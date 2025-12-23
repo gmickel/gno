@@ -69,11 +69,13 @@ describe('FTS search', () => {
 
     const result = await adapter.searchFts('hello');
     expect(result.ok).toBe(true);
-    if (!result.ok) return;
+    if (!result.ok) {
+      return;
+    }
 
     expect(result.value).toHaveLength(1);
     // docid is first 6 chars of sourceHash which is "hash_hellomd"
-    expect(result.value[0].docid).toBe('#hash_h');
+    expect(result.value[0]?.docid).toBe('#hash_h');
   });
 
   test('returns multiple matches ranked by score', async () => {
@@ -91,7 +93,9 @@ describe('FTS search', () => {
 
     const result = await adapter.searchFts('apple');
     expect(result.ok).toBe(true);
-    if (!result.ok) return;
+    if (!result.ok) {
+      return;
+    }
 
     expect(result.value).toHaveLength(2);
     // Both results should contain "apple"
@@ -105,7 +109,9 @@ describe('FTS search', () => {
 
     const result = await adapter.searchFts('nonexistent');
     expect(result.ok).toBe(true);
-    if (!result.ok) return;
+    if (!result.ok) {
+      return;
+    }
 
     expect(result.value).toHaveLength(0);
   });
@@ -166,15 +172,19 @@ describe('FTS search', () => {
     // Search without filter
     let result = await adapter.searchFts('important');
     expect(result.ok).toBe(true);
-    if (!result.ok) return;
+    if (!result.ok) {
+      return;
+    }
     expect(result.value).toHaveLength(2);
 
     // Search with collection filter
     result = await adapter.searchFts('important', { collection: 'notes' });
     expect(result.ok).toBe(true);
-    if (!result.ok) return;
+    if (!result.ok) {
+      return;
+    }
     expect(result.value).toHaveLength(1);
-    expect(result.value[0].collection).toBe('notes');
+    expect(result.value[0]?.collection).toBe('notes');
   });
 
   test('respects limit option', async () => {
@@ -192,7 +202,9 @@ describe('FTS search', () => {
 
     const result = await adapter.searchFts('testing', { limit: 3 });
     expect(result.ok).toBe(true);
-    if (!result.ok) return;
+    if (!result.ok) {
+      return;
+    }
 
     expect(result.value).toHaveLength(3);
   });
@@ -214,12 +226,14 @@ describe('FTS search', () => {
 
     const result = await adapter.searchFts('fox', { snippet: true });
     expect(result.ok).toBe(true);
-    if (!result.ok) return;
+    if (!result.ok) {
+      return;
+    }
 
     expect(result.value).toHaveLength(1);
-    expect(result.value[0].snippet).toBeDefined();
-    expect(result.value[0].snippet).toContain('<mark>');
-    expect(result.value[0].snippet).toContain('fox');
+    expect(result.value[0]?.snippet).toBeDefined();
+    expect(result.value[0]?.snippet).toContain('<mark>');
+    expect(result.value[0]?.snippet).toContain('fox');
   });
 
   test('excludes inactive documents from search', async () => {
@@ -247,10 +261,12 @@ describe('FTS search', () => {
 
     const result = await adapter.searchFts('document');
     expect(result.ok).toBe(true);
-    if (!result.ok) return;
+    if (!result.ok) {
+      return;
+    }
 
     expect(result.value).toHaveLength(1);
-    expect(result.value[0].uri).toContain('active.md');
+    expect(result.value[0]?.uri).toContain('active.md');
   });
 
   test('handles multilingual content (German)', async () => {
@@ -272,7 +288,9 @@ describe('FTS search', () => {
     // unicode61 tokenizer should handle German umlauts
     const result = await adapter.searchFts('Dokumentation');
     expect(result.ok).toBe(true);
-    if (!result.ok) return;
+    if (!result.ok) {
+      return;
+    }
 
     expect(result.value).toHaveLength(1);
   });

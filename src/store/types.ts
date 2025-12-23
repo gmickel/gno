@@ -25,12 +25,12 @@ export type StoreErrorCode =
   | 'INTERNAL';
 
 /** Store error with structured details */
-export interface StoreError {
+export type StoreError = {
   code: StoreErrorCode;
   message: string;
   cause?: unknown;
   details?: Record<string, unknown>;
-}
+};
 
 /** Result type for store operations */
 export type StoreResult<T> =
@@ -56,7 +56,7 @@ export function err<T>(
 // ─────────────────────────────────────────────────────────────────────────────
 
 /** Collection row from DB (mirrors config) */
-export interface CollectionRow {
+export type CollectionRow = {
   name: string;
   path: string;
   pattern: string;
@@ -65,18 +65,18 @@ export interface CollectionRow {
   updateCmd: string | null;
   languageHint: string | null;
   syncedAt: string;
-}
+};
 
 /** Context row from DB (mirrors config) */
-export interface ContextRow {
+export type ContextRow = {
   scopeType: 'global' | 'collection' | 'prefix';
   scopeKey: string;
   text: string;
   syncedAt: string;
-}
+};
 
 /** Document row from DB */
-export interface DocumentRow {
+export type DocumentRow = {
   id: number;
   collection: string;
   relPath: string;
@@ -110,10 +110,10 @@ export interface DocumentRow {
   // Timestamps
   createdAt: string;
   updatedAt: string;
-}
+};
 
 /** Chunk row from DB */
-export interface ChunkRow {
+export type ChunkRow = {
   mirrorHash: string;
   seq: number;
   pos: number;
@@ -123,10 +123,10 @@ export interface ChunkRow {
   language: string | null;
   tokenCount: number | null;
   createdAt: string;
-}
+};
 
 /** Ingest error row from DB */
-export interface IngestErrorRow {
+export type IngestErrorRow = {
   id: number;
   collection: string;
   relPath: string;
@@ -134,14 +134,14 @@ export interface IngestErrorRow {
   code: string;
   message: string;
   detailsJson: string | null;
-}
+};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Input Types (for upsert operations)
 // ─────────────────────────────────────────────────────────────────────────────
 
 /** Input for upserting a document */
-export interface DocumentInput {
+export type DocumentInput = {
   collection: string;
   relPath: string;
   sourceHash: string;
@@ -156,10 +156,10 @@ export interface DocumentInput {
   languageHint?: string;
   lastErrorCode?: string;
   lastErrorMessage?: string;
-}
+};
 
 /** Input for a single chunk */
-export interface ChunkInput {
+export type ChunkInput = {
   seq: number;
   pos: number;
   text: string;
@@ -167,23 +167,23 @@ export interface ChunkInput {
   endLine: number;
   language?: string;
   tokenCount?: number;
-}
+};
 
 /** Input for recording an ingest error */
-export interface IngestErrorInput {
+export type IngestErrorInput = {
   collection: string;
   relPath: string;
   code: string;
   message: string;
   details?: Record<string, unknown>;
-}
+};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Search Types
 // ─────────────────────────────────────────────────────────────────────────────
 
 /** Options for FTS search */
-export interface FtsSearchOptions {
+export type FtsSearchOptions = {
   /** Max results to return */
   limit?: number;
   /** Filter by collection */
@@ -192,10 +192,10 @@ export interface FtsSearchOptions {
   language?: string;
   /** Include snippet with highlights */
   snippet?: boolean;
-}
+};
 
 /** Single FTS search result */
-export interface FtsResult {
+export type FtsResult = {
   mirrorHash: string;
   seq: number;
   score: number;
@@ -206,24 +206,24 @@ export interface FtsResult {
   title?: string;
   collection?: string;
   relPath?: string;
-}
+};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Status Types
 // ─────────────────────────────────────────────────────────────────────────────
 
 /** Per-collection status */
-export interface CollectionStatus {
+export type CollectionStatus = {
   name: string;
   path: string;
   totalDocuments: number;
   activeDocuments: number;
   errorDocuments: number;
   chunkedDocuments: number;
-}
+};
 
 /** Index-level status */
-export interface IndexStatus {
+export type IndexStatus = {
   version: string;
   dbPath: string;
   ftsTokenizer: FtsTokenizer;
@@ -233,26 +233,26 @@ export interface IndexStatus {
   totalChunks: number;
   embeddingBacklog: number;
   recentErrors: number;
-}
+};
 
 /** Cleanup operation stats */
-export interface CleanupStats {
+export type CleanupStats = {
   orphanedContent: number;
   orphanedChunks: number;
   orphanedVectors: number;
   expiredCache: number;
-}
+};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Migration Types
 // ─────────────────────────────────────────────────────────────────────────────
 
 /** Migration result */
-export interface MigrationResult {
+export type MigrationResult = {
   applied: number[];
   currentVersion: number;
   ftsTokenizer: FtsTokenizer;
-}
+};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // StorePort Interface
@@ -262,7 +262,7 @@ export interface MigrationResult {
  * StorePort - Port interface for data persistence.
  * Implementations: SQLite adapter (src/store/sqlite/adapter.ts)
  */
-export interface StorePort {
+export type StorePort = {
   // ─────────────────────────────────────────────────────────────────────────
   // Lifecycle
   // ─────────────────────────────────────────────────────────────────────────
@@ -439,4 +439,4 @@ export interface StorePort {
    * Remove orphaned content, chunks, vectors, and expired cache.
    */
   cleanupOrphans(): Promise<StoreResult<CleanupStats>>;
-}
+};

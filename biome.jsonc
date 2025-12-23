@@ -34,6 +34,7 @@
         "noMagicNumbers": "off"
       },
       "performance": {
+        "noBarrelFile": "off",
         "noNamespaceImport": "warn"
       },
       "complexity": {
@@ -43,5 +44,17 @@
         }
       }
     }
-  }
+  },
+  "overrides": [
+    {
+      "includes": ["src/store/sqlite/**"],
+      "linter": {
+        "rules": {
+          "suspicious": {
+            "useAwait": "off"
+          }
+        }
+      }
+    }
+  ]
 }

@@ -14,7 +14,6 @@ import {
 } from '../app/constants';
 
 export type { ResolvedDirs } from '../app/constants';
-// biome-ignore lint/performance/noBarrelFile: intentional re-export for public API
 export { getConfigPath } from '../app/constants';
 
 /**

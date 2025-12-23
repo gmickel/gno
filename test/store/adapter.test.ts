@@ -42,7 +42,9 @@ describe('SqliteAdapter', () => {
       const result = await adapter.open(dbPath, 'unicode61');
 
       expect(result.ok).toBe(true);
-      if (!result.ok) return;
+      if (!result.ok) {
+        return;
+      }
 
       expect(result.value.applied).toContain(1);
       expect(result.value.currentVersion).toBe(1);
@@ -58,7 +60,9 @@ describe('SqliteAdapter', () => {
       // Second open
       result = await adapter.open(dbPath, 'unicode61');
       expect(result.ok).toBe(true);
-      if (!result.ok) return;
+      if (!result.ok) {
+        return;
+      }
 
       expect(result.value.applied).toHaveLength(0);
       expect(result.value.currentVersion).toBe(1);
@@ -74,7 +78,9 @@ describe('SqliteAdapter', () => {
       adapter = new SqliteAdapter();
       result = await adapter.open(dbPath, 'porter');
       expect(result.ok).toBe(false);
-      if (result.ok) return;
+      if (result.ok) {
+        return;
+      }
 
       expect(result.error.code).toBe('MIGRATION_FAILED');
       expect(result.error.message).toContain('tokenizer mismatch');
@@ -109,7 +115,9 @@ describe('SqliteAdapter', () => {
 
       const getResult = await adapter.getCollections();
       expect(getResult.ok).toBe(true);
-      if (!getResult.ok) return;
+      if (!getResult.ok) {
+        return;
+      }
 
       expect(getResult.value).toHaveLength(2);
 
@@ -156,10 +164,12 @@ describe('SqliteAdapter', () => {
 
       const result = await adapter.getCollections();
       expect(result.ok).toBe(true);
-      if (!result.ok) return;
+      if (!result.ok) {
+        return;
+      }
 
       expect(result.value).toHaveLength(1);
-      expect(result.value[0].name).toBe('notes');
+      expect(result.value[0]?.name).toBe('notes');
     });
   });
 
@@ -183,7 +193,9 @@ describe('SqliteAdapter', () => {
 
       const getResult = await adapter.getContexts();
       expect(getResult.ok).toBe(true);
-      if (!getResult.ok) return;
+      if (!getResult.ok) {
+        return;
+      }
 
       expect(getResult.value).toHaveLength(2);
 
@@ -223,14 +235,18 @@ describe('SqliteAdapter', () => {
 
       const upsertResult = await adapter.upsertDocument(doc);
       expect(upsertResult.ok).toBe(true);
-      if (!upsertResult.ok) return;
+      if (!upsertResult.ok) {
+        return;
+      }
 
       // docid is derived from sourceHash
       expect(upsertResult.value).toBe('#abc123');
 
       const getResult = await adapter.getDocument('notes', 'readme.md');
       expect(getResult.ok).toBe(true);
-      if (!getResult.ok) return;
+      if (!getResult.ok) {
+        return;
+      }
 
       expect(getResult.value).not.toBeNull();
       expect(getResult.value?.docid).toBe('#abc123');
@@ -254,7 +270,9 @@ describe('SqliteAdapter', () => {
 
       const result = await adapter.getDocumentByDocid('#xyz789');
       expect(result.ok).toBe(true);
-      if (!result.ok) return;
+      if (!result.ok) {
+        return;
+      }
 
       expect(result.value).not.toBeNull();
       expect(result.value?.relPath).toBe('test.md');
@@ -277,7 +295,9 @@ describe('SqliteAdapter', () => {
         'gno://notes/subdir/file.md'
       );
       expect(result.ok).toBe(true);
-      if (!result.ok) return;
+      if (!result.ok) {
+        return;
+      }
 
       expect(result.value).not.toBeNull();
       expect(result.value?.relPath).toBe('subdir/file.md');
@@ -306,17 +326,23 @@ describe('SqliteAdapter', () => {
 
       const markResult = await adapter.markInactive('notes', ['a.md']);
       expect(markResult.ok).toBe(true);
-      if (!markResult.ok) return;
+      if (!markResult.ok) {
+        return;
+      }
       expect(markResult.value).toBe(1);
 
       const docA = await adapter.getDocument('notes', 'a.md');
       expect(docA.ok).toBe(true);
-      if (!docA.ok) return;
+      if (!docA.ok) {
+        return;
+      }
       expect(docA.value?.active).toBe(false);
 
       const docB = await adapter.getDocument('notes', 'b.md');
       expect(docB.ok).toBe(true);
-      if (!docB.ok) return;
+      if (!docB.ok) {
+        return;
+      }
       expect(docB.value?.active).toBe(true);
     });
 
@@ -361,15 +387,19 @@ describe('SqliteAdapter', () => {
       // All documents
       let result = await adapter.listDocuments();
       expect(result.ok).toBe(true);
-      if (!result.ok) return;
+      if (!result.ok) {
+        return;
+      }
       expect(result.value).toHaveLength(2);
 
       // Filtered by collection
       result = await adapter.listDocuments('notes');
       expect(result.ok).toBe(true);
-      if (!result.ok) return;
+      if (!result.ok) {
+        return;
+      }
       expect(result.value).toHaveLength(1);
-      expect(result.value[0].collection).toBe('notes');
+      expect(result.value[0]?.collection).toBe('notes');
     });
   });
 
@@ -387,7 +417,9 @@ describe('SqliteAdapter', () => {
 
       const getResult = await adapter.getContent(mirrorHash);
       expect(getResult.ok).toBe(true);
-      if (!getResult.ok) return;
+      if (!getResult.ok) {
+        return;
+      }
 
       expect(getResult.value).toBe(markdown);
     });
@@ -395,7 +427,9 @@ describe('SqliteAdapter', () => {
     test('returns null for missing content', async () => {
       const result = await adapter.getContent('nonexistent');
       expect(result.ok).toBe(true);
-      if (!result.ok) return;
+      if (!result.ok) {
+        return;
+      }
       expect(result.value).toBeNull();
     });
 
@@ -408,7 +442,9 @@ describe('SqliteAdapter', () => {
 
       const result = await adapter.getContent(mirrorHash);
       expect(result.ok).toBe(true);
-      if (!result.ok) return;
+      if (!result.ok) {
+        return;
+      }
       // Original content is preserved (ON CONFLICT DO NOTHING)
       expect(result.value).toBe(markdown);
     });
@@ -445,12 +481,14 @@ describe('SqliteAdapter', () => {
 
       const getResult = await adapter.getChunks('chunk_mirror');
       expect(getResult.ok).toBe(true);
-      if (!getResult.ok) return;
+      if (!getResult.ok) {
+        return;
+      }
 
       expect(getResult.value).toHaveLength(2);
-      expect(getResult.value[0].seq).toBe(0);
-      expect(getResult.value[0].text).toBe('# Content');
-      expect(getResult.value[1].seq).toBe(1);
+      expect(getResult.value[0]?.seq).toBe(0);
+      expect(getResult.value[0]?.text).toBe('# Content');
+      expect(getResult.value[1]?.seq).toBe(1);
     });
 
     test('replaces existing chunks on upsert', async () => {
@@ -469,10 +507,12 @@ describe('SqliteAdapter', () => {
 
       const result = await adapter.getChunks('chunk_mirror');
       expect(result.ok).toBe(true);
-      if (!result.ok) return;
+      if (!result.ok) {
+        return;
+      }
 
       expect(result.value).toHaveLength(2);
-      expect(result.value[0].text).toBe('new1');
+      expect(result.value[0]?.text).toBe('new1');
     });
   });
 
@@ -510,7 +550,9 @@ describe('SqliteAdapter', () => {
 
       const result = await adapter.getStatus();
       expect(result.ok).toBe(true);
-      if (!result.ok) return;
+      if (!result.ok) {
+        return;
+      }
 
       expect(result.value.version).toBe('1');
       expect(result.value.ftsTokenizer).toBe('unicode61');
@@ -521,7 +563,7 @@ describe('SqliteAdapter', () => {
       // All chunks are in embedding backlog (no vectors yet)
       expect(result.value.embeddingBacklog).toBe(1);
       expect(result.value.collections).toHaveLength(1);
-      expect(result.value.collections[0].name).toBe('notes');
+      expect(result.value.collections[0]?.name).toBe('notes');
     });
   });
 
@@ -541,12 +583,14 @@ describe('SqliteAdapter', () => {
 
       const result = await adapter.getRecentErrors(10);
       expect(result.ok).toBe(true);
-      if (!result.ok) return;
+      if (!result.ok) {
+        return;
+      }
 
       expect(result.value).toHaveLength(1);
-      expect(result.value[0].code).toBe('CORRUPT');
-      expect(result.value[0].message).toBe('Invalid PDF structure');
-      expect(result.value[0].detailsJson).toContain('"page":5');
+      expect(result.value[0]?.code).toBe('CORRUPT');
+      expect(result.value[0]?.message).toBe('Invalid PDF structure');
+      expect(result.value[0]?.detailsJson).toContain('"page":5');
     });
   });
 
@@ -585,7 +629,9 @@ describe('SqliteAdapter', () => {
 
       const result = await adapter.cleanupOrphans();
       expect(result.ok).toBe(true);
-      if (!result.ok) return;
+      if (!result.ok) {
+        return;
+      }
 
       // Both contents should be cleaned (doc is inactive)
       expect(result.value.orphanedContent).toBe(2);
@@ -593,7 +639,9 @@ describe('SqliteAdapter', () => {
       // Verify content is gone
       const content = await adapter.getContent('orphan_content');
       expect(content.ok).toBe(true);
-      if (!content.ok) return;
+      if (!content.ok) {
+        return;
+      }
       expect(content.value).toBeNull();
     });
   });

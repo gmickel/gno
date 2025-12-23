@@ -4,7 +4,6 @@
  * @module src/cli/commands/context
  */
 
-// biome-ignore lint/performance/noBarrelFile: intentional public API
 export { contextAdd } from './add';
 export { type CheckResult, contextCheck, type OutputFormat } from './check';
 export { contextList } from './list';

@@ -4,7 +4,6 @@
  * @module src/config
  */
 
-// biome-ignore lint/performance/noBarrelFile: intentional public API
 export { createDefaultConfig } from './defaults';
 // Loading
 export {

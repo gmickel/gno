@@ -2,6 +2,8 @@
  * SQLite implementation of StorePort.
  * Uses bun:sqlite for database operations.
  *
+ * Note: bun:sqlite is synchronous but we use async for interface consistency.
+ *
  * @module src/store/sqlite/adapter
  */
 
@@ -553,11 +555,15 @@ export class SqliteAdapter implements StorePort {
       `;
 
       const params: (string | number)[] = [query];
-      if (options.collection) params.push(options.collection);
-      if (options.language) params.push(options.language);
+      if (options.collection) {
+        params.push(options.collection);
+      }
+      if (options.language) {
+        params.push(options.language);
+      }
       params.push(limit);
 
-      interface FtsRow {
+      type FtsRow = {
         mirror_hash: string;
         seq: number;
         score: number;
@@ -567,7 +573,7 @@ export class SqliteAdapter implements StorePort {
         title: string | null;
         collection: string;
         rel_path: string;
-      }
+      };
 
       const rows = db.query<FtsRow, (string | number)[]>(sql).all(...params);
 
@@ -646,23 +652,17 @@ export class SqliteAdapter implements StorePort {
         .get();
       const version = versionRow?.value ?? '0';
 
-      // Get tokenizer
-      const tokenizerRow = db
-        .query<{ value: string }, []>(
-          "SELECT value FROM schema_meta WHERE key = 'fts_tokenizer'"
-        )
-        .get();
-      const ftsTokenizer = (tokenizerRow?.value ?? 'unicode61') as FtsTokenizer;
+      // Use stored tokenizer from open()
 
       // Get collection stats
-      interface CollectionStat {
+      type CollectionStat = {
         name: string;
         path: string;
         total: number;
         active: number;
         errored: number;
         chunked: number;
-      }
+      };
 
       const collectionStats = db
         .query<CollectionStat, []>(
@@ -726,7 +726,7 @@ export class SqliteAdapter implements StorePort {
       return ok({
         version,
         dbPath: this.dbPath,
-        ftsTokenizer,
+        ftsTokenizer: this.ftsTokenizer,
         collections: collectionStats.map((s) => ({
           name: s.name,
           path: s.path,
@@ -874,7 +874,7 @@ export class SqliteAdapter implements StorePort {
 // DB Row Types (snake_case from SQLite)
 // ─────────────────────────────────────────────────────────────────────────────
 
-interface DbCollectionRow {
+type DbCollectionRow = {
   name: string;
   path: string;
   pattern: string;
@@ -883,16 +883,16 @@ interface DbCollectionRow {
   update_cmd: string | null;
   language_hint: string | null;
   synced_at: string;
-}
+};
 
-interface DbContextRow {
+type DbContextRow = {
   scope_type: 'global' | 'collection' | 'prefix';
   scope_key: string;
   text: string;
   synced_at: string;
-}
+};
 
-interface DbDocumentRow {
+type DbDocumentRow = {
   id: number;
   collection: string;
   rel_path: string;
@@ -914,9 +914,9 @@ interface DbDocumentRow {
   last_error_at: string | null;
   created_at: string;
   updated_at: string;
-}
+};
 
-interface DbChunkRow {
+type DbChunkRow = {
   mirror_hash: string;
   seq: number;
   pos: number;
@@ -926,9 +926,9 @@ interface DbChunkRow {
   language: string | null;
   token_count: number | null;
   created_at: string;
-}
+};
 
-interface DbIngestErrorRow {
+type DbIngestErrorRow = {
   id: number;
   collection: string;
   rel_path: string;
@@ -936,7 +936,7 @@ interface DbIngestErrorRow {
   code: string;
   message: string;
   details_json: string | null;
-}
+};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Row Mappers (snake_case -> camelCase)
