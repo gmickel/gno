@@ -33,7 +33,7 @@ export function expandPath(inputPath: string): string {
 
 /**
  * Ensure path is absolute, expanding ~ if needed.
- * Returns null if path cannot be made absolute.
+ * Falls back to current working directory for relative paths.
  */
 export function toAbsolutePath(inputPath: string, cwd?: string): string {
   const expanded = expandPath(inputPath);

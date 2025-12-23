@@ -38,14 +38,14 @@ export type FtsTokenizer = (typeof FTS_TOKENIZERS)[number];
 export const DEFAULT_FTS_TOKENIZER: FtsTokenizer = 'unicode61';
 
 /**
- * BCP-47 language tag pattern (simplified).
- * Matches: en, de, fr, zh-CN, und, en-US, etc.
+ * BCP-47 language tag pattern (simplified, case-insensitive).
+ * Matches: en, de, fr, zh-CN, zh-Hans, und, en-US, etc.
  */
-const BCP47_PATTERN = /^[a-z]{2,3}(-[A-Z]{2}|-[a-z]{4}|-[A-Z][a-z]{3})?$/;
+const BCP47_PATTERN = /^[a-z]{2,3}(-[a-z]{2}|-[a-z]{4})?$/i;
 
 /** Validate BCP-47 language hint */
 export function isValidLanguageHint(hint: string): boolean {
-  return BCP47_PATTERN.test(hint) || hint === 'und';
+  return BCP47_PATTERN.test(hint);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -58,8 +58,8 @@ export function isValidLanguageHint(hint: string): boolean {
  */
 const COLLECTION_NAME_REGEX = /^[a-z0-9][a-z0-9_-]{0,63}$/;
 
-/** Collection scope key pattern: name followed by colon */
-const COLLECTION_SCOPE_REGEX = /^[a-z0-9][a-z0-9_-]*:$/;
+/** Collection scope key pattern: name (1-64 chars) followed by colon */
+const COLLECTION_SCOPE_REGEX = /^[a-z0-9][a-z0-9_-]{0,63}:$/;
 
 export const CollectionSchema = z.object({
   /** Unique collection identifier (lowercase) */

@@ -23,6 +23,12 @@ import {
   toAbsolutePath,
 } from '../../config';
 
+/** Pattern to replace invalid chars in collection names with hyphens */
+const INVALID_NAME_CHARS = /[^a-z0-9_-]/g;
+
+/** Pattern to strip leading non-alphanumeric from collection names */
+const LEADING_NON_ALPHANUMERIC = /^[^a-z0-9]+/;
+
 /**
  * Options for init command.
  */
@@ -195,10 +201,10 @@ export async function init(options: InitOptions = {}): Promise<InitResult> {
     };
   }
 
-  // Create empty DB file
+  // Create DB placeholder file (actual schema created on first use)
   const dbPath = getIndexDbPath();
   try {
-    await Bun.write(dbPath, ''); // Create empty file - migrations will populate
+    await Bun.write(dbPath, '');
   } catch (error) {
     return {
       success: false,
@@ -246,11 +252,21 @@ async function addCollectionToConfig(
   }
 
   // Determine collection name
-  const collectionName =
+  let collectionName =
     options.name ??
-    basename(absolutePath)
-      .toLowerCase()
-      .replace(/[^a-z0-9_-]/g, '-');
+    basename(absolutePath).toLowerCase().replace(INVALID_NAME_CHARS, '-');
+
+  // Ensure name starts with alphanumeric (strip leading non-alphanumeric)
+  collectionName = collectionName.replace(LEADING_NON_ALPHANUMERIC, '');
+
+  // Validate derived name
+  if (!collectionName || collectionName.length > 64) {
+    return {
+      success: false,
+      error:
+        'Cannot derive valid collection name from path. Please specify --name explicitly.',
+    };
+  }
 
   // Check for duplicate name
   if (config.collections.some((c) => c.name === collectionName)) {
