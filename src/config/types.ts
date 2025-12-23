@@ -37,6 +37,17 @@ export type FtsTokenizer = (typeof FTS_TOKENIZERS)[number];
 /** Default FTS tokenizer */
 export const DEFAULT_FTS_TOKENIZER: FtsTokenizer = 'unicode61';
 
+/**
+ * BCP-47 language tag pattern (simplified).
+ * Matches: en, de, fr, zh-CN, und, en-US, etc.
+ */
+const BCP47_PATTERN = /^[a-z]{2,3}(-[A-Z]{2}|-[a-z]{4}|-[A-Z][a-z]{3})?$/;
+
+/** Validate BCP-47 language hint */
+export function isValidLanguageHint(hint: string): boolean {
+  return BCP47_PATTERN.test(hint) || hint === 'und';
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Collection Schema
 // ─────────────────────────────────────────────────────────────────────────────
@@ -75,7 +86,12 @@ export const CollectionSchema = z.object({
   updateCmd: z.string().optional(),
 
   /** Optional BCP-47 language hint */
-  languageHint: z.string().optional(),
+  languageHint: z
+    .string()
+    .refine((val) => isValidLanguageHint(val), {
+      message: 'Invalid BCP-47 language code (e.g., en, de, zh-CN, und)',
+    })
+    .optional(),
 });
 
 export type Collection = z.infer<typeof CollectionSchema>;

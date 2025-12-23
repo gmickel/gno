@@ -48,6 +48,7 @@ export {
   FTS_TOKENIZERS,
   type FtsTokenizer,
   getCollectionFromScope,
+  isValidLanguageHint,
   parseScope,
   type ScopeType,
   ScopeTypeSchema,
