@@ -20,7 +20,7 @@ const TEST_COLLECTION_PATH = join(TEST_DIR, 'collections', 'test-coll');
 
 // Mock process.exit to prevent actual exits
 const originalExit = process.exit;
-let exitCode: number | null = null;
+let exitCode = -1;
 const mockExit = (code: number) => {
   exitCode = code;
   throw new Error(`EXIT:${code}`);
@@ -44,7 +44,7 @@ describe('collection CLI commands', () => {
     process.exit = mockExit as never;
     console.log = mockLog as never;
     console.error = mockError as never;
-    exitCode = null;
+    exitCode = -1;
     consoleOutput = [];
     consoleErrors = [];
 
@@ -149,7 +149,7 @@ describe('collection CLI commands', () => {
       }
 
       // Reset for second attempt
-      exitCode = null;
+      exitCode = -1;
       consoleErrors = [];
 
       // Try to add duplicate
