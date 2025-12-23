@@ -517,7 +517,7 @@ gno get <ref> [--from <line>] [-l <lines>] [--line-numbers] [--source] [--json|-
 **Ref Formats:**
 - `gno://work/contracts/nda.docx` - Full URI
 - `work/contracts/nda.docx` - Collection-relative path
-- `#a1b2c3` - Document ID
+- `#a1b2c3d4` - Document ID
 - `gno://work/doc.md:120` - URI with line number suffix
 
 **Output (JSON):**
@@ -531,7 +531,7 @@ See [Output Schemas](./output-schemas/get.schema.json)
 **Examples:**
 ```bash
 gno get gno://work/contracts/nda.docx
-gno get "#a1b2c3" --line-numbers
+gno get "#a1b2c3d4" --line-numbers
 gno get work/doc.md:120 -l 50
 ```
 
@@ -585,7 +585,7 @@ gno ls [<scope>] [--json|--files|--md]
 ```json
 [
   {
-    "docid": "#a1b2c3",
+    "docid": "#a1b2c3d4",
     "uri": "gno://work/doc.md",
     "title": "Document Title",
     "source": { "relPath": "doc.md", "mime": "text/markdown", "ext": ".md" }

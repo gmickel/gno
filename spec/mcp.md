@@ -83,13 +83,13 @@ BM25 keyword search over indexed documents.
   "content": [
     {
       "type": "text",
-      "text": "Found 3 results for \"query\"\n\n1. #a1b2c3 - doc.md (0.85)\n..."
+      "text": "Found 3 results for \"query\"\n\n1. #a1b2c3d4 - doc.md (0.85)\n..."
     }
   ],
   "structuredContent": {
     "results": [
       {
-        "docid": "#a1b2c3",
+        "docid": "#a1b2c3d4",
         "score": 0.85,
         "uri": "gno://work/doc.md",
         "snippet": "...",
@@ -280,7 +280,7 @@ Retrieve a single document by reference.
     }
   ],
   "structuredContent": {
-    "docid": "#a1b2c3",
+    "docid": "#a1b2c3d4",
     "uri": "gno://work/doc.md",
     "title": "Document Title",
     "content": "# Document Title\n\nContent here...",
@@ -432,7 +432,7 @@ MIME type: `text/markdown`
 Content includes optional header comment:
 ```markdown
 <!-- gno://work/contracts/nda.docx
-     docid: #a1b2c3
+     docid: #a1b2c3d4
      source: /abs/path/to/nda.docx
      mime: application/vnd.openxmlformats-officedocument.wordprocessingml.document
 -->
