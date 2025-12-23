@@ -115,7 +115,7 @@ Initialize GNO configuration and index database. Safe to run repeatedly (idempot
 
 **Synopsis:**
 ```
-gno init [<path>] [--name <name>] [--pattern <glob>] [--include <csv-ext>] [--exclude <csv>] [--update <cmd>] [--yes]
+gno init [<path>] [--name <name>] [--pattern <glob>] [--include <csv-ext>] [--exclude <csv>] [--update <cmd>] [--tokenizer <type>] [--language <code>] [--yes]
 ```
 
 **Arguments:**
@@ -131,6 +131,8 @@ gno init [<path>] [--name <name>] [--pattern <glob>] [--include <csv-ext>] [--ex
 | `--include` | csv | - | Extension allowlist (e.g., `.md,.pdf`) |
 | `--exclude` | csv | `.git,node_modules` | Exclude patterns |
 | `--update` | string | - | Shell command to run before indexing |
+| `--tokenizer` | string | unicode61 | FTS tokenizer: unicode61, porter, trigram |
+| `--language` | string | - | BCP-47 language hint for collection (e.g., en, de, zh-CN) |
 | `--yes` | boolean | false | Skip prompts, accept defaults |
 
 **Behavior:**
@@ -155,6 +157,12 @@ gno init ~/notes --name notes --pattern "**/*.md"
 
 # Non-interactive initialization
 gno init ~/work/docs --name work --yes
+
+# Initialize with porter stemmer (English-optimized)
+gno init --tokenizer porter
+
+# Initialize with language hint for German docs
+gno init ~/docs/german --name german --language de
 ```
 
 ---
@@ -165,7 +173,7 @@ Add a new collection to the index.
 
 **Synopsis:**
 ```
-gno collection add <path> --name <name> [--pattern <glob>] [--include <csv-ext>] [--exclude <csv>] [--update <cmd>]
+gno collection add <path> --name <name> [--pattern <glob>] [--include <csv-ext>] [--exclude <csv>] [--update <cmd>] [--language <code>]
 ```
 
 **Arguments:**
@@ -181,10 +189,11 @@ gno collection add <path> --name <name> [--pattern <glob>] [--include <csv-ext>]
 | `--include` | csv | - | Extension allowlist |
 | `--exclude` | csv | `.git,node_modules,.venv,.idea,dist,build` | Exclude patterns |
 | `--update` | string | - | Shell command to run before indexing |
+| `--language` | string | - | BCP-47 language hint (e.g., en, de, zh-CN) |
 
 **Exit Codes:**
 - 0: Success
-- 1: Missing required args, invalid path, or duplicate name
+- 1: Missing required args, invalid path, duplicate name, or invalid language hint
 - 2: Config write failure
 
 **Examples:**
