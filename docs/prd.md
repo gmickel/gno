@@ -1296,13 +1296,15 @@ Rule: No implementation merges without spec updates and executable contract test
 
 Repo must include:
 
-* `spec/cli.md`
-* `spec/mcp.md`
-* `spec/db/schema.sql`
+* `spec/cli.md` ✓
+* `spec/mcp.md` ✓
+* `spec/db/schema.sql` (placeholder exists)
 * `spec/converters.md`
 * `spec/models.md`
 * `spec/evals.md`
-* `spec/output-schemas/*.json`
+* `spec/output-schemas/*.json` ✓
+
+Contract tests: `test/spec/schemas/` (94 tests via Ajv)
 
 Definition of done (per epic):
 

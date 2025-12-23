@@ -122,6 +122,49 @@ Biome's linter will catch most issues automatically. Focus your attention on:
 
 Most formatting and common issues are automatically fixed by Biome. Run `npx ultracite fix` before committing to ensure compliance.
 
+---
+
+## Spec-Driven Development
+
+GNO follows spec-driven development. **No implementation merges without spec updates and contract tests.**
+
+### Spec Files
+
+| File | Purpose |
+|------|---------|
+| `spec/cli.md` | CLI commands, flags, exit codes, output formats |
+| `spec/mcp.md` | MCP tools, resources, schemas, versioning |
+| `spec/output-schemas/*.json` | JSON Schema (draft-07) for all outputs |
+| `spec/db/schema.sql` | Database schema and migrations |
+| `docs/prd.md` | Full PRD (§14-16 for interface contracts) |
+
+### Workflow
+
+1. **Before implementing**: Read the relevant spec
+2. **If spec is missing/incomplete**: Update spec first, get review
+3. **Add/update JSON schema** if output shape changes
+4. **Add contract tests** in `test/spec/schemas/`
+5. **Implement the feature**
+6. **Verify**: `bun test` passes
+
+### Contract Tests
+
+Contract tests validate JSON outputs against schemas using Ajv:
+
+```bash
+bun test                           # run all tests
+bun test test/spec/schemas/        # run schema tests only
+```
+
+### Definition of Done (per epic)
+
+From PRD §21:
+- Specs updated and reviewed
+- Contract tests and golden fixtures added/updated
+- Unit and integration tests pass
+- Eval gates pass where applicable
+- CLI help updated
+
 ## Landing the Plane (Session Completion)
 
 **When ending a work session**, you MUST complete ALL steps below. Work is NOT complete until `git push` succeeds.
