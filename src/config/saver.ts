@@ -101,8 +101,10 @@ export async function saveConfigToPath(
 
   // Rename temp to target (atomic on POSIX, needs unlink on Windows)
   try {
-    // Windows: rename fails if dest exists, so unlink first
-    await unlink(filePath).catch(() => {});
+    // Windows: rename fails if dest exists, so unlink first (ignore if not exists)
+    await unlink(filePath).catch(() => {
+      /* ENOENT ok */
+    });
     await rename(tempPath, filePath);
   } catch (cause) {
     // Clean up temp file on rename failure
