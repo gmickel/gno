@@ -63,62 +63,16 @@ export type InitResult = {
 };
 
 /**
- * Execute gno init command.
+ * Handle case when already initialized.
  */
-export async function init(options: InitOptions = {}): Promise<InitResult> {
-  const paths = getConfigPaths();
+async function handleAlreadyInitialized(
+  options: InitOptions,
+  paths: ReturnType<typeof getConfigPaths>
+): Promise<InitResult> {
+  const config = await loadConfigOrNull(options.configPath);
+  const dbPath = getIndexDbPath();
 
-  // Check if already initialized
-  const initialized = await isInitialized(options.configPath);
-
-  if (initialized) {
-    const config = await loadConfigOrNull(options.configPath);
-    const dbPath = getIndexDbPath();
-
-    // If path provided, validate and add collection even if already initialized
-    if (options.path) {
-      if (!config) {
-        return {
-          success: false,
-          configPath: paths.configFile,
-          dataDir: paths.dataDir,
-          dbPath,
-          error: 'Config exists but could not be loaded',
-        };
-      }
-
-      const collectionResult = await addCollectionToConfig(config, options);
-      if (!collectionResult.success) {
-        return {
-          success: false,
-          configPath: paths.configFile,
-          dataDir: paths.dataDir,
-          dbPath,
-          error: collectionResult.error,
-        };
-      }
-
-      const saveResult = await saveConfig(config, options.configPath);
-      if (!saveResult.ok) {
-        return {
-          success: false,
-          configPath: paths.configFile,
-          dataDir: paths.dataDir,
-          dbPath,
-          error: saveResult.error.message,
-        };
-      }
-
-      return {
-        success: true,
-        alreadyInitialized: true,
-        configPath: paths.configFile,
-        dataDir: paths.dataDir,
-        dbPath,
-        collectionAdded: collectionResult.collectionName,
-      };
-    }
-
+  if (!options.path) {
     return {
       success: true,
       alreadyInitialized: true,
@@ -126,6 +80,60 @@ export async function init(options: InitOptions = {}): Promise<InitResult> {
       dataDir: paths.dataDir,
       dbPath,
     };
+  }
+
+  if (!config) {
+    return {
+      success: false,
+      configPath: paths.configFile,
+      dataDir: paths.dataDir,
+      dbPath,
+      error: 'Config exists but could not be loaded',
+    };
+  }
+
+  const collectionResult = await addCollectionToConfig(config, options);
+  if (!collectionResult.success) {
+    return {
+      success: false,
+      configPath: paths.configFile,
+      dataDir: paths.dataDir,
+      dbPath,
+      error: collectionResult.error,
+    };
+  }
+
+  const saveResult = await saveConfig(config, options.configPath);
+  if (!saveResult.ok) {
+    return {
+      success: false,
+      configPath: paths.configFile,
+      dataDir: paths.dataDir,
+      dbPath,
+      error: saveResult.error.message,
+    };
+  }
+
+  return {
+    success: true,
+    alreadyInitialized: true,
+    configPath: paths.configFile,
+    dataDir: paths.dataDir,
+    dbPath,
+    collectionAdded: collectionResult.collectionName,
+  };
+}
+
+/**
+ * Execute gno init command.
+ */
+export async function init(options: InitOptions = {}): Promise<InitResult> {
+  const paths = getConfigPaths();
+
+  // Check if already initialized
+  const initialized = await isInitialized(options.configPath);
+  if (initialized) {
+    return handleAlreadyInitialized(options, paths);
   }
 
   // Create directories
