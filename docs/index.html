@@ -429,14 +429,14 @@
     <script>
     'use strict';
     // Theme toggle
-    function toggleTheme() {
+    window.toggleTheme = () => {
       const html = document.documentElement;
       const current = html.getAttribute('data-theme');
       const next = current === 'dark' ? 'light' : 'dark';
       html.setAttribute('data-theme', next);
       localStorage.setItem('theme', next);
       updateThemeIcons(next);
-    }
+    };
 
     function updateThemeIcons(theme) {
       const sunIcon = document.querySelector('.sun-icon');
@@ -456,50 +456,51 @@
     updateThemeIcons(savedTheme);
 
     // Mobile nav toggle
-    function toggleNav() {
+    window.toggleNav = () => {
       document.getElementById('navLinks').classList.toggle('open');
-    }
+    };
 
     // Copy code
-    function copyCode(btn) {
+    window.copyCode = (btn) => {
       const code = btn
         .closest('.code-window')
         .querySelector('code').textContent;
       navigator.clipboard.writeText(code);
       btn.textContent = 'Copied!';
-      setTimeout(() => (btn.textContent = 'Copy'), 2000);
-    }
+      setTimeout(() => {
+        btn.textContent = 'Copy';
+      }, 2000);
+    };
 
     // Create floating particles
-    function createParticles() {
+    (function createParticles() {
       const container = document.getElementById('particles');
       const count = 30;
       for (let i = 0; i < count; i++) {
         const particle = document.createElement('div');
         particle.className = 'particle';
-        particle.style.left = Math.random() * 100 + '%';
-        particle.style.top = Math.random() * 100 + '%';
-        particle.style.animationDelay = -Math.random() * 20 + 's';
+        particle.style.left = `${Math.random() * 100}%`;
+        particle.style.top = `${Math.random() * 100}%`;
+        particle.style.animationDelay = `${-Math.random() * 20}s`;
         container.appendChild(particle);
       }
-    }
-    createParticles();
+    })();
 
     // Scroll animations
     const observer = new IntersectionObserver(
       (entries) => {
-        entries.forEach((entry) => {
+        for (const entry of entries) {
           if (entry.isIntersecting) {
             entry.target.classList.add('visible');
           }
-        });
+        }
       },
       { threshold: 0.1 }
     );
 
-    document
-      .querySelectorAll('.animate-on-scroll')
-      .forEach((el) => observer.observe(el));
+    for (const el of document.querySelectorAll('.animate-on-scroll')) {
+      observer.observe(el);
+    }
     </script>
   </body>
 </html>

@@ -825,14 +825,14 @@
     <script>
     'use strict';
     // Theme toggle
-    function toggleTheme() {
+    window.toggleTheme = () => {
       const html = document.documentElement;
       const current = html.getAttribute('data-theme');
       const next = current === 'dark' ? 'light' : 'dark';
       html.setAttribute('data-theme', next);
       localStorage.setItem('theme', next);
       updateThemeIcons(next);
-    }
+    };
 
     function updateThemeIcons(theme) {
       const sunIcon = document.querySelector('.sun-icon');
@@ -852,19 +852,21 @@
     updateThemeIcons(savedTheme);
 
     // Mobile nav toggle
-    function toggleNav() {
+    window.toggleNav = () => {
       document.getElementById('navLinks').classList.toggle('open');
-    }
+    };
 
     // Copy code
-    function copyCode(btn) {
+    window.copyCode = (btn) => {
       const code = btn
         .closest('.code-window')
         .querySelector('code').textContent;
       navigator.clipboard.writeText(code);
       btn.textContent = 'Copied!';
-      setTimeout(() => (btn.textContent = 'Copy'), 2000);
-    }
+      setTimeout(() => {
+        btn.textContent = 'Copy';
+      }, 2000);
+    };
 
     // Highlight active sidebar link on scroll
     const sections = document.querySelectorAll('section[id]');
@@ -872,19 +874,19 @@
 
     window.addEventListener('scroll', () => {
       let current = '';
-      sections.forEach((section) => {
+      for (const section of sections) {
         const sectionTop = section.offsetTop - 120;
         if (scrollY >= sectionTop) {
           current = section.getAttribute('id');
         }
-      });
+      }
 
-      navLinks.forEach((link) => {
+      for (const link of navLinks) {
         link.classList.remove('active');
-        if (link.getAttribute('href') === '#' + current) {
+        if (link.getAttribute('href') === `#${current}`) {
           link.classList.add('active');
         }
-      });
+      }
     });
     </script>
   </body>
