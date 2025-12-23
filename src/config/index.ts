@@ -22,6 +22,7 @@ export {
   expandPath,
   getConfigPath,
   getConfigPaths,
+  pathExists,
   type ResolvedDirs,
   toAbsolutePath,
 } from './paths';

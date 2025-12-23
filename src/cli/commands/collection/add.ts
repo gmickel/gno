@@ -2,13 +2,13 @@
  * gno collection add - Add a new collection
  */
 
-import { stat } from 'node:fs/promises';
 import {
   type Collection,
   CollectionSchema,
   DEFAULT_EXCLUDES,
   DEFAULT_PATTERN,
   loadConfig,
+  pathExists,
   saveConfig,
   toAbsolutePath,
 } from '../../../config';
@@ -37,9 +37,8 @@ export async function collectionAdd(
   const absolutePath = toAbsolutePath(path);
 
   // Check if path exists
-  try {
-    await stat(absolutePath);
-  } catch {
+  const exists = await pathExists(absolutePath);
+  if (!exists) {
     console.error(`Error: Path does not exist: ${absolutePath}`);
     process.exit(1);
   }

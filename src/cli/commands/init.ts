@@ -19,6 +19,7 @@ import {
   isInitialized,
   isValidLanguageHint,
   loadConfigOrNull,
+  pathExists,
   saveConfig,
   toAbsolutePath,
 } from '../../config';
@@ -241,10 +242,8 @@ async function addCollectionToConfig(
   const absolutePath = toAbsolutePath(options.path);
 
   // Check if path exists (as directory or file)
-  try {
-    const { stat } = await import('node:fs/promises');
-    await stat(absolutePath);
-  } catch {
+  const exists = await pathExists(absolutePath);
+  if (!exists) {
     return {
       success: false,
       error: `Path does not exist: ${absolutePath}`,
