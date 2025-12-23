@@ -1,0 +1,4 @@
+version: "1.0"
+collections:
+  - name: "Invalid Name With Spaces"
+    path: /some/path

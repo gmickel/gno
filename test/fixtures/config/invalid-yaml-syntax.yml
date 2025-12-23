@@ -1,0 +1,6 @@
+version: "1.0"
+collections:
+  - name: notes
+    path: /path
+    invalid yaml here
+      broken: indentation

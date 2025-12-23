@@ -4,6 +4,9 @@
   "workspaces": {
     "": {
       "name": "gno",
+      "dependencies": {
+        "zod": "^4.2.1",
+      },
       "devDependencies": {
         "@biomejs/biome": "2.3.9",
         "@types/bun": "latest",
