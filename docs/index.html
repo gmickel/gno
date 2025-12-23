@@ -326,8 +326,37 @@
               <div class="quickstart-number">4</div>
               <div class="quickstart-content">
                 <h3>Use with AI Assistants</h3>
-                <p>Start the MCP server for Claude integration:</p>
+                <p>
+                  <strong>Recommended:</strong>Let agents call gno directly via
+                  shell. Agents excel at CLI tools—they're more token-efficient
+                  and avoid the context pollution common with MCP servers.
+                </p>
                 <div class="code-window">
+                  <div class="code-header">
+                    <div class="code-dots">
+                      <span class="code-dot"></span>
+                      <span class="code-dot"></span>
+                      <span class="code-dot"></span>
+                    </div>
+                    <span class="code-title"
+                      >CLAUDE.md or agent instructions</span
+                    >
+                    <button class="code-copy" onclick="copyCode(this)">
+                      Copy
+                    </button>
+                  </div>
+                  <div class="code-content">
+                    <pre
+                    ><code><span class="token-comment"># Use gno CLI for knowledge search</span>
+<span class="token-command">gno</span> search <span class="token-string">"auth flow"</span> <span class="token-flag">--json</span>
+<span class="token-command">gno</span> ask <span class="token-string">"How does X work?"</span> <span class="token-flag">--answer</span></code></pre>
+                  </div>
+                </div>
+                <p style="margin-top: 1rem; opacity: 0.8; font-size: 0.9rem">
+                  <strong>Fallback:</strong>For Claude Desktop or environments
+                  without shell access, use MCP:
+                </p>
+                <div class="code-window" style="margin-top: 0.5rem">
                   <div class="code-header">
                     <div class="code-dots">
                       <span class="code-dot"></span>

@@ -1,0 +1,21 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "gno://schemas/context-list@1.0",
+  "title": "GNO Context List",
+  "description": "List of configured contexts for search enhancement",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "required": ["scope", "text"],
+    "properties": {
+      "scope": {
+        "type": "string",
+        "description": "Scope key: '/' (global), 'name:' (collection), or 'gno://collection/path' (prefix)"
+      },
+      "text": {
+        "type": "string",
+        "description": "Context description text for search enhancement"
+      }
+    }
+  }
+}

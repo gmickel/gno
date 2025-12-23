@@ -9,15 +9,34 @@ Default to using Bun instead of Node.js.
 - Use `bun run <script>` instead of `npm run <script>` or `yarn run <script>` or `pnpm run <script>`
 - Bun automatically loads .env, so don't use dotenv.
 
-## APIs
+## APIs - BUN FIRST!
 
-- `Bun.serve()` supports WebSockets, HTTPS, and routes. Don't use `express`.
-- `bun:sqlite` for SQLite. Don't use `better-sqlite3`.
-- `Bun.redis` for Redis. Don't use `ioredis`.
-- `Bun.sql` for Postgres. Don't use `pg` or `postgres.js`.
-- `WebSocket` is built-in. Don't use `ws`.
-- Prefer `Bun.file` over `node:fs`'s readFile/writeFile
-- Bun.$`ls` instead of execa.
+**CRITICAL**: Always prefer Bun native APIs over Node.js equivalents. Search for Bun alternatives before using `node:*` imports.
+
+### Must Use Bun
+
+| Task | Use This | NOT This |
+|------|----------|----------|
+| HTTP server | `Bun.serve()` | express, fastify, koa |
+| SQLite | `bun:sqlite` | better-sqlite3, sqlite3 |
+| Redis | `Bun.redis` | ioredis, redis |
+| Postgres | `Bun.sql` | pg, postgres.js |
+| WebSockets | `WebSocket` (built-in) | ws |
+| File read/write | `Bun.file()`, `Bun.write()` | node:fs readFile/writeFile |
+| File existence | `Bun.file(path).exists()` | node:fs stat/access |
+| Shell commands | `Bun.$\`cmd\`` | execa, child_process |
+| YAML | `Bun.YAML` | js-yaml, yaml |
+| Env loading | (automatic) | dotenv |
+
+### Acceptable node:* (No Bun Equivalent)
+
+| Module | Functions | Why |
+|--------|-----------|-----|
+| `node:path` | join, dirname, basename, isAbsolute, normalize | No Bun path utils |
+| `node:os` | homedir, platform, tmpdir | No Bun os utils |
+| `node:fs/promises` | mkdir, rename, unlink, rm, mkdtemp | Filesystem structure ops only |
+
+**Rule**: If you add a `node:*` import, comment WHY there's no Bun alternative.
 
 ## Testing
 

@@ -1,0 +1,45 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "gno://schemas/collection-list@1.0",
+  "title": "GNO Collection List",
+  "description": "List of configured collections",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "required": ["name", "path", "pattern", "include", "exclude"],
+    "properties": {
+      "name": {
+        "type": "string",
+        "description": "Collection identifier (lowercase, alphanumeric with hyphens/underscores)",
+        "pattern": "^[a-z0-9][a-z0-9_-]{0,63}$"
+      },
+      "path": {
+        "type": "string",
+        "description": "Absolute path to collection root directory"
+      },
+      "pattern": {
+        "type": "string",
+        "description": "Glob pattern for file matching",
+        "default": "**/*"
+      },
+      "include": {
+        "type": "array",
+        "description": "Extension allowlist (empty = all)",
+        "items": { "type": "string" }
+      },
+      "exclude": {
+        "type": "array",
+        "description": "Path patterns to skip",
+        "items": { "type": "string" }
+      },
+      "updateCmd": {
+        "type": "string",
+        "description": "Optional shell command to run before indexing"
+      },
+      "languageHint": {
+        "type": "string",
+        "description": "BCP-47 language hint for the collection"
+      }
+    }
+  }
+}

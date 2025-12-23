@@ -1,0 +1,5 @@
+version: "1.0"
+contexts:
+  - scopeType: collection
+    scopeKey: "notes"
+    text: "Missing colon suffix"

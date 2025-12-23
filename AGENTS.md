@@ -124,6 +124,52 @@ Most formatting and common issues are automatically fixed by Biome. Run `npx ult
 
 ---
 
+## Bun-First Development
+
+**CRITICAL**: This project uses Bun, not Node.js. Always prefer Bun native APIs.
+
+### Before Adding Any `node:*` Import
+
+1. **Check CLAUDE.md** - Is there a Bun alternative listed?
+2. **Search Bun docs** - `node_modules/bun-types/docs/**.md`
+3. **Only if no alternative exists** - Use node:* with a comment explaining why
+
+### Common Mistakes to Avoid
+
+```typescript
+// ❌ BAD: Using node:fs for file reads
+import { readFile } from 'node:fs/promises';
+const content = await readFile(path, 'utf8');
+
+// ✅ GOOD: Using Bun.file
+const content = await Bun.file(path).text();
+
+// ❌ BAD: Using stat for existence check
+import { stat } from 'node:fs/promises';
+try { await stat(path); } catch { /* not found */ }
+
+// ✅ GOOD: Using Bun.file or pathExists utility
+const exists = await Bun.file(path).exists();
+// or for files AND directories:
+import { pathExists } from '../config';
+const exists = await pathExists(path);
+
+// ❌ BAD: Using external YAML lib
+import yaml from 'js-yaml';
+
+// ✅ GOOD: Using Bun.YAML
+const data = Bun.YAML.parse(content);
+const str = Bun.YAML.stringify(obj);
+```
+
+### Acceptable node:* Uses
+
+- `node:path` - path manipulation (join, dirname, etc.)
+- `node:os` - system info (homedir, platform)
+- `node:fs/promises` - filesystem structure ONLY (mkdir, rename, unlink)
+
+---
+
 ## Spec-Driven Development
 
 GNO follows spec-driven development. **No implementation merges without spec updates and contract tests.**

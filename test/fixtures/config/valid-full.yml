@@ -1,0 +1,37 @@
+version: "1.0"
+ftsTokenizer: unicode61
+
+collections:
+  - name: notes
+    path: /Users/test/notes
+    pattern: "**/*.md"
+    include: []
+    exclude:
+      - .git
+      - node_modules
+    updateCmd: "git pull"
+    languageHint: en
+
+  - name: work
+    path: /Users/test/work/docs
+    pattern: "**/*.{md,pdf,docx}"
+    include:
+      - .md
+      - .pdf
+      - .docx
+    exclude:
+      - .git
+      - .venv
+
+contexts:
+  - scopeType: global
+    scopeKey: /
+    text: "Personal knowledge base for software engineering"
+
+  - scopeType: collection
+    scopeKey: "notes:"
+    text: "Daily notes and meeting minutes"
+
+  - scopeType: prefix
+    scopeKey: "gno://notes/projects"
+    text: "Active project documentation"
