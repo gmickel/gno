@@ -54,10 +54,10 @@ export class NodeLlamaCppGeneration implements GenerationPort {
       return model;
     }
 
-    try {
-      const llamaModel = model.value.model as LlamaModel;
-      const context = await llamaModel.createContext();
+    const llamaModel = model.value.model as LlamaModel;
+    const context = await llamaModel.createContext();
 
+    try {
       // Import LlamaChatSession dynamically
       const { LlamaChatSession } = await import('node-llama-cpp');
       const session = new LlamaChatSession({
@@ -73,12 +73,13 @@ export class NodeLlamaCppGeneration implements GenerationPort {
           : undefined,
       });
 
-      // Cleanup
-      await context.dispose();
-
       return { ok: true, value: response };
     } catch (e) {
       return { ok: false, error: inferenceFailedError(this.modelUri, e) };
+    } finally {
+      await context.dispose().catch(() => {
+        // Ignore disposal errors
+      });
     }
   }
 

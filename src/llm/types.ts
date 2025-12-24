@@ -24,13 +24,8 @@ export type ModelType = 'embed' | 'rerank' | 'gen';
 /** Model URI format: hf:org/repo/file.gguf or file:/path */
 export type ModelUri = string;
 
-export type ModelPreset = {
-  id: string;
-  name: string;
-  embed: ModelUri;
-  rerank: ModelUri;
-  gen: ModelUri;
-};
+// ModelPreset is defined in config/types.ts (source of truth)
+// Re-exported from index.ts for convenience
 
 export type ModelCacheEntry = {
   uri: ModelUri;
@@ -115,13 +110,8 @@ export type LoadedModel = {
 // Config Types
 // ─────────────────────────────────────────────────────────────────────────────
 
-export type ModelConfig = {
-  activePreset: string;
-  presets: ModelPreset[];
-  loadTimeout: number;
-  inferenceTimeout: number;
-  warmModelTtl: number;
-};
+// ModelConfig is defined in config/types.ts (source of truth)
+// Re-exported from index.ts for convenience
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Progress Callback

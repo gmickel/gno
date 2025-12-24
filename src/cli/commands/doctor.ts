@@ -148,10 +148,9 @@ export async function doctor(
   checks.push(await checkDatabase());
 
   // Load config for model checks (if available)
+  const { createDefaultConfig } = await import('../../config');
   const configResult = await loadConfig(options.configPath);
-  const config = configResult.ok
-    ? configResult.value
-    : { version: '1.0' as const, models: undefined };
+  const config = configResult.ok ? configResult.value : createDefaultConfig();
 
   // Model checks
   const modelChecks = await checkModels(config);

@@ -4,6 +4,8 @@
  * @module src/llm
  */
 
+// Re-export config types (source of truth in config/types.ts)
+export type { ModelConfig, ModelPreset } from '../config/types';
 export type { ParsedModelUri } from './cache';
 // Cache
 export { ModelCache, parseModelUri, toNodeLlamaCppUri } from './cache';
@@ -47,8 +49,6 @@ export type {
   LlmResult,
   LoadedModel,
   ModelCacheEntry,
-  ModelConfig,
-  ModelPreset,
   ModelStatus,
   ModelType,
   ModelUri,

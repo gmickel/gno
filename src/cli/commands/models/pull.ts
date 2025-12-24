@@ -84,10 +84,9 @@ export async function modelsPull(
   options: ModelsPullOptions = {}
 ): Promise<ModelsPullResult> {
   // Load config (use defaults if not initialized)
+  const { createDefaultConfig } = await import('../../../config');
   const configResult = await loadConfig(options.configPath);
-  const config = configResult.ok
-    ? configResult.value
-    : { version: '1.0' as const, models: undefined };
+  const config = configResult.ok ? configResult.value : createDefaultConfig();
 
   const preset = getActivePreset(config);
   const cache = new ModelCache(getModelsCachePath());

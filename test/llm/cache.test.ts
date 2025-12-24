@@ -82,6 +82,27 @@ describe('ModelCache', () => {
       expect(isCached).toBe(false);
     });
 
+    test('returns true for file: URI when file exists', async () => {
+      const modelPath = join(tempDir, 'local-model.gguf');
+      await writeFile(modelPath, 'test content');
+
+      const isCached = await cache.isCached(`file:${modelPath}`);
+      expect(isCached).toBe(true);
+    });
+
+    test('returns false for file: URI when file does not exist', async () => {
+      const isCached = await cache.isCached('file:/nonexistent/model.gguf');
+      expect(isCached).toBe(false);
+    });
+
+    test('returns true for absolute path when file exists', async () => {
+      const modelPath = join(tempDir, 'local-model.gguf');
+      await writeFile(modelPath, 'test content');
+
+      const isCached = await cache.isCached(modelPath);
+      expect(isCached).toBe(true);
+    });
+
     test('returns false for stale manifest entry', async () => {
       // Write a manifest with an entry pointing to a non-existent file
       const manifestPath = join(tempDir, 'manifest.json');

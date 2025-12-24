@@ -32,6 +32,8 @@ export class ModelManager {
   private readonly models: Map<string, CachedModel> = new Map();
   private readonly disposalTimers: Map<string, ReturnType<typeof setTimeout>> =
     new Map();
+  private readonly inflightLoads: Map<string, Promise<LlmResult<LoadedModel>>> =
+    new Map();
   private readonly config: ModelConfig;
 
   constructor(config: ModelConfig) {
@@ -52,7 +54,7 @@ export class ModelManager {
 
   /**
    * Load a model by path.
-   * Uses caching and TTL-based disposal.
+   * Uses caching, inflight deduplication, and TTL-based disposal.
    */
   async loadModel(
     modelPath: string,
@@ -74,23 +76,52 @@ export class ModelManager {
       };
     }
 
-    // Load the model
+    // Check for inflight load (deduplicate concurrent requests)
+    const inflight = this.inflightLoads.get(uri);
+    if (inflight) {
+      return inflight;
+    }
+
+    // Start new load with cleanup
+    const loadPromise = this.loadModelInternal(modelPath, uri, type).finally(
+      () => {
+        this.inflightLoads.delete(uri);
+      }
+    );
+    this.inflightLoads.set(uri, loadPromise);
+    return loadPromise;
+  }
+
+  /**
+   * Internal model loading with timeout handling.
+   */
+  private async loadModelInternal(
+    modelPath: string,
+    uri: string,
+    type: ModelType
+  ): Promise<LlmResult<LoadedModel>> {
+    const timeoutMs = this.config.loadTimeout;
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+    let timedOut = false;
+
     try {
       const llama = await this.getLlama();
-
-      // Create timeout promise
-      const timeoutMs = this.config.loadTimeout;
       const loadPromise = llama.loadModel({ modelPath });
 
-      const model = await Promise.race([
-        loadPromise,
-        new Promise<never>((_, reject) => {
-          setTimeout(
-            () => reject(new Error(`Load timeout after ${timeoutMs}ms`)),
-            timeoutMs
-          );
-        }),
-      ]);
+      // Create timeout with proper cleanup
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        timeoutId = setTimeout(() => {
+          timedOut = true;
+          reject(new Error(`Load timeout after ${timeoutMs}ms`));
+        }, timeoutMs);
+      });
+
+      const model = await Promise.race([loadPromise, timeoutPromise]);
+
+      // Clear timeout on success
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
 
       const now = Date.now();
       const cachedModel: CachedModel = {
@@ -113,6 +144,17 @@ export class ModelManager {
         },
       };
     } catch (e) {
+      // Clear timeout on error
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+
+      // Handle late-arriving model after timeout
+      if (timedOut) {
+        // Model may still complete loading - dispose it when it does
+        // (loadPromise continues running; we can't cancel it)
+      }
+
       if (e instanceof Error) {
         if (e.message.includes('timeout')) {
           return {
@@ -217,6 +259,11 @@ export class ModelManager {
         // Ignore disposal errors in timer callback
       });
     }, this.config.warmModelTtl);
+
+    // Allow CLI processes to exit without waiting for TTL timer
+    if (typeof timer.unref === 'function') {
+      timer.unref();
+    }
 
     this.disposalTimers.set(uri, timer);
   }

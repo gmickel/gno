@@ -225,10 +225,11 @@ export class ModelCache {
     try {
       const { resolveModelFile } = await import('node-llama-cpp');
 
-      // Convert to node-llama-cpp format (without hf: prefix)
-      const hfPath = parsed.value.file
-        ? `${parsed.value.org}/${parsed.value.repo}/${parsed.value.file}`
-        : `${parsed.value.org}/${parsed.value.repo}`;
+      // Convert to node-llama-cpp format (handles quantization shorthand)
+      // hf:org/repo/file.gguf -> org/repo/file.gguf
+      // hf:org/repo:Q4_K_M -> org/repo:Q4_K_M
+      const hfUri = toNodeLlamaCppUri(parsed.value);
+      const hfPath = hfUri.startsWith('hf:') ? hfUri.slice(3) : hfUri;
 
       const resolvedPath = await resolveModelFile(hfPath, {
         directory: this.dir,
@@ -263,7 +264,9 @@ export class ModelCache {
   }
 
   /**
-   * Check if a model is cached.
+   * Check if a model is cached/available.
+   * For file: URIs, checks if file exists on disk.
+   * For hf: URIs, checks the manifest.
    */
   async isCached(uri: string): Promise<boolean> {
     const cached = await this.getCachedPath(uri);
@@ -271,9 +274,19 @@ export class ModelCache {
   }
 
   /**
-   * Get cached path for a URI.
+   * Get cached/available path for a URI.
+   * For file: URIs, returns path if file exists.
+   * For hf: URIs, checks the manifest.
    */
   async getCachedPath(uri: string): Promise<string | null> {
+    // Handle file: URIs directly (check filesystem, not manifest)
+    const parsed = parseModelUri(uri);
+    if (parsed.ok && parsed.value.scheme === 'file') {
+      const exists = await this.fileExists(parsed.value.file);
+      return exists ? parsed.value.file : null;
+    }
+
+    // HF URIs: check manifest
     const manifest = await this.loadManifest();
     const entry = manifest.models.find((m) => m.uri === uri);
     if (!entry) {

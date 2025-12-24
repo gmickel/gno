@@ -788,11 +788,12 @@ gno doctor [--json|--md]
 {
   "healthy": true,
   "checks": [
-    { "name": "config", "status": "ok", "message": "Config file found" },
-    { "name": "database", "status": "ok", "message": "Index DB accessible" },
-    { "name": "sqlite-vec", "status": "ok", "message": "Vector extension loaded" },
-    { "name": "embed-model", "status": "warn", "message": "Model not cached, run gno models pull" },
-    { "name": "converters", "status": "ok", "message": "All converters available" }
+    { "name": "config", "status": "ok", "message": "Config loaded: ~/.config/gno/config.yaml" },
+    { "name": "database", "status": "ok", "message": "Database found: ~/.local/share/gno/index.db" },
+    { "name": "embed-model", "status": "ok", "message": "embed model cached" },
+    { "name": "rerank-model", "status": "warn", "message": "rerank model not cached. Run: gno models pull --rerank" },
+    { "name": "gen-model", "status": "ok", "message": "gen model cached" },
+    { "name": "node-llama-cpp", "status": "ok", "message": "node-llama-cpp loaded successfully" }
   ]
 }
 ```
