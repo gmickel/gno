@@ -34,10 +34,17 @@ import { err, ok } from '../types';
 // SQLite Adapter Implementation
 // ─────────────────────────────────────────────────────────────────────────────
 
+/** Regex to strip .sqlite extension from db path */
+const SQLITE_EXT_REGEX = /\.sqlite$/;
+
+/** Regex to strip index- prefix from db name */
+const INDEX_PREFIX_REGEX = /^index-/;
+
 export class SqliteAdapter implements StorePort {
   private db: Database | null = null;
   private dbPath = '';
   private ftsTokenizer: FtsTokenizer = 'unicode61';
+  private configPath = ''; // Set by CLI layer for status output
 
   // ─────────────────────────────────────────────────────────────────────────
   // Lifecycle
@@ -82,6 +89,13 @@ export class SqliteAdapter implements StorePort {
 
   isOpen(): boolean {
     return this.db !== null;
+  }
+
+  /**
+   * Set config path for status output (called by CLI layer).
+   */
+  setConfigPath(configPath: string): void {
+    this.configPath = configPath;
   }
 
   private ensureOpen(): Database {
@@ -652,9 +666,15 @@ export class SqliteAdapter implements StorePort {
         .get();
       const version = versionRow?.value ?? '0';
 
-      // Use stored tokenizer from open()
+      // Derive indexName from dbPath (basename without extension)
+      const indexName =
+        this.dbPath
+          .split('/')
+          .pop()
+          ?.replace(SQLITE_EXT_REGEX, '')
+          ?.replace(INDEX_PREFIX_REGEX, '') || 'default';
 
-      // Get collection stats
+      // Get collection stats with chunk counts
       type CollectionStat = {
         name: string;
         path: string;
@@ -662,6 +682,8 @@ export class SqliteAdapter implements StorePort {
         active: number;
         errored: number;
         chunked: number;
+        chunk_count: number;
+        embedded_count: number;
       };
 
       const collectionStats = db
@@ -670,10 +692,16 @@ export class SqliteAdapter implements StorePort {
           SELECT
             c.name,
             c.path,
-            COUNT(d.id) as total,
+            COUNT(DISTINCT d.id) as total,
             SUM(CASE WHEN d.active = 1 THEN 1 ELSE 0 END) as active,
             SUM(CASE WHEN d.last_error_code IS NOT NULL THEN 1 ELSE 0 END) as errored,
-            SUM(CASE WHEN d.mirror_hash IS NOT NULL THEN 1 ELSE 0 END) as chunked
+            SUM(CASE WHEN d.mirror_hash IS NOT NULL THEN 1 ELSE 0 END) as chunked,
+            (SELECT COUNT(*) FROM content_chunks cc
+             JOIN documents d2 ON d2.mirror_hash = cc.mirror_hash
+             WHERE d2.collection = c.name AND d2.active = 1) as chunk_count,
+            (SELECT COUNT(*) FROM content_vectors cv
+             JOIN documents d3 ON d3.mirror_hash = cv.mirror_hash
+             WHERE d3.collection = c.name AND d3.active = 1) as embedded_count
           FROM collections c
           LEFT JOIN documents d ON d.collection = c.name
           GROUP BY c.name, c.path
@@ -723,8 +751,21 @@ export class SqliteAdapter implements StorePort {
         )
         .get();
 
+      // Last updated (max updated_at from documents)
+      const lastUpdatedRow = db
+        .query<{ last_updated: string | null }, []>(
+          'SELECT MAX(updated_at) as last_updated FROM documents'
+        )
+        .get();
+
+      // Health check: no recent errors and DB is accessible
+      const recentErrors = recentErrorsRow?.count ?? 0;
+      const healthy = recentErrors === 0;
+
       return ok({
         version,
+        indexName,
+        configPath: this.configPath,
         dbPath: this.dbPath,
         ftsTokenizer: this.ftsTokenizer,
         collections: collectionStats.map((s) => ({
@@ -734,12 +775,16 @@ export class SqliteAdapter implements StorePort {
           activeDocuments: s.active,
           errorDocuments: s.errored,
           chunkedDocuments: s.chunked,
+          totalChunks: s.chunk_count,
+          embeddedChunks: s.embedded_count,
         })),
         totalDocuments: totalsRow?.total ?? 0,
         activeDocuments: totalsRow?.active ?? 0,
         totalChunks: chunkCount,
         embeddingBacklog: backlogRow?.count ?? 0,
-        recentErrors: recentErrorsRow?.count ?? 0,
+        recentErrors,
+        lastUpdatedAt: lastUpdatedRow?.last_updated ?? null,
+        healthy,
       });
     } catch (cause) {
       return err(

@@ -220,19 +220,40 @@ export type CollectionStatus = {
   activeDocuments: number;
   errorDocuments: number;
   chunkedDocuments: number;
+  /** Total chunks for this collection */
+  totalChunks: number;
+  /** Chunks with embeddings (EPIC 7) */
+  embeddedChunks: number;
 };
 
 /** Index-level status */
 export type IndexStatus = {
+  /** Config version string */
   version: string;
+  /** Index name (from dbPath) */
+  indexName: string;
+  /** Full path to config file */
+  configPath: string;
+  /** Full path to database file */
   dbPath: string;
+  /** FTS tokenizer in use */
   ftsTokenizer: FtsTokenizer;
+  /** Per-collection status */
   collections: CollectionStatus[];
+  /** Total documents across all collections */
   totalDocuments: number;
+  /** Active (non-deleted) documents */
   activeDocuments: number;
+  /** Total chunks across all collections */
   totalChunks: number;
+  /** Chunks without embeddings */
   embeddingBacklog: number;
+  /** Recent ingest errors (last 24h) */
   recentErrors: number;
+  /** Last successful update timestamp (ISO 8601) */
+  lastUpdatedAt: string | null;
+  /** Overall health status */
+  healthy: boolean;
 };
 
 /** Cleanup operation stats */
