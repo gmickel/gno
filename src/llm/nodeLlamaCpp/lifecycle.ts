@@ -56,7 +56,7 @@ export class ModelManager {
    * Load a model by path.
    * Uses caching, inflight deduplication, and TTL-based disposal.
    */
-  async loadModel(
+  loadModel(
     modelPath: string,
     uri: string,
     type: ModelType
@@ -155,8 +155,15 @@ export class ModelManager {
       // Dispose late-arriving model after timeout to prevent memory leak
       if (timedOut && loadPromise) {
         loadPromise.then(
-          (model) => model.dispose().catch(() => {}),
-          () => {} // Ignore load errors after timeout
+          (model) => {
+            // Dispose model that arrived after timeout
+            model.dispose().catch(() => {
+              // Ignore dispose errors
+            });
+          },
+          () => {
+            // Ignore load errors after timeout
+          }
         );
       }
 
