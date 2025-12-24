@@ -12,10 +12,15 @@ import type { ModelManager } from './lifecycle';
 // Types
 // ─────────────────────────────────────────────────────────────────────────────
 
-type LlamaEmbeddingContext = Awaited<
+// LlamaModel type from node-llama-cpp
+type LlamaModel = Awaited<
   ReturnType<
     Awaited<ReturnType<typeof import('node-llama-cpp').getLlama>>['loadModel']
-  >['createEmbeddingContext']
+  >
+>;
+
+type LlamaEmbeddingContext = Awaited<
+  ReturnType<LlamaModel['createEmbeddingContext']>
 >;
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -43,7 +48,7 @@ export class NodeLlamaCppEmbedding implements EmbeddingPort {
 
     try {
       const embedding = await ctx.value.getEmbeddingFor(text);
-      const vector = Array.from(embedding.vector);
+      const vector = Array.from(embedding.vector) as number[];
 
       // Cache dimensions on first call
       if (this.dims === null) {
@@ -66,7 +71,7 @@ export class NodeLlamaCppEmbedding implements EmbeddingPort {
       const results: number[][] = [];
       for (const text of texts) {
         const embedding = await ctx.value.getEmbeddingFor(text);
-        const vector = Array.from(embedding.vector);
+        const vector = Array.from(embedding.vector) as number[];
         results.push(vector);
 
         // Cache dimensions on first call
@@ -118,13 +123,7 @@ export class NodeLlamaCppEmbedding implements EmbeddingPort {
 
     try {
       // Cast to access createEmbeddingContext
-      const llamaModel = model.value.model as Awaited<
-        ReturnType<
-          Awaited<
-            ReturnType<typeof import('node-llama-cpp').getLlama>
-          >['loadModel']
-        >
-      >;
+      const llamaModel = model.value.model as LlamaModel;
       this.context = await llamaModel.createEmbeddingContext();
       return { ok: true, value: this.context };
     } catch (e) {

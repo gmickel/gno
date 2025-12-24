@@ -158,8 +158,8 @@ describe('ModelCache', () => {
 
       const entries = await cache.list();
       expect(entries).toHaveLength(1);
-      expect(entries[0].uri).toBe('hf:test/model/model.gguf');
-      expect(entries[0].type).toBe('embed');
+      expect(entries[0]?.uri).toBe('hf:test/model/model.gguf');
+      expect(entries[0]?.type).toBe('embed');
     });
   });
 
@@ -266,7 +266,7 @@ describe('ModelCache', () => {
 
       const entries = await cache.list();
       expect(entries).toHaveLength(1);
-      expect(entries[0].type).toBe('gen');
+      expect(entries[0]?.type).toBe('gen');
     });
   });
 });

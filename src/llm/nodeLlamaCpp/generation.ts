@@ -64,13 +64,11 @@ export class NodeLlamaCppGeneration implements GenerationPort {
         contextSequence: context.getSequence(),
       });
 
+      // Note: stop sequences not yet supported - requires stopOnTrigger API
       const response = await session.prompt(prompt, {
         temperature: params?.temperature ?? DEFAULT_TEMPERATURE,
         seed: params?.seed ?? DEFAULT_SEED,
         maxTokens: params?.maxTokens ?? DEFAULT_MAX_TOKENS,
-        stopGenerationTrigger: params?.stop
-          ? params.stop.map((s) => s)
-          : undefined,
       });
 
       return { ok: true, value: response };

@@ -61,7 +61,7 @@ async function checkConfig(configPath?: string): Promise<DoctorCheck> {
     };
   }
 
-  const paths = getConfigPaths(configPath);
+  const paths = getConfigPaths();
   return {
     name: 'config',
     status: 'ok',

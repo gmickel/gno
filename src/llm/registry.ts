@@ -45,8 +45,12 @@ export function getActivePreset(config: Config): ModelPreset {
     return fallback;
   }
 
-  // Shouldn't happen with defaults, but return built-in default
-  return DEFAULT_MODEL_PRESETS[0];
+  // Return built-in default (guaranteed to exist)
+  const builtIn = DEFAULT_MODEL_PRESETS[0];
+  if (!builtIn) {
+    throw new Error('No default model presets configured');
+  }
+  return builtIn;
 }
 
 /**

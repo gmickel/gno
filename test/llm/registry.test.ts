@@ -135,7 +135,7 @@ describe('listPresets', () => {
     const presets = listPresets(config);
 
     expect(presets).toHaveLength(1);
-    expect(presets[0].id).toBe('custom');
+    expect(presets[0]?.id).toBe('custom');
   });
 });
 

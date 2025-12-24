@@ -53,7 +53,7 @@ export class NodeLlamaCppRerank implements RerankPort {
     // Build index map for O(1) lookups (handles duplicates correctly)
     const indexMap = new Map<string, number[]>();
     for (let i = 0; i < documents.length; i += 1) {
-      const doc = documents[i];
+      const doc = documents[i] as string; // Guaranteed by loop bounds
       const indices = indexMap.get(doc) ?? [];
       indices.push(i);
       indexMap.set(doc, indices);

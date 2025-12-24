@@ -23,8 +23,7 @@ describe('parseModelUri', () => {
     test('parses hf: with quantization shorthand', () => {
       const result = parseModelUri('hf:BAAI/bge-m3-gguf:Q4_K_M');
       expect(result.ok).toBe(true);
-      if (result.ok) {
-        expect(result.value.scheme).toBe('hf');
+      if (result.ok && result.value.scheme === 'hf') {
         expect(result.value.org).toBe('BAAI');
         expect(result.value.repo).toBe('bge-m3-gguf');
         expect(result.value.quantization).toBe('Q4_K_M');
@@ -36,7 +35,7 @@ describe('parseModelUri', () => {
         'hf:Qwen/Qwen2.5-0.5B-Instruct-GGUF/qwen2.5-0.5b-instruct-q4_k_m.gguf'
       );
       expect(result.ok).toBe(true);
-      if (result.ok) {
+      if (result.ok && result.value.scheme === 'hf') {
         expect(result.value.org).toBe('Qwen');
         expect(result.value.repo).toBe('Qwen2.5-0.5B-Instruct-GGUF');
         expect(result.value.file).toBe('qwen2.5-0.5b-instruct-q4_k_m.gguf');
