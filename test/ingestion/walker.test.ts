@@ -74,9 +74,10 @@ describe('FileWalker', () => {
     expect(skipped.length).toBeGreaterThan(0);
     expect(skipped.some((s) => s.reason === 'TOO_LARGE')).toBe(true);
 
-    // Small files should still be included
-    const smallFiles = entries.filter((e) => e.size <= 100);
-    expect(smallFiles.length).toBeGreaterThanOrEqual(0);
+    // Entries should only contain files <= 100 bytes
+    for (const entry of entries) {
+      expect(entry.size).toBeLessThanOrEqual(100);
+    }
   });
 
   test('returns sorted entries by relPath', async () => {

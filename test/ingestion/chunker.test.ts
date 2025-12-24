@@ -24,11 +24,13 @@ describe('MarkdownChunker', () => {
     const chunks = chunker.chunk(text);
 
     expect(chunks.length).toBe(1);
-    expect(chunks[0].seq).toBe(0);
-    expect(chunks[0].pos).toBe(0);
-    expect(chunks[0].text).toBe(text);
-    expect(chunks[0].startLine).toBe(1);
-    expect(chunks[0].endLine).toBe(1);
+    const chunk = chunks[0];
+    expect(chunk).toBeDefined();
+    expect(chunk?.seq).toBe(0);
+    expect(chunk?.pos).toBe(0);
+    expect(chunk?.text).toBe(text);
+    expect(chunk?.startLine).toBe(1);
+    expect(chunk?.endLine).toBe(1);
   });
 
   test('tracks line numbers correctly', () => {
@@ -36,8 +38,10 @@ describe('MarkdownChunker', () => {
     const chunks = chunker.chunk(text);
 
     expect(chunks.length).toBe(1);
-    expect(chunks[0].startLine).toBe(1);
-    expect(chunks[0].endLine).toBe(3);
+    const chunk = chunks[0];
+    expect(chunk).toBeDefined();
+    expect(chunk?.startLine).toBe(1);
+    expect(chunk?.endLine).toBe(3);
   });
 
   test('creates multiple chunks for large content', () => {
@@ -50,7 +54,7 @@ describe('MarkdownChunker', () => {
 
     // Check sequential numbering
     for (let i = 0; i < chunks.length; i += 1) {
-      expect(chunks[i].seq).toBe(i);
+      expect(chunks[i]?.seq).toBe(i);
     }
   });
 
@@ -65,7 +69,7 @@ describe('MarkdownChunker', () => {
     expect(chunks.length).toBeGreaterThan(1);
 
     // First chunk should end with As (break at paragraph)
-    const chunk0End = chunks[0].text.slice(-5);
+    const chunk0End = chunks[0]?.text.slice(-5);
     expect(chunk0End).toBe('AAAAA');
   });
 
@@ -82,8 +86,8 @@ describe('MarkdownChunker', () => {
     // Check that chunks overlap (second chunk starts before first ends conceptually)
     // The pos of chunk 2 should be less than end of chunk 1 content
     if (chunks.length >= 2) {
-      const chunk0EndPos = chunks[0].pos + chunks[0].text.length;
-      expect(chunks[1].pos).toBeLessThan(chunk0EndPos);
+      const chunk0EndPos = chunks[0]?.pos + chunks[0]?.text.length;
+      expect(chunks[1]?.pos).toBeLessThan(chunk0EndPos);
     }
   });
 
@@ -91,7 +95,7 @@ describe('MarkdownChunker', () => {
     const text = 'Hello, this is some test content.';
     const chunks = chunker.chunk(text, undefined, 'fr');
 
-    expect(chunks[0].language).toBe('fr');
+    expect(chunks[0]?.language).toBe('fr');
   });
 
   test('detects language when no hint provided', () => {
@@ -101,7 +105,7 @@ describe('MarkdownChunker', () => {
     const chunks = chunker.chunk(text);
 
     // Should detect as English or null (short text)
-    expect(chunks[0].language === 'en' || chunks[0].language === null).toBe(
+    expect(chunks[0]?.language === 'en' || chunks[0]?.language === null).toBe(
       true
     );
   });
@@ -110,7 +114,7 @@ describe('MarkdownChunker', () => {
     const text = 'Hello, world!';
     const chunks = chunker.chunk(text);
 
-    expect(chunks[0].tokenCount).toBe(null);
+    expect(chunks[0]?.tokenCount).toBe(null);
   });
 
   test('handles content with only whitespace', () => {
@@ -125,6 +129,6 @@ describe('MarkdownChunker', () => {
     const text = '  Hello, world!  \n';
     const chunks = chunker.chunk(text);
 
-    expect(chunks[0].text).toBe('Hello, world!');
+    expect(chunks[0]?.text).toBe('Hello, world!');
   });
 });
