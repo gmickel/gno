@@ -137,13 +137,19 @@ async function processBatches(ctx: BatchContext): Promise<BatchResult> {
       continue;
     }
 
-    // Store vectors
+    // Validate batch/embedding count match
     const embeddings = batchEmbedResult.value;
+    if (embeddings.length !== batch.length) {
+      errors += batch.length;
+      continue;
+    }
+
+    // Store vectors
     const vectors: VectorRow[] = batch.map((b, idx) => ({
       mirrorHash: b.mirrorHash,
       seq: b.seq,
       model: ctx.modelUri,
-      embedding: new Float32Array(embeddings[idx] ?? []),
+      embedding: new Float32Array(embeddings[idx] as number[]),
       embeddedAt: new Date().toISOString(),
     }));
 
