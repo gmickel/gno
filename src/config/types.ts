@@ -148,6 +148,58 @@ export const ContextSchema = z
 export type Context = z.infer<typeof ContextSchema>;
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Model Preset Schema
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const ModelPresetSchema = z.object({
+  /** Unique preset identifier */
+  id: z.string().min(1),
+  /** Human-readable name */
+  name: z.string().min(1),
+  /** Embedding model URI (hf: or file:) */
+  embed: z.string().min(1),
+  /** Reranker model URI */
+  rerank: z.string().min(1),
+  /** Generation model URI */
+  gen: z.string().min(1),
+});
+
+export type ModelPreset = z.infer<typeof ModelPresetSchema>;
+
+/** Default model presets */
+export const DEFAULT_MODEL_PRESETS: ModelPreset[] = [
+  {
+    id: 'multilingual',
+    name: 'Multilingual (BGE + Qwen)',
+    embed: 'hf:BAAI/bge-m3-gguf/bge-m3-q4_k_m.gguf',
+    rerank: 'hf:BAAI/bge-reranker-v2-m3-gguf/bge-reranker-v2-m3-q4_k_m.gguf',
+    gen: 'hf:Qwen/Qwen2.5-0.5B-Instruct-GGUF/qwen2.5-0.5b-instruct-q4_k_m.gguf',
+  },
+  {
+    id: 'qwen',
+    name: 'Qwen Family',
+    embed: 'hf:Qwen/Qwen3-Embedding-0.6B-GGUF/qwen3-embedding-0.6b-q4_k_m.gguf',
+    rerank: 'hf:Qwen/Qwen3-Reranker-0.6B-GGUF/qwen3-reranker-0.6b-q4_k_m.gguf',
+    gen: 'hf:Qwen/Qwen2.5-0.5B-Instruct-GGUF/qwen2.5-0.5b-instruct-q4_k_m.gguf',
+  },
+];
+
+export const ModelConfigSchema = z.object({
+  /** Active preset ID */
+  activePreset: z.string().default('multilingual'),
+  /** Model presets */
+  presets: z.array(ModelPresetSchema).default(DEFAULT_MODEL_PRESETS),
+  /** Model load timeout in ms */
+  loadTimeout: z.number().default(60_000),
+  /** Inference timeout in ms */
+  inferenceTimeout: z.number().default(30_000),
+  /** Keep warm model TTL in ms (5 min) */
+  warmModelTtl: z.number().default(300_000),
+});
+
+export type ModelConfig = z.infer<typeof ModelConfigSchema>;
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Config Schema (root)
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -163,6 +215,9 @@ export const ConfigSchema = z.object({
 
   /** Context metadata */
   contexts: z.array(ContextSchema).default([]),
+
+  /** Model configuration */
+  models: ModelConfigSchema.optional(),
 });
 
 export type Config = z.infer<typeof ConfigSchema>;

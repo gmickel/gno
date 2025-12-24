@@ -694,9 +694,11 @@ gno models list [--json|--md]
 **Output (JSON):**
 ```json
 {
-  "embed": { "uri": "hf:BAAI/bge-m3", "cached": true, "path": "/path/to/model" },
+  "embed": { "uri": "hf:BAAI/bge-m3", "cached": true, "path": "/path/to/model", "size": 123456789 },
   "rerank": { "uri": "hf:BAAI/bge-reranker-v2-m3", "cached": false, "path": null },
-  "gen": { "uri": "hf:Qwen/Qwen2.5-0.5B-Instruct", "cached": true, "path": "/path/to/model" }
+  "gen": { "uri": "hf:Qwen/Qwen2.5-0.5B-Instruct", "cached": true, "path": "/path/to/model", "size": 987654321 },
+  "cacheDir": "/path/to/cache/models",
+  "totalSize": 1111111110
 }
 ```
 
@@ -708,7 +710,7 @@ Download models to local cache.
 
 **Synopsis:**
 ```
-gno models pull [--all|--embed|--rerank|--gen]
+gno models pull [--all|--embed|--rerank|--gen] [--force]
 ```
 
 **Options:**
@@ -718,6 +720,11 @@ gno models pull [--all|--embed|--rerank|--gen]
 | `--embed` | Pull embedding model only |
 | `--rerank` | Pull reranker model only |
 | `--gen` | Pull generation model only |
+| `--force` | Re-download even if already cached |
+
+**Behavior:**
+- Skips models that are already cached (checksum match) unless `--force` is used
+- Default (no flags): pulls all models
 
 **Exit Codes:**
 - 0: Success

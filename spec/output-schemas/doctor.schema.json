@@ -1,0 +1,37 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "gno://schemas/doctor@1.0",
+  "title": "GNO Doctor",
+  "description": "Health check diagnostics",
+  "type": "object",
+  "required": ["healthy", "checks"],
+  "properties": {
+    "healthy": {
+      "type": "boolean",
+      "description": "Overall health status (true if no errors)"
+    },
+    "checks": {
+      "type": "array",
+      "description": "Individual diagnostic checks",
+      "items": {
+        "type": "object",
+        "required": ["name", "status", "message"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Check identifier"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["ok", "warn", "error"],
+            "description": "Check result status"
+          },
+          "message": {
+            "type": "string",
+            "description": "Human-readable status message"
+          }
+        }
+      }
+    }
+  }
+}

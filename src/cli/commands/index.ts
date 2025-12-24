@@ -11,12 +11,21 @@ export {
   formatCleanup,
 } from './cleanup';
 export {
+  type DoctorCheck,
+  type DoctorCheckStatus,
+  type DoctorOptions,
+  type DoctorResult,
+  doctor,
+  formatDoctor,
+} from './doctor';
+export {
   formatIndex,
   type IndexOptions,
   type IndexResult,
   index,
 } from './index-cmd';
 export { type InitOptions, type InitResult, init } from './init';
+export * from './models';
 export {
   formatStatus,
   type StatusOptions,

@@ -1,0 +1,56 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "gno://schemas/models-list@1.0",
+  "title": "GNO Models List",
+  "description": "List of configured and cached models",
+  "type": "object",
+  "required": ["embed", "rerank", "gen", "cacheDir", "totalSize"],
+  "properties": {
+    "embed": {
+      "$ref": "#/$defs/modelStatus",
+      "description": "Embedding model status"
+    },
+    "rerank": {
+      "$ref": "#/$defs/modelStatus",
+      "description": "Reranker model status"
+    },
+    "gen": {
+      "$ref": "#/$defs/modelStatus",
+      "description": "Generation model status"
+    },
+    "cacheDir": {
+      "type": "string",
+      "description": "Path to model cache directory"
+    },
+    "totalSize": {
+      "type": "integer",
+      "description": "Total size of cached models in bytes",
+      "minimum": 0
+    }
+  },
+  "$defs": {
+    "modelStatus": {
+      "type": "object",
+      "required": ["uri", "cached", "path"],
+      "properties": {
+        "uri": {
+          "type": "string",
+          "description": "Model URI (hf: or file:)"
+        },
+        "cached": {
+          "type": "boolean",
+          "description": "Whether the model is cached locally"
+        },
+        "path": {
+          "type": ["string", "null"],
+          "description": "Local file path if cached"
+        },
+        "size": {
+          "type": "integer",
+          "description": "File size in bytes",
+          "minimum": 0
+        }
+      }
+    }
+  }
+}
