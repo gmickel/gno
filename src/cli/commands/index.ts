@@ -19,6 +19,12 @@ export {
   formatDoctor,
 } from './doctor';
 export {
+  type EmbedOptions,
+  type EmbedResult,
+  embed,
+  formatEmbed,
+} from './embed';
+export {
   formatIndex,
   type IndexOptions,
   type IndexResult,

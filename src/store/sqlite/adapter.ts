@@ -29,6 +29,7 @@ import type {
   StoreResult,
 } from '../types';
 import { err, ok } from '../types';
+import type { SqliteDbProvider } from './types';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SQLite Adapter Implementation
@@ -40,7 +41,7 @@ const SQLITE_EXT_REGEX = /\.sqlite$/;
 /** Regex to strip index- prefix from db name */
 const INDEX_PREFIX_REGEX = /^index-/;
 
-export class SqliteAdapter implements StorePort {
+export class SqliteAdapter implements StorePort, SqliteDbProvider {
   private db: Database | null = null;
   private dbPath = '';
   private ftsTokenizer: FtsTokenizer = 'unicode61';
@@ -96,6 +97,14 @@ export class SqliteAdapter implements StorePort {
    */
   setConfigPath(configPath: string): void {
     this.configPath = configPath;
+  }
+
+  /**
+   * Get raw SQLite database handle for vector operations.
+   * Part of SqliteDbProvider interface - use with isSqliteDbProvider() type guard.
+   */
+  getRawDb(): Database {
+    return this.ensureOpen();
   }
 
   private ensureOpen(): Database {
@@ -728,12 +737,17 @@ export class SqliteAdapter implements StorePort {
           )
           .get()?.count ?? 0;
 
-      // Embedding backlog: chunks without vectors
+      // Embedding backlog: chunks from active docs without vectors
+      // Uses EXISTS to avoid duplicates when multiple docs share mirror_hash
       const backlogRow = db
         .query<{ count: number }, []>(
           `
           SELECT COUNT(*) as count FROM content_chunks c
-          WHERE NOT EXISTS (
+          WHERE EXISTS (
+            SELECT 1 FROM documents d
+            WHERE d.mirror_hash = c.mirror_hash AND d.active = 1
+          )
+          AND NOT EXISTS (
             SELECT 1 FROM content_vectors v
             WHERE v.mirror_hash = c.mirror_hash AND v.seq = c.seq
           )

@@ -352,7 +352,7 @@ Generate embeddings for chunks without vectors.
 
 **Synopsis:**
 ```
-gno embed [--force] [--model <uri>] [--batch-size <n>]
+gno embed [--force] [--model <uri>] [--batch-size <n>] [--dry-run] [--yes] [--json]
 ```
 
 **Options:**
@@ -361,10 +361,25 @@ gno embed [--force] [--model <uri>] [--batch-size <n>]
 | `--force` | boolean | false | Re-embed all chunks (ignore existing vectors) |
 | `--model` | string | config | Override embedding model URI |
 | `--batch-size` | integer | 32 | Chunks per batch |
+| `--dry-run` | boolean | false | Show what would be embedded without doing it |
+| `--yes`, `-y` | boolean | false | Skip confirmation prompts |
+| `--json` | boolean | false | Output result as JSON |
 
 **Exit Codes:**
 - 0: Success
+- 1: User cancelled
 - 2: Model not available or embedding failure
+
+**JSON Output:**
+```json
+{
+  "embedded": 1234,
+  "errors": 0,
+  "duration": 45.2,
+  "model": "hf:BAAI/bge-m3-gguf/bge-m3-q8_0.gguf",
+  "searchAvailable": true
+}
+```
 
 ---
 

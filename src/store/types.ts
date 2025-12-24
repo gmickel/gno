@@ -22,7 +22,14 @@ export type StoreErrorCode =
   | 'TRANSACTION_FAILED'
   | 'INVALID_INPUT'
   | 'IO_ERROR'
-  | 'INTERNAL';
+  | 'INTERNAL'
+  // Vector-specific error codes (EPIC 7)
+  | 'VECTOR_WRITE_FAILED'
+  | 'VECTOR_DELETE_FAILED'
+  | 'VEC_SEARCH_UNAVAILABLE'
+  | 'VEC_SEARCH_FAILED'
+  | 'VEC_REBUILD_FAILED'
+  | 'VEC_SYNC_FAILED';
 
 /** Store error with structured details */
 export type StoreError = {
