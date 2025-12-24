@@ -123,6 +123,12 @@ export type SyncOptions = {
     timeoutMs?: number;
     maxOutputChars?: number;
   };
+  /**
+   * Max concurrent file processing (default: 1).
+   * Higher values improve throughput but increase memory pressure.
+   * SQLite operations are serialized regardless of this setting.
+   */
+  concurrency?: number;
 };
 
 /** Per-file sync status */

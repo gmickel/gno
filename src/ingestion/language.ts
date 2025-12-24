@@ -7,31 +7,29 @@
 
 import type { LanguageDetectorPort } from './types';
 
-/**
- * CJK Unicode ranges for language detection.
- * - CJK Unified Ideographs: U+4E00-U+9FFF
- * - CJK Unified Ideographs Extension A: U+3400-U+4DBF
- * - Hiragana: U+3040-U+309F
- * - Katakana: U+30A0-U+30FF
- * - Hangul Syllables: U+AC00-U+D7AF
- */
-const CJK_REGEX =
-  /[\u4e00-\u9fff\u3400-\u4dbf\u3040-\u309f\u30a0-\u30ff\uac00-\ud7af]/;
-
 /** Regex to split on whitespace and punctuation */
 const WORD_SPLIT_REGEX = /[\s\p{P}]+/u;
 
-/** Regex for whitespace */
-const WHITESPACE_REGEX = /\s/;
-
 /** Hiragana range */
-const HIRAGANA_REGEX = /[\u3040-\u309f]/;
+const HIRAGANA_MIN = 0x30_40;
+const HIRAGANA_MAX = 0x30_9f;
 
 /** Katakana range */
-const KATAKANA_REGEX = /[\u30a0-\u30ff]/;
+const KATAKANA_MIN = 0x30_a0;
+const KATAKANA_MAX = 0x30_ff;
 
 /** Hangul range */
-const HANGUL_REGEX = /[\uac00-\ud7af]/;
+const HANGUL_MIN = 0xac_00;
+const HANGUL_MAX = 0xd7_af;
+
+/** CJK ranges for quick codepoint checking */
+const CJK_RANGES = [
+  [0x4e_00, 0x9f_ff], // CJK Unified Ideographs
+  [0x34_00, 0x4d_bf], // CJK Unified Ideographs Extension A
+  [0x30_40, 0x30_9f], // Hiragana
+  [0x30_a0, 0x30_ff], // Katakana
+  [0xac_00, 0xd7_af], // Hangul
+] as const;
 
 /**
  * Character frequency thresholds for CJK detection.
@@ -41,9 +39,10 @@ const CJK_THRESHOLD = 0.1; // 10% CJK chars triggers detection
 /**
  * Common words for European language detection.
  * These are stop words that appear frequently.
+ * Pre-built as Sets for O(1) lookup.
  */
-const LANGUAGE_MARKERS: Record<string, string[]> = {
-  en: [
+const LANGUAGE_MARKER_SETS: Record<string, Set<string>> = {
+  en: new Set([
     'the',
     'and',
     'is',
@@ -58,8 +57,8 @@ const LANGUAGE_MARKERS: Record<string, string[]> = {
     'with',
     'for',
     'not',
-  ],
-  de: [
+  ]),
+  de: new Set([
     'der',
     'die',
     'das',
@@ -74,8 +73,8 @@ const LANGUAGE_MARKERS: Record<string, string[]> = {
     'den',
     'dem',
     'nicht',
-  ],
-  fr: [
+  ]),
+  fr: new Set([
     'le',
     'la',
     'les',
@@ -90,8 +89,8 @@ const LANGUAGE_MARKERS: Record<string, string[]> = {
     'des',
     'dans',
     'pas',
-  ],
-  it: [
+  ]),
+  it: new Set([
     'il',
     'la',
     'le',
@@ -106,8 +105,36 @@ const LANGUAGE_MARKERS: Record<string, string[]> = {
     'dei',
     'nel',
     'non',
-  ],
+  ]),
 };
+
+/**
+ * Check if a codepoint is CJK.
+ */
+function isCjkCodepoint(cp: number): boolean {
+  for (const [min, max] of CJK_RANGES) {
+    if (cp >= min && cp <= max) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * Check if a codepoint is whitespace.
+ */
+function isWhitespace(cp: number): boolean {
+  // Common whitespace codepoints
+  return (
+    cp === 0x20 || // space
+    cp === 0x09 || // tab
+    cp === 0x0a || // newline
+    cp === 0x0d || // carriage return
+    cp === 0x0c || // form feed
+    cp === 0xa0 || // non-breaking space
+    (cp >= 0x20_00 && cp <= 0x20_0a) // various spaces
+  );
+}
 
 /**
  * Extract words from text for language analysis.
@@ -120,28 +147,47 @@ function extractWords(text: string): string[] {
 }
 
 /**
- * Count CJK characters in text.
- */
-function countCjkChars(text: string): number {
-  let count = 0;
-  for (const char of text) {
-    if (CJK_REGEX.test(char)) {
-      count += 1;
-    }
-  }
-  return count;
-}
-
-/**
  * Detect if text is primarily CJK (Chinese, Japanese, Korean).
+ * Single-pass counting for efficiency.
  */
 function detectCjk(text: string): 'zh' | 'ja' | 'ko' | null {
-  const totalChars = [...text].filter((c) => !WHITESPACE_REGEX.test(c)).length;
+  let totalChars = 0;
+  let cjkCount = 0;
+  let hasHiragana = false;
+  let hasKatakana = false;
+  let hasHangul = false;
+
+  // Single pass through the string
+  for (const char of text) {
+    const cp = char.codePointAt(0);
+    if (cp === undefined) {
+      continue;
+    }
+
+    // Skip whitespace for total count
+    if (!isWhitespace(cp)) {
+      totalChars += 1;
+
+      // Check CJK ranges
+      if (isCjkCodepoint(cp)) {
+        cjkCount += 1;
+
+        // Also check for script-specific markers
+        if (cp >= HIRAGANA_MIN && cp <= HIRAGANA_MAX) {
+          hasHiragana = true;
+        } else if (cp >= KATAKANA_MIN && cp <= KATAKANA_MAX) {
+          hasKatakana = true;
+        } else if (cp >= HANGUL_MIN && cp <= HANGUL_MAX) {
+          hasHangul = true;
+        }
+      }
+    }
+  }
+
   if (totalChars === 0) {
     return null;
   }
 
-  const cjkCount = countCjkChars(text);
   const cjkRatio = cjkCount / totalChars;
 
   if (cjkRatio < CJK_THRESHOLD) {
@@ -149,10 +195,6 @@ function detectCjk(text: string): 'zh' | 'ja' | 'ko' | null {
   }
 
   // Distinguish between CJK languages by script-specific characters
-  const hasHiragana = HIRAGANA_REGEX.test(text);
-  const hasKatakana = KATAKANA_REGEX.test(text);
-  const hasHangul = HANGUL_REGEX.test(text);
-
   if (hasHiragana || hasKatakana) {
     return 'ja';
   }
@@ -166,6 +208,7 @@ function detectCjk(text: string): 'zh' | 'ja' | 'ko' | null {
 
 /**
  * Detect European language by word frequency.
+ * Uses pre-built Sets for O(1) marker lookup.
  */
 function detectEuropean(words: string[]): string | null {
   if (words.length < 10) {
@@ -174,8 +217,7 @@ function detectEuropean(words: string[]): string | null {
 
   const scores: Record<string, number> = {};
 
-  for (const [lang, markers] of Object.entries(LANGUAGE_MARKERS)) {
-    const markerSet = new Set(markers);
+  for (const [lang, markerSet] of Object.entries(LANGUAGE_MARKER_SETS)) {
     let matches = 0;
 
     for (const word of words) {

@@ -68,9 +68,11 @@ describe('MarkdownChunker', () => {
     const chunks = chunker.chunk(text);
     expect(chunks.length).toBeGreaterThan(1);
 
-    // First chunk should end with As (break at paragraph)
-    const chunk0End = chunks[0]?.text.slice(-5);
-    expect(chunk0End).toBe('AAAAA');
+    // First chunk should contain only As (text is preserved exactly including trailing newlines)
+    // Chunk breaks AFTER the paragraph break (\n\n), so first chunk ends with those newlines
+    const chunk0Text = chunks[0]?.text ?? '';
+    expect(chunk0Text.includes('B')).toBe(false); // No Bs in first chunk
+    expect(chunk0Text.trimEnd().endsWith('A')).toBe(true); // Ends with As before whitespace
   });
 
   test('respects overlap percentage', () => {
@@ -125,10 +127,13 @@ describe('MarkdownChunker', () => {
     expect(chunks).toEqual([]);
   });
 
-  test('trims chunk text', () => {
+  test('preserves chunk text exactly (no trimming)', () => {
+    // Text is preserved exactly to maintain accurate pos/line mappings
+    // and preserve Markdown semantics like indented code blocks
     const text = '  Hello, world!  \n';
     const chunks = chunker.chunk(text);
 
-    expect(chunks[0]?.text).toBe('Hello, world!');
+    expect(chunks[0]?.text).toBe(text);
+    expect(chunks[0]?.pos).toBe(0);
   });
 });

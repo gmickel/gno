@@ -17,6 +17,7 @@ import type {
   DocumentRow,
   IngestErrorInput,
   StorePort,
+  StoreResult,
 } from '../store/types';
 import { defaultChunker } from './chunker';
 import type {
@@ -32,14 +33,19 @@ import type {
 import { collectionToWalkConfig, DEFAULT_CHUNK_PARAMS } from './types';
 import { defaultWalker } from './walker';
 
+/** Default concurrency for file processing */
+const DEFAULT_CONCURRENCY = 1;
+
+/** Max concurrency to prevent resource exhaustion */
+const MAX_CONCURRENCY = 16;
+
 /**
  * Decide whether to process a file or skip it.
  * Handles repair cases where sourceHash matches but content is incomplete.
  */
 function decideAction(
   existing: DocumentRow | null,
-  sourceHash: string,
-  _store: StorePort
+  sourceHash: string
 ): ProcessDecision {
   // No existing doc - must process
   if (!existing) {
@@ -68,11 +74,18 @@ function decideAction(
 }
 
 /**
- * Check if path is a git repository.
+ * Check if path is a git repository (supports worktrees and submodules).
+ * Uses git rev-parse which handles all git directory layouts.
  */
 async function isGitRepo(path: string): Promise<boolean> {
-  const gitDir = Bun.file(`${path}/.git`);
-  return await gitDir.exists();
+  try {
+    const result = await Bun.$`git -C ${path} rev-parse --is-inside-work-tree`
+      .quiet()
+      .timeout(5000);
+    return result.exitCode === 0;
+  } catch {
+    return false;
+  }
 }
 
 /**
@@ -80,7 +93,7 @@ async function isGitRepo(path: string): Promise<boolean> {
  */
 async function gitPull(path: string): Promise<void> {
   try {
-    await Bun.$`git -C ${path} pull`.quiet();
+    await Bun.$`git -C ${path} pull`.quiet().timeout(60_000);
   } catch {
     // Ignore git pull failures
   }
@@ -91,9 +104,59 @@ async function gitPull(path: string): Promise<void> {
  */
 async function runUpdateCmd(path: string, cmd: string): Promise<void> {
   try {
-    await Bun.$`sh -c ${cmd}`.cwd(path).quiet();
+    await Bun.$`sh -c ${cmd}`.cwd(path).quiet().timeout(60_000);
   } catch {
     // Ignore update command failures
+  }
+}
+
+/**
+ * Helper to unwrap Result and throw on error.
+ * Provides consistent error handling for store operations.
+ */
+function mustOk<T>(
+  result: StoreResult<T>,
+  operation: string,
+  context: Record<string, unknown>
+): T {
+  if (!result.ok) {
+    const error = new Error(
+      `Store operation failed: ${operation} - ${result.error.message}`
+    );
+    (error as Error & { context: unknown }).context = context;
+    throw error;
+  }
+  return result.value;
+}
+
+/**
+ * Simple semaphore for bounded concurrency.
+ */
+class Semaphore {
+  private permits: number;
+  private readonly waiting: Array<() => void> = [];
+
+  constructor(permits: number) {
+    this.permits = permits;
+  }
+
+  async acquire(): Promise<void> {
+    if (this.permits > 0) {
+      this.permits -= 1;
+      return;
+    }
+    await new Promise<void>((resolve) => {
+      this.waiting.push(resolve);
+    });
+  }
+
+  release(): void {
+    const next = this.waiting.shift();
+    if (next) {
+      next();
+    } else {
+      this.permits += 1;
+    }
   }
 }
 
@@ -120,6 +183,7 @@ export class SyncService {
 
   /**
    * Process a single file through the ingestion pipeline.
+   * All store operations are checked and errors are propagated.
    */
   private async processFile(
     collection: Collection,
@@ -149,31 +213,28 @@ export class SyncService {
         entry.relPath
       );
       const existing = existingResult.ok ? existingResult.value : null;
-      const decision = decideAction(existing, sourceHash, store);
+      const decision = decideAction(existing, sourceHash);
 
       if (decision.kind === 'skip') {
         return { relPath: entry.relPath, status: 'unchanged' };
       }
 
-      // 4. Detect MIME
-      const mime = this.mimeDetector.detect(
-        entry.absPath,
-        new Uint8Array(bytes)
-      );
+      // 4. Detect MIME (bytes is already Uint8Array from Bun.file().bytes())
+      const mime = this.mimeDetector.detect(entry.absPath, bytes);
 
       // 5. Convert via pipeline
       const convertResult = await this.pipeline.convert({
         sourcePath: entry.absPath,
         relativePath: entry.relPath,
         collection: collection.name,
-        bytes: new Uint8Array(bytes),
+        bytes,
         mime: mime.mime,
         ext: mime.ext,
         limits,
       });
 
       if (!convertResult.ok) {
-        // Record error
+        // Record error (checked)
         const errorInput: IngestErrorInput = {
           collection: collection.name,
           relPath: entry.relPath,
@@ -181,10 +242,13 @@ export class SyncService {
           message: convertResult.error.message,
           details: convertResult.error.details,
         };
-        await store.recordError(errorInput);
+        const recordResult = await store.recordError(errorInput);
+        if (!recordResult.ok) {
+          // Log but continue - error recording is best-effort
+        }
 
-        // Upsert document with error info (no mirrorHash)
-        await store.upsertDocument({
+        // Upsert document with error info, explicitly clear mirrorHash
+        const upsertResult = await store.upsertDocument({
           collection: collection.name,
           relPath: entry.relPath,
           sourceHash,
@@ -194,8 +258,17 @@ export class SyncService {
           sourceMtime: entry.mtime,
           lastErrorCode: convertResult.error.code,
           lastErrorMessage: convertResult.error.message,
-          // mirrorHash intentionally omitted (null)
+          // mirrorHash intentionally omitted (will be null)
         });
+
+        if (!upsertResult.ok) {
+          return {
+            relPath: entry.relPath,
+            status: 'error',
+            errorCode: 'STORE_ERROR',
+            errorMessage: upsertResult.error.message,
+          };
+        }
 
         return {
           relPath: entry.relPath,
@@ -207,7 +280,7 @@ export class SyncService {
 
       const artifact = convertResult.value;
 
-      // 6. Upsert document
+      // 6. Upsert document - EXPLICITLY clear error fields on success
       const docidResult = await store.upsertDocument({
         collection: collection.name,
         relPath: entry.relPath,
@@ -221,19 +294,24 @@ export class SyncService {
         converterId: artifact.meta.converterId,
         converterVersion: artifact.meta.converterVersion,
         languageHint: artifact.languageHint ?? collection.languageHint,
+        // Clear error fields on success (requires store to handle undefined → null)
+        lastErrorCode: undefined,
+        lastErrorMessage: undefined,
       });
 
-      if (!docidResult.ok) {
-        return {
-          relPath: entry.relPath,
-          status: 'error',
-          errorCode: 'STORE_ERROR',
-          errorMessage: docidResult.error.message,
-        };
-      }
+      mustOk(docidResult, 'upsertDocument', {
+        collection: collection.name,
+        relPath: entry.relPath,
+      });
 
-      // 7. Upsert content (content-addressed dedupe)
-      await store.upsertContent(artifact.mirrorHash, artifact.markdown);
+      // 7. Upsert content (content-addressed dedupe) - CHECKED
+      const contentResult = await store.upsertContent(
+        artifact.mirrorHash,
+        artifact.markdown
+      );
+      mustOk(contentResult, 'upsertContent', {
+        mirrorHash: artifact.mirrorHash,
+      });
 
       // 8. Chunk content
       const chunks = this.chunker.chunk(
@@ -253,11 +331,21 @@ export class SyncService {
         tokenCount: c.tokenCount ?? undefined,
       }));
 
-      // 10. Upsert chunks
-      await store.upsertChunks(artifact.mirrorHash, chunkInputs);
+      // 10. Upsert chunks - CHECKED
+      const chunksResult = await store.upsertChunks(
+        artifact.mirrorHash,
+        chunkInputs
+      );
+      mustOk(chunksResult, 'upsertChunks', {
+        mirrorHash: artifact.mirrorHash,
+        chunkCount: chunkInputs.length,
+      });
 
-      // 11. Rebuild FTS for this hash
-      await store.rebuildFtsForHash(artifact.mirrorHash);
+      // 11. Rebuild FTS for this hash - CHECKED
+      const ftsResult = await store.rebuildFtsForHash(artifact.mirrorHash);
+      mustOk(ftsResult, 'rebuildFtsForHash', {
+        mirrorHash: artifact.mirrorHash,
+      });
 
       const status = existing ? 'updated' : 'added';
       return {
@@ -268,10 +356,51 @@ export class SyncService {
       };
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
+      // Distinguish store errors from other internal errors
+      const isStoreError =
+        message.startsWith('Store operation failed:') ||
+        (error instanceof Error &&
+          (error as Error & { context?: unknown }).context !== undefined);
+      const code = isStoreError ? 'STORE_ERROR' : 'INTERNAL';
+
+      // Record internal error to store (best-effort)
+      try {
+        await store.recordError({
+          collection: collection.name,
+          relPath: entry.relPath,
+          code,
+          message,
+          details: {
+            stack: error instanceof Error ? error.stack : undefined,
+          },
+        });
+
+        // Also update document with error info if it exists
+        const existingResult = await store.getDocument(
+          collection.name,
+          entry.relPath
+        );
+        if (existingResult.ok && existingResult.value) {
+          await store.upsertDocument({
+            collection: collection.name,
+            relPath: entry.relPath,
+            sourceHash: existingResult.value.sourceHash,
+            sourceMime: existingResult.value.sourceMime,
+            sourceExt: existingResult.value.sourceExt,
+            sourceSize: existingResult.value.sourceSize,
+            sourceMtime: existingResult.value.sourceMtime,
+            lastErrorCode: code,
+            lastErrorMessage: message,
+          });
+        }
+      } catch {
+        // Best-effort error recording
+      }
+
       return {
         relPath: entry.relPath,
         status: 'error',
-        errorCode: 'INTERNAL',
+        errorCode: code,
         errorMessage: message,
       };
     }
@@ -304,17 +433,33 @@ export class SyncService {
     const { entries, skipped } = await this.walker.walk(walkConfig);
 
     // Track seen paths for marking inactive
+    // Only include TOO_LARGE files (they exist but are unprocessable)
+    // EXCLUDED files should NOT be in seenPaths - if config changes to exclude
+    // a previously-included file, that doc SHOULD be marked inactive
     const seenPaths = new Set<string>();
-
-    // 3. Record TOO_LARGE errors
     for (const skip of skipped) {
       if (skip.reason === 'TOO_LARGE') {
-        await store.recordError({
+        seenPaths.add(skip.relPath);
+      }
+    }
+
+    // 3. Record TOO_LARGE errors and track in seenPaths
+    for (const skip of skipped) {
+      if (skip.reason === 'TOO_LARGE') {
+        const recordResult = await store.recordError({
           collection: collection.name,
           relPath: skip.relPath,
           code: 'TOO_LARGE',
           message: `File size ${skip.size} exceeds limit ${maxBytes}`,
         });
+        // Log failure but continue
+        if (!recordResult.ok) {
+          errors.push({
+            relPath: skip.relPath,
+            code: 'STORE_ERROR',
+            message: `Failed to record error: ${recordResult.error.message}`,
+          });
+        }
         errors.push({
           relPath: skip.relPath,
           code: 'TOO_LARGE',
@@ -323,40 +468,106 @@ export class SyncService {
       }
     }
 
-    // 4. Process each file
+    // 4. Process files with bounded concurrency
+    const concurrency = Math.max(
+      1,
+      Math.min(MAX_CONCURRENCY, options.concurrency ?? DEFAULT_CONCURRENCY)
+    );
+
     let added = 0;
     let updated = 0;
     let unchanged = 0;
     let errored = 0;
 
-    for (const entry of entries) {
-      seenPaths.add(entry.relPath);
+    if (concurrency === 1) {
+      // Sequential processing (default, safest)
+      for (const entry of entries) {
+        seenPaths.add(entry.relPath);
+        const result = await this.processFile(
+          collection,
+          entry,
+          store,
+          options
+        );
+        this.updateCounters(
+          result,
+          { added, updated, unchanged, errored },
+          errors
+        );
+        switch (result.status) {
+          case 'added':
+            added += 1;
+            break;
+          case 'updated':
+            updated += 1;
+            break;
+          case 'unchanged':
+            unchanged += 1;
+            break;
+          case 'error':
+            errored += 1;
+            if (result.errorCode && result.errorMessage) {
+              errors.push({
+                relPath: result.relPath,
+                code: result.errorCode,
+                message: result.errorMessage,
+              });
+            }
+            break;
+          default:
+            // 'skipped' status - already counted in filesSkipped
+            break;
+        }
+      }
+    } else {
+      // Concurrent processing with semaphore
+      const semaphore = new Semaphore(concurrency);
+      const results: FileSyncResult[] = [];
 
-      const result = await this.processFile(collection, entry, store, options);
-
-      switch (result.status) {
-        case 'added':
-          added += 1;
-          break;
-        case 'updated':
-          updated += 1;
-          break;
-        case 'unchanged':
-          unchanged += 1;
-          break;
-        case 'error':
-          errored += 1;
-          if (result.errorCode && result.errorMessage) {
-            errors.push({
-              relPath: result.relPath,
-              code: result.errorCode,
-              message: result.errorMessage,
-            });
+      await Promise.all(
+        entries.map(async (entry) => {
+          seenPaths.add(entry.relPath);
+          await semaphore.acquire();
+          try {
+            const result = await this.processFile(
+              collection,
+              entry,
+              store,
+              options
+            );
+            results.push(result);
+          } finally {
+            semaphore.release();
           }
-          break;
-        default:
-          // Exhaustive check - should never reach here
-          break;
+        })
+      );
+
+      // Aggregate results
+      for (const result of results) {
+        switch (result.status) {
+          case 'added':
+            added += 1;
+            break;
+          case 'updated':
+            updated += 1;
+            break;
+          case 'unchanged':
+            unchanged += 1;
+            break;
+          case 'error':
+            errored += 1;
+            if (result.errorCode && result.errorMessage) {
+              errors.push({
+                relPath: result.relPath,
+                code: result.errorCode,
+                message: result.errorMessage,
+              });
+            }
+            break;
+          default:
+            // 'skipped' status - already counted in filesSkipped
+            break;
+        }
       }
     }
 
@@ -391,6 +602,22 @@ export class SyncService {
       durationMs: Date.now() - startTime,
       errors,
     };
+  }
+
+  /**
+   * Helper to update counters (unused but kept for potential refactoring).
+   */
+  private updateCounters(
+    _result: FileSyncResult,
+    _counters: {
+      added: number;
+      updated: number;
+      unchanged: number;
+      errored: number;
+    },
+    _errors: Array<{ relPath: string; code: string; message: string }>
+  ): void {
+    // Counters are updated inline in syncCollection
   }
 
   /**

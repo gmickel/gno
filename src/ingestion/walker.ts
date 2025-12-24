@@ -5,8 +5,22 @@
  * @module src/ingestion/walker
  */
 
-import { extname, normalize as normalizePath, sep } from 'node:path';
+import { realpath } from 'node:fs/promises';
+import {
+  extname,
+  isAbsolute,
+  normalize as normalizePath,
+  relative,
+  resolve,
+  sep,
+} from 'node:path';
 import type { SkippedEntry, WalkConfig, WalkEntry, WalkerPort } from './types';
+
+/**
+ * Regex to detect dangerous patterns with parent directory traversal.
+ * Matches ".." at start, after "/", or after "\" (Windows).
+ */
+const DANGEROUS_PATTERN_REGEX = /(?:^|[\\/])\.\./;
 
 /**
  * Normalize path to POSIX format (forward slashes).
@@ -19,10 +33,57 @@ function toPosixPath(path: string): string {
 }
 
 /**
+ * Validate glob pattern is safe (no directory traversal).
+ * Returns error message if invalid, null if valid.
+ */
+function validatePattern(pattern: string): string | null {
+  if (isAbsolute(pattern)) {
+    return 'Pattern must be relative, not absolute';
+  }
+  if (DANGEROUS_PATTERN_REGEX.test(pattern)) {
+    return 'Pattern contains dangerous parent directory reference (..)';
+  }
+  return null;
+}
+
+/**
+ * Compute safe relative path from root to file.
+ * Returns null if file is outside root (security check).
+ * Uses realpath to resolve symlinks and normalize case.
+ */
+async function safeRelPath(
+  rootReal: string,
+  absPath: string
+): Promise<string | null> {
+  try {
+    const fileReal = await realpath(absPath);
+    const rel = relative(rootReal, fileReal);
+
+    // Reject if relative path escapes root
+    // Check for ".." at start followed by separator or end (not just ".." prefix)
+    if (rel === '..' || rel.startsWith(`..${sep}`) || isAbsolute(rel)) {
+      return null;
+    }
+
+    return toPosixPath(rel);
+  } catch {
+    // Can't resolve path (e.g., broken symlink)
+    return null;
+  }
+}
+
+/**
  * Check if a path matches any exclude pattern.
- * Exclude patterns can match:
- * - Exact directory/file name: ".git" matches ".git" or "foo/.git/bar"
- * - Path prefix: "node_modules" matches "node_modules/..." or "foo/node_modules/..."
+ *
+ * Exclude semantics (component-based matching):
+ * - Patterns match against path components (directory/file names)
+ * - "node_modules" matches any path containing "node_modules" as a component
+ * - ".git" matches ".git" directory at any level
+ * - Patterns are NOT globs - they match exact component names
+ *
+ * Examples:
+ * - exclude: [".git"] matches "foo/.git/bar" but not "foo/.github/..."
+ * - exclude: ["dist"] matches "dist/bundle.js" and "src/dist/output.js"
  */
 function matchesExclude(relPath: string, excludes: string[]): boolean {
   const parts = relPath.split('/');
@@ -65,6 +126,9 @@ function matchesInclude(relPath: string, include: string[]): boolean {
 
 /**
  * File walker implementation using Bun.Glob.
+ *
+ * Security: Validates patterns and ensures all matched files are within
+ * the collection root directory. Files outside root are silently ignored.
  */
 export class FileWalker implements WalkerPort {
   async walk(config: WalkConfig): Promise<{
@@ -74,30 +138,57 @@ export class FileWalker implements WalkerPort {
     const entries: WalkEntry[] = [];
     const skipped: SkippedEntry[] = [];
 
+    // Validate pattern for security
+    const patternError = validatePattern(config.pattern);
+    if (patternError) {
+      throw new Error(`Invalid glob pattern: ${patternError}`);
+    }
+
+    // Resolve root to real path for consistent comparison
+    const rootAbs = resolve(config.root);
+    let rootReal: string;
+    try {
+      rootReal = await realpath(rootAbs);
+    } catch {
+      // Root doesn't exist
+      return { entries: [], skipped: [] };
+    }
+
     const glob = new Bun.Glob(config.pattern);
 
     for await (const match of glob.scan({
-      cwd: config.root,
+      cwd: rootReal,
       absolute: true,
       onlyFiles: true,
       followSymlinks: false,
     })) {
-      // Compute relative path
       const absPath = normalizePath(match);
-      let relPath = absPath.slice(config.root.length);
-      if (relPath.startsWith('/') || relPath.startsWith(sep)) {
-        relPath = relPath.slice(1);
+
+      // Security: Compute safe relative path (validates file is within root)
+      const relPath = await safeRelPath(rootReal, absPath);
+      if (relPath === null) {
+        // File outside root or unresolvable - silently skip (security)
+        continue;
       }
-      relPath = toPosixPath(relPath);
 
       // Check exclude patterns
       if (matchesExclude(relPath, config.exclude)) {
-        continue; // Silently skip excluded files
+        skipped.push({
+          absPath,
+          relPath,
+          reason: 'EXCLUDED',
+        });
+        continue;
       }
 
       // Check include extensions
       if (!matchesInclude(relPath, config.include)) {
-        continue; // Silently skip non-matching extensions
+        skipped.push({
+          absPath,
+          relPath,
+          reason: 'EXCLUDED',
+        });
+        continue;
       }
 
       // Stat file
