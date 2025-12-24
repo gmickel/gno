@@ -226,12 +226,10 @@ export class ModelCache {
       const { resolveModelFile } = await import('node-llama-cpp');
 
       // Convert to node-llama-cpp format (handles quantization shorthand)
-      // hf:org/repo/file.gguf -> org/repo/file.gguf
-      // hf:org/repo:Q4_K_M -> org/repo:Q4_K_M
+      // node-llama-cpp needs hf: prefix to identify HuggingFace models
       const hfUri = toNodeLlamaCppUri(parsed.value);
-      const hfPath = hfUri.startsWith('hf:') ? hfUri.slice(3) : hfUri;
 
-      const resolvedPath = await resolveModelFile(hfPath, {
+      const resolvedPath = await resolveModelFile(hfUri, {
         directory: this.dir,
         onProgress: onProgress
           ? (status) => {
