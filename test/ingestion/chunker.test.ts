@@ -1,0 +1,130 @@
+/**
+ * Chunker tests.
+ * @module test/ingestion/chunker.test
+ */
+
+import { describe, expect, test } from 'bun:test';
+import { MarkdownChunker } from '../../src/ingestion/chunker';
+
+describe('MarkdownChunker', () => {
+  const chunker = new MarkdownChunker();
+
+  test('returns empty array for empty input', () => {
+    const chunks = chunker.chunk('');
+    expect(chunks).toEqual([]);
+  });
+
+  test('returns empty array for null-ish input', () => {
+    const chunks = chunker.chunk(null as unknown as string);
+    expect(chunks).toEqual([]);
+  });
+
+  test('creates single chunk for small content', () => {
+    const text = 'Hello, world!';
+    const chunks = chunker.chunk(text);
+
+    expect(chunks.length).toBe(1);
+    expect(chunks[0].seq).toBe(0);
+    expect(chunks[0].pos).toBe(0);
+    expect(chunks[0].text).toBe(text);
+    expect(chunks[0].startLine).toBe(1);
+    expect(chunks[0].endLine).toBe(1);
+  });
+
+  test('tracks line numbers correctly', () => {
+    const text = 'Line 1\nLine 2\nLine 3';
+    const chunks = chunker.chunk(text);
+
+    expect(chunks.length).toBe(1);
+    expect(chunks[0].startLine).toBe(1);
+    expect(chunks[0].endLine).toBe(3);
+  });
+
+  test('creates multiple chunks for large content', () => {
+    // Create content larger than maxChars (800 tokens * 4 = 3200 chars)
+    const paragraph = 'This is a test paragraph. '.repeat(50); // ~1300 chars
+    const text = `${paragraph}\n\n${paragraph}\n\n${paragraph}`;
+
+    const chunks = chunker.chunk(text);
+    expect(chunks.length).toBeGreaterThan(1);
+
+    // Check sequential numbering
+    for (let i = 0; i < chunks.length; i += 1) {
+      expect(chunks[i].seq).toBe(i);
+    }
+  });
+
+  test('breaks at paragraph boundaries when possible', () => {
+    // Create text where paragraph break falls within search window
+    // maxChars = 3200, window = 320, so para break should be near 3200
+    const para1 = 'A'.repeat(3100); // Just under target
+    const para2 = 'B'.repeat(2000);
+    const text = `${para1}\n\n${para2}`;
+
+    const chunks = chunker.chunk(text);
+    expect(chunks.length).toBeGreaterThan(1);
+
+    // First chunk should end with As (break at paragraph)
+    const chunk0End = chunks[0].text.slice(-5);
+    expect(chunk0End).toBe('AAAAA');
+  });
+
+  test('respects overlap percentage', () => {
+    // Create content that will definitely need multiple chunks
+    const text = 'Word '.repeat(2000); // ~10000 chars
+
+    const chunks = chunker.chunk(text, {
+      maxTokens: 800,
+      overlapPercent: 0.15,
+    });
+    expect(chunks.length).toBeGreaterThan(2);
+
+    // Check that chunks overlap (second chunk starts before first ends conceptually)
+    // The pos of chunk 2 should be less than end of chunk 1 content
+    if (chunks.length >= 2) {
+      const chunk0EndPos = chunks[0].pos + chunks[0].text.length;
+      expect(chunks[1].pos).toBeLessThan(chunk0EndPos);
+    }
+  });
+
+  test('uses document language hint when provided', () => {
+    const text = 'Hello, this is some test content.';
+    const chunks = chunker.chunk(text, undefined, 'fr');
+
+    expect(chunks[0].language).toBe('fr');
+  });
+
+  test('detects language when no hint provided', () => {
+    // English text
+    const text =
+      'The quick brown fox jumps over the lazy dog. This is a test of the language detection system.';
+    const chunks = chunker.chunk(text);
+
+    // Should detect as English or null (short text)
+    expect(chunks[0].language === 'en' || chunks[0].language === null).toBe(
+      true
+    );
+  });
+
+  test('tokenCount is null for char-based chunking', () => {
+    const text = 'Hello, world!';
+    const chunks = chunker.chunk(text);
+
+    expect(chunks[0].tokenCount).toBe(null);
+  });
+
+  test('handles content with only whitespace', () => {
+    const text = '   \n\n   \t   ';
+    const chunks = chunker.chunk(text);
+
+    // Trimmed to empty, should return empty
+    expect(chunks).toEqual([]);
+  });
+
+  test('trims chunk text', () => {
+    const text = '  Hello, world!  \n';
+    const chunks = chunker.chunk(text);
+
+    expect(chunks[0].text).toBe('Hello, world!');
+  });
+});
