@@ -489,11 +489,6 @@ export class SyncService {
           store,
           options
         );
-        this.updateCounters(
-          result,
-          { added, updated, unchanged, errored },
-          errors
-        );
         switch (result.status) {
           case 'added':
             added += 1;
@@ -602,22 +597,6 @@ export class SyncService {
       durationMs: Date.now() - startTime,
       errors,
     };
-  }
-
-  /**
-   * Helper to update counters (unused but kept for potential refactoring).
-   */
-  private updateCounters(
-    _result: FileSyncResult,
-    _counters: {
-      added: number;
-      updated: number;
-      unchanged: number;
-      errored: number;
-    },
-    _errors: Array<{ relPath: string; code: string; message: string }>
-  ): void {
-    // Counters are updated inline in syncCollection
   }
 
   /**
