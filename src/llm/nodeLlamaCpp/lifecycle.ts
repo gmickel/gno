@@ -65,15 +65,15 @@ export class ModelManager {
     const cached = this.models.get(uri);
     if (cached) {
       this.resetDisposalTimer(uri);
-      return {
-        ok: true,
+      return Promise.resolve({
+        ok: true as const,
         value: {
           uri: cached.uri,
           type: cached.type,
           model: cached.model,
           loadedAt: cached.loadedAt,
         },
-      };
+      });
     }
 
     // Check for inflight load (deduplicate concurrent requests)
