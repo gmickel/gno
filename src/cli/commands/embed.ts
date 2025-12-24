@@ -5,13 +5,17 @@
  * @module src/cli/commands/embed
  */
 
+import type { Database } from 'bun:sqlite';
 import { getIndexDbPath } from '../../app/constants';
 import { getConfigPaths, isInitialized, loadConfig } from '../../config';
 import { LlmAdapter } from '../../llm/nodeLlamaCpp/adapter';
 import { getActivePreset } from '../../llm/registry';
 import type { EmbeddingPort } from '../../llm/types';
 import { SqliteAdapter } from '../../store/sqlite/adapter';
+import type { StoreResult } from '../../store/types';
+import { err, ok } from '../../store/types';
 import {
+  type BacklogItem,
   createVectorIndexPort,
   createVectorStatsPort,
   type VectorIndexPort,
@@ -321,11 +325,6 @@ export async function embed(options: EmbedOptions = {}): Promise<EmbedResult> {
 // ─────────────────────────────────────────────────────────────────────────────
 // Helper: Get all active chunks (for --force mode)
 // ─────────────────────────────────────────────────────────────────────────────
-
-import type { Database } from 'bun:sqlite';
-import type { StoreResult } from '../../store/types';
-import { err, ok } from '../../store/types';
-import type { BacklogItem } from '../../store/vector';
 
 function getActiveChunkCount(db: Database): Promise<StoreResult<number>> {
   try {

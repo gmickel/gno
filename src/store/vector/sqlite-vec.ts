@@ -197,7 +197,7 @@ export async function createVectorIndexPort(
     searchNearest(
       embedding: Float32Array,
       k: number,
-      _options?: { minScore?: number }
+      searchOptions?: { minScore?: number }
     ): Promise<StoreResult<VectorSearchResult[]>> {
       if (!(searchAvailable && searchStmt)) {
         return Promise.resolve(
@@ -213,9 +213,18 @@ export async function createVectorIndexPort(
           chunk_id: string;
           distance: number;
         }[];
+
+        // Filter by minScore if provided
+        // For cosine distance: similarity = 1 - distance, keep if >= minScore
+        const minScore = searchOptions?.minScore;
+        const filtered =
+          minScore !== undefined
+            ? results.filter((r) => 1 - r.distance >= minScore)
+            : results;
+
         return Promise.resolve(
           ok(
-            results.map((r) => {
+            filtered.map((r) => {
               const parts = r.chunk_id.split(':');
               const mirrorHash = parts[0] ?? '';
               const seqStr = parts[1] ?? '0';
