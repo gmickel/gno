@@ -171,8 +171,9 @@ export const DEFAULT_MODEL_PRESETS: ModelPreset[] = [
   {
     id: 'multilingual',
     name: 'Multilingual (BGE + Qwen)',
-    embed: 'hf:BAAI/bge-m3-gguf/bge-m3-q4_k_m.gguf',
-    rerank: 'hf:BAAI/bge-reranker-v2-m3-gguf/bge-reranker-v2-m3-q4_k_m.gguf',
+    embed: 'hf:gpustack/bge-m3-GGUF/bge-m3-Q4_K_M.gguf',
+    rerank:
+      'hf:gpustack/bge-reranker-v2-m3-GGUF/bge-reranker-v2-m3-Q4_K_M.gguf',
     gen: 'hf:Qwen/Qwen2.5-0.5B-Instruct-GGUF/qwen2.5-0.5b-instruct-q4_k_m.gguf',
   },
   {
