@@ -5,7 +5,9 @@
  * @module src/ingestion/walker
  */
 
+// node:fs/promises - Bun has no realpath equivalent
 import { realpath } from 'node:fs/promises';
+// node:path - Bun has no path manipulation module
 import {
   extname,
   isAbsolute,

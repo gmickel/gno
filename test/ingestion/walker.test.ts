@@ -4,6 +4,7 @@
  */
 
 import { describe, expect, test } from 'bun:test';
+// node:path - Bun has no path manipulation module
 import { resolve } from 'node:path';
 import { FileWalker } from '../../src/ingestion/walker';
 

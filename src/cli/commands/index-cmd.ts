@@ -5,10 +5,8 @@
  * @module src/cli/commands/indexCmd
  */
 
-import { getIndexDbPath } from '../../app/constants';
-import { getConfigPaths, isInitialized, loadConfig } from '../../config';
 import { defaultSyncService, type SyncResult } from '../../ingestion';
-import { SqliteAdapter } from '../../store/sqlite/adapter';
+import { formatSyncResultLines, initStore } from './shared';
 
 /**
  * Options for index command.
@@ -41,64 +39,17 @@ export type IndexResult =
  * Execute gno index command.
  */
 export async function index(options: IndexOptions = {}): Promise<IndexResult> {
-  // Check if initialized
-  const initialized = await isInitialized(options.configPath);
-  if (!initialized) {
-    return { success: false, error: 'GNO not initialized. Run: gno init' };
+  const initResult = await initStore({
+    configPath: options.configPath,
+    collection: options.collection,
+  });
+  if (!initResult.ok) {
+    return { success: false, error: initResult.error };
   }
 
-  // Load config
-  const configResult = await loadConfig(options.configPath);
-  if (!configResult.ok) {
-    return { success: false, error: configResult.error.message };
-  }
-  const config = configResult.value;
-
-  // Filter to single collection if specified
-  let collections = config.collections;
-  if (options.collection) {
-    collections = collections.filter((c) => c.name === options.collection);
-    if (collections.length === 0) {
-      return {
-        success: false,
-        error: `Collection not found: ${options.collection}`,
-      };
-    }
-  }
-
-  if (collections.length === 0) {
-    return {
-      success: false,
-      error: 'No collections configured. Run: gno collection add <path>',
-    };
-  }
-
-  // Open database
-  const store = new SqliteAdapter();
-  const dbPath = getIndexDbPath();
-  const paths = getConfigPaths();
-
-  // Set configPath for status output
-  store.setConfigPath(paths.configFile);
-
-  const openResult = await store.open(dbPath, config.ftsTokenizer);
-  if (!openResult.ok) {
-    return { success: false, error: openResult.error.message };
-  }
+  const { store, collections } = initResult;
 
   try {
-    // Sync collections from config to DB
-    const syncCollResult = await store.syncCollections(config.collections);
-    if (!syncCollResult.ok) {
-      return { success: false, error: syncCollResult.error.message };
-    }
-
-    // Sync contexts from config to DB
-    const syncCtxResult = await store.syncContexts(config.contexts ?? []);
-    if (!syncCtxResult.ok) {
-      return { success: false, error: syncCtxResult.error.message };
-    }
-
     // Run sync service (update phase)
     const syncResult = await defaultSyncService.syncAll(collections, store, {
       gitPull: options.gitPull,
@@ -106,11 +57,9 @@ export async function index(options: IndexOptions = {}): Promise<IndexResult> {
     });
 
     // Embedding phase (EPIC 7 - stub for now)
-    const embedSkipped = options.noEmbed ?? false;
-    if (!embedSkipped) {
-      // TODO: EPIC 7 - Run embedding
-      // For now, we skip embedding as it's not implemented yet
-    }
+    // TODO: EPIC 7 - Run embedding when implemented
+    // For now, embedding is always skipped
+    const embedSkipped = options.noEmbed ?? true;
 
     return { success: true, syncResult, embedSkipped };
   } finally {
@@ -130,45 +79,13 @@ export function formatIndex(
   }
 
   const { syncResult, embedSkipped } = result;
-  const lines: string[] = [];
+  const lines: string[] = ['Indexing complete.', ''];
 
-  lines.push('Indexing complete.');
-  lines.push('');
-
-  for (const c of syncResult.collections) {
-    lines.push(`${c.collection}:`);
-    lines.push(
-      `  ${c.filesAdded} added, ${c.filesUpdated} updated, ${c.filesUnchanged} unchanged`
-    );
-    if (c.filesErrored > 0) {
-      lines.push(`  ${c.filesErrored} errors`);
-    }
-    if (c.filesMarkedInactive > 0) {
-      lines.push(`  ${c.filesMarkedInactive} marked inactive`);
-    }
-
-    if (options.verbose && c.errors.length > 0) {
-      for (const err of c.errors) {
-        lines.push(`    [${err.code}] ${err.relPath}: ${err.message}`);
-      }
-    }
-  }
-
-  lines.push('');
-  lines.push(
-    `Total: ${syncResult.totalFilesAdded} added, ${syncResult.totalFilesUpdated} updated` +
-      (syncResult.totalFilesErrored > 0
-        ? `, ${syncResult.totalFilesErrored} errors`
-        : '')
-  );
-  lines.push(`Duration: ${syncResult.totalDurationMs}ms`);
+  lines.push(...formatSyncResultLines(syncResult, options));
 
   if (embedSkipped) {
     lines.push('');
-    lines.push('Embedding skipped (--no-embed)');
-  } else {
-    lines.push('');
-    lines.push('Embedding: not yet implemented (EPIC 7)');
+    lines.push('Embedding skipped (--no-embed or not yet implemented)');
   }
 
   return lines.join('\n');
