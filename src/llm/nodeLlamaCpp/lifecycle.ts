@@ -104,9 +104,12 @@ export class ModelManager {
     let timeoutId: ReturnType<typeof setTimeout> | null = null;
     let timedOut = false;
 
+    // Capture loadPromise outside try block so we can dispose it on timeout
+    let loadPromise: Promise<LlamaModel> | null = null;
+
     try {
       const llama = await this.getLlama();
-      const loadPromise = llama.loadModel({ modelPath });
+      loadPromise = llama.loadModel({ modelPath });
 
       // Create timeout with proper cleanup
       const timeoutPromise = new Promise<never>((_, reject) => {
@@ -149,10 +152,12 @@ export class ModelManager {
         clearTimeout(timeoutId);
       }
 
-      // Handle late-arriving model after timeout
-      if (timedOut) {
-        // Model may still complete loading - dispose it when it does
-        // (loadPromise continues running; we can't cancel it)
+      // Dispose late-arriving model after timeout to prevent memory leak
+      if (timedOut && loadPromise) {
+        loadPromise.then(
+          (model) => model.dispose().catch(() => {}),
+          () => {} // Ignore load errors after timeout
+        );
       }
 
       if (e instanceof Error) {
