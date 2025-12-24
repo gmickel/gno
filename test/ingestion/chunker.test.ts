@@ -87,9 +87,13 @@ describe('MarkdownChunker', () => {
 
     // Check that chunks overlap (second chunk starts before first ends conceptually)
     // The pos of chunk 2 should be less than end of chunk 1 content
-    if (chunks.length >= 2) {
-      const chunk0EndPos = chunks[0]?.pos + chunks[0]?.text.length;
-      expect(chunks[1]?.pos).toBeLessThan(chunk0EndPos);
+    const chunk0 = chunks[0];
+    const chunk1 = chunks[1];
+    expect(chunk0).toBeDefined();
+    expect(chunk1).toBeDefined();
+    if (chunk0 && chunk1) {
+      const chunk0EndPos = chunk0.pos + chunk0.text.length;
+      expect(chunk1.pos).toBeLessThan(chunk0EndPos);
     }
   });
 

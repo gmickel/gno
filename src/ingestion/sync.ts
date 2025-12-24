@@ -81,7 +81,7 @@ async function isGitRepo(path: string): Promise<boolean> {
   try {
     const result = await Bun.$`git -C ${path} rev-parse --is-inside-work-tree`
       .quiet()
-      .timeout(5000);
+      .nothrow();
     return result.exitCode === 0;
   } catch {
     return false;
@@ -93,7 +93,7 @@ async function isGitRepo(path: string): Promise<boolean> {
  */
 async function gitPull(path: string): Promise<void> {
   try {
-    await Bun.$`git -C ${path} pull`.quiet().timeout(60_000);
+    await Bun.$`git -C ${path} pull`.quiet().nothrow();
   } catch {
     // Ignore git pull failures
   }
@@ -104,7 +104,7 @@ async function gitPull(path: string): Promise<void> {
  */
 async function runUpdateCmd(path: string, cmd: string): Promise<void> {
   try {
-    await Bun.$`sh -c ${cmd}`.cwd(path).quiet().timeout(60_000);
+    await Bun.$`sh -c ${cmd}`.cwd(path).quiet().nothrow();
   } catch {
     // Ignore update command failures
   }
@@ -299,7 +299,7 @@ export class SyncService {
         lastErrorMessage: undefined,
       });
 
-      mustOk(docidResult, 'upsertDocument', {
+      const docid = mustOk(docidResult, 'upsertDocument', {
         collection: collection.name,
         relPath: entry.relPath,
       });
@@ -351,7 +351,7 @@ export class SyncService {
       return {
         relPath: entry.relPath,
         status,
-        docid: docidResult.value,
+        docid,
         mirrorHash: artifact.mirrorHash,
       };
     } catch (error) {

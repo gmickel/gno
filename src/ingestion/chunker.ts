@@ -56,7 +56,8 @@ function lineAtPosition(index: LineIndex, pos: number): number {
 
   while (low < high) {
     const mid = Math.floor((low + high) / 2);
-    if (newlines[mid] < pos) {
+    const newlinePos = newlines[mid];
+    if (newlinePos !== undefined && newlinePos < pos) {
       low = mid + 1;
     } else {
       high = mid;
@@ -117,7 +118,8 @@ function findBreakPoint(
     }
 
     // Only consider matches that would give us a break point before or near target
-    const breakPos = start + match.index + 1 + match[1].length;
+    const whitespace = match[1] ?? '';
+    const breakPos = start + match.index + 1 + whitespace.length;
     if (breakPos <= target + windowSize) {
       lastSentenceMatch = match;
     }
@@ -125,7 +127,8 @@ function findBreakPoint(
 
   if (lastSentenceMatch) {
     // Break after the punctuation and whitespace, before the capital
-    return start + lastSentenceMatch.index + 1 + lastSentenceMatch[1].length;
+    const whitespace = lastSentenceMatch[1] ?? '';
+    return start + lastSentenceMatch.index + 1 + whitespace.length;
   }
 
   // Look for single newline
