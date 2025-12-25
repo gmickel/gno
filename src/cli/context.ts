@@ -22,14 +22,14 @@ export type GlobalOptions = {
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Resolution
+// Parsing (pure - no side effects)
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Resolve global options from Commander raw opts.
+ * Parse global options from Commander raw opts (pure function).
  * Supports NO_COLOR env var (https://no-color.org/).
  */
-export function resolveGlobalOptions(
+export function parseGlobalOptions(
   raw: Record<string, unknown>,
   env = process.env
 ): GlobalOptions {
@@ -40,9 +40,6 @@ export function resolveGlobalOptions(
 
   const colorEnabled = !(noColorEnv || noColorFlag);
 
-  // Set colors state (enables per-invocation reset, avoids test pollution)
-  setColorsEnabled(colorEnabled);
-
   return {
     index: (raw.index as string) ?? 'default',
     config: raw.config as string | undefined,
@@ -52,4 +49,16 @@ export function resolveGlobalOptions(
     quiet: Boolean(raw.quiet),
     json: Boolean(raw.json),
   };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Side Effects
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Apply global options side effects (colors, etc).
+ * Should be called exactly once per CLI invocation.
+ */
+export function applyGlobalOptions(globals: GlobalOptions): void {
+  setColorsEnabled(globals.color);
 }

@@ -11,7 +11,7 @@ let colorsEnabled = true;
 
 /**
  * Set colors enabled/disabled.
- * Called by resolveGlobalOptions based on --no-color flag and NO_COLOR env.
+ * Called by applyGlobalOptions based on --no-color flag and NO_COLOR env.
  */
 export function setColorsEnabled(enabled: boolean): void {
   colorsEnabled = enabled;

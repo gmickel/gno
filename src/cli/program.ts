@@ -13,7 +13,12 @@ import {
   PRODUCT_NAME,
   VERSION,
 } from '../app/constants';
-import { type GlobalOptions, resolveGlobalOptions } from './context';
+import { setColorsEnabled } from './colors';
+import {
+  applyGlobalOptions,
+  type GlobalOptions,
+  parseGlobalOptions,
+} from './context';
 import { CliError } from './errors';
 import {
   assertFormatSupported,
@@ -21,7 +26,6 @@ import {
   getDefaultLimit,
   parseOptionalFloat,
   parsePositiveInt,
-  selectOutputFormat,
 } from './options';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -44,27 +48,65 @@ export function getGlobals(): GlobalOptions {
 
 /**
  * Reset global state (for testing).
+ * Resets both option state and color state to avoid test pollution.
  */
 export function resetGlobals(): void {
   globalState.current = null;
+  // Reset colors to default (true) - will be set by applyGlobalOptions on next run
+  setColorsEnabled(true);
 }
 
 /**
- * Select output format, merging global --json with local flags.
- * Local format flags (--md, --csv, etc.) take precedence over global --json.
+ * Select output format with explicit precedence.
+ * Precedence: local non-json format > local --json > global --json > terminal
  */
 function getFormat(
   cmdOpts: Record<string, unknown>
-): ReturnType<typeof selectOutputFormat> {
+): 'terminal' | 'json' | 'files' | 'csv' | 'md' | 'xml' {
   const globals = getGlobals();
-  // Merge global json with local opts (local takes precedence)
-  return selectOutputFormat({
-    json: Boolean(cmdOpts.json) || globals.json,
+
+  const local = {
+    json: Boolean(cmdOpts.json),
     files: Boolean(cmdOpts.files),
     csv: Boolean(cmdOpts.csv),
     md: Boolean(cmdOpts.md),
     xml: Boolean(cmdOpts.xml),
-  });
+  };
+
+  // Count local format flags
+  const localFormats = Object.entries(local).filter(([_, v]) => v);
+  if (localFormats.length > 1) {
+    throw new CliError(
+      'VALIDATION',
+      `Conflicting output formats: ${localFormats.map(([k]) => k).join(', ')}. Choose one.`
+    );
+  }
+
+  // Local non-json format wins (--md, --csv, --files, --xml)
+  if (local.files) {
+    return 'files';
+  }
+  if (local.csv) {
+    return 'csv';
+  }
+  if (local.md) {
+    return 'md';
+  }
+  if (local.xml) {
+    return 'xml';
+  }
+
+  // Local --json wins over global
+  if (local.json) {
+    return 'json';
+  }
+
+  // Global --json as fallback
+  if (globals.json) {
+    return 'json';
+  }
+
+  return 'terminal';
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -94,9 +136,10 @@ export function createProgram(): Command {
 
   // Resolve globals ONCE before any command runs (ensures consistency)
   program.hook('preAction', (thisCommand) => {
-    // Get root program's options (global flags)
     const rootOpts = thisCommand.optsWithGlobals();
-    globalState.current = resolveGlobalOptions(rootOpts);
+    const globals = parseGlobalOptions(rootOpts);
+    applyGlobalOptions(globals);
+    globalState.current = globals;
   });
 
   // Wire command groups
@@ -136,7 +179,6 @@ function wireSearchCommands(program: Command): void {
     .option('--xml', 'XML output')
     .option('--files', 'file paths only')
     .action(async (queryText: string, cmdOpts: Record<string, unknown>) => {
-      resolveGlobalOptions(program.opts()); // Validate global options
       const format = getFormat(cmdOpts);
       assertFormatSupported(CMD.search, format);
 
@@ -180,7 +222,6 @@ function wireSearchCommands(program: Command): void {
     .option('--xml', 'XML output')
     .option('--files', 'file paths only')
     .action(async (queryText: string, cmdOpts: Record<string, unknown>) => {
-      resolveGlobalOptions(program.opts());
       const format = getFormat(cmdOpts);
       assertFormatSupported(CMD.vsearch, format);
 
@@ -227,7 +268,6 @@ function wireSearchCommands(program: Command): void {
     .option('--xml', 'XML output')
     .option('--files', 'file paths only')
     .action(async (queryText: string, cmdOpts: Record<string, unknown>) => {
-      resolveGlobalOptions(program.opts());
       const format = getFormat(cmdOpts);
       assertFormatSupported(CMD.query, format);
 
@@ -272,7 +312,6 @@ function wireSearchCommands(program: Command): void {
     .option('--json', 'JSON output')
     .option('--md', 'Markdown output')
     .action(async (queryText: string, cmdOpts: Record<string, unknown>) => {
-      resolveGlobalOptions(program.opts());
       const format = getFormat(cmdOpts);
       assertFormatSupported(CMD.ask, format);
 
@@ -319,7 +358,7 @@ function wireOnboardingCommands(program: Command): void {
     .option('--language <code>', 'language hint (BCP-47)')
     .action(
       async (path: string | undefined, cmdOpts: Record<string, unknown>) => {
-        const globals = resolveGlobalOptions(program.opts());
+        const globals = getGlobals();
         const { init } = await import('./commands/init');
         const result = await init({
           path,
@@ -373,7 +412,7 @@ function wireOnboardingCommands(program: Command): void {
         collection: string | undefined,
         cmdOpts: Record<string, unknown>
       ) => {
-        const globals = resolveGlobalOptions(program.opts());
+        const globals = getGlobals();
         const { index, formatIndex } = await import('./commands/index-cmd');
         const opts = {
           collection,
@@ -632,18 +671,26 @@ function wireManagementCommands(program: Command): void {
     .option('--rerank', 'download reranker model')
     .option('--gen', 'download generation model')
     .option('--force', 'force re-download')
-    .option('--quiet', 'quiet mode (no progress)')
+    .option('--no-progress', 'disable download progress')
     .action(async (cmdOpts: Record<string, unknown>) => {
+      const globals = getGlobals();
       const { modelsPull, formatModelsPull, createProgressRenderer } =
         await import('./commands/models');
+
+      // Merge global quiet/json with local --no-progress
+      const showProgress =
+        (process.stderr.isTTY ?? false) &&
+        !globals.quiet &&
+        !globals.json &&
+        cmdOpts.progress !== false;
+
       const result = await modelsPull({
         all: Boolean(cmdOpts.all),
         embed: Boolean(cmdOpts.embed),
         rerank: Boolean(cmdOpts.rerank),
         gen: Boolean(cmdOpts.gen),
         force: Boolean(cmdOpts.force),
-        quiet: Boolean(cmdOpts.quiet),
-        onProgress: cmdOpts.quiet ? undefined : createProgressRenderer(),
+        onProgress: showProgress ? createProgressRenderer() : undefined,
       });
 
       // For models pull, print result first, then check for failures
@@ -658,7 +705,7 @@ function wireManagementCommands(program: Command): void {
     .command('clear')
     .description('Clear model cache')
     .action(async () => {
-      const globals = resolveGlobalOptions(program.opts());
+      const globals = getGlobals();
       const { modelsClear, formatModelsClear } = await import(
         './commands/models'
       );
@@ -687,7 +734,7 @@ function wireManagementCommands(program: Command): void {
     .description('Sync files from disk into the index')
     .option('--git-pull', 'run git pull in git repositories')
     .action(async (cmdOpts: Record<string, unknown>) => {
-      const globals = resolveGlobalOptions(program.opts());
+      const globals = getGlobals();
       const { update, formatUpdate } = await import('./commands/update');
       const opts = {
         gitPull: Boolean(cmdOpts.gitPull),
@@ -711,7 +758,7 @@ function wireManagementCommands(program: Command): void {
     .option('--dry-run', 'show what would be done')
     .option('--json', 'JSON output')
     .action(async (cmdOpts: Record<string, unknown>) => {
-      const globals = resolveGlobalOptions(program.opts());
+      const globals = getGlobals();
       const format = getFormat(cmdOpts);
 
       const { embed, formatEmbed } = await import('./commands/embed');

@@ -10,43 +10,6 @@ import { CLI_NAME, PRODUCT_NAME } from '../app/constants';
 import { CliError, exitCodeFor, formatErrorForOutput } from './errors';
 import { createProgram, resetGlobals } from './program';
 
-// Known commands for detecting "no subcommand" vs "unknown command"
-const KNOWN_COMMANDS = new Set([
-  'search',
-  'vsearch',
-  'query',
-  'ask',
-  'init',
-  'index',
-  'status',
-  'doctor',
-  'collection',
-  'context',
-  'models',
-  'update',
-  'embed',
-  'cleanup',
-  'reset',
-  'get',
-  'multi-get',
-  'ls',
-  'mcp',
-  'help',
-]);
-
-// Known global flags (without values) that can appear before subcommand
-const KNOWN_GLOBAL_FLAGS = new Set([
-  '--color',
-  '--no-color',
-  '-v',
-  '--verbose',
-  '-y',
-  '--yes',
-  '-q',
-  '--quiet',
-  '--json',
-]);
-
 /**
  * Check if argv contains --json flag (before end-of-options marker).
  * Used for error formatting before command parsing completes.
@@ -63,51 +26,78 @@ function argvWantsJson(argv: string[]): boolean {
   return false;
 }
 
+// Known global flags (boolean) - includes both --no-color and --color (negatable)
+const KNOWN_BOOL_FLAGS = new Set([
+  '--color',
+  '--no-color',
+  '--verbose',
+  '--yes',
+  '-q',
+  '--quiet',
+  '--json',
+]);
+
+// Known global flags that take values (--flag value or --flag=value)
+const KNOWN_VALUE_FLAGS = ['--index', '--config'] as const;
+
 /**
- * Check if argv should trigger concise help.
- * True when: no subcommand AND only KNOWN global flags (or nothing).
- * This allows `gno --json` to show JSON help, not trigger unknown option.
- * Unknown flags like `--badoption` go to Commander to error.
+ * Check if arg is a known value flag (--index, --config, or --index=val form).
  */
-function shouldShowConciseHelp(argv: string[]): boolean {
-  const args = argv.slice(2); // Skip node and script
-
-  // No args at all -> concise help
-  if (args.length === 0) {
-    return true;
+function isKnownValueFlag(arg: string): boolean {
+  for (const flag of KNOWN_VALUE_FLAGS) {
+    if (arg === flag || arg.startsWith(`${flag}=`)) {
+      return true;
+    }
   }
+  return false;
+}
 
-  // Check each arg
-  for (const arg of args) {
-    // Found a subcommand -> let Commander handle it
-    if (KNOWN_COMMANDS.has(arg)) {
-      return false;
+/**
+ * Check if argv has no subcommand (only known global flags).
+ * Returns true for: gno, gno --json, gno --quiet --verbose
+ * Returns false for: gno search, gno init, gno --help, gno --badoption, etc.
+ *
+ * Edge cases handled:
+ * - `gno -- search` → false (content after --)
+ * - `gno --index` → false (missing value, let Commander error)
+ * - `gno --index=foo` → true (equals form supported)
+ * - `gno --color` → true (negatable flag pair)
+ */
+function hasNoSubcommand(argv: string[]): boolean {
+  // Skip first two (node, script path)
+  for (let i = 2; i < argv.length; i++) {
+    const arg = argv[i] as string; // Guaranteed by loop bounds
+
+    // End of options marker
+    if (arg === '--') {
+      // Only "no subcommand" if nothing comes after --
+      return i === argv.length - 1;
     }
-    // Help or version flag -> let Commander handle it
-    if (
-      arg === '-h' ||
-      arg === '--help' ||
-      arg === '-V' ||
-      arg === '--version'
-    ) {
-      return false;
-    }
-    // Known global flag -> continue checking
-    if (KNOWN_GLOBAL_FLAGS.has(arg)) {
+
+    // Known boolean flag - skip
+    if (KNOWN_BOOL_FLAGS.has(arg)) {
       continue;
     }
-    // Skip flag values (e.g., --index default)
-    if (arg.startsWith('-i') || arg.startsWith('--index')) {
+
+    // Known value flag with = syntax (--index=foo)
+    if (isKnownValueFlag(arg) && arg.includes('=')) {
       continue;
     }
-    if (arg.startsWith('-c') || arg.startsWith('--config')) {
+
+    // Known value flag without = (--index foo)
+    if (isKnownValueFlag(arg)) {
+      const nextArg = argv[i + 1];
+      // Missing value or next is a flag → let Commander handle/error
+      if (nextArg === undefined || nextArg.startsWith('-')) {
+        return false;
+      }
+      i += 1; // Skip the value
       continue;
     }
-    // Unknown flag or non-flag argument -> let Commander handle/error
+
+    // Anything else (subcommand, unknown flag, --help, etc.) → not "no subcommand"
     return false;
   }
-
-  // Only known global flags, no subcommand -> show concise help
   return true;
 }
 
@@ -154,8 +144,8 @@ export async function runCli(argv: string[]): Promise<number> {
 
   const isJson = argvWantsJson(argv);
 
-  // Show concise help when run with no subcommand (per clig.dev guidelines)
-  if (shouldShowConciseHelp(argv)) {
+  // Handle "no subcommand" case before Commander (avoids full help display)
+  if (hasNoSubcommand(argv)) {
     printConciseHelp({ json: isJson });
     return 0;
   }
