@@ -676,4 +676,21 @@ function wireManagementCommands(program: Command): void {
       }
       process.stdout.write(`${formatCleanup(result)}\n`);
     });
+
+  // reset - Reset GNO to fresh state
+  program
+    .command('reset')
+    .description('Delete all GNO data and start fresh')
+    .option('--confirm', 'confirm destructive operation')
+    .option('--keep-config', 'preserve config file')
+    .option('--keep-cache', 'preserve model cache')
+    .action(async (cmdOpts: Record<string, unknown>) => {
+      const { reset, formatReset } = await import('./commands/reset');
+      const result = await reset({
+        confirm: Boolean(cmdOpts.confirm),
+        keepConfig: Boolean(cmdOpts.keepConfig),
+        keepCache: Boolean(cmdOpts.keepCache),
+      });
+      process.stdout.write(`${formatReset(result)}\n`);
+    });
 }

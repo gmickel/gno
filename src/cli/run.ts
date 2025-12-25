@@ -57,8 +57,12 @@ export async function runCli(argv: string[]): Promise<number> {
     // Handle Commander errors (exitOverride throws these)
     if (err instanceof CommanderError) {
       // Help/version are "successful" exits
+      // commander.helpDisplayed: --help or -h flag
+      // commander.help: help subcommand (e.g., help collection)
+      // commander.version: --version or -V flag
       if (
         err.code === 'commander.helpDisplayed' ||
+        err.code === 'commander.help' ||
         err.code === 'commander.version'
       ) {
         return 0;

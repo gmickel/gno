@@ -5,6 +5,8 @@
  * @module src/cli/context
  */
 
+import { disableColors } from './colors';
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
 // ─────────────────────────────────────────────────────────────────────────────
@@ -34,10 +36,17 @@ export function resolveGlobalOptions(
   // --no-color sets color to false in Commander
   const noColorFlag = raw.color === false;
 
+  const colorEnabled = !(noColorEnv || noColorFlag);
+
+  // Disable colors globally if --no-color or NO_COLOR
+  if (!colorEnabled) {
+    disableColors();
+  }
+
   return {
     index: (raw.index as string) ?? 'default',
     config: raw.config as string | undefined,
-    color: !(noColorEnv || noColorFlag),
+    color: colorEnabled,
     verbose: Boolean(raw.verbose),
     yes: Boolean(raw.yes),
   };
