@@ -14,7 +14,7 @@ process.on('SIGINT', () => {
   process.exit(130);
 });
 
-// Run CLI and set exit code (no process.exit inside runner)
+// Run CLI and exit
 runCli(process.argv).then((code) => {
-  process.exitCode = code;
+  process.exit(code);
 });
