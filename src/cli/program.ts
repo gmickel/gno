@@ -851,8 +851,10 @@ function wireManagementCommands(program: Command): void {
     .option('--keep-cache', 'preserve model cache')
     .action(async (cmdOpts: Record<string, unknown>) => {
       const { reset, formatReset } = await import('./commands/reset');
+      const globals = getGlobals();
       const result = await reset({
-        confirm: Boolean(cmdOpts.confirm),
+        // Accept either --confirm or global --yes
+        confirm: Boolean(cmdOpts.confirm) || globals.yes,
         keepConfig: Boolean(cmdOpts.keepConfig),
         keepCache: Boolean(cmdOpts.keepCache),
       });

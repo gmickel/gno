@@ -7,6 +7,8 @@
  * @module src/store/sqlite/adapter
  */
 
+// CRITICAL: Import setup FIRST to configure custom SQLite before any Database use
+import './setup';
 import { Database } from 'bun:sqlite';
 import { buildUri, deriveDocid } from '../../app/constants';
 import type { Collection, Context, FtsTokenizer } from '../../config/types';
