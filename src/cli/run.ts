@@ -26,12 +26,61 @@ function argvWantsJson(argv: string[]): boolean {
 }
 
 /**
+ * Check if argv has no user arguments at all.
+ * Only returns true for bare `gno` invocation.
+ */
+function argvIsEmpty(argv: string[]): boolean {
+  // argv[0] = node, argv[1] = gno (or script path)
+  return argv.length <= 2;
+}
+
+/**
+ * Print concise help when gno is run with no args.
+ * Per clig.dev: show brief usage, examples, and pointer to --help.
+ */
+function printConciseHelp(opts: { json: boolean }): void {
+  if (opts.json) {
+    const help = {
+      name: 'gno',
+      description: 'GNO - Local Knowledge Index and Retrieval',
+      usage: 'gno <command> [options]',
+      examples: [
+        'gno init ~/docs --name docs',
+        'gno index',
+        'gno ask "your question"',
+      ],
+      help: 'Run gno --help for full command list',
+    };
+    process.stdout.write(`${JSON.stringify(help, null, 2)}\n`);
+  } else {
+    process.stdout.write(`GNO - Local Knowledge Index and Retrieval
+
+Usage: gno <command> [options]
+
+Quick start:
+  gno init ~/docs --name docs    Initialize with a collection
+  gno index                      Build the index
+  gno ask "your question"        Search your knowledge
+
+Run 'gno --help' for full command list.
+`);
+  }
+}
+
+/**
  * Run CLI and return exit code.
  * No process.exit() - caller sets process.exitCode.
  */
 export async function runCli(argv: string[]): Promise<number> {
-  const program = createProgram();
   const isJson = argvWantsJson(argv);
+
+  // Show concise help when run with no args (per clig.dev guidelines)
+  if (argvIsEmpty(argv)) {
+    printConciseHelp({ json: isJson });
+    return 0;
+  }
+
+  const program = createProgram();
 
   // Suppress Commander's stderr output in JSON mode
   // so agents get only our structured JSON envelope

@@ -17,6 +17,7 @@ export type GlobalOptions = {
   color: boolean;
   verbose: boolean;
   yes: boolean;
+  quiet: boolean;
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -49,5 +50,6 @@ export function resolveGlobalOptions(
     color: colorEnabled,
     verbose: Boolean(raw.verbose),
     yes: Boolean(raw.yes),
+    quiet: Boolean(raw.quiet),
   };
 }

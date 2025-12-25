@@ -38,6 +38,16 @@ export const MCP_SERVER_NAME = 'gno';
 export const MCP_TOOL_PREFIX = 'gno';
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Documentation & Support
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Documentation URL */
+export const DOCS_URL = 'https://github.com/gmickel/gno#readme';
+
+/** Issue tracker URL */
+export const ISSUES_URL = 'https://github.com/gmickel/gno/issues';
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Environment Variable Names (for directory overrides)
 // ─────────────────────────────────────────────────────────────────────────────
 

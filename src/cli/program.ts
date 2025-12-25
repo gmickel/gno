@@ -29,7 +29,9 @@ export function createProgram(): Command {
     .name(CLI_NAME)
     .description(`${PRODUCT_NAME} - Local Knowledge Index and Retrieval`)
     .version(VERSION, '-V, --version', 'show version')
-    .exitOverride(); // Prevent Commander from calling process.exit()
+    .exitOverride() // Prevent Commander from calling process.exit()
+    .showSuggestionAfterError(true)
+    .showHelpAfterError('(Use --help for available options)');
 
   // Global flags - resolved via resolveGlobalOptions()
   program
@@ -37,7 +39,8 @@ export function createProgram(): Command {
     .option('--config <path>', 'config file path')
     .option('--no-color', 'disable colors')
     .option('--verbose', 'verbose logging')
-    .option('--yes', 'non-interactive mode');
+    .option('--yes', 'non-interactive mode')
+    .option('-q, --quiet', 'suppress non-essential output');
 
   // Wire command groups
   wireSearchCommands(program);
@@ -45,6 +48,14 @@ export function createProgram(): Command {
   wireManagementCommands(program);
   wireRetrievalCommands(program);
   wireMcpCommand(program);
+
+  // Add docs/support links to help footer
+  program.addHelpText(
+    'after',
+    `
+Documentation: https://github.com/gmickel/gno#readme
+Report issues: https://github.com/gmickel/gno/issues`
+  );
 
   return program;
 }
