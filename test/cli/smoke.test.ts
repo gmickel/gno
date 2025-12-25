@@ -9,6 +9,9 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { runCli } from '../../src/cli/run';
 
+// Top-level regex for version string validation (perf: avoid recreating in tests)
+const VERSION_REGEX = /\d+\.\d+\.\d+/;
+
 // Capture stdout/stderr/console
 let stdoutData: string;
 let stderrData: string;
@@ -67,10 +70,11 @@ async function cleanupTestEnv(testDir: string) {
   } catch {
     // Ignore cleanup errors
   }
-  // Use delete to properly remove env vars (= undefined becomes "undefined" string)
-  delete process.env.GNO_CONFIG_DIR;
-  delete process.env.GNO_DATA_DIR;
-  delete process.env.GNO_CACHE_DIR;
+  // Use Reflect.deleteProperty to properly remove env vars
+  // (= undefined becomes "undefined" string, breaking tests)
+  Reflect.deleteProperty(process.env, 'GNO_CONFIG_DIR');
+  Reflect.deleteProperty(process.env, 'GNO_DATA_DIR');
+  Reflect.deleteProperty(process.env, 'GNO_CACHE_DIR');
 }
 
 // Helper to run CLI with args
@@ -115,13 +119,13 @@ describe('CLI smoke tests', () => {
     test('--version returns 0 and shows version', async () => {
       const { code, stdout } = await cli('--version');
       expect(code).toBe(0);
-      expect(stdout).toMatch(/\d+\.\d+\.\d+/);
+      expect(stdout).toMatch(VERSION_REGEX);
     });
 
     test('-V returns 0', async () => {
       const { code, stdout } = await cli('-V');
       expect(code).toBe(0);
-      expect(stdout).toMatch(/\d+\.\d+\.\d+/);
+      expect(stdout).toMatch(VERSION_REGEX);
     });
 
     test('help <command> shows command help', async () => {
