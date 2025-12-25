@@ -18,6 +18,9 @@ export const PRODUCT_NAME = 'GNO';
 /** CLI binary name */
 export const CLI_NAME = 'gno';
 
+/** Version (synced with package.json) */
+export const VERSION = '0.1.0';
+
 /** Virtual URI scheme for document references */
 export const URI_SCHEME = 'gno';
 

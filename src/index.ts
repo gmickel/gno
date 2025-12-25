@@ -1,12 +1,20 @@
+#!/usr/bin/env bun
 /**
- * GNO - Local Knowledge Index and Retrieval
- * CLI entry point
+ * GNO CLI entry point.
+ * Thin bootstrap that delegates to CLI runner.
+ *
+ * @module src/index
  */
 
-import { CLI_NAME, PRODUCT_NAME } from './app/constants';
+import { runCli } from './cli/run';
 
-// Placeholder CLI - will be replaced with actual CLI implementation
-console.log(
-  `${PRODUCT_NAME} (${CLI_NAME}) - Local Knowledge Index and Retrieval`
-);
-console.log('Run with --help for usage information.');
+// SIGINT handler for graceful shutdown
+process.on('SIGINT', () => {
+  process.stderr.write('\nInterrupted\n');
+  process.exit(130);
+});
+
+// Run CLI and exit
+runCli(process.argv).then((code) => {
+  process.exit(code);
+});

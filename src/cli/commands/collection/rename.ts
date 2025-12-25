@@ -8,6 +8,7 @@ import {
   loadConfig,
   saveConfig,
 } from '../../../config';
+import { CliError } from '../../errors';
 
 export async function collectionRename(
   oldName: string,
@@ -19,8 +20,10 @@ export async function collectionRename(
   // Load config
   const result = await loadConfig();
   if (!result.ok) {
-    console.error(`Error: Failed to load config: ${result.error.message}`);
-    process.exit(2);
+    throw new CliError(
+      'RUNTIME',
+      `Failed to load config: ${result.error.message}`
+    );
   }
 
   const config = result.value;
@@ -30,8 +33,10 @@ export async function collectionRename(
     (c) => c.name === oldCollectionName
   );
   if (!collection) {
-    console.error(`Error: Collection "${oldCollectionName}" not found`);
-    process.exit(1);
+    throw new CliError(
+      'VALIDATION',
+      `Collection "${oldCollectionName}" not found`
+    );
   }
 
   // Check if new name already exists
@@ -39,18 +44,20 @@ export async function collectionRename(
     (c) => c.name === newCollectionName
   );
   if (existingNew) {
-    console.error(`Error: Collection "${newCollectionName}" already exists`);
-    process.exit(1);
+    throw new CliError(
+      'VALIDATION',
+      `Collection "${newCollectionName}" already exists`
+    );
   }
 
   // Validate new name
   const testCollection = { ...collection, name: newCollectionName };
   const validation = CollectionSchema.safeParse(testCollection);
   if (!validation.success) {
-    console.error(
-      `Error: Invalid collection name: ${validation.error.issues[0]?.message ?? 'unknown error'}`
+    throw new CliError(
+      'VALIDATION',
+      `Invalid collection name: ${validation.error.issues[0]?.message ?? 'unknown error'}`
     );
-    process.exit(1);
   }
 
   // Rename collection
@@ -76,12 +83,13 @@ export async function collectionRename(
   // Save config
   const saveResult = await saveConfig(config);
   if (!saveResult.ok) {
-    console.error(`Error: Failed to save config: ${saveResult.error.message}`);
-    process.exit(2);
+    throw new CliError(
+      'RUNTIME',
+      `Failed to save config: ${saveResult.error.message}`
+    );
   }
 
-  console.log(
-    `Collection "${oldCollectionName}" renamed to "${newCollectionName}"`
+  process.stdout.write(
+    `Collection "${oldCollectionName}" renamed to "${newCollectionName}"\n`
   );
-  process.exit(0);
 }

@@ -7,6 +7,7 @@ import {
   collectionRemove,
   collectionRename,
 } from '../../src/cli/commands/collection';
+import { CliError } from '../../src/cli/errors';
 import {
   createDefaultConfig,
   loadConfigFromPath,
@@ -18,35 +19,19 @@ const TEST_DIR = join(import.meta.dir, '.temp-collection-tests');
 const TEST_CONFIG_PATH = join(TEST_DIR, 'config', 'index.yml');
 const TEST_COLLECTION_PATH = join(TEST_DIR, 'collections', 'test-coll');
 
-// Mock process.exit to prevent actual exits
-const originalExit = process.exit;
-let exitCode = -1;
-const mockExit = (code: number) => {
-  exitCode = code;
-  throw new Error(`EXIT:${code}`);
-};
-
-// Capture console output
-let consoleOutput: string[] = [];
-let consoleErrors: string[] = [];
-const originalLog = console.log;
-const originalError = console.error;
-const mockLog = (...args: unknown[]) => {
-  consoleOutput.push(args.join(' '));
-};
-const mockError = (...args: unknown[]) => {
-  consoleErrors.push(args.join(' '));
+// Capture stdout output
+let stdoutOutput: string[] = [];
+const originalWrite = process.stdout.write.bind(process.stdout);
+const mockWrite = (chunk: string | Uint8Array): boolean => {
+  stdoutOutput.push(String(chunk));
+  return true;
 };
 
 describe('collection CLI commands', () => {
   beforeEach(async () => {
     // Set up mocks
-    process.exit = mockExit as never;
-    console.log = mockLog as never;
-    console.error = mockError as never;
-    exitCode = -1;
-    consoleOutput = [];
-    consoleErrors = [];
+    process.stdout.write = mockWrite as typeof process.stdout.write;
+    stdoutOutput = [];
 
     // Set up temp directories
     await rm(TEST_DIR, { recursive: true, force: true });
@@ -63,9 +48,7 @@ describe('collection CLI commands', () => {
 
   afterEach(async () => {
     // Restore mocks
-    process.exit = originalExit;
-    console.log = originalLog;
-    console.error = originalError;
+    process.stdout.write = originalWrite;
     process.env.GNO_CONFIG_DIR = undefined;
 
     // Clean up temp dir
@@ -74,16 +57,11 @@ describe('collection CLI commands', () => {
 
   describe('collectionAdd', () => {
     test('adds collection with required name', async () => {
-      try {
-        await collectionAdd(TEST_COLLECTION_PATH, {
-          name: 'test-coll',
-        });
-      } catch {
-        // Ignore exit error
-      }
+      await collectionAdd(TEST_COLLECTION_PATH, {
+        name: 'test-coll',
+      });
 
-      expect(exitCode).toBe(0);
-      expect(consoleOutput.join('\n')).toContain('added successfully');
+      expect(stdoutOutput.join('')).toContain('added successfully');
 
       // Verify config was updated
       const result = await loadConfigFromPath(TEST_CONFIG_PATH);
@@ -98,13 +76,9 @@ describe('collection CLI commands', () => {
     });
 
     test('converts name to lowercase', async () => {
-      try {
-        await collectionAdd(TEST_COLLECTION_PATH, {
-          name: 'Test-COLL',
-        });
-      } catch {
-        // Ignore exit error
-      }
+      await collectionAdd(TEST_COLLECTION_PATH, {
+        name: 'Test-COLL',
+      });
 
       const result = await loadConfigFromPath(TEST_CONFIG_PATH);
       if (!result.ok) {
@@ -115,65 +89,59 @@ describe('collection CLI commands', () => {
     });
 
     test('errors if name missing', async () => {
+      let error: CliError | undefined;
       try {
         await collectionAdd(TEST_COLLECTION_PATH, {});
-      } catch {
-        // Ignore exit error
+      } catch (e) {
+        error = e as CliError;
       }
 
-      expect(exitCode).toBe(1);
-      expect(consoleErrors.join('\n')).toContain('--name is required');
+      expect(error).toBeInstanceOf(CliError);
+      expect(error?.code).toBe('VALIDATION');
+      expect(error?.message).toContain('--name is required');
     });
 
     test('errors if path does not exist', async () => {
+      let error: CliError | undefined;
       try {
         await collectionAdd('/nonexistent/path', {
           name: 'test',
         });
-      } catch {
-        // Ignore exit error
+      } catch (e) {
+        error = e as CliError;
       }
 
-      expect(exitCode).toBe(1);
-      expect(consoleErrors.join('\n')).toContain('does not exist');
+      expect(error).toBeInstanceOf(CliError);
+      expect(error?.code).toBe('VALIDATION');
+      expect(error?.message).toContain('does not exist');
     });
 
     test('errors on duplicate name', async () => {
       // Add first collection
-      try {
-        await collectionAdd(TEST_COLLECTION_PATH, {
-          name: 'test-coll',
-        });
-      } catch {
-        // Ignore exit error
-      }
-
-      // Reset for second attempt
-      exitCode = -1;
-      consoleErrors = [];
+      await collectionAdd(TEST_COLLECTION_PATH, {
+        name: 'test-coll',
+      });
 
       // Try to add duplicate
+      let error: CliError | undefined;
       try {
         await collectionAdd(TEST_COLLECTION_PATH, {
           name: 'test-coll',
         });
-      } catch {
-        // Ignore exit error
+      } catch (e) {
+        error = e as CliError;
       }
 
-      expect(exitCode).toBe(1);
-      expect(consoleErrors.join('\n')).toContain('already exists');
+      expect(error).toBeInstanceOf(CliError);
+      expect(error?.code).toBe('VALIDATION');
+      expect(error?.message).toContain('already exists');
     });
 
     test('accepts custom pattern', async () => {
-      try {
-        await collectionAdd(TEST_COLLECTION_PATH, {
-          name: 'test',
-          pattern: '**/*.md',
-        });
-      } catch {
-        // Ignore exit error
-      }
+      await collectionAdd(TEST_COLLECTION_PATH, {
+        name: 'test',
+        pattern: '**/*.md',
+      });
 
       const result = await loadConfigFromPath(TEST_CONFIG_PATH);
       if (!result.ok) {
@@ -184,14 +152,10 @@ describe('collection CLI commands', () => {
     });
 
     test('parses include extensions', async () => {
-      try {
-        await collectionAdd(TEST_COLLECTION_PATH, {
-          name: 'test',
-          include: '.md,.txt,.pdf',
-        });
-      } catch {
-        // Ignore exit error
-      }
+      await collectionAdd(TEST_COLLECTION_PATH, {
+        name: 'test',
+        include: '.md,.txt,.pdf',
+      });
 
       const result = await loadConfigFromPath(TEST_CONFIG_PATH);
       if (!result.ok) {
@@ -206,14 +170,10 @@ describe('collection CLI commands', () => {
     });
 
     test('parses exclude patterns', async () => {
-      try {
-        await collectionAdd(TEST_COLLECTION_PATH, {
-          name: 'test',
-          exclude: '.git,node_modules,dist',
-        });
-      } catch {
-        // Ignore exit error
-      }
+      await collectionAdd(TEST_COLLECTION_PATH, {
+        name: 'test',
+        exclude: '.git,node_modules,dist',
+      });
 
       const result = await loadConfigFromPath(TEST_CONFIG_PATH);
       if (!result.ok) {
@@ -228,14 +188,10 @@ describe('collection CLI commands', () => {
     });
 
     test('sets update command', async () => {
-      try {
-        await collectionAdd(TEST_COLLECTION_PATH, {
-          name: 'test',
-          update: 'git pull',
-        });
-      } catch {
-        // Ignore exit error
-      }
+      await collectionAdd(TEST_COLLECTION_PATH, {
+        name: 'test',
+        update: 'git pull',
+      });
 
       const result = await loadConfigFromPath(TEST_CONFIG_PATH);
       if (!result.ok) {
@@ -275,14 +231,9 @@ describe('collection CLI commands', () => {
     });
 
     test('lists collections in terminal format', async () => {
-      try {
-        await collectionList({});
-      } catch {
-        // Ignore exit error
-      }
+      await collectionList({});
 
-      expect(exitCode).toBe(0);
-      const output = consoleOutput.join('\n');
+      const output = stdoutOutput.join('');
       expect(output).toContain('notes');
       expect(output).toContain('work');
       expect(output).toContain('/test/notes');
@@ -290,14 +241,9 @@ describe('collection CLI commands', () => {
     });
 
     test('lists collections in JSON format', async () => {
-      try {
-        await collectionList({ json: true });
-      } catch {
-        // Ignore exit error
-      }
+      await collectionList({ json: true });
 
-      expect(exitCode).toBe(0);
-      const output = consoleOutput.join('\n');
+      const output = stdoutOutput.join('');
       const parsed = JSON.parse(output);
       expect(parsed).toHaveLength(2);
       expect(parsed[0]?.name).toBe('notes');
@@ -305,14 +251,9 @@ describe('collection CLI commands', () => {
     });
 
     test('lists collections in Markdown format', async () => {
-      try {
-        await collectionList({ md: true });
-      } catch {
-        // Ignore exit error
-      }
+      await collectionList({ md: true });
 
-      expect(exitCode).toBe(0);
-      const output = consoleOutput.join('\n');
+      const output = stdoutOutput.join('');
       expect(output).toContain('# Collections');
       expect(output).toContain('## notes');
       expect(output).toContain('## work');
@@ -329,14 +270,9 @@ describe('collection CLI commands', () => {
       config.value.collections = [];
       await saveConfigToPath(config.value, TEST_CONFIG_PATH);
 
-      try {
-        await collectionList({});
-      } catch {
-        // Ignore exit error
-      }
+      await collectionList({});
 
-      expect(exitCode).toBe(0);
-      expect(consoleOutput.join('\n')).toContain('No collections');
+      expect(stdoutOutput.join('')).toContain('No collections');
     });
   });
 
@@ -361,14 +297,9 @@ describe('collection CLI commands', () => {
     });
 
     test('removes existing collection', async () => {
-      try {
-        await collectionRemove('notes');
-      } catch {
-        // Ignore exit error
-      }
+      await collectionRemove('notes');
 
-      expect(exitCode).toBe(0);
-      expect(consoleOutput.join('\n')).toContain('removed successfully');
+      expect(stdoutOutput.join('')).toContain('removed successfully');
 
       const result = await loadConfigFromPath(TEST_CONFIG_PATH);
       if (!result.ok) {
@@ -379,14 +310,16 @@ describe('collection CLI commands', () => {
     });
 
     test('errors if collection not found', async () => {
+      let error: CliError | undefined;
       try {
         await collectionRemove('nonexistent');
-      } catch {
-        // Ignore exit error
+      } catch (e) {
+        error = e as CliError;
       }
 
-      expect(exitCode).toBe(1);
-      expect(consoleErrors.join('\n')).toContain('not found');
+      expect(error).toBeInstanceOf(CliError);
+      expect(error?.code).toBe('VALIDATION');
+      expect(error?.message).toContain('not found');
     });
 
     test('errors if collection referenced by context', async () => {
@@ -405,24 +338,22 @@ describe('collection CLI commands', () => {
       ];
       await saveConfigToPath(config.value, TEST_CONFIG_PATH);
 
+      let error: CliError | undefined;
       try {
         await collectionRemove('notes');
-      } catch {
-        // Ignore exit error
+      } catch (e) {
+        error = e as CliError;
       }
 
-      expect(exitCode).toBe(1);
-      expect(consoleErrors.join('\n')).toContain('referenced by contexts');
+      expect(error).toBeInstanceOf(CliError);
+      expect(error?.code).toBe('VALIDATION');
+      expect(error?.message).toContain('referenced by contexts');
     });
 
     test('converts name to lowercase', async () => {
-      try {
-        await collectionRemove('NOTES');
-      } catch {
-        // Ignore exit error
-      }
+      await collectionRemove('NOTES');
 
-      expect(exitCode).toBe(0);
+      expect(stdoutOutput.join('')).toContain('removed successfully');
     });
   });
 
@@ -447,14 +378,9 @@ describe('collection CLI commands', () => {
     });
 
     test('renames existing collection', async () => {
-      try {
-        await collectionRename('notes', 'documents');
-      } catch {
-        // Ignore exit error
-      }
+      await collectionRename('notes', 'documents');
 
-      expect(exitCode).toBe(0);
-      expect(consoleOutput.join('\n')).toContain('renamed to');
+      expect(stdoutOutput.join('')).toContain('renamed to');
 
       const result = await loadConfigFromPath(TEST_CONFIG_PATH);
       if (!result.ok) {
@@ -466,14 +392,16 @@ describe('collection CLI commands', () => {
     });
 
     test('errors if old name not found', async () => {
+      let error: CliError | undefined;
       try {
         await collectionRename('nonexistent', 'newname');
-      } catch {
-        // Ignore exit error
+      } catch (e) {
+        error = e as CliError;
       }
 
-      expect(exitCode).toBe(1);
-      expect(consoleErrors.join('\n')).toContain('not found');
+      expect(error).toBeInstanceOf(CliError);
+      expect(error?.code).toBe('VALIDATION');
+      expect(error?.message).toContain('not found');
     });
 
     test('errors if new name already exists', async () => {
@@ -491,14 +419,16 @@ describe('collection CLI commands', () => {
       });
       await saveConfigToPath(config.value, TEST_CONFIG_PATH);
 
+      let error: CliError | undefined;
       try {
         await collectionRename('notes', 'work');
-      } catch {
-        // Ignore exit error
+      } catch (e) {
+        error = e as CliError;
       }
 
-      expect(exitCode).toBe(1);
-      expect(consoleErrors.join('\n')).toContain('already exists');
+      expect(error).toBeInstanceOf(CliError);
+      expect(error?.code).toBe('VALIDATION');
+      expect(error?.message).toContain('already exists');
     });
 
     test('updates collection scope contexts', async () => {
@@ -516,11 +446,7 @@ describe('collection CLI commands', () => {
       ];
       await saveConfigToPath(config.value, TEST_CONFIG_PATH);
 
-      try {
-        await collectionRename('notes', 'documents');
-      } catch {
-        // Ignore exit error
-      }
+      await collectionRename('notes', 'documents');
 
       const result = await loadConfigFromPath(TEST_CONFIG_PATH);
       if (!result.ok) {
@@ -545,11 +471,7 @@ describe('collection CLI commands', () => {
       ];
       await saveConfigToPath(config.value, TEST_CONFIG_PATH);
 
-      try {
-        await collectionRename('notes', 'documents');
-      } catch {
-        // Ignore exit error
-      }
+      await collectionRename('notes', 'documents');
 
       const result = await loadConfigFromPath(TEST_CONFIG_PATH);
       if (!result.ok) {
@@ -562,11 +484,7 @@ describe('collection CLI commands', () => {
     });
 
     test('converts names to lowercase', async () => {
-      try {
-        await collectionRename('NOTES', 'Documents');
-      } catch {
-        // Ignore exit error
-      }
+      await collectionRename('NOTES', 'Documents');
 
       const result = await loadConfigFromPath(TEST_CONFIG_PATH);
       if (!result.ok) {
@@ -577,14 +495,16 @@ describe('collection CLI commands', () => {
     });
 
     test('validates new name format', async () => {
+      let error: CliError | undefined;
       try {
         await collectionRename('notes', 'Invalid Name!');
-      } catch {
-        // Ignore exit error
+      } catch (e) {
+        error = e as CliError;
       }
 
-      expect(exitCode).toBe(1);
-      expect(consoleErrors.join('\n')).toContain('Invalid collection name');
+      expect(error).toBeInstanceOf(CliError);
+      expect(error?.code).toBe('VALIDATION');
+      expect(error?.message).toContain('Invalid collection name');
     });
   });
 });
