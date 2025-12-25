@@ -53,7 +53,7 @@ function normalizeBm25Score(raw: number): number {
   return Math.tanh(raw / 10);
 }
 
-function normalizeVectorScore(distance: number): number {
+function _normalizeVectorScore(distance: number): number {
   return Math.max(0, Math.min(1, 1 - distance / 2));
 }
 
@@ -157,7 +157,7 @@ export async function searchHybrid(
 ): Promise<
   ReturnType<typeof ok<SearchResults>> | ReturnType<typeof err<SearchResults>>
 > {
-  const { store, config, vectorIndex, embedPort, genPort, rerankPort } = deps;
+  const { store, vectorIndex, embedPort, genPort, rerankPort } = deps;
   const pipelineConfig = deps.pipelineConfig ?? DEFAULT_PIPELINE_CONFIG;
 
   const limit = options.limit ?? 20;
@@ -284,8 +284,7 @@ export async function searchHybrid(
   // 4. Reranking
   // ─────────────────────────────────────────────────────────────────────────
   const rerankResult = await rerankCandidates(
-    options.noRerank ? null : rerankPort,
-    store,
+    { rerankPort: options.noRerank ? null : rerankPort, store },
     query,
     fusedCandidates,
     { maxCandidates: pipelineConfig.rerankCandidates }
@@ -354,14 +353,20 @@ export async function searchHybrid(
       chunksCache.set(candidate.mirrorHash, chunksResult);
     }
 
-    if (!chunksResult.ok) continue;
+    if (!chunksResult.ok) {
+      continue;
+    }
 
     const chunk = chunksResult.value.find((c) => c.seq === candidate.seq);
-    if (!chunk) continue;
+    if (!chunk) {
+      continue;
+    }
 
     // Find document from pre-fetched map
     const doc = docByMirrorHash.get(candidate.mirrorHash);
-    if (!doc) continue;
+    if (!doc) {
+      continue;
+    }
 
     docidMap.set(`${candidate.mirrorHash}:${candidate.seq}`, doc.docid);
 

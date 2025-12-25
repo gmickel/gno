@@ -17,6 +17,7 @@ import type { ExpansionResult } from './types';
 
 const EXPANSION_PROMPT_VERSION = 'v1';
 const DEFAULT_TIMEOUT_MS = 5000;
+const JSON_EXTRACT_PATTERN = /\{[\s\S]*\}/;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Cache Key Generation
@@ -108,7 +109,7 @@ function getPromptTemplate(lang?: string): string {
 function parseExpansionResult(output: string): ExpansionResult | null {
   try {
     // Try to extract JSON from output (model may include extra text)
-    const jsonMatch = output.match(/\{[\s\S]*\}/);
+    const jsonMatch = output.match(JSON_EXTRACT_PATTERN);
     if (!jsonMatch) {
       return null;
     }
