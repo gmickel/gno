@@ -31,14 +31,17 @@ function normalizeBm25Score(raw: number): number {
 // Result Building
 // ─────────────────────────────────────────────────────────────────────────────
 
+type BuildResultContext = {
+  fts: FtsResult;
+  chunk: ChunkRow | null;
+  collectionPath?: string;
+  options?: SearchOptions;
+  fullContent?: string;
+};
+
 /** Build SearchResult from FtsResult and related data */
-function buildSearchResult(
-  fts: FtsResult,
-  chunk: ChunkRow | null,
-  collectionPath?: string,
-  options?: SearchOptions,
-  fullContent?: string
-): SearchResult {
+function buildSearchResult(ctx: BuildResultContext): SearchResult {
+  const { fts, chunk, collectionPath, options, fullContent } = ctx;
   const source: SearchResultSource = {
     relPath: fts.relPath ?? '',
     mime: 'text/markdown', // Default for mirror content
@@ -180,7 +183,7 @@ export async function searchBm25(
       ? collectionPaths.get(fts.collection)
       : undefined;
 
-    results.push(buildSearchResult(fts, chunk, collectionPath, options));
+    results.push(buildSearchResult({ fts, chunk, collectionPath, options }));
   }
 
   // For --full, fetch full content and build results
@@ -197,7 +200,7 @@ export async function searchBm25(
         ? collectionPaths.get(fts.collection)
         : undefined;
       results.push(
-        buildSearchResult(fts, chunk, collectionPath, options, fullContent)
+        buildSearchResult({ fts, chunk, collectionPath, options, fullContent })
       );
     }
   }
