@@ -371,7 +371,7 @@ function wireRetrievalCommands(program: Command): void {
     .command('get <ref>')
     .description('Get document by URI or docid')
     .option('--json', 'JSON output')
-    .action(async (_ref: string, cmdOpts: Record<string, unknown>) => {
+    .action((_ref: string, cmdOpts: Record<string, unknown>) => {
       const format = selectOutputFormat(cmdOpts);
       assertFormatSupported(CMD.get, format);
 
@@ -384,7 +384,7 @@ function wireRetrievalCommands(program: Command): void {
     .command('multi-get <refs...>')
     .description('Get multiple documents by URI or docid')
     .option('--json', 'JSON output')
-    .action(async (_refs: string[], cmdOpts: Record<string, unknown>) => {
+    .action((_refs: string[], cmdOpts: Record<string, unknown>) => {
       const format = selectOutputFormat(cmdOpts);
       assertFormatSupported(CMD.multiGet, format);
 
@@ -400,10 +400,7 @@ function wireRetrievalCommands(program: Command): void {
     .option('--offset <num>', 'skip first N results')
     .option('--json', 'JSON output')
     .action(
-      async (
-        _collection: string | undefined,
-        cmdOpts: Record<string, unknown>
-      ) => {
+      (_collection: string | undefined, cmdOpts: Record<string, unknown>) => {
         const format = selectOutputFormat(cmdOpts);
         assertFormatSupported(CMD.ls, format);
 
@@ -422,7 +419,7 @@ function wireMcpCommand(program: Command): void {
   program
     .command('mcp')
     .description('Start MCP server (stdio transport)')
-    .action(async () => {
+    .action(() => {
       // Stub - will be implemented in EPIC 10
       throw new CliError('RUNTIME', 'mcp command not yet implemented');
     });
@@ -447,6 +444,8 @@ function wireManagementCommands(program: Command): void {
     .option('--exclude <patterns>', 'exclude patterns (CSV)')
     .option('--update <cmd>', 'shell command to run before indexing')
     .action(async (path: string, cmdOpts: Record<string, unknown>) => {
+      // TODO: Refactor collectionAdd to throw CliError instead of process.exit()
+      // Currently calls process.exit() directly, bypassing CLI error handling
       const { collectionAdd } = await import('./commands/collection');
       await collectionAdd(path, {
         name: cmdOpts.name as string,

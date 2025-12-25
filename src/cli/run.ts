@@ -37,7 +37,9 @@ export async function runCli(argv: string[]): Promise<number> {
   // so agents get only our structured JSON envelope
   if (isJson) {
     program.configureOutput({
-      writeErr: () => {}, // Suppress Commander's error text
+      writeErr: () => {
+        // Intentionally empty: suppress Commander's stderr
+      },
     });
   }
 

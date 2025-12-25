@@ -122,13 +122,6 @@ export function getDefaultLimit(format: OutputFormat): number {
   return format === 'terminal' ? 5 : 20;
 }
 
-/**
- * Check if format is structured (non-terminal).
- */
-export function isStructuredFormat(format: OutputFormat): boolean {
-  return format !== 'terminal';
-}
-
 // ─────────────────────────────────────────────────────────────────────────────
 // Numeric Option Parsing
 // ─────────────────────────────────────────────────────────────────────────────
