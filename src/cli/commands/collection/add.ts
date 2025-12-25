@@ -62,12 +62,26 @@ export async function collectionAdd(
     );
   }
 
-  // Parse options
+  // Parse options - filter empty, dedupe
   const includeList = options.include
-    ? options.include.split(',').map((ext) => ext.trim())
+    ? [
+        ...new Set(
+          options.include
+            .split(',')
+            .map((s) => s.trim())
+            .filter(Boolean)
+        ),
+      ]
     : [];
   const excludeList = options.exclude
-    ? options.exclude.split(',').map((p) => p.trim())
+    ? [
+        ...new Set(
+          options.exclude
+            .split(',')
+            .map((s) => s.trim())
+            .filter(Boolean)
+        ),
+      ]
     : [...DEFAULT_EXCLUDES];
 
   // Build collection

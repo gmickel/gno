@@ -12,20 +12,22 @@ type ListOptions = {
 };
 
 function formatMarkdown(collections: Collection[]): string {
-  const lines: string[] = ['# Collections\n'];
+  const lines: string[] = ['# Collections', ''];
   if (collections.length === 0) {
-    lines.push('No collections configured.\n');
+    lines.push('No collections configured.');
     return lines.join('\n');
   }
 
   for (const coll of collections) {
-    lines.push(`## ${coll.name}\n`);
+    lines.push(`## ${coll.name}`, '');
     lines.push(`- **Path:** ${coll.path}`);
     lines.push(`- **Pattern:** ${coll.pattern}`);
     if (coll.include.length > 0) {
       lines.push(`- **Include:** ${coll.include.join(', ')}`);
     }
-    lines.push(`- **Exclude:** ${coll.exclude.join(', ')}`);
+    if (coll.exclude.length > 0) {
+      lines.push(`- **Exclude:** ${coll.exclude.join(', ')}`);
+    }
     if (coll.updateCmd) {
       lines.push(`- **Update Command:** \`${coll.updateCmd}\``);
     }
@@ -39,7 +41,7 @@ function formatTerminal(collections: Collection[]): string {
     return 'No collections configured.';
   }
 
-  const lines: string[] = [`Collections (${collections.length}):\n`];
+  const lines: string[] = [`Collections (${collections.length}):`, ''];
   for (const coll of collections) {
     lines.push(`  ${coll.name}`);
     lines.push(`    Path:    ${coll.path}`);
