@@ -28,9 +28,7 @@ export type ModelsPullOptions = {
   gen?: boolean;
   /** Force re-download */
   force?: boolean;
-  /** Quiet mode (no progress) */
-  quiet?: boolean;
-  /** Progress callback for UI */
+  /** Progress callback for UI (omit to disable progress) */
   onProgress?: (type: ModelType, progress: DownloadProgress) => void;
 };
 
@@ -118,9 +116,7 @@ export async function modelsPull(
 
     // Download the model
     const result = await cache.download(uri, type, (progress) => {
-      if (!options.quiet && options.onProgress) {
-        options.onProgress(type, progress);
-      }
+      options.onProgress?.(type, progress);
     });
 
     if (result.ok) {

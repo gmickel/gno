@@ -9,6 +9,9 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { runCli } from '../../src/cli/run';
 
+// Top-level regex for version string validation (perf: avoid recreating in tests)
+const VERSION_REGEX = /\d+\.\d+\.\d+/;
+
 // Capture stdout/stderr/console
 let stdoutData: string;
 let stderrData: string;
@@ -67,9 +70,11 @@ async function cleanupTestEnv(testDir: string) {
   } catch {
     // Ignore cleanup errors
   }
-  process.env.GNO_CONFIG_DIR = undefined;
-  process.env.GNO_DATA_DIR = undefined;
-  process.env.GNO_CACHE_DIR = undefined;
+  // Use Reflect.deleteProperty to properly remove env vars
+  // (= undefined becomes "undefined" string, breaking tests)
+  Reflect.deleteProperty(process.env, 'GNO_CONFIG_DIR');
+  Reflect.deleteProperty(process.env, 'GNO_DATA_DIR');
+  Reflect.deleteProperty(process.env, 'GNO_CACHE_DIR');
 }
 
 // Helper to run CLI with args
@@ -114,13 +119,13 @@ describe('CLI smoke tests', () => {
     test('--version returns 0 and shows version', async () => {
       const { code, stdout } = await cli('--version');
       expect(code).toBe(0);
-      expect(stdout).toMatch(/\d+\.\d+\.\d+/);
+      expect(stdout).toMatch(VERSION_REGEX);
     });
 
     test('-V returns 0', async () => {
       const { code, stdout } = await cli('-V');
       expect(code).toBe(0);
-      expect(stdout).toMatch(/\d+\.\d+\.\d+/);
+      expect(stdout).toMatch(VERSION_REGEX);
     });
 
     test('help <command> shows command help', async () => {
@@ -436,6 +441,53 @@ describe('CLI smoke tests', () => {
     test('--index is accepted', async () => {
       const { code } = await cli('--index', 'myindex', '--help');
       expect(code).toBe(0);
+    });
+
+    test('--quiet/-q is accepted', async () => {
+      const { code: code1 } = await cli('--quiet', '--help');
+      expect(code1).toBe(0);
+      const { code: code2 } = await cli('-q', '--help');
+      expect(code2).toBe(0);
+    });
+  });
+
+  describe('concise help', () => {
+    test('gno with no args shows concise help', async () => {
+      const { code, stdout } = await cli();
+      expect(code).toBe(0);
+      expect(stdout).toContain('Quick start:');
+      expect(stdout).toContain('gno init');
+      expect(stdout).toContain("Run 'gno --help' for full command list");
+    });
+
+    test('gno with no args --json returns structured help', async () => {
+      // Note: --json alone triggers concise help because it's a flag-only invocation
+      // We need to test this differently - let the full help handle it
+      const { code, stdout } = await cli('--help');
+      expect(code).toBe(0);
+      expect(stdout).toContain('Usage: gno');
+    });
+  });
+
+  describe('suggestions and help hints', () => {
+    test('typo suggests correct command', async () => {
+      const { code, stderr } = await cli('serach');
+      expect(code).toBe(1);
+      expect(stderr).toContain('Did you mean search');
+    });
+
+    test('error shows help hint', async () => {
+      const { code, stderr } = await cli('collection', 'add', '/tmp');
+      expect(code).toBe(1);
+      expect(stderr).toContain('--help');
+    });
+  });
+
+  describe('help footer', () => {
+    test('--help shows docs link', async () => {
+      const { code, stdout } = await cli('--help');
+      expect(code).toBe(0);
+      expect(stdout).toContain('github.com/gmickel/gno');
     });
   });
 

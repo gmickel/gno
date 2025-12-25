@@ -5,7 +5,7 @@
  * @module src/cli/context
  */
 
-import { disableColors } from './colors';
+import { setColorsEnabled } from './colors';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -17,17 +17,19 @@ export type GlobalOptions = {
   color: boolean;
   verbose: boolean;
   yes: boolean;
+  quiet: boolean;
+  json: boolean;
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Resolution
+// Parsing (pure - no side effects)
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Resolve global options from Commander raw opts.
+ * Parse global options from Commander raw opts (pure function).
  * Supports NO_COLOR env var (https://no-color.org/).
  */
-export function resolveGlobalOptions(
+export function parseGlobalOptions(
   raw: Record<string, unknown>,
   env = process.env
 ): GlobalOptions {
@@ -38,16 +40,25 @@ export function resolveGlobalOptions(
 
   const colorEnabled = !(noColorEnv || noColorFlag);
 
-  // Disable colors globally if --no-color or NO_COLOR
-  if (!colorEnabled) {
-    disableColors();
-  }
-
   return {
     index: (raw.index as string) ?? 'default',
     config: raw.config as string | undefined,
     color: colorEnabled,
     verbose: Boolean(raw.verbose),
     yes: Boolean(raw.yes),
+    quiet: Boolean(raw.quiet),
+    json: Boolean(raw.json),
   };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Side Effects
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Apply global options side effects (colors, etc).
+ * Should be called exactly once per CLI invocation.
+ */
+export function applyGlobalOptions(globals: GlobalOptions): void {
+  setColorsEnabled(globals.color);
 }
