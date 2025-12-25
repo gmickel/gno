@@ -558,11 +558,12 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
       const limit = options.limit ?? 20;
 
       // Join FTS results with chunks and documents
+      // Use bm25() function explicitly - fts.rank doesn't work with JOINs
       const sql = `
         SELECT
           c.mirror_hash,
           c.seq,
-          fts.rank as score,
+          bm25(content_fts) as score,
           ${options.snippet ? "snippet(content_fts, 0, '<mark>', '</mark>', '...', 32) as snippet," : ''}
           d.docid,
           d.uri,
@@ -575,7 +576,7 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
         WHERE content_fts MATCH ?
         ${options.collection ? 'AND d.collection = ?' : ''}
         ${options.language ? 'AND c.language = ?' : ''}
-        ORDER BY fts.rank
+        ORDER BY bm25(content_fts)
         LIMIT ?
       `;
 
