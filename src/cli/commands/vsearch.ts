@@ -8,8 +8,15 @@
 import { LlmAdapter } from '../../llm/nodeLlamaCpp/adapter';
 import { getActivePreset } from '../../llm/registry';
 import type { SearchOptions, SearchResults } from '../../pipeline/types';
-import { searchVector, type VectorSearchDeps } from '../../pipeline/vsearch';
+import {
+  searchVectorWithEmbedding,
+  type VectorSearchDeps,
+} from '../../pipeline/vsearch';
 import { createVectorIndexPort } from '../../store/vector';
+import {
+  type FormatOptions,
+  formatSearchResults,
+} from '../format/search-results';
 import { initStore } from './shared';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -79,12 +86,13 @@ export async function vsearch(
     const embedPort = embedResult.value;
 
     try {
-      // Get dimensions via probe
-      const probeResult = await embedPort.embed('dimension probe');
-      if (!probeResult.ok) {
-        return { success: false, error: probeResult.error.message };
+      // Embed query (also determines dimensions - avoids double embed)
+      const queryEmbedResult = await embedPort.embed(query);
+      if (!queryEmbedResult.ok) {
+        return { success: false, error: queryEmbedResult.error.message };
       }
-      const dimensions = probeResult.value.length;
+      const queryEmbedding = new Float32Array(queryEmbedResult.value);
+      const dimensions = queryEmbedding.length;
 
       // Create vector index port
       const db = store.getRawDb();
@@ -106,10 +114,13 @@ export async function vsearch(
         config,
       };
 
-      const result = await searchVector(deps, query, {
-        ...options,
-        limit,
-      });
+      // Pass pre-computed embedding to avoid double-embed
+      const result = await searchVectorWithEmbedding(
+        deps,
+        query,
+        queryEmbedding,
+        { ...options, limit }
+      );
 
       if (!result.ok) {
         return { success: false, error: result.error.message };
@@ -125,114 +136,31 @@ export async function vsearch(
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Formatters (same as search command)
+// Formatter
 // ─────────────────────────────────────────────────────────────────────────────
 
-function formatTerminal(data: SearchResults): string {
-  if (data.results.length === 0) {
-    return 'No results found.';
+/**
+ * Get output format from options.
+ */
+function getFormatType(
+  options: VsearchCommandOptions
+): FormatOptions['format'] {
+  if (options.json) {
+    return 'json';
   }
-
-  const lines: string[] = [];
-  for (const r of data.results) {
-    lines.push(`[${r.docid}] ${r.uri} (score: ${r.score.toFixed(2)})`);
-    if (r.title) {
-      lines.push(`  ${r.title}`);
-    }
-    if (r.snippet) {
-      const snippet =
-        r.snippet.length > 200 ? `${r.snippet.slice(0, 200)}...` : r.snippet;
-      lines.push(`  ${snippet.replace(/\n/g, ' ')}`);
-    }
-    lines.push('');
+  if (options.files) {
+    return 'files';
   }
-  lines.push(
-    `${data.meta.totalResults} result(s) for "${data.meta.query}" (vector)`
-  );
-  return lines.join('\n');
-}
-
-function formatMarkdown(data: SearchResults): string {
-  if (data.results.length === 0) {
-    return `# Vector Search Results\n\nNo results found for "${data.meta.query}".`;
+  if (options.csv) {
+    return 'csv';
   }
-
-  const lines: string[] = [];
-  lines.push(`# Vector Search Results for "${data.meta.query}"`);
-  lines.push('');
-  lines.push(`*${data.meta.totalResults} result(s)*`);
-  lines.push('');
-
-  for (const r of data.results) {
-    lines.push(`## ${r.title || r.source.relPath}`);
-    lines.push('');
-    lines.push(`- **URI**: \`${r.uri}\``);
-    lines.push(`- **Score**: ${r.score.toFixed(2)}`);
-    lines.push(`- **DocID**: \`${r.docid}\``);
-    if (r.snippet) {
-      lines.push('');
-      lines.push('```');
-      lines.push(r.snippet.slice(0, 500));
-      lines.push('```');
-    }
-    lines.push('');
+  if (options.md) {
+    return 'md';
   }
-
-  return lines.join('\n');
-}
-
-function formatCsv(data: SearchResults): string {
-  const lines: string[] = [];
-  lines.push('docid,score,uri,title,relPath');
-  for (const r of data.results) {
-    const title = (r.title ?? '').replace(/"/g, '""');
-    lines.push(
-      `"${r.docid}",${r.score.toFixed(4)},"${r.uri}","${title}","${r.source.relPath}"`
-    );
+  if (options.xml) {
+    return 'xml';
   }
-  return lines.join('\n');
-}
-
-function formatXml(data: SearchResults): string {
-  const lines: string[] = [];
-  lines.push('<?xml version="1.0" encoding="UTF-8"?>');
-  lines.push('<searchResults>');
-  lines.push(
-    `  <meta query="${escapeXml(data.meta.query)}" mode="${data.meta.mode}" total="${data.meta.totalResults}"/>`
-  );
-  for (const r of data.results) {
-    lines.push('  <result>');
-    lines.push(`    <docid>${escapeXml(r.docid)}</docid>`);
-    lines.push(`    <score>${r.score}</score>`);
-    lines.push(`    <uri>${escapeXml(r.uri)}</uri>`);
-    if (r.title) {
-      lines.push(`    <title>${escapeXml(r.title)}</title>`);
-    }
-    lines.push(`    <relPath>${escapeXml(r.source.relPath)}</relPath>`);
-    if (r.snippet) {
-      lines.push(
-        `    <snippet>${escapeXml(r.snippet.slice(0, 500))}</snippet>`
-      );
-    }
-    lines.push('  </result>');
-  }
-  lines.push('</searchResults>');
-  return lines.join('\n');
-}
-
-function formatFiles(data: SearchResults): string {
-  return data.results
-    .map((r) => r.source.absPath ?? r.source.relPath)
-    .join('\n');
-}
-
-function escapeXml(str: string): string {
-  return str
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&apos;');
+  return 'terminal';
 }
 
 /**
@@ -250,25 +178,11 @@ export function formatVsearch(
       : `Error: ${result.error}`;
   }
 
-  if (options.json) {
-    return JSON.stringify(result.data, null, 2);
-  }
+  const formatOpts: FormatOptions = {
+    format: getFormatType(options),
+    full: options.full,
+    lineNumbers: options.lineNumbers,
+  };
 
-  if (options.md) {
-    return formatMarkdown(result.data);
-  }
-
-  if (options.csv) {
-    return formatCsv(result.data);
-  }
-
-  if (options.xml) {
-    return formatXml(result.data);
-  }
-
-  if (options.files) {
-    return formatFiles(result.data);
-  }
-
-  return formatTerminal(result.data);
+  return formatSearchResults(result.data, formatOpts);
 }

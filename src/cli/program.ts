@@ -172,7 +172,9 @@ function wireSearchCommands(program: Command): void {
     .option('-n, --limit <num>', 'max results')
     .option('--min-score <num>', 'minimum score threshold')
     .option('-c, --collection <name>', 'filter by collection')
+    .option('--lang <code>', 'language filter/hint (BCP-47)')
     .option('--full', 'include full content')
+    .option('--line-numbers', 'include line numbers in output')
     .option('--json', 'JSON output')
     .option('--md', 'Markdown output')
     .option('--csv', 'CSV output')
@@ -182,6 +184,17 @@ function wireSearchCommands(program: Command): void {
       const format = getFormat(cmdOpts);
       assertFormatSupported(CMD.search, format);
 
+      // Validate empty query
+      if (!queryText.trim()) {
+        throw new CliError('VALIDATION', 'Query cannot be empty');
+      }
+
+      // Validate minScore range
+      const minScore = parseOptionalFloat('min-score', cmdOpts.minScore);
+      if (minScore !== undefined && (minScore < 0 || minScore > 1)) {
+        throw new CliError('VALIDATION', '--min-score must be between 0 and 1');
+      }
+
       const limit = cmdOpts.limit
         ? parsePositiveInt('limit', cmdOpts.limit)
         : getDefaultLimit(format);
@@ -189,9 +202,11 @@ function wireSearchCommands(program: Command): void {
       const { search, formatSearch } = await import('./commands/search');
       const result = await search(queryText, {
         limit,
-        minScore: parseOptionalFloat('min-score', cmdOpts.minScore),
+        minScore,
         collection: cmdOpts.collection as string | undefined,
+        lang: cmdOpts.lang as string | undefined,
         full: Boolean(cmdOpts.full),
+        lineNumbers: Boolean(cmdOpts.lineNumbers),
         json: format === 'json',
         md: format === 'md',
         csv: format === 'csv',
@@ -201,10 +216,22 @@ function wireSearchCommands(program: Command): void {
 
       // Check success before printing - stdout is for successful outputs only
       if (!result.success) {
-        throw new CliError('RUNTIME', result.error);
+        // Map validation errors to exit code 1
+        throw new CliError(
+          result.isValidation ? 'VALIDATION' : 'RUNTIME',
+          result.error
+        );
       }
       process.stdout.write(
-        `${formatSearch(result, { json: format === 'json' })}\n`
+        `${formatSearch(result, {
+          json: format === 'json',
+          md: format === 'md',
+          csv: format === 'csv',
+          xml: format === 'xml',
+          files: format === 'files',
+          full: Boolean(cmdOpts.full),
+          lineNumbers: Boolean(cmdOpts.lineNumbers),
+        })}\n`
       );
     });
 
@@ -215,7 +242,9 @@ function wireSearchCommands(program: Command): void {
     .option('-n, --limit <num>', 'max results')
     .option('--min-score <num>', 'minimum score threshold')
     .option('-c, --collection <name>', 'filter by collection')
+    .option('--lang <code>', 'language filter/hint (BCP-47)')
     .option('--full', 'include full content')
+    .option('--line-numbers', 'include line numbers in output')
     .option('--json', 'JSON output')
     .option('--md', 'Markdown output')
     .option('--csv', 'CSV output')
@@ -225,6 +254,17 @@ function wireSearchCommands(program: Command): void {
       const format = getFormat(cmdOpts);
       assertFormatSupported(CMD.vsearch, format);
 
+      // Validate empty query
+      if (!queryText.trim()) {
+        throw new CliError('VALIDATION', 'Query cannot be empty');
+      }
+
+      // Validate minScore range
+      const minScore = parseOptionalFloat('min-score', cmdOpts.minScore);
+      if (minScore !== undefined && (minScore < 0 || minScore > 1)) {
+        throw new CliError('VALIDATION', '--min-score must be between 0 and 1');
+      }
+
       const limit = cmdOpts.limit
         ? parsePositiveInt('limit', cmdOpts.limit)
         : getDefaultLimit(format);
@@ -232,9 +272,11 @@ function wireSearchCommands(program: Command): void {
       const { vsearch, formatVsearch } = await import('./commands/vsearch');
       const result = await vsearch(queryText, {
         limit,
-        minScore: parseOptionalFloat('min-score', cmdOpts.minScore),
+        minScore,
         collection: cmdOpts.collection as string | undefined,
+        lang: cmdOpts.lang as string | undefined,
         full: Boolean(cmdOpts.full),
+        lineNumbers: Boolean(cmdOpts.lineNumbers),
         json: format === 'json',
         md: format === 'md',
         csv: format === 'csv',
@@ -246,7 +288,15 @@ function wireSearchCommands(program: Command): void {
         throw new CliError('RUNTIME', result.error);
       }
       process.stdout.write(
-        `${formatVsearch(result, { json: format === 'json' })}\n`
+        `${formatVsearch(result, {
+          json: format === 'json',
+          md: format === 'md',
+          csv: format === 'csv',
+          xml: format === 'xml',
+          files: format === 'files',
+          full: Boolean(cmdOpts.full),
+          lineNumbers: Boolean(cmdOpts.lineNumbers),
+        })}\n`
       );
     });
 
