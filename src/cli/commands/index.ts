@@ -5,6 +5,12 @@
  */
 
 export {
+  type AskCommandOptions,
+  type AskCommandResult,
+  ask,
+  formatAsk,
+} from './ask';
+export {
   type CleanupOptions,
   type CleanupResult,
   cleanup,
@@ -33,6 +39,18 @@ export {
 export { type InitOptions, type InitResult, init } from './init';
 export * from './models';
 export {
+  formatQuery,
+  type QueryCommandOptions,
+  type QueryResult,
+  query,
+} from './query';
+export {
+  formatSearch,
+  type SearchCommandOptions,
+  type SearchResult,
+  search,
+} from './search';
+export {
   formatStatus,
   type StatusOptions,
   type StatusResult,
@@ -44,3 +62,9 @@ export {
   type UpdateResult,
   update,
 } from './update';
+export {
+  formatVsearch,
+  type VsearchCommandOptions,
+  type VsearchResult,
+  vsearch,
+} from './vsearch';
