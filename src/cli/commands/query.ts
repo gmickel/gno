@@ -14,7 +14,10 @@ import type {
 } from '../../llm/types';
 import { type HybridSearchDeps, searchHybrid } from '../../pipeline/hybrid';
 import type { HybridSearchOptions, SearchResults } from '../../pipeline/types';
-import { createVectorIndexPort } from '../../store/vector';
+import {
+  createVectorIndexPort,
+  type VectorIndexPort,
+} from '../../store/vector';
 import { initStore } from './shared';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -106,7 +109,7 @@ export async function query(
     }
 
     // Create vector index (optional)
-    let vectorIndex = null;
+    let vectorIndex: VectorIndexPort | null = null;
     if (embedPort) {
       const probeResult = await embedPort.embed('dimension probe');
       if (probeResult.ok) {
@@ -142,9 +145,15 @@ export async function query(
 
     return { success: true, data: result.value };
   } finally {
-    if (embedPort) await embedPort.dispose();
-    if (genPort) await genPort.dispose();
-    if (rerankPort) await rerankPort.dispose();
+    if (embedPort) {
+      await embedPort.dispose();
+    }
+    if (genPort) {
+      await genPort.dispose();
+    }
+    if (rerankPort) {
+      await rerankPort.dispose();
+    }
     await store.close();
   }
 }
@@ -162,9 +171,15 @@ function formatTerminal(data: SearchResults): string {
 
   // Show mode info
   const modeInfo: string[] = [];
-  if (data.meta.expanded) modeInfo.push('expanded');
-  if (data.meta.vectorsUsed) modeInfo.push('hybrid');
-  if (data.meta.reranked) modeInfo.push('reranked');
+  if (data.meta.expanded) {
+    modeInfo.push('expanded');
+  }
+  if (data.meta.vectorsUsed) {
+    modeInfo.push('hybrid');
+  }
+  if (data.meta.reranked) {
+    modeInfo.push('reranked');
+  }
   if (modeInfo.length > 0) {
     lines.push(`Mode: ${modeInfo.join(', ')}`);
     lines.push('');
@@ -196,9 +211,15 @@ function formatMarkdown(data: SearchResults): string {
   lines.push('');
 
   const modeInfo: string[] = [];
-  if (data.meta.expanded) modeInfo.push('expanded');
-  if (data.meta.vectorsUsed) modeInfo.push('hybrid');
-  if (data.meta.reranked) modeInfo.push('reranked');
+  if (data.meta.expanded) {
+    modeInfo.push('expanded');
+  }
+  if (data.meta.vectorsUsed) {
+    modeInfo.push('hybrid');
+  }
+  if (data.meta.reranked) {
+    modeInfo.push('reranked');
+  }
   lines.push(
     `*${data.meta.totalResults} result(s) | Mode: ${modeInfo.join(', ') || 'bm25'}*`
   );
@@ -280,7 +301,9 @@ function escapeXml(str: string): string {
  * Format explain data to stderr.
  */
 function formatExplainToStderr(data: SearchResults): void {
-  if (!data.meta.explain) return;
+  if (!data.meta.explain) {
+    return;
+  }
 
   const lines: string[] = [];
 

@@ -19,7 +19,10 @@ import type {
   Citation,
   SearchResult,
 } from '../../pipeline/types';
-import { createVectorIndexPort } from '../../store/vector';
+import {
+  createVectorIndexPort,
+  type VectorIndexPort,
+} from '../../store/vector';
 import { initStore } from './shared';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -70,7 +73,9 @@ async function generateGroundedAnswer(
 
   for (let i = 0; i < Math.min(results.length, 5); i++) {
     const r = results[i];
-    if (!r) continue;
+    if (!r) {
+      continue;
+    }
     contextParts.push(`[${i + 1}] ${r.snippet}`);
     citations.push({
       docid: r.docid,
@@ -151,7 +156,7 @@ export async function ask(
     }
 
     // Create vector index
-    let vectorIndex = null;
+    let vectorIndex: VectorIndexPort | null = null;
     if (embedPort) {
       const probeResult = await embedPort.embed('dimension probe');
       if (probeResult.ok) {
@@ -233,9 +238,15 @@ export async function ask(
 
     return { success: true, data: askResult };
   } finally {
-    if (embedPort) await embedPort.dispose();
-    if (genPort) await genPort.dispose();
-    if (rerankPort) await rerankPort.dispose();
+    if (embedPort) {
+      await embedPort.dispose();
+    }
+    if (genPort) {
+      await genPort.dispose();
+    }
+    if (rerankPort) {
+      await rerankPort.dispose();
+    }
     await store.close();
   }
 }
@@ -288,7 +299,9 @@ function formatMarkdown(data: AskResult): string {
 
   for (let i = 0; i < data.results.length; i++) {
     const r = data.results[i];
-    if (!r) continue;
+    if (!r) {
+      continue;
+    }
     lines.push(`${i + 1}. **${r.title || r.source.relPath}**`);
     lines.push(`   - URI: \`${r.uri}\``);
     lines.push(`   - Score: ${r.score.toFixed(2)}`);

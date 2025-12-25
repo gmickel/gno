@@ -20,12 +20,10 @@ import type {
 
 /**
  * Normalize BM25 score to 0-1 range.
- * BM25 scores are unbounded; we use sigmoid-like normalization.
- * Score of 10 maps to ~0.9, 5 to ~0.8, 1 to ~0.5.
+ * BM25 scores are unbounded; we use tanh(raw/10) for smooth 0-1 mapping.
+ * Score of 10 maps to ~0.76, 20 to ~0.96, 30 to ~0.995.
  */
 function normalizeBm25Score(raw: number): number {
-  // Using tanh for smooth 0-1 mapping
-  // Adjust scale factor to get reasonable spread
   return Math.tanh(raw / 10);
 }
 

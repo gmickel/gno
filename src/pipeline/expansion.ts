@@ -172,7 +172,6 @@ export async function expandQuery(
   options: ExpansionOptions = {}
 ): Promise<StoreResult<ExpansionResult | null>> {
   const timeout = options.timeout ?? DEFAULT_TIMEOUT_MS;
-  const lang = options.lang ?? 'auto';
 
   // Build prompt
   const template = getPromptTemplate(options.lang);
