@@ -4,8 +4,11 @@
  * Deletes all config, data, and cache directories.
  */
 
+// node:fs/promises: rm and stat for recursive directory deletion (no Bun equivalent)
 import { rm, stat } from 'node:fs/promises';
+// node:os: homedir for platform-agnostic home directory (no Bun equivalent)
 import { homedir } from 'node:os';
+// node:path: path manipulation utilities (no Bun equivalent)
 import { isAbsolute, normalize, sep } from 'node:path';
 import { resolveDirs } from '../../app/constants';
 import { CliError } from '../errors';
