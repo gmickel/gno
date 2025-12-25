@@ -19,12 +19,12 @@ import type {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Normalize BM25 score to 0-1 range.
- * BM25 scores are unbounded; we use tanh(raw/10) for smooth 0-1 mapping.
- * Score of 10 maps to ~0.76, 20 to ~0.96, 30 to ~0.995.
+ * Pass through BM25 score as-is.
+ * Scores are relative within result set - compare to each other, not absolute.
+ * Larger corpus = larger scores; small corpus = tiny scores.
  */
 function normalizeBm25Score(raw: number): number {
-  return Math.tanh(raw / 10);
+  return raw;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

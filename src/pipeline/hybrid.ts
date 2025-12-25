@@ -50,7 +50,9 @@ export type HybridSearchDeps = {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function normalizeBm25Score(raw: number): number {
-  return Math.tanh(raw / 10);
+  // Pass through raw score - with small corpus scores are tiny
+  // strongBm25Threshold check will rarely trigger, but that's fine
+  return raw;
 }
 
 function _normalizeVectorScore(distance: number): number {
