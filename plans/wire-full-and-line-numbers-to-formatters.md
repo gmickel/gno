@@ -269,11 +269,12 @@ program
 ```typescript
 const MAX_FULL_SIZE_CHARS = 10 * 1024 * 1024; // ~10MB in UTF-16 code units
 
-function emitLargeFileWarnings(results: SearchResult[]): void {
+function emitLargeFileWarnings(results: SearchResult[], quiet: boolean): void {
+  if (quiet) return; // Respect --quiet flag
   for (const r of results) {
     if (r.snippet.length > MAX_FULL_SIZE_CHARS) {
       const sizeMB = (r.snippet.length / 1024 / 1024).toFixed(1);
-      console.error(`Warning: ${r.uri} is ~${sizeMB}MB`);
+      process.stderr.write(`Warning: ${r.uri} is ~${sizeMB}MB\n`);
     }
   }
 }

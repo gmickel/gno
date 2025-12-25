@@ -6,8 +6,14 @@
  */
 
 import { Command } from 'commander';
-import { CLI_NAME, PRODUCT_NAME, VERSION } from '../app/constants';
-import { resolveGlobalOptions } from './context';
+import {
+  CLI_NAME,
+  DOCS_URL,
+  ISSUES_URL,
+  PRODUCT_NAME,
+  VERSION,
+} from '../app/constants';
+import { type GlobalOptions, resolveGlobalOptions } from './context';
 import { CliError } from './errors';
 import {
   assertFormatSupported,
@@ -17,6 +23,49 @@ import {
   parsePositiveInt,
   selectOutputFormat,
 } from './options';
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Global State (set by preAction hook)
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Using object wrapper to allow mutation while satisfying linter
+const globalState: { current: GlobalOptions | null } = { current: null };
+
+/**
+ * Get resolved global options. Must be called after command parsing.
+ * Throws if called before preAction hook runs.
+ */
+export function getGlobals(): GlobalOptions {
+  if (!globalState.current) {
+    throw new Error('Global options not resolved - called before preAction?');
+  }
+  return globalState.current;
+}
+
+/**
+ * Reset global state (for testing).
+ */
+export function resetGlobals(): void {
+  globalState.current = null;
+}
+
+/**
+ * Select output format, merging global --json with local flags.
+ * Local format flags (--md, --csv, etc.) take precedence over global --json.
+ */
+function getFormat(
+  cmdOpts: Record<string, unknown>
+): ReturnType<typeof selectOutputFormat> {
+  const globals = getGlobals();
+  // Merge global json with local opts (local takes precedence)
+  return selectOutputFormat({
+    json: Boolean(cmdOpts.json) || globals.json,
+    files: Boolean(cmdOpts.files),
+    csv: Boolean(cmdOpts.csv),
+    md: Boolean(cmdOpts.md),
+    xml: Boolean(cmdOpts.xml),
+  });
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Program Factory
@@ -33,14 +82,22 @@ export function createProgram(): Command {
     .showSuggestionAfterError(true)
     .showHelpAfterError('(Use --help for available options)');
 
-  // Global flags - resolved via resolveGlobalOptions()
+  // Global flags - resolved via preAction hook
   program
     .option('--index <name>', 'index name', 'default')
     .option('--config <path>', 'config file path')
     .option('--no-color', 'disable colors')
     .option('--verbose', 'verbose logging')
     .option('--yes', 'non-interactive mode')
-    .option('-q, --quiet', 'suppress non-essential output');
+    .option('-q, --quiet', 'suppress non-essential output')
+    .option('--json', 'JSON output (for errors and supported commands)');
+
+  // Resolve globals ONCE before any command runs (ensures consistency)
+  program.hook('preAction', (thisCommand) => {
+    // Get root program's options (global flags)
+    const rootOpts = thisCommand.optsWithGlobals();
+    globalState.current = resolveGlobalOptions(rootOpts);
+  });
 
   // Wire command groups
   wireSearchCommands(program);
@@ -53,8 +110,8 @@ export function createProgram(): Command {
   program.addHelpText(
     'after',
     `
-Documentation: https://github.com/gmickel/gno#readme
-Report issues: https://github.com/gmickel/gno/issues`
+Documentation: ${DOCS_URL}
+Report issues: ${ISSUES_URL}`
   );
 
   return program;
@@ -80,7 +137,7 @@ function wireSearchCommands(program: Command): void {
     .option('--files', 'file paths only')
     .action(async (queryText: string, cmdOpts: Record<string, unknown>) => {
       resolveGlobalOptions(program.opts()); // Validate global options
-      const format = selectOutputFormat(cmdOpts);
+      const format = getFormat(cmdOpts);
       assertFormatSupported(CMD.search, format);
 
       const limit = cmdOpts.limit
@@ -124,7 +181,7 @@ function wireSearchCommands(program: Command): void {
     .option('--files', 'file paths only')
     .action(async (queryText: string, cmdOpts: Record<string, unknown>) => {
       resolveGlobalOptions(program.opts());
-      const format = selectOutputFormat(cmdOpts);
+      const format = getFormat(cmdOpts);
       assertFormatSupported(CMD.vsearch, format);
 
       const limit = cmdOpts.limit
@@ -171,7 +228,7 @@ function wireSearchCommands(program: Command): void {
     .option('--files', 'file paths only')
     .action(async (queryText: string, cmdOpts: Record<string, unknown>) => {
       resolveGlobalOptions(program.opts());
-      const format = selectOutputFormat(cmdOpts);
+      const format = getFormat(cmdOpts);
       assertFormatSupported(CMD.query, format);
 
       const limit = cmdOpts.limit
@@ -216,7 +273,7 @@ function wireSearchCommands(program: Command): void {
     .option('--md', 'Markdown output')
     .action(async (queryText: string, cmdOpts: Record<string, unknown>) => {
       resolveGlobalOptions(program.opts());
-      const format = selectOutputFormat(cmdOpts);
+      const format = getFormat(cmdOpts);
       assertFormatSupported(CMD.ask, format);
 
       const limit = cmdOpts.limit
@@ -341,7 +398,7 @@ function wireOnboardingCommands(program: Command): void {
     .description('Show index status')
     .option('--json', 'JSON output')
     .action(async (cmdOpts: Record<string, unknown>) => {
-      const format = selectOutputFormat(cmdOpts);
+      const format = getFormat(cmdOpts);
       assertFormatSupported(CMD.status, format);
 
       const { status, formatStatus } = await import('./commands/status');
@@ -361,7 +418,7 @@ function wireOnboardingCommands(program: Command): void {
     .description('Diagnose configuration issues')
     .option('--json', 'JSON output')
     .action(async (cmdOpts: Record<string, unknown>) => {
-      const format = selectOutputFormat(cmdOpts);
+      const format = getFormat(cmdOpts);
       const { doctor, formatDoctor } = await import('./commands/doctor');
       const result = await doctor({ json: format === 'json' });
 
@@ -383,7 +440,7 @@ function wireRetrievalCommands(program: Command): void {
     .description('Get document by URI or docid')
     .option('--json', 'JSON output')
     .action((_ref: string, cmdOpts: Record<string, unknown>) => {
-      const format = selectOutputFormat(cmdOpts);
+      const format = getFormat(cmdOpts);
       assertFormatSupported(CMD.get, format);
 
       // Stub - will be implemented in EPIC 9
@@ -396,7 +453,7 @@ function wireRetrievalCommands(program: Command): void {
     .description('Get multiple documents by URI or docid')
     .option('--json', 'JSON output')
     .action((_refs: string[], cmdOpts: Record<string, unknown>) => {
-      const format = selectOutputFormat(cmdOpts);
+      const format = getFormat(cmdOpts);
       assertFormatSupported(CMD.multiGet, format);
 
       // Stub - will be implemented in EPIC 9
@@ -412,7 +469,7 @@ function wireRetrievalCommands(program: Command): void {
     .option('--json', 'JSON output')
     .action(
       (_collection: string | undefined, cmdOpts: Record<string, unknown>) => {
-        const format = selectOutputFormat(cmdOpts);
+        const format = getFormat(cmdOpts);
         assertFormatSupported(CMD.ls, format);
 
         // Stub - will be implemented in EPIC 9
@@ -471,7 +528,7 @@ function wireManagementCommands(program: Command): void {
     .option('--json', 'JSON output')
     .option('--md', 'Markdown output')
     .action(async (cmdOpts: Record<string, unknown>) => {
-      const format = selectOutputFormat(cmdOpts);
+      const format = getFormat(cmdOpts);
       assertFormatSupported(CMD.collectionList, format);
 
       const { collectionList } = await import('./commands/collection');
@@ -519,7 +576,7 @@ function wireManagementCommands(program: Command): void {
     .option('--json', 'JSON output')
     .option('--md', 'Markdown output')
     .action(async (cmdOpts: Record<string, unknown>) => {
-      const format = selectOutputFormat(cmdOpts);
+      const format = getFormat(cmdOpts);
       assertFormatSupported(CMD.contextList, format);
 
       const { contextList } = await import('./commands/context');
@@ -532,7 +589,7 @@ function wireManagementCommands(program: Command): void {
     .option('--json', 'JSON output')
     .option('--md', 'Markdown output')
     .action(async (cmdOpts: Record<string, unknown>) => {
-      const format = selectOutputFormat(cmdOpts);
+      const format = getFormat(cmdOpts);
       assertFormatSupported(CMD.contextCheck, format);
 
       const { contextCheck } = await import('./commands/context');
@@ -555,7 +612,7 @@ function wireManagementCommands(program: Command): void {
     .description('List available models')
     .option('--json', 'JSON output')
     .action(async (cmdOpts: Record<string, unknown>) => {
-      const format = selectOutputFormat(cmdOpts);
+      const format = getFormat(cmdOpts);
       assertFormatSupported(CMD.modelsList, format);
 
       const { modelsList, formatModelsList } = await import(
@@ -614,7 +671,7 @@ function wireManagementCommands(program: Command): void {
     .description('Show model cache path')
     .option('--json', 'JSON output')
     .action(async (cmdOpts: Record<string, unknown>) => {
-      const format = selectOutputFormat(cmdOpts);
+      const format = getFormat(cmdOpts);
       const { modelsPath, formatModelsPath } = await import(
         './commands/models'
       );
@@ -655,7 +712,7 @@ function wireManagementCommands(program: Command): void {
     .option('--json', 'JSON output')
     .action(async (cmdOpts: Record<string, unknown>) => {
       const globals = resolveGlobalOptions(program.opts());
-      const format = selectOutputFormat(cmdOpts);
+      const format = getFormat(cmdOpts);
 
       const { embed, formatEmbed } = await import('./commands/embed');
       const opts = {

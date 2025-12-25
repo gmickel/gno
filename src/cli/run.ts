@@ -6,8 +6,46 @@
  */
 
 import { CommanderError } from 'commander';
+import { CLI_NAME, PRODUCT_NAME } from '../app/constants';
 import { CliError, exitCodeFor, formatErrorForOutput } from './errors';
-import { createProgram } from './program';
+import { createProgram, resetGlobals } from './program';
+
+// Known commands for detecting "no subcommand" vs "unknown command"
+const KNOWN_COMMANDS = new Set([
+  'search',
+  'vsearch',
+  'query',
+  'ask',
+  'init',
+  'index',
+  'status',
+  'doctor',
+  'collection',
+  'context',
+  'models',
+  'update',
+  'embed',
+  'cleanup',
+  'reset',
+  'get',
+  'multi-get',
+  'ls',
+  'mcp',
+  'help',
+]);
+
+// Known global flags (without values) that can appear before subcommand
+const KNOWN_GLOBAL_FLAGS = new Set([
+  '--color',
+  '--no-color',
+  '-v',
+  '--verbose',
+  '-y',
+  '--yes',
+  '-q',
+  '--quiet',
+  '--json',
+]);
 
 /**
  * Check if argv contains --json flag (before end-of-options marker).
@@ -26,43 +64,82 @@ function argvWantsJson(argv: string[]): boolean {
 }
 
 /**
- * Check if argv has no user arguments at all.
- * Only returns true for bare `gno` invocation.
+ * Check if argv should trigger concise help.
+ * True when: no subcommand AND only KNOWN global flags (or nothing).
+ * This allows `gno --json` to show JSON help, not trigger unknown option.
+ * Unknown flags like `--badoption` go to Commander to error.
  */
-function argvIsEmpty(argv: string[]): boolean {
-  // argv[0] = node, argv[1] = gno (or script path)
-  return argv.length <= 2;
+function shouldShowConciseHelp(argv: string[]): boolean {
+  const args = argv.slice(2); // Skip node and script
+
+  // No args at all -> concise help
+  if (args.length === 0) {
+    return true;
+  }
+
+  // Check each arg
+  for (const arg of args) {
+    // Found a subcommand -> let Commander handle it
+    if (KNOWN_COMMANDS.has(arg)) {
+      return false;
+    }
+    // Help or version flag -> let Commander handle it
+    if (
+      arg === '-h' ||
+      arg === '--help' ||
+      arg === '-V' ||
+      arg === '--version'
+    ) {
+      return false;
+    }
+    // Known global flag -> continue checking
+    if (KNOWN_GLOBAL_FLAGS.has(arg)) {
+      continue;
+    }
+    // Skip flag values (e.g., --index default)
+    if (arg.startsWith('-i') || arg.startsWith('--index')) {
+      continue;
+    }
+    if (arg.startsWith('-c') || arg.startsWith('--config')) {
+      continue;
+    }
+    // Unknown flag or non-flag argument -> let Commander handle/error
+    return false;
+  }
+
+  // Only known global flags, no subcommand -> show concise help
+  return true;
 }
 
 /**
- * Print concise help when gno is run with no args.
+ * Print concise help when gno is run with no subcommand.
  * Per clig.dev: show brief usage, examples, and pointer to --help.
  */
 function printConciseHelp(opts: { json: boolean }): void {
   if (opts.json) {
     const help = {
-      name: 'gno',
-      description: 'GNO - Local Knowledge Index and Retrieval',
-      usage: 'gno <command> [options]',
+      name: CLI_NAME,
+      description: `${PRODUCT_NAME} - Local Knowledge Index and Retrieval`,
+      usage: `${CLI_NAME} <command> [options]`,
       examples: [
-        'gno init ~/docs --name docs',
-        'gno index',
-        'gno ask "your question"',
+        `${CLI_NAME} init ~/docs --name docs`,
+        `${CLI_NAME} index`,
+        `${CLI_NAME} ask "your question"`,
       ],
-      help: 'Run gno --help for full command list',
+      help: `Run ${CLI_NAME} --help for full command list`,
     };
     process.stdout.write(`${JSON.stringify(help, null, 2)}\n`);
   } else {
-    process.stdout.write(`GNO - Local Knowledge Index and Retrieval
+    process.stdout.write(`${PRODUCT_NAME} - Local Knowledge Index and Retrieval
 
-Usage: gno <command> [options]
+Usage: ${CLI_NAME} <command> [options]
 
 Quick start:
-  gno init ~/docs --name docs    Initialize with a collection
-  gno index                      Build the index
-  gno ask "your question"        Search your knowledge
+  ${CLI_NAME} init ~/docs --name docs    Initialize with a collection
+  ${CLI_NAME} index                      Build the index
+  ${CLI_NAME} ask "your question"        Search your knowledge
 
-Run 'gno --help' for full command list.
+Run '${CLI_NAME} --help' for full command list.
 `);
   }
 }
@@ -72,10 +149,13 @@ Run 'gno --help' for full command list.
  * No process.exit() - caller sets process.exitCode.
  */
 export async function runCli(argv: string[]): Promise<number> {
+  // Reset global state for clean invocation (important for testing)
+  resetGlobals();
+
   const isJson = argvWantsJson(argv);
 
-  // Show concise help when run with no args (per clig.dev guidelines)
-  if (argvIsEmpty(argv)) {
+  // Show concise help when run with no subcommand (per clig.dev guidelines)
+  if (shouldShowConciseHelp(argv)) {
     printConciseHelp({ json: isJson });
     return 0;
   }

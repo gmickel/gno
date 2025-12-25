@@ -5,7 +5,7 @@
  * @module src/cli/context
  */
 
-import { disableColors } from './colors';
+import { setColorsEnabled } from './colors';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -18,6 +18,7 @@ export type GlobalOptions = {
   verbose: boolean;
   yes: boolean;
   quiet: boolean;
+  json: boolean;
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -39,10 +40,8 @@ export function resolveGlobalOptions(
 
   const colorEnabled = !(noColorEnv || noColorFlag);
 
-  // Disable colors globally if --no-color or NO_COLOR
-  if (!colorEnabled) {
-    disableColors();
-  }
+  // Set colors state (enables per-invocation reset, avoids test pollution)
+  setColorsEnabled(colorEnabled);
 
   return {
     index: (raw.index as string) ?? 'default',
@@ -51,5 +50,6 @@ export function resolveGlobalOptions(
     verbose: Boolean(raw.verbose),
     yes: Boolean(raw.yes),
     quiet: Boolean(raw.quiet),
+    json: Boolean(raw.json),
   };
 }

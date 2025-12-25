@@ -67,9 +67,10 @@ async function cleanupTestEnv(testDir: string) {
   } catch {
     // Ignore cleanup errors
   }
-  process.env.GNO_CONFIG_DIR = undefined;
-  process.env.GNO_DATA_DIR = undefined;
-  process.env.GNO_CACHE_DIR = undefined;
+  // Use delete to properly remove env vars (= undefined becomes "undefined" string)
+  delete process.env.GNO_CONFIG_DIR;
+  delete process.env.GNO_DATA_DIR;
+  delete process.env.GNO_CACHE_DIR;
 }
 
 // Helper to run CLI with args
