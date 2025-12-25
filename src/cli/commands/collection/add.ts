@@ -12,6 +12,7 @@ import {
   saveConfig,
   toAbsolutePath,
 } from '../../../config';
+import { CliError } from '../../errors';
 
 type AddOptions = {
   name?: string;
@@ -27,8 +28,7 @@ export async function collectionAdd(
 ): Promise<void> {
   // Validate required name
   if (!options.name) {
-    console.error('Error: --name is required');
-    process.exit(1);
+    throw new CliError('VALIDATION', '--name is required');
   }
 
   const collectionName = options.name.toLowerCase();
@@ -39,15 +39,16 @@ export async function collectionAdd(
   // Check if path exists
   const exists = await pathExists(absolutePath);
   if (!exists) {
-    console.error(`Error: Path does not exist: ${absolutePath}`);
-    process.exit(1);
+    throw new CliError('VALIDATION', `Path does not exist: ${absolutePath}`);
   }
 
   // Load config
   const result = await loadConfig();
   if (!result.ok) {
-    console.error(`Error: Failed to load config: ${result.error.message}`);
-    process.exit(2);
+    throw new CliError(
+      'RUNTIME',
+      `Failed to load config: ${result.error.message}`
+    );
   }
 
   const config = result.value;
@@ -55,8 +56,10 @@ export async function collectionAdd(
   // Check for duplicate name
   const existing = config.collections.find((c) => c.name === collectionName);
   if (existing) {
-    console.error(`Error: Collection "${collectionName}" already exists`);
-    process.exit(1);
+    throw new CliError(
+      'VALIDATION',
+      `Collection "${collectionName}" already exists`
+    );
   }
 
   // Parse options
@@ -80,10 +83,10 @@ export async function collectionAdd(
   // Validate collection
   const validation = CollectionSchema.safeParse(collection);
   if (!validation.success) {
-    console.error(
-      `Error: Invalid collection: ${validation.error.issues[0]?.message ?? 'unknown error'}`
+    throw new CliError(
+      'VALIDATION',
+      `Invalid collection: ${validation.error.issues[0]?.message ?? 'unknown error'}`
     );
-    process.exit(1);
   }
 
   // Add to config
@@ -92,11 +95,12 @@ export async function collectionAdd(
   // Save config
   const saveResult = await saveConfig(config);
   if (!saveResult.ok) {
-    console.error(`Error: Failed to save config: ${saveResult.error.message}`);
-    process.exit(2);
+    throw new CliError(
+      'RUNTIME',
+      `Failed to save config: ${saveResult.error.message}`
+    );
   }
 
-  console.log(`Collection "${collectionName}" added successfully`);
-  console.log(`Path: ${absolutePath}`);
-  process.exit(0);
+  process.stdout.write(`Collection "${collectionName}" added successfully\n`);
+  process.stdout.write(`Path: ${absolutePath}\n`);
 }

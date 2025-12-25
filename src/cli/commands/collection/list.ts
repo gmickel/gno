@@ -4,76 +4,81 @@
 
 import type { Collection } from '../../../config';
 import { loadConfig } from '../../../config';
+import { CliError } from '../../errors';
 
 type ListOptions = {
   json?: boolean;
   md?: boolean;
 };
 
-function formatMarkdown(collections: Collection[]): void {
-  console.log('# Collections\n');
+function formatMarkdown(collections: Collection[]): string {
+  const lines: string[] = ['# Collections\n'];
   if (collections.length === 0) {
-    console.log('No collections configured.\n');
-    return;
+    lines.push('No collections configured.\n');
+    return lines.join('\n');
   }
 
   for (const coll of collections) {
-    console.log(`## ${coll.name}\n`);
-    console.log(`- **Path:** ${coll.path}`);
-    console.log(`- **Pattern:** ${coll.pattern}`);
+    lines.push(`## ${coll.name}\n`);
+    lines.push(`- **Path:** ${coll.path}`);
+    lines.push(`- **Pattern:** ${coll.pattern}`);
     if (coll.include.length > 0) {
-      console.log(`- **Include:** ${coll.include.join(', ')}`);
+      lines.push(`- **Include:** ${coll.include.join(', ')}`);
     }
-    console.log(`- **Exclude:** ${coll.exclude.join(', ')}`);
+    lines.push(`- **Exclude:** ${coll.exclude.join(', ')}`);
     if (coll.updateCmd) {
-      console.log(`- **Update Command:** \`${coll.updateCmd}\``);
+      lines.push(`- **Update Command:** \`${coll.updateCmd}\``);
     }
-    console.log();
+    lines.push('');
   }
+  return lines.join('\n');
 }
 
-function formatTerminal(collections: Collection[]): void {
+function formatTerminal(collections: Collection[]): string {
   if (collections.length === 0) {
-    console.log('No collections configured.');
-    return;
+    return 'No collections configured.';
   }
 
-  console.log(`Collections (${collections.length}):\n`);
+  const lines: string[] = [`Collections (${collections.length}):\n`];
   for (const coll of collections) {
-    console.log(`  ${coll.name}`);
-    console.log(`    Path:    ${coll.path}`);
-    console.log(`    Pattern: ${coll.pattern}`);
+    lines.push(`  ${coll.name}`);
+    lines.push(`    Path:    ${coll.path}`);
+    lines.push(`    Pattern: ${coll.pattern}`);
     if (coll.include.length > 0) {
-      console.log(`    Include: ${coll.include.join(', ')}`);
+      lines.push(`    Include: ${coll.include.join(', ')}`);
     }
     if (coll.exclude.length > 0) {
-      console.log(`    Exclude: ${coll.exclude.join(', ')}`);
+      lines.push(`    Exclude: ${coll.exclude.join(', ')}`);
     }
     if (coll.updateCmd) {
-      console.log(`    Update:  ${coll.updateCmd}`);
+      lines.push(`    Update:  ${coll.updateCmd}`);
     }
-    console.log();
+    lines.push('');
   }
+  return lines.join('\n');
 }
 
 export async function collectionList(options: ListOptions): Promise<void> {
   // Load config
   const result = await loadConfig();
   if (!result.ok) {
-    console.error(`Error: Failed to load config: ${result.error.message}`);
-    process.exit(2);
+    throw new CliError(
+      'RUNTIME',
+      `Failed to load config: ${result.error.message}`
+    );
   }
 
   const config = result.value;
 
-  // Format output
+  // Format and output
+  let output: string;
   if (options.json) {
-    console.log(JSON.stringify(config.collections, null, 2));
+    output = JSON.stringify(config.collections, null, 2);
   } else if (options.md) {
-    formatMarkdown(config.collections);
+    output = formatMarkdown(config.collections);
   } else {
-    formatTerminal(config.collections);
+    output = formatTerminal(config.collections);
   }
 
-  process.exit(0);
+  process.stdout.write(`${output}\n`);
 }

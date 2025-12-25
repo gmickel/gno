@@ -444,8 +444,6 @@ function wireManagementCommands(program: Command): void {
     .option('--exclude <patterns>', 'exclude patterns (CSV)')
     .option('--update <cmd>', 'shell command to run before indexing')
     .action(async (path: string, cmdOpts: Record<string, unknown>) => {
-      // TODO: Refactor collectionAdd to throw CliError instead of process.exit()
-      // Currently calls process.exit() directly, bypassing CLI error handling
       const { collectionAdd } = await import('./commands/collection');
       await collectionAdd(path, {
         name: cmdOpts.name as string,

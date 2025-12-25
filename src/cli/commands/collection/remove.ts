@@ -7,6 +7,7 @@ import {
   loadConfig,
   saveConfig,
 } from '../../../config';
+import { CliError } from '../../errors';
 
 export async function collectionRemove(name: string): Promise<void> {
   const collectionName = name.toLowerCase();
@@ -14,8 +15,10 @@ export async function collectionRemove(name: string): Promise<void> {
   // Load config
   const result = await loadConfig();
   if (!result.ok) {
-    console.error(`Error: Failed to load config: ${result.error.message}`);
-    process.exit(2);
+    throw new CliError(
+      'RUNTIME',
+      `Failed to load config: ${result.error.message}`
+    );
   }
 
   const config = result.value;
@@ -25,8 +28,10 @@ export async function collectionRemove(name: string): Promise<void> {
     (c) => c.name === collectionName
   );
   if (collectionIndex === -1) {
-    console.error(`Error: Collection "${collectionName}" not found`);
-    process.exit(1);
+    throw new CliError(
+      'VALIDATION',
+      `Collection "${collectionName}" not found`
+    );
   }
 
   // Check if any contexts reference this collection
@@ -37,11 +42,10 @@ export async function collectionRemove(name: string): Promise<void> {
 
   if (referencingContexts.length > 0) {
     const scopes = referencingContexts.map((ctx) => ctx.scopeKey).join(', ');
-    console.error(
-      `Error: Collection "${collectionName}" is referenced by contexts: ${scopes}`
+    throw new CliError(
+      'VALIDATION',
+      `Collection "${collectionName}" is referenced by contexts: ${scopes}. Remove the contexts first or rename the collection.`
     );
-    console.error('Remove the contexts first or rename the collection.');
-    process.exit(1);
   }
 
   // Remove collection
@@ -50,10 +54,11 @@ export async function collectionRemove(name: string): Promise<void> {
   // Save config
   const saveResult = await saveConfig(config);
   if (!saveResult.ok) {
-    console.error(`Error: Failed to save config: ${saveResult.error.message}`);
-    process.exit(2);
+    throw new CliError(
+      'RUNTIME',
+      `Failed to save config: ${saveResult.error.message}`
+    );
   }
 
-  console.log(`Collection "${collectionName}" removed successfully`);
-  process.exit(0);
+  process.stdout.write(`Collection "${collectionName}" removed successfully\n`);
 }
