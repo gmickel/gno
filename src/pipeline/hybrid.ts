@@ -107,23 +107,33 @@ async function checkBm25Strength(
 
 type ChunkId = { mirrorHash: string; seq: number };
 
+type FtsChunksResult =
+  | { ok: true; chunks: ChunkId[] }
+  | { ok: false; code: 'INVALID_INPUT' | 'OTHER'; message: string };
+
 async function searchFtsChunks(
   store: StorePort,
   query: string,
   options: { limit: number; collection?: string; lang?: string }
-): Promise<ChunkId[]> {
+): Promise<FtsChunksResult> {
   const result = await store.searchFts(query, {
     limit: options.limit,
     collection: options.collection,
     language: options.lang,
   });
   if (!result.ok) {
-    return [];
+    // Propagate INVALID_INPUT for FTS syntax errors
+    const code =
+      result.error.code === 'INVALID_INPUT' ? 'INVALID_INPUT' : 'OTHER';
+    return { ok: false, code, message: result.error.message };
   }
-  return result.value.map((r) => ({
-    mirrorHash: r.mirrorHash,
-    seq: r.seq,
-  }));
+  return {
+    ok: true,
+    chunks: result.value.map((r) => ({
+      mirrorHash: r.mirrorHash,
+      seq: r.seq,
+    })),
+  };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -218,27 +228,39 @@ export async function searchHybrid(
   const rankedInputs: RankedInput[] = [];
 
   // BM25: original query
-  const bm25Chunks = await searchFtsChunks(store, query, {
+  const bm25Result = await searchFtsChunks(store, query, {
     limit: limit * 2,
     collection: options.collection,
     lang: options.lang,
   });
 
+  // Propagate FTS syntax errors as INVALID_INPUT
+  if (!bm25Result.ok) {
+    if (bm25Result.code === 'INVALID_INPUT') {
+      return err(
+        'INVALID_INPUT',
+        `Invalid search query: ${bm25Result.message}`
+      );
+    }
+    // Other errors: continue with empty BM25 results
+  }
+
+  const bm25Chunks = bm25Result.ok ? bm25Result.chunks : [];
   const bm25Count = bm25Chunks.length;
   if (bm25Count > 0) {
     rankedInputs.push(toRankedInput('bm25', bm25Chunks));
   }
 
-  // BM25: lexical variants
+  // BM25: lexical variants (syntax errors here are ignored - variants are optional)
   if (expansion?.lexicalQueries) {
     for (const variant of expansion.lexicalQueries) {
-      const variantChunks = await searchFtsChunks(store, variant, {
+      const variantResult = await searchFtsChunks(store, variant, {
         limit,
         collection: options.collection,
         lang: options.lang,
       });
-      if (variantChunks.length > 0) {
-        rankedInputs.push(toRankedInput('bm25_variant', variantChunks));
+      if (variantResult.ok && variantResult.chunks.length > 0) {
+        rankedInputs.push(toRankedInput('bm25_variant', variantResult.chunks));
       }
     }
   }
