@@ -34,6 +34,31 @@ import { err, ok } from '../types';
 import type { SqliteDbProvider } from './types';
 
 // ─────────────────────────────────────────────────────────────────────────────
+// FTS5 Query Escaping
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Whitespace regex for splitting FTS5 tokens */
+const WHITESPACE_REGEX = /\s+/;
+
+/**
+ * Escape a query string for safe FTS5 MATCH.
+ * Wraps each token in double quotes to treat as literal terms.
+ * Handles special chars: ? * - + ( ) " : ^ etc.
+ */
+function escapeFts5Query(query: string): string {
+  // Split on whitespace, filter empty, quote each token
+  return query
+    .split(WHITESPACE_REGEX)
+    .filter((t) => t.length > 0)
+    .map((token) => {
+      // Escape internal double quotes by doubling them
+      const escaped = token.replace(/"/g, '""');
+      return `"${escaped}"`;
+    })
+    .join(' ');
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // SQLite Adapter Implementation
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -580,7 +605,7 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
         LIMIT ?
       `;
 
-      const params: (string | number)[] = [query];
+      const params: (string | number)[] = [escapeFts5Query(query)];
       if (options.collection) {
         params.push(options.collection);
       }
