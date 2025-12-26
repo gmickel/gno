@@ -7,6 +7,8 @@
  * @module src/store/sqlite/adapter
  */
 
+// CRITICAL: Import setup FIRST to configure custom SQLite before any Database use
+import './setup';
 import { Database } from 'bun:sqlite';
 import { buildUri, deriveDocid } from '../../app/constants';
 import type { Collection, Context, FtsTokenizer } from '../../config/types';
@@ -556,11 +558,12 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
       const limit = options.limit ?? 20;
 
       // Join FTS results with chunks and documents
+      // Use bm25() function explicitly - fts.rank doesn't work with JOINs
       const sql = `
         SELECT
           c.mirror_hash,
           c.seq,
-          fts.rank as score,
+          bm25(content_fts) as score,
           ${options.snippet ? "snippet(content_fts, 0, '<mark>', '</mark>', '...', 32) as snippet," : ''}
           d.docid,
           d.uri,
@@ -573,7 +576,7 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
         WHERE content_fts MATCH ?
         ${options.collection ? 'AND d.collection = ?' : ''}
         ${options.language ? 'AND c.language = ?' : ''}
-        ORDER BY fts.rank
+        ORDER BY bm25(content_fts)
         LIMIT ?
       `;
 
@@ -604,7 +607,7 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
         rows.map((r) => ({
           mirrorHash: r.mirror_hash,
           seq: r.seq,
-          score: Math.abs(r.score), // FTS5 rank is negative
+          score: r.score, // Raw bm25() - smaller (more negative) is better
           snippet: r.snippet,
           docid: r.docid,
           uri: r.uri,
@@ -614,9 +617,15 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
         }))
       );
     } catch (cause) {
+      const message = cause instanceof Error ? cause.message : '';
+      // Detect FTS5 syntax errors and return INVALID_INPUT for consistent handling
+      const isSyntaxError =
+        message.includes('malformed MATCH') ||
+        message.includes('fts5: syntax error') ||
+        message.includes('fts5:');
       return err(
-        'QUERY_FAILED',
-        cause instanceof Error ? cause.message : 'Failed to search FTS',
+        isSyntaxError ? 'INVALID_INPUT' : 'QUERY_FAILED',
+        message || 'Failed to search FTS',
         cause
       );
     }

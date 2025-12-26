@@ -85,7 +85,7 @@ export async function reset(options: ResetOptions): Promise<ResetResult> {
   if (!options.confirm) {
     throw new CliError(
       'VALIDATION',
-      'Reset requires --confirm flag to prevent accidental data loss'
+      'Reset requires --confirm or --yes flag to prevent accidental data loss'
     );
   }
 

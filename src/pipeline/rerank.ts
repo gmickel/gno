@@ -26,6 +26,11 @@ export type RerankResult = {
   reranked: boolean;
 };
 
+export type RerankDeps = {
+  rerankPort: RerankPort | null;
+  store: StorePort;
+};
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Blending
 // ─────────────────────────────────────────────────────────────────────────────
@@ -70,19 +75,19 @@ function blend(
  * Falls back to fusion-only if reranking fails.
  */
 export async function rerankCandidates(
-  rerankPort: RerankPort | null,
-  store: StorePort,
+  deps: RerankDeps,
   query: string,
   candidates: FusionCandidate[],
   options: RerankOptions = {}
 ): Promise<RerankResult> {
+  const { rerankPort, store } = deps;
   const maxCandidates = options.maxCandidates ?? 20;
   const schedule = options.blendingSchedule ?? DEFAULT_BLENDING_SCHEDULE;
 
   // If no reranker, return candidates as-is with null rerank scores
   if (!rerankPort) {
     return {
-      candidates: candidates.map((c, i) => ({
+      candidates: candidates.map((c, _i) => ({
         ...c,
         rerankScore: null,
         blendedScore: c.fusionScore,

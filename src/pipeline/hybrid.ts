@@ -46,14 +46,10 @@ export type HybridSearchDeps = {
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Score Normalization (from search.ts)
+// Score Normalization
 // ─────────────────────────────────────────────────────────────────────────────
 
-function normalizeBm25Score(raw: number): number {
-  return Math.tanh(raw / 10);
-}
-
-function normalizeVectorScore(distance: number): number {
+function _normalizeVectorScore(distance: number): number {
   return Math.max(0, Math.min(1, 1 - distance / 2));
 }
 
@@ -63,7 +59,9 @@ function normalizeVectorScore(distance: number): number {
 
 /**
  * Check if BM25 results are strong enough to skip expansion.
- * Uses raw store API to get normalized score.
+ * Uses gap-based metric: how much better is #1 than #2?
+ * Returns 0-1 where 1 = #1 is clearly dominant, 0 = results are similar.
+ * Raw BM25: smaller (more negative) is better.
  */
 async function checkBm25Strength(
   store: StorePort,
@@ -78,8 +76,29 @@ async function checkBm25Strength(
   if (!result.ok || result.value.length === 0) {
     return 0;
   }
-  // Return max normalized score from top results
-  return Math.max(...result.value.map((r) => normalizeBm25Score(r.score)));
+
+  // Only one result = strong signal
+  if (result.value.length === 1) {
+    return 1;
+  }
+
+  // Get top 2 scores (smaller is better)
+  const scores = result.value.map((r) => r.score).sort((a, b) => a - b);
+  const best = scores[0] ?? 0;
+  const second = scores[1] ?? best;
+  const worst = scores[scores.length - 1] ?? best;
+
+  // Compute gap-based strength
+  // If best and second are equal, gap = 0
+  // If second is much worse (larger), gap approaches 1
+  const range = worst - best;
+  if (range === 0) {
+    return 0; // All scores equal, no clear winner
+  }
+
+  // Gap = how much worse is #2 relative to the range (clamped for safety)
+  const gap = (second - best) / range;
+  return Math.max(0, Math.min(1, gap));
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -88,23 +107,33 @@ async function checkBm25Strength(
 
 type ChunkId = { mirrorHash: string; seq: number };
 
+type FtsChunksResult =
+  | { ok: true; chunks: ChunkId[] }
+  | { ok: false; code: 'INVALID_INPUT' | 'OTHER'; message: string };
+
 async function searchFtsChunks(
   store: StorePort,
   query: string,
   options: { limit: number; collection?: string; lang?: string }
-): Promise<ChunkId[]> {
+): Promise<FtsChunksResult> {
   const result = await store.searchFts(query, {
     limit: options.limit,
     collection: options.collection,
     language: options.lang,
   });
   if (!result.ok) {
-    return [];
+    // Propagate INVALID_INPUT for FTS syntax errors
+    const code =
+      result.error.code === 'INVALID_INPUT' ? 'INVALID_INPUT' : 'OTHER';
+    return { ok: false, code, message: result.error.message };
   }
-  return result.value.map((r) => ({
-    mirrorHash: r.mirrorHash,
-    seq: r.seq,
-  }));
+  return {
+    ok: true,
+    chunks: result.value.map((r) => ({
+      mirrorHash: r.mirrorHash,
+      seq: r.seq,
+    })),
+  };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -157,7 +186,7 @@ export async function searchHybrid(
 ): Promise<
   ReturnType<typeof ok<SearchResults>> | ReturnType<typeof err<SearchResults>>
 > {
-  const { store, config, vectorIndex, embedPort, genPort, rerankPort } = deps;
+  const { store, vectorIndex, embedPort, genPort, rerankPort } = deps;
   const pipelineConfig = deps.pipelineConfig ?? DEFAULT_PIPELINE_CONFIG;
 
   const limit = options.limit ?? 20;
@@ -199,27 +228,39 @@ export async function searchHybrid(
   const rankedInputs: RankedInput[] = [];
 
   // BM25: original query
-  const bm25Chunks = await searchFtsChunks(store, query, {
+  const bm25Result = await searchFtsChunks(store, query, {
     limit: limit * 2,
     collection: options.collection,
     lang: options.lang,
   });
 
+  // Propagate FTS syntax errors as INVALID_INPUT
+  if (!bm25Result.ok) {
+    if (bm25Result.code === 'INVALID_INPUT') {
+      return err(
+        'INVALID_INPUT',
+        `Invalid search query: ${bm25Result.message}`
+      );
+    }
+    // Other errors: continue with empty BM25 results
+  }
+
+  const bm25Chunks = bm25Result.ok ? bm25Result.chunks : [];
   const bm25Count = bm25Chunks.length;
   if (bm25Count > 0) {
     rankedInputs.push(toRankedInput('bm25', bm25Chunks));
   }
 
-  // BM25: lexical variants
+  // BM25: lexical variants (syntax errors here are ignored - variants are optional)
   if (expansion?.lexicalQueries) {
     for (const variant of expansion.lexicalQueries) {
-      const variantChunks = await searchFtsChunks(store, variant, {
+      const variantResult = await searchFtsChunks(store, variant, {
         limit,
         collection: options.collection,
         lang: options.lang,
       });
-      if (variantChunks.length > 0) {
-        rankedInputs.push(toRankedInput('bm25_variant', variantChunks));
+      if (variantResult.ok && variantResult.chunks.length > 0) {
+        rankedInputs.push(toRankedInput('bm25_variant', variantResult.chunks));
       }
     }
   }
@@ -284,8 +325,7 @@ export async function searchHybrid(
   // 4. Reranking
   // ─────────────────────────────────────────────────────────────────────────
   const rerankResult = await rerankCandidates(
-    options.noRerank ? null : rerankPort,
-    store,
+    { rerankPort: options.noRerank ? null : rerankPort, store },
     query,
     fusedCandidates,
     { maxCandidates: pipelineConfig.rerankCandidates }
@@ -354,14 +394,20 @@ export async function searchHybrid(
       chunksCache.set(candidate.mirrorHash, chunksResult);
     }
 
-    if (!chunksResult.ok) continue;
+    if (!chunksResult.ok) {
+      continue;
+    }
 
     const chunk = chunksResult.value.find((c) => c.seq === candidate.seq);
-    if (!chunk) continue;
+    if (!chunk) {
+      continue;
+    }
 
     // Find document from pre-fetched map
     const doc = docByMirrorHash.get(candidate.mirrorHash);
-    if (!doc) continue;
+    if (!doc) {
+      continue;
+    }
 
     docidMap.set(`${candidate.mirrorHash}:${candidate.seq}`, doc.docid);
 
