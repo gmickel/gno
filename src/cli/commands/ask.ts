@@ -138,12 +138,16 @@ function renumberAnswerCitations(
   // Use fresh regex to avoid lastIndex issues
   const re = /\[(\d+)\]/g;
   // Replace valid [n] with renumbered [m], remove invalid citations
-  return answer.replace(re, (match, numStr: string) => {
+  const replaced = answer.replace(re, (match, numStr: string) => {
     const oldNum = Number(numStr);
     const newNum = mapping.get(oldNum);
     // If not in mapping, remove the citation entirely
     return newNum !== undefined ? `[${newNum}]` : '';
   });
+
+  // Clean up whitespace artifacts from removed citations
+  // e.g., "See [99] for" → "See  for" → "See for"
+  return replaced.replace(/ {2,}/g, ' ').trim();
 }
 
 async function generateGroundedAnswer(
