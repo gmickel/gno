@@ -80,6 +80,11 @@ export async function rerankCandidates(
   candidates: FusionCandidate[],
   options: RerankOptions = {}
 ): Promise<RerankResult> {
+  // Early return for empty candidates
+  if (candidates.length === 0) {
+    return { candidates: [], reranked: false };
+  }
+
   const { rerankPort, store } = deps;
   const maxCandidates = options.maxCandidates ?? 20;
   const schedule = options.blendingSchedule ?? DEFAULT_BLENDING_SCHEDULE;

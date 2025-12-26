@@ -86,7 +86,7 @@ async function checkBm25Strength(
   const scores = result.value.map((r) => r.score).sort((a, b) => a - b);
   const best = scores[0] ?? 0;
   const second = scores[1] ?? best;
-  const worst = scores[scores.length - 1] ?? best;
+  const worst = scores.at(-1) ?? best;
 
   // Compute gap-based strength
   // If best and second are equal, gap = 0
@@ -235,15 +235,10 @@ export async function searchHybrid(
   });
 
   // Propagate FTS syntax errors as INVALID_INPUT
-  if (!bm25Result.ok) {
-    if (bm25Result.code === 'INVALID_INPUT') {
-      return err(
-        'INVALID_INPUT',
-        `Invalid search query: ${bm25Result.message}`
-      );
-    }
-    // Other errors: continue with empty BM25 results
+  if (!bm25Result.ok && bm25Result.code === 'INVALID_INPUT') {
+    return err('INVALID_INPUT', `Invalid search query: ${bm25Result.message}`);
   }
+  // Other errors: continue with empty BM25 results
 
   const bm25Chunks = bm25Result.ok ? bm25Result.chunks : [];
   const bm25Count = bm25Chunks.length;
@@ -351,7 +346,12 @@ export async function searchHybrid(
   // 5. Build final results (optimized: batch lookups, no per-candidate queries)
   // ─────────────────────────────────────────────────────────────────────────
 
-  // Fetch documents and collections ONCE
+  // Collect unique mirrorHashes needed from candidates
+  // TODO: For large corpora (100k+ docs), add store.getDocumentsByMirrorHashes
+  // batch lookup to avoid loading all documents into memory.
+  const neededHashes = new Set(filteredCandidates.map((c) => c.mirrorHash));
+
+  // Fetch documents and collections
   const docsResult = await store.listDocuments(options.collection);
   const collectionsResult = await store.getCollections();
 
@@ -371,10 +371,10 @@ export async function searchHybrid(
     });
   }
 
-  // Build lookup maps
+  // Build lookup maps - only include docs needed by candidates
   const docByMirrorHash = new Map<string, (typeof docsResult.value)[number]>();
   for (const doc of docsResult.value) {
-    if (doc.active && doc.mirrorHash) {
+    if (doc.active && doc.mirrorHash && neededHashes.has(doc.mirrorHash)) {
       docByMirrorHash.set(doc.mirrorHash, doc);
     }
   }
@@ -403,7 +403,13 @@ export async function searchHybrid(
   // Track seen docids for --full de-duplication
   const seenDocids = new Set<string>();
 
-  for (const candidate of filteredCandidates.slice(0, limit)) {
+  // Iterate until we have enough results (don't slice early - deduping may skip candidates)
+  for (const candidate of filteredCandidates) {
+    // Stop when we have enough results
+    if (results.length >= limit) {
+      break;
+    }
+
     // Find document from pre-fetched map
     const doc = docByMirrorHash.get(candidate.mirrorHash);
     if (!doc) {

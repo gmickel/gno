@@ -402,9 +402,10 @@ function wireSearchCommands(program: Command): void {
         limit,
         collection: cmdOpts.collection as string | undefined,
         lang: cmdOpts.lang as string | undefined,
-        // Per spec: --answer defaults to false, --no-answer forces false
+        // Per spec: --answer defaults to false, --no-answer forces retrieval-only
+        // Commander creates separate cmdOpts.noAnswer for --no-answer flag
         answer: Boolean(cmdOpts.answer),
-        noAnswer: cmdOpts.answer === false,
+        noAnswer: Boolean(cmdOpts.noAnswer),
         maxAnswerTokens,
         json: format === 'json',
         md: format === 'md',

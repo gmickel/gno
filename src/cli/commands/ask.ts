@@ -308,12 +308,27 @@ function formatTerminal(data: AskResult): string {
     lines.push('');
   }
 
-  // Show citations
-  lines.push('Sources:');
-  for (const r of data.results) {
-    lines.push(`  [${r.docid}] ${r.uri}`);
-    if (r.title) {
-      lines.push(`    ${r.title}`);
+  // Show citations keyed by [1], [2] if answer was generated
+  // This matches the [1], [2] references in the answer text
+  if (data.citations && data.citations.length > 0) {
+    lines.push('Citations:');
+    for (let i = 0; i < data.citations.length; i++) {
+      const c = data.citations[i];
+      if (c) {
+        lines.push(`  [${i + 1}] ${c.docid} ${c.uri}`);
+      }
+    }
+    lines.push('');
+  }
+
+  // Show all sources (may include more than citations)
+  if (data.results.length > 0) {
+    lines.push('Sources:');
+    for (const r of data.results) {
+      lines.push(`  [${r.docid}] ${r.uri}`);
+      if (r.title) {
+        lines.push(`    ${r.title}`);
+      }
     }
   }
 
@@ -334,6 +349,20 @@ function formatMarkdown(data: AskResult): string {
     lines.push('## Answer');
     lines.push('');
     lines.push(data.answer);
+    lines.push('');
+  }
+
+  // Show citations keyed by [1], [2] if answer was generated
+  // This matches the [1], [2] references in the answer text
+  if (data.citations && data.citations.length > 0) {
+    lines.push('## Citations');
+    lines.push('');
+    for (let i = 0; i < data.citations.length; i++) {
+      const c = data.citations[i];
+      if (c) {
+        lines.push(`**[${i + 1}]** \`${c.docid}\` — \`${c.uri}\``);
+      }
+    }
     lines.push('');
   }
 
