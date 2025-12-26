@@ -40,6 +40,14 @@ export class NodeLlamaCppEmbedding implements EmbeddingPort {
     this.modelPath = modelPath;
   }
 
+  async init(): Promise<LlmResult<void>> {
+    const ctx = await this.getContext();
+    if (!ctx.ok) {
+      return ctx;
+    }
+    return { ok: true, value: undefined };
+  }
+
   async embed(text: string): Promise<LlmResult<number[]>> {
     const ctx = await this.getContext();
     if (!ctx.ok) {
@@ -125,6 +133,12 @@ export class NodeLlamaCppEmbedding implements EmbeddingPort {
       // Cast to access createEmbeddingContext
       const llamaModel = model.value.model as LlamaModel;
       this.context = await llamaModel.createEmbeddingContext();
+
+      // Cache dimensions from model (available without running embed)
+      if (this.dims === null) {
+        this.dims = llamaModel.embeddingVectorSize;
+      }
+
       return { ok: true, value: this.context };
     } catch (e) {
       return { ok: false, error: inferenceFailedError(this.modelUri, e) };
