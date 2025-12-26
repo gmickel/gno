@@ -132,16 +132,12 @@ export async function searchBm25(
   });
 
   if (!ftsResult.ok) {
-    // Map FTS parse errors to INVALID_INPUT for validation exit code
-    const message = ftsResult.error.message;
-    const isFtsSyntaxError =
-      message.includes('malformed MATCH') ||
-      message.includes('fts5: syntax error') ||
-      message.includes('fts5:');
-    if (isFtsSyntaxError) {
+    // Adapter returns INVALID_INPUT for FTS syntax errors, pass through
+    const { code, message, cause } = ftsResult.error;
+    if (code === 'INVALID_INPUT') {
       return err('INVALID_INPUT', `Invalid search query: ${message}`);
     }
-    return err('QUERY_FAILED', message, ftsResult.error.cause);
+    return err('QUERY_FAILED', message, cause);
   }
 
   // Get collection paths for absPath resolution

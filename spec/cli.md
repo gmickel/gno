@@ -407,6 +407,18 @@ gno search <query> [-n <num>] [--min-score <num>] [-c <collection>] [--full] [--
 | `--line-numbers` | boolean | false | Include line numbers in output |
 | `--lang` | string | auto | Language filter/hint (BCP-47) |
 
+**Scoring:**
+
+Scores are normalized per query to a 0-1 range using min-max scaling:
+- `1.0` = best match among returned results
+- `0.0` = worst match among returned results
+
+Important notes:
+- Scores are **relative within a single query's result set**, not comparable across different queries
+- `--min-score` filters based on this normalized score (e.g., `--min-score 0.5` keeps top half)
+- Raw SQLite FTS5 BM25 scores vary with corpus size; normalization ensures consistent UX
+- When all results have equal raw scores, they all receive `1.0`
+
 **Output (JSON):**
 See [Output Schemas](./output-schemas/search-result.schema.json)
 
@@ -434,6 +446,14 @@ gno vsearch <query> [-n <num>] [--min-score <num>] [-c <collection>] [--full] [-
 ```
 
 **Options:** Same as `gno search`
+
+**Scoring:**
+
+Vector similarity scores are normalized to a 0-1 range:
+- `1.0` = identical/most similar
+- `0.0` = least similar (within result set)
+
+Cosine distance (0=identical, 2=opposite) is converted: `score = 1 - (distance / 2)`
 
 **Exit Codes:**
 - 0: Success

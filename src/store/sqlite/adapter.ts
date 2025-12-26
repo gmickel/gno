@@ -617,9 +617,15 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
         }))
       );
     } catch (cause) {
+      const message = cause instanceof Error ? cause.message : '';
+      // Detect FTS5 syntax errors and return INVALID_INPUT for consistent handling
+      const isSyntaxError =
+        message.includes('malformed MATCH') ||
+        message.includes('fts5: syntax error') ||
+        message.includes('fts5:');
       return err(
-        'QUERY_FAILED',
-        cause instanceof Error ? cause.message : 'Failed to search FTS',
+        isSyntaxError ? 'INVALID_INPUT' : 'QUERY_FAILED',
+        message || 'Failed to search FTS',
         cause
       );
     }
