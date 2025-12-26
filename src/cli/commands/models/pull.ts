@@ -115,9 +115,14 @@ export async function modelsPull(
     }
 
     // Download the model
-    const result = await cache.download(uri, type, (progress) => {
-      options.onProgress?.(type, progress);
-    });
+    const result = await cache.download(
+      uri,
+      type,
+      (progress) => {
+        options.onProgress?.(type, progress);
+      },
+      options.force
+    );
 
     if (result.ok) {
       results.push({

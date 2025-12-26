@@ -203,7 +203,8 @@ export class ModelCache {
   async download(
     uri: string,
     type: ModelType,
-    onProgress?: ProgressCallback
+    onProgress?: ProgressCallback,
+    force?: boolean
   ): Promise<LlmResult<string>> {
     const parsed = parseModelUri(uri);
     if (!parsed.ok) {
@@ -227,6 +228,14 @@ export class ModelCache {
 
     // Ensure cache dir exists
     await mkdir(this.dir, { recursive: true });
+
+    // Force: delete existing file to trigger re-download
+    if (force) {
+      const existingPath = await this.getCachedPath(uri);
+      if (existingPath) {
+        await rm(existingPath).catch(() => {});
+      }
+    }
 
     try {
       const { resolveModelFile } = await import('node-llama-cpp');
