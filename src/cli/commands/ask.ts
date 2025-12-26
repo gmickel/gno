@@ -42,6 +42,8 @@ export type AskCommandOptions = AskOptions & {
   json?: boolean;
   /** Output as Markdown */
   md?: boolean;
+  /** Show all retrieved sources (not just cited) */
+  showSources?: boolean;
 };
 
 export type AskCommandResult =
@@ -52,19 +54,97 @@ export type AskCommandResult =
 // Grounded Answer Generation
 // ─────────────────────────────────────────────────────────────────────────────
 
-const ANSWER_PROMPT = `You are a helpful assistant. Answer the user's question based ONLY on the provided context. If the context doesn't contain enough information to answer, say so.
+const ANSWER_PROMPT = `You are answering a question using ONLY the provided context blocks.
+
+Rules you MUST follow:
+1) Use ONLY facts stated in the context blocks. Do NOT use outside knowledge.
+2) Every factual statement must include an inline citation like [1] or [2] referring to a context block.
+3) If the context does not contain enough information to answer, reply EXACTLY:
+   "I don't have enough information in the provided sources to answer this question."
+4) Do not cite sources you did not use. Do not invent citation numbers.
 
 Question: {query}
 
-Context:
+Context blocks:
 {context}
 
-Provide a concise answer (1-3 paragraphs). Include inline citations like [1], [2] when referencing specific documents.`;
+Write a concise answer (1-3 paragraphs).`;
+
+/** Abstention message when LLM cannot ground answer */
+const ABSTENTION_MESSAGE =
+  "I don't have enough information in the provided sources to answer this question.";
 
 // Max characters per snippet to avoid blowing up prompt size
 const MAX_SNIPPET_CHARS = 1500;
 // Max number of sources to include in context
 const MAX_CONTEXT_SOURCES = 5;
+
+/**
+ * Extract VALID citation numbers from answer text.
+ * Only returns numbers in range [1, maxCitation].
+ * @param answer Answer text to parse
+ * @param maxCitation Maximum valid citation number
+ * @returns Sorted unique valid citation numbers (1-indexed)
+ */
+function extractValidCitationNumbers(
+  answer: string,
+  maxCitation: number
+): number[] {
+  const nums = new Set<number>();
+  // Use fresh regex to avoid lastIndex issues
+  const re = /\[(\d+)\]/g;
+  const matches = answer.matchAll(re);
+  for (const match of matches) {
+    const n = Number(match[1]);
+    // Only accept valid citation numbers in range [1, maxCitation]
+    if (Number.isInteger(n) && n >= 1 && n <= maxCitation) {
+      nums.add(n);
+    }
+  }
+  return [...nums].sort((a, b) => a - b);
+}
+
+/**
+ * Filter citations to only those actually referenced in the answer.
+ * @param citations All citations provided to LLM
+ * @param validUsedNumbers Valid 1-indexed citation numbers from answer
+ */
+function filterCitationsByUse(
+  citations: Citation[],
+  validUsedNumbers: number[]
+): Citation[] {
+  const usedSet = new Set(validUsedNumbers);
+  return citations.filter((_, idx) => usedSet.has(idx + 1));
+}
+
+/**
+ * Renumber citations in answer text to match filtered citations.
+ * E.g., if answer uses [2] and [5], renumber to [1] and [2].
+ * Invalid citations (not in validUsedNumbers) are removed.
+ */
+function renumberAnswerCitations(
+  answer: string,
+  validUsedNumbers: number[]
+): string {
+  // Build mapping: old number -> new number (1-indexed)
+  const mapping = new Map<number, number>();
+  for (let i = 0; i < validUsedNumbers.length; i++) {
+    const oldNum = validUsedNumbers[i];
+    if (oldNum !== undefined) {
+      mapping.set(oldNum, i + 1);
+    }
+  }
+
+  // Use fresh regex to avoid lastIndex issues
+  const re = /\[(\d+)\]/g;
+  // Replace valid [n] with renumbered [m], remove invalid citations
+  return answer.replace(re, (match, numStr: string) => {
+    const oldNum = Number(numStr);
+    const newNum = mapping.get(oldNum);
+    // If not in mapping, remove the citation entirely
+    return newNum !== undefined ? `[${newNum}]` : '';
+  });
+}
 
 async function generateGroundedAnswer(
   genPort: GenerationPort,
@@ -258,8 +338,27 @@ export async function ask(
         };
       }
 
-      answer = answerResult.answer;
-      citations = answerResult.citations;
+      // Extract only VALID citation numbers (in range 1..citations.length)
+      const maxCitation = answerResult.citations.length;
+      const validUsedNums = extractValidCitationNumbers(
+        answerResult.answer,
+        maxCitation
+      );
+      const filteredCitations = filterCitationsByUse(
+        answerResult.citations,
+        validUsedNums
+      );
+
+      // Abstention guard: if no valid citations, LLM didn't ground the answer
+      if (validUsedNums.length === 0 || filteredCitations.length === 0) {
+        answer = ABSTENTION_MESSAGE;
+        citations = [];
+      } else {
+        // Renumber citations in answer to match filtered list (e.g., [2],[5] -> [1],[2])
+        // Invalid citations are removed from the answer text
+        answer = renumberAnswerCitations(answerResult.answer, validUsedNums);
+        citations = filteredCitations;
+      }
       answerGenerated = true;
     }
 
@@ -298,8 +397,13 @@ export async function ask(
 // Formatters
 // ─────────────────────────────────────────────────────────────────────────────
 
-function formatTerminal(data: AskResult): string {
+type FormatOptions = {
+  showSources?: boolean;
+};
+
+function formatTerminal(data: AskResult, opts: FormatOptions = {}): string {
   const lines: string[] = [];
+  const hasAnswer = Boolean(data.answer);
 
   // Show answer if present
   if (data.answer) {
@@ -308,27 +412,37 @@ function formatTerminal(data: AskResult): string {
     lines.push('');
   }
 
-  // Show citations keyed by [1], [2] if answer was generated
-  // This matches the [1], [2] references in the answer text
+  // Show cited sources (only sources actually referenced in answer)
   if (data.citations && data.citations.length > 0) {
-    lines.push('Citations:');
+    lines.push('Cited Sources:');
     for (let i = 0; i < data.citations.length; i++) {
       const c = data.citations[i];
       if (c) {
-        lines.push(`  [${i + 1}] ${c.docid} ${c.uri}`);
+        lines.push(`  [${i + 1}] ${c.uri}`);
       }
     }
     lines.push('');
   }
 
-  // Show all sources (may include more than citations)
-  if (data.results.length > 0) {
-    lines.push('Sources:');
+  // Show all retrieved sources if:
+  // - No answer was generated (retrieval-only mode)
+  // - User explicitly requested with --show-sources
+  const showAllSources = !hasAnswer || opts.showSources;
+  if (showAllSources && data.results.length > 0) {
+    lines.push(hasAnswer ? 'All Retrieved Sources:' : 'Sources:');
     for (const r of data.results) {
       lines.push(`  [${r.docid}] ${r.uri}`);
       if (r.title) {
         lines.push(`    ${r.title}`);
       }
+    }
+  } else if (hasAnswer && data.results.length > 0) {
+    // Hint about --show-sources when we have more sources
+    const citedCount = data.citations?.length ?? 0;
+    if (data.results.length > citedCount) {
+      lines.push(
+        `(${data.results.length} sources retrieved, use --show-sources to list all)`
+      );
     }
   }
 
@@ -339,8 +453,9 @@ function formatTerminal(data: AskResult): string {
   return lines.join('\n');
 }
 
-function formatMarkdown(data: AskResult): string {
+function formatMarkdown(data: AskResult, opts: FormatOptions = {}): string {
   const lines: string[] = [];
+  const hasAnswer = Boolean(data.answer);
 
   lines.push(`# Question: ${data.query}`);
   lines.push('');
@@ -352,35 +467,38 @@ function formatMarkdown(data: AskResult): string {
     lines.push('');
   }
 
-  // Show citations keyed by [1], [2] if answer was generated
-  // This matches the [1], [2] references in the answer text
+  // Show cited sources (only sources actually referenced in answer)
   if (data.citations && data.citations.length > 0) {
-    lines.push('## Citations');
+    lines.push('## Cited Sources');
     lines.push('');
     for (let i = 0; i < data.citations.length; i++) {
       const c = data.citations[i];
       if (c) {
-        lines.push(`**[${i + 1}]** \`${c.docid}\` — \`${c.uri}\``);
+        lines.push(`**[${i + 1}]** \`${c.uri}\``);
       }
     }
     lines.push('');
   }
 
-  lines.push('## Sources');
-  lines.push('');
+  // Show all retrieved sources if no answer or --show-sources
+  const showAllSources = !hasAnswer || opts.showSources;
+  if (showAllSources) {
+    lines.push(hasAnswer ? '## All Retrieved Sources' : '## Sources');
+    lines.push('');
 
-  for (let i = 0; i < data.results.length; i++) {
-    const r = data.results[i];
-    if (!r) {
-      continue;
+    for (let i = 0; i < data.results.length; i++) {
+      const r = data.results[i];
+      if (!r) {
+        continue;
+      }
+      lines.push(`${i + 1}. **${r.title || r.source.relPath}**`);
+      lines.push(`   - URI: \`${r.uri}\``);
+      lines.push(`   - Score: ${r.score.toFixed(2)}`);
     }
-    lines.push(`${i + 1}. **${r.title || r.source.relPath}**`);
-    lines.push(`   - URI: \`${r.uri}\``);
-    lines.push(`   - Score: ${r.score.toFixed(2)}`);
-  }
 
-  if (data.results.length === 0) {
-    lines.push('*No relevant sources found.*');
+    if (data.results.length === 0) {
+      lines.push('*No relevant sources found.*');
+    }
   }
 
   lines.push('');
@@ -407,13 +525,15 @@ export function formatAsk(
       : `Error: ${result.error}`;
   }
 
+  const formatOpts: FormatOptions = { showSources: options.showSources };
+
   if (options.json) {
     return JSON.stringify(result.data, null, 2);
   }
 
   if (options.md) {
-    return formatMarkdown(result.data);
+    return formatMarkdown(result.data, formatOpts);
   }
 
-  return formatTerminal(result.data);
+  return formatTerminal(result.data, formatOpts);
 }

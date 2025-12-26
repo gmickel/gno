@@ -169,25 +169,34 @@ export type ModelPreset = z.infer<typeof ModelPresetSchema>;
 /** Default model presets */
 export const DEFAULT_MODEL_PRESETS: ModelPreset[] = [
   {
-    id: 'multilingual',
-    name: 'Multilingual (BGE + Qwen)',
+    id: 'slim',
+    name: 'Slim (Fast, ~1GB)',
     embed: 'hf:gpustack/bge-m3-GGUF/bge-m3-Q4_K_M.gguf',
     rerank:
       'hf:gpustack/bge-reranker-v2-m3-GGUF/bge-reranker-v2-m3-Q4_K_M.gguf',
-    gen: 'hf:Qwen/Qwen2.5-0.5B-Instruct-GGUF/qwen2.5-0.5b-instruct-q4_k_m.gguf',
+    gen: 'hf:Qwen/Qwen3-1.7B-GGUF/qwen3-1.7b-q4_k_m.gguf',
   },
   {
-    id: 'qwen',
-    name: 'Qwen Family',
-    embed: 'hf:Qwen/Qwen3-Embedding-0.6B-GGUF/qwen3-embedding-0.6b-q4_k_m.gguf',
-    rerank: 'hf:Qwen/Qwen3-Reranker-0.6B-GGUF/qwen3-reranker-0.6b-q4_k_m.gguf',
-    gen: 'hf:Qwen/Qwen2.5-0.5B-Instruct-GGUF/qwen2.5-0.5b-instruct-q4_k_m.gguf',
+    id: 'balanced',
+    name: 'Balanced (Default, ~2GB)',
+    embed: 'hf:gpustack/bge-m3-GGUF/bge-m3-Q4_K_M.gguf',
+    rerank:
+      'hf:gpustack/bge-reranker-v2-m3-GGUF/bge-reranker-v2-m3-Q4_K_M.gguf',
+    gen: 'hf:ggml-org/SmolLM3-3B-GGUF/SmolLM3-3B-Q5_K_M.gguf',
+  },
+  {
+    id: 'quality',
+    name: 'Quality (Best Answers, ~2.5GB)',
+    embed: 'hf:gpustack/bge-m3-GGUF/bge-m3-Q4_K_M.gguf',
+    rerank:
+      'hf:gpustack/bge-reranker-v2-m3-GGUF/bge-reranker-v2-m3-Q4_K_M.gguf',
+    gen: 'hf:unsloth/Qwen3-4B-Instruct-2507-GGUF/Qwen3-4B-Instruct-2507-Q4_K_M.gguf',
   },
 ];
 
 export const ModelConfigSchema = z.object({
   /** Active preset ID */
-  activePreset: z.string().default('multilingual'),
+  activePreset: z.string().default('balanced'),
   /** Model presets */
   presets: z.array(ModelPresetSchema).default(DEFAULT_MODEL_PRESETS),
   /** Model load timeout in ms */

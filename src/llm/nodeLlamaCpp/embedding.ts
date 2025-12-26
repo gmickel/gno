@@ -103,6 +103,8 @@ export class NodeLlamaCppEmbedding implements EmbeddingPort {
   }
 
   async dispose(): Promise<void> {
+    // Clear promise first to prevent reuse of disposed context
+    this.contextPromise = null;
     if (this.context) {
       try {
         await this.context.dispose();

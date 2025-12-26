@@ -377,6 +377,7 @@ function wireSearchCommands(program: Command): void {
     .option('--answer', 'generate short grounded answer')
     .option('--no-answer', 'force retrieval-only output')
     .option('--max-answer-tokens <num>', 'max answer tokens')
+    .option('--show-sources', 'show all retrieved sources (not just cited)')
     .option('--json', 'JSON output')
     .option('--md', 'Markdown output')
     .action(async (queryText: string, cmdOpts: Record<string, unknown>) => {
@@ -398,6 +399,7 @@ function wireSearchCommands(program: Command): void {
         : undefined;
 
       const { ask, formatAsk } = await import('./commands/ask');
+      const showSources = Boolean(cmdOpts.showSources);
       const result = await ask(queryText, {
         limit,
         collection: cmdOpts.collection as string | undefined,
@@ -407,6 +409,7 @@ function wireSearchCommands(program: Command): void {
         answer: Boolean(cmdOpts.answer),
         noAnswer: Boolean(cmdOpts.noAnswer),
         maxAnswerTokens,
+        showSources,
         json: format === 'json',
         md: format === 'md',
       });
@@ -415,7 +418,7 @@ function wireSearchCommands(program: Command): void {
         throw new CliError('RUNTIME', result.error);
       }
       process.stdout.write(
-        `${formatAsk(result, { json: format === 'json', md: format === 'md' })}\n`
+        `${formatAsk(result, { json: format === 'json', md: format === 'md', showSources })}\n`
       );
     });
 }
@@ -741,6 +744,22 @@ function wireManagementCommands(program: Command): void {
       process.stdout.write(
         `${formatModelsList(result, { json: format === 'json' })}\n`
       );
+    });
+
+  modelsCmd
+    .command('use')
+    .description('Switch active model preset')
+    .argument('<preset>', 'preset ID (slim, balanced, quality)')
+    .action(async (preset: string) => {
+      const globals = getGlobals();
+      const { modelsUse, formatModelsUse } = await import(
+        './commands/models/use'
+      );
+      const result = await modelsUse(preset, { configPath: globals.config });
+      if (!result.success) {
+        throw new CliError('VALIDATION', result.error);
+      }
+      process.stdout.write(`${formatModelsUse(result)}\n`);
     });
 
   modelsCmd
