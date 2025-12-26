@@ -50,7 +50,7 @@ src/pipeline/
 
 | Parameter | Default | Configurable | Source |
 |-----------|---------|--------------|--------|
-| `strongBm25Threshold` | 0.7 | Yes (config) | Expansion skip decision |
+| `strongBm25Threshold` | 0.7 | Yes (config) | Expansion skip (gap-based: #1 vs #2) |
 | `rrfK` | 60 | Yes (config) | RRF constant |
 | `topRankBonus` | 0.1 | Yes (config) | Added if in top-5 both modes |
 | `expansionTimeout` | 5000ms | Yes (config) | Gen model timeout |
