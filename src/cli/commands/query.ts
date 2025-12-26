@@ -117,8 +117,8 @@ export async function query(
     // Create vector index (optional)
     let vectorIndex: VectorIndexPort | null = null;
     if (embedPort) {
-      const initResult = await embedPort.init();
-      if (initResult.ok) {
+      const embedInitResult = await embedPort.init();
+      if (embedInitResult.ok) {
         const dimensions = embedPort.dimensions();
         const db = store.getRawDb();
         const vectorResult = await createVectorIndexPort(db, {
