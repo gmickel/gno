@@ -738,7 +738,7 @@ gno models list [--json|--md]
   ],
   "embed": { "uri": "hf:gpustack/bge-m3-GGUF/bge-m3-Q4_K_M.gguf", "cached": true },
   "rerank": { "uri": "hf:gpustack/bge-reranker-v2-m3-GGUF/bge-reranker-v2-m3-Q4_K_M.gguf", "cached": false },
-  "gen": { "uri": "hf:ggml-org/SmolLM3-3B-GGUF/SmolLM3-3B-Q5_K_M.gguf", "cached": true }
+  "gen": { "uri": "hf:ggml-org/SmolLM3-3B-GGUF/SmolLM3-Q4_K_M.gguf", "cached": true }
 }
 ```
 

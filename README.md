@@ -21,13 +21,15 @@ bun install
 
 ```bash
 # Initialize GNO
-bun run src/cli/main.ts init
+bun run src/index.ts init
 
 # Add a collection
-bun run src/cli/main.ts init ~/notes --name notes --pattern "**/*.md"
+bun run src/index.ts init ~/notes --name notes --pattern "**/*.md"
 
-# With language hint for German docs
-bun run src/cli/main.ts init ~/docs --name german --language de
+# Index and search
+bun run src/index.ts index
+bun run src/index.ts query "your question"
+bun run src/index.ts ask "your question" --answer
 ```
 
 ## Development
@@ -55,12 +57,10 @@ Core CLI and indexing infrastructure complete. See `spec/cli.md` for the full in
 - **EPIC 5**: File discovery, content extraction (md/txt/pdf/docx), FTS indexing
 - **EPIC 6**: LLM subsystem with node-llama-cpp (embedding, rerank, generation)
 - **EPIC 7**: Vector embeddings with sqlite-vec, `gno embed` command
-
-### Upcoming
-
-- EPIC 8: Search pipelines (BM25, vector, hybrid)
-- EPIC 9: Output formatters and `gno get`
-- EPIC 10: MCP server integration
+- **EPIC 8**: Search pipelines (BM25, vector, hybrid query with reranking)
+- **EPIC 8.3/8.4**: `gno ask` with grounded answers and citation validation
+- **EPIC 9**: Output formatters (json, md, csv, xml, files) and `gno get`
+- **EPIC 10**: MCP server integration
 
 ## Documentation
 

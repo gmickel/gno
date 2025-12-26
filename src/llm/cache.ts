@@ -233,7 +233,9 @@ export class ModelCache {
     if (force) {
       const existingPath = await this.getCachedPath(uri);
       if (existingPath) {
-        await rm(existingPath).catch(() => {});
+        await rm(existingPath).catch(() => {
+          // Ignore: file may not exist or already deleted
+        });
       }
     }
 

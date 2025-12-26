@@ -138,7 +138,7 @@ function renumberAnswerCitations(
   // Use fresh regex to avoid lastIndex issues
   const re = /\[(\d+)\]/g;
   // Replace valid [n] with renumbered [m], remove invalid citations
-  const replaced = answer.replace(re, (match, numStr: string) => {
+  const replaced = answer.replace(re, (_match, numStr: string) => {
     const oldNum = Number(numStr);
     const newNum = mapping.get(oldNum);
     // If not in mapping, remove the citation entirely
