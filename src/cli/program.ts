@@ -560,42 +560,144 @@ function wireRetrievalCommands(program: Command): void {
   program
     .command('get <ref>')
     .description('Get document by URI or docid')
+    .option(
+      '--from <line>',
+      'Start at line number',
+      parsePositiveInt.bind(null, 'from')
+    )
+    .option(
+      '-l, --limit <lines>',
+      'Limit to N lines',
+      parsePositiveInt.bind(null, 'limit')
+    )
+    .option('--line-numbers', 'Prefix lines with numbers')
+    .option('--source', 'Include source metadata')
     .option('--json', 'JSON output')
-    .action((_ref: string, cmdOpts: Record<string, unknown>) => {
+    .option('--md', 'Markdown output')
+    .action(async (ref: string, cmdOpts: Record<string, unknown>) => {
       const format = getFormat(cmdOpts);
       assertFormatSupported(CMD.get, format);
+      const globals = getGlobals();
 
-      // Stub - will be implemented in EPIC 9
-      throw new CliError('RUNTIME', 'get command not yet implemented');
+      const { get, formatGet } = await import('./commands/get');
+      const result = await get(ref, {
+        configPath: globals.config,
+        from: cmdOpts.from as number | undefined,
+        limit: cmdOpts.limit as number | undefined,
+        lineNumbers: Boolean(cmdOpts.lineNumbers),
+        source: Boolean(cmdOpts.source),
+        json: format === 'json',
+        md: format === 'md',
+      });
+
+      if (!result.success) {
+        throw new CliError(
+          result.isValidation ? 'VALIDATION' : 'RUNTIME',
+          result.error
+        );
+      }
+
+      process.stdout.write(
+        `${formatGet(result, {
+          lineNumbers: Boolean(cmdOpts.lineNumbers),
+          json: format === 'json',
+          md: format === 'md',
+        })}\n`
+      );
     });
 
   // multi-get - Retrieve multiple documents
   program
     .command('multi-get <refs...>')
     .description('Get multiple documents by URI or docid')
+    .option(
+      '--max-bytes <n>',
+      'Max bytes per document',
+      parsePositiveInt.bind(null, 'max-bytes')
+    )
+    .option('--line-numbers', 'Include line numbers')
     .option('--json', 'JSON output')
-    .action((_refs: string[], cmdOpts: Record<string, unknown>) => {
+    .option('--files', 'File protocol output')
+    .option('--md', 'Markdown output')
+    .action(async (refs: string[], cmdOpts: Record<string, unknown>) => {
       const format = getFormat(cmdOpts);
       assertFormatSupported(CMD.multiGet, format);
+      const globals = getGlobals();
 
-      // Stub - will be implemented in EPIC 9
-      throw new CliError('RUNTIME', 'multi-get command not yet implemented');
+      const { multiGet, formatMultiGet } = await import('./commands/multi-get');
+      const result = await multiGet(refs, {
+        configPath: globals.config,
+        maxBytes: cmdOpts.maxBytes as number | undefined,
+        lineNumbers: Boolean(cmdOpts.lineNumbers),
+        json: format === 'json',
+        files: format === 'files',
+        md: format === 'md',
+      });
+
+      if (!result.success) {
+        throw new CliError(
+          result.isValidation ? 'VALIDATION' : 'RUNTIME',
+          result.error
+        );
+      }
+
+      process.stdout.write(
+        `${formatMultiGet(result, {
+          lineNumbers: Boolean(cmdOpts.lineNumbers),
+          json: format === 'json',
+          files: format === 'files',
+          md: format === 'md',
+        })}\n`
+      );
     });
 
   // ls - List indexed documents
   program
-    .command('ls [collection]')
+    .command('ls [scope]')
     .description('List indexed documents')
-    .option('-n, --limit <num>', 'max results', '20')
-    .option('--offset <num>', 'skip first N results')
+    .option(
+      '-n, --limit <num>',
+      'Max results',
+      parsePositiveInt.bind(null, 'limit')
+    )
+    .option(
+      '--offset <num>',
+      'Skip first N results',
+      parsePositiveInt.bind(null, 'offset')
+    )
     .option('--json', 'JSON output')
+    .option('--files', 'File protocol output')
+    .option('--md', 'Markdown output')
     .action(
-      (_collection: string | undefined, cmdOpts: Record<string, unknown>) => {
+      async (scope: string | undefined, cmdOpts: Record<string, unknown>) => {
         const format = getFormat(cmdOpts);
         assertFormatSupported(CMD.ls, format);
+        const globals = getGlobals();
 
-        // Stub - will be implemented in EPIC 9
-        throw new CliError('RUNTIME', 'ls command not yet implemented');
+        const { ls, formatLs } = await import('./commands/ls');
+        const result = await ls(scope, {
+          configPath: globals.config,
+          limit: cmdOpts.limit as number | undefined,
+          offset: cmdOpts.offset as number | undefined,
+          json: format === 'json',
+          files: format === 'files',
+          md: format === 'md',
+        });
+
+        if (!result.success) {
+          throw new CliError(
+            result.isValidation ? 'VALIDATION' : 'RUNTIME',
+            result.error
+          );
+        }
+
+        process.stdout.write(
+          `${formatLs(result, {
+            json: format === 'json',
+            files: format === 'files',
+            md: format === 'md',
+          })}\n`
+        );
       }
     );
 }

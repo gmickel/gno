@@ -31,19 +31,51 @@ export {
   formatEmbed,
 } from './embed';
 export {
+  formatGet,
+  type GetCommandOptions,
+  type GetResponse,
+  type GetResult,
+  get,
+} from './get';
+export {
   formatIndex,
   type IndexOptions,
   type IndexResult,
   index,
 } from './index-cmd';
 export { type InitOptions, type InitResult, init } from './init';
+export {
+  formatLs,
+  type LsCommandOptions,
+  type LsDocument,
+  type LsResponse,
+  type LsResult,
+  ls,
+} from './ls';
 export * from './models';
+export {
+  formatMultiGet,
+  type MultiGetCommandOptions,
+  type MultiGetDocument,
+  type MultiGetResponse,
+  type MultiGetResult,
+  multiGet,
+  type SkippedDoc,
+} from './multi-get';
 export {
   formatQuery,
   type QueryCommandOptions,
   type QueryResult,
   query,
 } from './query';
+export {
+  isGlobPattern,
+  type ParsedRef,
+  type ParseRefResult,
+  parseRef,
+  type RefType,
+  splitRefs,
+} from './ref-parser';
 export {
   formatSearch,
   type SearchCommandOptions,

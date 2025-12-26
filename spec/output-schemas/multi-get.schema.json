@@ -67,7 +67,8 @@
               "not_found",
               "exceeds_maxBytes",
               "permission_denied",
-              "conversion_error"
+              "conversion_error",
+              "invalid_ref"
             ]
           }
         }

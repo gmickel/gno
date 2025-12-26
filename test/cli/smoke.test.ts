@@ -397,24 +397,6 @@ describe('CLI smoke tests', () => {
   });
 
   describe('stub commands', () => {
-    test('get returns not implemented', async () => {
-      const { code, stderr } = await cli('get', 'doc:123');
-      expect(code).toBe(2); // RUNTIME error
-      expect(stderr).toContain('not yet implemented');
-    });
-
-    test('multi-get returns not implemented', async () => {
-      const { code, stderr } = await cli('multi-get', 'doc:1', 'doc:2');
-      expect(code).toBe(2);
-      expect(stderr).toContain('not yet implemented');
-    });
-
-    test('ls returns not implemented', async () => {
-      const { code, stderr } = await cli('ls');
-      expect(code).toBe(2);
-      expect(stderr).toContain('not yet implemented');
-    });
-
     test('mcp returns not implemented', async () => {
       const { code, stderr } = await cli('mcp');
       expect(code).toBe(2);
@@ -548,7 +530,7 @@ describe('CLI error envelope format', () => {
   });
 
   test('runtime error from stub commands', async () => {
-    const { code, stderr } = await cli('get', 'doc:123');
+    const { code, stderr } = await cli('mcp');
     expect(code).toBe(2);
     expect(stderr).toContain('not yet implemented');
   });
