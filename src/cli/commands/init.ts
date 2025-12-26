@@ -76,6 +76,9 @@ async function handleAlreadyInitialized(
   options: InitOptions,
   paths: ReturnType<typeof getConfigPaths>
 ): Promise<InitResult> {
+  // Ensure directories exist (may have been deleted by reset)
+  await ensureDirectories();
+
   const config = await loadConfigOrNull(options.configPath);
   const dbPath = getIndexDbPath();
 
