@@ -45,6 +45,12 @@ export type QueryCommandOptions = HybridSearchOptions & {
   files?: boolean;
 };
 
+export type QueryFormatOptions = {
+  format: 'terminal' | 'json' | 'files' | 'csv' | 'md' | 'xml';
+  full?: boolean;
+  lineNumbers?: boolean;
+};
+
 export type QueryResult =
   | { success: true; data: SearchResults }
   | { success: false; error: string };
@@ -162,212 +168,52 @@ export async function query(
 // Formatters
 // ─────────────────────────────────────────────────────────────────────────────
 
-function formatTerminal(data: SearchResults): string {
-  if (data.results.length === 0) {
-    return 'No results found.';
-  }
-
-  const lines: string[] = [];
-
-  // Show mode info
-  const modeInfo: string[] = [];
-  if (data.meta.expanded) {
-    modeInfo.push('expanded');
-  }
-  if (data.meta.vectorsUsed) {
-    modeInfo.push('hybrid');
-  }
-  if (data.meta.reranked) {
-    modeInfo.push('reranked');
-  }
-  if (modeInfo.length > 0) {
-    lines.push(`Mode: ${modeInfo.join(', ')}`);
-    lines.push('');
-  }
-
-  for (const r of data.results) {
-    lines.push(`[${r.docid}] ${r.uri} (score: ${r.score.toFixed(2)})`);
-    if (r.title) {
-      lines.push(`  ${r.title}`);
-    }
-    if (r.snippet) {
-      const snippet =
-        r.snippet.length > 200 ? `${r.snippet.slice(0, 200)}...` : r.snippet;
-      lines.push(`  ${snippet.replace(/\n/g, ' ')}`);
-    }
-    lines.push('');
-  }
-  lines.push(`${data.meta.totalResults} result(s) for "${data.meta.query}"`);
-  return lines.join('\n');
-}
-
-function formatMarkdown(data: SearchResults): string {
-  if (data.results.length === 0) {
-    return `# Query Results\n\nNo results found for "${data.meta.query}".`;
-  }
-
-  const lines: string[] = [];
-  lines.push(`# Query Results for "${data.meta.query}"`);
-  lines.push('');
-
-  const modeInfo: string[] = [];
-  if (data.meta.expanded) {
-    modeInfo.push('expanded');
-  }
-  if (data.meta.vectorsUsed) {
-    modeInfo.push('hybrid');
-  }
-  if (data.meta.reranked) {
-    modeInfo.push('reranked');
-  }
-  lines.push(
-    `*${data.meta.totalResults} result(s) | Mode: ${modeInfo.join(', ') || 'bm25'}*`
-  );
-  lines.push('');
-
-  for (const r of data.results) {
-    lines.push(`## ${r.title || r.source.relPath}`);
-    lines.push('');
-    lines.push(`- **URI**: \`${r.uri}\``);
-    lines.push(`- **Score**: ${r.score.toFixed(2)}`);
-    lines.push(`- **DocID**: \`${r.docid}\``);
-    if (r.snippet) {
-      lines.push('');
-      lines.push('```');
-      lines.push(r.snippet.slice(0, 500));
-      lines.push('```');
-    }
-    lines.push('');
-  }
-
-  return lines.join('\n');
-}
-
-function formatCsv(data: SearchResults): string {
-  const lines: string[] = [];
-  lines.push('docid,score,uri,title,relPath');
-  for (const r of data.results) {
-    const title = (r.title ?? '').replace(/"/g, '""');
-    lines.push(
-      `"${r.docid}",${r.score.toFixed(4)},"${r.uri}","${title}","${r.source.relPath}"`
-    );
-  }
-  return lines.join('\n');
-}
-
-function formatXml(data: SearchResults): string {
-  const lines: string[] = [];
-  lines.push('<?xml version="1.0" encoding="UTF-8"?>');
-  lines.push('<queryResults>');
-  lines.push(
-    `  <meta query="${escapeXml(data.meta.query)}" mode="${data.meta.mode}" expanded="${data.meta.expanded}" reranked="${data.meta.reranked}" total="${data.meta.totalResults}"/>`
-  );
-  for (const r of data.results) {
-    lines.push('  <result>');
-    lines.push(`    <docid>${escapeXml(r.docid)}</docid>`);
-    lines.push(`    <score>${r.score}</score>`);
-    lines.push(`    <uri>${escapeXml(r.uri)}</uri>`);
-    if (r.title) {
-      lines.push(`    <title>${escapeXml(r.title)}</title>`);
-    }
-    lines.push(`    <relPath>${escapeXml(r.source.relPath)}</relPath>`);
-    if (r.snippet) {
-      lines.push(
-        `    <snippet>${escapeXml(r.snippet.slice(0, 500))}</snippet>`
-      );
-    }
-    lines.push('  </result>');
-  }
-  lines.push('</queryResults>');
-  return lines.join('\n');
-}
-
-function formatFiles(data: SearchResults): string {
-  return data.results
-    .map((r) => r.source.absPath ?? r.source.relPath)
-    .join('\n');
-}
-
-function escapeXml(str: string): string {
-  return str
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&apos;');
-}
+// Import shared formatters dynamically to keep module loading fast
+// and avoid circular dependencies
 
 /**
- * Format explain data to stderr.
+ * Output explain data to stderr using pipeline formatters.
  */
-function formatExplainToStderr(data: SearchResults): void {
-  if (!data.meta.explain) {
+function outputExplainToStderr(data: SearchResults): void {
+  const explain = data.meta.explain;
+  if (!explain) {
     return;
   }
 
-  const lines: string[] = [];
-
-  // Format pipeline stages
-  for (const line of data.meta.explain.lines) {
-    lines.push(`[explain] ${line.stage}: ${line.message}`);
-  }
-
-  // Format result breakdown
-  for (const r of data.meta.explain.results.slice(0, 10)) {
-    let msg = `score=${r.score.toFixed(2)}`;
-    if (r.bm25Score !== undefined) {
-      msg += ` (bm25=${r.bm25Score.toFixed(2)}`;
-      if (r.vecScore !== undefined) {
-        msg += `, vec=${r.vecScore.toFixed(2)}`;
-      }
-      if (r.rerankScore !== undefined) {
-        msg += `, rerank=${r.rerankScore.toFixed(2)}`;
-      }
-      msg += ')';
-    }
-    lines.push(`[explain] result ${r.rank}: ${r.docid} ${msg}`);
-  }
-
-  process.stderr.write(`${lines.join('\n')}\n`);
+  // Import pipeline formatters synchronously (they're lightweight)
+  const {
+    formatExplain,
+    formatResultExplain,
+  } = require('../../pipeline/explain');
+  process.stderr.write(`${formatExplain(explain.lines)}\n`);
+  process.stderr.write(`${formatResultExplain(explain.results)}\n`);
 }
 
 /**
  * Format query result for output.
+ * Uses shared formatSearchResults for consistent output across search commands.
  */
 export function formatQuery(
   result: QueryResult,
-  options: QueryCommandOptions
+  options: QueryFormatOptions
 ): string {
   if (!result.success) {
-    return options.json
+    return options.format === 'json'
       ? JSON.stringify({
           error: { code: 'QUERY_FAILED', message: result.error },
         })
       : `Error: ${result.error}`;
   }
 
-  // Output explain to stderr if present
-  formatExplainToStderr(result.data);
+  // Output explain to stderr if present (async but best-effort)
+  outputExplainToStderr(result.data);
 
-  if (options.json) {
-    return JSON.stringify(result.data, null, 2);
-  }
-
-  if (options.md) {
-    return formatMarkdown(result.data);
-  }
-
-  if (options.csv) {
-    return formatCsv(result.data);
-  }
-
-  if (options.xml) {
-    return formatXml(result.data);
-  }
-
-  if (options.files) {
-    return formatFiles(result.data);
-  }
-
-  return formatTerminal(result.data);
+  // Use shared formatter for consistent output
+  // Dynamic import to keep module loading fast
+  const { formatSearchResults } = require('../format/search-results');
+  return formatSearchResults(result.data, {
+    format: options.format,
+    full: options.full,
+    lineNumbers: options.lineNumbers,
+  });
 }

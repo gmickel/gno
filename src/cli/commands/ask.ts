@@ -61,28 +61,49 @@ Context:
 
 Provide a concise answer (1-3 paragraphs). Include inline citations like [1], [2] when referencing specific documents.`;
 
+// Max characters per snippet to avoid blowing up prompt size
+const MAX_SNIPPET_CHARS = 1500;
+// Max number of sources to include in context
+const MAX_CONTEXT_SOURCES = 5;
+
 async function generateGroundedAnswer(
   genPort: GenerationPort,
   query: string,
   results: SearchResult[],
   maxTokens: number
 ): Promise<{ answer: string; citations: Citation[] } | null> {
-  // Build context from top results
+  // Build context from top results with bounded snippet sizes
   const contextParts: string[] = [];
   const citations: Citation[] = [];
 
-  for (let i = 0; i < Math.min(results.length, 5); i++) {
-    const r = results[i];
-    if (!r) {
+  // Track citation index separately to ensure it matches context blocks exactly
+  let citationIndex = 0;
+
+  for (const r of results.slice(0, MAX_CONTEXT_SOURCES)) {
+    // Skip results with empty snippets
+    if (!r.snippet || r.snippet.trim().length === 0) {
       continue;
     }
-    contextParts.push(`[${i + 1}] ${r.snippet}`);
+
+    // Cap snippet length to avoid prompt blowup
+    const snippet =
+      r.snippet.length > MAX_SNIPPET_CHARS
+        ? `${r.snippet.slice(0, MAX_SNIPPET_CHARS)}...`
+        : r.snippet;
+
+    citationIndex += 1;
+    contextParts.push(`[${citationIndex}] ${snippet}`);
     citations.push({
       docid: r.docid,
       uri: r.uri,
       startLine: r.snippetRange?.startLine,
       endLine: r.snippetRange?.endLine,
     });
+  }
+
+  // If no valid context, can't generate answer
+  if (contextParts.length === 0) {
+    return null;
   }
 
   const prompt = ANSWER_PROMPT.replace('{query}', query).replace(
@@ -181,6 +202,19 @@ export async function ask(
       rerankPort,
     };
 
+    // Check if answer generation is explicitly requested
+    const answerRequested = options.answer && !options.noAnswer;
+
+    // Fail early if --answer is requested but no generation model available
+    if (answerRequested && genPort === null) {
+      return {
+        success: false,
+        error:
+          'Answer generation requested but no generation model available. ' +
+          'Run `gno models pull --gen` to download a model, or configure a preset.',
+      };
+    }
+
     // Run hybrid search
     const searchResult = await searchHybrid(deps, query, {
       limit,
@@ -199,11 +233,12 @@ export async function ask(
     let citations: Citation[] | undefined;
     let answerGenerated = false;
 
+    // Only generate answer if:
+    // 1. --answer was explicitly requested (not just default behavior)
+    // 2. --no-answer was not set
+    // 3. We have results to ground on (no point generating from nothing)
     const shouldGenerateAnswer =
-      options.answer &&
-      !options.noAnswer &&
-      genPort !== null &&
-      results.length > 0;
+      answerRequested && genPort !== null && results.length > 0;
 
     if (shouldGenerateAnswer && genPort) {
       const maxTokens = options.maxAnswerTokens ?? 512;
@@ -213,11 +248,19 @@ export async function ask(
         results,
         maxTokens
       );
-      if (answerResult) {
-        answer = answerResult.answer;
-        citations = answerResult.citations;
-        answerGenerated = true;
+
+      // Fail loudly if generation was requested but failed
+      if (!answerResult) {
+        return {
+          success: false,
+          error:
+            'Answer generation failed. The generation model may have encountered an error.',
+        };
       }
+
+      answer = answerResult.answer;
+      citations = answerResult.citations;
+      answerGenerated = true;
     }
 
     const askResult: AskResult = {
@@ -330,7 +373,7 @@ export function formatAsk(
   if (!result.success) {
     return options.json
       ? JSON.stringify({
-          error: { code: 'QUERY_FAILED', message: result.error },
+          error: { code: 'ASK_FAILED', message: result.error },
         })
       : `Error: ${result.error}`;
   }

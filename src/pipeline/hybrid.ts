@@ -8,7 +8,7 @@
 import type { Config } from '../config/types';
 import type { EmbeddingPort, GenerationPort, RerankPort } from '../llm/types';
 import type { StorePort } from '../store/types';
-import { type err, ok } from '../store/types';
+import { err, ok } from '../store/types';
 import type { VectorIndexPort } from '../store/vector/types';
 import { expandQuery } from './expansion';
 import {
@@ -339,6 +339,15 @@ export async function searchHybrid(
   );
 
   // ─────────────────────────────────────────────────────────────────────────
+  // 4b. Apply minScore filter (blendedScore is now normalized to [0,1])
+  // ─────────────────────────────────────────────────────────────────────────
+  const minScore = options.minScore ?? 0;
+  const filteredCandidates =
+    minScore > 0
+      ? rerankResult.candidates.filter((c) => c.blendedScore >= minScore)
+      : rerankResult.candidates;
+
+  // ─────────────────────────────────────────────────────────────────────────
   // 5. Build final results (optimized: batch lookups, no per-candidate queries)
   // ─────────────────────────────────────────────────────────────────────────
 
@@ -383,11 +392,30 @@ export async function searchHybrid(
     Awaited<ReturnType<typeof store.getChunks>>
   >();
 
+  // Cache full content by mirrorHash for --full mode
+  const contentCache = new Map<
+    string,
+    Awaited<ReturnType<typeof store.getContent>>
+  >();
+
   const results: SearchResult[] = [];
   const docidMap = new Map<string, string>();
+  // Track seen docids for --full de-duplication
+  const seenDocids = new Set<string>();
 
-  for (const candidate of rerankResult.candidates.slice(0, limit)) {
-    // Get or fetch chunks for this mirrorHash
+  for (const candidate of filteredCandidates.slice(0, limit)) {
+    // Find document from pre-fetched map
+    const doc = docByMirrorHash.get(candidate.mirrorHash);
+    if (!doc) {
+      continue;
+    }
+
+    // For --full mode, de-dupe by docid (keep best scoring candidate per doc)
+    if (options.full && seenDocids.has(doc.docid)) {
+      continue;
+    }
+
+    // Get or fetch chunks for this mirrorHash (needed for fallback and non-full mode)
     let chunksResult = chunksCache.get(candidate.mirrorHash);
     if (!chunksResult) {
       chunksResult = await store.getChunks(candidate.mirrorHash);
@@ -403,27 +431,42 @@ export async function searchHybrid(
       continue;
     }
 
-    // Find document from pre-fetched map
-    const doc = docByMirrorHash.get(candidate.mirrorHash);
-    if (!doc) {
-      continue;
-    }
-
     docidMap.set(`${candidate.mirrorHash}:${candidate.seq}`, doc.docid);
 
     const collectionPath = collectionPaths.get(doc.collection);
+
+    // For --full mode, fetch full mirror content
+    let snippet = chunk.text;
+    let snippetRange: { startLine: number; endLine: number } | undefined = {
+      startLine: chunk.startLine,
+      endLine: chunk.endLine,
+    };
+
+    if (options.full) {
+      // Get or fetch full content for this mirrorHash
+      let contentResult = contentCache.get(candidate.mirrorHash);
+      if (!contentResult) {
+        contentResult = await store.getContent(candidate.mirrorHash);
+        contentCache.set(candidate.mirrorHash, contentResult);
+      }
+
+      if (contentResult.ok && contentResult.value) {
+        snippet = contentResult.value;
+        snippetRange = undefined; // Full content has no range
+      }
+      // Fallback to chunk text if content unavailable
+    }
+
+    seenDocids.add(doc.docid);
 
     results.push({
       docid: doc.docid,
       score: candidate.blendedScore,
       uri: doc.uri,
       title: doc.title ?? undefined,
-      snippet: chunk.text,
+      snippet,
       snippetLanguage: chunk.language ?? undefined,
-      snippetRange: {
-        startLine: chunk.startLine,
-        endLine: chunk.endLine,
-      },
+      snippetRange,
       source: {
         relPath: doc.relPath,
         absPath: collectionPath
@@ -450,7 +493,7 @@ export async function searchHybrid(
     ? {
         lines: explainLines,
         results: buildExplainResults(
-          rerankResult.candidates.slice(0, limit),
+          filteredCandidates.slice(0, limit),
           docidMap
         ),
       }
