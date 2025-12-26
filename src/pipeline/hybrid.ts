@@ -46,14 +46,8 @@ export type HybridSearchDeps = {
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Score Normalization (from search.ts)
+// Score Normalization
 // ─────────────────────────────────────────────────────────────────────────────
-
-function normalizeBm25Score(raw: number): number {
-  // Pass through raw score - with small corpus scores are tiny
-  // strongBm25Threshold check will rarely trigger, but that's fine
-  return raw;
-}
 
 function _normalizeVectorScore(distance: number): number {
   return Math.max(0, Math.min(1, 1 - distance / 2));
@@ -65,7 +59,9 @@ function _normalizeVectorScore(distance: number): number {
 
 /**
  * Check if BM25 results are strong enough to skip expansion.
- * Uses raw store API to get normalized score.
+ * Uses gap-based metric: how much better is #1 than #2?
+ * Returns 0-1 where 1 = #1 is clearly dominant, 0 = results are similar.
+ * Raw BM25: smaller (more negative) is better.
  */
 async function checkBm25Strength(
   store: StorePort,
@@ -80,8 +76,29 @@ async function checkBm25Strength(
   if (!result.ok || result.value.length === 0) {
     return 0;
   }
-  // Return max normalized score from top results
-  return Math.max(...result.value.map((r) => normalizeBm25Score(r.score)));
+
+  // Only one result = strong signal
+  if (result.value.length === 1) {
+    return 1;
+  }
+
+  // Get top 2 scores (smaller is better)
+  const scores = result.value.map((r) => r.score).sort((a, b) => a - b);
+  const best = scores[0] ?? 0;
+  const second = scores[1] ?? best;
+  const worst = scores[scores.length - 1] ?? best;
+
+  // Compute gap-based strength
+  // If best and second are equal, gap = 0
+  // If second is much worse (larger), gap approaches 1
+  const range = worst - best;
+  if (range === 0) {
+    return 0; // All scores equal, no clear winner
+  }
+
+  // Gap = how much worse is #2 relative to the range
+  const gap = (second - best) / range;
+  return Math.min(1, gap);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

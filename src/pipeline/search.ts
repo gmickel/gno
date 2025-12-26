@@ -19,12 +19,31 @@ import type {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Pass through BM25 score as-is.
- * Scores are relative within result set - compare to each other, not absolute.
- * Larger corpus = larger scores; small corpus = tiny scores.
+ * Normalize BM25 scores to 0-1 range using min-max scaling.
+ * FTS5 bm25() returns negative scores where smaller (more negative) = better match.
+ * After normalization: 1 = best match, 0 = worst match in result set.
  */
-function normalizeBm25Score(raw: number): number {
-  return raw;
+function normalizeBm25Scores(results: SearchResult[]): void {
+  if (results.length === 0) return;
+
+  // Raw scores: smaller (more negative) is better
+  const scores = results.map((r) => r.score);
+  const best = Math.min(...scores); // Most negative = best
+  const worst = Math.max(...scores); // Least negative = worst
+  const range = worst - best;
+
+  // If all scores equal, assign 1.0 to all
+  if (range === 0) {
+    for (const r of results) {
+      r.score = 1;
+    }
+    return;
+  }
+
+  // Map: best -> 1, worst -> 0
+  for (const r of results) {
+    r.score = (worst - r.score) / range;
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -75,7 +94,7 @@ function buildSearchResult(ctx: BuildResultContext): SearchResult {
 
   return {
     docid: fts.docid ?? '',
-    score: normalizeBm25Score(fts.score),
+    score: fts.score, // Raw score, normalized later as batch
     uri: fts.uri ?? '',
     title: fts.title,
     snippet,
@@ -147,12 +166,6 @@ export async function searchBm25(
   >();
 
   for (const fts of ftsResult.value) {
-    // Apply minScore filter after normalization
-    const normalizedScore = normalizeBm25Score(fts.score);
-    if (normalizedScore < minScore) {
-      continue;
-    }
-
     // Get chunk for snippetRange if we have mirrorHash+seq (cached)
     let chunk: ChunkRow | null = null;
     if (fts.mirrorHash) {
@@ -170,11 +183,12 @@ export async function searchBm25(
     }
 
     // For --full, de-dupe by docid (keep best scoring chunk per doc)
+    // Raw BM25: smaller (more negative) is better
     if (options.full) {
       const docid = fts.docid ?? '';
       const existing = bestByDocid.get(docid);
-      if (!existing || normalizedScore > existing.score) {
-        bestByDocid.set(docid, { fts, chunk, score: normalizedScore });
+      if (!existing || fts.score < existing.score) {
+        bestByDocid.set(docid, { fts, chunk, score: fts.score });
       }
       continue;
     }
@@ -205,12 +219,19 @@ export async function searchBm25(
     }
   }
 
+  // Normalize scores to 0-1 range (batch min-max)
+  normalizeBm25Scores(results);
+
+  // Apply minScore filter after normalization
+  const filteredResults =
+    minScore > 0 ? results.filter((r) => r.score >= minScore) : results;
+
   return ok({
-    results,
+    results: filteredResults,
     meta: {
       query,
       mode: 'bm25',
-      totalResults: results.length,
+      totalResults: filteredResults.length,
       collection: options.collection,
       lang: options.lang,
     },

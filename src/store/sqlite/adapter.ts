@@ -607,7 +607,7 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
         rows.map((r) => ({
           mirrorHash: r.mirror_hash,
           seq: r.seq,
-          score: Math.abs(r.score), // FTS5 bm25() is negative
+          score: r.score, // Raw bm25() - smaller (more negative) is better
           snippet: r.snippet,
           docid: r.docid,
           uri: r.uri,
