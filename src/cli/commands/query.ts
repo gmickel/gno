@@ -117,17 +117,14 @@ export async function query(
     // Create vector index (optional)
     let vectorIndex: VectorIndexPort | null = null;
     if (embedPort) {
-      const probeResult = await embedPort.embed('dimension probe');
-      if (probeResult.ok) {
-        const dimensions = probeResult.value.length;
-        const db = store.getRawDb();
-        const vectorResult = await createVectorIndexPort(db, {
-          model: embedUri,
-          dimensions,
-        });
-        if (vectorResult.ok) {
-          vectorIndex = vectorResult.value;
-        }
+      const dimensions = embedPort.dimensions();
+      const db = store.getRawDb();
+      const vectorResult = await createVectorIndexPort(db, {
+        model: embedUri,
+        dimensions,
+      });
+      if (vectorResult.ok) {
+        vectorIndex = vectorResult.value;
       }
     }
 

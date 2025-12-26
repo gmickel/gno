@@ -356,19 +356,7 @@ export async function searchHybrid(
   const collectionsResult = await store.getCollections();
 
   if (!docsResult.ok) {
-    return ok({
-      results: [],
-      meta: {
-        query,
-        mode: vectorAvailable ? 'hybrid' : 'bm25_only',
-        expanded: expansion !== null,
-        reranked: rerankResult.reranked,
-        vectorsUsed: vectorAvailable ?? false,
-        totalResults: 0,
-        collection: options.collection,
-        lang: options.lang,
-      },
-    });
+    return err('QUERY_FAILED', docsResult.error.message);
   }
 
   // Build lookup maps - only include docs needed by candidates

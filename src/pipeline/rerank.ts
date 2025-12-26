@@ -160,10 +160,12 @@ export async function rerankCandidates(
 
   // Map rerank scores to candidates
   // Note: We use normalizeFusionScore defined above (across ALL candidates)
-  const rerankScores = rerankResult.value;
+  // Build index->score map for O(1) lookup instead of O(n) find per candidate
+  const scoreByIndex = new Map(
+    rerankResult.value.map((s) => [s.index, s.score])
+  );
   const rerankedCandidates: RerankedCandidate[] = toRerank.map((c, i) => {
-    const score = rerankScores.find((s) => s.index === i);
-    const rerankScore = score?.score ?? null;
+    const rerankScore = scoreByIndex.get(i) ?? null;
 
     // Normalize rerank score to 0-1 range (models may return different scales)
     const normalizedRerankScore =
