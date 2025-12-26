@@ -7,7 +7,6 @@
 
 import { createDefaultConfig, loadConfig } from '../../../config';
 import { saveConfig } from '../../../config/saver';
-import { DEFAULT_MODEL_PRESETS } from '../../../config/types';
 import { getPreset, listPresets } from '../../../llm/registry';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -50,12 +49,13 @@ export async function modelsUse(
     };
   }
 
-  // Update config with new active preset
+  // Update config with new active preset (don't persist presets - use code defaults)
   const updatedConfig = {
     ...config,
     models: {
       activePreset: presetId,
-      presets: config.models?.presets ?? DEFAULT_MODEL_PRESETS,
+      // Don't persist presets - always use DEFAULT_MODEL_PRESETS from code
+      // This ensures preset URI updates are picked up without config migration
       loadTimeout: config.models?.loadTimeout ?? 60_000,
       inferenceTimeout: config.models?.inferenceTimeout ?? 30_000,
       warmModelTtl: config.models?.warmModelTtl ?? 300_000,

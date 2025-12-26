@@ -174,7 +174,7 @@ export const DEFAULT_MODEL_PRESETS: ModelPreset[] = [
     embed: 'hf:gpustack/bge-m3-GGUF/bge-m3-Q4_K_M.gguf',
     rerank:
       'hf:gpustack/bge-reranker-v2-m3-GGUF/bge-reranker-v2-m3-Q4_K_M.gguf',
-    gen: 'hf:Qwen/Qwen3-1.7B-GGUF/qwen3-1.7b-q4_k_m.gguf',
+    gen: 'hf:unsloth/Qwen3-1.7B-GGUF/Qwen3-1.7B-Q4_K_M.gguf',
   },
   {
     id: 'balanced',
