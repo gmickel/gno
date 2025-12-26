@@ -32,7 +32,12 @@ export type IndexOptions = {
  * Result of index command.
  */
 export type IndexResult =
-  | { success: true; syncResult: SyncResult; embedSkipped: boolean }
+  | {
+      success: true;
+      syncResult: SyncResult;
+      embedSkipped: boolean;
+      embedResult?: { embedded: number; errors: number; duration: number };
+    }
   | { success: false; error: string };
 
 /**
@@ -56,12 +61,28 @@ export async function index(options: IndexOptions = {}): Promise<IndexResult> {
       runUpdateCmd: true,
     });
 
-    // Embedding phase (EPIC 7 - stub for now)
-    // TODO: EPIC 7 - Run embedding when implemented
-    // For now, embedding is always skipped
-    const embedSkipped = options.noEmbed ?? true;
+    // Embedding phase
+    const embedSkipped = options.noEmbed ?? false;
+    let embedResult: IndexResult extends { success: true }
+      ? IndexResult['embedResult']
+      : never;
 
-    return { success: true, syncResult, embedSkipped };
+    if (!embedSkipped) {
+      const { embed } = await import('./embed');
+      const result = await embed({
+        configPath: options.configPath,
+        collection: options.collection,
+      });
+      if (result.success) {
+        embedResult = {
+          embedded: result.embedded,
+          errors: result.errors,
+          duration: result.duration,
+        };
+      }
+    }
+
+    return { success: true, syncResult, embedSkipped, embedResult };
   } finally {
     await store.close();
   }
@@ -85,7 +106,14 @@ export function formatIndex(
 
   if (embedSkipped) {
     lines.push('');
-    lines.push('Embedding skipped (--no-embed or not yet implemented)');
+    lines.push('Embedding skipped (--no-embed)');
+  } else if (result.embedResult) {
+    lines.push('');
+    const { embedded, errors, duration } = result.embedResult;
+    const errPart = errors > 0 ? ` (${errors} errors)` : '';
+    lines.push(
+      `Embedded ${embedded} chunks in ${(duration / 1000).toFixed(1)}s${errPart}`
+    );
   }
 
   return lines.join('\n');

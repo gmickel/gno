@@ -28,7 +28,7 @@ describe('getModelConfig', () => {
     const config = makeConfig();
     const modelConfig = getModelConfig(config);
 
-    expect(modelConfig.activePreset).toBe('multilingual');
+    expect(modelConfig.activePreset).toBe('balanced');
     expect(modelConfig.presets).toEqual(DEFAULT_MODEL_PRESETS);
     expect(modelConfig.loadTimeout).toBe(60_000);
     expect(modelConfig.inferenceTimeout).toBe(30_000);
@@ -37,7 +37,7 @@ describe('getModelConfig', () => {
 
   test('uses configured values', () => {
     const config = makeConfig({
-      activePreset: 'qwen',
+      activePreset: 'quality',
       presets: DEFAULT_MODEL_PRESETS,
       loadTimeout: 120_000,
       inferenceTimeout: 60_000,
@@ -45,7 +45,7 @@ describe('getModelConfig', () => {
     });
     const modelConfig = getModelConfig(config);
 
-    expect(modelConfig.activePreset).toBe('qwen');
+    expect(modelConfig.activePreset).toBe('quality');
     expect(modelConfig.loadTimeout).toBe(120_000);
     expect(modelConfig.inferenceTimeout).toBe(60_000);
     expect(modelConfig.warmModelTtl).toBe(600_000);
@@ -53,18 +53,18 @@ describe('getModelConfig', () => {
 });
 
 describe('getActivePreset', () => {
-  test('returns multilingual preset by default', () => {
+  test('returns balanced preset by default', () => {
     const config = makeConfig();
     const preset = getActivePreset(config);
 
-    expect(preset.id).toBe('multilingual');
-    expect(preset.name).toBe('Multilingual (BGE + Qwen)');
+    expect(preset.id).toBe('balanced');
+    expect(preset.name).toBe('Balanced (Default, ~2GB)');
     expect(preset.embed).toContain('bge-m3');
   });
 
   test('returns configured active preset', () => {
     const config = makeConfig({
-      activePreset: 'qwen',
+      activePreset: 'quality',
       presets: DEFAULT_MODEL_PRESETS,
       loadTimeout: 60_000,
       inferenceTimeout: 30_000,
@@ -72,8 +72,8 @@ describe('getActivePreset', () => {
     });
     const preset = getActivePreset(config);
 
-    expect(preset.id).toBe('qwen');
-    expect(preset.embed).toContain('Qwen3-Embedding');
+    expect(preset.id).toBe('quality');
+    expect(preset.gen).toContain('Qwen3-4B');
   });
 
   test('falls back to first preset if active not found', () => {
@@ -86,7 +86,7 @@ describe('getActivePreset', () => {
     });
     const preset = getActivePreset(config);
 
-    expect(preset.id).toBe('multilingual');
+    expect(preset.id).toBe('slim');
   });
 });
 
@@ -96,7 +96,7 @@ describe('resolveModelUri', () => {
 
     expect(resolveModelUri(config, 'embed')).toContain('bge-m3');
     expect(resolveModelUri(config, 'rerank')).toContain('bge-reranker');
-    expect(resolveModelUri(config, 'gen')).toContain('Qwen2.5');
+    expect(resolveModelUri(config, 'gen')).toContain('SmolLM3');
   });
 
   test('returns override when provided', () => {
@@ -113,8 +113,9 @@ describe('listPresets', () => {
     const presets = listPresets(config);
 
     expect(presets).toHaveLength(DEFAULT_MODEL_PRESETS.length);
-    expect(presets.map((p) => p.id)).toContain('multilingual');
-    expect(presets.map((p) => p.id)).toContain('qwen');
+    expect(presets.map((p) => p.id)).toContain('slim');
+    expect(presets.map((p) => p.id)).toContain('balanced');
+    expect(presets.map((p) => p.id)).toContain('quality');
   });
 
   test('returns custom presets', () => {
@@ -142,10 +143,10 @@ describe('listPresets', () => {
 describe('getPreset', () => {
   test('returns preset by ID', () => {
     const config = makeConfig();
-    const preset = getPreset(config, 'qwen');
+    const preset = getPreset(config, 'quality');
 
     expect(preset).toBeDefined();
-    expect(preset?.id).toBe('qwen');
+    expect(preset?.id).toBe('quality');
   });
 
   test('returns undefined for unknown ID', () => {

@@ -77,8 +77,11 @@ export type RerankScore = {
 
 export type EmbeddingPort = {
   readonly modelUri: string;
+  /** Initialize the embedding context (loads model). Call before dimensions(). */
+  init(): Promise<LlmResult<void>>;
   embed(text: string): Promise<LlmResult<number[]>>;
   embedBatch(texts: string[]): Promise<LlmResult<number[][]>>;
+  /** Returns embedding dimensions. Must call init() first. */
   dimensions(): number;
   dispose(): Promise<void>;
 };

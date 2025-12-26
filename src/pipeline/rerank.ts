@@ -80,17 +80,37 @@ export async function rerankCandidates(
   candidates: FusionCandidate[],
   options: RerankOptions = {}
 ): Promise<RerankResult> {
+  // Early return for empty candidates
+  if (candidates.length === 0) {
+    return { candidates: [], reranked: false };
+  }
+
   const { rerankPort, store } = deps;
   const maxCandidates = options.maxCandidates ?? 20;
   const schedule = options.blendingSchedule ?? DEFAULT_BLENDING_SCHEDULE;
 
-  // If no reranker, return candidates as-is with null rerank scores
+  // Normalize fusion scores to 0-1 range across ALL candidates for stability.
+  // This ensures blendedScore is always in [0,1] regardless of reranker availability.
+  const fusionScoresAll = candidates.map((c) => c.fusionScore);
+  const minFusionAll = Math.min(...fusionScoresAll);
+  const maxFusionAll = Math.max(...fusionScoresAll);
+  const fusionRangeAll = maxFusionAll - minFusionAll;
+
+  function normalizeFusionScore(score: number): number {
+    if (fusionRangeAll < 1e-9) {
+      return 1; // tie for best
+    }
+    const v = (score - minFusionAll) / fusionRangeAll;
+    return Math.max(0, Math.min(1, v));
+  }
+
+  // If no reranker, return candidates with normalized fusion scores
   if (!rerankPort) {
     return {
-      candidates: candidates.map((c, _i) => ({
+      candidates: candidates.map((c) => ({
         ...c,
         rerankScore: null,
-        blendedScore: c.fusionScore,
+        blendedScore: normalizeFusionScore(c.fusionScore),
       })),
       reranked: false,
     };
@@ -127,37 +147,25 @@ export async function rerankCandidates(
   const rerankResult = await rerankPort.rerank(query, texts);
 
   if (!rerankResult.ok) {
-    // Graceful degradation - return fusion scores only
+    // Graceful degradation - return normalized fusion scores
     return {
       candidates: candidates.map((c) => ({
         ...c,
         rerankScore: null,
-        blendedScore: c.fusionScore,
+        blendedScore: normalizeFusionScore(c.fusionScore),
       })),
       reranked: false,
     };
   }
 
-  // Normalize fusion scores to 0-1 range for blending compatibility
-  // RRF scores are ~1/(k+rank) which is ~0.016 at best for k=60
-  // We use min-max normalization across the candidate set
-  const fusionScores = toRerank.map((c) => c.fusionScore);
-  const minFusion = Math.min(...fusionScores);
-  const maxFusion = Math.max(...fusionScores);
-  const fusionRange = maxFusion - minFusion;
-
-  function normalizeFusionScore(score: number): number {
-    if (fusionRange < 1e-9) {
-      return 0.5; // All same score, use midpoint
-    }
-    return (score - minFusion) / fusionRange;
-  }
-
   // Map rerank scores to candidates
-  const rerankScores = rerankResult.value;
+  // Note: We use normalizeFusionScore defined above (across ALL candidates)
+  // Build index->score map for O(1) lookup instead of O(n) find per candidate
+  const scoreByIndex = new Map(
+    rerankResult.value.map((s) => [s.index, s.score])
+  );
   const rerankedCandidates: RerankedCandidate[] = toRerank.map((c, i) => {
-    const score = rerankScores.find((s) => s.index === i);
-    const rerankScore = score?.score ?? null;
+    const rerankScore = scoreByIndex.get(i) ?? null;
 
     // Normalize rerank score to 0-1 range (models may return different scales)
     const normalizedRerankScore =
@@ -179,15 +187,18 @@ export async function rerankCandidates(
   });
 
   // Add remaining candidates (not reranked)
-  // These get normalized fusion scores but stay below reranked candidates
+  // These get normalized fusion scores with penalty but clamped to [0,1]
   const allCandidates: RerankedCandidate[] = [
     ...rerankedCandidates,
-    ...remaining.map((c) => ({
-      ...c,
-      rerankScore: null,
-      // Apply 0.5x penalty to remaining (they weren't good enough to rerank)
-      blendedScore: normalizeFusionScore(c.fusionScore) * 0.5,
-    })),
+    ...remaining.map((c) => {
+      const base = normalizeFusionScore(c.fusionScore);
+      return {
+        ...c,
+        rerankScore: null,
+        // Apply 0.5x penalty and clamp to [0,1]
+        blendedScore: Math.max(0, Math.min(1, base * 0.5)),
+      };
+    }),
   ];
 
   // Sort by blended score

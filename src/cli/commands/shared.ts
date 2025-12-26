@@ -74,6 +74,10 @@ export async function initStore(
     };
   }
 
+  // Ensure data directory exists (may have been deleted by reset)
+  const { ensureDirectories } = await import('../../config');
+  await ensureDirectories();
+
   // Open database
   const store = new SqliteAdapter();
   const dbPath = getIndexDbPath();

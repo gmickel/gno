@@ -501,7 +501,7 @@ Human-friendly query with citations-first output and optional grounded answer.
 
 **Synopsis:**
 ```
-gno ask <query> [-n <num>] [-c <collection>] [--lang <bcp47>] [--answer] [--no-answer] [--max-answer-tokens <n>] [--json|--md]
+gno ask <query> [-n <num>] [-c <collection>] [--lang <bcp47>] [--answer] [--no-answer] [--max-answer-tokens <n>] [--show-sources] [--json|--md]
 ```
 
 **Options:**
@@ -510,6 +510,7 @@ gno ask <query> [-n <num>] [-c <collection>] [--lang <bcp47>] [--answer] [--no-a
 | `--answer` | boolean | false | Generate short grounded answer |
 | `--no-answer` | boolean | false | Force retrieval-only output |
 | `--max-answer-tokens` | integer | config | Cap answer generation tokens |
+| `--show-sources` | boolean | false | Show all retrieved sources (not just cited) |
 
 **Output (JSON):**
 See [Output Schemas](./output-schemas/ask.schema.json)
@@ -729,13 +730,44 @@ gno models list [--json|--md]
 **Output (JSON):**
 ```json
 {
-  "embed": { "uri": "hf:BAAI/bge-m3", "cached": true, "path": "/path/to/model", "size": 123456789 },
-  "rerank": { "uri": "hf:BAAI/bge-reranker-v2-m3", "cached": false, "path": null },
-  "gen": { "uri": "hf:Qwen/Qwen2.5-0.5B-Instruct", "cached": true, "path": "/path/to/model", "size": 987654321 },
-  "cacheDir": "/path/to/cache/models",
-  "totalSize": 1111111110
+  "activePreset": "balanced",
+  "presets": [
+    { "id": "slim", "name": "Slim (Fast, ~1GB)", "active": false },
+    { "id": "balanced", "name": "Balanced (Default, ~2GB)", "active": true },
+    { "id": "quality", "name": "Quality (Best Answers, ~2.5GB)", "active": false }
+  ],
+  "embed": { "uri": "hf:gpustack/bge-m3-GGUF/bge-m3-Q4_K_M.gguf", "cached": true },
+  "rerank": { "uri": "hf:gpustack/bge-reranker-v2-m3-GGUF/bge-reranker-v2-m3-Q4_K_M.gguf", "cached": false },
+  "gen": { "uri": "hf:ggml-org/SmolLM3-3B-GGUF/SmolLM3-Q4_K_M.gguf", "cached": true }
 }
 ```
+
+---
+
+### gno models use
+
+Switch active model preset.
+
+**Synopsis:**
+```
+gno models use <preset>
+```
+
+**Arguments:**
+| Arg | Type | Description |
+|-----|------|-------------|
+| `<preset>` | string | Preset ID: `slim`, `balanced`, or `quality` |
+
+**Presets:**
+| ID | Gen Model | RAM | Use Case |
+|----|-----------|-----|----------|
+| `slim` | Qwen3-1.7B | ~1GB | Fast queries, limited RAM |
+| `balanced` | SmolLM3-3B | ~2GB | Default, good quality |
+| `quality` | Qwen3-4B-Instruct-2507 | ~2.5GB | Best grounded answers |
+
+**Exit Codes:**
+- 0: Success
+- 1: Unknown preset
 
 ---
 

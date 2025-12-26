@@ -24,7 +24,15 @@ export type ModelsListOptions = {
   md?: boolean;
 };
 
+export type PresetInfo = {
+  id: string;
+  name: string;
+  active: boolean;
+};
+
 export type ModelsListResult = {
+  activePreset: string;
+  presets: PresetInfo[];
   embed: ModelStatus;
   rerank: ModelStatus;
   gen: ModelStatus;
@@ -66,9 +74,12 @@ export async function modelsList(
 ): Promise<ModelsListResult> {
   // Load config (use defaults if not initialized)
   const { createDefaultConfig } = await import('../../../config');
+  const { getModelConfig, listPresets } = await import('../../../llm/registry');
   const configResult = await loadConfig(options.configPath);
   const config = configResult.ok ? configResult.value : createDefaultConfig();
 
+  const modelConfig = getModelConfig(config);
+  const allPresets = listPresets(config);
   const preset = getActivePreset(config);
   const cache = new ModelCache(getModelsCachePath());
 
@@ -79,6 +90,12 @@ export async function modelsList(
   ]);
 
   return {
+    activePreset: modelConfig.activePreset,
+    presets: allPresets.map((p) => ({
+      id: p.id,
+      name: p.name,
+      active: p.id === modelConfig.activePreset,
+    })),
     embed,
     rerank,
     gen,
@@ -107,7 +124,16 @@ function formatBytes(bytes: number): string {
 function formatTerminal(result: ModelsListResult): string {
   const lines: string[] = [];
 
-  lines.push('Models:');
+  // Show presets
+  lines.push('Presets:');
+  for (const p of result.presets) {
+    const marker = p.active ? '>' : ' ';
+    lines.push(`  ${marker} ${p.id}: ${p.name}`);
+  }
+  lines.push('');
+
+  // Show models for active preset
+  lines.push(`Models (${result.activePreset}):`);
 
   const statusIcon = (s: ModelStatus) => (s.cached ? '✓' : '✗');
 
@@ -134,6 +160,9 @@ function formatTerminal(result: ModelsListResult): string {
     lines.push('');
     lines.push('Run: gno models pull --all');
   }
+
+  lines.push('');
+  lines.push('Switch preset: gno models use <preset>');
 
   return lines.join('\n');
 }

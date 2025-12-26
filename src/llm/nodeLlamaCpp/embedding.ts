@@ -29,6 +29,8 @@ type LlamaEmbeddingContext = Awaited<
 
 export class NodeLlamaCppEmbedding implements EmbeddingPort {
   private context: LlamaEmbeddingContext | null = null;
+  private contextPromise: Promise<LlmResult<LlamaEmbeddingContext>> | null =
+    null;
   private dims: number | null = null;
   private readonly manager: ModelManager;
   readonly modelUri: string;
@@ -38,6 +40,14 @@ export class NodeLlamaCppEmbedding implements EmbeddingPort {
     this.manager = manager;
     this.modelUri = modelUri;
     this.modelPath = modelPath;
+  }
+
+  async init(): Promise<LlmResult<void>> {
+    const ctx = await this.getContext();
+    if (!ctx.ok) {
+      return ctx;
+    }
+    return { ok: true, value: undefined };
   }
 
   async embed(text: string): Promise<LlmResult<number[]>> {
@@ -87,12 +97,14 @@ export class NodeLlamaCppEmbedding implements EmbeddingPort {
 
   dimensions(): number {
     if (this.dims === null) {
-      throw new Error('Call embed() first to initialize dimensions');
+      throw new Error('Call init() or embed() first to initialize dimensions');
     }
     return this.dims;
   }
 
   async dispose(): Promise<void> {
+    // Clear promise first to prevent reuse of disposed context
+    this.contextPromise = null;
     if (this.context) {
       try {
         await this.context.dispose();
@@ -107,17 +119,29 @@ export class NodeLlamaCppEmbedding implements EmbeddingPort {
   // Private
   // ───────────────────────────────────────────────────────────────────────────
 
-  private async getContext(): Promise<LlmResult<LlamaEmbeddingContext>> {
+  private getContext(): Promise<LlmResult<LlamaEmbeddingContext>> {
+    // Return cached context
     if (this.context) {
-      return { ok: true, value: this.context };
+      return Promise.resolve({ ok: true, value: this.context });
     }
 
+    // Reuse in-flight promise to prevent concurrent context creation
+    if (this.contextPromise) {
+      return this.contextPromise;
+    }
+
+    this.contextPromise = this.createContext();
+    return this.contextPromise;
+  }
+
+  private async createContext(): Promise<LlmResult<LlamaEmbeddingContext>> {
     const model = await this.manager.loadModel(
       this.modelPath,
       this.modelUri,
       'embed'
     );
     if (!model.ok) {
+      this.contextPromise = null; // Allow retry
       return model;
     }
 
@@ -125,8 +149,16 @@ export class NodeLlamaCppEmbedding implements EmbeddingPort {
       // Cast to access createEmbeddingContext
       const llamaModel = model.value.model as LlamaModel;
       this.context = await llamaModel.createEmbeddingContext();
+
+      // Cache dimensions from model (available without running embed)
+      const size = llamaModel.embeddingVectorSize;
+      if (this.dims === null && typeof size === 'number' && size > 0) {
+        this.dims = size;
+      }
+
       return { ok: true, value: this.context };
     } catch (e) {
+      this.contextPromise = null; // Allow retry
       return { ok: false, error: inferenceFailedError(this.modelUri, e) };
     }
   }

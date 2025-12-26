@@ -2,10 +2,29 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "gno://schemas/models-list@1.0",
   "title": "GNO Models List",
-  "description": "List of configured and cached models",
+  "description": "List of configured and cached models with preset information",
   "type": "object",
-  "required": ["embed", "rerank", "gen", "cacheDir", "totalSize"],
+  "required": [
+    "activePreset",
+    "presets",
+    "embed",
+    "rerank",
+    "gen",
+    "cacheDir",
+    "totalSize"
+  ],
   "properties": {
+    "activePreset": {
+      "type": "string",
+      "description": "ID of the currently active model preset"
+    },
+    "presets": {
+      "type": "array",
+      "description": "Available model presets",
+      "items": {
+        "$ref": "#/$defs/presetInfo"
+      }
+    },
     "embed": {
       "$ref": "#/$defs/modelStatus",
       "description": "Embedding model status"
@@ -29,6 +48,24 @@
     }
   },
   "$defs": {
+    "presetInfo": {
+      "type": "object",
+      "required": ["id", "name", "active"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Preset identifier (e.g., slim, balanced, quality)"
+        },
+        "name": {
+          "type": "string",
+          "description": "Human-readable preset name"
+        },
+        "active": {
+          "type": "boolean",
+          "description": "Whether this preset is currently active"
+        }
+      }
+    },
     "modelStatus": {
       "type": "object",
       "required": ["uri", "cached", "path"],

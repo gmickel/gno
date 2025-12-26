@@ -309,6 +309,7 @@ function wireSearchCommands(program: Command): void {
     .option('-c, --collection <name>', 'filter by collection')
     .option('--lang <code>', 'language hint (BCP-47)')
     .option('--full', 'include full content')
+    .option('--line-numbers', 'include line numbers in output')
     .option('--no-expand', 'disable query expansion')
     .option('--no-rerank', 'disable reranking')
     .option('--explain', 'include scoring explanation')
@@ -321,6 +322,17 @@ function wireSearchCommands(program: Command): void {
       const format = getFormat(cmdOpts);
       assertFormatSupported(CMD.query, format);
 
+      // Validate empty query
+      if (!queryText.trim()) {
+        throw new CliError('VALIDATION', 'Query cannot be empty');
+      }
+
+      // Validate minScore range
+      const minScore = parseOptionalFloat('min-score', cmdOpts.minScore);
+      if (minScore !== undefined && (minScore < 0 || minScore > 1)) {
+        throw new CliError('VALIDATION', '--min-score must be between 0 and 1');
+      }
+
       const limit = cmdOpts.limit
         ? parsePositiveInt('limit', cmdOpts.limit)
         : getDefaultLimit(format);
@@ -328,10 +340,11 @@ function wireSearchCommands(program: Command): void {
       const { query, formatQuery } = await import('./commands/query');
       const result = await query(queryText, {
         limit,
-        minScore: parseOptionalFloat('min-score', cmdOpts.minScore),
+        minScore,
         collection: cmdOpts.collection as string | undefined,
         lang: cmdOpts.lang as string | undefined,
         full: Boolean(cmdOpts.full),
+        lineNumbers: Boolean(cmdOpts.lineNumbers),
         noExpand: cmdOpts.expand === false,
         noRerank: cmdOpts.rerank === false,
         explain: Boolean(cmdOpts.explain),
@@ -346,7 +359,11 @@ function wireSearchCommands(program: Command): void {
         throw new CliError('RUNTIME', result.error);
       }
       process.stdout.write(
-        `${formatQuery(result, { json: format === 'json' })}\n`
+        `${formatQuery(result, {
+          format,
+          full: Boolean(cmdOpts.full),
+          lineNumbers: Boolean(cmdOpts.lineNumbers),
+        })}\n`
       );
     });
 
@@ -357,26 +374,42 @@ function wireSearchCommands(program: Command): void {
     .option('-n, --limit <num>', 'max source results')
     .option('-c, --collection <name>', 'filter by collection')
     .option('--lang <code>', 'language hint (BCP-47)')
-    .option('--[no-]answer', 'generate grounded answer', true)
-    .option('--max-tokens <num>', 'max answer tokens', '512')
+    .option('--answer', 'generate short grounded answer')
+    .option('--no-answer', 'force retrieval-only output')
+    .option('--max-answer-tokens <num>', 'max answer tokens')
+    .option('--show-sources', 'show all retrieved sources (not just cited)')
     .option('--json', 'JSON output')
     .option('--md', 'Markdown output')
     .action(async (queryText: string, cmdOpts: Record<string, unknown>) => {
       const format = getFormat(cmdOpts);
       assertFormatSupported(CMD.ask, format);
 
+      // Validate empty query
+      if (!queryText.trim()) {
+        throw new CliError('VALIDATION', 'Query cannot be empty');
+      }
+
       const limit = cmdOpts.limit
         ? parsePositiveInt('limit', cmdOpts.limit)
         : getDefaultLimit(format);
 
+      // Parse max-answer-tokens (optional, defaults to 512 in command impl)
+      const maxAnswerTokens = cmdOpts.maxAnswerTokens
+        ? parsePositiveInt('max-answer-tokens', cmdOpts.maxAnswerTokens)
+        : undefined;
+
       const { ask, formatAsk } = await import('./commands/ask');
+      const showSources = Boolean(cmdOpts.showSources);
       const result = await ask(queryText, {
         limit,
         collection: cmdOpts.collection as string | undefined,
         lang: cmdOpts.lang as string | undefined,
-        answer: cmdOpts.answer !== false,
-        noAnswer: cmdOpts.answer === false,
-        maxAnswerTokens: parsePositiveInt('max-tokens', cmdOpts.maxTokens),
+        // Per spec: --answer defaults to false, --no-answer forces retrieval-only
+        // Commander creates separate cmdOpts.noAnswer for --no-answer flag
+        answer: Boolean(cmdOpts.answer),
+        noAnswer: Boolean(cmdOpts.noAnswer),
+        maxAnswerTokens,
+        showSources,
         json: format === 'json',
         md: format === 'md',
       });
@@ -385,7 +418,7 @@ function wireSearchCommands(program: Command): void {
         throw new CliError('RUNTIME', result.error);
       }
       process.stdout.write(
-        `${formatAsk(result, { json: format === 'json' })}\n`
+        `${formatAsk(result, { json: format === 'json', md: format === 'md', showSources })}\n`
       );
     });
 }
@@ -711,6 +744,22 @@ function wireManagementCommands(program: Command): void {
       process.stdout.write(
         `${formatModelsList(result, { json: format === 'json' })}\n`
       );
+    });
+
+  modelsCmd
+    .command('use')
+    .description('Switch active model preset')
+    .argument('<preset>', 'preset ID (slim, balanced, quality)')
+    .action(async (preset: string) => {
+      const globals = getGlobals();
+      const { modelsUse, formatModelsUse } = await import(
+        './commands/models/use'
+      );
+      const result = await modelsUse(preset, { configPath: globals.config });
+      if (!result.success) {
+        throw new CliError('VALIDATION', result.error);
+      }
+      process.stdout.write(`${formatModelsUse(result)}\n`);
     });
 
   modelsCmd

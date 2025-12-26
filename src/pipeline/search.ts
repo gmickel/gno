@@ -24,7 +24,9 @@ import type {
  * After normalization: 1 = best match, 0 = worst match in result set.
  */
 function normalizeBm25Scores(results: SearchResult[]): void {
-  if (results.length === 0) return;
+  if (results.length === 0) {
+    return;
+  }
 
   // Raw scores: smaller (more negative) is better
   const scores = results.map((r) => r.score);
