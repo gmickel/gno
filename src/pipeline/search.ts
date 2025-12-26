@@ -40,9 +40,9 @@ function normalizeBm25Scores(results: SearchResult[]): void {
     return;
   }
 
-  // Map: best -> 1, worst -> 0
+  // Map: best -> 1, worst -> 0 (clamp for floating point safety)
   for (const r of results) {
-    r.score = (worst - r.score) / range;
+    r.score = Math.max(0, Math.min(1, (worst - r.score) / range));
   }
 }
 

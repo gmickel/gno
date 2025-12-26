@@ -96,9 +96,9 @@ async function checkBm25Strength(
     return 0; // All scores equal, no clear winner
   }
 
-  // Gap = how much worse is #2 relative to the range
+  // Gap = how much worse is #2 relative to the range (clamped for safety)
   const gap = (second - best) / range;
-  return Math.min(1, gap);
+  return Math.max(0, Math.min(1, gap));
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
