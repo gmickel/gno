@@ -182,7 +182,7 @@ export const DEFAULT_MODEL_PRESETS: ModelPreset[] = [
     embed: 'hf:gpustack/bge-m3-GGUF/bge-m3-Q4_K_M.gguf',
     rerank:
       'hf:gpustack/bge-reranker-v2-m3-GGUF/bge-reranker-v2-m3-Q4_K_M.gguf',
-    gen: 'hf:ggml-org/SmolLM3-3B-GGUF/SmolLM3-3B-Q5_K_M.gguf',
+    gen: 'hf:ggml-org/SmolLM3-3B-GGUF/SmolLM3-Q4_K_M.gguf',
   },
   {
     id: 'quality',
