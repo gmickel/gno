@@ -1,7 +1,9 @@
 /**
  * SQLite setup for extension support.
- * Bun's bundled SQLite doesn't support extensions.
- * This module configures Bun to use system SQLite (Homebrew) when available.
+ *
+ * Platform behavior:
+ * - Linux/Windows: Bun's bundled SQLite supports extensions natively
+ * - macOS: Apple's SQLite disables extension loading, requires custom SQLite
  *
  * MUST be imported before any Database is created.
  *
@@ -14,59 +16,111 @@ import { existsSync } from 'node:fs';
 // node:os: platform detection (no Bun equivalent)
 import { platform } from 'node:os';
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Types
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * How SQLite extensions are loaded on this platform:
+ * - 'native': Bundled SQLite supports extensions (Linux/Windows)
+ * - 'custom': Custom SQLite library loaded successfully (macOS with Homebrew)
+ * - 'unavailable': Extension loading not possible
+ */
+export type ExtensionLoadingMode = 'native' | 'custom' | 'unavailable';
+
+/**
+ * Record of a SQLite load attempt for diagnostics.
+ */
+export type LoadAttempt = { path: string; error: string };
+
+// ─────────────────────────────────────────────────────────────────────────────
+// State
+// ─────────────────────────────────────────────────────────────────────────────
+
 // Possible paths to Homebrew SQLite with extension support
 const SQLITE_PATHS = [
   '/opt/homebrew/opt/sqlite3/lib/libsqlite3.dylib', // macOS Apple Silicon
   '/usr/local/opt/sqlite3/lib/libsqlite3.dylib', // macOS Intel
 ];
 
-let customSqliteLoaded = false;
+let setupCompleted = false;
 let customSqlitePath: string | null = null;
+const loadAttempts: LoadAttempt[] = [];
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Setup
+// ─────────────────────────────────────────────────────────────────────────────
 
 /**
  * Configure Bun to use system SQLite with extension support.
  * Safe to call multiple times - only runs once.
  */
 function setupCustomSqlite(): void {
-  if (customSqliteLoaded) {
+  if (setupCompleted) {
     return;
   }
 
-  // Only attempt on macOS
+  // Linux/Windows: bundled SQLite supports extensions natively
   if (platform() !== 'darwin') {
-    customSqliteLoaded = true;
+    setupCompleted = true;
     return;
   }
 
+  // macOS: try Homebrew paths
   for (const path of SQLITE_PATHS) {
-    if (existsSync(path)) {
-      try {
-        Database.setCustomSQLite(path);
-        customSqlitePath = path;
-        customSqliteLoaded = true;
-        return;
-      } catch {
-        // Failed to load, try next path
-      }
+    if (!existsSync(path)) {
+      loadAttempts.push({ path, error: 'file not found' });
+      continue;
+    }
+    try {
+      Database.setCustomSQLite(path);
+      customSqlitePath = path;
+      setupCompleted = true;
+      return;
+    } catch (e) {
+      const message = e instanceof Error ? e.message : String(e);
+      loadAttempts.push({ path, error: message });
     }
   }
 
-  customSqliteLoaded = true;
+  setupCompleted = true;
 }
 
 // Run setup immediately on import
 setupCustomSqlite();
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Public API
+// ─────────────────────────────────────────────────────────────────────────────
+
 /**
- * Check if custom SQLite with extension support is available.
+ * Get the extension loading mode for this platform.
  */
-export function hasExtensionSupport(): boolean {
-  return customSqlitePath !== null;
+export function getExtensionLoadingMode(): ExtensionLoadingMode {
+  if (platform() !== 'darwin') {
+    return 'native'; // Linux/Windows: bundled SQLite supports extensions
+  }
+  return customSqlitePath ? 'custom' : 'unavailable';
 }
 
 /**
- * Get the path to the custom SQLite library, or null if using bundled.
+ * Get the path to the custom SQLite library, or null if using bundled/native.
  */
 export function getCustomSqlitePath(): string | null {
   return customSqlitePath;
+}
+
+/**
+ * Get all SQLite load attempts for diagnostics.
+ * Useful for debugging why extension loading failed.
+ */
+export function getLoadAttempts(): LoadAttempt[] {
+  return loadAttempts.map((a) => ({ ...a }));
+}
+
+/**
+ * @deprecated Use getExtensionLoadingMode() !== 'unavailable' instead
+ */
+export function hasExtensionSupport(): boolean {
+  return getExtensionLoadingMode() !== 'unavailable';
 }

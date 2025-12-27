@@ -54,6 +54,8 @@ export type VectorIndexPort = {
   readonly model: string;
   /** Vector dimensions */
   readonly dimensions: number;
+  /** Error message if sqlite-vec failed to load (for diagnostics) */
+  readonly loadError?: string;
 
   // ─────────────────────────────────────────────────────────────────────────
   // Storage (always works, uses content_vectors table)

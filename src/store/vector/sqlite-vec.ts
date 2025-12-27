@@ -76,12 +76,14 @@ export async function createVectorIndexPort(
 
   // Try loading sqlite-vec extension (ESM dynamic import)
   let searchAvailable = false;
+  let loadError: string | undefined;
   try {
     const sqliteVec = await import('sqlite-vec');
     sqliteVec.load(db);
     searchAvailable = true;
-  } catch {
+  } catch (e) {
     // sqlite-vec not available - storage still works, search disabled
+    loadError = e instanceof Error ? e.message : String(e);
   }
 
   // Create per-model vec0 table if extension available
@@ -94,9 +96,10 @@ export async function createVectorIndexPort(
           embedding FLOAT[${dimensions}] distance_metric=${distanceMetric}
         );
       `);
-    } catch {
+    } catch (e) {
       // Vec table creation failed - degrade to storage-only mode
       searchAvailable = false;
+      loadError = e instanceof Error ? e.message : String(e);
     }
   }
 
@@ -134,6 +137,7 @@ export async function createVectorIndexPort(
     searchAvailable,
     model,
     dimensions,
+    loadError,
 
     upsertVectors(rows: VectorRow[]): Promise<StoreResult<void>> {
       // 1. Always store in content_vectors first (critical path)
