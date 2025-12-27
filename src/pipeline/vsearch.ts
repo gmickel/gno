@@ -7,7 +7,7 @@
 
 import type { Config } from '../config/types';
 import type { EmbeddingPort } from '../llm/types';
-import type { ChunkRow, StorePort } from '../store/types';
+import type { StorePort } from '../store/types';
 import { err, ok } from '../store/types';
 import type { VectorIndexPort } from '../store/vector/types';
 import type { SearchOptions, SearchResult, SearchResults } from './types';
@@ -84,9 +84,16 @@ export async function searchVectorWithEmbedding(
     }
   }
 
-  // Cache for chunks and docs to avoid N+1 queries
-  const chunkCache = new Map<string, ChunkRow[]>();
+  // Cache docs to avoid N+1 queries
   const docByMirrorHash = await buildDocumentMap(store, options.collection);
+
+  // Pre-fetch all chunks in one batch query (eliminates N+1)
+  const uniqueHashes = [...new Set(vecResults.map((v) => v.mirrorHash))];
+  const chunksMapResult = await store.getChunksBatch(uniqueHashes);
+  if (!chunksMapResult.ok) {
+    return err('QUERY_FAILED', chunksMapResult.error.message);
+  }
+  const chunksMap = chunksMapResult.value;
 
   // Build search results
   const results: SearchResult[] = [];
@@ -103,17 +110,8 @@ export async function searchVectorWithEmbedding(
       continue;
     }
 
-    // Get chunks (cached)
-    let chunks = chunkCache.get(vec.mirrorHash);
-    if (!chunks) {
-      const chunksResult = await store.getChunks(vec.mirrorHash);
-      if (!chunksResult.ok) {
-        continue;
-      }
-      chunks = chunksResult.value;
-      chunkCache.set(vec.mirrorHash, chunks);
-    }
-
+    // Get chunks from batch result
+    const chunks = chunksMap.get(vec.mirrorHash) ?? [];
     const chunk = chunks.find((c) => c.seq === vec.seq);
     if (!chunk) {
       continue;

@@ -4,8 +4,12 @@ import { rerankCandidates } from '../../src/pipeline/rerank';
 import type { FusionCandidate } from '../../src/pipeline/types';
 
 // Mock store with minimal implementation for tests
+// Uses getChunksBatch; getChunks throws to verify N+1 elimination
 const mockStore = {
-  getChunks: async () => ({ ok: true as const, value: [] }),
+  getChunks: () => {
+    throw new Error('N+1 detected: getChunks should not be called');
+  },
+  getChunksBatch: async () => ({ ok: true as const, value: new Map() }),
 };
 
 // Helper to create test candidates
@@ -163,6 +167,52 @@ describe('rerank normalization', () => {
       // Remaining candidates should have null rerankScore
       const remainingCandidates = result.candidates.slice(5);
       for (const c of remainingCandidates) {
+        expect(c.rerankScore).toBeNull();
+      }
+    });
+  });
+
+  describe('chunk batch fetch failure', () => {
+    test('degrades to fusion-only when getChunksBatch fails', async () => {
+      // Mock reranker that should not be called
+      const successReranker = {
+        rerank: () => {
+          throw new Error('rerank should not be called on chunk fetch failure');
+        },
+        dispose: async () => {
+          // no-op for test
+        },
+      };
+
+      // Mock store where getChunksBatch fails
+      const failingStore = {
+        getChunks: () => {
+          throw new Error('N+1 detected: getChunks should not be called');
+        },
+        getChunksBatch: async () => ({
+          ok: false as const,
+          error: { code: 'QUERY_FAILED', message: 'DB error' },
+        }),
+      };
+
+      const candidates = createCandidates(10, (i) => 1 / (60 + i));
+
+      const result = await rerankCandidates(
+        {
+          rerankPort: successReranker as never,
+          store: failingStore as never,
+        },
+        'test query',
+        candidates
+      );
+
+      // Should degrade gracefully, not call reranker
+      expect(result.reranked).toBe(false);
+
+      // All blendedScores should be in [0,1]
+      for (const c of result.candidates) {
+        expect(c.blendedScore).toBeGreaterThanOrEqual(0);
+        expect(c.blendedScore).toBeLessThanOrEqual(1);
         expect(c.rerankScore).toBeNull();
       }
     });

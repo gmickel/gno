@@ -120,28 +120,30 @@ export async function rerankCandidates(
   const toRerank = candidates.slice(0, maxCandidates);
   const remaining = candidates.slice(maxCandidates);
 
-  // Get chunk texts for reranking (with cache to avoid duplicate fetches)
-  const texts: string[] = [];
-  const chunksCache = new Map<
-    string,
-    Awaited<ReturnType<typeof store.getChunks>>
-  >();
+  // Pre-fetch all chunks in one batch query (eliminates N+1)
+  const uniqueHashes = [...new Set(toRerank.map((c) => c.mirrorHash))];
+  const chunksMapResult = await store.getChunksBatch(uniqueHashes);
 
-  for (const c of toRerank) {
-    // Get or fetch chunks for this mirrorHash
-    let chunksResult = chunksCache.get(c.mirrorHash);
-    if (!chunksResult) {
-      chunksResult = await store.getChunks(c.mirrorHash);
-      chunksCache.set(c.mirrorHash, chunksResult);
-    }
-
-    if (chunksResult.ok) {
-      const chunk = chunksResult.value.find((ch) => ch.seq === c.seq);
-      texts.push(chunk?.text ?? '');
-    } else {
-      texts.push('');
-    }
+  // If chunk fetch fails, degrade gracefully (fusion-only)
+  // Don't rerank on empty/missing texts - produces non-deterministic results
+  if (!chunksMapResult.ok) {
+    return {
+      candidates: candidates.map((c) => ({
+        ...c,
+        rerankScore: null,
+        blendedScore: normalizeFusionScore(c.fusionScore),
+      })),
+      reranked: false,
+    };
   }
+  const chunksMap = chunksMapResult.value;
+
+  // Build texts array for reranking
+  const texts: string[] = toRerank.map((c) => {
+    const chunks = chunksMap.get(c.mirrorHash) ?? [];
+    const chunk = chunks.find((ch) => ch.seq === c.seq);
+    return chunk?.text ?? '';
+  });
 
   // Run reranking
   const rerankResult = await rerankPort.rerank(query, texts);

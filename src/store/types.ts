@@ -418,6 +418,16 @@ export type StorePort = {
    */
   getChunks(mirrorHash: string): Promise<StoreResult<ChunkRow[]>>;
 
+  /**
+   * Batch fetch chunks for multiple mirror hashes.
+   * Returns Map where each ChunkRow[] is sorted by seq ascending.
+   * Missing hashes are not present in the returned Map.
+   * Note: Map is not JSON-serializable; internal pipeline optimization only.
+   */
+  getChunksBatch(
+    mirrorHashes: string[]
+  ): Promise<StoreResult<Map<string, ChunkRow[]>>>;
+
   // ─────────────────────────────────────────────────────────────────────────
   // FTS Search
   // ─────────────────────────────────────────────────────────────────────────

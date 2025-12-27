@@ -154,7 +154,8 @@ export async function searchBm25(
   // Build results
   const results: SearchResult[] = [];
 
-  // Cache for chunks to avoid N+1 queries
+  // TODO: Refactor to use store.getChunksBatch() for N+1 elimination
+  // (deferred - FTS JOIN already handles main query efficiently)
   const chunkCache = new Map<string, ChunkRow[]>();
 
   // For --full, track best score per docid to de-dupe

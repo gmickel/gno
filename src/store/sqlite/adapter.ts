@@ -570,6 +570,58 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
     }
   }
 
+  async getChunksBatch(
+    mirrorHashes: string[]
+  ): Promise<StoreResult<Map<string, ChunkRow[]>>> {
+    try {
+      // Early return for empty input
+      if (mirrorHashes.length === 0) {
+        return ok(new Map());
+      }
+
+      // Dedupe and filter empty strings
+      const uniqueHashes = [
+        ...new Set(mirrorHashes.filter((h) => h.trim().length > 0)),
+      ];
+      if (uniqueHashes.length === 0) {
+        return ok(new Map());
+      }
+
+      const db = this.ensureOpen();
+      const result = new Map<string, ChunkRow[]>();
+
+      // SQLite SQLITE_LIMIT_VARIABLE_NUMBER defaults to 999
+      // Reserve 99 for potential future filter params (collection, language, etc.)
+      const SQLITE_MAX_PARAMS = 900;
+
+      // Batch queries to respect SQLite parameter limit
+      for (let i = 0; i < uniqueHashes.length; i += SQLITE_MAX_PARAMS) {
+        const batch = uniqueHashes.slice(i, i + SQLITE_MAX_PARAMS);
+        const placeholders = batch.map(() => '?').join(',');
+        const sql = `SELECT * FROM content_chunks
+                     WHERE mirror_hash IN (${placeholders})
+                     ORDER BY mirror_hash, seq`;
+        const rows = db.query<DbChunkRow, string[]>(sql).all(...batch);
+
+        // Group by mirrorHash, preserving seq order from ORDER BY
+        for (const row of rows) {
+          const mapped = mapChunkRow(row);
+          const existing = result.get(mapped.mirrorHash) ?? [];
+          existing.push(mapped);
+          result.set(mapped.mirrorHash, existing);
+        }
+      }
+
+      return ok(result);
+    } catch (cause) {
+      return err(
+        'QUERY_FAILED',
+        cause instanceof Error ? cause.message : 'Failed to get chunks batch',
+        cause
+      );
+    }
+  }
+
   // ─────────────────────────────────────────────────────────────────────────
   // FTS Search
   // ─────────────────────────────────────────────────────────────────────────

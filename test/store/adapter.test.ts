@@ -531,6 +531,154 @@ describe('SqliteAdapter', () => {
     });
   });
 
+  describe('getChunksBatch', () => {
+    beforeEach(async () => {
+      await adapter.open(dbPath, 'unicode61');
+    });
+
+    test('returns empty Map for empty input', async () => {
+      const result = await adapter.getChunksBatch([]);
+      expect(result.ok).toBe(true);
+      if (!result.ok) {
+        return;
+      }
+      expect(result.value.size).toBe(0);
+    });
+
+    test('returns empty Map for only empty/whitespace strings', async () => {
+      const result = await adapter.getChunksBatch(['', '  ', '\t']);
+      expect(result.ok).toBe(true);
+      if (!result.ok) {
+        return;
+      }
+      expect(result.value.size).toBe(0);
+    });
+
+    test('single hash equivalence to getChunks', async () => {
+      await adapter.upsertContent('batch_test', 'content');
+      const chunks: ChunkInput[] = [
+        { seq: 0, pos: 0, text: 'chunk0', startLine: 1, endLine: 1 },
+        { seq: 1, pos: 7, text: 'chunk1', startLine: 2, endLine: 2 },
+      ];
+      await adapter.upsertChunks('batch_test', chunks);
+
+      // Compare single getChunks vs getChunksBatch
+      const single = await adapter.getChunks('batch_test');
+      const batch = await adapter.getChunksBatch(['batch_test']);
+
+      expect(single.ok).toBe(true);
+      expect(batch.ok).toBe(true);
+      if (!(single.ok && batch.ok)) {
+        return;
+      }
+
+      const batchChunks = batch.value.get('batch_test') ?? [];
+      expect(batchChunks).toEqual(single.value);
+    });
+
+    test('multiple unique hashes with ordering preserved', async () => {
+      // Create content for two hashes
+      await adapter.upsertContent('hash_a', 'a');
+      await adapter.upsertContent('hash_b', 'b');
+
+      await adapter.upsertChunks('hash_a', [
+        { seq: 0, pos: 0, text: 'a0', startLine: 1, endLine: 1 },
+        { seq: 1, pos: 2, text: 'a1', startLine: 2, endLine: 2 },
+      ]);
+      await adapter.upsertChunks('hash_b', [
+        { seq: 0, pos: 0, text: 'b0', startLine: 1, endLine: 1 },
+        { seq: 1, pos: 2, text: 'b1', startLine: 2, endLine: 2 },
+        { seq: 2, pos: 4, text: 'b2', startLine: 3, endLine: 3 },
+      ]);
+
+      const result = await adapter.getChunksBatch(['hash_b', 'hash_a']);
+      expect(result.ok).toBe(true);
+      if (!result.ok) {
+        return;
+      }
+
+      expect(result.value.size).toBe(2);
+
+      const aChunks = result.value.get('hash_a') ?? [];
+      expect(aChunks).toHaveLength(2);
+      expect(aChunks[0]?.seq).toBe(0);
+      expect(aChunks[1]?.seq).toBe(1);
+
+      const bChunks = result.value.get('hash_b') ?? [];
+      expect(bChunks).toHaveLength(3);
+      expect(bChunks[0]?.seq).toBe(0);
+      expect(bChunks[1]?.seq).toBe(1);
+      expect(bChunks[2]?.seq).toBe(2);
+    });
+
+    test('dedups duplicate hashes in input', async () => {
+      await adapter.upsertContent('dedup_hash', 'content');
+      await adapter.upsertChunks('dedup_hash', [
+        { seq: 0, pos: 0, text: 'only', startLine: 1, endLine: 1 },
+      ]);
+
+      const result = await adapter.getChunksBatch([
+        'dedup_hash',
+        'dedup_hash',
+        'dedup_hash',
+      ]);
+      expect(result.ok).toBe(true);
+      if (!result.ok) {
+        return;
+      }
+
+      expect(result.value.size).toBe(1);
+      expect(result.value.get('dedup_hash')?.length).toBe(1);
+    });
+
+    test('mix of existing and non-existing hashes', async () => {
+      await adapter.upsertContent('exists', 'x');
+      await adapter.upsertChunks('exists', [
+        { seq: 0, pos: 0, text: 'data', startLine: 1, endLine: 1 },
+      ]);
+
+      const result = await adapter.getChunksBatch([
+        'exists',
+        'not_here',
+        'also_missing',
+      ]);
+      expect(result.ok).toBe(true);
+      if (!result.ok) {
+        return;
+      }
+
+      // Only 'exists' should be in the map
+      expect(result.value.size).toBe(1);
+      expect(result.value.has('exists')).toBe(true);
+      expect(result.value.has('not_here')).toBe(false);
+    });
+
+    test('large batch (>900 hashes) is correctly batched', async () => {
+      // Create 950 hashes (should split into 2 batches with SQLITE_MAX_PARAMS=900)
+      const hashes: string[] = [];
+      for (let i = 0; i < 950; i++) {
+        const hash = `large_batch_${i}`;
+        hashes.push(hash);
+        await adapter.upsertContent(hash, `content ${i}`);
+        await adapter.upsertChunks(hash, [
+          { seq: 0, pos: 0, text: `chunk ${i}`, startLine: 1, endLine: 1 },
+        ]);
+      }
+
+      const result = await adapter.getChunksBatch(hashes);
+      expect(result.ok).toBe(true);
+      if (!result.ok) {
+        return;
+      }
+
+      expect(result.value.size).toBe(950);
+
+      // Verify first and last entries
+      expect(result.value.get('large_batch_0')?.[0]?.text).toBe('chunk 0');
+      expect(result.value.get('large_batch_949')?.[0]?.text).toBe('chunk 949');
+    });
+  });
+
   describe('status', () => {
     beforeEach(async () => {
       await adapter.open(dbPath, 'unicode61');

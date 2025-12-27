@@ -374,11 +374,12 @@ export async function searchHybrid(
     }
   }
 
-  // Cache chunks by mirrorHash to avoid repeated fetches
-  const chunksCache = new Map<
-    string,
-    Awaited<ReturnType<typeof store.getChunks>>
-  >();
+  // Pre-fetch all chunks in one batch query (eliminates N+1)
+  const chunksMapResult = await store.getChunksBatch([...neededHashes]);
+  if (!chunksMapResult.ok) {
+    return err('QUERY_FAILED', chunksMapResult.error.message);
+  }
+  const chunksMap = chunksMapResult.value;
 
   // Cache full content by mirrorHash for --full mode
   const contentCache = new Map<
@@ -409,18 +410,9 @@ export async function searchHybrid(
       continue;
     }
 
-    // Get or fetch chunks for this mirrorHash (needed for fallback and non-full mode)
-    let chunksResult = chunksCache.get(candidate.mirrorHash);
-    if (!chunksResult) {
-      chunksResult = await store.getChunks(candidate.mirrorHash);
-      chunksCache.set(candidate.mirrorHash, chunksResult);
-    }
-
-    if (!chunksResult.ok) {
-      continue;
-    }
-
-    const chunk = chunksResult.value.find((c) => c.seq === candidate.seq);
+    // Get chunks from batch result
+    const chunks = chunksMap.get(candidate.mirrorHash) ?? [];
+    const chunk = chunks.find((c) => c.seq === candidate.seq);
     if (!chunk) {
       continue;
     }
