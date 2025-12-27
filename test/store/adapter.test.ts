@@ -2,7 +2,19 @@
  * Integration tests for SQLite adapter.
  */
 
-import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  setDefaultTimeout,
+  test,
+} from 'bun:test';
+
+// Windows SQLite file handles may not release immediately after close()
+// Increase timeout to allow safeRm retries in afterEach hooks
+setDefaultTimeout(15_000);
+
 import { mkdtemp } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
