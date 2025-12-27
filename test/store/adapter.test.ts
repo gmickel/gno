@@ -13,7 +13,9 @@ import {
 
 // Windows SQLite file handles may not release immediately after close()
 // Increase timeout to allow safeRm retries in afterEach hooks
-setDefaultTimeout(15_000);
+if (process.platform === 'win32') {
+  setDefaultTimeout(15_000);
+}
 
 import { mkdtemp } from 'node:fs/promises';
 import { tmpdir } from 'node:os';

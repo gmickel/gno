@@ -15,7 +15,7 @@ const RETRYABLE_CODES = new Set(['EBUSY', 'EPERM', 'ENOTEMPTY', 'EACCES']);
  * Retries on: EBUSY (file in use), EPERM (permission denied),
  * ENOTEMPTY (dir not empty yet), EACCES (access denied transiently).
  */
-export async function safeRm(path: string, retries = 5): Promise<void> {
+export async function safeRm(path: string, retries = 8): Promise<void> {
   for (let i = 0; i < retries; i++) {
     try {
       await rm(path, { recursive: true, force: true });
