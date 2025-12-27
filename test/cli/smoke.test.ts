@@ -4,10 +4,11 @@
  */
 
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
-import { mkdir, rm } from 'node:fs/promises';
+import { mkdir } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { runCli } from '../../src/cli/run';
+import { safeRm } from '../helpers/cleanup';
 
 // Top-level regex for version string validation (perf: avoid recreating in tests)
 const VERSION_REGEX = /\d+\.\d+\.\d+/;
@@ -65,11 +66,7 @@ async function setupTestEnv(testDir: string) {
 }
 
 async function cleanupTestEnv(testDir: string) {
-  try {
-    await rm(testDir, { recursive: true, force: true });
-  } catch {
-    // Ignore cleanup errors
-  }
+  await safeRm(testDir);
   // Use Reflect.deleteProperty to properly remove env vars
   // (= undefined becomes "undefined" string, breaking tests)
   Reflect.deleteProperty(process.env, 'GNO_CONFIG_DIR');

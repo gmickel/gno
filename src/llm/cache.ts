@@ -6,7 +6,8 @@
  */
 
 import { mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
-import { join } from 'node:path';
+// node:path: join for path construction, isAbsolute for cross-platform path detection
+import { isAbsolute, join } from 'node:path';
 import { getModelsCachePath } from '../app/constants';
 import {
   downloadFailedError,
@@ -111,8 +112,8 @@ export function parseModelUri(
     };
   }
 
-  // Treat as local file path if starts with /
-  if (uri.startsWith('/')) {
+  // Treat as local file path if absolute (works on both Unix and Windows)
+  if (isAbsolute(uri)) {
     return {
       ok: true,
       value: { scheme: 'file', file: uri },

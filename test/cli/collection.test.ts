@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
-import { mkdir, rm } from 'node:fs/promises';
+import { mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import {
   collectionAdd,
@@ -13,6 +13,7 @@ import {
   loadConfigFromPath,
   saveConfigToPath,
 } from '../../src/config';
+import { safeRm } from '../helpers/cleanup';
 
 // Temp directory for tests
 const TEST_DIR = join(import.meta.dir, '.temp-collection-tests');
@@ -34,7 +35,7 @@ describe('collection CLI commands', () => {
     stdoutOutput = [];
 
     // Set up temp directories
-    await rm(TEST_DIR, { recursive: true, force: true });
+    await safeRm(TEST_DIR);
     await mkdir(join(TEST_DIR, 'config'), { recursive: true });
     await mkdir(TEST_COLLECTION_PATH, { recursive: true });
 
@@ -52,7 +53,7 @@ describe('collection CLI commands', () => {
     process.env.GNO_CONFIG_DIR = undefined;
 
     // Clean up temp dir
-    await rm(TEST_DIR, { recursive: true, force: true });
+    await safeRm(TEST_DIR);
   });
 
   describe('collectionAdd', () => {

@@ -3,7 +3,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
@@ -15,6 +15,7 @@ import {
 import { loadConfigFromPath } from '../../src/config/loader';
 import { saveConfigToPath } from '../../src/config/saver';
 import type { Config } from '../../src/config/types';
+import { safeRm } from '../helpers/cleanup';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Test Helpers
@@ -68,7 +69,7 @@ async function teardownTest(): Promise<void> {
   process.env.GNO_DATA_DIR = undefined;
 
   if (testDir) {
-    await rm(testDir, { recursive: true, force: true });
+    await safeRm(testDir);
   }
 }
 

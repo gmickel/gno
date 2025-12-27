@@ -1,11 +1,11 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
-import { rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createDefaultConfig } from '../../src/config/defaults';
 import { loadConfigFromPath } from '../../src/config/loader';
 import { saveConfigToPath } from '../../src/config/saver';
 import type { Config } from '../../src/config/types';
+import { safeRm } from '../helpers/cleanup';
 
 describe('saveConfigToPath', () => {
   let tempDir: string;
@@ -15,11 +15,7 @@ describe('saveConfigToPath', () => {
   });
 
   afterEach(async () => {
-    try {
-      await rm(tempDir, { recursive: true, force: true });
-    } catch {
-      // Ignore cleanup errors
-    }
+    await safeRm(tempDir);
   });
 
   test('saves default config and loads it back', async () => {

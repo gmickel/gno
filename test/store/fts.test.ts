@@ -3,11 +3,12 @@
  */
 
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { SqliteAdapter } from '../../src/store';
 import type { ChunkInput } from '../../src/store/types';
+import { safeRm } from '../helpers/cleanup';
 
 describe('FTS search', () => {
   let adapter: SqliteAdapter;
@@ -34,7 +35,7 @@ describe('FTS search', () => {
 
   afterEach(async () => {
     await adapter.close();
-    await rm(testDir, { recursive: true, force: true });
+    await safeRm(testDir);
   });
 
   async function setupDocument(

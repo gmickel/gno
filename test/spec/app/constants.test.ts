@@ -75,9 +75,15 @@ describe('constants', () => {
 describe('getPlatformPaths', () => {
   test('darwin paths use Library directories', () => {
     const paths = getPlatformPaths('darwin');
-    expect(paths.config).toContain('Library/Application Support/gno/config');
-    expect(paths.data).toContain('Library/Application Support/gno/data');
-    expect(paths.cache).toContain('Library/Caches/gno');
+    // Check for platform-independent path components
+    expect(paths.config).toContain('Library');
+    expect(paths.config).toContain('gno');
+    expect(paths.config).toContain('config');
+    expect(paths.data).toContain('Library');
+    expect(paths.data).toContain('gno');
+    expect(paths.data).toContain('data');
+    expect(paths.cache).toContain('Library');
+    expect(paths.cache).toContain('gno');
   });
 
   test('linux paths use XDG-style directories', () => {
@@ -142,35 +148,36 @@ describe('resolveDirs', () => {
 
 describe('getIndexDbPath', () => {
   test('uses default index name', () => {
-    const path = getIndexDbPath(undefined, {
-      config: '/c',
-      data: '/d',
-      cache: '/k',
-    });
-    expect(path).toBe('/d/index-default.sqlite');
+    const dirs = { config: '/c', data: '/d', cache: '/k' };
+    const path = getIndexDbPath(undefined, dirs);
+    // Use platform-appropriate path separator
+    expect(path).toBe(
+      `${dirs.data}${require('node:path').sep}index-default.sqlite`
+    );
   });
 
   test('uses custom index name', () => {
-    const path = getIndexDbPath('work', {
-      config: '/c',
-      data: '/d',
-      cache: '/k',
-    });
-    expect(path).toBe('/d/index-work.sqlite');
+    const dirs = { config: '/c', data: '/d', cache: '/k' };
+    const path = getIndexDbPath('work', dirs);
+    expect(path).toBe(
+      `${dirs.data}${require('node:path').sep}index-work.sqlite`
+    );
   });
 });
 
 describe('getConfigPath', () => {
   test('returns config file path', () => {
-    const path = getConfigPath({ config: '/c', data: '/d', cache: '/k' });
-    expect(path).toBe('/c/index.yml');
+    const dirs = { config: '/c', data: '/d', cache: '/k' };
+    const path = getConfigPath(dirs);
+    expect(path).toBe(`${dirs.config}${require('node:path').sep}index.yml`);
   });
 });
 
 describe('getModelsCachePath', () => {
   test('returns models cache path', () => {
-    const path = getModelsCachePath({ config: '/c', data: '/d', cache: '/k' });
-    expect(path).toBe('/k/models');
+    const dirs = { config: '/c', data: '/d', cache: '/k' };
+    const path = getModelsCachePath(dirs);
+    expect(path).toBe(`${dirs.cache}${require('node:path').sep}models`);
   });
 });
 

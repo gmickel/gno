@@ -4,7 +4,7 @@
 
 import { Database } from 'bun:sqlite';
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
@@ -13,6 +13,7 @@ import {
   encodeEmbedding,
 } from '../../../src/store/vector/sqlite-vec';
 import type { VectorRow } from '../../../src/store/vector/types';
+import { safeRm } from '../../helpers/cleanup';
 
 describe('encodeEmbedding/decodeEmbedding', () => {
   test('round-trips Float32Array correctly', () => {
@@ -80,7 +81,7 @@ describe('createVectorIndexPort', () => {
 
   afterEach(async () => {
     db.close();
-    await rm(testDir, { recursive: true, force: true });
+    await safeRm(testDir);
   });
 
   test('creates port with correct properties', async () => {

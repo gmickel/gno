@@ -5,10 +5,11 @@
  */
 
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
-import { cp, mkdir, rm } from 'node:fs/promises';
+import { cp, mkdir } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { runCli } from '../../src/cli/run';
+import { safeRm } from '../helpers/cleanup';
 
 // Regex patterns at module scope for performance
 const LINE_PROTOCOL_PATTERN = /#[a-f0-9]+,\d+\.\d+,gno:\/\//;
@@ -93,11 +94,7 @@ beforeAll(async () => {
 
 afterAll(async () => {
   // Cleanup
-  try {
-    await rm(testDir, { recursive: true, force: true });
-  } catch {
-    // Ignore cleanup errors
-  }
+  await safeRm(testDir);
   Reflect.deleteProperty(process.env, 'GNO_CONFIG_DIR');
   Reflect.deleteProperty(process.env, 'GNO_DATA_DIR');
   Reflect.deleteProperty(process.env, 'GNO_CACHE_DIR');

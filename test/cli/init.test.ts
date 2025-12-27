@@ -3,11 +3,12 @@
  */
 
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
-import { mkdir, rm } from 'node:fs/promises';
+import { mkdir } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { init } from '../../src/cli/commands/init';
 import { loadConfigFromPath } from '../../src/config/loader';
+import { safeRm } from '../helpers/cleanup';
 
 // Use temp directory for isolated tests
 const TEST_ROOT = join(tmpdir(), 'gno-test-init');
@@ -30,11 +31,7 @@ async function setupTestEnv(testDir: string) {
 
 async function cleanupTestEnv(testDir: string) {
   // Clean up test directory
-  try {
-    await rm(testDir, { recursive: true, force: true });
-  } catch {
-    // Ignore cleanup errors
-  }
+  await safeRm(testDir);
 
   // Restore env vars
   process.env.GNO_CONFIG_DIR = undefined;

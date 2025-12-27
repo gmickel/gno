@@ -4,10 +4,11 @@
 
 import { Database } from 'bun:sqlite';
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createVectorStatsPort } from '../../../src/store/vector/stats';
+import { safeRm } from '../../helpers/cleanup';
 
 describe('VectorStatsPort', () => {
   let db: Database;
@@ -52,7 +53,7 @@ describe('VectorStatsPort', () => {
 
   afterEach(async () => {
     db.close();
-    await rm(testDir, { recursive: true, force: true });
+    await safeRm(testDir);
   });
 
   describe('countVectors', () => {

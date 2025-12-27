@@ -3,12 +3,13 @@
  */
 
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { Collection, Context } from '../../src/config/types';
 import { SqliteAdapter } from '../../src/store';
 import type { ChunkInput, DocumentInput } from '../../src/store/types';
+import { safeRm } from '../helpers/cleanup';
 
 describe('SqliteAdapter', () => {
   let adapter: SqliteAdapter;
@@ -23,7 +24,7 @@ describe('SqliteAdapter', () => {
 
   afterEach(async () => {
     await adapter.close();
-    await rm(testDir, { recursive: true, force: true });
+    await safeRm(testDir);
   });
 
   describe('lifecycle', () => {

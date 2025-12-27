@@ -3,10 +3,11 @@
  */
 
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
-import { mkdir, rm, writeFile } from 'node:fs/promises';
+import { mkdir, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { ModelCache } from '../../src/llm/cache';
+import { safeRm } from '../helpers/cleanup';
 
 describe('ModelCache', () => {
   let tempDir: string;
@@ -22,7 +23,7 @@ describe('ModelCache', () => {
   });
 
   afterEach(async () => {
-    await rm(tempDir, { recursive: true, force: true });
+    await safeRm(tempDir);
   });
 
   describe('resolve', () => {
