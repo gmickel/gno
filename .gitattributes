@@ -1,3 +1,5 @@
+# Force LF line endings for all text files (fixes Windows CI)
+* text=auto eol=lf
 
 # Use bd merge for beads JSONL files
 .beads/issues.jsonl merge=beads
