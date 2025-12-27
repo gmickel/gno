@@ -49,13 +49,13 @@ export async function modelsUse(
     };
   }
 
-  // Update config with new active preset (don't persist presets - use code defaults)
+  // Update config with new active preset
   const updatedConfig = {
     ...config,
     models: {
       activePreset: presetId,
-      // Don't persist presets - always use DEFAULT_MODEL_PRESETS from code
-      // This ensures preset URI updates are picked up without config migration
+      // Preserve existing presets or use defaults from code
+      presets: config.models?.presets ?? [],
       loadTimeout: config.models?.loadTimeout ?? 60_000,
       inferenceTimeout: config.models?.inferenceTimeout ?? 30_000,
       warmModelTtl: config.models?.warmModelTtl ?? 300_000,

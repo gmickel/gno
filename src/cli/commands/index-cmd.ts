@@ -63,15 +63,14 @@ export async function index(options: IndexOptions = {}): Promise<IndexResult> {
 
     // Embedding phase
     const embedSkipped = options.noEmbed ?? false;
-    let embedResult: IndexResult extends { success: true }
-      ? IndexResult['embedResult']
-      : never;
+    let embedResult:
+      | { embedded: number; errors: number; duration: number }
+      | undefined;
 
     if (!embedSkipped) {
       const { embed } = await import('./embed');
       const result = await embed({
         configPath: options.configPath,
-        collection: options.collection,
       });
       if (result.success) {
         embedResult = {
