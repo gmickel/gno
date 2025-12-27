@@ -1,4 +1,6 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
+// node:path: sep for cross-platform path separator in tests
+import { sep } from 'node:path';
 import {
   buildUri,
   CLI_NAME,
@@ -151,17 +153,13 @@ describe('getIndexDbPath', () => {
     const dirs = { config: '/c', data: '/d', cache: '/k' };
     const path = getIndexDbPath(undefined, dirs);
     // Use platform-appropriate path separator
-    expect(path).toBe(
-      `${dirs.data}${require('node:path').sep}index-default.sqlite`
-    );
+    expect(path).toBe(`${dirs.data}${sep}index-default.sqlite`);
   });
 
   test('uses custom index name', () => {
     const dirs = { config: '/c', data: '/d', cache: '/k' };
     const path = getIndexDbPath('work', dirs);
-    expect(path).toBe(
-      `${dirs.data}${require('node:path').sep}index-work.sqlite`
-    );
+    expect(path).toBe(`${dirs.data}${sep}index-work.sqlite`);
   });
 });
 
@@ -169,7 +167,7 @@ describe('getConfigPath', () => {
   test('returns config file path', () => {
     const dirs = { config: '/c', data: '/d', cache: '/k' };
     const path = getConfigPath(dirs);
-    expect(path).toBe(`${dirs.config}${require('node:path').sep}index.yml`);
+    expect(path).toBe(`${dirs.config}${sep}index.yml`);
   });
 });
 
@@ -177,7 +175,7 @@ describe('getModelsCachePath', () => {
   test('returns models cache path', () => {
     const dirs = { config: '/c', data: '/d', cache: '/k' };
     const path = getModelsCachePath(dirs);
-    expect(path).toBe(`${dirs.cache}${require('node:path').sep}models`);
+    expect(path).toBe(`${dirs.cache}${sep}models`);
   });
 });
 

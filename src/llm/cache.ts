@@ -8,6 +8,8 @@
 import { mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
 // node:path: join for path construction, isAbsolute for cross-platform path detection
 import { isAbsolute, join } from 'node:path';
+// node:url: fileURLToPath for proper file:// URL handling
+import { fileURLToPath } from 'node:url';
 import { getModelsCachePath } from '../app/constants';
 import {
   downloadFailedError,
@@ -50,8 +52,12 @@ export type ParsedModelUri =
  * Supported formats:
  * - hf:org/repo/file.gguf (explicit file)
  * - hf:org/repo:Q4_K_M (quantization shorthand - infers filename)
- * - file:/path/to/model.gguf (local file)
- * - /path/to/model.gguf (implicit file: scheme)
+ * - file:///path/to/model.gguf (standard file URL)
+ * - file:///C:/path/to/model.gguf (Windows file URL)
+ * - file:/path/to/model.gguf (simplified file URI)
+ * - /path/to/model.gguf (Unix absolute path)
+ * - C:\path\to\model.gguf (Windows absolute path)
+ * - \\server\share\model.gguf (UNC path)
  */
 export function parseModelUri(
   uri: string
@@ -100,7 +106,20 @@ export function parseModelUri(
     return { ok: false, error: `Invalid hf: URI format: ${uri}` };
   }
 
-  // Handle file: scheme or absolute path
+  // Handle file:// URLs (proper file URLs like file:///C:/path or file:///path)
+  if (uri.startsWith('file://')) {
+    try {
+      const filePath = fileURLToPath(new URL(uri));
+      return {
+        ok: true,
+        value: { scheme: 'file', file: filePath },
+      };
+    } catch {
+      return { ok: false, error: `Invalid file URL: ${uri}` };
+    }
+  }
+
+  // Handle simplified file: scheme (file:/path or file:C:\path)
   if (uri.startsWith('file:')) {
     const path = uri.slice(5);
     if (!path) {
