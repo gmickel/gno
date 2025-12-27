@@ -3,6 +3,7 @@
  * Handles Windows file locking issues with SQLite.
  */
 
+// node:fs/promises: rm with recursive/force options for test cleanup
 import { rm } from 'node:fs/promises';
 
 // Windows transient delete errors to retry on
