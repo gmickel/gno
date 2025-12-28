@@ -21,6 +21,7 @@ import {
   explainVector,
 } from './explain';
 import { type RankedInput, rrfFuse, toRankedInput } from './fusion';
+import { detectQueryLanguage } from './query-language';
 import { rerankCandidates } from './rerank';
 import type {
   ExpansionResult,
@@ -195,6 +196,21 @@ export async function searchHybrid(
   let expansion: ExpansionResult | null = null;
 
   // ─────────────────────────────────────────────────────────────────────────
+  // 0. Detect query language for PROMPT SELECTION only
+  //    CRITICAL: Detection does NOT change retrieval filters - options.lang does
+  // ─────────────────────────────────────────────────────────────────────────
+  const detection = detectQueryLanguage(query);
+  // Use explicit --lang if provided, otherwise use detected language
+  const queryLanguage = options.lang ?? detection.bcp47;
+
+  explainLines.push({
+    stage: 'lang',
+    message: options.lang
+      ? `queryLanguage=${queryLanguage} (explicit)`
+      : `queryLanguage=${queryLanguage} (detected${detection.confident ? '' : ', low confidence'})`,
+  });
+
+  // ─────────────────────────────────────────────────────────────────────────
   // 1. Check if expansion needed
   // ─────────────────────────────────────────────────────────────────────────
   const shouldExpand = !options.noExpand && genPort !== null;
@@ -210,7 +226,8 @@ export async function searchHybrid(
 
     if (!skipExpansionDueToStrength) {
       const expandResult = await expandQuery(genPort, query, {
-        lang: options.lang,
+        // Use queryLanguage for prompt selection, NOT options.lang (retrieval filter)
+        lang: queryLanguage,
         timeout: pipelineConfig.expansionTimeout,
       });
       if (expandResult.ok) {
@@ -500,6 +517,7 @@ export async function searchHybrid(
       totalResults: results.length,
       collection: options.collection,
       lang: options.lang,
+      queryLanguage,
       explain: explainData,
     },
   });

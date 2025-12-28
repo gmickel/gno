@@ -11,6 +11,7 @@ import type { StorePort } from '../store/types';
 import { err, ok } from '../store/types';
 import type { VectorIndexPort } from '../store/vector/types';
 import { createChunkLookup } from './chunk-lookup';
+import { detectQueryLanguage } from './query-language';
 import type { SearchOptions, SearchResult, SearchResults } from './types';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -56,6 +57,10 @@ export async function searchVectorWithEmbedding(
   const { store, vectorIndex } = deps;
   const limit = options.limit ?? 20;
   const minScore = options.minScore ?? 0;
+
+  // Detect query language for metadata (DOES NOT affect retrieval filtering)
+  const detection = detectQueryLanguage(query);
+  const queryLanguage = options.lang ?? detection.bcp47;
 
   // Check if vector search is available
   if (!vectorIndex.searchAvailable) {
@@ -236,6 +241,7 @@ export async function searchVectorWithEmbedding(
       totalResults: results.length,
       collection: options.collection,
       lang: options.lang,
+      queryLanguage,
     },
   });
 }

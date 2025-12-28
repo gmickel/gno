@@ -63,6 +63,8 @@ export type SearchMeta = {
   totalResults: number;
   collection?: string;
   lang?: string;
+  /** Detected/overridden query language for prompt selection (typically BCP-47; may be user-provided via --lang) */
+  queryLanguage?: string;
   /** Explain data (when --explain is used) */
   explain?: {
     lines: ExplainLine[];

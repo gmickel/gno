@@ -38,6 +38,8 @@
   },
   "dependencies": {
     "commander": "^14.0.2",
+    "franc": "^6.2.0",
+    "iso-639-3": "^3.0.1",
     "markitdown-ts": "^0.0.8",
     "node-llama-cpp": "^3.14.5",
     "officeparser": "^5.2.2",

@@ -369,7 +369,7 @@ export async function ask(
     const askResult: AskResult = {
       query,
       mode: searchResult.value.meta.vectorsUsed ? 'hybrid' : 'bm25_only',
-      queryLanguage: options.lang ?? 'auto',
+      queryLanguage: searchResult.value.meta.queryLanguage ?? 'und',
       answer,
       citations,
       results,

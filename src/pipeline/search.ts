@@ -9,6 +9,7 @@ import { join as pathJoin } from 'node:path'; // No Bun path utils equivalent
 import type { ChunkRow, FtsResult, StorePort } from '../store/types';
 import { err, ok } from '../store/types';
 import { createChunkLookup } from './chunk-lookup';
+import { detectQueryLanguage } from './query-language';
 import type {
   SearchOptions,
   SearchResult,
@@ -130,6 +131,10 @@ export async function searchBm25(
   const limit = options.limit ?? 20;
   const minScore = options.minScore ?? 0;
 
+  // Detect query language for metadata (DOES NOT affect retrieval filtering)
+  const detection = detectQueryLanguage(query);
+  const queryLanguage = options.lang ?? detection.bcp47;
+
   // Run FTS search
   // Disable FTS snippet when --full or --line-numbers (we use raw text instead)
   const ftsResult = await store.searchFts(query, {
@@ -249,6 +254,7 @@ export async function searchBm25(
       totalResults: filteredResults.length,
       collection: options.collection,
       lang: options.lang,
+      queryLanguage,
     },
   });
 }
