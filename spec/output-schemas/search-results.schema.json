@@ -187,6 +187,10 @@
         "lang": {
           "type": "string",
           "description": "Language filter/hint if applied"
+        },
+        "queryLanguage": {
+          "type": "string",
+          "description": "Detected or overridden query language for prompt selection (typically BCP-47)"
         }
       }
     }
