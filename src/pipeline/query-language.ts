@@ -5,31 +5,72 @@
  * It does NOT affect retrieval filtering - that's controlled by CLI --lang flag.
  */
 import { franc } from 'franc';
-import { iso6393 } from 'iso-639-3';
 
 const MIN_RELIABLE_LENGTH = 15;
 
-/** Supported languages for detection (ISO 639-3 codes) */
-const SUPPORTED_LANGUAGES: readonly string[] = [
-  'eng', // English
-  'deu', // German
-  'fra', // French
-  'ita', // Italian
-  'spa', // Spanish
-  'por', // Portuguese
-  'nld', // Dutch
-  'cmn', // Mandarin Chinese
-  'jpn', // Japanese
-  'kor', // Korean
-];
+/**
+ * Supported languages for detection.
+ * Maps ISO 639-3 codes to BCP-47 (ISO 639-1) codes.
+ *
+ * Selection criteria:
+ * - Major world languages by speaker count
+ * - Significant tech/documentation communities
+ * - Linguistically distinct (to minimize false positives)
+ */
+const LANG_MAP = {
+  // Western European (Germanic)
+  eng: 'en', // English
+  deu: 'de', // German
+  nld: 'nl', // Dutch
 
-/** Build ISO 639-3 → BCP-47 (ISO 639-1) mapping at module init */
-const ISO639_3_TO_BCP47: Record<string, string> = {};
-for (const lang of iso6393) {
-  if (lang.iso6391) {
-    ISO639_3_TO_BCP47[lang.iso6393] = lang.iso6391;
-  }
-}
+  // Western European (Romance)
+  fra: 'fr', // French
+  ita: 'it', // Italian
+  spa: 'es', // Spanish
+  por: 'pt', // Portuguese
+  cat: 'ca', // Catalan
+  ron: 'ro', // Romanian
+
+  // Scandinavian
+  swe: 'sv', // Swedish
+  dan: 'da', // Danish
+  nob: 'nb', // Norwegian Bokmål
+  nno: 'nn', // Norwegian Nynorsk
+  fin: 'fi', // Finnish
+
+  // Eastern European
+  pol: 'pl', // Polish
+  ces: 'cs', // Czech
+  slk: 'sk', // Slovak
+  rus: 'ru', // Russian
+  ukr: 'uk', // Ukrainian
+  bul: 'bg', // Bulgarian
+  hrv: 'hr', // Croatian
+  ell: 'el', // Greek
+  hun: 'hu', // Hungarian
+
+  // Middle Eastern
+  tur: 'tr', // Turkish
+  ara: 'ar', // Arabic
+  heb: 'he', // Hebrew
+  fas: 'fa', // Persian/Farsi
+
+  // South Asian
+  hin: 'hi', // Hindi
+
+  // Southeast Asian
+  vie: 'vi', // Vietnamese
+  tha: 'th', // Thai
+  ind: 'id', // Indonesian
+
+  // East Asian
+  cmn: 'zh', // Mandarin Chinese
+  jpn: 'ja', // Japanese
+  kor: 'ko', // Korean
+} as const;
+
+/** ISO 639-3 codes for franc's only filter */
+const SUPPORTED_LANGUAGES = Object.keys(LANG_MAP);
 
 export interface LanguageDetection {
   /** BCP-47 code: 'en', 'de', 'fr', etc. 'und' if undetermined */
@@ -62,15 +103,14 @@ export function detectQueryLanguage(text: string): LanguageDetection {
 
   const detected = franc(trimmed, {
     minLength: MIN_RELIABLE_LENGTH,
-    only: [...SUPPORTED_LANGUAGES],
+    only: SUPPORTED_LANGUAGES,
   });
 
   if (detected === 'und') {
     return { bcp47: 'und', iso639_3: 'und', confident: false };
   }
 
-  const bcp47 = ISO639_3_TO_BCP47[detected];
-  // Normalize both to 'und' if no BCP-47 mapping exists (contract consistency)
+  const bcp47 = LANG_MAP[detected as keyof typeof LANG_MAP];
   if (!bcp47) {
     return { bcp47: 'und', iso639_3: 'und', confident: false };
   }

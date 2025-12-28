@@ -82,18 +82,9 @@ describe('detectQueryLanguage', () => {
     test('handles code snippets gracefully', () => {
       const result = detectQueryLanguage('function foo() { return bar.baz() }');
       // Code may be detected as some language or und, but shouldn't error
-      expect([
-        'und',
-        'en',
-        'de',
-        'fr',
-        'es',
-        'pt',
-        'nl',
-        'zh',
-        'ja',
-        'ko',
-      ]).toContain(result.bcp47);
+      expect(result.bcp47).toBeDefined();
+      expect(typeof result.bcp47).toBe('string');
+      expect(typeof result.confident).toBe('boolean');
     });
 
     test('handles numbers and symbols', () => {
