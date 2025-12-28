@@ -636,6 +636,8 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
 
       // Join FTS results with chunks and documents
       // Use bm25() function explicitly - fts.rank doesn't work with JOINs
+      // Note: Multiple docs can share mirror_hash (content-addressed storage)
+      // Deduplication by uri+seq is done in search.ts to avoid FTS function context issues
       const sql = `
         SELECT
           c.mirror_hash,
@@ -646,7 +648,12 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
           d.uri,
           d.title,
           d.collection,
-          d.rel_path
+          d.rel_path,
+          d.source_mime,
+          d.source_ext,
+          d.source_mtime,
+          d.source_size,
+          d.source_hash
         FROM content_fts fts
         JOIN content_chunks c ON c.rowid = fts.rowid
         JOIN documents d ON d.mirror_hash = c.mirror_hash AND d.active = 1
@@ -676,6 +683,11 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
         title: string | null;
         collection: string;
         rel_path: string;
+        source_mime: string | null;
+        source_ext: string | null;
+        source_mtime: string | null;
+        source_size: number | null;
+        source_hash: string | null;
       };
 
       const rows = db.query<FtsRow, (string | number)[]>(sql).all(...params);
@@ -691,6 +703,11 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
           title: r.title ?? undefined,
           collection: r.collection,
           relPath: r.rel_path,
+          sourceMime: r.source_mime ?? undefined,
+          sourceExt: r.source_ext ?? undefined,
+          sourceMtime: r.source_mtime ?? undefined,
+          sourceSize: r.source_size ?? undefined,
+          sourceHash: r.source_hash ?? undefined,
         }))
       );
     } catch (cause) {

@@ -5,6 +5,7 @@
  * @module src/pipeline/search
  */
 
+import { join as pathJoin } from 'node:path'; // No Bun path utils equivalent
 import type { ChunkRow, FtsResult, StorePort } from '../store/types';
 import { err, ok } from '../store/types';
 import { createChunkLookup } from './chunk-lookup';
@@ -66,13 +67,17 @@ function buildSearchResult(ctx: BuildResultContext): SearchResult {
   const { fts, chunk, collectionPath, options, fullContent } = ctx;
   const source: SearchResultSource = {
     relPath: fts.relPath ?? '',
-    mime: 'text/markdown', // Default for mirror content
-    ext: '.md',
+    // Use actual source metadata with fallback to markdown defaults
+    mime: fts.sourceMime ?? 'text/markdown',
+    ext: fts.sourceExt ?? '.md',
+    modifiedAt: fts.sourceMtime,
+    sizeBytes: fts.sourceSize,
+    sourceHash: fts.sourceHash,
   };
 
-  // Add absPath if we have collection path
+  // Add absPath if we have collection path (cross-platform safe)
   if (collectionPath && fts.relPath) {
-    source.absPath = `${collectionPath}/${fts.relPath}`;
+    source.absPath = pathJoin(collectionPath, fts.relPath);
   }
 
   // Determine snippet content and range
@@ -166,6 +171,10 @@ export async function searchBm25(
     ? createChunkLookup(chunksMapResult.value)
     : () => undefined;
 
+  // Dedup: multiple docs can share mirror_hash (content-addressed storage)
+  // Track seen uri+seq to eliminate duplicate rows from join fan-out
+  // Robust key: use uri if present, else fall back to mirrorHash+relPath
+  const seenUriSeq = new Set<string>();
   // For --full, track best score per docid to de-dupe
   const bestByDocid = new Map<
     string,
@@ -173,6 +182,16 @@ export async function searchBm25(
   >();
 
   for (const fts of ftsResult.value) {
+    // Dedup by uri+seq - eliminates rows from mirror_hash join fan-out
+    // Use robust key to avoid over-dedup if uri is unexpectedly missing
+    const uriSeqKey = fts.uri
+      ? `${fts.uri}:${fts.seq}`
+      : `${fts.mirrorHash ?? ''}:${fts.seq}:${fts.relPath ?? ''}`;
+    if (seenUriSeq.has(uriSeqKey)) {
+      continue;
+    }
+    seenUriSeq.add(uriSeqKey);
+
     // Get chunk via O(1) lookup
     const chunk = fts.mirrorHash
       ? (getChunk(fts.mirrorHash, fts.seq) ?? null)

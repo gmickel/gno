@@ -213,6 +213,12 @@ export type FtsResult = {
   title?: string;
   collection?: string;
   relPath?: string;
+  // Source metadata (optional for backward compat)
+  sourceMime?: string;
+  sourceExt?: string;
+  sourceMtime?: string;
+  sourceSize?: number;
+  sourceHash?: string;
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
