@@ -204,7 +204,7 @@ h1, h2, h3, h4, h5, h6 {
   color: var(--color-text-primary);
   line-height: 1.25;
   font-weight: 600;
-  margin-top: $space-7;
+  margin-top: $space-9; // Increased from $space-7 for more breathing room
   margin-bottom: $space-4;
   letter-spacing: -0.01em;
 
@@ -653,7 +653,7 @@ body.layout-home .site-main {
   text-transform: uppercase;
   letter-spacing: 0.1em;
   color: var(--color-text-tertiary);
-  margin: $space-6 0 $space-3;
+  margin: $space-8 0 $space-3; // Increased top margin from $space-6
   display: flex;
   align-items: center;
   gap: $space-2;
