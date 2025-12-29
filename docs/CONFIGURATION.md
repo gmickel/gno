@@ -1,0 +1,253 @@
+# Configuration
+
+GNO configuration reference.
+
+## Config File
+
+Location: `~/.config/gno/config/index.yml`
+
+```yaml
+version: "1.0"
+
+# FTS tokenizer (set at init, cannot change)
+ftsTokenizer: unicode61
+
+# Collections
+collections:
+  - name: notes
+    path: /Users/you/notes
+    pattern: "**/*.md"
+    include: []
+    exclude:
+      - .git
+      - node_modules
+    languageHint: en
+
+  - name: work
+    path: /Users/you/work/docs
+    pattern: "**/*"
+    exclude:
+      - dist
+      - build
+
+# Contexts (semantic hints)
+contexts:
+  - scopeType: global
+    scopeKey: /
+    text: Personal knowledge base and project documentation
+
+  - scopeType: collection
+    scopeKey: notes:
+    text: Personal notes and journal entries
+
+  - scopeType: prefix
+    scopeKey: gno://work/api
+    text: API documentation and specifications
+
+# Model configuration
+models:
+  activePreset: balanced
+```
+
+## Collections
+
+Collections define what gets indexed.
+
+### Collection Fields
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `name` | string | required | Unique identifier (lowercase) |
+| `path` | string | required | Absolute path to directory |
+| `pattern` | glob | `**/*` | File matching pattern |
+| `include` | array | `[]` | Extension allowlist |
+| `exclude` | array | see below | Patterns to skip |
+| `updateCmd` | string | - | Shell command before indexing |
+| `languageHint` | string | - | BCP-47 language code |
+
+### Default Excludes
+
+```yaml
+exclude:
+  - .git
+  - node_modules
+  - .venv
+  - .idea
+  - dist
+  - build
+  - __pycache__
+  - .DS_Store
+  - Thumbs.db
+```
+
+### Examples
+
+**Markdown notes:**
+
+```yaml
+- name: notes
+  path: /Users/you/notes
+  pattern: "**/*.md"
+```
+
+**Code docs with language hint:**
+
+```yaml
+- name: german-docs
+  path: /Users/you/docs/german
+  pattern: "**/*.md"
+  languageHint: de
+```
+
+**TypeScript project:**
+
+```yaml
+- name: project
+  path: /Users/you/project
+  pattern: "**/*.ts"
+  include:
+    - .ts
+    - .tsx
+  exclude:
+    - node_modules
+    - dist
+    - "*.test.ts"
+```
+
+**With update command:**
+
+```yaml
+- name: wiki
+  path: /Users/you/wiki
+  updateCmd: "git pull"
+```
+
+## Contexts
+
+Contexts add semantic hints to improve search relevance.
+
+### Scope Types
+
+| Type | Key Format | Example |
+|------|------------|---------|
+| `global` | `/` | Applies to all documents |
+| `collection` | `name:` | Applies to collection |
+| `prefix` | `gno://collection/path` | Applies to path prefix |
+
+### Examples
+
+```yaml
+contexts:
+  # Global context
+  - scopeType: global
+    scopeKey: /
+    text: Technical knowledge base for software development
+
+  # Collection context
+  - scopeType: collection
+    scopeKey: notes:
+    text: Personal notes and daily journal entries
+
+  # Path prefix context
+  - scopeType: prefix
+    scopeKey: gno://work/api
+    text: REST API documentation and OpenAPI specs
+```
+
+## Models
+
+Model configuration for embeddings and AI answers.
+
+### Presets
+
+| Preset | Disk | Best For |
+|--------|------|----------|
+| `slim` | ~1GB | Fast responses, lower quality |
+| `balanced` | ~2GB | Good balance (default) |
+| `quality` | ~2.5GB | Best answers, slower |
+
+### Model Details
+
+All presets use bge-m3 for embeddings (1024 dimensions, multilingual).
+
+| Preset | Embed | Rerank | Gen |
+|--------|-------|--------|-----|
+| slim | bge-m3-Q4 | bge-reranker-v2-m3-Q4 | Qwen3-1.7B-Q4 |
+| balanced | bge-m3-Q4 | bge-reranker-v2-m3-Q4 | SmolLM3-3B-Q4 |
+| quality | bge-m3-Q4 | bge-reranker-v2-m3-Q4 | Qwen3-4B-Q4 |
+
+### Custom Models
+
+```yaml
+models:
+  activePreset: custom
+  presets:
+    - id: custom
+      name: My Custom Setup
+      embed: hf:user/model/embed.gguf
+      rerank: hf:user/model/rerank.gguf
+      gen: hf:user/model/gen.gguf
+```
+
+Model URIs support:
+- `hf:org/repo/file.gguf` - Hugging Face download
+- `file:/path/to/model.gguf` - Local file
+
+### Timeouts
+
+```yaml
+models:
+  loadTimeout: 60000      # Model load timeout (ms)
+  inferenceTimeout: 30000 # Inference timeout (ms)
+  warmModelTtl: 300000    # Keep-warm duration (ms)
+```
+
+## FTS Tokenizer
+
+Set at `gno init`, cannot be changed without rebuilding.
+
+| Tokenizer | Description |
+|-----------|-------------|
+| `unicode61` | Unicode-aware (default) |
+| `porter` | English stemming |
+| `trigram` | Substring matching |
+
+```bash
+# Initialize with porter stemmer
+gno init --tokenizer porter
+```
+
+## Environment Variables
+
+Override paths:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `GNO_CONFIG_DIR` | `~/.config/gno` | Config directory |
+| `GNO_DATA_DIR` | `~/.local/share/gno` | Database directory |
+| `GNO_CACHE_DIR` | `~/.cache/gno` | Model cache |
+
+## File Locations
+
+| Path | Purpose |
+|------|---------|
+| `~/.config/gno/config/index.yml` | Main config |
+| `~/.local/share/gno/index-default.sqlite` | Database |
+| `~/.cache/gno/models/` | Model cache (macOS: `~/Library/Caches/gno/`) |
+
+## Editing Config
+
+Edit directly or use CLI:
+
+```bash
+# Add collection via CLI
+gno collection add ~/notes --name notes
+
+# View config
+cat ~/.config/gno/config/index.yml
+
+# Edit manually
+vim ~/.config/gno/config/index.yml
+```
+
+After manual edits, run `gno update` to apply changes.
