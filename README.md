@@ -1,105 +1,244 @@
-# GNO
+# GNO: Your Local Second Brain
 
-**Your Local Second Brain**
+**Index, Search, and Synthesize Your Entire Digital Life.**
 
-GNO is a **Local Knowledge Engine** that indexes your entire digital life—notes, code, PDFs, and Office docs. It provides fast, privacy-preserving search with optional AI-powered answers.
+GNO is a **Local Knowledge Engine** designed for privacy-conscious individuals and AI agents. It indexes your notes, code, documents (Markdown, PDF, Office, and more), and meeting transcripts, providing lightning-fast semantic search and AI-powered answers—all on your machine.
 
-**Built for Humans and AI Agents.** Access your knowledge instantly via the CLI or connect it to your AI agents (like Claude Desktop) with the Model Context Protocol (MCP).
+---
 
-## Features
+## ✨ Key Features
 
-- **Hybrid Search** - BM25 full-text + vector similarity with reciprocal rank fusion
-- **AI Answers** - Grounded responses with citations using local LLMs
-- **Multi-Format** - Index Markdown, PDF, DOCX, XLSX, PPTX, and plain text
-- **Collections** - Organize documents by source directory
-- **Contexts** - Add semantic hints to improve search relevance
-- **Multilingual** - BCP-47 language hints and configurable FTS tokenizers
-- **MCP Integration** - First-class MCP server for AI agent access
-- **Privacy First** - All processing happens locally, no data leaves your machine
+*   **Universal Indexing**: Effortlessly ingest and search across Markdown, PDF, DOCX, XLSX, PPTX, and plain text files.
+*   **Hybrid Search Pipeline**: Combines **BM25 keyword search** with **vector semantic search** and **AI re-ranking** for unparalleled retrieval accuracy.
+*   **Local LLM Integration**: Get grounded AI answers with citations using **node-llama-cpp** and auto-downloaded GGUF models. No external services, maximum privacy.
+*   **Agent-First Design (MCP)**: Seamlessly integrate GNO with AI agents via the Model Context Protocol (MCP) server.
+*   **Deterministic Output**: Stable, schema-driven JSON, file-line, and markdown outputs for reliable scripting.
+*   **Multilingual Support**: Robust handling of multiple languages in indexing and retrieval.
+*   **Privacy-Preserving**: All processing happens locally. Your data never leaves your device.
+*   **World-Class Engineering**: Spec-driven development, rigorous testing, and eval gates ensure reliability and quality.
 
-## Quick Start
+---
 
-```bash
-# Install
-bun install -g gno
+## 🚀 Quick Start
 
-# Initialize with your notes folder
-gno init ~/notes --name notes
+Get searching in minutes with the 3-command workflow:
 
-# Index documents
-gno update
+1.  **Initialize your knowledge base**:
+    ```sh
+    # Create a collection for your notes (adjust path and name as needed)
+    gno init ~/my-notes --name notes --pattern "**/*.md"
 
-# Search
-gno search "project deadlines"
-gno query "authentication best practices"
-gno ask "summarize the API discussion" --answer
+    # Index documents (automatically runs 'update' and 'embed' if models are found)
+    gno index --yes
+    ```
+
+2.  **Ask a question**:
+    ```sh
+    # Get a direct, cited answer from your documents
+    gno ask "What are the best practices for API authentication?" --collection notes
+
+    # Search with keywords or natural language
+    gno query "Q4 planning meeting summary" --collection notes
+    ```
+
+3.  **Explore your data**:
+    ```sh
+    # Retrieve specific document content
+    gno get "notes/2024-01-15.md"
+
+    # Get results in a machine-readable format for agents
+    gno search "project deadlines" --json -n 10
+    ```
+
+---
+
+## 🧠 For Humans & AI Agents
+
+GNO is built for both worlds:
+
+*   **For Humans**: A powerful, yet intuitive CLI to quickly find information, get answers, and explore your local knowledge base.
+*   **For AI Agents**: Exposes a stable MCP server and structured output formats (`--json`, `--files`) for seamless integration with LLMs and agentic workflows.
+
+---
+
+## 🔎 Search Modes
+
+GNO offers multiple search strategies to suit your needs:
+
+| Command     | Mode           | Description                                                     | Best For                                         |
+| :---------- | :------------- | :-------------------------------------------------------------- | :----------------------------------------------- |
+| `gno search`| **BM25**       | Fast, keyword-based full-text search.                           | Exact phrase matching, known terms.              |
+| `gno vsearch`| **Vector**     | Semantic search based on meaning, not just keywords.            | Natural language queries, conceptual understanding. |
+| `gno query` | **Hybrid**     | Combines BM25 and Vector search with LLM reranking and fusion.  | Highest accuracy, nuanced understanding.         |
+| `gno ask`   | **RAG-focused**| Hybrid search providing a synthesized, cited answer from results. | Getting direct answers to complex questions.     |
+
+---
+
+## 🤖 Agent Integration
+
+GNO is designed to be the knowledge backbone for your AI agents.
+
+### CLI Output Formats
+
+Use `--json` or `--files` for machine-readable output:
+
+```sh
+# Get JSON results for LLM processing
+gno query "meeting notes on user feedback" --json -n 5
+
+# Get file paths and scores for agent tool use
+gno search "API design" --files --min-score 0.3
 ```
 
-See [Quickstart Guide](docs/QUICKSTART.md) for the full walkthrough.
+### MCP Server Integration
 
-## Installation
+Exposes a stable MCP server for tighter integration with LLM applications.
 
-Requires [Bun](https://bun.sh/) 1.0+.
+**Tools Exposed:**
+*   `gno.search` (BM25)
+*   `gno.vsearch` (Vector)
+*   `gno.query` (Hybrid)
+*   `gno.get` (Document retrieval)
+*   `gno.multi_get` (Batch retrieval)
+*   `gno.status` (Index health)
 
-```bash
-curl -fsSL https://bun.sh/install | bash
+**Example Claude Desktop Configuration** (`~/Library/Application Support/Claude/claude_desktop_config.json`):
+
+```json
+{
+  "mcpServers": {
+    "gno": {
+      "command": "gno",
+      "args": ["mcp"]
+    }
+  }
+}
+```
+
+*(Adjust path and `mcpServers` key based on your agent's configuration.)*
+
+---
+
+## ⚙️ How It Works: The GNO Pipeline
+
+GNO employs a sophisticated, multi-stage retrieval process for optimal results:
+
+```mermaid
+graph TD
+    A[User Query] --> B(Query Expansion);
+    B --> C{Lexical Variants};
+    B --> D{Semantic Variants};
+    B --> E{Optional HyDE};
+    A --> F[Original Query];
+
+    C --> G(BM25 Retrieval);
+    D --> H(Vector Search);
+    E --> H;
+    F --> G;
+    F --> H;
+
+    G --> I(Ranked List 1);
+    H --> J(Ranked List 2);
+    I --> K{RRF Fusion + Bonus};
+    J --> K;
+
+    K --> L(Top Candidates);
+    L --> M(LLM Re-ranking);
+    M --> N(Position-Aware Blending);
+    N --> O(Final Results);
+
+    subgraph "Search Stages"
+        B; C; D; E; F; G; H; I; J; K; L; M; N; O;
+    end
+```
+
+### Search Pipeline Details:
+
+1.  **Query Expansion**: Generates alternative queries (lexical and semantic) and an optional synthetic "HyDE" document using a local LLM for richer retrieval.
+2.  **Parallel Retrieval**: Executes BM25 (keyword) and Vector (semantic) searches concurrently.
+3.  **Fusion**: Combines results using Reciprocal Rank Fusion (RRF) with a weighted boost for original query matches and a top-rank bonus.
+4.  **Re-ranking**: An LLM-based cross-encoder re-scores the top candidates for final relevance.
+5.  **Blending**: Dynamically adjusts the mix of retrieval vs. reranked scores based on rank position to preserve accuracy.
+
+**Score Normalization**: Raw scores from FTS, vector distance, and reranker are normalized to a 0-1 scale for consistent fusion.
+
+---
+
+## 📦 Installation
+
+Requires **Bun** >= 1.0.0.
+
+```sh
+# Install globally
 bun install -g gno
 ```
 
-**macOS**: Vector search requires Homebrew SQLite:
-
-```bash
+**macOS users**: For optimal vector search performance, install Homebrew SQLite:
+```sh
 brew install sqlite3
 ```
 
-Verify with `gno doctor`.
+Verify your installation:
+```sh
+gno doctor
+```
 
-See [Installation Guide](docs/INSTALLATION.md) for platform-specific details.
+---
 
-## Search Modes
+## 🏠 Local LLM Models
 
-| Command | Mode | Description |
-|---------|------|-------------|
-| `gno search` | BM25 | Keyword matching, fast |
-| `gno vsearch` | Vector | Semantic similarity |
-| `gno query` | Hybrid | BM25 + vector with fusion |
-| `gno ask --answer` | RAG | Grounded AI answer |
+GNO runs embeddings, reranking, and query expansion locally using GGUF models via `node-llama-cpp`. Models are automatically downloaded and cached on first use in `~/.cache/gno/models/`.
 
-## Documentation
+| Model                 | Purpose           | Size (approx.) |
+| :-------------------- | :---------------- | :------------- |
+| `embeddinggemma-300M` | Embeddings        | ~300MB         |
+| `qwen3-reranker-0.6B` | Re-ranking        | ~640MB         |
+| `Qwen3-0.6B`          | Query Expansion   | ~640MB         |
 
-- **[Quickstart](docs/QUICKSTART.md)** - Get searching in 5 minutes
-- **[Installation](docs/INSTALLATION.md)** - Platform setup, requirements
-- **[CLI Reference](docs/CLI.md)** - All commands and options
-- **[Architecture](docs/ARCHITECTURE.md)** - System design overview
-- **[Configuration](docs/CONFIGURATION.md)** - Collections, contexts, models
-- **[MCP Integration](docs/MCP.md)** - AI assistant setup
-- **[Use Cases](docs/USE-CASES.md)** - Real-world workflows
-- **[Troubleshooting](docs/TROUBLESHOOTING.md)** - Common issues
+*(Specific GGUF versions are pinned for stability.)*
 
-## Specifications
+---
 
-- [CLI Specification](spec/cli.md) - Command contracts
-- [MCP Specification](spec/mcp.md) - Tool and resource schemas
-- [Output Schemas](spec/output-schemas/) - JSON schema definitions
+## 📜 Architecture Overview
 
-## Development
+GNO follows a layered, Ports and Adapters architecture for maintainability and testability:
+
+```
+┌───────────────────────────────────────────────────────────┐
+│                       GNO CLI / MCP                       │
+├───────────────────────────────────────────────────────────┤
+│ Ports: Converter, Store, Embedding, Generation, Rerank... │
+├───────────────────────────────────────────────────────────┤
+│ Adapters: SQLite, FTS5, sqlite-vec, node-llama-cpp, CLI   │
+├───────────────────────────────────────────────────────────┤
+│ Core Domain: Identity, Mirrors, Chunking, Retrieval       │
+└───────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 💻 Development
 
 ```bash
-# Clone and install
+# Clone the repository
 git clone https://github.com/gmickel/gno.git
 cd gno
+
+# Install dependencies
 bun install
 
 # Run tests
 bun test
 
-# Lint and format
+# Lint and format code
 bun run lint
 
 # Type check
 bun run typecheck
 ```
 
-## License
+---
 
-MIT
+## 📄 License
+
+[MIT License](./LICENSE)
