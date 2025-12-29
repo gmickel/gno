@@ -204,22 +204,17 @@ h1, h2, h3, h4, h5, h6 {
   color: var(--color-text-primary);
   line-height: 1.25;
   font-weight: 600;
-  margin-top: $space-9; // Increased from $space-7 for more breathing room
+  margin-top: $space-9;
   margin-bottom: $space-4;
   letter-spacing: -0.01em;
+}
 
-  &:first-child { margin-top: 0; }
+h2 {
+  margin-top: $space-10;
+}
 
-  // Anchor links on hover
-  .anchor {
-    margin-left: $space-2;
-    opacity: 0;
-    color: var(--color-text-tertiary);
-    text-decoration: none;
-    transition: opacity $transition-fast;
-    font-size: 0.8em;
-  }
-  &:hover .anchor { opacity: 1; }
+h3 {
+  margin-top: $space-10;
 }
 
 h1 {
