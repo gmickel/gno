@@ -10,9 +10,8 @@
 // -----------------------------------------------------------------------------
 // Font Imports
 // -----------------------------------------------------------------------------
-// JetBrains Mono: Technical precision for code and headings
-// Source Serif 4: Refined readability for body text - scholarly, not stuffy
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,300;0,8..60,400;0,8..60,500;0,8..60,600;1,8..60,400&display=swap');
+// JetBrains Mono: Technical precision throughout - it's a dev tool
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap');
 
 // -----------------------------------------------------------------------------
 // Design Tokens
@@ -31,7 +30,7 @@ $space-9: 6rem;     // 96px
 
 // Typography scale
 $font-mono: 'JetBrains Mono', ui-monospace, 'Cascadia Code', 'Source Code Pro', Menlo, Consolas, monospace;
-$font-serif: 'Source Serif 4', 'Iowan Old Style', 'Palatino Linotype', 'URW Palladio L', P052, serif;
+$font-body: $font-mono; // All mono for dev tool aesthetic
 
 $text-xs: 0.75rem;
 $text-sm: 0.875rem;
@@ -181,7 +180,7 @@ html {
 }
 
 body {
-  font-family: $font-serif;
+  font-family: $font-body;
   font-size: $text-base;
   line-height: 1.7;
   color: var(--color-text-primary);
@@ -1321,6 +1320,49 @@ blockquote {
   flex-wrap: wrap;
 
   animation: fadeIn 0.5s ease-out 0.4s both;
+}
+
+// Demos section
+.demos {
+  padding: $space-8 0;
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.section-title {
+  text-align: center;
+  font-size: $text-2xl;
+  margin-bottom: $space-7;
+  color: var(--color-text-primary);
+}
+
+.demo-full {
+  max-width: 900px;
+  margin: 0 auto $space-7;
+  text-align: center;
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+
+  h3 {
+    font-size: $text-xl;
+    margin: 0 0 $space-2;
+    color: var(--color-accent);
+  }
+
+  p {
+    font-size: $text-base;
+    color: var(--color-text-secondary);
+    margin-bottom: $space-5;
+  }
+
+  img {
+    width: 100%;
+    height: auto;
+    border-radius: $radius-lg;
+    border: 1px solid var(--color-border);
+    box-shadow: var(--shadow-elevation-medium);
+  }
 }
 
 // Features section
