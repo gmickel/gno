@@ -4,8 +4,9 @@ layout: default
 
 <div class="content content-home">
   <section class="hero">
+    <div class="hero-aurora" aria-hidden="true"></div>
     <span class="hero-badge">
-      <span>🔍</span>
+      {% include icons.html icon="brain" size="16" %}
       Local Knowledge Engine
     </span>
     <h1 class="hero-title">Your Local Second Brain</h1>
@@ -43,53 +44,53 @@ layout: default
 
   <section class="features">
     <div class="features-grid">
-      <div class="feature-card">
-        <div class="feature-card-icon">🔎</div>
+      <a href="{{ '/features/hybrid-search/' | relative_url }}" class="feature-card">
+        <div class="feature-card-icon">{% include icons.html icon="hybrid-search" size="24" %}</div>
         <h3 class="feature-card-title">Hybrid Search</h3>
         <p class="feature-card-description">
           BM25 full-text + vector similarity with reciprocal rank fusion for accurate results.
         </p>
-      </div>
+      </a>
 
-      <div class="feature-card">
-        <div class="feature-card-icon">🤖</div>
+      <a href="{{ '/features/local-llm/' | relative_url }}" class="feature-card">
+        <div class="feature-card-icon">{% include icons.html icon="local-llm" size="24" %}</div>
         <h3 class="feature-card-title">AI Answers</h3>
         <p class="feature-card-description">
           Get grounded responses with citations using local LLMs. No data leaves your machine.
         </p>
-      </div>
+      </a>
 
-      <div class="feature-card">
-        <div class="feature-card-icon">📄</div>
+      <a href="{{ '/features/multi-format/' | relative_url }}" class="feature-card">
+        <div class="feature-card-icon">{% include icons.html icon="multi-format" size="24" %}</div>
         <h3 class="feature-card-title">Multi-Format</h3>
         <p class="feature-card-description">
           Index Markdown, PDF, DOCX, XLSX, PPTX, and plain text documents seamlessly.
         </p>
-      </div>
+      </a>
 
-      <div class="feature-card">
-        <div class="feature-card-icon">🔒</div>
+      <a href="{{ '/features/privacy-first/' | relative_url }}" class="feature-card">
+        <div class="feature-card-icon">{% include icons.html icon="privacy-first" size="24" %}</div>
         <h3 class="feature-card-title">Privacy First</h3>
         <p class="feature-card-description">
           All processing happens locally. Your documents never leave your machine.
         </p>
-      </div>
+      </a>
 
-      <div class="feature-card">
-        <div class="feature-card-icon">🌐</div>
+      <a href="{{ '/features/mcp-integration/' | relative_url }}" class="feature-card">
+        <div class="feature-card-icon">{% include icons.html icon="mcp-integration" size="24" %}</div>
         <h3 class="feature-card-title">MCP Integration</h3>
         <p class="feature-card-description">
           Use as an MCP server for seamless AI assistant access to your knowledge base.
         </p>
-      </div>
+      </a>
 
-      <div class="feature-card">
-        <div class="feature-card-icon">🗂️</div>
+      <a href="{{ '/features/collections/' | relative_url }}" class="feature-card">
+        <div class="feature-card-icon">{% include icons.html icon="collections" size="24" %}</div>
         <h3 class="feature-card-title">Collections</h3>
         <p class="feature-card-description">
           Organize documents by source directory with contexts for improved relevance.
         </p>
-      </div>
+      </a>
     </div>
   </section>
 

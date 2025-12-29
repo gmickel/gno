@@ -158,4 +158,47 @@
     }
   });
 
+  // ==========================================================================
+  // Scroll-Triggered Animations
+  // ==========================================================================
+
+  // Only run if user hasn't requested reduced motion
+  if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    var animatedElements = document.querySelectorAll(
+      '.feature-card, .demo-full, .section-title, .animate-on-scroll'
+    );
+
+    if (animatedElements.length > 0 && 'IntersectionObserver' in window) {
+      var observer = new IntersectionObserver(function(entries) {
+        entries.forEach(function(entry) {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('is-visible');
+            // Unobserve after animation to save resources
+            observer.unobserve(entry.target);
+          }
+        });
+      }, {
+        root: null,
+        rootMargin: '0px 0px -50px 0px',
+        threshold: 0.1
+      });
+
+      animatedElements.forEach(function(el) {
+        observer.observe(el);
+      });
+    } else {
+      // Fallback: show all elements immediately
+      animatedElements.forEach(function(el) {
+        el.classList.add('is-visible');
+      });
+    }
+  } else {
+    // Reduced motion: show all elements immediately
+    document.querySelectorAll(
+      '.feature-card, .demo-full, .section-title, .animate-on-scroll'
+    ).forEach(function(el) {
+      el.classList.add('is-visible');
+    });
+  }
+
 })();

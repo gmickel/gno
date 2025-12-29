@@ -107,9 +107,15 @@ $bp-xl: 1280px;
   --glass-bg: rgba(5, 5, 5, 0.75);
   --glass-border: rgba(255, 255, 255, 0.06);
 
-  // Hero Gradient
-  --hero-gradient: radial-gradient(circle at 50% 0%, rgba(77, 184, 168, 0.12), transparent 50%),
-                   radial-gradient(circle at 90% 20%, rgba(212, 160, 83, 0.05), transparent 40%);
+  // Hero Gradient - Aurora effect
+  --hero-gradient: radial-gradient(ellipse 80% 50% at 50% -20%, rgba(77, 184, 168, 0.15), transparent),
+                   radial-gradient(ellipse 60% 40% at 80% 0%, rgba(212, 160, 83, 0.08), transparent),
+                   radial-gradient(ellipse 50% 30% at 20% 10%, rgba(77, 184, 168, 0.06), transparent);
+
+  // Aurora blobs for animation
+  --aurora-1: rgba(77, 184, 168, 0.12);
+  --aurora-2: rgba(212, 160, 83, 0.08);
+  --aurora-3: rgba(109, 220, 203, 0.06);
   
   // Grid Pattern
   --grid-pattern: linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
@@ -134,14 +140,14 @@ $bp-xl: 1280px;
   --color-text-tertiary: #8f8880;
   --color-text-inverse: #ffffff;
 
-  --color-accent: #208096;
-  --color-accent-hover: #2aaec9;
-  --color-accent-faint: rgba(32, 128, 150, 0.06);
-  --color-accent-glow: rgba(32, 128, 150, 0.25);
+  --color-accent: #1a6b7d;
+  --color-accent-hover: #208096;
+  --color-accent-faint: rgba(32, 128, 150, 0.08);
+  --color-accent-glow: rgba(32, 128, 150, 0.3);
 
-  --color-warm: #b5872e;
-  --color-warm-hover: #d4a03b;
-  --color-warm-faint: rgba(181, 135, 46, 0.1);
+  --color-warm: #9a7225;
+  --color-warm-hover: #b5872e;
+  --color-warm-faint: rgba(154, 114, 37, 0.1);
 
   --color-code-bg: #f5f2ee;
   --color-code-border: #e0dcd6;
@@ -154,9 +160,14 @@ $bp-xl: 1280px;
   --glass-bg: rgba(252, 251, 249, 0.8);
   --glass-border: rgba(0, 0, 0, 0.03);
 
-  --hero-gradient: radial-gradient(circle at 50% 0%, rgba(32, 128, 150, 0.06), transparent 50%),
-                   radial-gradient(circle at 90% 20%, rgba(181, 135, 46, 0.06), transparent 40%);
-  
+  --hero-gradient: radial-gradient(ellipse 80% 50% at 50% -20%, rgba(26, 107, 125, 0.08), transparent),
+                   radial-gradient(ellipse 60% 40% at 80% 0%, rgba(154, 114, 37, 0.06), transparent);
+
+  // Aurora blobs for light mode
+  --aurora-1: rgba(26, 107, 125, 0.08);
+  --aurora-2: rgba(154, 114, 37, 0.06);
+  --aurora-3: rgba(32, 128, 150, 0.04);
+
   --grid-pattern: linear-gradient(rgba(0, 0, 0, 0.02) 1px, transparent 1px),
                   linear-gradient(90deg, rgba(0, 0, 0, 0.02) 1px, transparent 1px);
 }
@@ -284,7 +295,20 @@ pre {
   z-index: 100;
   background: var(--glass-bg);
   backdrop-filter: var(--backdrop-blur);
+  -webkit-backdrop-filter: var(--backdrop-blur);
   border-bottom: 1px solid var(--glass-border);
+
+  // Subtle top glow line
+  &::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--color-accent-glow), transparent);
+    opacity: 0.5;
+  }
 }
 
 .site-header-inner {
@@ -308,8 +332,24 @@ pre {
   letter-spacing: -0.01em;
   border: none;
 
+  &:hover {
+    color: var(--color-text-primary);
+  }
+
   &-icon {
-    font-size: 1.6rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform $transition-base;
+
+    svg {
+      width: 28px;
+      height: 28px;
+    }
+  }
+
+  &:hover &-icon {
+    transform: scale(1.05);
   }
 }
 
@@ -372,8 +412,9 @@ pre {
   @media (min-width: $bp-lg) { margin-left: $sidebar-width; }
 }
 
-// Layout Fix: No margin on homepage/layout-home
-body.layout-home .site-main {
+// Layout Fix: No margin on homepage and fullwidth pages
+body.layout-home .site-main,
+body.layout-fullwidth .site-main {
   margin-left: 0 !important;
 }
 
@@ -402,21 +443,72 @@ body.layout-home .site-main {
   padding: $space-10 $space-5 $space-9;
   max-width: 1000px;
   margin: 0 auto;
+  overflow: visible;
 
-  // Background Glow (World Class Detail)
-  &::before {
+  // Animated Aurora Blobs
+  &::before,
+  &::after {
     content: '';
     position: absolute;
-    top: -50%;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 140%;
-    height: 150%;
-    background: var(--hero-gradient);
-    filter: blur(60px);
+    border-radius: 50%;
+    filter: blur(80px);
     z-index: -1;
     pointer-events: none;
+    animation: aurora-float 20s ease-in-out infinite;
+  }
+
+  &::before {
+    top: -30%;
+    left: 10%;
+    width: 60%;
+    height: 60%;
+    background: var(--aurora-1);
+    animation-delay: 0s;
+  }
+
+  &::after {
+    top: -20%;
+    right: 5%;
+    width: 50%;
+    height: 50%;
+    background: var(--aurora-2);
+    animation-delay: -7s;
+    animation-duration: 25s;
+  }
+}
+
+// Third aurora blob via extra element
+.hero-aurora {
+  position: absolute;
+  top: 0;
+  left: 30%;
+  width: 40%;
+  height: 40%;
+  background: var(--aurora-3);
+  border-radius: 50%;
+  filter: blur(100px);
+  z-index: -1;
+  pointer-events: none;
+  animation: aurora-float 30s ease-in-out infinite reverse;
+  animation-delay: -3s;
+}
+
+@keyframes aurora-float {
+  0%, 100% {
+    transform: translate(0, 0) scale(1);
+    opacity: 0.6;
+  }
+  25% {
+    transform: translate(5%, 10%) scale(1.1);
     opacity: 0.8;
+  }
+  50% {
+    transform: translate(-5%, 5%) scale(0.95);
+    opacity: 0.5;
+  }
+  75% {
+    transform: translate(3%, -5%) scale(1.05);
+    opacity: 0.7;
   }
 }
 
@@ -430,12 +522,18 @@ body.layout-home .site-main {
   border-radius: $radius-full;
   box-shadow: var(--shadow-sm);
   margin-bottom: $space-6;
-  
+
   font-family: $font-mono;
   font-size: 0.8rem;
   color: var(--color-warm);
   font-weight: 500;
   letter-spacing: 0.02em;
+
+  svg {
+    width: 16px;
+    height: 16px;
+    color: var(--color-warm);
+  }
 }
 
 .hero-title {
@@ -445,14 +543,29 @@ body.layout-home .site-main {
   font-weight: 700;
   letter-spacing: -0.04em;
   margin-bottom: $space-5;
-  
-  // Refined gradient text
-  background: linear-gradient(180deg, var(--color-text-primary) 20%, var(--color-text-secondary) 150%);
+  margin-top: 0;
+
+  // Shimmer gradient text
+  background: linear-gradient(
+    135deg,
+    var(--color-text-primary) 0%,
+    var(--color-accent) 25%,
+    var(--color-text-primary) 50%,
+    var(--color-warm) 75%,
+    var(--color-text-primary) 100%
+  );
+  background-size: 200% auto;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
-  
+  animation: shimmer 8s linear infinite;
+
   @media (min-width: $bp-md) { font-size: 5rem; }
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% center; }
+  100% { background-position: -200% center; }
 }
 
 .hero-description {
@@ -488,19 +601,43 @@ body.layout-home .site-main {
   border: 1px solid transparent;
 
   &-primary {
-    background: var(--color-accent);
+    background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-accent-hover) 100%);
     color: #fff;
-    // World Class Detail: Inner highlight for depth
-    box-shadow: 
-      0 4px 12px var(--color-accent-glow),
-      inset 0 1px 0 rgba(255, 255, 255, 0.2);
-    
-    &:hover {
-      background: var(--color-accent-hover);
+    position: relative;
+    overflow: hidden;
+    // Glow effect
+    box-shadow:
+      0 4px 15px var(--color-accent-glow),
+      0 0 0 1px rgba(255, 255, 255, 0.1) inset;
+
+    // Shine overlay
+    &::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(255, 255, 255, 0.2),
+        transparent
+      );
+      transition: left 0.5s ease;
+    }
+
+    &:hover, &:focus {
+      background: linear-gradient(135deg, var(--color-accent-hover) 0%, var(--color-accent) 100%);
+      color: #fff;
       transform: translateY(-2px);
-      box-shadow: 
-        0 8px 20px var(--color-accent-glow),
-        inset 0 1px 0 rgba(255, 255, 255, 0.2);
+      box-shadow:
+        0 8px 25px var(--color-accent-glow),
+        0 0 0 1px rgba(255, 255, 255, 0.15) inset;
+
+      &::before {
+        left: 100%;
+      }
     }
   }
 
@@ -509,10 +646,11 @@ body.layout-home .site-main {
     color: var(--color-text-primary);
     border-color: var(--color-border);
     box-shadow: var(--shadow-sm);
-    
-    &:hover {
+
+    &:hover, &:focus {
       border-color: var(--color-text-secondary);
       background: var(--color-bg-hover);
+      color: var(--color-text-primary);
       transform: translateY(-2px);
       box-shadow: var(--shadow-md);
     }
@@ -566,14 +704,86 @@ body.layout-home .site-main {
 // Feature Cards
 // -----------------------------------------------------------------------------
 
+// Bento Grid - Asymmetric layout for visual interest
 .features-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  grid-template-columns: repeat(6, 1fr);
+  grid-auto-rows: minmax(180px, auto);
   gap: $space-5;
   padding: $space-8 0;
+
+  // Bento layout - varied card sizes
+  .feature-card {
+    // Default: 2 columns
+    grid-column: span 2;
+
+    // First card: Large (3 cols)
+    &:nth-child(1) {
+      grid-column: span 3;
+      grid-row: span 2;
+
+      .feature-card-icon {
+        width: 72px;
+        height: 72px;
+        svg { width: 32px; height: 32px; }
+      }
+      .feature-card-title { font-size: 1.75rem; }
+      .feature-card-description { font-size: 1.05rem; }
+    }
+
+    // Second card: Medium tall
+    &:nth-child(2) {
+      grid-column: span 3;
+      grid-row: span 2;
+    }
+
+    // Third to sixth: 2 cols each
+    &:nth-child(3),
+    &:nth-child(4),
+    &:nth-child(5),
+    &:nth-child(6) {
+      grid-column: span 2;
+    }
+  }
+
+  // Tablet: 4 column grid
+  @media (max-width: $bp-lg) {
+    grid-template-columns: repeat(4, 1fr);
+
+    .feature-card {
+      grid-column: span 2;
+      grid-row: span 1;
+
+      &:nth-child(1),
+      &:nth-child(2) {
+        grid-column: span 2;
+        grid-row: span 1;
+        .feature-card-icon { width: 56px; height: 56px; svg { width: 24px; height: 24px; } }
+        .feature-card-title { font-size: 1.35rem; }
+        .feature-card-description { font-size: 0.95rem; }
+      }
+    }
+  }
+
+  // Mobile: Single column
+  @media (max-width: $bp-sm) {
+    grid-template-columns: 1fr;
+
+    .feature-card,
+    .feature-card:nth-child(1),
+    .feature-card:nth-child(2),
+    .feature-card:nth-child(3),
+    .feature-card:nth-child(4),
+    .feature-card:nth-child(5),
+    .feature-card:nth-child(6) {
+      grid-column: span 1;
+      grid-row: span 1;
+    }
+  }
 }
 
 .feature-card {
+  display: block;
   background: var(--color-bg-subtle);
   border: 1px solid var(--color-border);
   border-radius: $radius-xl;
@@ -581,6 +791,8 @@ body.layout-home .site-main {
   transition: all $transition-base;
   position: relative;
   overflow: hidden;
+  cursor: pointer;
+  text-decoration: none;
 
   // Gradient Border Effect on Hover
   &::after {
@@ -597,17 +809,20 @@ body.layout-home .site-main {
     transition: opacity $transition-base;
   }
 
-  &:hover {
+  &:hover, &:focus-visible {
     transform: translateY(-4px);
     box-shadow: var(--shadow-lg);
     background: var(--color-bg-surface);
+    border-color: var(--color-border-highlight);
     &::after { opacity: 1; }
-    
+
     .feature-card-icon {
       background: var(--color-accent);
       color: #fff;
       transform: scale(1.1) rotate(5deg);
       border-color: transparent;
+
+      svg { color: #fff; }
     }
   }
 
@@ -620,10 +835,16 @@ body.layout-home .site-main {
     background: var(--color-bg-surface);
     border: 1px solid var(--color-border);
     border-radius: $radius-lg;
-    font-size: 1.5rem;
     margin-bottom: $space-5;
     color: var(--color-accent);
     transition: all $transition-bounce;
+
+    svg {
+      width: 24px;
+      height: 24px;
+      color: var(--color-accent);
+      transition: color $transition-base;
+    }
   }
 
   &-title {
@@ -638,6 +859,7 @@ body.layout-home .site-main {
     font-size: 0.95rem;
     color: var(--color-text-secondary);
     line-height: 1.6;
+    margin-bottom: 0;
   }
 }
 
@@ -652,10 +874,17 @@ body.layout-home .site-main {
   text-transform: uppercase;
   letter-spacing: 0.1em;
   color: var(--color-text-tertiary);
-  margin: $space-8 0 $space-3; // Increased top margin from $space-6
+  margin: $space-8 0 $space-3;
   display: flex;
   align-items: center;
   gap: $space-2;
+
+  svg {
+    width: 14px;
+    height: 14px;
+    color: var(--color-accent);
+    opacity: 0.8;
+  }
 }
 
 .sidebar-nav {
@@ -698,8 +927,9 @@ body.layout-home .site-main {
   @media (min-width: $bp-lg) { margin-left: $sidebar-width; }
 }
 
-// Layout Fix: No margin on homepage
-body.layout-home .site-footer {
+// Layout Fix: No margin on homepage and fullwidth pages
+body.layout-home .site-footer,
+body.layout-fullwidth .site-footer {
   margin-left: 0 !important;
 }
 
@@ -720,10 +950,18 @@ body.layout-home .site-footer {
   margin-bottom: $space-1;
 
   &-logo {
+    display: flex;
+    align-items: center;
+    gap: $space-2;
     font-family: $font-serif;
     font-weight: 700;
     font-size: 1.25rem;
     color: var(--color-text-primary);
+
+    svg {
+      width: 20px;
+      height: 20px;
+    }
   }
 }
 
@@ -731,14 +969,24 @@ body.layout-home .site-footer {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
+  align-items: center;
   gap: $space-3 $space-6;
 
   a {
+    display: inline-flex;
+    align-items: center;
+    gap: $space-1;
     font-family: $font-sans;
     font-size: 0.875rem;
     color: var(--color-text-secondary);
     text-decoration: none;
     transition: color $transition-fast;
+    border: none;
+
+    svg {
+      width: 16px;
+      height: 16px;
+    }
 
     &:hover {
       color: var(--color-text-primary);
@@ -753,9 +1001,22 @@ body.layout-home .site-footer {
   color: var(--color-text-tertiary);
   display: flex;
   justify-content: center;
-  
+
+  span {
+    display: inline-flex;
+    align-items: center;
+    gap: $space-1;
+  }
+
+  .heart-icon {
+    color: #ef4444;
+    width: 14px;
+    height: 14px;
+  }
+
   a {
     color: var(--color-text-secondary);
+    border: none;
     &:hover { color: var(--color-accent); }
   }
 }
@@ -816,19 +1077,80 @@ body.layout-home .site-footer {
   @media (max-width: $bp-lg) { display: block; }
 }
 
-// Syntax Highlighting Overrides
-.highlight {
-  // Use the .highlight class for the visual box (border, background, etc)
+// Terminal-Style Code Blocks
+// Only apply terminal chrome to div.highlight (outer container), not pre.highlight
+div.highlight {
   background: var(--color-code-bg);
   border: 1px solid var(--color-code-border);
   border-radius: $radius-lg;
   margin: $space-5 0;
   position: relative;
+  overflow: hidden;
 
-  // Fix specificity issue for Rouge which puts .highlight class on the pre itself
-  &.highlight, pre.highlight {
-    background: var(--color-code-bg);
-    border: 1px solid var(--color-code-border);
+  // Terminal window header
+  &::before {
+    content: '';
+    display: block;
+    height: 32px;
+    background: var(--color-bg-surface);
+    border-bottom: 1px solid var(--color-code-border);
+    position: relative;
+  }
+
+  // Traffic light dots
+  &::after {
+    content: '';
+    position: absolute;
+    top: 10px;
+    left: 12px;
+    width: 12px;
+    height: 12px;
+    background: #ff5f57;
+    border-radius: 50%;
+    box-shadow:
+      20px 0 0 #febc2e,
+      40px 0 0 #28c840;
+  }
+
+  // Inner pre should have no border/margin
+  pre, pre.highlight {
+    margin: 0;
+    border: none;
+    border-radius: 0;
+    background: transparent;
+
+    // Remove pseudo-elements from nested pre.highlight
+    &::before, &::after {
+      display: none;
+    }
+  }
+}
+
+// Standalone pre.highlight (no wrapper div)
+pre.highlight:not(div.highlight pre) {
+  background: var(--color-code-bg);
+  border: 1px solid var(--color-code-border);
+  border-radius: $radius-lg;
+  margin: $space-5 0;
+}
+
+// Inline code with subtle glow
+code:not(pre code) {
+  position: relative;
+
+  &::before {
+    content: '';
+    position: absolute;
+    inset: -2px;
+    background: var(--color-accent-faint);
+    border-radius: $radius-sm;
+    z-index: -1;
+    opacity: 0;
+    transition: opacity $transition-fast;
+  }
+
+  &:hover::before {
+    opacity: 1;
   }
 }
 
@@ -1079,9 +1401,21 @@ button:focus-visible,
 }
 
 .feature-icon {
-  font-size: 4rem;
-  display: block;
-  margin-bottom: $space-4;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 80px;
+  height: 80px;
+  margin: 0 auto $space-4;
+  background: var(--color-accent-faint);
+  border: 1px solid var(--color-accent);
+  border-radius: $radius-xl;
+
+  svg {
+    width: 40px;
+    height: 40px;
+    color: var(--color-accent);
+  }
 }
 
 .feature-title {
@@ -1385,6 +1719,116 @@ button:focus-visible,
   font-family: $font-sans;
   font-size: 0.875rem;
   color: var(--color-text-secondary);
+}
+
+// -----------------------------------------------------------------------------
+// Scroll-Triggered Entrance Animations
+// -----------------------------------------------------------------------------
+// Only hide elements when JS is confirmed loaded (via html.js class)
+// This prevents invisible content when JS fails to load
+
+html.js {
+  // Elements start hidden and animate in
+  .animate-on-scroll {
+    opacity: 0;
+    transform: translateY(20px);
+    transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+
+    &.is-visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  // Staggered animation for grid items
+  .features-grid .feature-card {
+    opacity: 0;
+    transform: translateY(30px);
+    transition: opacity 0.5s ease-out, transform 0.5s ease-out;
+
+    &.is-visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    // Stagger delays
+    @for $i from 1 through 6 {
+      &:nth-child(#{$i}).is-visible {
+        transition-delay: #{($i - 1) * 0.1}s;
+      }
+    }
+  }
+
+  // Demo sections fade in
+  .demo-full {
+    opacity: 0;
+    transform: translateY(20px);
+    transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+
+    &.is-visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  // Section titles slide in
+  .section-title {
+    opacity: 0;
+    transform: translateY(10px);
+    transition: opacity 0.5s ease-out, transform 0.5s ease-out;
+
+    &.is-visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}
+
+// -----------------------------------------------------------------------------
+// Reduced Motion Support
+// -----------------------------------------------------------------------------
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .hero::before,
+  .hero::after,
+  .hero-aurora,
+  .hero-title {
+    animation: none !important;
+  }
+
+  // Show all animated elements immediately
+  .animate-on-scroll,
+  .features-grid .feature-card,
+  .demo-full,
+  .section-title {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+
+  .feature-card:hover,
+  .feature-card:focus-visible {
+    transform: none;
+    .feature-card-icon {
+      transform: none;
+    }
+  }
+
+  .btn:hover {
+    transform: none;
+  }
+
+  .related-docs-card:hover {
+    transform: none;
+  }
 }
 
 // -----------------------------------------------------------------------------

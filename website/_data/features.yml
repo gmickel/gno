@@ -4,7 +4,7 @@
   title: Hybrid Search
   headline: The Best of Keywords and Semantics
   description: GNO combines BM25 full-text search with vector similarity search using reciprocal rank fusion. Get accurate results whether you search for exact terms or conceptual matches.
-  icon: "🔎"
+  icon: hybrid-search
   benefits:
     - Exact keyword matching with BM25
     - Semantic similarity with vector search
@@ -19,7 +19,7 @@
   title: Local LLM Answers
   headline: AI Answers Without the Cloud
   description: Get cited, grounded answers from your own documents using local language models. GNO runs everything on your machine - no API keys, no data sharing, no subscriptions.
-  icon: "🤖"
+  icon: local-llm
   benefits:
     - 100% local processing
     - No API keys required
@@ -34,7 +34,7 @@
   title: Multi-Format Indexing
   headline: Index Everything You Write
   description: GNO indexes Markdown, PDF, Word, Excel, PowerPoint, and plain text. One tool for all your documents, with intelligent chunking and language detection.
-  icon: "📄"
+  icon: multi-format
   benefits:
     - Markdown with frontmatter extraction
     - PDF text extraction
@@ -50,7 +50,7 @@
   title: Privacy First
   headline: Your Data Stays Yours
   description: GNO is designed from the ground up for privacy. All processing happens locally - indexing, embeddings, search, and AI answers. Nothing leaves your machine, ever.
-  icon: "🔒"
+  icon: privacy-first
   benefits:
     - Zero cloud dependencies
     - No telemetry or tracking
@@ -64,7 +64,7 @@
   title: MCP Integration
   headline: Give Your AI Assistant Memory
   description: Connect GNO to Claude Desktop, Cursor, or any MCP-compatible AI assistant. Your AI can now search and cite your local documents.
-  icon: "🌐"
+  icon: mcp-integration
   benefits:
     - Works with Claude Desktop
     - Works with Cursor
@@ -77,7 +77,7 @@
   title: Collections
   headline: Organize Your Knowledge
   description: Group documents by source directory with patterns, includes, and excludes. Search specific collections or across everything.
-  icon: "🗂️"
+  icon: collections
   benefits:
     - Multiple document sources
     - Glob patterns for filtering

@@ -5,7 +5,7 @@ layout: default
 <div class="content content-home">
   <article class="feature-page">
     <header class="feature-header">
-      <span class="feature-icon">{{ page.icon }}</span>
+      <span class="feature-icon">{% include icons.html icon=page.icon size="64" %}</span>
       <h1 class="feature-title">{{ page.headline }}</h1>
       <p class="feature-description">{{ page.description }}</p>
     </header>
@@ -48,7 +48,7 @@ layout: default
       {% for feature in site.data.features %}
       {% unless feature.slug == page.slug %}
       <a href="{{ '/features/' | append: feature.slug | append: '/' | relative_url }}" class="feature-card">
-        <div class="feature-card-icon">{{ feature.icon }}</div>
+        <div class="feature-card-icon">{% include icons.html icon=feature.icon size="24" %}</div>
         <h3 class="feature-card-title">{{ feature.title }}</h3>
         <p class="feature-card-description">{{ feature.description | truncate: 80 }}</p>
       </a>

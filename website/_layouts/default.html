@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="{{ page.lang | default: site.lang | default: 'en' }}" data-theme="dark">
+<html lang="{{ page.lang | default: site.lang | default: 'en' }}" data-theme="dark" class="no-js">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -9,7 +9,7 @@
   <meta name="description" content="{{ page.description | default: site.description | strip_html | truncate: 160 }}">
 
   <!-- Favicon -->
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔍</text></svg>">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32' fill='none'%3E%3Ccircle cx='14' cy='14' r='10' stroke='%234db8a8' stroke-width='2.5'/%3E%3Cpath d='M21.5 21.5L28 28' stroke='%234db8a8' stroke-width='2.5' stroke-linecap='round'/%3E%3Ccircle cx='14' cy='14' r='5' stroke='%234db8a8' stroke-width='1.5' opacity='0.6'/%3E%3Cpath d='M11 14h6M14 11v6' stroke='%234db8a8' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E">
 
   <!-- DNS Prefetch for external resources -->
   <link rel="dns-prefetch" href="https://fonts.googleapis.com">
@@ -51,9 +51,13 @@
   <link rel="preload" href="{{ '/assets/css/style.css' | relative_url }}" as="style">
   <link rel="preload" href="{{ '/assets/js/main.js' | relative_url }}" as="script">
 
-  <!-- Theme script (prevent flash) -->
+  <!-- Theme script (prevent flash) + JS detection -->
   <script>
   (function() {
+    // Enable JS-dependent CSS
+    document.documentElement.classList.remove('no-js');
+    document.documentElement.classList.add('js');
+    // Theme
     var theme = localStorage.getItem('gno-theme');
     if (!theme) {
       theme = window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';

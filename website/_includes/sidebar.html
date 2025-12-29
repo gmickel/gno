@@ -2,10 +2,7 @@
   {% for section in site.nav %}
   <div class="sidebar-section">
     <h3 class="sidebar-heading">
-      {% if section.icon == 'rocket' %}🚀{% endif %}
-      {% if section.icon == 'book' %}📖{% endif %}
-      {% if section.icon == 'lightbulb' %}💡{% endif %}
-      {% if section.icon == 'info' %}ℹ️{% endif %}
+      {% include icons.html icon=section.icon size="14" %}
       {{ section.title }}
     </h3>
     <ul class="sidebar-nav">
