@@ -564,6 +564,21 @@ body.layout-home .site-main {
 }
 
 // -----------------------------------------------------------------------------
+// Section Titles
+// -----------------------------------------------------------------------------
+
+.section-title {
+  text-align: center;
+  font-size: 2rem;
+  margin-bottom: $space-7;
+  margin-top: $space-10; // Significantly increased top spacing
+  color: var(--color-text-primary);
+  font-family: $font-serif;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+// -----------------------------------------------------------------------------
 // Feature Cards
 // -----------------------------------------------------------------------------
 
