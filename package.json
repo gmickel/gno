@@ -20,7 +20,8 @@
     "test:coverage:html": "bun test --coverage --html",
     "typecheck": "tsgo --noEmit",
     "lint:typeaware": "bun x oxlint --type-aware",
-    "reset": "bun run src/index.ts reset --confirm"
+    "reset": "bun run src/index.ts reset --confirm",
+    "docs:verify": "bun run scripts/docs-verify.ts"
   },
   "devDependencies": {
     "@biomejs/biome": "2.3.9",
