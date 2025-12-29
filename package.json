@@ -21,7 +21,11 @@
     "typecheck": "tsgo --noEmit",
     "lint:typeaware": "bun x oxlint --type-aware",
     "reset": "bun run src/index.ts reset --confirm",
-    "docs:verify": "bun run scripts/docs-verify.ts"
+    "docs:verify": "bun run scripts/docs-verify.ts",
+    "website:install": "cd website && bundle install",
+    "website:dev": "cd website && make serve",
+    "website:build": "cd website && make build",
+    "website:demos": "cd website/demos && ./build-demos.sh"
   },
   "devDependencies": {
     "@biomejs/biome": "2.3.9",

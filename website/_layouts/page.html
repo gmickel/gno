@@ -1,0 +1,29 @@
+---
+layout: default
+---
+
+<div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+{% include sidebar.html %}
+
+<div class="content">
+  {% if page.breadcrumbs != false %}
+  <nav class="breadcrumbs" aria-label="Breadcrumb">
+    <a href="{{ '/' | relative_url }}">Home</a>
+    <span class="separator">/</span>
+    {% if page.parent %}
+    <a href="{{ page.parent_url | relative_url }}">{{ page.parent }}</a>
+    <span class="separator">/</span>
+    {% endif %}
+    <span class="current">{{ page.title }}</span>
+  </nav>
+  {% endif %}
+
+  <article class="page-content">
+    {% if page.title %}
+    <h1>{{ page.title }}</h1>
+    {% endif %}
+
+    {{ content }}
+  </article>
+</div>

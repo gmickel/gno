@@ -10,7 +10,8 @@
       "!!**/evals/fixtures",
       "!!**/evals/harbor",
       "!!**/src/web/components/ui",
-      "!!**/src/web/components/ai-elements"
+      "!!**/src/web/components/ai-elements",
+      "!!**/website"
     ]
   },
   "javascript": {

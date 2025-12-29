@@ -1,0 +1,107 @@
+# GNO Documentation Site
+title: GNO
+description: Fast local semantic search for your documents
+url: ""
+baseurl: ""
+
+# Build settings
+markdown: kramdown
+highlighter: rouge
+
+# Plugins
+plugins:
+  - jekyll-optional-front-matter
+  - jekyll-titles-from-headings
+  - jekyll-relative-links
+  - jekyll-default-layout
+  - jekyll-seo-tag
+  - jekyll-sitemap
+
+# Plugin config
+optional_front_matter:
+  remove_originals: true
+
+titles_from_headings:
+  enabled: true
+  strip_title: true
+  collections: true
+
+relative_links:
+  enabled: true
+  collections: true
+
+defaults:
+  - scope:
+      path: ""
+      type: "pages"
+    values:
+      layout: "page"
+  - scope:
+      path: "docs"
+      type: "pages"
+    values:
+      layout: "page"
+  - scope:
+      path: "index.md"
+    values:
+      layout: "home"
+
+# Kramdown config
+kramdown:
+  input: GFM
+  hard_wrap: false
+  syntax_highlighter: rouge
+  syntax_highlighter_opts:
+    block:
+      line_numbers: false
+
+# Include symlinks
+include:
+  - docs
+
+# Exclude from build
+exclude:
+  - Gemfile
+  - Gemfile.lock
+  - node_modules
+  - vendor
+
+# Navigation structure
+nav:
+  - title: Getting Started
+    icon: rocket
+    items:
+      - title: Quick Start
+        url: /docs/QUICKSTART/
+      - title: Installation
+        url: /docs/INSTALLATION/
+      - title: Configuration
+        url: /docs/CONFIGURATION/
+  - title: Reference
+    icon: book
+    items:
+      - title: CLI Commands
+        url: /docs/CLI/
+      - title: MCP Integration
+        url: /docs/MCP/
+      - title: Architecture
+        url: /docs/ARCHITECTURE/
+  - title: Guides
+    icon: lightbulb
+    items:
+      - title: Use Cases
+        url: /docs/USE-CASES/
+      - title: Troubleshooting
+        url: /docs/TROUBLESHOOTING/
+  - title: Resources
+    icon: info
+    items:
+      - title: Glossary
+        url: /docs/GLOSSARY/
+
+# Social/meta
+github_username: gmickel
+repository: gmickel/gno
+
+# Theme settings
+theme_default: dark

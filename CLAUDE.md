@@ -157,6 +157,75 @@ bun --hot ./index.ts
 
 For more information, read the Bun API docs in `node_modules/bun-types/docs/**.md`.
 
+## Terminal Demos (VHS)
+
+The documentation website includes animated terminal demos built with [VHS](https://github.com/charmbracelet/vhs).
+
+### Structure
+
+```
+website/
+├── demos/
+│   ├── build-demos.sh       # Build script
+│   └── tapes/               # VHS tape files
+│       ├── hero.tape
+│       ├── quickstart.tape
+│       └── search-modes.tape
+└── assets/demos/            # Generated GIFs
+```
+
+### Building Demos
+
+```bash
+# Build all demos
+bun run website:demos
+
+# Build specific demo
+./website/demos/build-demos.sh hero
+
+# List available tapes
+./website/demos/build-demos.sh
+```
+
+### Creating New Demos
+
+1. Create `website/demos/tapes/your-demo.tape`:
+
+```tape
+Output "your-demo.gif"
+Set Theme "TokyoNight"
+Set FontFamily "JetBrains Mono"
+Set FontSize 16
+Set Width 900
+Set Height 500
+
+# Hidden setup (not recorded)
+Hide
+Type `export DEMO_DIR=$(mktemp -d)`
+Enter
+# ... setup commands ...
+Show
+
+# Visible demo
+Type "gno search 'query'"
+Enter
+Sleep 3s
+```
+
+2. Build: `./website/demos/build-demos.sh your-demo`
+
+3. Use in docs:
+```html
+<div class="demo-container">
+  <img src="/assets/demos/your-demo.gif" alt="Demo" class="demo-gif">
+</div>
+```
+
+### Requirements
+
+- VHS: `brew install charmbracelet/tap/vhs`
+- GNO linked globally: `bun link`
+
 <!-- BEGIN BEADS INTEGRATION -->
 ## Issue Tracking with bd (beads)
 

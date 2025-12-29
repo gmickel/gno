@@ -1,0 +1,9 @@
+{
+  "buildCommand": "mkdir -p docs && cp ../docs/*.md docs/ && bundle exec jekyll build",
+  "outputDirectory": "_site",
+  "installCommand": "gem install bundler && bundle install",
+  "framework": null,
+  "devCommand": "mkdir -p docs && cp ../docs/*.md docs/ && bundle exec jekyll serve --livereload",
+  "cleanUrls": true,
+  "trailingSlash": false
+}
