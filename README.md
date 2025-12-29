@@ -191,9 +191,9 @@ GNO runs embeddings, reranking, and query expansion locally using GGUF models vi
 
 | Model                 | Purpose           | Size (approx.) |
 | :-------------------- | :---------------- | :------------- |
-| `embeddinggemma-300M` | Embeddings        | ~300MB         |
-| `qwen3-reranker-0.6B` | Re-ranking        | ~640MB         |
-| `Qwen3-0.6B`          | Query Expansion   | ~640MB         |
+| `bge-m3`              | Multilingual Embeddings | ~500MB         |
+| `bge-reranker-v2-m3`  | Cross-Encoder Re-ranking | ~700MB         |
+| `Qwen-Instruct`       | Query Expansion / HyDE | ~600MB         |
 
 *(Specific GGUF versions are pinned for stability.)*
 

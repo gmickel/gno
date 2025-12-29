@@ -43,7 +43,7 @@ bun install -g gno
 gno init ~/notes --name notes
 
 # Index documents
-gno update
+gno index --yes
 
 # Search
 gno query "authentication best practices"
