@@ -283,6 +283,10 @@ pre {
     color: inherit;
     font-size: 0.9em;
   }
+
+  // Custom scrollbar
+  &::-webkit-scrollbar { height: 8px; }
+  &::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: 4px; }
 }
 
 // -----------------------------------------------------------------------------
@@ -760,13 +764,10 @@ body.layout-home .site-footer {
 
 // Syntax Highlighting Overrides
 .highlight {
-  background: var(--color-code-bg);
-  border-radius: $radius-lg;
-  border: 1px solid var(--color-border);
-  
-  // Custom scrollbar
-  &::-webkit-scrollbar { height: 8px; }
-  &::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: 4px; }
+  // Fix double border: remove styles from the wrapper div
+  background: transparent;
+  border: none;
+  border-radius: 0;
 }
 
 // Copy Button
