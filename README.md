@@ -1,8 +1,10 @@
 # GNO
 
-**Local knowledge indexing and semantic search CLI**
+**Your Local Second Brain**
 
-GNO indexes your documents locally and provides fast, privacy-preserving search with optional AI-powered answers.
+GNO is a **Local Knowledge Engine** that indexes your entire digital life—notes, code, PDFs, and Office docs. It provides fast, privacy-preserving search with optional AI-powered answers.
+
+**Built for Humans and AI Agents.** Access your knowledge instantly via the CLI or connect it to your AI agents (like Claude Desktop) with the Model Context Protocol (MCP).
 
 ## Features
 
@@ -12,7 +14,7 @@ GNO indexes your documents locally and provides fast, privacy-preserving search 
 - **Collections** - Organize documents by source directory
 - **Contexts** - Add semantic hints to improve search relevance
 - **Multilingual** - BCP-47 language hints and configurable FTS tokenizers
-- **MCP Integration** - Use as an MCP server for AI assistant access
+- **MCP Integration** - First-class MCP server for AI agent access
 - **Privacy First** - All processing happens locally, no data leaves your machine
 
 ## Quick Start

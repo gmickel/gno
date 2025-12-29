@@ -11,7 +11,7 @@
     <ul class="sidebar-nav">
       {% for item in section.items %}
       <li>
-        <a href="{{ item.url | relative_url }}" {% if page.url == item.url %}class="active"{% endif %}>
+        <a href="{{ item.url | relative_url }}" {% if page.url contains item.url %}class="active"{% endif %}>
           {{ item.title }}
         </a>
       </li>
