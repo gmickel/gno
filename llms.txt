@@ -1,0 +1,26 @@
+# GNO
+
+> Local knowledge indexing and semantic search CLI. Indexes documents locally, provides BM25/vector/hybrid search, and generates AI answers using local LLMs. Privacy-first: all processing happens on your machine.
+
+GNO helps you build a personal knowledge base from your documents (Markdown, PDF, DOCX, etc.) and search it semantically. It supports MCP integration for AI assistants like Claude.
+
+## Documentation
+
+- [Quickstart](docs/QUICKSTART.md): Get searching in 5 minutes
+- [Installation](docs/INSTALLATION.md): Platform setup, requirements, model downloads
+- [CLI Reference](docs/CLI.md): All commands and options
+- [Configuration](docs/CONFIGURATION.md): Collections, contexts, model presets
+- [Architecture](docs/ARCHITECTURE.md): System design, data flows
+- [MCP Integration](docs/MCP.md): Claude Desktop and Cursor setup
+- [Use Cases](docs/USE-CASES.md): Real-world workflows
+- [Troubleshooting](docs/TROUBLESHOOTING.md): Common issues and solutions
+
+## Specifications
+
+- [CLI Spec](spec/cli.md): Command contracts, exit codes, output formats
+- [MCP Spec](spec/mcp.md): Tool schemas, resource patterns
+
+## Optional
+
+- [Glossary](docs/GLOSSARY.md): Key terms and concepts
+- [Architecture Notes](docs/NOTES.md): Internal implementation details
