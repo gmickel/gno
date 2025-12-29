@@ -207,8 +207,6 @@ h1, h2, h3, h4, h5, h6 {
   margin-top: $space-8;
   margin-bottom: $space-4;
   letter-spacing: -0.01em;
-
-  &:first-child { margin-top: 0; }
 }
 
 h2 {
@@ -383,6 +381,11 @@ body.layout-home .site-main {
   max-width: $content-max-width;
   margin: 0 auto;
   padding: $space-8 $space-5;
+}
+
+// Reset first element in content to align with top padding
+.page-content > :first-child {
+  margin-top: 0;
 }
 
 .content-home {
