@@ -204,25 +204,11 @@ h1, h2, h3, h4, h5, h6 {
   color: var(--color-text-primary);
   line-height: 1.25;
   font-weight: 600;
-  margin-top: $space-9;
+  margin-top: $space-8;
   margin-bottom: $space-4;
   letter-spacing: -0.01em;
-}
 
-h2 {
-  margin-top: $space-10;
-}
-
-h3 {
-  margin-top: $space-10;
-}
-
-h1 {
-  font-size: 2.75rem;
-  font-weight: 700;
-  letter-spacing: -0.03em;
-  
-  @media (min-width: $bp-md) { font-size: 3.5rem; }
+  &:first-child { margin-top: 0; }
 }
 
 h2 {
