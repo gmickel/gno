@@ -3,7 +3,7 @@
 ---
 
 // =============================================================================
-// GNO Design System - "Scholarly Dusk" v2
+// GNO Design System - "Scholarly Dusk" v2.1 (World-Class Polish)
 // A refined, editorial aesthetic for a knowledge discovery tool
 // =============================================================================
 
@@ -61,27 +61,27 @@ $bp-xl: 1280px;
 :root {
   // Dark theme (Default)
   // Deep, rich, "Library at Night"
-  --color-bg-base: #0a0c10;      // Almost black, hint of blue
-  --color-bg-subtle: #11141a;    // Sidebar/Cards
-  --color-bg-surface: #1a1f26;   // Elevated
-  --color-bg-hover: #242a35;
-  --color-bg-active: #2e3642;
+  --color-bg-base: #050505;      // Deep black
+  --color-bg-subtle: #0f1115;    // Sidebar/Cards
+  --color-bg-surface: #181b21;   // Elevated
+  --color-bg-hover: #22262e;
+  --color-bg-active: #2c313a;
 
-  --color-border: #242a35;
-  --color-border-subtle: #1a1f26;
-  --color-border-highlight: #3a4555;
+  --color-border: #1f2329;
+  --color-border-subtle: #16191d;
+  --color-border-highlight: #333842;
 
   // Text
-  --color-text-primary: #f2f5f7;
-  --color-text-secondary: #9baec2;
-  --color-text-tertiary: #657585;
-  --color-text-inverse: #0a0c10;
+  --color-text-primary: #ededed;
+  --color-text-secondary: #949ba3;
+  --color-text-tertiary: #636b75;
+  --color-text-inverse: #050505;
 
   // Brand - "Alchemical Teal" & "Old Gold"
   --color-accent: #4db8a8;
   --color-accent-hover: #6ddccb;
   --color-accent-faint: rgba(77, 184, 168, 0.1);
-  --color-accent-glow: rgba(77, 184, 168, 0.4);
+  --color-accent-glow: rgba(77, 184, 168, 0.5);
 
   --color-warm: #d4a053;
   --color-warm-hover: #f0bc6e;
@@ -94,64 +94,71 @@ $bp-xl: 1280px;
   --color-info: #60a5fa;
 
   // Syntax
-  --color-code-bg: #11141a;
-  --color-code-border: #242a35;
+  --color-code-bg: #0f1115;
+  --color-code-border: #1f2329;
 
   // Effects
-  --shadow-sm: 0 1px 2px rgba(0,0,0,0.3);
-  --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.3), 0 2px 4px -2px rgba(0,0,0,0.2);
-  --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.3), 0 4px 6px -4px rgba(0,0,0,0.2);
-  --shadow-glow: 0 0 80px -20px var(--color-accent-glow);
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.4);
+  --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.4), 0 2px 4px -2px rgba(0,0,0,0.3);
+  --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.4), 0 4px 6px -4px rgba(0,0,0,0.3);
+  --shadow-glow: 0 0 100px -20px var(--color-accent-glow);
 
-  --backdrop-blur: blur(12px);
-  --glass-bg: rgba(10, 12, 16, 0.8);
-  --glass-border: rgba(255, 255, 255, 0.08);
+  --backdrop-blur: blur(16px);
+  --glass-bg: rgba(5, 5, 5, 0.75);
+  --glass-border: rgba(255, 255, 255, 0.06);
 
   // Hero Gradient
-  --hero-gradient: radial-gradient(circle at 50% 0%, rgba(77, 184, 168, 0.15), transparent 60%),
-                   radial-gradient(circle at 80% 20%, rgba(212, 160, 83, 0.08), transparent 40%);
+  --hero-gradient: radial-gradient(circle at 50% 0%, rgba(77, 184, 168, 0.12), transparent 50%),
+                   radial-gradient(circle at 90% 20%, rgba(212, 160, 83, 0.05), transparent 40%);
+  
+  // Grid Pattern
+  --grid-pattern: linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+                  linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
 }
 
 [data-theme="light"] {
   // Light theme
   // "Antique Paper"
-  --color-bg-base: #fdfcfb;
-  --color-bg-subtle: #f6f4f1;
+  --color-bg-base: #fcfbf9;
+  --color-bg-subtle: #f5f2ee;
   --color-bg-surface: #ffffff;
-  --color-bg-hover: #edeae6;
-  --color-bg-active: #e3dfd9;
+  --color-bg-hover: #ebe7e1;
+  --color-bg-active: #e0dcd6;
 
-  --color-border: #e3dfd9;
-  --color-border-subtle: #edeae6;
-  --color-border-highlight: #d1cdc6;
+  --color-border: #e0dcd6;
+  --color-border-subtle: #ebe7e1;
+  --color-border-highlight: #d1ccc5;
 
-  --color-text-primary: #2d2a26;
-  --color-text-secondary: #5e5952;
-  --color-text-tertiary: #918a82;
+  --color-text-primary: #24221f;
+  --color-text-secondary: #59554f;
+  --color-text-tertiary: #8f8880;
   --color-text-inverse: #ffffff;
 
   --color-accent: #208096;
   --color-accent-hover: #2aaec9;
-  --color-accent-faint: rgba(32, 128, 150, 0.08);
-  --color-accent-glow: rgba(32, 128, 150, 0.2);
+  --color-accent-faint: rgba(32, 128, 150, 0.06);
+  --color-accent-glow: rgba(32, 128, 150, 0.25);
 
   --color-warm: #b5872e;
   --color-warm-hover: #d4a03b;
   --color-warm-faint: rgba(181, 135, 46, 0.1);
 
-  --color-code-bg: #f6f4f1;
-  --color-code-border: #e3dfd9;
+  --color-code-bg: #f5f2ee;
+  --color-code-border: #e0dcd6;
 
-  --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
-  --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -2px rgba(0,0,0,0.05);
-  --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.08), 0 4px 6px -4px rgba(0,0,0,0.05);
-  --shadow-glow: 0 0 60px -20px var(--color-accent-glow);
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.04);
+  --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.04), 0 2px 4px -2px rgba(0,0,0,0.03);
+  --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.06), 0 4px 6px -4px rgba(0,0,0,0.03);
+  --shadow-glow: 0 0 80px -20px var(--color-accent-glow);
 
-  --glass-bg: rgba(253, 252, 251, 0.85);
-  --glass-border: rgba(0, 0, 0, 0.04);
+  --glass-bg: rgba(252, 251, 249, 0.8);
+  --glass-border: rgba(0, 0, 0, 0.03);
 
-  --hero-gradient: radial-gradient(circle at 50% 0%, rgba(32, 128, 150, 0.08), transparent 60%),
-                   radial-gradient(circle at 85% 10%, rgba(181, 135, 46, 0.08), transparent 40%);
+  --hero-gradient: radial-gradient(circle at 50% 0%, rgba(32, 128, 150, 0.06), transparent 50%),
+                   radial-gradient(circle at 90% 20%, rgba(181, 135, 46, 0.06), transparent 40%);
+  
+  --grid-pattern: linear-gradient(rgba(0, 0, 0, 0.02) 1px, transparent 1px),
+                  linear-gradient(90deg, rgba(0, 0, 0, 0.02) 1px, transparent 1px);
 }
 
 // -----------------------------------------------------------------------------
@@ -177,6 +184,10 @@ body {
   line-height: 1.65;
   overflow-x: hidden;
   transition: background-color $transition-slow, color $transition-slow;
+  
+  // World-class detail: Subtle grid pattern
+  background-image: var(--grid-pattern);
+  background-size: 40px 40px;
 }
 
 ::selection {
@@ -195,6 +206,7 @@ h1, h2, h3, h4, h5, h6 {
   font-weight: 600;
   margin-top: $space-7;
   margin-bottom: $space-4;
+  letter-spacing: -0.01em;
 
   &:first-child { margin-top: 0; }
 
@@ -211,22 +223,22 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 h1 {
-  font-size: 2.5rem;
+  font-size: 2.75rem;
   font-weight: 700;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.03em;
   
-  @media (min-width: $bp-md) { font-size: 3rem; }
+  @media (min-width: $bp-md) { font-size: 3.5rem; }
 }
 
 h2 {
-  font-size: 1.8rem;
+  font-size: 2rem;
   padding-bottom: $space-3;
   border-bottom: 1px solid var(--color-border-subtle);
 }
 
-h3 { font-size: 1.4rem; }
-h4 { font-size: 1.15rem; font-family: $font-sans; font-weight: 600; }
-h5 { font-size: 1rem; font-family: $font-sans; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--color-text-tertiary); }
+h3 { font-size: 1.5rem; }
+h4 { font-size: 1.25rem; font-family: $font-sans; font-weight: 600; letter-spacing: -0.02em; }
+h5 { font-size: 0.875rem; font-family: $font-sans; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--color-text-tertiary); }
 
 p {
   margin-bottom: $space-5;
@@ -305,13 +317,13 @@ pre {
   gap: $space-3;
   font-family: $font-serif;
   font-weight: 700;
-  font-size: 1.25rem;
+  font-size: 1.35rem;
   color: var(--color-text-primary);
   letter-spacing: -0.01em;
   border: none;
 
   &-icon {
-    font-size: 1.5rem;
+    font-size: 1.6rem;
   }
 }
 
@@ -368,8 +380,15 @@ pre {
 .site-main {
   padding-top: $header-height;
   min-height: 100vh;
+  transition: margin-left $transition-base;
   
+  // Only add margin if sidebar is present (default behavior)
   @media (min-width: $bp-lg) { margin-left: $sidebar-width; }
+}
+
+// Layout Fix: No margin on homepage/layout-home
+body.layout-home .site-main {
+  margin-left: 0 !important;
 }
 
 .content {
@@ -389,21 +408,21 @@ pre {
 .hero {
   position: relative;
   text-align: center;
-  padding: $space-10 $space-5 $space-8;
+  padding: $space-10 $space-5 $space-9;
   max-width: 1000px;
   margin: 0 auto;
 
-  // Background Glow
+  // Background Glow (World Class Detail)
   &::before {
     content: '';
     position: absolute;
     top: -50%;
     left: 50%;
     transform: translateX(-50%);
-    width: 120%;
+    width: 140%;
     height: 150%;
     background: var(--hero-gradient);
-    filter: blur(40px);
+    filter: blur(60px);
     z-index: -1;
     pointer-events: none;
     opacity: 0.8;
@@ -425,6 +444,7 @@ pre {
   font-size: 0.8rem;
   color: var(--color-warm);
   font-weight: 500;
+  letter-spacing: 0.02em;
 }
 
 .hero-title {
@@ -432,24 +452,26 @@ pre {
   font-size: 3.5rem;
   line-height: 1.1;
   font-weight: 700;
-  letter-spacing: -0.03em;
+  letter-spacing: -0.04em;
   margin-bottom: $space-5;
   
-  background: linear-gradient(180deg, var(--color-text-primary) 0%, var(--color-text-secondary) 150%);
+  // Refined gradient text
+  background: linear-gradient(180deg, var(--color-text-primary) 20%, var(--color-text-secondary) 150%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
   
-  @media (min-width: $bp-md) { font-size: 4.5rem; }
+  @media (min-width: $bp-md) { font-size: 5rem; }
 }
 
 .hero-description {
   font-family: $font-sans;
-  font-size: 1.25rem;
+  font-size: 1.35rem;
   color: var(--color-text-secondary);
-  line-height: 1.6;
-  max-width: 600px;
+  line-height: 1.5;
+  max-width: 640px;
   margin: 0 auto $space-8;
+  letter-spacing: -0.01em;
 }
 
 .hero-actions {
@@ -477,12 +499,17 @@ pre {
   &-primary {
     background: var(--color-accent);
     color: #fff;
-    box-shadow: 0 4px 12px var(--color-accent-glow);
+    // World Class Detail: Inner highlight for depth
+    box-shadow: 
+      0 4px 12px var(--color-accent-glow),
+      inset 0 1px 0 rgba(255, 255, 255, 0.2);
     
     &:hover {
       background: var(--color-accent-hover);
       transform: translateY(-2px);
-      box-shadow: 0 8px 16px var(--color-accent-glow);
+      box-shadow: 
+        0 8px 20px var(--color-accent-glow),
+        inset 0 1px 0 rgba(255, 255, 255, 0.2);
     }
   }
 
@@ -490,46 +517,42 @@ pre {
     background: var(--color-bg-surface);
     color: var(--color-text-primary);
     border-color: var(--color-border);
+    box-shadow: var(--shadow-sm);
     
     &:hover {
       border-color: var(--color-text-secondary);
       background: var(--color-bg-hover);
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-md);
     }
+  }
+  
+  &-lg {
+    padding: $space-3 2rem;
+    font-size: 1.05rem;
   }
 }
 
-// Hero Demo Window
+// Hero Demo Window (Fix: Remove extra window chrome)
 .hero-demo {
   margin: $space-9 auto $space-5;
-  border-radius: $radius-lg;
+  // Remove padding/border/bg that mimicked window
+  // Just a clean container for the already-windowed GIF
+  border-radius: $radius-lg; 
   box-shadow: var(--shadow-lg), var(--shadow-glow);
-  background: var(--color-bg-base);
-  border: 1px solid var(--color-border-highlight);
-  padding: $space-2;
   position: relative;
   overflow: hidden;
+  max-width: 900px;
 
-  // Window Controls
-  &::before {
-    content: '';
-    display: block;
-    height: 24px;
-    margin-bottom: $space-2;
-    background-image: 
-      radial-gradient(circle, #ff5f56 6px, transparent 7px),
-      radial-gradient(circle, #ffbd2e 6px, transparent 7px),
-      radial-gradient(circle, #27c93f 6px, transparent 7px);
-    background-size: 20px 20px;
-    background-position: 10px center, 35px center, 60px center;
-    background-repeat: no-repeat;
-    opacity: 0.8;
-  }
+  // REMOVED ::before pseudo-element for traffic lights
 
   img {
     display: block;
     width: 100%;
-    border-radius: $radius-md;
-    border: 1px solid var(--color-border);
+    height: auto;
+    border-radius: $radius-lg;
+    // Keep subtle border to define edge
+    border: 1px solid var(--glass-border); 
   }
 }
 
@@ -539,7 +562,7 @@ pre {
 
 .features-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
   gap: $space-5;
   padding: $space-8 0;
 }
@@ -571,12 +594,14 @@ pre {
   &:hover {
     transform: translateY(-4px);
     box-shadow: var(--shadow-lg);
+    background: var(--color-bg-surface);
     &::after { opacity: 1; }
     
     .feature-card-icon {
       background: var(--color-accent);
       color: #fff;
       transform: scale(1.1) rotate(5deg);
+      border-color: transparent;
     }
   }
 
@@ -597,7 +622,7 @@ pre {
 
   &-title {
     font-family: $font-serif;
-    font-size: 1.25rem;
+    font-size: 1.35rem;
     margin-bottom: $space-2;
     color: var(--color-text-primary);
   }
@@ -667,6 +692,11 @@ pre {
   @media (min-width: $bp-lg) { margin-left: $sidebar-width; }
 }
 
+// Layout Fix: No margin on homepage
+body.layout-home .site-footer {
+  margin-left: 0 !important;
+}
+
 .footer-inner {
   max-width: $content-max-width;
   margin: 0 auto;
@@ -696,7 +726,8 @@ pre {
   align-items: center;
   justify-content: center;
   background: transparent;
-  border: 1px solid var(--color-border);
+  // Fix: Removed border
+  border: none;
   border-radius: $radius-full;
   color: var(--color-text-secondary);
   cursor: pointer;
@@ -731,6 +762,7 @@ pre {
 .highlight {
   background: var(--color-code-bg);
   border-radius: $radius-lg;
+  border: 1px solid var(--color-border);
   
   // Custom scrollbar
   &::-webkit-scrollbar { height: 8px; }
