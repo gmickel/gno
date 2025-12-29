@@ -4,7 +4,8 @@ GNO configuration reference.
 
 ## Config File
 
-Location: `~/.config/gno/config/index.yml`
+Location varies by platform (see [File Locations](#file-locations) below).
+Run `gno doctor` to see your resolved config path.
 
 ```yaml
 version: "1.0"
@@ -219,21 +220,31 @@ gno init --tokenizer porter
 
 ## Environment Variables
 
-Override paths:
+Override paths (applied before platform defaults):
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `GNO_CONFIG_DIR` | `~/.config/gno` | Config directory |
-| `GNO_DATA_DIR` | `~/.local/share/gno` | Database directory |
-| `GNO_CACHE_DIR` | `~/.cache/gno` | Model cache |
+| Variable | Description |
+|----------|-------------|
+| `GNO_CONFIG_DIR` | Override config directory |
+| `GNO_DATA_DIR` | Override database directory |
+| `GNO_CACHE_DIR` | Override model cache |
 
 ## File Locations
 
+**Linux** (XDG):
 | Path | Purpose |
 |------|---------|
-| `~/.config/gno/config/index.yml` | Main config |
+| `~/.config/gno/index.yml` | Config |
 | `~/.local/share/gno/index-default.sqlite` | Database |
-| `~/.cache/gno/models/` | Model cache (macOS: `~/Library/Caches/gno/`) |
+| `~/.cache/gno/models/` | Model cache |
+
+**macOS**:
+| Path | Purpose |
+|------|---------|
+| `~/Library/Application Support/gno/config/index.yml` | Config |
+| `~/Library/Application Support/gno/data/index-default.sqlite` | Database |
+| `~/Library/Caches/gno/models/` | Model cache |
+
+Run `gno doctor` to see resolved paths for your system.
 
 ## Editing Config
 
@@ -243,11 +254,11 @@ Edit directly or use CLI:
 # Add collection via CLI
 gno collection add ~/notes --name notes
 
-# View config
-cat ~/.config/gno/config/index.yml
+# View config (Linux)
+cat ~/.config/gno/index.yml
 
-# Edit manually
-vim ~/.config/gno/config/index.yml
+# View config (macOS)
+cat ~/Library/Application\ Support/gno/config/index.yml
 ```
 
 After manual edits, run `gno update` to apply changes.

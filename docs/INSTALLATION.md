@@ -100,7 +100,11 @@ Model presets control disk usage:
 | balanced | ~2GB | bge-m3-Q4 | bge-reranker-v2-m3-Q4 | SmolLM3-3B-Q4 |
 | quality | ~2.5GB | bge-m3-Q4 | bge-reranker-v2-m3-Q4 | Qwen3-4B-Q4 |
 
-Change preset in config: `modelPreset: balanced`
+Change preset in config:
+```yaml
+models:
+  activePreset: balanced
+```
 
 ## Verification
 

@@ -157,12 +157,21 @@ Run `gno doctor` to check component status.
 
 ## File Locations
 
+**Linux** (XDG standard):
 | Location | Purpose |
 |----------|---------|
-| `~/.config/gno/` | Configuration (config.yml) |
-| `~/.local/share/gno/` | Database (index.sqlite) |
-| `~/Library/Caches/gno/` | Model cache (macOS) |
-| `~/.cache/gno/` | Model cache (Linux) |
+| `~/.config/gno/index.yml` | Configuration |
+| `~/.local/share/gno/index-default.sqlite` | Database |
+| `~/.cache/gno/models/` | Model cache |
+
+**macOS**:
+| Location | Purpose |
+|----------|---------|
+| `~/Library/Application Support/gno/config/index.yml` | Configuration |
+| `~/Library/Application Support/gno/data/index-default.sqlite` | Database |
+| `~/Library/Caches/gno/models/` | Model cache |
+
+Run `gno doctor` to see resolved paths.
 
 ## Technical Notes
 

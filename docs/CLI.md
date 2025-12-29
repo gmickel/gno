@@ -28,8 +28,10 @@ All commands accept:
 --no-color        Disable colored output
 --verbose         Enable verbose logging
 --yes             Non-interactive mode
---json            JSON output
 ```
+
+**Output format flags** (`--json`, `--files`, `--csv`, `--md`, `--xml`) are per-command.
+See [spec/cli.md](../spec/cli.md#output-format-support-matrix) for which commands support which formats.
 
 ## Search Commands
 
@@ -45,7 +47,7 @@ gno search "meeting" --files
 ```
 
 Options:
-- `-n, --limit <n>` - Limit results (default: 10)
+- `-n, --limit <n>` - Limit results (default: 5; 20 with --json/--files)
 - `--min-score <n>` - Minimum score threshold (0-1)
 - `--full` - Show full document content
 - `--line-numbers` - Show line numbers in snippets
