@@ -1,9 +1,9 @@
 {
-  "buildCommand": "mkdir -p docs && cp ../docs/*.md docs/ && echo '---\nlayout: page\ntitle: Changelog\ndescription: Release history and version notes for GNO\npermalink: /changelog/\n---\n' > changelog.md && cat ../CHANGELOG.md >> changelog.md && bundle exec jekyll build",
+  "buildCommand": "mkdir -p docs && cp ../docs/*.md docs/ && printf '%s\\n' '---' 'layout: page' 'title: Changelog' 'description: Release history and version notes for GNO' 'permalink: /changelog/' '---' '' > changelog.md && cat ../CHANGELOG.md >> changelog.md && bundle exec jekyll build",
   "outputDirectory": "_site",
   "installCommand": "gem install bundler && bundle install",
   "framework": null,
-  "devCommand": "mkdir -p docs && cp ../docs/*.md docs/ && echo '---\nlayout: page\ntitle: Changelog\ndescription: Release history and version notes for GNO\npermalink: /changelog/\n---\n' > changelog.md && cat ../CHANGELOG.md >> changelog.md && bundle exec jekyll serve --livereload",
+  "devCommand": "mkdir -p docs && cp ../docs/*.md docs/ && printf '%s\\n' '---' 'layout: page' 'title: Changelog' 'description: Release history and version notes for GNO' 'permalink: /changelog/' '---' '' > changelog.md && cat ../CHANGELOG.md >> changelog.md && bundle exec jekyll serve --livereload",
   "cleanUrls": true,
   "trailingSlash": false
 }
