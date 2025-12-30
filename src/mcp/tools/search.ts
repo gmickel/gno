@@ -1,5 +1,5 @@
 /**
- * MCP gno.search tool - BM25 full-text search.
+ * MCP gno_search tool - BM25 full-text search.
  *
  * @module src/mcp/tools/search
  */
@@ -77,7 +77,7 @@ function formatSearchResults(data: SearchResults): string {
 }
 
 /**
- * Handle gno.search tool call.
+ * Handle gno_search tool call.
  */
 export function handleSearch(
   args: SearchInput,
@@ -85,7 +85,7 @@ export function handleSearch(
 ): Promise<ToolResult> {
   return runTool(
     ctx,
-    'gno.search',
+    'gno_search',
     async () => {
       // Validate collection exists if specified
       if (args.collection) {

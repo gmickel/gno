@@ -1,5 +1,5 @@
 /**
- * MCP gno.vsearch tool - Vector/semantic similarity search.
+ * MCP gno_vsearch tool - Vector/semantic similarity search.
  *
  * @module src/mcp/tools/vsearch
  */
@@ -85,7 +85,7 @@ function formatSearchResults(data: SearchResults): string {
 }
 
 /**
- * Handle gno.vsearch tool call.
+ * Handle gno_vsearch tool call.
  */
 export function handleVsearch(
   args: VsearchInput,
@@ -93,7 +93,7 @@ export function handleVsearch(
 ): Promise<ToolResult> {
   return runTool(
     ctx,
-    'gno.vsearch',
+    'gno_vsearch',
     async () => {
       // Validate collection exists if specified
       if (args.collection) {

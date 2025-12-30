@@ -1,5 +1,5 @@
 /**
- * MCP gno.status tool - Index status and health.
+ * MCP gno_status tool - Index status and health.
  *
  * @module src/mcp/tools/status
  */
@@ -55,7 +55,7 @@ function formatStatus(status: IndexStatus): string {
 }
 
 /**
- * Handle gno.status tool call.
+ * Handle gno_status tool call.
  */
 export function handleStatus(
   _args: StatusInput,
@@ -63,7 +63,7 @@ export function handleStatus(
 ): Promise<ToolResult> {
   return runTool(
     ctx,
-    'gno.status',
+    'gno_status',
     async () => {
       const result = await ctx.store.getStatus();
       if (!result.ok) {

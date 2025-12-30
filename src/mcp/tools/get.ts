@@ -1,5 +1,5 @@
 /**
- * MCP gno.get tool - Retrieve single document.
+ * MCP gno_get tool - Retrieve single document.
  *
  * @module src/mcp/tools/get
  */
@@ -104,7 +104,7 @@ function formatGetResponse(data: GetResponse): string {
 }
 
 /**
- * Handle gno.get tool call.
+ * Handle gno_get tool call.
  */
 export function handleGet(
   args: GetInput,
@@ -112,7 +112,7 @@ export function handleGet(
 ): Promise<ToolResult> {
   return runTool(
     ctx,
-    'gno.get',
+    'gno_get',
     async () => {
       // Parse reference
       const parsed = parseRef(args.ref);

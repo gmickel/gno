@@ -1,5 +1,5 @@
 /**
- * MCP gno.query tool - Hybrid search with expansion and reranking.
+ * MCP gno_query tool - Hybrid search with expansion and reranking.
  *
  * @module src/mcp/tools/query
  */
@@ -104,7 +104,7 @@ function formatSearchResults(data: SearchResults): string {
 }
 
 /**
- * Handle gno.query tool call.
+ * Handle gno_query tool call.
  */
 export function handleQuery(
   args: QueryInput,
@@ -112,7 +112,7 @@ export function handleQuery(
 ): Promise<ToolResult> {
   return runTool(
     ctx,
-    'gno.query',
+    'gno_query',
     async () => {
       // Validate collection exists if specified
       if (args.collection) {

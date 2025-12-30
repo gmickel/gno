@@ -1,12 +1,12 @@
 /**
- * MCP gno.search tool tests.
+ * MCP gno_search tool tests.
  */
 
 import { describe, expect, test } from 'bun:test';
 import { z } from 'zod';
 
 // Test the search input/output schemas match spec
-describe('gno.search schema', () => {
+describe('gno_search schema', () => {
   const searchInputSchema = z.object({
     query: z.string().min(1, 'Query cannot be empty'),
     collection: z.string().optional(),
@@ -61,7 +61,7 @@ describe('gno.search schema', () => {
   });
 });
 
-describe('gno.search output schema', () => {
+describe('gno_search output schema', () => {
   const searchResultSchema = z.object({
     docid: z.string(),
     score: z.number(),

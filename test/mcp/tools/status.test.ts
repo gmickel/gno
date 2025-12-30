@@ -1,12 +1,12 @@
 /**
- * MCP gno.status tool tests.
+ * MCP gno_status tool tests.
  */
 
 import { describe, expect, test } from 'bun:test';
 import { z } from 'zod';
 
 // Test the status input/output schemas match spec
-describe('gno.status schema', () => {
+describe('gno_status schema', () => {
   test('status input schema accepts empty object', () => {
     const schema = z.object({});
     const result = schema.safeParse({});

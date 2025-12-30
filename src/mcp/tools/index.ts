@@ -115,45 +115,44 @@ export async function runTool<T>(
 // ─────────────────────────────────────────────────────────────────────────────
 
 export function registerTools(server: McpServer, ctx: ToolContext): void {
-  // Tool IDs exactly per spec (gno.search, gno.vsearch, etc.)
+  // Tool IDs use underscores (MCP pattern: ^[a-zA-Z0-9_-]{1,64}$)
   server.tool(
-    'gno.search',
+    'gno_search',
     'BM25 full-text search across indexed documents',
     searchInputSchema.shape,
     (args) => handleSearch(args, ctx)
   );
 
   server.tool(
-    'gno.vsearch',
+    'gno_vsearch',
     'Vector/semantic similarity search',
     vsearchInputSchema.shape,
     (args) => handleVsearch(args, ctx)
   );
 
   server.tool(
-    'gno.query',
+    'gno_query',
     'Hybrid search with optional expansion and reranking',
     queryInputSchema.shape,
     (args) => handleQuery(args, ctx)
   );
 
   server.tool(
-    'gno.get',
+    'gno_get',
     'Retrieve a single document by URI, docid, or collection/path',
     getInputSchema.shape,
     (args) => handleGet(args, ctx)
   );
 
-  // Note: underscore in multi_get per spec
   server.tool(
-    'gno.multi_get',
+    'gno_multi_get',
     'Retrieve multiple documents by refs or glob pattern',
     multiGetInputSchema.shape,
     (args) => handleMultiGet(args, ctx)
   );
 
   server.tool(
-    'gno.status',
+    'gno_status',
     'Get index status and health information',
     statusInputSchema.shape,
     (args) => handleStatus(args, ctx)

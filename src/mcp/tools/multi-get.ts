@@ -1,5 +1,5 @@
 /**
- * MCP gno.multi_get tool - Retrieve multiple documents.
+ * MCP gno_multi_get tool - Retrieve multiple documents.
  *
  * @module src/mcp/tools/multi-get
  */
@@ -118,7 +118,7 @@ function formatMultiGetResponse(data: MultiGetResponse): string {
 }
 
 /**
- * Handle gno.multi_get tool call.
+ * Handle gno_multi_get tool call.
  */
 export function handleMultiGet(
   args: MultiGetInput,
@@ -126,7 +126,7 @@ export function handleMultiGet(
 ): Promise<ToolResult> {
   return runTool(
     ctx,
-    'gno.multi_get',
+    'gno_multi_get',
     async () => {
       // Validate input
       if (!(args.refs || args.pattern)) {
