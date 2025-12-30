@@ -24,6 +24,10 @@ sync-docs:
 		esac; \
 	done
 	@echo "Synced docs from ../docs/ (excluding NOTES.md)"
+	@echo "---\nlayout: page\ntitle: Changelog\ndescription: Release history and version notes for GNO\npermalink: /changelog/\n---\n" > changelog.md
+	@cat ../CHANGELOG.md >> changelog.md
+	@echo "\n[View on GitHub](https://github.com/gmickel/gno/blob/main/CHANGELOG.md)" >> changelog.md
+	@echo "Synced CHANGELOG.md"
 
 # Clean build artifacts
 clean:

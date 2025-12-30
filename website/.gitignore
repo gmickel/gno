@@ -5,6 +5,7 @@ _site/
 vendor/
 Gemfile.lock
 
-# Copied from ../docs/ during build
+# Copied from parent during build
 docs/
+changelog.md
 .vercel
