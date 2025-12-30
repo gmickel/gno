@@ -17,52 +17,29 @@ The diagram below shows how your query flows through GNO's search system:
 **Stage 4: Reranking** → Top 20 candidates are rescored by a cross-encoder for final ordering.
 
 ```
-          ┌─────────────────────────┐
-          │       YOUR QUERY        │
-          │ "how do I deploy to     │
-          │       production"       │
-          └───────────┬─────────────┘
-                      ▼
-          ┌─────────────────────────┐
-          │  1. QUERY EXPANSION     │
-          │                         │
-          │  Lexical: "deploy app"  │
-          │  Semantic: "release     │
-          │    software to prod"    │
-          │  HyDE: "To deploy..."   │
-          └───────────┬─────────────┘
-                      │
-           ┌─────────┴─────────┐
-           ▼                   ▼
-   ┌──────────────┐   ┌──────────────┐
-   │ 2A. BM25     │   │ 2B. VECTOR   │
-   │              │   │              │
-   │ Keyword      │   │ Semantic     │
-   │ matching     │   │ similarity   │
-   │ (FTS5)       │   │ (embeddings) │
-   └──────┬───────┘   └───────┬──────┘
-          │                   │
-          └─────────┬─────────┘
-                    ▼
-          ┌─────────────────────────┐
-          │  3. RRF FUSION          │
-          │                         │
-          │  Merges ranked lists    │
-          │  score = Σ w/(k+rank)   │
-          │  k=60, weights vary     │
-          └───────────┬─────────────┘
-                      ▼
-          ┌─────────────────────────┐
-          │  4. RERANKING           │
-          │                         │
-          │  Cross-encoder rescores │
-          │  top 20 candidates      │
-          └───────────┬─────────────┘
-                      ▼
-          ┌─────────────────────────┐
-          │     FINAL RESULTS       │
-          │  Sorted by score [0-1]  │
-          └─────────────────────────┘
+        YOUR QUERY
+            |
+            v
+   [1. QUERY EXPANSION]
+   Lexical + Semantic + HyDE
+            |
+      +-----+-----+
+      |           |
+      v           v
+   [BM25]    [VECTOR]
+      |           |
+      +-----+-----+
+            |
+            v
+    [3. RRF FUSION]
+    Merges ranked lists
+            |
+            v
+    [4. RERANKING]
+    Cross-encoder rescores
+            |
+            v
+      FINAL RESULTS
 ```
 
 ## Query Expansion with HyDE
