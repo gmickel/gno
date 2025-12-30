@@ -4,6 +4,10 @@
   "type": "module",
   "author": "Gno",
   "license": "MIT",
+  "files": [
+    "src",
+    "assets"
+  ],
   "Author": "Gordon Mickel <gordon@mickel.tech>",
   "bin": {
     "gno": "src/index.ts"

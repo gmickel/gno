@@ -148,6 +148,7 @@ export function createProgram(): Command {
   wireManagementCommands(program);
   wireRetrievalCommands(program);
   wireMcpCommand(program);
+  wireSkillCommands(program);
 
   // Add docs/support links to help footer
   program.addHelpText(
@@ -1010,5 +1011,93 @@ function wireManagementCommands(program: Command): void {
         keepCache: Boolean(cmdOpts.keepCache),
       });
       process.stdout.write(`${formatReset(result)}\n`);
+    });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Skill Commands (install, uninstall, show, paths)
+// ─────────────────────────────────────────────────────────────────────────────
+
+function wireSkillCommands(program: Command): void {
+  const skillCmd = program
+    .command('skill')
+    .description('Manage GNO agent skill');
+
+  skillCmd
+    .command('install')
+    .description('Install GNO skill to Claude Code or Codex')
+    .option(
+      '-s, --scope <scope>',
+      'installation scope (project, user)',
+      'project'
+    )
+    .option(
+      '-t, --target <target>',
+      'target agent (claude, codex, all)',
+      'claude'
+    )
+    .option('-f, --force', 'overwrite existing installation')
+    .action(async (cmdOpts: Record<string, unknown>) => {
+      const { installSkill } = await import('./commands/skill/install.js');
+      await installSkill({
+        scope: cmdOpts.scope as 'project' | 'user',
+        target: cmdOpts.target as 'claude' | 'codex' | 'all',
+        force: Boolean(cmdOpts.force),
+      });
+    });
+
+  skillCmd
+    .command('uninstall')
+    .description('Uninstall GNO skill')
+    .option(
+      '-s, --scope <scope>',
+      'installation scope (project, user)',
+      'project'
+    )
+    .option(
+      '-t, --target <target>',
+      'target agent (claude, codex, all)',
+      'claude'
+    )
+    .action(async (cmdOpts: Record<string, unknown>) => {
+      const { uninstallSkill } = await import('./commands/skill/uninstall.js');
+      await uninstallSkill({
+        scope: cmdOpts.scope as 'project' | 'user',
+        target: cmdOpts.target as 'claude' | 'codex' | 'all',
+      });
+    });
+
+  skillCmd
+    .command('show')
+    .description('Preview skill files without installing')
+    .option('--file <name>', 'specific file to show')
+    .option('--all', 'show all skill files')
+    .action(async (cmdOpts: Record<string, unknown>) => {
+      const { showSkill } = await import('./commands/skill/show.js');
+      await showSkill({
+        file: cmdOpts.file as string | undefined,
+        all: Boolean(cmdOpts.all),
+      });
+    });
+
+  skillCmd
+    .command('paths')
+    .description('Show resolved skill installation paths')
+    .option(
+      '-s, --scope <scope>',
+      'filter by scope (project, user, all)',
+      'all'
+    )
+    .option(
+      '-t, --target <target>',
+      'filter by target (claude, codex, all)',
+      'all'
+    )
+    .action(async (cmdOpts: Record<string, unknown>) => {
+      const { showPaths } = await import('./commands/skill/paths-cmd.js');
+      await showPaths({
+        scope: cmdOpts.scope as 'project' | 'user' | 'all',
+        target: cmdOpts.target as 'claude' | 'codex' | 'all',
+      });
     });
 }

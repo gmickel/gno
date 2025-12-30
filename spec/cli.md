@@ -72,6 +72,10 @@ Default output is human-readable terminal format.
 | cleanup | no | no | no | no | no | terminal |
 | doctor | yes | no | no | yes | no | terminal |
 | mcp | no | no | no | no | no | stdio |
+| skill install | yes | no | no | no | no | terminal |
+| skill uninstall | yes | no | no | no | no | terminal |
+| skill show | no | no | no | no | no | terminal |
+| skill paths | yes | no | no | no | no | terminal |
 
 ---
 
@@ -891,6 +895,146 @@ gno mcp
 
 ---
 
+### gno skill install
+
+Install GNO agent skill for Claude Code or Codex.
+
+**Synopsis:**
+```
+gno skill install [--scope <project|user>] [--target <claude|codex|all>] [--force] [--json]
+```
+
+**Options:**
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `--scope` | string | project | `project` (.claude/skills/) or `user` (~/.claude/skills/) |
+| `--target` | string | claude | `claude`, `codex`, or `all` |
+| `--force` | boolean | false | Overwrite existing skill without prompting |
+
+**Behavior:**
+1. Resolves target path based on scope and target
+2. If skill exists and not `--force`/`--yes`: error
+3. Atomically installs skill directory (temp + rename)
+4. Copies SKILL.md and reference files
+
+**Output (JSON):**
+```json
+{
+  "installed": [
+    { "target": "claude", "scope": "project", "path": ".claude/skills/gno" }
+  ]
+}
+```
+
+**Exit Codes:**
+- 0: Success
+- 1: Skill already exists (without --force)
+- 2: IO failure
+
+**Examples:**
+```bash
+# Install to current project for Claude Code
+gno skill install
+
+# Install globally for all agents
+gno skill install --scope user --target all
+
+# Force reinstall
+gno skill install --force
+```
+
+---
+
+### gno skill uninstall
+
+Remove GNO agent skill.
+
+**Synopsis:**
+```
+gno skill uninstall [--scope <project|user>] [--target <claude|codex|all>] [--json]
+```
+
+**Options:** Same as `skill install` (except `--force`)
+
+**Safety Checks:**
+- Validates path ends with `/skills/gno` before removal
+- Rejects paths that don't match expected structure
+- Uses atomic removal with retry for Windows compatibility
+
+**Output (JSON):**
+```json
+{
+  "uninstalled": [
+    { "target": "claude", "scope": "project", "path": ".claude/skills/gno" }
+  ]
+}
+```
+
+**Exit Codes:**
+- 0: Success
+- 1: Skill not found
+- 2: IO failure or safety check failed
+
+---
+
+### gno skill show
+
+Preview skill files without installing.
+
+**Synopsis:**
+```
+gno skill show [--file <name>] [--all]
+```
+
+**Options:**
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `--file` | string | SKILL.md | File to show: SKILL.md, cli-reference.md, mcp-reference.md, examples.md |
+| `--all` | boolean | false | Show all files with separators |
+
+**Behavior:**
+- Outputs file content to stdout
+- Lists available files at end
+
+**Exit Codes:**
+- 0: Success
+- 1: Invalid file name
+
+**Examples:**
+```bash
+gno skill show
+gno skill show --file cli-reference.md
+gno skill show --all
+```
+
+---
+
+### gno skill paths
+
+Show resolved skill installation paths.
+
+**Synopsis:**
+```
+gno skill paths [--scope <project|user>] [--target <claude|codex|all>] [--json]
+```
+
+**Options:** Same as `skill install`
+
+**Output (JSON):**
+```json
+{
+  "paths": [
+    { "target": "claude", "scope": "project", "path": "/path/to/.claude/skills/gno", "exists": false },
+    { "target": "claude", "scope": "user", "path": "/home/user/.claude/skills/gno", "exists": true }
+  ]
+}
+```
+
+**Exit Codes:**
+- 0: Success
+
+---
+
 ## Error Output
 
 Errors are written to stderr. With `--json` flag, errors are also returned as:
@@ -917,6 +1061,9 @@ Error codes match exit codes: `VALIDATION` (exit 1), `RUNTIME` (exit 2).
 | `GNO_DATA_DIR` | Override data directory (DB location) |
 | `GNO_CACHE_DIR` | Override cache directory (models) |
 | `NO_COLOR` | Disable colored output (standard) |
+| `GNO_SKILLS_HOME_OVERRIDE` | Override home dir for skill user scope (testing) |
+| `CLAUDE_SKILLS_DIR` | Override Claude skills directory |
+| `CODEX_SKILLS_DIR` | Override Codex skills directory |
 
 ---
 
