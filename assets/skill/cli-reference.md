@@ -264,6 +264,60 @@ gno doctor [--json|--md]
 gno cleanup
 ```
 
+## MCP Server
+
+### gno mcp
+
+Start MCP server (stdio transport).
+
+```bash
+gno mcp
+```
+
+### gno mcp install
+
+Install GNO as MCP server in client configurations.
+
+```bash
+gno mcp install [options]
+```
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `-t, --target` | claude-desktop | Target: `claude-desktop`, `claude-code`, `codex` |
+| `-s, --scope` | user | Scope: `user`, `project` |
+| `-f, --force` | false | Overwrite existing config |
+| `--dry-run` | false | Preview changes |
+
+Examples:
+
+```bash
+# Claude Desktop (default)
+gno mcp install
+
+# Claude Code (user scope)
+gno mcp install -t claude-code
+
+# Claude Code (project scope)
+gno mcp install -t claude-code -s project
+```
+
+### gno mcp uninstall
+
+Remove GNO MCP server from client configuration.
+
+```bash
+gno mcp uninstall [-t <target>] [-s <scope>]
+```
+
+### gno mcp status
+
+Show MCP installation status.
+
+```bash
+gno mcp status [--json]
+```
+
 ## Exit Codes
 
 | Code | Description |

@@ -2,46 +2,83 @@
 layout: feature
 title: MCP Integration
 headline: Give Your AI Assistant Memory
-description: Connect GNO to Claude Desktop, Cursor, or any MCP-compatible AI assistant. Your AI can now search and cite your local documents.
-keywords: mcp server, claude desktop integration, cursor integration, ai assistant, model context protocol
+description: Connect GNO to Claude Desktop, Claude Code, Cursor, or any MCP-compatible AI assistant. Your AI can now search and cite your local documents.
+keywords: mcp server, claude desktop integration, claude code integration, cursor integration, ai assistant, model context protocol
 icon: mcp-integration
 slug: mcp-integration
 permalink: /features/mcp-integration/
 benefits:
   - Works with Claude Desktop
+  - Works with Claude Code
   - Works with Cursor
   - Standard MCP protocol
   - Search, read, and cite documents
 commands:
-  - "gno mcp"
+  - "gno mcp install"
+  - "gno mcp status"
 ---
 
 ## What is MCP?
 
 Model Context Protocol (MCP) is a standard that lets AI assistants access external tools and data sources. GNO implements an MCP server that gives your AI access to your local documents.
 
-## Setup
+## Quick Setup
 
 ### Claude Desktop
 
-Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
+```bash
+gno mcp install
+```
+
+Restart Claude Desktop. GNO tools will appear in the tool list.
+
+### Claude Code
+
+```bash
+# User-level (all projects)
+gno mcp install --target claude-code
+
+# Project-level (current project only)
+gno mcp install --target claude-code --scope project
+```
+
+### Check Status
+
+```bash
+gno mcp status
+```
+
+Shows which clients have GNO configured.
+
+## Advanced Setup
+
+For manual configuration or unsupported clients, add to the client's MCP config:
 
 ```json
 {
   "mcpServers": {
     "gno": {
-      "command": "gno",
-      "args": ["mcp"]
+      "command": "/path/to/bun",
+      "args": ["/path/to/gno", "mcp"]
     }
   }
 }
 ```
 
-Restart Claude Desktop. GNO tools will appear in the tool list.
+**Note**: Use absolute paths. Claude Desktop runs in a sandboxed environment with a limited PATH.
+
+### Config Locations
+
+| Client | Path |
+|--------|------|
+| Claude Desktop (macOS) | `~/Library/Application Support/Claude/claude_desktop_config.json` |
+| Claude Code (user) | `~/.claude.json` |
+| Claude Code (project) | `./.mcp.json` |
+| Codex (user) | `~/.codex.json` |
 
 ### Cursor
 
-Configure in Cursor's MCP settings with the same command:
+Configure in Cursor's MCP settings with the command:
 ```
 gno mcp
 ```

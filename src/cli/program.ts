@@ -704,15 +704,20 @@ function wireRetrievalCommands(program: Command): void {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// MCP Command
+// MCP Commands
 // ─────────────────────────────────────────────────────────────────────────────
 
 function wireMcpCommand(program: Command): void {
-  // mcp - Start MCP server (stdio transport)
-  // CRITICAL: helpOption(false) prevents --help from writing to stdout
-  // which would corrupt the JSON-RPC stream
-  program
+  // mcp - Start MCP server (stdio transport) or manage MCP configuration
+  // CRITICAL: helpOption(false) on server command prevents --help from writing
+  // to stdout which would corrupt the JSON-RPC stream
+  const mcpCmd = program
     .command('mcp')
+    .description('MCP server and configuration');
+
+  // Default action: start MCP server
+  mcpCmd
+    .command('serve', { isDefault: true })
     .description('Start MCP server (stdio transport)')
     .helpOption(false)
     .action(async () => {
@@ -720,6 +725,142 @@ function wireMcpCommand(program: Command): void {
       const globalOpts = program.opts();
       const globals = parseGlobalOptions(globalOpts);
       await mcpCommand(globals);
+    });
+
+  // install - Install gno MCP server to client configs
+  mcpCmd
+    .command('install')
+    .description('Install gno as MCP server in client configuration')
+    .option(
+      '-t, --target <target>',
+      'target client (claude-desktop, claude-code, codex)',
+      'claude-desktop'
+    )
+    .option(
+      '-s, --scope <scope>',
+      'scope (user, project) - project only for claude-code/codex',
+      'user'
+    )
+    .option('-f, --force', 'overwrite existing configuration')
+    .option('--dry-run', 'show what would be done without making changes')
+    .option('--json', 'JSON output')
+    .action(async (cmdOpts: Record<string, unknown>) => {
+      const target = cmdOpts.target as string;
+      const scope = cmdOpts.scope as string;
+
+      // Validate target
+      if (!['claude-desktop', 'claude-code', 'codex'].includes(target)) {
+        throw new CliError(
+          'VALIDATION',
+          `Invalid target: ${target}. Must be 'claude-desktop', 'claude-code', or 'codex'.`
+        );
+      }
+      // Validate scope
+      if (!['user', 'project'].includes(scope)) {
+        throw new CliError(
+          'VALIDATION',
+          `Invalid scope: ${scope}. Must be 'user' or 'project'.`
+        );
+      }
+
+      const { installMcp } = await import('./commands/mcp/install.js');
+      await installMcp({
+        target: target as 'claude-desktop' | 'claude-code' | 'codex',
+        scope: scope as 'user' | 'project',
+        force: Boolean(cmdOpts.force),
+        dryRun: Boolean(cmdOpts.dryRun),
+        // Pass undefined if not set, so global --json can take effect
+        json: cmdOpts.json === true ? true : undefined,
+      });
+    });
+
+  // uninstall - Remove gno MCP server from client configs
+  mcpCmd
+    .command('uninstall')
+    .description('Remove gno MCP server from client configuration')
+    .option(
+      '-t, --target <target>',
+      'target client (claude-desktop, claude-code, codex)',
+      'claude-desktop'
+    )
+    .option('-s, --scope <scope>', 'scope (user, project)', 'user')
+    .option('--json', 'JSON output')
+    .action(async (cmdOpts: Record<string, unknown>) => {
+      const target = cmdOpts.target as string;
+      const scope = cmdOpts.scope as string;
+
+      // Validate target
+      if (!['claude-desktop', 'claude-code', 'codex'].includes(target)) {
+        throw new CliError(
+          'VALIDATION',
+          `Invalid target: ${target}. Must be 'claude-desktop', 'claude-code', or 'codex'.`
+        );
+      }
+      // Validate scope
+      if (!['user', 'project'].includes(scope)) {
+        throw new CliError(
+          'VALIDATION',
+          `Invalid scope: ${scope}. Must be 'user' or 'project'.`
+        );
+      }
+
+      const { uninstallMcp } = await import('./commands/mcp/uninstall.js');
+      await uninstallMcp({
+        target: target as 'claude-desktop' | 'claude-code' | 'codex',
+        scope: scope as 'user' | 'project',
+        // Pass undefined if not set, so global --json can take effect
+        json: cmdOpts.json === true ? true : undefined,
+      });
+    });
+
+  // status - Show MCP installation status
+  mcpCmd
+    .command('status')
+    .description('Show MCP server installation status')
+    .option(
+      '-t, --target <target>',
+      'filter by target (claude-desktop, claude-code, codex, all)',
+      'all'
+    )
+    .option(
+      '-s, --scope <scope>',
+      'filter by scope (user, project, all)',
+      'all'
+    )
+    .option('--json', 'JSON output')
+    .action(async (cmdOpts: Record<string, unknown>) => {
+      const target = cmdOpts.target as string;
+      const scope = cmdOpts.scope as string;
+
+      // Validate target
+      if (!['claude-desktop', 'claude-code', 'codex', 'all'].includes(target)) {
+        throw new CliError(
+          'VALIDATION',
+          `Invalid target: ${target}. Must be 'claude-desktop', 'claude-code', 'codex', or 'all'.`
+        );
+      }
+      // Validate scope
+      if (!['user', 'project', 'all'].includes(scope)) {
+        throw new CliError(
+          'VALIDATION',
+          `Invalid scope: ${scope}. Must be 'user', 'project', or 'all'.`
+        );
+      }
+      // Validate target/scope combination
+      if (target === 'claude-desktop' && scope === 'project') {
+        throw new CliError(
+          'VALIDATION',
+          'Claude Desktop does not support project scope.'
+        );
+      }
+
+      const { statusMcp } = await import('./commands/mcp/status.js');
+      await statusMcp({
+        target: target as 'claude-desktop' | 'claude-code' | 'codex' | 'all',
+        scope: scope as 'user' | 'project' | 'all',
+        // Pass undefined if not set, so global --json can take effect
+        json: cmdOpts.json === true ? true : undefined,
+      });
     });
 }
 

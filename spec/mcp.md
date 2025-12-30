@@ -530,6 +530,103 @@ Clients should check schema version for compatibility.
 
 ---
 
+## CLI Commands
+
+GNO provides CLI commands to manage MCP server installation.
+
+### gno mcp install
+
+Install gno as an MCP server in client configurations.
+
+**Synopsis:**
+```bash
+gno mcp install [options]
+```
+
+**Options:**
+| Option | Description | Default |
+|--------|-------------|---------|
+| `-t, --target <target>` | Target client: `claude-desktop`, `claude-code`, `codex` | `claude-desktop` |
+| `-s, --scope <scope>` | Scope: `user`, `project` (project only for claude-code/codex) | `user` |
+| `-f, --force` | Overwrite existing configuration | `false` |
+| `--dry-run` | Show what would be done without changes | `false` |
+| `--json` | JSON output | `false` |
+
+**Config Locations:**
+
+| Target | Scope | macOS Path |
+|--------|-------|------------|
+| `claude-desktop` | user | `~/Library/Application Support/Claude/claude_desktop_config.json` |
+| `claude-code` | user | `~/.claude.json` |
+| `claude-code` | project | `./.mcp.json` |
+| `codex` | user | `~/.codex.json` |
+| `codex` | project | `./.codex/.mcp.json` |
+
+**Example:**
+```bash
+# Install for Claude Desktop (default)
+gno mcp install
+
+# Install for Claude Code (user scope)
+gno mcp install -t claude-code
+
+# Install for Claude Code (project scope)
+gno mcp install -t claude-code -s project
+
+# Preview changes
+gno mcp install --dry-run
+```
+
+### gno mcp uninstall
+
+Remove gno MCP server from client configurations.
+
+**Synopsis:**
+```bash
+gno mcp uninstall [options]
+```
+
+**Options:**
+| Option | Description | Default |
+|--------|-------------|---------|
+| `-t, --target <target>` | Target client | `claude-desktop` |
+| `-s, --scope <scope>` | Scope | `user` |
+| `--json` | JSON output | `false` |
+
+### gno mcp status
+
+Show MCP server installation status across all targets.
+
+**Synopsis:**
+```bash
+gno mcp status [options]
+```
+
+**Options:**
+| Option | Description | Default |
+|--------|-------------|---------|
+| `-t, --target <target>` | Filter by target (or `all`) | `all` |
+| `-s, --scope <scope>` | Filter by scope (or `all`) | `all` |
+| `--json` | JSON output | `false` |
+
+**Example Output:**
+```
+MCP Server Status
+──────────────────────────────────────────────────
+
+✓ Claude Desktop: configured
+    Command: /path/to/bun
+    Args: /path/to/gno mcp
+    Config: ~/Library/Application Support/Claude/claude_desktop_config.json
+
+✗ Claude Code: not configured
+    Config: ~/.claude.json
+
+2/5 targets configured
+```
+
+---
+
 ## See Also
 
 - [CLI Specification](./cli.md)

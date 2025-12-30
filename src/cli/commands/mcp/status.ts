@@ -1,0 +1,198 @@
+/**
+ * Show MCP server installation status across all targets.
+ *
+ * @module src/cli/commands/mcp/status
+ */
+
+import { getGlobals } from '../../program.js';
+import {
+  getTargetDisplayName,
+  MCP_SERVER_NAME,
+  MCP_TARGETS,
+  type McpScope,
+  type McpTarget,
+  resolveMcpConfigPath,
+  TARGETS_WITH_PROJECT_SCOPE,
+} from './paths.js';
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Types
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface StatusOptions {
+  target?: McpTarget | 'all';
+  scope?: McpScope | 'all';
+  /** Override cwd (testing) */
+  cwd?: string;
+  /** Override home dir (testing) */
+  homeDir?: string;
+  /** JSON output */
+  json?: boolean;
+}
+
+interface TargetStatus {
+  target: McpTarget;
+  scope: McpScope;
+  configPath: string;
+  configured: boolean;
+  serverEntry?: { command: string; args: string[] };
+  error?: string;
+}
+
+interface StatusResult {
+  targets: TargetStatus[];
+  summary: {
+    configured: number;
+    total: number;
+  };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Config Reading
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface McpConfig {
+  mcpServers?: Record<string, { command: string; args: string[] }>;
+}
+
+async function checkTargetStatus(
+  target: McpTarget,
+  scope: McpScope,
+  options: { cwd?: string; homeDir?: string }
+): Promise<TargetStatus> {
+  const { cwd, homeDir } = options;
+
+  const { configPath } = resolveMcpConfigPath({
+    target,
+    scope,
+    cwd,
+    homeDir,
+  });
+
+  const file = Bun.file(configPath);
+  const exists = await file.exists();
+
+  if (!exists) {
+    return { target, scope, configPath, configured: false };
+  }
+
+  try {
+    const content = await file.text();
+    if (!content.trim()) {
+      return { target, scope, configPath, configured: false };
+    }
+
+    const config = JSON.parse(content) as McpConfig;
+    const serverEntry = config.mcpServers?.[MCP_SERVER_NAME];
+
+    if (serverEntry) {
+      return { target, scope, configPath, configured: true, serverEntry };
+    }
+
+    return { target, scope, configPath, configured: false };
+  } catch {
+    return {
+      target,
+      scope,
+      configPath,
+      configured: false,
+      error: 'Malformed JSON',
+    };
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Status Command
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Get globals safely.
+ */
+function safeGetGlobals(): { json: boolean } {
+  try {
+    return getGlobals();
+  } catch {
+    return { json: false };
+  }
+}
+
+/**
+ * Show MCP installation status.
+ */
+export async function statusMcp(opts: StatusOptions = {}): Promise<void> {
+  const targetFilter = opts.target ?? 'all';
+  const scopeFilter = opts.scope ?? 'all';
+  const globals = safeGetGlobals();
+  const json = opts.json ?? globals.json;
+
+  const targets: McpTarget[] =
+    targetFilter === 'all' ? MCP_TARGETS : [targetFilter];
+
+  const results: TargetStatus[] = [];
+
+  for (const target of targets) {
+    if (target === 'claude-desktop') {
+      // Only user scope for Claude Desktop
+      if (scopeFilter === 'all' || scopeFilter === 'user') {
+        results.push(
+          await checkTargetStatus(target, 'user', {
+            cwd: opts.cwd,
+            homeDir: opts.homeDir,
+          })
+        );
+      }
+    } else if (TARGETS_WITH_PROJECT_SCOPE.includes(target)) {
+      const scopes: McpScope[] =
+        scopeFilter === 'all' ? ['user', 'project'] : [scopeFilter];
+
+      for (const scope of scopes) {
+        results.push(
+          await checkTargetStatus(target, scope, {
+            cwd: opts.cwd,
+            homeDir: opts.homeDir,
+          })
+        );
+      }
+    }
+  }
+
+  const configured = results.filter((r) => r.configured).length;
+  const statusResult: StatusResult = {
+    targets: results,
+    summary: { configured, total: results.length },
+  };
+
+  // Output
+  if (json) {
+    process.stdout.write(`${JSON.stringify(statusResult, null, 2)}\n`);
+    return;
+  }
+
+  // Terminal output
+  process.stdout.write('MCP Server Status\n');
+  process.stdout.write(`${'─'.repeat(50)}\n\n`);
+
+  for (const status of results) {
+    const targetName = getTargetDisplayName(status.target);
+    const scopeLabel = status.scope === 'project' ? ' (project)' : '';
+    const statusIcon = status.configured ? '✓' : '✗';
+    const statusText = status.configured ? 'configured' : 'not configured';
+
+    process.stdout.write(
+      `${statusIcon} ${targetName}${scopeLabel}: ${statusText}\n`
+    );
+
+    if (status.configured && status.serverEntry) {
+      process.stdout.write(`    Command: ${status.serverEntry.command}\n`);
+      process.stdout.write(`    Args: ${status.serverEntry.args.join(' ')}\n`);
+    }
+
+    if (status.error) {
+      process.stdout.write(`    Error: ${status.error}\n`);
+    }
+
+    process.stdout.write(`    Config: ${status.configPath}\n\n`);
+  }
+
+  process.stdout.write(`${configured}/${results.length} targets configured\n`);
+}

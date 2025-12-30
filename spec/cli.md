@@ -72,6 +72,9 @@ Default output is human-readable terminal format.
 | cleanup | no | no | no | no | no | terminal |
 | doctor | yes | no | no | yes | no | terminal |
 | mcp | no | no | no | no | no | stdio |
+| mcp install | yes | no | no | no | no | terminal |
+| mcp uninstall | yes | no | no | no | no | terminal |
+| mcp status | yes | no | no | no | no | terminal |
 | skill install | yes | no | no | no | no | terminal |
 | skill uninstall | yes | no | no | no | no | terminal |
 | skill show | no | no | no | no | no | terminal |
@@ -892,6 +895,181 @@ gno mcp
 **Exit Codes:**
 - 0: Clean shutdown
 - 2: Initialization failure
+
+---
+
+### gno mcp install
+
+Install gno as an MCP server in client configurations.
+
+**Synopsis:**
+```bash
+gno mcp install [--target <target>] [--scope <scope>] [--force] [--dry-run] [--json]
+```
+
+**Options:**
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `--target` | string | claude-desktop | Target client: `claude-desktop`, `claude-code`, `codex` |
+| `--scope` | string | user | Scope: `user` or `project` (project only for claude-code/codex) |
+| `--force` | boolean | false | Overwrite existing gno configuration |
+| `--dry-run` | boolean | false | Show what would be done without changes |
+
+**Config Locations:**
+| Target | Scope | Path (macOS) |
+|--------|-------|--------------|
+| claude-desktop | user | `~/Library/Application Support/Claude/claude_desktop_config.json` |
+| claude-code | user | `~/.claude.json` |
+| claude-code | project | `./.mcp.json` |
+| codex | user | `~/.codex.json` |
+| codex | project | `./.codex/.mcp.json` |
+
+**Behavior:**
+1. Detects bun and gno paths (absolute paths for sandboxed environments)
+2. Reads existing config (creates if missing)
+3. Adds `mcpServers.gno` entry
+4. Creates backup before modifying
+5. Writes atomically via temp file + rename
+
+**Output (JSON):**
+```json
+{
+  "installed": {
+    "target": "claude-desktop",
+    "scope": "user",
+    "configPath": "~/Library/Application Support/Claude/claude_desktop_config.json",
+    "action": "created",
+    "serverEntry": { "command": "/path/to/bun", "args": ["/path/to/gno", "mcp"] }
+  }
+}
+```
+
+**Exit Codes:**
+- 0: Success
+- 1: Already configured (without --force), invalid scope for target
+- 2: Bun not found, gno not found, IO failure
+
+**Examples:**
+```bash
+# Install for Claude Desktop (default)
+gno mcp install
+
+# Install for Claude Code (user scope)
+gno mcp install --target claude-code
+
+# Install for Claude Code (project scope)
+gno mcp install --target claude-code --scope project
+
+# Force overwrite
+gno mcp install --force
+
+# Preview changes
+gno mcp install --dry-run
+```
+
+---
+
+### gno mcp uninstall
+
+Remove gno MCP server from client configurations.
+
+**Synopsis:**
+```bash
+gno mcp uninstall [--target <target>] [--scope <scope>] [--json]
+```
+
+**Options:**
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `--target` | string | claude-desktop | Target client |
+| `--scope` | string | user | Scope |
+
+**Behavior:**
+1. Reads existing config
+2. Removes `mcpServers.gno` entry if present
+3. Creates backup before modifying
+4. Removes empty `mcpServers` object
+5. Preserves other entries
+
+**Output (JSON):**
+```json
+{
+  "uninstalled": {
+    "target": "claude-desktop",
+    "scope": "user",
+    "configPath": "~/Library/Application Support/Claude/claude_desktop_config.json",
+    "action": "removed"
+  }
+}
+```
+
+**Exit Codes:**
+- 0: Success (including if not configured)
+- 1: Invalid scope for target
+- 2: IO failure
+
+---
+
+### gno mcp status
+
+Show MCP server installation status across all targets.
+
+**Synopsis:**
+```bash
+gno mcp status [--target <target>] [--scope <scope>] [--json]
+```
+
+**Options:**
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `--target` | string | all | Filter by target (or `all`) |
+| `--scope` | string | all | Filter by scope (or `all`) |
+
+**Output (Terminal):**
+```
+MCP Server Status
+──────────────────────────────────────────────────
+
+✓ Claude Desktop: configured
+    Command: /path/to/bun
+    Args: /path/to/gno mcp
+    Config: ~/Library/Application Support/Claude/claude_desktop_config.json
+
+✗ Claude Code: not configured
+    Config: ~/.claude.json
+
+✗ Claude Code (project): not configured
+    Config: ./.mcp.json
+
+2/5 targets configured
+```
+
+**Output (JSON):**
+```json
+{
+  "targets": [
+    {
+      "target": "claude-desktop",
+      "scope": "user",
+      "configPath": "~/Library/Application Support/Claude/claude_desktop_config.json",
+      "configured": true,
+      "serverEntry": { "command": "/path/to/bun", "args": ["/path/to/gno", "mcp"] }
+    },
+    {
+      "target": "claude-code",
+      "scope": "user",
+      "configPath": "~/.claude.json",
+      "configured": false
+    }
+  ],
+  "summary": { "configured": 1, "total": 5 }
+}
+```
+
+**Exit Codes:**
+- 0: Success
+- 1: Invalid target or scope
+- 2: IO failure
 
 ---
 
