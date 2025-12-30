@@ -713,33 +713,37 @@ tr:hover td {
   position: relative;
   max-width: 900px;
 
-  // Multi-layered glow for smooth falloff
-  // Inner crisp shadow → mid diffuse → outer ambient
+  // Multi-layered glow - extends far and fades to nothing
   box-shadow:
     // Crisp inner shadow for definition
     0 4px 6px -1px rgba(0, 0, 0, 0.3),
     0 2px 4px -2px rgba(0, 0, 0, 0.2),
-    // Mid-range teal glow
-    0 0 40px -8px rgba(77, 184, 168, 0.4),
-    0 0 60px -15px rgba(77, 184, 168, 0.3),
-    // Outer ambient spread
-    0 0 100px -20px rgba(77, 184, 168, 0.25),
-    0 0 140px -30px rgba(77, 184, 168, 0.15);
+    // Inner teal glow (bright core)
+    0 0 30px 0 rgba(77, 184, 168, 0.35),
+    0 0 60px 0 rgba(77, 184, 168, 0.25),
+    // Mid-range spread
+    0 0 100px 10px rgba(77, 184, 168, 0.15),
+    0 0 150px 20px rgba(77, 184, 168, 0.1),
+    // Far ambient (blends to background)
+    0 0 200px 40px rgba(77, 184, 168, 0.06),
+    0 0 280px 60px rgba(77, 184, 168, 0.03),
+    0 0 350px 80px rgba(77, 184, 168, 0.015);
 
-  // Ambient glow pseudo-element for extra depth
+  // Large ambient glow pseudo-element
   &::before {
     content: '';
     position: absolute;
-    inset: -40px;
+    inset: -120px;
     background: radial-gradient(
-      ellipse 60% 40% at 50% 50%,
-      rgba(77, 184, 168, 0.08) 0%,
-      rgba(77, 184, 168, 0.04) 40%,
-      transparent 70%
+      ellipse 70% 50% at 50% 50%,
+      rgba(77, 184, 168, 0.12) 0%,
+      rgba(77, 184, 168, 0.06) 30%,
+      rgba(77, 184, 168, 0.02) 60%,
+      transparent 100%
     );
     z-index: -1;
     pointer-events: none;
-    filter: blur(20px);
+    filter: blur(40px);
     animation: demo-glow-pulse 6s ease-in-out infinite;
   }
 
@@ -747,20 +751,20 @@ tr:hover td {
   &::after {
     content: '';
     position: absolute;
-    top: -60px;
+    top: -100px;
     left: 50%;
     transform: translateX(-50%);
-    width: 60%;
-    height: 80px;
+    width: 80%;
+    height: 120px;
     background: linear-gradient(
       180deg,
-      rgba(77, 184, 168, 0.12) 0%,
-      rgba(77, 184, 168, 0.04) 60%,
+      rgba(77, 184, 168, 0.1) 0%,
+      rgba(77, 184, 168, 0.04) 50%,
       transparent 100%
     );
     z-index: -1;
     pointer-events: none;
-    filter: blur(30px);
+    filter: blur(50px);
   }
 
   img {
@@ -768,9 +772,7 @@ tr:hover td {
     width: 100%;
     height: auto;
     border-radius: $radius-lg;
-    // Refined border with subtle inner glow
     border: 1px solid rgba(77, 184, 168, 0.15);
-    // Inner edge highlight
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.05),
       inset 0 -1px 0 rgba(0, 0, 0, 0.1);
