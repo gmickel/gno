@@ -36,7 +36,7 @@ This document specifies the MCP server interface for GNO.
 
 ## Tools
 
-### gno.search
+### gno_search
 
 BM25 keyword search over indexed documents.
 
@@ -116,7 +116,7 @@ BM25 keyword search over indexed documents.
 
 ---
 
-### gno.vsearch
+### gno_vsearch
 
 Vector semantic search over indexed documents.
 
@@ -162,7 +162,7 @@ Vector semantic search over indexed documents.
 
 ---
 
-### gno.query
+### gno_query
 
 Hybrid search combining BM25 and vector retrieval with optional expansion and reranking.
 
@@ -235,7 +235,7 @@ Hybrid search combining BM25 and vector retrieval with optional expansion and re
 
 ---
 
-### gno.get
+### gno_get
 
 Retrieve a single document by reference.
 
@@ -304,7 +304,7 @@ Retrieve a single document by reference.
 
 ---
 
-### gno.multi_get
+### gno_multi_get
 
 Retrieve multiple documents by pattern or list.
 
@@ -370,7 +370,7 @@ Retrieve multiple documents by pattern or list.
 
 ---
 
-### gno.status
+### gno_status
 
 Get index status and health information.
 

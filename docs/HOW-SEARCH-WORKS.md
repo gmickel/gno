@@ -17,29 +17,40 @@ The diagram below shows how your query flows through GNO's search system:
 **Stage 4: Reranking** → Top 20 candidates are rescored by a cross-encoder for final ordering.
 
 ```
-        YOUR QUERY
-            |
-            v
-   [1. QUERY EXPANSION]
-   Lexical + Semantic + HyDE
-            |
-      +-----+-----+
-      |           |
-      v           v
-   [BM25]    [VECTOR]
-      |           |
-      +-----+-----+
-            |
-            v
-    [3. RRF FUSION]
-    Merges ranked lists
-            |
-            v
-    [4. RERANKING]
-    Cross-encoder rescores
-            |
-            v
-      FINAL RESULTS
+      ┌─────────────┐
+      │ YOUR QUERY  │
+      └──────┬──────┘
+             │
+             ▼
+   ┌──────────────────┐
+   │ QUERY EXPANSION  │
+   │ lexical+semantic │
+   │     + HyDE       │
+   └────────┬─────────┘
+            │
+      ┌─────┴─────┐
+      │           │
+      ▼           ▼
+   ┌──────┐  ┌────────┐
+   │ BM25 │  │ VECTOR │
+   └──┬───┘  └───┬────┘
+      │          │
+      └────┬─────┘
+           │
+           ▼
+     ┌───────────┐
+     │ RRF MERGE │
+     └─────┬─────┘
+           │
+           ▼
+     ┌───────────┐
+     │ RERANKER  │
+     └─────┬─────┘
+           │
+           ▼
+      ┌─────────┐
+      │ RESULTS │
+      └─────────┘
 ```
 
 ## Query Expansion with HyDE

@@ -240,6 +240,7 @@ Error: Bun runtime not found. Install bun first: curl -fsSL https://bun.sh/insta
 
 ## Tasks
 
+### Implementation
 1. **T1**: Create `src/cli/commands/mcp/paths.ts` - Path resolution
 2. **T2**: Create `src/cli/commands/mcp/install.ts` - Install logic
 3. **T3**: Create `src/cli/commands/mcp/uninstall.ts` - Remove gno entry
@@ -247,7 +248,40 @@ Error: Bun runtime not found. Install bun first: curl -fsSL https://bun.sh/insta
 5. **T5**: Update `src/cli/commands/mcp/index.ts` - Command group
 6. **T6**: Tests for path resolution
 7. **T7**: Tests for install/uninstall
-8. **T8**: Documentation in docs/
+
+### Documentation Updates
+8. **T8**: Update `spec/mcp.md`
+   - Fix tool names: `gno.search` → `gno_search` (all 6 tools)
+   - Add `gno mcp install` command section
+   - Add `gno mcp uninstall` command section
+   - Add `gno mcp status` command section
+
+9. **T9**: Update `spec/cli.md`
+   - Add `mcp install` to command list and output format matrix
+   - Add `mcp uninstall` to command list
+   - Add `mcp status` to command list
+   - Add full command specifications (synopsis, options, output)
+
+10. **T10**: Update `website/features/mcp-integration.md`
+    - Replace manual JSON setup with `gno mcp install` as primary method
+    - Keep manual setup as "Advanced" or fallback section
+    - Fix tool names in table: `search` → `gno_search` format
+    - Add supported targets (Claude Desktop, Claude Code, Codex)
+
+11. **T11**: Update `assets/skill/cli-reference.md`
+    - Add MCP section with `gno mcp`, `gno mcp install`, `gno mcp uninstall`, `gno mcp status`
+
+12. **T12**: Update `assets/skill/mcp-reference.md` (if exists)
+    - Fix tool names to underscore format
+
+## Documentation Changes Summary
+
+| File | Changes |
+|------|---------|
+| `spec/mcp.md` | Tool names `gno.X` → `gno_X`, add install/uninstall/status |
+| `spec/cli.md` | Add mcp subcommands to matrix and specs |
+| `website/features/mcp-integration.md` | Primary setup via `gno mcp install`, fix tool names |
+| `assets/skill/cli-reference.md` | Add MCP commands section |
 
 ## References
 
