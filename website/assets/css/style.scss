@@ -707,13 +707,15 @@ tr:hover td {
 }
 
 // Hero Demo Window - Premium ambient glow effect
+// Dark mode: Teal glow blending into dark background
+// Light mode: Dramatic depth shadows with subtle accent
 .hero-demo {
   margin: $space-9 auto $space-5;
   border-radius: $radius-lg;
   position: relative;
   max-width: 900px;
 
-  // Multi-layered glow - extends far and fades to nothing
+  // Dark mode: Multi-layered teal glow
   box-shadow:
     // Crisp inner shadow for definition
     0 4px 6px -1px rgba(0, 0, 0, 0.3),
@@ -776,6 +778,61 @@ tr:hover td {
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.05),
       inset 0 -1px 0 rgba(0, 0, 0, 0.1);
+  }
+}
+
+// Light mode: Dramatic depth shadows instead of glow
+[data-theme="light"] .hero-demo {
+  // Layered shadows for dramatic depth + subtle teal accent ring
+  box-shadow:
+    // Tight definition shadow
+    0 1px 2px rgba(0, 0, 0, 0.06),
+    0 2px 4px rgba(0, 0, 0, 0.06),
+    // Mid-depth shadows
+    0 4px 8px rgba(0, 0, 0, 0.06),
+    0 8px 16px rgba(0, 0, 0, 0.06),
+    // Deep ambient shadow
+    0 16px 32px rgba(0, 0, 0, 0.08),
+    0 32px 64px rgba(0, 0, 0, 0.08),
+    // Far spread for smooth blend
+    0 48px 96px rgba(0, 0, 0, 0.06),
+    0 64px 128px rgba(0, 0, 0, 0.04),
+    // Subtle teal accent ring
+    0 0 0 1px rgba(26, 107, 125, 0.08),
+    0 0 60px -10px rgba(26, 107, 125, 0.15);
+
+  // Light mode pseudo-element: soft depth halo
+  &::before {
+    inset: -80px;
+    background: radial-gradient(
+      ellipse 60% 45% at 50% 55%,
+      rgba(0, 0, 0, 0.04) 0%,
+      rgba(0, 0, 0, 0.02) 40%,
+      transparent 70%
+    );
+    filter: blur(30px);
+    animation: none; // No pulse in light mode - refined stillness
+  }
+
+  // Light mode: subtle teal glow above (inverted direction)
+  &::after {
+    top: auto;
+    bottom: -80px;
+    height: 100px;
+    background: radial-gradient(
+      ellipse 80% 60% at 50% 0%,
+      rgba(26, 107, 125, 0.06) 0%,
+      rgba(26, 107, 125, 0.02) 50%,
+      transparent 100%
+    );
+    filter: blur(40px);
+  }
+
+  img {
+    border-color: rgba(0, 0, 0, 0.08);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.8),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.04);
   }
 }
 
