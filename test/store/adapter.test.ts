@@ -653,30 +653,37 @@ describe('SqliteAdapter', () => {
       expect(result.value.has('not_here')).toBe(false);
     });
 
-    test('large batch (>900 hashes) is correctly batched', async () => {
-      // Create 950 hashes (should split into 2 batches with SQLITE_MAX_PARAMS=900)
-      const hashes: string[] = [];
-      for (let i = 0; i < 950; i++) {
-        const hash = `large_batch_${i}`;
-        hashes.push(hash);
-        await adapter.upsertContent(hash, `content ${i}`);
-        await adapter.upsertChunks(hash, [
-          { seq: 0, pos: 0, text: `chunk ${i}`, startLine: 1, endLine: 1 },
-        ]);
-      }
+    // Windows SQLite is ~4x slower due to NTFS + journaling + Defender scanning
+    test(
+      'large batch (>900 hashes) is correctly batched',
+      async () => {
+        // Create 950 hashes (should split into 2 batches with SQLITE_MAX_PARAMS=900)
+        const hashes: string[] = [];
+        for (let i = 0; i < 950; i++) {
+          const hash = `large_batch_${i}`;
+          hashes.push(hash);
+          await adapter.upsertContent(hash, `content ${i}`);
+          await adapter.upsertChunks(hash, [
+            { seq: 0, pos: 0, text: `chunk ${i}`, startLine: 1, endLine: 1 },
+          ]);
+        }
 
-      const result = await adapter.getChunksBatch(hashes);
-      expect(result.ok).toBe(true);
-      if (!result.ok) {
-        return;
-      }
+        const result = await adapter.getChunksBatch(hashes);
+        expect(result.ok).toBe(true);
+        if (!result.ok) {
+          return;
+        }
 
-      expect(result.value.size).toBe(950);
+        expect(result.value.size).toBe(950);
 
-      // Verify first and last entries
-      expect(result.value.get('large_batch_0')?.[0]?.text).toBe('chunk 0');
-      expect(result.value.get('large_batch_949')?.[0]?.text).toBe('chunk 949');
-    });
+        // Verify first and last entries
+        expect(result.value.get('large_batch_0')?.[0]?.text).toBe('chunk 0');
+        expect(result.value.get('large_batch_949')?.[0]?.text).toBe(
+          'chunk 949'
+        );
+      },
+      { timeout: 60_000 }
+    ); // 60s for Windows
   });
 
   describe('status', () => {
