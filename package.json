@@ -54,7 +54,13 @@
     "website:install": "cd website && bundle install",
     "website:dev": "cd website && make serve",
     "website:build": "cd website && make build",
-    "website:demos": "cd website/demos && ./build-demos.sh"
+    "website:demos": "cd website/demos && ./build-demos.sh",
+    "version:patch": "npm version patch --no-git-tag-version",
+    "version:minor": "npm version minor --no-git-tag-version",
+    "version:major": "npm version major --no-git-tag-version",
+    "prerelease": "bun run lint && bun run typecheck && bun test",
+    "release:dry-run": "gh workflow run publish.yml -f publish=false",
+    "release:trigger": "gh workflow run publish.yml -f publish=true"
   },
   "dependencies": {
     "commander": "^14.0.2",

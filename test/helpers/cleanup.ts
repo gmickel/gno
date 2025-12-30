@@ -22,16 +22,17 @@ export async function safeRm(path: string, retries = 8): Promise<void> {
       return;
     } catch (e) {
       const err = e as NodeJS.ErrnoException;
+      // ENOENT means already deleted - success
+      if (err.code === 'ENOENT') {
+        return;
+      }
+      // Retry on transient Windows errors
       if (RETRYABLE_CODES.has(err.code ?? '') && i < retries - 1) {
-        // Wait a bit for file handles to be released
         await new Promise((r) => setTimeout(r, 100 * (i + 1)));
         continue;
       }
-      // On final retry or other error, just ignore - best effort cleanup
-      if (i === retries - 1) {
-        return;
-      }
-      throw e;
+      // Best effort cleanup - don't fail tests over cleanup issues
+      return;
     }
   }
 }

@@ -62,6 +62,40 @@ test("hello world", () => {
 
 **spec/** - Interface contracts and schemas
 
+## Versioning & Release
+
+Version is managed in `package.json` (single source of truth). `src/app/constants.ts` imports it.
+
+**Bump version:**
+```bash
+bun run version:patch   # 0.1.0 → 0.1.1
+bun run version:minor   # 0.1.0 → 0.2.0
+bun run version:major   # 0.1.0 → 1.0.0
+```
+
+**Release workflow:**
+```bash
+bun run prerelease       # lint + typecheck + test
+bun run release:dry-run  # trigger CI without publishing
+bun run release:trigger  # trigger CI with publish (requires NPM_TOKEN secret)
+```
+
+**Manual workflow dispatch:**
+```bash
+gh workflow run publish.yml -f publish=false  # dry run
+gh workflow run publish.yml -f publish=true   # actual publish
+```
+
+**Full release process:**
+1. `bun run version:patch` (or minor/major)
+2. `git add package.json && git commit -m "chore: bump to vX.Y.Z"`
+3. `git tag vX.Y.Z && git push --tags`
+4. Workflow auto-triggers on `v*` tag push
+
+**Requirements:**
+- `NPM_TOKEN` secret in GitHub repo settings (Settings → Secrets → Actions)
+- Uncomment publish job in `.github/workflows/publish.yml` when ready
+
 ## Specifications
 
 **IMPORTANT**: Before implementing CLI commands, MCP tools, or output formats, consult the specs:
