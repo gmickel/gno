@@ -37,7 +37,7 @@ The system consists of:
 
 Skill files shipped in package, copied on install:
 
-```
+```plaintext
 assets/skill/
 ├── SKILL.md              # Core instructions + frontmatter (< 500 lines)
 ├── cli-reference.md      # Full CLI command reference
@@ -93,7 +93,7 @@ For usage examples, see [examples.md](examples.md).
 
 Centralized path resolver with injection for testability:
 
-```typescript
+```ts
 // src/cli/commands/skill/paths.ts
 
 interface SkillPathOptions {
@@ -131,7 +131,7 @@ export function resolveSkillPaths(opts: SkillPathOptions): SkillPaths;
 New command group: `gno skill`
 
 **`gno skill install`**:
-```
+```bash
 gno skill install [--scope <project|user>] [--target <claude|codex|all>]
 
 Options:
@@ -160,7 +160,7 @@ Global flags honored:
 9. Output success message (or JSON if `--json`)
 
 **`gno skill uninstall`**:
-```
+```bash
 gno skill uninstall [--scope <project|user>] [--target <claude|codex|all>]
 ```
 
@@ -175,7 +175,7 @@ gno skill uninstall [--scope <project|user>] [--target <claude|codex|all>]
 4. Only then: remove directory with retry (Windows-safe)
 
 **`gno skill show`**:
-```
+```bash
 gno skill show [--file <name>]   # Preview skill files
 
 Options:
@@ -193,7 +193,7 @@ Output:
 ```
 
 **`gno skill paths`** (debugging helper):
-```
+```bash
 gno skill paths [--scope <project|user>] [--target <claude|codex|all>] [--json]
 
 Output: Shows resolved paths for each target without installing
@@ -202,7 +202,7 @@ Output: Shows resolved paths for each target without installing
 ### Phase 4: Implementation
 
 **File Structure**:
-```
+```plaintext
 assets/skill/                    # Skill files shipped with package
 ├── SKILL.md
 ├── cli-reference.md
@@ -219,7 +219,7 @@ src/cli/commands/skill/
 ```
 
 **Ensure files ship with package** (package.json):
-```json
+```jsonc
 {
   "files": [
     "dist",
@@ -229,7 +229,7 @@ src/cli/commands/skill/
 ```
 
 **Locate source files at runtime**:
-```typescript
+```ts
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -245,7 +245,7 @@ const SKILL_SOURCE_DIR = join(__dirname, '../../assets/skill');
 - Output to stdout; diagnostics to stderr via `src/cli/ui.ts` patterns
 
 **Wire into program.ts**:
-```typescript
+```ts
 // In wireManagementCommands() or similar
 const skillCmd = program.command('skill').description('Manage GNO agent skill');
 
@@ -334,7 +334,7 @@ skillCmd.command('install')
 - Existing skill structure: `~/.claude/skills/convex/`, flow-plan, flow-work
 - Error handling: `src/cli/errors.ts` (CliError)
 - Spec location: `spec/cli.md` (must update first)
-- Claude Code skills: https://docs.anthropic.com/en/docs/claude-code/skills
+- Claude Code skills: <https://docs.anthropic.com/en/docs/claude-code/skills>
 
 ## Tasks
 
