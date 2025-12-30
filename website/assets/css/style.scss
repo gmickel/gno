@@ -412,9 +412,10 @@ pre {
   @media (min-width: $bp-lg) { margin-left: $sidebar-width; }
 }
 
-// Layout Fix: No margin on homepage and fullwidth pages
+// Layout Fix: No margin on homepage, fullwidth, and feature pages
 body.layout-home .site-main,
-body.layout-fullwidth .site-main {
+body.layout-fullwidth .site-main,
+body.layout-feature .site-main {
   margin-left: 0 !important;
 }
 
