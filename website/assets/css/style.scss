@@ -612,13 +612,23 @@ tr:hover td {
   100% { background-position: -200% center; }
 }
 
+// Punchy one-liner tagline
+.hero-tagline {
+  font-family: $font-mono;
+  font-size: 1.15rem;
+  color: var(--color-accent);
+  letter-spacing: 0.02em;
+  margin: 0 auto $space-4;
+  font-weight: 500;
+}
+
 .hero-description {
   font-family: $font-sans;
-  font-size: 1.35rem;
+  font-size: 1.25rem;
   color: var(--color-text-secondary);
-  line-height: 1.5;
+  line-height: 1.6;
   max-width: 640px;
-  margin: 0 auto $space-8;
+  margin: 0 auto $space-6;
   letter-spacing: -0.01em;
 }
 

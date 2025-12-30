@@ -10,6 +10,9 @@ layout: default
       Local Knowledge Engine
     </span>
     <h1 class="hero-title">Your Local Second Brain</h1>
+    <p class="hero-tagline">
+      Index everything. Search from CLI, Claude, or ChatGPT. Your data never leaves your machine.
+    </p>
     <p class="hero-description">
       Index your entire digital life—notes, code, PDFs, and Office docs. Turn your fragmented data into a cohesive local knowledge engine. Built for humans and AI agents alike, fully local and private.
     </p>
@@ -89,6 +92,22 @@ layout: default
         <h3 class="feature-card-title">Collections</h3>
         <p class="feature-card-description">
           Organize documents by source directory with contexts for improved relevance.
+        </p>
+      </a>
+
+      <a href="{{ '/docs/CLI/' | relative_url }}" class="feature-card">
+        <div class="feature-card-icon">{% include icons.html icon="terminal" size="24" %}</div>
+        <h3 class="feature-card-title">Fast CLI</h3>
+        <p class="feature-card-description">
+          Bun-powered for instant startup. Search thousands of documents in milliseconds.
+        </p>
+      </a>
+
+      <a href="{{ '/docs/HOW-SEARCH-WORKS/' | relative_url }}" class="feature-card">
+        <div class="feature-card-icon">{% include icons.html icon="brain" size="24" %}</div>
+        <h3 class="feature-card-title">Local Embeddings</h3>
+        <p class="feature-card-description">
+          ONNX models run entirely on your machine. No API keys, no cloud dependencies.
         </p>
       </a>
     </div>
