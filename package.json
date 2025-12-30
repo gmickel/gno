@@ -1,16 +1,41 @@
 {
   "name": "gno",
-  "module": "src/index.ts",
-  "type": "module",
-  "author": "Gno",
+  "version": "0.1.0",
+  "description": "Local semantic search for your documents. Index Markdown, PDF, and Office files with hybrid BM25 + vector search.",
+  "keywords": [
+    "search",
+    "semantic-search",
+    "rag",
+    "vector-search",
+    "embeddings",
+    "local-first",
+    "mcp",
+    "llm"
+  ],
+  "author": "Gordon Mickel <gordon@mickel.tech>",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gmickel/gno.git"
+  },
+  "bugs": {
+    "url": "https://github.com/gmickel/gno/issues"
+  },
+  "homepage": "https://gno.sh",
+  "type": "module",
+  "module": "src/index.ts",
+  "bin": {
+    "gno": "src/index.ts"
+  },
   "files": [
     "src",
     "assets"
   ],
-  "Author": "Gordon Mickel <gordon@mickel.tech>",
-  "bin": {
-    "gno": "src/index.ts"
+  "engines": {
+    "bun": ">=1.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "scripts": {
     "dev": "bun run --hot src/index.ts",
@@ -31,6 +56,16 @@
     "website:build": "cd website && make build",
     "website:demos": "cd website/demos && ./build-demos.sh"
   },
+  "dependencies": {
+    "commander": "^14.0.2",
+    "franc": "^6.2.0",
+    "markitdown-ts": "^0.0.8",
+    "node-llama-cpp": "^3.14.5",
+    "officeparser": "^5.2.2",
+    "picocolors": "^1.1.1",
+    "sqlite-vec": "^0.1.7-alpha.2",
+    "zod": "^4.2.1"
+  },
   "devDependencies": {
     "@biomejs/biome": "2.3.9",
     "@types/bun": "latest",
@@ -44,15 +79,5 @@
   },
   "peerDependencies": {
     "typescript": "^5"
-  },
-  "dependencies": {
-    "commander": "^14.0.2",
-    "franc": "^6.2.0",
-    "markitdown-ts": "^0.0.8",
-    "node-llama-cpp": "^3.14.5",
-    "officeparser": "^5.2.2",
-    "picocolors": "^1.1.1",
-    "sqlite-vec": "^0.1.7-alpha.2",
-    "zod": "^4.2.1"
   }
 }
