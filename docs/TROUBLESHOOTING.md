@@ -153,9 +153,44 @@ gno doctor
 
 ### Poor Relevance
 
-- Add contexts to improve semantic understanding
-- Use `--rerank` for better ordering
-- Try different search modes (search vs vsearch vs query)
+**Diagnose with --explain:**
+
+```bash
+gno query "my search" --explain
+```
+
+This shows scoring breakdown for each result:
+- `bm25`: Keyword match score (high = exact terms found)
+- `vector`: Semantic similarity (high = meaning matches)
+- `fusion`: Combined RRF score
+- `rerank`: Cross-encoder judgment (if enabled)
+- `blended`: Final score
+
+**Common Issues:**
+
+| Symptom | Cause | Fix |
+|---------|-------|-----|
+| High BM25, low vector | Query too keyword-specific | Use `gno query` not `gno search` |
+| Low BM25, high vector | Query too abstract | Add specific keywords |
+| Good scores, wrong order | Fusion needs tuning | Use `--rerank` |
+| All low scores | Content not indexed | Check `gno ls`, re-index |
+
+**Improve Results:**
+
+1. **Add contexts** - Semantic hints improve relevance
+2. **Use reranking** - `gno query "text" --rerank` (slower but better)
+3. **Choose right mode:**
+   - `gno search` - Exact keyword matching
+   - `gno vsearch` - Conceptual/semantic matching
+   - `gno query` - Combined (usually best)
+4. **Adjust min-score** - Filter low-confidence results: `--min-score 0.3`
+5. **Try expansion** - Query expansion is on by default, disable with `--no-expand` if getting off-topic results
+
+**Score Interpretation:**
+
+Scores are normalized 0-1 per query. A 0.8 doesn't mean "80% confident" - it means "ranked high relative to other results for this query." Scores are NOT comparable across different queries.
+
+See [How Search Works](HOW-SEARCH-WORKS.md) for full pipeline details.
 
 ### "Embed model not cached"
 
