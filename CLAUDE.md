@@ -50,6 +50,18 @@ test("hello world", () => {
 });
 ```
 
+## Directory Structure
+
+**docs/** - User-facing documentation only. Published to website.
+- QUICKSTART.md, CLI.md, CONFIGURATION.md, etc.
+- Do NOT put internal docs, spikes, plans, or dev notes here
+
+**notes/** - Internal documentation, spikes, plans, dev notes
+- Not published, not user-facing
+- Spike results, implementation plans, architecture decisions
+
+**spec/** - Interface contracts and schemas
+
 ## Specifications
 
 **IMPORTANT**: Before implementing CLI commands, MCP tools, or output formats, consult the specs:
