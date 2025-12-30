@@ -706,26 +706,86 @@ tr:hover td {
   }
 }
 
-// Hero Demo Window (Fix: Remove extra window chrome)
+// Hero Demo Window - Premium ambient glow effect
 .hero-demo {
   margin: $space-9 auto $space-5;
-  // Remove padding/border/bg that mimicked window
-  // Just a clean container for the already-windowed GIF
-  border-radius: $radius-lg; 
-  box-shadow: var(--shadow-lg), var(--shadow-glow);
+  border-radius: $radius-lg;
   position: relative;
-  overflow: hidden;
   max-width: 900px;
 
-  // REMOVED ::before pseudo-element for traffic lights
+  // Multi-layered glow for smooth falloff
+  // Inner crisp shadow → mid diffuse → outer ambient
+  box-shadow:
+    // Crisp inner shadow for definition
+    0 4px 6px -1px rgba(0, 0, 0, 0.3),
+    0 2px 4px -2px rgba(0, 0, 0, 0.2),
+    // Mid-range teal glow
+    0 0 40px -8px rgba(77, 184, 168, 0.4),
+    0 0 60px -15px rgba(77, 184, 168, 0.3),
+    // Outer ambient spread
+    0 0 100px -20px rgba(77, 184, 168, 0.25),
+    0 0 140px -30px rgba(77, 184, 168, 0.15);
+
+  // Ambient glow pseudo-element for extra depth
+  &::before {
+    content: '';
+    position: absolute;
+    inset: -40px;
+    background: radial-gradient(
+      ellipse 60% 40% at 50% 50%,
+      rgba(77, 184, 168, 0.08) 0%,
+      rgba(77, 184, 168, 0.04) 40%,
+      transparent 70%
+    );
+    z-index: -1;
+    pointer-events: none;
+    filter: blur(20px);
+    animation: demo-glow-pulse 6s ease-in-out infinite;
+  }
+
+  // Subtle vertical light beam accent
+  &::after {
+    content: '';
+    position: absolute;
+    top: -60px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 60%;
+    height: 80px;
+    background: linear-gradient(
+      180deg,
+      rgba(77, 184, 168, 0.12) 0%,
+      rgba(77, 184, 168, 0.04) 60%,
+      transparent 100%
+    );
+    z-index: -1;
+    pointer-events: none;
+    filter: blur(30px);
+  }
 
   img {
     display: block;
     width: 100%;
     height: auto;
     border-radius: $radius-lg;
-    // Keep subtle border to define edge
-    border: 1px solid var(--glass-border); 
+    // Refined border with subtle inner glow
+    border: 1px solid rgba(77, 184, 168, 0.15);
+    // Inner edge highlight
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.05),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.1);
+  }
+}
+
+// Smooth breathing animation for ambient glow
+@keyframes demo-glow-pulse {
+  0%, 100% {
+    opacity: 0.6;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.02);
   }
 }
 
