@@ -96,31 +96,9 @@ gh workflow run publish.yml -f publish=true   # actual publish
 - `NPM_TOKEN` secret in GitHub repo settings (Settings → Secrets → Actions)
 - Uncomment publish job in `.github/workflows/publish.yml` when ready
 
-## CI/CD Matrix
+## CI/CD
 
-| Trigger | Ubuntu | macOS | Windows | npm publish |
-|---------|--------|-------|---------|-------------|
-| PR | ✓ | ✓ | - | - |
-| PR + label `test-windows` | ✓ | ✓ | ✓ | - |
-| Push main | ✓ | ✓ | ✓ | - |
-| Tag `v*` | ✓ | ✓ | ✓ | ✓ |
-| Manual dispatch | ✓ | ✓ | ✓ | optional |
-
-**Rationale:**
-- PRs run Ubuntu + macOS (core dev platforms)
-- Windows only on main/tags/manual (slow, less critical)
-- Label `test-windows` for Windows-specific PR testing
-- npm publish only on explicit version tags
-
-**Cache:**
-- Bun packages cached per-OS with lockfile hash
-- Auto-invalidates when `bun.lockb` changes
-- Falls back to partial cache on lockfile change
-
-**Windows optimizations:**
-- TEMP on D: drive (faster than C: on GH runners)
-- SQLite CI-mode pragmas (synchronous=OFF, journal_mode=MEMORY)
-- Batch transactions in SyncService (50 docs/tx)
+See [.github/CONTRIBUTING.md](.github/CONTRIBUTING.md) for CI matrix, caching, and release process.
 
 ## Specifications
 
