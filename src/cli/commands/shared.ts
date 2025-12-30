@@ -20,6 +20,8 @@ export type InitStoreResult =
       store: SqliteAdapter;
       config: Config;
       collections: Collection[];
+      /** Actual config path used (for status reporting) */
+      actualConfigPath: string;
     }
   | { ok: false; error: string };
 
@@ -29,6 +31,8 @@ export type InitStoreResult =
 export interface InitStoreOptions {
   /** Override config path */
   configPath?: string;
+  /** Index name (defaults to 'default') */
+  indexName?: string;
   /** Filter to single collection by name */
   collection?: string;
 }
@@ -78,13 +82,16 @@ export async function initStore(
   const { ensureDirectories } = await import('../../config');
   await ensureDirectories();
 
-  // Open database
+  // Open database (honor indexName option)
   const store = new SqliteAdapter();
-  const dbPath = getIndexDbPath();
+  const dbPath = getIndexDbPath(options.indexName);
   const paths = getConfigPaths();
 
+  // Actual config path used (options.configPath overrides default)
+  const actualConfigPath = options.configPath ?? paths.configFile;
+
   // Set configPath for status output
-  store.setConfigPath(paths.configFile);
+  store.setConfigPath(actualConfigPath);
 
   const openResult = await store.open(dbPath, config.ftsTokenizer);
   if (!openResult.ok) {
@@ -105,7 +112,7 @@ export async function initStore(
     return { ok: false, error: syncCtxResult.error.message };
   }
 
-  return { ok: true, store, config, collections };
+  return { ok: true, store, config, collections, actualConfigPath };
 }
 
 /**

@@ -1,0 +1,151 @@
+/**
+ * MCP resource registration for gno:// URIs.
+ *
+ * @module src/mcp/resources
+ */
+
+import { join as pathJoin } from 'node:path';
+import {
+  type McpServer,
+  ResourceTemplate,
+} from '@modelcontextprotocol/sdk/server/mcp.js';
+import { buildUri, parseUri, URI_PREFIX } from '../../app/constants';
+import type { DocumentRow } from '../../store/types';
+import type { ToolContext } from '../server';
+
+/**
+ * Format document content with header comment and line numbers.
+ */
+function formatResourceContent(
+  doc: DocumentRow,
+  content: string,
+  ctx: ToolContext
+): string {
+  // Find collection for absPath
+  const uriParsed = parseUri(doc.uri);
+  let absPath = doc.relPath;
+  if (uriParsed) {
+    const collection = ctx.collections.find(
+      (c) => c.name === uriParsed.collection
+    );
+    if (collection) {
+      absPath = pathJoin(collection.path, doc.relPath);
+    }
+  }
+
+  // Header comment per spec (includes language if available)
+  const langLine = doc.languageHint
+    ? `\n     language: ${doc.languageHint}`
+    : '';
+  const header = `<!-- ${doc.uri}
+     docid: ${doc.docid}
+     source: ${absPath}
+     mime: ${doc.sourceMime}${langLine}
+-->
+
+`;
+
+  // Line numbers per spec (default ON for agent friendliness)
+  const lines = content.split('\n');
+  const numbered = lines.map((line, i) => `${i + 1}: ${line}`).join('\n');
+
+  return header + numbered;
+}
+
+/**
+ * Register gno:// resources with the MCP server.
+ */
+export function registerResources(server: McpServer, ctx: ToolContext): void {
+  // Resource template for gno://{collection}/{path} URIs
+  const template = new ResourceTemplate(`${URI_PREFIX}{collection}/{+path}`, {
+    list: async () => {
+      // List all documents as resources
+      const listResult = await ctx.store.listDocuments();
+      if (!listResult.ok) {
+        return { resources: [] };
+      }
+
+      return {
+        resources: listResult.value.map((doc) => ({
+          uri: doc.uri,
+          name: doc.relPath,
+          mimeType: doc.sourceMime || 'text/markdown',
+          description: doc.title ?? undefined,
+        })),
+      };
+    },
+  });
+
+  // Register the template-based resource handler
+  server.resource('gno-document', template, {}, async (uri, _variables) => {
+    // Check shutdown before acquiring mutex
+    if (ctx.isShuttingDown()) {
+      throw new Error('Server is shutting down');
+    }
+
+    // Serialize resource reads same as tools (prevent concurrent DB access + shutdown race)
+    const release = await ctx.toolMutex.acquire();
+    try {
+      // Use parseUri for proper URL decoding (handles %20, etc.)
+      const parsed = parseUri(uri.href);
+      if (!parsed) {
+        throw new Error(`Invalid gno:// URI: ${uri.href}`);
+      }
+
+      const { collection, path } = parsed;
+
+      // Validate collection exists
+      const collectionExists = ctx.collections.some(
+        (c) => c.name === collection
+      );
+      if (!collectionExists) {
+        throw new Error(`Collection not found: ${collection}`);
+      }
+
+      // Look up document (path is properly decoded by parseUri)
+      const docResult = await ctx.store.getDocument(collection, path);
+      if (!docResult.ok) {
+        throw new Error(
+          `Failed to lookup document: ${docResult.error.message}`
+        );
+      }
+
+      const doc = docResult.value;
+      if (!doc) {
+        throw new Error(`Document not found: ${uri.href}`);
+      }
+
+      // Get content
+      if (!doc.mirrorHash) {
+        throw new Error(`Document has no indexed content: ${uri.href}`);
+      }
+
+      const contentResult = await ctx.store.getContent(doc.mirrorHash);
+      if (!contentResult.ok) {
+        throw new Error(
+          `Failed to read content: ${contentResult.error.message}`
+        );
+      }
+
+      const content = contentResult.value ?? '';
+
+      // Format with header and line numbers
+      const formattedContent = formatResourceContent(doc, content, ctx);
+
+      // Build canonical URI
+      const canonicalUri = buildUri(collection, path);
+
+      return {
+        contents: [
+          {
+            uri: canonicalUri,
+            mimeType: 'text/markdown',
+            text: formattedContent,
+          },
+        ],
+      };
+    } finally {
+      release();
+    }
+  });
+}

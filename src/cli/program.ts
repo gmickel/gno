@@ -709,12 +709,17 @@ function wireRetrievalCommands(program: Command): void {
 
 function wireMcpCommand(program: Command): void {
   // mcp - Start MCP server (stdio transport)
+  // CRITICAL: helpOption(false) prevents --help from writing to stdout
+  // which would corrupt the JSON-RPC stream
   program
     .command('mcp')
     .description('Start MCP server (stdio transport)')
-    .action(() => {
-      // Stub - will be implemented in EPIC 10
-      throw new CliError('RUNTIME', 'mcp command not yet implemented');
+    .helpOption(false)
+    .action(async () => {
+      const { mcpCommand } = await import('./commands/mcp.js');
+      const globalOpts = program.opts();
+      const globals = parseGlobalOptions(globalOpts);
+      await mcpCommand(globals);
     });
 }
 
