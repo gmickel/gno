@@ -19,7 +19,7 @@
 ### bun:sqlite (Built-in)
 **Status**: AVAILABLE (extension loading is platform-dependent)
 
-- SQLite engine bundled with Bun, always available
+- SQLite available via `bun:sqlite` on all platforms
 - FTS5 and JSON1 extensions work out of the box
 - **Extension loading behavior**:
   - Linux/Windows: Bun's bundled SQLite supports extensions natively
@@ -34,7 +34,7 @@
 - Compiled binary's `import.meta.url` → bunfs virtual path (`/$bunfs/root/gno-test`)
 - Extension file not found even with `./node_modules/sqlite-vec-darwin-arm64/vec0.dylib` present adjacent to binary
 
-**Error**: `Loadble extension for sqlite-vec not found. Was the sqlite-vec-darwin-arm64 package installed?`
+**Error** (verbatim): `Loadble extension for sqlite-vec not found. Was the sqlite-vec-darwin-arm64 package installed?`
 
 **macOS caveat**: Even with sidecar `vec0.dylib`, extension loading requires either:
 - Homebrew SQLite installed (`brew install sqlite`), or
@@ -42,7 +42,7 @@
 - Accept storage-only mode (no KNN search)
 
 **Path forward** (choose one):
-1. **Bypass sqlite-vec loader**: Call `db.loadExtension(path)` directly with explicit path (avoids `import.meta.url` issue)
+1. **Bypass sqlite-vec loader**: Call `db.loadExtension(path)` directly with explicit path (avoids `import.meta.url` issue) — *not validated in this spike*
 2. **Fork/patch sqlite-vec**: Accept configurable extension path
 3. **Runtime download**: Download `vec0.*` on first use to known location
 
@@ -77,7 +77,7 @@ Both are optional features in markitdown-ts. Externalized because bundler couldn
 ## Build Command
 
 ```bash
-bun build --compile --minify src/index.ts --outfile gno \
+bun build --compile --minify src/index.ts --outfile gno-test \
   --external node-llama-cpp \
   --external youtube-transcript \
   --external unzipper
