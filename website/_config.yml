@@ -109,6 +109,8 @@ nav:
   - title: Guides
     icon: lightbulb
     items:
+      - title: How Search Works
+        url: /docs/HOW-SEARCH-WORKS/
       - title: Use Cases
         url: /docs/USE-CASES/
       - title: Troubleshooting
@@ -118,6 +120,8 @@ nav:
     items:
       - title: Glossary
         url: /docs/GLOSSARY/
+      - title: Changelog
+        url: /changelog/
 
 # Social/meta
 github_username: gmickel

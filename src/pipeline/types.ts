@@ -106,6 +106,8 @@ export type HybridSearchOptions = SearchOptions & {
   noRerank?: boolean;
   /** Enable explain output */
   explain?: boolean;
+  /** Language hint for prompt selection (does NOT filter retrieval, only affects expansion prompts) */
+  queryLanguageHint?: string;
 };
 
 /** Options for ask command */

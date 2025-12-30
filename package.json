@@ -63,6 +63,7 @@
     "release:trigger": "gh workflow run publish.yml -f publish=true"
   },
   "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.25.1",
     "commander": "^14.0.2",
     "franc": "^6.2.0",
     "markitdown-ts": "^0.0.8",

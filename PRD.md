@@ -243,7 +243,7 @@ Retrieve:
 
 Agent integration:
 
-* `gno mcp` and tools `gno.search`, `gno.query`, `gno.get`, etc.
+* `gno mcp` and tools `gno_search`, `gno_query`, `gno_get`, etc.
 
 ---
 
@@ -1125,12 +1125,12 @@ Rules:
 
 Tool names are stable and versioned under `gno.*`:
 
-* `gno.search` (BM25)
-* `gno.vsearch` (vector)
-* `gno.query` (hybrid)
-* `gno.get`
-* `gno.multi_get`
-* `gno.status`
+* `gno_search` (BM25)
+* `gno_vsearch` (vector)
+* `gno_query` (hybrid)
+* `gno_get`
+* `gno_multi_get`
+* `gno_status`
 
 Each tool returns:
 
@@ -1646,7 +1646,7 @@ Acceptance:
 ### EPIC 10 - MCP server (stdio)
 
 * T10.1 MCP server skeleton
-* T10.2 Implement tools: `gno.search`, `gno.vsearch`, `gno.query`, `gno.get`, `gno.multi_get`, `gno.status`
+* T10.2 Implement tools: `gno_search`, `gno_vsearch`, `gno_query`, `gno_get`, `gno_multi_get`, `gno_status`
 * T10.3 Implement resource reads for `gno://...`
 * T10.4 MCP contract tests (golden tool calls)
 

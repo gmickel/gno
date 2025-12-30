@@ -140,23 +140,133 @@ gno context add "personal:" "Personal notes and journal"
 
 ## AI Agent Integration
 
-Use GNO as a knowledge base for AI assistants.
+Use GNO as a knowledge base for AI assistants like Claude Code, Codex, or any MCP-compatible agent.
 
-### Setup
+### Option 1: Skill Installation (Recommended)
 
-See [MCP Integration](MCP.md) for Claude Desktop/Cursor setup.
+Install GNO as a skill for Claude Code or Codex:
 
-### Patterns
+```bash
+# Install for Claude Code (project scope)
+gno skill install
 
-1. **Research**: Ask the AI to search for context before answering
-2. **Documentation**: Let AI reference your docs when coding
-3. **Memory**: Use indexed notes as persistent memory
+# Install for user-wide access
+gno skill install --scope user
 
-Example prompts:
+# Install for Codex
+gno skill install --target codex
 
+# Install for both
+gno skill install --target all --scope user
+```
+
+After installation, restart your agent. It will automatically detect the GNO skill and can search your indexed documents.
+
+**What gets installed:**
+- `SKILL.md` - Instructions for the agent on how to use GNO
+- Tool definitions for search, query, and document retrieval
+
+### Option 2: MCP Server
+
+For Claude Desktop or Cursor, run GNO as an MCP server:
+
+```bash
+gno mcp
+```
+
+See [MCP Integration](MCP.md) for detailed setup.
+
+### Workflow Patterns
+
+**Research-then-answer:**
 > "Search my notes for anything about the authentication system, then help me debug this login issue"
 
-> "Find my project requirements and suggest implementation approach"
+**Documentation lookup:**
+> "Find my API docs and show me how the /users endpoint works"
+
+**Cross-reference:**
+> "Search for all mentions of 'database migration' across my projects"
+
+**Memory/recall:**
+> "What did I write last week about the deployment pipeline?"
+
+### Best Practices
+
+1. **Index relevant collections** - Only index what the agent needs
+2. **Use contexts** - Add semantic hints for better relevance
+3. **Keep indexes updated** - Run `gno update` regularly or use `--git-pull`
+4. **Scope searches** - Use collection names to focus agent queries
+
+## Git Integration
+
+Keep collections in sync with git repositories.
+
+### Auto-Pull Before Indexing
+
+Use `--git-pull` to fetch latest changes:
+
+```bash
+gno update --git-pull
+```
+
+This runs `git pull` in every collection that's a git repository before indexing.
+
+### Collection-Level Update Commands
+
+Configure collections to run custom commands before indexing:
+
+```yaml
+# In config
+collections:
+  - name: wiki
+    path: /Users/you/wiki
+    updateCmd: "git pull origin main"
+
+  - name: docs
+    path: /Users/you/docs
+    updateCmd: "git pull && npm run build-docs"
+```
+
+The `updateCmd` runs in the collection's root directory.
+
+### Automation
+
+Combine with cron or scheduled tasks:
+
+```bash
+# Daily index update with git pull
+0 6 * * * cd ~ && gno update --git-pull --yes
+```
+
+## Multi-Language Search
+
+GNO supports 30+ languages with automatic detection.
+
+### Setup Language Hints
+
+For collections in a specific language, set `languageHint`:
+
+```bash
+gno collection add ~/docs/german --name de-docs --language de
+gno collection add ~/docs/french --name fr-docs --language fr
+```
+
+Or in config:
+
+```yaml
+collections:
+  - name: de-docs
+    path: /Users/you/docs/german
+    languageHint: de
+```
+
+### Query Language Detection
+
+GNO auto-detects query language using [franc](https://github.com/wooorm/franc). Searches in German automatically use German-optimized expansion prompts.
+
+### Multilingual Embedding
+
+The default bge-m3 embedding model supports 100+ languages. Vector search works across languages - a German query can find relevant English documents and vice versa.
 
 ## Incremental Updates
 

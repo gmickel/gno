@@ -201,17 +201,24 @@ export async function searchHybrid(
   // ─────────────────────────────────────────────────────────────────────────
   // 0. Detect query language for PROMPT SELECTION only
   //    CRITICAL: Detection does NOT change retrieval filters - options.lang does
+  //    Priority: queryLanguageHint (MCP) > lang (CLI) > detection
   // ─────────────────────────────────────────────────────────────────────────
   const detection = detectQueryLanguage(query);
-  // Use explicit --lang if provided, otherwise use detected language
-  const queryLanguage = options.lang ?? detection.bcp47;
+  // Use explicit hint > lang filter > detected language
+  const queryLanguage =
+    options.queryLanguageHint ?? options.lang ?? detection.bcp47;
 
-  explainLines.push({
-    stage: 'lang',
-    message: options.lang
-      ? `queryLanguage=${queryLanguage} (explicit)`
-      : `queryLanguage=${queryLanguage} (detected${detection.confident ? '' : ', low confidence'})`,
-  });
+  // Build explain message for language detection
+  let langMessage: string;
+  if (options.queryLanguageHint) {
+    langMessage = `queryLanguage=${queryLanguage} (hint)`;
+  } else if (options.lang) {
+    langMessage = `queryLanguage=${queryLanguage} (explicit)`;
+  } else {
+    const confidence = detection.confident ? '' : ', low confidence';
+    langMessage = `queryLanguage=${queryLanguage} (detected${confidence})`;
+  }
+  explainLines.push({ stage: 'lang', message: langMessage });
 
   // ─────────────────────────────────────────────────────────────────────────
   // 1. Check if expansion needed

@@ -180,12 +180,12 @@ gno mcp
 - Server info (name: "gno", transport: stdio)
 - Capabilities declaration
 - Tools (6):
-  - gno.search - BM25 keyword search
-  - gno.vsearch - vector semantic search
-  - gno.query - hybrid search
-  - gno.get - retrieve single document
-  - gno.multi_get - retrieve multiple documents
-  - gno.status - index status
+  - gno_search - BM25 keyword search
+  - gno_vsearch - vector semantic search
+  - gno_query - hybrid search
+  - gno_get - retrieve single document
+  - gno_multi_get - retrieve multiple documents
+  - gno_status - index status
 - Resources (gno://{collection}/{path})
 - Error handling
 - Versioning strategy
@@ -193,7 +193,7 @@ gno mcp
 **Tool schema pattern:**
 ```typescript
 {
-  name: "gno.search",
+  name: "gno_search",
   description: "BM25 keyword search over indexed documents",
   inputSchema: {
     type: "object",

@@ -1,7 +1,7 @@
 # GNO CLI Specification
 
-**Version:** 1.0.0
-**Last Updated:** 2025-12-23
+**Version:** 0.1.0
+**Last Updated:** 2025-12-30
 
 This document specifies the command-line interface for GNO, a local knowledge indexing and retrieval system.
 

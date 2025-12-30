@@ -66,11 +66,16 @@ test("hello world", () => {
 
 Version is managed in `package.json` (single source of truth). `src/app/constants.ts` imports it.
 
+**IMPORTANT**: Bump version on EVERY merge to main:
+- Features/new functionality → `version:minor`
+- Bug fixes/patches → `version:patch`
+- Breaking changes → `version:major`
+
 **Bump version:**
 ```bash
-bun run version:patch   # 0.1.0 → 0.1.1
-bun run version:minor   # 0.1.0 → 0.2.0
-bun run version:major   # 0.1.0 → 1.0.0
+bun run version:patch   # 0.1.0 → 0.1.1 (bug fixes)
+bun run version:minor   # 0.1.0 → 0.2.0 (features)
+bun run version:major   # 0.1.0 → 1.0.0 (breaking)
 ```
 
 **Release workflow:**
@@ -86,11 +91,27 @@ gh workflow run publish.yml -f publish=false  # dry run
 gh workflow run publish.yml -f publish=true   # actual publish
 ```
 
-**Full release process:**
-1. `bun run version:patch` (or minor/major)
-2. `git add package.json && git commit -m "chore: bump to vX.Y.Z"`
-3. `git tag vX.Y.Z && git push --tags`
-4. Workflow auto-triggers on `v*` tag push
+**Post-merge workflow (EVERY merge to main):**
+1. `bun run version:patch` (or minor/major based on changes)
+2. **Update CHANGELOG.md** - Move [Unreleased] items to new version section
+3. **Update website/changelog.md** - Keep in sync with CHANGELOG.md
+4. `git add package.json CHANGELOG.md website/changelog.md`
+5. `git commit -m "chore: bump to vX.Y.Z"`
+6. `git tag vX.Y.Z && git push --tags`
+7. Workflow auto-triggers on `v*` tag push
+
+**CHANGELOG format** (Keep a Changelog):
+```markdown
+## [Unreleased]
+### Added
+- New feature description
+
+## [0.2.0] - 2025-01-15
+### Added
+- Feature from this release
+### Fixed
+- Bug that was fixed
+```
 
 **Requirements:**
 - `NPM_TOKEN` secret in GitHub repo settings (Settings → Secrets → Actions)

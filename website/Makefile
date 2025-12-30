@@ -14,11 +14,16 @@ serve: sync-docs
 build: sync-docs
 	bundle exec jekyll build
 
-# Copy docs from parent directory
+# Copy docs from parent directory (excludes internal NOTES.md)
 sync-docs:
 	@mkdir -p docs
-	@cp ../docs/*.md docs/
-	@echo "Synced docs from ../docs/"
+	@for f in ../docs/*.md; do \
+		case "$$(basename $$f)" in \
+			NOTES.md) ;; \
+			*) cp "$$f" docs/ ;; \
+		esac; \
+	done
+	@echo "Synced docs from ../docs/ (excluding NOTES.md)"
 
 # Clean build artifacts
 clean:

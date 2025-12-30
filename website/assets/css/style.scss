@@ -412,9 +412,10 @@ pre {
   @media (min-width: $bp-lg) { margin-left: $sidebar-width; }
 }
 
-// Layout Fix: No margin on homepage and fullwidth pages
+// Layout Fix: No margin on homepage, fullwidth, and feature pages
 body.layout-home .site-main,
-body.layout-fullwidth .site-main {
+body.layout-fullwidth .site-main,
+body.layout-feature .site-main {
   margin-left: 0 !important;
 }
 
@@ -431,6 +432,49 @@ body.layout-fullwidth .site-main {
 
 .content-home {
   max-width: 1200px;
+}
+
+// -----------------------------------------------------------------------------
+// Tables
+// -----------------------------------------------------------------------------
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: $space-5 0;
+  font-size: 0.95rem;
+}
+
+th, td {
+  padding: $space-3 $space-4;
+  text-align: left;
+  border-bottom: 1px solid var(--color-border);
+}
+
+th {
+  font-weight: 600;
+  color: var(--color-text);
+  background: var(--color-bg-subtle);
+  white-space: nowrap;
+}
+
+td {
+  color: var(--color-text-secondary);
+}
+
+tr:hover td {
+  background: var(--color-bg-subtle);
+}
+
+// Responsive tables
+@media (max-width: $bp-sm) {
+  table {
+    font-size: 0.85rem;
+  }
+
+  th, td {
+    padding: $space-2 $space-3;
+  }
 }
 
 // -----------------------------------------------------------------------------
@@ -568,13 +612,23 @@ body.layout-fullwidth .site-main {
   100% { background-position: -200% center; }
 }
 
+// Punchy one-liner tagline
+.hero-tagline {
+  font-family: $font-mono;
+  font-size: 1.15rem;
+  color: var(--color-accent);
+  letter-spacing: 0.02em;
+  margin: 0 auto $space-4;
+  font-weight: 500;
+}
+
 .hero-description {
   font-family: $font-sans;
-  font-size: 1.35rem;
+  font-size: 1.25rem;
   color: var(--color-text-secondary);
-  line-height: 1.5;
+  line-height: 1.6;
   max-width: 640px;
-  margin: 0 auto $space-8;
+  margin: 0 auto $space-6;
   letter-spacing: -0.01em;
 }
 
@@ -662,26 +716,145 @@ body.layout-fullwidth .site-main {
   }
 }
 
-// Hero Demo Window (Fix: Remove extra window chrome)
+// Hero Demo Window - Premium ambient glow effect
+// Dark mode: Teal glow blending into dark background
+// Light mode: Dramatic depth shadows with subtle accent
 .hero-demo {
   margin: $space-9 auto $space-5;
-  // Remove padding/border/bg that mimicked window
-  // Just a clean container for the already-windowed GIF
-  border-radius: $radius-lg; 
-  box-shadow: var(--shadow-lg), var(--shadow-glow);
+  border-radius: $radius-lg;
   position: relative;
-  overflow: hidden;
   max-width: 900px;
 
-  // REMOVED ::before pseudo-element for traffic lights
+  // Dark mode: Multi-layered teal glow
+  box-shadow:
+    // Crisp inner shadow for definition
+    0 4px 6px -1px rgba(0, 0, 0, 0.3),
+    0 2px 4px -2px rgba(0, 0, 0, 0.2),
+    // Inner teal glow (bright core)
+    0 0 30px 0 rgba(77, 184, 168, 0.35),
+    0 0 60px 0 rgba(77, 184, 168, 0.25),
+    // Mid-range spread
+    0 0 100px 10px rgba(77, 184, 168, 0.15),
+    0 0 150px 20px rgba(77, 184, 168, 0.1),
+    // Far ambient (blends to background)
+    0 0 200px 40px rgba(77, 184, 168, 0.06),
+    0 0 280px 60px rgba(77, 184, 168, 0.03),
+    0 0 350px 80px rgba(77, 184, 168, 0.015);
+
+  // Large ambient glow pseudo-element
+  &::before {
+    content: '';
+    position: absolute;
+    inset: -120px;
+    background: radial-gradient(
+      ellipse 70% 50% at 50% 50%,
+      rgba(77, 184, 168, 0.12) 0%,
+      rgba(77, 184, 168, 0.06) 30%,
+      rgba(77, 184, 168, 0.02) 60%,
+      transparent 100%
+    );
+    z-index: -1;
+    pointer-events: none;
+    filter: blur(40px);
+    animation: demo-glow-pulse 6s ease-in-out infinite;
+  }
+
+  // Subtle vertical light beam accent
+  &::after {
+    content: '';
+    position: absolute;
+    top: -100px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 80%;
+    height: 120px;
+    background: linear-gradient(
+      180deg,
+      rgba(77, 184, 168, 0.1) 0%,
+      rgba(77, 184, 168, 0.04) 50%,
+      transparent 100%
+    );
+    z-index: -1;
+    pointer-events: none;
+    filter: blur(50px);
+  }
 
   img {
     display: block;
     width: 100%;
     height: auto;
     border-radius: $radius-lg;
-    // Keep subtle border to define edge
-    border: 1px solid var(--glass-border); 
+    border: 1px solid rgba(77, 184, 168, 0.15);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.05),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.1);
+  }
+}
+
+// Light mode: Dramatic depth shadows instead of glow
+[data-theme="light"] .hero-demo {
+  // Layered shadows for dramatic depth + subtle teal accent ring
+  box-shadow:
+    // Tight definition shadow
+    0 1px 2px rgba(0, 0, 0, 0.06),
+    0 2px 4px rgba(0, 0, 0, 0.06),
+    // Mid-depth shadows
+    0 4px 8px rgba(0, 0, 0, 0.06),
+    0 8px 16px rgba(0, 0, 0, 0.06),
+    // Deep ambient shadow
+    0 16px 32px rgba(0, 0, 0, 0.08),
+    0 32px 64px rgba(0, 0, 0, 0.08),
+    // Far spread for smooth blend
+    0 48px 96px rgba(0, 0, 0, 0.06),
+    0 64px 128px rgba(0, 0, 0, 0.04),
+    // Subtle teal accent ring
+    0 0 0 1px rgba(26, 107, 125, 0.08),
+    0 0 60px -10px rgba(26, 107, 125, 0.15);
+
+  // Light mode pseudo-element: soft depth halo
+  &::before {
+    inset: -80px;
+    background: radial-gradient(
+      ellipse 60% 45% at 50% 55%,
+      rgba(0, 0, 0, 0.04) 0%,
+      rgba(0, 0, 0, 0.02) 40%,
+      transparent 70%
+    );
+    filter: blur(30px);
+    animation: none; // No pulse in light mode - refined stillness
+  }
+
+  // Light mode: subtle teal glow above (inverted direction)
+  &::after {
+    top: auto;
+    bottom: -80px;
+    height: 100px;
+    background: radial-gradient(
+      ellipse 80% 60% at 50% 0%,
+      rgba(26, 107, 125, 0.06) 0%,
+      rgba(26, 107, 125, 0.02) 50%,
+      transparent 100%
+    );
+    filter: blur(40px);
+  }
+
+  img {
+    border-color: rgba(0, 0, 0, 0.08);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.8),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.04);
+  }
+}
+
+// Smooth breathing animation for ambient glow
+@keyframes demo-glow-pulse {
+  0%, 100% {
+    opacity: 0.6;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.02);
   }
 }
 

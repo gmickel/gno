@@ -80,6 +80,20 @@ gno query "topic" --rerank
 
 Algorithm for combining multiple ranked lists. Score = Σ(1 / (k + rank)) where k=60.
 
+See [How Search Works](HOW-SEARCH-WORKS.md) for detailed explanation.
+
+### Query Expansion
+
+LLM-powered technique that generates query variants to improve recall. Creates lexical variants (for BM25), semantic variants (for vectors), and HyDE passages.
+
+See [How Search Works](HOW-SEARCH-WORKS.md#query-expansion-with-hyde) for details.
+
+### HyDE (Hypothetical Document Embeddings)
+
+Technique where an LLM generates a hypothetical document answering the query. The embedding of this synthetic document often better matches real answer documents than the original question embedding.
+
+See [How Search Works](HOW-SEARCH-WORKS.md#query-expansion-with-hyde) for details.
+
 ## Storage Terms
 
 ### Source

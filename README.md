@@ -28,8 +28,8 @@ Get searching in minutes with the 3-command workflow:
     # Create a collection for your notes (adjust path and name as needed)
     gno init ~/my-notes --name notes --pattern "**/*.md"
 
-    # Index documents (automatically runs 'update' and 'embed' if models are found)
-    gno index --yes
+    # Index all collections (incremental - only processes changed files)
+    gno update
     ```
 
 2.  **Ask a question**:
