@@ -208,6 +208,22 @@ export async function startMcpServer(options: McpServerOptions): Promise<void> {
   // Connect transport
   const transport = new StdioServerTransport();
   protocolMode = true; // Enable stdout for JSON-RPC
+
   await server.connect(transport);
+
   console.error(`[MCP] ${MCP_SERVER_NAME} v${VERSION} ready on stdio`);
+
+  // Block forever until shutdown signal or stdin closes
+  // This prevents the CLI from exiting after startMcpServer() returns
+  await new Promise<void>((resolve) => {
+    process.stdin.on('end', () => {
+      console.error('[MCP] stdin ended');
+      resolve();
+    });
+    process.stdin.on('close', () => {
+      console.error('[MCP] stdin closed');
+      resolve();
+    });
+    // Also resolve on SIGTERM/SIGINT (already handled by shutdown())
+  });
 }
