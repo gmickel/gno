@@ -51,6 +51,7 @@ All local. All private. Your data never leaves your machine.
 - **Scales to 15,000+ files** - SQLite + FTS5 handles it
 - **Query expansion** - LLM rewrites your question for better matches
 - **Reranking** - Cross-encoder picks the truly relevant results
+- **Skills** - Native integration for Claude Code, Codex, OpenCode
 - **MCP standard** - Works with Claude Desktop, Cursor, any MCP client
 
 Your second brain finally becomes accessible.
