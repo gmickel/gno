@@ -42,3 +42,7 @@ The `query` command combines both methods using RRF, a proven algorithm that mer
 ```bash
 gno query "authentication best practices"
 ```
+
+### Learn More
+
+For a deep dive into query expansion, HyDE, RRF fusion, and reranking, see the **[How Search Works](/docs/HOW-SEARCH-WORKS/)** guide.

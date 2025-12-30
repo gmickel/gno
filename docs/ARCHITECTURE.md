@@ -177,6 +177,7 @@ Run `gno doctor` to see resolved paths.
 
 For implementation details, see:
 
+- [How Search Works](HOW-SEARCH-WORKS.md) - Deep dive into query expansion, HyDE, and RRF fusion
 - [docs/NOTES.md](NOTES.md) - Internal architecture notes
 - [spec/cli.md](../spec/cli.md) - CLI specification
 - [spec/mcp.md](../spec/mcp.md) - MCP specification
