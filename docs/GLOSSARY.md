@@ -70,10 +70,11 @@ gno query "semantic plus keywords"
 
 ### Reranking
 
-Cross-encoder model that rescores results for better relevance. More accurate but slower.
+Cross-encoder model that rescores results for better relevance. More accurate but slower. Enabled by default with `gno query`.
 
 ```bash
-gno query "topic" --rerank
+gno query "topic"           # reranking enabled by default
+gno query "topic" --no-rerank  # disable for speed
 ```
 
 ### RRF (Reciprocal Rank Fusion)
@@ -170,7 +171,7 @@ Protocol for AI assistants to access external tools and resources. GNO runs as a
 
 ### Tool
 
-MCP function that AI can invoke. GNO provides: search, vsearch, query, get, multi_get, status.
+MCP function that AI can invoke. GNO provides: gno_search, gno_vsearch, gno_query, gno_get, gno_multi_get, gno_status.
 
 ### Resource
 
