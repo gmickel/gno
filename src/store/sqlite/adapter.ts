@@ -73,6 +73,8 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
   private dbPath = '';
   private ftsTokenizer: FtsTokenizer = 'unicode61';
   private configPath = ''; // Set by CLI layer for status output
+  private txDepth = 0; // Transaction nesting depth
+  private txCounter = 0; // Savepoint counter for unique names
 
   // ─────────────────────────────────────────────────────────────────────────
   // Lifecycle
@@ -117,6 +119,58 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
 
   isOpen(): boolean {
     return this.db !== null;
+  }
+
+  /**
+   * Run an async function within a single SQLite transaction.
+   * Uses SAVEPOINT for nesting safety.
+   *
+   * Note: bun:sqlite's Database#transaction is synchronous, so we use
+   * explicit BEGIN/COMMIT to support async callbacks.
+   */
+  async withTransaction<T>(fn: () => Promise<T>): Promise<StoreResult<T>> {
+    const db = this.ensureOpen();
+
+    const isOuter = this.txDepth === 0;
+    const savepoint = `sp_${++this.txCounter}`;
+
+    try {
+      if (isOuter) {
+        // IMMEDIATE reduces lock churn for bulk writes
+        db.exec('BEGIN IMMEDIATE');
+      } else {
+        db.exec(`SAVEPOINT ${savepoint}`);
+      }
+
+      this.txDepth += 1;
+      const value = await fn();
+      this.txDepth -= 1;
+
+      if (isOuter) {
+        db.exec('COMMIT');
+      } else {
+        db.exec(`RELEASE ${savepoint}`);
+      }
+
+      return ok(value);
+    } catch (cause) {
+      this.txDepth = Math.max(0, this.txDepth - 1);
+
+      try {
+        if (isOuter) {
+          db.exec('ROLLBACK');
+        } else {
+          db.exec(`ROLLBACK TO ${savepoint}`);
+          db.exec(`RELEASE ${savepoint}`);
+        }
+      } catch {
+        // Ignore rollback failures; report original error
+      }
+
+      const message =
+        cause instanceof Error ? cause.message : 'Transaction failed';
+      return err('TRANSACTION_FAILED', message, cause);
+    }
   }
 
   /**

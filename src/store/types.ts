@@ -289,6 +289,19 @@ export interface MigrationResult {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Transaction Types
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Optional transaction wrapper capability.
+ * Store implementations that support batching multiple writes into a single
+ * durable commit should implement this.
+ */
+export type WithTransaction = <T>(
+  fn: () => Promise<T>
+) => Promise<StoreResult<T>>;
+
+// ─────────────────────────────────────────────────────────────────────────────
 // StorePort Interface
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -319,6 +332,13 @@ export interface StorePort {
    * Check if database is open.
    */
   isOpen(): boolean;
+
+  /**
+   * Run an async function within a single transaction.
+   * Optional - implementations without transactional support can omit this.
+   * Used by SyncService to batch document writes for better Windows performance.
+   */
+  withTransaction?: WithTransaction;
 
   // ─────────────────────────────────────────────────────────────────────────
   // Config Sync (YAML -> DB)

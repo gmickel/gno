@@ -36,6 +36,9 @@ import { defaultWalker } from './walker';
 /** Default concurrency for file processing */
 const DEFAULT_CONCURRENCY = 1;
 
+/** Batch size for grouping writes into single transaction (Windows perf) */
+const TX_BATCH_SIZE = 50;
+
 /** Max concurrency to prevent resource exhaustion */
 const MAX_CONCURRENCY = 16;
 
@@ -480,38 +483,59 @@ export class SyncService {
     let errored = 0;
 
     if (concurrency === 1) {
-      // Sequential processing (default, safest)
-      for (const entry of entries) {
-        seenPaths.add(entry.relPath);
-        const result = await this.processFile(
-          collection,
-          entry,
-          store,
-          options
-        );
-        switch (result.status) {
-          case 'added':
-            added += 1;
-            break;
-          case 'updated':
-            updated += 1;
-            break;
-          case 'unchanged':
-            unchanged += 1;
-            break;
-          case 'error':
-            errored += 1;
-            if (result.errorCode && result.errorMessage) {
-              errors.push({
-                relPath: result.relPath,
-                code: result.errorCode,
-                message: result.errorMessage,
-              });
+      // Sequential processing with batched transactions (Windows perf)
+      for (let i = 0; i < entries.length; i += TX_BATCH_SIZE) {
+        const batch = entries.slice(i, i + TX_BATCH_SIZE);
+
+        const runBatch = async (): Promise<void> => {
+          for (const entry of batch) {
+            seenPaths.add(entry.relPath);
+            const result = await this.processFile(
+              collection,
+              entry,
+              store,
+              options
+            );
+            switch (result.status) {
+              case 'added':
+                added += 1;
+                break;
+              case 'updated':
+                updated += 1;
+                break;
+              case 'unchanged':
+                unchanged += 1;
+                break;
+              case 'error':
+                errored += 1;
+                if (result.errorCode && result.errorMessage) {
+                  errors.push({
+                    relPath: result.relPath,
+                    code: result.errorCode,
+                    message: result.errorMessage,
+                  });
+                }
+                break;
+              default:
+                // 'skipped' status - already counted in filesSkipped
+                break;
             }
-            break;
-          default:
-            // 'skipped' status - already counted in filesSkipped
-            break;
+          }
+        };
+
+        // Wrap batch in single transaction when supported (reduces commits)
+        if (store.withTransaction) {
+          const txResult = await store.withTransaction(runBatch);
+          if (!txResult.ok) {
+            errors.push({
+              relPath: '(transaction batch)',
+              code: txResult.error.code,
+              message: txResult.error.message,
+            });
+            break; // Abort on transaction failure
+          }
+        } else {
+          await runBatch();
         }
       }
     } else {

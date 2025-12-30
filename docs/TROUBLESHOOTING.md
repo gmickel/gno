@@ -123,6 +123,19 @@ Tips:
 - Add excludes (`node_modules`, `dist`)
 - First run is slowest (subsequent runs are incremental)
 
+### Slow Indexing on Windows
+
+Windows can be significantly slower due to NTFS overhead and real-time antivirus scanning.
+
+**Exclude GNO data directory from Windows Defender:**
+
+1. Open Windows Security → Virus & threat protection
+2. Under "Virus & threat protection settings", click "Manage settings"
+3. Scroll to "Exclusions" and click "Add or remove exclusions"
+4. Add folder: `%LOCALAPPDATA%\gno\data`
+
+This can improve indexing speed by 2-4x on Windows.
+
 ## Search Issues
 
 ### No Results
