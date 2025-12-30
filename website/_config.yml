@@ -120,6 +120,8 @@ nav:
     items:
       - title: Glossary
         url: /docs/GLOSSARY/
+      - title: Changelog
+        url: /changelog/
 
 # Social/meta
 github_username: gmickel

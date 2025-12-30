@@ -88,9 +88,23 @@ gh workflow run publish.yml -f publish=true   # actual publish
 
 **Full release process:**
 1. `bun run version:patch` (or minor/major)
-2. `git add package.json && git commit -m "chore: bump to vX.Y.Z"`
-3. `git tag vX.Y.Z && git push --tags`
-4. Workflow auto-triggers on `v*` tag push
+2. **Update CHANGELOG.md** - Move [Unreleased] items to new version section
+3. `git add package.json CHANGELOG.md && git commit -m "chore: bump to vX.Y.Z"`
+4. `git tag vX.Y.Z && git push --tags`
+5. Workflow auto-triggers on `v*` tag push
+
+**CHANGELOG format** (Keep a Changelog):
+```markdown
+## [Unreleased]
+### Added
+- New feature description
+
+## [0.2.0] - 2025-01-15
+### Added
+- Feature from this release
+### Fixed
+- Bug that was fixed
+```
 
 **Requirements:**
 - `NPM_TOKEN` secret in GitHub repo settings (Settings → Secrets → Actions)
