@@ -4,7 +4,7 @@ title: Multi-Format Indexing
 headline: Index Everything You Write
 description: GNO indexes Markdown, PDF, Word, Excel, PowerPoint, and plain text. One tool for all your documents, with intelligent chunking and language detection.
 keywords: document indexing, pdf search, markdown search, office documents, docx xlsx pptx
-icon: "📄"
+icon: multi-format
 slug: multi-format
 permalink: /features/multi-format/
 benefits:

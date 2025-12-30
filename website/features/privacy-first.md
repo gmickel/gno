@@ -4,7 +4,7 @@ title: Privacy First
 headline: Your Data Stays Yours
 description: GNO is designed from the ground up for privacy. All processing happens locally - indexing, embeddings, search, and AI answers. Nothing leaves your machine, ever.
 keywords: privacy first, local search, offline search, no cloud, private documents
-icon: "🔒"
+icon: privacy-first
 slug: privacy-first
 permalink: /features/privacy-first/
 benefits:

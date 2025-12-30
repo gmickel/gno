@@ -90,3 +90,4 @@ htmlcov/
 # Finder (MacOS) folder config
 .DS_Store
 .vercel
+docs/NOTES.md

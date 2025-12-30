@@ -4,7 +4,7 @@ title: MCP Integration
 headline: Give Your AI Assistant Memory
 description: Connect GNO to Claude Desktop, Cursor, or any MCP-compatible AI assistant. Your AI can now search and cite your local documents.
 keywords: mcp server, claude desktop integration, cursor integration, ai assistant, model context protocol
-icon: "🌐"
+icon: mcp-integration
 slug: mcp-integration
 permalink: /features/mcp-integration/
 benefits:

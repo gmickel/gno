@@ -4,7 +4,7 @@ title: Local LLM Answers
 headline: AI Answers Without the Cloud
 description: Get cited, grounded answers from your own documents using local language models. GNO runs everything on your machine - no API keys, no data sharing, no subscriptions.
 keywords: local llm, ai answers, local ai, private ai, grounded answers, cited responses
-icon: "🤖"
+icon: local-llm
 slug: local-llm
 permalink: /features/local-llm/
 benefits:

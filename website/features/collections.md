@@ -4,7 +4,7 @@ title: Collections
 headline: Organize Your Knowledge
 description: Group documents by source directory with patterns, includes, and excludes. Search specific collections or across everything.
 keywords: document collections, organize documents, file patterns, search scope, document groups
-icon: "🗂️"
+icon: collections
 slug: collections
 permalink: /features/collections/
 benefits:
