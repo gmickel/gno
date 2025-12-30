@@ -6,92 +6,63 @@ GNO uses a sophisticated multi-stage search pipeline that combines traditional k
 
 ## The Search Pipeline
 
+The diagram below shows how your query flows through GNO's search system:
+
+**Stage 1: Query Expansion** → Your query is expanded by an LLM into keyword variants (for BM25), semantic variants (for vectors), and a HyDE passage.
+
+**Stage 2: Parallel Search** → BM25 and vector searches run simultaneously on original query + all variants.
+
+**Stage 3: RRF Fusion** → Results are merged using Reciprocal Rank Fusion. Documents appearing in multiple lists get boosted.
+
+**Stage 4: Reranking** → Top 20 candidates are rescored by a cross-encoder for final ordering.
+
 ```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                            YOUR QUERY                                        │
-│                    "how do I deploy to production"                          │
-└─────────────────────────────────────────────────────────────────────────────┘
-                                   │
-                                   ▼
-┌─────────────────────────────────────────────────────────────────────────────┐
-│  STAGE 1: QUERY EXPANSION (LLM)                                             │
-│  ─────────────────────────────                                              │
-│  Your query is expanded into multiple variants:                             │
-│                                                                             │
-│  Lexical variants (for BM25):                                               │
-│    • "deployment process"                                                   │
-│    • "deploy application"                                                   │
-│    • "production deployment guide"                                          │
-│                                                                             │
-│  Semantic variants (for vectors):                                           │
-│    • "steps to release software"                                            │
-│    • "guide for shipping to prod"                                           │
-│                                                                             │
-│  HyDE passage (hypothetical answer):                                        │
-│    "To deploy the application, first run build, then push to staging..."   │
-└─────────────────────────────────────────────────────────────────────────────┘
-                                   │
-                    ┌──────────────┴──────────────┐
-                    ▼                              ▼
-┌─────────────────────────────────┐ ┌─────────────────────────────────┐
-│  STAGE 2A: BM25 SEARCH          │ │  STAGE 2B: VECTOR SEARCH        │
-│  ───────────────────            │ │  ────────────────────           │
-│  Keyword matching via FTS5      │ │  Semantic similarity via        │
-│                                 │ │  embedding cosine distance      │
-│  Searches run in parallel:      │ │                                 │
-│  • Original query (2x budget)   │ │  Searches run in parallel:      │
-│  • Each lexical variant         │ │  • Original query (2x budget)   │
-│                                 │ │  • Each semantic variant        │
-│  Finds exact term matches:      │ │  • HyDE passage                 │
-│  "deploy", "production"         │ │                                 │
-│                                 │ │  Finds conceptual matches even  │
-│                                 │ │  without exact words            │
-└─────────────────────────────────┘ └─────────────────────────────────┘
-                    │                              │
-                    └──────────────┬───────────────┘
-                                   ▼
-┌─────────────────────────────────────────────────────────────────────────────┐
-│  STAGE 3: RECIPROCAL RANK FUSION (RRF)                                      │
-│  ───────────────────────────────────────                                    │
-│  Merges all result lists using position-based scoring:                      │
-│                                                                             │
-│  score = Σ (weight / (k + rank))     where k=60                            │
-│                                                                             │
-│  Documents appearing in top positions across multiple searches get          │
-│  boosted. A doc ranked #1 in BM25 AND #2 in vector beats one ranked        │
-│  #1 in only BM25.                                                           │
-│                                                                             │
-│  Weights:                                                                   │
-│    • Original queries: 1.0                                                  │
-│    • Variant queries: 0.5                                                   │
-│    • HyDE passage: 0.7                                                      │
-│                                                                             │
-│  Top-rank bonus: +0.1 if result appears in top-5 of BOTH BM25 and vector   │
-└─────────────────────────────────────────────────────────────────────────────┘
-                                   │
-                                   ▼
-┌─────────────────────────────────────────────────────────────────────────────┐
-│  STAGE 4: RERANKING (Cross-Encoder)                                         │
-│  ─────────────────────────────────                                          │
-│  Top 20 candidates are rescored using a neural cross-encoder model.         │
-│  This model reads query + document together for deeper understanding.       │
-│                                                                             │
-│  Position-aware blending combines fusion and rerank scores:                 │
-│                                                                             │
-│  Position    Fusion Weight    Rerank Weight                                │
-│  ────────    ─────────────    ─────────────                                │
-│  1-3         75%              25%                                           │
-│  4-10        60%              40%                                           │
-│  11+         40%              60%                                           │
-│                                                                             │
-│  Top results trust the multi-signal fusion; lower ranks rely on reranker.  │
-└─────────────────────────────────────────────────────────────────────────────┘
-                                   │
-                                   ▼
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                          FINAL RESULTS                                       │
-│                  Sorted by blended score [0.0 - 1.0]                        │
-└─────────────────────────────────────────────────────────────────────────────┘
+          ┌─────────────────────────┐
+          │       YOUR QUERY        │
+          │ "how do I deploy to     │
+          │       production"       │
+          └───────────┬─────────────┘
+                      ▼
+          ┌─────────────────────────┐
+          │  1. QUERY EXPANSION     │
+          │                         │
+          │  Lexical: "deploy app"  │
+          │  Semantic: "release     │
+          │    software to prod"    │
+          │  HyDE: "To deploy..."   │
+          └───────────┬─────────────┘
+                      │
+           ┌─────────┴─────────┐
+           ▼                   ▼
+   ┌──────────────┐   ┌──────────────┐
+   │ 2A. BM25     │   │ 2B. VECTOR   │
+   │              │   │              │
+   │ Keyword      │   │ Semantic     │
+   │ matching     │   │ similarity   │
+   │ (FTS5)       │   │ (embeddings) │
+   └──────┬───────┘   └───────┬──────┘
+          │                   │
+          └─────────┬─────────┘
+                    ▼
+          ┌─────────────────────────┐
+          │  3. RRF FUSION          │
+          │                         │
+          │  Merges ranked lists    │
+          │  score = Σ w/(k+rank)   │
+          │  k=60, weights vary     │
+          └───────────┬─────────────┘
+                      ▼
+          ┌─────────────────────────┐
+          │  4. RERANKING           │
+          │                         │
+          │  Cross-encoder rescores │
+          │  top 20 candidates      │
+          └───────────┬─────────────┘
+                      ▼
+          ┌─────────────────────────┐
+          │     FINAL RESULTS       │
+          │  Sorted by score [0-1]  │
+          └─────────────────────────┘
 ```
 
 ## Query Expansion with HyDE
