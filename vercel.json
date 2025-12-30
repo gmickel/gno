@@ -1,5 +1,5 @@
 {
-  "buildCommand": "cd website && mkdir -p docs && cp ../docs/*.md docs/ && bundle exec jekyll build",
+  "buildCommand": "cd website && make build",
   "outputDirectory": "website/_site",
   "installCommand": "cd website && gem install bundler && bundle install",
   "framework": null,
