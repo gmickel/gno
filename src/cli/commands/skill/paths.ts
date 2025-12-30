@@ -6,7 +6,7 @@
  */
 
 import { homedir } from 'node:os';
-import { join, normalize, sep } from 'node:path';
+import { isAbsolute, join, normalize, relative, sep } from 'node:path';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Environment Variables
@@ -79,6 +79,12 @@ export function resolveSkillPaths(opts: SkillPathOptions): SkillPaths {
       : process.env[ENV_CODEX_SKILLS_DIR];
 
   if (envOverride) {
+    // Require absolute path for security
+    if (!isAbsolute(envOverride)) {
+      throw new Error(
+        `${target === 'claude' ? ENV_CLAUDE_SKILLS_DIR : ENV_CODEX_SKILLS_DIR} must be an absolute path`
+      );
+    }
     const skillsDir = normalize(envOverride);
     return {
       base: join(skillsDir, '..'),
@@ -175,8 +181,9 @@ export function validatePathForDeletion(
     return 'Path equals base directory';
   }
 
-  // Must be inside expected base (prefix check)
-  if (!normalized.startsWith(normalizedBase)) {
+  // Must be strictly inside expected base (proper containment check)
+  const rel = relative(normalizedBase, normalized);
+  if (rel.startsWith('..') || isAbsolute(rel)) {
     return 'Path is not inside expected base directory';
   }
 

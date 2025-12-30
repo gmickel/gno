@@ -5,7 +5,7 @@
  * @module src/cli/commands/skill/install
  */
 
-import { mkdir, readdir, rename, rm } from 'node:fs/promises';
+import { mkdir, readdir, rename, rm, stat } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { CliError } from '../../errors.js';
@@ -14,6 +14,7 @@ import {
   resolveSkillPaths,
   type SkillScope,
   type SkillTarget,
+  validatePathForDeletion,
 } from './paths.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -69,8 +70,16 @@ async function installToTarget(
   const sourceDir = getSkillSourceDir();
   const paths = resolveSkillPaths({ scope, target, ...overrides });
 
-  // Check if already exists
-  const destExists = await Bun.file(join(paths.gnoDir, 'SKILL.md')).exists();
+  // Check if already exists (directory or SKILL.md)
+  const skillMdExists = await Bun.file(join(paths.gnoDir, 'SKILL.md')).exists();
+  let dirExists = false;
+  try {
+    const dirStat = await stat(paths.gnoDir);
+    dirExists = dirStat.isDirectory();
+  } catch {
+    // Directory doesn't exist
+  }
+  const destExists = skillMdExists || dirExists;
 
   if (destExists && !force) {
     throw new CliError(
@@ -85,8 +94,9 @@ async function installToTarget(
     throw new CliError('RUNTIME', `No skill files found in ${sourceDir}`);
   }
 
-  // Create temp directory
-  const tmpName = `.gno-skill.tmp.${Date.now()}`;
+  // Create temp directory with unique name to avoid collisions
+  const randomSuffix = Math.random().toString(36).slice(2, 10);
+  const tmpName = `.gno-skill.tmp.${Date.now()}-${process.pid}-${randomSuffix}`;
   const tmpDir = join(paths.skillsDir, tmpName);
 
   try {
@@ -96,14 +106,21 @@ async function installToTarget(
     // Create temp directory
     await mkdir(tmpDir, { recursive: true });
 
-    // Copy all files to temp
+    // Copy all files to temp (binary-safe)
     for (const file of sourceFiles) {
-      const content = await Bun.file(join(sourceDir, file)).text();
+      const content = await Bun.file(join(sourceDir, file)).arrayBuffer();
       await Bun.write(join(tmpDir, file), content);
     }
 
-    // Remove existing if present
+    // Remove existing if present (with safety check)
     if (destExists) {
+      const validationError = validatePathForDeletion(paths.gnoDir, paths.base);
+      if (validationError) {
+        throw new CliError(
+          'RUNTIME',
+          `Safety check failed for ${paths.gnoDir}: ${validationError}`
+        );
+      }
       await rm(paths.gnoDir, { recursive: true, force: true });
     }
 

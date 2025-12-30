@@ -1037,12 +1037,32 @@ function wireSkillCommands(program: Command): void {
       'claude'
     )
     .option('-f, --force', 'overwrite existing installation')
+    .option('--json', 'JSON output')
     .action(async (cmdOpts: Record<string, unknown>) => {
+      const scope = cmdOpts.scope as string;
+      const target = cmdOpts.target as string;
+
+      // Validate scope
+      if (!['project', 'user'].includes(scope)) {
+        throw new CliError(
+          'VALIDATION',
+          `Invalid scope: ${scope}. Must be 'project' or 'user'.`
+        );
+      }
+      // Validate target
+      if (!['claude', 'codex', 'all'].includes(target)) {
+        throw new CliError(
+          'VALIDATION',
+          `Invalid target: ${target}. Must be 'claude', 'codex', or 'all'.`
+        );
+      }
+
       const { installSkill } = await import('./commands/skill/install.js');
       await installSkill({
-        scope: cmdOpts.scope as 'project' | 'user',
-        target: cmdOpts.target as 'claude' | 'codex' | 'all',
+        scope: scope as 'project' | 'user',
+        target: target as 'claude' | 'codex' | 'all',
         force: Boolean(cmdOpts.force),
+        json: Boolean(cmdOpts.json),
       });
     });
 
@@ -1059,11 +1079,31 @@ function wireSkillCommands(program: Command): void {
       'target agent (claude, codex, all)',
       'claude'
     )
+    .option('--json', 'JSON output')
     .action(async (cmdOpts: Record<string, unknown>) => {
+      const scope = cmdOpts.scope as string;
+      const target = cmdOpts.target as string;
+
+      // Validate scope
+      if (!['project', 'user'].includes(scope)) {
+        throw new CliError(
+          'VALIDATION',
+          `Invalid scope: ${scope}. Must be 'project' or 'user'.`
+        );
+      }
+      // Validate target
+      if (!['claude', 'codex', 'all'].includes(target)) {
+        throw new CliError(
+          'VALIDATION',
+          `Invalid target: ${target}. Must be 'claude', 'codex', or 'all'.`
+        );
+      }
+
       const { uninstallSkill } = await import('./commands/skill/uninstall.js');
       await uninstallSkill({
-        scope: cmdOpts.scope as 'project' | 'user',
-        target: cmdOpts.target as 'claude' | 'codex' | 'all',
+        scope: scope as 'project' | 'user',
+        target: target as 'claude' | 'codex' | 'all',
+        json: Boolean(cmdOpts.json),
       });
     });
 
@@ -1093,11 +1133,31 @@ function wireSkillCommands(program: Command): void {
       'filter by target (claude, codex, all)',
       'all'
     )
+    .option('--json', 'JSON output')
     .action(async (cmdOpts: Record<string, unknown>) => {
+      const scope = cmdOpts.scope as string;
+      const target = cmdOpts.target as string;
+
+      // Validate scope
+      if (!['project', 'user', 'all'].includes(scope)) {
+        throw new CliError(
+          'VALIDATION',
+          `Invalid scope: ${scope}. Must be 'project', 'user', or 'all'.`
+        );
+      }
+      // Validate target
+      if (!['claude', 'codex', 'all'].includes(target)) {
+        throw new CliError(
+          'VALIDATION',
+          `Invalid target: ${target}. Must be 'claude', 'codex', or 'all'.`
+        );
+      }
+
       const { showPaths } = await import('./commands/skill/paths-cmd.js');
       await showPaths({
-        scope: cmdOpts.scope as 'project' | 'user' | 'all',
-        target: cmdOpts.target as 'claude' | 'codex' | 'all',
+        scope: scope as 'project' | 'user' | 'all',
+        target: target as 'claude' | 'codex' | 'all',
+        json: Boolean(cmdOpts.json),
       });
     });
 }
