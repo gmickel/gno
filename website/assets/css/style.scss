@@ -435,6 +435,49 @@ body.layout-feature .site-main {
 }
 
 // -----------------------------------------------------------------------------
+// Tables
+// -----------------------------------------------------------------------------
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: $space-5 0;
+  font-size: 0.95rem;
+}
+
+th, td {
+  padding: $space-3 $space-4;
+  text-align: left;
+  border-bottom: 1px solid var(--color-border);
+}
+
+th {
+  font-weight: 600;
+  color: var(--color-text);
+  background: var(--color-bg-subtle);
+  white-space: nowrap;
+}
+
+td {
+  color: var(--color-text-secondary);
+}
+
+tr:hover td {
+  background: var(--color-bg-subtle);
+}
+
+// Responsive tables
+@media (max-width: $bp-sm) {
+  table {
+    font-size: 0.85rem;
+  }
+
+  th, td {
+    padding: $space-2 $space-3;
+  }
+}
+
+// -----------------------------------------------------------------------------
 // Hero Section (Home)
 // -----------------------------------------------------------------------------
 
