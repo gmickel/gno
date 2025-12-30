@@ -1403,10 +1403,21 @@ See `spec/evals.md` for detailed implementation specification.
 
 ## 19. Packaging and distribution
 
-Targets:
+Target: **npm registry, Bun-only**
 
-* npm package (Bun-first) with `bin` entry for `gno`
-* optional prebuilt binaries where feasible (native deps may constrain)
+```bash
+# Requires Bun runtime
+curl -fsSL https://bun.sh/install | bash
+
+# Then run
+bunx gno
+# Or install globally
+bun add -g gno
+```
+
+Note: `npm install` / `yarn` / `pnpm` will download the package but execution requires Bun runtime (code uses `bun:sqlite`, bin is `.ts`).
+
+Prebuilt standalone binaries not viable due to native deps (sqlite-vec needs sidecar, node-llama-cpp can't bundle). See `notes/spike-bun-compile.md`.
 
 First-run UX:
 
