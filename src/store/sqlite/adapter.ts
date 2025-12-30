@@ -90,9 +90,18 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
       this.ftsTokenizer = ftsTokenizer;
 
       // Enable pragmas for performance and safety
-      this.db.exec('PRAGMA journal_mode = WAL');
       this.db.exec('PRAGMA foreign_keys = ON');
       this.db.exec('PRAGMA busy_timeout = 5000');
+
+      // CI mode: trade durability for speed (no fsync, memory journal)
+      // Safe for tests since we don't need crash recovery
+      if (process.env.CI) {
+        this.db.exec('PRAGMA journal_mode = MEMORY');
+        this.db.exec('PRAGMA synchronous = OFF');
+        this.db.exec('PRAGMA temp_store = MEMORY');
+      } else {
+        this.db.exec('PRAGMA journal_mode = WAL');
+      }
 
       // Run migrations
       const result = runMigrations(this.db, migrations, ftsTokenizer);

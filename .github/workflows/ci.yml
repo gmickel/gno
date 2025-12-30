@@ -23,6 +23,25 @@ jobs:
         with:
           bun-version: latest
 
+      # Cache Bun's global package cache (big win for bun install)
+      - name: Cache Bun packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: bun-cache-${{ runner.os }}-${{ hashFiles('**/bun.lockb') }}
+          restore-keys: |
+            bun-cache-${{ runner.os }}-
+
+      # Windows: Move TEMP to D: drive for faster I/O
+      # C: drive is slow on GitHub Actions Windows runners
+      - name: "Set TEMP to D: drive (Windows)"
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path "D:/Temp" | Out-Null
+          echo "TEMP=D:/Temp" >> $env:GITHUB_ENV
+          echo "TMP=D:/Temp" >> $env:GITHUB_ENV
+
       # macOS: Install Homebrew SQLite for extension support
       - name: Install SQLite (macOS)
         if: matrix.os == 'macos-latest'
