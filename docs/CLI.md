@@ -92,16 +92,22 @@ See [How Search Works](HOW-SEARCH-WORKS.md) for details on the scoring pipeline.
 
 ### gno ask
 
-Search and optionally generate an AI answer.
+Search and optionally generate an AI answer. Combines retrieval with optional LLM-generated response.
 
 ```bash
 gno ask "what is the project goal"
 gno ask "summarize the auth discussion" --answer
+gno ask "explain the auth flow" --answer --show-sources
 ```
 
 Options:
-- `--answer` - Generate grounded AI answer
-- `--min-relevance <n>` - Relevance threshold for sources
+- `--answer` - Generate grounded AI answer (requires gen model)
+- `--no-answer` - Force retrieval-only output
+- `--max-answer-tokens <n>` - Limit answer length
+- `--show-sources` - Show all retrieved sources, not just cited ones
+- `-n, --limit <n>` - Max source results
+- `-c, --collection <name>` - Filter by collection
+- `--lang <code>` - Language hint (BCP-47)
 
 ## Document Commands
 
