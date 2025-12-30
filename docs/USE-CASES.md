@@ -197,6 +197,77 @@ See [MCP Integration](MCP.md) for detailed setup.
 3. **Keep indexes updated** - Run `gno update` regularly or use `--git-pull`
 4. **Scope searches** - Use collection names to focus agent queries
 
+## Git Integration
+
+Keep collections in sync with git repositories.
+
+### Auto-Pull Before Indexing
+
+Use `--git-pull` to fetch latest changes:
+
+```bash
+gno update --git-pull
+```
+
+This runs `git pull` in every collection that's a git repository before indexing.
+
+### Collection-Level Update Commands
+
+Configure collections to run custom commands before indexing:
+
+```yaml
+# In config
+collections:
+  - name: wiki
+    path: /Users/you/wiki
+    updateCmd: "git pull origin main"
+
+  - name: docs
+    path: /Users/you/docs
+    updateCmd: "git pull && npm run build-docs"
+```
+
+The `updateCmd` runs in the collection's root directory.
+
+### Automation
+
+Combine with cron or scheduled tasks:
+
+```bash
+# Daily index update with git pull
+0 6 * * * cd ~ && gno update --git-pull --yes
+```
+
+## Multi-Language Search
+
+GNO supports 30+ languages with automatic detection.
+
+### Setup Language Hints
+
+For collections in a specific language, set `languageHint`:
+
+```bash
+gno collection add ~/docs/german --name de-docs --language de
+gno collection add ~/docs/french --name fr-docs --language fr
+```
+
+Or in config:
+
+```yaml
+collections:
+  - name: de-docs
+    path: /Users/you/docs/german
+    languageHint: de
+```
+
+### Query Language Detection
+
+GNO auto-detects query language using [franc](https://github.com/wooorm/franc). Searches in German automatically use German-optimized expansion prompts.
+
+### Multilingual Embedding
+
+The default bge-m3 embedding model supports 100+ languages. Vector search works across languages - a German query can find relevant English documents and vice versa.
+
 ## Incremental Updates
 
 GNO only re-indexes changed files.
