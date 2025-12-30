@@ -87,3 +87,33 @@
     - "gno collection add ~/notes --name notes"
     - "gno collection list"
     - "gno search 'term' -c notes"
+
+- slug: fast-cli
+  title: Fast CLI
+  headline: Instant Startup, Lightning Search
+  description: Bun-powered for instant startup. Search thousands of documents in milliseconds.
+  icon: terminal
+  link: /docs/CLI/
+  benefits:
+    - Instant cold start with Bun
+    - Sub-second search across large collections
+    - JSON, CSV, Markdown output formats
+    - Scriptable and pipeable
+  commands:
+    - "gno search 'query' --json"
+    - "gno query 'topic' --limit 20"
+
+- slug: advanced-retrieval
+  title: Advanced Retrieval
+  headline: State-of-the-Art Search Pipeline
+  description: Query expansion, metadata filtering, and cross-encoder reranking. Fully offline.
+  icon: brain
+  link: /docs/HOW-SEARCH-WORKS/
+  benefits:
+    - HyDE query expansion
+    - Cross-encoder reranking
+    - Context hints for relevance
+    - Configurable retrieval stages
+  commands:
+    - "gno query 'topic'"
+    - "gno query 'topic' --explain"
