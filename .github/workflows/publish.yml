@@ -18,7 +18,7 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
     runs-on: ${{ matrix.os }}
-    continue-on-error: ${{ matrix.os == 'windows-latest' }}
+    # No continue-on-error - releases must pass on all platforms
 
     steps:
       - uses: actions/checkout@v4
@@ -27,6 +27,24 @@ jobs:
         uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
+
+      # Cache Bun's global package cache
+      - name: Cache Bun packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: bun-cache-${{ runner.os }}-${{ hashFiles('**/bun.lockb') }}
+          restore-keys: |
+            bun-cache-${{ runner.os }}-
+
+      # Windows: Move TEMP to D: drive for faster I/O
+      - name: "Set TEMP to D: drive (Windows)"
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path "D:/Temp" | Out-Null
+          echo "TEMP=D:/Temp" >> $env:GITHUB_ENV
+          echo "TMP=D:/Temp" >> $env:GITHUB_ENV
 
       - name: Install SQLite (macOS)
         if: matrix.os == 'macos-latest'
