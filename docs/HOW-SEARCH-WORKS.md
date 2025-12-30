@@ -17,40 +17,66 @@ The diagram below shows how your query flows through GNO's search system:
 **Stage 4: Reranking** → Top 20 candidates are rescored by a cross-encoder for final ordering.
 
 ```
-      ┌─────────────┐
-      │ YOUR QUERY  │
-      └──────┬──────┘
-             │
-             ▼
-   ┌──────────────────┐
-   │ QUERY EXPANSION  │
-   │ lexical+semantic │
-   │     + HyDE       │
-   └────────┬─────────┘
-            │
-      ┌─────┴─────┐
-      │           │
-      ▼           ▼
-   ┌──────┐  ┌────────┐
-   │ BM25 │  │ VECTOR │
-   └──┬───┘  └───┬────┘
-      │          │
-      └────┬─────┘
-           │
-           ▼
-     ┌───────────┐
-     │ RRF MERGE │
-     └─────┬─────┘
-           │
-           ▼
-     ┌───────────┐
-     │ RERANKER  │
-     └─────┬─────┘
-           │
-           ▼
-      ┌─────────┐
-      │ RESULTS │
-      └─────────┘
+┌───────────────────────────────────────────────────────────────┐
+│                         YOUR QUERY                            │
+│                "how do I deploy to production"                │
+└───────────────────────────────┬───────────────────────────────┘
+                                │
+                                ▼
+┌───────────────────────────────────────────────────────────────┐
+│  STAGE 1: QUERY EXPANSION (LLM)                               │
+│                                                               │
+│  Lexical variants (for BM25):                                 │
+│    • "deployment process", "deploy application"               │
+│                                                               │
+│  Semantic variants (for vectors):                             │
+│    • "steps to release software"                              │
+│                                                               │
+│  HyDE passage (hypothetical answer):                          │
+│    "To deploy, first run build, then push to staging..."     │
+└───────────────────────────────┬───────────────────────────────┘
+                                │
+              ┌─────────────────┴─────────────────┐
+              ▼                                   ▼
+┌─────────────────────────────┐ ┌─────────────────────────────┐
+│  STAGE 2A: BM25 SEARCH      │ │  STAGE 2B: VECTOR SEARCH    │
+│                             │ │                             │
+│  Keyword matching via FTS5  │ │  Semantic similarity via    │
+│                             │ │  embedding cosine distance  │
+│  Searches in parallel:      │ │                             │
+│  • Original query (2x)      │ │  Searches in parallel:      │
+│  • Each lexical variant     │ │  • Original query (2x)      │
+│                             │ │  • Semantic variants + HyDE │
+└──────────────┬──────────────┘ └──────────────┬──────────────┘
+               │                               │
+               └───────────────┬───────────────┘
+                               ▼
+┌───────────────────────────────────────────────────────────────┐
+│  STAGE 3: RECIPROCAL RANK FUSION (RRF)                        │
+│                                                               │
+│  score = Σ (weight / (k + rank))    where k=60                │
+│                                                               │
+│  Documents in top positions across multiple searches get      │
+│  boosted. Weights: original=1.0, variants=0.5, HyDE=0.7       │
+└───────────────────────────────┬───────────────────────────────┘
+                                │
+                                ▼
+┌───────────────────────────────────────────────────────────────┐
+│  STAGE 4: RERANKING (Cross-Encoder)                           │
+│                                                               │
+│  Top 20 candidates rescored by neural cross-encoder.          │
+│                                                               │
+│  Position-aware blending:                                     │
+│    1-3: 75% fusion / 25% rerank                               │
+│    4-10: 60% fusion / 40% rerank                              │
+│    11+: 40% fusion / 60% rerank                               │
+└───────────────────────────────┬───────────────────────────────┘
+                                │
+                                ▼
+┌───────────────────────────────────────────────────────────────┐
+│                        FINAL RESULTS                          │
+│                 Sorted by blended score [0-1]                 │
+└───────────────────────────────────────────────────────────────┘
 ```
 
 ## Query Expansion with HyDE
