@@ -2,6 +2,8 @@
 
 GNO uses a sophisticated multi-stage search pipeline that combines traditional keyword search with modern neural techniques. This document explains how your queries are processed, expanded, and ranked.
 
+> **New to the terminology?** See the [Glossary](GLOSSARY.md) for definitions of BM25, RRF, HyDE, and other terms.
+
 ## The Search Pipeline
 
 ```
