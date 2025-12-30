@@ -33,7 +33,7 @@ The diagram below shows how your query flows through GNO's search system:
 │    • "steps to release software"                              │
 │                                                               │
 │  HyDE passage (hypothetical answer):                          │
-│    "To deploy, first run build, then push to staging..."     │
+│    "To deploy, run build, push to staging..."                 │
 └───────────────────────────────┬───────────────────────────────┘
                                 │
               ┌─────────────────┴─────────────────┐
