@@ -11,6 +11,20 @@ MCP (Model Context Protocol) allows AI assistants to access external tools and r
 - **Tools**: gno_search, gno_vsearch, gno_query, gno_get, gno_multi_get, gno_status
 - **Resources**: Access documents via `gno://collection/path`
 
+## Design: Retrieval-Only
+
+GNO's MCP tools are **retrieval-only by design**. Unlike the CLI's `gno ask` command (which runs a local LLM to synthesize answers), MCP tools return search results and document content without LLM processing.
+
+**Why?** Claude, Codex, and other AI agents use much more powerful models. Having GNO call a separate (likely smaller) LLM to synthesize answers would be:
+- Slower (extra LLM call)
+- Lower quality (local models < Claude/GPT-4)
+- Redundant (the client LLM can synthesize directly)
+
+**Intended workflow:**
+1. Client LLM uses `gno_query` to retrieve relevant documents
+2. Client LLM synthesizes the answer from retrieved context
+3. Result: Best retrieval (GNO) + best synthesis (Claude/Codex)
+
 ## Claude Desktop Setup
 
 Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
