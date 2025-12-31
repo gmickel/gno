@@ -1,4 +1,5 @@
 import {
+  AlertCircle,
   CheckIcon,
   ChevronDownIcon,
   Loader2,
@@ -29,11 +30,20 @@ interface Preset {
 interface PresetsResponse {
   presets: Preset[];
   activePreset: string;
+  capabilities: Capabilities;
+}
+
+interface Capabilities {
+  bm25: boolean;
+  vector: boolean;
+  hybrid: boolean;
+  answer: boolean;
 }
 
 interface SetPresetResponse {
   success: boolean;
   activePreset: string;
+  capabilities: Capabilities;
 }
 
 /**
@@ -71,6 +81,16 @@ export function PresetSelector() {
       if (data) {
         setPresets(data.presets);
         setActiveId(data.activePreset);
+
+        // Check initial capabilities
+        const caps = data.capabilities;
+        const missing: string[] = [];
+        if (!caps.vector) missing.push('vector search');
+        if (!caps.answer) missing.push('AI answers');
+
+        if (missing.length > 0) {
+          setError(`Missing: ${missing.join(', ')}. Run: gno models pull`);
+        }
       }
       setLoading(false);
     });
@@ -106,6 +126,18 @@ export function PresetSelector() {
 
     if (data?.success) {
       setActiveId(data.activePreset);
+
+      // Warn if key capabilities are missing (models not downloaded)
+      const caps = data.capabilities;
+      const missing: string[] = [];
+      if (!caps.vector) missing.push('vector search');
+      if (!caps.answer) missing.push('AI answers');
+
+      if (missing.length > 0) {
+        setError(
+          `Models not loaded: ${missing.join(', ')}. Run: gno models pull`
+        );
+      }
     }
   };
 
@@ -120,6 +152,8 @@ export function PresetSelector() {
         >
           {switching ? (
             <Loader2 className="size-3.5 animate-spin text-primary" />
+          ) : error ? (
+            <AlertCircle className="size-3.5 text-amber-500" />
           ) : (
             <SlidersHorizontal className="size-3.5 text-muted-foreground/70 transition-colors group-hover:text-primary" />
           )}

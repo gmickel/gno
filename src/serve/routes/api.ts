@@ -526,6 +526,7 @@ export function handlePresets(ctx: ServerContext): Response {
   return jsonResponse({
     presets: presetsWithStatus,
     activePreset: activeId,
+    capabilities: ctx.capabilities,
   });
 }
 

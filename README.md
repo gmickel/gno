@@ -164,6 +164,7 @@ curl http://localhost:3000/api/status
 | `/api/docs` | GET | List documents |
 | `/api/doc` | GET | Get document content |
 | `/api/status` | GET | Index statistics |
+| `/api/presets` | GET/POST | Model preset management |
 
 No authentication. No rate limits. Build custom tools, automate workflows, integrate with any language.
 
