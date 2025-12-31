@@ -100,30 +100,25 @@ jobs:
           name: npm-package
           path: gmickel-gno-*.tgz
 
-  # PUBLISH JOB - Currently disabled
-  # Uncomment when ready to publish. Requires NPM_TOKEN secret.
-  # To publish:
-  #   1. Set NPM_TOKEN secret in repo settings
-  #   2. Uncomment the publish job below
-  #   3. Either push a v* tag OR manually trigger with publish=true
-  #
-  # publish:
-  #   needs: pack-test
-  #   runs-on: ubuntu-latest
-  #   if: github.event_name == 'push' || inputs.publish == true
-  #
-  #   steps:
-  #     - uses: actions/checkout@v6
-  #
-  #     - name: Setup Bun
-  #       uses: oven-sh/setup-bun@v2
-  #       with:
-  #         bun-version: latest
-  #
-  #     - name: Install dependencies
-  #       run: bun install --frozen-lockfile
-  #
-  #     - name: Publish to npm
-  #       run: npm publish --access public
-  #       env:
-  #         NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+  publish:
+    needs: pack-test
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' || inputs.publish == true
+    permissions:
+      contents: read
+      id-token: write  # Required for npm trusted publishing (OIDC)
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Publish to npm
+        run: npm publish --access public
+        # No token needed - uses OIDC trusted publishing

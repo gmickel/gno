@@ -82,7 +82,7 @@ bun run version:major   # 0.1.0 → 1.0.0 (breaking)
 ```bash
 bun run prerelease       # lint + typecheck + test
 bun run release:dry-run  # trigger CI without publishing
-bun run release:trigger  # trigger CI with publish (requires NPM_TOKEN secret)
+bun run release:trigger  # trigger CI with publish (uses OIDC, no token needed)
 ```
 
 **Manual workflow dispatch:**
@@ -115,8 +115,8 @@ gh workflow run publish.yml -f publish=true   # actual publish
 ```
 
 **Requirements:**
-- `NPM_TOKEN` secret in GitHub repo settings (Settings → Secrets → Actions)
-- Uncomment publish job in `.github/workflows/publish.yml` when ready
+- Configure npm trusted publisher at https://www.npmjs.com/package/@gmickel/gno/access
+  - Owner: `gmickel`, Repo: `gno`, Workflow: `publish.yml`
 
 ## CI/CD
 

@@ -30,13 +30,20 @@
 
 ## Release Process
 
+**First-time setup (npm):**
+1. Go to https://www.npmjs.com/package/@gmickel/gno/access
+2. Add trusted publisher: owner=`gmickel`, repo=`gno`, workflow=`publish.yml`
+
+**Release:**
 ```bash
 bun run version:patch   # bump version
-git add package.json && git commit -m "chore: bump to vX.Y.Z"
+# Update CHANGELOG.md
+git add package.json CHANGELOG.md
+git commit -m "chore: bump to vX.Y.Z"
 git tag vX.Y.Z && git push --tags
 ```
 
-Tag push triggers full CI + npm publish (when enabled).
+Tag push triggers full CI + npm publish via OIDC (no token needed).
 
 ## Manual Workflow Dispatch
 
