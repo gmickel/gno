@@ -65,6 +65,7 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.25.1",
+    "bun-plugin-tailwind": "^0.1.2",
     "clsx": "^2.1.1",
     "commander": "^14.0.2",
     "franc": "^6.2.0",

@@ -1,44 +1,17 @@
 /**
  * Bun.serve() web server for GNO web UI.
+ * Uses Bun's fullstack dev server with HTML imports.
  * Opens DB once at startup, closes on shutdown.
  *
  * @module src/serve/server
  */
 
-import { dirname, join, normalize, sep } from 'node:path'; // No Bun equivalent for path utils
 import { getIndexDbPath } from '../app/constants';
 import { getConfigPaths, isInitialized, loadConfig } from '../config';
 import { SqliteAdapter } from '../store/sqlite/adapter';
+// HTML import - Bun handles bundling TSX/CSS automatically
+import homepage from './public/index.html';
 import { routeApi } from './routes/api';
-
-// Resolve public directory relative to this file
-const PUBLIC_DIR = join(dirname(import.meta.path), 'public');
-
-/**
- * Safely resolve a public file path, preventing directory traversal.
- * Returns null if path escapes PUBLIC_DIR.
- */
-function resolvePublicPath(
-  publicDir: string,
-  urlPathname: string
-): string | null {
-  // Default to index.html for root
-  let rel = urlPathname === '/' ? 'index.html' : urlPathname;
-
-  // Make relative (strip leading slashes - critical for security)
-  rel = rel.replace(/^\/+/, '');
-
-  // Normalize and block traversal attempts
-  const normalized = normalize(rel);
-  if (normalized.startsWith(`..${sep}`) || normalized === '..') return null;
-
-  // Join and enforce containment within publicDir
-  const abs = join(publicDir, normalized);
-  const prefix = publicDir.endsWith(sep) ? publicDir : publicDir + sep;
-  if (!abs.startsWith(prefix) && abs !== publicDir) return null;
-
-  return abs;
-}
 
 export interface ServeOptions {
   /** Port to listen on (default: 3000) */
@@ -53,30 +26,6 @@ export interface ServeResult {
 }
 
 /**
- * Build frontend bundle (app.tsx -> app.js).
- * Runs at server start to ensure TSX is transpiled for browsers.
- */
-async function buildFrontend(): Promise<{ success: boolean; error?: string }> {
-  const entrypoint = join(PUBLIC_DIR, 'app.tsx');
-  const result = await Bun.build({
-    entrypoints: [entrypoint],
-    outdir: PUBLIC_DIR,
-    target: 'browser',
-    minify: process.env.NODE_ENV === 'production',
-  });
-
-  if (!result.success) {
-    const errors = result.logs
-      .filter((l) => l.level === 'error')
-      .map((l) => l.message)
-      .join('; ');
-    return { success: false, error: `Frontend build failed: ${errors}` };
-  }
-
-  return { success: true };
-}
-
-/**
  * Start the web server.
  * Opens DB once, closes on SIGINT/SIGTERM.
  */
@@ -84,12 +33,6 @@ export async function startServer(
   options: ServeOptions = {}
 ): Promise<ServeResult> {
   const port = options.port ?? 3000;
-
-  // Build frontend before starting server
-  const buildResult = await buildFrontend();
-  if (!buildResult.success) {
-    return { success: false, error: buildResult.error };
-  }
 
   // Check initialization
   const initialized = await isInitialized(options.configPath);
@@ -140,6 +83,18 @@ export async function startServer(
   const server = Bun.serve({
     port,
     hostname: '127.0.0.1', // Loopback only - no LAN exposure
+
+    // HTML routes - Bun automatically bundles TSX/CSS
+    routes: {
+      '/': homepage,
+      '/search': homepage, // SPA routes
+      '/browse': homepage,
+      '/doc': homepage,
+    },
+
+    // Enable development mode for HMR and console logging
+    development: process.env.NODE_ENV !== 'production',
+
     async fetch(req) {
       const url = new URL(req.url);
 
@@ -165,29 +120,7 @@ export async function startServer(
         return apiResponse;
       }
 
-      // Determine target path for static files
-      let targetPath = url.pathname;
-
-      // SPA routing: serve index.html for non-file routes
-      if (!(targetPath.includes('.') || targetPath.startsWith('/api/'))) {
-        targetPath = '/index.html';
-      }
-
-      // Safe path resolution - prevents directory traversal
-      const absPath = resolvePublicPath(PUBLIC_DIR, targetPath);
-      if (!absPath) {
-        return new Response('Forbidden', {
-          status: 403,
-          headers: SECURITY_HEADERS,
-        });
-      }
-
-      const file = Bun.file(absPath);
-      if (await file.exists()) {
-        return new Response(file, { headers: SECURITY_HEADERS });
-      }
-
-      // 404 for unknown routes
+      // 404 for unknown routes (HTML routes handled by routes option)
       return new Response('Not Found', {
         status: 404,
         headers: SECURITY_HEADERS,
