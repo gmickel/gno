@@ -18,11 +18,87 @@ export interface ServeOptions {
   port?: number;
   /** Config path override */
   configPath?: string;
+  /** Index name (from --index flag) */
+  index?: string;
 }
 
 export interface ServeResult {
   success: boolean;
   error?: string;
+}
+
+// SPA routes that should serve index.html
+const SPA_ROUTES = new Set(['/', '/search', '/browse', '/doc']);
+
+/**
+ * Parse hostname from Host header, handling IPv6 brackets.
+ * Examples: "localhost:3000" -> "localhost", "[::1]:3000" -> "::1"
+ */
+function parseHostname(host: string): string {
+  if (host.startsWith('[')) {
+    // IPv6 with brackets: [::1]:3000 or [::1]
+    const bracketEnd = host.indexOf(']');
+    if (bracketEnd > 0) {
+      return host.slice(1, bracketEnd); // Strip brackets
+    }
+  }
+  // IPv4 or hostname: localhost:3000 or 127.0.0.1:3000
+  const colonIdx = host.indexOf(':');
+  return colonIdx > 0 ? host.slice(0, colonIdx) : host;
+}
+
+/**
+ * Check if hostname is a valid loopback address.
+ * Supports IPv4 (127.0.0.1, localhost) and IPv6 (::1).
+ */
+function isLoopback(hostname: string): boolean {
+  const h = hostname.toLowerCase();
+  return h === '127.0.0.1' || h === 'localhost' || h === '::1';
+}
+
+/**
+ * Get CSP based on environment.
+ * Dev mode allows WebSocket connections for HMR.
+ */
+function getCspHeader(isDev: boolean): string {
+  // Local fonts only - no Google Fonts for true offline-first
+  const base = [
+    "default-src 'self'",
+    "script-src 'self'",
+    "style-src 'self' 'unsafe-inline'",
+    "font-src 'self'",
+    "img-src 'self' data: blob:",
+    "frame-ancestors 'none'",
+    "base-uri 'none'", // Prevent base tag injection
+    "object-src 'none'", // Prevent plugin execution
+  ];
+
+  // Dev mode: allow WebSocket for HMR
+  if (isDev) {
+    base.push("connect-src 'self' ws:");
+  } else {
+    base.push("connect-src 'self'");
+  }
+
+  return base.join('; ');
+}
+
+/**
+ * Apply security headers to a Response.
+ */
+function withSecurityHeaders(response: Response, isDev: boolean): Response {
+  const headers = new Headers(response.headers);
+  headers.set('Content-Security-Policy', getCspHeader(isDev));
+  headers.set('X-Content-Type-Options', 'nosniff');
+  headers.set('X-Frame-Options', 'DENY');
+  headers.set('Referrer-Policy', 'no-referrer');
+  headers.set('Cross-Origin-Resource-Policy', 'same-origin');
+
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
 }
 
 /**
@@ -33,6 +109,7 @@ export async function startServer(
   options: ServeOptions = {}
 ): Promise<ServeResult> {
   const port = options.port ?? 3000;
+  const isDev = process.env.NODE_ENV !== 'production';
 
   // Check initialization
   const initialized = await isInitialized(options.configPath);
@@ -49,7 +126,7 @@ export async function startServer(
 
   // Open database once for server lifetime
   const store = new SqliteAdapter();
-  const dbPath = getIndexDbPath();
+  const dbPath = getIndexDbPath(options.index);
   // Use actual config path (from options or default) for consistency
   const paths = getConfigPaths();
   const actualConfigPath = options.configPath ?? paths.configFile;
@@ -60,79 +137,78 @@ export async function startServer(
     return { success: false, error: openResult.error.message };
   }
 
+  // Shutdown controller for clean lifecycle
+  const shutdownController = new AbortController();
+
   // Graceful shutdown handler
   const shutdown = async () => {
     console.log('\nShutting down...');
     await store.close();
-    process.exit(0);
+    shutdownController.abort();
   };
 
-  process.on('SIGINT', shutdown);
-  process.on('SIGTERM', shutdown);
+  process.once('SIGINT', shutdown);
+  process.once('SIGTERM', shutdown);
 
-  // Security headers for all responses
-  const SECURITY_HEADERS = {
-    'Content-Security-Policy':
-      "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; frame-ancestors 'none'",
-    'X-Content-Type-Options': 'nosniff',
-    'X-Frame-Options': 'DENY',
-    'Referrer-Policy': 'no-referrer',
-    'Cross-Origin-Resource-Policy': 'same-origin',
-  };
+  // Start server with try/catch for port-in-use etc.
+  let server: ReturnType<typeof Bun.serve>;
+  try {
+    server = Bun.serve({
+      port,
+      hostname: '127.0.0.1', // Loopback only - no LAN exposure
 
-  const server = Bun.serve({
-    port,
-    hostname: '127.0.0.1', // Loopback only - no LAN exposure
+      // Enable development mode for HMR and console logging
+      development: isDev,
 
-    // HTML routes - Bun automatically bundles TSX/CSS
-    routes: {
-      '/': homepage,
-      '/search': homepage, // SPA routes
-      '/browse': homepage,
-      '/doc': homepage,
-    },
+      async fetch(req) {
+        const url = new URL(req.url);
 
-    // Enable development mode for HMR and console logging
-    development: process.env.NODE_ENV !== 'production',
-
-    async fetch(req) {
-      const url = new URL(req.url);
-
-      // Validate Host header for DNS rebinding protection
-      const host = req.headers.get('host');
-      if (
-        host &&
-        !host.startsWith('127.0.0.1:') &&
-        !host.startsWith('localhost:')
-      ) {
-        return new Response('Forbidden', {
-          status: 403,
-          headers: SECURITY_HEADERS,
-        });
-      }
-
-      // API routes
-      const apiResponse = await routeApi(store, req, url);
-      if (apiResponse) {
-        for (const [k, v] of Object.entries(SECURITY_HEADERS)) {
-          apiResponse.headers.set(k, v);
+        // Validate Host header for DNS rebinding protection
+        const host = req.headers.get('host') ?? '';
+        const hostname = parseHostname(host);
+        if (hostname && !isLoopback(hostname)) {
+          return withSecurityHeaders(
+            new Response('Forbidden', { status: 403 }),
+            isDev
+          );
         }
-        return apiResponse;
-      }
 
-      // 404 for unknown routes (HTML routes handled by routes option)
-      return new Response('Not Found', {
-        status: 404,
-        headers: SECURITY_HEADERS,
-      });
-    },
-  });
+        // API routes
+        const apiResponse = await routeApi(store, req, url);
+        if (apiResponse) {
+          return withSecurityHeaders(apiResponse, isDev);
+        }
+
+        // SPA routes - serve homepage with security headers
+        if (SPA_ROUTES.has(url.pathname)) {
+          return withSecurityHeaders(homepage, isDev);
+        }
+
+        // 404 for unknown routes
+        return withSecurityHeaders(
+          new Response('Not Found', { status: 404 }),
+          isDev
+        );
+      },
+    });
+  } catch (e) {
+    await store.close();
+    return {
+      success: false,
+      error: e instanceof Error ? e.message : String(e),
+    };
+  }
 
   console.log(`GNO server running at http://localhost:${server.port}`);
   console.log('Press Ctrl+C to stop');
 
-  // Block forever - server runs until SIGINT/SIGTERM
-  await new Promise(() => {});
+  // Block until shutdown signal
+  await new Promise<void>((resolve) => {
+    shutdownController.signal.addEventListener('abort', () => resolve(), {
+      once: true,
+    });
+  });
 
+  server.stop(true);
   return { success: true };
 }

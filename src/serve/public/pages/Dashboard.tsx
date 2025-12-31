@@ -1,4 +1,14 @@
+import { BookOpen, Database, Layers, Search, Sparkles } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { Badge } from '../components/ui/badge';
+import { Button } from '../components/ui/button';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '../components/ui/card';
 import { apiFetch } from '../hooks/use-api';
 
 interface PageProps {
@@ -32,92 +42,139 @@ export default function Dashboard({ navigate }: PageProps) {
   }, []);
 
   return (
-    <div className="min-h-screen p-8">
-      <header className="mb-8">
-        <h1 className="font-semibold text-3xl text-[hsl(var(--primary))]">
-          GNO
-        </h1>
-        <p className="text-[hsl(var(--muted-foreground))]">
-          Local Knowledge Index
-        </p>
+    <div className="min-h-screen">
+      {/* Header with aurora glow */}
+      <header className="relative border-border/50 border-b bg-card/50 backdrop-blur-sm">
+        <div className="aurora-glow absolute inset-0 opacity-30" />
+        <div className="relative px-8 py-12">
+          <div className="mb-2 flex items-center gap-3">
+            <Sparkles className="size-8 text-primary" />
+            <h1 className="font-bold text-4xl text-primary tracking-tight">
+              GNO
+            </h1>
+          </div>
+          <p className="text-lg text-muted-foreground">
+            Your Local Knowledge Index
+          </p>
+        </div>
       </header>
 
-      <nav className="mb-8 flex gap-4">
-        <button
-          className="rounded-md bg-[hsl(var(--primary))] px-4 py-2 text-[hsl(var(--primary-foreground))] hover:opacity-90"
-          onClick={() => navigate('/search')}
-        >
-          Search
-        </button>
-        <button
-          className="rounded-md bg-[hsl(var(--muted))] px-4 py-2 text-[hsl(var(--foreground))] hover:opacity-90"
-          onClick={() => navigate('/browse')}
-        >
-          Browse
-        </button>
-      </nav>
+      <main className="mx-auto max-w-6xl p-8">
+        {/* Navigation */}
+        <nav className="mb-10 flex gap-4">
+          <Button
+            className="gap-2"
+            onClick={() => navigate('/search')}
+            size="lg"
+          >
+            <Search className="size-4" />
+            Search
+          </Button>
+          <Button
+            className="gap-2"
+            onClick={() => navigate('/browse')}
+            size="lg"
+            variant="outline"
+          >
+            <BookOpen className="size-4" />
+            Browse
+          </Button>
+        </nav>
 
-      {error && (
-        <div className="mb-4 rounded-md bg-[hsl(var(--destructive))] p-4 text-[hsl(var(--destructive-foreground))]">
-          {error}
-        </div>
-      )}
+        {/* Error state */}
+        {error && (
+          <Card className="mb-6 border-destructive bg-destructive/10">
+            <CardContent className="py-4 text-destructive">{error}</CardContent>
+          </Card>
+        )}
 
-      {status && (
-        <div className="grid gap-4 md:grid-cols-3">
-          <div className="rounded-lg bg-[hsl(var(--card))] p-6">
-            <div className="text-[hsl(var(--muted-foreground))] text-sm">
-              Documents
-            </div>
-            <div className="font-semibold text-3xl">
-              {status.totalDocuments}
-            </div>
-          </div>
-          <div className="rounded-lg bg-[hsl(var(--card))] p-6">
-            <div className="text-[hsl(var(--muted-foreground))] text-sm">
-              Chunks
-            </div>
-            <div className="font-semibold text-3xl">{status.totalChunks}</div>
-          </div>
-          <div className="rounded-lg bg-[hsl(var(--card))] p-6">
-            <div className="text-[hsl(var(--muted-foreground))] text-sm">
-              Status
-            </div>
-            <div
-              className={`font-semibold text-3xl ${status.healthy ? 'text-green-500' : 'text-yellow-500'}`}
-            >
-              {status.healthy ? 'Healthy' : 'Degraded'}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {status && status.collections.length > 0 && (
-        <div className="mt-8">
-          <h2 className="mb-4 font-semibold text-xl">Collections</h2>
-          <div className="space-y-2">
-            {status.collections.map((c) => (
-              <div
-                className="flex items-center justify-between rounded-lg bg-[hsl(var(--card))] p-4"
-                key={c.name}
-              >
-                <div>
-                  <div className="font-medium">{c.name}</div>
-                  <div className="text-[hsl(var(--muted-foreground))] text-sm">
-                    {c.path}
-                  </div>
+        {/* Stats Grid */}
+        {status && (
+          <div className="mb-10 grid animate-fade-in gap-6 opacity-0 md:grid-cols-3">
+            <Card className="group transition-colors hover:border-primary/50">
+              <CardHeader className="pb-2">
+                <CardDescription className="flex items-center gap-2">
+                  <Database className="size-4" />
+                  Documents
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="font-bold text-4xl tracking-tight">
+                  {status.totalDocuments.toLocaleString()}
                 </div>
-                <div className="text-right">
-                  <div className="text-sm">{c.documentCount} docs</div>
-                  <div className="text-[hsl(var(--muted-foreground))] text-sm">
-                    {c.chunkCount} chunks
-                  </div>
+              </CardContent>
+            </Card>
+
+            <Card className="group stagger-1 animate-fade-in opacity-0 transition-colors hover:border-primary/50">
+              <CardHeader className="pb-2">
+                <CardDescription className="flex items-center gap-2">
+                  <Layers className="size-4" />
+                  Chunks
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="font-bold text-4xl tracking-tight">
+                  {status.totalChunks.toLocaleString()}
                 </div>
-              </div>
-            ))}
+              </CardContent>
+            </Card>
+
+            <Card className="group stagger-2 animate-fade-in opacity-0 transition-colors hover:border-primary/50">
+              <CardHeader className="pb-2">
+                <CardDescription>Status</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Badge
+                  className="px-3 py-1 text-lg"
+                  variant={status.healthy ? 'default' : 'secondary'}
+                >
+                  {status.healthy ? '● Healthy' : '○ Degraded'}
+                </Badge>
+              </CardContent>
+            </Card>
           </div>
-        </div>
-      )}
+        )}
+
+        {/* Collections */}
+        {status && status.collections.length > 0 && (
+          <section className="stagger-3 animate-fade-in opacity-0">
+            <h2 className="mb-6 border-border/50 border-b pb-3 font-semibold text-2xl">
+              Collections
+            </h2>
+            <div className="space-y-3">
+              {status.collections.map((c, i) => (
+                <Card
+                  className="group animate-fade-in cursor-pointer opacity-0 transition-all hover:border-primary/50 hover:bg-card/80"
+                  key={c.name}
+                  onClick={() =>
+                    navigate(`/browse?collection=${encodeURIComponent(c.name)}`)
+                  }
+                  style={{ animationDelay: `${0.4 + i * 0.1}s` }}
+                >
+                  <CardContent className="flex items-center justify-between py-4">
+                    <div>
+                      <div className="font-medium text-lg transition-colors group-hover:text-primary">
+                        {c.name}
+                      </div>
+                      <div className="font-mono text-muted-foreground text-sm">
+                        {c.path}
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="font-medium">
+                        {c.documentCount.toLocaleString()} docs
+                      </div>
+                      <div className="text-muted-foreground text-sm">
+                        {c.chunkCount.toLocaleString()} chunks
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </section>
+        )}
+      </main>
     </div>
   );
 }

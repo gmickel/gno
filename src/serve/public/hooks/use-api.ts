@@ -6,6 +6,32 @@ interface ApiState<T> {
   error: string | null;
 }
 
+/**
+ * Safely parse JSON response, checking Content-Type first.
+ */
+async function parseJsonSafe(
+  res: Response
+): Promise<{ json: unknown; parseError: string | null }> {
+  const ct = res.headers.get('content-type') ?? '';
+  const isJson = ct.includes('application/json');
+
+  if (!isJson) {
+    // Non-JSON response - return text as error context
+    const text = await res.text();
+    return {
+      json: null,
+      parseError: text.slice(0, 200) || `Non-JSON response: ${res.status}`,
+    };
+  }
+
+  try {
+    const json = await res.json();
+    return { json, parseError: null };
+  } catch {
+    return { json: null, parseError: 'Invalid JSON response' };
+  }
+}
+
 export function useApi<T>() {
   const [state, setState] = useState<ApiState<T>>({
     data: null,
@@ -23,16 +49,23 @@ export function useApi<T>() {
           ...options,
         });
 
-        const json = await res.json();
+        const { json, parseError } = await parseJsonSafe(res);
+
+        if (parseError) {
+          setState({ data: null, loading: false, error: parseError });
+          return null;
+        }
 
         if (!res.ok) {
-          const msg = json.error?.message || `Request failed: ${res.status}`;
+          const apiError = json as { error?: { message?: string } };
+          const msg =
+            apiError.error?.message || `Request failed: ${res.status}`;
           setState({ data: null, loading: false, error: msg });
           return null;
         }
 
-        setState({ data: json, loading: false, error: null });
-        return json;
+        setState({ data: json as T, loading: false, error: null });
+        return json as T;
       } catch (err) {
         const msg = err instanceof Error ? err.message : 'Network error';
         setState({ data: null, loading: false, error: msg });
@@ -55,16 +88,21 @@ export async function apiFetch<T>(
       ...options,
     });
 
-    const json = await res.json();
+    const { json, parseError } = await parseJsonSafe(res);
+
+    if (parseError) {
+      return { data: null, error: parseError };
+    }
 
     if (!res.ok) {
+      const apiError = json as { error?: { message?: string } };
       return {
         data: null,
-        error: json.error?.message || `Request failed: ${res.status}`,
+        error: apiError.error?.message || `Request failed: ${res.status}`,
       };
     }
 
-    return { data: json, error: null };
+    return { data: json as T, error: null };
   } catch (err) {
     return {
       data: null,

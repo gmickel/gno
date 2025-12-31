@@ -7,11 +7,9 @@ import Search from './pages/Search';
 import './globals.css';
 
 type Route = '/' | '/search' | '/browse' | '/doc';
+type Navigate = (to: string | number) => void;
 
-const routes: Record<
-  Route,
-  React.ComponentType<{ navigate: (to: string) => void }>
-> = {
+const routes: Record<Route, React.ComponentType<{ navigate: Navigate }>> = {
   '/': Dashboard,
   '/search': Search,
   '/browse': Browse,

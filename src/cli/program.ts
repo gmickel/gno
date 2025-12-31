@@ -1344,7 +1344,11 @@ function wireServeCommand(program: Command): void {
       const port = parsePositiveInt('port', cmdOpts.port);
 
       const { serve } = await import('./commands/serve.js');
-      const result = await serve({ port, configPath: globals.config });
+      const result = await serve({
+        port,
+        configPath: globals.config,
+        index: globals.index,
+      });
 
       if (!result.success) {
         throw new CliError('RUNTIME', result.error ?? 'Server failed to start');

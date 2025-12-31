@@ -22,7 +22,7 @@ export interface ApiError {
 
 export interface SearchRequestBody {
   query: string;
-  mode?: 'bm25'; // Only BM25 supported in web UI (vector/hybrid require LLM deps)
+  // Only BM25 supported in web UI (vector/hybrid require LLM deps)
   limit?: number;
   minScore?: number;
   collection?: string;
@@ -160,6 +160,55 @@ export async function handleDocs(
 }
 
 /**
+ * GET /api/doc
+ * Query params: uri (required)
+ * Returns single document with content.
+ */
+export async function handleDoc(
+  store: SqliteAdapter,
+  url: URL
+): Promise<Response> {
+  const uri = url.searchParams.get('uri');
+  if (!uri) {
+    return errorResponse('VALIDATION', 'Missing uri parameter');
+  }
+
+  const docResult = await store.getDocumentByUri(uri);
+  if (!docResult.ok) {
+    return errorResponse('RUNTIME', docResult.error.message, 500);
+  }
+  if (!docResult.value) {
+    return errorResponse('NOT_FOUND', 'Document not found', 404);
+  }
+
+  const doc = docResult.value;
+  let content: string | null = null;
+
+  if (doc.mirrorHash) {
+    const contentResult = await store.getContent(doc.mirrorHash);
+    if (contentResult.ok && contentResult.value) {
+      content = contentResult.value;
+    }
+  }
+
+  return jsonResponse({
+    docid: doc.docid,
+    uri: doc.uri,
+    title: doc.title,
+    content,
+    contentAvailable: content !== null,
+    collection: doc.collection,
+    relPath: doc.relPath,
+    source: {
+      mime: doc.sourceMime,
+      ext: doc.sourceExt,
+      modifiedAt: doc.sourceMtime,
+      sizeBytes: doc.sourceSize,
+    },
+  });
+}
+
+/**
  * POST /api/search
  * Body: { query, mode?, limit?, minScore?, collection? }
  * Returns search results.
@@ -281,6 +330,10 @@ export async function routeApi(
 
   if (path === '/api/docs') {
     return handleDocs(store, url);
+  }
+
+  if (path === '/api/doc') {
+    return handleDoc(store, url);
   }
 
   if (path === '/api/search' && req.method === 'POST') {
