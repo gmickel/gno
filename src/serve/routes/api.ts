@@ -1,0 +1,235 @@
+/**
+ * REST API routes for GNO web UI.
+ * All routes return JSON with consistent error format.
+ *
+ * @module src/serve/routes/api
+ */
+
+import { searchHybrid } from '../../pipeline/hybrid';
+import { searchBm25 } from '../../pipeline/search';
+import type { SearchOptions } from '../../pipeline/types';
+import { searchVector } from '../../pipeline/vsearch';
+import type { SqliteAdapter } from '../../store/sqlite/adapter';
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Types
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface ApiError {
+  error: {
+    code: string;
+    message: string;
+  };
+}
+
+export interface SearchRequestBody {
+  query: string;
+  mode?: 'bm25' | 'vector' | 'hybrid';
+  limit?: number;
+  minScore?: number;
+  collection?: string;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Helpers
+// ─────────────────────────────────────────────────────────────────────────────
+
+function jsonResponse(data: unknown, status = 200): Response {
+  return Response.json(data, { status });
+}
+
+function errorResponse(code: string, message: string, status = 400): Response {
+  return jsonResponse({ error: { code, message } }, status);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Route Handlers
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * GET /api/health
+ * Health check endpoint.
+ */
+export function handleHealth(): Response {
+  return jsonResponse({ ok: true });
+}
+
+/**
+ * GET /api/status
+ * Returns index status matching status.schema.json.
+ */
+export async function handleStatus(store: SqliteAdapter): Promise<Response> {
+  const result = await store.getStatus();
+  if (!result.ok) {
+    return errorResponse('RUNTIME', result.error.message, 500);
+  }
+
+  const s = result.value;
+  return jsonResponse({
+    indexName: s.indexName,
+    configPath: s.configPath,
+    dbPath: s.dbPath,
+    collections: s.collections.map((c) => ({
+      name: c.name,
+      path: c.path,
+      documentCount: c.activeDocuments,
+      chunkCount: c.totalChunks,
+      embeddedCount: c.embeddedChunks,
+    })),
+    totalDocuments: s.activeDocuments,
+    totalChunks: s.totalChunks,
+    embeddingBacklog: s.embeddingBacklog,
+    lastUpdated: s.lastUpdatedAt,
+    healthy: s.healthy,
+  });
+}
+
+/**
+ * GET /api/collections
+ * Returns list of collections.
+ */
+export async function handleCollections(
+  store: SqliteAdapter
+): Promise<Response> {
+  const result = await store.getCollections();
+  if (!result.ok) {
+    return errorResponse('RUNTIME', result.error.message, 500);
+  }
+
+  return jsonResponse(
+    result.value.map((c) => ({
+      name: c.name,
+      path: c.path,
+    }))
+  );
+}
+
+/**
+ * GET /api/docs
+ * Query params: collection, limit (default 20), offset (default 0)
+ * Returns paginated document list.
+ */
+export async function handleDocs(
+  store: SqliteAdapter,
+  url: URL
+): Promise<Response> {
+  const collection = url.searchParams.get('collection') || undefined;
+  const limit = Math.min(Number(url.searchParams.get('limit')) || 20, 100);
+  const offset = Number(url.searchParams.get('offset')) || 0;
+
+  const result = await store.listDocuments(collection);
+
+  if (!result.ok) {
+    return errorResponse('RUNTIME', result.error.message, 500);
+  }
+
+  // Apply pagination in memory (store doesn't support it yet)
+  const docs = result.value.slice(offset, offset + limit);
+
+  return jsonResponse({
+    documents: docs.map((doc) => ({
+      docid: doc.docid,
+      uri: doc.uri,
+      title: doc.title,
+      collection: doc.collection,
+      relPath: doc.relPath,
+      sourceExt: doc.sourceExt,
+      sourceMime: doc.sourceMime,
+      updatedAt: doc.updatedAt,
+    })),
+    total: result.value.length,
+    limit,
+    offset,
+  });
+}
+
+/**
+ * POST /api/search
+ * Body: { query, mode?, limit?, minScore?, collection? }
+ * Returns search results.
+ */
+export async function handleSearch(
+  store: SqliteAdapter,
+  req: Request
+): Promise<Response> {
+  let body: SearchRequestBody;
+  try {
+    body = await req.json();
+  } catch {
+    return errorResponse('VALIDATION', 'Invalid JSON body');
+  }
+
+  if (!body.query || typeof body.query !== 'string') {
+    return errorResponse('VALIDATION', 'Missing or invalid query');
+  }
+
+  const query = body.query.trim();
+  if (!query) {
+    return errorResponse('VALIDATION', 'Query cannot be empty');
+  }
+
+  const mode = body.mode || 'hybrid';
+  const options: SearchOptions = {
+    limit: Math.min(body.limit || 10, 50),
+    minScore: body.minScore,
+    collection: body.collection,
+  };
+
+  let result;
+  if (mode === 'bm25') {
+    result = await searchBm25(store, query, options);
+  } else if (mode === 'vector') {
+    result = await searchVector(store, query, options);
+  } else {
+    result = await searchHybrid(store, query, options);
+  }
+
+  if (!result.ok) {
+    return errorResponse('RUNTIME', result.error.message, 500);
+  }
+
+  return jsonResponse(result.value);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Router
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Route an API request to the appropriate handler.
+ * Returns null if the path is not an API route.
+ */
+export async function routeApi(
+  store: SqliteAdapter,
+  req: Request,
+  url: URL
+): Promise<Response | null> {
+  const path = url.pathname;
+
+  if (path === '/api/health') {
+    return handleHealth();
+  }
+
+  if (path === '/api/status') {
+    return handleStatus(store);
+  }
+
+  if (path === '/api/collections') {
+    return handleCollections(store);
+  }
+
+  if (path === '/api/docs') {
+    return handleDocs(store, url);
+  }
+
+  if (path === '/api/search' && req.method === 'POST') {
+    return handleSearch(store, req);
+  }
+
+  // Unknown API route
+  if (path.startsWith('/api/')) {
+    return errorResponse('NOT_FOUND', `Unknown API endpoint: ${path}`, 404);
+  }
+
+  return null;
+}

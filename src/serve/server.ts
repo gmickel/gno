@@ -8,6 +8,7 @@
 import { getIndexDbPath } from '../app/constants';
 import { getConfigPaths, isInitialized, loadConfig } from '../config';
 import { SqliteAdapter } from '../store/sqlite/adapter';
+import { routeApi } from './routes/api';
 
 export interface ServeOptions {
   /** Port to listen on (default: 3000) */
@@ -70,17 +71,15 @@ export async function startServer(
 
   const server = Bun.serve({
     port,
-    fetch(req) {
+    async fetch(req) {
       const url = new URL(req.url);
 
-      // Health check endpoint
-      if (url.pathname === '/api/health') {
-        return Response.json(
-          { ok: true },
-          {
-            headers: { 'Content-Security-Policy': CSP_HEADER },
-          }
-        );
+      // API routes
+      const apiResponse = await routeApi(store, req, url);
+      if (apiResponse) {
+        // Add CSP header to API responses
+        apiResponse.headers.set('Content-Security-Policy', CSP_HEADER);
+        return apiResponse;
       }
 
       // Placeholder for future routes
