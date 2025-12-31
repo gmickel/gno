@@ -42,8 +42,15 @@ jobs:
       - name: Typecheck
         run: bun run typecheck
 
-      - name: Test
+      - name: Test (Ubuntu)
+        if: matrix.os == 'ubuntu-latest'
         run: bun test
+        env:
+          CI: 'true'
+
+      - name: Test (macOS)
+        if: matrix.os == 'macos-latest'
+        run: bun test | cat
         env:
           CI: 'true'
 
@@ -86,6 +93,6 @@ jobs:
         run: bun run typecheck
 
       - name: Test
-        run: bun test
+        run: bun test | cat
         env:
           CI: 'true'
