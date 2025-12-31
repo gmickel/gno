@@ -1,0 +1,70 @@
+@import "tailwindcss";
+
+:root {
+  /* Scholarly Dusk - Dark (default) */
+  --background: 0 0% 2%; /* #050505 */
+  --foreground: 0 0% 93%; /* #ededed */
+  --card: 220 14% 7%; /* #0f1115 */
+  --card-foreground: 0 0% 93%;
+  --popover: 220 14% 7%;
+  --popover-foreground: 0 0% 93%;
+  --primary: 169 41% 51%; /* #4db8a8 - Alchemical Teal */
+  --primary-foreground: 0 0% 100%;
+  --secondary: 39 56% 58%; /* #d4a053 - Old Gold */
+  --secondary-foreground: 0 0% 100%;
+  --muted: 217 14% 11%; /* #181b21 */
+  --muted-foreground: 214 7% 61%; /* #949ba3 */
+  --accent: 169 41% 51%;
+  --accent-foreground: 0 0% 100%;
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 216 12% 14%; /* #1f2329 */
+  --input: 216 12% 14%;
+  --ring: 169 41% 51%;
+  --radius: 0.5rem;
+}
+
+[data-theme="light"] {
+  /* Scholarly Dusk - Light (Antique Paper) */
+  --background: 40 33% 98%; /* #fcfbf9 */
+  --foreground: 30 9% 13%; /* #24221f */
+  --card: 38 24% 95%; /* #f5f2ee */
+  --card-foreground: 30 9% 13%;
+  --popover: 38 24% 95%;
+  --popover-foreground: 30 9% 13%;
+  --primary: 191 66% 32%; /* #1a6b7d */
+  --primary-foreground: 0 0% 100%;
+  --secondary: 39 62% 35%; /* #9a7225 */
+  --secondary-foreground: 0 0% 100%;
+  --muted: 35 17% 91%;
+  --muted-foreground: 30 8% 33%;
+  --border: 35 12% 85%;
+  --input: 35 12% 85%;
+  --ring: 191 66% 32%;
+}
+
+* {
+  border-color: hsl(var(--border));
+}
+
+body {
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+  margin: 0;
+  min-height: 100vh;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: "Newsreader", Georgia, serif;
+}
+
+code,
+pre {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+}

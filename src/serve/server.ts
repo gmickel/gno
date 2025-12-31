@@ -5,10 +5,14 @@
  * @module src/serve/server
  */
 
+import { dirname, join } from 'node:path'; // No Bun equivalent for path utils
 import { getIndexDbPath } from '../app/constants';
 import { getConfigPaths, isInitialized, loadConfig } from '../config';
 import { SqliteAdapter } from '../store/sqlite/adapter';
 import { routeApi } from './routes/api';
+
+// Resolve public directory relative to this file
+const PUBLIC_DIR = join(dirname(import.meta.path), 'public');
 
 export interface ServeOptions {
   /** Port to listen on (default: 3000) */
@@ -82,13 +86,18 @@ export async function startServer(
         return apiResponse;
       }
 
-      // Placeholder for future routes
-      if (url.pathname === '/') {
-        return new Response('GNO Web UI - Coming Soon', {
-          headers: {
-            'Content-Type': 'text/html',
-            'Content-Security-Policy': CSP_HEADER,
-          },
+      // Static files from public directory
+      let filePath = url.pathname === '/' ? '/index.html' : url.pathname;
+
+      // SPA routing: serve index.html for non-file routes
+      if (!(filePath.includes('.') || filePath.startsWith('/api/'))) {
+        filePath = '/index.html';
+      }
+
+      const file = Bun.file(join(PUBLIC_DIR, filePath));
+      if (await file.exists()) {
+        return new Response(file, {
+          headers: { 'Content-Security-Policy': CSP_HEADER },
         });
       }
 
