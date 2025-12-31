@@ -148,16 +148,23 @@ export async function createServerContext(
 
 /**
  * Dispose server context resources.
+ * Each port is disposed independently to prevent one failure from blocking others.
  */
 export async function disposeServerContext(ctx: ServerContext): Promise<void> {
-  if (ctx.embedPort) {
-    await ctx.embedPort.dispose();
-  }
-  if (ctx.genPort) {
-    await ctx.genPort.dispose();
-  }
-  if (ctx.rerankPort) {
-    await ctx.rerankPort.dispose();
+  const ports = [
+    { name: 'embed', port: ctx.embedPort },
+    { name: 'gen', port: ctx.genPort },
+    { name: 'rerank', port: ctx.rerankPort },
+  ];
+
+  for (const { name, port } of ports) {
+    if (port) {
+      try {
+        await port.dispose();
+      } catch (e) {
+        console.error(`Failed to dispose ${name} port:`, e);
+      }
+    }
   }
 }
 
