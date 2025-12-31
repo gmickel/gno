@@ -188,6 +188,7 @@ export class SyncService {
    * Process a single file through the ingestion pipeline.
    * All store operations are checked and errors are propagated.
    */
+  // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: file processing with multiple extraction and embedding paths
   private async processFile(
     collection: Collection,
     entry: WalkEntry,
@@ -412,6 +413,7 @@ export class SyncService {
   /**
    * Sync a single collection.
    */
+  // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: sync orchestration with git integration and progress tracking
   async syncCollection(
     collection: Collection,
     store: StorePort,

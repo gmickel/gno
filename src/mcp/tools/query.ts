@@ -113,6 +113,7 @@ export function handleQuery(
   return runTool(
     ctx,
     'gno_query',
+    // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: query with validation, hybrid search, and result formatting
     async () => {
       // Validate collection exists if specified
       if (args.collection) {

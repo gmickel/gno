@@ -113,6 +113,7 @@ export function handleGet(
   return runTool(
     ctx,
     'gno_get',
+    // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: document retrieval with multiple ref formats and chunk handling
     async () => {
       // Parse reference
       const parsed = parseRef(args.ref);

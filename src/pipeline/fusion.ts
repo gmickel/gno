@@ -44,6 +44,7 @@ function rrfContribution(rank: number, k: number, weight: number): number {
  * @param config - RRF configuration
  * @returns Fused and sorted candidates
  */
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: RRF fusion with deduplication and scoring
 export function rrfFuse(
   inputs: RankedInput[],
   config: RrfConfig

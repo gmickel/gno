@@ -184,6 +184,7 @@ async function searchVectorChunks(
 /**
  * Execute hybrid search with full pipeline.
  */
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: search orchestration with BM25, vector, expansion, fusion, and reranking
 export async function searchHybrid(
   deps: HybridSearchDeps,
   query: string,

@@ -150,6 +150,7 @@ function extractWords(text: string): string[] {
  * Detect if text is primarily CJK (Chinese, Japanese, Korean).
  * Single-pass counting for efficiency.
  */
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Unicode range detection with multiple language heuristics
 function detectCjk(text: string): 'zh' | 'ja' | 'ko' | null {
   let totalChars = 0;
   let cjkCount = 0;

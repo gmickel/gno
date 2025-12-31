@@ -62,6 +62,7 @@ export type QueryResult =
 /**
  * Execute gno query command.
  */
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: CLI orchestration with multiple output formats
 export async function query(
   queryText: string,
   options: QueryCommandOptions = {}

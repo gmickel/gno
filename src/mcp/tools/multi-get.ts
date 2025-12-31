@@ -127,6 +127,7 @@ export function handleMultiGet(
   return runTool(
     ctx,
     'gno_multi_get',
+    // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: multi-get with pattern expansion and batch retrieval
     async () => {
       // Validate input
       if (!(args.refs || args.pattern)) {

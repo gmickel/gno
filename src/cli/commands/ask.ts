@@ -214,6 +214,7 @@ async function generateGroundedAnswer(
 /**
  * Execute gno ask command.
  */
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: CLI orchestration with multiple output formats
 export async function ask(
   query: string,
   options: AskCommandOptions = {}
@@ -405,6 +406,7 @@ interface FormatOptions {
   showSources?: boolean;
 }
 
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: terminal formatting with conditional sections
 function formatTerminal(data: AskResult, opts: FormatOptions = {}): string {
   const lines: string[] = [];
   const hasAnswer = Boolean(data.answer);

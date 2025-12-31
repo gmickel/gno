@@ -141,6 +141,7 @@ function safeGetGlobals(): { json: boolean } {
 /**
  * Show MCP installation status.
  */
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: status display with multiple targets and scopes
 export async function statusMcp(opts: StatusOptions = {}): Promise<void> {
   const targetFilter = opts.target ?? 'all';
   const scopeFilter = opts.scope ?? 'all';

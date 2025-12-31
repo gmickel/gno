@@ -94,6 +94,7 @@ export function handleVsearch(
   return runTool(
     ctx,
     'gno_vsearch',
+    // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: vector search with validation and result formatting
     async () => {
       // Validate collection exists if specified
       if (args.collection) {

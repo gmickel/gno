@@ -121,6 +121,7 @@ function buildSearchResult(ctx: BuildResultContext): SearchResult {
 /**
  * Execute BM25 search and return structured results.
  */
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: BM25 search with pagination, filtering, and explain output
 export async function searchBm25(
   store: StorePort,
   query: string,

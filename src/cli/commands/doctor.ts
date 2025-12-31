@@ -143,6 +143,7 @@ async function checkNodeLlamaCpp(): Promise<DoctorCheck> {
  * Check SQLite extension support (FTS5, sqlite-vec).
  * Uses runtime capability probes instead of compile_options strings.
  */
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: diagnostic checks with platform-specific handling
 async function checkSqliteExtensions(): Promise<DoctorCheck[]> {
   const checks: DoctorCheck[] = [];
   const plat = platform();

@@ -46,6 +46,7 @@ export interface VectorSearchDeps {
  * Execute vector search with pre-computed embedding.
  * Use this to avoid double-embedding when caller already has the query vector.
  */
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: search pipeline with expansion, reranking, and scoring
 export async function searchVectorWithEmbedding(
   deps: VectorSearchDeps,
   query: string,

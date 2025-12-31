@@ -38,7 +38,7 @@ async function cleanupTestEnv(testDir: string) {
 }
 
 // Use direct function import instead of CLI to get sync stats
-async function runUpdate(configPath?: string): Promise<UpdateResult> {
+function runUpdate(configPath?: string): Promise<UpdateResult> {
   return update({ configPath });
 }
 
@@ -123,7 +123,9 @@ describe('incremental sync', () => {
     // First sync - should process all files
     const result = await runUpdate();
     expect(result.success).toBe(true);
-    if (!result.success) return;
+    if (!result.success) {
+      return;
+    }
 
     expect(result.result.totalFilesAdded).toBe(2);
     expect(result.result.totalFilesSkipped).toBe(0);
@@ -138,13 +140,17 @@ describe('incremental sync', () => {
     await cli('init', docsDir, '--name', 'docs');
     const first = await runUpdate();
     expect(first.success).toBe(true);
-    if (!first.success) return;
+    if (!first.success) {
+      return;
+    }
     expect(first.result.totalFilesAdded).toBe(2);
 
     // Second sync without changes - should skip all
     const second = await runUpdate();
     expect(second.success).toBe(true);
-    if (!second.success) return;
+    if (!second.success) {
+      return;
+    }
 
     // filesUnchanged is per-collection, totalFilesSkipped is for walker-level skips (TOO_LARGE)
     const coll = second.result.collections[0];
@@ -161,7 +167,9 @@ describe('incremental sync', () => {
     await cli('init', docsDir, '--name', 'docs');
     const first = await runUpdate();
     expect(first.success).toBe(true);
-    if (!first.success) return;
+    if (!first.success) {
+      return;
+    }
     expect(first.result.totalFilesAdded).toBe(1);
 
     // Add new file
@@ -170,7 +178,9 @@ describe('incremental sync', () => {
     // Second sync - should only process new file
     const second = await runUpdate();
     expect(second.success).toBe(true);
-    if (!second.success) return;
+    if (!second.success) {
+      return;
+    }
 
     const coll = second.result.collections[0];
     expect(second.result.totalFilesAdded).toBe(1);
@@ -187,7 +197,9 @@ describe('incremental sync', () => {
     await cli('init', docsDir, '--name', 'docs');
     const first = await runUpdate();
     expect(first.success).toBe(true);
-    if (!first.success) return;
+    if (!first.success) {
+      return;
+    }
     expect(first.result.totalFilesAdded).toBe(2);
 
     // Modify one file
@@ -196,7 +208,9 @@ describe('incremental sync', () => {
     // Second sync - should update only modified file
     const second = await runUpdate();
     expect(second.success).toBe(true);
-    if (!second.success) return;
+    if (!second.success) {
+      return;
+    }
 
     const coll = second.result.collections[0];
     expect(second.result.totalFilesUpdated).toBe(1);
@@ -213,7 +227,9 @@ describe('incremental sync', () => {
     await cli('init', docsDir, '--name', 'docs');
     const first = await runUpdate();
     expect(first.success).toBe(true);
-    if (!first.success) return;
+    if (!first.success) {
+      return;
+    }
     expect(first.result.totalFilesAdded).toBe(2);
 
     // Add new file and modify existing
@@ -223,7 +239,9 @@ describe('incremental sync', () => {
     // Second sync
     const second = await runUpdate();
     expect(second.success).toBe(true);
-    if (!second.success) return;
+    if (!second.success) {
+      return;
+    }
 
     const coll = second.result.collections[0];
     expect(second.result.totalFilesAdded).toBe(1); // new-file.md
