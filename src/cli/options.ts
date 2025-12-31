@@ -134,11 +134,12 @@ export function parsePositiveInt(name: string, value: unknown): number {
   if (value === undefined || value === null) {
     throw new CliError('VALIDATION', `--${name} requires a value`);
   }
-  const num = Number.parseInt(String(value), 10);
+  const strValue = String(value);
+  const num = Number.parseInt(strValue, 10);
   if (Number.isNaN(num)) {
     throw new CliError(
       'VALIDATION',
-      `--${name} must be a number, got: ${value}`
+      `--${name} must be a number, got: ${strValue}`
     );
   }
   if (num < 1) {
@@ -170,11 +171,12 @@ export function parseOptionalFloat(
   if (value === undefined || value === null) {
     return;
   }
-  const num = Number.parseFloat(String(value));
+  const strValue = String(value);
+  const num = Number.parseFloat(strValue);
   if (Number.isNaN(num)) {
     throw new CliError(
       'VALIDATION',
-      `--${name} must be a number, got: ${value}`
+      `--${name} must be a number, got: ${strValue}`
     );
   }
   return num;

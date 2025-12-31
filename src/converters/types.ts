@@ -3,12 +3,7 @@
  * PRD §8.2 - Converter interfaces
  */
 
-export type ConverterId =
-  | 'native/markdown'
-  | 'native/plaintext'
-  | 'adapter/markitdown-ts'
-  | 'adapter/officeparser'
-  | string;
+export type ConverterId = string;
 
 export interface ConvertInput {
   /** Absolute path to source file */

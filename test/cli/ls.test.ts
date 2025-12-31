@@ -188,7 +188,7 @@ describe('gno ls smoke tests', () => {
     expect(code).toBe(0);
     const parsed = JSON.parse(stdout);
     const uris = parsed.documents.map((d: { uri: string }) => d.uri);
-    const sorted = [...uris].sort();
+    const sorted = [...uris].sort((a, b) => a.localeCompare(b));
     expect(uris).toEqual(sorted);
   });
 });

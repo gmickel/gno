@@ -26,7 +26,10 @@ export function createVectorStatsPort(db: Database): VectorStatsPort {
         return Promise.resolve(ok(result.count));
       } catch (e) {
         return Promise.resolve(
-          err('QUERY_FAILED', `Failed to count vectors: ${e}`)
+          err(
+            'QUERY_FAILED',
+            `Failed to count vectors: ${e instanceof Error ? e.message : String(e)}`
+          )
         );
       }
     },
@@ -57,7 +60,10 @@ export function createVectorStatsPort(db: Database): VectorStatsPort {
         return Promise.resolve(ok(result.count));
       } catch (e) {
         return Promise.resolve(
-          err('QUERY_FAILED', `Failed to count backlog: ${e}`)
+          err(
+            'QUERY_FAILED',
+            `Failed to count backlog: ${e instanceof Error ? e.message : String(e)}`
+          )
         );
       }
     },
@@ -135,7 +141,10 @@ export function createVectorStatsPort(db: Database): VectorStatsPort {
         return Promise.resolve(ok(results));
       } catch (e) {
         return Promise.resolve(
-          err('QUERY_FAILED', `Failed to get backlog: ${e}`)
+          err(
+            'QUERY_FAILED',
+            `Failed to get backlog: ${e instanceof Error ? e.message : String(e)}`
+          )
         );
       }
     },

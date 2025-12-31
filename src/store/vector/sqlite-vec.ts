@@ -154,7 +154,10 @@ export async function createVectorIndexPort(
         })();
       } catch (e) {
         return Promise.resolve(
-          err('VECTOR_WRITE_FAILED', `Vector write failed: ${e}`)
+          err(
+            'VECTOR_WRITE_FAILED',
+            `Vector write failed: ${e instanceof Error ? e.message : String(e)}`
+          )
         );
       }
 
@@ -182,7 +185,10 @@ export async function createVectorIndexPort(
         deleteVectorStmt.run(mirrorHash, model);
       } catch (e) {
         return Promise.resolve(
-          err('VECTOR_DELETE_FAILED', `Vector delete failed: ${e}`)
+          err(
+            'VECTOR_DELETE_FAILED',
+            `Vector delete failed: ${e instanceof Error ? e.message : String(e)}`
+          )
         );
       }
 
@@ -242,7 +248,10 @@ export async function createVectorIndexPort(
         );
       } catch (e) {
         return Promise.resolve(
-          err('VEC_SEARCH_FAILED', `Vector search failed: ${e}`)
+          err(
+            'VEC_SEARCH_FAILED',
+            `Vector search failed: ${e instanceof Error ? e.message : String(e)}`
+          )
         );
       }
     },
@@ -287,7 +296,10 @@ export async function createVectorIndexPort(
         return Promise.resolve(ok(undefined));
       } catch (e) {
         return Promise.resolve(
-          err('VEC_REBUILD_FAILED', `Vec rebuild failed: ${e}`)
+          err(
+            'VEC_REBUILD_FAILED',
+            `Vec rebuild failed: ${e instanceof Error ? e.message : String(e)}`
+          )
         );
       }
     },
@@ -349,7 +361,12 @@ export async function createVectorIndexPort(
 
         return Promise.resolve(ok({ added, removed }));
       } catch (e) {
-        return Promise.resolve(err('VEC_SYNC_FAILED', `Vec sync failed: ${e}`));
+        return Promise.resolve(
+          err(
+            'VEC_SYNC_FAILED',
+            `Vec sync failed: ${e instanceof Error ? e.message : String(e)}`
+          )
+        );
       }
     },
   });

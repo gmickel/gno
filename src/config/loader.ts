@@ -106,7 +106,7 @@ export async function loadConfigFromPath(
       ok: false,
       error: {
         code: 'VERSION_MISMATCH',
-        message: `Config version mismatch. Found "${parsed.version}", expected "${CONFIG_VERSION}"`,
+        message: `Config version mismatch. Found "${String(parsed.version)}", expected "${CONFIG_VERSION}"`,
         found: String(parsed.version),
         expected: CONFIG_VERSION,
       },

@@ -350,7 +350,12 @@ function getActiveChunkCount(db: Database): Promise<StoreResult<number>> {
       .get() as { count: number };
     return Promise.resolve(ok(result.count));
   } catch (e) {
-    return Promise.resolve(err('QUERY_FAILED', `Failed to count chunks: ${e}`));
+    return Promise.resolve(
+      err(
+        'QUERY_FAILED',
+        `Failed to count chunks: ${e instanceof Error ? e.message : String(e)}`
+      )
+    );
   }
 }
 
@@ -390,7 +395,12 @@ function getActiveChunks(
     const results = db.prepare(sql).all(...params) as BacklogItem[];
     return Promise.resolve(ok(results));
   } catch (e) {
-    return Promise.resolve(err('QUERY_FAILED', `Failed to get chunks: ${e}`));
+    return Promise.resolve(
+      err(
+        'QUERY_FAILED',
+        `Failed to get chunks: ${e instanceof Error ? e.message : String(e)}`
+      )
+    );
   }
 }
 

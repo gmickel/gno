@@ -15,6 +15,13 @@ process.on('SIGINT', () => {
 });
 
 // Run CLI and exit
-runCli(process.argv).then((code) => {
-  process.exit(code);
-});
+runCli(process.argv)
+  .then((code) => {
+    process.exit(code);
+  })
+  .catch((err) => {
+    process.stderr.write(
+      `Fatal error: ${err instanceof Error ? err.message : String(err)}\n`
+    );
+    process.exit(1);
+  });
