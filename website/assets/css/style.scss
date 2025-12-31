@@ -397,6 +397,18 @@ pre {
   z-index: 50;
   transition: transform $transition-base;
 
+  // Custom scrollbar - thin and subtle
+  &::-webkit-scrollbar { width: 6px; }
+  &::-webkit-scrollbar-track { background: transparent; }
+  &::-webkit-scrollbar-thumb {
+    background: var(--color-border);
+    border-radius: 3px;
+    &:hover { background: var(--color-border-highlight); }
+  }
+  // Firefox
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border) transparent;
+
   @media (max-width: $bp-lg) {
     transform: translateX(-100%);
     &.open { transform: translateX(0); }
