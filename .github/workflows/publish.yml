@@ -21,7 +21,7 @@ jobs:
     # No continue-on-error - releases must pass on all platforms
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
@@ -69,7 +69,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
@@ -113,7 +113,7 @@ jobs:
   #   if: github.event_name == 'push' || inputs.publish == true
   #
   #   steps:
-  #     - uses: actions/checkout@v4
+  #     - uses: actions/checkout@v6
   #
   #     - name: Setup Bun
   #       uses: oven-sh/setup-bun@v2
