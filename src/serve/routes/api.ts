@@ -5,10 +5,8 @@
  * @module src/serve/routes/api
  */
 
-import { searchHybrid } from '../../pipeline/hybrid';
 import { searchBm25 } from '../../pipeline/search';
 import type { SearchOptions } from '../../pipeline/types';
-import { searchVector } from '../../pipeline/vsearch';
 import type { SqliteAdapter } from '../../store/sqlite/adapter';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -24,7 +22,7 @@ export interface ApiError {
 
 export interface SearchRequestBody {
   query: string;
-  mode?: 'bm25' | 'vector' | 'hybrid';
+  mode?: 'bm25'; // Only BM25 supported in web UI (vector/hybrid require LLM deps)
   limit?: number;
   minScore?: number;
   collection?: string;
@@ -154,7 +152,7 @@ export async function handleSearch(
 ): Promise<Response> {
   let body: SearchRequestBody;
   try {
-    body = await req.json();
+    body = (await req.json()) as SearchRequestBody;
   } catch {
     return errorResponse('VALIDATION', 'Invalid JSON body');
   }
@@ -168,21 +166,14 @@ export async function handleSearch(
     return errorResponse('VALIDATION', 'Query cannot be empty');
   }
 
-  const mode = body.mode || 'hybrid';
+  // Only BM25 supported in web UI (vector/hybrid require LLM ports)
   const options: SearchOptions = {
     limit: Math.min(body.limit || 10, 50),
     minScore: body.minScore,
     collection: body.collection,
   };
 
-  let result;
-  if (mode === 'bm25') {
-    result = await searchBm25(store, query, options);
-  } else if (mode === 'vector') {
-    result = await searchVector(store, query, options);
-  } else {
-    result = await searchHybrid(store, query, options);
-  }
+  const result = await searchBm25(store, query, options);
 
   if (!result.ok) {
     return errorResponse('RUNTIME', result.error.message, 500);

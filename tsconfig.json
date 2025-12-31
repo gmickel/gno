@@ -23,5 +23,6 @@
     "paths": {
       "bun-types": ["./node_modules/bun-types"]
     }
-  }
+  },
+  "exclude": ["node_modules", "src/serve/public"]
 }

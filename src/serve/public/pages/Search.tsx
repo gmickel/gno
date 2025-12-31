@@ -24,7 +24,6 @@ interface SearchResponse {
 
 export default function Search({ navigate }: PageProps) {
   const [query, setQuery] = useState('');
-  const [mode, setMode] = useState<'hybrid' | 'bm25' | 'vector'>('hybrid');
   const [results, setResults] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -36,9 +35,10 @@ export default function Search({ navigate }: PageProps) {
     setLoading(true);
     setError(null);
 
+    // Only BM25 search supported in web UI
     const { data, error } = await apiFetch<SearchResponse>('/api/search', {
       method: 'POST',
-      body: JSON.stringify({ query, mode, limit: 10 }),
+      body: JSON.stringify({ query, limit: 10 }),
     });
 
     setLoading(false);
@@ -79,21 +79,8 @@ export default function Search({ navigate }: PageProps) {
             {loading ? 'Searching...' : 'Search'}
           </button>
         </div>
-        <div className="flex gap-2">
-          {(['hybrid', 'bm25', 'vector'] as const).map((m) => (
-            <button
-              className={`rounded px-3 py-1 text-sm ${
-                mode === m
-                  ? 'bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))]'
-                  : 'bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))]'
-              }`}
-              key={m}
-              onClick={() => setMode(m)}
-              type="button"
-            >
-              {m.toUpperCase()}
-            </button>
-          ))}
+        <div className="text-[hsl(var(--muted-foreground))] text-sm">
+          BM25 keyword search
         </div>
       </form>
 
