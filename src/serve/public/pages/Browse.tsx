@@ -3,7 +3,6 @@ import { useEffect, useState } from 'react';
 import { Loader } from '../components/ai-elements/loader';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
-import { Card, CardContent } from '../components/ui/card';
 import {
   Select,
   SelectContent,
@@ -67,7 +66,9 @@ export default function Browse({ navigate }: PageProps) {
 
   useEffect(() => {
     apiFetch<Collection[]>('/api/collections').then(({ data }) => {
-      if (data) setCollections(data);
+      if (data) {
+        setCollections(data);
+      }
     });
   }, []);
 
@@ -196,7 +197,7 @@ export default function Browse({ navigate }: PageProps) {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {docs.map((doc, i) => (
+                {docs.map((doc, _i) => (
                   <TableRow
                     className="group cursor-pointer"
                     key={doc.docid}

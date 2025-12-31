@@ -11,6 +11,8 @@
       "!!**/evals/harbor",
       "!!**/src/web/components/ui",
       "!!**/src/web/components/ai-elements",
+      "!!**/src/serve/public/components/ui",
+      "!!**/src/serve/public/components/ai-elements",
       "!!**/website"
     ]
   },
@@ -59,6 +61,16 @@
         "rules": {
           "suspicious": {
             "useAwait": "off"
+          }
+        }
+      }
+    },
+    {
+      "includes": ["**/pages/*.tsx"],
+      "linter": {
+        "rules": {
+          "style": {
+            "useFilenamingConvention": "off"
           }
         }
       }

@@ -148,11 +148,13 @@ export default function Ask({ navigate }: PageProps) {
   // Scroll to bottom when conversation updates
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [conversation]);
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!query.trim()) return;
+    if (!query.trim()) {
+      return;
+    }
 
     const entryId = crypto.randomUUID();
     const currentQuery = query.trim();

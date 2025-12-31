@@ -43,8 +43,11 @@ export default function Dashboard({ navigate }: PageProps) {
 
   useEffect(() => {
     apiFetch<StatusData>('/api/status').then(({ data, error }) => {
-      if (error) setError(error);
-      else setStatus(data);
+      if (error) {
+        setError(error);
+      } else {
+        setStatus(data);
+      }
     });
   }, []);
 

@@ -113,7 +113,9 @@ export default function Search({ navigate }: PageProps) {
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!query.trim()) return;
+    if (!query.trim()) {
+      return;
+    }
 
     setLoading(true);
     setError(null);

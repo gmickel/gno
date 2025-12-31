@@ -43,7 +43,9 @@ interface DocData {
 }
 
 function formatBytes(bytes: number): string {
-  if (bytes === 0) return '0 B';
+  if (bytes === 0) {
+    return '0 B';
+  }
   const k = 1024;
   const sizes = ['B', 'KB', 'MB', 'GB'];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
@@ -267,27 +269,27 @@ export default function DocView({ navigate }: PageProps) {
                 </CardTitle>
               </CardHeader>
               <CardContent className="pt-4">
-                {doc.contentAvailable ? (
-                  isCodeFile ? (
-                    <CodeBlock
-                      code={doc.content ?? ''}
-                      language={getLanguageFromExt(doc.source.ext)}
-                      showLineNumbers
-                    >
-                      <CodeBlockCopyButton />
-                    </CodeBlock>
-                  ) : (
-                    <div className="rounded-lg border border-border/50 bg-muted/30 p-6">
-                      <pre className="whitespace-pre-wrap font-mono text-sm leading-relaxed">
-                        {doc.content}
-                      </pre>
-                    </div>
-                  )
-                ) : (
+                {!doc.contentAvailable && (
                   <div className="rounded-lg border border-border/50 bg-muted/30 p-6 text-center">
                     <p className="text-muted-foreground">
                       Content not available (document may need re-indexing)
                     </p>
+                  </div>
+                )}
+                {doc.contentAvailable && isCodeFile && (
+                  <CodeBlock
+                    code={doc.content ?? ''}
+                    language={getLanguageFromExt(doc.source.ext)}
+                    showLineNumbers
+                  >
+                    <CodeBlockCopyButton />
+                  </CodeBlock>
+                )}
+                {doc.contentAvailable && !isCodeFile && (
+                  <div className="rounded-lg border border-border/50 bg-muted/30 p-6">
+                    <pre className="whitespace-pre-wrap font-mono text-sm leading-relaxed">
+                      {doc.content}
+                    </pre>
                   </div>
                 )}
               </CardContent>
