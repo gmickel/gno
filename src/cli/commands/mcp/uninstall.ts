@@ -6,13 +6,19 @@
 
 import { CliError } from '../../errors.js';
 import { getGlobals } from '../../program.js';
-import { readMcpConfig, writeMcpConfig } from './config.js';
+import {
+  type AnyMcpConfig,
+  readMcpConfig,
+  removeServerEntry,
+  writeMcpConfig,
+} from './config.js';
 import {
   getTargetDisplayName,
   MCP_SERVER_NAME,
   type McpScope,
   type McpTarget,
   resolveMcpConfigPath,
+  TARGETS_WITH_PROJECT_SCOPE,
 } from './paths.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -53,7 +59,7 @@ async function uninstallFromTarget(
 ): Promise<UninstallResult> {
   const { cwd, homeDir } = options;
 
-  const { configPath } = resolveMcpConfigPath({
+  const { configPath, configFormat } = resolveMcpConfigPath({
     target,
     scope,
     cwd,
@@ -67,21 +73,19 @@ async function uninstallFromTarget(
     return { target, scope, configPath, action: 'not_found' };
   }
 
-  // No mcpServers section or no gno entry
-  if (!config.mcpServers?.[MCP_SERVER_NAME]) {
+  // Try to remove entry using format-aware helper
+  const removed = removeServerEntry(
+    config as AnyMcpConfig,
+    MCP_SERVER_NAME,
+    configFormat
+  );
+
+  if (!removed) {
     return { target, scope, configPath, action: 'not_found' };
   }
 
-  // Remove entry
-  delete config.mcpServers[MCP_SERVER_NAME];
-
-  // Clean up empty mcpServers object
-  if (Object.keys(config.mcpServers).length === 0) {
-    config.mcpServers = undefined;
-  }
-
   // Write back
-  await writeMcpConfig(configPath, config);
+  await writeMcpConfig(configPath, config as AnyMcpConfig);
 
   return { target, scope, configPath, action: 'removed' };
 }
@@ -107,11 +111,11 @@ export async function uninstallMcp(opts: UninstallOptions = {}): Promise<void> {
   const json = opts.json ?? globals.json;
   const quiet = opts.quiet ?? globals.quiet;
 
-  // Validate scope for claude-desktop
-  if (target === 'claude-desktop' && scope === 'project') {
+  // Validate scope - only some targets support project scope
+  if (scope === 'project' && !TARGETS_WITH_PROJECT_SCOPE.includes(target)) {
     throw new CliError(
       'VALIDATION',
-      'Claude Desktop does not support project scope.'
+      `${getTargetDisplayName(target)} does not support project scope.`
     );
   }
 

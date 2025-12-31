@@ -6,7 +6,15 @@
 
 import { CliError } from '../../errors.js';
 import { getGlobals } from '../../program.js';
-import { readMcpConfig, writeMcpConfig } from './config.js';
+import {
+  type AnyMcpConfig,
+  buildEntry,
+  hasServerEntry,
+  readMcpConfig,
+  type StandardMcpEntry,
+  setServerEntry,
+  writeMcpConfig,
+} from './config.js';
 import {
   buildMcpServerEntry,
   getTargetDisplayName,
@@ -14,6 +22,7 @@ import {
   type McpScope,
   type McpTarget,
   resolveMcpConfigPath,
+  TARGETS_WITH_PROJECT_SCOPE,
 } from './paths.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -53,7 +62,7 @@ interface InstallResult {
 async function installToTarget(
   target: McpTarget,
   scope: McpScope,
-  serverEntry: { command: string; args: string[] },
+  serverEntry: StandardMcpEntry,
   options: {
     force?: boolean;
     dryRun?: boolean;
@@ -63,7 +72,7 @@ async function installToTarget(
 ): Promise<InstallResult> {
   const { force = false, dryRun = false, cwd, homeDir } = options;
 
-  const { configPath } = resolveMcpConfigPath({
+  const { configPath, configFormat } = resolveMcpConfigPath({
     target,
     scope,
     cwd,
@@ -71,16 +80,11 @@ async function installToTarget(
   });
 
   // Read existing config (needed for both dry-run preview and actual install)
-  const config = await readMcpConfig(configPath);
+  const config = (await readMcpConfig(configPath)) as AnyMcpConfig;
 
-  // Initialize mcpServers if needed
-  if (!config.mcpServers) {
-    config.mcpServers = {};
-  }
-
-  // Check if already exists
-  const existingEntry = config.mcpServers[MCP_SERVER_NAME];
-  if (existingEntry && !force) {
+  // Check if already exists using format-aware helper
+  const alreadyExists = hasServerEntry(config, MCP_SERVER_NAME, configFormat);
+  if (alreadyExists && !force) {
     throw new CliError(
       'VALIDATION',
       `${getTargetDisplayName(target)} already has gno configured.\n` +
@@ -89,7 +93,7 @@ async function installToTarget(
     );
   }
 
-  const wouldCreate = !existingEntry;
+  const wouldCreate = !alreadyExists;
 
   if (dryRun) {
     return {
@@ -103,8 +107,9 @@ async function installToTarget(
 
   const action = wouldCreate ? 'created' : 'updated';
 
-  // Add/update entry
-  config.mcpServers[MCP_SERVER_NAME] = serverEntry;
+  // Build format-specific entry and add to config
+  const entry = buildEntry(serverEntry.command, serverEntry.args, configFormat);
+  setServerEntry(config, MCP_SERVER_NAME, entry, configFormat);
 
   // Write atomically
   await writeMcpConfig(configPath, config);
@@ -141,11 +146,11 @@ export async function installMcp(opts: InstallOptions = {}): Promise<void> {
   const json = opts.json ?? globals.json;
   const quiet = opts.quiet ?? globals.quiet;
 
-  // Validate scope for claude-desktop
-  if (target === 'claude-desktop' && scope === 'project') {
+  // Validate scope - only some targets support project scope
+  if (scope === 'project' && !TARGETS_WITH_PROJECT_SCOPE.includes(target)) {
     throw new CliError(
       'VALIDATION',
-      'Claude Desktop does not support project scope. Use --scope user.'
+      `${getTargetDisplayName(target)} does not support project scope. Use --scope user.`
     );
   }
 

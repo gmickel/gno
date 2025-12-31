@@ -13,14 +13,39 @@ import { join } from 'node:path';
 // Types
 // ─────────────────────────────────────────────────────────────────────────────
 
-export type McpTarget = 'claude-desktop' | 'claude-code' | 'codex';
+export type McpTarget =
+  | 'claude-desktop'
+  | 'claude-code'
+  | 'codex'
+  | 'cursor'
+  | 'zed'
+  | 'windsurf'
+  | 'opencode'
+  | 'amp'
+  | 'lmstudio';
+
 export type McpScope = 'user' | 'project';
+
+/**
+ * Config format varies by target.
+ * - standard: mcpServers key (Claude Desktop, Cursor, Windsurf, LM Studio)
+ * - context_servers: Zed uses context_servers key
+ * - mcp: OpenCode uses mcp key with array command
+ * - amp_mcp: Amp uses amp.mcpServers key
+ */
+export type McpConfigFormat =
+  | 'standard'
+  | 'context_servers'
+  | 'mcp'
+  | 'amp_mcp';
 
 export interface McpConfigPaths {
   /** Config file path */
   configPath: string;
   /** Whether this target supports project scope */
   supportsProjectScope: boolean;
+  /** Config format for this target */
+  configFormat: McpConfigFormat;
 }
 
 export interface McpServerEntry {
@@ -48,10 +73,35 @@ export const MCP_TARGETS: McpTarget[] = [
   'claude-desktop',
   'claude-code',
   'codex',
+  'cursor',
+  'zed',
+  'windsurf',
+  'opencode',
+  'amp',
+  'lmstudio',
 ];
 
 /** Targets that support project scope */
-export const TARGETS_WITH_PROJECT_SCOPE: McpTarget[] = ['claude-code', 'codex'];
+export const TARGETS_WITH_PROJECT_SCOPE: McpTarget[] = [
+  'claude-code',
+  'codex',
+  'cursor',
+  'opencode',
+];
+
+/** Get config format for a target */
+export function getTargetConfigFormat(target: McpTarget): McpConfigFormat {
+  switch (target) {
+    case 'zed':
+      return 'context_servers';
+    case 'opencode':
+      return 'mcp';
+    case 'amp':
+      return 'amp_mcp';
+    default:
+      return 'standard';
+  }
+}
 
 /** Regex to extract entry script path from command path */
 const COMMANDS_PATH_PATTERN = /\/commands\/.*$/;
@@ -105,6 +155,89 @@ function resolveCodexPath(scope: McpScope, home: string, cwd: string): string {
 }
 
 /**
+ * Resolve Cursor config path.
+ */
+function resolveCursorPath(scope: McpScope, home: string, cwd: string): string {
+  if (scope === 'user') {
+    const plat = platform();
+    if (plat === 'win32') {
+      return join(home, '.cursor', 'mcp.json');
+    }
+    return join(home, '.cursor/mcp.json');
+  }
+  return join(cwd, '.cursor/mcp.json');
+}
+
+/**
+ * Resolve Zed config path (macOS/Linux only, no project scope).
+ */
+function resolveZedPath(home: string): string {
+  const plat = platform();
+  if (plat === 'win32') {
+    // Zed not available on Windows, but provide path anyway
+    return join(home, '.config/zed/settings.json');
+  }
+  // macOS and Linux use XDG or fallback
+  const xdgConfig = process.env.XDG_CONFIG_HOME;
+  if (xdgConfig) {
+    return join(xdgConfig, 'zed/settings.json');
+  }
+  return join(home, '.config/zed/settings.json');
+}
+
+/**
+ * Resolve Windsurf config path.
+ */
+function resolveWindsurfPath(home: string): string {
+  const plat = platform();
+  if (plat === 'win32') {
+    return join(home, '.codeium', 'windsurf', 'mcp_config.json');
+  }
+  return join(home, '.codeium/windsurf/mcp_config.json');
+}
+
+/**
+ * Resolve OpenCode config path.
+ */
+function resolveOpenCodePath(
+  scope: McpScope,
+  home: string,
+  cwd: string
+): string {
+  if (scope === 'user') {
+    const plat = platform();
+    if (plat === 'win32') {
+      return join(home, '.config', 'opencode', 'config.json');
+    }
+    return join(home, '.config/opencode/config.json');
+  }
+  // Project scope: opencode.json in project root
+  return join(cwd, 'opencode.json');
+}
+
+/**
+ * Resolve Amp config path.
+ */
+function resolveAmpPath(home: string): string {
+  const plat = platform();
+  if (plat === 'win32') {
+    return join(home, '.config', 'amp', 'settings.json');
+  }
+  return join(home, '.config/amp/settings.json');
+}
+
+/**
+ * Resolve LM Studio config path.
+ */
+function resolveLmStudioPath(home: string): string {
+  const plat = platform();
+  if (plat === 'win32') {
+    return join(home, '.lmstudio', 'mcp.json');
+  }
+  return join(home, '.lmstudio/mcp.json');
+}
+
+/**
  * Resolve MCP config path for a given target and scope.
  */
 export function resolveMcpConfigPath(opts: McpPathOptions): McpConfigPaths {
@@ -115,21 +248,63 @@ export function resolveMcpConfigPath(opts: McpPathOptions): McpConfigPaths {
     homeDir = homedir(),
   } = opts;
 
+  const configFormat = getTargetConfigFormat(target);
+  const supportsProjectScope = TARGETS_WITH_PROJECT_SCOPE.includes(target);
+
   switch (target) {
     case 'claude-desktop':
       return {
         configPath: resolveClaudeDesktopPath(homeDir),
-        supportsProjectScope: false,
+        supportsProjectScope,
+        configFormat,
       };
     case 'claude-code':
       return {
         configPath: resolveClaudeCodePath(scope, homeDir, cwd),
-        supportsProjectScope: true,
+        supportsProjectScope,
+        configFormat,
       };
     case 'codex':
       return {
         configPath: resolveCodexPath(scope, homeDir, cwd),
-        supportsProjectScope: true,
+        supportsProjectScope,
+        configFormat,
+      };
+    case 'cursor':
+      return {
+        configPath: resolveCursorPath(scope, homeDir, cwd),
+        supportsProjectScope,
+        configFormat,
+      };
+    case 'zed':
+      return {
+        configPath: resolveZedPath(homeDir),
+        supportsProjectScope,
+        configFormat,
+      };
+    case 'windsurf':
+      return {
+        configPath: resolveWindsurfPath(homeDir),
+        supportsProjectScope,
+        configFormat,
+      };
+    case 'opencode':
+      return {
+        configPath: resolveOpenCodePath(scope, homeDir, cwd),
+        supportsProjectScope,
+        configFormat,
+      };
+    case 'amp':
+      return {
+        configPath: resolveAmpPath(homeDir),
+        supportsProjectScope,
+        configFormat,
+      };
+    case 'lmstudio':
+      return {
+        configPath: resolveLmStudioPath(homeDir),
+        supportsProjectScope,
+        configFormat,
       };
     default: {
       const _exhaustive: never = target;
@@ -154,18 +329,10 @@ export function resolveAllMcpPaths(
   }> = [];
 
   for (const t of targets) {
-    if (t === 'claude-desktop') {
-      // Claude Desktop only supports user scope - skip if filtering by project
-      if (scope === 'project') {
-        continue;
-      }
-      results.push({
-        target: t,
-        scope: 'user',
-        paths: resolveMcpConfigPath({ target: t, scope: 'user', ...overrides }),
-      });
-    } else {
-      // Other targets support both scopes
+    const supportsProject = TARGETS_WITH_PROJECT_SCOPE.includes(t);
+
+    if (supportsProject) {
+      // Targets that support both scopes
       const scopes: McpScope[] =
         scope === 'all' ? ['user', 'project'] : [scope];
       for (const s of scopes) {
@@ -175,6 +342,16 @@ export function resolveAllMcpPaths(
           paths: resolveMcpConfigPath({ target: t, scope: s, ...overrides }),
         });
       }
+    } else {
+      // User scope only - skip if filtering by project
+      if (scope === 'project') {
+        continue;
+      }
+      results.push({
+        target: t,
+        scope: 'user',
+        paths: resolveMcpConfigPath({ target: t, scope: 'user', ...overrides }),
+      });
     }
   }
 
@@ -250,6 +427,18 @@ export function getTargetDisplayName(target: McpTarget): string {
       return 'Claude Code';
     case 'codex':
       return 'Codex';
+    case 'cursor':
+      return 'Cursor';
+    case 'zed':
+      return 'Zed';
+    case 'windsurf':
+      return 'Windsurf';
+    case 'opencode':
+      return 'OpenCode';
+    case 'amp':
+      return 'Amp';
+    case 'lmstudio':
+      return 'LM Studio';
     default: {
       const _exhaustive: never = target;
       throw new Error(`Unknown target: ${_exhaustive}`);

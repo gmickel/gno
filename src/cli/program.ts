@@ -733,12 +733,12 @@ function wireMcpCommand(program: Command): void {
     .description('Install gno as MCP server in client configuration')
     .option(
       '-t, --target <target>',
-      'target client (claude-desktop, claude-code, codex)',
+      'target client (claude-desktop, cursor, zed, windsurf, opencode, amp, lmstudio, claude-code, codex)',
       'claude-desktop'
     )
     .option(
       '-s, --scope <scope>',
-      'scope (user, project) - project only for claude-code/codex',
+      'scope (user, project) - project only for claude-code/codex/cursor/opencode',
       'user'
     )
     .option('-f, --force', 'overwrite existing configuration')
@@ -748,11 +748,14 @@ function wireMcpCommand(program: Command): void {
       const target = cmdOpts.target as string;
       const scope = cmdOpts.scope as string;
 
+      // Import MCP_TARGETS for validation
+      const { MCP_TARGETS } = await import('./commands/mcp/paths.js');
+
       // Validate target
-      if (!['claude-desktop', 'claude-code', 'codex'].includes(target)) {
+      if (!(MCP_TARGETS as string[]).includes(target)) {
         throw new CliError(
           'VALIDATION',
-          `Invalid target: ${target}. Must be 'claude-desktop', 'claude-code', or 'codex'.`
+          `Invalid target: ${target}. Must be one of: ${MCP_TARGETS.join(', ')}.`
         );
       }
       // Validate scope
@@ -765,7 +768,7 @@ function wireMcpCommand(program: Command): void {
 
       const { installMcp } = await import('./commands/mcp/install.js');
       await installMcp({
-        target: target as 'claude-desktop' | 'claude-code' | 'codex',
+        target: target as Parameters<typeof installMcp>[0]['target'],
         scope: scope as 'user' | 'project',
         force: Boolean(cmdOpts.force),
         dryRun: Boolean(cmdOpts.dryRun),
@@ -780,7 +783,7 @@ function wireMcpCommand(program: Command): void {
     .description('Remove gno MCP server from client configuration')
     .option(
       '-t, --target <target>',
-      'target client (claude-desktop, claude-code, codex)',
+      'target client (claude-desktop, cursor, zed, windsurf, opencode, amp, lmstudio, claude-code, codex)',
       'claude-desktop'
     )
     .option('-s, --scope <scope>', 'scope (user, project)', 'user')
@@ -789,11 +792,14 @@ function wireMcpCommand(program: Command): void {
       const target = cmdOpts.target as string;
       const scope = cmdOpts.scope as string;
 
+      // Import MCP_TARGETS for validation
+      const { MCP_TARGETS } = await import('./commands/mcp/paths.js');
+
       // Validate target
-      if (!['claude-desktop', 'claude-code', 'codex'].includes(target)) {
+      if (!(MCP_TARGETS as string[]).includes(target)) {
         throw new CliError(
           'VALIDATION',
-          `Invalid target: ${target}. Must be 'claude-desktop', 'claude-code', or 'codex'.`
+          `Invalid target: ${target}. Must be one of: ${MCP_TARGETS.join(', ')}.`
         );
       }
       // Validate scope
@@ -806,7 +812,7 @@ function wireMcpCommand(program: Command): void {
 
       const { uninstallMcp } = await import('./commands/mcp/uninstall.js');
       await uninstallMcp({
-        target: target as 'claude-desktop' | 'claude-code' | 'codex',
+        target: target as Parameters<typeof uninstallMcp>[0]['target'],
         scope: scope as 'user' | 'project',
         // Pass undefined if not set, so global --json can take effect
         json: cmdOpts.json === true ? true : undefined,
@@ -819,7 +825,7 @@ function wireMcpCommand(program: Command): void {
     .description('Show MCP server installation status')
     .option(
       '-t, --target <target>',
-      'filter by target (claude-desktop, claude-code, codex, all)',
+      'filter by target (claude-desktop, cursor, zed, windsurf, opencode, amp, lmstudio, claude-code, codex, all)',
       'all'
     )
     .option(
@@ -832,11 +838,16 @@ function wireMcpCommand(program: Command): void {
       const target = cmdOpts.target as string;
       const scope = cmdOpts.scope as string;
 
+      // Import MCP_TARGETS for validation
+      const { MCP_TARGETS, TARGETS_WITH_PROJECT_SCOPE } = await import(
+        './commands/mcp/paths.js'
+      );
+
       // Validate target
-      if (!['claude-desktop', 'claude-code', 'codex', 'all'].includes(target)) {
+      if (target !== 'all' && !(MCP_TARGETS as string[]).includes(target)) {
         throw new CliError(
           'VALIDATION',
-          `Invalid target: ${target}. Must be 'claude-desktop', 'claude-code', 'codex', or 'all'.`
+          `Invalid target: ${target}. Must be one of: ${MCP_TARGETS.join(', ')}, all.`
         );
       }
       // Validate scope
@@ -847,16 +858,20 @@ function wireMcpCommand(program: Command): void {
         );
       }
       // Validate target/scope combination
-      if (target === 'claude-desktop' && scope === 'project') {
+      if (
+        target !== 'all' &&
+        scope === 'project' &&
+        !(TARGETS_WITH_PROJECT_SCOPE as string[]).includes(target)
+      ) {
         throw new CliError(
           'VALIDATION',
-          'Claude Desktop does not support project scope.'
+          `${target} does not support project scope.`
         );
       }
 
       const { statusMcp } = await import('./commands/mcp/status.js');
       await statusMcp({
-        target: target as 'claude-desktop' | 'claude-code' | 'codex' | 'all',
+        target: target as Parameters<typeof statusMcp>[0]['target'],
         scope: scope as 'user' | 'project' | 'all',
         // Pass undefined if not set, so global --json can take effect
         json: cmdOpts.json === true ? true : undefined,

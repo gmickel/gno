@@ -25,7 +25,57 @@ GNO's MCP tools are **retrieval-only by design**. Unlike the CLI's `gno ask` com
 2. Client LLM synthesizes the answer from retrieved context
 3. Result: Best retrieval (GNO) + best synthesis (Claude/Codex)
 
-## Claude Desktop Setup
+## Quick Install
+
+Use the CLI to install GNO as an MCP server:
+
+```bash
+gno mcp install                           # Claude Desktop (default)
+gno mcp install --target cursor           # Cursor
+gno mcp install --target zed              # Zed
+gno mcp install --target windsurf         # Windsurf
+gno mcp install --target opencode         # OpenCode
+gno mcp install --target amp              # Amp
+gno mcp install --target lmstudio         # LM Studio
+gno mcp install --target claude-code      # Claude Code CLI
+gno mcp install --target codex            # OpenAI Codex CLI
+```
+
+### Scope Options
+
+Some clients support project-level configuration:
+
+```bash
+gno mcp install --target cursor --scope project    # .cursor/mcp.json
+gno mcp install --target opencode --scope project  # opencode.json
+```
+
+### Other Commands
+
+```bash
+gno mcp status                  # Show installation status for all targets
+gno mcp uninstall --target X    # Remove GNO from a target
+```
+
+## Supported Clients
+
+| Client | Install Command | Scope |
+|--------|-----------------|-------|
+| Claude Desktop | `gno mcp install` | User |
+| Claude Code | `gno mcp install --target claude-code` | User, Project |
+| Cursor | `gno mcp install --target cursor` | User, Project |
+| Zed | `gno mcp install --target zed` | User |
+| Windsurf | `gno mcp install --target windsurf` | User |
+| OpenCode | `gno mcp install --target opencode` | User, Project |
+| Amp | `gno mcp install --target amp` | User |
+| LM Studio | `gno mcp install --target lmstudio` | User |
+| Codex | `gno mcp install --target codex` | User, Project |
+
+**Note**: Warp terminal requires manual UI configuration. See [Warp MCP docs](https://docs.warp.dev/knowledge-and-collaboration/mcp).
+
+## Manual Configuration
+
+### Claude Desktop
 
 Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
 
@@ -40,17 +90,93 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
 }
 ```
 
-Restart Claude Desktop. GNO tools will appear in the tool list.
+### Cursor
 
-## Cursor Setup
-
-Add to Cursor settings (MCP Servers section):
+Add to `~/.cursor/mcp.json`:
 
 ```json
 {
-  "gno": {
-    "command": "gno",
-    "args": ["mcp"]
+  "mcpServers": {
+    "gno": {
+      "command": "gno",
+      "args": ["mcp"]
+    }
+  }
+}
+```
+
+### Zed
+
+Add to `~/.config/zed/settings.json`:
+
+```json
+{
+  "context_servers": {
+    "gno": {
+      "command": "gno",
+      "args": ["mcp"]
+    }
+  }
+}
+```
+
+### Windsurf
+
+Add to `~/.codeium/windsurf/mcp_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "gno": {
+      "command": "gno",
+      "args": ["mcp"]
+    }
+  }
+}
+```
+
+### OpenCode
+
+Add to `~/.config/opencode/config.json`:
+
+```json
+{
+  "mcp": {
+    "gno": {
+      "type": "local",
+      "command": ["gno", "mcp"],
+      "enabled": true
+    }
+  }
+}
+```
+
+### Amp
+
+Add to `~/.config/amp/settings.json`:
+
+```json
+{
+  "amp.mcpServers": {
+    "gno": {
+      "command": "gno",
+      "args": ["mcp"]
+    }
+  }
+}
+```
+
+### LM Studio
+
+Add to `~/.lmstudio/mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "gno": {
+      "command": "gno",
+      "args": ["mcp"]
+    }
   }
 }
 ```

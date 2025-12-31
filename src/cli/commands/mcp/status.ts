@@ -6,6 +6,12 @@
 
 import { getGlobals } from '../../program.js';
 import {
+  type AnyMcpConfig,
+  getServerEntry,
+  type OpenCodeMcpEntry,
+  type StandardMcpEntry,
+} from './config.js';
+import {
   getTargetDisplayName,
   MCP_SERVER_NAME,
   MCP_TARGETS,
@@ -51,8 +57,18 @@ interface StatusResult {
 // Config Reading
 // ─────────────────────────────────────────────────────────────────────────────
 
-interface McpConfig {
-  mcpServers?: Record<string, { command: string; args: string[] }>;
+/**
+ * Normalize entry to standard format for display.
+ */
+function normalizeEntry(
+  entry: StandardMcpEntry | OpenCodeMcpEntry
+): StandardMcpEntry {
+  if ('type' in entry && entry.type === 'local') {
+    // OpenCode format: command is array [command, ...args]
+    const [command, ...args] = entry.command;
+    return { command, args };
+  }
+  return entry as StandardMcpEntry;
 }
 
 async function checkTargetStatus(
@@ -62,7 +78,7 @@ async function checkTargetStatus(
 ): Promise<TargetStatus> {
   const { cwd, homeDir } = options;
 
-  const { configPath } = resolveMcpConfigPath({
+  const { configPath, configFormat } = resolveMcpConfigPath({
     target,
     scope,
     cwd,
@@ -82,10 +98,11 @@ async function checkTargetStatus(
       return { target, scope, configPath, configured: false };
     }
 
-    const config = JSON.parse(content) as McpConfig;
-    const serverEntry = config.mcpServers?.[MCP_SERVER_NAME];
+    const config = JSON.parse(content) as AnyMcpConfig;
+    const entry = getServerEntry(config, MCP_SERVER_NAME, configFormat);
 
-    if (serverEntry) {
+    if (entry) {
+      const serverEntry = normalizeEntry(entry);
       return { target, scope, configPath, configured: true, serverEntry };
     }
 
@@ -131,17 +148,10 @@ export async function statusMcp(opts: StatusOptions = {}): Promise<void> {
   const results: TargetStatus[] = [];
 
   for (const target of targets) {
-    if (target === 'claude-desktop') {
-      // Only user scope for Claude Desktop
-      if (scopeFilter === 'all' || scopeFilter === 'user') {
-        results.push(
-          await checkTargetStatus(target, 'user', {
-            cwd: opts.cwd,
-            homeDir: opts.homeDir,
-          })
-        );
-      }
-    } else if (TARGETS_WITH_PROJECT_SCOPE.includes(target)) {
+    const supportsProject = TARGETS_WITH_PROJECT_SCOPE.includes(target);
+
+    if (supportsProject) {
+      // Targets that support both scopes
       const scopes: McpScope[] =
         scopeFilter === 'all' ? ['user', 'project'] : [scopeFilter];
 
@@ -153,6 +163,14 @@ export async function statusMcp(opts: StatusOptions = {}): Promise<void> {
           })
         );
       }
+    } else if (scopeFilter === 'all' || scopeFilter === 'user') {
+      // User scope only - skip if filtering by project
+      results.push(
+        await checkTargetStatus(target, 'user', {
+          cwd: opts.cwd,
+          homeDir: opts.homeDir,
+        })
+      );
     }
   }
 

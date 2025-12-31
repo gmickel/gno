@@ -910,19 +910,46 @@ gno mcp install [--target <target>] [--scope <scope>] [--force] [--dry-run] [--j
 **Options:**
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `--target` | string | claude-desktop | Target client: `claude-desktop`, `claude-code`, `codex` |
-| `--scope` | string | user | Scope: `user` or `project` (project only for claude-code/codex) |
+| `--target` | string | claude-desktop | Target client (see table below) |
+| `--scope` | string | user | Scope: `user` or `project` (project only for some targets) |
 | `--force` | boolean | false | Overwrite existing gno configuration |
 | `--dry-run` | boolean | false | Show what would be done without changes |
 
-**Config Locations:**
-| Target | Scope | Path (macOS) |
-|--------|-------|--------------|
+**Targets:**
+| Value | Description | Project Scope |
+|-------|-------------|---------------|
+| `claude-desktop` | Claude Desktop app (default) | No |
+| `claude-code` | Claude Code CLI | Yes |
+| `codex` | OpenAI Codex CLI | Yes |
+| `cursor` | Cursor editor | Yes |
+| `zed` | Zed editor | No |
+| `windsurf` | Windsurf IDE | No |
+| `opencode` | OpenCode CLI | Yes |
+| `amp` | Amp (Sourcegraph) | No |
+| `lmstudio` | LM Studio | No |
+
+**Config Locations (macOS):**
+| Target | Scope | Path |
+|--------|-------|------|
 | claude-desktop | user | `~/Library/Application Support/Claude/claude_desktop_config.json` |
 | claude-code | user | `~/.claude.json` |
 | claude-code | project | `./.mcp.json` |
 | codex | user | `~/.codex.json` |
 | codex | project | `./.codex/.mcp.json` |
+| cursor | user | `~/.cursor/mcp.json` |
+| cursor | project | `./.cursor/mcp.json` |
+| zed | user | `~/.config/zed/settings.json` |
+| windsurf | user | `~/.codeium/windsurf/mcp_config.json` |
+| opencode | user | `~/.config/opencode/config.json` |
+| opencode | project | `./opencode.json` |
+| amp | user | `~/.config/amp/settings.json` |
+| lmstudio | user | `~/.lmstudio/mcp.json` |
+
+**Config Formats:**
+- Standard (`mcpServers` key): Claude Desktop, Claude Code, Codex, Cursor, Windsurf, LM Studio
+- Zed: `context_servers` key
+- OpenCode: `mcp` key with array command format
+- Amp: `amp.mcpServers` key
 
 **Behavior:**
 1. Detects bun and gno paths (absolute paths for sandboxed environments)
@@ -954,8 +981,11 @@ gno mcp install [--target <target>] [--scope <scope>] [--force] [--dry-run] [--j
 # Install for Claude Desktop (default)
 gno mcp install
 
-# Install for Claude Code (user scope)
-gno mcp install --target claude-code
+# Install for Cursor
+gno mcp install --target cursor
+
+# Install for Zed
+gno mcp install --target zed
 
 # Install for Claude Code (project scope)
 gno mcp install --target claude-code --scope project

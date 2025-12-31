@@ -107,21 +107,27 @@ describe('MCP CLI commands', () => {
   });
 
   describe('resolveAllMcpPaths', () => {
-    test('returns 5 entries for all/all (claude-desktop is user-only)', () => {
+    test('returns 13 entries for all/all', () => {
       const results = resolveAllMcpPaths('all', 'all', {
         cwd: FAKE_CWD,
         homeDir: FAKE_HOME,
       });
 
-      // claude-desktop: 1 (user only)
-      // claude-code: 2 (user + project)
-      // codex: 2 (user + project)
-      expect(results).toHaveLength(5);
+      // User-only targets (1 each): claude-desktop, zed, windsurf, amp, lmstudio = 5
+      // User+project targets (2 each): claude-code, codex, cursor, opencode = 8
+      // Total: 13
+      expect(results).toHaveLength(13);
 
       const targets = results.map((r) => r.target);
       expect(targets.filter((t) => t === 'claude-desktop')).toHaveLength(1);
       expect(targets.filter((t) => t === 'claude-code')).toHaveLength(2);
       expect(targets.filter((t) => t === 'codex')).toHaveLength(2);
+      expect(targets.filter((t) => t === 'cursor')).toHaveLength(2);
+      expect(targets.filter((t) => t === 'zed')).toHaveLength(1);
+      expect(targets.filter((t) => t === 'windsurf')).toHaveLength(1);
+      expect(targets.filter((t) => t === 'opencode')).toHaveLength(2);
+      expect(targets.filter((t) => t === 'amp')).toHaveLength(1);
+      expect(targets.filter((t) => t === 'lmstudio')).toHaveLength(1);
     });
 
     test('filters by target', () => {
@@ -140,8 +146,8 @@ describe('MCP CLI commands', () => {
         homeDir: FAKE_HOME,
       });
 
-      // Only claude-code and codex support project scope
-      expect(results).toHaveLength(2);
+      // claude-code, codex, cursor, opencode support project scope
+      expect(results).toHaveLength(4);
       expect(results.every((r) => r.scope === 'project')).toBe(true);
     });
   });
@@ -505,8 +511,8 @@ describe('MCP CLI commands', () => {
       });
 
       const output = JSON.parse(stdoutOutput.join(''));
-      expect(output.targets).toHaveLength(5);
-      expect(output.summary.total).toBe(5);
+      expect(output.targets).toHaveLength(13);
+      expect(output.summary.total).toBe(13);
     });
   });
 
@@ -519,12 +525,27 @@ describe('MCP CLI commands', () => {
       expect(MCP_TARGETS).toContain('claude-desktop');
       expect(MCP_TARGETS).toContain('claude-code');
       expect(MCP_TARGETS).toContain('codex');
+      expect(MCP_TARGETS).toContain('cursor');
+      expect(MCP_TARGETS).toContain('zed');
+      expect(MCP_TARGETS).toContain('windsurf');
+      expect(MCP_TARGETS).toContain('opencode');
+      expect(MCP_TARGETS).toContain('amp');
+      expect(MCP_TARGETS).toContain('lmstudio');
+      expect(MCP_TARGETS).toHaveLength(9);
     });
 
-    test('TARGETS_WITH_PROJECT_SCOPE excludes claude-desktop', () => {
-      expect(TARGETS_WITH_PROJECT_SCOPE).not.toContain('claude-desktop');
+    test('TARGETS_WITH_PROJECT_SCOPE includes correct targets', () => {
       expect(TARGETS_WITH_PROJECT_SCOPE).toContain('claude-code');
       expect(TARGETS_WITH_PROJECT_SCOPE).toContain('codex');
+      expect(TARGETS_WITH_PROJECT_SCOPE).toContain('cursor');
+      expect(TARGETS_WITH_PROJECT_SCOPE).toContain('opencode');
+      // User-only targets
+      expect(TARGETS_WITH_PROJECT_SCOPE).not.toContain('claude-desktop');
+      expect(TARGETS_WITH_PROJECT_SCOPE).not.toContain('zed');
+      expect(TARGETS_WITH_PROJECT_SCOPE).not.toContain('windsurf');
+      expect(TARGETS_WITH_PROJECT_SCOPE).not.toContain('amp');
+      expect(TARGETS_WITH_PROJECT_SCOPE).not.toContain('lmstudio');
+      expect(TARGETS_WITH_PROJECT_SCOPE).toHaveLength(4);
     });
   });
 });
