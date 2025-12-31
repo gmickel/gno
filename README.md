@@ -2,8 +2,8 @@
 
 **Your Local Second Brain** — Index, search, and synthesize your entire digital life.
 
-[![npm version](https://img.shields.io/npm/v/@gmickel/gno.svg)](https://www.npmjs.com/package/@gmickel/gno)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
+[![npm](./assets/badges/npm.svg)](https://www.npmjs.com/package/@gmickel/gno)
+[![License](./assets/badges/license.svg)](./LICENSE)
 [![Website](./assets/badges/website.svg)](https://gno.sh)
 [![Twitter](./assets/badges/twitter.svg)](https://twitter.com/gmickel)
 

@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="66" height="28" viewBox="0 0 66 28">
+  <defs>
+    <linearGradient id="bg-npm" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a1a2e"/>
+      <stop offset="100%" style="stop-color:#0f0f1a"/>
+    </linearGradient>
+  </defs>
+  <rect width="66" height="28" rx="6" fill="url(#bg-npm)"/>
+  <rect x="1" y="1" width="64" height="26" rx="5" fill="none" stroke="#cb3837" stroke-opacity="0.4"/>
+  <rect x="8" y="7" width="32" height="14" rx="3" fill="#cb3837"/>
+  <text x="13" y="18" font-family="ui-monospace,SFMono-Regular,Menlo,Monaco,monospace" font-size="10" font-weight="700" fill="#fff">npm</text>
+  <text x="46" y="18" font-family="ui-monospace,SFMono-Regular,Menlo,Monaco,monospace" font-size="12" fill="#e2e8f0">↗</text>
+</svg>

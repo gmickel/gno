@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="90" height="28" viewBox="0 0 90 28">
+  <defs>
+    <linearGradient id="bg-lic" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a1a2e"/>
+      <stop offset="100%" style="stop-color:#0f0f1a"/>
+    </linearGradient>
+  </defs>
+  <rect width="90" height="28" rx="6" fill="url(#bg-lic)"/>
+  <rect x="1" y="1" width="88" height="26" rx="5" fill="none" stroke="#2dd4bf" stroke-opacity="0.3"/>
+  <text x="12" y="18" font-family="ui-monospace,SFMono-Regular,Menlo,Monaco,monospace" font-size="11" fill="#94a3b8">MIT</text>
+  <text x="40" y="18" font-family="ui-monospace,SFMono-Regular,Menlo,Monaco,monospace" font-size="11" fill="#2dd4bf">License</text>
+</svg>
