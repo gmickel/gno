@@ -48,7 +48,9 @@
 }
 
 body {
-  font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial,
+    sans-serif;
   background-color: hsl(var(--background));
   color: hsl(var(--foreground));
   margin: 0;
@@ -61,10 +63,10 @@ h3,
 h4,
 h5,
 h6 {
-  font-family: "Newsreader", Georgia, serif;
+  font-family: Georgia, "Times New Roman", serif;
 }
 
 code,
 pre {
-  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }

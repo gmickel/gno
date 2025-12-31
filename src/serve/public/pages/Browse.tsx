@@ -50,7 +50,10 @@ export default function Browse({ navigate }: PageProps) {
     apiFetch<DocsResponse>(url).then(({ data }) => {
       setLoading(false);
       if (data) {
-        setDocs(data.documents);
+        // Append for "Load More", replace for new collection selection
+        setDocs((prev) =>
+          offset === 0 ? data.documents : [...prev, ...data.documents]
+        );
         setTotal(data.total);
       }
     });
