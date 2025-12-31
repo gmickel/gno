@@ -47,6 +47,7 @@
     "test:watch": "bun test --watch",
     "test:coverage": "bun test --coverage",
     "test:coverage:html": "bun test --coverage --html",
+    "test:fixtures": "bun scripts/generate-test-fixtures.ts",
     "typecheck": "tsgo --noEmit",
     "lint:typeaware": "bun x oxlint --type-aware",
     "reset": "bun run src/index.ts reset --confirm",
