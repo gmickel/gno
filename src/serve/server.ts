@@ -22,6 +22,7 @@ import {
   handlePresets,
   handleQuery,
   handleSearch,
+  handleSetPreset,
   handleStatus,
 } from './routes/api';
 
@@ -125,7 +126,11 @@ export async function startServer(
   }
 
   // Create server context with LLM ports for hybrid search and AI answers
-  const ctx = await createServerContext(store, config);
+  // Use holder pattern to allow hot-reloading presets
+  const ctxHolder = {
+    current: await createServerContext(store, config),
+    config, // Keep original config for reloading
+  };
 
   // Shutdown controller for clean lifecycle
   const shutdownController = new AbortController();
@@ -133,7 +138,7 @@ export async function startServer(
   // Graceful shutdown handler
   const shutdown = async () => {
     console.log('\nShutting down...');
-    await disposeServerContext(ctx);
+    await disposeServerContext(ctxHolder.current);
     await store.close();
     shutdownController.abort();
   };
@@ -190,17 +195,24 @@ export async function startServer(
         },
         '/api/query': {
           POST: async (req: Request) =>
-            withSecurityHeaders(await handleQuery(ctx, req), isDev),
+            withSecurityHeaders(
+              await handleQuery(ctxHolder.current, req),
+              isDev
+            ),
         },
         '/api/ask': {
           POST: async (req: Request) =>
-            withSecurityHeaders(await handleAsk(ctx, req), isDev),
+            withSecurityHeaders(await handleAsk(ctxHolder.current, req), isDev),
         },
         '/api/capabilities': {
-          GET: () => withSecurityHeaders(handleCapabilities(ctx), isDev),
+          GET: () =>
+            withSecurityHeaders(handleCapabilities(ctxHolder.current), isDev),
         },
         '/api/presets': {
-          GET: () => withSecurityHeaders(handlePresets(ctx), isDev),
+          GET: () =>
+            withSecurityHeaders(handlePresets(ctxHolder.current), isDev),
+          POST: async (req: Request) =>
+            withSecurityHeaders(await handleSetPreset(ctxHolder, req), isDev),
         },
       },
 

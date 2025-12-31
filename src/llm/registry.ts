@@ -19,7 +19,9 @@ import type { ModelType } from './types';
 export function getModelConfig(config: Config): ModelConfig {
   return {
     activePreset: config.models?.activePreset ?? 'balanced',
-    presets: config.models?.presets ?? DEFAULT_MODEL_PRESETS,
+    presets: config.models?.presets?.length
+      ? config.models.presets
+      : DEFAULT_MODEL_PRESETS,
     loadTimeout: config.models?.loadTimeout ?? 60_000,
     inferenceTimeout: config.models?.inferenceTimeout ?? 30_000,
     warmModelTtl: config.models?.warmModelTtl ?? 300_000,

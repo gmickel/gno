@@ -16,6 +16,8 @@ GNO is a local knowledge engine for privacy-conscious developers and AI agents. 
 - [Quick Start](#quick-start)
 - [Installation](#installation)
 - [Search Modes](#search-modes)
+- [Web UI](#web-ui)
+- [REST API](#rest-api)
 - [Agent Integration](#agent-integration)
 - [How It Works](#how-it-works)
 - [Features](#features)
@@ -113,6 +115,62 @@ Output formats: `--json`, `--files`, `--csv`, `--md`, `--xml`
 
 ---
 
+## Web UI
+
+Visual dashboard for search, browsing, and AI answers—right in your browser.
+
+```bash
+gno serve                    # Start on port 3000
+gno serve --port 8080        # Custom port
+```
+
+Open `http://localhost:3000` to:
+
+- **Search** — BM25, vector, or hybrid modes with visual results
+- **Browse** — Paginated document list, filter by collection
+- **Ask** — AI-powered Q&A with citations
+- **Switch presets** — Change models live without restart
+
+Everything runs locally. No cloud, no accounts, no data leaving your machine.
+
+> **Detailed docs**: [Web UI Guide](https://gno.sh/docs/WEB-UI/)
+
+---
+
+## REST API
+
+Programmatic access to all GNO features via HTTP.
+
+```bash
+# Hybrid search
+curl -X POST http://localhost:3000/api/query \
+  -H "Content-Type: application/json" \
+  -d '{"query": "authentication patterns", "limit": 10}'
+
+# AI answer
+curl -X POST http://localhost:3000/api/ask \
+  -H "Content-Type: application/json" \
+  -d '{"query": "What is our deployment process?"}'
+
+# Index status
+curl http://localhost:3000/api/status
+```
+
+| Endpoint | Method | Description |
+|:---------|:-------|:------------|
+| `/api/query` | POST | Hybrid search (recommended) |
+| `/api/search` | POST | BM25 keyword search |
+| `/api/ask` | POST | AI-powered Q&A |
+| `/api/docs` | GET | List documents |
+| `/api/doc` | GET | Get document content |
+| `/api/status` | GET | Index statistics |
+
+No authentication. No rate limits. Build custom tools, automate workflows, integrate with any language.
+
+> **Full reference**: [API Documentation](https://gno.sh/docs/API/)
+
+---
+
 ## Agent Integration
 
 ### MCP Server
@@ -183,6 +241,8 @@ graph TD
 | Feature | Description |
 |:--------|:------------|
 | **Hybrid Search** | BM25 + vector + RRF fusion + cross-encoder reranking |
+| **Web UI** | Visual dashboard for search, browse, and AI Q&A |
+| **REST API** | HTTP API for custom tools and integrations |
 | **Multi-Format** | Markdown, PDF, DOCX, XLSX, PPTX, plain text |
 | **Local LLM** | AI answers via llama.cpp—no API keys |
 | **Privacy First** | 100% offline, zero telemetry, your data stays yours |
@@ -224,7 +284,7 @@ gno models pull --all
 
 ```
 ┌─────────────────────────────────────────────────┐
-│                 GNO CLI / MCP                   │
+│            GNO CLI / MCP / Web UI / API         │
 ├─────────────────────────────────────────────────┤
 │  Ports: Converter, Store, Embedding, Rerank    │
 ├─────────────────────────────────────────────────┤

@@ -163,7 +163,11 @@ When adding new commands or modifying outputs:
 - [ ] CLAUDE.md / AGENTS.md - Are instructions still accurate?
 - [ ] spec/*.md - Do specs match implementation?
 - [ ] spec/output-schemas/*.json - Do schemas match actual outputs?
-- [ ] docs/*.md - User-facing docs accurate (CLI.md, QUICKSTART.md, ARCHITECTURE.md)?
+- [ ] docs/*.md - User-facing docs accurate?
+  - CLI.md, QUICKSTART.md, ARCHITECTURE.md
+  - WEB-UI.md, API.md (for `gno serve` and REST API)
+  - MCP.md (for `gno mcp`)
+- [ ] website/_data/features.yml - Feature bento cards current?
 - [ ] website/ - Auto-synced from docs/ via `bun run website:sync-docs`
 - [ ] Beads - Are descriptions and comments up to date?
 

@@ -104,6 +104,10 @@ nav:
     items:
       - title: CLI Commands
         url: /docs/CLI/
+      - title: Web UI
+        url: /docs/WEB-UI/
+      - title: REST API
+        url: /docs/API/
       - title: MCP Integration
         url: /docs/MCP/
       - title: Architecture

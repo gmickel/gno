@@ -5,8 +5,8 @@
  * @module src/serve/routes/api
  */
 
-import type { ModelPreset } from '../../config/types';
-import { getModelConfig, listPresets } from '../../llm/registry';
+import type { Config, ModelPreset } from '../../config/types';
+import { getModelConfig, getPreset, listPresets } from '../../llm/registry';
 import {
   generateGroundedAnswer,
   processAnswerResult,
@@ -20,7 +20,13 @@ import type {
   SearchResult,
 } from '../../pipeline/types';
 import type { SqliteAdapter } from '../../store/sqlite/adapter';
-import type { ServerContext } from '../context';
+import { reloadServerContext, type ServerContext } from '../context';
+
+/** Mutable context holder for hot-reloading presets */
+export interface ContextHolder {
+  current: ServerContext;
+  config: Config;
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -520,6 +526,66 @@ export function handlePresets(ctx: ServerContext): Response {
   return jsonResponse({
     presets: presetsWithStatus,
     activePreset: activeId,
+  });
+}
+
+export interface SetPresetRequestBody {
+  presetId: string;
+}
+
+/**
+ * POST /api/presets
+ * Switch to a different preset and reload LLM context.
+ */
+export async function handleSetPreset(
+  ctxHolder: ContextHolder,
+  req: Request
+): Promise<Response> {
+  let body: SetPresetRequestBody;
+  try {
+    body = (await req.json()) as SetPresetRequestBody;
+  } catch {
+    return errorResponse('VALIDATION', 'Invalid JSON body');
+  }
+
+  if (!body.presetId || typeof body.presetId !== 'string') {
+    return errorResponse('VALIDATION', 'Missing or invalid presetId');
+  }
+
+  // Validate preset exists
+  const preset = getPreset(ctxHolder.config, body.presetId);
+  if (!preset) {
+    return errorResponse('NOT_FOUND', `Unknown preset: ${body.presetId}`, 404);
+  }
+
+  // Update config with new active preset (use getModelConfig to get defaults)
+  const currentModelConfig = getModelConfig(ctxHolder.config);
+  const newConfig: Config = {
+    ...ctxHolder.config,
+    models: {
+      ...currentModelConfig,
+      activePreset: body.presetId,
+    },
+  };
+
+  console.log(`Switching to preset: ${preset.name}`);
+
+  // Reload context with new config
+  try {
+    ctxHolder.current = await reloadServerContext(ctxHolder.current, newConfig);
+    ctxHolder.config = newConfig;
+  } catch (e) {
+    return errorResponse(
+      'RUNTIME',
+      `Failed to reload context: ${e instanceof Error ? e.message : String(e)}`,
+      500
+    );
+  }
+
+  return jsonResponse({
+    success: true,
+    activePreset: body.presetId,
+    capabilities: ctxHolder.current.capabilities,
   });
 }
 

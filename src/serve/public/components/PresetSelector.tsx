@@ -1,7 +1,11 @@
-import { CheckIcon, ChevronDownIcon, SlidersHorizontal } from 'lucide-react';
+import {
+  CheckIcon,
+  ChevronDownIcon,
+  Loader2,
+  SlidersHorizontal,
+} from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { apiFetch } from '../hooks/use-api';
-import { cn } from '../lib/utils';
 import { Button } from './ui/button';
 import {
   DropdownMenu,
@@ -24,6 +28,11 @@ interface Preset {
 
 interface PresetsResponse {
   presets: Preset[];
+  activePreset: string;
+}
+
+interface SetPresetResponse {
+  success: boolean;
   activePreset: string;
 }
 
@@ -54,6 +63,8 @@ export function PresetSelector() {
   const [presets, setPresets] = useState<Preset[]>([]);
   const [activeId, setActiveId] = useState<string>('');
   const [loading, setLoading] = useState(true);
+  const [switching, setSwitching] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     apiFetch<PresetsResponse>('/api/presets').then(({ data }) => {
@@ -71,11 +82,31 @@ export function PresetSelector() {
     return null;
   }
 
-  // Note: Changing presets at runtime requires server restart
-  // This selector shows current config, future: could restart context
-  const handleSelect = (id: string) => {
-    setActiveId(id);
-    // TODO: In future, POST to /api/presets to change and restart context
+  const handleSelect = async (id: string) => {
+    if (id === activeId || switching) return;
+
+    setSwitching(true);
+    setError(null);
+
+    const { data, error: fetchError } = await apiFetch<SetPresetResponse>(
+      '/api/presets',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ presetId: id }),
+      }
+    );
+
+    setSwitching(false);
+
+    if (fetchError) {
+      setError(fetchError);
+      return;
+    }
+
+    if (data?.success) {
+      setActiveId(data.activePreset);
+    }
   };
 
   return (
@@ -83,17 +114,26 @@ export function PresetSelector() {
       <DropdownMenuTrigger asChild>
         <Button
           className="group gap-2 font-normal text-muted-foreground hover:text-foreground"
+          disabled={switching}
           size="sm"
           variant="ghost"
         >
-          <SlidersHorizontal className="size-3.5 text-muted-foreground/70 transition-colors group-hover:text-primary" />
+          {switching ? (
+            <Loader2 className="size-3.5 animate-spin text-primary" />
+          ) : (
+            <SlidersHorizontal className="size-3.5 text-muted-foreground/70 transition-colors group-hover:text-primary" />
+          )}
           <span className="hidden sm:inline">
-            {activePreset ? extractBaseName(activePreset.name) : 'Preset'}
+            {switching
+              ? 'Switching...'
+              : activePreset
+                ? extractBaseName(activePreset.name)
+                : 'Preset'}
           </span>
           <ChevronDownIcon className="size-3 opacity-50" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="w-64">
+      <DropdownMenuContent align="start" className="w-64 border-border bg-card">
         <DropdownMenuLabel className="font-normal text-muted-foreground text-xs uppercase tracking-wider">
           Model Preset
         </DropdownMenuLabel>
@@ -107,6 +147,7 @@ export function PresetSelector() {
             return (
               <DropdownMenuRadioItem
                 className="cursor-pointer py-2.5"
+                disabled={switching}
                 key={preset.id}
                 value={preset.id}
               >
@@ -134,10 +175,14 @@ export function PresetSelector() {
             );
           })}
         </DropdownMenuRadioGroup>
-        <DropdownMenuSeparator />
-        <div className="px-2 py-1.5 text-[10px] text-muted-foreground/60">
-          Restart server to apply changes
-        </div>
+        {error && (
+          <>
+            <DropdownMenuSeparator />
+            <div className="px-2 py-1.5 text-[10px] text-destructive">
+              {error}
+            </div>
+          </>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );

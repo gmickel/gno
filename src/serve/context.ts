@@ -117,3 +117,15 @@ export async function disposeServerContext(ctx: ServerContext): Promise<void> {
     await ctx.rerankPort.dispose();
   }
 }
+
+/**
+ * Reload server context with potentially new config.
+ * Disposes existing ports and recreates them.
+ */
+export async function reloadServerContext(
+  ctx: ServerContext,
+  newConfig?: Config
+): Promise<ServerContext> {
+  await disposeServerContext(ctx);
+  return createServerContext(ctx.store, newConfig ?? ctx.config);
+}
