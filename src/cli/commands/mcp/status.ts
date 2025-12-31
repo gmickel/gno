@@ -8,6 +8,7 @@ import { getGlobals } from '../../program.js';
 import {
   type AnyMcpConfig,
   getServerEntry,
+  isYamlFormat,
   type OpenCodeMcpEntry,
   type StandardMcpEntry,
 } from './config.js';
@@ -65,7 +66,7 @@ function normalizeEntry(
 ): StandardMcpEntry {
   if ('type' in entry && entry.type === 'local') {
     // OpenCode format: command is array [command, ...args]
-    const [command, ...args] = entry.command;
+    const [command = '', ...args] = entry.command;
     return { command, args };
   }
   return entry as StandardMcpEntry;
@@ -98,7 +99,10 @@ async function checkTargetStatus(
       return { target, scope, configPath, configured: false };
     }
 
-    const config = JSON.parse(content) as AnyMcpConfig;
+    const useYaml = isYamlFormat(configFormat);
+    const config = useYaml
+      ? (Bun.YAML.parse(content) as AnyMcpConfig)
+      : (JSON.parse(content) as AnyMcpConfig);
     const entry = getServerEntry(config, MCP_SERVER_NAME, configFormat);
 
     if (entry) {
@@ -108,12 +112,13 @@ async function checkTargetStatus(
 
     return { target, scope, configPath, configured: false };
   } catch {
+    const format = isYamlFormat(configFormat) ? 'YAML' : 'JSON';
     return {
       target,
       scope,
       configPath,
       configured: false,
-      error: 'Malformed JSON',
+      error: `Malformed ${format}`,
     };
   }
 }

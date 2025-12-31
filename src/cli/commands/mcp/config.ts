@@ -86,11 +86,11 @@ async function checkConfigPath(
  * Read and parse MCP config file.
  * Returns empty config if file doesn't exist.
  * Returns null if file doesn't exist AND returnNullOnMissing is true.
- * Throws on malformed JSON or if path is a directory.
+ * Throws on malformed JSON/YAML or if path is a directory.
  */
 export async function readMcpConfig(
   configPath: string,
-  options?: { returnNullOnMissing?: boolean }
+  options?: { returnNullOnMissing?: boolean; yaml?: boolean }
 ): Promise<McpConfig | null> {
   const pathStatus = await checkConfigPath(configPath);
 
@@ -107,11 +107,15 @@ export async function readMcpConfig(
   }
 
   try {
+    if (options?.yaml) {
+      return Bun.YAML.parse(content) as McpConfig;
+    }
     return JSON.parse(content) as McpConfig;
   } catch {
+    const format = options?.yaml ? 'YAML' : 'JSON';
     throw new CliError(
       'RUNTIME',
-      `Malformed JSON in ${configPath}. Please fix or backup and delete the file.`
+      `Malformed ${format} in ${configPath}. Please fix or backup and delete the file.`
     );
   }
 }
@@ -122,7 +126,8 @@ export async function readMcpConfig(
  */
 export async function writeMcpConfig(
   configPath: string,
-  config: AnyMcpConfig
+  config: AnyMcpConfig,
+  options?: { yaml?: boolean }
 ): Promise<void> {
   const dir = dirname(configPath);
 
@@ -139,10 +144,15 @@ export async function writeMcpConfig(
     // File doesn't exist, no backup needed
   }
 
+  // Serialize content
+  const content = options?.yaml
+    ? Bun.YAML.stringify(config)
+    : JSON.stringify(config, null, 2);
+
   // Write to temp file first
   const tmpPath = `${configPath}.tmp.${Date.now()}.${process.pid}`;
   try {
-    await Bun.write(tmpPath, JSON.stringify(config, null, 2));
+    await Bun.write(tmpPath, content);
     // Atomic rename
     await rename(tmpPath, configPath);
   } catch (err) {
@@ -168,6 +178,7 @@ export function getServersKey(
 ): 'mcpServers' | 'context_servers' | 'mcp' | 'amp.mcpServers' {
   switch (format) {
     case 'standard':
+    case 'yaml_standard':
       return 'mcpServers';
     case 'context_servers':
       return 'context_servers';
@@ -180,6 +191,13 @@ export function getServersKey(
       throw new Error(`Unknown format: ${_exhaustive}`);
     }
   }
+}
+
+/**
+ * Check if format uses YAML.
+ */
+export function isYamlFormat(format: McpConfigFormat): boolean {
+  return format === 'yaml_standard';
 }
 
 /**

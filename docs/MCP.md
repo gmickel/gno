@@ -37,6 +37,7 @@ gno mcp install --target windsurf         # Windsurf
 gno mcp install --target opencode         # OpenCode
 gno mcp install --target amp              # Amp
 gno mcp install --target lmstudio         # LM Studio
+gno mcp install --target librechat        # LibreChat
 gno mcp install --target claude-code      # Claude Code CLI
 gno mcp install --target codex            # OpenAI Codex CLI
 ```
@@ -46,8 +47,9 @@ gno mcp install --target codex            # OpenAI Codex CLI
 Some clients support project-level configuration:
 
 ```bash
-gno mcp install --target cursor --scope project    # .cursor/mcp.json
-gno mcp install --target opencode --scope project  # opencode.json
+gno mcp install --target cursor --scope project     # .cursor/mcp.json
+gno mcp install --target opencode --scope project   # opencode.json
+gno mcp install --target librechat --scope project  # librechat.yaml
 ```
 
 ### Other Commands
@@ -69,6 +71,7 @@ gno mcp uninstall --target X    # Remove GNO from a target
 | OpenCode | `gno mcp install --target opencode` | User, Project |
 | Amp | `gno mcp install --target amp` | User |
 | LM Studio | `gno mcp install --target lmstudio` | User |
+| LibreChat | `gno mcp install --target librechat` | Project |
 | Codex | `gno mcp install --target codex` | User, Project |
 
 **Note**: Warp terminal requires manual UI configuration. See [Warp MCP docs](https://docs.warp.dev/knowledge-and-collaboration/mcp).
@@ -179,6 +182,18 @@ Add to `~/.lmstudio/mcp.json`:
     }
   }
 }
+```
+
+### LibreChat
+
+Add to `librechat.yaml` in your LibreChat project root:
+
+```yaml
+mcpServers:
+  gno:
+    command: gno
+    args:
+      - mcp
 ```
 
 ## Other MCP Clients

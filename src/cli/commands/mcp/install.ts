@@ -10,6 +10,7 @@ import {
   type AnyMcpConfig,
   buildEntry,
   hasServerEntry,
+  isYamlFormat,
   readMcpConfig,
   type StandardMcpEntry,
   setServerEntry,
@@ -80,7 +81,10 @@ async function installToTarget(
   });
 
   // Read existing config (needed for both dry-run preview and actual install)
-  const config = (await readMcpConfig(configPath)) as AnyMcpConfig;
+  const useYaml = isYamlFormat(configFormat);
+  const config = (await readMcpConfig(configPath, {
+    yaml: useYaml,
+  })) as AnyMcpConfig;
 
   // Check if already exists using format-aware helper
   const alreadyExists = hasServerEntry(config, MCP_SERVER_NAME, configFormat);
@@ -112,7 +116,7 @@ async function installToTarget(
   setServerEntry(config, MCP_SERVER_NAME, entry, configFormat);
 
   // Write atomically
-  await writeMcpConfig(configPath, config);
+  await writeMcpConfig(configPath, config, { yaml: useYaml });
 
   return {
     target,

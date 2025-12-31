@@ -22,7 +22,8 @@ export type McpTarget =
   | 'windsurf'
   | 'opencode'
   | 'amp'
-  | 'lmstudio';
+  | 'lmstudio'
+  | 'librechat';
 
 export type McpScope = 'user' | 'project';
 
@@ -32,12 +33,14 @@ export type McpScope = 'user' | 'project';
  * - context_servers: Zed uses context_servers key
  * - mcp: OpenCode uses mcp key with array command
  * - amp_mcp: Amp uses amp.mcpServers key
+ * - yaml_standard: YAML file with mcpServers key (LibreChat)
  */
 export type McpConfigFormat =
   | 'standard'
   | 'context_servers'
   | 'mcp'
-  | 'amp_mcp';
+  | 'amp_mcp'
+  | 'yaml_standard';
 
 export interface McpConfigPaths {
   /** Config file path */
@@ -79,6 +82,7 @@ export const MCP_TARGETS: McpTarget[] = [
   'opencode',
   'amp',
   'lmstudio',
+  'librechat',
 ];
 
 /** Targets that support project scope */
@@ -87,6 +91,7 @@ export const TARGETS_WITH_PROJECT_SCOPE: McpTarget[] = [
   'codex',
   'cursor',
   'opencode',
+  'librechat',
 ];
 
 /** Get config format for a target */
@@ -98,6 +103,8 @@ export function getTargetConfigFormat(target: McpTarget): McpConfigFormat {
       return 'mcp';
     case 'amp':
       return 'amp_mcp';
+    case 'librechat':
+      return 'yaml_standard';
     default:
       return 'standard';
   }
@@ -238,6 +245,14 @@ function resolveLmStudioPath(home: string): string {
 }
 
 /**
+ * Resolve LibreChat config path.
+ * LibreChat uses librechat.yaml in project root (project scope only).
+ */
+function resolveLibreChatPath(cwd: string): string {
+  return join(cwd, 'librechat.yaml');
+}
+
+/**
  * Resolve MCP config path for a given target and scope.
  */
 export function resolveMcpConfigPath(opts: McpPathOptions): McpConfigPaths {
@@ -303,6 +318,12 @@ export function resolveMcpConfigPath(opts: McpPathOptions): McpConfigPaths {
     case 'lmstudio':
       return {
         configPath: resolveLmStudioPath(homeDir),
+        supportsProjectScope,
+        configFormat,
+      };
+    case 'librechat':
+      return {
+        configPath: resolveLibreChatPath(cwd),
         supportsProjectScope,
         configFormat,
       };
@@ -439,6 +460,8 @@ export function getTargetDisplayName(target: McpTarget): string {
       return 'Amp';
     case 'lmstudio':
       return 'LM Studio';
+    case 'librechat':
+      return 'LibreChat';
     default: {
       const _exhaustive: never = target;
       throw new Error(`Unknown target: ${_exhaustive}`);

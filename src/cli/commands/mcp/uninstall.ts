@@ -8,6 +8,7 @@ import { CliError } from '../../errors.js';
 import { getGlobals } from '../../program.js';
 import {
   type AnyMcpConfig,
+  isYamlFormat,
   readMcpConfig,
   removeServerEntry,
   writeMcpConfig,
@@ -66,7 +67,11 @@ async function uninstallFromTarget(
     homeDir,
   });
 
-  const config = await readMcpConfig(configPath, { returnNullOnMissing: true });
+  const useYaml = isYamlFormat(configFormat);
+  const config = await readMcpConfig(configPath, {
+    returnNullOnMissing: true,
+    yaml: useYaml,
+  });
 
   // File doesn't exist
   if (config === null) {
@@ -85,7 +90,7 @@ async function uninstallFromTarget(
   }
 
   // Write back
-  await writeMcpConfig(configPath, config as AnyMcpConfig);
+  await writeMcpConfig(configPath, config as AnyMcpConfig, { yaml: useYaml });
 
   return { target, scope, configPath, action: 'removed' };
 }

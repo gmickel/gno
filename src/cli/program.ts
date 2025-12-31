@@ -733,7 +733,7 @@ function wireMcpCommand(program: Command): void {
     .description('Install gno as MCP server in client configuration')
     .option(
       '-t, --target <target>',
-      'target client (claude-desktop, cursor, zed, windsurf, opencode, amp, lmstudio, claude-code, codex)',
+      'target client (claude-desktop, cursor, zed, windsurf, opencode, amp, lmstudio, librechat, claude-code, codex)',
       'claude-desktop'
     )
     .option(
@@ -768,7 +768,9 @@ function wireMcpCommand(program: Command): void {
 
       const { installMcp } = await import('./commands/mcp/install.js');
       await installMcp({
-        target: target as Parameters<typeof installMcp>[0]['target'],
+        target: target as NonNullable<
+          Parameters<typeof installMcp>[0]
+        >['target'],
         scope: scope as 'user' | 'project',
         force: Boolean(cmdOpts.force),
         dryRun: Boolean(cmdOpts.dryRun),
@@ -783,7 +785,7 @@ function wireMcpCommand(program: Command): void {
     .description('Remove gno MCP server from client configuration')
     .option(
       '-t, --target <target>',
-      'target client (claude-desktop, cursor, zed, windsurf, opencode, amp, lmstudio, claude-code, codex)',
+      'target client (claude-desktop, cursor, zed, windsurf, opencode, amp, lmstudio, librechat, claude-code, codex)',
       'claude-desktop'
     )
     .option('-s, --scope <scope>', 'scope (user, project)', 'user')
@@ -812,7 +814,9 @@ function wireMcpCommand(program: Command): void {
 
       const { uninstallMcp } = await import('./commands/mcp/uninstall.js');
       await uninstallMcp({
-        target: target as Parameters<typeof uninstallMcp>[0]['target'],
+        target: target as NonNullable<
+          Parameters<typeof uninstallMcp>[0]
+        >['target'],
         scope: scope as 'user' | 'project',
         // Pass undefined if not set, so global --json can take effect
         json: cmdOpts.json === true ? true : undefined,
@@ -825,7 +829,7 @@ function wireMcpCommand(program: Command): void {
     .description('Show MCP server installation status')
     .option(
       '-t, --target <target>',
-      'filter by target (claude-desktop, cursor, zed, windsurf, opencode, amp, lmstudio, claude-code, codex, all)',
+      'filter by target (claude-desktop, cursor, zed, windsurf, opencode, amp, lmstudio, librechat, claude-code, codex, all)',
       'all'
     )
     .option(
@@ -871,7 +875,9 @@ function wireMcpCommand(program: Command): void {
 
       const { statusMcp } = await import('./commands/mcp/status.js');
       await statusMcp({
-        target: target as Parameters<typeof statusMcp>[0]['target'],
+        target: target as NonNullable<
+          Parameters<typeof statusMcp>[0]
+        >['target'],
         scope: scope as 'user' | 'project' | 'all',
         // Pass undefined if not set, so global --json can take effect
         json: cmdOpts.json === true ? true : undefined,

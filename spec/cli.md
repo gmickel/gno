@@ -927,6 +927,7 @@ gno mcp install [--target <target>] [--scope <scope>] [--force] [--dry-run] [--j
 | `opencode` | OpenCode CLI | Yes |
 | `amp` | Amp (Sourcegraph) | No |
 | `lmstudio` | LM Studio | No |
+| `librechat` | LibreChat | Yes (project only) |
 
 **Config Locations (macOS):**
 | Target | Scope | Path |
@@ -944,9 +945,11 @@ gno mcp install [--target <target>] [--scope <scope>] [--force] [--dry-run] [--j
 | opencode | project | `./opencode.json` |
 | amp | user | `~/.config/amp/settings.json` |
 | lmstudio | user | `~/.lmstudio/mcp.json` |
+| librechat | project | `./librechat.yaml` |
 
 **Config Formats:**
-- Standard (`mcpServers` key): Claude Desktop, Claude Code, Codex, Cursor, Windsurf, LM Studio
+- Standard JSON (`mcpServers` key): Claude Desktop, Claude Code, Codex, Cursor, Windsurf, LM Studio
+- Standard YAML (`mcpServers` key): LibreChat
 - Zed: `context_servers` key
 - OpenCode: `mcp` key with array command format
 - Amp: `amp.mcpServers` key
