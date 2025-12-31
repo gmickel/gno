@@ -82,7 +82,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Contract Tests** - Schema validation for all outputs
 
 #### Documentation
-- **Jekyll Website** - Comprehensive docs at gno.dev
+- **Jekyll Website** - Comprehensive docs at gno.sh
 - **VHS Terminal Demos** - Animated CLI demonstrations
 - **Search Pipeline Guide** - Deep dive into HyDE, RRF, reranking
 - **API Specifications** - CLI spec, MCP spec, output schemas

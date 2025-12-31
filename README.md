@@ -133,7 +133,7 @@ graph TD
 3. **Fusion** — Reciprocal Rank Fusion merges results with position-based scoring
 4. **Re-ranking** — Cross-encoder rescores top 20, blended with fusion scores
 
-See [How Search Works](https://gno.dev/docs/HOW-SEARCH-WORKS/) for full pipeline details.
+See [How Search Works](https://gno.sh/docs/HOW-SEARCH-WORKS/) for full pipeline details.
 
 ---
 
