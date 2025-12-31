@@ -23,6 +23,14 @@ sync-docs:
 			*) cp "$$f" docs/ ;; \
 		esac; \
 	done
+	@# Copy subdirectories (comparisons, integrations, etc.)
+	@for dir in ../docs/*/; do \
+		if [ -d "$$dir" ]; then \
+			dirname=$$(basename "$$dir"); \
+			mkdir -p "docs/$$dirname"; \
+			cp -r "$$dir"* "docs/$$dirname/" 2>/dev/null || true; \
+		fi; \
+	done
 	@echo "Synced docs from ../docs/ (excluding NOTES.md)"
 	@{ \
 		echo '---'; \
