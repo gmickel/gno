@@ -236,6 +236,37 @@ export async function routeApi(
 ): Promise<Response | null> {
   const path = url.pathname;
 
+  // CSRF protection: validate Origin for non-GET requests
+  if (req.method !== 'GET' && req.method !== 'HEAD') {
+    const origin = req.headers.get('origin');
+    const secFetchSite = req.headers.get('sec-fetch-site');
+
+    // Reject cross-origin requests (allow same-origin or no origin for curl)
+    if (origin) {
+      const originUrl = new URL(origin);
+      if (
+        originUrl.hostname !== '127.0.0.1' &&
+        originUrl.hostname !== 'localhost'
+      ) {
+        return errorResponse(
+          'FORBIDDEN',
+          'Cross-origin requests not allowed',
+          403
+        );
+      }
+    } else if (
+      secFetchSite &&
+      secFetchSite !== 'same-origin' &&
+      secFetchSite !== 'none'
+    ) {
+      return errorResponse(
+        'FORBIDDEN',
+        'Cross-origin requests not allowed',
+        403
+      );
+    }
+  }
+
   if (path === '/api/health') {
     return handleHealth();
   }

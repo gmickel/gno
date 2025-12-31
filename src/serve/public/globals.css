@@ -1,4 +1,4 @@
-@import "tailwindcss";
+/* GNO Web UI - Vanilla CSS (no Tailwind) */
 
 :root {
   /* Scholarly Dusk - Dark (default) */
@@ -43,6 +43,15 @@
   --ring: 191 66% 32%;
 }
 
+/* Reset and base */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
 * {
   border-color: hsl(var(--border));
 }
@@ -53,8 +62,8 @@ body {
     sans-serif;
   background-color: hsl(var(--background));
   color: hsl(var(--foreground));
-  margin: 0;
   min-height: 100vh;
+  line-height: 1.5;
 }
 
 h1,
@@ -69,4 +78,259 @@ h6 {
 code,
 pre {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+/* Utility classes */
+.min-h-screen {
+  min-height: 100vh;
+}
+.p-8 {
+  padding: 2rem;
+}
+.p-6 {
+  padding: 1.5rem;
+}
+.p-4 {
+  padding: 1rem;
+}
+.px-4 {
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+.px-6 {
+  padding-left: 1.5rem;
+  padding-right: 1.5rem;
+}
+.py-2 {
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+}
+.py-3 {
+  padding-top: 0.75rem;
+  padding-bottom: 0.75rem;
+}
+.mb-2 {
+  margin-bottom: 0.5rem;
+}
+.mb-4 {
+  margin-bottom: 1rem;
+}
+.mb-6 {
+  margin-bottom: 1.5rem;
+}
+.mb-8 {
+  margin-bottom: 2rem;
+}
+.mt-6 {
+  margin-top: 1.5rem;
+}
+.mt-8 {
+  margin-top: 2rem;
+}
+.ml-4 {
+  margin-left: 1rem;
+}
+.gap-4 {
+  gap: 1rem;
+}
+
+/* Flexbox */
+.flex {
+  display: flex;
+}
+.flex-1 {
+  flex: 1;
+}
+.items-center {
+  align-items: center;
+}
+.items-start {
+  align-items: flex-start;
+}
+.justify-between {
+  justify-content: space-between;
+}
+
+/* Grid */
+.grid {
+  display: grid;
+}
+.gap-4 {
+  gap: 1rem;
+}
+
+@media (min-width: 768px) {
+  .md\:grid-cols-3 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+/* Spacing */
+.space-y-2 > * + * {
+  margin-top: 0.5rem;
+}
+.space-y-4 > * + * {
+  margin-top: 1rem;
+}
+
+/* Typography */
+.text-sm {
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+}
+.text-xl {
+  font-size: 1.25rem;
+  line-height: 1.75rem;
+}
+.text-2xl {
+  font-size: 1.5rem;
+  line-height: 2rem;
+}
+.text-3xl {
+  font-size: 1.875rem;
+  line-height: 2.25rem;
+}
+.font-medium {
+  font-weight: 500;
+}
+.font-semibold {
+  font-weight: 600;
+}
+.font-mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+.truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.whitespace-pre-wrap {
+  white-space: pre-wrap;
+}
+.text-right {
+  text-align: right;
+}
+.text-inherit {
+  color: inherit;
+}
+
+/* Line clamp */
+.line-clamp-3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Colors */
+.text-green-500 {
+  color: rgb(34 197 94);
+}
+.text-yellow-500 {
+  color: rgb(234 179 8);
+}
+
+/* Backgrounds and borders */
+.rounded-md {
+  border-radius: 0.375rem;
+}
+.rounded-lg {
+  border-radius: 0.5rem;
+}
+.border {
+  border-width: 1px;
+}
+
+/* Interactive */
+.cursor-pointer {
+  cursor: pointer;
+}
+
+.hover\:opacity-90:hover {
+  opacity: 0.9;
+}
+.hover\:ring-1:hover {
+  box-shadow: 0 0 0 1px hsl(var(--ring));
+}
+
+.disabled\:opacity-50:disabled {
+  opacity: 0.5;
+}
+
+.focus\:outline-none:focus {
+  outline: none;
+}
+.focus\:ring-2:focus {
+  box-shadow: 0 0 0 2px hsl(var(--ring));
+}
+
+/* Color utilities using CSS variables */
+.bg-\[hsl\(var\(--background\)\)\] {
+  background-color: hsl(var(--background));
+}
+.bg-\[hsl\(var\(--card\)\)\] {
+  background-color: hsl(var(--card));
+}
+.bg-\[hsl\(var\(--muted\)\)\] {
+  background-color: hsl(var(--muted));
+}
+.bg-\[hsl\(var\(--primary\)\)\] {
+  background-color: hsl(var(--primary));
+}
+.bg-\[hsl\(var\(--destructive\)\)\] {
+  background-color: hsl(var(--destructive));
+}
+.bg-yellow-500\/30 {
+  background-color: rgba(234, 179, 8, 0.3);
+}
+
+.text-\[hsl\(var\(--foreground\)\)\] {
+  color: hsl(var(--foreground));
+}
+.text-\[hsl\(var\(--muted-foreground\)\)\] {
+  color: hsl(var(--muted-foreground));
+}
+.text-\[hsl\(var\(--primary\)\)\] {
+  color: hsl(var(--primary));
+}
+.text-\[hsl\(var\(--primary-foreground\)\)\] {
+  color: hsl(var(--primary-foreground));
+}
+.text-\[hsl\(var\(--destructive-foreground\)\)\] {
+  color: hsl(var(--destructive-foreground));
+}
+
+.border-\[hsl\(var\(--border\)\)\] {
+  border-color: hsl(var(--border));
+}
+
+.hover\:text-\[hsl\(var\(--foreground\)\)\]:hover {
+  color: hsl(var(--foreground));
+}
+.hover\:ring-\[hsl\(var\(--ring\)\)\]:hover {
+  --tw-ring-color: hsl(var(--ring));
+}
+.focus\:ring-\[hsl\(var\(--ring\)\)\]:focus {
+  --tw-ring-color: hsl(var(--ring));
+}
+
+/* Button base styles */
+button {
+  cursor: pointer;
+  border: none;
+  font-family: inherit;
+  font-size: inherit;
+}
+
+/* Input base styles */
+input,
+select {
+  font-family: inherit;
+  font-size: inherit;
+}
+
+/* Search highlight */
+mark {
+  background-color: rgba(234, 179, 8, 0.3);
+  color: inherit;
 }
