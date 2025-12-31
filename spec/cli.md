@@ -79,6 +79,7 @@ Default output is human-readable terminal format.
 | skill uninstall | yes | no | no | no | no | terminal |
 | skill show | no | no | no | no | no | terminal |
 | skill paths | yes | no | no | no | no | terminal |
+| serve | no | no | no | no | no | terminal |
 
 ---
 
@@ -1257,6 +1258,39 @@ gno skill paths [--scope <project|user>] [--target <claude|codex|all>] [--json]
 
 **Exit Codes:**
 - 0: Success
+
+---
+
+### gno serve
+
+Start web UI server for visual search and browse.
+
+**Synopsis:**
+```bash
+gno serve [--port <num>]
+```
+
+**Options:**
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `-p, --port` | number | 3000 | Port to listen on |
+
+**Behavior:**
+- Opens database once at startup (not per-request)
+- Closes database on SIGINT/SIGTERM
+- Sets CSP header: `default-src 'self'; script-src 'self'`
+- Health check at `/api/health` returns `{ok:true}`
+
+**Exit Codes:**
+- 0: Server stopped gracefully
+- 2: Server failed to start (DB error, port in use)
+
+**Examples:**
+```bash
+gno serve
+gno serve --port 8080
+```
 
 ---
 

@@ -149,6 +149,7 @@ export function createProgram(): Command {
   wireRetrievalCommands(program);
   wireMcpCommand(program);
   wireSkillCommands(program);
+  wireServeCommand(program);
 
   // Add docs/support links to help footer
   program.addHelpText(
@@ -1326,5 +1327,27 @@ function wireSkillCommands(program: Command): void {
         target: target as 'claude' | 'codex' | 'all',
         json: Boolean(cmdOpts.json),
       });
+    });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Serve Command (web UI)
+// ─────────────────────────────────────────────────────────────────────────────
+
+function wireServeCommand(program: Command): void {
+  program
+    .command('serve')
+    .description('Start web UI server')
+    .option('-p, --port <num>', 'port to listen on', '3000')
+    .action(async (cmdOpts: Record<string, unknown>) => {
+      const port = parsePositiveInt('port', cmdOpts.port);
+
+      const { serve } = await import('./commands/serve.js');
+      const result = await serve({ port });
+
+      if (!result.success) {
+        throw new CliError('RUNTIME', result.error ?? 'Server failed to start');
+      }
+      // Server runs until SIGINT/SIGTERM - no output needed here
     });
 }
