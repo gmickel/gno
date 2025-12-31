@@ -937,24 +937,24 @@ gno mcp install [--target <target>] [--scope <scope>] [--force] [--dry-run] [--j
 | `lmstudio` | LM Studio | No |
 | `librechat` | LibreChat | Yes (project only) |
 
-**Config Locations (macOS):**
+**Config Locations:**
 
-| Target | Scope | Path |
-|--------|-------|------|
-| claude-desktop | user | `~/Library/Application Support/Claude/claude_desktop_config.json` |
-| claude-code | user | `~/.claude.json` |
-| claude-code | project | `./.mcp.json` |
-| codex | user | `~/.codex.json` |
-| codex | project | `./.codex/.mcp.json` |
-| cursor | user | `~/.cursor/mcp.json` |
-| cursor | project | `./.cursor/mcp.json` |
-| zed | user | `~/.config/zed/settings.json` |
-| windsurf | user | `~/.codeium/windsurf/mcp_config.json` |
-| opencode | user | `~/.config/opencode/config.json` |
-| opencode | project | `./opencode.json` |
-| amp | user | `~/.config/amp/settings.json` |
-| lmstudio | user | `~/.lmstudio/mcp.json` |
-| librechat | project | `./librechat.yaml` |
+| Target | Scope | macOS | Windows | Linux |
+|--------|-------|-------|---------|-------|
+| claude-desktop | user | `~/Library/Application Support/Claude/claude_desktop_config.json` | `%APPDATA%\Claude\claude_desktop_config.json` | `~/.config/Claude/claude_desktop_config.json` |
+| claude-code | user | `~/.claude.json` | `~/.claude.json` | `~/.claude.json` |
+| claude-code | project | `./.mcp.json` | `./.mcp.json` | `./.mcp.json` |
+| codex | user | `~/.codex.json` | `~/.codex.json` | `~/.codex.json` |
+| codex | project | `./.codex/.mcp.json` | `./.codex/.mcp.json` | `./.codex/.mcp.json` |
+| cursor | user | `~/.cursor/mcp.json` | `~/.cursor/mcp.json` | `~/.cursor/mcp.json` |
+| cursor | project | `./.cursor/mcp.json` | `./.cursor/mcp.json` | `./.cursor/mcp.json` |
+| zed | user | `~/.config/zed/settings.json` | N/A | `~/.config/zed/settings.json` |
+| windsurf | user | `~/.codeium/windsurf/mcp_config.json` | `%APPDATA%\Codeium\windsurf\mcp_config.json` | `~/.codeium/windsurf/mcp_config.json` |
+| opencode | user | `~/.config/opencode/config.json` | `~/.config/opencode/config.json` | `~/.config/opencode/config.json` |
+| opencode | project | `./opencode.json` | `./opencode.json` | `./opencode.json` |
+| amp | user | `~/.config/amp/settings.json` | `~/.config/amp/settings.json` | `~/.config/amp/settings.json` |
+| lmstudio | user | `~/.lmstudio/mcp.json` | `~/.lmstudio/mcp.json` | `~/.lmstudio/mcp.json` |
+| librechat | project | `./librechat.yaml` | `./librechat.yaml` | `./librechat.yaml` |
 
 **Config Formats:**
 - Standard JSON (`mcpServers` key): Claude Desktop, Claude Code, Codex, Cursor, Windsurf, LM Studio
