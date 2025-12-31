@@ -155,11 +155,11 @@ Models auto-download on first use to `~/.cache/gno/models/`.
 ┌─────────────────────────────────────────────────┐
 │                  GNO CLI / MCP                  │
 ├─────────────────────────────────────────────────┤
-│  Ports: Converter, Store, Embedding, Rerank    │
+│  Ports: Converter, Store, Embedding, Rerank     │
 ├─────────────────────────────────────────────────┤
-│  Adapters: SQLite, FTS5, sqlite-vec, llama-cpp │
+│  Adapters: SQLite, FTS5, sqlite-vec, llama-cpp  │
 ├─────────────────────────────────────────────────┤
-│  Core: Identity, Mirrors, Chunking, Retrieval  │
+│  Core: Identity, Mirrors, Chunking, Retrieval   │
 └─────────────────────────────────────────────────┘
 ```
 
