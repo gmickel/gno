@@ -13,7 +13,6 @@ import type {
   RerankPort,
 } from '../../llm/types';
 import {
-  ABSTENTION_MESSAGE,
   generateGroundedAnswer,
   processAnswerResult,
 } from '../../pipeline/answer';

@@ -5,9 +5,7 @@
  * @module src/cli/commands/serve
  */
 
-import type { ServeOptions, ServeResult } from '../../serve';
-
-export type { ServeOptions, ServeResult };
+export type { ServeOptions, ServeResult } from '../../serve';
 
 /**
  * Execute gno serve command.
