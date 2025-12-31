@@ -94,11 +94,12 @@ gh workflow run publish.yml -f publish=true   # actual publish
 **Post-merge workflow (EVERY merge to main):**
 1. `bun run version:patch` (or minor/major based on changes)
 2. **Update CHANGELOG.md** - Move [Unreleased] items to new version section
-3. **Update website/changelog.md** - Keep in sync with CHANGELOG.md
-4. `git add package.json CHANGELOG.md website/changelog.md`
-5. `git commit -m "chore: bump to vX.Y.Z"`
-6. `git tag vX.Y.Z && git push --tags`
-7. Workflow auto-triggers on `v*` tag push
+3. `git add package.json CHANGELOG.md`
+4. `git commit -m "chore: bump to vX.Y.Z"`
+5. `git tag vX.Y.Z && git push --tags`
+6. Workflow auto-triggers on `v*` tag push
+
+**Note**: `website/changelog.md` is auto-copied from root CHANGELOG.md during build (gitignored).
 
 **CHANGELOG format** (Keep a Changelog):
 ```markdown
