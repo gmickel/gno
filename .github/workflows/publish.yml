@@ -92,8 +92,8 @@ jobs:
 
       - name: Test packed tarball
         run: |
-          # Install from tarball globally
-          bun add -g ./gmickel-gno-*.tgz
+          # Install from tarball globally (use npm - bun has issues with local tarballs)
+          npm install -g ./gmickel-gno-*.tgz
 
           # Verify CLI works
           gno --version

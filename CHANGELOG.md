@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.3] - 2025-12-31
+
+### Fixed
+- CI: Use npm for tarball install test (bun has issues with local tarballs)
+
 ## [0.3.2] - 2025-12-31
 
 ### Fixed

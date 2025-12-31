@@ -1,6 +1,6 @@
 {
   "name": "@gmickel/gno",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "description": "Local semantic search for your documents. Index Markdown, PDF, and Office files with hybrid BM25 + vector search.",
   "keywords": [
     "search",
@@ -79,9 +79,13 @@
     "@typescript/native-preview": "^7.0.0-dev.20251215.1",
     "ajv": "^8.17.1",
     "ajv-formats": "^3.0.1",
+    "docx": "^9.5.1",
     "evalite": "^1.0.0-beta.15",
+    "exceljs": "^4.4.0",
     "lefthook": "^2.0.12",
     "oxlint-tsgolint": "^0.10.0",
+    "pdf-lib": "^1.17.1",
+    "pptxgenjs": "^4.0.1",
     "ultracite": "^6.5.0"
   },
   "peerDependencies": {
