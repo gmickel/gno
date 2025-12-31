@@ -75,6 +75,7 @@ export async function startServer(
 
   const server = Bun.serve({
     port,
+    hostname: '127.0.0.1', // Loopback only - no LAN exposure
     async fetch(req) {
       const url = new URL(req.url);
 

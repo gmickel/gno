@@ -19,21 +19,30 @@ const routes: Record<
 };
 
 function App() {
-  const [path, setPath] = useState<string>(window.location.pathname);
+  // Track full location (pathname + search) for proper query param handling
+  const [location, setLocation] = useState<string>(
+    window.location.pathname + window.location.search
+  );
 
   useEffect(() => {
-    const handlePopState = () => setPath(window.location.pathname);
+    const handlePopState = () =>
+      setLocation(window.location.pathname + window.location.search);
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
-  const navigate = (to: string) => {
+  const navigate = (to: string | number) => {
+    if (typeof to === 'number') {
+      // Handle history.go(-1) style navigation
+      window.history.go(to);
+      return;
+    }
     window.history.pushState({}, '', to);
-    setPath(to);
+    setLocation(to);
   };
 
   // Extract base path for routing (ignore query params)
-  const basePath = path.split('?')[0] as Route;
+  const basePath = location.split('?')[0] as Route;
   const Page = routes[basePath] || Dashboard;
 
   return <Page navigate={navigate} />;

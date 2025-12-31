@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { apiFetch } from '../hooks/use-api';
 
 interface PageProps {
-  navigate: (to: string) => void;
+  navigate: (to: string | number) => void;
 }
 
 interface DocData {
@@ -54,7 +54,7 @@ export default function DocView({ navigate }: PageProps) {
       <header className="mb-8 flex items-center gap-4">
         <button
           className="text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]"
-          onClick={() => navigate(-1 as unknown as string)}
+          onClick={() => navigate(-1)}
         >
           &larr; Back
         </button>

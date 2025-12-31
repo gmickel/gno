@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { apiFetch } from '../hooks/use-api';
 
 interface PageProps {
-  navigate: (to: string) => void;
+  navigate: (to: string | number) => void;
 }
 
 interface StatusData {

@@ -1340,10 +1340,11 @@ function wireServeCommand(program: Command): void {
     .description('Start web UI server')
     .option('-p, --port <num>', 'port to listen on', '3000')
     .action(async (cmdOpts: Record<string, unknown>) => {
+      const globals = getGlobals();
       const port = parsePositiveInt('port', cmdOpts.port);
 
       const { serve } = await import('./commands/serve.js');
-      const result = await serve({ port });
+      const result = await serve({ port, configPath: globals.config });
 
       if (!result.success) {
         throw new CliError('RUNTIME', result.error ?? 'Server failed to start');

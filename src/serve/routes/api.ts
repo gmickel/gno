@@ -112,8 +112,26 @@ export async function handleDocs(
   url: URL
 ): Promise<Response> {
   const collection = url.searchParams.get('collection') || undefined;
-  const limit = Math.min(Number(url.searchParams.get('limit')) || 20, 100);
-  const offset = Number(url.searchParams.get('offset')) || 0;
+
+  // Validate limit: positive integer, max 100
+  const limitParam = Number(url.searchParams.get('limit'));
+  if (
+    url.searchParams.has('limit') &&
+    (Number.isNaN(limitParam) || limitParam < 1)
+  ) {
+    return errorResponse('VALIDATION', 'limit must be a positive integer');
+  }
+  const limit = Math.min(limitParam || 20, 100);
+
+  // Validate offset: non-negative integer
+  const offsetParam = Number(url.searchParams.get('offset'));
+  if (
+    url.searchParams.has('offset') &&
+    (Number.isNaN(offsetParam) || offsetParam < 0)
+  ) {
+    return errorResponse('VALIDATION', 'offset must be a non-negative integer');
+  }
+  const offset = offsetParam || 0;
 
   const result = await store.listDocuments(collection);
 
@@ -164,6 +182,27 @@ export async function handleSearch(
   const query = body.query.trim();
   if (!query) {
     return errorResponse('VALIDATION', 'Query cannot be empty');
+  }
+
+  // Validate limit: positive integer
+  if (
+    body.limit !== undefined &&
+    (typeof body.limit !== 'number' || body.limit < 1)
+  ) {
+    return errorResponse('VALIDATION', 'limit must be a positive integer');
+  }
+
+  // Validate minScore: number between 0 and 1
+  if (
+    body.minScore !== undefined &&
+    (typeof body.minScore !== 'number' ||
+      body.minScore < 0 ||
+      body.minScore > 1)
+  ) {
+    return errorResponse(
+      'VALIDATION',
+      'minScore must be a number between 0 and 1'
+    );
   }
 
   // Only BM25 supported in web UI (vector/hybrid require LLM ports)
