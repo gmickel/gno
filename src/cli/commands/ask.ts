@@ -12,13 +12,13 @@ import type {
   GenerationPort,
   RerankPort,
 } from '../../llm/types';
+import {
+  ABSTENTION_MESSAGE,
+  generateGroundedAnswer,
+  processAnswerResult,
+} from '../../pipeline/answer';
 import { type HybridSearchDeps, searchHybrid } from '../../pipeline/hybrid';
-import type {
-  AskOptions,
-  AskResult,
-  Citation,
-  SearchResult,
-} from '../../pipeline/types';
+import type { AskOptions, AskResult, Citation } from '../../pipeline/types';
 import {
   createVectorIndexPort,
   type VectorIndexPort,
@@ -49,163 +49,6 @@ export type AskCommandOptions = AskOptions & {
 export type AskCommandResult =
   | { success: true; data: AskResult }
   | { success: false; error: string };
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Grounded Answer Generation
-// ─────────────────────────────────────────────────────────────────────────────
-
-const ANSWER_PROMPT = `You are answering a question using ONLY the provided context blocks.
-
-Rules you MUST follow:
-1) Use ONLY facts stated in the context blocks. Do NOT use outside knowledge.
-2) Every factual statement must include an inline citation like [1] or [2] referring to a context block.
-3) If the context does not contain enough information to answer, reply EXACTLY:
-   "I don't have enough information in the provided sources to answer this question."
-4) Do not cite sources you did not use. Do not invent citation numbers.
-
-Question: {query}
-
-Context blocks:
-{context}
-
-Write a concise answer (1-3 paragraphs).`;
-
-/** Abstention message when LLM cannot ground answer */
-const ABSTENTION_MESSAGE =
-  "I don't have enough information in the provided sources to answer this question.";
-
-// Max characters per snippet to avoid blowing up prompt size
-const MAX_SNIPPET_CHARS = 1500;
-// Max number of sources to include in context
-const MAX_CONTEXT_SOURCES = 5;
-
-/**
- * Extract VALID citation numbers from answer text.
- * Only returns numbers in range [1, maxCitation].
- * @param answer Answer text to parse
- * @param maxCitation Maximum valid citation number
- * @returns Sorted unique valid citation numbers (1-indexed)
- */
-function extractValidCitationNumbers(
-  answer: string,
-  maxCitation: number
-): number[] {
-  const nums = new Set<number>();
-  // Use fresh regex to avoid lastIndex issues
-  const re = /\[(\d+)\]/g;
-  const matches = answer.matchAll(re);
-  for (const match of matches) {
-    const n = Number(match[1]);
-    // Only accept valid citation numbers in range [1, maxCitation]
-    if (Number.isInteger(n) && n >= 1 && n <= maxCitation) {
-      nums.add(n);
-    }
-  }
-  return [...nums].sort((a, b) => a - b);
-}
-
-/**
- * Filter citations to only those actually referenced in the answer.
- * @param citations All citations provided to LLM
- * @param validUsedNumbers Valid 1-indexed citation numbers from answer
- */
-function filterCitationsByUse(
-  citations: Citation[],
-  validUsedNumbers: number[]
-): Citation[] {
-  const usedSet = new Set(validUsedNumbers);
-  return citations.filter((_, idx) => usedSet.has(idx + 1));
-}
-
-/**
- * Renumber citations in answer text to match filtered citations.
- * E.g., if answer uses [2] and [5], renumber to [1] and [2].
- * Invalid citations (not in validUsedNumbers) are removed.
- */
-function renumberAnswerCitations(
-  answer: string,
-  validUsedNumbers: number[]
-): string {
-  // Build mapping: old number -> new number (1-indexed)
-  const mapping = new Map<number, number>();
-  for (let i = 0; i < validUsedNumbers.length; i++) {
-    const oldNum = validUsedNumbers[i];
-    if (oldNum !== undefined) {
-      mapping.set(oldNum, i + 1);
-    }
-  }
-
-  // Use fresh regex to avoid lastIndex issues
-  const re = /\[(\d+)\]/g;
-  // Replace valid [n] with renumbered [m], remove invalid citations
-  const replaced = answer.replace(re, (_match, numStr: string) => {
-    const oldNum = Number(numStr);
-    const newNum = mapping.get(oldNum);
-    // If not in mapping, remove the citation entirely
-    return newNum !== undefined ? `[${newNum}]` : '';
-  });
-
-  // Clean up whitespace artifacts from removed citations
-  // e.g., "See [99] for" → "See  for" → "See for"
-  return replaced.replace(/ {2,}/g, ' ').trim();
-}
-
-async function generateGroundedAnswer(
-  genPort: GenerationPort,
-  query: string,
-  results: SearchResult[],
-  maxTokens: number
-): Promise<{ answer: string; citations: Citation[] } | null> {
-  // Build context from top results with bounded snippet sizes
-  const contextParts: string[] = [];
-  const citations: Citation[] = [];
-
-  // Track citation index separately to ensure it matches context blocks exactly
-  let citationIndex = 0;
-
-  for (const r of results.slice(0, MAX_CONTEXT_SOURCES)) {
-    // Skip results with empty snippets
-    if (!r.snippet || r.snippet.trim().length === 0) {
-      continue;
-    }
-
-    // Cap snippet length to avoid prompt blowup
-    const snippet =
-      r.snippet.length > MAX_SNIPPET_CHARS
-        ? `${r.snippet.slice(0, MAX_SNIPPET_CHARS)}...`
-        : r.snippet;
-
-    citationIndex += 1;
-    contextParts.push(`[${citationIndex}] ${snippet}`);
-    citations.push({
-      docid: r.docid,
-      uri: r.uri,
-      startLine: r.snippetRange?.startLine,
-      endLine: r.snippetRange?.endLine,
-    });
-  }
-
-  // If no valid context, can't generate answer
-  if (contextParts.length === 0) {
-    return null;
-  }
-
-  const prompt = ANSWER_PROMPT.replace('{query}', query).replace(
-    '{context}',
-    contextParts.join('\n\n')
-  );
-
-  const result = await genPort.generate(prompt, {
-    temperature: 0,
-    maxTokens,
-  });
-
-  if (!result.ok) {
-    return null;
-  }
-
-  return { answer: result.value, citations };
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Command Implementation
@@ -327,7 +170,7 @@ export async function ask(
 
     if (shouldGenerateAnswer && genPort) {
       const maxTokens = options.maxAnswerTokens ?? 512;
-      const answerResult = await generateGroundedAnswer(
+      const rawResult = await generateGroundedAnswer(
         genPort,
         query,
         results,
@@ -335,7 +178,7 @@ export async function ask(
       );
 
       // Fail loudly if generation was requested but failed
-      if (!answerResult) {
+      if (!rawResult) {
         return {
           success: false,
           error:
@@ -343,27 +186,10 @@ export async function ask(
         };
       }
 
-      // Extract only VALID citation numbers (in range 1..citations.length)
-      const maxCitation = answerResult.citations.length;
-      const validUsedNums = extractValidCitationNumbers(
-        answerResult.answer,
-        maxCitation
-      );
-      const filteredCitations = filterCitationsByUse(
-        answerResult.citations,
-        validUsedNums
-      );
-
-      // Abstention guard: if no valid citations, LLM didn't ground the answer
-      if (validUsedNums.length === 0 || filteredCitations.length === 0) {
-        answer = ABSTENTION_MESSAGE;
-        citations = [];
-      } else {
-        // Renumber citations in answer to match filtered list (e.g., [2],[5] -> [1],[2])
-        // Invalid citations are removed from the answer text
-        answer = renumberAnswerCitations(answerResult.answer, validUsedNums);
-        citations = filteredCitations;
-      }
+      // Process answer: extract valid citations, filter, renumber
+      const processed = processAnswerResult(rawResult);
+      answer = processed.answer;
+      citations = processed.citations;
       answerGenerated = true;
     }
 

@@ -1,5 +1,13 @@
-import { BookOpen, Database, Layers, Search, Sparkles } from 'lucide-react';
+import {
+  BookOpen,
+  Database,
+  Layers,
+  MessageSquare,
+  Search,
+  Sparkles,
+} from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { PresetSelector } from '../components/PresetSelector';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import {
@@ -7,7 +15,6 @@ import {
   CardContent,
   CardDescription,
   CardHeader,
-  CardTitle,
 } from '../components/ui/card';
 import { apiFetch } from '../hooks/use-api';
 
@@ -47,11 +54,14 @@ export default function Dashboard({ navigate }: PageProps) {
       <header className="relative border-border/50 border-b bg-card/50 backdrop-blur-sm">
         <div className="aurora-glow absolute inset-0 opacity-30" />
         <div className="relative px-8 py-12">
-          <div className="mb-2 flex items-center gap-3">
-            <Sparkles className="size-8 text-primary" />
-            <h1 className="font-bold text-4xl text-primary tracking-tight">
-              GNO
-            </h1>
+          <div className="mb-2 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Sparkles className="size-8 text-primary" />
+              <h1 className="font-bold text-4xl text-primary tracking-tight">
+                GNO
+              </h1>
+            </div>
+            <PresetSelector />
           </div>
           <p className="text-lg text-muted-foreground">
             Your Local Knowledge Index
@@ -69,6 +79,15 @@ export default function Dashboard({ navigate }: PageProps) {
           >
             <Search className="size-4" />
             Search
+          </Button>
+          <Button
+            className="gap-2"
+            onClick={() => navigate('/ask')}
+            size="lg"
+            variant="secondary"
+          >
+            <MessageSquare className="size-4" />
+            Ask
           </Button>
           <Button
             className="gap-2"

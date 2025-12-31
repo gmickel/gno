@@ -122,6 +122,21 @@ gh workflow run publish.yml -f publish=true   # actual publish
 
 See [.github/CONTRIBUTING.md](.github/CONTRIBUTING.md) for CI matrix, caching, and release process.
 
+## Architecture Pattern
+
+GNO uses **"Ports without DI"** - a pragmatic simplification of hexagonal architecture:
+
+- **Port interfaces exist**: `EmbeddingPort`, `GenerationPort`, `RerankPort`, `VectorIndexPort`
+- **Pipeline code receives ports as params**: Enables testing, clear dependencies
+- **No dependency injection**: Adapters instantiated directly in commands (`new LlmAdapter()`, `new SqliteAdapter()`)
+- **Single implementation per port**: No swappable backends (only node-llama-cpp, only SQLite)
+
+This is intentional - full hexagonal would add complexity without benefit for a CLI tool with fixed backends.
+
+```
+CLI/MCP/Serve → new Adapter() → adapter.createPort() → Port interface → Pipeline
+```
+
 ## Specifications
 
 **IMPORTANT**: Before implementing CLI commands, MCP tools, or output formats, consult the specs:
@@ -130,7 +145,6 @@ See [.github/CONTRIBUTING.md](.github/CONTRIBUTING.md) for CI matrix, caching, a
 - `spec/mcp.md` - MCP tools, resources, schemas, versioning
 - `spec/output-schemas/*.json` - JSON schemas for all structured outputs
 - `spec/db/schema.sql` - Database schema (when implemented)
-- `docs/prd.md` - Full product requirements (§14-16 for interface contracts)
 
 Contract tests in `test/spec/schemas/` validate outputs against schemas. Run `bun test` to verify compliance.
 
@@ -149,8 +163,12 @@ When adding new commands or modifying outputs:
 - [ ] CLAUDE.md / AGENTS.md - Are instructions still accurate?
 - [ ] spec/*.md - Do specs match implementation?
 - [ ] spec/output-schemas/*.json - Do schemas match actual outputs?
-- [ ] docs/prd.md - Mark completed items with ✓
+- [ ] docs/*.md - User-facing docs accurate (CLI.md, QUICKSTART.md, ARCHITECTURE.md)?
+- [ ] website/ - Auto-synced from docs/ via `bun run website:sync-docs`
 - [ ] Beads - Are descriptions and comments up to date?
+
+**Website sync**: The `website/docs/` directory is auto-populated from `docs/` during build.
+Run `bun run website:sync-docs` to manually sync. CHANGELOG.md is also copied.
 
 If you change behavior, update docs in the same commit. Never leave docs out of sync.
 

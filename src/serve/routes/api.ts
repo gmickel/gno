@@ -5,9 +5,22 @@
  * @module src/serve/routes/api
  */
 
+import type { ModelPreset } from '../../config/types';
+import { getModelConfig, listPresets } from '../../llm/registry';
+import {
+  generateGroundedAnswer,
+  processAnswerResult,
+} from '../../pipeline/answer';
+import { searchHybrid } from '../../pipeline/hybrid';
 import { searchBm25 } from '../../pipeline/search';
-import type { SearchOptions } from '../../pipeline/types';
+import type {
+  AskResult,
+  Citation,
+  SearchOptions,
+  SearchResult,
+} from '../../pipeline/types';
 import type { SqliteAdapter } from '../../store/sqlite/adapter';
+import type { ServerContext } from '../context';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -26,6 +39,24 @@ export interface SearchRequestBody {
   limit?: number;
   minScore?: number;
   collection?: string;
+}
+
+export interface QueryRequestBody {
+  query: string;
+  limit?: number;
+  minScore?: number;
+  collection?: string;
+  lang?: string;
+  noExpand?: boolean;
+  noRerank?: boolean;
+}
+
+export interface AskRequestBody {
+  query: string;
+  limit?: number;
+  collection?: string;
+  lang?: string;
+  maxAnswerTokens?: number;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -273,6 +304,225 @@ export async function handleSearch(
   return jsonResponse(result.value);
 }
 
+/**
+ * POST /api/query
+ * Body: { query, limit?, minScore?, collection?, lang?, noExpand?, noRerank? }
+ * Returns hybrid search results (BM25 + vector + expansion + reranking).
+ */
+export async function handleQuery(
+  ctx: ServerContext,
+  req: Request
+): Promise<Response> {
+  let body: QueryRequestBody;
+  try {
+    body = (await req.json()) as QueryRequestBody;
+  } catch {
+    return errorResponse('VALIDATION', 'Invalid JSON body');
+  }
+
+  if (!body.query || typeof body.query !== 'string') {
+    return errorResponse('VALIDATION', 'Missing or invalid query');
+  }
+
+  const query = body.query.trim();
+  if (!query) {
+    return errorResponse('VALIDATION', 'Query cannot be empty');
+  }
+
+  // Validate limit
+  if (
+    body.limit !== undefined &&
+    (typeof body.limit !== 'number' || body.limit < 1)
+  ) {
+    return errorResponse('VALIDATION', 'limit must be a positive integer');
+  }
+
+  // Validate minScore
+  if (
+    body.minScore !== undefined &&
+    (typeof body.minScore !== 'number' ||
+      body.minScore < 0 ||
+      body.minScore > 1)
+  ) {
+    return errorResponse(
+      'VALIDATION',
+      'minScore must be a number between 0 and 1'
+    );
+  }
+
+  const result = await searchHybrid(
+    {
+      store: ctx.store,
+      config: ctx.config,
+      vectorIndex: ctx.vectorIndex,
+      embedPort: ctx.embedPort,
+      genPort: ctx.genPort,
+      rerankPort: ctx.rerankPort,
+    },
+    query,
+    {
+      limit: Math.min(body.limit ?? 20, 50),
+      minScore: body.minScore,
+      collection: body.collection,
+      lang: body.lang,
+      noExpand: body.noExpand,
+      noRerank: body.noRerank,
+    }
+  );
+
+  if (!result.ok) {
+    return errorResponse('RUNTIME', result.error.message, 500);
+  }
+
+  return jsonResponse(result.value);
+}
+
+/**
+ * POST /api/ask
+ * Body: { query, limit?, collection?, lang?, maxAnswerTokens? }
+ * Returns AI-generated answer with citations and sources.
+ */
+export async function handleAsk(
+  ctx: ServerContext,
+  req: Request
+): Promise<Response> {
+  let body: AskRequestBody;
+  try {
+    body = (await req.json()) as AskRequestBody;
+  } catch {
+    return errorResponse('VALIDATION', 'Invalid JSON body');
+  }
+
+  if (!body.query || typeof body.query !== 'string') {
+    return errorResponse('VALIDATION', 'Missing or invalid query');
+  }
+
+  const query = body.query.trim();
+  if (!query) {
+    return errorResponse('VALIDATION', 'Query cannot be empty');
+  }
+
+  // Check if answer generation is available
+  if (!ctx.capabilities.answer) {
+    return errorResponse(
+      'UNAVAILABLE',
+      'Answer generation not available. No generation model loaded.',
+      503
+    );
+  }
+
+  const limit = Math.min(body.limit ?? 5, 20);
+
+  // Run hybrid search first
+  const searchResult = await searchHybrid(
+    {
+      store: ctx.store,
+      config: ctx.config,
+      vectorIndex: ctx.vectorIndex,
+      embedPort: ctx.embedPort,
+      genPort: ctx.genPort,
+      rerankPort: ctx.rerankPort,
+    },
+    query,
+    {
+      limit,
+      collection: body.collection,
+      lang: body.lang,
+    }
+  );
+
+  if (!searchResult.ok) {
+    return errorResponse('RUNTIME', searchResult.error.message, 500);
+  }
+
+  const results = searchResult.value.results;
+
+  // Generate grounded answer (requires genPort)
+  let answer: string | undefined;
+  let citations: Citation[] | undefined;
+  let answerGenerated = false;
+
+  if (ctx.genPort) {
+    const maxTokens = body.maxAnswerTokens ?? 512;
+    const rawResult = await generateGroundedAnswer(
+      ctx.genPort,
+      query,
+      results,
+      maxTokens
+    );
+
+    if (rawResult) {
+      const processed = processAnswerResult(rawResult);
+      answer = processed.answer;
+      citations = processed.citations;
+      answerGenerated = true;
+    }
+  }
+
+  const askResult: AskResult = {
+    query,
+    mode: searchResult.value.meta.vectorsUsed ? 'hybrid' : 'bm25_only',
+    queryLanguage: searchResult.value.meta.queryLanguage ?? 'und',
+    answer,
+    citations,
+    results,
+    meta: {
+      expanded: searchResult.value.meta.expanded ?? false,
+      reranked: searchResult.value.meta.reranked ?? false,
+      vectorsUsed: searchResult.value.meta.vectorsUsed ?? false,
+      answerGenerated,
+      totalResults: results.length,
+    },
+  };
+
+  return jsonResponse(askResult);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Status with capabilities
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * GET /api/capabilities
+ * Returns server capabilities (what features are available).
+ */
+export function handleCapabilities(ctx: ServerContext): Response {
+  return jsonResponse({
+    bm25: ctx.capabilities.bm25,
+    vector: ctx.capabilities.vector,
+    hybrid: ctx.capabilities.hybrid,
+    answer: ctx.capabilities.answer,
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Presets
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface PresetInfo extends ModelPreset {
+  active: boolean;
+}
+
+/**
+ * GET /api/presets
+ * Returns available model presets and which is active.
+ */
+export function handlePresets(ctx: ServerContext): Response {
+  const modelConfig = getModelConfig(ctx.config);
+  const presets = listPresets(ctx.config);
+  const activeId = modelConfig.activePreset;
+
+  const presetsWithStatus: PresetInfo[] = presets.map((p) => ({
+    ...p,
+    active: p.id === activeId,
+  }));
+
+  return jsonResponse({
+    presets: presetsWithStatus,
+    activePreset: activeId,
+  });
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Router
 // ─────────────────────────────────────────────────────────────────────────────
@@ -280,7 +530,9 @@ export async function handleSearch(
 /**
  * Route an API request to the appropriate handler.
  * Returns null if the path is not an API route.
+ * Note: Currently unused since we use routes object in Bun.serve().
  */
+// biome-ignore lint/suspicious/useAwait: handlers are async, kept for potential future use
 export async function routeApi(
   store: SqliteAdapter,
   req: Request,

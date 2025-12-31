@@ -1,8 +1,9 @@
-import { ArrowLeft, FileText, Search as SearchIcon } from 'lucide-react';
-import { useState } from 'react';
+import { ArrowLeft, FileText, Search as SearchIcon, Zap } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { Loader } from '../components/ai-elements/loader';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
+import { ButtonGroup } from '../components/ui/button-group';
 import { Card, CardContent } from '../components/ui/card';
 import { Input } from '../components/ui/input';
 import { apiFetch } from '../hooks/use-api';
@@ -58,6 +59,10 @@ interface SearchResult {
   title?: string;
   snippet: string;
   score: number;
+  snippetRange?: {
+    startLine: number;
+    endLine: number;
+  };
 }
 
 interface SearchResponse {
@@ -66,15 +71,45 @@ interface SearchResponse {
     query: string;
     mode: string;
     totalResults: number;
+    expanded?: boolean;
+    reranked?: boolean;
+    vectorsUsed?: boolean;
   };
 }
 
+interface Capabilities {
+  bm25: boolean;
+  vector: boolean;
+  hybrid: boolean;
+  answer: boolean;
+}
+
+type SearchMode = 'bm25' | 'hybrid';
+
 export default function Search({ navigate }: PageProps) {
   const [query, setQuery] = useState('');
+  const [mode, setMode] = useState<SearchMode>('bm25');
   const [results, setResults] = useState<SearchResult[]>([]);
+  const [meta, setMeta] = useState<SearchResponse['meta'] | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searched, setSearched] = useState(false);
+  const [capabilities, setCapabilities] = useState<Capabilities | null>(null);
+
+  // Fetch capabilities on mount
+  useEffect(() => {
+    async function fetchCapabilities() {
+      const { data } = await apiFetch<Capabilities>('/api/capabilities');
+      if (data) {
+        setCapabilities(data);
+        // Auto-select hybrid if available
+        if (data.hybrid) {
+          setMode('hybrid');
+        }
+      }
+    }
+    fetchCapabilities();
+  }, []);
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -84,7 +119,10 @@ export default function Search({ navigate }: PageProps) {
     setError(null);
     setSearched(true);
 
-    const { data, error } = await apiFetch<SearchResponse>('/api/search', {
+    // Use /api/query for hybrid, /api/search for bm25
+    const endpoint = mode === 'hybrid' ? '/api/query' : '/api/search';
+
+    const { data, error } = await apiFetch<SearchResponse>(endpoint, {
       method: 'POST',
       body: JSON.stringify({ query, limit: 20 }),
     });
@@ -93,10 +131,14 @@ export default function Search({ navigate }: PageProps) {
     if (error) {
       setError(error);
       setResults([]);
+      setMeta(null);
     } else if (data) {
       setResults(data.results);
+      setMeta(data.meta);
     }
   };
+
+  const hybridAvailable = capabilities?.hybrid ?? false;
 
   return (
     <div className="min-h-screen">
@@ -137,12 +179,51 @@ export default function Search({ navigate }: PageProps) {
               {loading ? <Loader size={16} /> : 'Search'}
             </Button>
           </div>
-          <p className="mt-3 flex items-center gap-2 text-muted-foreground text-sm">
-            <Badge className="font-mono text-xs" variant="outline">
-              BM25
-            </Badge>
-            Full-text keyword search
-          </p>
+
+          {/* Mode selector */}
+          <div className="mt-4 flex items-center gap-4">
+            <span className="text-muted-foreground text-sm">Mode:</span>
+            <ButtonGroup>
+              <Button
+                className={
+                  mode === 'bm25'
+                    ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+                    : ''
+                }
+                onClick={() => setMode('bm25')}
+                size="sm"
+                type="button"
+                variant={mode === 'bm25' ? 'default' : 'outline'}
+              >
+                BM25
+              </Button>
+              <Button
+                className={
+                  mode === 'hybrid'
+                    ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+                    : ''
+                }
+                disabled={!hybridAvailable}
+                onClick={() => setMode('hybrid')}
+                size="sm"
+                title={
+                  hybridAvailable
+                    ? 'Hybrid search with vector + reranking'
+                    : 'Hybrid search not available (no embedding model)'
+                }
+                type="button"
+                variant={mode === 'hybrid' ? 'default' : 'outline'}
+              >
+                <Zap className="mr-1 size-3" />
+                Hybrid
+              </Button>
+            </ButtonGroup>
+            <span className="text-muted-foreground/70 text-xs">
+              {mode === 'bm25'
+                ? 'Keyword-based full-text search'
+                : 'BM25 + vector + query expansion + reranking'}
+            </span>
+          </div>
         </form>
 
         {/* Error */}
@@ -174,9 +255,39 @@ export default function Search({ navigate }: PageProps) {
         {/* Results */}
         {!loading && results.length > 0 && (
           <div className="space-y-4">
-            <p className="mb-6 text-muted-foreground text-sm">
-              {results.length} result{results.length !== 1 ? 's' : ''}
-            </p>
+            <div className="mb-6 flex items-center justify-between">
+              <p className="text-muted-foreground text-sm">
+                {results.length} result{results.length !== 1 ? 's' : ''}
+              </p>
+              {meta && (
+                <div className="flex items-center gap-2">
+                  {meta.vectorsUsed && (
+                    <Badge
+                      className="font-mono text-[10px]"
+                      variant="secondary"
+                    >
+                      vectors
+                    </Badge>
+                  )}
+                  {meta.expanded && (
+                    <Badge
+                      className="font-mono text-[10px]"
+                      variant="secondary"
+                    >
+                      expanded
+                    </Badge>
+                  )}
+                  {meta.reranked && (
+                    <Badge
+                      className="font-mono text-[10px]"
+                      variant="secondary"
+                    >
+                      reranked
+                    </Badge>
+                  )}
+                </div>
+              )}
+            </div>
             {results.map((r, i) => (
               <Card
                 className="group animate-fade-in cursor-pointer opacity-0 transition-all hover:border-primary/50 hover:bg-card/80"
@@ -201,9 +312,16 @@ export default function Search({ navigate }: PageProps) {
                   <p className="line-clamp-3 text-muted-foreground text-sm leading-relaxed">
                     {renderSnippet(r.snippet)}
                   </p>
-                  <p className="mt-2 truncate font-mono text-muted-foreground/60 text-xs">
-                    {r.uri}
-                  </p>
+                  <div className="mt-2 flex items-center gap-2">
+                    <p className="truncate font-mono text-muted-foreground/60 text-xs">
+                      {r.uri}
+                    </p>
+                    {r.snippetRange && (
+                      <span className="shrink-0 font-mono text-[10px] text-muted-foreground/40">
+                        L{r.snippetRange.startLine}-{r.snippetRange.endLine}
+                      </span>
+                    )}
+                  </div>
                 </CardContent>
               </Card>
             ))}

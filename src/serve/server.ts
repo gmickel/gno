@@ -6,35 +6,24 @@
  * @module src/serve/server
  */
 
-import { join } from 'node:path'; // no Bun path utils
 import { getIndexDbPath } from '../app/constants';
 import { getConfigPaths, isInitialized, loadConfig } from '../config';
 import { SqliteAdapter } from '../store/sqlite/adapter';
-import { routeApi } from './routes/api';
-
-// Frontend directories
-const PUBLIC_DIR = join(import.meta.dir, 'public');
-const DIST_DIR = join(import.meta.dir, 'dist');
-
-/**
- * Build frontend if dist doesn't exist.
- */
-async function ensureFrontendBuilt(): Promise<void> {
-  const indexHtml = Bun.file(join(DIST_DIR, 'index.html'));
-  if (await indexHtml.exists()) return;
-
-  console.log('Building frontend...');
-  const result = await Bun.build({
-    entrypoints: [join(PUBLIC_DIR, 'index.html')],
-    outdir: DIST_DIR,
-    minify: true,
-  });
-
-  if (!result.success) {
-    throw new Error(`Frontend build failed: ${result.logs.join('\n')}`);
-  }
-  console.log('Frontend built successfully');
-}
+import { createServerContext, disposeServerContext } from './context';
+// HTML import - Bun handles bundling TSX/CSS automatically via routes
+import homepage from './public/index.html';
+import {
+  handleAsk,
+  handleCapabilities,
+  handleCollections,
+  handleDoc,
+  handleDocs,
+  handleHealth,
+  handlePresets,
+  handleQuery,
+  handleSearch,
+  handleStatus,
+} from './routes/api';
 
 export interface ServeOptions {
   /** Port to listen on (default: 3000) */
@@ -50,31 +39,9 @@ export interface ServeResult {
   error?: string;
 }
 
-/**
- * Parse hostname from Host header, handling IPv6 brackets.
- * Examples: "localhost:3000" -> "localhost", "[::1]:3000" -> "::1"
- */
-function parseHostname(host: string): string {
-  if (host.startsWith('[')) {
-    // IPv6 with brackets: [::1]:3000 or [::1]
-    const bracketEnd = host.indexOf(']');
-    if (bracketEnd > 0) {
-      return host.slice(1, bracketEnd); // Strip brackets
-    }
-  }
-  // IPv4 or hostname: localhost:3000 or 127.0.0.1:3000
-  const colonIdx = host.indexOf(':');
-  return colonIdx > 0 ? host.slice(0, colonIdx) : host;
-}
-
-/**
- * Check if hostname is a valid loopback address.
- * Supports IPv4 (127.0.0.1, localhost) and IPv6 (::1).
- */
-function isLoopback(hostname: string): boolean {
-  const h = hostname.toLowerCase();
-  return h === '127.0.0.1' || h === 'localhost' || h === '::1';
-}
+// Hostname parsing helpers - preserved for future fetch handler use
+// function parseHostname(host: string): string { ... }
+// function isLoopback(hostname: string): boolean { ... }
 
 /**
  * Get CSP based on environment.
@@ -131,16 +98,6 @@ export async function startServer(
   const port = options.port ?? 3000;
   const isDev = process.env.NODE_ENV !== 'production';
 
-  // Build frontend if needed
-  try {
-    await ensureFrontendBuilt();
-  } catch (e) {
-    return {
-      success: false,
-      error: e instanceof Error ? e.message : String(e),
-    };
-  }
-
   // Check initialization
   const initialized = await isInitialized(options.configPath);
   if (!initialized) {
@@ -167,12 +124,16 @@ export async function startServer(
     return { success: false, error: openResult.error.message };
   }
 
+  // Create server context with LLM ports for hybrid search and AI answers
+  const ctx = await createServerContext(store, config);
+
   // Shutdown controller for clean lifecycle
   const shutdownController = new AbortController();
 
   // Graceful shutdown handler
   const shutdown = async () => {
     console.log('\nShutting down...');
+    await disposeServerContext(ctx);
     await store.close();
     shutdownController.abort();
   };
@@ -187,57 +148,63 @@ export async function startServer(
       port,
       hostname: '127.0.0.1', // Loopback only - no LAN exposure
 
-      // Enable development mode for console logging
+      // Enable development mode for HMR and console logging
       development: isDev,
 
-      async fetch(req) {
-        const url = new URL(req.url);
-
-        // Validate Host header for DNS rebinding protection
-        const host = req.headers.get('host') ?? '';
-        const hostname = parseHostname(host);
-        if (hostname && !isLoopback(hostname)) {
-          return withSecurityHeaders(
-            new Response('Forbidden', { status: 403 }),
-            isDev
-          );
-        }
+      // Routes object - Bun handles HTML bundling and /_bun/* assets automatically
+      routes: {
+        // SPA routes - all serve the same React app
+        '/': homepage,
+        '/search': homepage,
+        '/browse': homepage,
+        '/doc': homepage,
+        '/ask': homepage,
 
         // API routes
-        const apiResponse = await routeApi(store, req, url);
-        if (apiResponse) {
-          return withSecurityHeaders(apiResponse, isDev);
-        }
-
-        // SPA routes - serve index.html
-        if (
-          url.pathname === '/' ||
-          url.pathname === '/search' ||
-          url.pathname === '/browse' ||
-          url.pathname === '/doc'
-        ) {
-          const html = Bun.file(join(DIST_DIR, 'index.html'));
-          return withSecurityHeaders(
-            new Response(html, {
-              headers: { 'Content-Type': 'text/html; charset=utf-8' },
-            }),
-            isDev
-          );
-        }
-
-        // Static assets from dist directory
-        const assetPath = join(DIST_DIR, url.pathname);
-        const assetFile = Bun.file(assetPath);
-        if (await assetFile.exists()) {
-          return withSecurityHeaders(new Response(assetFile), isDev);
-        }
-
-        // 404 for unknown routes
-        return withSecurityHeaders(
-          new Response('Not Found', { status: 404 }),
-          isDev
-        );
+        '/api/health': {
+          GET: () => withSecurityHeaders(handleHealth(), isDev),
+        },
+        '/api/status': {
+          GET: async () =>
+            withSecurityHeaders(await handleStatus(store), isDev),
+        },
+        '/api/collections': {
+          GET: async () =>
+            withSecurityHeaders(await handleCollections(store), isDev),
+        },
+        '/api/docs': {
+          GET: async (req: Request) => {
+            const url = new URL(req.url);
+            return withSecurityHeaders(await handleDocs(store, url), isDev);
+          },
+        },
+        '/api/doc': {
+          GET: async (req: Request) => {
+            const url = new URL(req.url);
+            return withSecurityHeaders(await handleDoc(store, url), isDev);
+          },
+        },
+        '/api/search': {
+          POST: async (req: Request) =>
+            withSecurityHeaders(await handleSearch(store, req), isDev),
+        },
+        '/api/query': {
+          POST: async (req: Request) =>
+            withSecurityHeaders(await handleQuery(ctx, req), isDev),
+        },
+        '/api/ask': {
+          POST: async (req: Request) =>
+            withSecurityHeaders(await handleAsk(ctx, req), isDev),
+        },
+        '/api/capabilities': {
+          GET: () => withSecurityHeaders(handleCapabilities(ctx), isDev),
+        },
+        '/api/presets': {
+          GET: () => withSecurityHeaders(handlePresets(ctx), isDev),
+        },
       },
+
+      // No fetch fallback - let Bun handle /_bun/* assets and return 404 for others
     });
   } catch (e) {
     await store.close();

@@ -10,17 +10,17 @@ GNO is a local knowledge indexing and search system built on SQLite.
 │                       (developer, researcher, writer)                       │
 └─────────────────────────────────────────────────────────────────────────────┘
                                       │
-                    ┌─────────────────┼─────────────────┐
-                    │                 │                 │
-                    ▼                 ▼                 ▼
-              ┌──────────┐     ┌──────────────┐   ┌───────────┐
-              │   CLI    │     │  MCP Server  │   │  AI Agent │
-              │  (gno)   │     │  (gno mcp)   │   │  (Claude) │
-              └──────────┘     └──────────────┘   └───────────┘
-                    │                 │                 │
-                    └─────────────────┼─────────────────┘
-                                      │
-                                      ▼
+              ┌───────────────────────┼───────────────────────┐
+              │                 │                 │           │
+              ▼                 ▼                 ▼           ▼
+        ┌──────────┐     ┌──────────────┐   ┌───────────┐ ┌──────────┐
+        │   CLI    │     │  MCP Server  │   │  AI Agent │ │  Web UI  │
+        │  (gno)   │     │  (gno mcp)   │   │  (Claude) │ │(gno serve)│
+        └──────────┘     └──────────────┘   └───────────┘ └──────────┘
+              │                 │                 │           │
+              └─────────────────┼─────────────────┴───────────┘
+                                │
+                                ▼
        ┌───────────────────────────────────────────────────────────────┐
        │                           GNO Core                            │
        │  ┌──────────────┐  ┌────────────┐  ┌────────────────────────┐ │
@@ -99,6 +99,29 @@ User query
     │
     ▼ Results (sorted by blended score)
 ```
+
+## Code Architecture
+
+GNO uses **"Ports without DI"** - a pragmatic simplification of hexagonal architecture:
+
+```
+CLI/MCP/Web UI → new Adapter() → adapter.createPort() → Port interface → Pipeline
+```
+
+**Port interfaces** (in `src/llm/types.ts`):
+- `EmbeddingPort` - vector embeddings
+- `GenerationPort` - LLM text generation
+- `RerankPort` - cross-encoder reranking
+- `VectorIndexPort` - vector search (in `src/store/vector`)
+
+**Adapters** (instantiate ports):
+- `LlmAdapter` - creates LLM ports via node-llama-cpp
+- `SqliteAdapter` - SQLite storage
+
+**Why not full hexagonal?**
+- Single implementation per port (no swappable backends)
+- CLI tool with fixed dependencies - DI adds complexity without benefit
+- Pipeline code still testable via port interfaces
 
 ## Key Components
 

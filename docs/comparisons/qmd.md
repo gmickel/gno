@@ -34,7 +34,7 @@ Both tools provide semantic search for local documents with AI-powered features.
 
 | Feature | GNO | QMD |
 |---------|-----|-----|
-| **Web UI** | 🔜 `gno serve` | ✗ |
+| **Web UI** | ✓ `gno serve` | ✗ |
 | **Raycast Extension** | 🔜 macOS native GUI | ✗ |
 | **Tab Completion** | 🔜 Shell integration | ✗ |
 

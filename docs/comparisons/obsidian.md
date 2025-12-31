@@ -29,7 +29,7 @@ A comparison of GNO with Obsidian's built-in search.
 
 | Feature | GNO | Obsidian |
 |---------|-----|----------|
-| **Web UI** | 🔜 `gno serve` | ✓ (Obsidian app) |
+| **Web UI** | ✓ `gno serve` | ✓ (Obsidian app) |
 | **Raycast** | 🔜 macOS native | ✓ (community extension) |
 
 ## Complementary Workflow
