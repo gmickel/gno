@@ -86,6 +86,7 @@ jobs:
         run: bun run typecheck
 
       - name: Test
+        shell: cmd
         run: bun test
         env:
           CI: 'true'
