@@ -7,7 +7,7 @@ This quickstart guide helps you get up and running with GNO in minutes.
 Install GNO using Bun:
 
 ```bash
-bun install -g gno
+bun install -g @gmickel/gno
 ```
 
 ## First Steps

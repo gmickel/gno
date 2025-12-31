@@ -1410,9 +1410,9 @@ Target: **npm registry, Bun-only**
 curl -fsSL https://bun.sh/install | bash
 
 # Then run
-bunx gno
+bunx @gmickel/gno
 # Or install globally
-bun add -g gno
+bun add -g @gmickel/gno
 ```
 
 Note: `npm install` / `yarn` / `pnpm` will download the package but execution requires Bun runtime (code uses `bun:sqlite`, bin is `.ts`).

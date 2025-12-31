@@ -9,7 +9,7 @@ GNO requires [Bun](https://bun.sh/) as its JavaScript runtime.
 curl -fsSL https://bun.sh/install | bash
 
 # Install GNO
-bun install -g gno
+bun install -g @gmickel/gno
 
 # Verify installation
 gno doctor
@@ -169,7 +169,7 @@ Ensure write access to:
 
 ```bash
 # Remove binary
-bun remove -g gno
+bun remove -g @gmickel/gno
 
 # Remove config and data (optional)
 rm -rf ~/.config/gno

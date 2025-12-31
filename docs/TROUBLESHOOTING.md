@@ -35,7 +35,7 @@ GNO not in PATH after install.
 which gno
 
 # If not found, reinstall globally
-bun install -g gno
+bun install -g @gmickel/gno
 
 # Or add to PATH
 export PATH="$HOME/.bun/bin:$PATH"

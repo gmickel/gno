@@ -413,7 +413,7 @@ export function buildMcpServerEntry(): McpServerEntry {
 
   // 3. Fallback to bunx (works if gno is published to npm)
   // Note: This may trigger network access on first run
-  return { command: bunPath, args: ['x', 'gno', 'mcp'] };
+  return { command: bunPath, args: ['x', '@gmickel/gno', 'mcp'] };
 }
 
 /**

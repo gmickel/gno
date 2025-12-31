@@ -37,7 +37,7 @@ Once connected, you can ask Claude things like:
 
 ```bash
 # Install
-bun install -g gno
+bun install -g @gmickel/gno
 
 # Initialize with your notes folder
 gno init ~/notes --name notes

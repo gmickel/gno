@@ -85,7 +85,7 @@ jobs:
       - name: Test packed tarball
         run: |
           # Install from tarball globally
-          bun add -g ./gno-*.tgz
+          bun add -g ./gmickel-gno-*.tgz
 
           # Verify CLI works
           gno --version
@@ -98,7 +98,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: npm-package
-          path: gno-*.tgz
+          path: gmickel-gno-*.tgz
 
   # PUBLISH JOB - Currently disabled
   # Uncomment when ready to publish. Requires NPM_TOKEN secret.

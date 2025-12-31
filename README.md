@@ -182,7 +182,7 @@ Requires **Bun** >= 1.0.0.
 
 ```sh
 # Install globally
-bun install -g gno
+bun install -g @gmickel/gno
 ```
 
 **macOS users**: For optimal vector search performance, install Homebrew SQLite:

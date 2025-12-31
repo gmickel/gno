@@ -286,7 +286,7 @@ The assistant uses `gno_get` with the docid from search results.
 Ensure GNO is installed globally:
 
 ```bash
-bun install -g gno
+bun install -g @gmickel/gno
 which gno  # Should show path
 ```
 
