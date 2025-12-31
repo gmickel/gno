@@ -234,6 +234,8 @@ Options:
 - `--models-pull` - Download models if missing
 - `--git-pull` - Run `git pull` in git repositories
 
+**Incremental**: Both `gno index` and `gno update` are incremental. Files are tracked by SHA-256 hash—only new or modified files are processed. Unchanged files are skipped instantly.
+
 ### gno embed
 
 Generate embeddings for indexed chunks.

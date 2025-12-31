@@ -94,7 +94,13 @@ gno index
 gno update
 ```
 
-Only changed files are processed.
+**Incremental by default**: GNO tracks file content via SHA-256 hashes. When you run `gno index` or `gno update`:
+
+- **New files** → indexed
+- **Modified files** → re-indexed
+- **Unchanged files** → skipped (instant)
+
+This makes re-indexing fast even for large collections. Just run `gno index` after adding or editing files.
 
 ### Check System Health
 
