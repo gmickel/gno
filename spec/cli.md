@@ -131,6 +131,7 @@ gno init [<path>] [--name <name>] [--pattern <glob>] [--include <csv-ext>] [--ex
 | `<path>` | string | Optional root directory to add as a collection |
 
 **Options:**
+
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
 | `--name` | string | dirname | Collection name (required if path given) |
@@ -189,6 +190,7 @@ gno collection add <path> --name <name> [--pattern <glob>] [--include <csv-ext>]
 | `<path>` | string | Absolute path to collection root directory |
 
 **Options:**
+
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
 | `--name` | string | required | Unique collection identifier |
@@ -363,6 +365,7 @@ gno embed [--force] [--model <uri>] [--batch-size <n>] [--dry-run] [--yes] [--js
 ```
 
 **Options:**
+
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
 | `--force` | boolean | false | Re-embed all chunks (ignore existing vectors) |
@@ -405,6 +408,7 @@ gno search <query> [-n <num>] [--min-score <num>] [-c <collection>] [--full] [--
 | `<query>` | string | Search query |
 
 **Options:**
+
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
 | `-n` | integer | 5 (20 for --json/--files) | Max results |
@@ -512,6 +516,7 @@ gno ask <query> [-n <num>] [-c <collection>] [--lang <bcp47>] [--answer] [--no-a
 ```
 
 **Options:**
+
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
 | `--answer` | boolean | false | Generate short grounded answer |
@@ -595,6 +600,7 @@ gno multi-get <pattern-or-list> [--max-bytes <n>] [--line-numbers] [--json|--fil
 | `<pattern-or-list>` | string | Glob pattern, comma-separated refs, or docid list |
 
 **Options:**
+
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
 | `--max-bytes` | integer | 10240 | Max bytes per document (truncate with warning) |
@@ -908,6 +914,7 @@ gno mcp install [--target <target>] [--scope <scope>] [--force] [--dry-run] [--j
 ```
 
 **Options:**
+
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
 | `--target` | string | claude-desktop | Target client (see table below) |
@@ -916,6 +923,7 @@ gno mcp install [--target <target>] [--scope <scope>] [--force] [--dry-run] [--j
 | `--dry-run` | boolean | false | Show what would be done without changes |
 
 **Targets:**
+
 | Value | Description | Project Scope |
 |-------|-------------|---------------|
 | `claude-desktop` | Claude Desktop app (default) | No |
@@ -930,6 +938,7 @@ gno mcp install [--target <target>] [--scope <scope>] [--force] [--dry-run] [--j
 | `librechat` | LibreChat | Yes (project only) |
 
 **Config Locations (macOS):**
+
 | Target | Scope | Path |
 |--------|-------|------|
 | claude-desktop | user | `~/Library/Application Support/Claude/claude_desktop_config.json` |
@@ -1012,6 +1021,7 @@ gno mcp uninstall [--target <target>] [--scope <scope>] [--json]
 ```
 
 **Options:**
+
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
 | `--target` | string | claude-desktop | Target client |
@@ -1053,13 +1063,15 @@ gno mcp status [--target <target>] [--scope <scope>] [--json]
 ```
 
 **Options:**
+
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
 | `--target` | string | all | Filter by target (or `all`) |
 | `--scope` | string | all | Filter by scope (or `all`) |
 
 **Output (Terminal):**
-```
+
+```text
 MCP Server Status
 ──────────────────────────────────────────────────
 
@@ -1116,6 +1128,7 @@ gno skill install [--scope <project|user>] [--target <claude|codex|all>] [--forc
 ```
 
 **Options:**
+
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
 | `--scope` | string | project | `project` (.claude/skills/) or `user` (~/.claude/skills/) |
@@ -1198,6 +1211,7 @@ gno skill show [--file <name>] [--all]
 ```
 
 **Options:**
+
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
 | `--file` | string | SKILL.md | File to show: SKILL.md, cli-reference.md, mcp-reference.md, examples.md |

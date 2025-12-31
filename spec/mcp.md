@@ -544,6 +544,7 @@ gno mcp install [options]
 ```
 
 **Options:**
+
 | Option | Description | Default |
 |--------|-------------|---------|
 | `-t, --target <target>` | Target client: `claude-desktop`, `claude-code`, `codex` | `claude-desktop` |
@@ -587,6 +588,7 @@ gno mcp uninstall [options]
 ```
 
 **Options:**
+
 | Option | Description | Default |
 |--------|-------------|---------|
 | `-t, --target <target>` | Target client | `claude-desktop` |
@@ -603,6 +605,7 @@ gno mcp status [options]
 ```
 
 **Options:**
+
 | Option | Description | Default |
 |--------|-------------|---------|
 | `-t, --target <target>` | Filter by target (or `all`) | `all` |
@@ -610,7 +613,8 @@ gno mcp status [options]
 | `--json` | JSON output | `false` |
 
 **Example Output:**
-```
+
+```text
 MCP Server Status
 ──────────────────────────────────────────────────
 
