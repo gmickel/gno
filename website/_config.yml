@@ -18,6 +18,8 @@ social:
     - https://github.com/gmickel/gno
     - https://twitter.com/gmickel
 logo: /assets/images/logo.png
+og_image: /assets/images/og/og-image.png
+version: "0.3.5"
 lang: en_US
 
 # Build settings
@@ -115,6 +117,28 @@ nav:
         url: /docs/USE-CASES/
       - title: Troubleshooting
         url: /docs/TROUBLESHOOTING/
+  - title: Integrations
+    icon: plug
+    items:
+      - title: Claude Desktop
+        url: /docs/integrations/claude-desktop/
+      - title: Cursor
+        url: /docs/integrations/cursor/
+      - title: Claude Code
+        url: /docs/integrations/claude-code/
+      - title: All Integrations
+        url: /docs/MCP/
+  - title: Comparisons
+    icon: scale
+    items:
+      - title: GNO vs QMD
+        url: /docs/comparisons/qmd/
+      - title: GNO vs grep
+        url: /docs/comparisons/grep/
+      - title: GNO vs Elasticsearch
+        url: /docs/comparisons/elasticsearch/
+      - title: GNO vs Obsidian
+        url: /docs/comparisons/obsidian/
   - title: Resources
     icon: info
     items:

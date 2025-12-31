@@ -27,6 +27,9 @@
   <meta property="og:type" content="website">
   <meta property="og:url" content="{{ page.url | absolute_url }}">
   <meta property="og:site_name" content="{{ site.title }}">
+  <meta property="og:image" content="{{ page.og_image | default: site.og_image | absolute_url }}">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
 
   <!-- Twitter -->
   <meta name="twitter:card" content="{{ site.twitter.card | default: 'summary' }}">
@@ -34,6 +37,7 @@
   <meta name="twitter:creator" content="@{{ site.twitter.username }}">
   <meta name="twitter:title" content="{{ page.title | default: site.title }}">
   <meta name="twitter:description" content="{{ page.description | default: site.description | strip_html | truncate: 200 }}">
+  <meta name="twitter:image" content="{{ page.og_image | default: site.og_image | absolute_url }}">
 
   <!-- Additional Meta -->
   <meta name="author" content="{{ site.author.name }}">

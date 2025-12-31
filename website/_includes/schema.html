@@ -52,7 +52,7 @@ Includes: Organization, WebSite, SoftwareApplication, BreadcrumbList, Article/Te
       "description": "{{ site.description | strip_html }}",
       "url": "{{ site.url }}",
       "downloadUrl": "https://github.com/{{ site.repository }}",
-      "softwareVersion": "1.0",
+      "softwareVersion": "{{ site.version | default: '0.3.5' }}",
       "author": {
         "@type": "Person",
         "name": "{{ site.author.name }}",

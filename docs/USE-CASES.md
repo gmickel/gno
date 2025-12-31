@@ -368,3 +368,167 @@ git commit -m "GNO config"
 ```
 
 The database should not be version-controlled (binary, large).
+
+## Legal Document Search
+
+Index contracts, policies, and compliance documents.
+
+### Setup
+
+```bash
+# Index legal documents
+gno init ~/legal --name legal --pattern "**/*.{pdf,docx}"
+gno update
+```
+
+### Workflow
+
+```bash
+# Find specific contract clauses
+gno search "termination clause"
+
+# Semantic search for concepts
+gno vsearch "data retention requirements"
+
+# Cross-reference policies
+gno query "GDPR compliance obligations"
+
+# Get AI summary of a document
+gno ask "summarize the key terms of contract ABC" --answer
+```
+
+### Tips
+
+- Use `--full` to see complete clause text
+- Add contexts like "contracts:" and "policies:" for scoped searches
+- Index multiple folders: employment agreements, vendor contracts, policies
+
+## Academic Research
+
+Manage academic papers, citations, and literature reviews.
+
+### Setup
+
+```bash
+# Index your paper library
+gno init ~/papers --name papers --pattern "**/*.pdf"
+
+# Add notes and annotations
+gno init ~/research-notes --name notes --pattern "**/*.md"
+
+gno update
+```
+
+### Research Workflow
+
+```bash
+# Find papers on a topic
+gno query "transformer architectures for NLP"
+
+# Find papers by author (keyword in citations)
+gno search "Vaswani attention"
+
+# Find related work for literature review
+gno vsearch "methods for evaluating language models"
+
+# Get AI synthesis
+gno ask "summarize the main approaches to few-shot learning" --answer
+```
+
+### Tips
+
+- PDF extraction works with most academic papers
+- Use semantic search to find conceptually related work
+- Combine papers with your notes for better context
+
+## Technical Writing
+
+Index specs, RFCs, ADRs, and design documents.
+
+### Setup
+
+```bash
+# Index design docs
+gno init ~/docs/specs --name specs --pattern "**/*.md"
+gno init ~/docs/adrs --name adrs --pattern "**/*.md"
+gno init ~/docs/rfcs --name rfcs --pattern "**/*.md"
+
+gno update
+```
+
+### Workflow
+
+```bash
+# Find relevant specs
+gno query "API authentication requirements"
+
+# Search across all design docs
+gno search "database schema decisions"
+
+# Find ADR context
+gno query "why did we choose PostgreSQL"
+
+# AI summary
+gno ask "what are the key constraints in the payment system spec" --answer
+```
+
+### Tips
+
+- Add contexts: "specs:" "adrs:" "rfcs:" for scoped searches
+- Index RFC status in the content or filename
+- Combine with meeting notes for decision context
+
+## Knowledge Base for Teams
+
+Shared documentation for team reference.
+
+### Setup
+
+```bash
+# Index team wiki (synced via git, Dropbox, etc.)
+gno init /shared/team-wiki --name wiki
+
+# Index runbooks
+gno init /shared/runbooks --name runbooks
+
+# Index internal docs
+gno init /shared/docs --name team-docs
+
+gno update
+```
+
+### Team Workflow
+
+```bash
+# Find procedures
+gno search "deploy to production"
+
+# Search runbooks
+gno query "database backup restore" --collection runbooks
+
+# Find team decisions
+gno query "how do we handle on-call"
+
+# AI answers from team knowledge
+gno ask "what is the incident response process" --answer
+```
+
+### Keeping in Sync
+
+```bash
+# Pull latest docs before searching
+gno update --git-pull
+
+# Or configure auto-update
+# In config:
+# collections:
+#   - name: wiki
+#     path: /shared/team-wiki
+#     updateCmd: "git pull"
+```
+
+### Tips
+
+- Use a shared network folder or git repo
+- Each team member can run GNO locally for fast private searches
+- MCP integration lets Claude search team knowledge

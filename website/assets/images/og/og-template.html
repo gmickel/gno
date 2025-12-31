@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@700&family=Crimson+Pro:wght@400&display=swap');
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      width: 1200px;
+      height: 630px;
+      overflow: hidden;
+      font-family: system-ui, sans-serif;
+    }
+
+    .og-container {
+      width: 1200px;
+      height: 630px;
+      background: #0a0f18;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      overflow: hidden;
+    }
+
+    /* Subtle grid pattern */
+    .grid-bg {
+      position: absolute;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(77, 184, 168, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(77, 184, 168, 0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+    }
+
+    /* Radial glow behind logo */
+    .glow {
+      position: absolute;
+      width: 600px;
+      height: 600px;
+      background: radial-gradient(circle, rgba(77, 184, 168, 0.15) 0%, transparent 60%);
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+    }
+
+    /* Floating document shapes */
+    .shape {
+      position: absolute;
+      border: 1px solid rgba(77, 184, 168, 0.2);
+      border-radius: 4px;
+      background: rgba(77, 184, 168, 0.03);
+    }
+
+    .shape-1 {
+      width: 80px;
+      height: 100px;
+      top: 80px;
+      left: 120px;
+      transform: rotate(-12deg);
+    }
+
+    .shape-2 {
+      width: 60px;
+      height: 75px;
+      top: 140px;
+      right: 180px;
+      transform: rotate(8deg);
+    }
+
+    .shape-3 {
+      width: 70px;
+      height: 88px;
+      bottom: 100px;
+      left: 200px;
+      transform: rotate(6deg);
+    }
+
+    .shape-4 {
+      width: 55px;
+      height: 70px;
+      bottom: 120px;
+      right: 140px;
+      transform: rotate(-8deg);
+    }
+
+    /* Document lines inside shapes */
+    .shape::before {
+      content: '';
+      position: absolute;
+      top: 15px;
+      left: 10px;
+      right: 10px;
+      height: 3px;
+      background: rgba(77, 184, 168, 0.3);
+      border-radius: 2px;
+      box-shadow:
+        0 10px 0 rgba(77, 184, 168, 0.2),
+        0 20px 0 rgba(77, 184, 168, 0.15),
+        0 30px 0 rgba(77, 184, 168, 0.1);
+    }
+
+    /* Main content */
+    .content {
+      position: relative;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 32px;
+    }
+
+    /* Search icon */
+    .search-icon {
+      width: 120px;
+      height: 120px;
+      position: relative;
+    }
+
+    .search-icon svg {
+      width: 100%;
+      height: 100%;
+      filter: drop-shadow(0 0 30px rgba(77, 184, 168, 0.4));
+    }
+
+    /* Logo text */
+    .logo {
+      font-family: 'Space Grotesk', system-ui, sans-serif;
+      font-size: 140px;
+      font-weight: 700;
+      color: #ffffff;
+      letter-spacing: -4px;
+      line-height: 1;
+      text-shadow: 0 0 60px rgba(77, 184, 168, 0.3);
+    }
+
+    /* Tagline */
+    .tagline {
+      font-family: 'Crimson Pro', Georgia, serif;
+      font-size: 36px;
+      color: rgba(255, 255, 255, 0.7);
+      font-weight: 400;
+      letter-spacing: 2px;
+      font-style: italic;
+    }
+
+    /* Accent bar */
+    .accent-bar {
+      width: 80px;
+      height: 4px;
+      background: linear-gradient(90deg, transparent, #4db8a8, transparent);
+      border-radius: 2px;
+    }
+
+    /* Corner accents */
+    .corner {
+      position: absolute;
+      width: 60px;
+      height: 60px;
+      border: 2px solid rgba(77, 184, 168, 0.3);
+    }
+
+    .corner-tl {
+      top: 40px;
+      left: 40px;
+      border-right: none;
+      border-bottom: none;
+    }
+
+    .corner-tr {
+      top: 40px;
+      right: 40px;
+      border-left: none;
+      border-bottom: none;
+    }
+
+    .corner-bl {
+      bottom: 40px;
+      left: 40px;
+      border-right: none;
+      border-top: none;
+    }
+
+    .corner-br {
+      bottom: 40px;
+      right: 40px;
+      border-left: none;
+      border-top: none;
+    }
+
+    /* URL */
+    .url {
+      position: absolute;
+      bottom: 50px;
+      font-family: 'Space Grotesk', monospace;
+      font-size: 20px;
+      color: #4db8a8;
+      letter-spacing: 3px;
+    }
+  </style>
+</head>
+<body>
+  <div class="og-container">
+    <div class="grid-bg"></div>
+    <div class="glow"></div>
+
+    <!-- Floating document shapes -->
+    <div class="shape shape-1"></div>
+    <div class="shape shape-2"></div>
+    <div class="shape shape-3"></div>
+    <div class="shape shape-4"></div>
+
+    <!-- Corner accents -->
+    <div class="corner corner-tl"></div>
+    <div class="corner corner-tr"></div>
+    <div class="corner corner-bl"></div>
+    <div class="corner corner-br"></div>
+
+    <div class="content">
+      <!-- Search icon -->
+      <div class="search-icon">
+        <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="40" cy="40" r="28" stroke="#4db8a8" stroke-width="5"/>
+          <line x1="60" y1="60" x2="88" y2="88" stroke="#4db8a8" stroke-width="5" stroke-linecap="round"/>
+          <!-- Inner details -->
+          <circle cx="40" cy="40" r="14" stroke="#4db8a8" stroke-width="2" opacity="0.5"/>
+          <line x1="32" y1="40" x2="48" y2="40" stroke="#4db8a8" stroke-width="2" stroke-linecap="round"/>
+          <line x1="40" y1="32" x2="40" y2="48" stroke="#4db8a8" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      </div>
+
+      <div class="logo">GNO</div>
+
+      <div class="accent-bar"></div>
+
+      <div class="tagline">Your Local Second Brain</div>
+    </div>
+
+    <div class="url">gno.sh</div>
+  </div>
+</body>
+</html>
