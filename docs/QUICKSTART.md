@@ -121,6 +121,20 @@ gno ls --json
 gno get <docid>
 ```
 
+## Web UI
+
+Prefer a visual interface? Start the web server:
+
+```bash
+gno serve
+```
+
+Open http://localhost:3000 in your browser for:
+- Dashboard with index stats
+- Visual search with highlighted results
+- Document browser with collection filtering
+- Rendered document viewer with syntax highlighting
+
 ## Example Session
 
 ```bash
@@ -128,10 +142,13 @@ gno get <docid>
 gno init ~/notes --name notes
 gno index
 
-# Search
+# Search (CLI)
 gno search "meeting notes"
 gno vsearch "project timeline concerns"
 gno query "what did we decide about the API"
+
+# Or use the web UI
+gno serve
 
 # Get details
 gno ls --json | head

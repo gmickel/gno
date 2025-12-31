@@ -9,7 +9,7 @@
 import { getIndexDbPath } from '../app/constants';
 import { getConfigPaths, isInitialized, loadConfig } from '../config';
 import { SqliteAdapter } from '../store/sqlite/adapter';
-// HTML import - Bun handles bundling TSX/CSS automatically
+// HTML import - Bun handles bundling TSX/CSS automatically via routes
 import homepage from './public/index.html';
 import { routeApi } from './routes/api';
 
@@ -26,9 +26,6 @@ export interface ServeResult {
   success: boolean;
   error?: string;
 }
-
-// SPA routes that should serve index.html
-const SPA_ROUTES = new Set(['/', '/search', '/browse', '/doc']);
 
 /**
  * Parse hostname from Host header, handling IPv6 brackets.
@@ -160,6 +157,15 @@ export async function startServer(
       // Enable development mode for HMR and console logging
       development: isDev,
 
+      // Use routes for SPA pages - Bun handles HTML bundling
+      routes: {
+        '/': homepage,
+        '/search': homepage,
+        '/browse': homepage,
+        '/doc': homepage,
+      },
+
+      // Fetch handles API routes and adds security headers
       async fetch(req) {
         const url = new URL(req.url);
 
@@ -177,11 +183,6 @@ export async function startServer(
         const apiResponse = await routeApi(store, req, url);
         if (apiResponse) {
           return withSecurityHeaders(apiResponse, isDev);
-        }
-
-        // SPA routes - serve homepage with security headers
-        if (SPA_ROUTES.has(url.pathname)) {
-          return withSecurityHeaders(homepage, isDev);
         }
 
         // 404 for unknown routes

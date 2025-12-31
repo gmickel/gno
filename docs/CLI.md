@@ -16,6 +16,7 @@ GNO command-line interface guide.
 | `gno ask` | Search with AI answer |
 | `gno get` | Retrieve document content |
 | `gno ls` | List indexed documents |
+| `gno serve` | Start web UI server |
 | `gno models` | Manage models (list, pull, use) |
 | `gno skill` | Install GNO skill for AI agents |
 | `gno doctor` | Check system health |
@@ -450,6 +451,49 @@ gno search "test" --json | jq '.results[].uri'
 | 0 | Success |
 | 1 | Validation error (bad input) |
 | 2 | Runtime error (IO, DB, model) |
+
+## Web UI
+
+### gno serve
+
+Start a local web server for visual search and document browsing.
+
+```bash
+gno serve
+gno serve --port 8080
+```
+
+Options:
+- `-p, --port <num>` - Port to listen on (default: 3000)
+
+**Features:**
+- **Dashboard** (`/`) - Index stats, collection overview, health status
+- **Search** (`/search`) - Full-text BM25 search with highlighted snippets
+- **Browse** (`/browse`) - Collection and document list with filtering
+- **Document View** (`/doc`) - Rendered document content with syntax highlighting
+
+**API Endpoints:**
+- `GET /api/health` - Health check
+- `GET /api/status` - Index status (documents, chunks, collections)
+- `GET /api/collections` - List collections
+- `GET /api/docs` - List documents (paginated: `?limit=20&offset=0&collection=name`)
+- `GET /api/doc` - Get document content (`?uri=gno://collection/path`)
+- `POST /api/search` - Search (`{"query": "...", "limit": 10}`)
+
+**Security:**
+- Binds to `127.0.0.1` only (no LAN exposure)
+- Content Security Policy headers
+- CSRF protection for mutations
+- DNS rebinding protection
+
+**Example:**
+```bash
+# Start server
+gno serve --port 3001
+
+# Open in browser
+open http://localhost:3001
+```
 
 ## MCP Server
 
