@@ -1,14 +1,12 @@
 /**
  * Install gno as MCP server in client configurations.
- * Atomic write via temp file + rename.
  *
  * @module src/cli/commands/mcp/install
  */
 
-import { copyFile, mkdir, rename, stat, unlink } from 'node:fs/promises';
-import { dirname } from 'node:path';
 import { CliError } from '../../errors.js';
 import { getGlobals } from '../../program.js';
+import { readMcpConfig, writeMcpConfig } from './config.js';
 import {
   buildMcpServerEntry,
   getTargetDisplayName,
@@ -41,86 +39,8 @@ interface InstallResult {
   target: McpTarget;
   scope: McpScope;
   configPath: string;
-  action: 'created' | 'updated' | 'already_exists' | 'dry_run';
+  action: 'created' | 'updated' | 'dry_run_create' | 'dry_run_update';
   serverEntry: { command: string; args: string[] };
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Config File Operations
-// ─────────────────────────────────────────────────────────────────────────────
-
-interface McpConfig {
-  mcpServers?: Record<string, { command: string; args: string[] }>;
-  [key: string]: unknown;
-}
-
-/**
- * Read and parse MCP config file.
- * Returns empty config if file doesn't exist.
- * Throws on malformed JSON.
- */
-async function readMcpConfig(configPath: string): Promise<McpConfig> {
-  const file = Bun.file(configPath);
-  const exists = await file.exists();
-
-  if (!exists) {
-    return {};
-  }
-
-  const content = await file.text();
-  // Handle empty file
-  if (!content.trim()) {
-    return {};
-  }
-
-  try {
-    return JSON.parse(content) as McpConfig;
-  } catch {
-    throw new CliError(
-      'RUNTIME',
-      `Malformed JSON in ${configPath}. Please fix or backup and delete the file.`
-    );
-  }
-}
-
-/**
- * Write MCP config atomically via temp file + rename.
- * Creates backup of existing file first.
- */
-async function writeMcpConfig(
-  configPath: string,
-  config: McpConfig
-): Promise<void> {
-  const dir = dirname(configPath);
-
-  // Ensure directory exists
-  await mkdir(dir, { recursive: true });
-
-  // Create backup of existing file
-  try {
-    const exists = await stat(configPath);
-    if (exists.isFile()) {
-      await copyFile(configPath, `${configPath}.bak`);
-    }
-  } catch {
-    // File doesn't exist, no backup needed
-  }
-
-  // Write to temp file first
-  const tmpPath = `${configPath}.tmp.${Date.now()}.${process.pid}`;
-  try {
-    await Bun.write(tmpPath, JSON.stringify(config, null, 2));
-    // Atomic rename
-    await rename(tmpPath, configPath);
-  } catch (err) {
-    // Cleanup temp file on error
-    try {
-      await unlink(tmpPath);
-    } catch {
-      // Ignore cleanup errors
-    }
-    throw err;
-  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -150,17 +70,7 @@ async function installToTarget(
     homeDir,
   });
 
-  if (dryRun) {
-    return {
-      target,
-      scope,
-      configPath,
-      action: 'dry_run',
-      serverEntry,
-    };
-  }
-
-  // Read existing config
+  // Read existing config (needed for both dry-run preview and actual install)
   const config = await readMcpConfig(configPath);
 
   // Initialize mcpServers if needed
@@ -179,7 +89,19 @@ async function installToTarget(
     );
   }
 
-  const action = existingEntry ? 'updated' : 'created';
+  const wouldCreate = !existingEntry;
+
+  if (dryRun) {
+    return {
+      target,
+      scope,
+      configPath,
+      action: wouldCreate ? 'dry_run_create' : 'dry_run_update',
+      serverEntry,
+    };
+  }
+
+  const action = wouldCreate ? 'created' : 'updated';
 
   // Add/update entry
   config.mcpServers[MCP_SERVER_NAME] = serverEntry;
@@ -249,9 +171,10 @@ export async function installMcp(opts: InstallOptions = {}): Promise<void> {
   }
 
   if (dryRun) {
+    const dryRunVerb = result.action === 'dry_run_create' ? 'create' : 'update';
     process.stdout.write('Dry run - no changes made.\n\n');
     process.stdout.write(
-      `Would install gno to ${getTargetDisplayName(target)}:\n`
+      `Would ${dryRunVerb} gno in ${getTargetDisplayName(target)}:\n`
     );
     process.stdout.write(`  Config: ${result.configPath}\n`);
     process.stdout.write(`  Command: ${serverEntry.command}\n`);

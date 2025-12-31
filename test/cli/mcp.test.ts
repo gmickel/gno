@@ -227,7 +227,7 @@ describe('MCP CLI commands', () => {
       expect(stdoutOutput.join('')).toContain('Updated');
     });
 
-    test('dry-run does not modify files', async () => {
+    test('dry-run does not modify files and reports create', async () => {
       await installMcp({
         target: 'claude-code',
         scope: 'user',
@@ -239,6 +239,31 @@ describe('MCP CLI commands', () => {
       const configPath = join(FAKE_HOME, '.claude.json');
       expect(await Bun.file(configPath).exists()).toBe(false);
       expect(stdoutOutput.join('')).toContain('Dry run');
+      expect(stdoutOutput.join('')).toContain('Would create');
+    });
+
+    test('dry-run reports update when config exists', async () => {
+      // Create existing config with gno
+      const configPath = join(FAKE_HOME, '.claude.json');
+      await mkdir(FAKE_HOME, { recursive: true });
+      await Bun.write(
+        configPath,
+        JSON.stringify({
+          mcpServers: { [MCP_SERVER_NAME]: { command: 'old', args: [] } },
+        })
+      );
+
+      stdoutOutput = [];
+      await installMcp({
+        target: 'claude-code',
+        scope: 'user',
+        dryRun: true,
+        force: true,
+        homeDir: FAKE_HOME,
+        cwd: FAKE_CWD,
+      });
+
+      expect(stdoutOutput.join('')).toContain('Would update');
     });
 
     test('errors on project scope for claude-desktop', async () => {
@@ -307,6 +332,28 @@ describe('MCP CLI commands', () => {
       expect(error).toBeInstanceOf(CliError);
       expect(error?.code).toBe('RUNTIME');
       expect(error?.message).toContain('Malformed JSON');
+    });
+
+    test('creates backup before modifying existing config', async () => {
+      // Create initial config
+      const configPath = join(FAKE_HOME, '.claude.json');
+      const backupPath = `${configPath}.bak`;
+      const originalContent = JSON.stringify({ existing: 'data' });
+      await mkdir(FAKE_HOME, { recursive: true });
+      await Bun.write(configPath, originalContent);
+
+      // Install gno (modifies config)
+      await installMcp({
+        target: 'claude-code',
+        scope: 'user',
+        homeDir: FAKE_HOME,
+        cwd: FAKE_CWD,
+      });
+
+      // Verify backup was created with original content
+      const backupFile = Bun.file(backupPath);
+      expect(await backupFile.exists()).toBe(true);
+      expect(await backupFile.text()).toBe(originalContent);
     });
   });
 

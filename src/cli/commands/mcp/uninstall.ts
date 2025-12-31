@@ -4,10 +4,9 @@
  * @module src/cli/commands/mcp/uninstall
  */
 
-import { copyFile, mkdir, rename, stat, unlink } from 'node:fs/promises';
-import { dirname } from 'node:path';
 import { CliError } from '../../errors.js';
 import { getGlobals } from '../../program.js';
+import { readMcpConfig, writeMcpConfig } from './config.js';
 import {
   getTargetDisplayName,
   MCP_SERVER_NAME,
@@ -41,75 +40,6 @@ interface UninstallResult {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Config File Operations
-// ─────────────────────────────────────────────────────────────────────────────
-
-interface McpConfig {
-  mcpServers?: Record<string, { command: string; args: string[] }>;
-  [key: string]: unknown;
-}
-
-/**
- * Read and parse MCP config file.
- */
-async function readMcpConfig(configPath: string): Promise<McpConfig | null> {
-  const file = Bun.file(configPath);
-  const exists = await file.exists();
-
-  if (!exists) {
-    return null;
-  }
-
-  const content = await file.text();
-  if (!content.trim()) {
-    return {};
-  }
-
-  try {
-    return JSON.parse(content) as McpConfig;
-  } catch {
-    throw new CliError(
-      'RUNTIME',
-      `Malformed JSON in ${configPath}. Please fix or backup and delete the file.`
-    );
-  }
-}
-
-/**
- * Write MCP config atomically.
- */
-async function writeMcpConfig(
-  configPath: string,
-  config: McpConfig
-): Promise<void> {
-  const dir = dirname(configPath);
-  await mkdir(dir, { recursive: true });
-
-  // Backup
-  try {
-    const exists = await stat(configPath);
-    if (exists.isFile()) {
-      await copyFile(configPath, `${configPath}.bak`);
-    }
-  } catch {
-    // No backup needed
-  }
-
-  const tmpPath = `${configPath}.tmp.${Date.now()}.${process.pid}`;
-  try {
-    await Bun.write(tmpPath, JSON.stringify(config, null, 2));
-    await rename(tmpPath, configPath);
-  } catch (err) {
-    try {
-      await unlink(tmpPath);
-    } catch {
-      // Ignore
-    }
-    throw err;
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
 // Uninstall Logic
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -130,7 +60,7 @@ async function uninstallFromTarget(
     homeDir,
   });
 
-  const config = await readMcpConfig(configPath);
+  const config = await readMcpConfig(configPath, { returnNullOnMissing: true });
 
   // File doesn't exist
   if (config === null) {
