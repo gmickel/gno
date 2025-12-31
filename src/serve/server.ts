@@ -6,12 +6,35 @@
  * @module src/serve/server
  */
 
+import { join } from 'node:path'; // no Bun path utils
 import { getIndexDbPath } from '../app/constants';
 import { getConfigPaths, isInitialized, loadConfig } from '../config';
 import { SqliteAdapter } from '../store/sqlite/adapter';
-// HTML import - Bun handles bundling TSX/CSS automatically via routes
-import homepage from './public/index.html';
 import { routeApi } from './routes/api';
+
+// Frontend directories
+const PUBLIC_DIR = join(import.meta.dir, 'public');
+const DIST_DIR = join(import.meta.dir, 'dist');
+
+/**
+ * Build frontend if dist doesn't exist.
+ */
+async function ensureFrontendBuilt(): Promise<void> {
+  const indexHtml = Bun.file(join(DIST_DIR, 'index.html'));
+  if (await indexHtml.exists()) return;
+
+  console.log('Building frontend...');
+  const result = await Bun.build({
+    entrypoints: [join(PUBLIC_DIR, 'index.html')],
+    outdir: DIST_DIR,
+    minify: true,
+  });
+
+  if (!result.success) {
+    throw new Error(`Frontend build failed: ${result.logs.join('\n')}`);
+  }
+  console.log('Frontend built successfully');
+}
 
 export interface ServeOptions {
   /** Port to listen on (default: 3000) */
@@ -108,6 +131,16 @@ export async function startServer(
   const port = options.port ?? 3000;
   const isDev = process.env.NODE_ENV !== 'production';
 
+  // Build frontend if needed
+  try {
+    await ensureFrontendBuilt();
+  } catch (e) {
+    return {
+      success: false,
+      error: e instanceof Error ? e.message : String(e),
+    };
+  }
+
   // Check initialization
   const initialized = await isInitialized(options.configPath);
   if (!initialized) {
@@ -154,18 +187,9 @@ export async function startServer(
       port,
       hostname: '127.0.0.1', // Loopback only - no LAN exposure
 
-      // Enable development mode for HMR and console logging
+      // Enable development mode for console logging
       development: isDev,
 
-      // Use routes for SPA pages - Bun handles HTML bundling
-      routes: {
-        '/': homepage,
-        '/search': homepage,
-        '/browse': homepage,
-        '/doc': homepage,
-      },
-
-      // Fetch handles API routes and adds security headers
       async fetch(req) {
         const url = new URL(req.url);
 
@@ -183,6 +207,29 @@ export async function startServer(
         const apiResponse = await routeApi(store, req, url);
         if (apiResponse) {
           return withSecurityHeaders(apiResponse, isDev);
+        }
+
+        // SPA routes - serve index.html
+        if (
+          url.pathname === '/' ||
+          url.pathname === '/search' ||
+          url.pathname === '/browse' ||
+          url.pathname === '/doc'
+        ) {
+          const html = Bun.file(join(DIST_DIR, 'index.html'));
+          return withSecurityHeaders(
+            new Response(html, {
+              headers: { 'Content-Type': 'text/html; charset=utf-8' },
+            }),
+            isDev
+          );
+        }
+
+        // Static assets from dist directory
+        const assetPath = join(DIST_DIR, url.pathname);
+        const assetFile = Bun.file(assetPath);
+        if (await assetFile.exists()) {
+          return withSecurityHeaders(new Response(assetFile), isDev);
         }
 
         // 404 for unknown routes
