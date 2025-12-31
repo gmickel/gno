@@ -324,7 +324,7 @@ export default function Ask({ navigate }: PageProps) {
 
                     {/* Meta info */}
                     <div className="flex items-center gap-2 text-muted-foreground/60 text-xs">
-                      <span>{entry.response.results.length} sources</span>
+                      <span>{entry.response.results.length} results</span>
                       {entry.response.meta.vectorsUsed && (
                         <Badge
                           className="font-mono text-[9px]"
@@ -348,7 +348,7 @@ export default function Ask({ navigate }: PageProps) {
                       entry.response.results.length > 0 && (
                         <div className="space-y-2">
                           <p className="font-medium text-muted-foreground text-sm">
-                            Retrieved sources:
+                            Search results:
                           </p>
                           {entry.response.results.map((r, i) => (
                             <Card
@@ -389,7 +389,7 @@ export default function Ask({ navigate }: PageProps) {
                         <div className="flex items-center gap-2 text-muted-foreground">
                           <FileText className="size-4" />
                           <span className="text-sm">
-                            No relevant sources found
+                            No relevant results found
                           </span>
                         </div>
                       )}

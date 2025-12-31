@@ -5,6 +5,7 @@
  * @module src/serve/routes/api
  */
 
+import { modelsPull } from '../../cli/commands/models/pull';
 import type { Config, ModelPreset } from '../../config/types';
 import { getModelConfig, getPreset, listPresets } from '../../llm/registry';
 import {
@@ -13,14 +14,14 @@ import {
 } from '../../pipeline/answer';
 import { searchHybrid } from '../../pipeline/hybrid';
 import { searchBm25 } from '../../pipeline/search';
-import type {
-  AskResult,
-  Citation,
-  SearchOptions,
-  SearchResult,
-} from '../../pipeline/types';
+import type { AskResult, Citation, SearchOptions } from '../../pipeline/types';
 import type { SqliteAdapter } from '../../store/sqlite/adapter';
-import { reloadServerContext, type ServerContext } from '../context';
+import {
+  downloadState,
+  reloadServerContext,
+  resetDownloadState,
+  type ServerContext,
+} from '../context';
 
 /** Mutable context holder for hot-reloading presets */
 export interface ContextHolder {
@@ -587,6 +588,97 @@ export async function handleSetPreset(
     success: true,
     activePreset: body.presetId,
     capabilities: ctxHolder.current.capabilities,
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Model Download
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * GET /api/models/status
+ * Returns current download status for polling.
+ */
+export function handleModelStatus(): Response {
+  return jsonResponse({
+    active: downloadState.active,
+    currentType: downloadState.currentType,
+    progress: downloadState.progress,
+    completed: downloadState.completed,
+    failed: downloadState.failed,
+    startedAt: downloadState.startedAt,
+  });
+}
+
+/**
+ * POST /api/models/pull
+ * Start downloading models for current preset.
+ * Returns immediately; poll /api/models/status for progress.
+ */
+export function handleModelPull(ctxHolder: ContextHolder): Response {
+  // Don't start if already downloading
+  if (downloadState.active) {
+    return errorResponse('CONFLICT', 'Download already in progress', 409);
+  }
+
+  // Reset and start
+  resetDownloadState();
+  downloadState.active = true;
+  downloadState.startedAt = Date.now();
+
+  // Run download in background (don't await)
+  // Pass current config so it uses the active preset from UI
+  modelsPull({
+    config: ctxHolder.config,
+    all: true,
+    onProgress: (type, progress) => {
+      downloadState.currentType = type;
+      downloadState.progress = progress;
+    },
+  })
+    .then(async (result) => {
+      // Track results
+      for (const r of result.results) {
+        if (r.ok) {
+          if (!r.skipped) {
+            downloadState.completed.push(r.type);
+          }
+        } else {
+          downloadState.failed.push({
+            type: r.type,
+            error: r.error ?? 'Unknown error',
+          });
+        }
+      }
+
+      // Reload context to pick up new models
+      console.log('Models downloaded, reloading context...');
+      try {
+        ctxHolder.current = await reloadServerContext(
+          ctxHolder.current,
+          ctxHolder.config
+        );
+        console.log('Context reloaded');
+      } catch (e) {
+        console.error('Failed to reload context:', e);
+      }
+
+      downloadState.active = false;
+      downloadState.currentType = null;
+      downloadState.progress = null;
+    })
+    .catch((e) => {
+      console.error('Model download failed:', e);
+      downloadState.active = false;
+      downloadState.failed.push({
+        type: downloadState.currentType ?? 'embed',
+        error: e instanceof Error ? e.message : String(e),
+      });
+    });
+
+  return jsonResponse({
+    started: true,
+    message: 'Download started. Poll /api/models/status for progress.',
   });
 }
 

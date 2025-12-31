@@ -61,6 +61,10 @@ Answer generation uses shared module to stay in sync with CLI:
 | `/api/search` | POST | BM25 search |
 | `/api/query` | POST | Hybrid search |
 | `/api/ask` | POST | AI answer with citations |
+| `/api/presets` | GET | List model presets |
+| `/api/presets` | POST | Switch preset (hot-reload) |
+| `/api/models/status` | GET | Download progress |
+| `/api/models/pull` | POST | Start model download |
 
 ## Frontend
 

@@ -66,6 +66,17 @@ Switch between model presets without restarting:
 
 Click the preset selector, choose your preference, and GNO reloads models automatically.
 
+### In-Browser Model Download
+
+Missing models? Download them directly from the UI:
+
+1. Open the preset selector
+2. Click **Download Models**
+3. Watch the progress bar
+4. Start using AI features immediately
+
+No terminal required—everything happens in the browser.
+
 ## Privacy by Design
 
 Everything runs on `localhost`:

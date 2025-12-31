@@ -8,9 +8,52 @@
 import type { Config } from '../config/types';
 import { LlmAdapter } from '../llm/nodeLlamaCpp/adapter';
 import { getActivePreset } from '../llm/registry';
-import type { EmbeddingPort, GenerationPort, RerankPort } from '../llm/types';
+import type {
+  DownloadProgress,
+  EmbeddingPort,
+  GenerationPort,
+  ModelType,
+  RerankPort,
+} from '../llm/types';
 import type { SqliteAdapter } from '../store/sqlite/adapter';
 import { createVectorIndexPort, type VectorIndexPort } from '../store/vector';
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Download State (in-memory, single user)
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface DownloadState {
+  active: boolean;
+  currentType: ModelType | null;
+  progress: DownloadProgress | null;
+  completed: ModelType[];
+  failed: Array<{ type: ModelType; error: string }>;
+  startedAt: number | null;
+}
+
+/** Global download state for polling */
+export const downloadState: DownloadState = {
+  active: false,
+  currentType: null,
+  progress: null,
+  completed: [],
+  failed: [],
+  startedAt: null,
+};
+
+/** Reset download state */
+export function resetDownloadState(): void {
+  downloadState.active = false;
+  downloadState.currentType = null;
+  downloadState.progress = null;
+  downloadState.completed = [];
+  downloadState.failed = [];
+  downloadState.startedAt = null;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Server Context
+// ─────────────────────────────────────────────────────────────────────────────
 
 export interface ServerContext {
   store: SqliteAdapter;

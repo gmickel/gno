@@ -7,7 +7,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { PresetSelector } from '../components/PresetSelector';
+import { PresetSelector } from '../components/preset-selector';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import {

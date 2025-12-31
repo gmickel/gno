@@ -37,6 +37,8 @@ All endpoints are JSON-based and run entirely on your machine.
 | `/api/ask` | POST | AI-powered Q&A |
 | `/api/presets` | GET | List model presets |
 | `/api/presets` | POST | Switch preset |
+| `/api/models/status` | GET | Download status |
+| `/api/models/pull` | POST | Start model download |
 
 ---
 
@@ -480,6 +482,80 @@ curl -X POST http://localhost:3000/api/presets \
 
 ---
 
+### Model Download Status
+
+```http
+GET /api/models/status
+```
+
+Check the status of model downloads.
+
+**Response**:
+```json
+{
+  "active": true,
+  "currentType": "embed",
+  "progress": {
+    "downloadedBytes": 104857600,
+    "totalBytes": 524288000,
+    "percent": 20
+  },
+  "completed": [],
+  "failed": [],
+  "startedAt": 1706000000000
+}
+```
+
+| Field | Description |
+|:------|:------------|
+| `active` | Whether download is in progress |
+| `currentType` | Current model: `embed`, `gen`, or `rerank` |
+| `progress` | Download progress for current model |
+| `completed` | Successfully downloaded model types |
+| `failed` | Failed downloads with error messages |
+
+---
+
+### Start Model Download
+
+```http
+POST /api/models/pull
+```
+
+Start downloading models for the active preset. Returns immediately and downloads in background. Poll `/api/models/status` for progress.
+
+**Response**:
+```json
+{
+  "started": true,
+  "message": "Download started. Poll /api/models/status for progress."
+}
+```
+
+**Error** (download already in progress):
+```json
+{
+  "error": {
+    "code": "CONFLICT",
+    "message": "Download already in progress"
+  }
+}
+```
+
+**Example**:
+```bash
+# Start download
+curl -X POST http://localhost:3000/api/models/pull
+
+# Poll status until complete
+while true; do
+  curl -s http://localhost:3000/api/models/status | jq
+  sleep 2
+done
+```
+
+---
+
 ## Error Responses
 
 All errors follow a consistent format:
@@ -497,6 +573,7 @@ All errors follow a consistent format:
 |:-----|:------------|:------------|
 | `VALIDATION` | 400 | Invalid request parameters |
 | `NOT_FOUND` | 404 | Resource not found |
+| `CONFLICT` | 409 | Operation already in progress |
 | `UNAVAILABLE` | 503 | Feature not available (model not loaded) |
 | `RUNTIME` | 500 | Internal error |
 

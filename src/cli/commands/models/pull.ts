@@ -18,6 +18,8 @@ import type { DownloadProgress, ModelType } from '../../../llm/types';
 export interface ModelsPullOptions {
   /** Override config path */
   configPath?: string;
+  /** Override config object (takes precedence over configPath) */
+  config?: import('../../../config/types').Config;
   /** Pull all models */
   all?: boolean;
   /** Pull embedding model */
@@ -81,10 +83,13 @@ function getTypesToPull(options: ModelsPullOptions): ModelType[] {
 export async function modelsPull(
   options: ModelsPullOptions = {}
 ): Promise<ModelsPullResult> {
-  // Load config (use defaults if not initialized)
-  const { createDefaultConfig } = await import('../../../config');
-  const configResult = await loadConfig(options.configPath);
-  const config = configResult.ok ? configResult.value : createDefaultConfig();
+  // Use provided config, or load from disk (use defaults if not initialized)
+  let config = options.config;
+  if (!config) {
+    const { createDefaultConfig } = await import('../../../config');
+    const configResult = await loadConfig(options.configPath);
+    config = configResult.ok ? configResult.value : createDefaultConfig();
+  }
 
   const preset = getActivePreset(config);
   const cache = new ModelCache(getModelsCachePath());

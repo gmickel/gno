@@ -19,6 +19,8 @@ import {
   handleDoc,
   handleDocs,
   handleHealth,
+  handleModelPull,
+  handleModelStatus,
   handlePresets,
   handleQuery,
   handleSearch,
@@ -213,6 +215,12 @@ export async function startServer(
             withSecurityHeaders(handlePresets(ctxHolder.current), isDev),
           POST: async (req: Request) =>
             withSecurityHeaders(await handleSetPreset(ctxHolder, req), isDev),
+        },
+        '/api/models/status': {
+          GET: () => withSecurityHeaders(handleModelStatus(), isDev),
+        },
+        '/api/models/pull': {
+          POST: () => withSecurityHeaders(handleModelPull(ctxHolder), isDev),
         },
       },
 

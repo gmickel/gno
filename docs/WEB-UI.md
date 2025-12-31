@@ -65,7 +65,7 @@ Click **Ask** for AI-powered answers. Type your question—GNO searches your doc
 
 Switch between model presets without restarting:
 
-1. Click the preset selector (top-right of dashboard)
+1. Click the preset selector (top-left of header)
 2. Choose: **Slim** (fast), **Balanced** (default), or **Quality** (best answers)
 3. GNO reloads models automatically
 
@@ -74,6 +74,17 @@ Switch between model presets without restarting:
 | Slim | ~1GB | Quick searches, limited resources |
 | Balanced | ~2GB | General use |
 | Quality | ~2.5GB | Best answer quality |
+
+### Model Download
+
+If models aren't downloaded, the preset selector shows a warning icon. Download directly from the UI:
+
+1. Click the preset selector
+2. Click **Download Models** button
+3. Watch progress bar as models download
+4. Capabilities auto-enable when complete
+
+The download runs in background—you can continue using BM25 search while models download.
 
 ### Search Modes
 

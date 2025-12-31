@@ -62,6 +62,8 @@ curl http://localhost:3000/api/status | jq
 | `/api/docs` | GET | List documents |
 | `/api/doc` | GET | Get document content |
 | `/api/presets` | GET/POST | Model preset management |
+| `/api/models/pull` | POST | Download models |
+| `/api/models/status` | GET | Download progress |
 
 ## Language Integrations
 
