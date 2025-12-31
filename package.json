@@ -1,6 +1,6 @@
 {
   "name": "gno",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Local semantic search for your documents. Index Markdown, PDF, and Office files with hybrid BM25 + vector search.",
   "keywords": [
     "search",

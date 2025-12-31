@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.1] - 2025-12-31
+
+### Added
+- **MCP Install CLI** - One-command setup for AI assistant integration
+  - `gno mcp install` - Configure gno as MCP server in Claude Desktop, Claude Code, or Codex
+  - `gno mcp uninstall` - Remove gno from MCP configuration
+  - `gno mcp status` - Check installation status across all targets
+- Cross-platform support (macOS, Windows, Linux)
+- Atomic config writes with automatic backup
+- User and project scope support for Claude Code and Codex
+
 ## [0.2.0] - 2025-12-30
 
 ### Added
