@@ -44,12 +44,12 @@ jobs:
         run: bun run typecheck
 
       - name: Test
-        # Pipe through cat to avoid bun tty detection bug causing false exit 1
-        # Use bash shell on Windows since PowerShell cat (Get-Content) doesn't work with pipes
-        shell: bash
-        run: bun test | cat
+        run: bun test
         env:
           CI: 'true'
+          # Disable color output to avoid bun tty detection bug
+          NO_COLOR: '1'
+          FORCE_COLOR: '0'
 
   # Windows - main, tags, manual, or labeled PRs only
   test-windows:
@@ -91,9 +91,9 @@ jobs:
         run: bun run typecheck
 
       - name: Test
-        # Pipe through cat to avoid bun tty detection bug causing false exit 1
-        # Use bash shell on Windows since PowerShell cat (Get-Content) doesn't work with pipes
-        shell: bash
-        run: bun test | cat
+        run: bun test
         env:
           CI: 'true'
+          # Disable color output to avoid bun tty detection bug
+          NO_COLOR: '1'
+          FORCE_COLOR: '0'
