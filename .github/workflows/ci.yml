@@ -8,7 +8,6 @@ on:
   workflow_dispatch:
 
 jobs:
-  # Core platforms - always run
   test:
     strategy:
       matrix:
@@ -44,27 +43,10 @@ jobs:
         run: bun run typecheck
 
       - name: Test
-        # Workaround for bun test exit code bug: https://github.com/oven-sh/bun/issues/17028
-        # Capture output and fail only if actual test failures detected
-        shell: bash
-        run: |
-          set +e
-          output=$(bun test 2>&1)
-          exit_code=$?
-          echo "$output"
-          if echo "$output" | grep -q "(fail)"; then
-            echo "::error::Tests failed"
-            exit 1
-          fi
-          # Check for "0 fail" which means all tests passed
-          if echo "$output" | grep -qE "[0-9]+ pass"; then
-            exit 0
-          fi
-          exit $exit_code
+        run: bun test
         env:
           CI: 'true'
 
-  # Windows - main, tags, manual, or labeled PRs only
   test-windows:
     if: |
       github.event_name == 'push' ||
@@ -104,22 +86,6 @@ jobs:
         run: bun run typecheck
 
       - name: Test
-        # Workaround for bun test exit code bug: https://github.com/oven-sh/bun/issues/17028
-        # Capture output and fail only if actual test failures detected
-        shell: bash
-        run: |
-          set +e
-          output=$(bun test 2>&1)
-          exit_code=$?
-          echo "$output"
-          if echo "$output" | grep -q "(fail)"; then
-            echo "::error::Tests failed"
-            exit 1
-          fi
-          # Check for "0 fail" which means all tests passed
-          if echo "$output" | grep -qE "[0-9]+ pass"; then
-            exit 0
-          fi
-          exit $exit_code
+        run: bun test
         env:
           CI: 'true'
