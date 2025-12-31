@@ -56,8 +56,8 @@ test("hello world", () => {
 - QUICKSTART.md, CLI.md, CONFIGURATION.md, etc.
 - Do NOT put internal docs, spikes, plans, or dev notes here
 
-**notes/** - Internal documentation, spikes, plans, dev notes
-- Not published, not user-facing
+**notes/** - Internal documentation, spikes, plans, dev notes (gitignored)
+- Not published, not user-facing, not tracked in git
 - Spike results, implementation plans, architecture decisions
 
 **spec/** - Interface contracts and schemas
