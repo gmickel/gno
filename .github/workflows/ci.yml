@@ -45,6 +45,8 @@ jobs:
 
       - name: Test
         # Pipe through cat to avoid bun tty detection bug causing false exit 1
+        # Use bash shell on Windows since PowerShell cat (Get-Content) doesn't work with pipes
+        shell: bash
         run: bun test | cat
         env:
           CI: 'true'
@@ -90,6 +92,8 @@ jobs:
 
       - name: Test
         # Pipe through cat to avoid bun tty detection bug causing false exit 1
+        # Use bash shell on Windows since PowerShell cat (Get-Content) doesn't work with pipes
+        shell: bash
         run: bun test | cat
         env:
           CI: 'true'
