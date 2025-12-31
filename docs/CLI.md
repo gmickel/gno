@@ -205,24 +205,34 @@ gno collection rename notes work-notes
 
 ### gno update
 
-Re-index all collections (incremental). Only processes files changed since last index.
+Sync files from disk into the index (BM25/FTS only, no embeddings). Incremental - only processes files changed since last sync.
 
 ```bash
 gno update
-gno update --yes            # Non-interactive
 gno update --git-pull       # Pull git repos first
 ```
 
 Options:
 - `--git-pull` - Run `git pull` in git repositories
 
+Use `gno update` when you only need keyword search, or when you want to quickly sync changes and run `gno embed` separately.
+
 ### gno index
 
-Index a specific collection.
+Full index end-to-end: runs `gno update` then `gno embed`. This is the recommended command for most users.
 
 ```bash
-gno index notes
+gno index                   # Index all collections
+gno index notes             # Index specific collection
+gno index --no-embed        # Skip embedding (same as gno update)
+gno index --git-pull        # Pull git repos first
 ```
+
+Options:
+- `--collection <name>` - Scope to single collection
+- `--no-embed` - Skip embedding phase
+- `--models-pull` - Download models if missing
+- `--git-pull` - Run `git pull` in git repositories
 
 ### gno embed
 

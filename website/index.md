@@ -40,7 +40,7 @@ bun install -g @gmickel/gno
 gno init ~/notes --name notes
 
 # Index documents (BM25 + vectors)
-gno index --yes
+gno index
 
 # Search
 gno query "authentication best practices"
