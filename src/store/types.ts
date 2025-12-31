@@ -400,6 +400,16 @@ export interface StorePort {
   listDocuments(collection?: string): Promise<StoreResult<DocumentRow[]>>;
 
   /**
+   * List documents with pagination support.
+   * Returns documents and total count for efficient browsing.
+   */
+  listDocumentsPaginated(options: {
+    collection?: string;
+    limit: number;
+    offset: number;
+  }): Promise<StoreResult<{ documents: DocumentRow[]; total: number }>>;
+
+  /**
    * Mark documents as inactive (soft delete).
    * Returns count of affected documents.
    */

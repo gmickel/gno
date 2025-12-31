@@ -487,6 +487,53 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
     }
   }
 
+  async listDocumentsPaginated(options: {
+    collection?: string;
+    limit: number;
+    offset: number;
+  }): Promise<StoreResult<{ documents: DocumentRow[]; total: number }>> {
+    try {
+      const db = this.ensureOpen();
+      const { collection, limit, offset } = options;
+
+      // Get total count
+      const countRow = collection
+        ? db
+            .query<{ count: number }, [string]>(
+              'SELECT COUNT(*) as count FROM documents WHERE collection = ?'
+            )
+            .get(collection)
+        : db
+            .query<{ count: number }, []>(
+              'SELECT COUNT(*) as count FROM documents'
+            )
+            .get();
+
+      const total = countRow?.count ?? 0;
+
+      // Get paginated documents
+      const rows = collection
+        ? db
+            .query<DbDocumentRow, [string, number, number]>(
+              'SELECT * FROM documents WHERE collection = ? ORDER BY updated_at DESC LIMIT ? OFFSET ?'
+            )
+            .all(collection, limit, offset)
+        : db
+            .query<DbDocumentRow, [number, number]>(
+              'SELECT * FROM documents ORDER BY updated_at DESC LIMIT ? OFFSET ?'
+            )
+            .all(limit, offset);
+
+      return ok({ documents: rows.map(mapDocumentRow), total });
+    } catch (cause) {
+      return err(
+        'QUERY_FAILED',
+        cause instanceof Error ? cause.message : 'Failed to list documents',
+        cause
+      );
+    }
+  }
+
   async markInactive(
     collection: string,
     relPaths: string[]

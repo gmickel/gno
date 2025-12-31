@@ -133,17 +133,20 @@ export async function handleDocs(
   }
   const offset = offsetParam || 0;
 
-  const result = await store.listDocuments(collection);
+  const result = await store.listDocumentsPaginated({
+    collection,
+    limit,
+    offset,
+  });
 
   if (!result.ok) {
     return errorResponse('RUNTIME', result.error.message, 500);
   }
 
-  // Apply pagination in memory (store doesn't support it yet)
-  const docs = result.value.slice(offset, offset + limit);
+  const { documents, total } = result.value;
 
   return jsonResponse({
-    documents: docs.map((doc) => ({
+    documents: documents.map((doc) => ({
       docid: doc.docid,
       uri: doc.uri,
       title: doc.title,
@@ -153,7 +156,7 @@ export async function handleDocs(
       sourceMime: doc.sourceMime,
       updatedAt: doc.updatedAt,
     })),
-    total: result.value.length,
+    total,
     limit,
     offset,
   });
