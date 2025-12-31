@@ -81,10 +81,11 @@ async function installToTarget(
   });
 
   // Read existing config (needed for both dry-run preview and actual install)
+  // readMcpConfig returns {} for missing files when returnNullOnMissing is not set
   const useYaml = isYamlFormat(configFormat);
-  const config = (await readMcpConfig(configPath, {
+  const config = ((await readMcpConfig(configPath, {
     yaml: useYaml,
-  })) as AnyMcpConfig;
+  })) ?? {}) as AnyMcpConfig;
 
   // Check if already exists using format-aware helper
   const alreadyExists = hasServerEntry(config, MCP_SERVER_NAME, configFormat);
