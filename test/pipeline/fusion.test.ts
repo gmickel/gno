@@ -24,8 +24,8 @@ describe('rrfFuse', () => {
     // RRF contribution: weight / (k + rank)
     // Original: 2.0 / (60 + 1) = 0.0328
     // Variant: 0.5 / (60 + 1) = 0.0082
-    // Total: 0.041
-    const expectedScore = 2.0 / 61 + 0.5 / 61;
+    // Plus tiered bonus: rank 1 in bm25 → 0.1
+    const expectedScore = 2.0 / 61 + 0.5 / 61 + 0.1;
     expect(candidate?.fusionScore).toBeCloseTo(expectedScore, 6);
   });
 
@@ -38,7 +38,8 @@ describe('rrfFuse', () => {
     const result = rrfFuse(inputs, DEFAULT_RRF_CONFIG);
 
     expect(result).toHaveLength(1);
-    const expectedScore = 2.0 / 61 + 0.5 / 61;
+    // Plus tiered bonus: rank 1 in vector → 0.1
+    const expectedScore = 2.0 / 61 + 0.5 / 61 + 0.1;
     expect(result[0]?.fusionScore).toBeCloseTo(expectedScore, 6);
   });
 
@@ -50,7 +51,8 @@ describe('rrfFuse', () => {
     const result = rrfFuse(inputs, DEFAULT_RRF_CONFIG);
 
     expect(result).toHaveLength(1);
-    const expectedScore = 0.7 / 61;
+    // Plus tiered bonus: rank 1 in vector → 0.1
+    const expectedScore = 0.7 / 61 + 0.1;
     expect(result[0]?.fusionScore).toBeCloseTo(expectedScore, 6);
   });
 
@@ -85,7 +87,7 @@ describe('rrfFuse', () => {
     expect(result[0]?.fusionScore).toBeCloseTo(withBonus, 6);
   });
 
-  test('top-rank bonus applied when both sources in top 5', () => {
+  test('tiered top-rank bonus: #1 gets full, top-3 gets 40%', () => {
     const inputs = [
       toRankedInput('bm25', [
         { mirrorHash: 'docA', seq: 0 },
@@ -99,15 +101,15 @@ describe('rrfFuse', () => {
 
     const result = rrfFuse(inputs, DEFAULT_RRF_CONFIG);
 
-    // DocA: rank 1 in both -> top rank bonus
-    // DocB: rank 2 in both -> top rank bonus
+    // DocA: rank 1 in both -> tier 1 bonus (full)
+    // DocB: rank 2 in both -> tier 2 bonus (40%)
     const docA = result.find((r) => r.mirrorHash === 'docA');
     const docB = result.find((r) => r.mirrorHash === 'docB');
 
     expect(docA?.fusionScore).toBeGreaterThan(docB?.fusionScore ?? 0);
-    // Both should have bonus since both are in top 5 for both sources
+    // DocA gets full bonus, DocB gets 40% bonus
     expect(docA?.fusionScore).toBeCloseTo(2.0 / 61 + 2.0 / 61 + 0.1, 6);
-    expect(docB?.fusionScore).toBeCloseTo(2.0 / 62 + 2.0 / 62 + 0.1, 6);
+    expect(docB?.fusionScore).toBeCloseTo(2.0 / 62 + 2.0 / 62 + 0.04, 6);
   });
 
   test('tracks sources correctly', () => {

@@ -139,15 +139,22 @@ export function rrfFuse(
     }
   }
 
-  // Apply top-rank bonus
+  // Apply tiered top-rank bonus
+  // Rewards documents ranking highly in ANY list (not requiring both)
   for (const candidate of candidates.values()) {
-    if (
-      candidate.bm25Rank !== null &&
-      candidate.bm25Rank <= config.topRankThreshold &&
-      candidate.vecRank !== null &&
-      candidate.vecRank <= config.topRankThreshold
-    ) {
+    const bm25Rank = candidate.bm25Rank;
+    const vecRank = candidate.vecRank;
+
+    // Tier 1: #1 in any list
+    if (bm25Rank === 1 || vecRank === 1) {
       candidate.fusionScore += config.topRankBonus;
+    }
+    // Tier 2: Top-3 in any list (but not #1)
+    else if (
+      (bm25Rank !== null && bm25Rank <= config.topRankThreshold) ||
+      (vecRank !== null && vecRank <= config.topRankThreshold)
+    ) {
+      candidate.fusionScore += config.topRankBonus * 0.4; // 40% of tier 1
     }
   }
 
