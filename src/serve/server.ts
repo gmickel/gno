@@ -129,6 +129,18 @@ export async function startServer(
     return { success: false, error: openResult.error.message };
   }
 
+  // Sync collections and contexts from config to DB (same as CLI initStore)
+  const syncCollResult = await store.syncCollections(config.collections);
+  if (!syncCollResult.ok) {
+    await store.close();
+    return { success: false, error: syncCollResult.error.message };
+  }
+  const syncCtxResult = await store.syncContexts(config.contexts ?? []);
+  if (!syncCtxResult.ok) {
+    await store.close();
+    return { success: false, error: syncCtxResult.error.message };
+  }
+
   // Create server context with LLM ports for hybrid search and AI answers
   // Use holder pattern to allow hot-reloading presets
   const ctxHolder: ContextHolder = {
