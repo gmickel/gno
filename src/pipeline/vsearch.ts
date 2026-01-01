@@ -11,6 +11,7 @@ import type { StorePort } from '../store/types';
 import { err, ok } from '../store/types';
 import type { VectorIndexPort } from '../store/vector/types';
 import { createChunkLookup } from './chunk-lookup';
+import { formatQueryForEmbedding } from './contextual';
 import { detectQueryLanguage } from './query-language';
 import type { SearchOptions, SearchResult, SearchResults } from './types';
 
@@ -268,8 +269,8 @@ export async function searchVector(
     );
   }
 
-  // Embed query
-  const embedResult = await embedPort.embed(query);
+  // Embed query with contextual formatting
+  const embedResult = await embedPort.embed(formatQueryForEmbedding(query));
   if (!embedResult.ok) {
     return err(
       'QUERY_FAILED',

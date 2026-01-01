@@ -7,6 +7,7 @@
 
 import { LlmAdapter } from '../../llm/nodeLlamaCpp/adapter';
 import { getActivePreset } from '../../llm/registry';
+import { formatQueryForEmbedding } from '../../pipeline/contextual';
 import type { SearchOptions, SearchResults } from '../../pipeline/types';
 import {
   searchVectorWithEmbedding,
@@ -86,8 +87,10 @@ export async function vsearch(
     const embedPort = embedResult.value;
 
     try {
-      // Embed query (also determines dimensions - avoids double embed)
-      const queryEmbedResult = await embedPort.embed(query);
+      // Embed query with contextual formatting (also determines dimensions)
+      const queryEmbedResult = await embedPort.embed(
+        formatQueryForEmbedding(query)
+      );
       if (!queryEmbedResult.ok) {
         return { success: false, error: queryEmbedResult.error.message };
       }

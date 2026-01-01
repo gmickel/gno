@@ -38,6 +38,7 @@ export interface BacklogItem {
   mirrorHash: string;
   seq: number;
   text: string;
+  title: string | null;
   reason: 'new' | 'changed' | 'force';
 }
 

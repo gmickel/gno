@@ -78,9 +78,11 @@ export function createVectorStatsPort(db: Database): VectorStatsPort {
 
         // Seek pagination: use cursor to avoid skipping items as backlog shrinks
         // Query structure changes based on whether we have a cursor
+        // Include document title for contextual embedding
         const sql = after
           ? `
           SELECT c.mirror_hash as mirrorHash, c.seq, c.text,
+            (SELECT d.title FROM documents d WHERE d.mirror_hash = c.mirror_hash AND d.active = 1 LIMIT 1) as title,
             CASE
               WHEN NOT EXISTS (
                 SELECT 1 FROM content_vectors v
@@ -108,6 +110,7 @@ export function createVectorStatsPort(db: Database): VectorStatsPort {
         `
           : `
           SELECT c.mirror_hash as mirrorHash, c.seq, c.text,
+            (SELECT d.title FROM documents d WHERE d.mirror_hash = c.mirror_hash AND d.active = 1 LIMIT 1) as title,
             CASE
               WHEN NOT EXISTS (
                 SELECT 1 FROM content_vectors v

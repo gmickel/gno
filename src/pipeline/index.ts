@@ -4,6 +4,12 @@
  * @module src/pipeline
  */
 
+// Contextual embedding
+export {
+  extractTitle,
+  formatDocForEmbedding,
+  formatQueryForEmbedding,
+} from './contextual';
 // Expansion
 export { expandQuery, generateCacheKey } from './expansion';
 // Explain

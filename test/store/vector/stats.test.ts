@@ -24,6 +24,7 @@ describe('VectorStatsPort', () => {
       CREATE TABLE IF NOT EXISTS documents (
         id INTEGER PRIMARY KEY,
         mirror_hash TEXT,
+        title TEXT,
         active INTEGER DEFAULT 1
       );
 

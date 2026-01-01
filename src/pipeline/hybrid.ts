@@ -11,6 +11,7 @@ import type { StorePort } from '../store/types';
 import { err, ok } from '../store/types';
 import type { VectorIndexPort } from '../store/vector/types';
 import { createChunkLookup } from './chunk-lookup';
+import { formatQueryForEmbedding } from './contextual';
 import { expandQuery } from './expansion';
 import {
   buildExplainResults,
@@ -155,7 +156,8 @@ async function searchVectorChunks(
     return [];
   }
 
-  const embedResult = await embedPort.embed(query);
+  // Embed query with contextual formatting
+  const embedResult = await embedPort.embed(formatQueryForEmbedding(query));
   if (!embedResult.ok) {
     return [];
   }

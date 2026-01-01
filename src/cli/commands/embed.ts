@@ -11,6 +11,7 @@ import { getConfigPaths, isInitialized, loadConfig } from '../../config';
 import { LlmAdapter } from '../../llm/nodeLlamaCpp/adapter';
 import { getActivePreset } from '../../llm/registry';
 import type { EmbeddingPort } from '../../llm/types';
+import { formatDocForEmbedding } from '../../pipeline/contextual';
 import { SqliteAdapter } from '../../store/sqlite/adapter';
 import type { StoreResult } from '../../store/types';
 import { err, ok } from '../../store/types';
@@ -131,9 +132,9 @@ async function processBatches(ctx: BatchContext): Promise<BatchResult> {
       cursor = { mirrorHash: lastItem.mirrorHash, seq: lastItem.seq };
     }
 
-    // Embed batch
+    // Embed batch with contextual formatting (title prefix)
     const batchEmbedResult = await ctx.embedPort.embedBatch(
-      batch.map((b) => b.text)
+      batch.map((b) => formatDocForEmbedding(b.text, b.title ?? undefined))
     );
     if (!batchEmbedResult.ok) {
       errors += batch.length;
@@ -365,9 +366,12 @@ function getActiveChunks(
   after?: { mirrorHash: string; seq: number }
 ): Promise<StoreResult<BacklogItem[]>> {
   try {
+    // Include title for contextual embedding
     const sql = after
       ? `
-        SELECT c.mirror_hash as mirrorHash, c.seq, c.text, 'force' as reason
+        SELECT c.mirror_hash as mirrorHash, c.seq, c.text,
+          (SELECT d.title FROM documents d WHERE d.mirror_hash = c.mirror_hash AND d.active = 1 LIMIT 1) as title,
+          'force' as reason
         FROM content_chunks c
         WHERE EXISTS (
           SELECT 1 FROM documents d
@@ -378,7 +382,9 @@ function getActiveChunks(
         LIMIT ?
       `
       : `
-        SELECT c.mirror_hash as mirrorHash, c.seq, c.text, 'force' as reason
+        SELECT c.mirror_hash as mirrorHash, c.seq, c.text,
+          (SELECT d.title FROM documents d WHERE d.mirror_hash = c.mirror_hash AND d.active = 1 LIMIT 1) as title,
+          'force' as reason
         FROM content_chunks c
         WHERE EXISTS (
           SELECT 1 FROM documents d

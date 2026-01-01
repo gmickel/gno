@@ -8,6 +8,7 @@ import { join as pathJoin } from 'node:path';
 import { parseUri } from '../../app/constants';
 import { LlmAdapter } from '../../llm/nodeLlamaCpp/adapter';
 import { getActivePreset } from '../../llm/registry';
+import { formatQueryForEmbedding } from '../../pipeline/contextual';
 import type { SearchResult, SearchResults } from '../../pipeline/types';
 import {
   searchVectorWithEmbedding,
@@ -121,8 +122,10 @@ export function handleVsearch(
       const embedPort = embedResult.value;
 
       try {
-        // Embed query
-        const queryEmbedResult = await embedPort.embed(args.query);
+        // Embed query with contextual formatting
+        const queryEmbedResult = await embedPort.embed(
+          formatQueryForEmbedding(args.query)
+        );
         if (!queryEmbedResult.ok) {
           throw new Error(queryEmbedResult.error.message);
         }
