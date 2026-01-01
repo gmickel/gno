@@ -5,6 +5,23 @@ All notable changes to GNO will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.0] - 2026-01-01
+
+### Added
+- **REST API write operations** - Full CRUD for collections and documents
+  - `POST /api/collections` - Add new collection
+  - `DELETE /api/collections/:name` - Remove collection
+  - `POST /api/sync` - Trigger re-index
+  - `POST /api/docs` - Create document
+  - `POST /api/docs/:id/deactivate` - Unindex document
+  - `GET /api/jobs/:id` - Poll job status
+- **CSRF protection** - Origin validation for mutating endpoints
+- **API token auth** - `X-GNO-Token` header for non-browser clients
+
+### Changed
+- Extracted collection CRUD to `src/collection/` for API/CLI parity
+- Config sync with mutex serialization (YAML → DB → memory)
+
 ## [0.6.1] - 2026-01-01
 
 ### Added
