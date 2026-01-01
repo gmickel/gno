@@ -4,6 +4,8 @@ Use GNO as an MCP server for AI assistants like Claude Desktop, Cursor, and othe
 
 > **Full specification**: See [spec/mcp.md](../spec/mcp.md) for complete tool and resource schemas.
 
+![GNO MCP in Claude Desktop](../assets/screenshots/mcp.jpg)
+
 ## Overview
 
 MCP (Model Context Protocol) allows AI assistants to access external tools and resources. GNO provides:

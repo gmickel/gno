@@ -3,6 +3,8 @@ layout: home
 title: Home
 ---
 
+![GNO CLI](/assets/screenshots/cli.jpg)
+
 ## Why GNO?
 
 Most search tools are either fast but dumb (grep, find) or smart but slow and cloud-dependent. GNO bridges this gap by running a full hybrid search pipeline—keyword, vector, and re-ranking—entirely on your local machine.
@@ -13,7 +15,11 @@ Stop grepping through thousands of Markdown files. Ask GNO questions in plain En
 ### For AI Agents
 Give your local LLM agents (like Claude Desktop or Cursor) a long-term memory. GNO's **Model Context Protocol (MCP)** server allows agents to search, read, and cite your local files safely.
 
+![GNO Web UI](/assets/screenshots/webui-home.jpg)
+
 ## Agent Integration
+
+![GNO MCP](/assets/screenshots/mcp.jpg)
 
 Connect GNO to your AI tools instantly:
 

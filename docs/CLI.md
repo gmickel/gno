@@ -4,6 +4,8 @@ GNO command-line interface guide.
 
 > **Full specification**: See [spec/cli.md](../spec/cli.md) for exhaustive command documentation.
 
+![GNO CLI](../assets/screenshots/cli.jpg)
+
 ## Quick Reference
 
 | Command | Description |

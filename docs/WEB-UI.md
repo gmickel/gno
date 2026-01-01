@@ -7,6 +7,10 @@ gno serve
 # Open http://localhost:3000
 ```
 
+![GNO Web UI Dashboard](../assets/screenshots/webui-home.jpg)
+
+![GNO Web UI Ask](../assets/screenshots/webui-ask-answer.jpg)
+
 ---
 
 ## Overview
