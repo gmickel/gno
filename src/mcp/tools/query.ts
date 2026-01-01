@@ -154,8 +154,12 @@ export function handleQuery(
           noRerank = false;
         } else {
           // Use explicit expand/rerank params if provided
-          if (args.expand === true) noExpand = false;
-          if (args.rerank === false) noRerank = true;
+          if (args.expand === true) {
+            noExpand = false;
+          }
+          if (args.rerank === false) {
+            noRerank = true;
+          }
         }
 
         // Create generation port (for expansion) - optional

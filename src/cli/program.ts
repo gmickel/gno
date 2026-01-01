@@ -357,8 +357,12 @@ function wireSearchCommands(program: Command): void {
         noRerank = false;
       } else {
         // Check individual flags (override defaults)
-        if (cmdOpts.expand === false) noExpand = true;
-        if (cmdOpts.rerank === false) noRerank = true;
+        if (cmdOpts.expand === false) {
+          noExpand = true;
+        }
+        if (cmdOpts.rerank === false) {
+          noRerank = true;
+        }
       }
 
       const { query, formatQuery } = await import('./commands/query');
