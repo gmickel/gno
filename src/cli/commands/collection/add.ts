@@ -2,11 +2,8 @@
  * gno collection add - Add a new collection
  */
 
+import { addCollection } from '../../../collection';
 import {
-  type Collection,
-  CollectionSchema,
-  DEFAULT_EXCLUDES,
-  DEFAULT_PATTERN,
   loadConfig,
   pathExists,
   saveConfig,
@@ -31,83 +28,45 @@ export async function collectionAdd(
     throw new CliError('VALIDATION', '--name is required');
   }
 
-  const collectionName = options.name.toLowerCase();
-
-  // Expand and validate path
+  // Validate path exists BEFORE loading config (user-friendly error ordering)
   const absolutePath = toAbsolutePath(path);
-
-  // Check if path exists
   const exists = await pathExists(absolutePath);
   if (!exists) {
     throw new CliError('VALIDATION', `Path does not exist: ${absolutePath}`);
   }
 
   // Load config
-  const result = await loadConfig();
-  if (!result.ok) {
+  const configResult = await loadConfig();
+  if (!configResult.ok) {
     throw new CliError(
       'RUNTIME',
-      `Failed to load config: ${result.error.message}`
+      `Failed to load config: ${configResult.error.message}`
     );
   }
 
-  const config = result.value;
-
-  // Check for duplicate name
-  const existing = config.collections.find((c) => c.name === collectionName);
-  if (existing) {
-    throw new CliError(
-      'VALIDATION',
-      `Collection "${collectionName}" already exists`
-    );
-  }
-
-  // Parse options - filter empty, dedupe
-  const includeList = options.include
-    ? [
-        ...new Set(
-          options.include
-            .split(',')
-            .map((s) => s.trim())
-            .filter(Boolean)
-        ),
-      ]
-    : [];
-  const excludeList = options.exclude
-    ? [
-        ...new Set(
-          options.exclude
-            .split(',')
-            .map((s) => s.trim())
-            .filter(Boolean)
-        ),
-      ]
-    : [...DEFAULT_EXCLUDES];
-
-  // Build collection
-  const collection: Collection = {
-    name: collectionName,
-    path: absolutePath,
-    pattern: options.pattern ?? DEFAULT_PATTERN,
-    include: includeList,
-    exclude: excludeList,
+  // Add collection using shared module
+  const result = await addCollection(configResult.value, {
+    path,
+    name: options.name,
+    pattern: options.pattern,
+    include: options.include,
+    exclude: options.exclude,
     updateCmd: options.update,
-  };
+  });
 
-  // Validate collection
-  const validation = CollectionSchema.safeParse(collection);
-  if (!validation.success) {
-    throw new CliError(
-      'VALIDATION',
-      `Invalid collection: ${validation.error.issues[0]?.message ?? 'unknown error'}`
-    );
+  if (!result.ok) {
+    // Map collection error codes to CLI error codes
+    const cliCode =
+      result.code === 'VALIDATION' ||
+      result.code === 'PATH_NOT_FOUND' ||
+      result.code === 'DUPLICATE'
+        ? 'VALIDATION'
+        : 'RUNTIME';
+    throw new CliError(cliCode, result.message);
   }
-
-  // Add to config
-  config.collections.push(validation.data);
 
   // Save config
-  const saveResult = await saveConfig(config);
+  const saveResult = await saveConfig(result.config);
   if (!saveResult.ok) {
     throw new CliError(
       'RUNTIME',
@@ -115,6 +74,8 @@ export async function collectionAdd(
     );
   }
 
-  process.stdout.write(`Collection "${collectionName}" added successfully\n`);
-  process.stdout.write(`Path: ${absolutePath}\n`);
+  process.stdout.write(
+    `Collection "${result.collection.name}" added successfully\n`
+  );
+  process.stdout.write(`Path: ${result.collection.path}\n`);
 }

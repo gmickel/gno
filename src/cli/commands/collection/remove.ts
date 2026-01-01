@@ -2,57 +2,36 @@
  * gno collection remove - Remove a collection
  */
 
-import {
-  getCollectionFromScope,
-  loadConfig,
-  saveConfig,
-} from '../../../config';
+import { removeCollection } from '../../../collection';
+import { loadConfig, saveConfig } from '../../../config';
 import { CliError } from '../../errors';
 
 export async function collectionRemove(name: string): Promise<void> {
-  const collectionName = name.toLowerCase();
-
   // Load config
-  const result = await loadConfig();
-  if (!result.ok) {
+  const configResult = await loadConfig();
+  if (!configResult.ok) {
     throw new CliError(
       'RUNTIME',
-      `Failed to load config: ${result.error.message}`
+      `Failed to load config: ${configResult.error.message}`
     );
   }
 
-  const config = result.value;
+  // Remove collection using shared module
+  const result = removeCollection(configResult.value, { name });
 
-  // Find collection
-  const collectionIndex = config.collections.findIndex(
-    (c) => c.name === collectionName
-  );
-  if (collectionIndex === -1) {
-    throw new CliError(
-      'VALIDATION',
-      `Collection "${collectionName}" not found`
-    );
+  if (!result.ok) {
+    // Map collection error codes to CLI error codes
+    const cliCode =
+      result.code === 'VALIDATION' ||
+      result.code === 'NOT_FOUND' ||
+      result.code === 'HAS_REFERENCES'
+        ? 'VALIDATION'
+        : 'RUNTIME';
+    throw new CliError(cliCode, result.message);
   }
-
-  // Check if any contexts reference this collection
-  const referencingContexts = config.contexts.filter((ctx) => {
-    const collFromScope = getCollectionFromScope(ctx.scopeKey);
-    return collFromScope === collectionName;
-  });
-
-  if (referencingContexts.length > 0) {
-    const scopes = referencingContexts.map((ctx) => ctx.scopeKey).join(', ');
-    throw new CliError(
-      'VALIDATION',
-      `Collection "${collectionName}" is referenced by contexts: ${scopes}. Remove the contexts first or rename the collection.`
-    );
-  }
-
-  // Remove collection
-  config.collections.splice(collectionIndex, 1);
 
   // Save config
-  const saveResult = await saveConfig(config);
+  const saveResult = await saveConfig(result.config);
   if (!saveResult.ok) {
     throw new CliError(
       'RUNTIME',
@@ -60,5 +39,7 @@ export async function collectionRemove(name: string): Promise<void> {
     );
   }
 
-  process.stdout.write(`Collection "${collectionName}" removed successfully\n`);
+  process.stdout.write(
+    `Collection "${result.collection.name}" removed successfully\n`
+  );
 }
