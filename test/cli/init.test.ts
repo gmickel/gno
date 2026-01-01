@@ -256,7 +256,7 @@ describe('init command', () => {
       expect(loadResult.value.ftsTokenizer).toBe('porter');
     });
 
-    test('defaults to unicode61 tokenizer', async () => {
+    test('defaults to snowball english tokenizer', async () => {
       const result = await init();
 
       expect(result.success).toBe(true);
@@ -267,7 +267,8 @@ describe('init command', () => {
         return;
       }
 
-      expect(loadResult.value.ftsTokenizer).toBe('unicode61');
+      // Default changed from unicode61 to snowball english for multilingual stemming
+      expect(loadResult.value.ftsTokenizer).toBe('snowball english');
     });
 
     test('rejects invalid tokenizer', async () => {

@@ -18,7 +18,8 @@ describe('loadConfigFromPath', () => {
       }
 
       expect(result.value.version).toBe('1.0');
-      expect(result.value.ftsTokenizer).toBe('unicode61');
+      // Default tokenizer is now snowball english for multilingual stemming
+      expect(result.value.ftsTokenizer).toBe('snowball english');
       expect(result.value.collections).toEqual([]);
       expect(result.value.contexts).toEqual([]);
     });

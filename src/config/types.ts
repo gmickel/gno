@@ -32,11 +32,16 @@ export const DEFAULT_EXCLUDES: readonly string[] = [
 ];
 
 /** Valid FTS tokenizer options */
-export const FTS_TOKENIZERS = ['unicode61', 'porter', 'trigram'] as const;
+export const FTS_TOKENIZERS = [
+  'unicode61',
+  'porter',
+  'trigram',
+  'snowball english',
+] as const;
 export type FtsTokenizer = (typeof FTS_TOKENIZERS)[number];
 
-/** Default FTS tokenizer */
-export const DEFAULT_FTS_TOKENIZER: FtsTokenizer = 'unicode61';
+/** Default FTS tokenizer - snowball english for multilingual stemming */
+export const DEFAULT_FTS_TOKENIZER: FtsTokenizer = 'snowball english';
 
 /**
  * BCP-47 language tag pattern (simplified, case-insensitive).

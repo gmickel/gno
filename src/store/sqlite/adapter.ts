@@ -31,6 +31,7 @@ import type {
   StoreResult,
 } from '../types';
 import { err, ok } from '../types';
+import { loadFts5Snowball } from './fts5-snowball';
 import type { SqliteDbProvider } from './types';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -101,6 +102,19 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
         this.db.exec('PRAGMA temp_store = MEMORY');
       } else {
         this.db.exec('PRAGMA journal_mode = WAL');
+      }
+
+      // Load fts5-snowball extension if using snowball tokenizer
+      if (ftsTokenizer.startsWith('snowball')) {
+        const snowballResult = loadFts5Snowball(this.db);
+        if (!snowballResult.loaded) {
+          this.db.close();
+          this.db = null;
+          return err(
+            'EXTENSION_LOAD_FAILED',
+            `Failed to load fts5-snowball: ${snowballResult.error}`
+          );
+        }
       }
 
       // Run migrations
@@ -744,16 +758,15 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
       const db = this.ensureOpen();
       const limit = options.limit ?? 20;
 
-      // Join FTS results with chunks and documents
-      // Use bm25() function explicitly - fts.rank doesn't work with JOINs
-      // Note: Multiple docs can share mirror_hash (content-addressed storage)
-      // Deduplication by uri+seq is done in search.ts to avoid FTS function context issues
+      // Document-level FTS search using documents_fts
+      // Uses bm25() for relevance ranking (more negative = better match)
+      // Snippet from body column (index 2) with highlight markers
       const sql = `
         SELECT
-          c.mirror_hash,
-          c.seq,
-          bm25(content_fts) as score,
-          ${options.snippet ? "snippet(content_fts, 0, '<mark>', '</mark>', '...', 32) as snippet," : ''}
+          d.mirror_hash,
+          0 as seq,
+          bm25(documents_fts) as score,
+          ${options.snippet ? "snippet(documents_fts, 2, '<mark>', '</mark>', '...', 32) as snippet," : ''}
           d.docid,
           d.uri,
           d.title,
@@ -764,22 +777,17 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
           d.source_mtime,
           d.source_size,
           d.source_hash
-        FROM content_fts fts
-        JOIN content_chunks c ON c.rowid = fts.rowid
-        JOIN documents d ON d.mirror_hash = c.mirror_hash AND d.active = 1
-        WHERE content_fts MATCH ?
+        FROM documents_fts fts
+        JOIN documents d ON d.id = fts.rowid AND d.active = 1
+        WHERE documents_fts MATCH ?
         ${options.collection ? 'AND d.collection = ?' : ''}
-        ${options.language ? 'AND c.language = ?' : ''}
-        ORDER BY bm25(content_fts)
+        ORDER BY bm25(documents_fts)
         LIMIT ?
       `;
 
       const params: (string | number)[] = [escapeFts5Query(query)];
       if (options.collection) {
         params.push(options.collection);
-      }
-      if (options.language) {
-        params.push(options.language);
       }
       params.push(limit);
 
@@ -835,29 +843,157 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
     }
   }
 
+  /**
+   * Sync a document to documents_fts for full-text search.
+   * Must be called after document and content are both upserted.
+   * The FTS rowid matches documents.id for efficient JOINs.
+   */
+  async syncDocumentFts(
+    collection: string,
+    relPath: string
+  ): Promise<StoreResult<void>> {
+    try {
+      const db = this.ensureOpen();
+
+      const transaction = db.transaction(() => {
+        // Get document with its content
+        interface DocWithContent {
+          id: number;
+          rel_path: string;
+          title: string | null;
+          markdown: string | null;
+        }
+
+        const doc = db
+          .query<DocWithContent, [string, string]>(
+            `SELECT d.id, d.rel_path, d.title, c.markdown
+             FROM documents d
+             LEFT JOIN content c ON c.mirror_hash = d.mirror_hash
+             WHERE d.collection = ? AND d.rel_path = ? AND d.active = 1`
+          )
+          .get(collection, relPath);
+
+        if (!doc) {
+          return; // Document not found or inactive
+        }
+
+        // Delete existing FTS entry for this doc
+        db.run('DELETE FROM documents_fts WHERE rowid = ?', [doc.id]);
+
+        // Insert new FTS entry if we have content
+        if (doc.markdown) {
+          db.run(
+            'INSERT INTO documents_fts (rowid, filepath, title, body) VALUES (?, ?, ?, ?)',
+            [doc.id, doc.rel_path, doc.title ?? '', doc.markdown]
+          );
+        }
+      });
+
+      transaction();
+      return ok(undefined);
+    } catch (cause) {
+      return err(
+        'QUERY_FAILED',
+        cause instanceof Error ? cause.message : 'Failed to sync document FTS',
+        cause
+      );
+    }
+  }
+
+  /**
+   * Rebuild entire documents_fts index from scratch.
+   * Use after migration or for recovery.
+   */
+  async rebuildAllDocumentsFts(): Promise<StoreResult<number>> {
+    try {
+      const db = this.ensureOpen();
+      let count = 0;
+
+      const transaction = db.transaction(() => {
+        // Clear FTS table
+        db.run('DELETE FROM documents_fts');
+
+        // Get all active documents with content
+        interface DocWithContent {
+          id: number;
+          rel_path: string;
+          title: string | null;
+          markdown: string;
+        }
+
+        const docs = db
+          .query<DocWithContent, []>(
+            `SELECT d.id, d.rel_path, d.title, c.markdown
+             FROM documents d
+             JOIN content c ON c.mirror_hash = d.mirror_hash
+             WHERE d.active = 1 AND d.mirror_hash IS NOT NULL`
+          )
+          .all();
+
+        // Insert FTS entries
+        const stmt = db.prepare(
+          'INSERT INTO documents_fts (rowid, filepath, title, body) VALUES (?, ?, ?, ?)'
+        );
+
+        for (const doc of docs) {
+          stmt.run(doc.id, doc.rel_path, doc.title ?? '', doc.markdown);
+          count++;
+        }
+      });
+
+      transaction();
+      return ok(count);
+    } catch (cause) {
+      return err(
+        'QUERY_FAILED',
+        cause instanceof Error
+          ? cause.message
+          : 'Failed to rebuild documents FTS',
+        cause
+      );
+    }
+  }
+
+  /**
+   * @deprecated Use syncDocumentFts for document-level FTS.
+   * Kept for backwards compat during migration.
+   */
   async rebuildFtsForHash(mirrorHash: string): Promise<StoreResult<void>> {
     try {
       const db = this.ensureOpen();
 
       const transaction = db.transaction(() => {
-        // Get chunks for this hash
-        const chunks = db
-          .query<{ rowid: number; text: string }, [string]>(
-            'SELECT rowid, text FROM content_chunks WHERE mirror_hash = ?'
+        // Get documents using this hash and sync their FTS
+        interface DocInfo {
+          id: number;
+          rel_path: string;
+          title: string | null;
+        }
+
+        const docs = db
+          .query<DocInfo, [string]>(
+            'SELECT id, rel_path, title FROM documents WHERE mirror_hash = ? AND active = 1'
           )
           .all(mirrorHash);
 
-        // Delete old FTS entries for these rowids
-        for (const chunk of chunks) {
-          db.run('DELETE FROM content_fts WHERE rowid = ?', [chunk.rowid]);
+        // Get content
+        const content = db
+          .query<{ markdown: string }, [string]>(
+            'SELECT markdown FROM content WHERE mirror_hash = ?'
+          )
+          .get(mirrorHash);
+
+        if (!content) {
+          return;
         }
 
-        // Insert new FTS entries
-        const stmt = db.prepare(
-          'INSERT INTO content_fts (rowid, text) VALUES (?, ?)'
-        );
-        for (const chunk of chunks) {
-          stmt.run(chunk.rowid, chunk.text);
+        // Update FTS for each document using this hash
+        for (const doc of docs) {
+          db.run('DELETE FROM documents_fts WHERE rowid = ?', [doc.id]);
+          db.run(
+            'INSERT INTO documents_fts (rowid, filepath, title, body) VALUES (?, ?, ?, ?)',
+            [doc.id, doc.rel_path, doc.title ?? '', content.markdown]
+          );
         }
       });
 
@@ -1116,10 +1252,10 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
         `);
         expiredCache = cacheResult.changes;
 
-        // Rebuild FTS index (remove orphaned entries)
+        // Clean orphaned FTS entries (documents that no longer exist or are inactive)
         db.run(`
-          DELETE FROM content_fts WHERE rowid NOT IN (
-            SELECT rowid FROM content_chunks
+          DELETE FROM documents_fts WHERE rowid NOT IN (
+            SELECT id FROM documents WHERE active = 1
           )
         `);
       });
