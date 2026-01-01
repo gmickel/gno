@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-01-01
+
 ### Added
 - **Document-level BM25** - Full documents indexed (not chunks), finds terms across sections
 - **Snowball stemmer** - FTS5 with multilingual stemming (20+ languages); "running" matches "run"
