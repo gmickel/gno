@@ -1,0 +1,131 @@
+name: Build fts5-snowball
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            artifact: fts5stemmer.so
+            platform: linux-x64
+          - os: macos-latest
+            artifact: fts5stemmer.dylib
+            platform: darwin-arm64
+          - os: macos-13
+            artifact: fts5stemmer.dylib
+            platform: darwin-x64
+          - os: windows-latest
+            artifact: fts5stemmer.dll
+            platform: windows-x64
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Clone fts5-snowball
+        run: git clone --recursive https://github.com/abiliojr/fts5-snowball.git
+
+      # Linux build
+      - name: Build (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libsqlite3-dev
+          cd fts5-snowball
+          make
+          ls -la fts5stemmer.so
+
+      # macOS build (per issue #12)
+      - name: Install SQLite (macOS)
+        if: runner.os == 'macOS'
+        run: brew install sqlite3
+
+      - name: Build (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          cd fts5-snowball
+          # Patch Makefile for Homebrew paths (per issue #12)
+          SQLITE_PREFIX=$(brew --prefix sqlite3)
+          cat > Makefile << 'EOF'
+          SQLITE_INCLUDE=$(SQLITE_PREFIX)/include
+          SQLITE_LIB_PATH=$(SQLITE_PREFIX)/lib
+
+          all: libstemmer fts5stemmer.o
+          	cc -fPIC -shared -L$(SQLITE_LIB_PATH) -lsqlite3 -o fts5stemmer.so fts5stemmer.o snowball/libstemmer.o
+          	@[ "`uname -s`" = "Darwin" ] && mv fts5stemmer.so fts5stemmer.dylib || :
+
+          libstemmer:
+          	@if [ ! -f snowball/GNUmakefile ];then \
+          		echo -e "\n\nError: snowball is missing!"; \
+          		exit 2; \
+          	fi
+          	$(MAKE) CFLAGS=-fPIC -C snowball
+
+          fts5stemmer.o: src/fts5stemmer.c
+          	cc -fPIC -Wall -c -I$(SQLITE_INCLUDE) -Isnowball/include -Isqlite -O3 src/fts5stemmer.c
+
+          clean:
+          	@rm *.o
+          	$(MAKE) -C snowball clean
+          EOF
+          # Replace placeholder with actual path
+          sed -i '' "s|\$(SQLITE_PREFIX)|${SQLITE_PREFIX}|g" Makefile
+          cat Makefile
+          make
+          ls -la fts5stemmer.dylib
+
+      # Windows build (per gist emirotin/60bd3fb245b96e9fb1dd5069457c7991)
+      - name: Setup MSYS2 (Windows)
+        if: runner.os == 'Windows'
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: true
+          install: >-
+            mingw-w64-x86_64-gcc
+            mingw-w64-x86_64-sqlite3
+            make
+            perl
+
+      - name: Build (Windows)
+        if: runner.os == 'Windows'
+        shell: msys2 {0}
+        run: |
+          cd fts5-snowball
+          # Patch Makefile for MSYS2
+          cat > Makefile << 'EOF'
+          SQLITE_FLAGS=-I/mingw64/include
+          SQLITE_LIBS=-L/mingw64/lib -lsqlite3
+
+          all: libstemmer fts5stemmer.o
+          	gcc -shared -o fts5stemmer.dll fts5stemmer.o snowball/libstemmer.o $(SQLITE_LIBS)
+
+          libstemmer:
+          	@if [ ! -f snowball/GNUmakefile ];then \
+          		echo "Error: snowball is missing!"; \
+          		exit 2; \
+          	fi
+          	$(MAKE) CFLAGS=-fPIC CC=gcc -C snowball
+
+          fts5stemmer.o: src/fts5stemmer.c
+          	gcc -Wall -c $(SQLITE_FLAGS) -Isnowball/include -Isqlite -O3 src/fts5stemmer.c
+
+          clean:
+          	rm -f *.o *.dll
+          	$(MAKE) -C snowball clean
+          EOF
+          cat Makefile
+          make
+          ls -la fts5stemmer.dll
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: fts5stemmer-${{ matrix.platform }}
+          path: fts5-snowball/${{ matrix.artifact }}
+          retention-days: 7
