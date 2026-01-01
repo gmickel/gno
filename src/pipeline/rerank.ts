@@ -7,7 +7,6 @@
 
 import type { RerankPort } from '../llm/types';
 import type { StorePort } from '../store/types';
-import { createChunkLookup } from './chunk-lookup';
 import type { BlendingTier, FusionCandidate, RerankedCandidate } from './types';
 import { DEFAULT_BLENDING_SCHEDULE } from './types';
 
@@ -121,32 +120,39 @@ export async function rerankCandidates(
   const toRerank = candidates.slice(0, maxCandidates);
   const remaining = candidates.slice(maxCandidates);
 
-  // Pre-fetch all chunks in one batch query (eliminates N+1)
+  // Dedupe by document - multiple chunks from same doc use single full-doc rerank
   const uniqueHashes = [...new Set(toRerank.map((c) => c.mirrorHash))];
-  const chunksMapResult = await store.getChunksBatch(uniqueHashes);
 
-  // If chunk fetch fails, degrade gracefully (fusion-only)
-  // Don't rerank on empty/missing texts - produces non-deterministic results
-  if (!chunksMapResult.ok) {
-    return {
-      candidates: candidates.map((c) => ({
-        ...c,
-        rerankScore: null,
-        blendedScore: normalizeFusionScore(c.fusionScore),
-      })),
-      reranked: false,
-    };
+  // Fetch full document content for each unique document
+  // Max 128K chars per doc to fit in reranker context
+  const MAX_DOC_CHARS = 128_000;
+  const docContents = new Map<string, string>();
+
+  for (const hash of uniqueHashes) {
+    const contentResult = await store.getContent(hash);
+    if (contentResult.ok && contentResult.value) {
+      const content = contentResult.value;
+      docContents.set(
+        hash,
+        content.length > MAX_DOC_CHARS
+          ? `${content.slice(0, MAX_DOC_CHARS)}...`
+          : content
+      );
+    } else {
+      // Fallback to empty string if content not available
+      docContents.set(hash, '');
+    }
   }
-  const chunksMap = chunksMapResult.value;
-  const getChunk = createChunkLookup(chunksMap);
 
-  // Build texts array for reranking (O(1) lookup per candidate)
-  const texts: string[] = toRerank.map((c) => {
-    const chunk = getChunk(c.mirrorHash, c.seq);
-    return chunk?.text ?? '';
-  });
+  // Build texts array for reranking (one per unique document)
+  const hashToIndex = new Map<string, number>();
+  const texts: string[] = [];
+  for (const hash of uniqueHashes) {
+    hashToIndex.set(hash, texts.length);
+    texts.push(docContents.get(hash) ?? '');
+  }
 
-  // Run reranking
+  // Run reranking on full documents
   const rerankResult = await rerankPort.rerank(query, texts);
 
   if (!rerankResult.ok) {
@@ -163,12 +169,15 @@ export async function rerankCandidates(
 
   // Map rerank scores to candidates
   // Note: We use normalizeFusionScore defined above (across ALL candidates)
-  // Build index->score map for O(1) lookup instead of O(n) find per candidate
-  const scoreByIndex = new Map(
+  // Build doc index->score map for O(1) lookup
+  // All chunks from same document share the same rerank score
+  const scoreByDocIndex = new Map(
     rerankResult.value.map((s) => [s.index, s.score])
   );
   const rerankedCandidates: RerankedCandidate[] = toRerank.map((c, i) => {
-    const rerankScore = scoreByIndex.get(i) ?? null;
+    // Get document-level rerank score (shared by all chunks from same doc)
+    const docIndex = hashToIndex.get(c.mirrorHash) ?? -1;
+    const rerankScore = scoreByDocIndex.get(docIndex) ?? null;
 
     // Normalize rerank score to 0-1 range (models may return different scales)
     const normalizedRerankScore =

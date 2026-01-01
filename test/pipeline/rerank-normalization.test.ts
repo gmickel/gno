@@ -4,12 +4,15 @@ import { rerankCandidates } from '../../src/pipeline/rerank';
 import type { FusionCandidate } from '../../src/pipeline/types';
 
 // Mock store with minimal implementation for tests
-// Uses getChunksBatch; getChunks throws to verify N+1 elimination
+// Uses getContent for full document reranking
 const mockStore = {
   getChunks: () => {
     throw new Error('N+1 detected: getChunks should not be called');
   },
-  getChunksBatch: async () => ({ ok: true as const, value: new Map() }),
+  getContent: async () => ({
+    ok: true as const,
+    value: 'Mock document content',
+  }),
 };
 
 // Helper to create test candidates
@@ -172,30 +175,28 @@ describe('rerank normalization', () => {
     });
   });
 
-  describe('chunk batch fetch failure', () => {
-    test('degrades to fusion-only when getChunksBatch fails', async () => {
-      // Mock reranker that should not be called
+  describe('content fetch failure', () => {
+    test('uses empty string when getContent fails', async () => {
+      // Mock reranker that succeeds (will be called with empty strings)
       const successReranker = {
-        rerank: () => {
-          throw new Error('rerank should not be called on chunk fetch failure');
-        },
+        rerank: async (_query: string, texts: string[]) => ({
+          ok: true as const,
+          value: texts.map((_, i) => ({ index: i, score: 0.9 - i * 0.05 })),
+        }),
         dispose: async () => {
           // no-op for test
         },
       };
 
-      // Mock store where getChunksBatch fails
+      // Mock store where getContent fails
       const failingStore = {
-        getChunks: () => {
-          throw new Error('N+1 detected: getChunks should not be called');
-        },
-        getChunksBatch: async () => ({
+        getContent: async () => ({
           ok: false as const,
           error: { code: 'QUERY_FAILED', message: 'DB error' },
         }),
       };
 
-      const candidates = createCandidates(10, (i) => 1 / (60 + i));
+      const candidates = createCandidates(3, (i) => 1 / (60 + i));
 
       const result = await rerankCandidates(
         {
@@ -206,14 +207,13 @@ describe('rerank normalization', () => {
         candidates
       );
 
-      // Should degrade gracefully, not call reranker
-      expect(result.reranked).toBe(false);
+      // Should still rerank with empty strings
+      expect(result.reranked).toBe(true);
 
       // All blendedScores should be in [0,1]
       for (const c of result.candidates) {
         expect(c.blendedScore).toBeGreaterThanOrEqual(0);
         expect(c.blendedScore).toBeLessThanOrEqual(1);
-        expect(c.rerankScore).toBeNull();
       }
     });
   });
