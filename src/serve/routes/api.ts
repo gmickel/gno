@@ -6,7 +6,7 @@
  */
 
 import { modelsPull } from '../../cli/commands/models/pull';
-import { addCollection } from '../../collection';
+import { addCollection, removeCollection } from '../../collection';
 import type { Config, ModelPreset } from '../../config/types';
 import { defaultSyncService, type SyncResult } from '../../ingestion';
 import { getModelConfig, getPreset, listPresets } from '../../llm/registry';
@@ -235,6 +235,39 @@ export async function handleCreateCollection(
     },
     202
   );
+}
+
+/**
+ * DELETE /api/collections/:name
+ * Remove a collection and its documents.
+ */
+export async function handleDeleteCollection(
+  ctxHolder: ContextHolder,
+  store: SqliteAdapter,
+  name: string
+): Promise<Response> {
+  // Remove collection from config
+  const removeResult = removeCollection(ctxHolder.config, { name });
+
+  if (!removeResult.ok) {
+    const status = removeResult.code === 'NOT_FOUND' ? 404 : 400;
+    return errorResponse(removeResult.code, removeResult.message, status);
+  }
+
+  // Persist config and sync to DB (removes collection record)
+  const syncResult = await applyConfigChange(
+    ctxHolder,
+    store,
+    () => removeResult.config
+  );
+  if (!syncResult.ok) {
+    return errorResponse(syncResult.code, syncResult.error, 500);
+  }
+
+  return jsonResponse({
+    success: true,
+    collection: removeResult.collection.name,
+  });
 }
 
 /**

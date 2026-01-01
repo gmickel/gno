@@ -18,6 +18,7 @@ import {
   handleCapabilities,
   handleCollections,
   handleCreateCollection,
+  handleDeleteCollection,
   handleDoc,
   handleDocs,
   handleHealth,
@@ -291,6 +292,19 @@ export async function startServer(
             const url = new URL(req.url);
             const id = url.pathname.split('/').pop() || '';
             return withSecurityHeaders(handleJob(id), isDev);
+          },
+        },
+        '/api/collections/:name': {
+          DELETE: async (req: Request) => {
+            if (!isRequestAllowed(req, port)) {
+              return withSecurityHeaders(forbiddenResponse(), isDev);
+            }
+            const url = new URL(req.url);
+            const name = url.pathname.split('/').pop() || '';
+            return withSecurityHeaders(
+              await handleDeleteCollection(ctxHolder, store, name),
+              isDev
+            );
           },
         },
       },
