@@ -151,13 +151,13 @@ The Web UI is designed for local use only:
 
 > **Warning**: Do not expose `gno serve` to the internet. It has no authentication.
 
-> **Pro tip**: Want remote access to your second brain? Use a secure tunnel:
-> - [Tailscale Funnel](https://tailscale.com/kb/1223/funnel) — Zero-config, end-to-end encrypted
-> - [Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/) — Free tier, adds Cloudflare Access for auth
+> **Pro tip**: Want remote access to your second brain? Since GNO binds to localhost only, use a tunnel:
+> - [Tailscale Serve](https://tailscale.com/kb/1312/serve) — Expose to your Tailnet (private, your devices only)
+> - [Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/) — Free tier, add Cloudflare Access for auth
 > - [ngrok](https://ngrok.com/) — Quick setup, supports basic auth
 > - [localcan](https://localcan.com/) — macOS-native, simple
 >
-> These tools handle auth/encryption so you can safely access GNO from anywhere.
+> These handle auth/encryption so you can safely access GNO from anywhere.
 
 ---
 
