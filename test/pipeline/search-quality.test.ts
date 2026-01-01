@@ -30,6 +30,10 @@ if (process.platform === 'win32') {
 // Fixtures path
 const FIXTURES_DIR = join(import.meta.dir, '../fixtures/docs');
 
+// Top-level regex for performance
+const TITLE_REGEX = /^#\s+(.+)$/m;
+const PARAGRAPH_SPLIT_REGEX = /\n\n+/;
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
 // ─────────────────────────────────────────────────────────────────────────────
@@ -48,7 +52,7 @@ async function loadFixtures(): Promise<TestDoc[]> {
   for (const file of mdFiles) {
     const content = await Bun.file(join(FIXTURES_DIR, file)).text();
     // Extract title from first # heading
-    const titleMatch = content.match(/^#\s+(.+)$/m);
+    const titleMatch = content.match(TITLE_REGEX);
     docs.push({
       relPath: file,
       content,
@@ -63,7 +67,7 @@ async function loadFixtures(): Promise<TestDoc[]> {
  * Splits by double newlines, creates ~500 char chunks.
  */
 function simpleChunk(content: string): ChunkInput[] {
-  const paragraphs = content.split(/\n\n+/);
+  const paragraphs = content.split(PARAGRAPH_SPLIT_REGEX);
   const chunks: ChunkInput[] = [];
   let currentChunk = '';
   let startLine = 1;
@@ -181,7 +185,9 @@ describe('Search Quality - Document-Level BM25', () => {
     const result = await searchBm25(adapter, 'gmickel-bench total score');
 
     expect(result.ok).toBe(true);
-    if (!result.ok) return;
+    if (!result.ok) {
+      return;
+    }
 
     // Should find the AI eval results document
     expect(result.value.results.length).toBeGreaterThan(0);
@@ -198,7 +204,9 @@ describe('Search Quality - Document-Level BM25', () => {
     const result = await searchBm25(adapter, 'goroutines channels mutex');
 
     expect(result.ok).toBe(true);
-    if (!result.ok) return;
+    if (!result.ok) {
+      return;
+    }
 
     // Should find go-concurrency.md
     expect(result.value.results.length).toBeGreaterThan(0);
@@ -230,7 +238,9 @@ describe('Search Quality - Stemming', () => {
     const result = await searchBm25(adapter, 'scored models');
 
     expect(result.ok).toBe(true);
-    if (!result.ok) return;
+    if (!result.ok) {
+      return;
+    }
 
     // Should find results - with stemming, "scored" matches "score"
     expect(result.value.results.length).toBeGreaterThan(0);
@@ -246,7 +256,9 @@ describe('Search Quality - Stemming', () => {
     const result = await searchBm25(adapter, 'running tests');
 
     expect(result.ok).toBe(true);
-    if (!result.ok) return;
+    if (!result.ok) {
+      return;
+    }
 
     // testing-strategies.md has content about running tests
     const hasRunMatch = result.value.results.some(
@@ -263,7 +275,9 @@ describe('Search Quality - Stemming', () => {
     const result = await searchBm25(adapter, 'workers processing jobs');
 
     expect(result.ok).toBe(true);
-    if (!result.ok) return;
+    if (!result.ok) {
+      return;
+    }
 
     // go-concurrency.md has Worker/worker and job/jobs
     const found = result.value.results.some(
@@ -298,7 +312,9 @@ describe('Search Quality - Result Relevance', () => {
     const result = await searchBm25(adapter, 'goroutines channels waitgroup');
 
     expect(result.ok).toBe(true);
-    if (!result.ok) return;
+    if (!result.ok) {
+      return;
+    }
 
     expect(result.value.results.length).toBeGreaterThan(0);
 
@@ -312,7 +328,9 @@ describe('Search Quality - Result Relevance', () => {
     const result = await searchBm25(adapter, 'Python asyncio semaphores');
 
     expect(result.ok).toBe(true);
-    if (!result.ok) return;
+    if (!result.ok) {
+      return;
+    }
 
     // Should find python-async.md which has asyncio and Semaphore
     const found = result.value.results.some(
@@ -344,7 +362,9 @@ describe('Search Quality - Full Document Context', () => {
     const result = await searchBm25(adapter, 'goroutines', { full: true });
 
     expect(result.ok).toBe(true);
-    if (!result.ok) return;
+    if (!result.ok) {
+      return;
+    }
 
     // Find the go-concurrency result
     const goResult = result.value.results.find(
@@ -352,7 +372,9 @@ describe('Search Quality - Full Document Context', () => {
     );
 
     expect(goResult).toBeDefined();
-    if (!goResult) return;
+    if (!goResult) {
+      return;
+    }
 
     // Full content should include sections from throughout the document
     // (not just the chunk that matched)
@@ -370,14 +392,18 @@ describe('Search Quality - Full Document Context', () => {
     });
 
     expect(result.ok).toBe(true);
-    if (!result.ok) return;
+    if (!result.ok) {
+      return;
+    }
 
     const evalResult = result.value.results.find(
       (r) => r.source.relPath === 'ai-eval-results.md'
     );
 
     expect(evalResult).toBeDefined();
-    if (!evalResult) return;
+    if (!evalResult) {
+      return;
+    }
 
     // Full doc should include the summary table with scores
     expect(evalResult.snippet).toContain('494.6');
