@@ -95,7 +95,7 @@ describe('resolveModelUri', () => {
     const config = makeConfig();
 
     expect(resolveModelUri(config, 'embed')).toContain('bge-m3');
-    expect(resolveModelUri(config, 'rerank')).toContain('bge-reranker');
+    expect(resolveModelUri(config, 'rerank')).toContain('qwen3-reranker');
     expect(resolveModelUri(config, 'gen')).toContain('SmolLM3');
   });
 
