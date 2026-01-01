@@ -167,7 +167,7 @@ Model configuration for embeddings and AI answers.
 | `balanced` | ~2GB | Good balance (default) |
 | `quality` | ~2.5GB | Best answers, complex content |
 
-> **Note**: When using GNO standalone with `--answer`, the **quality** preset is required for documents containing markdown tables or other structured content. The smaller models in slim/balanced presets cannot reliably parse tabular data. When GNO is used via MCP, skill, or CLI by AI agents (Claude Code, Codex, etc.), the agent handles answer generation—so any preset works for retrieval.
+> **Note**: When using GNO standalone with `--answer`, the **quality** preset is required for documents containing Markdown tables or other structured content. The smaller models in slim/balanced presets cannot reliably parse tabular data. When GNO is used via MCP, skill, or CLI by AI agents (Claude Code, Codex, etc.), the agent handles answer generation—so any preset works for retrieval.
 
 ### Model Details
 
