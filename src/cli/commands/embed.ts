@@ -7,7 +7,12 @@
 
 import type { Database } from 'bun:sqlite';
 import { getIndexDbPath } from '../../app/constants';
-import { getConfigPaths, isInitialized, loadConfig } from '../../config';
+import {
+  type Config,
+  getConfigPaths,
+  isInitialized,
+  loadConfig,
+} from '../../config';
 import { LlmAdapter } from '../../llm/nodeLlamaCpp/adapter';
 import { resolveDownloadPolicy } from '../../llm/policy';
 import { getActivePreset } from '../../llm/registry';
@@ -197,6 +202,50 @@ async function processBatches(ctx: BatchContext): Promise<BatchResult> {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Helpers
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface EmbedContext {
+  config: Config;
+  modelUri: string;
+  store: SqliteAdapter;
+}
+
+/**
+ * Initialize embed context: check init, load config, open store.
+ */
+async function initEmbedContext(
+  configPath?: string,
+  model?: string
+): Promise<({ ok: true } & EmbedContext) | { ok: false; error: string }> {
+  const initialized = await isInitialized(configPath);
+  if (!initialized) {
+    return { ok: false, error: 'GNO not initialized. Run: gno init' };
+  }
+
+  const configResult = await loadConfig(configPath);
+  if (!configResult.ok) {
+    return { ok: false, error: configResult.error.message };
+  }
+  const config = configResult.value;
+
+  const preset = getActivePreset(config);
+  const modelUri = model ?? preset.embed;
+
+  const store = new SqliteAdapter();
+  const dbPath = getIndexDbPath();
+  const paths = getConfigPaths();
+  store.setConfigPath(paths.configFile);
+
+  const openResult = await store.open(dbPath, config.ftsTokenizer);
+  if (!openResult.ok) {
+    return { ok: false, error: openResult.error.message };
+  }
+
+  return { ok: true, config, modelUri, store };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Main Command
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -208,33 +257,12 @@ export async function embed(options: EmbedOptions = {}): Promise<EmbedResult> {
   const force = options.force ?? false;
   const dryRun = options.dryRun ?? false;
 
-  // Check initialization
-  const initialized = await isInitialized(options.configPath);
-  if (!initialized) {
-    return { success: false, error: 'GNO not initialized. Run: gno init' };
+  // Initialize config and store
+  const initResult = await initEmbedContext(options.configPath, options.model);
+  if (!initResult.ok) {
+    return { success: false, error: initResult.error };
   }
-
-  // Load config
-  const configResult = await loadConfig(options.configPath);
-  if (!configResult.ok) {
-    return { success: false, error: configResult.error.message };
-  }
-  const config = configResult.value;
-
-  // Get model URI
-  const preset = getActivePreset(config);
-  const modelUri = options.model ?? preset.embed;
-
-  // Open store
-  const store = new SqliteAdapter();
-  const dbPath = getIndexDbPath();
-  const paths = getConfigPaths();
-  store.setConfigPath(paths.configFile);
-
-  const openResult = await store.open(dbPath, config.ftsTokenizer);
-  if (!openResult.ok) {
-    return { success: false, error: openResult.error.message };
-  }
+  const { config, modelUri, store } = initResult;
 
   // Get raw DB for vector ops (SqliteAdapter always implements SqliteDbProvider)
   const db = store.getRawDb();
