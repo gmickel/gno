@@ -10,6 +10,7 @@ on:
 jobs:
   build:
     strategy:
+      fail-fast: false
       matrix:
         include:
           - os: ubuntu-latest
@@ -18,7 +19,7 @@ jobs:
           - os: macos-latest
             artifact: fts5stemmer.dylib
             platform: darwin-arm64
-          - os: macos-15-large
+          - os: macos-15
             artifact: fts5stemmer.dylib
             platform: darwin-x64
           - os: windows-latest
