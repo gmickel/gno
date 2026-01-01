@@ -15,7 +15,7 @@ import type { ExpansionResult } from './types';
 // Constants
 // ─────────────────────────────────────────────────────────────────────────────
 
-const EXPANSION_PROMPT_VERSION = 'v1';
+const EXPANSION_PROMPT_VERSION = 'v2';
 const DEFAULT_TIMEOUT_MS = 5000;
 const JSON_EXTRACT_PATTERN = /\{[\s\S]*\}/;
 
@@ -40,45 +40,53 @@ export function generateCacheKey(
 // Prompt Templates
 // ─────────────────────────────────────────────────────────────────────────────
 
-const EXPANSION_PROMPT_EN = `You are a query expansion assistant. Given a search query, generate alternative phrasings to improve search results.
+const EXPANSION_PROMPT_EN = `You expand search queries for a hybrid search system.
 
-Input query: "{query}"
+Query: "{query}"
 
-Generate a JSON object with:
-- "lexicalQueries": array of 2-3 keyword-based variations (for BM25 search)
-- "vectorQueries": array of 2-3 semantic rephrasing (for embedding search)
-- "hyde": a short hypothetical document passage that would answer the query (optional)
+Generate JSON with:
+1. "lexicalQueries": 2-3 keyword variations using synonyms (for BM25)
+2. "vectorQueries": 2-3 semantic rephrasings capturing intent (for embeddings)
+3. "hyde": A 50-100 word passage that directly answers the query, as if excerpted from a relevant document
 
-Respond ONLY with valid JSON, no explanation.
+Rules:
+- Keep proper nouns exactly as written
+- Be concise - each variation 3-8 words
+- HyDE should read like actual documentation, not a question
 
-Example:
-{
-  "lexicalQueries": ["deployment process", "how to deploy", "deploying application"],
-  "vectorQueries": ["steps to release software to production", "guide for application deployment"],
-  "hyde": "To deploy the application, first run the build command, then push to the staging environment..."
-}`;
+Respond with valid JSON only.`;
 
-const EXPANSION_PROMPT_DE = `Du bist ein Query-Erweiterungs-Assistent. Generiere alternative Formulierungen für die Suchanfrage.
+const EXPANSION_PROMPT_DE = `Du erweiterst Suchanfragen für ein hybrides Suchsystem.
 
-Suchanfrage: "{query}"
+Anfrage: "{query}"
 
-Generiere ein JSON-Objekt mit:
-- "lexicalQueries": Array mit 2-3 Keyword-Variationen (für BM25-Suche)
-- "vectorQueries": Array mit 2-3 semantischen Umformulierungen (für Vektor-Suche)
-- "hyde": Ein kurzer hypothetischer Dokumentenausschnitt, der die Anfrage beantworten würde (optional)
+Generiere JSON mit:
+1. "lexicalQueries": 2-3 Keyword-Variationen mit Synonymen (für BM25)
+2. "vectorQueries": 2-3 semantische Umformulierungen (für Embeddings)
+3. "hyde": Ein 50-100 Wort Abschnitt, der die Anfrage direkt beantwortet, wie aus einem relevanten Dokument
 
-Antworte NUR mit validem JSON, keine Erklärung.`;
+Regeln:
+- Eigennamen exakt beibehalten
+- Kurz halten - jede Variation 3-8 Wörter
+- HyDE soll wie echte Dokumentation klingen, nicht wie eine Frage
 
-const EXPANSION_PROMPT_MULTILINGUAL = `You are a query expansion assistant. Generate alternative phrasings for the search query in the same language as the query.
+Antworte nur mit validem JSON.`;
 
-Input query: "{query}"
+const EXPANSION_PROMPT_MULTILINGUAL = `You expand search queries for a hybrid search system. Respond in the same language as the query.
 
-Generate a JSON object with:
-- "lexicalQueries": array of 2-3 keyword-based variations
-- "vectorQueries": array of 2-3 semantic rephrasing
-- "hyde": a short hypothetical document passage (optional)
+Query: "{query}"
 
-Respond ONLY with valid JSON.`;
+Generate JSON with:
+1. "lexicalQueries": 2-3 keyword variations using synonyms (for BM25)
+2. "vectorQueries": 2-3 semantic rephrasings capturing intent (for embeddings)
+3. "hyde": A 50-100 word passage that directly answers the query, as if excerpted from a relevant document
+
+Rules:
+- Keep proper nouns exactly as written
+- Be concise - each variation 3-8 words
+- HyDE should read like actual documentation, not a question
+
+Respond with valid JSON only.`;
 
 /**
  * Get prompt template for language.
