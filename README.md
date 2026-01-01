@@ -208,6 +208,8 @@ Skills add GNO search to Claude Code/Codex without MCP protocol overhead:
 gno skill install --scope user
 ```
 
+![GNO Skill in Claude Code](./assets/screenshots/claudecodeskill.jpg)
+
 Then ask your agent: *"Search my notes for the auth discussion"*
 
 > **Detailed docs**: [MCP Integration](https://gno.sh/docs/MCP/) · [Use Cases](https://gno.sh/docs/USE-CASES/)

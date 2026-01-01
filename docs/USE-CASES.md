@@ -218,6 +218,8 @@ gno skill install --target all --scope user
 
 After installation, restart your agent. It will automatically detect the GNO skill and can search your indexed documents.
 
+![GNO Skill in Claude Code](../assets/screenshots/claudecodeskill.jpg)
+
 **What gets installed:**
 - `SKILL.md` - Instructions for the agent on how to use GNO
 - Tool definitions for search, query, and document retrieval
