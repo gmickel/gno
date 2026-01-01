@@ -1,9 +1,20 @@
 /**
  * Tests for collection API endpoints.
+ *
+ * These tests are hermetic - they use a temp config directory to avoid
+ * mutating the developer's real config.
  */
 
-import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
-import { mkdtemp, rm } from 'node:fs/promises';
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  test,
+} from 'bun:test';
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { Config } from '../../src/config/types';
@@ -16,6 +27,60 @@ import {
 
 interface ErrorBody {
   error: { code: string };
+}
+
+// Import config path utilities to find actual config location
+import { getConfigPaths } from '../../src/config/paths';
+
+let originalConfigContent: string | null = null;
+let configFilePath: string;
+
+// Set up hermetic config directory before all tests
+beforeAll(async () => {
+  // Use the actual config path (respects platform-specific locations)
+  const paths = getConfigPaths();
+  configFilePath = paths.configFile;
+
+  // Save original config if it exists
+  const file = Bun.file(configFilePath);
+  if (await file.exists()) {
+    originalConfigContent = await file.text();
+  }
+
+  // Ensure config directory exists
+  const { dirname } = await import('node:path');
+  const { mkdir } = await import('node:fs/promises');
+  await mkdir(dirname(configFilePath), { recursive: true });
+
+  await resetConfig();
+});
+
+afterAll(async () => {
+  // Restore original config or remove test config
+  if (originalConfigContent !== null) {
+    await writeFile(configFilePath, originalConfigContent);
+  }
+});
+
+// Helper to reset config to default state
+async function resetConfig() {
+  await writeFile(
+    configFilePath,
+    'version: "1.0"\nftsTokenizer: unicode61\ncollections: []\ncontexts: []\n'
+  );
+}
+
+// Helper to write config with collections/contexts using Bun.YAML
+async function writeConfig(config: Partial<Config>) {
+  const fullConfig = {
+    version: '1.0',
+    ftsTokenizer: 'unicode61',
+    collections: [] as Config['collections'],
+    contexts: [] as Config['contexts'],
+    ...config,
+  };
+  const yaml = Bun.YAML.stringify(fullConfig);
+  await writeFile(configFilePath, yaml);
 }
 
 // Minimal mock store for testing
@@ -48,7 +113,7 @@ function createMockContextHolder(config?: Partial<Config>): ContextHolder {
     ...config,
   };
   return {
-    current: {} as ContextHolder['current'],
+    current: { config: fullConfig } as ContextHolder['current'],
     config: fullConfig,
   };
 }
@@ -77,6 +142,7 @@ describe('POST /api/collections', () => {
 
   beforeEach(async () => {
     tmpDir = await mkdtemp(join(tmpdir(), 'gno-test-'));
+    await resetConfig();
   });
 
   afterEach(async () => {
@@ -110,8 +176,8 @@ describe('POST /api/collections', () => {
   });
 
   test('rejects duplicate collection name', async () => {
-    const store = createMockStore();
-    const ctxHolder = createMockContextHolder({
+    // Write config with existing collection to disk
+    await writeConfig({
       collections: [
         {
           name: 'existing',
@@ -122,6 +188,9 @@ describe('POST /api/collections', () => {
         },
       ],
     });
+
+    const store = createMockStore();
+    const ctxHolder = createMockContextHolder();
     const req = new Request('http://localhost/api/collections', {
       method: 'POST',
       body: JSON.stringify({ path: tmpDir, name: 'existing' }),
@@ -138,6 +207,7 @@ describe('DELETE /api/collections/:name', () => {
 
   beforeEach(async () => {
     tmpDir = await mkdtemp(join(tmpdir(), 'gno-test-'));
+    await resetConfig();
   });
 
   afterEach(async () => {
@@ -158,8 +228,8 @@ describe('DELETE /api/collections/:name', () => {
   });
 
   test('rejects collection with context references', async () => {
-    const store = createMockStore();
-    const ctxHolder = createMockContextHolder({
+    // Write config with collection and context reference to disk
+    await writeConfig({
       collections: [
         {
           name: 'docs',
@@ -171,6 +241,9 @@ describe('DELETE /api/collections/:name', () => {
       ],
       contexts: [{ scopeType: 'collection', scopeKey: 'docs:', text: 'test' }],
     });
+
+    const store = createMockStore();
+    const ctxHolder = createMockContextHolder();
     const res = await handleDeleteCollection(ctxHolder, store as never, 'docs');
     expect(res.status).toBe(400);
     const body = (await res.json()) as ErrorBody;

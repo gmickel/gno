@@ -51,6 +51,23 @@ describe('validateOrigin', () => {
     });
     expect(validateOrigin(req, port)).toBe(false);
   });
+
+  test('rejects cross-origin for port 0 (ephemeral)', () => {
+    const req = new Request('http://localhost:3000/api/test', {
+      method: 'POST',
+      headers: { Origin: 'http://localhost:3000' },
+    });
+    // Port 0 means ephemeral - we can't know actual port, so reject cross-origin
+    expect(validateOrigin(req, 0)).toBe(false);
+  });
+
+  test('allows no-origin for port 0', () => {
+    const req = new Request('http://localhost:3000/api/test', {
+      method: 'POST',
+    });
+    // No Origin header is always allowed (same-origin/curl)
+    expect(validateOrigin(req, 0)).toBe(true);
+  });
 });
 
 describe('validateToken', () => {
@@ -156,14 +173,17 @@ describe('forbiddenResponse', () => {
     expect(response.status).toBe(403);
   });
 
-  test('returns JSON error body', async () => {
+  test('returns JSON error body with standard envelope', async () => {
     const response = forbiddenResponse();
     const body = await response.json();
-    expect(body).toEqual({ error: 'Forbidden', code: 'CSRF_VIOLATION' });
+    // Uses same error envelope as other API errors
+    expect(body).toEqual({
+      error: { code: 'CSRF_VIOLATION', message: 'Forbidden' },
+    });
   });
 
   test('sets Content-Type header', () => {
     const response = forbiddenResponse();
-    expect(response.headers.get('Content-Type')).toBe('application/json');
+    expect(response.headers.get('Content-Type')).toContain('application/json');
   });
 });

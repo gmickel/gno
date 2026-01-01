@@ -181,40 +181,71 @@ export async function handleCreateCollection(
     return errorResponse('VALIDATION', 'Invalid JSON body');
   }
 
+  // Validate required fields
   if (!body.path || typeof body.path !== 'string') {
     return errorResponse('VALIDATION', 'Missing or invalid path');
+  }
+
+  // Validate optional fields have correct types
+  if (body.name !== undefined && typeof body.name !== 'string') {
+    return errorResponse('VALIDATION', 'name must be a string');
+  }
+  if (body.pattern !== undefined && typeof body.pattern !== 'string') {
+    return errorResponse('VALIDATION', 'pattern must be a string');
+  }
+  if (
+    body.include !== undefined &&
+    typeof body.include !== 'string' &&
+    !Array.isArray(body.include)
+  ) {
+    return errorResponse('VALIDATION', 'include must be a string or array');
+  }
+  if (
+    body.exclude !== undefined &&
+    typeof body.exclude !== 'string' &&
+    !Array.isArray(body.exclude)
+  ) {
+    return errorResponse('VALIDATION', 'exclude must be a string or array');
+  }
+  if (body.gitPull !== undefined && typeof body.gitPull !== 'boolean') {
+    return errorResponse('VALIDATION', 'gitPull must be a boolean');
   }
 
   // Derive name from path if not provided
   const { basename } = await import('node:path'); // no bun equivalent
   const name = body.name || basename(body.path);
 
-  // Add collection to config
-  const addResult = await addCollection(ctxHolder.config, {
-    path: body.path,
-    name,
-    pattern: body.pattern,
-    include: body.include,
-    exclude: body.exclude,
+  // Persist config and sync to DB (mutation happens inside with fresh config)
+  const syncResult = await applyConfigChange(ctxHolder, store, async (cfg) => {
+    const addResult = await addCollection(cfg, {
+      path: body.path,
+      name,
+      pattern: body.pattern,
+      include: body.include,
+      exclude: body.exclude,
+    });
+
+    if (!addResult.ok) {
+      return { ok: false, error: addResult.message, code: addResult.code };
+    }
+    return { ok: true, config: addResult.config };
   });
-
-  if (!addResult.ok) {
-    const status = addResult.code === 'DUPLICATE' ? 409 : 400;
-    return errorResponse(addResult.code, addResult.message, status);
-  }
-
-  // Persist config and sync to DB
-  const syncResult = await applyConfigChange(
-    ctxHolder,
-    store,
-    () => addResult.config
-  );
   if (!syncResult.ok) {
-    return errorResponse(syncResult.code, syncResult.error, 500);
+    // Map mutation error codes to HTTP status codes
+    const status =
+      syncResult.code === 'DUPLICATE'
+        ? 409
+        : syncResult.code === 'PATH_NOT_FOUND'
+          ? 400
+          : 500;
+    return errorResponse(syncResult.code, syncResult.error, status);
   }
 
-  // Start background sync job
-  const collection = addResult.collection;
+  // Find the newly added collection from config
+  const collection = syncResult.config.collections.find((c) => c.name === name);
+  if (!collection) {
+    return errorResponse('RUNTIME', 'Collection not found after add', 500);
+  }
   const jobResult = startJob('add', async (): Promise<SyncResult> => {
     const result = await defaultSyncService.syncCollection(collection, store, {
       gitPull: body.gitPull,
@@ -246,34 +277,44 @@ export async function handleCreateCollection(
 
 /**
  * DELETE /api/collections/:name
- * Remove a collection and its documents.
+ * Remove a collection from config.
+ * Note: Does NOT remove indexed documents - they remain in DB until re-sync
+ * or manual cleanup. This preserves data for potential recovery.
  */
 export async function handleDeleteCollection(
   ctxHolder: ContextHolder,
   store: SqliteAdapter,
   name: string
 ): Promise<Response> {
-  // Remove collection from config
-  const removeResult = removeCollection(ctxHolder.config, { name });
+  // Persist config and sync to DB (mutation happens inside with fresh config)
+  const syncResult = await applyConfigChange(ctxHolder, store, (cfg) => {
+    const removeResult = removeCollection(cfg, { name });
 
-  if (!removeResult.ok) {
-    const status = removeResult.code === 'NOT_FOUND' ? 404 : 400;
-    return errorResponse(removeResult.code, removeResult.message, status);
-  }
+    if (!removeResult.ok) {
+      return {
+        ok: false,
+        error: removeResult.message,
+        code: removeResult.code,
+      };
+    }
+    return { ok: true, config: removeResult.config };
+  });
 
-  // Persist config and sync to DB (removes collection record)
-  const syncResult = await applyConfigChange(
-    ctxHolder,
-    store,
-    () => removeResult.config
-  );
   if (!syncResult.ok) {
-    return errorResponse(syncResult.code, syncResult.error, 500);
+    // Map mutation error codes to HTTP status codes
+    const status =
+      syncResult.code === 'NOT_FOUND'
+        ? 404
+        : syncResult.code === 'HAS_REFERENCES'
+          ? 400
+          : 500;
+    return errorResponse(syncResult.code, syncResult.error, status);
   }
 
   return jsonResponse({
     success: true,
-    collection: removeResult.collection.name,
+    collection: name,
+    note: 'Collection removed from config. Indexed documents remain in DB.',
   });
 }
 
@@ -296,9 +337,20 @@ export async function handleSync(
     return errorResponse('VALIDATION', 'Invalid JSON body');
   }
 
-  // Get collections to sync
-  const collections = body.collection
-    ? ctxHolder.config.collections.filter((c) => c.name === body.collection)
+  // Validate optional fields
+  if (body.collection !== undefined && typeof body.collection !== 'string') {
+    return errorResponse('VALIDATION', 'collection must be a string');
+  }
+  if (body.gitPull !== undefined && typeof body.gitPull !== 'boolean') {
+    return errorResponse('VALIDATION', 'gitPull must be a boolean');
+  }
+
+  // Get collections to sync (case-insensitive matching)
+  const collectionName = body.collection?.toLowerCase();
+  const collections = collectionName
+    ? ctxHolder.config.collections.filter(
+        (c) => c.name.toLowerCase() === collectionName
+      )
     : ctxHolder.config.collections;
 
   if (body.collection && collections.length === 0) {
@@ -473,6 +525,7 @@ export async function handleDeactivateDoc(
 /**
  * POST /api/docs
  * Create a new document in a collection.
+ * Returns 202 with jobId for async sync.
  */
 export async function handleCreateDoc(
   ctxHolder: ContextHolder,
@@ -486,7 +539,7 @@ export async function handleCreateDoc(
     return errorResponse('VALIDATION', 'Invalid JSON body');
   }
 
-  // Validate required fields
+  // Validate required fields with type checks
   if (!body.collection || typeof body.collection !== 'string') {
     return errorResponse('VALIDATION', 'Missing or invalid collection');
   }
@@ -496,10 +549,14 @@ export async function handleCreateDoc(
   if (!body.content || typeof body.content !== 'string') {
     return errorResponse('VALIDATION', 'Missing or invalid content');
   }
+  if (body.overwrite !== undefined && typeof body.overwrite !== 'boolean') {
+    return errorResponse('VALIDATION', 'overwrite must be a boolean');
+  }
 
-  // Find collection
+  // Find collection (case-insensitive)
+  const collectionName = body.collection.toLowerCase();
   const collection = ctxHolder.config.collections.find(
-    (c) => c.name === body.collection
+    (c) => c.name.toLowerCase() === collectionName
   );
   if (!collection) {
     return errorResponse(
@@ -510,7 +567,7 @@ export async function handleCreateDoc(
   }
 
   // Validate relPath - no path traversal
-  const { join, normalize, isAbsolute } = await import('node:path'); // no bun equivalent
+  const { join, normalize, isAbsolute, dirname } = await import('node:path'); // no bun equivalent
   if (isAbsolute(body.relPath)) {
     return errorResponse('VALIDATION', 'relPath must be relative');
   }
@@ -525,47 +582,73 @@ export async function handleCreateDoc(
 
   const fullPath = join(collection.path, normalizedPath);
 
-  // Check if file already exists
-  const file = Bun.file(fullPath);
-  if ((await file.exists()) && !body.overwrite) {
+  try {
+    // Check if file already exists
+    const file = Bun.file(fullPath);
+    if ((await file.exists()) && !body.overwrite) {
+      return errorResponse(
+        'CONFLICT',
+        'File already exists. Set overwrite=true to replace.',
+        409
+      );
+    }
+
+    // Ensure parent directory exists
+    const parentDir = dirname(fullPath);
+    const { mkdir, rename, unlink } = await import('node:fs/promises'); // structure ops need fs
+    await mkdir(parentDir, { recursive: true });
+
+    // Write file atomically (temp file + rename)
+    const tempPath = `${fullPath}.tmp.${crypto.randomUUID()}`;
+    await Bun.write(tempPath, body.content);
+    try {
+      await rename(tempPath, fullPath);
+    } catch (renameError) {
+      // Clean up temp file on failure
+      await unlink(tempPath).catch(() => {});
+      throw renameError;
+    }
+
+    // Build proper file:// URI using node:url
+    const { pathToFileURL } = await import('node:url');
+    const fileUri = pathToFileURL(fullPath).href;
+
+    // Run sync via job system (non-blocking)
+    const jobResult = startJob('sync', async (): Promise<SyncResult> => {
+      const result = await defaultSyncService.syncCollection(
+        collection,
+        store,
+        { runUpdateCmd: false }
+      );
+      return {
+        collections: [result],
+        totalDurationMs: result.durationMs,
+        totalFilesProcessed: result.filesProcessed,
+        totalFilesAdded: result.filesAdded,
+        totalFilesUpdated: result.filesUpdated,
+        totalFilesErrored: result.filesErrored,
+        totalFilesSkipped: result.filesSkipped,
+      };
+    });
+
+    return jsonResponse(
+      {
+        uri: fileUri,
+        path: fullPath,
+        jobId: jobResult.ok ? jobResult.jobId : null,
+        note: jobResult.ok
+          ? 'File created. Sync job started - poll /api/jobs/:id for status.'
+          : 'File created. Sync skipped (another job running).',
+      },
+      202
+    );
+  } catch (e) {
     return errorResponse(
-      'CONFLICT',
-      'File already exists. Set overwrite=true to replace.',
-      409
+      'RUNTIME',
+      `Failed to create document: ${e instanceof Error ? e.message : String(e)}`,
+      500
     );
   }
-
-  // Ensure parent directory exists
-  const { dirname } = await import('node:path'); // no bun equivalent
-  const parentDir = dirname(fullPath);
-  const { mkdir } = await import('node:fs/promises'); // structure ops need fs
-  await mkdir(parentDir, { recursive: true });
-
-  // Write file atomically
-  await Bun.write(fullPath, body.content);
-
-  // Trigger targeted sync for just this file
-  const syncResult = await defaultSyncService.syncCollection(
-    collection,
-    store,
-    {
-      runUpdateCmd: false,
-    }
-  );
-
-  // Find the newly created document
-  const docResult = await store.getDocumentByUri(`file://${fullPath}`);
-  const docId = docResult.ok && docResult.value ? docResult.value.docid : null;
-
-  return jsonResponse(
-    {
-      docId,
-      uri: `file://${fullPath}`,
-      path: fullPath,
-      indexed: syncResult.filesAdded > 0 || syncResult.filesUpdated > 0,
-    },
-    201
-  );
 }
 
 /**

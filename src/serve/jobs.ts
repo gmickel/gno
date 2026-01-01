@@ -48,9 +48,12 @@ const jobs = new Map<string, JobStatus>();
 /**
  * Clean up expired jobs to prevent memory leaks.
  * Called on every job access.
+ * Only expires completed/failed jobs - running jobs are never expired.
  */
 function cleanupExpiredJobs(now = Date.now()): void {
   for (const [id, job] of jobs) {
+    // Never expire running jobs - only completed/failed
+    if (job.status === 'running') continue;
     if (now - job.createdAt > JOB_EXPIRATION_MS) {
       jobs.delete(id);
     }
@@ -94,7 +97,10 @@ export function startJob(
   jobs.set(jobId, jobStatus);
 
   // Run in background (don't await)
-  fn()
+  // Wrap with Promise.resolve().then() to catch sync throws from fn()
+  // Without this, a sync throw would leave activeJobId set forever (deadlock)
+  Promise.resolve()
+    .then(fn)
     .then((result) => {
       const job = jobs.get(jobId);
       if (job) {
