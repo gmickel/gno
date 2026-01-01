@@ -2,6 +2,10 @@ name: Build fts5-snowball
 
 on:
   workflow_dispatch:
+  push:
+    branches: [feat/search-quality-improvements]
+    paths:
+      - '.github/workflows/build-fts5-snowball.yml'
 
 jobs:
   build:
