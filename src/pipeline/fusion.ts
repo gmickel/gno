@@ -64,9 +64,12 @@ export function rrfFuse(
   );
 
   // Process BM25 sources
+  // Original query gets 2x weight to prevent dilution by expansion variants
   for (const input of bm25Inputs) {
     const weight =
-      input.source === 'bm25' ? config.bm25Weight : config.bm25Weight * 0.5;
+      input.source === 'bm25'
+        ? config.bm25Weight * 2.0
+        : config.bm25Weight * 0.5;
 
     for (const result of input.results) {
       const key = `${result.mirrorHash}:${result.seq}`;
@@ -98,8 +101,9 @@ export function rrfFuse(
   }
 
   // Process vector sources
+  // Original query gets 2x weight to prevent dilution by expansion variants
   for (const input of vectorInputs) {
-    let weight = config.vecWeight;
+    let weight = config.vecWeight * 2.0; // Default for original vector
     if (input.source === 'vector_variant') {
       weight = config.vecWeight * 0.5;
     } else if (input.source === 'hyde') {
