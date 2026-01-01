@@ -10,7 +10,7 @@ const mark = (label: string) => {
   times[label] = performance.now();
 };
 const since = (label: string) =>
-  ((performance.now() - times[label]!) / 1000).toFixed(2);
+  ((performance.now() - (times[label] ?? 0)) / 1000).toFixed(2);
 
 // Test query that requires good retrieval
 const TEST_QUERY = 'which model scores best on gmickel-bench?';
@@ -188,6 +188,10 @@ console.log('  --thorough ~5-8s  (full pipeline)');
 
 // Cleanup
 await embedPort.dispose();
-if (rerankPort) await rerankPort.dispose();
-if (genPort) await genPort.dispose();
+if (rerankPort) {
+  await rerankPort.dispose();
+}
+if (genPort) {
+  await genPort.dispose();
+}
 store.close();
