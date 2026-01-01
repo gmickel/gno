@@ -28,6 +28,7 @@ import {
   handleSearch,
   handleSetPreset,
   handleStatus,
+  handleSync,
 } from './routes/api';
 import { forbiddenResponse, isRequestAllowed } from './security';
 
@@ -199,6 +200,17 @@ export async function startServer(
             }
             return withSecurityHeaders(
               await handleCreateCollection(ctxHolder, store, req),
+              isDev
+            );
+          },
+        },
+        '/api/sync': {
+          POST: async (req: Request) => {
+            if (!isRequestAllowed(req, port)) {
+              return withSecurityHeaders(forbiddenResponse(), isDev);
+            }
+            return withSecurityHeaders(
+              await handleSync(ctxHolder, store, req),
               isDev
             );
           },

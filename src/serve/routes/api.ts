@@ -79,6 +79,11 @@ export interface CreateCollectionRequestBody {
   gitPull?: boolean;
 }
 
+export interface SyncRequestBody {
+  collection?: string;
+  gitPull?: boolean;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
 // ─────────────────────────────────────────────────────────────────────────────
@@ -230,6 +235,57 @@ export async function handleCreateCollection(
     },
     202
   );
+}
+
+/**
+ * POST /api/sync
+ * Trigger re-index of all or specific collection.
+ */
+export async function handleSync(
+  ctxHolder: ContextHolder,
+  store: SqliteAdapter,
+  req: Request
+): Promise<Response> {
+  let body: SyncRequestBody = {};
+  try {
+    const text = await req.text();
+    if (text) {
+      body = JSON.parse(text) as SyncRequestBody;
+    }
+  } catch {
+    return errorResponse('VALIDATION', 'Invalid JSON body');
+  }
+
+  // Get collections to sync
+  const collections = body.collection
+    ? ctxHolder.config.collections.filter((c) => c.name === body.collection)
+    : ctxHolder.config.collections;
+
+  if (body.collection && collections.length === 0) {
+    return errorResponse(
+      'NOT_FOUND',
+      `Collection not found: ${body.collection}`,
+      404
+    );
+  }
+
+  if (collections.length === 0) {
+    return errorResponse('VALIDATION', 'No collections to sync');
+  }
+
+  // Start background sync job
+  const jobResult = startJob('sync', async (): Promise<SyncResult> => {
+    return await defaultSyncService.syncAll(collections, store, {
+      gitPull: body.gitPull,
+      runUpdateCmd: true,
+    });
+  });
+
+  if (!jobResult.ok) {
+    return errorResponse('CONFLICT', jobResult.error, 409);
+  }
+
+  return jsonResponse({ jobId: jobResult.jobId }, 202);
 }
 
 /**
