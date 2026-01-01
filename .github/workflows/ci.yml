@@ -87,6 +87,6 @@ jobs:
 
       - name: Test
         shell: cmd
-        run: bun test --concurrency 1
+        run: bun test test/ --concurrency 1
         env:
           CI: 'true'
