@@ -9,7 +9,7 @@ Both tools provide semantic search for local documents with AI-powered features.
 | Aspect | GNO | QMD |
 |--------|-----|-----|
 | **Best for** | Multi-format knowledge bases | Markdown-only collections |
-| **Unique strength** | RAG answers, multi-target MCP | Shopify founder's tool |
+| **Unique strength** | Web UI, REST API, RAG answers | Shopify founder's tool |
 | **Language support** | 30+ languages | English-focused |
 
 ## Feature Comparison
@@ -22,16 +22,15 @@ Both tools provide semantic search for local documents with AI-powered features.
 | **Reranking** | ✓ Cross-encoder | ✓ Cross-encoder |
 | **HyDE** | ✓ | ✓ |
 | **AI Answers (RAG)** | ✓ `gno ask --answer` | ✗ |
+| **Web UI** | ✓ `gno serve` | ✗ |
+| **REST API** | ✓ `gno serve` | ✗ |
 | **Languages** | 30+ (auto-detect) | English-focused |
-| **MCP Targets** | 10+ (Claude, Cursor, Zed, Windsurf, etc.) | Claude Desktop only |
+| **MCP Install CLI** | ✓ 10+ targets | ✗ Manual config |
 | **Skills** | ✓ Claude Code, Codex, OpenCode | ✗ |
 | **Model Presets** | slim/balanced/quality | Single config |
 | **Incremental Index** | ✓ SHA-256 tracking | ✓ |
 | **Collection Contexts** | ✓ Semantic hints | ✓ |
 | **Output Formats** | JSON, CSV, MD, XML, files | JSON, CSV, MD, XML |
-
-| **REST API** | ✓ `gno serve` | ✗ |
-| **Web UI** | ✓ `gno serve` | ✗ |
 
 ### Planned Features
 
@@ -54,12 +53,19 @@ gno index
 
 **Multilingual**: Auto-detects 30+ languages. Search across notes in English, German, Japanese, and more without configuration.
 
-**More integrations**: 10+ MCP targets (Claude Desktop, Cursor, Zed, Windsurf, Codex CLI, OpenCode, and more) plus Skills for Claude Code, Codex, and OpenCode.
+**Web UI & REST API**: Visual dashboard for search, browsing, and AI answers. Full REST API for custom integrations.
 
 ```bash
-# Install MCP for Cursor
+gno serve  # Open http://localhost:3000
+```
+
+**MCP install CLI**: One-command setup for 10+ targets. QMD requires manual config editing.
+
+```bash
 gno mcp install --target cursor
 ```
+
+**Skills**: Native integration for Claude Code, Codex, and OpenCode via CLI.
 
 **RAG answers with citations**: Get AI-generated answers with source citations.
 
@@ -77,16 +83,18 @@ gno ask "what is our authentication strategy" --answer
 
 ## When to Choose GNO
 
+- You want a Web UI for visual search and browsing
+- You need a REST API for custom integrations
 - You have PDFs, Word docs, or Office files to search
 - You need multilingual support
 - You want RAG-style answers from your documents
-- You use Cursor, Zed, Windsurf, or other editors (not just Claude Desktop)
+- You want one-command MCP install for any editor
 - You want Claude Code or Codex Skills integration
 
 ## When to Choose QMD
 
 - Your knowledge base is 100% Markdown
-- You only need Claude Desktop integration
+- You don't need Web UI or REST API
 - You prefer a more focused, single-purpose tool
 
 ## Migration from QMD
