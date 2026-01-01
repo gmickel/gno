@@ -6,6 +6,7 @@
  */
 
 import { LlmAdapter } from '../../llm/nodeLlamaCpp/adapter';
+import { resolveDownloadPolicy } from '../../llm/policy';
 import { getActivePreset } from '../../llm/registry';
 import type {
   EmbeddingPort,
@@ -18,6 +19,11 @@ import {
   createVectorIndexPort,
   type VectorIndexPort,
 } from '../../store/vector';
+import { getGlobals } from '../program';
+import {
+  createProgressRenderer,
+  createThrottledProgressRenderer,
+} from '../progress';
 import { initStore } from './shared';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -90,9 +96,26 @@ export async function query(
     const preset = getActivePreset(config);
     const llm = new LlmAdapter(config);
 
+    // Resolve download policy from env/flags
+    const globals = getGlobals();
+    const policy = resolveDownloadPolicy(process.env, {
+      offline: globals.offline,
+    });
+
+    // Create progress renderer for model downloads (throttled)
+    const showProgress = !options.json && process.stderr.isTTY;
+    const downloadProgress = showProgress
+      ? createThrottledProgressRenderer(createProgressRenderer())
+      : undefined;
+
     // Create embedding port (for vector search)
     const embedUri = options.embedModel ?? preset.embed;
-    const embedResult = await llm.createEmbeddingPort(embedUri);
+    const embedResult = await llm.createEmbeddingPort(embedUri, {
+      policy,
+      onProgress: downloadProgress
+        ? (progress) => downloadProgress('embed', progress)
+        : undefined,
+    });
     if (embedResult.ok) {
       embedPort = embedResult.value;
     }
@@ -100,7 +123,12 @@ export async function query(
     // Create generation port (for expansion) - optional
     if (!options.noExpand) {
       const genUri = options.genModel ?? preset.gen;
-      const genResult = await llm.createGenerationPort(genUri);
+      const genResult = await llm.createGenerationPort(genUri, {
+        policy,
+        onProgress: downloadProgress
+          ? (progress) => downloadProgress('gen', progress)
+          : undefined,
+      });
       if (genResult.ok) {
         genPort = genResult.value;
       }
@@ -109,10 +137,20 @@ export async function query(
     // Create rerank port - optional
     if (!options.noRerank) {
       const rerankUri = options.rerankModel ?? preset.rerank;
-      const rerankResult = await llm.createRerankPort(rerankUri);
+      const rerankResult = await llm.createRerankPort(rerankUri, {
+        policy,
+        onProgress: downloadProgress
+          ? (progress) => downloadProgress('rerank', progress)
+          : undefined,
+      });
       if (rerankResult.ok) {
         rerankPort = rerankResult.value;
       }
+    }
+
+    // Clear progress line if shown
+    if (showProgress && downloadProgress) {
+      process.stderr.write('\n');
     }
 
     // Create vector index (optional)

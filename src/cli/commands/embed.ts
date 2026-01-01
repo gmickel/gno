@@ -9,6 +9,7 @@ import type { Database } from 'bun:sqlite';
 import { getIndexDbPath } from '../../app/constants';
 import { getConfigPaths, isInitialized, loadConfig } from '../../config';
 import { LlmAdapter } from '../../llm/nodeLlamaCpp/adapter';
+import { resolveDownloadPolicy } from '../../llm/policy';
 import { getActivePreset } from '../../llm/registry';
 import type { EmbeddingPort } from '../../llm/types';
 import { formatDocForEmbedding } from '../../pipeline/contextual';
@@ -23,6 +24,11 @@ import {
   type VectorRow,
   type VectorStatsPort,
 } from '../../store/vector';
+import { getGlobals } from '../program';
+import {
+  createProgressRenderer,
+  createThrottledProgressRenderer,
+} from '../progress';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -274,13 +280,34 @@ export async function embed(options: EmbedOptions = {}): Promise<EmbedResult> {
       };
     }
 
-    // Create LLM adapter and embedding port
+    // Create LLM adapter and embedding port with auto-download
+    const globals = getGlobals();
+    const policy = resolveDownloadPolicy(process.env, {
+      offline: globals.offline,
+    });
+
+    // Create progress renderer for model download (throttled to avoid spam)
+    const showDownloadProgress = !options.json && process.stderr.isTTY;
+    const downloadProgress = showDownloadProgress
+      ? createThrottledProgressRenderer(createProgressRenderer())
+      : undefined;
+
     const llm = new LlmAdapter(config);
-    const embedResult = await llm.createEmbeddingPort(modelUri);
+    const embedResult = await llm.createEmbeddingPort(modelUri, {
+      policy,
+      onProgress: downloadProgress
+        ? (progress) => downloadProgress('embed', progress)
+        : undefined,
+    });
     if (!embedResult.ok) {
       return { success: false, error: embedResult.error.message };
     }
     embedPort = embedResult.value;
+
+    // Clear download progress line if shown
+    if (showDownloadProgress) {
+      process.stderr.write('\n');
+    }
 
     // Discover dimensions via probe embedding
     const probeResult = await embedPort.embed('dimension probe');

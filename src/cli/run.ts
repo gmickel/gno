@@ -35,6 +35,7 @@ const KNOWN_BOOL_FLAGS = new Set([
   '-q',
   '--quiet',
   '--json',
+  '--offline',
 ]);
 
 // Known global flags that take values (--flag value or --flag=value)

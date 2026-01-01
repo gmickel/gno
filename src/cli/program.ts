@@ -132,7 +132,8 @@ export function createProgram(): Command {
     .option('--verbose', 'verbose logging')
     .option('--yes', 'non-interactive mode')
     .option('-q, --quiet', 'suppress non-essential output')
-    .option('--json', 'JSON output (for errors and supported commands)');
+    .option('--json', 'JSON output (for errors and supported commands)')
+    .option('--offline', 'offline mode (use cached models only)');
 
   // Resolve globals ONCE before any command runs (ensures consistency)
   program.hook('preAction', (thisCommand) => {

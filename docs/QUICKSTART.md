@@ -25,6 +25,8 @@ gno index
 
 This runs both BM25 (keyword) and vector indexing. GNO indexes Markdown, PDF, DOCX, XLSX, PPTX, and plain text.
 
+> **Note**: On first run, GNO automatically downloads the required embedding model (~80MB). Subsequent runs use the cached model.
+
 Check what's indexed:
 
 ```bash

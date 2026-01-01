@@ -22,7 +22,7 @@ const addFormats = addFormatsModule.default;
 
 const LINE_PROTOCOL_PATTERN = /#[a-f0-9]+,\d+\.\d+,gno:\/\//;
 const LINE_NUMBER_PATTERN = /\d+:/;
-const VECTOR_EMBED_PATTERN = /vector|embed/;
+const VECTOR_EMBED_PATTERN = /vector|embed|model|download/;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Setup / Teardown

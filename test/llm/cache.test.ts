@@ -202,6 +202,84 @@ describe('ModelCache', () => {
     });
   });
 
+  describe('ensureModel', () => {
+    test('returns cached path if model exists', async () => {
+      const modelPath = join(tempDir, 'test-model.gguf');
+      await writeFile(modelPath, 'test content');
+
+      // file: URIs are always "cached" if file exists
+      const result = await cache.ensureModel(`file:${modelPath}`, 'embed', {
+        offline: false,
+        allowDownload: false,
+      });
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value).toBe(modelPath);
+      }
+    });
+
+    test('returns error in offline mode for uncached hf: URI', async () => {
+      const result = await cache.ensureModel(
+        'hf:test/model/model.gguf',
+        'embed',
+        {
+          offline: true,
+          allowDownload: false,
+        }
+      );
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.code).toBe('MODEL_NOT_CACHED');
+      }
+    });
+
+    test('returns error when auto-download disabled for uncached hf: URI', async () => {
+      const result = await cache.ensureModel(
+        'hf:test/model/model.gguf',
+        'embed',
+        {
+          offline: false,
+          allowDownload: false,
+        }
+      );
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.code).toBe('AUTO_DOWNLOAD_DISABLED');
+      }
+    });
+
+    test('returns error for non-existent file: URI', async () => {
+      const result = await cache.ensureModel(
+        'file:/nonexistent/model.gguf',
+        'embed',
+        {
+          offline: false,
+          allowDownload: true,
+        }
+      );
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.code).toBe('MODEL_NOT_FOUND');
+      }
+    });
+
+    test('returns error for invalid URI', async () => {
+      const result = await cache.ensureModel('invalid-uri', 'embed', {
+        offline: false,
+        allowDownload: true,
+      });
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.code).toBe('INVALID_URI');
+      }
+    });
+  });
+
   describe('clear', () => {
     test('clears all models', async () => {
       const manifestPath = join(tempDir, 'manifest.json');

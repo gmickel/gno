@@ -33,7 +33,10 @@ All commands accept:
 --no-color        Disable colored output
 --verbose         Enable verbose logging
 --yes             Non-interactive mode
+--offline         Use cached models only (no auto-download)
 ```
+
+**Offline mode**: Use `--offline` or set `HF_HUB_OFFLINE=1` to prevent auto-downloading models. Set `GNO_NO_AUTO_DOWNLOAD=1` to disable auto-download while still allowing explicit `gno models pull`.
 
 **Output format flags** (`--json`, `--files`, `--csv`, `--md`, `--xml`) are per-command.
 See [spec/cli.md](../spec/cli.md#output-format-support-matrix) for which commands support which formats.

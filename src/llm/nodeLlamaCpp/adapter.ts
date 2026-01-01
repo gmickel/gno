@@ -7,17 +7,33 @@
 
 import type { Config } from '../../config/types';
 import { ModelCache } from '../cache';
+import type { DownloadPolicy } from '../policy';
 import { getActivePreset, getModelConfig } from '../registry';
 import type {
   EmbeddingPort,
   GenerationPort,
   LlmResult,
+  ProgressCallback,
   RerankPort,
 } from '../types';
 import { NodeLlamaCppEmbedding } from './embedding';
 import { NodeLlamaCppGeneration } from './generation';
 import { getModelManager, type ModelManager } from './lifecycle';
 import { NodeLlamaCppRerank } from './rerank';
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Types
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface CreatePortOptions {
+  /** Download policy (offline, allowDownload) */
+  policy?: DownloadPolicy;
+  /** Progress callback for downloads */
+  onProgress?: ProgressCallback;
+}
+
+/** Default policy: no auto-download (backwards compatible) */
+const DEFAULT_POLICY: DownloadPolicy = { offline: false, allowDownload: false };
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Adapter
@@ -37,15 +53,23 @@ export class LlmAdapter {
 
   /**
    * Create an embedding port.
+   * With options.policy.allowDownload=true, auto-downloads if not cached.
    */
   async createEmbeddingPort(
-    modelUri?: string
+    modelUri?: string,
+    options?: CreatePortOptions
   ): Promise<LlmResult<EmbeddingPort>> {
     const preset = getActivePreset(this.config);
     const uri = modelUri ?? preset.embed;
+    const policy = options?.policy ?? DEFAULT_POLICY;
 
-    // Resolve model path from cache
-    const resolved = await this.cache.resolve(uri, 'embed');
+    // Ensure model is available (downloads if policy allows)
+    const resolved = await this.cache.ensureModel(
+      uri,
+      'embed',
+      policy,
+      options?.onProgress
+    );
     if (!resolved.ok) {
       return resolved;
     }
@@ -58,15 +82,23 @@ export class LlmAdapter {
 
   /**
    * Create a generation port.
+   * With options.policy.allowDownload=true, auto-downloads if not cached.
    */
   async createGenerationPort(
-    modelUri?: string
+    modelUri?: string,
+    options?: CreatePortOptions
   ): Promise<LlmResult<GenerationPort>> {
     const preset = getActivePreset(this.config);
     const uri = modelUri ?? preset.gen;
+    const policy = options?.policy ?? DEFAULT_POLICY;
 
-    // Resolve model path from cache
-    const resolved = await this.cache.resolve(uri, 'gen');
+    // Ensure model is available (downloads if policy allows)
+    const resolved = await this.cache.ensureModel(
+      uri,
+      'gen',
+      policy,
+      options?.onProgress
+    );
     if (!resolved.ok) {
       return resolved;
     }
@@ -79,13 +111,23 @@ export class LlmAdapter {
 
   /**
    * Create a rerank port.
+   * With options.policy.allowDownload=true, auto-downloads if not cached.
    */
-  async createRerankPort(modelUri?: string): Promise<LlmResult<RerankPort>> {
+  async createRerankPort(
+    modelUri?: string,
+    options?: CreatePortOptions
+  ): Promise<LlmResult<RerankPort>> {
     const preset = getActivePreset(this.config);
     const uri = modelUri ?? preset.rerank;
+    const policy = options?.policy ?? DEFAULT_POLICY;
 
-    // Resolve model path from cache
-    const resolved = await this.cache.resolve(uri, 'rerank');
+    // Ensure model is available (downloads if policy allows)
+    const resolved = await this.cache.ensureModel(
+      uri,
+      'rerank',
+      policy,
+      options?.onProgress
+    );
     if (!resolved.ok) {
       return resolved;
     }

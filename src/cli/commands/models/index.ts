@@ -4,6 +4,7 @@
  * @module src/cli/commands/models
  */
 
+export { createProgressRenderer } from '../../progress';
 export {
   formatModelsClear,
   type ModelsClearOptions,
@@ -23,7 +24,6 @@ export {
   modelsPath,
 } from './path';
 export {
-  createProgressRenderer,
   formatModelsPull,
   type ModelPullResult,
   type ModelsPullOptions,

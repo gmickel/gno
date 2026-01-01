@@ -5,6 +5,7 @@
  * @module src/cli/context
  */
 
+import { envIsSet } from '../llm/policy';
 import { setColorsEnabled } from './colors';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -19,6 +20,7 @@ export interface GlobalOptions {
   yes: boolean;
   quiet: boolean;
   json: boolean;
+  offline: boolean;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -40,6 +42,13 @@ export function parseGlobalOptions(
 
   const colorEnabled = !(noColorEnv || noColorFlag);
 
+  // Offline mode: --offline flag or HF_HUB_OFFLINE/GNO_OFFLINE env var
+  // Use envIsSet for consistent truthiness (treats "1", "true", "yes" as true)
+  const offlineEnv =
+    envIsSet(env, 'HF_HUB_OFFLINE') || envIsSet(env, 'GNO_OFFLINE');
+  const offlineFlag = Boolean(raw.offline);
+  const offlineEnabled = offlineEnv || offlineFlag;
+
   return {
     index: (raw.index as string) ?? 'default',
     config: raw.config as string | undefined,
@@ -48,6 +57,7 @@ export function parseGlobalOptions(
     yes: Boolean(raw.yes),
     quiet: Boolean(raw.quiet),
     json: Boolean(raw.json),
+    offline: offlineEnabled,
   };
 }
 

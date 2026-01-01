@@ -305,6 +305,18 @@ The assistant uses `gno_get` with the docid from search results.
 3. Get full content of relevant docs
 4. Ask follow-up questions with context
 
+## Environment Variables
+
+Configure MCP server behavior with environment variables:
+
+| Variable | Effect |
+|----------|--------|
+| `HF_HUB_OFFLINE=1` | Offline mode: use cached models only, fail if missing |
+| `GNO_NO_AUTO_DOWNLOAD=1` | Disable auto-download but allow explicit `gno models pull` |
+| `GNO_VERBOSE=1` | Enable verbose logging |
+
+Models auto-download on first use. Use these variables in CI/air-gapped environments.
+
 ## Troubleshooting
 
 ### "Tool not found"

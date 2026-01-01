@@ -18,7 +18,9 @@ export type LlmErrorCode =
   | 'INFERENCE_FAILED'
   | 'TIMEOUT'
   | 'OUT_OF_MEMORY'
-  | 'INVALID_URI';
+  | 'INVALID_URI'
+  | 'LOCK_FAILED'
+  | 'AUTO_DOWNLOAD_DISABLED';
 
 export interface LlmError {
   code: LlmErrorCode;
@@ -91,9 +93,12 @@ export function llmError(
  * Check if error is retryable.
  */
 export function isRetryable(code: LlmErrorCode): boolean {
-  return ['MODEL_DOWNLOAD_FAILED', 'TIMEOUT', 'INFERENCE_FAILED'].includes(
-    code
-  );
+  return [
+    'MODEL_DOWNLOAD_FAILED',
+    'TIMEOUT',
+    'INFERENCE_FAILED',
+    'LOCK_FAILED',
+  ].includes(code);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -187,5 +192,23 @@ export function invalidUriError(uri: string, details: string): LlmError {
     message: `Invalid model URI: ${details}`,
     modelUri: uri,
     retryable: false,
+  });
+}
+
+export function lockFailedError(uri: string): LlmError {
+  return llmError('LOCK_FAILED', {
+    message: `Failed to acquire lock for model download: ${uri}`,
+    modelUri: uri,
+    retryable: true,
+    suggestion: 'Another process may be downloading. Wait and retry.',
+  });
+}
+
+export function autoDownloadDisabledError(uri: string): LlmError {
+  return llmError('AUTO_DOWNLOAD_DISABLED', {
+    message: `Model not cached and auto-download disabled: ${uri}`,
+    modelUri: uri,
+    retryable: false,
+    suggestion: "Run 'gno models pull' to download models manually.",
   });
 }

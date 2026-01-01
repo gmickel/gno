@@ -6,7 +6,9 @@
 
 import { join as pathJoin } from 'node:path';
 import { parseUri } from '../../app/constants';
+import { createNonTtyProgressRenderer } from '../../cli/progress';
 import { LlmAdapter } from '../../llm/nodeLlamaCpp/adapter';
+import { resolveDownloadPolicy } from '../../llm/policy';
 import { getActivePreset } from '../../llm/registry';
 import type {
   EmbeddingPort,
@@ -128,6 +130,12 @@ export function handleQuery(
       const preset = getActivePreset(ctx.config);
       const llm = new LlmAdapter(ctx.config);
 
+      // Resolve download policy from env (MCP has no CLI flags)
+      const policy = resolveDownloadPolicy(process.env, {});
+
+      // Non-TTY progress for MCP (periodic lines to stderr, not \r)
+      const downloadProgress = createNonTtyProgressRenderer();
+
       let embedPort: EmbeddingPort | null = null;
       let genPort: GenerationPort | null = null;
       let rerankPort: RerankPort | null = null;
@@ -135,7 +143,10 @@ export function handleQuery(
 
       try {
         // Create embedding port (for vector search) - optional
-        const embedResult = await llm.createEmbeddingPort(preset.embed);
+        const embedResult = await llm.createEmbeddingPort(preset.embed, {
+          policy,
+          onProgress: (progress) => downloadProgress('embed', progress),
+        });
         if (embedResult.ok) {
           embedPort = embedResult.value;
         }
@@ -164,7 +175,10 @@ export function handleQuery(
 
         // Create generation port (for expansion) - optional
         if (!noExpand) {
-          const genResult = await llm.createGenerationPort(preset.gen);
+          const genResult = await llm.createGenerationPort(preset.gen, {
+            policy,
+            onProgress: (progress) => downloadProgress('gen', progress),
+          });
           if (genResult.ok) {
             genPort = genResult.value;
           }
@@ -172,7 +186,10 @@ export function handleQuery(
 
         // Create rerank port - optional
         if (!noRerank) {
-          const rerankResult = await llm.createRerankPort(preset.rerank);
+          const rerankResult = await llm.createRerankPort(preset.rerank, {
+            policy,
+            onProgress: (progress) => downloadProgress('rerank', progress),
+          });
           if (rerankResult.ok) {
             rerankPort = rerankResult.value;
           }

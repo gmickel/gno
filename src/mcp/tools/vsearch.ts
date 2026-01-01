@@ -6,7 +6,9 @@
 
 import { join as pathJoin } from 'node:path';
 import { parseUri } from '../../app/constants';
+import { createNonTtyProgressRenderer } from '../../cli/progress';
 import { LlmAdapter } from '../../llm/nodeLlamaCpp/adapter';
+import { resolveDownloadPolicy } from '../../llm/policy';
 import { getActivePreset } from '../../llm/registry';
 import { formatQueryForEmbedding } from '../../pipeline/contextual';
 import type { SearchResult, SearchResults } from '../../pipeline/types';
@@ -109,9 +111,18 @@ export function handleVsearch(
       const preset = getActivePreset(ctx.config);
       const modelUri = preset.embed;
 
+      // Resolve download policy from env (MCP has no CLI flags)
+      const policy = resolveDownloadPolicy(process.env, {});
+
+      // Non-TTY progress for MCP (periodic lines to stderr, not \r)
+      const downloadProgress = createNonTtyProgressRenderer();
+
       // Create LLM adapter for embeddings
       const llm = new LlmAdapter(ctx.config);
-      const embedResult = await llm.createEmbeddingPort(modelUri);
+      const embedResult = await llm.createEmbeddingPort(modelUri, {
+        policy,
+        onProgress: (progress) => downloadProgress('embed', progress),
+      });
       if (!embedResult.ok) {
         throw new Error(
           `Failed to load embedding model: ${embedResult.error.message}. ` +

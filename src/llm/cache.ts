@@ -5,18 +5,24 @@
  * @module src/llm/cache
  */
 
-import { mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
+// node:crypto: createHash for safe lock filenames
+import { createHash } from 'node:crypto';
+import { mkdir, open, readFile, rename, rm, stat } from 'node:fs/promises';
 // node:path: join for path construction, isAbsolute for cross-platform path detection
 import { isAbsolute, join } from 'node:path';
 // node:url: fileURLToPath for proper file:// URL handling
 import { fileURLToPath } from 'node:url';
 import { getModelsCachePath } from '../app/constants';
 import {
+  autoDownloadDisabledError,
   downloadFailedError,
   invalidUriError,
+  lockFailedError,
   modelNotCachedError,
   modelNotFoundError,
 } from './errors';
+import { getLockPath, getManifestLockPath, withLock } from './lockfile';
+import type { DownloadPolicy } from './policy';
 import type {
   DownloadProgress,
   LlmResult,
@@ -307,6 +313,85 @@ export class ModelCache {
   }
 
   /**
+   * Ensure a model is available, downloading if necessary.
+   * Uses double-check locking pattern for concurrent safety.
+   *
+   * @param uri - Model URI (hf: or file:)
+   * @param type - Model type for manifest
+   * @param policy - Download policy (offline, allowDownload)
+   * @param onProgress - Optional progress callback
+   */
+  async ensureModel(
+    uri: string,
+    type: ModelType,
+    policy: DownloadPolicy,
+    onProgress?: ProgressCallback
+  ): Promise<LlmResult<string>> {
+    // Fast path: check if already cached
+    const cached = await this.getCachedPath(uri);
+    if (cached) {
+      return { ok: true, value: cached };
+    }
+
+    // Parse and validate URI
+    const parsed = parseModelUri(uri);
+    if (!parsed.ok) {
+      return { ok: false, error: invalidUriError(uri, parsed.error) };
+    }
+
+    // Local files: just verify existence (no download needed)
+    if (parsed.value.scheme === 'file') {
+      const exists = await this.fileExists(parsed.value.file);
+      if (!exists) {
+        return {
+          ok: false,
+          error: modelNotFoundError(
+            uri,
+            `File not found: ${parsed.value.file}`
+          ),
+        };
+      }
+      return { ok: true, value: parsed.value.file };
+    }
+
+    // HF models: check policy
+    if (policy.offline) {
+      return { ok: false, error: modelNotCachedError(uri, type) };
+    }
+
+    if (!policy.allowDownload) {
+      return { ok: false, error: autoDownloadDisabledError(uri) };
+    }
+
+    // Acquire lock for download (prevents concurrent downloads of same model)
+    // Use hash for lock filename to avoid collisions and path issues
+    await mkdir(this.dir, { recursive: true });
+    const lockName = createHash('sha256')
+      .update(uri)
+      .digest('hex')
+      .slice(0, 32);
+    const lockPath = getLockPath(join(this.dir, lockName));
+
+    const result = await withLock(lockPath, async () => {
+      // Double-check: another process may have downloaded while we waited
+      const cachedNow = await this.getCachedPath(uri);
+      if (cachedNow) {
+        return { ok: true as const, value: cachedNow };
+      }
+
+      // Download with progress
+      return this.download(uri, type, onProgress);
+    });
+
+    // withLock returns null if lock acquisition failed
+    if (result === null) {
+      return { ok: false, error: lockFailedError(uri) };
+    }
+
+    return result;
+  }
+
+  /**
    * Check if a model is cached/available.
    * For file: URIs, checks if file exists on disk.
    * For hf: URIs, checks the manifest.
@@ -368,6 +453,7 @@ export class ModelCache {
    * If types provided, only clears models of those types.
    */
   async clear(types?: ModelType[]): Promise<void> {
+    // First, read manifest to get paths to delete (outside lock for IO)
     const manifest = await this.loadManifest();
 
     const toRemove = types
@@ -382,14 +468,14 @@ export class ModelCache {
       }
     }
 
-    // Update manifest
-    if (types) {
-      manifest.models = manifest.models.filter((m) => !types.includes(m.type));
-    } else {
-      manifest.models = [];
-    }
-
-    await this.saveManifest(manifest);
+    // Update manifest under lock
+    await this.updateManifest((m) => {
+      if (types) {
+        m.models = m.models.filter((model) => !types.includes(model.type));
+      } else {
+        m.models = [];
+      }
+    });
   }
 
   // ───────────────────────────────────────────────────────────────────────────
@@ -410,58 +496,122 @@ export class ModelCache {
       return this.manifest;
     }
 
+    this.manifest = await this.readManifestFromDisk();
+    return this.manifest;
+  }
+
+  /**
+   * Read manifest from disk without cache (for use under lock).
+   */
+  private async readManifestFromDisk(): Promise<Manifest> {
     try {
       const content = await readFile(this.manifestPath, 'utf-8');
-      this.manifest = JSON.parse(content) as Manifest;
-      return this.manifest;
+      return JSON.parse(content) as Manifest;
     } catch {
       // No manifest or invalid - create empty
-      this.manifest = { version: MANIFEST_VERSION, models: [] };
-      return this.manifest;
+      return { version: MANIFEST_VERSION, models: [] };
     }
   }
 
-  private async saveManifest(manifest: Manifest): Promise<void> {
+  /**
+   * Atomically update manifest under lock.
+   * Uses read-modify-write pattern with cross-process locking to prevent lost updates.
+   */
+  private async updateManifest(
+    mutator: (manifest: Manifest) => void
+  ): Promise<void> {
     await mkdir(this.dir, { recursive: true });
-    await writeFile(this.manifestPath, JSON.stringify(manifest, null, 2));
-    this.manifest = manifest;
+
+    const lockPath = getManifestLockPath(this.dir);
+    const result = await withLock(lockPath, async () => {
+      // Read current manifest from disk (not cache) under lock
+      const manifest = await this.readManifestFromDisk();
+
+      // Apply mutation
+      mutator(manifest);
+
+      // Write atomically
+      await this.writeManifestAtomically(manifest);
+
+      // Update cache
+      this.manifest = manifest;
+      return true;
+    });
+
+    if (result === null) {
+      throw new Error('Failed to acquire manifest lock');
+    }
+  }
+
+  /**
+   * Atomically write manifest with fsync for durability.
+   * Uses write-to-temp + fsync + rename pattern.
+   * Must be called under manifest lock.
+   */
+  private async writeManifestAtomically(manifest: Manifest): Promise<void> {
+    const tmpPath = `${this.manifestPath}.${process.pid}.tmp`;
+    const content = JSON.stringify(manifest, null, 2);
+
+    // Write to temp file with fsync
+    const fh = await open(tmpPath, 'w');
+    try {
+      await fh.writeFile(content);
+      await fh.sync();
+    } finally {
+      await fh.close();
+    }
+
+    // Atomic rename
+    await rename(tmpPath, this.manifestPath);
+
+    // Fsync parent directory for rename durability (best-effort, not supported on Windows)
+    if (process.platform !== 'win32') {
+      try {
+        const dirFh = await open(this.dir, 'r');
+        try {
+          await dirFh.sync();
+        } finally {
+          await dirFh.close();
+        }
+      } catch {
+        // Best-effort durability
+      }
+    }
   }
 
   private async addToManifest(
     uri: string,
     type: ModelType,
-    path: string
+    modelPath: string
   ): Promise<void> {
-    const manifest = await this.loadManifest();
-
-    // Get file size and compute checksum
+    // Get file size outside lock (IO-bound, doesn't need protection)
     let size = 0;
     try {
-      const stats = await stat(path);
+      const stats = await stat(modelPath);
       size = stats.size;
     } catch {
       // Ignore
     }
 
-    // Remove existing entry if present
-    manifest.models = manifest.models.filter((m) => m.uri !== uri);
+    await this.updateManifest((manifest) => {
+      // Remove existing entry if present
+      manifest.models = manifest.models.filter((m) => m.uri !== uri);
 
-    // Add new entry
-    manifest.models.push({
-      uri,
-      type,
-      path,
-      size,
-      checksum: '', // TODO: compute SHA-256 for large files
-      cachedAt: new Date().toISOString(),
+      // Add new entry
+      manifest.models.push({
+        uri,
+        type,
+        path: modelPath,
+        size,
+        checksum: '', // TODO: compute SHA-256 for large files
+        cachedAt: new Date().toISOString(),
+      });
     });
-
-    await this.saveManifest(manifest);
   }
 
   private async removeFromManifest(uri: string): Promise<void> {
-    const manifest = await this.loadManifest();
-    manifest.models = manifest.models.filter((m) => m.uri !== uri);
-    await this.saveManifest(manifest);
+    await this.updateManifest((manifest) => {
+      manifest.models = manifest.models.filter((m) => m.uri !== uri);
+    });
   }
 }

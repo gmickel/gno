@@ -288,7 +288,7 @@ Models auto-download on first use to `~/.cache/gno/models/`.
 
 ```bash
 gno models use balanced
-gno models pull --all
+gno models pull --all  # Optional: pre-download models (auto-downloads on first use)
 ```
 
 > **Configuration**: [Model Setup](https://gno.sh/docs/CONFIGURATION/)

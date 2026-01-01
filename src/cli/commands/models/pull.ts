@@ -185,20 +185,3 @@ export function formatModelsPull(result: ModelsPullResult): string {
 
   return lines.join('\n');
 }
-
-/**
- * Create a terminal progress renderer.
- */
-export function createProgressRenderer(): (
-  type: ModelType,
-  progress: DownloadProgress
-) => void {
-  return (type, progress) => {
-    const percent = progress.percent.toFixed(1);
-    const downloaded = (progress.downloadedBytes / 1024 / 1024).toFixed(1);
-    const total = (progress.totalBytes / 1024 / 1024).toFixed(1);
-    process.stderr.write(
-      `\r${type}: ${percent}% (${downloaded}/${total} MB)    `
-    );
-  };
-}
