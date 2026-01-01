@@ -21,6 +21,7 @@ import {
   handleDoc,
   handleDocs,
   handleHealth,
+  handleJob,
   handleModelPull,
   handleModelStatus,
   handlePresets,
@@ -283,6 +284,13 @@ export async function startServer(
               return withSecurityHeaders(forbiddenResponse(), isDev);
             }
             return withSecurityHeaders(handleModelPull(ctxHolder), isDev);
+          },
+        },
+        '/api/jobs/:id': {
+          GET: (req: Request) => {
+            const url = new URL(req.url);
+            const id = url.pathname.split('/').pop() || '';
+            return withSecurityHeaders(handleJob(id), isDev);
           },
         },
       },

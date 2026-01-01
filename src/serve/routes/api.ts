@@ -25,7 +25,7 @@ import {
   resetDownloadState,
   type ServerContext,
 } from '../context';
-import { startJob } from '../jobs';
+import { getJobStatus, startJob } from '../jobs';
 
 /** Mutable context holder for hot-reloading presets */
 export interface ContextHolder {
@@ -828,6 +828,22 @@ export function handleModelPull(ctxHolder: ContextHolder): Response {
     started: true,
     message: 'Download started. Poll /api/models/status for progress.',
   });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Jobs
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * GET /api/jobs/:id
+ * Poll job status for async operations.
+ */
+export function handleJob(jobId: string): Response {
+  const status = getJobStatus(jobId);
+  if (!status) {
+    return errorResponse('NOT_FOUND', 'Job not found or expired', 404);
+  }
+  return jsonResponse(status);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
