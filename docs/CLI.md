@@ -40,7 +40,7 @@ See [spec/cli.md](../spec/cli.md#output-format-support-matrix) for which command
 
 ### gno search
 
-Full-text search using BM25.
+Full-text search using document-level BM25 with Snowball stemmer.
 
 ```bash
 gno search "project deadlines"
@@ -49,21 +49,27 @@ gno search "auth" --json
 gno search "meeting" --files
 ```
 
+**Document-level indexing**: Finds documents where terms appear anywhere—even across sections. "authentication JWT" matches docs with those terms in different parts.
+
+**Snowball stemming**: "running" matches "run", "scored" matches "score", plurals match singulars.
+
 Options:
 - `-n, --limit <n>` - Limit results (default: 5; 20 with --json/--files)
 - `--min-score <n>` - Minimum score threshold (0-1)
-- `--full` - Show full document content
+- `--full` - Show full document content (not just snippet)
 - `--line-numbers` - Show line numbers in snippets
 - `--lang <code>` - Filter by detected language in code blocks
 
 ### gno vsearch
 
-Semantic similarity search using vector embeddings.
+Semantic similarity search using vector embeddings with contextual chunking.
 
 ```bash
 gno vsearch "how to handle errors gracefully"
 gno vsearch "authentication best practices" --json
 ```
+
+**Contextual embeddings**: Each chunk is embedded with its document title prepended, helping the model distinguish context (e.g., "configuration" in React vs database docs).
 
 Same options as `gno search`. Requires embed model.
 
@@ -77,6 +83,12 @@ gno query "API design patterns" --explain
 gno query "auth" --no-expand --no-rerank
 ```
 
+**Pipeline features**:
+- **Strong signal detection**: Skips expensive LLM expansion when BM25 has confident match
+- **2× weight for original query**: Prevents dilution by LLM-generated variants
+- **Tiered top-rank bonus**: +0.05 for #1, +0.02 for #2-3
+- **Full-document reranking**: Qwen3-Reranker sees complete documents (32K context)
+
 Additional options:
 - `--no-expand` - Disable query expansion (faster, less recall)
 - `--no-rerank` - Disable cross-encoder reranking (faster)
@@ -85,7 +97,8 @@ Additional options:
 The `--explain` flag outputs:
 - BM25 scores per result
 - Vector similarity scores
-- RRF fusion scores
+- RRF fusion scores (with variant weights)
+- `skipped_strong` indicator if expansion was skipped
 - Rerank scores (if enabled)
 - Final blended scores
 
@@ -100,6 +113,8 @@ gno ask "what is the project goal"
 gno ask "summarize the auth discussion" --answer
 gno ask "explain the auth flow" --answer --show-sources
 ```
+
+**Full-document context**: When `--answer` is used, GNO passes complete document content to the generation model—not truncated snippets. This ensures the LLM sees tables, code examples, and full context needed for accurate answers.
 
 Options:
 - `--answer` - Generate grounded AI answer (requires gen model)

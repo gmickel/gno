@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Document-level BM25** - Full documents indexed (not chunks), finds terms across sections
+- **Snowball stemmer** - FTS5 with multilingual stemming (20+ languages); "running" matches "run"
+- **Contextual chunking** - Chunks embedded with document title prefix for context awareness
+- **Strong signal detection** - Skip expensive LLM expansion when BM25 has confident match
+- **Tiered top-rank bonus** - +0.05 for #1, +0.02 for #2-3 in RRF fusion
+- **Full-document reranking** - Qwen3-Reranker scores complete documents (32K context)
+- **Full-document answers** - Answer generation receives complete document content
+
+### Changed
+- Original query now gets **2× weight** in RRF fusion (prevents dilution by variants)
+- Switched to Qwen3-Reranker-0.6B (Apache 2.0 license, 32K context)
+
 ## [0.4.0] - 2026-01-01
 
 ### Added

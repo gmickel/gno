@@ -8,18 +8,31 @@ GNO uses a sophisticated multi-stage search pipeline that combines traditional k
 
 The diagram below shows how your query flows through GNO's search system:
 
+**Stage 0: Strong Signal Check** → Quick BM25 check. If top result is highly confident with clear separation, skip expensive expansion.
+
 **Stage 1: Query Expansion** → Your query is expanded by an LLM into keyword variants (for BM25), semantic variants (for vectors), and a HyDE passage.
 
-**Stage 2: Parallel Search** → BM25 and vector searches run simultaneously on original query + all variants.
+**Stage 2: Parallel Search** → Document-level BM25 and chunk-level vector searches run simultaneously on original query + all variants.
 
-**Stage 3: RRF Fusion** → Results are merged using Reciprocal Rank Fusion. Documents appearing in multiple lists get boosted.
+**Stage 3: RRF Fusion** → Results are merged using Reciprocal Rank Fusion. Original query gets 2× weight. Top-ranked documents get tiered bonuses.
 
-**Stage 4: Reranking** → Top 20 candidates are rescored by a cross-encoder for final ordering.
+**Stage 4: Reranking** → Top candidates rescored by Qwen3-Reranker with full document context (up to 32K tokens).
 
 ```
 ┌───────────────────────────────────────────────────────────────┐
 │                         YOUR QUERY                            │
 │                "how do I deploy to production"                │
+└───────────────────────────────┬───────────────────────────────┘
+                                │
+                                ▼
+┌───────────────────────────────────────────────────────────────┐
+│  STAGE 0: STRONG SIGNAL CHECK                                 │
+│                                                               │
+│  Quick BM25 search with top 5 results.                        │
+│  If top result score ≥ 0.84 AND gap to #2 ≥ 0.14:             │
+│    → Skip expansion, go straight to Stage 2                   │
+│  Else:                                                        │
+│    → Continue to Stage 1                                      │
 └───────────────────────────────┬───────────────────────────────┘
                                 │
                                 ▼
@@ -41,12 +54,12 @@ The diagram below shows how your query flows through GNO's search system:
 ┌─────────────────────────────┐ ┌─────────────────────────────┐
 │  STAGE 2A: BM25 SEARCH      │ │  STAGE 2B: VECTOR SEARCH    │
 │                             │ │                             │
-│  Keyword matching via FTS5  │ │  Semantic similarity via    │
-│                             │ │  embedding cosine distance  │
-│  Searches in parallel:      │ │                             │
-│  • Original query (2x)      │ │  Searches in parallel:      │
-│  • Each lexical variant     │ │  • Original query (2x)      │
-│                             │ │  • Semantic variants + HyDE │
+│  Document-level FTS5 with   │ │  Chunk-level embeddings     │
+│  Snowball stemmer (20+ langs)│ │  with contextual prefixes   │
+│                             │ │                             │
+│  Searches in parallel:      │ │  Searches in parallel:      │
+│  • Original query (2×)      │ │  • Original query (2×)      │
+│  • Each lexical variant     │ │  • Semantic variants + HyDE │
 └──────────────┬──────────────┘ └──────────────┬──────────────┘
                │                               │
                └───────────────┬───────────────┘
@@ -56,15 +69,15 @@ The diagram below shows how your query flows through GNO's search system:
 │                                                               │
 │  score = Σ (weight / (k + rank))    where k=60                │
 │                                                               │
-│  Documents in top positions across multiple searches get      │
-│  boosted. Weights: original=1.0, variants=0.5, HyDE=0.7       │
+│  Weights: original=2.0, variants=1.0, HyDE=1.4                │
+│  Tiered bonus: +0.05 for #1, +0.02 for #2-3                   │
 └───────────────────────────────┬───────────────────────────────┘
                                 │
                                 ▼
 ┌───────────────────────────────────────────────────────────────┐
-│  STAGE 4: RERANKING (Cross-Encoder)                           │
+│  STAGE 4: RERANKING (Qwen3-Reranker, 32K context)             │
 │                                                               │
-│  Top 20 candidates rescored by neural cross-encoder.          │
+│  Full document content passed to cross-encoder.               │
 │                                                               │
 │  Position-aware blending:                                     │
 │    1-3: 75% fusion / 25% rerank                               │
@@ -78,6 +91,17 @@ The diagram below shows how your query flows through GNO's search system:
 │                 Sorted by blended score [0-1]                 │
 └───────────────────────────────────────────────────────────────┘
 ```
+
+## Strong Signal Detection
+
+Before running expensive LLM-based query expansion, GNO checks if BM25 already has a confident match. This optimization skips expansion when:
+
+1. **High confidence**: Top result's normalized score ≥ 0.84
+2. **Clear separation**: Gap between #1 and #2 ≥ 0.14
+
+Both conditions must be true. This is conservative—we'd rather spend time on expansion than miss relevant results.
+
+When triggered, you'll see `skipped_strong` in `--explain` output. Typical speedup: 1-3 seconds saved per query.
 
 ## Query Expansion with HyDE
 
@@ -125,10 +149,14 @@ Without expansion, searching "deploy to production" only finds documents with th
 GNO offers different search commands for different needs:
 
 ### `gno search` - BM25 Only
-Fast keyword search using SQLite FTS5. Best for:
+Fast keyword search using SQLite FTS5 with document-level indexing. Best for:
 - Exact term lookups
 - Code identifiers
 - Known phrases
+
+**Document-level BM25**: Unlike chunk-level search, GNO indexes entire documents. This means a query for "authentication JWT" finds documents where these terms appear anywhere—even in different sections.
+
+**Snowball stemming**: FTS5 uses the Snowball stemmer supporting 20+ languages. "running" matches "run", "scored" matches "score", plurals match singulars.
 
 ```bash
 gno search "useEffect cleanup"
@@ -139,6 +167,8 @@ Pure semantic search using embeddings. Best for:
 - Conceptual queries
 - "How do I..." questions
 - Finding related content
+
+**Contextual chunking**: Each chunk is embedded with its document title prepended (`title: My Doc | text: ...`). This helps the embedding model understand context—a chunk about "configuration" in a React doc is different from one in a database doc.
 
 ```bash
 gno vsearch "how to prevent memory leaks in React"
@@ -209,19 +239,35 @@ The document appearing in both lists wins, even if another document ranked #1 in
 
 ### Variant Weighting
 
-Not all searches are equal:
+Not all searches are equal. Original queries get **2× weight** to prevent dilution by LLM-generated variants:
 
 | Source | Weight | Reasoning |
 |--------|--------|-----------|
-| Original BM25 | 1.0 | Direct match to user query |
-| Original Vector | 1.0 | Direct semantic match |
-| BM25 variants | 0.5 | LLM-generated, less direct |
-| Vector variants | 0.5 | LLM-generated, less direct |
-| HyDE passage | 0.7 | Powerful but indirect |
+| Original BM25 | 2.0 | Direct match to user query |
+| Original Vector | 2.0 | Direct semantic match |
+| BM25 variants | 1.0 | LLM-generated, less direct |
+| Vector variants | 1.0 | LLM-generated, less direct |
+| HyDE passage | 1.4 | Powerful but indirect |
 
-## Position-Aware Blending
+### Tiered Top-Rank Bonus
 
-After RRF fusion, the top candidates are reranked using a cross-encoder model. But we don't just replace fusion scores with rerank scores - we blend them based on position:
+Documents that rank highly in retrieval get a bonus before reranking:
+
+| Position | Bonus |
+|----------|-------|
+| #1 | +0.05 |
+| #2-3 | +0.02 |
+| #4+ | None |
+
+This preserves strong initial signals through the pipeline.
+
+## Reranking with Full Documents
+
+After RRF fusion, top candidates are reranked using **Qwen3-Reranker** with 32K token context. Unlike typical RAG systems that pass truncated snippets, GNO sends full document content to the reranker. This ensures the model sees complete context—tables at the end of a document, code examples, everything.
+
+### Position-Aware Blending
+
+We don't just replace fusion scores with rerank scores—we blend them based on position:
 
 | Position | Fusion Weight | Rerank Weight | Why |
 |----------|---------------|---------------|-----|
@@ -309,10 +355,13 @@ Language is auto-detected from your query text using the [franc](https://github.
 | BM25 search | ~5-20ms |
 | Vector search | ~10-50ms |
 | Query expansion | ~1-3s (LLM generation) |
-| Reranking (20 docs) | ~500ms-2s |
+| Reranking (20 full docs) | ~1-3s |
 | **Full hybrid query** | ~2-5s |
 
-Query expansion is cached by query + model, so repeated queries are fast.
+**Optimizations**:
+- Strong signal detection skips expansion for confident BM25 matches (saves 1-3s)
+- Query expansion is cached by query + model
+- Full-document reranking uses 32K context efficiently
 
 ## Related Documentation
 

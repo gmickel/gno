@@ -34,9 +34,9 @@ GNO is a local knowledge indexing and search system built on SQLite.
        ┌───────────────────────────────────────────────────────────────┐
        │                         Storage Layer                         │
        │  ┌──────────────┐  ┌──────────────┐  ┌──────────────────────┐ │
-       │  │   SQLite     │  │    FTS5      │  │    sqlite-vec        │ │
-       │  │  (documents, │  │   (BM25)     │  │   (vector KNN)       │ │
-       │  │   chunks)    │  │              │  │   (optional)         │ │
+       │  │   SQLite     │  │  FTS5 +      │  │    sqlite-vec        │ │
+       │  │  (documents, │  │  Snowball    │  │   (vector KNN)       │ │
+       │  │   chunks)    │  │  (20+ langs) │  │   (optional)         │ │
        │  └──────────────┘  └──────────────┘  └──────────────────────┘ │
        └───────────────────────────────────────────────────────────────┘
                                       │
@@ -71,9 +71,10 @@ File on disk
     │
     ▼ Chunker (~800 tokens, 15% overlap)
     │
-    ▼ Store (SQLite: documents, content, chunks, FTS)
+    ▼ Store (SQLite: documents, content, chunks, document-level FTS)
     │
-    ▼ [Optional] Embed chunks (llama.cpp → vectors)
+    ▼ [Optional] Embed chunks with title context (llama.cpp → vectors)
+    │   Format: "title: Doc Title | text: chunk content..."
 ```
 
 ### Search Pipeline
@@ -83,19 +84,19 @@ User query
     │
     ▼ Detect query language (franc, 30+ languages)
     │
-    ├─[ BM25-only mode ]─► searchBm25 only
+    ├─[ BM25-only mode ]─► searchBm25 only (document-level)
     │
-    ▼ BM25 Search (FTS5 full-text)
+    ▼ Strong signal check (skip expansion if confident BM25 match)
     │
-    ▼ Embed query (llama.cpp)
+    ▼ [Optional] Query expansion (LLM variants + HyDE)
     │
-    ▼ Vector Search (sqlite-vec KNN)
+    ▼ Document-level BM25 Search (FTS5 + Snowball stemmer)
     │
-    ▼ [Optional] Query expansion (LLM variants)
+    ▼ Chunk-level Vector Search (sqlite-vec KNN)
     │
-    ▼ RRF Fusion (reciprocal rank, k=60)
+    ▼ RRF Fusion (k=60, 2× weight for original, tiered bonus)
     │
-    ▼ [Optional] Rerank (cross-encoder)
+    ▼ [Optional] Rerank with full documents (Qwen3, 32K context)
     │
     ▼ Results (sorted by blended score)
 ```
@@ -132,8 +133,8 @@ CLI/MCP/Web UI → new Adapter() → adapter.createPort() → Port interface →
 | documents | Source file tracking (path, hash, docid) |
 | content | Canonical markdown by mirrorHash |
 | content_chunks | Chunked text (800 tokens each) |
-| content_fts | FTS5 virtual table for BM25 |
-| content_vectors | Embeddings (optional) |
+| documents_fts | Document-level FTS5 with Snowball stemmer |
+| content_vectors | Chunk embeddings with title context (optional) |
 
 ### Content Addressing
 
@@ -151,7 +152,7 @@ All models run locally via node-llama-cpp:
 | Model | Purpose | Default |
 |-------|---------|---------|
 | Embed | Generate vector embeddings | bge-m3-Q4 (1024 dims) |
-| Rerank | Cross-encoder scoring | bge-reranker-v2-m3-Q4 |
+| Rerank | Cross-encoder scoring | Qwen3-Reranker-0.6B-Q8 (32K context) |
 | Gen | Answer generation | Qwen3-1.7B-Q4 |
 
 Models are GGUF-quantized for efficiency. First use triggers automatic download.
@@ -160,10 +161,10 @@ Models are GGUF-quantized for efficiency. First use triggers automatic download.
 
 | Mode | Description |
 |------|-------------|
-| BM25 | Keyword matching via FTS5 |
-| Vector | Semantic similarity via embeddings |
-| Hybrid | BM25 + vector with RRF fusion |
-| Reranked | Hybrid + cross-encoder reordering |
+| BM25 | Document-level keyword matching via FTS5 + Snowball |
+| Vector | Chunk-level semantic similarity with contextual embeddings |
+| Hybrid | BM25 + vector with RRF fusion (2× original weight, tiered bonus) |
+| Reranked | Hybrid + full-document cross-encoder (32K context) |
 
 ## Graceful Degradation
 

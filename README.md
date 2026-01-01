@@ -99,10 +99,13 @@ gno skill install --target all       # Both Claude + Codex
 
 | Command | Mode | Best For |
 |:--------|:-----|:---------|
-| `gno search` | BM25 | Exact phrases, code identifiers |
-| `gno vsearch` | Vector | Natural language, concepts |
+| `gno search` | Document-level BM25 | Exact phrases, code identifiers |
+| `gno vsearch` | Contextual Vector | Natural language, concepts |
 | `gno query` | Hybrid | Best accuracy (BM25 + vector + reranking) |
 | `gno ask --answer` | RAG | Direct answers with citations |
+
+**BM25** indexes full documents (not chunks) with Snowball stemming—"running" matches "run".
+**Vector** embeds chunks with document titles for context awareness.
 
 ```bash
 gno search "handleAuth"              # Find exact matches
@@ -230,10 +233,11 @@ graph TD
     M --> N[Final Results]
 ```
 
+0. **Strong Signal Check** — Skip expansion if BM25 has confident match (saves 1-3s)
 1. **Query Expansion** — LLM generates lexical variants, semantic rephrases, and a [HyDE](https://arxiv.org/abs/2212.10496) passage
-2. **Parallel Retrieval** — BM25 + vector search run concurrently on all variants
-3. **Fusion** — Reciprocal Rank Fusion merges results with position-based scoring
-4. **Reranking** — Cross-encoder rescores top 20, blended with fusion scores
+2. **Parallel Retrieval** — Document-level BM25 + chunk-level vector search on all variants
+3. **Fusion** — RRF with 2× weight for original query, tiered bonus for top ranks
+4. **Reranking** — Qwen3-Reranker scores full documents (32K context), blended with fusion
 
 > **Deep dive**: [How Search Works](https://gno.sh/docs/HOW-SEARCH-WORKS/)
 
@@ -263,7 +267,7 @@ Models auto-download on first use to `~/.cache/gno/models/`.
 | Model | Purpose | Size |
 |:------|:--------|:-----|
 | bge-m3 | Embeddings (1024-dim, multilingual) | ~500MB |
-| bge-reranker-v2-m3 | Cross-encoder reranking | ~700MB |
+| Qwen3-Reranker-0.6B | Cross-encoder reranking (32K context) | ~700MB |
 | Qwen/SmolLM | Query expansion + AI answers | ~600MB-1.2GB |
 
 ### Model Presets

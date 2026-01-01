@@ -48,9 +48,15 @@ Used in search results and resource access.
 
 Best Matching 25 - a ranking function for full-text search. Matches keywords based on term frequency and document length. Fast and works without models.
 
+GNO uses **document-level BM25**: entire documents are indexed, not individual chunks. This means a query for "authentication JWT" finds documents where these terms appear anywhere—even in different sections.
+
 ```bash
 gno search "keyword match"
 ```
+
+### Strong Signal Detection
+
+Optimization that skips expensive query expansion when BM25 already has a confident match. Triggered when the top result's normalized score is ≥ 0.84 AND the gap to #2 is ≥ 0.14. Saves 1-3 seconds per query.
 
 ### Vector Search
 
@@ -79,9 +85,15 @@ gno query "topic" --no-rerank  # disable for speed
 
 ### RRF (Reciprocal Rank Fusion)
 
-Algorithm for combining multiple ranked lists. Score = Σ(1 / (k + rank)) where k=60.
+Algorithm for combining multiple ranked lists. Score = Σ(weight / (k + rank)) where k=60.
+
+GNO applies **2× weight** to original query results to prevent dilution by LLM-generated variants.
 
 See [How Search Works](HOW-SEARCH-WORKS.md) for detailed explanation.
+
+### Tiered Top-Rank Bonus
+
+Score boost applied to top-ranked documents before reranking: +0.05 for rank #1, +0.02 for ranks #2-3. Preserves strong initial retrieval signals through the pipeline.
 
 ### Query Expansion
 
@@ -110,12 +122,16 @@ Multiple sources can share the same mirror (content deduplication).
 ### Chunk
 
 Text segment (~800 tokens) created during indexing. Each chunk is:
-- Indexed in FTS5 for BM25 search
-- Optionally embedded for vector search
+- Part of document-level FTS5 index
+- Optionally embedded for vector search with contextual prefix
+
+### Contextual Chunking
+
+Technique where each chunk is embedded with its document title prepended: `title: My Doc | text: chunk content...`. Helps the embedding model understand context—a chunk about "configuration" in a React doc is semantically different from one in a database doc. Based on Anthropic's contextual retrieval research.
 
 ### Embedding
 
-Vector representation of a chunk. 1024-dimensional float array from bge-m3 model.
+Vector representation of a chunk. 1024-dimensional float array from bge-m3 model, with contextual title prefix.
 
 ### mirrorHash
 
@@ -129,7 +145,7 @@ Neural network that converts text to vectors. Default: bge-m3 (multilingual, 102
 
 ### Rerank Model
 
-Cross-encoder that scores query-document pairs. Default: bge-reranker-v2-m3.
+Cross-encoder that scores query-document pairs. Default: Qwen3-Reranker-0.6B (32K context). GNO passes **full document content** to the reranker, not truncated snippets, ensuring the model sees tables, code examples, and all sections.
 
 ### Gen Model
 
@@ -159,9 +175,14 @@ SQLite extension for vector storage and KNN search. Required for vector search.
 ### Tokenizer
 
 Text segmentation method for FTS5:
-- `unicode61`: Unicode-aware (default)
-- `porter`: English stemming
+- `snowball english`: Snowball stemmer (default, 20+ languages supported)
+- `unicode61`: Unicode-aware, no stemming
+- `porter`: English-only stemming (legacy)
 - `trigram`: Substring matching
+
+### Snowball Stemmer
+
+Multilingual stemming algorithm for FTS5. Reduces words to their root form: "running" → "run", "scored" → "score". Supports 20+ languages including English, German, French, Spanish, and more. GNO uses Snowball English by default.
 
 ## MCP Terms
 

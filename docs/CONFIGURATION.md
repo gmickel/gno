@@ -11,7 +11,7 @@ Run `gno doctor` to see your resolved config path.
 version: "1.0"
 
 # FTS tokenizer (set at init, cannot change)
-ftsTokenizer: unicode61
+ftsTokenizer: snowball english
 
 # Collections
 collections:
@@ -169,13 +169,17 @@ Model configuration for embeddings and AI answers.
 
 ### Model Details
 
-All presets use bge-m3 for embeddings (1024 dimensions, multilingual).
+All presets use:
+- **bge-m3** for embeddings (1024 dimensions, multilingual)
+- **Qwen3-Reranker-0.6B** for reranking (32K context, full documents)
 
 | Preset | Embed | Rerank | Gen |
 |--------|-------|--------|-----|
-| slim | bge-m3-Q4 | bge-reranker-v2-m3-Q4 | Qwen3-1.7B-Q4 |
-| balanced | bge-m3-Q4 | bge-reranker-v2-m3-Q4 | SmolLM3-3B-Q4 |
-| quality | bge-m3-Q4 | bge-reranker-v2-m3-Q4 | Qwen3-4B-Q4 |
+| slim | bge-m3-Q4 | Qwen3-Reranker-0.6B-Q8 | Qwen3-1.7B-Q4 |
+| balanced | bge-m3-Q4 | Qwen3-Reranker-0.6B-Q8 | SmolLM3-3B-Q4 |
+| quality | bge-m3-Q4 | Qwen3-Reranker-0.6B-Q8 | Qwen3-4B-Q4 |
+
+The reranker's 32K context window allows scoring complete documents—tables, code, all sections—rather than truncated snippets.
 
 ### Custom Models
 
@@ -209,13 +213,16 @@ Set at `gno init`, cannot be changed without rebuilding.
 
 | Tokenizer | Description |
 |-----------|-------------|
-| `unicode61` | Unicode-aware (default) |
-| `porter` | English stemming |
+| `snowball english` | Snowball stemmer (default, 20+ languages) |
+| `unicode61` | Unicode-aware, no stemming |
+| `porter` | English-only stemming (legacy) |
 | `trigram` | Substring matching |
 
+The Snowball stemmer enables matching across word forms: "running" matches "run", "scored" matches "score", plurals match singulars.
+
 ```bash
-# Initialize with porter stemmer
-gno init --tokenizer porter
+# Initialize with unicode61 (no stemming)
+gno init --tokenizer unicode61
 ```
 
 ## Environment Variables
