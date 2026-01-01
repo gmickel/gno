@@ -99,7 +99,7 @@
     "streamdown": "^1.6.10",
     "tailwind-merge": "^3.4.0",
     "use-stick-to-bottom": "^1.1.1",
-    "zod": "^4.2.1"
+    "zod": "^4.3.4"
   },
   "devDependencies": {
     "@biomejs/biome": "2.3.10",
@@ -112,12 +112,12 @@
     "docx": "^9.5.1",
     "evalite": "^1.0.0-beta.15",
     "exceljs": "^4.4.0",
-    "lefthook": "^2.0.12",
+    "lefthook": "^2.0.13",
     "oxlint-tsgolint": "^0.10.0",
     "pdf-lib": "^1.17.1",
     "pptxgenjs": "^4.0.1",
     "tailwindcss": "^4.1.18",
-    "ultracite": "^6.5.0"
+    "ultracite": "6.5.0"
   },
   "peerDependencies": {
     "typescript": "^5"

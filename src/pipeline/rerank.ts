@@ -120,44 +120,62 @@ export async function rerankCandidates(
   const toRerank = candidates.slice(0, maxCandidates);
   const remaining = candidates.slice(maxCandidates);
 
-  // Dedupe by document - multiple chunks from same doc use single full-doc rerank
-  const uniqueHashes = [...new Set(toRerank.map((c) => c.mirrorHash))];
-
-  // Fetch full document content for each unique document (parallel)
-  // Max 128K chars per doc to fit in reranker context
-  const MAX_DOC_CHARS = 128_000;
-  const contentResults = await Promise.all(
-    uniqueHashes.map((hash) => store.getContent(hash))
-  );
-  const docContents = new Map<string, string>();
-  for (let i = 0; i < uniqueHashes.length; i++) {
-    const hash = uniqueHashes[i] as string;
-    const result = contentResults[i] as Awaited<
-      ReturnType<typeof store.getContent>
-    >;
-    if (result.ok && result.value) {
-      const content = result.value;
-      docContents.set(
-        hash,
-        content.length > MAX_DOC_CHARS
-          ? `${content.slice(0, MAX_DOC_CHARS)}...`
-          : content
-      );
-    } else {
-      // Fallback to empty string if content not available
-      docContents.set(hash, '');
+  // Group by document and pick best chunk per doc (highest fusionScore)
+  // This is more efficient than full-doc reranking: 4K chunk vs 128K doc = 25x faster
+  const MAX_CHUNK_CHARS = 4000;
+  const bestChunkPerDoc = new Map<
+    string,
+    { candidate: FusionCandidate; seq: number }
+  >();
+  for (const c of toRerank) {
+    const existing = bestChunkPerDoc.get(c.mirrorHash);
+    if (!existing || c.fusionScore > existing.candidate.fusionScore) {
+      bestChunkPerDoc.set(c.mirrorHash, { candidate: c, seq: c.seq });
     }
   }
 
-  // Build texts array for reranking (one per unique document)
+  const uniqueHashes = [...bestChunkPerDoc.keys()];
+
+  // Fetch chunks for each unique document (parallel)
+  const chunkResults = await Promise.all(
+    uniqueHashes.map((hash) => store.getChunks(hash))
+  );
+
+  // Build chunk text map: hash -> text of best chunk (truncated to 4K)
+  const chunkTexts = new Map<string, string>();
+  for (let i = 0; i < uniqueHashes.length; i++) {
+    const hash = uniqueHashes[i] as string;
+    const result = chunkResults[i];
+    const bestInfo = bestChunkPerDoc.get(hash);
+
+    if (result?.ok && result.value && bestInfo) {
+      // Find chunk by seq number
+      const chunk = result.value.find((c) => c.seq === bestInfo.seq);
+      if (chunk) {
+        const text = chunk.text;
+        chunkTexts.set(
+          hash,
+          text.length > MAX_CHUNK_CHARS
+            ? `${text.slice(0, MAX_CHUNK_CHARS)}...`
+            : text
+        );
+      } else {
+        chunkTexts.set(hash, '');
+      }
+    } else {
+      chunkTexts.set(hash, '');
+    }
+  }
+
+  // Build texts array for reranking (one chunk per unique document)
   const hashToIndex = new Map<string, number>();
   const texts: string[] = [];
   for (const hash of uniqueHashes) {
     hashToIndex.set(hash, texts.length);
-    texts.push(docContents.get(hash) ?? '');
+    texts.push(chunkTexts.get(hash) ?? '');
   }
 
-  // Run reranking on full documents
+  // Run reranking on best chunks (much faster than full docs)
   const rerankResult = await rerankPort.rerank(query, texts);
 
   if (!rerankResult.ok) {

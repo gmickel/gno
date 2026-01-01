@@ -198,13 +198,23 @@ Hybrid search combining BM25 and vector retrieval with optional expansion and re
     },
     "expand": {
       "type": "boolean",
-      "description": "Enable query expansion",
-      "default": true
+      "description": "Enable query expansion (slower, better recall)",
+      "default": false
     },
     "rerank": {
       "type": "boolean",
       "description": "Enable cross-encoder reranking",
       "default": true
+    },
+    "fast": {
+      "type": "boolean",
+      "description": "Fast mode: skip expansion and reranking (~0.7s)",
+      "default": false
+    },
+    "thorough": {
+      "type": "boolean",
+      "description": "Thorough mode: enable expansion (~5-8s)",
+      "default": false
     }
   },
   "required": ["query"]

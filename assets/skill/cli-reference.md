@@ -130,6 +130,14 @@ Hybrid search with expansion and reranking.
 gno query <query> [options]
 ```
 
+**Search modes** (pick one):
+
+| Flag | Time | Description |
+|------|------|-------------|
+| `--fast` | ~0.7s | Skip expansion and reranking |
+| (default) | ~2-3s | Skip expansion, with reranking |
+| `--thorough` | ~5-8s | Full pipeline with expansion |
+
 Additional options:
 
 | Option | Description |
@@ -148,6 +156,8 @@ gno ask <question> [options]
 
 | Option | Description |
 |--------|-------------|
+| `--fast` | Skip expansion and reranking (fastest) |
+| `--thorough` | Enable query expansion (better recall) |
 | `--answer` | Generate grounded answer |
 | `--no-answer` | Retrieval only |
 | `--max-answer-tokens <n>` | Cap answer length |

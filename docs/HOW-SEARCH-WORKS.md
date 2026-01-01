@@ -261,9 +261,11 @@ Documents that rank highly in retrieval get a bonus before reranking:
 
 This preserves strong initial signals through the pipeline.
 
-## Reranking with Full Documents
+## Chunk-Level Reranking
 
-After RRF fusion, top candidates are reranked using **Qwen3-Reranker** with 32K token context. Unlike typical RAG systems that pass truncated snippets, GNO sends full document content to the reranker. This ensures the model sees complete context—tables at the end of a document, code examples, everything.
+After RRF fusion, top candidates are reranked using **Qwen3-Reranker**. For efficiency, GNO reranks the **best chunk per document** (selected by highest fusion score) rather than full documents.
+
+**Why chunk-level?** Full-document reranking (128K chars) is 25× slower than chunk-level (4K chars). Testing shows chunk-level achieves similar quality at ~2s vs ~10s for the same query.
 
 ### Position-Aware Blending
 
@@ -297,16 +299,28 @@ GNO retrieves more candidates than you request, then filters down:
 
 ## Controlling Search Behavior
 
-### Skip Expansion
-If you want faster results or have a precise query:
+### Search Modes
+
+GNO offers three search modes with different speed/quality trade-offs:
+
+| Mode | Flag | Time | Description |
+|------|------|------|-------------|
+| Fast | `--fast` | ~0.7s | Skip expansion and reranking |
+| Default | (none) | ~2-3s | Skip expansion, with reranking |
+| Thorough | `--thorough` | ~5-8s | Full pipeline with expansion |
+
 ```bash
-gno query "exact phrase match" --no-expand
+gno query "quick lookup" --fast       # Fastest
+gno query "my search"                 # Balanced (default)
+gno query "complex topic" --thorough  # Best recall
 ```
 
-### Skip Reranking
-For speed or if you trust fusion scores:
+### Fine-grained Control
+
+For specific combinations, use `--no-expand` or `--no-rerank`:
 ```bash
-gno query "my search" --no-rerank
+gno query "exact phrase" --no-expand  # Precise query, no expansion needed
+gno query "my search" --no-rerank     # Trust fusion scores
 ```
 
 ### Filter by Score
@@ -354,14 +368,17 @@ Language is auto-detected from your query text using the [franc](https://github.
 |-----------|-------------|
 | BM25 search | ~5-20ms |
 | Vector search | ~10-50ms |
-| Query expansion | ~1-3s (LLM generation) |
-| Reranking (20 full docs) | ~1-3s |
-| **Full hybrid query** | ~2-5s |
+| Query expansion | ~3-5s (LLM generation) |
+| Chunk-level reranking | ~1-2s |
+| **Fast mode** | ~0.7s |
+| **Default mode** | ~2-3s |
+| **Thorough mode** | ~5-8s |
 
 **Optimizations**:
-- Strong signal detection skips expansion for confident BM25 matches (saves 1-3s)
+- Default mode skips expansion (saves 3-5s on every query)
+- Chunk-level reranking: 4K chars vs 128K = 25× faster
+- Strong signal detection skips expansion for confident BM25 matches
 - Query expansion is cached by query + model
-- Full-document reranking uses 32K context efficiently
 
 ## Related Documentation
 

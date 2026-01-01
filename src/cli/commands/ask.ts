@@ -89,18 +89,24 @@ export async function ask(
       embedPort = embedResult.value;
     }
 
-    // Create generation port (for expansion and answer)
-    const genUri = options.genModel ?? preset.gen;
-    const genResult = await llm.createGenerationPort(genUri);
-    if (genResult.ok) {
-      genPort = genResult.value;
+    // Create generation port (for expansion and/or answer)
+    // Need genPort if: expansion enabled (!noExpand) OR answer requested
+    const needsGen = !options.noExpand || options.answer;
+    if (needsGen) {
+      const genUri = options.genModel ?? preset.gen;
+      const genResult = await llm.createGenerationPort(genUri);
+      if (genResult.ok) {
+        genPort = genResult.value;
+      }
     }
 
-    // Create rerank port
-    const rerankUri = options.rerankModel ?? preset.rerank;
-    const rerankResult = await llm.createRerankPort(rerankUri);
-    if (rerankResult.ok) {
-      rerankPort = rerankResult.value;
+    // Create rerank port (unless --fast or --no-rerank)
+    if (!options.noRerank) {
+      const rerankUri = options.rerankModel ?? preset.rerank;
+      const rerankResult = await llm.createRerankPort(rerankUri);
+      if (rerankResult.ok) {
+        rerankPort = rerankResult.value;
+      }
     }
 
     // Create vector index
@@ -147,6 +153,8 @@ export async function ask(
       limit,
       collection: options.collection,
       lang: options.lang,
+      noExpand: options.noExpand,
+      noRerank: options.noRerank,
     });
 
     if (!searchResult.ok) {

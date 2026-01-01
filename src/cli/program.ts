@@ -312,6 +312,8 @@ function wireSearchCommands(program: Command): void {
     .option('--lang <code>', 'language hint (BCP-47)')
     .option('--full', 'include full content')
     .option('--line-numbers', 'include line numbers in output')
+    .option('--fast', 'skip expansion and reranking (fastest, ~0.7s)')
+    .option('--thorough', 'enable query expansion (slower, ~5-8s)')
     .option('--no-expand', 'disable query expansion')
     .option('--no-rerank', 'disable reranking')
     .option('--explain', 'include scoring explanation')
@@ -339,6 +341,26 @@ function wireSearchCommands(program: Command): void {
         ? parsePositiveInt('limit', cmdOpts.limit)
         : getDefaultLimit(format);
 
+      // Determine expansion/rerank settings based on flags
+      // Priority: --fast > --thorough > --no-expand/--no-rerank > default
+      // Default: skip expansion (balanced mode ~2-3s)
+      let noExpand = true; // Default: skip expansion
+      let noRerank = false; // Default: with reranking
+
+      if (cmdOpts.fast) {
+        // --fast: skip both (~0.7s)
+        noExpand = true;
+        noRerank = true;
+      } else if (cmdOpts.thorough) {
+        // --thorough: full pipeline (~5-8s)
+        noExpand = false;
+        noRerank = false;
+      } else {
+        // Check individual flags (override defaults)
+        if (cmdOpts.expand === false) noExpand = true;
+        if (cmdOpts.rerank === false) noRerank = true;
+      }
+
       const { query, formatQuery } = await import('./commands/query');
       const result = await query(queryText, {
         limit,
@@ -347,8 +369,8 @@ function wireSearchCommands(program: Command): void {
         lang: cmdOpts.lang as string | undefined,
         full: Boolean(cmdOpts.full),
         lineNumbers: Boolean(cmdOpts.lineNumbers),
-        noExpand: cmdOpts.expand === false,
-        noRerank: cmdOpts.rerank === false,
+        noExpand,
+        noRerank,
         explain: Boolean(cmdOpts.explain),
         json: format === 'json',
         md: format === 'md',
@@ -376,6 +398,8 @@ function wireSearchCommands(program: Command): void {
     .option('-n, --limit <num>', 'max source results')
     .option('-c, --collection <name>', 'filter by collection')
     .option('--lang <code>', 'language hint (BCP-47)')
+    .option('--fast', 'skip expansion and reranking (fastest)')
+    .option('--thorough', 'enable query expansion (slower)')
     .option('--answer', 'generate short grounded answer')
     .option('--no-answer', 'force retrieval-only output')
     .option('--max-answer-tokens <num>', 'max answer tokens')
@@ -400,12 +424,27 @@ function wireSearchCommands(program: Command): void {
         ? parsePositiveInt('max-answer-tokens', cmdOpts.maxAnswerTokens)
         : undefined;
 
+      // Determine expansion/rerank settings based on flags
+      // Default: skip expansion (balanced mode)
+      let noExpand = true;
+      let noRerank = false;
+
+      if (cmdOpts.fast) {
+        noExpand = true;
+        noRerank = true;
+      } else if (cmdOpts.thorough) {
+        noExpand = false;
+        noRerank = false;
+      }
+
       const { ask, formatAsk } = await import('./commands/ask');
       const showSources = Boolean(cmdOpts.showSources);
       const result = await ask(queryText, {
         limit,
         collection: cmdOpts.collection as string | undefined,
         lang: cmdOpts.lang as string | undefined,
+        noExpand,
+        noRerank,
         // Per spec: --answer defaults to false, --no-answer forces retrieval-only
         // Commander creates separate cmdOpts.noAnswer for --no-answer flag
         answer: Boolean(cmdOpts.answer),

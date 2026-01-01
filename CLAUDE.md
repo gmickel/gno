@@ -50,6 +50,23 @@ test("hello world", () => {
 });
 ```
 
+## Development Scripts
+
+**scripts/** - Development and testing utilities (not published)
+
+| Script | Purpose |
+|--------|---------|
+| `perf-test.ts` | Performance testing for search pipeline. Tests different configurations (expand/rerank combinations) and measures timing. |
+| `test-rerank-size.ts` | Tests reranker performance at different document sizes (1K-128K chars). Used to identify optimal chunk size for reranking. |
+| `docs-verify.ts` | Verifies documentation is up-to-date with implementation. |
+| `generate-test-fixtures.ts` | Generates test fixtures for unit tests. |
+
+**Usage:**
+```bash
+bun scripts/perf-test.ts        # Run full performance test suite
+bun scripts/test-rerank-size.ts # Test rerank scaling with doc size
+```
+
 ## Directory Structure
 
 **docs/** - User-facing documentation only. Published to website.

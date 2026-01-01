@@ -235,6 +235,15 @@ Hybrid search (BM25 + vector).
 Query: "database optimization"
 ```
 
+**Search modes** (via parameters):
+- **Default**: Skip expansion, with reranking (~2-3s)
+- `fast: true`: Skip both expansion and reranking (~0.7s)
+- `thorough: true`: Full pipeline with expansion (~5-8s)
+
+**Agent retry strategy**: Use default mode first. If no relevant results:
+1. Rephrase the query (free, often effective)
+2. Then try `thorough: true` for better recall
+
 ### gno_get
 
 Retrieve document by ID.

@@ -193,13 +193,19 @@ gno models pull
 
 ## Tips
 
-### Speed vs Quality
+### Search Modes
 
-| Command | Speed | Quality | Use When |
-|---------|-------|---------|----------|
-| `gno search` | Fast | Good for keywords | Exact phrase matching |
-| `gno vsearch` | Medium | Good for concepts | Finding similar meaning |
-| `gno query` | Slower | Best | Important queries |
+| Command | Time | Use When |
+|---------|------|----------|
+| `gno search` | instant | Exact keyword matching |
+| `gno vsearch` | ~0.5s | Finding similar concepts |
+| `gno query --fast` | ~0.7s | Quick lookups |
+| `gno query` | ~2-3s | Default, balanced |
+| `gno query --thorough` | ~5-8s | Best recall, complex queries |
+
+**Agent retry strategy**: Use default mode first. If no results:
+1. Rephrase the query (free, often helps)
+2. Try `--thorough` for better recall
 
 ### Output formats
 

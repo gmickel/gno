@@ -4,14 +4,16 @@ import { rerankCandidates } from '../../src/pipeline/rerank';
 import type { FusionCandidate } from '../../src/pipeline/types';
 
 // Mock store with minimal implementation for tests
-// Uses getContent for full document reranking
+// Uses getChunks for chunk-level reranking
 const mockStore = {
-  getChunks: () => {
-    throw new Error('N+1 detected: getChunks should not be called');
-  },
-  getContent: async () => ({
+  getChunks: async (hash: string) => ({
     ok: true as const,
-    value: 'Mock document content',
+    value: [
+      {
+        seq: Number.parseInt(hash.replace('hash', ''), 10),
+        text: 'Mock chunk content',
+      },
+    ],
   }),
 };
 
@@ -175,8 +177,8 @@ describe('rerank normalization', () => {
     });
   });
 
-  describe('content fetch failure', () => {
-    test('uses empty string when getContent fails', async () => {
+  describe('chunk fetch failure', () => {
+    test('uses empty string when getChunks fails', async () => {
       // Mock reranker that succeeds (will be called with empty strings)
       const successReranker = {
         rerank: async (_query: string, texts: string[]) => ({
@@ -188,9 +190,9 @@ describe('rerank normalization', () => {
         },
       };
 
-      // Mock store where getContent fails
+      // Mock store where getChunks fails
       const failingStore = {
-        getContent: async () => ({
+        getChunks: async () => ({
           ok: false as const,
           error: { code: 'QUERY_FAILED', message: 'DB error' },
         }),

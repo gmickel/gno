@@ -28,6 +28,8 @@ interface QueryInput {
   limit?: number;
   minScore?: number;
   lang?: string;
+  fast?: boolean;
+  thorough?: boolean;
   expand?: boolean;
   rerank?: boolean;
 }
@@ -138,9 +140,26 @@ export function handleQuery(
           embedPort = embedResult.value;
         }
 
+        // Determine noExpand/noRerank based on mode flags
+        // Priority: fast > thorough > expand/rerank params > defaults
+        // Default: noExpand=true (skip expansion), noRerank=false (with reranking)
+        let noExpand = true;
+        let noRerank = false;
+
+        if (args.fast) {
+          noExpand = true;
+          noRerank = true;
+        } else if (args.thorough) {
+          noExpand = false;
+          noRerank = false;
+        } else {
+          // Use explicit expand/rerank params if provided
+          if (args.expand === true) noExpand = false;
+          if (args.rerank === false) noRerank = true;
+        }
+
         // Create generation port (for expansion) - optional
-        // expand defaults to true per spec
-        if (args.expand !== false) {
+        if (!noExpand) {
           const genResult = await llm.createGenerationPort(preset.gen);
           if (genResult.ok) {
             genPort = genResult.value;
@@ -148,8 +167,7 @@ export function handleQuery(
         }
 
         // Create rerank port - optional
-        // rerank defaults to true per spec
-        if (args.rerank !== false) {
+        if (!noRerank) {
           const rerankResult = await llm.createRerankPort(preset.rerank);
           if (rerankResult.ok) {
             rerankPort = rerankResult.value;
@@ -189,8 +207,8 @@ export function handleQuery(
           minScore: args.minScore,
           collection: args.collection,
           queryLanguageHint: args.lang, // Affects expansion prompt, not retrieval
-          noExpand: args.expand === false,
-          noRerank: args.rerank === false,
+          noExpand,
+          noRerank,
         });
 
         if (!result.ok) {

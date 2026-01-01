@@ -60,11 +60,23 @@ Hybrid search (best quality).
 {
   "query": "search terms",
   "collection": "optional-collection",
-  "limit": 5,
-  "expand": true,
-  "rerank": true
+  "limit": 5
 }
 ```
+
+**Search modes** (via parameters):
+
+| Mode | Parameters | Time |
+|------|------------|------|
+| Fast | `fast: true` | ~0.7s |
+| Default | (none) | ~2-3s |
+| Thorough | `thorough: true` | ~5-8s |
+
+Default skips expansion, with reranking. Use `thorough: true` for best recall.
+
+**Agent retry strategy**: Use default mode first. If no relevant results:
+1. Rephrase the query (free, often effective)
+2. Then try `thorough: true` for better recall
 
 ### gno.get
 

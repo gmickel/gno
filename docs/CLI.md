@@ -80,18 +80,26 @@ Hybrid search combining BM25 and vector results. This is the recommended search 
 ```bash
 gno query "database optimization"
 gno query "API design patterns" --explain
-gno query "auth" --no-expand --no-rerank
+gno query "auth" --fast              # Fastest: ~0.7s
+gno query "auth" --thorough          # Full pipeline: ~5-8s
 ```
+
+**Search modes**:
+- **Default** (~2-3s): Skip expansion, with reranking. Best balance of speed and quality.
+- `--fast` (~0.7s): Skip both expansion and reranking. Use for quick lookups.
+- `--thorough` (~5-8s): Full pipeline with LLM expansion and reranking. Best recall.
 
 **Pipeline features**:
 - **Strong signal detection**: Skips expensive LLM expansion when BM25 has confident match
 - **2× weight for original query**: Prevents dilution by LLM-generated variants
 - **Tiered top-rank bonus**: +0.05 for #1, +0.02 for #2-3
-- **Full-document reranking**: Qwen3-Reranker sees complete documents (32K context)
+- **Chunk-level reranking**: Best chunk per doc (4K max) for 25× faster reranking
 
 Additional options:
-- `--no-expand` - Disable query expansion (faster, less recall)
-- `--no-rerank` - Disable cross-encoder reranking (faster)
+- `--fast` - Skip expansion and reranking (fastest, ~0.7s)
+- `--thorough` - Enable query expansion (slower, ~5-8s)
+- `--no-expand` - Disable query expansion
+- `--no-rerank` - Disable cross-encoder reranking
 - `--explain` - Show detailed scoring breakdown (to stderr)
 
 The `--explain` flag outputs:
@@ -112,11 +120,15 @@ Search and optionally generate an AI answer. Combines retrieval with optional LL
 gno ask "what is the project goal"
 gno ask "summarize the auth discussion" --answer
 gno ask "explain the auth flow" --answer --show-sources
+gno ask "quick lookup" --fast            # Fastest retrieval
+gno ask "complex topic" --thorough       # Best recall
 ```
 
 **Full-document context**: When `--answer` is used, GNO passes complete document content to the generation model—not truncated snippets. This ensures the LLM sees tables, code examples, and full context needed for accurate answers.
 
 Options:
+- `--fast` - Skip expansion and reranking (fastest)
+- `--thorough` - Enable query expansion (slower, better recall)
 - `--answer` - Generate grounded AI answer (requires gen model)
 - `--no-answer` - Force retrieval-only output
 - `--max-answer-tokens <n>` - Limit answer length

@@ -40,7 +40,9 @@ const queryInputSchema = z.object({
   limit: z.number().int().min(1).max(100).default(5),
   minScore: z.number().min(0).max(1).optional(),
   lang: z.string().optional(),
-  expand: z.boolean().default(true),
+  fast: z.boolean().default(false),
+  thorough: z.boolean().default(false),
+  expand: z.boolean().default(false), // Default: skip expansion
   rerank: z.boolean().default(true),
 });
 
