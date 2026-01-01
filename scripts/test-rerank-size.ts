@@ -38,4 +38,4 @@ for (const size of sizes) {
 }
 
 await rerankPort.dispose();
-init.store.close();
+await init.store.close();

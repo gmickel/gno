@@ -23,7 +23,9 @@ async function cleanupAndExit(code: number): Promise<never> {
 // SIGINT handler for graceful shutdown
 process.on('SIGINT', () => {
   process.stderr.write('\nInterrupted\n');
-  cleanupAndExit(130);
+  cleanupAndExit(130).catch(() => {
+    // Ignore cleanup errors on exit
+  });
 });
 
 // Run CLI and exit
@@ -33,5 +35,7 @@ runCli(process.argv)
     process.stderr.write(
       `Fatal error: ${err instanceof Error ? err.message : String(err)}\n`
     );
-    cleanupAndExit(1);
+    cleanupAndExit(1).catch(() => {
+      // Ignore cleanup errors on exit
+    });
   });

@@ -194,4 +194,4 @@ if (rerankPort) {
 if (genPort) {
   await genPort.dispose();
 }
-store.close();
+await store.close();
