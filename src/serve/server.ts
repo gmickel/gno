@@ -12,6 +12,7 @@ import { SqliteAdapter } from '../store/sqlite/adapter';
 import { createServerContext, disposeServerContext } from './context';
 // HTML import - Bun handles bundling TSX/CSS automatically via routes
 import homepage from './public/index.html';
+import type { ContextHolder } from './routes/api';
 import {
   handleAsk,
   handleCapabilities,
@@ -27,6 +28,7 @@ import {
   handleSetPreset,
   handleStatus,
 } from './routes/api';
+import { forbiddenResponse, isRequestAllowed } from './security';
 
 export interface ServeOptions {
   /** Port to listen on (default: 3000) */
@@ -129,7 +131,7 @@ export async function startServer(
 
   // Create server context with LLM ports for hybrid search and AI answers
   // Use holder pattern to allow hot-reloading presets
-  const ctxHolder = {
+  const ctxHolder: ContextHolder = {
     current: await createServerContext(store, config),
     config, // Keep original config for reloading
   };
@@ -158,7 +160,7 @@ export async function startServer(
       // Enable development mode for HMR and console logging
       development: isDev,
 
-      // Routes object - Bun handles HTML bundling and /_bun/* assets automatically
+      // Static routes - Bun handles HTML bundling and /_bun/* assets automatically
       routes: {
         // SPA routes - all serve the same React app
         '/': homepage,
@@ -167,7 +169,7 @@ export async function startServer(
         '/doc': homepage,
         '/ask': homepage,
 
-        // API routes
+        // API routes with CSRF protection wrapper
         '/api/health': {
           GET: () => withSecurityHeaders(handleHealth(), isDev),
         },
@@ -192,19 +194,34 @@ export async function startServer(
           },
         },
         '/api/search': {
-          POST: async (req: Request) =>
-            withSecurityHeaders(await handleSearch(store, req), isDev),
+          POST: async (req: Request) => {
+            if (!isRequestAllowed(req, port)) {
+              return withSecurityHeaders(forbiddenResponse(), isDev);
+            }
+            return withSecurityHeaders(await handleSearch(store, req), isDev);
+          },
         },
         '/api/query': {
-          POST: async (req: Request) =>
-            withSecurityHeaders(
+          POST: async (req: Request) => {
+            if (!isRequestAllowed(req, port)) {
+              return withSecurityHeaders(forbiddenResponse(), isDev);
+            }
+            return withSecurityHeaders(
               await handleQuery(ctxHolder.current, req),
               isDev
-            ),
+            );
+          },
         },
         '/api/ask': {
-          POST: async (req: Request) =>
-            withSecurityHeaders(await handleAsk(ctxHolder.current, req), isDev),
+          POST: async (req: Request) => {
+            if (!isRequestAllowed(req, port)) {
+              return withSecurityHeaders(forbiddenResponse(), isDev);
+            }
+            return withSecurityHeaders(
+              await handleAsk(ctxHolder.current, req),
+              isDev
+            );
+          },
         },
         '/api/capabilities': {
           GET: () =>
@@ -213,18 +230,28 @@ export async function startServer(
         '/api/presets': {
           GET: () =>
             withSecurityHeaders(handlePresets(ctxHolder.current), isDev),
-          POST: async (req: Request) =>
-            withSecurityHeaders(await handleSetPreset(ctxHolder, req), isDev),
+          POST: async (req: Request) => {
+            if (!isRequestAllowed(req, port)) {
+              return withSecurityHeaders(forbiddenResponse(), isDev);
+            }
+            return withSecurityHeaders(
+              await handleSetPreset(ctxHolder, req),
+              isDev
+            );
+          },
         },
         '/api/models/status': {
           GET: () => withSecurityHeaders(handleModelStatus(), isDev),
         },
         '/api/models/pull': {
-          POST: () => withSecurityHeaders(handleModelPull(ctxHolder), isDev),
+          POST: (req: Request) => {
+            if (!isRequestAllowed(req, port)) {
+              return withSecurityHeaders(forbiddenResponse(), isDev);
+            }
+            return withSecurityHeaders(handleModelPull(ctxHolder), isDev);
+          },
         },
       },
-
-      // No fetch fallback - let Bun handle /_bun/* assets and return 404 for others
     });
   } catch (e) {
     await store.close();
