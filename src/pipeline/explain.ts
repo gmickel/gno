@@ -49,15 +49,23 @@ export function formatResultExplain(results: ExplainResult[]): string {
 // Explain Line Builders
 // ─────────────────────────────────────────────────────────────────────────────
 
+export type ExpansionStatus =
+  | 'disabled' // User chose --no-expand
+  | 'skipped_strong' // Strong BM25 signal detected
+  | 'attempted'; // Expansion was attempted (may have succeeded or timed out)
+
 export function explainExpansion(
-  enabled: boolean,
+  status: ExpansionStatus,
   result: ExpansionResult | null
 ): ExplainLine {
-  if (!enabled) {
+  if (status === 'disabled') {
     return { stage: 'expansion', message: 'disabled' };
   }
+  if (status === 'skipped_strong') {
+    return { stage: 'expansion', message: 'skipped (strong BM25)' };
+  }
   if (!result) {
-    return { stage: 'expansion', message: 'skipped (strong BM25 or timeout)' };
+    return { stage: 'expansion', message: 'skipped (timeout)' };
   }
   const lex = result.lexicalQueries.length;
   const sem = result.vectorQueries.length;

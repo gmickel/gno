@@ -138,12 +138,14 @@ export async function generateGroundedAnswer(
 
   for (const r of results.slice(0, MAX_CONTEXT_SOURCES)) {
     let content: string | null = null;
+    let usedFullContent = false;
 
     // Try to fetch full document content if store available
     if (store && r.conversion?.mirrorHash) {
       const contentResult = await store.getContent(r.conversion.mirrorHash);
       if (contentResult.ok && contentResult.value) {
         content = contentResult.value;
+        usedFullContent = true;
         // Truncate to max doc chars
         if (content.length > MAX_DOC_CHARS) {
           content = `${content.slice(0, MAX_DOC_CHARS)}\n\n[... truncated ...]`;
@@ -164,11 +166,12 @@ export async function generateGroundedAnswer(
 
     citationIndex += 1;
     contextParts.push(`[${citationIndex}] ${content}`);
+    // Clear line range when citing full content (not a specific snippet)
     citations.push({
       docid: r.docid,
       uri: r.uri,
-      startLine: r.snippetRange?.startLine,
-      endLine: r.snippetRange?.endLine,
+      startLine: usedFullContent ? undefined : r.snippetRange?.startLine,
+      endLine: usedFullContent ? undefined : r.snippetRange?.endLine,
     });
   }
 

@@ -15,6 +15,7 @@ import { formatQueryForEmbedding } from './contextual';
 import { expandQuery } from './expansion';
 import {
   buildExplainResults,
+  type ExpansionStatus,
   explainBm25,
   explainExpansion,
   explainFusion,
@@ -52,56 +53,64 @@ export interface HybridSearchDeps {
 // Score Normalization
 // ─────────────────────────────────────────────────────────────────────────────
 
-function _normalizeVectorScore(distance: number): number {
-  return Math.max(0, Math.min(1, 1 - distance / 2));
+// Removed: _normalizeVectorScore was dead code (vector distances normalized in vector index)
+
+// ─────────────────────────────────────────────────────────────────────────────
+// BM25 Score Normalization
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Normalize raw BM25 score to 0-1 range using sigmoid.
+ * BM25 scores are negative in SQLite FTS5 (more negative = better match).
+ * Typical range: -15 (excellent) to -2 (weak match).
+ * Maps to 0-1 where higher is better.
+ */
+function normalizeBm25Score(rawScore: number): number {
+  const absScore = Math.abs(rawScore);
+  // Sigmoid with center=4.5, scale=2.8
+  // Maps: -15 → ~0.99, -5 → ~0.55, -2 → ~0.29
+  return 1 / (1 + Math.exp(-(absScore - 4.5) / 2.8));
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // BM25 Strength Check
 // ─────────────────────────────────────────────────────────────────────────────
 
+// Thresholds for strong signal detection (conservative - prefer expansion over speed)
+const STRONG_TOP_SCORE = 0.84; // ~84th percentile confidence
+const STRONG_GAP = 0.14; // Clear separation from #2
+
 /**
  * Check if BM25 results are strong enough to skip expansion.
- * Uses gap-based metric: how much better is #1 than #2?
- * Returns 0-1 where 1 = #1 is clearly dominant, 0 = results are similar.
- * Raw BM25: smaller (more negative) is better.
+ * Returns true if top result is both confident AND clearly separated.
+ * This prevents skipping on weak-but-separated results.
  */
 async function checkBm25Strength(
   store: StorePort,
   query: string,
   options?: { collection?: string; lang?: string }
-): Promise<number> {
+): Promise<boolean> {
   const result = await store.searchFts(query, {
     limit: 5,
     collection: options?.collection,
     language: options?.lang,
   });
+
   if (!result.ok || result.value.length === 0) {
-    return 0;
+    return false;
   }
 
-  // Only one result = strong signal
-  if (result.value.length === 1) {
-    return 1;
-  }
+  // Normalize scores (higher = better)
+  const scores = result.value
+    .map((r) => normalizeBm25Score(r.score))
+    .sort((a, b) => b - a); // Descending
 
-  // Get top 2 scores (smaller is better)
-  const scores = result.value.map((r) => r.score).sort((a, b) => a - b);
-  const best = scores[0] ?? 0;
-  const second = scores[1] ?? best;
-  const worst = scores.at(-1) ?? best;
+  const topScore = scores[0] ?? 0;
+  const secondScore = scores[1] ?? 0;
+  const gap = topScore - secondScore;
 
-  // Compute gap-based strength
-  // If best and second are equal, gap = 0
-  // If second is much worse (larger), gap approaches 1
-  const range = worst - best;
-  if (range === 0) {
-    return 0; // All scores equal, no clear winner
-  }
-
-  // Gap = how much worse is #2 relative to the range (clamped for safety)
-  const gap = (second - best) / range;
-  return Math.max(0, Math.min(1, gap));
+  // Strong signal requires BOTH: high confidence AND clear separation
+  return topScore >= STRONG_TOP_SCORE && gap >= STRONG_GAP;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -227,17 +236,18 @@ export async function searchHybrid(
   // 1. Check if expansion needed
   // ─────────────────────────────────────────────────────────────────────────
   const shouldExpand = !options.noExpand && genPort !== null;
-  let skipExpansionDueToStrength = false;
+  let expansionStatus: ExpansionStatus = 'disabled';
 
   if (shouldExpand) {
-    const bm25Strength = await checkBm25Strength(store, query, {
+    const hasStrongSignal = await checkBm25Strength(store, query, {
       collection: options.collection,
       lang: options.lang,
     });
-    skipExpansionDueToStrength =
-      bm25Strength >= pipelineConfig.strongBm25Threshold;
 
-    if (!skipExpansionDueToStrength) {
+    if (hasStrongSignal) {
+      expansionStatus = 'skipped_strong';
+    } else {
+      expansionStatus = 'attempted';
       const expandResult = await expandQuery(genPort, query, {
         // Use queryLanguage for prompt selection, NOT options.lang (retrieval filter)
         lang: queryLanguage,
@@ -249,9 +259,7 @@ export async function searchHybrid(
     }
   }
 
-  explainLines.push(
-    explainExpansion(shouldExpand && !skipExpansionDueToStrength, expansion)
-  );
+  explainLines.push(explainExpansion(expansionStatus, expansion));
 
   // ─────────────────────────────────────────────────────────────────────────
   // 2. Parallel retrieval using raw store/vector APIs for correct seq tracking
@@ -295,7 +303,8 @@ export async function searchHybrid(
 
   // Vector search
   let vecCount = 0;
-  const vectorAvailable = vectorIndex?.searchAvailable && embedPort !== null;
+  const vectorAvailable =
+    vectorIndex !== null && vectorIndex.searchAvailable && embedPort !== null;
 
   if (vectorAvailable && vectorIndex && embedPort) {
     // Original query
@@ -443,7 +452,13 @@ export async function searchHybrid(
     }
 
     // Get chunk via O(1) lookup
-    const chunk = getChunk(candidate.mirrorHash, candidate.seq);
+    // For doc-level FTS (seq=0), fall back to first available chunk if exact lookup fails
+    let chunk = getChunk(candidate.mirrorHash, candidate.seq);
+    if (!chunk && candidate.seq === 0) {
+      // Doc-level FTS uses seq=0 as placeholder - try first chunk
+      const docChunks = chunksMap.get(candidate.mirrorHash);
+      chunk = docChunks?.[0] ?? null;
+    }
     if (!chunk) {
       continue;
     }

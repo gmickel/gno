@@ -196,7 +196,11 @@ export interface FtsSearchOptions {
   limit?: number;
   /** Filter by collection */
   collection?: string;
-  /** Filter by language */
+  /**
+   * Language hint (reserved for future use).
+   * Note: FTS5 snowball tokenizer is language-aware at index time,
+   * so runtime language filtering is not currently implemented.
+   */
   language?: string;
   /** Include snippet with highlights */
   snippet?: boolean;

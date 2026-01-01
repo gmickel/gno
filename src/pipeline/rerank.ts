@@ -123,15 +123,18 @@ export async function rerankCandidates(
   // Dedupe by document - multiple chunks from same doc use single full-doc rerank
   const uniqueHashes = [...new Set(toRerank.map((c) => c.mirrorHash))];
 
-  // Fetch full document content for each unique document
+  // Fetch full document content for each unique document (parallel)
   // Max 128K chars per doc to fit in reranker context
   const MAX_DOC_CHARS = 128_000;
+  const contentResults = await Promise.all(
+    uniqueHashes.map((hash) => store.getContent(hash))
+  );
   const docContents = new Map<string, string>();
-
-  for (const hash of uniqueHashes) {
-    const contentResult = await store.getContent(hash);
-    if (contentResult.ok && contentResult.value) {
-      const content = contentResult.value;
+  for (let i = 0; i < uniqueHashes.length; i++) {
+    const hash = uniqueHashes[i];
+    const result = contentResults[i];
+    if (result.ok && result.value) {
+      const content = result.value;
       docContents.set(
         hash,
         content.length > MAX_DOC_CHARS
@@ -174,14 +177,28 @@ export async function rerankCandidates(
   const scoreByDocIndex = new Map(
     rerankResult.value.map((s) => [s.index, s.score])
   );
+
+  // Normalize rerank scores using min-max (models return varying scales)
+  const rerankScores = rerankResult.value.map((s) => s.score);
+  const minRerank = Math.min(...rerankScores);
+  const maxRerank = Math.max(...rerankScores);
+  const rerankRange = maxRerank - minRerank;
+
+  function normalizeRerankScore(score: number): number {
+    if (rerankRange < 1e-9) {
+      return 1; // All tied for best
+    }
+    return (score - minRerank) / rerankRange;
+  }
+
   const rerankedCandidates: RerankedCandidate[] = toRerank.map((c, i) => {
     // Get document-level rerank score (shared by all chunks from same doc)
     const docIndex = hashToIndex.get(c.mirrorHash) ?? -1;
     const rerankScore = scoreByDocIndex.get(docIndex) ?? null;
 
-    // Normalize rerank score to 0-1 range (models may return different scales)
+    // Normalize rerank score to 0-1 range using min-max
     const normalizedRerankScore =
-      rerankScore !== null ? Math.max(0, Math.min(1, rerankScore)) : null;
+      rerankScore !== null ? normalizeRerankScore(rerankScore) : null;
 
     // Calculate blended score using normalized fusion score
     const position = i + 1;

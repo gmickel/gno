@@ -17,7 +17,8 @@ import type { ExpansionResult } from './types';
 
 const EXPANSION_PROMPT_VERSION = 'v2';
 const DEFAULT_TIMEOUT_MS = 5000;
-const JSON_EXTRACT_PATTERN = /\{[\s\S]*\}/;
+// Non-greedy to avoid matching from first { to last } across multiple objects
+const JSON_EXTRACT_PATTERN = /\{[\s\S]*?\}/;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Cache Key Generation
@@ -186,9 +187,10 @@ export async function expandQuery(
   const template = getPromptTemplate(options.lang);
   const prompt = template.replace('{query}', query);
 
-  // Run with timeout
+  // Run with timeout (clear timer to avoid resource leak)
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
   const timeoutPromise = new Promise<null>((resolve) => {
-    setTimeout(() => resolve(null), timeout);
+    timeoutId = setTimeout(() => resolve(null), timeout);
   });
 
   try {
@@ -200,6 +202,11 @@ export async function expandQuery(
       }),
       timeoutPromise,
     ]);
+
+    // Clear timeout if generation completed first
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
 
     // Timeout
     if (result === null) {
@@ -215,6 +222,9 @@ export async function expandQuery(
     const parsed = parseExpansionResult(result.value);
     return ok(parsed);
   } catch {
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
     return ok(null); // Graceful degradation
   }
 }

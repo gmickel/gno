@@ -15,6 +15,7 @@ export { expandQuery, generateCacheKey } from './expansion';
 // Explain
 export {
   buildExplainResults,
+  type ExpansionStatus,
   explainBm25,
   explainExpansion,
   explainFusion,

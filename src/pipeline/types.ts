@@ -213,8 +213,6 @@ export type RerankedCandidate = FusionCandidate & {
 
 /** Search pipeline configuration */
 export interface PipelineConfig {
-  /** Strong BM25 threshold to skip expansion */
-  strongBm25Threshold: number;
   /** Expansion timeout in ms */
   expansionTimeout: number;
   /** Max candidates to rerank */
@@ -227,7 +225,6 @@ export interface PipelineConfig {
 
 /** Default pipeline configuration */
 export const DEFAULT_PIPELINE_CONFIG: PipelineConfig = {
-  strongBm25Threshold: 0.7,
   expansionTimeout: 5000,
   rerankCandidates: 20,
   rrf: DEFAULT_RRF_CONFIG,
