@@ -17,6 +17,7 @@ import {
   handleAsk,
   handleCapabilities,
   handleCollections,
+  handleCreateCollection,
   handleDoc,
   handleDocs,
   handleHealth,
@@ -192,6 +193,15 @@ export async function startServer(
         '/api/collections': {
           GET: async () =>
             withSecurityHeaders(await handleCollections(store), isDev),
+          POST: async (req: Request) => {
+            if (!isRequestAllowed(req, port)) {
+              return withSecurityHeaders(forbiddenResponse(), isDev);
+            }
+            return withSecurityHeaders(
+              await handleCreateCollection(ctxHolder, store, req),
+              isDev
+            );
+          },
         },
         '/api/docs': {
           GET: async (req: Request) => {

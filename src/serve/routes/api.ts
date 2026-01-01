@@ -6,7 +6,9 @@
  */
 
 import { modelsPull } from '../../cli/commands/models/pull';
+import { addCollection } from '../../collection';
 import type { Config, ModelPreset } from '../../config/types';
+import { defaultSyncService, type SyncResult } from '../../ingestion';
 import { getModelConfig, getPreset, listPresets } from '../../llm/registry';
 import {
   generateGroundedAnswer,
@@ -16,12 +18,14 @@ import { searchHybrid } from '../../pipeline/hybrid';
 import { searchBm25 } from '../../pipeline/search';
 import type { AskResult, Citation, SearchOptions } from '../../pipeline/types';
 import type { SqliteAdapter } from '../../store/sqlite/adapter';
+import { applyConfigChange } from '../config-sync';
 import {
   downloadState,
   reloadServerContext,
   resetDownloadState,
   type ServerContext,
 } from '../context';
+import { startJob } from '../jobs';
 
 /** Mutable context holder for hot-reloading presets */
 export interface ContextHolder {
@@ -64,6 +68,15 @@ export interface AskRequestBody {
   collection?: string;
   lang?: string;
   maxAnswerTokens?: number;
+}
+
+export interface CreateCollectionRequestBody {
+  path: string;
+  name?: string;
+  pattern?: string;
+  include?: string;
+  exclude?: string;
+  gitPull?: boolean;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -137,6 +150,85 @@ export async function handleCollections(
       name: c.name,
       path: c.path,
     }))
+  );
+}
+
+/**
+ * POST /api/collections
+ * Create a new collection and start sync job.
+ */
+export async function handleCreateCollection(
+  ctxHolder: ContextHolder,
+  store: SqliteAdapter,
+  req: Request
+): Promise<Response> {
+  let body: CreateCollectionRequestBody;
+  try {
+    body = (await req.json()) as CreateCollectionRequestBody;
+  } catch {
+    return errorResponse('VALIDATION', 'Invalid JSON body');
+  }
+
+  if (!body.path || typeof body.path !== 'string') {
+    return errorResponse('VALIDATION', 'Missing or invalid path');
+  }
+
+  // Derive name from path if not provided
+  const { basename } = await import('node:path'); // no bun equivalent
+  const name = body.name || basename(body.path);
+
+  // Add collection to config
+  const addResult = await addCollection(ctxHolder.config, {
+    path: body.path,
+    name,
+    pattern: body.pattern,
+    include: body.include,
+    exclude: body.exclude,
+  });
+
+  if (!addResult.ok) {
+    const status = addResult.code === 'DUPLICATE' ? 409 : 400;
+    return errorResponse(addResult.code, addResult.message, status);
+  }
+
+  // Persist config and sync to DB
+  const syncResult = await applyConfigChange(
+    ctxHolder,
+    store,
+    () => addResult.config
+  );
+  if (!syncResult.ok) {
+    return errorResponse(syncResult.code, syncResult.error, 500);
+  }
+
+  // Start background sync job
+  const collection = addResult.collection;
+  const jobResult = startJob('add', async (): Promise<SyncResult> => {
+    const result = await defaultSyncService.syncCollection(collection, store, {
+      gitPull: body.gitPull,
+      runUpdateCmd: true,
+    });
+    return {
+      collections: [result],
+      totalDurationMs: result.durationMs,
+      totalFilesProcessed: result.filesProcessed,
+      totalFilesAdded: result.filesAdded,
+      totalFilesUpdated: result.filesUpdated,
+      totalFilesErrored: result.filesErrored,
+      totalFilesSkipped: result.filesSkipped,
+    };
+  });
+
+  if (!jobResult.ok) {
+    return errorResponse('CONFLICT', jobResult.error, 409);
+  }
+
+  return jsonResponse(
+    {
+      jobId: jobResult.jobId,
+      collection: collection.name,
+    },
+    202
   );
 }
 
