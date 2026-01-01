@@ -126,6 +126,8 @@ gno ask "complex topic" --thorough       # Best recall
 
 **Full-document context**: When `--answer` is used, GNO passes complete document content to the generation model—not truncated snippets. This ensures the LLM sees tables, code examples, and full context needed for accurate answers.
 
+**Preset requirement**: For documents with markdown tables or structured data, use the `quality` preset (`gno models use quality`). Smaller models cannot reliably parse tabular content. This only applies to standalone `--answer` usage—when AI agents (Claude Code, Codex) call GNO via MCP/skill/CLI, they handle answer generation.
+
 Options:
 - `--fast` - Skip expansion and reranking (fastest)
 - `--thorough` - Enable query expansion (slower, better recall)
