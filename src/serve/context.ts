@@ -6,7 +6,9 @@
  */
 
 import type { Config } from '../config/types';
+import type { CreatePortOptions } from '../llm/nodeLlamaCpp/adapter';
 import { LlmAdapter } from '../llm/nodeLlamaCpp/adapter';
+import { resolveDownloadPolicy } from '../llm/policy';
 import { getActivePreset } from '../llm/registry';
 import type {
   DownloadProgress,
@@ -87,8 +89,27 @@ export async function createServerContext(
     const preset = getActivePreset(config);
     const llm = new LlmAdapter(config);
 
+    // Resolve download policy from env (serve has no CLI flags)
+    const policy = resolveDownloadPolicy(process.env, {});
+
+    // Progress callback updates downloadState for WebUI polling
+    const createPortOptions = (type: ModelType): CreatePortOptions => ({
+      policy,
+      onProgress: (progress) => {
+        downloadState.active = true;
+        downloadState.currentType = type;
+        downloadState.progress = progress;
+        if (progress.percent >= 100) {
+          downloadState.completed.push(type);
+        }
+      },
+    });
+
     // Try to create embedding port
-    const embedResult = await llm.createEmbeddingPort(preset.embed);
+    const embedResult = await llm.createEmbeddingPort(
+      preset.embed,
+      createPortOptions('embed')
+    );
     if (embedResult.ok) {
       embedPort = embedResult.value;
       const initResult = await embedPort.init();
@@ -108,17 +129,29 @@ export async function createServerContext(
     }
 
     // Try to create generation port
-    const genResult = await llm.createGenerationPort(preset.gen);
+    const genResult = await llm.createGenerationPort(
+      preset.gen,
+      createPortOptions('gen')
+    );
     if (genResult.ok) {
       genPort = genResult.value;
       console.log('AI answer generation enabled');
     }
 
     // Try to create rerank port
-    const rerankResult = await llm.createRerankPort(preset.rerank);
+    const rerankResult = await llm.createRerankPort(
+      preset.rerank,
+      createPortOptions('rerank')
+    );
     if (rerankResult.ok) {
       rerankPort = rerankResult.value;
       console.log('Reranking enabled');
+    }
+
+    // Reset download state after initialization
+    if (downloadState.active) {
+      downloadState.active = false;
+      downloadState.currentType = null;
     }
   } catch (e) {
     // Log but don't fail - models are optional

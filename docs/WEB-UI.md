@@ -59,7 +59,7 @@ Click **Search** or press `/`. Choose your mode:
 
 Click **Ask** for AI-powered answers. Type your question—GNO searches your documents and synthesizes an answer with citations.
 
-> **Note**: Requires generation model. Run `gno models pull` if answers aren't working.
+> **Note**: Models auto-download on first use. Initial startup may take a moment while models download.
 
 ---
 
@@ -139,6 +139,10 @@ gno serve [options]
 |:---------|:------------|
 | `NODE_ENV=production` | Disable HMR, stricter CSP |
 | `GNO_VERBOSE=1` | Enable debug logging |
+| `HF_HUB_OFFLINE=1` | Offline mode: use cached models only |
+| `GNO_NO_AUTO_DOWNLOAD=1` | Disable auto-download (allow explicit `gno models pull`) |
+
+Models auto-download on first use. Use offline variables in air-gapped environments.
 
 ---
 
