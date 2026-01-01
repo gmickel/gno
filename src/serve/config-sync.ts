@@ -61,7 +61,9 @@ export async function applyConfigChange(
 ): Promise<ApplyConfigResult> {
   // Serialize config mutations to prevent lost updates
   const previousMutex = configMutex;
-  let resolveMutex: () => void = () => {};
+  let resolveMutex: () => void = () => {
+    /* no-op until assigned */
+  };
   configMutex = new Promise((resolve) => {
     resolveMutex = resolve;
   });
@@ -132,6 +134,6 @@ export async function applyConfigChange(
 
     return { ok: true, config: newConfig };
   } finally {
-    resolveMutex!();
+    resolveMutex();
   }
 }

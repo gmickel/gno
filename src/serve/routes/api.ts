@@ -232,12 +232,11 @@ export async function handleCreateCollection(
   });
   if (!syncResult.ok) {
     // Map mutation error codes to HTTP status codes
-    const status =
-      syncResult.code === 'DUPLICATE'
-        ? 409
-        : syncResult.code === 'PATH_NOT_FOUND'
-          ? 400
-          : 500;
+    const statusMap: Record<string, number> = {
+      DUPLICATE: 409,
+      PATH_NOT_FOUND: 400,
+    };
+    const status = statusMap[syncResult.code] ?? 500;
     return errorResponse(syncResult.code, syncResult.error, status);
   }
 
@@ -302,12 +301,11 @@ export async function handleDeleteCollection(
 
   if (!syncResult.ok) {
     // Map mutation error codes to HTTP status codes
-    const status =
-      syncResult.code === 'NOT_FOUND'
-        ? 404
-        : syncResult.code === 'HAS_REFERENCES'
-          ? 400
-          : 500;
+    const statusMap: Record<string, number> = {
+      NOT_FOUND: 404,
+      HAS_REFERENCES: 400,
+    };
+    const status = statusMap[syncResult.code] ?? 500;
     return errorResponse(syncResult.code, syncResult.error, status);
   }
 
@@ -523,6 +521,27 @@ export async function handleDeactivateDoc(
 }
 
 /**
+ * Validate relative path for document creation.
+ * Returns error message if invalid, null if valid.
+ */
+async function validateRelPath(
+  relPath: string
+): Promise<{ error: string } | { fullPath: string; normalizedPath: string }> {
+  const { normalize, isAbsolute } = await import('node:path');
+  if (isAbsolute(relPath)) {
+    return { error: 'relPath must be relative' };
+  }
+  if (relPath.includes('\0')) {
+    return { error: 'relPath contains invalid characters' };
+  }
+  const normalizedPath = normalize(relPath);
+  if (normalizedPath.startsWith('..')) {
+    return { error: 'relPath cannot escape collection root' };
+  }
+  return { fullPath: '', normalizedPath };
+}
+
+/**
  * POST /api/docs
  * Create a new document in a collection.
  * Returns 202 with jobId for async sync.
@@ -567,20 +586,13 @@ export async function handleCreateDoc(
   }
 
   // Validate relPath - no path traversal
-  const { join, normalize, isAbsolute, dirname } = await import('node:path'); // no bun equivalent
-  if (isAbsolute(body.relPath)) {
-    return errorResponse('VALIDATION', 'relPath must be relative');
-  }
-  if (body.relPath.includes('\0')) {
-    return errorResponse('VALIDATION', 'relPath contains invalid characters');
+  const pathValidation = await validateRelPath(body.relPath);
+  if ('error' in pathValidation) {
+    return errorResponse('VALIDATION', pathValidation.error);
   }
 
-  const normalizedPath = normalize(body.relPath);
-  if (normalizedPath.startsWith('..')) {
-    return errorResponse('VALIDATION', 'relPath cannot escape collection root');
-  }
-
-  const fullPath = join(collection.path, normalizedPath);
+  const { join, dirname } = await import('node:path'); // no bun equivalent
+  const fullPath = join(collection.path, pathValidation.normalizedPath);
 
   try {
     // Check if file already exists
@@ -605,7 +617,9 @@ export async function handleCreateDoc(
       await rename(tempPath, fullPath);
     } catch (renameError) {
       // Clean up temp file on failure
-      await unlink(tempPath).catch(() => {});
+      await unlink(tempPath).catch(() => {
+        /* ignore cleanup errors */
+      });
       throw renameError;
     }
 

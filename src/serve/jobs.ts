@@ -53,7 +53,9 @@ const jobs = new Map<string, JobStatus>();
 function cleanupExpiredJobs(now = Date.now()): void {
   for (const [id, job] of jobs) {
     // Never expire running jobs - only completed/failed
-    if (job.status === 'running') continue;
+    if (job.status === 'running') {
+      continue;
+    }
     if (now - job.createdAt > JOB_EXPIRATION_MS) {
       jobs.delete(id);
     }
