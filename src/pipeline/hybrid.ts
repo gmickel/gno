@@ -346,7 +346,7 @@ export async function searchHybrid(
     }
   }
 
-  explainLines.push(explainVector(vecCount, vectorAvailable ?? false));
+  explainLines.push(explainVector(vecCount, vectorAvailable));
 
   // ─────────────────────────────────────────────────────────────────────────
   // 3. RRF Fusion
@@ -541,7 +541,7 @@ export async function searchHybrid(
       mode: vectorAvailable ? 'hybrid' : 'bm25_only',
       expanded: expansion !== null,
       reranked: rerankResult.reranked,
-      vectorsUsed: vectorAvailable ?? false,
+      vectorsUsed: vectorAvailable,
       totalResults: results.length,
       collection: options.collection,
       lang: options.lang,
