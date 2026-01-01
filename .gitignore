@@ -36,6 +36,7 @@ __pycache__/
 *.py[cod]
 *$py.class
 *.so
+!vendor/fts5-snowball/**/*.so
 .Python
 build/
 develop-eggs/
