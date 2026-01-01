@@ -242,7 +242,7 @@ export async function startServer(
             const url = new URL(req.url);
             // Extract id from /api/docs/:id/deactivate
             const parts = url.pathname.split('/');
-            const id = parts[3] || '';
+            const id = decodeURIComponent(parts[3] || '');
             return withSecurityHeaders(
               await handleDeactivateDoc(store, id),
               isDev
@@ -316,7 +316,7 @@ export async function startServer(
         '/api/jobs/:id': {
           GET: (req: Request) => {
             const url = new URL(req.url);
-            const id = url.pathname.split('/').pop() || '';
+            const id = decodeURIComponent(url.pathname.split('/').pop() || '');
             return withSecurityHeaders(handleJob(id), isDev);
           },
         },
@@ -326,7 +326,9 @@ export async function startServer(
               return withSecurityHeaders(forbiddenResponse(), isDev);
             }
             const url = new URL(req.url);
-            const name = url.pathname.split('/').pop() || '';
+            const name = decodeURIComponent(
+              url.pathname.split('/').pop() || ''
+            );
             return withSecurityHeaders(
               await handleDeleteCollection(ctxHolder, store, name),
               isDev
