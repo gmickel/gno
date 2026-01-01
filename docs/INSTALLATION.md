@@ -98,9 +98,9 @@ Model presets control disk usage:
 
 | Preset | Disk | Embed | Rerank | Gen |
 |--------|------|-------|--------|-----|
-| slim | ~1GB | bge-m3-Q4 | bge-reranker-v2-m3-Q4 | Qwen3-1.7B-Q4 |
-| balanced | ~2GB | bge-m3-Q4 | bge-reranker-v2-m3-Q4 | SmolLM3-3B-Q4 |
-| quality | ~2.5GB | bge-m3-Q4 | bge-reranker-v2-m3-Q4 | Qwen3-4B-Q4 |
+| slim | ~1GB | bge-m3-Q4 | Qwen3-Reranker-0.6B-Q8 | Qwen3-1.7B-Q4 |
+| balanced | ~2GB | bge-m3-Q4 | Qwen3-Reranker-0.6B-Q8 | SmolLM3-3B-Q4 |
+| quality | ~2.5GB | bge-m3-Q4 | Qwen3-Reranker-0.6B-Q8 | Qwen3-4B-Q4 |
 
 Change preset in config:
 ```yaml

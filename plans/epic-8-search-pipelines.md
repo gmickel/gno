@@ -50,7 +50,6 @@ src/pipeline/
 
 | Parameter | Default | Configurable | Source |
 |-----------|---------|--------------|--------|
-| `strongBm25Threshold` | 0.7 | Yes (config) | Expansion skip (gap-based: #1 vs #2) |
 | `rrfK` | 60 | Yes (config) | RRF constant |
 | `topRankBonus` | 0.1 | Yes (config) | Added if in top-5 both modes |
 | `expansionTimeout` | 5000ms | Yes (config) | Gen model timeout |
@@ -224,7 +223,7 @@ const DEFAULT_BLENDING_SCHEDULE = [
 
 **Tasks:**
 - [ ] T8.5.1: Implement `src/pipeline/hybrid.ts` orchestrator:
-  - Strong BM25 check (threshold: 0.7)
+  - Strong BM25 check (sigmoid normalized, dual threshold)
   - Expansion decision logic
   - Parallel retrieval coordination
   - Fusion → Rerank → Blend pipeline
