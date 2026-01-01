@@ -84,6 +84,13 @@ export interface SyncRequestBody {
   gitPull?: boolean;
 }
 
+export interface CreateDocRequestBody {
+  collection: string;
+  relPath: string;
+  content: string;
+  overwrite?: boolean;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
 // ─────────────────────────────────────────────────────────────────────────────
@@ -428,6 +435,137 @@ export async function handleDoc(
       sizeBytes: doc.sourceSize,
     },
   });
+}
+
+/**
+ * POST /api/docs/:id/deactivate
+ * Deactivate a document (soft delete - does not remove file from disk).
+ */
+export async function handleDeactivateDoc(
+  store: SqliteAdapter,
+  docId: string
+): Promise<Response> {
+  // Get document to verify it exists and get collection/relPath
+  const docResult = await store.getDocumentByDocid(docId);
+  if (!docResult.ok) {
+    return errorResponse('RUNTIME', docResult.error.message, 500);
+  }
+  if (!docResult.value) {
+    return errorResponse('NOT_FOUND', 'Document not found', 404);
+  }
+
+  const doc = docResult.value;
+
+  // Mark as inactive
+  const result = await store.markInactive(doc.collection, [doc.relPath]);
+  if (!result.ok) {
+    return errorResponse('RUNTIME', result.error.message, 500);
+  }
+
+  return jsonResponse({
+    success: true,
+    docId: doc.docid,
+    path: doc.uri,
+    warning: 'File still exists on disk. Will be re-indexed unless excluded.',
+  });
+}
+
+/**
+ * POST /api/docs
+ * Create a new document in a collection.
+ */
+export async function handleCreateDoc(
+  ctxHolder: ContextHolder,
+  store: SqliteAdapter,
+  req: Request
+): Promise<Response> {
+  let body: CreateDocRequestBody;
+  try {
+    body = (await req.json()) as CreateDocRequestBody;
+  } catch {
+    return errorResponse('VALIDATION', 'Invalid JSON body');
+  }
+
+  // Validate required fields
+  if (!body.collection || typeof body.collection !== 'string') {
+    return errorResponse('VALIDATION', 'Missing or invalid collection');
+  }
+  if (!body.relPath || typeof body.relPath !== 'string') {
+    return errorResponse('VALIDATION', 'Missing or invalid relPath');
+  }
+  if (!body.content || typeof body.content !== 'string') {
+    return errorResponse('VALIDATION', 'Missing or invalid content');
+  }
+
+  // Find collection
+  const collection = ctxHolder.config.collections.find(
+    (c) => c.name === body.collection
+  );
+  if (!collection) {
+    return errorResponse(
+      'NOT_FOUND',
+      `Collection not found: ${body.collection}`,
+      404
+    );
+  }
+
+  // Validate relPath - no path traversal
+  const { join, normalize, isAbsolute } = await import('node:path'); // no bun equivalent
+  if (isAbsolute(body.relPath)) {
+    return errorResponse('VALIDATION', 'relPath must be relative');
+  }
+  if (body.relPath.includes('\0')) {
+    return errorResponse('VALIDATION', 'relPath contains invalid characters');
+  }
+
+  const normalizedPath = normalize(body.relPath);
+  if (normalizedPath.startsWith('..')) {
+    return errorResponse('VALIDATION', 'relPath cannot escape collection root');
+  }
+
+  const fullPath = join(collection.path, normalizedPath);
+
+  // Check if file already exists
+  const file = Bun.file(fullPath);
+  if ((await file.exists()) && !body.overwrite) {
+    return errorResponse(
+      'CONFLICT',
+      'File already exists. Set overwrite=true to replace.',
+      409
+    );
+  }
+
+  // Ensure parent directory exists
+  const { dirname } = await import('node:path'); // no bun equivalent
+  const parentDir = dirname(fullPath);
+  const { mkdir } = await import('node:fs/promises'); // structure ops need fs
+  await mkdir(parentDir, { recursive: true });
+
+  // Write file atomically
+  await Bun.write(fullPath, body.content);
+
+  // Trigger targeted sync for just this file
+  const syncResult = await defaultSyncService.syncCollection(
+    collection,
+    store,
+    {
+      runUpdateCmd: false,
+    }
+  );
+
+  // Find the newly created document
+  const docResult = await store.getDocumentByUri(`file://${fullPath}`);
+  const docId = docResult.ok && docResult.value ? docResult.value.docid : null;
+
+  return jsonResponse(
+    {
+      docId,
+      uri: `file://${fullPath}`,
+      path: fullPath,
+      indexed: syncResult.filesAdded > 0 || syncResult.filesUpdated > 0,
+    },
+    201
+  );
 }
 
 /**

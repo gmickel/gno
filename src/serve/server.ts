@@ -18,6 +18,8 @@ import {
   handleCapabilities,
   handleCollections,
   handleCreateCollection,
+  handleCreateDoc,
+  handleDeactivateDoc,
   handleDeleteCollection,
   handleDoc,
   handleDocs,
@@ -221,6 +223,30 @@ export async function startServer(
           GET: async (req: Request) => {
             const url = new URL(req.url);
             return withSecurityHeaders(await handleDocs(store, url), isDev);
+          },
+          POST: async (req: Request) => {
+            if (!isRequestAllowed(req, port)) {
+              return withSecurityHeaders(forbiddenResponse(), isDev);
+            }
+            return withSecurityHeaders(
+              await handleCreateDoc(ctxHolder, store, req),
+              isDev
+            );
+          },
+        },
+        '/api/docs/:id/deactivate': {
+          POST: async (req: Request) => {
+            if (!isRequestAllowed(req, port)) {
+              return withSecurityHeaders(forbiddenResponse(), isDev);
+            }
+            const url = new URL(req.url);
+            // Extract id from /api/docs/:id/deactivate
+            const parts = url.pathname.split('/');
+            const id = parts[3] || '';
+            return withSecurityHeaders(
+              await handleDeactivateDoc(store, id),
+              isDev
+            );
           },
         },
         '/api/doc': {
