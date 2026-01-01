@@ -452,7 +452,7 @@ export async function handleAsk(
   if (ctx.genPort) {
     const maxTokens = body.maxAnswerTokens ?? 512;
     const rawResult = await generateGroundedAnswer(
-      ctx.genPort,
+      { genPort: ctx.genPort, store: ctx.store },
       query,
       results,
       maxTokens

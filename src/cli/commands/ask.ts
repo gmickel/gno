@@ -170,7 +170,7 @@ export async function ask(
     if (shouldGenerateAnswer && genPort) {
       const maxTokens = options.maxAnswerTokens ?? 512;
       const rawResult = await generateGroundedAnswer(
-        genPort,
+        { genPort, store },
         query,
         results,
         maxTokens

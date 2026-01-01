@@ -6,6 +6,7 @@
  */
 
 import type { GenerationPort } from '../llm/types';
+import type { StorePort } from '../store/types';
 import type { Citation, SearchResult } from './types';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -32,11 +33,14 @@ Write a concise answer (1-3 paragraphs).`;
 export const ABSTENTION_MESSAGE =
   "I don't have enough information in the provided sources to answer this question.";
 
-/** Max characters per snippet to avoid blowing up prompt size */
-const MAX_SNIPPET_CHARS = 1500;
+/** Max characters per document (~8K tokens) */
+const MAX_DOC_CHARS = 32_000;
 
-/** Max number of sources to include in context */
-const MAX_CONTEXT_SOURCES = 5;
+/** Max number of sources - fewer docs but full content */
+const MAX_CONTEXT_SOURCES = 3;
+
+/** Fallback snippet limit when full content unavailable */
+const MAX_SNIPPET_CHARS = 1500;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Citation Processing
@@ -109,32 +113,57 @@ export interface AnswerGenerationResult {
   citations: Citation[];
 }
 
+export interface AnswerGenerationDeps {
+  genPort: GenerationPort;
+  store: StorePort | null;
+}
+
 /**
  * Generate a grounded answer from search results.
  * Returns null if no valid context or generation fails.
+ *
+ * When store is provided, fetches full document content for better context.
+ * Falls back to snippets if store unavailable or content fetch fails.
  */
 export async function generateGroundedAnswer(
-  genPort: GenerationPort,
+  deps: AnswerGenerationDeps,
   query: string,
   results: SearchResult[],
   maxTokens: number
 ): Promise<AnswerGenerationResult | null> {
+  const { genPort, store } = deps;
   const contextParts: string[] = [];
   const citations: Citation[] = [];
   let citationIndex = 0;
 
   for (const r of results.slice(0, MAX_CONTEXT_SOURCES)) {
-    if (!r.snippet || r.snippet.trim().length === 0) {
-      continue;
+    let content: string | null = null;
+
+    // Try to fetch full document content if store available
+    if (store && r.conversion?.mirrorHash) {
+      const contentResult = await store.getContent(r.conversion.mirrorHash);
+      if (contentResult.ok && contentResult.value) {
+        content = contentResult.value;
+        // Truncate to max doc chars
+        if (content.length > MAX_DOC_CHARS) {
+          content = `${content.slice(0, MAX_DOC_CHARS)}\n\n[... truncated ...]`;
+        }
+      }
     }
 
-    const snippet =
-      r.snippet.length > MAX_SNIPPET_CHARS
-        ? `${r.snippet.slice(0, MAX_SNIPPET_CHARS)}...`
-        : r.snippet;
+    // Fallback to snippet if full content unavailable
+    if (!content) {
+      if (!r.snippet || r.snippet.trim().length === 0) {
+        continue;
+      }
+      content =
+        r.snippet.length > MAX_SNIPPET_CHARS
+          ? `${r.snippet.slice(0, MAX_SNIPPET_CHARS)}...`
+          : r.snippet;
+    }
 
     citationIndex += 1;
-    contextParts.push(`[${citationIndex}] ${snippet}`);
+    contextParts.push(`[${citationIndex}] ${content}`);
     citations.push({
       docid: r.docid,
       uri: r.uri,
