@@ -304,7 +304,7 @@ export async function searchHybrid(
   // Vector search
   let vecCount = 0;
   const vectorAvailable =
-    vectorIndex !== null && vectorIndex.searchAvailable && embedPort !== null;
+    (vectorIndex?.searchAvailable && embedPort !== null) ?? false;
 
   if (vectorAvailable && vectorIndex && embedPort) {
     // Original query
@@ -457,7 +457,7 @@ export async function searchHybrid(
     if (!chunk && candidate.seq === 0) {
       // Doc-level FTS uses seq=0 as placeholder - try first chunk
       const docChunks = chunksMap.get(candidate.mirrorHash);
-      chunk = docChunks?.[0] ?? null;
+      chunk = docChunks?.[0];
     }
     if (!chunk) {
       continue;

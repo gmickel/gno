@@ -51,8 +51,12 @@ function getPlatformDir(): string | null {
 }
 
 function getExtensionSuffix(): string {
-  if (platform === 'win32') return 'dll';
-  if (platform === 'darwin') return 'dylib';
+  if (platform === 'win32') {
+    return 'dll';
+  }
+  if (platform === 'darwin') {
+    return 'dylib';
+  }
   return 'so';
 }
 

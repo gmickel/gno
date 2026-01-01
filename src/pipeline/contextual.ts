@@ -10,6 +10,11 @@
  * @module src/pipeline/contextual
  */
 
+// Top-level regex for performance
+const HEADING_REGEX = /^##?\s+(.+)$/m;
+const SUBHEADING_REGEX = /^##\s+(.+)$/m;
+const EXT_REGEX = /\.\w+$/;
+
 /**
  * Format document text for embedding.
  * Prepends title for contextual retrieval.
@@ -33,12 +38,12 @@ export function formatQueryForEmbedding(query: string): string {
  */
 export function extractTitle(content: string, filename: string): string {
   // Try to find first heading (# or ##)
-  const match = content.match(/^##?\s+(.+)$/m);
+  const match = content.match(HEADING_REGEX);
   if (match?.[1]) {
     const title = match[1].trim();
     // Skip generic titles like "Notes" and try next heading
     if (title.toLowerCase() === 'notes') {
-      const nextMatch = content.match(/^##\s+(.+)$/m);
+      const nextMatch = content.match(SUBHEADING_REGEX);
       if (nextMatch?.[1]) {
         return nextMatch[1].trim();
       }
@@ -48,5 +53,5 @@ export function extractTitle(content: string, filename: string): string {
 
   // Fall back to filename without extension
   const basename = filename.split('/').pop() ?? filename;
-  return basename.replace(/\.\w+$/, '');
+  return basename.replace(EXT_REGEX, '');
 }

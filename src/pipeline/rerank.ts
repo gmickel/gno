@@ -131,8 +131,10 @@ export async function rerankCandidates(
   );
   const docContents = new Map<string, string>();
   for (let i = 0; i < uniqueHashes.length; i++) {
-    const hash = uniqueHashes[i];
-    const result = contentResults[i];
+    const hash = uniqueHashes[i] as string;
+    const result = contentResults[i] as Awaited<
+      ReturnType<typeof store.getContent>
+    >;
     if (result.ok && result.value) {
       const content = result.value;
       docContents.set(

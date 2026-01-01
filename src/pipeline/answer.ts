@@ -125,6 +125,7 @@ export interface AnswerGenerationDeps {
  * When store is provided, fetches full document content for better context.
  * Falls back to snippets if store unavailable or content fetch fails.
  */
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: sequential content processing with fallbacks
 export async function generateGroundedAnswer(
   deps: AnswerGenerationDeps,
   query: string,
