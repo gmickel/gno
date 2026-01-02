@@ -11,6 +11,7 @@ import { z } from "zod";
 import type { ToolContext } from "../server";
 
 import { handleGet } from "./get";
+import { handleJobStatus } from "./job-status";
 import { handleMultiGet } from "./multi-get";
 import { handleQuery } from "./query";
 import { handleSearch } from "./search";
@@ -64,6 +65,10 @@ const multiGetInputSchema = z.object({
 });
 
 const statusInputSchema = z.object({});
+
+const jobStatusInputSchema = z.object({
+  jobId: z.string().min(1, "Job ID cannot be empty"),
+});
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Tool Result Type
@@ -161,5 +166,12 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
     "Get index status and health information",
     statusInputSchema.shape,
     (args) => handleStatus(args, ctx)
+  );
+
+  server.tool(
+    "gno_job_status",
+    "Get status of an async job",
+    jobStatusInputSchema.shape,
+    (args) => handleJobStatus(args, ctx)
   );
 }
