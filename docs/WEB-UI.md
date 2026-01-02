@@ -229,6 +229,8 @@ Browse all indexed documents:
 
 ### AI Answers
 
+![GNO AI Answers](../assets/screenshots/webui-ask-answer.png)
+
 The Ask page provides RAG-powered Q&A:
 
 1. Enter your question

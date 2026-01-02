@@ -163,6 +163,12 @@ Full-featured markdown editor with:
 - Re-index individual collections
 - Remove collections (documents preserved)
 
+### AI Answers
+
+![GNO AI Answers](./assets/screenshots/webui-ask-answer.png)
+
+Ask questions in natural language—GNO searches your documents and synthesizes answers with inline citations linking to sources.
+
 Everything runs locally. No cloud, no accounts, no data leaving your machine.
 
 > **Detailed docs**: [Web UI Guide](https://gno.sh/docs/WEB-UI/)
