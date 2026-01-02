@@ -7,7 +7,7 @@
 import type { SyncResult } from "../ingestion";
 
 import { MCP_ERRORS } from "./errors";
-import { acquireWriteLock } from "./file-lock";
+import { acquireWriteLock, type WriteLockHandle } from "./file-lock";
 
 const JOB_EXPIRATION_MS = 60 * 60 * 1000;
 const JOB_MAX_RECENT = 100;
@@ -81,22 +81,24 @@ export class JobManager {
       throw new JobError("LOCKED", MCP_ERRORS.LOCKED.message);
     }
 
-    const jobId = crypto.randomUUID();
-    const job: JobRecord = {
-      id: jobId,
-      type,
-      status: "running",
-      startedAt: Date.now(),
-      serverInstanceId: this.#serverInstanceId,
-    };
+    return this.#startJobWithLock(type, fn, lock);
+  }
 
-    this.#jobs.set(jobId, job);
-    this.#activeJobId = jobId;
+  async startJobWithLock(
+    type: JobType,
+    lock: WriteLockHandle,
+    fn: () => Promise<SyncResult>
+  ): Promise<string> {
+    this.#cleanupExpiredJobs();
 
-    const jobPromise = this.#runJob(job, fn, lock);
-    this.#track(jobPromise);
+    if (this.#activeJobId) {
+      throw new JobError(
+        "JOB_CONFLICT",
+        `${MCP_ERRORS.JOB_CONFLICT.message} (${this.#activeJobId})`
+      );
+    }
 
-    return jobId;
+    return this.#startJobWithLock(type, fn, lock);
   }
 
   getJob(jobId: string): JobRecord | undefined {
@@ -158,6 +160,29 @@ export class JobManager {
       await lock.release().catch(() => undefined);
       this.#cleanupExpiredJobs();
     }
+  }
+
+  #startJobWithLock(
+    type: JobType,
+    fn: () => Promise<SyncResult>,
+    lock: WriteLockHandle
+  ): string {
+    const jobId = crypto.randomUUID();
+    const job: JobRecord = {
+      id: jobId,
+      type,
+      status: "running",
+      startedAt: Date.now(),
+      serverInstanceId: this.#serverInstanceId,
+    };
+
+    this.#jobs.set(jobId, job);
+    this.#activeJobId = jobId;
+
+    const jobPromise = this.#runJob(job, fn, lock);
+    this.#track(jobPromise);
+
+    return jobId;
   }
 
   #cleanupExpiredJobs(now: number = Date.now()): void {

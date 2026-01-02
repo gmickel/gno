@@ -10,6 +10,8 @@ import { z } from "zod";
 
 import type { ToolContext } from "../server";
 
+import { handleAddCollection } from "./add-collection";
+import { handleCapture } from "./capture";
 import { handleGet } from "./get";
 import { handleJobStatus } from "./job-status";
 import { handleListJobs } from "./list-jobs";
@@ -37,6 +39,15 @@ const captureInputSchema = z.object({
   title: z.string().optional(),
   path: z.string().optional(),
   overwrite: z.boolean().default(false),
+});
+
+const addCollectionInputSchema = z.object({
+  path: z.string().min(1, "Path cannot be empty"),
+  name: z.string().optional(),
+  pattern: z.string().optional(),
+  include: z.array(z.string()).optional(),
+  exclude: z.array(z.string()).optional(),
+  gitPull: z.boolean().default(false),
 });
 
 const vsearchInputSchema = z.object({
@@ -188,6 +199,13 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
       captureInputSchema.shape,
       (args) => handleCapture(args, ctx)
     );
+
+    server.tool(
+      "gno_add_collection",
+      "Add a collection and start indexing",
+      addCollectionInputSchema.shape,
+      (args) => handleAddCollection(args, ctx)
+    );
   }
 
   server.tool(
@@ -204,4 +222,3 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
     (args) => handleListJobs(args, ctx)
   );
 }
-import { handleCapture } from "./capture";
