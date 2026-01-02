@@ -211,8 +211,8 @@ const TableRow: FC<ComponentProps<"tr">> = ({
   <tr
     className={cn(
       "border-b border-border/30 last:border-0",
-      "transition-colors hover:bg-muted/20",
-      "even:bg-muted/10",
+      "transition-colors hover:bg-muted/30",
+      "odd:bg-muted/20",
       className
     )}
     {...props}
