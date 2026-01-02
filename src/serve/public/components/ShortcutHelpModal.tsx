@@ -1,13 +1,17 @@
 /**
- * ShortcutHelpModal - Displays available keyboard shortcuts.
+ * ShortcutHelpModal - Card catalog reference for keyboard shortcuts.
  *
- * Features:
- * - Grouped by context (Global, Editor, Navigation)
- * - Triggered by '?' key or help icon
+ * Design: "Card Catalog" - Like a librarian's well-organized reference card.
+ * Two-column layout spreads content horizontally. Typewriter-style keys
+ * with embossed shadows evoke vintage office equipment.
+ *
+ * Uses Old Gold (secondary) for accents and dividers to maintain
+ * the scholarly warmth of the Scholarly Dusk theme.
  */
 
 import { KeyboardIcon } from "lucide-react";
 
+import { cn } from "../lib/utils";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog";
 
 export interface ShortcutHelpModalProps {
@@ -46,11 +50,94 @@ const shortcutGroups: ShortcutGroup[] = [
       { keys: "Esc", description: "Close editor" },
     ],
   },
-  {
-    title: "Navigation",
-    shortcuts: [{ keys: "Ctrl+Enter", description: "Submit form" }],
-  },
 ];
+
+// Separate footer shortcut
+const footerShortcut: ShortcutItem = {
+  keys: "Ctrl+Enter",
+  description: "Submit form",
+};
+
+function KeyCombo({ keys }: { keys: string }) {
+  const parts = keys.split("+");
+
+  return (
+    <div className="flex items-center gap-1">
+      {parts.map((key, i) => (
+        <span className="contents" key={key}>
+          {i > 0 && (
+            <span className="text-[10px] text-muted-foreground/40">+</span>
+          )}
+          <kbd
+            className={cn(
+              "inline-flex min-w-[1.5rem] items-center justify-center",
+              "rounded-[3px] border px-1.5 py-0.5",
+              // Typewriter key aesthetic - cream on dark
+              "border-[hsl(var(--secondary)/0.25)]",
+              "bg-gradient-to-b from-[hsl(40,20%,18%)] to-[hsl(40,15%,14%)]",
+              // Embossed shadow - key sits slightly raised
+              "shadow-[0_2px_0_hsl(var(--secondary)/0.15),inset_0_1px_0_hsl(var(--secondary)/0.1)]",
+              // Typography
+              "font-mono text-[11px] tracking-wide",
+              "text-[hsl(40,30%,75%)]"
+            )}
+          >
+            {key}
+          </kbd>
+        </span>
+      ))}
+    </div>
+  );
+}
+
+function ShortcutRow({ shortcut }: { shortcut: ShortcutItem }) {
+  return (
+    <div
+      className={cn(
+        "flex items-center justify-between gap-4",
+        "rounded px-2 py-1.5",
+        "transition-colors duration-150",
+        "hover:bg-[hsl(var(--secondary)/0.05)]"
+      )}
+    >
+      <span className="text-[13px] text-muted-foreground">
+        {shortcut.description}
+      </span>
+      <KeyCombo keys={shortcut.keys} />
+    </div>
+  );
+}
+
+function ShortcutGroupCard({ group }: { group: ShortcutGroup }) {
+  return (
+    <div className="space-y-2">
+      {/* Card catalog divider header */}
+      <div
+        className={cn(
+          "flex items-center gap-2 pb-1",
+          "border-b border-[hsl(var(--secondary)/0.15)]"
+        )}
+      >
+        <h3
+          className={cn(
+            "font-mono text-[10px] font-medium uppercase tracking-[0.15em]",
+            "text-[hsl(var(--secondary)/0.7)]"
+          )}
+        >
+          {group.title}
+        </h3>
+        <div className="h-px flex-1 bg-gradient-to-r from-[hsl(var(--secondary)/0.1)] to-transparent" />
+      </div>
+
+      {/* Shortcuts list */}
+      <div className="space-y-0.5">
+        {group.shortcuts.map((shortcut) => (
+          <ShortcutRow key={shortcut.keys} shortcut={shortcut} />
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export function ShortcutHelpModal({
   open,
@@ -58,46 +145,61 @@ export function ShortcutHelpModal({
 }: ShortcutHelpModalProps) {
   return (
     <Dialog onOpenChange={onOpenChange} open={open}>
-      <DialogContent className="max-w-md">
+      <DialogContent
+        className={cn(
+          // Wider modal for two-column layout
+          "max-w-lg",
+          // Card catalog paper texture feel
+          "border-[hsl(var(--secondary)/0.2)]",
+          "bg-gradient-to-br from-card via-card to-[hsl(var(--secondary)/0.02)]",
+          // Subtle shadow like paper lifted off desk
+          "shadow-[0_8px_32px_-8px_hsl(var(--secondary)/0.2)]"
+        )}
+      >
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
+          <DialogTitle
+            className={cn(
+              "flex items-center gap-2.5",
+              "text-[hsl(var(--secondary))]"
+            )}
+          >
             <KeyboardIcon className="size-5" />
-            Keyboard Shortcuts
+            <span className="font-medium tracking-wide">
+              Keyboard Shortcuts
+            </span>
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-6">
+        {/* Two-column grid for main groups */}
+        <div className="mt-2 grid grid-cols-2 gap-6">
           {shortcutGroups.map((group) => (
-            <div key={group.title}>
-              <h3 className="mb-3 font-medium text-muted-foreground text-xs uppercase tracking-wider">
-                {group.title}
-              </h3>
-              <div className="space-y-2.5">
-                {group.shortcuts.map((shortcut) => (
-                  <div
-                    className="flex items-center justify-between rounded-md px-2 py-1.5 transition-colors hover:bg-muted/50"
-                    key={shortcut.keys}
-                  >
-                    <span className="text-sm">{shortcut.description}</span>
-                    <div className="flex items-center gap-1">
-                      {shortcut.keys.split("+").map((key, i) => (
-                        <span key={key}>
-                          {i > 0 && (
-                            <span className="mx-0.5 text-muted-foreground/50">
-                              +
-                            </span>
-                          )}
-                          <kbd className="inline-flex min-w-[1.75rem] items-center justify-center rounded border border-border/80 bg-gradient-to-b from-muted/80 to-muted px-1.5 py-0.5 font-mono text-[11px] text-foreground shadow-[0_2px_0_hsl(var(--border)),inset_0_1px_0_hsl(var(--background)/0.5)]">
-                            {key}
-                          </kbd>
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
+            <ShortcutGroupCard group={group} key={group.title} />
           ))}
+        </div>
+
+        {/* Footer shortcut - single row */}
+        <div
+          className={cn(
+            "mt-4 flex items-center justify-between",
+            "rounded-md border border-dashed px-3 py-2",
+            "border-[hsl(var(--secondary)/0.15)]",
+            "bg-[hsl(var(--secondary)/0.03)]"
+          )}
+        >
+          <div className="flex items-center gap-2">
+            <span
+              className={cn(
+                "font-mono text-[9px] uppercase tracking-[0.15em]",
+                "text-[hsl(var(--secondary)/0.5)]"
+              )}
+            >
+              Forms
+            </span>
+            <span className="text-[13px] text-muted-foreground">
+              {footerShortcut.description}
+            </span>
+          </div>
+          <KeyCombo keys={footerShortcut.keys} />
         </div>
       </DialogContent>
     </Dialog>
