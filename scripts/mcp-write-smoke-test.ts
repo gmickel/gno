@@ -27,7 +27,6 @@ let testCollectionPath: string;
 // Colors for output
 const green = (s: string) => `\x1b[32m${s}\x1b[0m`;
 const red = (s: string) => `\x1b[31m${s}\x1b[0m`;
-const yellow = (s: string) => `\x1b[33m${s}\x1b[0m`;
 const dim = (s: string) => `\x1b[2m${s}\x1b[0m`;
 
 function log(msg: string) {
@@ -595,7 +594,8 @@ async function main() {
     await testJobManagement();
     await testRemoveCollection();
   } catch (err) {
-    log(red(`\nFatal error: ${err}`));
+    const message = err instanceof Error ? err.message : String(err);
+    log(red(`\nFatal error: ${message}`));
   } finally {
     await stopMcp();
 
