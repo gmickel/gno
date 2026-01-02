@@ -1,13 +1,13 @@
 # GNO
 
-**Your Local Second Brain** — Index, search, and synthesize your entire digital life.
+**Your Local Second Brain**: Index, search, and synthesize your entire digital life.
 
 [![npm](./assets/badges/npm.svg)](https://www.npmjs.com/package/@gmickel/gno)
 [![MIT License](./assets/badges/license.svg)](./LICENSE)
 [![Website](./assets/badges/website.svg)](https://gno.sh)
 [![Twitter](./assets/badges/twitter.svg)](https://twitter.com/gmickel)
 
-GNO is a local knowledge engine for privacy-conscious developers and AI agents. Index your notes, code, PDFs, and Office docs. Get hybrid search (BM25 + vector + reranking) and AI-powered answers—all running 100% on your machine.
+GNO is a local knowledge engine for privacy-conscious developers and AI agents. Index your notes, code, PDFs, and Office docs. Get hybrid search (BM25 + vector + reranking) and AI-powered answers, all running 100% on your machine.
 
 ---
 
@@ -85,7 +85,7 @@ Check status: `gno mcp status`
 
 #### Skills (Claude Code, Codex, OpenCode)
 
-Skills integrate via CLI—no MCP overhead:
+Skills integrate via CLI with no MCP overhead:
 
 ```bash
 gno skill install --scope user       # User-wide
@@ -106,7 +106,7 @@ gno skill install --target all       # Both Claude + Codex
 | `gno query`        | Hybrid              | Best accuracy (BM25 + vector + reranking) |
 | `gno ask --answer` | RAG                 | Direct answers with citations             |
 
-**BM25** indexes full documents (not chunks) with Snowball stemming—"running" matches "run".
+**BM25** indexes full documents (not chunks) with Snowball stemming, so "running" matches "run".
 **Vector** embeds chunks with document titles for context awareness.
 
 ```bash
@@ -155,7 +155,7 @@ GNO exposes 6 tools via [Model Context Protocol](https://modelcontextprotocol.io
 | `gno_multi_get` | Batch document retrieval    |
 | `gno_status`    | Index health check          |
 
-**Design**: MCP tools are retrieval-only. Your AI assistant (Claude, GPT-4) synthesizes answers from retrieved context—best retrieval (GNO) + best reasoning (your LLM).
+**Design**: MCP tools are retrieval-only. Your AI assistant (Claude, GPT-4) synthesizes answers from retrieved context. Best retrieval (GNO) + best reasoning (your LLM).
 
 [MCP setup guide →](https://gno.sh/docs/MCP/)
 
@@ -163,7 +163,7 @@ GNO exposes 6 tools via [Model Context Protocol](https://modelcontextprotocol.io
 
 ## Web UI
 
-Visual dashboard for search, browsing, editing, and AI answers—right in your browser.
+Visual dashboard for search, browsing, editing, and AI answers. Right in your browser.
 
 ```bash
 gno serve                    # Start on port 3000
@@ -174,12 +174,12 @@ gno serve --port 8080        # Custom port
 
 Open `http://localhost:3000` to:
 
-- **Search** — BM25, vector, or hybrid modes with visual results
-- **Browse** — Paginated document list, filter by collection
-- **Edit** — Create, edit, and delete documents with live preview
-- **Ask** — AI-powered Q&A with citations
-- **Manage Collections** — Add, remove, and re-index collections
-- **Switch presets** — Change models live without restart
+- **Search**: BM25, vector, or hybrid modes with visual results
+- **Browse**: Paginated document list, filter by collection
+- **Edit**: Create, edit, and delete documents with live preview
+- **Ask**: AI-powered Q&A with citations
+- **Manage Collections**: Add, remove, and re-index collections
+- **Switch presets**: Change models live without restart
 
 ### Search
 
@@ -214,7 +214,7 @@ Full-featured markdown editor with:
 
 ![GNO AI Answers](./assets/screenshots/webui-ask-answer.jpg)
 
-Ask questions in natural language—GNO searches your documents and synthesizes answers with inline citations linking to sources.
+Ask questions in natural language. GNO searches your documents and synthesizes answers with inline citations linking to sources.
 
 Everything runs locally. No cloud, no accounts, no data leaving your machine.
 
@@ -291,11 +291,11 @@ graph TD
     M --> N[Final Results]
 ```
 
-0. **Strong Signal Check** — Skip expansion if BM25 has confident match (saves 1-3s)
-1. **Query Expansion** — LLM generates lexical variants, semantic rephrases, and a [HyDE](https://arxiv.org/abs/2212.10496) passage
-2. **Parallel Retrieval** — Document-level BM25 + chunk-level vector search on all variants
-3. **Fusion** — RRF with 2× weight for original query, tiered bonus for top ranks
-4. **Reranking** — Qwen3-Reranker scores full documents (32K context), blended with fusion
+0. **Strong Signal Check**: Skip expansion if BM25 has confident match (saves 1-3s)
+1. **Query Expansion**: LLM generates lexical variants, semantic rephrases, and a [HyDE](https://arxiv.org/abs/2212.10496) passage
+2. **Parallel Retrieval**: Document-level BM25 + chunk-level vector search on all variants
+3. **Fusion**: RRF with 2× weight for original query, tiered bonus for top ranks
+4. **Reranking**: Qwen3-Reranker scores full documents (32K context), blended with fusion
 
 > **Deep dive**: [How Search Works](https://gno.sh/docs/HOW-SEARCH-WORKS/)
 
@@ -310,12 +310,12 @@ graph TD
 | **Web UI**          | Visual dashboard for search, browse, edit, and AI Q&A |
 | **REST API**        | HTTP API for custom tools and integrations            |
 | **Multi-Format**    | Markdown, PDF, DOCX, XLSX, PPTX, plain text           |
-| **Local LLM**       | AI answers via llama.cpp—no API keys                  |
+| **Local LLM**       | AI answers via llama.cpp, no API keys                 |
 | **Privacy First**   | 100% offline, zero telemetry, your data stays yours   |
 | **MCP Server**      | Works with Claude Desktop, Cursor, Zed, + 8 more      |
 | **Collections**     | Organize sources with patterns, excludes, contexts    |
 | **Multilingual**    | 30+ languages, auto-detection, cross-lingual search   |
-| **Incremental**     | SHA-256 tracking—only changed files re-indexed        |
+| **Incremental**     | SHA-256 tracking, only changed files re-indexed       |
 | **Keyboard First**  | ⌘N capture, ⌘K search, ⌘/ shortcuts, ⌘S save          |
 
 ---

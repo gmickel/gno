@@ -7,7 +7,7 @@ title: Home
 
 ## Why GNO?
 
-Most search tools are either fast but dumb (grep, find) or smart but slow and cloud-dependent. GNO bridges this gap by running a full hybrid search pipeline—keyword, vector, and re-ranking—entirely on your local machine.
+Most search tools are either fast but dumb (grep, find) or smart but slow and cloud-dependent. GNO bridges this gap by running a full hybrid search pipeline (keyword, vector, and re-ranking) entirely on your local machine.
 
 ## For AI Agents
 

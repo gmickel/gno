@@ -51,7 +51,7 @@ Used in search results and resource access.
 
 Best Matching 25 - a ranking function for full-text search. Matches keywords based on term frequency and document length. Fast and works without models.
 
-GNO uses **document-level BM25**: entire documents are indexed, not individual chunks. This means a query for "authentication JWT" finds documents where these terms appear anywhere—even in different sections.
+GNO uses **document-level BM25**: entire documents are indexed, not individual chunks. This means a query for "authentication JWT" finds documents where these terms appear anywhere, even in different sections.
 
 ```bash
 gno search "keyword match"
@@ -131,7 +131,7 @@ Text segment (~800 tokens) created during indexing. Each chunk is:
 
 ### Contextual Chunking
 
-Technique where each chunk is embedded with its document title prepended: `title: My Doc | text: chunk content...`. Helps the embedding model understand context—a chunk about "configuration" in a React doc is semantically different from one in a database doc. Based on Anthropic's contextual retrieval research.
+Technique where each chunk is embedded with its document title prepended: `title: My Doc | text: chunk content...`. Helps the embedding model understand context. A chunk about "configuration" in a React doc is semantically different from one in a database doc. Based on Anthropic's contextual retrieval research.
 
 ### Embedding
 

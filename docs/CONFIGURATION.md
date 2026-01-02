@@ -167,7 +167,7 @@ Model configuration for embeddings and AI answers.
 | `balanced` | ~2GB   | Good balance (default)        |
 | `quality`  | ~2.5GB | Best answers, complex content |
 
-> **Note**: When using GNO standalone with `--answer`, the **quality** preset is required for documents containing Markdown tables or other structured content. The smaller models in slim/balanced presets cannot reliably parse tabular data. When GNO is used via MCP, skill, or CLI by AI agents (Claude Code, Codex, etc.), the agent handles answer generation—so any preset works for retrieval.
+> **Note**: When using GNO standalone with `--answer`, the **quality** preset is required for documents containing Markdown tables or other structured content. The smaller models in slim/balanced presets cannot reliably parse tabular data. When GNO is used via MCP, skill, or CLI by AI agents (Claude Code, Codex, etc.), the agent handles answer generation, so any preset works for retrieval.
 
 ### Model Details
 
@@ -182,7 +182,7 @@ All presets use:
 | balanced | bge-m3-Q4 | Qwen3-Reranker-0.6B-Q8 | SmolLM3-3B-Q4 |
 | quality  | bge-m3-Q4 | Qwen3-Reranker-0.6B-Q8 | Qwen3-4B-Q4   |
 
-The reranker's 32K context window allows scoring complete documents—tables, code, all sections—rather than truncated snippets.
+The reranker's 32K context window allows scoring complete documents (tables, code, all sections) rather than truncated snippets.
 
 ### Custom Models
 

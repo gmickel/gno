@@ -99,7 +99,7 @@ Before running expensive LLM-based query expansion, GNO checks if BM25 already h
 1. **High confidence**: Top result's normalized score ≥ 0.84
 2. **Clear separation**: Gap between #1 and #2 ≥ 0.14
 
-Both conditions must be true. This is conservative—we'd rather spend time on expansion than miss relevant results.
+Both conditions must be true. This is conservative: we'd rather spend time on expansion than miss relevant results.
 
 When triggered, you'll see `skipped_strong` in `--explain` output. Typical speedup: 1-3 seconds saved per query.
 
@@ -162,7 +162,7 @@ Fast keyword search using SQLite FTS5 with document-level indexing. Best for:
 - Code identifiers
 - Known phrases
 
-**Document-level BM25**: Unlike chunk-level search, GNO indexes entire documents. This means a query for "authentication JWT" finds documents where these terms appear anywhere—even in different sections.
+**Document-level BM25**: Unlike chunk-level search, GNO indexes entire documents. This means a query for "authentication JWT" finds documents where these terms appear anywhere, even in different sections.
 
 **Snowball stemming**: FTS5 uses the Snowball stemmer supporting 20+ languages. "running" matches "run", "scored" matches "score", plurals match singulars.
 
@@ -178,7 +178,7 @@ Pure semantic search using embeddings. Best for:
 - "How do I..." questions
 - Finding related content
 
-**Contextual chunking**: Each chunk is embedded with its document title prepended (`title: My Doc | text: ...`). This helps the embedding model understand context—a chunk about "configuration" in a React doc is different from one in a database doc.
+**Contextual chunking**: Each chunk is embedded with its document title prepended (`title: My Doc | text: ...`). This helps the embedding model understand context. A chunk about "configuration" in a React doc is different from one in a database doc.
 
 ```bash
 gno vsearch "how to prevent memory leaks in React"
@@ -288,7 +288,7 @@ After RRF fusion, top candidates are reranked using **Qwen3-Reranker**. For effi
 
 ### Position-Aware Blending
 
-We don't just replace fusion scores with rerank scores—we blend them based on position:
+We don't just replace fusion scores with rerank scores. We blend them based on position:
 
 | Position | Fusion Weight | Rerank Weight | Why                                               |
 | -------- | ------------- | ------------- | ------------------------------------------------- |

@@ -64,9 +64,9 @@ The API binds to `127.0.0.1` only and is not accessible from the network.
 
 All mutating requests (POST, DELETE) require one of:
 
-1. **Same-origin request** — No `Origin` header (curl, scripts)
-2. **Valid Origin** — `Origin: http://localhost:<port>` or `http://127.0.0.1:<port>`
-3. **API Token** — `X-GNO-Token` header (for non-browser clients)
+1. **Same-origin request**: No `Origin` header (curl, scripts)
+2. **Valid Origin**: `Origin: http://localhost:<port>` or `http://127.0.0.1:<port>`
+3. **API Token**: `X-GNO-Token` header (for non-browser clients)
 
 Cross-origin requests from other domains are rejected with `403 Forbidden`.
 
@@ -1135,6 +1135,6 @@ None. The API runs locally with no rate limiting. Performance depends on your ha
 
 ## See Also
 
-- [Web UI Guide](./WEB-UI.md) — Visual interface documentation
-- [CLI Reference](./CLI.md) — Command-line interface
-- [MCP Integration](./MCP.md) — AI assistant integration
+- [Web UI Guide](./WEB-UI.md): Visual interface documentation
+- [CLI Reference](./CLI.md): Command-line interface
+- [MCP Integration](./MCP.md): AI assistant integration

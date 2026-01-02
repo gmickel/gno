@@ -133,7 +133,7 @@ gno mcp uninstall --target X    # Remove GNO from a target
 
 Use GNO directly in [Raycast AI](https://www.raycast.com/core-features/ai) with `@gno` mentions. Works in both Quick AI and AI Chat.
 
-> **Requires**: Raycast Pro subscription (for AI features) — or 50 free messages for non-Pro users
+> **Requires**: Raycast Pro subscription (for AI features), or 50 free messages for non-Pro users
 >
 > **Docs**: [Raycast AI](https://manual.raycast.com/ai) · [MCP Support](https://manual.raycast.com/model-context-protocol)
 
@@ -187,13 +187,13 @@ Once installed, `@gno` works anywhere in Raycast AI:
 | **AI Chat**     | Search "AI Chat" or assign hotkey (e.g., ⌥J) | Extended research, conversation history |
 | **AI Commands** | Custom commands with `@gno`                  | Repeatable workflows                    |
 
-**Quick AI** appears as a floating window above your apps — ideal for quick lookups:
+**Quick AI** appears as a floating window above your apps, ideal for quick lookups:
 
 ```
 @gno what's in my notes about TypeScript generics?
 ```
 
-**AI Chat** is a full window with sidebar and history — better for research sessions:
+**AI Chat** is a full window with sidebar and history, better for research sessions:
 
 ```
 @gno which model scored highest on gmickel-bench
@@ -219,7 +219,7 @@ The AI will call GNO tools (gno_query, gno_get) and synthesize answers from your
 @gno refresh the notes collection
 ```
 
-**Search depth** — ask for faster or more thorough searches:
+**Search depth**: ask for faster or more thorough searches:
 
 ```
 @gno quick search for TypeScript errors          # fast mode (~0.7s)

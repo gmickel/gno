@@ -13,7 +13,7 @@ gno serve
 
 ## Overview
 
-The GNO Web UI provides a complete graphical interface to your local knowledge index. Create, edit, search, and manage your documents—all running on your machine with no cloud dependencies.
+The GNO Web UI provides a complete graphical interface to your local knowledge index. Create, edit, search, and manage your documents, all running on your machine with no cloud dependencies.
 
 | Page            | Purpose                                           |
 | :-------------- | :------------------------------------------------ |
@@ -41,10 +41,10 @@ gno serve --index research   # Use named index
 
 Navigate to `http://localhost:3000`. The dashboard shows:
 
-- **Document count** — Total indexed documents
-- **Chunk count** — Text segments for search
-- **Collections** — Click to browse by source
-- **Quick Capture** — Create new notes instantly
+- **Document count**: Total indexed documents
+- **Chunk count**: Text segments for search
+- **Collections**: Click to browse by source
+- **Quick Capture**: Create new notes instantly
 
 ### 3. Create a Note
 
@@ -69,7 +69,7 @@ Click **Search** or press **/**. Choose your mode:
 
 ### 5. Ask Questions
 
-Click **Ask** for AI-powered answers. Type your question—GNO searches your documents and synthesizes an answer with citations.
+Click **Ask** for AI-powered answers. Type your question. GNO searches your documents and synthesizes an answer with citations.
 
 > **Note**: Models auto-download on first use. Initial startup may take a moment.
 
@@ -94,7 +94,7 @@ The split-view editor provides:
 
 ### Keyboard Shortcuts
 
-Press **?** to view all shortcuts. Single-key shortcuts (no modifier needed) work anywhere outside text inputs—like GitHub and Gmail.
+Press **?** to view all shortcuts. Single-key shortcuts (no modifier needed) work anywhere outside text inputs, like GitHub and Gmail.
 
 #### Global Shortcuts
 
@@ -149,19 +149,19 @@ From document view, click the trash icon. This:
 
 View and manage your document collections:
 
-- **Document count** — Files indexed
-- **Chunk count** — Text segments created
-- **Embedded %** — Vector embedding progress
-- **Re-index** — Update collection index
-- **Remove** — Delete collection from config
+- **Document count**: Files indexed
+- **Chunk count**: Text segments created
+- **Embedded %**: Vector embedding progress
+- **Re-index**: Update collection index
+- **Remove**: Delete collection from config
 
 ### Adding Collections
 
 Click **Add Collection** and provide:
 
-1. **Path** — Folder path (e.g., `~/Documents/notes`)
-2. **Name** — Optional (defaults to folder name)
-3. **Pattern** — Glob pattern (e.g., `**/*.md`)
+1. **Path**: Folder path (e.g., `~/Documents/notes`)
+2. **Name**: Optional (defaults to folder name)
+3. **Pattern**: Glob pattern (e.g., `**/*.md`)
 
 The collection is added to config and indexed immediately.
 
@@ -214,11 +214,11 @@ When syncing or adding collections, a progress indicator shows:
 
 The Search page offers three retrieval modes:
 
-**BM25** — Traditional keyword search. Best for exact phrases, code identifiers, known terms.
+**BM25**: Traditional keyword search. Best for exact phrases, code identifiers, known terms.
 
-**Vector** — Semantic similarity search. Best for concepts, natural language questions, finding related content.
+**Vector**: Semantic similarity search. Best for concepts, natural language questions, finding related content.
 
-**Hybrid** — Combines BM25 + vector with RRF fusion and optional reranking. Best accuracy for most queries.
+**Hybrid**: Combines BM25 + vector with RRF fusion and optional reranking. Best accuracy for most queries.
 
 ### Document Browser
 
@@ -283,9 +283,9 @@ The Web UI is designed for local use only:
 
 > **Pro tip**: Want remote access? Use a tunnel:
 >
-> - [Tailscale Serve](https://tailscale.com/kb/1312/serve) — Expose to your Tailnet
-> - [Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/) — Free tier with auth
-> - [ngrok](https://ngrok.com/) — Quick setup, supports basic auth
+> - [Tailscale Serve](https://tailscale.com/kb/1312/serve): Expose to your Tailnet
+> - [Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/): Free tier with auth
+> - [ngrok](https://ngrok.com/): Quick setup, supports basic auth
 
 ---
 

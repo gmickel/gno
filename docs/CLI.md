@@ -54,7 +54,7 @@ gno search "auth" --json
 gno search "meeting" --files
 ```
 
-**Document-level indexing**: Finds documents where terms appear anywhere—even across sections. "authentication JWT" matches docs with those terms in different parts.
+**Document-level indexing**: Finds documents where terms appear anywhere, even across sections. "authentication JWT" matches docs with those terms in different parts.
 
 **Snowball stemming**: "running" matches "run", "scored" matches "score", plurals match singulars.
 
@@ -134,9 +134,9 @@ gno ask "quick lookup" --fast            # Fastest retrieval
 gno ask "complex topic" --thorough       # Best recall
 ```
 
-**Full-document context**: When `--answer` is used, GNO passes complete document content to the generation model—not truncated snippets. This ensures the LLM sees tables, code examples, and full context needed for accurate answers.
+**Full-document context**: When `--answer` is used, GNO passes complete document content to the generation model, not truncated snippets. This ensures the LLM sees tables, code examples, and full context needed for accurate answers.
 
-**Preset requirement**: For documents with markdown tables or structured data, use the `quality` preset (`gno models use quality`). Smaller models cannot reliably parse tabular content. This only applies to standalone `--answer` usage—when AI agents (Claude Code, Codex) call GNO via MCP/skill/CLI, they handle answer generation.
+**Preset requirement**: For documents with markdown tables or structured data, use the `quality` preset (`gno models use quality`). Smaller models cannot reliably parse tabular content. This only applies to standalone `--answer` usage. When AI agents (Claude Code, Codex) call GNO via MCP/skill/CLI, they handle answer generation.
 
 Options:
 
@@ -282,7 +282,7 @@ Options:
 - `--models-pull` - Download models if missing
 - `--git-pull` - Run `git pull` in git repositories
 
-**Incremental**: Both `gno index` and `gno update` are incremental. Files are tracked by SHA-256 hash—only new or modified files are processed. Unchanged files are skipped instantly.
+**Incremental**: Both `gno index` and `gno update` are incremental. Files are tracked by SHA-256 hash. Only new or modified files are processed. Unchanged files are skipped instantly.
 
 ### gno embed
 

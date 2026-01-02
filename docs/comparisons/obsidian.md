@@ -160,4 +160,4 @@ gno ask "what were the action items from the team sync" --answer
 | Search PDFs in vault       | GNO      |
 | Script/automate search     | GNO      |
 
-GNO extends Obsidian's capabilities rather than replacing it. Your Obsidian vault becomes searchable from anywhere—terminal, AI assistants, scripts—while Obsidian remains your note-taking home.
+GNO extends Obsidian's capabilities rather than replacing it. Your Obsidian vault becomes searchable from anywhere (terminal, AI assistants, scripts) while Obsidian remains your note-taking home.

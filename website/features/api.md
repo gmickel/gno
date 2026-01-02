@@ -20,7 +20,7 @@ commands:
 
 ## Your Index, Programmable
 
-Every GNO feature is accessible via REST API. Build custom dashboards, integrate with scripts, automate document workflows—all with simple HTTP calls.
+Every GNO feature is accessible via REST API. Build custom dashboards, integrate with scripts, automate document workflows, all with simple HTTP calls.
 
 ```bash
 gno serve
@@ -141,10 +141,10 @@ Search documentation as part of your pipeline.
 
 ## No Limits
 
-- **No authentication** — It's your local machine
-- **No rate limits** — Performance depends on hardware
-- **No data limits** — Index as much as you want
-- **No cloud** — Everything stays local
+- **No authentication**: It's your local machine
+- **No rate limits**: Performance depends on hardware
+- **No data limits**: Index as much as you want
+- **No cloud**: Everything stays local
 
 ## Full Documentation
 

@@ -2,7 +2,7 @@
 
 Use GNO as a skill in AI coding agents like Claude Code, OpenCode, Amp, OpenAI Codex, VS Code Copilot, and Cursor.
 
-> **Why Skills?** Skills are the preferred integration method due to progressive discovery—tools are only loaded when invoked via `/gno`, avoiding context pollution from unused tool definitions. See [agentskills.io](https://agentskills.io/home) for the specification.
+> **Why Skills?** Skills are the preferred integration method due to progressive discovery: tools are only loaded when invoked via `/gno`, avoiding context pollution from unused tool definitions. See [agentskills.io](https://agentskills.io/home) for the specification.
 >
 > Skills work in any client that supports the spec. OpenCode and Amp use the same `.claude` path as Claude Code. VS Code Copilot and Cursor require manual setup (see below).
 
