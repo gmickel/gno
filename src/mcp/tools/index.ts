@@ -12,6 +12,7 @@ import type { ToolContext } from "../server";
 
 import { handleGet } from "./get";
 import { handleJobStatus } from "./job-status";
+import { handleListJobs } from "./list-jobs";
 import { handleMultiGet } from "./multi-get";
 import { handleQuery } from "./query";
 import { handleSearch } from "./search";
@@ -68,6 +69,10 @@ const statusInputSchema = z.object({});
 
 const jobStatusInputSchema = z.object({
   jobId: z.string().min(1, "Job ID cannot be empty"),
+});
+
+const listJobsInputSchema = z.object({
+  limit: z.number().int().min(1).max(100).default(10),
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -173,5 +178,12 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
     "Get status of an async job",
     jobStatusInputSchema.shape,
     (args) => handleJobStatus(args, ctx)
+  );
+
+  server.tool(
+    "gno_list_jobs",
+    "List active and recent jobs",
+    listJobsInputSchema.shape,
+    (args) => handleListJobs(args, ctx)
   );
 }
