@@ -16,8 +16,10 @@ import {
   CloudIcon,
   EyeIcon,
   EyeOffIcon,
+  LinkIcon,
   Loader2Icon,
   PenIcon,
+  UnlinkIcon,
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -131,10 +133,51 @@ export default function DocumentEditor({ navigate }: PageProps) {
   const [saveError, setSaveError] = useState<string | null>(null);
 
   const [showPreview, setShowPreview] = useState(true);
+  const [syncScroll, setSyncScroll] = useState(true);
   const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
   const editorRef = useRef<CodeMirrorEditorRef>(null);
+  const previewRef = useRef<HTMLDivElement>(null);
+  const isScrollingSyncRef = useRef(false);
 
   const hasUnsavedChanges = content !== originalContent;
+
+  // Scroll sync handlers with loop prevention
+  const handleEditorScroll = useCallback(
+    (scrollPercent: number) => {
+      if (!syncScroll || !showPreview || isScrollingSyncRef.current) return;
+
+      const preview = previewRef.current;
+      if (!preview) return;
+
+      isScrollingSyncRef.current = true;
+      const maxScroll = preview.scrollHeight - preview.clientHeight;
+      if (maxScroll > 0) {
+        preview.scrollTop = scrollPercent * maxScroll;
+      }
+      requestAnimationFrame(() => {
+        isScrollingSyncRef.current = false;
+      });
+    },
+    [syncScroll, showPreview]
+  );
+
+  const handlePreviewScroll = useCallback(() => {
+    if (!syncScroll || isScrollingSyncRef.current) return;
+
+    const preview = previewRef.current;
+    if (!preview) return;
+
+    const maxScroll = preview.scrollHeight - preview.clientHeight;
+    if (maxScroll <= 0) return;
+
+    const scrollPercent = preview.scrollTop / maxScroll;
+
+    isScrollingSyncRef.current = true;
+    editorRef.current?.scrollToPercent(scrollPercent);
+    requestAnimationFrame(() => {
+      isScrollingSyncRef.current = false;
+    });
+  }, [syncScroll]);
 
   // Save function
   const saveDocument = useCallback(
@@ -442,6 +485,32 @@ export default function DocumentEditor({ navigate }: PageProps) {
             </Tooltip>
           </TooltipProvider>
 
+          {/* Sync scroll toggle (only show when preview is visible) */}
+          {showPreview && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    onClick={() => setSyncScroll(!syncScroll)}
+                    size="sm"
+                    variant={syncScroll ? "secondary" : "ghost"}
+                  >
+                    {syncScroll ? (
+                      <LinkIcon className="size-4" />
+                    ) : (
+                      <UnlinkIcon className="size-4" />
+                    )}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>
+                    {syncScroll ? "Disable scroll sync" : "Enable scroll sync"}
+                  </p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
+
           {/* Save button */}
           <Button
             disabled={!hasUnsavedChanges || saveStatus === "saving"}
@@ -468,13 +537,18 @@ export default function DocumentEditor({ navigate }: PageProps) {
             className="h-full"
             initialContent={content}
             onChange={handleContentChange}
+            onScroll={handleEditorScroll}
             ref={editorRef}
           />
         </div>
 
         {/* Preview pane */}
         {showPreview && (
-          <div className="w-1/2 min-h-0 overflow-auto bg-background p-6">
+          <div
+            className="w-1/2 min-h-0 overflow-auto bg-background p-6"
+            onScroll={handlePreviewScroll}
+            ref={previewRef}
+          >
             <div className="mx-auto max-w-3xl">
               <MarkdownPreview content={content} />
             </div>

@@ -21,6 +21,8 @@ export interface CodeMirrorEditorProps {
   initialContent: string;
   /** Called when content changes */
   onChange: (content: string) => void;
+  /** Called when scroll position changes (0-1 percentage) */
+  onScroll?: (scrollPercent: number) => void;
   /** Additional CSS classes */
   className?: string;
 }
@@ -36,20 +38,27 @@ export interface CodeMirrorEditorRef {
   wrapSelection: (prefix: string, suffix: string) => void;
   /** Insert text at cursor position */
   insertAtCursor: (text: string) => void;
+  /** Scroll to percentage position (0-1) */
+  scrollToPercent: (percent: number) => void;
 }
 
 function CodeMirrorEditorInner(
-  { initialContent, onChange, className }: CodeMirrorEditorProps,
+  { initialContent, onChange, onScroll, className }: CodeMirrorEditorProps,
   ref: ForwardedRef<CodeMirrorEditorRef>
 ) {
   const containerRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
   const onChangeRef = useRef(onChange);
+  const onScrollRef = useRef(onScroll);
 
-  // Keep onChange ref current to avoid recreating editor on callback change
+  // Keep callback refs current to avoid recreating editor
   useEffect(() => {
     onChangeRef.current = onChange;
   }, [onChange]);
+
+  useEffect(() => {
+    onScrollRef.current = onScroll;
+  }, [onScroll]);
 
   // Initialize CodeMirror
   useEffect(() => {
@@ -66,6 +75,17 @@ function CodeMirrorEditorInner(
           if (update.docChanged) {
             onChangeRef.current(update.state.doc.toString());
           }
+        }),
+        // Scroll event handler
+        EditorView.domEventHandlers({
+          scroll: () => {
+            const scroller = view.scrollDOM;
+            const maxScroll = scroller.scrollHeight - scroller.clientHeight;
+            if (maxScroll > 0 && onScrollRef.current) {
+              const percent = scroller.scrollTop / maxScroll;
+              onScrollRef.current(percent);
+            }
+          },
         }),
         // Dark theme base styling
         EditorView.theme({
@@ -133,6 +153,16 @@ function CodeMirrorEditorInner(
         selection: { anchor: pos + text.length },
       });
       view.focus();
+    },
+    scrollToPercent: (percent: number) => {
+      const view = viewRef.current;
+      if (!view) return;
+
+      const scroller = view.scrollDOM;
+      const maxScroll = scroller.scrollHeight - scroller.clientHeight;
+      if (maxScroll > 0) {
+        scroller.scrollTop = percent * maxScroll;
+      }
     },
   }));
 
