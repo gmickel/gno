@@ -398,7 +398,11 @@ export function findBunPath(): string {
  * Uses absolute paths because Claude Desktop has a limited PATH.
  * Cross-platform: avoids shelling out to `which`.
  */
-export function buildMcpServerEntry(): McpServerEntry {
+export function buildMcpServerEntry(
+  options: {
+    enableWrite?: boolean;
+  } = {}
+): McpServerEntry {
   const bunPath = findBunPath();
   const home = homedir();
   const isWindows = platform() === "win32";
@@ -411,7 +415,11 @@ export function buildMcpServerEntry(): McpServerEntry {
   ) {
     // Dev mode: run the entry script directly with bun
     const entryScript = scriptPath.replace(COMMANDS_PATH_PATTERN, "/index.ts");
-    return { command: bunPath, args: ["run", entryScript, "mcp"] };
+    const args = ["run", entryScript, "mcp"];
+    if (options.enableWrite) {
+      args.push("--enable-write");
+    }
+    return { command: bunPath, args };
   }
 
   // 2. Check common gno install locations (cross-platform)
@@ -428,13 +436,21 @@ export function buildMcpServerEntry(): McpServerEntry {
 
   for (const gnoPath of gnoCandidates) {
     if (existsSync(gnoPath)) {
-      return { command: bunPath, args: [gnoPath, "mcp"] };
+      const args = [gnoPath, "mcp"];
+      if (options.enableWrite) {
+        args.push("--enable-write");
+      }
+      return { command: bunPath, args };
     }
   }
 
   // 3. Fallback to bunx (works if gno is published to npm)
   // Note: This may trigger network access on first run
-  return { command: bunPath, args: ["x", "@gmickel/gno", "mcp"] };
+  const args = ["x", "@gmickel/gno", "mcp"];
+  if (options.enableWrite) {
+    args.push("--enable-write");
+  }
+  return { command: bunPath, args };
 }
 
 /**

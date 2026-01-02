@@ -766,11 +766,17 @@ function wireMcpCommand(program: Command): void {
     .command("serve", { isDefault: true })
     .description("Start MCP server (stdio transport)")
     .helpOption(false)
-    .action(async () => {
+    .option(
+      "--enable-write",
+      "Enable write operations (capture, add-collection, sync, remove-collection)"
+    )
+    .action(async (cmdOpts: Record<string, unknown>) => {
       const { mcpCommand } = await import("./commands/mcp.js");
       const globalOpts = program.opts();
       const globals = parseGlobalOptions(globalOpts);
-      await mcpCommand(globals);
+      await mcpCommand(globals, {
+        enableWrite: Boolean(cmdOpts.enableWrite),
+      });
     });
 
   // install - Install gno MCP server to client configs
@@ -789,6 +795,10 @@ function wireMcpCommand(program: Command): void {
     )
     .option("-f, --force", "overwrite existing configuration")
     .option("--dry-run", "show what would be done without making changes")
+    .option(
+      "--enable-write",
+      "Enable write operations in installed MCP configuration"
+    )
     .option("--json", "JSON output")
     .action(async (cmdOpts: Record<string, unknown>) => {
       const target = cmdOpts.target as string;
@@ -820,6 +830,7 @@ function wireMcpCommand(program: Command): void {
         scope: scope as "user" | "project",
         force: Boolean(cmdOpts.force),
         dryRun: Boolean(cmdOpts.dryRun),
+        enableWrite: Boolean(cmdOpts.enableWrite),
         // Pass undefined if not set, so global --json can take effect
         json: cmdOpts.json === true ? true : undefined,
       });

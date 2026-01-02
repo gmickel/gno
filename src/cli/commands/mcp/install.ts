@@ -35,6 +35,7 @@ export interface InstallOptions {
   scope?: McpScope;
   force?: boolean;
   dryRun?: boolean;
+  enableWrite?: boolean;
   /** Override cwd (testing) */
   cwd?: string;
   /** Override home dir (testing) */
@@ -147,6 +148,7 @@ export async function installMcp(opts: InstallOptions = {}): Promise<void> {
   const scope = opts.scope ?? "user";
   const force = opts.force ?? false;
   const dryRun = opts.dryRun ?? false;
+  const enableWrite = opts.enableWrite ?? false;
   const globals = safeGetGlobals();
   const json = opts.json ?? globals.json;
   const quiet = opts.quiet ?? globals.quiet;
@@ -160,7 +162,7 @@ export async function installMcp(opts: InstallOptions = {}): Promise<void> {
   }
 
   // Build server entry (uses process.execPath, always succeeds)
-  const serverEntry = buildMcpServerEntry();
+  const serverEntry = buildMcpServerEntry({ enableWrite });
 
   // Install
   const result = await installToTarget(target, scope, serverEntry, {

@@ -15,6 +15,7 @@ import type { SqliteAdapter } from "../store/sqlite/adapter";
 
 import { MCP_SERVER_NAME, VERSION, getIndexDbPath } from "../app/constants";
 import { JobManager } from "../core/job-manager";
+import { envIsSet } from "../llm/policy";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Simple Promise Mutex (avoids async-mutex dependency)
@@ -144,7 +145,8 @@ export async function startMcpServer(options: McpServerOptions): Promise<void> {
   // Server instance ID (per-process)
   const serverInstanceId = crypto.randomUUID();
 
-  const enableWrite = options.enableWrite ?? false;
+  const enableWrite =
+    options.enableWrite ?? envIsSet(process.env, "GNO_MCP_ENABLE_WRITE");
   const dbPath = getIndexDbPath(options.indexName);
   const writeLockPath = join(dirname(dbPath), ".mcp-write.lock");
   const jobManager = new JobManager({

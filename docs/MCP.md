@@ -34,6 +34,7 @@ GNO's MCP tools are **retrieval-only by design**. Unlike the CLI's `gno ask` com
 Use the CLI to install GNO as an MCP server:
 
 ```bash
+# Read-only (default)
 gno mcp install                           # Claude Desktop (default)
 gno mcp install --target cursor           # Cursor
 gno mcp install --target zed              # Zed
@@ -45,6 +46,15 @@ gno mcp install --target librechat        # LibreChat
 gno mcp install --target claude-code      # Claude Code CLI
 gno mcp install --target codex            # OpenAI Codex CLI
 ```
+
+```bash
+# Write-enabled
+gno mcp install --enable-write                    # Claude Desktop (default)
+gno mcp install --target cursor --enable-write    # Cursor
+gno mcp install --target raycast --enable-write   # Raycast (if supported)
+```
+
+> ⚠️ **Write-enabled mode** allows AI to create documents, add collections, and trigger reindexing. Review tool calls before approving.
 
 ### Scope Options
 
@@ -96,15 +106,25 @@ Use GNO directly in [Raycast AI](https://www.raycast.com/core-features/ai) with 
 2. Configure:
    - **Name**: `GNO`
    - **Command**: `gno`
-   - **Args**: `mcp`
+   - **Args**: `mcp` (read-only) or `mcp --enable-write` (write-enabled)
 
 **Option 2: Via Deeplink**
 
 Open in browser:
 
+Read-only:
+
 ```
 raycast://mcp/install?%7B%22name%22%3A%22GNO%22%2C%22command%22%3A%22gno%22%2C%22args%22%3A%5B%22mcp%22%5D%7D
 ```
+
+Write-enabled:
+
+```
+raycast://mcp/install?%7B%22name%22%3A%22GNO%22%2C%22command%22%3A%22gno%22%2C%22args%22%3A%5B%22mcp%22%2C%22--enable-write%22%5D%7D
+```
+
+> ⚠️ **Write-enabled mode** allows AI to create documents, add collections, and trigger reindexing. Review tool calls before approving.
 
 ### Where to Use GNO
 
@@ -140,6 +160,14 @@ The AI will call GNO tools (gno_query, gno_get) and synthesize answers from your
 @gno get the contents of my project README
 ```
 
+**Write examples** (requires write-enabled mode):
+
+```
+@gno create a note about todays meeting
+@gno add my ~/Projects/docs folder
+@gno refresh the notes collection
+```
+
 **Search depth** — ask for faster or more thorough searches:
 
 ```
@@ -172,12 +200,27 @@ Smaller/weaker models may:
 
 Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
 
+Read-only:
+
 ```json
 {
   "mcpServers": {
     "gno": {
       "command": "gno",
       "args": ["mcp"]
+    }
+  }
+}
+```
+
+Write-enabled:
+
+```json
+{
+  "mcpServers": {
+    "gno": {
+      "command": "gno",
+      "args": ["mcp", "--enable-write"]
     }
   }
 }
@@ -187,6 +230,8 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
 
 Add to `~/.cursor/mcp.json`:
 
+Read-only:
+
 ```json
 {
   "mcpServers": {
@@ -198,9 +243,24 @@ Add to `~/.cursor/mcp.json`:
 }
 ```
 
+Write-enabled:
+
+```json
+{
+  "mcpServers": {
+    "gno": {
+      "command": "gno",
+      "args": ["mcp", "--enable-write"]
+    }
+  }
+}
+```
+
 ### Zed
 
 Add to `~/.config/zed/settings.json`:
+
+Read-only:
 
 ```json
 {
@@ -213,9 +273,24 @@ Add to `~/.config/zed/settings.json`:
 }
 ```
 
+Write-enabled:
+
+```json
+{
+  "context_servers": {
+    "gno": {
+      "command": "gno",
+      "args": ["mcp", "--enable-write"]
+    }
+  }
+}
+```
+
 ### Windsurf
 
 Add to `~/.codeium/windsurf/mcp_config.json`:
+
+Read-only:
 
 ```json
 {
@@ -228,9 +303,24 @@ Add to `~/.codeium/windsurf/mcp_config.json`:
 }
 ```
 
+Write-enabled:
+
+```json
+{
+  "mcpServers": {
+    "gno": {
+      "command": "gno",
+      "args": ["mcp", "--enable-write"]
+    }
+  }
+}
+```
+
 ### OpenCode
 
 Add to `~/.config/opencode/config.json`:
+
+Read-only:
 
 ```json
 {
@@ -244,9 +334,25 @@ Add to `~/.config/opencode/config.json`:
 }
 ```
 
+Write-enabled:
+
+```json
+{
+  "mcp": {
+    "gno": {
+      "type": "local",
+      "command": ["gno", "mcp", "--enable-write"],
+      "enabled": true
+    }
+  }
+}
+```
+
 ### Amp
 
 Add to `~/.config/amp/settings.json`:
+
+Read-only:
 
 ```json
 {
@@ -259,9 +365,24 @@ Add to `~/.config/amp/settings.json`:
 }
 ```
 
+Write-enabled:
+
+```json
+{
+  "amp.mcpServers": {
+    "gno": {
+      "command": "gno",
+      "args": ["mcp", "--enable-write"]
+    }
+  }
+}
+```
+
 ### LM Studio
 
 Add to `~/.lmstudio/mcp.json`:
+
+Read-only:
 
 ```json
 {
@@ -274,9 +395,24 @@ Add to `~/.lmstudio/mcp.json`:
 }
 ```
 
+Write-enabled:
+
+```json
+{
+  "mcpServers": {
+    "gno": {
+      "command": "gno",
+      "args": ["mcp", "--enable-write"]
+    }
+  }
+}
+```
+
 ### LibreChat
 
 Add to `librechat.yaml` in your LibreChat project root:
+
+Read-only:
 
 ```yaml
 mcpServers:
@@ -284,6 +420,17 @@ mcpServers:
     command: gno
     args:
       - mcp
+```
+
+Write-enabled:
+
+```yaml
+mcpServers:
+  gno:
+    command: gno
+    args:
+      - mcp
+      - --enable-write
 ```
 
 ## Other MCP Clients
