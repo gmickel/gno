@@ -1,9 +1,14 @@
 import {
+  AlertTriangleIcon,
   ArrowLeft,
   Calendar,
+  ChevronRightIcon,
   FileText,
   FolderOpen,
   HardDrive,
+  Loader2Icon,
+  PencilIcon,
+  TrashIcon,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -20,6 +25,14 @@ import {
   CardHeader,
   CardTitle,
 } from "../components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "../components/ui/dialog";
 import { Separator } from "../components/ui/separator";
 import { apiFetch } from "../hooks/use-api";
 
@@ -112,10 +125,46 @@ function getLanguageFromExt(ext: string): SupportedLanguage {
   return map[ext.toLowerCase()] || "text";
 }
 
+/** Parse breadcrumb segments from collection and relPath */
+function parseBreadcrumbs(
+  collection: string,
+  relPath: string
+): { label: string; path: string }[] {
+  const segments: { label: string; path: string }[] = [
+    {
+      label: collection,
+      path: `/browse?collection=${encodeURIComponent(collection)}`,
+    },
+  ];
+
+  const parts = relPath.split("/").filter(Boolean);
+  let currentPath = "";
+
+  for (let i = 0; i < parts.length; i++) {
+    const part = parts[i];
+    currentPath = currentPath ? `${currentPath}/${part}` : part;
+
+    // Last segment is the file - no link
+    if (i === parts.length - 1) {
+      segments.push({ label: part, path: "" });
+    } else {
+      segments.push({
+        label: part,
+        path: `/browse?collection=${encodeURIComponent(collection)}&path=${encodeURIComponent(currentPath)}`,
+      });
+    }
+  }
+
+  return segments;
+}
+
 export default function DocView({ navigate }: PageProps) {
   const [doc, setDoc] = useState<DocData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -160,6 +209,36 @@ export default function DocView({ navigate }: PageProps) {
       ".bash",
     ].includes(doc.source.ext.toLowerCase());
 
+  const breadcrumbs = doc ? parseBreadcrumbs(doc.collection, doc.relPath) : [];
+
+  const handleEdit = () => {
+    if (doc) {
+      navigate(`/edit?uri=${encodeURIComponent(doc.uri)}`);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!doc) return;
+
+    setDeleting(true);
+    setDeleteError(null);
+
+    const { error: err } = await apiFetch(
+      `/api/docs/${encodeURIComponent(doc.docid)}/deactivate`,
+      { method: "POST" }
+    );
+
+    setDeleting(false);
+
+    if (err) {
+      setDeleteError(err);
+      return;
+    }
+
+    setDeleteDialogOpen(false);
+    navigate(-1);
+  };
+
   return (
     <div className="min-h-screen">
       {/* Header */}
@@ -185,6 +264,25 @@ export default function DocView({ navigate }: PageProps) {
             <Badge className="shrink-0 font-mono" variant="outline">
               {doc.source.ext}
             </Badge>
+          )}
+          {doc && (
+            <>
+              <Separator className="h-6" orientation="vertical" />
+              <div className="flex items-center gap-2">
+                <Button className="gap-1.5" onClick={handleEdit} size="sm">
+                  <PencilIcon className="size-4" />
+                  Edit
+                </Button>
+                <Button
+                  className="gap-1.5 text-muted-foreground hover:text-destructive"
+                  onClick={() => setDeleteDialogOpen(true)}
+                  size="sm"
+                  variant="ghost"
+                >
+                  <TrashIcon className="size-4" />
+                </Button>
+              </div>
+            </>
           )}
         </div>
       </header>
@@ -214,6 +312,33 @@ export default function DocView({ navigate }: PageProps) {
         {/* Document */}
         {doc && (
           <div className="animate-fade-in space-y-6 opacity-0">
+            {/* Breadcrumbs */}
+            {breadcrumbs.length > 0 && (
+              <nav className="flex items-center gap-1 text-sm">
+                <FolderOpen className="mr-1 size-4 text-muted-foreground" />
+                {breadcrumbs.map((crumb, i) => (
+                  <span className="flex items-center gap-1" key={crumb.label}>
+                    {i > 0 && (
+                      <ChevronRightIcon className="size-3 text-muted-foreground/50" />
+                    )}
+                    {crumb.path ? (
+                      <button
+                        className="text-muted-foreground transition-colors hover:text-foreground hover:underline"
+                        onClick={() => navigate(crumb.path)}
+                        type="button"
+                      >
+                        {crumb.label}
+                      </button>
+                    ) : (
+                      <span className="font-medium text-foreground">
+                        {crumb.label}
+                      </span>
+                    )}
+                  </span>
+                ))}
+              </nav>
+            )}
+
             {/* Metadata */}
             <Card>
               <CardContent className="py-4">
@@ -304,6 +429,59 @@ export default function DocView({ navigate }: PageProps) {
           </div>
         )}
       </main>
+
+      {/* Delete confirmation dialog */}
+      <Dialog onOpenChange={setDeleteDialogOpen} open={deleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <TrashIcon className="size-5 text-destructive" />
+              Remove from index?
+            </DialogTitle>
+            <DialogDescription className="space-y-3 pt-2">
+              <span className="block">
+                This will remove <strong>
+                  "{doc?.title || doc?.relPath}"
+                </strong>{" "}
+                from the GNO search index.
+              </span>
+              <span className="flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-amber-500">
+                <AlertTriangleIcon className="mt-0.5 size-4 shrink-0" />
+                <span className="text-sm">
+                  The file will NOT be deleted from disk. It may be re-indexed
+                  on next sync unless you add it to the collection's exclude
+                  pattern.
+                </span>
+              </span>
+            </DialogDescription>
+          </DialogHeader>
+
+          {deleteError && (
+            <div className="rounded-lg bg-destructive/10 p-3 text-destructive text-sm">
+              {deleteError}
+            </div>
+          )}
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              onClick={() => setDeleteDialogOpen(false)}
+              variant="outline"
+            >
+              Cancel
+            </Button>
+            <Button
+              disabled={deleting}
+              onClick={handleDelete}
+              variant="destructive"
+            >
+              {deleting && (
+                <Loader2Icon className="mr-1.5 size-4 animate-spin" />
+              )}
+              Remove from index
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
