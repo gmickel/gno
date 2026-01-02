@@ -149,9 +149,9 @@ export function ShortcutHelpModal({
         className={cn(
           // Wider modal for two-column layout
           "max-w-lg",
-          // Card catalog paper texture feel
+          // Solid background - no transparency
           "border-[hsl(var(--secondary)/0.2)]",
-          "bg-gradient-to-br from-card via-card to-[hsl(var(--secondary)/0.02)]",
+          "bg-[hsl(220,15%,13%)]",
           // Subtle shadow like paper lifted off desk
           "shadow-[0_8px_32px_-8px_hsl(var(--secondary)/0.2)]"
         )}
