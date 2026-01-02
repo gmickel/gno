@@ -103,7 +103,7 @@ bun run version:major   # 0.1.0 → 1.0.0 (breaking)
 **Release workflow:**
 
 ```bash
-bun run prerelease       # lint + typecheck + test
+bun run prerelease       # lint:check + test
 bun run release:dry-run  # trigger CI without publishing
 bun run release:trigger  # trigger CI with publish (uses OIDC, no token needed)
 ```
