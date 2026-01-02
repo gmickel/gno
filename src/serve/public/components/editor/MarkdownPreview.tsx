@@ -123,7 +123,7 @@ const Pre: FC<ComponentProps<"pre">> = ({ children, ...props }) => {
   );
 };
 
-// Blockquote with refined styling
+// Blockquote with refined scholarly styling
 const Blockquote: FC<ComponentProps<"blockquote">> = ({
   children,
   className,
@@ -131,7 +131,9 @@ const Blockquote: FC<ComponentProps<"blockquote">> = ({
 }) => (
   <blockquote
     className={cn(
-      "my-4 border-l-2 border-secondary/60 bg-secondary/5 py-2 pr-4 pl-4 italic text-muted-foreground",
+      "my-5 border-l-[3px] border-primary/40 bg-muted/20 py-3 pr-5 pl-5",
+      "font-serif text-[0.95em] italic text-muted-foreground/90",
+      "rounded-r-md shadow-sm",
       "[&>p]:mb-0",
       className
     )}
@@ -168,13 +170,13 @@ const OrderedList: FC<ComponentProps<"ol">> = ({
   </ol>
 );
 
-// Table styles
+// Table styles - refined scholarly aesthetic
 const Table: FC<ComponentProps<"table">> = ({
   children,
   className,
   ...props
 }) => (
-  <div className="my-4 overflow-x-auto rounded-lg border border-border/60">
+  <div className="my-4 overflow-x-auto rounded-lg border border-border/60 shadow-sm">
     <table
       className={cn("w-full border-collapse text-sm", className)}
       {...props}
@@ -189,7 +191,14 @@ const TableHead: FC<ComponentProps<"thead">> = ({
   className,
   ...props
 }) => (
-  <thead className={cn("bg-muted/50", className)} {...props}>
+  <thead
+    className={cn(
+      "bg-muted/60 border-b border-border/50",
+      "text-muted-foreground uppercase tracking-wider text-xs",
+      className
+    )}
+    {...props}
+  >
     {children}
   </thead>
 );
@@ -200,7 +209,12 @@ const TableRow: FC<ComponentProps<"tr">> = ({
   ...props
 }) => (
   <tr
-    className={cn("border-b border-border/40 last:border-0", className)}
+    className={cn(
+      "border-b border-border/30 last:border-0",
+      "transition-colors hover:bg-muted/20",
+      "even:bg-muted/10",
+      className
+    )}
     {...props}
   >
     {children}
@@ -212,7 +226,7 @@ const TableCell: FC<ComponentProps<"td">> = ({
   className,
   ...props
 }) => (
-  <td className={cn("px-4 py-2", className)} {...props}>
+  <td className={cn("px-4 py-2.5 align-top", className)} {...props}>
     {children}
   </td>
 );
@@ -222,7 +236,10 @@ const TableHeaderCell: FC<ComponentProps<"th">> = ({
   className,
   ...props
 }) => (
-  <th className={cn("px-4 py-2 text-left font-semibold", className)} {...props}>
+  <th
+    className={cn("px-4 py-2.5 text-left font-semibold", className)}
+    {...props}
+  >
     {children}
   </th>
 );

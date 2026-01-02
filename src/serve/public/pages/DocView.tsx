@@ -437,7 +437,7 @@ export default function DocView({ navigate }: PageProps) {
                   </div>
                 )}
                 {doc.contentAvailable && isMarkdown && !showRawView && (
-                  <div className="rounded-lg border border-border/50 bg-background p-6">
+                  <div className="rounded-lg border border-border/40 bg-gradient-to-br from-background to-muted/10 p-6 shadow-inner">
                     <MarkdownPreview content={doc.content ?? ""} />
                   </div>
                 )}
