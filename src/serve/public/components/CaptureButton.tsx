@@ -35,16 +35,19 @@ export function CaptureButton({ className, onClick }: CaptureButtonProps) {
         <TooltipTrigger asChild>
           <Button
             className={cn(
-              "fixed right-6 bottom-6 z-50 size-14 rounded-full shadow-lg",
+              "group fixed right-6 bottom-6 z-50 size-14 rounded-full",
               "bg-primary hover:bg-primary/90 text-primary-foreground",
-              "transition-all duration-200 hover:scale-105 hover:shadow-xl",
+              "shadow-[0_0_20px_-5px_hsl(var(--primary)/0.5)]",
+              "hover:shadow-[0_0_30px_-5px_hsl(var(--primary)/0.7)]",
+              "transition-all duration-300 hover:scale-110",
               "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+              "animate-pulse-glow",
               className
             )}
             onClick={onClick}
             size="icon"
           >
-            <PenIcon className="size-6" />
+            <PenIcon className="size-6 transition-transform duration-200 group-hover:rotate-[-8deg]" />
             <span className="sr-only">New note ({modKey}+N)</span>
           </Button>
         </TooltipTrigger>

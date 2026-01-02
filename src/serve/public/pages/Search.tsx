@@ -164,23 +164,27 @@ export default function Search({ navigate }: PageProps) {
       <main className="mx-auto max-w-4xl p-8">
         {/* Search Form */}
         <form className="mb-8" onSubmit={handleSearch}>
-          <div className="relative">
-            <SearchIcon className="absolute top-1/2 left-4 size-5 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              className="border-border bg-card py-6 pr-4 pl-12 text-lg focus:border-primary"
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search your documents..."
-              type="text"
-              value={query}
-            />
-            <Button
-              className="absolute top-1/2 right-2 -translate-y-1/2"
-              disabled={loading || !query.trim()}
-              size="sm"
-              type="submit"
-            >
-              {loading ? <Loader size={16} /> : "Search"}
-            </Button>
+          <div className="group relative">
+            {/* Gradient border effect on focus */}
+            <div className="pointer-events-none absolute -inset-[1px] rounded-lg bg-gradient-to-r from-primary/50 via-primary to-primary/50 opacity-0 blur-sm transition-opacity duration-300 group-focus-within:opacity-100" />
+            <div className="relative">
+              <SearchIcon className="absolute top-1/2 left-4 size-5 -translate-y-1/2 text-muted-foreground transition-colors duration-200 group-focus-within:text-primary" />
+              <Input
+                className="border-border/50 bg-card py-6 pr-4 pl-12 text-lg transition-all duration-200 focus:border-primary focus:bg-card/80 focus:shadow-[0_0_20px_-5px_hsl(var(--primary)/0.3)]"
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search your documents..."
+                type="text"
+                value={query}
+              />
+              <Button
+                className="absolute top-1/2 right-2 -translate-y-1/2"
+                disabled={loading || !query.trim()}
+                size="sm"
+                type="submit"
+              >
+                {loading ? <Loader size={16} /> : "Search"}
+              </Button>
+            </div>
           </div>
 
           {/* Mode selector */}
@@ -247,11 +251,28 @@ export default function Search({ navigate }: PageProps) {
         {/* Empty state */}
         {!loading && searched && results.length === 0 && !error && (
           <div className="py-20 text-center">
-            <FileText className="mx-auto mb-4 size-12 text-muted-foreground" />
-            <h3 className="mb-2 font-medium text-lg">No results found</h3>
-            <p className="text-muted-foreground">
-              Try adjusting your search terms
+            <div className="relative mx-auto mb-6 size-20">
+              <div className="absolute inset-0 animate-pulse rounded-full bg-primary/10" />
+              <div className="absolute inset-2 rounded-full bg-card" />
+              <FileText className="absolute inset-0 m-auto size-8 text-muted-foreground" />
+            </div>
+            <h3 className="mb-2 font-semibold text-xl">No matches found</h3>
+            <p className="mx-auto mb-6 max-w-sm text-muted-foreground">
+              We couldn't find any documents matching "{query}". Try different
+              keywords or check your spelling.
             </p>
+            <div className="flex justify-center gap-3">
+              <Button onClick={() => setQuery("")} size="sm" variant="outline">
+                Clear search
+              </Button>
+              <Button
+                onClick={() => setMode(mode === "bm25" ? "hybrid" : "bm25")}
+                size="sm"
+                variant="ghost"
+              >
+                Try {mode === "bm25" ? "hybrid" : "keyword"} mode
+              </Button>
+            </div>
           </div>
         )}
 

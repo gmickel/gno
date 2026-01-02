@@ -10,7 +10,6 @@
 import { KeyboardIcon } from "lucide-react";
 
 import { modKey } from "../hooks/useKeyboardShortcuts";
-import { Badge } from "./ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog";
 
 export interface ShortcutHelpModalProps {
@@ -71,19 +70,30 @@ export function ShortcutHelpModal({
         <div className="space-y-6">
           {shortcutGroups.map((group) => (
             <div key={group.title}>
-              <h3 className="mb-2 font-medium text-muted-foreground text-sm">
+              <h3 className="mb-3 font-medium text-muted-foreground text-xs uppercase tracking-wider">
                 {group.title}
               </h3>
-              <div className="space-y-2">
+              <div className="space-y-2.5">
                 {group.shortcuts.map((shortcut) => (
                   <div
-                    className="flex items-center justify-between"
+                    className="flex items-center justify-between rounded-md px-2 py-1.5 transition-colors hover:bg-muted/50"
                     key={shortcut.keys}
                   >
                     <span className="text-sm">{shortcut.description}</span>
-                    <Badge className="font-mono" variant="outline">
-                      {shortcut.keys}
-                    </Badge>
+                    <div className="flex items-center gap-1">
+                      {shortcut.keys.split("+").map((key, i) => (
+                        <span key={key}>
+                          {i > 0 && (
+                            <span className="mx-0.5 text-muted-foreground/50">
+                              +
+                            </span>
+                          )}
+                          <kbd className="inline-flex min-w-[1.75rem] items-center justify-center rounded border border-border/80 bg-gradient-to-b from-muted/80 to-muted px-1.5 py-0.5 font-mono text-[11px] text-foreground shadow-[0_2px_0_hsl(var(--border)),inset_0_1px_0_hsl(var(--background)/0.5)]">
+                            {key}
+                          </kbd>
+                        </span>
+                      ))}
+                    </div>
                   </div>
                 ))}
               </div>

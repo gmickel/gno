@@ -186,12 +186,15 @@ mark {
   animation-delay: 0.4s;
 }
 
-/* Glassmorphism utility */
+/* Glassmorphism utility - enhanced depth */
 .glass {
-  background: hsl(var(--background) / 0.8);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  background: hsl(var(--background) / 0.85);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
   border: 1px solid hsl(var(--border) / 0.5);
+  box-shadow:
+    0 0 40px -10px hsl(var(--primary) / 0.1),
+    inset 0 1px 0 hsl(var(--foreground) / 0.03);
 }
 
 /* Aurora glow effect */
@@ -211,6 +214,26 @@ mark {
   z-index: -1;
   pointer-events: none;
   filter: blur(60px);
+}
+
+/* Interactive card lift effect */
+.card-lift {
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.card-lift:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 30px -10px hsl(var(--primary) / 0.2);
+}
+
+/* Focus ring with glow */
+.focus-glow:focus-visible {
+  outline: 2px solid hsl(var(--primary));
+  outline-offset: 2px;
+  box-shadow: 0 0 20px -5px hsl(var(--primary) / 0.5);
 }
 
 /* Reduced motion support */

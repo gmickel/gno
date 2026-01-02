@@ -188,21 +188,26 @@ export default function Dashboard({ navigate }: PageProps) {
         {/* Stats Grid */}
         {status && (
           <div className="mb-10 grid animate-fade-in gap-6 opacity-0 md:grid-cols-4">
-            <Card className="group transition-colors hover:border-primary/50">
-              <CardHeader className="pb-2">
-                <CardDescription className="flex items-center gap-2">
+            {/* Hero Documents Card */}
+            <Card className="group relative overflow-hidden border-primary/30 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent transition-all duration-300 hover:border-primary/50 hover:shadow-[0_0_30px_-10px_hsl(var(--primary)/0.3)]">
+              <div className="pointer-events-none absolute -top-12 -right-12 size-32 rounded-full bg-primary/10 blur-2xl" />
+              <CardHeader className="relative pb-2">
+                <CardDescription className="flex items-center gap-2 text-primary/80">
                   <Database className="size-4" />
                   Documents
                 </CardDescription>
               </CardHeader>
-              <CardContent>
-                <div className="font-bold text-4xl tracking-tight">
+              <CardContent className="relative">
+                <div className="font-bold text-5xl tracking-tight text-primary">
                   {status.totalDocuments.toLocaleString()}
                 </div>
+                <p className="mt-1 text-muted-foreground text-sm">
+                  indexed files
+                </p>
               </CardContent>
             </Card>
 
-            <Card className="group stagger-1 animate-fade-in opacity-0 transition-colors hover:border-primary/50">
+            <Card className="group stagger-1 animate-fade-in opacity-0 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/50 hover:shadow-lg">
               <CardHeader className="pb-2">
                 <CardDescription className="flex items-center gap-2">
                   <Layers className="size-4" />
@@ -216,7 +221,7 @@ export default function Dashboard({ navigate }: PageProps) {
               </CardContent>
             </Card>
 
-            <Card className="group stagger-2 animate-fade-in opacity-0 transition-colors hover:border-primary/50">
+            <Card className="group stagger-2 animate-fade-in opacity-0 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/50 hover:shadow-lg">
               <CardHeader className="pb-2">
                 <CardDescription className="flex items-center gap-2">
                   <FolderIcon className="size-4" />
@@ -237,7 +242,7 @@ export default function Dashboard({ navigate }: PageProps) {
 
             {/* Quick Capture Card */}
             <Card
-              className="group stagger-3 animate-fade-in cursor-pointer opacity-0 transition-all hover:border-primary/50 hover:bg-primary/5"
+              className="group stagger-3 animate-fade-in cursor-pointer opacity-0 transition-all duration-200 hover:-translate-y-0.5 hover:border-secondary/50 hover:bg-secondary/5 hover:shadow-lg"
               onClick={openCapture}
             >
               <CardHeader className="pb-2">
@@ -248,10 +253,13 @@ export default function Dashboard({ navigate }: PageProps) {
               </CardHeader>
               <CardContent>
                 <div className="flex items-center justify-between">
-                  <span className="font-medium text-lg transition-colors group-hover:text-primary">
+                  <span className="font-medium text-lg transition-colors group-hover:text-secondary">
                     New Note
                   </span>
-                  <Badge className="font-mono text-xs" variant="outline">
+                  <Badge
+                    className="font-mono text-xs transition-colors group-hover:border-secondary/50 group-hover:text-secondary"
+                    variant="outline"
+                  >
                     {modKey}N
                   </Badge>
                 </div>
