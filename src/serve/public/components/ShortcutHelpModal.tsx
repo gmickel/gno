@@ -171,7 +171,7 @@ export function ShortcutHelpModal({
         </DialogHeader>
 
         {/* Two-column grid for main groups */}
-        <div className="mt-2 grid grid-cols-2 gap-6">
+        <div className="-mt-2 grid grid-cols-2 gap-6">
           {shortcutGroups.map((group) => (
             <ShortcutGroupCard group={group} key={group.title} />
           ))}
