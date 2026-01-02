@@ -60,6 +60,7 @@ export interface ToolContext {
   jobManager: JobManager;
   serverInstanceId: string;
   writeLockPath: string;
+  enableWrite: boolean;
   isShuttingDown: () => boolean;
 }
 
@@ -71,6 +72,7 @@ export interface McpServerOptions {
   indexName?: string;
   configPath?: string;
   verbose?: boolean;
+  enableWrite?: boolean;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -142,6 +144,7 @@ export async function startMcpServer(options: McpServerOptions): Promise<void> {
   // Server instance ID (per-process)
   const serverInstanceId = crypto.randomUUID();
 
+  const enableWrite = options.enableWrite ?? false;
   const dbPath = getIndexDbPath(options.indexName);
   const writeLockPath = join(dirname(dbPath), ".mcp-write.lock");
   const jobManager = new JobManager({
@@ -163,6 +166,7 @@ export async function startMcpServer(options: McpServerOptions): Promise<void> {
     jobManager,
     serverInstanceId,
     writeLockPath,
+    enableWrite,
     isShuttingDown: () => shuttingDown,
   };
 

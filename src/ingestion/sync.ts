@@ -5,6 +5,11 @@
  * @module src/ingestion/sync
  */
 
+// node:fs/promises for stat (no Bun equivalent for file stats)
+import { stat } from "node:fs/promises";
+// node:path for join (no Bun path utils)
+import { join } from "node:path";
+
 import type { Collection } from "../config/types";
 import type {
   ChunkInput,
@@ -409,6 +414,56 @@ export class SyncService {
         errorMessage: message,
       };
     }
+  }
+
+  /**
+   * Sync a specific set of files within a collection.
+   */
+  async syncFiles(
+    collection: Collection,
+    store: StorePort,
+    relPaths: string[],
+    options: SyncOptions = {}
+  ): Promise<FileSyncResult[]> {
+    const results: FileSyncResult[] = [];
+
+    for (const relPath of relPaths) {
+      const absPath = join(collection.path, relPath);
+      let stats: Awaited<ReturnType<typeof stat>>;
+      try {
+        stats = await stat(absPath);
+      } catch {
+        results.push({
+          relPath,
+          status: "error",
+          errorCode: "NOT_FOUND",
+          errorMessage: "File not found",
+        });
+        continue;
+      }
+
+      if (!stats.isFile()) {
+        results.push({
+          relPath,
+          status: "error",
+          errorCode: "NOT_FILE",
+          errorMessage: "Path is not a file",
+        });
+        continue;
+      }
+
+      const entry: WalkEntry = {
+        absPath,
+        relPath,
+        size: stats.size,
+        mtime: stats.mtime.toISOString(),
+      };
+
+      const result = await this.processFile(collection, entry, store, options);
+      results.push(result);
+    }
+
+    return results;
   }
 
   /**

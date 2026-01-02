@@ -31,6 +31,14 @@ const searchInputSchema = z.object({
   lang: z.string().optional(),
 });
 
+const captureInputSchema = z.object({
+  collection: z.string().min(1, "Collection cannot be empty"),
+  content: z.string(),
+  title: z.string().optional(),
+  path: z.string().optional(),
+  overwrite: z.boolean().default(false),
+});
+
 const vsearchInputSchema = z.object({
   query: z.string().min(1, "Query cannot be empty"),
   collection: z.string().optional(),
@@ -173,6 +181,15 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
     (args) => handleStatus(args, ctx)
   );
 
+  if (ctx.enableWrite) {
+    server.tool(
+      "gno_capture",
+      "Create a new document",
+      captureInputSchema.shape,
+      (args) => handleCapture(args, ctx)
+    );
+  }
+
   server.tool(
     "gno_job_status",
     "Get status of an async job",
@@ -187,3 +204,4 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
     (args) => handleListJobs(args, ctx)
   );
 }
+import { handleCapture } from "./capture";
