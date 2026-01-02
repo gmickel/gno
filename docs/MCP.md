@@ -129,6 +129,8 @@ gno mcp uninstall --target X    # Remove GNO from a target
 
 ## Raycast AI Integration
 
+![GNO in Raycast AI](../assets/screenshots/raycast-mcp.jpg)
+
 Use GNO directly in [Raycast AI](https://www.raycast.com/core-features/ai) with `@gno` mentions. Works in both Quick AI and AI Chat.
 
 > **Requires**: Raycast Pro subscription (for AI features) — or 50 free messages for non-Pro users

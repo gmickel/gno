@@ -52,6 +52,27 @@ Automatic via Vercel on push to main.
 2. Add to nav in `_config.yml` if it should appear in sidebar
 3. Use front matter if custom title/layout needed
 
+## Screenshots
+
+Source screenshots live in `/assets/screenshots/` (project root). For local dev, copy to website:
+
+```bash
+cp ../assets/screenshots/*.{jpg,png} assets/screenshots/
+```
+
+### Capture Settings
+
+**Chrome DevTools:**
+
+- Dimensions: 1380 × 880
+- DPR: 2.0
+- Cmd+Shift+P → "Capture screenshot"
+
+**Brandbird:**
+
+- Canvas: 2960 × 2010 px
+- Template: "gno"
+
 ## Terminal Demos (VHS)
 
 The documentation website includes animated terminal demos built with [VHS](https://github.com/charmbracelet/vhs).

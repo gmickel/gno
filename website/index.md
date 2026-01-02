@@ -9,23 +9,25 @@ title: Home
 
 Most search tools are either fast but dumb (grep, find) or smart but slow and cloud-dependent. GNO bridges this gap by running a full hybrid search pipeline—keyword, vector, and re-ranking—entirely on your local machine.
 
-### For Humans
+## For AI Agents
 
-Stop grepping through thousands of Markdown files. Ask GNO questions in plain English and get cited answers from your own notes, documentation, and code.
+Give your local LLM agents a long-term memory. GNO integrates as a Claude Code skill or MCP server, allowing agents to search, read, and cite your local files.
 
-### For AI Agents
+### Claude Code
 
-Give your local LLM agents (like Claude Desktop or Cursor) a long-term memory. GNO's **Model Context Protocol (MCP)** server allows agents to search, read, and cite your local files safely.
+Install GNO as a skill and search your knowledge base directly from Claude Code:
 
-![GNO Web UI](/assets/screenshots/webui-home.png)
+```bash
+gno skill install --scope user
+```
 
-![GNO Document Editor](/assets/screenshots/webui-editor.png)
+![GNO Claude Code Skill](/assets/screenshots/claudecodeskill.jpg)
 
-## Agent Integration
+[Skill setup guide →](/docs/integrations/skills/)
 
-![GNO MCP](/assets/screenshots/mcp.jpg)
+### MCP Clients
 
-Connect GNO to your AI tools instantly:
+Connect GNO to Claude Desktop, Cursor, Raycast, and more:
 
 ```bash
 gno mcp install                    # Claude Desktop (default)
@@ -35,8 +37,24 @@ gno mcp install --target windsurf  # Windsurf
 # ... and 6 more targets
 ```
 
-Once connected, you can ask Claude things like:
+![GNO MCP](/assets/screenshots/mcp.jpg)
+
+Once connected, ask things like:
 
 > "Search my local notes for the project roadmap and summarize the Q4 goals."
 
-[Full MCP setup guide →](/docs/MCP/)
+[MCP setup guide →](/docs/MCP/)
+
+## For Humans
+
+Stop grepping through thousands of Markdown files. Ask GNO questions in plain English and get cited answers from your own notes, documentation, and code.
+
+The Web UI provides a visual dashboard for search, browsing, editing, and AI-powered answers.
+
+![GNO Web UI](/assets/screenshots/webui-home.jpg)
+
+![GNO Search](/assets/screenshots/webui-search.jpg)
+
+![GNO Document Editor](/assets/screenshots/webui-editor.jpg)
+
+![GNO AI Answers](/assets/screenshots/webui-ask-answer.jpg)

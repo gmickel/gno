@@ -814,17 +814,21 @@ Get an AI-generated answer with citations from your documents.
   "limit": 5,
   "collection": "notes",
   "lang": "en",
-  "maxAnswerTokens": 512
+  "maxAnswerTokens": 512,
+  "noExpand": false,
+  "noRerank": false
 }
 ```
 
-| Field             | Type   | Default | Description                            |
-| :---------------- | :----- | :------ | :------------------------------------- |
-| `query`           | string | —       | Question (required)                    |
-| `limit`           | number | 5       | Number of sources to consider (max 20) |
-| `collection`      | string | —       | Filter by collection                   |
-| `lang`            | string | auto    | Query language hint                    |
-| `maxAnswerTokens` | number | 512     | Max tokens in answer                   |
+| Field             | Type    | Default | Description                            |
+| :---------------- | :------ | :------ | :------------------------------------- |
+| `query`           | string  | —       | Question (required)                    |
+| `limit`           | number  | 5       | Number of sources to consider (max 20) |
+| `collection`      | string  | —       | Filter by collection                   |
+| `lang`            | string  | auto    | Query language hint                    |
+| `maxAnswerTokens` | number  | 512     | Max tokens in answer                   |
+| `noExpand`        | boolean | false   | Disable query expansion                |
+| `noRerank`        | boolean | false   | Disable cross-encoder reranking        |
 
 **Response**:
 

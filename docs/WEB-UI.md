@@ -7,7 +7,7 @@ gno serve
 # Open http://localhost:3000
 ```
 
-![GNO Web UI Dashboard](../assets/screenshots/webui-home.png)
+![GNO Web UI Dashboard](../assets/screenshots/webui-home.jpg)
 
 ---
 
@@ -79,7 +79,7 @@ Click **Ask** for AI-powered answers. Type your question—GNO searches your doc
 
 ### Editor Features
 
-![GNO Document Editor](../assets/screenshots/webui-editor.png)
+![GNO Document Editor](../assets/screenshots/webui-editor.jpg)
 
 The split-view editor provides:
 
@@ -145,7 +145,7 @@ From document view, click the trash icon. This:
 
 ### Collections Page
 
-![GNO Collections](../assets/screenshots/webui-collections.png)
+![GNO Collections](../assets/screenshots/webui-collections.jpg)
 
 View and manage your document collections:
 
@@ -210,6 +210,8 @@ When syncing or adding collections, a progress indicator shows:
 
 ### Search Modes
 
+![GNO Search](../assets/screenshots/webui-search.jpg)
+
 The Search page offers three retrieval modes:
 
 **BM25** — Traditional keyword search. Best for exact phrases, code identifiers, known terms.
@@ -230,7 +232,7 @@ Browse all indexed documents:
 
 ### AI Answers
 
-![GNO AI Answers](../assets/screenshots/webui-ask-answer.png)
+![GNO AI Answers](../assets/screenshots/webui-ask-answer.jpg)
 
 The Ask page provides RAG-powered Q&A:
 

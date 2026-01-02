@@ -16,9 +16,9 @@ GNO is a local knowledge engine for privacy-conscious developers and AI agents. 
 - [Quick Start](#quick-start)
 - [Installation](#installation)
 - [Search Modes](#search-modes)
+- [Agent Integration](#agent-integration)
 - [Web UI](#web-ui)
 - [REST API](#rest-api)
-- [Agent Integration](#agent-integration)
 - [How It Works](#how-it-works)
 - [Features](#features)
 - [Local Models](#local-models)
@@ -120,6 +120,47 @@ Output formats: `--json`, `--files`, `--csv`, `--md`, `--xml`
 
 ---
 
+## Agent Integration
+
+Give your local LLM agents a long-term memory. GNO integrates as a Claude Code skill or MCP server, allowing agents to search, read, and cite your local files.
+
+### Skills
+
+Skills add GNO search to Claude Code/Codex without MCP protocol overhead:
+
+```bash
+gno skill install --scope user
+```
+
+![GNO Skill in Claude Code](./assets/screenshots/claudecodeskill.jpg)
+
+Then ask your agent: _"Search my notes for the auth discussion"_
+
+[Skill setup guide →](https://gno.sh/docs/integrations/skills/)
+
+### MCP Server
+
+Connect GNO to Claude Desktop, Cursor, Raycast, and more:
+
+![GNO MCP](./assets/screenshots/mcp.jpg)
+
+GNO exposes 6 tools via [Model Context Protocol](https://modelcontextprotocol.io):
+
+| Tool            | Description                 |
+| :-------------- | :-------------------------- |
+| `gno_search`    | BM25 keyword search         |
+| `gno_vsearch`   | Vector semantic search      |
+| `gno_query`     | Hybrid search (recommended) |
+| `gno_get`       | Retrieve document by ID     |
+| `gno_multi_get` | Batch document retrieval    |
+| `gno_status`    | Index health check          |
+
+**Design**: MCP tools are retrieval-only. Your AI assistant (Claude, GPT-4) synthesizes answers from retrieved context—best retrieval (GNO) + best reasoning (your LLM).
+
+[MCP setup guide →](https://gno.sh/docs/MCP/)
+
+---
+
 ## Web UI
 
 Visual dashboard for search, browsing, editing, and AI answers—right in your browser.
@@ -129,7 +170,7 @@ gno serve                    # Start on port 3000
 gno serve --port 8080        # Custom port
 ```
 
-![GNO Web UI](./assets/screenshots/webui-home.png)
+![GNO Web UI](./assets/screenshots/webui-home.jpg)
 
 Open `http://localhost:3000` to:
 
@@ -140,9 +181,15 @@ Open `http://localhost:3000` to:
 - **Manage Collections** — Add, remove, and re-index collections
 - **Switch presets** — Change models live without restart
 
+### Search
+
+![GNO Search](./assets/screenshots/webui-search.jpg)
+
+Three retrieval modes: BM25 (keyword), Vector (semantic), or Hybrid (best of both). Adjust search depth for speed vs thoroughness.
+
 ### Document Editing
 
-![GNO Document Editor](./assets/screenshots/webui-editor.png)
+![GNO Document Editor](./assets/screenshots/webui-editor.jpg)
 
 Full-featured markdown editor with:
 
@@ -156,7 +203,7 @@ Full-featured markdown editor with:
 
 ### Collections Management
 
-![GNO Collections](./assets/screenshots/webui-collections.png)
+![GNO Collections](./assets/screenshots/webui-collections.jpg)
 
 - Add collections with folder path input
 - View document count, chunk count, embedding status
@@ -165,7 +212,7 @@ Full-featured markdown editor with:
 
 ### AI Answers
 
-![GNO AI Answers](./assets/screenshots/webui-ask-answer.png)
+![GNO AI Answers](./assets/screenshots/webui-ask-answer.jpg)
 
 Ask questions in natural language—GNO searches your documents and synthesizes answers with inline citations linking to sources.
 
@@ -216,41 +263,6 @@ curl http://localhost:3000/api/status
 No authentication. No rate limits. Build custom tools, automate workflows, integrate with any language.
 
 > **Full reference**: [API Documentation](https://gno.sh/docs/API/)
-
----
-
-## Agent Integration
-
-### MCP Server
-
-![GNO MCP](./assets/screenshots/mcp.jpg)
-
-GNO exposes 6 tools via [Model Context Protocol](https://modelcontextprotocol.io):
-
-| Tool            | Description                 |
-| :-------------- | :-------------------------- |
-| `gno_search`    | BM25 keyword search         |
-| `gno_vsearch`   | Vector semantic search      |
-| `gno_query`     | Hybrid search (recommended) |
-| `gno_get`       | Retrieve document by ID     |
-| `gno_multi_get` | Batch document retrieval    |
-| `gno_status`    | Index health check          |
-
-**Design**: MCP tools are retrieval-only. Your AI assistant (Claude, GPT-4) synthesizes answers from retrieved context—best retrieval (GNO) + best reasoning (your LLM).
-
-### Skills
-
-Skills add GNO search to Claude Code/Codex without MCP protocol overhead:
-
-```bash
-gno skill install --scope user
-```
-
-![GNO Skill in Claude Code](./assets/screenshots/claudecodeskill.jpg)
-
-Then ask your agent: _"Search my notes for the auth discussion"_
-
-> **Detailed docs**: [MCP Integration](https://gno.sh/docs/MCP/) · [Use Cases](https://gno.sh/docs/USE-CASES/)
 
 ---
 

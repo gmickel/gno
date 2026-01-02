@@ -553,7 +553,7 @@ Human-friendly query with citations-first output and optional grounded answer.
 **Synopsis:**
 
 ```bash
-gno ask <query> [-n <num>] [-c <collection>] [--lang <bcp47>] [--answer] [--no-answer] [--max-answer-tokens <n>] [--show-sources] [--json|--md]
+gno ask <query> [-n <num>] [-c <collection>] [--lang <bcp47>] [--answer] [--no-answer] [--max-answer-tokens <n>] [--no-expand] [--no-rerank] [--show-sources] [--json|--md]
 ```
 
 **Options:**
@@ -563,6 +563,8 @@ gno ask <query> [-n <num>] [-c <collection>] [--lang <bcp47>] [--answer] [--no-a
 | `--answer`            | boolean | false   | Generate short grounded answer              |
 | `--no-answer`         | boolean | false   | Force retrieval-only output                 |
 | `--max-answer-tokens` | integer | config  | Cap answer generation tokens                |
+| `--no-expand`         | boolean | false   | Disable query expansion                     |
+| `--no-rerank`         | boolean | false   | Disable cross-encoder reranking             |
 | `--show-sources`      | boolean | false   | Show all retrieved sources (not just cited) |
 
 **Output (JSON):**

@@ -124,13 +124,15 @@ nav:
   - title: Integrations
     icon: plug
     items:
+      - title: Skills
+        url: /docs/integrations/skills/
       - title: Claude Desktop
         url: /docs/integrations/claude-desktop/
       - title: Cursor
         url: /docs/integrations/cursor/
       - title: Claude Code
         url: /docs/integrations/claude-code/
-      - title: All Integrations
+      - title: All MCP Clients
         url: /docs/MCP/
   - title: Comparisons
     icon: scale

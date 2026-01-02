@@ -5,7 +5,7 @@ import {
   FileText,
   Sparkles,
 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { Loader } from "../components/ai-elements/loader";
 import {
@@ -15,11 +15,16 @@ import {
   SourcesTrigger,
 } from "../components/ai-elements/sources";
 import { AIModelSelector } from "../components/AIModelSelector";
+import {
+  ThoroughnessSelector,
+  type Thoroughness,
+} from "../components/ThoroughnessSelector";
 import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
 import { Card, CardContent } from "../components/ui/card";
 import { Textarea } from "../components/ui/textarea";
 import { apiFetch } from "../hooks/use-api";
+import { useKeyboardShortcuts } from "../hooks/useKeyboardShortcuts";
 
 interface PageProps {
   navigate: (to: string | number) => void;
@@ -74,6 +79,8 @@ interface ConversationEntry {
   loading: boolean;
   error?: string;
 }
+
+const THOROUGHNESS_ORDER: Thoroughness[] = ["fast", "balanced", "thorough"];
 
 /**
  * Render answer text with clickable citation badges.
@@ -133,6 +140,7 @@ export default function Ask({ navigate }: PageProps) {
   const [query, setQuery] = useState("");
   const [conversation, setConversation] = useState<ConversationEntry[]>([]);
   const [capabilities, setCapabilities] = useState<Capabilities | null>(null);
+  const [thoroughness, setThoroughness] = useState<Thoroughness>("balanced");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -142,10 +150,32 @@ export default function Ask({ navigate }: PageProps) {
       const { data } = await apiFetch<Capabilities>("/api/capabilities");
       if (data) {
         setCapabilities(data);
+        // Auto-select balanced if hybrid available, otherwise fast
+        if (data.hybrid) {
+          setThoroughness("balanced");
+        } else {
+          setThoroughness("fast");
+        }
       }
     }
     void fetchCapabilities();
   }, []);
+
+  // Cycle thoroughness with 't' key
+  const cycleThoroughness = useCallback(() => {
+    setThoroughness((current) => {
+      const currentIdx = THOROUGHNESS_ORDER.indexOf(current);
+      const nextIdx = (currentIdx + 1) % THOROUGHNESS_ORDER.length;
+      return THOROUGHNESS_ORDER[nextIdx];
+    });
+  }, []);
+
+  const shortcuts = useMemo(
+    () => [{ key: "t", action: cycleThoroughness }],
+    [cycleThoroughness]
+  );
+
+  useKeyboardShortcuts(shortcuts);
 
   // Scroll to bottom when conversation updates
   useEffect(() => {
@@ -168,10 +198,31 @@ export default function Ask({ navigate }: PageProps) {
     ]);
     setQuery("");
 
+    // Build request body with thoroughness-mapped params
+    // fast: BM25-only via noExpand + noRerank
+    // balanced: with reranking, no expansion
+    // thorough: full pipeline
+    const requestBody: Record<string, unknown> = {
+      query: currentQuery,
+      limit: 5,
+    };
+
+    if (thoroughness === "fast") {
+      requestBody.noExpand = true;
+      requestBody.noRerank = true;
+    } else if (thoroughness === "balanced") {
+      requestBody.noExpand = true;
+      requestBody.noRerank = false;
+    } else {
+      // thorough - full pipeline
+      requestBody.noExpand = false;
+      requestBody.noRerank = false;
+    }
+
     // Make API call
     const { data, error } = await apiFetch<AskResponse>("/api/ask", {
       method: "POST",
-      body: JSON.stringify({ query: currentQuery, limit: 5 }),
+      body: JSON.stringify(requestBody),
     });
 
     // Update conversation with response
@@ -213,8 +264,21 @@ export default function Ask({ navigate }: PageProps) {
             Back
           </Button>
           <h1 className="font-semibold text-xl">Ask</h1>
-          <div className="ml-auto flex items-center gap-3">
+          <div className="ml-auto flex items-center gap-4">
+            {/* Search depth selector */}
+            <ThoroughnessSelector
+              disabled={!capabilities?.hybrid}
+              onChange={setThoroughness}
+              value={thoroughness}
+            />
+
+            {/* Divider */}
+            <div className="h-6 w-px bg-border/40" />
+
+            {/* AI model selector */}
             <AIModelSelector />
+
+            {/* Capability badges */}
             {capabilities && (
               <div className="flex items-center gap-2">
                 {capabilities.vector && (

@@ -71,6 +71,8 @@ export interface AskRequestBody {
   collection?: string;
   lang?: string;
   maxAnswerTokens?: number;
+  noExpand?: boolean;
+  noRerank?: boolean;
 }
 
 export interface CreateCollectionRequestBody {
@@ -928,6 +930,8 @@ export async function handleAsk(
       limit,
       collection: body.collection,
       lang: body.lang,
+      noExpand: body.noExpand,
+      noRerank: body.noRerank,
     }
   );
 
