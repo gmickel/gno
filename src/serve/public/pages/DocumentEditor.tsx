@@ -523,6 +523,7 @@ export default function DocumentEditor({ navigate }: PageProps) {
                     aria-label={
                       syncScroll ? "Disable scroll sync" : "Enable scroll sync"
                     }
+                    className="transition-all duration-200"
                     onClick={() => setSyncScroll(!syncScroll)}
                     size="sm"
                     variant={syncScroll ? "secondary" : "ghost"}
