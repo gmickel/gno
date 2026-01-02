@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
 
+import { HelpButton } from "./components/HelpButton";
 import { ShortcutHelpModal } from "./components/ShortcutHelpModal";
 import { CaptureModalProvider } from "./hooks/useCaptureModal";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
@@ -57,12 +58,11 @@ function App() {
     setLocation(to);
   }, []);
 
-  // Global keyboard shortcuts
+  // Global keyboard shortcuts (single-key, GitHub/Gmail pattern)
   const shortcuts = useMemo(
     () => [
       {
-        key: "k",
-        meta: true,
+        key: "/",
         action: () => {
           // Focus search input on current page or navigate to search
           const searchInput = document.querySelector<HTMLInputElement>(
@@ -77,8 +77,7 @@ function App() {
         },
       },
       {
-        key: "/",
-        meta: true,
+        key: "?",
         action: () => setShortcutHelpOpen(true),
       },
     ],
@@ -94,6 +93,7 @@ function App() {
   return (
     <CaptureModalProvider>
       <Page navigate={navigate} />
+      <HelpButton onClick={() => setShortcutHelpOpen(true)} />
       <ShortcutHelpModal
         onOpenChange={setShortcutHelpOpen}
         open={shortcutHelpOpen}

@@ -3,7 +3,7 @@
  *
  * Provides:
  * - Single modal instance at App level
- * - Cmd+N shortcut wiring
+ * - 'n' shortcut wiring (single-key, skips in text inputs)
  * - openCapture() function for triggering from anywhere
  */
 
@@ -44,12 +44,11 @@ export function CaptureModalProvider({
 
   const openCapture = useCallback(() => setOpen(true), []);
 
-  // Cmd+N global shortcut
+  // 'n' global shortcut (single-key, skips when in text input)
   const shortcuts = useMemo(
     () => [
       {
         key: "n",
-        meta: true,
         action: openCapture,
       },
     ],

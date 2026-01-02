@@ -6,12 +6,11 @@
  * - Triggers parent's onClick handler
  * - Subtle hover animation
  *
- * Note: Modal and Cmd+N shortcut are managed at App level for single instance.
+ * Note: Modal and 'n' shortcut are managed at App level for single instance.
  */
 
 import { PenIcon } from "lucide-react";
 
-import { modKey } from "../hooks/useKeyboardShortcuts";
 import { cn } from "../lib/utils";
 import { Button } from "./ui/button";
 import {
@@ -48,11 +47,11 @@ export function CaptureButton({ className, onClick }: CaptureButtonProps) {
             size="icon"
           >
             <PenIcon className="size-6 transition-transform duration-200 group-hover:rotate-[-8deg]" />
-            <span className="sr-only">New note ({modKey}+N)</span>
+            <span className="sr-only">New note (N)</span>
           </Button>
         </TooltipTrigger>
         <TooltipContent side="left">
-          <p>New note ({modKey}N)</p>
+          <p>New note (N)</p>
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>

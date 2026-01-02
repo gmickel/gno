@@ -48,7 +48,7 @@ Navigate to `http://localhost:3000`. The dashboard shows:
 
 ### 3. Create a Note
 
-Press **Ctrl+N** (or click the floating + button) to open Quick Capture:
+Press **N** (or click the floating + button) to open Quick Capture:
 
 1. Enter a title
 2. Write your content (markdown supported)
@@ -59,7 +59,7 @@ The document is saved to disk and indexed automatically.
 
 ### 4. Search
 
-Click **Search** or press **Ctrl+K**. Choose your mode:
+Click **Search** or press **/**. Choose your mode:
 
 | Mode   | Description                |
 | :----- | :------------------------- |
@@ -94,16 +94,16 @@ The split-view editor provides:
 
 ### Keyboard Shortcuts
 
-Press **Ctrl+/** to view all shortcuts.
+Press **?** to view all shortcuts. Single-key shortcuts (no modifier needed) work anywhere outside text inputs—like GitHub and Gmail.
 
 #### Global Shortcuts
 
-| Shortcut | Action              |
-| :------- | :------------------ |
-| Ctrl+N   | New note (anywhere) |
-| Ctrl+K   | Focus search        |
-| Ctrl+/   | Show shortcut help  |
-| Escape   | Close modal         |
+| Shortcut | Action       |
+| :------- | :----------- |
+| N        | New note     |
+| /        | Focus search |
+| ?        | Show help    |
+| Esc      | Close modal  |
 
 #### Editor Shortcuts
 
@@ -121,7 +121,7 @@ From any document view, click **Edit** to open the split-view editor. Changes ar
 
 ### Creating Documents
 
-Use Quick Capture (Ctrl+N) for new notes:
+Use Quick Capture (N) for new notes:
 
 1. Enter a title (generates filename automatically)
 2. Write content in markdown

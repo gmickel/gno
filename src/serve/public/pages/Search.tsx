@@ -170,6 +170,7 @@ export default function Search({ navigate }: PageProps) {
             <div className="relative">
               <SearchIcon className="absolute top-1/2 left-4 size-5 -translate-y-1/2 text-muted-foreground transition-colors duration-200 group-focus-within:text-primary" />
               <Input
+                autoFocus
                 className="border-border/50 bg-card py-6 pr-4 pl-12 text-lg transition-all duration-200 focus:border-primary focus:bg-card/80 focus:shadow-[0_0_20px_-5px_hsl(var(--primary)/0.3)]"
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Search your documents..."

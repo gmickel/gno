@@ -3,13 +3,11 @@
  *
  * Features:
  * - Grouped by context (Global, Editor, Navigation)
- * - Platform-appropriate modifier display
- * - Triggered by Cmd+/ or help button
+ * - Triggered by '?' key or help icon
  */
 
 import { KeyboardIcon } from "lucide-react";
 
-import { modKey } from "../hooks/useKeyboardShortcuts";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog";
 
 export interface ShortcutHelpModalProps {
@@ -31,25 +29,25 @@ const shortcutGroups: ShortcutGroup[] = [
   {
     title: "Global",
     shortcuts: [
-      { keys: `${modKey}+N`, description: "New note" },
-      { keys: `${modKey}+K`, description: "Focus search" },
-      { keys: `${modKey}+/`, description: "Show shortcuts" },
+      { keys: "N", description: "New note" },
+      { keys: "/", description: "Focus search" },
+      { keys: "?", description: "Show shortcuts" },
       { keys: "Esc", description: "Close modal" },
     ],
   },
   {
     title: "Editor",
     shortcuts: [
-      { keys: `${modKey}+S`, description: "Save" },
-      { keys: `${modKey}+B`, description: "Bold" },
-      { keys: `${modKey}+I`, description: "Italic" },
-      { keys: `${modKey}+K`, description: "Insert link" },
+      { keys: "Ctrl+S", description: "Save" },
+      { keys: "Ctrl+B", description: "Bold" },
+      { keys: "Ctrl+I", description: "Italic" },
+      { keys: "Ctrl+K", description: "Insert link" },
       { keys: "Esc", description: "Close editor" },
     ],
   },
   {
     title: "Navigation",
-    shortcuts: [{ keys: `${modKey}+Enter`, description: "Submit form" }],
+    shortcuts: [{ keys: "Ctrl+Enter", description: "Submit form" }],
   },
 ];
 

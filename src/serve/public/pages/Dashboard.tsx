@@ -16,7 +16,6 @@ import { useCallback, useEffect, useState } from "react";
 import { CaptureButton } from "../components/CaptureButton";
 import { IndexingProgress } from "../components/IndexingProgress";
 import { PresetSelector } from "../components/preset-selector";
-import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
 import {
   Card,
@@ -26,7 +25,6 @@ import {
 } from "../components/ui/card";
 import { apiFetch } from "../hooks/use-api";
 import { useCaptureModal } from "../hooks/useCaptureModal";
-import { modKey } from "../hooks/useKeyboardShortcuts";
 
 interface SyncResponse {
   jobId: string;
@@ -256,12 +254,9 @@ export default function Dashboard({ navigate }: PageProps) {
                   <span className="font-medium text-lg transition-colors group-hover:text-secondary">
                     New Note
                   </span>
-                  <Badge
-                    className="font-mono text-xs transition-colors group-hover:border-secondary/50 group-hover:text-secondary"
-                    variant="outline"
-                  >
-                    {modKey}N
-                  </Badge>
+                  <kbd className="inline-flex min-w-[1.5rem] items-center justify-center rounded border border-border/80 bg-gradient-to-b from-muted/80 to-muted px-1.5 py-0.5 font-mono text-[11px] text-foreground shadow-[0_2px_0_hsl(var(--border)),inset_0_1px_0_hsl(var(--background)/0.5)] transition-colors group-hover:border-secondary/50 group-hover:text-secondary">
+                    N
+                  </kbd>
                 </div>
               </CardContent>
             </Card>
