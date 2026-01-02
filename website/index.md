@@ -19,6 +19,8 @@ Give your local LLM agents (like Claude Desktop or Cursor) a long-term memory. G
 
 ![GNO Web UI](/assets/screenshots/webui-home.png)
 
+![GNO Document Editor](/assets/screenshots/webui-editor.png)
+
 ## Agent Integration
 
 ![GNO MCP](/assets/screenshots/mcp.jpg)
