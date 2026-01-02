@@ -7,11 +7,14 @@
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+// node:path for join/dirname (no Bun path utils)
+import { dirname, join } from "node:path";
 
 import type { Collection, Config } from "../config/types";
 import type { SqliteAdapter } from "../store/sqlite/adapter";
 
-import { MCP_SERVER_NAME, VERSION } from "../app/constants";
+import { MCP_SERVER_NAME, VERSION, getIndexDbPath } from "../app/constants";
+import { JobManager } from "../core/job-manager";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Simple Promise Mutex (avoids async-mutex dependency)
@@ -54,6 +57,9 @@ export interface ToolContext {
   collections: Collection[];
   actualConfigPath: string;
   toolMutex: Mutex;
+  jobManager: JobManager;
+  serverInstanceId: string;
+  writeLockPath: string;
   isShuttingDown: () => boolean;
 }
 
@@ -133,6 +139,17 @@ export async function startMcpServer(options: McpServerOptions): Promise<void> {
   // Sequential execution mutex
   const toolMutex = new Mutex();
 
+  // Server instance ID (per-process)
+  const serverInstanceId = crypto.randomUUID();
+
+  const dbPath = getIndexDbPath(options.indexName);
+  const writeLockPath = join(dirname(dbPath), ".mcp-write.lock");
+  const jobManager = new JobManager({
+    lockPath: writeLockPath,
+    serverInstanceId,
+    toolMutex,
+  });
+
   // Shutdown state
   let shuttingDown = false;
 
@@ -143,6 +160,9 @@ export async function startMcpServer(options: McpServerOptions): Promise<void> {
     collections,
     actualConfigPath,
     toolMutex,
+    jobManager,
+    serverInstanceId,
+    writeLockPath,
     isShuttingDown: () => shuttingDown,
   };
 
@@ -176,17 +196,20 @@ export async function startMcpServer(options: McpServerOptions): Promise<void> {
     const release = await toolMutex.acquire();
     release();
 
-    // 2. Close MCP server/transport (flush buffers, clean disconnect)
+    // 2. Wait for background jobs before closing DB
+    await jobManager.shutdown();
+
+    // 3. Close MCP server/transport (flush buffers, clean disconnect)
     try {
       await server.close();
     } catch {
       // Best-effort - server may already be closed
     }
 
-    // 3. Close DB (safe now - no tool is running)
+    // 4. Close DB (safe now - no tool or job is running)
     await store.close();
 
-    // 4. Exit
+    // 5. Exit
     process.exit(0);
   };
 
