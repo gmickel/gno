@@ -2,6 +2,10 @@ import { ArrowLeft, FileText, Search as SearchIcon, Zap } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { Loader } from "../components/ai-elements/loader";
+import {
+  ThoroughnessSelector,
+  type Thoroughness,
+} from "../components/ThoroughnessSelector";
 import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
 import { ButtonGroup } from "../components/ui/button-group";
@@ -90,6 +94,7 @@ type SearchMode = "bm25" | "hybrid";
 export default function Search({ navigate }: PageProps) {
   const [query, setQuery] = useState("");
   const [mode, setMode] = useState<SearchMode>("bm25");
+  const [thoroughness, setThoroughness] = useState<Thoroughness>("balanced");
   const [results, setResults] = useState<SearchResult[]>([]);
   const [meta, setMeta] = useState<SearchResponse["meta"] | null>(null);
   const [loading, setLoading] = useState(false);
@@ -125,9 +130,30 @@ export default function Search({ navigate }: PageProps) {
     // Use /api/query for hybrid, /api/search for bm25
     const endpoint = mode === "hybrid" ? "/api/query" : "/api/search";
 
+    // Build request body based on mode and thoroughness
+    const body: Record<string, unknown> = { query, limit: 20 };
+
+    if (mode === "hybrid") {
+      // Map thoroughness to noExpand/noRerank flags
+      // fast: skip both (~0.7s)
+      // balanced: with reranking, no expansion (~2-3s)
+      // thorough: full pipeline (~5-8s)
+      if (thoroughness === "fast") {
+        body.noExpand = true;
+        body.noRerank = true;
+      } else if (thoroughness === "balanced") {
+        body.noExpand = true;
+        body.noRerank = false;
+      } else {
+        // thorough
+        body.noExpand = false;
+        body.noRerank = false;
+      }
+    }
+
     const { data, error } = await apiFetch<SearchResponse>(endpoint, {
       method: "POST",
-      body: JSON.stringify({ query, limit: 20 }),
+      body: JSON.stringify(body),
     });
 
     setLoading(false);
@@ -189,7 +215,7 @@ export default function Search({ navigate }: PageProps) {
           </div>
 
           {/* Mode selector */}
-          <div className="mt-4 flex items-center gap-4">
+          <div className="mt-4 flex flex-wrap items-center gap-4">
             <span className="text-muted-foreground text-sm">Mode:</span>
             <ButtonGroup>
               <Button
@@ -226,10 +252,24 @@ export default function Search({ navigate }: PageProps) {
                 Hybrid
               </Button>
             </ButtonGroup>
+
+            {/* Thoroughness selector - only for hybrid mode */}
+            {mode === "hybrid" && (
+              <ThoroughnessSelector
+                disabled={loading}
+                onChange={setThoroughness}
+                value={thoroughness}
+              />
+            )}
+
             <span className="text-muted-foreground/70 text-xs">
               {mode === "bm25"
                 ? "Keyword-based full-text search"
-                : "BM25 + vector + query expansion + reranking"}
+                : thoroughness === "fast"
+                  ? "Quick lookup, no reranking"
+                  : thoroughness === "balanced"
+                    ? "With reranking"
+                    : "Full pipeline with query expansion"}
             </span>
           </div>
         </form>

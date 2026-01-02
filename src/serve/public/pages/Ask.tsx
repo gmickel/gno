@@ -14,10 +14,17 @@ import {
   SourcesContent,
   SourcesTrigger,
 } from "../components/ai-elements/sources";
+import { PresetSelector } from "../components/preset-selector";
 import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
 import { Card, CardContent } from "../components/ui/card";
 import { Textarea } from "../components/ui/textarea";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "../components/ui/tooltip";
 import { apiFetch } from "../hooks/use-api";
 
 interface PageProps {
@@ -212,20 +219,44 @@ export default function Ask({ navigate }: PageProps) {
             Back
           </Button>
           <h1 className="font-semibold text-xl">Ask</h1>
-          {capabilities && (
-            <div className="ml-auto flex items-center gap-2">
-              {capabilities.vector && (
-                <Badge className="font-mono text-[10px]" variant="secondary">
-                  vectors
-                </Badge>
-              )}
-              {capabilities.answer && (
-                <Badge className="font-mono text-[10px]" variant="secondary">
-                  AI
-                </Badge>
-              )}
-            </div>
-          )}
+          <div className="ml-auto flex items-center gap-3">
+            {/* Preset selector with clarifying label */}
+            <TooltipProvider delayDuration={300}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground/50">
+                      AI Model
+                    </span>
+                    <PresetSelector />
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" sideOffset={8}>
+                  <p className="text-xs">
+                    Controls which LLM generates answers.
+                    <br />
+                    <span className="text-muted-foreground">
+                      Does not affect search or retrieval.
+                    </span>
+                  </p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            {capabilities && (
+              <div className="flex items-center gap-2">
+                {capabilities.vector && (
+                  <Badge className="font-mono text-[10px]" variant="secondary">
+                    vectors
+                  </Badge>
+                )}
+                {capabilities.answer && (
+                  <Badge className="font-mono text-[10px]" variant="secondary">
+                    AI
+                  </Badge>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </header>
 

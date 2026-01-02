@@ -2,6 +2,14 @@
 
 Local web server for GNO search and document browsing.
 
+## UI Development
+
+**ALWAYS use the `frontend-design` plugin** for any UI component work. This ensures distinctive, high-quality designs that match the "Scholarly Dusk" aesthetic rather than generic AI-generated patterns.
+
+```
+/frontend-design:frontend-design <description of component>
+```
+
 ## Architecture
 
 Uses same **"Ports without DI"** pattern as CLI/MCP (see root CLAUDE.md):
