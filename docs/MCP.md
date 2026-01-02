@@ -10,12 +10,14 @@ Use GNO as an MCP server for AI assistants like Claude Desktop, Cursor, and othe
 
 MCP (Model Context Protocol) allows AI assistants to access external tools and resources. GNO provides:
 
-- **Tools**: gno_search, gno_vsearch, gno_query, gno_get, gno_multi_get, gno_status
+- **Tools (read)**: gno_search, gno_vsearch, gno_query, gno_get, gno_multi_get, gno_status
+- **Tools (write, opt-in)**: gno_capture, gno_add_collection, gno_sync, gno_remove_collection
+- **Tools (jobs)**: gno_job_status, gno_list_jobs
 - **Resources**: Access documents via `gno://collection/path`
 
-## Design: Retrieval-Only
+## Design: Retrieval-Focused
 
-GNO's MCP tools are **retrieval-only by design**. Unlike the CLI's `gno ask` command (which runs a local LLM to synthesize answers), MCP tools return search results and document content without LLM processing.
+GNO's MCP tools are **retrieval-focused**. The MCP server returns search results and document content; the client LLM synthesizes answers. Write tools enable collection management but do not perform answer synthesis.
 
 **Why?** Claude, Codex, and other AI agents use much more powerful models. Having GNO call a separate (likely smaller) LLM to synthesize answers would be:
 
@@ -28,6 +30,41 @@ GNO's MCP tools are **retrieval-only by design**. Unlike the CLI's `gno ask` com
 1. Client LLM uses `gno_query` to retrieve relevant documents
 2. Client LLM synthesizes the answer from retrieved context
 3. Result: Best retrieval (GNO) + best synthesis (Claude/Codex)
+
+## Security Model
+
+### Write Tool Gating
+
+Write tools are **disabled by default**. Enable with:
+
+```bash
+gno mcp --enable-write
+# or
+GNO_MCP_ENABLE_WRITE=1 gno mcp
+```
+
+Without this flag, only read-only tools are available.
+
+### Collection Root Validation
+
+`gno_add_collection` rejects dangerous paths:
+
+- `/` (root filesystem)
+- `~` alone (entire home directory)
+- System directories (`/etc`, `/usr`, `/bin`, `/var`, `/System`, `/Library`)
+- Hidden config dirs (`~/.config`, `~/.local`, `~/.ssh`, `~/.gnupg`)
+
+### Client Approval
+
+MCP clients prompt for tool approval. Review parameters before confirming write operations.
+
+## Job Session Lifetime
+
+Jobs are stored in memory and tied to the MCP server process:
+
+- Job IDs are only valid within the same running server
+- Polling after server restart returns NOT_FOUND
+- Different MCP processes cannot query each other's jobs
 
 ## Quick Install
 
@@ -505,6 +542,30 @@ Check index health.
 
 Returns collection counts, document totals, and health status.
 
+### gno_capture
+
+Create a new document (requires `--enable-write`).
+
+### gno_add_collection
+
+Add a folder to the index (requires `--enable-write`).
+
+### gno_sync
+
+Reindex one or all collections (requires `--enable-write`).
+
+### gno_remove_collection
+
+Remove a collection from config (requires `--enable-write`). Indexed data is retained.
+
+### gno_job_status
+
+Check async job status.
+
+### gno_list_jobs
+
+List active and recent jobs.
+
 ## Resources
 
 Access documents via GNO URIs:
@@ -517,6 +578,13 @@ gno://work/src/main.ts
 Resource format:
 
 - `gno://<collection>/<relative-path>`
+
+## Clarifications
+
+- MCP loads embedding/rerank models for search tools
+- MCP does NOT do answer synthesis
+- Collection names are case-insensitive
+- `tags` field coming in a future release (gno-k1b)
 
 ## Usage Patterns
 
