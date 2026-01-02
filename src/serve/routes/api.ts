@@ -92,6 +92,10 @@ export interface CreateDocRequestBody {
   overwrite?: boolean;
 }
 
+export interface UpdateDocRequestBody {
+  content: string;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
 // ─────────────────────────────────────────────────────────────────────────────
@@ -519,6 +523,115 @@ export async function handleDeactivateDoc(
     path: doc.uri,
     warning: "File still exists on disk. Will be re-indexed unless excluded.",
   });
+}
+
+/**
+ * PUT /api/docs/:id
+ * Update an existing document's content.
+ */
+export async function handleUpdateDoc(
+  ctxHolder: ContextHolder,
+  store: SqliteAdapter,
+  docId: string,
+  req: Request
+): Promise<Response> {
+  let body: UpdateDocRequestBody;
+  try {
+    body = (await req.json()) as UpdateDocRequestBody;
+  } catch {
+    return errorResponse("VALIDATION", "Invalid JSON body");
+  }
+
+  // Validate content field
+  if (!body.content || typeof body.content !== "string") {
+    return errorResponse("VALIDATION", "Missing or invalid content");
+  }
+
+  // Get document to verify it exists
+  const docResult = await store.getDocumentByDocid(docId);
+  if (!docResult.ok) {
+    return errorResponse("RUNTIME", docResult.error.message, 500);
+  }
+  if (!docResult.value) {
+    return errorResponse("NOT_FOUND", "Document not found", 404);
+  }
+
+  const doc = docResult.value;
+
+  // Find collection config (case-insensitive)
+  const collectionName = doc.collection.toLowerCase();
+  const collection = ctxHolder.config.collections.find(
+    (c) => c.name.toLowerCase() === collectionName
+  );
+  if (!collection) {
+    return errorResponse(
+      "NOT_FOUND",
+      `Collection not found: ${doc.collection}`,
+      404
+    );
+  }
+
+  // Resolve full path
+  const nodePath = await import("node:path"); // no bun equivalent
+  const fullPath = nodePath.join(collection.path, doc.relPath);
+
+  // Verify file exists
+  const file = Bun.file(fullPath);
+  if (!(await file.exists())) {
+    return errorResponse("FILE_NOT_FOUND", "Source file no longer exists", 404);
+  }
+
+  try {
+    // Write atomically via temp file + rename
+    const { rename, unlink } = await import("node:fs/promises"); // structure ops need fs
+    const tempPath = `${fullPath}.tmp.${crypto.randomUUID()}`;
+    await Bun.write(tempPath, body.content);
+    try {
+      await rename(tempPath, fullPath);
+    } catch (renameError) {
+      // Clean up temp file on failure
+      await unlink(tempPath).catch(() => {
+        /* ignore cleanup errors */
+      });
+      throw renameError;
+    }
+
+    // Build proper file:// URI using node:url
+    const { pathToFileURL } = await import("node:url");
+    const fileUri = pathToFileURL(fullPath).href;
+
+    // Run sync via job system (non-blocking)
+    const jobResult = startJob("sync", async (): Promise<SyncResult> => {
+      const result = await defaultSyncService.syncCollection(
+        collection,
+        store,
+        { runUpdateCmd: false }
+      );
+      return {
+        collections: [result],
+        totalDurationMs: result.durationMs,
+        totalFilesProcessed: result.filesProcessed,
+        totalFilesAdded: result.filesAdded,
+        totalFilesUpdated: result.filesUpdated,
+        totalFilesErrored: result.filesErrored,
+        totalFilesSkipped: result.filesSkipped,
+      };
+    });
+
+    return jsonResponse({
+      success: true,
+      docId: doc.docid,
+      uri: fileUri,
+      path: fullPath,
+      jobId: jobResult.ok ? jobResult.jobId : null,
+    });
+  } catch (e) {
+    return errorResponse(
+      "RUNTIME",
+      `Failed to update document: ${e instanceof Error ? e.message : String(e)}`,
+      500
+    );
+  }
 }
 
 /**

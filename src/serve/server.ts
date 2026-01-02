@@ -34,6 +34,7 @@ import {
   handleSetPreset,
   handleStatus,
   handleSync,
+  handleUpdateDoc,
 } from "./routes/api";
 import { forbiddenResponse, isRequestAllowed } from "./security";
 
@@ -246,6 +247,20 @@ export async function startServer(
             const id = decodeURIComponent(parts[3] || "");
             return withSecurityHeaders(
               await handleDeactivateDoc(store, id),
+              isDev
+            );
+          },
+        },
+        "/api/docs/:id": {
+          PUT: async (req: Request) => {
+            if (!isRequestAllowed(req, port)) {
+              return withSecurityHeaders(forbiddenResponse(), isDev);
+            }
+            const url = new URL(req.url);
+            // Extract id from /api/docs/:id
+            const id = decodeURIComponent(url.pathname.split("/").pop() || "");
+            return withSecurityHeaders(
+              await handleUpdateDoc(ctxHolder, store, id, req),
               isDev
             );
           },

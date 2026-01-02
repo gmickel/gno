@@ -50,6 +50,7 @@ All endpoints are JSON-based and run entirely on your machine.
 | `/api/collections/:name`   | DELETE | Remove collection   |
 | `/api/sync`                | POST   | Trigger re-index    |
 | `/api/docs`                | POST   | Create new document |
+| `/api/docs/:id`            | PUT    | Update document     |
 | `/api/docs/:id/deactivate` | POST   | Unindex document    |
 | `/api/jobs/:id`            | GET    | Poll job status     |
 
@@ -557,6 +558,65 @@ curl -X POST http://localhost:3000/api/docs \
     "relPath": "journal/2025-01-01.md",
     "content": "# January 1st\n\nNew year, new notes!"
   }'
+```
+
+---
+
+### Update Document
+
+```http
+PUT /api/docs/:id
+```
+
+Update an existing document's content. Triggers background sync to re-index.
+
+**URL Parameters**:
+
+| Param | Description                                                          |
+| :---- | :------------------------------------------------------------------- |
+| `:id` | Document ID (the `#hexhash` from docid, URL-encoded as `%23hexhash`) |
+
+**Request Body**:
+
+```json
+{
+  "content": "# Updated Content\n\nNew document content..."
+}
+```
+
+| Field     | Type   | Required | Description      |
+| :-------- | :----- | :------- | :--------------- |
+| `content` | string | Yes      | New file content |
+
+**Response**:
+
+```json
+{
+  "success": true,
+  "docId": "#abc123",
+  "uri": "file:///Users/you/notes/projects/readme.md",
+  "path": "/Users/you/notes/projects/readme.md",
+  "jobId": "550e8400-e29b-41d4-a716-446655440000"
+}
+```
+
+**Errors**:
+
+| Code             | Status | Description                  |
+| :--------------- | :----- | :--------------------------- |
+| `VALIDATION`     | 400    | Missing or invalid content   |
+| `NOT_FOUND`      | 404    | Document not found in index  |
+| `FILE_NOT_FOUND` | 404    | Source file no longer exists |
+| `CONFLICT`       | 409    | Sync job already running     |
+| `RUNTIME`        | 500    | Failed to write file         |
+
+**Example**:
+
+```bash
+# Note: # must be URL-encoded as %23
+curl -X PUT "http://localhost:3000/api/docs/%23abc123" \
+  -H "Content-Type: application/json" \
+  -d '{"content": "# Updated\n\nNew content here."}'
 ```
 
 ---
