@@ -6,6 +6,7 @@
 
 import type { SyncResult } from "../ingestion";
 
+import { MCP_ERRORS } from "./errors";
 import { acquireWriteLock } from "./file-lock";
 
 const JOB_EXPIRATION_MS = 60 * 60 * 1000;
@@ -71,16 +72,13 @@ export class JobManager {
     if (this.#activeJobId) {
       throw new JobError(
         "JOB_CONFLICT",
-        `Job ${this.#activeJobId} already running`
+        `${MCP_ERRORS.JOB_CONFLICT.message} (${this.#activeJobId})`
       );
     }
 
     const lock = await acquireWriteLock(this.#lockPath, this.#lockTimeoutMs);
     if (!lock) {
-      throw new JobError(
-        "LOCKED",
-        "Another GNO write operation is running. Try again later."
-      );
+      throw new JobError("LOCKED", MCP_ERRORS.LOCKED.message);
     }
 
     const jobId = crypto.randomUUID();

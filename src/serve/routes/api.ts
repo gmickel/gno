@@ -11,6 +11,8 @@ import type { SqliteAdapter } from "../../store/sqlite/adapter";
 
 import { modelsPull } from "../../cli/commands/models/pull";
 import { addCollection, removeCollection } from "../../collection";
+import { atomicWrite } from "../../core/file-ops";
+import { validateRelPath } from "../../core/validation";
 import { defaultSyncService, type SyncResult } from "../../ingestion";
 import { getModelConfig, getPreset, listPresets } from "../../llm/registry";
 import {
@@ -582,19 +584,7 @@ export async function handleUpdateDoc(
   }
 
   try {
-    // Write atomically via temp file + rename
-    const { rename, unlink } = await import("node:fs/promises"); // structure ops need fs
-    const tempPath = `${fullPath}.tmp.${crypto.randomUUID()}`;
-    await Bun.write(tempPath, body.content);
-    try {
-      await rename(tempPath, fullPath);
-    } catch (renameError) {
-      // Clean up temp file on failure
-      await unlink(tempPath).catch(() => {
-        /* ignore cleanup errors */
-      });
-      throw renameError;
-    }
+    await atomicWrite(fullPath, body.content);
 
     // Build proper file:// URI using node:url
     const { pathToFileURL } = await import("node:url");
@@ -632,27 +622,6 @@ export async function handleUpdateDoc(
       500
     );
   }
-}
-
-/**
- * Validate relative path for document creation.
- * Returns error message if invalid, null if valid.
- */
-async function validateRelPath(
-  relPath: string
-): Promise<{ error: string } | { fullPath: string; normalizedPath: string }> {
-  const nodePath = await import("node:path");
-  if (nodePath.isAbsolute(relPath)) {
-    return { error: "relPath must be relative" };
-  }
-  if (relPath.includes("\0")) {
-    return { error: "relPath contains invalid characters" };
-  }
-  const normalizedPath = nodePath.normalize(relPath);
-  if (normalizedPath.startsWith("..")) {
-    return { error: "relPath cannot escape collection root" };
-  }
-  return { fullPath: "", normalizedPath };
 }
 
 /**
@@ -700,16 +669,18 @@ export async function handleCreateDoc(
   }
 
   // Validate relPath - no path traversal
-  const pathValidation = await validateRelPath(body.relPath);
-  if ("error" in pathValidation) {
-    return errorResponse("VALIDATION", pathValidation.error);
+  let normalizedRelPath: string;
+  try {
+    normalizedRelPath = validateRelPath(body.relPath);
+  } catch (e) {
+    return errorResponse(
+      "VALIDATION",
+      e instanceof Error ? e.message : String(e)
+    );
   }
 
   const nodePath = await import("node:path"); // no bun equivalent
-  const fullPath = nodePath.join(
-    collection.path,
-    pathValidation.normalizedPath
-  );
+  const fullPath = nodePath.join(collection.path, normalizedRelPath);
 
   try {
     // Check if file already exists
@@ -724,21 +695,10 @@ export async function handleCreateDoc(
 
     // Ensure parent directory exists
     const parentDir = nodePath.dirname(fullPath);
-    const { mkdir, rename, unlink } = await import("node:fs/promises"); // structure ops need fs
+    const { mkdir } = await import("node:fs/promises"); // structure ops need fs
     await mkdir(parentDir, { recursive: true });
 
-    // Write file atomically (temp file + rename)
-    const tempPath = `${fullPath}.tmp.${crypto.randomUUID()}`;
-    await Bun.write(tempPath, body.content);
-    try {
-      await rename(tempPath, fullPath);
-    } catch (renameError) {
-      // Clean up temp file on failure
-      await unlink(tempPath).catch(() => {
-        /* ignore cleanup errors */
-      });
-      throw renameError;
-    }
+    await atomicWrite(fullPath, body.content);
 
     // Build proper file:// URI using node:url
     const { pathToFileURL } = await import("node:url");

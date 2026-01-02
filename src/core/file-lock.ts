@@ -9,6 +9,7 @@ import { mkdir } from "node:fs/promises";
 // node:path for dirname (no Bun path utils)
 import { dirname } from "node:path";
 
+import { MCP_ERRORS } from "./errors";
 const DEFAULT_TIMEOUT_MS = 5000;
 const HOLD_SECONDS = 60 * 60 * 24 * 365;
 const READY_TOKEN = "READY";
@@ -132,9 +133,7 @@ export async function withWriteLock<T>(
 ): Promise<T> {
   const lock = await acquireWriteLock(lockPath, timeoutMs);
   if (!lock) {
-    throw new Error(
-      "LOCKED: Another GNO write operation is running. Try again later."
-    );
+    throw new Error(`${MCP_ERRORS.LOCKED.code}: ${MCP_ERRORS.LOCKED.message}`);
   }
 
   try {

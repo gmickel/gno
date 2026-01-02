@@ -9,31 +9,11 @@ import type { Config } from "../config/types";
 import type { SqliteAdapter } from "../store/sqlite/adapter";
 import type { ContextHolder } from "./routes/api";
 
-import { loadConfig, saveConfig } from "../config";
-
-export interface ConfigSyncResult {
-  ok: true;
-  config: Config;
-}
-
-export interface ConfigSyncError {
-  ok: false;
-  error: string;
-  /** Error code - can be system codes or mutation-specific codes passed through */
-  code: string;
-}
-
-export type ApplyConfigResult = ConfigSyncResult | ConfigSyncError;
-
-export type MutationResult =
-  | { ok: true; config: Config }
-  | { ok: false; error: string; code: string };
-
-/**
- * In-memory mutex for serializing config mutations.
- * Prevents lost updates when multiple requests try to modify config concurrently.
- */
-let configMutex: Promise<void> = Promise.resolve();
+import {
+  applyConfigChange as applyConfigChangeCore,
+  type ApplyConfigResult,
+  type MutationResult,
+} from "../core/config-mutation";
 
 /**
  * Apply a config mutation atomically with serialization.
@@ -60,81 +40,15 @@ export async function applyConfigChange(
   mutate: (config: Config) => Promise<MutationResult> | MutationResult,
   configPath?: string
 ): Promise<ApplyConfigResult> {
-  // Serialize config mutations to prevent lost updates
-  const previousMutex = configMutex;
-  let resolveMutex: () => void = () => {
-    /* no-op until assigned */
-  };
-  configMutex = new Promise((resolve) => {
-    resolveMutex = resolve;
-  });
-
-  try {
-    await previousMutex;
-
-    // 1. Load current config from YAML
-    const loadResult = await loadConfig(configPath);
-    if (!loadResult.ok) {
-      return {
-        ok: false,
-        error: loadResult.error.message,
-        code: "LOAD_ERROR",
-      };
-    }
-
-    // 2. Apply mutation to freshly-loaded config
-    const mutationResult = await mutate(loadResult.value);
-    if (!mutationResult.ok) {
-      return {
-        ok: false,
-        error: mutationResult.error,
-        code: mutationResult.code, // Pass through the original error code
-      };
-    }
-    const newConfig = mutationResult.config;
-
-    // 3. Save YAML atomically
-    const saveResult = await saveConfig(newConfig, configPath);
-    if (!saveResult.ok) {
-      return {
-        ok: false,
-        error: saveResult.error.message,
-        code: "SAVE_ERROR",
-      };
-    }
-
-    // 4. Sync DB tables
-    const syncCollResult = await store.syncCollections(newConfig.collections);
-    if (!syncCollResult.ok) {
-      // YAML is saved, but DB sync failed - log warning
-      console.warn(
-        `Config saved but DB sync failed: ${syncCollResult.error.message}`
-      );
-      return {
-        ok: false,
-        error: `DB sync failed: ${syncCollResult.error.message}`,
-        code: "SYNC_ERROR",
-      };
-    }
-
-    const syncCtxResult = await store.syncContexts(newConfig.contexts ?? []);
-    if (!syncCtxResult.ok) {
-      console.warn(
-        `Config saved but context sync failed: ${syncCtxResult.error.message}`
-      );
-      return {
-        ok: false,
-        error: `Context sync failed: ${syncCtxResult.error.message}`,
-        code: "SYNC_ERROR",
-      };
-    }
-
-    // 5. Update both in-memory references
-    ctxHolder.config = newConfig;
-    ctxHolder.current = { ...ctxHolder.current, config: newConfig };
-
-    return { ok: true, config: newConfig };
-  } finally {
-    resolveMutex();
-  }
+  return applyConfigChangeCore(
+    {
+      store,
+      configPath,
+      onConfigUpdated: (config) => {
+        ctxHolder.config = config;
+        ctxHolder.current = { ...ctxHolder.current, config };
+      },
+    },
+    mutate
+  );
 }
