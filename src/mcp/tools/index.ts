@@ -17,6 +17,7 @@ import { handleJobStatus } from "./job-status";
 import { handleListJobs } from "./list-jobs";
 import { handleMultiGet } from "./multi-get";
 import { handleQuery } from "./query";
+import { handleRemoveCollection } from "./remove-collection";
 import { handleSearch } from "./search";
 import { handleStatus } from "./status";
 import { handleSync } from "./sync";
@@ -55,6 +56,10 @@ const syncInputSchema = z.object({
   collection: z.string().optional(),
   gitPull: z.boolean().default(false),
   runUpdateCmd: z.boolean().default(false),
+});
+
+const removeCollectionInputSchema = z.object({
+  collection: z.string().min(1, "Collection cannot be empty"),
 });
 
 const vsearchInputSchema = z.object({
@@ -219,6 +224,13 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
       "Sync one or all collections",
       syncInputSchema.shape,
       (args) => handleSync(args, ctx)
+    );
+
+    server.tool(
+      "gno_remove_collection",
+      "Remove a collection from config",
+      removeCollectionInputSchema.shape,
+      (args) => handleRemoveCollection(args, ctx)
     );
   }
 
