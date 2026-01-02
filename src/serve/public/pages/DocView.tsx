@@ -3,11 +3,13 @@ import {
   ArrowLeft,
   Calendar,
   ChevronRightIcon,
+  CodeIcon,
   FileText,
   FolderOpen,
   HardDrive,
   Loader2Icon,
   PencilIcon,
+  TextIcon,
   TrashIcon,
 } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -17,6 +19,7 @@ import {
   CodeBlockCopyButton,
 } from "../components/ai-elements/code-block";
 import { Loader } from "../components/ai-elements/loader";
+import { MarkdownPreview } from "../components/editor";
 import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
 import {
@@ -165,6 +168,7 @@ export default function DocView({ navigate }: PageProps) {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [showRawView, setShowRawView] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -187,6 +191,10 @@ export default function DocView({ navigate }: PageProps) {
       }
     );
   }, []);
+
+  const isMarkdown =
+    doc?.source.ext &&
+    [".md", ".markdown"].includes(doc.source.ext.toLowerCase());
 
   const isCodeFile =
     doc?.source.ext &&
@@ -393,9 +401,31 @@ export default function DocView({ navigate }: PageProps) {
             {/* Content */}
             <Card>
               <CardHeader className="pb-0">
-                <CardTitle className="flex items-center gap-2 text-lg">
-                  <FileText className="size-4" />
-                  Content
+                <CardTitle className="flex items-center justify-between text-lg">
+                  <span className="flex items-center gap-2">
+                    <FileText className="size-4" />
+                    Content
+                  </span>
+                  {isMarkdown && doc.contentAvailable && (
+                    <Button
+                      className="gap-1.5"
+                      onClick={() => setShowRawView(!showRawView)}
+                      size="sm"
+                      variant="ghost"
+                    >
+                      {showRawView ? (
+                        <>
+                          <TextIcon className="size-4" />
+                          <span className="hidden sm:inline">Rendered</span>
+                        </>
+                      ) : (
+                        <>
+                          <CodeIcon className="size-4" />
+                          <span className="hidden sm:inline">Source</span>
+                        </>
+                      )}
+                    </Button>
+                  )}
                 </CardTitle>
               </CardHeader>
               <CardContent className="pt-4">
@@ -406,7 +436,21 @@ export default function DocView({ navigate }: PageProps) {
                     </p>
                   </div>
                 )}
-                {doc.contentAvailable && isCodeFile && (
+                {doc.contentAvailable && isMarkdown && !showRawView && (
+                  <div className="rounded-lg border border-border/50 bg-background p-6">
+                    <MarkdownPreview content={doc.content ?? ""} />
+                  </div>
+                )}
+                {doc.contentAvailable && isMarkdown && showRawView && (
+                  <CodeBlock
+                    code={doc.content ?? ""}
+                    language={"markdown" as BundledLanguage}
+                    showLineNumbers
+                  >
+                    <CodeBlockCopyButton />
+                  </CodeBlock>
+                )}
+                {doc.contentAvailable && isCodeFile && !isMarkdown && (
                   <CodeBlock
                     code={doc.content ?? ""}
                     language={

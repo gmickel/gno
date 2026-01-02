@@ -12,6 +12,7 @@ import { ExternalLinkIcon } from "lucide-react";
 import { memo } from "react";
 import ReactMarkdown from "react-markdown";
 import rehypeSanitize from "rehype-sanitize";
+import remarkGfm from "remark-gfm";
 
 import { cn } from "../../lib/utils";
 import { CodeBlock, CodeBlockCopyButton } from "../ai-elements/code-block";
@@ -300,7 +301,11 @@ export const MarkdownPreview = memo(
           className
         )}
       >
-        <ReactMarkdown components={components} rehypePlugins={[rehypeSanitize]}>
+        <ReactMarkdown
+          components={components}
+          rehypePlugins={[rehypeSanitize]}
+          remarkPlugins={[remarkGfm]}
+        >
           {content}
         </ReactMarkdown>
       </div>
