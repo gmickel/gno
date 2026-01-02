@@ -98,12 +98,13 @@ Press **?** to view all shortcuts. Single-key shortcuts (no modifier needed) wor
 
 #### Global Shortcuts
 
-| Shortcut | Action       |
-| :------- | :----------- |
-| N        | New note     |
-| /        | Focus search |
-| ?        | Show help    |
-| Esc      | Close modal  |
+| Shortcut | Action             |
+| :------- | :----------------- |
+| N        | New note           |
+| /        | Focus search       |
+| T        | Cycle search depth |
+| ?        | Show help          |
+| Esc      | Close modal        |
 
 #### Editor Shortcuts
 

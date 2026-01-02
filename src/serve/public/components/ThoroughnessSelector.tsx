@@ -29,7 +29,7 @@ interface Option {
 }
 
 const options: Option[] = [
-  { id: "fast", label: "Fast", timing: "~0.7s", icon: Rabbit },
+  { id: "fast", label: "Fast", timing: "BM25", icon: Rabbit },
   { id: "balanced", label: "Balanced", timing: "~2s", icon: Gauge },
   { id: "thorough", label: "Thorough", timing: "~5s", icon: Sparkles },
 ];

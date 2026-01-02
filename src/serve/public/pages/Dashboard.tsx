@@ -15,7 +15,6 @@ import { useCallback, useEffect, useState } from "react";
 
 import { CaptureButton } from "../components/CaptureButton";
 import { IndexingProgress } from "../components/IndexingProgress";
-import { PresetSelector } from "../components/preset-selector";
 import { Button } from "../components/ui/button";
 import {
   Card,
@@ -108,22 +107,19 @@ export default function Dashboard({ navigate }: PageProps) {
                 GNO
               </h1>
             </div>
-            <div className="flex items-center gap-3">
-              <Button
-                disabled={syncing}
-                onClick={handleSync}
-                size="sm"
-                variant="outline"
-              >
-                {syncing ? (
-                  <Loader2Icon className="mr-1.5 size-4 animate-spin" />
-                ) : (
-                  <RefreshCwIcon className="mr-1.5 size-4" />
-                )}
-                {syncing ? "Syncing..." : "Update All"}
-              </Button>
-              <PresetSelector />
-            </div>
+            <Button
+              disabled={syncing}
+              onClick={handleSync}
+              size="sm"
+              variant="outline"
+            >
+              {syncing ? (
+                <Loader2Icon className="mr-1.5 size-4 animate-spin" />
+              ) : (
+                <RefreshCwIcon className="mr-1.5 size-4" />
+              )}
+              {syncing ? "Syncing..." : "Update All"}
+            </Button>
           </div>
           <p className="text-lg text-muted-foreground">
             Your Local Knowledge Index

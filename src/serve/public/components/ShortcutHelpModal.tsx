@@ -31,6 +31,7 @@ const shortcutGroups: ShortcutGroup[] = [
     shortcuts: [
       { keys: "N", description: "New note" },
       { keys: "/", description: "Focus search" },
+      { keys: "T", description: "Cycle search depth" },
       { keys: "?", description: "Show shortcuts" },
       { keys: "Esc", description: "Close modal" },
     ],
