@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
 
 import { ShortcutHelpModal } from "./components/ShortcutHelpModal";
+import { CaptureModalProvider } from "./hooks/useCaptureModal";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
 import Ask from "./pages/Ask";
 import Browse from "./pages/Browse";
@@ -91,13 +92,13 @@ function App() {
   const Page = routes[basePath] || Dashboard;
 
   return (
-    <>
+    <CaptureModalProvider>
       <Page navigate={navigate} />
       <ShortcutHelpModal
         onOpenChange={setShortcutHelpOpen}
         open={shortcutHelpOpen}
       />
-    </>
+    </CaptureModalProvider>
   );
 }
 

@@ -273,7 +273,7 @@ export async function handleCreateCollection(
   return jsonResponse(
     {
       jobId: jobResult.jobId,
-      collection: collection.name,
+      collection: { name: collection.name, path: collection.path },
     },
     202
   );
@@ -542,8 +542,8 @@ export async function handleUpdateDoc(
     return errorResponse("VALIDATION", "Invalid JSON body");
   }
 
-  // Validate content field
-  if (!body.content || typeof body.content !== "string") {
+  // Validate content field (allow empty string)
+  if (typeof body.content !== "string") {
     return errorResponse("VALIDATION", "Missing or invalid content");
   }
 

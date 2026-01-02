@@ -210,6 +210,10 @@ export default function DocumentEditor({ navigate }: PageProps) {
           const docContent = data.content ?? "";
           setContent(docContent);
           setOriginalContent(docContent);
+          // Ensure CodeMirror reflects content after async load
+          requestAnimationFrame(() => {
+            editorRef.current?.setValue(docContent);
+          });
         }
       }
     );
@@ -227,29 +231,29 @@ export default function DocumentEditor({ navigate }: PageProps) {
         return;
       }
 
-      // Cmd+B - Bold
-      if (isMeta && e.key === "b") {
+      // Editor-specific shortcuts - only when focus is in CodeMirror
+      const target = e.target as HTMLElement;
+      const inEditor = !!target.closest(".cm-editor");
+
+      // Cmd+B - Bold (editor only)
+      if (isMeta && e.key === "b" && inEditor) {
         e.preventDefault();
         editorRef.current?.wrapSelection("**", "**");
         return;
       }
 
-      // Cmd+I - Italic
-      if (isMeta && e.key === "i") {
+      // Cmd+I - Italic (editor only)
+      if (isMeta && e.key === "i" && inEditor) {
         e.preventDefault();
         editorRef.current?.wrapSelection("*", "*");
         return;
       }
 
-      // Cmd+K - Link (only in editor context, skip if not editing)
-      if (isMeta && e.key === "k") {
-        // Only handle if focus is in editor area
-        const target = e.target as HTMLElement;
-        if (target.closest(".cm-editor")) {
-          e.preventDefault();
-          editorRef.current?.wrapSelection("[", "](url)");
-          return;
-        }
+      // Cmd+K - Link (editor only)
+      if (isMeta && e.key === "k" && inEditor) {
+        e.preventDefault();
+        editorRef.current?.wrapSelection("[", "](url)");
+        return;
       }
 
       // Escape - Close (with warning if unsaved)
@@ -272,6 +276,7 @@ export default function DocumentEditor({ navigate }: PageProps) {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       if (hasUnsavedChanges) {
         e.preventDefault();
+        e.returnValue = ""; // Required for modern browsers
       }
     };
 

@@ -14,7 +14,6 @@ import {
 import { useCallback, useEffect, useState } from "react";
 
 import { CaptureButton } from "../components/CaptureButton";
-import { CaptureModal } from "../components/CaptureModal";
 import { IndexingProgress } from "../components/IndexingProgress";
 import { PresetSelector } from "../components/preset-selector";
 import { Badge } from "../components/ui/badge";
@@ -26,6 +25,8 @@ import {
   CardHeader,
 } from "../components/ui/card";
 import { apiFetch } from "../hooks/use-api";
+import { useCaptureModal } from "../hooks/useCaptureModal";
+import { modKey } from "../hooks/useKeyboardShortcuts";
 
 interface SyncResponse {
   jobId: string;
@@ -55,7 +56,7 @@ export default function Dashboard({ navigate }: PageProps) {
   const [error, setError] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
   const [syncJobId, setSyncJobId] = useState<string | null>(null);
-  const [captureOpen, setCaptureOpen] = useState(false);
+  const { openCapture } = useCaptureModal();
 
   const loadStatus = useCallback(async () => {
     const { data, error: err } = await apiFetch<StatusData>("/api/status");
@@ -237,7 +238,7 @@ export default function Dashboard({ navigate }: PageProps) {
             {/* Quick Capture Card */}
             <Card
               className="group stagger-3 animate-fade-in cursor-pointer opacity-0 transition-all hover:border-primary/50 hover:bg-primary/5"
-              onClick={() => setCaptureOpen(true)}
+              onClick={openCapture}
             >
               <CardHeader className="pb-2">
                 <CardDescription className="flex items-center gap-2">
@@ -251,7 +252,7 @@ export default function Dashboard({ navigate }: PageProps) {
                     New Note
                   </span>
                   <Badge className="font-mono text-xs" variant="outline">
-                    ⌘N
+                    {modKey}N
                   </Badge>
                 </div>
               </CardContent>
@@ -312,15 +313,8 @@ export default function Dashboard({ navigate }: PageProps) {
         )}
       </main>
 
-      {/* Capture Modal */}
-      <CaptureModal
-        onOpenChange={setCaptureOpen}
-        onSuccess={() => void loadStatus()}
-        open={captureOpen}
-      />
-
       {/* Floating Action Button */}
-      <CaptureButton onSuccess={() => void loadStatus()} />
+      <CaptureButton onClick={openCapture} />
     </div>
   );
 }
