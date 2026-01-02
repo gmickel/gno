@@ -5,6 +5,25 @@ All notable changes to GNO will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.2] - 2026-01-03
+
+### Added
+
+- **ThoroughnessSelector on Ask page** - Fast/Balanced/Thorough modes with keyboard shortcut (T)
+- **Skills documentation** - New docs/integrations/skills.md with Claude Code, Codex, OpenCode, Amp, VS Code Copilot, and Cursor support
+- **noExpand/noRerank API params** - Added to `/api/ask` endpoint for search depth control
+
+### Changed
+
+- **Documentation restructure** - Agent integration (Skills, MCP) now prioritized before Web UI in README and website
+- **Screenshot updates** - All webui screenshots updated to .jpg format with new Brandbird styling
+
+### Fixed
+
+- **react-markdown node prop leak** - Prevented `node` prop from leaking to DOM elements
+- **Table row striping** - Increased visibility of alternating row colors in markdown tables
+- **Em dash removal** - Replaced AI-style em dashes with standard punctuation across all docs
+
 ## [0.9.1] - 2026-01-02
 
 ### Added
