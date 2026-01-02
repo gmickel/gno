@@ -4,11 +4,12 @@ import { createRoot } from "react-dom/client";
 import Ask from "./pages/Ask";
 import Browse from "./pages/Browse";
 import Dashboard from "./pages/Dashboard";
+import DocumentEditor from "./pages/DocumentEditor";
 import DocView from "./pages/DocView";
 import Search from "./pages/Search";
 import "./globals.css";
 
-type Route = "/" | "/search" | "/browse" | "/doc" | "/ask";
+type Route = "/" | "/search" | "/browse" | "/doc" | "/ask" | "/edit";
 type Navigate = (to: string | number) => void;
 
 const routes: Record<Route, React.ComponentType<{ navigate: Navigate }>> = {
@@ -16,6 +17,7 @@ const routes: Record<Route, React.ComponentType<{ navigate: Navigate }>> = {
   "/search": Search,
   "/browse": Browse,
   "/doc": DocView,
+  "/edit": DocumentEditor,
   "/ask": Ask,
 };
 
