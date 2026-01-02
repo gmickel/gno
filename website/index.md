@@ -17,7 +17,7 @@ Stop grepping through thousands of Markdown files. Ask GNO questions in plain En
 
 Give your local LLM agents (like Claude Desktop or Cursor) a long-term memory. GNO's **Model Context Protocol (MCP)** server allows agents to search, read, and cite your local files safely.
 
-![GNO Web UI](/assets/screenshots/webui-home.jpg)
+![GNO Web UI](/assets/screenshots/webui-home.png)
 
 ## Agent Integration
 

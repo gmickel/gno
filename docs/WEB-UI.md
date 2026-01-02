@@ -7,7 +7,7 @@ gno serve
 # Open http://localhost:3000
 ```
 
-![GNO Web UI Dashboard](../assets/screenshots/webui-home.jpg)
+![GNO Web UI Dashboard](../assets/screenshots/webui-home.png)
 
 ---
 
@@ -79,7 +79,7 @@ Click **Ask** for AI-powered answers. Type your question—GNO searches your doc
 
 ### Editor Features
 
-![GNO Document Editor](../assets/screenshots/webui-editor.jpg)
+![GNO Document Editor](../assets/screenshots/webui-editor.png)
 
 The split-view editor provides:
 
@@ -144,7 +144,7 @@ From document view, click the trash icon. This:
 
 ### Collections Page
 
-![GNO Collections](../assets/screenshots/webui-collections.jpg)
+![GNO Collections](../assets/screenshots/webui-collections.png)
 
 View and manage your document collections:
 

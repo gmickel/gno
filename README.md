@@ -129,7 +129,7 @@ gno serve                    # Start on port 3000
 gno serve --port 8080        # Custom port
 ```
 
-![GNO Web UI](./assets/screenshots/webui-home.jpg)
+![GNO Web UI](./assets/screenshots/webui-home.png)
 
 Open `http://localhost:3000` to:
 
@@ -142,7 +142,7 @@ Open `http://localhost:3000` to:
 
 ### Document Editing
 
-![GNO Document Editor](./assets/screenshots/webui-editor.jpg)
+![GNO Document Editor](./assets/screenshots/webui-editor.png)
 
 Full-featured markdown editor with:
 
@@ -156,7 +156,7 @@ Full-featured markdown editor with:
 
 ### Collections Management
 
-![GNO Collections](./assets/screenshots/webui-collections.jpg)
+![GNO Collections](./assets/screenshots/webui-collections.png)
 
 - Add collections with folder path input
 - View document count, chunk count, embedding status
