@@ -147,13 +147,29 @@ export async function runTool<T>(
     // Exception firewall: never throw, always return isError
     const message = e instanceof Error ? e.message : String(e);
     console.error(`[MCP] ${name} error:`, message);
+    const parsedError = parseErrorMessage(message);
     return {
       isError: true,
       content: [{ type: "text", text: `Error: ${message}` }],
+      structuredContent: parsedError,
     };
   } finally {
     release();
   }
+}
+
+function parseErrorMessage(message: string): { [x: string]: unknown } {
+  const match = message.match(/^([A-Z_]+):\s*(.*)$/);
+  if (match) {
+    return {
+      error: match[1],
+      message: match[2] || message,
+    };
+  }
+  return {
+    error: "RUNTIME",
+    message,
+  };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

@@ -775,7 +775,7 @@ function wireMcpCommand(program: Command): void {
       const globalOpts = program.opts();
       const globals = parseGlobalOptions(globalOpts);
       await mcpCommand(globals, {
-        enableWrite: Boolean(cmdOpts.enableWrite),
+        enableWrite: cmdOpts.enableWrite === true ? true : undefined,
       });
     });
 

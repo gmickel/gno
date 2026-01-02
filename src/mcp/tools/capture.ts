@@ -116,9 +116,18 @@ export function handleCapture(
           );
         }
 
-        const relPath = args.path
-          ? ensureMarkdownExtension(validateRelPath(args.path))
-          : generateFilename(args.title, args.content);
+        let relPath: string;
+        if (args.path) {
+          try {
+            relPath = ensureMarkdownExtension(validateRelPath(args.path));
+          } catch (error) {
+            const message =
+              error instanceof Error ? error.message : String(error);
+            throw new Error(`${MCP_ERRORS.INVALID_PATH.code}: ${message}`);
+          }
+        } else {
+          relPath = generateFilename(args.title, args.content);
+        }
 
         assertNotSensitive(relPath);
 
