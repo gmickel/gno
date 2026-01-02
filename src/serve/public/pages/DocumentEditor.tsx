@@ -137,32 +137,42 @@ export default function DocumentEditor({ navigate }: PageProps) {
   const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
   const editorRef = useRef<CodeMirrorEditorRef>(null);
   const previewRef = useRef<HTMLDivElement>(null);
-  const isScrollingSyncRef = useRef(false);
+  // Event-based suppression: ignore the echo event caused by programmatic scroll
+  const ignoreNextEditorScroll = useRef(false);
+  const ignoreNextPreviewScroll = useRef(false);
 
   const hasUnsavedChanges = content !== originalContent;
 
-  // Scroll sync handlers with loop prevention
+  // Scroll sync handlers with event-based loop prevention
+  // Note: Uses percentage-based mapping which provides approximate correspondence.
+  // For very different layouts (headings, code blocks, images), perfect alignment
+  // would require anchor-based mapping between editor lines and rendered elements.
   const handleEditorScroll = useCallback(
     (scrollPercent: number) => {
-      if (!syncScroll || !showPreview || isScrollingSyncRef.current) return;
+      if (!syncScroll || !showPreview) return;
+      if (ignoreNextEditorScroll.current) {
+        ignoreNextEditorScroll.current = false;
+        return;
+      }
 
       const preview = previewRef.current;
       if (!preview) return;
 
-      isScrollingSyncRef.current = true;
       const maxScroll = preview.scrollHeight - preview.clientHeight;
-      if (maxScroll > 0) {
-        preview.scrollTop = scrollPercent * maxScroll;
-      }
-      requestAnimationFrame(() => {
-        isScrollingSyncRef.current = false;
-      });
+      if (maxScroll <= 0) return;
+
+      ignoreNextPreviewScroll.current = true;
+      preview.scrollTop = scrollPercent * maxScroll;
     },
     [syncScroll, showPreview]
   );
 
   const handlePreviewScroll = useCallback(() => {
-    if (!syncScroll || isScrollingSyncRef.current) return;
+    if (!syncScroll) return;
+    if (ignoreNextPreviewScroll.current) {
+      ignoreNextPreviewScroll.current = false;
+      return;
+    }
 
     const preview = previewRef.current;
     if (!preview) return;
@@ -172,11 +182,8 @@ export default function DocumentEditor({ navigate }: PageProps) {
 
     const scrollPercent = preview.scrollTop / maxScroll;
 
-    isScrollingSyncRef.current = true;
+    ignoreNextEditorScroll.current = true;
     editorRef.current?.scrollToPercent(scrollPercent);
-    requestAnimationFrame(() => {
-      isScrollingSyncRef.current = false;
-    });
   }, [syncScroll]);
 
   // Save function
@@ -491,6 +498,9 @@ export default function DocumentEditor({ navigate }: PageProps) {
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
+                    aria-label={
+                      syncScroll ? "Disable scroll sync" : "Enable scroll sync"
+                    }
                     onClick={() => setSyncScroll(!syncScroll)}
                     size="sm"
                     variant={syncScroll ? "secondary" : "ghost"}
@@ -537,7 +547,9 @@ export default function DocumentEditor({ navigate }: PageProps) {
             className="h-full"
             initialContent={content}
             onChange={handleContentChange}
-            onScroll={handleEditorScroll}
+            onScroll={
+              syncScroll && showPreview ? handleEditorScroll : undefined
+            }
             ref={editorRef}
           />
         </div>

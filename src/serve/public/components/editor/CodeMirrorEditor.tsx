@@ -76,17 +76,6 @@ function CodeMirrorEditorInner(
             onChangeRef.current(update.state.doc.toString());
           }
         }),
-        // Scroll event handler
-        EditorView.domEventHandlers({
-          scroll: () => {
-            const scroller = view.scrollDOM;
-            const maxScroll = scroller.scrollHeight - scroller.clientHeight;
-            if (maxScroll > 0 && onScrollRef.current) {
-              const percent = scroller.scrollTop / maxScroll;
-              onScrollRef.current(percent);
-            }
-          },
-        }),
         // Dark theme base styling
         EditorView.theme({
           "&": {
@@ -101,8 +90,28 @@ function CodeMirrorEditorInner(
       parent: containerRef.current,
     });
 
+    // Attach scroll listener directly to scrollDOM for reliable event capture
+    // (scroll events don't bubble, so domEventHandlers may miss them)
+    const scroller = view.scrollDOM;
+    const handleScroll = () => {
+      const maxScroll = scroller.scrollHeight - scroller.clientHeight;
+      if (maxScroll > 0 && onScrollRef.current) {
+        const percent = Math.max(
+          0,
+          Math.min(1, scroller.scrollTop / maxScroll)
+        );
+        if (Number.isFinite(percent)) {
+          onScrollRef.current(percent);
+        }
+      }
+    };
+    scroller.addEventListener("scroll", handleScroll, { passive: true });
+
     viewRef.current = view;
-    return () => view.destroy();
+    return () => {
+      scroller.removeEventListener("scroll", handleScroll);
+      view.destroy();
+    };
     // Only run on mount - initialContent should not trigger re-creation
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -156,12 +165,13 @@ function CodeMirrorEditorInner(
     },
     scrollToPercent: (percent: number) => {
       const view = viewRef.current;
-      if (!view) return;
+      if (!view || !Number.isFinite(percent)) return;
 
+      const clamped = Math.max(0, Math.min(1, percent));
       const scroller = view.scrollDOM;
       const maxScroll = scroller.scrollHeight - scroller.clientHeight;
       if (maxScroll > 0) {
-        scroller.scrollTop = percent * maxScroll;
+        scroller.scrollTop = clamped * maxScroll;
       }
     },
   }));
