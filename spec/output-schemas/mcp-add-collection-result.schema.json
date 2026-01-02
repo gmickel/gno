@@ -1,0 +1,23 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "gno://schemas/mcp-add-collection-result@1.0",
+  "title": "GNO MCP Add Collection Result",
+  "description": "Result payload for gno_add_collection",
+  "type": "object",
+  "required": ["jobId", "collection", "status"],
+  "properties": {
+    "jobId": {
+      "type": "string",
+      "description": "Job identifier"
+    },
+    "collection": {
+      "type": "string",
+      "description": "Normalized collection name"
+    },
+    "status": {
+      "type": "string",
+      "description": "Job status",
+      "enum": ["started"]
+    }
+  }
+}

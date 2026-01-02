@@ -1,7 +1,7 @@
 # GNO MCP Specification
 
 **Version:** 1.0.0
-**Last Updated:** 2025-12-23
+**Last Updated:** 2026-01-02
 **Protocol:** Model Context Protocol (MCP) over stdio
 **Transport:** JSON-RPC 2.0
 
@@ -33,6 +33,46 @@ This document specifies the MCP server interface for GNO.
 ```
 
 ---
+
+## Security Model
+
+### Write Tool Gating
+
+Write tools are **disabled by default**. Enable explicitly:
+
+```bash
+gno mcp --enable-write
+# or
+GNO_MCP_ENABLE_WRITE=1 gno mcp
+```
+
+When disabled, write tools are not registered and cannot be invoked.
+
+### Collection Root Validation
+
+`gno_add_collection` rejects dangerous roots to avoid indexing broad/system paths:
+
+- `/` (root)
+- `~` (entire home dir)
+- `/etc`, `/usr`, `/bin`, `/var`, `/System`, `/Library`
+- `~/.config`, `~/.local`, `~/.ssh`, `~/.gnupg`
+
+### Write Lock
+
+All write tools acquire an OS-backed advisory lock at `.mcp-write.lock` under the index directory.
+If another process holds the lock, tools return `LOCKED`.
+For async jobs, the lock is held for the full job duration.
+
+## Collection Name Rules
+
+Collection names are case-insensitive on input and normalized to lowercase in responses.
+
+## Job Management
+
+- Single active job per MCP server process
+- Completed job retention: 1 hour, max 100 entries
+- Jobs are in-memory per process (lost on restart)
+- Poll with `gno_job_status`; if the job is missing after restart, return `NOT_FOUND`
 
 ## Tools
 
@@ -438,6 +478,199 @@ Get index status and health information.
 
 ---
 
+### gno_capture
+
+Create a new document in a collection (write-enabled).
+
+**Input Schema:**
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "collection": {
+      "type": "string",
+      "description": "Target collection name"
+    },
+    "content": {
+      "type": "string",
+      "description": "Document content (markdown)"
+    },
+    "title": {
+      "type": "string",
+      "description": "Optional title used for filename generation"
+    },
+    "path": {
+      "type": "string",
+      "description": "Optional relative path within the collection"
+    },
+    "overwrite": {
+      "type": "boolean",
+      "description": "Overwrite existing file if true",
+      "default": false
+    }
+  },
+  "required": ["collection", "content"]
+}
+```
+
+**Notes:**
+
+- Paths must be relative, no `..` escapes, no NUL bytes
+- Sensitive subpaths are rejected (`.ssh`, `.gnupg`, `.git`, `node_modules`, etc.)
+- If `path` is omitted, a `.md` filename is generated from the title or heading
+
+**Output Schema:** `gno://schemas/mcp-capture-result@1.0`
+
+---
+
+### gno_add_collection
+
+Add a folder as a new collection and start indexing (write-enabled).
+
+**Input Schema:**
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "path": {
+      "type": "string",
+      "description": "Absolute or ~-expanded folder path"
+    },
+    "name": {
+      "type": "string",
+      "description": "Optional collection name (defaults to folder name)"
+    },
+    "pattern": {
+      "type": "string",
+      "description": "Glob pattern (default: **/*.md)"
+    },
+    "include": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Additional include patterns"
+    },
+    "exclude": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Exclude patterns"
+    },
+    "gitPull": {
+      "type": "boolean",
+      "description": "Run git pull before indexing",
+      "default": false
+    }
+  },
+  "required": ["path"]
+}
+```
+
+**Output Schema:** `gno://schemas/mcp-add-collection-result@1.0`
+
+---
+
+### gno_sync
+
+Reindex one or all collections (write-enabled).
+
+**Input Schema:**
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "collection": {
+      "type": "string",
+      "description": "Collection to sync (all if omitted)"
+    },
+    "gitPull": {
+      "type": "boolean",
+      "description": "Run git pull before indexing",
+      "default": false
+    },
+    "runUpdateCmd": {
+      "type": "boolean",
+      "description": "Run updateCmd before indexing (default: false for MCP)",
+      "default": false
+    }
+  }
+}
+```
+
+**Output Schema:** `gno://schemas/mcp-sync-result@1.0`
+
+---
+
+### gno_remove_collection
+
+Remove a collection from config (write-enabled). Indexed data is retained.
+
+**Input Schema:**
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "collection": {
+      "type": "string",
+      "description": "Collection name to remove"
+    }
+  },
+  "required": ["collection"]
+}
+```
+
+**Output Schema:** `gno://schemas/mcp-remove-result@1.0`
+
+---
+
+### gno_job_status
+
+Get status of a background job.
+
+**Input Schema:**
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "jobId": {
+      "type": "string",
+      "description": "Job identifier"
+    }
+  },
+  "required": ["jobId"]
+}
+```
+
+**Output Schema:** `gno://schemas/mcp-job-status@1.0`
+
+---
+
+### gno_list_jobs
+
+List active and recent jobs.
+
+**Input Schema:**
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "limit": {
+      "type": "integer",
+      "description": "Max recent jobs to return",
+      "default": 10
+    }
+  }
+}
+```
+
+**Output Schema:** `gno://schemas/mcp-job-list@1.0`
+
+---
+
 ## Resources
 
 ### gno://{collection}/{path}
@@ -529,6 +762,17 @@ Tool errors return:
 
 Resource errors use standard MCP error responses.
 
+### MCP Error Codes (Write Tools)
+
+- `NOT_FOUND` — Resource not found
+- `DUPLICATE` — Resource already exists
+- `CONFLICT` — Conflict with existing resource
+- `HAS_REFERENCES` — Collection referenced by contexts
+- `INVALID_PATH` — Path violates safety rules
+- `PATH_NOT_FOUND` — Path does not exist
+- `JOB_CONFLICT` — Another job is already running
+- `LOCKED` — Another MCP process holds the write lock
+
 ---
 
 ## Versioning
@@ -585,6 +829,7 @@ gno mcp install [options]
 | `-s, --scope <scope>`   | Scope: `user`, `project` (project only for claude-code/codex) | `user`           |
 | `-f, --force`           | Overwrite existing configuration                              | `false`          |
 | `--dry-run`             | Show what would be done without changes                       | `false`          |
+| `--enable-write`        | Install config with `--enable-write` args                     | `false`          |
 | `--json`                | JSON output                                                   | `false`          |
 
 **Config Locations:**
@@ -611,6 +856,9 @@ gno mcp install -t claude-code -s project
 
 # Preview changes
 gno mcp install --dry-run
+
+# Install with write tools enabled
+gno mcp install --enable-write
 ```
 
 ### gno mcp uninstall

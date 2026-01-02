@@ -1,0 +1,53 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "gno://schemas/mcp-capture-result@1.0",
+  "title": "GNO MCP Capture Result",
+  "description": "Result payload for gno_capture",
+  "type": "object",
+  "required": [
+    "docid",
+    "uri",
+    "absPath",
+    "collection",
+    "relPath",
+    "created",
+    "overwritten",
+    "serverInstanceId"
+  ],
+  "properties": {
+    "docid": {
+      "type": "string",
+      "description": "Document ID"
+    },
+    "uri": {
+      "type": "string",
+      "description": "Document URI",
+      "pattern": "^gno://[^/]+/.+"
+    },
+    "absPath": {
+      "type": "string",
+      "description": "Absolute path to the created file"
+    },
+    "collection": {
+      "type": "string",
+      "description": "Normalized collection name"
+    },
+    "relPath": {
+      "type": "string",
+      "description": "Relative path within collection"
+    },
+    "created": {
+      "type": "boolean",
+      "description": "True if file was created"
+    },
+    "overwritten": {
+      "type": "boolean",
+      "description": "True if existing file was overwritten"
+    },
+    "serverInstanceId": {
+      "type": "string",
+      "description": "Server instance UUID",
+      "format": "uuid"
+    }
+  }
+}

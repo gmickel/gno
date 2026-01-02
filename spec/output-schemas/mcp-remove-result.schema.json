@@ -1,0 +1,39 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "gno://schemas/mcp-remove-result@1.0",
+  "title": "GNO MCP Remove Collection Result",
+  "description": "Result payload for gno_remove_collection",
+  "type": "object",
+  "required": [
+    "removed",
+    "collection",
+    "configUpdated",
+    "indexedDataRetained",
+    "note"
+  ],
+  "properties": {
+    "removed": {
+      "type": "boolean",
+      "description": "Whether the collection was removed",
+      "const": true
+    },
+    "collection": {
+      "type": "string",
+      "description": "Normalized collection name"
+    },
+    "configUpdated": {
+      "type": "boolean",
+      "description": "Config update status",
+      "const": true
+    },
+    "indexedDataRetained": {
+      "type": "boolean",
+      "description": "Indexed data retention flag",
+      "const": true
+    },
+    "note": {
+      "type": "string",
+      "description": "Explanation of retained data"
+    }
+  }
+}

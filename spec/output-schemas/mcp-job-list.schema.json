@@ -1,0 +1,58 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "gno://schemas/mcp-job-list@1.0",
+  "title": "GNO MCP Job List",
+  "description": "Result payload for gno_list_jobs",
+  "type": "object",
+  "required": ["active", "recent"],
+  "properties": {
+    "active": {
+      "type": "array",
+      "description": "Active jobs",
+      "items": {
+        "type": "object",
+        "required": ["jobId", "type", "startedAt"],
+        "properties": {
+          "jobId": {
+            "type": "string",
+            "description": "Job identifier"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["add", "sync"]
+          },
+          "startedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      }
+    },
+    "recent": {
+      "type": "array",
+      "description": "Recent completed jobs",
+      "items": {
+        "type": "object",
+        "required": ["jobId", "type", "status", "completedAt"],
+        "properties": {
+          "jobId": {
+            "type": "string",
+            "description": "Job identifier"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["add", "sync"]
+          },
+          "status": {
+            "type": "string",
+            "enum": ["completed", "failed"]
+          },
+          "completedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      }
+    }
+  }
+}

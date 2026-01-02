@@ -1,0 +1,163 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "gno://schemas/mcp-job-status@1.0",
+  "title": "GNO MCP Job Status",
+  "description": "Result payload for gno_job_status",
+  "type": "object",
+  "required": ["jobId", "type", "status", "startedAt", "serverInstanceId"],
+  "$defs": {
+    "collectionSyncResult": {
+      "type": "object",
+      "required": [
+        "collection",
+        "filesProcessed",
+        "filesAdded",
+        "filesUpdated",
+        "filesUnchanged",
+        "filesErrored",
+        "filesSkipped",
+        "filesMarkedInactive",
+        "durationMs",
+        "errors"
+      ],
+      "properties": {
+        "collection": {
+          "type": "string",
+          "description": "Collection name"
+        },
+        "filesProcessed": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "filesAdded": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "filesUpdated": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "filesUnchanged": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "filesErrored": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "filesSkipped": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "filesMarkedInactive": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "durationMs": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "errors": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["relPath", "code", "message"],
+            "properties": {
+              "relPath": {
+                "type": "string"
+              },
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    "syncResult": {
+      "type": "object",
+      "required": [
+        "collections",
+        "totalDurationMs",
+        "totalFilesProcessed",
+        "totalFilesAdded",
+        "totalFilesUpdated",
+        "totalFilesErrored",
+        "totalFilesSkipped"
+      ],
+      "properties": {
+        "collections": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/collectionSyncResult"
+          }
+        },
+        "totalDurationMs": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "totalFilesProcessed": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "totalFilesAdded": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "totalFilesUpdated": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "totalFilesErrored": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "totalFilesSkipped": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    }
+  },
+  "properties": {
+    "jobId": {
+      "type": "string",
+      "description": "Job identifier"
+    },
+    "type": {
+      "type": "string",
+      "description": "Job type",
+      "enum": ["add", "sync"]
+    },
+    "status": {
+      "type": "string",
+      "description": "Job status",
+      "enum": ["running", "completed", "failed"]
+    },
+    "startedAt": {
+      "type": "string",
+      "description": "Start time",
+      "format": "date-time"
+    },
+    "completedAt": {
+      "type": "string",
+      "description": "Completion time",
+      "format": "date-time"
+    },
+    "result": {
+      "$ref": "#/$defs/syncResult"
+    },
+    "error": {
+      "type": "string",
+      "description": "Error message if failed"
+    },
+    "serverInstanceId": {
+      "type": "string",
+      "description": "Server instance UUID",
+      "format": "uuid"
+    }
+  }
+}

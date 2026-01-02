@@ -20,6 +20,12 @@ async function loadAllSchemas(): Promise<void> {
     "multi-get",
     "ask",
     "error",
+    "mcp-capture-result",
+    "mcp-add-collection-result",
+    "mcp-sync-result",
+    "mcp-remove-result",
+    "mcp-job-status",
+    "mcp-job-list",
   ];
 
   for (const name of schemaFiles) {

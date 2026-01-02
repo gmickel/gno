@@ -1,0 +1,41 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "gno://schemas/mcp-sync-result@1.0",
+  "title": "GNO MCP Sync Result",
+  "description": "Result payload for gno_sync",
+  "type": "object",
+  "required": ["jobId", "collections", "status", "options"],
+  "properties": {
+    "jobId": {
+      "type": "string",
+      "description": "Job identifier"
+    },
+    "collections": {
+      "type": "array",
+      "description": "Collections included in the sync",
+      "items": {
+        "type": "string"
+      }
+    },
+    "status": {
+      "type": "string",
+      "description": "Job status",
+      "enum": ["started"]
+    },
+    "options": {
+      "type": "object",
+      "description": "Effective sync options",
+      "required": ["gitPull", "runUpdateCmd"],
+      "properties": {
+        "gitPull": {
+          "type": "boolean",
+          "description": "Run git pull before sync"
+        },
+        "runUpdateCmd": {
+          "type": "boolean",
+          "description": "Run update command before sync"
+        }
+      }
+    }
+  }
+}
