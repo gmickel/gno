@@ -143,25 +143,34 @@ export default function DocumentEditor({ navigate }: PageProps) {
 
   const hasUnsavedChanges = content !== originalContent;
 
+  // Reset ignore flags when sync is toggled to prevent stale state
+  useEffect(() => {
+    ignoreNextEditorScroll.current = false;
+    ignoreNextPreviewScroll.current = false;
+  }, [syncScroll, showPreview]);
+
   // Scroll sync handlers with event-based loop prevention
   // Note: Uses percentage-based mapping which provides approximate correspondence.
   // For very different layouts (headings, code blocks, images), perfect alignment
   // would require anchor-based mapping between editor lines and rendered elements.
   const handleEditorScroll = useCallback(
     (scrollPercent: number) => {
-      if (!syncScroll || !showPreview) return;
+      // Clear ignore flag first, even if we early-return (prevents lingering)
       if (ignoreNextEditorScroll.current) {
         ignoreNextEditorScroll.current = false;
         return;
       }
+      if (!syncScroll || !showPreview) return;
+      if (!Number.isFinite(scrollPercent)) return;
 
+      const clamped = Math.max(0, Math.min(1, scrollPercent));
       const preview = previewRef.current;
       if (!preview) return;
 
       const maxScroll = preview.scrollHeight - preview.clientHeight;
       if (maxScroll <= 0) return;
 
-      const targetScroll = scrollPercent * maxScroll;
+      const targetScroll = clamped * maxScroll;
       // Only set ignore flag if scroll position actually changes (avoids lingering flag)
       if (Math.abs(preview.scrollTop - targetScroll) > 0.5) {
         ignoreNextPreviewScroll.current = true;
@@ -172,11 +181,12 @@ export default function DocumentEditor({ navigate }: PageProps) {
   );
 
   const handlePreviewScroll = useCallback(() => {
-    if (!syncScroll) return;
+    // Clear ignore flag first, even if we early-return (prevents lingering)
     if (ignoreNextPreviewScroll.current) {
       ignoreNextPreviewScroll.current = false;
       return;
     }
+    if (!syncScroll) return;
 
     const preview = previewRef.current;
     if (!preview) return;
@@ -184,13 +194,17 @@ export default function DocumentEditor({ navigate }: PageProps) {
     const maxScroll = preview.scrollHeight - preview.clientHeight;
     if (maxScroll <= 0) return;
 
-    const scrollPercent = preview.scrollTop / maxScroll;
+    const scrollPercentRaw = preview.scrollTop / maxScroll;
+    if (!Number.isFinite(scrollPercentRaw)) return;
+    const scrollPercent = Math.max(0, Math.min(1, scrollPercentRaw));
 
-    // Only set ignore flag if scroll actually changes (scrollToPercent returns true)
+    // Set ignore flag BEFORE programmatic scroll to prevent race condition
+    ignoreNextEditorScroll.current = true;
     const didScroll =
       editorRef.current?.scrollToPercent(scrollPercent) ?? false;
-    if (didScroll) {
-      ignoreNextEditorScroll.current = true;
+    // Clear flag if no scroll actually occurred (avoids lingering)
+    if (!didScroll) {
+      ignoreNextEditorScroll.current = false;
     }
   }, [syncScroll]);
 
