@@ -188,6 +188,7 @@ export async function startServer(
         "/browse": homepage,
         "/doc": homepage,
         "/edit": homepage,
+        "/collections": homepage,
         "/ask": homepage,
 
         // API routes with CSRF protection wrapper

@@ -3,13 +3,21 @@ import { createRoot } from "react-dom/client";
 
 import Ask from "./pages/Ask";
 import Browse from "./pages/Browse";
+import Collections from "./pages/Collections";
 import Dashboard from "./pages/Dashboard";
 import DocumentEditor from "./pages/DocumentEditor";
 import DocView from "./pages/DocView";
 import Search from "./pages/Search";
 import "./globals.css";
 
-type Route = "/" | "/search" | "/browse" | "/doc" | "/ask" | "/edit";
+type Route =
+  | "/"
+  | "/search"
+  | "/browse"
+  | "/doc"
+  | "/ask"
+  | "/edit"
+  | "/collections";
 type Navigate = (to: string | number) => void;
 
 const routes: Record<Route, React.ComponentType<{ navigate: Navigate }>> = {
@@ -18,6 +26,7 @@ const routes: Record<Route, React.ComponentType<{ navigate: Navigate }>> = {
   "/browse": Browse,
   "/doc": DocView,
   "/edit": DocumentEditor,
+  "/collections": Collections,
   "/ask": Ask,
 };
 
