@@ -5,6 +5,22 @@ All notable changes to GNO will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.6] - 2026-01-02
+
+### Added
+
+- **Single-key shortcuts** (GitHub/Gmail pattern): `N` new note, `/` search, `T` cycle depth, `?` help
+- **HelpButton** with scholarly marginalia design (Old Gold accents)
+- **ShortcutHelpModal** redesigned with two-column "Card Catalog" layout
+- **ThoroughnessSelector** for search depth control (Fast/Balanced/Thorough)
+- **AIModelSelector** with "vacuum tube display" aesthetic for Ask page
+- Simplified Search page - Thoroughness now controls BM25 vs hybrid modes
+
+### Fixed
+
+- Keyboard shortcuts no longer fire when Ctrl/Cmd/Alt held (fixes macOS browser conflicts)
+- Shortcuts don't fire inside dialogs or text inputs
+
 ## [0.8.5] - 2026-01-02
 
 ### Fixed
