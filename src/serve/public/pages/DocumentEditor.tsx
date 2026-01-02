@@ -580,11 +580,11 @@ export default function DocumentEditor({ navigate }: PageProps) {
         {/* Preview pane */}
         {showPreview && (
           <div
-            className="w-1/2 min-h-0 overflow-auto bg-gradient-to-br from-background via-background to-muted/20 p-6"
+            className="w-1/2 min-h-0 overflow-auto bg-background px-8 py-6"
             onScroll={handlePreviewScroll}
             ref={previewRef}
           >
-            <div className="mx-auto max-w-3xl rounded-lg bg-background/50 p-6 shadow-sm ring-1 ring-border/20">
+            <div className="mx-auto max-w-3xl">
               <MarkdownPreview content={content} />
             </div>
           </div>
