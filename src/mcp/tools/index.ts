@@ -19,6 +19,7 @@ import { handleMultiGet } from "./multi-get";
 import { handleQuery } from "./query";
 import { handleSearch } from "./search";
 import { handleStatus } from "./status";
+import { handleSync } from "./sync";
 import { handleVsearch } from "./vsearch";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -48,6 +49,12 @@ const addCollectionInputSchema = z.object({
   include: z.array(z.string()).optional(),
   exclude: z.array(z.string()).optional(),
   gitPull: z.boolean().default(false),
+});
+
+const syncInputSchema = z.object({
+  collection: z.string().optional(),
+  gitPull: z.boolean().default(false),
+  runUpdateCmd: z.boolean().default(false),
 });
 
 const vsearchInputSchema = z.object({
@@ -205,6 +212,13 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
       "Add a collection and start indexing",
       addCollectionInputSchema.shape,
       (args) => handleAddCollection(args, ctx)
+    );
+
+    server.tool(
+      "gno_sync",
+      "Sync one or all collections",
+      syncInputSchema.shape,
+      (args) => handleSync(args, ctx)
     );
   }
 
