@@ -161,8 +161,12 @@ export default function DocumentEditor({ navigate }: PageProps) {
       const maxScroll = preview.scrollHeight - preview.clientHeight;
       if (maxScroll <= 0) return;
 
-      ignoreNextPreviewScroll.current = true;
-      preview.scrollTop = scrollPercent * maxScroll;
+      const targetScroll = scrollPercent * maxScroll;
+      // Only set ignore flag if scroll position actually changes (avoids lingering flag)
+      if (Math.abs(preview.scrollTop - targetScroll) > 0.5) {
+        ignoreNextPreviewScroll.current = true;
+        preview.scrollTop = targetScroll;
+      }
     },
     [syncScroll, showPreview]
   );
@@ -182,8 +186,12 @@ export default function DocumentEditor({ navigate }: PageProps) {
 
     const scrollPercent = preview.scrollTop / maxScroll;
 
-    ignoreNextEditorScroll.current = true;
-    editorRef.current?.scrollToPercent(scrollPercent);
+    // Only set ignore flag if scroll actually changes (scrollToPercent returns true)
+    const didScroll =
+      editorRef.current?.scrollToPercent(scrollPercent) ?? false;
+    if (didScroll) {
+      ignoreNextEditorScroll.current = true;
+    }
   }, [syncScroll]);
 
   // Save function

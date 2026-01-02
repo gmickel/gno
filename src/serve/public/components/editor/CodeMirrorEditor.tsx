@@ -38,8 +38,8 @@ export interface CodeMirrorEditorRef {
   wrapSelection: (prefix: string, suffix: string) => void;
   /** Insert text at cursor position */
   insertAtCursor: (text: string) => void;
-  /** Scroll to percentage position (0-1) */
-  scrollToPercent: (percent: number) => void;
+  /** Scroll to percentage position (0-1). Returns true if scroll actually changed. */
+  scrollToPercent: (percent: number) => boolean;
 }
 
 function CodeMirrorEditorInner(
@@ -163,16 +163,22 @@ function CodeMirrorEditorInner(
       });
       view.focus();
     },
-    scrollToPercent: (percent: number) => {
+    scrollToPercent: (percent: number): boolean => {
       const view = viewRef.current;
-      if (!view || !Number.isFinite(percent)) return;
+      if (!view || !Number.isFinite(percent)) return false;
 
       const clamped = Math.max(0, Math.min(1, percent));
       const scroller = view.scrollDOM;
       const maxScroll = scroller.scrollHeight - scroller.clientHeight;
       if (maxScroll > 0) {
-        scroller.scrollTop = clamped * maxScroll;
+        const targetScroll = clamped * maxScroll;
+        // Only scroll if position actually changes (avoids unnecessary events)
+        if (Math.abs(scroller.scrollTop - targetScroll) > 0.5) {
+          scroller.scrollTop = targetScroll;
+          return true;
+        }
       }
+      return false;
     },
   }));
 
