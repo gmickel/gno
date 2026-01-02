@@ -53,11 +53,8 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
-      - name: Lint
-        run: bun run lint
-
-      - name: Typecheck
-        run: bun run typecheck
+      - name: Lint & Typecheck
+        run: bun run lint:check
 
       - name: Test (Unix)
         if: matrix.os != 'windows-latest'
