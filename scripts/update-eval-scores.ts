@@ -46,7 +46,7 @@ interface EvalResult {
  * Strip ANSI escape codes from string.
  */
 function stripAnsi(str: string): string {
-  // biome-ignore lint/suspicious/noControlCharactersInRegex: needed for ANSI stripping
+  // eslint-disable-next-line no-control-regex -- needed for ANSI stripping
   return str.replace(/\x1B\[[0-9;]*[a-zA-Z]/g, "");
 }
 
