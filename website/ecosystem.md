@@ -11,8 +11,6 @@ GNO is designed to be one piece of a larger AI-native toolkit. These companion p
 
 ## The Tools
 
-<div class="ecosystem-grid">
-
 ### Flow
 
 **Plan first, work second**
@@ -91,8 +89,6 @@ outlookctl draft --to "team@company.com" --subject "Auth approach"
 ```
 
 [GitHub](https://github.com/gmickel/outlookctl) | [Documentation](https://gmickel.github.io/outlookctl/)
-
-</div>
 
 ---
 
