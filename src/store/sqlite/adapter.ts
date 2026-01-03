@@ -28,6 +28,10 @@ import type {
   MigrationResult,
   StorePort,
   StoreResult,
+  TagCount,
+  TagRow,
+  TagSource,
+  UpsertDocumentResult,
 } from "../types";
 import type { SqliteDbProvider } from "./types";
 
@@ -349,7 +353,9 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
   // Documents
   // ─────────────────────────────────────────────────────────────────────────
 
-  async upsertDocument(doc: DocumentInput): Promise<StoreResult<string>> {
+  async upsertDocument(
+    doc: DocumentInput
+  ): Promise<StoreResult<UpsertDocumentResult>> {
     try {
       const db = this.ensureOpen();
       const docid = deriveDocid(doc.sourceHash);
@@ -361,8 +367,8 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
           collection, rel_path, source_hash, source_mime, source_ext,
           source_size, source_mtime, docid, uri, title, mirror_hash,
           converter_id, converter_version, language_hint, active,
-          last_error_code, last_error_message, last_error_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, datetime('now'))
+          last_error_code, last_error_message, last_error_at, ingest_version, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?, datetime('now'))
         ON CONFLICT(collection, rel_path) DO UPDATE SET
           source_hash = excluded.source_hash,
           source_mime = excluded.source_mime,
@@ -380,6 +386,7 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
           last_error_code = excluded.last_error_code,
           last_error_message = excluded.last_error_message,
           last_error_at = excluded.last_error_at,
+          ingest_version = excluded.ingest_version,
           updated_at = datetime('now')
       `,
         [
@@ -400,10 +407,22 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
           doc.lastErrorCode ?? null,
           doc.lastErrorMessage ?? null,
           doc.lastErrorCode ? new Date().toISOString() : null,
+          doc.ingestVersion ?? null,
         ]
       );
 
-      return ok(docid);
+      // Get the row id (either inserted or updated)
+      const idRow = db
+        .query<{ id: number }, [string, string]>(
+          "SELECT id FROM documents WHERE collection = ? AND rel_path = ?"
+        )
+        .get(doc.collection, doc.relPath);
+
+      if (!idRow) {
+        return err("QUERY_FAILED", "Failed to get document id after upsert");
+      }
+
+      return ok({ id: idRow.id, docid });
     } catch (cause) {
       return err(
         "QUERY_FAILED",
@@ -760,6 +779,34 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
       const db = this.ensureOpen();
       const limit = options.limit ?? 20;
 
+      // Build tag filter conditions using EXISTS subqueries
+      const tagConditions: string[] = [];
+      const params: (string | number)[] = [escapeFts5Query(query)];
+
+      // tagsAny: document has at least one of these tags
+      if (options.tagsAny && options.tagsAny.length > 0) {
+        const placeholders = options.tagsAny.map(() => "?").join(",");
+        tagConditions.push(
+          `EXISTS (SELECT 1 FROM doc_tags dt WHERE dt.document_id = d.id AND dt.tag IN (${placeholders}))`
+        );
+        params.push(...options.tagsAny);
+      }
+
+      // tagsAll: document has all of these tags
+      if (options.tagsAll && options.tagsAll.length > 0) {
+        for (const tag of options.tagsAll) {
+          tagConditions.push(
+            "EXISTS (SELECT 1 FROM doc_tags dt WHERE dt.document_id = d.id AND dt.tag = ?)"
+          );
+          params.push(tag);
+        }
+      }
+
+      if (options.collection) {
+        params.push(options.collection);
+      }
+      params.push(limit);
+
       // Document-level FTS search using documents_fts
       // Uses bm25() for relevance ranking (more negative = better match)
       // Snippet from body column (index 2) with highlight markers
@@ -782,16 +829,11 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
         FROM documents_fts fts
         JOIN documents d ON d.id = fts.rowid AND d.active = 1
         WHERE documents_fts MATCH ?
+        ${tagConditions.length > 0 ? `AND ${tagConditions.join(" AND ")}` : ""}
         ${options.collection ? "AND d.collection = ?" : ""}
         ORDER BY bm25(documents_fts)
         LIMIT ?
       `;
-
-      const params: (string | number)[] = [escapeFts5Query(query)];
-      if (options.collection) {
-        params.push(options.collection);
-      }
-      params.push(limit);
 
       interface FtsRow {
         mirror_hash: string;
@@ -1005,6 +1047,140 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
       return err(
         "QUERY_FAILED",
         cause instanceof Error ? cause.message : "Failed to rebuild FTS",
+        cause
+      );
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Tags
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Set tags for a document.
+   * Replaces tags from the given source (frontmatter or user).
+   * User tags are never overwritten by frontmatter updates.
+   */
+  async setDocTags(
+    documentId: number,
+    tags: string[],
+    source: TagSource
+  ): Promise<StoreResult<void>> {
+    try {
+      const db = this.ensureOpen();
+
+      const transaction = db.transaction(() => {
+        // Delete existing tags from this source
+        db.run("DELETE FROM doc_tags WHERE document_id = ? AND source = ?", [
+          documentId,
+          source,
+        ]);
+
+        // Insert new tags (skip duplicates from other source)
+        if (tags.length > 0) {
+          const stmt = db.prepare(`
+            INSERT OR IGNORE INTO doc_tags (document_id, tag, source)
+            VALUES (?, ?, ?)
+          `);
+
+          for (const tag of tags) {
+            stmt.run(documentId, tag, source);
+          }
+        }
+      });
+
+      transaction();
+      return ok(undefined);
+    } catch (cause) {
+      return err(
+        "QUERY_FAILED",
+        cause instanceof Error ? cause.message : "Failed to set document tags",
+        cause
+      );
+    }
+  }
+
+  /**
+   * Get all tags for a document.
+   */
+  async getTagsForDoc(documentId: number): Promise<StoreResult<TagRow[]>> {
+    try {
+      const db = this.ensureOpen();
+
+      interface DbTagRow {
+        tag: string;
+        source: "frontmatter" | "user";
+      }
+
+      const rows = db
+        .query<DbTagRow, [number]>(
+          "SELECT tag, source FROM doc_tags WHERE document_id = ? ORDER BY tag"
+        )
+        .all(documentId);
+
+      return ok(rows);
+    } catch (cause) {
+      return err(
+        "QUERY_FAILED",
+        cause instanceof Error
+          ? cause.message
+          : "Failed to get tags for document",
+        cause
+      );
+    }
+  }
+
+  /**
+   * Get tag counts across all active documents.
+   * Optionally filter by collection or tag prefix.
+   */
+  async getTagCounts(options?: {
+    collection?: string;
+    prefix?: string;
+  }): Promise<StoreResult<TagCount[]>> {
+    try {
+      const db = this.ensureOpen();
+
+      const params: (string | number)[] = [];
+      let sql = `
+        SELECT dt.tag, COUNT(DISTINCT dt.document_id) as count
+        FROM doc_tags dt
+        JOIN documents d ON d.id = dt.document_id AND d.active = 1
+      `;
+
+      const conditions: string[] = [];
+
+      if (options?.collection) {
+        conditions.push("d.collection = ?");
+        params.push(options.collection);
+      }
+
+      if (options?.prefix) {
+        // Match tags starting with prefix (for hierarchical browsing)
+        conditions.push("(dt.tag = ? OR dt.tag LIKE ?)");
+        params.push(options.prefix, `${options.prefix}/%`);
+      }
+
+      if (conditions.length > 0) {
+        sql += ` WHERE ${conditions.join(" AND ")}`;
+      }
+
+      sql += " GROUP BY dt.tag ORDER BY count DESC, dt.tag ASC";
+
+      interface DbTagCount {
+        tag: string;
+        count: number;
+      }
+
+      const rows = db
+        .query<DbTagCount, (string | number)[]>(sql)
+        .all(...params);
+
+      return ok(rows);
+    } catch (cause) {
+      return err(
+        "QUERY_FAILED",
+        cause instanceof Error ? cause.message : "Failed to get tag counts",
         cause
       );
     }
@@ -1319,6 +1495,7 @@ interface DbDocumentRow {
   converter_version: string | null;
   language_hint: string | null;
   active: number;
+  ingest_version: number | null;
   last_error_code: string | null;
   last_error_message: string | null;
   last_error_at: string | null;
@@ -1392,6 +1569,7 @@ function mapDocumentRow(row: DbDocumentRow): DocumentRow {
     converterVersion: row.converter_version,
     languageHint: row.language_hint,
     active: row.active === 1,
+    ingestVersion: row.ingest_version,
     lastErrorCode: row.last_error_code,
     lastErrorMessage: row.last_error_message,
     lastErrorAt: row.last_error_at,

@@ -109,6 +109,8 @@ export interface DocumentRow {
 
   // Status
   active: boolean;
+  /** Ingest schema version for backfill detection */
+  ingestVersion: number | null;
 
   // Error tracking
   lastErrorCode: string | null;
@@ -144,6 +146,25 @@ export interface IngestErrorRow {
   detailsJson: string | null;
 }
 
+/** Tag row from DB */
+export interface TagRow {
+  /** Normalized tag text */
+  tag: string;
+  /** Source: 'frontmatter' (auto-extracted) or 'user' (manually applied) */
+  source: "frontmatter" | "user";
+}
+
+/** Tag count for aggregation */
+export interface TagCount {
+  /** Normalized tag text */
+  tag: string;
+  /** Number of documents with this tag */
+  count: number;
+}
+
+/** Tag source type */
+export type TagSource = "frontmatter" | "user";
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Input Types (for upsert operations)
 // ─────────────────────────────────────────────────────────────────────────────
@@ -164,6 +185,16 @@ export interface DocumentInput {
   languageHint?: string;
   lastErrorCode?: string;
   lastErrorMessage?: string;
+  /** Ingest schema version for backfill detection */
+  ingestVersion?: number;
+}
+
+/** Result of upserting a document */
+export interface UpsertDocumentResult {
+  /** Database row ID */
+  id: number;
+  /** Content-derived document ID (#hex) */
+  docid: string;
 }
 
 /** Input for a single chunk */
@@ -204,6 +235,10 @@ export interface FtsSearchOptions {
   language?: string;
   /** Include snippet with highlights */
   snippet?: boolean;
+  /** Filter to docs with ANY of these tags */
+  tagsAny?: string[];
+  /** Filter to docs with ALL of these tags */
+  tagsAll?: string[];
 }
 
 /** Single FTS search result */
@@ -376,10 +411,12 @@ export interface StorePort {
   // ─────────────────────────────────────────────────────────────────────────
 
   /**
-   * Upsert a document. Returns docid.
+   * Upsert a document. Returns id and docid.
    * Creates new or updates existing by (collection, relPath).
    */
-  upsertDocument(doc: DocumentInput): Promise<StoreResult<string>>;
+  upsertDocument(
+    doc: DocumentInput
+  ): Promise<StoreResult<UpsertDocumentResult>>;
 
   /**
    * Get document by collection and relative path.
@@ -501,6 +538,35 @@ export interface StorePort {
    * Rebuild FTS index for a mirror hash.
    */
   rebuildFtsForHash(mirrorHash: string): Promise<StoreResult<void>>;
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Tags
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Set tags for a document.
+   * Replaces tags from the given source (frontmatter or user).
+   * User tags are never overwritten by frontmatter updates.
+   */
+  setDocTags(
+    documentId: number,
+    tags: string[],
+    source: TagSource
+  ): Promise<StoreResult<void>>;
+
+  /**
+   * Get all tags for a document.
+   */
+  getTagsForDoc(documentId: number): Promise<StoreResult<TagRow[]>>;
+
+  /**
+   * Get tag counts across all active documents.
+   * Optionally filter by collection or tag prefix.
+   */
+  getTagCounts(options?: {
+    collection?: string;
+    prefix?: string;
+  }): Promise<StoreResult<TagCount[]>>;
 
   // ─────────────────────────────────────────────────────────────────────────
   // Status

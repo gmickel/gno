@@ -65,7 +65,8 @@ describe("SqliteAdapter", () => {
 
       expect(result.value.applied).toContain(1);
       expect(result.value.applied).toContain(2);
-      expect(result.value.currentVersion).toBe(2);
+      expect(result.value.applied).toContain(3);
+      expect(result.value.currentVersion).toBe(3);
       expect(result.value.ftsTokenizer).toBe("unicode61");
     });
 
@@ -83,7 +84,7 @@ describe("SqliteAdapter", () => {
       }
 
       expect(result.value.applied).toHaveLength(0);
-      expect(result.value.currentVersion).toBe(2);
+      expect(result.value.currentVersion).toBe(3);
     });
 
     test("rejects tokenizer mismatch", async () => {
@@ -258,7 +259,8 @@ describe("SqliteAdapter", () => {
       }
 
       // docid is derived from sourceHash (8 hex chars)
-      expect(upsertResult.value).toBe("#abc123de");
+      expect(upsertResult.value.docid).toBe("#abc123de");
+      expect(typeof upsertResult.value.id).toBe("number");
 
       const getResult = await adapter.getDocument("notes", "readme.md");
       expect(getResult.ok).toBe(true);
@@ -727,7 +729,7 @@ describe("SqliteAdapter", () => {
         return;
       }
 
-      expect(result.value.version).toBe("2");
+      expect(result.value.version).toBe("3");
       expect(result.value.ftsTokenizer).toBe("unicode61");
       expect(result.value.dbPath).toBe(dbPath);
       expect(result.value.totalDocuments).toBe(1);

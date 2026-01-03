@@ -35,7 +35,13 @@ import {
   getDefaultPipeline,
 } from "../converters/pipeline";
 import { DEFAULT_LIMITS } from "../converters/types";
+import { normalizeTag, validateTag } from "../core/tags";
 import { defaultChunker } from "./chunker";
+import {
+  extractHashtags,
+  parseFrontmatter,
+  stripFrontmatter,
+} from "./frontmatter";
 import { collectionToWalkConfig, DEFAULT_CHUNK_PARAMS } from "./types";
 import { defaultWalker } from "./walker";
 
@@ -49,8 +55,16 @@ const TX_BATCH_SIZE = 50;
 const MAX_CONCURRENCY = 16;
 
 /**
+ * Current ingest schema version.
+ * Increment when ingestion adds new derived data (tags, metadata, etc.)
+ * Documents with ingestVersion < INGEST_VERSION will be re-processed.
+ */
+export const INGEST_VERSION = 2;
+
+/**
  * Decide whether to process a file or skip it.
  * Handles repair cases where sourceHash matches but content is incomplete.
+ * Also triggers re-processing for documents with outdated ingest version.
  */
 function decideAction(
   existing: DocumentRow | null,
@@ -78,8 +92,45 @@ function decideAction(
     return { kind: "repair", reason: "previous error recorded" };
   }
 
+  // 3. Ingest version is outdated (new derived data available)
+  if (
+    existing.ingestVersion === null ||
+    existing.ingestVersion < INGEST_VERSION
+  ) {
+    return { kind: "repair", reason: "ingest version outdated" };
+  }
+
   // All good - skip
   return { kind: "skip", reason: "unchanged" };
+}
+
+/**
+ * Extract tags from markdown content.
+ * Combines frontmatter tags and inline hashtags, normalized and validated.
+ */
+function extractTags(markdown: string): string[] {
+  const tags = new Set<string>();
+
+  // 1. Extract from frontmatter
+  const frontmatter = parseFrontmatter(markdown);
+  for (const tag of frontmatter.tags) {
+    const normalized = normalizeTag(tag);
+    if (validateTag(normalized)) {
+      tags.add(normalized);
+    }
+  }
+
+  // 2. Extract hashtags from body (after stripping frontmatter)
+  const body = stripFrontmatter(markdown);
+  const hashtags = extractHashtags(body);
+  for (const tag of hashtags) {
+    const normalized = normalizeTag(tag);
+    if (validateTag(normalized)) {
+      tags.add(normalized);
+    }
+  }
+
+  return [...tags];
 }
 
 /**
@@ -307,9 +358,10 @@ export class SyncService {
         // Clear error fields on success (requires store to handle undefined → null)
         lastErrorCode: undefined,
         lastErrorMessage: undefined,
+        ingestVersion: INGEST_VERSION,
       });
 
-      const docid = mustOk(docidResult, "upsertDocument", {
+      const { id: docId, docid } = mustOk(docidResult, "upsertDocument", {
         collection: collection.name,
         relPath: entry.relPath,
       });
@@ -355,6 +407,19 @@ export class SyncService {
       const ftsResult = await store.rebuildFtsForHash(artifact.mirrorHash);
       mustOk(ftsResult, "rebuildFtsForHash", {
         mirrorHash: artifact.mirrorHash,
+      });
+
+      // 12. Extract and store tags from frontmatter and body hashtags
+      // Always call setDocTags to clear removed tags on re-sync
+      const extractedTags = extractTags(artifact.markdown);
+      const tagsResult = await store.setDocTags(
+        docId,
+        extractedTags,
+        "frontmatter"
+      );
+      mustOk(tagsResult, "setDocTags", {
+        docId,
+        tagCount: extractedTags.length,
       });
 
       const status = existing ? "updated" : "added";
