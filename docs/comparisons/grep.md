@@ -157,11 +157,11 @@ bun install -g @gmickel/gno
 gno init ~/notes --name notes
 gno index
 
-# Search semantically
+# Search semantically (hybrid by default)
 gno query "your search query"
 
-# Or use hybrid mode (semantic + keyword)
-gno query "your search query" --mode hybrid
+# Or BM25-only for exact keyword matching
+gno search "your search query"
 ```
 
 Both tools have their place. grep/ripgrep excels at exact pattern matching in code. GNO excels at finding concepts in documents and knowledge bases.

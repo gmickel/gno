@@ -2,7 +2,7 @@
 
 A comparison of GNO with Obsidian's built-in search.
 
-**Key insight**: GNO and Obsidian are complementary. Use Obsidian for note-taking and editing. Use GNO for AI-powered search and external access.
+**Key insight**: GNO and Obsidian can work together. Both offer note editing, but Obsidian excels at visual linking and graph exploration while GNO adds AI-powered search and external CLI/MCP access.
 
 ## Quick Summary
 
@@ -22,7 +22,7 @@ A comparison of GNO with Obsidian's built-in search.
 | **External Access** | CLI, MCP server      | Obsidian app only |
 | **Works With**      | Any folder structure | Obsidian vaults   |
 | **Graph View**      | ✗                    | ✓                 |
-| **Note Editing**    | ✗                    | ✓                 |
+| **Note Editing**    | ✓ `gno serve`        | ✓                 |
 | **Plugins**         | MCP ecosystem        | Obsidian plugins  |
 
 | **REST API** | ✓ `gno serve` | ✗ |
@@ -145,9 +145,10 @@ gno ask "what were the action items from the team sync" --answer
 
 | Task                       | Use      |
 | -------------------------- | -------- |
-| Take notes                 | Obsidian |
-| Edit notes                 | Obsidian |
+| Take notes                 | Both     |
+| Edit notes                 | Both     |
 | Visual graph exploration   | Obsidian |
+| Backlinks and outlinks     | Obsidian |
 | Quick search from terminal | GNO      |
 | AI agent access to notes   | GNO      |
 | RAG answers                | GNO      |

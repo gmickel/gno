@@ -2,15 +2,18 @@
 layout: feature
 title: Web UI
 headline: Visual Search at Your Fingertips
-description: A local web dashboard for searching, browsing documents, and getting AI-powered answers. No cloud, no accounts. Just open your browser.
-keywords: gno web ui, local search dashboard, document browser, visual search, ai answers web interface
+description: A local web dashboard for searching, browsing, creating, and editing documents. Full-featured markdown editor with live preview, keyboard shortcuts, and AI-powered answers—all running 100% locally.
+keywords: gno web ui, local search dashboard, document browser, visual search, ai answers web interface, markdown editor, note taking
 icon: globe
 slug: web-ui
 permalink: /features/web-ui/
 benefits:
-  - Visual search interface
-  - Document browser with filtering
+  - Split-view markdown editor with live preview
+  - Quick capture for instant note creation
+  - Create, edit, and delete documents
+  - Visual search with BM25, vector, and hybrid modes
   - AI answers with citations
+  - Keyboard-first design
   - Live preset switching
   - 100% local, no cloud
 commands:
@@ -28,6 +31,16 @@ gno serve
 ```
 
 ## Features
+
+### Document Editor
+
+Create and edit documents directly in your browser:
+
+- **Split-view editing**: CodeMirror 6 editor with live markdown preview
+- **Auto-save**: Changes saved automatically with 2-second debounce
+- **Quick capture**: Press **N** anywhere to create a new note instantly
+- **Syntax highlighting**: Code blocks rendered with Shiki
+- **Keyboard shortcuts**: **⌘S** to save, **⌘B** for bold, **⌘I** for italic
 
 ### Dashboard
 
