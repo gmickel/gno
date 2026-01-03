@@ -28,12 +28,6 @@ A comparison of GNO with Obsidian's built-in search.
 | **REST API** | ✓ `gno serve` | ✗ |
 | **Web UI** | ✓ `gno serve` | ✓ (Obsidian app) |
 
-### Planned Features
-
-| Feature     | GNO             | Obsidian                |
-| ----------- | --------------- | ----------------------- |
-| **Raycast** | 🔜 macOS native | ✓ (community extension) |
-
 ## Complementary Workflow
 
 GNO works **with** Obsidian, not instead of it:

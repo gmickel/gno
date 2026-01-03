@@ -32,13 +32,7 @@ Both tools provide semantic search for local documents with AI-powered features.
 | **Incremental Index**   | ✓ SHA-256 tracking             | ✓                    |
 | **Collection Contexts** | ✓ Semantic hints               | ✓                    |
 | **Output Formats**      | JSON, CSV, MD, XML, files      | JSON, CSV, MD, XML   |
-
-### Shell & Integration
-
-| Feature               | GNO                 | QMD |
-| --------------------- | ------------------- | --- |
-| **Raycast Extension** | 🔜 macOS native GUI | ✗   |
-| **Tab Completion**    | ✓ bash/zsh/fish     | ✗   |
+| **Tab Completion**      | ✓ bash/zsh/fish                | ✗                    |
 
 ## Key Differentiators
 
