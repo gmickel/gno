@@ -51,23 +51,21 @@ interface AskOutput {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // LLM Port Cache (per preset)
+// Uses promise caching to prevent race conditions with concurrent evalite tasks.
 // ─────────────────────────────────────────────────────────────────────────────
 
 type GenPort = Awaited<ReturnType<LlmAdapter["createGenerationPort"]>>["value"];
 
-const cachedGenPorts = new Map<PresetId, GenPort>();
+// Cache promises, not resolved values - prevents duplicate model loads under concurrency
+const cachedGenPortPromises = new Map<PresetId, Promise<GenPort>>();
 let cachedLlm: LlmAdapter | null = null;
 let cachedConfig: ReturnType<typeof createDefaultConfig> | null = null;
 
 /**
- * Initialize generation port for a specific preset.
- * Ports are cached per preset for reuse.
+ * Create generation port for a specific preset.
+ * Internal - called once per preset via promise caching.
  */
-async function getGenPort(presetId: PresetId): Promise<GenPort> {
-  // Return cached port if available
-  const cached = cachedGenPorts.get(presetId);
-  if (cached) return cached;
-
+async function createGenPort(presetId: PresetId): Promise<GenPort> {
   // Initialize shared config and adapter
   if (!cachedConfig) {
     cachedConfig = createDefaultConfig();
@@ -96,9 +94,21 @@ async function getGenPort(presetId: PresetId): Promise<GenPort> {
     );
   }
 
-  cachedGenPorts.set(presetId, genResult.value);
   console.log(`[ask.eval] Generation port ready for ${presetId}`);
   return genResult.value;
+}
+
+/**
+ * Get generation port for a specific preset.
+ * Uses promise caching - concurrent calls share the same loading promise.
+ */
+function getGenPort(presetId: PresetId): Promise<GenPort> {
+  let promise = cachedGenPortPromises.get(presetId);
+  if (!promise) {
+    promise = createGenPort(presetId);
+    cachedGenPortPromises.set(presetId, promise);
+  }
+  return promise;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -333,10 +343,11 @@ Respond with ONLY a JSON object: {"score": 0.X, "reason": "brief explanation"}`;
 
 process.on("beforeExit", async () => {
   // Dispose all cached generation ports
-  for (const port of cachedGenPorts.values()) {
+  for (const promise of cachedGenPortPromises.values()) {
+    const port = await promise;
     await port.dispose();
   }
-  cachedGenPorts.clear();
+  cachedGenPortPromises.clear();
   cachedLlm = null;
   cachedConfig = null;
 });

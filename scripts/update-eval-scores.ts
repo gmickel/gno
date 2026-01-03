@@ -15,6 +15,9 @@ const SCORES_FILE = join(EVALS_DIR, "scores.md");
 // LLM-dependent evals (slow, optional)
 const LLM_EVALS = new Set(["ask.eval.ts"]);
 
+// Placeholder evals - run for tracking but don't gate releases
+const NON_GATING_EVALS = new Set(["multilingual.eval.ts"]);
+
 // Evals that have level/preset breakdowns
 const LEVEL_EVALS: Record<string, { column: string; levels: string[] }> = {
   "thoroughness.eval.ts": {
@@ -287,8 +290,20 @@ await Bun.write(SCORES_FILE, generateScoresMarkdown(results));
 
 console.log(`\nDone! Results written to evals/scores.md`);
 
-// Exit with error if any failed
-const failed = results.filter((r) => !r.passed);
+// Exit with error if any gating eval failed
+const failed = results.filter(
+  (r) => !r.passed && !NON_GATING_EVALS.has(r.file)
+);
+const nonGatingFailed = results.filter(
+  (r) => !r.passed && NON_GATING_EVALS.has(r.file)
+);
+
+if (nonGatingFailed.length > 0) {
+  console.log(
+    `\n${nonGatingFailed.length} non-gating eval(s) below threshold (not blocking).`
+  );
+}
+
 if (failed.length > 0) {
   console.log(`\n${failed.length} eval(s) failed threshold.`);
   process.exit(1);
