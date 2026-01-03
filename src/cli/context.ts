@@ -21,6 +21,7 @@ export interface GlobalOptions {
   quiet: boolean;
   json: boolean;
   offline: boolean;
+  noPager: boolean;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -58,6 +59,8 @@ export function parseGlobalOptions(
     quiet: Boolean(raw.quiet),
     json: Boolean(raw.json),
     offline: offlineEnabled,
+    // Commander: --no-pager => opts().pager === false
+    noPager: raw.pager === false,
   };
 }
 

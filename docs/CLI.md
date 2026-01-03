@@ -8,20 +8,21 @@ GNO command-line interface guide.
 
 ## Quick Reference
 
-| Command       | Description                     |
-| ------------- | ------------------------------- |
-| `gno init`    | Initialize config and database  |
-| `gno update`  | Index all collections           |
-| `gno search`  | BM25 full-text search           |
-| `gno vsearch` | Vector similarity search        |
-| `gno query`   | Hybrid search (BM25 + vector)   |
-| `gno ask`     | Search with AI answer           |
-| `gno get`     | Retrieve document content       |
-| `gno ls`      | List indexed documents          |
-| `gno serve`   | Start web UI server             |
-| `gno models`  | Manage models (list, pull, use) |
-| `gno skill`   | Install GNO skill for AI agents |
-| `gno doctor`  | Check system health             |
+| Command          | Description                     |
+| ---------------- | ------------------------------- |
+| `gno init`       | Initialize config and database  |
+| `gno update`     | Index all collections           |
+| `gno search`     | BM25 full-text search           |
+| `gno vsearch`    | Vector similarity search        |
+| `gno query`      | Hybrid search (BM25 + vector)   |
+| `gno ask`        | Search with AI answer           |
+| `gno get`        | Retrieve document content       |
+| `gno ls`         | List indexed documents          |
+| `gno serve`      | Start web UI server             |
+| `gno models`     | Manage models (list, pull, use) |
+| `gno skill`      | Install GNO skill for AI agents |
+| `gno completion` | Shell tab completion            |
+| `gno doctor`     | Check system health             |
 
 ## Global Flags
 
@@ -31,10 +32,13 @@ All commands accept:
 --index <name>    Use alternate index (default: "default")
 --config <path>   Override config file path
 --no-color        Disable colored output
+--no-pager        Disable automatic paging of long output
 --verbose         Enable verbose logging
 --yes             Non-interactive mode
 --offline         Use cached models only (no auto-download)
 ```
+
+**Pager**: Long output is automatically piped through a pager when in terminal mode. Uses `$PAGER` if set, otherwise `less -R` (Unix) or `more` (Windows). Disable with `--no-pager`.
 
 **Offline mode**: Use `--offline` or set `HF_HUB_OFFLINE=1` to prevent auto-downloading models. Set `GNO_NO_AUTO_DOWNLOAD=1` to disable auto-download while still allowing explicit `gno models pull`.
 
@@ -549,6 +553,39 @@ gno serve --port 3001
 # Open in browser
 open http://localhost:3001
 ```
+
+## Shell Completion
+
+Enable tab completion for gno commands.
+
+### Install Automatically
+
+```bash
+gno completion install
+```
+
+Auto-detects your shell and installs to the appropriate config file.
+
+### Manual Installation
+
+```bash
+# Bash (add to ~/.bashrc)
+gno completion bash >> ~/.bashrc
+
+# Zsh (add to ~/.zshrc)
+gno completion zsh >> ~/.zshrc
+
+# Fish
+gno completion fish > ~/.config/fish/completions/gno.fish
+```
+
+Restart your shell or source the config file to activate.
+
+### Completion Features
+
+- Commands and subcommands
+- All flags and options
+- Collection names (dynamic, when DB available)
 
 ## MCP Server
 

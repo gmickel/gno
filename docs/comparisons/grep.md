@@ -29,11 +29,11 @@ grep and ripgrep are excellent for exact pattern matching in code. GNO adds sema
 | **REST API** | ✓ `gno serve` | ✗ |
 | **Web UI** | ✓ `gno serve` | ✗ |
 
-### Planned Features
+### Shell & Integration
 
-| Feature            | GNO                  | grep/rg    |
-| ------------------ | -------------------- | ---------- |
-| **Tab Completion** | 🔜 Shell integration | ✓ Built-in |
+| Feature            | GNO             | grep/rg    |
+| ------------------ | --------------- | ---------- |
+| **Tab Completion** | ✓ bash/zsh/fish | ✓ Built-in |
 
 ## The Key Difference
 
