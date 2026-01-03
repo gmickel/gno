@@ -120,10 +120,10 @@ async function writeOutput(
 ): Promise<void> {
   const globals = getGlobals();
 
-  // Only page terminal output and when paging is enabled
+  // Only page terminal output when paging enabled
   if (format === "terminal" && !globals.noPager) {
     const { pageContent } = await import("./pager.js");
-    await pageContent(content, { noPager: globals.noPager });
+    await pageContent(content);
   } else {
     process.stdout.write(content + "\n");
   }

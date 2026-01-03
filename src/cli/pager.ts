@@ -5,7 +5,7 @@
  * @module src/cli/pager
  */
 
-import { spawn, type ChildProcess } from "node:child_process";
+// node:os - no Bun equivalent for platform()
 import { platform } from "node:os";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -85,7 +85,7 @@ export class Pager {
   private options: PagerOptions;
   private buffer: string[] = [];
   private terminalHeight: number;
-  private pagerProcess: ChildProcess | null = null;
+  private pagerProcess: ReturnType<typeof Bun.spawn> | null = null;
   private enabled: boolean;
 
   constructor(options: PagerOptions = {}) {
@@ -151,42 +151,33 @@ export class Pager {
    * Spawn pager process and pipe content.
    */
   private async spawnPager(pagerCmd: string[], content: string): Promise<void> {
-    return new Promise((resolve) => {
-      const [cmd, ...args] = pagerCmd;
-      if (!cmd) {
-        process.stdout.write(content + "\n");
-        resolve();
-        return;
+    const [cmd, ...args] = pagerCmd;
+    if (!cmd) {
+      process.stdout.write(content + "\n");
+      return;
+    }
+
+    try {
+      const proc = Bun.spawn([cmd, ...args], {
+        stdin: "pipe",
+        stdout: "inherit",
+        stderr: "inherit",
+      });
+      this.pagerProcess = proc;
+
+      // Write content to pager stdin
+      if (proc.stdin) {
+        proc.stdin.write(content + "\n");
+        await proc.stdin.end();
       }
 
-      try {
-        const proc = spawn(cmd, args, {
-          stdio: ["pipe", "inherit", "inherit"],
-        });
-        this.pagerProcess = proc;
-
-        proc.on("error", () => {
-          // Pager not found or failed to start - fall back to direct output
-          process.stdout.write(content + "\n");
-          resolve();
-        });
-
-        proc.on("close", () => {
-          this.pagerProcess = null;
-          resolve();
-        });
-
-        // Write content to pager stdin
-        if (proc.stdin) {
-          proc.stdin.write(content + "\n");
-          proc.stdin.end();
-        }
-      } catch {
-        // Spawn failed - fall back to direct output
-        process.stdout.write(content + "\n");
-        resolve();
-      }
-    });
+      // Wait for pager to exit
+      await proc.exited;
+      this.pagerProcess = null;
+    } catch {
+      // Spawn failed - fall back to direct output
+      process.stdout.write(content + "\n");
+    }
   }
 }
 

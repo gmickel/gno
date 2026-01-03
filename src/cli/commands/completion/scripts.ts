@@ -189,6 +189,8 @@ ${topLevel.map((c) => `    '${c}:${getCommandDescription(c)}'`).join("\n")}
   global_flags=(
     '--index[index name]:name:'
     '--config[config file path]:file:_files'
+    '-c[filter by collection]:collection:_${CLI_NAME}_collections'
+    '--collection[filter by collection]:collection:_${CLI_NAME}_collections'
     '--no-color[disable colors]'
     '--no-pager[disable paging]'
     '--verbose[verbose logging]'
@@ -356,6 +358,7 @@ function getCommandDescription(cmd: string): string {
     "skill show": "Preview skill files",
     "skill paths": "Show skill installation paths",
     completion: "Shell completion scripts",
+    "completion output": "Output completion script",
     "completion install": "Install shell completions",
   };
   return descriptions[cmd] || cmd;

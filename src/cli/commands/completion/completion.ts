@@ -4,7 +4,8 @@
  * @module src/cli/commands/completion/completion
  */
 
-import { appendFile, mkdir, stat, writeFile } from "node:fs/promises";
+// node:fs/promises - no Bun equivalent for mkdir/appendFile/writeFile
+import { appendFile, mkdir, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
 
@@ -87,12 +88,7 @@ async function isCompletionInstalled(shell: Shell): Promise<boolean> {
 
   // For fish, check if file exists
   if (shell === "fish") {
-    try {
-      await stat(path);
-      return true;
-    } catch {
-      return false;
-    }
+    return await Bun.file(path).exists();
   }
 
   // For bash/zsh, check for shell-specific patterns
@@ -199,11 +195,7 @@ export async function completionInstall(
       process.stdout.write(`Completion installed for ${shell}.\n`);
       process.stdout.write(`Config: ${result.path}\n`);
       process.stdout.write(`\nRestart your shell or run:\n`);
-      if (shell === "fish") {
-        process.stdout.write(`  source ${result.path}\n`);
-      } else {
-        process.stdout.write(`  source ${result.path}\n`);
-      }
+      process.stdout.write(`  source ${result.path}\n`);
     }
   }
 }
