@@ -102,19 +102,14 @@ async function isCompletionInstalled(shell: Shell): Promise<boolean> {
     const header = `# ${CLI_NAME}`;
     // Bash function name
     const bashFn = `_${CLI_NAME}_completions`;
-    // Zsh-specific patterns
-    const zshCompdef = `#compdef ${CLI_NAME}`;
+    // Zsh-specific patterns (function definition or completion header)
     const zshFn = `_${CLI_NAME}()`;
 
     if (shell === "bash") {
       return content.includes(header) || content.includes(bashFn);
     }
     if (shell === "zsh") {
-      return (
-        content.includes(header) ||
-        content.includes(zshCompdef) ||
-        content.includes(zshFn)
-      );
+      return content.includes(header) || content.includes(zshFn);
     }
     return false;
   } catch {

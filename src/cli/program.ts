@@ -1467,8 +1467,11 @@ function wireCompletionCommand(program: Command): void {
       "shell to install for (bash, zsh, fish) - auto-detected if omitted"
     )
     .option("--json", "JSON output")
-    .action(async (cmdOpts: Record<string, unknown>) => {
-      const shell = cmdOpts.shell as string | undefined;
+    .action(async (...args: unknown[]) => {
+      // Last arg is the Command object - use optsWithGlobals for subcommands
+      const cmd = args[args.length - 1] as Command;
+      const cmdOpts = cmd.optsWithGlobals<{ shell?: string; json?: boolean }>();
+      const { shell, json } = cmdOpts;
 
       const { completionInstall, SUPPORTED_SHELLS } =
         await import("./commands/completion/index.js");
@@ -1485,7 +1488,7 @@ function wireCompletionCommand(program: Command): void {
 
       await completionInstall({
         shell: shell as "bash" | "zsh" | "fish" | undefined,
-        json: Boolean(cmdOpts.json),
+        json: Boolean(json),
       });
     });
 }

@@ -175,9 +175,9 @@ export function generateZshCompletion(): string {
     )
     .join("\n");
 
-  return `#compdef ${CLI_NAME}
-# ${CLI_NAME} zsh completion
+  return `# ${CLI_NAME} zsh completion
 # Add to ~/.zshrc or copy to a directory in $fpath
+# If autoloading from fpath, add "#compdef ${CLI_NAME}" as first line
 
 _${CLI_NAME}() {
   local -a commands
