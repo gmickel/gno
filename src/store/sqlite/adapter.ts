@@ -1157,8 +1157,10 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
 
       if (options?.prefix) {
         // Match tags starting with prefix (for hierarchical browsing)
-        conditions.push("(dt.tag = ? OR dt.tag LIKE ?)");
-        params.push(options.prefix, `${options.prefix}/%`);
+        // Escape LIKE metacharacters (%, _, \) in prefix
+        const escapedPrefix = options.prefix.replace(/[%_\\]/g, "\\$&");
+        conditions.push("(dt.tag = ? OR dt.tag LIKE ? ESCAPE '\\')");
+        params.push(options.prefix, `${escapedPrefix}/%`);
       }
 
       if (conditions.length > 0) {
