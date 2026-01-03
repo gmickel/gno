@@ -77,6 +77,7 @@ describe("parseGlobalOptions", () => {
         quiet: true,
         json: true,
         offline: true,
+        noPager: false,
       });
     });
 
@@ -92,6 +93,7 @@ describe("parseGlobalOptions", () => {
         quiet: false,
         json: false,
         offline: false,
+        noPager: false,
       });
     });
 

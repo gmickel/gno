@@ -110,6 +110,25 @@ function getFormat(
   return "terminal";
 }
 
+/**
+ * Write output with optional paging for terminal format.
+ * Paging only applies to terminal format with list-like output.
+ */
+async function writeOutput(
+  content: string,
+  format: "terminal" | "json" | "files" | "csv" | "md" | "xml"
+): Promise<void> {
+  const globals = getGlobals();
+
+  // Only page terminal output and when paging is enabled
+  if (format === "terminal" && !globals.noPager) {
+    const { pageContent } = await import("./pager.js");
+    await pageContent(content, { noPager: globals.noPager });
+  } else {
+    process.stdout.write(content + "\n");
+  }
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Program Factory
 // ─────────────────────────────────────────────────────────────────────────────
@@ -134,7 +153,8 @@ export function createProgram(): Command {
     .option("--yes", "non-interactive mode")
     .option("-q, --quiet", "suppress non-essential output")
     .option("--json", "JSON output (for errors and supported commands)")
-    .option("--offline", "offline mode (use cached models only)");
+    .option("--offline", "offline mode (use cached models only)")
+    .option("--no-pager", "disable automatic paging of long output");
 
   // Resolve globals ONCE before any command runs (ensures consistency)
   program.hook("preAction", (thisCommand) => {
@@ -152,6 +172,7 @@ export function createProgram(): Command {
   wireMcpCommand(program);
   wireSkillCommands(program);
   wireServeCommand(program);
+  wireCompletionCommand(program);
 
   // Add docs/support links to help footer
   program.addHelpText(
@@ -226,17 +247,16 @@ function wireSearchCommands(program: Command): void {
           result.error
         );
       }
-      process.stdout.write(
-        `${formatSearch(result, {
-          json: format === "json",
-          md: format === "md",
-          csv: format === "csv",
-          xml: format === "xml",
-          files: format === "files",
-          full: Boolean(cmdOpts.full),
-          lineNumbers: Boolean(cmdOpts.lineNumbers),
-        })}\n`
-      );
+      const output = formatSearch(result, {
+        json: format === "json",
+        md: format === "md",
+        csv: format === "csv",
+        xml: format === "xml",
+        files: format === "files",
+        full: Boolean(cmdOpts.full),
+        lineNumbers: Boolean(cmdOpts.lineNumbers),
+      });
+      await writeOutput(output, format);
     });
 
   // vsearch - Vector similarity search
@@ -291,17 +311,16 @@ function wireSearchCommands(program: Command): void {
       if (!result.success) {
         throw new CliError("RUNTIME", result.error);
       }
-      process.stdout.write(
-        `${formatVsearch(result, {
-          json: format === "json",
-          md: format === "md",
-          csv: format === "csv",
-          xml: format === "xml",
-          files: format === "files",
-          full: Boolean(cmdOpts.full),
-          lineNumbers: Boolean(cmdOpts.lineNumbers),
-        })}\n`
-      );
+      const output = formatVsearch(result, {
+        json: format === "json",
+        md: format === "md",
+        csv: format === "csv",
+        xml: format === "xml",
+        files: format === "files",
+        full: Boolean(cmdOpts.full),
+        lineNumbers: Boolean(cmdOpts.lineNumbers),
+      });
+      await writeOutput(output, format);
     });
 
   // query - Hybrid search with expansion and reranking
@@ -388,13 +407,12 @@ function wireSearchCommands(program: Command): void {
       if (!result.success) {
         throw new CliError("RUNTIME", result.error);
       }
-      process.stdout.write(
-        `${formatQuery(result, {
-          format,
-          full: Boolean(cmdOpts.full),
-          lineNumbers: Boolean(cmdOpts.lineNumbers),
-        })}\n`
-      );
+      const output = formatQuery(result, {
+        format,
+        full: Boolean(cmdOpts.full),
+        lineNumbers: Boolean(cmdOpts.lineNumbers),
+      });
+      await writeOutput(output, format);
     });
 
   // ask - Human-friendly query with grounded answer
@@ -464,9 +482,12 @@ function wireSearchCommands(program: Command): void {
       if (!result.success) {
         throw new CliError("RUNTIME", result.error);
       }
-      process.stdout.write(
-        `${formatAsk(result, { json: format === "json", md: format === "md", showSources })}\n`
-      );
+      const output = formatAsk(result, {
+        json: format === "json",
+        md: format === "md",
+        showSources,
+      });
+      await writeOutput(output, format);
     });
 }
 
@@ -738,13 +759,12 @@ function wireRetrievalCommands(program: Command): void {
           );
         }
 
-        process.stdout.write(
-          `${formatLs(result, {
-            json: format === "json",
-            files: format === "files",
-            md: format === "md",
-          })}\n`
-        );
+        const output = formatLs(result, {
+          json: format === "json",
+          files: format === "files",
+          md: format === "md",
+        });
+        await writeOutput(output, format);
       }
     );
 }
@@ -1405,5 +1425,67 @@ function wireServeCommand(program: Command): void {
         throw new CliError("RUNTIME", result.error ?? "Server failed to start");
       }
       // Server runs until SIGINT/SIGTERM - no output needed here
+    });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Completion Command (shell completions)
+// ─────────────────────────────────────────────────────────────────────────────
+
+function wireCompletionCommand(program: Command): void {
+  const completionCmd = program
+    .command("completion")
+    .description("Shell completion scripts");
+
+  // Output completion script
+  completionCmd
+    .command("output <shell>", { isDefault: true })
+    .description("Output completion script for a shell (bash, zsh, fish)")
+    .action(async (shell: string) => {
+      const { completionOutput, SUPPORTED_SHELLS } =
+        await import("./commands/completion/index.js");
+
+      if (!SUPPORTED_SHELLS.includes(shell as "bash" | "zsh" | "fish")) {
+        throw new CliError(
+          "VALIDATION",
+          `Unsupported shell: ${shell}. Supported: ${SUPPORTED_SHELLS.join(", ")}`
+        );
+      }
+
+      const script = completionOutput({
+        shell: shell as "bash" | "zsh" | "fish",
+      });
+      process.stdout.write(script);
+    });
+
+  // Install completion to user's shell config
+  completionCmd
+    .command("install")
+    .description("Auto-install completion to shell config")
+    .option(
+      "-s, --shell <shell>",
+      "shell to install for (bash, zsh, fish) - auto-detected if omitted"
+    )
+    .option("--json", "JSON output")
+    .action(async (cmdOpts: Record<string, unknown>) => {
+      const shell = cmdOpts.shell as string | undefined;
+
+      const { completionInstall, SUPPORTED_SHELLS } =
+        await import("./commands/completion/index.js");
+
+      if (
+        shell &&
+        !SUPPORTED_SHELLS.includes(shell as "bash" | "zsh" | "fish")
+      ) {
+        throw new CliError(
+          "VALIDATION",
+          `Unsupported shell: ${shell}. Supported: ${SUPPORTED_SHELLS.join(", ")}`
+        );
+      }
+
+      await completionInstall({
+        shell: shell as "bash" | "zsh" | "fish" | undefined,
+        json: Boolean(cmdOpts.json),
+      });
     });
 }

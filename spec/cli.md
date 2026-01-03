@@ -26,6 +26,7 @@ All commands accept these flags:
 | `--no-color`      | boolean | Disable colored output                                   |
 | `--verbose`       | boolean | Enable verbose logging to stderr                         |
 | `--yes`           | boolean | Non-interactive mode: accept safe defaults, never prompt |
+| `--no-pager`      | boolean | Disable automatic paging of long output                  |
 
 ### Output Format Flags
 
@@ -43,43 +44,45 @@ Default output is human-readable terminal format.
 
 ### Output Format Support Matrix
 
-| Command           | --json | --files | --csv | --md | --xml | Default  |
-| ----------------- | ------ | ------- | ----- | ---- | ----- | -------- |
-| status            | yes    | no      | no    | yes  | no    | terminal |
-| init              | no     | no      | no    | no   | no    | terminal |
-| collection add    | no     | no      | no    | no   | no    | terminal |
-| collection list   | yes    | no      | no    | yes  | no    | terminal |
-| collection remove | no     | no      | no    | no   | no    | terminal |
-| collection rename | no     | no      | no    | no   | no    | terminal |
-| update            | no     | no      | no    | no   | no    | terminal |
-| index             | no     | no      | no    | no   | no    | terminal |
-| embed             | no     | no      | no    | no   | no    | terminal |
-| search            | yes    | yes     | yes   | yes  | yes   | terminal |
-| vsearch           | yes    | yes     | yes   | yes  | yes   | terminal |
-| query             | yes    | yes     | yes   | yes  | yes   | terminal |
-| ask               | yes    | no      | no    | yes  | no    | terminal |
-| get               | yes    | no      | no    | yes  | no    | terminal |
-| multi-get         | yes    | yes     | no    | yes  | no    | terminal |
-| ls                | yes    | yes     | no    | yes  | no    | terminal |
-| context add       | no     | no      | no    | no   | no    | terminal |
-| context list      | yes    | no      | no    | yes  | no    | terminal |
-| context check     | yes    | no      | no    | yes  | no    | terminal |
-| context rm        | no     | no      | no    | no   | no    | terminal |
-| models list       | yes    | no      | no    | yes  | no    | terminal |
-| models pull       | no     | no      | no    | no   | no    | terminal |
-| models clear      | no     | no      | no    | no   | no    | terminal |
-| models path       | yes    | no      | no    | no   | no    | terminal |
-| cleanup           | no     | no      | no    | no   | no    | terminal |
-| doctor            | yes    | no      | no    | yes  | no    | terminal |
-| mcp               | no     | no      | no    | no   | no    | stdio    |
-| mcp install       | yes    | no      | no    | no   | no    | terminal |
-| mcp uninstall     | yes    | no      | no    | no   | no    | terminal |
-| mcp status        | yes    | no      | no    | no   | no    | terminal |
-| skill install     | yes    | no      | no    | no   | no    | terminal |
-| skill uninstall   | yes    | no      | no    | no   | no    | terminal |
-| skill show        | no     | no      | no    | no   | no    | terminal |
-| skill paths       | yes    | no      | no    | no   | no    | terminal |
-| serve             | no     | no      | no    | no   | no    | terminal |
+| Command            | --json | --files | --csv | --md | --xml | Default  |
+| ------------------ | ------ | ------- | ----- | ---- | ----- | -------- |
+| status             | yes    | no      | no    | yes  | no    | terminal |
+| init               | no     | no      | no    | no   | no    | terminal |
+| collection add     | no     | no      | no    | no   | no    | terminal |
+| collection list    | yes    | no      | no    | yes  | no    | terminal |
+| collection remove  | no     | no      | no    | no   | no    | terminal |
+| collection rename  | no     | no      | no    | no   | no    | terminal |
+| update             | no     | no      | no    | no   | no    | terminal |
+| index              | no     | no      | no    | no   | no    | terminal |
+| embed              | no     | no      | no    | no   | no    | terminal |
+| search             | yes    | yes     | yes   | yes  | yes   | terminal |
+| vsearch            | yes    | yes     | yes   | yes  | yes   | terminal |
+| query              | yes    | yes     | yes   | yes  | yes   | terminal |
+| ask                | yes    | no      | no    | yes  | no    | terminal |
+| get                | yes    | no      | no    | yes  | no    | terminal |
+| multi-get          | yes    | yes     | no    | yes  | no    | terminal |
+| ls                 | yes    | yes     | no    | yes  | no    | terminal |
+| context add        | no     | no      | no    | no   | no    | terminal |
+| context list       | yes    | no      | no    | yes  | no    | terminal |
+| context check      | yes    | no      | no    | yes  | no    | terminal |
+| context rm         | no     | no      | no    | no   | no    | terminal |
+| models list        | yes    | no      | no    | yes  | no    | terminal |
+| models pull        | no     | no      | no    | no   | no    | terminal |
+| models clear       | no     | no      | no    | no   | no    | terminal |
+| models path        | yes    | no      | no    | no   | no    | terminal |
+| cleanup            | no     | no      | no    | no   | no    | terminal |
+| doctor             | yes    | no      | no    | yes  | no    | terminal |
+| mcp                | no     | no      | no    | no   | no    | stdio    |
+| mcp install        | yes    | no      | no    | no   | no    | terminal |
+| mcp uninstall      | yes    | no      | no    | no   | no    | terminal |
+| mcp status         | yes    | no      | no    | no   | no    | terminal |
+| skill install      | yes    | no      | no    | no   | no    | terminal |
+| skill uninstall    | yes    | no      | no    | no   | no    | terminal |
+| skill show         | no     | no      | no    | no   | no    | terminal |
+| skill paths        | yes    | no      | no    | no   | no    | terminal |
+| serve              | no     | no      | no    | no   | no    | terminal |
+| completion         | no     | no      | no    | no   | no    | terminal |
+| completion install | yes    | no      | no    | no   | no    | terminal |
 
 ---
 
@@ -1407,6 +1410,62 @@ gno serve --port 8080
 
 ---
 
+### gno completion
+
+Output or install shell completion scripts.
+
+**Synopsis:**
+
+```bash
+gno completion <shell>
+gno completion install [--shell <shell>] [--json]
+```
+
+**Subcommands:**
+
+| Subcommand | Description                                |
+| ---------- | ------------------------------------------ |
+| `<shell>`  | Output completion script (bash, zsh, fish) |
+| `install`  | Auto-install completion to shell config    |
+
+**Options (install):**
+
+| Flag          | Type   | Description                                     |
+| ------------- | ------ | ----------------------------------------------- |
+| `-s, --shell` | string | Shell to install for (auto-detected if omitted) |
+| `--json`      | flag   | JSON output                                     |
+
+**Supported Shells:**
+
+- `bash` - Appends to ~/.bashrc or ~/.bash_profile (macOS)
+- `zsh` - Appends to ~/.zshrc
+- `fish` - Creates ~/.config/fish/completions/gno.fish
+
+**Completion Features:**
+
+- Static: Commands, subcommands, flags (always available)
+- Dynamic: Collection names for `--collection` flag (when DB available)
+
+**Examples:**
+
+```bash
+# Output bash completion script
+gno completion bash >> ~/.bashrc
+
+# Auto-install for detected shell
+gno completion install
+
+# Install for specific shell
+gno completion install --shell zsh
+```
+
+**Exit Codes:**
+
+- 0: Success
+- 1: Unsupported shell
+
+---
+
 ## Error Output
 
 Errors are written to stderr. With `--json` flag, errors are also returned as:
@@ -1433,6 +1492,7 @@ Error codes match exit codes: `VALIDATION` (exit 1), `RUNTIME` (exit 2).
 | `GNO_DATA_DIR`             | Override data directory (DB location)            |
 | `GNO_CACHE_DIR`            | Override cache directory (models)                |
 | `NO_COLOR`                 | Disable colored output (standard)                |
+| `PAGER`                    | Pager for long output (default: less -R, more)   |
 | `GNO_SKILLS_HOME_OVERRIDE` | Override home dir for skill user scope (testing) |
 | `CLAUDE_SKILLS_DIR`        | Override Claude skills directory                 |
 | `CODEX_SKILLS_DIR`         | Override Codex skills directory                  |

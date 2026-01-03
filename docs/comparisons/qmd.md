@@ -32,12 +32,12 @@ Both tools provide semantic search for local documents with AI-powered features.
 | **Collection Contexts** | ✓ Semantic hints               | ✓                    |
 | **Output Formats**      | JSON, CSV, MD, XML, files      | JSON, CSV, MD, XML   |
 
-### Planned Features
+### Shell & Integration
 
-| Feature               | GNO                  | QMD |
-| --------------------- | -------------------- | --- |
-| **Raycast Extension** | 🔜 macOS native GUI  | ✗   |
-| **Tab Completion**    | 🔜 Shell integration | ✗   |
+| Feature               | GNO                 | QMD |
+| --------------------- | ------------------- | --- |
+| **Raycast Extension** | 🔜 macOS native GUI | ✗   |
+| **Tab Completion**    | ✓ bash/zsh/fish     | ✗   |
 
 ## Key Differentiators
 
