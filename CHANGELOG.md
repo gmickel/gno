@@ -5,6 +5,12 @@ All notable changes to GNO will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.6] - 2026-01-03
+
+### Fixed
+
+- **SKILL.md frontmatter** - `allowed-tools` now space-delimited per Agent Skills spec
+
 ## [0.9.5] - 2026-01-03
 
 ### Added
