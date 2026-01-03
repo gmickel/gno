@@ -33,9 +33,12 @@ test/
     query.eval.ts             # hybrid query pipeline
     expansion.eval.ts         # structured expansion stability
     multilingual.eval.ts      # cross-language ranking
+    thoroughness.eval.ts      # fast/balanced/thorough comparison
+    ask.eval.ts               # answer quality across presets
     scorers/
-      ir-metrics.ts           # recall@k, nDCG@k scorers
+      ir-metrics.ts           # recall@k, nDCG@k, latency scorers
       expansion-validity.ts   # schema validation scorer
+      answer-quality.ts       # LLM-as-judge for answers
     fixtures/
       corpus/
         de/                   # German test docs
@@ -43,6 +46,7 @@ test/
         fr/                   # French test docs
         it/                   # Italian test docs
       queries.json            # query-judgment pairs
+      ask-cases.json          # ask questions with expected topics
 evalite.config.ts             # global configuration
 ```
 
@@ -244,6 +248,42 @@ export const latencyBudget = (maxMs: number) => createScorer<
   }
 ]
 ```
+
+## Eval Dimensions
+
+GNO has two configurable axes that affect search/answer quality:
+
+### Search Thoroughness
+
+Controls the search pipeline depth via `--fast` / `--thorough` flags:
+
+| Mode     | Pipeline                      | Expected Latency | Quality  |
+| -------- | ----------------------------- | ---------------- | -------- |
+| fast     | BM25 only, no rerank          | < 1s             | Baseline |
+| balanced | Hybrid + rerank, no expansion | < 3s             | Better   |
+| thorough | Full pipeline + expansion     | < 8s             | Best     |
+
+**Eval strategy**: Run identical queries at all 3 levels, measure Recall@K and nDCG@K. Verify:
+
+- `thorough` >= `balanced` >= `fast` for ranking quality
+- Latency stays within budget per mode
+
+### Model Presets
+
+Controls AI model quality for generation (answers) via `gno models use <preset>`:
+
+| Preset   | Gen Model  | Size   | Answer Quality  |
+| -------- | ---------- | ------ | --------------- |
+| slim     | Qwen3-1.7B | ~1GB   | Faster, simpler |
+| balanced | SmolLM3-3B | ~2GB   | Default         |
+| quality  | Qwen3-4B   | ~2.5GB | Best answers    |
+
+Note: Embedding and reranking models are identical across presets.
+
+**Eval strategy**: Run identical questions through `gno ask` at each preset, use LLM-as-judge to score answer quality. Verify:
+
+- `quality` >= `balanced` >= `slim` for answer relevance
+- All presets produce factually grounded answers (no hallucination)
 
 ## Eval Files
 
@@ -460,6 +500,275 @@ evalite("Multilingual Cross-Language Retrieval", {
 });
 ```
 
+### Thoroughness Comparison Eval
+
+Tests the same queries at all thoroughness levels to verify quality ordering.
+
+```ts
+// test/eval/thoroughness.eval.ts
+import { evalite } from "evalite";
+import { recallAtK, ndcgAtK, latencyBudget } from "./scorers/ir-metrics";
+import { searchBm25 } from "../../src/pipeline/search";
+import { searchHybrid } from "../../src/pipeline/query";
+
+type ThoroughnessLevel = "fast" | "balanced" | "thorough";
+
+const LATENCY_BUDGETS: Record<ThoroughnessLevel, number> = {
+  fast: 1000,      // 1s
+  balanced: 3000,  // 3s
+  thorough: 8000,  // 8s
+};
+
+interface QueryCase {
+  query: string;
+  relevantDocs: string[];
+  judgments: Array<{ docid: string; relevance: number }>;
+}
+
+// Run each query at each thoroughness level
+async function runAtThoroughness(
+  query: string,
+  level: ThoroughnessLevel
+): Promise<{ docids: string[]; durationMs: number }> {
+  const start = performance.now();
+  let results: Array<{ docid: string }>;
+
+  if (level === "fast") {
+    // BM25 only
+    results = await searchBm25(query, { limit: 10 });
+  } else {
+    // Hybrid with different options
+    results = await searchHybrid(query, {
+      limit: 10,
+      noExpand: level === "balanced",  // balanced skips expansion
+      noRerank: false,
+    });
+  }
+
+  return {
+    docids: results.map(r => r.docid),
+    durationMs: performance.now() - start,
+  };
+}
+
+evalite("Thoroughness Comparison", {
+  data: async () => {
+    const queries: QueryCase[] = await Bun.file("test/eval/fixtures/queries.json").json();
+
+    // Create test cases for each query x thoroughness combination
+    const cases: Array<{
+      input: { query: string; level: ThoroughnessLevel };
+      expected: { relevantDocs: string[]; judgments: QueryCase["judgments"] };
+    }> = [];
+
+    for (const q of queries) {
+      for (const level of ["fast", "balanced", "thorough"] as ThoroughnessLevel[]) {
+        cases.push({
+          input: { query: q.query, level },
+          expected: { relevantDocs: q.relevantDocs, judgments: q.judgments },
+        });
+      }
+    }
+    return cases;
+  },
+
+  task: async (input) => runAtThoroughness(input.query, input.level),
+
+  scorers: [
+    {
+      name: "Recall@5",
+      scorer: ({ output, expected }) =>
+        recallAtK(5).scorer({ input: {}, output: output.docids, expected: expected.relevantDocs }),
+    },
+    {
+      name: "nDCG@10",
+      scorer: ({ output, expected }) =>
+        ndcgAtK(10).scorer({ input: {}, output: output.docids, expected: expected.judgments }),
+    },
+    {
+      name: "Latency Budget",
+      scorer: ({ input, output }) => {
+        const budget = LATENCY_BUDGETS[input.level];
+        const withinBudget = output.durationMs <= budget;
+        return {
+          score: withinBudget ? 1 : Math.max(0, 1 - (output.durationMs - budget) / budget),
+          metadata: { level: input.level, durationMs: output.durationMs, budget, withinBudget },
+        };
+      },
+    },
+  ],
+
+  columns: ({ input, output }) => [
+    { label: "Query", value: input.query.slice(0, 30) },
+    { label: "Level", value: input.level },
+    { label: "Time", value: `${output.durationMs.toFixed(0)}ms` },
+  ],
+});
+```
+
+### Answer Quality Eval
+
+Tests `gno ask` across model presets using LLM-as-judge for answer quality.
+
+```ts
+// test/eval/scorers/answer-quality.ts
+import { createScorer } from "evalite";
+import { generateText } from "ai";
+import { wrapAISDKModel } from "evalite/ai-sdk";
+import { openai } from "@ai-sdk/openai";
+
+// Use GPT-5-mini as judge (fast, cheap, good enough for eval)
+const judge = wrapAISDKModel(openai("gpt-5-mini"));
+
+interface AnswerJudgment {
+  relevance: number;      // 0-1: Does answer address the question?
+  groundedness: number;   // 0-1: Is answer supported by sources?
+  completeness: number;   // 0-1: Does answer cover key points?
+}
+
+export const answerQuality = createScorer<
+  { question: string; sources: string[] },
+  { answer: string; citations: string[] },
+  { expectedTopics: string[] }
+>({
+  name: "Answer Quality (LLM Judge)",
+  description: "Uses LLM to judge answer relevance, groundedness, and completeness",
+  scorer: async ({ input, output, expected }) => {
+    const prompt = `You are evaluating an AI-generated answer for quality.
+
+Question: ${input.question}
+
+Sources provided:
+${input.sources.map((s, i) => `[${i + 1}] ${s.slice(0, 500)}...`).join("\n\n")}
+
+Answer generated:
+${output.answer}
+
+Expected topics to cover: ${expected?.expectedTopics?.join(", ") || "N/A"}
+
+Rate the answer on three dimensions (0.0 to 1.0):
+1. RELEVANCE: Does the answer directly address the question?
+2. GROUNDEDNESS: Is the answer supported by the provided sources? (no hallucination)
+3. COMPLETENESS: Does the answer cover the key points?
+
+Respond in JSON format:
+{"relevance": 0.X, "groundedness": 0.X, "completeness": 0.X, "reasoning": "..."}`;
+
+    const result = await generateText({
+      model: judge,
+      prompt,
+      temperature: 0,
+    });
+
+    try {
+      const judgment: AnswerJudgment & { reasoning: string } = JSON.parse(result.text);
+      const avgScore = (judgment.relevance + judgment.groundedness + judgment.completeness) / 3;
+
+      return {
+        score: avgScore,
+        metadata: {
+          relevance: judgment.relevance,
+          groundedness: judgment.groundedness,
+          completeness: judgment.completeness,
+          reasoning: judgment.reasoning,
+        },
+      };
+    } catch {
+      return { score: 0, metadata: { error: "Failed to parse judge response" } };
+    }
+  },
+});
+```
+
+```ts
+// test/eval/ask.eval.ts
+import { evalite } from "evalite";
+import { answerQuality } from "./scorers/answer-quality";
+import { ask } from "../../src/pipeline/ask";
+import { setActivePreset } from "../../src/config/models";
+
+type PresetId = "slim" | "balanced" | "quality";
+
+interface AskCase {
+  question: string;
+  expectedTopics: string[];  // Key topics the answer should mention
+}
+
+const ASK_CASES: AskCase[] = [
+  {
+    question: "What is the authentication strategy?",
+    expectedTopics: ["OAuth", "JWT", "session", "tokens"],
+  },
+  {
+    question: "How do I deploy to production?",
+    expectedTopics: ["build", "deploy", "environment", "CI/CD"],
+  },
+  // Add more cases from fixtures...
+];
+
+evalite("Answer Quality by Preset", {
+  data: () => {
+    // Create test cases for each question x preset combination
+    const cases: Array<{
+      input: { question: string; preset: PresetId };
+      expected: { expectedTopics: string[] };
+    }> = [];
+
+    for (const c of ASK_CASES) {
+      for (const preset of ["slim", "balanced", "quality"] as PresetId[]) {
+        cases.push({
+          input: { question: c.question, preset },
+          expected: { expectedTopics: c.expectedTopics },
+        });
+      }
+    }
+    return cases;
+  },
+
+  task: async (input) => {
+    // Switch to the target preset
+    await setActivePreset(input.preset);
+
+    // Run ask pipeline
+    const result = await ask(input.question, { limit: 5 });
+
+    return {
+      answer: result.answer,
+      citations: result.citations.map(c => c.docid),
+      sources: result.sources.map(s => s.content),
+    };
+  },
+
+  scorers: [
+    {
+      name: "Answer Quality",
+      scorer: async ({ input, output, expected }) =>
+        answerQuality.scorer({
+          input: { question: input.question, sources: output.sources },
+          output: { answer: output.answer, citations: output.citations },
+          expected,
+        }),
+    },
+    {
+      name: "Has Citations",
+      scorer: ({ output }) => ({
+        score: output.citations.length > 0 ? 1 : 0,
+        metadata: { citationCount: output.citations.length },
+      }),
+    },
+  ],
+
+  columns: ({ input, output }) => [
+    { label: "Question", value: input.question.slice(0, 40) },
+    { label: "Preset", value: input.preset },
+    { label: "Citations", value: output.citations.length.toString() },
+  ],
+
+  // Run once per case (LLM judge is deterministic at temp=0)
+  trialCount: 1,
+});
+```
+
 ## CI Integration
 
 ### GitHub Actions Workflow
@@ -609,15 +918,19 @@ JSON contains:
    - At least 20 queries with relevance judgments
    - At least 2 docs each in DE, EN, FR, IT
    - At least 3 cross-language query-doc pairs
+   - At least 5 ask questions with expected topics
 
 2. **T11.2 Harness**: All eval files pass:
    - `vsearch.eval.ts` with Recall@5, Recall@10, nDCG@10
    - `query.eval.ts` with ranking + latency metrics
    - `expansion.eval.ts` with schema validity
    - `multilingual.eval.ts` with cross-language recall
+   - `thoroughness.eval.ts` with fast/balanced/thorough comparison
+   - `ask.eval.ts` with answer quality across presets (requires OPENAI_API_KEY)
 
 3. **T11.3 CI Gating**:
    - GitHub Actions workflow runs on PRs
    - Threshold starts at 70%, configurable
    - Static UI exported as artifact
    - Results JSON available for analysis
+   - Answer quality evals run separately (requires API key secret)
