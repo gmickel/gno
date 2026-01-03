@@ -139,6 +139,20 @@ nav:
     items:
       - title: GNO vs QMD
         url: /docs/comparisons/qmd/
+      - title: GNO vs PrivateGPT
+        url: /docs/comparisons/privategpt/
+      - title: GNO vs Khoj
+        url: /docs/comparisons/khoj/
+      - title: GNO vs GPT4All
+        url: /docs/comparisons/gpt4all/
+      - title: GNO vs AnythingLLM
+        url: /docs/comparisons/anythingllm/
+      - title: GNO vs Quivr
+        url: /docs/comparisons/quivr/
+      - title: GNO vs Kotaemon
+        url: /docs/comparisons/kotaemon/
+      - title: GNO vs Reor
+        url: /docs/comparisons/reor/
       - title: GNO vs grep
         url: /docs/comparisons/grep/
       - title: GNO vs Elasticsearch
