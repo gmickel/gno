@@ -13,21 +13,24 @@ import type { Citation, SearchResult } from "./types";
 // Constants
 // ─────────────────────────────────────────────────────────────────────────────
 
-const ANSWER_PROMPT = `You are answering a question using ONLY the provided context blocks.
+const ANSWER_PROMPT = `Answer the question using ONLY the context blocks below. Cite sources with [1], [2], etc.
 
-Rules you MUST follow:
-1) Use ONLY facts stated in the context blocks. Do NOT use outside knowledge.
-2) Every factual statement must include an inline citation like [1] or [2] referring to a context block.
-3) If the context does not contain enough information to answer, reply EXACTLY:
-   "I don't have enough information in the provided sources to answer this question."
-4) Do not cite sources you did not use. Do not invent citation numbers.
+Example:
+Q: What is the capital of France?
+Context:
+[1] France is a country in Western Europe. Paris is the capital and largest city.
+[2] The Eiffel Tower, built in 1889, is located in Paris.
 
-Question: {query}
+Answer: Paris is the capital of France [1]. It is home to the Eiffel Tower [2].
 
-Context blocks:
+---
+
+Q: {query}
+
+Context:
 {context}
 
-Write a concise answer (1-3 paragraphs).`;
+Answer:`;
 
 /** Abstention message when LLM cannot ground answer */
 export const ABSTENTION_MESSAGE =

@@ -48,6 +48,9 @@
     "test:coverage": "bun test --coverage",
     "test:coverage:html": "bun test --coverage --html",
     "test:fixtures": "bun scripts/generate-test-fixtures.ts",
+    "evals": "bun scripts/update-eval-scores.ts",
+    "eval": "bun --bun evalite",
+    "eval:watch": "bun --bun evalite watch",
     "reset": "bun run src/index.ts reset --confirm",
     "docs:verify": "bun run scripts/docs-verify.ts",
     "website:install": "cd website && bundle install",
@@ -110,6 +113,7 @@
     "zod": "^4.3.4"
   },
   "devDependencies": {
+    "@ai-sdk/openai": "^3.0.2",
     "@biomejs/biome": "2.3.10",
     "@tailwindcss/cli": "^4.1.18",
     "@types/bun": "latest",
@@ -126,7 +130,8 @@
     "oxlint-tsgolint": "^0.10.1",
     "pdf-lib": "^1.17.1",
     "pptxgenjs": "^4.0.1",
-    "ultracite": "7.0.4"
+    "ultracite": "7.0.4",
+    "vitest": "^4.0.16"
   },
   "peerDependencies": {
     "typescript": "^5"

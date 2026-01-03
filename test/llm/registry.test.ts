@@ -98,7 +98,7 @@ describe("resolveModelUri", () => {
 
     expect(resolveModelUri(config, "embed")).toContain("bge-m3");
     expect(resolveModelUri(config, "rerank")).toContain("qwen3-reranker");
-    expect(resolveModelUri(config, "gen")).toContain("SmolLM3");
+    expect(resolveModelUri(config, "gen")).toContain("Qwen2.5-3B-Instruct");
   });
 
   test("returns override when provided", () => {

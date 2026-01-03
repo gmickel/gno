@@ -28,40 +28,43 @@ GNO uses Evalite for:
 ```json
 {
   "devDependencies": {
-    "evalite": "^1.0.0",
-    "vitest": "^3.0.0",
-    "better-sqlite3": "^11.0.0"
+    "evalite": "^1.0.0-beta.15",
+    "vitest": "^4.0.0",
+    "@ai-sdk/openai": "^3.0.0"
   }
 }
 ```
 
-Note: `better-sqlite3` is required for persistent eval storage.
+Note: `@ai-sdk/openai` is optional - only needed if using LLM-as-judge scorer.
 
 ## File Structure
 
 ```
-test/
-  eval/
-    vsearch.eval.ts           # vector search ranking
-    query.eval.ts             # hybrid query pipeline
-    expansion.eval.ts         # structured expansion stability
-    multilingual.eval.ts      # cross-language ranking
-    thoroughness.eval.ts      # fast/balanced/thorough comparison
-    ask.eval.ts               # answer quality across presets
-    scorers/
-      ir-metrics.ts           # recall@k, nDCG@k, latency scorers
-      expansion-validity.ts   # schema validation scorer
-      answer-quality.ts       # LLM-as-judge for answers
-    fixtures/
-      corpus/
-        de/                   # German test docs
-        en/                   # English test docs
-        fr/                   # French test docs
-        it/                   # Italian test docs
-      queries.json            # query-judgment pairs
-      ask-cases.json          # ask questions with expected topics
-evalite.config.ts             # global configuration
+evals/                          # Top-level (not test/eval/)
+  vsearch.eval.ts               # BM25 search ranking
+  query.eval.ts                 # Query pipeline + latency
+  expansion.eval.ts             # Expansion schema validity
+  multilingual.eval.ts          # Cross-language (BM25 baseline)
+  thoroughness.eval.ts          # Fast/balanced/thorough comparison
+  ask.eval.ts                   # Answer quality by preset
+  scorers/
+    ir-metrics.ts               # recall@k, nDCG@k, latency scorers
+    expansion-validity.ts       # AJV schema validation
+    answer-quality.ts           # LLM-as-judge (requires OPENAI_API_KEY)
+  helpers/
+    setup-db.ts                 # Temp DB setup for eval corpus
+  fixtures/
+    corpus/
+      de/                       # German test docs
+      en/                       # English test docs
+      fr/                       # French test docs
+      it/                       # Italian test docs
+    queries.json                # Query-judgment pairs (29 queries)
+    ask-cases.json              # Ask questions with expected topics
+evalite.config.ts               # Global configuration
 ```
+
+**Note**: Evals are local-only (part of DoD/release process, not CI). Uses temp SQLite DB per run, isolated from global gno install.
 
 ## Configuration
 
@@ -69,35 +72,25 @@ evalite.config.ts             # global configuration
 
 ```ts
 import { defineConfig } from "evalite/config";
-import { createSqliteStorage } from "evalite/sqlite-storage";
 
 export default defineConfig({
-  // Storage: in-memory by default (fast, ephemeral)
-  // Use SQLite for persistent history across runs
-  storage: () => createSqliteStorage("./evalite.db"),
+  // In-memory storage (default, fast, ephemeral)
+  // For persistent history, see evalite docs
 
   // Test execution
   testTimeout: 120_000,   // 2 min for embedding + rerank
-  maxConcurrency: 10,     // parallel test cases
+  maxConcurrency: 5,      // Conservative for LLM calls
 
-  // Quality gate (MVP: 70%, increase as baseline improves)
-  // CLI --threshold flag overrides this value
+  // Quality gate (MVP: 70%)
   scoreThreshold: 70,
 
-  // Global trial count for variance measurement (can override per-eval)
+  // Variance measurement (can override per-eval)
   trialCount: 1,
 
-  // Cache LLM responses for fast iteration in dev
+  // Cache LLM responses for fast iteration
   cache: true,
 
-  // Watch mode triggers: rerun when these change
-  forceRerunTriggers: [
-    "src/pipeline/**/*.ts",
-    "src/llm/**/*.ts",
-    "test/eval/fixtures/**/*",
-  ],
-
-  // UI server port (default: 3006)
+  // UI server port
   server: { port: 3006 },
 });
 ```
@@ -107,23 +100,22 @@ export default defineConfig({
 ```json
 {
   "scripts": {
-    "eval": "evalite",
-    "eval:watch": "evalite watch",
-    "eval:serve": "evalite serve",
-    "eval:ci": "evalite --threshold=70 --outputPath=./eval-results.json"
+    "eval": "bun --bun evalite",
+    "eval:watch": "bun --bun evalite watch"
   }
 }
 ```
 
+**Note**: `--bun` flag required because evals use `bun:sqlite` via SqliteAdapter.
+
 **CLI Modes:**
 
-- `evalite` (or `evalite run`) - Run once, exit
-- `evalite watch` - Auto-rerun on file changes
-- `evalite serve` - Run once, keep UI alive (good for slow evals like thorough mode)
+- `bun run eval` - Run once, exit
+- `bun run eval:watch` - Auto-rerun on file changes
 
 ## Custom Scorers
 
-Evalite doesn't include IR-specific scorers. Create them in `test/eval/scorers/ir-metrics.ts`:
+Evalite doesn't include IR-specific scorers. Create them in `evals/scorers/ir-metrics.ts`:
 
 ### Recall@K
 
@@ -203,7 +195,7 @@ export const ndcgAtK = (k: number) => createScorer<
 ```ts
 import { createScorer } from "evalite";
 import Ajv from "ajv";
-import expansionSchema from "../../spec/output-schemas/expansion.json";
+import expansionSchema from "../../spec/output-schemas/expansion.schema.json";
 
 const ajv = new Ajv();
 const validate = ajv.compile(expansionSchema);
@@ -247,7 +239,7 @@ export const latencyBudget = (maxMs: number) => createScorer<
 
 ## Test Data Format
 
-### `test/eval/fixtures/queries.json`
+### `evals/fixtures/queries.json`
 
 ```json
 [
@@ -318,7 +310,7 @@ Note: Embedding and reranking models are identical across presets.
 ### Vector Search Eval
 
 ```ts
-// test/eval/vsearch.eval.ts
+// evals/vsearch.eval.ts
 import { evalite } from "evalite";
 import { recallAtK, ndcgAtK } from "./scorers/ir-metrics";
 import { vsearch } from "../../src/pipeline/vsearch";
@@ -333,7 +325,7 @@ interface QueryData {
 
 evalite("Vector Search Ranking", {
   data: async () => {
-    const queries: QueryData[] = await Bun.file("test/eval/fixtures/queries.json").json();
+    const queries: QueryData[] = await Bun.file("evals/fixtures/queries.json").json();
     return queries.map((q) => ({
       input: { query: q.query, collection: q.collection },
       expected: {
@@ -379,14 +371,14 @@ evalite("Vector Search Ranking", {
 ### Hybrid Query Eval
 
 ```ts
-// test/eval/query.eval.ts
+// evals/query.eval.ts
 import { evalite } from "evalite";
 import { recallAtK, ndcgAtK, latencyBudget } from "./scorers/ir-metrics";
 import { query } from "../../src/pipeline/query";
 
 evalite("Hybrid Query Pipeline", {
   data: async () => {
-    const queries = await Bun.file("test/eval/fixtures/queries.json").json();
+    const queries = await Bun.file("evals/fixtures/queries.json").json();
     return queries.map((q) => ({
       input: { query: q.query, collection: q.collection },
       expected: {
@@ -435,14 +427,14 @@ evalite("Hybrid Query Pipeline", {
 ### Expansion Stability Eval
 
 ```ts
-// test/eval/expansion.eval.ts
+// evals/expansion.eval.ts
 import { evalite } from "evalite";
 import { expansionSchemaValid } from "./scorers/expansion-validity";
 import { expandQuery } from "../../src/pipeline/expansion";
 
 evalite("Structured Expansion Stability", {
   data: async () => {
-    const queries = await Bun.file("test/eval/fixtures/queries.json").json();
+    const queries = await Bun.file("evals/fixtures/queries.json").json();
     return queries.map((q) => ({
       input: q.query,
     }));
@@ -481,7 +473,7 @@ evalite("Structured Expansion Stability", {
 ### Multilingual Eval
 
 ```ts
-// test/eval/multilingual.eval.ts
+// evals/multilingual.eval.ts
 import { evalite } from "evalite";
 import { recallAtK } from "./scorers/ir-metrics";
 import { query } from "../../src/pipeline/query";
@@ -533,7 +525,7 @@ evalite("Multilingual Cross-Language Retrieval", {
 Tests the same queries at all thoroughness levels to verify quality ordering.
 
 ```ts
-// test/eval/thoroughness.eval.ts
+// evals/thoroughness.eval.ts
 import { evalite } from "evalite";
 import { recallAtK, ndcgAtK, latencyBudget } from "./scorers/ir-metrics";
 import { searchBm25 } from "../../src/pipeline/search";
@@ -581,7 +573,7 @@ async function runAtThoroughness(
 
 evalite("Thoroughness Comparison", {
   data: async () => {
-    const queries: QueryCase[] = await Bun.file("test/eval/fixtures/queries.json").json();
+    const queries: QueryCase[] = await Bun.file("evals/fixtures/queries.json").json();
 
     // Create test cases for each query x thoroughness combination
     const cases: Array<{
@@ -639,7 +631,7 @@ evalite("Thoroughness Comparison", {
 Tests `gno ask` across model presets using LLM-as-judge for answer quality.
 
 ```ts
-// test/eval/scorers/answer-quality.ts
+// evals/scorers/answer-quality.ts
 import { createScorer } from "evalite";
 import { generateText } from "ai";
 import { wrapAISDKModel } from "evalite/ai-sdk";
@@ -709,7 +701,7 @@ Respond in JSON format:
 ```
 
 ```ts
-// test/eval/ask.eval.ts
+// evals/ask.eval.ts
 import { evalite } from "evalite";
 import { answerQuality } from "./scorers/answer-quality";
 import { ask } from "../../src/pipeline/ask";
@@ -797,60 +789,18 @@ evalite("Answer Quality by Preset", {
 });
 ```
 
-## CI Integration
+## Local Execution
 
-### GitHub Actions Workflow
+Evals are run locally as part of the Definition of Done (DoD) and release process—not in CI. This keeps CI fast and avoids needing local LLM models on CI runners.
 
-```yaml
-# .github/workflows/evals.yml
-name: Evals
+### Running Evals
 
-on:
-  push:
-    branches: [main]
-  pull_request:
-    paths:
-      - 'src/pipeline/**'
-      - 'src/llm/**'
-      - 'test/eval/**'
+```bash
+# Run all evals once
+bun run eval
 
-jobs:
-  evals:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: latest
-
-      - run: bun install
-
-      - name: Run evals
-        run: bun run eval:ci
-        env:
-          # Models cached in CI, no network needed
-          GNO_CACHE_DIR: ${{ runner.temp }}/gno-cache
-
-      - name: Export eval UI
-        if: always()
-        run: bun run evalite export --output=./eval-ui
-
-      - name: Upload eval results
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: eval-results
-          path: |
-            eval-results.json
-            eval-ui/
-
-      - name: Upload eval UI
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: eval-ui
-          path: eval-ui/
+# Watch mode (re-runs on file changes)
+bun run eval:watch
 ```
 
 ### Threshold Strategy
@@ -861,15 +811,7 @@ jobs:
 | Beta  | 80%       | Tighten as quality stabilizes        |
 | GA    | 90%       | Production quality gate              |
 
-Configure in CI:
-
-```bash
-# Soft fail during development
-evalite --threshold=70 || echo "Evals below threshold (soft fail)"
-
-# Hard fail in production
-evalite --threshold=90
-```
+The default threshold is configured in `evalite.config.ts`.
 
 ## Tracing
 
@@ -940,7 +882,7 @@ task: async (input) => {
 
 ### Development (In-Memory)
 
-Default behavior when no storage configured:
+Default behavior—no configuration needed:
 
 - Fast iteration
 - Data lost on process exit
@@ -948,22 +890,16 @@ Default behavior when no storage configured:
 
 ### Persistent (SQLite)
 
-Configure for tracking scores over time:
+For tracking scores over time, see Evalite docs: https://evalite.dev
 
-```ts
-export default defineConfig({
-  storage: () => createSqliteStorage("./evalite.db"),
-});
-````
+SQLite file would be gitignored; each developer has local history.
 
-SQLite file is gitignored; each developer has local history.
+### JSON Export
 
-### CI (JSON Export)
-
-Export results for artifact storage:
+Export results for analysis:
 
 ```bash
-evalite --outputPath=./eval-results.json
+bun --bun evalite --outputPath=./eval-results.json
 ```
 
 JSON contains:
@@ -976,7 +912,7 @@ JSON contains:
 
 ### EPIC 11 Complete When:
 
-1. **T11.1 Corpus**: `test/eval/fixtures/` contains:
+1. **T11.1 Corpus**: `evals/fixtures/` contains:
    - At least 20 queries with relevance judgments
    - At least 2 docs each in DE, EN, FR, IT
    - At least 3 cross-language query-doc pairs
@@ -990,9 +926,8 @@ JSON contains:
    - `thoroughness.eval.ts` with fast/balanced/thorough comparison
    - `ask.eval.ts` with answer quality across presets (requires OPENAI_API_KEY)
 
-3. **T11.3 CI Gating**:
-   - GitHub Actions workflow runs on PRs
-   - Threshold starts at 70%, configurable
-   - Static UI exported as artifact
-   - Results JSON available for analysis
-   - Answer quality evals run separately (requires API key secret)
+3. **T11.3 Documentation**:
+   - CLAUDE.md updated with eval commands
+   - CONTRIBUTING.md updated with DoD eval requirements
+   - This spec (spec/evals.md) matches implementation
+````

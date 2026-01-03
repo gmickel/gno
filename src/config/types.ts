@@ -188,7 +188,7 @@ export const DEFAULT_MODEL_PRESETS: ModelPreset[] = [
     embed: "hf:gpustack/bge-m3-GGUF/bge-m3-Q4_K_M.gguf",
     rerank:
       "hf:ggml-org/Qwen3-Reranker-0.6B-Q8_0-GGUF/qwen3-reranker-0.6b-q8_0.gguf",
-    gen: "hf:ggml-org/SmolLM3-3B-GGUF/SmolLM3-Q4_K_M.gguf",
+    gen: "hf:bartowski/Qwen2.5-3B-Instruct-GGUF/Qwen2.5-3B-Instruct-Q4_K_M.gguf",
   },
   {
     id: "quality",
