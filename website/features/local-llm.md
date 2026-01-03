@@ -39,11 +39,11 @@ GNO will:
 
 Choose the right balance of speed and quality:
 
-| Preset   | Speed  | Quality | Use Case          |
-| -------- | ------ | ------- | ----------------- |
-| slim     | Fast   | Good    | Quick lookups     |
-| balanced | Medium | Better  | Default           |
-| quality  | Slower | Best    | Complex questions |
+| Preset   | Speed  | Quality | Use Case               |
+| -------- | ------ | ------- | ---------------------- |
+| slim     | Fast   | Good    | Default, quick lookups |
+| balanced | Medium | Good    | Slightly larger model  |
+| quality  | Slower | Best    | Complex questions      |
 
 ```bash
 gno models use slim

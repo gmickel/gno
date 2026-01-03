@@ -73,8 +73,8 @@ GNO searches your documents, synthesizes an answer using a local LLM, and shows 
 
 Switch between model presets without restarting:
 
-- **Slim**: Fast, ~1GB disk
-- **Balanced**: Default, ~2GB disk
+- **Slim**: Default, fast, ~1GB disk
+- **Balanced**: Slightly larger, ~2GB disk
 - **Quality**: Best answers, ~2.5GB disk
 
 Click the preset selector, choose your preference, and GNO reloads models automatically.

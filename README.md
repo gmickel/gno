@@ -332,14 +332,14 @@ Models auto-download on first use to `~/.cache/gno/models/`.
 
 ### Model Presets
 
-| Preset     | Disk   | Best For               |
-| :--------- | :----- | :--------------------- |
-| `slim`     | ~1GB   | Fast, lower quality    |
-| `balanced` | ~2GB   | Good balance (default) |
-| `quality`  | ~2.5GB | Best answers           |
+| Preset     | Disk   | Best For                     |
+| :--------- | :----- | :--------------------------- |
+| `slim`     | ~1GB   | Fast, good quality (default) |
+| `balanced` | ~2GB   | Slightly larger model        |
+| `quality`  | ~2.5GB | Best answers                 |
 
 ```bash
-gno models use balanced
+gno models use slim
 gno models pull --all  # Optional: pre-download models (auto-downloads on first use)
 ```
 

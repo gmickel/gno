@@ -182,14 +182,14 @@ Click the menu (⋮) on any collection card and select **Remove**. This:
 Switch between model presets without restarting:
 
 1. Click the preset selector (top-right of header)
-2. Choose: **Slim** (fast), **Balanced** (default), or **Quality** (best answers)
+2. Choose: **Slim** (default), **Balanced**, or **Quality** (best answers)
 3. GNO reloads models automatically
 
-| Preset   | Disk   | Best For                          |
-| :------- | :----- | :-------------------------------- |
-| Slim     | ~1GB   | Quick searches, limited resources |
-| Balanced | ~2GB   | General use                       |
-| Quality  | ~2.5GB | Best answer quality               |
+| Preset   | Disk   | Best For                     |
+| :------- | :----- | :--------------------------- |
+| Slim     | ~1GB   | Fast, good quality (default) |
+| Balanced | ~2GB   | Slightly larger model        |
+| Quality  | ~2.5GB | Best answer quality          |
 
 ### Model Download
 

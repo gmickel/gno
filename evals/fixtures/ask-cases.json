@@ -1,0 +1,97 @@
+[
+  {
+    "id": "ask1",
+    "question": "How do I authenticate API requests?",
+    "expectedTopics": [
+      "bearer token",
+      "JWT",
+      "authorization header",
+      "token endpoint"
+    ],
+    "mockSources": ["en/api-reference.md", "fr/securite-applications.md"]
+  },
+  {
+    "id": "ask2",
+    "question": "What is the architecture for microservices communication?",
+    "expectedTopics": [
+      "message queue",
+      "RabbitMQ",
+      "async",
+      "event sourcing",
+      "eventual consistency"
+    ],
+    "mockSources": ["en/architecture-decisions.md"]
+  },
+  {
+    "id": "ask3",
+    "question": "How do I debug connection refused errors?",
+    "expectedTopics": [
+      "database",
+      "PostgreSQL",
+      "port",
+      "firewall",
+      "systemctl"
+    ],
+    "mockSources": ["en/troubleshooting-guide.md"]
+  },
+  {
+    "id": "ask4",
+    "question": "What are the best practices for error handling in TypeScript?",
+    "expectedTopics": [
+      "error class",
+      "validation",
+      "retry",
+      "circuit breaker",
+      "logging"
+    ],
+    "mockSources": ["de/fehlerbehandlung.md", "en/troubleshooting-guide.md"]
+  },
+  {
+    "id": "ask5",
+    "question": "How do I deploy to Kubernetes with Helm?",
+    "expectedTopics": ["helm", "namespace", "secrets", "configmap", "rollback"],
+    "mockSources": [
+      "de/deployment-anleitung.md",
+      "it/configurazione-sistema.md"
+    ]
+  },
+  {
+    "id": "ask6",
+    "question": "What security measures should I implement for web applications?",
+    "expectedTopics": [
+      "XSS",
+      "SQL injection",
+      "CSRF",
+      "helmet",
+      "password hashing"
+    ],
+    "mockSources": ["fr/securite-applications.md"]
+  },
+  {
+    "id": "ask7",
+    "question": "How can I optimize application performance with caching?",
+    "expectedTopics": [
+      "Redis",
+      "LRU cache",
+      "TTL",
+      "lazy loading",
+      "compression"
+    ],
+    "mockSources": ["it/ottimizzazione-performance.md"]
+  },
+  {
+    "id": "ask8",
+    "question": "How do I set up environment configuration for different environments?",
+    "expectedTopics": [
+      "environment variables",
+      "Docker",
+      "ConfigMap",
+      "secrets",
+      "validation"
+    ],
+    "mockSources": [
+      "it/configurazione-sistema.md",
+      "de/deployment-anleitung.md"
+    ]
+  }
+]

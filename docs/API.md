@@ -878,19 +878,19 @@ GET /api/presets
   "presets": [
     {
       "id": "slim",
-      "name": "Slim (Fast, ~1GB)",
+      "name": "Slim (Default, ~1GB)",
       "embed": "hf:...bge-m3-Q4...",
       "rerank": "hf:...reranker-Q4...",
-      "gen": "hf:...smollm-Q4...",
-      "active": false
+      "gen": "hf:...qwen3-1.7b-Q4...",
+      "active": true
     },
     {
       "id": "balanced",
-      "name": "Balanced (Default, ~2GB)",
-      "active": true
+      "name": "Balanced (~2GB)",
+      "active": false
     }
   ],
-  "activePreset": "balanced"
+  "activePreset": "slim"
 }
 ```
 

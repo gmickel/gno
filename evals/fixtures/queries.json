@@ -1,0 +1,266 @@
+[
+  {
+    "id": "q1",
+    "query": "API authentication bearer token",
+    "language": "en",
+    "relevantDocs": ["en/api-reference.md"],
+    "judgments": [
+      { "docid": "en/api-reference.md", "relevance": 3 },
+      { "docid": "fr/securite-applications.md", "relevance": 2 }
+    ]
+  },
+  {
+    "id": "q2",
+    "query": "rate limiting requests per minute",
+    "language": "en",
+    "relevantDocs": ["en/api-reference.md"],
+    "judgments": [{ "docid": "en/api-reference.md", "relevance": 3 }]
+  },
+  {
+    "id": "q3",
+    "query": "microservices message queue RabbitMQ",
+    "language": "en",
+    "relevantDocs": ["en/architecture-decisions.md"],
+    "judgments": [{ "docid": "en/architecture-decisions.md", "relevance": 3 }]
+  },
+  {
+    "id": "q4",
+    "query": "event sourcing audit trail",
+    "language": "en",
+    "relevantDocs": ["en/architecture-decisions.md"],
+    "judgments": [{ "docid": "en/architecture-decisions.md", "relevance": 3 }]
+  },
+  {
+    "id": "q5",
+    "query": "kubernetes deployment helm chart",
+    "language": "en",
+    "relevantDocs": [
+      "en/architecture-decisions.md",
+      "de/deployment-anleitung.md"
+    ],
+    "judgments": [
+      { "docid": "en/architecture-decisions.md", "relevance": 2 },
+      { "docid": "de/deployment-anleitung.md", "relevance": 3 }
+    ]
+  },
+  {
+    "id": "q6",
+    "query": "connection refused database error",
+    "language": "en",
+    "relevantDocs": ["en/troubleshooting-guide.md"],
+    "judgments": [
+      { "docid": "en/troubleshooting-guide.md", "relevance": 3 },
+      { "docid": "de/fehlerbehandlung.md", "relevance": 1 }
+    ]
+  },
+  {
+    "id": "q7",
+    "query": "memory leak debugging heap snapshot",
+    "language": "en",
+    "relevantDocs": ["en/troubleshooting-guide.md"],
+    "judgments": [{ "docid": "en/troubleshooting-guide.md", "relevance": 3 }]
+  },
+  {
+    "id": "q8",
+    "query": "JWT token expired refresh",
+    "language": "en",
+    "relevantDocs": [
+      "en/troubleshooting-guide.md",
+      "fr/securite-applications.md"
+    ],
+    "judgments": [
+      { "docid": "en/troubleshooting-guide.md", "relevance": 3 },
+      { "docid": "fr/securite-applications.md", "relevance": 2 }
+    ]
+  },
+  {
+    "id": "q9",
+    "query": "Bereitstellung Kubernetes Helm",
+    "language": "de",
+    "relevantDocs": ["de/deployment-anleitung.md"],
+    "judgments": [
+      { "docid": "de/deployment-anleitung.md", "relevance": 3 },
+      { "docid": "en/architecture-decisions.md", "relevance": 1 }
+    ],
+    "note": "German query for deployment"
+  },
+  {
+    "id": "q10",
+    "query": "Rollback vorherige Version",
+    "language": "de",
+    "relevantDocs": ["de/deployment-anleitung.md"],
+    "judgments": [{ "docid": "de/deployment-anleitung.md", "relevance": 3 }]
+  },
+  {
+    "id": "q11",
+    "query": "Fehlerklassen ValidationError",
+    "language": "de",
+    "relevantDocs": ["de/fehlerbehandlung.md"],
+    "judgments": [{ "docid": "de/fehlerbehandlung.md", "relevance": 3 }]
+  },
+  {
+    "id": "q12",
+    "query": "Circuit Breaker retry Logik",
+    "language": "de",
+    "relevantDocs": ["de/fehlerbehandlung.md"],
+    "judgments": [{ "docid": "de/fehlerbehandlung.md", "relevance": 3 }]
+  },
+  {
+    "id": "q13",
+    "query": "composants React hooks useState",
+    "language": "fr",
+    "relevantDocs": ["fr/guide-debutant.md"],
+    "judgments": [{ "docid": "fr/guide-debutant.md", "relevance": 3 }]
+  },
+  {
+    "id": "q14",
+    "query": "tests unitaires intégration",
+    "language": "fr",
+    "relevantDocs": ["fr/guide-debutant.md"],
+    "judgments": [{ "docid": "fr/guide-debutant.md", "relevance": 3 }]
+  },
+  {
+    "id": "q15",
+    "query": "injection SQL requêtes paramétrées",
+    "language": "fr",
+    "relevantDocs": ["fr/securite-applications.md"],
+    "judgments": [{ "docid": "fr/securite-applications.md", "relevance": 3 }]
+  },
+  {
+    "id": "q16",
+    "query": "CSRF token protection formulaire",
+    "language": "fr",
+    "relevantDocs": ["fr/securite-applications.md"],
+    "judgments": [{ "docid": "fr/securite-applications.md", "relevance": 3 }]
+  },
+  {
+    "id": "q17",
+    "query": "cache Redis LRU performance",
+    "language": "it",
+    "relevantDocs": ["it/ottimizzazione-performance.md"],
+    "judgments": [
+      { "docid": "it/ottimizzazione-performance.md", "relevance": 3 }
+    ]
+  },
+  {
+    "id": "q18",
+    "query": "lazy loading componenti React",
+    "language": "it",
+    "relevantDocs": ["it/ottimizzazione-performance.md"],
+    "judgments": [
+      { "docid": "it/ottimizzazione-performance.md", "relevance": 3 }
+    ]
+  },
+  {
+    "id": "q19",
+    "query": "Docker Compose configurazione servizi",
+    "language": "it",
+    "relevantDocs": ["it/configurazione-sistema.md"],
+    "judgments": [
+      { "docid": "it/configurazione-sistema.md", "relevance": 3 },
+      { "docid": "de/deployment-anleitung.md", "relevance": 2 }
+    ]
+  },
+  {
+    "id": "q20",
+    "query": "variabili ambiente validazione Zod",
+    "language": "it",
+    "relevantDocs": ["it/configurazione-sistema.md"],
+    "judgments": [{ "docid": "it/configurazione-sistema.md", "relevance": 3 }]
+  },
+  {
+    "id": "q21",
+    "query": "API gateway Kong authentication",
+    "language": "en",
+    "relevantDocs": ["en/architecture-decisions.md"],
+    "judgments": [
+      { "docid": "en/architecture-decisions.md", "relevance": 3 },
+      { "docid": "en/api-reference.md", "relevance": 1 }
+    ]
+  },
+  {
+    "id": "q22",
+    "query": "database per service saga pattern",
+    "language": "en",
+    "relevantDocs": ["en/architecture-decisions.md"],
+    "judgments": [{ "docid": "en/architecture-decisions.md", "relevance": 3 }]
+  },
+  {
+    "id": "q23",
+    "query": "container logs kubectl debug",
+    "language": "en",
+    "relevantDocs": [
+      "en/troubleshooting-guide.md",
+      "de/deployment-anleitung.md"
+    ],
+    "judgments": [
+      { "docid": "en/troubleshooting-guide.md", "relevance": 3 },
+      { "docid": "de/deployment-anleitung.md", "relevance": 2 }
+    ]
+  },
+  {
+    "id": "q24",
+    "query": "hachage mot de passe argon2",
+    "language": "fr",
+    "relevantDocs": ["fr/securite-applications.md"],
+    "judgments": [{ "docid": "fr/securite-applications.md", "relevance": 3 }],
+    "note": "French query for password hashing"
+  },
+  {
+    "id": "q25",
+    "query": "indici database query N+1",
+    "language": "it",
+    "relevantDocs": ["it/ottimizzazione-performance.md"],
+    "judgments": [
+      { "docid": "it/ottimizzazione-performance.md", "relevance": 3 }
+    ]
+  },
+  {
+    "id": "ml1",
+    "query": "deployment Kubernetes",
+    "language": "en",
+    "relevantDocs": [
+      "de/deployment-anleitung.md",
+      "en/architecture-decisions.md"
+    ],
+    "judgments": [
+      { "docid": "de/deployment-anleitung.md", "relevance": 3 },
+      { "docid": "en/architecture-decisions.md", "relevance": 2 },
+      { "docid": "it/configurazione-sistema.md", "relevance": 1 }
+    ],
+    "note": "Cross-language: EN query should find DE deployment doc"
+  },
+  {
+    "id": "ml2",
+    "query": "error handling retry mechanism",
+    "language": "en",
+    "relevantDocs": ["de/fehlerbehandlung.md", "en/troubleshooting-guide.md"],
+    "judgments": [
+      { "docid": "de/fehlerbehandlung.md", "relevance": 3 },
+      { "docid": "en/troubleshooting-guide.md", "relevance": 2 }
+    ],
+    "note": "Cross-language: EN query should find DE error handling doc"
+  },
+  {
+    "id": "ml3",
+    "query": "sécurité authentification JWT",
+    "language": "fr",
+    "relevantDocs": ["fr/securite-applications.md", "en/api-reference.md"],
+    "judgments": [
+      { "docid": "fr/securite-applications.md", "relevance": 3 },
+      { "docid": "en/api-reference.md", "relevance": 2 },
+      { "docid": "en/troubleshooting-guide.md", "relevance": 1 }
+    ],
+    "note": "Cross-language: FR query should find EN API doc too"
+  },
+  {
+    "id": "ml4",
+    "query": "caching performance optimization",
+    "language": "en",
+    "relevantDocs": ["it/ottimizzazione-performance.md"],
+    "judgments": [
+      { "docid": "it/ottimizzazione-performance.md", "relevance": 3 }
+    ],
+    "note": "Cross-language: EN query should find IT performance doc"
+  }
+]

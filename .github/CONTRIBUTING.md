@@ -36,6 +36,14 @@
 1. Go to https://www.npmjs.com/package/@gmickel/gno/access
 2. Add trusted publisher: owner=`gmickel`, repo=`gno`, workflow=`publish.yml`
 
+**Pre-release Checklist (DoD):**
+
+```bash
+bun run lint:check      # Must pass
+bun test                # Must pass
+bun run eval            # Must pass 70% threshold
+```
+
 **Release:**
 
 ```bash

@@ -223,7 +223,11 @@ export async function searchBm25(
 
   // For --full, fetch full content and build results
   if (options.full) {
-    for (const { fts, chunk } of bestByDocid.values()) {
+    // Sort by raw BM25 score (smaller = better) before building results
+    const sortedEntries = [...bestByDocid.values()].sort(
+      (a, b) => a.score - b.score
+    );
+    for (const { fts, chunk } of sortedEntries) {
       let fullContent: string | undefined;
       if (fts.mirrorHash) {
         const contentResult = await store.getContent(fts.mirrorHash);

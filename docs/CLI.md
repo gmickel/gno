@@ -345,8 +345,8 @@ gno models list --json
 Switch model preset. Changes take effect on next search.
 
 ```bash
-gno models use slim       # Fast, ~1GB disk
-gno models use balanced   # Default, ~2GB disk
+gno models use slim       # Default, fast, ~1GB disk
+gno models use balanced   # Larger model, ~2GB disk
 gno models use quality    # Best answers, ~2.5GB disk
 ```
 

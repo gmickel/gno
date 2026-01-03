@@ -30,7 +30,7 @@ describe("getModelConfig", () => {
     const config = makeConfig();
     const modelConfig = getModelConfig(config);
 
-    expect(modelConfig.activePreset).toBe("balanced");
+    expect(modelConfig.activePreset).toBe("slim");
     expect(modelConfig.presets).toEqual(DEFAULT_MODEL_PRESETS);
     expect(modelConfig.loadTimeout).toBe(60_000);
     expect(modelConfig.inferenceTimeout).toBe(30_000);
@@ -55,12 +55,12 @@ describe("getModelConfig", () => {
 });
 
 describe("getActivePreset", () => {
-  test("returns balanced preset by default", () => {
+  test("returns slim preset by default", () => {
     const config = makeConfig();
     const preset = getActivePreset(config);
 
-    expect(preset.id).toBe("balanced");
-    expect(preset.name).toBe("Balanced (Default, ~2GB)");
+    expect(preset.id).toBe("slim");
+    expect(preset.name).toBe("Slim (Default, ~1GB)");
     expect(preset.embed).toContain("bge-m3");
   });
 
@@ -98,7 +98,7 @@ describe("resolveModelUri", () => {
 
     expect(resolveModelUri(config, "embed")).toContain("bge-m3");
     expect(resolveModelUri(config, "rerank")).toContain("qwen3-reranker");
-    expect(resolveModelUri(config, "gen")).toContain("SmolLM3");
+    expect(resolveModelUri(config, "gen")).toContain("Qwen3-1.7B");
   });
 
   test("returns override when provided", () => {

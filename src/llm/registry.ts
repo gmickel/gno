@@ -19,7 +19,7 @@ import { DEFAULT_MODEL_PRESETS } from "../config/types";
  */
 export function getModelConfig(config: Config): ModelConfig {
   return {
-    activePreset: config.models?.activePreset ?? "balanced",
+    activePreset: config.models?.activePreset ?? "slim",
     presets: config.models?.presets?.length
       ? config.models.presets
       : DEFAULT_MODEL_PRESETS,

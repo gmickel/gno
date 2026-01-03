@@ -811,15 +811,15 @@ gno models list [--json|--md]
 
 ```json
 {
-  "activePreset": "balanced",
+  "activePreset": "slim",
   "presets": [
-    { "id": "slim", "name": "Slim (Fast, ~1GB)", "active": false },
-    { "id": "balanced", "name": "Balanced (Default, ~2GB)", "active": true },
+    { "id": "slim", "name": "Slim (Default, ~1GB)", "active": true },
+    { "id": "balanced", "name": "Balanced (~2GB)", "active": false },
     { "id": "quality", "name": "Quality (Best Answers, ~2.5GB)", "active": false }
   ],
   "embed": { "uri": "hf:gpustack/bge-m3-GGUF/bge-m3-Q4_K_M.gguf", "cached": true },
   "rerank": { "uri": "hf:gpustack/bge-reranker-v2-m3-GGUF/bge-reranker-v2-m3-Q4_K_M.gguf", "cached": false },
-  "gen": { "uri": "hf:ggml-org/SmolLM3-3B-GGUF/SmolLM3-Q4_K_M.gguf", "cached": true }
+  "gen": { "uri": "hf:unsloth/Qwen3-1.7B-GGUF/Qwen3-1.7B-Q4_K_M.gguf", "cached": true }
 }
 ```
 
@@ -843,9 +843,9 @@ gno models use <preset>
 **Presets:**
 | ID | Gen Model | RAM | Use Case |
 |----|-----------|-----|----------|
-| `slim` | Qwen3-1.7B | ~1GB | Fast queries, limited RAM |
-| `balanced` | SmolLM3-3B | ~2GB | Default, good quality |
-| `quality` | Qwen3-4B-Instruct-2507 | ~2.5GB | Best grounded answers |
+| `slim` | Qwen3-1.7B | ~1GB | Default, fast queries |
+| `balanced` | Qwen2.5-3B-Instruct | ~2GB | Slightly larger model |
+| `quality` | Qwen3-4B-Instruct | ~2.5GB | Best grounded answers |
 
 **Exit Codes:**
 

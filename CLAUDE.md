@@ -61,6 +61,43 @@ test("hello world", () => {
 });
 ```
 
+## Evals (Quality Gates)
+
+Local-only evaluation suite using Evalite v1. Run before releases as part of DoD.
+
+**Commands:**
+
+```bash
+bun run eval          # Run full eval suite (~5s)
+bun run eval:watch    # Watch mode for development
+```
+
+**Eval Files** (in `evals/`):
+
+| File                   | What it tests                                  | Threshold |
+| ---------------------- | ---------------------------------------------- | --------- |
+| `expansion.eval.ts`    | Query expansion schema validity                | 70%       |
+| `vsearch.eval.ts`      | BM25 ranking (Recall@5/10, nDCG@10)            | 70%       |
+| `query.eval.ts`        | Query pipeline + latency budget                | 70%       |
+| `multilingual.eval.ts` | Cross-language retrieval (placeholder)         | 70%       |
+| `thoroughness.eval.ts` | Fast/balanced/thorough comparison (stats only) | 70%       |
+| `ask.eval.ts`          | Answer quality by preset                       | 70%       |
+
+**Fixtures** (in `evals/fixtures/`):
+
+- `corpus/` - 9 test docs (EN/DE/FR/IT)
+- `queries.json` - 29 queries with relevance judgments
+- `ask-cases.json` - 8 ask test cases
+
+**Key Design Decisions:**
+
+- No CI integration - evals are local-only, part of release DoD
+- Temp DB per run (isolated from global gno install)
+- In-memory Evalite storage by default
+- LLM-as-judge requires OPENAI_API_KEY (skips gracefully if not set)
+- Multilingual is placeholder (vector search future work)
+- Thoroughness comparison reports stats, doesn't assert ordering
+
 ## Development Scripts
 
 **scripts/** - Development and testing utilities (not published)

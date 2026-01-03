@@ -176,7 +176,7 @@ export type ModelPreset = z.infer<typeof ModelPresetSchema>;
 export const DEFAULT_MODEL_PRESETS: ModelPreset[] = [
   {
     id: "slim",
-    name: "Slim (Fast, ~1GB)",
+    name: "Slim (Default, ~1GB)",
     embed: "hf:gpustack/bge-m3-GGUF/bge-m3-Q4_K_M.gguf",
     rerank:
       "hf:ggml-org/Qwen3-Reranker-0.6B-Q8_0-GGUF/qwen3-reranker-0.6b-q8_0.gguf",
@@ -184,11 +184,11 @@ export const DEFAULT_MODEL_PRESETS: ModelPreset[] = [
   },
   {
     id: "balanced",
-    name: "Balanced (Default, ~2GB)",
+    name: "Balanced (~2GB)",
     embed: "hf:gpustack/bge-m3-GGUF/bge-m3-Q4_K_M.gguf",
     rerank:
       "hf:ggml-org/Qwen3-Reranker-0.6B-Q8_0-GGUF/qwen3-reranker-0.6b-q8_0.gguf",
-    gen: "hf:ggml-org/SmolLM3-3B-GGUF/SmolLM3-Q4_K_M.gguf",
+    gen: "hf:bartowski/Qwen2.5-3B-Instruct-GGUF/Qwen2.5-3B-Instruct-Q4_K_M.gguf",
   },
   {
     id: "quality",
@@ -202,7 +202,7 @@ export const DEFAULT_MODEL_PRESETS: ModelPreset[] = [
 
 export const ModelConfigSchema = z.object({
   /** Active preset ID */
-  activePreset: z.string().default("balanced"),
+  activePreset: z.string().default("slim"),
   /** Model presets */
   presets: z.array(ModelPresetSchema).default(DEFAULT_MODEL_PRESETS),
   /** Model load timeout in ms */
