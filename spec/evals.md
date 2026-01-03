@@ -2,6 +2,19 @@
 
 This document specifies the evaluation harness for GNO using Evalite v1.
 
+## Why Evals?
+
+**Evals test stochastic LLM behavior, not deterministic code.**
+
+Unit tests verify "given X, always return Y". Evals verify "given X, return something good enough" - because LLM outputs vary. We're measuring:
+
+- Does retrieval find relevant docs most of the time?
+- Does answer generation stay grounded in sources?
+- Does quality improve with more compute (fast → thorough)?
+- Does expansion produce valid structure despite LLM variance?
+
+**Key insight**: Don't chase 100% determinism. Set thresholds (70%+), measure variance with `trialCount`, and accept that LLM-based features have inherent randomness. The goal is regression detection, not perfect reproducibility.
+
 ## Overview
 
 GNO uses Evalite for:
@@ -59,7 +72,8 @@ import { defineConfig } from "evalite/config";
 import { createSqliteStorage } from "evalite/sqlite-storage";
 
 export default defineConfig({
-  // Persistent storage for tracking scores over time
+  // Storage: in-memory by default (fast, ephemeral)
+  // Use SQLite for persistent history across runs
   storage: () => createSqliteStorage("./evalite.db"),
 
   // Test execution
@@ -67,7 +81,11 @@ export default defineConfig({
   maxConcurrency: 10,     // parallel test cases
 
   // Quality gate (MVP: 70%, increase as baseline improves)
+  // CLI --threshold flag overrides this value
   scoreThreshold: 70,
+
+  // Global trial count for variance measurement (can override per-eval)
+  trialCount: 1,
 
   // Cache LLM responses for fast iteration in dev
   cache: true,
@@ -78,6 +96,9 @@ export default defineConfig({
     "src/llm/**/*.ts",
     "test/eval/fixtures/**/*",
   ],
+
+  // UI server port (default: 3006)
+  server: { port: 3006 },
 });
 ```
 
@@ -88,10 +109,17 @@ export default defineConfig({
   "scripts": {
     "eval": "evalite",
     "eval:watch": "evalite watch",
+    "eval:serve": "evalite serve",
     "eval:ci": "evalite --threshold=70 --outputPath=./eval-results.json"
   }
 }
 ```
+
+**CLI Modes:**
+
+- `evalite` (or `evalite run`) - Run once, exit
+- `evalite watch` - Auto-rerun on file changes
+- `evalite serve` - Run once, keep UI alive (good for slow evals like thorough mode)
 
 ## Custom Scorers
 
@@ -843,16 +871,18 @@ evalite --threshold=70 || echo "Evals below threshold (soft fail)"
 evalite --threshold=90
 ```
 
-## Tracing with AI SDK
+## Tracing
 
-When using the AI SDK for LLM calls in tasks or scorers, wrap models for automatic tracing:
+### AI SDK (Automatic)
+
+When using the AI SDK for LLM calls, wrap models for automatic tracing:
 
 ```ts
 import { openai } from "@ai-sdk/openai";
 import { wrapAISDKModel } from "evalite/ai-sdk";
 import { generateObject } from "ai";
 
-const model = wrapAISDKModel(openai("gpt-4o-mini"));
+const model = wrapAISDKModel(openai("gpt-5-mini"));
 
 evalite("LLM Expansion", {
   data: [{ input: "termination clause" }],
@@ -874,6 +904,38 @@ Benefits:
 - Automatic caching of identical requests
 - Zero overhead in production (no-op outside Evalite)
 
+### Custom Steps (Manual)
+
+For non-LLM pipeline steps (BM25 search, reranking), use `reportTrace()`:
+
+````ts
+import { reportTrace } from "evalite/traces";
+
+task: async (input) => {
+  // BM25 search step
+  const start = performance.now();
+  const bm25Results = await searchBm25(input.query, { limit: 50 });
+  reportTrace({
+    input: { query: input.query, limit: 50 },
+    output: { count: bm25Results.length, topScore: bm25Results[0]?.score },
+    start,
+    end: performance.now(),
+  });
+
+  // Reranking step
+  const rerankStart = performance.now();
+  const reranked = await rerank(input.query, bm25Results);
+  reportTrace({
+    input: { query: input.query, candidates: bm25Results.length },
+    output: { reranked: reranked.length },
+    start: rerankStart,
+    end: performance.now(),
+  });
+
+  return reranked.map(r => r.docid);
+}
+```
+
 ## Storage
 
 ### Development (In-Memory)
@@ -892,7 +954,7 @@ Configure for tracking scores over time:
 export default defineConfig({
   storage: () => createSqliteStorage("./evalite.db"),
 });
-```
+````
 
 SQLite file is gitignored; each developer has local history.
 
