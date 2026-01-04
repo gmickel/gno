@@ -83,6 +83,18 @@ gno search "your query"               # BM25 keyword search
 --no-pager        Disable paging
 ```
 
+## Important: Embedding After Changes
+
+If you edit/create files that should be searchable via vector search:
+
+```bash
+gno index              # Full re-index (sync + embed)
+# or
+gno embed              # Embed only (if already synced)
+```
+
+MCP `gno.sync` and `gno.capture` do NOT auto-embed. Use CLI for embedding.
+
 ## Reference Documentation
 
 | Topic                                                 | File                                 |
