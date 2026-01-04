@@ -103,14 +103,16 @@ BM25 keyword search.
 gno search <query> [options]
 ```
 
-| Option             | Default | Description                 |
-| ------------------ | ------- | --------------------------- |
-| `-n`               | 5       | Max results                 |
-| `--min-score`      | 0       | Minimum score (0-1)         |
-| `-c, --collection` | all     | Filter to collection        |
-| `--full`           | false   | Full content (not snippets) |
-| `--line-numbers`   | false   | Include line numbers        |
-| `--lang`           | auto    | Language filter             |
+| Option             | Default | Description                      |
+| ------------------ | ------- | -------------------------------- |
+| `-n`               | 5       | Max results                      |
+| `--min-score`      | 0       | Minimum score (0-1)              |
+| `-c, --collection` | all     | Filter to collection             |
+| `--tags-any`       | -       | Filter: has ANY tag (comma-sep)  |
+| `--tags-all`       | -       | Filter: has ALL tags (comma-sep) |
+| `--full`           | false   | Full content (not snippets)      |
+| `--line-numbers`   | false   | Include line numbers             |
+| `--lang`           | auto    | Language filter                  |
 
 Output formats: `--json`, `--files`, `--csv`, `--md`, `--xml`
 
@@ -220,6 +222,42 @@ gno context list [--json|--md]
 
 ```bash
 gno context rm <scope>
+```
+
+## Tags
+
+### gno tags
+
+List tags with document counts.
+
+```bash
+gno tags [options]
+```
+
+| Option             | Description           |
+| ------------------ | --------------------- |
+| `-c, --collection` | Filter by collection  |
+| `--prefix`         | Filter by tag prefix  |
+| `--json`           | JSON output           |
+| `--md`             | Markdown table output |
+
+### gno tags add
+
+Add tag to document.
+
+```bash
+gno tags add <doc> <tag>
+```
+
+- `doc`: URI (`gno://...`) or docid (`#abc123`)
+- `tag`: Tag string (lowercase, alphanumeric, hyphens, dots, `/` for hierarchy)
+
+### gno tags rm
+
+Remove tag from document.
+
+```bash
+gno tags rm <doc> <tag>
 ```
 
 ## Models

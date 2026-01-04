@@ -45,9 +45,20 @@ BM25 keyword search.
   "collection": "optional-collection",
   "limit": 5,
   "minScore": 0.5,
-  "lang": "en"
+  "lang": "en",
+  "tagsAny": ["project", "work"],
+  "tagsAll": ["reviewed"]
 }
 ```
+
+| Parameter    | Description                         |
+| ------------ | ----------------------------------- |
+| `query`      | Search query (required)             |
+| `collection` | Filter by collection                |
+| `limit`      | Max results (default: 5)            |
+| `minScore`   | Minimum score 0-1                   |
+| `tagsAny`    | Filter: has ANY of these tags (OR)  |
+| `tagsAll`    | Filter: has ALL of these tags (AND) |
 
 ### gno.vsearch
 
@@ -121,6 +132,40 @@ Get index status.
 ```json
 {}
 ```
+
+### gno.list_tags
+
+List tags with document counts.
+
+```json
+{
+  "collection": "optional-collection",
+  "prefix": "project/"
+}
+```
+
+| Parameter    | Description                             |
+| ------------ | --------------------------------------- |
+| `collection` | Filter by collection                    |
+| `prefix`     | Filter by tag prefix (e.g., `project/`) |
+
+### gno.tag
+
+Add or remove tag from document.
+
+```json
+{
+  "ref": "gno://work/readme.md",
+  "tag": "project/api",
+  "action": "add"
+}
+```
+
+| Parameter | Description                        |
+| --------- | ---------------------------------- |
+| `ref`     | Document URI or docid (required)   |
+| `tag`     | Tag string (required)              |
+| `action`  | `add` or `remove` (default: `add`) |
 
 ## Resources
 

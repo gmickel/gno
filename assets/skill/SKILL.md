@@ -22,6 +22,8 @@ Fast local semantic search for your documents. Index once, search instantly. No 
 - User needs to **set up MCP** for document access
 - User wants a **web UI** to browse/search documents
 - User asks to **get AI answers** from their documents
+- User wants to **tag, categorize, or label** documents
+- User needs to **filter search by tags** or categories
 
 ## Quick Start
 
@@ -58,6 +60,10 @@ gno search "api" -n 10
 
 # Filter by collection
 gno query "auth" --collection work
+
+# Filter by tags
+gno search "api" --tags-any project,work     # Has ANY of these tags
+gno query "auth" --tags-all security,prod    # Has ALL of these tags
 
 # Search modes (for query/ask)
 gno query "topic" --fast       # ~0.7s, skip expansion/rerank
@@ -134,6 +140,31 @@ gno models pull --all
 gno context add "/" "Corporate knowledge base"
 gno context add "work:" "Work documents and contracts"
 ```
+
+### Tags
+
+| Command                    | Description               |
+| -------------------------- | ------------------------- |
+| `gno tags`                 | List all tags with counts |
+| `gno tags add <doc> <tag>` | Add tag to document       |
+| `gno tags rm <doc> <tag>`  | Remove tag from document  |
+
+```bash
+# List tags
+gno tags
+gno tags --collection work
+gno tags --prefix project/      # Hierarchical tags
+
+# Add/remove tags
+gno tags add gno://work/readme.md project/api
+gno tags rm "#a1b2c3d4" draft
+
+# Filter searches by tags
+gno search "api" --tags-any project,work
+gno query "auth" --tags-all security,reviewed
+```
+
+Tag format: lowercase, alphanumeric, hyphens, dots. Hierarchical with `/` (e.g., `project/web`, `status/draft`).
 
 ### Web UI
 
