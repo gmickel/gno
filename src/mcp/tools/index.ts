@@ -10,6 +10,7 @@ import { z } from "zod";
 
 import type { ToolContext } from "../server";
 
+import { normalizeTag } from "../../core/tags";
 import { handleAddCollection } from "./add-collection";
 import { handleCapture } from "./capture";
 import { handleGet } from "./get";
@@ -23,6 +24,19 @@ import { handleSearch } from "./search";
 import { handleStatus } from "./status";
 import { handleSync } from "./sync";
 import { handleVsearch } from "./vsearch";
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Shared Helpers
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Normalize and dedupe tag filter arrays.
+ * Returns undefined if empty, normalized array otherwise.
+ */
+export function normalizeTagFilters(tags?: string[]): string[] | undefined {
+  if (!tags?.length) return undefined;
+  return [...new Set(tags.map(normalizeTag))];
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Shared Input Schemas

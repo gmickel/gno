@@ -27,9 +27,9 @@
     },
     "meta": {
       "type": "object",
-      "required": ["total"],
+      "required": ["totalTags"],
       "properties": {
-        "total": {
+        "totalTags": {
           "type": "integer",
           "description": "Total number of unique tags",
           "minimum": 0

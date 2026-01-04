@@ -584,7 +584,7 @@ List all tags with document counts.
 }
 ```
 
-**Output Schema:** `gno://schemas/list-tags`
+**Output Schema:** `gno://schemas/tags-list@1.0`
 
 **Response:**
 

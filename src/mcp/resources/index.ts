@@ -174,10 +174,26 @@ export function registerResources(server: McpServer, ctx: ToolContext): void {
   });
 
   // Register gno://tags resource for listing tags
-  // Supports query params: ?collection=x&prefix=work/
+  // Use ResourceTemplate with RFC6570 query expansion for proper routing
+  const tagsTemplate = new ResourceTemplate(
+    `${URI_PREFIX}tags{?collection,prefix}`,
+    {
+      list: async () => ({
+        resources: [
+          {
+            uri: TAGS_URI,
+            name: "tags",
+            mimeType: "application/json",
+            description: "List all tags with document counts",
+          },
+        ],
+      }),
+    }
+  );
+
   server.resource(
     "gno-tags",
-    TAGS_URI,
+    tagsTemplate,
     { mimeType: "application/json" },
     async (uri) => {
       // Check shutdown before acquiring mutex

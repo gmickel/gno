@@ -21,6 +21,7 @@ import {
   validateRelPath,
 } from "../../core/validation";
 import { defaultSyncService } from "../../ingestion";
+import { updateFrontmatterTags } from "../../ingestion/frontmatter";
 import { extractTitle } from "../../pipeline/contextual";
 import { runTool, type ToolResult } from "./index";
 
@@ -144,7 +145,7 @@ export function handleCapture(
             const normalized = normalizeTag(tag);
             if (!validateTag(normalized)) {
               throw new Error(
-                `${MCP_ERRORS.INVALID_PATH.code}: Invalid tag "${tag}". Tags must be lowercase, alphanumeric with hyphens/dots/slashes.`
+                `${MCP_ERRORS.INVALID_INPUT.code}: Invalid tag "${tag}". Tags must be lowercase, alphanumeric with hyphens/dots/slashes.`
               );
             }
             normalizedTags.push(normalized);
@@ -162,30 +163,13 @@ export function handleCapture(
           );
         }
 
-        // Prepend frontmatter with tags for Markdown files
+        // Update frontmatter with tags for Markdown files
         let contentToWrite = args.content;
         const isMarkdown =
           relPath.endsWith(".md") || relPath.endsWith(".markdown");
         if (isMarkdown && normalizedTags.length > 0) {
-          // Check if content already has frontmatter
-          const hasFrontmatter = args.content.trimStart().startsWith("---");
-          if (hasFrontmatter) {
-            // Insert tags into existing frontmatter
-            const lines = args.content.split("\n");
-            const frontmatterEnd = lines.findIndex(
-              (line, i) => i > 0 && line.trim() === "---"
-            );
-            if (frontmatterEnd > 0) {
-              // Insert tags line before closing ---
-              const tagsLine = `tags: [${normalizedTags.join(", ")}]`;
-              lines.splice(frontmatterEnd, 0, tagsLine);
-              contentToWrite = lines.join("\n");
-            }
-          } else {
-            // Prepend new frontmatter
-            const frontmatter = `---\ntags: [${normalizedTags.join(", ")}]\n---\n\n`;
-            contentToWrite = frontmatter + args.content;
-          }
+          // Use shared utility that handles all frontmatter edge cases
+          contentToWrite = updateFrontmatterTags(args.content, normalizedTags);
         }
 
         await mkdir(dirname(absPath), { recursive: true });
@@ -237,19 +221,26 @@ export function handleCapture(
 
         // For non-markdown files, store tags as user-source in DB
         // (Markdown files get tags from frontmatter during sync)
+        let tagsStored = isMarkdown; // Markdown tags stored via frontmatter sync
         if (!isMarkdown && normalizedTags.length > 0 && documentId) {
           const tagResult = await ctx.store.setDocTags(
             documentId,
             normalizedTags,
             "user"
           );
-          if (!tagResult.ok) {
-            // Log but don't fail - document was created successfully
+          if (tagResult.ok) {
+            tagsStored = true;
+          } else {
+            // Log warning - document created but tags not stored
             console.error(
-              `[MCP] Failed to store tags: ${tagResult.error.message}`
+              `[MCP] Warning: Document created but tags not stored: ${tagResult.error.message}`
             );
           }
         }
+
+        // Only include tags in response if confirmed stored
+        const confirmedTags =
+          tagsStored && normalizedTags.length > 0 ? normalizedTags : undefined;
 
         return {
           docid,
@@ -260,7 +251,7 @@ export function handleCapture(
           created: !exists,
           overwritten: exists,
           serverInstanceId: ctx.serverInstanceId,
-          tags: normalizedTags.length > 0 ? normalizedTags : undefined,
+          tags: confirmedTags,
         };
       });
     },
