@@ -195,6 +195,8 @@ export function TagInput({
         void fetchSuggestions(inputValue, seq);
       }, 200);
     } else {
+      // Increment seq so stale in-flight responses are ignored
+      ++requestSeqRef.current;
       setSuggestions([]);
       setIsOpen(false);
     }
