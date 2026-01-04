@@ -530,6 +530,13 @@ export async function handleDoc(
     }
   }
 
+  // Get tags for this document
+  let tags: string[] = [];
+  const tagsResult = await store.getTagsForDoc(doc.id);
+  if (tagsResult.ok) {
+    tags = tagsResult.value.map((t) => t.tag);
+  }
+
   return jsonResponse({
     docid: doc.docid,
     uri: doc.uri,
@@ -538,6 +545,7 @@ export async function handleDoc(
     contentAvailable: content !== null,
     collection: doc.collection,
     relPath: doc.relPath,
+    tags,
     source: {
       mime: doc.sourceMime,
       ext: doc.sourceExt,

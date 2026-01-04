@@ -19,6 +19,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import { apiFetch } from "../hooks/use-api";
 import { IndexingProgress } from "./IndexingProgress";
+import { TagInput } from "./TagInput";
 import { Button } from "./ui/button";
 import {
   Dialog,
@@ -87,6 +88,7 @@ export function CaptureModal({
   const [content, setContent] = useState("");
   const [collection, setCollection] = useState("");
   const [collections, setCollections] = useState<Collection[]>([]);
+  const [tags, setTags] = useState<string[]>([]);
 
   // Submission state
   const [state, setState] = useState<ModalState>("form");
@@ -122,6 +124,7 @@ export function CaptureModal({
       const timer = setTimeout(() => {
         setTitle("");
         setContent("");
+        setTags([]);
         setState("form");
         setError(null);
         setJobId(null);
@@ -163,6 +166,18 @@ export function CaptureModal({
     }
 
     if (data) {
+      // If tags were specified, add them via PUT
+      if (tags.length > 0) {
+        const docId = data.uri.replace(/^gno:\/\//, "").split("/")[1];
+        if (docId) {
+          // Best effort - don't fail if tags can't be added
+          await apiFetch(`/api/docs/${encodeURIComponent(docId)}`, {
+            method: "PUT",
+            body: JSON.stringify({ tags }),
+          });
+        }
+      }
+
       // Save last used collection
       localStorage.setItem(STORAGE_KEY, collection);
 
@@ -171,7 +186,7 @@ export function CaptureModal({
       setCreatedUri(data.uri);
       onSuccess?.(data.uri);
     }
-  }, [isValid, title, collection, content, onSuccess]);
+  }, [isValid, title, collection, content, tags, onSuccess]);
 
   // Handle keyboard submit
   const handleKeyDown = useCallback(
@@ -282,6 +297,26 @@ export function CaptureModal({
                   No collections found. Add one first.
                 </p>
               )}
+            </div>
+
+            {/* Tags */}
+            <div>
+              <label
+                className="mb-1.5 block font-medium text-sm"
+                htmlFor="capture-tags"
+              >
+                Tags
+                <span className="ml-1 font-normal text-muted-foreground">
+                  (optional)
+                </span>
+              </label>
+              <TagInput
+                aria-label="Add tags to this note"
+                disabled={state === "submitting"}
+                onChange={setTags}
+                placeholder="Add tags..."
+                value={tags}
+              />
             </div>
           </div>
         )}

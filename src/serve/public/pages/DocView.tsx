@@ -2,6 +2,7 @@ import {
   AlertTriangleIcon,
   ArrowLeft,
   Calendar,
+  CheckIcon,
   ChevronRightIcon,
   CodeIcon,
   FileText,
@@ -9,10 +10,11 @@ import {
   HardDrive,
   Loader2Icon,
   PencilIcon,
+  TagIcon,
   TextIcon,
   TrashIcon,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import {
   CodeBlock,
@@ -20,6 +22,7 @@ import {
 } from "../components/ai-elements/code-block";
 import { Loader } from "../components/ai-elements/loader";
 import { MarkdownPreview } from "../components/editor";
+import { TagInput } from "../components/TagInput";
 import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
 import {
@@ -51,6 +54,7 @@ interface DocData {
   contentAvailable: boolean;
   collection: string;
   relPath: string;
+  tags: string[];
   source: {
     mime: string;
     ext: string;
@@ -170,6 +174,13 @@ export default function DocView({ navigate }: PageProps) {
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [showRawView, setShowRawView] = useState(false);
 
+  // Tag editing state
+  const [editingTags, setEditingTags] = useState(false);
+  const [editedTags, setEditedTags] = useState<string[]>([]);
+  const [savingTags, setSavingTags] = useState(false);
+  const [tagSaveError, setTagSaveError] = useState<string | null>(null);
+  const [tagSaveSuccess, setTagSaveSuccess] = useState(false);
+
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const uri = params.get("uri");
@@ -246,6 +257,55 @@ export default function DocView({ navigate }: PageProps) {
     setDeleteDialogOpen(false);
     navigate(-1);
   };
+
+  // Start editing tags
+  const handleStartEditTags = useCallback(() => {
+    if (doc) {
+      setEditedTags([...doc.tags]);
+      setEditingTags(true);
+      setTagSaveError(null);
+      setTagSaveSuccess(false);
+    }
+  }, [doc]);
+
+  // Cancel editing tags
+  const handleCancelEditTags = useCallback(() => {
+    setEditingTags(false);
+    setEditedTags([]);
+    setTagSaveError(null);
+  }, []);
+
+  // Save tags
+  const handleSaveTags = useCallback(async () => {
+    if (!doc) return;
+
+    setSavingTags(true);
+    setTagSaveError(null);
+    setTagSaveSuccess(false);
+
+    const { error: err } = await apiFetch(
+      `/api/docs/${encodeURIComponent(doc.docid)}`,
+      {
+        method: "PUT",
+        body: JSON.stringify({ tags: editedTags }),
+      }
+    );
+
+    setSavingTags(false);
+
+    if (err) {
+      setTagSaveError(err);
+      return;
+    }
+
+    // Update doc with new tags
+    setDoc({ ...doc, tags: editedTags });
+    setEditingTags(false);
+    setTagSaveSuccess(true);
+
+    // Clear success indicator after 2s
+    setTimeout(() => setTagSaveSuccess(false), 2000);
+  }, [doc, editedTags]);
 
   return (
     <div className="min-h-screen">
@@ -394,6 +454,98 @@ export default function DocView({ navigate }: PageProps) {
                   <code className="break-all font-mono text-muted-foreground text-sm">
                     {doc.uri}
                   </code>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Tags */}
+            <Card>
+              <CardContent className="py-4">
+                <div className="flex items-start gap-3">
+                  <TagIcon className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+                  <div className="min-w-0 flex-1">
+                    <div className="mb-2 flex items-center justify-between">
+                      <div className="text-muted-foreground text-xs">Tags</div>
+                      {!editingTags && (
+                        <Button
+                          className="gap-1 text-xs"
+                          onClick={handleStartEditTags}
+                          size="sm"
+                          variant="ghost"
+                        >
+                          <PencilIcon className="size-3" />
+                          Edit
+                        </Button>
+                      )}
+                      {tagSaveSuccess && (
+                        <span className="flex items-center gap-1 text-green-500 text-xs">
+                          <CheckIcon className="size-3" />
+                          Saved
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Display mode */}
+                    {!editingTags && (
+                      <div className="flex flex-wrap gap-1.5">
+                        {doc.tags.length === 0 ? (
+                          <span className="text-muted-foreground/60 text-sm italic">
+                            No tags
+                          </span>
+                        ) : (
+                          doc.tags.map((tag) => (
+                            <Badge
+                              className="font-mono text-xs"
+                              key={tag}
+                              variant="outline"
+                            >
+                              {tag}
+                            </Badge>
+                          ))
+                        )}
+                      </div>
+                    )}
+
+                    {/* Edit mode */}
+                    {editingTags && (
+                      <div className="space-y-3">
+                        <TagInput
+                          aria-label="Edit document tags"
+                          disabled={savingTags}
+                          onChange={setEditedTags}
+                          placeholder="Add tags..."
+                          value={editedTags}
+                        />
+
+                        {tagSaveError && (
+                          <p className="text-destructive text-xs">
+                            {tagSaveError}
+                          </p>
+                        )}
+
+                        <div className="flex items-center gap-2">
+                          <Button
+                            disabled={savingTags}
+                            onClick={handleSaveTags}
+                            size="sm"
+                          >
+                            {savingTags && (
+                              <Loader2Icon className="mr-1.5 size-3 animate-spin" />
+                            )}
+                            Save
+                          </Button>
+                          <Button
+                            disabled={savingTags}
+                            onClick={handleCancelEditTags}
+                            size="sm"
+                            variant="outline"
+                          >
+                            Cancel
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </CardContent>
             </Card>

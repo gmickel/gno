@@ -186,6 +186,37 @@ mark {
   animation-delay: 0.4s;
 }
 
+/* Collapsible animations */
+@keyframes collapse-down {
+  from {
+    height: 0;
+    opacity: 0;
+  }
+  to {
+    height: var(--radix-collapsible-content-height);
+    opacity: 1;
+  }
+}
+
+@keyframes collapse-up {
+  from {
+    height: var(--radix-collapsible-content-height);
+    opacity: 1;
+  }
+  to {
+    height: 0;
+    opacity: 0;
+  }
+}
+
+.animate-collapse-down {
+  animation: collapse-down 0.2s ease-out;
+}
+
+.animate-collapse-up {
+  animation: collapse-up 0.15s ease-out;
+}
+
 /* Glassmorphism utility - enhanced depth */
 .glass {
   background: hsl(var(--background) / 0.85);

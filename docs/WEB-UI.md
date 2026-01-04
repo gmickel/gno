@@ -15,15 +15,15 @@ gno serve
 
 The GNO Web UI provides a complete graphical interface to your local knowledge index. Create, edit, search, and manage your documents, all running on your machine with no cloud dependencies.
 
-| Page            | Purpose                                           |
-| :-------------- | :------------------------------------------------ |
-| **Dashboard**   | Index stats, collections, quick capture           |
-| **Search**      | BM25, vector, or hybrid search with mode selector |
-| **Browse**      | Paginated document list, filter by collection     |
-| **Doc View**    | View document with edit/delete actions            |
-| **Editor**      | Split-view markdown editor with live preview      |
-| **Collections** | Add, remove, and re-index collections             |
-| **Ask**         | AI-powered Q&A with citations                     |
+| Page            | Purpose                                                    |
+| :-------------- | :--------------------------------------------------------- |
+| **Dashboard**   | Index stats, collections, quick capture                    |
+| **Search**      | BM25, vector, or hybrid search with tag facets and filters |
+| **Browse**      | Paginated document list, filter by collection              |
+| **Doc View**    | View document with edit/delete actions and tag editing     |
+| **Editor**      | Split-view markdown editor with live preview               |
+| **Collections** | Add, remove, and re-index collections                      |
+| **Ask**         | AI-powered Q&A with citations                              |
 
 ---
 
@@ -53,7 +53,8 @@ Press **N** (or click the floating + button) to open Quick Capture:
 1. Enter a title
 2. Write your content (markdown supported)
 3. Select a collection
-4. Click **Create note**
+4. Add tags (optional, with autocomplete)
+5. Click **Create note**
 
 The document is saved to disk and indexed automatically.
 
@@ -240,6 +241,48 @@ The Ask page provides RAG-powered Q&A:
 2. GNO runs hybrid search
 3. Local LLM synthesizes answer from top results
 4. Citations link to source documents
+
+### Tags
+
+Tags provide hierarchical classification for your documents. Use the Search page sidebar and document views to filter and manage tags.
+
+#### Tag Format
+
+Tags follow a simple grammar:
+
+- Lowercase letters, numbers, hyphens, dots
+- Hierarchical with `/` separator (e.g., `project/web`, `status/in-progress`)
+- Unicode letters supported
+
+#### Search Page Tag Facets
+
+The Search page includes a sidebar with tag facets:
+
+- **Browse tags**: View all tags grouped by hierarchy
+- **Filter by tag**: Click a tag to filter search results
+- **Active filters**: Tags shown as chips above results
+- **Clear filters**: Click chip X or "Clear all" to remove
+
+#### Quick Capture Tags
+
+When creating notes via Quick Capture (N):
+
+1. Fill in title and content
+2. Add tags using the tag input field
+3. Type to search existing tags (autocomplete)
+4. Press Enter to add new tags
+5. Click X on chips to remove
+
+#### Document View Tags
+
+From any document view:
+
+1. See current tags displayed as badges
+2. Click **Edit** to modify tags
+3. Use the tag input with autocomplete
+4. Click **Save** to update
+
+Tag changes are saved to the document's frontmatter (for markdown files).
 
 ---
 
