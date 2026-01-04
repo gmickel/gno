@@ -28,7 +28,7 @@ interface TagSuggestion {
 
 interface TagsResponse {
   tags: TagSuggestion[];
-  meta: { totalTags: number };
+  meta: { total: number };
 }
 
 export interface TagInputProps {
@@ -65,23 +65,49 @@ function validateTag(tag: string): boolean {
   return true;
 }
 
-/** Group suggestions by their prefix for hierarchy display */
-function groupSuggestions(
-  suggestions: TagSuggestion[]
-): Map<string, TagSuggestion[]> {
-  const groups = new Map<string, TagSuggestion[]>();
+/** Flattened option for rendering and keyboard nav */
+interface FlatOption {
+  tag: string;
+  count: number;
+  prefix: string;
+  displayName: string;
+  isFirstInGroup: boolean;
+}
 
+/** Build flat list with grouping metadata */
+function flattenSuggestions(suggestions: TagSuggestion[]): FlatOption[] {
+  // Group by prefix
+  const groups = new Map<string, TagSuggestion[]>();
   for (const s of suggestions) {
     const slashIdx = s.tag.indexOf("/");
     const prefix = slashIdx > 0 ? s.tag.slice(0, slashIdx) : "";
-
-    if (!groups.has(prefix)) {
-      groups.set(prefix, []);
-    }
+    if (!groups.has(prefix)) groups.set(prefix, []);
     groups.get(prefix)!.push(s);
   }
 
-  return groups;
+  // Flatten with stable ordering: root first, then prefixes alphabetically
+  const flat: FlatOption[] = [];
+  const prefixes = Array.from(groups.keys()).sort((a, b) => {
+    if (a === "") return -1;
+    if (b === "") return 1;
+    return a.localeCompare(b);
+  });
+
+  for (const prefix of prefixes) {
+    const groupTags = groups.get(prefix)!;
+    for (let i = 0; i < groupTags.length; i++) {
+      const s = groupTags[i];
+      flat.push({
+        tag: s.tag,
+        count: s.count,
+        prefix,
+        displayName: prefix ? s.tag.slice(prefix.length + 1) : s.tag,
+        isFirstInGroup: i === 0,
+      });
+    }
+  }
+
+  return flat;
 }
 
 export function TagInput({
@@ -93,7 +119,7 @@ export function TagInput({
   "aria-label": ariaLabel = "Tag input",
 }: TagInputProps) {
   const inputRef = useRef<HTMLInputElement>(null);
-  const listboxRef = useRef<HTMLUListElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const instanceId = useId();
 
   // Input state
@@ -109,15 +135,16 @@ export function TagInput({
   // Live region for screen reader announcements
   const [announcement, setAnnouncement] = useState("");
 
-  // Debounced fetch
+  // Request sequencing to prevent race conditions
+  const requestSeqRef = useRef(0);
   const fetchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const listboxId = `${instanceId}-listbox`;
   const getOptionId = (index: number) => `${instanceId}-option-${index}`;
 
-  // Fetch suggestions with debounce
+  // Fetch suggestions with debounce and sequencing
   const fetchSuggestions = useCallback(
-    async (prefix: string) => {
+    async (prefix: string, seq: number) => {
       if (prefix.length === 0) {
         setSuggestions([]);
         setIsOpen(false);
@@ -126,9 +153,14 @@ export function TagInput({
 
       setIsLoading(true);
 
+      // Normalize prefix for lookup (strip trailing slash for prefix query)
+      const queryPrefix = normalizeTag(prefix);
       const { data, error: fetchError } = await apiFetch<TagsResponse>(
-        `/api/tags?prefix=${encodeURIComponent(prefix)}`
+        `/api/tags?prefix=${encodeURIComponent(queryPrefix)}`
       );
+
+      // Ignore stale responses
+      if (seq !== requestSeqRef.current) return;
 
       setIsLoading(false);
 
@@ -151,15 +183,16 @@ export function TagInput({
     [value]
   );
 
-  // Debounce input changes
+  // Debounce input changes with sequencing
   useEffect(() => {
     if (fetchTimeoutRef.current) {
       clearTimeout(fetchTimeoutRef.current);
     }
 
     if (inputValue.length > 0) {
+      const seq = ++requestSeqRef.current;
       fetchTimeoutRef.current = setTimeout(() => {
-        void fetchSuggestions(inputValue);
+        void fetchSuggestions(inputValue, seq);
       }, 200);
     } else {
       setSuggestions([]);
@@ -172,6 +205,12 @@ export function TagInput({
       }
     };
   }, [inputValue, fetchSuggestions]);
+
+  // Flatten suggestions for keyboard navigation
+  const flatOptions = useMemo(
+    () => flattenSuggestions(suggestions),
+    [suggestions]
+  );
 
   // Add a tag
   const addTag = useCallback(
@@ -222,11 +261,11 @@ export function TagInput({
       switch (e.key) {
         case "ArrowDown":
           e.preventDefault();
-          if (!isOpen && suggestions.length > 0) {
+          if (!isOpen && flatOptions.length > 0) {
             setIsOpen(true);
           }
           setActiveIndex((prev) =>
-            prev < suggestions.length - 1 ? prev + 1 : prev
+            prev < flatOptions.length - 1 ? prev + 1 : prev
           );
           break;
 
@@ -237,8 +276,8 @@ export function TagInput({
 
         case "Enter":
           e.preventDefault();
-          if (activeIndex >= 0 && suggestions[activeIndex]) {
-            addTag(suggestions[activeIndex].tag);
+          if (activeIndex >= 0 && flatOptions[activeIndex]) {
+            addTag(flatOptions[activeIndex].tag);
           } else if (inputValue) {
             addTag(inputValue);
           }
@@ -257,24 +296,20 @@ export function TagInput({
 
         case "Backspace":
           if (inputValue === "" && value.length > 0) {
+            e.preventDefault();
             removeTag(value[value.length - 1]);
           }
           break;
       }
     },
-    [isOpen, suggestions, activeIndex, inputValue, value, addTag, removeTag]
+    [isOpen, flatOptions, activeIndex, inputValue, value, addTag, removeTag]
   );
 
   // Click outside to close
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       const target = e.target as Node;
-      if (
-        inputRef.current &&
-        !inputRef.current.contains(target) &&
-        listboxRef.current &&
-        !listboxRef.current.contains(target)
-      ) {
+      if (containerRef.current && !containerRef.current.contains(target)) {
         setIsOpen(false);
       }
     };
@@ -283,22 +318,19 @@ export function TagInput({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Scroll active option into view
+  // Scroll active option into view using getElementById
   useEffect(() => {
-    if (activeIndex >= 0 && listboxRef.current) {
-      const option = listboxRef.current.children[activeIndex] as HTMLElement;
-      option?.scrollIntoView({ block: "nearest" });
+    if (activeIndex >= 0) {
+      const optionEl = document.getElementById(getOptionId(activeIndex));
+      optionEl?.scrollIntoView({ block: "nearest" });
     }
-  }, [activeIndex]);
+  }, [activeIndex, getOptionId]);
 
-  // Grouped suggestions for display
-  const groupedSuggestions = useMemo(
-    () => groupSuggestions(suggestions),
-    [suggestions]
-  );
+  // Track current group for header rendering
+  let currentPrefix: string | null = null;
 
   return (
-    <div className={cn("relative", className)}>
+    <div className={cn("relative", className)} ref={containerRef}>
       {/* Tag chips container with input */}
       <div
         className={cn(
@@ -315,7 +347,6 @@ export function TagInput({
           disabled && "cursor-not-allowed opacity-50"
         )}
         onClick={() => inputRef.current?.focus()}
-        onKeyDown={() => {}}
         role="presentation"
       >
         {/* Tag chips - specimen label style */}
@@ -387,7 +418,7 @@ export function TagInput({
               setError(null);
             }}
             onFocus={() => {
-              if (inputValue.length > 0 && suggestions.length > 0) {
+              if (inputValue.length > 0 && flatOptions.length > 0) {
                 setIsOpen(true);
               }
             }}
@@ -417,7 +448,7 @@ export function TagInput({
       )}
 
       {/* Autocomplete dropdown - vintage index card drawer */}
-      {isOpen && suggestions.length > 0 && (
+      {isOpen && flatOptions.length > 0 && (
         <ul
           className={cn(
             // Dropdown container
@@ -429,88 +460,67 @@ export function TagInput({
             "animate-fade-in"
           )}
           id={listboxId}
-          ref={listboxRef}
           role="listbox"
         >
-          {/* Render grouped suggestions */}
-          {Array.from(groupedSuggestions.entries()).map(
-            ([prefix, groupTags], groupIndex) => (
-              <li key={prefix || "_root"} role="presentation">
+          {flatOptions.map((opt, idx) => {
+            // Show group header when prefix changes
+            const showHeader = opt.prefix && opt.prefix !== currentPrefix;
+            currentPrefix = opt.prefix;
+
+            return (
+              <li key={opt.tag} role="presentation">
                 {/* Group header for hierarchical tags */}
-                {prefix && (
+                {showHeader && (
                   <div className="sticky top-0 border-border/30 border-b bg-muted/80 px-2.5 py-1 font-mono text-[10px] text-muted-foreground uppercase tracking-wider backdrop-blur-sm">
-                    {prefix}/
+                    {opt.prefix}/
                   </div>
                 )}
 
-                {/* Tags in group */}
-                <ul role="presentation">
-                  {groupTags.map((s) => {
-                    // Calculate flat index for keyboard navigation
-                    let flatIndex = 0;
-                    for (const [p, g] of groupedSuggestions) {
-                      if (p === prefix) {
-                        flatIndex += groupTags.indexOf(s);
-                        break;
-                      }
-                      flatIndex += g.length;
-                    }
-
-                    return (
-                      <li
-                        aria-selected={activeIndex === flatIndex}
-                        className={cn(
-                          // Base option style
-                          "flex cursor-pointer items-center justify-between gap-2",
-                          "px-2.5 py-2",
-                          "transition-colors duration-100",
-                          // Hover/active states
-                          "hover:bg-muted/50",
-                          activeIndex === flatIndex &&
-                            "bg-primary/10 text-primary",
-                          // First item subtle top border if in group
-                          prefix &&
-                            groupTags.indexOf(s) === 0 &&
-                            groupIndex > 0 &&
-                            ""
-                        )}
-                        id={getOptionId(flatIndex)}
-                        key={s.tag}
-                        onClick={() => addTag(s.tag)}
-                        onMouseEnter={() => setActiveIndex(flatIndex)}
-                        role="option"
-                      >
-                        {/* Tag name with hierarchy highlight */}
-                        <span className="flex items-center gap-1.5 font-mono text-sm">
-                          {prefix ? (
-                            <>
-                              <span className="text-muted-foreground/50">
-                                {prefix}/
-                              </span>
-                              <span>{s.tag.slice(prefix.length + 1)}</span>
-                            </>
-                          ) : (
-                            <span>{s.tag}</span>
-                          )}
+                {/* Option */}
+                <div
+                  aria-selected={activeIndex === idx}
+                  className={cn(
+                    // Base option style
+                    "flex cursor-pointer items-center justify-between gap-2",
+                    "px-2.5 py-2",
+                    "transition-colors duration-100",
+                    // Hover/active states
+                    "hover:bg-muted/50",
+                    activeIndex === idx && "bg-primary/10 text-primary"
+                  )}
+                  id={getOptionId(idx)}
+                  onClick={() => addTag(opt.tag)}
+                  onMouseEnter={() => setActiveIndex(idx)}
+                  role="option"
+                >
+                  {/* Tag name with hierarchy highlight */}
+                  <span className="flex items-center gap-1.5 font-mono text-sm">
+                    {opt.prefix ? (
+                      <>
+                        <span className="text-muted-foreground/50">
+                          {opt.prefix}/
                         </span>
+                        <span>{opt.displayName}</span>
+                      </>
+                    ) : (
+                      <span>{opt.tag}</span>
+                    )}
+                  </span>
 
-                        {/* Document count - brass pill */}
-                        <span
-                          className={cn(
-                            "shrink-0 rounded-full px-1.5 py-0.5",
-                            "bg-secondary/15 font-mono text-[10px] text-secondary",
-                            "border border-secondary/20"
-                          )}
-                        >
-                          {s.count}
-                        </span>
-                      </li>
-                    );
-                  })}
-                </ul>
+                  {/* Document count - brass pill */}
+                  <span
+                    className={cn(
+                      "shrink-0 rounded-full px-1.5 py-0.5",
+                      "bg-secondary/15 font-mono text-[10px] text-secondary",
+                      "border border-secondary/20"
+                    )}
+                  >
+                    {opt.count}
+                  </span>
+                </div>
               </li>
-            )
-          )}
+            );
+          })}
         </ul>
       )}
 

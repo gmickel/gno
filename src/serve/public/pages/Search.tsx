@@ -56,15 +56,36 @@ function renderSnippet(snippet: string): React.ReactNode {
   return parts;
 }
 
-/** Parse tags from URL search params */
+/**
+ * Tag grammar validation (matches src/core/tags.ts).
+ * Validates that a tag follows the grammar for filtering.
+ */
+const TAG_SEGMENT_REGEX = /^[\p{Ll}\p{Lo}\p{N}][\p{Ll}\p{Lo}\p{N}\-.]*$/u;
+
+function normalizeTag(tag: string): string {
+  return tag.trim().normalize("NFC").toLowerCase();
+}
+
+function isValidTag(tag: string): boolean {
+  if (tag.length === 0) return false;
+  if (tag.startsWith("/") || tag.endsWith("/")) return false;
+  const segments = tag.split("/");
+  for (const segment of segments) {
+    if (segment.length === 0) return false;
+    if (!TAG_SEGMENT_REGEX.test(segment)) return false;
+  }
+  return true;
+}
+
+/** Parse and validate tags from URL search params */
 function parseTagsFromUrl(): string[] {
   const params = new URLSearchParams(window.location.search);
   const tagsAny = params.get("tagsAny");
   if (!tagsAny) return [];
   return tagsAny
     .split(",")
-    .map((t) => t.trim())
-    .filter((t) => t.length > 0);
+    .map((t) => normalizeTag(t))
+    .filter((t) => t.length > 0 && isValidTag(t));
 }
 
 /** Update URL with tag filters */
@@ -161,14 +182,17 @@ export default function Search({ navigate }: PageProps) {
     void fetchCapabilities();
   }, []);
 
-  // Cycle thoroughness with 't' key
+  // Cycle thoroughness with 't' key (only cycles to supported modes)
+  const hybridAvailable = capabilities?.hybrid ?? false;
   const cycleThoroughness = useCallback(() => {
     setThoroughness((current) => {
+      // If hybrid not available, stay on fast
+      if (!hybridAvailable) return "fast";
       const currentIdx = THOROUGHNESS_ORDER.indexOf(current);
       const nextIdx = (currentIdx + 1) % THOROUGHNESS_ORDER.length;
       return THOROUGHNESS_ORDER[nextIdx];
     });
-  }, []);
+  }, [hybridAvailable]);
 
   const shortcuts = useMemo(
     () => [{ key: "t", action: cycleThoroughness }],
@@ -242,8 +266,6 @@ export default function Search({ navigate }: PageProps) {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTags]);
-
-  const hybridAvailable = capabilities?.hybrid ?? false;
 
   // Description for current thoroughness
   const thoroughnessDesc =

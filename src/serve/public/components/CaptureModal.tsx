@@ -147,6 +147,7 @@ export function CaptureModal({
     const filename = sanitizeFilename(title) || "untitled";
     const relPath = `${filename}.md`;
 
+    // Include tags in the POST request (server writes to frontmatter)
     const { data, error: err } = await apiFetch<CreateDocResponse>(
       "/api/docs",
       {
@@ -155,6 +156,7 @@ export function CaptureModal({
           collection,
           relPath,
           content,
+          ...(tags.length > 0 && { tags }),
         }),
       }
     );
@@ -166,18 +168,6 @@ export function CaptureModal({
     }
 
     if (data) {
-      // If tags were specified, add them via PUT
-      if (tags.length > 0) {
-        const docId = data.uri.replace(/^gno:\/\//, "").split("/")[1];
-        if (docId) {
-          // Best effort - don't fail if tags can't be added
-          await apiFetch(`/api/docs/${encodeURIComponent(docId)}`, {
-            method: "PUT",
-            body: JSON.stringify({ tags }),
-          });
-        }
-      }
-
       // Save last used collection
       localStorage.setItem(STORAGE_KEY, collection);
 

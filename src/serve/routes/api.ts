@@ -112,6 +112,8 @@ export interface CreateDocRequestBody {
   relPath: string;
   content: string;
   overwrite?: boolean;
+  /** Tags to add to document (written to frontmatter for markdown) */
+  tags?: string[];
 }
 
 export interface UpdateDocRequestBody {
@@ -574,13 +576,19 @@ export async function handleTags(
   let prefix: string | undefined;
   if (prefixRaw) {
     const normalized = normalizeTag(prefixRaw);
-    if (!validateTag(normalized)) {
+    // Strip trailing slash for prefix queries (allows "project/" to find "project/*")
+    const prefixToValidate = normalized.endsWith("/")
+      ? normalized.slice(0, -1)
+      : normalized;
+    // Only validate if non-empty (empty prefix = list all)
+    if (prefixToValidate.length > 0 && !validateTag(prefixToValidate)) {
       return errorResponse(
         "VALIDATION",
         `Invalid prefix: "${prefixRaw}". Must follow tag format.`
       );
     }
-    prefix = normalized;
+    // Use stripped version for query (store expects prefix without trailing slash)
+    prefix = prefixToValidate || undefined;
   }
 
   const result = await store.getTagCounts({ collection, prefix });
@@ -837,6 +845,19 @@ export async function handleCreateDoc(
     return errorResponse("VALIDATION", "overwrite must be a boolean");
   }
 
+  // Validate tags if provided
+  let validatedTags: string[] = [];
+  if (body.tags && Array.isArray(body.tags)) {
+    try {
+      validatedTags = parseAndValidateTagFilter(body.tags.join(","));
+    } catch (e) {
+      return errorResponse(
+        "VALIDATION",
+        e instanceof Error ? e.message : "Invalid tags"
+      );
+    }
+  }
+
   // Find collection (case-insensitive)
   const collectionName = body.collection.toLowerCase();
   const collection = ctxHolder.config.collections.find(
@@ -880,7 +901,14 @@ export async function handleCreateDoc(
     const { mkdir } = await import("node:fs/promises"); // structure ops need fs
     await mkdir(parentDir, { recursive: true });
 
-    await atomicWrite(fullPath, body.content);
+    // Inject tags into frontmatter for markdown files
+    let contentToWrite = body.content;
+    const ext = nodePath.extname(normalizedRelPath).toLowerCase();
+    if (validatedTags.length > 0 && (ext === ".md" || ext === ".markdown")) {
+      contentToWrite = updateFrontmatterTags(body.content, validatedTags);
+    }
+
+    await atomicWrite(fullPath, contentToWrite);
 
     // Build proper file:// URI using node:url
     const { pathToFileURL } = await import("node:url");
