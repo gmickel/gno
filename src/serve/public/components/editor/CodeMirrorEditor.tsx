@@ -8,13 +8,7 @@
 import { markdown } from "@codemirror/lang-markdown";
 import { oneDark } from "@codemirror/theme-one-dark";
 import { EditorView, basicSetup } from "codemirror";
-import {
-  forwardRef,
-  useEffect,
-  useImperativeHandle,
-  useRef,
-  type ForwardedRef,
-} from "react";
+import { useEffect, useImperativeHandle, useRef, type Ref } from "react";
 
 export interface CodeMirrorEditorProps {
   /** Initial content to display */
@@ -25,6 +19,8 @@ export interface CodeMirrorEditorProps {
   onScroll?: (scrollPercent: number) => void;
   /** Additional CSS classes */
   className?: string;
+  /** Ref for imperative methods (React 19 ref-as-prop) */
+  ref?: Ref<CodeMirrorEditorRef>;
 }
 
 export interface CodeMirrorEditorRef {
@@ -42,10 +38,13 @@ export interface CodeMirrorEditorRef {
   scrollToPercent: (percent: number) => boolean;
 }
 
-function CodeMirrorEditorInner(
-  { initialContent, onChange, onScroll, className }: CodeMirrorEditorProps,
-  ref: ForwardedRef<CodeMirrorEditorRef>
-) {
+export function CodeMirrorEditor({
+  initialContent,
+  onChange,
+  onScroll,
+  className,
+  ref,
+}: CodeMirrorEditorProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
   const onChangeRef = useRef(onChange);
@@ -184,5 +183,3 @@ function CodeMirrorEditorInner(
 
   return <div ref={containerRef} className={className} />;
 }
-
-export const CodeMirrorEditor = forwardRef(CodeMirrorEditorInner);
