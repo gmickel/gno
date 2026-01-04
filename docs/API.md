@@ -26,21 +26,22 @@ All endpoints are JSON-based and run entirely on your machine.
 
 ### Read Operations
 
-| Endpoint             | Method | Description          |
-| :------------------- | :----- | :------------------- |
-| `/api/health`        | GET    | Health check         |
-| `/api/status`        | GET    | Index statistics     |
-| `/api/capabilities`  | GET    | Available features   |
-| `/api/collections`   | GET    | List collections     |
-| `/api/docs`          | GET    | List documents       |
-| `/api/doc`           | GET    | Get document content |
-| `/api/search`        | POST   | BM25 keyword search  |
-| `/api/query`         | POST   | Hybrid search        |
-| `/api/ask`           | POST   | AI-powered Q&A       |
-| `/api/presets`       | GET    | List model presets   |
-| `/api/presets`       | POST   | Switch preset        |
-| `/api/models/status` | GET    | Download status      |
-| `/api/models/pull`   | POST   | Start model download |
+| Endpoint             | Method | Description           |
+| :------------------- | :----- | :-------------------- |
+| `/api/health`        | GET    | Health check          |
+| `/api/status`        | GET    | Index statistics      |
+| `/api/capabilities`  | GET    | Available features    |
+| `/api/collections`   | GET    | List collections      |
+| `/api/docs`          | GET    | List documents        |
+| `/api/doc`           | GET    | Get document content  |
+| `/api/tags`          | GET    | List tags with counts |
+| `/api/search`        | POST   | BM25 keyword search   |
+| `/api/query`         | POST   | Hybrid search         |
+| `/api/ask`           | POST   | AI-powered Q&A        |
+| `/api/presets`       | GET    | List model presets    |
+| `/api/presets`       | POST   | Switch preset         |
+| `/api/models/status` | GET    | Download status       |
+| `/api/models/pull`   | POST   | Start model download  |
 
 ### Write Operations
 
@@ -416,19 +417,68 @@ done
 
 ---
 
+### List Tags
+
+```http
+GET /api/tags?collection=notes&prefix=project
+```
+
+List all tags with document counts.
+
+**Query Parameters**:
+
+| Param        | Type   | Default | Description                         |
+| :----------- | :----- | :------ | :---------------------------------- |
+| `collection` | string | —       | Filter by collection name           |
+| `prefix`     | string | —       | Filter by tag prefix (hierarchical) |
+
+**Response**:
+
+```json
+{
+  "tags": [
+    { "tag": "work", "count": 15 },
+    { "tag": "project/alpha", "count": 8 },
+    { "tag": "urgent", "count": 3 }
+  ],
+  "meta": {
+    "total": 3,
+    "collection": "notes",
+    "prefix": "project"
+  }
+}
+```
+
+**Example**:
+
+```bash
+# All tags
+curl http://localhost:3000/api/tags | jq
+
+# Tags in collection
+curl "http://localhost:3000/api/tags?collection=notes" | jq
+
+# Tags with prefix
+curl "http://localhost:3000/api/tags?prefix=project" | jq
+```
+
+---
+
 ### List Documents
 
 ```http
-GET /api/docs?collection=notes&limit=20&offset=0
+GET /api/docs?collection=notes&limit=20&offset=0&tagsAll=work&tagsAny=urgent,meeting
 ```
 
 **Query Parameters**:
 
-| Param        | Type   | Default | Description                |
-| :----------- | :----- | :------ | :------------------------- |
-| `collection` | string | —       | Filter by collection name  |
-| `limit`      | number | 20      | Results per page (max 100) |
-| `offset`     | number | 0       | Pagination offset          |
+| Param        | Type   | Default | Description                          |
+| :----------- | :----- | :------ | :----------------------------------- |
+| `collection` | string | —       | Filter by collection name            |
+| `limit`      | number | 20      | Results per page (max 100)           |
+| `offset`     | number | 0       | Pagination offset                    |
+| `tagsAll`    | string | —       | Comma-separated tags (must have ALL) |
+| `tagsAny`    | string | —       | Comma-separated tags (must have ANY) |
 
 **Response**:
 
@@ -583,13 +633,19 @@ Update an existing document's content. Triggers background sync to re-index.
 
 ```json
 {
-  "content": "# Updated Content\n\nNew document content..."
+  "content": "# Updated Content\n\nNew document content...",
+  "tags": ["work", "project/alpha", "urgent"]
 }
 ```
 
-| Field     | Type   | Required | Description      |
-| :-------- | :----- | :------- | :--------------- |
-| `content` | string | Yes      | New file content |
+| Field     | Type     | Required | Description                                      |
+| :-------- | :------- | :------- | :----------------------------------------------- |
+| `content` | string   | No\*     | New file content                                 |
+| `tags`    | string[] | No\*     | Tags to set (replaces frontmatter tags on write) |
+
+\*At least one of `content` or `tags` must be provided.
+
+When `tags` is provided, the tags are written to the document's YAML frontmatter. If the document has no frontmatter, one is added. If it already has a `tags:` field, it is replaced.
 
 **Response**:
 
@@ -681,16 +737,20 @@ Keyword search using BM25 algorithm.
   "query": "authentication",
   "limit": 10,
   "minScore": 0.1,
-  "collection": "notes"
+  "collection": "notes",
+  "tagsAll": "work,project",
+  "tagsAny": "urgent,high"
 }
 ```
 
-| Field        | Type   | Default | Description                   |
-| :----------- | :----- | :------ | :---------------------------- |
-| `query`      | string | —       | Search query (required)       |
-| `limit`      | number | 10      | Max results (max 50)          |
-| `minScore`   | number | —       | Minimum score threshold (0-1) |
-| `collection` | string | —       | Filter by collection          |
+| Field        | Type   | Default | Description                          |
+| :----------- | :----- | :------ | :----------------------------------- |
+| `query`      | string | —       | Search query (required)              |
+| `limit`      | number | 10      | Max results (max 50)                 |
+| `minScore`   | number | —       | Minimum score threshold (0-1)        |
+| `collection` | string | —       | Filter by collection                 |
+| `tagsAll`    | string | —       | Comma-separated tags (must have ALL) |
+| `tagsAny`    | string | —       | Comma-separated tags (must have ANY) |
 
 **Response**:
 
@@ -745,19 +805,23 @@ Combined BM25 + vector search with optional reranking. **Recommended for best re
   "collection": "notes",
   "lang": "en",
   "noExpand": false,
-  "noRerank": false
+  "noRerank": false,
+  "tagsAll": "backend",
+  "tagsAny": "auth,security"
 }
 ```
 
-| Field        | Type    | Default | Description                     |
-| :----------- | :------ | :------ | :------------------------------ |
-| `query`      | string  | —       | Search query (required)         |
-| `limit`      | number  | 20      | Max results (max 50)            |
-| `minScore`   | number  | —       | Minimum score threshold (0-1)   |
-| `collection` | string  | —       | Filter by collection            |
-| `lang`       | string  | auto    | Query language hint             |
-| `noExpand`   | boolean | false   | Disable query expansion         |
-| `noRerank`   | boolean | false   | Disable cross-encoder reranking |
+| Field        | Type    | Default | Description                          |
+| :----------- | :------ | :------ | :----------------------------------- |
+| `query`      | string  | —       | Search query (required)              |
+| `limit`      | number  | 20      | Max results (max 50)                 |
+| `minScore`   | number  | —       | Minimum score threshold (0-1)        |
+| `collection` | string  | —       | Filter by collection                 |
+| `lang`       | string  | auto    | Query language hint                  |
+| `noExpand`   | boolean | false   | Disable query expansion              |
+| `noRerank`   | boolean | false   | Disable cross-encoder reranking      |
+| `tagsAll`    | string  | —       | Comma-separated tags (must have ALL) |
+| `tagsAny`    | string  | —       | Comma-separated tags (must have ANY) |
 
 **Response**:
 
@@ -816,7 +880,9 @@ Get an AI-generated answer with citations from your documents.
   "lang": "en",
   "maxAnswerTokens": 512,
   "noExpand": false,
-  "noRerank": false
+  "noRerank": false,
+  "tagsAll": "backend",
+  "tagsAny": "auth,security"
 }
 ```
 
@@ -829,6 +895,8 @@ Get an AI-generated answer with citations from your documents.
 | `maxAnswerTokens` | number  | 512     | Max tokens in answer                   |
 | `noExpand`        | boolean | false   | Disable query expansion                |
 | `noRerank`        | boolean | false   | Disable cross-encoder reranking        |
+| `tagsAll`         | string  | —       | Comma-separated tags (must have ALL)   |
+| `tagsAny`         | string  | —       | Comma-separated tags (must have ANY)   |
 
 **Response**:
 

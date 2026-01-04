@@ -526,38 +526,57 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
     collection?: string;
     limit: number;
     offset: number;
+    tagsAll?: string[];
+    tagsAny?: string[];
   }): Promise<StoreResult<{ documents: DocumentRow[]; total: number }>> {
     try {
       const db = this.ensureOpen();
-      const { collection, limit, offset } = options;
+      const { collection, limit, offset, tagsAll, tagsAny } = options;
+
+      // Build WHERE conditions and params
+      const conditions: string[] = ["d.active = 1"];
+      const params: (string | number)[] = [];
+
+      if (collection) {
+        conditions.push("d.collection = ?");
+        params.push(collection);
+      }
+
+      // tagsAny: document has at least one of these tags (OR)
+      if (tagsAny && tagsAny.length > 0) {
+        const placeholders = tagsAny.map(() => "?").join(",");
+        conditions.push(
+          `EXISTS (SELECT 1 FROM doc_tags dt WHERE dt.document_id = d.id AND dt.tag IN (${placeholders}))`
+        );
+        params.push(...tagsAny);
+      }
+
+      // tagsAll: document has all of these tags (AND)
+      if (tagsAll && tagsAll.length > 0) {
+        for (const tag of tagsAll) {
+          conditions.push(
+            "EXISTS (SELECT 1 FROM doc_tags dt WHERE dt.document_id = d.id AND dt.tag = ?)"
+          );
+          params.push(tag);
+        }
+      }
+
+      const whereClause = conditions.join(" AND ");
 
       // Get total count
-      const countRow = collection
-        ? db
-            .query<{ count: number }, [string]>(
-              "SELECT COUNT(*) as count FROM documents WHERE collection = ?"
-            )
-            .get(collection)
-        : db
-            .query<{ count: number }, []>(
-              "SELECT COUNT(*) as count FROM documents"
-            )
-            .get();
-
+      // Use COUNT(DISTINCT d.id) to prevent duplicate counting when tag filters match multiple tags
+      const countSql = `SELECT COUNT(DISTINCT d.id) as count FROM documents d WHERE ${whereClause}`;
+      const countRow = db
+        .query<{ count: number }, (string | number)[]>(countSql)
+        .get(...params);
       const total = countRow?.count ?? 0;
 
       // Get paginated documents
-      const rows = collection
-        ? db
-            .query<DbDocumentRow, [string, number, number]>(
-              "SELECT * FROM documents WHERE collection = ? ORDER BY updated_at DESC LIMIT ? OFFSET ?"
-            )
-            .all(collection, limit, offset)
-        : db
-            .query<DbDocumentRow, [number, number]>(
-              "SELECT * FROM documents ORDER BY updated_at DESC LIMIT ? OFFSET ?"
-            )
-            .all(limit, offset);
+      // Use DISTINCT to prevent duplicate rows when tag filters match multiple tags
+      const selectSql = `SELECT DISTINCT d.* FROM documents d WHERE ${whereClause} ORDER BY d.updated_at DESC LIMIT ? OFFSET ?`;
+      const rows = db
+        .query<DbDocumentRow, (string | number)[]>(selectSql)
+        .all(...params, limit, offset);
 
       return ok({ documents: rows.map(mapDocumentRow), total });
     } catch (cause) {

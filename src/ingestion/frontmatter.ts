@@ -218,6 +218,75 @@ export function stripFrontmatter(source: string): string {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
+ * Update frontmatter tags in markdown source.
+ * If no frontmatter exists, adds one with tags.
+ * Replaces existing tags field if present.
+ */
+export function updateFrontmatterTags(source: string, tags: string[]): string {
+  const tagsLine = tags.length > 0 ? `tags: [${tags.join(", ")}]` : "tags: []";
+
+  const match = FRONTMATTER_REGEX.exec(source);
+
+  if (!match) {
+    // No frontmatter - add one
+    return `---\n${tagsLine}\n---\n\n${source}`;
+  }
+
+  const frontmatter = match[1];
+  if (frontmatter === undefined) {
+    return `---\n${tagsLine}\n---\n\n${source.slice(match[0].length)}`;
+  }
+
+  const lines = frontmatter.split("\n");
+  const newLines: string[] = [];
+  let foundTags = false;
+  let skipArrayItems = false;
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (line === undefined) continue;
+
+    // Check if this is a tags line (YAML or Logseq format)
+    const yamlMatch = YAML_TAGS_REGEX.exec(line);
+    const logseqMatch = LOGSEQ_TAGS_REGEX.exec(line);
+
+    if (yamlMatch || logseqMatch) {
+      // Replace with new tags
+      newLines.push(tagsLine);
+      foundTags = true;
+
+      // Skip array items on following lines if YAML block array
+      const value = (yamlMatch?.[1] ?? "").trim();
+      if (value === "" || value.startsWith("-")) {
+        skipArrayItems = true;
+      }
+      continue;
+    }
+
+    // Skip array items if we just replaced a YAML block array
+    if (skipArrayItems) {
+      const itemMatch = YAML_ARRAY_ITEM_REGEX.exec(line);
+      if (itemMatch) {
+        continue;
+      }
+      // Non-array-item line, stop skipping
+      skipArrayItems = false;
+    }
+
+    newLines.push(line);
+  }
+
+  // Add tags if not found
+  if (!foundTags) {
+    newLines.push(tagsLine);
+  }
+
+  const newFrontmatter = newLines.join("\n");
+  const rest = source.slice(match[0].length);
+  return `---\n${newFrontmatter}\n---\n${rest}`;
+}
+
+/**
  * Extract hashtags from markdown body.
  * Skips:
  * - Fenced code blocks (```)

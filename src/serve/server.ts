@@ -34,6 +34,7 @@ import {
   handleSetPreset,
   handleStatus,
   handleSync,
+  handleTags,
   handleUpdateDoc,
 } from "./routes/api";
 import { forbiddenResponse, isRequestAllowed } from "./security";
@@ -271,6 +272,12 @@ export async function startServer(
           GET: async (req: Request) => {
             const url = new URL(req.url);
             return withSecurityHeaders(await handleDoc(store, url), isDev);
+          },
+        },
+        "/api/tags": {
+          GET: async (req: Request) => {
+            const url = new URL(req.url);
+            return withSecurityHeaders(await handleTags(store, url), isDev);
           },
         },
         "/api/search": {

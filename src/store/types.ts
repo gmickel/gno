@@ -449,6 +449,10 @@ export interface StorePort {
     collection?: string;
     limit: number;
     offset: number;
+    /** Filter to docs having ALL these tags (AND) */
+    tagsAll?: string[];
+    /** Filter to docs having ANY of these tags (OR) */
+    tagsAny?: string[];
   }): Promise<StoreResult<{ documents: DocumentRow[]; total: number }>>;
 
   /**

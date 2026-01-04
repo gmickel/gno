@@ -12,8 +12,14 @@ import type { SqliteAdapter } from "../../store/sqlite/adapter";
 import { modelsPull } from "../../cli/commands/models/pull";
 import { addCollection, removeCollection } from "../../collection";
 import { atomicWrite } from "../../core/file-ops";
+import {
+  normalizeTag,
+  parseAndValidateTagFilter,
+  validateTag,
+} from "../../core/tags";
 import { validateRelPath } from "../../core/validation";
 import { defaultSyncService, type SyncResult } from "../../ingestion";
+import { updateFrontmatterTags } from "../../ingestion/frontmatter";
 import { getModelConfig, getPreset, listPresets } from "../../llm/registry";
 import {
   generateGroundedAnswer,
@@ -53,6 +59,10 @@ export interface SearchRequestBody {
   limit?: number;
   minScore?: number;
   collection?: string;
+  /** Comma-separated tags - filter to docs having ALL (AND) */
+  tagsAll?: string;
+  /** Comma-separated tags - filter to docs having ANY (OR) */
+  tagsAny?: string;
 }
 
 export interface QueryRequestBody {
@@ -63,6 +73,10 @@ export interface QueryRequestBody {
   lang?: string;
   noExpand?: boolean;
   noRerank?: boolean;
+  /** Comma-separated tags - filter to docs having ALL (AND) */
+  tagsAll?: string;
+  /** Comma-separated tags - filter to docs having ANY (OR) */
+  tagsAny?: string;
 }
 
 export interface AskRequestBody {
@@ -73,6 +87,10 @@ export interface AskRequestBody {
   maxAnswerTokens?: number;
   noExpand?: boolean;
   noRerank?: boolean;
+  /** Comma-separated tags - filter to docs having ALL (AND) */
+  tagsAll?: string;
+  /** Comma-separated tags - filter to docs having ANY (OR) */
+  tagsAny?: string;
 }
 
 export interface CreateCollectionRequestBody {
@@ -97,7 +115,10 @@ export interface CreateDocRequestBody {
 }
 
 export interface UpdateDocRequestBody {
-  content: string;
+  /** New content (optional if only updating tags) */
+  content?: string;
+  /** Tags to set (replaces existing tags) */
+  tags?: string[];
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -389,7 +410,7 @@ export async function handleSync(
 
 /**
  * GET /api/docs
- * Query params: collection, limit (default 20), offset (default 0)
+ * Query params: collection, limit (default 20), offset (default 0), tagsAll, tagsAny
  * Returns paginated document list.
  */
 export async function handleDocs(
@@ -418,10 +439,40 @@ export async function handleDocs(
   }
   const offset = offsetParam || 0;
 
+  // Parse tag filters
+  let tagsAll: string[] | undefined;
+  let tagsAny: string[] | undefined;
+
+  const tagsAllParam = url.searchParams.get("tagsAll");
+  if (tagsAllParam) {
+    try {
+      tagsAll = parseAndValidateTagFilter(tagsAllParam);
+    } catch (e) {
+      return errorResponse(
+        "VALIDATION",
+        e instanceof Error ? e.message : "Invalid tagsAll"
+      );
+    }
+  }
+
+  const tagsAnyParam = url.searchParams.get("tagsAny");
+  if (tagsAnyParam) {
+    try {
+      tagsAny = parseAndValidateTagFilter(tagsAnyParam);
+    } catch (e) {
+      return errorResponse(
+        "VALIDATION",
+        e instanceof Error ? e.message : "Invalid tagsAny"
+      );
+    }
+  }
+
   const result = await store.listDocumentsPaginated({
     collection,
     limit,
     offset,
+    tagsAll,
+    tagsAny,
   });
 
   if (!result.ok) {
@@ -497,6 +548,36 @@ export async function handleDoc(
 }
 
 /**
+ * GET /api/tags
+ * Query params: collection, prefix
+ * Returns tag list with document counts.
+ */
+export async function handleTags(
+  store: SqliteAdapter,
+  url: URL
+): Promise<Response> {
+  const collection = url.searchParams.get("collection") || undefined;
+  const prefix = url.searchParams.get("prefix") || undefined;
+
+  const result = await store.getTagCounts({ collection, prefix });
+
+  if (!result.ok) {
+    return errorResponse("RUNTIME", result.error.message, 500);
+  }
+
+  const tags = result.value;
+
+  return jsonResponse({
+    tags,
+    meta: {
+      total: tags.length,
+      ...(collection && { collection }),
+      ...(prefix && { prefix }),
+    },
+  });
+}
+
+/**
  * POST /api/docs/:id/deactivate
  * Deactivate a document (soft delete - does not remove file from disk).
  */
@@ -531,7 +612,7 @@ export async function handleDeactivateDoc(
 
 /**
  * PUT /api/docs/:id
- * Update an existing document's content.
+ * Update an existing document's content and/or tags.
  */
 export async function handleUpdateDoc(
   ctxHolder: ContextHolder,
@@ -546,9 +627,39 @@ export async function handleUpdateDoc(
     return errorResponse("VALIDATION", "Invalid JSON body");
   }
 
-  // Validate content field (allow empty string)
-  if (typeof body.content !== "string") {
-    return errorResponse("VALIDATION", "Missing or invalid content");
+  // At least one of content or tags must be provided
+  const hasContent = body.content !== undefined;
+  const hasTags = body.tags !== undefined;
+
+  if (!hasContent && !hasTags) {
+    return errorResponse("VALIDATION", "Must provide content or tags");
+  }
+
+  // Validate content if provided (allow empty string)
+  if (hasContent && typeof body.content !== "string") {
+    return errorResponse("VALIDATION", "content must be a string");
+  }
+
+  // Validate tags if provided
+  let normalizedTags: string[] | undefined;
+  if (hasTags) {
+    if (!Array.isArray(body.tags)) {
+      return errorResponse("VALIDATION", "tags must be an array");
+    }
+    normalizedTags = [];
+    for (const tag of body.tags) {
+      if (typeof tag !== "string") {
+        return errorResponse("VALIDATION", "Each tag must be a string");
+      }
+      const normalized = normalizeTag(tag);
+      if (!validateTag(normalized)) {
+        return errorResponse(
+          "VALIDATION",
+          `Invalid tag: "${tag}". Tags must be lowercase, alphanumeric with hyphens/dots/slashes.`
+        );
+      }
+      normalizedTags.push(normalized);
+    }
   }
 
   // Get document to verify it exists
@@ -585,37 +696,75 @@ export async function handleUpdateDoc(
     return errorResponse("FILE_NOT_FOUND", "Source file no longer exists", 404);
   }
 
+  // Determine if we can write tags back to file
+  const isMarkdown =
+    doc.sourceMime === "text/markdown" || doc.sourceExt === ".md";
+  let writeBack: "applied" | "skipped_unsupported" | undefined;
+
   try {
-    await atomicWrite(fullPath, body.content);
+    // Determine final content to write
+    let contentToWrite: string | undefined;
+
+    if (hasContent) {
+      contentToWrite = body.content;
+    }
+
+    // Handle tag writeback for Markdown files
+    if (hasTags && normalizedTags) {
+      if (isMarkdown) {
+        // Read current content if we're only updating tags
+        const source = contentToWrite ?? (await file.text());
+        contentToWrite = updateFrontmatterTags(source, normalizedTags);
+        writeBack = "applied";
+      } else {
+        writeBack = "skipped_unsupported";
+      }
+
+      // Update tags in DB (user source since this is a user action)
+      const tagResult = await store.setDocTags(doc.id, normalizedTags, "user");
+      if (!tagResult.ok) {
+        return errorResponse("RUNTIME", tagResult.error.message, 500);
+      }
+    }
+
+    // Write file if we have content to write
+    if (contentToWrite !== undefined) {
+      await atomicWrite(fullPath, contentToWrite);
+    }
 
     // Build proper file:// URI using node:url
     const { pathToFileURL } = await import("node:url");
     const fileUri = pathToFileURL(fullPath).href;
 
-    // Run sync via job system (non-blocking)
-    const jobResult = startJob("sync", async (): Promise<SyncResult> => {
-      const result = await defaultSyncService.syncCollection(
-        collection,
-        store,
-        { runUpdateCmd: false }
-      );
-      return {
-        collections: [result],
-        totalDurationMs: result.durationMs,
-        totalFilesProcessed: result.filesProcessed,
-        totalFilesAdded: result.filesAdded,
-        totalFilesUpdated: result.filesUpdated,
-        totalFilesErrored: result.filesErrored,
-        totalFilesSkipped: result.filesSkipped,
-      };
-    });
+    // Run sync via job system (non-blocking) only if content changed
+    let jobId: string | null = null;
+    if (contentToWrite !== undefined) {
+      const jobResult = startJob("sync", async (): Promise<SyncResult> => {
+        const result = await defaultSyncService.syncCollection(
+          collection,
+          store,
+          { runUpdateCmd: false }
+        );
+        return {
+          collections: [result],
+          totalDurationMs: result.durationMs,
+          totalFilesProcessed: result.filesProcessed,
+          totalFilesAdded: result.filesAdded,
+          totalFilesUpdated: result.filesUpdated,
+          totalFilesErrored: result.filesErrored,
+          totalFilesSkipped: result.filesSkipped,
+        };
+      });
+      jobId = jobResult.ok ? jobResult.jobId : null;
+    }
 
     return jsonResponse({
       success: true,
       docId: doc.docid,
       uri: fileUri,
       path: fullPath,
-      jobId: jobResult.ok ? jobResult.jobId : null,
+      jobId,
+      writeBack,
     });
   } catch (e) {
     return errorResponse(
@@ -790,11 +939,39 @@ export async function handleSearch(
     );
   }
 
+  // Parse tag filters
+  let tagsAll: string[] | undefined;
+  let tagsAny: string[] | undefined;
+
+  if (body.tagsAll) {
+    try {
+      tagsAll = parseAndValidateTagFilter(body.tagsAll);
+    } catch (e) {
+      return errorResponse(
+        "VALIDATION",
+        e instanceof Error ? e.message : "Invalid tagsAll"
+      );
+    }
+  }
+
+  if (body.tagsAny) {
+    try {
+      tagsAny = parseAndValidateTagFilter(body.tagsAny);
+    } catch (e) {
+      return errorResponse(
+        "VALIDATION",
+        e instanceof Error ? e.message : "Invalid tagsAny"
+      );
+    }
+  }
+
   // Only BM25 supported in web UI (vector/hybrid require LLM ports)
   const options: SearchOptions = {
     limit: Math.min(body.limit || 10, 50),
     minScore: body.minScore,
     collection: body.collection,
+    tagsAll,
+    tagsAny,
   };
 
   const result = await searchBm25(store, query, options);
@@ -852,6 +1029,32 @@ export async function handleQuery(
     );
   }
 
+  // Parse tag filters
+  let tagsAll: string[] | undefined;
+  let tagsAny: string[] | undefined;
+
+  if (body.tagsAll) {
+    try {
+      tagsAll = parseAndValidateTagFilter(body.tagsAll);
+    } catch (e) {
+      return errorResponse(
+        "VALIDATION",
+        e instanceof Error ? e.message : "Invalid tagsAll"
+      );
+    }
+  }
+
+  if (body.tagsAny) {
+    try {
+      tagsAny = parseAndValidateTagFilter(body.tagsAny);
+    } catch (e) {
+      return errorResponse(
+        "VALIDATION",
+        e instanceof Error ? e.message : "Invalid tagsAny"
+      );
+    }
+  }
+
   const result = await searchHybrid(
     {
       store: ctx.store,
@@ -869,6 +1072,8 @@ export async function handleQuery(
       lang: body.lang,
       noExpand: body.noExpand,
       noRerank: body.noRerank,
+      tagsAll,
+      tagsAny,
     }
   );
 
@@ -913,6 +1118,32 @@ export async function handleAsk(
     );
   }
 
+  // Parse tag filters
+  let tagsAll: string[] | undefined;
+  let tagsAny: string[] | undefined;
+
+  if (body.tagsAll) {
+    try {
+      tagsAll = parseAndValidateTagFilter(body.tagsAll);
+    } catch (e) {
+      return errorResponse(
+        "VALIDATION",
+        e instanceof Error ? e.message : "Invalid tagsAll"
+      );
+    }
+  }
+
+  if (body.tagsAny) {
+    try {
+      tagsAny = parseAndValidateTagFilter(body.tagsAny);
+    } catch (e) {
+      return errorResponse(
+        "VALIDATION",
+        e instanceof Error ? e.message : "Invalid tagsAny"
+      );
+    }
+  }
+
   const limit = Math.min(body.limit ?? 5, 20);
 
   // Run hybrid search first
@@ -932,6 +1163,8 @@ export async function handleAsk(
       lang: body.lang,
       noExpand: body.noExpand,
       noRerank: body.noRerank,
+      tagsAll,
+      tagsAny,
     }
   );
 
