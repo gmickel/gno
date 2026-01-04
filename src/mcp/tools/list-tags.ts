@@ -7,6 +7,9 @@
 import type { TagCount } from "../../store/types";
 import type { ToolContext } from "../server";
 
+import { MCP_ERRORS } from "../../core/errors";
+import { normalizeTag, validateTag } from "../../core/tags";
+import { normalizeCollectionName } from "../../core/validation";
 import { runTool, type ToolResult } from "./index";
 
 interface ListTagsInput {
@@ -61,18 +64,35 @@ export function handleListTags(
     ctx,
     "gno_list_tags",
     async () => {
-      // Validate collection exists if specified
+      // Normalize and validate collection (case-insensitive)
+      let collection: string | undefined;
       if (args.collection) {
-        const exists = ctx.collections.some((c) => c.name === args.collection);
+        collection = normalizeCollectionName(args.collection);
+        const exists = ctx.collections.some(
+          (c) => c.name.toLowerCase() === collection
+        );
         if (!exists) {
-          throw new Error(`Collection not found: ${args.collection}`);
+          throw new Error(
+            `${MCP_ERRORS.NOT_FOUND.code}: Collection not found: ${args.collection}`
+          );
         }
       }
 
-      const result = await ctx.store.getTagCounts({
-        collection: args.collection,
-        prefix: args.prefix,
-      });
+      // Normalize and validate prefix
+      let prefix: string | undefined;
+      if (args.prefix) {
+        const trimmed = args.prefix.trim().replace(/\/+$/, "");
+        if (trimmed.length > 0) {
+          prefix = normalizeTag(trimmed);
+          if (!validateTag(prefix)) {
+            throw new Error(
+              `${MCP_ERRORS.INVALID_INPUT.code}: Invalid tag prefix "${args.prefix}"`
+            );
+          }
+        }
+      }
+
+      const result = await ctx.store.getTagCounts({ collection, prefix });
 
       if (!result.ok) {
         throw new Error(result.error.message);
@@ -81,8 +101,8 @@ export function handleListTags(
       return {
         tags: result.value,
         meta: {
-          collection: args.collection,
-          prefix: args.prefix,
+          collection,
+          prefix,
           totalTags: result.value.length,
         },
       };

@@ -14,6 +14,9 @@ import type { DocumentRow, TagCount } from "../../store/types";
 import type { ToolContext } from "../server";
 
 import { buildUri, parseUri, URI_PREFIX } from "../../app/constants";
+import { MCP_ERRORS } from "../../core/errors";
+import { normalizeTag, validateTag } from "../../core/tags";
+import { normalizeCollectionName } from "../../core/validation";
 
 // Tags resource URI prefix
 const TAGS_URI = `${URI_PREFIX}tags`;
@@ -205,14 +208,34 @@ export function registerResources(server: McpServer, ctx: ToolContext): void {
       try {
         // Parse query params from URI
         const url = new URL(uri.href);
-        const collection = url.searchParams.get("collection") || undefined;
-        const prefix = url.searchParams.get("prefix") || undefined;
+        const collectionParam = url.searchParams.get("collection") || undefined;
+        const prefixParam = url.searchParams.get("prefix") || undefined;
 
-        // Validate collection exists if specified
-        if (collection) {
-          const exists = ctx.collections.some((c) => c.name === collection);
+        // Normalize and validate collection (case-insensitive)
+        let collection: string | undefined;
+        if (collectionParam) {
+          collection = normalizeCollectionName(collectionParam);
+          const exists = ctx.collections.some(
+            (c) => c.name.toLowerCase() === collection
+          );
           if (!exists) {
-            throw new Error(`Collection not found: ${collection}`);
+            throw new Error(
+              `${MCP_ERRORS.NOT_FOUND.code}: Collection not found: ${collectionParam}`
+            );
+          }
+        }
+
+        // Normalize and validate prefix
+        let prefix: string | undefined;
+        if (prefixParam) {
+          const trimmed = prefixParam.trim().replace(/\/+$/, "");
+          if (trimmed.length > 0) {
+            prefix = normalizeTag(trimmed);
+            if (!validateTag(prefix)) {
+              throw new Error(
+                `${MCP_ERRORS.INVALID_INPUT.code}: Invalid tag prefix "${prefixParam}"`
+              );
+            }
           }
         }
 
