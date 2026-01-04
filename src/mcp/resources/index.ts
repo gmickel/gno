@@ -10,10 +10,32 @@ import {
 } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { join as pathJoin } from "node:path";
 
-import type { DocumentRow } from "../../store/types";
+import type { DocumentRow, TagCount } from "../../store/types";
 import type { ToolContext } from "../server";
 
 import { buildUri, parseUri, URI_PREFIX } from "../../app/constants";
+
+// Tags resource URI prefix
+const TAGS_URI = `${URI_PREFIX}tags`;
+
+/**
+ * Format tag list as JSON for MCP resource content.
+ */
+function formatTagsContent(
+  tags: TagCount[],
+  collection?: string,
+  prefix?: string
+): string {
+  const result = {
+    tags,
+    meta: {
+      collection: collection || undefined,
+      prefix: prefix || undefined,
+      totalTags: tags.length,
+    },
+  };
+  return JSON.stringify(result, null, 2);
+}
 
 /**
  * Format document content with header comment and line numbers.
@@ -150,4 +172,52 @@ export function registerResources(server: McpServer, ctx: ToolContext): void {
       release();
     }
   });
+
+  // Register gno://tags resource for listing tags
+  // Supports query params: ?collection=x&prefix=work/
+  server.resource(
+    "gno-tags",
+    TAGS_URI,
+    { mimeType: "application/json" },
+    async (uri) => {
+      // Check shutdown before acquiring mutex
+      if (ctx.isShuttingDown()) {
+        throw new Error("Server is shutting down");
+      }
+
+      const release = await ctx.toolMutex.acquire();
+      try {
+        // Parse query params from URI
+        const url = new URL(uri.href);
+        const collection = url.searchParams.get("collection") || undefined;
+        const prefix = url.searchParams.get("prefix") || undefined;
+
+        // Validate collection exists if specified
+        if (collection) {
+          const exists = ctx.collections.some((c) => c.name === collection);
+          if (!exists) {
+            throw new Error(`Collection not found: ${collection}`);
+          }
+        }
+
+        // Get tag counts
+        const result = await ctx.store.getTagCounts({ collection, prefix });
+        if (!result.ok) {
+          throw new Error(`Failed to get tags: ${result.error.message}`);
+        }
+
+        return {
+          contents: [
+            {
+              uri: uri.href,
+              mimeType: "application/json",
+              text: formatTagsContent(result.value, collection, prefix),
+            },
+          ],
+        };
+      } finally {
+        release();
+      }
+    }
+  );
 }

@@ -28,6 +28,8 @@ interface VsearchInput {
   limit?: number;
   minScore?: number;
   lang?: string;
+  tagsAll?: string[];
+  tagsAny?: string[];
 }
 
 /**
@@ -186,6 +188,8 @@ export function handleVsearch(
             limit: args.limit ?? 5,
             minScore: args.minScore,
             collection: args.collection,
+            tagsAll: args.tagsAll,
+            tagsAny: args.tagsAny,
           }
         );
 

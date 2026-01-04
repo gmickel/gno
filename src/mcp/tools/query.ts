@@ -36,6 +36,8 @@ interface QueryInput {
   thorough?: boolean;
   expand?: boolean;
   rerank?: boolean;
+  tagsAll?: string[];
+  tagsAny?: string[];
 }
 
 /**
@@ -232,6 +234,8 @@ export function handleQuery(
           queryLanguageHint: args.lang, // Affects expansion prompt, not retrieval
           noExpand,
           noRerank,
+          tagsAll: args.tagsAll,
+          tagsAny: args.tagsAny,
         });
 
         if (!result.ok) {

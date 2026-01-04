@@ -11,6 +11,7 @@ const captureInputSchema = z.object({
   title: z.string().optional(),
   path: z.string().optional(),
   overwrite: z.boolean().default(false),
+  tags: z.array(z.string()).optional(),
 });
 
 describe("gno_capture schema", () => {
@@ -29,6 +30,24 @@ describe("gno_capture schema", () => {
       title: "My Title",
       path: "my-title.md",
       overwrite: true,
+    });
+    expect(result.success).toBe(true);
+  });
+
+  test("capture input accepts tags array", () => {
+    const result = captureInputSchema.safeParse({
+      collection: "notes",
+      content: "hello",
+      tags: ["work", "project"],
+    });
+    expect(result.success).toBe(true);
+  });
+
+  test("capture input accepts empty tags array", () => {
+    const result = captureInputSchema.safeParse({
+      collection: "notes",
+      content: "hello",
+      tags: [],
     });
     expect(result.success).toBe(true);
   });

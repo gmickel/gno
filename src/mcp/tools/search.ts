@@ -19,6 +19,8 @@ interface SearchInput {
   limit?: number;
   minScore?: number;
   lang?: string;
+  tagsAll?: string[];
+  tagsAny?: string[];
 }
 
 /**
@@ -102,6 +104,8 @@ export function handleSearch(
         minScore: args.minScore,
         collection: args.collection,
         lang: args.lang,
+        tagsAll: args.tagsAll,
+        tagsAny: args.tagsAny,
       });
 
       if (!result.ok) {
