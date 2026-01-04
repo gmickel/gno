@@ -486,7 +486,7 @@ export function TagInput({
             // Dropdown container - z-[60] to appear above modal buttons
             "absolute z-[60] mt-1 w-full",
             "max-h-[240px] overflow-auto",
-            "rounded-md border border-border/60 bg-[#0f1115]",
+            "rounded-md border border-border/60 bg-card",
             "shadow-lg shadow-black/30",
             // Fade in animation
             "animate-fade-in"
