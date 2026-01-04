@@ -910,9 +910,8 @@ export async function handleCreateDoc(
 
     await atomicWrite(fullPath, contentToWrite);
 
-    // Build proper file:// URI using node:url
-    const { pathToFileURL } = await import("node:url");
-    const fileUri = pathToFileURL(fullPath).href;
+    // Build gno:// URI for the created document
+    const gnoUri = `gno://${collection.name}/${normalizedRelPath}`;
 
     // Run sync via job system (non-blocking)
     const jobResult = startJob("sync", async (): Promise<SyncResult> => {
@@ -934,7 +933,7 @@ export async function handleCreateDoc(
 
     return jsonResponse(
       {
-        uri: fileUri,
+        uri: gnoUri,
         path: fullPath,
         jobId: jobResult.ok ? jobResult.jobId : null,
         note: jobResult.ok

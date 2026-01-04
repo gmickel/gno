@@ -17,7 +17,7 @@ DELETE /users/123       # Remove user
 
 ## Request/Response Format
 
-Always use JSON with consistent structure:
+Always use **JSON** with consistent structures:
 
 ```typescript
 // Success response

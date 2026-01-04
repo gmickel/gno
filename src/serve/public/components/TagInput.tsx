@@ -142,10 +142,31 @@ export function TagInput({
   const listboxId = `${instanceId}-listbox`;
   const getOptionId = (index: number) => `${instanceId}-option-${index}`;
 
-  // Fetch suggestions with debounce and sequencing
-  const fetchSuggestions = useCallback(
-    async (prefix: string, seq: number) => {
-      if (prefix.length === 0) {
+  // Cache all tags for client-side filtering
+  const [allTags, setAllTags] = useState<TagSuggestion[]>([]);
+  const hasFetchedAllTags = useRef(false);
+
+  // Max suggestions to show (perf cap)
+  const MAX_SUGGESTIONS = 100;
+
+  // Fetch all tags once on first interaction
+  const fetchAllTags = useCallback(async () => {
+    if (hasFetchedAllTags.current) return;
+
+    const { data, error } = await apiFetch<TagsResponse>("/api/tags");
+    if (error || !data) {
+      // Allow retry on failure
+      return;
+    }
+
+    hasFetchedAllTags.current = true;
+    setAllTags(data.tags);
+  }, []);
+
+  // Filter suggestions client-side for substring matching
+  const filterSuggestions = useCallback(
+    (query: string, seq: number) => {
+      if (query.length === 0) {
         setSuggestions([]);
         setIsOpen(false);
         return;
@@ -153,34 +174,32 @@ export function TagInput({
 
       setIsLoading(true);
 
-      // Normalize prefix for lookup (strip trailing slash for prefix query)
-      const queryPrefix = normalizeTag(prefix);
-      const { data, error: fetchError } = await apiFetch<TagsResponse>(
-        `/api/tags?prefix=${encodeURIComponent(queryPrefix)}`
-      );
-
       // Ignore stale responses
-      if (seq !== requestSeqRef.current) return;
-
-      setIsLoading(false);
-
-      if (fetchError || !data) {
-        setSuggestions([]);
+      if (seq !== requestSeqRef.current) {
+        setIsLoading(false);
         return;
       }
 
-      // Filter out already-selected tags
-      const filtered = data.tags.filter((s) => !value.includes(s.tag));
+      const normalizedQuery = normalizeTag(query);
+
+      // Filter tags that contain the query (substring match), cap for perf
+      const filtered = allTags
+        .filter(
+          (s) => s.tag.includes(normalizedQuery) && !value.includes(s.tag)
+        )
+        .slice(0, MAX_SUGGESTIONS);
+
       setSuggestions(filtered);
       setIsOpen(filtered.length > 0);
       setActiveIndex(-1);
+      setIsLoading(false);
 
       // Announce results
       if (filtered.length > 0) {
         setAnnouncement(`${filtered.length} tag suggestions available`);
       }
     },
-    [value]
+    [allTags, value]
   );
 
   // Debounce input changes with sequencing
@@ -191,11 +210,12 @@ export function TagInput({
 
     if (inputValue.length > 0) {
       const seq = ++requestSeqRef.current;
+      // Short debounce for client-side filtering (no network latency)
       fetchTimeoutRef.current = setTimeout(() => {
-        void fetchSuggestions(inputValue, seq);
-      }, 200);
+        filterSuggestions(inputValue, seq);
+      }, 50);
     } else {
-      // Increment seq so stale in-flight responses are ignored
+      // Increment seq so stale responses are ignored
       ++requestSeqRef.current;
       setSuggestions([]);
       setIsOpen(false);
@@ -206,7 +226,15 @@ export function TagInput({
         clearTimeout(fetchTimeoutRef.current);
       }
     };
-  }, [inputValue, fetchSuggestions]);
+  }, [inputValue, filterSuggestions]);
+
+  // Re-filter when allTags arrives (handles type-before-fetch-completes)
+  useEffect(() => {
+    if (allTags.length > 0 && inputValue.length > 0) {
+      const seq = ++requestSeqRef.current;
+      filterSuggestions(inputValue, seq);
+    }
+  }, [allTags]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Flatten suggestions for keyboard navigation
   const flatOptions = useMemo(
@@ -420,6 +448,8 @@ export function TagInput({
               setError(null);
             }}
             onFocus={() => {
+              // Fetch all tags on first focus for client-side filtering
+              void fetchAllTags();
               if (inputValue.length > 0 && flatOptions.length > 0) {
                 setIsOpen(true);
               }
@@ -453,11 +483,11 @@ export function TagInput({
       {isOpen && flatOptions.length > 0 && (
         <ul
           className={cn(
-            // Dropdown container
-            "absolute z-50 mt-1 w-full",
+            // Dropdown container - z-[60] to appear above modal buttons
+            "absolute z-[60] mt-1 w-full",
             "max-h-[240px] overflow-auto",
-            "rounded-md border border-border/60 bg-popover",
-            "shadow-lg shadow-black/20",
+            "rounded-md border border-border/60 bg-card",
+            "shadow-lg shadow-black/30",
             // Fade in animation
             "animate-fade-in"
           )}
