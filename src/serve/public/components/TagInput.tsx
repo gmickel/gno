@@ -340,11 +340,11 @@ export function TagInput({
           "flex min-h-[42px] flex-wrap items-center gap-1.5",
           "rounded-md border bg-card/50 px-2.5 py-1.5",
           "transition-all duration-200",
-          // Border states
+          // Border states - use border color only, no ring to avoid double border
           "border-border/60 hover:border-border",
-          "focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/20",
+          "focus-within:border-primary",
           // Error state
-          error && "border-destructive/50 ring-2 ring-destructive/20",
+          error && "border-destructive",
           // Disabled
           disabled && "cursor-not-allowed opacity-50"
         )}
