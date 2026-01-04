@@ -146,15 +146,21 @@ export function TagInput({
   const [allTags, setAllTags] = useState<TagSuggestion[]>([]);
   const hasFetchedAllTags = useRef(false);
 
+  // Max suggestions to show (perf cap)
+  const MAX_SUGGESTIONS = 100;
+
   // Fetch all tags once on first interaction
   const fetchAllTags = useCallback(async () => {
     if (hasFetchedAllTags.current) return;
-    hasFetchedAllTags.current = true;
 
-    const { data } = await apiFetch<TagsResponse>("/api/tags");
-    if (data) {
-      setAllTags(data.tags);
+    const { data, error } = await apiFetch<TagsResponse>("/api/tags");
+    if (error || !data) {
+      // Allow retry on failure
+      return;
     }
+
+    hasFetchedAllTags.current = true;
+    setAllTags(data.tags);
   }, []);
 
   // Filter suggestions client-side for substring matching
@@ -176,10 +182,12 @@ export function TagInput({
 
       const normalizedQuery = normalizeTag(query);
 
-      // Filter tags that contain the query (substring match)
-      const filtered = allTags.filter(
-        (s) => s.tag.includes(normalizedQuery) && !value.includes(s.tag)
-      );
+      // Filter tags that contain the query (substring match), cap for perf
+      const filtered = allTags
+        .filter(
+          (s) => s.tag.includes(normalizedQuery) && !value.includes(s.tag)
+        )
+        .slice(0, MAX_SUGGESTIONS);
 
       setSuggestions(filtered);
       setIsOpen(filtered.length > 0);
@@ -219,6 +227,14 @@ export function TagInput({
       }
     };
   }, [inputValue, filterSuggestions]);
+
+  // Re-filter when allTags arrives (handles type-before-fetch-completes)
+  useEffect(() => {
+    if (allTags.length > 0 && inputValue.length > 0) {
+      const seq = ++requestSeqRef.current;
+      filterSuggestions(inputValue, seq);
+    }
+  }, [allTags]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Flatten suggestions for keyboard navigation
   const flatOptions = useMemo(
