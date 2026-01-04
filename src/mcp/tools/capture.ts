@@ -15,11 +15,13 @@ import { buildUri } from "../../app/constants";
 import { MCP_ERRORS } from "../../core/errors";
 import { withWriteLock } from "../../core/file-lock";
 import { atomicWrite } from "../../core/file-ops";
+import { normalizeTag, validateTag } from "../../core/tags";
 import {
   normalizeCollectionName,
   validateRelPath,
 } from "../../core/validation";
 import { defaultSyncService } from "../../ingestion";
+import { updateFrontmatterTags } from "../../ingestion/frontmatter";
 import { extractTitle } from "../../pipeline/contextual";
 import { runTool, type ToolResult } from "./index";
 
@@ -29,6 +31,7 @@ interface CaptureInput {
   title?: string;
   path?: string;
   overwrite?: boolean;
+  tags?: string[];
 }
 
 interface CaptureResult {
@@ -40,6 +43,7 @@ interface CaptureResult {
   created: boolean;
   overwritten: boolean;
   serverInstanceId: string;
+  tags?: string[];
 }
 
 const SENSITIVE_SUBPATHS = new Set([
@@ -90,6 +94,9 @@ function formatCaptureResult(result: CaptureResult): string {
   lines.push(`Path: ${result.absPath}`);
   lines.push(`Created: ${result.created ? "yes" : "no"}`);
   lines.push(`Overwritten: ${result.overwritten ? "yes" : "no"}`);
+  if (result.tags && result.tags.length > 0) {
+    lines.push(`Tags: ${result.tags.join(", ")}`);
+  }
   return lines.join("\n");
 }
 
@@ -131,6 +138,22 @@ export function handleCapture(
 
         assertNotSensitive(relPath);
 
+        // Validate and normalize tags
+        let normalizedTags: string[] = [];
+        if (args.tags && args.tags.length > 0) {
+          for (const tag of args.tags) {
+            const normalized = normalizeTag(tag);
+            if (!validateTag(normalized)) {
+              throw new Error(
+                `${MCP_ERRORS.INVALID_INPUT.code}: Invalid tag "${tag}". Tags must be lowercase, alphanumeric with hyphens/dots/slashes.`
+              );
+            }
+            normalizedTags.push(normalized);
+          }
+          // Dedupe
+          normalizedTags = [...new Set(normalizedTags)];
+        }
+
         const absPath = join(collection.path, relPath);
         const file = Bun.file(absPath);
         const exists = await file.exists();
@@ -140,8 +163,17 @@ export function handleCapture(
           );
         }
 
+        // Update frontmatter with tags for Markdown files
+        let contentToWrite = args.content;
+        const isMarkdown =
+          relPath.endsWith(".md") || relPath.endsWith(".markdown");
+        if (isMarkdown && normalizedTags.length > 0) {
+          // Use shared utility that handles all frontmatter edge cases
+          contentToWrite = updateFrontmatterTags(args.content, normalizedTags);
+        }
+
         await mkdir(dirname(absPath), { recursive: true });
-        await atomicWrite(absPath, args.content);
+        await atomicWrite(absPath, contentToWrite);
 
         const results = await defaultSyncService.syncFiles(
           collection,
@@ -162,6 +194,7 @@ export function handleCapture(
         }
 
         let docid = syncResult.docid;
+        let documentId: number | undefined;
         if (!docid) {
           const docResult = await ctx.store.getDocument(
             collectionName,
@@ -174,7 +207,40 @@ export function handleCapture(
             throw new Error("RUNTIME: Document missing after sync");
           }
           docid = docResult.value.docid;
+          documentId = docResult.value.id;
+        } else {
+          // Get document id for tag storage
+          const docResult = await ctx.store.getDocument(
+            collectionName,
+            relPath
+          );
+          if (docResult.ok && docResult.value) {
+            documentId = docResult.value.id;
+          }
         }
+
+        // For non-markdown files, store tags as user-source in DB
+        // (Markdown files get tags from frontmatter during sync)
+        let tagsStored = isMarkdown; // Markdown tags stored via frontmatter sync
+        if (!isMarkdown && normalizedTags.length > 0 && documentId) {
+          const tagResult = await ctx.store.setDocTags(
+            documentId,
+            normalizedTags,
+            "user"
+          );
+          if (tagResult.ok) {
+            tagsStored = true;
+          } else {
+            // Log warning - document created but tags not stored
+            console.error(
+              `[MCP] Warning: Document created but tags not stored: ${tagResult.error.message}`
+            );
+          }
+        }
+
+        // Only include tags in response if confirmed stored
+        const confirmedTags =
+          tagsStored && normalizedTags.length > 0 ? normalizedTags : undefined;
 
         return {
           docid,
@@ -185,6 +251,7 @@ export function handleCapture(
           created: !exists,
           overwritten: exists,
           serverInstanceId: ctx.serverInstanceId,
+          tags: confirmedTags,
         };
       });
     },

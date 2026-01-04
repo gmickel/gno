@@ -37,4 +37,8 @@ export const MCP_ERRORS = {
     code: "HAS_REFERENCES",
     message: "Resource has references.",
   },
+  INVALID_INPUT: {
+    code: "INVALID_INPUT",
+    message: "Invalid input.",
+  },
 };

@@ -1222,11 +1222,13 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
       }
 
       if (options?.prefix) {
+        // Normalize prefix: trim trailing slashes to avoid double-slash in LIKE pattern
+        const normalizedPrefix = options.prefix.replace(/\/+$/, "");
         // Match tags starting with prefix (for hierarchical browsing)
         // Escape LIKE metacharacters (%, _, \) in prefix
-        const escapedPrefix = options.prefix.replace(/[%_\\]/g, "\\$&");
+        const escapedPrefix = normalizedPrefix.replace(/[%_\\]/g, "\\$&");
         conditions.push("(dt.tag = ? OR dt.tag LIKE ? ESCAPE '\\')");
-        params.push(options.prefix, `${escapedPrefix}/%`);
+        params.push(normalizedPrefix, `${escapedPrefix}/%`);
       }
 
       if (conditions.length > 0) {

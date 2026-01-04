@@ -110,6 +110,16 @@ BM25 keyword search over indexed documents.
     "lang": {
       "type": "string",
       "description": "Language filter (BCP-47 code)"
+    },
+    "tagsAll": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Only include docs with ALL specified tags"
+    },
+    "tagsAny": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Only include docs with ANY specified tag"
     }
   },
   "required": ["query"]
@@ -193,6 +203,16 @@ Vector semantic search over indexed documents.
     "lang": {
       "type": "string",
       "description": "Language hint for query (BCP-47 code)"
+    },
+    "tagsAll": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Only include docs with ALL specified tags"
+    },
+    "tagsAny": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Only include docs with ANY specified tag"
     }
   },
   "required": ["query"]
@@ -261,6 +281,16 @@ Hybrid search combining BM25 and vector retrieval with optional expansion and re
       "type": "boolean",
       "description": "Thorough mode: enable expansion (~5-8s)",
       "default": false
+    },
+    "tagsAll": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Only include docs with ALL specified tags"
+    },
+    "tagsAny": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Only include docs with ANY specified tag"
     }
   },
   "required": ["query"]
@@ -508,6 +538,11 @@ Create a new document in a collection (write-enabled).
       "type": "boolean",
       "description": "Overwrite existing file if true",
       "default": false
+    },
+    "tags": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Tags to apply to the document"
     }
   },
   "required": ["collection", "content"]
@@ -519,8 +554,61 @@ Create a new document in a collection (write-enabled).
 - Paths must be relative, no `..` escapes, no NUL bytes
 - Sensitive subpaths are rejected (`.ssh`, `.gnupg`, `.git`, `node_modules`, etc.)
 - If `path` is omitted, a `.md` filename is generated from the title or heading
+- Tags are validated and normalized to lowercase
+- For Markdown files, tags are added to frontmatter
+- For non-Markdown files, tags are stored as user-source in the database
 
 **Output Schema:** `gno://schemas/mcp-capture-result@1.0`
+
+---
+
+### gno_list_tags
+
+List all tags with document counts.
+
+**Input Schema:**
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "collection": {
+      "type": "string",
+      "description": "Filter by collection name"
+    },
+    "prefix": {
+      "type": "string",
+      "description": "Filter by tag prefix (e.g., 'work/' matches 'work/project')"
+    }
+  }
+}
+```
+
+**Output Schema:** `gno://schemas/tags-list@1.0`
+
+**Response:**
+
+```json
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "Found 5 tags:\n\n  work (10)\n  personal (5)\n  ..."
+    }
+  ],
+  "structuredContent": {
+    "tags": [
+      { "tag": "work", "count": 10 },
+      { "tag": "personal", "count": 5 }
+    ],
+    "meta": {
+      "collection": null,
+      "prefix": null,
+      "totalTags": 5
+    }
+  }
+}
+```
 
 ---
 
@@ -672,6 +760,39 @@ List active and recent jobs.
 ---
 
 ## Resources
+
+### gno://tags
+
+List all tags with document counts. Supports query parameters for filtering.
+
+**URI Pattern:** `gno://tags` or `gno://tags?collection=x&prefix=work/`
+
+**Query Parameters:**
+
+| Parameter    | Description                           |
+| ------------ | ------------------------------------- |
+| `collection` | Filter tags by collection name        |
+| `prefix`     | Filter tags by prefix (e.g., `work/`) |
+
+**Response:**
+
+MIME type: `application/json`
+
+```json
+{
+  "tags": [
+    { "tag": "work", "count": 10 },
+    { "tag": "personal", "count": 5 }
+  ],
+  "meta": {
+    "collection": null,
+    "prefix": null,
+    "totalTags": 2
+  }
+}
+```
+
+---
 
 ### gno://{collection}/{path}
 

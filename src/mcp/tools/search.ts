@@ -11,7 +11,7 @@ import type { ToolContext } from "../server";
 
 import { parseUri } from "../../app/constants";
 import { searchBm25 } from "../../pipeline/search";
-import { runTool, type ToolResult } from "./index";
+import { normalizeTagFilters, runTool, type ToolResult } from "./index";
 
 interface SearchInput {
   query: string;
@@ -19,6 +19,8 @@ interface SearchInput {
   limit?: number;
   minScore?: number;
   lang?: string;
+  tagsAll?: string[];
+  tagsAny?: string[];
 }
 
 /**
@@ -102,6 +104,8 @@ export function handleSearch(
         minScore: args.minScore,
         collection: args.collection,
         lang: args.lang,
+        tagsAll: normalizeTagFilters(args.tagsAll),
+        tagsAny: normalizeTagFilters(args.tagsAny),
       });
 
       if (!result.ok) {

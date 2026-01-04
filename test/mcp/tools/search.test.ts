@@ -13,6 +13,8 @@ describe("gno_search schema", () => {
     limit: z.number().int().min(1).max(100).default(5),
     minScore: z.number().min(0).max(1).optional(),
     lang: z.string().optional(),
+    tagsAll: z.array(z.string()).optional(),
+    tagsAny: z.array(z.string()).optional(),
   });
 
   test("search input requires non-empty query", () => {
@@ -58,6 +60,31 @@ describe("gno_search schema", () => {
       minScore: 1.5,
     });
     expect(result.success).toBe(false);
+  });
+
+  test("search input accepts tagsAll filter", () => {
+    const result = searchInputSchema.safeParse({
+      query: "test",
+      tagsAll: ["work", "urgent"],
+    });
+    expect(result.success).toBe(true);
+  });
+
+  test("search input accepts tagsAny filter", () => {
+    const result = searchInputSchema.safeParse({
+      query: "test",
+      tagsAny: ["work", "personal"],
+    });
+    expect(result.success).toBe(true);
+  });
+
+  test("search input accepts combined tag filters", () => {
+    const result = searchInputSchema.safeParse({
+      query: "test",
+      tagsAll: ["important"],
+      tagsAny: ["work", "personal"],
+    });
+    expect(result.success).toBe(true);
   });
 });
 

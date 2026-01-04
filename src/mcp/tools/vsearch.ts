@@ -20,7 +20,7 @@ import {
   type VectorSearchDeps,
 } from "../../pipeline/vsearch";
 import { createVectorIndexPort } from "../../store/vector";
-import { runTool, type ToolResult } from "./index";
+import { normalizeTagFilters, runTool, type ToolResult } from "./index";
 
 interface VsearchInput {
   query: string;
@@ -28,6 +28,8 @@ interface VsearchInput {
   limit?: number;
   minScore?: number;
   lang?: string;
+  tagsAll?: string[];
+  tagsAny?: string[];
 }
 
 /**
@@ -186,6 +188,8 @@ export function handleVsearch(
             limit: args.limit ?? 5,
             minScore: args.minScore,
             collection: args.collection,
+            tagsAll: normalizeTagFilters(args.tagsAll),
+            tagsAny: normalizeTagFilters(args.tagsAny),
           }
         );
 

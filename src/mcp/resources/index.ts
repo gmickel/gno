@@ -10,10 +10,35 @@ import {
 } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { join as pathJoin } from "node:path";
 
-import type { DocumentRow } from "../../store/types";
+import type { DocumentRow, TagCount } from "../../store/types";
 import type { ToolContext } from "../server";
 
 import { buildUri, parseUri, URI_PREFIX } from "../../app/constants";
+import { MCP_ERRORS } from "../../core/errors";
+import { normalizeTag, validateTag } from "../../core/tags";
+import { normalizeCollectionName } from "../../core/validation";
+
+// Tags resource URI prefix
+const TAGS_URI = `${URI_PREFIX}tags`;
+
+/**
+ * Format tag list as JSON for MCP resource content.
+ */
+function formatTagsContent(
+  tags: TagCount[],
+  collection?: string,
+  prefix?: string
+): string {
+  const result = {
+    tags,
+    meta: {
+      collection: collection || undefined,
+      prefix: prefix || undefined,
+      totalTags: tags.length,
+    },
+  };
+  return JSON.stringify(result, null, 2);
+}
 
 /**
  * Format document content with header comment and line numbers.
@@ -150,4 +175,88 @@ export function registerResources(server: McpServer, ctx: ToolContext): void {
       release();
     }
   });
+
+  // Register gno://tags resource for listing tags
+  // Use ResourceTemplate with RFC6570 query expansion for proper routing
+  const tagsTemplate = new ResourceTemplate(
+    `${URI_PREFIX}tags{?collection,prefix}`,
+    {
+      list: async () => ({
+        resources: [
+          {
+            uri: TAGS_URI,
+            name: "tags",
+            mimeType: "application/json",
+            description: "List all tags with document counts",
+          },
+        ],
+      }),
+    }
+  );
+
+  server.resource(
+    "gno-tags",
+    tagsTemplate,
+    { mimeType: "application/json" },
+    async (uri) => {
+      // Check shutdown before acquiring mutex
+      if (ctx.isShuttingDown()) {
+        throw new Error("Server is shutting down");
+      }
+
+      const release = await ctx.toolMutex.acquire();
+      try {
+        // Parse query params from URI
+        const url = new URL(uri.href);
+        const collectionParam = url.searchParams.get("collection") || undefined;
+        const prefixParam = url.searchParams.get("prefix") || undefined;
+
+        // Normalize and validate collection (case-insensitive)
+        let collection: string | undefined;
+        if (collectionParam) {
+          collection = normalizeCollectionName(collectionParam);
+          const exists = ctx.collections.some(
+            (c) => c.name.toLowerCase() === collection
+          );
+          if (!exists) {
+            throw new Error(
+              `${MCP_ERRORS.NOT_FOUND.code}: Collection not found: ${collectionParam}`
+            );
+          }
+        }
+
+        // Normalize and validate prefix
+        let prefix: string | undefined;
+        if (prefixParam) {
+          const trimmed = prefixParam.trim().replace(/\/+$/, "");
+          if (trimmed.length > 0) {
+            prefix = normalizeTag(trimmed);
+            if (!validateTag(prefix)) {
+              throw new Error(
+                `${MCP_ERRORS.INVALID_INPUT.code}: Invalid tag prefix "${prefixParam}"`
+              );
+            }
+          }
+        }
+
+        // Get tag counts
+        const result = await ctx.store.getTagCounts({ collection, prefix });
+        if (!result.ok) {
+          throw new Error(`Failed to get tags: ${result.error.message}`);
+        }
+
+        return {
+          contents: [
+            {
+              uri: uri.href,
+              mimeType: "application/json",
+              text: formatTagsContent(result.value, collection, prefix),
+            },
+          ],
+        };
+      } finally {
+        release();
+      }
+    }
+  );
 }

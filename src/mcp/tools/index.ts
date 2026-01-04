@@ -10,11 +10,13 @@ import { z } from "zod";
 
 import type { ToolContext } from "../server";
 
+import { normalizeTag } from "../../core/tags";
 import { handleAddCollection } from "./add-collection";
 import { handleCapture } from "./capture";
 import { handleGet } from "./get";
 import { handleJobStatus } from "./job-status";
 import { handleListJobs } from "./list-jobs";
+import { handleListTags } from "./list-tags";
 import { handleMultiGet } from "./multi-get";
 import { handleQuery } from "./query";
 import { handleRemoveCollection } from "./remove-collection";
@@ -22,6 +24,19 @@ import { handleSearch } from "./search";
 import { handleStatus } from "./status";
 import { handleSync } from "./sync";
 import { handleVsearch } from "./vsearch";
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Shared Helpers
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Normalize and dedupe tag filter arrays.
+ * Returns undefined if empty, normalized array otherwise.
+ */
+export function normalizeTagFilters(tags?: string[]): string[] | undefined {
+  if (!tags?.length) return undefined;
+  return [...new Set(tags.map(normalizeTag))];
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Shared Input Schemas
@@ -33,6 +48,8 @@ const searchInputSchema = z.object({
   limit: z.number().int().min(1).max(100).default(5),
   minScore: z.number().min(0).max(1).optional(),
   lang: z.string().optional(),
+  tagsAll: z.array(z.string()).optional(),
+  tagsAny: z.array(z.string()).optional(),
 });
 
 const captureInputSchema = z.object({
@@ -41,6 +58,7 @@ const captureInputSchema = z.object({
   title: z.string().optional(),
   path: z.string().optional(),
   overwrite: z.boolean().default(false),
+  tags: z.array(z.string()).optional(),
 });
 
 const addCollectionInputSchema = z.object({
@@ -68,6 +86,8 @@ const vsearchInputSchema = z.object({
   limit: z.number().int().min(1).max(100).default(5),
   minScore: z.number().min(0).max(1).optional(),
   lang: z.string().optional(),
+  tagsAll: z.array(z.string()).optional(),
+  tagsAny: z.array(z.string()).optional(),
 });
 
 const queryInputSchema = z.object({
@@ -80,6 +100,8 @@ const queryInputSchema = z.object({
   thorough: z.boolean().default(false),
   expand: z.boolean().default(false), // Default: skip expansion
   rerank: z.boolean().default(true),
+  tagsAll: z.array(z.string()).optional(),
+  tagsAny: z.array(z.string()).optional(),
 });
 
 const getInputSchema = z.object({
@@ -104,6 +126,11 @@ const jobStatusInputSchema = z.object({
 
 const listJobsInputSchema = z.object({
   limit: z.number().int().min(1).max(100).default(10),
+});
+
+const listTagsInputSchema = z.object({
+  collection: z.string().optional(),
+  prefix: z.string().optional(),
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -218,6 +245,13 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
     "Get index status and health information",
     statusInputSchema.shape,
     (args) => handleStatus(args, ctx)
+  );
+
+  server.tool(
+    "gno_list_tags",
+    "List tags with document counts",
+    listTagsInputSchema.shape,
+    (args) => handleListTags(args, ctx)
   );
 
   if (ctx.enableWrite) {

@@ -24,7 +24,7 @@ import {
   createVectorIndexPort,
   type VectorIndexPort,
 } from "../../store/vector";
-import { runTool, type ToolResult } from "./index";
+import { normalizeTagFilters, runTool, type ToolResult } from "./index";
 
 interface QueryInput {
   query: string;
@@ -36,6 +36,8 @@ interface QueryInput {
   thorough?: boolean;
   expand?: boolean;
   rerank?: boolean;
+  tagsAll?: string[];
+  tagsAny?: string[];
 }
 
 /**
@@ -232,6 +234,8 @@ export function handleQuery(
           queryLanguageHint: args.lang, // Affects expansion prompt, not retrieval
           noExpand,
           noRerank,
+          tagsAll: normalizeTagFilters(args.tagsAll),
+          tagsAny: normalizeTagFilters(args.tagsAny),
         });
 
         if (!result.ok) {
