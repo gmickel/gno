@@ -130,12 +130,20 @@ type FtsChunksResult =
 async function searchFtsChunks(
   store: StorePort,
   query: string,
-  options: { limit: number; collection?: string; lang?: string }
+  options: {
+    limit: number;
+    collection?: string;
+    lang?: string;
+    tagsAll?: string[];
+    tagsAny?: string[];
+  }
 ): Promise<FtsChunksResult> {
   const result = await store.searchFts(query, {
     limit: options.limit,
     collection: options.collection,
     language: options.lang,
+    tagsAll: options.tagsAll,
+    tagsAny: options.tagsAny,
   });
   if (!result.ok) {
     // Propagate INVALID_INPUT for FTS syntax errors
@@ -270,6 +278,8 @@ export async function searchHybrid(
     limit: limit * 2,
     collection: options.collection,
     lang: options.lang,
+    tagsAll: options.tagsAll,
+    tagsAny: options.tagsAny,
   });
 
   // Propagate FTS syntax errors as INVALID_INPUT
@@ -291,6 +301,8 @@ export async function searchHybrid(
         limit,
         collection: options.collection,
         lang: options.lang,
+        tagsAll: options.tagsAll,
+        tagsAny: options.tagsAny,
       });
       if (variantResult.ok && variantResult.chunks.length > 0) {
         rankedInputs.push(toRankedInput("bm25_variant", variantResult.chunks));

@@ -1,0 +1,48 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "gno://schemas/tags-list@1.0",
+  "title": "GNO Tags List",
+  "description": "List of tags with document counts",
+  "type": "object",
+  "required": ["tags", "meta"],
+  "properties": {
+    "tags": {
+      "type": "array",
+      "description": "List of tags with counts",
+      "items": {
+        "type": "object",
+        "required": ["tag", "count"],
+        "properties": {
+          "tag": {
+            "type": "string",
+            "description": "Tag name (lowercase, alphanumeric with hyphens/dots/slashes)"
+          },
+          "count": {
+            "type": "integer",
+            "description": "Number of documents with this tag",
+            "minimum": 1
+          }
+        }
+      }
+    },
+    "meta": {
+      "type": "object",
+      "required": ["total"],
+      "properties": {
+        "total": {
+          "type": "integer",
+          "description": "Total number of unique tags",
+          "minimum": 0
+        },
+        "collection": {
+          "type": "string",
+          "description": "Collection filter applied"
+        },
+        "prefix": {
+          "type": "string",
+          "description": "Prefix filter applied"
+        }
+      }
+    }
+  }
+}

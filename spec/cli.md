@@ -83,6 +83,9 @@ Default output is human-readable terminal format.
 | skill uninstall    | yes    | no      | no    | no   | no    | terminal |
 | skill show         | no     | no      | no    | no   | no    | terminal |
 | skill paths        | yes    | no      | no    | no   | no    | terminal |
+| tags list          | yes    | no      | no    | yes  | no    | terminal |
+| tags add           | yes    | no      | no    | no   | no    | terminal |
+| tags rm            | yes    | no      | no    | no   | no    | terminal |
 | serve              | no     | no      | no    | no   | no    | terminal |
 | completion         | no     | no      | no    | no   | no    | terminal |
 | completion install | yes    | no      | no    | no   | no    | terminal |
@@ -435,7 +438,7 @@ BM25 keyword search over indexed documents.
 **Synopsis:**
 
 ```bash
-gno search <query> [-n <num>] [--min-score <num>] [-c <collection>] [--full] [--line-numbers] [--lang <bcp47>] [--json|--files|--csv|--md|--xml]
+gno search <query> [-n <num>] [--min-score <num>] [-c <collection>] [--tags-all <tags>] [--tags-any <tags>] [--full] [--line-numbers] [--lang <bcp47>] [--json|--files|--csv|--md|--xml]
 ```
 
 **Arguments:**
@@ -450,6 +453,8 @@ gno search <query> [-n <num>] [--min-score <num>] [-c <collection>] [--full] [--
 | `-n`               | integer | 5 (20 for --json/--files) | Max results                                    |
 | `--min-score`      | number  | 0                         | Minimum score threshold                        |
 | `-c, --collection` | string  | all                       | Filter to collection                           |
+| `--tags-all`       | string  | none                      | Filter to docs with ALL tags (comma-separated) |
+| `--tags-any`       | string  | none                      | Filter to docs with ANY tag (comma-separated)  |
 | `--full`           | boolean | false                     | Include full mirror content instead of snippet |
 | `--line-numbers`   | boolean | false                     | Include line numbers in output                 |
 | `--lang`           | string  | auto                      | Language filter/hint (BCP-47)                  |
@@ -494,10 +499,10 @@ Vector semantic search over indexed documents.
 **Synopsis:**
 
 ```bash
-gno vsearch <query> [-n <num>] [--min-score <num>] [-c <collection>] [--full] [--line-numbers] [--lang <bcp47>] [--json|--files|--csv|--md|--xml]
+gno vsearch <query> [-n <num>] [--min-score <num>] [-c <collection>] [--tags-all <tags>] [--tags-any <tags>] [--full] [--line-numbers] [--lang <bcp47>] [--json|--files|--csv|--md|--xml]
 ```
 
-**Options:** Same as `gno search`
+**Options:** Same as `gno search` (including `--tags-all` and `--tags-any` for tag filtering)
 
 **Scoring:**
 
@@ -523,8 +528,10 @@ Hybrid search combining BM25 and vector retrieval with optional expansion and re
 **Synopsis:**
 
 ```bash
-gno query <query> [-n <num>] [--min-score <num>] [-c <collection>] [--full] [--line-numbers] [--lang <bcp47>] [--no-expand] [--no-rerank] [--explain] [--json|--files|--csv|--md|--xml]
+gno query <query> [-n <num>] [--min-score <num>] [-c <collection>] [--tags-all <tags>] [--tags-any <tags>] [--full] [--line-numbers] [--lang <bcp47>] [--no-expand] [--no-rerank] [--explain] [--json|--files|--csv|--md|--xml]
 ```
+
+**Options:** Same as `gno search`, plus:
 
 **Additional Options:**
 | Option | Type | Description |
@@ -1373,6 +1380,135 @@ gno skill paths [--scope <project|user>] [--target <claude|codex|all>] [--json]
 **Exit Codes:**
 
 - 0: Success
+
+---
+
+### gno tags list
+
+List all tags with document counts.
+
+**Synopsis:**
+
+```bash
+gno tags [list] [-c, --collection <name>] [--prefix <prefix>] [--json] [--md]
+```
+
+**Options:**
+
+| Option             | Type   | Description               |
+| ------------------ | ------ | ------------------------- |
+| `-c, --collection` | string | Filter by collection name |
+| `--prefix`         | string | Filter by tag prefix      |
+| `--json`           | flag   | JSON output               |
+| `--md`             | flag   | Markdown output           |
+
+**Output (JSON):**
+
+```json
+{
+  "tags": [
+    { "tag": "javascript", "count": 15 },
+    { "tag": "python", "count": 8 }
+  ],
+  "meta": {
+    "total": 25,
+    "collection": "notes",
+    "prefix": "java"
+  }
+}
+```
+
+**Exit Codes:**
+
+- 0: Success
+
+---
+
+### gno tags add
+
+Add a tag to a document.
+
+**Synopsis:**
+
+```bash
+gno tags add <doc> <tag> [--json]
+```
+
+**Arguments:**
+
+- `<doc>` - Document reference (docid or URI)
+- `<tag>` - Tag to add (normalized to lowercase)
+
+**Options:**
+
+| Option   | Type | Description |
+| -------- | ---- | ----------- |
+| `--json` | flag | JSON output |
+
+**Behavior:**
+
+- Validates tag format (lowercase alphanumeric with hyphens/dots/slashes)
+- Adds tag to document in database with source='user'
+- For markdown files, also updates frontmatter tags
+- Idempotent: succeeds if tag already exists
+
+**Output (JSON):**
+
+```json
+{
+  "docid": "abc123",
+  "tag": "javascript",
+  "wroteToFile": true
+}
+```
+
+**Exit Codes:**
+
+- 0: Success
+- 1: Invalid tag format or document not found
+
+---
+
+### gno tags rm
+
+Remove a tag from a document.
+
+**Synopsis:**
+
+```bash
+gno tags rm <doc> <tag> [--json]
+```
+
+**Arguments:**
+
+- `<doc>` - Document reference (docid or URI)
+- `<tag>` - Tag to remove
+
+**Options:**
+
+| Option   | Type | Description |
+| -------- | ---- | ----------- |
+| `--json` | flag | JSON output |
+
+**Behavior:**
+
+- Removes tag from document in database
+- For markdown files with frontmatter tags, also updates the file
+
+**Output (JSON):**
+
+```json
+{
+  "docid": "abc123",
+  "tag": "javascript",
+  "removedFromFile": true
+}
+```
+
+**Exit Codes:**
+
+- 0: Success
+- 1: Tag not found on document or document not found
 
 ---
 

@@ -143,6 +143,8 @@ export async function searchBm25(
     collection: options.collection,
     language: options.lang,
     snippet: !(options.full || options.lineNumbers),
+    tagsAll: options.tagsAll,
+    tagsAny: options.tagsAny,
   });
 
   if (!ftsResult.ok) {

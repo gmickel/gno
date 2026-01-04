@@ -96,6 +96,10 @@ export interface SearchOptions {
   full?: boolean;
   /** Include line numbers */
   lineNumbers?: boolean;
+  /** Filter to docs with ALL of these tags (AND) */
+  tagsAll?: string[];
+  /** Filter to docs with ANY of these tags (OR) */
+  tagsAny?: string[];
 }
 
 /** Options for hybrid search (gno query) */

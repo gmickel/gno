@@ -31,6 +31,7 @@ export const CMD = {
   contextList: "context.list",
   contextCheck: "context.check",
   modelsList: "models.list",
+  tagsList: "tags.list",
 } as const;
 
 export type CommandId = (typeof CMD)[keyof typeof CMD];
@@ -48,6 +49,7 @@ const FORMAT_SUPPORT: Record<CommandId, OutputFormat[]> = {
   [CMD.contextList]: ["terminal", "json", "md"],
   [CMD.contextCheck]: ["terminal", "json", "md"],
   [CMD.modelsList]: ["terminal", "json"],
+  [CMD.tagsList]: ["terminal", "json", "md"],
 };
 
 // ─────────────────────────────────────────────────────────────────────────────

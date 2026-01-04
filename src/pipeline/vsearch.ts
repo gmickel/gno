@@ -91,8 +91,12 @@ export async function searchVectorWithEmbedding(
     }
   }
 
-  // Cache docs to avoid N+1 queries
-  const docByMirrorHash = await buildDocumentMap(store, options.collection);
+  // Cache docs to avoid N+1 queries (filtered by collection and tags)
+  const docByMirrorHash = await buildDocumentMap(store, {
+    collection: options.collection,
+    tagsAll: options.tagsAll,
+    tagsAny: options.tagsAny,
+  });
 
   // Pre-fetch all chunks in one batch query (eliminates N+1)
   const uniqueHashes = [...new Set(vecResults.map((v) => v.mirrorHash))];
@@ -311,35 +315,68 @@ interface DocumentInfo {
 // Helper: Build document map by mirrorHash
 // ─────────────────────────────────────────────────────────────────────────────
 
+interface DocumentMapOptions {
+  collection?: string;
+  tagsAll?: string[];
+  tagsAny?: string[];
+}
+
 async function buildDocumentMap(
   store: StorePort,
-  collectionFilter?: string
+  options: DocumentMapOptions = {}
 ): Promise<Map<string, DocumentInfo>> {
   const result = new Map<string, DocumentInfo>();
 
-  const docs = await store.listDocuments(collectionFilter);
+  const docs = await store.listDocuments(options.collection);
   if (!docs.ok) {
     return result;
   }
 
   for (const doc of docs.value) {
-    if (doc.mirrorHash && doc.active) {
-      result.set(doc.mirrorHash, {
-        docid: doc.docid,
-        uri: doc.uri,
-        title: doc.title,
-        collection: doc.collection,
-        relPath: doc.relPath,
-        sourceHash: doc.sourceHash,
-        sourceMime: doc.sourceMime,
-        sourceExt: doc.sourceExt,
-        sourceMtime: doc.sourceMtime,
-        sourceSize: doc.sourceSize,
-        mirrorHash: doc.mirrorHash,
-        converterId: doc.converterId,
-        converterVersion: doc.converterVersion,
-      });
+    if (!doc.mirrorHash || !doc.active) {
+      continue;
     }
+
+    // Apply tag filters if specified
+    if (options.tagsAll?.length || options.tagsAny?.length) {
+      const tagsResult = await store.getTagsForDoc(doc.id);
+      if (!tagsResult.ok) {
+        continue;
+      }
+      const docTags = new Set(tagsResult.value.map((t) => t.tag));
+
+      // tagsAll: doc must have ALL specified tags
+      if (options.tagsAll?.length) {
+        const hasAll = options.tagsAll.every((t) => docTags.has(t));
+        if (!hasAll) {
+          continue;
+        }
+      }
+
+      // tagsAny: doc must have at least one of the specified tags
+      if (options.tagsAny?.length) {
+        const hasAny = options.tagsAny.some((t) => docTags.has(t));
+        if (!hasAny) {
+          continue;
+        }
+      }
+    }
+
+    result.set(doc.mirrorHash, {
+      docid: doc.docid,
+      uri: doc.uri,
+      title: doc.title,
+      collection: doc.collection,
+      relPath: doc.relPath,
+      sourceHash: doc.sourceHash,
+      sourceMime: doc.sourceMime,
+      sourceExt: doc.sourceExt,
+      sourceMtime: doc.sourceMtime,
+      sourceSize: doc.sourceSize,
+      mirrorHash: doc.mirrorHash,
+      converterId: doc.converterId,
+      converterVersion: doc.converterVersion,
+    });
   }
 
   return result;
