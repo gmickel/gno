@@ -231,4 +231,80 @@ describe("EmbedScheduler", () => {
 
     scheduler.dispose();
   });
+
+  test("notify during running schedules rerun (Critical #2 regression)", async () => {
+    // Create embed port with controlled async behavior
+    let embedResolve:
+      | ((value: { ok: true; value: number[][] }) => void)
+      | null = null;
+    const embedPromise = new Promise<{ ok: true; value: number[][] }>(
+      (resolve) => {
+        embedResolve = resolve;
+      }
+    );
+
+    const slowEmbedPort = {
+      embed: mock(() => Promise.resolve({ ok: true, value: [0.1, 0.2, 0.3] })),
+      embedBatch: mock(() => embedPromise),
+      dimensions: () => 3,
+      init: () => Promise.resolve({ ok: true }),
+      dispose: () => Promise.resolve(),
+    } as unknown as EmbeddingPort;
+
+    // Mock DB that returns one backlog item on first call, empty on second
+    let backlogCalls = 0;
+    const mockDb = {
+      prepare: () => ({
+        all: () => {
+          backlogCalls++;
+          return backlogCalls === 1
+            ? [
+                {
+                  mirrorHash: "hash1",
+                  seq: 0,
+                  text: "test",
+                  title: "Test",
+                  reason: "new",
+                },
+              ]
+            : [];
+        },
+        get: () => ({ count: 1 }),
+      }),
+    } as never;
+
+    const scheduler = createEmbedScheduler({
+      db: mockDb,
+      getEmbedPort: () => slowEmbedPort,
+      getVectorIndex: () => createMockVectorIndex(),
+      getModelUri: () => "test-model",
+    });
+
+    // Start first run (will block on embedBatch)
+    scheduler.notifySyncComplete(["doc1"]);
+    const runPromise = scheduler.triggerNow();
+
+    // Allow microtask to start the run
+    await Promise.resolve();
+
+    // While running, notify again
+    scheduler.notifySyncComplete(["doc2", "doc3"]);
+
+    // Pending should accumulate during run
+    const midRunState = scheduler.getState();
+    expect(midRunState.running).toBe(true);
+    expect(midRunState.pendingDocCount).toBe(2); // doc2, doc3 accumulated
+
+    // Complete the first run
+    embedResolve!({ ok: true, value: [[0.1, 0.2, 0.3]] });
+    await runPromise;
+
+    // After run, pendingCount should still be 2 (not cleared) and rerun scheduled
+    const postRunState = scheduler.getState();
+    expect(postRunState.running).toBe(false);
+    expect(postRunState.pendingDocCount).toBe(2);
+    expect(postRunState.nextRunAt).toBeDefined(); // Rerun scheduled
+
+    scheduler.dispose();
+  });
 });

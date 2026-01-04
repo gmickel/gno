@@ -243,23 +243,25 @@ export function createEmbedScheduler(deps: EmbedSchedulerDeps): EmbedScheduler {
     pendingCount = 0;
     firstPendingAt = null;
 
+    let result: EmbedResult;
     try {
-      const result = await runEmbed();
-
-      // Check if we need to rerun (notifications arrived while running)
-      if ((needsRerun || pendingCount > 0) && !disposed) {
-        needsRerun = false;
-        // Set firstPendingAt if we have pending work
-        if (pendingCount > 0 && firstPendingAt === null) {
-          firstPendingAt = Date.now();
-        }
-        scheduleRun();
-      }
-
-      return result;
+      result = await runEmbed();
     } finally {
       running = false;
     }
+
+    // Check if we need to rerun (notifications arrived while running)
+    // Must be AFTER running=false so scheduleRun() actually schedules
+    if ((needsRerun || pendingCount > 0) && !disposed) {
+      needsRerun = false;
+      // Set firstPendingAt if we have pending work
+      if (pendingCount > 0 && firstPendingAt === null) {
+        firstPendingAt = Date.now();
+      }
+      scheduleRun();
+    }
+
+    return result;
   }
 
   return {
