@@ -345,10 +345,15 @@ export async function tagsList(
   }
   const { store } = initResult;
 
+  // Normalize prefix to match tag storage (lowercase, trimmed)
+  const normalizedPrefix = options.prefix
+    ? normalizeTag(options.prefix)
+    : undefined;
+
   try {
     const result = await store.getTagCounts({
       collection: options.collection,
-      prefix: options.prefix,
+      prefix: normalizedPrefix,
     });
 
     if (!result.ok) {
@@ -362,7 +367,7 @@ export async function tagsList(
         meta: {
           total: result.value.length,
           collection: options.collection,
-          prefix: options.prefix,
+          prefix: normalizedPrefix,
         },
       },
     };

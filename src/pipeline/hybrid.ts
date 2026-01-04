@@ -224,6 +224,11 @@ export async function searchHybrid(
   const explainLines: ExplainLine[] = [];
   let expansion: ExpansionResult | null = null;
 
+  // When tag filters are present, increase retrieval limits since vector results
+  // are filtered post-retrieval and we need more candidates to fill the limit
+  const hasTagFilters = options.tagsAll?.length || options.tagsAny?.length;
+  const retrievalMultiplier = hasTagFilters ? 3 : 1;
+
   // ─────────────────────────────────────────────────────────────────────────
   // 0. Detect query language for PROMPT SELECTION only
   //    CRITICAL: Detection does NOT change retrieval filters - options.lang does
@@ -327,9 +332,9 @@ export async function searchHybrid(
     (vectorIndex?.searchAvailable && embedPort !== null) ?? false;
 
   if (vectorAvailable && vectorIndex && embedPort) {
-    // Original query
+    // Original query (increase limit when tag filters active since filtering is post-retrieval)
     const vecChunks = await searchVectorChunks(vectorIndex, embedPort, query, {
-      limit: limit * 2,
+      limit: limit * 2 * retrievalMultiplier,
     });
 
     vecCount = vecChunks.length;
@@ -344,7 +349,7 @@ export async function searchHybrid(
           vectorIndex,
           embedPort,
           variant,
-          { limit }
+          { limit: limit * retrievalMultiplier }
         );
         if (variantChunks.length > 0) {
           rankedInputs.push(toRankedInput("vector_variant", variantChunks));
@@ -358,7 +363,7 @@ export async function searchHybrid(
         vectorIndex,
         embedPort,
         expansion.hyde,
-        { limit }
+        { limit: limit * retrievalMultiplier }
       );
       if (hydeChunks.length > 0) {
         rankedInputs.push(toRankedInput("hyde", hydeChunks));
