@@ -556,8 +556,24 @@ export async function handleTags(
   store: SqliteAdapter,
   url: URL
 ): Promise<Response> {
-  const collection = url.searchParams.get("collection") || undefined;
-  const prefix = url.searchParams.get("prefix") || undefined;
+  const collectionRaw = url.searchParams.get("collection") || undefined;
+  const prefixRaw = url.searchParams.get("prefix") || undefined;
+
+  // Normalize collection to lowercase if provided
+  const collection = collectionRaw?.toLowerCase();
+
+  // Validate and normalize prefix using tag grammar
+  let prefix: string | undefined;
+  if (prefixRaw) {
+    const normalized = normalizeTag(prefixRaw);
+    if (!validateTag(normalized)) {
+      return errorResponse(
+        "VALIDATION",
+        `Invalid prefix: "${prefixRaw}". Must follow tag format.`
+      );
+    }
+    prefix = normalized;
+  }
 
   const result = await store.getTagCounts({ collection, prefix });
 
@@ -686,9 +702,16 @@ export async function handleUpdateDoc(
     );
   }
 
-  // Resolve full path
+  // Validate and resolve full path
+  // Critical: validate relPath from DB to prevent path traversal attacks
   const nodePath = await import("node:path"); // no bun equivalent
-  const fullPath = nodePath.join(collection.path, doc.relPath);
+  let safeRelPath: string;
+  try {
+    safeRelPath = validateRelPath(doc.relPath);
+  } catch {
+    return errorResponse("VALIDATION", "Invalid document relPath in DB", 400);
+  }
+  const fullPath = nodePath.join(collection.path, safeRelPath);
 
   // Verify file exists
   const file = Bun.file(fullPath);
