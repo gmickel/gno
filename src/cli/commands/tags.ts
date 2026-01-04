@@ -5,6 +5,7 @@
  * @module src/cli/commands/tags
  */
 
+import { open, unlink } from "node:fs/promises"; // No Bun equivalents for atomic create/unlink
 import { dirname, join as pathJoin } from "node:path"; // No Bun path utils
 
 import type { TagCount } from "../../store/types";
@@ -80,6 +81,7 @@ const LOCK_RETRY_DELAY = 100; // 100ms between retries
 
 /**
  * Acquire a file lock for safe concurrent writes.
+ * Uses O_EXCL for atomic creation - fails if file exists.
  * Returns unlock function on success, throws on timeout.
  */
 async function acquireLock(dirPath: string): Promise<() => Promise<void>> {
@@ -88,22 +90,27 @@ async function acquireLock(dirPath: string): Promise<() => Promise<void>> {
 
   while (Date.now() - startTime < LOCK_TIMEOUT) {
     try {
-      // Attempt atomic create - fails if exists
-      await Bun.write(lockPath, `${process.pid}\n`, { createPath: false });
-      // Lock acquired
+      // Attempt atomic create with O_EXCL - fails if file exists
+      const fd = await open(lockPath, "wx");
+      await fd.write(`${process.pid}\n`);
+      await fd.close();
+
+      // Lock acquired - return unlock function
       return async () => {
         try {
-          const file = Bun.file(lockPath);
-          if (await file.exists()) {
-            await Bun.$`rm -f ${lockPath}`;
-          }
+          await unlink(lockPath);
         } catch {
-          // Ignore cleanup errors
+          // Ignore cleanup errors (file may already be deleted)
         }
       };
-    } catch {
-      // Lock exists, wait and retry
-      await Bun.sleep(LOCK_RETRY_DELAY);
+    } catch (error) {
+      // EEXIST means lock exists, wait and retry
+      if ((error as NodeJS.ErrnoException).code === "EEXIST") {
+        await Bun.sleep(LOCK_RETRY_DELAY);
+        continue;
+      }
+      // Other errors (ENOENT for missing dir, etc.) - rethrow
+      throw error;
     }
   }
 
@@ -580,6 +587,16 @@ export async function tagsRm(
           }
         }
       }
+    }
+
+    // If tag is from frontmatter and we couldn't update the file, error
+    // (tag will reappear on next sync otherwise)
+    if (existingTag.source === "frontmatter" && !removedFromFile) {
+      return {
+        success: false,
+        error: `Cannot remove frontmatter tag "${tag}" - file is not writable or not markdown`,
+        isValidation: true,
+      };
     }
 
     return {

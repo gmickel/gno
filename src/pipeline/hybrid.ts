@@ -89,12 +89,19 @@ const STRONG_GAP = 0.14; // Clear separation from #2
 async function checkBm25Strength(
   store: StorePort,
   query: string,
-  options?: { collection?: string; lang?: string }
+  options?: {
+    collection?: string;
+    lang?: string;
+    tagsAll?: string[];
+    tagsAny?: string[];
+  }
 ): Promise<boolean> {
   const result = await store.searchFts(query, {
     limit: 5,
     collection: options?.collection,
     language: options?.lang,
+    tagsAll: options?.tagsAll,
+    tagsAny: options?.tagsAny,
   });
 
   if (!result.ok || result.value.length === 0) {
@@ -249,6 +256,8 @@ export async function searchHybrid(
     const hasStrongSignal = await checkBm25Strength(store, query, {
       collection: options.collection,
       lang: options.lang,
+      tagsAll: options.tagsAll,
+      tagsAny: options.tagsAny,
     });
 
     if (hasStrongSignal) {
@@ -412,9 +421,49 @@ export async function searchHybrid(
 
   // Build lookup maps - only include docs needed by candidates
   const docByMirrorHash = new Map<string, (typeof docsResult.value)[number]>();
+
+  // Collect doc IDs that need tag filtering
+  const needsTagFilter = options.tagsAll?.length || options.tagsAny?.length;
+  const docIdsForTagCheck: number[] = [];
+  const candidateDocs: (typeof docsResult.value)[number][] = [];
+
   for (const doc of docsResult.value) {
     if (doc.active && doc.mirrorHash && neededHashes.has(doc.mirrorHash)) {
-      docByMirrorHash.set(doc.mirrorHash, doc);
+      if (needsTagFilter) {
+        docIdsForTagCheck.push(doc.id);
+        candidateDocs.push(doc);
+      } else {
+        docByMirrorHash.set(doc.mirrorHash, doc);
+      }
+    }
+  }
+
+  // Apply tag filters if needed (batch fetch to avoid N+1)
+  if (needsTagFilter && docIdsForTagCheck.length > 0) {
+    const tagsResult = await store.getTagsBatch(docIdsForTagCheck);
+    if (tagsResult.ok) {
+      const tagsByDocId = tagsResult.value;
+      for (const doc of candidateDocs) {
+        const docTags = new Set(
+          (tagsByDocId.get(doc.id) ?? []).map((t) => t.tag)
+        );
+
+        // tagsAll: doc must have ALL specified tags
+        if (options.tagsAll?.length) {
+          const hasAll = options.tagsAll.every((t) => docTags.has(t));
+          if (!hasAll) continue;
+        }
+
+        // tagsAny: doc must have at least one of the specified tags
+        if (options.tagsAny?.length) {
+          const hasAny = options.tagsAny.some((t) => docTags.has(t));
+          if (!hasAny) continue;
+        }
+
+        if (doc.mirrorHash) {
+          docByMirrorHash.set(doc.mirrorHash, doc);
+        }
+      }
     }
   }
 
@@ -471,6 +520,11 @@ export async function searchHybrid(
       chunk = docChunks?.[0];
     }
     if (!chunk) {
+      continue;
+    }
+
+    // STRICT --lang filter: require exact match (excludes null/undefined)
+    if (options.lang && chunk.language !== options.lang) {
       continue;
     }
 

@@ -1131,6 +1131,53 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
   }
 
   /**
+   * Get tags for multiple documents in a single query.
+   * Returns a map of documentId -> TagRow[].
+   */
+  async getTagsBatch(
+    documentIds: number[]
+  ): Promise<StoreResult<Map<number, TagRow[]>>> {
+    try {
+      const db = this.ensureOpen();
+
+      if (documentIds.length === 0) {
+        return ok(new Map());
+      }
+
+      interface DbTagRow {
+        document_id: number;
+        tag: string;
+        source: "frontmatter" | "user";
+      }
+
+      // Use parameterized IN clause to prevent SQL injection
+      const placeholders = documentIds.map(() => "?").join(", ");
+      const rows = db
+        .query<DbTagRow, number[]>(
+          `SELECT document_id, tag, source FROM doc_tags
+           WHERE document_id IN (${placeholders}) ORDER BY document_id, tag`
+        )
+        .all(...documentIds);
+
+      // Group by document_id
+      const result = new Map<number, TagRow[]>();
+      for (const row of rows) {
+        const existing = result.get(row.document_id) ?? [];
+        existing.push({ tag: row.tag, source: row.source });
+        result.set(row.document_id, existing);
+      }
+
+      return ok(result);
+    } catch (cause) {
+      return err(
+        "QUERY_FAILED",
+        cause instanceof Error ? cause.message : "Failed to get tags batch",
+        cause
+      );
+    }
+  }
+
+  /**
    * Get tag counts across all active documents.
    * Optionally filter by collection or tag prefix.
    */

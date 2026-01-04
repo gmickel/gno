@@ -560,6 +560,14 @@ export interface StorePort {
   getTagsForDoc(documentId: number): Promise<StoreResult<TagRow[]>>;
 
   /**
+   * Get tags for multiple documents in a single query.
+   * Returns a map of documentId -> TagRow[].
+   */
+  getTagsBatch(
+    documentIds: number[]
+  ): Promise<StoreResult<Map<number, TagRow[]>>>;
+
+  /**
    * Get tag counts across all active documents.
    * Optionally filter by collection or tag prefix.
    */

@@ -14,7 +14,7 @@ import {
   PRODUCT_NAME,
   VERSION,
 } from "../app/constants";
-import { parseTagFilter } from "../core/tags";
+import { parseAndValidateTagFilter } from "../core/tags";
 import { setColorsEnabled } from "./colors";
 import {
   applyGlobalOptions,
@@ -224,13 +224,22 @@ function wireSearchCommands(program: Command): void {
         throw new CliError("VALIDATION", "--min-score must be between 0 and 1");
       }
 
-      // Parse tag filters
-      const tagsAll = cmdOpts.tagsAll
-        ? parseTagFilter(cmdOpts.tagsAll as string)
-        : undefined;
-      const tagsAny = cmdOpts.tagsAny
-        ? parseTagFilter(cmdOpts.tagsAny as string)
-        : undefined;
+      // Parse and validate tag filters
+      let tagsAll: string[] | undefined;
+      let tagsAny: string[] | undefined;
+      try {
+        tagsAll = cmdOpts.tagsAll
+          ? parseAndValidateTagFilter(cmdOpts.tagsAll as string)
+          : undefined;
+        tagsAny = cmdOpts.tagsAny
+          ? parseAndValidateTagFilter(cmdOpts.tagsAny as string)
+          : undefined;
+      } catch (error) {
+        throw new CliError(
+          "VALIDATION",
+          error instanceof Error ? error.message : "Invalid tag filter"
+        );
+      }
 
       const limit = cmdOpts.limit
         ? parsePositiveInt("limit", cmdOpts.limit)
@@ -305,13 +314,22 @@ function wireSearchCommands(program: Command): void {
         throw new CliError("VALIDATION", "--min-score must be between 0 and 1");
       }
 
-      // Parse tag filters
-      const tagsAll = cmdOpts.tagsAll
-        ? parseTagFilter(cmdOpts.tagsAll as string)
-        : undefined;
-      const tagsAny = cmdOpts.tagsAny
-        ? parseTagFilter(cmdOpts.tagsAny as string)
-        : undefined;
+      // Parse and validate tag filters
+      let tagsAll: string[] | undefined;
+      let tagsAny: string[] | undefined;
+      try {
+        tagsAll = cmdOpts.tagsAll
+          ? parseAndValidateTagFilter(cmdOpts.tagsAll as string)
+          : undefined;
+        tagsAny = cmdOpts.tagsAny
+          ? parseAndValidateTagFilter(cmdOpts.tagsAny as string)
+          : undefined;
+      } catch (error) {
+        throw new CliError(
+          "VALIDATION",
+          error instanceof Error ? error.message : "Invalid tag filter"
+        );
+      }
 
       const limit = cmdOpts.limit
         ? parsePositiveInt("limit", cmdOpts.limit)
@@ -386,13 +404,22 @@ function wireSearchCommands(program: Command): void {
         throw new CliError("VALIDATION", "--min-score must be between 0 and 1");
       }
 
-      // Parse tag filters
-      const tagsAll = cmdOpts.tagsAll
-        ? parseTagFilter(cmdOpts.tagsAll as string)
-        : undefined;
-      const tagsAny = cmdOpts.tagsAny
-        ? parseTagFilter(cmdOpts.tagsAny as string)
-        : undefined;
+      // Parse and validate tag filters
+      let tagsAll: string[] | undefined;
+      let tagsAny: string[] | undefined;
+      try {
+        tagsAll = cmdOpts.tagsAll
+          ? parseAndValidateTagFilter(cmdOpts.tagsAll as string)
+          : undefined;
+        tagsAny = cmdOpts.tagsAny
+          ? parseAndValidateTagFilter(cmdOpts.tagsAny as string)
+          : undefined;
+      } catch (error) {
+        throw new CliError(
+          "VALIDATION",
+          error instanceof Error ? error.message : "Invalid tag filter"
+        );
+      }
 
       const limit = cmdOpts.limit
         ? parsePositiveInt("limit", cmdOpts.limit)

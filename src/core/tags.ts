@@ -69,7 +69,7 @@ export function validateTag(tag: string): boolean {
 
 /**
  * Parse a comma-separated tag filter string into an array of normalized tags.
- * Empty strings and invalid tags are filtered out.
+ * Empty strings are filtered out. Does NOT validate - use parseAndValidateTagFilter for strict parsing.
  */
 export function parseTagFilter(filter: string): string[] {
   if (filter.trim().length === 0) {
@@ -80,4 +80,23 @@ export function parseTagFilter(filter: string): string[] {
     .split(",")
     .map((t) => normalizeTag(t))
     .filter((t) => t.length > 0);
+}
+
+/**
+ * Parse and validate a comma-separated tag filter string.
+ * Returns array of normalized, validated tags.
+ * Throws Error if any tag is invalid.
+ */
+export function parseAndValidateTagFilter(filter: string): string[] {
+  const tags = parseTagFilter(filter);
+
+  for (const tag of tags) {
+    if (!validateTag(tag)) {
+      throw new Error(
+        `Invalid tag: "${tag}". Tags must be lowercase, alphanumeric with hyphens/dots/slashes.`
+      );
+    }
+  }
+
+  return tags;
 }

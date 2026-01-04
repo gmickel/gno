@@ -332,37 +332,50 @@ async function buildDocumentMap(
     return result;
   }
 
-  for (const doc of docs.value) {
-    if (!doc.mirrorHash || !doc.active) {
+  // Filter active docs with mirrorHash
+  const activeDocs = docs.value.filter((d) => d.mirrorHash && d.active);
+
+  // Apply tag filters if specified (batch fetch to avoid N+1)
+  const needsTagFilter = options.tagsAll?.length || options.tagsAny?.length;
+  let allowedDocIds: Set<number> | null = null;
+
+  if (needsTagFilter && activeDocs.length > 0) {
+    const docIds = activeDocs.map((d) => d.id);
+    const tagsResult = await store.getTagsBatch(docIds);
+
+    if (tagsResult.ok) {
+      allowedDocIds = new Set<number>();
+      const tagsByDocId = tagsResult.value;
+
+      for (const doc of activeDocs) {
+        const docTags = new Set(
+          (tagsByDocId.get(doc.id) ?? []).map((t) => t.tag)
+        );
+
+        // tagsAll: doc must have ALL specified tags
+        if (options.tagsAll?.length) {
+          const hasAll = options.tagsAll.every((t) => docTags.has(t));
+          if (!hasAll) continue;
+        }
+
+        // tagsAny: doc must have at least one of the specified tags
+        if (options.tagsAny?.length) {
+          const hasAny = options.tagsAny.some((t) => docTags.has(t));
+          if (!hasAny) continue;
+        }
+
+        allowedDocIds.add(doc.id);
+      }
+    }
+  }
+
+  for (const doc of activeDocs) {
+    // Skip if tag filter excluded this doc
+    if (allowedDocIds !== null && !allowedDocIds.has(doc.id)) {
       continue;
     }
 
-    // Apply tag filters if specified
-    if (options.tagsAll?.length || options.tagsAny?.length) {
-      const tagsResult = await store.getTagsForDoc(doc.id);
-      if (!tagsResult.ok) {
-        continue;
-      }
-      const docTags = new Set(tagsResult.value.map((t) => t.tag));
-
-      // tagsAll: doc must have ALL specified tags
-      if (options.tagsAll?.length) {
-        const hasAll = options.tagsAll.every((t) => docTags.has(t));
-        if (!hasAll) {
-          continue;
-        }
-      }
-
-      // tagsAny: doc must have at least one of the specified tags
-      if (options.tagsAny?.length) {
-        const hasAny = options.tagsAny.some((t) => docTags.has(t));
-        if (!hasAny) {
-          continue;
-        }
-      }
-    }
-
-    result.set(doc.mirrorHash, {
+    result.set(doc.mirrorHash!, {
       docid: doc.docid,
       uri: doc.uri,
       title: doc.title,
