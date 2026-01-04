@@ -80,21 +80,18 @@ describe("sqlite-vec integration", () => {
           seq: 0,
           model: "test-model",
           embedding: new Float32Array([1.0, 0.0, 0.0, 0.0]), // Unit vector in x
-          embeddedAt: new Date().toISOString(),
         },
         {
           mirrorHash: "doc2",
           seq: 0,
           model: "test-model",
           embedding: new Float32Array([0.0, 1.0, 0.0, 0.0]), // Unit vector in y
-          embeddedAt: new Date().toISOString(),
         },
         {
           mirrorHash: "doc3",
           seq: 0,
           model: "test-model",
           embedding: new Float32Array([0.9, 0.1, 0.0, 0.0]), // Close to doc1
-          embeddedAt: new Date().toISOString(),
         },
       ];
 
@@ -208,7 +205,6 @@ describe("sqlite-vec integration", () => {
           seq: 0,
           model: "rebuild-test",
           embedding: new Float32Array([1, 0, 0, 0]),
-          embeddedAt: new Date().toISOString(),
         },
       ]);
 

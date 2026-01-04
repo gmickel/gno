@@ -99,13 +99,12 @@ export async function embedBacklog(
         continue;
       }
 
-      // Store vectors
+      // Store vectors (embeddedAt set by DB)
       const vectors: VectorRow[] = batch.map((b: BacklogItem, idx: number) => ({
         mirrorHash: b.mirrorHash,
         seq: b.seq,
         model: modelUri,
         embedding: new Float32Array(embeddings[idx] as number[]),
-        embeddedAt: new Date().toISOString(),
       }));
 
       const storeResult = await vectorIndex.upsertVectors(vectors);

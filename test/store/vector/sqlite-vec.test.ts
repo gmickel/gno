@@ -121,14 +121,12 @@ describe("createVectorIndexPort", () => {
         seq: 0,
         model: "test-model",
         embedding: new Float32Array([1.0, 2.0, 3.0, 4.0]),
-        embeddedAt: new Date().toISOString(),
       },
       {
         mirrorHash: "hash1",
         seq: 1,
         model: "test-model",
         embedding: new Float32Array([5.0, 6.0, 7.0, 8.0]),
-        embeddedAt: new Date().toISOString(),
       },
     ];
 
@@ -161,7 +159,6 @@ describe("createVectorIndexPort", () => {
         seq: 0,
         model: "test-model",
         embedding: new Float32Array([1.0, 2.0, 3.0, 4.0]),
-        embeddedAt: new Date().toISOString(),
       },
     ]);
 
@@ -172,7 +169,6 @@ describe("createVectorIndexPort", () => {
         seq: 0,
         model: "test-model",
         embedding: new Float32Array([9.0, 9.0, 9.0, 9.0]),
-        embeddedAt: new Date().toISOString(),
       },
     ]);
 
@@ -202,14 +198,12 @@ describe("createVectorIndexPort", () => {
         seq: 0,
         model: "test-model",
         embedding: new Float32Array([1, 2, 3, 4]),
-        embeddedAt: new Date().toISOString(),
       },
       {
         mirrorHash: "hash2",
         seq: 0,
         model: "test-model",
         embedding: new Float32Array([5, 6, 7, 8]),
-        embeddedAt: new Date().toISOString(),
       },
     ]);
 

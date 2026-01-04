@@ -17,7 +17,7 @@ export interface VectorRow {
   seq: number;
   model: string;
   embedding: Float32Array;
-  embeddedAt: string;
+  // embeddedAt is set by DB via datetime('now')
 }
 
 /** Vector search result */

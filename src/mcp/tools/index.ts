@@ -78,9 +78,7 @@ const syncInputSchema = z.object({
   runUpdateCmd: z.boolean().default(false),
 });
 
-const embedInputSchema = z.object({
-  force: z.boolean().default(false),
-});
+const embedInputSchema = z.object({});
 
 const indexInputSchema = z.object({
   collection: z.string().optional(),

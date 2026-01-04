@@ -161,13 +161,12 @@ async function processBatches(ctx: BatchContext): Promise<BatchResult> {
       continue;
     }
 
-    // Store vectors
+    // Store vectors (embeddedAt set by DB)
     const vectors: VectorRow[] = batch.map((b, idx) => ({
       mirrorHash: b.mirrorHash,
       seq: b.seq,
       model: ctx.modelUri,
       embedding: new Float32Array(embeddings[idx] as number[]),
-      embeddedAt: new Date().toISOString(),
     }));
 
     const storeResult = await ctx.vectorIndex.upsertVectors(vectors);

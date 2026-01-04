@@ -765,13 +765,7 @@ Generate embeddings for unembedded chunks (write-enabled). Runs as background jo
 ```json
 {
   "type": "object",
-  "properties": {
-    "force": {
-      "type": "boolean",
-      "description": "Re-embed all chunks (default: false, backlog only)",
-      "default": false
-    }
-  }
+  "properties": {}
 }
 ```
 

@@ -18,9 +18,7 @@ import {
 } from "../../store/vector";
 import { runTool, type ToolResult } from "./index";
 
-interface EmbedInput {
-  force?: boolean;
-}
+type EmbedInput = Record<string, never>;
 
 interface EmbedResultOutput {
   jobId: string;
@@ -84,12 +82,12 @@ export function handleEmbed(
             const embedPort = embedResult.value;
 
             try {
-              // Probe dimensions
-              const probeResult = await embedPort.embed("dimension probe");
-              if (!probeResult.ok) {
-                throw new Error(probeResult.error.message);
+              // Initialize and get dimensions from port interface
+              const initResult = await embedPort.init();
+              if (!initResult.ok) {
+                throw new Error(initResult.error.message);
               }
-              const dimensions = probeResult.value.length;
+              const dimensions = embedPort.dimensions();
 
               // Create vector index port
               const db = ctx.store.getRawDb();

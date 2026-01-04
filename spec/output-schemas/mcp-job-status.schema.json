@@ -120,6 +120,62 @@
           "minimum": 0
         }
       }
+    },
+    "embedResult": {
+      "type": "object",
+      "required": ["embedded", "errors"],
+      "properties": {
+        "embedded": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of chunks embedded"
+        },
+        "errors": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of chunks that failed"
+        }
+      }
+    },
+    "indexResult": {
+      "type": "object",
+      "required": ["sync", "embed"],
+      "properties": {
+        "sync": {
+          "$ref": "#/$defs/syncResult"
+        },
+        "embed": {
+          "$ref": "#/$defs/embedResult"
+        }
+      }
+    },
+    "typedResult": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["kind", "value"],
+          "properties": {
+            "kind": { "const": "sync" },
+            "value": { "$ref": "#/$defs/syncResult" }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["kind", "value"],
+          "properties": {
+            "kind": { "const": "embed" },
+            "value": { "$ref": "#/$defs/embedResult" }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["kind", "value"],
+          "properties": {
+            "kind": { "const": "index" },
+            "value": { "$ref": "#/$defs/indexResult" }
+          }
+        }
+      ]
     }
   },
   "properties": {
@@ -130,7 +186,7 @@
     "type": {
       "type": "string",
       "description": "Job type",
-      "enum": ["add", "sync"]
+      "enum": ["add", "sync", "embed", "index"]
     },
     "status": {
       "type": "string",
@@ -148,7 +204,12 @@
       "format": "date-time"
     },
     "result": {
+      "description": "Legacy sync result (deprecated, use typedResult)",
       "$ref": "#/$defs/syncResult"
+    },
+    "typedResult": {
+      "description": "Typed job result (discriminated union)",
+      "$ref": "#/$defs/typedResult"
     },
     "error": {
       "type": "string",
