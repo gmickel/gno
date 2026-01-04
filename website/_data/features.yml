@@ -107,6 +107,23 @@
     - "curl /api/query -d '{...}'"
     - "curl /api/models/pull -X POST"
 
+- slug: tags
+  title: Tag System
+  headline: Classify and Filter Your Knowledge
+  description: Add tags to documents for instant filtering. Automatic frontmatter extraction, hierarchical tags, and powerful AND/OR filters across CLI, Web UI, and MCP.
+  icon: tag
+  benefits:
+    - Auto-extract from frontmatter
+    - Hierarchical tags (project/api, status/review)
+    - Filter with --tags-any (OR) or --tags-all (AND)
+    - Tag autocomplete in Web UI
+    - Write-back to markdown frontmatter
+    - MCP tools for AI agents
+  commands:
+    - "gno search 'query' --tags-any bug,feature"
+    - "gno query 'topic' --tags-all status/active"
+    - "gno tag set doc.md api,v2"
+
 - slug: collections
   title: Collections
   headline: Organize Your Knowledge

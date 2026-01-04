@@ -84,3 +84,24 @@ MCP tests in `test/mcp/`:
 ```bash
 bun test test/mcp/
 ```
+
+## Tag Tools
+
+Tag management via MCP:
+
+- `gno.list_tags` - List all tags with doc counts, optional collection filter
+- `gno.tag` - Add/remove tags from documents
+
+```typescript
+// gno.list_tags
+{ collection?: string }  // optional filter
+// Returns: { tags: [{ name, count }] }
+
+// gno.tag
+{ action: "add" | "remove", path: string, tags: string[] }
+// Returns: { success, tags: [...current tags] }
+```
+
+- Tags in search/query tools: `--tags` param filters by tag (AND logic)
+- Validation via `src/core/tags.ts`: normalizeTag(), validateTag()
+- Storage: `doc_tags` junction table with `source` column (frontmatter|user)

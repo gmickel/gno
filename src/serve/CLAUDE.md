@@ -79,12 +79,14 @@ Answer generation uses shared module to stay in sync with CLI:
 | `/api/presets`       | POST   | Switch preset (hot-reload) |
 | `/api/models/status` | GET    | Download progress          |
 | `/api/models/pull`   | POST   | Start model download       |
+| `/api/tags`          | GET    | List tags (with counts)    |
 
 ## Frontend
 
 - **Framework**: React (via Bun HTML imports)
 - **Styling**: Tailwind CSS + ShadCN components
 - **AI Elements**: Conversation, Message, Sources, CodeBlock, Loader
+- **Tag Components**: TagInput, TagFacets (filter sidebar)
 - **Routing**: Simple hash-free SPA routing in App.tsx
 
 ## Development
@@ -178,3 +180,22 @@ bun --hot ./index.ts
 ```
 
 For more information, read the Bun API docs in `node_modules/bun-types/docs/**.md`.
+
+## Tag System
+
+REST endpoints support tag filtering:
+
+- `GET /api/tags` - List all tags with doc counts
+- `POST /api/search`, `/api/query`, `/api/ask` - Accept `tags` array param
+
+WebUI state:
+
+- TagFacets component shows available tags with counts
+- TagInput for adding/removing tags on documents
+- Selected tags filter search results (AND logic)
+
+Implementation:
+
+- Tags stored in `doc_tags` junction table with `source` (frontmatter|user)
+- Validation via `src/core/tags.ts`
+- Frontmatter parsing in `src/ingestion/frontmatter.ts`

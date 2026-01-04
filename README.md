@@ -303,20 +303,21 @@ graph TD
 
 ## Features
 
-| Feature             | Description                                           |
-| :------------------ | :---------------------------------------------------- |
-| **Hybrid Search**   | BM25 + vector + RRF fusion + cross-encoder reranking  |
-| **Document Editor** | Create, edit, delete docs with live markdown preview  |
-| **Web UI**          | Visual dashboard for search, browse, edit, and AI Q&A |
-| **REST API**        | HTTP API for custom tools and integrations            |
-| **Multi-Format**    | Markdown, PDF, DOCX, XLSX, PPTX, plain text           |
-| **Local LLM**       | AI answers via llama.cpp, no API keys                 |
-| **Privacy First**   | 100% offline, zero telemetry, your data stays yours   |
-| **MCP Server**      | Works with Claude Desktop, Cursor, Zed, + 8 more      |
-| **Collections**     | Organize sources with patterns, excludes, contexts    |
-| **Multilingual**    | 30+ languages, auto-detection, cross-lingual search   |
-| **Incremental**     | SHA-256 tracking, only changed files re-indexed       |
-| **Keyboard First**  | ⌘N capture, ⌘K search, ⌘/ shortcuts, ⌘S save          |
+| Feature             | Description                                                                    |
+| :------------------ | :----------------------------------------------------------------------------- |
+| **Hybrid Search**   | BM25 + vector + RRF fusion + cross-encoder reranking                           |
+| **Document Editor** | Create, edit, delete docs with live markdown preview                           |
+| **Web UI**          | Visual dashboard for search, browse, edit, and AI Q&A                          |
+| **REST API**        | HTTP API for custom tools and integrations                                     |
+| **Multi-Format**    | Markdown, PDF, DOCX, XLSX, PPTX, plain text                                    |
+| **Local LLM**       | AI answers via llama.cpp, no API keys                                          |
+| **Privacy First**   | 100% offline, zero telemetry, your data stays yours                            |
+| **MCP Server**      | Works with Claude Desktop, Cursor, Zed, + 8 more                               |
+| **Collections**     | Organize sources with patterns, excludes, contexts                             |
+| **Tag Filtering**   | Frontmatter tags with hierarchical paths, filter via `--tags-any`/`--tags-all` |
+| **Multilingual**    | 30+ languages, auto-detection, cross-lingual search                            |
+| **Incremental**     | SHA-256 tracking, only changed files re-indexed                                |
+| **Keyboard First**  | ⌘N capture, ⌘K search, ⌘/ shortcuts, ⌘S save                                   |
 
 ---
 

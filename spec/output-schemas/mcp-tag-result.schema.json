@@ -1,0 +1,33 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "gno://schemas/mcp-tag-result@1.0",
+  "title": "GNO MCP Tag Result",
+  "description": "Result from gno_tag tool (add/remove tag)",
+  "type": "object",
+  "required": ["docid", "uri", "tag", "action"],
+  "properties": {
+    "docid": {
+      "type": "string",
+      "description": "Document ID",
+      "pattern": "^#[a-f0-9]{6,8}$"
+    },
+    "uri": {
+      "type": "string",
+      "description": "Document URI",
+      "pattern": "^gno://[^/]+/.+"
+    },
+    "tag": {
+      "type": "string",
+      "description": "Tag that was added or removed"
+    },
+    "action": {
+      "type": "string",
+      "enum": ["add", "remove"],
+      "description": "Action performed"
+    },
+    "wroteToFile": {
+      "type": "boolean",
+      "description": "Whether frontmatter was updated in source file"
+    }
+  }
+}

@@ -493,6 +493,7 @@ GET /api/docs?collection=notes&limit=20&offset=0&tagsAll=work&tagsAny=urgent,mee
       "relPath": "projects/readme.md",
       "sourceExt": ".md",
       "sourceMime": "text/markdown",
+      "tags": ["work", "project/alpha"],
       "updatedAt": "2025-01-15T09:00:00Z"
     }
   ],
@@ -533,6 +534,7 @@ GET /api/doc?uri=gno://notes/projects/readme.md
   "contentAvailable": true,
   "collection": "notes",
   "relPath": "projects/readme.md",
+  "tags": ["work", "project/alpha"],
   "source": {
     "mime": "text/markdown",
     "ext": ".md",
@@ -764,6 +766,7 @@ Keyword search using BM25 algorithm.
       "uri": "gno://notes/auth.md",
       "title": "Authentication Guide",
       "collection": "notes",
+      "tags": ["backend", "auth"],
       "score": 0.87,
       "chunk": {
         "text": "...relevant text snippet...",
@@ -836,6 +839,7 @@ Combined BM25 + vector search with optional reranking. **Recommended for best re
       "uri": "gno://notes/auth.md",
       "title": "Authentication Guide",
       "collection": "notes",
+      "tags": ["backend", "auth"],
       "score": 0.92,
       "chunk": {
         "text": "...relevant text snippet...",

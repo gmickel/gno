@@ -86,6 +86,25 @@ gno collection add ~/work/projects --name projects --pattern "**/*.md"
 gno index
 ```
 
+### Tag Your Documents
+
+Tags are extracted from markdown frontmatter automatically. You can also manage them via CLI:
+
+```bash
+# List all tags
+gno tags
+
+# Add tags to a document
+gno tags add abc123 work project/alpha
+
+# Remove a tag
+gno tags rm abc123 draft
+
+# Search with tag filters
+gno query "auth" --tags-all backend,security
+gno query "meeting" --tags-any urgent,priority
+```
+
 ### Re-Index After Changes
 
 ```bash

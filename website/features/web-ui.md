@@ -61,6 +61,17 @@ Choose the right tool for the job:
 | **Vector** | Concepts, natural language    |
 | **Hybrid** | Best accuracy (recommended)   |
 
+### Tag Filtering
+
+Filter search results visually with the tag system:
+
+- **Sidebar facets**: See all tags with document counts, click to filter
+- **Filter chips**: Active filters appear above results, click X to remove
+- **Tag autocomplete**: When editing, get suggestions from existing tags
+- **AND/OR modes**: Toggle between match-any and match-all filtering
+
+Tags are extracted automatically from markdown frontmatter. Manage tags directly in the document editor or via the sidebar.
+
 ### AI Answers
 
 Type a question, get a cited answer:

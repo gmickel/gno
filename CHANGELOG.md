@@ -5,6 +5,19 @@ All notable changes to GNO will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **Tag System** - Organize and filter documents by tags
+  - Frontmatter tag extraction during sync (`tags:` field in markdown)
+  - Hierarchical tags with `/` separator (e.g., `project/web`, `status/draft`)
+  - `gno tags` CLI commands: `list`, `add`, `rm` for tag management
+  - `--tags-any`/`--tags-all` flags on search/vsearch/query/ask for OR/AND filtering
+  - REST API: `GET /api/tags` endpoint, tag filtering params on search endpoints
+  - MCP tools: `gno.list_tags` for tag discovery, `gno.tag` for add/remove
+  - WebUI: TagInput with autocomplete, TagFacets sidebar for filtering, filter chips display
+
 ## [0.9.6] - 2026-01-03
 
 ### Fixed

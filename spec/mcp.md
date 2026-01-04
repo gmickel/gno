@@ -612,6 +612,72 @@ List all tags with document counts.
 
 ---
 
+### gno_tag
+
+Add or remove a tag from a document (write-enabled).
+
+**Input Schema:**
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "ref": {
+      "type": "string",
+      "description": "Document reference: gno:// URI, collection/path, or #docid"
+    },
+    "tag": {
+      "type": "string",
+      "description": "Tag to add or remove (lowercase alphanumeric with hyphens/dots/slashes)"
+    },
+    "action": {
+      "type": "string",
+      "enum": ["add", "remove"],
+      "description": "Action to perform",
+      "default": "add"
+    }
+  },
+  "required": ["ref", "tag"]
+}
+```
+
+**Output Schema:** `gno://schemas/mcp-tag-result@1.0`
+
+**Response:**
+
+```json
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "Added tag 'javascript' to #a1b2c3d4"
+    }
+  ],
+  "structuredContent": {
+    "docid": "#a1b2c3d4",
+    "uri": "gno://notes/doc.md",
+    "tag": "javascript",
+    "action": "add",
+    "wroteToFile": true
+  }
+}
+```
+
+**Behavior:**
+
+- Validates tag format (lowercase alphanumeric with hyphens/dots/slashes for hierarchy)
+- For add: Creates tag association with source='user'; updates frontmatter for markdown files
+- For remove: Deletes tag association; updates frontmatter for markdown files
+- Idempotent: add succeeds if tag exists, remove succeeds if tag absent
+
+**Errors:**
+
+- Document not found: returns `isError: true`
+- Invalid tag format: returns `isError: true`
+- Invalid ref format: returns `isError: true`
+
+---
+
 ### gno_add_collection
 
 Add a folder as a new collection and start indexing (write-enabled).

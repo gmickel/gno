@@ -12,6 +12,7 @@
 --   content_vectors   - Embeddings per chunk per model (EPIC 7)
 --   llm_cache         - Cached LLM responses (EPIC 6+)
 --   ingest_errors     - Conversion/indexing error records
+--   doc_tags          - Document tags (frontmatter and user-added)
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- Schema Metadata
@@ -202,3 +203,22 @@ CREATE TABLE IF NOT EXISTS ingest_errors (
 
 CREATE INDEX IF NOT EXISTS idx_ingest_errors_occurred ON ingest_errors(occurred_at DESC);
 CREATE INDEX IF NOT EXISTS idx_ingest_errors_collection ON ingest_errors(collection, rel_path);
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Document Tags
+-- ─────────────────────────────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS doc_tags (
+  doc_id INTEGER NOT NULL,
+  tag TEXT NOT NULL COLLATE NOCASE,   -- Tag name (lowercase alphanumeric, hyphens, dots, slashes)
+  source TEXT NOT NULL DEFAULT 'frontmatter',  -- 'frontmatter' or 'user'
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  PRIMARY KEY (doc_id, tag),
+  FOREIGN KEY (doc_id) REFERENCES documents(id) ON DELETE CASCADE
+);
+
+-- Tag grammar: lowercase, alphanumeric, hyphens, dots, slashes for hierarchy
+-- Examples: javascript, project/web, status/draft, lang.en
+
+CREATE INDEX IF NOT EXISTS idx_doc_tags_tag ON doc_tags(tag);
+CREATE INDEX IF NOT EXISTS idx_doc_tags_source ON doc_tags(source);

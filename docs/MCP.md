@@ -10,8 +10,8 @@ Use GNO as an MCP server for AI assistants like Claude Desktop, Cursor, and othe
 
 MCP (Model Context Protocol) allows AI assistants to access external tools and resources. GNO provides:
 
-- **Tools (read)**: gno_search, gno_vsearch, gno_query, gno_get, gno_multi_get, gno_status
-- **Tools (write, opt-in)**: gno_capture, gno_add_collection, gno_sync, gno_remove_collection
+- **Tools (read)**: gno_search, gno_vsearch, gno_query, gno_get, gno_multi_get, gno_status, gno_list_tags
+- **Tools (write, opt-in)**: gno_capture, gno_add_collection, gno_sync, gno_remove_collection, gno_tag
 - **Tools (jobs)**: gno_job_status, gno_list_jobs
 - **Resources**: Access documents via `gno://collection/path`
 
@@ -521,6 +521,8 @@ Hybrid search (BM25 + vector).
 
 ```
 Query: "database optimization"
+tagsAll: "backend,work"   # Optional: must have ALL tags
+tagsAny: "urgent,priority"  # Optional: must have ANY tag
 ```
 
 **Search modes** (via parameters):
@@ -580,6 +582,29 @@ Check async job status.
 
 List active and recent jobs.
 
+### gno_list_tags
+
+List all tags with document counts.
+
+```
+collection: "notes"  # Optional: filter by collection
+prefix: "project"    # Optional: filter by tag prefix
+```
+
+Returns tags with counts for faceted filtering.
+
+### gno_tag
+
+Add or remove tags from a document (requires `--enable-write`).
+
+```
+docId: "abc123"
+add: ["work", "project/alpha"]    # Tags to add
+remove: ["draft"]                 # Tags to remove
+```
+
+Tag changes update the document's YAML frontmatter on disk.
+
 ## Resources
 
 Access documents via GNO URIs:
@@ -598,7 +623,7 @@ Resource format:
 - MCP loads embedding/rerank models for search tools
 - MCP does NOT do answer synthesis
 - Collection names are case-insensitive
-- `tags` field coming in a future release (gno-k1b)
+- Search tools support `tagsAll`/`tagsAny` for filtering
 
 ## Usage Patterns
 

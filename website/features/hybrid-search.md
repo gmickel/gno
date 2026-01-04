@@ -46,6 +46,20 @@ The `query` command combines both methods using RRF, a proven algorithm that mer
 gno query "authentication best practices"
 ```
 
+### Tag Filtering
+
+Combine hybrid search with tag filters for precise results:
+
+```bash
+# Match any tag (OR)
+gno query "authentication" --tags-any api,security
+
+# Match all tags (AND)
+gno query "API design" --tags-all status/review,priority/high
+```
+
+Tags are extracted automatically from markdown frontmatter. See the [Tag System](/features/tags/) for details.
+
 ### Learn More
 
 For a deep dive into query expansion, HyDE, RRF fusion, and reranking, see the **[How Search Works](/docs/HOW-SEARCH-WORKS/)** guide.

@@ -19,6 +19,7 @@ src/cli/
     ├── search.ts
     ├── query.ts
     ├── ask.ts
+    ├── tags.ts        # Tag management (list, add, remove)
     └── ...
 ```
 
@@ -94,3 +95,26 @@ bun test test/cli/
 ```
 
 Use `--json` output for assertions in tests.
+
+## Tag Commands
+
+Tag management commands in `src/cli/commands/tags.ts`:
+
+```bash
+# List all tags (with doc counts)
+gno tags
+
+# Add tags to document
+gno tag add <path> tag1 tag2
+
+# Remove tags from document
+gno tag remove <path> tag1
+
+# Filter search/query by tags
+gno search "query" --tags=foo,bar
+```
+
+- Tags normalized via `src/core/tags.ts`: lowercase, trimmed, validated
+- Stored in `doc_tags` junction table with `source` column (frontmatter|user)
+- Frontmatter tags extracted during ingestion (`src/ingestion/frontmatter.ts`)
+- User-added tags can be removed; frontmatter tags are read-only

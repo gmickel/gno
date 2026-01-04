@@ -191,6 +191,50 @@ gno models use quality
 gno models pull
 ```
 
+## Tagging
+
+### List and manage tags
+
+```bash
+# List all tags with counts
+gno tags
+
+# Filter by collection
+gno tags -c work
+
+# Filter by prefix (hierarchical)
+gno tags --prefix project/
+```
+
+### Add/remove tags
+
+```bash
+# Add tag to document
+gno tags add gno://work/readme.md project/api
+
+# Remove tag
+gno tags rm gno://work/readme.md draft
+
+# Tags in frontmatter are extracted automatically
+cat myfile.md
+# ---
+# tags: [project/web, status/review]
+# ---
+```
+
+### Filter search by tags
+
+```bash
+# Find docs with ANY of these tags (OR)
+gno search "api" --tags-any project,work
+
+# Find docs with ALL of these tags (AND)
+gno query "auth" --tags-all security,reviewed
+
+# Combine with other filters
+gno ask "deployment steps" -c work --tags-any devops --answer
+```
+
 ## Tips
 
 ### Search Modes

@@ -137,6 +137,13 @@
               }
             }
           }
+        },
+        "tags": {
+          "type": "array",
+          "description": "Tags associated with the document",
+          "items": {
+            "type": "string"
+          }
         }
       }
     }
@@ -191,6 +198,16 @@
         "queryLanguage": {
           "type": "string",
           "description": "Detected or overridden query language for prompt selection (typically BCP-47)"
+        },
+        "tagsAll": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Tags ALL filter applied (if any)"
+        },
+        "tagsAny": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Tags ANY filter applied (if any)"
         }
       }
     }

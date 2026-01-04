@@ -21,6 +21,7 @@ GNO command-line interface guide.
 | `gno serve`      | Start web UI server             |
 | `gno models`     | Manage models (list, pull, use) |
 | `gno skill`      | Install GNO skill for AI agents |
+| `gno tags`       | Manage document tags            |
 | `gno completion` | Shell tab completion            |
 | `gno doctor`     | Check system health             |
 
@@ -70,6 +71,8 @@ Options:
 - `--full` - Show full document content (not just snippet)
 - `--line-numbers` - Show line numbers in snippets
 - `--lang <code>` - Filter by detected language in code blocks
+- `--tags-all <tags>` - Filter: docs must have ALL tags (comma-separated)
+- `--tags-any <tags>` - Filter: docs must have ANY tag (comma-separated)
 
 ### gno vsearch
 
@@ -82,7 +85,7 @@ gno vsearch "authentication best practices" --json
 
 **Contextual embeddings**: Each chunk is embedded with its document title prepended, helping the model distinguish context (e.g., "configuration" in React vs database docs).
 
-Same options as `gno search`. Requires embed model.
+Same options as `gno search`, including `--tags-all` and `--tags-any` filters. Requires embed model.
 
 ### gno query
 
@@ -93,6 +96,7 @@ gno query "database optimization"
 gno query "API design patterns" --explain
 gno query "auth" --fast              # Fastest: ~0.7s
 gno query "auth" --thorough          # Full pipeline: ~5-8s
+gno query "auth" --tags-all work,backend   # Filter by tags
 ```
 
 **Search modes**:
@@ -115,6 +119,8 @@ Additional options:
 - `--no-expand` - Disable query expansion
 - `--no-rerank` - Disable cross-encoder reranking
 - `--explain` - Show detailed scoring breakdown (to stderr)
+- `--tags-all <tags>` - Filter: docs must have ALL tags
+- `--tags-any <tags>` - Filter: docs must have ANY tag
 
 The `--explain` flag outputs:
 
@@ -154,6 +160,8 @@ Options:
 - `-n, --limit <n>` - Max source results
 - `-c, --collection <name>` - Filter by collection
 - `--lang <code>` - Language hint (BCP-47)
+- `--tags-all <tags>` - Filter: docs must have ALL tags
+- `--tags-any <tags>` - Filter: docs must have ANY tag
 
 ## Document Commands
 
@@ -441,6 +449,42 @@ gno skill paths --json
 ```
 
 See [Using GNO with AI Agents](USE-CASES.md#ai-agent-integration) for setup guide.
+
+## Tag Commands
+
+Manage document tags. Tags are extracted from markdown frontmatter during sync.
+
+**Tag format**: lowercase alphanumeric, hyphens, dots, slashes for hierarchy (e.g., `project/web`, `status.active`).
+
+### gno tags
+
+List all tags with document counts.
+
+```bash
+gno tags                    # All tags
+gno tags --collection notes # Tags in collection
+gno tags --json
+```
+
+### gno tags add
+
+Add tag(s) to a document.
+
+```bash
+gno tags add abc123 work
+gno tags add abc123 project/alpha urgent
+```
+
+### gno tags rm
+
+Remove tag(s) from a document.
+
+```bash
+gno tags rm abc123 obsolete
+gno tags rm abc123 draft wip
+```
+
+Tag changes update the document's YAML frontmatter on disk.
 
 ## Admin Commands
 

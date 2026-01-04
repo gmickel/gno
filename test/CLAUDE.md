@@ -116,3 +116,11 @@ afterEach(() => {
 - Don't use `.only` or `.skip` in committed code
 - Keep test suites reasonably flat
 - Use fixtures for test data, don't inline large strings
+
+## Tag Contract Tests
+
+Tag system schema validation in `test/spec/schemas/`:
+
+- `tags.schema.test.ts` - Validates list_tags, tag add/remove responses
+- Tests tag normalization (lowercase, trim) and validation rules
+- Covers both frontmatter and user-added tag sources
