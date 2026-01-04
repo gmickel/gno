@@ -58,3 +58,23 @@ The Web UI provides a visual dashboard for search, browsing, editing, and AI-pow
 ![GNO Document Editor](/assets/screenshots/webui-editor.jpg)
 
 ![GNO AI Answers](/assets/screenshots/webui-ask-answer.jpg)
+
+## Key Features
+
+<section class="features">
+  <div class="features-grid">
+    {% assign highlight_features = "hybrid-search,tags,local-llm,multi-format,privacy-first,mcp-integration" | split: "," %}
+    {% for slug in highlight_features %}
+      {% assign feature = site.data.features | where: "slug", slug | first %}
+      {% if feature %}
+      <a href="{{ '/features/' | append: feature.slug | append: '/' | relative_url }}" class="feature-card">
+        <div class="feature-card-icon">{% include icons.html icon=feature.icon size="24" %}</div>
+        <h3 class="feature-card-title">{{ feature.title }}</h3>
+        <p class="feature-card-description">{{ feature.description | truncate: 100 }}</p>
+      </a>
+      {% endif %}
+    {% endfor %}
+  </div>
+</section>
+
+[View all features →](/features/)
