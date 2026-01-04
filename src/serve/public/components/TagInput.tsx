@@ -483,8 +483,8 @@ export function TagInput({
       {isOpen && flatOptions.length > 0 && (
         <ul
           className={cn(
-            // Dropdown container - solid background to avoid clash with buttons
-            "absolute z-50 mt-1 w-full",
+            // Dropdown container - z-[60] to appear above modal buttons
+            "absolute z-[60] mt-1 w-full",
             "max-h-[240px] overflow-auto",
             "rounded-md border border-border/60 bg-card",
             "shadow-lg shadow-black/30",
