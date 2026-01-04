@@ -602,7 +602,7 @@ export async function handleTags(
   return jsonResponse({
     tags,
     meta: {
-      total: tags.length,
+      totalTags: tags.length,
       ...(collection && { collection }),
       ...(prefix && { prefix }),
     },

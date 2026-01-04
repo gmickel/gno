@@ -96,10 +96,10 @@ describe("API tag endpoints", () => {
 
       const body = (await res.json()) as {
         tags: Array<{ tag: string; count: number }>;
-        meta: { total: number };
+        meta: { totalTags: number };
       };
       expect(body.tags).toBeArrayOfSize(3);
-      expect(body.meta.total).toBe(3);
+      expect(body.meta.totalTags).toBe(3);
 
       // work: 3, urgent: 1, meeting: 1
       const workTag = body.tags.find((t) => t.tag === "work");

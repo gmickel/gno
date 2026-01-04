@@ -34,7 +34,7 @@ function createMockStore(tagCounts: Array<{ tag: string; count: number }>) {
 
 interface TagsResponse {
   tags: Array<{ tag: string; count: number }>;
-  meta: { total: number; collection?: string; prefix?: string };
+  meta: { totalTags: number; collection?: string; prefix?: string };
 }
 
 describe("GET /api/tags", () => {
@@ -53,7 +53,7 @@ describe("GET /api/tags", () => {
     expect(body.tags).toBeArrayOfSize(2);
     expect(body.tags[0]).toEqual({ tag: "work", count: 5 });
     expect(body.tags[1]).toEqual({ tag: "personal", count: 3 });
-    expect(body.meta.total).toBe(2);
+    expect(body.meta.totalTags).toBe(2);
   });
 
   test("filters by collection and includes in meta", async () => {
@@ -105,7 +105,7 @@ describe("GET /api/tags", () => {
 
     const body = (await res.json()) as TagsResponse;
     expect(body.tags).toBeArrayOfSize(0);
-    expect(body.meta.total).toBe(0);
+    expect(body.meta.totalTags).toBe(0);
   });
 
   test("handles store error gracefully", async () => {

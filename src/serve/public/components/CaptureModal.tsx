@@ -291,15 +291,12 @@ export function CaptureModal({
 
             {/* Tags */}
             <div>
-              <label
-                className="mb-1.5 block font-medium text-sm"
-                htmlFor="capture-tags"
-              >
+              <span className="mb-1.5 block font-medium text-sm">
                 Tags
                 <span className="ml-1 font-normal text-muted-foreground">
                   (optional)
                 </span>
-              </label>
+              </span>
               <TagInput
                 aria-label="Add tags to this note"
                 disabled={state === "submitting"}

@@ -37,7 +37,7 @@ export type TagsListResult =
 export interface TagsListResponse {
   tags: TagCount[];
   meta: {
-    total: number;
+    totalTags: number;
     collection?: string;
     prefix?: string;
   };
@@ -365,7 +365,7 @@ export async function tagsList(
       data: {
         tags: result.value,
         meta: {
-          total: result.value.length,
+          totalTags: result.value.length,
           collection: options.collection,
           prefix: normalizedPrefix,
         },
@@ -644,7 +644,7 @@ export function formatTagsList(
       return "# Tags\n\nNo tags found.";
     }
     const lines: string[] = ["# Tags", ""];
-    lines.push(`*${data.meta.total} tags*`);
+    lines.push(`*${data.meta.totalTags} tags*`);
     lines.push("");
     lines.push("| Tag | Documents |");
     lines.push("|-----|-----------|");
