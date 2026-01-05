@@ -5,6 +5,36 @@ All notable changes to GNO will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.11.0] - 2026-01-05
+
+### Added
+
+- **MCP `gno_embed` tool** - Generate embeddings for unembedded chunks via MCP
+  - Runs as async background job, poll with `gno_job_status`
+  - Offline-only: fails fast if embedding model not cached (no auto-download)
+  - Returns `{ jobId, status, model }` on start
+
+- **MCP `gno_index` tool** - Full reindex (sync + embed) in single job
+  - Syncs all collections then embeds new chunks
+  - Optional `collection` param to limit scope
+  - Optional `gitPull` to pull before sync
+  - Returns `{ jobId, collections, phases, status }`
+
+- **Typed job results** - Job status now includes discriminated `typedResult` union
+  - `{ kind: "sync", value: SyncResult }`
+  - `{ kind: "embed", value: { embedded, errors } }`
+  - `{ kind: "index", value: { sync, embed } }`
+
+- **Server-side embed scheduler** - Auto-embed after sync in web UI
+  - 30s debounce to batch rapid syncs
+  - Background embedding with progress in `/api/embed/status`
+  - Manual trigger via `POST /api/embed`
+
+### Fixed
+
+- **Embed scheduler notification** - Sync/add jobs now properly trigger auto-embed
+- **Job schemas** - Updated `mcp-job-status.schema.json` and `mcp-job-list.schema.json` for new job types
+
 ## [0.10.4] - 2026-01-04
 
 ### Changed
