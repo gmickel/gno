@@ -1894,36 +1894,77 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
       // Get total count with a separate query (only if we hit the limit)
       let totalNodes = degreeRows.length;
       if (degreeRows.length === limitNodes) {
-        const countParams: string[] = collection ? [collection] : [];
+        const countParams: (string | number)[] = [];
+        if (collection) {
+          countParams.push(collection); // outgoing CTE
+          countParams.push(collection); // incoming CTE
+          countParams.push(collection); // main query
+        }
         const countQuery = `
-          SELECT COUNT(*) as cnt FROM documents d
-          WHERE 1=1 ${activeClause} ${collection ? "AND d.collection = ?" : ""}
-          ${
-            linkedOnly
-              ? `AND d.id IN (
-                SELECT source_doc_id FROM doc_links
-                UNION
-                SELECT source_doc_id FROM doc_links dl
-                JOIN documents t ON t.id = CASE dl.link_type
-                  WHEN 'wiki' THEN (${wikiBestMatch(
+          WITH outgoing AS (
+            SELECT DISTINCT
+              d.id as doc_id,
+              CASE dl.link_type
+                WHEN 'wiki' THEN (
+                  ${wikiBestMatch(
                     "COALESCE(dl.target_collection, d.collection)",
                     "dl.target_ref_norm"
-                  )})
-                  WHEN 'markdown' THEN (
-                    SELECT md.id FROM documents md
-                    WHERE md.active = 1
-                      AND md.collection = COALESCE(dl.target_collection, d.collection)
-                      AND md.rel_path = dl.target_ref_norm
-                    ORDER BY md.id LIMIT 1
-                  )
-                END
-                WHERE t.active = 1
-              )`
-              : ""
-          }
+                  )}
+                )
+                WHEN 'markdown' THEN (
+                  SELECT t.id FROM documents t
+                  WHERE t.active = 1
+                    AND t.collection = COALESCE(dl.target_collection, d.collection)
+                    AND t.rel_path = dl.target_ref_norm
+                  ORDER BY t.id LIMIT 1
+                )
+              END as target_id
+            FROM documents d
+            JOIN doc_links dl ON dl.source_doc_id = d.id
+            WHERE 1=1 ${activeClause}
+              ${collection ? "AND d.collection = ?" : ""}
+          ),
+          incoming AS (
+            SELECT DISTINCT
+              CASE dl.link_type
+                WHEN 'wiki' THEN (
+                  ${wikiBestMatch(
+                    "COALESCE(dl.target_collection, src.collection)",
+                    "dl.target_ref_norm"
+                  )}
+                )
+                WHEN 'markdown' THEN (
+                  SELECT t.id FROM documents t
+                  WHERE t.active = 1
+                    AND t.collection = COALESCE(dl.target_collection, src.collection)
+                    AND t.rel_path = dl.target_ref_norm
+                  ORDER BY t.id LIMIT 1
+                )
+              END as doc_id,
+              src.id as source_id
+            FROM documents src
+            JOIN doc_links dl ON dl.source_doc_id = src.id
+            WHERE src.active = 1
+              ${collection ? "AND COALESCE(dl.target_collection, src.collection) = ?" : ""}
+          ),
+          degrees AS (
+            SELECT doc_id, COUNT(DISTINCT target_id) as out_deg
+            FROM outgoing WHERE target_id IS NOT NULL GROUP BY doc_id
+          ),
+          in_degrees AS (
+            SELECT doc_id, COUNT(DISTINCT source_id) as in_deg
+            FROM incoming WHERE doc_id IS NOT NULL GROUP BY doc_id
+          )
+          SELECT COUNT(*) as cnt
+          FROM documents d
+          LEFT JOIN degrees deg ON deg.doc_id = d.id
+          LEFT JOIN in_degrees indeg ON indeg.doc_id = d.id
+          WHERE 1=1 ${activeClause}
+            ${collection ? "AND d.collection = ?" : ""}
+            ${linkedOnly ? "AND (deg.out_deg > 0 OR indeg.in_deg > 0)" : ""}
         `;
         const cnt = db
-          .query<{ cnt: number }, string[]>(countQuery)
+          .query<{ cnt: number }, (string | number)[]>(countQuery)
           .get(...countParams);
         totalNodes = cnt?.cnt ?? degreeRows.length;
       }
@@ -2039,8 +2080,9 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
       let similarTruncatedByComputeBudget = false;
 
       if (includeSimilar && nodeIds.size > 0 && similarAvailable) {
-        // Cap at 1000 nodes for similarity computation
-        const SIMILARITY_NODE_CAP = 1000;
+        // Cap similarity work to avoid blocking the server event loop
+        const SIMILARITY_NODE_CAP = 200;
+        const SIMILARITY_TIME_BUDGET_MS = 1500;
         const nodesForSimilarity = [...nodeDocids].slice(
           0,
           SIMILARITY_NODE_CAP
@@ -2054,18 +2096,39 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
 
         // Track if any similarity queries fail
         let similarityFailures = 0;
+        const similarityStart = Date.now();
+
+        const mirrorByDocid = new Map<string, string>();
+        if (nodesForSimilarity.length > 0) {
+          const placeholders = nodesForSimilarity.map(() => "?").join(",");
+          const mirrorRows = db
+            .query<{ docid: string; mirror_hash: string }, string[]>(
+              `SELECT docid, mirror_hash
+               FROM documents
+               WHERE active = 1
+                 AND docid IN (${placeholders})`
+            )
+            .all(...nodesForSimilarity);
+          for (const row of mirrorRows) {
+            if (row.mirror_hash) {
+              mirrorByDocid.set(row.docid, row.mirror_hash);
+            }
+          }
+        }
 
         // Get kNN for each node
         // Query content_vectors for embedded chunks, find similar
         for (const docid of nodesForSimilarity) {
-          // Get document's mirror_hash
-          const docRow = db
-            .query<{ mirror_hash: string }, [string]>(
-              "SELECT mirror_hash FROM documents WHERE docid = ? AND active = 1"
-            )
-            .get(docid);
+          if (Date.now() - similarityStart > SIMILARITY_TIME_BUDGET_MS) {
+            similarTruncatedByComputeBudget = true;
+            warnings.push(
+              `Similarity truncated after ${SIMILARITY_TIME_BUDGET_MS}ms`
+            );
+            break;
+          }
 
-          if (!docRow?.mirror_hash) continue;
+          const mirrorHash = mirrorByDocid.get(docid);
+          if (!mirrorHash) continue;
 
           // Find similar docs using vec_distance, aggregate by doc to get max score
           interface SimilarRow {
@@ -2092,7 +2155,7 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
           try {
             const similarRows = db
               .query<SimilarRow, [string, string, number, number]>(similarQuery)
-              .all(docRow.mirror_hash, docid, threshold, similarTopK);
+              .all(mirrorHash, docid, threshold, similarTopK);
 
             for (const sim of similarRows) {
               if (!nodeDocids.has(sim.target_docid)) continue;

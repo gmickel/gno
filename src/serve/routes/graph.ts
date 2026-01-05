@@ -25,31 +25,46 @@ function errorResponse(code: string, message: string, status = 400): Response {
   return jsonResponse({ error: { code, message } }, status);
 }
 
-/**
- * Parse and validate a positive integer query param.
- * Returns default if missing, NaN, or out of bounds.
- */
+type ParseResult = { ok: true; value: number } | { ok: false; message: string };
+
 function parsePositiveInt(
+  name: string,
   value: string | null,
   defaultValue: number,
   min: number,
   max: number
-): number {
-  if (!value) return defaultValue;
+): ParseResult {
+  if (!value) return { ok: true, value: defaultValue };
   const parsed = Number(value);
-  if (!Number.isFinite(parsed)) return defaultValue;
-  return Math.min(Math.max(Math.floor(parsed), min), max);
+  if (!Number.isFinite(parsed) || !Number.isInteger(parsed)) {
+    return {
+      ok: false,
+      message: `${name} must be an integer between ${min} and ${max}`,
+    };
+  }
+  if (parsed < min || parsed > max) {
+    return {
+      ok: false,
+      message: `${name} must be between ${min} and ${max}`,
+    };
+  }
+  return { ok: true, value: parsed };
 }
 
-/**
- * Parse and validate a float query param in [0, 1].
- * Returns default if missing, NaN, or out of bounds.
- */
-function parseThreshold(value: string | null, defaultValue: number): number {
-  if (!value) return defaultValue;
+function parseThreshold(
+  name: string,
+  value: string | null,
+  defaultValue: number
+): ParseResult {
+  if (!value) return { ok: true, value: defaultValue };
   const parsed = Number(value);
-  if (!Number.isFinite(parsed)) return defaultValue;
-  return Math.max(0, Math.min(1, parsed));
+  if (!Number.isFinite(parsed)) {
+    return { ok: false, message: `${name} must be a number between 0 and 1` };
+  }
+  if (parsed < 0 || parsed > 1) {
+    return { ok: false, message: `${name} must be between 0 and 1` };
+  }
+  return { ok: true, value: parsed };
 }
 
 /**
@@ -83,39 +98,58 @@ export async function handleGraph(
 ): Promise<Response> {
   // Parse query params
   const collection = url.searchParams.get("collection") || undefined;
-  const limitNodes = parsePositiveInt(
+  const limitNodesResult = parsePositiveInt(
+    "limit",
     url.searchParams.get("limit"),
     2000,
     1,
     5000
   );
-  const limitEdges = parsePositiveInt(
+  if (!limitNodesResult.ok) {
+    return errorResponse("VALIDATION", limitNodesResult.message, 400);
+  }
+  const limitEdgesResult = parsePositiveInt(
+    "edgeLimit",
     url.searchParams.get("edgeLimit"),
     10000,
     1,
     50000
   );
+  if (!limitEdgesResult.ok) {
+    return errorResponse("VALIDATION", limitEdgesResult.message, 400);
+  }
   const includeSimilar = parseBoolean(
     url.searchParams.get("includeSimilar"),
     false
   );
-  const threshold = parseThreshold(url.searchParams.get("threshold"), 0.7);
+  const thresholdResult = parseThreshold(
+    "threshold",
+    url.searchParams.get("threshold"),
+    0.7
+  );
+  if (!thresholdResult.ok) {
+    return errorResponse("VALIDATION", thresholdResult.message, 400);
+  }
   const linkedOnly = parseBoolean(url.searchParams.get("linkedOnly"), true);
-  const similarTopK = parsePositiveInt(
+  const similarTopKResult = parsePositiveInt(
+    "similarTopK",
     url.searchParams.get("similarTopK"),
     5,
     1,
     20
   );
+  if (!similarTopKResult.ok) {
+    return errorResponse("VALIDATION", similarTopKResult.message, 400);
+  }
 
   const options: GetGraphOptions = {
     collection,
-    limitNodes,
-    limitEdges,
+    limitNodes: limitNodesResult.value,
+    limitEdges: limitEdgesResult.value,
     includeSimilar,
-    threshold,
+    threshold: thresholdResult.value,
     linkedOnly,
-    similarTopK,
+    similarTopK: similarTopKResult.value,
   };
 
   const result = await store.getGraph(options);

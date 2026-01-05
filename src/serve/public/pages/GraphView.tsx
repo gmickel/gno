@@ -71,7 +71,6 @@ interface GraphMeta {
   returnedEdges: number;
   truncated: boolean;
   linkedOnly: boolean;
-  activeOnly: boolean;
   includedSimilar: boolean;
   similarAvailable: boolean;
   similarTopK: number;

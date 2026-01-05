@@ -214,6 +214,7 @@ export async function startServer(
         "/edit": homepage,
         "/collections": homepage,
         "/ask": homepage,
+        "/graph": homepage,
 
         // API routes with CSRF protection wrapper
         "/api/health": {

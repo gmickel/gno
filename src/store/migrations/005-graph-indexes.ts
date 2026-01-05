@@ -33,9 +33,17 @@ export const migration: Migration = {
       ON documents(collection, rel_path)
       WHERE active = 1
     `);
+
+    // Expression index for wiki rel_path matching (uses lower(rel_path))
+    db.exec(`
+      CREATE INDEX idx_docs_wiki_relpath_resolve
+      ON documents(collection, lower(rel_path))
+      WHERE active = 1
+    `);
   },
 
   down(db: Database): void {
+    db.exec("DROP INDEX IF EXISTS idx_docs_wiki_relpath_resolve");
     db.exec("DROP INDEX IF EXISTS idx_docs_md_resolve");
     db.exec("DROP INDEX IF EXISTS idx_docs_wiki_resolve");
   },

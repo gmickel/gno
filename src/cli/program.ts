@@ -1842,7 +1842,7 @@ function wireGraphCommand(program: Command): void {
         }
       }
 
-      await writeOutput(output, "json"); // All graph outputs go through terminal unformatted
+      await writeOutput(output, format === "json" ? "json" : "terminal");
     });
 }
 

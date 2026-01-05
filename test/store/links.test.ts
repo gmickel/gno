@@ -770,5 +770,49 @@ describe("SqliteAdapter links", () => {
       );
       expect(edge).toBeDefined();
     });
+
+    test("resolves ambiguous basename deterministically by id", async () => {
+      const sourceId = await createTestDoc("notes", "source.md", "Source");
+      await createTestDoc("notes", "projects/task.md", "Project Task");
+      await createTestDoc("notes", "work/task.md", "Work Task");
+
+      const docA = await adapter.getDocument("notes", "projects/task.md");
+      const docB = await adapter.getDocument("notes", "work/task.md");
+      expect(docA.ok).toBe(true);
+      expect(docB.ok).toBe(true);
+      if (!docA.ok || !docB.ok || !docA.value || !docB.value) return;
+      const docAValue = docA.value;
+      const docBValue = docB.value;
+
+      const links: DocLinkInput[] = [
+        {
+          targetRef: "task.md",
+          targetRefNorm: "task.md",
+          linkType: "wiki",
+          startLine: 1,
+          startCol: 1,
+          endLine: 1,
+          endCol: 12,
+        },
+      ];
+      await adapter.setDocLinks(sourceId, links, "parsed");
+
+      const graph = await adapter.getGraph({
+        collection: "notes",
+        linkedOnly: false,
+        limitNodes: 100,
+        limitEdges: 100,
+      });
+      expect(graph.ok).toBe(true);
+      if (!graph.ok) return;
+
+      const edge = graph.value.links.find(
+        (link) => link.target === docAValue.docid
+      );
+      expect(edge).toBeDefined();
+      expect(
+        graph.value.links.some((link) => link.target === docBValue.docid)
+      ).toBe(false);
+    });
   });
 });
