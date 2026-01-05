@@ -173,6 +173,7 @@ export function createProgram(): Command {
   wireRetrievalCommands(program);
   wireTagsCommands(program);
   wireLinksCommands(program);
+  wireGraphCommand(program);
   wireMcpCommand(program);
   wireSkillCommands(program);
   wireServeCommand(program);
@@ -1757,6 +1758,88 @@ function wireLinksCommands(program: Command): void {
         md: format === "md",
       });
       await writeOutput(output, format);
+    });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Graph Command
+// ─────────────────────────────────────────────────────────────────────────────
+
+function wireGraphCommand(program: Command): void {
+  program
+    .command("graph")
+    .description("Output knowledge graph of document links")
+    .option("-c, --collection <name>", "filter by collection")
+    .option("--limit <n>", "max nodes (default 2000)")
+    .option("--edge-limit <n>", "max edges (default 10000)")
+    .option("--include-similar", "include similarity edges")
+    .option("--threshold <n>", "similarity threshold (default 0.7)")
+    .option("--include-isolated", "include nodes with no links")
+    .option("--similar-top-k <n>", "similar docs per node (default 5)")
+    .option("--json", "JSON output (default)")
+    .option("--dot", "Graphviz DOT output")
+    .option("--mermaid", "Mermaid diagram output")
+    .action(async (cmdOpts: Record<string, unknown>) => {
+      const globals = getGlobals();
+
+      // Validate mutually exclusive format flags
+      const formatFlags = [cmdOpts.json, cmdOpts.dot, cmdOpts.mermaid].filter(
+        Boolean
+      );
+      if (formatFlags.length > 1) {
+        throw new CliError(
+          "VALIDATION",
+          "Choose one format: --json, --dot, or --mermaid"
+        );
+      }
+
+      const format: "json" | "dot" | "mermaid" = cmdOpts.dot
+        ? "dot"
+        : cmdOpts.mermaid
+          ? "mermaid"
+          : "json";
+
+      const limitNodes = cmdOpts.limit
+        ? parsePositiveInt("limit", cmdOpts.limit)
+        : undefined;
+      const limitEdges = cmdOpts.edgeLimit
+        ? parsePositiveInt("edge-limit", cmdOpts.edgeLimit)
+        : undefined;
+      const threshold = parseOptionalFloat("threshold", cmdOpts.threshold);
+      const similarTopK = cmdOpts.similarTopK
+        ? parsePositiveInt("similar-top-k", cmdOpts.similarTopK)
+        : undefined;
+
+      const { graph, formatGraph } = await import("./commands/graph.js");
+      const result = await graph({
+        configPath: globals.config,
+        collection: cmdOpts.collection as string | undefined,
+        limitNodes,
+        limitEdges,
+        includeSimilar: Boolean(cmdOpts.includeSimilar),
+        threshold,
+        includeIsolated: Boolean(cmdOpts.includeIsolated),
+        similarTopK,
+        format,
+      });
+
+      if (!result.success) {
+        throw new CliError(
+          result.isValidation ? "VALIDATION" : "RUNTIME",
+          result.error
+        );
+      }
+
+      const output = formatGraph(result, { format });
+
+      // Print truncation warning to stderr if applicable
+      if (result.data.meta.truncated) {
+        for (const warning of result.data.meta.warnings) {
+          console.error(`Warning: ${warning}`);
+        }
+      }
+
+      await writeOutput(output, "json"); // All graph outputs go through terminal unformatted
     });
 }
 
