@@ -123,6 +123,15 @@ export function normalizeWikiName(name: string): string {
   return name.normalize("NFC").toLowerCase().trim();
 }
 
+/**
+ * Extract basename from a wiki ref.
+ * Strips path segments and a trailing .md extension.
+ */
+export function extractWikiBasename(ref: string): string {
+  const base = pathPosix.basename(ref.trim());
+  return base.toLowerCase().endsWith(".md") ? base.slice(0, -3) : base;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Path Normalization
 // ─────────────────────────────────────────────────────────────────────────────

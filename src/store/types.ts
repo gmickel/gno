@@ -759,7 +759,7 @@ export interface StorePort {
 
   /**
    * Get backlinks pointing to a document.
-   * Uses target_ref_norm for matching (wiki=normalized title, markdown=rel_path).
+   * Uses target_ref_norm for matching (wiki=normalized title with path fallbacks, markdown=rel_path).
    * Only returns links from active source documents.
    */
   getBacklinksForDoc(

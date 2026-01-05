@@ -42,7 +42,7 @@ import type {
 import type { SqliteDbProvider } from "./types";
 
 import { buildUri, deriveDocid } from "../../app/constants";
-import { normalizeWikiName } from "../../core/links";
+import { extractWikiBasename, normalizeWikiName } from "../../core/links";
 import { migrations, runMigrations } from "../migrations";
 import { err, ok } from "../types";
 import { loadFts5Snowball } from "./fts5-snowball";
@@ -1391,7 +1391,7 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
 
   /**
    * Get backlinks pointing to a document.
-   * Uses target_ref_norm for matching (wiki=normalized title, markdown=rel_path).
+   * Uses target_ref_norm for matching (wiki=normalized title with path fallbacks, markdown=rel_path).
    * Only returns links from active source documents.
    */
   async getBacklinksForDoc(
@@ -1415,8 +1415,13 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
         return ok([]);
       }
 
-      // Compute normalized wiki key from target title
-      const wikiKey = normalizeWikiName(target.title ?? "");
+      // Compute normalized wiki keys for fallback matching
+      const titleKey = normalizeWikiName(target.title ?? "");
+      const titleKeyMd = titleKey ? `${titleKey}.md` : "";
+      const relPathKey = normalizeWikiName(target.rel_path);
+      const relPathBasenameKey = normalizeWikiName(
+        target.rel_path.split("/").pop() ?? target.rel_path
+      );
 
       interface DbBacklinkRow {
         source_doc_id: number;
@@ -1430,24 +1435,59 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
 
       const targetCollection = options?.collection ?? target.collection;
 
-      // Query wiki backlinks (link_type='wiki')
+      // Query wiki backlinks (link_type='wiki') with path-style fallbacks
       // NULL target_collection means "same collection as source" - enforce this in SQL
-      const wikiBacklinks = wikiKey
-        ? db
-            .query<DbBacklinkRow, [string, string, string]>(
-              `SELECT dl.source_doc_id, src.docid, src.uri, src.title, dl.link_text, dl.start_line, dl.start_col
-               FROM doc_links dl
-               JOIN documents src ON src.id = dl.source_doc_id AND src.active = 1
-               WHERE dl.link_type = 'wiki'
-                 AND dl.target_ref_norm = ?
-                 AND (
-                   (dl.target_collection IS NULL AND src.collection = ?)
-                   OR dl.target_collection = ?
-                 )
-               ORDER BY src.uri, dl.start_line, dl.start_col`
-            )
-            .all(wikiKey, targetCollection, targetCollection)
-        : [];
+      const wikiConditions: string[] = [];
+      const wikiParams: string[] = [];
+
+      const addWikiExact = (value: string): void => {
+        wikiConditions.push("dl.target_ref_norm = ?");
+        wikiParams.push(value);
+      };
+
+      const addWikiSuffix = (value: string): void => {
+        wikiConditions.push(
+          `(substr(dl.target_ref_norm, -length(?)) = ?
+            AND (length(dl.target_ref_norm) = length(?)
+              OR substr(dl.target_ref_norm, -length(?) - 1, 1) = '/'))`
+        );
+        wikiParams.push(value, value, value, value);
+      };
+
+      if (titleKey) {
+        addWikiExact(titleKey);
+        addWikiExact(titleKeyMd);
+        addWikiSuffix(titleKey);
+        addWikiSuffix(titleKeyMd);
+      }
+
+      if (relPathKey) {
+        addWikiExact(relPathKey);
+        addWikiSuffix(relPathKey);
+      }
+
+      if (relPathBasenameKey && relPathBasenameKey !== relPathKey) {
+        addWikiExact(relPathBasenameKey);
+        addWikiSuffix(relPathBasenameKey);
+      }
+
+      const wikiBacklinks =
+        wikiConditions.length > 0
+          ? db
+              .query<DbBacklinkRow, string[]>(
+                `SELECT dl.source_doc_id, src.docid, src.uri, src.title, dl.link_text, dl.start_line, dl.start_col
+                 FROM doc_links dl
+                 JOIN documents src ON src.id = dl.source_doc_id AND src.active = 1
+                 WHERE dl.link_type = 'wiki'
+                   AND (${wikiConditions.join(" OR ")})
+                   AND (
+                     (dl.target_collection IS NULL AND src.collection = ?)
+                     OR dl.target_collection = ?
+                   )
+                 ORDER BY src.uri, dl.start_line, dl.start_col`
+              )
+              .all(...wikiParams, targetCollection, targetCollection)
+          : [];
 
       // Query markdown backlinks (link_type='markdown')
       // NULL target_collection means "same collection as source" - enforce this in SQL
@@ -1510,27 +1550,75 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
         title: string | null;
       } | null> = [];
 
+      const isPathLikeWikiRef = (ref: string): boolean =>
+        ref.includes("/") || ref.endsWith(".md");
+
+      const matchWikiByTitle = (
+        collection: string,
+        key: string
+      ): { docid: string; uri: string; title: string | null } | null =>
+        db
+          .query<
+            { docid: string; uri: string; title: string | null },
+            [string, string]
+          >(
+            `SELECT docid, uri, title FROM documents
+             WHERE active = 1
+               AND collection = ?
+               AND lower(trim(title)) = ?
+             ORDER BY id ASC
+             LIMIT 1`
+          )
+          .get(collection, key) ?? null;
+
+      const matchWikiByRelPath = (
+        collection: string,
+        key: string
+      ): { docid: string; uri: string; title: string | null } | null =>
+        db
+          .query<
+            { docid: string; uri: string; title: string | null },
+            [string, string]
+          >(
+            `SELECT docid, uri, title FROM documents
+             WHERE active = 1
+               AND collection = ?
+               AND lower(rel_path) = ?
+             ORDER BY id ASC
+             LIMIT 1`
+          )
+          .get(collection, key) ?? null;
+
       for (const target of targets) {
         let doc: { docid: string; uri: string; title: string | null } | null =
           null;
 
         if (target.linkType === "wiki") {
-          // Wiki links match on normalized title (lower+trim)
-          // ORDER BY id for deterministic results when multiple docs share title
-          const row = db
-            .query<
-              { docid: string; uri: string; title: string | null },
-              [string, string]
-            >(
-              `SELECT docid, uri, title FROM documents
-               WHERE active = 1
-                 AND collection = ?
-                 AND lower(trim(title)) = ?
-               ORDER BY id ASC
-               LIMIT 1`
-            )
-            .get(target.targetCollection, target.targetRefNorm);
-          doc = row ?? null;
+          const targetRefNorm = target.targetRefNorm;
+          const pathLike = isPathLikeWikiRef(targetRefNorm);
+          const basenameWithExt =
+            targetRefNorm.split("/").pop() ?? targetRefNorm;
+          const basenameNoExt = extractWikiBasename(targetRefNorm);
+
+          doc = matchWikiByTitle(target.targetCollection, targetRefNorm);
+
+          if (!doc && pathLike && basenameNoExt !== targetRefNorm) {
+            doc = matchWikiByTitle(
+              target.targetCollection,
+              normalizeWikiName(basenameNoExt)
+            );
+          }
+
+          if (!doc) {
+            doc = matchWikiByRelPath(target.targetCollection, targetRefNorm);
+          }
+
+          if (!doc && pathLike && basenameWithExt !== targetRefNorm) {
+            doc = matchWikiByRelPath(
+              target.targetCollection,
+              normalizeWikiName(basenameWithExt)
+            );
+          }
         } else {
           // Markdown links match on rel_path
           // ORDER BY id for deterministic results
@@ -1601,6 +1689,44 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
       // Build active filter clause (always active=1 for consistency)
       const activeClause = "AND d.active = 1";
 
+      const wikiTitleExpr = (alias: string): string =>
+        `lower(trim(${alias}.title))`;
+
+      const wikiRelPathExpr = (alias: string): string =>
+        `lower(${alias}.rel_path)`;
+
+      const suffixMatch = (targetExpr: string, valueExpr: string): string =>
+        `(substr(${targetExpr}, -length(${valueExpr})) = ${valueExpr}
+          AND (length(${targetExpr}) = length(${valueExpr})
+            OR substr(${targetExpr}, -length(${valueExpr}) - 1, 1) = '/'))`;
+
+      const wikiMatch = (alias: string, targetRefExpr: string): string => {
+        const titleExpr = wikiTitleExpr(alias);
+        const relExpr = wikiRelPathExpr(alias);
+        return `(
+          ${titleExpr} = ${targetRefExpr}
+          OR ${targetRefExpr} = ${titleExpr} || '.md'
+          OR ${suffixMatch(targetRefExpr, titleExpr)}
+          OR ${suffixMatch(targetRefExpr, `${titleExpr} || '.md'`)}
+          OR ${relExpr} = ${targetRefExpr}
+          OR ${suffixMatch(targetRefExpr, relExpr)}
+        )`;
+      };
+
+      const wikiOrder = (alias: string, targetRefExpr: string): string => {
+        const titleExpr = wikiTitleExpr(alias);
+        const relExpr = wikiRelPathExpr(alias);
+        return `CASE
+          WHEN ${titleExpr} = ${targetRefExpr} THEN 1
+          WHEN ${targetRefExpr} = ${titleExpr} || '.md' THEN 2
+          WHEN ${suffixMatch(targetRefExpr, titleExpr)} THEN 3
+          WHEN ${suffixMatch(targetRefExpr, `${titleExpr} || '.md'`)} THEN 4
+          WHEN ${relExpr} = ${targetRefExpr} THEN 5
+          WHEN ${suffixMatch(targetRefExpr, relExpr)} THEN 6
+          ELSE 7
+        END`;
+      };
+
       // Phase 1: Compute degrees for all documents (unique neighbor count)
       // Degree = count of unique neighbors (in + out), not raw link occurrences
       interface DegreeRow {
@@ -1622,8 +1748,8 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
                 SELECT t.id FROM documents t
                 WHERE t.active = 1
                   AND t.collection = COALESCE(dl.target_collection, d.collection)
-                  AND lower(trim(t.title)) = dl.target_ref_norm
-                ORDER BY t.id LIMIT 1
+                  AND ${wikiMatch("t", "dl.target_ref_norm")}
+                ORDER BY ${wikiOrder("t", "dl.target_ref_norm")}, t.id LIMIT 1
               )
               WHEN 'markdown' THEN (
                 SELECT t.id FROM documents t
@@ -1645,8 +1771,8 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
                 SELECT t.id FROM documents t
                 WHERE t.active = 1
                   AND t.collection = COALESCE(dl.target_collection, src.collection)
-                  AND lower(trim(t.title)) = dl.target_ref_norm
-                ORDER BY t.id LIMIT 1
+                  AND ${wikiMatch("t", "dl.target_ref_norm")}
+                ORDER BY ${wikiOrder("t", "dl.target_ref_norm")}, t.id LIMIT 1
               )
               WHEN 'markdown' THEN (
                 SELECT t.id FROM documents t
@@ -1703,7 +1829,7 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
         const countQuery = `
           SELECT COUNT(*) as cnt FROM documents d
           WHERE 1=1 ${activeClause} ${collection ? "AND d.collection = ?" : ""}
-          ${linkedOnly ? "AND d.id IN (SELECT source_doc_id FROM doc_links UNION SELECT source_doc_id FROM doc_links dl JOIN documents t ON CASE dl.link_type WHEN 'wiki' THEN lower(trim(t.title)) = dl.target_ref_norm WHEN 'markdown' THEN t.rel_path = dl.target_ref_norm END WHERE t.active = 1)" : ""}
+          ${linkedOnly ? `AND d.id IN (SELECT source_doc_id FROM doc_links UNION SELECT source_doc_id FROM doc_links dl JOIN documents t ON CASE dl.link_type WHEN 'wiki' THEN ${wikiMatch("t", "dl.target_ref_norm")} WHEN 'markdown' THEN t.rel_path = dl.target_ref_norm END WHERE t.active = 1)` : ""}
         `;
         const cnt = db
           .query<{ cnt: number }, string[]>(countQuery)
@@ -1762,8 +1888,8 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
                   SELECT t.id FROM documents t
                   WHERE t.active = 1
                     AND t.collection = COALESCE(dl.target_collection, d.collection)
-                    AND lower(trim(t.title)) = dl.target_ref_norm
-                  ORDER BY t.id LIMIT 1
+                    AND ${wikiMatch("t", "dl.target_ref_norm")}
+                  ORDER BY ${wikiOrder("t", "dl.target_ref_norm")}, t.id LIMIT 1
                 )
                 WHEN 'markdown' THEN (
                   SELECT t.id FROM documents t
@@ -1796,7 +1922,7 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
               WHEN 'wiki' THEN
                 tgt.active = 1
                 AND tgt.collection = COALESCE(dl.target_collection, src.collection)
-                AND lower(trim(tgt.title)) = dl.target_ref_norm
+                AND ${wikiMatch("tgt", "dl.target_ref_norm")}
               WHEN 'markdown' THEN
                 tgt.active = 1
                 AND tgt.collection = COALESCE(dl.target_collection, src.collection)
