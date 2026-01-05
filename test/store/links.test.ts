@@ -364,6 +364,50 @@ describe("SqliteAdapter links", () => {
     });
   });
 
+  describe("resolveLinks", () => {
+    test("resolves wiki paths by title basename", async () => {
+      await createTestDoc("notes", "target.md", "Target Note");
+
+      const docResult = await adapter.getDocument("notes", "target.md");
+      expect(docResult.ok).toBe(true);
+      if (!docResult.ok || !docResult.value) return;
+
+      const result = await adapter.resolveLinks([
+        {
+          targetRefNorm: "vault/target note.md",
+          targetCollection: "notes",
+          linkType: "wiki",
+        },
+      ]);
+
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+
+      expect(result.value[0]?.docid).toBe(docResult.value.docid);
+    });
+
+    test("resolves wiki paths by rel_path basename", async () => {
+      await createTestDoc("notes", "task.md", "Different Title");
+
+      const docResult = await adapter.getDocument("notes", "task.md");
+      expect(docResult.ok).toBe(true);
+      if (!docResult.ok || !docResult.value) return;
+
+      const result = await adapter.resolveLinks([
+        {
+          targetRefNorm: "vault/task.md",
+          targetCollection: "notes",
+          linkType: "wiki",
+        },
+      ]);
+
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+
+      expect(result.value[0]?.docid).toBe(docResult.value.docid);
+    });
+  });
+
   describe("getBacklinksForDoc", () => {
     test("finds wiki backlinks by normalized title", async () => {
       const targetId = await createTestDoc("notes", "target.md", "Target Note");
@@ -551,6 +595,56 @@ describe("SqliteAdapter links", () => {
       if (!result.ok) return;
 
       expect(result.value).toHaveLength(2);
+    });
+
+    test("finds wiki backlinks by path-style title", async () => {
+      const targetId = await createTestDoc("notes", "target.md", "Target Note");
+      const sourceId = await createTestDoc("notes", "source.md", "Source");
+
+      const links: DocLinkInput[] = [
+        {
+          targetRef: "vault/Target Note.md",
+          targetRefNorm: "vault/target note.md",
+          linkType: "wiki",
+          startLine: 1,
+          startCol: 1,
+          endLine: 1,
+          endCol: 24,
+        },
+      ];
+      await adapter.setDocLinks(sourceId, links, "parsed");
+
+      const result = await adapter.getBacklinksForDoc(targetId);
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+
+      expect(result.value).toHaveLength(1);
+      expect(result.value[0]?.sourceDocId).toBe(sourceId);
+    });
+
+    test("finds wiki backlinks by path-style rel_path", async () => {
+      const targetId = await createTestDoc("notes", "note.md", "Different");
+      const sourceId = await createTestDoc("notes", "source.md", "Source");
+
+      const links: DocLinkInput[] = [
+        {
+          targetRef: "vault/note.md",
+          targetRefNorm: "vault/note.md",
+          linkType: "wiki",
+          startLine: 2,
+          startCol: 1,
+          endLine: 2,
+          endCol: 16,
+        },
+      ];
+      await adapter.setDocLinks(sourceId, links, "parsed");
+
+      const result = await adapter.getBacklinksForDoc(targetId);
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+
+      expect(result.value).toHaveLength(1);
+      expect(result.value[0]?.sourceDocId).toBe(sourceId);
     });
   });
 

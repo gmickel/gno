@@ -81,6 +81,29 @@ Also check [[Project Plan]].
     expect(linksResult.value.every((l) => l.linkType === "wiki")).toBe(true);
   });
 
+  test("extracts path-style wiki links during sync", async () => {
+    const content = `# Notes
+
+See [[Folder/Note.md]] and [[02 Action/Projects/Task.md]].
+`;
+    await writeFile(join(collectionDir, "paths.md"), content);
+
+    const syncService = new SyncService();
+    await syncService.syncCollection(collection, adapter);
+
+    const docResult = await adapter.getDocument("docs", "paths.md");
+    expect(docResult.ok).toBe(true);
+    if (!docResult.ok || !docResult.value) return;
+
+    const linksResult = await adapter.getLinksForDoc(docResult.value.id);
+    expect(linksResult.ok).toBe(true);
+    if (!linksResult.ok) return;
+
+    const targets = linksResult.value.map((l) => l.targetRefNorm);
+    expect(targets).toContain("folder/note.md");
+    expect(targets).toContain("02 action/projects/task.md");
+  });
+
   test("extracts markdown links during sync", async () => {
     const content = `# Guide
 
@@ -501,5 +524,32 @@ Read [the guide](./guide.md) first.
 
     expect(backlinks.value).toHaveLength(1);
     expect(backlinks.value[0]?.sourceDocUri).toContain("index.md");
+  });
+
+  test("finds backlinks via path-style wiki links", async () => {
+    const targetContent = `# Target Note
+
+This is the target.
+`;
+    const sourceContent = `# Source
+
+See [[vault/Target Note.md]] for more.
+`;
+    await writeFile(join(collectionDir, "target.md"), targetContent);
+    await writeFile(join(collectionDir, "source.md"), sourceContent);
+
+    const syncService = new SyncService();
+    await syncService.syncCollection(collection, adapter);
+
+    const targetDoc = await adapter.getDocument("docs", "target.md");
+    expect(targetDoc.ok).toBe(true);
+    if (!targetDoc.ok || !targetDoc.value) return;
+
+    const backlinks = await adapter.getBacklinksForDoc(targetDoc.value.id);
+    expect(backlinks.ok).toBe(true);
+    if (!backlinks.ok) return;
+
+    expect(backlinks.value).toHaveLength(1);
+    expect(backlinks.value[0]?.sourceDocUri).toContain("source.md");
   });
 });
