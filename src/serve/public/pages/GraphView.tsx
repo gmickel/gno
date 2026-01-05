@@ -291,7 +291,15 @@ export default function GraphView({ navigate }: PageProps) {
 
     // Fit to view after data loads
     setTimeout(() => {
-      graphRef.current?.zoomToFit(400);
+      const fg = graphRef.current;
+      if (!fg) return;
+      fg.zoomToFit(400);
+      setTimeout(() => {
+        const zoom = fg.zoom?.();
+        if (typeof zoom === "number") {
+          pointerScaleRef.current = zoom;
+        }
+      }, 450);
     }, 100);
   }, [selectedCollection, includeSimilar]);
 

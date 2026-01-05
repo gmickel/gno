@@ -189,10 +189,13 @@ export async function handleDocLinks(
       linkType: l.linkType,
     }))
   );
+  if (!resolvedTargets.ok) {
+    return errorResponse("RUNTIME", resolvedTargets.error.message, 500);
+  }
 
   const response: LinkResponse = {
     links: links.map((l, idx) => {
-      const resolved = resolvedTargets.ok ? resolvedTargets.value[idx] : null;
+      const resolved = resolvedTargets.value[idx] ?? null;
       return {
         targetRef: l.targetRef,
         targetRefNorm: l.targetRefNorm,
@@ -360,13 +363,13 @@ export async function handleDocSimilar(
     embedding: Uint8Array;
   }
 
-  const vectors = db
+  const vectorRow = db
     .query<VectorRow, [string, string]>(
-      "SELECT embedding FROM content_vectors WHERE mirror_hash = ? AND model = ?"
+      "SELECT embedding FROM content_vectors WHERE mirror_hash = ? AND model = ? AND seq = 0 LIMIT 1"
     )
-    .all(doc.mirrorHash, embedModel);
+    .get(doc.mirrorHash, embedModel);
 
-  if (vectors.length === 0) {
+  if (!vectorRow) {
     return jsonResponse({
       similar: [],
       meta: {
@@ -379,30 +382,12 @@ export async function handleDocSimilar(
     } satisfies SimilarDocResponse);
   }
 
-  // Compute average embedding from stored chunk embeddings
   let dimensions: number;
-  let avgEmbedding: Float32Array;
+  let embedding: Float32Array;
 
   try {
-    const firstVec = decodeEmbedding(vectors[0]!.embedding);
-    dimensions = firstVec.length;
-    avgEmbedding = new Float32Array(dimensions);
-
-    for (const v of vectors) {
-      const emb = decodeEmbedding(v.embedding);
-      if (emb.length !== dimensions) {
-        return errorResponse(
-          "RUNTIME",
-          "Inconsistent embedding dimensions in stored vectors",
-          500
-        );
-      }
-      for (let i = 0; i < dimensions; i++) {
-        const current = avgEmbedding[i] ?? 0;
-        const embVal = emb[i] ?? 0;
-        avgEmbedding[i] = current + embVal / vectors.length;
-      }
-    }
+    embedding = decodeEmbedding(vectorRow.embedding);
+    dimensions = embedding.length;
   } catch (e) {
     return errorResponse(
       "RUNTIME",
@@ -411,23 +396,23 @@ export async function handleDocSimilar(
     );
   }
 
-  // Normalize the average embedding for cosine similarity
+  // Normalize embedding for cosine similarity
   let norm = 0;
   for (let i = 0; i < dimensions; i++) {
-    const val = avgEmbedding[i] ?? 0;
+    const val = embedding[i] ?? 0;
     norm += val * val;
   }
   norm = Math.sqrt(norm);
   if (norm > 0) {
     for (let i = 0; i < dimensions; i++) {
-      avgEmbedding[i] = (avgEmbedding[i] ?? 0) / norm;
+      embedding[i] = (embedding[i] ?? 0) / norm;
     }
   }
 
   // Search for similar docs (request extra to account for self-exclusion, filtering)
   const candidateLimit = Math.min(limit * 20, 200);
   const searchResult = await ctx.vectorIndex.searchNearest(
-    avgEmbedding,
+    embedding,
     candidateLimit,
     {}
   );

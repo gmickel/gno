@@ -122,7 +122,7 @@ async function writeOutput(
   const globals = getGlobals();
 
   // Only page terminal output when paging enabled
-  if (format === "terminal" && !globals.noPager) {
+  if (format === "terminal" && !globals.noPager && process.stdout.isTTY) {
     const { pageContent } = await import("./pager.js");
     await pageContent(content);
   } else {

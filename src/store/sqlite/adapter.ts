@@ -1601,6 +1601,18 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
         }
       }
 
+      const chunkArray = <T>(items: T[], chunkSize: number): T[][] => {
+        const chunks: T[][] = [];
+        for (let i = 0; i < items.length; i += chunkSize) {
+          chunks.push(items.slice(i, i + chunkSize));
+        }
+        return chunks;
+      };
+
+      const MAX_SQL_PARAMS = 900;
+      const wikiBatchSize = Math.max(1, Math.floor(MAX_SQL_PARAMS / 4));
+      const mdBatchSize = Math.max(1, Math.floor(MAX_SQL_PARAMS / 3));
+
       const titleExpr = "lower(trim(d.title))";
       const relExpr = "lower(d.rel_path)";
       const suffixMatchExprExpr = (
@@ -1612,130 +1624,134 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
             OR substr(${targetExpr}, -length(${valueExpr}) - 1, 1) = '/'))`;
 
       if (wikiTargets.length > 0) {
-        const valuesClause = wikiTargets.map(() => "(?, ?, ?, ?)").join(", ");
-        const wikiParams = wikiTargets.flatMap((t) => [
-          t.idx,
-          t.collection,
-          t.baseRef,
-          t.baseRefMd,
-        ]);
+        for (const batch of chunkArray(wikiTargets, wikiBatchSize)) {
+          const valuesClause = batch.map(() => "(?, ?, ?, ?)").join(", ");
+          const wikiParams = batch.flatMap((t) => [
+            t.idx,
+            t.collection,
+            t.baseRef,
+            t.baseRefMd,
+          ]);
 
-        const baseRefExpr = "t.base_ref";
-        const baseRefMdExpr = "t.base_ref_md";
-        const wikiWhere = `
-          ${titleExpr} = ${baseRefExpr}
-          OR ${titleExpr} = ${baseRefMdExpr}
-          OR ${suffixMatchExprExpr(baseRefExpr, titleExpr)}
-          OR ${suffixMatchExprExpr(baseRefMdExpr, `${titleExpr} || '.md'`)}
-          OR ${relExpr} = ${baseRefExpr}
-          OR ${relExpr} = ${baseRefMdExpr}
-          OR ${suffixMatchExprExpr(relExpr, baseRefMdExpr)}
-          OR ${suffixMatchExprExpr(relExpr, baseRefExpr)}
-          OR ${suffixMatchExprExpr(baseRefMdExpr, relExpr)}
-          OR ${suffixMatchExprExpr(baseRefExpr, relExpr)}
-        `;
+          const baseRefExpr = "t.base_ref";
+          const baseRefMdExpr = "t.base_ref_md";
+          const wikiWhere = `
+            ${titleExpr} = ${baseRefExpr}
+            OR ${titleExpr} = ${baseRefMdExpr}
+            OR ${suffixMatchExprExpr(baseRefExpr, titleExpr)}
+            OR ${suffixMatchExprExpr(baseRefMdExpr, `${titleExpr} || '.md'`)}
+            OR ${relExpr} = ${baseRefExpr}
+            OR ${relExpr} = ${baseRefMdExpr}
+            OR ${suffixMatchExprExpr(relExpr, baseRefMdExpr)}
+            OR ${suffixMatchExprExpr(relExpr, baseRefExpr)}
+            OR ${suffixMatchExprExpr(baseRefMdExpr, relExpr)}
+            OR ${suffixMatchExprExpr(baseRefExpr, relExpr)}
+          `;
 
-        const wikiRank = `CASE
-          WHEN ${titleExpr} = ${baseRefExpr} THEN 1
-          WHEN ${titleExpr} = ${baseRefMdExpr} THEN 2
-          WHEN ${suffixMatchExprExpr(baseRefExpr, titleExpr)} THEN 3
-          WHEN ${suffixMatchExprExpr(
-            baseRefMdExpr,
-            `${titleExpr} || '.md'`
-          )} THEN 4
-          WHEN ${relExpr} = ${baseRefExpr} THEN 5
-          WHEN ${relExpr} = ${baseRefMdExpr} THEN 6
-          WHEN ${suffixMatchExprExpr(relExpr, baseRefMdExpr)} THEN 7
-          WHEN ${suffixMatchExprExpr(relExpr, baseRefExpr)} THEN 8
-          WHEN ${suffixMatchExprExpr(baseRefMdExpr, relExpr)} THEN 9
-          WHEN ${suffixMatchExprExpr(baseRefExpr, relExpr)} THEN 10
-          ELSE 99
-        END`;
+          const wikiRank = `CASE
+            WHEN ${titleExpr} = ${baseRefExpr} THEN 1
+            WHEN ${titleExpr} = ${baseRefMdExpr} THEN 2
+            WHEN ${suffixMatchExprExpr(baseRefExpr, titleExpr)} THEN 3
+            WHEN ${suffixMatchExprExpr(
+              baseRefMdExpr,
+              `${titleExpr} || '.md'`
+            )} THEN 4
+            WHEN ${relExpr} = ${baseRefExpr} THEN 5
+            WHEN ${relExpr} = ${baseRefMdExpr} THEN 6
+            WHEN ${suffixMatchExprExpr(relExpr, baseRefMdExpr)} THEN 7
+            WHEN ${suffixMatchExprExpr(relExpr, baseRefExpr)} THEN 8
+            WHEN ${suffixMatchExprExpr(baseRefMdExpr, relExpr)} THEN 9
+            WHEN ${suffixMatchExprExpr(baseRefExpr, relExpr)} THEN 10
+            ELSE 99
+          END`;
 
-        const wikiQuery = `
-          WITH targets(idx, collection, base_ref, base_ref_md) AS (
-            VALUES ${valuesClause}
-          ),
-          candidates AS (
-            SELECT
-              t.idx,
-              d.docid,
-              d.uri,
-              d.title,
-              d.id as doc_id,
-              ${wikiRank} as rank
-            FROM targets t
-            JOIN documents d ON d.active = 1 AND d.collection = t.collection
-            WHERE ${wikiWhere}
-          ),
-          ranked AS (
-            SELECT *,
-              ROW_NUMBER() OVER (PARTITION BY idx ORDER BY rank, doc_id) as rn
-            FROM candidates
-          )
-          SELECT idx, docid, uri, title
-          FROM ranked
-          WHERE rn = 1
-        `;
+          const wikiQuery = `
+            WITH targets(idx, collection, base_ref, base_ref_md) AS (
+              VALUES ${valuesClause}
+            ),
+            candidates AS (
+              SELECT
+                t.idx,
+                d.docid,
+                d.uri,
+                d.title,
+                d.id as doc_id,
+                ${wikiRank} as rank
+              FROM targets t
+              JOIN documents d ON d.active = 1 AND d.collection = t.collection
+              WHERE ${wikiWhere}
+            ),
+            ranked AS (
+              SELECT *,
+                ROW_NUMBER() OVER (PARTITION BY idx ORDER BY rank, doc_id) as rn
+              FROM candidates
+            )
+            SELECT idx, docid, uri, title
+            FROM ranked
+            WHERE rn = 1
+          `;
 
-        const wikiRows = db
-          .query<
-            { idx: number; docid: string; uri: string; title: string | null },
-            (string | number)[]
-          >(wikiQuery)
-          .all(...wikiParams);
+          const wikiRows = db
+            .query<
+              { idx: number; docid: string; uri: string; title: string | null },
+              (string | number)[]
+            >(wikiQuery)
+            .all(...wikiParams);
 
-        for (const row of wikiRows) {
-          results[row.idx] = {
-            docid: row.docid,
-            uri: row.uri,
-            title: row.title,
-          };
+          for (const row of wikiRows) {
+            results[row.idx] = {
+              docid: row.docid,
+              uri: row.uri,
+              title: row.title,
+            };
+          }
         }
       }
 
       if (mdTargets.length > 0) {
-        const valuesClause = mdTargets.map(() => "(?, ?, ?)").join(", ");
-        const mdParams = mdTargets.flatMap((t) => [
-          t.idx,
-          t.collection,
-          t.relPath,
-        ]);
-        const mdQuery = `
-          WITH targets(idx, collection, rel_path) AS (
-            VALUES ${valuesClause}
-          ),
-          ranked AS (
-            SELECT
-              t.idx,
-              d.docid,
-              d.uri,
-              d.title,
-              d.id as doc_id,
-              ROW_NUMBER() OVER (PARTITION BY t.idx ORDER BY d.id) as rn
-            FROM targets t
-            JOIN documents d ON d.active = 1
-              AND d.collection = t.collection
-              AND d.rel_path = t.rel_path
-          )
-          SELECT idx, docid, uri, title
-          FROM ranked
-          WHERE rn = 1
-        `;
+        for (const batch of chunkArray(mdTargets, mdBatchSize)) {
+          const valuesClause = batch.map(() => "(?, ?, ?)").join(", ");
+          const mdParams = batch.flatMap((t) => [
+            t.idx,
+            t.collection,
+            t.relPath,
+          ]);
+          const mdQuery = `
+            WITH targets(idx, collection, rel_path) AS (
+              VALUES ${valuesClause}
+            ),
+            ranked AS (
+              SELECT
+                t.idx,
+                d.docid,
+                d.uri,
+                d.title,
+                d.id as doc_id,
+                ROW_NUMBER() OVER (PARTITION BY t.idx ORDER BY d.id) as rn
+              FROM targets t
+              JOIN documents d ON d.active = 1
+                AND d.collection = t.collection
+                AND d.rel_path = t.rel_path
+            )
+            SELECT idx, docid, uri, title
+            FROM ranked
+            WHERE rn = 1
+          `;
 
-        const mdRows = db
-          .query<
-            { idx: number; docid: string; uri: string; title: string | null },
-            (string | number)[]
-          >(mdQuery)
-          .all(...mdParams);
+          const mdRows = db
+            .query<
+              { idx: number; docid: string; uri: string; title: string | null },
+              (string | number)[]
+            >(mdQuery)
+            .all(...mdParams);
 
-        for (const row of mdRows) {
-          results[row.idx] = {
-            docid: row.docid,
-            uri: row.uri,
-            title: row.title,
-          };
+          for (const row of mdRows) {
+            results[row.idx] = {
+              docid: row.docid,
+              uri: row.uri,
+              title: row.title,
+            };
+          }
         }
       }
 
@@ -2177,10 +2193,15 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
             }
           }
         }
+        const allowedMirrorHashes = [...mirrorByDocid.values()];
+        if (allowedMirrorHashes.length === 0) {
+          warnings.push("Similarity unavailable: no embedded nodes in graph");
+        }
 
         // Get kNN for each node
         // Query content_vectors for embedded chunks, find similar
         for (const docid of nodesForSimilarity) {
+          if (allowedMirrorHashes.length === 0) break;
           const mirrorHash = mirrorByDocid.get(docid);
           if (!mirrorHash) continue;
 
@@ -2191,6 +2212,9 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
           }
 
           // Use GROUP BY to get one best score per doc (avoids duplicate rows from multi-chunk docs)
+          const allowedPlaceholders = allowedMirrorHashes
+            .map(() => "?")
+            .join(",");
           const similarQuery = `
             SELECT
               d.docid as target_docid,
@@ -2202,6 +2226,7 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
             JOIN documents d ON d.mirror_hash = v2.mirror_hash AND d.active = 1
             WHERE v1.mirror_hash = ? AND v1.seq = 0
               AND d.docid != ?
+              AND v2.mirror_hash IN (${allowedPlaceholders})
             GROUP BY d.docid
             HAVING score >= ?
             ORDER BY score DESC
@@ -2210,8 +2235,14 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
 
           try {
             const similarRows = db
-              .query<SimilarRow, [string, string, number, number]>(similarQuery)
-              .all(mirrorHash, docid, threshold, similarTopK);
+              .query<SimilarRow, (string | number)[]>(similarQuery)
+              .all(
+                mirrorHash,
+                docid,
+                ...allowedMirrorHashes,
+                threshold,
+                similarTopK
+              );
 
             for (const sim of similarRows) {
               if (!nodeDocids.has(sim.target_docid)) continue;

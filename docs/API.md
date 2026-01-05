@@ -591,7 +591,11 @@ Get outgoing links from a document (wiki links and markdown links).
       "startCol": 1,
       "endLine": 5,
       "endCol": 17,
-      "source": "parsed"
+      "source": "parsed",
+      "resolved": true,
+      "resolvedDocid": "#def456",
+      "resolvedUri": "gno://notes/other.md",
+      "resolvedTitle": "Other Note"
     },
     {
       "targetRef": "./related.md",
@@ -614,13 +618,17 @@ Get outgoing links from a document (wiki links and markdown links).
 }
 ```
 
-| Field          | Description                                |
-| :------------- | :----------------------------------------- |
-| `targetRef`    | Target path or wiki name                   |
-| `linkType`     | `wiki` ([[Name]]) or `markdown` ([](path)) |
-| `targetAnchor` | Fragment/anchor without #                  |
-| `linkText`     | Display text of the link                   |
-| `source`       | `parsed`, `user`, or `suggested`           |
+| Field           | Description                                |
+| :-------------- | :----------------------------------------- |
+| `targetRef`     | Target path or wiki name                   |
+| `linkType`      | `wiki` ([[Name]]) or `markdown` ([](path)) |
+| `targetAnchor`  | Fragment/anchor without #                  |
+| `linkText`      | Display text of the link                   |
+| `source`        | `parsed`, `user`, or `suggested`           |
+| `resolved`      | Whether target doc exists in index         |
+| `resolvedDocid` | Docid of resolved target (if found)        |
+| `resolvedUri`   | URI of resolved target (if found)          |
+| `resolvedTitle` | Title of resolved target (if found)        |
 
 **Example**:
 
