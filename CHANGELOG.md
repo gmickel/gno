@@ -5,6 +5,30 @@ All notable changes to GNO will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.13.0] - 2026-01-06
+
+### Added
+
+- **Knowledge Graph** - Interactive visualization of document connections
+  - `gno graph` - CLI command with `--json`, `--dot`, `--mermaid` output formats
+  - `--collection` filter, `--similar` for similarity edges, `--threshold` control
+  - REST API: `GET /api/graph` with full query parameters
+  - MCP tool: `gno_graph` for AI agents to explore relationships
+  - WebUI: `/graph` page with force-directed layout, zoom/pan, collection filter
+  - Similarity edges shown as golden connections (semantic relatedness)
+  - Click any node to navigate to that document
+
+- **Document Viewer** - Enhanced document reading experience
+  - Outgoing links panel showing wiki and markdown links
+  - Backlinks panel showing documents linking to current doc
+  - Related notes sidebar with AI-powered similarity suggestions
+  - Tooltips for truncated titles in all panels
+
+### Fixed
+
+- Wiki link resolution for path-based references
+- Right panel title truncation with tooltip on hover
+
 ## [0.12.0] - 2026-01-05
 
 ### Added
