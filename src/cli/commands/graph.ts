@@ -115,7 +115,9 @@ export function formatDot(result: GraphResult): string {
   // Edges
   for (const link of result.links) {
     const style =
-      link.type === "similar" ? ' [style=dashed, color="#888888"]' : "";
+      link.type === "similar"
+        ? ' [style=dashed, color="#888888", dir=none]'
+        : "";
     lines.push(
       `  "${escapeDot(link.source)}" -> "${escapeDot(link.target)}"${style};`
     );
@@ -148,7 +150,7 @@ export function formatMermaid(result: GraphResult): string {
   for (const link of result.links) {
     const sourceId = nodeIds.get(link.source) ?? link.source;
     const targetId = nodeIds.get(link.target) ?? link.target;
-    const arrow = link.type === "similar" ? "-.->" : "-->";
+    const arrow = link.type === "similar" ? "---" : "-->";
     lines.push(`  ${sourceId} ${arrow} ${targetId}`);
   }
 

@@ -605,6 +605,56 @@ describe("SqliteAdapter links", () => {
       expect(result.value).toHaveLength(2);
     });
 
+    test("filters backlinks by source collection", async () => {
+      const targetId = await createTestDoc("notes", "target.md", "Target Note");
+      const sameCollSourceId = await createTestDoc(
+        "notes",
+        "same.md",
+        "Same Coll"
+      );
+      const diffCollSourceId = await createTestDoc(
+        "docs",
+        "diff.md",
+        "Diff Coll"
+      );
+
+      const sameCollLinks: DocLinkInput[] = [
+        {
+          targetRef: "Target Note",
+          targetRefNorm: "target note",
+          linkType: "wiki",
+          startLine: 1,
+          startCol: 1,
+          endLine: 1,
+          endCol: 20,
+        },
+      ];
+      await adapter.setDocLinks(sameCollSourceId, sameCollLinks, "parsed");
+
+      const diffCollLinks: DocLinkInput[] = [
+        {
+          targetRef: "Target Note",
+          targetRefNorm: "target note",
+          targetCollection: "notes",
+          linkType: "wiki",
+          startLine: 1,
+          startCol: 1,
+          endLine: 1,
+          endCol: 20,
+        },
+      ];
+      await adapter.setDocLinks(diffCollSourceId, diffCollLinks, "parsed");
+
+      const result = await adapter.getBacklinksForDoc(targetId, {
+        collection: "notes",
+      });
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+
+      expect(result.value).toHaveLength(1);
+      expect(result.value[0]?.sourceDocId).toBe(sameCollSourceId);
+    });
+
     test("handles multiple backlinks from same document", async () => {
       const targetId = await createTestDoc("notes", "target.md", "Target Note");
       const sourceId = await createTestDoc("notes", "source.md", "Source");

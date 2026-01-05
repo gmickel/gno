@@ -29,11 +29,11 @@ export interface LinkResponse {
     /** Whether target doc was resolved (found in index) */
     resolved?: boolean;
     /** Resolved target document ID (if found) */
-    targetDocid?: string;
+    resolvedDocid?: string;
     /** Resolved target URI (if found) */
-    targetUri?: string;
+    resolvedUri?: string;
     /** Resolved target title (if found) */
-    targetTitle?: string;
+    resolvedTitle?: string;
   }>;
   meta: {
     docid: string;
@@ -86,31 +86,43 @@ function errorResponse(code: string, message: string, status = 400): Response {
   return jsonResponse({ error: { code, message } }, status);
 }
 
-/**
- * Parse and validate a positive integer query param.
- * Returns default if missing, NaN, or out of bounds.
- */
+type ParseResult = { ok: true; value: number } | { ok: false; message: string };
+
 function parsePositiveInt(
+  name: string,
   value: string | null,
   defaultValue: number,
   min: number,
   max: number
-): number {
-  if (!value) return defaultValue;
+): ParseResult {
+  if (!value) return { ok: true, value: defaultValue };
   const parsed = Number(value);
-  if (!Number.isFinite(parsed)) return defaultValue;
-  return Math.min(Math.max(Math.floor(parsed), min), max);
+  if (!Number.isFinite(parsed) || !Number.isInteger(parsed)) {
+    return {
+      ok: false,
+      message: `${name} must be an integer between ${min} and ${max}`,
+    };
+  }
+  if (parsed < min || parsed > max) {
+    return { ok: false, message: `${name} must be between ${min} and ${max}` };
+  }
+  return { ok: true, value: parsed };
 }
 
-/**
- * Parse and validate a float query param in [0, 1].
- * Returns default if missing, NaN, or out of bounds.
- */
-function parseThreshold(value: string | null, defaultValue: number): number {
-  if (!value) return defaultValue;
+function parseThreshold(
+  name: string,
+  value: string | null,
+  defaultValue: number
+): ParseResult {
+  if (!value) return { ok: true, value: defaultValue };
   const parsed = Number(value);
-  if (!Number.isFinite(parsed)) return defaultValue;
-  return Math.max(0, Math.min(1, parsed));
+  if (!Number.isFinite(parsed)) {
+    return { ok: false, message: `${name} must be a number between 0 and 1` };
+  }
+  if (parsed < 0 || parsed > 1) {
+    return { ok: false, message: `${name} must be between 0 and 1` };
+  }
+  return { ok: true, value: parsed };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -197,9 +209,9 @@ export async function handleDocLinks(
         // Resolved target info
         resolved: resolved !== null,
         ...(resolved && {
-          targetDocid: resolved.docid,
-          targetUri: resolved.uri,
-          targetTitle: resolved.title ?? undefined,
+          resolvedDocid: resolved.docid,
+          resolvedUri: resolved.uri,
+          resolvedTitle: resolved.title ?? undefined,
         }),
       };
     }),
@@ -302,9 +314,26 @@ export async function handleDocSimilar(
     );
   }
 
-  // Parse and validate query params (guard against NaN)
-  const limit = parsePositiveInt(url.searchParams.get("limit"), 5, 1, 20);
-  const threshold = parseThreshold(url.searchParams.get("threshold"), 0.5);
+  const limitResult = parsePositiveInt(
+    "limit",
+    url.searchParams.get("limit"),
+    5,
+    1,
+    20
+  );
+  if (!limitResult.ok) {
+    return errorResponse("VALIDATION", limitResult.message, 400);
+  }
+  const thresholdResult = parseThreshold(
+    "threshold",
+    url.searchParams.get("threshold"),
+    0.5
+  );
+  if (!thresholdResult.ok) {
+    return errorResponse("VALIDATION", thresholdResult.message, 400);
+  }
+  const limit = limitResult.value;
+  const threshold = thresholdResult.value;
   const crossCollection = url.searchParams.get("crossCollection") === "true";
 
   // Check document has content

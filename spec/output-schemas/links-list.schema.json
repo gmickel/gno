@@ -74,6 +74,10 @@
           "resolvedUri": {
             "type": "string",
             "description": "URI of resolved target document"
+          },
+          "resolvedTitle": {
+            "type": "string",
+            "description": "Title of resolved target document"
           }
         }
       }

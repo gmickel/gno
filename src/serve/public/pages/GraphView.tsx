@@ -248,6 +248,7 @@ export default function GraphView({ navigate }: PageProps) {
   // Graph ref for zoom controls - using any for dynamic import compatibility
   // biome-ignore lint: dynamic import typing
   const graphRef = useRef<any>(null);
+  const pointerScaleRef = useRef(1);
 
   // Fetch collections on mount
   useEffect(() => {
@@ -590,13 +591,23 @@ export default function GraphView({ navigate }: PageProps) {
                 ctx: CanvasRenderingContext2D
               ) => {
                 if (node.x === undefined || node.y === undefined) return;
+                const scale = pointerScaleRef.current || 1;
                 ctx.fillStyle = color;
                 ctx.beginPath();
-                ctx.arc(node.x, node.y, node.size * 1.5, 0, 2 * Math.PI);
+                ctx.arc(
+                  node.x,
+                  node.y,
+                  (node.size / scale) * 1.5,
+                  0,
+                  2 * Math.PI
+                );
                 ctx.fill();
               }}
               onNodeClick={handleNodeClick}
               onNodeHover={(node: any) => setHoveredNode(node)}
+              onZoom={(transform: { k: number }) => {
+                pointerScaleRef.current = transform.k;
+              }}
               ref={graphRef}
             />
           </Suspense>
