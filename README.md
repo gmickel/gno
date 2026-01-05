@@ -224,6 +224,18 @@ Full-featured markdown editor with:
 | **Keyboard Shortcuts**  | ⌘S save, ⌘B bold, ⌘I italic, ⌘K link |
 | **Quick Capture**       | ⌘N creates new note from anywhere    |
 
+### Document Viewer
+
+![GNO Document Viewer](./assets/screenshots/webui-doc-view.jpg)
+
+View documents with full context: outgoing links, backlinks, and AI-powered related notes sidebar.
+
+### Knowledge Graph
+
+![GNO Knowledge Graph](./assets/screenshots/webui-graph.jpg)
+
+Interactive visualization of document connections. Wiki links, markdown links, and optional similarity edges rendered as a navigable constellation.
+
 ### Collections Management
 
 ![GNO Collections](./assets/screenshots/webui-collections.jpg)
