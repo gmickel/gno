@@ -11,6 +11,7 @@ import Collections from "./pages/Collections";
 import Dashboard from "./pages/Dashboard";
 import DocumentEditor from "./pages/DocumentEditor";
 import DocView from "./pages/DocView";
+import GraphView from "./pages/GraphView";
 import Search from "./pages/Search";
 import "./globals.css";
 
@@ -21,7 +22,8 @@ type Route =
   | "/doc"
   | "/ask"
   | "/edit"
-  | "/collections";
+  | "/collections"
+  | "/graph";
 type Navigate = (to: string | number) => void;
 
 const routes: Record<Route, React.ComponentType<{ navigate: Navigate }>> = {
@@ -32,6 +34,7 @@ const routes: Record<Route, React.ComponentType<{ navigate: Navigate }>> = {
   "/edit": DocumentEditor,
   "/collections": Collections,
   "/ask": Ask,
+  "/graph": GraphView,
 };
 
 function App() {

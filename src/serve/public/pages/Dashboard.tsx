@@ -3,6 +3,7 @@ import {
   CheckCircle2Icon,
   Database,
   FolderIcon,
+  GitForkIcon,
   Layers,
   Loader2Icon,
   MessageSquare,
@@ -143,7 +144,7 @@ export default function Dashboard({ navigate }: PageProps) {
 
       <main className="mx-auto max-w-6xl p-8">
         {/* Navigation */}
-        <nav className="mb-10 flex gap-4">
+        <nav className="mb-10 flex flex-wrap gap-4">
           <Button
             className="gap-2"
             onClick={() => navigate("/search")}
@@ -169,6 +170,15 @@ export default function Dashboard({ navigate }: PageProps) {
           >
             <BookOpen className="size-4" />
             Browse
+          </Button>
+          <Button
+            className="gap-2"
+            onClick={() => navigate("/graph")}
+            size="lg"
+            variant="outline"
+          >
+            <GitForkIcon className="size-4" />
+            Graph
           </Button>
         </nav>
 
