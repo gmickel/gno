@@ -72,28 +72,28 @@ function setCache(key: string, data: BacklinksResponse): void {
   cache.set(key, { data, timestamp: Date.now() });
 }
 
-/** Loading skeleton - index cards shimmer */
+/** Loading skeleton - index cards shimmer with brass tint */
 function BacklinksSkeleton() {
   return (
     <div className="space-y-2 p-3">
       {[1, 2, 3].map((i) => (
         <div
-          className="rounded border border-muted/20 bg-muted/5 p-2.5"
+          className="rounded border border-[#d4a053]/10 bg-[#050505]/50 p-2.5"
           key={i}
         >
-          {/* Title line */}
+          {/* Title line - teal shimmer */}
           <div
-            className="mb-2 h-3.5 w-3/4 animate-pulse rounded bg-muted/40"
+            className="mb-2 h-3.5 w-3/4 animate-pulse rounded bg-[#4db8a8]/15"
             style={{ animationDelay: `${i * 100}ms` }}
           />
-          {/* Context snippet */}
+          {/* Context snippet - subtle brass */}
           <div className="space-y-1">
             <div
-              className="h-2.5 w-full animate-pulse rounded bg-muted/20"
+              className="h-2.5 w-full animate-pulse rounded bg-[#d4a053]/10"
               style={{ animationDelay: `${i * 100 + 50}ms` }}
             />
             <div
-              className="h-2.5 w-2/3 animate-pulse rounded bg-muted/20"
+              className="h-2.5 w-2/3 animate-pulse rounded bg-[#d4a053]/10"
               style={{ animationDelay: `${i * 100 + 100}ms` }}
             />
           </div>
@@ -108,12 +108,10 @@ function BacklinksEmpty() {
   return (
     <div className="flex flex-col items-center justify-center gap-2 px-4 py-8 text-center">
       {/* Brass-ringed empty indicator */}
-      <div className="flex size-10 items-center justify-center rounded-full border border-secondary/30 bg-muted/10">
-        <LinkIcon className="size-4 text-muted-foreground/40" />
+      <div className="flex size-10 items-center justify-center rounded-full border border-[#d4a053]/30 bg-[#050505]/50">
+        <LinkIcon className="size-4 text-[#d4a053]/40" />
       </div>
-      <p className="font-mono text-muted-foreground text-xs">
-        No backlinks found
-      </p>
+      <p className="font-mono text-[#4db8a8]/60 text-xs">No backlinks found</p>
       <p className="text-muted-foreground/60 text-xs">
         Other documents haven&apos;t linked to this one yet
       </p>
@@ -141,26 +139,27 @@ function BacklinkCard({
 
   return (
     <button
+      aria-label={`Navigate to ${displayName}`}
       className={cn(
-        // Index card aesthetic
+        // Index card aesthetic on dark
         "group relative w-full text-left",
-        "rounded border border-muted/20 bg-muted/5",
+        "rounded border border-[#d4a053]/15 bg-[#050505]/60",
         "p-2.5 transition-all duration-200",
         // Hover - card lifts, brass glow
-        "hover:border-secondary/40 hover:bg-muted/10",
-        "hover:shadow-[0_2px_8px_rgba(212,160,83,0.1)]",
-        // Focus state
-        "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary/50"
+        "hover:border-[#d4a053]/40 hover:bg-[#050505]/80",
+        "hover:shadow-[0_2px_8px_rgba(212,160,83,0.12)]",
+        // Focus state - teal ring
+        "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#4db8a8]/50"
       )}
       onClick={() => onNavigate?.(backlink.sourceUri)}
       type="button"
     >
       {/* Brass corner accent */}
-      <div className="absolute top-0 right-0 size-2 border-t border-r border-secondary/30 transition-colors group-hover:border-secondary/60" />
+      <div className="absolute top-0 right-0 size-2 border-t border-r border-[#d4a053]/30 transition-colors group-hover:border-[#d4a053]/60" />
 
       {/* Source document title */}
       <div className="mb-1.5 flex items-start gap-1.5">
-        <LinkIcon className="mt-0.5 size-3 shrink-0 text-secondary/60" />
+        <LinkIcon className="mt-0.5 size-3 shrink-0 text-[#d4a053]/60" />
         <span className="line-clamp-1 font-mono text-[11px] text-foreground/90 leading-tight">
           {displayName}
         </span>
@@ -170,8 +169,8 @@ function BacklinkCard({
       {contextSnippet && (
         <div
           className={cn(
-            "ml-4.5 border-l-2 border-primary/20 pl-2",
-            "transition-colors group-hover:border-primary/40"
+            "ml-4.5 border-l-2 border-[#4db8a8]/20 pl-2",
+            "transition-colors group-hover:border-[#4db8a8]/40"
           )}
         >
           <p className="line-clamp-2 text-[10px] text-muted-foreground/70 italic leading-relaxed">
@@ -182,7 +181,7 @@ function BacklinkCard({
 
       {/* Line reference - brass plate style */}
       <div className="mt-1.5 flex justify-end">
-        <span className="rounded bg-secondary/10 px-1 py-0.5 font-mono text-[9px] text-secondary/60 tabular-nums">
+        <span className="rounded bg-[#d4a053]/10 px-1 py-0.5 font-mono text-[9px] text-[#d4a053]/60 tabular-nums">
           L{backlink.startLine}:{backlink.startCol}
         </span>
       </div>
@@ -259,15 +258,16 @@ export function BacklinksPanel({
     >
       {/* Panel header - drawer handle aesthetic */}
       <CollapsibleTrigger
+        aria-label={`${isOpen ? "Collapse" : "Expand"} backlinks panel`}
         className={cn(
           "group flex w-full items-center gap-2",
           "rounded-sm px-2 py-1.5",
           "transition-colors duration-150",
-          "hover:bg-muted/20"
+          "hover:bg-[#4db8a8]/5"
         )}
       >
         {/* Chevron */}
-        <span className="flex size-4 shrink-0 items-center justify-center text-muted-foreground/60">
+        <span className="flex size-4 shrink-0 items-center justify-center text-[#d4a053]/50">
           {isOpen ? (
             <ChevronDownIcon className="size-3.5 transition-transform duration-200" />
           ) : (
@@ -276,11 +276,11 @@ export function BacklinksPanel({
         </span>
 
         {/* Title - brass label */}
-        <span className="flex-1 text-left font-mono text-[11px] text-muted-foreground uppercase tracking-wider">
+        <span className="flex-1 text-left font-mono text-[11px] text-[#d4a053]/70 uppercase tracking-wider">
           Backlinks
         </span>
 
-        {/* Count badge - brass plate */}
+        {/* Count badge - teal for active, muted otherwise */}
         {!loading && (
           <span
             className={cn(
@@ -288,7 +288,7 @@ export function BacklinksPanel({
               "font-mono text-[10px] tabular-nums",
               "transition-colors duration-150",
               totalCount > 0
-                ? "bg-primary/15 text-primary"
+                ? "bg-[#4db8a8]/15 text-[#4db8a8]"
                 : "bg-muted/20 text-muted-foreground/60"
             )}
           >
@@ -296,9 +296,9 @@ export function BacklinksPanel({
           </span>
         )}
 
-        {/* Loading indicator */}
+        {/* Loading indicator - teal spinner */}
         {loading && (
-          <span className="size-3 animate-spin rounded-full border border-muted-foreground/20 border-t-primary/60" />
+          <span className="size-3 animate-spin rounded-full border border-[#d4a053]/20 border-t-[#4db8a8]/60" />
         )}
       </CollapsibleTrigger>
 
@@ -310,7 +310,7 @@ export function BacklinksPanel({
           <div className="p-4 text-center">
             <p className="font-mono text-destructive text-xs">{error}</p>
             <button
-              className="mt-2 font-mono text-primary text-xs underline-offset-2 hover:underline"
+              className="mt-2 font-mono text-[#4db8a8] text-xs underline-offset-2 hover:underline"
               onClick={() => void fetchBacklinks()}
               type="button"
             >
