@@ -84,7 +84,7 @@ Also check [[Project Plan]].
   test("extracts path-style wiki links during sync", async () => {
     const content = `# Notes
 
-See [[Folder/Note.md]] and [[02 Action/Projects/Task.md]].
+See [[Folder/Note.md]] and [[Folder/Note]] and [[02 Action/Projects/Task.md]].
 `;
     await writeFile(join(collectionDir, "paths.md"), content);
 
@@ -101,6 +101,7 @@ See [[Folder/Note.md]] and [[02 Action/Projects/Task.md]].
 
     const targets = linksResult.value.map((l) => l.targetRefNorm);
     expect(targets).toContain("folder/note.md");
+    expect(targets).toContain("folder/note");
     expect(targets).toContain("02 action/projects/task.md");
   });
 

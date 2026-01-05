@@ -406,6 +406,48 @@ describe("SqliteAdapter links", () => {
 
       expect(result.value[0]?.docid).toBe(docResult.value.docid);
     });
+
+    test("resolves wiki refs without extension to .md rel_path", async () => {
+      await createTestDoc("notes", "task.md", "Different Title");
+
+      const docResult = await adapter.getDocument("notes", "task.md");
+      expect(docResult.ok).toBe(true);
+      if (!docResult.ok || !docResult.value) return;
+
+      const result = await adapter.resolveLinks([
+        {
+          targetRefNorm: "task",
+          targetCollection: "notes",
+          linkType: "wiki",
+        },
+      ]);
+
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+
+      expect(result.value[0]?.docid).toBe(docResult.value.docid);
+    });
+
+    test("resolves wiki refs to subfolder rel_path by basename", async () => {
+      await createTestDoc("notes", "projects/task.md", "Different Title");
+
+      const docResult = await adapter.getDocument("notes", "projects/task.md");
+      expect(docResult.ok).toBe(true);
+      if (!docResult.ok || !docResult.value) return;
+
+      const result = await adapter.resolveLinks([
+        {
+          targetRefNorm: "task.md",
+          targetCollection: "notes",
+          linkType: "wiki",
+        },
+      ]);
+
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+
+      expect(result.value[0]?.docid).toBe(docResult.value.docid);
+    });
   });
 
   describe("getBacklinksForDoc", () => {
@@ -678,6 +720,55 @@ describe("SqliteAdapter links", () => {
       expect(backlinks.ok).toBe(true);
       if (!backlinks.ok) return;
       expect(backlinks.value).toHaveLength(0);
+    });
+  });
+
+  describe("getGraph", () => {
+    test("resolves wiki links to subfolder rel_path by basename", async () => {
+      const sourceId = await createTestDoc("notes", "source.md", "Source");
+      await createTestDoc("notes", "projects/task.md", "Different Title");
+
+      const sourceDoc = await adapter.getDocument("notes", "source.md");
+      const targetDoc = await adapter.getDocument("notes", "projects/task.md");
+      expect(sourceDoc.ok).toBe(true);
+      expect(targetDoc.ok).toBe(true);
+      if (
+        !sourceDoc.ok ||
+        !targetDoc.ok ||
+        !sourceDoc.value ||
+        !targetDoc.value
+      )
+        return;
+      const sourceValue = sourceDoc.value;
+      const targetValue = targetDoc.value;
+
+      const links: DocLinkInput[] = [
+        {
+          targetRef: "task.md",
+          targetRefNorm: "task.md",
+          linkType: "wiki",
+          startLine: 1,
+          startCol: 1,
+          endLine: 1,
+          endCol: 12,
+        },
+      ];
+      await adapter.setDocLinks(sourceId, links, "parsed");
+
+      const graph = await adapter.getGraph({
+        collection: "notes",
+        linkedOnly: false,
+        limitNodes: 100,
+        limitEdges: 100,
+      });
+      expect(graph.ok).toBe(true);
+      if (!graph.ok) return;
+
+      const edge = graph.value.links.find(
+        (link) =>
+          link.source === sourceValue.docid && link.target === targetValue.docid
+      );
+      expect(edge).toBeDefined();
     });
   });
 });

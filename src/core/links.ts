@@ -76,7 +76,7 @@ const UNSAFE_PERCENT_CODES = new Set(["%2F", "%5C", "%00", "%2f", "%5c"]);
 
 /**
  * Wiki link: [[target]] or [[target|alias]] or [[target#anchor]] or [[collection:target]]
- * Captures: 1=full match content, 2=target (before |), 3=alias (after |)
+ * Captures: 1=content inside brackets
  */
 const WIKI_LINK_REGEX = /\[\[([^\]|]+(?:\|[^\]]+)?)\]\]/g;
 
@@ -124,12 +124,20 @@ export function normalizeWikiName(name: string): string {
 }
 
 /**
+ * Strip a trailing .md extension (case-insensitive) without lowercasing.
+ */
+export function stripWikiMdExt(ref: string): string {
+  const lower = ref.toLowerCase();
+  return lower.endsWith(".md") ? ref.slice(0, -3) : ref;
+}
+
+/**
  * Extract basename from a wiki ref.
- * Strips path segments and a trailing .md extension.
+ * Strips path segments and a trailing .md extension (no normalization).
  */
 export function extractWikiBasename(ref: string): string {
   const base = pathPosix.basename(ref.trim());
-  return base.toLowerCase().endsWith(".md") ? base.slice(0, -3) : base;
+  return stripWikiMdExt(base);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -298,7 +306,15 @@ export function parseLinks(
       targetPart = content;
     }
 
-    const parts = parseTargetParts(targetPart);
+    const trimmedTarget = targetPart.trim();
+    const hasScheme =
+      /^[a-z][a-z0-9+.-]*:\/\//i.test(trimmedTarget) ||
+      trimmedTarget.startsWith("mailto:");
+    if (hasScheme || trimmedTarget.startsWith("//")) {
+      continue;
+    }
+
+    const parts = parseTargetParts(trimmedTarget);
     if (!parts.ref) continue;
 
     const startPos = offsetToPosition(startOffset, lineOffsets);
@@ -364,6 +380,10 @@ export function parseLinks(
 
     // Check for collection prefix in path
     const parts = parseTargetParts(path);
+    if (parts.collection) {
+      // Markdown cross-collection links are not supported
+      continue;
+    }
 
     const startPos = offsetToPosition(startOffset, lineOffsets);
     const endPos = offsetToPosition(endOffset, lineOffsets);
