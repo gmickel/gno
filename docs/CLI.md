@@ -23,6 +23,7 @@ GNO command-line interface guide.
 | `gno links`      | List outgoing links from document |
 | `gno backlinks`  | List documents linking to target  |
 | `gno similar`    | Find semantically similar docs    |
+| `gno graph`      | Export knowledge graph            |
 | `gno serve`      | Start web UI server               |
 | `gno mcp`        | Start MCP server for AI clients   |
 | `gno models`     | Manage models (list, pull, use)   |
@@ -547,6 +548,44 @@ Options:
 - `--json`, `--md` - Output format
 
 **Requirements**: Embeddings must be generated with `gno embed` or `gno index`.
+
+### gno graph
+
+Export knowledge graph of document links (wiki links, markdown links, similarity edges).
+
+```bash
+gno graph                           # JSON output (default)
+gno graph --dot                     # Graphviz DOT format
+gno graph --mermaid                 # Mermaid diagram format
+gno graph -c notes                  # Single collection
+gno graph --include-similar         # Add similarity edges
+```
+
+Options:
+
+- `-c, --collection <name>` - Filter to single collection
+- `--limit-nodes <n>` - Max nodes (default: 2000)
+- `--limit-edges <n>` - Max edges (default: 10000)
+- `--include-similar` - Include similarity edges
+- `--threshold <num>` - Similarity threshold (default: 0.7)
+- `--include-isolated` - Include nodes with no links
+- `--similar-top-k <n>` - Similar docs per node (default: 5)
+- `--json` - JSON output (default)
+- `--dot` - Graphviz DOT format
+- `--mermaid` - Mermaid diagram format
+
+**Pipeline to Graphviz**:
+
+```bash
+gno graph --dot | dot -Tsvg > graph.svg
+```
+
+**Pipeline to Mermaid Live**:
+
+```bash
+gno graph --mermaid | pbcopy
+# Paste into https://mermaid.live
+```
 
 ## Admin Commands
 

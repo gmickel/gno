@@ -24,6 +24,7 @@ The GNO Web UI provides a complete graphical interface to your local knowledge i
 | **Editor**      | Split-view markdown editor with live preview               |
 | **Collections** | Add, remove, and re-index collections                      |
 | **Ask**         | AI-powered Q&A with citations                              |
+| **Graph**       | Interactive knowledge graph visualization                  |
 
 ---
 
@@ -242,6 +243,40 @@ The Ask page provides RAG-powered Q&A:
 3. Local LLM synthesizes answer from top results
 4. Citations link to source documents
 
+### Knowledge Graph
+
+The Graph page (`/graph`) provides an interactive visualization of document relationships:
+
+**Features**:
+
+- Force-directed graph using react-force-graph-2d
+- Nodes represent documents, edges represent links
+- Three edge types: wiki links, markdown links, similarity edges
+- Collection filter dropdown
+- Similarity toggle (when embeddings available)
+- Truncation warning when graph exceeds limits
+- Click any node to navigate to that document
+
+**Navigation**:
+
+- Dashboard "Graph" button or `/graph` URL
+- Zoom with scroll wheel
+- Pan by dragging background
+- Click node to open document view
+
+**Filtering**:
+
+- **Collection**: Filter to single collection or view all
+- **Similarity**: Toggle similarity edges (requires embeddings)
+- Isolated nodes (no links) are hidden by default
+
+**Visual Indicators**:
+
+- Node size indicates degree (more connections = larger)
+- Wiki links shown as solid lines
+- Similarity edges shown as dashed lines
+- Hover reveals document title
+
 ### Document Sidebar
 
 The document view includes a collapsible sidebar with link information:
@@ -371,7 +406,8 @@ Browser
 │  │   ├── DocView (/doc)             │
 │  │   ├── Editor (/edit)             │
 │  │   ├── Collections (/collections) │
-│  │   └── Ask (/ask)                 │
+│  │   ├── Ask (/ask)                 │
+│  │   └── Graph (/graph)             │
 │  └── REST API (/api/*)              │
 ├─────────────────────────────────────┤
 │  ServerContext                      │

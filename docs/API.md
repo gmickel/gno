@@ -37,6 +37,7 @@ All endpoints are JSON-based and run entirely on your machine.
 | `/api/doc/:id/links`     | GET    | Get outgoing links from doc |
 | `/api/doc/:id/backlinks` | GET    | Get docs linking to this    |
 | `/api/doc/:id/similar`   | GET    | Find semantically similar   |
+| `/api/graph`             | GET    | Knowledge graph of links    |
 | `/api/tags`              | GET    | List tags with counts       |
 | `/api/search`            | POST   | BM25 keyword search         |
 | `/api/query`             | POST   | Hybrid search               |
@@ -752,6 +753,93 @@ curl "http://localhost:3000/api/doc/%23abc123/similar?limit=10" | jq
 
 # Find similar across all collections
 curl "http://localhost:3000/api/doc/%23abc123/similar?crossCollection=true&threshold=0.6" | jq
+```
+
+---
+
+### Get Knowledge Graph
+
+```http
+GET /api/graph
+```
+
+Returns a knowledge graph of document links (wiki links, markdown links, and optionally similarity edges).
+
+**Query Parameters**:
+
+| Param            | Type    | Default | Description                       |
+| :--------------- | :------ | :------ | :-------------------------------- |
+| `collection`     | string  | -       | Filter to single collection       |
+| `limit`          | number  | 2000    | Max nodes (1-5000)                |
+| `edgeLimit`      | number  | 10000   | Max edges (1-50000)               |
+| `includeSimilar` | boolean | false   | Include similarity edges          |
+| `threshold`      | number  | 0.7     | Similarity threshold (0-1)        |
+| `linkedOnly`     | boolean | true    | Exclude isolated nodes (no links) |
+| `similarTopK`    | number  | 5       | Similar docs per node (1-20)      |
+
+**Response**:
+
+```json
+{
+  "nodes": [
+    {
+      "id": "#abc123",
+      "uri": "gno://notes/readme.md",
+      "title": "Project README",
+      "collection": "notes",
+      "relPath": "readme.md",
+      "degree": 5
+    }
+  ],
+  "links": [
+    {
+      "source": "#abc123",
+      "target": "#def456",
+      "type": "wiki",
+      "weight": 1
+    },
+    {
+      "source": "#abc123",
+      "target": "#ghi789",
+      "type": "similar",
+      "weight": 0.85
+    }
+  ],
+  "meta": {
+    "nodeCount": 42,
+    "edgeCount": 67,
+    "truncated": false,
+    "similarAvailable": true
+  }
+}
+```
+
+| Field                   | Description                                      |
+| :---------------------- | :----------------------------------------------- |
+| `nodes[].id`            | Document ID (hash)                               |
+| `nodes[].uri`           | Virtual URI                                      |
+| `nodes[].title`         | Document title                                   |
+| `nodes[].collection`    | Source collection                                |
+| `nodes[].relPath`       | Relative path in collection                      |
+| `nodes[].degree`        | Number of connections (in + out)                 |
+| `links[].source`        | Source node ID                                   |
+| `links[].target`        | Target node ID                                   |
+| `links[].type`          | Link type: `wiki`, `markdown`, or `similar`      |
+| `links[].weight`        | Edge weight (count for links, score for similar) |
+| `meta.truncated`        | True if results hit limit                        |
+| `meta.similarAvailable` | True if similarity edges can be computed         |
+
+**Example**:
+
+```bash
+# Get graph for notes collection
+curl "http://localhost:3000/api/graph?collection=notes" | jq
+
+# Include similarity edges with 0.8 threshold
+curl "http://localhost:3000/api/graph?includeSimilar=true&threshold=0.8" | jq
+
+# Get all nodes including isolated ones
+curl "http://localhost:3000/api/graph?linkedOnly=false&limit=500" | jq
 ```
 
 ---
