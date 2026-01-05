@@ -234,6 +234,53 @@ Validate context configuration.
 gno context check [--json]
 ```
 
+## Note Linking
+
+### gno links
+
+List outgoing links from a document.
+
+```bash
+gno links <ref> [options]
+```
+
+| Option       | Description                          |
+| ------------ | ------------------------------------ |
+| `--type`     | Filter: `wiki`, `markdown`, or `all` |
+| `--resolved` | Only show resolved links             |
+| `--broken`   | Only show broken links               |
+| `--json`     | JSON output                          |
+
+### gno backlinks
+
+Find documents linking TO a target.
+
+```bash
+gno backlinks <ref> [options]
+```
+
+| Option   | Description               |
+| -------- | ------------------------- |
+| `-n`     | Max results (default: 20) |
+| `--json` | JSON output               |
+
+### gno similar
+
+Find semantically similar documents.
+
+```bash
+gno similar <ref> [options]
+```
+
+| Option               | Description                   |
+| -------------------- | ----------------------------- |
+| `-n`                 | Max results (default: 5)      |
+| `--threshold`        | Min similarity (0-1)          |
+| `--cross-collection` | Search across all collections |
+| `--json`             | JSON output                   |
+
+**Requirements**: Embeddings must exist for source and target documents.
+
 ## Tags
 
 ### gno tags
@@ -323,6 +370,19 @@ gno doctor [--json|--md]
 ```bash
 gno cleanup
 ```
+
+### gno vec
+
+Vector index maintenance. Use when `gno similar` returns empty despite embeddings.
+
+```bash
+gno vec sync      # Fast incremental sync
+gno vec rebuild   # Full rebuild
+```
+
+| Option   | Description |
+| -------- | ----------- |
+| `--json` | JSON output |
 
 ## MCP Server
 

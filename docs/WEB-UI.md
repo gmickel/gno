@@ -437,4 +437,13 @@ curl -X POST http://localhost:3000/api/docs \
 curl -X PUT http://localhost:3000/api/docs/abc123 \
   -H "Content-Type: application/json" \
   -d '{"content": "# Updated content"}'
+
+# Get outgoing links
+curl http://localhost:3000/api/doc/abc123/links
+
+# Get backlinks (who links to this doc)
+curl http://localhost:3000/api/doc/abc123/backlinks
+
+# Get similar documents
+curl "http://localhost:3000/api/doc/abc123/similar?limit=5&threshold=0.5"
 ```
