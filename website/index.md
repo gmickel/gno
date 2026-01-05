@@ -57,6 +57,8 @@ The Web UI provides a visual dashboard for search, browsing, editing, and AI-pow
 
 ![GNO Document Editor](/assets/screenshots/webui-editor.jpg)
 
+![GNO Document Viewer](/assets/screenshots/webui-doc-view.jpg)
+
 ![GNO AI Answers](/assets/screenshots/webui-ask-answer.jpg)
 
 ### Knowledge Graph

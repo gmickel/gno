@@ -42,6 +42,32 @@ Create and edit documents directly in your browser:
 - **Syntax highlighting**: Code blocks rendered with Shiki
 - **Keyboard shortcuts**: **⌘S** to save, **⌘B** for bold, **⌘I** for italic
 
+![GNO Document Editor](/assets/screenshots/webui-editor.jpg)
+
+### Document Viewer
+
+View documents with full context:
+
+- **Outgoing links**: See all wiki and markdown links from this document
+- **Backlinks**: Discover what documents link to this one
+- **Related notes**: AI-powered suggestions based on semantic similarity
+- **Quick navigation**: Click any link to jump to that document
+
+![GNO Document Viewer](/assets/screenshots/webui-doc-view.jpg)
+
+### Knowledge Graph
+
+Visualize connections between your documents:
+
+- **Interactive graph**: Zoom, pan, and explore document relationships
+- **Multiple edge types**: Wiki links, markdown links, and similarity edges
+- **Collection filtering**: Focus on specific knowledge areas
+- **Click to navigate**: Jump to any document from the graph
+
+![GNO Knowledge Graph](/assets/screenshots/webui-graph.jpg)
+
+[Learn more about the Knowledge Graph →](/features/graph-view/)
+
 ### Dashboard
 
 See your index at a glance:

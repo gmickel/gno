@@ -378,6 +378,108 @@ describe("MCP link tools integration", () => {
     });
   });
 
+  describe("gno_graph integration", () => {
+    test("returns graph with nodes and edges", async () => {
+      // Create a small connected graph with links by rel_path (simpler resolution)
+      const docAId = await createTestDoc(
+        "notes",
+        "doc-a.md",
+        "Document A",
+        "Links to doc-b.md"
+      );
+      const docBId = await createTestDoc(
+        "notes",
+        "doc-b.md",
+        "Document B",
+        "Links to doc-a.md"
+      );
+
+      // Add markdown links (resolved by rel_path - simpler than wiki title matching)
+      await store.setDocLinks(
+        docAId,
+        [
+          {
+            targetRef: "doc-b.md",
+            targetRefNorm: "doc-b.md",
+            linkType: "markdown",
+            startLine: 1,
+            startCol: 10,
+            endLine: 1,
+            endCol: 25,
+          },
+        ],
+        "parsed"
+      );
+      await store.setDocLinks(
+        docBId,
+        [
+          {
+            targetRef: "doc-a.md",
+            targetRefNorm: "doc-a.md",
+            linkType: "markdown",
+            startLine: 1,
+            startCol: 10,
+            endLine: 1,
+            endCol: 25,
+          },
+        ],
+        "parsed"
+      );
+
+      const result = await store.getGraph({ collection: "notes" });
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+
+      const { nodes, links, meta } = result.value;
+
+      // Should have 2 nodes (both connected)
+      expect(nodes.length).toBe(2);
+      expect(nodes.map((n) => n.title).sort()).toEqual([
+        "Document A",
+        "Document B",
+      ]);
+
+      // Should have at least 1 edge (edges may be deduplicated/collapsed)
+      expect(links.length).toBeGreaterThanOrEqual(1);
+      expect(links.every((l) => l.type === "markdown")).toBe(true);
+
+      // Both docs should have degree >= 1 (connected to each other)
+      expect(nodes.every((n) => n.degree >= 1)).toBe(true);
+    });
+
+    test("returns empty graph for collection with no links", async () => {
+      // Create isolated doc (no links, linkedOnly=true by default)
+      await createTestDoc("notes", "isolated.md", "Isolated", "No links here");
+
+      const result = await store.getGraph({
+        collection: "notes",
+        linkedOnly: true,
+      });
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+
+      // No nodes since linkedOnly=true and doc has no links
+      expect(result.value.nodes).toHaveLength(0);
+      expect(result.value.links).toHaveLength(0);
+    });
+
+    test("includes isolated nodes when linkedOnly=false", async () => {
+      await createTestDoc("notes", "alone.md", "Alone", "No links");
+
+      const result = await store.getGraph({
+        collection: "notes",
+        linkedOnly: false,
+      });
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+
+      expect(result.value.nodes.length).toBeGreaterThanOrEqual(1);
+      const aloneNode = result.value.nodes.find((n) => n.title === "Alone");
+      expect(aloneNode).toBeDefined();
+      expect(aloneNode?.degree).toBe(0);
+    });
+  });
+
   describe("gno_similar integration", () => {
     // gno_similar requires embedding models which are not available in CI
     // These tests verify the store-level operations that gno_similar depends on

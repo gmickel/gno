@@ -403,3 +403,216 @@ describe("gno_similar schema", () => {
     expect(result.success).toBe(true);
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// gno_graph schemas
+// ─────────────────────────────────────────────────────────────────────────────
+
+const graphInputSchema = z.object({
+  collection: z.string().optional(),
+  limit: z.number().int().min(1).max(5000).default(2000),
+  edgeLimit: z.number().int().min(1).max(50000).default(10000),
+  includeSimilar: z.boolean().default(false),
+  threshold: z.number().min(0).max(1).default(0.7),
+  linkedOnly: z.boolean().default(true),
+  similarTopK: z.number().int().min(1).max(20).default(5),
+});
+
+const graphOutputSchema = z.object({
+  nodes: z.array(
+    z.object({
+      id: z.string(),
+      uri: z.string(),
+      title: z.string().nullable(),
+      collection: z.string(),
+      relPath: z.string(),
+      degree: z.number(),
+    })
+  ),
+  links: z.array(
+    z.object({
+      source: z.string(),
+      target: z.string(),
+      type: z.enum(["wiki", "markdown", "similar"]),
+      weight: z.number(),
+    })
+  ),
+  meta: z.object({
+    collection: z.string().nullable(),
+    nodeLimit: z.number(),
+    edgeLimit: z.number(),
+    totalNodes: z.number(),
+    totalEdges: z.number(),
+    totalEdgesUnresolved: z.number(),
+    returnedNodes: z.number(),
+    returnedEdges: z.number(),
+    truncated: z.boolean(),
+    includedSimilar: z.boolean(),
+  }),
+});
+
+describe("gno_graph schema", () => {
+  test("graph input accepts empty object (uses defaults)", () => {
+    const result = graphInputSchema.safeParse({});
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.limit).toBe(2000);
+      expect(result.data.edgeLimit).toBe(10000);
+      expect(result.data.includeSimilar).toBe(false);
+      expect(result.data.linkedOnly).toBe(true);
+    }
+  });
+
+  test("graph input accepts collection filter", () => {
+    const result = graphInputSchema.safeParse({ collection: "notes" });
+    expect(result.success).toBe(true);
+  });
+
+  test("graph input accepts custom limits", () => {
+    const result = graphInputSchema.safeParse({
+      limit: 500,
+      edgeLimit: 2000,
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.limit).toBe(500);
+      expect(result.data.edgeLimit).toBe(2000);
+    }
+  });
+
+  test("graph input rejects limit > 5000", () => {
+    const result = graphInputSchema.safeParse({ limit: 5001 });
+    expect(result.success).toBe(false);
+  });
+
+  test("graph input rejects edgeLimit > 50000", () => {
+    const result = graphInputSchema.safeParse({ edgeLimit: 50001 });
+    expect(result.success).toBe(false);
+  });
+
+  test("graph input accepts includeSimilar with threshold", () => {
+    const result = graphInputSchema.safeParse({
+      includeSimilar: true,
+      threshold: 0.8,
+      similarTopK: 10,
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.includeSimilar).toBe(true);
+      expect(result.data.threshold).toBe(0.8);
+      expect(result.data.similarTopK).toBe(10);
+    }
+  });
+
+  test("graph input rejects threshold > 1", () => {
+    const result = graphInputSchema.safeParse({ threshold: 1.5 });
+    expect(result.success).toBe(false);
+  });
+
+  test("graph input rejects similarTopK > 20", () => {
+    const result = graphInputSchema.safeParse({ similarTopK: 21 });
+    expect(result.success).toBe(false);
+  });
+
+  test("graph output validates valid result", () => {
+    const validOutput = {
+      nodes: [
+        {
+          id: "#abc1234",
+          uri: "gno://notes/readme.md",
+          title: "README",
+          collection: "notes",
+          relPath: "readme.md",
+          degree: 5,
+        },
+        {
+          id: "#def5678",
+          uri: "gno://notes/guide.md",
+          title: null,
+          collection: "notes",
+          relPath: "guide.md",
+          degree: 3,
+        },
+      ],
+      links: [
+        {
+          source: "#abc1234",
+          target: "#def5678",
+          type: "wiki",
+          weight: 2,
+        },
+        {
+          source: "#abc1234",
+          target: "#def5678",
+          type: "similar",
+          weight: 0.85,
+        },
+      ],
+      meta: {
+        collection: "notes",
+        nodeLimit: 2000,
+        edgeLimit: 10000,
+        totalNodes: 2,
+        totalEdges: 2,
+        totalEdgesUnresolved: 0,
+        returnedNodes: 2,
+        returnedEdges: 2,
+        truncated: false,
+        includedSimilar: true,
+      },
+    };
+    const result = graphOutputSchema.safeParse(validOutput);
+    expect(result.success).toBe(true);
+  });
+
+  test("graph output accepts empty graph", () => {
+    const validOutput = {
+      nodes: [],
+      links: [],
+      meta: {
+        collection: null,
+        nodeLimit: 2000,
+        edgeLimit: 10000,
+        totalNodes: 0,
+        totalEdges: 0,
+        totalEdgesUnresolved: 0,
+        returnedNodes: 0,
+        returnedEdges: 0,
+        truncated: false,
+        includedSimilar: false,
+      },
+    };
+    const result = graphOutputSchema.safeParse(validOutput);
+    expect(result.success).toBe(true);
+  });
+
+  test("graph output accepts truncated result", () => {
+    const validOutput = {
+      nodes: [
+        {
+          id: "#abc1234",
+          uri: "gno://notes/readme.md",
+          title: "README",
+          collection: "notes",
+          relPath: "readme.md",
+          degree: 100,
+        },
+      ],
+      links: [],
+      meta: {
+        collection: null,
+        nodeLimit: 100,
+        edgeLimit: 1000,
+        totalNodes: 5000,
+        totalEdges: 25000,
+        totalEdgesUnresolved: 50,
+        returnedNodes: 100,
+        returnedEdges: 1000,
+        truncated: true,
+        includedSimilar: false,
+      },
+    };
+    const result = graphOutputSchema.safeParse(validOutput);
+    expect(result.success).toBe(true);
+  });
+});
