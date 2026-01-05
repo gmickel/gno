@@ -613,6 +613,8 @@ Get outgoing links from a document (wiki links and markdown links).
   "meta": {
     "docid": "#abc123",
     "totalLinks": 2,
+    "resolvedCount": 1,
+    "resolutionAvailable": true,
     "typeFilter": "wiki"
   }
 }
@@ -629,6 +631,13 @@ Get outgoing links from a document (wiki links and markdown links).
 | `resolvedDocid` | Docid of resolved target (if found)        |
 | `resolvedUri`   | URI of resolved target (if found)          |
 | `resolvedTitle` | Title of resolved target (if found)        |
+
+Resolution fields are only included when `meta.resolutionAvailable` is true.
+
+| Meta Field            | Description                           |
+| :-------------------- | :------------------------------------ |
+| `resolvedCount`       | Number of links resolved              |
+| `resolutionAvailable` | Whether resolution completed normally |
 
 **Example**:
 
@@ -699,7 +708,8 @@ curl "http://localhost:3000/api/doc/%23abc123/backlinks" | jq
 GET /api/doc/:id/similar?limit=5&threshold=0.7&crossCollection=true
 ```
 
-Find semantically similar documents using vector embeddings.
+Find semantically similar documents using vector embeddings. Uses the doc's
+`seq=0` embedding (falls back to first chunk).
 
 **URL Parameters**:
 
@@ -786,6 +796,7 @@ Returns a knowledge graph of document links (wiki links, markdown links, and opt
 | `similarTopK`    | number  | 5       | Similar docs per node (1-20)      |
 
 > **Note**: When `collection` is specified, nodes are limited to that collection and edges are drawn only between those nodes, but node `degree` may reflect links to documents outside the filtered view.
+> **Note**: Similarity edges use `seq=0` embeddings only (no fallback).
 
 **Response**:
 

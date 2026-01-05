@@ -38,6 +38,8 @@ export interface LinkResponse {
   meta: {
     docid: string;
     totalLinks: number;
+    resolvedCount: number;
+    resolutionAvailable: boolean;
     typeFilter?: "wiki" | "markdown";
   };
 }
@@ -182,20 +184,19 @@ export async function handleDocLinks(
 
   // Resolve targets - batch query for efficiency
   // Note: targetCollection may be empty string "" for same-collection links
-  const resolvedTargets = await store.resolveLinks(
+  const resolvedResult = await store.resolveLinks(
     links.map((l) => ({
       targetRefNorm: l.targetRefNorm,
       targetCollection: l.targetCollection || doc.collection,
       linkType: l.linkType,
     }))
   );
-  if (!resolvedTargets.ok) {
-    return errorResponse("RUNTIME", resolvedTargets.error.message, 500);
-  }
+  const resolutionAvailable = resolvedResult.ok;
+  const resolvedTargets = resolutionAvailable ? resolvedResult.value : null;
 
   const response: LinkResponse = {
     links: links.map((l, idx) => {
-      const resolved = resolvedTargets.value[idx] ?? null;
+      const resolved = resolvedTargets?.[idx] ?? null;
       return {
         targetRef: l.targetRef,
         targetRefNorm: l.targetRefNorm,
@@ -209,18 +210,24 @@ export async function handleDocLinks(
         endLine: l.endLine,
         endCol: l.endCol,
         source: l.source,
-        // Resolved target info
-        resolved: resolved !== null,
-        ...(resolved && {
-          resolvedDocid: resolved.docid,
-          resolvedUri: resolved.uri,
-          resolvedTitle: resolved.title ?? undefined,
+        ...(resolutionAvailable && {
+          // Resolved target info
+          resolved: resolved !== null,
+          ...(resolved && {
+            resolvedDocid: resolved.docid,
+            resolvedUri: resolved.uri,
+            resolvedTitle: resolved.title ?? undefined,
+          }),
         }),
       };
     }),
     meta: {
       docid: doc.docid,
       totalLinks: links.length,
+      resolvedCount: resolvedTargets
+        ? resolvedTargets.filter(Boolean).length
+        : 0,
+      resolutionAvailable,
       ...(validatedType && { typeFilter: validatedType }),
     },
   };
@@ -288,7 +295,7 @@ export async function handleDocBacklinks(
  *   ?threshold=0.5 (min similarity score 0-1, default 0.5)
  *   ?crossCollection=true (search across all collections, default false)
  *
- * Algorithm: avg embedding of stored doc chunks -> vector search -> exclude self
+ * Algorithm: seq=0 embedding (fallback to first available) -> vector search -> exclude self
  */
 export async function handleDocSimilar(
   ctx: ServerContext,
@@ -356,7 +363,7 @@ export async function handleDocSimilar(
   // Get embedding model from context
   const embedModel = ctx.vectorIndex.model;
 
-  // Get document's stored embeddings from content_vectors
+  // Get document embedding from content_vectors (prefer seq=0)
   const db = store.getRawDb();
 
   interface VectorRow {
@@ -369,7 +376,15 @@ export async function handleDocSimilar(
     )
     .get(doc.mirrorHash, embedModel);
 
-  if (!vectorRow) {
+  const fallbackRow =
+    vectorRow ??
+    db
+      .query<VectorRow, [string, string]>(
+        "SELECT embedding FROM content_vectors WHERE mirror_hash = ? AND model = ? ORDER BY seq LIMIT 1"
+      )
+      .get(doc.mirrorHash, embedModel);
+
+  if (!fallbackRow) {
     return jsonResponse({
       similar: [],
       meta: {
@@ -386,7 +401,7 @@ export async function handleDocSimilar(
   let embedding: Float32Array;
 
   try {
-    embedding = decodeEmbedding(vectorRow.embedding);
+    embedding = decodeEmbedding(fallbackRow.embedding);
     dimensions = embedding.length;
   } catch (e) {
     return errorResponse(

@@ -1,12 +1,17 @@
 /**
- * MCP link tools - gno_links, gno_backlinks, gno_similar.
+ * MCP link tools - gno_links, gno_backlinks, gno_similar, gno_graph.
  *
  * @module src/mcp/tools/links
  */
 
 import { join as pathJoin } from "node:path";
 
-import type { BacklinkRow, DocLinkRow, DocumentRow } from "../../store/types";
+import type {
+  BacklinkRow,
+  DocLinkRow,
+  DocumentRow,
+  GraphResult,
+} from "../../store/types";
 import type { ToolContext } from "../server";
 
 import { parseRef } from "../../cli/commands/ref-parser";
@@ -613,5 +618,105 @@ export function handleSimilar(
       };
     },
     formatSimilarResult
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// gno_graph - Get knowledge graph of document connections
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface GraphInput {
+  collection?: string;
+  limit?: number;
+  edgeLimit?: number;
+  includeSimilar?: boolean;
+  threshold?: number;
+  linkedOnly?: boolean;
+  similarTopK?: number;
+}
+
+function formatGraphResult(data: GraphResult): string {
+  const { nodes, links, meta } = data;
+  const lines: string[] = [];
+
+  lines.push(
+    `Knowledge Graph: ${meta.totalNodes} nodes, ${meta.totalEdges} edges`
+  );
+
+  if (meta.collection) {
+    lines.push(`Collection: ${meta.collection}`);
+  }
+
+  if (meta.truncated) {
+    lines.push(
+      `(Truncated: returned ${meta.returnedNodes}/${meta.totalNodes} nodes, ${meta.returnedEdges}/${meta.totalEdges} edges)`
+    );
+  }
+
+  if (meta.includedSimilar) {
+    lines.push("Similarity edges: enabled");
+  }
+
+  lines.push("");
+  lines.push("Top nodes by degree:");
+  const topNodes = [...nodes].sort((a, b) => b.degree - a.degree).slice(0, 10);
+  for (const node of topNodes) {
+    const title = node.title ? ` "${node.title}"` : "";
+    lines.push(`  [${node.id}] ${node.uri}${title} (degree: ${node.degree})`);
+  }
+
+  const edgeTypes = new Map<string, number>();
+  for (const link of links) {
+    edgeTypes.set(link.type, (edgeTypes.get(link.type) ?? 0) + 1);
+  }
+
+  lines.push("");
+  lines.push("Edge breakdown:");
+  for (const [type, count] of edgeTypes) {
+    lines.push(`  ${type}: ${count}`);
+  }
+
+  return lines.join("\n");
+}
+
+export function handleGraph(
+  args: GraphInput,
+  ctx: ToolContext
+): Promise<ToolResult> {
+  return runTool(
+    ctx,
+    "gno_graph",
+    async () => {
+      // Validate collection if specified (case-insensitive)
+      let collection: string | undefined;
+      if (args.collection) {
+        collection = normalizeCollectionName(args.collection);
+        const exists = ctx.collections.some(
+          (c) => c.name.toLowerCase() === collection?.toLowerCase()
+        );
+        if (!exists) {
+          throw new Error(
+            `${MCP_ERRORS.NOT_FOUND.code}: Collection not found: ${args.collection}`
+          );
+        }
+      }
+
+      const result = await ctx.store.getGraph({
+        collection,
+        limitNodes: args.limit ?? 2000,
+        limitEdges: args.edgeLimit ?? 10000,
+        includeSimilar: args.includeSimilar ?? false,
+        threshold: args.threshold ?? 0.7,
+        linkedOnly: args.linkedOnly ?? true,
+        similarTopK: args.similarTopK ?? 5,
+      });
+
+      if (!result.ok) {
+        throw new Error(result.error.message);
+      }
+
+      return result.value;
+    },
+    formatGraphResult
   );
 }

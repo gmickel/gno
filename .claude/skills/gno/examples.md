@@ -206,6 +206,54 @@ gno models use quality
 gno models pull
 ```
 
+## Note Linking
+
+### View outgoing links
+
+```bash
+# List all links from a document
+gno links gno://notes/readme.md
+
+# Filter by type
+gno links gno://notes/readme.md --type wiki
+gno links gno://notes/readme.md --type markdown
+
+# Show only broken links
+gno links gno://notes/readme.md --broken
+```
+
+### Find backlinks
+
+```bash
+# Find all documents linking TO this one
+gno backlinks gno://notes/api-design.md
+
+# More results
+gno backlinks gno://notes/api-design.md -n 50
+```
+
+### Find related notes
+
+```bash
+# Find semantically similar documents
+gno similar gno://notes/auth.md
+
+# Stricter threshold (default: 0.7)
+gno similar gno://notes/auth.md --threshold 0.85
+
+# Search across all collections
+gno similar gno://notes/auth.md --cross-collection
+```
+
+### Wiki link syntax
+
+```markdown
+# In your documents:
+See [[API Design]] for details.
+Check [[work:Project Plan]] for cross-collection link.
+Read [[Security#OAuth]] for specific section.
+```
+
 ## Tagging
 
 ### List and manage tags

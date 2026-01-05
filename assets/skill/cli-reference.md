@@ -281,6 +281,29 @@ gno similar <ref> [options]
 
 **Requirements**: Embeddings must exist for source and target documents.
 
+### gno graph
+
+Generate knowledge graph of document connections.
+
+```bash
+gno graph [options]
+```
+
+| Option             | Default | Description                    |
+| ------------------ | ------- | ------------------------------ |
+| `-c, --collection` | all     | Filter to single collection    |
+| `--limit`          | 2000    | Max nodes                      |
+| `--edge-limit`     | 10000   | Max edges                      |
+| `--similar`        | false   | Include similarity edges       |
+| `--threshold`      | 0.7     | Similarity threshold (0-1)     |
+| `--linked-only`    | true    | Exclude isolated nodes         |
+| `--similar-top-k`  | 5       | Similar docs per node (max 20) |
+| `--json`           | -       | JSON output                    |
+
+**Edge types**: `wiki` (wiki links), `markdown` (md links), `similar` (vector similarity).
+
+**Web UI**: Access interactive graph at `http://localhost:3000/graph` via `gno serve`.
+
 ## Tags
 
 ### gno tags

@@ -33,7 +33,10 @@ gno init ~/notes --name notes && gno index
 | **File Formats**         | MD, PDF, DOCX, XLSX, PPTX, TXT | Markdown                   |
 | **Multiple Collections** | ✓                              | ✗ Single directory         |
 | **AI Answers (RAG)**     | ✓                              | ✓                          |
-| **Auto Note Linking**    | ✗                              | ✓                          |
+| **Note Linking**         | ✓ Wiki + Markdown links        | ✓ Auto-linking             |
+| **Backlinks**            | ✓ CLI + Web UI                 | ✓                          |
+| **Similar Notes**        | ✓ Vector similarity            | ✓                          |
+| **Graph View**           | ✓ Interactive force graph      | ✗                          |
 | **MCP Support**          | ✓                              | ✗                          |
 | **REST API**             | ✓                              | ✗                          |
 | **Local LLMs**           | ✓ node-llama-cpp               | ✓ Ollama + Transformers.js |
@@ -56,6 +59,21 @@ gno query "Q4 budget projections"  # finds in XLSX, PDF, MD
 gno query "authentication" --format json | jq '.results[].path'
 ```
 
+**Knowledge graph**: Interactive force-directed graph visualization of document connections.
+
+```bash
+gno graph                   # CLI output
+gno serve                   # Web UI at /graph
+```
+
+**Note linking via CLI**: Explore links programmatically.
+
+```bash
+gno links doc.md            # Outgoing links
+gno backlinks doc.md        # Documents linking to this one
+gno similar doc.md          # Semantically similar notes
+```
+
 **MCP for AI assistants**: Let Claude, Cursor, or other AI tools search your documents.
 
 ```bash
@@ -67,7 +85,7 @@ gno mcp install --target claude
 
 ```bash
 gno serve
-# GET http://localhost:3131/api/search?q=your+query
+# GET http://localhost:3000/api/search?q=your+query
 ```
 
 **Multiple collections**: Manage separate indexes for different projects or contexts.

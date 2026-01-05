@@ -830,6 +830,122 @@ Find semantically similar documents using vector embeddings.
 
 ---
 
+### gno_graph
+
+Get knowledge graph of document connections (nodes and edges).
+
+**Input Schema:**
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "collection": {
+      "type": "string",
+      "description": "Filter to single collection"
+    },
+    "limit": {
+      "type": "integer",
+      "description": "Maximum nodes (1-5000)",
+      "default": 2000,
+      "minimum": 1,
+      "maximum": 5000
+    },
+    "edgeLimit": {
+      "type": "integer",
+      "description": "Maximum edges (1-50000)",
+      "default": 10000,
+      "minimum": 1,
+      "maximum": 50000
+    },
+    "includeSimilar": {
+      "type": "boolean",
+      "description": "Include semantic similarity edges",
+      "default": false
+    },
+    "threshold": {
+      "type": "number",
+      "description": "Similarity threshold (0-1)",
+      "default": 0.7,
+      "minimum": 0,
+      "maximum": 1
+    },
+    "linkedOnly": {
+      "type": "boolean",
+      "description": "Exclude isolated nodes (no connections)",
+      "default": true
+    },
+    "similarTopK": {
+      "type": "integer",
+      "description": "Similar documents per node (1-20)",
+      "default": 5,
+      "minimum": 1,
+      "maximum": 20
+    }
+  },
+  "required": []
+}
+```
+
+**Output Schema:** `gno://schemas/graph@1.0`
+
+**Response:**
+
+```json
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "Knowledge Graph: 150 nodes, 320 edges\n\nTop nodes by degree:\n  [#abc123] gno://notes/readme.md \"README\" (degree: 12)\n  ..."
+    }
+  ],
+  "structuredContent": {
+    "nodes": [
+      {
+        "id": "#abc123",
+        "uri": "gno://notes/readme.md",
+        "title": "README",
+        "collection": "notes",
+        "relPath": "readme.md",
+        "degree": 12
+      }
+    ],
+    "links": [
+      {
+        "source": "#abc123",
+        "target": "#def456",
+        "type": "wiki",
+        "weight": 1
+      }
+    ],
+    "meta": {
+      "collection": null,
+      "nodeLimit": 2000,
+      "edgeLimit": 10000,
+      "totalNodes": 150,
+      "totalEdges": 320,
+      "returnedNodes": 150,
+      "returnedEdges": 320,
+      "truncated": false,
+      "linkedOnly": true,
+      "includedSimilar": false
+    }
+  }
+}
+```
+
+**Edge Types:**
+
+- `wiki`: Wiki link (`[[Target]]`)
+- `markdown`: Markdown link (`[text](path.md)`)
+- `similar`: Semantic similarity (only when `includeSimilar: true`)
+
+**Errors:**
+
+- Collection not found: returns `isError: true`
+
+---
+
 ### gno_add_collection
 
 Add a folder as a new collection and start indexing (write-enabled).

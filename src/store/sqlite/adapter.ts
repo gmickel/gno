@@ -2197,6 +2197,9 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
         if (allowedMirrorHashes.length === 0) {
           warnings.push("Similarity unavailable: no embedded nodes in graph");
         }
+        const allowedPlaceholders = allowedMirrorHashes
+          .map(() => "?")
+          .join(",");
 
         // Get kNN for each node
         // Query content_vectors for embedded chunks, find similar
@@ -2212,9 +2215,6 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
           }
 
           // Use GROUP BY to get one best score per doc (avoids duplicate rows from multi-chunk docs)
-          const allowedPlaceholders = allowedMirrorHashes
-            .map(() => "?")
-            .join(",");
           const similarQuery = `
             SELECT
               d.docid as target_docid,

@@ -58,3 +58,11 @@ The Web UI provides a visual dashboard for search, browsing, editing, and AI-pow
 ![GNO Document Editor](/assets/screenshots/webui-editor.jpg)
 
 ![GNO AI Answers](/assets/screenshots/webui-ask-answer.jpg)
+
+### Knowledge Graph
+
+See how your ideas connect. The interactive knowledge graph visualizes wiki links, markdown links, and semantic similarity as a navigable constellation. Click any node to jump to that document.
+
+![GNO Knowledge Graph](/assets/screenshots/webui-graph.jpg)
+
+[Knowledge Graph feature →](/features/graph-view/)

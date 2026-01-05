@@ -32,20 +32,22 @@ docker-compose up
 
 ## Feature Comparison
 
-| Feature              | GNO                      | Khoj                  |
-| -------------------- | ------------------------ | --------------------- |
-| **Search Modes**     | BM25, Vector, Hybrid     | Vector (semantic)     |
-| **Reranking**        | ✓ Cross-encoder          | ✓ Cross-encoder       |
-| **AI Answers (RAG)** | ✓                        | ✓                     |
-| **CLI**              | ✓ Full-featured          | ✓ Server command only |
-| **Web UI**           | ✓ `gno serve`            | ✓ Gradio-based        |
-| **REST API**         | ✓                        | ✓                     |
-| **MCP Support**      | ✓ 10+ targets            | ✗                     |
-| **Query Expansion**  | ✓ LLM-powered            | ✗                     |
-| **HyDE**             | ✓                        | ✗                     |
-| **Model Presets**    | ✓ slim/balanced/quality  | ✗                     |
-| **Search Depth**     | ✓ fast/balanced/thorough | ✗                     |
-| **Tab Completion**   | ✓ bash/zsh/fish          | ✗                     |
+| Feature              | GNO                       | Khoj                  |
+| -------------------- | ------------------------- | --------------------- |
+| **Search Modes**     | BM25, Vector, Hybrid      | Vector (semantic)     |
+| **Reranking**        | ✓ Cross-encoder           | ✓ Cross-encoder       |
+| **AI Answers (RAG)** | ✓                         | ✓                     |
+| **CLI**              | ✓ Full-featured           | ✓ Server command only |
+| **Web UI**           | ✓ `gno serve`             | ✓ Gradio-based        |
+| **REST API**         | ✓                         | ✓                     |
+| **MCP Support**      | ✓ 10+ targets             | ✗                     |
+| **Query Expansion**  | ✓ LLM-powered             | ✗                     |
+| **HyDE**             | ✓                         | ✗                     |
+| **Model Presets**    | ✓ slim/balanced/quality   | ✗                     |
+| **Search Depth**     | ✓ fast/balanced/thorough  | ✗                     |
+| **Tab Completion**   | ✓ bash/zsh/fish           | ✗                     |
+| **Knowledge Graph**  | ✓ Interactive force graph | ✗                     |
+| **Note Linking**     | ✓ Wiki + backlinks        | ✗                     |
 
 ## File Format Support
 

@@ -20,6 +20,8 @@ Fast local semantic search. Index once, search instantly. No cloud, no API keys.
 - User wants a **web UI** to browse/search documents
 - User asks to **get AI answers** from their documents
 - User wants to **tag, categorize, or filter** documents
+- User asks about **backlinks, wiki links, or related notes**
+- User wants to **visualize document connections** or see a **knowledge graph**
 
 ## Quick Start
 
@@ -32,18 +34,19 @@ gno search "your query"               # BM25 keyword search
 
 ## Command Overview
 
-| Category     | Commands                                                         | Description                                            |
-| ------------ | ---------------------------------------------------------------- | ------------------------------------------------------ |
-| **Search**   | `search`, `vsearch`, `query`, `ask`                              | Find documents by keywords, meaning, or get AI answers |
-| **Retrieve** | `get`, `multi-get`, `ls`                                         | Fetch document content by URI or ID                    |
-| **Index**    | `init`, `collection add/list/remove`, `index`, `update`, `embed` | Set up and maintain document index                     |
-| **Tags**     | `tags`, `tags add`, `tags rm`                                    | Organize and filter documents                          |
-| **Context**  | `context add/list/rm/check`                                      | Add hints to improve search relevance                  |
-| **Models**   | `models list/use/pull/clear/path`                                | Manage local AI models                                 |
-| **Serve**    | `serve`                                                          | Web UI for browsing and searching                      |
-| **MCP**      | `mcp`, `mcp install/uninstall/status`                            | AI assistant integration                               |
-| **Skill**    | `skill install/uninstall/show/paths`                             | Install skill for AI agents                            |
-| **Admin**    | `status`, `doctor`, `cleanup`, `reset`, `completion`             | Maintenance and diagnostics                            |
+| Category     | Commands                                                         | Description                                               |
+| ------------ | ---------------------------------------------------------------- | --------------------------------------------------------- |
+| **Search**   | `search`, `vsearch`, `query`, `ask`                              | Find documents by keywords, meaning, or get AI answers    |
+| **Links**    | `links`, `backlinks`, `similar`, `graph`                         | Navigate document relationships and visualize connections |
+| **Retrieve** | `get`, `multi-get`, `ls`                                         | Fetch document content by URI or ID                       |
+| **Index**    | `init`, `collection add/list/remove`, `index`, `update`, `embed` | Set up and maintain document index                        |
+| **Tags**     | `tags`, `tags add`, `tags rm`                                    | Organize and filter documents                             |
+| **Context**  | `context add/list/rm/check`                                      | Add hints to improve search relevance                     |
+| **Models**   | `models list/use/pull/clear/path`                                | Manage local AI models                                    |
+| **Serve**    | `serve`                                                          | Web UI for browsing and searching                         |
+| **MCP**      | `mcp`, `mcp install/uninstall/status`                            | AI assistant integration                                  |
+| **Skill**    | `skill install/uninstall/show/paths`                             | Install skill for AI agents                               |
+| **Admin**    | `status`, `doctor`, `cleanup`, `reset`, `vec`, `completion`      | Maintenance and diagnostics                               |
 
 ## Search Modes
 
@@ -82,6 +85,18 @@ gno search "your query"               # BM25 keyword search
 --no-color        Disable colors
 --no-pager        Disable paging
 ```
+
+## Important: Embedding After Changes
+
+If you edit/create files that should be searchable via vector search:
+
+```bash
+gno index              # Full re-index (sync + embed)
+# or
+gno embed              # Embed only (if already synced)
+```
+
+MCP `gno.sync` and `gno.capture` do NOT auto-embed. Use CLI for embedding.
 
 ## Reference Documentation
 

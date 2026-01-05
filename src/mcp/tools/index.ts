@@ -17,7 +17,12 @@ import { handleEmbed } from "./embed";
 import { handleGet } from "./get";
 import { handleIndex } from "./index-cmd";
 import { handleJobStatus } from "./job-status";
-import { handleBacklinks, handleLinks, handleSimilar } from "./links";
+import {
+  handleBacklinks,
+  handleGraph,
+  handleLinks,
+  handleSimilar,
+} from "./links";
 import { handleListJobs } from "./list-jobs";
 import { handleListTags } from "./list-tags";
 import { handleMultiGet } from "./multi-get";
@@ -158,6 +163,16 @@ const similarInputSchema = z.object({
   limit: z.number().int().min(1).max(50).default(5),
   threshold: z.number().min(0).max(1).optional(),
   crossCollection: z.boolean().default(false),
+});
+
+const graphInputSchema = z.object({
+  collection: z.string().trim().optional(),
+  limit: z.number().int().min(1).max(5000).default(2000),
+  edgeLimit: z.number().int().min(1).max(50000).default(10000),
+  includeSimilar: z.boolean().default(false),
+  threshold: z.number().min(0).max(1).default(0.7),
+  linkedOnly: z.boolean().default(true),
+  similarTopK: z.number().int().min(1).max(20).default(5),
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -338,6 +353,13 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
     "Find semantically similar documents using vector embeddings",
     similarInputSchema.shape,
     (args) => handleSimilar(args, ctx)
+  );
+
+  server.tool(
+    "gno_graph",
+    "Get knowledge graph of document connections (nodes and edges)",
+    graphInputSchema.shape,
+    (args) => handleGraph(args, ctx)
   );
 
   if (ctx.enableWrite) {

@@ -234,6 +234,76 @@ Validate context configuration.
 gno context check [--json]
 ```
 
+## Note Linking
+
+### gno links
+
+List outgoing links from a document.
+
+```bash
+gno links <ref> [options]
+```
+
+| Option       | Description                          |
+| ------------ | ------------------------------------ |
+| `--type`     | Filter: `wiki`, `markdown`, or `all` |
+| `--resolved` | Only show resolved links             |
+| `--broken`   | Only show broken links               |
+| `--json`     | JSON output                          |
+
+### gno backlinks
+
+Find documents linking TO a target.
+
+```bash
+gno backlinks <ref> [options]
+```
+
+| Option   | Description               |
+| -------- | ------------------------- |
+| `-n`     | Max results (default: 20) |
+| `--json` | JSON output               |
+
+### gno similar
+
+Find semantically similar documents.
+
+```bash
+gno similar <ref> [options]
+```
+
+| Option               | Description                   |
+| -------------------- | ----------------------------- |
+| `-n`                 | Max results (default: 5)      |
+| `--threshold`        | Min similarity (0-1)          |
+| `--cross-collection` | Search across all collections |
+| `--json`             | JSON output                   |
+
+**Requirements**: Embeddings must exist for source and target documents.
+
+### gno graph
+
+Generate knowledge graph of document connections.
+
+```bash
+gno graph [options]
+```
+
+| Option             | Default | Description                    |
+| ------------------ | ------- | ------------------------------ |
+| `-c, --collection` | all     | Filter to single collection    |
+| `--limit`          | 2000    | Max nodes                      |
+| `--edge-limit`     | 10000   | Max edges                      |
+| `--similar`        | false   | Include similarity edges       |
+| `--threshold`      | 0.7     | Similarity threshold (0-1)     |
+| `--linked-only`    | true    | Exclude isolated nodes         |
+| `--similar-top-k`  | 5       | Similar docs per node (max 20) |
+| `--json`           | -       | JSON output                    |
+
+**Edge types**: `wiki` (wiki links), `markdown` (md links), `similar` (vector similarity).
+
+**Web UI**: Access interactive graph at `http://localhost:3000/graph` via `gno serve`.
+
 ## Tags
 
 ### gno tags
@@ -323,6 +393,19 @@ gno doctor [--json|--md]
 ```bash
 gno cleanup
 ```
+
+### gno vec
+
+Vector index maintenance. Use when `gno similar` returns empty despite embeddings.
+
+```bash
+gno vec sync      # Fast incremental sync
+gno vec rebuild   # Full rebuild
+```
+
+| Option   | Description |
+| -------- | ----------- |
+| `--json` | JSON output |
 
 ## MCP Server
 

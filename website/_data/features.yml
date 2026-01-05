@@ -141,6 +141,23 @@
     - "gno backlinks doc.md"
     - "gno similar doc.md"
 
+- slug: graph-view
+  title: Knowledge Graph
+  headline: See How Your Ideas Connect
+  description: Interactive force-directed graph visualization of document connections. Explore wiki links, markdown links, and semantic similarity as a navigable constellation. CLI, Web UI, and API access.
+  icon: git-branch
+  benefits:
+    - Interactive force-directed visualization
+    - Wiki links, markdown links, and similarity edges
+    - Filter by collection
+    - Click nodes to navigate to documents
+    - Zoom, pan, and explore
+    - CLI and REST API access
+  commands:
+    - "gno graph"
+    - "gno graph --collection notes"
+    - "gno serve # then /graph"
+
 - slug: collections
   title: Collections
   headline: Organize Your Knowledge

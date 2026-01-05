@@ -547,20 +547,27 @@ export async function similar(
     }
     const db = store.getRawDb();
 
-    // Get document's embeddings from content_vectors
+    // Get document embedding from content_vectors (prefer seq=0)
     interface VectorRow {
-      mirror_hash: string;
       embedding: Uint8Array;
     }
 
     const embedModel = modelPreset.embed;
-    const vectors = db
+    const vectorRow = db
       .query<VectorRow, [string, string]>(
-        "SELECT mirror_hash, embedding FROM content_vectors WHERE mirror_hash = ? AND model = ?"
+        "SELECT embedding FROM content_vectors WHERE mirror_hash = ? AND model = ? AND seq = 0 LIMIT 1"
       )
-      .all(doc.mirrorHash, embedModel);
+      .get(doc.mirrorHash, embedModel);
 
-    if (vectors.length === 0) {
+    const fallbackRow =
+      vectorRow ??
+      db
+        .query<VectorRow, [string, string]>(
+          "SELECT embedding FROM content_vectors WHERE mirror_hash = ? AND model = ? ORDER BY seq LIMIT 1"
+        )
+        .get(doc.mirrorHash, embedModel);
+
+    if (!fallbackRow) {
       return {
         success: false,
         error: "Document has no embeddings. Run: gno embed",
@@ -568,32 +575,20 @@ export async function similar(
       };
     }
 
-    // Compute average embedding
+    // Normalize embedding for cosine similarity
     const { decodeEmbedding } =
       await import("../../store/vector/sqlite-vec.js");
-    const firstVec = decodeEmbedding(vectors[0]!.embedding);
-    const dimensions = firstVec.length;
-    const avgEmbedding = new Float32Array(dimensions);
-
-    for (const v of vectors) {
-      const emb = decodeEmbedding(v.embedding);
-      for (let i = 0; i < dimensions; i++) {
-        const current = avgEmbedding[i] ?? 0;
-        const embVal = emb[i] ?? 0;
-        avgEmbedding[i] = current + embVal / vectors.length;
-      }
-    }
-
-    // Normalize the average embedding for cosine similarity
+    const embedding = decodeEmbedding(fallbackRow.embedding);
+    const dimensions = embedding.length;
     let norm = 0;
     for (let i = 0; i < dimensions; i++) {
-      const val = avgEmbedding[i] ?? 0;
+      const val = embedding[i] ?? 0;
       norm += val * val;
     }
     norm = Math.sqrt(norm);
     if (norm > 0) {
       for (let i = 0; i < dimensions; i++) {
-        avgEmbedding[i] = (avgEmbedding[i] ?? 0) / norm;
+        embedding[i] = (embedding[i] ?? 0) / norm;
       }
     }
 
@@ -621,7 +616,7 @@ export async function similar(
     // Use larger pool to account for self, inactive docs, collection filter, duplicates
     const candidateLimit = Math.min(limit * 20, 200);
     const searchResult = await vectorIndex.searchNearest(
-      avgEmbedding,
+      embedding,
       candidateLimit,
       {}
     );

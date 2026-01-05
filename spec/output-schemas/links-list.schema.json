@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "gno://schemas/links-list@1.0",
+  "$id": "gno://schemas/links-list@1.1",
   "title": "GNO Links List",
   "description": "List of outgoing links from a document",
   "type": "object",
@@ -84,7 +84,12 @@
     },
     "meta": {
       "type": "object",
-      "required": ["docid", "totalLinks"],
+      "required": [
+        "docid",
+        "totalLinks",
+        "resolvedCount",
+        "resolutionAvailable"
+      ],
       "properties": {
         "docid": {
           "type": "string",
@@ -107,6 +112,10 @@
           "type": "integer",
           "description": "Number of links that resolved to existing documents",
           "minimum": 0
+        },
+        "resolutionAvailable": {
+          "type": "boolean",
+          "description": "Whether link resolution completed successfully"
         },
         "typeFilter": {
           "type": "string",

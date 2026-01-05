@@ -27,13 +27,22 @@ GNO is a local knowledge engine for privacy-conscious developers and AI agents. 
 
 ---
 
-## What's New in v0.12
+## What's New in v0.13
+
+- **Knowledge Graph**: Interactive force-directed visualization of document connections
+- **Graph with Similarity**: See semantic similarity as golden edges (not just wiki/markdown links)
+- **CLI**: `gno graph` command with collection filtering and similarity options
+- **Web UI**: `/graph` page with zoom, pan, collection filter, similarity toggle
+- **MCP**: `gno_graph` tool for AI agents to explore document relationships
+- **REST API**: `/api/graph` endpoint with full query parameters
+
+### v0.12
 
 - **Note Linking**: Wiki-style `[[links]]`, backlinks, and AI-powered related notes
 - **Tag System**: Filter searches by frontmatter tags with `--tags-any`/`--tags-all`
 - **Web UI**: Outgoing links panel, backlinks panel, related notes sidebar
 - **CLI**: `gno links`, `gno backlinks`, `gno similar` commands
-- **MCP**: New tools for AI agents to navigate your knowledge graph
+- **MCP**: `gno_links`, `gno_backlinks`, `gno_similar` tools
 
 ---
 
@@ -154,16 +163,20 @@ Connect GNO to Claude Desktop, Cursor, Raycast, and more:
 
 ![GNO MCP](./assets/screenshots/mcp.jpg)
 
-GNO exposes 6 tools via [Model Context Protocol](https://modelcontextprotocol.io):
+GNO exposes tools via [Model Context Protocol](https://modelcontextprotocol.io):
 
-| Tool            | Description                 |
-| :-------------- | :-------------------------- |
-| `gno_search`    | BM25 keyword search         |
-| `gno_vsearch`   | Vector semantic search      |
-| `gno_query`     | Hybrid search (recommended) |
-| `gno_get`       | Retrieve document by ID     |
-| `gno_multi_get` | Batch document retrieval    |
-| `gno_status`    | Index health check          |
+| Tool            | Description                           |
+| :-------------- | :------------------------------------ |
+| `gno_search`    | BM25 keyword search                   |
+| `gno_vsearch`   | Vector semantic search                |
+| `gno_query`     | Hybrid search (recommended)           |
+| `gno_get`       | Retrieve document by ID               |
+| `gno_multi_get` | Batch document retrieval              |
+| `gno_links`     | Get outgoing links from document      |
+| `gno_backlinks` | Get documents linking TO document     |
+| `gno_similar`   | Find semantically similar documents   |
+| `gno_graph`     | Get knowledge graph (nodes and edges) |
+| `gno_status`    | Index health check                    |
 
 **Design**: MCP tools are retrieval-only. Your AI assistant (Claude, GPT-4) synthesizes answers from retrieved context. Best retrieval (GNO) + best reasoning (your LLM).
 

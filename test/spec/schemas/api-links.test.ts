@@ -17,7 +17,12 @@ describe("links-list schema", () => {
     test("validates minimal response", () => {
       const response = {
         links: [],
-        meta: { docid: "#abc123", totalLinks: 0 },
+        meta: {
+          docid: "#abc123",
+          totalLinks: 0,
+          resolvedCount: 0,
+          resolutionAvailable: true,
+        },
       };
       expect(assertValid(response, schema)).toBe(true);
     });
@@ -32,7 +37,12 @@ describe("links-list schema", () => {
             startCol: 1,
           },
         ],
-        meta: { docid: "#abc123", totalLinks: 1 },
+        meta: {
+          docid: "#abc123",
+          totalLinks: 1,
+          resolvedCount: 0,
+          resolutionAvailable: true,
+        },
       };
       expect(assertValid(response, schema)).toBe(true);
     });
@@ -52,7 +62,12 @@ describe("links-list schema", () => {
             source: "parsed",
           },
         ],
-        meta: { docid: "#abc123", totalLinks: 1 },
+        meta: {
+          docid: "#abc123",
+          totalLinks: 1,
+          resolvedCount: 0,
+          resolutionAvailable: true,
+        },
       };
       expect(assertValid(response, schema)).toBe(true);
     });
@@ -67,7 +82,33 @@ describe("links-list schema", () => {
             startCol: 1,
           },
         ],
-        meta: { docid: "#abc123", totalLinks: 1, typeFilter: "wiki" },
+        meta: {
+          docid: "#abc123",
+          totalLinks: 1,
+          resolvedCount: 0,
+          resolutionAvailable: true,
+          typeFilter: "wiki",
+        },
+      };
+      expect(assertValid(response, schema)).toBe(true);
+    });
+
+    test("validates response when resolution unavailable", () => {
+      const response = {
+        links: [
+          {
+            targetRef: "Other Note",
+            linkType: "wiki",
+            startLine: 2,
+            startCol: 1,
+          },
+        ],
+        meta: {
+          docid: "#abc123",
+          totalLinks: 1,
+          resolvedCount: 0,
+          resolutionAvailable: false,
+        },
       };
       expect(assertValid(response, schema)).toBe(true);
     });

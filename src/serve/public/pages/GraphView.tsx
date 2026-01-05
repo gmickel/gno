@@ -249,6 +249,21 @@ export default function GraphView({ navigate }: PageProps) {
   // biome-ignore lint: dynamic import typing
   const graphRef = useRef<any>(null);
   const pointerScaleRef = useRef(1);
+  const zoomTimeoutRef = useRef<number | null>(null);
+  const pointerTimeoutRef = useRef<number | null>(null);
+  const fetchSeqRef = useRef(0);
+  const mountedRef = useRef(true);
+
+  const clearZoomTimeouts = useCallback(() => {
+    if (zoomTimeoutRef.current !== null) {
+      clearTimeout(zoomTimeoutRef.current);
+      zoomTimeoutRef.current = null;
+    }
+    if (pointerTimeoutRef.current !== null) {
+      clearTimeout(pointerTimeoutRef.current);
+      pointerTimeoutRef.current = null;
+    }
+  }, []);
 
   // Fetch collections on mount
   useEffect(() => {
@@ -261,11 +276,20 @@ export default function GraphView({ navigate }: PageProps) {
     void fetchCollections();
   }, []);
 
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
   // Fetch graph data
   const fetchGraph = useCallback(async () => {
+    const fetchSeq = ++fetchSeqRef.current;
     setLoading(true);
     setError(null);
     setShowTruncationBanner(true);
+    clearZoomTimeouts();
 
     const params = new URLSearchParams();
     if (selectedCollection !== "_all") {
@@ -280,6 +304,8 @@ export default function GraphView({ navigate }: PageProps) {
     const url = `/api/graph?${params.toString()}`;
     const { data, error: fetchError } = await apiFetch<GraphResponse>(url);
 
+    if (!mountedRef.current || fetchSeq !== fetchSeqRef.current) return;
+
     if (fetchError || !data) {
       setError(fetchError ?? "Failed to load graph");
       setLoading(false);
@@ -290,22 +316,26 @@ export default function GraphView({ navigate }: PageProps) {
     setLoading(false);
 
     // Fit to view after data loads
-    setTimeout(() => {
+    zoomTimeoutRef.current = window.setTimeout(() => {
+      if (fetchSeq !== fetchSeqRef.current) return;
       const fg = graphRef.current;
       if (!fg) return;
       fg.zoomToFit(400);
-      setTimeout(() => {
+      pointerTimeoutRef.current = window.setTimeout(() => {
+        if (fetchSeq !== fetchSeqRef.current) return;
         const zoom = fg.zoom?.();
         if (typeof zoom === "number") {
           pointerScaleRef.current = zoom;
         }
       }, 450);
     }, 100);
-  }, [selectedCollection, includeSimilar]);
+  }, [clearZoomTimeouts, selectedCollection, includeSimilar]);
 
   useEffect(() => {
     void fetchGraph();
   }, [fetchGraph]);
+
+  useEffect(() => () => clearZoomTimeouts(), [clearZoomTimeouts]);
 
   // Handle node click - navigate to document
   // biome-ignore lint: dynamic import typing

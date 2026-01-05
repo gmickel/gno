@@ -24,6 +24,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "./ui/collapsible";
+import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 
 /** Single link from the API response */
 export interface OutgoingLink {
@@ -165,15 +166,27 @@ function LinkItem({
         )}
       </span>
 
-      {/* Link text and target */}
-      <div className="min-w-0 flex-1">
-        <span className="block truncate">{displayText}</span>
-        {link.targetAnchor && (
-          <span className="block truncate text-[10px] opacity-60">
-            #{link.targetAnchor}
-          </span>
-        )}
-      </div>
+      {/* Link text and target with tooltip for long names */}
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <div className="min-w-0 flex-1">
+            <span className="block truncate">{displayText}</span>
+            {link.targetAnchor && (
+              <span className="block truncate text-[10px] opacity-60">
+                #{link.targetAnchor}
+              </span>
+            )}
+          </div>
+        </TooltipTrigger>
+        <TooltipContent side="left" className="max-w-[300px]">
+          <p className="break-words">{displayText}</p>
+          {link.targetAnchor && (
+            <p className="text-muted-foreground text-[10px]">
+              #{link.targetAnchor}
+            </p>
+          )}
+        </TooltipContent>
+      </Tooltip>
 
       {/* External indicator for valid links */}
       {!isBroken && (

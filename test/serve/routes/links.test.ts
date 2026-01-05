@@ -4,7 +4,11 @@
 
 import { describe, expect, test } from "bun:test";
 
-import type { BacklinkRow, DocLinkRow } from "../../../src/store/types";
+import type {
+  BacklinkRow,
+  DocLinkRow,
+  StoreResult,
+} from "../../../src/store/types";
 
 import {
   handleDocBacklinks,
@@ -21,6 +25,9 @@ function createMockStore(options: {
   links?: DocLinkRow[];
   backlinks?: BacklinkRow[];
   content?: string;
+  resolveLinksResult?: StoreResult<
+    Array<{ docid: string; uri: string; title: string | null } | null>
+  >;
 }) {
   return {
     getDocumentByDocid(docid: string) {
@@ -54,6 +61,9 @@ function createMockStore(options: {
         linkType: "wiki" | "markdown";
       }>
     ) {
+      if (options.resolveLinksResult) {
+        return Promise.resolve(options.resolveLinksResult);
+      }
       // Return null for all targets (unresolved) - tests don't need resolved links
       return Promise.resolve({
         ok: true as const,
@@ -72,8 +82,15 @@ interface LinkApiResponse {
     targetRef: string;
     linkType: "wiki" | "markdown";
     startLine: number;
+    resolved?: boolean;
   }>;
-  meta: { totalLinks: number; docid: string; typeFilter?: string };
+  meta: {
+    totalLinks: number;
+    docid: string;
+    resolvedCount: number;
+    resolutionAvailable: boolean;
+    typeFilter?: string;
+  };
 }
 
 interface BacklinkApiResponse {
@@ -215,6 +232,43 @@ describe("GET /api/doc/:id/links", () => {
     const body = (await res.json()) as LinkApiResponse;
     expect(body.links).toBeArrayOfSize(0);
     expect(body.meta.totalLinks).toBe(0);
+  });
+
+  test("omits resolved fields when resolution unavailable", async () => {
+    const links: DocLinkRow[] = [
+      {
+        targetRef: "Other Note",
+        targetRefNorm: "other note",
+        targetAnchor: null,
+        targetCollection: null,
+        linkType: "wiki",
+        linkText: null,
+        startLine: 1,
+        startCol: 1,
+        endLine: 1,
+        endCol: 16,
+        source: "parsed",
+      },
+    ];
+
+    const store = createMockStore({
+      doc: { id: 1, docid: "#abc123" },
+      links,
+      resolveLinksResult: {
+        ok: false,
+        error: { code: "QUERY_FAILED", message: "resolve fail" },
+      },
+    });
+
+    const url = new URL("http://localhost/api/doc/%23abc123/links");
+    const res = await handleDocLinks(store as never, "#abc123", url);
+
+    expect(res.status).toBe(200);
+
+    const body = (await res.json()) as LinkApiResponse;
+    expect(body.meta.resolutionAvailable).toBe(false);
+    expect(body.links).toBeArrayOfSize(1);
+    expect("resolved" in body.links[0]!).toBe(false);
   });
 });
 

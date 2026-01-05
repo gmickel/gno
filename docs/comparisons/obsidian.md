@@ -6,27 +6,29 @@ A comparison of GNO with Obsidian's built-in search.
 
 ## Quick Summary
 
-| Aspect              | GNO                           | Obsidian Search            |
-| ------------------- | ----------------------------- | -------------------------- |
-| **Purpose**         | Search & AI access            | Note-taking app            |
-| **Unique strength** | MCP/Skills, CLI, multi-format | Visual editing, graph view |
-| **Works with**      | Any folder                    | Obsidian vaults only       |
+| Aspect              | GNO                                     | Obsidian Search         |
+| ------------------- | --------------------------------------- | ----------------------- |
+| **Purpose**         | Search & AI access                      | Note-taking app         |
+| **Unique strength** | MCP/Skills, CLI, graph+similarity edges | Visual editing, plugins |
+| **Works with**      | Any folder                              | Obsidian vaults only    |
 
 ## Feature Comparison
 
-| Feature             | GNO                  | Obsidian Search   |
-| ------------------- | -------------------- | ----------------- |
-| **Semantic Search** | ✓ Vector + rerank    | Plugin-dependent  |
-| **File Formats**    | MD, PDF, DOCX, etc.  | Markdown only     |
-| **AI Integration**  | MCP, Skills, RAG     | Plugin-dependent  |
-| **External Access** | CLI, MCP server      | Obsidian app only |
-| **Works With**      | Any folder structure | Obsidian vaults   |
-| **Graph View**      | ✗                    | ✓                 |
-| **Note Editing**    | ✓ `gno serve`        | ✓                 |
-| **Plugins**         | MCP ecosystem        | Obsidian plugins  |
-
-| **REST API** | ✓ `gno serve` | ✗ |
-| **Web UI** | ✓ `gno serve` | ✓ (Obsidian app) |
+| Feature                | GNO                          | Obsidian Search   |
+| ---------------------- | ---------------------------- | ----------------- |
+| **Semantic Search**    | ✓ Vector + rerank            | Plugin-dependent  |
+| **File Formats**       | MD, PDF, DOCX, etc.          | Markdown only     |
+| **AI Integration**     | MCP, Skills, RAG             | Plugin-dependent  |
+| **External Access**    | CLI, MCP server              | Obsidian app only |
+| **Works With**         | Any folder structure         | Obsidian vaults   |
+| **Graph View**         | ✓ With similarity edges      | ✓ Links only      |
+| **Backlinks**          | ✓ CLI + Web UI               | ✓                 |
+| **Similar Notes**      | ✓ Vector similarity          | Plugin-dependent  |
+| **Graph + Similarity** | ✓ Visual similarity clusters | ✗                 |
+| **Note Editing**       | ✓ `gno serve`                | ✓                 |
+| **Plugins**            | MCP ecosystem                | Obsidian plugins  |
+| **REST API**           | ✓ `gno serve`                | ✗                 |
+| **Web UI**             | ✓ `gno serve`                | ✓ (Obsidian app)  |
 
 ## Complementary Workflow
 
@@ -92,13 +94,13 @@ gno query "project alpha" --format json | jq '.results[].path'
 
 ## When to Use Obsidian Search
 
-**Visual exploration**: Graph view, backlinks, outgoing links.
+**Visual exploration**: Graph view with interactive features, Canvas.
 
-**Note editing**: Creating and modifying notes.
+**Note editing**: Rich note-taking with full plugin ecosystem.
 
-**Obsidian plugins**: Plugin-specific features (Dataview, Canvas, etc.).
+**Obsidian plugins**: Plugin-specific features (Dataview, Canvas, Excalidraw, etc.).
 
-**Quick vault navigation**: Opening notes by name.
+**Quick vault navigation**: Opening notes by name, quick switcher.
 
 ## Integration Setup
 
@@ -147,12 +149,17 @@ gno ask "what were the action items from the team sync" --answer
 | -------------------------- | -------- |
 | Take notes                 | Both     |
 | Edit notes                 | Both     |
-| Visual graph exploration   | Obsidian |
-| Backlinks and outlinks     | Obsidian |
+| Visual graph exploration   | Both     |
+| Backlinks and outlinks     | Both     |
+| Similar notes discovery    | Both     |
 | Quick search from terminal | GNO      |
 | AI agent access to notes   | GNO      |
 | RAG answers                | GNO      |
 | Search PDFs in vault       | GNO      |
 | Script/automate search     | GNO      |
+| Obsidian plugins           | Obsidian |
+| Canvas/Excalidraw          | Obsidian |
 
 GNO extends Obsidian's capabilities rather than replacing it. Your Obsidian vault becomes searchable from anywhere (terminal, AI assistants, scripts) while Obsidian remains your note-taking home.
+
+Both now support graph views, backlinks, and outgoing links—but GNO adds CLI access (`gno links`, `gno backlinks`, `gno similar`, `gno graph`) and REST API endpoints for programmatic use.

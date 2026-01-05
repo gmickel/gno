@@ -10,7 +10,7 @@ Use GNO as an MCP server for AI assistants like Claude Desktop, Cursor, and othe
 
 MCP (Model Context Protocol) allows AI assistants to access external tools and resources. GNO provides:
 
-- **Tools (read)**: gno_search, gno_vsearch, gno_query, gno_get, gno_multi_get, gno_status, gno_list_tags, gno_links, gno_backlinks, gno_similar
+- **Tools (read)**: gno_search, gno_vsearch, gno_query, gno_get, gno_multi_get, gno_status, gno_list_tags, gno_links, gno_backlinks, gno_similar, gno_graph
 - **Tools (write, opt-in)**: gno_capture, gno_add_collection, gno_sync, gno_embed, gno_index, gno_remove_collection
 - **Tools (jobs)**: gno_job_status, gno_list_jobs
 - **Resources**: Access documents via `gno://collection/path`
@@ -651,6 +651,29 @@ Uses document embeddings to find semantically related content. The algorithm:
 4. Returns top N similar documents (excluding the source itself)
 
 **Note**: Requires documents to be embedded (`gno embed` or `gno index`). Vector search must be available (sqlite-vec installed).
+
+### gno_graph
+
+Get knowledge graph of document connections (nodes and edges).
+
+```
+collection: "notes"        # Optional: filter to single collection
+limit: 2000                # Max nodes (1-5000, default: 2000)
+edgeLimit: 10000           # Max edges (1-50000, default: 10000)
+includeSimilar: false      # Include similarity edges (default: false)
+threshold: 0.7             # Similarity threshold (0-1, default: 0.7)
+linkedOnly: true           # Exclude isolated nodes (default: true)
+similarTopK: 5             # Similar docs per node (1-20, default: 5)
+```
+
+Returns graph data with nodes (documents) and links (edges). Edge types: `wiki`, `markdown`, `similar`.
+
+**Use cases**:
+
+- Explore document relationships programmatically
+- Build custom visualizations
+- Analyze knowledge graph structure
+- Find highly connected "hub" documents
 
 ## Resources
 

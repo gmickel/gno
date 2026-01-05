@@ -448,6 +448,29 @@ describe("SqliteAdapter links", () => {
 
       expect(result.value[0]?.docid).toBe(docResult.value.docid);
     });
+
+    test("resolves large batches without reordering", async () => {
+      await createTestDoc("notes", "bulk.md", "Bulk");
+
+      const docResult = await adapter.getDocument("notes", "bulk.md");
+      expect(docResult.ok).toBe(true);
+      if (!docResult.ok || !docResult.value) return;
+
+      const targets = Array.from({ length: 900 }, (_, idx) => ({
+        targetRefNorm: idx % 2 === 0 ? "bulk" : "bulk.md",
+        targetCollection: "notes",
+        linkType: (idx % 2 === 0 ? "wiki" : "markdown") as "wiki" | "markdown",
+      }));
+
+      const result = await adapter.resolveLinks(targets);
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+
+      expect(result.value).toHaveLength(targets.length);
+      for (const resolved of result.value) {
+        expect(resolved?.docid).toBe(docResult.value.docid);
+      }
+    });
   });
 
   describe("getBacklinksForDoc", () => {

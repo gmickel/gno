@@ -25,6 +25,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "./ui/collapsible";
+import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 
 // -----------------------------------------------------------------------------
 // Types
@@ -256,10 +257,17 @@ function RelatedNoteItem({
       }}
       type="button"
     >
-      {/* Title */}
-      <h4 className="truncate font-mono text-[13px] text-foreground/90 group-hover:text-foreground">
-        {doc.title || "Untitled"}
-      </h4>
+      {/* Title with tooltip for long names */}
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <h4 className="truncate font-mono text-[13px] text-foreground/90 group-hover:text-foreground">
+            {doc.title || "Untitled"}
+          </h4>
+        </TooltipTrigger>
+        <TooltipContent side="left" className="max-w-[300px]">
+          <p className="break-words">{doc.title || "Untitled"}</p>
+        </TooltipContent>
+      </Tooltip>
 
       {/* Collection badge - brass plate style */}
       <div className="mt-1 flex items-center gap-1.5">

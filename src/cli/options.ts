@@ -57,7 +57,7 @@ const FORMAT_SUPPORT: Record<CommandId, OutputFormat[]> = {
   [CMD.linksList]: ["terminal", "json", "md"],
   [CMD.backlinks]: ["terminal", "json", "md"],
   [CMD.similar]: ["terminal", "json", "md"],
-  // graph uses custom --dot/--mermaid flags and writes via terminal output
+  // graph uses custom --dot/--mermaid flags (not OutputFormat) and writes via terminal output
   [CMD.graph]: ["json", "terminal"],
 };
 

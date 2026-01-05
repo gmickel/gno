@@ -548,6 +548,7 @@ Options:
 - `--json`, `--md` - Output format
 
 **Requirements**: Embeddings must be generated with `gno embed` or `gno index`.
+**Similarity basis**: Uses the doc's `seq=0` embedding (falls back to first chunk).
 
 ### gno graph
 
@@ -586,6 +587,8 @@ gno graph --dot | dot -Tsvg > graph.svg
 gno graph --mermaid | pbcopy
 # Paste into https://mermaid.live
 ```
+
+Similarity edges use `seq=0` embeddings only.
 
 ## Admin Commands
 

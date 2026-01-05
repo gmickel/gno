@@ -18,6 +18,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "./ui/collapsible";
+import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 
 /** Single backlink from API */
 interface Backlink {
@@ -162,14 +163,21 @@ function BacklinkItem({
         <LinkIcon className="size-3" />
       </span>
 
-      {/* Document title */}
-      <div className="min-w-0 flex-1">
-        <span className="block truncate">{displayName}</span>
-        {/* Line reference as subtitle */}
-        <span className="block truncate text-[10px] opacity-60">
-          L{backlink.startLine}:{backlink.startCol}
-        </span>
-      </div>
+      {/* Document title with tooltip for long names */}
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <div className="min-w-0 flex-1">
+            <span className="block truncate">{displayName}</span>
+            {/* Line reference as subtitle */}
+            <span className="block truncate text-[10px] opacity-60">
+              L{backlink.startLine}:{backlink.startCol}
+            </span>
+          </div>
+        </TooltipTrigger>
+        <TooltipContent side="left" className="max-w-[300px]">
+          <p className="break-words">{displayName}</p>
+        </TooltipContent>
+      </Tooltip>
     </button>
   );
 }

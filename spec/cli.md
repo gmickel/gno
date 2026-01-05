@@ -89,6 +89,7 @@ Default output is human-readable terminal format.
 | links list         | yes    | no      | no    | yes  | no    | terminal |
 | backlinks          | yes    | no      | no    | yes  | no    | terminal |
 | similar            | yes    | no      | no    | yes  | no    | terminal |
+| graph              | yes    | no      | no    | no   | no    | terminal |
 | serve              | no     | no      | no    | no   | no    | terminal |
 | completion         | no     | no      | no    | no   | no    | terminal |
 | completion install | yes    | no      | no    | no   | no    | terminal |
@@ -1742,6 +1743,110 @@ gno similar #abc123 --limit 10 --threshold 0.5
 
 # Search across all collections
 gno similar gno://docs/api.md --cross-collection --json
+```
+
+---
+
+### gno graph
+
+Generate knowledge graph of document links.
+
+**Synopsis:**
+
+```bash
+gno graph [-c, --collection <name>] [--limit <num>] [--edge-limit <num>] [--similar] [--threshold <num>] [--linked-only] [--similar-top-k <num>] [--json]
+```
+
+**Options:**
+
+| Flag               | Type   | Default | Description                    |
+| ------------------ | ------ | ------- | ------------------------------ |
+| `-c, --collection` | string | all     | Filter to single collection    |
+| `--limit`          | number | 2000    | Maximum nodes to return        |
+| `--edge-limit`     | number | 10000   | Maximum edges to return        |
+| `--similar`        | flag   | false   | Include similarity edges       |
+| `--threshold`      | number | 0.7     | Similarity threshold (0-1)     |
+| `--linked-only`    | flag   | true    | Exclude isolated nodes         |
+| `--similar-top-k`  | number | 5       | Similar docs per node (max 20) |
+| `--json`           | flag   |         | JSON output                    |
+
+**Behavior:**
+
+- Returns nodes (documents) and links (edges) as graph data
+- Edges include wiki links, markdown links, and optionally similarity edges
+- Node degree reflects total unique connections (in + out)
+- When collection is filtered, degree may reflect links outside the filter
+- Truncates results if node/edge limits are exceeded
+
+**Output (JSON):**
+
+Schema: `graph.schema.json`
+
+```json
+{
+  "nodes": [
+    {
+      "id": "#abc123",
+      "uri": "gno://notes/note.md",
+      "title": "My Note",
+      "collection": "notes",
+      "relPath": "note.md",
+      "degree": 5
+    }
+  ],
+  "links": [
+    {
+      "source": "#abc123",
+      "target": "#def456",
+      "type": "wiki",
+      "weight": 1
+    }
+  ],
+  "meta": {
+    "collection": null,
+    "nodeLimit": 2000,
+    "edgeLimit": 10000,
+    "totalNodes": 150,
+    "totalEdges": 320,
+    "totalEdgesUnresolved": 5,
+    "returnedNodes": 150,
+    "returnedEdges": 320,
+    "truncated": false,
+    "linkedOnly": true,
+    "includedSimilar": false,
+    "similarAvailable": true,
+    "similarTopK": 5,
+    "similarTruncatedByComputeBudget": false,
+    "warnings": []
+  }
+}
+```
+
+**Edge Types:**
+
+- `wiki`: Wiki link (`[[Target]]`)
+- `markdown`: Markdown link (`[text](path.md)`)
+- `similar`: Semantic similarity (requires `--similar` flag)
+
+**Exit Codes:**
+
+- 0: Success
+- 1: No documents indexed
+
+**Examples:**
+
+```bash
+# Full graph
+gno graph
+
+# Filter by collection
+gno graph --collection notes
+
+# Include similarity edges
+gno graph --similar --threshold 0.6
+
+# JSON output with limits
+gno graph --limit 500 --edge-limit 2000 --json
 ```
 
 ---
