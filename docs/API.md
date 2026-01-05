@@ -777,6 +777,8 @@ Returns a knowledge graph of document links (wiki links, markdown links, and opt
 | `linkedOnly`     | boolean | true    | Exclude isolated nodes (no links) |
 | `similarTopK`    | number  | 5       | Similar docs per node (1-20)      |
 
+> **Note**: When `collection` is specified, nodes are limited to that collection and edges are drawn only between those nodes, but node `degree` may reflect links to documents outside the filtered view.
+
 **Response**:
 
 ```json

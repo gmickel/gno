@@ -270,6 +270,8 @@ The Graph page (`/graph`) provides an interactive visualization of document rela
 - **Similarity**: Toggle similarity edges (requires embeddings)
 - Isolated nodes (no links) are hidden by default
 
+> **Note**: When filtering by collection, node degrees may reflect links to documents outside the current view (used for importance ranking).
+
 **Visual Indicators**:
 
 - Node size indicates degree (more connections = larger)
