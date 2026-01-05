@@ -26,6 +26,8 @@ import type {
   DocumentRow,
   FtsResult,
   FtsSearchOptions,
+  GetGraphOptions,
+  GraphResult,
   IndexStatus,
   IngestErrorInput,
   IngestErrorRow,
@@ -1556,6 +1558,377 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
       return err(
         "QUERY_FAILED",
         cause instanceof Error ? cause.message : "Failed to resolve links",
+        cause
+      );
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Graph
+  // ─────────────────────────────────────────────────────────────────────────
+
+  async getGraph(options?: GetGraphOptions): Promise<StoreResult<GraphResult>> {
+    try {
+      const db = this.ensureOpen();
+
+      // Apply defaults
+      const collection = options?.collection ?? null;
+      const limitNodes = options?.limitNodes ?? 2000;
+      const limitEdges = options?.limitEdges ?? 10000;
+      const includeSimilar = options?.includeSimilar ?? false;
+      const threshold = options?.threshold ?? 0.7;
+      const activeOnly = options?.activeOnly ?? true;
+      const linkedOnly = options?.linkedOnly ?? true;
+      const similarTopK = Math.max(1, Math.min(20, options?.similarTopK ?? 5));
+
+      const warnings: string[] = [];
+
+      // Build active filter clause
+      const activeClause = activeOnly ? "AND d.active = 1" : "";
+
+      // Phase 1: Compute degrees for all documents (unique neighbor count)
+      // Degree = count of unique neighbors (in + out), not raw link occurrences
+      interface DegreeRow {
+        id: number;
+        docid: string;
+        uri: string;
+        title: string | null;
+        collection: string;
+        rel_path: string;
+        degree: number;
+      }
+
+      const degreeQuery = `
+        WITH outgoing AS (
+          SELECT DISTINCT
+            d.id as doc_id,
+            CASE dl.link_type
+              WHEN 'wiki' THEN (
+                SELECT t.id FROM documents t
+                WHERE t.active = 1
+                  AND t.collection = COALESCE(dl.target_collection, d.collection)
+                  AND lower(trim(t.title)) = dl.target_ref_norm
+                ORDER BY t.id LIMIT 1
+              )
+              WHEN 'markdown' THEN (
+                SELECT t.id FROM documents t
+                WHERE t.active = 1
+                  AND t.collection = COALESCE(dl.target_collection, d.collection)
+                  AND t.rel_path = dl.target_ref_norm
+                ORDER BY t.id LIMIT 1
+              )
+            END as target_id
+          FROM documents d
+          JOIN doc_links dl ON dl.source_doc_id = d.id
+          WHERE 1=1 ${activeClause}
+            ${collection ? "AND d.collection = ?" : ""}
+        ),
+        incoming AS (
+          SELECT DISTINCT
+            CASE dl.link_type
+              WHEN 'wiki' THEN (
+                SELECT t.id FROM documents t
+                WHERE t.active = 1
+                  AND t.collection = COALESCE(dl.target_collection, src.collection)
+                  AND lower(trim(t.title)) = dl.target_ref_norm
+                ORDER BY t.id LIMIT 1
+              )
+              WHEN 'markdown' THEN (
+                SELECT t.id FROM documents t
+                WHERE t.active = 1
+                  AND t.collection = COALESCE(dl.target_collection, src.collection)
+                  AND t.rel_path = dl.target_ref_norm
+                ORDER BY t.id LIMIT 1
+              )
+            END as doc_id,
+            src.id as source_id
+          FROM documents src
+          JOIN doc_links dl ON dl.source_doc_id = src.id
+          WHERE src.active = 1
+            ${collection ? "AND COALESCE(dl.target_collection, src.collection) = ?" : ""}
+        ),
+        degrees AS (
+          SELECT doc_id, COUNT(DISTINCT target_id) as out_deg
+          FROM outgoing WHERE target_id IS NOT NULL GROUP BY doc_id
+        ),
+        in_degrees AS (
+          SELECT doc_id, COUNT(DISTINCT source_id) as in_deg
+          FROM incoming WHERE doc_id IS NOT NULL GROUP BY doc_id
+        )
+        SELECT
+          d.id, d.docid, d.uri, d.title, d.collection, d.rel_path,
+          COALESCE(deg.out_deg, 0) + COALESCE(indeg.in_deg, 0) as degree
+        FROM documents d
+        LEFT JOIN degrees deg ON deg.doc_id = d.id
+        LEFT JOIN in_degrees indeg ON indeg.doc_id = d.id
+        WHERE 1=1 ${activeClause}
+          ${collection ? "AND d.collection = ?" : ""}
+          ${linkedOnly ? "AND (deg.out_deg > 0 OR indeg.in_deg > 0)" : ""}
+        ORDER BY degree DESC, d.id ASC
+      `;
+
+      // Build query params
+      const params: string[] = [];
+      if (collection) {
+        params.push(collection); // for outgoing CTE
+        params.push(collection); // for incoming CTE
+        params.push(collection); // for main query
+      }
+
+      const degreeRows = db
+        .query<DegreeRow, string[]>(degreeQuery)
+        .all(...params);
+
+      const totalNodes = degreeRows.length;
+      const truncatedNodes = totalNodes > limitNodes;
+      const selectedRows = degreeRows.slice(0, limitNodes);
+      const nodeIds = new Set(selectedRows.map((r) => r.id));
+      const nodeDocids = new Set(selectedRows.map((r) => r.docid));
+
+      // Build nodes array
+      const nodes = selectedRows.map((r) => ({
+        id: r.docid,
+        uri: r.uri,
+        title: r.title,
+        collection: r.collection,
+        relPath: r.rel_path,
+        degree: r.degree,
+      }));
+
+      // Phase 2: Fetch edges restricted to selected node IDs
+      // Only edges where BOTH source and target are in our node set
+      interface EdgeRow {
+        source_docid: string;
+        target_docid: string;
+        link_type: "wiki" | "markdown";
+        weight: number;
+      }
+
+      let totalEdges = 0;
+      let totalEdgesUnresolved = 0;
+      const edgeMap = new Map<
+        string,
+        { type: "wiki" | "markdown" | "similar"; weight: number }
+      >();
+
+      if (nodeIds.size > 0) {
+        const nodeIdList = [...nodeIds].join(",");
+
+        // Count total edges and unresolved for meta
+        interface CountRow {
+          total: number;
+          unresolved: number;
+        }
+
+        const countQuery = `
+          SELECT
+            COUNT(*) as total,
+            SUM(CASE WHEN target_id IS NULL THEN 1 ELSE 0 END) as unresolved
+          FROM (
+            SELECT
+              dl.source_doc_id,
+              CASE dl.link_type
+                WHEN 'wiki' THEN (
+                  SELECT t.id FROM documents t
+                  WHERE t.active = 1
+                    AND t.collection = COALESCE(dl.target_collection, d.collection)
+                    AND lower(trim(t.title)) = dl.target_ref_norm
+                  ORDER BY t.id LIMIT 1
+                )
+                WHEN 'markdown' THEN (
+                  SELECT t.id FROM documents t
+                  WHERE t.active = 1
+                    AND t.collection = COALESCE(dl.target_collection, d.collection)
+                    AND t.rel_path = dl.target_ref_norm
+                  ORDER BY t.id LIMIT 1
+                )
+              END as target_id
+            FROM documents d
+            JOIN doc_links dl ON dl.source_doc_id = d.id
+            WHERE d.id IN (${nodeIdList}) ${activeClause}
+          )
+        `;
+
+        const countRow = db.query<CountRow, []>(countQuery).get();
+        totalEdges = countRow?.total ?? 0;
+        totalEdgesUnresolved = countRow?.unresolved ?? 0;
+
+        // Fetch collapsed edges (group by source, target, type with count as weight)
+        const edgeQuery = `
+          SELECT
+            src.docid as source_docid,
+            tgt.docid as target_docid,
+            dl.link_type,
+            COUNT(*) as weight
+          FROM documents src
+          JOIN doc_links dl ON dl.source_doc_id = src.id
+          JOIN documents tgt ON (
+            CASE dl.link_type
+              WHEN 'wiki' THEN
+                tgt.active = 1
+                AND tgt.collection = COALESCE(dl.target_collection, src.collection)
+                AND lower(trim(tgt.title)) = dl.target_ref_norm
+              WHEN 'markdown' THEN
+                tgt.active = 1
+                AND tgt.collection = COALESCE(dl.target_collection, src.collection)
+                AND tgt.rel_path = dl.target_ref_norm
+            END
+          )
+          WHERE src.id IN (${nodeIdList})
+            AND tgt.id IN (${nodeIdList})
+            ${activeClause.replace("d.", "src.")}
+          GROUP BY src.docid, tgt.docid, dl.link_type
+          ORDER BY weight DESC, src.docid, tgt.docid
+        `;
+
+        const edgeRows = db.query<EdgeRow, []>(edgeQuery).all();
+
+        for (const row of edgeRows) {
+          const key = `${row.source_docid}:${row.target_docid}:${row.link_type}`;
+          edgeMap.set(key, { type: row.link_type, weight: row.weight });
+        }
+      }
+
+      // Phase 3: Similarity edges (if requested)
+      let similarAvailable = false;
+      let similarTruncatedByComputeBudget = false;
+
+      if (includeSimilar && nodeIds.size > 0) {
+        // Check if sqlite-vec is available
+        try {
+          db.query("SELECT vec_version()").get();
+          similarAvailable = true;
+        } catch {
+          similarAvailable = false;
+          warnings.push("Similarity edges unavailable: sqlite-vec not loaded");
+        }
+
+        if (similarAvailable) {
+          // Cap at 1000 nodes for similarity computation
+          const SIMILARITY_NODE_CAP = 1000;
+          const nodesForSimilarity = [...nodeDocids].slice(
+            0,
+            SIMILARITY_NODE_CAP
+          );
+          if (nodeDocids.size > SIMILARITY_NODE_CAP) {
+            similarTruncatedByComputeBudget = true;
+            warnings.push(
+              `Similarity capped at ${SIMILARITY_NODE_CAP} nodes (requested ${nodeDocids.size})`
+            );
+          }
+
+          // Get kNN for each node
+          // Query content_vectors for embedded chunks, find similar
+          for (const docid of nodesForSimilarity) {
+            // Get document's mirror_hash
+            const docRow = db
+              .query<{ mirror_hash: string }, [string]>(
+                "SELECT mirror_hash FROM documents WHERE docid = ? AND active = 1"
+              )
+              .get(docid);
+
+            if (!docRow?.mirror_hash) continue;
+
+            // Find similar chunks using vec_distance
+            interface SimilarRow {
+              target_docid: string;
+              score: number;
+            }
+
+            // Use first chunk's embedding for simplicity
+            const similarQuery = `
+              SELECT DISTINCT
+                d.docid as target_docid,
+                1 - vec_distance_L2(v1.embedding, v2.embedding) as score
+              FROM content_vectors v1
+              JOIN content_vectors v2 ON v2.model = v1.model AND v2.mirror_hash != v1.mirror_hash
+              JOIN content_chunks c2 ON c2.mirror_hash = v2.mirror_hash AND c2.seq = v2.seq
+              JOIN documents d ON d.mirror_hash = v2.mirror_hash AND d.active = 1
+              WHERE v1.mirror_hash = ? AND v1.seq = 0
+                AND d.docid != ?
+                AND 1 - vec_distance_L2(v1.embedding, v2.embedding) >= ?
+              ORDER BY score DESC
+              LIMIT ?
+            `;
+
+            try {
+              const similarRows = db
+                .query<SimilarRow, [string, string, number, number]>(
+                  similarQuery
+                )
+                .all(docRow.mirror_hash, docid, threshold, similarTopK);
+
+              for (const sim of similarRows) {
+                if (!nodeDocids.has(sim.target_docid)) continue;
+
+                // Canonicalize by lexicographic order (undirected edge)
+                const [a, b] =
+                  docid < sim.target_docid
+                    ? [docid, sim.target_docid]
+                    : [sim.target_docid, docid];
+                const key = `${a}:${b}:similar`;
+
+                // Keep max score
+                const existing = edgeMap.get(key);
+                if (!existing || sim.score > existing.weight) {
+                  edgeMap.set(key, { type: "similar", weight: sim.score });
+                }
+              }
+            } catch {
+              // Skip similarity for this doc if query fails
+            }
+          }
+        }
+      }
+
+      // Convert edge map to array, apply limit
+      const allEdges = [...edgeMap.entries()].map(([key, val]) => {
+        const parts = key.split(":");
+        return {
+          source: parts[0] ?? "",
+          target: parts[1] ?? "",
+          type: val.type,
+          weight: val.weight,
+        };
+      });
+
+      const truncatedEdges = allEdges.length > limitEdges;
+      const links = allEdges.slice(0, limitEdges);
+
+      // Add truncation warnings
+      if (truncatedNodes) {
+        warnings.push(`Nodes truncated: ${totalNodes} → ${limitNodes}`);
+      }
+      if (truncatedEdges) {
+        warnings.push(`Edges truncated: ${allEdges.length} → ${limitEdges}`);
+      }
+
+      return ok({
+        nodes,
+        links,
+        meta: {
+          collection,
+          nodeLimit: limitNodes,
+          edgeLimit: limitEdges,
+          totalNodes,
+          totalEdges,
+          totalEdgesUnresolved,
+          returnedNodes: nodes.length,
+          returnedEdges: links.length,
+          truncated: truncatedNodes || truncatedEdges,
+          linkedOnly,
+          activeOnly,
+          includedSimilar: includeSimilar && similarAvailable,
+          similarAvailable,
+          similarTopK,
+          similarTruncatedByComputeBudget,
+          warnings,
+        },
+      });
+    } catch (cause) {
+      return err(
+        "QUERY_FAILED",
+        cause instanceof Error ? cause.message : "Failed to get graph",
         cause
       );
     }

@@ -382,6 +382,104 @@ export interface CleanupStats {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Graph Types
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Graph link type (wiki, markdown, or similarity) */
+export type GraphLinkType = "wiki" | "markdown" | "similar";
+
+/** Graph node representing a document */
+export interface GraphNode {
+  /** Document ID (#hex) - primary identifier */
+  id: string;
+  /** Document URI (gno://collection/path) */
+  uri: string;
+  /** Document title */
+  title: string | null;
+  /** Collection name */
+  collection: string;
+  /** Relative path within collection */
+  relPath: string;
+  /** Total degree (in + out unique neighbors) */
+  degree: number;
+}
+
+/** Graph link (edge) between two nodes */
+export interface GraphLink {
+  /** Source node ID (docid) */
+  source: string;
+  /** Target node ID (docid) */
+  target: string;
+  /** Link type */
+  type: GraphLinkType;
+  /** Edge weight (link count for wiki/md, similarity score for similar) */
+  weight: number;
+}
+
+/** Graph metadata with truncation info */
+export interface GraphMeta {
+  /** Collection filter applied (null = all) */
+  collection: string | null;
+  /** Node limit applied */
+  nodeLimit: number;
+  /** Edge limit applied */
+  edgeLimit: number;
+  /** Total nodes before truncation */
+  totalNodes: number;
+  /** Total edges before truncation */
+  totalEdges: number;
+  /** Edges dropped due to unresolved targets */
+  totalEdgesUnresolved: number;
+  /** Nodes actually returned */
+  returnedNodes: number;
+  /** Edges actually returned */
+  returnedEdges: number;
+  /** Whether results were truncated */
+  truncated: boolean;
+  /** Whether linkedOnly filter was applied */
+  linkedOnly: boolean;
+  /** Whether activeOnly filter was applied */
+  activeOnly: boolean;
+  /** Whether similarity edges were included */
+  includedSimilar: boolean;
+  /** Whether similarity search is available */
+  similarAvailable: boolean;
+  /** Similar top-K value used */
+  similarTopK: number;
+  /** Whether similarity was truncated by compute budget */
+  similarTruncatedByComputeBudget: boolean;
+  /** Warning messages */
+  warnings: string[];
+}
+
+/** Graph query result */
+export interface GraphResult {
+  nodes: GraphNode[];
+  links: GraphLink[];
+  meta: GraphMeta;
+}
+
+/** Options for getGraph query */
+export interface GetGraphOptions {
+  /** Filter to single collection */
+  collection?: string;
+  /** Max nodes to return (default 2000) */
+  limitNodes?: number;
+  /** Max edges to return (default 10000) */
+  limitEdges?: number;
+  /** Include similarity edges (default false) */
+  includeSimilar?: boolean;
+  /** Similarity threshold (default 0.7) */
+  threshold?: number;
+  /** Filter to active docs only (default true) */
+  activeOnly?: boolean;
+  /** Exclude isolated nodes (default true) */
+  linkedOnly?: boolean;
+  /** Top-K similar docs per node (default 5, clamped 1-20) */
+  similarTopK?: number;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Migration Types
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -688,6 +786,16 @@ export interface StorePort {
       Array<{ docid: string; uri: string; title: string | null } | null>
     >
   >;
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Graph
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Get knowledge graph of document links.
+   * Two-phase SQL: compute degrees, then fetch edges for top N nodes.
+   */
+  getGraph(options?: GetGraphOptions): Promise<StoreResult<GraphResult>>;
 
   // ─────────────────────────────────────────────────────────────────────────
   // Status
