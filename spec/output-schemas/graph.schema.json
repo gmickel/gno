@@ -1,0 +1,170 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "gno://schemas/graph@1.0",
+  "title": "GNO Graph",
+  "description": "Knowledge graph of document links",
+  "type": "object",
+  "required": ["nodes", "links", "meta"],
+  "properties": {
+    "nodes": {
+      "type": "array",
+      "description": "Graph nodes representing documents",
+      "items": {
+        "type": "object",
+        "required": ["id", "uri", "collection", "relPath", "degree"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Document ID (#hex)"
+          },
+          "uri": {
+            "type": "string",
+            "description": "Document URI (gno://collection/path)"
+          },
+          "title": {
+            "type": ["string", "null"],
+            "description": "Document title"
+          },
+          "collection": {
+            "type": "string",
+            "description": "Collection name"
+          },
+          "relPath": {
+            "type": "string",
+            "description": "Relative path within collection"
+          },
+          "degree": {
+            "type": "integer",
+            "description": "Total degree (in + out unique neighbors)",
+            "minimum": 0
+          }
+        }
+      }
+    },
+    "links": {
+      "type": "array",
+      "description": "Graph edges between documents",
+      "items": {
+        "type": "object",
+        "required": ["source", "target", "type", "weight"],
+        "properties": {
+          "source": {
+            "type": "string",
+            "description": "Source node ID (docid)"
+          },
+          "target": {
+            "type": "string",
+            "description": "Target node ID (docid)"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["wiki", "markdown", "similar"],
+            "description": "Edge type"
+          },
+          "weight": {
+            "type": "number",
+            "description": "Edge weight (link count or similarity score)",
+            "minimum": 0
+          }
+        }
+      }
+    },
+    "meta": {
+      "type": "object",
+      "required": [
+        "nodeLimit",
+        "edgeLimit",
+        "totalNodes",
+        "totalEdges",
+        "totalEdgesUnresolved",
+        "returnedNodes",
+        "returnedEdges",
+        "truncated",
+        "linkedOnly",
+        "activeOnly",
+        "includedSimilar",
+        "similarAvailable",
+        "similarTopK",
+        "similarTruncatedByComputeBudget",
+        "warnings"
+      ],
+      "properties": {
+        "collection": {
+          "type": ["string", "null"],
+          "description": "Collection filter applied"
+        },
+        "nodeLimit": {
+          "type": "integer",
+          "description": "Node limit applied",
+          "minimum": 1
+        },
+        "edgeLimit": {
+          "type": "integer",
+          "description": "Edge limit applied",
+          "minimum": 1
+        },
+        "totalNodes": {
+          "type": "integer",
+          "description": "Total nodes before truncation",
+          "minimum": 0
+        },
+        "totalEdges": {
+          "type": "integer",
+          "description": "Total edges before truncation",
+          "minimum": 0
+        },
+        "totalEdgesUnresolved": {
+          "type": "integer",
+          "description": "Edges dropped due to unresolved targets",
+          "minimum": 0
+        },
+        "returnedNodes": {
+          "type": "integer",
+          "description": "Nodes actually returned",
+          "minimum": 0
+        },
+        "returnedEdges": {
+          "type": "integer",
+          "description": "Edges actually returned",
+          "minimum": 0
+        },
+        "truncated": {
+          "type": "boolean",
+          "description": "Whether results were truncated"
+        },
+        "linkedOnly": {
+          "type": "boolean",
+          "description": "Whether linkedOnly filter was applied"
+        },
+        "activeOnly": {
+          "type": "boolean",
+          "description": "Whether activeOnly filter was applied"
+        },
+        "includedSimilar": {
+          "type": "boolean",
+          "description": "Whether similarity edges were included"
+        },
+        "similarAvailable": {
+          "type": "boolean",
+          "description": "Whether similarity search is available"
+        },
+        "similarTopK": {
+          "type": "integer",
+          "description": "Similar top-K value used",
+          "minimum": 1
+        },
+        "similarTruncatedByComputeBudget": {
+          "type": "boolean",
+          "description": "Whether similarity was truncated by compute budget"
+        },
+        "warnings": {
+          "type": "array",
+          "description": "Warning messages",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

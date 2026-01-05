@@ -30,6 +30,7 @@ async function loadAllSchemas(): Promise<void> {
     "links-list",
     "backlinks",
     "similar",
+    "graph",
   ];
 
   for (const name of schemaFiles) {
