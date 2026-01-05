@@ -165,6 +165,68 @@ export interface TagCount {
 /** Tag source type */
 export type TagSource = "frontmatter" | "user";
 
+/** Link source type */
+export type DocLinkSource = "parsed" | "user" | "suggested";
+
+/** Link type */
+export type DocLinkType = "wiki" | "markdown";
+
+/** Document link row from DB */
+export interface DocLinkRow {
+  /** Raw path or wiki name (no anchor) */
+  targetRef: string;
+  /** Normalized key for matching */
+  targetRefNorm: string;
+  /** Anchor/fragment without # */
+  targetAnchor: string | null;
+  /** Explicit collection prefix */
+  targetCollection: string | null;
+  /** Link type */
+  linkType: DocLinkType;
+  /** Display text (truncated 256 graphemes) */
+  linkText: string | null;
+  /** 1-based line number */
+  startLine: number;
+  /** 1-based column */
+  startCol: number;
+  /** 1-based end line */
+  endLine: number;
+  /** 1-based end column */
+  endCol: number;
+  /** Source of the link */
+  source: DocLinkSource;
+}
+
+/** Backlink row from DB (document linking TO target) */
+export interface BacklinkRow {
+  /** Source document ID */
+  sourceDocId: number;
+  /** Source document URI */
+  sourceDocUri: string;
+  /** Source document title */
+  sourceDocTitle: string | null;
+  /** Link display text */
+  linkText: string | null;
+  /** 1-based line number in source */
+  startLine: number;
+  /** 1-based column in source */
+  startCol: number;
+}
+
+/** Input for setting document links */
+export interface DocLinkInput {
+  targetRef: string;
+  targetRefNorm: string;
+  targetAnchor?: string;
+  targetCollection?: string;
+  linkType: DocLinkType;
+  linkText?: string;
+  startLine: number;
+  startCol: number;
+  endLine: number;
+  endCol: number;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Input Types (for upsert operations)
 // ─────────────────────────────────────────────────────────────────────────────
@@ -579,6 +641,35 @@ export interface StorePort {
     collection?: string;
     prefix?: string;
   }): Promise<StoreResult<TagCount[]>>;
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Links
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Set links for a document.
+   * Replaces links from the given source (parsed, user, or suggested).
+   */
+  setDocLinks(
+    documentId: number,
+    links: DocLinkInput[],
+    source: DocLinkSource
+  ): Promise<StoreResult<void>>;
+
+  /**
+   * Get all outgoing links for a document.
+   */
+  getLinksForDoc(documentId: number): Promise<StoreResult<DocLinkRow[]>>;
+
+  /**
+   * Get backlinks pointing to a document.
+   * Uses target_ref_norm for matching (wiki=normalized title, markdown=rel_path).
+   * Only returns links from active source documents.
+   */
+  getBacklinksForDoc(
+    documentId: number,
+    options?: { collection?: string }
+  ): Promise<StoreResult<BacklinkRow[]>>;
 
   // ─────────────────────────────────────────────────────────────────────────
   // Status

@@ -13,11 +13,15 @@ import { Database } from "bun:sqlite";
 
 import type { Collection, Context, FtsTokenizer } from "../../config/types";
 import type {
+  BacklinkRow,
   ChunkInput,
   ChunkRow,
   CleanupStats,
   CollectionRow,
   ContextRow,
+  DocLinkInput,
+  DocLinkRow,
+  DocLinkSource,
   DocumentInput,
   DocumentRow,
   FtsResult,
@@ -36,6 +40,7 @@ import type {
 import type { SqliteDbProvider } from "./types";
 
 import { buildUri, deriveDocid } from "../../app/constants";
+import { normalizeWikiName } from "../../core/links";
 import { migrations, runMigrations } from "../migrations";
 import { err, ok } from "../types";
 import { loadFts5Snowball } from "./fts5-snowball";
@@ -1251,6 +1256,223 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
       return err(
         "QUERY_FAILED",
         cause instanceof Error ? cause.message : "Failed to get tag counts",
+        cause
+      );
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Links
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Set links for a document.
+   * Replaces links from the given source (parsed, user, or suggested).
+   */
+  async setDocLinks(
+    documentId: number,
+    links: DocLinkInput[],
+    source: DocLinkSource
+  ): Promise<StoreResult<void>> {
+    try {
+      const db = this.ensureOpen();
+
+      const transaction = db.transaction(() => {
+        // Delete existing links from this source
+        db.run("DELETE FROM doc_links WHERE source_doc_id = ? AND source = ?", [
+          documentId,
+          source,
+        ]);
+
+        // Insert new links
+        if (links.length > 0) {
+          const stmt = db.prepare(`
+            INSERT INTO doc_links (
+              source_doc_id, target_ref, target_ref_norm, target_anchor,
+              target_collection, link_type, link_text,
+              start_line, start_col, end_line, end_col, source
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          `);
+
+          for (const link of links) {
+            stmt.run(
+              documentId,
+              link.targetRef,
+              link.targetRefNorm,
+              link.targetAnchor ?? null,
+              link.targetCollection ?? null,
+              link.linkType,
+              link.linkText ?? null,
+              link.startLine,
+              link.startCol,
+              link.endLine,
+              link.endCol,
+              source
+            );
+          }
+        }
+      });
+
+      transaction();
+      return ok(undefined);
+    } catch (cause) {
+      return err(
+        "QUERY_FAILED",
+        cause instanceof Error ? cause.message : "Failed to set document links",
+        cause
+      );
+    }
+  }
+
+  /**
+   * Get all outgoing links for a document.
+   */
+  async getLinksForDoc(documentId: number): Promise<StoreResult<DocLinkRow[]>> {
+    try {
+      const db = this.ensureOpen();
+
+      interface DbDocLinkRow {
+        target_ref: string;
+        target_ref_norm: string;
+        target_anchor: string | null;
+        target_collection: string | null;
+        link_type: "wiki" | "markdown";
+        link_text: string | null;
+        start_line: number;
+        start_col: number;
+        end_line: number;
+        end_col: number;
+        source: "parsed" | "user" | "suggested";
+      }
+
+      const rows = db
+        .query<DbDocLinkRow, [number]>(
+          `SELECT target_ref, target_ref_norm, target_anchor, target_collection,
+                  link_type, link_text, start_line, start_col, end_line, end_col, source
+           FROM doc_links
+           WHERE source_doc_id = ?
+           ORDER BY start_line, start_col`
+        )
+        .all(documentId);
+
+      return ok(
+        rows.map((r) => ({
+          targetRef: r.target_ref,
+          targetRefNorm: r.target_ref_norm,
+          targetAnchor: r.target_anchor,
+          targetCollection: r.target_collection,
+          linkType: r.link_type,
+          linkText: r.link_text,
+          startLine: r.start_line,
+          startCol: r.start_col,
+          endLine: r.end_line,
+          endCol: r.end_col,
+          source: r.source,
+        }))
+      );
+    } catch (cause) {
+      return err(
+        "QUERY_FAILED",
+        cause instanceof Error
+          ? cause.message
+          : "Failed to get links for document",
+        cause
+      );
+    }
+  }
+
+  /**
+   * Get backlinks pointing to a document.
+   * Uses target_ref_norm for matching (wiki=normalized title, markdown=rel_path).
+   * Only returns links from active source documents.
+   */
+  async getBacklinksForDoc(
+    documentId: number,
+    options?: { collection?: string }
+  ): Promise<StoreResult<BacklinkRow[]>> {
+    try {
+      const db = this.ensureOpen();
+
+      // Get target document
+      const target = db
+        .query<
+          { title: string | null; rel_path: string; collection: string },
+          [number]
+        >(
+          "SELECT title, rel_path, collection FROM documents WHERE id = ? AND active = 1"
+        )
+        .get(documentId);
+
+      if (!target) {
+        return ok([]);
+      }
+
+      // Compute normalized wiki key from target title
+      const wikiKey = normalizeWikiName(target.title ?? "");
+
+      interface DbBacklinkRow {
+        source_doc_id: number;
+        uri: string;
+        title: string | null;
+        link_text: string | null;
+        start_line: number;
+        start_col: number;
+      }
+
+      const targetCollection = options?.collection ?? target.collection;
+
+      // Query wiki backlinks (link_type='wiki')
+      // NULL target_collection means "same collection as source" - enforce this in SQL
+      const wikiBacklinks = wikiKey
+        ? db
+            .query<DbBacklinkRow, [string, string, string]>(
+              `SELECT dl.source_doc_id, src.uri, src.title, dl.link_text, dl.start_line, dl.start_col
+               FROM doc_links dl
+               JOIN documents src ON src.id = dl.source_doc_id AND src.active = 1
+               WHERE dl.link_type = 'wiki'
+                 AND dl.target_ref_norm = ?
+                 AND (
+                   (dl.target_collection IS NULL AND src.collection = ?)
+                   OR dl.target_collection = ?
+                 )
+               ORDER BY src.uri, dl.start_line, dl.start_col`
+            )
+            .all(wikiKey, targetCollection, targetCollection)
+        : [];
+
+      // Query markdown backlinks (link_type='markdown')
+      // NULL target_collection means "same collection as source" - enforce this in SQL
+      const mdBacklinks = db
+        .query<DbBacklinkRow, [string, string, string]>(
+          `SELECT dl.source_doc_id, src.uri, src.title, dl.link_text, dl.start_line, dl.start_col
+           FROM doc_links dl
+           JOIN documents src ON src.id = dl.source_doc_id AND src.active = 1
+           WHERE dl.link_type = 'markdown'
+             AND dl.target_ref_norm = ?
+             AND (
+               (dl.target_collection IS NULL AND src.collection = ?)
+               OR dl.target_collection = ?
+             )
+           ORDER BY src.uri, dl.start_line, dl.start_col`
+        )
+        .all(target.rel_path, targetCollection, targetCollection);
+
+      const allBacklinks = [...wikiBacklinks, ...mdBacklinks].map((r) => ({
+        sourceDocId: r.source_doc_id,
+        sourceDocUri: r.uri,
+        sourceDocTitle: r.title,
+        linkText: r.link_text,
+        startLine: r.start_line,
+        startCol: r.start_col,
+      }));
+
+      return ok(allBacklinks);
+    } catch (cause) {
+      return err(
+        "QUERY_FAILED",
+        cause instanceof Error
+          ? cause.message
+          : "Failed to get backlinks for document",
         cause
       );
     }

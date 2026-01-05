@@ -17,6 +17,7 @@ export {
 import { migration as m001 } from "./001-initial";
 import { migration as m002 } from "./002-documents-fts";
 import { migration as m003 } from "./003-doc-tags";
+import { migration as m004 } from "./004-doc-links";
 
 /** All migrations in order */
-export const migrations = [m001, m002, m003];
+export const migrations = [m001, m002, m003, m004];

@@ -13,6 +13,7 @@ import { join } from "node:path";
 import type { Collection } from "../config/types";
 import type {
   ChunkInput,
+  DocLinkInput,
   DocumentRow,
   IngestErrorInput,
   StorePort,
@@ -35,6 +36,11 @@ import {
   getDefaultPipeline,
 } from "../converters/pipeline";
 import { DEFAULT_LIMITS } from "../converters/types";
+import {
+  normalizeMarkdownPath,
+  normalizeWikiName,
+  parseLinks,
+} from "../core/links";
 import { normalizeTag, validateTag } from "../core/tags";
 import { defaultChunker } from "./chunker";
 import {
@@ -42,6 +48,8 @@ import {
   parseFrontmatter,
   stripFrontmatter,
 } from "./frontmatter";
+import { buildLineOffsets } from "./position";
+import { getExcludedRanges } from "./strip";
 import { collectionToWalkConfig, DEFAULT_CHUNK_PARAMS } from "./types";
 import { defaultWalker } from "./walker";
 
@@ -59,7 +67,7 @@ const MAX_CONCURRENCY = 16;
  * Increment when ingestion adds new derived data (tags, metadata, etc.)
  * Documents with ingestVersion < INGEST_VERSION will be re-processed.
  */
-export const INGEST_VERSION = 2;
+export const INGEST_VERSION = 3;
 
 /**
  * Decide whether to process a file or skip it.
@@ -420,6 +428,55 @@ export class SyncService {
       mustOk(tagsResult, "setDocTags", {
         docId,
         tagCount: extractedTags.length,
+      });
+
+      // 13. Extract and store links (wiki and markdown links)
+      const excludedRanges = getExcludedRanges(artifact.markdown);
+      const lineOffsets = buildLineOffsets(artifact.markdown);
+      const parsedLinks = parseLinks(
+        artifact.markdown,
+        lineOffsets,
+        excludedRanges
+      );
+
+      const linkInputs: DocLinkInput[] = [];
+      for (const link of parsedLinks) {
+        // Compute target_ref_norm based on link type
+        let targetRefNorm: string;
+        if (link.kind === "wiki") {
+          targetRefNorm = normalizeWikiName(link.targetRef);
+        } else {
+          // Markdown links with collection prefix are not supported
+          // (use wiki links for cross-collection references)
+          if (link.targetCollection) {
+            continue;
+          }
+          const resolved = normalizeMarkdownPath(link.targetRef, entry.relPath);
+          if (!resolved) {
+            // Link escapes collection root - skip silently
+            continue;
+          }
+          targetRefNorm = resolved;
+        }
+
+        linkInputs.push({
+          targetRef: link.targetRef,
+          targetRefNorm,
+          targetAnchor: link.targetAnchor,
+          targetCollection: link.targetCollection,
+          linkType: link.kind,
+          linkText: link.displayText,
+          startLine: link.startLine,
+          startCol: link.startCol,
+          endLine: link.endLine,
+          endCol: link.endCol,
+        });
+      }
+
+      const linksResult = await store.setDocLinks(docId, linkInputs, "parsed");
+      mustOk(linksResult, "setDocLinks", {
+        docId,
+        linkCount: linkInputs.length,
       });
 
       const status = existing ? "updated" : "added";
