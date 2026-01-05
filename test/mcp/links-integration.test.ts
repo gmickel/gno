@@ -430,14 +430,15 @@ describe("MCP link tools integration", () => {
       expect(result.ok).toBe(true);
       if (!result.ok) return;
 
-      const { nodes, links, meta } = result.value;
+      const { nodes, links } = result.value;
 
       // Should have 2 nodes (both connected)
       expect(nodes.length).toBe(2);
-      expect(nodes.map((n) => n.title).sort()).toEqual([
-        "Document A",
-        "Document B",
-      ]);
+      expect(
+        nodes
+          .map((n) => n.title)
+          .sort((a, b) => (a ?? "").localeCompare(b ?? ""))
+      ).toEqual(["Document A", "Document B"]);
 
       // Should have at least 1 edge (edges may be deduplicated/collapsed)
       expect(links.length).toBeGreaterThanOrEqual(1);
