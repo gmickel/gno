@@ -81,7 +81,6 @@
         "returnedEdges",
         "truncated",
         "linkedOnly",
-        "activeOnly",
         "includedSimilar",
         "similarAvailable",
         "similarTopK",
@@ -135,10 +134,6 @@
         "linkedOnly": {
           "type": "boolean",
           "description": "Whether linkedOnly filter was applied"
-        },
-        "activeOnly": {
-          "type": "boolean",
-          "description": "Whether activeOnly filter was applied"
         },
         "includedSimilar": {
           "type": "boolean",

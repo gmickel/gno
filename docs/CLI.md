@@ -564,8 +564,8 @@ gno graph --include-similar         # Add similarity edges
 Options:
 
 - `-c, --collection <name>` - Filter to single collection
-- `--limit-nodes <n>` - Max nodes (default: 2000)
-- `--limit-edges <n>` - Max edges (default: 10000)
+- `--limit <n>` - Max nodes (default: 2000)
+- `--edge-limit <n>` - Max edges (default: 10000)
 - `--include-similar` - Include similarity edges
 - `--threshold <num>` - Similarity threshold (default: 0.7)
 - `--include-isolated` - Include nodes with no links

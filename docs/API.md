@@ -806,10 +806,21 @@ Returns a knowledge graph of document links (wiki links, markdown links, and opt
     }
   ],
   "meta": {
-    "nodeCount": 42,
-    "edgeCount": 67,
+    "collection": null,
+    "nodeLimit": 2000,
+    "edgeLimit": 10000,
+    "totalNodes": 42,
+    "totalEdges": 67,
+    "totalEdgesUnresolved": 0,
+    "returnedNodes": 42,
+    "returnedEdges": 67,
     "truncated": false,
-    "similarAvailable": true
+    "linkedOnly": true,
+    "includedSimilar": false,
+    "similarAvailable": true,
+    "similarTopK": 5,
+    "similarTruncatedByComputeBudget": false,
+    "warnings": []
   }
 }
 ```

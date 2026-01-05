@@ -1806,6 +1806,9 @@ function wireGraphCommand(program: Command): void {
         ? parsePositiveInt("edge-limit", cmdOpts.edgeLimit)
         : undefined;
       const threshold = parseOptionalFloat("threshold", cmdOpts.threshold);
+      if (threshold !== undefined && (threshold < 0 || threshold > 1)) {
+        throw new CliError("VALIDATION", "--threshold must be between 0 and 1");
+      }
       const similarTopK = cmdOpts.similarTopK
         ? parsePositiveInt("similar-top-k", cmdOpts.similarTopK)
         : undefined;

@@ -438,8 +438,6 @@ export interface GraphMeta {
   truncated: boolean;
   /** Whether linkedOnly filter was applied */
   linkedOnly: boolean;
-  /** Whether activeOnly filter was applied */
-  activeOnly: boolean;
   /** Whether similarity edges were included */
   includedSimilar: boolean;
   /** Whether similarity search is available */
@@ -471,8 +469,6 @@ export interface GetGraphOptions {
   includeSimilar?: boolean;
   /** Similarity threshold (default 0.7) */
   threshold?: number;
-  /** Filter to active docs only (default true) */
-  activeOnly?: boolean;
   /** Exclude isolated nodes (default true) */
   linkedOnly?: boolean;
   /** Top-K similar docs per node (default 5, clamped 1-20) */

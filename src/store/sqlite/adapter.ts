@@ -1573,18 +1573,33 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
 
       // Apply defaults
       const collection = options?.collection ?? null;
-      const limitNodes = options?.limitNodes ?? 2000;
-      const limitEdges = options?.limitEdges ?? 10000;
+      // Clamp all limits defensively (store is last line of defense)
+      const limitNodes = Math.max(
+        1,
+        Math.min(5000, options?.limitNodes ?? 2000)
+      );
+      const limitEdges = Math.max(
+        1,
+        Math.min(50000, options?.limitEdges ?? 10000)
+      );
       const includeSimilar = options?.includeSimilar ?? false;
-      const threshold = options?.threshold ?? 0.7;
-      const activeOnly = options?.activeOnly ?? true;
+      const threshold = Math.max(0, Math.min(1, options?.threshold ?? 0.7));
       const linkedOnly = options?.linkedOnly ?? true;
       const similarTopK = Math.max(1, Math.min(20, options?.similarTopK ?? 5));
 
       const warnings: string[] = [];
 
-      // Build active filter clause
-      const activeClause = activeOnly ? "AND d.active = 1" : "";
+      // Always probe sqlite-vec availability (not just when similarity requested)
+      let similarAvailable = false;
+      try {
+        db.query("SELECT vec_version()").get();
+        similarAvailable = true;
+      } catch {
+        // sqlite-vec not loaded
+      }
+
+      // Build active filter clause (always active=1 for consistency)
+      const activeClause = "AND d.active = 1";
 
       // Phase 1: Compute degrees for all documents (unique neighbor count)
       // Degree = count of unique neighbors (in + out), not raw link occurrences
@@ -1665,23 +1680,39 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
           ${collection ? "AND d.collection = ?" : ""}
           ${linkedOnly ? "AND (deg.out_deg > 0 OR indeg.in_deg > 0)" : ""}
         ORDER BY degree DESC, d.id ASC
+        LIMIT ?
       `;
 
       // Build query params
-      const params: string[] = [];
+      const params: (string | number)[] = [];
       if (collection) {
         params.push(collection); // for outgoing CTE
         params.push(collection); // for incoming CTE
         params.push(collection); // for main query
       }
+      params.push(limitNodes); // LIMIT param
 
       const degreeRows = db
-        .query<DegreeRow, string[]>(degreeQuery)
+        .query<DegreeRow, (string | number)[]>(degreeQuery)
         .all(...params);
 
-      const totalNodes = degreeRows.length;
+      // Get total count with a separate query (only if we hit the limit)
+      let totalNodes = degreeRows.length;
+      if (degreeRows.length === limitNodes) {
+        const countParams: string[] = collection ? [collection] : [];
+        const countQuery = `
+          SELECT COUNT(*) as cnt FROM documents d
+          WHERE 1=1 ${activeClause} ${collection ? "AND d.collection = ?" : ""}
+          ${linkedOnly ? "AND d.id IN (SELECT source_doc_id FROM doc_links UNION SELECT source_doc_id FROM doc_links dl JOIN documents t ON CASE dl.link_type WHEN 'wiki' THEN lower(trim(t.title)) = dl.target_ref_norm WHEN 'markdown' THEN t.rel_path = dl.target_ref_norm END WHERE t.active = 1)" : ""}
+        `;
+        const cnt = db
+          .query<{ cnt: number }, string[]>(countQuery)
+          .get(...countParams);
+        totalNodes = cnt?.cnt ?? degreeRows.length;
+      }
+
       const truncatedNodes = totalNodes > limitNodes;
-      const selectedRows = degreeRows.slice(0, limitNodes);
+      const selectedRows = degreeRows;
       const nodeIds = new Set(selectedRows.map((r) => r.id));
       const nodeDocids = new Set(selectedRows.map((r) => r.docid));
 
@@ -1704,7 +1735,6 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
         weight: number;
       }
 
-      let totalEdges = 0;
       let totalEdgesUnresolved = 0;
       const edgeMap = new Map<
         string,
@@ -1750,7 +1780,6 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
         `;
 
         const countRow = db.query<CountRow, []>(countQuery).get();
-        totalEdges = countRow?.total ?? 0;
         totalEdgesUnresolved = countRow?.unresolved ?? 0;
 
         // Fetch collapsed edges (group by source, target, type with count as weight)
@@ -1790,95 +1819,96 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
       }
 
       // Phase 3: Similarity edges (if requested)
-      let similarAvailable = false;
       let similarTruncatedByComputeBudget = false;
 
-      if (includeSimilar && nodeIds.size > 0) {
-        // Check if sqlite-vec is available
-        try {
-          db.query("SELECT vec_version()").get();
-          similarAvailable = true;
-        } catch {
-          similarAvailable = false;
-          warnings.push("Similarity edges unavailable: sqlite-vec not loaded");
-        }
-
-        if (similarAvailable) {
-          // Cap at 1000 nodes for similarity computation
-          const SIMILARITY_NODE_CAP = 1000;
-          const nodesForSimilarity = [...nodeDocids].slice(
-            0,
-            SIMILARITY_NODE_CAP
+      if (includeSimilar && nodeIds.size > 0 && similarAvailable) {
+        // Cap at 1000 nodes for similarity computation
+        const SIMILARITY_NODE_CAP = 1000;
+        const nodesForSimilarity = [...nodeDocids].slice(
+          0,
+          SIMILARITY_NODE_CAP
+        );
+        if (nodeDocids.size > SIMILARITY_NODE_CAP) {
+          similarTruncatedByComputeBudget = true;
+          warnings.push(
+            `Similarity capped at ${SIMILARITY_NODE_CAP} nodes (requested ${nodeDocids.size})`
           );
-          if (nodeDocids.size > SIMILARITY_NODE_CAP) {
-            similarTruncatedByComputeBudget = true;
-            warnings.push(
-              `Similarity capped at ${SIMILARITY_NODE_CAP} nodes (requested ${nodeDocids.size})`
-            );
+        }
+
+        // Track if any similarity queries fail
+        let similarityFailures = 0;
+
+        // Get kNN for each node
+        // Query content_vectors for embedded chunks, find similar
+        for (const docid of nodesForSimilarity) {
+          // Get document's mirror_hash
+          const docRow = db
+            .query<{ mirror_hash: string }, [string]>(
+              "SELECT mirror_hash FROM documents WHERE docid = ? AND active = 1"
+            )
+            .get(docid);
+
+          if (!docRow?.mirror_hash) continue;
+
+          // Find similar docs using vec_distance, aggregate by doc to get max score
+          interface SimilarRow {
+            target_docid: string;
+            score: number;
           }
 
-          // Get kNN for each node
-          // Query content_vectors for embedded chunks, find similar
-          for (const docid of nodesForSimilarity) {
-            // Get document's mirror_hash
-            const docRow = db
-              .query<{ mirror_hash: string }, [string]>(
-                "SELECT mirror_hash FROM documents WHERE docid = ? AND active = 1"
-              )
-              .get(docid);
+          // Use GROUP BY to get one best score per doc (avoids duplicate rows from multi-chunk docs)
+          const similarQuery = `
+            SELECT
+              d.docid as target_docid,
+              MAX(1 - vec_distance_L2(v1.embedding, v2.embedding)) as score
+            FROM content_vectors v1
+            JOIN content_vectors v2 ON v2.model = v1.model AND v2.mirror_hash != v1.mirror_hash
+            JOIN documents d ON d.mirror_hash = v2.mirror_hash AND d.active = 1
+            WHERE v1.mirror_hash = ? AND v1.seq = 0
+              AND d.docid != ?
+            GROUP BY d.docid
+            HAVING score >= ?
+            ORDER BY score DESC
+            LIMIT ?
+          `;
 
-            if (!docRow?.mirror_hash) continue;
+          try {
+            const similarRows = db
+              .query<SimilarRow, [string, string, number, number]>(similarQuery)
+              .all(docRow.mirror_hash, docid, threshold, similarTopK);
 
-            // Find similar chunks using vec_distance
-            interface SimilarRow {
-              target_docid: string;
-              score: number;
-            }
+            for (const sim of similarRows) {
+              if (!nodeDocids.has(sim.target_docid)) continue;
 
-            // Use first chunk's embedding for simplicity
-            const similarQuery = `
-              SELECT DISTINCT
-                d.docid as target_docid,
-                1 - vec_distance_L2(v1.embedding, v2.embedding) as score
-              FROM content_vectors v1
-              JOIN content_vectors v2 ON v2.model = v1.model AND v2.mirror_hash != v1.mirror_hash
-              JOIN content_chunks c2 ON c2.mirror_hash = v2.mirror_hash AND c2.seq = v2.seq
-              JOIN documents d ON d.mirror_hash = v2.mirror_hash AND d.active = 1
-              WHERE v1.mirror_hash = ? AND v1.seq = 0
-                AND d.docid != ?
-                AND 1 - vec_distance_L2(v1.embedding, v2.embedding) >= ?
-              ORDER BY score DESC
-              LIMIT ?
-            `;
+              // Clamp score to [0, 1] for schema compliance
+              const clampedScore = Math.max(0, Math.min(1, sim.score));
 
-            try {
-              const similarRows = db
-                .query<SimilarRow, [string, string, number, number]>(
-                  similarQuery
-                )
-                .all(docRow.mirror_hash, docid, threshold, similarTopK);
+              // Canonicalize by lexicographic order (undirected edge)
+              const [a, b] =
+                docid < sim.target_docid
+                  ? [docid, sim.target_docid]
+                  : [sim.target_docid, docid];
+              const key = `${a}:${b}:similar`;
 
-              for (const sim of similarRows) {
-                if (!nodeDocids.has(sim.target_docid)) continue;
-
-                // Canonicalize by lexicographic order (undirected edge)
-                const [a, b] =
-                  docid < sim.target_docid
-                    ? [docid, sim.target_docid]
-                    : [sim.target_docid, docid];
-                const key = `${a}:${b}:similar`;
-
-                // Keep max score
-                const existing = edgeMap.get(key);
-                if (!existing || sim.score > existing.weight) {
-                  edgeMap.set(key, { type: "similar", weight: sim.score });
-                }
+              // Keep max score
+              const existing = edgeMap.get(key);
+              if (!existing || clampedScore > existing.weight) {
+                edgeMap.set(key, { type: "similar", weight: clampedScore });
               }
-            } catch {
-              // Skip similarity for this doc if query fails
             }
+          } catch {
+            similarityFailures++;
           }
         }
+
+        // Report partial failures
+        if (similarityFailures > 0) {
+          warnings.push(
+            `Similarity query failed for ${similarityFailures} nodes; results may be incomplete`
+          );
+        }
+      } else if (includeSimilar && !similarAvailable) {
+        warnings.push("Similarity edges unavailable: sqlite-vec not loaded");
       }
 
       // Convert edge map to array, apply limit
@@ -1911,13 +1941,13 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
           nodeLimit: limitNodes,
           edgeLimit: limitEdges,
           totalNodes,
-          totalEdges,
+          // totalEdges = collapsed edge count within selected nodes (matches allEdges)
+          totalEdges: allEdges.length,
           totalEdgesUnresolved,
           returnedNodes: nodes.length,
           returnedEdges: links.length,
           truncated: truncatedNodes || truncatedEdges,
           linkedOnly,
-          activeOnly,
           includedSimilar: includeSimilar && similarAvailable,
           similarAvailable,
           similarTopK,

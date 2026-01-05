@@ -312,12 +312,19 @@ export default function GraphView({ navigate }: PageProps) {
 
   // Zoom controls
   const handleZoomIn = () => {
-    // Force graph doesn't expose zoom directly, so we use zoomToFit with constraints
-    graphRef.current?.zoomToFit(300);
+    const fg = graphRef.current;
+    if (fg) {
+      const currentZoom = fg.zoom();
+      fg.zoom(currentZoom * 1.3, 200);
+    }
   };
 
   const handleZoomOut = () => {
-    graphRef.current?.zoomToFit(300);
+    const fg = graphRef.current;
+    if (fg) {
+      const currentZoom = fg.zoom();
+      fg.zoom(currentZoom / 1.3, 200);
+    }
   };
 
   // Memoized graph data for force-graph (needs objects with x/y)
@@ -568,7 +575,10 @@ export default function GraphView({ navigate }: PageProps) {
               linkColor={(link: any) => link.color}
               linkCurvature={0.1}
               linkDirectionalParticleColor={() => COLORS.nodeDefault}
-              linkDirectionalParticles={2}
+              linkDirectionalParticles={
+                // Disable particles on large graphs for performance
+                forceGraphData.links.length > 500 ? 0 : 1
+              }
               linkDirectionalParticleWidth={1.5}
               linkWidth={(link: any) =>
                 Math.max(0.5, Math.min(3, Math.sqrt(link.weight)))
