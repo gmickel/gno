@@ -139,7 +139,7 @@ Documents that are semantically related based on vector similarity. Found using 
 
 ### Link Resolution
 
-Process of matching link targets to actual documents. Wiki links use case-insensitive filename matching; markdown links use resolved paths. Resolution happens at query time, not during indexing.
+Process of matching link targets to actual documents. Wiki links match normalized titles with path-style fallbacks (basename/rel_path, optional .md); markdown links use resolved paths. Resolution happens at query time, not during indexing.
 
 ### Cross-Collection Link
 

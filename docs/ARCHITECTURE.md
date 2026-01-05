@@ -222,7 +222,7 @@ External URLs (https://) are NOT stored—only internal document links.
 
 Links are resolved at query time, not stored with target document IDs. This handles document renames gracefully:
 
-- **Wiki links**: Case-insensitive filename match via normalized reference
+- **Wiki links**: Normalized title match with path-style fallbacks (basename/rel_path, optional .md)
 - **Cross-collection**: `[[collection:Note]]` syntax with explicit collection prefix
 - **Markdown links**: Resolved path stored for matching
 
