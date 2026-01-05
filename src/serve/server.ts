@@ -41,6 +41,7 @@ import {
   handleTags,
   handleUpdateDoc,
 } from "./routes/api";
+import { handleGraph } from "./routes/graph";
 import {
   handleDocBacklinks,
   handleDocLinks,
@@ -431,6 +432,12 @@ export async function startServer(
               await handleDocSimilar(ctxHolder.current, id, url),
               isDev
             );
+          },
+        },
+        "/api/graph": {
+          GET: async (req: Request) => {
+            const url = new URL(req.url);
+            return withSecurityHeaders(await handleGraph(store, url), isDev);
           },
         },
       },
