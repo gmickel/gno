@@ -7,6 +7,7 @@ keywords: gno web ui, local search dashboard, document browser, visual search, a
 icon: globe
 slug: web-ui
 permalink: /features/web-ui/
+og_image: /assets/images/og/og-web-ui.png
 benefits:
   - Split-view markdown editor with live preview
   - Quick capture for instant note creation

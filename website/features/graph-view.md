@@ -7,6 +7,7 @@ keywords: knowledge graph, graph view, document visualization, force graph, wiki
 icon: graph
 slug: graph-view
 permalink: /features/graph-view/
+og_image: /assets/images/og/og-graph-view.png
 benefits:
   - Interactive force-directed visualization
   - Wiki links, markdown links, and similarity edges

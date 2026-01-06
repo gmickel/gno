@@ -7,6 +7,7 @@ keywords: ai agent, skill, claude code, codex, opencode, amp, knowledge access, 
 icon: agent
 slug: agent-integration
 permalink: /features/agent-integration/
+og_image: /assets/images/og/og-agent-integration.png
 benefits:
   - SKILL.md integration (no MCP overhead)
   - Zero context window pollution

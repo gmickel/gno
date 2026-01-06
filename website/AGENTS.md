@@ -145,9 +145,26 @@ Sleep 3s
 
 ## OG Images
 
-Feature-specific Open Graph images for social sharing. See `assets/images/og/CLAUDE.md` for:
+Feature-specific Open Graph images for social sharing.
 
-- Design system (colors, fonts, layout)
-- Template structure
-- How to create new OG images
-- Wiring up in feature frontmatter
+**CRITICAL**: Every feature page MUST have `og_image` in frontmatter:
+
+```yaml
+---
+layout: feature
+title: Feature Name
+slug: feature-slug
+og_image: /assets/images/og/og-feature-slug.png  # REQUIRED
+---
+```
+
+Without this, the page falls back to the generic GNO template image.
+
+### Adding a New Feature with OG Image
+
+1. Create HTML template: `assets/images/og/og-feature-slug.html`
+2. Generate PNG: `bun run website:og -f og-feature-slug`
+3. Create feature page with `og_image` frontmatter pointing to the PNG
+4. CI auto-regenerates PNGs when HTML templates change
+
+See `assets/images/og/CLAUDE.md` for template design system.

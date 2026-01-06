@@ -7,6 +7,7 @@ keywords: privacy first, local search, offline search, no cloud, private documen
 icon: privacy-first
 slug: privacy-first
 permalink: /features/privacy-first/
+og_image: /assets/images/og/og-privacy-first.png
 benefits:
   - Zero cloud dependencies
   - No telemetry or tracking

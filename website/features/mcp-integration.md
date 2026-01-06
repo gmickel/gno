@@ -7,6 +7,7 @@ keywords: mcp server, claude desktop integration, claude code integration, curso
 icon: mcp-integration
 slug: mcp-integration
 permalink: /features/mcp-integration/
+og_image: /assets/images/og/og-mcp-integration.png
 benefits:
   - Works with Claude Desktop
   - Works with Claude Code

@@ -7,6 +7,7 @@ keywords: gno api, rest api, http api, search api, local api, programmatic searc
 icon: code
 slug: api
 permalink: /features/api/
+og_image: /assets/images/og/og-api.png
 benefits:
   - Full search capabilities via HTTP
   - JSON request/response format

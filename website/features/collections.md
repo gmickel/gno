@@ -7,6 +7,7 @@ keywords: document collections, organize documents, file patterns, search scope,
 icon: collections
 slug: collections
 permalink: /features/collections/
+og_image: /assets/images/og/og-collections.png
 benefits:
   - Multiple document sources
   - Glob patterns for filtering

@@ -7,6 +7,7 @@ keywords: document indexing, pdf search, markdown search, office documents, docx
 icon: multi-format
 slug: multi-format
 permalink: /features/multi-format/
+og_image: /assets/images/og/og-multi-format.png
 benefits:
   - Markdown with frontmatter extraction
   - PDF text extraction

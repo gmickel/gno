@@ -7,6 +7,7 @@ keywords: document tags, tagging system, metadata filtering, hierarchical tags, 
 icon: tag
 slug: tags
 permalink: /features/tags/
+og_image: /assets/images/og/og-tags.png
 benefits:
   - Auto-extract from frontmatter
   - Hierarchical tags (project/api, status/review)

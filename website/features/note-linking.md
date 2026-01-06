@@ -7,6 +7,7 @@ keywords: wiki links, backlinks, zettelkasten, note linking, knowledge graph, bi
 icon: link
 slug: note-linking
 permalink: /features/note-linking/
+og_image: /assets/images/og/og-note-linking.png
 benefits:
   - "[[Wiki links]] and [Markdown](links)"
   - Backlinks show who references you

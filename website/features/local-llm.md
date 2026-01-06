@@ -7,6 +7,7 @@ keywords: local llm, ai answers, local ai, private ai, grounded answers, cited r
 icon: local-llm
 slug: local-llm
 permalink: /features/local-llm/
+og_image: /assets/images/og/og-local-llm.png
 benefits:
   - 100% local processing
   - No API keys required

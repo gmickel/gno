@@ -7,6 +7,7 @@ keywords: hybrid search, bm25, vector search, semantic search, reciprocal rank f
 icon: hybrid-search
 slug: hybrid-search
 permalink: /features/hybrid-search/
+og_image: /assets/images/og/og-hybrid-search.png
 benefits:
   - Exact keyword matching with BM25
   - Semantic similarity with vector search
