@@ -7,8 +7,8 @@ import { afterAll, describe, expect, test } from "bun:test";
 import { mkdtemp, symlink } from "node:fs/promises";
 // node:os for tmpdir (no Bun os utils)
 import { tmpdir } from "node:os";
-// node:path for join (no Bun path utils)
-import { join } from "node:path";
+// node:path for join, sep (no Bun path utils)
+import { join, sep } from "node:path";
 
 import {
   validateCollectionRoot,
@@ -27,7 +27,8 @@ const isWindows = process.platform === "win32";
 describe("validateRelPath", () => {
   test("accepts relative path", () => {
     const result = validateRelPath("notes/test.md");
-    expect(result).toBe("notes/test.md");
+    // normalize() returns platform-native separators
+    expect(result).toBe(`notes${sep}test.md`);
   });
 
   test("rejects absolute path", () => {

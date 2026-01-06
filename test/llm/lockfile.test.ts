@@ -170,8 +170,9 @@ describe("path helpers", () => {
   });
 
   test("getManifestLockPath returns manifest.lock in dir", () => {
+    // join() returns platform-native separators
     expect(getManifestLockPath("/path/to/cache")).toBe(
-      "/path/to/cache/manifest.lock"
+      join("/path/to/cache", "manifest.lock")
     );
   });
 });
