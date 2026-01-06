@@ -7,6 +7,8 @@
 [![Website](./assets/badges/website.svg)](https://gno.sh)
 [![Twitter](./assets/badges/twitter.svg)](https://twitter.com/gmickel)
 
+![GNO](./assets/og-image.png)
+
 GNO is a local knowledge engine for privacy-conscious developers and AI agents. Index your notes, code, PDFs, and Office docs. Get hybrid search (BM25 + vector + reranking) and AI-powered answers, all running 100% on your machine.
 
 ---
