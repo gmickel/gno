@@ -39,7 +39,7 @@
     <!-- Open Graph -->
     <meta
       property="og:title"
-      content="{{ page.title | default: site.title }}"
+      content="{% if page.headline %}{{ page.title }} - {{ page.headline }}{% else %}{{ page.title | default: site.title }}{% endif %}"
     />
     <meta
       property="og:description"
