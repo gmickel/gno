@@ -109,12 +109,15 @@ bun run eval:watch    # Watch mode for development
 | `docs-verify.ts`            | Verifies documentation is up-to-date with implementation.                                                                  |
 | `generate-test-fixtures.ts` | Generates test fixtures for unit tests.                                                                                    |
 | `og-screenshots.ts`         | Generates PNG screenshots from OG image HTML templates using Playwright.                                                   |
+| `sync-assets.ts`            | Syncs all website assets: OG images, screenshots, README hero. Run before release.                                         |
 
 **Usage:**
 
 ```bash
-bun scripts/perf-test.ts        # Run full performance test suite
-bun scripts/test-rerank-size.ts # Test rerank scaling with doc size
+bun scripts/perf-test.ts           # Run full performance test suite
+bun scripts/test-rerank-size.ts    # Test rerank scaling with doc size
+bun run website:sync-assets        # Sync all website assets (OG, screenshots, hero)
+bun run website:sync-assets --og   # OG images only
 ```
 
 ## Directory Structure
@@ -180,10 +183,11 @@ gh workflow run publish.yml -f publish=true   # actual publish
 
 1. `bun run version:patch` (or minor/major based on changes)
 2. **Update CHANGELOG.md** - Move [Unreleased] items to new version section
-3. `git add package.json CHANGELOG.md`
-4. `git commit -m "chore: bump to vX.Y.Z"`
-5. `git tag vX.Y.Z && git push --tags`
-6. Workflow auto-triggers on `v*` tag push
+3. **Sync assets** - `bun run website:sync-assets` (OG images, screenshots, README hero)
+4. `git add package.json CHANGELOG.md assets/ website/assets/`
+5. `git commit -m "chore: bump to vX.Y.Z"`
+6. `git tag vX.Y.Z && git push --tags`
+7. Workflow auto-triggers on `v*` tag push
 
 **Note**: `website/changelog.md` is auto-copied from root CHANGELOG.md during build (gitignored).
 
