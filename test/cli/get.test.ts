@@ -129,13 +129,14 @@ const validateGet = ajv.compile(getSchema);
 describe("gno get smoke tests", () => {
   let testDir: string;
 
+  // Increase timeout for hooks - CLI init/update can be slow on Windows
   beforeEach(async () => {
     testDir = await setupTestWithContent();
-  });
+  }, 30_000);
 
   afterEach(async () => {
     await cleanupTestEnv(testDir);
-  });
+  }, 30_000);
 
   test("retrieves by collection/path", async () => {
     const { code, stdout } = await cli("get", "docs/test.md");
