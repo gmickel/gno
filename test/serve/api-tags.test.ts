@@ -5,7 +5,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -13,6 +13,7 @@ import type { DocumentInput } from "../../src/store/types";
 
 import { handleDocs, handleTags } from "../../src/serve/routes/api";
 import { SqliteAdapter } from "../../src/store/sqlite/adapter";
+import { safeRm } from "../helpers/cleanup";
 
 describe("API tag endpoints", () => {
   let tmpDir: string;
@@ -49,7 +50,7 @@ describe("API tag endpoints", () => {
 
   afterEach(async () => {
     await store.close();
-    await rm(tmpDir, { recursive: true, force: true });
+    await safeRm(tmpDir);
   });
 
   /**

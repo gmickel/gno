@@ -5,7 +5,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -14,6 +14,7 @@ import type { ContextHolder } from "../../src/serve/routes/api";
 import type { DocumentRow } from "../../src/store/types";
 
 import { handleUpdateDoc } from "../../src/serve/routes/api";
+import { safeRm } from "../helpers/cleanup";
 
 interface ErrorBody {
   error: { code: string; message: string };
@@ -61,7 +62,7 @@ describe("PUT /api/docs/:id", () => {
   });
 
   afterEach(async () => {
-    await rm(tmpDir, { recursive: true, force: true });
+    await safeRm(tmpDir);
   });
 
   test("rejects missing content", async () => {

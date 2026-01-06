@@ -3,7 +3,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { mkdir, rm, stat } from "node:fs/promises";
+import { mkdir, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -13,6 +13,7 @@ import {
   getManifestLockPath,
   withLock,
 } from "../../src/llm/lockfile";
+import { safeRm } from "../helpers/cleanup";
 
 let testDir: string;
 
@@ -22,7 +23,7 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
-  await rm(testDir, { recursive: true, force: true });
+  await safeRm(testDir);
 });
 
 describe("acquireLock", () => {

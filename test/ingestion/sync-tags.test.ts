@@ -5,7 +5,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -13,6 +13,7 @@ import type { Collection } from "../../src/config/types";
 
 import { INGEST_VERSION, SyncService } from "../../src/ingestion/sync";
 import { SqliteAdapter } from "../../src/store/sqlite/adapter";
+import { safeRm } from "../helpers/cleanup";
 
 describe("SyncService tag extraction", () => {
   let tmpDir: string;
@@ -45,7 +46,7 @@ describe("SyncService tag extraction", () => {
 
   afterEach(async () => {
     await adapter.close();
-    await rm(tmpDir, { recursive: true, force: true });
+    await safeRm(tmpDir);
   });
 
   test("extracts tags from frontmatter during sync", async () => {
@@ -213,7 +214,7 @@ describe("SyncService version-aware backfill", () => {
 
   afterEach(async () => {
     await adapter.close();
-    await rm(tmpDir, { recursive: true, force: true });
+    await safeRm(tmpDir);
   });
 
   test("re-processes documents with outdated ingest version", async () => {

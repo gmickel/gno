@@ -3,20 +3,21 @@
  */
 
 import { afterEach, describe, expect, test } from "bun:test";
-// node:fs/promises for mkdtemp/rm (no Bun equivalent for structure ops)
-import { mkdtemp, rm } from "node:fs/promises";
+// node:fs/promises for mkdtemp (no Bun equivalent for structure ops)
+import { mkdtemp } from "node:fs/promises";
 // node:os for tmpdir (no Bun os utils)
 import { tmpdir } from "node:os";
 // node:path for join (no Bun path utils)
 import { join } from "node:path";
 
 import { atomicWrite } from "../../src/core/file-ops";
+import { safeRm } from "../helpers/cleanup";
 
 let tempDir: string | null = null;
 
 afterEach(async () => {
   if (tempDir) {
-    await rm(tempDir, { recursive: true, force: true });
+    await safeRm(tempDir);
     tempDir = null;
   }
 });

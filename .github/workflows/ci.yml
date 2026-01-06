@@ -65,12 +65,13 @@ jobs:
           key: bun-cache-Windows-${{ hashFiles('**/bun.lockb') }}
           restore-keys: bun-cache-Windows-
 
-      - name: "Set TEMP to D: drive"
+      # Use runner.temp for better cross-runner compatibility
+      # (D: drive had availability issues on Windows Server 2025)
+      - name: Set TEMP to runner temp
         shell: pwsh
         run: |
-          New-Item -ItemType Directory -Force -Path "D:/Temp" | Out-Null
-          echo "TEMP=D:/Temp" >> $env:GITHUB_ENV
-          echo "TMP=D:/Temp" >> $env:GITHUB_ENV
+          echo "TEMP=${{ runner.temp }}" >> $env:GITHUB_ENV
+          echo "TMP=${{ runner.temp }}" >> $env:GITHUB_ENV
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
