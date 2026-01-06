@@ -9,7 +9,7 @@
 
 ![GNO](./assets/og-image.png)
 
-GNO is a local knowledge engine for privacy-conscious developers and AI agents. Index your notes, code, PDFs, and Office docs. Get hybrid search (BM25 + vector + reranking) and AI-powered answers, all running 100% on your machine.
+GNO is a local knowledge engine that turns your documents into a searchable, connected knowledge graph. Index notes, code, PDFs, and Office docs. Get hybrid search, AI answers with citations, and wiki-style note linking—all 100% offline.
 
 ---
 
