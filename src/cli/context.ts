@@ -50,6 +50,12 @@ export function parseGlobalOptions(
   const offlineFlag = Boolean(raw.offline);
   const offlineEnabled = offlineEnv || offlineFlag;
 
+  const noPagerEnv =
+    (env.NO_PAGER !== undefined && env.NO_PAGER !== "") ||
+    (env.GNO_NO_PAGER !== undefined && env.GNO_NO_PAGER !== "") ||
+    env.NODE_ENV === "test" ||
+    env.BUN_TEST !== undefined;
+
   return {
     index: (raw.index as string) ?? "default",
     config: raw.config as string | undefined,
@@ -60,7 +66,7 @@ export function parseGlobalOptions(
     json: Boolean(raw.json),
     offline: offlineEnabled,
     // Commander: --no-pager => opts().pager === false
-    noPager: raw.pager === false,
+    noPager: raw.pager === false || noPagerEnv,
   };
 }
 

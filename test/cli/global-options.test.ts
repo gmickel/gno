@@ -57,16 +57,19 @@ describe("parseGlobalOptions", () => {
 
   describe("other options", () => {
     test("parses all global options", () => {
-      const result = parseGlobalOptions({
-        index: "custom",
-        config: "/path/to/config.yml",
-        color: true,
-        verbose: true,
-        yes: true,
-        quiet: true,
-        json: true,
-        offline: true,
-      });
+      const result = parseGlobalOptions(
+        {
+          index: "custom",
+          config: "/path/to/config.yml",
+          color: true,
+          verbose: true,
+          yes: true,
+          quiet: true,
+          json: true,
+          offline: true,
+        },
+        {}
+      );
 
       expect(result).toEqual({
         index: "custom",
@@ -82,7 +85,7 @@ describe("parseGlobalOptions", () => {
     });
 
     test("uses defaults for missing options", () => {
-      const result = parseGlobalOptions({});
+      const result = parseGlobalOptions({}, {});
 
       expect(result).toEqual({
         index: "default",
@@ -105,6 +108,16 @@ describe("parseGlobalOptions", () => {
     test("--no-color flag disables color", () => {
       const result = parseGlobalOptions({ color: false });
       expect(result.color).toBe(false);
+    });
+
+    test("NO_PAGER env disables pager", () => {
+      const result = parseGlobalOptions({}, { NO_PAGER: "1" });
+      expect(result.noPager).toBe(true);
+    });
+
+    test("GNO_NO_PAGER env disables pager", () => {
+      const result = parseGlobalOptions({}, { GNO_NO_PAGER: "1" });
+      expect(result.noPager).toBe(true);
     });
   });
 });

@@ -183,7 +183,7 @@ gh workflow run publish.yml -f publish=true   # actual publish
 
 1. **Check for OG image PRs** - `gh pr list` and merge any `chore/regenerate-og-images` PRs
 2. `bun run version:patch` (or minor/major based on changes)
-3. **Update CHANGELOG.md** - Move [Unreleased] items to new version section
+3. **Update CHANGELOG.md** - Move [Unreleased] items to new version section, keep empty [Unreleased], update compare links
 4. `git add package.json CHANGELOG.md`
 5. `git commit -m "chore: bump to vX.Y.Z"`
 6. `git tag vX.Y.Z && git push --tags`

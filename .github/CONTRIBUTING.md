@@ -48,7 +48,7 @@ bun run eval            # Must pass 70% threshold
 
 ```bash
 bun run version:patch   # bump version
-# Update CHANGELOG.md
+# Update CHANGELOG.md (move Unreleased, keep empty header, update compare links)
 git add package.json CHANGELOG.md
 git commit -m "chore: bump to vX.Y.Z"
 git tag vX.Y.Z && git push --tags
