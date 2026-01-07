@@ -125,7 +125,7 @@ jobs:
           ls -la fts5stemmer.dll
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: fts5stemmer-${{ matrix.platform }}
           path: fts5-snowball/${{ matrix.artifact }}
