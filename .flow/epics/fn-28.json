@@ -1,0 +1,13 @@
+{
+  "branch_name": null,
+  "created_at": "2026-01-09T11:24:16.400337Z",
+  "depends_on_epics": [],
+  "id": "fn-28",
+  "next_task": 1,
+  "plan_review_status": "unknown",
+  "plan_reviewed_at": null,
+  "spec_path": ".flow/specs/fn-28.md",
+  "status": "open",
+  "title": "File deletion from Web UI (not just unindex)",
+  "updated_at": "2026-01-09T11:24:16.400538Z"
+}

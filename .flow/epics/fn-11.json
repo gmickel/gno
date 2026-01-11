@@ -1,0 +1,13 @@
+{
+  "branch_name": null,
+  "created_at": "2026-01-09T11:24:13.792708Z",
+  "depends_on_epics": [],
+  "id": "fn-11",
+  "next_task": 1,
+  "plan_review_status": "unknown",
+  "plan_reviewed_at": null,
+  "spec_path": ".flow/specs/fn-11.md",
+  "status": "open",
+  "title": "Setup React component testing infrastructure",
+  "updated_at": "2026-01-09T11:24:13.792891Z"
+}

@@ -1,0 +1,14 @@
+{
+  "assignee": null,
+  "claim_note": "",
+  "claimed_at": null,
+  "created_at": "2026-01-09T11:24:14.609475Z",
+  "depends_on": [],
+  "epic": "fn-16",
+  "id": "fn-16.1",
+  "priority": null,
+  "spec_path": ".flow/tasks/fn-16.1.md",
+  "status": "todo",
+  "title": "Implement: Add GET /api/jobs/active endpoint",
+  "updated_at": "2026-01-09T11:24:14.609649Z"
+}

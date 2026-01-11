@@ -19,6 +19,8 @@ import {
 
 import type { SkippedEntry, WalkConfig, WalkEntry, WalkerPort } from "./types";
 
+import { SUPPORTED_EXTENSIONS } from "../converters/mime";
+
 /**
  * Regex to detect dangerous patterns with parent directory traversal.
  * Matches ".." at start, after "/", or after "\" (Windows).
@@ -108,18 +110,20 @@ function matchesExclude(relPath: string, excludes: string[]): boolean {
 /**
  * Check if a file extension matches the include list.
  * Include list contains extensions like ".md" or "md" (normalized).
+ * When include is empty, falls back to SUPPORTED_EXTENSIONS to avoid
+ * walking files that can't be converted.
  */
 function matchesInclude(relPath: string, include: string[]): boolean {
-  if (include.length === 0) {
-    return true;
-  }
-
   const ext = extname(relPath).toLowerCase();
   if (!ext) {
     return false;
   }
 
-  return include.some((inc) => {
+  // Fallback to supported extensions when no explicit include list
+  const effectiveInclude =
+    include.length === 0 ? SUPPORTED_EXTENSIONS : include;
+
+  return effectiveInclude.some((inc) => {
     const normalizedInc = inc.startsWith(".")
       ? inc.toLowerCase()
       : `.${inc.toLowerCase()}`;

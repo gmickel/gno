@@ -1,0 +1,14 @@
+{
+  "assignee": null,
+  "claim_note": "",
+  "claimed_at": null,
+  "created_at": "2026-01-09T11:24:14.757927Z",
+  "depends_on": [],
+  "epic": "fn-17",
+  "id": "fn-17.1",
+  "priority": null,
+  "spec_path": ".flow/tasks/fn-17.1.md",
+  "status": "todo",
+  "title": "Implement: Review and update CLI defaults",
+  "updated_at": "2026-01-09T11:24:14.758141Z"
+}

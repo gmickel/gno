@@ -1,0 +1,14 @@
+{
+  "assignee": null,
+  "claim_note": "",
+  "claimed_at": null,
+  "created_at": "2026-01-09T11:24:15.070157Z",
+  "depends_on": [],
+  "epic": "fn-19",
+  "id": "fn-19.1",
+  "priority": null,
+  "spec_path": ".flow/tasks/fn-19.1.md",
+  "status": "todo",
+  "title": "Implement: Enforce maxBytes limit before file read (stat-base",
+  "updated_at": "2026-01-09T11:24:15.070381Z"
+}

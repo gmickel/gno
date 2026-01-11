@@ -9,7 +9,7 @@ When in doubt about model names, ASK the user rather than defaulting to outdated
 
 ---
 
-**Note**: This project uses [bd (beads)](https://github.com/steveyegge/beads) for issue tracking. Use `bd` commands instead of markdown TODOs.
+**Note**: This project uses **Flow-Next** for issue tracking. Use `flowctl` commands via the flow-next plugin. See `.flow/` directory.
 
 Default to using Bun instead of Node.js.
 
@@ -310,7 +310,7 @@ When adding new commands or modifying outputs:
   - MCP.md (for `gno mcp`)
 - [ ] website/\_data/features.yml - Feature bento cards current?
 - [ ] website/ - Auto-synced from docs/ via `bun run website:sync-docs`
-- [ ] Beads - Are descriptions and comments up to date?
+- [ ] Flow-Next - Are epic/task specs up to date?
 
 **Website sync**: The `website/docs/` directory is auto-populated from `docs/` during build.
 Run `bun run website:sync-docs` to manually sync. CHANGELOG.md is also copied.
@@ -321,98 +321,98 @@ If you change behavior, update docs in the same commit. Never leave docs out of 
 
 **When ending a work session:**
 
-1. **File issues** - Create beads for remaining/discovered work
+1. **File issues** - Create Flow-Next epics/tasks for remaining/discovered work
 2. **Quality gates** (if code changed) - `bun run lint:check && bun test`
-3. **Update beads** - Close finished, update in-progress
-4. **Sync & push** - `bd sync && git push` (see Versioning for release pushes)
+3. **Update Flow-Next** - Mark tasks done via `flowctl done`
+4. **Commit & push** - `git push` (see Versioning for release pushes)
 5. **Verify** - `git status` shows up to date with origin
 
 Work is NOT complete until pushed to remote.
 
-<!-- BEGIN BEADS INTEGRATION -->
+<!-- BEGIN FLOW-NEXT INTEGRATION -->
 
-## Issue Tracking with bd (beads)
+## Issue Tracking with Flow-Next
 
-**IMPORTANT**: This project uses **bd (beads)** for ALL issue tracking. Do NOT use markdown TODOs, task lists, or other tracking methods.
+**IMPORTANT**: This project uses **Flow-Next** for ALL issue tracking. Do NOT use markdown TODOs, task lists, or other tracking methods.
 
-### Why bd?
+### Why Flow-Next?
 
-- Dependency-aware: Track blockers and relationships between issues
-- Git-friendly: Auto-syncs to JSONL for version control
-- Agent-optimized: JSON output, ready work detection, discovered-from links
-- Prevents duplicate tracking systems and confusion
+- Epic-task model: Every task belongs to an epic for context
+- Dependency-aware: Track blockers and task ordering
+- Re-anchoring: Specs re-read before each task to prevent drift
+- Git-friendly: Everything in `.flow/` directory, version controlled
+- Agent-optimized: JSON output, structured specs, ready work detection
 
-### Quick Start
+### Directory Structure
 
-**Check for ready work:**
-
-```bash
-bd ready --json
+```
+.flow/
+├── meta.json              # Schema version
+├── epics/fn-N.json        # Epic metadata
+├── specs/fn-N.md          # Epic specifications
+├── tasks/fn-N.M.json      # Task metadata
+├── tasks/fn-N.M.md        # Task specifications
+└── bead-mapping.json      # Migration reference (bead ID → flow ID)
 ```
 
-**Create new issues:**
+### Using Flow-Next
+
+**Via Claude Code (recommended):**
 
 ```bash
-bd create "Issue title" --description="Detailed context" -t bug|feature|task -p 0-4 --json
-bd create "Issue title" --description="What this issue is about" -p 1 --deps discovered-from:bd-123 --json
+/flow-next:plan Add a new feature    # Create epic with tasks
+/flow-next:work fn-1                 # Work on epic/task
+/flow-next:interview fn-1            # Flesh out requirements
 ```
 
-**Claim and update:**
+**Via flowctl CLI** (bundled with flow-next plugin, not global):
 
 ```bash
-bd update bd-42 --status in_progress --json
-bd update bd-42 --priority 1 --json
+# flowctl is at $CLAUDE_PLUGIN_ROOT/scripts/flowctl
+FLOWCTL="${CLAUDE_PLUGIN_ROOT}/scripts/flowctl"
+$FLOWCTL ready --epic fn-1 --json     # Tasks ready in epic
+$FLOWCTL next --json                  # Next plan/work unit
+$FLOWCTL show fn-1 --json             # Epic with all tasks
+$FLOWCTL cat fn-1.2                   # Print task spec
+$FLOWCTL start fn-1.2 --json          # Claim task
+$FLOWCTL done fn-1.2 --summary-file s.md  # Complete with summary
 ```
 
-**Complete work:**
+### ID Format
 
-```bash
-bd close bd-42 --reason "Completed" --json
-```
+- **Epic**: `fn-N` (e.g., `fn-1`, `fn-42`)
+- **Task**: `fn-N.M` (e.g., `fn-1.1`, `fn-42.7`)
 
-### Issue Types
+### Task Status
 
-- `bug` - Something broken
-- `feature` - New functionality
-- `task` - Work item (tests, docs, refactoring)
-- `epic` - Large feature with subtasks
-- `chore` - Maintenance (dependencies, tooling)
-
-### Priorities
-
-- `0` - Critical (security, data loss, broken builds)
-- `1` - High (major features, important bugs)
-- `2` - Medium (default, nice-to-have)
-- `3` - Low (polish, optimization)
-- `4` - Backlog (future ideas)
+- `todo` - Not started
+- `in_progress` - Being worked on
+- `blocked` - Waiting on dependency or blocker
+- `done` - Completed
 
 ### Workflow for AI Agents
 
-1. **Check ready work**: `bd ready` shows unblocked issues
-2. **Claim your task**: `bd update <id> --status in_progress`
-3. **Work on it**: Implement, test, document
-4. **Discover new work?** Create linked issue:
-   - `bd create "Found bug" --description="Details about what was found" -p 1 --deps discovered-from:<parent-id>`
-5. **Complete**: `bd close <id> --reason "Done"`
-
-### Auto-Sync
-
-bd automatically syncs with git:
-
-- Exports to `.beads/issues.jsonl` after changes (5s debounce)
-- Imports from JSONL when newer (e.g., after `git pull`)
-- No manual export/import needed!
+1. **Check ready work**: `flowctl ready --epic fn-N` or `flowctl next`
+2. **Claim your task**: `flowctl start fn-N.M`
+3. **Re-read spec**: `flowctl cat fn-N.M` before starting work
+4. **Work on it**: Implement, test, document
+5. **Complete**: `flowctl done fn-N.M --summary-file summary.md`
 
 ### Important Rules
 
-- ✅ Use bd for ALL task tracking
+- ✅ Use Flow-Next for ALL task tracking
 - ✅ Always use `--json` flag for programmatic use
-- ✅ Link discovered work with `discovered-from` dependencies
-- ✅ Check `bd ready` before asking "what should I work on?"
+- ✅ Re-read specs before each task (prevents drift)
+- ✅ Every task belongs to an epic (even single-task epics)
 - ❌ Do NOT create markdown TODO lists
 - ❌ Do NOT use external issue trackers
 - ❌ Do NOT duplicate tracking systems
 
-For more details, see README.md and docs/QUICKSTART.md.
+### Migration Note
 
-<!-- END BEADS INTEGRATION -->
+This project was migrated from beads (bd) to Flow-Next on 2026-01-09.
+
+- See `completed-beads.md` for historical closed issues
+- See `.flow/bead-mapping.json` for ID mapping reference
+
+<!-- END FLOW-NEXT INTEGRATION -->

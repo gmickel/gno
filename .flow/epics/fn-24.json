@@ -1,0 +1,13 @@
+{
+  "branch_name": null,
+  "created_at": "2026-01-09T11:24:15.766796Z",
+  "depends_on_epics": [],
+  "id": "fn-24",
+  "next_task": 1,
+  "plan_review_status": "unknown",
+  "plan_reviewed_at": null,
+  "spec_path": ".flow/specs/fn-24.md",
+  "status": "open",
+  "title": "Shareable Indexes",
+  "updated_at": "2026-01-09T11:24:15.767012Z"
+}

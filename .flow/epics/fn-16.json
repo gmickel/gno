@@ -1,0 +1,13 @@
+{
+  "branch_name": null,
+  "created_at": "2026-01-09T11:24:14.534085Z",
+  "depends_on_epics": [],
+  "id": "fn-16",
+  "next_task": 1,
+  "plan_review_status": "unknown",
+  "plan_reviewed_at": null,
+  "spec_path": ".flow/specs/fn-16.md",
+  "status": "open",
+  "title": "Add GET /api/jobs/active endpoint",
+  "updated_at": "2026-01-09T11:24:14.534261Z"
+}

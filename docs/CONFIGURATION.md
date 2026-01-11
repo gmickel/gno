@@ -61,10 +61,33 @@ Collections define what gets indexed.
 | `name`         | string | required  | Unique identifier (lowercase) |
 | `path`         | string | required  | Absolute path to directory    |
 | `pattern`      | glob   | `**/*`    | File matching pattern         |
-| `include`      | array  | `[]`      | Extension allowlist           |
+| `include`      | array  | see below | Extension allowlist           |
 | `exclude`      | array  | see below | Patterns to skip              |
 | `updateCmd`    | string | -         | Shell command before indexing |
 | `languageHint` | string | -         | BCP-47 language code          |
+
+### Default Include Extensions
+
+When `include` is empty (default), only supported document types are indexed:
+
+- `.md` - Markdown
+- `.txt` - Plain text
+- `.pdf` - PDF documents
+- `.docx` - Word documents
+- `.pptx` - PowerPoint
+- `.xlsx` - Excel spreadsheets
+
+To override the default and index only specific supported types:
+
+```yaml
+include:
+  - .md
+  - .txt
+```
+
+> **Note:** `include` controls which files are scanned, but files must still have converter support. Specifying unsupported extensions will result in conversion errors.
+
+Files without extensions (e.g., `Makefile`, `LICENSE`) and dotfiles (e.g., `.env`, `.gitignore`) are always excluded.
 
 ### Default Excludes
 
@@ -100,20 +123,22 @@ exclude:
   languageHint: de
 ```
 
-**TypeScript project:**
+**Mixed documentation folder:**
 
 ```yaml
-- name: project
-  path: /Users/you/project
-  pattern: "**/*.ts"
+- name: project-docs
+  path: /Users/you/project/docs
+  pattern: "**/*"
   include:
-    - .ts
-    - .tsx
+    - .md
+    - .txt
   exclude:
     - node_modules
     - dist
-    - "*.test.ts"
+    - drafts
 ```
+
+> **Note:** Exclude patterns match path components (directory or file names), not globs. Use `dist` to exclude a `dist/` directory, not `*.js`.
 
 **With update command:**
 

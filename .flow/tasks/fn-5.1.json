@@ -1,0 +1,14 @@
+{
+  "assignee": null,
+  "claim_note": "",
+  "claimed_at": null,
+  "created_at": "2026-01-09T11:24:12.945317Z",
+  "depends_on": [],
+  "epic": "fn-5",
+  "id": "fn-5.1",
+  "priority": null,
+  "spec_path": ".flow/tasks/fn-5.1.md",
+  "status": "todo",
+  "title": "Implement: Update screenshots for v0.12",
+  "updated_at": "2026-01-09T11:24:12.945504Z"
+}

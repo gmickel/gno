@@ -1,0 +1,14 @@
+{
+  "assignee": null,
+  "claim_note": "",
+  "claimed_at": null,
+  "created_at": "2026-01-09T11:24:16.322558Z",
+  "depends_on": [],
+  "epic": "fn-27",
+  "id": "fn-27.1",
+  "priority": null,
+  "spec_path": ".flow/tasks/fn-27.1.md",
+  "status": "todo",
+  "title": "Implement: Allow empty content in POST /api/docs",
+  "updated_at": "2026-01-09T11:24:16.322755Z"
+}

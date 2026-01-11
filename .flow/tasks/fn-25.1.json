@@ -1,0 +1,14 @@
+{
+  "assignee": null,
+  "claim_note": "",
+  "claimed_at": null,
+  "created_at": "2026-01-09T11:24:16.010451Z",
+  "depends_on": [],
+  "epic": "fn-25",
+  "id": "fn-25.1",
+  "priority": null,
+  "spec_path": ".flow/tasks/fn-25.1.md",
+  "status": "todo",
+  "title": "Implement: Multi-modal Support",
+  "updated_at": "2026-01-09T11:24:16.010627Z"
+}

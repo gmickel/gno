@@ -1,0 +1,13 @@
+{
+  "branch_name": null,
+  "created_at": "2026-01-09T11:24:13.482149Z",
+  "depends_on_epics": [],
+  "id": "fn-9",
+  "next_task": 1,
+  "plan_review_status": "unknown",
+  "plan_reviewed_at": null,
+  "spec_path": ".flow/specs/fn-9.md",
+  "status": "open",
+  "title": "Fix bun test failures in cli search/tag/global options",
+  "updated_at": "2026-01-09T11:24:13.482362Z"
+}

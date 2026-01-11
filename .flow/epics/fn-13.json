@@ -1,0 +1,13 @@
+{
+  "branch_name": null,
+  "created_at": "2026-01-09T11:24:14.087157Z",
+  "depends_on_epics": [],
+  "id": "fn-13",
+  "next_task": 1,
+  "plan_review_status": "unknown",
+  "plan_reviewed_at": null,
+  "spec_path": ".flow/specs/fn-13.md",
+  "status": "open",
+  "title": "Cloud LLM Support (Optional)",
+  "updated_at": "2026-01-09T11:24:14.087548Z"
+}
