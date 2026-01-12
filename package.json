@@ -117,7 +117,7 @@
   },
   "devDependencies": {
     "@ai-sdk/openai": "^3.0.2",
-    "@biomejs/biome": "2.3.10",
+    "@biomejs/biome": "2.3.11",
     "@tailwindcss/cli": "^4.1.18",
     "@types/bun": "latest",
     "@types/react": "^19.2.7",
@@ -128,13 +128,13 @@
     "evalite": "^1.0.0-beta.15",
     "exceljs": "^4.4.0",
     "lefthook": "^2.0.13",
-    "oxfmt": "^0.21.0",
+    "oxfmt": "^0.24.0",
     "oxlint": "^1.36.0",
-    "oxlint-tsgolint": "^0.10.1",
+    "oxlint-tsgolint": "^0.11.0",
     "pdf-lib": "^1.17.1",
     "playwright": "^1.52.0",
     "pptxgenjs": "^4.0.1",
-    "ultracite": "7.0.4",
+    "ultracite": "7.0.11",
     "vitest": "^4.0.16"
   },
   "peerDependencies": {
