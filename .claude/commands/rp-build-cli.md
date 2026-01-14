@@ -1,5 +1,8 @@
 ---
 description: Build with rp-cli context builder → chat → implement
+repoprompt_managed: true
+repoprompt_commands_version: 3
+repoprompt_variant: cli
 ---
 
 # MCP Builder Mode (CLI)
@@ -36,7 +39,7 @@ Chain commands with `&&`:
 rp-cli -e 'select set src/ && context'
 ```
 
-Use `-d <cmd>` for detailed help on any command.
+Use `rp-cli -e 'describe <tool>'` for help on a specific tool, or `rp-cli --help` for CLI usage.
 
 ---
 

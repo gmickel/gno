@@ -154,8 +154,20 @@ async function processBatches(ctx: BatchContext): Promise<BatchResult> {
     );
     if (!batchEmbedResult.ok) {
       if (ctx.verbose) {
+        const err = batchEmbedResult.error;
+        const cause = err.cause;
+        const causeMsg =
+          cause && typeof cause === "object" && "message" in cause
+            ? (cause as { message: string }).message
+            : typeof cause === "string"
+              ? cause
+              : "";
+        const titles = batch
+          .slice(0, 3)
+          .map((b) => b.title ?? b.mirrorHash.slice(0, 8))
+          .join(", ");
         process.stderr.write(
-          `\n[embed] Batch failed: ${batchEmbedResult.error.message}\n`
+          `\n[embed] Batch failed (${batch.length} chunks: ${titles}${batch.length > 3 ? "..." : ""}): ${err.message}${causeMsg ? ` - ${causeMsg}` : ""}\n`
         );
       }
       errors += batch.length;

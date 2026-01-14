@@ -1,5 +1,8 @@
 ---
 description: Reminder to use rp-cli
+repoprompt_managed: true
+repoprompt_commands_version: 3
+repoprompt_variant: cli
 ---
 
 # RepoPrompt Tools Reminder (CLI)

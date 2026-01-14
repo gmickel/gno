@@ -1,5 +1,8 @@
 ---
-description: Deep bug investigation with rp-cli commands
+description: Deep codebase investigation and architecture research with rp-cli commands
+repoprompt_managed: true
+repoprompt_commands_version: 3
+repoprompt_variant: cli
 ---
 
 # Deep Investigation Mode (CLI)
@@ -36,7 +39,7 @@ Chain commands with `&&`:
 rp-cli -e 'select set src/ && context'
 ```
 
-Use `-d <cmd>` for detailed help on any command.
+Use `rp-cli -e 'describe <tool>'` for help on a specific tool, or `rp-cli --help` for CLI usage.
 
 ---
 

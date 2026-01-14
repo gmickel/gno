@@ -1487,22 +1487,22 @@
     border-style: none;
   }
   .border-\[\#4db8a8\]\/20 {
-    border-color: oklab(71.5993% -0.101044 -0.0034821/.2);
+    border-color: oklab(71.5993% -0.101044 -0.0034821/0.2);
   }
   .border-\[\#4db8a8\]\/30 {
-    border-color: oklab(71.5993% -0.101044 -0.0034821/.3);
+    border-color: oklab(71.5993% -0.101044 -0.0034821/0.3);
   }
   .border-\[\#d4a053\]\/10 {
-    border-color: oklab(73.9427% 0.0288123 0.109093/.1);
+    border-color: oklab(73.9427% 0.0288123 0.109093/0.1);
   }
   .border-\[\#d4a053\]\/20 {
-    border-color: oklab(73.9427% 0.0288123 0.109093/.2);
+    border-color: oklab(73.9427% 0.0288123 0.109093/0.2);
   }
   .border-\[\#d4a053\]\/30 {
-    border-color: oklab(73.9427% 0.0288124 0.109093/.3);
+    border-color: oklab(73.9427% 0.0288124 0.109093/0.3);
   }
   .border-\[\#d4a053\]\/50 {
-    border-color: oklab(73.9427% 0.0288123 0.109093/.5);
+    border-color: oklab(73.9427% 0.0288123 0.109093/0.5);
   }
   .border-\[hsl\(var\(--secondary\)\/0\.2\)\] {
     border-color: hsl(var(--secondary) / 0.2);
@@ -1637,10 +1637,10 @@
     border-color: #0000;
   }
   .border-t-\[\#4db8a8\]\/60 {
-    border-top-color: oklab(71.5993% -0.101044 -0.0034821/.6);
+    border-top-color: oklab(71.5993% -0.101044 -0.0034821/0.6);
   }
   .border-t-\[\#d4a053\]\/60 {
-    border-top-color: oklab(73.9427% 0.0288124 0.109093/.6);
+    border-top-color: oklab(73.9427% 0.0288124 0.109093/0.6);
   }
   .border-t-primary {
     border-top-color: var(--color-primary);
@@ -1655,19 +1655,19 @@
     background-color: #0f1115;
   }
   .bg-\[\#0f1115\]\/80 {
-    background-color: oklab(17.7275% -0.000878438 -0.0088294/.8);
+    background-color: oklab(17.7275% -0.000878438 -0.0088294/0.8);
   }
   .bg-\[\#0f1115\]\/95 {
-    background-color: oklab(17.7275% -0.000878438 -0.0088294/.95);
+    background-color: oklab(17.7275% -0.000878438 -0.0088294/0.95);
   }
   .bg-\[\#4db8a8\]\/10 {
-    background-color: oklab(71.5993% -0.101044 -0.0034821/.1);
+    background-color: oklab(71.5993% -0.101044 -0.0034821/0.1);
   }
   .bg-\[\#4db8a8\]\/15 {
-    background-color: oklab(71.5993% -0.101044 -0.0034821/.15);
+    background-color: oklab(71.5993% -0.101044 -0.0034821/0.15);
   }
   .bg-\[\#4db8a8\]\/60 {
-    background-color: oklab(71.5993% -0.101044 -0.0034821/.6);
+    background-color: oklab(71.5993% -0.101044 -0.0034821/0.6);
   }
   .bg-\[\#050505\] {
     background-color: #050505;
@@ -1676,10 +1676,10 @@
     background-color: oklab(11.4918% 7.45058e-9 7.45058e-9/0.5);
   }
   .bg-\[\#d4a053\]\/10 {
-    background-color: oklab(73.9427% 0.0288123 0.109093/.1);
+    background-color: oklab(73.9427% 0.0288123 0.109093/0.1);
   }
   .bg-\[\#d4a053\]\/15 {
-    background-color: oklab(73.9427% 0.0288124 0.109093/.15);
+    background-color: oklab(73.9427% 0.0288124 0.109093/0.15);
   }
   .bg-\[hsl\(220\,15\%\,10\%\)\] {
     background-color: #16181d;
@@ -2826,25 +2826,25 @@
     color: #4db8a8;
   }
   .text-\[\#4db8a8\]\/50 {
-    color: oklab(71.5993% -0.101044 -0.0034821/.5);
+    color: oklab(71.5993% -0.101044 -0.0034821/0.5);
   }
   .text-\[\#4db8a8\]\/60 {
-    color: oklab(71.5993% -0.101044 -0.0034821/.6);
+    color: oklab(71.5993% -0.101044 -0.0034821/0.6);
   }
   .text-\[\#4db8a8\]\/80 {
-    color: oklab(71.5993% -0.101044 -0.0034821/.8);
+    color: oklab(71.5993% -0.101044 -0.0034821/0.8);
   }
   .text-\[\#d4a053\] {
     color: #d4a053;
   }
   .text-\[\#d4a053\]\/40 {
-    color: oklab(73.9427% 0.0288123 0.109093/.4);
+    color: oklab(73.9427% 0.0288123 0.109093/0.4);
   }
   .text-\[\#d4a053\]\/50 {
-    color: oklab(73.9427% 0.0288123 0.109093/.5);
+    color: oklab(73.9427% 0.0288123 0.109093/0.5);
   }
   .text-\[\#d4a053\]\/70 {
-    color: oklab(73.9427% 0.0288123 0.109093/.7);
+    color: oklab(73.9427% 0.0288123 0.109093/0.7);
   }
   .text-\[hsl\(40\,30\%\,75\%\)\] {
     color: #d2c6ac;
@@ -3559,10 +3559,10 @@
       }
     }
     .group-hover\:bg-\[\#4db8a8\]\/25:is(:where(.group):hover *) {
-      background-color: oklab(71.5993% -0.101044 -0.0034821/.25);
+      background-color: oklab(71.5993% -0.101044 -0.0034821/0.25);
     }
     .group-hover\:bg-\[\#d4a053\]\/25:is(:where(.group):hover *) {
-      background-color: oklab(73.9427% 0.0288123 0.109093/.25);
+      background-color: oklab(73.9427% 0.0288123 0.109093/0.25);
     }
     .group-hover\:bg-accent:is(:where(.group):hover *) {
       background-color: var(--color-accent);
@@ -3911,7 +3911,7 @@
       scale: var(--tw-scale-x) var(--tw-scale-y);
     }
     .hover\:border-\[\#d4a053\]\/50:hover {
-      border-color: oklab(73.9427% 0.0288123 0.109093/.5);
+      border-color: oklab(73.9427% 0.0288123 0.109093/0.5);
     }
     .hover\:border-\[hsl\(var\(--secondary\)\/0\.2\)\]:hover {
       border-color: hsl(var(--secondary) / 0.2);
@@ -3959,13 +3959,13 @@
       }
     }
     .hover\:bg-\[\#4db8a8\]\/5:hover {
-      background-color: oklab(71.5993% -0.101044 -0.0034821/.05);
+      background-color: oklab(71.5993% -0.101044 -0.0034821/0.05);
     }
     .hover\:bg-\[\#4db8a8\]\/10:hover {
-      background-color: oklab(71.5993% -0.101044 -0.0034821/.1);
+      background-color: oklab(71.5993% -0.101044 -0.0034821/0.1);
     }
     .hover\:bg-\[\#d4a053\]\/10:hover {
-      background-color: oklab(73.9427% 0.0288123 0.109093/.1);
+      background-color: oklab(73.9427% 0.0288123 0.109093/0.1);
     }
     .hover\:bg-\[hsl\(var\(--primary\)\/0\.08\)\]:hover {
       background-color: hsl(var(--primary) / 0.08);
@@ -4377,7 +4377,7 @@
       var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);
   }
   .focus-visible\:ring-\[\#d4a053\]\/50:focus-visible {
-    --tw-ring-color: oklab(73.9427% 0.0288123 0.109093/.5);
+    --tw-ring-color: oklab(73.9427% 0.0288123 0.109093/0.5);
   }
   .focus-visible\:ring-\[hsl\(var\(--secondary\)\/0\.5\)\]:focus-visible {
     --tw-ring-color: hsl(var(--secondary)/0.5);
