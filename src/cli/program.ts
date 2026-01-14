@@ -1278,6 +1278,7 @@ function wireManagementCommands(program: Command): void {
         dryRun: Boolean(cmdOpts.dryRun),
         yes: globals.yes,
         json: format === "json",
+        verbose: globals.verbose,
       };
       const result = await embed(opts);
 

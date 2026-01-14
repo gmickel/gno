@@ -390,7 +390,14 @@ gno index --collection notes --no-embed
 
 # CI/scripted usage
 gno index --models-pull --yes
+
+# Debug embedding errors
+gno index --verbose
 ```
+
+**Verbose Mode:**
+
+With `--verbose`, embedding errors during the embed phase are logged to stderr (see `gno embed`).
 
 ---
 
@@ -431,6 +438,16 @@ gno embed [--force] [--model <uri>] [--batch-size <n>] [--dry-run] [--yes] [--js
   "model": "hf:BAAI/bge-m3-gguf/bge-m3-q8_0.gguf",
   "searchAvailable": true
 }
+```
+
+**Verbose Mode:**
+
+With `--verbose`, embedding errors are logged to stderr:
+
+```
+[embed] Batch failed: <error message>
+[embed] Count mismatch: got X, expected Y
+[embed] Store failed: <error message>
 ```
 
 ---
