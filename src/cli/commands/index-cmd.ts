@@ -71,6 +71,7 @@ export async function index(options: IndexOptions = {}): Promise<IndexResult> {
       const { embed } = await import("./embed");
       const result = await embed({
         configPath: options.configPath,
+        verbose: options.verbose,
       });
       if (result.success) {
         embedResult = {

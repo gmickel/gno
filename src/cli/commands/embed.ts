@@ -56,6 +56,8 @@ export interface EmbedOptions {
   yes?: boolean;
   /** Output as JSON */
   json?: boolean;
+  /** Verbose error logging */
+  verbose?: boolean;
 }
 
 export type EmbedResult =
@@ -104,6 +106,7 @@ interface BatchContext {
   force: boolean;
   showProgress: boolean;
   totalToEmbed: number;
+  verbose: boolean;
 }
 
 type BatchResult =
@@ -150,6 +153,11 @@ async function processBatches(ctx: BatchContext): Promise<BatchResult> {
       batch.map((b) => formatDocForEmbedding(b.text, b.title ?? undefined))
     );
     if (!batchEmbedResult.ok) {
+      if (ctx.verbose) {
+        process.stderr.write(
+          `\n[embed] Batch failed: ${batchEmbedResult.error.message}\n`
+        );
+      }
       errors += batch.length;
       continue;
     }
@@ -157,6 +165,11 @@ async function processBatches(ctx: BatchContext): Promise<BatchResult> {
     // Validate batch/embedding count match
     const embeddings = batchEmbedResult.value;
     if (embeddings.length !== batch.length) {
+      if (ctx.verbose) {
+        process.stderr.write(
+          `\n[embed] Count mismatch: got ${embeddings.length}, expected ${batch.length}\n`
+        );
+      }
       errors += batch.length;
       continue;
     }
@@ -171,6 +184,11 @@ async function processBatches(ctx: BatchContext): Promise<BatchResult> {
 
     const storeResult = await ctx.vectorIndex.upsertVectors(vectors);
     if (!storeResult.ok) {
+      if (ctx.verbose) {
+        process.stderr.write(
+          `\n[embed] Store failed: ${storeResult.error.message}\n`
+        );
+      }
       errors += batch.length;
       continue;
     }
@@ -366,6 +384,7 @@ export async function embed(options: EmbedOptions = {}): Promise<EmbedResult> {
       force,
       showProgress: !options.json,
       totalToEmbed,
+      verbose: options.verbose ?? false,
     });
 
     if (!result.ok) {
