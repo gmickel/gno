@@ -96,7 +96,41 @@ function App() {
 
   return (
     <CaptureModalProvider>
-      <Page navigate={navigate} />
+      <div className="flex min-h-screen flex-col">
+        <div className="flex-1">
+          <Page navigate={navigate} />
+        </div>
+        <footer className="border-t border-border/50 bg-background/80 py-4 text-center text-muted-foreground text-sm">
+          <div className="flex items-center justify-center gap-4">
+            <a
+              className="transition-colors hover:text-foreground"
+              href="https://github.com/gmickel/gno"
+              rel="noopener noreferrer"
+              target="_blank"
+            >
+              GitHub
+            </a>
+            <span className="text-border">·</span>
+            <a
+              className="transition-colors hover:text-foreground"
+              href="https://discord.gg/ST5Y39hQ"
+              rel="noopener noreferrer"
+              target="_blank"
+            >
+              Discord
+            </a>
+            <span className="text-border">·</span>
+            <a
+              className="transition-colors hover:text-foreground"
+              href="https://gno.sh"
+              rel="noopener noreferrer"
+              target="_blank"
+            >
+              gno.sh
+            </a>
+          </div>
+        </footer>
+      </div>
       <HelpButton onClick={() => setShortcutHelpOpen(true)} />
       <ShortcutHelpModal
         onOpenChange={setShortcutHelpOpen}
