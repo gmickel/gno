@@ -54,7 +54,10 @@ interface AskOutput {
 // Uses promise caching to prevent race conditions with concurrent evalite tasks.
 // ─────────────────────────────────────────────────────────────────────────────
 
-type GenPort = Awaited<ReturnType<LlmAdapter["createGenerationPort"]>>["value"];
+type GenPort = Extract<
+  Awaited<ReturnType<LlmAdapter["createGenerationPort"]>>,
+  { ok: true }
+>["value"];
 
 // Cache promises, not resolved values - prevents duplicate model loads under concurrency
 const cachedGenPortPromises = new Map<PresetId, Promise<GenPort>>();

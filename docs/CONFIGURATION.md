@@ -226,6 +226,55 @@ Model URIs support:
 
 - `hf:org/repo/file.gguf` - Hugging Face download
 - `file:/path/to/model.gguf` - Local file
+- `http://host:port/path#modelname` - Remote HTTP endpoint (OpenAI-compatible)
+
+### HTTP Endpoints
+
+GNO supports remote model servers using OpenAI-compatible APIs. This allows offloading inference to a more powerful machine (e.g., a GPU server on your network).
+
+```yaml
+models:
+  activePreset: remote
+  presets:
+    - id: remote
+      name: Remote GPU Server
+      embed: "http://192.168.1.100:8081/v1/embeddings#bge-m3"
+      rerank: "http://192.168.1.100:8082/v1/completions#qwen3-reranker"
+      gen: "http://192.168.1.100:8083/v1/chat/completions#qwen3-4b"
+```
+
+**URI Format:** `http://host:port/path#modelname`
+
+| Component   | Description                                        |
+| ----------- | -------------------------------------------------- |
+| `http(s)://`| Protocol (HTTP or HTTPS)                           |
+| `host:port` | Server address                                     |
+| `/path`     | API endpoint (e.g., `/v1/chat/completions`)        |
+| `#modelname`| Optional model identifier sent in requests         |
+
+**Supported Endpoints:**
+
+| Model Type | API Path                 | OpenAI-Compatible API       |
+| ---------- | ------------------------ | --------------------------- |
+| `embed`    | `/v1/embeddings`         | Embeddings API              |
+| `rerank`   | `/v1/completions`        | Completions API (text only) |
+| `gen`      | `/v1/chat/completions`   | Chat Completions API        |
+
+**Example with llama.cpp server:**
+
+```bash
+# Start llama-server for generation
+llama-server -m model.gguf --host 0.0.0.0 --port 8083
+
+# Configure GNO to use it
+# gen: "http://192.168.1.100:8083/v1/chat/completions#my-model"
+```
+
+**Benefits:**
+- Offload inference to a GPU server
+- Share models across multiple machines
+- Use larger models than local hardware supports
+- Keep local machine responsive during inference
 
 ### Timeouts
 
