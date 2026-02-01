@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.15.0] - 2026-02-01
+
+### Added
+
+- **HTTP backends for remote model servers** - Offload embedding, reranking, and generation to remote llama-server instances via OpenAI-compatible APIs ([#62](https://github.com/gmickel/gno/pull/62)) - thanks [@Whamp](https://github.com/Whamp)!
+  - Configure with URI format: `http://host:port/path#modelname`
+  - Supports embedding (`/v1/embeddings`), reranking (`/v1/completions`), and generation (`/v1/chat/completions`)
+  - Enables running GNO on lightweight machines while GPU inference runs on separate servers
+
 ## [0.14.3] - 2026-01-14
 
 ### Changed

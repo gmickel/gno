@@ -245,20 +245,20 @@ models:
 
 **URI Format:** `http://host:port/path#modelname`
 
-| Component   | Description                                        |
-| ----------- | -------------------------------------------------- |
-| `http(s)://`| Protocol (HTTP or HTTPS)                           |
-| `host:port` | Server address                                     |
-| `/path`     | API endpoint (e.g., `/v1/chat/completions`)        |
-| `#modelname`| Optional model identifier sent in requests         |
+| Component    | Description                                 |
+| ------------ | ------------------------------------------- |
+| `http(s)://` | Protocol (HTTP or HTTPS)                    |
+| `host:port`  | Server address                              |
+| `/path`      | API endpoint (e.g., `/v1/chat/completions`) |
+| `#modelname` | Optional model identifier sent in requests  |
 
 **Supported Endpoints:**
 
-| Model Type | API Path                 | OpenAI-Compatible API       |
-| ---------- | ------------------------ | --------------------------- |
-| `embed`    | `/v1/embeddings`         | Embeddings API              |
-| `rerank`   | `/v1/completions`        | Completions API (text only) |
-| `gen`      | `/v1/chat/completions`   | Chat Completions API        |
+| Model Type | API Path               | OpenAI-Compatible API       |
+| ---------- | ---------------------- | --------------------------- |
+| `embed`    | `/v1/embeddings`       | Embeddings API              |
+| `rerank`   | `/v1/completions`      | Completions API (text only) |
+| `gen`      | `/v1/chat/completions` | Chat Completions API        |
 
 **Example with llama.cpp server:**
 
@@ -271,6 +271,7 @@ llama-server -m model.gguf --host 0.0.0.0 --port 8083
 ```
 
 **Benefits:**
+
 - Offload inference to a GPU server
 - Share models across multiple machines
 - Use larger models than local hardware supports
