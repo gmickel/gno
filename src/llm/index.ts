@@ -26,6 +26,12 @@ export {
 } from "./errors";
 // Adapter
 export { createLlmAdapter, LlmAdapter } from "./nodeLlamaCpp/adapter";
+// HTTP Embedding
+export { HttpEmbedding, isHttpModelUri } from "./httpEmbedding";
+// HTTP Generation
+export { HttpGeneration, isHttpGenUri } from "./httpGeneration";
+// HTTP Rerank
+export { HttpRerank, isHttpRerankUri } from "./httpRerank";
 // Lifecycle
 export {
   getModelManager,

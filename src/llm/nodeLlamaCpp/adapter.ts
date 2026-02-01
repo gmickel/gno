@@ -16,6 +16,9 @@ import type {
 } from "../types";
 
 import { ModelCache } from "../cache";
+import { HttpEmbedding, isHttpModelUri } from "../httpEmbedding";
+import { HttpGeneration, isHttpGenUri } from "../httpGeneration";
+import { HttpRerank, isHttpRerankUri } from "../httpRerank";
 import { getActivePreset, getModelConfig } from "../registry";
 import { NodeLlamaCppEmbedding } from "./embedding";
 import { NodeLlamaCppGeneration } from "./generation";
@@ -54,6 +57,7 @@ export class LlmAdapter {
 
   /**
    * Create an embedding port.
+   * Supports HTTP endpoints for remote embedding models.
    * With options.policy.allowDownload=true, auto-downloads if not cached.
    */
   async createEmbeddingPort(
@@ -63,6 +67,17 @@ export class LlmAdapter {
     const preset = getActivePreset(this.config);
     const uri = modelUri ?? preset.embed;
     const policy = options?.policy ?? DEFAULT_POLICY;
+
+    // Use HTTP embedding for remote endpoints
+    if (isHttpModelUri(uri)) {
+      const httpEmbed = new HttpEmbedding(uri);
+      // Initialize to verify connection and get dimensions
+      const initResult = await httpEmbed.init();
+      if (!initResult.ok) {
+        return { ok: false, error: initResult.error };
+      }
+      return { ok: true, value: httpEmbed };
+    }
 
     // Ensure model is available (downloads if policy allows)
     const resolved = await this.cache.ensureModel(
@@ -83,6 +98,7 @@ export class LlmAdapter {
 
   /**
    * Create a generation port.
+   * Supports HTTP endpoints for remote generation models.
    * With options.policy.allowDownload=true, auto-downloads if not cached.
    */
   async createGenerationPort(
@@ -92,6 +108,12 @@ export class LlmAdapter {
     const preset = getActivePreset(this.config);
     const uri = modelUri ?? preset.gen;
     const policy = options?.policy ?? DEFAULT_POLICY;
+
+    // Use HTTP generation for remote endpoints
+    if (isHttpGenUri(uri)) {
+      const httpGen = new HttpGeneration(uri);
+      return { ok: true, value: httpGen };
+    }
 
     // Ensure model is available (downloads if policy allows)
     const resolved = await this.cache.ensureModel(
@@ -112,6 +134,7 @@ export class LlmAdapter {
 
   /**
    * Create a rerank port.
+   * Supports HTTP endpoints for remote reranking models.
    * With options.policy.allowDownload=true, auto-downloads if not cached.
    */
   async createRerankPort(
@@ -121,6 +144,12 @@ export class LlmAdapter {
     const preset = getActivePreset(this.config);
     const uri = modelUri ?? preset.rerank;
     const policy = options?.policy ?? DEFAULT_POLICY;
+
+    // Use HTTP rerank for remote endpoints
+    if (isHttpRerankUri(uri)) {
+      const httpRerank = new HttpRerank(uri);
+      return { ok: true, value: httpRerank };
+    }
 
     // Ensure model is available (downloads if policy allows)
     const resolved = await this.cache.ensureModel(
