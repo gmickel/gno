@@ -47,13 +47,13 @@ Add to search results ActionPanel:
 ## API Mapping
 
 ```typescript
-function getSearchParams(depth: 'fast' | 'balanced' | 'thorough') {
+function getSearchParams(depth: "fast" | "balanced" | "thorough") {
   switch (depth) {
-    case 'fast':
+    case "fast":
       return { noExpand: true, noRerank: true };
-    case 'balanced':
+    case "balanced":
       return { noRerank: true };
-    case 'thorough':
+    case "thorough":
       return {}; // defaults
   }
 }

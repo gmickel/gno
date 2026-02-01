@@ -381,7 +381,8 @@ The homepage features grid (lines ~100-243) contains hardcoded feature cards. Ad
   </div>
   <h3 class="feature-card-title">Note Linking</h3>
   <p class="feature-card-description">
-    Wiki links, backlinks, and semantic similarity. Navigate your knowledge graph.
+    Wiki links, backlinks, and semantic similarity. Navigate your knowledge
+    graph.
   </p>
 </a>
 ```
@@ -611,8 +612,8 @@ Autocomplete for [[wiki links in editor.
 // src/serve/public/hooks/useBacklinks.ts
 export function useBacklinks(docId: number) {
   return useQuery({
-    queryKey: ['backlinks', docId],
-    queryFn: () => fetch(`/api/doc/${docId}/backlinks`).then(r => r.json()),
+    queryKey: ["backlinks", docId],
+    queryFn: () => fetch(`/api/doc/${docId}/backlinks`).then((r) => r.json()),
   });
 }
 ```
@@ -623,8 +624,8 @@ export function useBacklinks(docId: number) {
 // src/serve/public/hooks/useLinks.ts
 export function useLinks(docId: number) {
   return useQuery({
-    queryKey: ['links', docId],
-    queryFn: () => fetch(`/api/doc/${docId}/links`).then(r => r.json()),
+    queryKey: ["links", docId],
+    queryFn: () => fetch(`/api/doc/${docId}/links`).then((r) => r.json()),
   });
 }
 ```
@@ -635,10 +636,10 @@ export function useLinks(docId: number) {
 // src/serve/public/hooks/useSimilar.ts
 export function useSimilar(docId: number, docUri: string) {
   return useQuery({
-    queryKey: ['similar', docId],
-    queryFn: () => fetch(`/api/doc/${docId}/similar`).then(r => r.json()),
+    queryKey: ["similar", docId],
+    queryFn: () => fetch(`/api/doc/${docId}/similar`).then((r) => r.json()),
     staleTime: 60_000, // Cache for 1 min
-    refetchOnMount: 'always', // Background refresh
+    refetchOnMount: "always", // Background refresh
   });
 }
 ```
@@ -649,8 +650,8 @@ export function useSimilar(docId: number, docUri: string) {
 // src/serve/public/hooks/useDocSuggestions.ts
 export function useDocSuggestions(query: string, currentCollection?: string) {
   return useQuery({
-    queryKey: ['doc-suggestions', query],
-    queryFn: () => fetch(`/api/docs/suggest?q=${query}`).then(r => r.json()),
+    queryKey: ["doc-suggestions", query],
+    queryFn: () => fetch(`/api/docs/suggest?q=${query}`).then((r) => r.json()),
     enabled: query.length >= 0, // Trigger on [[
   });
 }
@@ -673,7 +674,11 @@ Autocomplete endpoint for wiki links.
 ```json
 {
   "suggestions": [
-    { "uri": "gno://coll/note.md", "title": "Note Title", "collection": "coll" },
+    {
+      "uri": "gno://coll/note.md",
+      "title": "Note Title",
+      "collection": "coll"
+    },
     { "uri": "gno://work/other.md", "title": "Other Doc", "collection": "work" }
   ]
 }
@@ -771,8 +776,20 @@ Get outgoing links from a document.
 {
   "doc": { "uri": "gno://coll/note.md", "title": "My Note" },
   "links": [
-    { "type": "wiki", "target": "Related", "displayText": null, "resolved": true, "targetUri": "gno://coll/related.md" },
-    { "type": "markdown", "target": "./other.md", "displayText": "Link", "resolved": false, "targetUri": null }
+    {
+      "type": "wiki",
+      "target": "Related",
+      "displayText": null,
+      "resolved": true,
+      "targetUri": "gno://coll/related.md"
+    },
+    {
+      "type": "markdown",
+      "target": "./other.md",
+      "displayText": "Link",
+      "resolved": false,
+      "targetUri": null
+    }
   ],
   "meta": { "total": 2, "broken": 1 }
 }
@@ -811,7 +828,12 @@ Get documents that link TO a document.
 {
   "doc": { "uri": "gno://coll/note.md", "title": "My Note" },
   "backlinks": [
-    { "sourceUri": "gno://coll/other.md", "sourceTitle": "Other", "linkText": "see My Note", "context": "...context..." }
+    {
+      "sourceUri": "gno://coll/other.md",
+      "sourceTitle": "Other",
+      "linkText": "see My Note",
+      "context": "...context..."
+    }
   ],
   "meta": { "total": 1 }
 }
@@ -1050,8 +1072,8 @@ async function embedBacklog(
   embedPort: EmbeddingPort | null,
   vectorIndex: VectorIndexPort | null,
   modelUri: string,
-  docIds?: string[]  // NEW: filter to specific docs
-): Promise<{ embedded: number; errors: number } | null>
+  docIds?: string[] // NEW: filter to specific docs
+): Promise<{ embedded: number; errors: number } | null>;
 ```
 
 Changes:
@@ -1217,7 +1239,7 @@ Send full document content to reranker instead of truncated chunks.
 ```typescript
 const texts: string[] = toRerank.map((c) => {
   const chunk = getChunk(c.mirrorHash, c.seq);
-  return chunk?.text ?? '';
+  return chunk?.text ?? "";
 });
 ```
 
@@ -1230,11 +1252,11 @@ const texts: string[] = await Promise.all(
     if (contentResult.ok && contentResult.value) {
       const content = contentResult.value;
       return content.length > 128000
-        ? content.slice(0, 128000) + '...'
+        ? content.slice(0, 128000) + "..."
         : content;
     }
     const chunk = getChunk(c.mirrorHash, c.seq);
-    return chunk?.text ?? '';
+    return chunk?.text ?? "";
   })
 );
 ```
@@ -1279,7 +1301,7 @@ Expansion queries sometimes dilute exact matches. Original query is most valuabl
 
 ```typescript
 // First 2 lists (original FTS + original vector) get 2x weight
-const weights = rankedLists.map((_, i) => i < 2 ? 2.0 : 1.0);
+const weights = rankedLists.map((_, i) => (i < 2 ? 2.0 : 1.0));
 const fused = reciprocalRankFusion(rankedLists, weights);
 ```
 
@@ -1287,17 +1309,18 @@ const fused = reciprocalRankFusion(rankedLists, weights);
 
 ```typescript
 for (const input of bm25Inputs) {
-  const weight = input.source === 'bm25'
-    ? config.bm25Weight * 2.0  // 2x for original
-    : config.bm25Weight * 0.5; // 0.5x for variants
+  const weight =
+    input.source === "bm25"
+      ? config.bm25Weight * 2.0 // 2x for original
+      : config.bm25Weight * 0.5; // 0.5x for variants
 }
 
 for (const input of vectorInputs) {
-  if (input.source === 'vector') {
-    weight = config.vecWeight * 2.0;  // 2x for original
-  } else if (input.source === 'vector_variant') {
+  if (input.source === "vector") {
+    weight = config.vecWeight * 2.0; // 2x for original
+  } else if (input.source === "vector_variant") {
     weight = config.vecWeight * 0.5;
-  } else if (input.source === 'hyde') {
+  } else if (input.source === "hyde") {
     weight = config.vecWeight * 0.7;
   }
 }
@@ -1379,10 +1402,10 @@ After epic implementation, these tests should pass.
 ### 1. Cross-chunk query terms
 
 ```typescript
-test('finds document when query terms span multiple chunks', async () => {
+test("finds document when query terms span multiple chunks", async () => {
   // "gmickel-bench" in chunk 1, "score table" in chunk 18
-  const results = await query('which model scored best on gmickel-bench?');
-  expect(results).toContainDocument('AI Coding Assistant Eval Results.md');
+  const results = await query("which model scored best on gmickel-bench?");
+  expect(results).toContainDocument("AI Coding Assistant Eval Results.md");
 });
 ```
 
@@ -1390,22 +1413,24 @@ test('finds document when query terms span multiple chunks', async () => {
 
 ```typescript
 test('stemming: "scored" matches "score"', async () => {
-  const results = await search('scored best');
-  expect(results.some(r => r.content.includes('score'))).toBe(true);
+  const results = await search("scored best");
+  expect(results.some((r) => r.content.includes("score"))).toBe(true);
 });
 
 test('stemming: "running" matches "run"', async () => {
-  const results = await search('running tests');
-  expect(results.some(r => r.content.includes('run test'))).toBe(true);
+  const results = await search("running tests");
+  expect(results.some((r) => r.content.includes("run test"))).toBe(true);
 });
 ```
 
 ### 3. Answer generation with full context
 
 ```typescript
-test('answer includes data from document tables', async () => {
-  const answer = await ask('which model scored best on gmickel-bench?', { answer: true });
-  expect(answer.text).toContain('494.6'); // or GPT-5.2-xhigh
+test("answer includes data from document tables", async () => {
+  const answer = await ask("which model scored best on gmickel-bench?", {
+    answer: true,
+  });
+  expect(answer.text).toContain("494.6"); // or GPT-5.2-xhigh
   expect(answer.citations).toHaveLength(1);
 });
 ```
@@ -1413,8 +1438,10 @@ test('answer includes data from document tables', async () => {
 ### 4. Cross-document synthesis
 
 ```typescript
-test('synthesizes answer from multiple documents', async () => {
-  const answer = await ask('compare async programming in go and python', { answer: true });
+test("synthesizes answer from multiple documents", async () => {
+  const answer = await ask("compare async programming in go and python", {
+    answer: true,
+  });
   expect(answer.citations.length).toBeGreaterThan(1);
 });
 ```
@@ -1457,10 +1484,10 @@ Implement all 6 MCP tools per spec/mcp.md with exception firewall, mutex, and in
 ### Tool Context (src/mcp/context.ts)
 
 ```typescript
-import type { SqliteAdapter } from '../store/sqlite/adapter.js';
-import type { Config, Collection } from '../config/types.js';
-import type { Mutex } from 'async-mutex';
-import type { LlmAdapter } from '../llm/adapter.js';
+import type { SqliteAdapter } from "../store/sqlite/adapter.js";
+import type { Config, Collection } from "../config/types.js";
+import type { Mutex } from "async-mutex";
+import type { LlmAdapter } from "../llm/adapter.js";
 
 export interface ToolContext {
   store: SqliteAdapter;
@@ -1474,32 +1501,32 @@ export interface ToolContext {
 
 // Model lifecycle with retry-safe states
 export interface ModelManager {
-  state: 'idle' | 'loading' | 'ready' | 'error';
+  state: "idle" | "loading" | "ready" | "error";
   adapter?: LlmAdapter;
-  getAdapter(): Promise<LlmAdapter>;  // returns cached or initializes
-  dispose(): Promise<void>;  // best-effort, non-throwing
+  getAdapter(): Promise<LlmAdapter>; // returns cached or initializes
+  dispose(): Promise<void>; // best-effort, non-throwing
 }
 
 // Retry-safe implementation
 class ModelManagerImpl implements ModelManager {
-  state: 'idle' | 'loading' | 'ready' | 'error' = 'idle';
+  state: "idle" | "loading" | "ready" | "error" = "idle";
   adapter?: LlmAdapter;
   private loadPromise?: Promise<LlmAdapter>;
 
   async getAdapter(): Promise<LlmAdapter> {
-    if (this.state === 'ready' && this.adapter) return this.adapter;
-    if (this.state === 'loading' && this.loadPromise) return this.loadPromise;
+    if (this.state === "ready" && this.adapter) return this.adapter;
+    if (this.state === "loading" && this.loadPromise) return this.loadPromise;
 
     // Reset error state to allow retry
-    this.state = 'loading';
+    this.state = "loading";
     this.loadPromise = this.doLoad();
 
     try {
       this.adapter = await this.loadPromise;
-      this.state = 'ready';
+      this.state = "ready";
       return this.adapter;
     } catch (e) {
-      this.state = 'idle';  // Allow retry on next call
+      this.state = "idle"; // Allow retry on next call
       this.loadPromise = undefined;
       throw e;
     }
@@ -1512,9 +1539,11 @@ class ModelManagerImpl implements ModelManager {
   async dispose(): Promise<void> {
     try {
       await this.adapter?.dispose?.();
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
     this.adapter = undefined;
-    this.state = 'idle';
+    this.state = "idle";
   }
 }
 ```
@@ -1522,8 +1551,11 @@ class ModelManagerImpl implements ModelManager {
 ### Tool Registration (src/mcp/tools/index.ts)
 
 ```typescript
-import { z } from 'zod';
-import type { McpServer, CallToolResult } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { z } from "zod";
+import type {
+  McpServer,
+  CallToolResult,
+} from "@modelcontextprotocol/sdk/server/mcp.js";
 
 // DRY helper: exception firewall + response shaping + mutex
 export async function runTool<T>(
@@ -1536,7 +1568,7 @@ export async function runTool<T>(
   if (ctx.isShuttingDown()) {
     return {
       isError: true,
-      content: [{ type: 'text', text: 'Error: Server is shutting down' }]
+      content: [{ type: "text", text: "Error: Server is shutting down" }],
     };
   }
 
@@ -1545,14 +1577,19 @@ export async function runTool<T>(
   try {
     const data = await fn();
     return {
-      content: [{ type: 'text', text: formatText(data) }],
-      structuredContent: data
+      content: [{ type: "text", text: formatText(data) }],
+      structuredContent: data,
     };
   } catch (e) {
     // Exception firewall: never throw, always return isError
     return {
       isError: true,
-      content: [{ type: 'text', text: `Error: ${e instanceof Error ? e.message : String(e)}` }]
+      content: [
+        {
+          type: "text",
+          text: `Error: ${e instanceof Error ? e.message : String(e)}`,
+        },
+      ],
     };
   } finally {
     release();
@@ -1561,31 +1598,42 @@ export async function runTool<T>(
 
 export function registerTools(server: McpServer, ctx: ToolContext): void {
   // Tool IDs exactly per spec
-  server.tool('gno.search', searchInputSchema, (args) => handleSearch(args, ctx));
-  server.tool('gno.vsearch', vsearchInputSchema, (args) => handleVsearch(args, ctx));
-  server.tool('gno.query', queryInputSchema, (args) => handleQuery(args, ctx));
-  server.tool('gno.get', getInputSchema, (args) => handleGet(args, ctx));
-  server.tool('gno.multi_get', multiGetInputSchema, (args) => handleMultiGet(args, ctx));  // underscore!
-  server.tool('gno.status', statusInputSchema, (args) => handleStatus(args, ctx));
+  server.tool("gno.search", searchInputSchema, (args) =>
+    handleSearch(args, ctx)
+  );
+  server.tool("gno.vsearch", vsearchInputSchema, (args) =>
+    handleVsearch(args, ctx)
+  );
+  server.tool("gno.query", queryInputSchema, (args) => handleQuery(args, ctx));
+  server.tool("gno.get", getInputSchema, (args) => handleGet(args, ctx));
+  server.tool("gno.multi_get", multiGetInputSchema, (args) =>
+    handleMultiGet(args, ctx)
+  ); // underscore!
+  server.tool("gno.status", statusInputSchema, (args) =>
+    handleStatus(args, ctx)
+  );
 }
 ```
 
 ### Input Validation (zod v4.2.1 - already in deps)
 
 ```typescript
-import { z } from 'zod';
+import { z } from "zod";
 
 const searchInputSchema = {
-  query: z.string().min(1, 'Query cannot be empty'),
+  query: z.string().min(1, "Query cannot be empty"),
   collection: z.string().optional(),
   limit: z.number().int().min(1).max(100).default(5),
   minScore: z.number().min(0).max(1).optional(),
-  lang: z.string().optional()
+  lang: z.string().optional(),
 };
 
 function validateSearchInput(args: unknown, ctx: ToolContext) {
   const parsed = searchInputSchema.parse(args);
-  if (parsed.collection && !ctx.collections.find(c => c.name === parsed.collection)) {
+  if (
+    parsed.collection &&
+    !ctx.collections.find((c) => c.name === parsed.collection)
+  ) {
     throw new Error(`Collection not found: ${parsed.collection}`);
   }
   return parsed;
@@ -1595,26 +1643,29 @@ function validateSearchInput(args: unknown, ctx: ToolContext) {
 ### absPath Enrichment (CRITICAL: derive collection from result, not input)
 
 ```typescript
-import path from 'node:path';
-import { parseUri } from '../../app/constants.js';
+import path from "node:path";
+import { parseUri } from "../../app/constants.js";
 
 // CORRECT: Derive collection from result's URI, not tool input
-function enrichWithAbsPath(results: SearchResults, collections: Collection[]): SearchResults {
+function enrichWithAbsPath(
+  results: SearchResults,
+  collections: Collection[]
+): SearchResults {
   return {
     ...results,
-    results: results.results.map(r => {
+    results: results.results.map((r) => {
       // Parse collection from result's URI (handles multi-collection searches)
       const { collection: collName } = parseUri(r.uri);
-      const collection = collections.find(c => c.name === collName);
+      const collection = collections.find((c) => c.name === collName);
       const absPath = collection
         ? path.join(collection.root, r.source.relPath)
         : r.source.relPath;
 
       return {
         ...r,
-        source: { ...r.source, absPath }
+        source: { ...r.source, absPath },
       };
-    })
+    }),
   };
 }
 ```
@@ -1705,14 +1756,14 @@ function enrichWithAbsPath(results: SearchResults, collections: Collection[]): S
 ### 1. CLI Entry Point (src/cli/commands/mcp.ts)
 
 ```typescript
-import type { GlobalOptions } from '../options.js';
+import type { GlobalOptions } from "../options.js";
 
 export async function mcpCommand(options: GlobalOptions): Promise<void> {
-  const { startMcpServer } = await import('../../mcp/server.js');
+  const { startMcpServer } = await import("../../mcp/server.js");
   await startMcpServer({
     indexName: options.index,
     configPath: options.config,
-    verbose: options.verbose
+    verbose: options.verbose,
   });
 }
 ```
@@ -1720,11 +1771,11 @@ export async function mcpCommand(options: GlobalOptions): Promise<void> {
 ### 2. Server Setup (src/mcp/server.ts)
 
 ```typescript
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import { MCP_SERVER_NAME, MCP_SERVER_VERSION } from '../app/constants.js';
-import { initStore } from '../cli/commands/shared.js';
-import { Mutex } from 'async-mutex';
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { MCP_SERVER_NAME, MCP_SERVER_VERSION } from "../app/constants.js";
+import { initStore } from "../cli/commands/shared.js";
+import { Mutex } from "async-mutex";
 
 interface McpServerOptions {
   indexName?: string;
@@ -1752,25 +1803,28 @@ export async function startMcpServer(options: McpServerOptions): Promise<void> {
   const init = await initStore({
     indexName: options.indexName,
     configPath: options.configPath,
-    verbose: options.verbose ?? false
+    verbose: options.verbose ?? false,
   });
 
   if (!init.ok) {
-    console.error('Failed to initialize:', init.error);
+    console.error("Failed to initialize:", init.error);
     process.exit(1);
   }
   const { store, config, collections, actualConfigPath } = init;
 
   // Create MCP server
-  const server = new McpServer({
-    name: MCP_SERVER_NAME,
-    version: MCP_SERVER_VERSION
-  }, {
-    capabilities: {
-      tools: { listChanged: false },
-      resources: { subscribe: false, listChanged: false }
+  const server = new McpServer(
+    {
+      name: MCP_SERVER_NAME,
+      version: MCP_SERVER_VERSION,
+    },
+    {
+      capabilities: {
+        tools: { listChanged: false },
+        resources: { subscribe: false, listChanged: false },
+      },
     }
-  });
+  );
 
   // Sequential execution mutex
   const toolMutex = new Mutex();
@@ -1780,8 +1834,12 @@ export async function startMcpServer(options: McpServerOptions): Promise<void> {
 
   // Tool context (passed to all handlers)
   const ctx = {
-    store, config, collections, actualConfigPath, toolMutex,
-    isShuttingDown: () => shuttingDown
+    store,
+    config,
+    collections,
+    actualConfigPath,
+    toolMutex,
+    isShuttingDown: () => shuttingDown,
   };
 
   // Register tools (T10.2) - pass ctx
@@ -1799,16 +1857,18 @@ export async function startMcpServer(options: McpServerOptions): Promise<void> {
     // 2. Wait for current handler (bounded timeout via mutex tryAcquire)
     const release = await Promise.race([
       toolMutex.acquire(),
-      new Promise<null>(r => setTimeout(() => r(null), 5000))
+      new Promise<null>((r) => setTimeout(() => r(null), 5000)),
     ]);
-    if (release && typeof release === 'function') release();
+    if (release && typeof release === "function") release();
 
     // 3. Dispose model ports (best-effort, non-throwing)
     try {
       if (ctx.modelManager?.adapter) {
         await ctx.modelManager.adapter.dispose?.();
       }
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
 
     // 4. Close DB
     await store.close();
@@ -1816,14 +1876,14 @@ export async function startMcpServer(options: McpServerOptions): Promise<void> {
     // 5. Exit
     process.exit(0);
   };
-  process.on('SIGTERM', shutdown);
-  process.on('SIGINT', shutdown);
+  process.on("SIGTERM", shutdown);
+  process.on("SIGINT", shutdown);
 
   // Connect transport
   const transport = new StdioServerTransport();
-  protocolMode = true;  // Enable stdout for JSON-RPC
+  protocolMode = true; // Enable stdout for JSON-RPC
   await server.connect(transport);
-  console.error('GNO MCP server running on stdio');
+  console.error("GNO MCP server running on stdio");
 }
 ```
 
@@ -1834,11 +1894,11 @@ Replace stub at line 710-718. CRITICAL: Ensure Commander doesn't print help to s
 ```typescript
 function wireMcpCommand(program: Command): void {
   program
-    .command('mcp')
-    .description('Start MCP server (stdio transport)')
-    .helpOption(false)  // Disable --help to prevent stdout pollution
+    .command("mcp")
+    .description("Start MCP server (stdio transport)")
+    .helpOption(false) // Disable --help to prevent stdout pollution
     .action(async () => {
-      const { mcpCommand } = await import('./commands/mcp.js');
+      const { mcpCommand } = await import("./commands/mcp.js");
       const globalOpts = program.opts();
       await mcpCommand(globalOpts);
     });
@@ -1851,8 +1911,8 @@ Move WAL + busy_timeout to lowest level (open time):
 
 ```typescript
 // In SqliteAdapter.open() or constructor, immediately after db open:
-db.exec('PRAGMA journal_mode=WAL');
-db.exec('PRAGMA busy_timeout=5000');
+db.exec("PRAGMA journal_mode=WAL");
+db.exec("PRAGMA busy_timeout=5000");
 ```
 
 This ensures ALL connections (CLI, MCP, tests) get proper concurrency handling.
@@ -1864,8 +1924,8 @@ Add `indexName` and `configPath` to InitStoreOptions:
 ```typescript
 interface InitStoreOptions {
   verbose?: boolean;
-  indexName?: string;   // honor --index flag
-  configPath?: string;  // honor --config flag
+  indexName?: string; // honor --index flag
+  configPath?: string; // honor --config flag
 }
 
 interface InitStoreResult {
@@ -1873,7 +1933,7 @@ interface InitStoreResult {
   store: SqliteAdapter;
   config: Config;
   collections: Collection[];
-  actualConfigPath: string;  // truthful path for status
+  actualConfigPath: string; // truthful path for status
 }
 ```
 

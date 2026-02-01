@@ -388,12 +388,12 @@ export type ConverterId =
   | string;
 
 export type ConvertInput = {
-  sourcePath: string;        // absolute
-  relativePath: string;      // within collection
+  sourcePath: string; // absolute
+  relativePath: string; // within collection
   collection: string;
   bytes: Uint8Array;
   mime: string;
-  ext: string;               // ".pdf"
+  ext: string; // ".pdf"
   limits: {
     maxBytes: number;
     timeoutMs: number;
@@ -401,15 +401,20 @@ export type ConvertInput = {
 };
 
 export type ConvertWarning = {
-  code: "LOSSY" | "TRUNCATED" | "PARTIAL" | "UNSUPPORTED_FEATURE" | "LOW_CONFIDENCE";
+  code:
+    | "LOSSY"
+    | "TRUNCATED"
+    | "PARTIAL"
+    | "UNSUPPORTED_FEATURE"
+    | "LOW_CONFIDENCE";
   message: string;
   details?: Record<string, unknown>;
 };
 
 export type ConvertOutput = {
-  markdown: string;          // canonical markdown (see 8.4)
+  markdown: string; // canonical markdown (see 8.4)
   title?: string;
-  languageHint?: string;     // optional BCP-47 or "und"
+  languageHint?: string; // optional BCP-47 or "und"
   meta: {
     converterId: ConverterId;
     converterVersion: string;
@@ -450,7 +455,7 @@ export type ConvertError = {
   message: string;
 
   retryable: boolean;
-  fatal: boolean;            // reserved for unrecoverable store corruption, not conversion
+  fatal: boolean; // reserved for unrecoverable store corruption, not conversion
 
   converterId: string;
   sourcePath: string;
@@ -1082,7 +1087,12 @@ Repo must include JSON schemas for:
   "queryLanguage": "auto",
   "answer": "optional string",
   "citations": [
-    { "docid": "#a1b2c3", "uri": "gno://work/path", "startLine": 120, "endLine": 145 }
+    {
+      "docid": "#a1b2c3",
+      "uri": "gno://work/path",
+      "startLine": 120,
+      "endLine": 145
+    }
   ],
   "results": [],
   "meta": {
@@ -1282,10 +1292,10 @@ import { createSqliteStorage } from "evalite/sqlite-storage";
 
 export default defineConfig({
   storage: () => createSqliteStorage("./evalite.db"),
-  testTimeout: 120000,    // 2 min for slow LLM calls
-  maxConcurrency: 10,     // parallel test cases
-  scoreThreshold: 70,     // MVP: 70%, tighten over time
-  cache: true,            // cache LLM responses in dev
+  testTimeout: 120000, // 2 min for slow LLM calls
+  maxConcurrency: 10, // parallel test cases
+  scoreThreshold: 70, // MVP: 70%, tighten over time
+  cache: true, // cache LLM responses in dev
 });
 ```
 
@@ -1297,46 +1307,52 @@ Create reusable scorers for retrieval metrics (not built into Evalite):
 // test/eval/scorers/ir-metrics.ts
 import { createScorer } from "evalite";
 
-export const recallAtK = (k: number) => createScorer<
-  { query: string },
-  string[],    // output: docids
-  string[]     // expected: relevant docids
->({
-  name: `Recall@${k}`,
-  description: `Fraction of relevant docs in top ${k} results`,
-  scorer: ({ output, expected }) => {
-    const topK = output.slice(0, k);
-    const hits = expected.filter(id => topK.includes(id)).length;
-    return {
-      score: expected.length > 0 ? hits / expected.length : 1,
-      metadata: { k, hits, total: expected.length },
-    };
-  },
-});
+export const recallAtK = (k: number) =>
+  createScorer<
+    { query: string },
+    string[], // output: docids
+    string[] // expected: relevant docids
+  >({
+    name: `Recall@${k}`,
+    description: `Fraction of relevant docs in top ${k} results`,
+    scorer: ({ output, expected }) => {
+      const topK = output.slice(0, k);
+      const hits = expected.filter((id) => topK.includes(id)).length;
+      return {
+        score: expected.length > 0 ? hits / expected.length : 1,
+        metadata: { k, hits, total: expected.length },
+      };
+    },
+  });
 
-export const ndcgAtK = (k: number) => createScorer<
-  { query: string },
-  string[],
-  { docid: string; relevance: number }[]
->({
-  name: `nDCG@${k}`,
-  description: `Normalized DCG at rank ${k}`,
-  scorer: ({ output, expected }) => {
-    const relevanceMap = new Map(expected.map(e => [e.docid, e.relevance]));
-    const dcg = output.slice(0, k).reduce((sum, docid, i) => {
-      const rel = relevanceMap.get(docid) ?? 0;
-      return sum + (Math.pow(2, rel) - 1) / Math.log2(i + 2);
-    }, 0);
-    const ideal = [...expected]
-      .sort((a, b) => b.relevance - a.relevance)
-      .slice(0, k)
-      .reduce((sum, e, i) => sum + (Math.pow(2, e.relevance) - 1) / Math.log2(i + 2), 0);
-    return {
-      score: ideal > 0 ? dcg / ideal : 1,
-      metadata: { k, dcg, idcg: ideal },
-    };
-  },
-});
+export const ndcgAtK = (k: number) =>
+  createScorer<
+    { query: string },
+    string[],
+    { docid: string; relevance: number }[]
+  >({
+    name: `nDCG@${k}`,
+    description: `Normalized DCG at rank ${k}`,
+    scorer: ({ output, expected }) => {
+      const relevanceMap = new Map(expected.map((e) => [e.docid, e.relevance]));
+      const dcg = output.slice(0, k).reduce((sum, docid, i) => {
+        const rel = relevanceMap.get(docid) ?? 0;
+        return sum + (Math.pow(2, rel) - 1) / Math.log2(i + 2);
+      }, 0);
+      const ideal = [...expected]
+        .sort((a, b) => b.relevance - a.relevance)
+        .slice(0, k)
+        .reduce(
+          (sum, e, i) =>
+            sum + (Math.pow(2, e.relevance) - 1) / Math.log2(i + 2),
+          0
+        );
+      return {
+        score: ideal > 0 ? dcg / ideal : 1,
+        metadata: { k, dcg, idcg: ideal },
+      };
+    },
+  });
 ```
 
 #### 18.2.3 Example Eval File
@@ -1356,15 +1372,18 @@ evalite("Vector Search Ranking", {
     }));
   },
   task: async (input) => {
-    const results = await vsearch(input.query, { collection: input.collection, limit: 10 });
-    return results.map(r => r.docid);
+    const results = await vsearch(input.query, {
+      collection: input.collection,
+      limit: 10,
+    });
+    return results.map((r) => r.docid);
   },
   scorers: [
     { scorer: (args) => recallAtK(5).scorer(args) },
     { scorer: (args) => recallAtK(10).scorer(args) },
     { scorer: (args) => ndcgAtK(10).scorer(args) },
   ],
-  trialCount: 1,  // deterministic for same embeddings
+  trialCount: 1, // deterministic for same embeddings
 });
 ```
 

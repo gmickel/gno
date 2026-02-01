@@ -116,7 +116,13 @@ gno status [--json|--md]
   "configPath": "/path/to/config",
   "dbPath": "/path/to/index.sqlite",
   "collections": [
-    { "name": "work", "path": "/path", "documentCount": 100, "chunkCount": 500, "embeddedCount": 500 }
+    {
+      "name": "work",
+      "path": "/path",
+      "documentCount": 100,
+      "chunkCount": 500,
+      "embeddedCount": 500
+    }
   ],
   "totalDocuments": 100,
   "totalChunks": 500,
@@ -846,11 +852,24 @@ gno models list [--json|--md]
   "presets": [
     { "id": "slim", "name": "Slim (Default, ~1GB)", "active": true },
     { "id": "balanced", "name": "Balanced (~2GB)", "active": false },
-    { "id": "quality", "name": "Quality (Best Answers, ~2.5GB)", "active": false }
+    {
+      "id": "quality",
+      "name": "Quality (Best Answers, ~2.5GB)",
+      "active": false
+    }
   ],
-  "embed": { "uri": "hf:gpustack/bge-m3-GGUF/bge-m3-Q4_K_M.gguf", "cached": true },
-  "rerank": { "uri": "hf:gpustack/bge-reranker-v2-m3-GGUF/bge-reranker-v2-m3-Q4_K_M.gguf", "cached": false },
-  "gen": { "uri": "hf:unsloth/Qwen3-1.7B-GGUF/Qwen3-1.7B-Q4_K_M.gguf", "cached": true }
+  "embed": {
+    "uri": "hf:gpustack/bge-m3-GGUF/bge-m3-Q4_K_M.gguf",
+    "cached": true
+  },
+  "rerank": {
+    "uri": "hf:gpustack/bge-reranker-v2-m3-GGUF/bge-reranker-v2-m3-Q4_K_M.gguf",
+    "cached": false
+  },
+  "gen": {
+    "uri": "hf:unsloth/Qwen3-1.7B-GGUF/Qwen3-1.7B-Q4_K_M.gguf",
+    "cached": true
+  }
 }
 ```
 
@@ -979,12 +998,28 @@ gno doctor [--json|--md]
 {
   "healthy": true,
   "checks": [
-    { "name": "config", "status": "ok", "message": "Config loaded: ~/.config/gno/config.yaml" },
-    { "name": "database", "status": "ok", "message": "Database found: ~/.local/share/gno/index.db" },
+    {
+      "name": "config",
+      "status": "ok",
+      "message": "Config loaded: ~/.config/gno/config.yaml"
+    },
+    {
+      "name": "database",
+      "status": "ok",
+      "message": "Database found: ~/.local/share/gno/index.db"
+    },
     { "name": "embed-model", "status": "ok", "message": "embed model cached" },
-    { "name": "rerank-model", "status": "warn", "message": "rerank model not cached. Run: gno models pull --rerank" },
+    {
+      "name": "rerank-model",
+      "status": "warn",
+      "message": "rerank model not cached. Run: gno models pull --rerank"
+    },
     { "name": "gen-model", "status": "ok", "message": "gen model cached" },
-    { "name": "node-llama-cpp", "status": "ok", "message": "node-llama-cpp loaded successfully" }
+    {
+      "name": "node-llama-cpp",
+      "status": "ok",
+      "message": "node-llama-cpp loaded successfully"
+    }
   ]
 }
 ```
@@ -1097,7 +1132,10 @@ gno mcp install [--target <target>] [--scope <scope>] [--force] [--dry-run] [--j
     "scope": "user",
     "configPath": "~/Library/Application Support/Claude/claude_desktop_config.json",
     "action": "created",
-    "serverEntry": { "command": "/path/to/bun", "args": ["/path/to/gno", "mcp"] }
+    "serverEntry": {
+      "command": "/path/to/bun",
+      "args": ["/path/to/gno", "mcp"]
+    }
   }
 }
 ```
@@ -1225,7 +1263,10 @@ MCP Server Status
       "scope": "user",
       "configPath": "~/Library/Application Support/Claude/claude_desktop_config.json",
       "configured": true,
-      "serverEntry": { "command": "/path/to/bun", "args": ["/path/to/gno", "mcp"] }
+      "serverEntry": {
+        "command": "/path/to/bun",
+        "args": ["/path/to/gno", "mcp"]
+      }
     },
     {
       "target": "claude-code",
@@ -1392,8 +1433,18 @@ gno skill paths [--scope <project|user>] [--target <claude|codex|all>] [--json]
 ```json
 {
   "paths": [
-    { "target": "claude", "scope": "project", "path": "/path/to/.claude/skills/gno", "exists": false },
-    { "target": "claude", "scope": "user", "path": "/home/user/.claude/skills/gno", "exists": true }
+    {
+      "target": "claude",
+      "scope": "project",
+      "path": "/path/to/.claude/skills/gno",
+      "exists": false
+    },
+    {
+      "target": "claude",
+      "scope": "user",
+      "path": "/home/user/.claude/skills/gno",
+      "exists": true
+    }
   ]
 }
 ```

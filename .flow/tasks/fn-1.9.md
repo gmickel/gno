@@ -15,26 +15,29 @@ src/lib/cli.ts
 
 ```typescript
 // Execute gno search (BM25)
-async function gnoSearch(query: string, limit?: number): Promise<SearchResult[]>
+async function gnoSearch(
+  query: string,
+  limit?: number
+): Promise<SearchResult[]>;
 
 // Execute gno query (hybrid)
-async function gnoQuery(query: string, limit?: number): Promise<SearchResult[]>
+async function gnoQuery(query: string, limit?: number): Promise<SearchResult[]>;
 
 // Execute gno ask (AI answer) - fallback when API unavailable
-async function gnoAsk(query: string): Promise<AskResponse>
+async function gnoAsk(query: string): Promise<AskResponse>;
 
 // Check if gno is installed
-async function isGnoInstalled(): Promise<boolean>
+async function isGnoInstalled(): Promise<boolean>;
 
 // Get gno version
-async function getGnoVersion(): Promise<string>
+async function getGnoVersion(): Promise<string>;
 ```
 
 ## Implementation Pattern
 
 ```typescript
-import { exec } from 'child_process';
-import { promisify } from 'util';
+import { exec } from "child_process";
+import { promisify } from "util";
 const execAsync = promisify(exec);
 
 async function gnoSearch(query: string, limit = 10): Promise<SearchResult[]> {

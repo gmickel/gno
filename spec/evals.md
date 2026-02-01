@@ -78,8 +78,8 @@ export default defineConfig({
   // For persistent history, see evalite docs
 
   // Test execution
-  testTimeout: 120_000,   // 2 min for embedding + rerank
-  maxConcurrency: 5,      // Conservative for LLM calls
+  testTimeout: 120_000, // 2 min for embedding + rerank
+  maxConcurrency: 5, // Conservative for LLM calls
 
   // Quality gate (MVP: 70%)
   scoreThreshold: 70,
@@ -123,28 +123,28 @@ Evalite doesn't include IR-specific scorers. Create them in `evals/scorers/ir-me
 import { createScorer } from "evalite";
 
 type RecallInput = { query: string; collection?: string };
-type RecallOutput = string[];  // docids
-type RecallExpected = string[];  // relevant docids
+type RecallOutput = string[]; // docids
+type RecallExpected = string[]; // relevant docids
 
-export const recallAtK = (k: number) => createScorer<
-  RecallInput,
-  RecallOutput,
-  RecallExpected
->({
-  name: `Recall@${k}`,
-  description: `Fraction of relevant docs retrieved in top ${k} results`,
-  scorer: ({ output, expected }) => {
-    if (!expected || expected.length === 0) {
-      return { score: 1, metadata: { k, hits: 0, total: 0, note: "no relevants" } };
-    }
-    const topK = output.slice(0, k);
-    const hits = expected.filter(docid => topK.includes(docid)).length;
-    return {
-      score: hits / expected.length,
-      metadata: { k, hits, total: expected.length },
-    };
-  },
-});
+export const recallAtK = (k: number) =>
+  createScorer<RecallInput, RecallOutput, RecallExpected>({
+    name: `Recall@${k}`,
+    description: `Fraction of relevant docs retrieved in top ${k} results`,
+    scorer: ({ output, expected }) => {
+      if (!expected || expected.length === 0) {
+        return {
+          score: 1,
+          metadata: { k, hits: 0, total: 0, note: "no relevants" },
+        };
+      }
+      const topK = output.slice(0, k);
+      const hits = expected.filter((docid) => topK.includes(docid)).length;
+      return {
+        score: hits / expected.length,
+        metadata: { k, hits, total: expected.length },
+      };
+    },
+  });
 ```
 
 ### nDCG@K
@@ -154,40 +154,40 @@ type NdcgInput = { query: string; collection?: string };
 type NdcgOutput = string[];
 type NdcgExpected = Array<{ docid: string; relevance: number }>;
 
-export const ndcgAtK = (k: number) => createScorer<
-  NdcgInput,
-  NdcgOutput,
-  NdcgExpected
->({
-  name: `nDCG@${k}`,
-  description: `Normalized Discounted Cumulative Gain at rank ${k}`,
-  scorer: ({ output, expected }) => {
-    if (!expected || expected.length === 0) {
-      return { score: 1, metadata: { k, dcg: 0, idcg: 0, note: "no judgments" } };
-    }
+export const ndcgAtK = (k: number) =>
+  createScorer<NdcgInput, NdcgOutput, NdcgExpected>({
+    name: `nDCG@${k}`,
+    description: `Normalized Discounted Cumulative Gain at rank ${k}`,
+    scorer: ({ output, expected }) => {
+      if (!expected || expected.length === 0) {
+        return {
+          score: 1,
+          metadata: { k, dcg: 0, idcg: 0, note: "no judgments" },
+        };
+      }
 
-    const relevanceMap = new Map(expected.map(e => [e.docid, e.relevance]));
+      const relevanceMap = new Map(expected.map((e) => [e.docid, e.relevance]));
 
-    // DCG for actual ranking
-    const dcg = output.slice(0, k).reduce((sum, docid, i) => {
-      const rel = relevanceMap.get(docid) ?? 0;
-      return sum + (Math.pow(2, rel) - 1) / Math.log2(i + 2);
-    }, 0);
-
-    // Ideal DCG (sorted by relevance)
-    const idcg = [...expected]
-      .sort((a, b) => b.relevance - a.relevance)
-      .slice(0, k)
-      .reduce((sum, e, i) => {
-        return sum + (Math.pow(2, e.relevance) - 1) / Math.log2(i + 2);
+      // DCG for actual ranking
+      const dcg = output.slice(0, k).reduce((sum, docid, i) => {
+        const rel = relevanceMap.get(docid) ?? 0;
+        return sum + (Math.pow(2, rel) - 1) / Math.log2(i + 2);
       }, 0);
 
-    return {
-      score: idcg > 0 ? dcg / idcg : 1,
-      metadata: { k, dcg: dcg.toFixed(4), idcg: idcg.toFixed(4) },
-    };
-  },
-});
+      // Ideal DCG (sorted by relevance)
+      const idcg = [...expected]
+        .sort((a, b) => b.relevance - a.relevance)
+        .slice(0, k)
+        .reduce((sum, e, i) => {
+          return sum + (Math.pow(2, e.relevance) - 1) / Math.log2(i + 2);
+        }, 0);
+
+      return {
+        score: idcg > 0 ? dcg / idcg : 1,
+        metadata: { k, dcg: dcg.toFixed(4), idcg: idcg.toFixed(4) },
+      };
+    },
+  });
 ```
 
 ### Expansion Schema Validity
@@ -200,18 +200,16 @@ import expansionSchema from "../../spec/output-schemas/expansion.schema.json";
 const ajv = new Ajv();
 const validate = ajv.compile(expansionSchema);
 
-export const expansionSchemaValid = createScorer<
-  string,
-  unknown,
-  undefined
->({
+export const expansionSchemaValid = createScorer<string, unknown, undefined>({
   name: "Expansion Schema Valid",
   description: "Checks if expansion output matches JSON schema",
   scorer: ({ output }) => {
     const valid = validate(output);
     return {
       score: valid ? 1 : 0,
-      metadata: valid ? { valid: true } : { valid: false, errors: validate.errors },
+      metadata: valid
+        ? { valid: true }
+        : { valid: false, errors: validate.errors },
     };
   },
 });
@@ -220,21 +218,20 @@ export const expansionSchemaValid = createScorer<
 ### Latency Budget (Soft Gate)
 
 ```ts
-export const latencyBudget = (maxMs: number) => createScorer<
-  unknown,
-  { result: unknown; durationMs: number },
-  undefined
->({
-  name: `Latency < ${maxMs}ms`,
-  description: `Checks if task completed within ${maxMs}ms budget`,
-  scorer: ({ output }) => {
-    const withinBudget = output.durationMs <= maxMs;
-    return {
-      score: withinBudget ? 1 : Math.max(0, 1 - (output.durationMs - maxMs) / maxMs),
-      metadata: { durationMs: output.durationMs, maxMs, withinBudget },
-    };
-  },
-});
+export const latencyBudget = (maxMs: number) =>
+  createScorer<unknown, { result: unknown; durationMs: number }, undefined>({
+    name: `Latency < ${maxMs}ms`,
+    description: `Checks if task completed within ${maxMs}ms budget`,
+    scorer: ({ output }) => {
+      const withinBudget = output.durationMs <= maxMs;
+      return {
+        score: withinBudget
+          ? 1
+          : Math.max(0, 1 - (output.durationMs - maxMs) / maxMs),
+        metadata: { durationMs: output.durationMs, maxMs, withinBudget },
+      };
+    },
+  });
 ```
 
 ## Test Data Format
@@ -262,9 +259,7 @@ export const latencyBudget = (maxMs: number) => createScorer<
     "language": "de",
     "note": "German query over mixed DE/EN corpus",
     "relevantDocs": ["#a1b2c3"],
-    "judgments": [
-      { "docid": "#a1b2c3", "relevance": 3 }
-    ]
+    "judgments": [{ "docid": "#a1b2c3", "relevance": 3 }]
   }
 ]
 ```
@@ -325,7 +320,9 @@ interface QueryData {
 
 evalite("Vector Search Ranking", {
   data: async () => {
-    const queries: QueryData[] = await Bun.file("evals/fixtures/queries.json").json();
+    const queries: QueryData[] = await Bun.file(
+      "evals/fixtures/queries.json"
+    ).json();
     return queries.map((q) => ({
       input: { query: q.query, collection: q.collection },
       expected: {
@@ -340,19 +337,27 @@ evalite("Vector Search Ranking", {
       collection: input.collection,
       limit: 10,
     });
-    return results.map(r => r.docid);
+    return results.map((r) => r.docid);
   },
 
   scorers: [
     {
       name: "Recall@5",
       scorer: ({ output, expected }) =>
-        recallAtK(5).scorer({ input: {}, output, expected: expected.relevantDocs }),
+        recallAtK(5).scorer({
+          input: {},
+          output,
+          expected: expected.relevantDocs,
+        }),
     },
     {
       name: "Recall@10",
       scorer: ({ output, expected }) =>
-        recallAtK(10).scorer({ input: {}, output, expected: expected.relevantDocs }),
+        recallAtK(10).scorer({
+          input: {},
+          output,
+          expected: expected.relevantDocs,
+        }),
     },
     {
       name: "nDCG@10",
@@ -397,7 +402,7 @@ evalite("Hybrid Query Pipeline", {
     const durationMs = performance.now() - start;
 
     return {
-      docids: results.map(r => r.docid),
+      docids: results.map((r) => r.docid),
       durationMs,
     };
   },
@@ -406,12 +411,20 @@ evalite("Hybrid Query Pipeline", {
     {
       name: "Recall@5",
       scorer: ({ output, expected }) =>
-        recallAtK(5).scorer({ input: {}, output: output.docids, expected: expected.relevantDocs }),
+        recallAtK(5).scorer({
+          input: {},
+          output: output.docids,
+          expected: expected.relevantDocs,
+        }),
     },
     {
       name: "nDCG@10",
       scorer: ({ output, expected }) =>
-        ndcgAtK(10).scorer({ input: {}, output: output.docids, expected: expected.judgments }),
+        ndcgAtK(10).scorer({
+          input: {},
+          output: output.docids,
+          expected: expected.judgments,
+        }),
     },
     {
       name: "Latency < 2s",
@@ -420,7 +433,7 @@ evalite("Hybrid Query Pipeline", {
     },
   ],
 
-  trialCount: 1,  // deterministic for same model weights
+  trialCount: 1, // deterministic for same model weights
 });
 ```
 
@@ -447,20 +460,31 @@ evalite("Structured Expansion Stability", {
   scorers: [
     {
       name: "Schema Valid",
-      scorer: ({ output }) => expansionSchemaValid.scorer({ input: "", output, expected: undefined }),
+      scorer: ({ output }) =>
+        expansionSchemaValid.scorer({ input: "", output, expected: undefined }),
     },
     {
       name: "Has Lexical Variants",
       scorer: ({ output }) => {
-        const hasLexical = Array.isArray(output?.lexicalQueries) && output.lexicalQueries.length > 0;
-        return { score: hasLexical ? 1 : 0, metadata: { count: output?.lexicalQueries?.length ?? 0 } };
+        const hasLexical =
+          Array.isArray(output?.lexicalQueries) &&
+          output.lexicalQueries.length > 0;
+        return {
+          score: hasLexical ? 1 : 0,
+          metadata: { count: output?.lexicalQueries?.length ?? 0 },
+        };
       },
     },
     {
       name: "Has Vector Variants",
       scorer: ({ output }) => {
-        const hasVector = Array.isArray(output?.vectorQueries) && output.vectorQueries.length > 0;
-        return { score: hasVector ? 1 : 0, metadata: { count: output?.vectorQueries?.length ?? 0 } };
+        const hasVector =
+          Array.isArray(output?.vectorQueries) &&
+          output.vectorQueries.length > 0;
+        return {
+          score: hasVector ? 1 : 0,
+          metadata: { count: output?.vectorQueries?.length ?? 0 },
+        };
       },
     },
   ],
@@ -481,28 +505,29 @@ import { query } from "../../src/pipeline/query";
 // Cross-language test cases: query in one language, relevant docs in another
 const multilingualCases = [
   {
-    query: "Kündigungsklausel",  // German
+    query: "Kündigungsklausel", // German
     expectedLang: "de",
-    relevantDocs: ["#en-termination-1"],  // English doc
+    relevantDocs: ["#en-termination-1"], // English doc
     note: "DE query should find EN termination clause doc via embeddings",
   },
   {
-    query: "termination clause",  // English
+    query: "termination clause", // English
     expectedLang: "en",
-    relevantDocs: ["#de-kuendigung-1"],  // German doc
+    relevantDocs: ["#de-kuendigung-1"], // German doc
     note: "EN query should find DE Kündigung doc via embeddings",
   },
 ];
 
 evalite("Multilingual Cross-Language Retrieval", {
-  data: () => multilingualCases.map(c => ({
-    input: { query: c.query },
-    expected: c.relevantDocs,
-  })),
+  data: () =>
+    multilingualCases.map((c) => ({
+      input: { query: c.query },
+      expected: c.relevantDocs,
+    })),
 
   task: async (input) => {
     const results = await query(input.query, { limit: 10 });
-    return results.map(r => r.docid);
+    return results.map((r) => r.docid);
   },
 
   scorers: [
@@ -534,9 +559,9 @@ import { searchHybrid } from "../../src/pipeline/query";
 type ThoroughnessLevel = "fast" | "balanced" | "thorough";
 
 const LATENCY_BUDGETS: Record<ThoroughnessLevel, number> = {
-  fast: 1000,      // 1s
-  balanced: 3000,  // 3s
-  thorough: 8000,  // 8s
+  fast: 1000, // 1s
+  balanced: 3000, // 3s
+  thorough: 8000, // 8s
 };
 
 interface QueryCase {
@@ -560,20 +585,22 @@ async function runAtThoroughness(
     // Hybrid with different options
     results = await searchHybrid(query, {
       limit: 10,
-      noExpand: level === "balanced",  // balanced skips expansion
+      noExpand: level === "balanced", // balanced skips expansion
       noRerank: false,
     });
   }
 
   return {
-    docids: results.map(r => r.docid),
+    docids: results.map((r) => r.docid),
     durationMs: performance.now() - start,
   };
 }
 
 evalite("Thoroughness Comparison", {
   data: async () => {
-    const queries: QueryCase[] = await Bun.file("evals/fixtures/queries.json").json();
+    const queries: QueryCase[] = await Bun.file(
+      "evals/fixtures/queries.json"
+    ).json();
 
     // Create test cases for each query x thoroughness combination
     const cases: Array<{
@@ -582,7 +609,11 @@ evalite("Thoroughness Comparison", {
     }> = [];
 
     for (const q of queries) {
-      for (const level of ["fast", "balanced", "thorough"] as ThoroughnessLevel[]) {
+      for (const level of [
+        "fast",
+        "balanced",
+        "thorough",
+      ] as ThoroughnessLevel[]) {
         cases.push({
           input: { query: q.query, level },
           expected: { relevantDocs: q.relevantDocs, judgments: q.judgments },
@@ -598,12 +629,20 @@ evalite("Thoroughness Comparison", {
     {
       name: "Recall@5",
       scorer: ({ output, expected }) =>
-        recallAtK(5).scorer({ input: {}, output: output.docids, expected: expected.relevantDocs }),
+        recallAtK(5).scorer({
+          input: {},
+          output: output.docids,
+          expected: expected.relevantDocs,
+        }),
     },
     {
       name: "nDCG@10",
       scorer: ({ output, expected }) =>
-        ndcgAtK(10).scorer({ input: {}, output: output.docids, expected: expected.judgments }),
+        ndcgAtK(10).scorer({
+          input: {},
+          output: output.docids,
+          expected: expected.judgments,
+        }),
     },
     {
       name: "Latency Budget",
@@ -611,8 +650,15 @@ evalite("Thoroughness Comparison", {
         const budget = LATENCY_BUDGETS[input.level];
         const withinBudget = output.durationMs <= budget;
         return {
-          score: withinBudget ? 1 : Math.max(0, 1 - (output.durationMs - budget) / budget),
-          metadata: { level: input.level, durationMs: output.durationMs, budget, withinBudget },
+          score: withinBudget
+            ? 1
+            : Math.max(0, 1 - (output.durationMs - budget) / budget),
+          metadata: {
+            level: input.level,
+            durationMs: output.durationMs,
+            budget,
+            withinBudget,
+          },
         };
       },
     },
@@ -641,9 +687,9 @@ import { openai } from "@ai-sdk/openai";
 const judge = wrapAISDKModel(openai("gpt-5-mini"));
 
 interface AnswerJudgment {
-  relevance: number;      // 0-1: Does answer address the question?
-  groundedness: number;   // 0-1: Is answer supported by sources?
-  completeness: number;   // 0-1: Does answer cover key points?
+  relevance: number; // 0-1: Does answer address the question?
+  groundedness: number; // 0-1: Is answer supported by sources?
+  completeness: number; // 0-1: Does answer cover key points?
 }
 
 export const answerQuality = createScorer<
@@ -652,7 +698,8 @@ export const answerQuality = createScorer<
   { expectedTopics: string[] }
 >({
   name: "Answer Quality (LLM Judge)",
-  description: "Uses LLM to judge answer relevance, groundedness, and completeness",
+  description:
+    "Uses LLM to judge answer relevance, groundedness, and completeness",
   scorer: async ({ input, output, expected }) => {
     const prompt = `You are evaluating an AI-generated answer for quality.
 
@@ -681,8 +728,12 @@ Respond in JSON format:
     });
 
     try {
-      const judgment: AnswerJudgment & { reasoning: string } = JSON.parse(result.text);
-      const avgScore = (judgment.relevance + judgment.groundedness + judgment.completeness) / 3;
+      const judgment: AnswerJudgment & { reasoning: string } = JSON.parse(
+        result.text
+      );
+      const avgScore =
+        (judgment.relevance + judgment.groundedness + judgment.completeness) /
+        3;
 
       return {
         score: avgScore,
@@ -694,7 +745,10 @@ Respond in JSON format:
         },
       };
     } catch {
-      return { score: 0, metadata: { error: "Failed to parse judge response" } };
+      return {
+        score: 0,
+        metadata: { error: "Failed to parse judge response" },
+      };
     }
   },
 });
@@ -711,7 +765,7 @@ type PresetId = "slim" | "balanced" | "quality";
 
 interface AskCase {
   question: string;
-  expectedTopics: string[];  // Key topics the answer should mention
+  expectedTopics: string[]; // Key topics the answer should mention
 }
 
 const ASK_CASES: AskCase[] = [
@@ -754,8 +808,8 @@ evalite("Answer Quality by Preset", {
 
     return {
       answer: result.answer,
-      citations: result.citations.map(c => c.docid),
-      sources: result.sources.map(s => s.content),
+      citations: result.citations.map((c) => c.docid),
+      sources: result.sources.map((s) => s.content),
     };
   },
 

@@ -38,16 +38,20 @@ Essential security measures for production applications.
 
 ```typescript
 // Rate limiting
-app.use(rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per window
-}));
+app.use(
+  rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 100, // limit each IP to 100 requests per window
+  })
+);
 
 // CORS configuration
-app.use(cors({
-  origin: ['https://myapp.com'],
-  credentials: true,
-}));
+app.use(
+  cors({
+    origin: ["https://myapp.com"],
+    credentials: true,
+  })
+);
 
 // Security headers
 app.use(helmet());

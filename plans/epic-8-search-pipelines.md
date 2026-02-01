@@ -122,12 +122,14 @@ src/pipeline/
 
 ```typescript
 // Cache key for llm_cache table
-const cacheKey = sha256([
-  EXPANSION_PROMPT_VERSION,  // e.g., "v1"
-  modelUri,                   // e.g., "hf:Qwen/..."
-  query,
-  lang ?? 'auto'
-].join('\0'));
+const cacheKey = sha256(
+  [
+    EXPANSION_PROMPT_VERSION, // e.g., "v1"
+    modelUri, // e.g., "hf:Qwen/..."
+    query,
+    lang ?? "auto",
+  ].join("\0")
+);
 ```
 
 **Acceptance Criteria:**
@@ -172,8 +174,7 @@ function rrfScore(
     score += weights.vec / (k + vecRank);
   }
   // Top-rank bonus if in top-5 of both
-  if (bm25Rank !== null && bm25Rank <= 5 &&
-      vecRank !== null && vecRank <= 5) {
+  if (bm25Rank !== null && bm25Rank <= 5 && vecRank !== null && vecRank <= 5) {
     score += weights.bonus;
   }
   return score;
@@ -214,14 +215,14 @@ function blend(
   position: number,
   schedule = DEFAULT_BLENDING_SCHEDULE
 ): number {
-  const tier = schedule.find(t => position <= t.maxRank) ?? schedule.at(-1)!;
+  const tier = schedule.find((t) => position <= t.maxRank) ?? schedule.at(-1)!;
   return tier.fusionWeight * fusionScore + tier.rerankWeight * rerankScore;
 }
 
 const DEFAULT_BLENDING_SCHEDULE = [
   { maxRank: 3, fusionWeight: 0.75, rerankWeight: 0.25 },
-  { maxRank: 10, fusionWeight: 0.60, rerankWeight: 0.40 },
-  { maxRank: Infinity, fusionWeight: 0.40, rerankWeight: 0.60 },
+  { maxRank: 10, fusionWeight: 0.6, rerankWeight: 0.4 },
+  { maxRank: Infinity, fusionWeight: 0.4, rerankWeight: 0.6 },
 ];
 ```
 
@@ -257,18 +258,16 @@ async function hybridSearch(
   opts: HybridSearchOptions
 ): Promise<StoreResult<SearchResult[]>> {
   // 1. Check if expansion needed
-  const shouldExpand = !opts.noExpand &&
-    await checkBm25Strength(query) < STRONG_BM25_THRESHOLD;
+  const shouldExpand =
+    !opts.noExpand && (await checkBm25Strength(query)) < STRONG_BM25_THRESHOLD;
 
   // 2. Run expansion if needed
-  const expansion = shouldExpand
-    ? await expand(query, opts.lang)
-    : null;
+  const expansion = shouldExpand ? await expand(query, opts.lang) : null;
 
   // 3. Parallel retrieval
   const [bm25, vector] = await Promise.all([
     retrieveBm25(query, expansion?.lexicalQueries ?? []),
-    retrieveVector(query, expansion?.vectorQueries ?? [], expansion?.hyde)
+    retrieveVector(query, expansion?.vectorQueries ?? [], expansion?.hyde),
   ]);
 
   // 4. RRF Fusion

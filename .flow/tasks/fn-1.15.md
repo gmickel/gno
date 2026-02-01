@@ -26,27 +26,40 @@ REST API (apiAddCollection)
 ## Implementation
 
 ```typescript
-import { getSelectedFinderItems, showToast, Toast, showHUD } from '@raycast/api';
-import { apiAddCollection, apiGetJob } from './lib/api';
+import {
+  getSelectedFinderItems,
+  showToast,
+  Toast,
+  showHUD,
+} from "@raycast/api";
+import { apiAddCollection, apiGetJob } from "./lib/api";
 
 export default async function Command() {
   try {
     const selectedItems = await getSelectedFinderItems();
 
     if (selectedItems.length === 0) {
-      await showToast({ style: Toast.Style.Failure, title: 'No folder selected', message: 'Select a folder in Finder first' });
+      await showToast({
+        style: Toast.Style.Failure,
+        title: "No folder selected",
+        message: "Select a folder in Finder first",
+      });
       return;
     }
 
     // Filter to directories only
-    const folders = selectedItems.filter(item => !item.path.includes('.'));
+    const folders = selectedItems.filter((item) => !item.path.includes("."));
 
     if (folders.length === 0) {
-      await showToast({ style: Toast.Style.Failure, title: 'No folders selected', message: 'Select folders, not files' });
+      await showToast({
+        style: Toast.Style.Failure,
+        title: "No folders selected",
+        message: "Select folders, not files",
+      });
       return;
     }
 
-    await showToast({ style: Toast.Style.Animated, title: 'Adding to GNO...' });
+    await showToast({ style: Toast.Style.Animated, title: "Adding to GNO..." });
 
     for (const folder of folders) {
       const { jobId } = await apiAddCollection(folder.path);
@@ -55,10 +68,17 @@ export default async function Command() {
 
     await showHUD(`Added ${folders.length} folder(s) to GNO`);
   } catch (error) {
-    if (String(error).includes('ECONNREFUSED')) {
-      await showToast({ style: Toast.Style.Failure, title: 'Start gno serve first' });
+    if (String(error).includes("ECONNREFUSED")) {
+      await showToast({
+        style: Toast.Style.Failure,
+        title: "Start gno serve first",
+      });
     } else {
-      await showToast({ style: Toast.Style.Failure, title: 'Failed to add folder', message: String(error) });
+      await showToast({
+        style: Toast.Style.Failure,
+        title: "Failed to add folder",
+        message: String(error),
+      });
     }
   }
 }

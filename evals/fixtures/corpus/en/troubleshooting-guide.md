@@ -67,7 +67,8 @@ async function refreshIfNeeded(token: string) {
   const decoded = jwt.decode(token);
   const expiresIn = decoded.exp - Date.now() / 1000;
 
-  if (expiresIn < 300) { // Less than 5 min
+  if (expiresIn < 300) {
+    // Less than 5 min
     return await refreshToken(token);
   }
   return token;

@@ -101,8 +101,8 @@ src/cli/commands/mcp/
 ### paths.ts
 
 ```typescript
-export type McpTarget = 'claude-desktop' | 'claude-code' | 'codex';
-export type McpScope = 'user' | 'project';
+export type McpTarget = "claude-desktop" | "claude-code" | "codex";
+export type McpScope = "user" | "project";
 
 interface McpPaths {
   configPath: string;
@@ -113,20 +113,23 @@ function resolveClaudeDesktopPath(): string {
   const platform = process.platform;
   const home = homedir();
 
-  if (platform === 'darwin') {
-    return join(home, 'Library/Application Support/Claude/claude_desktop_config.json');
-  } else if (platform === 'win32') {
-    return join(process.env.APPDATA || '', 'Claude/claude_desktop_config.json');
+  if (platform === "darwin") {
+    return join(
+      home,
+      "Library/Application Support/Claude/claude_desktop_config.json"
+    );
+  } else if (platform === "win32") {
+    return join(process.env.APPDATA || "", "Claude/claude_desktop_config.json");
   } else {
-    return join(home, '.config/Claude/claude_desktop_config.json');
+    return join(home, ".config/Claude/claude_desktop_config.json");
   }
 }
 
 function resolveClaudeCodePath(scope: McpScope): string {
-  if (scope === 'user') {
-    return join(homedir(), '.claude.json');
+  if (scope === "user") {
+    return join(homedir(), ".claude.json");
   }
-  return join(process.cwd(), '.mcp.json');
+  return join(process.cwd(), ".mcp.json");
 }
 ```
 
@@ -151,32 +154,32 @@ function resolveClaudeCodePath(scope: McpScope): string {
 function findGnoPath(): string {
   // 1. Check if running from source (dev mode)
   const scriptPath = process.argv[1];
-  if (scriptPath?.includes('/gno/src/cli/')) {
+  if (scriptPath?.includes("/gno/src/cli/")) {
     // Dev: use bun with script path
-    return { command: 'bun', args: ['run', scriptPath, 'mcp'] };
+    return { command: "bun", args: ["run", scriptPath, "mcp"] };
   }
 
   // 2. Check `which gno` for linked/global install
-  const whichResult = spawnSync('which', ['gno']);
+  const whichResult = spawnSync("which", ["gno"]);
   if (whichResult.status === 0) {
     const gnoPath = whichResult.stdout.toString().trim();
-    return { command: gnoPath, args: ['mcp'] };
+    return { command: gnoPath, args: ["mcp"] };
   }
 
   // 3. Check common locations
   const candidates = [
-    join(homedir(), '.bun/bin/gno'),      // bun link
-    '/usr/local/bin/gno',                  // npm -g
-    '/opt/homebrew/bin/gno',               // homebrew
+    join(homedir(), ".bun/bin/gno"), // bun link
+    "/usr/local/bin/gno", // npm -g
+    "/opt/homebrew/bin/gno", // homebrew
   ];
   for (const path of candidates) {
     if (existsSync(path)) {
-      return { command: path, args: ['mcp'] };
+      return { command: path, args: ["mcp"] };
     }
   }
 
   // 4. Fallback to npx (works if npm installed)
-  return { command: 'npx', args: ['-y', 'gno', 'mcp'] };
+  return { command: "npx", args: ["-y", "gno", "mcp"] };
 }
 ```
 
@@ -189,18 +192,18 @@ function findGnoPath(): string {
 ```typescript
 function findBunPath(): string | null {
   // 1. Check `which bun`
-  const whichResult = spawnSync('which', ['bun']);
+  const whichResult = spawnSync("which", ["bun"]);
   if (whichResult.status === 0) {
     return whichResult.stdout.toString().trim();
   }
 
   // 2. Check common locations
   const candidates = [
-    join(homedir(), '.bun/bin/bun'),
-    '/usr/local/bin/bun',
-    '/opt/homebrew/bin/bun',
+    join(homedir(), ".bun/bin/bun"),
+    "/usr/local/bin/bun",
+    "/opt/homebrew/bin/bun",
     // mise/asdf managed
-    ...glob.sync(join(homedir(), '.local/share/mise/installs/bun/*/bin/bun')),
+    ...glob.sync(join(homedir(), ".local/share/mise/installs/bun/*/bin/bun")),
   ];
 
   for (const path of candidates) {

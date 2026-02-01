@@ -134,7 +134,7 @@ Sleep 3s
 
 ```html
 <div class="demo-container">
-  <img src="/assets/demos/your-demo.gif" alt="Demo" class="demo-gif">
+  <img src="/assets/demos/your-demo.gif" alt="Demo" class="demo-gif" />
 </div>
 ```
 
@@ -163,14 +163,14 @@ Meta tags are defined manually in `_layouts/default.html` (NOT using jekyll-seo-
 ```yaml
 ---
 layout: feature
-title: Feature Name           # Short title (used in <title>)
-headline: The Catchy Tagline  # Combined with title for og:title (50-60 chars total)
+title: Feature Name # Short title (used in <title>)
+headline: The Catchy Tagline # Combined with title for og:title (50-60 chars total)
 description: Longer description for meta description and og:description
 slug: feature-slug
 permalink: /features/feature-slug/
-og_image: /assets/images/og/og-feature-slug.png  # REQUIRED for social sharing
+og_image: /assets/images/og/og-feature-slug.png # REQUIRED for social sharing
 keywords: comma, separated, keywords
-icon: icon-name               # From _includes/icons.html
+icon: icon-name # From _includes/icons.html
 ---
 ```
 

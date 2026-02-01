@@ -7,11 +7,11 @@ Efficient database access patterns for high-performance applications.
 Always use connection pools to avoid overhead:
 
 ```typescript
-import { Pool } from 'pg';
+import { Pool } from "pg";
 
 const pool = new Pool({
-  host: 'localhost',
-  database: 'myapp',
+  host: "localhost",
+  database: "myapp",
   max: 20,
   idleTimeoutMillis: 30000,
 });
@@ -45,9 +45,11 @@ Avoid the N+1 query anti-pattern with eager loading:
 
 ```typescript
 // Bad: N+1 queries
-const posts = await db.query('SELECT * FROM posts');
+const posts = await db.query("SELECT * FROM posts");
 for (const post of posts) {
-  const author = await db.query('SELECT * FROM users WHERE id = $1', [post.author_id]);
+  const author = await db.query("SELECT * FROM users WHERE id = $1", [
+    post.author_id,
+  ]);
 }
 
 // Good: single JOIN query

@@ -54,7 +54,9 @@ src/llm/
 
 ```typescript
 // src/llm/types.ts
-export type LlmResult<T> = { ok: true; value: T } | { ok: false; error: LlmError };
+export type LlmResult<T> =
+  | { ok: true; value: T }
+  | { ok: false; error: LlmError };
 
 export type EmbeddingPort = {
   readonly modelUri: string;
@@ -99,7 +101,7 @@ Per node-llama-cpp best practices:
 **File:** `src/llm/types.ts`
 
 ```typescript
-export type ModelType = 'embed' | 'rerank' | 'gen';
+export type ModelType = "embed" | "rerank" | "gen";
 
 export type ModelUri = string; // Format: hf:org/repo/file.gguf
 
@@ -125,13 +127,13 @@ export type ModelCacheEntry = {
 
 ```typescript
 export type LlmErrorCode =
-  | 'MODEL_NOT_FOUND'
-  | 'MODEL_DOWNLOAD_FAILED'
-  | 'MODEL_LOAD_FAILED'
-  | 'MODEL_CORRUPTED'
-  | 'INFERENCE_FAILED'
-  | 'TIMEOUT'
-  | 'OUT_OF_MEMORY';
+  | "MODEL_NOT_FOUND"
+  | "MODEL_DOWNLOAD_FAILED"
+  | "MODEL_LOAD_FAILED"
+  | "MODEL_CORRUPTED"
+  | "INFERENCE_FAILED"
+  | "TIMEOUT"
+  | "OUT_OF_MEMORY";
 
 export type LlmError = {
   code: LlmErrorCode;
@@ -156,21 +158,23 @@ const ModelPresetSchema = z.object({
 });
 
 const ModelConfigSchema = z.object({
-  activePreset: z.string().default('multilingual'),
+  activePreset: z.string().default("multilingual"),
   presets: z.array(ModelPresetSchema).default([
     {
-      id: 'multilingual',
-      name: 'Multilingual (BGE + Qwen)',
-      embed: 'hf:BAAI/bge-m3-gguf/bge-m3-q4_k_m.gguf',
-      rerank: 'hf:BAAI/bge-reranker-v2-m3-gguf/bge-reranker-v2-m3-q4_k_m.gguf',
-      gen: 'hf:Qwen/Qwen2.5-0.5B-Instruct-GGUF/qwen2.5-0.5b-instruct-q4_k_m.gguf',
+      id: "multilingual",
+      name: "Multilingual (BGE + Qwen)",
+      embed: "hf:BAAI/bge-m3-gguf/bge-m3-q4_k_m.gguf",
+      rerank: "hf:BAAI/bge-reranker-v2-m3-gguf/bge-reranker-v2-m3-q4_k_m.gguf",
+      gen: "hf:Qwen/Qwen2.5-0.5B-Instruct-GGUF/qwen2.5-0.5b-instruct-q4_k_m.gguf",
     },
     {
-      id: 'qwen',
-      name: 'Qwen Family',
-      embed: 'hf:Qwen/Qwen3-Embedding-0.6B-GGUF/qwen3-embedding-0.6b-q4_k_m.gguf',
-      rerank: 'hf:Qwen/Qwen3-Reranker-0.6B-GGUF/qwen3-reranker-0.6b-q4_k_m.gguf',
-      gen: 'hf:Qwen/Qwen2.5-0.5B-Instruct-GGUF/qwen2.5-0.5b-instruct-q4_k_m.gguf',
+      id: "qwen",
+      name: "Qwen Family",
+      embed:
+        "hf:Qwen/Qwen3-Embedding-0.6B-GGUF/qwen3-embedding-0.6b-q4_k_m.gguf",
+      rerank:
+        "hf:Qwen/Qwen3-Reranker-0.6B-GGUF/qwen3-reranker-0.6b-q4_k_m.gguf",
+      gen: "hf:Qwen/Qwen2.5-0.5B-Instruct-GGUF/qwen2.5-0.5b-instruct-q4_k_m.gguf",
     },
   ]),
   loadTimeout: z.number().default(60000), // ms
@@ -184,12 +188,12 @@ const ModelConfigSchema = z.object({
 **File:** `src/llm/registry.ts`
 
 ```typescript
-import type { Config, ModelPreset } from '../config/types';
-import type { LlmError } from './errors';
-import { presetNotFoundError } from './errors';
+import type { Config, ModelPreset } from "../config/types";
+import type { LlmError } from "./errors";
+import { presetNotFoundError } from "./errors";
 
 export function getActivePreset(config: Config): ModelPreset {
-  const presetId = config.models?.activePreset ?? 'multilingual';
+  const presetId = config.models?.activePreset ?? "multilingual";
   const preset = config.models?.presets?.find((p) => p.id === presetId);
 
   if (!preset) {
@@ -204,7 +208,7 @@ export function getActivePreset(config: Config): ModelPreset {
 
 export function resolveModelUri(
   config: Config,
-  type: 'embed' | 'rerank' | 'gen',
+  type: "embed" | "rerank" | "gen",
   override?: string
 ): string {
   if (override) return override;
@@ -225,11 +229,12 @@ export function listPresets(config: Config): ModelPreset[] {
 export class ModelManager {
   private llama: Llama | null = null;
   private models: Map<string, LoadedModel> = new Map();
-  private disposalTimers: Map<string, ReturnType<typeof setTimeout>> = new Map();
+  private disposalTimers: Map<string, ReturnType<typeof setTimeout>> =
+    new Map();
 
   async getLlama(): Promise<Llama> {
     if (!this.llama) {
-      const { getLlama } = await import('node-llama-cpp');
+      const { getLlama } = await import("node-llama-cpp");
       this.llama = await getLlama();
     }
     return this.llama;
@@ -265,7 +270,7 @@ export class ModelManager {
 
 ```typescript
 export type ParsedModelUri = {
-  scheme: 'hf' | 'file';
+  scheme: "hf" | "file";
   org?: string;
   repo?: string;
   file: string;
@@ -273,14 +278,17 @@ export type ParsedModelUri = {
 };
 
 export function parseModelUri(uri: string): Result<ParsedModelUri, string> {
-  if (uri.startsWith('hf:')) {
+  if (uri.startsWith("hf:")) {
     // hf:org/repo/file.gguf or hf:org/repo:Q4_K_M
     const match = uri.match(/^hf:([^/]+)\/([^/:]+)(?:\/([^:]+)|:(\w+))?$/);
-    if (!match) return { ok: false, error: 'Invalid hf: URI format' };
+    if (!match) return { ok: false, error: "Invalid hf: URI format" };
     // ...
   }
-  if (uri.startsWith('file:') || uri.startsWith('/')) {
-    return { ok: true, value: { scheme: 'file', file: uri.replace('file:', '') } };
+  if (uri.startsWith("file:") || uri.startsWith("/")) {
+    return {
+      ok: true,
+      value: { scheme: "file", file: uri.replace("file:", "") },
+    };
   }
   return { ok: false, error: `Unknown URI scheme: ${uri}` };
 }
@@ -296,22 +304,29 @@ export class ModelCache {
 
   async resolve(uri: string): Promise<Result<string, LlmError>> {
     const parsed = parseModelUri(uri);
-    if (!parsed.ok) return { ok: false, error: modelNotFoundError(uri, parsed.error) };
+    if (!parsed.ok)
+      return { ok: false, error: modelNotFoundError(uri, parsed.error) };
 
-    if (parsed.value.scheme === 'file') {
+    if (parsed.value.scheme === "file") {
       return this.resolveLocalFile(parsed.value.file);
     }
 
     const cachedPath = await this.getCachedPath(uri);
     if (cachedPath) return { ok: true, value: cachedPath };
 
-    return { ok: false, error: modelNotFoundError(uri, 'Not cached') };
+    return { ok: false, error: modelNotFoundError(uri, "Not cached") };
   }
 
-  async download(uri: string, onProgress?: ProgressCallback): Promise<Result<string, LlmError>> {
-    const { resolveModelFile } = await import('node-llama-cpp');
+  async download(
+    uri: string,
+    onProgress?: ProgressCallback
+  ): Promise<Result<string, LlmError>> {
+    const { resolveModelFile } = await import("node-llama-cpp");
     try {
-      const path = await resolveModelFile(uri.replace('hf:', ''), this.cacheDir);
+      const path = await resolveModelFile(
+        uri.replace("hf:", ""),
+        this.cacheDir
+      );
       await this.updateManifest(uri, path);
       return { ok: true, value: path };
     } catch (e) {
@@ -374,7 +389,7 @@ export class NodeLlamaCppEmbedding implements EmbeddingPort {
 
   dimensions(): number {
     if (this.dims === null) {
-      throw new Error('Call embed() first to initialize dimensions');
+      throw new Error("Call embed() first to initialize dimensions");
     }
     return this.dims;
   }
@@ -393,7 +408,7 @@ export class NodeLlamaCppEmbedding implements EmbeddingPort {
   private async getContext(): Promise<LlmResult<LlamaEmbeddingContext>> {
     if (this.context) return { ok: true, value: this.context };
 
-    const model = await this.manager.loadModel(this.modelUri, 'embed');
+    const model = await this.manager.loadModel(this.modelUri, "embed");
     if (!model.ok) return model;
 
     this.context = await model.value.model.createEmbeddingContext();
@@ -408,12 +423,17 @@ export class NodeLlamaCppEmbedding implements EmbeddingPort {
 
 ```typescript
 export class NodeLlamaCppGeneration implements GenerationPort {
-  async generate(prompt: string, params: GenParams): Promise<LlmResult<string>> {
-    const model = await this.manager.loadModel(this.modelUri, 'gen');
+  async generate(
+    prompt: string,
+    params: GenParams
+  ): Promise<LlmResult<string>> {
+    const model = await this.manager.loadModel(this.modelUri, "gen");
     if (!model.ok) return model;
 
     const context = await model.value.model.createContext();
-    const session = new LlamaChatSession({ contextSequence: context.getSequence() });
+    const session = new LlamaChatSession({
+      contextSequence: context.getSequence(),
+    });
 
     try {
       const response = await session.prompt(prompt, {
@@ -435,8 +455,11 @@ export class NodeLlamaCppGeneration implements GenerationPort {
 
 ```typescript
 export class NodeLlamaCppRerank implements RerankPort {
-  async rerank(query: string, documents: string[]): Promise<LlmResult<RerankScore[]>> {
-    const model = await this.manager.loadModel(this.modelUri, 'rerank');
+  async rerank(
+    query: string,
+    documents: string[]
+  ): Promise<LlmResult<RerankScore[]>> {
+    const model = await this.manager.loadModel(this.modelUri, "rerank");
     if (!model.ok) return model;
 
     const context = await model.value.model.createRankingContext();
@@ -473,7 +496,9 @@ export type ModelsListResult = {
   totalSize: number;
 };
 
-export async function modelsListCommand(opts: ModelsListOptions): Promise<ModelsListResult> {
+export async function modelsListCommand(
+  opts: ModelsListOptions
+): Promise<ModelsListResult> {
   const config = await loadConfig(opts.configPath);
   const preset = getActivePreset(config);
   const cache = new ModelCache(getModelsCachePath());
@@ -493,17 +518,23 @@ export async function modelsListCommand(opts: ModelsListOptions): Promise<Models
 **File:** `src/cli/commands/models/pull.ts`
 
 ```typescript
-export async function modelsPullCommand(opts: ModelsPullOptions): Promise<ModelsPullResult> {
+export async function modelsPullCommand(
+  opts: ModelsPullOptions
+): Promise<ModelsPullResult> {
   const config = await loadConfig(opts.configPath);
   const preset = getActivePreset(config);
   const cache = new ModelCache(getModelsCachePath());
 
   const types: ModelType[] = opts.all
-    ? ['embed', 'rerank', 'gen']
-    : [opts.embed && 'embed', opts.rerank && 'rerank', opts.gen && 'gen'].filter(Boolean);
+    ? ["embed", "rerank", "gen"]
+    : [
+        opts.embed && "embed",
+        opts.rerank && "rerank",
+        opts.gen && "gen",
+      ].filter(Boolean);
 
   if (types.length === 0) {
-    types.push('embed', 'rerank', 'gen'); // Default: pull all
+    types.push("embed", "rerank", "gen"); // Default: pull all
   }
 
   const results: ModelPullResult[] = [];
@@ -526,17 +557,23 @@ export async function modelsPullCommand(opts: ModelsPullOptions): Promise<Models
 **File:** `src/cli/commands/models/clear.ts`
 
 ```typescript
-export async function modelsClearCommand(opts: ModelsClearOptions): Promise<void> {
+export async function modelsClearCommand(
+  opts: ModelsClearOptions
+): Promise<void> {
   const cache = new ModelCache(getModelsCachePath());
 
   if (!opts.yes) {
-    const confirm = await promptConfirm('Delete cached models?');
+    const confirm = await promptConfirm("Delete cached models?");
     if (!confirm) return;
   }
 
   const types = opts.all
     ? undefined
-    : [opts.embed && 'embed', opts.rerank && 'rerank', opts.gen && 'gen'].filter(Boolean);
+    : [
+        opts.embed && "embed",
+        opts.rerank && "rerank",
+        opts.gen && "gen",
+      ].filter(Boolean);
 
   await cache.clear(types);
 }
@@ -547,7 +584,9 @@ export async function modelsClearCommand(opts: ModelsClearOptions): Promise<void
 **File:** `src/cli/commands/models/path.ts`
 
 ```typescript
-export async function modelsPathCommand(opts: ModelsPathOptions): Promise<string> {
+export async function modelsPathCommand(
+  opts: ModelsPathOptions
+): Promise<string> {
   return getModelsCachePath();
 }
 ```
@@ -562,13 +601,13 @@ async function checkModels(config: Config): Promise<DoctorCheck[]> {
   const cache = new ModelCache(getModelsCachePath());
   const preset = getActivePreset(config);
 
-  for (const type of ['embed', 'rerank', 'gen'] as const) {
+  for (const type of ["embed", "rerank", "gen"] as const) {
     const uri = preset[type];
     const cached = await cache.isCached(uri);
 
     checks.push({
       name: `${type}-model`,
-      status: cached ? 'ok' : 'warn',
+      status: cached ? "ok" : "warn",
       message: cached
         ? `${type} model cached`
         : `${type} model not cached, run gno models pull --${type}`,
@@ -577,17 +616,17 @@ async function checkModels(config: Config): Promise<DoctorCheck[]> {
 
   // Check node-llama-cpp compatibility
   try {
-    const { getLlama } = await import('node-llama-cpp');
+    const { getLlama } = await import("node-llama-cpp");
     const llama = await getLlama();
     checks.push({
-      name: 'node-llama-cpp',
-      status: 'ok',
-      message: 'node-llama-cpp loaded successfully',
+      name: "node-llama-cpp",
+      status: "ok",
+      message: "node-llama-cpp loaded successfully",
     });
   } catch (e) {
     checks.push({
-      name: 'node-llama-cpp',
-      status: 'error',
+      name: "node-llama-cpp",
+      status: "error",
       message: `node-llama-cpp failed: ${e.message}`,
     });
   }
@@ -705,25 +744,25 @@ async function checkModels(config: Config): Promise<DoctorCheck[]> {
 
 ```typescript
 // test/llm/uri.test.ts
-describe('parseModelUri', () => {
-  test('parses hf: with org/repo/file', () => {
-    const result = parseModelUri('hf:BAAI/bge-m3-gguf/bge-m3-q4_k_m.gguf');
+describe("parseModelUri", () => {
+  test("parses hf: with org/repo/file", () => {
+    const result = parseModelUri("hf:BAAI/bge-m3-gguf/bge-m3-q4_k_m.gguf");
     expect(result.ok).toBe(true);
     expect(result.value).toEqual({
-      scheme: 'hf',
-      org: 'BAAI',
-      repo: 'bge-m3-gguf',
-      file: 'bge-m3-q4_k_m.gguf',
+      scheme: "hf",
+      org: "BAAI",
+      repo: "bge-m3-gguf",
+      file: "bge-m3-q4_k_m.gguf",
     });
   });
 
-  test('parses hf: with quantization shorthand', () => {
-    const result = parseModelUri('hf:BAAI/bge-m3-gguf:Q4_K_M');
+  test("parses hf: with quantization shorthand", () => {
+    const result = parseModelUri("hf:BAAI/bge-m3-gguf:Q4_K_M");
     expect(result.ok).toBe(true);
   });
 
-  test('rejects invalid URI', () => {
-    const result = parseModelUri('invalid');
+  test("rejects invalid URI", () => {
+    const result = parseModelUri("invalid");
     expect(result.ok).toBe(false);
   });
 });
@@ -733,10 +772,10 @@ describe('parseModelUri', () => {
 
 ```typescript
 // test/llm/embedding.integration.test.ts
-describe.skipIf(!process.env.TEST_LLM)('EmbeddingPort', () => {
-  test('generates embedding vector', async () => {
+describe.skipIf(!process.env.TEST_LLM)("EmbeddingPort", () => {
+  test("generates embedding vector", async () => {
     const port = await createEmbeddingPort();
-    const result = await port.embed('Hello world');
+    const result = await port.embed("Hello world");
     expect(result.ok).toBe(true);
     expect(result.value).toHaveLength(1024);
   });
@@ -747,10 +786,10 @@ describe.skipIf(!process.env.TEST_LLM)('EmbeddingPort', () => {
 
 ```typescript
 // test/spec/schemas/models-list.test.ts
-import Ajv from 'ajv';
-import schema from '../../../spec/output-schemas/models-list.schema.json';
+import Ajv from "ajv";
+import schema from "../../../spec/output-schemas/models-list.schema.json";
 
-test('modelsListCommand output matches schema', async () => {
+test("modelsListCommand output matches schema", async () => {
   const result = await modelsListCommand({ json: true });
   const ajv = new Ajv();
   const validate = ajv.compile(schema);

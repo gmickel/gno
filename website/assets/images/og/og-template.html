@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <style>
-      @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@700&family=Crimson+Pro:wght@400&display=swap');
+      @import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@700&family=Crimson+Pro:wght@400&display=swap");
 
       * {
         margin: 0;
@@ -45,7 +45,11 @@
         position: absolute;
         width: 600px;
         height: 600px;
-        background: radial-gradient(circle, rgba(77, 184, 168, 0.15) 0%, transparent 60%);
+        background: radial-gradient(
+          circle,
+          rgba(77, 184, 168, 0.15) 0%,
+          transparent 60%
+        );
         top: 50%;
         left: 50%;
         transform: translate(-50%, -50%);
@@ -93,7 +97,7 @@
 
       /* Document lines inside shapes */
       .shape::before {
-        content: '';
+        content: "";
         position: absolute;
         top: 15px;
         left: 10px;
@@ -132,7 +136,7 @@
 
       /* Logo text */
       .logo {
-        font-family: 'Space Grotesk', system-ui, sans-serif;
+        font-family: "Space Grotesk", system-ui, sans-serif;
         font-size: 140px;
         font-weight: 700;
         color: #ffffff;
@@ -143,7 +147,7 @@
 
       /* Tagline */
       .tagline {
-        font-family: 'Crimson Pro', Georgia, serif;
+        font-family: "Crimson Pro", Georgia, serif;
         font-size: 36px;
         color: rgba(255, 255, 255, 0.7);
         font-weight: 400;
@@ -199,7 +203,7 @@
       .url {
         position: absolute;
         bottom: 50px;
-        font-family: 'Space Grotesk', monospace;
+        font-family: "Space Grotesk", monospace;
         font-size: 20px;
         color: #4db8a8;
         letter-spacing: 3px;

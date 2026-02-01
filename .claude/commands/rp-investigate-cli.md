@@ -128,28 +128,34 @@ Create a findings report as you investigate:
 # Investigation: [Title]
 
 ## Summary
+
 [1-2 sentence summary of findings]
 
 ## Symptoms
+
 - [Observed symptom 1]
 - [Observed symptom 2]
 
 ## Investigation Log
 
 ### [Timestamp/Phase] - [Area Investigated]
+
 **Hypothesis:** [What you were testing]
 **Findings:** [What you found]
 **Evidence:** [File:line references]
 **Conclusion:** [Confirmed/Eliminated/Needs more investigation]
 
 ## Root Cause
+
 [Detailed explanation with evidence]
 
 ## Recommendations
+
 1. [Fix 1]
 2. [Fix 2]
 
 ## Preventive Measures
+
 - [How to prevent this in future]
 ```
 

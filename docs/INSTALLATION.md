@@ -125,7 +125,11 @@ gno doctor --json
     { "name": "database", "status": "ok", "message": "Database found" },
     { "name": "sqlite-vec", "status": "ok", "message": "sqlite-vec loaded" },
     { "name": "embed-model", "status": "ok", "message": "embed model cached" },
-    { "name": "rerank-model", "status": "warn", "message": "rerank model not cached" },
+    {
+      "name": "rerank-model",
+      "status": "warn",
+      "message": "rerank model not cached"
+    },
     { "name": "gen-model", "status": "ok", "message": "gen model cached" }
   ]
 }

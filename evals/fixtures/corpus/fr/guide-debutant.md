@@ -51,15 +51,12 @@ Les composants sont les blocs de construction de l'interface utilisateur:
 interface ButtonProps {
   label: string;
   onClick: () => void;
-  variant?: 'primary' | 'secondary';
+  variant?: "primary" | "secondary";
 }
 
-export function Button({ label, onClick, variant = 'primary' }: ButtonProps) {
+export function Button({ label, onClick, variant = "primary" }: ButtonProps) {
   return (
-    <button
-      className={`btn btn-${variant}`}
-      onClick={onClick}
-    >
+    <button className={`btn btn-${variant}`} onClick={onClick}>
       {label}
     </button>
   );
@@ -78,7 +75,7 @@ function useFetch<T>(url: string) {
 
   useEffect(() => {
     fetch(url)
-      .then(res => res.json())
+      .then((res) => res.json())
       .then(setData)
       .catch(setError)
       .finally(() => setLoading(false));
@@ -93,7 +90,7 @@ function useFetch<T>(url: string) {
 Pour la gestion d'état globale, utilisez Zustand:
 
 ```typescript
-import { create } from 'zustand';
+import { create } from "zustand";
 
 interface UserStore {
   user: User | null;
@@ -116,30 +113,30 @@ const useUserStore = create<UserStore>((set) => ({
 ### Tests Unitaires
 
 ```typescript
-import { test, expect } from 'bun:test';
-import { formatDate } from './utils';
+import { test, expect } from "bun:test";
+import { formatDate } from "./utils";
 
-test('formatDate retourne une date formatée', () => {
-  const result = formatDate(new Date('2024-01-15'));
-  expect(result).toBe('15 janvier 2024');
+test("formatDate retourne une date formatée", () => {
+  const result = formatDate(new Date("2024-01-15"));
+  expect(result).toBe("15 janvier 2024");
 });
 ```
 
 ### Tests d'Intégration
 
 ```typescript
-test('création de compte utilisateur', async () => {
-  const response = await fetch('/api/users', {
-    method: 'POST',
+test("création de compte utilisateur", async () => {
+  const response = await fetch("/api/users", {
+    method: "POST",
     body: JSON.stringify({
-      email: 'test@example.com',
-      password: 'motdepasse123',
+      email: "test@example.com",
+      password: "motdepasse123",
     }),
   });
 
   expect(response.status).toBe(201);
   const user = await response.json();
-  expect(user.email).toBe('test@example.com');
+  expect(user.email).toBe("test@example.com");
 });
 ```
 

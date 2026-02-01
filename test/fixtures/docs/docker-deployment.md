@@ -30,7 +30,7 @@ CMD ["node", "dist/server.js"]
 Define multi-container applications:
 
 ```yaml
-version: '3.8'
+version: "3.8"
 
 services:
   app:
@@ -90,13 +90,13 @@ Monitor container health:
 
 ```typescript
 // /health endpoint
-app.get('/health', async (req, res) => {
+app.get("/health", async (req, res) => {
   try {
-    await db.query('SELECT 1');
+    await db.query("SELECT 1");
     await redis.ping();
-    res.json({ status: 'healthy' });
+    res.json({ status: "healthy" });
   } catch (error) {
-    res.status(503).json({ status: 'unhealthy', error: error.message });
+    res.status(503).json({ status: "unhealthy", error: error.message });
   }
 });
 ```
@@ -111,10 +111,10 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '0.5'
+          cpus: "0.5"
           memory: 512M
         reservations:
-          cpus: '0.25'
+          cpus: "0.25"
           memory: 256M
 ```
 
@@ -126,9 +126,23 @@ Log to stdout for container environments:
 // Use structured logging
 const logger = {
   info: (msg: string, meta?: object) =>
-    console.log(JSON.stringify({ level: 'info', msg, ...meta, ts: new Date().toISOString() })),
+    console.log(
+      JSON.stringify({
+        level: "info",
+        msg,
+        ...meta,
+        ts: new Date().toISOString(),
+      })
+    ),
   error: (msg: string, error?: Error) =>
-    console.error(JSON.stringify({ level: 'error', msg, error: error?.message, ts: new Date().toISOString() })),
+    console.error(
+      JSON.stringify({
+        level: "error",
+        msg,
+        error: error?.message,
+        ts: new Date().toISOString(),
+      })
+    ),
 };
 ```
 

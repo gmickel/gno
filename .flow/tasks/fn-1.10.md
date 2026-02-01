@@ -14,35 +14,42 @@ src/lib/api.ts
 ## Constants
 
 ```typescript
-const GNO_API = 'http://127.0.0.1:3000';
+const GNO_API = "http://127.0.0.1:3000";
 ```
 
 ## Functions
 
 ```typescript
 // AI-powered answer (fast when models loaded)
-async function apiAsk(query: string, limit?: number): Promise<AskResponse>
+async function apiAsk(query: string, limit?: number): Promise<AskResponse>;
 
 // Hybrid search via API
-async function apiQuery(query: string, limit?: number): Promise<SearchResult[]>
+async function apiQuery(query: string, limit?: number): Promise<SearchResult[]>;
 
 // Create document (quick capture)
-async function apiCreateDoc(collection: string, relPath: string, content: string): Promise<CreateDocResponse>
+async function apiCreateDoc(
+  collection: string,
+  relPath: string,
+  content: string
+): Promise<CreateDocResponse>;
 
 // Add collection (Finder integration)
-async function apiAddCollection(path: string, name?: string): Promise<{ jobId: string }>
+async function apiAddCollection(
+  path: string,
+  name?: string
+): Promise<{ jobId: string }>;
 
 // Trigger sync/reindex
-async function apiSync(collection?: string): Promise<{ jobId: string }>
+async function apiSync(collection?: string): Promise<{ jobId: string }>;
 
 // Poll job status
-async function apiGetJob(jobId: string): Promise<JobStatus>
+async function apiGetJob(jobId: string): Promise<JobStatus>;
 
 // List collections
-async function apiCollections(): Promise<Collection[]>
+async function apiCollections(): Promise<Collection[]>;
 
 // Check if API is running
-async function isApiRunning(): Promise<boolean>
+async function isApiRunning(): Promise<boolean>;
 ```
 
 ## Error Handling

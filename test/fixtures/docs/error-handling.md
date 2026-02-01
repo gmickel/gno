@@ -21,14 +21,17 @@ class AppError extends Error {
 }
 
 class ValidationError extends AppError {
-  constructor(message: string, public field?: string) {
-    super(message, 'VALIDATION_ERROR', 400);
+  constructor(
+    message: string,
+    public field?: string
+  ) {
+    super(message, "VALIDATION_ERROR", 400);
   }
 }
 
 class NotFoundError extends AppError {
   constructor(resource: string, id: string) {
-    super(`${resource} with id ${id} not found`, 'NOT_FOUND', 404);
+    super(`${resource} with id ${id} not found`, "NOT_FOUND", 404);
   }
 }
 ```
@@ -38,9 +41,7 @@ class NotFoundError extends AppError {
 Use Result types for explicit error handling:
 
 ```typescript
-type Result<T, E = Error> =
-  | { ok: true; value: T }
-  | { ok: false; error: E };
+type Result<T, E = Error> = { ok: true; value: T } | { ok: false; error: E };
 
 function ok<T>(value: T): Result<T, never> {
   return { ok: true, value };
@@ -54,7 +55,7 @@ function err<E>(error: E): Result<never, E> {
 async function findUser(id: string): Promise<Result<User, NotFoundError>> {
   const user = await db.users.find(id);
   if (!user) {
-    return err(new NotFoundError('User', id));
+    return err(new NotFoundError("User", id));
   }
   return ok(user);
 }
@@ -78,10 +79,10 @@ function errorHandler(
   }
 
   // Log unexpected errors
-  console.error('Unexpected error:', err);
+  console.error("Unexpected error:", err);
 
   res.status(500).json({
-    error: { code: 'INTERNAL_ERROR', message: 'Something went wrong' },
+    error: { code: "INTERNAL_ERROR", message: "Something went wrong" },
   });
 }
 ```
@@ -105,6 +106,6 @@ async function withRetry<T>(
       await sleep(delay);
     }
   }
-  throw new Error('Unreachable');
+  throw new Error("Unreachable");
 }
 ```

@@ -21,14 +21,17 @@ class AppError extends Error {
 }
 
 class ValidationError extends AppError {
-  constructor(message: string, public readonly details: unknown[]) {
-    super(message, 'VALIDATION_ERROR', 400);
+  constructor(
+    message: string,
+    public readonly details: unknown[]
+  ) {
+    super(message, "VALIDATION_ERROR", 400);
   }
 }
 
 class NotFoundError extends AppError {
   constructor(resource: string) {
-    super(`${resource} nicht gefunden`, 'NOT_FOUND', 404);
+    super(`${resource} nicht gefunden`, "NOT_FOUND", 404);
   }
 }
 ```
@@ -38,9 +41,14 @@ class NotFoundError extends AppError {
 Implementieren Sie einen zentralen Fehler-Handler:
 
 ```typescript
-function errorHandler(err: Error, req: Request, res: Response, next: NextFunction) {
+function errorHandler(
+  err: Error,
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
   if (err instanceof AppError) {
-    logger.warn({ err, req }, 'Operationaler Fehler');
+    logger.warn({ err, req }, "Operationaler Fehler");
     return res.status(err.statusCode).json({
       error: {
         code: err.code,
@@ -50,11 +58,11 @@ function errorHandler(err: Error, req: Request, res: Response, next: NextFunctio
   }
 
   // Unerwartete Fehler
-  logger.error({ err, req }, 'Unerwarteter Fehler');
+  logger.error({ err, req }, "Unerwarteter Fehler");
   return res.status(500).json({
     error: {
-      code: 'INTERNAL_ERROR',
-      message: 'Ein interner Fehler ist aufgetreten',
+      code: "INTERNAL_ERROR",
+      message: "Ein interner Fehler ist aufgetreten",
     },
   });
 }
@@ -65,10 +73,10 @@ function errorHandler(err: Error, req: Request, res: Response, next: NextFunctio
 Verwenden Sie strukturierte Logs für bessere Analysierbarkeit:
 
 ```typescript
-import pino from 'pino';
+import pino from "pino";
 
 const logger = pino({
-  level: process.env.LOG_LEVEL || 'info',
+  level: process.env.LOG_LEVEL || "info",
   formatters: {
     level: (label) => ({ level: label }),
   },
@@ -76,8 +84,8 @@ const logger = pino({
 });
 
 // Verwendung
-logger.info({ userId: '123', action: 'login' }, 'Benutzer angemeldet');
-logger.error({ err, requestId: '456' }, 'Verarbeitung fehlgeschlagen');
+logger.info({ userId: "123", action: "login" }, "Benutzer angemeldet");
+logger.error({ err, requestId: "456" }, "Verarbeitung fehlgeschlagen");
 ```
 
 ## Retry-Logik
@@ -98,12 +106,12 @@ async function withRetry<T>(
 
       logger.warn(
         { attempt, maxAttempts, err },
-        'Versuch fehlgeschlagen, wiederhole...'
+        "Versuch fehlgeschlagen, wiederhole..."
       );
       await sleep(delayMs * Math.pow(2, attempt - 1));
     }
   }
-  throw new Error('Unreachable');
+  throw new Error("Unreachable");
 }
 ```
 
@@ -115,7 +123,7 @@ Schützen Sie externe Dienste mit Circuit Breaker:
 class CircuitBreaker {
   private failures = 0;
   private lastFailure?: Date;
-  private state: 'closed' | 'open' | 'half-open' = 'closed';
+  private state: "closed" | "open" | "half-open" = "closed";
 
   constructor(
     private readonly threshold: number = 5,
@@ -123,11 +131,11 @@ class CircuitBreaker {
   ) {}
 
   async execute<T>(fn: () => Promise<T>): Promise<T> {
-    if (this.state === 'open') {
+    if (this.state === "open") {
       if (Date.now() - this.lastFailure!.getTime() > this.timeout) {
-        this.state = 'half-open';
+        this.state = "half-open";
       } else {
-        throw new Error('Circuit offen - Dienst vorübergehend nicht verfügbar');
+        throw new Error("Circuit offen - Dienst vorübergehend nicht verfügbar");
       }
     }
 
@@ -143,15 +151,15 @@ class CircuitBreaker {
 
   private onSuccess() {
     this.failures = 0;
-    this.state = 'closed';
+    this.state = "closed";
   }
 
   private onFailure() {
     this.failures++;
     this.lastFailure = new Date();
     if (this.failures >= this.threshold) {
-      this.state = 'open';
-      logger.warn('Circuit Breaker geöffnet');
+      this.state = "open";
+      logger.warn("Circuit Breaker geöffnet");
     }
   }
 }

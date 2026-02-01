@@ -58,7 +58,10 @@ import { execFile } from "child_process";
 import { promisify } from "util";
 const execFileAsync = promisify(execFile);
 
-async function gnoSearchCLI(query: string, limit = 10): Promise<SearchResult[]> {
+async function gnoSearchCLI(
+  query: string,
+  limit = 10
+): Promise<SearchResult[]> {
   const gnoPath = getPreference<string>("gnoPath") || "gno";
   try {
     const { stdout } = await execFileAsync(
@@ -70,7 +73,9 @@ async function gnoSearchCLI(query: string, limit = 10): Promise<SearchResult[]> 
     return result.results;
   } catch (err: unknown) {
     if ((err as NodeJS.ErrnoException).code === "ENOENT") {
-      throw new Error("GNO CLI not found. Install from: https://github.com/gmickel/gno");
+      throw new Error(
+        "GNO CLI not found. Install from: https://github.com/gmickel/gno"
+      );
     }
     throw err;
   }
@@ -100,7 +105,7 @@ function getApiBase(): string {
 async function ensureServer(): Promise<boolean> {
   try {
     const res = await fetch(`${getApiBase()}/api/health`, {
-      signal: AbortSignal.timeout(2000)
+      signal: AbortSignal.timeout(2000),
     });
     return res.ok;
   } catch {
@@ -115,8 +120,11 @@ function apiHeaders(): HeadersInit {
   return headers;
 }
 
-async function apiRequest<T>(endpoint: string, options?: RequestInit): Promise<T> {
-  if (!await ensureServer()) {
+async function apiRequest<T>(
+  endpoint: string,
+  options?: RequestInit
+): Promise<T> {
+  if (!(await ensureServer())) {
     throw new Error("GNO server not running. Start with: gno serve");
   }
   const res = await fetch(`${getApiBase()}${endpoint}`, {
@@ -158,17 +166,22 @@ interface JobStatus {
   error?: string;
 }
 
-async function pollJob(jobId: string, onProgress?: (p: JobStatus) => void): Promise<JobStatus> {
+async function pollJob(
+  jobId: string,
+  onProgress?: (p: JobStatus) => void
+): Promise<JobStatus> {
   while (true) {
     const job = await apiRequest<JobStatus>(`/api/jobs/${jobId}`);
     onProgress?.(job);
     if (job.status === "completed" || job.status === "failed") return job;
-    await new Promise(r => setTimeout(r, 500));
+    await new Promise((r) => setTimeout(r, 500));
   }
 }
 
 // Handle 409 CONFLICT - parse active job ID from error message
-async function startSyncWithConflictHandling(onProgress?: (p: JobStatus) => void): Promise<JobStatus> {
+async function startSyncWithConflictHandling(
+  onProgress?: (p: JobStatus) => void
+): Promise<JobStatus> {
   try {
     const res = await fetch(`${getApiBase()}/api/sync`, {
       method: "POST",
@@ -178,7 +191,9 @@ async function startSyncWithConflictHandling(onProgress?: (p: JobStatus) => void
     if (res.status === 409) {
       const err = await res.json();
       // Parse: "Job <uuid> already running"
-      const match = err.error?.message?.match(/Job ([a-f0-9-]+) already running/);
+      const match = err.error?.message?.match(
+        /Job ([a-f0-9-]+) already running/
+      );
       if (match?.[1]) return pollJob(match[1], onProgress);
       throw new Error("Sync already in progress");
     }
@@ -196,17 +211,25 @@ async function startSyncWithConflictHandling(onProgress?: (p: JobStatus) => void
 
 ```typescript
 interface CaptureRequest {
-  collection: string;  // Must exist
-  relPath: string;     // e.g., "inbox/20260102-1030-my-note.md"
-  content: string;     // CANNOT be empty - use "\n" minimum
+  collection: string; // Must exist
+  relPath: string; // e.g., "inbox/20260102-1030-my-note.md"
+  content: string; // CANNOT be empty - use "\n" minimum
   overwrite?: boolean;
 }
 
 // Path generation (filesystem-safe, no colons)
 function generateCapturePath(title: string): string {
   const now = new Date();
-  const ts = now.toISOString().slice(0, 16).replace(/[-:T]/g, "").replace(/(\d{8})(\d{4})/, "$1-$2");
-  const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 50).replace(/-$/, "");
+  const ts = now
+    .toISOString()
+    .slice(0, 16)
+    .replace(/[-:T]/g, "")
+    .replace(/(\d{8})(\d{4})/, "$1-$2");
+  const slug = title
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .slice(0, 50)
+    .replace(/-$/, "");
   return `inbox/${ts}-${slug || "untitled"}.md`;
 }
 
@@ -258,8 +281,9 @@ Search results include `relPath` but not `absPath`. Use `path.resolve` with vali
 import path from "path";
 
 async function getCollectionPaths(): Promise<Map<string, string>> {
-  const collections = await apiRequest<Array<{ name: string; path: string }>>("/api/collections");
-  return new Map(collections.map(c => [c.name, c.path]));
+  const collections =
+    await apiRequest<Array<{ name: string; path: string }>>("/api/collections");
+  return new Map(collections.map((c) => [c.name, c.path]));
 }
 
 function resolveAbsPath(relPath: string, collectionPath: string): string {

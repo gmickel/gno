@@ -296,8 +296,8 @@ test/fixtures/outputs/
 **validator.ts:**
 
 ```typescript
-import Ajv from 'ajv';
-import addFormats from 'ajv-formats';
+import Ajv from "ajv";
+import addFormats from "ajv-formats";
 
 const ajv = new Ajv({ strict: true, allErrors: true });
 addFormats(ajv);
@@ -324,65 +324,67 @@ export function assertValid(data: unknown, schema: object) {
 **search-result.test.ts:**
 
 ```typescript
-import { describe, test, expect, beforeAll } from 'bun:test';
-import { loadSchema, assertValid } from './validator';
+import { describe, test, expect, beforeAll } from "bun:test";
+import { loadSchema, assertValid } from "./validator";
 
-describe('search-result schema', () => {
+describe("search-result schema", () => {
   let schema: object;
 
   beforeAll(async () => {
-    schema = await loadSchema('search-result');
+    schema = await loadSchema("search-result");
   });
 
-  test('validates minimal valid result', () => {
+  test("validates minimal valid result", () => {
     const result = {
-      docid: '#a1b2c3',
+      docid: "#a1b2c3",
       score: 0.78,
-      uri: 'gno://work/doc.md',
-      snippet: 'sample text',
+      uri: "gno://work/doc.md",
+      snippet: "sample text",
       source: {
-        relPath: 'doc.md',
-        mime: 'text/markdown',
-        ext: '.md'
-      }
+        relPath: "doc.md",
+        mime: "text/markdown",
+        ext: ".md",
+      },
     };
     expect(assertValid(result, schema)).toBe(true);
   });
 
-  test('validates full result with all optional fields', async () => {
-    const fixture = await Bun.file('test/fixtures/outputs/search-result-valid.json').json();
+  test("validates full result with all optional fields", async () => {
+    const fixture = await Bun.file(
+      "test/fixtures/outputs/search-result-valid.json"
+    ).json();
     expect(assertValid(fixture, schema)).toBe(true);
   });
 
-  test('rejects invalid docid format', () => {
+  test("rejects invalid docid format", () => {
     const result = {
-      docid: 'invalid', // missing # prefix
+      docid: "invalid", // missing # prefix
       score: 0.5,
-      uri: 'gno://work/doc.md',
-      snippet: 'text',
-      source: { relPath: 'doc.md', mime: 'text/markdown', ext: '.md' }
+      uri: "gno://work/doc.md",
+      snippet: "text",
+      source: { relPath: "doc.md", mime: "text/markdown", ext: ".md" },
     };
     expect(() => assertValid(result, schema)).toThrow();
   });
 
-  test('rejects score out of range', () => {
+  test("rejects score out of range", () => {
     const result = {
-      docid: '#abc123',
+      docid: "#abc123",
       score: 1.5, // > 1
-      uri: 'gno://work/doc.md',
-      snippet: 'text',
-      source: { relPath: 'doc.md', mime: 'text/markdown', ext: '.md' }
+      uri: "gno://work/doc.md",
+      snippet: "text",
+      source: { relPath: "doc.md", mime: "text/markdown", ext: ".md" },
     };
     expect(() => assertValid(result, schema)).toThrow();
   });
 
-  test('rejects invalid uri format', () => {
+  test("rejects invalid uri format", () => {
     const result = {
-      docid: '#abc123',
+      docid: "#abc123",
       score: 0.5,
-      uri: 'file:///path/doc.md', // wrong scheme
-      snippet: 'text',
-      source: { relPath: 'doc.md', mime: 'text/markdown', ext: '.md' }
+      uri: "file:///path/doc.md", // wrong scheme
+      snippet: "text",
+      source: { relPath: "doc.md", mime: "text/markdown", ext: ".md" },
     };
     expect(() => assertValid(result, schema)).toThrow();
   });

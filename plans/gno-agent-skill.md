@@ -102,16 +102,16 @@ Centralized path resolver with injection for testability:
 // src/cli/commands/skill/paths.ts
 
 interface SkillPathOptions {
-  scope: 'project' | 'user';
-  target: 'claude' | 'codex';
-  cwd?: string;           // Override for project scope
-  homeDir?: string;       // Override for user scope (tests)
+  scope: "project" | "user";
+  target: "claude" | "codex";
+  cwd?: string; // Override for project scope
+  homeDir?: string; // Override for user scope (tests)
 }
 
 interface SkillPaths {
-  base: string;           // e.g., ~/.claude or ./.claude
-  skillsDir: string;      // e.g., ~/.claude/skills
-  gnoDir: string;         // e.g., ~/.claude/skills/gno
+  base: string; // e.g., ~/.claude or ./.claude
+  skillsDir: string; // e.g., ~/.claude/skills
+  gnoDir: string; // e.g., ~/.claude/skills/gno
 }
 
 export function resolveSkillPaths(opts: SkillPathOptions): SkillPaths;
@@ -234,22 +234,19 @@ src/cli/commands/skill/
 
 ```jsonc
 {
-  "files": [
-    "dist",
-    "assets"
-  ]
+  "files": ["dist", "assets"],
 }
 ```
 
 **Locate source files at runtime**:
 
 ```ts
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 // Works in both dev and after Bun build
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const SKILL_SOURCE_DIR = join(__dirname, '../../assets/skill');
+const SKILL_SOURCE_DIR = join(__dirname, "../../assets/skill");
 ```
 
 **Error Handling** (follow existing patterns):
@@ -263,14 +260,15 @@ const SKILL_SOURCE_DIR = join(__dirname, '../../assets/skill');
 
 ```ts
 // In wireManagementCommands() or similar
-const skillCmd = program.command('skill').description('Manage GNO agent skill');
+const skillCmd = program.command("skill").description("Manage GNO agent skill");
 
-skillCmd.command('install')
-  .option('--scope <scope>', 'project or user', 'project')
-  .option('--target <target>', 'claude, codex, or all', 'claude')
-  .option('--force', 'Overwrite existing skill')
+skillCmd
+  .command("install")
+  .option("--scope <scope>", "project or user", "project")
+  .option("--target <target>", "claude, codex, or all", "claude")
+  .option("--force", "Overwrite existing skill")
   .action(async (opts) => {
-    const { installSkill } = await import('./skill/install.js');
+    const { installSkill } = await import("./skill/install.js");
     await installSkill(opts);
   });
 

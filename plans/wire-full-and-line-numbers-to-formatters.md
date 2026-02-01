@@ -16,11 +16,11 @@ Complete EPIC 8 search pipeline by wiring `--full` and `--line-numbers` options 
 ```typescript
 // Current broken state (program.ts):
 const result = await search(queryText, {
-  full: Boolean(cmdOpts.full),  // ✅ reaches pipeline
+  full: Boolean(cmdOpts.full), // ✅ reaches pipeline
   // ...
 });
 process.stdout.write(
-  `${formatSearch(result, { json: format === 'json' })}\n`  // ❌ no full, no md, no xml...
+  `${formatSearch(result, { json: format === "json" })}\n` // ❌ no full, no md, no xml...
 );
 ```
 
@@ -65,7 +65,7 @@ type SearchPipelineOptions = {
 
 // Format options (what formatters consume)
 type SearchFormatOptions = {
-  format: 'terminal' | 'json' | 'md' | 'csv' | 'xml' | 'files';
+  format: "terminal" | "json" | "md" | "csv" | "xml" | "files";
   full?: boolean;
   lineNumbers?: boolean;
 };
@@ -138,8 +138,8 @@ export type SnippetRange = { startLine: number; endLine: number };
 export type SnippetRenderOptions = {
   full: boolean;
   lineNumbers: boolean;
-  truncateChars: number;   // e.g., 200 for terminal, 500 for md/xml
-  truncateLines: number;   // e.g., 10 when lineNumbers && !full
+  truncateChars: number; // e.g., 200 for terminal, 500 for md/xml
+  truncateLines: number; // e.g., 10 when lineNumbers && !full
   range?: SnippetRange;
 };
 
@@ -152,15 +152,15 @@ export function renderSnippet(
   opts: SnippetRenderOptions
 ): { text: string; truncated: boolean } {
   // Normalize line endings
-  let content = text.replace(/\r\n/g, '\n');
+  let content = text.replace(/\r\n/g, "\n");
   let truncated = false;
 
   if (!opts.full) {
     if (opts.lineNumbers) {
       // Truncate by lines when showing line numbers
-      const lines = content.split('\n');
+      const lines = content.split("\n");
       if (lines.length > opts.truncateLines) {
-        content = lines.slice(0, opts.truncateLines).join('\n');
+        content = lines.slice(0, opts.truncateLines).join("\n");
         truncated = true;
       }
     } else {
@@ -183,11 +183,11 @@ export function renderSnippet(
  * Add line numbers to content (1-indexed, dynamic width).
  */
 export function addLineNumbers(content: string, startLine = 1): string {
-  const lines = content.split('\n');
+  const lines = content.split("\n");
   const width = String(startLine + lines.length - 1).length;
   return lines
     .map((line, i) => `${String(startLine + i).padStart(width)} | ${line}`)
-    .join('\n');
+    .join("\n");
 }
 
 /**
@@ -195,9 +195,9 @@ export function addLineNumbers(content: string, startLine = 1): string {
  */
 export function escapeXml(text: string): string {
   return text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
 }
 ```
 
@@ -208,9 +208,12 @@ export function escapeXml(text: string): string {
 Update formatters to use shared helper:
 
 ```typescript
-import { renderSnippet, escapeXml } from './formatting';
+import { renderSnippet, escapeXml } from "./formatting";
 
-function formatTerminal(data: SearchResults, options: SearchFormatOptions): string {
+function formatTerminal(
+  data: SearchResults,
+  options: SearchFormatOptions
+): string {
   // NO MORE: snippet.replace(/\n/g, ' ')
   // Preserve newlines for readable multi-line output
 
@@ -224,7 +227,7 @@ function formatTerminal(data: SearchResults, options: SearchFormatOptions): stri
     });
 
     // Output snippet (no extra indentation when line numbers present)
-    lines.push(snippet + (truncated ? '...' : ''));
+    lines.push(snippet + (truncated ? "..." : ""));
   }
   // ...
 }
@@ -233,7 +236,7 @@ function formatXml(data: SearchResults, options: SearchFormatOptions): string {
   for (const result of data.results) {
     const { text: snippet } = renderSnippet(result.snippet, {
       full: options.full ?? false,
-      lineNumbers: false,  // XML uses metadata, not inline numbers
+      lineNumbers: false, // XML uses metadata, not inline numbers
       truncateChars: 500,
       truncateLines: 20,
       range: result.snippetRange,
@@ -242,7 +245,7 @@ function formatXml(data: SearchResults, options: SearchFormatOptions): string {
     // Add line range attributes when available
     const rangeAttrs = result.snippetRange
       ? ` startLine="${result.snippetRange.startLine}" endLine="${result.snippetRange.endLine}"`
-      : '';
+      : "";
 
     lines.push(`<snippet${rangeAttrs}>${escapeXml(snippet)}</snippet>`);
   }
@@ -258,10 +261,10 @@ Add option to all three commands (spec already documents it):
 
 ```typescript
 program
-  .command('search <query>')
-  .option('--full', 'include full content')
-  .option('--line-numbers', 'prepend line numbers to output')
-  // ...
+  .command("search <query>")
+  .option("--full", "include full content")
+  .option("--line-numbers", "prepend line numbers to output");
+// ...
 ```
 
 ### Phase 4: Warnings in program.ts

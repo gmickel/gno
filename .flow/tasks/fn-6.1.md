@@ -81,22 +81,26 @@ gno links [list] <doc> [--type <wiki|markdown|url>] [--json] [--md]
 
 **Options:**
 
-| Option    | Type   | Default | Description                          |
-| --------- | ------ | ------- | ------------------------------------ |
-| `--type`  | string | all     | Filter by link type                  |
-| `--json`  | flag   |         | JSON output                          |
-| `--md`    | flag   |         | Markdown output                      |
+| Option   | Type   | Default | Description         |
+| -------- | ------ | ------- | ------------------- |
+| `--type` | string | all     | Filter by link type |
+| `--json` | flag   |         | JSON output         |
+| `--md`   | flag   |         | Markdown output     |
 
 **Examples:**
 
 \`\`\`bash
+
 # List all links
+
 gno links '#abc123'
 
 # JSON output
+
 gno links 'gno://notes/doc.md' --json
 
 # Wiki links only
+
 gno links '#abc123' --type wiki
 \`\`\`
 ```
@@ -114,24 +118,24 @@ Returns outgoing links from a document.
 
 **Path Parameters:**
 
-| Param | Type   | Description      |
-| :---- | :----- | :--------------- |
-| `id`  | string | Document ID      |
+| Param | Type   | Description |
+| :---- | :----- | :---------- |
+| `id`  | string | Document ID |
 
 **Query Parameters:**
 
-| Param  | Type   | Default | Description                |
-| :----- | :----- | :------ | :------------------------- |
+| Param  | Type   | Default | Description                 |
+| :----- | :----- | :------ | :-------------------------- |
 | `type` | string | all     | Filter: wiki, markdown, url |
 
 **Response:**
 
 \`\`\`json
 {
-  "links": [
-    { "targetPath": "other.md", "linkType": "wiki", "targetDocid": "#xyz789" }
-  ],
-  "meta": { "totalLinks": 1, "docid": "#abc123" }
+"links": [
+{ "targetPath": "other.md", "linkType": "wiki", "targetDocid": "#xyz789" }
+],
+"meta": { "totalLinks": 1, "docid": "#abc123" }
 }
 \`\`\`
 ```

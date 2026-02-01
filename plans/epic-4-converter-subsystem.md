@@ -120,28 +120,33 @@ export type ConverterId =
   | string;
 
 export type ConvertInput = {
-  sourcePath: string;        // absolute
-  relativePath: string;      // within collection
+  sourcePath: string; // absolute
+  relativePath: string; // within collection
   collection: string;
   bytes: Uint8Array;
   mime: string;
-  ext: string;               // ".pdf"
+  ext: string; // ".pdf"
   limits: {
-    maxBytes: number;        // default: 100MB
-    timeoutMs: number;       // default: 60000
+    maxBytes: number; // default: 100MB
+    timeoutMs: number; // default: 60000
   };
 };
 
 export type ConvertWarning = {
-  code: "LOSSY" | "TRUNCATED" | "PARTIAL" | "UNSUPPORTED_FEATURE" | "LOW_CONFIDENCE";
+  code:
+    | "LOSSY"
+    | "TRUNCATED"
+    | "PARTIAL"
+    | "UNSUPPORTED_FEATURE"
+    | "LOW_CONFIDENCE";
   message: string;
   details?: Record<string, unknown>;
 };
 
 export type ConvertOutput = {
-  markdown: string;          // raw (pipeline canonicalizes); NOT canonical
+  markdown: string; // raw (pipeline canonicalizes); NOT canonical
   title?: string;
-  languageHint?: string;     // BCP-47 or "und"
+  languageHint?: string; // BCP-47 or "und"
   meta: {
     converterId: ConverterId;
     converterVersion: string;
@@ -201,7 +206,7 @@ export type ConvertError = {
   code: ConvertErrorCode;
   message: string;
   retryable: boolean;
-  fatal: boolean;            // reserved for store corruption
+  fatal: boolean; // reserved for store corruption
   converterId: string;
   sourcePath: string;
   mime: string;
@@ -387,13 +392,13 @@ Convert `.txt` to Markdown:
 ```typescript
 // 1. Always decode as UTF-8
 const decoder = new TextDecoder("utf-8", {
-  fatal: false,        // Don't throw on invalid bytes
-  ignoreBOM: false     // We'll strip manually for determinism
+  fatal: false, // Don't throw on invalid bytes
+  ignoreBOM: false, // We'll strip manually for determinism
 });
 
 // 2. Strip BOM if present
 let text = decoder.decode(input.bytes);
-if (text.charCodeAt(0) === 0xFEFF) {
+if (text.charCodeAt(0) === 0xfeff) {
   text = text.slice(1);
 }
 
@@ -679,7 +684,9 @@ import { ConverterRegistry, createDefaultRegistry } from "./registry";
 import type { ConvertInput, ConversionArtifact, PipelineResult } from "./types";
 
 export class ConversionPipeline {
-  constructor(private readonly registry: ConverterRegistry = createDefaultRegistry()) {}
+  constructor(
+    private readonly registry: ConverterRegistry = createDefaultRegistry()
+  ) {}
 
   async convert(input: ConvertInput): Promise<PipelineResult> {
     // 1. Delegate to registry (finds converter + invokes)

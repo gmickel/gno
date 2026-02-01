@@ -30,13 +30,13 @@ Extend the macOS-only workaround in `src/store/sqlite/setup.ts` to enable sqlite
 Replace `hasExtensionSupport(): boolean` with:
 
 ```typescript
-export type ExtensionLoadingMode = 'native' | 'custom' | 'unavailable';
+export type ExtensionLoadingMode = "native" | "custom" | "unavailable";
 
 export function getExtensionLoadingMode(): ExtensionLoadingMode {
-  if (platform() !== 'darwin') {
-    return 'native'; // Linux/Windows: bundled SQLite supports extensions
+  if (platform() !== "darwin") {
+    return "native"; // Linux/Windows: bundled SQLite supports extensions
   }
-  return customSqlitePath ? 'custom' : 'unavailable';
+  return customSqlitePath ? "custom" : "unavailable";
 }
 
 export function getCustomSqlitePath(): string | null {
@@ -85,12 +85,15 @@ export function getCustomSqlitePath(): string | null {
 **Path resolution** (ESM-safe):
 
 ```typescript
-import { fileURLToPath } from 'node:url';
-import { arch } from 'node:process';
+import { fileURLToPath } from "node:url";
+import { arch } from "node:process";
 
 function getBundledSqlitePath(): string | null {
-  const archDir = arch === 'arm64' ? 'darwin-arm64' : 'darwin-x64';
-  const url = new URL(`../../vendor/sqlite/${archDir}/libsqlite3.dylib`, import.meta.url);
+  const archDir = arch === "arm64" ? "darwin-arm64" : "darwin-x64";
+  const url = new URL(
+    `../../vendor/sqlite/${archDir}/libsqlite3.dylib`,
+    import.meta.url
+  );
   const path = fileURLToPath(url);
   return existsSync(path) ? path : null;
 }
@@ -122,7 +125,9 @@ for (const path of sqlitePaths) {
   }
 }
 // All failed - export attempts array for doctor to report full chain
-export function getLoadAttempts(): LoadAttempt[] { return attempts; }
+export function getLoadAttempts(): LoadAttempt[] {
+  return attempts;
+}
 ```
 
 Doctor prints full chain:
@@ -151,33 +156,33 @@ Add SQLite extension diagnostics using **capability probes** (not compile-option
 ```typescript
 async function checkSqliteExtensions(): Promise<DiagnosticResult> {
   // CRITICAL: Must import setup.ts before creating any Database
-  await import('../../store/sqlite/setup');
+  await import("../../store/sqlite/setup");
 
-  const db = new Database(':memory:');
-  const version = db.query('SELECT sqlite_version() as v').get().v;
+  const db = new Database(":memory:");
+  const version = db.query("SELECT sqlite_version() as v").get().v;
 
   // 1. Probe FTS5 capability (not compile_options - strings vary across builds)
   try {
-    db.exec('CREATE VIRTUAL TABLE _fts5_probe USING fts5(x)');
-    db.exec('DROP TABLE _fts5_probe');
+    db.exec("CREATE VIRTUAL TABLE _fts5_probe USING fts5(x)");
+    db.exec("DROP TABLE _fts5_probe");
   } catch {
-    return { status: 'error', message: 'SQLite missing FTS5 support' };
+    return { status: "error", message: "SQLite missing FTS5 support" };
   }
 
   // 2. Probe JSON capability
   try {
     db.query("SELECT json_valid('{}')").get();
   } catch {
-    return { status: 'error', message: 'SQLite missing JSON support' };
+    return { status: "error", message: "SQLite missing JSON support" };
   }
 
   // 3. Try loading sqlite-vec (probes extension loading capability)
   try {
-    const sqliteVec = await import('sqlite-vec');
+    const sqliteVec = await import("sqlite-vec");
     sqliteVec.load(db);
-    return { status: 'ok', message: `sqlite-vec loaded (SQLite ${version})` };
+    return { status: "ok", message: `sqlite-vec loaded (SQLite ${version})` };
   } catch (e) {
-    return { status: 'warn', message: `sqlite-vec unavailable: ${e.message}` };
+    return { status: "warn", message: `sqlite-vec unavailable: ${e.message}` };
   }
 }
 ```

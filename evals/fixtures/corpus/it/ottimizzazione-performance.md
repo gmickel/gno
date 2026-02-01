@@ -9,10 +9,10 @@ Guida completa per migliorare le prestazioni delle applicazioni web.
 Implementare una cache in memoria per dati frequentemente acceduti:
 
 ```typescript
-import { LRUCache } from 'lru-cache';
+import { LRUCache } from "lru-cache";
 
 const cache = new LRUCache<string, unknown>({
-  max: 500,           // Massimo 500 elementi
+  max: 500, // Massimo 500 elementi
   ttl: 1000 * 60 * 5, // 5 minuti di vita
 });
 
@@ -40,7 +40,7 @@ async function getDatiUtente(id: string): Promise<Utente> {
 Per applicazioni multi-istanza, utilizzare Redis:
 
 ```typescript
-import { Redis } from 'ioredis';
+import { Redis } from "ioredis";
 
 const redis = new Redis(process.env.REDIS_URL);
 
@@ -144,18 +144,20 @@ function ImmagineOttimizzata({ src, alt }: Props) {
 ### Compressione delle Risposte
 
 ```typescript
-import compression from 'compression';
+import compression from "compression";
 
-app.use(compression({
-  filter: (req, res) => {
-    // Non comprimere risposte già compresse
-    if (req.headers['x-no-compression']) {
-      return false;
-    }
-    return compression.filter(req, res);
-  },
-  level: 6, // Bilanciamento tra velocità e dimensione
-}));
+app.use(
+  compression({
+    filter: (req, res) => {
+      // Non comprimere risposte già compresse
+      if (req.headers["x-no-compression"]) {
+        return false;
+      }
+      return compression.filter(req, res);
+    },
+    level: 6, // Bilanciamento tra velocità e dimensione
+  })
+);
 ```
 
 ## Monitoraggio Performance
@@ -163,30 +165,30 @@ app.use(compression({
 ### Metriche Chiave
 
 ```typescript
-import { Histogram, Counter } from 'prom-client';
+import { Histogram, Counter } from "prom-client";
 
 const tempoRichiesta = new Histogram({
-  name: 'http_request_duration_seconds',
-  help: 'Durata delle richieste HTTP',
-  labelNames: ['method', 'route', 'status'],
+  name: "http_request_duration_seconds",
+  help: "Durata delle richieste HTTP",
+  labelNames: ["method", "route", "status"],
   buckets: [0.1, 0.5, 1, 2, 5],
 });
 
 const richiesteContatore = new Counter({
-  name: 'http_requests_total',
-  help: 'Contatore totale richieste HTTP',
-  labelNames: ['method', 'route', 'status'],
+  name: "http_requests_total",
+  help: "Contatore totale richieste HTTP",
+  labelNames: ["method", "route", "status"],
 });
 
 // Middleware per raccogliere metriche
 app.use((req, res, next) => {
   const inizio = Date.now();
 
-  res.on('finish', () => {
+  res.on("finish", () => {
     const durata = (Date.now() - inizio) / 1000;
     const labels = {
       method: req.method,
-      route: req.route?.path || 'unknown',
+      route: req.route?.path || "unknown",
       status: res.statusCode.toString(),
     };
 

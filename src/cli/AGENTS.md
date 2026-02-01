@@ -54,9 +54,9 @@ program
 
 ```typescript
 export const EXIT = {
-  SUCCESS: 0,    // Command completed successfully
+  SUCCESS: 0, // Command completed successfully
   VALIDATION: 1, // Bad args, missing params
-  RUNTIME: 2,    // IO, DB, model, network errors
+  RUNTIME: 2, // IO, DB, model, network errors
 } as const;
 ```
 

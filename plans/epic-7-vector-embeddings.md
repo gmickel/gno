@@ -113,10 +113,12 @@ export type SqliteDbProvider = {
 };
 
 export function isSqliteDbProvider(store: unknown): store is SqliteDbProvider {
-  return store !== null &&
-    typeof store === 'object' &&
-    'getRawDb' in store &&
-    typeof (store as SqliteDbProvider).getRawDb === 'function';
+  return (
+    store !== null &&
+    typeof store === "object" &&
+    "getRawDb" in store &&
+    typeof (store as SqliteDbProvider).getRawDb === "function"
+  );
 }
 ```
 
@@ -127,7 +129,7 @@ export async function createVectorIndexPort(
   options: {
     model: string;
     dimensions: number;
-    distanceMetric?: 'cosine' | 'l2';
+    distanceMetric?: "cosine" | "l2";
   }
 ): Promise<StoreResult<VectorIndexPort>>;
 ```
@@ -139,7 +141,7 @@ This preserves StorePort stability while enabling lazy vector index creation.
 File: `src/store/vector/types.ts`
 
 ```typescript
-import type { StoreResult } from '../types';
+import type { StoreResult } from "../types";
 
 export type VectorRow = {
   mirrorHash: string;
@@ -201,7 +203,7 @@ export type BacklogItem = {
   mirrorHash: string;
   seq: number;
   text: string;
-  reason: 'new' | 'changed';
+  reason: "new" | "changed";
 };
 ```
 
@@ -231,7 +233,9 @@ import { createHash } from "node:crypto";
  * Creates a copy to avoid shared ArrayBuffer issues.
  */
 export function encodeEmbedding(f32: Float32Array): Uint8Array {
-  return new Uint8Array(f32.buffer.slice(f32.byteOffset, f32.byteOffset + f32.byteLength));
+  return new Uint8Array(
+    f32.buffer.slice(f32.byteOffset, f32.byteOffset + f32.byteLength)
+  );
 }
 
 /**
@@ -248,15 +252,19 @@ export function decodeEmbedding(blob: Uint8Array): Float32Array {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function modelTableName(modelUri: string): string {
-  const hash = createHash('sha256').update(modelUri).digest('hex').slice(0, 8);
+  const hash = createHash("sha256").update(modelUri).digest("hex").slice(0, 8);
   return `vec_${hash}`;
 }
 
 export async function createVectorIndexPort(
   db: Database,
-  options: { model: string; dimensions: number; distanceMetric?: 'cosine' | 'l2' }
+  options: {
+    model: string;
+    dimensions: number;
+    distanceMetric?: "cosine" | "l2";
+  }
 ): Promise<StoreResult<VectorIndexPort>> {
-  const { model, dimensions, distanceMetric = 'cosine' } = options;
+  const { model, dimensions, distanceMetric = "cosine" } = options;
   const tableName = modelTableName(model);
 
   // NOTE: FK enforcement should also be set in SqliteAdapter.open() as baseline invariant
@@ -290,7 +298,9 @@ export async function createVectorIndexPort(
   `);
 
   const upsertVecStmt = searchAvailable
-    ? db.prepare(`INSERT OR REPLACE INTO ${tableName} (chunk_id, embedding) VALUES (?, ?)`)
+    ? db.prepare(
+        `INSERT OR REPLACE INTO ${tableName} (chunk_id, embedding) VALUES (?, ?)`
+      )
     : null;
 
   const searchStmt = searchAvailable
@@ -333,47 +343,71 @@ export async function createVectorIndexPort(
           })();
           return { ok: true, value: undefined };
         } catch (e) {
-          return { ok: false, error: { code: 'VECTOR_WRITE_FAILED', message: String(e) } };
+          return {
+            ok: false,
+            error: { code: "VECTOR_WRITE_FAILED", message: String(e) },
+          };
         }
       },
 
-      async deleteVectorsForMirror(mirrorHash: string): Promise<StoreResult<void>> {
+      async deleteVectorsForMirror(
+        mirrorHash: string
+      ): Promise<StoreResult<void>> {
         try {
           db.transaction(() => {
-            db.prepare(`DELETE FROM content_vectors WHERE mirror_hash = ? AND model = ?`)
-              .run(mirrorHash, model);
+            db.prepare(
+              `DELETE FROM content_vectors WHERE mirror_hash = ? AND model = ?`
+            ).run(mirrorHash, model);
             if (deleteVecStmt) {
               deleteVecStmt.run(mirrorHash);
             }
           })();
           return { ok: true, value: undefined };
         } catch (e) {
-          return { ok: false, error: { code: 'VECTOR_DELETE_FAILED', message: String(e) } };
+          return {
+            ok: false,
+            error: { code: "VECTOR_DELETE_FAILED", message: String(e) },
+          };
         }
       },
 
-      async searchNearest(embedding, k, options): Promise<StoreResult<VectorSearchResult[]>> {
+      async searchNearest(
+        embedding,
+        k,
+        options
+      ): Promise<StoreResult<VectorSearchResult[]>> {
         if (!searchAvailable || !searchStmt) {
           return {
             ok: false,
             error: {
-              code: 'VEC_SEARCH_UNAVAILABLE',
-              message: 'Vector search requires sqlite-vec. Embeddings stored but KNN search disabled.'
-            }
+              code: "VEC_SEARCH_UNAVAILABLE",
+              message:
+                "Vector search requires sqlite-vec. Embeddings stored but KNN search disabled.",
+            },
           };
         }
 
         try {
-          const results = searchStmt.all(embedding, k) as { chunk_id: string; distance: number }[];
+          const results = searchStmt.all(embedding, k) as {
+            chunk_id: string;
+            distance: number;
+          }[];
           return {
             ok: true,
-            value: results.map(r => {
+            value: results.map((r) => {
               const [mirrorHash, seqStr] = r.chunk_id.split(":");
-              return { mirrorHash, seq: Number.parseInt(seqStr, 10), distance: r.distance };
-            })
+              return {
+                mirrorHash,
+                seq: Number.parseInt(seqStr, 10),
+                distance: r.distance,
+              };
+            }),
           };
         } catch (e) {
-          return { ok: false, error: { code: 'VEC_SEARCH_FAILED', message: String(e) } };
+          return {
+            ok: false,
+            error: { code: "VEC_SEARCH_FAILED", message: String(e) },
+          };
         }
       },
 
@@ -393,9 +427,17 @@ export async function createVectorIndexPort(
           `);
 
           // Repopulate from content_vectors
-          const rows = db.prepare(`
+          const rows = db
+            .prepare(
+              `
             SELECT mirror_hash, seq, embedding FROM content_vectors WHERE model = ?
-          `).all(model) as { mirror_hash: string; seq: number; embedding: Uint8Array }[];
+          `
+            )
+            .all(model) as {
+            mirror_hash: string;
+            seq: number;
+            embedding: Uint8Array;
+          }[];
 
           const insertStmt = db.prepare(`
             INSERT INTO ${tableName} (chunk_id, embedding) VALUES (?, ?)
@@ -410,11 +452,16 @@ export async function createVectorIndexPort(
 
           return { ok: true, value: undefined };
         } catch (e) {
-          return { ok: false, error: { code: 'VEC_REBUILD_FAILED', message: String(e) } };
+          return {
+            ok: false,
+            error: { code: "VEC_REBUILD_FAILED", message: String(e) },
+          };
         }
       },
 
-      async syncVecIndex(): Promise<StoreResult<{ added: number; removed: number }>> {
+      async syncVecIndex(): Promise<
+        StoreResult<{ added: number; removed: number }>
+      > {
         // Sync vec table with content_vectors (add missing, remove orphans)
         if (!searchAvailable) {
           return { ok: true, value: { added: 0, removed: 0 } };
@@ -425,25 +472,37 @@ export async function createVectorIndexPort(
           let removed = 0;
 
           // 1. Remove orphans from vec table (not in content_vectors for this model)
-          const orphanResult = db.prepare(`
+          const orphanResult = db
+            .prepare(
+              `
             DELETE FROM ${tableName}
             WHERE chunk_id NOT IN (
               SELECT mirror_hash || ':' || seq
               FROM content_vectors
               WHERE model = ?
             )
-          `).run(model);
+          `
+            )
+            .run(model);
           removed = orphanResult.changes;
 
           // 2. Add missing entries (in content_vectors but not in vec table)
-          const missing = db.prepare(`
+          const missing = db
+            .prepare(
+              `
             SELECT cv.mirror_hash, cv.seq, cv.embedding
             FROM content_vectors cv
             WHERE cv.model = ?
               AND (cv.mirror_hash || ':' || cv.seq) NOT IN (
                 SELECT chunk_id FROM ${tableName}
               )
-          `).all(model) as { mirror_hash: string; seq: number; embedding: Uint8Array }[];
+          `
+            )
+            .all(model) as {
+            mirror_hash: string;
+            seq: number;
+            embedding: Uint8Array;
+          }[];
 
           if (missing.length > 0) {
             const insertStmt = db.prepare(`
@@ -460,10 +519,13 @@ export async function createVectorIndexPort(
 
           return { ok: true, value: { added, removed } };
         } catch (e) {
-          return { ok: false, error: { code: 'VEC_SYNC_FAILED', message: String(e) } };
+          return {
+            ok: false,
+            error: { code: "VEC_SYNC_FAILED", message: String(e) },
+          };
         }
-      }
-    }
+      },
+    },
   };
 }
 ```
@@ -485,19 +547,28 @@ export function createVectorStatsPort(db: Database): VectorStatsPort {
   return {
     async countVectors(model: string): Promise<StoreResult<number>> {
       try {
-        const result = db.prepare(`
+        const result = db
+          .prepare(
+            `
           SELECT COUNT(*) as count FROM content_vectors WHERE model = ?
-        `).get(model) as { count: number };
+        `
+          )
+          .get(model) as { count: number };
         return { ok: true, value: result.count };
       } catch (e) {
-        return { ok: false, error: { code: 'QUERY_FAILED', message: String(e) } };
+        return {
+          ok: false,
+          error: { code: "QUERY_FAILED", message: String(e) },
+        };
       }
     },
 
     async countBacklog(model: string): Promise<StoreResult<number>> {
       try {
         // Count chunks needing embedding (fast for progress display)
-        const result = db.prepare(`
+        const result = db
+          .prepare(
+            `
           SELECT COUNT(*) as count
           FROM content_chunks c
           WHERE EXISTS (
@@ -511,10 +582,15 @@ export function createVectorStatsPort(db: Database): VectorStatsPort {
               AND v.model = ?
               AND v.embedded_at >= c.created_at
           )
-        `).get(model) as { count: number };
+        `
+          )
+          .get(model) as { count: number };
         return { ok: true, value: result.count };
       } catch (e) {
-        return { ok: false, error: { code: 'QUERY_FAILED', message: String(e) } };
+        return {
+          ok: false,
+          error: { code: "QUERY_FAILED", message: String(e) },
+        };
       }
     },
 
@@ -527,7 +603,9 @@ export function createVectorStatsPort(db: Database): VectorStatsPort {
         const offset = options?.offset ?? 0;
 
         // CRITICAL: Use EXISTS to avoid duplicates when multiple docs share mirror_hash
-        const results = db.prepare(`
+        const results = db
+          .prepare(
+            `
           SELECT c.mirror_hash, c.seq, c.text,
             CASE
               WHEN NOT EXISTS (
@@ -554,13 +632,18 @@ export function createVectorStatsPort(db: Database): VectorStatsPort {
           )
           ORDER BY c.mirror_hash, c.seq
           LIMIT ? OFFSET ?
-        `).all(model, model, limit, offset) as BacklogItem[];
+        `
+          )
+          .all(model, model, limit, offset) as BacklogItem[];
 
         return { ok: true, value: results };
       } catch (e) {
-        return { ok: false, error: { code: 'QUERY_FAILED', message: String(e) } };
+        return {
+          ok: false,
+          error: { code: "QUERY_FAILED", message: String(e) },
+        };
       }
-    }
+    },
   };
 }
 ```
@@ -588,7 +671,10 @@ export type StoreErrorCode =
 import { isSqliteDbProvider } from "../store/sqlite/types";
 
 // In gno embed command or service layer
-async function initEmbedding(config: Config, store: StorePort): Promise<{
+async function initEmbedding(
+  config: Config,
+  store: StorePort
+): Promise<{
   embedPort: EmbeddingPort;
   vectorIndex: VectorIndexPort;
   stats: VectorStatsPort;
@@ -600,9 +686,13 @@ async function initEmbedding(config: Config, store: StorePort): Promise<{
   const db = store.getRawDb();
 
   // 1. Get model URI from config
-  const modelUri = config.models.presets.find(p => p.id === config.models.activePreset)?.embed;
+  const modelUri = config.models.presets.find(
+    (p) => p.id === config.models.activePreset
+  )?.embed;
   if (!modelUri) {
-    throw new Error("No embedding model configured. Set models.activePreset in config.");
+    throw new Error(
+      "No embedding model configured. Set models.activePreset in config."
+    );
   }
 
   // 2. Create embedding port (from EPIC 6)
@@ -617,7 +707,10 @@ async function initEmbedding(config: Config, store: StorePort): Promise<{
   const dimensions = probeResult.value.length;
 
   // 4. Create vector index port (NOW we know dimensions)
-  const vectorResult = await createVectorIndexPort(db, { model: modelUri, dimensions });
+  const vectorResult = await createVectorIndexPort(db, {
+    model: modelUri,
+    dimensions,
+  });
   if (!vectorResult.ok) throw new Error(vectorResult.error.message);
 
   // 5. Create stats port
@@ -667,7 +760,10 @@ export async function detectBacklog(
   options: BacklogOptions
 ): Promise<StoreResult<BacklogItem[]>> {
   if (!isSqliteDbProvider(store)) {
-    return { ok: false, error: { code: 'UNSUPPORTED_STORE', message: 'Backlog requires SQLite' } };
+    return {
+      ok: false,
+      error: { code: "UNSUPPORTED_STORE", message: "Backlog requires SQLite" },
+    };
   }
 
   const stats = createVectorStatsPort(store.getRawDb());
@@ -760,14 +856,17 @@ import { isSqliteDbProvider } from "../store/sqlite/types";
  * NOTE: --dry-run and interactive prompts are extensions to spec/cli.md.
  * Update spec/cli.md to document these before implementation.
  */
-export async function embedCommand(args: string[], config: Config): Promise<number> {
+export async function embedCommand(
+  args: string[],
+  config: Config
+): Promise<number> {
   const { values, positionals } = parseArgs({
     args,
     options: {
       force: { type: "boolean", default: false },
       model: { type: "string" },
       "batch-size": { type: "string", default: "32" }, // Per spec/cli.md
-      "dry-run": { type: "boolean", default: false },  // Extension to spec
+      "dry-run": { type: "boolean", default: false }, // Extension to spec
       yes: { type: "boolean", short: "y", default: false },
     },
     allowPositionals: false,
@@ -785,7 +884,9 @@ export async function embedCommand(args: string[], config: Config): Promise<numb
   const { embedPort, vectorIndex, stats } = await initEmbedding(config, store);
 
   if (!vectorIndex.searchAvailable) {
-    console.warn("Warning: sqlite-vec not available. Embeddings will be stored but KNN search disabled.");
+    console.warn(
+      "Warning: sqlite-vec not available. Embeddings will be stored but KNN search disabled."
+    );
   }
 
   // 3. Detect backlog
@@ -800,7 +901,7 @@ export async function embedCommand(args: string[], config: Config): Promise<numb
     // Force: get ALL chunks from active documents
     const allChunks = await store.getAllActiveChunks();
     if (!allChunks.ok) return 2;
-    backlog = allChunks.value.map(c => ({ ...c, reason: "force" as const }));
+    backlog = allChunks.value.map((c) => ({ ...c, reason: "force" as const }));
   }
 
   if (backlog.length === 0) {
@@ -810,7 +911,9 @@ export async function embedCommand(args: string[], config: Config): Promise<numb
 
   // 4. Confirm if large backlog
   if (backlog.length > 1000 && !values.yes) {
-    const confirm = await prompt(`Embed ${backlog.length.toLocaleString()} chunks? [y/N] `);
+    const confirm = await prompt(
+      `Embed ${backlog.length.toLocaleString()} chunks? [y/N] `
+    );
     if (confirm?.toLowerCase() !== "y") {
       console.log("Aborted.");
       return 1;
@@ -818,7 +921,9 @@ export async function embedCommand(args: string[], config: Config): Promise<numb
   }
 
   if (dryRun) {
-    console.log(`Dry run: would embed ${backlog.length} chunks with model ${modelUri}`);
+    console.log(
+      `Dry run: would embed ${backlog.length} chunks with model ${modelUri}`
+    );
     return 0;
   }
 
@@ -829,11 +934,13 @@ export async function embedCommand(args: string[], config: Config): Promise<numb
 
   for (let i = 0; i < backlog.length; i += batchSize) {
     const batch = backlog.slice(i, i + batchSize);
-    const texts = batch.map(b => b.text);
+    const texts = batch.map((b) => b.text);
 
     const embedResult = await embedPort.embedBatch(texts);
     if (!embedResult.ok) {
-      console.error(`Batch ${Math.floor(i/batchSize) + 1} failed: ${embedResult.error.message}`);
+      console.error(
+        `Batch ${Math.floor(i / batchSize) + 1} failed: ${embedResult.error.message}`
+      );
       errors += batch.length;
       continue;
     }
@@ -857,7 +964,7 @@ export async function embedCommand(args: string[], config: Config): Promise<numb
     embedded += batch.length;
 
     // Progress
-    const pct = ((i + batch.length) / backlog.length * 100).toFixed(1);
+    const pct = (((i + batch.length) / backlog.length) * 100).toFixed(1);
     const elapsed = (Date.now() - startTime) / 1000;
     const rate = embedded / elapsed;
     const eta = (backlog.length - embedded) / rate;
@@ -870,7 +977,9 @@ export async function embedCommand(args: string[], config: Config): Promise<numb
   console.log(); // newline after progress
 
   const duration = (Date.now() - startTime) / 1000;
-  console.log(`Embedded ${embedded.toLocaleString()} chunks in ${formatDuration(duration)}`);
+  console.log(
+    `Embedded ${embedded.toLocaleString()} chunks in ${formatDuration(duration)}`
+  );
   if (errors > 0) {
     console.log(`${errors} chunks failed to embed.`);
     return 2;
@@ -894,7 +1003,7 @@ export function calculateBatchSize(
   const contextLimit = Math.floor(modelContextSize / avgChunkTokens / 2);
 
   // Memory limit: ~4KB per float32 embedding * 768 dimensions
-  const memoryLimit = Math.floor(maxMemoryMb * 1024 / (768 * 4));
+  const memoryLimit = Math.floor((maxMemoryMb * 1024) / (768 * 4));
 
   // Default reasonable batch
   const defaultBatch = 64;
@@ -910,9 +1019,9 @@ export function calculateBatchSize(
 ```typescript
 // Error codes for embedding failures (use with ingest_errors table)
 export const EMBED_ERROR_CODES = {
-  EMBED_TOO_LONG: 'EMBED_TOO_LONG',           // Chunk exceeds model context
-  EMBED_INFERENCE_FAILED: 'EMBED_INFERENCE_FAILED', // Model inference error
-  EMBED_MALFORMED: 'EMBED_MALFORMED',         // Invalid chunk content
+  EMBED_TOO_LONG: "EMBED_TOO_LONG", // Chunk exceeds model context
+  EMBED_INFERENCE_FAILED: "EMBED_INFERENCE_FAILED", // Model inference error
+  EMBED_MALFORMED: "EMBED_MALFORMED", // Invalid chunk content
 } as const;
 
 export type EmbedError = {
@@ -926,14 +1035,21 @@ export type EmbedError = {
 // Store failed chunks in ingest_errors for retry/debugging
 // Actual schema: ingest_errors(id, collection, rel_path, occurred_at, code, message, details_json)
 // Strategy: resolve (mirror_hash, seq) → (collection, rel_path) via documents table
-async function recordEmbedError(db: Database, error: EmbedError): Promise<void> {
+async function recordEmbedError(
+  db: Database,
+  error: EmbedError
+): Promise<void> {
   // Find a document for this mirror_hash to get collection/rel_path
   // If multiple docs share mirror, pick first active one (deterministic via ORDER BY)
-  const doc = db.prepare(`
+  const doc = db
+    .prepare(
+      `
     SELECT collection, rel_path FROM documents
     WHERE mirror_hash = ? AND active = 1
     ORDER BY id LIMIT 1
-  `).get(error.mirrorHash) as { collection: string; rel_path: string } | null;
+  `
+    )
+    .get(error.mirrorHash) as { collection: string; rel_path: string } | null;
 
   if (!doc) {
     // No active document - chunk is orphaned, skip error recording
@@ -948,10 +1064,12 @@ async function recordEmbedError(db: Database, error: EmbedError): Promise<void> 
 
   // Note: ingest_errors has no UNIQUE constraint, so we just INSERT
   // Multiple errors for same file are allowed (shows history)
-  db.prepare(`
+  db.prepare(
+    `
     INSERT INTO ingest_errors (collection, rel_path, code, message, details_json, occurred_at)
     VALUES (?, ?, ?, ?, ?, datetime('now'))
-  `).run(doc.collection, doc.rel_path, error.code, error.message, detailsJson);
+  `
+  ).run(doc.collection, doc.rel_path, error.code, error.message, detailsJson);
 }
 ```
 
@@ -1014,7 +1132,7 @@ async function checkModelSwitch(
     GROUP BY model
   `);
 
-  const existing = stats.value.find(s => s.model !== newModel);
+  const existing = stats.value.find((s) => s.model !== newModel);
   if (existing) {
     return { switching: true, oldModel: existing.model, count: existing.count };
   }
@@ -1115,17 +1233,18 @@ try {
 gno embed [--force] [--model <uri>] [--batch-size <n>] [--dry-run] [--yes]
 
 Options:
-  --dry-run     Show what would be embedded without doing it
-  --yes, -y     Skip confirmation prompts (for scripted usage)
+--dry-run Show what would be embedded without doing it
+--yes, -y Skip confirmation prompts (for scripted usage)
 
 Interactive behavior:
-  - If backlog > 1000 chunks, prompt for confirmation (unless --yes)
-  - If model not available, prompt to download (unless --yes exits with code 2)
+
+- If backlog > 1000 chunks, prompt for confirmation (unless --yes)
+- If model not available, prompt to download (unless --yes exits with code 2)
 
 Exit codes:
-  0: Success
-  1: User cancelled
-  2: Model not available or embedding failure
+0: Success
+1: User cancelled
+2: Model not available or embedding failure
 ```
 
 ### Decision 6: Foreign Key Enforcement at Adapter Level
@@ -1163,15 +1282,22 @@ async function onDocumentRechunked(mirrorHash: string, store: StorePort) {
   const db = store.getRawDb();
 
   // Get all models that have vectors for this mirror
-  const models = db.prepare(`
+  const models = db
+    .prepare(
+      `
     SELECT DISTINCT model FROM content_vectors WHERE mirror_hash = ?
-  `).all(mirrorHash) as { model: string }[];
+  `
+    )
+    .all(mirrorHash) as { model: string }[];
 
   for (const { model } of models) {
     // Probe for dimensions (use cached if available)
     const dims = await getModelDimensions(model);
     if (dims) {
-      const vecPort = await createVectorIndexPort(db, { model, dimensions: dims });
+      const vecPort = await createVectorIndexPort(db, {
+        model,
+        dimensions: dims,
+      });
       if (vecPort.ok) {
         await vecPort.value.syncVecIndex();
       }

@@ -40,14 +40,16 @@ export const toolName: Tool = {
   description: "What this tool does",
   inputSchema: {
     type: "object",
-    properties: { /* ... */ },
+    properties: {
+      /* ... */
+    },
     required: ["query"],
   },
 };
 
 export async function handleToolName(
   args: ToolArgs,
-  store: SqliteAdapter,
+  store: SqliteAdapter
   // ... other ports
 ): Promise<CallToolResult> {
   // 1. Validate args

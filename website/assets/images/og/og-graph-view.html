@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <style>
-      @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Crimson+Pro:ital,wght@1,400&display=swap');
+      @import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Crimson+Pro:ital,wght@1,400&display=swap");
 
       * {
         margin: 0;
@@ -39,7 +39,11 @@
         position: absolute;
         width: 500px;
         height: 500px;
-        background: radial-gradient(circle, rgba(77, 184, 168, 0.2) 0%, transparent 60%);
+        background: radial-gradient(
+          circle,
+          rgba(77, 184, 168, 0.2) 0%,
+          transparent 60%
+        );
         top: 50%;
         left: 180px;
         transform: translateY(-50%);
@@ -52,10 +56,30 @@
         border: 2px solid rgba(77, 184, 168, 0.3);
       }
 
-      .corner-tl { top: 30px; left: 30px; border-right: none; border-bottom: none; }
-      .corner-tr { top: 30px; right: 30px; border-left: none; border-bottom: none; }
-      .corner-bl { bottom: 30px; left: 30px; border-right: none; border-top: none; }
-      .corner-br { bottom: 30px; right: 30px; border-left: none; border-top: none; }
+      .corner-tl {
+        top: 30px;
+        left: 30px;
+        border-right: none;
+        border-bottom: none;
+      }
+      .corner-tr {
+        top: 30px;
+        right: 30px;
+        border-left: none;
+        border-bottom: none;
+      }
+      .corner-bl {
+        bottom: 30px;
+        left: 30px;
+        border-right: none;
+        border-top: none;
+      }
+      .corner-br {
+        bottom: 30px;
+        right: 30px;
+        border-left: none;
+        border-top: none;
+      }
 
       .icon-section {
         width: 400px;
@@ -106,7 +130,7 @@
       }
 
       .gno-badge span {
-        font-family: 'Space Grotesk', sans-serif;
+        font-family: "Space Grotesk", sans-serif;
         font-size: 18px;
         font-weight: 500;
         color: #4db8a8;
@@ -114,7 +138,7 @@
       }
 
       .feature-title {
-        font-family: 'Space Grotesk', sans-serif;
+        font-family: "Space Grotesk", sans-serif;
         font-size: 58px;
         font-weight: 700;
         color: #ffffff;
@@ -132,7 +156,7 @@
       }
 
       .tagline {
-        font-family: 'Crimson Pro', Georgia, serif;
+        font-family: "Crimson Pro", Georgia, serif;
         font-size: 32px;
         color: rgba(255, 255, 255, 0.7);
         font-style: italic;
@@ -143,7 +167,7 @@
         position: absolute;
         bottom: 40px;
         right: 50px;
-        font-family: 'Space Grotesk', monospace;
+        font-family: "Space Grotesk", monospace;
         font-size: 18px;
         color: #4db8a8;
         letter-spacing: 2px;
@@ -159,12 +183,38 @@
         border: 1px solid rgba(77, 184, 168, 0.6);
       }
 
-      .graph-node-1 { top: 140px; left: 70px; }
-      .graph-node-2 { top: 180px; left: 140px; width: 8px; height: 8px; }
-      .graph-node-3 { top: 240px; left: 60px; width: 10px; height: 10px; }
-      .graph-node-4 { bottom: 200px; left: 100px; }
-      .graph-node-5 { bottom: 160px; left: 160px; width: 8px; height: 8px; }
-      .graph-node-6 { top: 200px; left: 300px; width: 10px; height: 10px; }
+      .graph-node-1 {
+        top: 140px;
+        left: 70px;
+      }
+      .graph-node-2 {
+        top: 180px;
+        left: 140px;
+        width: 8px;
+        height: 8px;
+      }
+      .graph-node-3 {
+        top: 240px;
+        left: 60px;
+        width: 10px;
+        height: 10px;
+      }
+      .graph-node-4 {
+        bottom: 200px;
+        left: 100px;
+      }
+      .graph-node-5 {
+        bottom: 160px;
+        left: 160px;
+        width: 8px;
+        height: 8px;
+      }
+      .graph-node-6 {
+        top: 200px;
+        left: 300px;
+        width: 10px;
+        height: 10px;
+      }
 
       .graph-edge {
         position: absolute;
@@ -173,10 +223,30 @@
         transform-origin: left center;
       }
 
-      .edge-1 { width: 60px; top: 146px; left: 82px; transform: rotate(30deg); }
-      .edge-2 { width: 50px; top: 186px; left: 148px; transform: rotate(50deg); }
-      .edge-3 { width: 70px; top: 250px; left: 70px; transform: rotate(-20deg); }
-      .edge-4 { width: 55px; bottom: 206px; left: 112px; transform: rotate(-40deg); }
+      .edge-1 {
+        width: 60px;
+        top: 146px;
+        left: 82px;
+        transform: rotate(30deg);
+      }
+      .edge-2 {
+        width: 50px;
+        top: 186px;
+        left: 148px;
+        transform: rotate(50deg);
+      }
+      .edge-3 {
+        width: 70px;
+        top: 250px;
+        left: 70px;
+        transform: rotate(-20deg);
+      }
+      .edge-4 {
+        width: 55px;
+        bottom: 206px;
+        left: 112px;
+        transform: rotate(-40deg);
+      }
     </style>
   </head>
   <body>

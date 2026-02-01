@@ -17,7 +17,7 @@ async function getUser(id: string): Promise<User> {
   // Cache miss - fetch from database
   const user = await db.users.findById(id);
   if (user) {
-    await redis.set(`user:${id}`, JSON.stringify(user), 'EX', 3600);
+    await redis.set(`user:${id}`, JSON.stringify(user), "EX", 3600);
   }
 
   return user;
@@ -34,7 +34,7 @@ async function updateUser(id: string, data: Partial<User>): Promise<User> {
   const user = await db.users.update(id, data);
 
   // Update cache synchronously
-  await redis.set(`user:${id}`, JSON.stringify(user), 'EX', 3600);
+  await redis.set(`user:${id}`, JSON.stringify(user), "EX", 3600);
 
   return user;
 }
@@ -79,7 +79,7 @@ async function getWithLock(key: string, fetchFn: () => Promise<unknown>) {
   if (cached) return JSON.parse(cached);
 
   const lockKey = `lock:${key}`;
-  const acquired = await redis.set(lockKey, '1', 'NX', 'EX', 10);
+  const acquired = await redis.set(lockKey, "1", "NX", "EX", 10);
 
   if (!acquired) {
     // Another process is fetching, wait and retry
@@ -89,7 +89,7 @@ async function getWithLock(key: string, fetchFn: () => Promise<unknown>) {
 
   try {
     const data = await fetchFn();
-    await redis.set(key, JSON.stringify(data), 'EX', 3600);
+    await redis.set(key, JSON.stringify(data), "EX", 3600);
     return data;
   } finally {
     await redis.del(lockKey);

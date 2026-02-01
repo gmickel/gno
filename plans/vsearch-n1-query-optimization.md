@@ -105,7 +105,7 @@ After:
 
 ```typescript
 // Pre-fetch all chunks in one query
-const uniqueHashes = [...new Set(vecResults.map(v => v.mirrorHash))];
+const uniqueHashes = [...new Set(vecResults.map((v) => v.mirrorHash))];
 const chunksMapResult = await store.getChunksBatch(uniqueHashes);
 if (!chunksMapResult.ok) {
   return err(chunksMapResult.error);
@@ -130,7 +130,7 @@ const chunksCache = new Map<string, ChunkRow[]>();
 // ... per-candidate: store.getChunks(mirrorHash) if not cached
 
 // After: Single batch prefetch before result building
-const neededHashes = [...new Set(candidates.map(c => c.mirrorHash))];
+const neededHashes = [...new Set(candidates.map((c) => c.mirrorHash))];
 const chunksMapResult = await store.getChunksBatch(neededHashes);
 if (!chunksMapResult.ok) return err(chunksMapResult.error);
 const chunksMap = chunksMapResult.value;
@@ -152,7 +152,9 @@ All test mocks implementing StorePort must include `getChunksBatch`:
 
 ```typescript
 const mockStore: Partial<StorePort> = {
-  getChunks: async () => { throw new Error('getChunks should not be called'); },
+  getChunks: async () => {
+    throw new Error("getChunks should not be called");
+  },
   getChunksBatch: async (hashes) => ok(new Map(/* test data */)),
   // ...
 };
@@ -209,7 +211,9 @@ Verify N+1 removal deterministically:
 
 ```typescript
 // Mock getChunks to throw - ensures pipeline uses batch
-getChunks: async () => { throw new Error('N+1 detected'); }
+getChunks: async () => {
+  throw new Error("N+1 detected");
+};
 ```
 
 ## References

@@ -52,7 +52,7 @@ interface ServerContext {
   embedPort: EmbeddingPort | null;
   genPort: GenerationPort | null;
   rerankPort: RerankPort | null;
-  capabilities: { bm25, vector, hybrid, answer };
+  capabilities: { bm25; vector; hybrid; answer };
 }
 ```
 
@@ -113,7 +113,7 @@ Use HTML imports with `Bun.serve()`. Don't use `vite`. HTML imports fully suppor
 Server example:
 
 ```ts
-import index from "./index.html"
+import index from "./index.html";
 
 Bun.serve({
   routes: {
@@ -134,13 +134,13 @@ Bun.serve({
     },
     close: (ws) => {
       // handle close
-    }
+    },
   },
   development: {
     hmr: true,
     console: true,
-  }
-})
+  },
+});
 ```
 
 HTML files can import .tsx, .jsx or .js files directly and Bun's bundler will transpile & bundle automatically. `<link>` tags can point to stylesheets and Bun's CSS bundler will bundle.
@@ -160,7 +160,7 @@ With the following `frontend.tsx`:
 import React from "react";
 
 // import .css files directly and it works
-import './index.css';
+import "./index.css";
 
 import { createRoot } from "react-dom/client";
 

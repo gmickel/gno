@@ -57,14 +57,14 @@ config/
 ### Validazione all'Avvio
 
 ```typescript
-import { z } from 'zod';
+import { z } from "zod";
 
 const envSchema = z.object({
   DATABASE_URL: z.string().url(),
   JWT_SECRET: z.string().min(32),
-  NODE_ENV: z.enum(['development', 'production', 'test']),
+  NODE_ENV: z.enum(["development", "production", "test"]),
   PORT: z.coerce.number().default(3000),
-  LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).default('info'),
+  LOG_LEVEL: z.enum(["debug", "info", "warn", "error"]).default("info"),
 });
 
 const env = envSchema.parse(process.env);
@@ -104,7 +104,7 @@ CMD ["node", "dist/server.js"]
 ### Docker Compose
 
 ```yaml
-version: '3.8'
+version: "3.8"
 
 services:
   app:
@@ -206,7 +206,7 @@ spec:
 export const developmentConfig = {
   debug: true,
   logging: {
-    level: 'debug',
+    level: "debug",
     prettyPrint: true,
   },
   database: {
@@ -222,7 +222,7 @@ export const developmentConfig = {
 export const productionConfig = {
   debug: false,
   logging: {
-    level: 'info',
+    level: "info",
     prettyPrint: false,
   },
   database: {

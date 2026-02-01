@@ -204,13 +204,19 @@ See `website/assets/images/og/CLAUDE.md` for template details.
 
 ```markdown
 ## [Unreleased]
+
 ### Added
+
 - New feature description
 
 ## [0.2.0] - 2025-01-15
+
 ### Added
+
 - Feature from this release
+
 ### Fixed
+
 - Bug that was fixed
 ```
 

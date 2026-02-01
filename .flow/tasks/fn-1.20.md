@@ -47,7 +47,7 @@ Populate dynamically on first run from `/api/presets`.
 Before Ask command, check capabilities:
 
 ```typescript
-const { data } = await apiRequest<PresetsResponse>('/api/presets');
+const { data } = await apiRequest<PresetsResponse>("/api/presets");
 if (!data.capabilities.answer) {
   // Show toast: "AI model not loaded. Download models first."
   // Offer action to open Manage AI Models command

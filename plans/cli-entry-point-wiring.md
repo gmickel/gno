@@ -80,11 +80,11 @@ src/cli/help.ts       → Custom grouped help renderer (optional)
  * Thin bootstrap that delegates to CLI runner.
  */
 
-import { runCli } from './cli/run';
+import { runCli } from "./cli/run";
 
 // SIGINT handler for graceful shutdown
-process.on('SIGINT', () => {
-  process.stderr.write('\nInterrupted\n');
+process.on("SIGINT", () => {
+  process.stderr.write("\nInterrupted\n");
   process.exit(130);
 });
 
@@ -101,9 +101,9 @@ runCli(process.argv).then((code) => {
  * CLI runner - main entry point.
  */
 
-import { createProgram } from './program';
-import { CliError, formatErrorForOutput, exitCodeFor } from './errors';
-import { resolveGlobalOptions, type GlobalContext } from './context';
+import { createProgram } from "./program";
+import { CliError, formatErrorForOutput, exitCodeFor } from "./errors";
+import { resolveGlobalOptions, type GlobalContext } from "./context";
 
 export async function runCli(argv: string[]): Promise<number> {
   const program = createProgram();
@@ -115,21 +115,23 @@ export async function runCli(argv: string[]): Promise<number> {
     if (err instanceof CliError) {
       const globals = resolveGlobalOptions(program.opts());
       const output = formatErrorForOutput(err, globals);
-      process.stderr.write(output + '\n');
+      process.stderr.write(output + "\n");
       return exitCodeFor(err);
     }
 
     // Commander errors (missing args, unknown options)
-    if (err && typeof err === 'object' && 'code' in err) {
+    if (err && typeof err === "object" && "code" in err) {
       const code = (err as { code: string }).code;
-      if (code.startsWith('commander.')) {
+      if (code.startsWith("commander.")) {
         process.stderr.write(`Error: ${(err as Error).message}\n`);
         return 1; // Validation error
       }
     }
 
     // Unexpected errors
-    process.stderr.write(`Error: ${err instanceof Error ? err.message : String(err)}\n`);
+    process.stderr.write(
+      `Error: ${err instanceof Error ? err.message : String(err)}\n`
+    );
     return 2; // Runtime error
   }
 }
@@ -142,22 +144,26 @@ export async function runCli(argv: string[]): Promise<number> {
  * CLI error model aligned to spec.
  */
 
-export type CliErrorCode = 'VALIDATION' | 'RUNTIME';
+export type CliErrorCode = "VALIDATION" | "RUNTIME";
 
 export class CliError extends Error {
   readonly code: CliErrorCode;
   readonly details?: Record<string, unknown>;
 
-  constructor(code: CliErrorCode, message: string, details?: Record<string, unknown>) {
+  constructor(
+    code: CliErrorCode,
+    message: string,
+    details?: Record<string, unknown>
+  ) {
     super(message);
     this.code = code;
     this.details = details;
-    this.name = 'CliError';
+    this.name = "CliError";
   }
 }
 
 export function exitCodeFor(err: CliError): 1 | 2 {
-  return err.code === 'VALIDATION' ? 1 : 2;
+  return err.code === "VALIDATION" ? 1 : 2;
 }
 
 export function formatErrorForOutput(
@@ -197,11 +203,11 @@ export function resolveGlobalOptions(
   env = process.env
 ): GlobalOptions {
   // NO_COLOR env var support (https://no-color.org/)
-  const noColorEnv = env.NO_COLOR !== undefined && env.NO_COLOR !== '';
+  const noColorEnv = env.NO_COLOR !== undefined && env.NO_COLOR !== "";
   const noColorFlag = raw.color === false; // --no-color sets color to false
 
   return {
-    index: (raw.index as string) ?? 'default',
+    index: (raw.index as string) ?? "default",
     config: raw.config as string | undefined,
     color: !noColorEnv && !noColorFlag,
     verbose: Boolean(raw.verbose),
@@ -217,23 +223,23 @@ export function resolveGlobalOptions(
  * Output format selection and validation.
  */
 
-import { CliError } from './errors';
+import { CliError } from "./errors";
 
-export type OutputFormat = 'terminal' | 'json' | 'files' | 'csv' | 'md' | 'xml';
+export type OutputFormat = "terminal" | "json" | "files" | "csv" | "md" | "xml";
 
 // Format support matrix per command (from spec/cli.md)
 const FORMAT_SUPPORT: Record<string, OutputFormat[]> = {
-  search: ['terminal', 'json', 'files', 'csv', 'md', 'xml'],
-  vsearch: ['terminal', 'json', 'files', 'csv', 'md', 'xml'],
-  query: ['terminal', 'json', 'files', 'csv', 'md', 'xml'],
-  ask: ['terminal', 'json', 'md'],
-  get: ['terminal', 'json'],
-  'multi-get': ['terminal', 'json'],
-  ls: ['terminal', 'json'],
-  status: ['terminal', 'json'],
-  'collection-list': ['terminal', 'json', 'md'],
-  'context-list': ['terminal', 'json'],
-  'models-list': ['terminal', 'json'],
+  search: ["terminal", "json", "files", "csv", "md", "xml"],
+  vsearch: ["terminal", "json", "files", "csv", "md", "xml"],
+  query: ["terminal", "json", "files", "csv", "md", "xml"],
+  ask: ["terminal", "json", "md"],
+  get: ["terminal", "json"],
+  "multi-get": ["terminal", "json"],
+  ls: ["terminal", "json"],
+  status: ["terminal", "json"],
+  "collection-list": ["terminal", "json", "md"],
+  "context-list": ["terminal", "json"],
+  "models-list": ["terminal", "json"],
 };
 
 export function selectOutputFormat(flags: {
@@ -244,28 +250,28 @@ export function selectOutputFormat(flags: {
   xml?: boolean;
 }): OutputFormat {
   const selected: OutputFormat[] = [];
-  if (flags.json) selected.push('json');
-  if (flags.files) selected.push('files');
-  if (flags.csv) selected.push('csv');
-  if (flags.md) selected.push('md');
-  if (flags.xml) selected.push('xml');
+  if (flags.json) selected.push("json");
+  if (flags.files) selected.push("files");
+  if (flags.csv) selected.push("csv");
+  if (flags.md) selected.push("md");
+  if (flags.xml) selected.push("xml");
 
   if (selected.length > 1) {
     throw new CliError(
-      'VALIDATION',
-      `Conflicting output formats: ${selected.join(', ')}. Choose one.`
+      "VALIDATION",
+      `Conflicting output formats: ${selected.join(", ")}. Choose one.`
     );
   }
 
-  return selected[0] ?? 'terminal';
+  return selected[0] ?? "terminal";
 }
 
 export function assertFormatSupported(cmd: string, format: OutputFormat): void {
   const supported = FORMAT_SUPPORT[cmd];
   if (supported && !supported.includes(format)) {
     throw new CliError(
-      'VALIDATION',
-      `Format --${format} is not supported by '${cmd}'. Supported: ${supported.join(', ')}`
+      "VALIDATION",
+      `Format --${format} is not supported by '${cmd}'. Supported: ${supported.join(", ")}`
     );
   }
 }
@@ -274,7 +280,7 @@ export function assertFormatSupported(cmd: string, format: OutputFormat): void {
  * Get default limit based on format (spec: 5 for terminal, 20 for structured).
  */
 export function getDefaultLimit(format: OutputFormat): number {
-  return format === 'terminal' ? 5 : 20;
+  return format === "terminal" ? 5 : 20;
 }
 ```
 
@@ -285,11 +291,15 @@ export function getDefaultLimit(format: OutputFormat): number {
  * Commander program definition.
  */
 
-import { Command } from 'commander';
-import { CLI_NAME, VERSION, PRODUCT_NAME } from '../app/constants';
-import { CliError } from './errors';
-import { resolveGlobalOptions } from './context';
-import { selectOutputFormat, assertFormatSupported, getDefaultLimit } from './options';
+import { Command } from "commander";
+import { CLI_NAME, VERSION, PRODUCT_NAME } from "../app/constants";
+import { CliError } from "./errors";
+import { resolveGlobalOptions } from "./context";
+import {
+  selectOutputFormat,
+  assertFormatSupported,
+  getDefaultLimit,
+} from "./options";
 
 export function createProgram(): Command {
   const program = new Command();
@@ -301,11 +311,11 @@ export function createProgram(): Command {
 
   // Global flags
   program
-    .option('--index <name>', 'index name', 'default')
-    .option('--config <path>', 'config file path')
-    .option('--no-color', 'disable colors')
-    .option('--verbose', 'verbose logging')
-    .option('--yes', 'non-interactive mode');
+    .option("--index <name>", "index name", "default")
+    .option("--config <path>", "config file path")
+    .option("--no-color", "disable colors")
+    .option("--verbose", "verbose logging")
+    .option("--yes", "non-interactive mode");
 
   // Wire commands
   wireSearchCommands(program);
@@ -320,42 +330,46 @@ export function createProgram(): Command {
 function wireSearchCommands(program: Command): void {
   // Search command
   program
-    .command('search <query>')
-    .description('BM25 keyword search')
-    .option('-n <num>', 'max results')
-    .option('--min-score <num>', 'minimum score threshold')
-    .option('-c, --collection <name>', 'filter by collection')
-    .option('--full', 'include full content')
-    .option('--line-numbers', 'include line numbers')
-    .option('--lang <code>', 'language filter')
-    .option('--json', 'JSON output')
-    .option('--md', 'Markdown output')
-    .option('--csv', 'CSV output')
-    .option('--xml', 'XML output')
-    .option('--files', 'file paths only')
+    .command("search <query>")
+    .description("BM25 keyword search")
+    .option("-n <num>", "max results")
+    .option("--min-score <num>", "minimum score threshold")
+    .option("-c, --collection <name>", "filter by collection")
+    .option("--full", "include full content")
+    .option("--line-numbers", "include line numbers")
+    .option("--lang <code>", "language filter")
+    .option("--json", "JSON output")
+    .option("--md", "Markdown output")
+    .option("--csv", "CSV output")
+    .option("--xml", "XML output")
+    .option("--files", "file paths only")
     .action(async (queryText, cmdOpts) => {
       const globals = resolveGlobalOptions(program.opts());
       const format = selectOutputFormat(cmdOpts);
-      assertFormatSupported('search', format);
+      assertFormatSupported("search", format);
 
-      const limit = cmdOpts.n ? parseInt(cmdOpts.n, 10) : getDefaultLimit(format);
+      const limit = cmdOpts.n
+        ? parseInt(cmdOpts.n, 10)
+        : getDefaultLimit(format);
 
-      const { search, formatSearch } = await import('./commands/search');
+      const { search, formatSearch } = await import("./commands/search");
       const result = await search(queryText, {
         ...cmdOpts,
         limit,
         configPath: globals.config,
-        json: format === 'json',
-        md: format === 'md',
-        csv: format === 'csv',
-        xml: format === 'xml',
-        files: format === 'files',
+        json: format === "json",
+        md: format === "md",
+        csv: format === "csv",
+        xml: format === "xml",
+        files: format === "files",
       });
 
-      console.log(formatSearch(result, { ...cmdOpts, json: format === 'json' }));
+      console.log(
+        formatSearch(result, { ...cmdOpts, json: format === "json" })
+      );
 
       if (!result.success) {
-        throw new CliError('RUNTIME', result.error);
+        throw new CliError("RUNTIME", result.error);
       }
     });
 

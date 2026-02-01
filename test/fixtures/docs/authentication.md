@@ -7,17 +7,17 @@ Authentication is the process of verifying user identity before granting access 
 JSON Web Tokens provide a stateless authentication mechanism:
 
 ```typescript
-import jwt from 'jsonwebtoken';
+import jwt from "jsonwebtoken";
 
 interface TokenPayload {
   userId: string;
   email: string;
-  role: 'admin' | 'user';
+  role: "admin" | "user";
 }
 
 function generateToken(payload: TokenPayload): string {
   return jwt.sign(payload, process.env.JWT_SECRET!, {
-    expiresIn: '24h',
+    expiresIn: "24h",
   });
 }
 
@@ -31,12 +31,12 @@ function verifyToken(token: string): TokenPayload {
 For server-rendered applications, session cookies offer better security:
 
 ```typescript
-import { createSession, destroySession } from './session';
+import { createSession, destroySession } from "./session";
 
 async function login(email: string, password: string) {
   const user = await validateCredentials(email, password);
   if (!user) {
-    throw new AuthError('Invalid credentials');
+    throw new AuthError("Invalid credentials");
   }
   return createSession(user.id);
 }

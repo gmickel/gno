@@ -249,6 +249,7 @@ gno similar gno://notes/auth.md --cross-collection
 
 ```markdown
 # In your documents:
+
 See [[API Design]] for details.
 Check [[work:Project Plan]] for cross-collection link.
 Read [[Security#OAuth]] for specific section.

@@ -109,16 +109,18 @@
 
     <!-- Theme script (prevent flash) + JS detection -->
     <script>
-      (function() {
+      (function () {
         // Enable JS-dependent CSS
-        document.documentElement.classList.remove('no-js');
-        document.documentElement.classList.add('js');
+        document.documentElement.classList.remove("no-js");
+        document.documentElement.classList.add("js");
         // Theme
-        var theme = localStorage.getItem('gno-theme');
+        var theme = localStorage.getItem("gno-theme");
         if (!theme) {
-          theme = window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+          theme = window.matchMedia("(prefers-color-scheme: light)").matches
+            ? "light"
+            : "dark";
         }
-        document.documentElement.setAttribute('data-theme', theme);
+        document.documentElement.setAttribute("data-theme", theme);
       })();
     </script>
 

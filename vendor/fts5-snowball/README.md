@@ -24,13 +24,15 @@ The Snowball stemmer supports: Arabic, Basque, Catalan, Danish, Dutch, English, 
 ## Usage
 
 ```typescript
-import { Database } from 'bun:sqlite';
+import { Database } from "bun:sqlite";
 
 // Load extension
-db.loadExtension('vendor/fts5-snowball/darwin-arm64/fts5stemmer.dylib');
+db.loadExtension("vendor/fts5-snowball/darwin-arm64/fts5stemmer.dylib");
 
 // Create FTS table with snowball tokenizer
-db.exec(`CREATE VIRTUAL TABLE docs USING fts5(content, tokenize='snowball english')`);
+db.exec(
+  `CREATE VIRTUAL TABLE docs USING fts5(content, tokenize='snowball english')`
+);
 ```
 
 ## License

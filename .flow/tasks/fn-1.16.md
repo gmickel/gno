@@ -26,32 +26,46 @@ REST API (apiSync)
 ## Implementation
 
 ```typescript
-import { showToast, Toast, showHUD } from '@raycast/api';
-import { apiSync, apiGetJob } from './lib/api';
+import { showToast, Toast, showHUD } from "@raycast/api";
+import { apiSync, apiGetJob } from "./lib/api";
 
 export default async function Command() {
   try {
-    await showToast({ style: Toast.Style.Animated, title: 'Updating index...' });
+    await showToast({
+      style: Toast.Style.Animated,
+      title: "Updating index...",
+    });
 
     const { jobId } = await apiSync();
 
     // Poll for completion
     let status = await apiGetJob(jobId);
-    while (status.status === 'running') {
-      await new Promise(r => setTimeout(r, 1000));
+    while (status.status === "running") {
+      await new Promise((r) => setTimeout(r, 1000));
       status = await apiGetJob(jobId);
     }
 
-    if (status.status === 'complete') {
-      await showHUD('Index updated');
+    if (status.status === "complete") {
+      await showHUD("Index updated");
     } else {
-      await showToast({ style: Toast.Style.Failure, title: 'Update failed', message: status.error });
+      await showToast({
+        style: Toast.Style.Failure,
+        title: "Update failed",
+        message: status.error,
+      });
     }
   } catch (error) {
-    if (String(error).includes('ECONNREFUSED')) {
-      await showToast({ style: Toast.Style.Failure, title: 'Start gno serve first' });
+    if (String(error).includes("ECONNREFUSED")) {
+      await showToast({
+        style: Toast.Style.Failure,
+        title: "Start gno serve first",
+      });
     } else {
-      await showToast({ style: Toast.Style.Failure, title: 'Failed', message: String(error) });
+      await showToast({
+        style: Toast.Style.Failure,
+        title: "Failed",
+        message: String(error),
+      });
     }
   }
 }

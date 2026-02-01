@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <style>
-      @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Crimson+Pro:ital,wght@1,400&display=swap');
+      @import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Crimson+Pro:ital,wght@1,400&display=swap");
 
       * {
         margin: 0;
@@ -39,7 +39,11 @@
         position: absolute;
         width: 500px;
         height: 500px;
-        background: radial-gradient(circle, rgba(77, 184, 168, 0.2) 0%, transparent 60%);
+        background: radial-gradient(
+          circle,
+          rgba(77, 184, 168, 0.2) 0%,
+          transparent 60%
+        );
         top: 50%;
         left: 180px;
         transform: translateY(-50%);
@@ -52,10 +56,30 @@
         border: 2px solid rgba(77, 184, 168, 0.3);
       }
 
-      .corner-tl { top: 30px; left: 30px; border-right: none; border-bottom: none; }
-      .corner-tr { top: 30px; right: 30px; border-left: none; border-bottom: none; }
-      .corner-bl { bottom: 30px; left: 30px; border-right: none; border-top: none; }
-      .corner-br { bottom: 30px; right: 30px; border-left: none; border-top: none; }
+      .corner-tl {
+        top: 30px;
+        left: 30px;
+        border-right: none;
+        border-bottom: none;
+      }
+      .corner-tr {
+        top: 30px;
+        right: 30px;
+        border-left: none;
+        border-bottom: none;
+      }
+      .corner-bl {
+        bottom: 30px;
+        left: 30px;
+        border-right: none;
+        border-top: none;
+      }
+      .corner-br {
+        bottom: 30px;
+        right: 30px;
+        border-left: none;
+        border-top: none;
+      }
 
       .icon-section {
         width: 400px;
@@ -106,7 +130,7 @@
       }
 
       .gno-badge span {
-        font-family: 'Space Grotesk', sans-serif;
+        font-family: "Space Grotesk", sans-serif;
         font-size: 18px;
         font-weight: 500;
         color: #4db8a8;
@@ -114,7 +138,7 @@
       }
 
       .feature-title {
-        font-family: 'Space Grotesk', sans-serif;
+        font-family: "Space Grotesk", sans-serif;
         font-size: 54px;
         font-weight: 700;
         color: #ffffff;
@@ -132,7 +156,7 @@
       }
 
       .tagline {
-        font-family: 'Crimson Pro', Georgia, serif;
+        font-family: "Crimson Pro", Georgia, serif;
         font-size: 30px;
         color: rgba(255, 255, 255, 0.7);
         font-style: italic;
@@ -143,7 +167,7 @@
         position: absolute;
         bottom: 40px;
         right: 50px;
-        font-family: 'Space Grotesk', monospace;
+        font-family: "Space Grotesk", monospace;
         font-size: 18px;
         color: #4db8a8;
         letter-spacing: 2px;
@@ -153,13 +177,38 @@
       .neural-path {
         position: absolute;
         height: 1px;
-        background: linear-gradient(90deg, transparent, rgba(77, 184, 168, 0.3), transparent);
+        background: linear-gradient(
+          90deg,
+          transparent,
+          rgba(77, 184, 168, 0.3),
+          transparent
+        );
       }
 
-      .neural-path-1 { width: 150px; top: 180px; left: 40px; transform: rotate(10deg); }
-      .neural-path-2 { width: 120px; top: 220px; left: 60px; transform: rotate(-5deg); }
-      .neural-path-3 { width: 100px; bottom: 200px; left: 80px; transform: rotate(15deg); }
-      .neural-path-4 { width: 80px; bottom: 240px; left: 100px; transform: rotate(-10deg); }
+      .neural-path-1 {
+        width: 150px;
+        top: 180px;
+        left: 40px;
+        transform: rotate(10deg);
+      }
+      .neural-path-2 {
+        width: 120px;
+        top: 220px;
+        left: 60px;
+        transform: rotate(-5deg);
+      }
+      .neural-path-3 {
+        width: 100px;
+        bottom: 200px;
+        left: 80px;
+        transform: rotate(15deg);
+      }
+      .neural-path-4 {
+        width: 80px;
+        bottom: 240px;
+        left: 100px;
+        transform: rotate(-10deg);
+      }
 
       .neural-node {
         position: absolute;
@@ -169,12 +218,30 @@
         border-radius: 50%;
       }
 
-      .node-1 { top: 175px; left: 50px; }
-      .node-2 { top: 190px; left: 180px; }
-      .node-3 { top: 215px; left: 70px; }
-      .node-4 { top: 225px; left: 170px; }
-      .node-5 { bottom: 195px; left: 90px; }
-      .node-6 { bottom: 210px; left: 170px; }
+      .node-1 {
+        top: 175px;
+        left: 50px;
+      }
+      .node-2 {
+        top: 190px;
+        left: 180px;
+      }
+      .node-3 {
+        top: 215px;
+        left: 70px;
+      }
+      .node-4 {
+        top: 225px;
+        left: 170px;
+      }
+      .node-5 {
+        bottom: 195px;
+        left: 90px;
+      }
+      .node-6 {
+        bottom: 210px;
+        left: 170px;
+      }
     </style>
   </head>
   <body>

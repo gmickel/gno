@@ -96,14 +96,14 @@ All specs defined in `spec/cli.md`, schemas in `spec/output-schemas/`.
 ```ts
 // ref-parser.ts - Pure lexical parsing, NO store/config access
 
-export type RefType = 'docid' | 'uri' | 'collPath';
+export type RefType = "docid" | "uri" | "collPath";
 
 export type ParsedRef = {
   type: RefType;
-  value: string;          // normalized ref (without :line suffix)
-  collection?: string;    // for collPath
-  relPath?: string;       // for collPath
-  line?: number;          // parsed :line suffix (1-indexed)
+  value: string; // normalized ref (without :line suffix)
+  collection?: string; // for collPath
+  relPath?: string; // for collPath
+  line?: number; // parsed :line suffix (1-indexed)
 };
 
 export type ParseRefResult = ParsedRef | { error: string };
@@ -116,15 +116,15 @@ export type ParseRefResult = ParsedRef | { error: string };
  */
 export function parseRef(ref: string): ParseRefResult {
   // 1. DocID: starts with #, validate pattern
-  if (ref.startsWith('#')) {
-    if (ref.includes(':')) {
-      return { error: 'Docid refs cannot have :line suffix' };
+  if (ref.startsWith("#")) {
+    if (ref.includes(":")) {
+      return { error: "Docid refs cannot have :line suffix" };
     }
     // Validate docid format: #[a-f0-9]{6,8}
     if (!/^#[a-f0-9]{6,8}$/.test(ref)) {
       return { error: `Invalid docid format: ${ref}` };
     }
-    return { type: 'docid', value: ref };
+    return { type: "docid", value: ref };
   }
 
   // 2. Parse optional :line suffix for URI and collPath
@@ -137,19 +137,19 @@ export function parseRef(ref: string): ParseRefResult {
   }
 
   // 3. URI: starts with gno://
-  if (baseRef.startsWith('gno://')) {
-    return { type: 'uri', value: baseRef, line };
+  if (baseRef.startsWith("gno://")) {
+    return { type: "uri", value: baseRef, line };
   }
 
   // 4. Collection/path: must contain /
-  const slashIdx = baseRef.indexOf('/');
+  const slashIdx = baseRef.indexOf("/");
   if (slashIdx === -1) {
     return { error: `Invalid ref format (missing /): ${ref}` };
   }
   const collection = baseRef.slice(0, slashIdx);
   const relPath = baseRef.slice(slashIdx + 1);
 
-  return { type: 'collPath', value: baseRef, collection, relPath, line };
+  return { type: "collPath", value: baseRef, collection, relPath, line };
 }
 
 /**
@@ -158,7 +158,7 @@ export function parseRef(ref: string): ParseRefResult {
 export function splitRefs(refs: string[]): string[] {
   const result: string[] = [];
   for (const r of refs) {
-    for (const part of r.split(',')) {
+    for (const part of r.split(",")) {
       const trimmed = part.trim();
       if (trimmed) result.push(trimmed);
     }
@@ -181,15 +181,15 @@ export function isGlobPattern(ref: string): boolean {
 ````ts
 // get.ts - follows search.ts pattern
 
-import { CliError } from '../errors';
-import { addLineNumbers } from '../format/search-results';
-import { parseRef, type ParsedRef } from './ref-parser';
-import { initStore } from './shared';
+import { CliError } from "../errors";
+import { addLineNumbers } from "../format/search-results";
+import { parseRef, type ParsedRef } from "./ref-parser";
+import { initStore } from "./shared";
 
 export type GetCommandOptions = {
   configPath?: string;
-  from?: number;      // --from <line>, overrides :line suffix
-  limit?: number;     // -l <lines>
+  from?: number; // --from <line>, overrides :line suffix
+  limit?: number; // -l <lines>
   lineNumbers?: boolean;
   source?: boolean;
   json?: boolean;
@@ -224,10 +224,13 @@ export type GetResponse = {
   };
 };
 
-export async function get(ref: string, options: GetCommandOptions): Promise<GetResult> {
+export async function get(
+  ref: string,
+  options: GetCommandOptions
+): Promise<GetResult> {
   // 1. Parse ref
   const parsed = parseRef(ref);
-  if ('error' in parsed) {
+  if ("error" in parsed) {
     return { success: false, error: parsed.error, isValidation: true };
   }
 
@@ -242,14 +245,17 @@ export async function get(ref: string, options: GetCommandOptions): Promise<GetR
     // 3. Lookup document by type
     let docResult;
     switch (parsed.type) {
-      case 'docid':
+      case "docid":
         docResult = await store.getDocumentByDocid(parsed.value);
         break;
-      case 'uri':
+      case "uri":
         docResult = await store.getDocumentByUri(parsed.value);
         break;
-      case 'collPath':
-        docResult = await store.getDocument(parsed.collection!, parsed.relPath!);
+      case "collPath":
+        docResult = await store.getDocument(
+          parsed.collection!,
+          parsed.relPath!
+        );
         break;
     }
 
@@ -260,21 +266,24 @@ export async function get(ref: string, options: GetCommandOptions): Promise<GetR
 
     // 4. Check doc exists and is active
     if (!doc || !doc.active) {
-      return { success: false, error: 'Document not found' };
+      return { success: false, error: "Document not found" };
     }
 
     // 5. Check mirror content exists
     if (!doc.mirrorHash) {
-      return { success: false, error: 'Mirror content unavailable (conversion error)' };
+      return {
+        success: false,
+        error: "Mirror content unavailable (conversion error)",
+      };
     }
 
     const contentResult = await store.getContent(doc.mirrorHash);
     if (!contentResult.ok || contentResult.value === null) {
-      return { success: false, error: 'Mirror content unavailable' };
+      return { success: false, error: "Mirror content unavailable" };
     }
 
     // 6. Apply line range
-    const lines = contentResult.value.split('\n');
+    const lines = contentResult.value.split("\n");
     const totalLines = lines.length;
 
     // --from overrides :line suffix
@@ -286,7 +295,7 @@ export async function get(ref: string, options: GetCommandOptions): Promise<GetR
     const clampedEnd = Math.min(clampedStart + limit - 1, totalLines);
 
     const selectedLines = lines.slice(clampedStart - 1, clampedEnd);
-    let content = selectedLines.join('\n');
+    let content = selectedLines.join("\n");
 
     // Determine if partial
     const isPartial = clampedStart > 1 || clampedEnd < totalLines;
@@ -300,7 +309,9 @@ export async function get(ref: string, options: GetCommandOptions): Promise<GetR
         title: doc.title ?? undefined,
         content,
         totalLines,
-        returnedLines: isPartial ? { start: clampedStart, end: clampedEnd } : undefined,
+        returnedLines: isPartial
+          ? { start: clampedStart, end: clampedEnd }
+          : undefined,
         language: doc.languageHint ?? undefined,
         source: {
           relPath: doc.relPath,
@@ -309,11 +320,13 @@ export async function get(ref: string, options: GetCommandOptions): Promise<GetR
           sizeBytes: doc.sourceSize,
           sourceHash: doc.sourceHash,
         },
-        conversion: doc.converterId ? {
-          converterId: doc.converterId,
-          converterVersion: doc.converterVersion ?? undefined,
-          mirrorHash: doc.mirrorHash,
-        } : undefined,
+        conversion: doc.converterId
+          ? {
+              converterId: doc.converterId,
+              converterVersion: doc.converterVersion ?? undefined,
+              mirrorHash: doc.mirrorHash,
+            }
+          : undefined,
       },
     };
   } finally {
@@ -324,10 +337,15 @@ export async function get(ref: string, options: GetCommandOptions): Promise<GetR
 /**
  * Format get result for output.
  */
-export function formatGet(result: GetResult, options: GetCommandOptions): string {
+export function formatGet(
+  result: GetResult,
+  options: GetCommandOptions
+): string {
   if (!result.success) {
     if (options.json) {
-      return JSON.stringify({ error: { code: 'GET_FAILED', message: result.error } });
+      return JSON.stringify({
+        error: { code: "GET_FAILED", message: result.error },
+      });
     }
     return `Error: ${result.error}`;
   }
@@ -341,19 +359,23 @@ export function formatGet(result: GetResult, options: GetCommandOptions): string
   if (options.md) {
     const lines: string[] = [];
     lines.push(`# ${data.title || data.source.relPath}`);
-    lines.push('');
+    lines.push("");
     lines.push(`- **URI**: \`${data.uri}\``);
     lines.push(`- **DocID**: \`${data.docid}\``);
     if (data.returnedLines) {
-      lines.push(`- **Lines**: ${data.returnedLines.start}-${data.returnedLines.end} of ${data.totalLines}`);
+      lines.push(
+        `- **Lines**: ${data.returnedLines.start}-${data.returnedLines.end} of ${data.totalLines}`
+      );
     }
-    lines.push('');
-    lines.push('```');
-    lines.push(options.lineNumbers && data.returnedLines
-      ? addLineNumbers(data.content, data.returnedLines.start)
-      : data.content);
-    lines.push('```');
-    return lines.join('\n');
+    lines.push("");
+    lines.push("```");
+    lines.push(
+      options.lineNumbers && data.returnedLines
+        ? addLineNumbers(data.content, data.returnedLines.start)
+        : data.content
+    );
+    lines.push("```");
+    return lines.join("\n");
   }
 
   // Terminal format
@@ -367,9 +389,9 @@ export function formatGet(result: GetResult, options: GetCommandOptions): string
 
 function addLineNumbers(text: string, startLine: number): string {
   return text
-    .split('\n')
+    .split("\n")
     .map((line, i) => `${startLine + i}: ${line}`)
-    .join('\n');
+    .join("\n");
 }
 ````
 
@@ -380,13 +402,18 @@ function addLineNumbers(text: string, startLine: number): string {
 ````ts
 // multi-get.ts
 
-import { minimatch } from 'minimatch';
-import { parseRef, splitRefs, isGlobPattern, type ParsedRef } from './ref-parser';
-import { initStore } from './shared';
+import { minimatch } from "minimatch";
+import {
+  parseRef,
+  splitRefs,
+  isGlobPattern,
+  type ParsedRef,
+} from "./ref-parser";
+import { initStore } from "./shared";
 
 export type MultiGetCommandOptions = {
   configPath?: string;
-  maxBytes?: number;    // default 10240
+  maxBytes?: number; // default 10240
   lineNumbers?: boolean;
   json?: boolean;
   files?: boolean;
@@ -409,7 +436,7 @@ export type MultiGetDocument = {
 
 export type SkippedDoc = {
   ref: string;
-  reason: 'not_found' | 'conversion_error';
+  reason: "not_found" | "conversion_error";
 };
 
 export type MultiGetResponse = {
@@ -446,7 +473,7 @@ export async function multiGet(
     for (const ref of allRefs) {
       if (isGlobPattern(ref)) {
         // Glob must be in collection/pattern format
-        const slashIdx = ref.indexOf('/');
+        const slashIdx = ref.indexOf("/");
         if (slashIdx === -1) {
           // Invalid glob format - skip
           continue;
@@ -479,44 +506,47 @@ export async function multiGet(
       seen.add(ref);
 
       const parsed = parseRef(ref);
-      if ('error' in parsed) {
-        skipped.push({ ref, reason: 'not_found' });
+      if ("error" in parsed) {
+        skipped.push({ ref, reason: "not_found" });
         continue;
       }
 
       // Fetch doc
       let docResult;
       switch (parsed.type) {
-        case 'docid':
+        case "docid":
           docResult = await store.getDocumentByDocid(parsed.value);
           break;
-        case 'uri':
+        case "uri":
           docResult = await store.getDocumentByUri(parsed.value);
           break;
-        case 'collPath':
-          docResult = await store.getDocument(parsed.collection!, parsed.relPath!);
+        case "collPath":
+          docResult = await store.getDocument(
+            parsed.collection!,
+            parsed.relPath!
+          );
           break;
       }
 
       if (!docResult.ok) {
-        skipped.push({ ref, reason: 'not_found' });
+        skipped.push({ ref, reason: "not_found" });
         continue;
       }
 
       const doc = docResult.value;
       if (!doc || !doc.active) {
-        skipped.push({ ref, reason: 'not_found' });
+        skipped.push({ ref, reason: "not_found" });
         continue;
       }
 
       if (!doc.mirrorHash) {
-        skipped.push({ ref, reason: 'conversion_error' });
+        skipped.push({ ref, reason: "conversion_error" });
         continue;
       }
 
       const contentResult = await store.getContent(doc.mirrorHash);
       if (!contentResult.ok || contentResult.value === null) {
-        skipped.push({ ref, reason: 'conversion_error' });
+        skipped.push({ ref, reason: "conversion_error" });
         continue;
       }
 
@@ -526,17 +556,17 @@ export async function multiGet(
       const encoder = new TextEncoder();
 
       if (encoder.encode(content).length > maxBytes) {
-        const lines = content.split('\n');
-        let accumulated = '';
+        const lines = content.split("\n");
+        let accumulated = "";
         let byteLen = 0;
 
         for (const line of lines) {
-          const lineBytes = encoder.encode(line + '\n').length;
+          const lineBytes = encoder.encode(line + "\n").length;
           if (byteLen + lineBytes > maxBytes) {
             truncated = true;
             break;
           }
-          accumulated += line + '\n';
+          accumulated += line + "\n";
           byteLen += lineBytes;
         }
         content = accumulated.trimEnd();
@@ -548,7 +578,7 @@ export async function multiGet(
         title: doc.title ?? undefined,
         content,
         truncated: truncated || undefined,
-        totalLines: content.split('\n').length,
+        totalLines: content.split("\n").length,
         source: {
           relPath: doc.relPath,
           mime: doc.sourceMime,
@@ -581,7 +611,9 @@ export function formatMultiGet(
 ): string {
   if (!result.success) {
     if (options.json) {
-      return JSON.stringify({ error: { code: 'MULTI_GET_FAILED', message: result.error } });
+      return JSON.stringify({
+        error: { code: "MULTI_GET_FAILED", message: result.error },
+      });
     }
     return `Error: ${result.error}`;
   }
@@ -593,17 +625,15 @@ export function formatMultiGet(
   }
 
   if (options.files) {
-    return data.documents
-      .map((d) => `${d.docid},${d.uri}`)
-      .join('\n');
+    return data.documents.map((d) => `${d.docid},${d.uri}`).join("\n");
   }
 
   if (options.md) {
     const lines: string[] = [];
     lines.push(`# Multi-Get Results`);
-    lines.push('');
+    lines.push("");
     lines.push(`*${data.meta.returned} of ${data.meta.requested} documents*`);
-    lines.push('');
+    lines.push("");
 
     for (const doc of data.documents) {
       lines.push(`## ${doc.title || doc.source.relPath}`);
@@ -611,21 +641,21 @@ export function formatMultiGet(
       if (doc.truncated) {
         lines.push(`- **Truncated**: yes (max ${data.meta.maxBytes} bytes)`);
       }
-      lines.push('');
-      lines.push('```');
+      lines.push("");
+      lines.push("```");
       lines.push(doc.content);
-      lines.push('```');
-      lines.push('');
+      lines.push("```");
+      lines.push("");
     }
 
     if (data.skipped.length > 0) {
-      lines.push('## Skipped');
+      lines.push("## Skipped");
       for (const s of data.skipped) {
         lines.push(`- ${s.ref}: ${s.reason}`);
       }
     }
 
-    return lines.join('\n');
+    return lines.join("\n");
   }
 
   // Terminal format
@@ -633,13 +663,15 @@ export function formatMultiGet(
   for (const doc of data.documents) {
     lines.push(`=== ${doc.uri} ===`);
     lines.push(doc.content);
-    lines.push('');
+    lines.push("");
   }
   if (data.skipped.length > 0) {
-    lines.push(`Skipped: ${data.skipped.map((s) => s.ref).join(', ')}`);
+    lines.push(`Skipped: ${data.skipped.map((s) => s.ref).join(", ")}`);
   }
-  lines.push(`${data.meta.returned}/${data.meta.requested} documents retrieved`);
-  return lines.join('\n');
+  lines.push(
+    `${data.meta.returned}/${data.meta.requested} documents retrieved`
+  );
+  return lines.join("\n");
 }
 ````
 
@@ -650,7 +682,7 @@ export function formatMultiGet(
 ```ts
 // ls.ts
 
-import { initStore } from './shared';
+import { initStore } from "./shared";
 
 export type LsCommandOptions = {
   configPath?: string;
@@ -687,7 +719,7 @@ export async function ls(
     if (!scope) {
       // List all
       docs = await store.listDocuments();
-    } else if (scope.startsWith('gno://')) {
+    } else if (scope.startsWith("gno://")) {
       // URI prefix filter
       const allDocs = await store.listDocuments();
       if (!allDocs.ok) {
@@ -730,7 +762,9 @@ export async function ls(
 export function formatLs(result: LsResult, options: LsCommandOptions): string {
   if (!result.success) {
     if (options.json) {
-      return JSON.stringify({ error: { code: 'LS_FAILED', message: result.error } });
+      return JSON.stringify({
+        error: { code: "LS_FAILED", message: result.error },
+      });
     }
     return `Error: ${result.error}`;
   }
@@ -742,29 +776,29 @@ export function formatLs(result: LsResult, options: LsCommandOptions): string {
   }
 
   if (options.files) {
-    return docs.map((d) => `${d.docid},${d.uri}`).join('\n');
+    return docs.map((d) => `${d.docid},${d.uri}`).join("\n");
   }
 
   if (options.md) {
     if (docs.length === 0) {
-      return '# Documents\n\nNo documents found.';
+      return "# Documents\n\nNo documents found.";
     }
     const lines: string[] = [];
-    lines.push('# Documents');
-    lines.push('');
-    lines.push('| DocID | URI | Title |');
-    lines.push('|-------|-----|-------|');
+    lines.push("# Documents");
+    lines.push("");
+    lines.push("| DocID | URI | Title |");
+    lines.push("|-------|-----|-------|");
     for (const d of docs) {
-      lines.push(`| \`${d.docid}\` | \`${d.uri}\` | ${d.title || '-'} |`);
+      lines.push(`| \`${d.docid}\` | \`${d.uri}\` | ${d.title || "-"} |`);
     }
-    return lines.join('\n');
+    return lines.join("\n");
   }
 
   // Terminal format
   if (docs.length === 0) {
-    return 'No documents found.';
+    return "No documents found.";
   }
-  return docs.map((d) => `${d.docid}\t${d.uri}`).join('\n');
+  return docs.map((d) => `${d.docid}\t${d.uri}`).join("\n");
 }
 ```
 
@@ -775,84 +809,86 @@ export function formatLs(result: LsResult, options: LsCommandOptions): string {
 Replace stubs in `wireRetrievalCommands()` using the established CliError pattern:
 
 ```ts
-import { CliError } from './errors';
+import { CliError } from "./errors";
 
 // get
 program
-  .command('get <ref>')
-  .description('Get document by URI or docid')
-  .option('--from <line>', 'Start at line number', parseInt)
-  .option('-l, --limit <lines>', 'Limit to N lines', parseInt)
-  .option('--line-numbers', 'Prefix lines with numbers')
-  .option('--source', 'Include source metadata')
-  .option('--json', 'JSON output')
-  .option('--md', 'Markdown output')
+  .command("get <ref>")
+  .description("Get document by URI or docid")
+  .option("--from <line>", "Start at line number", parseInt)
+  .option("-l, --limit <lines>", "Limit to N lines", parseInt)
+  .option("--line-numbers", "Prefix lines with numbers")
+  .option("--source", "Include source metadata")
+  .option("--json", "JSON output")
+  .option("--md", "Markdown output")
   .action(async (ref: string, cmdOpts: Record<string, unknown>) => {
     const format = getFormat(cmdOpts);
     assertFormatSupported(CMD.get, format);
 
-    const { get, formatGet } = await import('./commands/get');
+    const { get, formatGet } = await import("./commands/get");
     const result = await get(ref, cmdOpts);
 
     if (!result.success) {
       throw new CliError(
-        result.isValidation ? 'VALIDATION' : 'RUNTIME',
+        result.isValidation ? "VALIDATION" : "RUNTIME",
         result.error
       );
     }
 
-    process.stdout.write(formatGet(result, cmdOpts) + '\n');
+    process.stdout.write(formatGet(result, cmdOpts) + "\n");
   });
 
 // multi-get
 program
-  .command('multi-get <refs...>')
-  .description('Get multiple documents')
-  .option('--max-bytes <n>', 'Max bytes per document', parseInt, 10240)
-  .option('--line-numbers', 'Include line numbers')
-  .option('--json', 'JSON output')
-  .option('--files', 'File protocol output')
-  .option('--md', 'Markdown output')
+  .command("multi-get <refs...>")
+  .description("Get multiple documents")
+  .option("--max-bytes <n>", "Max bytes per document", parseInt, 10240)
+  .option("--line-numbers", "Include line numbers")
+  .option("--json", "JSON output")
+  .option("--files", "File protocol output")
+  .option("--md", "Markdown output")
   .action(async (refs: string[], cmdOpts: Record<string, unknown>) => {
     const format = getFormat(cmdOpts);
     assertFormatSupported(CMD.multiGet, format);
 
-    const { multiGet, formatMultiGet } = await import('./commands/multi-get');
+    const { multiGet, formatMultiGet } = await import("./commands/multi-get");
     const result = await multiGet(refs, cmdOpts);
 
     if (!result.success) {
       throw new CliError(
-        result.isValidation ? 'VALIDATION' : 'RUNTIME',
+        result.isValidation ? "VALIDATION" : "RUNTIME",
         result.error
       );
     }
 
-    process.stdout.write(formatMultiGet(result, cmdOpts) + '\n');
+    process.stdout.write(formatMultiGet(result, cmdOpts) + "\n");
   });
 
 // ls
 program
-  .command('ls [scope]')
-  .description('List indexed documents')
-  .option('--json', 'JSON output')
-  .option('--files', 'File protocol output')
-  .option('--md', 'Markdown output')
-  .action(async (scope: string | undefined, cmdOpts: Record<string, unknown>) => {
-    const format = getFormat(cmdOpts);
-    assertFormatSupported(CMD.ls, format);
+  .command("ls [scope]")
+  .description("List indexed documents")
+  .option("--json", "JSON output")
+  .option("--files", "File protocol output")
+  .option("--md", "Markdown output")
+  .action(
+    async (scope: string | undefined, cmdOpts: Record<string, unknown>) => {
+      const format = getFormat(cmdOpts);
+      assertFormatSupported(CMD.ls, format);
 
-    const { ls, formatLs } = await import('./commands/ls');
-    const result = await ls(scope, cmdOpts);
+      const { ls, formatLs } = await import("./commands/ls");
+      const result = await ls(scope, cmdOpts);
 
-    if (!result.success) {
-      throw new CliError(
-        result.isValidation ? 'VALIDATION' : 'RUNTIME',
-        result.error
-      );
+      if (!result.success) {
+        throw new CliError(
+          result.isValidation ? "VALIDATION" : "RUNTIME",
+          result.error
+        );
+      }
+
+      process.stdout.write(formatLs(result, cmdOpts) + "\n");
     }
-
-    process.stdout.write(formatLs(result, cmdOpts) + '\n');
-  });
+  );
 ```
 
 ### Phase 6: Export & Index
@@ -860,9 +896,9 @@ program
 **Update:** `src/cli/commands/index.ts`
 
 ```ts
-export { get, formatGet } from './get';
-export { multiGet, formatMultiGet } from './multi-get';
-export { ls, formatLs } from './ls';
+export { get, formatGet } from "./get";
+export { multiGet, formatMultiGet } from "./multi-get";
+export { ls, formatLs } from "./ls";
 ```
 
 ### Phase 7: Tests
@@ -886,10 +922,10 @@ export { ls, formatLs } from './ls';
 
 ```ts
 // test/cli/get.test.ts
-import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
-import { runCli, setupTestEnv, teardownTestEnv, type TestEnv } from './helpers';
+import { afterEach, beforeEach, describe, expect, test } from "bun:test";
+import { runCli, setupTestEnv, teardownTestEnv, type TestEnv } from "./helpers";
 
-describe('gno get', () => {
+describe("gno get", () => {
   let env: TestEnv;
 
   beforeEach(async () => {
@@ -901,47 +937,53 @@ describe('gno get', () => {
     await teardownTestEnv(env);
   });
 
-  test('retrieves by docid', async () => {
-    const { code, stdout } = await runCli(['get', '#testdoc'], env);
+  test("retrieves by docid", async () => {
+    const { code, stdout } = await runCli(["get", "#testdoc"], env);
     expect(code).toBe(0);
-    expect(stdout).toContain('test content');
+    expect(stdout).toContain("test content");
   });
 
-  test('retrieves by URI', async () => {
-    const { code, stdout } = await runCli(['get', 'gno://test/doc.md'], env);
-    expect(code).toBe(0);
-  });
-
-  test('retrieves by collection/path', async () => {
-    const { code } = await runCli(['get', 'test/doc.md'], env);
+  test("retrieves by URI", async () => {
+    const { code, stdout } = await runCli(["get", "gno://test/doc.md"], env);
     expect(code).toBe(0);
   });
 
-  test('parses :line suffix', async () => {
-    const { code, stdout } = await runCli(['get', 'gno://test/doc.md:5'], env);
+  test("retrieves by collection/path", async () => {
+    const { code } = await runCli(["get", "test/doc.md"], env);
     expect(code).toBe(0);
   });
 
-  test('applies --from and -l range', async () => {
-    const { code, stdout } = await runCli(['get', 'test/doc.md', '--from', '2', '-l', '3'], env);
+  test("parses :line suffix", async () => {
+    const { code, stdout } = await runCli(["get", "gno://test/doc.md:5"], env);
     expect(code).toBe(0);
   });
 
-  test('outputs JSON matching schema', async () => {
-    const { code, stdout } = await runCli(['get', 'test/doc.md', '--json'], env);
+  test("applies --from and -l range", async () => {
+    const { code, stdout } = await runCli(
+      ["get", "test/doc.md", "--from", "2", "-l", "3"],
+      env
+    );
+    expect(code).toBe(0);
+  });
+
+  test("outputs JSON matching schema", async () => {
+    const { code, stdout } = await runCli(
+      ["get", "test/doc.md", "--json"],
+      env
+    );
     expect(code).toBe(0);
     const data = JSON.parse(stdout);
     expect(data.docid).toMatch(/^#[a-f0-9]{6,8}$/);
     expect(data.uri).toMatch(/^gno:\/\//);
   });
 
-  test('exits 1 for invalid ref format', async () => {
-    const { code, stderr } = await runCli(['get', 'invalid'], env);
+  test("exits 1 for invalid ref format", async () => {
+    const { code, stderr } = await runCli(["get", "invalid"], env);
     expect(code).toBe(1);
   });
 
-  test('exits 2 for not found', async () => {
-    const { code } = await runCli(['get', '#notfound'], env);
+  test("exits 2 for not found", async () => {
+    const { code } = await runCli(["get", "#notfound"], env);
     expect(code).toBe(2);
   });
 });
@@ -1039,17 +1081,17 @@ describe('gno get', () => {
 ```ts
 // UTF-8 safe line-boundary truncation
 const encoder = new TextEncoder();
-const lines = content.split('\n');
-let accumulated = '';
+const lines = content.split("\n");
+let accumulated = "";
 let byteLen = 0;
 
 for (const line of lines) {
-  const lineBytes = encoder.encode(line + '\n').length;
+  const lineBytes = encoder.encode(line + "\n").length;
   if (byteLen + lineBytes > maxBytes) {
     truncated = true;
     break;
   }
-  accumulated += line + '\n';
+  accumulated += line + "\n";
   byteLen += lineBytes;
 }
 content = accumulated.trimEnd();

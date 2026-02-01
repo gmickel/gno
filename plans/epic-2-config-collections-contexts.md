@@ -52,23 +52,23 @@ src/
 version: "1.0"
 
 # Index-level settings (immutable after init)
-ftsTokenizer: unicode61  # unicode61 | porter | trigram
+ftsTokenizer: unicode61 # unicode61 | porter | trigram
 
 # Collection definitions
 collections:
   - name: notes
     path: /Users/gordon/notes
     pattern: "**/*.md"
-    include: []  # extension allowlist (empty = all)
-    exclude:     # path patterns to skip
+    include: [] # extension allowlist (empty = all)
+    exclude: # path patterns to skip
       - .git
       - node_modules
-    updateCmd: "git pull"  # optional shell command before indexing
-    languageHint: en       # optional BCP-47 hint
+    updateCmd: "git pull" # optional shell command before indexing
+    languageHint: en # optional BCP-47 hint
 
 # Context metadata for search enhancement
 contexts:
-  - scopeType: global      # global | collection | prefix
+  - scopeType: global # global | collection | prefix
     scopeKey: /
     text: "Personal knowledge base for software engineering"
   - scopeType: collection

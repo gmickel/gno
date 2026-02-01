@@ -9,7 +9,7 @@ Guide complet sur la sécurisation des applications web modernes.
 Les JSON Web Tokens offrent une authentification sans état:
 
 ```typescript
-import jwt from 'jsonwebtoken';
+import jwt from "jsonwebtoken";
 
 function genererToken(utilisateur: Utilisateur): string {
   return jwt.sign(
@@ -19,7 +19,7 @@ function genererToken(utilisateur: Utilisateur): string {
       role: utilisateur.role,
     },
     process.env.JWT_SECRET!,
-    { expiresIn: '24h' }
+    { expiresIn: "24h" }
   );
 }
 
@@ -27,7 +27,7 @@ function verifierToken(token: string): TokenPayload {
   try {
     return jwt.verify(token, process.env.JWT_SECRET!) as TokenPayload;
   } catch (err) {
-    throw new AuthenticationError('Token invalide ou expiré');
+    throw new AuthenticationError("Token invalide ou expiré");
   }
 }
 ```
@@ -37,7 +37,7 @@ function verifierToken(token: string): TokenPayload {
 Utilisez toujours un algorithme de hachage sécurisé:
 
 ```typescript
-import { hash, verify } from 'argon2';
+import { hash, verify } from "argon2";
 
 async function hacherMotDePasse(motDePasse: string): Promise<string> {
   return hash(motDePasse, {
@@ -67,7 +67,7 @@ Utilisez toujours des requêtes paramétrées:
 const query = `SELECT * FROM users WHERE id = ${userId}`;
 
 // SÉCURISÉ - Requête paramétrée
-const query = 'SELECT * FROM users WHERE id = $1';
+const query = "SELECT * FROM users WHERE id = $1";
 const result = await db.query(query, [userId]);
 ```
 
@@ -76,7 +76,7 @@ const result = await db.query(query, [userId]);
 Échappez toujours les données utilisateur:
 
 ```typescript
-import { escapeHtml } from './sanitize';
+import { escapeHtml } from "./sanitize";
 
 function afficherCommentaire(commentaire: string): string {
   // Échapper le HTML pour prévenir XSS
@@ -89,18 +89,18 @@ function afficherCommentaire(commentaire: string): string {
 Implémentez des tokens CSRF pour les formulaires:
 
 ```typescript
-import { generateToken, validateToken } from './csrf';
+import { generateToken, validateToken } from "./csrf";
 
 // Génération
-app.get('/form', (req, res) => {
+app.get("/form", (req, res) => {
   const csrfToken = generateToken(req.session.id);
-  res.render('form', { csrfToken });
+  res.render("form", { csrfToken });
 });
 
 // Validation
-app.post('/submit', (req, res) => {
+app.post("/submit", (req, res) => {
   if (!validateToken(req.body.csrfToken, req.session.id)) {
-    return res.status(403).json({ error: 'Token CSRF invalide' });
+    return res.status(403).json({ error: "Token CSRF invalide" });
   }
   // Traiter le formulaire
 });
@@ -111,22 +111,24 @@ app.post('/submit', (req, res) => {
 Configurez les en-têtes HTTP de sécurité:
 
 ```typescript
-import helmet from 'helmet';
+import helmet from "helmet";
 
-app.use(helmet({
-  contentSecurityPolicy: {
-    directives: {
-      defaultSrc: ["'self'"],
-      scriptSrc: ["'self'"],
-      styleSrc: ["'self'", "'unsafe-inline'"],
-      imgSrc: ["'self'", 'data:', 'https:'],
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'"],
+        styleSrc: ["'self'", "'unsafe-inline'"],
+        imgSrc: ["'self'", "data:", "https:"],
+      },
     },
-  },
-  hsts: {
-    maxAge: 31536000,
-    includeSubDomains: true,
-  },
-}));
+    hsts: {
+      maxAge: 31536000,
+      includeSubDomains: true,
+    },
+  })
+);
 ```
 
 ## Gestion des Secrets
@@ -144,13 +146,13 @@ const config = {
   },
   jwt: {
     secret: process.env.JWT_SECRET,
-    expiresIn: '24h',
+    expiresIn: "24h",
   },
 };
 
 // Vérification au démarrage
 for (const [key, value] of Object.entries(process.env)) {
-  if (key.includes('SECRET') && !value) {
+  if (key.includes("SECRET") && !value) {
     throw new Error(`Variable ${key} non définie`);
   }
 }
@@ -162,8 +164,8 @@ Enregistrez les événements de sécurité:
 
 ```typescript
 const auditLogger = pino({
-  name: 'security-audit',
-  level: 'info',
+  name: "security-audit",
+  level: "info",
 });
 
 function logEvenementSecurite(evenement: EvenementSecurite) {
@@ -178,9 +180,9 @@ function logEvenementSecurite(evenement: EvenementSecurite) {
 
 // Utilisation
 logEvenementSecurite({
-  type: 'LOGIN_ECHEC',
+  type: "LOGIN_ECHEC",
   utilisateurId: email,
   adresseIP: req.ip,
-  details: { raison: 'Mot de passe incorrect' },
+  details: { raison: "Mot de passe incorrect" },
 });
 ```
