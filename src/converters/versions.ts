@@ -20,5 +20,5 @@ export const NATIVE_VERSIONS = {
  */
 export const ADAPTER_VERSIONS = {
   "markitdown-ts": "0.0.8",
-  officeparser: "5.2.0",
+  officeparser: "6.0.4",
 } as const;
