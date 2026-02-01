@@ -100,7 +100,7 @@
     "minimatch": "^10.1.1",
     "nanoid": "^5.1.6",
     "node-llama-cpp": "^3.14.5",
-    "officeparser": "^5.2.2",
+    "officeparser": "^6.0.4",
     "picocolors": "^1.1.1",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
