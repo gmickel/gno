@@ -1,0 +1,14 @@
+{
+  "assignee": null,
+  "claim_note": "",
+  "claimed_at": null,
+  "created_at": "2026-02-03T13:30:40.587598Z",
+  "depends_on": [],
+  "epic": "fn-29-fix-embedbatch-to-use-native-batch-api",
+  "id": "fn-29-fix-embedbatch-to-use-native-batch-api.1",
+  "priority": 1,
+  "spec_path": ".flow/tasks/fn-29-fix-embedbatch-to-use-native-batch-api.1.md",
+  "status": "todo",
+  "title": "Update embedBatch to use getEmbeddingsFor",
+  "updated_at": "2026-02-03T13:30:40.587779Z"
+}

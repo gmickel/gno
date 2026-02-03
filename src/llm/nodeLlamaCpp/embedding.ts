@@ -79,17 +79,21 @@ export class NodeLlamaCppEmbedding implements EmbeddingPort {
     }
 
     try {
-      const results: number[][] = [];
-      for (const text of texts) {
-        const embedding = await ctx.value.getEmbeddingFor(text);
-        const vector = Array.from(embedding.vector) as number[];
-        results.push(vector);
+      // Use Promise.all for parallel embedding (node-llama-cpp's recommended batch pattern)
+      const embeddings = await Promise.all(
+        texts.map((text) => ctx.value.getEmbeddingFor(text))
+      );
 
-        // Cache dimensions on first call
-        if (this.dims === null) {
-          this.dims = vector.length;
-        }
+      const results = embeddings.map(
+        (embedding) => Array.from(embedding.vector) as number[]
+      );
+
+      // Cache dimensions from first result
+      const firstResult = results[0];
+      if (this.dims === null && firstResult !== undefined) {
+        this.dims = firstResult.length;
       }
+
       return { ok: true, value: results };
     } catch (e) {
       return { ok: false, error: inferenceFailedError(this.modelUri, e) };
