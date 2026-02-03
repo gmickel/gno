@@ -7,7 +7,7 @@
   "plan_review_status": "unknown",
   "plan_reviewed_at": null,
   "spec_path": ".flow/specs/fn-29-fix-embedbatch-to-use-native-batch-api.md",
-  "status": "open",
+  "status": "done",
   "title": "Fix embedBatch to use native batch API",
-  "updated_at": "2026-02-03T13:30:29.959176Z"
+  "updated_at": "2026-02-03T23:22:00.213935Z"
 }

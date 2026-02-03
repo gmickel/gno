@@ -11,3 +11,10 @@ SQLite lower() ASCII-only; consider title_norm/rel_path_norm fields or JS-normal
 
 - [ ] Implementation complete
 - [ ] Tests passing
+
+## Done summary
+- Task completed
+## Evidence
+- Commits:
+- Tests:
+- PRs:

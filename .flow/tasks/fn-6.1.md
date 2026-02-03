@@ -157,3 +157,10 @@ Returns outgoing links from a document.
 - [ ] Implementation complete
 - [ ] Tests passing
 - [ ] Documentation updated
+
+## Done summary
+- Task completed
+## Evidence
+- Commits:
+- Tests:
+- PRs:

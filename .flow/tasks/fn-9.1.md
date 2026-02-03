@@ -9,3 +9,10 @@ bun test failed in full suite:\n- test/cli/search-fixtures.test.ts (bcrypt, mult
 - [ ] Implementation complete
 - [ ] Tests passing
 - [ ] Documentation updated
+
+## Done summary
+- Task completed
+## Evidence
+- Commits:
+- Tests:
+- PRs:
