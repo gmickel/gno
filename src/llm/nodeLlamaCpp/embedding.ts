@@ -25,6 +25,15 @@ type LlamaEmbeddingContext = Awaited<
 >;
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Constants
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Max concurrent embedding operations per batch to avoid overwhelming the context.
+// node-llama-cpp contexts may not handle high concurrency well; this provides
+// a safe default while still allowing parallelism within chunks.
+const MAX_CONCURRENT_EMBEDDINGS = 16;
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Implementation
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -82,42 +91,52 @@ export class NodeLlamaCppEmbedding implements EmbeddingPort {
       return { ok: true, value: [] };
     }
 
-    // Use allSettled to ensure all in-flight operations complete before returning.
-    // This prevents leaving orphaned operations running if one fails early,
-    // which could cause issues if dispose() is called while operations are pending.
-    // node-llama-cpp doesn't have a native batch API (getEmbeddingsFor), so we
-    // must call getEmbeddingFor individually.
-    const settled = await Promise.allSettled(
-      texts.map((text) => ctx.value.getEmbeddingFor(text))
-    );
+    try {
+      // Process in chunks to avoid overwhelming the embedding context.
+      // node-llama-cpp v3.x only exposes getEmbeddingFor (single text), not a native
+      // batch method. We use allSettled within chunks to ensure all in-flight ops
+      // complete before returning (prevents orphaned operations on early failure).
+      const allResults: number[][] = [];
 
-    // Check for any failures
-    const firstRejection = settled.find(
-      (r): r is PromiseRejectedResult => r.status === "rejected"
-    );
-    if (firstRejection) {
-      return {
-        ok: false,
-        error: inferenceFailedError(this.modelUri, firstRejection.reason),
-      };
+      for (let i = 0; i < texts.length; i += MAX_CONCURRENT_EMBEDDINGS) {
+        const chunk = texts.slice(i, i + MAX_CONCURRENT_EMBEDDINGS);
+        const settled = await Promise.allSettled(
+          chunk.map((text) => ctx.value.getEmbeddingFor(text))
+        );
+
+        // Check for any failures in this chunk
+        const firstRejection = settled.find(
+          (r): r is PromiseRejectedResult => r.status === "rejected"
+        );
+        if (firstRejection) {
+          return {
+            ok: false,
+            error: inferenceFailedError(this.modelUri, firstRejection.reason),
+          };
+        }
+
+        // Extract results from this chunk (cast safe after rejection check)
+        const chunkResults = (
+          settled as Array<
+            PromiseFulfilledResult<
+              Awaited<ReturnType<typeof ctx.value.getEmbeddingFor>>
+            >
+          >
+        ).map((r) => Array.from(r.value.vector) as number[]);
+
+        allResults.push(...chunkResults);
+      }
+
+      // Cache dimensions from first result
+      const firstResult = allResults[0];
+      if (this.dims === null && firstResult !== undefined) {
+        this.dims = firstResult.length;
+      }
+
+      return { ok: true, value: allResults };
+    } catch (e) {
+      return { ok: false, error: inferenceFailedError(this.modelUri, e) };
     }
-
-    // All succeeded - extract results (cast is safe after rejection check)
-    const results = (
-      settled as Array<
-        PromiseFulfilledResult<
-          Awaited<ReturnType<typeof ctx.value.getEmbeddingFor>>
-        >
-      >
-    ).map((r) => Array.from(r.value.vector) as number[]);
-
-    // Cache dimensions from first result
-    const firstResult = results[0];
-    if (this.dims === null && firstResult !== undefined) {
-      this.dims = firstResult.length;
-    }
-
-    return { ok: true, value: results };
   }
 
   dimensions(): number {
