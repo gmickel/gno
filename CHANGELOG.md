@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.16.0] - 2026-02-03
+
+### Changed
+
+- **Improved batch embedding performance** - `embedBatch()` now processes embeddings concurrently (up to 16 at a time) instead of sequentially, with proper error handling and dispose safety ([#64](https://github.com/gmickel/gno/pull/64))
+
 ## [0.15.1] - 2026-02-01
 
 ### Changed
