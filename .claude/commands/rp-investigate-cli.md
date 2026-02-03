@@ -1,7 +1,7 @@
 ---
 description: Deep codebase investigation and architecture research with rp-cli commands
 repoprompt_managed: true
-repoprompt_commands_version: 3
+repoprompt_commands_version: 5
 repoprompt_variant: cli
 ---
 
@@ -21,17 +21,17 @@ rp-cli -e '<command>'
 
 **Quick reference:**
 
-| MCP Tool             | CLI Command                                               |
-| -------------------- | --------------------------------------------------------- |
-| `get_file_tree`      | `rp-cli -e 'tree'`                                        |
-| `file_search`        | `rp-cli -e 'search "pattern"'`                            |
-| `get_code_structure` | `rp-cli -e 'structure path/'`                             |
-| `read_file`          | `rp-cli -e 'read path/file.swift'`                        |
-| `manage_selection`   | `rp-cli -e 'select add path/'`                            |
-| `context_builder`    | `rp-cli -e 'builder "instructions" --response-type plan'` |
-| `chat_send`          | `rp-cli -e 'chat "message" --mode plan'`                  |
-| `apply_edits`        | `rp-cli -e 'edit path/file.swift "old" "new"'`            |
-| `file_actions`       | `rp-cli -e 'file create path/new.swift'`                  |
+| MCP Tool             | CLI Command                                                                  |
+| -------------------- | ---------------------------------------------------------------------------- |
+| `get_file_tree`      | `rp-cli -e 'tree'`                                                           |
+| `file_search`        | `rp-cli -e 'search "pattern"'`                                               |
+| `get_code_structure` | `rp-cli -e 'structure path/'`                                                |
+| `read_file`          | `rp-cli -e 'read path/file.swift'`                                           |
+| `manage_selection`   | `rp-cli -e 'select add path/'`                                               |
+| `context_builder`    | `rp-cli -e 'builder "instructions" --response-type plan'`                    |
+| `chat_send`          | `rp-cli -e 'chat "message" --mode plan'`                                     |
+| `apply_edits`        | `rp-cli -e 'call apply_edits {"path":"...","search":"...","replace":"..."}'` |
+| `file_actions`       | `rp-cli -e 'call file_actions {"action":"create","path":"..."}'`             |
 
 Chain commands with `&&`:
 
@@ -58,7 +58,9 @@ Use `rp-cli -e 'describe <tool>'` for help on a specific tool, or `rp-cli --help
 2. Summarize the symptoms and constraints
 3. Form initial hypotheses
 
-### Phase 2: Systematic Exploration
+### Phase 2: Systematic Exploration (via `builder` - REQUIRED)
+
+⚠️ **Do NOT skip this step.** You MUST call `builder` to get proper context before drawing conclusions.
 
 Use `builder` with detailed instructions:
 
@@ -83,8 +85,10 @@ Areas to explore:
 After `builder` returns, continue with targeted questions:
 
 ```bash
-rp-cli -e 'chat "<specific follow-up based on findings>" --mode plan'
+rp-cli -t '<tab_id>' -e 'chat "<specific follow-up based on findings>" --mode plan'
 ```
+
+> Pass `-t <tab_id>` to target the same tab across separate CLI invocations.
 
 ### Phase 4: Evidence Gathering
 
@@ -161,4 +165,15 @@ Create a findings report as you investigate:
 
 ---
 
-Now begin the investigation. Read any provided context, then use `builder` to start systematic exploration.
+## Anti-patterns to Avoid
+
+- 🚫 **CRITICAL:** Skipping `builder` and attempting to investigate by reading files manually – you'll miss critical context
+- 🚫 Doing extensive exploration (5+ tool calls) before calling `builder` – initial assessment should be brief
+- 🚫 Drawing conclusions before `builder` has built proper context
+- 🚫 Reading many full files during Phase 1 – save deep reading for after `builder`
+- 🚫 Assuming you understand the issue without systematic exploration via `builder`
+- 🚫 Using only chat follow-ups without an initial `builder` call
+
+---
+
+Now begin the investigation. Read any provided context, then **immediately** use `builder` to start systematic exploration. Do not attempt manual exploration first.

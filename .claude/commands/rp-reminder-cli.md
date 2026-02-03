@@ -1,7 +1,7 @@
 ---
 description: Reminder to use rp-cli
 repoprompt_managed: true
-repoprompt_commands_version: 3
+repoprompt_commands_version: 5
 repoprompt_variant: cli
 ---
 
@@ -28,8 +28,9 @@ rp-cli -e 'search "keyword"'
 rp-cli -e 'read Root/file.swift'
 rp-cli -e 'read Root/file.swift --start-line 50 --limit 30'
 
-# Edit (search/replace)
-rp-cli -e 'edit Root/file.swift "old" "new"'
+# Edit (search/replace) - JSON format required
+rp-cli -e 'call apply_edits {"path":"Root/file.swift","search":"old","replace":"new"}'
+rp-cli -e 'call apply_edits {"path":"Root/file.swift","search":"a\nb","replace":"c\nd"}'
 
 # File operations
 rp-cli -e 'file create Root/new.swift "content..."'

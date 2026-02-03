@@ -78,26 +78,46 @@ export class NodeLlamaCppEmbedding implements EmbeddingPort {
       return ctx;
     }
 
-    try {
-      // Use Promise.all for parallel embedding (node-llama-cpp's recommended batch pattern)
-      const embeddings = await Promise.all(
-        texts.map((text) => ctx.value.getEmbeddingFor(text))
-      );
-
-      const results = embeddings.map(
-        (embedding) => Array.from(embedding.vector) as number[]
-      );
-
-      // Cache dimensions from first result
-      const firstResult = results[0];
-      if (this.dims === null && firstResult !== undefined) {
-        this.dims = firstResult.length;
-      }
-
-      return { ok: true, value: results };
-    } catch (e) {
-      return { ok: false, error: inferenceFailedError(this.modelUri, e) };
+    if (texts.length === 0) {
+      return { ok: true, value: [] };
     }
+
+    // Use allSettled to ensure all in-flight operations complete before returning.
+    // This prevents leaving orphaned operations running if one fails early,
+    // which could cause issues if dispose() is called while operations are pending.
+    // node-llama-cpp doesn't have a native batch API (getEmbeddingsFor), so we
+    // must call getEmbeddingFor individually.
+    const settled = await Promise.allSettled(
+      texts.map((text) => ctx.value.getEmbeddingFor(text))
+    );
+
+    // Check for any failures
+    const firstRejection = settled.find(
+      (r): r is PromiseRejectedResult => r.status === "rejected"
+    );
+    if (firstRejection) {
+      return {
+        ok: false,
+        error: inferenceFailedError(this.modelUri, firstRejection.reason),
+      };
+    }
+
+    // All succeeded - extract results (cast is safe after rejection check)
+    const results = (
+      settled as Array<
+        PromiseFulfilledResult<
+          Awaited<ReturnType<typeof ctx.value.getEmbeddingFor>>
+        >
+      >
+    ).map((r) => Array.from(r.value.vector) as number[]);
+
+    // Cache dimensions from first result
+    const firstResult = results[0];
+    if (this.dims === null && firstResult !== undefined) {
+      this.dims = firstResult.length;
+    }
+
+    return { ok: true, value: results };
   }
 
   dimensions(): number {
