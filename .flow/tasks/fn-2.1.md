@@ -13,8 +13,11 @@ Reduce drift between resolveLinks/getBacklinks/getGraph via shared helper or nor
 - [ ] Tests passing
 
 ## Done summary
+
 - Task completed
+
 ## Evidence
+
 - Commits:
 - Tests:
 - PRs:

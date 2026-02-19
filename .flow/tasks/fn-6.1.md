@@ -159,8 +159,11 @@ Returns outgoing links from a document.
 - [ ] Documentation updated
 
 ## Done summary
+
 - Task completed
+
 ## Evidence
+
 - Commits:
 - Tests:
 - PRs:

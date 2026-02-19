@@ -13,8 +13,11 @@ Avoid per-target queries; resolve wiki links in bulk with candidate key sets + r
 - [ ] Tests passing
 
 ## Done summary
+
 - Task completed
+
 ## Evidence
+
 - Commits:
 - Tests:
 - PRs:

@@ -18,8 +18,11 @@ Current screenshots in assets/screenshots/ are outdated.
 - [ ] Documentation updated
 
 ## Done summary
+
 - Task completed
+
 ## Evidence
+
 - Commits:
 - Tests:
 - PRs:

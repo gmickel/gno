@@ -290,6 +290,7 @@ def get_default_config() -> dict:
         "memory": {"enabled": True},
         "planSync": {"enabled": True, "crossEpic": False},
         "review": {"backend": None},
+        "scouts": {"github": False},
     }
 
 
@@ -1766,24 +1767,32 @@ def get_actor() -> str:
 
 
 def scan_max_epic_id(flow_dir: Path) -> int:
-    """Scan .flow/epics/ to find max epic number. Returns 0 if none exist.
+    """Scan .flow/epics/ and .flow/specs/ to find max epic number. Returns 0 if none exist.
 
     Handles legacy (fn-N.json), short suffix (fn-N-xxx.json), and slug (fn-N-slug.json) formats.
+    Also scans specs/*.md as safety net for orphaned specs created without flowctl.
     """
-    epics_dir = flow_dir / EPICS_DIR
-    if not epics_dir.exists():
-        return 0
-
     max_n = 0
-    for epic_file in epics_dir.glob("fn-*.json"):
-        # Match: fn-N.json, fn-N-x.json (1-3 char), fn-N-xx-yy.json (slug)
-        match = re.match(
-            r"^fn-(\d+)(?:-[a-z0-9][a-z0-9-]*[a-z0-9]|-[a-z0-9]{1,3})?\.json$",
-            epic_file.name,
-        )
-        if match:
-            n = int(match.group(1))
-            max_n = max(max_n, n)
+    pattern = r"^fn-(\d+)(?:-[a-z0-9][a-z0-9-]*[a-z0-9]|-[a-z0-9]{1,3})?\.(json|md)$"
+
+    # Scan epics/*.json
+    epics_dir = flow_dir / EPICS_DIR
+    if epics_dir.exists():
+        for epic_file in epics_dir.glob("fn-*.json"):
+            match = re.match(pattern, epic_file.name)
+            if match:
+                n = int(match.group(1))
+                max_n = max(max_n, n)
+
+    # Scan specs/*.md as safety net (catches orphaned specs)
+    specs_dir = flow_dir / SPECS_DIR
+    if specs_dir.exists():
+        for spec_file in specs_dir.glob("fn-*.md"):
+            match = re.match(pattern, spec_file.name)
+            if match:
+                n = int(match.group(1))
+                max_n = max(max_n, n)
+
     return max_n
 
 
@@ -6662,6 +6671,7 @@ def cmd_validate(args: argparse.Namespace) -> None:
 
         # Find all epics (if epics dir exists)
         epic_ids = []
+        epic_nums: dict[int, list[str]] = {}  # Track numeric IDs for collision detection
         if epics_dir.exists():
             for epic_file in sorted(epics_dir.glob("fn-*.json")):
                 # Match: fn-N.json, fn-N-xxx.json (short), fn-N-slug.json (long)
@@ -6670,11 +6680,37 @@ def cmd_validate(args: argparse.Namespace) -> None:
                     epic_file.name,
                 )
                 if match:
-                    epic_ids.append(epic_file.stem)  # Use full ID from filename
+                    epic_id = epic_file.stem
+                    epic_ids.append(epic_id)
+                    num = int(match.group(1))
+                    if num not in epic_nums:
+                        epic_nums[num] = []
+                    epic_nums[num].append(epic_id)
 
         # Start with root errors
         all_errors = list(root_errors)
+
+        # Detect epic ID collisions (multiple epics with same fn-N prefix)
+        for num, ids in epic_nums.items():
+            if len(ids) > 1:
+                all_errors.append(
+                    f"Epic ID collision: fn-{num} used by multiple epics: {', '.join(sorted(ids))}"
+                )
+
         all_warnings = []
+
+        # Detect orphaned specs (spec exists but no epic JSON)
+        specs_dir = flow_dir / SPECS_DIR
+        if specs_dir.exists():
+            pattern = r"^fn-(\d+)(?:-[a-z0-9][a-z0-9-]*[a-z0-9]|-[a-z0-9]{1,3})?\.md$"
+            for spec_file in specs_dir.glob("fn-*.md"):
+                match = re.match(pattern, spec_file.name)
+                if match:
+                    spec_id = spec_file.stem
+                    if spec_id not in epic_ids:
+                        all_warnings.append(
+                            f"Orphaned spec: {spec_file.name} has no matching epic JSON"
+                        )
         total_tasks = 0
         epic_results = []
 
