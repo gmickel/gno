@@ -139,6 +139,18 @@ HyDE: "To deploy the application to production, first ensure all tests pass,
        production using the deployment pipeline..."
 ```
 
+### Expansion Guardrails
+
+GNO applies deterministic guardrails after generation to reduce query drift:
+
+- Preserves quoted phrases and negations in lexical variants
+- Preserves named/symbol-heavy entities (for example `Bob`, `C++`, `Node.js`)
+- Filters lexical/semantic variants that do not overlap query intent
+- Falls back to the original query when variants are fully filtered
+- Drops HyDE text when it has no meaningful overlap with the query
+
+This keeps expansion useful for recall without letting unrelated variants dominate retrieval.
+
 ### Why Expansion Helps
 
 Without expansion, searching "deploy to production" only finds documents with those exact words. With expansion:
@@ -283,6 +295,7 @@ This preserves strong initial signals through the pipeline.
 ## Chunk-Level Reranking
 
 After RRF fusion, top candidates are reranked using **Qwen3-Reranker**. For efficiency, GNO reranks the **best chunk per document** (selected by highest fusion score) rather than full documents.
+Chunk text loading is batched (`getChunksBatch`) to avoid per-document N+1 lookups in this stage.
 
 **Why chunk-level?** Full-document reranking (128K chars) is 25× slower than chunk-level (4K chars). Testing shows chunk-level achieves similar quality at ~2s vs ~10s for the same query.
 

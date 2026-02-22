@@ -28,11 +28,16 @@ import {
   explainBm25,
   explainExpansion,
   explainFusion,
+  explainQueryModes,
   explainRerank,
   explainVector,
 } from "./explain";
 import { type RankedInput, rrfFuse, toRankedInput } from "./fusion";
 import { detectQueryLanguage } from "./query-language";
+import {
+  buildExpansionFromQueryModes,
+  summarizeQueryModes,
+} from "./query-modes";
 import { rerankCandidates } from "./rerank";
 import { DEFAULT_PIPELINE_CONFIG } from "./types";
 
@@ -256,8 +261,17 @@ export async function searchHybrid(
   // ─────────────────────────────────────────────────────────────────────────
   const shouldExpand = !options.noExpand && genPort !== null;
   let expansionStatus: ExpansionStatus = "disabled";
+  let queryModeSummary: ReturnType<typeof summarizeQueryModes> | undefined =
+    undefined;
 
-  if (shouldExpand) {
+  if (options.queryModes?.length) {
+    queryModeSummary = summarizeQueryModes(options.queryModes);
+    explainLines.push(explainQueryModes(queryModeSummary));
+    expansion = buildExpansionFromQueryModes(options.queryModes);
+    expansionStatus = "provided";
+  }
+
+  if (expansionStatus !== "provided" && shouldExpand) {
     const hasStrongSignal = await checkBm25Strength(store, query, {
       collection: options.collection,
       lang: options.lang,
@@ -308,16 +322,25 @@ export async function searchHybrid(
     rankedInputs.push(toRankedInput("bm25", bm25Chunks));
   }
 
-  // BM25: lexical variants (syntax errors here are ignored - variants are optional)
-  if (expansion?.lexicalQueries) {
-    for (const variant of expansion.lexicalQueries) {
-      const variantResult = await searchFtsChunks(store, variant, {
-        limit,
-        collection: options.collection,
-        lang: options.lang,
-        tagsAll: options.tagsAll,
-        tagsAny: options.tagsAny,
-      });
+  // BM25: lexical variants (optional; run in parallel and ignore failures)
+  if (expansion?.lexicalQueries?.length) {
+    const lexicalVariantResults = await Promise.allSettled(
+      expansion.lexicalQueries.map((variant) =>
+        searchFtsChunks(store, variant, {
+          limit,
+          collection: options.collection,
+          lang: options.lang,
+          tagsAll: options.tagsAll,
+          tagsAny: options.tagsAny,
+        })
+      )
+    );
+
+    for (const settled of lexicalVariantResults) {
+      if (settled.status !== "fulfilled") {
+        continue;
+      }
+      const variantResult = settled.value;
       if (variantResult.ok && variantResult.chunks.length > 0) {
         rankedInputs.push(toRankedInput("bm25_variant", variantResult.chunks));
       }
@@ -342,31 +365,34 @@ export async function searchHybrid(
       rankedInputs.push(toRankedInput("vector", vecChunks));
     }
 
-    // Semantic variants
-    if (expansion?.vectorQueries) {
-      for (const variant of expansion.vectorQueries) {
-        const variantChunks = await searchVectorChunks(
-          vectorIndex,
-          embedPort,
-          variant,
-          { limit: limit * retrievalMultiplier }
-        );
-        if (variantChunks.length > 0) {
-          rankedInputs.push(toRankedInput("vector_variant", variantChunks));
-        }
-      }
-    }
+    // Semantic variants + HyDE (optional; run in parallel and ignore failures)
+    const vectorVariantQueries = [
+      ...(expansion?.vectorQueries?.map((query) => ({
+        source: "vector_variant" as const,
+        query,
+      })) ?? []),
+      ...(expansion?.hyde
+        ? [{ source: "hyde" as const, query: expansion.hyde }]
+        : []),
+    ];
 
-    // HyDE
-    if (expansion?.hyde) {
-      const hydeChunks = await searchVectorChunks(
-        vectorIndex,
-        embedPort,
-        expansion.hyde,
-        { limit: limit * retrievalMultiplier }
+    if (vectorVariantQueries.length > 0) {
+      const optionalVectorResults = await Promise.allSettled(
+        vectorVariantQueries.map((variant) =>
+          searchVectorChunks(vectorIndex, embedPort, variant.query, {
+            limit: limit * retrievalMultiplier,
+          })
+        )
       );
-      if (hydeChunks.length > 0) {
-        rankedInputs.push(toRankedInput("hyde", hydeChunks));
+
+      for (const [index, settled] of optionalVectorResults.entries()) {
+        if (settled.status !== "fulfilled" || settled.value.length === 0) {
+          continue;
+        }
+        const variant = vectorVariantQueries[index];
+        if (variant) {
+          rankedInputs.push(toRankedInput(variant.source, settled.value));
+        }
       }
     }
   }
@@ -616,6 +642,7 @@ export async function searchHybrid(
       collection: options.collection,
       lang: options.lang,
       queryLanguage,
+      queryModes: queryModeSummary,
       explain: explainData,
     },
   });

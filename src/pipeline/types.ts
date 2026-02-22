@@ -65,6 +65,8 @@ export interface SearchMeta {
   lang?: string;
   /** Detected/overridden query language for prompt selection (typically BCP-47; may be user-provided via --lang) */
   queryLanguage?: string;
+  /** Summary of structured query modes applied (if provided) */
+  queryModes?: QueryModeSummary;
   /** Explain data (when --explain is used) */
   explain?: {
     lines: ExplainLine[];
@@ -102,12 +104,30 @@ export interface SearchOptions {
   tagsAny?: string[];
 }
 
+/** Structured query mode identifier */
+export type QueryMode = "term" | "intent" | "hyde";
+
+/** Structured query mode entry */
+export interface QueryModeInput {
+  mode: QueryMode;
+  text: string;
+}
+
+/** Structured query mode summary for metadata/explain */
+export interface QueryModeSummary {
+  term: number;
+  intent: number;
+  hyde: boolean;
+}
+
 /** Options for hybrid search (gno query) */
 export type HybridSearchOptions = SearchOptions & {
   /** Disable query expansion */
   noExpand?: boolean;
   /** Disable reranking */
   noRerank?: boolean;
+  /** Optional structured mode entries; when set, used as expansion inputs */
+  queryModes?: QueryModeInput[];
   /** Enable explain output */
   explain?: boolean;
   /** Language hint for prompt selection (does NOT filter retrieval, only affects expansion prompts) */

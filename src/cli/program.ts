@@ -386,6 +386,12 @@ function wireSearchCommands(program: Command): void {
     .option("--thorough", "enable query expansion (slower, ~5-8s)")
     .option("--no-expand", "disable query expansion")
     .option("--no-rerank", "disable reranking")
+    .option(
+      "--query-mode <mode:text>",
+      "structured mode entry (repeatable): term:<text>, intent:<text>, or hyde:<text>",
+      (value: string, previous: string[] = []) => [...previous, value],
+      []
+    )
     .option("--explain", "include scoring explanation")
     .option("--json", "JSON output")
     .option("--md", "Markdown output")
@@ -405,6 +411,17 @@ function wireSearchCommands(program: Command): void {
       const minScore = parseOptionalFloat("min-score", cmdOpts.minScore);
       if (minScore !== undefined && (minScore < 0 || minScore > 1)) {
         throw new CliError("VALIDATION", "--min-score must be between 0 and 1");
+      }
+
+      // Parse optional structured query modes
+      let queryModes: import("../pipeline/types").QueryModeInput[] | undefined;
+      if (Array.isArray(cmdOpts.queryMode) && cmdOpts.queryMode.length > 0) {
+        const { parseQueryModeSpecs } = await import("../pipeline/query-modes");
+        const parsed = parseQueryModeSpecs(cmdOpts.queryMode as string[]);
+        if (!parsed.ok) {
+          throw new CliError("VALIDATION", parsed.error.message);
+        }
+        queryModes = parsed.value;
       }
 
       // Parse and validate tag filters
@@ -464,6 +481,7 @@ function wireSearchCommands(program: Command): void {
         lineNumbers: Boolean(cmdOpts.lineNumbers),
         noExpand,
         noRerank,
+        queryModes,
         explain: Boolean(cmdOpts.explain),
         json: format === "json",
         md: format === "md",

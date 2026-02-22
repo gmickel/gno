@@ -121,8 +121,9 @@ export async function query(
       embedPort = embedResult.value;
     }
 
-    // Create generation port (for expansion) - optional
-    if (!options.noExpand) {
+    // Create generation port (for expansion) - optional.
+    // Skip when structured query modes are provided.
+    if (!options.noExpand && !options.queryModes?.length) {
       const genUri = options.genModel ?? preset.gen;
       const genResult = await llm.createGenerationPort(genUri, {
         policy,

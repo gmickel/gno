@@ -555,7 +555,7 @@ Hybrid search combining BM25 and vector retrieval with optional expansion and re
 **Synopsis:**
 
 ```bash
-gno query <query> [-n <num>] [--min-score <num>] [-c <collection>] [--tags-all <tags>] [--tags-any <tags>] [--full] [--line-numbers] [--lang <bcp47>] [--no-expand] [--no-rerank] [--explain] [--json|--files|--csv|--md|--xml]
+gno query <query> [-n <num>] [--min-score <num>] [-c <collection>] [--tags-all <tags>] [--tags-any <tags>] [--full] [--line-numbers] [--lang <bcp47>] [--no-expand] [--no-rerank] [--query-mode <mode:text>]... [--explain] [--json|--files|--csv|--md|--xml]
 ```
 
 **Options:** Same as `gno search`, plus:
@@ -565,6 +565,7 @@ gno query <query> [-n <num>] [--min-score <num>] [-c <collection>] [--tags-all <
 |--------|------|-------------|
 | `--no-expand` | boolean | Disable query expansion |
 | `--no-rerank` | boolean | Disable cross-encoder reranking |
+| `--query-mode` | string[] | Structured mode entry (`term:<text>`, `intent:<text>`, `hyde:<text>`). Repeatable. |
 | `--explain` | boolean | Print retrieval explanation to stderr |
 
 **Explain Output (stderr):**

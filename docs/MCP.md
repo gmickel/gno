@@ -523,6 +523,10 @@ Hybrid search (BM25 + vector).
 Query: "database optimization"
 tagsAll: "backend,work"   # Optional: must have ALL tags
 tagsAny: "urgent,priority"  # Optional: must have ANY tag
+queryModes:
+  - { mode: "term", text: "\"refresh token\" -oauth1" }
+  - { mode: "intent", text: "how token rotation is implemented" }
+  - { mode: "hyde", text: "Refresh tokens rotate on each use and old tokens are invalidated." }
 ```
 
 **Search modes** (via parameters):
@@ -535,6 +539,13 @@ tagsAny: "urgent,priority"  # Optional: must have ANY tag
 
 1. Rephrase the query (free, often effective)
 2. Then try `thorough: true` for better recall
+
+When `queryModes` is provided, GNO uses those entries directly:
+
+- `term`: BM25-focused phrase/keyword query
+- `intent`: semantic/vector-focused reformulation
+- `hyde`: hypothetical passage for vector retrieval
+- Validation: `text` is trimmed and must be non-empty; at most one `hyde` entry is allowed
 
 ### gno_get
 

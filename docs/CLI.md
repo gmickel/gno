@@ -105,6 +105,7 @@ gno query "API design patterns" --explain
 gno query "auth" --fast              # Fastest: ~0.7s
 gno query "auth" --thorough          # Full pipeline: ~5-8s
 gno query "auth" --tags-all work,backend   # Filter by tags
+gno query "auth flow" --query-mode term:"jwt refresh token" --query-mode intent:"how refresh token rotation works"
 ```
 
 **Search modes**:
@@ -126,6 +127,7 @@ Additional options:
 - `--thorough` - Enable query expansion (slower, ~5-8s)
 - `--no-expand` - Disable query expansion
 - `--no-rerank` - Disable cross-encoder reranking
+- `--query-mode <mode:text>` - Structured expansion hints; repeat for multiple entries. Modes: `term`, `intent`, `hyde`
 - `--explain` - Show detailed scoring breakdown (to stderr)
 - `--tags-all <tags>` - Filter: docs must have ALL tags
 - `--tags-any <tags>` - Filter: docs must have ANY tag

@@ -11,7 +11,11 @@ import type {
   GenerationPort,
   RerankPort,
 } from "../../llm/types";
-import type { SearchResult, SearchResults } from "../../pipeline/types";
+import type {
+  QueryModeInput,
+  SearchResult,
+  SearchResults,
+} from "../../pipeline/types";
 import type { ToolContext } from "../server";
 
 import { parseUri } from "../../app/constants";
@@ -32,6 +36,7 @@ interface QueryInput {
   limit?: number;
   minScore?: number;
   lang?: string;
+  queryModes?: QueryModeInput[];
   fast?: boolean;
   thorough?: boolean;
   expand?: boolean;
@@ -158,6 +163,7 @@ export function handleQuery(
         // Determine noExpand/noRerank based on mode flags
         // Priority: fast > thorough > expand/rerank params > defaults
         // Default: noExpand=true (skip expansion), noRerank=false (with reranking)
+        const hasStructuredModes = Boolean(args.queryModes?.length);
         let noExpand = true;
         let noRerank = false;
 
@@ -177,8 +183,13 @@ export function handleQuery(
           }
         }
 
+        // Structured query modes replace generated expansion.
+        if (hasStructuredModes) {
+          noExpand = true;
+        }
+
         // Create generation port (for expansion) - optional
-        if (!noExpand) {
+        if (!noExpand && !hasStructuredModes) {
           const genResult = await llm.createGenerationPort(preset.gen, {
             policy,
             onProgress: (progress) => downloadProgress("gen", progress),
@@ -234,6 +245,7 @@ export function handleQuery(
           queryLanguageHint: args.lang, // Affects expansion prompt, not retrieval
           noExpand,
           noRerank,
+          queryModes: args.queryModes,
           tagsAll: normalizeTagFilters(args.tagsAll),
           tagsAny: normalizeTagFilters(args.tagsAny),
         });

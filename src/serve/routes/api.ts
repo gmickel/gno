@@ -6,7 +6,12 @@
  */
 
 import type { Config, ModelPreset } from "../../config/types";
-import type { AskResult, Citation, SearchOptions } from "../../pipeline/types";
+import type {
+  AskResult,
+  Citation,
+  QueryModeInput,
+  SearchOptions,
+} from "../../pipeline/types";
 import type { SqliteAdapter } from "../../store/sqlite/adapter";
 import type { EmbedScheduler } from "../embed-scheduler";
 
@@ -73,6 +78,7 @@ export interface QueryRequestBody {
   minScore?: number;
   collection?: string;
   lang?: string;
+  queryModes?: QueryModeInput[];
   noExpand?: boolean;
   noRerank?: boolean;
   /** Comma-separated tags - filter to docs having ALL (AND) */
@@ -1062,7 +1068,7 @@ export async function handleSearch(
 
 /**
  * POST /api/query
- * Body: { query, limit?, minScore?, collection?, lang?, noExpand?, noRerank? }
+ * Body: { query, limit?, minScore?, collection?, lang?, queryModes?, noExpand?, noRerank? }
  * Returns hybrid search results (BM25 + vector + expansion + reranking).
  */
 export async function handleQuery(
@@ -1106,6 +1112,56 @@ export async function handleQuery(
     );
   }
 
+  // Validate queryModes
+  let queryModes: QueryModeInput[] | undefined;
+  if (body.queryModes !== undefined) {
+    if (!Array.isArray(body.queryModes)) {
+      return errorResponse(
+        "VALIDATION",
+        "queryModes must be an array of { mode, text } objects"
+      );
+    }
+
+    queryModes = [];
+    let hydeCount = 0;
+
+    for (const [index, entry] of body.queryModes.entries()) {
+      if (!entry || typeof entry !== "object") {
+        return errorResponse(
+          "VALIDATION",
+          `queryModes[${index}] must be an object`
+        );
+      }
+
+      const mode = (entry as { mode?: unknown }).mode;
+      const text = (entry as { text?: unknown }).text;
+      if (mode !== "term" && mode !== "intent" && mode !== "hyde") {
+        return errorResponse(
+          "VALIDATION",
+          `queryModes[${index}].mode must be one of: term, intent, hyde`
+        );
+      }
+      if (typeof text !== "string" || !text.trim()) {
+        return errorResponse(
+          "VALIDATION",
+          `queryModes[${index}].text must be a non-empty string`
+        );
+      }
+
+      if (mode === "hyde") {
+        hydeCount += 1;
+        if (hydeCount > 1) {
+          return errorResponse(
+            "VALIDATION",
+            "Only one hyde mode is allowed in queryModes"
+          );
+        }
+      }
+
+      queryModes.push({ mode, text: text.trim() });
+    }
+  }
+
   // Parse tag filters
   let tagsAll: string[] | undefined;
   let tagsAny: string[] | undefined;
@@ -1147,6 +1203,7 @@ export async function handleQuery(
       minScore: body.minScore,
       collection: body.collection,
       lang: body.lang,
+      queryModes,
       noExpand: body.noExpand,
       noRerank: body.noRerank,
       tagsAll,

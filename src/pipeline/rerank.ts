@@ -6,7 +6,7 @@
  */
 
 import type { RerankPort } from "../llm/types";
-import type { StorePort } from "../store/types";
+import type { ChunkRow, StorePort } from "../store/types";
 import type { BlendingTier, FusionCandidate, RerankedCandidate } from "./types";
 
 import { DEFAULT_BLENDING_SCHEDULE } from "./types";
@@ -102,18 +102,18 @@ async function fetchChunkTexts(
   bestChunkPerDoc: Map<string, BestChunkInfo>
 ): Promise<{ texts: string[]; hashToIndex: Map<string, number> }> {
   const uniqueHashes = [...bestChunkPerDoc.keys()];
-  const chunkResults = await Promise.all(
-    uniqueHashes.map((hash) => store.getChunks(hash))
-  );
-
+  const chunksBatchResult = await store.getChunksBatch(uniqueHashes);
+  const chunksByHash: Map<string, ChunkRow[]> = chunksBatchResult.ok
+    ? chunksBatchResult.value
+    : new Map();
   const chunkTexts = new Map<string, string>();
-  for (let i = 0; i < uniqueHashes.length; i++) {
-    const hash = uniqueHashes[i] as string;
-    const result = chunkResults[i];
-    const bestInfo = bestChunkPerDoc.get(hash);
 
-    if (result?.ok && result.value && bestInfo) {
-      const chunk = result.value.find((c) => c.seq === bestInfo.seq);
+  for (const hash of uniqueHashes) {
+    const bestInfo = bestChunkPerDoc.get(hash);
+    const chunks = chunksByHash.get(hash);
+
+    if (chunks && bestInfo) {
+      const chunk = chunks.find((c) => c.seq === bestInfo.seq);
       const text = chunk?.text ?? "";
       chunkTexts.set(
         hash,

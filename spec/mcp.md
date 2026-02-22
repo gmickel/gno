@@ -262,6 +262,24 @@ Hybrid search combining BM25 and vector retrieval with optional expansion and re
       "type": "string",
       "description": "Language hint for query (BCP-47 code)"
     },
+    "queryModes": {
+      "type": "array",
+      "description": "Optional structured mode entries for retrieval",
+      "items": {
+        "type": "object",
+        "properties": {
+          "mode": {
+            "type": "string",
+            "enum": ["term", "intent", "hyde"]
+          },
+          "text": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": ["mode", "text"]
+      }
+    },
     "expand": {
       "type": "boolean",
       "description": "Enable query expansion (slower, better recall)",
@@ -298,6 +316,8 @@ Hybrid search combining BM25 and vector retrieval with optional expansion and re
 ```
 
 **Output Schema:** `gno://schemas/search-results`
+
+Validation note: `queryModes[].text` is trimmed and must remain non-empty; only one `mode: "hyde"` entry is allowed.
 
 **Response structuredContent includes:**
 

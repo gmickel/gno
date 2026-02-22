@@ -1131,6 +1131,14 @@ Combined BM25 + vector search with optional reranking. **Recommended for best re
   "minScore": 0.1,
   "collection": "notes",
   "lang": "en",
+  "queryModes": [
+    { "mode": "term", "text": "\"refresh token\" -oauth1" },
+    { "mode": "intent", "text": "how token rotation is implemented" },
+    {
+      "mode": "hyde",
+      "text": "Refresh tokens are rotated on every use and prior tokens are invalidated."
+    }
+  ],
   "noExpand": false,
   "noRerank": false,
   "tagsAll": "backend",
@@ -1138,17 +1146,18 @@ Combined BM25 + vector search with optional reranking. **Recommended for best re
 }
 ```
 
-| Field        | Type    | Default | Description                          |
-| :----------- | :------ | :------ | :----------------------------------- |
-| `query`      | string  | —       | Search query (required)              |
-| `limit`      | number  | 20      | Max results (max 50)                 |
-| `minScore`   | number  | —       | Minimum score threshold (0-1)        |
-| `collection` | string  | —       | Filter by collection                 |
-| `lang`       | string  | auto    | Query language hint                  |
-| `noExpand`   | boolean | false   | Disable query expansion              |
-| `noRerank`   | boolean | false   | Disable cross-encoder reranking      |
-| `tagsAll`    | string  | —       | Comma-separated tags (must have ALL) |
-| `tagsAny`    | string  | —       | Comma-separated tags (must have ANY) |
+| Field        | Type    | Default | Description                                                 |
+| :----------- | :------ | :------ | :---------------------------------------------------------- |
+| `query`      | string  | —       | Search query (required)                                     |
+| `limit`      | number  | 20      | Max results (max 50)                                        |
+| `minScore`   | number  | —       | Minimum score threshold (0-1)                               |
+| `collection` | string  | —       | Filter by collection                                        |
+| `lang`       | string  | auto    | Query language hint                                         |
+| `queryModes` | array   | —       | Optional structured mode entries (`term`, `intent`, `hyde`) |
+| `noExpand`   | boolean | false   | Disable query expansion                                     |
+| `noRerank`   | boolean | false   | Disable cross-encoder reranking                             |
+| `tagsAll`    | string  | —       | Comma-separated tags (must have ALL)                        |
+| `tagsAny`    | string  | —       | Comma-separated tags (must have ANY)                        |
 
 **Response**:
 

@@ -199,6 +199,27 @@
           "type": "string",
           "description": "Detected or overridden query language for prompt selection (typically BCP-47)"
         },
+        "queryModes": {
+          "type": "object",
+          "description": "Summary of structured query modes applied",
+          "required": ["term", "intent", "hyde"],
+          "properties": {
+            "term": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Number of term mode entries"
+            },
+            "intent": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Number of intent mode entries"
+            },
+            "hyde": {
+              "type": "boolean",
+              "description": "Whether a hyde entry was provided"
+            }
+          }
+        },
         "tagsAll": {
           "type": "array",
           "items": { "type": "string" },

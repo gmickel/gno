@@ -9,6 +9,7 @@ import type {
   ExpansionResult,
   ExplainLine,
   ExplainResult,
+  QueryModeSummary,
   RerankedCandidate,
 } from "./types";
 
@@ -52,7 +53,8 @@ export function formatResultExplain(results: ExplainResult[]): string {
 export type ExpansionStatus =
   | "disabled" // User chose --no-expand
   | "skipped_strong" // Strong BM25 signal detected
-  | "attempted"; // Expansion was attempted (may have succeeded or timed out)
+  | "attempted" // Expansion was attempted (may have succeeded or timed out)
+  | "provided"; // Structured query modes were provided
 
 export function explainExpansion(
   status: ExpansionStatus,
@@ -64,6 +66,18 @@ export function explainExpansion(
   if (status === "skipped_strong") {
     return { stage: "expansion", message: "skipped (strong BM25)" };
   }
+  if (status === "provided") {
+    if (!result) {
+      return { stage: "expansion", message: "provided (empty)" };
+    }
+    const lex = result.lexicalQueries.length;
+    const sem = result.vectorQueries.length;
+    const hyde = result.hyde ? ", 1 hyde" : "";
+    return {
+      stage: "expansion",
+      message: `provided (${lex} term, ${sem} intent${hyde})`,
+    };
+  }
   if (!result) {
     return { stage: "expansion", message: "skipped (timeout)" };
   }
@@ -73,6 +87,14 @@ export function explainExpansion(
   return {
     stage: "expansion",
     message: `enabled (${lex} lexical, ${sem} semantic variants${hyde})`,
+  };
+}
+
+export function explainQueryModes(summary: QueryModeSummary): ExplainLine {
+  const hyde = summary.hyde ? "yes" : "no";
+  return {
+    stage: "query_modes",
+    message: `term=${summary.term}, intent=${summary.intent}, hyde=${hyde}`,
   };
 }
 
