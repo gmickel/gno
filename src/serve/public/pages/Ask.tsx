@@ -337,7 +337,7 @@ export default function Ask({ navigate }: PageProps) {
   ].filter((pill): pill is string => Boolean(pill));
 
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="flex h-dvh min-h-0 flex-col overflow-hidden">
       <header className="glass sticky top-0 z-10 border-border/50 border-b">
         <div className="flex items-center gap-4 px-8 py-4">
           <Button
@@ -379,8 +379,8 @@ export default function Ask({ navigate }: PageProps) {
         </div>
       </header>
 
-      <main className="flex-1 overflow-y-auto p-8">
-        <div className="mx-auto max-w-3xl space-y-6">
+      <main className="min-h-0 flex-1 overflow-y-auto px-6 py-6 md:p-8">
+        <div className="mx-auto max-w-3xl space-y-5">
           <Collapsible onOpenChange={setShowAdvanced} open={showAdvanced}>
             <CollapsibleTrigger asChild>
               <Button
@@ -540,7 +540,7 @@ export default function Ask({ navigate }: PageProps) {
           )}
 
           {conversation.length === 0 && (
-            <div className="py-20 text-center">
+            <div className="py-10 text-center md:py-14">
               <Sparkles className="mx-auto mb-4 size-12 text-primary/60" />
               <h2 className="mb-2 font-medium text-lg">Ask anything</h2>
               <p className="text-muted-foreground">
