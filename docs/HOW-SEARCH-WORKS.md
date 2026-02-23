@@ -83,6 +83,8 @@ The diagram below shows how your query flows through GNO's search system:
 │    1-3: 75% fusion / 25% rerank                               │
 │    4-10: 60% fusion / 40% rerank                              │
 │    11+: 40% fusion / 60% rerank                               │
+│                                                               │
+│  Guardrail: preserve original BM25 #1 exact hit as top result │
 └───────────────────────────────┬───────────────────────────────┘
                                 │
                                 ▼
@@ -378,6 +380,8 @@ The `--explain` flag shows what happened:
 ```bash
 gno query "my search" --explain
 ```
+
+This includes stage timings (`lang`, `expansion`, `bm25`, `vector`, `fusion`, `rerank`, `assembly`, `total`), fallback counters, and per-result fusion/rerank score components.
 
 ## Graceful Degradation
 

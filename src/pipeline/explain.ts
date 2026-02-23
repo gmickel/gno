@@ -31,13 +31,33 @@ export function formatResultExplain(results: ExplainResult[]): string {
   const lines: string[] = [];
   for (const r of results.slice(0, 10)) {
     let msg = `score=${r.score.toFixed(2)}`;
-    if (r.bm25Score !== undefined) {
-      msg += ` (bm25=${r.bm25Score.toFixed(2)}`;
+    if (
+      r.fusionScore !== undefined ||
+      r.bm25Score !== undefined ||
+      r.vecScore !== undefined ||
+      r.rerankScore !== undefined
+    ) {
+      msg += " (";
+      if (r.fusionScore !== undefined) {
+        msg += `fusion=${r.fusionScore.toFixed(3)}`;
+      }
+      if (r.bm25Score !== undefined) {
+        if (msg.at(-1) !== "(") {
+          msg += ", ";
+        }
+        msg += `bm25=${r.bm25Score.toFixed(2)}`;
+      }
       if (r.vecScore !== undefined) {
-        msg += `, vec=${r.vecScore.toFixed(2)}`;
+        if (msg.at(-1) !== "(") {
+          msg += ", ";
+        }
+        msg += `vec=${r.vecScore.toFixed(2)}`;
       }
       if (r.rerankScore !== undefined) {
-        msg += `, rerank=${r.rerankScore.toFixed(2)}`;
+        if (msg.at(-1) !== "(") {
+          msg += ", ";
+        }
+        msg += `rerank=${r.rerankScore.toFixed(2)}`;
       }
       msg += ")";
     }
@@ -123,6 +143,51 @@ export function explainRerank(enabled: boolean, count: number): ExplainLine {
   return { stage: "rerank", message: `top ${count} reranked` };
 }
 
+interface ExplainCountersInput {
+  expansionCacheHits: number;
+  expansionCacheLookups: number;
+  rerankCacheHits: number;
+  rerankCacheLookups: number;
+  fallbackEvents: string[];
+}
+
+export function explainCounters(counters: ExplainCountersInput): ExplainLine {
+  const events = [...new Set(counters.fallbackEvents)];
+  const fallbackSummary = events.length > 0 ? events.join("|") : "none";
+  return {
+    stage: "counters",
+    message: `expansionCache=${counters.expansionCacheHits}/${counters.expansionCacheLookups}, rerankCache=${counters.rerankCacheHits}/${counters.rerankCacheLookups}, fallbacks=${fallbackSummary}`,
+  };
+}
+
+interface StageTimingsInput {
+  langMs: number;
+  expansionMs: number;
+  bm25Ms: number;
+  vectorMs: number;
+  fusionMs: number;
+  rerankMs: number;
+  assemblyMs: number;
+  totalMs: number;
+}
+
+export function explainTimings(timings: StageTimingsInput): ExplainLine {
+  const fmt = (value: number): string => `${value.toFixed(2)}ms`;
+  return {
+    stage: "timing",
+    message: [
+      `lang=${fmt(timings.langMs)}`,
+      `expansion=${fmt(timings.expansionMs)}`,
+      `bm25=${fmt(timings.bm25Ms)}`,
+      `vector=${fmt(timings.vectorMs)}`,
+      `fusion=${fmt(timings.fusionMs)}`,
+      `rerank=${fmt(timings.rerankMs)}`,
+      `assembly=${fmt(timings.assemblyMs)}`,
+      `total=${fmt(timings.totalMs)}`,
+    ].join(", "),
+  };
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Build ExplainResult from RerankedCandidate
 // ─────────────────────────────────────────────────────────────────────────────
@@ -137,6 +202,7 @@ export function buildExplainResults(
       rank: i + 1,
       docid: docidMap.get(key) ?? "#unknown",
       score: c.blendedScore,
+      fusionScore: c.fusionScore,
       bm25Score: c.bm25Rank !== null ? 1 / (60 + c.bm25Rank) : undefined,
       vecScore: c.vecRank !== null ? 1 / (60 + c.vecRank) : undefined,
       rerankScore: c.rerankScore ?? undefined,

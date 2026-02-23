@@ -600,6 +600,18 @@ export interface StorePort {
   listDocuments(collection?: string): Promise<StoreResult<DocumentRow[]>>;
 
   /**
+   * Fetch documents by mirror hashes in batch.
+   * Useful for retrieval pipelines to avoid full document scans.
+   */
+  getDocumentsByMirrorHashes(
+    mirrorHashes: string[],
+    options?: {
+      collection?: string;
+      activeOnly?: boolean;
+    }
+  ): Promise<StoreResult<DocumentRow[]>>;
+
+  /**
    * List documents with pagination support.
    * Returns documents and total count for efficient browsing.
    */

@@ -25,6 +25,7 @@ export interface RerankOptions {
 export interface RerankResult {
   candidates: RerankedCandidate[];
   reranked: boolean;
+  fallbackReason: "none" | "disabled" | "error";
 }
 
 export interface RerankDeps {
@@ -72,6 +73,7 @@ function blend(
 // ─────────────────────────────────────────────────────────────────────────────
 
 const MAX_CHUNK_CHARS = 4000;
+const PROTECT_BM25_TOP_RANK = 1;
 
 interface BestChunkInfo {
   candidate: FusionCandidate;
@@ -92,6 +94,13 @@ function selectBestChunks(
     }
   }
   return bestChunkPerDoc;
+}
+
+function isProtectedLexicalTopHit(candidate: FusionCandidate): boolean {
+  return (
+    candidate.bm25Rank === PROTECT_BM25_TOP_RANK &&
+    candidate.sources.includes("bm25")
+  );
 }
 
 /**
@@ -151,7 +160,7 @@ export async function rerankCandidates(
   options: RerankOptions = {}
 ): Promise<RerankResult> {
   if (candidates.length === 0) {
-    return { candidates: [], reranked: false };
+    return { candidates: [], reranked: false, fallbackReason: "none" };
   }
 
   const { rerankPort, store } = deps;
@@ -181,6 +190,7 @@ export async function rerankCandidates(
         blendedScore: normalizeFusionScore(c.fusionScore),
       })),
       reranked: false,
+      fallbackReason: "disabled",
     };
   }
 
@@ -202,6 +212,7 @@ export async function rerankCandidates(
         blendedScore: normalizeFusionScore(c.fusionScore),
       })),
       reranked: false,
+      fallbackReason: "error",
     };
   }
 
@@ -239,7 +250,7 @@ export async function rerankCandidates(
   });
 
   // Add remaining candidates with penalty
-  const allCandidates: RerankedCandidate[] = [
+  let allCandidates: RerankedCandidate[] = [
     ...rerankedCandidates,
     ...remaining.map((c) => ({
       ...c,
@@ -260,5 +271,15 @@ export async function rerankCandidates(
     return `${a.mirrorHash}:${a.seq}`.localeCompare(`${b.mirrorHash}:${b.seq}`);
   });
 
-  return { candidates: allCandidates, reranked: true };
+  // Guardrail: keep strong original lexical #1 at the top.
+  // This avoids rerank-only demotions on clear exact-hit queries.
+  const protectedTopHit = allCandidates.find(isProtectedLexicalTopHit);
+  if (protectedTopHit && allCandidates[0] !== protectedTopHit) {
+    allCandidates = [
+      protectedTopHit,
+      ...allCandidates.filter((candidate) => candidate !== protectedTopHit),
+    ];
+  }
+
+  return { candidates: allCandidates, reranked: true, fallbackReason: "none" };
 }

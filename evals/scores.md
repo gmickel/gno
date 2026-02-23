@@ -1,24 +1,25 @@
 # Eval Scores
 
-Last updated: 2026-01-03
+Last updated: 2026-02-23
 
 ## Summary
 
 | Metric        | Value        |
 | ------------- | ------------ |
-| Total Evals   | 78           |
-| Average Score | 79%          |
+| Total Evals   | 79           |
+| Average Score | 80%          |
 | Status        | Some Failing |
 
 ## Results by File
 
 | Eval         | Score | Status | Cases | Duration |
 | ------------ | ----- | ------ | ----- | -------- |
-| expansion    | 100%  | PASS   | 15    | 5ms      |
+| expansion    | 100%  | PASS   | 15    | 4ms      |
+| hybrid       | 89%   | PASS   | 1     | 36ms     |
 | thoroughness | 88%   | PASS   | 24    | 22ms     |
-| vsearch      | 84%   | PASS   | 25    | 24ms     |
-| query        | 83%   | PASS   | 10    | 23ms     |
-| multilingual | 38%   | FAIL   | 4     | 21ms     |
+| vsearch      | 84%   | PASS   | 25    | 19ms     |
+| query        | 83%   | PASS   | 10    | 66ms     |
+| multilingual | 38%   | FAIL   | 4     | 19ms     |
 
 ## Breakdown by Level
 

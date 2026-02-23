@@ -274,4 +274,113 @@ describe("rerank normalization", () => {
       expect(batchCalls).toBe(1);
     });
   });
+
+  describe("blend policy hardening", () => {
+    test("protects original bm25 top hit from rerank-only demotion", async () => {
+      const successReranker = {
+        rerank: async () => ({
+          ok: true as const,
+          value: [
+            { index: 0, score: 0.0, rank: 2 },
+            { index: 1, score: 1.0, rank: 1 },
+          ],
+        }),
+        dispose: async () => {
+          // no-op for test
+        },
+      };
+
+      const candidates: FusionCandidate[] = [
+        {
+          mirrorHash: "hashA",
+          seq: 0,
+          bm25Rank: 1,
+          vecRank: null,
+          fusionScore: 0.9,
+          sources: ["bm25"],
+        },
+        {
+          mirrorHash: "hashB",
+          seq: 0,
+          bm25Rank: 2,
+          vecRank: 1,
+          fusionScore: 0.89,
+          sources: ["bm25", "vector"],
+        },
+      ];
+
+      const result = await rerankCandidates(
+        { rerankPort: successReranker as never, store: mockStore as never },
+        "exact lexical query",
+        candidates,
+        {
+          blendingSchedule: [
+            {
+              maxRank: Number.POSITIVE_INFINITY,
+              fusionWeight: 0.1,
+              rerankWeight: 0.9,
+            },
+          ],
+        }
+      );
+
+      expect(result.reranked).toBe(true);
+      expect(result.candidates[0]?.mirrorHash).toBe("hashA");
+    });
+
+    test("tie sort remains deterministic by mirrorHash:seq", async () => {
+      const successReranker = {
+        rerank: async () => ({
+          ok: true as const,
+          value: [
+            { index: 0, score: 1, rank: 1 },
+            { index: 1, score: 1, rank: 2 },
+          ],
+        }),
+        dispose: async () => {
+          // no-op for test
+        },
+      };
+
+      const candidates: FusionCandidate[] = [
+        {
+          mirrorHash: "hashB",
+          seq: 0,
+          bm25Rank: 2,
+          vecRank: 2,
+          fusionScore: 0.8,
+          sources: ["bm25", "vector"],
+        },
+        {
+          mirrorHash: "hashA",
+          seq: 0,
+          bm25Rank: 1,
+          vecRank: 1,
+          fusionScore: 0.8,
+          sources: ["bm25", "vector"],
+        },
+      ];
+
+      const result = await rerankCandidates(
+        { rerankPort: successReranker as never, store: mockStore as never },
+        "tie query",
+        candidates,
+        {
+          blendingSchedule: [
+            {
+              maxRank: Number.POSITIVE_INFINITY,
+              fusionWeight: 0.5,
+              rerankWeight: 0.5,
+            },
+          ],
+        }
+      );
+
+      expect(result.reranked).toBe(true);
+      expect(result.candidates.map((c) => c.mirrorHash)).toEqual([
+        "hashA",
+        "hashB",
+      ]);
+    });
+  });
 });

@@ -343,6 +343,7 @@ export interface ExplainResult {
   rank: number;
   docid: string;
   score: number;
+  fusionScore?: number;
   bm25Score?: number;
   vecScore?: number;
   rerankScore?: number;

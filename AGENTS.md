@@ -69,6 +69,7 @@ Local-only evaluation suite using Evalite v1. Run before releases as part of DoD
 
 ```bash
 bun run eval          # Run full eval suite (~5s)
+bun run eval:hybrid   # Run hybrid benchmark suite only
 bun run eval:watch    # Watch mode for development
 ```
 
@@ -76,6 +77,7 @@ bun run eval:watch    # Watch mode for development
 
 | File                   | What it tests                                  | Threshold |
 | ---------------------- | ---------------------------------------------- | --------- |
+| `hybrid.eval.ts`       | End-to-end hybrid benchmark + stage latency    | 70%       |
 | `expansion.eval.ts`    | Query expansion schema validity                | 70%       |
 | `vsearch.eval.ts`      | BM25 ranking (Recall@5/10, nDCG@10)            | 70%       |
 | `query.eval.ts`        | Query pipeline + latency budget                | 70%       |
@@ -87,6 +89,8 @@ bun run eval:watch    # Watch mode for development
 
 - `corpus/` - 9 test docs (EN/DE/FR/IT)
 - `queries.json` - 29 queries with relevance judgments
+- `hybrid-adversarial.json` - entity/phrase/negation/ambiguity cases
+- `hybrid-baseline/` - benchmark snapshot artifacts (json + md)
 - `ask-cases.json` - 8 ask test cases
 
 **Key Design Decisions:**
@@ -107,6 +111,7 @@ bun run eval:watch    # Watch mode for development
 | `perf-test.ts`              | Performance testing for search pipeline. Tests different configurations (expand/rerank combinations) and measures timing.  |
 | `test-rerank-size.ts`       | Tests reranker performance at different document sizes (1K-128K chars). Used to identify optimal chunk size for reranking. |
 | `docs-verify.ts`            | Verifies documentation is up-to-date with implementation.                                                                  |
+| `hybrid-benchmark.ts`       | Runs hybrid benchmark and writes baseline artifacts to `evals/fixtures/hybrid-baseline/`.                                  |
 | `generate-test-fixtures.ts` | Generates test fixtures for unit tests.                                                                                    |
 | `og-screenshots.ts`         | Generates PNG screenshots from OG image HTML templates using Playwright.                                                   |
 | `sync-assets.ts`            | Syncs all website assets: OG images, screenshots, README hero. Run before release.                                         |

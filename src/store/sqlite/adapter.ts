@@ -529,6 +529,62 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
     }
   }
 
+  async getDocumentsByMirrorHashes(
+    mirrorHashes: string[],
+    options: {
+      collection?: string;
+      activeOnly?: boolean;
+    } = {}
+  ): Promise<StoreResult<DocumentRow[]>> {
+    try {
+      if (mirrorHashes.length === 0) {
+        return ok([]);
+      }
+
+      const uniqueHashes = [
+        ...new Set(mirrorHashes.filter((hash) => hash.trim().length > 0)),
+      ];
+      if (uniqueHashes.length === 0) {
+        return ok([]);
+      }
+
+      const db = this.ensureOpen();
+      const rows: DbDocumentRow[] = [];
+
+      // SQLite SQLITE_LIMIT_VARIABLE_NUMBER defaults to 999.
+      // Reserve headroom for optional non-IN parameters.
+      const SQL_PARAM_LIMIT = options.collection ? 899 : 900;
+
+      for (let i = 0; i < uniqueHashes.length; i += SQL_PARAM_LIMIT) {
+        const batch = uniqueHashes.slice(i, i + SQL_PARAM_LIMIT);
+        const placeholders = batch.map(() => "?").join(",");
+        const clauses = [`mirror_hash IN (${placeholders})`];
+        const params: string[] = [...batch];
+
+        if (options.activeOnly ?? true) {
+          clauses.push("active = 1");
+        }
+        if (options.collection) {
+          clauses.push("collection = ?");
+          params.push(options.collection);
+        }
+
+        const sql = `SELECT * FROM documents WHERE ${clauses.join(" AND ")} ORDER BY id`;
+        rows.push(...db.query<DbDocumentRow, string[]>(sql).all(...params));
+      }
+
+      return ok(rows.map(mapDocumentRow));
+    } catch (cause) {
+      return err(
+        "QUERY_FAILED",
+        cause instanceof Error
+          ? cause.message
+          : "Failed to get documents by mirror hashes",
+        cause
+      );
+    }
+  }
+
   async listDocumentsPaginated(options: {
     collection?: string;
     limit: number;

@@ -120,6 +120,7 @@ gno query "auth flow" --query-mode term:"jwt refresh token" --query-mode intent:
 - **2× weight for original query**: Prevents dilution by LLM-generated variants
 - **Tiered top-rank bonus**: +0.05 for #1, +0.02 for #2-3
 - **Chunk-level reranking**: Best chunk per doc (4K max) for 25× faster reranking
+- **Lexical top-hit protection**: Preserves original BM25 #1 exact hits against rerank-only demotion
 
 Additional options:
 
@@ -140,6 +141,8 @@ The `--explain` flag outputs:
 - `skipped_strong` indicator if expansion was skipped
 - Rerank scores (if enabled)
 - Final blended scores
+- Per-stage timing breakdown (`lang`, `expansion`, `bm25`, `vector`, `fusion`, `rerank`, `assembly`, `total`)
+- Fallback/counter summary (`fallbacks=...`, cache counters for expansion/rerank)
 
 See [How Search Works](HOW-SEARCH-WORKS.md) for details on the scoring pipeline.
 

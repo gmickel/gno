@@ -422,6 +422,139 @@ describe("SqliteAdapter", () => {
       expect(result.value).toHaveLength(1);
       expect(result.value[0]?.collection).toBe("notes");
     });
+
+    test("gets documents by mirror hashes with active-only default", async () => {
+      const makeDoc = (
+        relPath: string,
+        mirrorHash: string,
+        collection = "notes"
+      ): DocumentInput => ({
+        collection,
+        relPath,
+        sourceHash: `source_${relPath}`,
+        sourceMime: "text/markdown",
+        sourceExt: ".md",
+        sourceSize: 100,
+        sourceMtime: "2024-01-01T00:00:00Z",
+        mirrorHash,
+      });
+
+      await adapter.upsertDocument(makeDoc("a.md", "hash_a"));
+      await adapter.upsertDocument(makeDoc("b.md", "hash_b"));
+      await adapter.upsertDocument(makeDoc("c.md", "hash_c"));
+      await adapter.markInactive("notes", ["b.md"]);
+
+      const result = await adapter.getDocumentsByMirrorHashes([
+        "hash_a",
+        "hash_b",
+        "hash_a",
+        "",
+      ]);
+      expect(result.ok).toBe(true);
+      if (!result.ok) {
+        return;
+      }
+
+      expect(result.value.map((d) => d.relPath)).toEqual(["a.md"]);
+    });
+
+    test("gets documents by mirror hashes with collection and active override", async () => {
+      await adapter.syncCollections([
+        {
+          name: "notes",
+          path: "/notes",
+          pattern: "**/*",
+          include: [],
+          exclude: [],
+        },
+        {
+          name: "docs",
+          path: "/docs",
+          pattern: "**/*",
+          include: [],
+          exclude: [],
+        },
+      ]);
+
+      const makeDoc = (
+        relPath: string,
+        mirrorHash: string,
+        collection = "notes"
+      ): DocumentInput => ({
+        collection,
+        relPath,
+        sourceHash: `source_${collection}_${relPath}`,
+        sourceMime: "text/markdown",
+        sourceExt: ".md",
+        sourceSize: 100,
+        sourceMtime: "2024-01-01T00:00:00Z",
+        mirrorHash,
+      });
+
+      await adapter.upsertDocument(makeDoc("same-notes.md", "shared_hash"));
+      await adapter.upsertDocument(
+        makeDoc("same-docs.md", "shared_hash", "docs")
+      );
+      await adapter.upsertDocument(makeDoc("inactive.md", "inactive_hash"));
+      await adapter.markInactive("notes", ["inactive.md"]);
+
+      const notesOnly = await adapter.getDocumentsByMirrorHashes(
+        ["shared_hash", "inactive_hash"],
+        {
+          collection: "notes",
+          activeOnly: false,
+        }
+      );
+      expect(notesOnly.ok).toBe(true);
+      if (!notesOnly.ok) {
+        return;
+      }
+      expect(notesOnly.value.map((d) => d.relPath).sort()).toEqual([
+        "inactive.md",
+        "same-notes.md",
+      ]);
+
+      const allCollections = await adapter.getDocumentsByMirrorHashes(
+        ["shared_hash"],
+        {
+          activeOnly: false,
+        }
+      );
+      expect(allCollections.ok).toBe(true);
+      if (!allCollections.ok) {
+        return;
+      }
+      expect(allCollections.value).toHaveLength(2);
+      expect(allCollections.value.map((d) => d.collection).sort()).toEqual([
+        "docs",
+        "notes",
+      ]);
+    });
+
+    test("handles more mirror hashes than SQLite parameter limit", async () => {
+      await adapter.upsertDocument({
+        collection: "notes",
+        relPath: "big-query.md",
+        sourceHash: "source_big_query",
+        sourceMime: "text/markdown",
+        sourceExt: ".md",
+        sourceSize: 100,
+        sourceMtime: "2024-01-01T00:00:00Z",
+        mirrorHash: "target_hash",
+      });
+
+      const manyHashes = Array.from({ length: 1005 }, (_, i) => `hash_${i}`);
+      manyHashes.push("target_hash");
+
+      const result = await adapter.getDocumentsByMirrorHashes(manyHashes);
+      expect(result.ok).toBe(true);
+      if (!result.ok) {
+        return;
+      }
+
+      expect(result.value).toHaveLength(1);
+      expect(result.value[0]?.relPath).toBe("big-query.md");
+    });
   });
 
   describe("content", () => {

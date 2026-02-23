@@ -1,0 +1,717 @@
+{
+  "generatedAt": "2026-02-22T23:59:35.598Z",
+  "corpusDocs": 9,
+  "caseCount": 33,
+  "metrics": {
+    "recallAt5": 0.8485,
+    "recallAt10": 0.8485,
+    "ndcgAt10": 0.867,
+    "mrr": 0.9091
+  },
+  "latencies": {
+    "total": {
+      "p50Ms": 0.46,
+      "p95Ms": 1.04,
+      "meanMs": 0.57
+    },
+    "byStage": {
+      "lang": {
+        "p50Ms": 0.05,
+        "p95Ms": 0.13,
+        "meanMs": 0.07
+      },
+      "expansion": {
+        "p50Ms": 0,
+        "p95Ms": 0.02,
+        "meanMs": 0
+      },
+      "bm25": {
+        "p50Ms": 0,
+        "p95Ms": 0,
+        "meanMs": 0
+      },
+      "vector": {
+        "p50Ms": 0,
+        "p95Ms": 0,
+        "meanMs": 0
+      },
+      "fusion": {
+        "p50Ms": 0,
+        "p95Ms": 0.02,
+        "meanMs": 0.01
+      },
+      "rerank": {
+        "p50Ms": 0,
+        "p95Ms": 0.01,
+        "meanMs": 0
+      },
+      "assembly": {
+        "p50Ms": 0.03,
+        "p95Ms": 0.09,
+        "meanMs": 0.04
+      }
+    }
+  },
+  "cases": [
+    {
+      "id": "q1",
+      "category": "baseline",
+      "query": "API authentication bearer token",
+      "topDocs": ["en/api-reference.md"],
+      "recallAt5": 1,
+      "recallAt10": 1,
+      "ndcgAt10": 0.7872,
+      "mrr": 1,
+      "timings": {
+        "langMs": 0.57,
+        "expansionMs": 0.02,
+        "bm25Ms": 0,
+        "vectorMs": 0,
+        "fusionMs": 0.13,
+        "rerankMs": 0.14,
+        "assemblyMs": 0.39,
+        "totalMs": 1.89
+      }
+    },
+    {
+      "id": "q2",
+      "category": "baseline",
+      "query": "rate limiting requests per minute",
+      "topDocs": ["en/api-reference.md"],
+      "recallAt5": 1,
+      "recallAt10": 1,
+      "ndcgAt10": 1,
+      "mrr": 1,
+      "timings": {
+        "langMs": 0.13,
+        "expansionMs": 0,
+        "bm25Ms": 0,
+        "vectorMs": 0,
+        "fusionMs": 0.01,
+        "rerankMs": 0,
+        "assemblyMs": 0.05,
+        "totalMs": 0.67
+      }
+    },
+    {
+      "id": "q3",
+      "category": "baseline",
+      "query": "microservices message queue RabbitMQ",
+      "topDocs": ["en/architecture-decisions.md"],
+      "recallAt5": 1,
+      "recallAt10": 1,
+      "ndcgAt10": 1,
+      "mrr": 1,
+      "timings": {
+        "langMs": 0.1,
+        "expansionMs": 0,
+        "bm25Ms": 0,
+        "vectorMs": 0,
+        "fusionMs": 0.01,
+        "rerankMs": 0,
+        "assemblyMs": 0.04,
+        "totalMs": 0.51
+      }
+    },
+    {
+      "id": "q4",
+      "category": "baseline",
+      "query": "event sourcing audit trail",
+      "topDocs": ["en/architecture-decisions.md"],
+      "recallAt5": 1,
+      "recallAt10": 1,
+      "ndcgAt10": 1,
+      "mrr": 1,
+      "timings": {
+        "langMs": 0.08,
+        "expansionMs": 0,
+        "bm25Ms": 0,
+        "vectorMs": 0,
+        "fusionMs": 0,
+        "rerankMs": 0,
+        "assemblyMs": 0.04,
+        "totalMs": 0.46
+      }
+    },
+    {
+      "id": "q5",
+      "category": "baseline",
+      "query": "kubernetes deployment helm chart",
+      "topDocs": ["de/deployment-anleitung.md", "en/architecture-decisions.md"],
+      "recallAt5": 1,
+      "recallAt10": 1,
+      "ndcgAt10": 1,
+      "mrr": 1,
+      "timings": {
+        "langMs": 0.08,
+        "expansionMs": 0,
+        "bm25Ms": 0,
+        "vectorMs": 0,
+        "fusionMs": 0.02,
+        "rerankMs": 0,
+        "assemblyMs": 0.09,
+        "totalMs": 0.55
+      }
+    },
+    {
+      "id": "q6",
+      "category": "baseline",
+      "query": "connection refused database error",
+      "topDocs": [],
+      "recallAt5": 0,
+      "recallAt10": 0,
+      "ndcgAt10": 0,
+      "mrr": 0,
+      "timings": {
+        "langMs": 0.07,
+        "expansionMs": 0,
+        "bm25Ms": 0,
+        "vectorMs": 0,
+        "fusionMs": 0,
+        "rerankMs": 0.01,
+        "assemblyMs": 0.02,
+        "totalMs": 0.41
+      }
+    },
+    {
+      "id": "q7",
+      "category": "baseline",
+      "query": "memory leak debugging heap snapshot",
+      "topDocs": ["en/troubleshooting-guide.md"],
+      "recallAt5": 1,
+      "recallAt10": 1,
+      "ndcgAt10": 1,
+      "mrr": 1,
+      "timings": {
+        "langMs": 0.06,
+        "expansionMs": 0,
+        "bm25Ms": 0,
+        "vectorMs": 0,
+        "fusionMs": 0,
+        "rerankMs": 0.01,
+        "assemblyMs": 0.04,
+        "totalMs": 0.54
+      }
+    },
+    {
+      "id": "q8",
+      "category": "baseline",
+      "query": "JWT token expired refresh",
+      "topDocs": ["en/troubleshooting-guide.md"],
+      "recallAt5": 0.5,
+      "recallAt10": 0.5,
+      "ndcgAt10": 0.7872,
+      "mrr": 1,
+      "timings": {
+        "langMs": 0.05,
+        "expansionMs": 0,
+        "bm25Ms": 0,
+        "vectorMs": 0,
+        "fusionMs": 0,
+        "rerankMs": 0,
+        "assemblyMs": 0.05,
+        "totalMs": 0.47
+      }
+    },
+    {
+      "id": "q9",
+      "category": "baseline",
+      "query": "Bereitstellung Kubernetes Helm",
+      "topDocs": ["de/deployment-anleitung.md"],
+      "recallAt5": 1,
+      "recallAt10": 1,
+      "ndcgAt10": 0.9173,
+      "mrr": 1,
+      "timings": {
+        "langMs": 0.06,
+        "expansionMs": 0,
+        "bm25Ms": 0,
+        "vectorMs": 0,
+        "fusionMs": 0.01,
+        "rerankMs": 0,
+        "assemblyMs": 0.03,
+        "totalMs": 0.34
+      }
+    },
+    {
+      "id": "q10",
+      "category": "baseline",
+      "query": "Rollback vorherige Version",
+      "topDocs": [],
+      "recallAt5": 0,
+      "recallAt10": 0,
+      "ndcgAt10": 0,
+      "mrr": 0,
+      "timings": {
+        "langMs": 0.05,
+        "expansionMs": 0,
+        "bm25Ms": 0,
+        "vectorMs": 0,
+        "fusionMs": 0,
+        "rerankMs": 0,
+        "assemblyMs": 0.01,
+        "totalMs": 0.34
+      }
+    },
+    {
+      "id": "q11",
+      "category": "baseline",
+      "query": "Fehlerklassen ValidationError",
+      "topDocs": ["de/fehlerbehandlung.md"],
+      "recallAt5": 1,
+      "recallAt10": 1,
+      "ndcgAt10": 1,
+      "mrr": 1,
+      "timings": {
+        "langMs": 0.06,
+        "expansionMs": 0,
+        "bm25Ms": 0,
+        "vectorMs": 0,
+        "fusionMs": 0,
+        "rerankMs": 0,
+        "assemblyMs": 0.03,
+        "totalMs": 0.29
+      }
+    },
+    {
+      "id": "q12",
+      "category": "baseline",
+      "query": "Circuit Breaker retry Logik",
+      "topDocs": ["de/fehlerbehandlung.md"],
+      "recallAt5": 1,
+      "recallAt10": 1,
+      "ndcgAt10": 1,
+      "mrr": 1,
+      "timings": {
+        "langMs": 0.06,
+        "expansionMs": 0,
+        "bm25Ms": 0,
+        "vectorMs": 0,
+        "fusionMs": 0,
+        "rerankMs": 0,
+        "assemblyMs": 0.03,
+        "totalMs": 0.41
+      }
+    },
+    {
+      "id": "q13",
+      "category": "baseline",
+      "query": "composants React hooks useState",
+      "topDocs": ["fr/guide-debutant.md"],
+      "recallAt5": 1,
+      "recallAt10": 1,
+      "ndcgAt10": 1,
+      "mrr": 1,
+      "timings": {
+        "langMs": 0.05,
+        "expansionMs": 0,
+        "bm25Ms": 0,
+        "vectorMs": 0,
+        "fusionMs": 0,
+        "rerankMs": 0,
+        "assemblyMs": 0.04,
+        "totalMs": 0.43
+      }
+    },
+    {
+      "id": "q14",
+      "category": "baseline",
+      "query": "tests unitaires intégration",
+      "topDocs": ["fr/guide-debutant.md"],
+      "recallAt5": 1,
+      "recallAt10": 1,
+      "ndcgAt10": 1,
+      "mrr": 1,
+      "timings": {
+        "langMs": 0.06,
+        "expansionMs": 0,
+        "bm25Ms": 0,
+        "vectorMs": 0,
+        "fusionMs": 0,
+        "rerankMs": 0,
+        "assemblyMs": 0.02,
+        "totalMs": 0.39
+      }
+    },
+    {
+      "id": "q15",
+      "category": "baseline",
+      "query": "injection SQL requêtes paramétrées",
+      "topDocs": ["fr/securite-applications.md"],
+      "recallAt5": 1,
+      "recallAt10": 1,
+      "ndcgAt10": 1,
+      "mrr": 1,
+      "timings": {
+        "langMs": 0.06,
+        "expansionMs": 0,
+        "bm25Ms": 0,
+        "vectorMs": 0,
+        "fusionMs": 0,
+        "rerankMs": 0,
+        "assemblyMs": 0.03,
+        "totalMs": 0.45
+      }
+    },
+    {
+      "id": "q16",
+      "category": "baseline",
+      "query": "CSRF token protection formulaire",
+      "topDocs": ["fr/securite-applications.md"],
+      "recallAt5": 1,
+      "recallAt10": 1,
+      "ndcgAt10": 1,
+      "mrr": 1,
+      "timings": {
+        "langMs": 0.05,
+        "expansionMs": 0,
+        "bm25Ms": 0,
+        "vectorMs": 0,
+        "fusionMs": 0.01,
+        "rerankMs": 0,
+        "assemblyMs": 0.03,
+        "totalMs": 0.42
+      }
+    },
+    {
+      "id": "q17",
+      "category": "baseline",
+      "query": "cache Redis LRU performance",
+      "topDocs": ["it/ottimizzazione-performance.md"],
+      "recallAt5": 1,
+      "recallAt10": 1,
+      "ndcgAt10": 1,
+      "mrr": 1,
+      "timings": {
+        "langMs": 0.05,
+        "expansionMs": 0,
+        "bm25Ms": 0,
+        "vectorMs": 0,
+        "fusionMs": 0.01,
+        "rerankMs": 0,
+        "assemblyMs": 0.03,
+        "totalMs": 0.42
+      }
+    },
+    {
+      "id": "q18",
+      "category": "baseline",
+      "query": "lazy loading componenti React",
+      "topDocs": ["it/ottimizzazione-performance.md"],
+      "recallAt5": 1,
+      "recallAt10": 1,
+      "ndcgAt10": 1,
+      "mrr": 1,
+      "timings": {
+        "langMs": 0.05,
+        "expansionMs": 0,
+        "bm25Ms": 0,
+        "vectorMs": 0,
+        "fusionMs": 0,
+        "rerankMs": 0,
+        "assemblyMs": 0.02,
+        "totalMs": 0.4
+      }
+    },
+    {
+      "id": "q19",
+      "category": "baseline",
+      "query": "Docker Compose configurazione servizi",
+      "topDocs": [],
+      "recallAt5": 0,
+      "recallAt10": 0,
+      "ndcgAt10": 0,
+      "mrr": 0,
+      "timings": {
+        "langMs": 0.05,
+        "expansionMs": 0,
+        "bm25Ms": 0,
+        "vectorMs": 0,
+        "fusionMs": 0,
+        "rerankMs": 0,
+        "assemblyMs": 0.01,
+        "totalMs": 0.35
+      }
+    },
+    {
+      "id": "q20",
+      "category": "baseline",
+      "query": "variabili ambiente validazione Zod",
+      "topDocs": ["it/configurazione-sistema.md"],
+      "recallAt5": 1,
+      "recallAt10": 1,
+      "ndcgAt10": 1,
+      "mrr": 1,
+      "timings": {
+        "langMs": 0.05,
+        "expansionMs": 0,
+        "bm25Ms": 0,
+        "vectorMs": 0,
+        "fusionMs": 0,
+        "rerankMs": 0,
+        "assemblyMs": 0.02,
+        "totalMs": 0.44
+      }
+    },
+    {
+      "id": "q21",
+      "category": "baseline",
+      "query": "API gateway Kong authentication",
+      "topDocs": ["en/architecture-decisions.md"],
+      "recallAt5": 1,
+      "recallAt10": 1,
+      "ndcgAt10": 0.9173,
+      "mrr": 1,
+      "timings": {
+        "langMs": 0.05,
+        "expansionMs": 0,
+        "bm25Ms": 0,
+        "vectorMs": 0,
+        "fusionMs": 0,
+        "rerankMs": 0,
+        "assemblyMs": 0.02,
+        "totalMs": 0.36
+      }
+    },
+    {
+      "id": "q22",
+      "category": "baseline",
+      "query": "database per service saga pattern",
+      "topDocs": ["en/architecture-decisions.md"],
+      "recallAt5": 1,
+      "recallAt10": 1,
+      "ndcgAt10": 1,
+      "mrr": 1,
+      "timings": {
+        "langMs": 0.05,
+        "expansionMs": 0,
+        "bm25Ms": 0,
+        "vectorMs": 0,
+        "fusionMs": 0,
+        "rerankMs": 0,
+        "assemblyMs": 0.02,
+        "totalMs": 0.5
+      }
+    },
+    {
+      "id": "q23",
+      "category": "baseline",
+      "query": "container logs kubectl debug",
+      "topDocs": ["en/troubleshooting-guide.md"],
+      "recallAt5": 0.5,
+      "recallAt10": 0.5,
+      "ndcgAt10": 0.7872,
+      "mrr": 1,
+      "timings": {
+        "langMs": 0.04,
+        "expansionMs": 0,
+        "bm25Ms": 0,
+        "vectorMs": 0,
+        "fusionMs": 0,
+        "rerankMs": 0,
+        "assemblyMs": 0.02,
+        "totalMs": 0.39
+      }
+    },
+    {
+      "id": "q24",
+      "category": "baseline",
+      "query": "hachage mot de passe argon2",
+      "topDocs": ["fr/securite-applications.md"],
+      "recallAt5": 1,
+      "recallAt10": 1,
+      "ndcgAt10": 1,
+      "mrr": 1,
+      "timings": {
+        "langMs": 0.05,
+        "expansionMs": 0,
+        "bm25Ms": 0,
+        "vectorMs": 0,
+        "fusionMs": 0.01,
+        "rerankMs": 0,
+        "assemblyMs": 0.03,
+        "totalMs": 0.48
+      }
+    },
+    {
+      "id": "q25",
+      "category": "baseline",
+      "query": "indici database query N+1",
+      "topDocs": ["it/ottimizzazione-performance.md"],
+      "recallAt5": 1,
+      "recallAt10": 1,
+      "ndcgAt10": 1,
+      "mrr": 1,
+      "timings": {
+        "langMs": 0.04,
+        "expansionMs": 0,
+        "bm25Ms": 0,
+        "vectorMs": 0,
+        "fusionMs": 0.01,
+        "rerankMs": 0,
+        "assemblyMs": 0.02,
+        "totalMs": 0.46
+      }
+    },
+    {
+      "id": "adv1",
+      "category": "entity",
+      "query": "ECONNREFUSED 127.0.0.1:5432",
+      "topDocs": ["en/troubleshooting-guide.md"],
+      "recallAt5": 1,
+      "recallAt10": 1,
+      "ndcgAt10": 0.9173,
+      "mrr": 1,
+      "timings": {
+        "langMs": 0.09,
+        "expansionMs": 0.07,
+        "bm25Ms": 0,
+        "vectorMs": 0,
+        "fusionMs": 0.02,
+        "rerankMs": 0,
+        "assemblyMs": 0.02,
+        "totalMs": 1.04
+      }
+    },
+    {
+      "id": "adv2",
+      "category": "phrase",
+      "query": "\"Authorization: Bearer\" token endpoint",
+      "topDocs": ["en/api-reference.md"],
+      "recallAt5": 1,
+      "recallAt10": 1,
+      "ndcgAt10": 0.9173,
+      "mrr": 1,
+      "timings": {
+        "langMs": 0.06,
+        "expansionMs": 0.01,
+        "bm25Ms": 0,
+        "vectorMs": 0,
+        "fusionMs": 0,
+        "rerankMs": 0,
+        "assemblyMs": 0.02,
+        "totalMs": 0.94
+      }
+    },
+    {
+      "id": "adv3",
+      "category": "acronym",
+      "query": "ADR-003 database per service",
+      "topDocs": ["en/architecture-decisions.md"],
+      "recallAt5": 1,
+      "recallAt10": 1,
+      "ndcgAt10": 1,
+      "mrr": 1,
+      "timings": {
+        "langMs": 0.04,
+        "expansionMs": 0,
+        "bm25Ms": 0,
+        "vectorMs": 0,
+        "fusionMs": 0,
+        "rerankMs": 0,
+        "assemblyMs": 0.02,
+        "totalMs": 0.79
+      }
+    },
+    {
+      "id": "adv4",
+      "category": "ambiguous",
+      "query": "NOT_FOUND 404 error code",
+      "topDocs": ["en/api-reference.md", "de/fehlerbehandlung.md"],
+      "recallAt5": 1,
+      "recallAt10": 1,
+      "ndcgAt10": 1,
+      "mrr": 1,
+      "timings": {
+        "langMs": 0.04,
+        "expansionMs": 0,
+        "bm25Ms": 0,
+        "vectorMs": 0,
+        "fusionMs": 0.01,
+        "rerankMs": 0,
+        "assemblyMs": 0.04,
+        "totalMs": 0.72
+      }
+    },
+    {
+      "id": "adv5",
+      "category": "near-miss",
+      "query": "helm rollback app -upgrade",
+      "topDocs": ["de/deployment-anleitung.md"],
+      "recallAt5": 1,
+      "recallAt10": 1,
+      "ndcgAt10": 0.9173,
+      "mrr": 1,
+      "timings": {
+        "langMs": 0.04,
+        "expansionMs": 0,
+        "bm25Ms": 0,
+        "vectorMs": 0,
+        "fusionMs": 0,
+        "rerankMs": 0,
+        "assemblyMs": 0.02,
+        "totalMs": 0.98
+      }
+    },
+    {
+      "id": "adv6",
+      "category": "entity",
+      "query": "JWT_SECRET minimum length validation",
+      "topDocs": ["it/configurazione-sistema.md"],
+      "recallAt5": 0.5,
+      "recallAt10": 0.5,
+      "ndcgAt10": 0.7453,
+      "mrr": 1,
+      "timings": {
+        "langMs": 0.06,
+        "expansionMs": 0,
+        "bm25Ms": 0,
+        "vectorMs": 0,
+        "fusionMs": 0,
+        "rerankMs": 0,
+        "assemblyMs": 0.03,
+        "totalMs": 0.79
+      }
+    },
+    {
+      "id": "adv7",
+      "category": "phrase",
+      "query": "\"message queue\" RabbitMQ async communication",
+      "topDocs": ["en/architecture-decisions.md"],
+      "recallAt5": 1,
+      "recallAt10": 1,
+      "ndcgAt10": 1,
+      "mrr": 1,
+      "timings": {
+        "langMs": 0.07,
+        "expansionMs": 0,
+        "bm25Ms": 0,
+        "vectorMs": 0,
+        "fusionMs": 0,
+        "rerankMs": 0,
+        "assemblyMs": 0.02,
+        "totalMs": 0.75
+      }
+    },
+    {
+      "id": "adv8",
+      "category": "negation",
+      "query": "connection timeout -ECONNREFUSED",
+      "topDocs": ["en/troubleshooting-guide.md"],
+      "recallAt5": 0.5,
+      "recallAt10": 0.5,
+      "ndcgAt10": 0.9173,
+      "mrr": 1,
+      "timings": {
+        "langMs": 0.05,
+        "expansionMs": 0,
+        "bm25Ms": 0,
+        "vectorMs": 0,
+        "fusionMs": 0,
+        "rerankMs": 0,
+        "assemblyMs": 0.02,
+        "totalMs": 0.58
+      }
+    }
+  ]
+}

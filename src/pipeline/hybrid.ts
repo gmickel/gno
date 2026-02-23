@@ -26,10 +26,12 @@ import {
   buildExplainResults,
   type ExpansionStatus,
   explainBm25,
+  explainCounters,
   explainExpansion,
   explainFusion,
   explainQueryModes,
   explainRerank,
+  explainTimings,
   explainVector,
 } from "./explain";
 import { type RankedInput, rrfFuse, toRankedInput } from "./fusion";
@@ -222,12 +224,30 @@ export async function searchHybrid(
   query: string,
   options: HybridSearchOptions = {}
 ): Promise<ReturnType<typeof ok<SearchResults>>> {
+  const runStartedAt = performance.now();
   const { store, vectorIndex, embedPort, genPort, rerankPort } = deps;
   const pipelineConfig = deps.pipelineConfig ?? DEFAULT_PIPELINE_CONFIG;
 
   const limit = options.limit ?? 20;
   const explainLines: ExplainLine[] = [];
   let expansion: ExpansionResult | null = null;
+  const timings = {
+    langMs: 0,
+    expansionMs: 0,
+    bm25Ms: 0,
+    vectorMs: 0,
+    fusionMs: 0,
+    rerankMs: 0,
+    assemblyMs: 0,
+    totalMs: 0,
+  };
+  const counters = {
+    expansionCacheHits: 0,
+    expansionCacheLookups: 0,
+    rerankCacheHits: 0,
+    rerankCacheLookups: 0,
+    fallbackEvents: [] as string[],
+  };
 
   // When tag filters are present, increase retrieval limits since vector results
   // are filtered post-retrieval and we need more candidates to fill the limit
@@ -239,6 +259,7 @@ export async function searchHybrid(
   //    CRITICAL: Detection does NOT change retrieval filters - options.lang does
   //    Priority: queryLanguageHint (MCP) > lang (CLI) > detection
   // ─────────────────────────────────────────────────────────────────────────
+  const langStartedAt = performance.now();
   const detection = detectQueryLanguage(query);
   // Use explicit hint > lang filter > detected language
   const queryLanguage =
@@ -255,10 +276,12 @@ export async function searchHybrid(
     langMessage = `queryLanguage=${queryLanguage} (detected${confidence})`;
   }
   explainLines.push({ stage: "lang", message: langMessage });
+  timings.langMs = performance.now() - langStartedAt;
 
   // ─────────────────────────────────────────────────────────────────────────
   // 1. Check if expansion needed
   // ─────────────────────────────────────────────────────────────────────────
+  const expansionStartedAt = performance.now();
   const shouldExpand = !options.noExpand && genPort !== null;
   let expansionStatus: ExpansionStatus = "disabled";
   let queryModeSummary: ReturnType<typeof summarizeQueryModes> | undefined =
@@ -281,6 +304,7 @@ export async function searchHybrid(
 
     if (hasStrongSignal) {
       expansionStatus = "skipped_strong";
+      counters.fallbackEvents.push("expansion_skipped_strong");
     } else {
       expansionStatus = "attempted";
       const expandResult = await expandQuery(genPort, query, {
@@ -293,13 +317,19 @@ export async function searchHybrid(
       }
     }
   }
+  if (expansionStatus === "disabled") {
+    counters.fallbackEvents.push("expansion_disabled");
+  }
 
   explainLines.push(explainExpansion(expansionStatus, expansion));
+  timings.expansionMs = performance.now() - expansionStartedAt;
 
   // ─────────────────────────────────────────────────────────────────────────
   // 2. Parallel retrieval using raw store/vector APIs for correct seq tracking
   // ─────────────────────────────────────────────────────────────────────────
   const rankedInputs: RankedInput[] = [];
+
+  const bm25StartedAt = performance.now();
 
   // BM25: original query
   const bm25Result = await searchFtsChunks(store, query, {
@@ -346,6 +376,7 @@ export async function searchHybrid(
       }
     }
   }
+  timings.bm25Ms = performance.now() - bm25StartedAt;
 
   explainLines.push(explainBm25(bm25Count));
 
@@ -353,6 +384,11 @@ export async function searchHybrid(
   let vecCount = 0;
   const vectorAvailable =
     (vectorIndex?.searchAvailable && embedPort !== null) ?? false;
+  if (!vectorAvailable) {
+    counters.fallbackEvents.push("vector_unavailable");
+  }
+
+  const vectorStartedAt = performance.now();
 
   if (vectorAvailable && vectorIndex && embedPort) {
     // Original query (increase limit when tag filters active since filtering is post-retrieval)
@@ -396,13 +432,16 @@ export async function searchHybrid(
       }
     }
   }
+  timings.vectorMs = performance.now() - vectorStartedAt;
 
   explainLines.push(explainVector(vecCount, vectorAvailable));
 
   // ─────────────────────────────────────────────────────────────────────────
   // 3. RRF Fusion
   // ─────────────────────────────────────────────────────────────────────────
+  const fusionStartedAt = performance.now();
   const fusedCandidates = rrfFuse(rankedInputs, pipelineConfig.rrf);
+  timings.fusionMs = performance.now() - fusionStartedAt;
   explainLines.push(
     explainFusion(pipelineConfig.rrf.k, fusedCandidates.length)
   );
@@ -410,12 +449,22 @@ export async function searchHybrid(
   // ─────────────────────────────────────────────────────────────────────────
   // 4. Reranking
   // ─────────────────────────────────────────────────────────────────────────
+  const rerankStartedAt = performance.now();
   const rerankResult = await rerankCandidates(
     { rerankPort: options.noRerank ? null : rerankPort, store },
     query,
     fusedCandidates,
-    { maxCandidates: pipelineConfig.rerankCandidates }
+    {
+      maxCandidates: pipelineConfig.rerankCandidates,
+      blendingSchedule: pipelineConfig.blendingSchedule,
+    }
   );
+  if (rerankResult.fallbackReason === "disabled") {
+    counters.fallbackEvents.push("rerank_disabled");
+  } else if (rerankResult.fallbackReason === "error") {
+    counters.fallbackEvents.push("rerank_error");
+  }
+  timings.rerankMs = performance.now() - rerankStartedAt;
 
   explainLines.push(
     explainRerank(
@@ -437,20 +486,23 @@ export async function searchHybrid(
   // 5. Build final results (optimized: batch lookups, no per-candidate queries)
   // ─────────────────────────────────────────────────────────────────────────
 
-  // Collect unique mirrorHashes needed from candidates
-  // TODO: For large corpora (100k+ docs), add store.getDocumentsByMirrorHashes
-  // batch lookup to avoid loading all documents into memory.
+  const assemblyStartedAt = performance.now();
+
+  // Collect unique mirrorHashes needed from candidates.
   const neededHashes = new Set(filteredCandidates.map((c) => c.mirrorHash));
 
-  // Fetch documents and collections
-  const docsResult = await store.listDocuments(options.collection);
+  // Fetch only needed documents and collections.
+  const docsResult = await store.getDocumentsByMirrorHashes([...neededHashes], {
+    collection: options.collection,
+    activeOnly: true,
+  });
   const collectionsResult = await store.getCollections();
 
   if (!docsResult.ok) {
     return err("QUERY_FAILED", docsResult.error.message);
   }
 
-  // Build lookup maps - only include docs needed by candidates
+  // Build lookup maps.
   const docByMirrorHash = new Map<string, (typeof docsResult.value)[number]>();
 
   // Collect doc IDs that need tag filtering
@@ -459,13 +511,14 @@ export async function searchHybrid(
   const candidateDocs: (typeof docsResult.value)[number][] = [];
 
   for (const doc of docsResult.value) {
-    if (doc.active && doc.mirrorHash && neededHashes.has(doc.mirrorHash)) {
-      if (needsTagFilter) {
-        docIdsForTagCheck.push(doc.id);
-        candidateDocs.push(doc);
-      } else {
-        docByMirrorHash.set(doc.mirrorHash, doc);
-      }
+    if (!doc.mirrorHash) {
+      continue;
+    }
+    if (needsTagFilter) {
+      docIdsForTagCheck.push(doc.id);
+      candidateDocs.push(doc);
+    } else {
+      docByMirrorHash.set(doc.mirrorHash, doc);
     }
   }
 
@@ -613,6 +666,10 @@ export async function searchHybrid(
       },
     });
   }
+  timings.assemblyMs = performance.now() - assemblyStartedAt;
+  timings.totalMs = performance.now() - runStartedAt;
+  explainLines.push(explainTimings(timings));
+  explainLines.push(explainCounters(counters));
 
   // ─────────────────────────────────────────────────────────────────────────
   // 6. Build explain data (if requested)

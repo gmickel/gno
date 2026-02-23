@@ -81,6 +81,7 @@ export async function searchVectorWithEmbedding(
   }
 
   const vecResults = searchResult.value;
+  const uniqueHashes = [...new Set(vecResults.map((v) => v.mirrorHash))];
 
   // Get collection paths for absPath resolution
   const collectionsResult = await store.getCollections();
@@ -96,10 +97,10 @@ export async function searchVectorWithEmbedding(
     collection: options.collection,
     tagsAll: options.tagsAll,
     tagsAny: options.tagsAny,
+    mirrorHashes: uniqueHashes,
   });
 
   // Pre-fetch all chunks in one batch query (eliminates N+1)
-  const uniqueHashes = [...new Set(vecResults.map((v) => v.mirrorHash))];
   const chunksMapResult = await store.getChunksBatch(uniqueHashes);
   if (!chunksMapResult.ok) {
     return err("QUERY_FAILED", chunksMapResult.error.message);
@@ -319,6 +320,7 @@ interface DocumentMapOptions {
   collection?: string;
   tagsAll?: string[];
   tagsAny?: string[];
+  mirrorHashes?: string[];
 }
 
 async function buildDocumentMap(
@@ -327,13 +329,25 @@ async function buildDocumentMap(
 ): Promise<Map<string, DocumentInfo>> {
   const result = new Map<string, DocumentInfo>();
 
-  const docs = await store.listDocuments(options.collection);
+  if (options.mirrorHashes && options.mirrorHashes.length === 0) {
+    return result;
+  }
+
+  const docs = options.mirrorHashes
+    ? await store.getDocumentsByMirrorHashes(options.mirrorHashes, {
+        collection: options.collection,
+        activeOnly: true,
+      })
+    : await store.listDocuments(options.collection);
   if (!docs.ok) {
     return result;
   }
 
-  // Filter active docs with mirrorHash
-  const activeDocs = docs.value.filter((d) => d.mirrorHash && d.active);
+  // Filter docs with mirrorHash.
+  // listDocuments path still needs explicit active filter.
+  const activeDocs = options.mirrorHashes
+    ? docs.value.filter((d) => d.mirrorHash)
+    : docs.value.filter((d) => d.mirrorHash && d.active);
 
   // Apply tag filters if specified (batch fetch to avoid N+1)
   const needsTagFilter = options.tagsAll?.length || options.tagsAny?.length;
