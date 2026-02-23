@@ -32,7 +32,15 @@ GNO is a local knowledge engine that turns your documents into a searchable, con
 
 ---
 
-## What's New in v0.15
+## What's New in v0.17
+
+- **Structured Query Modes**: `term`, `intent`, and `hyde` controls across CLI, API, MCP, and Web
+- **Temporal Retrieval Upgrades**: `since`/`until`, date-range parsing, and recency sorting with frontmatter-date fallback
+- **Web Retrieval UX Polish**: richer advanced controls in Search and Ask (collection/date/category/author/tags + query modes)
+- **Metadata-Aware Retrieval**: ingestion now materializes document metadata/date fields for better filtering and ranking
+- **Migration Reliability**: SQLite-compatible migration path for existing indexes (including older SQLite engines)
+
+### v0.15
 
 - **HTTP Backends**: Offload embedding, reranking, and generation to remote GPU servers
 - Simple URI config: `http://host:port/path#modelname`
