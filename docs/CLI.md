@@ -72,6 +72,8 @@ gno search "meeting" --files
 
 **Snowball stemming**: "running" matches "run", "scored" matches "score", plurals match singulars.
 
+**Recency intent sorting**: Queries containing `latest`, `newest`, or `recent` are ordered newest-first using frontmatter date when present, falling back to file modified time.
+
 Options:
 
 - `-n, --limit <n>` - Limit results (default: 5; 20 with --json/--files)
@@ -79,6 +81,10 @@ Options:
 - `--full` - Show full document content (not just snippet)
 - `--line-numbers` - Show line numbers in snippets
 - `--lang <code>` - Filter by detected language in code blocks
+- `--since <date>` - Modified-at lower bound (ISO date/time or token like `today`, `last week`, `recent`)
+- `--until <date>` - Modified-at upper bound (ISO date/time or token)
+- `--category <values>` - Require matching category/content type (comma-separated)
+- `--author <text>` - Author contains text (case-insensitive)
 - `--tags-all <tags>` - Filter: docs must have ALL tags (comma-separated)
 - `--tags-any <tags>` - Filter: docs must have ANY tag (comma-separated)
 
@@ -93,7 +99,7 @@ gno vsearch "authentication best practices" --json
 
 **Contextual embeddings**: Each chunk is embedded with its document title prepended, helping the model distinguish context (e.g., "configuration" in React vs database docs).
 
-Same options as `gno search`, including `--tags-all` and `--tags-any` filters. Requires embed model.
+Same options as `gno search`, including temporal/category/author and tag filters. Requires embed model.
 
 ### gno query
 
@@ -130,6 +136,10 @@ Additional options:
 - `--no-rerank` - Disable cross-encoder reranking
 - `--query-mode <mode:text>` - Structured expansion hints; repeat for multiple entries. Modes: `term`, `intent`, `hyde`
 - `--explain` - Show detailed scoring breakdown (to stderr)
+- `--since <date>` - Modified-at lower bound (ISO date/time or token)
+- `--until <date>` - Modified-at upper bound (ISO date/time or token)
+- `--category <values>` - Require matching category/content type
+- `--author <text>` - Author contains text (case-insensitive)
 - `--tags-all <tags>` - Filter: docs must have ALL tags
 - `--tags-any <tags>` - Filter: docs must have ANY tag
 
@@ -190,6 +200,10 @@ Options:
 - `--max-answer-tokens <n>` - Limit answer length
 - `--show-sources` - Show all retrieved sources, not just cited ones
 - `-n, --limit <n>` - Max source results
+- `--since <date>` - Modified-at lower bound (ISO date/time or token)
+- `--until <date>` - Modified-at upper bound (ISO date/time or token)
+- `--category <values>` - Require matching category/content type
+- `--author <text>` - Author contains text (case-insensitive)
 
 JSON output includes `meta.answerContext` with selected/dropped source explain details.
 

@@ -36,6 +36,10 @@ interface QueryInput {
   limit?: number;
   minScore?: number;
   lang?: string;
+  since?: string;
+  until?: string;
+  categories?: string[];
+  author?: string;
   queryModes?: QueryModeInput[];
   fast?: boolean;
   thorough?: boolean;
@@ -243,6 +247,10 @@ export function handleQuery(
           minScore: args.minScore,
           collection: args.collection,
           queryLanguageHint: args.lang, // Affects expansion prompt, not retrieval
+          since: args.since,
+          until: args.until,
+          categories: args.categories,
+          author: args.author,
           noExpand,
           noRerank,
           queryModes: args.queryModes,

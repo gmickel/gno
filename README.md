@@ -139,11 +139,13 @@ gno skill install --target all       # Both Claude + Codex
 
 **BM25** indexes full documents (not chunks) with Snowball stemming, so "running" matches "run".
 **Vector** embeds chunks with document titles for context awareness.
+All retrieval modes also support metadata filters: `--since`, `--until`, `--category`, `--author`, `--tags-all`, `--tags-any`.
 
 ```bash
 gno search "handleAuth"              # Find exact matches
 gno vsearch "error handling patterns" # Semantic similarity
 gno query "database optimization"    # Full pipeline
+gno query "meeting decisions" --since "last month" --category "meeting,notes" --author "gordon"
 gno ask "what did we decide" --answer # AI synthesis
 ```
 

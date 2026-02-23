@@ -47,4 +47,16 @@ describe("gno_query schema", () => {
     });
     expect(result.success).toBe(false);
   });
+
+  test("accepts temporal/category/author filters", () => {
+    const result = queryInputSchema.safeParse({
+      query: "recent meeting notes",
+      since: "last month",
+      until: "today",
+      categories: ["meeting", "notes"],
+      author: "gordon",
+    });
+
+    expect(result.success).toBe(true);
+  });
 });

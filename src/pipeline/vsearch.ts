@@ -15,6 +15,13 @@ import { err, ok } from "../store/types";
 import { createChunkLookup } from "./chunk-lookup";
 import { formatQueryForEmbedding } from "./contextual";
 import { detectQueryLanguage } from "./query-language";
+import {
+  resolveRecencyTimestamp,
+  isWithinTemporalRange,
+  resolveTemporalRange,
+  shouldSortByRecency,
+  type TemporalRange,
+} from "./temporal";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Score Normalization
@@ -58,6 +65,13 @@ export async function searchVectorWithEmbedding(
   const { store, vectorIndex } = deps;
   const limit = options.limit ?? 20;
   const minScore = options.minScore ?? 0;
+  const recencySort = shouldSortByRecency(query);
+  const retrievalLimit = recencySort ? limit * 3 : limit;
+  const temporalRange = resolveTemporalRange(
+    query,
+    options.since,
+    options.until
+  );
 
   // Detect query language for metadata (DOES NOT affect retrieval filtering)
   const detection = detectQueryLanguage(query);
@@ -72,9 +86,13 @@ export async function searchVectorWithEmbedding(
   }
 
   // Search nearest neighbors
-  const searchResult = await vectorIndex.searchNearest(queryEmbedding, limit, {
-    minScore,
-  });
+  const searchResult = await vectorIndex.searchNearest(
+    queryEmbedding,
+    retrievalLimit,
+    {
+      minScore,
+    }
+  );
 
   if (!searchResult.ok) {
     return err("QUERY_FAILED", searchResult.error.message);
@@ -97,6 +115,10 @@ export async function searchVectorWithEmbedding(
     collection: options.collection,
     tagsAll: options.tagsAll,
     tagsAny: options.tagsAny,
+    since: temporalRange.since,
+    until: temporalRange.until,
+    categories: options.categories,
+    author: options.author,
     mirrorHashes: uniqueHashes,
   });
 
@@ -179,6 +201,7 @@ export async function searchVectorWithEmbedding(
         mime: doc.sourceMime,
         ext: doc.sourceExt,
         modifiedAt: doc.sourceMtime,
+        documentDate: doc.frontmatterDate ?? undefined,
         sizeBytes: doc.sourceSize,
         sourceHash: doc.sourceHash,
       },
@@ -224,6 +247,7 @@ export async function searchVectorWithEmbedding(
           mime: doc.sourceMime,
           ext: doc.sourceExt,
           modifiedAt: doc.sourceMtime,
+          documentDate: doc.frontmatterDate ?? undefined,
           sizeBytes: doc.sourceSize,
           sourceHash: doc.sourceHash,
         },
@@ -238,15 +262,38 @@ export async function searchVectorWithEmbedding(
     }
   }
 
+  if (recencySort) {
+    results.sort((a, b) => {
+      const aTs = resolveRecencyTimestamp(
+        a.source.documentDate,
+        a.source.modifiedAt
+      );
+      const bTs = resolveRecencyTimestamp(
+        b.source.documentDate,
+        b.source.modifiedAt
+      );
+      if (aTs !== bTs) {
+        return bTs - aTs;
+      }
+      return b.score - a.score;
+    });
+  }
+
+  const finalResults = results.slice(0, limit);
+
   return ok({
-    results,
+    results: finalResults,
     meta: {
       query,
       mode: "vector",
       vectorsUsed: true,
-      totalResults: results.length,
+      totalResults: finalResults.length,
       collection: options.collection,
       lang: options.lang,
+      since: temporalRange.since,
+      until: temporalRange.until,
+      categories: options.categories,
+      author: options.author,
       queryLanguage,
     },
   });
@@ -306,6 +353,7 @@ interface DocumentInfo {
   sourceMime: string;
   sourceExt: string;
   sourceMtime: string;
+  frontmatterDate?: string | null;
   sourceSize: number;
   mirrorHash: string | null;
   converterId: string | null;
@@ -320,7 +368,25 @@ interface DocumentMapOptions {
   collection?: string;
   tagsAll?: string[];
   tagsAny?: string[];
+  since?: string;
+  until?: string;
+  categories?: string[];
+  author?: string;
   mirrorHashes?: string[];
+}
+
+function matchesCategoryFilter(
+  doc: { contentType?: string | null; categories?: string[] | null },
+  categories?: string[]
+): boolean {
+  if (!categories || categories.length === 0) {
+    return true;
+  }
+  const allowed = new Set(categories.map((c) => c.toLowerCase()));
+  if (doc.contentType && allowed.has(doc.contentType.toLowerCase())) {
+    return true;
+  }
+  return (doc.categories ?? []).some((c) => allowed.has(c.toLowerCase()));
 }
 
 async function buildDocumentMap(
@@ -348,6 +414,10 @@ async function buildDocumentMap(
   const activeDocs = options.mirrorHashes
     ? docs.value.filter((d) => d.mirrorHash)
     : docs.value.filter((d) => d.mirrorHash && d.active);
+  const temporalRange: TemporalRange = {
+    since: options.since,
+    until: options.until,
+  };
 
   // Apply tag filters if specified (batch fetch to avoid N+1)
   const needsTagFilter = options.tagsAll?.length || options.tagsAny?.length;
@@ -384,6 +454,19 @@ async function buildDocumentMap(
   }
 
   for (const doc of activeDocs) {
+    if (!isWithinTemporalRange(doc.sourceMtime, temporalRange)) {
+      continue;
+    }
+    if (!matchesCategoryFilter(doc, options.categories)) {
+      continue;
+    }
+    if (
+      options.author &&
+      !doc.author?.toLowerCase().includes(options.author.toLowerCase())
+    ) {
+      continue;
+    }
+
     // Skip if tag filter excluded this doc
     if (allowedDocIds !== null && !allowedDocIds.has(doc.id)) {
       continue;
@@ -399,6 +482,7 @@ async function buildDocumentMap(
       sourceMime: doc.sourceMime,
       sourceExt: doc.sourceExt,
       sourceMtime: doc.sourceMtime,
+      frontmatterDate: doc.frontmatterDate,
       sourceSize: doc.sourceSize,
       mirrorHash: doc.mirrorHash,
       converterId: doc.converterId,

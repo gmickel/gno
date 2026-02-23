@@ -208,6 +208,29 @@ But [[Real Link]] works.`;
       expect(links.length).toBe(0);
     });
 
+    test("parses Logseq alias [text]([[target]]) as wiki link", () => {
+      const markdown = "Open [Project Plan]([[Roadmap]]) next.";
+      const offsets = buildLineOffsets(markdown);
+      const excluded = getExcludedRanges(markdown);
+      const links = parseLinks(markdown, offsets, excluded);
+
+      expect(links.length).toBe(1);
+      expect(links[0]?.kind).toBe("wiki");
+      expect(links[0]?.targetRef).toBe("Roadmap");
+      expect(links[0]?.displayText).toBe("Project Plan");
+    });
+
+    test("parses Logseq block embed as wiki-style link", () => {
+      const markdown = "Reference: {{embed ((63f1d1a8-2d7e-4f33-a5f1))}}";
+      const offsets = buildLineOffsets(markdown);
+      const excluded = getExcludedRanges(markdown);
+      const links = parseLinks(markdown, offsets, excluded);
+
+      expect(links.length).toBe(1);
+      expect(links[0]?.kind).toBe("wiki");
+      expect(links[0]?.targetRef).toBe("63f1d1a8-2d7e-4f33-a5f1");
+    });
+
     test("skips markdown links inside code blocks", () => {
       const markdown = `Text before
 

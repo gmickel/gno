@@ -111,6 +111,23 @@ BM25 keyword search over indexed documents.
       "type": "string",
       "description": "Language filter (BCP-47 code)"
     },
+    "since": {
+      "type": "string",
+      "description": "Modified-at lower bound (ISO date/time or relative token)"
+    },
+    "until": {
+      "type": "string",
+      "description": "Modified-at upper bound (ISO date/time or relative token)"
+    },
+    "categories": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Only include docs matching any category/content type"
+    },
+    "author": {
+      "type": "string",
+      "description": "Only include docs where author contains this value"
+    },
     "tagsAll": {
       "type": "array",
       "items": { "type": "string" },
@@ -167,6 +184,8 @@ BM25 keyword search over indexed documents.
 - Invalid query (empty string): returns `isError: true`
 - Collection not found: returns `isError: true`
 
+Ordering note: recency-intent queries (`latest`, `newest`, `recent`) are sorted newest-first by canonical frontmatter date when present, else source modified time.
+
 ---
 
 ### gno_vsearch
@@ -203,6 +222,23 @@ Vector semantic search over indexed documents.
     "lang": {
       "type": "string",
       "description": "Language hint for query (BCP-47 code)"
+    },
+    "since": {
+      "type": "string",
+      "description": "Modified-at lower bound (ISO date/time or relative token)"
+    },
+    "until": {
+      "type": "string",
+      "description": "Modified-at upper bound (ISO date/time or relative token)"
+    },
+    "categories": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Only include docs matching any category/content type"
+    },
+    "author": {
+      "type": "string",
+      "description": "Only include docs where author contains this value"
     },
     "tagsAll": {
       "type": "array",
@@ -261,6 +297,23 @@ Hybrid search combining BM25 and vector retrieval with optional expansion and re
     "lang": {
       "type": "string",
       "description": "Language hint for query (BCP-47 code)"
+    },
+    "since": {
+      "type": "string",
+      "description": "Modified-at lower bound (ISO date/time or relative token)"
+    },
+    "until": {
+      "type": "string",
+      "description": "Modified-at upper bound (ISO date/time or relative token)"
+    },
+    "categories": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Only include docs matching any category/content type"
+    },
+    "author": {
+      "type": "string",
+      "description": "Only include docs where author contains this value"
     },
     "queryModes": {
       "type": "array",

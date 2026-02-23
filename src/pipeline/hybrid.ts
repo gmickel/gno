@@ -41,6 +41,12 @@ import {
   summarizeQueryModes,
 } from "./query-modes";
 import { rerankCandidates } from "./rerank";
+import {
+  isWithinTemporalRange,
+  resolveRecencyTimestamp,
+  resolveTemporalRange,
+  shouldSortByRecency,
+} from "./temporal";
 import { DEFAULT_PIPELINE_CONFIG } from "./types";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -101,6 +107,10 @@ async function checkBm25Strength(
     lang?: string;
     tagsAll?: string[];
     tagsAny?: string[];
+    since?: string;
+    until?: string;
+    categories?: string[];
+    author?: string;
   }
 ): Promise<boolean> {
   const result = await store.searchFts(query, {
@@ -109,6 +119,10 @@ async function checkBm25Strength(
     language: options?.lang,
     tagsAll: options?.tagsAll,
     tagsAny: options?.tagsAny,
+    since: options?.since,
+    until: options?.until,
+    categories: options?.categories,
+    author: options?.author,
   });
 
   if (!result.ok || result.value.length === 0) {
@@ -150,6 +164,10 @@ async function searchFtsChunks(
     lang?: string;
     tagsAll?: string[];
     tagsAny?: string[];
+    since?: string;
+    until?: string;
+    categories?: string[];
+    author?: string;
   }
 ): Promise<FtsChunksResult> {
   const result = await store.searchFts(query, {
@@ -158,6 +176,10 @@ async function searchFtsChunks(
     language: options.lang,
     tagsAll: options.tagsAll,
     tagsAny: options.tagsAny,
+    since: options.since,
+    until: options.until,
+    categories: options.categories,
+    author: options.author,
   });
   if (!result.ok) {
     // Propagate INVALID_INPUT for FTS syntax errors
@@ -229,6 +251,12 @@ export async function searchHybrid(
   const pipelineConfig = deps.pipelineConfig ?? DEFAULT_PIPELINE_CONFIG;
 
   const limit = options.limit ?? 20;
+  const recencySort = shouldSortByRecency(query);
+  const temporalRange = resolveTemporalRange(
+    query,
+    options.since,
+    options.until
+  );
   const explainLines: ExplainLine[] = [];
   let expansion: ExpansionResult | null = null;
   const timings = {
@@ -249,10 +277,16 @@ export async function searchHybrid(
     fallbackEvents: [] as string[],
   };
 
-  // When tag filters are present, increase retrieval limits since vector results
-  // are filtered post-retrieval and we need more candidates to fill the limit
-  const hasTagFilters = options.tagsAll?.length || options.tagsAny?.length;
-  const retrievalMultiplier = hasTagFilters ? 3 : 1;
+  // Increase retrieval limits when post-retrieval filters are active.
+  const hasPostFilters = Boolean(
+    options.tagsAll?.length ||
+    options.tagsAny?.length ||
+    options.categories?.length ||
+    options.author ||
+    temporalRange.since ||
+    temporalRange.until
+  );
+  const retrievalMultiplier = hasPostFilters || recencySort ? 3 : 1;
 
   // ─────────────────────────────────────────────────────────────────────────
   // 0. Detect query language for PROMPT SELECTION only
@@ -300,6 +334,10 @@ export async function searchHybrid(
       lang: options.lang,
       tagsAll: options.tagsAll,
       tagsAny: options.tagsAny,
+      since: temporalRange.since,
+      until: temporalRange.until,
+      categories: options.categories,
+      author: options.author,
     });
 
     if (hasStrongSignal) {
@@ -333,11 +371,15 @@ export async function searchHybrid(
 
   // BM25: original query
   const bm25Result = await searchFtsChunks(store, query, {
-    limit: limit * 2,
+    limit: limit * 2 * retrievalMultiplier,
     collection: options.collection,
     lang: options.lang,
     tagsAll: options.tagsAll,
     tagsAny: options.tagsAny,
+    since: temporalRange.since,
+    until: temporalRange.until,
+    categories: options.categories,
+    author: options.author,
   });
 
   // Propagate FTS syntax errors as INVALID_INPUT
@@ -357,11 +399,15 @@ export async function searchHybrid(
     const lexicalVariantResults = await Promise.allSettled(
       expansion.lexicalQueries.map((variant) =>
         searchFtsChunks(store, variant, {
-          limit,
+          limit: limit * retrievalMultiplier,
           collection: options.collection,
           lang: options.lang,
           tagsAll: options.tagsAll,
           tagsAny: options.tagsAny,
+          since: temporalRange.since,
+          until: temporalRange.until,
+          categories: options.categories,
+          author: options.author,
         })
       )
     );
@@ -391,7 +437,7 @@ export async function searchHybrid(
   const vectorStartedAt = performance.now();
 
   if (vectorAvailable && vectorIndex && embedPort) {
-    // Original query (increase limit when tag filters active since filtering is post-retrieval)
+    // Original query (increase limit when post-filters are active).
     const vecChunks = await searchVectorChunks(vectorIndex, embedPort, query, {
       limit: limit * 2 * retrievalMultiplier,
     });
@@ -504,6 +550,32 @@ export async function searchHybrid(
 
   // Build lookup maps.
   const docByMirrorHash = new Map<string, (typeof docsResult.value)[number]>();
+  const matchesMetadataFilters = (
+    doc: (typeof docsResult.value)[number]
+  ): boolean => {
+    if (!isWithinTemporalRange(doc.sourceMtime, temporalRange)) {
+      return false;
+    }
+    if (
+      options.author &&
+      !doc.author?.toLowerCase().includes(options.author.toLowerCase())
+    ) {
+      return false;
+    }
+    if (options.categories?.length) {
+      const allowed = new Set(options.categories.map((c) => c.toLowerCase()));
+      const contentTypeMatch = doc.contentType
+        ? allowed.has(doc.contentType.toLowerCase())
+        : false;
+      const categoryMatch = (doc.categories ?? []).some((c) =>
+        allowed.has(c.toLowerCase())
+      );
+      if (!contentTypeMatch && !categoryMatch) {
+        return false;
+      }
+    }
+    return true;
+  };
 
   // Collect doc IDs that need tag filtering
   const needsTagFilter = options.tagsAll?.length || options.tagsAny?.length;
@@ -518,7 +590,9 @@ export async function searchHybrid(
       docIdsForTagCheck.push(doc.id);
       candidateDocs.push(doc);
     } else {
-      docByMirrorHash.set(doc.mirrorHash, doc);
+      if (matchesMetadataFilters(doc)) {
+        docByMirrorHash.set(doc.mirrorHash, doc);
+      }
     }
   }
 
@@ -544,7 +618,7 @@ export async function searchHybrid(
           if (!hasAny) continue;
         }
 
-        if (doc.mirrorHash) {
+        if (doc.mirrorHash && matchesMetadataFilters(doc)) {
           docByMirrorHash.set(doc.mirrorHash, doc);
         }
       }
@@ -573,6 +647,7 @@ export async function searchHybrid(
   >();
 
   const results: SearchResult[] = [];
+  const assemblyLimit = recencySort ? limit * 3 : limit;
   const docidMap = new Map<string, string>();
   // Track seen docids for --full de-duplication
   const seenDocids = new Set<string>();
@@ -580,7 +655,7 @@ export async function searchHybrid(
   // Iterate until we have enough results (don't slice early - deduping may skip candidates)
   for (const candidate of filteredCandidates) {
     // Stop when we have enough results
-    if (results.length >= limit) {
+    if (results.length >= assemblyLimit) {
       break;
     }
 
@@ -656,6 +731,7 @@ export async function searchHybrid(
         mime: doc.sourceMime,
         ext: doc.sourceExt,
         modifiedAt: doc.sourceMtime,
+        documentDate: doc.frontmatterDate ?? undefined,
         sizeBytes: doc.sourceSize,
         sourceHash: doc.sourceHash,
       },
@@ -687,17 +763,40 @@ export async function searchHybrid(
   // ─────────────────────────────────────────────────────────────────────────
   // 7. Return results
   // ─────────────────────────────────────────────────────────────────────────
+  if (recencySort) {
+    results.sort((a, b) => {
+      const aTs = resolveRecencyTimestamp(
+        a.source.documentDate,
+        a.source.modifiedAt
+      );
+      const bTs = resolveRecencyTimestamp(
+        b.source.documentDate,
+        b.source.modifiedAt
+      );
+      if (aTs !== bTs) {
+        return bTs - aTs;
+      }
+      return b.score - a.score;
+    });
+  }
+
+  const finalResults = results.slice(0, limit);
+
   return ok({
-    results,
+    results: finalResults,
     meta: {
       query,
       mode: vectorAvailable ? "hybrid" : "bm25_only",
       expanded: expansion !== null,
       reranked: rerankResult.reranked,
       vectorsUsed: vectorAvailable,
-      totalResults: results.length,
+      totalResults: finalResults.length,
       collection: options.collection,
       lang: options.lang,
+      since: temporalRange.since,
+      until: temporalRange.until,
+      categories: options.categories,
+      author: options.author,
       queryLanguage,
       queryModes: queryModeSummary,
       explain: explainData,

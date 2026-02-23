@@ -465,7 +465,7 @@ BM25 keyword search over indexed documents.
 **Synopsis:**
 
 ```bash
-gno search <query> [-n <num>] [--min-score <num>] [-c <collection>] [--tags-all <tags>] [--tags-any <tags>] [--full] [--line-numbers] [--lang <bcp47>] [--json|--files|--csv|--md|--xml]
+gno search <query> [-n <num>] [--min-score <num>] [-c <collection>] [--since <date>] [--until <date>] [--category <values>] [--author <text>] [--tags-all <tags>] [--tags-any <tags>] [--full] [--line-numbers] [--lang <bcp47>] [--json|--files|--csv|--md|--xml]
 ```
 
 **Arguments:**
@@ -475,16 +475,20 @@ gno search <query> [-n <num>] [--min-score <num>] [-c <collection>] [--tags-all 
 
 **Options:**
 
-| Option             | Type    | Default                   | Description                                    |
-| ------------------ | ------- | ------------------------- | ---------------------------------------------- |
-| `-n`               | integer | 5 (20 for --json/--files) | Max results                                    |
-| `--min-score`      | number  | 0                         | Minimum score threshold                        |
-| `-c, --collection` | string  | all                       | Filter to collection                           |
-| `--tags-all`       | string  | none                      | Filter to docs with ALL tags (comma-separated) |
-| `--tags-any`       | string  | none                      | Filter to docs with ANY tag (comma-separated)  |
-| `--full`           | boolean | false                     | Include full mirror content instead of snippet |
-| `--line-numbers`   | boolean | false                     | Include line numbers in output                 |
-| `--lang`           | string  | auto                      | Language filter/hint (BCP-47)                  |
+| Option             | Type    | Default                   | Description                                                          |
+| ------------------ | ------- | ------------------------- | -------------------------------------------------------------------- |
+| `-n`               | integer | 5 (20 for --json/--files) | Max results                                                          |
+| `--min-score`      | number  | 0                         | Minimum score threshold                                              |
+| `-c, --collection` | string  | all                       | Filter to collection                                                 |
+| `--since`          | string  | none                      | Modified-at lower bound (ISO date/time or relative token)            |
+| `--until`          | string  | none                      | Modified-at upper bound (ISO date/time or relative token)            |
+| `--category`       | string  | none                      | Filter to docs with matching category/content type (comma-separated) |
+| `--author`         | string  | none                      | Filter to docs where author contains value (case-insensitive)        |
+| `--tags-all`       | string  | none                      | Filter to docs with ALL tags (comma-separated)                       |
+| `--tags-any`       | string  | none                      | Filter to docs with ANY tag (comma-separated)                        |
+| `--full`           | boolean | false                     | Include full mirror content instead of snippet                       |
+| `--line-numbers`   | boolean | false                     | Include line numbers in output                                       |
+| `--lang`           | string  | auto                      | Language filter/hint (BCP-47)                                        |
 
 **Scoring:**
 
@@ -499,6 +503,7 @@ Important notes:
 - `--min-score` filters based on this normalized score (e.g., `--min-score 0.5` keeps top half)
 - Raw SQLite FTS5 BM25 scores vary with corpus size; normalization ensures consistent UX
 - When all results have equal raw scores, they all receive `1.0`
+- Queries with explicit recency intent (`latest`, `newest`, `recent`) are ordered newest-first using canonical frontmatter date when present, falling back to source modified time.
 
 **Output (JSON):**
 See [Output Schemas](./output-schemas/search-result.schema.json)
@@ -526,10 +531,10 @@ Vector semantic search over indexed documents.
 **Synopsis:**
 
 ```bash
-gno vsearch <query> [-n <num>] [--min-score <num>] [-c <collection>] [--tags-all <tags>] [--tags-any <tags>] [--full] [--line-numbers] [--lang <bcp47>] [--json|--files|--csv|--md|--xml]
+gno vsearch <query> [-n <num>] [--min-score <num>] [-c <collection>] [--since <date>] [--until <date>] [--category <values>] [--author <text>] [--tags-all <tags>] [--tags-any <tags>] [--full] [--line-numbers] [--lang <bcp47>] [--json|--files|--csv|--md|--xml]
 ```
 
-**Options:** Same as `gno search` (including `--tags-all` and `--tags-any` for tag filtering)
+**Options:** Same as `gno search` (including temporal/category/author and tag filters)
 
 **Scoring:**
 
@@ -555,7 +560,7 @@ Hybrid search combining BM25 and vector retrieval with optional expansion and re
 **Synopsis:**
 
 ```bash
-gno query <query> [-n <num>] [--min-score <num>] [-c <collection>] [--tags-all <tags>] [--tags-any <tags>] [--full] [--line-numbers] [--lang <bcp47>] [--no-expand] [--no-rerank] [--query-mode <mode:text>]... [--explain] [--json|--files|--csv|--md|--xml]
+gno query <query> [-n <num>] [--min-score <num>] [-c <collection>] [--since <date>] [--until <date>] [--category <values>] [--author <text>] [--tags-all <tags>] [--tags-any <tags>] [--full] [--line-numbers] [--lang <bcp47>] [--no-expand] [--no-rerank] [--query-mode <mode:text>]... [--explain] [--json|--files|--csv|--md|--xml]
 ```
 
 **Options:** Same as `gno search`, plus:
@@ -600,19 +605,23 @@ Human-friendly query with citations-first output and optional grounded answer.
 **Synopsis:**
 
 ```bash
-gno ask <query> [-n <num>] [-c <collection>] [--lang <bcp47>] [--answer] [--no-answer] [--max-answer-tokens <n>] [--no-expand] [--no-rerank] [--show-sources] [--json|--md]
+gno ask <query> [-n <num>] [-c <collection>] [--lang <bcp47>] [--since <date>] [--until <date>] [--category <values>] [--author <text>] [--answer] [--no-answer] [--max-answer-tokens <n>] [--no-expand] [--no-rerank] [--show-sources] [--json|--md]
 ```
 
 **Options:**
 
-| Option                | Type    | Default | Description                                 |
-| --------------------- | ------- | ------- | ------------------------------------------- |
-| `--answer`            | boolean | false   | Generate short grounded answer              |
-| `--no-answer`         | boolean | false   | Force retrieval-only output                 |
-| `--max-answer-tokens` | integer | config  | Cap answer generation tokens                |
-| `--no-expand`         | boolean | false   | Disable query expansion                     |
-| `--no-rerank`         | boolean | false   | Disable cross-encoder reranking             |
-| `--show-sources`      | boolean | false   | Show all retrieved sources (not just cited) |
+| Option                | Type    | Default | Description                                                          |
+| --------------------- | ------- | ------- | -------------------------------------------------------------------- |
+| `--answer`            | boolean | false   | Generate short grounded answer                                       |
+| `--no-answer`         | boolean | false   | Force retrieval-only output                                          |
+| `--max-answer-tokens` | integer | config  | Cap answer generation tokens                                         |
+| `--since`             | string  | none    | Modified-at lower bound (ISO date/time or relative token)            |
+| `--until`             | string  | none    | Modified-at upper bound (ISO date/time or relative token)            |
+| `--category`          | string  | none    | Filter to docs with matching category/content type (comma-separated) |
+| `--author`            | string  | none    | Filter to docs where author contains value (case-insensitive)        |
+| `--no-expand`         | boolean | false   | Disable query expansion                                              |
+| `--no-rerank`         | boolean | false   | Disable cross-encoder reranking                                      |
+| `--show-sources`      | boolean | false   | Show all retrieved sources (not just cited)                          |
 
 **Output (JSON):**
 See [Output Schemas](./output-schemas/ask.schema.json)

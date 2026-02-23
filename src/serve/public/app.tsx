@@ -58,8 +58,6 @@ function App() {
     }
     window.history.pushState({}, "", to);
     setLocation(to);
-    // Dispatch event for components that need to react to URL changes
-    window.dispatchEvent(new CustomEvent("locationchange", { detail: to }));
   }, []);
 
   // Global keyboard shortcuts (single-key, GitHub/Gmail pattern)
@@ -98,7 +96,7 @@ function App() {
     <CaptureModalProvider>
       <div className="flex min-h-screen flex-col">
         <div className="flex-1">
-          <Page navigate={navigate} />
+          <Page key={location} navigate={navigate} />
         </div>
         <footer className="border-t border-border/50 bg-background/80 py-4 text-center text-muted-foreground text-sm">
           <div className="flex items-center justify-center gap-4">

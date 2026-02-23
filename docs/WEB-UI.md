@@ -229,6 +229,7 @@ Browse all indexed documents:
 - Filter by collection
 - Paginated results (20 per page)
 - Click any document to view content
+- URL query state (`/browse?collection=...`, `/doc?uri=...`) updates reactively on in-app navigation and browser back/forward
 - Breadcrumb navigation within collections
 - Edit and delete actions on each document
 

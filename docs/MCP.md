@@ -504,6 +504,12 @@ BM25 keyword search.
 ```
 Query: "authentication"
 Collection: (optional)
+since: "last month"         # Optional temporal lower bound
+until: "today"              # Optional temporal upper bound
+categories: ["meeting"]     # Optional category/content-type filters
+author: "gordon"            # Optional author contains filter
+tagsAll: ["backend"]        # Optional: must have ALL tags
+tagsAny: ["urgent"]         # Optional: must have ANY tag
 Limit: 5 (default)
 ```
 
@@ -513,6 +519,10 @@ Vector semantic search.
 
 ```
 Query: "how to handle errors gracefully"
+since: "2025-01-01"
+until: "today"
+categories: ["notes", "code"]
+author: "gordon"
 ```
 
 ### gno_query
@@ -521,8 +531,12 @@ Hybrid search (BM25 + vector).
 
 ```
 Query: "database optimization"
-tagsAll: "backend,work"   # Optional: must have ALL tags
-tagsAny: "urgent,priority"  # Optional: must have ANY tag
+since: "last month"
+until: "today"
+categories: ["backend", "notes"]
+author: "gordon"
+tagsAll: ["backend", "work"]   # Optional: must have ALL tags
+tagsAny: ["urgent", "priority"]  # Optional: must have ANY tag
 queryModes:
   - { mode: "term", text: "\"refresh token\" -oauth1" }
   - { mode: "intent", text: "how token rotation is implemented" }
@@ -539,6 +553,8 @@ queryModes:
 
 1. Rephrase the query (free, often effective)
 2. Then try `thorough: true` for better recall
+
+Recency intent (`latest`, `newest`, `recent`) sorts results newest-first by canonical frontmatter date when present, with file modified time as fallback.
 
 When `queryModes` is provided, GNO uses those entries directly:
 

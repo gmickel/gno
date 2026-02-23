@@ -110,4 +110,58 @@ describe("searchBm25 N+1 guard", () => {
       expect(result.value.results.length).toBe(1);
     }
   });
+
+  test("sorts newest-first for recency queries using doc date fallback", async () => {
+    const mockStore: Partial<StorePort> = {
+      searchFts: async () => ({
+        ok: true as const,
+        value: [
+          {
+            ...makeFtsResult("hash_a", 0),
+            score: -10,
+            sourceMtime: "2025-01-01T00:00:00.000Z",
+            frontmatterDate: "2025-01-01T00:00:00.000Z",
+            relPath: "a.md",
+          },
+          {
+            ...makeFtsResult("hash_b", 0),
+            score: -5,
+            sourceMtime: "2025-01-10T00:00:00.000Z",
+            relPath: "b.md",
+          },
+          {
+            ...makeFtsResult("hash_c", 0),
+            score: -3,
+            sourceMtime: "2025-01-05T00:00:00.000Z",
+            frontmatterDate: "2025-02-01T00:00:00.000Z",
+            relPath: "c.md",
+          },
+        ],
+      }),
+      getCollections: async () => ({
+        ok: true as const,
+        value: [],
+      }),
+      getChunksBatch: async (hashes: string[]) => {
+        const chunks = new Map<string, ChunkRow[]>();
+        for (const hash of hashes) {
+          chunks.set(hash, [makeChunk(hash, 0)]);
+        }
+        return { ok: true as const, value: chunks };
+      },
+    };
+
+    const result = await searchBm25(mockStore as StorePort, "latest notes", {
+      limit: 2,
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      return;
+    }
+
+    expect(result.value.results).toHaveLength(2);
+    expect(result.value.results[0]?.source.relPath).toBe("c.md");
+    expect(result.value.results[1]?.source.relPath).toBe("b.md");
+  });
 });

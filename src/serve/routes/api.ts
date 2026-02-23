@@ -66,6 +66,11 @@ export interface SearchRequestBody {
   limit?: number;
   minScore?: number;
   collection?: string;
+  since?: string;
+  until?: string;
+  /** Comma-separated category filters */
+  category?: string;
+  author?: string;
   /** Comma-separated tags - filter to docs having ALL (AND) */
   tagsAll?: string;
   /** Comma-separated tags - filter to docs having ANY (OR) */
@@ -78,6 +83,11 @@ export interface QueryRequestBody {
   minScore?: number;
   collection?: string;
   lang?: string;
+  since?: string;
+  until?: string;
+  /** Comma-separated category filters */
+  category?: string;
+  author?: string;
   queryModes?: QueryModeInput[];
   noExpand?: boolean;
   noRerank?: boolean;
@@ -92,6 +102,11 @@ export interface AskRequestBody {
   limit?: number;
   collection?: string;
   lang?: string;
+  since?: string;
+  until?: string;
+  /** Comma-separated category filters */
+  category?: string;
+  author?: string;
   maxAnswerTokens?: number;
   noExpand?: boolean;
   noRerank?: boolean;
@@ -141,6 +156,17 @@ function jsonResponse(data: unknown, status = 200): Response {
 
 function errorResponse(code: string, message: string, status = 400): Response {
   return jsonResponse({ error: { code, message } }, status);
+}
+
+function parseCommaSeparatedValues(input: string): string[] {
+  return Array.from(
+    new Set(
+      input
+        .split(",")
+        .map((value) => value.trim().toLowerCase())
+        .filter(Boolean)
+    )
+  );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -437,6 +463,12 @@ export async function handleDocs(
   url: URL
 ): Promise<Response> {
   const collection = url.searchParams.get("collection") || undefined;
+  const sortFieldRaw = (url.searchParams.get("sortField") ?? "modified")
+    .trim()
+    .toLowerCase();
+  const sortOrderRaw = (url.searchParams.get("sortOrder") ?? "desc")
+    .trim()
+    .toLowerCase();
 
   // Validate limit: positive integer, max 100
   const limitParam = Number(url.searchParams.get("limit"));
@@ -457,6 +489,18 @@ export async function handleDocs(
     return errorResponse("VALIDATION", "offset must be a non-negative integer");
   }
   const offset = offsetParam || 0;
+
+  if (sortFieldRaw !== "modified" && !/^[a-z0-9_]+$/.test(sortFieldRaw)) {
+    return errorResponse(
+      "VALIDATION",
+      "sortField must be 'modified' or a lowercase frontmatter date key"
+    );
+  }
+
+  if (sortOrderRaw !== "asc" && sortOrderRaw !== "desc") {
+    return errorResponse("VALIDATION", "sortOrder must be 'asc' or 'desc'");
+  }
+  const sortOrder: "asc" | "desc" = sortOrderRaw === "asc" ? "asc" : "desc";
 
   // Parse tag filters
   let tagsAll: string[] | undefined;
@@ -486,12 +530,30 @@ export async function handleDocs(
     }
   }
 
+  const dateFieldsResult = await store.getCollectionDateFields(collection);
+  if (!dateFieldsResult.ok) {
+    return errorResponse("RUNTIME", dateFieldsResult.error.message, 500);
+  }
+  const availableDateFields = dateFieldsResult.value;
+
+  if (
+    sortFieldRaw !== "modified" &&
+    !availableDateFields.includes(sortFieldRaw)
+  ) {
+    return errorResponse(
+      "VALIDATION",
+      `Unknown sortField: ${sortFieldRaw} for current collection`
+    );
+  }
+
   const result = await store.listDocumentsPaginated({
     collection,
     limit,
     offset,
     tagsAll,
     tagsAny,
+    sortField: sortFieldRaw,
+    sortOrder,
   });
 
   if (!result.ok) {
@@ -514,6 +576,9 @@ export async function handleDocs(
     total,
     limit,
     offset,
+    availableDateFields,
+    sortField: sortFieldRaw,
+    sortOrder,
   });
 }
 
@@ -1022,6 +1087,22 @@ export async function handleSearch(
     );
   }
 
+  if (body.since !== undefined && typeof body.since !== "string") {
+    return errorResponse("VALIDATION", "since must be a string");
+  }
+  if (body.until !== undefined && typeof body.until !== "string") {
+    return errorResponse("VALIDATION", "until must be a string");
+  }
+  if (body.category !== undefined && typeof body.category !== "string") {
+    return errorResponse(
+      "VALIDATION",
+      "category must be a comma-separated string"
+    );
+  }
+  if (body.author !== undefined && typeof body.author !== "string") {
+    return errorResponse("VALIDATION", "author must be a string");
+  }
+
   // Parse tag filters
   let tagsAll: string[] | undefined;
   let tagsAny: string[] | undefined;
@@ -1048,6 +1129,11 @@ export async function handleSearch(
     }
   }
 
+  const categories = body.category
+    ? parseCommaSeparatedValues(body.category)
+    : undefined;
+  const author = body.author?.trim() || undefined;
+
   // Only BM25 supported in web UI (vector/hybrid require LLM ports)
   const options: SearchOptions = {
     limit: Math.min(body.limit || 10, 50),
@@ -1055,6 +1141,10 @@ export async function handleSearch(
     collection: body.collection,
     tagsAll,
     tagsAny,
+    since: body.since,
+    until: body.until,
+    categories,
+    author,
   };
 
   const result = await searchBm25(store, query, options);
@@ -1110,6 +1200,22 @@ export async function handleQuery(
       "VALIDATION",
       "minScore must be a number between 0 and 1"
     );
+  }
+
+  if (body.since !== undefined && typeof body.since !== "string") {
+    return errorResponse("VALIDATION", "since must be a string");
+  }
+  if (body.until !== undefined && typeof body.until !== "string") {
+    return errorResponse("VALIDATION", "until must be a string");
+  }
+  if (body.category !== undefined && typeof body.category !== "string") {
+    return errorResponse(
+      "VALIDATION",
+      "category must be a comma-separated string"
+    );
+  }
+  if (body.author !== undefined && typeof body.author !== "string") {
+    return errorResponse("VALIDATION", "author must be a string");
   }
 
   // Validate queryModes
@@ -1188,6 +1294,11 @@ export async function handleQuery(
     }
   }
 
+  const categories = body.category
+    ? parseCommaSeparatedValues(body.category)
+    : undefined;
+  const author = body.author?.trim() || undefined;
+
   const result = await searchHybrid(
     {
       store: ctx.store,
@@ -1208,6 +1319,10 @@ export async function handleQuery(
       noRerank: body.noRerank,
       tagsAll,
       tagsAny,
+      since: body.since,
+      until: body.until,
+      categories,
+      author,
     }
   );
 
@@ -1256,6 +1371,22 @@ export async function handleAsk(
   let tagsAll: string[] | undefined;
   let tagsAny: string[] | undefined;
 
+  if (body.since !== undefined && typeof body.since !== "string") {
+    return errorResponse("VALIDATION", "since must be a string");
+  }
+  if (body.until !== undefined && typeof body.until !== "string") {
+    return errorResponse("VALIDATION", "until must be a string");
+  }
+  if (body.category !== undefined && typeof body.category !== "string") {
+    return errorResponse(
+      "VALIDATION",
+      "category must be a comma-separated string"
+    );
+  }
+  if (body.author !== undefined && typeof body.author !== "string") {
+    return errorResponse("VALIDATION", "author must be a string");
+  }
+
   if (body.tagsAll) {
     try {
       tagsAll = parseAndValidateTagFilter(body.tagsAll);
@@ -1278,6 +1409,11 @@ export async function handleAsk(
     }
   }
 
+  const categories = body.category
+    ? parseCommaSeparatedValues(body.category)
+    : undefined;
+  const author = body.author?.trim() || undefined;
+
   const limit = Math.min(body.limit ?? 5, 20);
 
   // Run hybrid search first
@@ -1299,6 +1435,10 @@ export async function handleAsk(
       noRerank: body.noRerank,
       tagsAll,
       tagsAny,
+      since: body.since,
+      until: body.until,
+      categories,
+      author,
     }
   );
 

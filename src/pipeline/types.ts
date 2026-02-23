@@ -18,6 +18,7 @@ export interface SearchResultSource {
   mime: string;
   ext: string;
   modifiedAt?: string;
+  documentDate?: string;
   sizeBytes?: number;
   sourceHash?: string;
 }
@@ -67,6 +68,14 @@ export interface SearchMeta {
   queryLanguage?: string;
   /** Summary of structured query modes applied (if provided) */
   queryModes?: QueryModeSummary;
+  /** Temporal filter lower bound (ISO 8601) */
+  since?: string;
+  /** Temporal filter upper bound (ISO 8601) */
+  until?: string;
+  /** Category filters applied */
+  categories?: string[];
+  /** Author filter applied */
+  author?: string;
   /** Explain data (when --explain is used) */
   explain?: {
     lines: ExplainLine[];
@@ -102,6 +111,14 @@ export interface SearchOptions {
   tagsAll?: string[];
   /** Filter to docs with ANY of these tags (OR) */
   tagsAny?: string[];
+  /** Filter by modified time lower bound (ISO 8601 or relative token) */
+  since?: string;
+  /** Filter by modified time upper bound (ISO 8601 or relative token) */
+  until?: string;
+  /** Filter to docs matching ANY category */
+  categories?: string[];
+  /** Filter by author value */
+  author?: string;
 }
 
 /** Structured query mode identifier */

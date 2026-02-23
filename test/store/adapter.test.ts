@@ -67,7 +67,7 @@ describe("SqliteAdapter", () => {
       expect(result.value.applied).toContain(2);
       expect(result.value.applied).toContain(3);
       expect(result.value.applied).toContain(4);
-      expect(result.value.currentVersion).toBe(5);
+      expect(result.value.currentVersion).toBe(7);
       expect(result.value.ftsTokenizer).toBe("unicode61");
     });
 
@@ -85,7 +85,7 @@ describe("SqliteAdapter", () => {
       }
 
       expect(result.value.applied).toHaveLength(0);
-      expect(result.value.currentVersion).toBe(5);
+      expect(result.value.currentVersion).toBe(7);
     });
 
     test("rejects tokenizer mismatch", async () => {
@@ -555,6 +555,156 @@ describe("SqliteAdapter", () => {
       expect(result.value).toHaveLength(1);
       expect(result.value[0]?.relPath).toBe("big-query.md");
     });
+
+    test("lists collection date fields from date_fields metadata", async () => {
+      await adapter.syncCollections([
+        {
+          name: "notes",
+          path: "/notes",
+          pattern: "**/*",
+          include: [],
+          exclude: [],
+        },
+        {
+          name: "docs",
+          path: "/docs",
+          pattern: "**/*",
+          include: [],
+          exclude: [],
+        },
+      ]);
+
+      await adapter.upsertDocument({
+        collection: "notes",
+        relPath: "a.md",
+        sourceHash: "date_fields_a",
+        sourceMime: "text/markdown",
+        sourceExt: ".md",
+        sourceSize: 100,
+        sourceMtime: "2025-01-01T00:00:00.000Z",
+        dateFields: {
+          published_at: "2025-01-05T00:00:00.000Z",
+          deadline: "2025-02-01T00:00:00.000Z",
+        },
+      });
+      await adapter.upsertDocument({
+        collection: "notes",
+        relPath: "b.md",
+        sourceHash: "date_fields_b",
+        sourceMime: "text/markdown",
+        sourceExt: ".md",
+        sourceSize: 100,
+        sourceMtime: "2025-01-02T00:00:00.000Z",
+        dateFields: {
+          event_date: "2025-01-06T00:00:00.000Z",
+        },
+      });
+      await adapter.upsertDocument({
+        collection: "docs",
+        relPath: "c.md",
+        sourceHash: "date_fields_c",
+        sourceMime: "text/markdown",
+        sourceExt: ".md",
+        sourceSize: 100,
+        sourceMtime: "2025-01-03T00:00:00.000Z",
+        dateFields: {
+          release_date: "2025-01-07T00:00:00.000Z",
+        },
+      });
+
+      const notesFields = await adapter.getCollectionDateFields("notes");
+      expect(notesFields.ok).toBe(true);
+      if (!notesFields.ok) {
+        return;
+      }
+      expect(notesFields.value).toEqual([
+        "deadline",
+        "event_date",
+        "published_at",
+      ]);
+
+      const allFields = await adapter.getCollectionDateFields();
+      expect(allFields.ok).toBe(true);
+      if (!allFields.ok) {
+        return;
+      }
+      expect(allFields.value).toEqual([
+        "deadline",
+        "event_date",
+        "published_at",
+        "release_date",
+      ]);
+    });
+
+    test("sorts paginated docs by frontmatter date field with modified fallback", async () => {
+      await adapter.upsertDocument({
+        collection: "notes",
+        relPath: "doc-a.md",
+        sourceHash: "sort_a",
+        sourceMime: "text/markdown",
+        sourceExt: ".md",
+        sourceSize: 100,
+        sourceMtime: "2025-01-01T00:00:00.000Z",
+        dateFields: {
+          published_at: "2025-02-01T00:00:00.000Z",
+        },
+      });
+      await adapter.upsertDocument({
+        collection: "notes",
+        relPath: "doc-b.md",
+        sourceHash: "sort_b",
+        sourceMime: "text/markdown",
+        sourceExt: ".md",
+        sourceSize: 100,
+        sourceMtime: "2025-03-01T00:00:00.000Z",
+      });
+      await adapter.upsertDocument({
+        collection: "notes",
+        relPath: "doc-c.md",
+        sourceHash: "sort_c",
+        sourceMime: "text/markdown",
+        sourceExt: ".md",
+        sourceSize: 100,
+        sourceMtime: "2025-01-15T00:00:00.000Z",
+        dateFields: {
+          published_at: "2025-01-20T00:00:00.000Z",
+        },
+      });
+
+      const desc = await adapter.listDocumentsPaginated({
+        collection: "notes",
+        limit: 10,
+        offset: 0,
+        sortField: "published_at",
+        sortOrder: "desc",
+      });
+      expect(desc.ok).toBe(true);
+      if (!desc.ok) {
+        return;
+      }
+      expect(desc.value.documents.map((doc) => doc.relPath)).toEqual([
+        "doc-b.md",
+        "doc-a.md",
+        "doc-c.md",
+      ]);
+
+      const asc = await adapter.listDocumentsPaginated({
+        collection: "notes",
+        limit: 10,
+        offset: 0,
+        sortField: "published_at",
+        sortOrder: "asc",
+      });
+      expect(asc.ok).toBe(true);
+      if (!asc.ok) {
+        return;
+      }
+      expect(asc.value.documents.map((doc) => doc.relPath)).toEqual([
+        "doc-c.md",
+        "doc-a.md",
+        "doc-b.md",
+      ]);
+    });
   });
 
   describe("content", () => {
@@ -863,7 +1013,7 @@ describe("SqliteAdapter", () => {
         return;
       }
 
-      expect(result.value.version).toBe("5");
+      expect(result.value.version).toBe("7");
       expect(result.value.ftsTokenizer).toBe("unicode61");
       expect(result.value.dbPath).toBe(dbPath);
       expect(result.value.totalDocuments).toBe(1);

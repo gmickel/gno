@@ -473,18 +473,20 @@ curl "http://localhost:3000/api/tags?prefix=project" | jq
 ### List Documents
 
 ```http
-GET /api/docs?collection=notes&limit=20&offset=0&tagsAll=work&tagsAny=urgent,meeting
+GET /api/docs?collection=notes&limit=20&offset=0&tagsAll=work&tagsAny=urgent,meeting&sortField=published_at&sortOrder=desc
 ```
 
 **Query Parameters**:
 
-| Param        | Type   | Default | Description                          |
-| :----------- | :----- | :------ | :----------------------------------- |
-| `collection` | string | —       | Filter by collection name            |
-| `limit`      | number | 20      | Results per page (max 100)           |
-| `offset`     | number | 0       | Pagination offset                    |
-| `tagsAll`    | string | —       | Comma-separated tags (must have ALL) |
-| `tagsAny`    | string | —       | Comma-separated tags (must have ANY) |
+| Param        | Type   | Default  | Description                          |
+| :----------- | :----- | :------- | :----------------------------------- |
+| `collection` | string | —        | Filter by collection name            |
+| `limit`      | number | 20       | Results per page (max 100)           |
+| `offset`     | number | 0        | Pagination offset                    |
+| `tagsAll`    | string | —        | Comma-separated tags (must have ALL) |
+| `tagsAny`    | string | —        | Comma-separated tags (must have ANY) |
+| `sortField`  | string | modified | `modified` or frontmatter date key   |
+| `sortOrder`  | string | desc     | `asc` or `desc`                      |
 
 **Response**:
 
@@ -499,13 +501,15 @@ GET /api/docs?collection=notes&limit=20&offset=0&tagsAll=work&tagsAny=urgent,mee
       "relPath": "projects/readme.md",
       "sourceExt": ".md",
       "sourceMime": "text/markdown",
-      "tags": ["work", "project/alpha"],
       "updatedAt": "2025-01-15T09:00:00Z"
     }
   ],
   "total": 142,
   "limit": 20,
-  "offset": 0
+  "offset": 0,
+  "availableDateFields": ["deadline", "published_at"],
+  "sortField": "published_at",
+  "sortOrder": "desc"
 }
 ```
 
@@ -1064,19 +1068,29 @@ Keyword search using BM25 algorithm.
   "limit": 10,
   "minScore": 0.1,
   "collection": "notes",
+  "since": "last month",
+  "until": "today",
+  "category": "meeting,notes",
+  "author": "gordon",
   "tagsAll": "work,project",
   "tagsAny": "urgent,high"
 }
 ```
 
-| Field        | Type   | Default | Description                          |
-| :----------- | :----- | :------ | :----------------------------------- |
-| `query`      | string | —       | Search query (required)              |
-| `limit`      | number | 10      | Max results (max 50)                 |
-| `minScore`   | number | —       | Minimum score threshold (0-1)        |
-| `collection` | string | —       | Filter by collection                 |
-| `tagsAll`    | string | —       | Comma-separated tags (must have ALL) |
-| `tagsAny`    | string | —       | Comma-separated tags (must have ANY) |
+| Field        | Type   | Default | Description                                               |
+| :----------- | :----- | :------ | :-------------------------------------------------------- |
+| `query`      | string | —       | Search query (required)                                   |
+| `limit`      | number | 10      | Max results (max 50)                                      |
+| `minScore`   | number | —       | Minimum score threshold (0-1)                             |
+| `collection` | string | —       | Filter by collection                                      |
+| `since`      | string | —       | Modified-at lower bound (ISO date/time or token)          |
+| `until`      | string | —       | Modified-at upper bound (ISO date/time or token)          |
+| `category`   | string | —       | Comma-separated category/content-type filters (ANY match) |
+| `author`     | string | —       | Author contains value (case-insensitive)                  |
+| `tagsAll`    | string | —       | Comma-separated tags (must have ALL)                      |
+| `tagsAny`    | string | —       | Comma-separated tags (must have ANY)                      |
+
+If query text includes recency intent (`latest`, `newest`, `recent`), results are ordered newest-first by canonical frontmatter date when present, otherwise by source modified time.
 
 **Response**:
 
@@ -1131,6 +1145,10 @@ Combined BM25 + vector search with optional reranking. **Recommended for best re
   "minScore": 0.1,
   "collection": "notes",
   "lang": "en",
+  "since": "2025-01-01",
+  "until": "today",
+  "category": "backend,meeting",
+  "author": "gordon",
   "queryModes": [
     { "mode": "term", "text": "\"refresh token\" -oauth1" },
     { "mode": "intent", "text": "how token rotation is implemented" },
@@ -1153,6 +1171,10 @@ Combined BM25 + vector search with optional reranking. **Recommended for best re
 | `minScore`   | number  | —       | Minimum score threshold (0-1)                               |
 | `collection` | string  | —       | Filter by collection                                        |
 | `lang`       | string  | auto    | Query language hint                                         |
+| `since`      | string  | —       | Modified-at lower bound (ISO date/time or token)            |
+| `until`      | string  | —       | Modified-at upper bound (ISO date/time or token)            |
+| `category`   | string  | —       | Comma-separated category/content-type filters (ANY match)   |
+| `author`     | string  | —       | Author contains value (case-insensitive)                    |
 | `queryModes` | array   | —       | Optional structured mode entries (`term`, `intent`, `hyde`) |
 | `noExpand`   | boolean | false   | Disable query expansion                                     |
 | `noRerank`   | boolean | false   | Disable cross-encoder reranking                             |
@@ -1221,6 +1243,10 @@ Get an AI-generated answer with citations from your documents.
   "limit": 5,
   "collection": "notes",
   "lang": "en",
+  "since": "last month",
+  "until": "today",
+  "category": "backend,notes",
+  "author": "gordon",
   "maxAnswerTokens": 512,
   "noExpand": false,
   "noRerank": false,
@@ -1229,17 +1255,21 @@ Get an AI-generated answer with citations from your documents.
 }
 ```
 
-| Field             | Type    | Default | Description                            |
-| :---------------- | :------ | :------ | :------------------------------------- |
-| `query`           | string  | —       | Question (required)                    |
-| `limit`           | number  | 5       | Number of sources to consider (max 20) |
-| `collection`      | string  | —       | Filter by collection                   |
-| `lang`            | string  | auto    | Query language hint                    |
-| `maxAnswerTokens` | number  | 512     | Max tokens in answer                   |
-| `noExpand`        | boolean | false   | Disable query expansion                |
-| `noRerank`        | boolean | false   | Disable cross-encoder reranking        |
-| `tagsAll`         | string  | —       | Comma-separated tags (must have ALL)   |
-| `tagsAny`         | string  | —       | Comma-separated tags (must have ANY)   |
+| Field             | Type    | Default | Description                                               |
+| :---------------- | :------ | :------ | :-------------------------------------------------------- |
+| `query`           | string  | —       | Question (required)                                       |
+| `limit`           | number  | 5       | Number of sources to consider (max 20)                    |
+| `collection`      | string  | —       | Filter by collection                                      |
+| `lang`            | string  | auto    | Query language hint                                       |
+| `since`           | string  | —       | Modified-at lower bound (ISO date/time or token)          |
+| `until`           | string  | —       | Modified-at upper bound (ISO date/time or token)          |
+| `category`        | string  | —       | Comma-separated category/content-type filters (ANY match) |
+| `author`          | string  | —       | Author contains value (case-insensitive)                  |
+| `maxAnswerTokens` | number  | 512     | Max tokens in answer                                      |
+| `noExpand`        | boolean | false   | Disable query expansion                                   |
+| `noRerank`        | boolean | false   | Disable cross-encoder reranking                           |
+| `tagsAll`         | string  | —       | Comma-separated tags (must have ALL)                      |
+| `tagsAny`         | string  | —       | Comma-separated tags (must have ANY)                      |
 
 **Response**:
 

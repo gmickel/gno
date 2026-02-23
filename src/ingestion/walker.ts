@@ -200,7 +200,7 @@ export class FileWalker implements WalkerPort {
 
       // Stat file
       const file = Bun.file(absPath);
-      let stat: { size: number; mtime: Date };
+      let stat: { size: number; mtime: Date; ctime?: Date; birthtime?: Date };
       try {
         stat = await file.stat();
       } catch {
@@ -224,6 +224,7 @@ export class FileWalker implements WalkerPort {
         relPath,
         size: stat.size,
         mtime: stat.mtime.toISOString(),
+        ctime: (stat.birthtime ?? stat.ctime ?? stat.mtime).toISOString(),
       });
     }
 

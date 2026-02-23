@@ -192,29 +192,10 @@ export default function DocView({ navigate }: PageProps) {
   // Request sequencing - ignore stale responses on rapid navigation
   const requestIdRef = useRef(0);
 
-  // Track URL for reactivity when navigating between docs
-  const [currentUri, setCurrentUri] = useState(() => {
+  // App remounts page on route/query changes, so URI is stable per render.
+  const currentUri = useMemo(() => {
     const params = new URLSearchParams(window.location.search);
     return params.get("uri") ?? "";
-  });
-
-  // Listen for URL changes (popstate for back/forward, locationchange for navigate())
-  useEffect(() => {
-    const updateUri = () => {
-      const params = new URLSearchParams(window.location.search);
-      const newUri = params.get("uri") ?? "";
-      setCurrentUri(newUri);
-    };
-
-    // Listen for browser back/forward
-    window.addEventListener("popstate", updateUri);
-    // Listen for programmatic navigation via navigate()
-    window.addEventListener("locationchange", updateUri);
-
-    return () => {
-      window.removeEventListener("popstate", updateUri);
-      window.removeEventListener("locationchange", updateUri);
-    };
   }, []);
 
   // Fetch document when URI changes

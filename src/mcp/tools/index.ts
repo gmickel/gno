@@ -56,6 +56,10 @@ const searchInputSchema = z.object({
   limit: z.number().int().min(1).max(100).default(5),
   minScore: z.number().min(0).max(1).optional(),
   lang: z.string().optional(),
+  since: z.string().optional(),
+  until: z.string().optional(),
+  categories: z.array(z.string()).optional(),
+  author: z.string().optional(),
   tagsAll: z.array(z.string()).optional(),
   tagsAny: z.array(z.string()).optional(),
 });
@@ -101,6 +105,10 @@ const vsearchInputSchema = z.object({
   limit: z.number().int().min(1).max(100).default(5),
   minScore: z.number().min(0).max(1).optional(),
   lang: z.string().optional(),
+  since: z.string().optional(),
+  until: z.string().optional(),
+  categories: z.array(z.string()).optional(),
+  author: z.string().optional(),
   tagsAll: z.array(z.string()).optional(),
   tagsAny: z.array(z.string()).optional(),
 });
@@ -116,6 +124,10 @@ export const queryInputSchema = z.object({
   limit: z.number().int().min(1).max(100).default(5),
   minScore: z.number().min(0).max(1).optional(),
   lang: z.string().optional(),
+  since: z.string().optional(),
+  until: z.string().optional(),
+  categories: z.array(z.string()).optional(),
+  author: z.string().optional(),
   queryModes: z
     .array(queryModeInputSchema)
     .superRefine((entries, ctx) => {

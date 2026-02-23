@@ -67,7 +67,7 @@ const MAX_CONCURRENCY = 16;
  * Increment when ingestion adds new derived data (tags, metadata, etc.)
  * Documents with ingestVersion < INGEST_VERSION will be re-processed.
  */
-export const INGEST_VERSION = 3;
+export const INGEST_VERSION = 5;
 
 /**
  * Decide whether to process a file or skip it.
@@ -139,6 +139,171 @@ function extractTags(markdown: string): string[] {
   }
 
   return [...tags];
+}
+
+interface DocumentMetadata {
+  contentType?: string;
+  categories?: string[];
+  author?: string;
+  frontmatterDate?: string;
+  dateFields?: Record<string, string>;
+}
+
+const CODE_EXTENSIONS = new Set([
+  ".c",
+  ".cc",
+  ".cpp",
+  ".cs",
+  ".go",
+  ".java",
+  ".js",
+  ".jsx",
+  ".m",
+  ".mm",
+  ".php",
+  ".py",
+  ".rb",
+  ".rs",
+  ".swift",
+  ".ts",
+  ".tsx",
+]);
+
+const AUTHOR_KEYS = ["author", "by", "owner", "creator"] as const;
+const DATE_KEYS = [
+  "date",
+  "published",
+  "published_at",
+  "created",
+  "created_at",
+  "updated",
+  "updated_at",
+] as const;
+const DATE_FIELD_KEY_REGEX =
+  /(^|_)(date|time|created|updated|published|modified|deadline|expires|expiry|start|end)(_|$)/;
+
+function normalizeMetadataKey(rawKey: string): string {
+  return rawKey
+    .trim()
+    .replace(/([a-z0-9])([A-Z])/g, "$1_$2")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .replace(/_+/g, "_");
+}
+
+function normalizeDate(value: unknown): string | undefined {
+  if (value instanceof Date) {
+    return Number.isNaN(value.getTime()) ? undefined : value.toISOString();
+  }
+  if (typeof value !== "string" && typeof value !== "number") {
+    return undefined;
+  }
+  const normalizedValue =
+    typeof value === "string"
+      ? value.trim().replace(/^["'](.*)["']$/, "$1")
+      : value;
+  const parsed = new Date(normalizedValue);
+  if (Number.isNaN(parsed.getTime())) {
+    return undefined;
+  }
+  return parsed.toISOString();
+}
+
+function inferContentType(relPath: string, ext: string): string {
+  const lowerPath = relPath.toLowerCase();
+  if (CODE_EXTENSIONS.has(ext.toLowerCase())) {
+    return "code";
+  }
+  if (/(meeting|standup|retro|minutes)/.test(lowerPath)) {
+    return "meeting";
+  }
+  if (/(spec|rfc|adr|design)/.test(lowerPath)) {
+    return "spec";
+  }
+  if (/(notes|journal|log)/.test(lowerPath)) {
+    return "notes";
+  }
+  return "prose";
+}
+
+function parseCategories(input: unknown): string[] {
+  if (Array.isArray(input)) {
+    return input
+      .filter((v): v is string => typeof v === "string")
+      .map((v) => v.trim().toLowerCase())
+      .filter((v) => v.length > 0);
+  }
+  if (typeof input === "string") {
+    return input
+      .split(",")
+      .map((v) => v.trim().toLowerCase())
+      .filter((v) => v.length > 0);
+  }
+  return [];
+}
+
+function extractDocumentMetadata(
+  markdown: string,
+  relPath: string,
+  ext: string
+): DocumentMetadata {
+  const parsed = parseFrontmatter(markdown);
+  const metadata = parsed.metadata;
+  const contentType = inferContentType(relPath, ext);
+  const categories = new Set<string>([contentType]);
+
+  const fmCategories = parseCategories(
+    metadata.category ?? metadata.categories ?? metadata.type
+  );
+  for (const category of fmCategories) {
+    categories.add(category);
+  }
+
+  let author: string | undefined;
+  for (const key of AUTHOR_KEYS) {
+    const value = metadata[key];
+    if (typeof value === "string" && value.trim().length > 0) {
+      author = value.trim();
+      break;
+    }
+  }
+
+  const normalizedMetadata = new Map<string, unknown>();
+  for (const [rawKey, value] of Object.entries(metadata)) {
+    const key = normalizeMetadataKey(rawKey);
+    if (key.length > 0 && !normalizedMetadata.has(key)) {
+      normalizedMetadata.set(key, value);
+    }
+  }
+
+  let frontmatterDate: string | undefined;
+  for (const key of DATE_KEYS) {
+    const normalized = normalizeDate(normalizedMetadata.get(key));
+    if (normalized) {
+      frontmatterDate = normalized;
+      break;
+    }
+  }
+
+  const dateFields: Record<string, string> = {};
+  for (const [key, value] of normalizedMetadata.entries()) {
+    if (!DATE_FIELD_KEY_REGEX.test(key)) {
+      continue;
+    }
+    const normalized = normalizeDate(value);
+    if (normalized) {
+      dateFields[key] = normalized;
+    }
+  }
+
+  return {
+    contentType,
+    categories: [...categories],
+    author,
+    frontmatterDate,
+    dateFields: Object.keys(dateFields).length > 0 ? dateFields : undefined,
+  };
 }
 
 /**
@@ -268,15 +433,63 @@ export class SyncService {
     };
 
     try {
-      // 1. Read file bytes
+      // 1. Re-stat before read to enforce maxBytes on current file size
+      let sourceSize = entry.size;
+      let sourceMtime = entry.mtime;
+      let sourceCtime = entry.ctime;
+      try {
+        const sourceStat = await stat(entry.absPath);
+        if (!sourceStat.isFile()) {
+          return {
+            relPath: entry.relPath,
+            status: "error",
+            errorCode: "NOT_FILE",
+            errorMessage: "Path is not a file",
+          };
+        }
+        sourceSize = sourceStat.size;
+        sourceMtime = sourceStat.mtime.toISOString();
+        sourceCtime = (
+          sourceStat.birthtime ??
+          sourceStat.ctime ??
+          sourceStat.mtime
+        ).toISOString();
+      } catch {
+        return {
+          relPath: entry.relPath,
+          status: "error",
+          errorCode: "NOT_FOUND",
+          errorMessage: "File not found",
+        };
+      }
+
+      if (sourceSize > limits.maxBytes) {
+        const message = `File size ${sourceSize} exceeds limit ${limits.maxBytes}`;
+        await store
+          .recordError({
+            collection: collection.name,
+            relPath: entry.relPath,
+            code: "TOO_LARGE",
+            message,
+          })
+          .catch(() => undefined);
+        return {
+          relPath: entry.relPath,
+          status: "skipped",
+          errorCode: "TOO_LARGE",
+          errorMessage: message,
+        };
+      }
+
+      // 2. Read file bytes
       const bytes = await Bun.file(entry.absPath).bytes();
 
-      // 2. Compute sourceHash
+      // 3. Compute sourceHash
       const hasher = new Bun.CryptoHasher("sha256");
       hasher.update(bytes);
       const sourceHash = hasher.digest("hex");
 
-      // 3. Check existing doc for skip/repair decision
+      // 4. Check existing doc for skip/repair decision
       const existingResult = await store.getDocument(
         collection.name,
         entry.relPath
@@ -288,10 +501,10 @@ export class SyncService {
         return { relPath: entry.relPath, status: "unchanged" };
       }
 
-      // 4. Detect MIME (bytes is already Uint8Array from Bun.file().bytes())
+      // 5. Detect MIME (bytes is already Uint8Array from Bun.file().bytes())
       const mime = this.mimeDetector.detect(entry.absPath, bytes);
 
-      // 5. Convert via pipeline
+      // 6. Convert via pipeline
       const convertResult = await this.pipeline.convert({
         sourcePath: entry.absPath,
         relativePath: entry.relPath,
@@ -323,8 +536,9 @@ export class SyncService {
           sourceHash,
           sourceMime: mime.mime,
           sourceExt: mime.ext,
-          sourceSize: entry.size,
-          sourceMtime: entry.mtime,
+          sourceSize,
+          sourceMtime,
+          sourceCtime,
           lastErrorCode: convertResult.error.code,
           lastErrorMessage: convertResult.error.message,
           // mirrorHash intentionally omitted (will be null)
@@ -348,21 +562,32 @@ export class SyncService {
       }
 
       const artifact = convertResult.value;
+      const extractedMetadata = extractDocumentMetadata(
+        artifact.markdown,
+        entry.relPath,
+        mime.ext
+      );
 
-      // 6. Upsert document - EXPLICITLY clear error fields on success
+      // 7. Upsert document - EXPLICITLY clear error fields on success
       const docidResult = await store.upsertDocument({
         collection: collection.name,
         relPath: entry.relPath,
         sourceHash,
         sourceMime: mime.mime,
         sourceExt: mime.ext,
-        sourceSize: entry.size,
-        sourceMtime: entry.mtime,
+        sourceSize,
+        sourceMtime,
+        sourceCtime,
         title: artifact.title,
         mirrorHash: artifact.mirrorHash,
         converterId: artifact.meta.converterId,
         converterVersion: artifact.meta.converterVersion,
         languageHint: artifact.languageHint ?? collection.languageHint,
+        contentType: extractedMetadata.contentType,
+        categories: extractedMetadata.categories,
+        author: extractedMetadata.author,
+        frontmatterDate: extractedMetadata.frontmatterDate,
+        dateFields: extractedMetadata.dateFields,
         // Clear error fields on success (requires store to handle undefined → null)
         lastErrorCode: undefined,
         lastErrorMessage: undefined,
@@ -374,7 +599,7 @@ export class SyncService {
         relPath: entry.relPath,
       });
 
-      // 7. Upsert content (content-addressed dedupe) - CHECKED
+      // 8. Upsert content (content-addressed dedupe) - CHECKED
       const contentResult = await store.upsertContent(
         artifact.mirrorHash,
         artifact.markdown
@@ -383,14 +608,14 @@ export class SyncService {
         mirrorHash: artifact.mirrorHash,
       });
 
-      // 8. Chunk content
+      // 9. Chunk content
       const chunks = this.chunker.chunk(
         artifact.markdown,
         DEFAULT_CHUNK_PARAMS,
         artifact.languageHint ?? collection.languageHint
       );
 
-      // 9. Convert to ChunkInput for store
+      // 10. Convert to ChunkInput for store
       const chunkInputs: ChunkInput[] = chunks.map((c) => ({
         seq: c.seq,
         pos: c.pos,
@@ -401,7 +626,7 @@ export class SyncService {
         tokenCount: c.tokenCount ?? undefined,
       }));
 
-      // 10. Upsert chunks - CHECKED
+      // 11. Upsert chunks - CHECKED
       const chunksResult = await store.upsertChunks(
         artifact.mirrorHash,
         chunkInputs
@@ -411,13 +636,13 @@ export class SyncService {
         chunkCount: chunkInputs.length,
       });
 
-      // 11. Rebuild FTS for this hash - CHECKED
+      // 12. Rebuild FTS for this hash - CHECKED
       const ftsResult = await store.rebuildFtsForHash(artifact.mirrorHash);
       mustOk(ftsResult, "rebuildFtsForHash", {
         mirrorHash: artifact.mirrorHash,
       });
 
-      // 12. Extract and store tags from frontmatter and body hashtags
+      // 13. Extract and store tags from frontmatter and body hashtags
       // Always call setDocTags to clear removed tags on re-sync
       const extractedTags = extractTags(artifact.markdown);
       const tagsResult = await store.setDocTags(
@@ -430,7 +655,7 @@ export class SyncService {
         tagCount: extractedTags.length,
       });
 
-      // 13. Extract and store links (wiki and markdown links)
+      // 14. Extract and store links (wiki and markdown links)
       const excludedRanges = getExcludedRanges(artifact.markdown);
       const lineOffsets = buildLineOffsets(artifact.markdown);
       const parsedLinks = parseLinks(
@@ -521,6 +746,9 @@ export class SyncService {
             sourceExt: existingResult.value.sourceExt,
             sourceSize: existingResult.value.sourceSize,
             sourceMtime: existingResult.value.sourceMtime,
+            sourceCtime:
+              existingResult.value.sourceCtime ??
+              existingResult.value.sourceMtime,
             lastErrorCode: code,
             lastErrorMessage: message,
           });
@@ -579,6 +807,7 @@ export class SyncService {
         relPath,
         size: stats.size,
         mtime: stats.mtime.toISOString(),
+        ctime: (stats.birthtime ?? stats.ctime ?? stats.mtime).toISOString(),
       };
 
       const result = await this.processFile(collection, entry, store, options);
@@ -661,6 +890,7 @@ export class SyncService {
     let updated = 0;
     let unchanged = 0;
     let errored = 0;
+    let dynamicSkipped = 0;
 
     if (concurrency === 1) {
       // Sequential processing with batched transactions (Windows perf)
@@ -696,8 +926,15 @@ export class SyncService {
                   });
                 }
                 break;
-              default:
-                // 'skipped' status - already counted in filesSkipped
+              case "skipped":
+                dynamicSkipped += 1;
+                if (result.errorCode && result.errorMessage) {
+                  errors.push({
+                    relPath: result.relPath,
+                    code: result.errorCode,
+                    message: result.errorMessage,
+                  });
+                }
                 break;
             }
           }
@@ -763,8 +1000,15 @@ export class SyncService {
               });
             }
             break;
-          default:
-            // 'skipped' status - already counted in filesSkipped
+          case "skipped":
+            dynamicSkipped += 1;
+            if (result.errorCode && result.errorMessage) {
+              errors.push({
+                relPath: result.relPath,
+                code: result.errorCode,
+                message: result.errorMessage,
+              });
+            }
             break;
         }
       }
@@ -796,7 +1040,7 @@ export class SyncService {
       filesUpdated: updated,
       filesUnchanged: unchanged,
       filesErrored: errored,
-      filesSkipped: skipped.length,
+      filesSkipped: skipped.length + dynamicSkipped,
       filesMarkedInactive: markedInactive,
       durationMs: Date.now() - startTime,
       errors,

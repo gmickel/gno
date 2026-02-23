@@ -192,6 +192,12 @@ export async function ask(
       limit,
       collection: options.collection,
       lang: options.lang,
+      since: options.since,
+      until: options.until,
+      categories: options.categories,
+      author: options.author,
+      tagsAll: options.tagsAll,
+      tagsAny: options.tagsAny,
       noExpand: options.noExpand,
       noRerank: options.noRerank,
     });

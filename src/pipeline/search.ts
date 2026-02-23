@@ -18,6 +18,11 @@ import type {
 import { err, ok } from "../store/types";
 import { createChunkLookup } from "./chunk-lookup";
 import { detectQueryLanguage } from "./query-language";
+import {
+  resolveRecencyTimestamp,
+  resolveTemporalRange,
+  shouldSortByRecency,
+} from "./temporal";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Score Normalization
@@ -74,6 +79,7 @@ function buildSearchResult(ctx: BuildResultContext): SearchResult {
     mime: fts.sourceMime ?? "text/markdown",
     ext: fts.sourceExt ?? ".md",
     modifiedAt: fts.sourceMtime,
+    documentDate: fts.frontmatterDate,
     sizeBytes: fts.sourceSize,
     sourceHash: fts.sourceHash,
   };
@@ -131,6 +137,13 @@ export async function searchBm25(
 ): Promise<ReturnType<typeof ok<SearchResults>>> {
   const limit = options.limit ?? 20;
   const minScore = options.minScore ?? 0;
+  const recencySort = shouldSortByRecency(query);
+  const retrievalLimit = recencySort ? limit * 3 : limit;
+  const temporalRange = resolveTemporalRange(
+    query,
+    options.since,
+    options.until
+  );
 
   // Detect query language for metadata (DOES NOT affect retrieval filtering)
   const detection = detectQueryLanguage(query);
@@ -139,12 +152,16 @@ export async function searchBm25(
   // Run FTS search
   // Disable FTS snippet when --full or --line-numbers (we use raw text instead)
   const ftsResult = await store.searchFts(query, {
-    limit,
+    limit: retrievalLimit,
     collection: options.collection,
     language: options.lang,
     snippet: !(options.full || options.lineNumbers),
     tagsAll: options.tagsAll,
     tagsAny: options.tagsAny,
+    since: temporalRange.since,
+    until: temporalRange.until,
+    categories: options.categories,
+    author: options.author,
   });
 
   if (!ftsResult.ok) {
@@ -253,14 +270,35 @@ export async function searchBm25(
   const filteredResults =
     minScore > 0 ? results.filter((r) => r.score >= minScore) : results;
 
+  if (recencySort) {
+    filteredResults.sort((a, b) => {
+      const aTs = resolveRecencyTimestamp(
+        a.source.documentDate,
+        a.source.modifiedAt
+      );
+      const bTs = resolveRecencyTimestamp(
+        b.source.documentDate,
+        b.source.modifiedAt
+      );
+      if (aTs !== bTs) {
+        return bTs - aTs;
+      }
+      return b.score - a.score;
+    });
+  }
+
   return ok({
-    results: filteredResults,
+    results: filteredResults.slice(0, limit),
     meta: {
       query,
       mode: "bm25",
-      totalResults: filteredResults.length,
+      totalResults: Math.min(filteredResults.length, limit),
       collection: options.collection,
       lang: options.lang,
+      since: temporalRange.since,
+      until: temporalRange.until,
+      categories: options.categories,
+      author: options.author,
       queryLanguage,
     },
   });
