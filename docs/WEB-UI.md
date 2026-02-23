@@ -73,7 +73,7 @@ Click **Search** or press **/**. Choose your mode:
 
 Click **Ask** for AI-powered answers. Type your question. GNO searches your documents and synthesizes an answer with citations.
 
-> **Note**: Models auto-download on first use. Initial startup may take a moment.
+> **Note**: Models auto-download on first use. Cold start can take longer on first launch while local models download. For instant startup, set `GNO_NO_AUTO_DOWNLOAD=1` and download explicitly with `gno models pull`.
 
 ---
 
