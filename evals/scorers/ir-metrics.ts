@@ -46,6 +46,23 @@ export function computeNdcg(
   return idcg > 0 ? dcg / idcg : 1;
 }
 
+/**
+ * Compute Mean Reciprocal Rank (single-query form).
+ * Returns reciprocal rank of first relevant hit in output.
+ */
+export function computeMrr(output: string[], expected: string[]): number {
+  if (expected.length === 0) {
+    return 1;
+  }
+  const expectedSet = new Set(expected);
+  for (const [index, docid] of output.entries()) {
+    if (expectedSet.has(docid)) {
+      return 1 / (index + 1);
+    }
+  }
+  return 0;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Recall@K Scorer
 // ─────────────────────────────────────────────────────────────────────────────

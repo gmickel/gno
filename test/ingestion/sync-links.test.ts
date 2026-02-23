@@ -190,6 +190,54 @@ Check [[Meeting Notes|the meeting]] for updates.
     expect(linksResult.value[0]?.linkText).toBe("the meeting");
   });
 
+  test("extracts Logseq alias links", async () => {
+    const content = `# Logseq
+
+See [roadmap]([[Project Roadmap]]) and [install]([[Guide#Setup]]).
+`;
+    await writeFile(join(collectionDir, "logseq-alias.md"), content);
+
+    const syncService = new SyncService();
+    await syncService.syncCollection(collection, adapter);
+
+    const docResult = await adapter.getDocument("docs", "logseq-alias.md");
+    expect(docResult.ok).toBe(true);
+    if (!docResult.ok || !docResult.value) return;
+
+    const linksResult = await adapter.getLinksForDoc(docResult.value.id);
+    expect(linksResult.ok).toBe(true);
+    if (!linksResult.ok) return;
+
+    expect(linksResult.value).toHaveLength(2);
+    expect(linksResult.value[0]?.targetRef).toBe("Project Roadmap");
+    expect(linksResult.value[0]?.linkText).toBe("roadmap");
+    expect(linksResult.value[1]?.targetRef).toBe("Guide");
+    expect(linksResult.value[1]?.targetAnchor).toBe("Setup");
+  });
+
+  test("extracts Logseq block embeds as links", async () => {
+    const content = `# Logseq Blocks
+
+{{embed ((63f1d1a8-2d7e-4f33-a5f1))}}
+`;
+    await writeFile(join(collectionDir, "logseq-block.md"), content);
+
+    const syncService = new SyncService();
+    await syncService.syncCollection(collection, adapter);
+
+    const docResult = await adapter.getDocument("docs", "logseq-block.md");
+    expect(docResult.ok).toBe(true);
+    if (!docResult.ok || !docResult.value) return;
+
+    const linksResult = await adapter.getLinksForDoc(docResult.value.id);
+    expect(linksResult.ok).toBe(true);
+    if (!linksResult.ok) return;
+
+    expect(linksResult.value).toHaveLength(1);
+    expect(linksResult.value[0]?.targetRef).toBe("63f1d1a8-2d7e-4f33-a5f1");
+    expect(linksResult.value[0]?.linkType).toBe("wiki");
+  });
+
   test("skips links inside code blocks", async () => {
     const content = `# Example
 

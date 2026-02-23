@@ -8,6 +8,15 @@ Evaluation harness for search ranking and answer generation quality using [Evali
 # Run all evals and update scores.md
 bun run evals
 
+# Run hybrid benchmark only
+bun run eval:hybrid
+
+# Generate hybrid baseline snapshot artifacts
+bun run eval:hybrid:baseline
+
+# Compare current benchmark to latest baseline
+bun run eval:hybrid:delta
+
 # Include LLM evals (slower, requires model download)
 bun run evals --include-llm
 
@@ -25,10 +34,19 @@ See [scores.md](scores.md) for latest results. Updated automatically by `bun run
 | ---------------- | -------------------------------------- | ---------------------------- |
 | **vsearch**      | BM25 search ranking (Recall@K, nDCG@K) | ✅ Passing                   |
 | **query**        | Query parsing and latency              | ✅ Passing                   |
+| **hybrid**       | End-to-end hybrid benchmark + p50/p95  | ✅ Passing                   |
 | **expansion**    | Query expansion validity               | ✅ Passing                   |
 | **thoroughness** | Fast/balanced/thorough comparison      | ✅ Passing                   |
 | **multilingual** | Cross-language retrieval               | ⚠️ Placeholder (see below)   |
 | **ask**          | Answer generation quality              | ⚠️ LLM-dependent (see below) |
+
+## Hybrid Blend Policy Notes
+
+- Rerank blending is tiered by rank: top results keep stronger fusion weight.
+- Original BM25 rank-1 hit is protected from rerank-only demotion.
+- `bun run eval:hybrid` should be used to validate quality after blend tuning.
+- `bun run eval:hybrid:baseline` snapshots current metrics for later delta checks.
+- `bun run eval:hybrid:delta` prints quality/latency deltas against `hybrid-baseline/latest.json`.
 
 ## Known Limitations
 
@@ -71,6 +89,8 @@ The balanced preset trades some citation reliability for faster inference and lo
 evals/
 ├── fixtures/
 │   ├── corpus/{de,en,fr,it}/  # Multilingual test documents
+│   ├── hybrid-adversarial.json # Entity/phrase/negation/ambiguity cases
+│   ├── hybrid-baseline/        # Baseline snapshots (json+md)
 │   ├── queries.json           # Search queries with relevance judgments
 │   └── ask-cases.json         # Answer generation test cases
 ├── helpers/

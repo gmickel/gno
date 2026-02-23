@@ -103,6 +103,43 @@ describe("ask schema", () => {
       };
       expect(assertValid(response, schema)).toBe(true);
     });
+
+    test("validates optional answerContext explain payload", () => {
+      const response = {
+        query: "compare redis vs sqlite",
+        mode: "hybrid",
+        answer: "Redis is faster [1], SQLite is simpler [2].",
+        citations: [
+          { docid: "#abc123", uri: "gno://work/redis.md" },
+          { docid: "#def456", uri: "gno://work/sqlite.md" },
+        ],
+        results: [],
+        meta: {
+          expanded: false,
+          reranked: true,
+          vectorsUsed: true,
+          answerGenerated: true,
+          totalResults: 2,
+          answerContext: {
+            strategy: "adaptive_coverage_v1",
+            targetSources: 2,
+            facets: ["redis", "sqlite"],
+            selected: [
+              {
+                docid: "#abc123",
+                uri: "gno://work/redis.md",
+                score: 0.9,
+                queryTokenHits: 2,
+                facetHits: 1,
+                reason: "comparison_balance",
+              },
+            ],
+            dropped: [],
+          },
+        },
+      };
+      expect(assertValid(response, schema)).toBe(true);
+    });
   });
 
   describe("invalid inputs", () => {

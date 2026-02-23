@@ -17,10 +17,44 @@ import { ok } from "../store/types";
 // Constants
 // ─────────────────────────────────────────────────────────────────────────────
 
-const EXPANSION_PROMPT_VERSION = "v2";
+const EXPANSION_PROMPT_VERSION = "v3";
 const DEFAULT_TIMEOUT_MS = 5000;
 // Non-greedy to avoid matching from first { to last } across multiple objects
 const JSON_EXTRACT_PATTERN = /\{[\s\S]*?\}/;
+const QUOTED_PHRASE_PATTERN = /"([^"]+)"/g;
+const NEGATION_PATTERN = /-(?:"([^"]+)"|([^\s]+))/g;
+const TOKEN_PATTERN = /[A-Za-z0-9][A-Za-z0-9.+#_-]*/g;
+const MAX_VARIANTS = 5;
+const STOPWORDS = new Set([
+  "a",
+  "an",
+  "and",
+  "are",
+  "as",
+  "at",
+  "be",
+  "by",
+  "for",
+  "from",
+  "how",
+  "in",
+  "is",
+  "it",
+  "of",
+  "on",
+  "or",
+  "that",
+  "the",
+  "this",
+  "to",
+  "what",
+  "when",
+  "where",
+  "which",
+  "who",
+  "why",
+  "with",
+]);
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Cache Key Generation
@@ -54,6 +88,8 @@ Generate JSON with:
 
 Rules:
 - Keep proper nouns exactly as written
+- Preserve quoted phrases and negated terms from the query in lexicalQueries
+- Keep symbol-heavy technical entities exactly (for example: C++, C#, Node.js)
 - Be concise - each variation 3-8 words
 - HyDE should read like actual documentation, not a question
 
@@ -70,6 +106,8 @@ Generiere JSON mit:
 
 Regeln:
 - Eigennamen exakt beibehalten
+- Zitierte Phrasen und negierte Begriffe in lexicalQueries beibehalten
+- Technische Begriffe mit Symbolen exakt halten (z. B. C++, C#, Node.js)
 - Kurz halten - jede Variation 3-8 Wörter
 - HyDE soll wie echte Dokumentation klingen, nicht wie eine Frage
 
@@ -86,6 +124,8 @@ Generate JSON with:
 
 Rules:
 - Keep proper nouns exactly as written
+- Preserve quoted phrases and negated terms from the query in lexicalQueries
+- Keep symbol-heavy technical entities exactly (for example: C++, C#, Node.js)
 - Be concise - each variation 3-8 words
 - HyDE should read like actual documentation, not a question
 
@@ -108,6 +148,199 @@ function getPromptTemplate(lang?: string): string {
     default:
       return EXPANSION_PROMPT_MULTILINGUAL;
   }
+}
+
+interface QuerySignals {
+  quotedPhrases: string[];
+  negations: string[];
+  criticalEntities: string[];
+  overlapTokens: Set<string>;
+}
+
+function normalizeToken(token: string): string {
+  return token.toLowerCase().trim();
+}
+
+function extractOverlapTokens(text: string): Set<string> {
+  const matches = text.match(TOKEN_PATTERN) ?? [];
+  const tokens: string[] = [];
+  for (const rawToken of matches) {
+    const token = normalizeToken(rawToken);
+    if (token.length < 2) {
+      continue;
+    }
+    if (STOPWORDS.has(token)) {
+      continue;
+    }
+    tokens.push(token);
+  }
+  return new Set(tokens);
+}
+
+function dedupeStrings(values: string[]): string[] {
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const value of values) {
+    const trimmed = value.trim();
+    if (!trimmed) {
+      continue;
+    }
+    const key = trimmed.toLowerCase();
+    if (seen.has(key)) {
+      continue;
+    }
+    seen.add(key);
+    out.push(trimmed);
+  }
+  return out;
+}
+
+function extractQuerySignals(query: string): QuerySignals {
+  const quotedPhrases = dedupeStrings(
+    [...query.matchAll(QUOTED_PHRASE_PATTERN)]
+      .map((m) => m[1]?.trim() ?? "")
+      .filter(Boolean)
+  );
+
+  const negations = dedupeStrings(
+    [...query.matchAll(NEGATION_PATTERN)]
+      .map((m) => {
+        const phrase = m[1]?.trim();
+        if (phrase) {
+          return `-"${phrase}"`;
+        }
+        const token = m[2]?.trim();
+        return token ? `-${token}` : "";
+      })
+      .filter(Boolean)
+  );
+
+  const criticalEntities = dedupeStrings(
+    (query.match(TOKEN_PATTERN) ?? []).filter((token) => {
+      // Preserve common entity signals: uppercase/mixed case, acronyms, symbol-heavy technical terms.
+      return (
+        /[A-Z]/.test(token) ||
+        /[+#.]/.test(token) ||
+        /[A-Za-z]\d|\d[A-Za-z]/.test(token)
+      );
+    })
+  );
+
+  return {
+    quotedPhrases,
+    negations,
+    criticalEntities,
+    overlapTokens: extractOverlapTokens(query),
+  };
+}
+
+function hasCaseInsensitiveSubstring(text: string, part: string): boolean {
+  return text.toLowerCase().includes(part.toLowerCase());
+}
+
+function hasSufficientOverlap(
+  querySignals: QuerySignals,
+  candidate: string
+): boolean {
+  if (!candidate.trim()) {
+    return false;
+  }
+
+  for (const phrase of querySignals.quotedPhrases) {
+    if (hasCaseInsensitiveSubstring(candidate, phrase)) {
+      return true;
+    }
+  }
+  for (const entity of querySignals.criticalEntities) {
+    if (hasCaseInsensitiveSubstring(candidate, entity)) {
+      return true;
+    }
+  }
+  for (const negation of querySignals.negations) {
+    if (hasCaseInsensitiveSubstring(candidate, negation)) {
+      return true;
+    }
+  }
+
+  const candidateTokens = extractOverlapTokens(candidate);
+  for (const token of candidateTokens) {
+    if (querySignals.overlapTokens.has(token)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+function buildAnchorLexicalQuery(
+  query: string,
+  querySignals: QuerySignals
+): string {
+  const parts: string[] = [];
+
+  for (const entity of querySignals.criticalEntities) {
+    parts.push(entity);
+  }
+  for (const phrase of querySignals.quotedPhrases) {
+    parts.push(`"${phrase}"`);
+  }
+  for (const negation of querySignals.negations) {
+    parts.push(negation);
+  }
+
+  const anchored = dedupeStrings(parts).join(" ").trim();
+  return anchored || query.trim();
+}
+
+function normalizeVariants(
+  variants: string[],
+  querySignals: QuerySignals
+): string[] {
+  const deduped = dedupeStrings(variants);
+  return deduped.filter((variant) =>
+    hasSufficientOverlap(querySignals, variant)
+  );
+}
+
+/**
+ * Apply deterministic expansion guardrails:
+ * - preserve entities/phrases/negations in lexical variants
+ * - filter drifted variants with no overlap
+ * - provide fallbacks when filtering removes all variants
+ */
+export function applyExpansionGuardrails(
+  query: string,
+  expansion: ExpansionResult
+): ExpansionResult {
+  const querySignals = extractQuerySignals(query);
+  const anchorLexical = buildAnchorLexicalQuery(query, querySignals);
+
+  const lexicalCandidates = [anchorLexical, ...expansion.lexicalQueries];
+  const guardedLexical = normalizeVariants(lexicalCandidates, querySignals);
+  const guardedVector = normalizeVariants(
+    expansion.vectorQueries,
+    querySignals
+  );
+
+  const lexicalQueries = (
+    guardedLexical.length > 0 ? guardedLexical : [query.trim()]
+  ).slice(0, MAX_VARIANTS);
+  const vectorQueries = (
+    guardedVector.length > 0 ? guardedVector : [query.trim()]
+  ).slice(0, MAX_VARIANTS);
+
+  const hyde =
+    typeof expansion.hyde === "string" &&
+    hasSufficientOverlap(querySignals, expansion.hyde)
+      ? expansion.hyde.trim()
+      : undefined;
+
+  return {
+    lexicalQueries,
+    vectorQueries,
+    hyde,
+    notes: expansion.notes,
+  };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -145,13 +378,13 @@ function parseExpansionResult(output: string): ExpansionResult | null {
 
     // Limit array sizes
     const result: ExpansionResult = {
-      lexicalQueries: lexicalQueries.slice(0, 5),
-      vectorQueries: vectorQueries.slice(0, 5),
+      lexicalQueries: lexicalQueries.slice(0, MAX_VARIANTS),
+      vectorQueries: vectorQueries.slice(0, MAX_VARIANTS),
     };
 
     // Optional fields
-    if (typeof parsed.hyde === "string" && parsed.hyde.length > 0) {
-      result.hyde = parsed.hyde;
+    if (typeof parsed.hyde === "string" && parsed.hyde.trim().length > 0) {
+      result.hyde = parsed.hyde.trim();
     }
     if (typeof parsed.notes === "string") {
       result.notes = parsed.notes;
@@ -222,7 +455,10 @@ export async function expandQuery(
 
     // Parse result
     const parsed = parseExpansionResult(result.value);
-    return ok(parsed);
+    if (!parsed) {
+      return ok(null);
+    }
+    return ok(applyExpansionGuardrails(query, parsed));
   } catch {
     if (timeoutId) {
       clearTimeout(timeoutId);
@@ -257,7 +493,7 @@ export async function expandQueryCached(
   if (cached) {
     const parsed = parseExpansionResult(cached);
     if (parsed) {
-      return ok(parsed);
+      return ok(applyExpansionGuardrails(query, parsed));
     }
   }
 

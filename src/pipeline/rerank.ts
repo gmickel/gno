@@ -6,7 +6,7 @@
  */
 
 import type { RerankPort } from "../llm/types";
-import type { StorePort } from "../store/types";
+import type { ChunkRow, StorePort } from "../store/types";
 import type { BlendingTier, FusionCandidate, RerankedCandidate } from "./types";
 
 import { DEFAULT_BLENDING_SCHEDULE } from "./types";
@@ -25,6 +25,7 @@ export interface RerankOptions {
 export interface RerankResult {
   candidates: RerankedCandidate[];
   reranked: boolean;
+  fallbackReason: "none" | "disabled" | "error";
 }
 
 export interface RerankDeps {
@@ -72,6 +73,7 @@ function blend(
 // ─────────────────────────────────────────────────────────────────────────────
 
 const MAX_CHUNK_CHARS = 4000;
+const PROTECT_BM25_TOP_RANK = 1;
 
 interface BestChunkInfo {
   candidate: FusionCandidate;
@@ -94,6 +96,13 @@ function selectBestChunks(
   return bestChunkPerDoc;
 }
 
+function isProtectedLexicalTopHit(candidate: FusionCandidate): boolean {
+  return (
+    candidate.bm25Rank === PROTECT_BM25_TOP_RANK &&
+    candidate.sources.includes("bm25")
+  );
+}
+
 /**
  * Fetch chunk texts for reranking.
  */
@@ -102,18 +111,18 @@ async function fetchChunkTexts(
   bestChunkPerDoc: Map<string, BestChunkInfo>
 ): Promise<{ texts: string[]; hashToIndex: Map<string, number> }> {
   const uniqueHashes = [...bestChunkPerDoc.keys()];
-  const chunkResults = await Promise.all(
-    uniqueHashes.map((hash) => store.getChunks(hash))
-  );
-
+  const chunksBatchResult = await store.getChunksBatch(uniqueHashes);
+  const chunksByHash: Map<string, ChunkRow[]> = chunksBatchResult.ok
+    ? chunksBatchResult.value
+    : new Map();
   const chunkTexts = new Map<string, string>();
-  for (let i = 0; i < uniqueHashes.length; i++) {
-    const hash = uniqueHashes[i] as string;
-    const result = chunkResults[i];
-    const bestInfo = bestChunkPerDoc.get(hash);
 
-    if (result?.ok && result.value && bestInfo) {
-      const chunk = result.value.find((c) => c.seq === bestInfo.seq);
+  for (const hash of uniqueHashes) {
+    const bestInfo = bestChunkPerDoc.get(hash);
+    const chunks = chunksByHash.get(hash);
+
+    if (chunks && bestInfo) {
+      const chunk = chunks.find((c) => c.seq === bestInfo.seq);
       const text = chunk?.text ?? "";
       chunkTexts.set(
         hash,
@@ -151,7 +160,7 @@ export async function rerankCandidates(
   options: RerankOptions = {}
 ): Promise<RerankResult> {
   if (candidates.length === 0) {
-    return { candidates: [], reranked: false };
+    return { candidates: [], reranked: false, fallbackReason: "none" };
   }
 
   const { rerankPort, store } = deps;
@@ -181,6 +190,7 @@ export async function rerankCandidates(
         blendedScore: normalizeFusionScore(c.fusionScore),
       })),
       reranked: false,
+      fallbackReason: "disabled",
     };
   }
 
@@ -202,6 +212,7 @@ export async function rerankCandidates(
         blendedScore: normalizeFusionScore(c.fusionScore),
       })),
       reranked: false,
+      fallbackReason: "error",
     };
   }
 
@@ -239,7 +250,7 @@ export async function rerankCandidates(
   });
 
   // Add remaining candidates with penalty
-  const allCandidates: RerankedCandidate[] = [
+  let allCandidates: RerankedCandidate[] = [
     ...rerankedCandidates,
     ...remaining.map((c) => ({
       ...c,
@@ -260,5 +271,15 @@ export async function rerankCandidates(
     return `${a.mirrorHash}:${a.seq}`.localeCompare(`${b.mirrorHash}:${b.seq}`);
   });
 
-  return { candidates: allCandidates, reranked: true };
+  // Guardrail: keep strong original lexical #1 at the top.
+  // This avoids rerank-only demotions on clear exact-hit queries.
+  const protectedTopHit = allCandidates.find(isProtectedLexicalTopHit);
+  if (protectedTopHit && allCandidates[0] !== protectedTopHit) {
+    allCandidates = [
+      protectedTopHit,
+      ...allCandidates.filter((candidate) => candidate !== protectedTopHit),
+    ];
+  }
+
+  return { candidates: allCandidates, reranked: true, fallbackReason: "none" };
 }

@@ -7,7 +7,12 @@
 
 import type { GenerationPort } from "../llm/types";
 import type { StorePort } from "../store/types";
-import type { Citation, SearchResult } from "./types";
+import type {
+  AnswerContextEntry,
+  AnswerContextExplain,
+  Citation,
+  SearchResult,
+} from "./types";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Constants
@@ -39,11 +44,64 @@ export const ABSTENTION_MESSAGE =
 /** Max characters per document (~8K tokens) */
 const MAX_DOC_CHARS = 32_000;
 
-/** Max number of sources - fewer docs but full content */
-const MAX_CONTEXT_SOURCES = 3;
+/** Max number of sources selected for grounded answer context */
+const MAX_CONTEXT_SOURCES = 5;
+/** Default source target for non-comparative queries */
+const BASE_CONTEXT_SOURCES = 3;
+/** Candidate pool before adaptive selection */
+const CONTEXT_CANDIDATE_POOL = 12;
 
 /** Fallback snippet limit when full content unavailable */
 const MAX_SNIPPET_CHARS = 1500;
+
+const FACET_SPLIT_RE = /\b(?:and|or|vs|versus)\b|[,;]+/gi;
+const COMPARISON_QUERY_RE =
+  /\b(?:compare|comparison|difference|different|vs|versus|trade-?off|pros|cons|conflict|between)\b/i;
+const TOKEN_SPLIT_RE = /[^\p{L}\p{N}]+/u;
+const QUERY_STOPWORDS = new Set([
+  "a",
+  "an",
+  "and",
+  "are",
+  "as",
+  "at",
+  "be",
+  "by",
+  "for",
+  "from",
+  "how",
+  "i",
+  "in",
+  "is",
+  "it",
+  "of",
+  "on",
+  "or",
+  "that",
+  "the",
+  "to",
+  "vs",
+  "versus",
+  "what",
+  "when",
+  "where",
+  "which",
+  "who",
+  "why",
+  "with",
+]);
+
+interface SourceCandidate {
+  result: SearchResult;
+  normalizedScore: number;
+  matchedQueryTokens: Set<string>;
+  matchedFacetIndexes: Set<number>;
+}
+
+interface SelectedSource {
+  candidate: SourceCandidate;
+  reason: string;
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Citation Processing
@@ -114,11 +172,256 @@ export function renumberAnswerCitations(
 export interface AnswerGenerationResult {
   answer: string;
   citations: Citation[];
+  answerContext: AnswerContextExplain;
 }
 
 export interface AnswerGenerationDeps {
   genPort: GenerationPort;
   store: StorePort | null;
+}
+
+function normalizeScore(score: number): number {
+  if (!Number.isFinite(score)) {
+    return 0;
+  }
+  return Math.max(0, Math.min(1, score));
+}
+
+function tokenize(text: string): string[] {
+  return text
+    .trim()
+    .toLowerCase()
+    .split(TOKEN_SPLIT_RE)
+    .map((token) => token.trim())
+    .filter((token) => token.length >= 2 && !QUERY_STOPWORDS.has(token));
+}
+
+function uniqueFacetTexts(query: string): string[] {
+  const segments = query
+    .split(FACET_SPLIT_RE)
+    .map((segment) => segment.trim())
+    .filter((segment) => segment.length > 0);
+
+  if (segments.length <= 1) {
+    return query.trim().length > 0 ? [query.trim()] : [];
+  }
+
+  return [...new Set(segments)];
+}
+
+function buildCandidates(
+  queryTokenSet: Set<string>,
+  facetTokenSets: Set<string>[],
+  results: SearchResult[]
+): SourceCandidate[] {
+  return results.map((result) => {
+    const signalText = `${result.title ?? ""}\n${result.snippet ?? ""}`;
+    const signalTokenSet = new Set(tokenize(signalText));
+
+    const matchedQueryTokens = new Set<string>();
+    for (const token of queryTokenSet) {
+      if (signalTokenSet.has(token)) {
+        matchedQueryTokens.add(token);
+      }
+    }
+
+    const matchedFacetIndexes = new Set<number>();
+    for (const [index, facetTokenSet] of facetTokenSets.entries()) {
+      for (const token of facetTokenSet) {
+        if (signalTokenSet.has(token)) {
+          matchedFacetIndexes.add(index);
+          break;
+        }
+      }
+    }
+
+    return {
+      result,
+      normalizedScore: normalizeScore(result.score),
+      matchedQueryTokens,
+      matchedFacetIndexes,
+    };
+  });
+}
+
+function dedupeByDocidBestScore(results: SearchResult[]): SearchResult[] {
+  const bestByDocid = new Map<string, SearchResult>();
+
+  for (const result of results) {
+    const existing = bestByDocid.get(result.docid);
+    if (!existing || result.score > existing.score) {
+      bestByDocid.set(result.docid, result);
+    }
+  }
+
+  return [...bestByDocid.values()].sort((a, b) => {
+    const scoreDiff = b.score - a.score;
+    if (Math.abs(scoreDiff) > 1e-9) {
+      return scoreDiff;
+    }
+    return a.docid.localeCompare(b.docid);
+  });
+}
+
+function selectAdaptiveSources(
+  query: string,
+  results: SearchResult[]
+): { selected: SearchResult[]; explain: AnswerContextExplain } {
+  const dedupedResults = dedupeByDocidBestScore(results).slice(
+    0,
+    CONTEXT_CANDIDATE_POOL
+  );
+  const queryTokens = tokenize(query);
+  const queryTokenSet = new Set(queryTokens);
+  const facets = uniqueFacetTexts(query);
+  const facetTokenSets = facets.map((facet) => new Set(tokenize(facet)));
+  const candidates = buildCandidates(
+    queryTokenSet,
+    facetTokenSets,
+    dedupedResults
+  );
+
+  const comparisonIntent = COMPARISON_QUERY_RE.test(query);
+  let targetSources = BASE_CONTEXT_SOURCES;
+  if (comparisonIntent || facets.length >= 3) {
+    targetSources = 5;
+  } else if (facets.length >= 2) {
+    targetSources = 4;
+  }
+  targetSources = Math.min(
+    targetSources,
+    MAX_CONTEXT_SOURCES,
+    candidates.length
+  );
+
+  const coveredTokens = new Set<string>();
+  const coveredFacets = new Set<number>();
+  const selected: SelectedSource[] = [];
+  const selectedDocids = new Set<string>();
+
+  while (selected.length < targetSources) {
+    let bestCandidate: SourceCandidate | null = null;
+    let bestGain = Number.NEGATIVE_INFINITY;
+    let bestReason = "relevance";
+
+    for (const candidate of candidates) {
+      const docid = candidate.result.docid;
+      if (selectedDocids.has(docid)) {
+        continue;
+      }
+
+      const newTokenHits = [...candidate.matchedQueryTokens].filter(
+        (token) => !coveredTokens.has(token)
+      ).length;
+      const newFacetHits = [...candidate.matchedFacetIndexes].filter(
+        (index) => !coveredFacets.has(index)
+      ).length;
+
+      const tokenGain =
+        queryTokenSet.size > 0 ? newTokenHits / queryTokenSet.size : 0;
+      const facetGain =
+        facetTokenSets.length > 0 ? newFacetHits / facetTokenSets.length : 0;
+
+      let gain =
+        candidate.normalizedScore * 0.6 + tokenGain * 0.25 + facetGain * 0.15;
+
+      if (comparisonIntent && selected.length > 0 && newFacetHits === 0) {
+        gain -= 0.2;
+      }
+
+      let reason = "relevance";
+      if (newFacetHits > 0) {
+        reason = "new_facet_coverage";
+      } else if (newTokenHits > 0) {
+        reason = "new_query_coverage";
+      }
+
+      if (
+        !bestCandidate ||
+        gain > bestGain ||
+        (Math.abs(gain - bestGain) <= 1e-9 &&
+          candidate.normalizedScore > bestCandidate.normalizedScore)
+      ) {
+        bestCandidate = candidate;
+        bestGain = gain;
+        bestReason = reason;
+      }
+    }
+
+    if (!bestCandidate) {
+      break;
+    }
+
+    // Keep selection compact when marginal gain is exhausted.
+    if (
+      bestGain <= 0 &&
+      selected.length >= 1 &&
+      !comparisonIntent &&
+      selected.length >= BASE_CONTEXT_SOURCES
+    ) {
+      break;
+    }
+
+    selected.push({ candidate: bestCandidate, reason: bestReason });
+    selectedDocids.add(bestCandidate.result.docid);
+    for (const token of bestCandidate.matchedQueryTokens) {
+      coveredTokens.add(token);
+    }
+    for (const index of bestCandidate.matchedFacetIndexes) {
+      coveredFacets.add(index);
+    }
+  }
+
+  if (comparisonIntent && selected.length < 2) {
+    for (const candidate of candidates) {
+      if (selectedDocids.has(candidate.result.docid)) {
+        continue;
+      }
+      selected.push({ candidate, reason: "comparison_balance" });
+      selectedDocids.add(candidate.result.docid);
+      if (selected.length >= 2) {
+        break;
+      }
+    }
+  }
+
+  if (selected.length === 0 && candidates.length > 0) {
+    const first = candidates[0];
+    if (first) {
+      selected.push({ candidate: first, reason: "fallback_top_result" });
+      selectedDocids.add(first.result.docid);
+    }
+  }
+
+  const toEntry = (
+    candidate: SourceCandidate,
+    reason: string
+  ): AnswerContextEntry => ({
+    docid: candidate.result.docid,
+    uri: candidate.result.uri,
+    score: candidate.normalizedScore,
+    queryTokenHits: candidate.matchedQueryTokens.size,
+    facetHits: candidate.matchedFacetIndexes.size,
+    reason,
+  });
+
+  const selectedEntries = selected.map(({ candidate, reason }) =>
+    toEntry(candidate, reason)
+  );
+  const droppedEntries = candidates
+    .filter((candidate) => !selectedDocids.has(candidate.result.docid))
+    .map((candidate) => toEntry(candidate, "lower_marginal_gain"));
+
+  return {
+    selected: selected.map((entry) => entry.candidate.result),
+    explain: {
+      strategy: "adaptive_coverage_v1",
+      targetSources,
+      facets,
+      selected: selectedEntries,
+      dropped: droppedEntries,
+    },
+  };
 }
 
 /**
@@ -136,11 +439,12 @@ export async function generateGroundedAnswer(
   maxTokens: number
 ): Promise<AnswerGenerationResult | null> {
   const { genPort, store } = deps;
+  const sourceSelection = selectAdaptiveSources(query, results);
   const contextParts: string[] = [];
   const citations: Citation[] = [];
   let citationIndex = 0;
 
-  for (const r of results.slice(0, MAX_CONTEXT_SOURCES)) {
+  for (const r of sourceSelection.selected) {
     let content: string | null = null;
     let usedFullContent = false;
 
@@ -197,7 +501,11 @@ export async function generateGroundedAnswer(
     return null;
   }
 
-  return { answer: result.value, citations };
+  return {
+    answer: result.value,
+    citations,
+    answerContext: sourceSelection.explain,
+  };
 }
 
 /**
@@ -207,6 +515,7 @@ export async function generateGroundedAnswer(
 export function processAnswerResult(rawResult: AnswerGenerationResult): {
   answer: string;
   citations: Citation[];
+  answerContext: AnswerContextExplain;
 } {
   const maxCitation = rawResult.citations.length;
   const validUsedNums = extractValidCitationNumbers(
@@ -219,9 +528,17 @@ export function processAnswerResult(rawResult: AnswerGenerationResult): {
   );
 
   if (validUsedNums.length === 0 || filteredCitations.length === 0) {
-    return { answer: ABSTENTION_MESSAGE, citations: [] };
+    return {
+      answer: ABSTENTION_MESSAGE,
+      citations: [],
+      answerContext: rawResult.answerContext,
+    };
   }
 
   const answer = renumberAnswerCitations(rawResult.answer, validUsedNums);
-  return { answer, citations: filteredCitations };
+  return {
+    answer,
+    citations: filteredCitations,
+    answerContext: rawResult.answerContext,
+  };
 }

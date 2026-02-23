@@ -13,6 +13,10 @@ describe("gno_search schema", () => {
     limit: z.number().int().min(1).max(100).default(5),
     minScore: z.number().min(0).max(1).optional(),
     lang: z.string().optional(),
+    since: z.string().optional(),
+    until: z.string().optional(),
+    categories: z.array(z.string()).optional(),
+    author: z.string().optional(),
     tagsAll: z.array(z.string()).optional(),
     tagsAny: z.array(z.string()).optional(),
   });
@@ -34,6 +38,10 @@ describe("gno_search schema", () => {
       limit: 10,
       minScore: 0.5,
       lang: "en",
+      since: "2025-01-01",
+      until: "today",
+      categories: ["meeting", "notes"],
+      author: "gordon",
     });
     expect(result.success).toBe(true);
     if (result.success) {
@@ -108,6 +116,7 @@ describe("gno_search output schema", () => {
       mime: z.string(),
       ext: z.string(),
       modifiedAt: z.string().optional(),
+      documentDate: z.string().optional(),
       sizeBytes: z.number().optional(),
       sourceHash: z.string().optional(),
     }),
@@ -127,6 +136,10 @@ describe("gno_search output schema", () => {
       collection: z.string().optional(),
       lang: z.string().optional(),
       queryLanguage: z.string().optional(),
+      since: z.string().optional(),
+      until: z.string().optional(),
+      categories: z.array(z.string()).optional(),
+      author: z.string().optional(),
     }),
   });
 

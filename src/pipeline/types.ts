@@ -18,6 +18,7 @@ export interface SearchResultSource {
   mime: string;
   ext: string;
   modifiedAt?: string;
+  documentDate?: string;
   sizeBytes?: number;
   sourceHash?: string;
 }
@@ -65,6 +66,16 @@ export interface SearchMeta {
   lang?: string;
   /** Detected/overridden query language for prompt selection (typically BCP-47; may be user-provided via --lang) */
   queryLanguage?: string;
+  /** Summary of structured query modes applied (if provided) */
+  queryModes?: QueryModeSummary;
+  /** Temporal filter lower bound (ISO 8601) */
+  since?: string;
+  /** Temporal filter upper bound (ISO 8601) */
+  until?: string;
+  /** Category filters applied */
+  categories?: string[];
+  /** Author filter applied */
+  author?: string;
   /** Explain data (when --explain is used) */
   explain?: {
     lines: ExplainLine[];
@@ -100,6 +111,30 @@ export interface SearchOptions {
   tagsAll?: string[];
   /** Filter to docs with ANY of these tags (OR) */
   tagsAny?: string[];
+  /** Filter by modified time lower bound (ISO 8601 or relative token) */
+  since?: string;
+  /** Filter by modified time upper bound (ISO 8601 or relative token) */
+  until?: string;
+  /** Filter to docs matching ANY category */
+  categories?: string[];
+  /** Filter by author value */
+  author?: string;
+}
+
+/** Structured query mode identifier */
+export type QueryMode = "term" | "intent" | "hyde";
+
+/** Structured query mode entry */
+export interface QueryModeInput {
+  mode: QueryMode;
+  text: string;
+}
+
+/** Structured query mode summary for metadata/explain */
+export interface QueryModeSummary {
+  term: number;
+  intent: number;
+  hyde: boolean;
 }
 
 /** Options for hybrid search (gno query) */
@@ -108,6 +143,8 @@ export type HybridSearchOptions = SearchOptions & {
   noExpand?: boolean;
   /** Disable reranking */
   noRerank?: boolean;
+  /** Optional structured mode entries; when set, used as expansion inputs */
+  queryModes?: QueryModeInput[];
   /** Enable explain output */
   explain?: boolean;
   /** Language hint for prompt selection (does NOT filter retrieval, only affects expansion prompts) */
@@ -247,6 +284,25 @@ export interface Citation {
   endLine?: number;
 }
 
+/** Source selection entry for answer-generation explain */
+export interface AnswerContextEntry {
+  docid: string;
+  uri: string;
+  score: number;
+  queryTokenHits: number;
+  facetHits: number;
+  reason: string;
+}
+
+/** Answer-generation context selection explain payload */
+export interface AnswerContextExplain {
+  strategy: "adaptive_coverage_v1";
+  targetSources: number;
+  facets: string[];
+  selected: AnswerContextEntry[];
+  dropped: AnswerContextEntry[];
+}
+
 /** Ask result metadata */
 export interface AskMeta {
   expanded: boolean;
@@ -254,6 +310,7 @@ export interface AskMeta {
   vectorsUsed: boolean;
   answerGenerated?: boolean;
   totalResults?: number;
+  answerContext?: AnswerContextExplain;
 }
 
 /** Ask command result */
@@ -323,6 +380,7 @@ export interface ExplainResult {
   rank: number;
   docid: string;
   score: number;
+  fusionScore?: number;
   bm25Score?: number;
   vecScore?: number;
   rerankScore?: number;

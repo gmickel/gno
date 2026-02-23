@@ -95,6 +95,7 @@ export interface DocumentRow {
   sourceExt: string;
   sourceSize: number;
   sourceMtime: string;
+  sourceCtime?: string | null;
 
   // Derived identifiers
   docid: string;
@@ -106,6 +107,12 @@ export interface DocumentRow {
   converterId: string | null;
   converterVersion: string | null;
   languageHint: string | null;
+  contentType?: string | null;
+  categories?: string[] | null;
+  author?: string | null;
+  frontmatterDate?: string | null;
+  dateFields?: Record<string, string> | null;
+  indexedAt?: string | null;
 
   // Status
   active: boolean;
@@ -242,11 +249,17 @@ export interface DocumentInput {
   sourceExt: string;
   sourceSize: number;
   sourceMtime: string;
+  sourceCtime?: string;
   title?: string;
   mirrorHash?: string;
   converterId?: string;
   converterVersion?: string;
   languageHint?: string;
+  contentType?: string;
+  categories?: string[];
+  author?: string;
+  frontmatterDate?: string;
+  dateFields?: Record<string, string>;
   lastErrorCode?: string;
   lastErrorMessage?: string;
   /** Ingest schema version for backfill detection */
@@ -303,6 +316,14 @@ export interface FtsSearchOptions {
   tagsAny?: string[];
   /** Filter to docs with ALL of these tags */
   tagsAll?: string[];
+  /** Filter by modified time lower bound (ISO 8601) */
+  since?: string;
+  /** Filter by modified time upper bound (ISO 8601) */
+  until?: string;
+  /** Filter to docs matching ANY category */
+  categories?: string[];
+  /** Filter by author field (case-insensitive contains) */
+  author?: string;
 }
 
 /** Single FTS search result */
@@ -321,6 +342,7 @@ export interface FtsResult {
   sourceMime?: string;
   sourceExt?: string;
   sourceMtime?: string;
+  frontmatterDate?: string;
   sourceSize?: number;
   sourceHash?: string;
 }
@@ -600,6 +622,18 @@ export interface StorePort {
   listDocuments(collection?: string): Promise<StoreResult<DocumentRow[]>>;
 
   /**
+   * Fetch documents by mirror hashes in batch.
+   * Useful for retrieval pipelines to avoid full document scans.
+   */
+  getDocumentsByMirrorHashes(
+    mirrorHashes: string[],
+    options?: {
+      collection?: string;
+      activeOnly?: boolean;
+    }
+  ): Promise<StoreResult<DocumentRow[]>>;
+
+  /**
    * List documents with pagination support.
    * Returns documents and total count for efficient browsing.
    */
@@ -611,6 +645,18 @@ export interface StorePort {
     tagsAll?: string[];
     /** Filter to docs having ANY of these tags (OR) */
     tagsAny?: string[];
+    /** Filter by modified time lower bound (ISO 8601) */
+    since?: string;
+    /** Filter by modified time upper bound (ISO 8601) */
+    until?: string;
+    /** Filter to docs matching ANY category */
+    categories?: string[];
+    /** Filter by author field (case-insensitive contains) */
+    author?: string;
+    /** Sort field: "modified" or frontmatter date key */
+    sortField?: string;
+    /** Sort direction */
+    sortOrder?: "asc" | "desc";
   }): Promise<StoreResult<{ documents: DocumentRow[]; total: number }>>;
 
   /**

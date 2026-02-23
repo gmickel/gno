@@ -222,6 +222,111 @@
           "type": "integer",
           "description": "Number of results returned",
           "minimum": 0
+        },
+        "answerContext": {
+          "type": "object",
+          "description": "Answer context selection explain payload",
+          "required": [
+            "strategy",
+            "targetSources",
+            "facets",
+            "selected",
+            "dropped"
+          ],
+          "properties": {
+            "strategy": {
+              "type": "string",
+              "enum": ["adaptive_coverage_v1"]
+            },
+            "targetSources": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "facets": {
+              "type": "array",
+              "items": { "type": "string" }
+            },
+            "selected": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "docid",
+                  "uri",
+                  "score",
+                  "queryTokenHits",
+                  "facetHits",
+                  "reason"
+                ],
+                "properties": {
+                  "docid": {
+                    "type": "string",
+                    "pattern": "^#[a-f0-9]{6,8}$"
+                  },
+                  "uri": {
+                    "type": "string",
+                    "pattern": "^gno://[^/]+/.+"
+                  },
+                  "score": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "queryTokenHits": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "facetHits": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "reason": {
+                    "type": "string"
+                  }
+                }
+              }
+            },
+            "dropped": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "docid",
+                  "uri",
+                  "score",
+                  "queryTokenHits",
+                  "facetHits",
+                  "reason"
+                ],
+                "properties": {
+                  "docid": {
+                    "type": "string",
+                    "pattern": "^#[a-f0-9]{6,8}$"
+                  },
+                  "uri": {
+                    "type": "string",
+                    "pattern": "^gno://[^/]+/.+"
+                  },
+                  "score": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "queryTokenHits": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "facetHits": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "reason": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
         }
       }
     }

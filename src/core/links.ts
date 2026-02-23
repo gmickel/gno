@@ -80,6 +80,10 @@ const UNSAFE_PERCENT_CODES = new Set(["%2F", "%5C", "%00", "%2f", "%5c"]);
  */
 const WIKI_LINK_REGEX = /\[\[([^\]|]+(?:\|[^\]]+)?)\]\]/g;
 
+/** Logseq embed: {{embed [[Page]]}} or {{embed ((block-id))}} */
+const LOGSEQ_EMBED_REGEX =
+  /\{\{\s*embed\s+(\[\[[^\]]+\]\]|\(\([^)]+\)\))\s*\}\}/gi;
+
 /**
  * Markdown inline link: [text](url)
  * Captures: 1=text, 2=url (path and optional anchor)
@@ -273,6 +277,43 @@ export function parseLinks(
 ): ParsedLink[] {
   const links: ParsedLink[] = [];
 
+  const pushWikiLink = (
+    raw: string,
+    target: string,
+    startOffset: number,
+    endOffset: number,
+    displayText?: string
+  ): void => {
+    const trimmedTarget = target.trim();
+    const hasScheme =
+      /^[a-z][a-z0-9+.-]*:\/\//i.test(trimmedTarget) ||
+      trimmedTarget.startsWith("mailto:");
+    if (hasScheme || trimmedTarget.startsWith("//")) {
+      return;
+    }
+
+    const parts = parseTargetParts(trimmedTarget);
+    if (!parts.ref) {
+      return;
+    }
+
+    const startPos = offsetToPosition(startOffset, lineOffsets);
+    const endPos = offsetToPosition(endOffset, lineOffsets);
+
+    links.push({
+      kind: "wiki",
+      raw,
+      targetRef: parts.ref,
+      targetAnchor: parts.anchor,
+      targetCollection: parts.collection,
+      displayText,
+      startLine: startPos.line,
+      startCol: startPos.col,
+      endLine: endPos.line,
+      endCol: endPos.col,
+    });
+  };
+
   // Parse wiki links
   WIKI_LINK_REGEX.lastIndex = 0;
   let match: RegExpExecArray | null;
@@ -280,6 +321,14 @@ export function parseLinks(
   while ((match = WIKI_LINK_REGEX.exec(markdown)) !== null) {
     const startOffset = match.index;
     const endOffset = startOffset + match[0].length;
+
+    // Skip [[target]] nested in Logseq alias syntax: [Display]([[target]])
+    if (
+      markdown.slice(Math.max(0, startOffset - 2), startOffset) === "](" &&
+      markdown.slice(endOffset, endOffset + 1) === ")"
+    ) {
+      continue;
+    }
 
     // Skip if inside excluded range
     if (rangeIntersectsExcluded(startOffset, endOffset, excludedRanges)) {
@@ -307,31 +356,35 @@ export function parseLinks(
     }
 
     const trimmedTarget = targetPart.trim();
-    const hasScheme =
-      /^[a-z][a-z0-9+.-]*:\/\//i.test(trimmedTarget) ||
-      trimmedTarget.startsWith("mailto:");
-    if (hasScheme || trimmedTarget.startsWith("//")) {
+    if (!trimmedTarget) {
+      continue;
+    }
+    pushWikiLink(match[0], trimmedTarget, startOffset, endOffset, displayText);
+  }
+
+  // Parse Logseq embeds as links
+  LOGSEQ_EMBED_REGEX.lastIndex = 0;
+
+  while ((match = LOGSEQ_EMBED_REGEX.exec(markdown)) !== null) {
+    const startOffset = match.index;
+    const endOffset = startOffset + match[0].length;
+
+    if (rangeIntersectsExcluded(startOffset, endOffset, excludedRanges)) {
       continue;
     }
 
-    const parts = parseTargetParts(trimmedTarget);
-    if (!parts.ref) continue;
+    const embedTarget = match[1]?.trim();
+    if (!embedTarget) {
+      continue;
+    }
 
-    const startPos = offsetToPosition(startOffset, lineOffsets);
-    const endPos = offsetToPosition(endOffset, lineOffsets);
-
-    links.push({
-      kind: "wiki",
-      raw: match[0],
-      targetRef: parts.ref,
-      targetAnchor: parts.anchor,
-      targetCollection: parts.collection,
-      displayText,
-      startLine: startPos.line,
-      startCol: startPos.col,
-      endLine: endPos.line,
-      endCol: endPos.col,
-    });
+    if (embedTarget.startsWith("((") && embedTarget.endsWith("))")) {
+      const blockId = embedTarget.slice(2, -2).trim();
+      if (blockId.length === 0) {
+        continue;
+      }
+      pushWikiLink(match[0], blockId, startOffset, endOffset);
+    }
   }
 
   // Parse markdown links
@@ -349,6 +402,25 @@ export function parseLinks(
     const linkText = match[1] ?? "";
     const url = match[2];
     if (!url) continue;
+
+    // Logseq alias syntax: [Display]([[Target]])
+    if (url.startsWith("[[") && url.endsWith("]]")) {
+      const innerTarget = url.slice(2, -2).trim();
+      if (innerTarget.length > 0) {
+        const displayText =
+          linkText && linkText !== innerTarget
+            ? truncateText(linkText, MAX_DISPLAY_TEXT_GRAPHEMES)
+            : undefined;
+        pushWikiLink(
+          match[0],
+          innerTarget,
+          startOffset,
+          endOffset,
+          displayText
+        );
+      }
+      continue;
+    }
 
     // Skip external URLs
     if (EXTERNAL_URL_REGEX.test(url)) {

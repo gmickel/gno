@@ -504,6 +504,12 @@ BM25 keyword search.
 ```
 Query: "authentication"
 Collection: (optional)
+since: "last month"         # Optional temporal lower bound
+until: "today"              # Optional temporal upper bound
+categories: ["meeting"]     # Optional category/content-type filters
+author: "gordon"            # Optional author contains filter
+tagsAll: ["backend"]        # Optional: must have ALL tags
+tagsAny: ["urgent"]         # Optional: must have ANY tag
 Limit: 5 (default)
 ```
 
@@ -513,6 +519,10 @@ Vector semantic search.
 
 ```
 Query: "how to handle errors gracefully"
+since: "2025-01-01"
+until: "today"
+categories: ["notes", "code"]
+author: "gordon"
 ```
 
 ### gno_query
@@ -521,8 +531,16 @@ Hybrid search (BM25 + vector).
 
 ```
 Query: "database optimization"
-tagsAll: "backend,work"   # Optional: must have ALL tags
-tagsAny: "urgent,priority"  # Optional: must have ANY tag
+since: "last month"
+until: "today"
+categories: ["backend", "notes"]
+author: "gordon"
+tagsAll: ["backend", "work"]   # Optional: must have ALL tags
+tagsAny: ["urgent", "priority"]  # Optional: must have ANY tag
+queryModes:
+  - { mode: "term", text: "\"refresh token\" -oauth1" }
+  - { mode: "intent", text: "how token rotation is implemented" }
+  - { mode: "hyde", text: "Refresh tokens rotate on each use and old tokens are invalidated." }
 ```
 
 **Search modes** (via parameters):
@@ -535,6 +553,34 @@ tagsAny: "urgent,priority"  # Optional: must have ANY tag
 
 1. Rephrase the query (free, often effective)
 2. Then try `thorough: true` for better recall
+
+Recency intent (`latest`, `newest`, `recent`) sorts results newest-first by canonical frontmatter date when present, with file modified time as fallback.
+
+When `queryModes` is provided, GNO uses those entries directly:
+
+- `term`: BM25-focused phrase/keyword query
+- `intent`: semantic/vector-focused reformulation
+- `hyde`: hypothetical passage for vector retrieval
+- Validation: `text` is trimmed and must be non-empty; at most one `hyde` entry is allowed
+
+**Migration notes (retrieval v2):**
+
+- Existing `gno_query` calls remain valid with no payload changes required.
+- `queryModes` is optional and only needed when your client wants explicit retrieval intent control.
+- If `queryModes` is set, generated expansion is skipped for that query and the provided entries are used directly.
+
+```yaml
+# Existing payload (still valid)
+query: "auth flow"
+thorough: true
+
+# Retrieval v2 payload (explicit intent control)
+query: "auth flow"
+queryModes:
+  - { mode: "term", text: "\"refresh token\" -oauth1" }
+  - { mode: "intent", text: "how token rotation is implemented" }
+  - { mode: "hyde", text: "Refresh tokens rotate on each use and old tokens are revoked." }
+```
 
 ### gno_get
 

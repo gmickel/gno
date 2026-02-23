@@ -43,7 +43,13 @@ describe("FTS search", () => {
   async function setupDocument(
     relPath: string,
     markdown: string,
-    chunks: ChunkInput[]
+    chunks: ChunkInput[],
+    metadata?: {
+      sourceMtime?: string;
+      contentType?: string;
+      categories?: string[];
+      author?: string;
+    }
   ) {
     const sourceHash = `hash_${relPath.replace(/\W/g, "")}`;
     const mirrorHash = `mirror_${relPath.replace(/\W/g, "")}`;
@@ -55,9 +61,12 @@ describe("FTS search", () => {
       sourceMime: "text/markdown",
       sourceExt: ".md",
       sourceSize: markdown.length,
-      sourceMtime: "2024-01-01T00:00:00Z",
+      sourceMtime: metadata?.sourceMtime ?? "2024-01-01T00:00:00Z",
       mirrorHash,
       title: relPath,
+      contentType: metadata?.contentType,
+      categories: metadata?.categories,
+      author: metadata?.author,
     });
 
     await adapter.upsertContent(mirrorHash, markdown);
@@ -297,5 +306,146 @@ describe("FTS search", () => {
     }
 
     expect(result.value).toHaveLength(1);
+  });
+
+  test("filters by temporal bounds", async () => {
+    await setupDocument(
+      "old.md",
+      "Project timeline note",
+      [
+        {
+          seq: 0,
+          pos: 0,
+          text: "Project timeline note",
+          startLine: 1,
+          endLine: 1,
+        },
+      ],
+      { sourceMtime: "2024-01-01T00:00:00Z" }
+    );
+    await setupDocument(
+      "recent.md",
+      "Project timeline note",
+      [
+        {
+          seq: 0,
+          pos: 0,
+          text: "Project timeline note",
+          startLine: 1,
+          endLine: 1,
+        },
+      ],
+      { sourceMtime: "2025-01-10T00:00:00Z" }
+    );
+
+    const recentOnly = await adapter.searchFts("project", {
+      since: "2025-01-01T00:00:00Z",
+    });
+    expect(recentOnly.ok).toBe(true);
+    if (!recentOnly.ok) {
+      return;
+    }
+    expect(recentOnly.value).toHaveLength(1);
+    expect(recentOnly.value[0]?.relPath).toBe("recent.md");
+
+    const oldOnly = await adapter.searchFts("project", {
+      until: "2024-12-31T23:59:59Z",
+    });
+    expect(oldOnly.ok).toBe(true);
+    if (!oldOnly.ok) {
+      return;
+    }
+    expect(oldOnly.value).toHaveLength(1);
+    expect(oldOnly.value[0]?.relPath).toBe("old.md");
+  });
+
+  test("filters by category using content type and categories", async () => {
+    await setupDocument(
+      "meeting.md",
+      "Sprint planning agenda",
+      [
+        {
+          seq: 0,
+          pos: 0,
+          text: "Sprint planning agenda",
+          startLine: 1,
+          endLine: 1,
+        },
+      ],
+      { contentType: "meeting", categories: ["notes", "planning"] }
+    );
+    await setupDocument(
+      "code.md",
+      "Sprint planning agenda",
+      [
+        {
+          seq: 0,
+          pos: 0,
+          text: "Sprint planning agenda",
+          startLine: 1,
+          endLine: 1,
+        },
+      ],
+      { contentType: "code", categories: ["engineering"] }
+    );
+
+    const meetingResults = await adapter.searchFts("planning", {
+      categories: ["meeting"],
+    });
+    expect(meetingResults.ok).toBe(true);
+    if (!meetingResults.ok) {
+      return;
+    }
+    expect(meetingResults.value).toHaveLength(1);
+    expect(meetingResults.value[0]?.relPath).toBe("meeting.md");
+
+    const notesResults = await adapter.searchFts("planning", {
+      categories: ["notes"],
+    });
+    expect(notesResults.ok).toBe(true);
+    if (!notesResults.ok) {
+      return;
+    }
+    expect(notesResults.value).toHaveLength(1);
+    expect(notesResults.value[0]?.relPath).toBe("meeting.md");
+  });
+
+  test("filters by author substring", async () => {
+    await setupDocument(
+      "gordon.md",
+      "Design proposal draft",
+      [
+        {
+          seq: 0,
+          pos: 0,
+          text: "Design proposal draft",
+          startLine: 1,
+          endLine: 1,
+        },
+      ],
+      { author: "Gordon Mickel" }
+    );
+    await setupDocument(
+      "alice.md",
+      "Design proposal draft",
+      [
+        {
+          seq: 0,
+          pos: 0,
+          text: "Design proposal draft",
+          startLine: 1,
+          endLine: 1,
+        },
+      ],
+      { author: "Alice" }
+    );
+
+    const result = await adapter.searchFts("design", { author: "gordon" });
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      return;
+    }
+    expect(result.value).toHaveLength(1);
+    expect(result.value[0]?.relPath).toBe("gordon.md");
   });
 });

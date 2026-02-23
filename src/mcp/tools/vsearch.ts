@@ -28,6 +28,10 @@ interface VsearchInput {
   limit?: number;
   minScore?: number;
   lang?: string;
+  since?: string;
+  until?: string;
+  categories?: string[];
+  author?: string;
   tagsAll?: string[];
   tagsAny?: string[];
 }
@@ -188,6 +192,10 @@ export function handleVsearch(
             limit: args.limit ?? 5,
             minScore: args.minScore,
             collection: args.collection,
+            since: args.since,
+            until: args.until,
+            categories: args.categories,
+            author: args.author,
             tagsAll: normalizeTagFilters(args.tagsAll),
             tagsAny: normalizeTagFilters(args.tagsAny),
           }

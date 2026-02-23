@@ -25,7 +25,7 @@ gno index
 
 This runs both BM25 (keyword) and vector indexing. GNO indexes Markdown, PDF, DOCX, XLSX, PPTX, and plain text.
 
-> **Note**: On first run, GNO automatically downloads the required embedding model (~80MB). Subsequent runs use the cached model.
+> **Note**: On first run, GNO may download local models (embedding ~500MB; optional rerank/gen models can add ~700MB-1.2GB). Subsequent runs use cache. To avoid startup downloads, set `GNO_NO_AUTO_DOWNLOAD=1` and run `gno models pull` explicitly.
 
 Check what's indexed:
 
@@ -107,7 +107,7 @@ gno query "meeting" --tags-any urgent,priority
 
 ### Explore Links
 
-Documents can link to each other using wiki links (`[[Note]]`) or markdown links (`[text](path.md)`). GNO tracks these relationships:
+Documents can link to each other using wiki links (`[[Note]]`), markdown links (`[text](path.md)`), and Logseq-compatible variants like `[text]([[Note]])` and `{{embed [[Note]]}}`. GNO tracks these relationships:
 
 ```bash
 # Show links FROM a document

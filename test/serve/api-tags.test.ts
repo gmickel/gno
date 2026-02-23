@@ -59,7 +59,8 @@ describe("API tag endpoints", () => {
   async function createTestDoc(
     collection: string,
     relPath: string,
-    hash: string
+    hash: string,
+    overrides: Partial<DocumentInput> = {}
   ): Promise<number> {
     const doc: DocumentInput = {
       collection,
@@ -72,6 +73,7 @@ describe("API tag endpoints", () => {
       title: relPath,
       mirrorHash: hash,
       ingestVersion: 2,
+      ...overrides,
     };
     const result = await store.upsertDocument(doc);
     expect(result.ok).toBe(true);
@@ -257,6 +259,65 @@ describe("API tag endpoints", () => {
 
       expect(res.status).toBe(400);
 
+      const body = (await res.json()) as { error: { code: string } };
+      expect(body.error.code).toBe("VALIDATION");
+    });
+
+    test("returns availableDateFields and sorts by selected date field with fallback", async () => {
+      await createTestDoc("notes", "doc1.md", "hash1", {
+        sourceMtime: "2025-01-01T00:00:00.000Z",
+        dateFields: {
+          published_at: "2025-01-10T00:00:00.000Z",
+          deadline: "2025-03-01T00:00:00.000Z",
+        },
+      });
+      await createTestDoc("notes", "doc2.md", "hash2", {
+        sourceMtime: "2025-01-02T00:00:00.000Z",
+        dateFields: {
+          published_at: "2025-01-20T00:00:00.000Z",
+          event_date: "2025-04-01T00:00:00.000Z",
+        },
+      });
+      await createTestDoc("notes", "doc3.md", "hash3", {
+        sourceMtime: "2025-01-15T00:00:00.000Z",
+      });
+
+      const url = new URL(
+        "http://localhost/api/docs?collection=notes&sortField=published_at&sortOrder=asc"
+      );
+      const res = await handleDocs(store, url);
+
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as {
+        documents: Array<{ relPath: string }>;
+        availableDateFields: string[];
+        sortField: string;
+        sortOrder: "asc" | "desc";
+      };
+
+      expect(body.availableDateFields).toEqual([
+        "deadline",
+        "event_date",
+        "published_at",
+      ]);
+      expect(body.sortField).toBe("published_at");
+      expect(body.sortOrder).toBe("asc");
+      expect(body.documents.map((doc) => doc.relPath)).toEqual([
+        "doc1.md",
+        "doc3.md",
+        "doc2.md",
+      ]);
+    });
+
+    test("invalid sortField returns 400", async () => {
+      await createTestDoc("notes", "doc1.md", "hash1");
+
+      const url = new URL(
+        "http://localhost/api/docs?collection=notes&sortField=not_a_field"
+      );
+      const res = await handleDocs(store, url);
+
+      expect(res.status).toBe(400);
       const body = (await res.json()) as { error: { code: string } };
       expect(body.error.code).toBe("VALIDATION");
     });

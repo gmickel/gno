@@ -1,5 +1,5 @@
 import { ArrowLeft, ChevronRight, FileText, FolderOpen } from "lucide-react";
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 
 import { Loader } from "../components/ai-elements/loader";
 import { Badge } from "../components/ui/badge";
@@ -44,6 +44,9 @@ interface DocsResponse {
   total: number;
   limit: number;
   offset: number;
+  availableDateFields: string[];
+  sortField: string;
+  sortOrder: "asc" | "desc";
 }
 
 export default function Browse({ navigate }: PageProps) {
@@ -54,6 +57,9 @@ export default function Browse({ navigate }: PageProps) {
   const [offset, setOffset] = useState(0);
   const [loading, setLoading] = useState(false);
   const [initialLoad, setInitialLoad] = useState(true);
+  const [availableDateFields, setAvailableDateFields] = useState<string[]>([]);
+  const [sortField, setSortField] = useState("modified");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const limit = 25;
 
   // Parse collection from URL on mount
@@ -75,21 +81,41 @@ export default function Browse({ navigate }: PageProps) {
 
   useEffect(() => {
     setLoading(true);
-    const url = selected
-      ? `/api/docs?collection=${encodeURIComponent(selected)}&limit=${limit}&offset=${offset}`
-      : `/api/docs?limit=${limit}&offset=${offset}`;
+    const params = new URLSearchParams({
+      limit: String(limit),
+      offset: String(offset),
+      sortField,
+      sortOrder,
+    });
+    if (selected) {
+      params.set("collection", selected);
+    }
+    const url = `/api/docs?${params.toString()}`;
 
     void apiFetch<DocsResponse>(url).then(({ data }) => {
       setLoading(false);
       setInitialLoad(false);
       if (data) {
+        setAvailableDateFields(data.availableDateFields ?? []);
+        setSortField(data.sortField);
+        setSortOrder(data.sortOrder);
         setDocs((prev) =>
           offset === 0 ? data.documents : [...prev, ...data.documents]
         );
         setTotal(data.total);
       }
     });
-  }, [selected, offset]);
+  }, [selected, offset, sortField, sortOrder]);
+
+  useEffect(() => {
+    if (sortField === "modified" || availableDateFields.includes(sortField)) {
+      return;
+    }
+    setSortField("modified");
+    setSortOrder("desc");
+    setOffset(0);
+    setDocs([]);
+  }, [availableDateFields, sortField]);
 
   const handleCollectionChange = (value: string) => {
     const newSelected = value === "all" ? "" : value;
@@ -106,6 +132,24 @@ export default function Browse({ navigate }: PageProps) {
   const handleLoadMore = () => {
     setOffset((prev) => prev + limit);
   };
+
+  const handleSortChange = (value: string) => {
+    const [nextField, nextOrder] = value.split(":");
+    if (!nextField || (nextOrder !== "asc" && nextOrder !== "desc")) {
+      return;
+    }
+    setSortField(nextField);
+    setSortOrder(nextOrder);
+    setOffset(0);
+    setDocs([]);
+  };
+
+  const formatDateFieldLabel = (field: string) =>
+    field
+      .split("_")
+      .filter((token) => token.length > 0)
+      .map((token) => token.charAt(0).toUpperCase() + token.slice(1))
+      .join(" ");
 
   const getExtBadgeVariant = (ext: string) => {
     switch (ext.toLowerCase()) {
@@ -154,6 +198,28 @@ export default function Browse({ navigate }: PageProps) {
                   <SelectItem key={c.name} value={c.name}>
                     {c.name}
                   </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select
+              onValueChange={handleSortChange}
+              value={`${sortField}:${sortOrder}`}
+            >
+              <SelectTrigger className="w-[230px]">
+                <SelectValue placeholder="Sort" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="modified:desc">Newest Modified</SelectItem>
+                <SelectItem value="modified:asc">Oldest Modified</SelectItem>
+                {availableDateFields.map((field) => (
+                  <Fragment key={field}>
+                    <SelectItem value={`${field}:desc`}>
+                      {`Newest by ${formatDateFieldLabel(field)}`}
+                    </SelectItem>
+                    <SelectItem value={`${field}:asc`}>
+                      {`Oldest by ${formatDateFieldLabel(field)}`}
+                    </SelectItem>
+                  </Fragment>
                 ))}
               </SelectContent>
             </Select>

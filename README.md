@@ -139,15 +139,37 @@ gno skill install --target all       # Both Claude + Codex
 
 **BM25** indexes full documents (not chunks) with Snowball stemming, so "running" matches "run".
 **Vector** embeds chunks with document titles for context awareness.
+All retrieval modes also support metadata filters: `--since`, `--until`, `--category`, `--author`, `--tags-all`, `--tags-any`.
 
 ```bash
 gno search "handleAuth"              # Find exact matches
 gno vsearch "error handling patterns" # Semantic similarity
 gno query "database optimization"    # Full pipeline
+gno query "meeting decisions" --since "last month" --category "meeting,notes" --author "gordon"
 gno ask "what did we decide" --answer # AI synthesis
 ```
 
 Output formats: `--json`, `--files`, `--csv`, `--md`, `--xml`
+
+### Retrieval V2 Controls
+
+Existing query calls still work. Retrieval v2 adds optional structured intent control and deeper explain output.
+
+```bash
+# Existing call (unchanged)
+gno query "auth flow" --thorough
+
+# Structured retrieval intent
+gno query "auth flow" \
+  --query-mode term:"jwt refresh token -oauth1" \
+  --query-mode intent:"how refresh token rotation works" \
+  --query-mode hyde:"Refresh tokens rotate on each use and previous tokens are revoked." \
+  --explain
+```
+
+- Modes: `term` (BM25-focused), `intent` (semantic-focused), `hyde` (single hypothetical passage)
+- Explain includes stage timings, fallback/cache counters, and per-result score components
+- `gno ask --json` includes `meta.answerContext` for adaptive source selection traces
 
 ---
 
@@ -372,7 +394,7 @@ graph TD
 
 ## Local Models
 
-Models auto-download on first use to `~/.cache/gno/models/`. Alternatively, offload to a GPU server on your network using HTTP backends.
+Models auto-download on first use to `~/.cache/gno/models/`. For deterministic startup, set `GNO_NO_AUTO_DOWNLOAD=1` and use `gno models pull` explicitly. Alternatively, offload to a GPU server on your network using HTTP backends.
 
 | Model               | Purpose                               | Size         |
 | :------------------ | :------------------------------------ | :----------- |
@@ -443,6 +465,19 @@ bun run lint && bun run typecheck
 ```
 
 > **Contributing**: [CONTRIBUTING.md](.github/CONTRIBUTING.md)
+
+### Evals and Benchmark Deltas
+
+Use retrieval benchmark commands to track quality and latency over time:
+
+```bash
+bun run eval:hybrid
+bun run eval:hybrid:baseline
+bun run eval:hybrid:delta
+```
+
+- Benchmark guide: [evals/README.md](./evals/README.md)
+- Latest baseline snapshot: [evals/fixtures/hybrid-baseline/latest.json](./evals/fixtures/hybrid-baseline/latest.json)
 
 ---
 

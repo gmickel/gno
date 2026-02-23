@@ -181,6 +181,81 @@ This is #work related.
 
     expect(docResult.value.ingestVersion).toBe(INGEST_VERSION);
   });
+
+  test("uses date precedence for canonical frontmatter date", async () => {
+    const content = `---
+updated: 2025-03-01
+published: 2025-02-15
+---
+# Date precedence
+`;
+    await writeFile(join(collectionDir, "date-precedence.md"), content);
+
+    const syncService = new SyncService();
+    await syncService.syncCollection(collection, adapter);
+
+    const docResult = await adapter.getDocument("docs", "date-precedence.md");
+    expect(docResult.ok).toBe(true);
+    if (!docResult.ok || !docResult.value) return;
+
+    expect(docResult.value.frontmatterDate).toBe("2025-02-15T00:00:00.000Z");
+  });
+
+  test("parses frontmatter date-only and timezone datetime formats", async () => {
+    const dateOnly = `---
+date: 2025-01-02
+---
+# Date only
+`;
+    const zoned = `---
+published_at: "2025-01-03T10:30:00-05:00"
+---
+# Zoned
+`;
+
+    await writeFile(join(collectionDir, "date-only.md"), dateOnly);
+    await writeFile(join(collectionDir, "zoned-date.md"), zoned);
+
+    const syncService = new SyncService();
+    await syncService.syncCollection(collection, adapter);
+
+    const dateOnlyDoc = await adapter.getDocument("docs", "date-only.md");
+    expect(dateOnlyDoc.ok).toBe(true);
+    if (!dateOnlyDoc.ok || !dateOnlyDoc.value) return;
+    expect(dateOnlyDoc.value.frontmatterDate).toBe("2025-01-02T00:00:00.000Z");
+
+    const zonedDoc = await adapter.getDocument("docs", "zoned-date.md");
+    expect(zonedDoc.ok).toBe(true);
+    if (!zonedDoc.ok || !zonedDoc.value) return;
+    expect(zonedDoc.value.frontmatterDate).toBe("2025-01-03T15:30:00.000Z");
+  });
+
+  test("extracts normalized date_fields from date-like frontmatter keys", async () => {
+    const content = `---
+publishedAt: 2025-01-10
+deadline: "2025-02-01"
+startDate: 2025-01-20
+owner: Alice
+notes: 2025-03-05
+---
+# Date fields
+`;
+    await writeFile(join(collectionDir, "date-fields.md"), content);
+
+    const syncService = new SyncService();
+    await syncService.syncCollection(collection, adapter);
+
+    const docResult = await adapter.getDocument("docs", "date-fields.md");
+    expect(docResult.ok).toBe(true);
+    if (!docResult.ok || !docResult.value) return;
+
+    expect(docResult.value.dateFields).toEqual({
+      deadline: "2025-02-01T00:00:00.000Z",
+      published_at: "2025-01-10T00:00:00.000Z",
+      start_date: "2025-01-20T00:00:00.000Z",
+    });
+    expect(docResult.value.frontmatterDate).toBe("2025-01-10T00:00:00.000Z");
+  });
 });
 
 describe("SyncService version-aware backfill", () => {

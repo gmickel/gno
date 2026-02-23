@@ -130,6 +130,17 @@ async function writeOutput(
   }
 }
 
+function parseCsvValues(raw: unknown): string[] | undefined {
+  if (typeof raw !== "string") {
+    return undefined;
+  }
+  const values = raw
+    .split(",")
+    .map((v) => v.trim().toLowerCase())
+    .filter((v) => v.length > 0);
+  return values.length > 0 ? values : undefined;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Program Factory
 // ─────────────────────────────────────────────────────────────────────────────
@@ -203,6 +214,16 @@ function wireSearchCommands(program: Command): void {
     .option("--min-score <num>", "minimum score threshold")
     .option("-c, --collection <name>", "filter by collection")
     .option("--lang <code>", "language filter/hint (BCP-47)")
+    .option(
+      "--since <date>",
+      "modified-at lower bound (ISO date/time or token)"
+    )
+    .option(
+      "--until <date>",
+      "modified-at upper bound (ISO date/time or token)"
+    )
+    .option("--category <values>", "require category match (comma-separated)")
+    .option("--author <text>", "filter by author (case-insensitive contains)")
     .option("--tags-all <tags>", "require ALL tags (comma-separated)")
     .option("--tags-any <tags>", "require ANY tag (comma-separated)")
     .option("--full", "include full content")
@@ -247,6 +268,7 @@ function wireSearchCommands(program: Command): void {
       const limit = cmdOpts.limit
         ? parsePositiveInt("limit", cmdOpts.limit)
         : getDefaultLimit(format);
+      const categories = parseCsvValues(cmdOpts.category);
 
       const { search, formatSearch } = await import("./commands/search");
       const result = await search(queryText, {
@@ -254,6 +276,10 @@ function wireSearchCommands(program: Command): void {
         minScore,
         collection: cmdOpts.collection as string | undefined,
         lang: cmdOpts.lang as string | undefined,
+        since: cmdOpts.since as string | undefined,
+        until: cmdOpts.until as string | undefined,
+        categories,
+        author: cmdOpts.author as string | undefined,
         tagsAll,
         tagsAny,
         full: Boolean(cmdOpts.full),
@@ -293,6 +319,16 @@ function wireSearchCommands(program: Command): void {
     .option("--min-score <num>", "minimum score threshold")
     .option("-c, --collection <name>", "filter by collection")
     .option("--lang <code>", "language filter/hint (BCP-47)")
+    .option(
+      "--since <date>",
+      "modified-at lower bound (ISO date/time or token)"
+    )
+    .option(
+      "--until <date>",
+      "modified-at upper bound (ISO date/time or token)"
+    )
+    .option("--category <values>", "require category match (comma-separated)")
+    .option("--author <text>", "filter by author (case-insensitive contains)")
     .option("--tags-all <tags>", "require ALL tags (comma-separated)")
     .option("--tags-any <tags>", "require ANY tag (comma-separated)")
     .option("--full", "include full content")
@@ -337,6 +373,7 @@ function wireSearchCommands(program: Command): void {
       const limit = cmdOpts.limit
         ? parsePositiveInt("limit", cmdOpts.limit)
         : getDefaultLimit(format);
+      const categories = parseCsvValues(cmdOpts.category);
 
       const { vsearch, formatVsearch } = await import("./commands/vsearch");
       const result = await vsearch(queryText, {
@@ -344,6 +381,10 @@ function wireSearchCommands(program: Command): void {
         minScore,
         collection: cmdOpts.collection as string | undefined,
         lang: cmdOpts.lang as string | undefined,
+        since: cmdOpts.since as string | undefined,
+        until: cmdOpts.until as string | undefined,
+        categories,
+        author: cmdOpts.author as string | undefined,
         tagsAll,
         tagsAny,
         full: Boolean(cmdOpts.full),
@@ -378,6 +419,16 @@ function wireSearchCommands(program: Command): void {
     .option("--min-score <num>", "minimum score threshold")
     .option("-c, --collection <name>", "filter by collection")
     .option("--lang <code>", "language hint (BCP-47)")
+    .option(
+      "--since <date>",
+      "modified-at lower bound (ISO date/time or token)"
+    )
+    .option(
+      "--until <date>",
+      "modified-at upper bound (ISO date/time or token)"
+    )
+    .option("--category <values>", "require category match (comma-separated)")
+    .option("--author <text>", "filter by author (case-insensitive contains)")
     .option("--tags-all <tags>", "require ALL tags (comma-separated)")
     .option("--tags-any <tags>", "require ANY tag (comma-separated)")
     .option("--full", "include full content")
@@ -386,6 +437,12 @@ function wireSearchCommands(program: Command): void {
     .option("--thorough", "enable query expansion (slower, ~5-8s)")
     .option("--no-expand", "disable query expansion")
     .option("--no-rerank", "disable reranking")
+    .option(
+      "--query-mode <mode:text>",
+      "structured mode entry (repeatable): term:<text>, intent:<text>, or hyde:<text>",
+      (value: string, previous: string[] = []) => [...previous, value],
+      []
+    )
     .option("--explain", "include scoring explanation")
     .option("--json", "JSON output")
     .option("--md", "Markdown output")
@@ -405,6 +462,17 @@ function wireSearchCommands(program: Command): void {
       const minScore = parseOptionalFloat("min-score", cmdOpts.minScore);
       if (minScore !== undefined && (minScore < 0 || minScore > 1)) {
         throw new CliError("VALIDATION", "--min-score must be between 0 and 1");
+      }
+
+      // Parse optional structured query modes
+      let queryModes: import("../pipeline/types").QueryModeInput[] | undefined;
+      if (Array.isArray(cmdOpts.queryMode) && cmdOpts.queryMode.length > 0) {
+        const { parseQueryModeSpecs } = await import("../pipeline/query-modes");
+        const parsed = parseQueryModeSpecs(cmdOpts.queryMode as string[]);
+        if (!parsed.ok) {
+          throw new CliError("VALIDATION", parsed.error.message);
+        }
+        queryModes = parsed.value;
       }
 
       // Parse and validate tag filters
@@ -427,6 +495,7 @@ function wireSearchCommands(program: Command): void {
       const limit = cmdOpts.limit
         ? parsePositiveInt("limit", cmdOpts.limit)
         : getDefaultLimit(format);
+      const categories = parseCsvValues(cmdOpts.category);
 
       // Determine expansion/rerank settings based on flags
       // Priority: --fast > --thorough > --no-expand/--no-rerank > default
@@ -458,12 +527,17 @@ function wireSearchCommands(program: Command): void {
         minScore,
         collection: cmdOpts.collection as string | undefined,
         lang: cmdOpts.lang as string | undefined,
+        since: cmdOpts.since as string | undefined,
+        until: cmdOpts.until as string | undefined,
+        categories,
+        author: cmdOpts.author as string | undefined,
         tagsAll,
         tagsAny,
         full: Boolean(cmdOpts.full),
         lineNumbers: Boolean(cmdOpts.lineNumbers),
         noExpand,
         noRerank,
+        queryModes,
         explain: Boolean(cmdOpts.explain),
         json: format === "json",
         md: format === "md",
@@ -490,6 +564,16 @@ function wireSearchCommands(program: Command): void {
     .option("-n, --limit <num>", "max source results")
     .option("-c, --collection <name>", "filter by collection")
     .option("--lang <code>", "language hint (BCP-47)")
+    .option(
+      "--since <date>",
+      "modified-at lower bound (ISO date/time or token)"
+    )
+    .option(
+      "--until <date>",
+      "modified-at upper bound (ISO date/time or token)"
+    )
+    .option("--category <values>", "require category match (comma-separated)")
+    .option("--author <text>", "filter by author (case-insensitive contains)")
     .option("--fast", "skip expansion and reranking (fastest)")
     .option("--thorough", "enable query expansion (slower)")
     .option("--answer", "generate short grounded answer")
@@ -515,6 +599,7 @@ function wireSearchCommands(program: Command): void {
       const maxAnswerTokens = cmdOpts.maxAnswerTokens
         ? parsePositiveInt("max-answer-tokens", cmdOpts.maxAnswerTokens)
         : undefined;
+      const categories = parseCsvValues(cmdOpts.category);
 
       // Determine expansion/rerank settings based on flags
       // Default: skip expansion (balanced mode)
@@ -535,6 +620,10 @@ function wireSearchCommands(program: Command): void {
         limit,
         collection: cmdOpts.collection as string | undefined,
         lang: cmdOpts.lang as string | undefined,
+        since: cmdOpts.since as string | undefined,
+        until: cmdOpts.until as string | undefined,
+        categories,
+        author: cmdOpts.author as string | undefined,
         noExpand,
         noRerank,
         // Per spec: --answer defaults to false, --no-answer forces retrieval-only

@@ -72,6 +72,8 @@ gno search "meeting" --files
 
 **Snowball stemming**: "running" matches "run", "scored" matches "score", plurals match singulars.
 
+**Recency intent sorting**: Queries containing `latest`, `newest`, or `recent` are ordered newest-first using frontmatter date when present, falling back to file modified time.
+
 Options:
 
 - `-n, --limit <n>` - Limit results (default: 5; 20 with --json/--files)
@@ -79,6 +81,10 @@ Options:
 - `--full` - Show full document content (not just snippet)
 - `--line-numbers` - Show line numbers in snippets
 - `--lang <code>` - Filter by detected language in code blocks
+- `--since <date>` - Modified-at lower bound (ISO date/time or token like `today`, `last week`, `recent`)
+- `--until <date>` - Modified-at upper bound (ISO date/time or token)
+- `--category <values>` - Require matching category/content type (comma-separated)
+- `--author <text>` - Author contains text (case-insensitive)
 - `--tags-all <tags>` - Filter: docs must have ALL tags (comma-separated)
 - `--tags-any <tags>` - Filter: docs must have ANY tag (comma-separated)
 
@@ -93,7 +99,7 @@ gno vsearch "authentication best practices" --json
 
 **Contextual embeddings**: Each chunk is embedded with its document title prepended, helping the model distinguish context (e.g., "configuration" in React vs database docs).
 
-Same options as `gno search`, including `--tags-all` and `--tags-any` filters. Requires embed model.
+Same options as `gno search`, including temporal/category/author and tag filters. Requires embed model.
 
 ### gno query
 
@@ -105,6 +111,7 @@ gno query "API design patterns" --explain
 gno query "auth" --fast              # Fastest: ~0.7s
 gno query "auth" --thorough          # Full pipeline: ~5-8s
 gno query "auth" --tags-all work,backend   # Filter by tags
+gno query "auth flow" --query-mode term:"jwt refresh token" --query-mode intent:"how refresh token rotation works"
 ```
 
 **Search modes**:
@@ -119,6 +126,7 @@ gno query "auth" --tags-all work,backend   # Filter by tags
 - **2× weight for original query**: Prevents dilution by LLM-generated variants
 - **Tiered top-rank bonus**: +0.05 for #1, +0.02 for #2-3
 - **Chunk-level reranking**: Best chunk per doc (4K max) for 25× faster reranking
+- **Lexical top-hit protection**: Preserves original BM25 #1 exact hits against rerank-only demotion
 
 Additional options:
 
@@ -126,9 +134,31 @@ Additional options:
 - `--thorough` - Enable query expansion (slower, ~5-8s)
 - `--no-expand` - Disable query expansion
 - `--no-rerank` - Disable cross-encoder reranking
+- `--query-mode <mode:text>` - Structured expansion hints; repeat for multiple entries. Modes: `term`, `intent`, `hyde`
 - `--explain` - Show detailed scoring breakdown (to stderr)
+- `--since <date>` - Modified-at lower bound (ISO date/time or token)
+- `--until <date>` - Modified-at upper bound (ISO date/time or token)
+- `--category <values>` - Require matching category/content type
+- `--author <text>` - Author contains text (case-insensitive)
 - `--tags-all <tags>` - Filter: docs must have ALL tags
 - `--tags-any <tags>` - Filter: docs must have ANY tag
+
+**Migration notes (retrieval v2):**
+
+- Existing calls keep working (`gno query "..."`, `--fast`, `--thorough`, `--no-expand`, `--no-rerank`).
+- `--query-mode` is opt-in for explicit intent control and replaces generated expansion for that query.
+- Use `term` for exact lexical constraints, `intent` for semantic reformulations, and `hyde` for one hypothetical answer passage.
+
+```bash
+# Existing call (still valid)
+gno query "auth flow" --thorough
+
+# Retrieval v2 structured call
+gno query "auth flow" \
+  --query-mode term:"jwt refresh token -oauth1" \
+  --query-mode intent:"how refresh token rotation works" \
+  --query-mode hyde:"Refresh tokens rotate on each use and previous tokens are revoked."
+```
 
 The `--explain` flag outputs:
 
@@ -138,6 +168,8 @@ The `--explain` flag outputs:
 - `skipped_strong` indicator if expansion was skipped
 - Rerank scores (if enabled)
 - Final blended scores
+- Per-stage timing breakdown (`lang`, `expansion`, `bm25`, `vector`, `fusion`, `rerank`, `assembly`, `total`)
+- Fallback/counter summary (`fallbacks=...`, cache counters for expansion/rerank)
 
 See [How Search Works](HOW-SEARCH-WORKS.md) for details on the scoring pipeline.
 
@@ -155,6 +187,8 @@ gno ask "complex topic" --thorough       # Best recall
 
 **Full-document context**: When `--answer` is used, GNO passes complete document content to the generation model, not truncated snippets. This ensures the LLM sees tables, code examples, and full context needed for accurate answers.
 
+**Adaptive source selection**: `gno ask --answer` picks context sources using relevance + query coverage + facet coverage (instead of fixed top-N). Comparison queries (`vs`, `compare`, `difference`) force at least two competing sources when available.
+
 **Preset requirement**: For documents with markdown tables or structured data, use the `quality` preset (`gno models use quality`). Smaller models cannot reliably parse tabular content. This only applies to standalone `--answer` usage. When AI agents (Claude Code, Codex) call GNO via MCP/skill/CLI, they handle answer generation.
 
 Options:
@@ -166,6 +200,13 @@ Options:
 - `--max-answer-tokens <n>` - Limit answer length
 - `--show-sources` - Show all retrieved sources, not just cited ones
 - `-n, --limit <n>` - Max source results
+- `--since <date>` - Modified-at lower bound (ISO date/time or token)
+- `--until <date>` - Modified-at upper bound (ISO date/time or token)
+- `--category <values>` - Require matching category/content type
+- `--author <text>` - Author contains text (case-insensitive)
+
+JSON output includes `meta.answerContext` with selected/dropped source explain details.
+
 - `-c, --collection <name>` - Filter by collection
 - `--lang <code>` - Language hint (BCP-47)
 - `--tags-all <tags>` - Filter: docs must have ALL tags

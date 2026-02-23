@@ -111,6 +111,23 @@ BM25 keyword search over indexed documents.
       "type": "string",
       "description": "Language filter (BCP-47 code)"
     },
+    "since": {
+      "type": "string",
+      "description": "Modified-at lower bound (ISO date/time or relative token)"
+    },
+    "until": {
+      "type": "string",
+      "description": "Modified-at upper bound (ISO date/time or relative token)"
+    },
+    "categories": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Only include docs matching any category/content type"
+    },
+    "author": {
+      "type": "string",
+      "description": "Only include docs where author contains this value"
+    },
     "tagsAll": {
       "type": "array",
       "items": { "type": "string" },
@@ -167,6 +184,8 @@ BM25 keyword search over indexed documents.
 - Invalid query (empty string): returns `isError: true`
 - Collection not found: returns `isError: true`
 
+Ordering note: recency-intent queries (`latest`, `newest`, `recent`) are sorted newest-first by canonical frontmatter date when present, else source modified time.
+
 ---
 
 ### gno_vsearch
@@ -203,6 +222,23 @@ Vector semantic search over indexed documents.
     "lang": {
       "type": "string",
       "description": "Language hint for query (BCP-47 code)"
+    },
+    "since": {
+      "type": "string",
+      "description": "Modified-at lower bound (ISO date/time or relative token)"
+    },
+    "until": {
+      "type": "string",
+      "description": "Modified-at upper bound (ISO date/time or relative token)"
+    },
+    "categories": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Only include docs matching any category/content type"
+    },
+    "author": {
+      "type": "string",
+      "description": "Only include docs where author contains this value"
     },
     "tagsAll": {
       "type": "array",
@@ -262,6 +298,41 @@ Hybrid search combining BM25 and vector retrieval with optional expansion and re
       "type": "string",
       "description": "Language hint for query (BCP-47 code)"
     },
+    "since": {
+      "type": "string",
+      "description": "Modified-at lower bound (ISO date/time or relative token)"
+    },
+    "until": {
+      "type": "string",
+      "description": "Modified-at upper bound (ISO date/time or relative token)"
+    },
+    "categories": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Only include docs matching any category/content type"
+    },
+    "author": {
+      "type": "string",
+      "description": "Only include docs where author contains this value"
+    },
+    "queryModes": {
+      "type": "array",
+      "description": "Optional structured mode entries for retrieval",
+      "items": {
+        "type": "object",
+        "properties": {
+          "mode": {
+            "type": "string",
+            "enum": ["term", "intent", "hyde"]
+          },
+          "text": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": ["mode", "text"]
+      }
+    },
     "expand": {
       "type": "boolean",
       "description": "Enable query expansion (slower, better recall)",
@@ -298,6 +369,14 @@ Hybrid search combining BM25 and vector retrieval with optional expansion and re
 ```
 
 **Output Schema:** `gno://schemas/search-results`
+
+Validation note: `queryModes[].text` is trimmed and must remain non-empty; only one `mode: "hyde"` entry is allowed.
+
+Compatibility / migration notes:
+
+- Existing `gno_query` tool calls remain valid without `queryModes`.
+- `queryModes` is optional; use it only when clients need explicit retrieval intent control.
+- When `queryModes` is present, generated expansion is skipped and provided entries are used directly.
 
 **Response structuredContent includes:**
 

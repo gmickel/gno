@@ -83,6 +83,8 @@ The diagram below shows how your query flows through GNO's search system:
 │    1-3: 75% fusion / 25% rerank                               │
 │    4-10: 60% fusion / 40% rerank                              │
 │    11+: 40% fusion / 60% rerank                               │
+│                                                               │
+│  Guardrail: preserve original BM25 #1 exact hit as top result │
 └───────────────────────────────┬───────────────────────────────┘
                                 │
                                 ▼
@@ -138,6 +140,18 @@ HyDE: "To deploy the application to production, first ensure all tests pass,
        to your staging environment for validation, and finally promote to
        production using the deployment pipeline..."
 ```
+
+### Expansion Guardrails
+
+GNO applies deterministic guardrails after generation to reduce query drift:
+
+- Preserves quoted phrases and negations in lexical variants
+- Preserves named/symbol-heavy entities (for example `Bob`, `C++`, `Node.js`)
+- Filters lexical/semantic variants that do not overlap query intent
+- Falls back to the original query when variants are fully filtered
+- Drops HyDE text when it has no meaningful overlap with the query
+
+This keeps expansion useful for recall without letting unrelated variants dominate retrieval.
 
 ### Why Expansion Helps
 
@@ -283,6 +297,7 @@ This preserves strong initial signals through the pipeline.
 ## Chunk-Level Reranking
 
 After RRF fusion, top candidates are reranked using **Qwen3-Reranker**. For efficiency, GNO reranks the **best chunk per document** (selected by highest fusion score) rather than full documents.
+Chunk text loading is batched (`getChunksBatch`) to avoid per-document N+1 lookups in this stage.
 
 **Why chunk-level?** Full-document reranking (128K chars) is 25× slower than chunk-level (4K chars). Testing shows chunk-level achieves similar quality at ~2s vs ~10s for the same query.
 
@@ -365,6 +380,8 @@ The `--explain` flag shows what happened:
 ```bash
 gno query "my search" --explain
 ```
+
+This includes stage timings (`lang`, `expansion`, `bm25`, `vector`, `fusion`, `rerank`, `assembly`, `total`), fallback counters, and per-result fusion/rerank score components.
 
 ## Graceful Degradation
 

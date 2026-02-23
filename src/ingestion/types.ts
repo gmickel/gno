@@ -21,6 +21,8 @@ export interface WalkEntry {
   size: number;
   /** Modification time (ISO 8601) */
   mtime: string;
+  /** Creation/change time (ISO 8601) */
+  ctime: string;
 }
 
 /** Walker configuration */

@@ -372,16 +372,18 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
         `
         INSERT INTO documents (
           collection, rel_path, source_hash, source_mime, source_ext,
-          source_size, source_mtime, docid, uri, title, mirror_hash,
-          converter_id, converter_version, language_hint, active,
-          last_error_code, last_error_message, last_error_at, ingest_version, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?, datetime('now'))
+          source_size, source_mtime, source_ctime, docid, uri, title, mirror_hash,
+          converter_id, converter_version, language_hint, content_type, categories,
+          author, frontmatter_date, date_fields, active, indexed_at, last_error_code,
+          last_error_message, last_error_at, ingest_version, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, datetime('now'), ?, ?, ?, ?, datetime('now'))
         ON CONFLICT(collection, rel_path) DO UPDATE SET
           source_hash = excluded.source_hash,
           source_mime = excluded.source_mime,
           source_ext = excluded.source_ext,
           source_size = excluded.source_size,
           source_mtime = excluded.source_mtime,
+          source_ctime = excluded.source_ctime,
           docid = excluded.docid,
           uri = excluded.uri,
           title = excluded.title,
@@ -389,7 +391,13 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
           converter_id = excluded.converter_id,
           converter_version = excluded.converter_version,
           language_hint = excluded.language_hint,
+          content_type = excluded.content_type,
+          categories = excluded.categories,
+          author = excluded.author,
+          frontmatter_date = excluded.frontmatter_date,
+          date_fields = excluded.date_fields,
           active = 1,
+          indexed_at = datetime('now'),
           last_error_code = excluded.last_error_code,
           last_error_message = excluded.last_error_message,
           last_error_at = excluded.last_error_at,
@@ -404,6 +412,7 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
           doc.sourceExt,
           doc.sourceSize,
           doc.sourceMtime,
+          doc.sourceCtime ?? doc.sourceMtime,
           docid,
           uri,
           doc.title ?? null,
@@ -411,6 +420,11 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
           doc.converterId ?? null,
           doc.converterVersion ?? null,
           doc.languageHint ?? null,
+          doc.contentType ?? null,
+          doc.categories ? JSON.stringify(doc.categories) : null,
+          doc.author ?? null,
+          doc.frontmatterDate ?? null,
+          doc.dateFields ? JSON.stringify(doc.dateFields) : null,
           doc.lastErrorCode ?? null,
           doc.lastErrorMessage ?? null,
           doc.lastErrorCode ? new Date().toISOString() : null,
@@ -529,12 +543,74 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
     }
   }
 
+  async getDocumentsByMirrorHashes(
+    mirrorHashes: string[],
+    options: {
+      collection?: string;
+      activeOnly?: boolean;
+    } = {}
+  ): Promise<StoreResult<DocumentRow[]>> {
+    try {
+      if (mirrorHashes.length === 0) {
+        return ok([]);
+      }
+
+      const uniqueHashes = [
+        ...new Set(mirrorHashes.filter((hash) => hash.trim().length > 0)),
+      ];
+      if (uniqueHashes.length === 0) {
+        return ok([]);
+      }
+
+      const db = this.ensureOpen();
+      const rows: DbDocumentRow[] = [];
+
+      // SQLite SQLITE_LIMIT_VARIABLE_NUMBER defaults to 999.
+      // Reserve headroom for optional non-IN parameters.
+      const SQL_PARAM_LIMIT = options.collection ? 899 : 900;
+
+      for (let i = 0; i < uniqueHashes.length; i += SQL_PARAM_LIMIT) {
+        const batch = uniqueHashes.slice(i, i + SQL_PARAM_LIMIT);
+        const placeholders = batch.map(() => "?").join(",");
+        const clauses = [`mirror_hash IN (${placeholders})`];
+        const params: string[] = [...batch];
+
+        if (options.activeOnly ?? true) {
+          clauses.push("active = 1");
+        }
+        if (options.collection) {
+          clauses.push("collection = ?");
+          params.push(options.collection);
+        }
+
+        const sql = `SELECT * FROM documents WHERE ${clauses.join(" AND ")} ORDER BY id`;
+        rows.push(...db.query<DbDocumentRow, string[]>(sql).all(...params));
+      }
+
+      return ok(rows.map(mapDocumentRow));
+    } catch (cause) {
+      return err(
+        "QUERY_FAILED",
+        cause instanceof Error
+          ? cause.message
+          : "Failed to get documents by mirror hashes",
+        cause
+      );
+    }
+  }
+
   async listDocumentsPaginated(options: {
     collection?: string;
     limit: number;
     offset: number;
     tagsAll?: string[];
     tagsAny?: string[];
+    since?: string;
+    until?: string;
+    categories?: string[];
+    author?: string;
+    sortField?: string;
+    sortOrder?: "asc" | "desc";
   }): Promise<StoreResult<{ documents: DocumentRow[]; total: number }>> {
     try {
       const db = this.ensureOpen();
@@ -547,6 +623,28 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
       if (collection) {
         conditions.push("d.collection = ?");
         params.push(collection);
+      }
+
+      if (options.since) {
+        conditions.push("d.source_mtime >= ?");
+        params.push(options.since);
+      }
+      if (options.until) {
+        conditions.push("d.source_mtime <= ?");
+        params.push(options.until);
+      }
+
+      if (options.categories && options.categories.length > 0) {
+        const placeholders = options.categories.map(() => "?").join(",");
+        conditions.push(
+          `(d.content_type IN (${placeholders}) OR EXISTS (SELECT 1 FROM json_each(COALESCE(d.categories, '[]')) jc WHERE jc.value IN (${placeholders})))`
+        );
+        params.push(...options.categories, ...options.categories);
+      }
+
+      if (options.author) {
+        conditions.push("LOWER(COALESCE(d.author, '')) LIKE ?");
+        params.push(`%${options.author.toLowerCase()}%`);
       }
 
       // tagsAny: document has at least one of these tags (OR)
@@ -570,6 +668,15 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
 
       const whereClause = conditions.join(" AND ");
 
+      // Sort options
+      const sortOrder = options.sortOrder === "asc" ? "ASC" : "DESC";
+      const sortField = options.sortField ?? "modified";
+      const isSafeDateField = /^[a-z0-9_]+$/.test(sortField);
+      let orderClause = `d.source_mtime ${sortOrder}`;
+      if (sortField !== "modified" && isSafeDateField) {
+        orderClause = `COALESCE(json_extract(d.date_fields, '$."${sortField}"'), d.source_mtime) ${sortOrder}`;
+      }
+
       // Get total count
       // Use COUNT(DISTINCT d.id) to prevent duplicate counting when tag filters match multiple tags
       const countSql = `SELECT COUNT(DISTINCT d.id) as count FROM documents d WHERE ${whereClause}`;
@@ -580,7 +687,7 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
 
       // Get paginated documents
       // Use DISTINCT to prevent duplicate rows when tag filters match multiple tags
-      const selectSql = `SELECT DISTINCT d.* FROM documents d WHERE ${whereClause} ORDER BY d.updated_at DESC LIMIT ? OFFSET ?`;
+      const selectSql = `SELECT DISTINCT d.* FROM documents d WHERE ${whereClause} ORDER BY ${orderClause}, d.id ASC LIMIT ? OFFSET ?`;
       const rows = db
         .query<DbDocumentRow, (string | number)[]>(selectSql)
         .all(...params, limit, offset);
@@ -590,6 +697,43 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
       return err(
         "QUERY_FAILED",
         cause instanceof Error ? cause.message : "Failed to list documents",
+        cause
+      );
+    }
+  }
+
+  async getCollectionDateFields(
+    collection?: string
+  ): Promise<StoreResult<string[]>> {
+    try {
+      const db = this.ensureOpen();
+      const conditions: string[] = [
+        "d.active = 1",
+        "d.date_fields IS NOT NULL",
+      ];
+      const params: string[] = [];
+
+      if (collection) {
+        conditions.push("d.collection = ?");
+        params.push(collection);
+      }
+
+      const sql = `
+        SELECT DISTINCT jf.key as field
+        FROM documents d
+        JOIN json_each(COALESCE(d.date_fields, '{}')) jf
+        WHERE ${conditions.join(" AND ")}
+        ORDER BY jf.key ASC
+      `;
+
+      const rows = db.query<{ field: string }, string[]>(sql).all(...params);
+      return ok(rows.map((r) => r.field));
+    } catch (cause) {
+      return err(
+        "QUERY_FAILED",
+        cause instanceof Error
+          ? cause.message
+          : "Failed to list collection date fields",
         cause
       );
     }
@@ -828,6 +972,26 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
         }
       }
 
+      if (options.since) {
+        tagConditions.push("d.source_mtime >= ?");
+        params.push(options.since);
+      }
+      if (options.until) {
+        tagConditions.push("d.source_mtime <= ?");
+        params.push(options.until);
+      }
+      if (options.categories && options.categories.length > 0) {
+        const placeholders = options.categories.map(() => "?").join(",");
+        tagConditions.push(
+          `(d.content_type IN (${placeholders}) OR EXISTS (SELECT 1 FROM json_each(COALESCE(d.categories, '[]')) jc WHERE jc.value IN (${placeholders})))`
+        );
+        params.push(...options.categories, ...options.categories);
+      }
+      if (options.author) {
+        tagConditions.push("LOWER(COALESCE(d.author, '')) LIKE ?");
+        params.push(`%${options.author.toLowerCase()}%`);
+      }
+
       if (options.collection) {
         params.push(options.collection);
       }
@@ -850,6 +1014,7 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
           d.source_mime,
           d.source_ext,
           d.source_mtime,
+          d.frontmatter_date,
           d.source_size,
           d.source_hash
         FROM documents_fts fts
@@ -874,6 +1039,7 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
         source_mime: string | null;
         source_ext: string | null;
         source_mtime: string | null;
+        frontmatter_date: string | null;
         source_size: number | null;
         source_hash: string | null;
       }
@@ -894,6 +1060,7 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
           sourceMime: r.source_mime ?? undefined,
           sourceExt: r.source_ext ?? undefined,
           sourceMtime: r.source_mtime ?? undefined,
+          frontmatterDate: r.frontmatter_date ?? undefined,
           sourceSize: r.source_size ?? undefined,
           sourceHash: r.source_hash ?? undefined,
         }))
@@ -2632,6 +2799,7 @@ interface DbDocumentRow {
   source_ext: string;
   source_size: number;
   source_mtime: string;
+  source_ctime: string | null;
   docid: string;
   uri: string;
   title: string | null;
@@ -2639,6 +2807,12 @@ interface DbDocumentRow {
   converter_id: string | null;
   converter_version: string | null;
   language_hint: string | null;
+  content_type: string | null;
+  categories: string | null;
+  author: string | null;
+  frontmatter_date: string | null;
+  date_fields: string | null;
+  indexed_at: string | null;
   active: number;
   ingest_version: number | null;
   last_error_code: string | null;
@@ -2697,6 +2871,38 @@ function mapContextRow(row: DbContextRow): ContextRow {
 }
 
 function mapDocumentRow(row: DbDocumentRow): DocumentRow {
+  let categories: string[] | null = null;
+  if (row.categories) {
+    try {
+      const parsed = JSON.parse(row.categories);
+      if (Array.isArray(parsed)) {
+        categories = parsed.filter((v): v is string => typeof v === "string");
+      }
+    } catch {
+      categories = null;
+    }
+  }
+
+  let dateFields: Record<string, string> | null = null;
+  if (row.date_fields) {
+    try {
+      const parsed = JSON.parse(row.date_fields);
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+        const normalized: Record<string, string> = {};
+        for (const [key, value] of Object.entries(parsed)) {
+          if (typeof value === "string") {
+            normalized[key] = value;
+          }
+        }
+        if (Object.keys(normalized).length > 0) {
+          dateFields = normalized;
+        }
+      }
+    } catch {
+      dateFields = null;
+    }
+  }
+
   return {
     id: row.id,
     collection: row.collection,
@@ -2706,6 +2912,7 @@ function mapDocumentRow(row: DbDocumentRow): DocumentRow {
     sourceExt: row.source_ext,
     sourceSize: row.source_size,
     sourceMtime: row.source_mtime,
+    sourceCtime: row.source_ctime,
     docid: row.docid,
     uri: row.uri,
     title: row.title,
@@ -2713,6 +2920,12 @@ function mapDocumentRow(row: DbDocumentRow): DocumentRow {
     converterId: row.converter_id,
     converterVersion: row.converter_version,
     languageHint: row.language_hint,
+    contentType: row.content_type,
+    categories,
+    author: row.author,
+    frontmatterDate: row.frontmatter_date,
+    dateFields,
+    indexedAt: row.indexed_at,
     active: row.active === 1,
     ingestVersion: row.ingest_version,
     lastErrorCode: row.last_error_code,

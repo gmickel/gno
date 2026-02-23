@@ -56,6 +56,10 @@ const searchInputSchema = z.object({
   limit: z.number().int().min(1).max(100).default(5),
   minScore: z.number().min(0).max(1).optional(),
   lang: z.string().optional(),
+  since: z.string().optional(),
+  until: z.string().optional(),
+  categories: z.array(z.string()).optional(),
+  author: z.string().optional(),
   tagsAll: z.array(z.string()).optional(),
   tagsAny: z.array(z.string()).optional(),
 });
@@ -101,16 +105,41 @@ const vsearchInputSchema = z.object({
   limit: z.number().int().min(1).max(100).default(5),
   minScore: z.number().min(0).max(1).optional(),
   lang: z.string().optional(),
+  since: z.string().optional(),
+  until: z.string().optional(),
+  categories: z.array(z.string()).optional(),
+  author: z.string().optional(),
   tagsAll: z.array(z.string()).optional(),
   tagsAny: z.array(z.string()).optional(),
 });
 
-const queryInputSchema = z.object({
+const queryModeInputSchema = z.object({
+  mode: z.enum(["term", "intent", "hyde"]),
+  text: z.string().trim().min(1, "Query mode text cannot be empty"),
+});
+
+export const queryInputSchema = z.object({
   query: z.string().min(1, "Query cannot be empty"),
   collection: z.string().optional(),
   limit: z.number().int().min(1).max(100).default(5),
   minScore: z.number().min(0).max(1).optional(),
   lang: z.string().optional(),
+  since: z.string().optional(),
+  until: z.string().optional(),
+  categories: z.array(z.string()).optional(),
+  author: z.string().optional(),
+  queryModes: z
+    .array(queryModeInputSchema)
+    .superRefine((entries, ctx) => {
+      const hydeCount = entries.filter((entry) => entry.mode === "hyde").length;
+      if (hydeCount > 1) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Only one hyde mode is allowed in queryModes",
+        });
+      }
+    })
+    .optional(),
   fast: z.boolean().default(false),
   thorough: z.boolean().default(false),
   expand: z.boolean().default(false), // Default: skip expansion

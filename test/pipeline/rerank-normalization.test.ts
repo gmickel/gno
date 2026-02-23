@@ -5,16 +5,21 @@ import type { FusionCandidate } from "../../src/pipeline/types";
 import { rerankCandidates } from "../../src/pipeline/rerank";
 
 // Mock store with minimal implementation for tests
-// Uses getChunks for chunk-level reranking
+// Uses getChunksBatch for chunk-level reranking
 const mockStore = {
-  getChunks: async (hash: string) => ({
+  getChunksBatch: async (hashes: string[]) => ({
     ok: true as const,
-    value: [
-      {
-        seq: Number.parseInt(hash.replace("hash", ""), 10),
-        text: "Mock chunk content",
-      },
-    ],
+    value: new Map(
+      hashes.map((hash) => [
+        hash,
+        [
+          {
+            seq: Number.parseInt(hash.replace("hash", ""), 10),
+            text: "Mock chunk content",
+          },
+        ],
+      ])
+    ),
   }),
 };
 
@@ -179,7 +184,7 @@ describe("rerank normalization", () => {
   });
 
   describe("chunk fetch failure", () => {
-    test("uses empty string when getChunks fails", async () => {
+    test("uses empty string when getChunksBatch fails", async () => {
       // Mock reranker that succeeds (will be called with empty strings)
       const successReranker = {
         rerank: async (_query: string, texts: string[]) => ({
@@ -191,9 +196,9 @@ describe("rerank normalization", () => {
         },
       };
 
-      // Mock store where getChunks fails
+      // Mock store where getChunksBatch fails
       const failingStore = {
-        getChunks: async () => ({
+        getChunksBatch: async () => ({
           ok: false as const,
           error: { code: "QUERY_FAILED", message: "DB error" },
         }),
@@ -218,6 +223,164 @@ describe("rerank normalization", () => {
         expect(c.blendedScore).toBeGreaterThanOrEqual(0);
         expect(c.blendedScore).toBeLessThanOrEqual(1);
       }
+    });
+
+    test("uses batch fetch instead of per-hash calls", async () => {
+      let batchCalls = 0;
+      const storeWithCounters = {
+        getChunksBatch: async (hashes: string[]) => {
+          batchCalls += 1;
+          return {
+            ok: true as const,
+            value: new Map(
+              hashes.map((hash) => [
+                hash,
+                [
+                  {
+                    seq: Number.parseInt(hash.replace("hash", ""), 10),
+                    text: "Mock chunk content",
+                  },
+                ],
+              ])
+            ),
+          };
+        },
+        getChunks: async () => {
+          throw new Error("unexpected getChunks call");
+        },
+      };
+
+      const successReranker = {
+        rerank: async (_query: string, texts: string[]) => ({
+          ok: true as const,
+          value: texts.map((_, i) => ({ index: i, score: 1 - i * 0.1 })),
+        }),
+        dispose: async () => {
+          // no-op for test
+        },
+      };
+
+      const candidates = createCandidates(4, (i) => 1 / (60 + i));
+      const result = await rerankCandidates(
+        {
+          rerankPort: successReranker as never,
+          store: storeWithCounters as never,
+        },
+        "test query",
+        candidates
+      );
+
+      expect(result.reranked).toBe(true);
+      expect(batchCalls).toBe(1);
+    });
+  });
+
+  describe("blend policy hardening", () => {
+    test("protects original bm25 top hit from rerank-only demotion", async () => {
+      const successReranker = {
+        rerank: async () => ({
+          ok: true as const,
+          value: [
+            { index: 0, score: 0.0, rank: 2 },
+            { index: 1, score: 1.0, rank: 1 },
+          ],
+        }),
+        dispose: async () => {
+          // no-op for test
+        },
+      };
+
+      const candidates: FusionCandidate[] = [
+        {
+          mirrorHash: "hashA",
+          seq: 0,
+          bm25Rank: 1,
+          vecRank: null,
+          fusionScore: 0.9,
+          sources: ["bm25"],
+        },
+        {
+          mirrorHash: "hashB",
+          seq: 0,
+          bm25Rank: 2,
+          vecRank: 1,
+          fusionScore: 0.89,
+          sources: ["bm25", "vector"],
+        },
+      ];
+
+      const result = await rerankCandidates(
+        { rerankPort: successReranker as never, store: mockStore as never },
+        "exact lexical query",
+        candidates,
+        {
+          blendingSchedule: [
+            {
+              maxRank: Number.POSITIVE_INFINITY,
+              fusionWeight: 0.1,
+              rerankWeight: 0.9,
+            },
+          ],
+        }
+      );
+
+      expect(result.reranked).toBe(true);
+      expect(result.candidates[0]?.mirrorHash).toBe("hashA");
+    });
+
+    test("tie sort remains deterministic by mirrorHash:seq", async () => {
+      const successReranker = {
+        rerank: async () => ({
+          ok: true as const,
+          value: [
+            { index: 0, score: 1, rank: 1 },
+            { index: 1, score: 1, rank: 2 },
+          ],
+        }),
+        dispose: async () => {
+          // no-op for test
+        },
+      };
+
+      const candidates: FusionCandidate[] = [
+        {
+          mirrorHash: "hashB",
+          seq: 0,
+          bm25Rank: 2,
+          vecRank: 2,
+          fusionScore: 0.8,
+          sources: ["bm25", "vector"],
+        },
+        {
+          mirrorHash: "hashA",
+          seq: 0,
+          bm25Rank: 1,
+          vecRank: 1,
+          fusionScore: 0.8,
+          sources: ["bm25", "vector"],
+        },
+      ];
+
+      const result = await rerankCandidates(
+        { rerankPort: successReranker as never, store: mockStore as never },
+        "tie query",
+        candidates,
+        {
+          blendingSchedule: [
+            {
+              maxRank: Number.POSITIVE_INFINITY,
+              fusionWeight: 0.5,
+              rerankWeight: 0.5,
+            },
+          ],
+        }
+      );
+
+      expect(result.reranked).toBe(true);
+      expect(result.candidates.map((c) => c.mirrorHash)).toEqual([
+        "hashA",
+        "hashB",
+      ]);
     });
   });
 });

@@ -19,6 +19,8 @@ import { migration as m002 } from "./002-documents-fts";
 import { migration as m003 } from "./003-doc-tags";
 import { migration as m004 } from "./004-doc-links";
 import { migration as m005 } from "./005-graph-indexes";
+import { migration as m006 } from "./006-document-metadata";
+import { migration as m007 } from "./007-document-date-fields";
 
 /** All migrations in order */
-export const migrations = [m001, m002, m003, m004, m005];
+export const migrations = [m001, m002, m003, m004, m005, m006, m007];

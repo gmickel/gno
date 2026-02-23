@@ -120,6 +120,8 @@ Internal document link using `[[double bracket]]` syntax. GNO supports:
 - `[[Target|Display]]` - link with custom display text
 - `[[Target#Heading]]` - link to section anchor
 - `[[collection:Target]]` - cross-collection link
+- `[Display]([[Target]])` - Logseq alias syntax
+- `{{embed [[Target]]}}` / `{{embed ((block-id))}}` - Logseq embeds treated as links
 
 ### Markdown Link
 

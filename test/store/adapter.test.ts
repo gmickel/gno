@@ -67,7 +67,7 @@ describe("SqliteAdapter", () => {
       expect(result.value.applied).toContain(2);
       expect(result.value.applied).toContain(3);
       expect(result.value.applied).toContain(4);
-      expect(result.value.currentVersion).toBe(5);
+      expect(result.value.currentVersion).toBe(7);
       expect(result.value.ftsTokenizer).toBe("unicode61");
     });
 
@@ -85,7 +85,7 @@ describe("SqliteAdapter", () => {
       }
 
       expect(result.value.applied).toHaveLength(0);
-      expect(result.value.currentVersion).toBe(5);
+      expect(result.value.currentVersion).toBe(7);
     });
 
     test("rejects tokenizer mismatch", async () => {
@@ -422,6 +422,289 @@ describe("SqliteAdapter", () => {
       expect(result.value).toHaveLength(1);
       expect(result.value[0]?.collection).toBe("notes");
     });
+
+    test("gets documents by mirror hashes with active-only default", async () => {
+      const makeDoc = (
+        relPath: string,
+        mirrorHash: string,
+        collection = "notes"
+      ): DocumentInput => ({
+        collection,
+        relPath,
+        sourceHash: `source_${relPath}`,
+        sourceMime: "text/markdown",
+        sourceExt: ".md",
+        sourceSize: 100,
+        sourceMtime: "2024-01-01T00:00:00Z",
+        mirrorHash,
+      });
+
+      await adapter.upsertDocument(makeDoc("a.md", "hash_a"));
+      await adapter.upsertDocument(makeDoc("b.md", "hash_b"));
+      await adapter.upsertDocument(makeDoc("c.md", "hash_c"));
+      await adapter.markInactive("notes", ["b.md"]);
+
+      const result = await adapter.getDocumentsByMirrorHashes([
+        "hash_a",
+        "hash_b",
+        "hash_a",
+        "",
+      ]);
+      expect(result.ok).toBe(true);
+      if (!result.ok) {
+        return;
+      }
+
+      expect(result.value.map((d) => d.relPath)).toEqual(["a.md"]);
+    });
+
+    test("gets documents by mirror hashes with collection and active override", async () => {
+      await adapter.syncCollections([
+        {
+          name: "notes",
+          path: "/notes",
+          pattern: "**/*",
+          include: [],
+          exclude: [],
+        },
+        {
+          name: "docs",
+          path: "/docs",
+          pattern: "**/*",
+          include: [],
+          exclude: [],
+        },
+      ]);
+
+      const makeDoc = (
+        relPath: string,
+        mirrorHash: string,
+        collection = "notes"
+      ): DocumentInput => ({
+        collection,
+        relPath,
+        sourceHash: `source_${collection}_${relPath}`,
+        sourceMime: "text/markdown",
+        sourceExt: ".md",
+        sourceSize: 100,
+        sourceMtime: "2024-01-01T00:00:00Z",
+        mirrorHash,
+      });
+
+      await adapter.upsertDocument(makeDoc("same-notes.md", "shared_hash"));
+      await adapter.upsertDocument(
+        makeDoc("same-docs.md", "shared_hash", "docs")
+      );
+      await adapter.upsertDocument(makeDoc("inactive.md", "inactive_hash"));
+      await adapter.markInactive("notes", ["inactive.md"]);
+
+      const notesOnly = await adapter.getDocumentsByMirrorHashes(
+        ["shared_hash", "inactive_hash"],
+        {
+          collection: "notes",
+          activeOnly: false,
+        }
+      );
+      expect(notesOnly.ok).toBe(true);
+      if (!notesOnly.ok) {
+        return;
+      }
+      expect(notesOnly.value.map((d) => d.relPath).sort()).toEqual([
+        "inactive.md",
+        "same-notes.md",
+      ]);
+
+      const allCollections = await adapter.getDocumentsByMirrorHashes(
+        ["shared_hash"],
+        {
+          activeOnly: false,
+        }
+      );
+      expect(allCollections.ok).toBe(true);
+      if (!allCollections.ok) {
+        return;
+      }
+      expect(allCollections.value).toHaveLength(2);
+      expect(allCollections.value.map((d) => d.collection).sort()).toEqual([
+        "docs",
+        "notes",
+      ]);
+    });
+
+    test("handles more mirror hashes than SQLite parameter limit", async () => {
+      await adapter.upsertDocument({
+        collection: "notes",
+        relPath: "big-query.md",
+        sourceHash: "source_big_query",
+        sourceMime: "text/markdown",
+        sourceExt: ".md",
+        sourceSize: 100,
+        sourceMtime: "2024-01-01T00:00:00Z",
+        mirrorHash: "target_hash",
+      });
+
+      const manyHashes = Array.from({ length: 1005 }, (_, i) => `hash_${i}`);
+      manyHashes.push("target_hash");
+
+      const result = await adapter.getDocumentsByMirrorHashes(manyHashes);
+      expect(result.ok).toBe(true);
+      if (!result.ok) {
+        return;
+      }
+
+      expect(result.value).toHaveLength(1);
+      expect(result.value[0]?.relPath).toBe("big-query.md");
+    });
+
+    test("lists collection date fields from date_fields metadata", async () => {
+      await adapter.syncCollections([
+        {
+          name: "notes",
+          path: "/notes",
+          pattern: "**/*",
+          include: [],
+          exclude: [],
+        },
+        {
+          name: "docs",
+          path: "/docs",
+          pattern: "**/*",
+          include: [],
+          exclude: [],
+        },
+      ]);
+
+      await adapter.upsertDocument({
+        collection: "notes",
+        relPath: "a.md",
+        sourceHash: "date_fields_a",
+        sourceMime: "text/markdown",
+        sourceExt: ".md",
+        sourceSize: 100,
+        sourceMtime: "2025-01-01T00:00:00.000Z",
+        dateFields: {
+          published_at: "2025-01-05T00:00:00.000Z",
+          deadline: "2025-02-01T00:00:00.000Z",
+        },
+      });
+      await adapter.upsertDocument({
+        collection: "notes",
+        relPath: "b.md",
+        sourceHash: "date_fields_b",
+        sourceMime: "text/markdown",
+        sourceExt: ".md",
+        sourceSize: 100,
+        sourceMtime: "2025-01-02T00:00:00.000Z",
+        dateFields: {
+          event_date: "2025-01-06T00:00:00.000Z",
+        },
+      });
+      await adapter.upsertDocument({
+        collection: "docs",
+        relPath: "c.md",
+        sourceHash: "date_fields_c",
+        sourceMime: "text/markdown",
+        sourceExt: ".md",
+        sourceSize: 100,
+        sourceMtime: "2025-01-03T00:00:00.000Z",
+        dateFields: {
+          release_date: "2025-01-07T00:00:00.000Z",
+        },
+      });
+
+      const notesFields = await adapter.getCollectionDateFields("notes");
+      expect(notesFields.ok).toBe(true);
+      if (!notesFields.ok) {
+        return;
+      }
+      expect(notesFields.value).toEqual([
+        "deadline",
+        "event_date",
+        "published_at",
+      ]);
+
+      const allFields = await adapter.getCollectionDateFields();
+      expect(allFields.ok).toBe(true);
+      if (!allFields.ok) {
+        return;
+      }
+      expect(allFields.value).toEqual([
+        "deadline",
+        "event_date",
+        "published_at",
+        "release_date",
+      ]);
+    });
+
+    test("sorts paginated docs by frontmatter date field with modified fallback", async () => {
+      await adapter.upsertDocument({
+        collection: "notes",
+        relPath: "doc-a.md",
+        sourceHash: "sort_a",
+        sourceMime: "text/markdown",
+        sourceExt: ".md",
+        sourceSize: 100,
+        sourceMtime: "2025-01-01T00:00:00.000Z",
+        dateFields: {
+          published_at: "2025-02-01T00:00:00.000Z",
+        },
+      });
+      await adapter.upsertDocument({
+        collection: "notes",
+        relPath: "doc-b.md",
+        sourceHash: "sort_b",
+        sourceMime: "text/markdown",
+        sourceExt: ".md",
+        sourceSize: 100,
+        sourceMtime: "2025-03-01T00:00:00.000Z",
+      });
+      await adapter.upsertDocument({
+        collection: "notes",
+        relPath: "doc-c.md",
+        sourceHash: "sort_c",
+        sourceMime: "text/markdown",
+        sourceExt: ".md",
+        sourceSize: 100,
+        sourceMtime: "2025-01-15T00:00:00.000Z",
+        dateFields: {
+          published_at: "2025-01-20T00:00:00.000Z",
+        },
+      });
+
+      const desc = await adapter.listDocumentsPaginated({
+        collection: "notes",
+        limit: 10,
+        offset: 0,
+        sortField: "published_at",
+        sortOrder: "desc",
+      });
+      expect(desc.ok).toBe(true);
+      if (!desc.ok) {
+        return;
+      }
+      expect(desc.value.documents.map((doc) => doc.relPath)).toEqual([
+        "doc-b.md",
+        "doc-a.md",
+        "doc-c.md",
+      ]);
+
+      const asc = await adapter.listDocumentsPaginated({
+        collection: "notes",
+        limit: 10,
+        offset: 0,
+        sortField: "published_at",
+        sortOrder: "asc",
+      });
+      expect(asc.ok).toBe(true);
+      if (!asc.ok) {
+        return;
+      }
+      expect(asc.value.documents.map((doc) => doc.relPath)).toEqual([
+        "doc-c.md",
+        "doc-a.md",
+        "doc-b.md",
+      ]);
+    });
   });
 
   describe("content", () => {
@@ -730,7 +1013,7 @@ describe("SqliteAdapter", () => {
         return;
       }
 
-      expect(result.value.version).toBe("5");
+      expect(result.value.version).toBe("7");
       expect(result.value.ftsTokenizer).toBe("unicode61");
       expect(result.value.dbPath).toBe(dbPath);
       expect(result.value.totalDocuments).toBe(1);

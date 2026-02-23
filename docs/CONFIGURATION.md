@@ -86,6 +86,8 @@ include:
 ```
 
 > **Note:** `include` controls which files are scanned, but files must still have converter support. Specifying unsupported extensions will result in conversion errors.
+>
+> Files larger than the conversion size limit (100MB default) are skipped via filesystem `stat` before GNO reads file bytes.
 
 Files without extensions (e.g., `Makefile`, `LICENSE`) and dotfiles (e.g., `.env`, `.gitignore`) are always excluded.
 
