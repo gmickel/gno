@@ -74,6 +74,22 @@ describe("ask command", () => {
             vectorsUsed: true,
             answerGenerated: true,
             totalResults: 1,
+            answerContext: {
+              strategy: "adaptive_coverage_v1",
+              targetSources: 2,
+              facets: ["auth", "session"],
+              selected: [
+                {
+                  docid: "#a1b2c3d4",
+                  uri: "gno://work/doc.md",
+                  score: 0.85,
+                  queryTokenHits: 2,
+                  facetHits: 1,
+                  reason: "new_facet_coverage",
+                },
+              ],
+              dropped: [],
+            },
           },
         }),
       };
@@ -84,6 +100,7 @@ describe("ask command", () => {
       expect(parsed.citations).toHaveLength(1);
       expect(parsed.citations[0].docid).toBe("#a1b2c3d4");
       expect(parsed.meta.answerGenerated).toBe(true);
+      expect(parsed.meta.answerContext?.strategy).toBe("adaptive_coverage_v1");
     });
 
     test("formats terminal output with sources", () => {

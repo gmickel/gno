@@ -568,6 +568,12 @@ gno query <query> [-n <num>] [--min-score <num>] [-c <collection>] [--tags-all <
 | `--query-mode` | string[] | Structured mode entry (`term:<text>`, `intent:<text>`, `hyde:<text>`). Repeatable. |
 | `--explain` | boolean | Print retrieval explanation to stderr |
 
+**Compatibility / Migration:**
+
+- Legacy query invocations remain valid (`gno query "<text>"`, `--fast`, `--thorough`, `--no-expand`, `--no-rerank`).
+- `--query-mode` is optional and additive to the command surface.
+- If one or more `--query-mode` entries are provided, generated expansion is bypassed and provided entries are used as retrieval intents.
+
 **Explain Output (stderr):**
 
 ```
@@ -610,6 +616,11 @@ gno ask <query> [-n <num>] [-c <collection>] [--lang <bcp47>] [--answer] [--no-a
 
 **Output (JSON):**
 See [Output Schemas](./output-schemas/ask.schema.json)
+
+Notes:
+
+- `meta.answerContext` is optional explain payload for answer source selection.
+- Strategy: adaptive coverage (relevance + query/facet coverage), not fixed top-N.
 
 **Exit Codes:**
 

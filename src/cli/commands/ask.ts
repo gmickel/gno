@@ -205,6 +205,7 @@ export async function ask(
     // Generate grounded answer if requested
     let answer: string | undefined;
     let citations: Citation[] | undefined;
+    let answerContext: AskResult["meta"]["answerContext"] | undefined;
     let answerGenerated = false;
 
     // Only generate answer if:
@@ -236,6 +237,7 @@ export async function ask(
       const processed = processAnswerResult(rawResult);
       answer = processed.answer;
       citations = processed.citations;
+      answerContext = processed.answerContext;
       answerGenerated = true;
     }
 
@@ -252,6 +254,7 @@ export async function ask(
         vectorsUsed: searchResult.value.meta.vectorsUsed ?? false,
         answerGenerated,
         totalResults: results.length,
+        answerContext,
       },
     };
 

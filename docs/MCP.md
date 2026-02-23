@@ -547,6 +547,25 @@ When `queryModes` is provided, GNO uses those entries directly:
 - `hyde`: hypothetical passage for vector retrieval
 - Validation: `text` is trimmed and must be non-empty; at most one `hyde` entry is allowed
 
+**Migration notes (retrieval v2):**
+
+- Existing `gno_query` calls remain valid with no payload changes required.
+- `queryModes` is optional and only needed when your client wants explicit retrieval intent control.
+- If `queryModes` is set, generated expansion is skipped for that query and the provided entries are used directly.
+
+```yaml
+# Existing payload (still valid)
+query: "auth flow"
+thorough: true
+
+# Retrieval v2 payload (explicit intent control)
+query: "auth flow"
+queryModes:
+  - { mode: "term", text: "\"refresh token\" -oauth1" }
+  - { mode: "intent", text: "how token rotation is implemented" }
+  - { mode: "hyde", text: "Refresh tokens rotate on each use and old tokens are revoked." }
+```
+
 ### gno_get
 
 Retrieve document by ID.

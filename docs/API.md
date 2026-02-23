@@ -1159,6 +1159,12 @@ Combined BM25 + vector search with optional reranking. **Recommended for best re
 | `tagsAll`    | string  | —       | Comma-separated tags (must have ALL)                        |
 | `tagsAny`    | string  | —       | Comma-separated tags (must have ANY)                        |
 
+**Compatibility notes:**
+
+- Existing `/api/query` payloads remain valid.
+- `queryModes` is optional and only needed for explicit retrieval intent control.
+- If `queryModes` is provided, generated expansion is skipped and provided entries are used directly.
+
 **Response**:
 
 ```json
@@ -1244,8 +1250,8 @@ Get an AI-generated answer with citations from your documents.
   "queryLanguage": "en",
   "answer": "Based on your documents, the authentication strategy uses JWT tokens with refresh rotation. Key points:\n\n1. Access tokens expire in 15 minutes [1]\n2. Refresh tokens are rotated on each use [2]\n3. Sessions are stored in Redis [1]",
   "citations": [
-    { "index": 1, "docid": "abc123", "uri": "gno://notes/auth.md" },
-    { "index": 2, "docid": "def456", "uri": "gno://notes/security.md" }
+    { "docid": "#abc123", "uri": "gno://notes/auth.md" },
+    { "docid": "#def456", "uri": "gno://notes/security.md" }
   ],
   "results": [...],
   "meta": {
@@ -1253,7 +1259,23 @@ Get an AI-generated answer with citations from your documents.
     "reranked": true,
     "vectorsUsed": true,
     "answerGenerated": true,
-    "totalResults": 5
+    "totalResults": 5,
+    "answerContext": {
+      "strategy": "adaptive_coverage_v1",
+      "targetSources": 4,
+      "facets": ["authentication strategy", "session storage"],
+      "selected": [
+        {
+          "docid": "#abc123",
+          "uri": "gno://notes/auth.md",
+          "score": 0.94,
+          "queryTokenHits": 4,
+          "facetHits": 2,
+          "reason": "new_facet_coverage"
+        }
+      ],
+      "dropped": []
+    }
   }
 }
 ```

@@ -1311,6 +1311,7 @@ export async function handleAsk(
   // Generate grounded answer (requires genPort)
   let answer: string | undefined;
   let citations: Citation[] | undefined;
+  let answerContext: AskResult["meta"]["answerContext"] | undefined;
   let answerGenerated = false;
 
   if (ctx.genPort) {
@@ -1326,6 +1327,7 @@ export async function handleAsk(
       const processed = processAnswerResult(rawResult);
       answer = processed.answer;
       citations = processed.citations;
+      answerContext = processed.answerContext;
       answerGenerated = true;
     }
   }
@@ -1343,6 +1345,7 @@ export async function handleAsk(
       vectorsUsed: searchResult.value.meta.vectorsUsed ?? false,
       answerGenerated,
       totalResults: results.length,
+      answerContext,
     },
   };
 

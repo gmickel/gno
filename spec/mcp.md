@@ -319,6 +319,12 @@ Hybrid search combining BM25 and vector retrieval with optional expansion and re
 
 Validation note: `queryModes[].text` is trimmed and must remain non-empty; only one `mode: "hyde"` entry is allowed.
 
+Compatibility / migration notes:
+
+- Existing `gno_query` tool calls remain valid without `queryModes`.
+- `queryModes` is optional; use it only when clients need explicit retrieval intent control.
+- When `queryModes` is present, generated expansion is skipped and provided entries are used directly.
+
 **Response structuredContent includes:**
 
 ```json

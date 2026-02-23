@@ -267,6 +267,25 @@ export interface Citation {
   endLine?: number;
 }
 
+/** Source selection entry for answer-generation explain */
+export interface AnswerContextEntry {
+  docid: string;
+  uri: string;
+  score: number;
+  queryTokenHits: number;
+  facetHits: number;
+  reason: string;
+}
+
+/** Answer-generation context selection explain payload */
+export interface AnswerContextExplain {
+  strategy: "adaptive_coverage_v1";
+  targetSources: number;
+  facets: string[];
+  selected: AnswerContextEntry[];
+  dropped: AnswerContextEntry[];
+}
+
 /** Ask result metadata */
 export interface AskMeta {
   expanded: boolean;
@@ -274,6 +293,7 @@ export interface AskMeta {
   vectorsUsed: boolean;
   answerGenerated?: boolean;
   totalResults?: number;
+  answerContext?: AnswerContextExplain;
 }
 
 /** Ask command result */

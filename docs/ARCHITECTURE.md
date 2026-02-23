@@ -84,6 +84,8 @@ User query
     │
     ▼ Detect query language (franc, 30+ languages)
     │
+    ├─[ Structured query modes provided ]─► Use provided term/intent/hyde entries
+    │
     ├─[ BM25-only mode ]─► searchBm25 only (document-level)
     │
     ▼ Strong signal check (skip expansion if confident BM25 match)
@@ -99,7 +101,22 @@ User query
     ▼ [Optional] Rerank best chunk per document (Qwen3, 4K chars)
     │
     ▼ Results (sorted by blended score)
+    │
+    ▼ [Optional] Answer stage (adaptive source selection + citation hygiene)
 ```
+
+### Retrieval V2 Controls
+
+- **Structured query modes**: callers can pass explicit `term`, `intent`, and `hyde` entries.
+- **Compatibility**: existing query calls still work; structured modes are opt-in.
+- **Mode behavior**: when structured modes are present, generated expansion is skipped for that query.
+
+### Observability Surfaces
+
+- `--explain` includes per-stage timings (`lang`, `expansion`, `bm25`, `vector`, `fusion`, `rerank`, `assembly`, `total`).
+- Explain output includes fallback + cache counters for retrieval diagnostics.
+- Result explain lines include score components (bm25/vector/fusion/rerank/blended).
+- `gno ask --json` may include `meta.answerContext` with selected/dropped source explain details.
 
 ## Code Architecture
 

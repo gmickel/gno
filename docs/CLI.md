@@ -133,6 +133,23 @@ Additional options:
 - `--tags-all <tags>` - Filter: docs must have ALL tags
 - `--tags-any <tags>` - Filter: docs must have ANY tag
 
+**Migration notes (retrieval v2):**
+
+- Existing calls keep working (`gno query "..."`, `--fast`, `--thorough`, `--no-expand`, `--no-rerank`).
+- `--query-mode` is opt-in for explicit intent control and replaces generated expansion for that query.
+- Use `term` for exact lexical constraints, `intent` for semantic reformulations, and `hyde` for one hypothetical answer passage.
+
+```bash
+# Existing call (still valid)
+gno query "auth flow" --thorough
+
+# Retrieval v2 structured call
+gno query "auth flow" \
+  --query-mode term:"jwt refresh token -oauth1" \
+  --query-mode intent:"how refresh token rotation works" \
+  --query-mode hyde:"Refresh tokens rotate on each use and previous tokens are revoked."
+```
+
 The `--explain` flag outputs:
 
 - BM25 scores per result
@@ -160,6 +177,8 @@ gno ask "complex topic" --thorough       # Best recall
 
 **Full-document context**: When `--answer` is used, GNO passes complete document content to the generation model, not truncated snippets. This ensures the LLM sees tables, code examples, and full context needed for accurate answers.
 
+**Adaptive source selection**: `gno ask --answer` picks context sources using relevance + query coverage + facet coverage (instead of fixed top-N). Comparison queries (`vs`, `compare`, `difference`) force at least two competing sources when available.
+
 **Preset requirement**: For documents with markdown tables or structured data, use the `quality` preset (`gno models use quality`). Smaller models cannot reliably parse tabular content. This only applies to standalone `--answer` usage. When AI agents (Claude Code, Codex) call GNO via MCP/skill/CLI, they handle answer generation.
 
 Options:
@@ -171,6 +190,9 @@ Options:
 - `--max-answer-tokens <n>` - Limit answer length
 - `--show-sources` - Show all retrieved sources, not just cited ones
 - `-n, --limit <n>` - Max source results
+
+JSON output includes `meta.answerContext` with selected/dropped source explain details.
+
 - `-c, --collection <name>` - Filter by collection
 - `--lang <code>` - Language hint (BCP-47)
 - `--tags-all <tags>` - Filter: docs must have ALL tags
