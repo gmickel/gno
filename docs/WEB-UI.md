@@ -15,16 +15,16 @@ gno serve
 
 The GNO Web UI provides a complete graphical interface to your local knowledge index. Create, edit, search, and manage your documents, all running on your machine with no cloud dependencies.
 
-| Page            | Purpose                                                    |
-| :-------------- | :--------------------------------------------------------- |
-| **Dashboard**   | Index stats, collections, quick capture                    |
-| **Search**      | BM25, vector, or hybrid search with tag facets and filters |
-| **Browse**      | Paginated document list, filter by collection              |
-| **Doc View**    | View document with edit/delete actions and tag editing     |
-| **Editor**      | Split-view markdown editor with live preview               |
-| **Collections** | Add, remove, and re-index collections                      |
-| **Ask**         | AI-powered Q&A with citations                              |
-| **Graph**       | Interactive knowledge graph visualization                  |
+| Page            | Purpose                                                         |
+| :-------------- | :-------------------------------------------------------------- |
+| **Dashboard**   | Index stats, collections, quick capture                         |
+| **Search**      | BM25/vector/hybrid + advanced retrieval controls and tag facets |
+| **Browse**      | Paginated documents with collection and date-field sorting      |
+| **Doc View**    | View document with edit/delete actions and tag editing          |
+| **Editor**      | Split-view markdown editor with live preview                    |
+| **Collections** | Add, remove, and re-index collections                           |
+| **Ask**         | AI-powered Q&A with citations                                   |
+| **Graph**       | Interactive knowledge graph visualization                       |
 
 ---
 
@@ -61,7 +61,15 @@ The document is saved to disk and indexed automatically.
 
 ### 4. Search
 
-Click **Search** or press **/**. Choose your mode:
+Click **Search** or press **/**. Choose your mode, then open **Advanced Retrieval** for:
+
+- Collection filter
+- Date range (`since` / `until`)
+- Category + author filters
+- Tag match mode (`any` / `all`)
+- Query modes (`term`, `intent`, `hyde`)
+
+Choose retrieval mode:
 
 | Mode   | Description                |
 | :----- | :------------------------- |
@@ -71,7 +79,7 @@ Click **Search** or press **/**. Choose your mode:
 
 ### 5. Ask Questions
 
-Click **Ask** for AI-powered answers. Type your question. GNO searches your documents and synthesizes an answer with citations.
+Click **Ask** for AI-powered answers. Use **Advanced Retrieval** to scope by collection/date/category/author/tags, then ask your question.
 
 > **Note**: Models auto-download on first use. Cold start can take longer on first launch while local models download. For instant startup, set `GNO_NO_AUTO_DOWNLOAD=1` and download explicitly with `gno models pull`.
 
@@ -222,12 +230,21 @@ The Search page offers three retrieval modes:
 
 **Hybrid**: Combines BM25 + vector with RRF fusion and optional reranking. Best accuracy for most queries.
 
+Advanced retrieval panel adds structured controls:
+
+- **Collection**: target one source or search all
+- **Date range**: explicit lower/upper document date filters
+- **Category/author**: frontmatter metadata filters
+- **Tag mode**: switch between tag OR (`any`) and tag AND (`all`)
+- **Query modes**: inject `term`, `intent`, or `hyde` entries for structured hybrid expansion
+
 ### Document Browser
 
 Browse all indexed documents:
 
 - Filter by collection
-- Paginated results (20 per page)
+- Sort by modified time or extracted frontmatter date fields
+- Paginated results (25 per page)
 - Click any document to view content
 - URL query state (`/browse?collection=...`, `/doc?uri=...`) updates reactively on in-app navigation and browser back/forward
 - Breadcrumb navigation within collections

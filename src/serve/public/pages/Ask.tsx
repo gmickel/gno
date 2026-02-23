@@ -1,8 +1,10 @@
 import {
   ArrowLeft,
   BookOpen,
+  ChevronDown,
   CornerDownLeft,
   FileText,
+  SlidersHorizontal,
   Sparkles,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -22,9 +24,24 @@ import {
 import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
 import { Card, CardContent } from "../components/ui/card";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "../components/ui/collapsible";
+import { Input } from "../components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../components/ui/select";
 import { Textarea } from "../components/ui/textarea";
 import { apiFetch } from "../hooks/use-api";
 import { useKeyboardShortcuts } from "../hooks/useKeyboardShortcuts";
+import { parseTagsCsv, type TagMode } from "../lib/retrieval-filters";
+import { cn } from "../lib/utils";
 
 interface PageProps {
   navigate: (to: string | number) => void;
@@ -80,6 +97,10 @@ interface ConversationEntry {
   error?: string;
 }
 
+interface Collection {
+  name: string;
+}
+
 const THOROUGHNESS_ORDER: Thoroughness[] = ["fast", "balanced", "thorough"];
 
 /**
@@ -100,7 +121,6 @@ function renderAnswer(
 
   // oxlint-disable-next-line no-cond-assign -- Standard regex match pattern
   while ((match = citationRegex.exec(answer)) !== null) {
-    // Add text before citation
     if (match.index > lastIndex) {
       parts.push(answer.slice(lastIndex, match.index));
     }
@@ -128,7 +148,6 @@ function renderAnswer(
     lastIndex = match.index + match[0].length;
   }
 
-  // Add remaining text
   if (lastIndex < answer.length) {
     parts.push(answer.slice(lastIndex));
   }
@@ -140,105 +159,152 @@ export default function Ask({ navigate }: PageProps) {
   const [query, setQuery] = useState("");
   const [conversation, setConversation] = useState<ConversationEntry[]>([]);
   const [capabilities, setCapabilities] = useState<Capabilities | null>(null);
+  const [collections, setCollections] = useState<Collection[]>([]);
   const [thoroughness, setThoroughness] = useState<Thoroughness>("balanced");
+
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [selectedCollection, setSelectedCollection] = useState("");
+  const [since, setSince] = useState("");
+  const [until, setUntil] = useState("");
+  const [category, setCategory] = useState("");
+  const [author, setAuthor] = useState("");
+  const [tagMode, setTagMode] = useState<TagMode>("any");
+  const [tagsInput, setTagsInput] = useState("");
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // Fetch capabilities on mount
+  const hybridAvailable = capabilities?.hybrid ?? false;
+
   useEffect(() => {
-    async function fetchCapabilities() {
-      const { data } = await apiFetch<Capabilities>("/api/capabilities");
-      if (data) {
-        setCapabilities(data);
-        // Auto-select balanced if hybrid available, otherwise fast
-        if (data.hybrid) {
-          setThoroughness("balanced");
-        } else {
-          setThoroughness("fast");
-        }
+    async function bootstrap(): Promise<void> {
+      const [capsResult, collectionsResult] = await Promise.all([
+        apiFetch<Capabilities>("/api/capabilities"),
+        apiFetch<Collection[]>("/api/collections"),
+      ]);
+
+      if (capsResult.data) {
+        const caps = capsResult.data;
+        setCapabilities(caps);
+        setThoroughness(caps.hybrid ? "balanced" : "fast");
+      }
+
+      if (collectionsResult.data) {
+        setCollections(collectionsResult.data);
       }
     }
-    void fetchCapabilities();
+
+    void bootstrap();
   }, []);
 
-  // Cycle thoroughness with 't' key
   const cycleThoroughness = useCallback(() => {
     setThoroughness((current) => {
+      if (!hybridAvailable) {
+        return "fast";
+      }
       const currentIdx = THOROUGHNESS_ORDER.indexOf(current);
       const nextIdx = (currentIdx + 1) % THOROUGHNESS_ORDER.length;
       return THOROUGHNESS_ORDER[nextIdx];
     });
-  }, []);
+  }, [hybridAvailable]);
 
   const shortcuts = useMemo(
     () => [{ key: "t", action: cycleThoroughness }],
     [cycleThoroughness]
   );
-
   useKeyboardShortcuts(shortcuts);
 
-  // Scroll to bottom when conversation updates
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, []);
+  }, [conversation]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!query.trim()) {
-      return;
-    }
+  const handleSubmit = useCallback(
+    async (e: React.FormEvent) => {
+      e.preventDefault();
+      if (!query.trim()) {
+        return;
+      }
 
-    const entryId = crypto.randomUUID();
-    const currentQuery = query.trim();
+      const entryId = crypto.randomUUID();
+      const currentQuery = query.trim();
 
-    // Add entry to conversation
-    setConversation((prev) => [
-      ...prev,
-      { id: entryId, query: currentQuery, response: null, loading: true },
-    ]);
-    setQuery("");
+      setConversation((prev) => [
+        ...prev,
+        { id: entryId, query: currentQuery, response: null, loading: true },
+      ]);
+      setQuery("");
 
-    // Build request body with thoroughness-mapped params
-    // fast: BM25-only via noExpand + noRerank
-    // balanced: with reranking, no expansion
-    // thorough: full pipeline
-    const requestBody: Record<string, unknown> = {
-      query: currentQuery,
-      limit: 5,
-    };
+      const requestBody: Record<string, unknown> = {
+        query: currentQuery,
+        limit: 5,
+      };
 
-    if (thoroughness === "fast") {
-      requestBody.noExpand = true;
-      requestBody.noRerank = true;
-    } else if (thoroughness === "balanced") {
-      requestBody.noExpand = true;
-      requestBody.noRerank = false;
-    } else {
-      // thorough - full pipeline
-      requestBody.noExpand = false;
-      requestBody.noRerank = false;
-    }
+      if (selectedCollection) {
+        requestBody.collection = selectedCollection;
+      }
+      if (since) {
+        requestBody.since = since;
+      }
+      if (until) {
+        requestBody.until = until;
+      }
+      if (category.trim()) {
+        requestBody.category = category.trim();
+      }
+      if (author.trim()) {
+        requestBody.author = author.trim();
+      }
 
-    // Make API call
-    const { data, error } = await apiFetch<AskResponse>("/api/ask", {
-      method: "POST",
-      body: JSON.stringify(requestBody),
-    });
+      const normalizedTags = parseTagsCsv(tagsInput);
+      if (normalizedTags.length > 0) {
+        if (tagMode === "all") {
+          requestBody.tagsAll = normalizedTags.join(",");
+        } else {
+          requestBody.tagsAny = normalizedTags.join(",");
+        }
+      }
 
-    // Update conversation with response
-    setConversation((prev) =>
-      prev.map((entry) =>
-        entry.id === entryId
-          ? {
-              ...entry,
-              response: data ?? null,
-              loading: false,
-              error: error ?? undefined,
-            }
-          : entry
-      )
-    );
-  };
+      if (thoroughness === "fast") {
+        requestBody.noExpand = true;
+        requestBody.noRerank = true;
+      } else if (thoroughness === "balanced") {
+        requestBody.noExpand = true;
+        requestBody.noRerank = false;
+      } else {
+        requestBody.noExpand = false;
+        requestBody.noRerank = false;
+      }
+
+      const { data, error } = await apiFetch<AskResponse>("/api/ask", {
+        method: "POST",
+        body: JSON.stringify(requestBody),
+      });
+
+      setConversation((prev) =>
+        prev.map((entry) =>
+          entry.id === entryId
+            ? {
+                ...entry,
+                response: data ?? null,
+                loading: false,
+                error: error ?? undefined,
+              }
+            : entry
+        )
+      );
+    },
+    [
+      author,
+      category,
+      query,
+      selectedCollection,
+      since,
+      tagMode,
+      tagsInput,
+      thoroughness,
+      until,
+    ]
+  );
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -247,11 +313,31 @@ export default function Ask({ navigate }: PageProps) {
     }
   };
 
+  const clearFilters = () => {
+    setSelectedCollection("");
+    setSince("");
+    setUntil("");
+    setCategory("");
+    setAuthor("");
+    setTagsInput("");
+    setTagMode("any");
+  };
+
   const answerAvailable = capabilities?.answer ?? false;
+
+  const activeFilterPills = [
+    selectedCollection ? `collection:${selectedCollection}` : null,
+    since ? `since:${since}` : null,
+    until ? `until:${until}` : null,
+    category.trim() ? `category:${category.trim()}` : null,
+    author.trim() ? `author:${author.trim()}` : null,
+    parseTagsCsv(tagsInput).length > 0
+      ? `${tagMode}:${parseTagsCsv(tagsInput).join(",")}`
+      : null,
+  ].filter((pill): pill is string => Boolean(pill));
 
   return (
     <div className="flex min-h-screen flex-col">
-      {/* Header */}
       <header className="glass sticky top-0 z-10 border-border/50 border-b">
         <div className="flex items-center gap-4 px-8 py-4">
           <Button
@@ -265,20 +351,16 @@ export default function Ask({ navigate }: PageProps) {
           </Button>
           <h1 className="font-semibold text-xl">Ask</h1>
           <div className="ml-auto flex items-center gap-4">
-            {/* Search depth selector */}
             <ThoroughnessSelector
               disabled={!capabilities?.hybrid}
               onChange={setThoroughness}
               value={thoroughness}
             />
 
-            {/* Divider */}
             <div className="h-6 w-px bg-border/40" />
 
-            {/* AI model selector */}
             <AIModelSelector />
 
-            {/* Capability badges */}
             {capabilities && (
               <div className="flex items-center gap-2">
                 {capabilities.vector && (
@@ -297,10 +379,166 @@ export default function Ask({ navigate }: PageProps) {
         </div>
       </header>
 
-      {/* Conversation area */}
       <main className="flex-1 overflow-y-auto p-8">
-        <div className="mx-auto max-w-3xl space-y-8">
-          {/* Empty state */}
+        <div className="mx-auto max-w-3xl space-y-6">
+          <Collapsible onOpenChange={setShowAdvanced} open={showAdvanced}>
+            <CollapsibleTrigger asChild>
+              <Button
+                className="gap-2"
+                size="sm"
+                type="button"
+                variant="outline"
+              >
+                <SlidersHorizontal className="size-4" />
+                Advanced Retrieval
+                <ChevronDown
+                  className={cn(
+                    "size-4 transition-transform",
+                    showAdvanced && "rotate-180"
+                  )}
+                />
+              </Button>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="pt-3">
+              <Card className="border-border/50 bg-card/50">
+                <CardContent className="space-y-4 pt-4">
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <div>
+                      <p className="mb-1 text-muted-foreground text-xs">
+                        Collection
+                      </p>
+                      <Select
+                        onValueChange={(value) =>
+                          setSelectedCollection(value === "all" ? "" : value)
+                        }
+                        value={selectedCollection || "all"}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="All collections" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All collections</SelectItem>
+                          {collections.map((collection) => (
+                            <SelectItem
+                              key={collection.name}
+                              value={collection.name}
+                            >
+                              {collection.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div>
+                      <p className="mb-1 text-muted-foreground text-xs">
+                        Author
+                      </p>
+                      <Input
+                        onChange={(e) => setAuthor(e.target.value)}
+                        placeholder="gordon"
+                        value={author}
+                      />
+                    </div>
+
+                    <div>
+                      <p className="mb-1 text-muted-foreground text-xs">
+                        Category
+                      </p>
+                      <Input
+                        onChange={(e) => setCategory(e.target.value)}
+                        placeholder="engineering, research"
+                        value={category}
+                      />
+                    </div>
+
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div>
+                        <p className="mb-1 text-muted-foreground text-xs">
+                          Since
+                        </p>
+                        <Input
+                          onChange={(e) => setSince(e.target.value)}
+                          type="date"
+                          value={since}
+                        />
+                      </div>
+                      <div>
+                        <p className="mb-1 text-muted-foreground text-xs">
+                          Until
+                        </p>
+                        <Input
+                          onChange={(e) => setUntil(e.target.value)}
+                          type="date"
+                          value={until}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="md:col-span-2">
+                      <p className="mb-1 text-muted-foreground text-xs">
+                        Tags (comma separated)
+                      </p>
+                      <Input
+                        onChange={(e) => setTagsInput(e.target.value)}
+                        placeholder="project/alpha, urgent"
+                        value={tagsInput}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-muted-foreground text-xs">
+                      Tag match:
+                    </span>
+                    <Button
+                      onClick={() => setTagMode("any")}
+                      size="sm"
+                      type="button"
+                      variant={tagMode === "any" ? "default" : "outline"}
+                    >
+                      Any
+                    </Button>
+                    <Button
+                      onClick={() => setTagMode("all")}
+                      size="sm"
+                      type="button"
+                      variant={tagMode === "all" ? "default" : "outline"}
+                    >
+                      All
+                    </Button>
+                    <Button
+                      className="ml-auto"
+                      onClick={clearFilters}
+                      size="sm"
+                      type="button"
+                      variant="ghost"
+                    >
+                      Clear filters
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </CollapsibleContent>
+          </Collapsible>
+
+          {activeFilterPills.length > 0 && (
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="font-mono text-muted-foreground text-xs">
+                Filters:
+              </span>
+              {activeFilterPills.map((pill) => (
+                <Badge
+                  className="font-mono text-[10px]"
+                  key={pill}
+                  variant="outline"
+                >
+                  {pill}
+                </Badge>
+              ))}
+            </div>
+          )}
+
           {conversation.length === 0 && (
             <div className="py-20 text-center">
               <Sparkles className="mx-auto mb-4 size-12 text-primary/60" />
@@ -313,17 +551,14 @@ export default function Ask({ navigate }: PageProps) {
             </div>
           )}
 
-          {/* Conversation entries */}
           {conversation.map((entry) => (
             <div className="space-y-4" key={entry.id}>
-              {/* User query */}
               <div className="flex justify-end">
                 <div className="max-w-[80%] rounded-lg bg-secondary px-4 py-3">
                   <p className="text-foreground">{entry.query}</p>
                 </div>
               </div>
 
-              {/* AI response */}
               <div className="space-y-3">
                 {entry.loading && (
                   <div className="flex items-center gap-3">
@@ -344,7 +579,6 @@ export default function Ask({ navigate }: PageProps) {
 
                 {entry.response && (
                   <>
-                    {/* Answer */}
                     {entry.response.answer && (
                       <div className="prose prose-sm prose-invert max-w-none rounded-lg bg-card/50 p-4">
                         <p className="whitespace-pre-wrap leading-relaxed">
@@ -357,7 +591,6 @@ export default function Ask({ navigate }: PageProps) {
                       </div>
                     )}
 
-                    {/* Citations */}
                     {entry.response.citations &&
                       entry.response.citations.length > 0 && (
                         <Sources defaultOpen>
@@ -365,26 +598,26 @@ export default function Ask({ navigate }: PageProps) {
                             count={entry.response.citations.length}
                           />
                           <SourcesContent>
-                            {entry.response.citations.map((c, i) => (
+                            {entry.response.citations.map((citation, i) => (
                               <Source
                                 href="#"
-                                key={`${c.docid}-${i}`}
-                                onClick={(e) => {
-                                  e.preventDefault();
+                                key={`${citation.docid}-${i}`}
+                                onClick={(event) => {
+                                  event.preventDefault();
                                   navigate(
-                                    `/doc?uri=${encodeURIComponent(c.uri)}`
+                                    `/doc?uri=${encodeURIComponent(citation.uri)}`
                                   );
                                 }}
-                                title={`[${i + 1}] ${c.uri.split("/").pop()}`}
+                                title={`[${i + 1}] ${citation.uri.split("/").pop()}`}
                               >
                                 <BookOpen className="size-4 shrink-0" />
                                 <span className="truncate">
-                                  [{i + 1}] {c.uri.split("/").pop()}
+                                  [{i + 1}] {citation.uri.split("/").pop()}
                                 </span>
-                                {c.startLine && (
+                                {citation.startLine && (
                                   <span className="ml-1 font-mono text-[10px] text-muted-foreground/60">
-                                    L{c.startLine}
-                                    {c.endLine && `-${c.endLine}`}
+                                    L{citation.startLine}
+                                    {citation.endLine && `-${citation.endLine}`}
                                   </span>
                                 )}
                               </Source>
@@ -393,7 +626,6 @@ export default function Ask({ navigate }: PageProps) {
                         </Sources>
                       )}
 
-                    {/* Meta info */}
                     <div className="flex items-center gap-2 text-muted-foreground/60 text-xs">
                       <span>{entry.response.results.length} results</span>
                       {entry.response.meta.vectorsUsed && (
@@ -414,20 +646,19 @@ export default function Ask({ navigate }: PageProps) {
                       )}
                     </div>
 
-                    {/* Show retrieved sources if no answer */}
                     {!entry.response.answer &&
                       entry.response.results.length > 0 && (
                         <div className="space-y-2">
                           <p className="font-medium text-muted-foreground text-sm">
                             Search results:
                           </p>
-                          {entry.response.results.map((r, i) => (
+                          {entry.response.results.map((result, i) => (
                             <Card
                               className="cursor-pointer transition-colors hover:border-primary/50"
-                              key={`${r.docid}-${i}`}
+                              key={`${result.docid}-${i}`}
                               onClick={() =>
                                 navigate(
-                                  `/doc?uri=${encodeURIComponent(r.uri)}`
+                                  `/doc?uri=${encodeURIComponent(result.uri)}`
                                 )
                               }
                             >
@@ -435,17 +666,18 @@ export default function Ask({ navigate }: PageProps) {
                                 <div className="flex items-start justify-between gap-2">
                                   <div className="min-w-0">
                                     <p className="font-medium text-primary text-sm">
-                                      {r.title || r.uri.split("/").pop()}
+                                      {result.title ||
+                                        result.uri.split("/").pop()}
                                     </p>
                                     <p className="line-clamp-2 text-muted-foreground text-xs">
-                                      {r.snippet.slice(0, 200)}...
+                                      {result.snippet.slice(0, 200)}...
                                     </p>
                                   </div>
                                   <Badge
                                     className="shrink-0 font-mono text-[10px]"
                                     variant="secondary"
                                   >
-                                    {(r.score * 100).toFixed(0)}%
+                                    {(result.score * 100).toFixed(0)}%
                                   </Badge>
                                 </div>
                               </CardContent>
@@ -454,7 +686,6 @@ export default function Ask({ navigate }: PageProps) {
                         </div>
                       )}
 
-                    {/* No results */}
                     {!entry.response.answer &&
                       entry.response.results.length === 0 && (
                         <div className="flex items-center gap-2 text-muted-foreground">
@@ -474,7 +705,6 @@ export default function Ask({ navigate }: PageProps) {
         </div>
       </main>
 
-      {/* Input area */}
       <footer className="glass sticky bottom-0 border-border/50 border-t">
         <form
           className="mx-auto flex max-w-3xl items-end gap-3 p-4"

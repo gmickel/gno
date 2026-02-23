@@ -97,6 +97,8 @@ export default function Browse({ navigate }: PageProps) {
       setInitialLoad(false);
       if (data) {
         setAvailableDateFields(data.availableDateFields ?? []);
+        setSortField(data.sortField);
+        setSortOrder(data.sortOrder);
         setDocs((prev) =>
           offset === 0 ? data.documents : [...prev, ...data.documents]
         );
@@ -199,30 +201,28 @@ export default function Browse({ navigate }: PageProps) {
                 ))}
               </SelectContent>
             </Select>
-            {availableDateFields.length > 0 && (
-              <Select
-                onValueChange={handleSortChange}
-                value={`${sortField}:${sortOrder}`}
-              >
-                <SelectTrigger className="w-[230px]">
-                  <SelectValue placeholder="Sort" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="modified:desc">Newest Modified</SelectItem>
-                  <SelectItem value="modified:asc">Oldest Modified</SelectItem>
-                  {availableDateFields.map((field) => (
-                    <Fragment key={field}>
-                      <SelectItem value={`${field}:desc`}>
-                        {`Newest by ${formatDateFieldLabel(field)}`}
-                      </SelectItem>
-                      <SelectItem value={`${field}:asc`}>
-                        {`Oldest by ${formatDateFieldLabel(field)}`}
-                      </SelectItem>
-                    </Fragment>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
+            <Select
+              onValueChange={handleSortChange}
+              value={`${sortField}:${sortOrder}`}
+            >
+              <SelectTrigger className="w-[230px]">
+                <SelectValue placeholder="Sort" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="modified:desc">Newest Modified</SelectItem>
+                <SelectItem value="modified:asc">Oldest Modified</SelectItem>
+                {availableDateFields.map((field) => (
+                  <Fragment key={field}>
+                    <SelectItem value={`${field}:desc`}>
+                      {`Newest by ${formatDateFieldLabel(field)}`}
+                    </SelectItem>
+                    <SelectItem value={`${field}:asc`}>
+                      {`Oldest by ${formatDateFieldLabel(field)}`}
+                    </SelectItem>
+                  </Fragment>
+                ))}
+              </SelectContent>
+            </Select>
             <Badge className="font-mono" variant="outline">
               {total.toLocaleString()} docs
             </Badge>
