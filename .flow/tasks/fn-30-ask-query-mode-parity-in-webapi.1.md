@@ -15,8 +15,11 @@ Implement Ask parity for structured query modes. Add API validation + pass-throu
 - [ ] Docs updated (`/docs/API.md`, `/docs/WEB-UI.md`).
 
 ## Done summary
+
 Implemented Ask-side structured query mode parity. The Ask API now validates and forwards `queryModes` exactly like Query, the Ask page exposes add/remove query-mode chips with duplicate-HyDE guardrails, and Ask responses surface the query-mode summary metadata.
+
 ## Evidence
+
 - Commits:
 - Tests: bun run lint:check, bun test, curl -sS -X POST http://127.0.0.1:3316/api/ask ... valid queryModes, curl -sS -X POST http://127.0.0.1:3316/api/ask ... duplicate hyde
 - PRs:

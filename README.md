@@ -32,7 +32,12 @@ GNO is a local knowledge engine that turns your documents into a searchable, con
 
 ---
 
-## What's New in v0.18
+## What's New in v0.19
+
+- **Exclusion Filters**: explicit `exclude` controls across CLI, API, Web, and MCP to hard-prune unwanted docs by title/path/body text
+- **Ask Query-Mode Parity**: Ask now supports structured `term` / `intent` / `hyde` controls in both API and Web UI
+
+### v0.18
 
 - **Intent Steering**: optional `intent` control for ambiguous queries across CLI, API, Web, and MCP query flows
 - **Rerank Controls**: `candidateLimit` lets you tune rerank cost vs. recall on slower or memory-constrained machines
