@@ -85,6 +85,7 @@ Options:
 - `--until <date>` - Modified-at upper bound (ISO date/time or token)
 - `--category <values>` - Require matching category/content type (comma-separated)
 - `--author <text>` - Author contains text (case-insensitive)
+- `--intent <text>` - Disambiguating context for ambiguous queries; steers snippet selection without searching on this text
 - `--tags-all <tags>` - Filter: docs must have ALL tags (comma-separated)
 - `--tags-any <tags>` - Filter: docs must have ANY tag (comma-separated)
 
@@ -101,6 +102,8 @@ gno vsearch "authentication best practices" --json
 
 Same options as `gno search`, including temporal/category/author and tag filters. Requires embed model.
 
+If `--intent` is provided, vector search uses it only to steer snippet selection toward the intended interpretation. It is not embedded or searched directly.
+
 ### gno query
 
 Hybrid search combining BM25 and vector results. This is the recommended search command for most use cases.
@@ -111,6 +114,7 @@ gno query "API design patterns" --explain
 gno query "auth" --fast              # Fastest: ~0.7s
 gno query "auth" --thorough          # Full pipeline: ~5-8s
 gno query "auth" --tags-all work,backend   # Filter by tags
+gno query "performance" --intent "web performance and latency"
 gno query "auth flow" --query-mode term:"jwt refresh token" --query-mode intent:"how refresh token rotation works"
 ```
 
@@ -134,6 +138,8 @@ Additional options:
 - `--thorough` - Enable query expansion (slower, ~5-8s)
 - `--no-expand` - Disable query expansion
 - `--no-rerank` - Disable cross-encoder reranking
+- `--intent <text>` - Disambiguating context for ambiguous queries. Steers expansion, rerank chunk/snippet choice, and disables strong-signal bypass, but is not searched directly.
+- `-C, --candidate-limit <n>` - Max candidates passed to reranking (default: 20)
 - `--query-mode <mode:text>` - Structured expansion hints; repeat for multiple entries. Modes: `term`, `intent`, `hyde`
 - `--explain` - Show detailed scoring breakdown (to stderr)
 - `--since <date>` - Modified-at lower bound (ISO date/time or token)
@@ -146,6 +152,7 @@ Additional options:
 **Migration notes (retrieval v2):**
 
 - Existing calls keep working (`gno query "..."`, `--fast`, `--thorough`, `--no-expand`, `--no-rerank`).
+- `--intent` is orthogonal to `--query-mode`: intent steers scoring/prompting, while query modes inject caller-provided retrieval expansions.
 - `--query-mode` is opt-in for explicit intent control and replaces generated expansion for that query.
 - Use `term` for exact lexical constraints, `intent` for semantic reformulations, and `hyde` for one hypothetical answer passage.
 
@@ -183,6 +190,7 @@ gno ask "summarize the auth discussion" --answer
 gno ask "explain the auth flow" --answer --show-sources
 gno ask "quick lookup" --fast            # Fastest retrieval
 gno ask "complex topic" --thorough       # Best recall
+gno ask "performance" --intent "web latency and vitals"
 ```
 
 **Full-document context**: When `--answer` is used, GNO passes complete document content to the generation model, not truncated snippets. This ensures the LLM sees tables, code examples, and full context needed for accurate answers.
@@ -195,6 +203,8 @@ Options:
 
 - `--fast` - Skip expansion and reranking (fastest)
 - `--thorough` - Enable query expansion (slower, better recall)
+- `--intent <text>` - Disambiguating context for ambiguous questions without searching on that text
+- `-C, --candidate-limit <n>` - Max candidates passed to reranking (default: 20)
 - `--answer` - Generate grounded AI answer (requires gen model)
 - `--no-answer` - Force retrieval-only output
 - `--max-answer-tokens <n>` - Limit answer length

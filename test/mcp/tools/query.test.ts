@@ -59,4 +59,20 @@ describe("gno_query schema", () => {
 
     expect(result.success).toBe(true);
   });
+
+  test("accepts intent and candidateLimit", () => {
+    const result = queryInputSchema.safeParse({
+      query: "performance",
+      intent: "web performance and latency",
+      candidateLimit: 12,
+    });
+
+    expect(result.success).toBe(true);
+    if (!result.success) {
+      return;
+    }
+
+    expect(result.data.intent).toBe("web performance and latency");
+    expect(result.data.candidateLimit).toBe(12);
+  });
 });

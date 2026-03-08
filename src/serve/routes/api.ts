@@ -66,6 +66,7 @@ export interface SearchRequestBody {
   limit?: number;
   minScore?: number;
   collection?: string;
+  intent?: string;
   since?: string;
   until?: string;
   /** Comma-separated category filters */
@@ -83,6 +84,8 @@ export interface QueryRequestBody {
   minScore?: number;
   collection?: string;
   lang?: string;
+  intent?: string;
+  candidateLimit?: number;
   since?: string;
   until?: string;
   /** Comma-separated category filters */
@@ -102,6 +105,8 @@ export interface AskRequestBody {
   limit?: number;
   collection?: string;
   lang?: string;
+  intent?: string;
+  candidateLimit?: number;
   since?: string;
   until?: string;
   /** Comma-separated category filters */
@@ -1093,6 +1098,9 @@ export async function handleSearch(
   if (body.until !== undefined && typeof body.until !== "string") {
     return errorResponse("VALIDATION", "until must be a string");
   }
+  if (body.intent !== undefined && typeof body.intent !== "string") {
+    return errorResponse("VALIDATION", "intent must be a string");
+  }
   if (body.category !== undefined && typeof body.category !== "string") {
     return errorResponse(
       "VALIDATION",
@@ -1139,6 +1147,7 @@ export async function handleSearch(
     limit: Math.min(body.limit || 10, 50),
     minScore: body.minScore,
     collection: body.collection,
+    intent: body.intent?.trim() || undefined,
     tagsAll,
     tagsAny,
     since: body.since,
@@ -1207,6 +1216,18 @@ export async function handleQuery(
   }
   if (body.until !== undefined && typeof body.until !== "string") {
     return errorResponse("VALIDATION", "until must be a string");
+  }
+  if (body.intent !== undefined && typeof body.intent !== "string") {
+    return errorResponse("VALIDATION", "intent must be a string");
+  }
+  if (
+    body.candidateLimit !== undefined &&
+    (typeof body.candidateLimit !== "number" || body.candidateLimit < 1)
+  ) {
+    return errorResponse(
+      "VALIDATION",
+      "candidateLimit must be a positive integer"
+    );
   }
   if (body.category !== undefined && typeof body.category !== "string") {
     return errorResponse(
@@ -1314,6 +1335,11 @@ export async function handleQuery(
       minScore: body.minScore,
       collection: body.collection,
       lang: body.lang,
+      intent: body.intent?.trim() || undefined,
+      candidateLimit:
+        body.candidateLimit !== undefined
+          ? Math.min(body.candidateLimit, 100)
+          : undefined,
       queryModes,
       noExpand: body.noExpand,
       noRerank: body.noRerank,
@@ -1377,6 +1403,18 @@ export async function handleAsk(
   if (body.until !== undefined && typeof body.until !== "string") {
     return errorResponse("VALIDATION", "until must be a string");
   }
+  if (body.intent !== undefined && typeof body.intent !== "string") {
+    return errorResponse("VALIDATION", "intent must be a string");
+  }
+  if (
+    body.candidateLimit !== undefined &&
+    (typeof body.candidateLimit !== "number" || body.candidateLimit < 1)
+  ) {
+    return errorResponse(
+      "VALIDATION",
+      "candidateLimit must be a positive integer"
+    );
+  }
   if (body.category !== undefined && typeof body.category !== "string") {
     return errorResponse(
       "VALIDATION",
@@ -1431,8 +1469,13 @@ export async function handleAsk(
       limit,
       collection: body.collection,
       lang: body.lang,
+      intent: body.intent?.trim() || undefined,
       noExpand: body.noExpand,
       noRerank: body.noRerank,
+      candidateLimit:
+        body.candidateLimit !== undefined
+          ? Math.min(body.candidateLimit, 100)
+          : undefined,
       tagsAll,
       tagsAny,
       since: body.since,
@@ -1483,6 +1526,8 @@ export async function handleAsk(
       expanded: searchResult.value.meta.expanded ?? false,
       reranked: searchResult.value.meta.reranked ?? false,
       vectorsUsed: searchResult.value.meta.vectorsUsed ?? false,
+      intent: searchResult.value.meta.intent,
+      candidateLimit: searchResult.value.meta.candidateLimit,
       answerGenerated,
       totalResults: results.length,
       answerContext,

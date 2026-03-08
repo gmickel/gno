@@ -58,6 +58,7 @@ export async function modelsUse(
       presets: config.models?.presets ?? [],
       loadTimeout: config.models?.loadTimeout ?? 60_000,
       inferenceTimeout: config.models?.inferenceTimeout ?? 30_000,
+      expandContextSize: config.models?.expandContextSize ?? 2_048,
       warmModelTtl: config.models?.warmModelTtl ?? 300_000,
     },
   };

@@ -34,6 +34,7 @@ describe("getModelConfig", () => {
     expect(modelConfig.presets).toEqual(DEFAULT_MODEL_PRESETS);
     expect(modelConfig.loadTimeout).toBe(60_000);
     expect(modelConfig.inferenceTimeout).toBe(30_000);
+    expect(modelConfig.expandContextSize).toBe(2_048);
     expect(modelConfig.warmModelTtl).toBe(300_000);
   });
 
@@ -43,6 +44,7 @@ describe("getModelConfig", () => {
       presets: DEFAULT_MODEL_PRESETS,
       loadTimeout: 120_000,
       inferenceTimeout: 60_000,
+      expandContextSize: 4_096,
       warmModelTtl: 600_000,
     });
     const modelConfig = getModelConfig(config);
@@ -50,6 +52,7 @@ describe("getModelConfig", () => {
     expect(modelConfig.activePreset).toBe("quality");
     expect(modelConfig.loadTimeout).toBe(120_000);
     expect(modelConfig.inferenceTimeout).toBe(60_000);
+    expect(modelConfig.expandContextSize).toBe(4_096);
     expect(modelConfig.warmModelTtl).toBe(600_000);
   });
 });
@@ -70,6 +73,7 @@ describe("getActivePreset", () => {
       presets: DEFAULT_MODEL_PRESETS,
       loadTimeout: 60_000,
       inferenceTimeout: 30_000,
+      expandContextSize: 2_048,
       warmModelTtl: 300_000,
     });
     const preset = getActivePreset(config);
@@ -84,6 +88,7 @@ describe("getActivePreset", () => {
       presets: DEFAULT_MODEL_PRESETS,
       loadTimeout: 60_000,
       inferenceTimeout: 30_000,
+      expandContextSize: 2_048,
       warmModelTtl: 300_000,
     });
     const preset = getActivePreset(config);
@@ -133,6 +138,7 @@ describe("listPresets", () => {
       presets: [customPreset],
       loadTimeout: 60_000,
       inferenceTimeout: 30_000,
+      expandContextSize: 2_048,
       warmModelTtl: 300_000,
     });
     const presets = listPresets(config);

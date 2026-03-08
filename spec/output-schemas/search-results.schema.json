@@ -196,6 +196,10 @@
           "type": "string",
           "description": "Collection filter if applied"
         },
+        "intent": {
+          "type": "string",
+          "description": "Disambiguating context used to steer retrieval without being searched directly"
+        },
         "lang": {
           "type": "string",
           "description": "Language filter/hint if applied"
@@ -218,6 +222,11 @@
         "author": {
           "type": "string",
           "description": "Author filter applied (if any)"
+        },
+        "candidateLimit": {
+          "type": "integer",
+          "description": "Max candidates sent to reranking (if applicable)",
+          "minimum": 1
         },
         "queryLanguage": {
           "type": "string",

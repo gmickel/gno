@@ -153,6 +153,8 @@ export default function Search({ navigate }: PageProps) {
   const [showAdvanced, setShowAdvanced] = useState(
     Boolean(
       initialFilters.collection ||
+      initialFilters.intent ||
+      initialFilters.candidateLimit ||
       initialFilters.since ||
       initialFilters.until ||
       initialFilters.category ||
@@ -165,6 +167,10 @@ export default function Search({ navigate }: PageProps) {
   const [tagMode, setTagMode] = useState<TagMode>(initialFilters.tagMode);
   const [selectedCollection, setSelectedCollection] = useState(
     initialFilters.collection
+  );
+  const [intent, setIntent] = useState(initialFilters.intent);
+  const [candidateLimit, setCandidateLimit] = useState(
+    initialFilters.candidateLimit
   );
   const [since, setSince] = useState(initialFilters.since);
   const [until, setUntil] = useState(initialFilters.until);
@@ -179,13 +185,17 @@ export default function Search({ navigate }: PageProps) {
   const [showMobileTags, setShowMobileTags] = useState(false);
 
   const hybridAvailable = capabilities?.hybrid ?? false;
-  const forceHybridForModes = thoroughness === "fast" && queryModes.length > 0;
+  const forceHybridForModes =
+    thoroughness === "fast" &&
+    (queryModes.length > 0 || intent.trim().length > 0);
 
   // Sync URL as filter state changes.
   useEffect(() => {
     const url = new URL(window.location.href);
     applyFiltersToUrl(url, {
       collection: selectedCollection,
+      intent,
+      candidateLimit,
       since,
       until,
       category,
@@ -198,7 +208,9 @@ export default function Search({ navigate }: PageProps) {
   }, [
     activeTags,
     author,
+    candidateLimit,
     category,
+    intent,
     queryModes,
     selectedCollection,
     since,
@@ -283,7 +295,10 @@ export default function Search({ navigate }: PageProps) {
       setError(null);
       setSearched(true);
 
-      const useBm25 = thoroughness === "fast" && queryModes.length === 0;
+      const useBm25 =
+        thoroughness === "fast" &&
+        queryModes.length === 0 &&
+        intent.trim().length === 0;
       const endpoint = useBm25 ? "/api/search" : "/api/query";
       const body: Record<string, unknown> = {
         query,
@@ -292,6 +307,12 @@ export default function Search({ navigate }: PageProps) {
 
       if (selectedCollection) {
         body.collection = selectedCollection;
+      }
+      if (intent.trim()) {
+        body.intent = intent.trim();
+      }
+      if (candidateLimit.trim()) {
+        body.candidateLimit = Number(candidateLimit);
       }
       if (since) {
         body.since = since;
@@ -350,7 +371,9 @@ export default function Search({ navigate }: PageProps) {
     [
       activeTags,
       author,
+      candidateLimit,
       category,
+      intent,
       query,
       queryModes,
       selectedCollection,
@@ -370,7 +393,9 @@ export default function Search({ navigate }: PageProps) {
   }, [
     activeTags,
     author,
+    candidateLimit,
     category,
+    intent,
     queryModes,
     selectedCollection,
     since,
@@ -387,6 +412,8 @@ export default function Search({ navigate }: PageProps) {
 
   const activeFilterPills = [
     selectedCollection ? `collection:${selectedCollection}` : null,
+    intent.trim() ? `intent:${intent.trim()}` : null,
+    candidateLimit.trim() ? `candidates:${candidateLimit.trim()}` : null,
     since ? `since:${since}` : null,
     until ? `until:${until}` : null,
     category.trim() ? `category:${category.trim()}` : null,
@@ -399,6 +426,8 @@ export default function Search({ navigate }: PageProps) {
 
   const clearAdvancedFilters = () => {
     setSelectedCollection("");
+    setIntent("");
+    setCandidateLimit("");
     setSince("");
     setUntil("");
     setCategory("");
@@ -551,6 +580,17 @@ export default function Search({ navigate }: PageProps) {
                           />
                         </div>
 
+                        <div className="md:col-span-2">
+                          <p className="mb-1 text-muted-foreground text-xs">
+                            Intent
+                          </p>
+                          <Input
+                            onChange={(e) => setIntent(e.target.value)}
+                            placeholder="Disambiguate ambiguous queries without searching on this text"
+                            value={intent}
+                          />
+                        </div>
+
                         <div>
                           <p className="mb-1 text-muted-foreground text-xs">
                             Category
@@ -583,6 +623,20 @@ export default function Search({ navigate }: PageProps) {
                               value={until}
                             />
                           </div>
+                        </div>
+
+                        <div>
+                          <p className="mb-1 text-muted-foreground text-xs">
+                            Candidate limit
+                          </p>
+                          <Input
+                            inputMode="numeric"
+                            min="1"
+                            onChange={(e) => setCandidateLimit(e.target.value)}
+                            placeholder="20"
+                            type="number"
+                            value={candidateLimit}
+                          />
                         </div>
                       </div>
 

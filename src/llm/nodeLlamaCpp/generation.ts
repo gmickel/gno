@@ -56,7 +56,9 @@ export class NodeLlamaCppGeneration implements GenerationPort {
     }
 
     const llamaModel = model.value.model as LlamaModel;
-    const context = await llamaModel.createContext();
+    const context = await llamaModel.createContext(
+      params?.contextSize ? { contextSize: params.contextSize } : undefined
+    );
 
     try {
       // Import LlamaChatSession dynamically

@@ -1068,6 +1068,7 @@ Keyword search using BM25 algorithm.
   "limit": 10,
   "minScore": 0.1,
   "collection": "notes",
+  "intent": "web authentication and session security",
   "since": "last month",
   "until": "today",
   "category": "meeting,notes",
@@ -1077,18 +1078,19 @@ Keyword search using BM25 algorithm.
 }
 ```
 
-| Field        | Type   | Default | Description                                               |
-| :----------- | :----- | :------ | :-------------------------------------------------------- |
-| `query`      | string | —       | Search query (required)                                   |
-| `limit`      | number | 10      | Max results (max 50)                                      |
-| `minScore`   | number | —       | Minimum score threshold (0-1)                             |
-| `collection` | string | —       | Filter by collection                                      |
-| `since`      | string | —       | Modified-at lower bound (ISO date/time or token)          |
-| `until`      | string | —       | Modified-at upper bound (ISO date/time or token)          |
-| `category`   | string | —       | Comma-separated category/content-type filters (ANY match) |
-| `author`     | string | —       | Author contains value (case-insensitive)                  |
-| `tagsAll`    | string | —       | Comma-separated tags (must have ALL)                      |
-| `tagsAny`    | string | —       | Comma-separated tags (must have ANY)                      |
+| Field        | Type   | Default | Description                                                                                         |
+| :----------- | :----- | :------ | :-------------------------------------------------------------------------------------------------- |
+| `query`      | string | —       | Search query (required)                                                                             |
+| `limit`      | number | 10      | Max results (max 50)                                                                                |
+| `minScore`   | number | —       | Minimum score threshold (0-1)                                                                       |
+| `collection` | string | —       | Filter by collection                                                                                |
+| `intent`     | string | —       | Disambiguating context for ambiguous queries; steers snippet choice without being searched directly |
+| `since`      | string | —       | Modified-at lower bound (ISO date/time or token)                                                    |
+| `until`      | string | —       | Modified-at upper bound (ISO date/time or token)                                                    |
+| `category`   | string | —       | Comma-separated category/content-type filters (ANY match)                                           |
+| `author`     | string | —       | Author contains value (case-insensitive)                                                            |
+| `tagsAll`    | string | —       | Comma-separated tags (must have ALL)                                                                |
+| `tagsAny`    | string | —       | Comma-separated tags (must have ANY)                                                                |
 
 If query text includes recency intent (`latest`, `newest`, `recent`), results are ordered newest-first by canonical frontmatter date when present, otherwise by source modified time.
 
@@ -1145,6 +1147,8 @@ Combined BM25 + vector search with optional reranking. **Recommended for best re
   "minScore": 0.1,
   "collection": "notes",
   "lang": "en",
+  "intent": "web authentication and request latency",
+  "candidateLimit": 12,
   "since": "2025-01-01",
   "until": "today",
   "category": "backend,meeting",
@@ -1164,26 +1168,29 @@ Combined BM25 + vector search with optional reranking. **Recommended for best re
 }
 ```
 
-| Field        | Type    | Default | Description                                                 |
-| :----------- | :------ | :------ | :---------------------------------------------------------- |
-| `query`      | string  | —       | Search query (required)                                     |
-| `limit`      | number  | 20      | Max results (max 50)                                        |
-| `minScore`   | number  | —       | Minimum score threshold (0-1)                               |
-| `collection` | string  | —       | Filter by collection                                        |
-| `lang`       | string  | auto    | Query language hint                                         |
-| `since`      | string  | —       | Modified-at lower bound (ISO date/time or token)            |
-| `until`      | string  | —       | Modified-at upper bound (ISO date/time or token)            |
-| `category`   | string  | —       | Comma-separated category/content-type filters (ANY match)   |
-| `author`     | string  | —       | Author contains value (case-insensitive)                    |
-| `queryModes` | array   | —       | Optional structured mode entries (`term`, `intent`, `hyde`) |
-| `noExpand`   | boolean | false   | Disable query expansion                                     |
-| `noRerank`   | boolean | false   | Disable cross-encoder reranking                             |
-| `tagsAll`    | string  | —       | Comma-separated tags (must have ALL)                        |
-| `tagsAny`    | string  | —       | Comma-separated tags (must have ANY)                        |
+| Field            | Type    | Default | Description                                                                                                                      |
+| :--------------- | :------ | :------ | :------------------------------------------------------------------------------------------------------------------------------- |
+| `query`          | string  | —       | Search query (required)                                                                                                          |
+| `limit`          | number  | 20      | Max results (max 50)                                                                                                             |
+| `minScore`       | number  | —       | Minimum score threshold (0-1)                                                                                                    |
+| `collection`     | string  | —       | Filter by collection                                                                                                             |
+| `lang`           | string  | auto    | Query language hint                                                                                                              |
+| `intent`         | string  | —       | Disambiguating context for ambiguous queries; steers expansion, reranking, and snippet selection without being searched directly |
+| `candidateLimit` | number  | 20      | Max candidates sent to reranking (max 100)                                                                                       |
+| `since`          | string  | —       | Modified-at lower bound (ISO date/time or token)                                                                                 |
+| `until`          | string  | —       | Modified-at upper bound (ISO date/time or token)                                                                                 |
+| `category`       | string  | —       | Comma-separated category/content-type filters (ANY match)                                                                        |
+| `author`         | string  | —       | Author contains value (case-insensitive)                                                                                         |
+| `queryModes`     | array   | —       | Optional structured mode entries (`term`, `intent`, `hyde`)                                                                      |
+| `noExpand`       | boolean | false   | Disable query expansion                                                                                                          |
+| `noRerank`       | boolean | false   | Disable cross-encoder reranking                                                                                                  |
+| `tagsAll`        | string  | —       | Comma-separated tags (must have ALL)                                                                                             |
+| `tagsAny`        | string  | —       | Comma-separated tags (must have ANY)                                                                                             |
 
 **Compatibility notes:**
 
 - Existing `/api/query` payloads remain valid.
+- `intent` is orthogonal to `queryModes`: intent steers scoring/prompting, while query modes inject caller-provided retrieval expansions.
 - `queryModes` is optional and only needed for explicit retrieval intent control.
 - If `queryModes` is provided, generated expansion is skipped and provided entries are used directly.
 
@@ -1243,6 +1250,8 @@ Get an AI-generated answer with citations from your documents.
   "limit": 5,
   "collection": "notes",
   "lang": "en",
+  "intent": "web authentication and request latency",
+  "candidateLimit": 12,
   "since": "last month",
   "until": "today",
   "category": "backend,notes",
@@ -1255,21 +1264,23 @@ Get an AI-generated answer with citations from your documents.
 }
 ```
 
-| Field             | Type    | Default | Description                                               |
-| :---------------- | :------ | :------ | :-------------------------------------------------------- |
-| `query`           | string  | —       | Question (required)                                       |
-| `limit`           | number  | 5       | Number of sources to consider (max 20)                    |
-| `collection`      | string  | —       | Filter by collection                                      |
-| `lang`            | string  | auto    | Query language hint                                       |
-| `since`           | string  | —       | Modified-at lower bound (ISO date/time or token)          |
-| `until`           | string  | —       | Modified-at upper bound (ISO date/time or token)          |
-| `category`        | string  | —       | Comma-separated category/content-type filters (ANY match) |
-| `author`          | string  | —       | Author contains value (case-insensitive)                  |
-| `maxAnswerTokens` | number  | 512     | Max tokens in answer                                      |
-| `noExpand`        | boolean | false   | Disable query expansion                                   |
-| `noRerank`        | boolean | false   | Disable cross-encoder reranking                           |
-| `tagsAll`         | string  | —       | Comma-separated tags (must have ALL)                      |
-| `tagsAny`         | string  | —       | Comma-separated tags (must have ANY)                      |
+| Field             | Type    | Default | Description                                                                   |
+| :---------------- | :------ | :------ | :---------------------------------------------------------------------------- |
+| `query`           | string  | —       | Question (required)                                                           |
+| `limit`           | number  | 5       | Number of sources to consider (max 20)                                        |
+| `collection`      | string  | —       | Filter by collection                                                          |
+| `lang`            | string  | auto    | Query language hint                                                           |
+| `intent`          | string  | —       | Disambiguating context for ambiguous questions without searching on that text |
+| `candidateLimit`  | number  | 20      | Max candidates sent to reranking (max 100)                                    |
+| `since`           | string  | —       | Modified-at lower bound (ISO date/time or token)                              |
+| `until`           | string  | —       | Modified-at upper bound (ISO date/time or token)                              |
+| `category`        | string  | —       | Comma-separated category/content-type filters (ANY match)                     |
+| `author`          | string  | —       | Author contains value (case-insensitive)                                      |
+| `maxAnswerTokens` | number  | 512     | Max tokens in answer                                                          |
+| `noExpand`        | boolean | false   | Disable query expansion                                                       |
+| `noRerank`        | boolean | false   | Disable cross-encoder reranking                                               |
+| `tagsAll`         | string  | —       | Comma-separated tags (must have ALL)                                          |
+| `tagsAny`         | string  | —       | Comma-separated tags (must have ANY)                                          |
 
 **Response**:
 

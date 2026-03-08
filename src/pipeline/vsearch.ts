@@ -14,6 +14,7 @@ import type { SearchOptions, SearchResult, SearchResults } from "./types";
 import { err, ok } from "../store/types";
 import { createChunkLookup } from "./chunk-lookup";
 import { formatQueryForEmbedding } from "./contextual";
+import { selectBestChunkForSteering } from "./intent";
 import { detectQueryLanguage } from "./query-language";
 import {
   resolveRecencyTimestamp,
@@ -146,7 +147,18 @@ export async function searchVectorWithEmbedding(
     }
 
     // Get chunk via O(1) lookup
-    const chunk = getChunk(vec.mirrorHash, vec.seq);
+    const rawChunk = getChunk(vec.mirrorHash, vec.seq);
+    const chunk = options.intent
+      ? (selectBestChunkForSteering(
+          chunksMap.get(vec.mirrorHash) ?? [],
+          query,
+          options.intent,
+          {
+            preferredSeq: rawChunk?.seq ?? vec.seq,
+            intentWeight: 0.3,
+          }
+        ) ?? rawChunk)
+      : rawChunk;
     if (!chunk) {
       continue;
     }
@@ -288,6 +300,7 @@ export async function searchVectorWithEmbedding(
       mode: "vector",
       vectorsUsed: true,
       totalResults: finalResults.length,
+      intent: options.intent,
       collection: options.collection,
       lang: options.lang,
       since: temporalRange.since,

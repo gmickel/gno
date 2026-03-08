@@ -35,6 +35,7 @@ import {
   explainVector,
 } from "./explain";
 import { type RankedInput, rrfFuse, toRankedInput } from "./fusion";
+import { selectBestChunkForSteering } from "./intent";
 import { detectQueryLanguage } from "./query-language";
 import {
   buildExpansionFromQueryModes,
@@ -329,16 +330,18 @@ export async function searchHybrid(
   }
 
   if (expansionStatus !== "provided" && shouldExpand) {
-    const hasStrongSignal = await checkBm25Strength(store, query, {
-      collection: options.collection,
-      lang: options.lang,
-      tagsAll: options.tagsAll,
-      tagsAny: options.tagsAny,
-      since: temporalRange.since,
-      until: temporalRange.until,
-      categories: options.categories,
-      author: options.author,
-    });
+    const hasStrongSignal = options.intent?.trim()
+      ? false
+      : await checkBm25Strength(store, query, {
+          collection: options.collection,
+          lang: options.lang,
+          tagsAll: options.tagsAll,
+          tagsAny: options.tagsAny,
+          since: temporalRange.since,
+          until: temporalRange.until,
+          categories: options.categories,
+          author: options.author,
+        });
 
     if (hasStrongSignal) {
       expansionStatus = "skipped_strong";
@@ -349,6 +352,8 @@ export async function searchHybrid(
         // Use queryLanguage for prompt selection, NOT options.lang (retrieval filter)
         lang: queryLanguage,
         timeout: pipelineConfig.expansionTimeout,
+        intent: options.intent,
+        contextSize: deps.config.models?.expandContextSize,
       });
       if (expandResult.ok) {
         expansion = expandResult.value;
@@ -496,13 +501,16 @@ export async function searchHybrid(
   // 4. Reranking
   // ─────────────────────────────────────────────────────────────────────────
   const rerankStartedAt = performance.now();
+  const candidateLimit =
+    options.candidateLimit ?? pipelineConfig.rerankCandidates;
   const rerankResult = await rerankCandidates(
     { rerankPort: options.noRerank ? null : rerankPort, store },
     query,
     fusedCandidates,
     {
-      maxCandidates: pipelineConfig.rerankCandidates,
+      maxCandidates: candidateLimit,
       blendingSchedule: pipelineConfig.blendingSchedule,
+      intent: options.intent,
     }
   );
   if (rerankResult.fallbackReason === "disabled") {
@@ -513,10 +521,7 @@ export async function searchHybrid(
   timings.rerankMs = performance.now() - rerankStartedAt;
 
   explainLines.push(
-    explainRerank(
-      !options.noRerank && rerankPort !== null,
-      pipelineConfig.rerankCandidates
-    )
+    explainRerank(!options.noRerank && rerankPort !== null, candidateLimit)
   );
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -692,10 +697,23 @@ export async function searchHybrid(
     const collectionPath = collectionPaths.get(doc.collection);
 
     // For --full mode, fetch full mirror content
-    let snippet = chunk.text;
+    const snippetChunk =
+      options.full || !options.intent?.trim()
+        ? chunk
+        : (selectBestChunkForSteering(
+            chunksMap.get(candidate.mirrorHash) ?? [],
+            query,
+            options.intent,
+            {
+              preferredSeq: chunk.seq,
+              intentWeight: 0.3,
+            }
+          ) ?? chunk);
+
+    let snippet = snippetChunk.text;
     let snippetRange: { startLine: number; endLine: number } | undefined = {
-      startLine: chunk.startLine,
-      endLine: chunk.endLine,
+      startLine: snippetChunk.startLine,
+      endLine: snippetChunk.endLine,
     };
 
     if (options.full) {
@@ -791,12 +809,14 @@ export async function searchHybrid(
       reranked: rerankResult.reranked,
       vectorsUsed: vectorAvailable,
       totalResults: finalResults.length,
+      intent: options.intent,
       collection: options.collection,
       lang: options.lang,
       since: temporalRange.since,
       until: temporalRange.until,
       categories: options.categories,
       author: options.author,
+      candidateLimit,
       queryLanguage,
       queryModes: queryModeSummary,
       explain: explainData,

@@ -9,6 +9,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+## [0.18.0] - 2026-03-08
+
+### Added
+
+- Explicit `intent` steering for ambiguous retrieval across CLI, API, Web, and MCP query flows.
+- `candidateLimit` controls for hybrid retrieval and ask flows to tune rerank cost vs. recall.
+
+### Changed
+
+- Query expansion now uses a bounded configurable generation context (`models.expandContextSize`, default `2048`).
+- Reranking now deduplicates identical chunk texts before scoring and fans scores back out deterministically.
+- Search and Ask web advanced retrieval controls now expose intent and rerank candidate limit.
+
+## [0.17.0] - 2026-02-23
+
+### Added
+
 - Structured query mode inputs across CLI/API/MCP (`term`, `intent`, `hyde`) with validation and explain metadata.
 - Temporal retrieval upgrades: query recency intent detection, explicit/relative date range parsing, and recency sorting with frontmatter-date fallback.
 - Frontmatter date-field extraction and date-aware browse sorting (`sortField`/`sortOrder`) in web API and UI.

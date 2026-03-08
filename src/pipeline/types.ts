@@ -62,6 +62,7 @@ export interface SearchMeta {
   reranked?: boolean;
   vectorsUsed?: boolean;
   totalResults: number;
+  intent?: string;
   collection?: string;
   lang?: string;
   /** Detected/overridden query language for prompt selection (typically BCP-47; may be user-provided via --lang) */
@@ -76,6 +77,8 @@ export interface SearchMeta {
   categories?: string[];
   /** Author filter applied */
   author?: string;
+  /** Rerank candidate limit used */
+  candidateLimit?: number;
   /** Explain data (when --explain is used) */
   explain?: {
     lines: ExplainLine[];
@@ -119,6 +122,8 @@ export interface SearchOptions {
   categories?: string[];
   /** Filter by author value */
   author?: string;
+  /** Optional disambiguating context that steers scoring/snippets, but is not searched directly */
+  intent?: string;
 }
 
 /** Structured query mode identifier */
@@ -145,6 +150,8 @@ export type HybridSearchOptions = SearchOptions & {
   noRerank?: boolean;
   /** Optional structured mode entries; when set, used as expansion inputs */
   queryModes?: QueryModeInput[];
+  /** Max candidates passed to reranking */
+  candidateLimit?: number;
   /** Enable explain output */
   explain?: boolean;
   /** Language hint for prompt selection (does NOT filter retrieval, only affects expansion prompts) */
@@ -308,6 +315,8 @@ export interface AskMeta {
   expanded: boolean;
   reranked: boolean;
   vectorsUsed: boolean;
+  intent?: string;
+  candidateLimit?: number;
   answerGenerated?: boolean;
   totalResults?: number;
   answerContext?: AnswerContextExplain;

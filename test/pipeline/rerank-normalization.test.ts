@@ -383,4 +383,93 @@ describe("rerank normalization", () => {
       ]);
     });
   });
+
+  describe("intent-aware reranking", () => {
+    test("prepends intent to rerank query and deduplicates identical texts", async () => {
+      let capturedQuery = "";
+      let capturedDocuments: string[] = [];
+
+      const successReranker = {
+        rerank: async (query: string, documents: string[]) => {
+          capturedQuery = query;
+          capturedDocuments = documents;
+          return {
+            ok: true as const,
+            value: documents.map((_, index) => ({
+              index,
+              score: 1 - index * 0.1,
+              rank: index + 1,
+            })),
+          };
+        },
+        dispose: async () => {
+          // no-op for test
+        },
+      };
+
+      const duplicateTextStore = {
+        getChunksBatch: async () => ({
+          ok: true as const,
+          value: new Map([
+            [
+              "hashA",
+              [
+                {
+                  seq: 0,
+                  text: "Shared chunk content",
+                },
+              ],
+            ],
+            [
+              "hashB",
+              [
+                {
+                  seq: 1,
+                  text: "Shared chunk content",
+                },
+              ],
+            ],
+          ]),
+        }),
+      };
+
+      const candidates: FusionCandidate[] = [
+        {
+          mirrorHash: "hashA",
+          seq: 0,
+          bm25Rank: 1,
+          vecRank: 2,
+          fusionScore: 0.9,
+          sources: ["bm25", "vector"],
+        },
+        {
+          mirrorHash: "hashB",
+          seq: 1,
+          bm25Rank: 2,
+          vecRank: 1,
+          fusionScore: 0.85,
+          sources: ["bm25", "vector"],
+        },
+      ];
+
+      const result = await rerankCandidates(
+        {
+          rerankPort: successReranker as never,
+          store: duplicateTextStore as never,
+        },
+        "performance",
+        candidates,
+        {
+          intent: "web latency",
+        }
+      );
+
+      expect(result.reranked).toBe(true);
+      expect(capturedQuery).toBe("Intent: web latency\nQuery: performance");
+      expect(capturedDocuments).toEqual(["Shared chunk content"]);
+      expect(result.candidates).toHaveLength(2);
+      expect(result.candidates[0]?.rerankScore).not.toBeNull();
+      expect(result.candidates[1]?.rerankScore).not.toBeNull();
+    });
+  });
 });
