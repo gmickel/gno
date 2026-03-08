@@ -227,6 +227,11 @@ Vector semantic search over indexed documents.
       "type": "string",
       "description": "Optional disambiguating context for ambiguous queries"
     },
+    "exclude": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Hard-prune docs containing any excluded term in title/path/body"
+    },
     "since": {
       "type": "string",
       "description": "Modified-at lower bound (ISO date/time or relative token)"
@@ -312,6 +317,11 @@ Hybrid search combining BM25 and vector retrieval with optional expansion and re
       "minimum": 1,
       "maximum": 100
     },
+    "exclude": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Hard-prune docs containing any excluded term in title/path/body"
+    },
     "since": {
       "type": "string",
       "description": "Modified-at lower bound (ISO date/time or relative token)"
@@ -391,6 +401,7 @@ Compatibility / migration notes:
 - Existing `gno_query` tool calls remain valid without `queryModes`.
 - `intent` is orthogonal to `queryModes`: intent steers scoring/prompting, while query modes inject caller-provided retrieval expansions.
 - `candidateLimit` tunes rerank cost without changing retrieval contracts.
+- `exclude` hard-prunes matching docs after retrieval using title/path/body text.
 - `queryModes` is optional; use it only when clients need explicit retrieval intent control.
 - When `queryModes` is present, generated expansion is skipped and provided entries are used directly.
 

@@ -533,6 +533,7 @@ Hybrid search (BM25 + vector).
 Query: "database optimization"
 intent: "postgres query latency and indexing"
 candidateLimit: 12
+exclude: ["hiring", "reviews"]
 since: "last month"
 until: "today"
 categories: ["backend", "notes"]
@@ -569,6 +570,7 @@ Optional steering controls:
 
 - `intent`: disambiguating context for ambiguous queries. It steers expansion, reranking, and snippet selection without being searched directly.
 - `candidateLimit`: max candidates sent to reranking. Lower it for faster responses on CPU-heavy or low-memory setups.
+- `exclude`: hard-prune docs containing any excluded term in title/path/body.
 
 **Migration notes (retrieval v2):**
 

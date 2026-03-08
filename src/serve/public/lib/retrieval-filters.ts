@@ -11,6 +11,7 @@ export interface RetrievalFiltersState {
   collection: string;
   intent: string;
   candidateLimit: string;
+  exclude: string;
   since: string;
   until: string;
   category: string;
@@ -126,6 +127,7 @@ export function parseFiltersFromSearch(
     intent: params.get("intent") ?? defaults.intent ?? "",
     candidateLimit:
       params.get("candidateLimit") ?? defaults.candidateLimit ?? "",
+    exclude: params.get("exclude") ?? defaults.exclude ?? "",
     since: params.get("since") ?? defaults.since ?? "",
     until: params.get("until") ?? defaults.until ?? "",
     category: params.get("category") ?? defaults.category ?? "",
@@ -152,6 +154,7 @@ export function applyFiltersToUrl(
   setOrDelete("collection", filters.collection);
   setOrDelete("intent", filters.intent);
   setOrDelete("candidateLimit", filters.candidateLimit);
+  setOrDelete("exclude", filters.exclude);
   setOrDelete("since", filters.since);
   setOrDelete("until", filters.until);
   setOrDelete("category", filters.category);

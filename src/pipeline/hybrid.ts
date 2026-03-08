@@ -21,6 +21,7 @@ import type {
 import { err, ok } from "../store/types";
 import { createChunkLookup } from "./chunk-lookup";
 import { formatQueryForEmbedding } from "./contextual";
+import { matchesExcludedChunks, matchesExcludedText } from "./exclude";
 import { expandQuery } from "./expansion";
 import {
   buildExplainResults,
@@ -670,6 +671,25 @@ export async function searchHybrid(
       continue;
     }
 
+    const excluded =
+      matchesExcludedText(
+        [
+          doc.title ?? "",
+          doc.relPath,
+          doc.author ?? "",
+          doc.contentType ?? "",
+          ...(doc.categories ?? []),
+        ],
+        options.exclude
+      ) ||
+      matchesExcludedChunks(
+        chunksMap.get(candidate.mirrorHash) ?? [],
+        options.exclude
+      );
+    if (excluded) {
+      continue;
+    }
+
     // For --full mode, de-dupe by docid (keep best scoring candidate per doc)
     if (options.full && seenDocids.has(doc.docid)) {
       continue;
@@ -810,6 +830,7 @@ export async function searchHybrid(
       vectorsUsed: vectorAvailable,
       totalResults: finalResults.length,
       intent: options.intent,
+      exclude: options.exclude,
       collection: options.collection,
       lang: options.lang,
       since: temporalRange.since,

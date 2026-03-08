@@ -166,6 +166,7 @@ export default function Ask({ navigate }: PageProps) {
   const [selectedCollection, setSelectedCollection] = useState("");
   const [intent, setIntent] = useState("");
   const [candidateLimit, setCandidateLimit] = useState("");
+  const [exclude, setExclude] = useState("");
   const [since, setSince] = useState("");
   const [until, setUntil] = useState("");
   const [category, setCategory] = useState("");
@@ -250,6 +251,9 @@ export default function Ask({ navigate }: PageProps) {
       if (candidateLimit.trim()) {
         requestBody.candidateLimit = Number(candidateLimit);
       }
+      if (exclude.trim()) {
+        requestBody.exclude = exclude.trim();
+      }
       if (since) {
         requestBody.since = since;
       }
@@ -305,6 +309,7 @@ export default function Ask({ navigate }: PageProps) {
       author,
       candidateLimit,
       category,
+      exclude,
       intent,
       query,
       selectedCollection,
@@ -327,6 +332,7 @@ export default function Ask({ navigate }: PageProps) {
     setSelectedCollection("");
     setIntent("");
     setCandidateLimit("");
+    setExclude("");
     setSince("");
     setUntil("");
     setCategory("");
@@ -341,6 +347,7 @@ export default function Ask({ navigate }: PageProps) {
     selectedCollection ? `collection:${selectedCollection}` : null,
     intent.trim() ? `intent:${intent.trim()}` : null,
     candidateLimit.trim() ? `candidates:${candidateLimit.trim()}` : null,
+    exclude.trim() ? `exclude:${exclude.trim()}` : null,
     since ? `since:${since}` : null,
     until ? `until:${until}` : null,
     category.trim() ? `category:${category.trim()}` : null,
@@ -463,6 +470,17 @@ export default function Ask({ navigate }: PageProps) {
                         onChange={(e) => setIntent(e.target.value)}
                         placeholder="Disambiguate ambiguous questions without searching on this text"
                         value={intent}
+                      />
+                    </div>
+
+                    <div className="md:col-span-2">
+                      <p className="mb-1 text-muted-foreground text-xs">
+                        Exclude
+                      </p>
+                      <Input
+                        onChange={(e) => setExclude(e.target.value)}
+                        placeholder="team reviews, hiring, onboarding"
+                        value={exclude}
                       />
                     </div>
 

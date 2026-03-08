@@ -162,6 +162,7 @@ gno vsearch "error handling patterns" # Semantic similarity
 gno query "database optimization"    # Full pipeline
 gno query "meeting decisions" --since "last month" --category "meeting,notes" --author "gordon"
 gno query "performance" --intent "web performance and latency"
+gno query "performance" --exclude "reviews,hiring"
 gno ask "what did we decide" --answer # AI synthesis
 ```
 

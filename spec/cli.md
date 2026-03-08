@@ -465,7 +465,7 @@ BM25 keyword search over indexed documents.
 **Synopsis:**
 
 ```bash
-gno search <query> [-n <num>] [--min-score <num>] [-c <collection>] [--since <date>] [--until <date>] [--category <values>] [--author <text>] [--intent <text>] [--tags-all <tags>] [--tags-any <tags>] [--full] [--line-numbers] [--lang <bcp47>] [--json|--files|--csv|--md|--xml]
+gno search <query> [-n <num>] [--min-score <num>] [-c <collection>] [--since <date>] [--until <date>] [--category <values>] [--author <text>] [--intent <text>] [--exclude <values>] [--tags-all <tags>] [--tags-any <tags>] [--full] [--line-numbers] [--lang <bcp47>] [--json|--files|--csv|--md|--xml]
 ```
 
 **Arguments:**
@@ -485,6 +485,7 @@ gno search <query> [-n <num>] [--min-score <num>] [-c <collection>] [--since <da
 | `--category`       | string  | none                      | Filter to docs with matching category/content type (comma-separated)                          |
 | `--author`         | string  | none                      | Filter to docs where author contains value (case-insensitive)                                 |
 | `--intent`         | string  | none                      | Disambiguating context for ambiguous queries; steers snippets without being searched directly |
+| `--exclude`        | string  | none                      | Hard-prune docs containing any comma-separated term in title/path/body                        |
 | `--tags-all`       | string  | none                      | Filter to docs with ALL tags (comma-separated)                                                |
 | `--tags-any`       | string  | none                      | Filter to docs with ANY tag (comma-separated)                                                 |
 | `--full`           | boolean | false                     | Include full mirror content instead of snippet                                                |
@@ -532,7 +533,7 @@ Vector semantic search over indexed documents.
 **Synopsis:**
 
 ```bash
-gno vsearch <query> [-n <num>] [--min-score <num>] [-c <collection>] [--since <date>] [--until <date>] [--category <values>] [--author <text>] [--intent <text>] [--tags-all <tags>] [--tags-any <tags>] [--full] [--line-numbers] [--lang <bcp47>] [--json|--files|--csv|--md|--xml]
+gno vsearch <query> [-n <num>] [--min-score <num>] [-c <collection>] [--since <date>] [--until <date>] [--category <values>] [--author <text>] [--intent <text>] [--exclude <values>] [--tags-all <tags>] [--tags-any <tags>] [--full] [--line-numbers] [--lang <bcp47>] [--json|--files|--csv|--md|--xml]
 ```
 
 **Options:** Same as `gno search` (including temporal/category/author and tag filters)
@@ -561,7 +562,7 @@ Hybrid search combining BM25 and vector retrieval with optional expansion and re
 **Synopsis:**
 
 ```bash
-gno query <query> [-n <num>] [--min-score <num>] [-c <collection>] [--since <date>] [--until <date>] [--category <values>] [--author <text>] [--intent <text>] [-C <num>] [--tags-all <tags>] [--tags-any <tags>] [--full] [--line-numbers] [--lang <bcp47>] [--no-expand] [--no-rerank] [--query-mode <mode:text>]... [--explain] [--json|--files|--csv|--md|--xml]
+gno query <query> [-n <num>] [--min-score <num>] [-c <collection>] [--since <date>] [--until <date>] [--category <values>] [--author <text>] [--intent <text>] [--exclude <values>] [-C <num>] [--tags-all <tags>] [--tags-any <tags>] [--full] [--line-numbers] [--lang <bcp47>] [--no-expand] [--no-rerank] [--query-mode <mode:text>]... [--explain] [--json|--files|--csv|--md|--xml]
 ```
 
 **Options:** Same as `gno search`, plus:
@@ -572,6 +573,7 @@ gno query <query> [-n <num>] [--min-score <num>] [-c <collection>] [--since <dat
 | `--no-expand` | boolean | Disable query expansion |
 | `--no-rerank` | boolean | Disable cross-encoder reranking |
 | `--intent` | string | Disambiguating context for ambiguous queries; steers expansion, rerank chunk/snippet choice, and disables strong-signal bypass without being searched directly |
+| `--exclude` | string | Hard-prune docs containing any comma-separated term in title/path/body |
 | `-C, --candidate-limit` | integer | Max candidates passed to reranking (default 20) |
 | `--query-mode` | string[] | Structured mode entry (`term:<text>`, `intent:<text>`, `hyde:<text>`). Repeatable. |
 | `--explain` | boolean | Print retrieval explanation to stderr |
@@ -609,7 +611,7 @@ Human-friendly query with citations-first output and optional grounded answer.
 **Synopsis:**
 
 ```bash
-gno ask <query> [-n <num>] [-c <collection>] [--lang <bcp47>] [--since <date>] [--until <date>] [--category <values>] [--author <text>] [--intent <text>] [-C <num>] [--answer] [--no-answer] [--max-answer-tokens <n>] [--no-expand] [--no-rerank] [--show-sources] [--json|--md]
+gno ask <query> [-n <num>] [-c <collection>] [--lang <bcp47>] [--since <date>] [--until <date>] [--category <values>] [--author <text>] [--intent <text>] [--exclude <values>] [-C <num>] [--answer] [--no-answer] [--max-answer-tokens <n>] [--no-expand] [--no-rerank] [--show-sources] [--json|--md]
 ```
 
 **Options:**
@@ -624,6 +626,7 @@ gno ask <query> [-n <num>] [-c <collection>] [--lang <bcp47>] [--since <date>] [
 | `--category`            | string  | none    | Filter to docs with matching category/content type (comma-separated)          |
 | `--author`              | string  | none    | Filter to docs where author contains value (case-insensitive)                 |
 | `--intent`              | string  | none    | Disambiguating context for ambiguous questions without searching on that text |
+| `--exclude`             | string  | none    | Hard-prune docs containing any comma-separated term in title/path/body        |
 | `-C, --candidate-limit` | integer | 20      | Max candidates passed to reranking                                            |
 | `--no-expand`           | boolean | false   | Disable query expansion                                                       |
 | `--no-rerank`           | boolean | false   | Disable cross-encoder reranking                                               |

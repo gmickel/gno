@@ -225,6 +225,10 @@ function wireSearchCommands(program: Command): void {
     .option("--category <values>", "require category match (comma-separated)")
     .option("--author <text>", "filter by author (case-insensitive contains)")
     .option("--intent <text>", "disambiguating context for ambiguous queries")
+    .option(
+      "--exclude <values>",
+      "exclude docs containing any term (comma-separated)"
+    )
     .option("--tags-all <tags>", "require ALL tags (comma-separated)")
     .option("--tags-any <tags>", "require ANY tag (comma-separated)")
     .option("--full", "include full content")
@@ -270,6 +274,7 @@ function wireSearchCommands(program: Command): void {
         ? parsePositiveInt("limit", cmdOpts.limit)
         : getDefaultLimit(format);
       const categories = parseCsvValues(cmdOpts.category);
+      const exclude = parseCsvValues(cmdOpts.exclude);
 
       const { search, formatSearch } = await import("./commands/search");
       const result = await search(queryText, {
@@ -282,6 +287,7 @@ function wireSearchCommands(program: Command): void {
         categories,
         author: cmdOpts.author as string | undefined,
         intent: cmdOpts.intent as string | undefined,
+        exclude,
         tagsAll,
         tagsAny,
         full: Boolean(cmdOpts.full),
@@ -332,6 +338,10 @@ function wireSearchCommands(program: Command): void {
     .option("--category <values>", "require category match (comma-separated)")
     .option("--author <text>", "filter by author (case-insensitive contains)")
     .option("--intent <text>", "disambiguating context for ambiguous queries")
+    .option(
+      "--exclude <values>",
+      "exclude docs containing any term (comma-separated)"
+    )
     .option("--tags-all <tags>", "require ALL tags (comma-separated)")
     .option("--tags-any <tags>", "require ANY tag (comma-separated)")
     .option("--full", "include full content")
@@ -377,6 +387,7 @@ function wireSearchCommands(program: Command): void {
         ? parsePositiveInt("limit", cmdOpts.limit)
         : getDefaultLimit(format);
       const categories = parseCsvValues(cmdOpts.category);
+      const exclude = parseCsvValues(cmdOpts.exclude);
 
       const { vsearch, formatVsearch } = await import("./commands/vsearch");
       const result = await vsearch(queryText, {
@@ -389,6 +400,7 @@ function wireSearchCommands(program: Command): void {
         categories,
         author: cmdOpts.author as string | undefined,
         intent: cmdOpts.intent as string | undefined,
+        exclude,
         tagsAll,
         tagsAny,
         full: Boolean(cmdOpts.full),
@@ -434,6 +446,10 @@ function wireSearchCommands(program: Command): void {
     .option("--category <values>", "require category match (comma-separated)")
     .option("--author <text>", "filter by author (case-insensitive contains)")
     .option("--intent <text>", "disambiguating context for ambiguous queries")
+    .option(
+      "--exclude <values>",
+      "exclude docs containing any term (comma-separated)"
+    )
     .option("--tags-all <tags>", "require ALL tags (comma-separated)")
     .option("--tags-any <tags>", "require ANY tag (comma-separated)")
     .option("--full", "include full content")
@@ -505,6 +521,7 @@ function wireSearchCommands(program: Command): void {
         ? parsePositiveInt("candidate-limit", cmdOpts.candidateLimit)
         : undefined;
       const categories = parseCsvValues(cmdOpts.category);
+      const exclude = parseCsvValues(cmdOpts.exclude);
 
       // Determine expansion/rerank settings based on flags
       // Priority: --fast > --thorough > --no-expand/--no-rerank > default
@@ -541,6 +558,7 @@ function wireSearchCommands(program: Command): void {
         categories,
         author: cmdOpts.author as string | undefined,
         intent: cmdOpts.intent as string | undefined,
+        exclude,
         tagsAll,
         tagsAny,
         full: Boolean(cmdOpts.full),
@@ -586,6 +604,10 @@ function wireSearchCommands(program: Command): void {
     .option("--category <values>", "require category match (comma-separated)")
     .option("--author <text>", "filter by author (case-insensitive contains)")
     .option("--intent <text>", "disambiguating context for ambiguous queries")
+    .option(
+      "--exclude <values>",
+      "exclude docs containing any term (comma-separated)"
+    )
     .option("--fast", "skip expansion and reranking (fastest)")
     .option("--thorough", "enable query expansion (slower)")
     .option("-C, --candidate-limit <num>", "max candidates passed to reranking")
@@ -616,6 +638,7 @@ function wireSearchCommands(program: Command): void {
         ? parsePositiveInt("max-answer-tokens", cmdOpts.maxAnswerTokens)
         : undefined;
       const categories = parseCsvValues(cmdOpts.category);
+      const exclude = parseCsvValues(cmdOpts.exclude);
 
       // Determine expansion/rerank settings based on flags
       // Default: skip expansion (balanced mode)
@@ -641,6 +664,7 @@ function wireSearchCommands(program: Command): void {
         categories,
         author: cmdOpts.author as string | undefined,
         intent: cmdOpts.intent as string | undefined,
+        exclude,
         noExpand,
         noRerank,
         candidateLimit,

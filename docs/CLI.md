@@ -86,6 +86,7 @@ Options:
 - `--category <values>` - Require matching category/content type (comma-separated)
 - `--author <text>` - Author contains text (case-insensitive)
 - `--intent <text>` - Disambiguating context for ambiguous queries; steers snippet selection without searching on this text
+- `--exclude <values>` - Exclude docs containing any comma-separated term in title/path/body
 - `--tags-all <tags>` - Filter: docs must have ALL tags (comma-separated)
 - `--tags-any <tags>` - Filter: docs must have ANY tag (comma-separated)
 
@@ -139,6 +140,7 @@ Additional options:
 - `--no-expand` - Disable query expansion
 - `--no-rerank` - Disable cross-encoder reranking
 - `--intent <text>` - Disambiguating context for ambiguous queries. Steers expansion, rerank chunk/snippet choice, and disables strong-signal bypass, but is not searched directly.
+- `--exclude <values>` - Hard-prune docs containing any comma-separated term in title/path/body
 - `-C, --candidate-limit <n>` - Max candidates passed to reranking (default: 20)
 - `--query-mode <mode:text>` - Structured expansion hints; repeat for multiple entries. Modes: `term`, `intent`, `hyde`
 - `--explain` - Show detailed scoring breakdown (to stderr)
@@ -204,6 +206,7 @@ Options:
 - `--fast` - Skip expansion and reranking (fastest)
 - `--thorough` - Enable query expansion (slower, better recall)
 - `--intent <text>` - Disambiguating context for ambiguous questions without searching on that text
+- `--exclude <values>` - Hard-prune docs containing any comma-separated term in title/path/body
 - `-C, --candidate-limit <n>` - Max candidates passed to reranking (default: 20)
 - `--answer` - Generate grounded AI answer (requires gen model)
 - `--no-answer` - Force retrieval-only output

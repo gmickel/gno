@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Explicit exclusion filters across CLI, API, Web, and MCP retrieval surfaces for hard-pruning docs by title/path/body terms.
+
 ## [0.18.0] - 2026-03-08
 
 ### Added

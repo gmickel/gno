@@ -67,6 +67,7 @@ export interface SearchRequestBody {
   minScore?: number;
   collection?: string;
   intent?: string;
+  exclude?: string;
   since?: string;
   until?: string;
   /** Comma-separated category filters */
@@ -86,6 +87,7 @@ export interface QueryRequestBody {
   lang?: string;
   intent?: string;
   candidateLimit?: number;
+  exclude?: string;
   since?: string;
   until?: string;
   /** Comma-separated category filters */
@@ -107,6 +109,7 @@ export interface AskRequestBody {
   lang?: string;
   intent?: string;
   candidateLimit?: number;
+  exclude?: string;
   since?: string;
   until?: string;
   /** Comma-separated category filters */
@@ -1101,6 +1104,12 @@ export async function handleSearch(
   if (body.intent !== undefined && typeof body.intent !== "string") {
     return errorResponse("VALIDATION", "intent must be a string");
   }
+  if (body.exclude !== undefined && typeof body.exclude !== "string") {
+    return errorResponse(
+      "VALIDATION",
+      "exclude must be a comma-separated string"
+    );
+  }
   if (body.category !== undefined && typeof body.category !== "string") {
     return errorResponse(
       "VALIDATION",
@@ -1140,6 +1149,9 @@ export async function handleSearch(
   const categories = body.category
     ? parseCommaSeparatedValues(body.category)
     : undefined;
+  const exclude = body.exclude
+    ? parseCommaSeparatedValues(body.exclude)
+    : undefined;
   const author = body.author?.trim() || undefined;
 
   // Only BM25 supported in web UI (vector/hybrid require LLM ports)
@@ -1148,6 +1160,7 @@ export async function handleSearch(
     minScore: body.minScore,
     collection: body.collection,
     intent: body.intent?.trim() || undefined,
+    exclude,
     tagsAll,
     tagsAny,
     since: body.since,
@@ -1219,6 +1232,12 @@ export async function handleQuery(
   }
   if (body.intent !== undefined && typeof body.intent !== "string") {
     return errorResponse("VALIDATION", "intent must be a string");
+  }
+  if (body.exclude !== undefined && typeof body.exclude !== "string") {
+    return errorResponse(
+      "VALIDATION",
+      "exclude must be a comma-separated string"
+    );
   }
   if (
     body.candidateLimit !== undefined &&
@@ -1318,6 +1337,9 @@ export async function handleQuery(
   const categories = body.category
     ? parseCommaSeparatedValues(body.category)
     : undefined;
+  const exclude = body.exclude
+    ? parseCommaSeparatedValues(body.exclude)
+    : undefined;
   const author = body.author?.trim() || undefined;
 
   const result = await searchHybrid(
@@ -1340,6 +1362,7 @@ export async function handleQuery(
         body.candidateLimit !== undefined
           ? Math.min(body.candidateLimit, 100)
           : undefined,
+      exclude,
       queryModes,
       noExpand: body.noExpand,
       noRerank: body.noRerank,
@@ -1406,6 +1429,12 @@ export async function handleAsk(
   if (body.intent !== undefined && typeof body.intent !== "string") {
     return errorResponse("VALIDATION", "intent must be a string");
   }
+  if (body.exclude !== undefined && typeof body.exclude !== "string") {
+    return errorResponse(
+      "VALIDATION",
+      "exclude must be a comma-separated string"
+    );
+  }
   if (
     body.candidateLimit !== undefined &&
     (typeof body.candidateLimit !== "number" || body.candidateLimit < 1)
@@ -1450,6 +1479,9 @@ export async function handleAsk(
   const categories = body.category
     ? parseCommaSeparatedValues(body.category)
     : undefined;
+  const exclude = body.exclude
+    ? parseCommaSeparatedValues(body.exclude)
+    : undefined;
   const author = body.author?.trim() || undefined;
 
   const limit = Math.min(body.limit ?? 5, 20);
@@ -1476,6 +1508,7 @@ export async function handleAsk(
         body.candidateLimit !== undefined
           ? Math.min(body.candidateLimit, 100)
           : undefined,
+      exclude,
       tagsAll,
       tagsAny,
       since: body.since,
@@ -1528,6 +1561,7 @@ export async function handleAsk(
       vectorsUsed: searchResult.value.meta.vectorsUsed ?? false,
       intent: searchResult.value.meta.intent,
       candidateLimit: searchResult.value.meta.candidateLimit,
+      exclude: searchResult.value.meta.exclude,
       answerGenerated,
       totalResults: results.length,
       answerContext,
