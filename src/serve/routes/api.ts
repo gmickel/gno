@@ -110,6 +110,7 @@ export interface AskRequestBody {
   intent?: string;
   candidateLimit?: number;
   exclude?: string;
+  queryModes?: QueryModeInput[];
   since?: string;
   until?: string;
   /** Comma-separated category filters */
@@ -175,6 +176,73 @@ function parseCommaSeparatedValues(input: string): string[] {
         .filter(Boolean)
     )
   );
+}
+
+function parseQueryModesInput(value: unknown): {
+  queryModes?: QueryModeInput[];
+  error?: Response;
+} {
+  if (value === undefined) {
+    return {};
+  }
+
+  if (!Array.isArray(value)) {
+    return {
+      error: errorResponse(
+        "VALIDATION",
+        "queryModes must be an array of { mode, text } objects"
+      ),
+    };
+  }
+
+  const queryModes: QueryModeInput[] = [];
+  let hydeCount = 0;
+
+  for (const [index, entry] of value.entries()) {
+    if (!entry || typeof entry !== "object") {
+      return {
+        error: errorResponse(
+          "VALIDATION",
+          `queryModes[${index}] must be an object`
+        ),
+      };
+    }
+
+    const mode = (entry as { mode?: unknown }).mode;
+    const text = (entry as { text?: unknown }).text;
+    if (mode !== "term" && mode !== "intent" && mode !== "hyde") {
+      return {
+        error: errorResponse(
+          "VALIDATION",
+          `queryModes[${index}].mode must be one of: term, intent, hyde`
+        ),
+      };
+    }
+    if (typeof text !== "string" || !text.trim()) {
+      return {
+        error: errorResponse(
+          "VALIDATION",
+          `queryModes[${index}].text must be a non-empty string`
+        ),
+      };
+    }
+
+    if (mode === "hyde") {
+      hydeCount += 1;
+      if (hydeCount > 1) {
+        return {
+          error: errorResponse(
+            "VALIDATION",
+            "Only one hyde mode is allowed in queryModes"
+          ),
+        };
+      }
+    }
+
+    queryModes.push({ mode, text: text.trim() });
+  }
+
+  return { queryModes };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1258,54 +1326,11 @@ export async function handleQuery(
     return errorResponse("VALIDATION", "author must be a string");
   }
 
-  // Validate queryModes
-  let queryModes: QueryModeInput[] | undefined;
-  if (body.queryModes !== undefined) {
-    if (!Array.isArray(body.queryModes)) {
-      return errorResponse(
-        "VALIDATION",
-        "queryModes must be an array of { mode, text } objects"
-      );
-    }
-
-    queryModes = [];
-    let hydeCount = 0;
-
-    for (const [index, entry] of body.queryModes.entries()) {
-      if (!entry || typeof entry !== "object") {
-        return errorResponse(
-          "VALIDATION",
-          `queryModes[${index}] must be an object`
-        );
-      }
-
-      const mode = (entry as { mode?: unknown }).mode;
-      const text = (entry as { text?: unknown }).text;
-      if (mode !== "term" && mode !== "intent" && mode !== "hyde") {
-        return errorResponse(
-          "VALIDATION",
-          `queryModes[${index}].mode must be one of: term, intent, hyde`
-        );
-      }
-      if (typeof text !== "string" || !text.trim()) {
-        return errorResponse(
-          "VALIDATION",
-          `queryModes[${index}].text must be a non-empty string`
-        );
-      }
-
-      if (mode === "hyde") {
-        hydeCount += 1;
-        if (hydeCount > 1) {
-          return errorResponse(
-            "VALIDATION",
-            "Only one hyde mode is allowed in queryModes"
-          );
-        }
-      }
-
-      queryModes.push({ mode, text: text.trim() });
-    }
+  const { queryModes, error: queryModesError } = parseQueryModesInput(
+    body.queryModes
+  );
+  if (queryModesError) {
+    return queryModesError;
   }
 
   // Parse tag filters
@@ -1454,6 +1479,13 @@ export async function handleAsk(
     return errorResponse("VALIDATION", "author must be a string");
   }
 
+  const { queryModes, error: queryModesError } = parseQueryModesInput(
+    body.queryModes
+  );
+  if (queryModesError) {
+    return queryModesError;
+  }
+
   if (body.tagsAll) {
     try {
       tagsAll = parseAndValidateTagFilter(body.tagsAll);
@@ -1509,6 +1541,7 @@ export async function handleAsk(
           ? Math.min(body.candidateLimit, 100)
           : undefined,
       exclude,
+      queryModes,
       tagsAll,
       tagsAny,
       since: body.since,
@@ -1562,6 +1595,7 @@ export async function handleAsk(
       intent: searchResult.value.meta.intent,
       candidateLimit: searchResult.value.meta.candidateLimit,
       exclude: searchResult.value.meta.exclude,
+      queryModes: searchResult.value.meta.queryModes,
       answerGenerated,
       totalResults: results.length,
       answerContext,

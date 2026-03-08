@@ -16,8 +16,11 @@ TBD
 - Docs/spec updated (README/docs/spec schemas) including examples and caveats.
 
 ## Done summary
+
 Implemented explicit exclusion filters across CLI, API, Web, and MCP retrieval surfaces. Exclusions now hard-prune candidate docs by title/path/body text in BM25, vector, hybrid, and ask flows. Added parser/state/route/pipeline coverage and verified live CLI/API smoke for intent + candidateLimit + exclude.
+
 ## Evidence
+
 - Commits:
 - Tests: bun run lint:check, bun test, bun /Users/gordon/work/gno/src/index.ts query "performance" --intent "web performance and latency" --exclude "reviews" --candidate-limit 8 --limit 5 --json, bun /Users/gordon/work/gno/src/index.ts search "performance" --intent "web performance and latency" --exclude "reviews" --limit 5 --json, bun /Users/gordon/work/gno/src/index.ts ask "performance" --intent "web performance and latency" --exclude "reviews" --candidate-limit 8 --limit 3 --no-answer --json, curl -sS -X POST http://127.0.0.1:3314/api/query ..., curl -sS -X POST http://127.0.0.1:3314/api/search ..., curl -sS -X POST http://127.0.0.1:3314/api/ask ...
 - PRs:

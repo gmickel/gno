@@ -1257,6 +1257,10 @@ Get an AI-generated answer with citations from your documents.
   "intent": "web authentication and request latency",
   "candidateLimit": 12,
   "exclude": "hiring,reviews",
+  "queryModes": [
+    { "mode": "term", "text": "\"refresh token\" -oauth1" },
+    { "mode": "intent", "text": "how token rotation is implemented" }
+  ],
   "since": "last month",
   "until": "today",
   "category": "backend,notes",
@@ -1278,6 +1282,7 @@ Get an AI-generated answer with citations from your documents.
 | `intent`          | string  | —       | Disambiguating context for ambiguous questions without searching on that text     |
 | `candidateLimit`  | number  | 20      | Max candidates sent to reranking (max 100)                                        |
 | `exclude`         | string  | —       | Comma-separated exclusion terms; matching docs are hard-pruned by title/path/body |
+| `queryModes`      | array   | —       | Optional structured mode entries (`term`, `intent`, `hyde`)                       |
 | `since`           | string  | —       | Modified-at lower bound (ISO date/time or token)                                  |
 | `until`           | string  | —       | Modified-at upper bound (ISO date/time or token)                                  |
 | `category`        | string  | —       | Comma-separated category/content-type filters (ANY match)                         |
@@ -1287,6 +1292,12 @@ Get an AI-generated answer with citations from your documents.
 | `noRerank`        | boolean | false   | Disable cross-encoder reranking                                                   |
 | `tagsAll`         | string  | —       | Comma-separated tags (must have ALL)                                              |
 | `tagsAny`         | string  | —       | Comma-separated tags (must have ANY)                                              |
+
+**Compatibility notes:**
+
+- Existing `/api/ask` payloads remain valid.
+- `queryModes` is optional and only needed for explicit retrieval steering during Q&A.
+- If `queryModes` is provided, generated expansion is skipped and provided entries are used directly.
 
 **Response**:
 

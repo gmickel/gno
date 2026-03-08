@@ -322,6 +322,7 @@ export interface AskMeta {
   intent?: string;
   candidateLimit?: number;
   exclude?: string[];
+  queryModes?: QueryModeSummary;
   answerGenerated?: boolean;
   totalResults?: number;
   answerContext?: AnswerContextExplain;

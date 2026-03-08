@@ -264,6 +264,7 @@ export async function ask(
         intent: searchResult.value.meta.intent,
         candidateLimit: searchResult.value.meta.candidateLimit,
         exclude: searchResult.value.meta.exclude,
+        queryModes: searchResult.value.meta.queryModes,
         answerGenerated,
         totalResults: results.length,
         answerContext,
