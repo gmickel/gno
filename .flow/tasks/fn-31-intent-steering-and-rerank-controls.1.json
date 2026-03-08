@@ -1,0 +1,14 @@
+{
+  "assignee": null,
+  "claim_note": "",
+  "claimed_at": null,
+  "created_at": "2026-03-08T06:18:13.947714Z",
+  "depends_on": [],
+  "epic": "fn-31-intent-steering-and-rerank-controls",
+  "id": "fn-31-intent-steering-and-rerank-controls.1",
+  "priority": 1,
+  "spec_path": ".flow/tasks/fn-31-intent-steering-and-rerank-controls.1.md",
+  "status": "todo",
+  "title": "Implement intent-aware retrieval steering and rerank controls",
+  "updated_at": "2026-03-08T06:18:13.947885Z"
+}

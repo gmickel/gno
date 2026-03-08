@@ -67,9 +67,16 @@ const STOPWORDS = new Set([
 export function generateCacheKey(
   modelUri: string,
   query: string,
-  lang: string
+  lang: string,
+  intent?: string
 ): string {
-  const data = [EXPANSION_PROMPT_VERSION, modelUri, query, lang].join("\0");
+  const data = [
+    EXPANSION_PROMPT_VERSION,
+    modelUri,
+    query,
+    lang,
+    intent?.trim() ?? "",
+  ].join("\0");
   return createHash("sha256").update(data).digest("hex");
 }
 
@@ -148,6 +155,24 @@ function getPromptTemplate(lang?: string): string {
     default:
       return EXPANSION_PROMPT_MULTILINGUAL;
   }
+}
+
+function buildPrompt(query: string, template: string, intent?: string): string {
+  const basePrompt = template.replace("{query}", query);
+  const trimmedIntent = intent?.trim();
+  if (!trimmedIntent) {
+    return basePrompt;
+  }
+
+  return basePrompt
+    .replace(
+      `Query: "${query}"\n`,
+      `Query: "${query}"\nQuery intent: "${trimmedIntent}"\n`
+    )
+    .replace(
+      `Anfrage: "${query}"\n`,
+      `Anfrage: "${query}"\nQuery intent: "${trimmedIntent}"\n`
+    );
 }
 
 interface QuerySignals {
@@ -405,6 +430,10 @@ export interface ExpansionOptions {
   lang?: string;
   /** Timeout in milliseconds */
   timeout?: number;
+  /** Optional context that steers expansion for ambiguous queries */
+  intent?: string;
+  /** Optional bounded context size override for expansion generation */
+  contextSize?: number;
 }
 
 /**
@@ -420,7 +449,7 @@ export async function expandQuery(
 
   // Build prompt
   const template = getPromptTemplate(options.lang);
-  const prompt = template.replace("{query}", query);
+  const prompt = buildPrompt(query, template, options.intent);
 
   // Run with timeout (clear timer to avoid resource leak)
   let timeoutId: ReturnType<typeof setTimeout> | undefined;
@@ -434,6 +463,7 @@ export async function expandQuery(
         temperature: 0,
         seed: 42,
         maxTokens: 512,
+        contextSize: options.contextSize,
       }),
       timeoutPromise,
     ]);
@@ -486,7 +516,12 @@ export async function expandQueryCached(
   options: ExpansionOptions = {}
 ): Promise<StoreResult<ExpansionResult | null>> {
   const lang = options.lang ?? "auto";
-  const cacheKey = generateCacheKey(deps.genPort.modelUri, query, lang);
+  const cacheKey = generateCacheKey(
+    deps.genPort.modelUri,
+    query,
+    lang,
+    options.intent
+  );
 
   // Check cache
   const cached = await deps.getCache(cacheKey);

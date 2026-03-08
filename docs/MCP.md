@@ -531,6 +531,8 @@ Hybrid search (BM25 + vector).
 
 ```
 Query: "database optimization"
+intent: "postgres query latency and indexing"
+candidateLimit: 12
 since: "last month"
 until: "today"
 categories: ["backend", "notes"]
@@ -563,9 +565,15 @@ When `queryModes` is provided, GNO uses those entries directly:
 - `hyde`: hypothetical passage for vector retrieval
 - Validation: `text` is trimmed and must be non-empty; at most one `hyde` entry is allowed
 
+Optional steering controls:
+
+- `intent`: disambiguating context for ambiguous queries. It steers expansion, reranking, and snippet selection without being searched directly.
+- `candidateLimit`: max candidates sent to reranking. Lower it for faster responses on CPU-heavy or low-memory setups.
+
 **Migration notes (retrieval v2):**
 
 - Existing `gno_query` calls remain valid with no payload changes required.
+- `intent` is complementary to `queryModes`: use intent for background context, `queryModes` for caller-supplied lexical/semantic expansions.
 - `queryModes` is optional and only needed when your client wants explicit retrieval intent control.
 - If `queryModes` is set, generated expansion is skipped for that query and the provided entries are used directly.
 

@@ -224,6 +224,7 @@ function wireSearchCommands(program: Command): void {
     )
     .option("--category <values>", "require category match (comma-separated)")
     .option("--author <text>", "filter by author (case-insensitive contains)")
+    .option("--intent <text>", "disambiguating context for ambiguous queries")
     .option("--tags-all <tags>", "require ALL tags (comma-separated)")
     .option("--tags-any <tags>", "require ANY tag (comma-separated)")
     .option("--full", "include full content")
@@ -280,6 +281,7 @@ function wireSearchCommands(program: Command): void {
         until: cmdOpts.until as string | undefined,
         categories,
         author: cmdOpts.author as string | undefined,
+        intent: cmdOpts.intent as string | undefined,
         tagsAll,
         tagsAny,
         full: Boolean(cmdOpts.full),
@@ -329,6 +331,7 @@ function wireSearchCommands(program: Command): void {
     )
     .option("--category <values>", "require category match (comma-separated)")
     .option("--author <text>", "filter by author (case-insensitive contains)")
+    .option("--intent <text>", "disambiguating context for ambiguous queries")
     .option("--tags-all <tags>", "require ALL tags (comma-separated)")
     .option("--tags-any <tags>", "require ANY tag (comma-separated)")
     .option("--full", "include full content")
@@ -385,6 +388,7 @@ function wireSearchCommands(program: Command): void {
         until: cmdOpts.until as string | undefined,
         categories,
         author: cmdOpts.author as string | undefined,
+        intent: cmdOpts.intent as string | undefined,
         tagsAll,
         tagsAny,
         full: Boolean(cmdOpts.full),
@@ -429,6 +433,7 @@ function wireSearchCommands(program: Command): void {
     )
     .option("--category <values>", "require category match (comma-separated)")
     .option("--author <text>", "filter by author (case-insensitive contains)")
+    .option("--intent <text>", "disambiguating context for ambiguous queries")
     .option("--tags-all <tags>", "require ALL tags (comma-separated)")
     .option("--tags-any <tags>", "require ANY tag (comma-separated)")
     .option("--full", "include full content")
@@ -443,6 +448,7 @@ function wireSearchCommands(program: Command): void {
       (value: string, previous: string[] = []) => [...previous, value],
       []
     )
+    .option("-C, --candidate-limit <num>", "max candidates passed to reranking")
     .option("--explain", "include scoring explanation")
     .option("--json", "JSON output")
     .option("--md", "Markdown output")
@@ -495,6 +501,9 @@ function wireSearchCommands(program: Command): void {
       const limit = cmdOpts.limit
         ? parsePositiveInt("limit", cmdOpts.limit)
         : getDefaultLimit(format);
+      const candidateLimit = cmdOpts.candidateLimit
+        ? parsePositiveInt("candidate-limit", cmdOpts.candidateLimit)
+        : undefined;
       const categories = parseCsvValues(cmdOpts.category);
 
       // Determine expansion/rerank settings based on flags
@@ -531,12 +540,14 @@ function wireSearchCommands(program: Command): void {
         until: cmdOpts.until as string | undefined,
         categories,
         author: cmdOpts.author as string | undefined,
+        intent: cmdOpts.intent as string | undefined,
         tagsAll,
         tagsAny,
         full: Boolean(cmdOpts.full),
         lineNumbers: Boolean(cmdOpts.lineNumbers),
         noExpand,
         noRerank,
+        candidateLimit,
         queryModes,
         explain: Boolean(cmdOpts.explain),
         json: format === "json",
@@ -574,8 +585,10 @@ function wireSearchCommands(program: Command): void {
     )
     .option("--category <values>", "require category match (comma-separated)")
     .option("--author <text>", "filter by author (case-insensitive contains)")
+    .option("--intent <text>", "disambiguating context for ambiguous queries")
     .option("--fast", "skip expansion and reranking (fastest)")
     .option("--thorough", "enable query expansion (slower)")
+    .option("-C, --candidate-limit <num>", "max candidates passed to reranking")
     .option("--answer", "generate short grounded answer")
     .option("--no-answer", "force retrieval-only output")
     .option("--max-answer-tokens <num>", "max answer tokens")
@@ -594,6 +607,9 @@ function wireSearchCommands(program: Command): void {
       const limit = cmdOpts.limit
         ? parsePositiveInt("limit", cmdOpts.limit)
         : getDefaultLimit(format);
+      const candidateLimit = cmdOpts.candidateLimit
+        ? parsePositiveInt("candidate-limit", cmdOpts.candidateLimit)
+        : undefined;
 
       // Parse max-answer-tokens (optional, defaults to 512 in command impl)
       const maxAnswerTokens = cmdOpts.maxAnswerTokens
@@ -624,8 +640,10 @@ function wireSearchCommands(program: Command): void {
         until: cmdOpts.until as string | undefined,
         categories,
         author: cmdOpts.author as string | undefined,
+        intent: cmdOpts.intent as string | undefined,
         noExpand,
         noRerank,
+        candidateLimit,
         // Per spec: --answer defaults to false, --no-answer forces retrieval-only
         // Commander creates separate cmdOpts.noAnswer for --no-answer flag
         answer: Boolean(cmdOpts.answer),

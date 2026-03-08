@@ -214,6 +214,15 @@
           "type": "boolean",
           "description": "Whether vector search was used"
         },
+        "intent": {
+          "type": "string",
+          "description": "Disambiguating context used to steer retrieval without being searched directly"
+        },
+        "candidateLimit": {
+          "type": "integer",
+          "description": "Max candidates sent to reranking (if applicable)",
+          "minimum": 1
+        },
         "answerGenerated": {
           "type": "boolean",
           "description": "Whether an answer was generated"

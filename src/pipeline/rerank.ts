@@ -9,6 +9,10 @@ import type { RerankPort } from "../llm/types";
 import type { ChunkRow, StorePort } from "../store/types";
 import type { BlendingTier, FusionCandidate, RerankedCandidate } from "./types";
 
+import {
+  buildIntentAwareRerankQuery,
+  selectBestChunkForSteering,
+} from "./intent";
 import { DEFAULT_BLENDING_SCHEDULE } from "./types";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -20,6 +24,8 @@ export interface RerankOptions {
   maxCandidates?: number;
   /** Blending schedule */
   blendingSchedule?: BlendingTier[];
+  /** Optional disambiguating context for reranking */
+  intent?: string;
 }
 
 export interface RerankResult {
@@ -75,27 +81,6 @@ function blend(
 const MAX_CHUNK_CHARS = 4000;
 const PROTECT_BM25_TOP_RANK = 1;
 
-interface BestChunkInfo {
-  candidate: FusionCandidate;
-  seq: number;
-}
-
-/**
- * Extract best chunk per document for efficient reranking.
- */
-function selectBestChunks(
-  toRerank: FusionCandidate[]
-): Map<string, BestChunkInfo> {
-  const bestChunkPerDoc = new Map<string, BestChunkInfo>();
-  for (const c of toRerank) {
-    const existing = bestChunkPerDoc.get(c.mirrorHash);
-    if (!existing || c.fusionScore > existing.candidate.fusionScore) {
-      bestChunkPerDoc.set(c.mirrorHash, { candidate: c, seq: c.seq });
-    }
-  }
-  return bestChunkPerDoc;
-}
-
 function isProtectedLexicalTopHit(candidate: FusionCandidate): boolean {
   return (
     candidate.bm25Rank === PROTECT_BM25_TOP_RANK &&
@@ -108,31 +93,50 @@ function isProtectedLexicalTopHit(candidate: FusionCandidate): boolean {
  */
 async function fetchChunkTexts(
   store: StorePort,
-  bestChunkPerDoc: Map<string, BestChunkInfo>
+  toRerank: FusionCandidate[],
+  query: string,
+  intent: string | undefined
 ): Promise<{ texts: string[]; hashToIndex: Map<string, number> }> {
-  const uniqueHashes = [...bestChunkPerDoc.keys()];
+  const uniqueHashes = [
+    ...new Set(toRerank.map((candidate) => candidate.mirrorHash)),
+  ];
   const chunksBatchResult = await store.getChunksBatch(uniqueHashes);
   const chunksByHash: Map<string, ChunkRow[]> = chunksBatchResult.ok
     ? chunksBatchResult.value
     : new Map();
-  const chunkTexts = new Map<string, string>();
+  const preferredSeqByHash = new Map<string, number>();
 
-  for (const hash of uniqueHashes) {
-    const bestInfo = bestChunkPerDoc.get(hash);
-    const chunks = chunksByHash.get(hash);
-
-    if (chunks && bestInfo) {
-      const chunk = chunks.find((c) => c.seq === bestInfo.seq);
-      const text = chunk?.text ?? "";
-      chunkTexts.set(
-        hash,
-        text.length > MAX_CHUNK_CHARS
-          ? `${text.slice(0, MAX_CHUNK_CHARS)}...`
-          : text
+  for (const candidate of toRerank) {
+    const existingSeq = preferredSeqByHash.get(candidate.mirrorHash);
+    if (existingSeq !== undefined) {
+      const existingCandidate = toRerank.find(
+        (entry) =>
+          entry.mirrorHash === candidate.mirrorHash && entry.seq === existingSeq
       );
-    } else {
-      chunkTexts.set(hash, "");
+      if (
+        existingCandidate &&
+        existingCandidate.fusionScore >= candidate.fusionScore
+      ) {
+        continue;
+      }
     }
+    preferredSeqByHash.set(candidate.mirrorHash, candidate.seq);
+  }
+
+  const chunkTexts = new Map<string, string>();
+  for (const hash of uniqueHashes) {
+    const chunks = chunksByHash.get(hash);
+    const bestChunk = selectBestChunkForSteering(chunks ?? [], query, intent, {
+      preferredSeq: preferredSeqByHash.get(hash) ?? null,
+      intentWeight: 0.5,
+    });
+    const text = bestChunk?.text ?? "";
+    chunkTexts.set(
+      hash,
+      text.length > MAX_CHUNK_CHARS
+        ? `${text.slice(0, MAX_CHUNK_CHARS)}...`
+        : text
+    );
   }
 
   const hashToIndex = new Map<string, number>();
@@ -198,11 +202,40 @@ export async function rerankCandidates(
   const remaining = candidates.slice(maxCandidates);
 
   // Extract best chunk per document for efficient reranking
-  const bestChunkPerDoc = selectBestChunks(toRerank);
-  const { texts, hashToIndex } = await fetchChunkTexts(store, bestChunkPerDoc);
+  const { texts, hashToIndex } = await fetchChunkTexts(
+    store,
+    toRerank,
+    query,
+    options.intent
+  );
+
+  const uniqueTexts: string[] = [];
+  const docIndexToUniqueIndex = new Map<number, number>();
+  const uniqueIndexToDocIndices = new Map<number, number[]>();
+  const textToUniqueIndex = new Map<string, number>();
+
+  for (const [docIndex, text] of texts.entries()) {
+    const existingIndex = textToUniqueIndex.get(text);
+    if (existingIndex !== undefined) {
+      docIndexToUniqueIndex.set(docIndex, existingIndex);
+      const mapped = uniqueIndexToDocIndices.get(existingIndex) ?? [];
+      mapped.push(docIndex);
+      uniqueIndexToDocIndices.set(existingIndex, mapped);
+      continue;
+    }
+
+    const uniqueIndex = uniqueTexts.length;
+    uniqueTexts.push(text);
+    textToUniqueIndex.set(text, uniqueIndex);
+    docIndexToUniqueIndex.set(docIndex, uniqueIndex);
+    uniqueIndexToDocIndices.set(uniqueIndex, [docIndex]);
+  }
 
   // Run reranking on best chunks (much faster than full docs)
-  const rerankResult = await rerankPort.rerank(query, texts);
+  const rerankResult = await rerankPort.rerank(
+    buildIntentAwareRerankQuery(query, options.intent),
+    uniqueTexts
+  );
 
   if (!rerankResult.ok) {
     return {
@@ -217,9 +250,13 @@ export async function rerankCandidates(
   }
 
   // Normalize rerank scores using min-max
-  const scoreByDocIndex = new Map(
-    rerankResult.value.map((s) => [s.index, s.score])
-  );
+  const scoreByDocIndex = new Map<number, number>();
+  for (const score of rerankResult.value) {
+    const docIndices = uniqueIndexToDocIndices.get(score.index) ?? [];
+    for (const docIndex of docIndices) {
+      scoreByDocIndex.set(docIndex, score.score);
+    }
+  }
   const rerankScores = rerankResult.value.map((s) => s.score);
   const minRerank = Math.min(...rerankScores);
   const maxRerank = Math.max(...rerankScores);

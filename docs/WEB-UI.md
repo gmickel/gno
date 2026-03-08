@@ -79,7 +79,7 @@ Choose retrieval mode:
 
 ### 5. Ask Questions
 
-Click **Ask** for AI-powered answers. Use **Advanced Retrieval** to scope by collection/date/category/author/tags, then ask your question.
+Click **Ask** for AI-powered answers. Use **Advanced Retrieval** to scope by collection/date/category/author/tags and add optional `intent` / candidate-limit controls for ambiguous questions.
 
 > **Note**: Models auto-download on first use. Cold start can take longer on first launch while local models download. For instant startup, set `GNO_NO_AUTO_DOWNLOAD=1` and download explicitly with `gno models pull`.
 

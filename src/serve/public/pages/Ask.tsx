@@ -164,6 +164,8 @@ export default function Ask({ navigate }: PageProps) {
 
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [selectedCollection, setSelectedCollection] = useState("");
+  const [intent, setIntent] = useState("");
+  const [candidateLimit, setCandidateLimit] = useState("");
   const [since, setSince] = useState("");
   const [until, setUntil] = useState("");
   const [category, setCategory] = useState("");
@@ -242,6 +244,12 @@ export default function Ask({ navigate }: PageProps) {
       if (selectedCollection) {
         requestBody.collection = selectedCollection;
       }
+      if (intent.trim()) {
+        requestBody.intent = intent.trim();
+      }
+      if (candidateLimit.trim()) {
+        requestBody.candidateLimit = Number(candidateLimit);
+      }
       if (since) {
         requestBody.since = since;
       }
@@ -295,7 +303,9 @@ export default function Ask({ navigate }: PageProps) {
     },
     [
       author,
+      candidateLimit,
       category,
+      intent,
       query,
       selectedCollection,
       since,
@@ -315,6 +325,8 @@ export default function Ask({ navigate }: PageProps) {
 
   const clearFilters = () => {
     setSelectedCollection("");
+    setIntent("");
+    setCandidateLimit("");
     setSince("");
     setUntil("");
     setCategory("");
@@ -327,6 +339,8 @@ export default function Ask({ navigate }: PageProps) {
 
   const activeFilterPills = [
     selectedCollection ? `collection:${selectedCollection}` : null,
+    intent.trim() ? `intent:${intent.trim()}` : null,
+    candidateLimit.trim() ? `candidates:${candidateLimit.trim()}` : null,
     since ? `since:${since}` : null,
     until ? `until:${until}` : null,
     category.trim() ? `category:${category.trim()}` : null,
@@ -441,6 +455,17 @@ export default function Ask({ navigate }: PageProps) {
                       />
                     </div>
 
+                    <div className="md:col-span-2">
+                      <p className="mb-1 text-muted-foreground text-xs">
+                        Intent
+                      </p>
+                      <Input
+                        onChange={(e) => setIntent(e.target.value)}
+                        placeholder="Disambiguate ambiguous questions without searching on this text"
+                        value={intent}
+                      />
+                    </div>
+
                     <div>
                       <p className="mb-1 text-muted-foreground text-xs">
                         Category
@@ -473,6 +498,20 @@ export default function Ask({ navigate }: PageProps) {
                           value={until}
                         />
                       </div>
+                    </div>
+
+                    <div>
+                      <p className="mb-1 text-muted-foreground text-xs">
+                        Candidate limit
+                      </p>
+                      <Input
+                        inputMode="numeric"
+                        min="1"
+                        onChange={(e) => setCandidateLimit(e.target.value)}
+                        placeholder="20"
+                        type="number"
+                        value={candidateLimit}
+                      />
                     </div>
 
                     <div className="md:col-span-2">

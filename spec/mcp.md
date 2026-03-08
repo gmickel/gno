@@ -223,6 +223,10 @@ Vector semantic search over indexed documents.
       "type": "string",
       "description": "Language hint for query (BCP-47 code)"
     },
+    "intent": {
+      "type": "string",
+      "description": "Optional disambiguating context for ambiguous queries"
+    },
     "since": {
       "type": "string",
       "description": "Modified-at lower bound (ISO date/time or relative token)"
@@ -297,6 +301,16 @@ Hybrid search combining BM25 and vector retrieval with optional expansion and re
     "lang": {
       "type": "string",
       "description": "Language hint for query (BCP-47 code)"
+    },
+    "intent": {
+      "type": "string",
+      "description": "Optional disambiguating context for ambiguous queries"
+    },
+    "candidateLimit": {
+      "type": "integer",
+      "description": "Maximum candidates sent to reranking (1-100)",
+      "minimum": 1,
+      "maximum": 100
     },
     "since": {
       "type": "string",
@@ -375,6 +389,8 @@ Validation note: `queryModes[].text` is trimmed and must remain non-empty; only 
 Compatibility / migration notes:
 
 - Existing `gno_query` tool calls remain valid without `queryModes`.
+- `intent` is orthogonal to `queryModes`: intent steers scoring/prompting, while query modes inject caller-provided retrieval expansions.
+- `candidateLimit` tunes rerank cost without changing retrieval contracts.
 - `queryModes` is optional; use it only when clients need explicit retrieval intent control.
 - When `queryModes` is present, generated expansion is skipped and provided entries are used directly.
 

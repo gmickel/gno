@@ -17,6 +17,7 @@ import type {
 
 import { err, ok } from "../store/types";
 import { createChunkLookup } from "./chunk-lookup";
+import { selectBestChunkForSteering } from "./intent";
 import { detectQueryLanguage } from "./query-language";
 import {
   resolveRecencyTimestamp,
@@ -218,9 +219,23 @@ export async function searchBm25(
     seenUriSeq.add(uriSeqKey);
 
     // Get chunk via O(1) lookup
-    const chunk = fts.mirrorHash
+    const rawChunk = fts.mirrorHash
       ? (getChunk(fts.mirrorHash, fts.seq) ?? null)
       : null;
+    const chunk =
+      options.intent && fts.mirrorHash
+        ? (selectBestChunkForSteering(
+            chunksMapResult.ok
+              ? (chunksMapResult.value.get(fts.mirrorHash) ?? [])
+              : [],
+            query,
+            options.intent,
+            {
+              preferredSeq: rawChunk?.seq ?? fts.seq,
+              intentWeight: 0.3,
+            }
+          ) ?? rawChunk)
+        : rawChunk;
 
     // For --full, de-dupe by docid (keep best scoring chunk per doc)
     // Raw BM25: smaller (more negative) is better
@@ -293,6 +308,7 @@ export async function searchBm25(
       query,
       mode: "bm25",
       totalResults: Math.min(filteredResults.length, limit),
+      intent: options.intent,
       collection: options.collection,
       lang: options.lang,
       since: temporalRange.since,

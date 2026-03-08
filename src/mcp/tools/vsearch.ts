@@ -28,6 +28,7 @@ interface VsearchInput {
   limit?: number;
   minScore?: number;
   lang?: string;
+  intent?: string;
   since?: string;
   until?: string;
   categories?: string[];
@@ -192,6 +193,7 @@ export function handleVsearch(
             limit: args.limit ?? 5,
             minScore: args.minScore,
             collection: args.collection,
+            intent: args.intent,
             since: args.since,
             until: args.until,
             categories: args.categories,

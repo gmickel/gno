@@ -192,6 +192,7 @@ export async function ask(
       limit,
       collection: options.collection,
       lang: options.lang,
+      intent: options.intent,
       since: options.since,
       until: options.until,
       categories: options.categories,
@@ -200,6 +201,7 @@ export async function ask(
       tagsAny: options.tagsAny,
       noExpand: options.noExpand,
       noRerank: options.noRerank,
+      candidateLimit: options.candidateLimit,
     });
 
     if (!searchResult.ok) {
@@ -258,6 +260,8 @@ export async function ask(
         expanded: searchResult.value.meta.expanded ?? false,
         reranked: searchResult.value.meta.reranked ?? false,
         vectorsUsed: searchResult.value.meta.vectorsUsed ?? false,
+        intent: searchResult.value.meta.intent,
+        candidateLimit: searchResult.value.meta.candidateLimit,
         answerGenerated,
         totalResults: results.length,
         answerContext,

@@ -285,6 +285,7 @@ llama-server -m model.gguf --host 0.0.0.0 --port 8083
 models:
   loadTimeout: 60000 # Model load timeout (ms)
   inferenceTimeout: 30000 # Inference timeout (ms)
+  expandContextSize: 2048 # Context window used for query expansion generation
   warmModelTtl: 300000 # Keep-warm duration (ms)
 ```
 

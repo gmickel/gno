@@ -54,6 +54,8 @@ export interface GenParams {
   seed?: number;
   /** Max tokens to generate. Default: 256 */
   maxTokens?: number;
+  /** Optional context size override for the generation context */
+  contextSize?: number;
   /** Stop sequences */
   stop?: string[];
 }

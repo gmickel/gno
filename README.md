@@ -32,7 +32,14 @@ GNO is a local knowledge engine that turns your documents into a searchable, con
 
 ---
 
-## What's New in v0.17
+## What's New in v0.18
+
+- **Intent Steering**: optional `intent` control for ambiguous queries across CLI, API, Web, and MCP query flows
+- **Rerank Controls**: `candidateLimit` lets you tune rerank cost vs. recall on slower or memory-constrained machines
+- **Stability**: query expansion now uses a bounded configurable context size (`models.expandContextSize`, default `2048`)
+- **Rerank Efficiency**: identical chunk texts are deduplicated before scoring and expanded back out deterministically
+
+### v0.17
 
 - **Structured Query Modes**: `term`, `intent`, and `hyde` controls across CLI, API, MCP, and Web
 - **Temporal Retrieval Upgrades**: `since`/`until`, date-range parsing, and recency sorting with frontmatter-date fallback
@@ -154,6 +161,7 @@ gno search "handleAuth"              # Find exact matches
 gno vsearch "error handling patterns" # Semantic similarity
 gno query "database optimization"    # Full pipeline
 gno query "meeting decisions" --since "last month" --category "meeting,notes" --author "gordon"
+gno query "performance" --intent "web performance and latency"
 gno ask "what did we decide" --answer # AI synthesis
 ```
 
@@ -169,6 +177,8 @@ gno query "auth flow" --thorough
 
 # Structured retrieval intent
 gno query "auth flow" \
+  --intent "web authentication and token lifecycle" \
+  --candidate-limit 12 \
   --query-mode term:"jwt refresh token -oauth1" \
   --query-mode intent:"how refresh token rotation works" \
   --query-mode hyde:"Refresh tokens rotate on each use and previous tokens are revoked." \

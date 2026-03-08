@@ -13,6 +13,7 @@ describe("gno_search schema", () => {
     limit: z.number().int().min(1).max(100).default(5),
     minScore: z.number().min(0).max(1).optional(),
     lang: z.string().optional(),
+    intent: z.string().optional(),
     since: z.string().optional(),
     until: z.string().optional(),
     categories: z.array(z.string()).optional(),
@@ -91,6 +92,14 @@ describe("gno_search schema", () => {
       query: "test",
       tagsAll: ["important"],
       tagsAny: ["work", "personal"],
+    });
+    expect(result.success).toBe(true);
+  });
+
+  test("search input accepts intent", () => {
+    const result = searchInputSchema.safeParse({
+      query: "performance",
+      intent: "web latency and vitals",
     });
     expect(result.success).toBe(true);
   });
