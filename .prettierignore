@@ -1,0 +1,7 @@
+# Generated asset shipped in npm package; source lives in globals.css.
+src/serve/public/globals.built.css
+
+# Repo-local agent scratch space; untracked and user-specific.
+.agents/
+.claude/
+skills-lock.json
