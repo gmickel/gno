@@ -608,6 +608,12 @@ function wireSearchCommands(program: Command): void {
       "--exclude <values>",
       "exclude docs containing any term (comma-separated)"
     )
+    .option(
+      "--query-mode <mode:text>",
+      "structured mode entry (repeatable): term:<text>, intent:<text>, or hyde:<text>",
+      (value: string, previous: string[] = []) => [...previous, value],
+      []
+    )
     .option("--fast", "skip expansion and reranking (fastest)")
     .option("--thorough", "enable query expansion (slower)")
     .option("-C, --candidate-limit <num>", "max candidates passed to reranking")
@@ -640,6 +646,16 @@ function wireSearchCommands(program: Command): void {
       const categories = parseCsvValues(cmdOpts.category);
       const exclude = parseCsvValues(cmdOpts.exclude);
 
+      let queryModes: import("../pipeline/types").QueryModeInput[] | undefined;
+      if (Array.isArray(cmdOpts.queryMode) && cmdOpts.queryMode.length > 0) {
+        const { parseQueryModeSpecs } = await import("../pipeline/query-modes");
+        const parsed = parseQueryModeSpecs(cmdOpts.queryMode as string[]);
+        if (!parsed.ok) {
+          throw new CliError("VALIDATION", parsed.error.message);
+        }
+        queryModes = parsed.value;
+      }
+
       // Determine expansion/rerank settings based on flags
       // Default: skip expansion (balanced mode)
       let noExpand = true;
@@ -665,6 +681,7 @@ function wireSearchCommands(program: Command): void {
         author: cmdOpts.author as string | undefined,
         intent: cmdOpts.intent as string | undefined,
         exclude,
+        queryModes,
         noExpand,
         noRerank,
         candidateLimit,

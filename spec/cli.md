@@ -611,26 +611,27 @@ Human-friendly query with citations-first output and optional grounded answer.
 **Synopsis:**
 
 ```bash
-gno ask <query> [-n <num>] [-c <collection>] [--lang <bcp47>] [--since <date>] [--until <date>] [--category <values>] [--author <text>] [--intent <text>] [--exclude <values>] [-C <num>] [--answer] [--no-answer] [--max-answer-tokens <n>] [--no-expand] [--no-rerank] [--show-sources] [--json|--md]
+gno ask <query> [-n <num>] [-c <collection>] [--lang <bcp47>] [--since <date>] [--until <date>] [--category <values>] [--author <text>] [--intent <text>] [--exclude <values>] [--query-mode <mode:text>]... [-C <num>] [--answer] [--no-answer] [--max-answer-tokens <n>] [--no-expand] [--no-rerank] [--show-sources] [--json|--md]
 ```
 
 **Options:**
 
-| Option                  | Type    | Default | Description                                                                   |
-| ----------------------- | ------- | ------- | ----------------------------------------------------------------------------- |
-| `--answer`              | boolean | false   | Generate short grounded answer                                                |
-| `--no-answer`           | boolean | false   | Force retrieval-only output                                                   |
-| `--max-answer-tokens`   | integer | config  | Cap answer generation tokens                                                  |
-| `--since`               | string  | none    | Modified-at lower bound (ISO date/time or relative token)                     |
-| `--until`               | string  | none    | Modified-at upper bound (ISO date/time or relative token)                     |
-| `--category`            | string  | none    | Filter to docs with matching category/content type (comma-separated)          |
-| `--author`              | string  | none    | Filter to docs where author contains value (case-insensitive)                 |
-| `--intent`              | string  | none    | Disambiguating context for ambiguous questions without searching on that text |
-| `--exclude`             | string  | none    | Hard-prune docs containing any comma-separated term in title/path/body        |
-| `-C, --candidate-limit` | integer | 20      | Max candidates passed to reranking                                            |
-| `--no-expand`           | boolean | false   | Disable query expansion                                                       |
-| `--no-rerank`           | boolean | false   | Disable cross-encoder reranking                                               |
-| `--show-sources`        | boolean | false   | Show all retrieved sources (not just cited)                                   |
+| Option                  | Type     | Default | Description                                                                        |
+| ----------------------- | -------- | ------- | ---------------------------------------------------------------------------------- |
+| `--answer`              | boolean  | false   | Generate short grounded answer                                                     |
+| `--no-answer`           | boolean  | false   | Force retrieval-only output                                                        |
+| `--max-answer-tokens`   | integer  | config  | Cap answer generation tokens                                                       |
+| `--since`               | string   | none    | Modified-at lower bound (ISO date/time or relative token)                          |
+| `--until`               | string   | none    | Modified-at upper bound (ISO date/time or relative token)                          |
+| `--category`            | string   | none    | Filter to docs with matching category/content type (comma-separated)               |
+| `--author`              | string   | none    | Filter to docs where author contains value (case-insensitive)                      |
+| `--intent`              | string   | none    | Disambiguating context for ambiguous questions without searching on that text      |
+| `--exclude`             | string   | none    | Hard-prune docs containing any comma-separated term in title/path/body             |
+| `--query-mode`          | string[] | none    | Structured mode entry (`term:<text>`, `intent:<text>`, `hyde:<text>`). Repeatable. |
+| `-C, --candidate-limit` | integer  | 20      | Max candidates passed to reranking                                                 |
+| `--no-expand`           | boolean  | false   | Disable query expansion                                                            |
+| `--no-rerank`           | boolean  | false   | Disable cross-encoder reranking                                                    |
+| `--show-sources`        | boolean  | false   | Show all retrieved sources (not just cited)                                        |
 
 **Output (JSON):**
 See [Output Schemas](./output-schemas/ask.schema.json)

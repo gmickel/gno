@@ -55,6 +55,35 @@ describe("ask command", () => {
       expect(parsed.meta.expanded).toBe(true);
     });
 
+    test("formats JSON with query mode summary when present", () => {
+      const result = {
+        success: true as const,
+        data: createAskResult({
+          meta: {
+            expanded: true,
+            reranked: true,
+            vectorsUsed: true,
+            answerGenerated: false,
+            totalResults: 1,
+            queryModes: {
+              term: 1,
+              intent: 1,
+              hyde: false,
+            },
+          },
+        }),
+      };
+
+      const output = formatAsk(result, { json: true });
+      const parsed = JSON.parse(output);
+
+      expect(parsed.meta.queryModes).toEqual({
+        term: 1,
+        intent: 1,
+        hyde: false,
+      });
+    });
+
     test("formats JSON with answer and citations", () => {
       const result = {
         success: true as const,
@@ -105,7 +134,7 @@ describe("ask command", () => {
 
     test("formats terminal output with sources", () => {
       const result = { success: true as const, data: createAskResult() };
-      const output = formatAsk(result, {});
+      const output = formatAsk(result, { json: false, md: false });
 
       expect(output).toContain("Sources");
       expect(output).toContain("#a1b2c3d4");
@@ -119,7 +148,7 @@ describe("ask command", () => {
           answer: "Here is the answer to your question.",
         }),
       };
-      const output = formatAsk(result, {});
+      const output = formatAsk(result, { json: false, md: false });
 
       expect(output).toContain("Answer");
       expect(output).toContain("Here is the answer to your question.");
@@ -139,7 +168,7 @@ describe("ask command", () => {
         data: createAskResult({ results: [] }),
       };
 
-      const terminal = formatAsk(result, {});
+      const terminal = formatAsk(result, { json: false, md: false });
       expect(terminal).toContain("No relevant sources");
 
       const json = formatAsk(result, { json: true });
@@ -158,7 +187,7 @@ describe("ask command", () => {
 
     test("formats error correctly in terminal", () => {
       const result = { success: false as const, error: "Generation failed" };
-      const output = formatAsk(result, {});
+      const output = formatAsk(result, { json: false, md: false });
 
       expect(output).toContain("Error:");
       expect(output).toContain("Generation failed");
