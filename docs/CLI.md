@@ -193,6 +193,7 @@ gno ask "explain the auth flow" --answer --show-sources
 gno ask "quick lookup" --fast            # Fastest retrieval
 gno ask "complex topic" --thorough       # Best recall
 gno ask "performance" --intent "web latency and vitals"
+gno ask "performance" --query-mode term:"web performance budgets" --query-mode intent:"latency and vitals" --no-answer
 ```
 
 **Full-document context**: When `--answer` is used, GNO passes complete document content to the generation model, not truncated snippets. This ensures the LLM sees tables, code examples, and full context needed for accurate answers.
@@ -207,6 +208,7 @@ Options:
 - `--thorough` - Enable query expansion (slower, better recall)
 - `--intent <text>` - Disambiguating context for ambiguous questions without searching on that text
 - `--exclude <values>` - Hard-prune docs containing any comma-separated term in title/path/body
+- `--query-mode <mode:text>` - Structured expansion hints; repeat for multiple entries. Modes: `term`, `intent`, `hyde`
 - `-C, --candidate-limit <n>` - Max candidates passed to reranking (default: 20)
 - `--answer` - Generate grounded AI answer (requires gen model)
 - `--no-answer` - Force retrieval-only output
@@ -219,6 +221,7 @@ Options:
 - `--author <text>` - Author contains text (case-insensitive)
 
 JSON output includes `meta.answerContext` with selected/dropped source explain details.
+JSON output also includes `meta.queryModes` when structured query modes are supplied.
 
 - `-c, --collection <name>` - Filter by collection
 - `--lang <code>` - Language hint (BCP-47)

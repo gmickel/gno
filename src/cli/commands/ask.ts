@@ -200,6 +200,7 @@ export async function ask(
       tagsAll: options.tagsAll,
       tagsAny: options.tagsAny,
       exclude: options.exclude,
+      queryModes: options.queryModes,
       noExpand: options.noExpand,
       noRerank: options.noRerank,
       candidateLimit: options.candidateLimit,

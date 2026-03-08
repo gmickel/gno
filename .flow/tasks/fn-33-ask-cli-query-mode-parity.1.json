@@ -1,0 +1,14 @@
+{
+  "assignee": null,
+  "claim_note": "",
+  "claimed_at": null,
+  "created_at": "2026-03-08T19:37:51.308798Z",
+  "depends_on": [],
+  "epic": "fn-33-ask-cli-query-mode-parity",
+  "id": "fn-33-ask-cli-query-mode-parity.1",
+  "priority": 1,
+  "spec_path": ".flow/tasks/fn-33-ask-cli-query-mode-parity.1.md",
+  "status": "todo",
+  "title": "Add query mode support to gno ask CLI",
+  "updated_at": "2026-03-08T19:37:51.308968Z"
+}
