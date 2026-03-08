@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+## [0.21.0] - 2026-03-08
+
+### Added
+
+- CLI `gno ask --query-mode` parity with existing Ask API and Web support, including structured mode validation and JSON metadata output.
+
 ## [0.20.0] - 2026-03-08
 
 ### Changed

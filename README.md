@@ -32,7 +32,15 @@ GNO is a local knowledge engine that turns your documents into a searchable, con
 
 ---
 
-## What's New in v0.19
+## What's New in v0.21
+
+- **Ask CLI Query Modes**: `gno ask` now accepts repeatable `--query-mode term|intent|hyde` entries, matching the existing Ask API and Web controls
+
+### v0.20
+
+- **Improved Model Init Fallbacks**: upgraded `node-llama-cpp` to `3.17.1` and switched to `build: "autoAttempt"` for better backend selection/fallback behavior
+
+### v0.19
 
 - **Exclusion Filters**: explicit `exclude` controls across CLI, API, Web, and MCP to hard-prune unwanted docs by title/path/body text
 - **Ask Query-Mode Parity**: Ask now supports structured `term` / `intent` / `hyde` controls in both API and Web UI
