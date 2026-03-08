@@ -1,0 +1,13 @@
+{
+  "branch_name": "feat/node-llama-cpp-upgrade",
+  "created_at": "2026-03-08T14:52:44.921727Z",
+  "depends_on_epics": [],
+  "id": "fn-32-upgrade-node-llama-cpp-to-autoattempt",
+  "next_task": 1,
+  "plan_review_status": "unknown",
+  "plan_reviewed_at": null,
+  "spec_path": ".flow/specs/fn-32-upgrade-node-llama-cpp-to-autoattempt.md",
+  "status": "open",
+  "title": "Upgrade node-llama-cpp to autoAttempt build path",
+  "updated_at": "2026-03-08T14:52:56.356149Z"
+}
