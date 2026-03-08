@@ -49,7 +49,10 @@ export class ModelManager {
     if (!this.llama) {
       const { getLlama, LlamaLogLevel } = await import("node-llama-cpp");
       // Suppress model loading warnings (vocab tokens, pooling type)
-      this.llama = await getLlama({ logLevel: LlamaLogLevel.error });
+      this.llama = await getLlama({
+        build: "autoAttempt",
+        logLevel: LlamaLogLevel.error,
+      });
     }
     return this.llama;
   }
