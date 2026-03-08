@@ -203,4 +203,28 @@ describe("hybrid intent steering", () => {
     expect(withIntent.value.meta.expanded).toBe(true);
     expect(generateCalls).toBe(1);
   });
+
+  test("exclude terms hard-prune matching candidates", async () => {
+    const result = await searchHybrid(
+      {
+        store: createStore() as never,
+        config,
+        vectorIndex: null,
+        embedPort: null,
+        genPort: null,
+        rerankPort: null,
+      },
+      "performance",
+      { exclude: ["reviews"] }
+    );
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      return;
+    }
+
+    expect(result.value.results).toHaveLength(1);
+    expect(result.value.results[0]?.uri).toBe("gno://notes/performance.md");
+    expect(result.value.meta.exclude).toEqual(["reviews"]);
+  });
 });

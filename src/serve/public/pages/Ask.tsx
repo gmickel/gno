@@ -6,6 +6,7 @@ import {
   FileText,
   SlidersHorizontal,
   Sparkles,
+  XIcon,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
@@ -40,7 +41,12 @@ import {
 import { Textarea } from "../components/ui/textarea";
 import { apiFetch } from "../hooks/use-api";
 import { useKeyboardShortcuts } from "../hooks/useKeyboardShortcuts";
-import { parseTagsCsv, type TagMode } from "../lib/retrieval-filters";
+import {
+  parseTagsCsv,
+  type QueryModeEntry,
+  type QueryModeType,
+  type TagMode,
+} from "../lib/retrieval-filters";
 import { cn } from "../lib/utils";
 
 interface PageProps {
@@ -79,6 +85,11 @@ interface AskResponse {
     vectorsUsed: boolean;
     answerGenerated: boolean;
     totalResults: number;
+    queryModes?: {
+      term: number;
+      intent: number;
+      hyde: boolean;
+    };
   };
 }
 
@@ -102,6 +113,12 @@ interface Collection {
 }
 
 const THOROUGHNESS_ORDER: Thoroughness[] = ["fast", "balanced", "thorough"];
+
+const QUERY_MODE_LABEL: Record<QueryModeType, string> = {
+  term: "Term",
+  intent: "Intent",
+  hyde: "HyDE",
+};
 
 /**
  * Render answer text with clickable citation badges.
@@ -166,12 +183,17 @@ export default function Ask({ navigate }: PageProps) {
   const [selectedCollection, setSelectedCollection] = useState("");
   const [intent, setIntent] = useState("");
   const [candidateLimit, setCandidateLimit] = useState("");
+  const [exclude, setExclude] = useState("");
   const [since, setSince] = useState("");
   const [until, setUntil] = useState("");
   const [category, setCategory] = useState("");
   const [author, setAuthor] = useState("");
   const [tagMode, setTagMode] = useState<TagMode>("any");
   const [tagsInput, setTagsInput] = useState("");
+  const [queryModes, setQueryModes] = useState<QueryModeEntry[]>([]);
+  const [queryModeDraft, setQueryModeDraft] = useState<QueryModeType>("term");
+  const [queryModeText, setQueryModeText] = useState("");
+  const [queryModeError, setQueryModeError] = useState<string | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -220,6 +242,28 @@ export default function Ask({ navigate }: PageProps) {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [conversation]);
 
+  const handleAddQueryMode = useCallback(() => {
+    const text = queryModeText.trim();
+    if (!text) {
+      return;
+    }
+    if (
+      queryModeDraft === "hyde" &&
+      queryModes.some((queryMode) => queryMode.mode === "hyde")
+    ) {
+      setQueryModeError("Only one HyDE mode is allowed.");
+      return;
+    }
+    setQueryModes((prev) => [...prev, { mode: queryModeDraft, text }]);
+    setQueryModeText("");
+    setQueryModeError(null);
+  }, [queryModeDraft, queryModeText, queryModes]);
+
+  const handleRemoveQueryMode = useCallback((index: number) => {
+    setQueryModes((prev) => prev.filter((_, i) => i !== index));
+    setQueryModeError(null);
+  }, []);
+
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
       e.preventDefault();
@@ -249,6 +293,9 @@ export default function Ask({ navigate }: PageProps) {
       }
       if (candidateLimit.trim()) {
         requestBody.candidateLimit = Number(candidateLimit);
+      }
+      if (exclude.trim()) {
+        requestBody.exclude = exclude.trim();
       }
       if (since) {
         requestBody.since = since;
@@ -282,6 +329,9 @@ export default function Ask({ navigate }: PageProps) {
         requestBody.noExpand = false;
         requestBody.noRerank = false;
       }
+      if (queryModes.length > 0) {
+        requestBody.queryModes = queryModes;
+      }
 
       const { data, error } = await apiFetch<AskResponse>("/api/ask", {
         method: "POST",
@@ -305,8 +355,10 @@ export default function Ask({ navigate }: PageProps) {
       author,
       candidateLimit,
       category,
+      exclude,
       intent,
       query,
+      queryModes,
       selectedCollection,
       since,
       tagMode,
@@ -327,12 +379,16 @@ export default function Ask({ navigate }: PageProps) {
     setSelectedCollection("");
     setIntent("");
     setCandidateLimit("");
+    setExclude("");
     setSince("");
     setUntil("");
     setCategory("");
     setAuthor("");
     setTagsInput("");
     setTagMode("any");
+    setQueryModes([]);
+    setQueryModeText("");
+    setQueryModeError(null);
   };
 
   const answerAvailable = capabilities?.answer ?? false;
@@ -341,6 +397,8 @@ export default function Ask({ navigate }: PageProps) {
     selectedCollection ? `collection:${selectedCollection}` : null,
     intent.trim() ? `intent:${intent.trim()}` : null,
     candidateLimit.trim() ? `candidates:${candidateLimit.trim()}` : null,
+    exclude.trim() ? `exclude:${exclude.trim()}` : null,
+    queryModes.length > 0 ? `${queryModes.length} query mode(s)` : null,
     since ? `since:${since}` : null,
     until ? `until:${until}` : null,
     category.trim() ? `category:${category.trim()}` : null,
@@ -466,6 +524,17 @@ export default function Ask({ navigate }: PageProps) {
                       />
                     </div>
 
+                    <div className="md:col-span-2">
+                      <p className="mb-1 text-muted-foreground text-xs">
+                        Exclude
+                      </p>
+                      <Input
+                        onChange={(e) => setExclude(e.target.value)}
+                        placeholder="team reviews, hiring, onboarding"
+                        value={exclude}
+                      />
+                    </div>
+
                     <div>
                       <p className="mb-1 text-muted-foreground text-xs">
                         Category
@@ -555,6 +624,75 @@ export default function Ask({ navigate }: PageProps) {
                     >
                       Clear filters
                     </Button>
+                  </div>
+
+                  <div className="space-y-2">
+                    <p className="text-muted-foreground text-xs">
+                      Query modes (term, intent, hyde)
+                    </p>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Select
+                        onValueChange={(value) =>
+                          setQueryModeDraft(value as QueryModeType)
+                        }
+                        value={queryModeDraft}
+                      >
+                        <SelectTrigger className="w-[120px]">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="term">Term</SelectItem>
+                          <SelectItem value="intent">Intent</SelectItem>
+                          <SelectItem value="hyde">HyDE</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Input
+                        className="min-w-[220px] flex-1"
+                        onChange={(e) => setQueryModeText(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            handleAddQueryMode();
+                          }
+                        }}
+                        placeholder="Add query mode text"
+                        value={queryModeText}
+                      />
+                      <Button
+                        onClick={handleAddQueryMode}
+                        size="sm"
+                        type="button"
+                        variant="outline"
+                      >
+                        Add mode
+                      </Button>
+                    </div>
+
+                    {queryModeError && (
+                      <p className="text-destructive text-xs">
+                        {queryModeError}
+                      </p>
+                    )}
+
+                    {queryModes.length > 0 && (
+                      <div className="flex flex-wrap gap-2">
+                        {queryModes.map((queryMode, index) => (
+                          <button
+                            className={cn(
+                              "group inline-flex items-center gap-1 rounded-full border border-primary/30 bg-primary/10",
+                              "px-2.5 py-1 font-mono text-[11px] text-primary transition-all duration-150",
+                              "hover:border-primary/50 hover:bg-primary/20"
+                            )}
+                            key={`${queryMode.mode}:${queryMode.text}:${index}`}
+                            onClick={() => handleRemoveQueryMode(index)}
+                            type="button"
+                          >
+                            <span>{`${QUERY_MODE_LABEL[queryMode.mode]}: ${queryMode.text}`}</span>
+                            <XIcon className="size-3 opacity-60 transition-opacity group-hover:opacity-100" />
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -683,6 +821,17 @@ export default function Ask({ navigate }: PageProps) {
                           expanded
                         </Badge>
                       )}
+                      {entry.response.meta.queryModes &&
+                        (entry.response.meta.queryModes.term > 0 ||
+                          entry.response.meta.queryModes.intent > 0 ||
+                          entry.response.meta.queryModes.hyde) && (
+                          <Badge
+                            className="font-mono text-[9px]"
+                            variant="outline"
+                          >
+                            query modes
+                          </Badge>
+                        )}
                     </div>
 
                     {!entry.response.answer &&

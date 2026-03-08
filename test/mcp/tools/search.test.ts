@@ -14,6 +14,7 @@ describe("gno_search schema", () => {
     minScore: z.number().min(0).max(1).optional(),
     lang: z.string().optional(),
     intent: z.string().optional(),
+    exclude: z.array(z.string()).optional(),
     since: z.string().optional(),
     until: z.string().optional(),
     categories: z.array(z.string()).optional(),
@@ -100,6 +101,7 @@ describe("gno_search schema", () => {
     const result = searchInputSchema.safeParse({
       query: "performance",
       intent: "web latency and vitals",
+      exclude: ["reviews"],
     });
     expect(result.success).toBe(true);
   });

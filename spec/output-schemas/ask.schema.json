@@ -223,6 +223,29 @@
           "description": "Max candidates sent to reranking (if applicable)",
           "minimum": 1
         },
+        "exclude": {
+          "type": "array",
+          "description": "Explicit exclusion terms applied",
+          "items": { "type": "string" }
+        },
+        "queryModes": {
+          "type": "object",
+          "description": "Summary of structured query modes applied",
+          "required": ["term", "intent", "hyde"],
+          "properties": {
+            "term": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "intent": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "hyde": {
+              "type": "boolean"
+            }
+          }
+        },
         "answerGenerated": {
           "type": "boolean",
           "description": "Whether an answer was generated"

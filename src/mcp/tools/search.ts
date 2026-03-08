@@ -20,6 +20,7 @@ interface SearchInput {
   minScore?: number;
   lang?: string;
   intent?: string;
+  exclude?: string[];
   since?: string;
   until?: string;
   categories?: string[];
@@ -110,6 +111,7 @@ export function handleSearch(
         collection: args.collection,
         lang: args.lang,
         intent: args.intent,
+        exclude: args.exclude,
         since: args.since,
         until: args.until,
         categories: args.categories,

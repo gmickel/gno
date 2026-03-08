@@ -79,6 +79,8 @@ export interface SearchMeta {
   author?: string;
   /** Rerank candidate limit used */
   candidateLimit?: number;
+  /** Explicit exclusion terms applied */
+  exclude?: string[];
   /** Explain data (when --explain is used) */
   explain?: {
     lines: ExplainLine[];
@@ -124,6 +126,8 @@ export interface SearchOptions {
   author?: string;
   /** Optional disambiguating context that steers scoring/snippets, but is not searched directly */
   intent?: string;
+  /** Explicit exclusion terms for hard candidate pruning */
+  exclude?: string[];
 }
 
 /** Structured query mode identifier */
@@ -317,6 +321,8 @@ export interface AskMeta {
   vectorsUsed: boolean;
   intent?: string;
   candidateLimit?: number;
+  exclude?: string[];
+  queryModes?: QueryModeSummary;
   answerGenerated?: boolean;
   totalResults?: number;
   answerContext?: AnswerContextExplain;

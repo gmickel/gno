@@ -14,6 +14,7 @@ import type { SearchOptions, SearchResult, SearchResults } from "./types";
 import { err, ok } from "../store/types";
 import { createChunkLookup } from "./chunk-lookup";
 import { formatQueryForEmbedding } from "./contextual";
+import { matchesExcludedChunks, matchesExcludedText } from "./exclude";
 import { selectBestChunkForSteering } from "./intent";
 import { detectQueryLanguage } from "./query-language";
 import {
@@ -174,6 +175,25 @@ export async function searchVectorWithEmbedding(
       continue;
     }
 
+    const excluded =
+      matchesExcludedText(
+        [
+          doc.title ?? "",
+          doc.relPath,
+          doc.author ?? "",
+          doc.contentType ?? "",
+          ...(doc.categories ?? []),
+        ],
+        options.exclude
+      ) ||
+      matchesExcludedChunks(
+        chunksMap.get(vec.mirrorHash) ?? [],
+        options.exclude
+      );
+    if (excluded) {
+      continue;
+    }
+
     // For --full, de-dupe by docid (keep best scoring chunk per doc)
     if (options.full) {
       const existing = bestByDocid.get(doc.docid);
@@ -301,6 +321,7 @@ export async function searchVectorWithEmbedding(
       vectorsUsed: true,
       totalResults: finalResults.length,
       intent: options.intent,
+      exclude: options.exclude,
       collection: options.collection,
       lang: options.lang,
       since: temporalRange.since,
@@ -362,6 +383,9 @@ interface DocumentInfo {
   title: string | null;
   collection: string;
   relPath: string;
+  author: string | null;
+  contentType: string | null;
+  categories: string[] | null;
   sourceHash: string;
   sourceMime: string;
   sourceExt: string;
@@ -491,6 +515,9 @@ async function buildDocumentMap(
       title: doc.title,
       collection: doc.collection,
       relPath: doc.relPath,
+      author: doc.author ?? null,
+      contentType: doc.contentType ?? null,
+      categories: doc.categories ?? null,
       sourceHash: doc.sourceHash,
       sourceMime: doc.sourceMime,
       sourceExt: doc.sourceExt,

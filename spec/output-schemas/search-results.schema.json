@@ -228,6 +228,11 @@
           "description": "Max candidates sent to reranking (if applicable)",
           "minimum": 1
         },
+        "exclude": {
+          "type": "array",
+          "description": "Explicit exclusion terms applied",
+          "items": { "type": "string" }
+        },
         "queryLanguage": {
           "type": "string",
           "description": "Detected or overridden query language for prompt selection (typically BCP-47)"

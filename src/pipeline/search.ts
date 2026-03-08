@@ -17,6 +17,7 @@ import type {
 
 import { err, ok } from "../store/types";
 import { createChunkLookup } from "./chunk-lookup";
+import { matchesExcludedChunks, matchesExcludedText } from "./exclude";
 import { selectBestChunkForSteering } from "./intent";
 import { detectQueryLanguage } from "./query-language";
 import {
@@ -237,6 +238,21 @@ export async function searchBm25(
           ) ?? rawChunk)
         : rawChunk;
 
+    const excluded =
+      matchesExcludedText(
+        [fts.title ?? "", fts.relPath ?? "", fts.snippet ?? ""],
+        options.exclude
+      ) ||
+      matchesExcludedChunks(
+        chunksMapResult.ok && fts.mirrorHash
+          ? (chunksMapResult.value.get(fts.mirrorHash) ?? [])
+          : [],
+        options.exclude
+      );
+    if (excluded) {
+      continue;
+    }
+
     // For --full, de-dupe by docid (keep best scoring chunk per doc)
     // Raw BM25: smaller (more negative) is better
     if (options.full) {
@@ -309,6 +325,7 @@ export async function searchBm25(
       mode: "bm25",
       totalResults: Math.min(filteredResults.length, limit),
       intent: options.intent,
+      exclude: options.exclude,
       collection: options.collection,
       lang: options.lang,
       since: temporalRange.since,

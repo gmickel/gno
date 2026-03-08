@@ -65,6 +65,7 @@ describe("gno_query schema", () => {
       query: "performance",
       intent: "web performance and latency",
       candidateLimit: 12,
+      exclude: ["reviews", "hiring"],
     });
 
     expect(result.success).toBe(true);
@@ -74,5 +75,6 @@ describe("gno_query schema", () => {
 
     expect(result.data.intent).toBe("web performance and latency");
     expect(result.data.candidateLimit).toBe(12);
+    expect(result.data.exclude).toEqual(["reviews", "hiring"]);
   });
 });

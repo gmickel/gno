@@ -155,6 +155,7 @@ export default function Search({ navigate }: PageProps) {
       initialFilters.collection ||
       initialFilters.intent ||
       initialFilters.candidateLimit ||
+      initialFilters.exclude ||
       initialFilters.since ||
       initialFilters.until ||
       initialFilters.category ||
@@ -172,6 +173,7 @@ export default function Search({ navigate }: PageProps) {
   const [candidateLimit, setCandidateLimit] = useState(
     initialFilters.candidateLimit
   );
+  const [exclude, setExclude] = useState(initialFilters.exclude);
   const [since, setSince] = useState(initialFilters.since);
   const [until, setUntil] = useState(initialFilters.until);
   const [category, setCategory] = useState(initialFilters.category);
@@ -196,6 +198,7 @@ export default function Search({ navigate }: PageProps) {
       collection: selectedCollection,
       intent,
       candidateLimit,
+      exclude,
       since,
       until,
       category,
@@ -210,6 +213,7 @@ export default function Search({ navigate }: PageProps) {
     author,
     candidateLimit,
     category,
+    exclude,
     intent,
     queryModes,
     selectedCollection,
@@ -314,6 +318,9 @@ export default function Search({ navigate }: PageProps) {
       if (candidateLimit.trim()) {
         body.candidateLimit = Number(candidateLimit);
       }
+      if (exclude.trim()) {
+        body.exclude = exclude.trim();
+      }
       if (since) {
         body.since = since;
       }
@@ -373,6 +380,7 @@ export default function Search({ navigate }: PageProps) {
       author,
       candidateLimit,
       category,
+      exclude,
       intent,
       query,
       queryModes,
@@ -395,6 +403,7 @@ export default function Search({ navigate }: PageProps) {
     author,
     candidateLimit,
     category,
+    exclude,
     intent,
     queryModes,
     selectedCollection,
@@ -414,6 +423,7 @@ export default function Search({ navigate }: PageProps) {
     selectedCollection ? `collection:${selectedCollection}` : null,
     intent.trim() ? `intent:${intent.trim()}` : null,
     candidateLimit.trim() ? `candidates:${candidateLimit.trim()}` : null,
+    exclude.trim() ? `exclude:${exclude.trim()}` : null,
     since ? `since:${since}` : null,
     until ? `until:${until}` : null,
     category.trim() ? `category:${category.trim()}` : null,
@@ -428,6 +438,7 @@ export default function Search({ navigate }: PageProps) {
     setSelectedCollection("");
     setIntent("");
     setCandidateLimit("");
+    setExclude("");
     setSince("");
     setUntil("");
     setCategory("");
@@ -588,6 +599,17 @@ export default function Search({ navigate }: PageProps) {
                             onChange={(e) => setIntent(e.target.value)}
                             placeholder="Disambiguate ambiguous queries without searching on this text"
                             value={intent}
+                          />
+                        </div>
+
+                        <div className="md:col-span-2">
+                          <p className="mb-1 text-muted-foreground text-xs">
+                            Exclude
+                          </p>
+                          <Input
+                            onChange={(e) => setExclude(e.target.value)}
+                            placeholder="team reviews, hiring, onboarding"
+                            value={exclude}
                           />
                         </div>
 

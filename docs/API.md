@@ -1069,6 +1069,7 @@ Keyword search using BM25 algorithm.
   "minScore": 0.1,
   "collection": "notes",
   "intent": "web authentication and session security",
+  "exclude": "hiring,reviews",
   "since": "last month",
   "until": "today",
   "category": "meeting,notes",
@@ -1085,6 +1086,7 @@ Keyword search using BM25 algorithm.
 | `minScore`   | number | —       | Minimum score threshold (0-1)                                                                       |
 | `collection` | string | —       | Filter by collection                                                                                |
 | `intent`     | string | —       | Disambiguating context for ambiguous queries; steers snippet choice without being searched directly |
+| `exclude`    | string | —       | Comma-separated exclusion terms; matching docs are hard-pruned by title/path/body                   |
 | `since`      | string | —       | Modified-at lower bound (ISO date/time or token)                                                    |
 | `until`      | string | —       | Modified-at upper bound (ISO date/time or token)                                                    |
 | `category`   | string | —       | Comma-separated category/content-type filters (ANY match)                                           |
@@ -1149,6 +1151,7 @@ Combined BM25 + vector search with optional reranking. **Recommended for best re
   "lang": "en",
   "intent": "web authentication and request latency",
   "candidateLimit": 12,
+  "exclude": "hiring,reviews",
   "since": "2025-01-01",
   "until": "today",
   "category": "backend,meeting",
@@ -1177,6 +1180,7 @@ Combined BM25 + vector search with optional reranking. **Recommended for best re
 | `lang`           | string  | auto    | Query language hint                                                                                                              |
 | `intent`         | string  | —       | Disambiguating context for ambiguous queries; steers expansion, reranking, and snippet selection without being searched directly |
 | `candidateLimit` | number  | 20      | Max candidates sent to reranking (max 100)                                                                                       |
+| `exclude`        | string  | —       | Comma-separated exclusion terms; matching docs are hard-pruned by title/path/body                                                |
 | `since`          | string  | —       | Modified-at lower bound (ISO date/time or token)                                                                                 |
 | `until`          | string  | —       | Modified-at upper bound (ISO date/time or token)                                                                                 |
 | `category`       | string  | —       | Comma-separated category/content-type filters (ANY match)                                                                        |
@@ -1252,6 +1256,11 @@ Get an AI-generated answer with citations from your documents.
   "lang": "en",
   "intent": "web authentication and request latency",
   "candidateLimit": 12,
+  "exclude": "hiring,reviews",
+  "queryModes": [
+    { "mode": "term", "text": "\"refresh token\" -oauth1" },
+    { "mode": "intent", "text": "how token rotation is implemented" }
+  ],
   "since": "last month",
   "until": "today",
   "category": "backend,notes",
@@ -1264,23 +1273,31 @@ Get an AI-generated answer with citations from your documents.
 }
 ```
 
-| Field             | Type    | Default | Description                                                                   |
-| :---------------- | :------ | :------ | :---------------------------------------------------------------------------- |
-| `query`           | string  | —       | Question (required)                                                           |
-| `limit`           | number  | 5       | Number of sources to consider (max 20)                                        |
-| `collection`      | string  | —       | Filter by collection                                                          |
-| `lang`            | string  | auto    | Query language hint                                                           |
-| `intent`          | string  | —       | Disambiguating context for ambiguous questions without searching on that text |
-| `candidateLimit`  | number  | 20      | Max candidates sent to reranking (max 100)                                    |
-| `since`           | string  | —       | Modified-at lower bound (ISO date/time or token)                              |
-| `until`           | string  | —       | Modified-at upper bound (ISO date/time or token)                              |
-| `category`        | string  | —       | Comma-separated category/content-type filters (ANY match)                     |
-| `author`          | string  | —       | Author contains value (case-insensitive)                                      |
-| `maxAnswerTokens` | number  | 512     | Max tokens in answer                                                          |
-| `noExpand`        | boolean | false   | Disable query expansion                                                       |
-| `noRerank`        | boolean | false   | Disable cross-encoder reranking                                               |
-| `tagsAll`         | string  | —       | Comma-separated tags (must have ALL)                                          |
-| `tagsAny`         | string  | —       | Comma-separated tags (must have ANY)                                          |
+| Field             | Type    | Default | Description                                                                       |
+| :---------------- | :------ | :------ | :-------------------------------------------------------------------------------- |
+| `query`           | string  | —       | Question (required)                                                               |
+| `limit`           | number  | 5       | Number of sources to consider (max 20)                                            |
+| `collection`      | string  | —       | Filter by collection                                                              |
+| `lang`            | string  | auto    | Query language hint                                                               |
+| `intent`          | string  | —       | Disambiguating context for ambiguous questions without searching on that text     |
+| `candidateLimit`  | number  | 20      | Max candidates sent to reranking (max 100)                                        |
+| `exclude`         | string  | —       | Comma-separated exclusion terms; matching docs are hard-pruned by title/path/body |
+| `queryModes`      | array   | —       | Optional structured mode entries (`term`, `intent`, `hyde`)                       |
+| `since`           | string  | —       | Modified-at lower bound (ISO date/time or token)                                  |
+| `until`           | string  | —       | Modified-at upper bound (ISO date/time or token)                                  |
+| `category`        | string  | —       | Comma-separated category/content-type filters (ANY match)                         |
+| `author`          | string  | —       | Author contains value (case-insensitive)                                          |
+| `maxAnswerTokens` | number  | 512     | Max tokens in answer                                                              |
+| `noExpand`        | boolean | false   | Disable query expansion                                                           |
+| `noRerank`        | boolean | false   | Disable cross-encoder reranking                                                   |
+| `tagsAll`         | string  | —       | Comma-separated tags (must have ALL)                                              |
+| `tagsAny`         | string  | —       | Comma-separated tags (must have ANY)                                              |
+
+**Compatibility notes:**
+
+- Existing `/api/ask` payloads remain valid.
+- `queryModes` is optional and only needed for explicit retrieval steering during Q&A.
+- If `queryModes` is provided, generated expansion is skipped and provided entries are used directly.
 
 **Response**:
 

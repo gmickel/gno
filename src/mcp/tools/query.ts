@@ -38,6 +38,7 @@ interface QueryInput {
   lang?: string;
   intent?: string;
   candidateLimit?: number;
+  exclude?: string[];
   since?: string;
   until?: string;
   categories?: string[];
@@ -251,6 +252,7 @@ export function handleQuery(
           queryLanguageHint: args.lang, // Affects expansion prompt, not retrieval
           intent: args.intent,
           candidateLimit: args.candidateLimit,
+          exclude: args.exclude,
           since: args.since,
           until: args.until,
           categories: args.categories,

@@ -52,12 +52,13 @@ describe("retrieval filters", () => {
 
   test("URL roundtrip for filters", () => {
     const source = parseFiltersFromSearch(
-      "?collection=notes&intent=web%20performance&candidateLimit=12&since=2025-01-01&until=2025-12-31&category=engineering&author=gordon&tagsAll=project/alpha,urgent&qm=term:vector%20search&qm=intent:find%20best%20docs"
+      "?collection=notes&intent=web%20performance&candidateLimit=12&exclude=reviews,onboarding&since=2025-01-01&until=2025-12-31&category=engineering&author=gordon&tagsAll=project/alpha,urgent&qm=term:vector%20search&qm=intent:find%20best%20docs"
     );
     expect(source).toEqual({
       collection: "notes",
       intent: "web performance",
       candidateLimit: "12",
+      exclude: "reviews,onboarding",
       since: "2025-01-01",
       until: "2025-12-31",
       category: "engineering",
@@ -75,6 +76,7 @@ describe("retrieval filters", () => {
       collection: "notes",
       intent: "web performance",
       candidateLimit: "12",
+      exclude: "reviews,onboarding",
       since: "2025-01-01",
       until: "2025-12-31",
       category: "engineering",
@@ -90,6 +92,7 @@ describe("retrieval filters", () => {
     expect(target.searchParams.get("collection")).toBe("notes");
     expect(target.searchParams.get("intent")).toBe("web performance");
     expect(target.searchParams.get("candidateLimit")).toBe("12");
+    expect(target.searchParams.get("exclude")).toBe("reviews,onboarding");
     expect(target.searchParams.get("tagsAll")).toBe("project/alpha,urgent");
     expect(target.searchParams.get("tagsAny")).toBeNull();
     expect(target.searchParams.getAll("qm")).toEqual([
