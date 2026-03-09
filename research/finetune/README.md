@@ -75,10 +75,12 @@ bun run research:finetune:mlx:train
 Fuse adapters and export a portable GGUF:
 
 ```bash
-bun run research:finetune:mlx:fuse
+bun run research:finetune:select-best mlx-run1
+bun run research:finetune:fuse-best mlx-run1
 bun run research:finetune:export-env
-bun run research:finetune:export-gguf
-bun run research:finetune:smoke-gno-export
+bun run research:finetune:export-gguf mlx-run1
+bun run research:finetune:smoke-gno-export mlx-run1
+bun run research:finetune:benchmark-export mlx-run1
 ```
 
 Smoke the adapter against the JSON contract:

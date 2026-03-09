@@ -9,13 +9,14 @@ const exportPython = join(
   "research/finetune/.venv-export/bin/python"
 );
 const llamaCppDir = "/tmp/llama.cpp";
+const runName = process.argv[2] ?? "mlx-run1";
 const fusedModelDir = join(
   repoRoot,
-  "research/finetune/outputs/mlx-qwen3-1.7b-lora/fused-deq"
+  `research/finetune/outputs/${runName}-best-fused-deq`
 );
 const outFile = join(
   repoRoot,
-  "research/finetune/outputs/mlx-qwen3-1.7b-lora/gno-expansion-qwen3-1.7b-f16.gguf"
+  `research/finetune/outputs/${runName}-best-fused-deq/gno-expansion-${runName}-f16.gguf`
 );
 
 const steps: string[][] = [

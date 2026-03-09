@@ -941,7 +941,8 @@ function pickBestCandidate(
 }
 
 export async function runRetrievalCandidateBenchmark(
-  selectedIds?: string[]
+  selectedIds?: string[],
+  candidatePool: CandidateMatrixEntry[] = RETRIEVAL_CANDIDATES
 ): Promise<RetrievalCandidateBenchmarkSummary> {
   const config = createDefaultConfig();
   const llm = new LlmAdapter(config);
@@ -954,10 +955,8 @@ export async function runRetrievalCandidateBenchmark(
   };
 
   const selected = selectedIds?.length
-    ? RETRIEVAL_CANDIDATES.filter((candidate) =>
-        selectedIds.includes(candidate.id)
-      )
-    : RETRIEVAL_CANDIDATES;
+    ? candidatePool.filter((candidate) => selectedIds.includes(candidate.id))
+    : candidatePool;
 
   try {
     const candidates: CandidateBenchmarkResult[] = [];

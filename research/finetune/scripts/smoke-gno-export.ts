@@ -5,9 +5,10 @@ import { createDefaultConfig } from "../../../src/config";
 import { LlmAdapter } from "../../../src/llm/nodeLlamaCpp/adapter";
 import { expandQuery } from "../../../src/pipeline/expansion";
 
+const runName = process.argv[2] ?? "mlx-run1";
 const modelPath = join(
   import.meta.dir,
-  "../outputs/mlx-smoke-fused-deq/gno-expansion-qwen3-1.7b-smoke-f16.gguf"
+  `../outputs/${runName}-best-fused-deq/gno-expansion-${runName}-f16.gguf`
 );
 
 const queries = [
