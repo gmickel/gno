@@ -1,9 +1,11 @@
 # fn-37-productionize-fine-tuned-retrieval Productionize fine-tuned retrieval models
 
 ## Overview
+
 Turn the new fine-tuning sandbox into a repeatable, documented, distributable model pipeline. The immediate goal is to move from "one good local run" to a trustworthy promotion flow with automatic run selection, benchmark comparison, model cards, install/use instructions, and support for multiple candidate bases when it is worth trying them.
 
 ## Scope
+
 - productionize the current `Qwen3-1.7B` fine-tune path first
 - automate run promotion artifacts:
   - best checkpoint selection
@@ -22,6 +24,7 @@ Out of scope for this epic:
 - cloud/distributed training infrastructure
 
 ## Approach
+
 1. lock the current winning `Qwen3-1.7B` path into an explicit promotion pipeline
 2. make outputs legible and distributable
 3. only then broaden to alternate base-model sweeps
@@ -33,7 +36,9 @@ Key principle:
 - promoted artifacts must be portable (`safetensors` + `GGUF`)
 
 ## Quick commands
+
 <!-- Required: at least one smoke command for the repo -->
+
 - `bun run research:finetune:select-best mlx-run1`
 - `bun run research:finetune:fuse-best mlx-run1`
 - `bun run research:finetune:export-env`
@@ -44,6 +49,7 @@ Key principle:
 - `bun test`
 
 ## Acceptance
+
 - [ ] Promotion flow can take a completed run and emit a benchmarked portable artifact with no manual checkpoint picking
 - [ ] Fine-tune docs explain training, selection, export, install, and benchmarking clearly
 - [ ] User-facing docs explain how to use a custom fine-tuned model in `gno`
@@ -51,6 +57,7 @@ Key principle:
 - [ ] Autonomous loop has a concrete next mutation target tied to the promotion metric
 
 ## References
+
 - `evals/fixtures/retrieval-candidate-benchmark/recommendation.md`
 - `research/finetune/README.md`
 - `research/finetune/autonomous/README.md`
