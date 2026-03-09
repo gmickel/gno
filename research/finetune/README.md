@@ -54,6 +54,39 @@ research/finetune/
 
 ## Quick Start
 
+Import qmd examples into the sandbox schema:
+
+```bash
+bun run research:finetune:qmd-import
+```
+
+Build an MLX LoRA training dataset:
+
+```bash
+bun run research:finetune:mlx:build-dataset
+```
+
+Run a local MLX LoRA training job:
+
+```bash
+bun run research:finetune:mlx:train
+```
+
+Fuse adapters and export a portable GGUF:
+
+```bash
+bun run research:finetune:mlx:fuse
+bun run research:finetune:export-env
+bun run research:finetune:export-gguf
+bun run research:finetune:smoke-gno-export
+```
+
+Smoke the adapter against the JSON contract:
+
+```bash
+bun run research:finetune:mlx:smoke
+```
+
 Bootstrap promotion fixtures from current evals:
 
 ```bash
@@ -89,6 +122,11 @@ Required properties:
 - retrieval metadata needed to score preservation/drift
 
 Training examples are expected under `data/training/`.
+
+Current seeded sources:
+
+- `data/training/gno-hardcases.jsonl`
+- generated qmd import via `bun run research:finetune:qmd-import`
 
 ### 2. Promotion cases
 
@@ -144,6 +182,28 @@ Deliberate differences for `gno`:
 - output contract matches `gno` JSON expansion shape, not `lex:/vec:/hyde:` lines
 - promotion set is tied to `gno` eval fixtures and ask-style retrieval
 - export target is local `gno` runtime URI compatibility
+
+## MLX Local Backend
+
+Local backend:
+
+- training base: `mlx-community/Qwen3-1.7B-4bit`
+- trainer: `python3 -m mlx_lm lora`
+- fuse/export: `python3 -m mlx_lm fuse --export-gguf`
+
+Portable outputs:
+
+- adapter weights
+- fused MLX model
+- GGUF export for `llama.cpp` / `node-llama-cpp`
+
+Current observed limitation:
+
+- `mlx_lm fuse --export-gguf` fails for `qwen3` with current MLX tooling
+- working path:
+  - `mlx_lm fuse --dequantize`
+  - `llama.cpp convert_hf_to_gguf.py`
+  - smoke the GGUF through `gno`
 
 ## Autonomous Layer
 

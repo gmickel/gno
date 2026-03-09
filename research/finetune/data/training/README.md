@@ -14,6 +14,7 @@ Recommended files:
 - `handcrafted.jsonl`
 - `synthetic.jsonl`
 - `hard-cases.jsonl`
+- `generated/qmd-import.jsonl`
 
 Not committed yet:
 
