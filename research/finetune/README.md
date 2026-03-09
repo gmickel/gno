@@ -75,12 +75,16 @@ bun run research:finetune:mlx:train
 Fuse adapters and export a portable GGUF:
 
 ```bash
+bun run research:finetune:promote mlx-run1
+
+# equivalent expanded form:
 bun run research:finetune:select-best mlx-run1
 bun run research:finetune:fuse-best mlx-run1
 bun run research:finetune:export-env
 bun run research:finetune:export-gguf mlx-run1
 bun run research:finetune:smoke-gno-export mlx-run1
 bun run research:finetune:benchmark-export mlx-run1
+bun run research:finetune:promotion-bundle mlx-run1
 ```
 
 Smoke the adapter against the JSON contract:
@@ -105,6 +109,12 @@ Re-run the current product baseline before changing anything:
 
 ```bash
 bun run eval:retrieval-candidates:write
+```
+
+Plan an alternate-base sweep:
+
+```bash
+bun run research:finetune:plan-sweep
 ```
 
 ## Data Surfaces
@@ -166,6 +176,25 @@ See:
 - `contracts/export-contract.md`
 - `runs/2026-03-09-fn-34-baseline.md`
 
+## When To Rerun The Current Winner
+
+Prefer another run on the current `Qwen3-1.7B` winner when:
+
+- the latest promoted run is still improving heldout retrieval or structure
+- latency is already acceptable
+- you changed data, reward, or prompts more than model-family assumptions
+
+Prefer an alternate-base sweep when:
+
+- the winner plateaus across multiple runs
+- you need a lighter fast-path model
+- you need better structure that prompt/reward changes are not delivering
+- a new base changes the quality/cost frontier enough to justify retesting
+
+Current sweep manifest:
+
+- `configs/alternate-base-sweep.json`
+
 ## External Reference Mapping
 
 Reference stack:
@@ -206,6 +235,46 @@ Current observed limitation:
   - `mlx_lm fuse --dequantize`
   - `llama.cpp convert_hf_to_gguf.py`
   - smoke the GGUF through `gno`
+
+## Troubleshooting
+
+### MLX training works but background jobs exit immediately
+
+Use an attached PTY or terminal session for long-running MLX jobs if your shell
+environment drops detached jobs unexpectedly.
+
+### GGUF export fails on the fused quantized model
+
+Export the dequantized fused model instead:
+
+1. `bun run research:finetune:fuse-best <run>`
+2. `bun run research:finetune:export-env`
+3. `bun run research:finetune:export-gguf <run>`
+
+### The best checkpoint is not the final checkpoint
+
+Use:
+
+```bash
+bun run research:finetune:select-best <run>
+```
+
+The promotion path uses validation loss to pick the best saved checkpoint rather
+than assuming the final adapter is best.
+
+### Exported model loads but still has weak structure
+
+Use:
+
+```bash
+bun run research:finetune:smoke-gno-export <run>
+```
+
+This shows raw output plus parsed expansion output so you can distinguish:
+
+- export/runtime breakage
+- prompt drift
+- insufficient training
 
 ## Autonomous Layer
 

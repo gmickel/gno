@@ -66,3 +66,20 @@ The noop run must:
 - write exactly one run artifact under `research/finetune/autonomous/runs/`
 - leave the rest of the repo unchanged by the harness itself
 - fail if any new mutation escapes the allowed roots
+
+## Evaluation Cycle
+
+For an actual sandbox evaluation cycle:
+
+```bash
+bun run research:finetune:autonomous:evaluate mlx-run1
+```
+
+This will:
+
+1. validate the declared mutation targets are inside the sandbox
+2. call the promoted run pipeline for the named run
+3. compare benchmark deltas vs the shipped baseline
+4. emit a keep/discard decision under `autonomous/runs/`
+
+The human gate remains explicit. The script does not change product defaults.

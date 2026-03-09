@@ -2,7 +2,7 @@
 
 ## Description
 
-TBD
+Document the fine-tuned model workflow for both contributors and users, including portability constraints and troubleshooting.
 
 ## Acceptance
 
@@ -17,10 +17,10 @@ Acceptance:
 
 ## Done summary
 
-TBD
+Expanded both sandbox and user-facing documentation for fine-tuned models. Added a dedicated Fine-Tuned Models guide, documented custom preset usage, clarified Mac-only training vs portable artifacts, and added troubleshooting for export/runtime/benchmark issues.
 
 ## Evidence
 
 - Commits:
-- Tests:
+- Tests: bun run docs:verify, bun run lint:check
 - PRs:

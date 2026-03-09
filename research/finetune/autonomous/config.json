@@ -3,11 +3,17 @@
   "task": "expansion",
   "sandboxRoot": "research/finetune",
   "allowedRoots": [
+    "research/finetune/",
     "research/finetune/configs/",
     "research/finetune/contracts/",
     "research/finetune/data/training/",
     "research/finetune/scripts/",
     "research/finetune/autonomous/"
+  ],
+  "mutationTargets": [
+    "research/finetune/configs/mlx-qwen3-1.7b-lora.yaml",
+    "research/finetune/contracts/reward-contract.md",
+    "research/finetune/README.md"
   ],
   "disallowedRoots": [
     "src/",

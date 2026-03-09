@@ -2,7 +2,7 @@
 
 ## Description
 
-TBD
+Automate the path from a completed fine-tune run to a portable, benchmarked promotion bundle with no manual checkpoint picking.
 
 ## Acceptance
 
@@ -18,10 +18,10 @@ Acceptance:
 
 ## Done summary
 
-TBD
+Implemented the automated promotion path for fine-tune runs. The pipeline now selects the best checkpoint from logs, fuses/dequantizes it, exports GGUF, smokes the artifact through gno, benchmarks it, and generates promotion artifacts (model card, install snippet, summary JSON). Proved end-to-end on mlx-run1 with a measurable benchmark win over the shipped baseline.
 
 ## Evidence
 
 - Commits:
-- Tests:
+- Tests: bun run research:finetune:promote mlx-run1, bun test test/research/run-selection.test.ts test/research/promotion-bundle.test.ts, bun run lint:check
 - PRs:

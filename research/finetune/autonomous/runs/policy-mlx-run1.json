@@ -1,0 +1,19 @@
+{
+  "experimentId": "policy-mlx-run1",
+  "policyId": "gno-autonomous-expansion-v1",
+  "runName": "mlx-run1",
+  "targets": [
+    "research/finetune/configs/mlx-qwen3-1.7b-lora.yaml",
+    "research/finetune/contracts/reward-contract.md",
+    "research/finetune/README.md"
+  ],
+  "metricCommand": "bun run research:finetune:promote <run>",
+  "deltas": {
+    "ndcgAt10": 0.006,
+    "schemaSuccessRate": 0.3333,
+    "p95Ms": -1960.71
+  },
+  "decision": "keep",
+  "humanApprovalRequired": true,
+  "runtimeSeconds": 136.8
+}

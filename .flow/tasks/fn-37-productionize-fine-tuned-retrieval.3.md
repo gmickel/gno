@@ -2,7 +2,7 @@
 
 ## Description
 
-TBD
+Add a clear sweep path for alternate Qwen bases after the current `Qwen3-1.7B` winner, including decision rules for when to stay on the winner versus branching out.
 
 ## Acceptance
 
@@ -17,10 +17,10 @@ Acceptance:
 
 ## Done summary
 
-TBD
+Added an alternate-base sweep path for future Qwen candidate exploration. The sandbox now includes a sweep manifest, a planning command, and explicit decision rules for when to keep rerunning the current Qwen3-1.7B winner versus trying Qwen2.5-3B or Qwen3.5 candidates.
 
 ## Evidence
 
 - Commits:
-- Tests:
+- Tests: bun run research:finetune:plan-sweep, bun test test/research/alternate-sweep.test.ts, bun run lint:check
 - PRs:

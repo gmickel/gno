@@ -230,6 +230,29 @@ Model URIs support:
 - `file:/path/to/model.gguf` - Local file
 - `http://host:port/path#modelname` - Remote HTTP endpoint (OpenAI-compatible)
 
+### Using A Fine-Tuned Local Model
+
+Fine-tuned generation models can be used with a custom preset via `file:` URI:
+
+```yaml
+models:
+  activePreset: tuned
+  presets:
+    - id: tuned
+      name: Fine-tuned Expansion
+      embed: hf:gpustack/bge-m3-GGUF/bge-m3-Q4_K_M.gguf
+      rerank: hf:ggml-org/Qwen3-Reranker-0.6B-Q8_0-GGUF/qwen3-reranker-0.6b-q8_0.gguf
+      gen: file:/absolute/path/to/gno-expansion-your-run-f16.gguf
+```
+
+Notes:
+
+- training backend may be Mac-only (for example MLX LoRA on Apple Silicon)
+- exported artifacts remain portable if you fuse and convert to GGUF
+- keep embed/rerank unchanged unless you have benchmark evidence for changing them too
+
+See [Fine-Tuned Models](FINE-TUNED-MODELS.md) for the full workflow and troubleshooting notes.
+
 ### HTTP Endpoints
 
 GNO supports remote model servers using OpenAI-compatible APIs. This allows offloading inference to a more powerful machine (e.g., a GPU server on your network).
