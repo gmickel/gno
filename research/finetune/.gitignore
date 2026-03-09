@@ -1,0 +1,4 @@
+outputs/
+data/generated/
+data/mlx/
+.venv-export/

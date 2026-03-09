@@ -1,0 +1,106 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "GNO Expansion Sandbox Config",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "task",
+    "status",
+    "recommendedBy",
+    "model",
+    "dataset",
+    "training",
+    "evaluation",
+    "export"
+  ],
+  "properties": {
+    "$schema": { "type": "string", "minLength": 1 },
+    "id": { "type": "string", "minLength": 1 },
+    "task": { "const": "expansion" },
+    "status": { "enum": ["baseline", "experimental", "candidate"] },
+    "recommendedBy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["epic", "artifact", "runDate"],
+      "properties": {
+        "epic": { "type": "string", "minLength": 1 },
+        "artifact": { "type": "string", "minLength": 1 },
+        "runDate": { "type": "string", "format": "date" }
+      }
+    },
+    "model": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "baseModel",
+        "runtimeModelUri",
+        "targetQuantization",
+        "promptMode"
+      ],
+      "properties": {
+        "baseModel": { "type": "string", "minLength": 1 },
+        "runtimeModelUri": { "type": "string", "minLength": 1 },
+        "targetQuantization": { "type": "string", "minLength": 1 },
+        "promptMode": { "type": "string", "minLength": 1 }
+      }
+    },
+    "dataset": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "trainingSchema",
+        "promotionSchema",
+        "trainingDir",
+        "promotionCases",
+        "splitDir"
+      ],
+      "properties": {
+        "trainingSchema": { "type": "string", "minLength": 1 },
+        "promotionSchema": { "type": "string", "minLength": 1 },
+        "trainingDir": { "type": "string", "minLength": 1 },
+        "promotionCases": { "type": "string", "minLength": 1 },
+        "splitDir": { "type": "string", "minLength": 1 }
+      }
+    },
+    "training": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "stage",
+        "adapter",
+        "contextTokens",
+        "maxCompletionTokens",
+        "targetFormat"
+      ],
+      "properties": {
+        "stage": { "enum": ["sft", "rl"] },
+        "adapter": { "enum": ["lora", "full"] },
+        "contextTokens": { "type": "integer", "minimum": 256 },
+        "maxCompletionTokens": { "type": "integer", "minimum": 64 },
+        "targetFormat": { "const": "gno_expansion_json" }
+      }
+    },
+    "evaluation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["baselineCommand", "validationSplit", "promotionSplit"],
+      "properties": {
+        "baselineCommand": { "type": "string", "minLength": 1 },
+        "validationSplit": { "const": "validation" },
+        "promotionSplit": { "const": "heldout" }
+      }
+    },
+    "export": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["adapterDir", "mergedDir", "ggufDir", "runtimeUriTemplate"],
+      "properties": {
+        "adapterDir": { "type": "string", "minLength": 1 },
+        "mergedDir": { "type": "string", "minLength": 1 },
+        "ggufDir": { "type": "string", "minLength": 1 },
+        "runtimeUriTemplate": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}

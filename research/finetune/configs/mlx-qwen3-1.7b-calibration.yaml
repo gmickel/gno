@@ -1,0 +1,22 @@
+model: "mlx-community/Qwen3-1.7B-4bit"
+train: true
+data: "research/finetune/data/mlx"
+fine_tune_type: "lora"
+optimizer: "adamw"
+mask_prompt: false
+num_layers: 8
+batch_size: 1
+iters: 100
+val_batches: 2
+learning_rate: 1.0e-5
+steps_per_report: 5
+steps_per_eval: 20
+grad_accumulation_steps: 4
+adapter_path: "research/finetune/outputs/mlx-calibration"
+save_every: 20
+max_seq_length: 1024
+seed: 42
+lora_parameters:
+  rank: 16
+  dropout: 0.0
+  scale: 20.0

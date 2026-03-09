@@ -1,0 +1,46 @@
+{
+  "id": "gno-autonomous-expansion-v1",
+  "task": "expansion",
+  "sandboxRoot": "research/finetune",
+  "allowedRoots": [
+    "research/finetune/configs/",
+    "research/finetune/contracts/",
+    "research/finetune/data/training/",
+    "research/finetune/scripts/",
+    "research/finetune/autonomous/"
+  ],
+  "disallowedRoots": [
+    "src/",
+    "docs/",
+    "spec/output-schemas/",
+    "evals/fixtures/",
+    "website/"
+  ],
+  "budget": {
+    "maxRuntimeMinutes": 20,
+    "maxChangedFiles": 4,
+    "maxRunsPerSession": 3,
+    "maxCommitsPerRun": 1
+  },
+  "metric": {
+    "baselineArtifact": "evals/fixtures/retrieval-candidate-benchmark/latest.json",
+    "validationCommand": "bun run research:finetune:validate",
+    "smokeCommand": "bun test test/research/finetune-sandbox.test.ts",
+    "promotionSplit": "heldout"
+  },
+  "logging": {
+    "runDir": "research/finetune/autonomous/runs",
+    "requiredFields": [
+      "experimentId",
+      "commitSha",
+      "changedFiles",
+      "metricCommand",
+      "decision",
+      "runtimeSeconds"
+    ]
+  },
+  "promotion": {
+    "humanApprovalRequired": true,
+    "rollbackOnRegression": true
+  }
+}
