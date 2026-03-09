@@ -1,0 +1,14 @@
+{
+  "experimentId": "noop-2026-03-09T10-48-17.492Z",
+  "mode": "noop",
+  "policyId": "gno-autonomous-expansion-v1",
+  "commitSha": "1f29e6a749ff8c15a6e1e994b4c1601a519f6db1",
+  "changedFiles": [
+    "research/finetune/autonomous/runs/noop-2026-03-09T10-48-17.492Z.json"
+  ],
+  "metricCommand": "bun run research:finetune:validate && bun test test/research/finetune-sandbox.test.ts",
+  "budgetMinutes": 20,
+  "runtimeSeconds": 0.06,
+  "decision": "discard",
+  "rationale": "Boundary proof only. No mutation attempted."
+}

@@ -23,10 +23,17 @@ Design the tracked sandbox where `gno` can train and evaluate retrieval-specific
 
 ## Done summary
 
-TBD
+Implemented a tracked research/finetune sandbox for expansion-model work. Added schemas, reward/eval/export contracts, baseline config, bootstrap/validation scripts, generated promotion cases, split manifests, and baseline run notes tied to the fn-34 recommendation.
+
+Key decisions:
+
+- expansion only
+- primary base: Qwen3-1.7B-Q4_K_M
+- heldout split reserved for ask, multilingual, and high-risk entity/negation cases
+- export target is local GGUF loaded via file: URI in gno
 
 ## Evidence
 
 - Commits:
-- Tests:
+- Tests: bun run research:finetune:bootstrap, bun run research:finetune:validate, bun test test/research/finetune-sandbox.test.ts, bun run lint:check
 - PRs:

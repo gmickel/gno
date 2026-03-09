@@ -1,0 +1,24 @@
+{
+  "split": "heldout",
+  "caseCount": 15,
+  "caseIds": [
+    "ml1",
+    "ml2",
+    "ml3",
+    "ml4",
+    "adv1",
+    "adv6",
+    "adv8",
+    "ask1",
+    "ask2",
+    "ask3",
+    "ask4",
+    "ask5",
+    "ask6",
+    "ask7",
+    "ask8"
+  ],
+  "caseSets": ["multilingual", "adversarial", "ask"],
+  "categories": ["multilingual", "entity", "negation", "ask"],
+  "sources": ["queries.json#ml", "hybrid-adversarial.json", "ask-cases.json"]
+}

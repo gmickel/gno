@@ -1,0 +1,19 @@
+{
+  "split": "validation",
+  "caseCount": 10,
+  "caseIds": [
+    "q5",
+    "q10",
+    "q15",
+    "q20",
+    "q25",
+    "adv2",
+    "adv3",
+    "adv4",
+    "adv5",
+    "adv7"
+  ],
+  "caseSets": ["baseline", "adversarial"],
+  "categories": ["baseline", "phrase", "acronym", "ambiguous", "near-miss"],
+  "sources": ["queries.json", "hybrid-adversarial.json"]
+}

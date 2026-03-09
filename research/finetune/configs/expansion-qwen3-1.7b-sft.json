@@ -1,0 +1,42 @@
+{
+  "$schema": "../schemas/expansion-sandbox-config.schema.json",
+  "id": "expansion-qwen3-1.7b-sft",
+  "task": "expansion",
+  "status": "baseline",
+  "recommendedBy": {
+    "epic": "fn-34-evaluate-next-generation-retrieval",
+    "artifact": "evals/fixtures/retrieval-candidate-benchmark/recommendation.md",
+    "runDate": "2026-03-09"
+  },
+  "model": {
+    "baseModel": "Qwen/Qwen3-1.7B",
+    "runtimeModelUri": "hf:unsloth/Qwen3-1.7B-GGUF/Qwen3-1.7B-Q4_K_M.gguf",
+    "targetQuantization": "Q4_K_M",
+    "promptMode": "no_think_json"
+  },
+  "dataset": {
+    "trainingSchema": "research/finetune/schemas/expansion-training-example.schema.json",
+    "promotionSchema": "research/finetune/schemas/promotion-case.schema.json",
+    "trainingDir": "research/finetune/data/training",
+    "promotionCases": "research/finetune/data/promotion/promotion-cases.jsonl",
+    "splitDir": "research/finetune/data/splits"
+  },
+  "training": {
+    "stage": "sft",
+    "adapter": "lora",
+    "contextTokens": 2048,
+    "maxCompletionTokens": 512,
+    "targetFormat": "gno_expansion_json"
+  },
+  "evaluation": {
+    "baselineCommand": "bun run eval:retrieval-candidates:write",
+    "validationSplit": "validation",
+    "promotionSplit": "heldout"
+  },
+  "export": {
+    "adapterDir": "research/finetune/outputs/expansion-qwen3-1.7b-sft/adapter",
+    "mergedDir": "research/finetune/outputs/expansion-qwen3-1.7b-sft/merged",
+    "ggufDir": "research/finetune/outputs/expansion-qwen3-1.7b-sft/gguf",
+    "runtimeUriTemplate": "file:{ggufDir}/gno-expansion-qwen3-1.7b-q4_k_m.gguf"
+  }
+}

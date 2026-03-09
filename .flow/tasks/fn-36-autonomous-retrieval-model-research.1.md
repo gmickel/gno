@@ -23,10 +23,10 @@ Define the first safe autonomous loop for retrieval-model experimentation. This 
 
 ## Done summary
 
-TBD
+Implemented a constrained autonomous research harness inside research/finetune/autonomous. Added fixed mutation roots, fixed metric/budget/promotion rules, and a noop-run proof that emits one run artifact and fails if any new mutation escapes the sandbox.
 
 ## Evidence
 
 - Commits:
-- Tests:
+- Tests: bun run research:finetune:autonomous:noop, bun run research:finetune:validate, bun test test/research/finetune-sandbox.test.ts test/research/autonomous-harness.test.ts, bun run lint:check
 - PRs:
