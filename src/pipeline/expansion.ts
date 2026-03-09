@@ -421,6 +421,30 @@ function parseExpansionResult(output: string): ExpansionResult | null {
   }
 }
 
+/**
+ * Build the exact expansion prompt used by production query expansion.
+ * Exported for benchmark/eval harnesses that need to inspect raw model output.
+ */
+export function buildExpansionPrompt(
+  query: string,
+  options: Pick<ExpansionOptions, "lang" | "intent"> = {}
+): string {
+  const template = getPromptTemplate(options.lang);
+  return buildPrompt(query, template, options.intent);
+}
+
+/**
+ * Parse raw expansion output using the same schema + guardrails as production.
+ * Exported for benchmark/eval harnesses that need raw-model diagnostics.
+ */
+export function parseExpansionOutput(
+  output: string,
+  query: string
+): ExpansionResult | null {
+  const parsed = parseExpansionResult(output);
+  return parsed ? applyExpansionGuardrails(query, parsed) : null;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Expansion Function
 // ─────────────────────────────────────────────────────────────────────────────
@@ -448,8 +472,7 @@ export async function expandQuery(
   const timeout = options.timeout ?? DEFAULT_TIMEOUT_MS;
 
   // Build prompt
-  const template = getPromptTemplate(options.lang);
-  const prompt = buildPrompt(query, template, options.intent);
+  const prompt = buildExpansionPrompt(query, options);
 
   // Run with timeout (clear timer to avoid resource leak)
   let timeoutId: ReturnType<typeof setTimeout> | undefined;
@@ -484,11 +507,11 @@ export async function expandQuery(
     }
 
     // Parse result
-    const parsed = parseExpansionResult(result.value);
+    const parsed = parseExpansionOutput(result.value, query);
     if (!parsed) {
       return ok(null);
     }
-    return ok(applyExpansionGuardrails(query, parsed));
+    return ok(parsed);
   } catch {
     if (timeoutId) {
       clearTimeout(timeoutId);

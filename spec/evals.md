@@ -47,6 +47,9 @@ evals/                          # Top-level (not test/eval/)
   multilingual.eval.ts          # Cross-language (BM25 baseline)
   thoroughness.eval.ts          # Fast/balanced/thorough comparison
   ask.eval.ts                   # Answer quality by preset
+  helpers/retrieval-candidate-benchmark.ts # Candidate gen-model benchmark
+  helpers/retrieval-candidate-matrix.ts    # Candidate matrix + cases
+  fixtures/retrieval-candidate-benchmark/  # Snapshot artifacts (json+md)
   scorers/
     ir-metrics.ts               # recall@k, nDCG@k, latency scorers
     expansion-validity.ts       # AJV schema validation
@@ -101,7 +104,9 @@ export default defineConfig({
 {
   "scripts": {
     "eval": "bun --bun evalite",
-    "eval:watch": "bun --bun evalite watch"
+    "eval:watch": "bun --bun evalite watch",
+    "eval:retrieval-candidates": "bun scripts/retrieval-candidate-benchmark.ts",
+    "eval:retrieval-candidates:write": "bun scripts/retrieval-candidate-benchmark.ts --write"
   }
 }
 ```
@@ -112,6 +117,23 @@ export default defineConfig({
 
 - `bun run eval` - Run once, exit
 - `bun run eval:watch` - Auto-rerun on file changes
+- `bun run eval:retrieval-candidates` - Manual full-path candidate benchmark
+- `bun run eval:retrieval-candidates:write` - Same benchmark, plus snapshot artifacts
+
+## Manual Candidate Benchmarks
+
+Not every retrieval-quality study should be an Evalite gate. For model-base comparisons, use a reproducible script plus committed artifacts when:
+
+- the run is too expensive for the normal local eval loop
+- you need raw per-model outputs, memory/load behavior, or smoke traces
+- the question is comparative research ("should we change bases?"), not release gating
+
+Current manual benchmark:
+
+- `scripts/retrieval-candidate-benchmark.ts`
+  - uses the real hybrid path (`expandQuery` + BM25 + sqlite-vec + rerank)
+  - covers baseline, adversarial, multilingual, and ask-style retrieval cases
+  - writes artifacts to `evals/fixtures/retrieval-candidate-benchmark/`
 
 ## Custom Scorers
 

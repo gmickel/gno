@@ -17,6 +17,12 @@ bun run eval:hybrid:baseline
 # Compare current benchmark to latest baseline
 bun run eval:hybrid:delta
 
+# Benchmark local candidate generation bases for retrieval
+bun run eval:retrieval-candidates
+
+# Write raw candidate benchmark artifacts + summary
+bun run eval:retrieval-candidates:write
+
 # Include LLM evals (slower, requires model download)
 bun run evals --include-llm
 
@@ -30,15 +36,16 @@ See [scores.md](scores.md) for latest results. Updated automatically by `bun run
 
 ## Eval Overview
 
-| Eval             | What it tests                          | Status                       |
-| ---------------- | -------------------------------------- | ---------------------------- |
-| **vsearch**      | BM25 search ranking (Recall@K, nDCG@K) | ✅ Passing                   |
-| **query**        | Query parsing and latency              | ✅ Passing                   |
-| **hybrid**       | End-to-end hybrid benchmark + p50/p95  | ✅ Passing                   |
-| **expansion**    | Query expansion validity               | ✅ Passing                   |
-| **thoroughness** | Fast/balanced/thorough comparison      | ✅ Passing                   |
-| **multilingual** | Cross-language retrieval               | ⚠️ Placeholder (see below)   |
-| **ask**          | Answer generation quality              | ⚠️ LLM-dependent (see below) |
+| Eval                     | What it tests                                    | Status                       |
+| ------------------------ | ------------------------------------------------ | ---------------------------- |
+| **vsearch**              | BM25 search ranking (Recall@K, nDCG@K)           | ✅ Passing                   |
+| **query**                | Query parsing and latency                        | ✅ Passing                   |
+| **hybrid**               | End-to-end hybrid benchmark + p50/p95            | ✅ Passing                   |
+| **retrieval-candidates** | Candidate gen-model benchmark (full hybrid path) | ✅ Available for manual runs |
+| **expansion**            | Query expansion validity                         | ✅ Passing                   |
+| **thoroughness**         | Fast/balanced/thorough comparison                | ✅ Passing                   |
+| **multilingual**         | Cross-language retrieval                         | ⚠️ Placeholder (see below)   |
+| **ask**                  | Answer generation quality                        | ⚠️ LLM-dependent (see below) |
 
 ## Hybrid Blend Policy Notes
 
@@ -47,6 +54,16 @@ See [scores.md](scores.md) for latest results. Updated automatically by `bun run
 - `bun run eval:hybrid` should be used to validate quality after blend tuning.
 - `bun run eval:hybrid:baseline` snapshots current metrics for later delta checks.
 - `bun run eval:hybrid:delta` prints quality/latency deltas against `hybrid-baseline/latest.json`.
+
+## Retrieval Candidate Benchmark
+
+- `bun run eval:retrieval-candidates` runs the next-generation base-model matrix against the real hybrid path: expansion + BM25 + sqlite-vec + rerank.
+- `bun run eval:retrieval-candidates:write` writes raw artifacts to `evals/fixtures/retrieval-candidate-benchmark/`.
+- Outputs include:
+  - expansion schema/clean-JSON/entity-loss smoke signals
+  - retrieval metrics across baseline, adversarial, multilingual, and ask-style cases
+  - answer smoke metrics, latency, and RSS deltas on the local machine
+- Use this benchmark before changing the default generation base or starting retrieval fine-tuning work.
 
 ## Known Limitations
 
@@ -91,10 +108,13 @@ evals/
 │   ├── corpus/{de,en,fr,it}/  # Multilingual test documents
 │   ├── hybrid-adversarial.json # Entity/phrase/negation/ambiguity cases
 │   ├── hybrid-baseline/        # Baseline snapshots (json+md)
+│   ├── retrieval-candidate-benchmark/ # Candidate benchmark outputs (json+md)
 │   ├── queries.json           # Search queries with relevance judgments
 │   └── ask-cases.json         # Answer generation test cases
 ├── helpers/
-│   └── setup-db.ts            # Temp DB creation for evals
+│   ├── retrieval-candidate-benchmark.ts # Full candidate benchmark runner
+│   ├── retrieval-candidate-matrix.ts    # Candidate matrix + benchmark cases
+│   └── setup-db.ts                     # Temp DB creation for evals
 ├── scorers/
 │   └── ir-metrics.ts          # Recall@K, nDCG@K scorers
 ├── *.eval.ts                  # Eval definitions
@@ -109,8 +129,9 @@ evals/
 2. Use `evalite()` from "evalite" package
 3. Get shared DB: `await getSharedEvalDb()`
 4. Add scorers with 0-1 normalized scores
-5. Run `bun run eval:scores` to verify
-6. Update this README with status
+5. If the work is a manual benchmark rather than an Evalite gate, add a reproducible `scripts/*.ts` entry and artifact directory under `evals/fixtures/`
+6. Run `bun run eval:scores` to verify
+7. Update this README with status
 
 ## CI/CD
 

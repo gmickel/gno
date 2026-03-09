@@ -1,0 +1,13 @@
+{
+  "branch_name": "fn-34-evaluate-next-generation-retrieval",
+  "created_at": "2026-03-09T00:14:13.693595Z",
+  "depends_on_epics": [],
+  "id": "fn-34-evaluate-next-generation-retrieval",
+  "next_task": 1,
+  "plan_review_status": "unknown",
+  "plan_reviewed_at": null,
+  "spec_path": ".flow/specs/fn-34-evaluate-next-generation-retrieval.md",
+  "status": "open",
+  "title": "Evaluate next-generation retrieval model bases",
+  "updated_at": "2026-03-09T00:14:58.431802Z"
+}

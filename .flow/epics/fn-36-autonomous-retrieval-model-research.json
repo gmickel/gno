@@ -1,0 +1,13 @@
+{
+  "branch_name": "fn-36-autonomous-retrieval-model-research",
+  "created_at": "2026-03-09T00:14:13.693535Z",
+  "depends_on_epics": [],
+  "id": "fn-36-autonomous-retrieval-model-research",
+  "next_task": 1,
+  "plan_review_status": "unknown",
+  "plan_reviewed_at": null,
+  "spec_path": ".flow/specs/fn-36-autonomous-retrieval-model-research.md",
+  "status": "open",
+  "title": "Autonomous retrieval model research harness",
+  "updated_at": "2026-03-09T00:14:58.604255Z"
+}

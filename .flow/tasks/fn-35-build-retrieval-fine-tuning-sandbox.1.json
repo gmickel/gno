@@ -1,0 +1,14 @@
+{
+  "assignee": null,
+  "claim_note": "",
+  "claimed_at": null,
+  "created_at": "2026-03-09T00:14:58.778004Z",
+  "depends_on": [],
+  "epic": "fn-35-build-retrieval-fine-tuning-sandbox",
+  "id": "fn-35-build-retrieval-fine-tuning-sandbox.1",
+  "priority": 1,
+  "spec_path": ".flow/tasks/fn-35-build-retrieval-fine-tuning-sandbox.1.md",
+  "status": "todo",
+  "title": "Design the retrieval fine-tuning sandbox",
+  "updated_at": "2026-03-09T00:14:58.778143Z"
+}

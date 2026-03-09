@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+## [0.21.1] - 2026-03-09
+
+### Added
+
+- Reproducible retrieval candidate benchmark harness for local generation bases, including Qwen3.5 comparisons, raw artifacts, and recommendation memo for expansion fine-tuning.
+- Manual benchmark scripts/docs for full-path model evaluation across expansion reliability, hybrid retrieval quality, latency, memory, and ask-style smoke tests.
+
 ## [0.21.0] - 2026-03-08
 
 ### Added
