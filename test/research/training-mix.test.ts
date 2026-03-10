@@ -1,17 +1,23 @@
 import { describe, expect, test } from "bun:test";
 
 import mix from "../../research/finetune/configs/training-mix.json";
+import { shouldFilterImportedExample } from "../../research/finetune/lib/mlx-training";
 
 describe("training data improvements", () => {
-  test("qmd import filters at least some low-quality imported examples", async () => {
-    const report = (await Bun.file(
-      new URL(
-        "../../research/finetune/data/generated/qmd-import-report.json",
-        import.meta.url
-      )
-    ).json()) as { filtered: number; kept: number };
-    expect(report.filtered).toBeGreaterThan(0);
-    expect(report.kept).toBeGreaterThan(0);
+  test("qmd import filters temporal and release drift examples", () => {
+    expect(
+      shouldFilterImportedExample("latest qwen 2026 release notes", {
+        lexicalQueries: ["latest qwen release notes"],
+        vectorQueries: ["recent qwen model release changes"],
+      })
+    ).toBe(true);
+
+    expect(
+      shouldFilterImportedExample("jwt token validation", {
+        lexicalQueries: ["jwt token validation"],
+        vectorQueries: ["how to validate a jwt token"],
+      })
+    ).toBe(false);
   });
 
   test("training mix oversamples gno-specific data", () => {
