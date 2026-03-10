@@ -89,6 +89,12 @@ bun run research:finetune:benchmark-export mlx-run1
 bun run research:finetune:promotion-bundle mlx-run1
 ```
 
+Finalize the confirmed promoted model into a canonical release bundle:
+
+```bash
+bun run research:finetune:finalize slim-retrieval-v1 auto-entity-lock-default-mix-lr95
+```
+
 Smoke the adapter against the JSON contract:
 
 ```bash

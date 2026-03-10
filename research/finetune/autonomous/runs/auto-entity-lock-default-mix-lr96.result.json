@@ -1,0 +1,1508 @@
+{
+  "runName": "auto-entity-lock-default-mix-lr96",
+  "candidateId": "entity-lock-default-mix-lr96",
+  "mix": "research/finetune/configs/training-mix.json",
+  "promptProfile": "research/finetune/configs/prompt-profiles/entity-lock-v1.json",
+  "learningRate": 0.0000096,
+  "seed": null,
+  "logPath": "/Users/gordon/work/gno/research/finetune/outputs/logs/auto-entity-lock-default-mix-lr96-2026-03-10T124341432Z.log",
+  "benchmark": {
+    "candidate": {
+      "id": "sandbox-auto-entity-lock-default-mix-lr96",
+      "label": "Sandbox auto-entity-lock-default-mix-lr96",
+      "family": "Qwen3-1.7B fine-tuned",
+      "uri": "file:/Users/gordon/work/gno/research/finetune/outputs/auto-entity-lock-default-mix-lr96-best-fused-deq/gno-expansion-auto-entity-lock-default-mix-lr96-f16.gguf",
+      "quantization": "F16",
+      "sourceModelUrl": "mlx-community/Qwen3-1.7B-4bit",
+      "ggufUrl": "/Users/gordon/work/gno/research/finetune/outputs/auto-entity-lock-default-mix-lr96-best-fused-deq/gno-expansion-auto-entity-lock-default-mix-lr96-f16.gguf",
+      "roleTests": ["expand", "answer"],
+      "expectedRamGiB": 4,
+      "expectedVramGiB": 0,
+      "notes": "Auto-benchmarked exported candidate from auto-entity-lock-default-mix-lr96"
+    },
+    "ok": true,
+    "resolvedModelPath": "/Users/gordon/work/gno/research/finetune/outputs/auto-entity-lock-default-mix-lr96-best-fused-deq/gno-expansion-auto-entity-lock-default-mix-lr96-f16.gguf",
+    "modelFileBytes": 3447349312,
+    "vectorAvailable": true,
+    "load": {
+      "firstResponseMs": 2551.3,
+      "rssDeltaBytes": 3657383936,
+      "peakRssBytes": 4742414336
+    },
+    "expansion": {
+      "schemaSuccessRate": 1,
+      "cleanJsonRate": 1,
+      "thinkLeakRate": 0,
+      "entityLossRate": 0,
+      "negationDriftRate": 0,
+      "averageLatencyMs": 2277.13,
+      "averageRawChars": 574.33,
+      "averageLexicalQueries": 4,
+      "averageVectorQueries": 2.33,
+      "averageHydeChars": 292.17,
+      "smoke": [
+        {
+          "id": "smoke-entity",
+          "label": "entity-heavy",
+          "query": "ECONNREFUSED 127.0.0.1:5432",
+          "rawOutput": "\n\n{\"lexicalQueries\":[\"database connection refused troubleshooting port 5432\",\"database connection refused port 127.0.0.1:5432\",\"database connection refused port 5432\"],\"vectorQueries\":[\"how to resolve ECONNREFUSED for PostgreSQL 127.0.0.1:5432\",\"fix ECONNREFUSED for 127.0.0.1:5432\"],\"hyde\":\"Check if the PostgreSQL server is running on 127.0.0.1:5432. If the port is blocked, update the configuration to use the correct IP address. For Docker containers, ensure the host port is mapped correctly. For local development, use 127.0.0.1:5432 and ensure the database is configured to listen on this address.\"}\n",
+          "parseOk": true,
+          "cleanJson": true,
+          "thinkLeak": false,
+          "entityLoss": false,
+          "negationDrift": false,
+          "latencyMs": 2551.3,
+          "lexicalQueries": [
+            "ECONNREFUSED 127.0.0.1",
+            "database connection refused troubleshooting port 5432",
+            "database connection refused port 127.0.0.1:5432",
+            "database connection refused port 5432"
+          ],
+          "vectorQueries": [
+            "how to resolve ECONNREFUSED for PostgreSQL 127.0.0.1:5432",
+            "fix ECONNREFUSED for 127.0.0.1:5432"
+          ],
+          "hyde": "Check if the PostgreSQL server is running on 127.0.0.1:5432. If the port is blocked, update the configuration to use the correct IP address. For Docker containers, ensure the host port is mapped correctly. For local development, use 127.0.0.1:5432 and ensure the database is configured to listen on this address."
+        },
+        {
+          "id": "smoke-negation",
+          "label": "negation-sensitive",
+          "query": "connection timeout -\"ECONNREFUSED\"",
+          "rawOutput": "\n\n{\"lexicalQueries\":[\"connection timeout - ECONNREFUSED socket\",\"connection timeout - ECONNREFUSED error\",\"connection timeout - ECONNREFUSED failed\"],\"vectorQueries\":[\"exclude connection refused cases\",\"filter out ECONNREFUSED errors\",\"ignore connection refused cases\"],\"hyde\":\"Connection timeout - ECONNREFUSED occurs when a socket connection fails before the server responds. This is common in Node.js and C# applications where the client is waiting for a response from a server that is not reachable. Use the `ECONNREFUSED` error to log and retry connections before the timeout.\"}\n",
+          "parseOk": true,
+          "cleanJson": true,
+          "thinkLeak": false,
+          "entityLoss": false,
+          "negationDrift": false,
+          "latencyMs": 2606.03,
+          "lexicalQueries": [
+            "ECONNREFUSED \"ECONNREFUSED\" -\"ECONNREFUSED\"",
+            "connection timeout - ECONNREFUSED socket",
+            "connection timeout - ECONNREFUSED error",
+            "connection timeout - ECONNREFUSED failed"
+          ],
+          "vectorQueries": [
+            "exclude connection refused cases",
+            "filter out ECONNREFUSED errors",
+            "ignore connection refused cases"
+          ],
+          "hyde": "Connection timeout - ECONNREFUSED occurs when a socket connection fails before the server responds. This is common in Node.js and C# applications where the client is waiting for a response from a server that is not reachable. Use the `ECONNREFUSED` error to log and retry connections before the timeout."
+        },
+        {
+          "id": "smoke-phrase",
+          "label": "quoted phrase",
+          "query": "\"Authorization: Bearer\" token endpoint",
+          "rawOutput": "\n\n{\"lexicalQueries\":[\"bearer token endpoint auth authorization\",\"bearer token endpoint auth endpoint\",\"bearer token endpoint auth flow\"],\"vectorQueries\":[\"how to use bearer tokens for auth endpoints\",\"what is the token endpoint for authorization\"],\"hyde\":\"The token endpoint is the endpoint used to obtain a bearer token for an authenticated user. It is typically called /token and returns a JSON Web Token (JWT) that can be used to authenticate requests to protected endpoints.\"}\n",
+          "parseOk": true,
+          "cleanJson": true,
+          "thinkLeak": false,
+          "entityLoss": false,
+          "negationDrift": false,
+          "latencyMs": 1627.53,
+          "lexicalQueries": [
+            "Authorization Bearer \"Authorization: Bearer\"",
+            "bearer token endpoint auth authorization",
+            "bearer token endpoint auth endpoint",
+            "bearer token endpoint auth flow"
+          ],
+          "vectorQueries": [
+            "how to use bearer tokens for auth endpoints",
+            "what is the token endpoint for authorization"
+          ],
+          "hyde": "The token endpoint is the endpoint used to obtain a bearer token for an authenticated user. It is typically called /token and returns a JSON Web Token (JWT) that can be used to authenticate requests to protected endpoints."
+        },
+        {
+          "id": "smoke-ask",
+          "label": "ask-style retrieval",
+          "query": "How do I authenticate API requests?",
+          "rawOutput": "\n\n{\"lexicalQueries\":[\"API authentication OAuth2 JWT\",\"API authentication bearer tokens JSON web tokens\",\"API authentication OAuth2 bearer tokens\"],\"vectorQueries\":[\"how do I authenticate API requests using OAuth2 and JWT\",\"what is the standard way to authenticate API requests with bearer tokens\"],\"hyde\":\"API authentication typically uses OAuth2 (Authorization: Bearer <token>) or JWT (Authorization: Bearer <token>). For endpoints requiring bearer tokens, use the client credentials flow with a valid client ID and secret. JWT tokens are signed with a public key, while OAuth2 tokens are issued by an authorization server.\"}\n",
+          "parseOk": true,
+          "cleanJson": true,
+          "thinkLeak": false,
+          "entityLoss": false,
+          "negationDrift": false,
+          "latencyMs": 2153.76,
+          "lexicalQueries": [
+            "How I API",
+            "API authentication OAuth2 JWT",
+            "API authentication bearer tokens JSON web tokens",
+            "API authentication OAuth2 bearer tokens"
+          ],
+          "vectorQueries": [
+            "how do I authenticate API requests using OAuth2 and JWT",
+            "what is the standard way to authenticate API requests with bearer tokens"
+          ],
+          "hyde": "API authentication typically uses OAuth2 (Authorization: Bearer <token>) or JWT (Authorization: Bearer <token>). For endpoints requiring bearer tokens, use the client credentials flow with a valid client ID and secret. JWT tokens are signed with a public key, while OAuth2 tokens are issued by an authorization server."
+        },
+        {
+          "id": "smoke-fr",
+          "label": "multilingual-fr",
+          "query": "sécurité authentification JWT",
+          "rawOutput": "\n\n{\"lexicalQueries\":[\"sécurité authentification JWT token\",\"sécurité JWT token authentification\",\"sécurité JWT token authentification et token\"],\"vectorQueries\":[\"sécurité JWT token authentification pour l'API\",\"sécurité JWT token authentification et token pour l'API\"],\"hyde\":\"Les tokens JWT (JSON Web Tokens) sont utilisés pour l'authentification et l'authentification à l'API. Ils contiennent l'ID de l'utilisateur, l'expiratoin et l'audience. La sécurité JWT requiert une bonne gestion des tokens, leur expiration et l'expédition sécurisée. L'authentification JWT est souvent utilisée pour l'API REST et l'authentification des clients.\"}\n",
+          "parseOk": true,
+          "cleanJson": true,
+          "thinkLeak": false,
+          "entityLoss": false,
+          "negationDrift": false,
+          "latencyMs": 3019.34,
+          "lexicalQueries": [
+            "JWT",
+            "sécurité authentification JWT token",
+            "sécurité JWT token authentification",
+            "sécurité JWT token authentification et token"
+          ],
+          "vectorQueries": [
+            "sécurité JWT token authentification pour l'API",
+            "sécurité JWT token authentification et token pour l'API"
+          ],
+          "hyde": "Les tokens JWT (JSON Web Tokens) sont utilisés pour l'authentification et l'authentification à l'API. Ils contiennent l'ID de l'utilisateur, l'expiratoin et l'audience. La sécurité JWT requiert une bonne gestion des tokens, leur expiration et l'expédition sécurisée. L'authentification JWT est souvent utilisée pour l'API REST et l'authentification des clients."
+        },
+        {
+          "id": "smoke-de",
+          "label": "multilingual-de",
+          "query": "helm rollback app -upgrade",
+          "rawOutput": "\n\n{\"lexicalQueries\":[\"helm rollback app -upgrade\",\"helm rollback app upgrade\",\"helm rollback app -upgrade documentation\"],\"vectorQueries\":[\"how to helm rollback app -upgrade\",\"what is helm rollback app -upgrade\",\"helm rollback app -upgrade best practices\"],\"hyde\":\"This guide to helm rollback app -upgrade covers the essential steps, common pitfalls, and best practices for successfully rolling back your helm application. Follow the steps carefully to avoid common issues and ensure a smooth recovery.\"}\n",
+          "parseOk": true,
+          "cleanJson": true,
+          "thinkLeak": false,
+          "entityLoss": false,
+          "negationDrift": false,
+          "latencyMs": 1704.85,
+          "lexicalQueries": [
+            "-upgrade",
+            "helm rollback app -upgrade",
+            "helm rollback app upgrade",
+            "helm rollback app -upgrade documentation"
+          ],
+          "vectorQueries": [
+            "how to helm rollback app -upgrade",
+            "what is helm rollback app -upgrade",
+            "helm rollback app -upgrade best practices"
+          ],
+          "hyde": "This guide to helm rollback app -upgrade covers the essential steps, common pitfalls, and best practices for successfully rolling back your helm application. Follow the steps carefully to avoid common issues and ensure a smooth recovery."
+        }
+      ]
+    },
+    "retrieval": {
+      "caseCount": 45,
+      "metrics": {
+        "recallAt5": 0.9667,
+        "recallAt10": 0.9667,
+        "ndcgAt10": 0.919,
+        "mrr": 0.9407
+      },
+      "bySet": {
+        "baseline": {
+          "metric": {
+            "recallAt5": 1,
+            "recallAt10": 1,
+            "ndcgAt10": 0.9753,
+            "mrr": 0.98
+          },
+          "latency": {
+            "p50Ms": 2556.24,
+            "p95Ms": 3424.92,
+            "meanMs": 2660.31
+          }
+        },
+        "multilingual": {
+          "metric": {
+            "recallAt5": 0.875,
+            "recallAt10": 0.875,
+            "ndcgAt10": 0.8109,
+            "mrr": 0.875
+          },
+          "latency": {
+            "p50Ms": 2238.75,
+            "p95Ms": 3413.3,
+            "meanMs": 2544.31
+          }
+        },
+        "adversarial": {
+          "metric": {
+            "recallAt5": 1,
+            "recallAt10": 1,
+            "ndcgAt10": 0.9751,
+            "mrr": 1
+          },
+          "latency": {
+            "p50Ms": 548,
+            "p95Ms": 617.34,
+            "meanMs": 555.14
+          }
+        },
+        "ask": {
+          "metric": {
+            "recallAt5": 0.875,
+            "recallAt10": 0.875,
+            "ndcgAt10": 0.741,
+            "mrr": 0.7917
+          },
+          "latency": {
+            "p50Ms": 2642.69,
+            "p95Ms": 5950.04,
+            "meanMs": 3617.91
+          }
+        }
+      },
+      "latencies": {
+        "total": {
+          "p50Ms": 2388.25,
+          "p95Ms": 4063.78,
+          "meanMs": 2445.99
+        },
+        "byStage": {
+          "lang": {
+            "p50Ms": 0.14,
+            "p95Ms": 0.23,
+            "meanMs": 0.16
+          },
+          "expansion": {
+            "p50Ms": 1741.34,
+            "p95Ms": 3395.81,
+            "meanMs": 1711.79
+          },
+          "bm25": {
+            "p50Ms": 0,
+            "p95Ms": 0,
+            "meanMs": 0
+          },
+          "vector": {
+            "p50Ms": 76.77,
+            "p95Ms": 141.1,
+            "meanMs": 80.56
+          },
+          "fusion": {
+            "p50Ms": 0.04,
+            "p95Ms": 0.09,
+            "meanMs": 0.05
+          },
+          "rerank": {
+            "p50Ms": 593.98,
+            "p95Ms": 917.82,
+            "meanMs": 651.36
+          },
+          "assembly": {
+            "p50Ms": 0.27,
+            "p95Ms": 0.39,
+            "meanMs": 0.29
+          },
+          "total": {
+            "p50Ms": 2388.25,
+            "p95Ms": 4063.78,
+            "meanMs": 2445.99
+          }
+        }
+      },
+      "cases": [
+        {
+          "id": "q1",
+          "caseSet": "baseline",
+          "category": "baseline",
+          "query": "API authentication bearer token",
+          "topDocs": [
+            "en/api-reference.md",
+            "fr/securite-applications.md",
+            "fr/guide-debutant.md",
+            "de/fehlerbehandlung.md",
+            "en/architecture-decisions.md"
+          ],
+          "recallAt5": 1,
+          "recallAt10": 1,
+          "ndcgAt10": 1,
+          "mrr": 1,
+          "timings": {
+            "langMs": 0.61,
+            "expansionMs": 1922.18,
+            "bm25Ms": 0,
+            "vectorMs": 116.42,
+            "fusionMs": 0.22,
+            "rerankMs": 751.28,
+            "assemblyMs": 0.71,
+            "totalMs": 2793.49
+          }
+        },
+        {
+          "id": "q2",
+          "caseSet": "baseline",
+          "category": "baseline",
+          "query": "rate limiting requests per minute",
+          "topDocs": [
+            "en/api-reference.md",
+            "de/fehlerbehandlung.md",
+            "it/ottimizzazione-performance.md"
+          ],
+          "recallAt5": 1,
+          "recallAt10": 1,
+          "ndcgAt10": 1,
+          "mrr": 1,
+          "timings": {
+            "langMs": 0.18,
+            "expansionMs": 1608.16,
+            "bm25Ms": 0,
+            "vectorMs": 69.83,
+            "fusionMs": 0.04,
+            "rerankMs": 661.05,
+            "assemblyMs": 0.25,
+            "totalMs": 2340.63
+          }
+        },
+        {
+          "id": "q3",
+          "caseSet": "baseline",
+          "category": "baseline",
+          "query": "microservices message queue RabbitMQ",
+          "topDocs": [
+            "en/architecture-decisions.md",
+            "en/api-reference.md",
+            "fr/guide-debutant.md",
+            "de/fehlerbehandlung.md",
+            "it/ottimizzazione-performance.md"
+          ],
+          "recallAt5": 1,
+          "recallAt10": 1,
+          "ndcgAt10": 1,
+          "mrr": 1,
+          "timings": {
+            "langMs": 0.17,
+            "expansionMs": 1936.61,
+            "bm25Ms": 0,
+            "vectorMs": 159.46,
+            "fusionMs": 0.05,
+            "rerankMs": 1041.9,
+            "assemblyMs": 0.48,
+            "totalMs": 3141.11
+          }
+        },
+        {
+          "id": "q4",
+          "caseSet": "baseline",
+          "category": "baseline",
+          "query": "event sourcing audit trail",
+          "topDocs": [
+            "en/architecture-decisions.md",
+            "en/api-reference.md",
+            "fr/securite-applications.md"
+          ],
+          "recallAt5": 1,
+          "recallAt10": 1,
+          "ndcgAt10": 1,
+          "mrr": 1,
+          "timings": {
+            "langMs": 0.2,
+            "expansionMs": 1711.14,
+            "bm25Ms": 0,
+            "vectorMs": 65.11,
+            "fusionMs": 0.04,
+            "rerankMs": 584.12,
+            "assemblyMs": 0.28,
+            "totalMs": 2362.98
+          }
+        },
+        {
+          "id": "q5",
+          "caseSet": "baseline",
+          "category": "baseline",
+          "query": "kubernetes deployment helm chart",
+          "topDocs": [
+            "de/deployment-anleitung.md",
+            "en/architecture-decisions.md",
+            "fr/guide-debutant.md",
+            "en/api-reference.md"
+          ],
+          "recallAt5": 1,
+          "recallAt10": 1,
+          "ndcgAt10": 1,
+          "mrr": 1,
+          "timings": {
+            "langMs": 0.14,
+            "expansionMs": 1851.15,
+            "bm25Ms": 0,
+            "vectorMs": 148.29,
+            "fusionMs": 0.06,
+            "rerankMs": 993.03,
+            "assemblyMs": 0.34,
+            "totalMs": 2994.88
+          }
+        },
+        {
+          "id": "q6",
+          "caseSet": "baseline",
+          "category": "baseline",
+          "query": "connection refused database error",
+          "topDocs": [
+            "en/troubleshooting-guide.md",
+            "en/api-reference.md",
+            "it/configurazione-sistema.md",
+            "fr/guide-debutant.md",
+            "de/fehlerbehandlung.md"
+          ],
+          "recallAt5": 1,
+          "recallAt10": 1,
+          "ndcgAt10": 0.968,
+          "mrr": 1,
+          "timings": {
+            "langMs": 0.18,
+            "expansionMs": 2197.45,
+            "bm25Ms": 0,
+            "vectorMs": 118.09,
+            "fusionMs": 0.05,
+            "rerankMs": 785.79,
+            "assemblyMs": 0.28,
+            "totalMs": 3104.04
+          }
+        },
+        {
+          "id": "q7",
+          "caseSet": "baseline",
+          "category": "baseline",
+          "query": "memory leak debugging heap snapshot",
+          "topDocs": [
+            "en/troubleshooting-guide.md",
+            "en/api-reference.md",
+            "fr/guide-debutant.md",
+            "de/fehlerbehandlung.md",
+            "it/ottimizzazione-performance.md"
+          ],
+          "recallAt5": 1,
+          "recallAt10": 1,
+          "ndcgAt10": 1,
+          "mrr": 1,
+          "timings": {
+            "langMs": 0.15,
+            "expansionMs": 1741.34,
+            "bm25Ms": 0,
+            "vectorMs": 88.65,
+            "fusionMs": 0.08,
+            "rerankMs": 723.26,
+            "assemblyMs": 0.35,
+            "totalMs": 2556.24
+          }
+        },
+        {
+          "id": "q8",
+          "caseSet": "baseline",
+          "category": "baseline",
+          "query": "JWT token expired refresh",
+          "topDocs": [
+            "en/troubleshooting-guide.md",
+            "en/api-reference.md",
+            "fr/securite-applications.md"
+          ],
+          "recallAt5": 1,
+          "recallAt10": 1,
+          "ndcgAt10": 0.9558,
+          "mrr": 1,
+          "timings": {
+            "langMs": 0.15,
+            "expansionMs": 2351.87,
+            "bm25Ms": 0,
+            "vectorMs": 133.13,
+            "fusionMs": 0.04,
+            "rerankMs": 753.96,
+            "assemblyMs": 0.28,
+            "totalMs": 3241.79
+          }
+        },
+        {
+          "id": "q9",
+          "caseSet": "baseline",
+          "category": "baseline",
+          "query": "Bereitstellung Kubernetes Helm",
+          "topDocs": [
+            "de/deployment-anleitung.md",
+            "en/api-reference.md",
+            "fr/guide-debutant.md",
+            "it/configurazione-sistema.md",
+            "de/fehlerbehandlung.md"
+          ],
+          "recallAt5": 1,
+          "recallAt10": 1,
+          "ndcgAt10": 0.9173,
+          "mrr": 1,
+          "timings": {
+            "langMs": 0.13,
+            "expansionMs": 1964.33,
+            "bm25Ms": 0,
+            "vectorMs": 62.75,
+            "fusionMs": 0.03,
+            "rerankMs": 653.7,
+            "assemblyMs": 0.34,
+            "totalMs": 2682.29
+          }
+        },
+        {
+          "id": "q10",
+          "caseSet": "baseline",
+          "category": "baseline",
+          "query": "Rollback vorherige Version",
+          "topDocs": [
+            "en/api-reference.md",
+            "de/deployment-anleitung.md",
+            "fr/guide-debutant.md",
+            "it/ottimizzazione-performance.md",
+            "en/troubleshooting-guide.md"
+          ],
+          "recallAt5": 1,
+          "recallAt10": 1,
+          "ndcgAt10": 0.6309,
+          "mrr": 0.5,
+          "timings": {
+            "langMs": 0.17,
+            "expansionMs": 1417.06,
+            "bm25Ms": 0,
+            "vectorMs": 76.31,
+            "fusionMs": 0.03,
+            "rerankMs": 642.47,
+            "assemblyMs": 0.25,
+            "totalMs": 2138.55
+          }
+        },
+        {
+          "id": "q11",
+          "caseSet": "baseline",
+          "category": "baseline",
+          "query": "Fehlerklassen ValidationError",
+          "topDocs": ["de/fehlerbehandlung.md", "en/api-reference.md"],
+          "recallAt5": 1,
+          "recallAt10": 1,
+          "ndcgAt10": 1,
+          "mrr": 1,
+          "timings": {
+            "langMs": 0.14,
+            "expansionMs": 1698.02,
+            "bm25Ms": 0,
+            "vectorMs": 76.63,
+            "fusionMs": 0.04,
+            "rerankMs": 637.19,
+            "assemblyMs": 0.32,
+            "totalMs": 2414.23
+          }
+        },
+        {
+          "id": "q12",
+          "caseSet": "baseline",
+          "category": "baseline",
+          "query": "Circuit Breaker retry Logik",
+          "topDocs": ["de/fehlerbehandlung.md", "en/api-reference.md"],
+          "recallAt5": 1,
+          "recallAt10": 1,
+          "ndcgAt10": 1,
+          "mrr": 1,
+          "timings": {
+            "langMs": 0.15,
+            "expansionMs": 1799.57,
+            "bm25Ms": 0,
+            "vectorMs": 93.98,
+            "fusionMs": 0.03,
+            "rerankMs": 651.28,
+            "assemblyMs": 0.31,
+            "totalMs": 2546.94
+          }
+        },
+        {
+          "id": "q13",
+          "caseSet": "baseline",
+          "category": "baseline",
+          "query": "composants React hooks useState",
+          "topDocs": [
+            "fr/guide-debutant.md",
+            "en/api-reference.md",
+            "de/fehlerbehandlung.md",
+            "it/ottimizzazione-performance.md"
+          ],
+          "recallAt5": 1,
+          "recallAt10": 1,
+          "ndcgAt10": 1,
+          "mrr": 1,
+          "timings": {
+            "langMs": 0.16,
+            "expansionMs": 2164.25,
+            "bm25Ms": 0,
+            "vectorMs": 137.16,
+            "fusionMs": 0.04,
+            "rerankMs": 737.61,
+            "assemblyMs": 0.39,
+            "totalMs": 3042.74
+          }
+        },
+        {
+          "id": "q14",
+          "caseSet": "baseline",
+          "category": "baseline",
+          "query": "tests unitaires intégration",
+          "topDocs": [
+            "fr/guide-debutant.md",
+            "en/api-reference.md",
+            "de/fehlerbehandlung.md",
+            "fr/securite-applications.md",
+            "it/ottimizzazione-performance.md"
+          ],
+          "recallAt5": 1,
+          "recallAt10": 1,
+          "ndcgAt10": 1,
+          "mrr": 1,
+          "timings": {
+            "langMs": 0.29,
+            "expansionMs": 1843.69,
+            "bm25Ms": 0,
+            "vectorMs": 91.13,
+            "fusionMs": 0.04,
+            "rerankMs": 593.16,
+            "assemblyMs": 0.27,
+            "totalMs": 2530.7
+          }
+        },
+        {
+          "id": "q15",
+          "caseSet": "baseline",
+          "category": "baseline",
+          "query": "injection SQL requêtes paramétrées",
+          "topDocs": [
+            "fr/securite-applications.md",
+            "en/api-reference.md",
+            "en/troubleshooting-guide.md",
+            "de/fehlerbehandlung.md",
+            "it/ottimizzazione-performance.md"
+          ],
+          "recallAt5": 1,
+          "recallAt10": 1,
+          "ndcgAt10": 1,
+          "mrr": 1,
+          "timings": {
+            "langMs": 0.13,
+            "expansionMs": 3095.72,
+            "bm25Ms": 0,
+            "vectorMs": 124.72,
+            "fusionMs": 0.09,
+            "rerankMs": 726.14,
+            "assemblyMs": 0.34,
+            "totalMs": 3949.75
+          }
+        },
+        {
+          "id": "q16",
+          "caseSet": "baseline",
+          "category": "baseline",
+          "query": "CSRF token protection formulaire",
+          "topDocs": ["fr/securite-applications.md", "en/api-reference.md"],
+          "recallAt5": 1,
+          "recallAt10": 1,
+          "ndcgAt10": 1,
+          "mrr": 1,
+          "timings": {
+            "langMs": 0.17,
+            "expansionMs": 1762.22,
+            "bm25Ms": 0,
+            "vectorMs": 72.97,
+            "fusionMs": 0.04,
+            "rerankMs": 550.96,
+            "assemblyMs": 0.25,
+            "totalMs": 2388.25
+          }
+        },
+        {
+          "id": "q17",
+          "caseSet": "baseline",
+          "category": "baseline",
+          "query": "cache Redis LRU performance",
+          "topDocs": [
+            "it/ottimizzazione-performance.md",
+            "en/api-reference.md"
+          ],
+          "recallAt5": 1,
+          "recallAt10": 1,
+          "ndcgAt10": 1,
+          "mrr": 1,
+          "timings": {
+            "langMs": 0.12,
+            "expansionMs": 1911.49,
+            "bm25Ms": 0,
+            "vectorMs": 108.58,
+            "fusionMs": 0.03,
+            "rerankMs": 574.47,
+            "assemblyMs": 0.31,
+            "totalMs": 2596.88
+          }
+        },
+        {
+          "id": "q18",
+          "caseSet": "baseline",
+          "category": "baseline",
+          "query": "lazy loading componenti React",
+          "topDocs": [
+            "it/ottimizzazione-performance.md",
+            "en/api-reference.md",
+            "fr/guide-debutant.md"
+          ],
+          "recallAt5": 1,
+          "recallAt10": 1,
+          "ndcgAt10": 1,
+          "mrr": 1,
+          "timings": {
+            "langMs": 0.12,
+            "expansionMs": 1371.41,
+            "bm25Ms": 0,
+            "vectorMs": 66.87,
+            "fusionMs": 0.04,
+            "rerankMs": 560.12,
+            "assemblyMs": 0.22,
+            "totalMs": 2000.45
+          }
+        },
+        {
+          "id": "q19",
+          "caseSet": "baseline",
+          "category": "baseline",
+          "query": "Docker Compose configurazione servizi",
+          "topDocs": [
+            "it/configurazione-sistema.md",
+            "en/api-reference.md",
+            "de/deployment-anleitung.md"
+          ],
+          "recallAt5": 1,
+          "recallAt10": 1,
+          "ndcgAt10": 0.9558,
+          "mrr": 1,
+          "timings": {
+            "langMs": 0.14,
+            "expansionMs": 1621.75,
+            "bm25Ms": 0,
+            "vectorMs": 60.86,
+            "fusionMs": 0.03,
+            "rerankMs": 586.05,
+            "assemblyMs": 0.29,
+            "totalMs": 2270.05
+          }
+        },
+        {
+          "id": "q20",
+          "caseSet": "baseline",
+          "category": "baseline",
+          "query": "variabili ambiente validazione Zod",
+          "topDocs": [
+            "it/configurazione-sistema.md",
+            "en/api-reference.md",
+            "en/troubleshooting-guide.md",
+            "fr/guide-debutant.md",
+            "de/fehlerbehandlung.md"
+          ],
+          "recallAt5": 1,
+          "recallAt10": 1,
+          "ndcgAt10": 1,
+          "mrr": 1,
+          "timings": {
+            "langMs": 0.16,
+            "expansionMs": 1761.22,
+            "bm25Ms": 0,
+            "vectorMs": 106.7,
+            "fusionMs": 0.04,
+            "rerankMs": 714.05,
+            "assemblyMs": 0.27,
+            "totalMs": 2584.33
+          }
+        },
+        {
+          "id": "q21",
+          "caseSet": "baseline",
+          "category": "baseline",
+          "query": "API gateway Kong authentication",
+          "topDocs": [
+            "en/architecture-decisions.md",
+            "en/api-reference.md",
+            "fr/guide-debutant.md",
+            "fr/securite-applications.md",
+            "it/configurazione-sistema.md"
+          ],
+          "recallAt5": 1,
+          "recallAt10": 1,
+          "ndcgAt10": 1,
+          "mrr": 1,
+          "timings": {
+            "langMs": 0.12,
+            "expansionMs": 2005.27,
+            "bm25Ms": 0,
+            "vectorMs": 119.11,
+            "fusionMs": 0.03,
+            "rerankMs": 696.1,
+            "assemblyMs": 0.38,
+            "totalMs": 2822.77
+          }
+        },
+        {
+          "id": "q22",
+          "caseSet": "baseline",
+          "category": "baseline",
+          "query": "database per service saga pattern",
+          "topDocs": [
+            "en/architecture-decisions.md",
+            "en/api-reference.md",
+            "it/ottimizzazione-performance.md",
+            "de/fehlerbehandlung.md",
+            "it/configurazione-sistema.md"
+          ],
+          "recallAt5": 1,
+          "recallAt10": 1,
+          "ndcgAt10": 1,
+          "mrr": 1,
+          "timings": {
+            "langMs": 0.23,
+            "expansionMs": 1493.38,
+            "bm25Ms": 0,
+            "vectorMs": 85.45,
+            "fusionMs": 0.06,
+            "rerankMs": 565.77,
+            "assemblyMs": 0.27,
+            "totalMs": 2147.68
+          }
+        },
+        {
+          "id": "q23",
+          "caseSet": "baseline",
+          "category": "baseline",
+          "query": "container logs kubectl debug",
+          "topDocs": [
+            "en/troubleshooting-guide.md",
+            "en/api-reference.md",
+            "de/deployment-anleitung.md",
+            "de/fehlerbehandlung.md",
+            "fr/guide-debutant.md"
+          ],
+          "recallAt5": 1,
+          "recallAt10": 1,
+          "ndcgAt10": 0.9558,
+          "mrr": 1,
+          "timings": {
+            "langMs": 0.14,
+            "expansionMs": 1430.94,
+            "bm25Ms": 0,
+            "vectorMs": 67.06,
+            "fusionMs": 0.04,
+            "rerankMs": 584.32,
+            "assemblyMs": 0.27,
+            "totalMs": 2084.51
+          }
+        },
+        {
+          "id": "q24",
+          "caseSet": "baseline",
+          "category": "baseline",
+          "query": "hachage mot de passe argon2",
+          "topDocs": [
+            "fr/securite-applications.md",
+            "en/api-reference.md",
+            "fr/guide-debutant.md",
+            "de/fehlerbehandlung.md",
+            "it/ottimizzazione-performance.md"
+          ],
+          "recallAt5": 1,
+          "recallAt10": 1,
+          "ndcgAt10": 1,
+          "mrr": 1,
+          "timings": {
+            "langMs": 0.13,
+            "expansionMs": 2445.01,
+            "bm25Ms": 0,
+            "vectorMs": 138.81,
+            "fusionMs": 0.03,
+            "rerankMs": 838.58,
+            "assemblyMs": 0.25,
+            "totalMs": 3424.92
+          }
+        },
+        {
+          "id": "q25",
+          "caseSet": "baseline",
+          "category": "baseline",
+          "query": "indici database query N+1",
+          "topDocs": [
+            "it/ottimizzazione-performance.md",
+            "en/api-reference.md",
+            "de/fehlerbehandlung.md"
+          ],
+          "recallAt5": 1,
+          "recallAt10": 1,
+          "ndcgAt10": 1,
+          "mrr": 1,
+          "timings": {
+            "langMs": 0.11,
+            "expansionMs": 1699.68,
+            "bm25Ms": 0,
+            "vectorMs": 77.36,
+            "fusionMs": 0.04,
+            "rerankMs": 567.95,
+            "assemblyMs": 0.24,
+            "totalMs": 2347.57
+          }
+        },
+        {
+          "id": "ml1",
+          "caseSet": "multilingual",
+          "category": "multilingual",
+          "query": "deployment Kubernetes",
+          "topDocs": [
+            "de/deployment-anleitung.md",
+            "en/api-reference.md",
+            "fr/guide-debutant.md",
+            "en/architecture-decisions.md",
+            "de/fehlerbehandlung.md"
+          ],
+          "recallAt5": 1,
+          "recallAt10": 1,
+          "ndcgAt10": 0.9207,
+          "mrr": 1,
+          "timings": {
+            "langMs": 0.14,
+            "expansionMs": 1500.63,
+            "bm25Ms": 0,
+            "vectorMs": 83.21,
+            "fusionMs": 0.03,
+            "rerankMs": 653.04,
+            "assemblyMs": 0.25,
+            "totalMs": 2238.75
+          }
+        },
+        {
+          "id": "ml2",
+          "caseSet": "multilingual",
+          "category": "multilingual",
+          "query": "error handling retry mechanism",
+          "topDocs": ["de/fehlerbehandlung.md", "en/api-reference.md"],
+          "recallAt5": 0.5,
+          "recallAt10": 0.5,
+          "ndcgAt10": 0.7872,
+          "mrr": 1,
+          "timings": {
+            "langMs": 0.13,
+            "expansionMs": 1761.74,
+            "bm25Ms": 0,
+            "vectorMs": 88.12,
+            "fusionMs": 0.03,
+            "rerankMs": 522.95,
+            "assemblyMs": 0.24,
+            "totalMs": 2375.24
+          }
+        },
+        {
+          "id": "ml3",
+          "caseSet": "multilingual",
+          "category": "multilingual",
+          "query": "sécurité authentification JWT",
+          "topDocs": [
+            "fr/securite-applications.md",
+            "de/deployment-anleitung.md",
+            "en/api-reference.md"
+          ],
+          "recallAt5": 1,
+          "recallAt10": 1,
+          "ndcgAt10": 0.9049,
+          "mrr": 1,
+          "timings": {
+            "langMs": 0.14,
+            "expansionMs": 2534.48,
+            "bm25Ms": 0,
+            "vectorMs": 141.1,
+            "fusionMs": 0.04,
+            "rerankMs": 735.36,
+            "assemblyMs": 0.23,
+            "totalMs": 3413.3
+          }
+        },
+        {
+          "id": "ml4",
+          "caseSet": "multilingual",
+          "category": "multilingual",
+          "query": "caching performance optimization",
+          "topDocs": [
+            "en/api-reference.md",
+            "it/ottimizzazione-performance.md"
+          ],
+          "recallAt5": 1,
+          "recallAt10": 1,
+          "ndcgAt10": 0.6309,
+          "mrr": 0.5,
+          "timings": {
+            "langMs": 0.13,
+            "expansionMs": 1585.95,
+            "bm25Ms": 0,
+            "vectorMs": 63.29,
+            "fusionMs": 0.02,
+            "rerankMs": 498.63,
+            "assemblyMs": 0.19,
+            "totalMs": 2149.94
+          }
+        },
+        {
+          "id": "adv1",
+          "caseSet": "adversarial",
+          "category": "entity",
+          "query": "ECONNREFUSED 127.0.0.1:5432",
+          "topDocs": [
+            "en/troubleshooting-guide.md",
+            "en/api-reference.md",
+            "it/configurazione-sistema.md",
+            "de/fehlerbehandlung.md",
+            "fr/guide-debutant.md"
+          ],
+          "recallAt5": 1,
+          "recallAt10": 1,
+          "ndcgAt10": 0.9738,
+          "mrr": 1,
+          "timings": {
+            "langMs": 0.16,
+            "expansionMs": 0.12,
+            "bm25Ms": 0,
+            "vectorMs": 29.67,
+            "fusionMs": 0.03,
+            "rerankMs": 586.27,
+            "assemblyMs": 0.21,
+            "totalMs": 617.34
+          }
+        },
+        {
+          "id": "adv2",
+          "caseSet": "adversarial",
+          "category": "phrase",
+          "query": "\"Authorization: Bearer\" token endpoint",
+          "topDocs": [
+            "en/api-reference.md",
+            "fr/securite-applications.md",
+            "fr/guide-debutant.md"
+          ],
+          "recallAt5": 1,
+          "recallAt10": 1,
+          "ndcgAt10": 1,
+          "mrr": 1,
+          "timings": {
+            "langMs": 0.14,
+            "expansionMs": 0.01,
+            "bm25Ms": 0,
+            "vectorMs": 17.79,
+            "fusionMs": 0.03,
+            "rerankMs": 511.44,
+            "assemblyMs": 0.22,
+            "totalMs": 530.69
+          }
+        },
+        {
+          "id": "adv3",
+          "caseSet": "adversarial",
+          "category": "acronym",
+          "query": "ADR-003 database per service",
+          "topDocs": [
+            "en/architecture-decisions.md",
+            "en/api-reference.md",
+            "it/configurazione-sistema.md",
+            "it/ottimizzazione-performance.md",
+            "de/fehlerbehandlung.md"
+          ],
+          "recallAt5": 1,
+          "recallAt10": 1,
+          "ndcgAt10": 1,
+          "mrr": 1,
+          "timings": {
+            "langMs": 0.11,
+            "expansionMs": 0.01,
+            "bm25Ms": 0,
+            "vectorMs": 29.16,
+            "fusionMs": 0.04,
+            "rerankMs": 517.61,
+            "assemblyMs": 0.32,
+            "totalMs": 548.14
+          }
+        },
+        {
+          "id": "adv4",
+          "caseSet": "adversarial",
+          "category": "ambiguous",
+          "query": "NOT_FOUND 404 error code",
+          "topDocs": ["en/api-reference.md", "de/fehlerbehandlung.md"],
+          "recallAt5": 1,
+          "recallAt10": 1,
+          "ndcgAt10": 1,
+          "mrr": 1,
+          "timings": {
+            "langMs": 0.13,
+            "expansionMs": 0.01,
+            "bm25Ms": 0,
+            "vectorMs": 28.2,
+            "fusionMs": 0.25,
+            "rerankMs": 466.14,
+            "assemblyMs": 0.28,
+            "totalMs": 495.91
+          }
+        },
+        {
+          "id": "adv5",
+          "caseSet": "adversarial",
+          "category": "near-miss",
+          "query": "helm rollback app -upgrade",
+          "topDocs": [
+            "de/deployment-anleitung.md",
+            "en/api-reference.md",
+            "fr/guide-debutant.md",
+            "en/troubleshooting-guide.md",
+            "de/fehlerbehandlung.md"
+          ],
+          "recallAt5": 1,
+          "recallAt10": 1,
+          "ndcgAt10": 0.9173,
+          "mrr": 1,
+          "timings": {
+            "langMs": 0.14,
+            "expansionMs": 0.01,
+            "bm25Ms": 0,
+            "vectorMs": 22.31,
+            "fusionMs": 0.04,
+            "rerankMs": 571.65,
+            "assemblyMs": 0.25,
+            "totalMs": 595.56
+          }
+        },
+        {
+          "id": "adv6",
+          "caseSet": "adversarial",
+          "category": "entity",
+          "query": "JWT_SECRET minimum length validation",
+          "topDocs": [
+            "it/configurazione-sistema.md",
+            "en/api-reference.md",
+            "fr/securite-applications.md",
+            "de/deployment-anleitung.md",
+            "fr/guide-debutant.md"
+          ],
+          "recallAt5": 1,
+          "recallAt10": 1,
+          "ndcgAt10": 0.936,
+          "mrr": 1,
+          "timings": {
+            "langMs": 0.12,
+            "expansionMs": 0.01,
+            "bm25Ms": 0,
+            "vectorMs": 27.21,
+            "fusionMs": 0.04,
+            "rerankMs": 538.31,
+            "assemblyMs": 0.25,
+            "totalMs": 566.81
+          }
+        },
+        {
+          "id": "adv7",
+          "caseSet": "adversarial",
+          "category": "phrase",
+          "query": "\"message queue\" RabbitMQ async communication",
+          "topDocs": [
+            "en/architecture-decisions.md",
+            "en/api-reference.md",
+            "fr/guide-debutant.md",
+            "it/ottimizzazione-performance.md",
+            "de/fehlerbehandlung.md"
+          ],
+          "recallAt5": 1,
+          "recallAt10": 1,
+          "ndcgAt10": 1,
+          "mrr": 1,
+          "timings": {
+            "langMs": 0.14,
+            "expansionMs": 0.01,
+            "bm25Ms": 0,
+            "vectorMs": 29.28,
+            "fusionMs": 0.03,
+            "rerankMs": 508.09,
+            "assemblyMs": 0.24,
+            "totalMs": 538.64
+          }
+        },
+        {
+          "id": "adv8",
+          "caseSet": "adversarial",
+          "category": "negation",
+          "query": "connection timeout -ECONNREFUSED",
+          "topDocs": [
+            "en/troubleshooting-guide.md",
+            "en/api-reference.md",
+            "fr/guide-debutant.md",
+            "de/fehlerbehandlung.md",
+            "it/ottimizzazione-performance.md"
+          ],
+          "recallAt5": 1,
+          "recallAt10": 1,
+          "ndcgAt10": 0.9738,
+          "mrr": 1,
+          "timings": {
+            "langMs": 0.11,
+            "expansionMs": 0.01,
+            "bm25Ms": 0,
+            "vectorMs": 29.59,
+            "fusionMs": 0.03,
+            "rerankMs": 517.35,
+            "assemblyMs": 0.28,
+            "totalMs": 548
+          }
+        },
+        {
+          "id": "ask1",
+          "caseSet": "ask",
+          "category": "ask",
+          "query": "How do I authenticate API requests?",
+          "topDocs": [
+            "en/api-reference.md",
+            "fr/guide-debutant.md",
+            "fr/securite-applications.md",
+            "de/fehlerbehandlung.md"
+          ],
+          "recallAt5": 1,
+          "recallAt10": 1,
+          "ndcgAt10": 0.9197,
+          "mrr": 1,
+          "timings": {
+            "langMs": 0.15,
+            "expansionMs": 1660.55,
+            "bm25Ms": 0,
+            "vectorMs": 61.97,
+            "fusionMs": 0.03,
+            "rerankMs": 469.32,
+            "assemblyMs": 0.19,
+            "totalMs": 2194.06
+          }
+        },
+        {
+          "id": "ask2",
+          "caseSet": "ask",
+          "category": "ask",
+          "query": "What is the architecture for microservices communication?",
+          "topDocs": [
+            "en/architecture-decisions.md",
+            "en/api-reference.md",
+            "de/fehlerbehandlung.md",
+            "fr/guide-debutant.md",
+            "it/configurazione-sistema.md"
+          ],
+          "recallAt5": 1,
+          "recallAt10": 1,
+          "ndcgAt10": 1,
+          "mrr": 1,
+          "timings": {
+            "langMs": 0.15,
+            "expansionMs": 5001.9,
+            "bm25Ms": 0,
+            "vectorMs": 32.12,
+            "fusionMs": 0.03,
+            "rerankMs": 913.2,
+            "assemblyMs": 0.26,
+            "totalMs": 5948.45
+          }
+        },
+        {
+          "id": "ask3",
+          "caseSet": "ask",
+          "category": "ask",
+          "query": "How do I debug connection refused errors?",
+          "topDocs": [
+            "en/troubleshooting-guide.md",
+            "en/api-reference.md",
+            "fr/guide-debutant.md",
+            "de/fehlerbehandlung.md"
+          ],
+          "recallAt5": 1,
+          "recallAt10": 1,
+          "ndcgAt10": 1,
+          "mrr": 1,
+          "timings": {
+            "langMs": 0.16,
+            "expansionMs": 3395.81,
+            "bm25Ms": 0,
+            "vectorMs": 81.82,
+            "fusionMs": 0.04,
+            "rerankMs": 583.94,
+            "assemblyMs": 0.23,
+            "totalMs": 4063.78
+          }
+        },
+        {
+          "id": "ask4",
+          "caseSet": "ask",
+          "category": "ask",
+          "query": "What are the best practices for error handling in TypeScript?",
+          "topDocs": [
+            "de/fehlerbehandlung.md",
+            "fr/guide-debutant.md",
+            "en/api-reference.md"
+          ],
+          "recallAt5": 0.5,
+          "recallAt10": 0.5,
+          "ndcgAt10": 0.6131,
+          "mrr": 1,
+          "timings": {
+            "langMs": 0.17,
+            "expansionMs": 1743.79,
+            "bm25Ms": 0,
+            "vectorMs": 76.77,
+            "fusionMs": 0.03,
+            "rerankMs": 504.47,
+            "assemblyMs": 0.31,
+            "totalMs": 2327.86
+          }
+        },
+        {
+          "id": "ask5",
+          "caseSet": "ask",
+          "category": "ask",
+          "query": "How do I deploy to Kubernetes with Helm?",
+          "topDocs": [
+            "de/deployment-anleitung.md",
+            "en/api-reference.md",
+            "fr/guide-debutant.md",
+            "en/architecture-decisions.md"
+          ],
+          "recallAt5": 0.5,
+          "recallAt10": 0.5,
+          "ndcgAt10": 0.6131,
+          "mrr": 1,
+          "timings": {
+            "langMs": 0.18,
+            "expansionMs": 1717.67,
+            "bm25Ms": 0,
+            "vectorMs": 104.22,
+            "fusionMs": 0.08,
+            "rerankMs": 817.4,
+            "assemblyMs": 0.32,
+            "totalMs": 2642.69
+          }
+        },
+        {
+          "id": "ask6",
+          "caseSet": "ask",
+          "category": "ask",
+          "query": "What security measures should I implement for web applications?",
+          "topDocs": [
+            "en/api-reference.md",
+            "de/fehlerbehandlung.md",
+            "fr/securite-applications.md"
+          ],
+          "recallAt5": 1,
+          "recallAt10": 1,
+          "ndcgAt10": 0.5,
+          "mrr": 0.3333,
+          "timings": {
+            "langMs": 0.2,
+            "expansionMs": 1602.94,
+            "bm25Ms": 0,
+            "vectorMs": 71.5,
+            "fusionMs": 0.07,
+            "rerankMs": 593.98,
+            "assemblyMs": 0.23,
+            "totalMs": 2271.44
+          }
+        },
+        {
+          "id": "ask7",
+          "caseSet": "ask",
+          "category": "ask",
+          "query": "How can I optimize application performance with caching?",
+          "topDocs": [
+            "en/api-reference.md",
+            "it/ottimizzazione-performance.md"
+          ],
+          "recallAt5": 1,
+          "recallAt10": 1,
+          "ndcgAt10": 0.6309,
+          "mrr": 0.5,
+          "timings": {
+            "langMs": 0.14,
+            "expansionMs": 5001.63,
+            "bm25Ms": 0,
+            "vectorMs": 29.24,
+            "fusionMs": 0.04,
+            "rerankMs": 917.82,
+            "assemblyMs": 0.26,
+            "totalMs": 5950.04
+          }
+        },
+        {
+          "id": "ask8",
+          "caseSet": "ask",
+          "category": "ask",
+          "query": "How do I set up environment configuration for different environments?",
+          "topDocs": [
+            "en/api-reference.md",
+            "de/deployment-anleitung.md",
+            "de/fehlerbehandlung.md",
+            "it/configurazione-sistema.md"
+          ],
+          "recallAt5": 1,
+          "recallAt10": 1,
+          "ndcgAt10": 0.6509,
+          "mrr": 0.5,
+          "timings": {
+            "langMs": 0.21,
+            "expansionMs": 2718.19,
+            "bm25Ms": 0,
+            "vectorMs": 113.33,
+            "fusionMs": 0.03,
+            "rerankMs": 709.89,
+            "assemblyMs": 0.27,
+            "totalMs": 3544.93
+          }
+        }
+      ]
+    },
+    "answerSmoke": {
+      "caseCount": 4,
+      "topicHitRate": 0.35,
+      "citationRate": 0.5,
+      "validCitationRate": 0.5,
+      "latency": {
+        "p50Ms": 4896.03,
+        "p95Ms": 7264.61,
+        "meanMs": 5342.02
+      },
+      "cases": [
+        {
+          "id": "ask1",
+          "question": "How do I authenticate API requests?",
+          "latencyMs": 7264.61,
+          "topicHitRate": 0,
+          "hasCitations": false,
+          "validCitationRate": 0,
+          "citedSources": [],
+          "answer": "I don't have enough information in the provided sources to answer this question."
+        },
+        {
+          "id": "ask3",
+          "question": "How do I debug connection refused errors?",
+          "latencyMs": 4896.03,
+          "topicHitRate": 1,
+          "hasCitations": true,
+          "validCitationRate": 1,
+          "citedSources": ["en/troubleshooting-guide.md"],
+          "answer": "Q: How do I debug connection refused errors? \nA: Check if the database server is running using `systemctl status postgresql` [1]. Verify the port configuration matches the `.env` file and test the connection with `psql -h localhost -p 5432 -U postgres` . Address firewall rules or network latency if required."
+        },
+        {
+          "id": "ask6",
+          "question": "What security measures should I implement for web applications?",
+          "latencyMs": 6900.13,
+          "topicHitRate": 0,
+          "hasCitations": false,
+          "validCitationRate": 0,
+          "citedSources": [],
+          "answer": "I don't have enough information in the provided sources to answer this question."
+        },
+        {
+          "id": "ask8",
+          "question": "How do I set up environment configuration for different environments?",
+          "latencyMs": 2307.32,
+          "topicHitRate": 0.4,
+          "hasCitations": true,
+          "validCitationRate": 1,
+          "citedSources": [
+            "de/deployment-anleitung.md",
+            "it/configurazione-sistema.md"
+          ],
+          "answer": "Q: How do I set up environment configuration for different environments?\n\nAnswer: Define environment variables in a configuration file with separate entries for development, staging, and production. Use a common base configuration and override only the necessary variables for each environment. For example, use `default.json` for common settings and `production.json` for production overrides. Use `dotenv` or environment variables directly in your application to read and apply these values. [1] and [2] provide detailed examples of how to structure and use environment variables in a Dockerized application with Kubernetes and Helm."
+        }
+      ]
+    }
+  },
+  "trainingConfigPath": "/Users/gordon/work/gno/research/finetune/autonomous/runs/auto-entity-lock-default-mix-lr96.yaml"
+}

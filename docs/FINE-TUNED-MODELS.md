@@ -2,6 +2,26 @@
 
 Guide for using fine-tuned local generation models with `gno`.
 
+## Current Promoted Retrieval Model
+
+Current promoted slim retrieval model:
+
+- release id: `slim-retrieval-v1`
+- canonical run: `auto-entity-lock-default-mix-lr95`
+- repeated benchmark median:
+  - `nDCG@10 0.925`
+  - ask `Recall@5 0.875`
+  - schema success `1.0`
+  - p95 `4775.99ms`
+
+Canonical bundle:
+
+- [release-manifest.json](/Users/gordon/work/gno/research/finetune/promoted/slim-retrieval-v1/release-manifest.json)
+- [MODEL_CARD.md](/Users/gordon/work/gno/research/finetune/promoted/slim-retrieval-v1/MODEL_CARD.md)
+- [install-snippet.yaml](/Users/gordon/work/gno/research/finetune/promoted/slim-retrieval-v1/install-snippet.yaml)
+
+This model passed the promotion gate and is the one to use for final packaging and publishing.
+
 ## What Is Portable
 
 The training backend can be machine-specific.

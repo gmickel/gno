@@ -29,6 +29,14 @@ Fine-tuning is only useful if the resulting model can be exported, benchmarked, 
 4. benchmark the exported artifact
 5. install it in GNO with a custom preset
 
+## Current Promoted Model
+
+The current promoted slim retrieval model is `slim-retrieval-v1`, produced from `auto-entity-lock-default-mix-lr95`.
+
+- repeated benchmark median `nDCG@10`: `0.925`
+- repeated benchmark median schema success: `1.0`
+- repeated benchmark median p95: `4775.99ms`
+
 ## Local Training, Portable Artifact
 
 The current local training backend is MLX LoRA on Apple Silicon. That is a training implementation detail, not a deployment requirement.

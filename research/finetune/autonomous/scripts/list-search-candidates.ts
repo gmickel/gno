@@ -18,7 +18,8 @@ for (const candidate of searchSpace.candidates) {
     row && Number.isFinite(row.weightedScore)
       ? ` score=${row.weightedScore.toFixed(2)}`
       : "";
+  const confirmation = row?.confirmation ? ` ${row.confirmation}` : "";
   console.log(
-    `- ${candidate.id}: status=${status}${score}, mix=${candidate.mix}, prompt=${candidate.promptProfile}, lr=${candidate.learningRate}`
+    `- ${candidate.id}: status=${status}${confirmation}${score}, mix=${candidate.mix}, prompt=${candidate.promptProfile}, lr=${candidate.learningRate}${candidate.seed ? `, seed=${candidate.seed}` : ""}`
   );
 }

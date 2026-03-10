@@ -1,0 +1,17 @@
+{
+  "totalExamples": 1912,
+  "trainExamples": 1720,
+  "validExamples": 192,
+  "sources": [
+    "gno-hardcases",
+    "qmd-finetune",
+    "gno-lexical-preservation-hardcases",
+    "gno-multilingual-hardcases",
+    "gno-disambiguation-hardcases",
+    "gno-ask-hardcases"
+  ],
+  "mixId": "training-mix-v1",
+  "mixPath": "/Users/gordon/work/gno/research/finetune/configs/training-mix.json",
+  "promptProfileId": "prompt-profile-entity-lock-v1",
+  "promptProfilePath": "/Users/gordon/work/gno/research/finetune/configs/prompt-profiles/entity-lock-v1.json"
+}

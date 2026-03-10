@@ -73,6 +73,7 @@ const trainConfig = {
   data: datasetOutput,
   adapter_path: `research/finetune/outputs/${runName}`,
   learning_rate: candidate.learningRate,
+  seed: candidate.seed ?? baseConfig.seed,
 };
 await Bun.write(trainingConfigPath, Bun.YAML.stringify(trainConfig));
 
@@ -143,6 +144,7 @@ await Bun.write(
       mix: candidate.mix,
       promptProfile: candidate.promptProfile,
       learningRate: candidate.learningRate,
+      seed: candidate.seed ?? null,
       logPath,
       benchmark: benchmarkSummary.candidates[0],
       trainingConfigPath,

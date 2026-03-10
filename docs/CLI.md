@@ -442,13 +442,13 @@ If you have exported a fine-tuned GGUF, point a custom preset at it:
 
 ```yaml
 models:
-  activePreset: tuned
+  activePreset: slim-tuned
   presets:
-    - id: tuned
-      name: Fine-tuned Expansion
+    - id: slim-tuned
+      name: GNO Slim Retrieval v1
       embed: hf:gpustack/bge-m3-GGUF/bge-m3-Q4_K_M.gguf
       rerank: hf:ggml-org/Qwen3-Reranker-0.6B-Q8_0-GGUF/qwen3-reranker-0.6b-q8_0.gguf
-      gen: file:/absolute/path/to/gno-expansion-run-f16.gguf
+      gen: hf:guiltylemon/gno-expansion-slim-retrieval-v1/gno-expansion-auto-entity-lock-default-mix-lr95-f16.gguf
 ```
 
 Then use it normally:

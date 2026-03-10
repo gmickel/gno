@@ -103,6 +103,8 @@ To inspect and run bounded search candidates:
 bun run research:finetune:autonomous:list-search-candidates
 bun run research:finetune:autonomous:run-candidate entity-lock-default-mix
 bun run research:finetune:autonomous:leaderboard
+bun run research:finetune:autonomous:confirm-winner auto-entity-lock-default-mix auto-entity-lock-default-mix-lr95
+bun run research:finetune:autonomous:check-promotion-targets auto-entity-lock-default-mix auto-entity-lock-default-mix-lr95
 ```
 
 For unattended bounded search over the remaining candidates:

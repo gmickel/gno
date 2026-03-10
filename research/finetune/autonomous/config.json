@@ -63,8 +63,8 @@
     ]
   },
   "search": {
-    "referenceRun": "mlx-run1",
-    "referenceBestValLoss": 0.312,
+    "referenceRun": "auto-entity-lock-default-mix-lr95",
+    "referenceBestValLoss": 0.31,
     "earlyStop": {
       "enabled": true,
       "minIteration": 500,

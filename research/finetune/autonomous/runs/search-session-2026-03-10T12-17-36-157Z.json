@@ -1,0 +1,41 @@
+{
+  "searchSpaceId": "autonomous-search-space-v3",
+  "startedAt": "2026-03-10T12:17:36.157Z",
+  "maxRuns": 3,
+  "executed": [
+    {
+      "candidateId": "entity-lock-default-mix-lr92",
+      "runName": "auto-entity-lock-default-mix-lr92",
+      "decision": "keep",
+      "weightedScore": 69.32
+    },
+    {
+      "candidateId": "entity-lock-default-mix-lr98",
+      "runName": "auto-entity-lock-default-mix-lr98",
+      "decision": "keep",
+      "weightedScore": 68.38
+    },
+    {
+      "candidateId": "entity-lock-default-mix-lr95-strict-reminder",
+      "runName": "auto-entity-lock-default-mix-lr95-strict-reminder",
+      "decision": "discard",
+      "weightedScore": 21.29
+    }
+  ],
+  "skipped": [
+    {
+      "candidateId": "entity-lock-default-mix-lr95",
+      "reason": "already-scored"
+    }
+  ],
+  "bestKeep": {
+    "runName": "auto-entity-lock-default-mix",
+    "candidateId": "entity-lock-default-mix",
+    "ndcgAt10": 0.919,
+    "askRecallAt5": 0.875,
+    "schemaSuccessRate": 1,
+    "p95Ms": 5022.5,
+    "decision": "keep",
+    "weightedScore": 100.27
+  }
+}

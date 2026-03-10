@@ -1,0 +1,14 @@
+{
+  "releaseId": "slim-retrieval-v1",
+  "repoId": "guiltylemon/gno-expansion-slim-retrieval-v1",
+  "runName": "auto-entity-lock-default-mix-lr95",
+  "generatedAt": "2026-03-10T14:23:48.448Z",
+  "ggufFileName": "gno-expansion-auto-entity-lock-default-mix-lr95-f16.gguf",
+  "benchmarkFile": "benchmark-summary.json",
+  "repeatBenchmarkFile": "repeat-benchmark.json",
+  "promotionSummaryFile": "promotion-summary.json",
+  "confirmedIncumbentFile": "confirmed-incumbent.json",
+  "promotionTargetCheckFile": "promotion-target-check.json",
+  "installSnippetFile": "install-snippet.yaml",
+  "githubReference": "https://github.com/gmickel/gno/blob/main/research/finetune/promoted/slim-retrieval-v1/release-manifest.json"
+}

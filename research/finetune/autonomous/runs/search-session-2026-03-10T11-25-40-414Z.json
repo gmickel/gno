@@ -1,0 +1,49 @@
+{
+  "searchSpaceId": "autonomous-search-space-v2",
+  "startedAt": "2026-03-10T11:25:40.414Z",
+  "maxRuns": 3,
+  "executed": [
+    {
+      "candidateId": "entity-lock-default-mix-lr95",
+      "runName": "auto-entity-lock-default-mix-lr95",
+      "decision": "keep",
+      "weightedScore": 66.06
+    },
+    {
+      "candidateId": "entity-lock-default-mix-lr105",
+      "runName": "auto-entity-lock-default-mix-lr105",
+      "decision": "keep",
+      "weightedScore": 65.64
+    },
+    {
+      "candidateId": "entity-lock-qmd-majority",
+      "runName": "auto-entity-lock-qmd-majority",
+      "decision": "discard",
+      "weightedScore": -74.35
+    }
+  ],
+  "skipped": [
+    {
+      "candidateId": "entity-lock-default-mix",
+      "reason": "already-scored"
+    },
+    {
+      "candidateId": "strict-json-balanced-mix",
+      "reason": "already-scored"
+    },
+    {
+      "candidateId": "entity-lock-balanced-mix",
+      "reason": "already-scored"
+    }
+  ],
+  "bestKeep": {
+    "runName": "auto-entity-lock-default-mix",
+    "candidateId": "entity-lock-default-mix",
+    "ndcgAt10": 0.919,
+    "askRecallAt5": 0.875,
+    "schemaSuccessRate": 1,
+    "p95Ms": 5022.5,
+    "decision": "keep",
+    "weightedScore": 100.27
+  }
+}

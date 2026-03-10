@@ -1,0 +1,27 @@
+{
+  "generatedAt": "2026-03-10T13:20:15.877Z",
+  "incumbentRun": "auto-entity-lock-default-mix",
+  "challengerRun": "auto-entity-lock-default-mix-lr95",
+  "passed": true,
+  "checks": {
+    "medianNdcg": true,
+    "deltaVsShipped": true,
+    "deltaVsIncumbent": true,
+    "schema": true,
+    "ask": true,
+    "latency": true
+  },
+  "challengerMedian": {
+    "ndcgAt10": 0.925,
+    "askRecallAt5": 0.875,
+    "schemaSuccessRate": 1,
+    "p95Ms": 4775.99
+  },
+  "incumbentMedian": {
+    "ndcgAt10": 0.919,
+    "askRecallAt5": 0.875,
+    "schemaSuccessRate": 1,
+    "p95Ms": 5367.99
+  },
+  "shippedSlimNdcgAt10": 0.8983
+}
