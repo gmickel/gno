@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+## [0.22.3] - 2026-03-10
+
+### Fixed
+
+- Relaxed the autonomous confirmation test so release CI no longer depends on a locally generated repeat-benchmark artifact being committed.
+
 ## [0.22.2] - 2026-03-10
 
 ### Fixed
