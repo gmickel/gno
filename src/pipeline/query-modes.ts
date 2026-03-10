@@ -46,26 +46,31 @@ export function parseQueryModeSpecs(
   specs: string[]
 ): StoreResult<QueryModeInput[]> {
   const parsed: QueryModeInput[] = [];
-  let hydeCount = 0;
-
   for (const spec of specs) {
     const entry = parseQueryModeSpec(spec);
     if (!entry.ok) {
       return entry;
     }
-    if (entry.value.mode === "hyde") {
-      hydeCount += 1;
-      if (hydeCount > 1) {
-        return err(
-          "INVALID_INPUT",
-          "Only one hyde mode is allowed in structured query input."
-        );
-      }
-    }
     parsed.push(entry.value);
   }
 
-  return ok(parsed);
+  return validateQueryModes(parsed);
+}
+
+/**
+ * Validate normalized query mode objects.
+ */
+export function validateQueryModes(
+  queryModes: QueryModeInput[]
+): StoreResult<QueryModeInput[]> {
+  const hydeCount = queryModes.filter((entry) => entry.mode === "hyde").length;
+  if (hydeCount > 1) {
+    return err(
+      "INVALID_INPUT",
+      "Only one hyde mode is allowed in structured query input."
+    );
+  }
+  return ok(queryModes);
 }
 
 /**

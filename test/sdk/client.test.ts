@@ -142,6 +142,23 @@ describe("SDK client", () => {
     expect(result.meta.query).toBe("JWT token");
   });
 
+  test("normalizes structured query documents in SDK query", async () => {
+    const result = await client.query(
+      "auth flow\nterm: JWT token\nintent: refresh token rotation",
+      {
+        limit: 5,
+        noExpand: true,
+        noRerank: true,
+      }
+    );
+    expect(result.meta.query).toBe("auth flow");
+    expect(result.meta.queryModes).toEqual({
+      term: 1,
+      intent: 1,
+      hyde: false,
+    });
+  });
+
   test("runs ask retrieval without answer generation", async () => {
     const result = await client.ask("JWT token", {
       limit: 5,
@@ -151,6 +168,24 @@ describe("SDK client", () => {
     });
     expect(result.results.length).toBeGreaterThan(0);
     expect(result.meta.answerGenerated).toBe(false);
+  });
+
+  test("normalizes structured query documents in SDK ask", async () => {
+    const result = await client.ask(
+      "term: JWT token\nintent: refresh token rotation",
+      {
+        limit: 5,
+        noAnswer: true,
+        noExpand: true,
+        noRerank: true,
+      }
+    );
+    expect(result.query).toBe("JWT token");
+    expect(result.meta.queryModes).toEqual({
+      term: 1,
+      intent: 1,
+      hyde: false,
+    });
   });
 
   test("gets one document by collection/path ref", async () => {

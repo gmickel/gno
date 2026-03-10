@@ -32,6 +32,29 @@ const baseContext = {
 };
 
 describe("POST /api/query", () => {
+  test("accepts structured query documents in query text", async () => {
+    const req = new Request("http://localhost/api/query", {
+      method: "POST",
+      body: JSON.stringify({
+        query: "auth flow\nterm: JWT token\nintent: refresh token rotation",
+        noExpand: true,
+        noRerank: true,
+      }),
+    });
+
+    const res = await handleQuery(baseContext as never, req);
+    expect(res.status).toBe(200);
+
+    const body = (await res.json()) as {
+      meta: {
+        query: string;
+        queryModes?: { term: number; intent: number; hyde: boolean };
+      };
+    };
+    expect(body.meta.query).toBe("auth flow");
+    expect(body.meta.queryModes).toEqual({ term: 1, intent: 1, hyde: false });
+  });
+
   test("rejects non-string exclude", async () => {
     const req = new Request("http://localhost/api/query", {
       method: "POST",
@@ -82,6 +105,23 @@ describe("POST /api/query", () => {
     const body = (await res.json()) as { error: { message: string } };
     expect(body.error.message).toContain("Only one hyde");
   });
+
+  test("rejects invalid structured query document prefixes", async () => {
+    const req = new Request("http://localhost/api/query", {
+      method: "POST",
+      body: JSON.stringify({
+        query: "term: JWT token\nvector: semantic expansion",
+      }),
+    });
+
+    const res = await handleQuery(baseContext as never, req);
+    expect(res.status).toBe(400);
+
+    const body = (await res.json()) as { error: { message: string } };
+    expect(body.error.message).toContain(
+      "Unknown structured query line prefix"
+    );
+  });
 });
 
 describe("POST /api/ask", () => {
@@ -123,6 +163,29 @@ describe("POST /api/ask", () => {
       };
     };
     expect(body.meta.expanded).toBe(true);
+    expect(body.meta.queryModes).toEqual({ term: 1, intent: 1, hyde: false });
+  });
+
+  test("accepts structured query documents in query text", async () => {
+    const req = new Request("http://localhost/api/ask", {
+      method: "POST",
+      body: JSON.stringify({
+        query: "term: web performance budgets\nintent: latency and vitals",
+        noExpand: true,
+        noRerank: true,
+      }),
+    });
+
+    const res = await handleAsk(baseContext as never, req);
+    expect(res.status).toBe(200);
+
+    const body = (await res.json()) as {
+      query: string;
+      meta: {
+        queryModes?: { term: number; intent: number; hyde: boolean };
+      };
+    };
+    expect(body.query).toBe("web performance budgets");
     expect(body.meta.queryModes).toEqual({ term: 1, intent: 1, hyde: false });
   });
 

@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import { normalizeStructuredQueryInput } from "../../../core/structured-query";
 import { Loader } from "../components/ai-elements/loader";
 import { TagFacets } from "../components/TagFacets";
 import {
@@ -30,6 +31,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../components/ui/select";
+import { Textarea } from "../components/ui/textarea";
 import { apiFetch } from "../hooks/use-api";
 import { useKeyboardShortcuts } from "../hooks/useKeyboardShortcuts";
 import {
@@ -187,9 +189,20 @@ export default function Search({ navigate }: PageProps) {
   const [showMobileTags, setShowMobileTags] = useState(false);
 
   const hybridAvailable = capabilities?.hybrid ?? false;
+  const structuredQueryState = useMemo(
+    () => normalizeStructuredQueryInput(query, queryModes),
+    [query, queryModes]
+  );
+  const structuredQueryError =
+    query.trim().length > 0 && !structuredQueryState.ok
+      ? structuredQueryState.error.message
+      : null;
   const forceHybridForModes =
     thoroughness === "fast" &&
-    (queryModes.length > 0 || intent.trim().length > 0);
+    (queryModes.length > 0 ||
+      intent.trim().length > 0 ||
+      (structuredQueryState.ok &&
+        structuredQueryState.value.usedStructuredQuerySyntax));
 
   // Sync URL as filter state changes.
   useEffect(() => {
@@ -294,6 +307,10 @@ export default function Search({ navigate }: PageProps) {
       if (!query.trim()) {
         return;
       }
+      if (!structuredQueryState.ok) {
+        setError(structuredQueryState.error.message);
+        return;
+      }
 
       setLoading(true);
       setError(null);
@@ -302,7 +319,8 @@ export default function Search({ navigate }: PageProps) {
       const useBm25 =
         thoroughness === "fast" &&
         queryModes.length === 0 &&
-        intent.trim().length === 0;
+        intent.trim().length === 0 &&
+        !structuredQueryState.value.usedStructuredQuerySyntax;
       const endpoint = useBm25 ? "/api/search" : "/api/query";
       const body: Record<string, unknown> = {
         query,
@@ -386,6 +404,7 @@ export default function Search({ navigate }: PageProps) {
       queryModes,
       selectedCollection,
       since,
+      structuredQueryState,
       tagMode,
       thoroughness,
       until,
@@ -448,6 +467,13 @@ export default function Search({ navigate }: PageProps) {
     setQueryModeError(null);
   };
 
+  const handleQueryKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      void handleSearch();
+    }
+  };
+
   return (
     <div className="min-h-screen">
       <header className="glass sticky top-0 z-10 border-border/50 border-b">
@@ -482,17 +508,19 @@ export default function Search({ navigate }: PageProps) {
                 <div className="pointer-events-none absolute -inset-[1px] rounded-lg bg-gradient-to-r from-primary/50 via-primary to-primary/50 opacity-0 blur-sm transition-opacity duration-300 group-focus-within:opacity-100" />
                 <div className="relative">
                   <SearchIcon className="absolute top-1/2 left-4 size-5 -translate-y-1/2 text-muted-foreground transition-colors duration-200 group-focus-within:text-primary" />
-                  <Input
+                  <Textarea
                     autoFocus
-                    className="border-border/50 bg-card py-6 pr-4 pl-12 text-lg transition-all duration-200 focus:border-primary focus:bg-card/80 focus:shadow-[0_0_20px_-5px_hsl(var(--primary)/0.3)]"
+                    className="min-h-[72px] resize-y border-border/50 bg-card pt-5 pr-20 pb-4 pl-12 text-base transition-all duration-200 focus:border-primary focus:bg-card/80 focus:shadow-[0_0_20px_-5px_hsl(var(--primary)/0.3)]"
                     onChange={(e) => setQuery(e.target.value)}
-                    placeholder="Search your documents..."
-                    type="text"
+                    onKeyDown={handleQueryKeyDown}
+                    placeholder="Search your documents... Use Shift+Enter for structured query documents"
                     value={query}
                   />
                   <Button
                     className="absolute top-1/2 right-2 -translate-y-1/2"
-                    disabled={loading || !query.trim()}
+                    disabled={
+                      loading || !query.trim() || Boolean(structuredQueryError)
+                    }
                     size="sm"
                     type="submit"
                   >
@@ -500,6 +528,18 @@ export default function Search({ navigate }: PageProps) {
                   </Button>
                 </div>
               </div>
+
+              {structuredQueryError && (
+                <p className="text-destructive text-xs">
+                  {structuredQueryError}
+                </p>
+              )}
+
+              <p className="text-muted-foreground/70 text-xs">
+                Press Enter to search. Use Shift+Enter for multi-line structured
+                query documents with <code>term:</code>, <code>intent:</code>,
+                and <code>hyde:</code>.
+              </p>
 
               <div className="flex flex-wrap items-center gap-4">
                 <ThoroughnessSelector

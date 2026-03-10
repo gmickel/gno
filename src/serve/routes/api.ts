@@ -18,6 +18,7 @@ import type { EmbedScheduler } from "../embed-scheduler";
 import { modelsPull } from "../../cli/commands/models/pull";
 import { addCollection, removeCollection } from "../../collection";
 import { atomicWrite } from "../../core/file-ops";
+import { normalizeStructuredQueryInput } from "../../core/structured-query";
 import {
   normalizeTag,
   parseAndValidateTagFilter,
@@ -32,6 +33,7 @@ import {
   processAnswerResult,
 } from "../../pipeline/answer";
 import { searchHybrid } from "../../pipeline/hybrid";
+import { validateQueryModes } from "../../pipeline/query-modes";
 import { searchBm25 } from "../../pipeline/search";
 import { applyConfigChange } from "../config-sync";
 import {
@@ -242,7 +244,38 @@ function parseQueryModesInput(value: unknown): {
     queryModes.push({ mode, text: text.trim() });
   }
 
-  return { queryModes };
+  const validated = validateQueryModes(queryModes);
+  if (!validated.ok) {
+    return {
+      error: errorResponse("VALIDATION", validated.error.message),
+    };
+  }
+
+  return { queryModes: validated.value };
+}
+
+function normalizeStructuredQueryBody(
+  query: string,
+  queryModes: QueryModeInput[] | undefined
+): {
+  query?: string;
+  queryModes?: QueryModeInput[];
+  error?: Response;
+} {
+  const normalized = normalizeStructuredQueryInput(query, queryModes ?? []);
+  if (!normalized.ok) {
+    return {
+      error: errorResponse("VALIDATION", normalized.error.message),
+    };
+  }
+
+  return {
+    query: normalized.value.query,
+    queryModes:
+      normalized.value.queryModes.length > 0
+        ? normalized.value.queryModes
+        : undefined,
+  };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1137,8 +1170,8 @@ export async function handleSearch(
     return errorResponse("VALIDATION", "Missing or invalid query");
   }
 
-  const query = body.query.trim();
-  if (!query) {
+  const rawQuery = body.query.trim();
+  if (!rawQuery) {
     return errorResponse("VALIDATION", "Query cannot be empty");
   }
 
@@ -1237,7 +1270,7 @@ export async function handleSearch(
     author,
   };
 
-  const result = await searchBm25(store, query, options);
+  const result = await searchBm25(store, rawQuery, options);
 
   if (!result.ok) {
     return errorResponse("RUNTIME", result.error.message, 500);
@@ -1266,8 +1299,8 @@ export async function handleQuery(
     return errorResponse("VALIDATION", "Missing or invalid query");
   }
 
-  const query = body.query.trim();
-  if (!query) {
+  const rawQuery = body.query.trim();
+  if (!rawQuery) {
     return errorResponse("VALIDATION", "Query cannot be empty");
   }
 
@@ -1333,6 +1366,16 @@ export async function handleQuery(
     return queryModesError;
   }
 
+  const {
+    query,
+    queryModes: normalizedQueryModes,
+    error: structuredQueryError,
+  } = normalizeStructuredQueryBody(rawQuery, queryModes);
+  if (structuredQueryError) {
+    return structuredQueryError;
+  }
+  const normalizedQuery = query ?? rawQuery;
+
   // Parse tag filters
   let tagsAll: string[] | undefined;
   let tagsAny: string[] | undefined;
@@ -1376,7 +1419,7 @@ export async function handleQuery(
       genPort: ctx.genPort,
       rerankPort: ctx.rerankPort,
     },
-    query,
+    normalizedQuery,
     {
       limit: Math.min(body.limit ?? 20, 50),
       minScore: body.minScore,
@@ -1388,7 +1431,7 @@ export async function handleQuery(
           ? Math.min(body.candidateLimit, 100)
           : undefined,
       exclude,
-      queryModes,
+      queryModes: normalizedQueryModes,
       noExpand: body.noExpand,
       noRerank: body.noRerank,
       tagsAll,
@@ -1427,8 +1470,8 @@ export async function handleAsk(
     return errorResponse("VALIDATION", "Missing or invalid query");
   }
 
-  const query = body.query.trim();
-  if (!query) {
+  const rawQuery = body.query.trim();
+  if (!rawQuery) {
     return errorResponse("VALIDATION", "Query cannot be empty");
   }
 
@@ -1486,6 +1529,16 @@ export async function handleAsk(
     return queryModesError;
   }
 
+  const {
+    query,
+    queryModes: normalizedQueryModes,
+    error: structuredQueryError,
+  } = normalizeStructuredQueryBody(rawQuery, queryModes);
+  if (structuredQueryError) {
+    return structuredQueryError;
+  }
+  const normalizedQuery = query ?? rawQuery;
+
   if (body.tagsAll) {
     try {
       tagsAll = parseAndValidateTagFilter(body.tagsAll);
@@ -1528,7 +1581,7 @@ export async function handleAsk(
       genPort: ctx.genPort,
       rerankPort: ctx.rerankPort,
     },
-    query,
+    normalizedQuery,
     {
       limit,
       collection: body.collection,
@@ -1541,7 +1594,7 @@ export async function handleAsk(
           ? Math.min(body.candidateLimit, 100)
           : undefined,
       exclude,
-      queryModes,
+      queryModes: normalizedQueryModes,
       tagsAll,
       tagsAny,
       since: body.since,
@@ -1567,7 +1620,7 @@ export async function handleAsk(
     const maxTokens = body.maxAnswerTokens ?? 512;
     const rawResult = await generateGroundedAnswer(
       { genPort: ctx.genPort, store: ctx.store },
-      query,
+      normalizedQuery,
       results,
       maxTokens
     );
@@ -1582,7 +1635,7 @@ export async function handleAsk(
   }
 
   const askResult: AskResult = {
-    query,
+    query: normalizedQuery,
     mode: searchResult.value.meta.vectorsUsed ? "hybrid" : "bm25_only",
     queryLanguage: searchResult.value.meta.queryLanguage ?? "und",
     answer,

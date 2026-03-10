@@ -20,6 +20,7 @@ import type { ToolContext } from "../server";
 
 import { parseUri } from "../../app/constants";
 import { createNonTtyProgressRenderer } from "../../cli/progress";
+import { normalizeStructuredQueryInput } from "../../core/structured-query";
 import { LlmAdapter } from "../../llm/nodeLlamaCpp/adapter";
 import { resolveDownloadPolicy } from "../../llm/policy";
 import { getActivePreset } from "../../llm/registry";
@@ -143,6 +144,19 @@ export function handleQuery(
         }
       }
 
+      const normalizedInput = normalizeStructuredQueryInput(
+        args.query,
+        args.queryModes ?? []
+      );
+      if (!normalizedInput.ok) {
+        throw new Error(normalizedInput.error.message);
+      }
+      const queryText = normalizedInput.value.query;
+      const queryModes =
+        normalizedInput.value.queryModes.length > 0
+          ? normalizedInput.value.queryModes
+          : undefined;
+
       const preset = getActivePreset(ctx.config);
       const llm = new LlmAdapter(ctx.config);
 
@@ -170,7 +184,7 @@ export function handleQuery(
         // Determine noExpand/noRerank based on mode flags
         // Priority: fast > thorough > expand/rerank params > defaults
         // Default: noExpand=true (skip expansion), noRerank=false (with reranking)
-        const hasStructuredModes = Boolean(args.queryModes?.length);
+        const hasStructuredModes = Boolean(queryModes?.length);
         let noExpand = true;
         let noRerank = false;
 
@@ -245,7 +259,7 @@ export function handleQuery(
         // Note: per spec, lang is a "hint" for query, not a filter
         // Pass as queryLanguageHint to affect expansion prompt selection
         // but NOT retrieval filtering (that would be options.lang)
-        const result = await searchHybrid(deps, args.query, {
+        const result = await searchHybrid(deps, queryText, {
           limit: args.limit ?? 5,
           minScore: args.minScore,
           collection: args.collection,
@@ -259,7 +273,7 @@ export function handleQuery(
           author: args.author,
           noExpand,
           noRerank,
-          queryModes: args.queryModes,
+          queryModes,
           tagsAll: normalizeTagFilters(args.tagsAll),
           tagsAny: normalizeTagFilters(args.tagsAny),
         });

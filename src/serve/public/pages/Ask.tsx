@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { normalizeStructuredQueryInput } from "../../../core/structured-query";
 import { Loader } from "../components/ai-elements/loader";
 import {
   Source,
@@ -199,6 +200,14 @@ export default function Ask({ navigate }: PageProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const hybridAvailable = capabilities?.hybrid ?? false;
+  const structuredQueryState = useMemo(
+    () => normalizeStructuredQueryInput(query, queryModes),
+    [query, queryModes]
+  );
+  const structuredQueryError =
+    query.trim().length > 0 && !structuredQueryState.ok
+      ? structuredQueryState.error.message
+      : null;
 
   useEffect(() => {
     async function bootstrap(): Promise<void> {
@@ -268,6 +277,11 @@ export default function Ask({ navigate }: PageProps) {
     async (e: React.FormEvent) => {
       e.preventDefault();
       if (!query.trim()) {
+        return;
+      }
+      if (!structuredQueryState.ok) {
+        setQueryModeError(structuredQueryState.error.message);
+        setShowAdvanced(true);
         return;
       }
 
@@ -361,6 +375,7 @@ export default function Ask({ navigate }: PageProps) {
       queryModes,
       selectedCollection,
       since,
+      structuredQueryState,
       tagMode,
       tagsInput,
       thoroughness,
@@ -906,7 +921,7 @@ export default function Ask({ navigate }: PageProps) {
               onKeyDown={handleKeyDown}
               placeholder={
                 answerAvailable
-                  ? "Ask a question about your documents..."
+                  ? "Ask a question about your documents... Use Shift+Enter for structured query documents"
                   : "AI answers not available"
               }
               ref={textareaRef}
@@ -915,13 +930,26 @@ export default function Ask({ navigate }: PageProps) {
             />
             <Button
               className="absolute right-2 bottom-2"
-              disabled={!(query.trim() && answerAvailable)}
+              disabled={
+                !(query.trim() && answerAvailable) ||
+                Boolean(structuredQueryError)
+              }
               size="icon-sm"
               type="submit"
             >
               <CornerDownLeft className="size-4" />
             </Button>
           </div>
+          {structuredQueryError && (
+            <p className="text-destructive text-xs">{structuredQueryError}</p>
+          )}
+          {!structuredQueryError && (
+            <p className="text-muted-foreground/70 text-xs">
+              Press Enter to submit. Use Shift+Enter for multi-line structured
+              query documents with <code>term:</code>, <code>intent:</code>, and{" "}
+              <code>hyde:</code>.
+            </p>
+          )}
         </form>
       </footer>
     </div>
