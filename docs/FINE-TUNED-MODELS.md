@@ -16,9 +16,10 @@ Current promoted slim retrieval model:
 
 Canonical bundle:
 
-- [release-manifest.json](/Users/gordon/work/gno/research/finetune/promoted/slim-retrieval-v1/release-manifest.json)
-- [MODEL_CARD.md](/Users/gordon/work/gno/research/finetune/promoted/slim-retrieval-v1/MODEL_CARD.md)
-- [install-snippet.yaml](/Users/gordon/work/gno/research/finetune/promoted/slim-retrieval-v1/install-snippet.yaml)
+- [HF model repo](https://huggingface.co/guiltylemon/gno-expansion-slim-retrieval-v1)
+- [release-manifest.json](https://github.com/gmickel/gno/blob/main/research/finetune/promoted/slim-retrieval-v1/release-manifest.json)
+- [MODEL_CARD.md](https://github.com/gmickel/gno/blob/main/research/finetune/promoted/slim-retrieval-v1/MODEL_CARD.md)
+- [install-snippet.yaml](https://github.com/gmickel/gno/blob/main/research/finetune/promoted/slim-retrieval-v1/install-snippet.yaml)
 
 This model passed the promotion gate and is the one to use for final packaging and publishing.
 
@@ -39,42 +40,51 @@ What must be portable is the exported artifact:
 
 ## Recommended Workflow
 
+Public/shared model:
+
+1. use the published HF model directly
+2. keep it in a custom preset such as `slim-tuned`
+3. benchmark before replacing any defaults in your own project
+
+Private/internal model:
+
 1. train a run in `research/finetune/`
 2. promote the run:
 
 ```bash
-bun run research:finetune:promote mlx-run1
+bun run research:finetune:promote <run>
 ```
 
-3. inspect the generated bundle:
-
-- `research/finetune/outputs/<run>/promotion/promotion-summary.json`
-- `research/finetune/outputs/<run>/promotion/MODEL_CARD.md`
-- `research/finetune/outputs/<run>/promotion/install-snippet.yaml`
-
-4. point a custom preset at the exported GGUF
+3. if it is private or paid, keep the resulting GGUF on disk and use `file:`
+4. if it is public, publish the GGUF and model card to HF and switch to `hf:`
 5. benchmark before replacing any defaults
 
 ## Install In GNO
 
-Example custom preset:
+Recommended public preset:
 
 ```yaml
 models:
-  activePreset: tuned
+  activePreset: slim-tuned
   presets:
-    - id: tuned
-      name: Fine-tuned Expansion
+    - id: slim-tuned
+      name: GNO Slim Retrieval v1
       embed: hf:gpustack/bge-m3-GGUF/bge-m3-Q4_K_M.gguf
       rerank: hf:ggml-org/Qwen3-Reranker-0.6B-Q8_0-GGUF/qwen3-reranker-0.6b-q8_0.gguf
-      gen: file:/absolute/path/to/gno-expansion-run-f16.gguf
+      gen: hf:guiltylemon/gno-expansion-slim-retrieval-v1/gno-expansion-auto-entity-lock-default-mix-lr95-f16.gguf
 ```
 
 Then:
 
 ```bash
-gno models use tuned
+gno models use slim-tuned
 gno query "ECONNREFUSED 127.0.0.1:5432" --thorough
+```
+
+For a private model that is not published to HF yet, replace `gen:` with:
+
+```yaml
+gen: file:/absolute/path/to/your-private-model.gguf
 ```
 
 ## When To Keep It Custom
