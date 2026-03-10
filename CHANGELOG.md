@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+## [0.22.4] - 2026-03-10
+
+### Changed
+
+- Updated the public fine-tuned model docs and feature pages to point at the published Hugging Face model, the current promoted slim retrieval preset, and the canonical HF-backed install flow instead of local-only paths.
+
 ## [0.22.3] - 2026-03-10
 
 ### Fixed
