@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+## [0.22.2] - 2026-03-10
+
+### Fixed
+
+- Made retrieval research tests portable in CI by removing machine-specific absolute paths and using repo-root-relative fixture resolution.
+
 ## [0.22.1] - 2026-03-10
 
 ### Fixed
