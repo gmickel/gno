@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+## [0.22.0] - 2026-03-10
+
+### Added
+
+- Retrieval fine-tuning sandbox now supports real local MLX LoRA training, portable GGUF export, automatic checkpoint selection, promotion bundles, and repeatable benchmark comparisons.
+- Autonomous retrieval search harness now supports bounded candidate search, early-stop guards, repeated incumbent confirmation, promotion target checks, and recorded experiment history.
+- Published promoted slim retrieval model `gno-expansion-slim-retrieval-v1` on Hugging Face, plus canonical release bundle, install snippet, and user-facing fine-tuned model documentation.
+
 ## [0.21.1] - 2026-03-09
 
 ### Added
