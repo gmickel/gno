@@ -64,6 +64,8 @@ Build an MLX LoRA training dataset:
 
 ```bash
 bun run research:finetune:mlx:build-dataset
+bun run research:finetune:build-variant-dataset research/finetune/configs/mixes/multilingual-boost.json
+bun run research:finetune:list-prompt-variants
 ```
 
 Run a local MLX LoRA training job:
@@ -117,6 +119,12 @@ Plan an alternate-base sweep:
 bun run research:finetune:plan-sweep
 ```
 
+List data-mix variants for autonomous exploration:
+
+```bash
+bun run research:finetune:list-mix-variants
+```
+
 ## Data Surfaces
 
 ### 1. Training examples
@@ -138,7 +146,32 @@ Training examples are expected under `data/training/`.
 Current seeded sources:
 
 - `data/training/gno-hardcases.jsonl`
+- `data/training/gno-multilingual-hardcases.jsonl`
+- `data/training/gno-disambiguation-hardcases.jsonl`
+- `data/training/gno-lexical-preservation-hardcases.jsonl`
+- `data/training/gno-ask-hardcases.jsonl`
 - generated qmd import via `bun run research:finetune:qmd-import`
+
+Current training mix:
+
+- `configs/training-mix.json`
+- imported qmd data remains the majority corpus
+- `gno`-specific retrieval data is boosted on top of that, not used as a replacement
+- multilingual, ambiguous, negation, and exact-lexical cases are favored over ask-style prompting
+- variant mixes for autonomous search:
+  - `configs/mixes/balanced-retrieval-v2.json`
+  - `configs/mixes/qmd-majority.json`
+  - `configs/mixes/multilingual-boost.json`
+  - `configs/mixes/lexical-boost.json`
+
+Prompt profiles:
+
+- default: `configs/prompt-profile.json`
+- variants:
+  - `configs/prompt-profiles/strict-json-v2.json`
+  - `configs/prompt-profiles/entity-lock-v1.json`
+
+Ask-style prompts remain in the corpus only as retrieval probes. They are not the main optimization target.
 
 ### 2. Promotion cases
 
@@ -194,6 +227,20 @@ Prefer an alternate-base sweep when:
 Current sweep manifest:
 
 - `configs/alternate-base-sweep.json`
+
+## Run History
+
+- `runs/2026-03-09-mlx-calibration.md`
+- `runs/2026-03-09-mlx-run2.md`
+- `runs/2026-03-09-mlx-run6.md`
+
+Practical lesson so far:
+
+- lower training/validation loss does not guarantee better retrieval
+- promotion decisions must follow exported-model benchmark results
+- retrieval-centric data quality beats blind hyperparameter scaling
+- augmenting a strong imported corpus is better than pruning it too aggressively
+- multilingual data matters, but a multilingual-heavy mix can still overcorrect and hurt overall quality
 
 ## External Reference Mapping
 
@@ -283,3 +330,6 @@ fn-36 builds on this sandbox under `research/finetune/autonomous/`.
 - config: `autonomous/config.json`
 - policy: `autonomous/policy.md`
 - dry-run proof: `bun run research:finetune:autonomous:noop`
+- unattended search preview: `bun run research:finetune:autonomous:search --dry-run`
+- unattended search run: `bun run research:finetune:autonomous:search`
+- search loop early-stops weak candidates at validation checkpoints, then promotes only surviving checkpoints

@@ -1,0 +1,15 @@
+{
+  "totalExamples": 1804,
+  "trainExamples": 1623,
+  "validExamples": 181,
+  "sources": [
+    "qmd-finetune",
+    "gno-lexical-preservation-hardcases",
+    "gno-multilingual-hardcases",
+    "gno-ask-hardcases",
+    "gno-hardcases",
+    "gno-disambiguation-hardcases"
+  ],
+  "mixId": "training-mix-multilingual-boost",
+  "mixPath": "/Users/gordon/work/gno/research/finetune/configs/mixes/multilingual-boost.json"
+}

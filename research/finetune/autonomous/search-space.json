@@ -1,0 +1,24 @@
+{
+  "id": "autonomous-search-space-v1",
+  "baseTrainingConfig": "research/finetune/configs/mlx-qwen3-1.7b-run10.yaml",
+  "candidates": [
+    {
+      "id": "entity-lock-default-mix",
+      "mix": "research/finetune/configs/training-mix.json",
+      "promptProfile": "research/finetune/configs/prompt-profiles/entity-lock-v1.json",
+      "learningRate": 1e-5
+    },
+    {
+      "id": "strict-json-balanced-mix",
+      "mix": "research/finetune/configs/mixes/balanced-retrieval-v2.json",
+      "promptProfile": "research/finetune/configs/prompt-profiles/strict-json-v2.json",
+      "learningRate": 1e-5
+    },
+    {
+      "id": "entity-lock-balanced-mix",
+      "mix": "research/finetune/configs/mixes/balanced-retrieval-v2.json",
+      "promptProfile": "research/finetune/configs/prompt-profiles/entity-lock-v1.json",
+      "learningRate": 9.5e-6
+    }
+  ]
+}

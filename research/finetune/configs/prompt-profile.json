@@ -1,0 +1,14 @@
+{
+  "id": "prompt-profile-v1",
+  "systemPrefix": "/no_think Expand this search query for GNO hybrid retrieval.",
+  "requiredKeys": ["lexicalQueries", "vectorQueries"],
+  "optionalKeys": ["hyde"],
+  "rules": [
+    "Preserve quoted phrases, critical entities, and negations.",
+    "lexicalQueries: short BM25-friendly terms.",
+    "vectorQueries: natural-language semantic rephrasings.",
+    "hyde: grounded passage only if useful.",
+    "No markdown, no commentary, no <think> tags."
+  ],
+  "formatReminder": "Respond with valid JSON only."
+}

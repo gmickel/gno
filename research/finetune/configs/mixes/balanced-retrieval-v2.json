@@ -1,0 +1,37 @@
+{
+  "id": "training-mix-balanced-retrieval-v2",
+  "seed": 42,
+  "entries": [
+    {
+      "name": "gno-hardcases",
+      "path": "research/finetune/data/training/gno-hardcases.jsonl",
+      "repeat": 7
+    },
+    {
+      "name": "gno-multilingual-hardcases",
+      "path": "research/finetune/data/training/gno-multilingual-hardcases.jsonl",
+      "repeat": 9
+    },
+    {
+      "name": "gno-disambiguation-hardcases",
+      "path": "research/finetune/data/training/gno-disambiguation-hardcases.jsonl",
+      "repeat": 7
+    },
+    {
+      "name": "gno-lexical-preservation-hardcases",
+      "path": "research/finetune/data/training/gno-lexical-preservation-hardcases.jsonl",
+      "repeat": 9
+    },
+    {
+      "name": "gno-ask-hardcases",
+      "path": "research/finetune/data/training/gno-ask-hardcases.jsonl",
+      "repeat": 1
+    },
+    {
+      "name": "qmd-import",
+      "path": "research/finetune/data/generated/qmd-import.jsonl",
+      "repeat": 1,
+      "maxExamples": 1900
+    }
+  ]
+}

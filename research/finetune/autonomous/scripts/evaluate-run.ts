@@ -1,28 +1,7 @@
 #!/usr/bin/env bun
-import { spawnSync } from "node:child_process";
 import { join } from "node:path";
 
-interface HarnessConfig {
-  id: string;
-  allowedRoots: string[];
-  mutationTargets: string[];
-  budget: {
-    maxRuntimeMinutes: number;
-    maxChangedFiles: number;
-  };
-  metric: {
-    baselineArtifact: string;
-    validationCommand: string;
-    smokeCommand: string;
-    promotionSplit: string;
-  };
-  logging: {
-    runDir: string;
-  };
-  promotion: {
-    humanApprovalRequired: boolean;
-  };
-}
+import { loadHarnessConfig } from "../lib/results";
 
 interface BenchmarkSummary {
   candidates: Array<{
@@ -36,10 +15,12 @@ interface BenchmarkSummary {
 }
 
 const repoRoot = join(import.meta.dir, "../../../..");
-const configPath = join(repoRoot, "research/finetune/autonomous/config.json");
-const config = (await Bun.file(configPath).json()) as HarnessConfig;
-const runName = process.argv[2] ?? "mlx-run1";
-const targets = process.argv.slice(3);
+const config = await loadHarnessConfig(repoRoot);
+const args = process.argv.slice(2);
+const forcePromote = args.includes("--force-promote");
+const positionalArgs = args.filter((arg) => arg !== "--force-promote");
+const runName = positionalArgs[0] ?? "mlx-run1";
+const targets = positionalArgs.slice(1);
 
 function assertAllowed(paths: string[], allowedRoots: string[]): void {
   for (const path of paths) {
@@ -50,14 +31,15 @@ function assertAllowed(paths: string[], allowedRoots: string[]): void {
 }
 
 function run(command: string[]): void {
-  const [bin, ...args] = command;
-  const result = spawnSync(bin!, args, {
+  const result = Bun.spawnSync({
+    cmd: command,
     cwd: repoRoot,
-    stdio: "inherit",
+    stdout: "inherit",
+    stderr: "inherit",
     env: process.env,
   });
-  if (result.status !== 0) {
-    process.exit(result.status ?? 1);
+  if (result.exitCode !== 0) {
+    process.exit(result.exitCode);
   }
 }
 
@@ -65,12 +47,18 @@ const selectedTargets = targets.length ? targets : config.mutationTargets;
 assertAllowed(selectedTargets, config.allowedRoots);
 
 const startedAt = performance.now();
-run(["bun", "run", "research:finetune:promote", runName]);
-
 const benchmarkPath = join(
   repoRoot,
   `research/finetune/outputs/${runName}/benchmark-summary.json`
 );
+const benchmarkExists = await Bun.file(benchmarkPath).exists();
+const ranPromotion = forcePromote || !benchmarkExists;
+if (ranPromotion) {
+  run(["bun", "run", "research:finetune:promote", runName]);
+} else {
+  console.log(`Reusing existing benchmark summary for ${runName}`);
+}
+
 const baselinePath = join(repoRoot, config.metric.baselineArtifact);
 const [benchmark, baseline] = await Promise.all([
   Bun.file(benchmarkPath).json(),
@@ -102,20 +90,37 @@ const schemaDelta =
 const p95Delta =
   benchmarkCandidate.retrieval.latencies.total.p95Ms -
   baselineCandidate.retrieval.latencies.total.p95Ms;
+const askDelta =
+  (benchmarkCandidate.retrieval.bySet?.ask?.metric?.recallAt5 ?? 0) -
+  (baselineCandidate.retrieval.bySet?.ask?.metric?.recallAt5 ?? 0);
+
+const weightedScore =
+  ndcgDelta * config.metric.decision.weights.ndcgAt10 +
+  schemaDelta * config.metric.decision.weights.schemaSuccessRate +
+  askDelta * config.metric.decision.weights.askRecallAt5 +
+  p95Delta * config.metric.decision.weights.p95Ms;
 
 const decision =
-  ndcgDelta >= 0 && schemaDelta >= 0 && p95Delta <= 0 ? "keep" : "discard";
+  ndcgDelta >= config.metric.decision.minimums.ndcgDelta &&
+  schemaDelta >= config.metric.decision.minimums.schemaDelta &&
+  weightedScore > 0
+    ? "keep"
+    : "discard";
 
 const runArtifact = {
   experimentId: `policy-${runName}`,
   policyId: config.id,
   runName,
   targets: selectedTargets,
-  metricCommand: "bun run research:finetune:promote <run>",
+  metricCommand: ranPromotion
+    ? "bun run research:finetune:promote <run>"
+    : "reuse benchmark-summary.json",
   deltas: {
     ndcgAt10: Number(ndcgDelta.toFixed(4)),
     schemaSuccessRate: Number(schemaDelta.toFixed(4)),
+    askRecallAt5: Number(askDelta.toFixed(4)),
     p95Ms: Number(p95Delta.toFixed(2)),
+    weightedScore: Number(weightedScore.toFixed(2)),
   },
   decision,
   humanApprovalRequired: config.promotion.humanApprovalRequired,

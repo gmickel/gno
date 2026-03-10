@@ -12,6 +12,10 @@
   ],
   "mutationTargets": [
     "research/finetune/configs/mlx-qwen3-1.7b-lora.yaml",
+    "research/finetune/configs/training-mix.json",
+    "research/finetune/configs/mixes/",
+    "research/finetune/configs/prompt-profile.json",
+    "research/finetune/configs/prompt-profiles/",
     "research/finetune/contracts/reward-contract.md",
     "research/finetune/README.md"
   ],
@@ -32,7 +36,20 @@
     "baselineArtifact": "evals/fixtures/retrieval-candidate-benchmark/latest.json",
     "validationCommand": "bun run research:finetune:validate",
     "smokeCommand": "bun test test/research/finetune-sandbox.test.ts",
-    "promotionSplit": "heldout"
+    "promotionSplit": "heldout",
+    "decision": {
+      "primary": "retrieval",
+      "weights": {
+        "ndcgAt10": 1000,
+        "schemaSuccessRate": 120,
+        "askRecallAt5": 25,
+        "p95Ms": -0.01
+      },
+      "minimums": {
+        "ndcgDelta": 0.005,
+        "schemaDelta": 0
+      }
+    }
   },
   "logging": {
     "runDir": "research/finetune/autonomous/runs",
@@ -44,6 +61,16 @@
       "decision",
       "runtimeSeconds"
     ]
+  },
+  "search": {
+    "referenceRun": "mlx-run1",
+    "referenceBestValLoss": 0.312,
+    "earlyStop": {
+      "enabled": true,
+      "minIteration": 500,
+      "maxBestValLoss": 0.5,
+      "maxValLossDelta": 0.22
+    }
   },
   "promotion": {
     "humanApprovalRequired": true,

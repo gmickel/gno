@@ -1,15 +1,16 @@
 #!/usr/bin/env bun
 import { spawnSync } from "node:child_process";
+import { existsSync } from "node:fs";
 import { join } from "node:path";
 
 const runName = process.argv[2] ?? "mlx-run1";
 const repoRoot = join(import.meta.dir, "../../..");
+const bestCheckpointPath = join(
+  repoRoot,
+  `research/finetune/outputs/${runName}/best-checkpoint.json`
+);
 
 const steps: Array<{ label: string; cmd: string[] }> = [
-  {
-    label: "select-best",
-    cmd: ["bun", "run", "research:finetune:select-best", runName],
-  },
   {
     label: "fuse-best",
     cmd: ["bun", "run", "research:finetune:fuse-best", runName],
@@ -35,6 +36,13 @@ const steps: Array<{ label: string; cmd: string[] }> = [
     cmd: ["bun", "run", "research:finetune:promotion-bundle", runName],
   },
 ];
+
+if (!existsSync(bestCheckpointPath)) {
+  steps.unshift({
+    label: "select-best",
+    cmd: ["bun", "run", "research:finetune:select-best", runName],
+  });
+}
 
 for (const step of steps) {
   console.log(`\n==> ${step.label}`);

@@ -83,3 +83,40 @@ This will:
 4. emit a keep/discard decision under `autonomous/runs/`
 
 The human gate remains explicit. The script does not change product defaults.
+
+Current decision policy is retrieval-first:
+
+- primary metric: `nDCG@10`
+- structure is rewarded strongly
+- ask recall is tracked with low weight
+- latency is a soft penalty, not a hard rejection by itself
+
+To inspect available data-mix candidates for future automated runs:
+
+```bash
+bun run research:finetune:autonomous:propose-mix-variants
+```
+
+To inspect and run bounded search candidates:
+
+```bash
+bun run research:finetune:autonomous:list-search-candidates
+bun run research:finetune:autonomous:run-candidate entity-lock-default-mix
+bun run research:finetune:autonomous:leaderboard
+```
+
+For unattended bounded search over the remaining candidates:
+
+```bash
+bun run research:finetune:autonomous:search --dry-run
+bun run research:finetune:autonomous:search
+```
+
+The search runner will:
+
+1. run sandbox validation + smoke once
+2. skip already-scored candidates by default
+3. respect `budget.maxRunsPerSession`
+4. early-stop obvious losers using validation checkpoints from the current winner
+5. run candidate train -> promote -> policy evaluate
+6. write a `search-session-*.json` summary with the best keep candidate

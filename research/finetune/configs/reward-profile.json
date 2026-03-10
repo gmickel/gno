@@ -1,0 +1,14 @@
+{
+  "id": "reward-profile-v1",
+  "weights": {
+    "format": 1.0,
+    "entity": 1.2,
+    "negation": 1.2,
+    "lexical": 1.1,
+    "vector": 1.0,
+    "hyde": 0.8,
+    "multilingual": 1.15,
+    "latencyPenalty": 0.5
+  },
+  "hardFailures": ["invalidJson", "thinkLeak", "entityDrop", "negationDrop"]
+}

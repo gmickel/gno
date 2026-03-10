@@ -1,0 +1,37 @@
+{
+  "id": "training-mix-qmd-majority",
+  "seed": 42,
+  "entries": [
+    {
+      "name": "gno-hardcases",
+      "path": "research/finetune/data/training/gno-hardcases.jsonl",
+      "repeat": 6
+    },
+    {
+      "name": "gno-multilingual-hardcases",
+      "path": "research/finetune/data/training/gno-multilingual-hardcases.jsonl",
+      "repeat": 8
+    },
+    {
+      "name": "gno-disambiguation-hardcases",
+      "path": "research/finetune/data/training/gno-disambiguation-hardcases.jsonl",
+      "repeat": 6
+    },
+    {
+      "name": "gno-lexical-preservation-hardcases",
+      "path": "research/finetune/data/training/gno-lexical-preservation-hardcases.jsonl",
+      "repeat": 6
+    },
+    {
+      "name": "gno-ask-hardcases",
+      "path": "research/finetune/data/training/gno-ask-hardcases.jsonl",
+      "repeat": 1
+    },
+    {
+      "name": "qmd-import",
+      "path": "research/finetune/data/generated/qmd-import.jsonl",
+      "repeat": 1,
+      "maxExamples": 1800
+    }
+  ]
+}

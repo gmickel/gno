@@ -1,0 +1,15 @@
+{
+  "id": "prompt-profile-strict-json-v2",
+  "systemPrefix": "/no_think Expand this search query for GNO hybrid retrieval.",
+  "requiredKeys": ["lexicalQueries", "vectorQueries"],
+  "optionalKeys": ["hyde"],
+  "rules": [
+    "Preserve quoted phrases, critical entities, and negations exactly.",
+    "lexicalQueries: short BM25-friendly terms.",
+    "vectorQueries: natural-language semantic rephrasings.",
+    "hyde: grounded passage only if useful.",
+    "Return one JSON object and nothing before or after it.",
+    "No markdown, no commentary, no <think> tags."
+  ],
+  "formatReminder": "Respond with valid JSON only. Do not add prose."
+}

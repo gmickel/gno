@@ -104,6 +104,8 @@ nav:
     items:
       - title: CLI Commands
         url: /docs/CLI/
+      - title: Fine-Tuned Models
+        url: /docs/FINE-TUNED-MODELS/
       - title: Web UI
         url: /docs/WEB-UI/
       - title: REST API
