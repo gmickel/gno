@@ -1,0 +1,25 @@
+{
+  "experimentId": "policy-auto-entity-lock-default-mix-lr94",
+  "policyId": "gno-autonomous-expansion-v1",
+  "runName": "auto-entity-lock-default-mix-lr94",
+  "targets": [
+    "research/finetune/configs/mlx-qwen3-1.7b-lora.yaml",
+    "research/finetune/configs/training-mix.json",
+    "research/finetune/configs/mixes/",
+    "research/finetune/configs/prompt-profile.json",
+    "research/finetune/configs/prompt-profiles/",
+    "research/finetune/contracts/reward-contract.md",
+    "research/finetune/README.md"
+  ],
+  "metricCommand": "reuse benchmark-summary.json",
+  "deltas": {
+    "ndcgAt10": 0.0275,
+    "schemaSuccessRate": 0.5,
+    "askRecallAt5": 0,
+    "p95Ms": 1195.34,
+    "weightedScore": 75.55
+  },
+  "decision": "keep",
+  "humanApprovalRequired": true,
+  "runtimeSeconds": 0
+}

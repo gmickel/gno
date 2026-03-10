@@ -1,8 +1,11 @@
 #!/usr/bin/env bun
 import { readdir } from "node:fs/promises";
-import { join } from "node:path";
+import { isAbsolute, join } from "node:path";
+import { parseArgs } from "node:util";
 
 import {
+  loadDatasetMixConfig,
+  loadPromptProfile,
   toMlxChatExample,
   type TrainingExample,
   validateTrainingExample,
@@ -11,6 +14,11 @@ import {
 const TRAINING_ROOT = join(import.meta.dir, "../data/training");
 const GENERATED_ROOT = join(import.meta.dir, "../data/generated");
 const OUT_ROOT = join(import.meta.dir, "../data/mlx");
+const MIX_PATH = join(import.meta.dir, "../configs/training-mix.json");
+const PROMPT_PROFILE_PATH = join(
+  import.meta.dir,
+  "../configs/prompt-profile.json"
+);
 
 async function collectJsonlFiles(dir: string): Promise<string[]> {
   const entries = await readdir(dir, { withFileTypes: true });
@@ -43,55 +51,101 @@ function shuffleDeterministic<T>(values: T[]): T[] {
 }
 
 async function main(): Promise<void> {
-  const files = [
+  const { values } = parseArgs({
+    args: Bun.argv.slice(2),
+    options: {
+      mix: { type: "string" },
+      output: { type: "string" },
+      prompt_profile: { type: "string" },
+    },
+    strict: true,
+    allowPositionals: false,
+  });
+
+  const mixPath = values.mix
+    ? isAbsolute(values.mix)
+      ? values.mix
+      : join(import.meta.dir, "../../..", values.mix)
+    : MIX_PATH;
+  const outputRoot = values.output
+    ? isAbsolute(values.output)
+      ? values.output
+      : join(import.meta.dir, "../../..", values.output)
+    : OUT_ROOT;
+  const promptProfilePath = values.prompt_profile
+    ? isAbsolute(values.prompt_profile)
+      ? values.prompt_profile
+      : join(import.meta.dir, "../../..", values.prompt_profile)
+    : PROMPT_PROFILE_PATH;
+
+  const mix = await loadDatasetMixConfig(mixPath);
+  const promptProfile = await loadPromptProfile(promptProfilePath);
+  const examples: TrainingExample[] = [];
+  const availableFiles = new Set([
     ...(await collectJsonlFiles(TRAINING_ROOT)),
     ...(await collectJsonlFiles(GENERATED_ROOT).catch(() => [])),
-  ];
-  const rawLines: string[] = [];
-  for (const path of files) {
-    rawLines.push(
-      ...(await Bun.file(path)
-        .text()
-        .then((text) => text.split("\n").filter(Boolean)))
-    );
-  }
+  ]);
 
-  const examples: TrainingExample[] = [];
-  for (const line of rawLines) {
-    const parsed = JSON.parse(line) as TrainingExample;
-    await validateTrainingExample(parsed);
-    examples.push(parsed);
-  }
+  for (const entry of mix.entries) {
+    const absolutePath = join(import.meta.dir, "../../..", entry.path);
+    if (!availableFiles.has(absolutePath)) {
+      continue;
+    }
 
-  const deduped = new Map<string, TrainingExample>();
-  for (const example of examples) {
-    const key = example.query.trim().toLowerCase();
-    if (!deduped.has(key)) {
-      deduped.set(key, example);
+    const parsedLines = (await Bun.file(absolutePath).text())
+      .split("\n")
+      .filter(Boolean)
+      .slice(0, entry.maxExamples ?? Number.POSITIVE_INFINITY);
+    const repeated = entry.repeat ?? 1;
+    const canonical = new Map<string, TrainingExample>();
+
+    for (const line of parsedLines) {
+      const parsed = JSON.parse(line) as TrainingExample;
+      await validateTrainingExample(parsed);
+      if (!canonical.has(parsed.id)) {
+        canonical.set(parsed.id, parsed);
+      }
+    }
+
+    for (let repeatIndex = 0; repeatIndex < repeated; repeatIndex += 1) {
+      for (const parsed of canonical.values()) {
+        examples.push({
+          ...parsed,
+          id: `${parsed.id}::${entry.name}::r${repeatIndex}`,
+        });
+      }
     }
   }
 
-  const shuffled = shuffleDeterministic([...deduped.values()]);
+  const shuffled = shuffleDeterministic(examples);
   const splitIndex = Math.max(1, Math.floor(shuffled.length * 0.9));
-  const train = shuffled.slice(0, splitIndex).map(toMlxChatExample);
-  const valid = shuffled.slice(splitIndex).map(toMlxChatExample);
+  const train = shuffled
+    .slice(0, splitIndex)
+    .map((example) => toMlxChatExample(example, promptProfile));
+  const valid = shuffled
+    .slice(splitIndex)
+    .map((example) => toMlxChatExample(example, promptProfile));
 
   await Bun.write(
-    join(OUT_ROOT, "train.jsonl"),
+    join(outputRoot, "train.jsonl"),
     `${train.map((item) => JSON.stringify(item)).join("\n")}\n`
   );
   await Bun.write(
-    join(OUT_ROOT, "valid.jsonl"),
+    join(outputRoot, "valid.jsonl"),
     `${valid.map((item) => JSON.stringify(item)).join("\n")}\n`
   );
   await Bun.write(
-    join(OUT_ROOT, "dataset-info.json"),
+    join(outputRoot, "dataset-info.json"),
     `${JSON.stringify(
       {
         totalExamples: shuffled.length,
         trainExamples: train.length,
         validExamples: valid.length,
         sources: [...new Set(shuffled.map((item) => item.source.name))],
+        mixId: mix.id,
+        mixPath,
+        promptProfileId: promptProfile.id,
+        promptProfilePath,
       },
       null,
       2

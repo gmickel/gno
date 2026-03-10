@@ -55,9 +55,22 @@ describe("mlx training helpers", () => {
       },
     };
 
-    const prompt = buildMlxUserPrompt(example);
+    const profile = {
+      id: "test-profile",
+      systemPrefix:
+        "/no_think Expand this search query for GNO hybrid retrieval.",
+      requiredKeys: ["lexicalQueries", "vectorQueries"],
+      optionalKeys: ["hyde"],
+      rules: [
+        "Preserve quoted phrases, critical entities, and negations.",
+        "lexicalQueries: short BM25-friendly terms.",
+      ],
+      formatReminder: "Respond with valid JSON only.",
+    };
+
+    const prompt = buildMlxUserPrompt(example, profile);
     const response = buildMlxAssistantResponse(example);
-    const mlx = toMlxChatExample(example);
+    const mlx = toMlxChatExample(example, profile);
 
     expect(prompt).toContain(
       "/no_think Expand this search query for GNO hybrid retrieval."

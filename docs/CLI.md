@@ -436,6 +436,36 @@ gno models pull --gen
 gno models pull --force   # Re-download even if cached
 ```
 
+### Using A Fine-Tuned GGUF
+
+If you have exported a fine-tuned GGUF, point a custom preset at it:
+
+```yaml
+models:
+  activePreset: slim-tuned
+  presets:
+    - id: slim-tuned
+      name: GNO Slim Retrieval v1
+      embed: hf:gpustack/bge-m3-GGUF/bge-m3-Q4_K_M.gguf
+      rerank: hf:ggml-org/Qwen3-Reranker-0.6B-Q8_0-GGUF/qwen3-reranker-0.6b-q8_0.gguf
+      gen: hf:guiltylemon/gno-expansion-slim-retrieval-v1/gno-expansion-auto-entity-lock-default-mix-lr95-f16.gguf
+```
+
+Then use it normally:
+
+```bash
+gno models use tuned
+gno query "ECONNREFUSED 127.0.0.1:5432" --thorough
+```
+
+Recommended workflow:
+
+1. benchmark the exported model first
+2. keep the tuned model in a custom preset
+3. only replace defaults after repeated measured wins
+
+See [Fine-Tuned Models](FINE-TUNED-MODELS.md) for the full promotion and troubleshooting workflow.
+
 ### gno models clear
 
 Remove cached models.

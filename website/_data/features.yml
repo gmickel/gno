@@ -31,6 +31,22 @@
     - "gno models use balanced"
     - "gno models pull"
 
+- slug: fine-tuned-models
+  title: Fine-Tuned Models
+  headline: Train Local, Ship Portable
+  description: Fine-tune retrieval generation models locally, export portable GGUF artifacts, benchmark them against the shipped baseline, and install them in GNO with custom presets.
+  icon: brain
+  benefits:
+    - Local MLX LoRA training on Apple Silicon
+    - Automatic checkpoint selection
+    - Portable GGUF export
+    - Benchmark before promotion
+    - Custom preset install snippets
+  commands:
+    - "bun run research:finetune:promote mlx-run1"
+    - "gno models use tuned"
+    - "gno query 'topic' --thorough"
+
 - slug: web-ui
   title: Web UI
   headline: Your Knowledge Dashboard

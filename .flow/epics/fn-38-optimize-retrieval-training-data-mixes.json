@@ -1,0 +1,13 @@
+{
+  "branch_name": "feat/fn-37-productionize-fine-tuned-retrieval",
+  "created_at": "2026-03-09T22:37:42.545170Z",
+  "depends_on_epics": [],
+  "id": "fn-38-optimize-retrieval-training-data-mixes",
+  "next_task": 1,
+  "plan_review_status": "unknown",
+  "plan_reviewed_at": null,
+  "spec_path": ".flow/specs/fn-38-optimize-retrieval-training-data-mixes.md",
+  "status": "open",
+  "title": "Optimize retrieval training data mixes",
+  "updated_at": "2026-03-09T22:37:42.545318Z"
+}

@@ -1,0 +1,29 @@
+{
+  "runName": "auto-entity-lock-default-mix-lr95",
+  "bestCheckpoint": {
+    "runName": "auto-entity-lock-default-mix-lr95",
+    "logPath": "/Users/gordon/work/gno/research/finetune/outputs/logs/auto-entity-lock-default-mix-lr95-2026-03-10T105752752Z.log",
+    "adapterDir": "/Users/gordon/work/gno/research/finetune/outputs/auto-entity-lock-default-mix-lr95",
+    "best": {
+      "iteration": 500,
+      "valLoss": 0.31,
+      "adapterFile": "/Users/gordon/work/gno/research/finetune/outputs/auto-entity-lock-default-mix-lr95/0000500_adapters.safetensors"
+    }
+  },
+  "artifact": {
+    "ggufPath": "/Users/gordon/work/gno/research/finetune/outputs/auto-entity-lock-default-mix-lr95-best-fused-deq/gno-expansion-auto-entity-lock-default-mix-lr95-f16.gguf",
+    "fileUri": "file:/Users/gordon/work/gno/research/finetune/outputs/auto-entity-lock-default-mix-lr95-best-fused-deq/gno-expansion-auto-entity-lock-default-mix-lr95-f16.gguf"
+  },
+  "benchmark": {
+    "ndcgAt10": 0.92,
+    "askRecallAt5": 0.875,
+    "schemaSuccessRate": 1,
+    "p95Ms": 6135.16
+  },
+  "baseline": {
+    "ndcgAt10": 0.8983,
+    "askRecallAt5": 0.9375,
+    "schemaSuccessRate": 0.5,
+    "p95Ms": 4727.34
+  }
+}

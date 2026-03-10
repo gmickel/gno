@@ -4,6 +4,7 @@ import { join } from "node:path";
 import {
   extractQueryConstraints,
   qmdPairsToTarget,
+  shouldFilterImportedExample,
   type TrainingExample,
   validateTrainingExample,
 } from "../lib/mlx-training";
@@ -20,6 +21,7 @@ async function main(): Promise<void> {
   const outDir = join(import.meta.dir, "../data/generated");
   const outPath = join(outDir, "qmd-import.jsonl");
   const examples: TrainingExample[] = [];
+  let filteredTemporal = 0;
 
   for (const filename of SOURCE_FILES) {
     const path = join(QMD_ROOT, "data", filename);
@@ -40,6 +42,10 @@ async function main(): Promise<void> {
       }
       const target = qmdPairsToTarget(parsed.output);
       if (!target) {
+        continue;
+      }
+      if (shouldFilterImportedExample(parsed.query, target)) {
+        filteredTemporal += 1;
         continue;
       }
 
@@ -64,6 +70,18 @@ async function main(): Promise<void> {
   await Bun.write(
     outPath,
     `${examples.map((example) => JSON.stringify(example)).join("\n")}\n`
+  );
+  await Bun.write(
+    join(outDir, "qmd-import-report.json"),
+    `${JSON.stringify(
+      {
+        kept: examples.length,
+        filtered: filteredTemporal,
+        reason: "temporal_or_release_drift_only",
+      },
+      null,
+      2
+    )}\n`
   );
   console.log(`Imported ${examples.length} qmd examples -> ${outPath}`);
 }

@@ -1,0 +1,15 @@
+{
+  "totalExamples": 1886,
+  "trainExamples": 1697,
+  "validExamples": 189,
+  "sources": [
+    "qmd-finetune",
+    "gno-hardcases",
+    "gno-multilingual-hardcases",
+    "gno-disambiguation-hardcases",
+    "gno-lexical-preservation-hardcases",
+    "gno-ask-hardcases"
+  ],
+  "mixId": "training-mix-qmd-majority",
+  "mixPath": "/Users/gordon/work/gno/research/finetune/configs/mixes/qmd-majority.json"
+}

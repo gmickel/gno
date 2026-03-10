@@ -66,3 +66,59 @@ The noop run must:
 - write exactly one run artifact under `research/finetune/autonomous/runs/`
 - leave the rest of the repo unchanged by the harness itself
 - fail if any new mutation escapes the allowed roots
+
+## Evaluation Cycle
+
+For an actual sandbox evaluation cycle:
+
+```bash
+bun run research:finetune:autonomous:evaluate mlx-run1
+```
+
+This will:
+
+1. validate the declared mutation targets are inside the sandbox
+2. call the promoted run pipeline for the named run
+3. compare benchmark deltas vs the shipped baseline
+4. emit a keep/discard decision under `autonomous/runs/`
+
+The human gate remains explicit. The script does not change product defaults.
+
+Current decision policy is retrieval-first:
+
+- primary metric: `nDCG@10`
+- structure is rewarded strongly
+- ask recall is tracked with low weight
+- latency is a soft penalty, not a hard rejection by itself
+
+To inspect available data-mix candidates for future automated runs:
+
+```bash
+bun run research:finetune:autonomous:propose-mix-variants
+```
+
+To inspect and run bounded search candidates:
+
+```bash
+bun run research:finetune:autonomous:list-search-candidates
+bun run research:finetune:autonomous:run-candidate entity-lock-default-mix
+bun run research:finetune:autonomous:leaderboard
+bun run research:finetune:autonomous:confirm-winner auto-entity-lock-default-mix auto-entity-lock-default-mix-lr95
+bun run research:finetune:autonomous:check-promotion-targets auto-entity-lock-default-mix auto-entity-lock-default-mix-lr95
+```
+
+For unattended bounded search over the remaining candidates:
+
+```bash
+bun run research:finetune:autonomous:search --dry-run
+bun run research:finetune:autonomous:search
+```
+
+The search runner will:
+
+1. run sandbox validation + smoke once
+2. skip already-scored candidates by default
+3. respect `budget.maxRunsPerSession`
+4. early-stop obvious losers using validation checkpoints from the current winner
+5. run candidate train -> promote -> policy evaluate
+6. write a `search-session-*.json` summary with the best keep candidate

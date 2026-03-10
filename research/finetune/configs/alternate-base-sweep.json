@@ -1,0 +1,50 @@
+{
+  "id": "alternate-base-sweep-v1",
+  "task": "expansion",
+  "defaultWinner": {
+    "id": "qwen3-1.7b-current",
+    "baseModel": "Qwen/Qwen3-1.7B",
+    "mlxModel": "mlx-community/Qwen3-1.7B-4bit",
+    "runtimeModelUri": "hf:unsloth/Qwen3-1.7B-GGUF/Qwen3-1.7B-Q4_K_M.gguf",
+    "status": "active"
+  },
+  "alternates": [
+    {
+      "id": "qwen2.5-3b",
+      "family": "Qwen2.5-3B-Instruct",
+      "reasonToTry": "better structure / latency tradeoff candidate",
+      "mlxModel": "mlx-community/Qwen2.5-3B-Instruct-4bit",
+      "runtimeModelUri": "hf:bartowski/Qwen2.5-3B-Instruct-GGUF/Qwen2.5-3B-Instruct-Q4_K_M.gguf",
+      "priority": 1
+    },
+    {
+      "id": "qwen3.5-0.8b",
+      "family": "Qwen3.5-0.8B",
+      "reasonToTry": "lighter fast-path candidate",
+      "mlxModel": "mlx-community/Qwen3.5-0.8B-4bit",
+      "runtimeModelUri": "hf:unsloth/Qwen3.5-0.8B-GGUF/Qwen3.5-0.8B-Q4_K_M.gguf",
+      "priority": 2
+    },
+    {
+      "id": "qwen3.5-4b",
+      "family": "Qwen3.5-4B",
+      "reasonToTry": "higher-cap ceiling candidate if 1.7B plateaus",
+      "mlxModel": "mlx-community/Qwen3.5-4B-4bit",
+      "runtimeModelUri": "hf:unsloth/Qwen3.5-4B-GGUF/Qwen3.5-4B-Q4_K_M.gguf",
+      "priority": 3
+    }
+  ],
+  "decisionRules": {
+    "stayOnWinnerWhen": [
+      "latest promoted run still improves heldout nDCG or schema reliability",
+      "current winner meets latency budget",
+      "training data changed more than model family assumptions"
+    ],
+    "runAlternateSweepWhen": [
+      "current winner plateaus across two or more runs",
+      "need a lighter fast-path model",
+      "need stronger structure without prompt/reward-only fixes",
+      "a new candidate base materially changes benchmark expectations"
+    ]
+  }
+}

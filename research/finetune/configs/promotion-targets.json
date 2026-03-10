@@ -1,0 +1,22 @@
+{
+  "id": "promotion-targets-v1",
+  "retrieval": {
+    "minimumMedianNdcgAt10": 0.92,
+    "minimumDeltaVsShippedSlim": 0.015,
+    "minimumDeltaVsIncumbent": 0.0001
+  },
+  "structure": {
+    "minimumMedianSchemaSuccessRate": 0.95
+  },
+  "ask": {
+    "minimumMedianRecallAt5": 0.85,
+    "required": false
+  },
+  "latency": {
+    "maximumMedianP95Ms": 6500
+  },
+  "notes": [
+    "Current Qwen3-4B retrieval baseline is informational only; it is already worse than slim on measured retrieval.",
+    "If all gates pass, stop tuning and move to promotion/docs/publish work."
+  ]
+}

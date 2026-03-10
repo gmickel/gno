@@ -42,10 +42,27 @@ contains '/docs/' %}
       <span class="related-docs-label">MCP Integration</span>
       <span class="related-docs-desc">Connect to AI assistants</span>
     </a>
+    <a
+      href="{{ '/docs/FINE-TUNED-MODELS/' | relative_url }}"
+      class="related-docs-card"
+    >
+      <span class="related-docs-icon">🧪</span>
+      <span class="related-docs-label">Fine-Tuned Models</span>
+      <span class="related-docs-desc">Use custom GGUF retrieval models</span>
+    </a>
+    {% elsif page.url contains 'FINE-TUNED-MODELS' %}
+    <a
+      href="{{ '/docs/CONFIGURATION/' | relative_url }}"
+      class="related-docs-card"
+    >
+      <span class="related-docs-icon">⚙️</span>
+      <span class="related-docs-label">Configuration</span>
+      <span class="related-docs-desc">Wire custom presets and model URIs</span>
+    </a>
     <a href="{{ '/docs/USE-CASES/' | relative_url }}" class="related-docs-card">
       <span class="related-docs-icon">💡</span>
       <span class="related-docs-label">Use Cases</span>
-      <span class="related-docs-desc">Real-world workflows</span>
+      <span class="related-docs-desc">Real-world retrieval workflows</span>
     </a>
     {% elsif page.url contains 'MCP' %}
     <a href="{{ '/docs/CLI/' | relative_url }}" class="related-docs-card">

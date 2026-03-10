@@ -1,0 +1,15 @@
+{
+  "id": "prompt-profile-entity-lock-v1-strict-reminder",
+  "systemPrefix": "/no_think Expand this search query for GNO hybrid retrieval.",
+  "requiredKeys": ["lexicalQueries", "vectorQueries"],
+  "optionalKeys": ["hyde"],
+  "rules": [
+    "Preserve quoted phrases, critical entities, and negations exactly.",
+    "Never replace or paraphrase all-uppercase, symbol-heavy, or quoted entities.",
+    "lexicalQueries: short BM25-friendly terms.",
+    "vectorQueries: natural-language semantic rephrasings.",
+    "hyde: grounded passage only if useful.",
+    "No markdown, no commentary, no <think> tags."
+  ],
+  "formatReminder": "Respond with exactly one valid JSON object. Keep critical entities verbatim. No prose before or after the JSON."
+}

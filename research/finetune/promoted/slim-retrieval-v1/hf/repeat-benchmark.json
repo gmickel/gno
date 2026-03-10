@@ -1,0 +1,77 @@
+{
+  "generatedAt": "2026-03-10T11:53:52.924Z",
+  "left": {
+    "run": "auto-entity-lock-default-mix",
+    "repeats": [
+      {
+        "ndcgAt10": 0.919,
+        "askRecallAt5": 0.875,
+        "schemaSuccessRate": 1,
+        "p95Ms": 4215.42
+      },
+      {
+        "ndcgAt10": 0.919,
+        "askRecallAt5": 0.875,
+        "schemaSuccessRate": 1,
+        "p95Ms": 5757.25
+      },
+      {
+        "ndcgAt10": 0.919,
+        "askRecallAt5": 0.875,
+        "schemaSuccessRate": 1,
+        "p95Ms": 5367.99
+      }
+    ],
+    "aggregate": {
+      "median": {
+        "ndcgAt10": 0.919,
+        "askRecallAt5": 0.875,
+        "schemaSuccessRate": 1,
+        "p95Ms": 5367.99
+      },
+      "mean": {
+        "ndcgAt10": 0.919,
+        "askRecallAt5": 0.875,
+        "schemaSuccessRate": 1,
+        "p95Ms": 5113.5533
+      }
+    }
+  },
+  "right": {
+    "run": "auto-entity-lock-default-mix-lr95",
+    "repeats": [
+      {
+        "ndcgAt10": 0.925,
+        "askRecallAt5": 0.875,
+        "schemaSuccessRate": 1,
+        "p95Ms": 5034.2
+      },
+      {
+        "ndcgAt10": 0.925,
+        "askRecallAt5": 0.875,
+        "schemaSuccessRate": 1,
+        "p95Ms": 4327.12
+      },
+      {
+        "ndcgAt10": 0.925,
+        "askRecallAt5": 0.875,
+        "schemaSuccessRate": 1,
+        "p95Ms": 4775.99
+      }
+    ],
+    "aggregate": {
+      "median": {
+        "ndcgAt10": 0.925,
+        "askRecallAt5": 0.875,
+        "schemaSuccessRate": 1,
+        "p95Ms": 4775.99
+      },
+      "mean": {
+        "ndcgAt10": 0.925,
+        "askRecallAt5": 0.875,
+        "schemaSuccessRate": 1,
+        "p95Ms": 4712.4367
+      }
+    }
+  }
+}
