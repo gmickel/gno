@@ -1,0 +1,29 @@
+{
+  "runName": "mlx-run1",
+  "bestCheckpoint": {
+    "runName": "mlx-run1",
+    "logPath": "/Users/gordon/work/gno/research/finetune/outputs/logs/mlx-run1-20260309-124626.log",
+    "adapterDir": "/Users/gordon/work/gno/research/finetune/outputs/mlx-run1",
+    "best": {
+      "iteration": 900,
+      "valLoss": 0.312,
+      "adapterFile": "/Users/gordon/work/gno/research/finetune/outputs/mlx-run1/0000900_adapters.safetensors"
+    }
+  },
+  "artifact": {
+    "ggufPath": "/Users/gordon/work/gno/research/finetune/outputs/mlx-run1-best-fused-deq/gno-expansion-mlx-run1-f16.gguf",
+    "fileUri": "file:/Users/gordon/work/gno/research/finetune/outputs/mlx-run1-best-fused-deq/gno-expansion-mlx-run1-f16.gguf"
+  },
+  "benchmark": {
+    "ndcgAt10": 0.9043,
+    "askRecallAt5": 0.9375,
+    "schemaSuccessRate": 0.8333,
+    "p95Ms": 2766.63
+  },
+  "baseline": {
+    "ndcgAt10": 0.8983,
+    "askRecallAt5": 0.9375,
+    "schemaSuccessRate": 0.5,
+    "p95Ms": 4727.34
+  }
+}
