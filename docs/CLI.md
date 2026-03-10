@@ -454,7 +454,7 @@ models:
 Then use it normally:
 
 ```bash
-gno models use tuned
+gno models use slim-tuned
 gno query "ECONNREFUSED 127.0.0.1:5432" --thorough
 ```
 

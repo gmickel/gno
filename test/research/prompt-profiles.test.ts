@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { join } from "node:path";
 
 import {
   loadPromptProfile,
@@ -7,8 +8,12 @@ import {
 
 describe("prompt profiles", () => {
   test("strict profile can be loaded", async () => {
+    const repoRoot = join(import.meta.dir, "../..");
     const profile = await loadPromptProfile(
-      "/Users/gordon/work/gno/research/finetune/configs/prompt-profiles/strict-json-v2.json"
+      join(
+        repoRoot,
+        "research/finetune/configs/prompt-profiles/strict-json-v2.json"
+      )
     );
     expect(profile.id).toBe("prompt-profile-strict-json-v2");
   });

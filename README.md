@@ -27,10 +27,41 @@ GNO is a local knowledge engine that turns your documents into a searchable, con
 - [How It Works](#how-it-works)
 - [Features](#features)
 - [Local Models](#local-models)
+- [Fine-Tuned Models](#fine-tuned-models)
 - [Architecture](#architecture)
 - [Development](#development)
 
 ---
+
+## What's New in v0.22
+
+- **Promoted Slim Retrieval Model**: published `slim-retrieval-v1` on Hugging Face for direct `hf:` installation in GNO
+- **Fine-Tuning Workflow**: local MLX LoRA training, portable GGUF export, automatic checkpoint selection, promotion bundles, and repeatable benchmark comparisons
+- **Autonomous Search Harness**: bounded candidate search with early-stop guards, repeated incumbent confirmation, and promotion targets
+- **Public Docs & Site**: fine-tuned model docs and feature pages now point at the published HF model and the `slim-tuned` preset
+
+### Fine-Tuned Model Quick Use
+
+```yaml
+models:
+  activePreset: slim-tuned
+  presets:
+    - id: slim-tuned
+      name: GNO Slim Retrieval v1
+      embed: hf:gpustack/bge-m3-GGUF/bge-m3-Q4_K_M.gguf
+      rerank: hf:ggml-org/Qwen3-Reranker-0.6B-Q8_0-GGUF/qwen3-reranker-0.6b-q8_0.gguf
+      gen: hf:guiltylemon/gno-expansion-slim-retrieval-v1/gno-expansion-auto-entity-lock-default-mix-lr95-f16.gguf
+```
+
+Then:
+
+```bash
+gno models use slim-tuned
+gno models pull --gen
+gno query "ECONNREFUSED 127.0.0.1:5432" --thorough
+```
+
+> Full guide: [Fine-Tuned Models](https://gno.sh/docs/FINE-TUNED-MODELS/) · [Feature page](https://gno.sh/features/fine-tuned-models/)
 
 ## What's New in v0.21
 
@@ -446,6 +477,24 @@ Models auto-download on first use to `~/.cache/gno/models/`. For deterministic s
 gno models use slim
 gno models pull --all  # Optional: pre-download models (auto-downloads on first use)
 ```
+
+## Fine-Tuned Models
+
+GNO now has a published promoted retrieval model for the default slim path:
+
+- model repo: `guiltylemon/gno-expansion-slim-retrieval-v1`
+- recommended preset id: `slim-tuned`
+- runtime URI:
+  - `hf:guiltylemon/gno-expansion-slim-retrieval-v1/gno-expansion-auto-entity-lock-default-mix-lr95-f16.gguf`
+
+Use it when you want the tuned retrieval expansion path immediately, without running local fine-tuning yourself.
+
+For private/internal products, use the same workflow but keep the final GGUF private and point `gen:` at a `file:` URI instead of publishing to Hugging Face.
+
+See:
+
+- [Fine-Tuned Models docs](https://gno.sh/docs/FINE-TUNED-MODELS/)
+- [Fine-Tuned Models feature page](https://gno.sh/features/fine-tuned-models/)
 
 ### HTTP Backends (Remote GPU)
 
