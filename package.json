@@ -33,7 +33,19 @@
     "vendor"
   ],
   "type": "module",
-  "module": "src/index.ts",
+  "main": "src/sdk/index.ts",
+  "module": "src/sdk/index.ts",
+  "types": "src/sdk/index.ts",
+  "exports": {
+    ".": {
+      "types": "./src/sdk/index.ts",
+      "default": "./src/sdk/index.ts"
+    },
+    "./cli": {
+      "default": "./src/index.ts"
+    },
+    "./package.json": "./package.json"
+  },
   "publishConfig": {
     "access": "public"
   },

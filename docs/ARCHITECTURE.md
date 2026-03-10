@@ -10,15 +10,15 @@ GNO is a local knowledge indexing and search system built on SQLite.
 │                       (developer, researcher, writer)                       │
 └─────────────────────────────────────────────────────────────────────────────┘
                                       │
-              ┌───────────────────────┼───────────────────────┐
-              │                 │                 │           │
-              ▼                 ▼                 ▼           ▼
-        ┌──────────┐     ┌──────────────┐   ┌───────────┐ ┌──────────┐
-        │   CLI    │     │  MCP Server  │   │  AI Agent │ │  Web UI  │
-        │  (gno)   │     │  (gno mcp)   │   │  (Claude) │ │(gno serve)│
-        └──────────┘     └──────────────┘   └───────────┘ └──────────┘
-              │                 │                 │           │
-              └─────────────────┼─────────────────┴───────────┘
+              ┌───────────────────────┼───────────────────────────────┐
+              │                 │                 │           │       │
+              ▼                 ▼                 ▼           ▼       ▼
+        ┌──────────┐     ┌──────────────┐   ┌───────────┐ ┌──────────┐ ┌──────────┐
+        │   CLI    │     │  MCP Server  │   │  AI Agent │ │  Web UI  │ │   SDK    │
+        │  (gno)   │     │  (gno mcp)   │   │  (Claude) │ │(gno serve)│ │ (import) │
+        └──────────┘     └──────────────┘   └───────────┘ └──────────┘ └──────────┘
+              │                 │                 │           │       │
+              └─────────────────┼─────────────────┴───────────┴───────┘
                                 │
                                 ▼
        ┌───────────────────────────────────────────────────────────────┐
@@ -123,7 +123,7 @@ User query
 GNO uses **"Ports without DI"** - a pragmatic simplification of hexagonal architecture:
 
 ```
-CLI/MCP/Web UI → new Adapter() → adapter.createPort() → Port interface → Pipeline
+CLI/MCP/Web UI/SDK → new Adapter() → adapter.createPort() → Port interface → Pipeline
 ```
 
 **Port interfaces** (in `src/llm/types.ts`):
@@ -137,6 +137,12 @@ CLI/MCP/Web UI → new Adapter() → adapter.createPort() → Port interface →
 
 - `LlmAdapter` - creates LLM ports via node-llama-cpp
 - `SqliteAdapter` - SQLite storage
+
+**SDK surface**:
+
+- package root exports `createGnoClient(...)`
+- supports inline config or file-backed config
+- exposes direct retrieval + indexing methods without CLI subprocesses
 
 **Why not full hexagonal?**
 

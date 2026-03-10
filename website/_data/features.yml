@@ -140,6 +140,21 @@
     - "curl /api/query -d '{...}'"
     - "curl /api/models/pull -X POST"
 
+- slug: sdk
+  title: SDK
+  headline: Embed GNO Directly
+  description: Import GNO into another Bun or TypeScript app. Open a store with inline config, run retrieval directly, and trigger update/index flows without CLI subprocesses or a local server.
+  icon: code
+  benefits:
+    - Package-root import surface
+    - Inline config support
+    - Direct search/query/ask/get APIs
+    - Programmatic update/embed/index flows
+    - Explicit lifecycle via close()
+  commands:
+    - "bun add @gmickel/gno"
+    - "import { createGnoClient } from '@gmickel/gno'"
+
 - slug: tags
   title: Tag System
   headline: Classify and Filter Your Knowledge

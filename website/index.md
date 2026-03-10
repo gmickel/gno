@@ -45,6 +45,32 @@ Once connected, ask things like:
 
 [MCP setup guide →](/docs/MCP/)
 
+## For Builders
+
+Embed GNO directly inside another Bun or TypeScript app with the SDK.
+
+```ts
+import { createDefaultConfig, createGnoClient } from "@gmickel/gno";
+
+const config = createDefaultConfig();
+config.collections = [
+  {
+    name: "notes",
+    path: "/Users/me/notes",
+    pattern: "**/*",
+    include: [],
+    exclude: [],
+  },
+];
+
+const client = await createGnoClient({ config, dbPath: "/tmp/gno-sdk.sqlite" });
+await client.index({ noEmbed: true });
+const results = await client.search("JWT token");
+await client.close();
+```
+
+[SDK guide →](/docs/SDK/)
+
 ## For Humans
 
 Stop grepping through thousands of Markdown files. Ask GNO questions in plain English and get cited answers from your own notes, documentation, and code.

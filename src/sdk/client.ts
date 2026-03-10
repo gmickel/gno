@@ -1,0 +1,551 @@
+/**
+ * GNO SDK client.
+ *
+ * @module src/sdk/client
+ */
+
+import { mkdir } from "node:fs/promises";
+import { dirname } from "node:path";
+
+import type { Config } from "../config/types";
+import type { DownloadPolicy } from "../llm/policy";
+import type { EmbeddingPort, GenerationPort, RerankPort } from "../llm/types";
+import type { AskResult, SearchResults } from "../pipeline/types";
+import type { IndexStatus, StoreResult } from "../store/types";
+import type { VectorIndexPort } from "../store/vector";
+import type {
+  GnoAskOptions,
+  GnoClient,
+  GnoClientInitOptions,
+  GnoEmbedOptions,
+  GnoEmbedResult,
+  GnoGetOptions,
+  GnoIndexOptions,
+  GnoIndexResult,
+  GnoListOptions,
+  GnoMultiGetOptions,
+  GnoQueryOptions,
+  GnoUpdateOptions,
+  GnoVectorSearchOptions,
+} from "./types";
+
+import { getIndexDbPath } from "../app/constants";
+import { ConfigSchema, loadConfig } from "../config";
+import { defaultSyncService, type SyncResult } from "../ingestion";
+import { LlmAdapter } from "../llm/nodeLlamaCpp/adapter";
+import { resolveDownloadPolicy } from "../llm/policy";
+import {
+  generateGroundedAnswer,
+  processAnswerResult,
+} from "../pipeline/answer";
+import { formatQueryForEmbedding } from "../pipeline/contextual";
+import { searchHybrid } from "../pipeline/hybrid";
+import { searchBm25 } from "../pipeline/search";
+import { searchVectorWithEmbedding } from "../pipeline/vsearch";
+import { SqliteAdapter } from "../store/sqlite/adapter";
+import { createVectorIndexPort } from "../store/vector";
+import {
+  getDocumentByRef,
+  listDocuments,
+  multiGetDocuments,
+} from "./documents";
+import { runEmbed } from "./embed";
+import { sdkError } from "./errors";
+
+interface OpenedClientState {
+  config: Config;
+  configPath: string | null;
+  configSource: "file" | "inline";
+  dbPath: string;
+  store: SqliteAdapter;
+  llm: LlmAdapter;
+  downloadPolicy: DownloadPolicy;
+}
+
+interface RuntimePorts {
+  embedPort: EmbeddingPort | null;
+  genPort: GenerationPort | null;
+  rerankPort: RerankPort | null;
+  vectorIndex: VectorIndexPort | null;
+}
+
+function unwrapStore<T>(
+  result: StoreResult<T>,
+  code: "STORE" | "RUNTIME" = "STORE"
+): T {
+  if (!result.ok) {
+    throw sdkError(code, result.error.message, { cause: result.error.cause });
+  }
+  return result.value;
+}
+
+async function resolveClientState(
+  options: GnoClientInitOptions = {}
+): Promise<OpenedClientState> {
+  if (options.config && options.configPath) {
+    throw sdkError("VALIDATION", "Pass either config or configPath, not both");
+  }
+
+  let config: Config;
+  let configPath: string | null;
+  let configSource: "file" | "inline";
+
+  if (options.config) {
+    const parsed = ConfigSchema.safeParse(options.config);
+    if (!parsed.success) {
+      throw sdkError(
+        "CONFIG",
+        parsed.error.issues[0]?.message ?? "Invalid config"
+      );
+    }
+    config = parsed.data;
+    configPath = null;
+    configSource = "inline";
+  } else {
+    const loaded = await loadConfig(options.configPath);
+    if (!loaded.ok) {
+      throw sdkError("CONFIG", loaded.error.message);
+    }
+    config = loaded.value;
+    configPath = options.configPath ?? null;
+    configSource = "file";
+  }
+
+  const dbPath = options.dbPath ?? getIndexDbPath(options.indexName);
+  await mkdir(dirname(dbPath), { recursive: true });
+
+  const store = new SqliteAdapter();
+  store.setConfigPath(configPath ?? "<inline-config>");
+  unwrapStore(await store.open(dbPath, config.ftsTokenizer));
+  unwrapStore(await store.syncCollections(config.collections));
+  unwrapStore(await store.syncContexts(config.contexts ?? []));
+
+  return {
+    config,
+    configPath,
+    configSource,
+    dbPath,
+    store,
+    llm: new LlmAdapter(config, options.cacheDir),
+    downloadPolicy:
+      options.downloadPolicy ?? resolveDownloadPolicy(process.env, {}),
+  };
+}
+
+class GnoClientImpl implements GnoClient {
+  readonly config: Config;
+  readonly dbPath: string;
+  readonly configPath: string | null;
+  readonly configSource: "file" | "inline";
+
+  private readonly store: SqliteAdapter;
+  private readonly llm: LlmAdapter;
+  private readonly downloadPolicy: DownloadPolicy;
+  private closed = false;
+
+  constructor(state: OpenedClientState) {
+    this.config = state.config;
+    this.dbPath = state.dbPath;
+    this.configPath = state.configPath;
+    this.configSource = state.configSource;
+    this.store = state.store;
+    this.llm = state.llm;
+    this.downloadPolicy = state.downloadPolicy;
+  }
+
+  isOpen(): boolean {
+    return !this.closed && this.store.isOpen();
+  }
+
+  private assertOpen(): void {
+    if (!this.isOpen()) {
+      throw sdkError("RUNTIME", "GNO client is closed");
+    }
+  }
+
+  private getCollections(collection?: string) {
+    if (!collection) {
+      return this.config.collections;
+    }
+    const filtered = this.config.collections.filter(
+      (c) => c.name === collection
+    );
+    if (filtered.length === 0) {
+      throw sdkError("VALIDATION", `Collection not found: ${collection}`);
+    }
+    return filtered;
+  }
+
+  private async createRuntimePorts(options: {
+    embed?: boolean;
+    gen?: boolean;
+    rerank?: boolean;
+    requiredEmbed?: boolean;
+    requiredGen?: boolean;
+    requiredRerank?: boolean;
+    embedModel?: string;
+    genModel?: string;
+    rerankModel?: string;
+  }): Promise<RuntimePorts> {
+    this.assertOpen();
+
+    let embedPort: EmbeddingPort | null = null;
+    let genPort: GenerationPort | null = null;
+    let rerankPort: RerankPort | null = null;
+    let vectorIndex: VectorIndexPort | null = null;
+
+    if (options.embed) {
+      const embedResult = await this.llm.createEmbeddingPort(
+        options.embedModel,
+        {
+          policy: this.downloadPolicy,
+        }
+      );
+      if (embedResult.ok) {
+        embedPort = embedResult.value;
+        const initResult = await embedPort.init();
+        if (initResult.ok) {
+          const vectorResult = await createVectorIndexPort(
+            this.store.getRawDb(),
+            {
+              model: embedPort.modelUri,
+              dimensions: embedPort.dimensions(),
+            }
+          );
+          if (vectorResult.ok) {
+            vectorIndex = vectorResult.value;
+          } else if (options.requiredEmbed) {
+            await embedPort.dispose();
+            throw sdkError("STORE", vectorResult.error.message, {
+              cause: vectorResult.error.cause,
+            });
+          }
+        } else if (options.requiredEmbed) {
+          await embedPort.dispose();
+          throw sdkError("MODEL", initResult.error.message, {
+            cause: initResult.error.cause,
+          });
+        }
+      } else if (options.requiredEmbed) {
+        throw sdkError("MODEL", embedResult.error.message, {
+          cause: embedResult.error.cause,
+        });
+      }
+    }
+
+    if (options.gen) {
+      const genResult = await this.llm.createGenerationPort(options.genModel, {
+        policy: this.downloadPolicy,
+      });
+      if (genResult.ok) {
+        genPort = genResult.value;
+      } else if (options.requiredGen) {
+        if (embedPort) {
+          await embedPort.dispose();
+        }
+        throw sdkError("MODEL", genResult.error.message, {
+          cause: genResult.error.cause,
+        });
+      }
+    }
+
+    if (options.rerank) {
+      const rerankResult = await this.llm.createRerankPort(
+        options.rerankModel,
+        {
+          policy: this.downloadPolicy,
+        }
+      );
+      if (rerankResult.ok) {
+        rerankPort = rerankResult.value;
+      } else if (options.requiredRerank) {
+        if (embedPort) {
+          await embedPort.dispose();
+        }
+        if (genPort) {
+          await genPort.dispose();
+        }
+        throw sdkError("MODEL", rerankResult.error.message, {
+          cause: rerankResult.error.cause,
+        });
+      }
+    }
+
+    return { embedPort, genPort, rerankPort, vectorIndex };
+  }
+
+  private async disposeRuntimePorts(ports: RuntimePorts): Promise<void> {
+    if (ports.embedPort) {
+      await ports.embedPort.dispose();
+    }
+    if (ports.genPort) {
+      await ports.genPort.dispose();
+    }
+    if (ports.rerankPort) {
+      await ports.rerankPort.dispose();
+    }
+  }
+
+  async search(
+    query: string,
+    options: import("../pipeline/types").SearchOptions = {}
+  ): Promise<SearchResults> {
+    this.assertOpen();
+    return unwrapStore(await searchBm25(this.store, query, options));
+  }
+
+  async vsearch(
+    query: string,
+    options: GnoVectorSearchOptions = {}
+  ): Promise<SearchResults> {
+    this.assertOpen();
+
+    const ports = await this.createRuntimePorts({
+      embed: true,
+      requiredEmbed: true,
+      embedModel: options.model,
+    });
+
+    try {
+      if (!ports.embedPort || !ports.vectorIndex) {
+        throw sdkError(
+          "MODEL",
+          "Vector search requires an embedding model and vector index"
+        );
+      }
+
+      const queryEmbedResult = await ports.embedPort.embed(
+        formatQueryForEmbedding(query)
+      );
+      if (!queryEmbedResult.ok) {
+        throw sdkError("MODEL", queryEmbedResult.error.message, {
+          cause: queryEmbedResult.error.cause,
+        });
+      }
+
+      return unwrapStore(
+        await searchVectorWithEmbedding(
+          {
+            store: this.store,
+            vectorIndex: ports.vectorIndex,
+            embedPort: ports.embedPort,
+            config: this.config,
+          },
+          query,
+          new Float32Array(queryEmbedResult.value),
+          options
+        )
+      );
+    } finally {
+      await this.disposeRuntimePorts(ports);
+    }
+  }
+
+  async query(
+    query: string,
+    options: GnoQueryOptions = {}
+  ): Promise<SearchResults> {
+    this.assertOpen();
+
+    const ports = await this.createRuntimePorts({
+      embed: true,
+      gen: !options.noExpand && !options.queryModes?.length,
+      rerank: !options.noRerank,
+      embedModel: options.embedModel,
+      genModel: options.genModel,
+      rerankModel: options.rerankModel,
+    });
+
+    try {
+      return unwrapStore(
+        await searchHybrid(
+          {
+            store: this.store,
+            config: this.config,
+            vectorIndex: ports.vectorIndex,
+            embedPort: ports.embedPort,
+            genPort: ports.genPort,
+            rerankPort: ports.rerankPort,
+          },
+          query,
+          options
+        )
+      );
+    } finally {
+      await this.disposeRuntimePorts(ports);
+    }
+  }
+
+  async ask(query: string, options: GnoAskOptions = {}): Promise<AskResult> {
+    this.assertOpen();
+
+    const answerRequested = Boolean(options.answer && !options.noAnswer);
+    const needsExpansionGen = !options.noExpand && !options.queryModes?.length;
+    const ports = await this.createRuntimePorts({
+      embed: true,
+      gen: needsExpansionGen || answerRequested,
+      rerank: !options.noRerank,
+      genModel: options.genModel,
+      embedModel: options.embedModel,
+      rerankModel: options.rerankModel,
+    });
+
+    try {
+      if (answerRequested && !ports.genPort) {
+        throw sdkError(
+          "MODEL",
+          "Answer generation requested but no generation model is available"
+        );
+      }
+
+      const searchResult = unwrapStore(
+        await searchHybrid(
+          {
+            store: this.store,
+            config: this.config,
+            vectorIndex: ports.vectorIndex,
+            embedPort: ports.embedPort,
+            genPort: ports.genPort,
+            rerankPort: ports.rerankPort,
+          },
+          query,
+          {
+            limit: options.limit,
+            collection: options.collection,
+            lang: options.lang,
+            intent: options.intent,
+            since: options.since,
+            until: options.until,
+            categories: options.categories,
+            author: options.author,
+            tagsAll: options.tagsAll,
+            tagsAny: options.tagsAny,
+            exclude: options.exclude,
+            queryModes: options.queryModes,
+            noExpand: options.noExpand,
+            noRerank: options.noRerank,
+            candidateLimit: options.candidateLimit,
+            queryLanguageHint: options.queryLanguageHint,
+          }
+        )
+      );
+
+      let answer: string | undefined;
+      let citations: AskResult["citations"];
+      let answerContext: AskResult["meta"]["answerContext"];
+      let answerGenerated = false;
+
+      if (answerRequested && ports.genPort && searchResult.results.length > 0) {
+        const rawAnswer = await generateGroundedAnswer(
+          { genPort: ports.genPort, store: this.store },
+          query,
+          searchResult.results,
+          options.maxAnswerTokens ?? 512
+        );
+        if (!rawAnswer) {
+          throw sdkError("MODEL", "Answer generation failed");
+        }
+        const processed = processAnswerResult(rawAnswer);
+        answer = processed.answer;
+        citations = processed.citations;
+        answerContext = processed.answerContext;
+        answerGenerated = true;
+      }
+
+      return {
+        query,
+        mode: searchResult.meta.vectorsUsed ? "hybrid" : "bm25_only",
+        queryLanguage: searchResult.meta.queryLanguage ?? "und",
+        answer,
+        citations,
+        results: searchResult.results,
+        meta: {
+          expanded: searchResult.meta.expanded ?? false,
+          reranked: searchResult.meta.reranked ?? false,
+          vectorsUsed: searchResult.meta.vectorsUsed ?? false,
+          intent: searchResult.meta.intent,
+          candidateLimit: searchResult.meta.candidateLimit,
+          exclude: searchResult.meta.exclude,
+          queryModes: searchResult.meta.queryModes,
+          answerGenerated,
+          totalResults: searchResult.results.length,
+          answerContext,
+        },
+      };
+    } finally {
+      await this.disposeRuntimePorts(ports);
+    }
+  }
+
+  async get(ref: string, options: GnoGetOptions = {}) {
+    this.assertOpen();
+    return getDocumentByRef(this.store, this.config, ref, options);
+  }
+
+  async multiGet(refs: string[], options: GnoMultiGetOptions = {}) {
+    this.assertOpen();
+    return multiGetDocuments(this.store, this.config, refs, options);
+  }
+
+  async list(options: GnoListOptions = {}) {
+    this.assertOpen();
+    return listDocuments(this.store, options);
+  }
+
+  async status(): Promise<IndexStatus> {
+    this.assertOpen();
+    return unwrapStore(await this.store.getStatus());
+  }
+
+  async update(options: GnoUpdateOptions = {}): Promise<SyncResult> {
+    this.assertOpen();
+    const collections = this.getCollections(options.collection);
+    return defaultSyncService.syncAll(collections, this.store, {
+      gitPull: options.gitPull,
+      runUpdateCmd: true,
+    });
+  }
+
+  async embed(options: GnoEmbedOptions = {}): Promise<GnoEmbedResult> {
+    this.assertOpen();
+    return runEmbed(
+      {
+        config: this.config,
+        store: this.store,
+        llm: this.llm,
+        downloadPolicy: this.downloadPolicy,
+      },
+      options
+    );
+  }
+
+  async index(options: GnoIndexOptions = {}): Promise<GnoIndexResult> {
+    const syncResult = await this.update(options);
+    if (options.noEmbed) {
+      return { syncResult, embedSkipped: true };
+    }
+
+    const embedResult = await this.embed(options);
+    return {
+      syncResult,
+      embedSkipped: false,
+      embedResult,
+    };
+  }
+
+  async close(): Promise<void> {
+    if (this.closed) {
+      return;
+    }
+    this.closed = true;
+    await this.store.close();
+    await this.llm.dispose();
+  }
+}
+
+export async function createGnoClient(
+  options: GnoClientInitOptions = {}
+): Promise<GnoClient> {
+  const state = await resolveClientState(options);
+  return new GnoClientImpl(state);
+}

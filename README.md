@@ -24,6 +24,7 @@ GNO is a local knowledge engine that turns your documents into a searchable, con
 - [Agent Integration](#agent-integration)
 - [Web UI](#web-ui)
 - [REST API](#rest-api)
+- [SDK](#sdk)
 - [How It Works](#how-it-works)
 - [Features](#features)
 - [Local Models](#local-models)
@@ -184,6 +185,58 @@ gno skill install --target all       # Both Claude + Codex
 ```
 
 > **Full setup guide**: [MCP Integration](https://gno.sh/docs/MCP/) · [CLI Reference](https://gno.sh/docs/CLI/)
+
+---
+
+## SDK
+
+Embed GNO directly in another Bun or TypeScript app. No CLI subprocesses. No local server required.
+
+```ts
+import { createDefaultConfig, createGnoClient } from "@gmickel/gno";
+
+const config = createDefaultConfig();
+config.collections = [
+  {
+    name: "notes",
+    path: "/Users/me/notes",
+    pattern: "**/*",
+    include: [],
+    exclude: [],
+  },
+];
+
+const client = await createGnoClient({
+  config,
+  dbPath: "/tmp/gno-sdk.sqlite",
+});
+
+await client.index({ noEmbed: true });
+
+const results = await client.query("JWT token flow", {
+  noExpand: true,
+  noRerank: true,
+});
+
+console.log(results.results[0]?.uri);
+await client.close();
+```
+
+Core SDK surface:
+
+- `createGnoClient({ config | configPath, dbPath? })`
+- `search`, `vsearch`, `query`, `ask`
+- `get`, `multiGet`, `list`, `status`
+- `update`, `embed`, `index`
+- `close`
+
+Install in an app:
+
+```bash
+bun add @gmickel/gno
+```
+
+Full guide: [SDK docs](https://gno.sh/docs/SDK/)
 
 ---
 
