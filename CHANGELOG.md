@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+## [0.23.0] - 2026-03-10
+
+### Added
+
+- First stable SDK / library mode at the package root via `createGnoClient(...)`, with inline-config and file-backed startup, direct retrieval/document methods, and programmatic `update` / `embed` / `index` flows.
+
+### Changed
+
+- Package root now resolves to the SDK surface; the CLI remains available through the `gno` binary and `./cli` export.
+- Added full SDK docs, README coverage, architecture notes, website nav, homepage copy, and a dedicated SDK feature page.
+
 ## [0.22.6] - 2026-03-10
 
 ### Fixed

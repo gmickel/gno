@@ -15,6 +15,16 @@ bun install -g @gmickel/gno
 gno doctor
 ```
 
+### SDK / Library Install
+
+```bash
+bun add @gmickel/gno
+```
+
+```ts
+import { createGnoClient } from "@gmickel/gno";
+```
+
 > **macOS users**: Vector search requires Homebrew SQLite. See [macOS setup](#macos) below.
 
 ## Requirements

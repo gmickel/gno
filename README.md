@@ -34,7 +34,14 @@ GNO is a local knowledge engine that turns your documents into a searchable, con
 
 ---
 
-## What's New in v0.22
+## What's New in v0.23
+
+- **SDK / Library Mode**: package-root importable SDK with `createGnoClient(...)` for direct retrieval, document access, and indexing flows
+- **Inline Config Support**: embed GNO in another app without writing YAML config files
+- **Programmatic Indexing**: call `update`, `embed`, and `index` directly from Bun/TypeScript
+- **Docs & Website**: dedicated SDK guide, feature page, homepage section, and architecture docs
+
+### v0.22
 
 - **Promoted Slim Retrieval Model**: published `slim-retrieval-v1` on Hugging Face for direct `hf:` installation in GNO
 - **Fine-Tuning Workflow**: local MLX LoRA training, portable GGUF export, automatic checkpoint selection, promotion bundles, and repeatable benchmark comparisons
