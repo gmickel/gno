@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+## [0.22.6] - 2026-03-10
+
+### Fixed
+
+- Stabilized cross-platform research tests by replacing one remaining generated-artifact assertion with direct filtering logic checks.
+
 ## [0.22.5] - 2026-03-10
 
 ### Changed
