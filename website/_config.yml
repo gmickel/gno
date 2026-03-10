@@ -114,6 +114,8 @@ nav:
         url: /docs/API/
       - title: MCP Integration
         url: /docs/MCP/
+      - title: Structured Syntax
+        url: /docs/SYNTAX/
       - title: Architecture
         url: /docs/ARCHITECTURE/
   - title: Guides

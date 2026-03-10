@@ -31,6 +31,7 @@ import type {
 
 import { getIndexDbPath } from "../app/constants";
 import { ConfigSchema, loadConfig } from "../config";
+import { normalizeStructuredQueryInput } from "../core/structured-query";
 import { defaultSyncService, type SyncResult } from "../ingestion";
 import { LlmAdapter } from "../llm/nodeLlamaCpp/adapter";
 import { resolveDownloadPolicy } from "../llm/policy";
@@ -347,6 +348,22 @@ class GnoClientImpl implements GnoClient {
   ): Promise<SearchResults> {
     this.assertOpen();
 
+    const normalizedInput = normalizeStructuredQueryInput(
+      query,
+      options.queryModes ?? []
+    );
+    if (!normalizedInput.ok) {
+      throw sdkError("VALIDATION", normalizedInput.error.message);
+    }
+    query = normalizedInput.value.query;
+    options = {
+      ...options,
+      queryModes:
+        normalizedInput.value.queryModes.length > 0
+          ? normalizedInput.value.queryModes
+          : undefined,
+    };
+
     const ports = await this.createRuntimePorts({
       embed: true,
       gen: !options.noExpand && !options.queryModes?.length,
@@ -378,6 +395,22 @@ class GnoClientImpl implements GnoClient {
 
   async ask(query: string, options: GnoAskOptions = {}): Promise<AskResult> {
     this.assertOpen();
+
+    const normalizedInput = normalizeStructuredQueryInput(
+      query,
+      options.queryModes ?? []
+    );
+    if (!normalizedInput.ok) {
+      throw sdkError("VALIDATION", normalizedInput.error.message);
+    }
+    query = normalizedInput.value.query;
+    options = {
+      ...options,
+      queryModes:
+        normalizedInput.value.queryModes.length > 0
+          ? normalizedInput.value.queryModes
+          : undefined,
+    };
 
     const answerRequested = Boolean(options.answer && !options.noAnswer);
     const needsExpansionGen = !options.noExpand && !options.queryModes?.length;

@@ -8,7 +8,7 @@
   "id": "fn-40-structured-query-document-syntax.1",
   "priority": 1,
   "spec_path": ".flow/tasks/fn-40-structured-query-document-syntax.1.md",
-  "status": "todo",
+  "status": "done",
   "title": "Design and implement first-class structured query documents",
-  "updated_at": "2026-03-10T15:34:15.453535Z"
+  "updated_at": "2026-03-10T18:10:00.000000Z"
 }

@@ -1197,6 +1197,7 @@ Combined BM25 + vector search with optional reranking. **Recommended for best re
 - `intent` is orthogonal to `queryModes`: intent steers scoring/prompting, while query modes inject caller-provided retrieval expansions.
 - `queryModes` is optional and only needed for explicit retrieval intent control.
 - If `queryModes` is provided, generated expansion is skipped and provided entries are used directly.
+- `query` can also be a multi-line structured query document using `term:`, `intent:`, and `hyde:` lines. See [Structured Query Syntax](./SYNTAX.md).
 
 **Response**:
 
@@ -1234,6 +1235,10 @@ Combined BM25 + vector search with optional reranking. **Recommended for best re
 curl -X POST http://localhost:3000/api/query \
   -H "Content-Type: application/json" \
   -d '{"query": "error handling best practices", "limit": 10}'
+
+curl -X POST http://localhost:3000/api/query \
+  -H "Content-Type: application/json" \
+  -d '{"query": "auth flow\nterm: \"refresh token\"\nintent: token rotation"}'
 ```
 
 ---
@@ -1298,6 +1303,7 @@ Get an AI-generated answer with citations from your documents.
 - Existing `/api/ask` payloads remain valid.
 - `queryModes` is optional and only needed for explicit retrieval steering during Q&A.
 - If `queryModes` is provided, generated expansion is skipped and provided entries are used directly.
+- `query` can also be a multi-line structured query document using `term:`, `intent:`, and `hyde:` lines. See [Structured Query Syntax](./SYNTAX.md).
 
 **Response**:
 

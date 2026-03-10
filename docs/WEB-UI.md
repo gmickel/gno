@@ -81,6 +81,15 @@ Choose retrieval mode:
 
 Click **Ask** for AI-powered answers. Use **Advanced Retrieval** to scope by collection/date/category/author/tags and add optional `intent` / candidate-limit / exclude / query-mode controls for ambiguous questions.
 
+Both **Search** and **Ask** accept multi-line structured query documents. Press `Shift+Enter` to add a new line, then use:
+
+```text
+auth flow
+term: "refresh token"
+intent: token rotation
+hyde: Refresh tokens rotate on each use.
+```
+
 > **Note**: Models auto-download on first use. Cold start can take longer on first launch while local models download. For instant startup, set `GNO_NO_AUTO_DOWNLOAD=1` and download explicitly with `gno models pull`.
 
 ---

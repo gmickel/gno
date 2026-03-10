@@ -117,6 +117,7 @@ gno query "auth" --thorough          # Full pipeline: ~5-8s
 gno query "auth" --tags-all work,backend   # Filter by tags
 gno query "performance" --intent "web performance and latency"
 gno query "auth flow" --query-mode term:"jwt refresh token" --query-mode intent:"how refresh token rotation works"
+gno query $'auth flow\nterm: "refresh token"\nintent: token rotation'
 ```
 
 **Search modes**:
@@ -157,6 +158,7 @@ Additional options:
 - `--intent` is orthogonal to `--query-mode`: intent steers scoring/prompting, while query modes inject caller-provided retrieval expansions.
 - `--query-mode` is opt-in for explicit intent control and replaces generated expansion for that query.
 - Use `term` for exact lexical constraints, `intent` for semantic reformulations, and `hyde` for one hypothetical answer passage.
+- Multi-line structured query documents are also supported. See [Structured Query Syntax](./SYNTAX.md).
 
 ```bash
 # Existing call (still valid)
@@ -167,6 +169,9 @@ gno query "auth flow" \
   --query-mode term:"jwt refresh token -oauth1" \
   --query-mode intent:"how refresh token rotation works" \
   --query-mode hyde:"Refresh tokens rotate on each use and previous tokens are revoked."
+
+# Multi-line structured query document
+gno query $'auth flow\nterm: "refresh token" -oauth1\nintent: how refresh token rotation works\nhyde: Refresh tokens rotate on each use and previous tokens are revoked.'
 ```
 
 The `--explain` flag outputs:
@@ -194,6 +199,7 @@ gno ask "quick lookup" --fast            # Fastest retrieval
 gno ask "complex topic" --thorough       # Best recall
 gno ask "performance" --intent "web latency and vitals"
 gno ask "performance" --query-mode term:"web performance budgets" --query-mode intent:"latency and vitals" --no-answer
+gno ask $'term: web performance budgets\nintent: latency and vitals' --no-answer
 ```
 
 **Full-document context**: When `--answer` is used, GNO passes complete document content to the generation model, not truncated snippets. This ensures the LLM sees tables, code examples, and full context needed for accurate answers.
@@ -209,6 +215,7 @@ Options:
 - `--intent <text>` - Disambiguating context for ambiguous questions without searching on that text
 - `--exclude <values>` - Hard-prune docs containing any comma-separated term in title/path/body
 - `--query-mode <mode:text>` - Structured expansion hints; repeat for multiple entries. Modes: `term`, `intent`, `hyde`
+- Multi-line structured query documents are also supported. See [Structured Query Syntax](./SYNTAX.md).
 - `-C, --candidate-limit <n>` - Max candidates passed to reranking (default: 20)
 - `--answer` - Generate grounded AI answer (requires gen model)
 - `--no-answer` - Force retrieval-only output

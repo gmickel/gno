@@ -108,6 +108,14 @@ const results = await client.query("performance", {
   noExpand: true,
   noRerank: true,
 });
+
+const structured = await client.query(
+  'auth flow\\nterm: "refresh token"\\nintent: token rotation',
+  {
+    noExpand: true,
+    noRerank: true,
+  }
+);
 ```
 
 ### Ask
@@ -124,6 +132,15 @@ const retrievalOnly = await client.ask("JWT token", {
 const answered = await client.ask("What is our auth flow?", {
   answer: true,
 });
+
+const retrievalOnlyStructured = await client.ask(
+  "term: web performance budgets\\nintent: latency and vitals",
+  {
+    noAnswer: true,
+    noExpand: true,
+    noRerank: true,
+  }
+);
 ```
 
 ### Vector Search
@@ -211,6 +228,7 @@ The package root is the SDK entrypoint. The CLI remains available through the `g
 - `query` and `ask` degrade gracefully if vector/rerank/generation models are unavailable, except when answer generation is explicitly requested.
 - `vsearch` requires embeddings plus vector search support.
 - Inline config is supported; writing YAML is optional.
+- `query` and `ask` accept multi-line structured query documents. See [Structured Query Syntax](./SYNTAX.md).
 
 ---
 
@@ -218,5 +236,6 @@ The package root is the SDK entrypoint. The CLI remains available through the `g
 
 - [CLI](./CLI.md)
 - [REST API](./API.md)
+- [Structured Query Syntax](./SYNTAX.md)
 - [Architecture](./ARCHITECTURE.md)
 - [Configuration](./CONFIGURATION.md)

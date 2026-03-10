@@ -578,6 +578,7 @@ Optional steering controls:
 - `intent` is complementary to `queryModes`: use intent for background context, `queryModes` for caller-supplied lexical/semantic expansions.
 - `queryModes` is optional and only needed when your client wants explicit retrieval intent control.
 - If `queryModes` is set, generated expansion is skipped for that query and the provided entries are used directly.
+- The `query` string itself may also be a multi-line structured query document using `term:`, `intent:`, and `hyde:` lines. See [Structured Query Syntax](./SYNTAX.md).
 
 ```yaml
 # Existing payload (still valid)
@@ -590,6 +591,12 @@ queryModes:
   - { mode: "term", text: "\"refresh token\" -oauth1" }
   - { mode: "intent", text: "how token rotation is implemented" }
   - { mode: "hyde", text: "Refresh tokens rotate on each use and old tokens are revoked." }
+
+# Or put the structure directly into the query field:
+query: |
+  auth flow
+  term: "refresh token" -oauth1
+  intent: how token rotation is implemented
 ```
 
 ### gno_get

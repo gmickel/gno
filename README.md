@@ -288,11 +288,15 @@ gno query "auth flow" \
   --query-mode intent:"how refresh token rotation works" \
   --query-mode hyde:"Refresh tokens rotate on each use and previous tokens are revoked." \
   --explain
+
+# Multi-line structured query document
+gno query $'auth flow\nterm: "refresh token" -oauth1\nintent: how refresh token rotation works\nhyde: Refresh tokens rotate on each use and previous tokens are revoked.' --fast
 ```
 
 - Modes: `term` (BM25-focused), `intent` (semantic-focused), `hyde` (single hypothetical passage)
 - Explain includes stage timings, fallback/cache counters, and per-result score components
 - `gno ask --json` includes `meta.answerContext` for adaptive source selection traces
+- Search and Ask web text boxes also accept multi-line structured query documents with `Shift+Enter`
 
 ---
 

@@ -497,6 +497,21 @@ function wireSearchCommands(program: Command): void {
         queryModes = parsed.value;
       }
 
+      const { normalizeStructuredQueryInput } =
+        await import("../core/structured-query");
+      const normalizedInput = normalizeStructuredQueryInput(
+        queryText,
+        queryModes ?? []
+      );
+      if (!normalizedInput.ok) {
+        throw new CliError("VALIDATION", normalizedInput.error.message);
+      }
+      queryText = normalizedInput.value.query;
+      queryModes =
+        normalizedInput.value.queryModes.length > 0
+          ? normalizedInput.value.queryModes
+          : undefined;
+
       // Parse and validate tag filters
       let tagsAll: string[] | undefined;
       let tagsAny: string[] | undefined;
@@ -655,6 +670,21 @@ function wireSearchCommands(program: Command): void {
         }
         queryModes = parsed.value;
       }
+
+      const { normalizeStructuredQueryInput } =
+        await import("../core/structured-query");
+      const normalizedInput = normalizeStructuredQueryInput(
+        queryText,
+        queryModes ?? []
+      );
+      if (!normalizedInput.ok) {
+        throw new CliError("VALIDATION", normalizedInput.error.message);
+      }
+      queryText = normalizedInput.value.query;
+      queryModes =
+        normalizedInput.value.queryModes.length > 0
+          ? normalizedInput.value.queryModes
+          : undefined;
 
       // Determine expansion/rerank settings based on flags
       // Default: skip expansion (balanced mode)
