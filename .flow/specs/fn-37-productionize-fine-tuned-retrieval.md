@@ -61,4 +61,4 @@ Key principle:
 - `evals/fixtures/retrieval-candidate-benchmark/recommendation.md`
 - `research/finetune/README.md`
 - `research/finetune/autonomous/README.md`
-- `/Users/gordon/repos/qmd/finetune`
+- local upstream reference training stack already cloned under `~/repos`

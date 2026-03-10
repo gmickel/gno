@@ -29,7 +29,7 @@ Without those, the agent will optimize noise.
 Useful references for the next agent:
 
 - Andrej Karpathy `autoresearch`: <https://github.com/karpathy/autoresearch>
-- local reference training stack: `/Users/gordon/repos/qmd/finetune`
+- local upstream reference training stack already cloned under `~/repos`
 - the sandbox defined by `fn-35`
 
 These references are for harness design only. The autonomous loop must optimize `gno`’s own sandbox metric and must not mutate product code.

@@ -1,0 +1,14 @@
+{
+  "assignee": null,
+  "claim_note": "",
+  "claimed_at": null,
+  "created_at": "2026-03-10T15:31:32.808621Z",
+  "depends_on": [],
+  "epic": "fn-39-sdk-and-library-mode",
+  "id": "fn-39-sdk-and-library-mode.1",
+  "priority": 1,
+  "spec_path": ".flow/tasks/fn-39-sdk-and-library-mode.1.md",
+  "status": "done",
+  "title": "Design and implement the first stable GNO SDK surface",
+  "updated_at": "2026-03-10T17:28:00.000000Z"
+}

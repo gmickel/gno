@@ -36,7 +36,7 @@ Reranker training should only become first-class after we have stronger labeled 
 Useful references for the next agent:
 
 - Andrej Karpathy `autoresearch`: <https://github.com/karpathy/autoresearch>
-- local reference training stack: `/Users/gordon/repos/qmd/finetune`
+- local upstream reference training stack already cloned under `~/repos`
 - current `gno` evals and fixtures in-repo
 
 These references should inform the sandbox design, but the sandbox must be tailored to `gno` contracts and evals.

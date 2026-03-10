@@ -19,7 +19,7 @@ Run the first benchmark pass for newer local generation bases, starting with pra
 - Use held-out evals and real runtime latency, not only synthetic prompts.
 - External references:
   - Andrej Karpathy `autoresearch`: <https://github.com/karpathy/autoresearch>
-  - local reference training stack: `/Users/gordon/repos/qmd/finetune`
+  - local upstream reference training stack already cloned under `~/repos`
   - official Qwen 3.5 pages for candidate selection
 
 ## Done summary

@@ -19,7 +19,7 @@ Define the first safe autonomous loop for retrieval-model experimentation. This 
 - Prefer one-file / very small-file mutation targets.
 - External references:
   - Andrej Karpathy `autoresearch`: <https://github.com/karpathy/autoresearch>
-  - local reference training stack: `/Users/gordon/repos/qmd/finetune`
+  - local upstream reference training stack already cloned under `~/repos`
 
 ## Done summary
 

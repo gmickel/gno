@@ -68,7 +68,7 @@ Rerank candidates are optional in this epic. If no realistic dedicated rerank mo
 Use these as inputs so the next agent does not need to rediscover them:
 
 - Andrej Karpathy `autoresearch`: <https://github.com/karpathy/autoresearch>
-- local reference training stack: `/Users/gordon/repos/qmd/finetune`
+- local upstream reference training stack already cloned under `~/repos`
 - official Qwen 3.5 model pages:
   - <https://huggingface.co/Qwen/Qwen3.5-0.8B>
   - <https://huggingface.co/Qwen/Qwen3.5-4B>
