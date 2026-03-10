@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+## [0.22.5] - 2026-03-10
+
+### Changed
+
+- Updated the main README, CLI examples, docs page, homepage bento, and fine-tuned model feature page to point at the current promoted `slim-tuned` retrieval model and Hugging Face install flow.
+
 ## [0.22.4] - 2026-03-10
 
 ### Changed
