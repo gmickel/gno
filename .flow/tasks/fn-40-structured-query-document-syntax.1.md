@@ -19,6 +19,7 @@ Design and implement first-class multi-line structured query documents using exi
 - Add docs, examples, and smoke coverage.
 
 ## Done summary
+
 Implemented first-class structured multi-line query documents using GNO naming only: `term`, `intent`, and `hyde`. Added a shared parser/normalizer, rolled it through CLI `query`/`ask`, REST `query`/`ask`, MCP `gno_query`, SDK `query`/`ask`, and Web Search/Ask text boxes, then added parser/CLI/API/SDK coverage plus full docs/website updates including a dedicated syntax reference page.
 
 Key decisions:
@@ -29,6 +30,7 @@ Key decisions:
 - explicit `queryModes` and document-derived modes merge, with shared validation across the combined set
 
 ## Evidence
+
 - Commits:
 - Tests: bun run lint:check, bun test, bun run docs:verify, cd website && mise x -- make build, bun test test/core/structured-query.test.ts test/serve/routes/query.test.ts test/sdk/client.test.ts test/cli/structured-query-document.test.ts --timeout 60000
 - PRs:
