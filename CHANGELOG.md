@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+## [0.24.0] - 2026-03-10
+
+### Added
+
+- First-class structured multi-line query documents using `term:`, `intent:`, and `hyde:` across CLI `query`/`ask`, REST `/api/query` and `/api/ask`, MCP `gno_query`, SDK `query`/`ask`, and Web Search/Ask text boxes.
+- Dedicated structured syntax reference doc plus updated CLI/API/MCP/SDK/Web docs.
+
 ## [0.23.0] - 2026-03-10
 
 ### Added

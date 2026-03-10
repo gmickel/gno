@@ -19,7 +19,7 @@ social:
     - https://twitter.com/gmickel
 logo: /assets/images/logo.png
 og_image: /assets/images/og/og-image.png
-version: "0.23.0"
+version: "0.24.0"
 lang: en_US
 
 # Build settings

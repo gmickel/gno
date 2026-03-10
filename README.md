@@ -34,7 +34,13 @@ GNO is a local knowledge engine that turns your documents into a searchable, con
 
 ---
 
-## What's New in v0.23
+## What's New in v0.24
+
+- **Structured Query Documents**: first-class multi-line query syntax using `term:`, `intent:`, and `hyde:`
+- **Cross-Surface Rollout**: works across CLI, API, MCP, SDK, and Web Search/Ask
+- **Portable Retrieval Prompts**: save/share advanced retrieval intent as one text payload instead of repeated flags or JSON arrays
+
+### v0.23
 
 - **SDK / Library Mode**: package-root importable SDK with `createGnoClient(...)` for direct retrieval, document access, and indexing flows
 - **Inline Config Support**: embed GNO in another app without writing YAML config files
