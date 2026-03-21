@@ -14,6 +14,7 @@ import {
   PRODUCT_NAME,
   VERSION,
 } from "../app/constants";
+import { resolveDepthPolicy } from "../core/depth-policy";
 import { parseAndValidateTagFilter } from "../core/tags";
 import { setColorsEnabled } from "./colors";
 import {
@@ -455,7 +456,10 @@ function wireSearchCommands(program: Command): void {
     .option("--full", "include full content")
     .option("--line-numbers", "include line numbers in output")
     .option("--fast", "skip expansion and reranking (fastest, ~0.7s)")
-    .option("--thorough", "enable query expansion (slower, ~5-8s)")
+    .option(
+      "--thorough",
+      "use expansion with a wider rerank pool (slowest, best recall)"
+    )
     .option("--no-expand", "disable query expansion")
     .option("--no-rerank", "disable reranking")
     .option(
@@ -474,6 +478,7 @@ function wireSearchCommands(program: Command): void {
     .action(async (queryText: string, cmdOpts: Record<string, unknown>) => {
       const format = getFormat(cmdOpts);
       assertFormatSupported(CMD.query, format);
+      const globals = getGlobals();
 
       // Validate empty query
       if (!queryText.trim()) {
@@ -532,35 +537,26 @@ function wireSearchCommands(program: Command): void {
       const limit = cmdOpts.limit
         ? parsePositiveInt("limit", cmdOpts.limit)
         : getDefaultLimit(format);
+      const { loadConfig } = await import("../config");
+      const { getActivePreset } = await import("../llm/registry");
+      const configResult = await loadConfig(globals.config);
+      const activePresetId = configResult.ok
+        ? getActivePreset(configResult.value).id
+        : "slim";
       const candidateLimit = cmdOpts.candidateLimit
         ? parsePositiveInt("candidate-limit", cmdOpts.candidateLimit)
         : undefined;
       const categories = parseCsvValues(cmdOpts.category);
       const exclude = parseCsvValues(cmdOpts.exclude);
 
-      // Determine expansion/rerank settings based on flags
-      // Priority: --fast > --thorough > --no-expand/--no-rerank > default
-      // Default: skip expansion (balanced mode ~2-3s)
-      let noExpand = true; // Default: skip expansion
-      let noRerank = false; // Default: with reranking
-
-      if (cmdOpts.fast) {
-        // --fast: skip both (~0.7s)
-        noExpand = true;
-        noRerank = true;
-      } else if (cmdOpts.thorough) {
-        // --thorough: full pipeline (~5-8s)
-        noExpand = false;
-        noRerank = false;
-      } else {
-        // Check individual flags (override defaults)
-        if (cmdOpts.expand === false) {
-          noExpand = true;
-        }
-        if (cmdOpts.rerank === false) {
-          noRerank = true;
-        }
-      }
+      const depthPolicy = resolveDepthPolicy({
+        presetId: activePresetId,
+        fast: Boolean(cmdOpts.fast),
+        thorough: Boolean(cmdOpts.thorough),
+        expand: cmdOpts.expand === false ? false : undefined,
+        rerank: cmdOpts.rerank === false ? false : undefined,
+        candidateLimit,
+      });
 
       const { query, formatQuery } = await import("./commands/query");
       const result = await query(queryText, {
@@ -578,9 +574,9 @@ function wireSearchCommands(program: Command): void {
         tagsAny,
         full: Boolean(cmdOpts.full),
         lineNumbers: Boolean(cmdOpts.lineNumbers),
-        noExpand,
-        noRerank,
-        candidateLimit,
+        noExpand: depthPolicy.noExpand,
+        noRerank: depthPolicy.noRerank,
+        candidateLimit: depthPolicy.candidateLimit,
         queryModes,
         explain: Boolean(cmdOpts.explain),
         json: format === "json",
@@ -630,7 +626,10 @@ function wireSearchCommands(program: Command): void {
       []
     )
     .option("--fast", "skip expansion and reranking (fastest)")
-    .option("--thorough", "enable query expansion (slower)")
+    .option(
+      "--thorough",
+      "use expansion with a wider rerank pool (slowest, best recall)"
+    )
     .option("-C, --candidate-limit <num>", "max candidates passed to reranking")
     .option("--answer", "generate short grounded answer")
     .option("--no-answer", "force retrieval-only output")
@@ -641,6 +640,7 @@ function wireSearchCommands(program: Command): void {
     .action(async (queryText: string, cmdOpts: Record<string, unknown>) => {
       const format = getFormat(cmdOpts);
       assertFormatSupported(CMD.ask, format);
+      const globals = getGlobals();
 
       // Validate empty query
       if (!queryText.trim()) {
@@ -650,6 +650,12 @@ function wireSearchCommands(program: Command): void {
       const limit = cmdOpts.limit
         ? parsePositiveInt("limit", cmdOpts.limit)
         : getDefaultLimit(format);
+      const { loadConfig } = await import("../config");
+      const { getActivePreset } = await import("../llm/registry");
+      const configResult = await loadConfig(globals.config);
+      const activePresetId = configResult.ok
+        ? getActivePreset(configResult.value).id
+        : "slim";
       const candidateLimit = cmdOpts.candidateLimit
         ? parsePositiveInt("candidate-limit", cmdOpts.candidateLimit)
         : undefined;
@@ -686,18 +692,13 @@ function wireSearchCommands(program: Command): void {
           ? normalizedInput.value.queryModes
           : undefined;
 
-      // Determine expansion/rerank settings based on flags
-      // Default: skip expansion (balanced mode)
-      let noExpand = true;
-      let noRerank = false;
-
-      if (cmdOpts.fast) {
-        noExpand = true;
-        noRerank = true;
-      } else if (cmdOpts.thorough) {
-        noExpand = false;
-        noRerank = false;
-      }
+      const depthPolicy = resolveDepthPolicy({
+        presetId: activePresetId,
+        fast: Boolean(cmdOpts.fast),
+        thorough: Boolean(cmdOpts.thorough),
+        candidateLimit,
+        hasStructuredModes: Boolean(queryModes?.length),
+      });
 
       const { ask, formatAsk } = await import("./commands/ask");
       const showSources = Boolean(cmdOpts.showSources);
@@ -712,9 +713,9 @@ function wireSearchCommands(program: Command): void {
         intent: cmdOpts.intent as string | undefined,
         exclude,
         queryModes,
-        noExpand,
-        noRerank,
-        candidateLimit,
+        noExpand: depthPolicy.noExpand,
+        noRerank: depthPolicy.noRerank,
+        candidateLimit: depthPolicy.candidateLimit,
         // Per spec: --answer defaults to false, --no-answer forces retrieval-only
         // Commander creates separate cmdOpts.noAnswer for --no-answer flag
         answer: Boolean(cmdOpts.answer),
@@ -1358,7 +1359,8 @@ function wireManagementCommands(program: Command): void {
     .option("--all", "download all configured models")
     .option("--embed", "download embedding model")
     .option("--rerank", "download reranker model")
-    .option("--gen", "download generation model")
+    .option("--expand", "download expansion model")
+    .option("--gen", "download answer generation model")
     .option("--force", "force re-download")
     .option("--no-progress", "disable download progress")
     .action(async (cmdOpts: Record<string, unknown>) => {
@@ -1377,6 +1379,7 @@ function wireManagementCommands(program: Command): void {
         all: Boolean(cmdOpts.all),
         embed: Boolean(cmdOpts.embed),
         rerank: Boolean(cmdOpts.rerank),
+        expand: Boolean(cmdOpts.expand),
         gen: Boolean(cmdOpts.gen),
         force: Boolean(cmdOpts.force),
         onProgress: showProgress ? createProgressRenderer() : undefined,

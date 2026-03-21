@@ -6,7 +6,7 @@
  * suggesting analog warmth in a digital interface.
  *
  * Uses Old Gold (secondary) to clearly distinguish from search/primary
- * actions - this controls AI answer generation only.
+ * actions - this controls the active retrieval/answer preset.
  */
 
 import {
@@ -27,6 +27,7 @@ interface Preset {
   name: string;
   embed: string;
   rerank: string;
+  expand?: string;
   gen: string;
   active: boolean;
 }
@@ -67,6 +68,7 @@ interface DownloadStatus {
 
 // Extract readable model name from preset name
 const SIZE_REGEX = /~[\d.]+GB/;
+const MODEL_URI_SEGMENT_RE = /\/([^/#]+?)(?:\.(?:gguf|bin|safetensors))?$/i;
 
 function extractBaseName(name: string): string {
   return name.split("(")[0].trim();
@@ -77,7 +79,37 @@ function extractSize(name: string): string | null {
   return match ? match[0] : null;
 }
 
-export function AIModelSelector() {
+function formatPresetLabel(preset: Preset | undefined): string {
+  if (!preset) {
+    return "Select";
+  }
+
+  if (preset.id === "slim-tuned") {
+    return "Slim Tuned";
+  }
+
+  return extractBaseName(preset.name);
+}
+
+function formatModelRole(uri: string | undefined): string {
+  if (!uri) {
+    return "Not set";
+  }
+
+  const hashModel = uri.split("#")[1]?.trim();
+  if (hashModel) {
+    return hashModel;
+  }
+
+  const matched = uri.match(MODEL_URI_SEGMENT_RE)?.[1];
+  return matched?.trim() || uri;
+}
+
+export interface AIModelSelectorProps {
+  onPresetChange?: (presetId: string) => void;
+}
+
+export function AIModelSelector({ onPresetChange }: AIModelSelectorProps = {}) {
   const [presets, setPresets] = useState<Preset[]>([]);
   const [activeId, setActiveId] = useState<string>("");
   const [loading, setLoading] = useState(true);
@@ -111,7 +143,7 @@ export function AIModelSelector() {
   // Check capabilities
   const checkCapabilities = useCallback((caps: Capabilities) => {
     if (!caps.answer) {
-      setError("AI model not loaded");
+      setError("Answer model not loaded");
       setModelsNeeded(true);
     } else {
       setError(null);
@@ -152,6 +184,7 @@ export function AIModelSelector() {
       if (data) {
         setPresets(data.presets);
         setActiveId(data.activePreset);
+        onPresetChange?.(data.activePreset);
         checkCapabilities(data.capabilities);
       }
       setLoading(false);
@@ -204,6 +237,7 @@ export function AIModelSelector() {
 
     if (data?.success) {
       setActiveId(data.activePreset);
+      onPresetChange?.(data.activePreset);
       checkCapabilities(data.capabilities);
       setOpen(false);
     }
@@ -233,7 +267,7 @@ export function AIModelSelector() {
     return (
       <div className="flex items-center gap-2">
         <span className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground/40">
-          AI Model
+          Preset
         </span>
         <div
           className={cn(
@@ -248,16 +282,14 @@ export function AIModelSelector() {
 
   if (presets.length === 0) return null;
 
-  const displayName = activePreset
-    ? extractBaseName(activePreset.name)
-    : "Select";
+  const displayName = formatPresetLabel(activePreset);
 
   return (
     <div className="relative" ref={containerRef}>
       {/* Label */}
       <div className="flex items-center gap-2">
         <span className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground/40">
-          AI Model
+          Preset
         </span>
 
         {/* Tube Display Button */}
@@ -418,6 +450,12 @@ export function AIModelSelector() {
                         {size}
                       </span>
                     )}
+                    <span className="font-mono text-[9px] text-muted-foreground/50">
+                      {`expand: ${formatModelRole(preset.expand ?? preset.gen)}`}
+                    </span>
+                    <span className="font-mono text-[9px] text-muted-foreground/50">
+                      {`answer: ${formatModelRole(preset.gen)}`}
+                    </span>
                   </div>
 
                   {isActive && (
@@ -455,7 +493,7 @@ export function AIModelSelector() {
                     type="button"
                   >
                     <Download className="size-3.5" />
-                    Download Models
+                    Download Preset Models
                   </button>
                 )}
               </div>
@@ -465,7 +503,7 @@ export function AIModelSelector() {
           {/* Footer note */}
           <div className="mt-1 border-t border-border/30 px-3 py-2">
             <p className="font-mono text-[9px] text-muted-foreground/50">
-              Controls AI answer generation only
+              Controls retrieval expansion and AI answers
             </p>
           </div>
         </div>

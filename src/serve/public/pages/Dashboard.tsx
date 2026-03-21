@@ -55,6 +55,7 @@ export default function Dashboard({ navigate }: PageProps) {
   const [syncing, setSyncing] = useState(false);
   const [syncJobId, setSyncJobId] = useState<string | null>(null);
   const { openCapture } = useCaptureModal();
+  const openCollections = () => navigate("/collections");
 
   const loadStatus = useCallback(async () => {
     const { data, error: err } = await apiFetch<StatusData>("/api/status");
@@ -173,6 +174,15 @@ export default function Dashboard({ navigate }: PageProps) {
           </Button>
           <Button
             className="gap-2"
+            onClick={openCollections}
+            size="lg"
+            variant="outline"
+          >
+            <FolderIcon className="size-4" />
+            Collections
+          </Button>
+          <Button
+            className="gap-2"
             onClick={() => navigate("/graph")}
             size="lg"
             variant="outline"
@@ -225,7 +235,18 @@ export default function Dashboard({ navigate }: PageProps) {
               </CardContent>
             </Card>
 
-            <Card className="group stagger-2 animate-fade-in opacity-0 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/50 hover:shadow-lg">
+            <Card
+              className="group stagger-2 animate-fade-in cursor-pointer opacity-0 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/50 hover:shadow-lg"
+              onClick={openCollections}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  openCollections();
+                }
+              }}
+              role="button"
+              tabIndex={0}
+            >
               <CardHeader className="pb-2">
                 <CardDescription className="flex items-center gap-2">
                   <FolderIcon className="size-4" />
@@ -241,6 +262,9 @@ export default function Dashboard({ navigate }: PageProps) {
                     <CheckCircle2Icon className="size-5 text-green-500" />
                   )}
                 </div>
+                <p className="mt-2 text-muted-foreground text-sm">
+                  Add folders, re-index after changes, remove old sources.
+                </p>
               </CardContent>
             </Card>
 
@@ -272,9 +296,12 @@ export default function Dashboard({ navigate }: PageProps) {
         {/* Collections */}
         {status && status.collections.length > 0 && (
           <section className="stagger-3 animate-fade-in opacity-0">
-            <h2 className="mb-6 border-border/50 border-b pb-3 font-semibold text-2xl">
-              Collections
-            </h2>
+            <div className="mb-6 flex items-center justify-between gap-4 border-border/50 border-b pb-3">
+              <h2 className="font-semibold text-2xl">Collections</h2>
+              <Button onClick={openCollections} size="sm" variant="outline">
+                Manage Collections
+              </Button>
+            </div>
             <div className="space-y-3">
               {status.collections.map((c, i) => (
                 <Card

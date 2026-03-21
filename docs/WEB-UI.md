@@ -204,6 +204,8 @@ Switch between model presets without restarting:
 2. Choose: **Slim** (default), **Balanced**, or **Quality** (best answers)
 3. GNO reloads models automatically
 
+The preset controls both retrieval expansion and standalone answer generation.
+
 | Preset   | Disk   | Best For                     |
 | :------- | :----- | :--------------------------- |
 | Slim     | ~1GB   | Fast, good quality (default) |

@@ -548,9 +548,9 @@ queryModes:
 
 **Search modes** (via parameters):
 
-- **Default**: Skip expansion, with reranking (~2-3s)
+- **Default**: Preset-aware balanced mode. On `slim` / `slim-tuned`, expansion + reranking; on larger presets, reranking only by default (~2-3s)
 - `fast: true`: Skip both expansion and reranking (~0.7s)
-- `thorough: true`: Full pipeline with expansion (~5-8s)
+- `thorough: true`: Expansion + wider rerank pool (~5-8s)
 
 **Agent retry strategy**: Use default mode first. If no relevant results:
 

@@ -65,7 +65,8 @@ interface OpenedClientState {
 
 interface RuntimePorts {
   embedPort: EmbeddingPort | null;
-  genPort: GenerationPort | null;
+  expandPort: GenerationPort | null;
+  answerPort: GenerationPort | null;
   rerankPort: RerankPort | null;
   vectorIndex: VectorIndexPort | null;
 }
@@ -179,19 +180,23 @@ class GnoClientImpl implements GnoClient {
 
   private async createRuntimePorts(options: {
     embed?: boolean;
-    gen?: boolean;
+    expand?: boolean;
+    answer?: boolean;
     rerank?: boolean;
     requiredEmbed?: boolean;
-    requiredGen?: boolean;
+    requiredExpand?: boolean;
+    requiredAnswer?: boolean;
     requiredRerank?: boolean;
     embedModel?: string;
+    expandModel?: string;
     genModel?: string;
     rerankModel?: string;
   }): Promise<RuntimePorts> {
     this.assertOpen();
 
     let embedPort: EmbeddingPort | null = null;
-    let genPort: GenerationPort | null = null;
+    let expandPort: GenerationPort | null = null;
+    let answerPort: GenerationPort | null = null;
     let rerankPort: RerankPort | null = null;
     let vectorIndex: VectorIndexPort | null = null;
 
@@ -234,15 +239,37 @@ class GnoClientImpl implements GnoClient {
       }
     }
 
-    if (options.gen) {
+    if (options.expand) {
+      const genResult = await this.llm.createExpansionPort(
+        options.expandModel ?? options.genModel,
+        {
+          policy: this.downloadPolicy,
+        }
+      );
+      if (genResult.ok) {
+        expandPort = genResult.value;
+      } else if (options.requiredExpand) {
+        if (embedPort) {
+          await embedPort.dispose();
+        }
+        throw sdkError("MODEL", genResult.error.message, {
+          cause: genResult.error.cause,
+        });
+      }
+    }
+
+    if (options.answer) {
       const genResult = await this.llm.createGenerationPort(options.genModel, {
         policy: this.downloadPolicy,
       });
       if (genResult.ok) {
-        genPort = genResult.value;
-      } else if (options.requiredGen) {
+        answerPort = genResult.value;
+      } else if (options.requiredAnswer) {
         if (embedPort) {
           await embedPort.dispose();
+        }
+        if (expandPort) {
+          await expandPort.dispose();
         }
         throw sdkError("MODEL", genResult.error.message, {
           cause: genResult.error.cause,
@@ -263,8 +290,11 @@ class GnoClientImpl implements GnoClient {
         if (embedPort) {
           await embedPort.dispose();
         }
-        if (genPort) {
-          await genPort.dispose();
+        if (expandPort) {
+          await expandPort.dispose();
+        }
+        if (answerPort) {
+          await answerPort.dispose();
         }
         throw sdkError("MODEL", rerankResult.error.message, {
           cause: rerankResult.error.cause,
@@ -272,15 +302,18 @@ class GnoClientImpl implements GnoClient {
       }
     }
 
-    return { embedPort, genPort, rerankPort, vectorIndex };
+    return { embedPort, expandPort, answerPort, rerankPort, vectorIndex };
   }
 
   private async disposeRuntimePorts(ports: RuntimePorts): Promise<void> {
     if (ports.embedPort) {
       await ports.embedPort.dispose();
     }
-    if (ports.genPort) {
-      await ports.genPort.dispose();
+    if (ports.expandPort) {
+      await ports.expandPort.dispose();
+    }
+    if (ports.answerPort) {
+      await ports.answerPort.dispose();
     }
     if (ports.rerankPort) {
       await ports.rerankPort.dispose();
@@ -366,9 +399,10 @@ class GnoClientImpl implements GnoClient {
 
     const ports = await this.createRuntimePorts({
       embed: true,
-      gen: !options.noExpand && !options.queryModes?.length,
+      expand: !options.noExpand && !options.queryModes?.length,
       rerank: !options.noRerank,
       embedModel: options.embedModel,
+      expandModel: options.expandModel,
       genModel: options.genModel,
       rerankModel: options.rerankModel,
     });
@@ -381,7 +415,7 @@ class GnoClientImpl implements GnoClient {
             config: this.config,
             vectorIndex: ports.vectorIndex,
             embedPort: ports.embedPort,
-            genPort: ports.genPort,
+            expandPort: ports.expandPort,
             rerankPort: ports.rerankPort,
           },
           query,
@@ -416,15 +450,17 @@ class GnoClientImpl implements GnoClient {
     const needsExpansionGen = !options.noExpand && !options.queryModes?.length;
     const ports = await this.createRuntimePorts({
       embed: true,
-      gen: needsExpansionGen || answerRequested,
+      expand: needsExpansionGen,
+      answer: answerRequested,
       rerank: !options.noRerank,
+      expandModel: options.expandModel,
       genModel: options.genModel,
       embedModel: options.embedModel,
       rerankModel: options.rerankModel,
     });
 
     try {
-      if (answerRequested && !ports.genPort) {
+      if (answerRequested && !ports.answerPort) {
         throw sdkError(
           "MODEL",
           "Answer generation requested but no generation model is available"
@@ -438,7 +474,7 @@ class GnoClientImpl implements GnoClient {
             config: this.config,
             vectorIndex: ports.vectorIndex,
             embedPort: ports.embedPort,
-            genPort: ports.genPort,
+            expandPort: ports.expandPort,
             rerankPort: ports.rerankPort,
           },
           query,
@@ -468,9 +504,13 @@ class GnoClientImpl implements GnoClient {
       let answerContext: AskResult["meta"]["answerContext"];
       let answerGenerated = false;
 
-      if (answerRequested && ports.genPort && searchResult.results.length > 0) {
+      if (
+        answerRequested &&
+        ports.answerPort &&
+        searchResult.results.length > 0
+      ) {
         const rawAnswer = await generateGroundedAnswer(
-          { genPort: ports.genPort, store: this.store },
+          { genPort: ports.answerPort, store: this.store },
           query,
           searchResult.results,
           options.maxAnswerTokens ?? 512

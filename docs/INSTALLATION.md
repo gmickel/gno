@@ -101,16 +101,17 @@ gno models pull --all
 # Or download specific models
 gno models pull --embed   # Required for vector search
 gno models pull --rerank  # Optional, improves ranking
+gno models pull --expand  # Required for local query expansion
 gno models pull --gen     # Required for --answer
 ```
 
 Model presets control disk usage:
 
-| Preset   | Disk   | Embed     | Rerank                 | Gen           |
-| -------- | ------ | --------- | ---------------------- | ------------- |
-| slim     | ~1GB   | bge-m3-Q4 | Qwen3-Reranker-0.6B-Q8 | Qwen3-1.7B-Q4 |
-| balanced | ~2GB   | bge-m3-Q4 | Qwen3-Reranker-0.6B-Q8 | SmolLM3-3B-Q4 |
-| quality  | ~2.5GB | bge-m3-Q4 | Qwen3-Reranker-0.6B-Q8 | Qwen3-4B-Q4   |
+| Preset   | Embed     | Rerank                 | Expand        | Answer        |
+| -------- | --------- | ---------------------- | ------------- | ------------- |
+| slim     | bge-m3-Q4 | Qwen3-Reranker-0.6B-Q8 | Qwen3-1.7B-Q4 | Qwen3-1.7B-Q4 |
+| balanced | bge-m3-Q4 | Qwen3-Reranker-0.6B-Q8 | Qwen2.5-3B-Q4 | Qwen2.5-3B-Q4 |
+| quality  | bge-m3-Q4 | Qwen3-Reranker-0.6B-Q8 | Qwen3-4B-Q4   | Qwen3-4B-Q4   |
 
 Change preset in config:
 

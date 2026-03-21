@@ -63,7 +63,8 @@ export interface ServerContext {
   config: Config;
   vectorIndex: VectorIndexPort | null;
   embedPort: EmbeddingPort | null;
-  genPort: GenerationPort | null;
+  expandPort: GenerationPort | null;
+  answerPort: GenerationPort | null;
   rerankPort: RerankPort | null;
   capabilities: {
     bm25: boolean;
@@ -82,7 +83,8 @@ export async function createServerContext(
   config: Config
 ): Promise<ServerContext> {
   let embedPort: EmbeddingPort | null = null;
-  let genPort: GenerationPort | null = null;
+  let expandPort: GenerationPort | null = null;
+  let answerPort: GenerationPort | null = null;
   let rerankPort: RerankPort | null = null;
   let vectorIndex: VectorIndexPort | null = null;
 
@@ -129,13 +131,23 @@ export async function createServerContext(
       }
     }
 
-    // Try to create generation port
-    const genResult = await llm.createGenerationPort(
+    // Try to create expansion port
+    const expandResult = await llm.createExpansionPort(
+      preset.expand ?? preset.gen,
+      createPortOptions("expand")
+    );
+    if (expandResult.ok) {
+      expandPort = expandResult.value;
+      console.log("Query expansion enabled");
+    }
+
+    // Try to create answer generation port
+    const answerResult = await llm.createGenerationPort(
       preset.gen,
       createPortOptions("gen")
     );
-    if (genResult.ok) {
-      genPort = genResult.value;
+    if (answerResult.ok) {
+      answerPort = answerResult.value;
       console.log("AI answer generation enabled");
     }
 
@@ -166,7 +178,7 @@ export async function createServerContext(
     bm25: true, // Always available
     vector: vectorIndex?.searchAvailable ?? false,
     hybrid: (vectorIndex?.searchAvailable ?? false) && embedPort !== null,
-    answer: genPort !== null,
+    answer: answerPort !== null,
   };
 
   return {
@@ -174,7 +186,8 @@ export async function createServerContext(
     config,
     vectorIndex,
     embedPort,
-    genPort,
+    expandPort,
+    answerPort,
     rerankPort,
     capabilities,
   };
@@ -187,7 +200,8 @@ export async function createServerContext(
 export async function disposeServerContext(ctx: ServerContext): Promise<void> {
   const ports = [
     { name: "embed", port: ctx.embedPort },
-    { name: "gen", port: ctx.genPort },
+    { name: "expand", port: ctx.expandPort },
+    { name: "answer", port: ctx.answerPort },
     { name: "rerank", port: ctx.rerankPort },
   ];
 

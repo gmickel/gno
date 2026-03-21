@@ -27,6 +27,8 @@ export interface ModelsPullOptions {
   embed?: boolean;
   /** Pull reranker model */
   rerank?: boolean;
+  /** Pull expansion model */
+  expand?: boolean;
   /** Pull generation model */
   gen?: boolean;
   /** Force re-download */
@@ -59,9 +61,9 @@ export interface ModelsPullResult {
  */
 function getTypesToPull(options: ModelsPullOptions): ModelType[] {
   if (options.all) {
-    return ["embed", "rerank", "gen"];
+    return ["embed", "rerank", "expand", "gen"];
   }
-  if (options.embed || options.rerank || options.gen) {
+  if (options.embed || options.rerank || options.expand || options.gen) {
     const types: ModelType[] = [];
     if (options.embed) {
       types.push("embed");
@@ -69,13 +71,16 @@ function getTypesToPull(options: ModelsPullOptions): ModelType[] {
     if (options.rerank) {
       types.push("rerank");
     }
+    if (options.expand) {
+      types.push("expand");
+    }
     if (options.gen) {
       types.push("gen");
     }
     return types;
   }
   // Default: pull all
-  return ["embed", "rerank", "gen"];
+  return ["embed", "rerank", "expand", "gen"];
 }
 
 /**
@@ -101,7 +106,8 @@ export async function modelsPull(
   let skipped = 0;
 
   for (const type of types) {
-    const uri = preset[type];
+    const uri =
+      type === "expand" ? (preset.expand ?? preset.gen) : preset[type];
 
     // Check if already cached (skip unless --force)
     if (!options.force) {
@@ -160,16 +166,18 @@ export async function modelsPull(
  */
 export function formatModelsPull(result: ModelsPullResult): string {
   const lines: string[] = [];
+  const label = (type: ModelType) =>
+    type === "gen" ? "answer" : type === "expand" ? "expand" : type;
 
   for (const r of result.results) {
     if (r.ok) {
       if (r.skipped) {
-        lines.push(`${r.type}: skipped (already cached)`);
+        lines.push(`${label(r.type)}: skipped (already cached)`);
       } else {
-        lines.push(`${r.type}: downloaded`);
+        lines.push(`${label(r.type)}: downloaded`);
       }
     } else {
-      lines.push(`${r.type}: failed - ${r.error}`);
+      lines.push(`${label(r.type)}: failed - ${r.error}`);
     }
   }
 

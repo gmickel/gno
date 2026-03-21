@@ -11,6 +11,7 @@
 
 import {
   AlertCircleIcon,
+  ArrowLeftIcon,
   DatabaseIcon,
   FileTextIcon,
   FolderIcon,
@@ -25,6 +26,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import { AddCollectionDialog } from "../components/AddCollectionDialog";
 import { Loader } from "../components/ai-elements/loader";
+import { IndexingProgress } from "../components/IndexingProgress";
 import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
 import {
@@ -80,11 +82,15 @@ interface SyncResponse {
 }
 
 interface CollectionCardProps {
+  actionsDisabled: boolean;
   collection: CollectionStats;
+  onBrowse: () => void;
   onReindex: () => void;
   onRemove: () => void;
   isReindexing: boolean;
 }
+
+type SyncTarget = { kind: "all" } | { kind: "collection"; name: string } | null;
 
 function formatNumber(n: number): string {
   if (n >= 1000000) {
@@ -104,7 +110,9 @@ function truncatePath(path: string, maxLength = 40): string {
 }
 
 function CollectionCard({
+  actionsDisabled,
   collection,
+  onBrowse,
   onReindex,
   onRemove,
   isReindexing,
@@ -115,7 +123,18 @@ function CollectionCard({
       : 100;
 
   return (
-    <Card className="group relative overflow-hidden transition-all hover:border-primary/30">
+    <Card
+      className="group relative cursor-pointer overflow-hidden transition-all hover:border-primary/30 hover:bg-card/90"
+      onClick={onBrowse}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onBrowse();
+        }
+      }}
+      role="button"
+      tabIndex={0}
+    >
       <CardHeader className="pb-2">
         <div className="flex items-start justify-between gap-2">
           <div className="flex min-w-0 items-center gap-2">
@@ -131,6 +150,8 @@ function CollectionCard({
             <DropdownMenuTrigger asChild>
               <Button
                 className="shrink-0 opacity-0 transition-opacity group-hover:opacity-100"
+                disabled={actionsDisabled}
+                onClick={(event) => event.stopPropagation()}
                 size="icon-sm"
                 variant="ghost"
               >
@@ -138,7 +159,13 @@ function CollectionCard({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem disabled={isReindexing} onClick={onReindex}>
+              <DropdownMenuItem
+                disabled={actionsDisabled || isReindexing}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onReindex();
+                }}
+              >
                 {isReindexing ? (
                   <Loader2Icon className="mr-2 size-4 animate-spin" />
                 ) : (
@@ -149,7 +176,11 @@ function CollectionCard({
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 className="text-destructive focus:text-destructive"
-                onClick={onRemove}
+                disabled={actionsDisabled}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onRemove();
+                }}
               >
                 <FolderMinusIcon className="mr-2 size-4" />
                 Remove
@@ -207,19 +238,23 @@ function CollectionCard({
             <span>Re-indexing...</span>
           </div>
         )}
+
+        <div className="mt-3 border-border/40 border-t pt-3 text-muted-foreground text-xs">
+          Click card to browse documents in this collection.
+        </div>
       </CardContent>
     </Card>
   );
 }
 
-export default function Collections({ navigate: _navigate }: PageProps) {
+export default function Collections({ navigate }: PageProps) {
   const [collections, setCollections] = useState<CollectionStats[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
-  const [reindexingCollections, setReindexingCollections] = useState<
-    Set<string>
-  >(new Set());
+  const [syncJobId, setSyncJobId] = useState<string | null>(null);
+  const [syncTarget, setSyncTarget] = useState<SyncTarget>(null);
+  const [syncError, setSyncError] = useState<string | null>(null);
   const [removeDialog, setRemoveDialog] = useState<CollectionStats | null>(
     null
   );
@@ -249,33 +284,22 @@ export default function Collections({ navigate: _navigate }: PageProps) {
   };
 
   // Re-index collection
-  const handleReindex = async (name: string) => {
-    setReindexingCollections((prev) => new Set([...prev, name]));
+  const handleReindex = async (name?: string) => {
+    setSyncError(null);
 
-    const { error: err } = await apiFetch<SyncResponse>("/api/sync", {
+    const { data, error: err } = await apiFetch<SyncResponse>("/api/sync", {
       method: "POST",
-      body: JSON.stringify({ collection: name }),
+      body: JSON.stringify(name ? { collection: name } : {}),
     });
 
     if (err) {
-      // Show error briefly then remove from reindexing state
-      setTimeout(() => {
-        setReindexingCollections((prev) => {
-          const next = new Set(prev);
-          next.delete(name);
-          return next;
-        });
-      }, 1000);
-    } else {
-      // Poll for completion (simple approach - could use IndexingProgress component)
-      setTimeout(async () => {
-        await loadCollections();
-        setReindexingCollections((prev) => {
-          const next = new Set(prev);
-          next.delete(name);
-          return next;
-        });
-      }, 3000);
+      setSyncError(err);
+      return;
+    }
+
+    if (data?.jobId) {
+      setSyncJobId(data.jobId);
+      setSyncTarget(name ? { kind: "collection", name } : { kind: "all" });
     }
   };
 
@@ -313,16 +337,31 @@ export default function Collections({ navigate: _navigate }: PageProps) {
     <div className="min-h-screen">
       {/* Header */}
       <header className="glass sticky top-0 z-10 border-border/50 border-b">
-        <div className="flex items-center justify-between px-8 py-4">
-          <div className="flex items-center gap-3">
-            <FolderIcon className="size-5 text-primary" />
-            <h1 className="font-semibold text-xl">Collections</h1>
-            <Badge className="font-mono" variant="outline">
-              {collections.length}
-            </Badge>
+        <div className="flex flex-wrap items-start justify-between gap-4 px-8 py-4">
+          <div className="space-y-2">
+            <div className="flex flex-wrap items-center gap-3">
+              <Button
+                className="gap-2"
+                onClick={() => navigate(-1)}
+                size="sm"
+                variant="ghost"
+              >
+                <ArrowLeftIcon className="size-4" />
+                Back
+              </Button>
+              <FolderIcon className="size-5 text-primary" />
+              <h1 className="font-semibold text-xl">Collections</h1>
+              <Badge className="font-mono" variant="outline">
+                {collections.length}
+              </Badge>
+            </div>
+            <p className="max-w-2xl text-muted-foreground text-sm">
+              Add new sources, re-index after external edits or git pulls, and
+              retire old folders without losing indexed history.
+            </p>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Button
               disabled={refreshing}
               onClick={handleRefresh}
@@ -336,6 +375,16 @@ export default function Collections({ navigate: _navigate }: PageProps) {
               )}
               Refresh
             </Button>
+            <Button
+              className="gap-2"
+              disabled={Boolean(syncJobId) || collections.length === 0}
+              onClick={() => void handleReindex()}
+              size="sm"
+              variant="outline"
+            >
+              <RefreshCwIcon className="size-4" />
+              Re-index All
+            </Button>
             <Button onClick={() => setAddDialogOpen(true)} size="sm">
               <FolderPlusIcon className="mr-1.5 size-4" />
               Add Collection
@@ -345,6 +394,44 @@ export default function Collections({ navigate: _navigate }: PageProps) {
       </header>
 
       <main className="p-8">
+        {(syncJobId || syncError) && (
+          <Card className="mx-auto mb-6 max-w-3xl border-primary/20 bg-card/80">
+            <CardContent className="py-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="space-y-1">
+                  <p className="font-medium text-sm tracking-[0.18em] uppercase">
+                    Re-index
+                  </p>
+                  <p className="text-muted-foreground text-sm">
+                    {syncTarget?.kind === "all"
+                      ? "Refreshing every configured collection."
+                      : `Refreshing ${syncTarget?.name ?? "selected collection"}.`}
+                  </p>
+                </div>
+                {syncJobId ? (
+                  <IndexingProgress
+                    compact
+                    jobId={syncJobId}
+                    onComplete={() => {
+                      setSyncError(null);
+                      setSyncJobId(null);
+                      setSyncTarget(null);
+                      void loadCollections();
+                    }}
+                    onError={(message) => {
+                      setSyncError(message);
+                      setSyncJobId(null);
+                      setSyncTarget(null);
+                    }}
+                  />
+                ) : (
+                  <p className="text-destructive text-sm">{syncError}</p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Error */}
         {error && (
           <Card className="mx-auto mb-6 max-w-md border-destructive bg-destructive/10">
@@ -385,9 +472,19 @@ export default function Collections({ navigate: _navigate }: PageProps) {
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {collections.map((collection) => (
               <CollectionCard
+                actionsDisabled={Boolean(syncJobId)}
                 collection={collection}
-                isReindexing={reindexingCollections.has(collection.name)}
+                isReindexing={
+                  Boolean(syncJobId) &&
+                  syncTarget?.kind === "collection" &&
+                  syncTarget.name === collection.name
+                }
                 key={collection.name}
+                onBrowse={() =>
+                  navigate(
+                    `/browse?collection=${encodeURIComponent(collection.name)}`
+                  )
+                }
                 onReindex={() => void handleReindex(collection.name)}
                 onRemove={() => setRemoveDialog(collection)}
               />

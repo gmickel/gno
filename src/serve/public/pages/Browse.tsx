@@ -1,7 +1,14 @@
-import { ArrowLeft, ChevronRight, FileText, FolderOpen } from "lucide-react";
+import {
+  ArrowLeft,
+  ChevronRight,
+  FileText,
+  FolderOpen,
+  RefreshCw,
+} from "lucide-react";
 import { Fragment, useEffect, useState } from "react";
 
 import { Loader } from "../components/ai-elements/loader";
+import { IndexingProgress } from "../components/IndexingProgress";
 import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
 import {
@@ -49,6 +56,12 @@ interface DocsResponse {
   sortOrder: "asc" | "desc";
 }
 
+interface SyncResponse {
+  jobId: string;
+}
+
+type SyncTarget = { kind: "all" } | { kind: "collection"; name: string } | null;
+
 export default function Browse({ navigate }: PageProps) {
   const [collections, setCollections] = useState<Collection[]>([]);
   const [selected, setSelected] = useState<string>("");
@@ -60,6 +73,10 @@ export default function Browse({ navigate }: PageProps) {
   const [availableDateFields, setAvailableDateFields] = useState<string[]>([]);
   const [sortField, setSortField] = useState("modified");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+  const [syncJobId, setSyncJobId] = useState<string | null>(null);
+  const [syncTarget, setSyncTarget] = useState<SyncTarget>(null);
+  const [syncError, setSyncError] = useState<string | null>(null);
+  const [refreshToken, setRefreshToken] = useState(0);
   const limit = 25;
 
   // Parse collection from URL on mount
@@ -105,7 +122,7 @@ export default function Browse({ navigate }: PageProps) {
         setTotal(data.total);
       }
     });
-  }, [selected, offset, sortField, sortOrder]);
+  }, [selected, offset, refreshToken, sortField, sortOrder]);
 
   useEffect(() => {
     if (sortField === "modified" || availableDateFields.includes(sortField)) {
@@ -144,6 +161,43 @@ export default function Browse({ navigate }: PageProps) {
     setDocs([]);
   };
 
+  const navigateToCollection = (collection: string) => {
+    const nextValue = collection.trim();
+    if (!nextValue) {
+      return;
+    }
+    setSelected(nextValue);
+    setOffset(0);
+    setDocs([]);
+    window.history.pushState(
+      {},
+      "",
+      `/browse?collection=${encodeURIComponent(nextValue)}`
+    );
+  };
+
+  const handleReindex = async () => {
+    setSyncError(null);
+
+    const body = selected ? { collection: selected } : {};
+    const { data, error } = await apiFetch<SyncResponse>("/api/sync", {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
+
+    if (error) {
+      setSyncError(error);
+      return;
+    }
+
+    if (data?.jobId) {
+      setSyncJobId(data.jobId);
+      setSyncTarget(
+        selected ? { kind: "collection", name: selected } : { kind: "all" }
+      );
+    }
+  };
+
   const formatDateFieldLabel = (field: string) =>
     field
       .split("_")
@@ -170,7 +224,7 @@ export default function Browse({ navigate }: PageProps) {
     <div className="min-h-screen">
       {/* Header */}
       <header className="glass sticky top-0 z-10 border-border/50 border-b">
-        <div className="flex items-center justify-between px-8 py-4">
+        <div className="flex flex-wrap items-center justify-between gap-4 px-8 py-4">
           <div className="flex items-center gap-4">
             <Button
               className="gap-2"
@@ -183,7 +237,7 @@ export default function Browse({ navigate }: PageProps) {
             </Button>
             <h1 className="font-semibold text-xl">Browse</h1>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex flex-wrap items-center justify-end gap-3">
             <Select
               onValueChange={handleCollectionChange}
               value={selected || "all"}
@@ -226,11 +280,86 @@ export default function Browse({ navigate }: PageProps) {
             <Badge className="font-mono" variant="outline">
               {total.toLocaleString()} docs
             </Badge>
+            <Button
+              className="gap-2"
+              onClick={() => navigate("/collections")}
+              size="sm"
+              variant="outline"
+            >
+              <FolderOpen className="size-4" />
+              Collections
+            </Button>
+            <Button
+              className="gap-2"
+              disabled={Boolean(syncJobId)}
+              onClick={() => void handleReindex()}
+              size="sm"
+            >
+              <RefreshCw className="size-4" />
+              {selected ? "Re-index This Collection" : "Re-index All"}
+            </Button>
           </div>
         </div>
       </header>
 
       <main className="mx-auto max-w-6xl p-8">
+        <div className="mb-6 rounded-2xl border border-border/60 bg-card/70 p-4 shadow-sm">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="space-y-1">
+              <p className="font-medium text-sm tracking-[0.18em] uppercase">
+                Collection Controls
+              </p>
+              <p className="max-w-2xl text-muted-foreground text-sm">
+                Add folders, remove sources, and re-index after external edits
+                from the collections view.
+              </p>
+              {selected && (
+                <div className="flex items-center gap-2">
+                  <span className="text-muted-foreground text-sm">
+                    Current collection:
+                  </span>
+                  <Badge className="font-mono text-xs" variant="secondary">
+                    {selected}
+                  </Badge>
+                </div>
+              )}
+            </div>
+
+            <div className="flex min-h-9 items-center">
+              {syncJobId ? (
+                <IndexingProgress
+                  className="justify-end"
+                  compact
+                  jobId={syncJobId}
+                  onComplete={() => {
+                    setSyncError(null);
+                    setSyncJobId(null);
+                    setSyncTarget(null);
+                    setRefreshToken((current) => current + 1);
+                  }}
+                  onError={(error) => {
+                    setSyncError(error);
+                    setSyncJobId(null);
+                    setSyncTarget(null);
+                  }}
+                />
+              ) : syncError ? (
+                <p className="text-destructive text-sm">{syncError}</p>
+              ) : syncTarget ? (
+                <p className="text-muted-foreground text-sm">
+                  Re-index queued for{" "}
+                  <span className="font-medium text-foreground">
+                    {syncTarget.kind === "all"
+                      ? "all collections"
+                      : syncTarget.name}
+                  </span>
+                  .
+                </p>
+              ) : null}
+            </div>
+          </div>
+        </div>
+
         {/* Initial loading */}
         {initialLoad && loading && (
           <div className="flex flex-col items-center justify-center gap-4 py-20">
@@ -287,7 +416,14 @@ export default function Browse({ navigate }: PageProps) {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Badge className="font-mono text-xs" variant="outline">
+                      <Badge
+                        className="cursor-pointer font-mono text-xs transition-colors hover:border-primary hover:text-primary"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          navigateToCollection(doc.collection);
+                        }}
+                        variant="outline"
+                      >
                         {doc.collection}
                       </Badge>
                     </TableCell>

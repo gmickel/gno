@@ -36,7 +36,9 @@ export type QueryCommandOptions = HybridSearchOptions & {
   configPath?: string;
   /** Override embedding model */
   embedModel?: string;
-  /** Override generation model */
+  /** Override expansion model */
+  expandModel?: string;
+  /** Deprecated alias for expansion model */
   genModel?: string;
   /** Override rerank model */
   rerankModel?: string;
@@ -90,7 +92,7 @@ export async function query(
   const { store, config } = initResult;
 
   let embedPort: EmbeddingPort | null = null;
-  let genPort: GenerationPort | null = null;
+  let expandPort: GenerationPort | null = null;
   let rerankPort: RerankPort | null = null;
 
   try {
@@ -121,18 +123,19 @@ export async function query(
       embedPort = embedResult.value;
     }
 
-    // Create generation port (for expansion) - optional.
+    // Create expansion port - optional.
     // Skip when structured query modes are provided.
     if (!options.noExpand && !options.queryModes?.length) {
-      const genUri = options.genModel ?? preset.gen;
-      const genResult = await llm.createGenerationPort(genUri, {
+      const expandUri =
+        options.expandModel ?? options.genModel ?? preset.expand;
+      const genResult = await llm.createExpansionPort(expandUri, {
         policy,
         onProgress: downloadProgress
-          ? (progress) => downloadProgress("gen", progress)
+          ? (progress) => downloadProgress("expand", progress)
           : undefined,
       });
       if (genResult.ok) {
-        genPort = genResult.value;
+        expandPort = genResult.value;
       }
     }
 
@@ -177,7 +180,7 @@ export async function query(
       config,
       vectorIndex,
       embedPort,
-      genPort,
+      expandPort,
       rerankPort,
     };
 
@@ -195,8 +198,8 @@ export async function query(
     if (embedPort) {
       await embedPort.dispose();
     }
-    if (genPort) {
-      await genPort.dispose();
+    if (expandPort) {
+      await expandPort.dispose();
     }
     if (rerankPort) {
       await rerankPort.dispose();

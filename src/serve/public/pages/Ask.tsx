@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { resolveDepthPolicy } from "../../../core/depth-policy";
 import { normalizeStructuredQueryInput } from "../../../core/structured-query";
 import { Loader } from "../components/ai-elements/loader";
 import {
@@ -113,6 +114,10 @@ interface Collection {
   name: string;
 }
 
+interface PresetsResponse {
+  activePreset: string;
+}
+
 const THOROUGHNESS_ORDER: Thoroughness[] = ["fast", "balanced", "thorough"];
 
 const QUERY_MODE_LABEL: Record<QueryModeType, string> = {
@@ -179,6 +184,7 @@ export default function Ask({ navigate }: PageProps) {
   const [capabilities, setCapabilities] = useState<Capabilities | null>(null);
   const [collections, setCollections] = useState<Collection[]>([]);
   const [thoroughness, setThoroughness] = useState<Thoroughness>("balanced");
+  const [activePreset, setActivePreset] = useState("slim");
 
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [selectedCollection, setSelectedCollection] = useState("");
@@ -211,9 +217,10 @@ export default function Ask({ navigate }: PageProps) {
 
   useEffect(() => {
     async function bootstrap(): Promise<void> {
-      const [capsResult, collectionsResult] = await Promise.all([
+      const [capsResult, collectionsResult, presetsResult] = await Promise.all([
         apiFetch<Capabilities>("/api/capabilities"),
         apiFetch<Collection[]>("/api/collections"),
+        apiFetch<PresetsResponse>("/api/presets"),
       ]);
 
       if (capsResult.data) {
@@ -224,6 +231,10 @@ export default function Ask({ navigate }: PageProps) {
 
       if (collectionsResult.data) {
         setCollections(collectionsResult.data);
+      }
+
+      if (presetsResult.data?.activePreset) {
+        setActivePreset(presetsResult.data.activePreset);
       }
     }
 
@@ -293,6 +304,15 @@ export default function Ask({ navigate }: PageProps) {
         { id: entryId, query: currentQuery, response: null, loading: true },
       ]);
       setQuery("");
+      const depthPolicy = resolveDepthPolicy({
+        presetId: activePreset,
+        fast: thoroughness === "fast",
+        thorough: thoroughness === "thorough",
+        hasStructuredModes: queryModes.length > 0,
+        candidateLimit: candidateLimit.trim()
+          ? Number(candidateLimit)
+          : undefined,
+      });
 
       const requestBody: Record<string, unknown> = {
         query: currentQuery,
@@ -305,8 +325,8 @@ export default function Ask({ navigate }: PageProps) {
       if (intent.trim()) {
         requestBody.intent = intent.trim();
       }
-      if (candidateLimit.trim()) {
-        requestBody.candidateLimit = Number(candidateLimit);
+      if (depthPolicy.candidateLimit !== undefined) {
+        requestBody.candidateLimit = depthPolicy.candidateLimit;
       }
       if (exclude.trim()) {
         requestBody.exclude = exclude.trim();
@@ -333,16 +353,8 @@ export default function Ask({ navigate }: PageProps) {
         }
       }
 
-      if (thoroughness === "fast") {
-        requestBody.noExpand = true;
-        requestBody.noRerank = true;
-      } else if (thoroughness === "balanced") {
-        requestBody.noExpand = true;
-        requestBody.noRerank = false;
-      } else {
-        requestBody.noExpand = false;
-        requestBody.noRerank = false;
-      }
+      requestBody.noExpand = depthPolicy.noExpand;
+      requestBody.noRerank = depthPolicy.noRerank;
       if (queryModes.length > 0) {
         requestBody.queryModes = queryModes;
       }
@@ -368,6 +380,7 @@ export default function Ask({ navigate }: PageProps) {
     [
       author,
       candidateLimit,
+      activePreset,
       category,
       exclude,
       intent,
@@ -404,6 +417,14 @@ export default function Ask({ navigate }: PageProps) {
     setQueryModes([]);
     setQueryModeText("");
     setQueryModeError(null);
+  };
+
+  const browseSelectedCollection = () => {
+    if (!selectedCollection) {
+      navigate("/browse");
+      return;
+    }
+    navigate(`/browse?collection=${encodeURIComponent(selectedCollection)}`);
   };
 
   const answerAvailable = capabilities?.answer ?? false;
@@ -446,7 +467,7 @@ export default function Ask({ navigate }: PageProps) {
 
             <div className="h-6 w-px bg-border/40" />
 
-            <AIModelSelector />
+            <AIModelSelector onPresetChange={setActivePreset} />
 
             {capabilities && (
               <div className="flex items-center gap-2">
@@ -515,6 +536,26 @@ export default function Ask({ navigate }: PageProps) {
                           ))}
                         </SelectContent>
                       </Select>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        <Button
+                          onClick={() => navigate("/collections")}
+                          size="sm"
+                          type="button"
+                          variant="outline"
+                        >
+                          Manage collections
+                        </Button>
+                        <Button
+                          onClick={browseSelectedCollection}
+                          size="sm"
+                          type="button"
+                          variant="ghost"
+                        >
+                          {selectedCollection
+                            ? "Browse selected"
+                            : "Browse all"}
+                        </Button>
+                      </div>
                     </div>
 
                     <div>
@@ -909,47 +950,46 @@ export default function Ask({ navigate }: PageProps) {
       </main>
 
       <footer className="glass sticky bottom-0 border-border/50 border-t">
-        <form
-          className="mx-auto flex max-w-3xl items-end gap-3 p-4"
-          onSubmit={handleSubmit}
-        >
-          <div className="relative flex-1">
-            <Textarea
-              className="min-h-[60px] resize-none pr-12"
-              disabled={!answerAvailable}
-              onChange={(e) => setQuery(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder={
-                answerAvailable
-                  ? "Ask a question about your documents... Use Shift+Enter for structured query documents"
-                  : "AI answers not available"
-              }
-              ref={textareaRef}
-              rows={1}
-              value={query}
-            />
-            <Button
-              className="absolute right-2 bottom-2"
-              disabled={
-                !(query.trim() && answerAvailable) ||
-                Boolean(structuredQueryError)
-              }
-              size="icon-sm"
-              type="submit"
-            >
-              <CornerDownLeft className="size-4" />
-            </Button>
+        <form className="mx-auto max-w-3xl p-4" onSubmit={handleSubmit}>
+          <div className="space-y-2">
+            <div className="relative">
+              <Textarea
+                className="min-h-[60px] w-full resize-none pr-12"
+                disabled={!answerAvailable}
+                onChange={(e) => setQuery(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder={
+                  answerAvailable
+                    ? "Ask a question about your documents... Use Shift+Enter for structured query documents"
+                    : "AI answers not available"
+                }
+                ref={textareaRef}
+                rows={1}
+                value={query}
+              />
+              <Button
+                className="absolute right-2 bottom-2"
+                disabled={
+                  !(query.trim() && answerAvailable) ||
+                  Boolean(structuredQueryError)
+                }
+                size="icon-sm"
+                type="submit"
+              >
+                <CornerDownLeft className="size-4" />
+              </Button>
+            </div>
+
+            {structuredQueryError ? (
+              <p className="text-destructive text-xs">{structuredQueryError}</p>
+            ) : (
+              <p className="text-muted-foreground/70 text-xs">
+                Press Enter to submit. Use Shift+Enter for multi-line structured
+                query documents with <code>term:</code>, <code>intent:</code>,
+                and <code>hyde:</code>.
+              </p>
+            )}
           </div>
-          {structuredQueryError && (
-            <p className="text-destructive text-xs">{structuredQueryError}</p>
-          )}
-          {!structuredQueryError && (
-            <p className="text-muted-foreground/70 text-xs">
-              Press Enter to submit. Use Shift+Enter for multi-line structured
-              query documents with <code>term:</code>, <code>intent:</code>, and{" "}
-              <code>hyde:</code>.
-            </p>
-          )}
         </form>
       </footer>
     </div>

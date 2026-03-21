@@ -61,16 +61,18 @@ models:
   activePreset: slim-tuned
   presets:
     - id: slim-tuned
-      name: GNO Slim Retrieval v1
+      name: GNO Slim Tuned
       embed: hf:gpustack/bge-m3-GGUF/bge-m3-Q4_K_M.gguf
       rerank: hf:ggml-org/Qwen3-Reranker-0.6B-Q8_0-GGUF/qwen3-reranker-0.6b-q8_0.gguf
-      gen: hf:guiltylemon/gno-expansion-slim-retrieval-v1/gno-expansion-auto-entity-lock-default-mix-lr95-f16.gguf
+      expand: hf:guiltylemon/gno-expansion-slim-retrieval-v1/gno-expansion-auto-entity-lock-default-mix-lr95-f16.gguf
+      gen: hf:unsloth/Qwen3-4B-Instruct-2507-GGUF/Qwen3-4B-Instruct-2507-Q4_K_M.gguf
 ```
 
 Then:
 
 ```bash
 gno models use slim-tuned
+gno models pull --expand
 gno models pull --gen
 gno query "ECONNREFUSED 127.0.0.1:5432" --thorough
 ```
@@ -579,6 +581,7 @@ models:
       name: Remote GPU Server
       embed: "http://192.168.1.100:8081/v1/embeddings#bge-m3"
       rerank: "http://192.168.1.100:8082/v1/completions#reranker"
+      expand: "http://192.168.1.100:8083/v1/chat/completions#gno-expand"
       gen: "http://192.168.1.100:8083/v1/chat/completions#qwen3-4b"
 ```
 

@@ -188,7 +188,7 @@ This shows scoring breakdown for each result:
    - `gno vsearch` - Conceptual/semantic matching
    - `gno query` - Combined (usually best)
 4. **Adjust min-score** - Filter low-confidence results: `--min-score 0.3`
-5. **Try expansion** - Query expansion is on by default, disable with `--no-expand` if getting off-topic results
+5. **Try expansion** - On `slim` / `slim-tuned`, balanced mode already expands by default. On larger presets, try `--thorough` or remove `--no-expand` if recall seems too low.
 
 **Score Interpretation:**
 

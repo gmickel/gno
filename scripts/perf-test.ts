@@ -103,7 +103,14 @@ console.log("--- Test Configurations ---\n");
 // Test 1: Thorough mode (full pipeline)
 mark("t1");
 const r1 = await searchHybrid(
-  { store, config, vectorIndex: null, embedPort, genPort, rerankPort },
+  {
+    store,
+    config,
+    vectorIndex: null,
+    embedPort,
+    expandPort: genPort,
+    rerankPort,
+  },
   TEST_QUERY,
   { limit: 5 }
 );
@@ -127,7 +134,7 @@ const r2 = await searchHybrid(
     config,
     vectorIndex: null,
     embedPort,
-    genPort: null, // No expansion
+    expandPort: null, // No expansion
     rerankPort,
   },
   TEST_QUERY,
@@ -147,7 +154,7 @@ const r3 = await searchHybrid(
     config,
     vectorIndex: null,
     embedPort,
-    genPort: null,
+    expandPort: null,
     rerankPort: null,
   },
   TEST_QUERY,
@@ -167,7 +174,7 @@ const r4 = await searchHybrid(
     config,
     vectorIndex: null,
     embedPort,
-    genPort,
+    expandPort: genPort,
     rerankPort: null,
   },
   TEST_QUERY,

@@ -188,12 +188,20 @@ Neural network that converts text to vectors. Default: bge-m3 (multilingual, 102
 
 Cross-encoder that scores query-document pairs. Default: Qwen3-Reranker-0.6B. GNO passes the **best chunk per document** (up to 4K chars) to the reranker for efficiency.
 
-### Gen Model
+### Expand Model
 
-Language model for answer generation. Options:
+Language model used for retrieval-time query expansion. Options:
 
 - Qwen3-1.7B (slim preset)
-- SmolLM3-3B (balanced preset)
+- Qwen2.5-3B (balanced preset)
+- Qwen3-4B (quality preset)
+
+### Gen Model
+
+Language model for grounded answer generation. Options:
+
+- Qwen3-1.7B (slim preset)
+- Qwen2.5-3B (balanced preset)
 - Qwen3-4B (quality preset)
 
 ### GGUF
