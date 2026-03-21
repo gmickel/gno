@@ -8,8 +8,10 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import { resolveDepthPolicy } from "../../../core/depth-policy";
 import { normalizeStructuredQueryInput } from "../../../core/structured-query";
 import { Loader } from "../components/ai-elements/loader";
+import { AIModelSelector } from "../components/AIModelSelector";
 import { TagFacets } from "../components/TagFacets";
 import {
   ThoroughnessSelector,
@@ -128,6 +130,10 @@ interface Collection {
   name: string;
 }
 
+interface PresetsResponse {
+  activePreset: string;
+}
+
 const THOROUGHNESS_ORDER: Thoroughness[] = ["fast", "balanced", "thorough"];
 
 const QUERY_MODE_LABEL: Record<QueryModeType, string> = {
@@ -151,6 +157,7 @@ export default function Search({ navigate }: PageProps) {
   const [searched, setSearched] = useState(false);
   const [capabilities, setCapabilities] = useState<Capabilities | null>(null);
   const [collections, setCollections] = useState<Collection[]>([]);
+  const [activePreset, setActivePreset] = useState("slim");
 
   const [showAdvanced, setShowAdvanced] = useState(
     Boolean(
@@ -245,10 +252,12 @@ export default function Search({ navigate }: PageProps) {
 
   useEffect(() => {
     async function bootstrap(): Promise<void> {
-      const [capabilitiesResult, collectionsResult] = await Promise.all([
-        apiFetch<Capabilities>("/api/capabilities"),
-        apiFetch<Collection[]>("/api/collections"),
-      ]);
+      const [capabilitiesResult, collectionsResult, presetsResult] =
+        await Promise.all([
+          apiFetch<Capabilities>("/api/capabilities"),
+          apiFetch<Collection[]>("/api/collections"),
+          apiFetch<PresetsResponse>("/api/presets"),
+        ]);
 
       if (capabilitiesResult.data) {
         const caps = capabilitiesResult.data;
@@ -258,6 +267,10 @@ export default function Search({ navigate }: PageProps) {
 
       if (collectionsResult.data) {
         setCollections(collectionsResult.data);
+      }
+
+      if (presetsResult.data?.activePreset) {
+        setActivePreset(presetsResult.data.activePreset);
       }
     }
 
@@ -315,6 +328,15 @@ export default function Search({ navigate }: PageProps) {
       setLoading(true);
       setError(null);
       setSearched(true);
+      const depthPolicy = resolveDepthPolicy({
+        presetId: activePreset,
+        fast: thoroughness === "fast",
+        thorough: thoroughness === "thorough",
+        hasStructuredModes: queryModes.length > 0,
+        candidateLimit: candidateLimit.trim()
+          ? Number(candidateLimit)
+          : undefined,
+      });
 
       const useBm25 =
         thoroughness === "fast" &&
@@ -333,8 +355,8 @@ export default function Search({ navigate }: PageProps) {
       if (intent.trim()) {
         body.intent = intent.trim();
       }
-      if (candidateLimit.trim()) {
-        body.candidateLimit = Number(candidateLimit);
+      if (depthPolicy.candidateLimit !== undefined) {
+        body.candidateLimit = depthPolicy.candidateLimit;
       }
       if (exclude.trim()) {
         body.exclude = exclude.trim();
@@ -360,16 +382,8 @@ export default function Search({ navigate }: PageProps) {
       }
 
       if (!useBm25) {
-        if (thoroughness === "fast") {
-          body.noExpand = true;
-          body.noRerank = true;
-        } else if (thoroughness === "balanced") {
-          body.noExpand = true;
-          body.noRerank = false;
-        } else {
-          body.noExpand = false;
-          body.noRerank = false;
-        }
+        body.noExpand = depthPolicy.noExpand;
+        body.noRerank = depthPolicy.noRerank;
         if (queryModes.length > 0) {
           body.queryModes = queryModes;
         }
@@ -397,6 +411,7 @@ export default function Search({ navigate }: PageProps) {
       activeTags,
       author,
       candidateLimit,
+      activePreset,
       category,
       exclude,
       intent,
@@ -435,8 +450,11 @@ export default function Search({ navigate }: PageProps) {
     thoroughness === "fast"
       ? "Keyword search (BM25)"
       : thoroughness === "balanced"
-        ? "Hybrid + reranking"
-        : "Full pipeline with expansion";
+        ? resolveDepthPolicy({ presetId: activePreset })
+            .balancedExpansionEnabled
+          ? "Hybrid + tuned expansion"
+          : "Hybrid + reranking"
+        : "Expansion + reranking + wider candidate pool";
 
   const activeFilterPills = [
     selectedCollection ? `collection:${selectedCollection}` : null,
@@ -474,20 +492,31 @@ export default function Search({ navigate }: PageProps) {
     }
   };
 
+  const browseSelectedCollection = () => {
+    if (!selectedCollection) {
+      navigate("/browse");
+      return;
+    }
+    navigate(`/browse?collection=${encodeURIComponent(selectedCollection)}`);
+  };
+
   return (
     <div className="min-h-screen">
       <header className="glass sticky top-0 z-10 border-border/50 border-b">
-        <div className="flex items-center gap-4 px-8 py-4">
-          <Button
-            className="gap-2"
-            onClick={() => navigate(-1)}
-            size="sm"
-            variant="ghost"
-          >
-            <ArrowLeft className="size-4" />
-            Back
-          </Button>
-          <h1 className="font-semibold text-xl">Search</h1>
+        <div className="flex flex-wrap items-center justify-between gap-4 px-8 py-4">
+          <div className="flex items-center gap-4">
+            <Button
+              className="gap-2"
+              onClick={() => navigate(-1)}
+              size="sm"
+              variant="ghost"
+            >
+              <ArrowLeft className="size-4" />
+              Back
+            </Button>
+            <h1 className="font-semibold text-xl">Search</h1>
+          </div>
+          <AIModelSelector onPresetChange={setActivePreset} />
         </div>
       </header>
 
@@ -618,6 +647,26 @@ export default function Search({ navigate }: PageProps) {
                               ))}
                             </SelectContent>
                           </Select>
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            <Button
+                              onClick={() => navigate("/collections")}
+                              size="sm"
+                              type="button"
+                              variant="outline"
+                            >
+                              Manage collections
+                            </Button>
+                            <Button
+                              onClick={browseSelectedCollection}
+                              size="sm"
+                              type="button"
+                              variant="ghost"
+                            >
+                              {selectedCollection
+                                ? "Browse selected"
+                                : "Browse all"}
+                            </Button>
+                          </div>
                         </div>
 
                         <div>

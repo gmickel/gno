@@ -19,7 +19,12 @@ import { ModelCache } from "../cache";
 import { HttpEmbedding, isHttpModelUri } from "../httpEmbedding";
 import { HttpGeneration, isHttpGenUri } from "../httpGeneration";
 import { HttpRerank, isHttpRerankUri } from "../httpRerank";
-import { getActivePreset, getModelConfig } from "../registry";
+import {
+  getActivePreset,
+  getAnswerModelUri,
+  getExpandModelUri,
+  getModelConfig,
+} from "../registry";
 import { NodeLlamaCppEmbedding } from "./embedding";
 import { NodeLlamaCppGeneration } from "./generation";
 import { getModelManager, type ModelManager } from "./lifecycle";
@@ -105,8 +110,7 @@ export class LlmAdapter {
     modelUri?: string,
     options?: CreatePortOptions
   ): Promise<LlmResult<GenerationPort>> {
-    const preset = getActivePreset(this.config);
-    const uri = modelUri ?? preset.gen;
+    const uri = getAnswerModelUri(this.config, modelUri);
     const policy = options?.policy ?? DEFAULT_POLICY;
 
     // Use HTTP generation for remote endpoints
@@ -119,6 +123,38 @@ export class LlmAdapter {
     const resolved = await this.cache.ensureModel(
       uri,
       "gen",
+      policy,
+      options?.onProgress
+    );
+    if (!resolved.ok) {
+      return resolved;
+    }
+
+    return {
+      ok: true,
+      value: new NodeLlamaCppGeneration(this.manager, uri, resolved.value),
+    };
+  }
+
+  /**
+   * Create a generation port dedicated to query expansion.
+   * Uses preset.expand when configured, else falls back to preset.gen.
+   */
+  async createExpansionPort(
+    modelUri?: string,
+    options?: CreatePortOptions
+  ): Promise<LlmResult<GenerationPort>> {
+    const uri = getExpandModelUri(this.config, modelUri);
+    const policy = options?.policy ?? DEFAULT_POLICY;
+
+    if (isHttpGenUri(uri)) {
+      const httpGen = new HttpGeneration(uri);
+      return { ok: true, value: httpGen };
+    }
+
+    const resolved = await this.cache.ensureModel(
+      uri,
+      "expand",
       policy,
       options?.onProgress
     );

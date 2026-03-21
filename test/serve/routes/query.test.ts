@@ -21,7 +21,8 @@ const baseContext = {
   },
   vectorIndex: null,
   embedPort: null,
-  genPort: null,
+  expandPort: null,
+  answerPort: null,
   rerankPort: null,
   capabilities: {
     bm25: true,

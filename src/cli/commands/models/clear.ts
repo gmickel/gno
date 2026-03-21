@@ -21,6 +21,8 @@ export interface ModelsClearOptions {
   embed?: boolean;
   /** Clear reranker model */
   rerank?: boolean;
+  /** Clear expansion model */
+  expand?: boolean;
   /** Clear generation model */
   gen?: boolean;
   /** Skip confirmation */
@@ -50,13 +52,16 @@ export async function modelsClear(
 
   if (options.all) {
     types = undefined; // Clear all
-  } else if (options.embed || options.rerank || options.gen) {
+  } else if (options.embed || options.rerank || options.expand || options.gen) {
     types = [];
     if (options.embed) {
       types.push("embed");
     }
     if (options.rerank) {
       types.push("rerank");
+    }
+    if (options.expand) {
+      types.push("expand");
     }
     if (options.gen) {
       types.push("gen");
@@ -71,7 +76,7 @@ export async function modelsClear(
   const sizeAfter = await cache.totalSize();
 
   return {
-    cleared: types ?? ["embed", "rerank", "gen"],
+    cleared: types ?? ["embed", "rerank", "expand", "gen"],
     sizeBefore,
     sizeAfter,
   };
@@ -96,8 +101,10 @@ function formatBytes(bytes: number): string {
  */
 export function formatModelsClear(result: ModelsClearResult): string {
   const lines: string[] = [];
+  const label = (type: ModelType) =>
+    type === "gen" ? "answer" : type === "expand" ? "expand" : type;
 
-  lines.push(`Cleared: ${result.cleared.join(", ")}`);
+  lines.push(`Cleared: ${result.cleared.map(label).join(", ")}`);
   lines.push(`Freed: ${formatBytes(result.sizeBefore - result.sizeAfter)}`);
 
   return lines.join("\n");

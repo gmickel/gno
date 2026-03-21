@@ -149,8 +149,8 @@ export const queryInputSchema = z.object({
     .optional(),
   fast: z.boolean().default(false),
   thorough: z.boolean().default(false),
-  expand: z.boolean().default(false), // Default: skip expansion
-  rerank: z.boolean().default(true),
+  expand: z.boolean().optional(),
+  rerank: z.boolean().optional(),
   tagsAll: z.array(z.string()).optional(),
   tagsAny: z.array(z.string()).optional(),
 });

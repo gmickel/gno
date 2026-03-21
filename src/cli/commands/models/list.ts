@@ -36,6 +36,7 @@ export interface ModelsListResult {
   presets: PresetInfo[];
   embed: ModelStatus;
   rerank: ModelStatus;
+  expand: ModelStatus;
   gen: ModelStatus;
   cacheDir: string;
   totalSize: number;
@@ -84,9 +85,10 @@ export async function modelsList(
   const preset = getActivePreset(config);
   const cache = new ModelCache(getModelsCachePath());
 
-  const [embed, rerank, gen] = await Promise.all([
+  const [embed, rerank, expand, gen] = await Promise.all([
     getModelStatus(cache, preset.embed),
     getModelStatus(cache, preset.rerank),
+    getModelStatus(cache, preset.expand ?? preset.gen),
     getModelStatus(cache, preset.gen),
   ]);
 
@@ -99,6 +101,7 @@ export async function modelsList(
     })),
     embed,
     rerank,
+    expand,
     gen,
     cacheDir: cache.dir,
     totalSize: await cache.totalSize(),
@@ -147,7 +150,11 @@ function formatTerminal(result: ModelsListResult): string {
       (result.rerank.size ? ` (${formatBytes(result.rerank.size)})` : "")
   );
   lines.push(
-    `  gen:    ${statusIcon(result.gen)} ${result.gen.uri}` +
+    `  expand: ${statusIcon(result.expand)} ${result.expand.uri}` +
+      (result.expand.size ? ` (${formatBytes(result.expand.size)})` : "")
+  );
+  lines.push(
+    `  answer: ${statusIcon(result.gen)} ${result.gen.uri}` +
       (result.gen.size ? ` (${formatBytes(result.gen.size)})` : "")
   );
 
@@ -156,7 +163,10 @@ function formatTerminal(result: ModelsListResult): string {
   lines.push(`Total size: ${formatBytes(result.totalSize)}`);
 
   const allCached =
-    result.embed.cached && result.rerank.cached && result.gen.cached;
+    result.embed.cached &&
+    result.rerank.cached &&
+    result.expand.cached &&
+    result.gen.cached;
   if (!allCached) {
     lines.push("");
     lines.push("Run: gno models pull --all");
@@ -186,7 +196,10 @@ function formatMarkdown(result: ModelsListResult): string {
     `| rerank | ${result.rerank.uri} | ${status(result.rerank)} | ${size(result.rerank)} |`
   );
   lines.push(
-    `| gen | ${result.gen.uri} | ${status(result.gen)} | ${size(result.gen)} |`
+    `| expand | ${result.expand.uri} | ${status(result.expand)} | ${size(result.expand)} |`
+  );
+  lines.push(
+    `| answer | ${result.gen.uri} | ${status(result.gen)} | ${size(result.gen)} |`
   );
 
   lines.push("");

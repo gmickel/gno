@@ -20,6 +20,7 @@ import type { ToolContext } from "../server";
 
 import { parseUri } from "../../app/constants";
 import { createNonTtyProgressRenderer } from "../../cli/progress";
+import { resolveDepthPolicy } from "../../core/depth-policy";
 import { normalizeStructuredQueryInput } from "../../core/structured-query";
 import { LlmAdapter } from "../../llm/nodeLlamaCpp/adapter";
 import { resolveDownloadPolicy } from "../../llm/policy";
@@ -167,7 +168,7 @@ export function handleQuery(
       const downloadProgress = createNonTtyProgressRenderer();
 
       let embedPort: EmbeddingPort | null = null;
-      let genPort: GenerationPort | null = null;
+      let expandPort: GenerationPort | null = null;
       let rerankPort: RerankPort | null = null;
       let vectorIndex: VectorIndexPort | null = null;
 
@@ -181,42 +182,29 @@ export function handleQuery(
           embedPort = embedResult.value;
         }
 
-        // Determine noExpand/noRerank based on mode flags
-        // Priority: fast > thorough > expand/rerank params > defaults
-        // Default: noExpand=true (skip expansion), noRerank=false (with reranking)
         const hasStructuredModes = Boolean(queryModes?.length);
-        let noExpand = true;
-        let noRerank = false;
+        const depthPolicy = resolveDepthPolicy({
+          presetId: preset.id,
+          fast: args.fast,
+          thorough: args.thorough,
+          expand: args.expand,
+          rerank: args.rerank,
+          candidateLimit: args.candidateLimit,
+          hasStructuredModes,
+        });
+        const { noExpand, noRerank } = depthPolicy;
 
-        if (args.fast) {
-          noExpand = true;
-          noRerank = true;
-        } else if (args.thorough) {
-          noExpand = false;
-          noRerank = false;
-        } else {
-          // Use explicit expand/rerank params if provided
-          if (args.expand === true) {
-            noExpand = false;
-          }
-          if (args.rerank === false) {
-            noRerank = true;
-          }
-        }
-
-        // Structured query modes replace generated expansion.
-        if (hasStructuredModes) {
-          noExpand = true;
-        }
-
-        // Create generation port (for expansion) - optional
+        // Create expansion port - optional
         if (!noExpand && !hasStructuredModes) {
-          const genResult = await llm.createGenerationPort(preset.gen, {
-            policy,
-            onProgress: (progress) => downloadProgress("gen", progress),
-          });
+          const genResult = await llm.createExpansionPort(
+            preset.expand ?? preset.gen,
+            {
+              policy,
+              onProgress: (progress) => downloadProgress("expand", progress),
+            }
+          );
           if (genResult.ok) {
-            genPort = genResult.value;
+            expandPort = genResult.value;
           }
         }
 
@@ -252,7 +240,7 @@ export function handleQuery(
           config: ctx.config,
           vectorIndex,
           embedPort,
-          genPort,
+          expandPort,
           rerankPort,
         };
 
@@ -265,7 +253,7 @@ export function handleQuery(
           collection: args.collection,
           queryLanguageHint: args.lang, // Affects expansion prompt, not retrieval
           intent: args.intent,
-          candidateLimit: args.candidateLimit,
+          candidateLimit: depthPolicy.candidateLimit,
           exclude: args.exclude,
           since: args.since,
           until: args.until,
@@ -298,8 +286,8 @@ export function handleQuery(
         if (embedPort) {
           await embedPort.dispose();
         }
-        if (genPort) {
-          await genPort.dispose();
+        if (expandPort) {
+          await expandPort.dispose();
         }
         if (rerankPort) {
           await rerankPort.dispose();

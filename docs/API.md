@@ -1372,6 +1372,7 @@ GET /api/presets
       "name": "Slim (Default, ~1GB)",
       "embed": "hf:...bge-m3-Q4...",
       "rerank": "hf:...reranker-Q4...",
+      "expand": "hf:...expansion-model...",
       "gen": "hf:...qwen3-1.7b-Q4...",
       "active": true
     },

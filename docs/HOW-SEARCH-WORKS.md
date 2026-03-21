@@ -338,17 +338,22 @@ GNO retrieves more candidates than you request, then filters down:
 
 GNO offers three search modes with different speed/quality trade-offs:
 
-| Mode     | Flag         | Time  | Description                    |
-| -------- | ------------ | ----- | ------------------------------ |
-| Fast     | `--fast`     | ~0.7s | Skip expansion and reranking   |
-| Default  | (none)       | ~2-3s | Skip expansion, with reranking |
-| Thorough | `--thorough` | ~5-8s | Full pipeline with expansion   |
+| Mode     | Flag         | Time  | Description                   |
+| -------- | ------------ | ----- | ----------------------------- |
+| Fast     | `--fast`     | ~0.7s | Skip expansion and reranking  |
+| Default  | (none)       | ~2-3s | Preset-aware balanced mode    |
+| Thorough | `--thorough` | ~5-8s | Expansion + wider rerank pool |
 
 ```bash
 gno query "quick lookup" --fast       # Fastest
 gno query "my search"                 # Balanced (default)
 gno query "complex topic" --thorough  # Best recall
 ```
+
+Balanced mode is preset-aware:
+
+- `slim` / `slim-tuned`: expansion + reranking
+- larger presets: reranking on, expansion off by default
 
 ### Fine-grained Control
 
@@ -420,7 +425,7 @@ Language is auto-detected from your query text using the [franc](https://github.
 
 **Optimizations**:
 
-- Default mode skips expansion (saves 3-5s on every query)
+- Balanced mode can skip expansion on larger presets to save 3-5s
 - Chunk-level reranking: 4K chars vs 128K = 25× faster
 - Strong signal detection skips expansion for confident BM25 matches
 - Query expansion is cached by query + model

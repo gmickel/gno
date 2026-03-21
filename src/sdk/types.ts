@@ -49,6 +49,7 @@ export interface GnoClientInitOptions {
 
 export interface GnoModelOverrides {
   embedModel?: string;
+  expandModel?: string;
   genModel?: string;
   rerankModel?: string;
 }

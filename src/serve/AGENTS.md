@@ -50,7 +50,8 @@ interface ServerContext {
   config: Config;
   vectorIndex: VectorIndexPort | null;
   embedPort: EmbeddingPort | null;
-  genPort: GenerationPort | null;
+  expandPort: GenerationPort | null;
+  answerPort: GenerationPort | null;
   rerankPort: RerankPort | null;
   capabilities: { bm25; vector; hybrid; answer };
 }

@@ -60,7 +60,7 @@ export interface HybridSearchDeps {
   config: Config;
   vectorIndex: VectorIndexPort | null;
   embedPort: EmbeddingPort | null;
-  genPort: GenerationPort | null;
+  expandPort: GenerationPort | null;
   rerankPort: RerankPort | null;
   pipelineConfig?: PipelineConfig;
 }
@@ -249,7 +249,7 @@ export async function searchHybrid(
   options: HybridSearchOptions = {}
 ): Promise<ReturnType<typeof ok<SearchResults>>> {
   const runStartedAt = performance.now();
-  const { store, vectorIndex, embedPort, genPort, rerankPort } = deps;
+  const { store, vectorIndex, embedPort, expandPort, rerankPort } = deps;
   const pipelineConfig = deps.pipelineConfig ?? DEFAULT_PIPELINE_CONFIG;
 
   const limit = options.limit ?? 20;
@@ -318,7 +318,7 @@ export async function searchHybrid(
   // 1. Check if expansion needed
   // ─────────────────────────────────────────────────────────────────────────
   const expansionStartedAt = performance.now();
-  const shouldExpand = !options.noExpand && genPort !== null;
+  const shouldExpand = !options.noExpand && expandPort !== null;
   let expansionStatus: ExpansionStatus = "disabled";
   let queryModeSummary: ReturnType<typeof summarizeQueryModes> | undefined =
     undefined;
@@ -349,7 +349,7 @@ export async function searchHybrid(
       counters.fallbackEvents.push("expansion_skipped_strong");
     } else {
       expansionStatus = "attempted";
-      const expandResult = await expandQuery(genPort, query, {
+      const expandResult = await expandQuery(expandPort, query, {
         // Use queryLanguage for prompt selection, NOT options.lang (retrieval filter)
         lang: queryLanguage,
         timeout: pipelineConfig.expansionTimeout,

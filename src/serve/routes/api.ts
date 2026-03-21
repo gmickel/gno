@@ -1416,7 +1416,7 @@ export async function handleQuery(
       config: ctx.config,
       vectorIndex: ctx.vectorIndex,
       embedPort: ctx.embedPort,
-      genPort: ctx.genPort,
+      expandPort: ctx.expandPort,
       rerankPort: ctx.rerankPort,
     },
     normalizedQuery,
@@ -1479,7 +1479,7 @@ export async function handleAsk(
   if (!ctx.capabilities.answer) {
     return errorResponse(
       "UNAVAILABLE",
-      "Answer generation not available. No generation model loaded.",
+      "Answer generation not available. No answer model loaded.",
       503
     );
   }
@@ -1578,7 +1578,7 @@ export async function handleAsk(
       config: ctx.config,
       vectorIndex: ctx.vectorIndex,
       embedPort: ctx.embedPort,
-      genPort: ctx.genPort,
+      expandPort: ctx.expandPort,
       rerankPort: ctx.rerankPort,
     },
     normalizedQuery,
@@ -1610,16 +1610,16 @@ export async function handleAsk(
 
   const results = searchResult.value.results;
 
-  // Generate grounded answer (requires genPort)
+  // Generate grounded answer (requires answer model)
   let answer: string | undefined;
   let citations: Citation[] | undefined;
   let answerContext: AskResult["meta"]["answerContext"] | undefined;
   let answerGenerated = false;
 
-  if (ctx.genPort) {
+  if (ctx.answerPort) {
     const maxTokens = body.maxAnswerTokens ?? 512;
     const rawResult = await generateGroundedAnswer(
-      { genPort: ctx.genPort, store: ctx.store },
+      { genPort: ctx.answerPort, store: ctx.store },
       normalizedQuery,
       results,
       maxTokens

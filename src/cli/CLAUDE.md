@@ -81,7 +81,8 @@ interface CliContext {
   store: SqliteAdapter;
   config: Config;
   embedPort?: EmbeddingPort;
-  genPort?: GenerationPort;
+  expandPort?: GenerationPort;
+  answerPort?: GenerationPort;
   rerankPort?: RerankPort;
 }
 ```

@@ -121,7 +121,7 @@ export function modelNotFoundError(uri: string, details?: string): LlmError {
 
 export function modelNotCachedError(
   uri: string,
-  modelType: "embed" | "rerank" | "gen"
+  modelType: "embed" | "rerank" | "expand" | "gen"
 ): LlmError {
   return llmError("MODEL_NOT_CACHED", {
     message: `${modelType} model not cached`,

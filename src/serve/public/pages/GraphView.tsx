@@ -522,6 +522,30 @@ export default function GraphView({ navigate }: PageProps) {
             </Select>
           </div>
 
+          <Button
+            className="text-xs"
+            onClick={() => navigate("/collections")}
+            size="sm"
+            variant="outline"
+          >
+            Manage collections
+          </Button>
+
+          <Button
+            className="text-xs"
+            onClick={() =>
+              navigate(
+                selectedCollection === "_all"
+                  ? "/browse"
+                  : `/browse?collection=${encodeURIComponent(selectedCollection)}`
+              )
+            }
+            size="sm"
+            variant="ghost"
+          >
+            {selectedCollection === "_all" ? "Browse all" : "Browse selected"}
+          </Button>
+
           {/* Similarity toggle - only show if available */}
           {graphData?.meta.similarAvailable && (
             <Button

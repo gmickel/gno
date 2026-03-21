@@ -122,9 +122,9 @@ gno query $'auth flow\nterm: "refresh token"\nintent: token rotation'
 
 **Search modes**:
 
-- **Default** (~2-3s): Skip expansion, with reranking. Best balance of speed and quality.
+- **Default** (~2-3s on slim): Preset-aware balanced mode. On `slim` / `slim-tuned`, uses expansion + reranking; on larger presets, keeps reranking on and expansion off by default.
 - `--fast` (~0.7s): Skip both expansion and reranking. Use for quick lookups.
-- `--thorough` (~5-8s): Full pipeline with LLM expansion and reranking. Best recall.
+- `--thorough` (~5-8s): Expansion + reranking with a wider candidate pool. Best recall.
 
 **Pipeline features**:
 
@@ -137,7 +137,7 @@ gno query $'auth flow\nterm: "refresh token"\nintent: token rotation'
 Additional options:
 
 - `--fast` - Skip expansion and reranking (fastest, ~0.7s)
-- `--thorough` - Enable query expansion (slower, ~5-8s)
+- `--thorough` - Use the widest retrieval/rerank budget (slower, best recall)
 - `--no-expand` - Disable query expansion
 - `--no-rerank` - Disable cross-encoder reranking
 - `--intent <text>` - Disambiguating context for ambiguous queries. Steers expansion, rerank chunk/snippet choice, and disables strong-signal bypass, but is not searched directly.
@@ -439,6 +439,7 @@ Download models.
 gno models pull --all
 gno models pull --embed
 gno models pull --rerank
+gno models pull --expand
 gno models pull --gen
 gno models pull --force   # Re-download even if cached
 ```
@@ -452,10 +453,11 @@ models:
   activePreset: slim-tuned
   presets:
     - id: slim-tuned
-      name: GNO Slim Retrieval v1
+      name: GNO Slim Tuned
       embed: hf:gpustack/bge-m3-GGUF/bge-m3-Q4_K_M.gguf
       rerank: hf:ggml-org/Qwen3-Reranker-0.6B-Q8_0-GGUF/qwen3-reranker-0.6b-q8_0.gguf
-      gen: hf:guiltylemon/gno-expansion-slim-retrieval-v1/gno-expansion-auto-entity-lock-default-mix-lr95-f16.gguf
+      expand: hf:guiltylemon/gno-expansion-slim-retrieval-v1/gno-expansion-auto-entity-lock-default-mix-lr95-f16.gguf
+      gen: hf:unsloth/Qwen3-4B-Instruct-2507-GGUF/Qwen3-4B-Instruct-2507-Q4_K_M.gguf
 ```
 
 Then use it normally:

@@ -40,7 +40,9 @@ export type AskCommandOptions = AskOptions & {
   configPath?: string;
   /** Override embedding model */
   embedModel?: string;
-  /** Override generation model */
+  /** Override expansion model */
+  expandModel?: string;
+  /** Override answer generation model */
   genModel?: string;
   /** Override rerank model */
   rerankModel?: string;
@@ -82,7 +84,8 @@ export async function ask(
   const { store, config } = initResult;
 
   let embedPort: EmbeddingPort | null = null;
-  let genPort: GenerationPort | null = null;
+  let expandPort: GenerationPort | null = null;
+  let answerPort: GenerationPort | null = null;
   let rerankPort: RerankPort | null = null;
 
   try {
@@ -113,10 +116,23 @@ export async function ask(
       embedPort = embedResult.value;
     }
 
-    // Create generation port (for expansion and/or answer)
-    // Need genPort if: expansion enabled (!noExpand) OR answer requested
-    const needsGen = !options.noExpand || options.answer;
-    if (needsGen) {
+    // Create expansion port when expansion is enabled.
+    if (!options.noExpand && !options.queryModes?.length) {
+      const expandUri =
+        options.expandModel ?? options.genModel ?? preset.expand;
+      const genResult = await llm.createExpansionPort(expandUri, {
+        policy,
+        onProgress: downloadProgress
+          ? (progress) => downloadProgress("expand", progress)
+          : undefined,
+      });
+      if (genResult.ok) {
+        expandPort = genResult.value;
+      }
+    }
+
+    // Create answer generation port when answers are requested.
+    if (options.answer) {
       const genUri = options.genModel ?? preset.gen;
       const genResult = await llm.createGenerationPort(genUri, {
         policy,
@@ -125,7 +141,7 @@ export async function ask(
           : undefined,
       });
       if (genResult.ok) {
-        genPort = genResult.value;
+        answerPort = genResult.value;
       }
     }
 
@@ -170,7 +186,7 @@ export async function ask(
       config,
       vectorIndex,
       embedPort,
-      genPort,
+      expandPort,
       rerankPort,
     };
 
@@ -178,7 +194,7 @@ export async function ask(
     const answerRequested = options.answer && !options.noAnswer;
 
     // Fail early if --answer is requested but no generation model available
-    if (answerRequested && genPort === null) {
+    if (answerRequested && answerPort === null) {
       return {
         success: false,
         error:
@@ -223,12 +239,12 @@ export async function ask(
     // 2. --no-answer was not set
     // 3. We have results to ground on (no point generating from nothing)
     const shouldGenerateAnswer =
-      answerRequested && genPort !== null && results.length > 0;
+      answerRequested && answerPort !== null && results.length > 0;
 
-    if (shouldGenerateAnswer && genPort) {
+    if (shouldGenerateAnswer && answerPort) {
       const maxTokens = options.maxAnswerTokens ?? 512;
       const rawResult = await generateGroundedAnswer(
-        { genPort, store },
+        { genPort: answerPort, store },
         query,
         results,
         maxTokens
@@ -277,8 +293,11 @@ export async function ask(
     if (embedPort) {
       await embedPort.dispose();
     }
-    if (genPort) {
-      await genPort.dispose();
+    if (expandPort) {
+      await expandPort.dispose();
+    }
+    if (answerPort) {
+      await answerPort.dispose();
     }
     if (rerankPort) {
       await rerankPort.dispose();

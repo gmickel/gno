@@ -166,7 +166,9 @@ export const ModelPresetSchema = z.object({
   embed: z.string().min(1),
   /** Reranker model URI */
   rerank: z.string().min(1),
-  /** Generation model URI */
+  /** Query expansion model URI (defaults to gen for older configs) */
+  expand: z.string().min(1).optional(),
+  /** Answer generation model URI */
   gen: z.string().min(1),
 });
 
@@ -180,6 +182,7 @@ export const DEFAULT_MODEL_PRESETS: ModelPreset[] = [
     embed: "hf:gpustack/bge-m3-GGUF/bge-m3-Q4_K_M.gguf",
     rerank:
       "hf:ggml-org/Qwen3-Reranker-0.6B-Q8_0-GGUF/qwen3-reranker-0.6b-q8_0.gguf",
+    expand: "hf:unsloth/Qwen3-1.7B-GGUF/Qwen3-1.7B-Q4_K_M.gguf",
     gen: "hf:unsloth/Qwen3-1.7B-GGUF/Qwen3-1.7B-Q4_K_M.gguf",
   },
   {
@@ -188,6 +191,8 @@ export const DEFAULT_MODEL_PRESETS: ModelPreset[] = [
     embed: "hf:gpustack/bge-m3-GGUF/bge-m3-Q4_K_M.gguf",
     rerank:
       "hf:ggml-org/Qwen3-Reranker-0.6B-Q8_0-GGUF/qwen3-reranker-0.6b-q8_0.gguf",
+    expand:
+      "hf:bartowski/Qwen2.5-3B-Instruct-GGUF/Qwen2.5-3B-Instruct-Q4_K_M.gguf",
     gen: "hf:bartowski/Qwen2.5-3B-Instruct-GGUF/Qwen2.5-3B-Instruct-Q4_K_M.gguf",
   },
   {
@@ -196,6 +201,8 @@ export const DEFAULT_MODEL_PRESETS: ModelPreset[] = [
     embed: "hf:gpustack/bge-m3-GGUF/bge-m3-Q4_K_M.gguf",
     rerank:
       "hf:ggml-org/Qwen3-Reranker-0.6B-Q8_0-GGUF/qwen3-reranker-0.6b-q8_0.gguf",
+    expand:
+      "hf:unsloth/Qwen3-4B-Instruct-2507-GGUF/Qwen3-4B-Instruct-2507-Q4_K_M.gguf",
     gen: "hf:unsloth/Qwen3-4B-Instruct-2507-GGUF/Qwen3-4B-Instruct-2507-Q4_K_M.gguf",
   },
 ];

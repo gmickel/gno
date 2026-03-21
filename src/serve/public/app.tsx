@@ -100,6 +100,14 @@ function App() {
         </div>
         <footer className="border-t border-border/50 bg-background/80 py-4 text-center text-muted-foreground text-sm">
           <div className="flex items-center justify-center gap-4">
+            <button
+              className="transition-colors hover:text-foreground"
+              onClick={() => navigate("/collections")}
+              type="button"
+            >
+              Collections
+            </button>
+            <span className="text-border">·</span>
             <a
               className="transition-colors hover:text-foreground"
               href="https://github.com/gmickel/gno"

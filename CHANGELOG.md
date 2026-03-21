@@ -9,6 +9,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+## [0.25.0] - 2026-03-21
+
+### Added
+
+- Preset-aware retrieval depth policy across Web, CLI, and MCP: `Balanced` now enables expansion on `slim` / `slim-tuned`, while `Thorough` widens the rerank candidate pool for best recall.
+- Explicit model-role split for presets and runtime: `expand` now controls query expansion separately from `gen` answer generation, with updated config/docs, model management UX, and CLI output.
+- Collection management discoverability and actions across the web UI, including direct `/collections` navigation, inline reindex affordances, and clickable collection surfaces that lead into filtered Browse views.
+
+### Changed
+
+- Ask/Search preset UI now presents the active preset as a bundle and shows separate expansion vs answer roles instead of implying the retrieval-tuned model is the answer model.
+- The live `slim-tuned` preset guidance now pairs the promoted retrieval expansion model with a separate larger answer model.
+
 ## [0.24.0] - 2026-03-10
 
 ### Added

@@ -57,6 +57,24 @@ export function getActivePreset(config: Config): ModelPreset {
   return builtIn;
 }
 
+export function getExpandModelUri(config: Config, override?: string): string {
+  if (override) {
+    return override;
+  }
+
+  const preset = getActivePreset(config);
+  return preset.expand ?? preset.gen;
+}
+
+export function getAnswerModelUri(config: Config, override?: string): string {
+  if (override) {
+    return override;
+  }
+
+  const preset = getActivePreset(config);
+  return preset.gen;
+}
+
 /**
  * Resolve a model URI for a given type.
  * Uses override if provided, otherwise from active preset.
@@ -70,6 +88,9 @@ export function resolveModelUri(
     return override;
   }
   const preset = getActivePreset(config);
+  if (type === "expand") {
+    return preset.expand ?? preset.gen;
+  }
   return preset[type];
 }
 

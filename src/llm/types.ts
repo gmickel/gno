@@ -19,7 +19,7 @@ export type LlmResult<T> =
 // Model Types
 // ─────────────────────────────────────────────────────────────────────────────
 
-export type ModelType = "embed" | "rerank" | "gen";
+export type ModelType = "embed" | "rerank" | "expand" | "gen";
 
 /** Model URI format: hf:org/repo/file.gguf or file:/path */
 export type ModelUri = string;
