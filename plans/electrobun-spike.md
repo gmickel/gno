@@ -30,11 +30,20 @@ Test whether Electrobun can wrap the existing GNO Bun/web workspace without fork
 ## What still feels shaky
 
 - Dev-mode automation of app menu clicks and shortcut callbacks was inconsistent under Peekaboo-driven smoke.
-- `open-url` worked, but timing in dev mode felt a little odd; needs cleaner packaged-app testing.
-- Single-instance handoff not tested.
-- File associations / open-file OS events not tested.
+- No obvious built-in single-instance support surfaced in docs or package source.
+- Forced second launch via `open -n` spawned a second shell process and a second `gno serve` child, so the default single-instance story is not acceptable yet.
+- No obvious file-association / `open-file` support surfaced in docs or package source.
 - Signing, notarization, updater, installer flow not tested.
 - No browser<->Bun RPC bridge into the existing React app yet; current spike stays shell-side on purpose.
+
+## Extra packaged-app findings
+
+- `bunx electrobun build` produced a runnable `.app` bundle in `build/dev-macos-arm64/`.
+- Generated `Info.plist` contains `CFBundleURLTypes` for `gno`.
+- I did not find `CFBundleDocumentTypes` / `LSItemContentTypes` generation in package source or built metadata.
+- Packaged app handled `open 'gno://open?route=/search?q=packaged'` and routed into the live GNO window.
+- Plain `open app` reused the existing app bundle process.
+- Forced `open -n app` launched a second bundle instance anyway, which is the real problem for GNO.
 
 ## Current spike shape
 
@@ -49,10 +58,12 @@ Test whether Electrobun can wrap the existing GNO Bun/web workspace without fork
 
 ## Initial takeaway
 
-Promising for `fn-50`.
+Promising, but not decision-ready for `fn-51`.
 
 Best current reading:
 
 - good enough to keep evaluating
 - especially strong fit for “thin Bun shell around existing GNO workspace”
-- not yet enough evidence to lock `fn-51` on Electrobun without packaged-app tests for single-instance, file associations, and updater/distribution behavior
+- packaged `gno://` support is better than expected
+- default single-instance and file-association stories are not good enough yet
+- recommendation right now: keep Electrobun in the running, but do **not** lock GNO onto it until another candidate is compared against these exact gaps
