@@ -272,6 +272,18 @@ The dashboard also shows a **Bootstrap & Storage** section for first-run explain
 
 This is the user-facing source of truth for “what will download?”, “where does it live?”, and “why is this preset still incomplete?”.
 
+### Recents and Favorites
+
+Navigation is no longer only a hidden keyboard trick.
+
+GNO now keeps:
+
+- **Recent documents** so you can jump back to what you were just reading
+- **Favorite documents** for high-traffic notes
+- **Pinned collections** for the folders you live in every day
+
+These shortcuts are visible on the dashboard and shared with the quick-switcher, so the same navigation model works with or without the keyboard.
+
 ### Agent Connectors
 
 The **Connectors** page gives one place to:

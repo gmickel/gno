@@ -4,6 +4,7 @@ import {
   FileText,
   FolderOpen,
   RefreshCw,
+  StarIcon,
 } from "lucide-react";
 import { Fragment, useEffect, useState } from "react";
 
@@ -28,6 +29,12 @@ import {
 } from "../components/ui/table";
 import { apiFetch } from "../hooks/use-api";
 import { useDocEvents } from "../hooks/use-doc-events";
+import {
+  loadFavoriteCollections,
+  loadFavoriteDocuments,
+  toggleFavoriteCollection,
+  toggleFavoriteDocument,
+} from "../lib/navigation-state";
 
 interface PageProps {
   navigate: (to: string | number) => void;
@@ -78,6 +85,8 @@ export default function Browse({ navigate }: PageProps) {
   const [syncTarget, setSyncTarget] = useState<SyncTarget>(null);
   const [syncError, setSyncError] = useState<string | null>(null);
   const [refreshToken, setRefreshToken] = useState(0);
+  const [favoriteDocHrefs, setFavoriteDocHrefs] = useState<string[]>([]);
+  const [favoriteCollections, setFavoriteCollections] = useState<string[]>([]);
   const latestDocEvent = useDocEvents();
   const limit = 25;
 
@@ -96,6 +105,10 @@ export default function Browse({ navigate }: PageProps) {
         setCollections(data);
       }
     });
+    setFavoriteDocHrefs(loadFavoriteDocuments().map((entry) => entry.href));
+    setFavoriteCollections(
+      loadFavoriteCollections().map((entry) => entry.name)
+    );
   }, []);
 
   useEffect(() => {
@@ -300,6 +313,31 @@ export default function Browse({ navigate }: PageProps) {
               <FolderOpen className="size-4" />
               Collections
             </Button>
+            {selected && (
+              <Button
+                className="gap-2"
+                onClick={() =>
+                  setFavoriteCollections(
+                    toggleFavoriteCollection({
+                      name: selected,
+                      href: `/browse?collection=${encodeURIComponent(selected)}`,
+                      label: selected,
+                    }).map((entry) => entry.name)
+                  )
+                }
+                size="sm"
+                variant="outline"
+              >
+                <StarIcon
+                  className={`size-4 ${
+                    favoriteCollections.includes(selected)
+                      ? "fill-current text-secondary"
+                      : ""
+                  }`}
+                />
+                {favoriteCollections.includes(selected) ? "Pinned" : "Pin"}
+              </Button>
+            )}
             <Button
               className="gap-2"
               disabled={Boolean(syncJobId)}
@@ -423,6 +461,31 @@ export default function Browse({ navigate }: PageProps) {
                             {doc.relPath}
                           </div>
                         </div>
+                        <Button
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            const next = toggleFavoriteDocument({
+                              uri: doc.uri,
+                              href: `/doc?uri=${encodeURIComponent(doc.uri)}`,
+                              label: doc.title || doc.relPath,
+                            });
+                            setFavoriteDocHrefs(
+                              next.map((entry) => entry.href)
+                            );
+                          }}
+                          size="icon-sm"
+                          variant="ghost"
+                        >
+                          <StarIcon
+                            className={`size-4 ${
+                              favoriteDocHrefs.includes(
+                                `/doc?uri=${encodeURIComponent(doc.uri)}`
+                              )
+                                ? "fill-current text-secondary"
+                                : "text-muted-foreground"
+                            }`}
+                          />
+                        </Button>
                         <ChevronRight className="ml-auto size-4 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
                       </div>
                     </TableCell>

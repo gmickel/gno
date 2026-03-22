@@ -3,6 +3,7 @@ import {
   CheckCircle2Icon,
   CpuIcon,
   Database,
+  FolderHeartIcon,
   FolderIcon,
   GitForkIcon,
   Layers,
@@ -11,6 +12,7 @@ import {
   PenIcon,
   RefreshCwIcon,
   Search,
+  StarIcon,
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
@@ -33,6 +35,15 @@ import {
 } from "../components/ui/card";
 import { apiFetch } from "../hooks/use-api";
 import { useCaptureModal } from "../hooks/useCaptureModal";
+import {
+  loadFavoriteCollections,
+  loadFavoriteDocuments,
+  loadRecentDocuments,
+  toggleFavoriteCollection,
+  type FavoriteCollection,
+  type FavoriteDoc,
+  type RecentDoc,
+} from "../lib/navigation-state";
 
 interface SyncResponse {
   jobId: string;
@@ -52,6 +63,11 @@ export default function Dashboard({ navigate }: PageProps) {
     string | undefined
   >(undefined);
   const [busyAction, setBusyAction] = useState<HealthActionKind | null>(null);
+  const [recentDocs, setRecentDocs] = useState<RecentDoc[]>([]);
+  const [favoriteDocs, setFavoriteDocs] = useState<FavoriteDoc[]>([]);
+  const [favoriteCollections, setFavoriteCollections] = useState<
+    FavoriteCollection[]
+  >([]);
   const { openCapture } = useCaptureModal();
 
   const openCollections = () => navigate("/collections");
@@ -71,6 +87,12 @@ export default function Dashboard({ navigate }: PageProps) {
   useEffect(() => {
     void loadStatus();
   }, [loadStatus]);
+
+  useEffect(() => {
+    setRecentDocs(loadRecentDocuments());
+    setFavoriteDocs(loadFavoriteDocuments());
+    setFavoriteCollections(loadFavoriteCollections());
+  }, []);
 
   const handleSync = useCallback(async () => {
     setSyncing(true);
@@ -136,6 +158,18 @@ export default function Dashboard({ navigate }: PageProps) {
     if (action === "download-models") {
       void handleDownloadModels();
     }
+  };
+
+  const handleToggleFavoriteCollection = (
+    collection: AppStatusResponse["collections"][number]
+  ) => {
+    setFavoriteCollections(
+      toggleFavoriteCollection({
+        name: collection.name,
+        href: `/browse?collection=${encodeURIComponent(collection.name)}`,
+        label: collection.name,
+      })
+    );
   };
 
   return (
@@ -279,6 +313,91 @@ export default function Dashboard({ navigate }: PageProps) {
           </div>
         )}
 
+        {(recentDocs.length > 0 ||
+          favoriteDocs.length > 0 ||
+          favoriteCollections.length > 0) && (
+          <section className="mb-10 grid gap-4 xl:grid-cols-3">
+            <Card className="border-border/60 bg-card/70">
+              <CardHeader className="pb-3">
+                <div className="flex items-center gap-2">
+                  <StarIcon className="size-4 text-primary" />
+                  <CardDescription>Favorite Documents</CardDescription>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {favoriteDocs.length === 0 ? (
+                  <p className="text-muted-foreground text-sm">
+                    Favorite a document from Browse to keep it here.
+                  </p>
+                ) : (
+                  favoriteDocs.slice(0, 5).map((doc) => (
+                    <Button
+                      className="w-full justify-start"
+                      key={doc.href}
+                      onClick={() => navigate(doc.href)}
+                      variant="ghost"
+                    >
+                      {doc.label}
+                    </Button>
+                  ))
+                )}
+              </CardContent>
+            </Card>
+            <Card className="border-border/60 bg-card/70">
+              <CardHeader className="pb-3">
+                <div className="flex items-center gap-2">
+                  <FolderHeartIcon className="size-4 text-primary" />
+                  <CardDescription>Pinned Collections</CardDescription>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {favoriteCollections.length === 0 ? (
+                  <p className="text-muted-foreground text-sm">
+                    Pin collections from the dashboard cards.
+                  </p>
+                ) : (
+                  favoriteCollections.slice(0, 5).map((collection) => (
+                    <Button
+                      className="w-full justify-start"
+                      key={collection.name}
+                      onClick={() => navigate(collection.href)}
+                      variant="ghost"
+                    >
+                      {collection.label}
+                    </Button>
+                  ))
+                )}
+              </CardContent>
+            </Card>
+            <Card className="border-border/60 bg-card/70">
+              <CardHeader className="pb-3">
+                <div className="flex items-center gap-2">
+                  <Search className="size-4 text-primary" />
+                  <CardDescription>Recent Documents</CardDescription>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {recentDocs.length === 0 ? (
+                  <p className="text-muted-foreground text-sm">
+                    Open a few notes and they will show up here.
+                  </p>
+                ) : (
+                  recentDocs.slice(0, 5).map((doc) => (
+                    <Button
+                      className="w-full justify-start"
+                      key={doc.href}
+                      onClick={() => navigate(doc.href)}
+                      variant="ghost"
+                    >
+                      {doc.label}
+                    </Button>
+                  ))
+                )}
+              </CardContent>
+            </Card>
+          </section>
+        )}
+
         {status && (
           <div className="mb-10 grid animate-fade-in gap-6 opacity-0 md:grid-cols-4">
             <Card className="group relative overflow-hidden border-primary/30 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent transition-all duration-300 hover:border-primary/50 hover:shadow-[0_0_30px_-10px_hsl(var(--primary)/0.3)]">
@@ -408,7 +527,25 @@ export default function Dashboard({ navigate }: PageProps) {
                         </div>
                       </div>
                     </div>
-                    <div className="text-right">
+                    <div className="flex items-center gap-3 text-right">
+                      <Button
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          handleToggleFavoriteCollection(collection);
+                        }}
+                        size="icon-sm"
+                        variant="ghost"
+                      >
+                        <StarIcon
+                          className={`size-4 ${
+                            favoriteCollections.some(
+                              (entry) => entry.name === collection.name
+                            )
+                              ? "fill-current text-secondary"
+                              : "text-muted-foreground"
+                          }`}
+                        />
+                      </Button>
                       <div className="font-medium">
                         {collection.documentCount.toLocaleString()} docs
                       </div>

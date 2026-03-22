@@ -2,11 +2,12 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
 
 import { HelpButton } from "./components/HelpButton";
-import { QuickSwitcher, saveRecentDocument } from "./components/QuickSwitcher";
+import { QuickSwitcher } from "./components/QuickSwitcher";
 import { ShortcutHelpModal } from "./components/ShortcutHelpModal";
 import { CaptureModalProvider, useCaptureModal } from "./hooks/useCaptureModal";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
 import { parseDocumentDeepLink } from "./lib/deep-links";
+import { saveRecentDocument } from "./lib/navigation-state";
 import Ask from "./pages/Ask";
 import Browse from "./pages/Browse";
 import Collections from "./pages/Collections";
