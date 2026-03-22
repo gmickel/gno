@@ -1423,7 +1423,8 @@ export async function handleCreateDoc(
     await atomicWrite(fullPath, contentToWrite);
 
     // Build gno:// URI for the created document
-    const gnoUri = `gno://${collection.name}/${normalizedRelPath}`;
+    const posixRelPath = normalizedRelPath.split(nodePath.sep).join("/");
+    const gnoUri = `gno://${collection.name}/${posixRelPath}`;
 
     // Run sync via job system (non-blocking)
     // Note: embedding handled separately by embed-scheduler (not inline)
