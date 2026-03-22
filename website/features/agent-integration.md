@@ -2,8 +2,8 @@
 layout: feature
 title: AI Agent Integration
 headline: Full GNO Access, Zero Overhead
-description: Give AI agents full GNO access via SKILL.md files—no MCP server, no context window pollution. One-line install for Claude Code, Codex, OpenCode, and Amp.
-keywords: ai agent, skill, claude code, codex, opencode, amp, knowledge access, skill.md, context window
+description: Give AI coding agents full GNO access via SKILL.md files—no MCP server, no context window pollution. One-line install for Claude Code, Codex, OpenCode, OpenClaw, and Amp.
+keywords: ai agent skill, claude code skill, codex skill, opencode skill, openclaw skill, knowledge retrieval, skill.md, ai agent memory, local knowledge
 icon: agent
 slug: agent-integration
 permalink: /features/agent-integration/
@@ -62,6 +62,7 @@ Your agent now has access to `/gno` commands that search your knowledge base onl
 | Claude Code  | `--scope user`      | ✓      |
 | OpenAI Codex | `--target codex`    | ✓      |
 | OpenCode     | `--target opencode` | ✓      |
+| OpenClaw     | `--target openclaw` | ✓      |
 | Amp          | `--target amp`      | ✓      |
 
 ## Example Usage

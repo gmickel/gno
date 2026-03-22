@@ -82,9 +82,10 @@
       name="googlebot"
       content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1"
     />
-    {% if page.keywords %}
-    <meta name="keywords" content="{{ page.keywords }}" />
-    {% endif %}
+    <meta
+      name="keywords"
+      content="{{ page.keywords | default: 'local search, semantic search, hybrid search, MCP server, Claude Code, Codex, OpenCode, Obsidian search, privacy-first, AI agent memory, knowledge engine, local RAG' }}"
+    />
 
     <!-- Canonical -->
     <link rel="canonical" href="{{ page.url | absolute_url }}" />

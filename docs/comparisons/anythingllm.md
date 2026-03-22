@@ -56,7 +56,7 @@ docker pull mintplexlabs/anythingllm
 
 **Privacy**: 100% local, no network calls, no cloud dependencies. AnythingLLM can use cloud LLMs.
 
-**AI agent integration**: Native MCP server for Claude, Cursor, Zed, Windsurf, Codex, and 5+ more targets. Skills for Claude Code.
+**AI agent integration**: Native MCP server for Claude Desktop, Cursor, Zed, Windsurf, Amp, Raycast, and more (11 targets). Skills for Claude Code, Codex, OpenCode, OpenClaw.
 
 **Incremental indexing**: SHA-256 change detection, only re-indexes modified files.
 

@@ -109,7 +109,7 @@ gno ask "how does caching work" --depth thorough --answer
 
 **Zero infrastructure**: SQLite embedded, no separate database server.
 
-**Skills**: Native integration for Claude Code, Codex, OpenCode.
+**Skills**: Native integration for Claude Code, Codex, OpenCode, OpenClaw.
 
 **MIT License**: Permissive licensing for commercial use.
 

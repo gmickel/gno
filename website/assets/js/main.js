@@ -246,7 +246,7 @@
   // Only run if user hasn't requested reduced motion
   if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
     var animatedElements = document.querySelectorAll(
-      ".feature-card, .demo-full, .section-title, .animate-on-scroll"
+      ".feature-card, .demo-full, .section-title, .animate-on-scroll, .step-card, .use-case-card, .integration-item"
     );
 
     if (animatedElements.length > 0 && "IntersectionObserver" in window) {
@@ -280,7 +280,7 @@
     // Reduced motion: show all elements immediately
     document
       .querySelectorAll(
-        ".feature-card, .demo-full, .section-title, .animate-on-scroll"
+        ".feature-card, .demo-full, .section-title, .animate-on-scroll, .step-card, .use-case-card, .integration-item"
       )
       .forEach(function (el) {
         el.classList.add("is-visible");

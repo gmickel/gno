@@ -4,31 +4,39 @@
 - category: Getting Started
   questions:
     - q: What is GNO?
-      a: GNO is a local knowledge search engine that indexes your documents (Markdown, PDF, DOCX, XLSX) and lets you search them using BM25 full-text, vector similarity, or hybrid search. Everything runs locally on your machine.
+      a: GNO is a local knowledge engine that indexes your documents—Markdown, PDF, DOCX, XLSX, PPTX—and lets you search them using BM25 full-text, vector similarity, or hybrid search with query expansion and cross-encoder reranking. Everything runs 100% locally on your machine with zero cloud dependencies.
 
     - q: How do I install GNO?
       a: >
-        Install via Bun with bun install -g gno. GNO requires Bun 1.0+ as its JavaScript runtime. Run gno doctor to verify your installation.
+        Install via Bun with bun install -g @gmickel/gno. On macOS, vector search requires Homebrew SQLite (brew install sqlite3). Run gno doctor to verify your installation.
 
     - q: What file formats does GNO support?
-      a: GNO indexes Markdown (.md), PDF (.pdf), Microsoft Word (.docx), Excel (.xlsx), PowerPoint (.pptx), and plain text files.
+      a: GNO indexes Markdown (.md) with frontmatter extraction, PDF (.pdf), Microsoft Word (.docx), Excel (.xlsx), PowerPoint (.pptx), and plain text files. It also detects document language across 30+ languages.
 
     - q: Is my data sent to the cloud?
-      a: No. GNO is 100% local and privacy-first. All indexing, embedding, and search happens on your machine. Your documents never leave your computer.
+      a: No. GNO is 100% local and privacy-first. All indexing, embedding, search, and AI answers run on your machine. Zero telemetry, zero tracking. Your documents never leave your computer. It works completely offline.
+
+    - q: Does GNO work with Obsidian?
+      a: >
+        Yes. Point GNO at your Obsidian vault directory and it indexes everything. GNO understands wiki links ([[note]]), frontmatter tags, and can discover semantic connections between notes that Obsidian's built-in search misses. It adds hybrid search, AI answers, and a knowledge graph on top of your existing vault.
 
 - category: Search & Querying
   questions:
     - q: What is the difference between search, vsearch, and query?
       a: >
-        gno search uses BM25 keyword matching (fast, exact terms). gno vsearch uses vector similarity (semantic meaning). gno query combines both with reciprocal rank fusion for best results.
+        gno search uses BM25 keyword matching (instant, ~5-20ms). gno vsearch uses vector similarity for semantic meaning (~0.5s). gno query combines both with query expansion, reciprocal rank fusion, and cross-encoder reranking for best results (~2-3s default, ~0.7s fast mode).
 
     - q: How do I get AI-generated answers?
       a: >
-        Use gno ask "your question" --answer. This searches your documents and generates a cited answer using a local LLM.
+        Use gno ask "your question" --answer. This searches your documents using the hybrid pipeline and generates a cited answer using a local LLM. No cloud APIs needed.
 
     - q: Can I search specific collections only?
       a: >
-        Yes, use --collection or -c flag, for example gno search "term" -c notes.
+        Yes, use --collection or -c flag, for example gno search "term" -c notes. You can also filter by tags (--tags-any, --tags-all), dates (--since, --until), and exclude specific documents (--exclude).
+
+    - q: What are structured query modes?
+      a: >
+        GNO supports multi-line query documents using term: (exact keywords), intent: (semantic intent steering), and hyde: (hypothetical document passages). These give you explicit control over the retrieval pipeline for complex queries.
 
 - category: Configuration
   questions:
@@ -38,34 +46,46 @@
 
     - q: How do I add multiple document folders?
       a: >
-        Use gno collection add path --name name for each folder, then run gno update to index them all.
+        Use gno collection add path --name name for each folder, then run gno update to index them all. You can add Obsidian vaults, project docs, research folders, and code repos—any directory on your machine.
 
     - q: Can I exclude certain files or folders?
       a: >
-        Yes, add them to the exclude array in your collection config, for example exclude node_modules, .git, and temporary files.
+        Yes, add them to the exclude array in your collection config, for example exclude node_modules, .git, and temporary files. You can also use the --exclude flag at query time to skip specific documents from results.
 
 - category: AI & Models
   questions:
     - q: What LLM models does GNO use?
       a: >
-        GNO uses local models via node-llama-cpp. Default presets are slim (fast), balanced, and quality. Run gno models list to see available models.
+        GNO uses local models via node-llama-cpp. Default presets are slim (~1GB, fast), balanced (~2GB), quality (~2.5GB), and slim-tuned (fine-tuned retrieval model from Hugging Face). Each preset has separate models for embedding, reranking, query expansion, and answer generation.
 
     - q: Do I need an API key?
-      a: No. GNO runs entirely locally with no API keys or cloud services required.
+      a: No. GNO runs entirely locally with no API keys or cloud services required. Models are downloaded once and run on your machine.
 
     - q: How do I change the model?
       a: >
-        Use gno models use preset then gno models pull to download. Presets are slim, balanced, or quality.
+        Use gno models use preset then gno models pull to download. Presets are slim, balanced, quality, or slim-tuned. You can also offload inference to a remote GPU server on your network via HTTP backends.
+
+    - q: What is the fine-tuned model?
+      a: >
+        GNO publishes a fine-tuned retrieval model (gno-expansion-slim-retrieval-v1) on Hugging Face, trained locally on Apple Silicon with MLX LoRA. It achieves nDCG@10 of 0.925 and Ask Recall@5 of 0.875. Install it with gno models use slim-tuned.
 
 - category: Integration
   questions:
-    - q: How do I use GNO with Claude Desktop?
+    - q: How do I use GNO with Claude Code or Codex?
       a: >
-        Add GNO to your claude_desktop_config.json mcpServers section with command gno and args mcp. Restart Claude Desktop after saving.
+        Install GNO as a skill with gno skill install --scope user. This works with Claude Code, Codex, OpenCode, and OpenClaw. Your agent can then search your knowledge base on demand with zero context window pollution.
+
+    - q: How do I use GNO with Cursor, Zed, or Windsurf?
+      a: >
+        Install GNO as an MCP server with gno mcp install --target cursor (or zed, windsurf, amp, etc.). GNO provides 19 MCP tools for search, retrieval, indexing, and graph exploration.
 
     - q: What is MCP?
-      a: Model Context Protocol (MCP) is a standard for AI assistants to access external tools. GNO provides an MCP server so Claude, Cursor, and other tools can search your documents.
+      a: Model Context Protocol (MCP) is a standard for AI assistants to access external tools. GNO provides an MCP server so Claude Desktop, Cursor, Zed, Windsurf, Amp, Raycast, and more can search your documents.
 
     - q: Can I use GNO in scripts?
       a: >
-        Yes, use --json flag for machine-readable output, for example gno search "term" --json piped to jq.
+        Yes, use --json flag for machine-readable output, for example gno search "term" --json piped to jq. GNO also supports CSV, Markdown, XML, and URI output formats. For TypeScript apps, use the SDK to embed GNO directly.
+
+    - q: Can I embed GNO in my own app?
+      a: >
+        Yes. The SDK lets you import GNO directly into any Bun or TypeScript app with createGnoClient(). Run search, query, ask, index, and more without CLI subprocesses or a local server.

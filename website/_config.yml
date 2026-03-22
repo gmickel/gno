@@ -1,7 +1,7 @@
 # GNO Documentation Site
 title: GNO
-tagline: Your Local Second Brain
-description: Fast local semantic search for your documents. Index Markdown, PDF, and Office files with hybrid BM25 + vector search. Privacy-first, runs entirely on your machine.
+tagline: Search Every File You Own
+description: "Search every file you own. GNO indexes Obsidian vaults, project docs, PDFs, and Office files with hybrid BM25 + vector search. Works with Claude Code, Codex, Cursor, and 10+ AI agents. 100% local, fully private."
 url: "https://www.gno.sh"
 baseurl: ""
 
@@ -19,7 +19,7 @@ social:
     - https://twitter.com/gmickel
 logo: /assets/images/logo.png
 og_image: /assets/images/og/og-image.png
-version: "0.24.0"
+version: "0.26.0"
 lang: en_US
 
 # Build settings

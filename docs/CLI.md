@@ -503,7 +503,7 @@ Install the GNO skill files.
 gno skill install                    # Project scope, Claude target
 gno skill install --scope user       # User-wide installation
 gno skill install --target codex     # For Codex instead of Claude
-gno skill install --target all       # Both Claude and Codex
+gno skill install --target all       # All targets (claude, codex, opencode, openclaw)
 gno skill install --force            # Overwrite existing
 ```
 

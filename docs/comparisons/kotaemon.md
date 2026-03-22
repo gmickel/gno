@@ -92,7 +92,7 @@ gno serve  # http://localhost:3000/api
 gno ask "how does caching work" --depth thorough --answer
 ```
 
-**Skills**: Native integration for Claude Code, Codex, OpenCode.
+**Skills**: Native integration for Claude Code, Codex, OpenCode, OpenClaw.
 
 **Incremental indexing**: SHA-256 tracking, only re-indexes changed files.
 

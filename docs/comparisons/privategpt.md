@@ -84,7 +84,7 @@ gno ask "how does caching work" --depth thorough --answer
 
 **Single command install**: npm/bun global install, ready in seconds.
 
-**Skills**: Native integration for Claude Code, Codex, OpenCode.
+**Skills**: Native integration for Claude Code, Codex, OpenCode, OpenClaw.
 
 ## PrivateGPT Advantages
 

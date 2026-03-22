@@ -1000,6 +1000,270 @@ tr:hover td {
 }
 
 // -----------------------------------------------------------------------------
+// Integrations Bar
+// -----------------------------------------------------------------------------
+
+.integrations-bar {
+  text-align: center;
+  padding: $space-6 0 $space-8;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.integrations-label {
+  font-family: $font-mono;
+  font-size: 0.8rem;
+  color: var(--color-text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: $space-5;
+}
+
+.integrations-grid {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: $space-3;
+}
+
+.integration-item {
+  display: flex;
+  align-items: center;
+  gap: $space-2;
+  padding: $space-2 $space-4;
+  background: var(--color-bg-subtle);
+  border: 1px solid var(--color-border);
+  border-radius: $radius-full;
+  font-family: $font-sans;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  text-decoration: none;
+  transition: all $transition-fast;
+  white-space: nowrap;
+
+  &:hover {
+    color: var(--color-text-primary);
+    background: var(--color-bg-surface);
+    border-color: var(--color-accent);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-sm);
+  }
+}
+
+.integration-icon {
+  display: flex;
+  align-items: center;
+  color: var(--color-accent);
+
+  svg {
+    width: 18px;
+    height: 18px;
+  }
+}
+
+.integration-name {
+  line-height: 1;
+}
+
+// -----------------------------------------------------------------------------
+// How It Works (Steps)
+// -----------------------------------------------------------------------------
+
+.how-it-works {
+  padding: $space-8 0;
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+.steps-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: $space-5;
+
+  @media (max-width: $bp-md) {
+    grid-template-columns: 1fr;
+    gap: $space-4;
+  }
+}
+
+.step-card {
+  background: var(--color-bg-subtle);
+  border: 1px solid var(--color-border);
+  border-radius: $radius-xl;
+  padding: $space-6;
+  position: relative;
+  transition: all $transition-base;
+
+  &:hover {
+    border-color: var(--color-accent);
+    background: var(--color-bg-surface);
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-lg);
+  }
+
+  h3 {
+    font-family: $font-serif;
+    font-size: 1.35rem;
+    margin: $space-3 0 $space-2;
+    color: var(--color-text-primary);
+  }
+
+  p {
+    font-size: 0.95rem;
+    color: var(--color-text-secondary);
+    margin-bottom: $space-4;
+    line-height: 1.6;
+  }
+}
+
+.step-number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  background: var(--color-accent);
+  color: #fff;
+  font-family: $font-mono;
+  font-size: 0.9rem;
+  font-weight: 700;
+  border-radius: $radius-full;
+}
+
+.step-command {
+  display: block;
+  padding: $space-3 $space-4;
+  background: var(--color-code-bg);
+  border: 1px solid var(--color-code-border);
+  border-radius: $radius-md;
+  font-family: $font-mono;
+  font-size: 0.85rem;
+  color: var(--color-accent);
+  word-break: break-all;
+}
+
+// -----------------------------------------------------------------------------
+// Use Case Cards
+// -----------------------------------------------------------------------------
+
+.use-cases {
+  padding: $space-8 0;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.use-case-card {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: $space-8;
+  align-items: center;
+  margin-bottom: $space-10;
+  padding: $space-8;
+  background: var(--color-bg-subtle);
+  border: 1px solid var(--color-border);
+  border-radius: $radius-2xl;
+  transition: border-color $transition-base;
+
+  &:hover {
+    border-color: var(--color-border-highlight);
+  }
+
+  &--reverse {
+    direction: rtl;
+
+    > * {
+      direction: ltr;
+    }
+  }
+
+  @media (max-width: $bp-lg) {
+    grid-template-columns: 1fr;
+    gap: $space-5;
+
+    &--reverse {
+      direction: ltr;
+    }
+  }
+}
+
+.use-case-label {
+  display: inline-block;
+  font-family: $font-mono;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--color-warm);
+  margin-bottom: $space-3;
+}
+
+.use-case-content {
+  h3 {
+    font-family: $font-serif;
+    font-size: 1.75rem;
+    margin: 0 0 $space-4;
+    color: var(--color-text-primary);
+    line-height: 1.2;
+
+    @media (min-width: $bp-md) {
+      font-size: 2rem;
+    }
+  }
+
+  p {
+    font-size: 1rem;
+    color: var(--color-text-secondary);
+    line-height: 1.7;
+    margin-bottom: $space-5;
+    max-width: none;
+  }
+}
+
+.use-case-commands {
+  display: flex;
+  flex-direction: column;
+  gap: $space-2;
+  margin-bottom: $space-5;
+
+  code {
+    display: block;
+    padding: $space-2 $space-4;
+    background: var(--color-code-bg);
+    border: 1px solid var(--color-code-border);
+    border-radius: $radius-md;
+    font-size: 0.8rem;
+    color: var(--color-accent);
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+}
+
+.use-case-link {
+  font-family: $font-sans;
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: var(--color-accent);
+  border: none;
+
+  &:hover {
+    color: var(--color-accent-hover);
+  }
+}
+
+.use-case-visual {
+  img {
+    width: 100%;
+    max-width: none;
+    height: auto;
+    border-radius: $radius-lg;
+    border: 1px solid var(--color-border);
+    box-shadow: var(--shadow-lg);
+    margin: 0;
+  }
+}
+
+// -----------------------------------------------------------------------------
 // Section Titles
 // -----------------------------------------------------------------------------
 
@@ -2228,6 +2492,60 @@ html.js {
     }
   }
 
+  // Step cards stagger
+  .steps-grid .step-card {
+    opacity: 0;
+    transform: translateY(20px);
+    transition:
+      opacity 0.5s ease-out,
+      transform 0.5s ease-out;
+
+    &.is-visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    @for $i from 1 through 3 {
+      &:nth-child(#{$i}).is-visible {
+        transition-delay: #{($i - 1) * 0.15}s;
+      }
+    }
+  }
+
+  // Use case cards slide in
+  .use-case-card {
+    opacity: 0;
+    transform: translateY(30px);
+    transition:
+      opacity 0.6s ease-out,
+      transform 0.6s ease-out;
+
+    &.is-visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  // Integration items stagger
+  .integration-item {
+    opacity: 0;
+    transform: translateY(10px);
+    transition:
+      opacity 0.3s ease-out,
+      transform 0.3s ease-out;
+
+    &.is-visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    @for $i from 1 through 10 {
+      &:nth-child(#{$i}).is-visible {
+        transition-delay: #{($i - 1) * 0.05}s;
+      }
+    }
+  }
+
   // Demo sections fade in
   .demo-full {
     opacity: 0;
@@ -2281,6 +2599,9 @@ html.js {
   // Show all animated elements immediately
   .animate-on-scroll,
   .features-grid .feature-card,
+  .steps-grid .step-card,
+  .use-case-card,
+  .integration-item,
   .demo-full,
   .section-title {
     opacity: 1 !important;

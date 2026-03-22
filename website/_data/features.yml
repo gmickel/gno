@@ -3,29 +3,34 @@
 - slug: hybrid-search
   title: Hybrid Search
   headline: The Best of Keywords and Semantics
-  description: GNO combines BM25 full-text search with vector similarity search using reciprocal rank fusion. Get accurate results whether you search for exact terms or conceptual matches.
+  description: GNO combines BM25 full-text search with vector similarity search, reciprocal rank fusion, query expansion, and cross-encoder reranking. Get accurate results whether you search for exact terms or conceptual matches—across 15,000+ documents in under a second.
   icon: hybrid-search
   benefits:
-    - Exact keyword matching with BM25
-    - Semantic similarity with vector search
-    - Reciprocal rank fusion combines both
-    - Configurable weights for tuning
+    - Exact keyword matching with BM25 full-text search
+    - Semantic similarity with vector embeddings
+    - Reciprocal rank fusion combines both pipelines
+    - Query expansion with HyDE and lexical variants
+    - Cross-encoder reranking for precision
+    - Strong signal detection skips expansion when confident
+    - Configurable fast/balanced/thorough modes
   commands:
     - "gno search 'exact terms'"
     - "gno vsearch 'conceptual query'"
     - "gno query 'best of both'"
+    - "gno query 'topic' --thorough"
 
 - slug: local-llm
   title: Local LLM Answers
   headline: AI Answers Without the Cloud
-  description: Get cited, grounded answers from your own documents using local language models. Run locally or offload to a GPU server on your network - no cloud APIs, no data sharing.
+  description: Get cited, grounded answers from your own documents using local language models. Run locally or offload to a GPU server on your network—no cloud APIs, no data sharing. Multiple presets from slim (~1GB) to quality (~2.5GB).
   icon: local-llm
   benefits:
     - 100% local processing
-    - Remote GPU server support via HTTP
+    - Remote GPU server support via HTTP backends
     - No API keys required
-    - Cited answers from your docs
-    - Multiple model presets (slim, balanced, quality)
+    - Cited answers with source documents
+    - Multiple model presets (slim, balanced, quality, slim-tuned)
+    - Separate expansion and generation models
   commands:
     - "gno ask 'your question' --answer"
     - "gno models use balanced"
@@ -34,14 +39,15 @@
 - slug: fine-tuned-models
   title: Fine-Tuned Models
   headline: Train Local, Ship Portable
-  description: Fine-tune retrieval generation models locally, publish portable GGUF artifacts, benchmark them against the shipped baseline, and install them in GNO with HF-backed custom presets.
+  description: Fine-tune retrieval generation models locally on Apple Silicon with MLX LoRA, publish portable GGUF artifacts, benchmark against the shipped baseline, and install via Hugging Face-backed custom presets.
   icon: brain
   benefits:
     - Local MLX LoRA training on Apple Silicon
     - Automatic checkpoint selection
     - Portable GGUF export
-    - Benchmark before promotion
-    - Published promoted model on Hugging Face
+    - Benchmark before promotion (nDCG@10 0.925)
+    - Published model on Hugging Face (gno-expansion-slim-retrieval-v1)
+    - Autonomous search harness for model selection
   commands:
     - "gno models use slim-tuned"
     - "gno models pull --gen"
@@ -50,16 +56,17 @@
 - slug: web-ui
   title: Web UI
   headline: Your Knowledge Dashboard
-  description: A local web dashboard for searching, browsing, creating, and editing documents. Full-featured markdown editor with live preview, keyboard shortcuts, and AI-powered answers—all running 100% locally.
+  description: A local web dashboard for searching, browsing, creating, and editing documents. Full-featured markdown editor with live preview, keyboard shortcuts, knowledge graph visualization, and AI-powered answers—all running 100% locally.
   icon: globe
   benefits:
     - Split-view markdown editor with live preview
-    - Quick capture (⌘N) for instant note creation
+    - Quick capture (Cmd+N) for instant note creation
     - Create, edit, and delete documents
     - Collection management (add, remove, re-index)
     - Visual search with BM25, vector, and hybrid modes
     - AI answers with citations
-    - Keyboard-first design (⌘N, ⌘K, ⌘S, ⌘B, ⌘I)
+    - Interactive knowledge graph visualization
+    - Keyboard-first design (Cmd+N, Cmd+K, Cmd+S)
     - Live preset switching and model download
     - 100% local, no cloud
   commands:
@@ -69,14 +76,16 @@
 - slug: multi-format
   title: Multi-Format Indexing
   headline: Index Everything You Write
-  description: GNO indexes Markdown, PDF, Word, Excel, PowerPoint, and plain text. One tool for all your documents, with intelligent chunking and language detection.
+  description: GNO indexes Markdown, PDF, Word, Excel, PowerPoint, and plain text. One tool for all your documents, with intelligent chunking, frontmatter extraction, and language detection across 30+ languages.
   icon: multi-format
   benefits:
     - Markdown with frontmatter extraction
     - PDF text extraction
     - Office documents (DOCX, XLSX, PPTX)
     - Plain text files
-    - Automatic language detection
+    - Automatic language detection (30+ languages)
+    - Content deduplication via mirror hashing
+    - Incremental indexing with SHA-256 change detection
   commands:
     - "gno init ~/docs --pattern '**/*'"
     - "gno update"
@@ -85,13 +94,16 @@
 - slug: privacy-first
   title: Privacy First
   headline: Your Data Stays Yours
-  description: GNO is designed from the ground up for privacy. All processing happens locally - indexing, embeddings, search, and AI answers. Nothing leaves your machine, ever.
+  description: GNO is designed from the ground up for privacy. All processing happens locally—indexing, embeddings, search, and AI answers. Zero telemetry, zero tracking, works completely offline. Your documents never leave your machine.
   icon: privacy-first
   benefits:
     - Zero cloud dependencies
     - No telemetry or tracking
     - SQLite database on your disk
     - Works completely offline
+    - Collection root validation (rejects dangerous paths)
+    - Advisory locks prevent concurrent writes
+    - CSRF protection on API endpoints
   commands:
     - "gno doctor"
     - "gno status"
@@ -99,58 +111,71 @@
 - slug: mcp-integration
   title: MCP Integration
   headline: Give Your AI Assistant Memory
-  description: Connect GNO to Claude Desktop, Cursor, or any MCP-compatible AI assistant. Your AI can now search and cite your local documents.
+  description: Connect GNO to Claude Desktop, Cursor, Zed, Windsurf, Amp, Raycast, LM Studio, LibreChat, and more via MCP. 19 tools for search, retrieval, indexing, and graph exploration. Your AI assistant can search and cite your local documents.
   icon: mcp-integration
   benefits:
-    - Works with Claude Desktop
-    - Works with Cursor
-    - Standard MCP protocol
-    - Search, read, and cite documents
+    - 19 MCP tools (search, query, get, graph, capture, and more)
+    - Works with Claude Desktop, Cursor, Zed, Windsurf, Amp
+    - Also supports Raycast, LM Studio, LibreChat
+    - Resource URIs for direct document access
+    - Write tools disabled by default (security-first)
+    - One-command install for 10+ clients
   commands:
-    - "gno mcp"
+    - "gno mcp install"
+    - "gno mcp install --target cursor"
+    - "gno mcp install --target zed"
+    - "gno mcp install --target windsurf"
+    - "gno mcp install --target amp"
 
 - slug: agent-integration
   title: AI Agent Integration
   headline: Full GNO Access, Zero Overhead
-  description: Give AI agents full GNO access via SKILL.md files—no MCP server, no context window pollution. One-line install for Claude Code, Codex, OpenCode, and Amp.
+  description: Give AI coding agents full GNO access via SKILL.md files—no MCP server, no context window pollution. One-line install for Claude Code, Codex, OpenCode, OpenClaw, and more. Your agent calls GNO on demand for instant knowledge retrieval.
   icon: agent
   benefits:
     - SKILL.md integration (no MCP overhead)
     - Zero context window pollution
-    - One-line install for 4+ agents
+    - One-line install for Claude Code, Codex, OpenCode, OpenClaw
     - On-demand knowledge retrieval
     - Works alongside MCP if needed
+    - Supports user and project scope
   commands:
     - "gno skill install --scope user"
     - "gno skill install --target codex"
+    - "gno skill install --target opencode"
+    - "gno skill install --target openclaw"
     - "gno skill install --target all"
 
 - slug: api
   title: REST API
   headline: Build Anything with Your Knowledge
-  description: HTTP API for programmatic access to GNO. Search, retrieve documents, get AI answers, and manage models from any language. Build custom tools, automate workflows, create integrations.
+  description: HTTP API with 35+ endpoints for programmatic access to GNO. Search, retrieve documents, get AI answers, explore the knowledge graph, and manage models from any language. Localhost-only with CSRF protection.
   icon: code
   benefits:
-    - Full search via HTTP
+    - 35+ HTTP endpoints
+    - Full search via HTTP (BM25, vector, hybrid, ask)
     - JSON request/response
+    - Document CRUD and collection management
     - Model download with progress
-    - No auth, no rate limits
-    - Python, JS, shell examples
+    - Localhost-only binding (secure by default)
+    - CSRF protection via Origin validation
   commands:
-    - "curl /api/query -d '{...}'"
-    - "curl /api/models/pull -X POST"
+    - "gno serve"
+    - 'curl localhost:3000/api/query -d ''{"q":"topic"}'''
+    - "curl localhost:3000/api/status"
 
 - slug: sdk
   title: SDK
   headline: Embed GNO Directly
-  description: Import GNO into another Bun or TypeScript app. Open a store with inline config, run retrieval directly, and trigger update/index flows without CLI subprocesses or a local server.
+  description: Import GNO into another Bun or TypeScript app. Open a store with inline config, run retrieval directly, and trigger update/index flows without CLI subprocesses or a local server. Full programmatic control.
   icon: code
   benefits:
-    - Package-root import surface
-    - Inline config support
+    - Package-root importable SDK
+    - Inline config support (no YAML files needed)
     - Direct search/query/ask/get APIs
     - Programmatic update/embed/index flows
     - Explicit lifecycle via close()
+    - Works in any Bun or TypeScript app
   commands:
     - "bun add @gmickel/gno"
     - "import { createGnoClient } from '@gmickel/gno'"
@@ -158,7 +183,7 @@
 - slug: tags
   title: Tag System
   headline: Classify and Filter Your Knowledge
-  description: Add tags to documents for instant filtering. Automatic frontmatter extraction, hierarchical tags, and powerful AND/OR filters across CLI, Web UI, and MCP.
+  description: Add tags to documents for instant filtering. Automatic frontmatter extraction, hierarchical tags, and powerful AND/OR filters across CLI, Web UI, MCP, and API. Write tags back to your markdown frontmatter.
   icon: tag
   benefits:
     - Auto-extract from frontmatter
@@ -167,6 +192,7 @@
     - Tag autocomplete in Web UI
     - Write-back to markdown frontmatter
     - MCP tools for AI agents
+    - Temporal filters (--since, --until) with relative dates
   commands:
     - "gno search 'query' --tags-any bug,feature"
     - "gno query 'topic' --tags-all status/active"
@@ -175,12 +201,13 @@
 - slug: note-linking
   title: Note Linking
   headline: Navigate Your Knowledge Graph
-  description: Wiki links, backlinks, and semantic similarity for connected notes. Build a personal knowledge graph with bidirectional navigation, cross-collection links, and AI-powered related note discovery.
+  description: Wiki links, backlinks, and semantic similarity for connected notes. Build a personal knowledge graph with bidirectional navigation, cross-collection links, Logseq-compatible embeds, and AI-powered related note discovery.
   icon: link
   benefits:
     - "[[Wiki links]] and [Markdown](links)"
     - Backlinks show who references you
     - Cross-collection linking
+    - "Logseq-compatible links and {{embed}} syntax"
     - Semantic similar notes via vectors
     - Broken link indicators
     - Wiki link autocomplete in editor
@@ -192,30 +219,33 @@
 - slug: graph-view
   title: Knowledge Graph
   headline: See How Your Ideas Connect
-  description: Interactive force-directed graph visualization of document connections. Explore wiki links, markdown links, and semantic similarity as a navigable constellation. CLI, Web UI, and API access.
+  description: Interactive force-directed graph visualization of document connections. Explore wiki links, markdown links, and semantic similarity edges as a navigable constellation. Available in CLI, Web UI, REST API, and via MCP.
   icon: graph
   benefits:
     - Interactive force-directed visualization
-    - Wiki links, markdown links, and similarity edges
+    - Wiki links, markdown links, and golden similarity edges
     - Filter by collection
     - Click nodes to navigate to documents
     - Zoom, pan, and explore
-    - CLI and REST API access
+    - CLI, REST API, and MCP access
   commands:
     - "gno graph"
     - "gno graph --collection notes"
+    - "gno graph --similar"
     - "gno serve # then /graph"
 
 - slug: collections
   title: Collections
   headline: Organize Your Knowledge
-  description: Group documents by source directory with patterns, includes, and excludes. Search specific collections or across everything.
+  description: Group documents by source directory with glob patterns, includes, and excludes. Search specific collections or across everything. Per-collection contexts for better relevance. Git sync support for team wikis.
   icon: collections
   benefits:
     - Multiple document sources
     - Glob patterns for filtering
     - Include/exclude rules
     - Per-collection search
+    - Collection contexts for relevance
+    - Update commands for git sync
   commands:
     - "gno collection add ~/notes --name notes"
     - "gno collection list"
@@ -224,29 +254,35 @@
 - slug: fast-cli
   title: Fast CLI
   headline: Instant Startup, Lightning Search
-  description: Bun-powered for instant startup. Search thousands of documents in milliseconds.
+  description: Bun-powered for instant startup. Search 15,000+ documents in milliseconds. Multiple output formats for scripting and automation.
   icon: terminal
   link: /docs/CLI/
   benefits:
     - Instant cold start with Bun
     - Sub-second search across large collections
-    - JSON, CSV, Markdown output formats
+    - JSON, CSV, Markdown, XML, URI output formats
     - Scriptable and pipeable
+    - Structured query documents for complex retrieval
   commands:
     - "gno search 'query' --json"
     - "gno query 'topic' --limit 20"
+    - "gno query 'topic' --explain"
 
 - slug: advanced-retrieval
   title: Advanced Retrieval
   headline: State-of-the-Art Search Pipeline
-  description: Query expansion, metadata filtering, and cross-encoder reranking. Fully offline.
+  description: Query expansion with HyDE, metadata filtering (temporal, author, category), cross-encoder reranking, intent steering, exclusion filters, and structured query modes. Fully offline, fully configurable.
   icon: brain
   link: /docs/HOW-SEARCH-WORKS/
   benefits:
     - HyDE query expansion
-    - Cross-encoder reranking
-    - Context hints for relevance
+    - Cross-encoder reranking (Qwen3-Reranker)
+    - Temporal filters (--since, --until)
+    - Intent steering (--intent)
+    - Exclusion filters (--exclude)
+    - Structured query modes (term, intent, hyde)
     - Configurable retrieval stages
   commands:
     - "gno query 'topic'"
     - "gno query 'topic' --explain"
+    - "gno query 'topic' --since 'last week'"

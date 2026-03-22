@@ -8,21 +8,22 @@ layout: default
     <span class="hero-badge">
       {% include icons.html icon="brain" size="16" %} Local Knowledge Engine
     </span>
-    <h1 class="hero-title">Your Local Second Brain</h1>
+    <h1 class="hero-title">Search Every File You Own</h1>
     <p class="hero-tagline">
-      Index everything. Search from CLI or Claude. Your data never leaves your
-      machine.
+      Obsidian vaults. Project docs. PDFs. Code. One hybrid search
+      pipeline&mdash;fully local, fully private.
     </p>
     <p class="hero-description">
-      Index your entire digital life—notes, code, PDFs, and Office docs. Turn
-      your fragmented data into a cohesive local knowledge engine. Built for
-      humans and AI agents alike, fully local and private.
+      Point GNO at any directory on your machine. It indexes
+      everything&mdash;Markdown, PDF, Office docs&mdash;and makes it searchable
+      from the CLI, a web dashboard, or your AI coding agent. No cloud. No API
+      keys. Your data never leaves your machine.
     </p>
 
     <div class="hero-demo">
       <img
         src="{{ '/assets/demos/hero.gif' | relative_url }}"
-        alt="GNO search demo"
+        alt="GNO hybrid search demo showing CLI query with instant results"
         class="demo-gif"
         loading="lazy"
       />
@@ -45,91 +46,282 @@ layout: default
     </div>
   </section>
 
-  <section class="quickstart">
-    <h2 class="section-title">Quick Start</h2>
-    <div class="quickstart-content">
-      <div class="highlight">
-        <pre><code><span class="c"># Install</span>
-bun install -g @gmickel/gno
-
-<span class="c"># macOS: Vector search requires Homebrew SQLite</span>
-brew install sqlite3
-
-<span class="c"># Initialize with your notes folder</span>
-gno init ~/notes --name notes
-
-<span class="c"># Index documents (BM25 + vectors)</span>
-gno index
-
-<span class="c"># Search</span>
-gno query "authentication best practices"
-gno ask "summarize the API discussion" --answer</code></pre>
-      </div>
-      <p class="quickstart-link">
-        <a href="{{ '/docs/QUICKSTART/' | relative_url }}"
-          >Read the Full Documentation →</a
+  <section class="integrations-bar">
+    <p class="integrations-label">Works with your tools</p>
+    <div class="integrations-grid">
+      <a
+        href="{{ '/docs/integrations/claude-code/' | relative_url }}"
+        class="integration-item"
+        title="Claude Code"
+      >
+        <span class="integration-icon"
+          >{% include icons.html icon="terminal" size="20" %}</span
         >
-      </p>
+        <span class="integration-name">Claude Code</span>
+      </a>
+      <a
+        href="{{ '/docs/integrations/skills/' | relative_url }}"
+        class="integration-item"
+        title="Codex"
+      >
+        <span class="integration-icon"
+          >{% include icons.html icon="code" size="20" %}</span
+        >
+        <span class="integration-name">Codex</span>
+      </a>
+      <a
+        href="{{ '/docs/integrations/skills/' | relative_url }}"
+        class="integration-item"
+        title="OpenCode"
+      >
+        <span class="integration-icon"
+          >{% include icons.html icon="terminal" size="20" %}</span
+        >
+        <span class="integration-name">OpenCode</span>
+      </a>
+      <a
+        href="{{ '/docs/integrations/skills/' | relative_url }}"
+        class="integration-item"
+        title="OpenClaw"
+      >
+        <span class="integration-icon"
+          >{% include icons.html icon="terminal" size="20" %}</span
+        >
+        <span class="integration-name">OpenClaw</span>
+      </a>
+      <a
+        href="{{ '/docs/integrations/cursor/' | relative_url }}"
+        class="integration-item"
+        title="Cursor"
+      >
+        <span class="integration-icon"
+          >{% include icons.html icon="code" size="20" %}</span
+        >
+        <span class="integration-name">Cursor</span>
+      </a>
+      <a
+        href="{{ '/docs/integrations/claude-desktop/' | relative_url }}"
+        class="integration-item"
+        title="Claude Desktop"
+      >
+        <span class="integration-icon"
+          >{% include icons.html icon="brain" size="20" %}</span
+        >
+        <span class="integration-name">Claude Desktop</span>
+      </a>
+      <a
+        href="{{ '/docs/MCP/' | relative_url }}"
+        class="integration-item"
+        title="Zed"
+      >
+        <span class="integration-icon"
+          >{% include icons.html icon="code" size="20" %}</span
+        >
+        <span class="integration-name">Zed</span>
+      </a>
+      <a
+        href="{{ '/docs/MCP/' | relative_url }}"
+        class="integration-item"
+        title="Windsurf"
+      >
+        <span class="integration-icon"
+          >{% include icons.html icon="code" size="20" %}</span
+        >
+        <span class="integration-name">Windsurf</span>
+      </a>
+      <a
+        href="{{ '/docs/MCP/' | relative_url }}"
+        class="integration-item"
+        title="Amp"
+      >
+        <span class="integration-icon"
+          >{% include icons.html icon="code" size="20" %}</span
+        >
+        <span class="integration-name">Amp</span>
+      </a>
+      <a
+        href="{{ '/docs/MCP/' | relative_url }}"
+        class="integration-item"
+        title="Raycast"
+      >
+        <span class="integration-icon"
+          >{% include icons.html icon="hybrid-search" size="20" %}</span
+        >
+        <span class="integration-name">Raycast</span>
+      </a>
+    </div>
+  </section>
+
+  <section class="how-it-works">
+    <h2 class="section-title">Three Commands to Searchable Knowledge</h2>
+    <div class="steps-grid">
+      <div class="step-card">
+        <span class="step-number">1</span>
+        <h3>Point</h3>
+        <p>
+          Add any directory&mdash;Obsidian vault, project docs, research papers,
+          code repos.
+        </p>
+        <code class="step-command">gno init ~/vault --name notes</code>
+      </div>
+      <div class="step-card">
+        <span class="step-number">2</span>
+        <h3>Index</h3>
+        <p>
+          GNO builds BM25 + vector indexes. Understands 30+ languages.
+          Incremental re-indexing.
+        </p>
+        <code class="step-command">gno index</code>
+      </div>
+      <div class="step-card">
+        <span class="step-number">3</span>
+        <h3>Search</h3>
+        <p>
+          Hybrid search from CLI, Web UI, REST API, or any AI agent via MCP /
+          Skills.
+        </p>
+        <code class="step-command">gno query "auth best practices"</code>
+      </div>
+    </div>
+  </section>
+
+  <section class="use-cases">
+    <h2 class="section-title">Built for How You Actually Work</h2>
+
+    <div class="use-case-card">
+      <div class="use-case-content">
+        <span class="use-case-label">For Knowledge Workers</span>
+        <h3>Your Obsidian Vault, Supercharged</h3>
+        <p>
+          You have thousands of notes across Obsidian, Logseq, or plain Markdown
+          folders. GNO indexes them all and adds what your note app
+          can't&mdash;hybrid semantic search, AI-powered answers with citations,
+          and a knowledge graph that reveals connections you didn't know
+          existed.
+        </p>
+        <div class="use-case-commands">
+          <code>gno query "what did we decide about the API redesign"</code>
+          <code
+            >gno ask "summarize my meeting notes from last week" --answer</code
+          >
+        </div>
+        <a
+          href="{{ '/features/hybrid-search/' | relative_url }}"
+          class="use-case-link"
+          >How search works &rarr;</a
+        >
+      </div>
+      <div class="use-case-visual">
+        <img
+          src="{{ '/assets/screenshots/webui-search.jpg' | relative_url }}"
+          alt="GNO Web UI search results"
+          loading="lazy"
+        />
+      </div>
+    </div>
+
+    <div class="use-case-card use-case-card--reverse">
+      <div class="use-case-content">
+        <span class="use-case-label">For AI Agents</span>
+        <h3>Give Your Coding Agent a Memory</h3>
+        <p>
+          Claude Code, Codex, OpenCode, OpenClaw, Cursor&mdash;they're powerful
+          but amnesiac. Install GNO as a skill or MCP server and your agent can
+          search your entire knowledge base on demand. Zero context pollution,
+          instant retrieval.
+        </p>
+        <div class="use-case-commands">
+          <code>gno skill install --scope user</code>
+          <code>gno mcp install --target cursor</code>
+        </div>
+        <a
+          href="{{ '/features/agent-integration/' | relative_url }}"
+          class="use-case-link"
+          >Agent integration &rarr;</a
+        >
+      </div>
+      <div class="use-case-visual">
+        <img
+          src="{{ '/assets/screenshots/claudecodeskill.jpg' | relative_url }}"
+          alt="GNO running as a Claude Code skill"
+          loading="lazy"
+        />
+      </div>
+    </div>
+
+    <div class="use-case-card">
+      <div class="use-case-content">
+        <span class="use-case-label">For Developers</span>
+        <h3>Embed Search in Your App</h3>
+        <p>
+          Use GNO as a TypeScript SDK, REST API, or CLI pipe. Build internal
+          tools, automate knowledge retrieval, or add semantic search to any
+          workflow. JSON output everywhere, scriptable and composable.
+        </p>
+        <div class="use-case-commands">
+          <code>gno search "JWT token" --json | jq '.results[].uri'</code>
+          <code>curl localhost:3000/api/query -d '{"q":"auth"}'</code>
+        </div>
+        <a href="{{ '/docs/SDK/' | relative_url }}" class="use-case-link"
+          >SDK docs &rarr;</a
+        >
+      </div>
+      <div class="use-case-visual">
+        <img
+          src="{{ '/assets/screenshots/webui-home.jpg' | relative_url }}"
+          alt="GNO Web UI dashboard"
+          loading="lazy"
+        />
+      </div>
     </div>
   </section>
 
   <section class="whats-new">
-    <h2 class="section-title">What's New in v0.13</h2>
+    <h2 class="section-title">What's New in v0.26</h2>
     <div class="whats-new-grid">
       <div class="whats-new-item">
-        <h3>Knowledge Graph</h3>
+        <h3>Skills for Every Agent</h3>
         <p>
-          Interactive force-directed visualization. See wiki links, markdown
-          links, and similarity edges as a navigable constellation.
+          One-line install for Claude Code, Codex, OpenCode, and OpenClaw. Zero
+          MCP overhead, on-demand retrieval.
         </p>
-        <a href="{{ '/features/graph-view/' | relative_url }}">Learn more →</a>
-      </div>
-      <div class="whats-new-item">
-        <h3>Document Viewer</h3>
-        <p>
-          Enhanced reading with outgoing links, backlinks, and AI-powered
-          related notes sidebar.
-        </p>
-        <a href="{{ '/features/web-ui/' | relative_url }}">Learn more →</a>
-      </div>
-      <div class="whats-new-item">
-        <h3>Note Linking</h3>
-        <p>
-          Wiki-style <code>[[links]]</code>, backlinks, and semantic similarity
-          for connected knowledge.
-        </p>
-        <a href="{{ '/features/note-linking/' | relative_url }}"
-          >Learn more →</a
+        <a href="{{ '/features/agent-integration/' | relative_url }}"
+          >Learn more &rarr;</a
         >
       </div>
-    </div>
-  </section>
-
-  <section class="demos">
-    <h2 class="section-title">See It In Action</h2>
-
-    <div class="demo-full">
-      <h3>Quick Start</h3>
-      <p>Initialize, index, and search in seconds</p>
-      <img
-        src="{{ '/assets/demos/quickstart.gif' | relative_url }}"
-        alt="GNO quickstart demo"
-        loading="lazy"
-      />
-    </div>
-
-    <div class="demo-full">
-      <h3>Search Modes</h3>
-      <p>BM25, vector, and hybrid search comparison</p>
-      <img
-        src="{{ '/assets/demos/search-modes.gif' | relative_url }}"
-        alt="GNO search modes demo"
-        loading="lazy"
-      />
+      <div class="whats-new-item">
+        <h3>Fine-Tuned Retrieval</h3>
+        <p>
+          Published <code>slim-retrieval-v1</code> on Hugging Face. Train your
+          own with local MLX LoRA, export portable GGUF.
+        </p>
+        <a href="{{ '/features/fine-tuned-models/' | relative_url }}"
+          >Learn more &rarr;</a
+        >
+      </div>
+      <div class="whats-new-item">
+        <h3>SDK &amp; Library Mode</h3>
+        <p>
+          Import GNO directly into Bun/TypeScript apps.
+          <code>createGnoClient()</code> for programmatic search without
+          subprocess overhead.
+        </p>
+        <a href="{{ '/docs/SDK/' | relative_url }}">Learn more &rarr;</a>
+      </div>
+      <div class="whats-new-item">
+        <h3>Structured Queries</h3>
+        <p>
+          Multi-line query documents with <code>term:</code>,
+          <code>intent:</code>, and <code>hyde:</code> for explicit retrieval
+          control.
+        </p>
+        <a href="{{ '/docs/SYNTAX/' | relative_url }}">Learn more &rarr;</a>
+      </div>
     </div>
   </section>
 
   <section class="features">
+    <h2 class="section-title">Everything You Need</h2>
     <div class="features-grid">
       <a
         href="{{ '/features/hybrid-search/' | relative_url }}"
@@ -140,8 +332,8 @@ gno ask "summarize the API discussion" --answer</code></pre>
         </div>
         <h3 class="feature-card-title">Hybrid Search</h3>
         <p class="feature-card-description">
-          BM25 full-text + vector similarity with reciprocal rank fusion for
-          accurate results.
+          BM25 full-text + vector similarity with reciprocal rank fusion and
+          cross-encoder reranking.
         </p>
       </a>
 
@@ -154,22 +346,8 @@ gno ask "summarize the API discussion" --answer</code></pre>
         </div>
         <h3 class="feature-card-title">AI Answers</h3>
         <p class="feature-card-description">
-          Get grounded responses with citations. Run locally or offload to a GPU
-          server on your network.
-        </p>
-      </a>
-
-      <a
-        href="{{ '/features/multi-format/' | relative_url }}"
-        class="feature-card"
-      >
-        <div class="feature-card-icon">
-          {% include icons.html icon="multi-format" size="24" %}
-        </div>
-        <h3 class="feature-card-title">Multi-Format</h3>
-        <p class="feature-card-description">
-          Index Markdown, PDF, DOCX, XLSX, PPTX, and plain text documents
-          seamlessly.
+          Cited, grounded responses from your own documents. Local LLM or remote
+          GPU&mdash;no cloud APIs.
         </p>
       </a>
 
@@ -182,8 +360,8 @@ gno ask "summarize the API discussion" --answer</code></pre>
         </div>
         <h3 class="feature-card-title">Privacy First</h3>
         <p class="feature-card-description">
-          All processing happens locally. Your documents never leave your
-          machine.
+          100% local. Zero telemetry. Works offline. Your documents never leave
+          your machine.
         </p>
       </a>
 
@@ -194,10 +372,10 @@ gno ask "summarize the API discussion" --answer</code></pre>
         <div class="feature-card-icon">
           {% include icons.html icon="agent" size="24" %}
         </div>
-        <h3 class="feature-card-title">Agent Integration</h3>
+        <h3 class="feature-card-title">Agent Skills</h3>
         <p class="feature-card-description">
-          SKILL.md integration for Claude Code, Codex, and more. Zero context
-          pollution, on-demand retrieval.
+          One-line install for Claude Code, Codex, OpenCode, OpenClaw. Zero
+          context pollution.
         </p>
       </a>
 
@@ -208,10 +386,35 @@ gno ask "summarize the API discussion" --answer</code></pre>
         <div class="feature-card-icon">
           {% include icons.html icon="mcp-integration" size="24" %}
         </div>
-        <h3 class="feature-card-title">MCP Integration</h3>
+        <h3 class="feature-card-title">MCP Server</h3>
         <p class="feature-card-description">
-          Use as an MCP server for seamless AI assistant access to your
-          knowledge base.
+          19 tools for Claude Desktop, Cursor, Zed, Windsurf, Amp, Raycast, and
+          more.
+        </p>
+      </a>
+
+      <a
+        href="{{ '/features/multi-format/' | relative_url }}"
+        class="feature-card"
+      >
+        <div class="feature-card-icon">
+          {% include icons.html icon="multi-format" size="24" %}
+        </div>
+        <h3 class="feature-card-title">Multi-Format</h3>
+        <p class="feature-card-description">
+          Markdown, PDF, DOCX, XLSX, PPTX, plain text. Frontmatter extraction
+          and language detection.
+        </p>
+      </a>
+
+      <a href="{{ '/features/web-ui/' | relative_url }}" class="feature-card">
+        <div class="feature-card-icon">
+          {% include icons.html icon="globe" size="24" %}
+        </div>
+        <h3 class="feature-card-title">Web UI</h3>
+        <p class="feature-card-description">
+          Dashboard for search, browse, edit, and AI Q&A. Knowledge graph
+          visualization. Keyboard-first.
         </p>
       </a>
 
@@ -224,55 +427,8 @@ gno ask "summarize the API discussion" --answer</code></pre>
         </div>
         <h3 class="feature-card-title">Fine-Tuned Models</h3>
         <p class="feature-card-description">
-          Use the published slim retrieval model from Hugging Face or train and
-          ship your own portable GGUF.
-        </p>
-      </a>
-
-      <a href="{{ '/features/web-ui/' | relative_url }}" class="feature-card">
-        <div class="feature-card-icon">
-          {% include icons.html icon="globe" size="24" %}
-        </div>
-        <h3 class="feature-card-title">Web UI</h3>
-        <p class="feature-card-description">
-          Visual dashboard for search, browse, and AI Q&A. Switch presets and
-          download models live.
-        </p>
-      </a>
-
-      <a href="{{ '/features/api/' | relative_url }}" class="feature-card">
-        <div class="feature-card-icon">
-          {% include icons.html icon="code" size="24" %}
-        </div>
-        <h3 class="feature-card-title">REST API</h3>
-        <p class="feature-card-description">
-          HTTP API for programmatic access. Build custom tools and integrations
-          in any language.
-        </p>
-      </a>
-
-      <a href="{{ '/features/tags/' | relative_url }}" class="feature-card">
-        <div class="feature-card-icon">
-          {% include icons.html icon="tag" size="24" %}
-        </div>
-        <h3 class="feature-card-title">Tag System</h3>
-        <p class="feature-card-description">
-          Classify and filter with hierarchical tags. Auto-extract from
-          frontmatter, filter with AND/OR.
-        </p>
-      </a>
-
-      <a
-        href="{{ '/features/note-linking/' | relative_url }}"
-        class="feature-card"
-      >
-        <div class="feature-card-icon">
-          {% include icons.html icon="link" size="24" %}
-        </div>
-        <h3 class="feature-card-title">Note Linking</h3>
-        <p class="feature-card-description">
-          Wiki links, backlinks, and semantic similarity. Navigate your
-          knowledge graph.
+          Published retrieval model on Hugging Face. Train your own with local
+          MLX LoRA.
         </p>
       </a>
 
@@ -285,22 +441,30 @@ gno ask "summarize the API discussion" --answer</code></pre>
         </div>
         <h3 class="feature-card-title">Knowledge Graph</h3>
         <p class="feature-card-description">
-          Interactive visualization of document connections. Explore wiki links,
-          markdown links, and similarity edges.
+          Interactive visualization of wiki links, markdown links, and semantic
+          similarity edges.
         </p>
       </a>
 
-      <a
-        href="{{ '/features/collections/' | relative_url }}"
-        class="feature-card"
-      >
+      <a href="{{ '/features/tags/' | relative_url }}" class="feature-card">
         <div class="feature-card-icon">
-          {% include icons.html icon="collections" size="24" %}
+          {% include icons.html icon="tag" size="24" %}
         </div>
-        <h3 class="feature-card-title">Collections</h3>
+        <h3 class="feature-card-title">Tags &amp; Filtering</h3>
         <p class="feature-card-description">
-          Organize documents by source directory with contexts for improved
-          relevance.
+          Hierarchical tags from frontmatter. Temporal, author, and category
+          filters. AND/OR logic.
+        </p>
+      </a>
+
+      <a href="{{ '/features/api/' | relative_url }}" class="feature-card">
+        <div class="feature-card-icon">
+          {% include icons.html icon="code" size="24" %}
+        </div>
+        <h3 class="feature-card-title">REST API &amp; SDK</h3>
+        <p class="feature-card-description">
+          35+ HTTP endpoints. TypeScript SDK for embedding GNO in your own apps.
+          JSON everywhere.
         </p>
       </a>
 
@@ -310,24 +474,43 @@ gno ask "summarize the API discussion" --answer</code></pre>
         </div>
         <h3 class="feature-card-title">Fast CLI</h3>
         <p class="feature-card-description">
-          Bun-powered for instant startup. Search thousands of documents in
-          milliseconds.
+          Bun-powered instant startup. Search 15,000+ docs in milliseconds.
+          JSON, CSV, Markdown output.
         </p>
       </a>
+    </div>
+  </section>
 
-      <a
-        href="{{ '/docs/HOW-SEARCH-WORKS/' | relative_url }}"
-        class="feature-card"
-      >
-        <div class="feature-card-icon">
-          {% include icons.html icon="brain" size="24" %}
-        </div>
-        <h3 class="feature-card-title">Advanced Retrieval</h3>
-        <p class="feature-card-description">
-          Query expansion, metadata filtering, and cross-encoder reranking.
-          Fully offline.
-        </p>
-      </a>
+  <section class="quickstart">
+    <h2 class="section-title">Quick Start</h2>
+    <div class="quickstart-content">
+      <div class="highlight">
+        <pre><code><span class="c"># Install</span>
+bun install -g @gmickel/gno
+
+<span class="c"># macOS: Vector search requires Homebrew SQLite</span>
+brew install sqlite3
+
+<span class="c"># Point at your files</span>
+gno init ~/obsidian-vault --name vault
+gno init ~/projects/docs --name docs
+
+<span class="c"># Index everything</span>
+gno index
+
+<span class="c"># Search</span>
+gno query "authentication best practices"
+gno ask "summarize the API discussion" --answer
+
+<span class="c"># Give your AI agent access</span>
+gno skill install --scope user          <span class="c"># Claude Code / Codex / OpenCode</span>
+gno mcp install --target cursor         <span class="c"># Cursor / Zed / Windsurf</span></code></pre>
+      </div>
+      <p class="quickstart-link">
+        <a href="{{ '/docs/QUICKSTART/' | relative_url }}"
+          >Read the Full Documentation &rarr;</a
+        >
+      </p>
     </div>
   </section>
 

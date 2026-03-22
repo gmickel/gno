@@ -1,39 +1,48 @@
 ---
 layout: home
 title: Home
+description: "Search every file you own. GNO indexes Obsidian vaults, project docs, PDFs, and Office files with hybrid BM25 + vector search. 100% local, works with Claude Code, Codex, Cursor, and 10+ AI agents."
+keywords: local search, semantic search, obsidian search, knowledge engine, hybrid search, MCP server, Claude Code, privacy-first, AI agent memory, local RAG
 ---
 
 ![GNO CLI](/assets/screenshots/cli.jpg)
 
 ## Why GNO?
 
-Most search tools are either fast but dumb (grep, find) or smart but slow and cloud-dependent. GNO bridges this gap by running a full hybrid search pipeline (keyword, vector, and re-ranking) entirely on your local machine.
+Your files are scattered across Obsidian vaults, project directories, research folders, and code repos. Existing search is either fast but dumb (grep, Spotlight) or smart but cloud-dependent. GNO runs a full hybrid search pipeline—BM25 keyword matching, vector similarity, query expansion, cross-encoder reranking—entirely on your machine.
 
-## For AI Agents
+**15,000+ documents. Sub-second search. Zero cloud.**
 
-Give your local LLM agents a long-term memory. GNO integrates as a Claude Code skill or MCP server, allowing agents to search, read, and cite your local files.
+## The Ideal AI Agent Companion
 
-### Claude Code
+Your coding agent is only as good as the context it can access. GNO gives Claude Code, Codex, OpenCode, OpenClaw, Cursor, and any MCP-compatible client instant access to your entire knowledge base.
 
-Install GNO as a skill and search your knowledge base directly from Claude Code:
+### Skills (Zero Overhead)
+
+Install GNO as a skill—no MCP server, no context window pollution. Your agent calls GNO on demand.
 
 ```bash
-gno skill install --scope user
+gno skill install --scope user                # Claude Code (default)
+gno skill install --target codex              # OpenAI Codex
+gno skill install --target opencode           # OpenCode
+gno skill install --target openclaw           # OpenClaw
+gno skill install --target all                # All agents at once
 ```
 
 ![GNO Claude Code Skill](/assets/screenshots/claudecodeskill.jpg)
 
 [Skill setup guide →](/docs/integrations/skills/)
 
-### MCP Clients
+### MCP Server (19 Tools)
 
-Connect GNO to Claude Desktop, Cursor, Raycast, and more:
+Connect GNO to Claude Desktop, Cursor, Zed, Windsurf, Amp, Raycast, LM Studio, and more:
 
 ```bash
 gno mcp install                    # Claude Desktop (default)
 gno mcp install --target cursor    # Cursor
 gno mcp install --target zed       # Zed
 gno mcp install --target windsurf  # Windsurf
+gno mcp install --target amp       # Amp
 # ... and 6 more targets
 ```
 
@@ -41,13 +50,13 @@ gno mcp install --target windsurf  # Windsurf
 
 Once connected, ask things like:
 
-> "Search my local notes for the project roadmap and summarize the Q4 goals."
+> "Search my notes for the authentication decision and summarize the trade-offs."
 
 [MCP setup guide →](/docs/MCP/)
 
 ## For Builders
 
-Embed GNO directly inside another Bun or TypeScript app with the SDK.
+Embed GNO directly inside another Bun or TypeScript app with the SDK—no subprocess overhead, no local server.
 
 ```ts
 import { createDefaultConfig, createGnoClient } from "@gmickel/gno";

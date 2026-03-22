@@ -1,6 +1,6 @@
 # Skills Integration
 
-Use GNO as a skill in AI coding agents like Claude Code, OpenCode, Amp, OpenAI Codex, VS Code Copilot, and Cursor.
+Use GNO as a skill in AI coding agents like Claude Code, OpenAI Codex, OpenCode, OpenClaw, Amp, VS Code Copilot, and Cursor.
 
 > **Why Skills?** Skills are the preferred integration method due to progressive discovery: tools are only loaded when invoked via `/gno`, avoiding context pollution from unused tool definitions. See [agentskills.io](https://agentskills.io/home) for the specification.
 >
@@ -11,16 +11,20 @@ Use GNO as a skill in AI coding agents like Claude Code, OpenCode, Amp, OpenAI C
 ```bash
 gno skill install --scope user          # Claude Code (default)
 gno skill install --target codex        # OpenAI Codex CLI
-gno skill install --target all          # Both targets
+gno skill install --target opencode     # OpenCode
+gno skill install --target openclaw     # OpenClaw
+gno skill install --target all          # All targets at once
 ```
 
 ## Supported Targets
 
-| Target   | Command                            | Config Location           | Also Works With |
-| :------- | :--------------------------------- | :------------------------ | :-------------- |
-| `claude` | `gno skill install`                | `~/.claude/settings.json` | OpenCode, Amp   |
-| `codex`  | `gno skill install --target codex` | `~/.codex/config.json`    |                 |
-| `all`    | `gno skill install --target all`   | Both locations            |                 |
+| Target     | Command                               | Config Location                  | Also Works With |
+| :--------- | :------------------------------------ | :------------------------------- | :-------------- |
+| `claude`   | `gno skill install`                   | `~/.claude/skills/gno/`          | OpenCode, Amp   |
+| `codex`    | `gno skill install --target codex`    | `~/.codex/skills/gno/`           |                 |
+| `opencode` | `gno skill install --target opencode` | `~/.config/opencode/skills/gno/` |                 |
+| `openclaw` | `gno skill install --target openclaw` | `~/.openclaw/skills/gno/`        |                 |
+| `all`      | `gno skill install --target all`      | All locations                    |                 |
 
 ## Scope Options
 
@@ -51,6 +55,17 @@ gno skill uninstall [options]  # Remove skill
 gno skill show [options]       # Preview skill files
 gno skill paths [options]      # Show installation paths
 ```
+
+### CLI Flags
+
+| Flag                | Description                                                             |
+| :------------------ | :---------------------------------------------------------------------- |
+| `--scope <scope>`   | `project` or `user` (default: `user`)                                   |
+| `--target <target>` | `claude`, `codex`, `opencode`, `openclaw`, or `all` (default: `claude`) |
+| `--force`           | Overwrite existing installation                                         |
+| `--retrieval`       | Include retrieval flags reference                                       |
+| `--links`           | Include linking commands reference                                      |
+| `--query-mode`      | Include query mode documentation                                        |
 
 ## Example Workflows
 
@@ -88,6 +103,24 @@ Add to `~/.codex/config.json`:
 {
   "skills": ["@gmickel/gno"]
 }
+```
+
+### OpenCode
+
+Copy the skill manually:
+
+```bash
+mkdir -p ~/.config/opencode/skills/gno
+gno skill show --target opencode > ~/.config/opencode/skills/gno/SKILL.md
+```
+
+### OpenClaw
+
+Copy the skill manually:
+
+```bash
+mkdir -p ~/.openclaw/skills/gno
+gno skill show --target openclaw > ~/.openclaw/skills/gno/SKILL.md
 ```
 
 ## Other Compatible Clients

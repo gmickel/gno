@@ -2,20 +2,23 @@
 layout: feature
 title: MCP Integration
 headline: Give Your AI Assistant Memory
-description: Connect GNO to Claude Desktop, Claude Code, Cursor, or any MCP-compatible AI assistant. Your AI can now search and cite your local documents.
-keywords: mcp server, claude desktop integration, claude code integration, cursor integration, ai assistant, model context protocol
+description: Connect GNO to Claude Desktop, Cursor, Zed, Windsurf, Amp, Raycast, and more via MCP. 19 tools for search, retrieval, graph exploration, and indexing. Your AI can search and cite your local documents.
+keywords: mcp server, claude desktop mcp, cursor mcp, zed mcp, windsurf mcp, amp mcp, model context protocol, ai assistant memory, local knowledge mcp
 icon: mcp-integration
 slug: mcp-integration
 permalink: /features/mcp-integration/
 og_image: /assets/images/og/og-mcp-integration.png
 benefits:
-  - Works with Claude Desktop
-  - Works with Claude Code
-  - Works with Cursor
-  - Standard MCP protocol
-  - Search, read, and cite documents
+  - 19 MCP tools for search, retrieval, graph, and indexing
+  - Works with Claude Desktop, Cursor, Zed, Windsurf, Amp
+  - Also supports Raycast, LM Studio, LibreChat
+  - One-command install for 10+ clients
+  - Write tools disabled by default (security-first)
+  - Resource URIs for direct document access
 commands:
   - "gno mcp install"
+  - "gno mcp install --target cursor"
+  - "gno mcp install --target zed"
   - "gno mcp status"
 ---
 
@@ -85,18 +88,43 @@ Configure in Cursor's MCP settings with the command:
 gno mcp
 ```
 
-## Available Tools
+## Available Tools (19 Total)
 
-Once connected, your AI assistant can:
+Once connected, your AI assistant can use:
 
-| Tool            | Description               |
-| --------------- | ------------------------- |
-| `gno_search`    | BM25 keyword search       |
-| `gno_vsearch`   | Vector similarity search  |
-| `gno_query`     | Hybrid search             |
-| `gno_get`       | Retrieve document content |
-| `gno_multi_get` | Batch document retrieval  |
-| `gno_status`    | Check index status        |
+**Read Tools:**
+
+| Tool            | Description                    |
+| --------------- | ------------------------------ |
+| `gno_search`    | BM25 keyword search            |
+| `gno_vsearch`   | Vector similarity search       |
+| `gno_query`     | Hybrid search with reranking   |
+| `gno_get`       | Retrieve document content      |
+| `gno_multi_get` | Batch document retrieval       |
+| `gno_status`    | Check index status             |
+| `gno_list_tags` | List all tags                  |
+| `gno_links`     | Get outgoing links             |
+| `gno_backlinks` | Get incoming backlinks         |
+| `gno_similar`   | Find semantically similar docs |
+| `gno_graph`     | Knowledge graph data           |
+
+**Write Tools (opt-in with `--enable-write`):**
+
+| Tool                    | Description             |
+| ----------------------- | ----------------------- |
+| `gno_capture`           | Create new documents    |
+| `gno_add_collection`    | Add document sources    |
+| `gno_remove_collection` | Remove document sources |
+| `gno_sync`              | Update collections      |
+| `gno_embed`             | Generate embeddings     |
+| `gno_index`             | Full re-index           |
+
+**Job Tools:**
+
+| Tool             | Description           |
+| ---------------- | --------------------- |
+| `gno_job_status` | Check async job state |
+| `gno_list_jobs`  | List all jobs         |
 
 ## Example Prompts
 
