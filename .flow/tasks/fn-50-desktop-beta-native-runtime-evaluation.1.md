@@ -23,9 +23,11 @@ This is a spike, not a production desktop app. Keep scope tight. Prefer isolatio
 - [ ] Core app/server logic is not polluted with shell-specific hacks beyond what the spike strictly needs.
 
 ## Done summary
+
 Built an isolated Electrobun spike under `desktop/electrobun-spike/`.
 
 What landed:
+
 - Electrobun shell launches the real GNO Bun server as a child process.
 - BrowserWindow loads the existing GNO workspace over loopback.
 - Runtime config carries repo root + port into the packaged/dev shell.
@@ -35,10 +37,13 @@ What landed:
 - Findings are documented in `plans/electrobun-spike.md`.
 
 Current read:
+
 - promising for `fn-50`
 - enough evidence to continue Electrobun evaluation
 - still missing single-instance, file associations, updater/signing, and packaged-app rollout validation
+
 ## Evidence
+
 - Commits:
 - Tests: bunx tsc -p desktop/electrobun-spike/tsconfig.json --noEmit, bun run lint:check, bun test, bun run docs:verify, desktop/electrobun-spike: self-test booted GNO window, navigated to /search?q=workspace, opened native Open dialog, moved probe file to Trash
 - PRs:
