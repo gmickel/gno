@@ -61,16 +61,90 @@ gno search "your query"               # BM25 keyword search
 
 **Retry strategy**: Use default first. If no results: rephrase query, then try `--thorough`.
 
-## Common Flags
+## Common Flags (search/vsearch/query/ask)
 
 ```
 -n <num>              Max results (default: 5)
 -c, --collection      Filter to collection
 --tags-any <t1,t2>    Has ANY of these tags
 --tags-all <t1,t2>    Has ALL of these tags
+--since <date>        Modified after date (ISO: 2026-03-01)
+--until <date>        Modified before date (ISO: 2026-03-31)
+--exclude <terms>     Exclude docs containing any term (comma-separated)
+--intent <text>       Disambiguate ambiguous queries (e.g. "python" = language not snake)
 --json                JSON output
 --files               URI list output
 --line-numbers        Include line numbers
+```
+
+## Advanced: Structured Query Modes (query/ask only)
+
+Use `--query-mode` to combine multiple retrieval strategies in one query (repeatable):
+
+```bash
+# Combine keyword + hypothetical document
+gno query "API rate limiting" \
+  --query-mode "term:rate limit" \
+  --query-mode "hyde:how to implement request throttling"
+
+# Add intent steering
+gno query "python" \
+  --query-mode "term:python" \
+  --query-mode "intent:programming language"
+```
+
+Modes: `term:<text>` (keyword), `intent:<text>` (disambiguation), `hyde:<text>` (hypothetical doc for semantic matching). Max one hyde per query.
+
+## Document Retrieval
+
+```bash
+# Full document by URI
+gno get gno://work/readme.md
+
+# By document ID
+gno get "#a1b2c3d4"
+
+# Specific line range: --from <start> -l <count>
+gno get gno://work/report.md --from 100 -l 20
+
+# With line numbers
+gno get gno://work/report.md --line-numbers
+
+# Multiple documents
+gno multi-get gno://work/doc1.md gno://work/doc2.md
+```
+
+## Search Then Get (common pipeline)
+
+```bash
+# Search, get full content of top result
+gno query "auth" --json | jq -r '.results[0].uri' | xargs gno get
+
+# Get all results
+gno search "error handling" --json | jq -r '.results[].uri' | xargs gno multi-get
+```
+
+## Document Links & Similarity
+
+```bash
+# Outgoing links from a document
+gno links gno://notes/readme.md
+
+# Find documents linking TO a document (backlinks)
+gno backlinks gno://notes/api-design.md
+
+# Find semantically similar documents
+gno similar gno://notes/auth.md
+
+# Similar across all collections (not just same collection)
+gno similar gno://notes/auth.md --cross-collection
+
+# Stricter threshold (default: 0.7)
+gno similar gno://notes/auth.md --threshold 0.85
+
+# Knowledge graph
+gno graph --json
+gno graph -c notes --similar   # Include similarity edges
 ```
 
 ## Global Flags
