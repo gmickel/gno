@@ -1,0 +1,17 @@
+{
+  "assignee": null,
+  "claim_note": "",
+  "claimed_at": null,
+  "created_at": "2026-03-22T06:51:13.534476Z",
+  "depends_on": [
+    "fn-41-document-workspace-foundation-for.3",
+    "fn-41-document-workspace-foundation-for.4"
+  ],
+  "epic": "fn-41-document-workspace-foundation-for",
+  "id": "fn-41-document-workspace-foundation-for.6",
+  "priority": 6,
+  "spec_path": ".flow/tasks/fn-41-document-workspace-foundation-for.6.md",
+  "status": "todo",
+  "title": "Build the fast Cmd/Ctrl+K workspace switcher",
+  "updated_at": "2026-03-22T06:52:11.143565Z"
+}

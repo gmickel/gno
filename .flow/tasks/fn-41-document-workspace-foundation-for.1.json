@@ -1,0 +1,14 @@
+{
+  "assignee": null,
+  "claim_note": "",
+  "claimed_at": null,
+  "created_at": "2026-03-22T06:51:13.057036Z",
+  "depends_on": [],
+  "epic": "fn-41-document-workspace-foundation-for",
+  "id": "fn-41-document-workspace-foundation-for.1",
+  "priority": 1,
+  "spec_path": ".flow/tasks/fn-41-document-workspace-foundation-for.1.md",
+  "status": "todo",
+  "title": "Define the safe document capability contract",
+  "updated_at": "2026-03-22T06:52:10.642498Z"
+}

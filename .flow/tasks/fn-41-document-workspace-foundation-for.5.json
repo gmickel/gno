@@ -1,0 +1,14 @@
+{
+  "assignee": null,
+  "claim_note": "",
+  "claimed_at": null,
+  "created_at": "2026-03-22T06:51:13.440522Z",
+  "depends_on": ["fn-41-document-workspace-foundation-for.1"],
+  "epic": "fn-41-document-workspace-foundation-for",
+  "id": "fn-41-document-workspace-foundation-for.5",
+  "priority": 5,
+  "spec_path": ".flow/tasks/fn-41-document-workspace-foundation-for.5.md",
+  "status": "todo",
+  "title": "Upgrade markdown authoring foundations in the editor",
+  "updated_at": "2026-03-22T06:52:11.045389Z"
+}

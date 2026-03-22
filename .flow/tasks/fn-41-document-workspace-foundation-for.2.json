@@ -1,0 +1,14 @@
+{
+  "assignee": null,
+  "claim_note": "",
+  "claimed_at": null,
+  "created_at": "2026-03-22T06:51:13.154644Z",
+  "depends_on": ["fn-41-document-workspace-foundation-for.1"],
+  "epic": "fn-41-document-workspace-foundation-for",
+  "id": "fn-41-document-workspace-foundation-for.2",
+  "priority": 2,
+  "spec_path": ".flow/tasks/fn-41-document-workspace-foundation-for.2.md",
+  "status": "todo",
+  "title": "Add conflict-safe editing and local history",
+  "updated_at": "2026-03-22T06:52:10.741134Z"
+}

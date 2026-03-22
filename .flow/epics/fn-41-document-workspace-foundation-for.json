@@ -1,0 +1,13 @@
+{
+  "branch_name": "fn-41-document-workspace-foundation-for",
+  "created_at": "2026-03-22T06:49:41.044358Z",
+  "depends_on_epics": [],
+  "id": "fn-41-document-workspace-foundation-for",
+  "next_task": 1,
+  "plan_review_status": "unknown",
+  "plan_reviewed_at": null,
+  "spec_path": ".flow/specs/fn-41-document-workspace-foundation-for.md",
+  "status": "open",
+  "title": "Document Workspace Foundation for Desktop + Agents",
+  "updated_at": "2026-03-22T06:50:57.064155Z"
+}

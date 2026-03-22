@@ -1,0 +1,14 @@
+{
+  "assignee": null,
+  "claim_note": "",
+  "claimed_at": null,
+  "created_at": "2026-03-22T06:51:13.344027Z",
+  "depends_on": ["fn-41-document-workspace-foundation-for.1"],
+  "epic": "fn-41-document-workspace-foundation-for",
+  "id": "fn-41-document-workspace-foundation-for.4",
+  "priority": 4,
+  "spec_path": ".flow/tasks/fn-41-document-workspace-foundation-for.4.md",
+  "status": "todo",
+  "title": "Standardize deep links and exact-hit navigation",
+  "updated_at": "2026-03-22T06:52:10.942032Z"
+}
