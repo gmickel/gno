@@ -11,10 +11,11 @@ og_image: /assets/images/og/og-web-ui.png
 benefits:
   - Split-view markdown editor with live preview
   - Quick capture for instant note creation
-  - Create, edit, and delete documents
+  - Safe markdown/plaintext editing with read-only converted docs
   - Visual search with BM25, vector, and hybrid modes
   - AI answers with citations
   - Keyboard-first design
+  - Instant refresh after edits with external-change awareness
   - Live preset switching
   - 100% local, no cloud
 commands:
@@ -40,8 +41,10 @@ Create and edit documents directly in your browser:
 - **Split-view editing**: CodeMirror 6 editor with live markdown preview
 - **Auto-save**: Changes saved automatically with 2-second debounce
 - **Quick capture**: Press **N** anywhere to create a new note instantly
+- **Quick switcher**: Press **⌘K** / **Ctrl+K** to jump to recent or matching notes
 - **Syntax highlighting**: Code blocks rendered with Shiki
 - **Keyboard shortcuts**: **⌘S** to save, **⌘B** for bold, **⌘I** for italic
+- **Safe editing**: Converted PDF/DOCX/etc. sources stay read-only; create a markdown copy instead
 
 ![GNO Document Editor](/assets/screenshots/webui-editor.jpg)
 
@@ -53,6 +56,8 @@ View documents with full context:
 - **Backlinks**: Discover what documents link to this one
 - **Related notes**: AI-powered suggestions based on semantic similarity
 - **Quick navigation**: Click any link to jump to that document
+- **Deep links**: Copy links to exact documents and source-view line targets
+- **External change awareness**: Reload when a file changes on disk
 
 ![GNO Document Viewer](/assets/screenshots/webui-doc-view.jpg)
 
@@ -77,6 +82,7 @@ See your index at a glance:
 - **Chunk count**: Searchable text segments
 - **Health status**: Is everything working?
 - **Collections**: Jump to any source
+- **Live updates**: Reindex changes show up without manual refresh after edits
 
 ### Three Search Modes
 

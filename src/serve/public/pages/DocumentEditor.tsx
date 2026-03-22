@@ -21,6 +21,7 @@ import {
   LinkIcon,
   Loader2Icon,
   PenIcon,
+  SquareArrowOutUpRightIcon,
   UnlinkIcon,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -53,6 +54,8 @@ import {
   TooltipTrigger,
 } from "../components/ui/tooltip";
 import { apiFetch } from "../hooks/use-api";
+import { useDocEvents } from "../hooks/use-doc-events";
+import { buildEditDeepLink, parseDocumentDeepLink } from "../lib/deep-links";
 
 interface PageProps {
   navigate: (to: string | number) => void;
@@ -67,10 +70,40 @@ interface DocData {
   collection: string;
   relPath: string;
   source: {
+    absPath?: string;
     mime: string;
     ext: string;
     modifiedAt?: string;
     sizeBytes?: number;
+    sourceHash?: string;
+  };
+  capabilities: {
+    editable: boolean;
+    tagsEditable: boolean;
+    tagsWriteback: boolean;
+    canCreateEditableCopy: boolean;
+    mode: "editable" | "read_only";
+    reason?: string;
+  };
+}
+
+interface CreateEditableCopyResponse {
+  uri: string;
+  path: string;
+  jobId: string | null;
+  note?: string;
+}
+
+interface UpdateDocResponse {
+  success: boolean;
+  docId: string;
+  uri: string;
+  path: string;
+  jobId: string | null;
+  writeBack?: "applied" | "skipped_unsupported";
+  version: {
+    sourceHash: string;
+    modifiedAt?: string;
   };
 }
 
@@ -128,6 +161,10 @@ function formatTime(date: Date): string {
 }
 
 export default function DocumentEditor({ navigate }: PageProps) {
+  const currentTarget = useMemo(
+    () => parseDocumentDeepLink(window.location.search),
+    []
+  );
   const [doc, setDoc] = useState<DocData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -137,6 +174,11 @@ export default function DocumentEditor({ navigate }: PageProps) {
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("saved");
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [creatingCopy, setCreatingCopy] = useState(false);
+  const [copyError, setCopyError] = useState<string | null>(null);
+  const [externalChangeNotice, setExternalChangeNotice] = useState<
+    string | null
+  >(null);
 
   const [showPreview, setShowPreview] = useState(true);
   const [syncScroll, setSyncScroll] = useState(true);
@@ -150,6 +192,8 @@ export default function DocumentEditor({ navigate }: PageProps) {
   // Event-based suppression: ignore the echo event caused by programmatic scroll
   const ignoreNextEditorScroll = useRef(false);
   const ignoreNextPreviewScroll = useRef(false);
+  const ignoreDocEventsUntilRef = useRef(0);
+  const latestDocEvent = useDocEvents();
 
   const hasUnsavedChanges = content !== originalContent;
   const parsedContent = useMemo(() => parseFrontmatter(content), [content]);
@@ -228,11 +272,15 @@ export default function DocumentEditor({ navigate }: PageProps) {
       setSaveStatus("saving");
       setSaveError(null);
 
-      const { error: err } = await apiFetch(
+      const { data, error: err } = await apiFetch<UpdateDocResponse>(
         `/api/docs/${encodeURIComponent(doc.docid)}`,
         {
           method: "PUT",
-          body: JSON.stringify({ content: contentToSave }),
+          body: JSON.stringify({
+            content: contentToSave,
+            expectedSourceHash: doc.source.sourceHash,
+            expectedModifiedAt: doc.source.modifiedAt,
+          }),
         }
       );
 
@@ -240,13 +288,50 @@ export default function DocumentEditor({ navigate }: PageProps) {
         setSaveStatus("error");
         setSaveError(err);
       } else {
+        ignoreDocEventsUntilRef.current = Date.now() + 5_000;
         setSaveStatus("saved");
         setOriginalContent(contentToSave);
         setLastSaved(new Date());
+        if (data) {
+          setDoc((currentDoc) =>
+            currentDoc
+              ? {
+                  ...currentDoc,
+                  source: {
+                    ...currentDoc.source,
+                    sourceHash: data.version.sourceHash,
+                    modifiedAt: data.version.modifiedAt,
+                  },
+                }
+              : currentDoc
+          );
+        }
       }
     },
     [doc]
   );
+
+  const handleCreateEditableCopy = useCallback(async () => {
+    if (!doc?.capabilities.canCreateEditableCopy) return;
+
+    setCreatingCopy(true);
+    setCopyError(null);
+    const { data, error: err } = await apiFetch<CreateEditableCopyResponse>(
+      `/api/docs/${encodeURIComponent(doc.docid)}/editable-copy`,
+      { method: "POST" }
+    );
+    setCreatingCopy(false);
+
+    if (err) {
+      setCopyError(err);
+      return;
+    }
+
+    if (data) {
+      ignoreDocEventsUntilRef.current = Date.now() + 5_000;
+      navigate(`/edit?uri=${encodeURIComponent(data.uri)}`);
+    }
+  }, [doc, navigate]);
 
   // Debounced auto-save
   const { debouncedFn: debouncedSave } = useDebouncedCallback(
@@ -274,11 +359,15 @@ export default function DocumentEditor({ navigate }: PageProps) {
     setSaveError(null);
 
     // Save document
-    const { error: err } = await apiFetch(
+    const { data, error: err } = await apiFetch<UpdateDocResponse>(
       `/api/docs/${encodeURIComponent(doc.docid)}`,
       {
         method: "PUT",
-        body: JSON.stringify({ content }),
+        body: JSON.stringify({
+          content,
+          expectedSourceHash: doc.source.sourceHash,
+          expectedModifiedAt: doc.source.modifiedAt,
+        }),
       }
     );
 
@@ -288,18 +377,27 @@ export default function DocumentEditor({ navigate }: PageProps) {
       return;
     }
 
+    ignoreDocEventsUntilRef.current = Date.now() + 5_000;
     setSaveStatus("saved");
     setOriginalContent(content);
     setLastSaved(new Date());
+    if (data) {
+      setDoc({
+        ...doc,
+        source: {
+          ...doc.source,
+          sourceHash: data.version.sourceHash,
+          modifiedAt: data.version.modifiedAt,
+        },
+      });
+    }
 
     // Trigger embedding (fire and forget - don't block on result)
     void apiFetch("/api/embed", { method: "POST" });
   }, [hasUnsavedChanges, doc, content]);
 
-  // Load document
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const uri = params.get("uri");
+  const loadDocument = useCallback(() => {
+    const uri = currentTarget.uri;
 
     if (!uri) {
       setError("No document URI provided");
@@ -320,11 +418,36 @@ export default function DocumentEditor({ navigate }: PageProps) {
           // Ensure CodeMirror reflects content after async load
           requestAnimationFrame(() => {
             editorRef.current?.setValue(docContent);
+            if (currentTarget.lineStart) {
+              editorRef.current?.revealLine(currentTarget.lineStart);
+            }
           });
         }
       }
     );
-  }, []);
+  }, [currentTarget.lineStart, currentTarget.uri]);
+
+  // Load document
+  useEffect(() => {
+    loadDocument();
+  }, [loadDocument]);
+
+  useEffect(() => {
+    if (!doc || latestDocEvent?.uri !== doc.uri) {
+      return;
+    }
+    if (Date.now() < ignoreDocEventsUntilRef.current) {
+      return;
+    }
+    setExternalChangeNotice(
+      "This document changed on disk. Reload before continuing."
+    );
+  }, [doc, latestDocEvent?.changedAt, latestDocEvent?.uri]);
+
+  const reloadDocument = useCallback(() => {
+    setExternalChangeNotice(null);
+    loadDocument();
+  }, [loadDocument]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -510,6 +633,70 @@ export default function DocumentEditor({ navigate }: PageProps) {
     );
   }
 
+  if (!doc.capabilities.editable) {
+    return (
+      <div className="flex min-h-screen items-center justify-center px-6">
+        <div className="w-full max-w-xl rounded-lg border border-border/50 bg-card p-6">
+          <div className="mb-4 flex items-center gap-3">
+            <AlertCircleIcon className="size-8 text-amber-500" />
+            <div>
+              <h2 className="font-semibold text-xl">Read-only document</h2>
+              <p className="text-muted-foreground text-sm">
+                {doc.capabilities.reason ??
+                  "This document cannot be edited in place."}
+              </p>
+            </div>
+          </div>
+
+          {copyError && (
+            <div className="mb-4 rounded-md border border-amber-500/30 bg-amber-500/10 p-3 text-amber-500 text-sm">
+              {copyError}
+            </div>
+          )}
+
+          <div className="flex flex-wrap gap-3">
+            {doc.capabilities.canCreateEditableCopy && (
+              <Button
+                disabled={creatingCopy}
+                onClick={() => {
+                  void handleCreateEditableCopy();
+                }}
+              >
+                {creatingCopy ? (
+                  <Loader2Icon className="mr-2 size-4 animate-spin" />
+                ) : (
+                  <PenIcon className="mr-2 size-4" />
+                )}
+                Create editable copy
+              </Button>
+            )}
+            <Button
+              onClick={() =>
+                navigate(`/doc?uri=${encodeURIComponent(doc.uri)}`)
+              }
+              variant="outline"
+            >
+              <BookOpenIcon className="mr-2 size-4" />
+              View document
+            </Button>
+            {doc.source.absPath && (
+              <Button asChild variant="outline">
+                <a
+                  href={`file://${doc.source.absPath}`}
+                  rel="noopener noreferrer"
+                  target="_blank"
+                >
+                  <SquareArrowOutUpRightIcon className="mr-2 size-4" />
+                  Open original
+                </a>
+              </Button>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex h-screen flex-col overflow-hidden">
       {/* Toolbar */}
@@ -564,6 +751,15 @@ export default function DocumentEditor({ navigate }: PageProps) {
           <div className="flex min-w-0 flex-1 items-center gap-2">
             <PenIcon className="size-4 shrink-0 text-muted-foreground" />
             <h1 className="truncate font-medium">{doc.title || doc.relPath}</h1>
+            {currentTarget.lineStart && (
+              <Badge className="shrink-0 font-mono" variant="outline">
+                L{currentTarget.lineStart}
+                {currentTarget.lineEnd &&
+                currentTarget.lineEnd !== currentTarget.lineStart
+                  ? `-${currentTarget.lineEnd}`
+                  : ""}
+              </Badge>
+            )}
             {hasUnsavedChanges && (
               <Badge
                 className="shrink-0 bg-yellow-500/20 text-yellow-500"
@@ -578,6 +774,22 @@ export default function DocumentEditor({ navigate }: PageProps) {
           <SaveStatusIndicator />
 
           <Separator className="h-5" orientation="vertical" />
+
+          <Button
+            onClick={() => {
+              void navigator.clipboard.writeText(
+                `${window.location.origin}${buildEditDeepLink({
+                  uri: doc.uri,
+                  lineStart: currentTarget.lineStart,
+                  lineEnd: currentTarget.lineEnd,
+                })}`
+              );
+            }}
+            size="sm"
+            variant="ghost"
+          >
+            <LinkIcon className="size-4" />
+          </Button>
 
           {/* Preview toggle */}
           <TooltipProvider>
@@ -646,6 +858,17 @@ export default function DocumentEditor({ navigate }: PageProps) {
           </Button>
         </div>
       </header>
+
+      {externalChangeNotice && (
+        <div className="border-amber-500/30 border-b bg-amber-500/10 px-4 py-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="text-amber-500 text-sm">{externalChangeNotice}</p>
+            <Button onClick={reloadDocument} size="sm" variant="outline">
+              Reload
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Editor area */}
       <div className="flex min-h-0 flex-1">

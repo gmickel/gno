@@ -36,6 +36,8 @@ export interface CodeMirrorEditorRef {
   insertAtCursor: (text: string) => void;
   /** Scroll to percentage position (0-1). Returns true if scroll actually changed. */
   scrollToPercent: (percent: number) => boolean;
+  /** Reveal a 1-based line number and select it. */
+  revealLine: (lineNumber: number) => boolean;
 }
 
 export function CodeMirrorEditor({
@@ -178,6 +180,22 @@ export function CodeMirrorEditor({
         }
       }
       return false;
+    },
+    revealLine: (lineNumber: number): boolean => {
+      const view = viewRef.current;
+      if (!view || !Number.isFinite(lineNumber)) return false;
+
+      const clampedLine = Math.max(
+        1,
+        Math.min(Math.trunc(lineNumber), view.state.doc.lines)
+      );
+      const line = view.state.doc.line(clampedLine);
+      view.dispatch({
+        selection: { anchor: line.from, head: line.to },
+        scrollIntoView: true,
+      });
+      view.focus();
+      return true;
     },
   }));
 

@@ -607,6 +607,8 @@ Retrieve document by ID.
 ref: "abc123def456"
 ```
 
+The response includes source metadata such as `absPath`, `sourceHash`, MIME/ext, and document capability metadata so clients can distinguish editable source files from read-only converted documents.
+
 ### gno_multi_get
 
 Retrieve multiple documents.

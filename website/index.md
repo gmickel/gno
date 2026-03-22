@@ -84,7 +84,7 @@ await client.close();
 
 Stop grepping through thousands of Markdown files. Ask GNO questions in plain English and get cited answers from your own notes, documentation, and code.
 
-The Web UI provides a visual dashboard for search, browsing, editing, and AI-powered answers. Filter by [tags](/features/tags/) extracted from your frontmatter for instant precision.
+The Web UI provides a visual dashboard for search, browsing, safe editing, quick switching, and AI-powered answers. Converted binary sources stay read-only, while markdown/plaintext notes remain editable. Filter by [tags](/features/tags/) extracted from your frontmatter for instant precision.
 
 ![GNO Web UI](/assets/screenshots/webui-home.jpg)
 

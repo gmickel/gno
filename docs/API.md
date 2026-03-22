@@ -546,13 +546,24 @@ GET /api/doc?uri=gno://notes/projects/readme.md
   "relPath": "projects/readme.md",
   "tags": ["work", "project/alpha"],
   "source": {
+    "absPath": "/Users/you/notes/projects/readme.md",
     "mime": "text/markdown",
     "ext": ".md",
     "modifiedAt": "2025-01-15T09:00:00Z",
-    "sizeBytes": 4523
+    "sizeBytes": 4523,
+    "sourceHash": "7b3c..."
+  },
+  "capabilities": {
+    "editable": true,
+    "tagsEditable": true,
+    "tagsWriteback": true,
+    "canCreateEditableCopy": false,
+    "mode": "editable"
   }
 }
 ```
+
+For converted source formats such as PDF or DOCX, `capabilities.editable` is `false` and `capabilities.canCreateEditableCopy` is `true`. Those documents remain viewable/searchable, but GNO will not write converted markdown back into the original binary source file.
 
 **Example**:
 
@@ -991,13 +1002,14 @@ When `tags` is provided, the tags are written to the document's YAML frontmatter
 
 **Errors**:
 
-| Code             | Status | Description                  |
-| :--------------- | :----- | :--------------------------- |
-| `VALIDATION`     | 400    | Missing or invalid content   |
-| `NOT_FOUND`      | 404    | Document not found in index  |
-| `FILE_NOT_FOUND` | 404    | Source file no longer exists |
-| `CONFLICT`       | 409    | Sync job already running     |
-| `RUNTIME`        | 500    | Failed to write file         |
+| Code             | Status | Description                             |
+| :--------------- | :----- | :-------------------------------------- |
+| `VALIDATION`     | 400    | Missing or invalid content              |
+| `READ_ONLY`      | 409    | Source format cannot be edited in place |
+| `NOT_FOUND`      | 404    | Document not found in index             |
+| `FILE_NOT_FOUND` | 404    | Source file no longer exists            |
+| `CONFLICT`       | 409    | Sync job already running                |
+| `RUNTIME`        | 500    | Failed to write file                    |
 
 **Example**:
 
@@ -1007,6 +1019,14 @@ curl -X PUT "http://localhost:3000/api/docs/%23abc123" \
   -H "Content-Type: application/json" \
   -d '{"content": "# Updated\n\nNew content here."}'
 ```
+
+For read-only converted documents, create a markdown note instead:
+
+```http
+POST /api/docs/:id/editable-copy
+```
+
+This creates a new markdown document using the converted content plus source provenance frontmatter. The original PDF/DOCX/etc. is left untouched.
 
 ---
 

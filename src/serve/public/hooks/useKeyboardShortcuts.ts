@@ -72,8 +72,8 @@ export function useKeyboardShortcuts(shortcuts: Shortcut[]): void {
 
         // Modifier handling
         if (shortcut.meta) {
-          // Require Ctrl for meta shortcuts
-          if (!e.ctrlKey) continue;
+          // Allow Ctrl or Cmd for cross-platform meta shortcuts
+          if (!e.ctrlKey && !e.metaKey) continue;
         } else {
           // Single-key shortcuts: don't fire when any modifier held
           // Prevents hijacking Cmd+N on macOS, Ctrl+K on Windows, etc.

@@ -61,11 +61,12 @@
   benefits:
     - Split-view markdown editor with live preview
     - Quick capture (Cmd+N) for instant note creation
-    - Create, edit, and delete documents
+    - Safe markdown/plaintext editing with read-only converted docs
     - Collection management (add, remove, re-index)
     - Visual search with BM25, vector, and hybrid modes
     - AI answers with citations
     - Interactive knowledge graph visualization
+    - Instant refresh after edits with external-change awareness
     - Keyboard-first design (Cmd+N, Cmd+K, Cmd+S)
     - Live preset switching and model download
     - 100% local, no cloud

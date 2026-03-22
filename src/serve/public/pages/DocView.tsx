@@ -9,8 +9,10 @@ import {
   FolderOpen,
   HardDrive,
   HomeIcon,
+  LinkIcon,
   Loader2Icon,
   PencilIcon,
+  SquareArrowOutUpRightIcon,
   TagIcon,
   TextIcon,
   TrashIcon,
@@ -49,6 +51,8 @@ import {
 } from "../components/ui/dialog";
 import { Separator } from "../components/ui/separator";
 import { apiFetch } from "../hooks/use-api";
+import { useDocEvents } from "../hooks/use-doc-events";
+import { buildDocDeepLink, parseDocumentDeepLink } from "../lib/deep-links";
 
 interface PageProps {
   navigate: (to: string | number) => void;
@@ -64,10 +68,40 @@ interface DocData {
   relPath: string;
   tags: string[];
   source: {
+    absPath?: string;
     mime: string;
     ext: string;
     modifiedAt?: string;
     sizeBytes?: number;
+    sourceHash?: string;
+  };
+  capabilities: {
+    editable: boolean;
+    tagsEditable: boolean;
+    tagsWriteback: boolean;
+    canCreateEditableCopy: boolean;
+    mode: "editable" | "read_only";
+    reason?: string;
+  };
+}
+
+interface CreateEditableCopyResponse {
+  uri: string;
+  path: string;
+  jobId: string | null;
+  note?: string;
+}
+
+interface UpdateDocResponse {
+  success: boolean;
+  docId: string;
+  uri: string;
+  path: string;
+  jobId: string | null;
+  writeBack?: "applied" | "skipped_unsupported";
+  version: {
+    sourceHash: string;
+    modifiedAt?: string;
   };
 }
 
@@ -181,6 +215,11 @@ export default function DocView({ navigate }: PageProps) {
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [showRawView, setShowRawView] = useState(false);
+  const [creatingCopy, setCreatingCopy] = useState(false);
+  const [copyError, setCopyError] = useState<string | null>(null);
+  const [externalChangeNotice, setExternalChangeNotice] = useState<
+    string | null
+  >(null);
 
   // Tag editing state
   const [editingTags, setEditingTags] = useState(false);
@@ -191,25 +230,32 @@ export default function DocView({ navigate }: PageProps) {
 
   // Request sequencing - ignore stale responses on rapid navigation
   const requestIdRef = useRef(0);
+  const latestDocEvent = useDocEvents();
 
   // App remounts page on route/query changes, so URI is stable per render.
-  const currentUri = useMemo(() => {
-    const params = new URLSearchParams(window.location.search);
-    return params.get("uri") ?? "";
-  }, []);
+  const currentTarget = useMemo(
+    () => parseDocumentDeepLink(window.location.search),
+    []
+  );
+  const currentUri = currentTarget.uri;
+  const highlightedLines = useMemo(() => {
+    if (!currentTarget.lineStart) return [];
+    const end = currentTarget.lineEnd ?? currentTarget.lineStart;
+    const lines: number[] = [];
+    for (let line = currentTarget.lineStart; line <= end; line += 1) {
+      lines.push(line);
+    }
+    return lines;
+  }, [currentTarget.lineEnd, currentTarget.lineStart]);
 
-  // Fetch document when URI changes
-  useEffect(() => {
+  const loadDocument = useCallback(() => {
     if (!currentUri) {
       setError("No document URI provided");
       setLoading(false);
       return;
     }
 
-    // Increment request ID to ignore stale responses
     const currentRequestId = ++requestIdRef.current;
-
-    // Reset state for new document
     setLoading(true);
     setError(null);
     setDoc(null);
@@ -231,6 +277,25 @@ export default function DocView({ navigate }: PageProps) {
       }
     });
   }, [currentUri]);
+
+  // Fetch document when URI changes
+  useEffect(() => {
+    loadDocument();
+  }, [loadDocument]);
+
+  useEffect(() => {
+    if (latestDocEvent?.uri !== currentUri) {
+      return;
+    }
+    setExternalChangeNotice(
+      "This document changed on disk. Reload to see the latest content."
+    );
+  }, [currentUri, latestDocEvent?.changedAt, latestDocEvent?.uri]);
+
+  const reloadDocument = useCallback(() => {
+    setExternalChangeNotice(null);
+    loadDocument();
+  }, [loadDocument]);
 
   const isMarkdown =
     doc?.source.ext &&
@@ -267,13 +332,40 @@ export default function DocView({ navigate }: PageProps) {
 
   const hasFrontmatter = Object.keys(parsedContent.data).length > 0;
 
+  useEffect(() => {
+    if (currentTarget.view === "source" || currentTarget.lineStart) {
+      setShowRawView(true);
+    }
+  }, [currentTarget.lineStart, currentTarget.view]);
+
   const breadcrumbs = doc ? parseBreadcrumbs(doc.collection, doc.relPath) : [];
 
   const handleEdit = () => {
-    if (doc) {
+    if (doc?.capabilities.editable) {
       navigate(`/edit?uri=${encodeURIComponent(doc.uri)}`);
     }
   };
+
+  const handleCreateEditableCopy = useCallback(async () => {
+    if (!doc?.capabilities.canCreateEditableCopy) return;
+
+    setCreatingCopy(true);
+    setCopyError(null);
+    const { data, error: err } = await apiFetch<CreateEditableCopyResponse>(
+      `/api/docs/${encodeURIComponent(doc.docid)}/editable-copy`,
+      { method: "POST" }
+    );
+    setCreatingCopy(false);
+
+    if (err) {
+      setCopyError(err);
+      return;
+    }
+
+    if (data) {
+      navigate(`/edit?uri=${encodeURIComponent(data.uri)}`);
+    }
+  }, [doc, navigate]);
 
   const handleDelete = async () => {
     if (!doc) return;
@@ -322,11 +414,15 @@ export default function DocView({ navigate }: PageProps) {
     setTagSaveError(null);
     setTagSaveSuccess(false);
 
-    const { error: err } = await apiFetch(
+    const { data, error: err } = await apiFetch<UpdateDocResponse>(
       `/api/docs/${encodeURIComponent(doc.docid)}`,
       {
         method: "PUT",
-        body: JSON.stringify({ tags: editedTags }),
+        body: JSON.stringify({
+          tags: editedTags,
+          expectedSourceHash: doc.source.sourceHash,
+          expectedModifiedAt: doc.source.modifiedAt,
+        }),
       }
     );
 
@@ -338,7 +434,15 @@ export default function DocView({ navigate }: PageProps) {
     }
 
     // Update doc with new tags
-    setDoc({ ...doc, tags: editedTags });
+    setDoc({
+      ...doc,
+      tags: editedTags,
+      source: {
+        ...doc.source,
+        sourceHash: data?.version.sourceHash ?? doc.source.sourceHash,
+        modifiedAt: data?.version.modifiedAt ?? doc.source.modifiedAt,
+      },
+    });
     setEditingTags(false);
     setTagSaveSuccess(true);
 
@@ -377,6 +481,9 @@ export default function DocView({ navigate }: PageProps) {
               {doc?.title || "Document"}
             </h1>
           </div>
+          {doc?.capabilities.mode === "read_only" && (
+            <Badge variant="secondary">Read-only</Badge>
+          )}
           {doc?.source.ext && (
             <Badge className="shrink-0 font-mono" variant="outline">
               {doc.source.ext}
@@ -386,10 +493,44 @@ export default function DocView({ navigate }: PageProps) {
             <>
               <Separator className="h-6" orientation="vertical" />
               <div className="flex items-center gap-2">
-                <Button className="gap-1.5" onClick={handleEdit} size="sm">
-                  <PencilIcon className="size-4" />
-                  Edit
-                </Button>
+                {doc.capabilities.editable ? (
+                  <Button className="gap-1.5" onClick={handleEdit} size="sm">
+                    <PencilIcon className="size-4" />
+                    Edit
+                  </Button>
+                ) : (
+                  <>
+                    {doc.capabilities.canCreateEditableCopy && (
+                      <Button
+                        className="gap-1.5"
+                        disabled={creatingCopy}
+                        onClick={() => {
+                          void handleCreateEditableCopy();
+                        }}
+                        size="sm"
+                      >
+                        {creatingCopy ? (
+                          <Loader2Icon className="size-4 animate-spin" />
+                        ) : (
+                          <PencilIcon className="size-4" />
+                        )}
+                        Create editable copy
+                      </Button>
+                    )}
+                    {doc.source.absPath && (
+                      <Button asChild size="sm" variant="outline">
+                        <a
+                          href={`file://${doc.source.absPath}`}
+                          rel="noopener noreferrer"
+                          target="_blank"
+                        >
+                          <SquareArrowOutUpRightIcon className="mr-1.5 size-4" />
+                          Open original
+                        </a>
+                      </Button>
+                    )}
+                  </>
+                )}
                 <Button
                   className="gap-1.5 text-muted-foreground hover:text-destructive"
                   onClick={() => setDeleteDialogOpen(true)}
@@ -431,6 +572,29 @@ export default function DocView({ navigate }: PageProps) {
           {/* Document */}
           {doc && (
             <div className="animate-fade-in space-y-6 opacity-0">
+              {externalChangeNotice && (
+                <Card className="border-amber-500/40 bg-amber-500/10">
+                  <CardContent className="flex flex-wrap items-center justify-between gap-3 py-3">
+                    <p className="text-amber-500 text-sm">
+                      {externalChangeNotice}
+                    </p>
+                    <Button
+                      onClick={reloadDocument}
+                      size="sm"
+                      variant="outline"
+                    >
+                      Reload
+                    </Button>
+                  </CardContent>
+                </Card>
+              )}
+              {copyError && (
+                <Card className="border-amber-500/40 bg-amber-500/10">
+                  <CardContent className="py-3 text-amber-500 text-sm">
+                    {copyError}
+                  </CardContent>
+                </Card>
+              )}
               {/* Breadcrumbs */}
               {breadcrumbs.length > 0 && (
                 <nav className="flex items-center gap-1 text-sm">
@@ -507,6 +671,43 @@ export default function DocView({ navigate }: PageProps) {
                     <code className="break-all font-mono text-muted-foreground text-sm">
                       {doc.uri}
                     </code>
+                    {doc.capabilities.reason && (
+                      <p className="mt-2 text-amber-500 text-xs">
+                        {doc.capabilities.reason}
+                      </p>
+                    )}
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {currentTarget.lineStart && (
+                        <Badge className="font-mono" variant="outline">
+                          L{currentTarget.lineStart}
+                          {currentTarget.lineEnd &&
+                          currentTarget.lineEnd !== currentTarget.lineStart
+                            ? `-${currentTarget.lineEnd}`
+                            : ""}
+                        </Badge>
+                      )}
+                      <Button
+                        onClick={() => {
+                          void navigator.clipboard.writeText(
+                            `${window.location.origin}${buildDocDeepLink({
+                              uri: doc.uri,
+                              view:
+                                currentTarget.view === "source" ||
+                                currentTarget.lineStart
+                                  ? "source"
+                                  : "rendered",
+                              lineStart: currentTarget.lineStart,
+                              lineEnd: currentTarget.lineEnd,
+                            })}`
+                          );
+                        }}
+                        size="sm"
+                        variant="outline"
+                      >
+                        <LinkIcon className="mr-1.5 size-4" />
+                        Copy link
+                      </Button>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -659,7 +860,9 @@ export default function DocView({ navigate }: PageProps) {
                   {doc.contentAvailable && isMarkdown && showRawView && (
                     <CodeBlock
                       code={doc.content ?? ""}
+                      highlightedLines={highlightedLines}
                       language={"markdown" as BundledLanguage}
+                      scrollToLine={currentTarget.lineStart}
                       showLineNumbers
                     >
                       <CodeBlockCopyButton />
@@ -668,9 +871,11 @@ export default function DocView({ navigate }: PageProps) {
                   {doc.contentAvailable && isCodeFile && !isMarkdown && (
                     <CodeBlock
                       code={doc.content ?? ""}
+                      highlightedLines={highlightedLines}
                       language={
                         getLanguageFromExt(doc.source.ext) as BundledLanguage
                       }
+                      scrollToLine={currentTarget.lineStart}
                       showLineNumbers
                     >
                       <CodeBlockCopyButton />

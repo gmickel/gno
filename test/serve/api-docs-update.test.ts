@@ -13,11 +13,18 @@ import type { Config } from "../../src/config/types";
 import type { ContextHolder } from "../../src/serve/routes/api";
 import type { DocumentRow } from "../../src/store/types";
 
-import { handleUpdateDoc } from "../../src/serve/routes/api";
+import {
+  handleCreateEditableCopy,
+  handleUpdateDoc,
+} from "../../src/serve/routes/api";
 import { safeRm } from "../helpers/cleanup";
 
 interface ErrorBody {
   error: { code: string; message: string };
+  currentVersion?: {
+    sourceHash: string;
+    modifiedAt?: string;
+  };
 }
 
 interface SuccessBody {
@@ -29,11 +36,38 @@ interface SuccessBody {
 }
 
 // Minimal mock store for testing
-function createMockStore(docs: DocumentRow[] = []) {
+function createMockStore(
+  docs: DocumentRow[] = [],
+  options: {
+    contentByMirrorHash?: Record<string, string>;
+    tagsByDocId?: Record<number, string[]>;
+  } = {}
+) {
   return {
     getDocumentByDocid(docId: string) {
       const doc = docs.find((d) => d.docid === docId);
       return Promise.resolve({ ok: true as const, value: doc ?? null });
+    },
+    getContent(mirrorHash: string) {
+      return Promise.resolve({
+        ok: true as const,
+        value: options.contentByMirrorHash?.[mirrorHash] ?? null,
+      });
+    },
+    getTagsForDoc(docId: number) {
+      return Promise.resolve({
+        ok: true as const,
+        value: (options.tagsByDocId?.[docId] ?? []).map((tag) => ({
+          tag,
+          source: "user" as const,
+        })),
+      });
+    },
+    listDocuments(collection: string) {
+      return Promise.resolve({
+        ok: true as const,
+        value: docs.filter((doc) => doc.collection === collection),
+      });
     },
   };
 }
@@ -51,6 +85,8 @@ function createMockContextHolder(config?: Partial<Config>): ContextHolder {
     current: { config: fullConfig } as ContextHolder["current"],
     config: fullConfig,
     scheduler: null,
+    eventBus: null,
+    watchService: null,
   };
 }
 
@@ -393,5 +429,204 @@ describe("PUT /api/docs/:id", () => {
       req
     );
     expect(res.status).toBe(200);
+  });
+
+  test("rejects in-place content edits for converted read-only docs", async () => {
+    const testFilePath = join(tmpDir, "report.pdf");
+    await writeFile(testFilePath, "pdf bytes placeholder");
+
+    const docs: DocumentRow[] = [
+      {
+        id: 1,
+        collection: "notes",
+        relPath: "report.pdf",
+        sourceHash: "pdfhash",
+        sourceMime: "application/pdf",
+        sourceExt: ".pdf",
+        sourceSize: 100,
+        sourceMtime: new Date().toISOString(),
+        docid: "#pdf123",
+        uri: "gno://notes/report.pdf",
+        title: "Report",
+        mirrorHash: "mirror-pdf",
+        converterId: "pdf",
+        converterVersion: "1.0.0",
+        languageHint: null,
+        lastErrorCode: null,
+        lastErrorMessage: null,
+        lastErrorAt: null,
+        active: true,
+        ingestVersion: null,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+    ];
+
+    const store = createMockStore(docs);
+    const ctxHolder = createMockContextHolder({
+      collections: [
+        {
+          name: "notes",
+          path: tmpDir,
+          pattern: "**/*",
+          include: [],
+          exclude: [],
+        },
+      ],
+    });
+
+    const req = new Request("http://localhost/api/docs/pdf123", {
+      method: "PUT",
+      body: JSON.stringify({ content: "# Updated converted content" }),
+    });
+    const res = await handleUpdateDoc(
+      ctxHolder,
+      store as never,
+      "#pdf123",
+      req
+    );
+    expect(res.status).toBe(409);
+    const body = (await res.json()) as ErrorBody;
+    expect(body.error.code).toBe("READ_ONLY");
+
+    const currentContent = await Bun.file(testFilePath).text();
+    expect(currentContent).toBe("pdf bytes placeholder");
+  });
+
+  test("returns conflict when expected source version is stale", async () => {
+    const testFilePath = join(tmpDir, "stale.md");
+    await writeFile(testFilePath, "# Newer content on disk");
+
+    const docs: DocumentRow[] = [
+      {
+        id: 1,
+        collection: "notes",
+        relPath: "stale.md",
+        sourceHash: "oldhash",
+        sourceMime: "text/markdown",
+        sourceExt: ".md",
+        sourceSize: 100,
+        sourceMtime: "2026-03-22T00:00:00.000Z",
+        docid: "#stale123",
+        uri: "gno://notes/stale.md",
+        title: "Stale",
+        mirrorHash: null,
+        converterId: null,
+        converterVersion: null,
+        languageHint: null,
+        lastErrorCode: null,
+        lastErrorMessage: null,
+        lastErrorAt: null,
+        active: true,
+        ingestVersion: null,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+    ];
+    const store = createMockStore(docs);
+    const ctxHolder = createMockContextHolder({
+      collections: [
+        {
+          name: "notes",
+          path: tmpDir,
+          pattern: "**/*.md",
+          include: [],
+          exclude: [],
+        },
+      ],
+    });
+
+    const req = new Request("http://localhost/api/docs/stale123", {
+      method: "PUT",
+      body: JSON.stringify({
+        content: "# Attempted overwrite",
+        expectedSourceHash: "oldhash",
+      }),
+    });
+    const res = await handleUpdateDoc(
+      ctxHolder,
+      store as never,
+      "#stale123",
+      req
+    );
+
+    expect(res.status).toBe(409);
+    const body = (await res.json()) as ErrorBody;
+    expect(body.error.code).toBe("CONFLICT");
+    expect(body.currentVersion?.sourceHash).toBeDefined();
+
+    const currentContent = await Bun.file(testFilePath).text();
+    expect(currentContent).toBe("# Newer content on disk");
+  });
+
+  test("creates an editable markdown copy for a converted source", async () => {
+    const docs: DocumentRow[] = [
+      {
+        id: 1,
+        collection: "notes",
+        relPath: "reports/quarterly.pdf",
+        sourceHash: "pdfhash",
+        sourceMime: "application/pdf",
+        sourceExt: ".pdf",
+        sourceSize: 100,
+        sourceMtime: new Date().toISOString(),
+        docid: "#pdfcopy",
+        uri: "gno://notes/reports/quarterly.pdf",
+        title: "Quarterly Report",
+        mirrorHash: "mirror-pdf",
+        converterId: "pdf",
+        converterVersion: "1.0.0",
+        languageHint: null,
+        lastErrorCode: null,
+        lastErrorMessage: null,
+        lastErrorAt: null,
+        active: true,
+        ingestVersion: null,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+    ];
+
+    const store = createMockStore(docs, {
+      contentByMirrorHash: {
+        "mirror-pdf": "# Converted content\n\nImportant summary.",
+      },
+      tagsByDocId: {
+        1: ["work", "report"],
+      },
+    });
+    const ctxHolder = createMockContextHolder({
+      collections: [
+        {
+          name: "notes",
+          path: tmpDir,
+          pattern: "**/*",
+          include: [],
+          exclude: [],
+        },
+      ],
+    });
+
+    const req = new Request("http://localhost/api/docs/pdfcopy/editable-copy", {
+      method: "POST",
+    });
+    const res = await handleCreateEditableCopy(
+      ctxHolder,
+      store as never,
+      "#pdfcopy",
+      req
+    );
+
+    expect(res.status).toBe(202);
+    const body = (await res.json()) as { uri: string; path: string };
+    expect(body.uri).toBe("gno://notes/reports/quarterly.md");
+
+    const createdContent = await Bun.file(body.path).text();
+    expect(createdContent).toContain("gno_source_docid:");
+    expect(createdContent).toContain("#pdfcopy");
+    expect(createdContent).toContain("gno_source_uri:");
+    expect(createdContent).toContain("gno://notes/reports/quarterly.pdf");
+    expect(createdContent).toContain("tags:");
+    expect(createdContent).toContain("# Converted content");
   });
 });

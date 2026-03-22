@@ -17,6 +17,8 @@ type CodeBlockProps = HTMLAttributes<HTMLDivElement> & {
   code: string;
   language: BundledLanguage;
   showLineNumbers?: boolean;
+  highlightedLines?: number[];
+  scrollToLine?: number;
 };
 
 interface CodeBlockContextType {
@@ -27,35 +29,63 @@ const CodeBlockContext = createContext<CodeBlockContextType>({
   code: "",
 });
 
-const lineNumberTransformer: ShikiTransformer = {
-  name: "line-numbers",
-  line(node, line) {
-    node.children.unshift({
-      type: "element",
-      tagName: "span",
-      properties: {
-        className: [
-          "inline-block",
-          "min-w-10",
-          "mr-4",
-          "text-right",
-          "select-none",
-          "text-muted-foreground",
-        ],
-      },
-      children: [{ type: "text", value: String(line) }],
-    });
-  },
-};
+function createLineTransformer(
+  showLineNumbers: boolean,
+  highlightedLines: number[]
+): ShikiTransformer {
+  const highlighted = new Set(highlightedLines);
+
+  return {
+    name: "line-metadata",
+    line(node, line) {
+      const className = Array.isArray(node.properties.className)
+        ? [...node.properties.className]
+        : [];
+      className.push("gno-code-line");
+      if (highlighted.has(line)) {
+        className.push(
+          "bg-amber-500/12",
+          "ring-1",
+          "ring-inset",
+          "ring-amber-500/25"
+        );
+      }
+      node.properties.className = className;
+      node.properties["data-line-number"] = String(line);
+
+      if (!showLineNumbers) {
+        return;
+      }
+
+      node.children.unshift({
+        type: "element",
+        tagName: "span",
+        properties: {
+          className: [
+            "inline-block",
+            "min-w-10",
+            "mr-4",
+            "text-right",
+            "select-none",
+            "text-muted-foreground",
+          ],
+        },
+        children: [{ type: "text", value: String(line) }],
+      });
+    },
+  };
+}
 
 export async function highlightCode(
   code: string,
   language: BundledLanguage,
-  showLineNumbers = false
+  showLineNumbers = false,
+  highlightedLines: number[] = []
 ) {
-  const transformers: ShikiTransformer[] = showLineNumbers
-    ? [lineNumberTransformer]
-    : [];
+  const transformers: ShikiTransformer[] =
+    showLineNumbers || highlightedLines.length > 0
+      ? [createLineTransformer(showLineNumbers, highlightedLines)]
+      : [];
 
   return await Promise.all([
     codeToHtml(code, {
@@ -75,6 +105,8 @@ export const CodeBlock = ({
   code,
   language,
   showLineNumbers = false,
+  highlightedLines = [],
+  scrollToLine,
   className,
   children,
   ...props
@@ -82,6 +114,7 @@ export const CodeBlock = ({
   const [html, setHtml] = useState<string>("");
   const [darkHtml, setDarkHtml] = useState<string>("");
   const requestIdRef = useRef(0);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -91,7 +124,8 @@ export const CodeBlock = ({
       const [light, dark] = await highlightCode(
         code,
         language,
-        showLineNumbers
+        showLineNumbers,
+        highlightedLines
       );
       // Only apply if this is still the latest request AND not cancelled
       if (!cancelled && requestId === requestIdRef.current) {
@@ -104,7 +138,20 @@ export const CodeBlock = ({
     return () => {
       cancelled = true;
     };
-  }, [code, language, showLineNumbers]);
+  }, [code, highlightedLines, language, showLineNumbers]);
+
+  useEffect(() => {
+    if (!scrollToLine) return;
+
+    const frame = requestAnimationFrame(() => {
+      const target = containerRef.current?.querySelector<HTMLElement>(
+        `[data-line-number="${scrollToLine}"]`
+      );
+      target?.scrollIntoView({ block: "center" });
+    });
+
+    return () => cancelAnimationFrame(frame);
+  }, [darkHtml, html, scrollToLine]);
 
   return (
     <CodeBlockContext.Provider value={{ code }}>
@@ -113,6 +160,7 @@ export const CodeBlock = ({
           "group relative w-full overflow-hidden rounded-md border bg-background text-foreground",
           className
         )}
+        ref={containerRef}
         {...props}
       >
         <div className="relative">

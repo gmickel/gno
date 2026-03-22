@@ -23,6 +23,7 @@ import type {
 } from "./types";
 
 import { isGlobPattern, parseRef, splitRefs } from "../cli/commands/ref-parser";
+import { getDocumentCapabilities } from "../core/document-capabilities";
 import { sdkError } from "./errors";
 
 const URI_PREFIX_PATTERN = /^gno:\/\/[^/]+\//;
@@ -53,6 +54,7 @@ function buildSourceMeta(
     mime: doc.sourceMime,
     ext: doc.sourceExt,
     sizeBytes: doc.sourceSize,
+    modifiedAt: doc.sourceMtime ?? undefined,
     sourceHash: doc.sourceHash,
   };
 }
@@ -122,6 +124,11 @@ export async function getDocumentByRef(
       language: doc.languageHint ?? undefined,
       source: buildSourceMeta(doc, config),
       conversion: buildConversionMeta(doc),
+      capabilities: getDocumentCapabilities({
+        sourceExt: doc.sourceExt,
+        sourceMime: doc.sourceMime,
+        contentAvailable: doc.mirrorHash !== null,
+      }),
     };
   }
 
@@ -144,6 +151,11 @@ export async function getDocumentByRef(
     language: doc.languageHint ?? undefined,
     source: buildSourceMeta(doc, config),
     conversion: buildConversionMeta(doc),
+    capabilities: getDocumentCapabilities({
+      sourceExt: doc.sourceExt,
+      sourceMime: doc.sourceMime,
+      contentAvailable: doc.mirrorHash !== null,
+    }),
   };
 }
 
