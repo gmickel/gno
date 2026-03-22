@@ -8,7 +8,8 @@
   "default_sync": null,
   "depends_on_epics": [
     "fn-41-document-workspace-foundation-for",
-    "fn-42-desktop-beta-onboarding-and-health"
+    "fn-42-desktop-beta-onboarding-and-health",
+    "fn-44-desktop-beta-import-and-migration"
   ],
   "id": "fn-45-desktop-beta-workspace-navigation",
   "next_task": 1,
@@ -17,5 +18,5 @@
   "spec_path": ".flow/specs/fn-45-desktop-beta-workspace-navigation.md",
   "status": "open",
   "title": "Desktop Beta: Workspace Navigation, Recents, and Favorites",
-  "updated_at": "2026-03-22T19:29:28.244910Z"
+  "updated_at": "2026-03-22T21:00:43.850050Z"
 }

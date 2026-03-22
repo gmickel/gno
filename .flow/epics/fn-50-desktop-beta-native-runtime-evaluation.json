@@ -8,7 +8,8 @@
   "default_sync": null,
   "depends_on_epics": [
     "fn-41-document-workspace-foundation-for",
-    "fn-48-desktop-beta-background-service-and"
+    "fn-48-desktop-beta-background-service-and",
+    "fn-49-desktop-beta-runtime-and-model-bootstrap"
   ],
   "id": "fn-50-desktop-beta-native-runtime-evaluation",
   "next_task": 1,
@@ -17,5 +18,5 @@
   "spec_path": ".flow/specs/fn-50-desktop-beta-native-runtime-evaluation.md",
   "status": "open",
   "title": "Desktop Beta: Native Runtime Evaluation and Abstraction",
-  "updated_at": "2026-03-22T19:29:28.349216Z"
+  "updated_at": "2026-03-22T21:00:43.543713Z"
 }

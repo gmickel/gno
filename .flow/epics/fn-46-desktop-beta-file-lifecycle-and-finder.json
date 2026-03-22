@@ -8,7 +8,8 @@
   "default_sync": null,
   "depends_on_epics": [
     "fn-41-document-workspace-foundation-for",
-    "fn-45-desktop-beta-workspace-navigation"
+    "fn-45-desktop-beta-workspace-navigation",
+    "fn-53-desktop-beta-app-level-tabs-and-multi"
   ],
   "id": "fn-46-desktop-beta-file-lifecycle-and-finder",
   "next_task": 1,
@@ -17,5 +18,5 @@
   "spec_path": ".flow/specs/fn-46-desktop-beta-file-lifecycle-and-finder.md",
   "status": "open",
   "title": "Desktop Beta: File Lifecycle and Finder Integration",
-  "updated_at": "2026-03-22T14:55:31.755161Z"
+  "updated_at": "2026-03-22T21:00:44.057679Z"
 }
