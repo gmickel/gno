@@ -194,6 +194,8 @@ Model configuration for embeddings and AI answers.
 | `balanced` | ~2GB   | Slightly larger model         |
 | `quality`  | ~2.5GB | Best answers, complex content |
 
+The dashboard bootstrap panel uses these preset footprints as the plain-language disk estimate for first-run setup.
+
 > **Note**: When using GNO standalone with `--answer`, the **quality** preset is required for documents containing Markdown tables or other structured content. The smaller models in slim/balanced presets cannot reliably parse tabular data. When GNO is used via MCP, skill, or CLI by AI agents (Claude Code, Codex, etc.), the agent handles answer generation, so any preset works for retrieval.
 
 ### Model Details
@@ -230,6 +232,16 @@ Model URIs support:
 - `hf:org/repo/file.gguf` - Hugging Face download
 - `file:/path/to/model.gguf` - Local file
 - `http://host:port/path#modelname` - Remote HTTP endpoint (OpenAI-compatible)
+
+### Download Policy
+
+Model provisioning follows one of three modes:
+
+- default: auto-download allowed on first use
+- offline: cached models only (`HF_HUB_OFFLINE=1` or `GNO_OFFLINE=1`)
+- manual: no auto-download, but explicit `gno models pull` still works (`GNO_NO_AUTO_DOWNLOAD=1`)
+
+The dashboard bootstrap panel reflects the active mode in plain language.
 
 ### Using A Fine-Tuned Local Model
 

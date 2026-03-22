@@ -98,6 +98,9 @@ describe("GET /api/status", () => {
     expect(body.background.watcher.expectedCollections).toEqual([]);
     expect(body.background.embedding.available).toBe(false);
     expect(body.background.events.retryMs).toBe(0);
+    expect(body.bootstrap.runtime.kind).toBe("bun");
+    expect(body.bootstrap.models.totalCount).toBe(4);
+    expect(body.bootstrap.policy.allowDownload).toBe(true);
   });
 
   test("marks healthy workspace when folders, models, and index are ready", async () => {
@@ -164,5 +167,6 @@ describe("GET /api/status", () => {
       embeddedCount: 12,
     });
     expect(body.background.watcher.activeCollections).toEqual([]);
+    expect(body.bootstrap.models.cachedCount).toBe(0);
   });
 });

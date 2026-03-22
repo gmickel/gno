@@ -1,6 +1,8 @@
 # Installation
 
-GNO requires [Bun](https://bun.sh/) as its JavaScript runtime.
+GNO currently requires [Bun](https://bun.sh/) as its JavaScript runtime.
+
+> **Beta runtime note**: This is still the current beta path. GNO does not yet bundle Bun for end users. The app and API now surface this explicitly in the dashboard bootstrap panel so runtime assumptions are visible instead of implicit.
 
 ## Quick Install
 
@@ -15,7 +17,7 @@ bun install -g @gmickel/gno
 gno doctor
 ```
 
-If you want a guided setup after install, run `gno serve` and open `http://localhost:3000`. The first-run dashboard can add a folder, explain health, and trigger model downloads without more terminal work.
+If you want a guided setup after install, run `gno serve` and open `http://localhost:3000`. The first-run dashboard can add a folder, explain health, show bootstrap/runtime status, and trigger model downloads without more terminal work.
 
 ### SDK / Library Install
 
@@ -123,6 +125,13 @@ models:
 ```
 
 Or change it later in the web UI from the preset picker on the dashboard.
+
+The dashboard also shows:
+
+- whether models will auto-download or stay manual/offline
+- where the cache lives
+- current cache size on disk
+- which preset roles are still missing
 
 ## Verification
 

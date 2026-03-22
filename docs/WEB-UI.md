@@ -260,6 +260,17 @@ The dashboard health model now includes background-service state:
 
 This is meant to reduce the “why didn’t it refresh?” class of failures in long sessions.
 
+### Bootstrap & Storage
+
+The dashboard also shows a **Bootstrap & Storage** section for first-run explainability:
+
+- current beta runtime strategy (`Bun` today, not yet bundled by the app)
+- whether local models can auto-download or require manual pull
+- current cache path and total disk usage
+- per-role model readiness for the active preset (`embed`, `rerank`, `expand`, `answer`)
+
+This is the user-facing source of truth for “what will download?”, “where does it live?”, and “why is this preset still incomplete?”.
+
 ### Indexing Progress
 
 When syncing or adding collections, a progress indicator shows:

@@ -79,6 +79,47 @@ export interface BackgroundServiceState {
   };
 }
 
+export interface BootstrapState {
+  runtime: {
+    kind: "bun";
+    strategy: "manual-install-beta";
+    currentVersion: string;
+    requiredVersion: string;
+    ready: boolean;
+    managedByApp: boolean;
+    summary: string;
+    detail: string;
+  };
+  policy: {
+    offline: boolean;
+    allowDownload: boolean;
+    source: "default" | "hf-hub-offline" | "gno-offline" | "no-auto-download";
+    summary: string;
+  };
+  cache: {
+    path: string;
+    totalSizeBytes: number;
+    totalSizeLabel: string;
+  };
+  models: {
+    activePresetId: string;
+    activePresetName: string;
+    estimatedFootprint: string | null;
+    downloading: boolean;
+    cachedCount: number;
+    totalCount: number;
+    summary: string;
+    entries: Array<{
+      role: "embed" | "rerank" | "expand" | "gen";
+      uri: string;
+      cached: boolean;
+      path: string | null;
+      sizeBytes: number | null;
+      statusLabel: string;
+    }>;
+  };
+}
+
 export interface AppStatusResponse {
   indexName: string;
   configPath: string;
@@ -103,4 +144,5 @@ export interface AppStatusResponse {
   onboarding: OnboardingState;
   health: HealthCenterState;
   background: BackgroundServiceState;
+  bootstrap: BootstrapState;
 }

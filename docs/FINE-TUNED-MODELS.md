@@ -82,6 +82,8 @@ gno models use slim-tuned
 gno query "ECONNREFUSED 127.0.0.1:5432" --thorough
 ```
 
+Once selected, the dashboard bootstrap section reports whether the tuned preset is fully cached, partially cached, or still downloading.
+
 For a private expansion model that is not published to HF yet, replace `expand:` with:
 
 ```yaml

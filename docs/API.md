@@ -26,28 +26,28 @@ All endpoints are JSON-based and run entirely on your machine.
 
 ### Read Operations
 
-| Endpoint                 | Method | Description                                                |
-| :----------------------- | :----- | :--------------------------------------------------------- |
-| `/api/health`            | GET    | Health check                                               |
-| `/api/status`            | GET    | Index statistics, onboarding, and health center state      |
-| `/api/capabilities`      | GET    | Available features                                         |
-| `/api/collections`       | GET    | List collections                                           |
-| `/api/docs`              | GET    | List documents                                             |
-| `/api/docs/autocomplete` | GET    | Title/path suggestions for wiki-linking and quick switcher |
-| `/api/doc`               | GET    | Get document content                                       |
-| `/api/events`            | GET    | Server-sent document change events                         |
-| `/api/doc/:id/links`     | GET    | Get outgoing links from doc                                |
-| `/api/doc/:id/backlinks` | GET    | Get docs linking to this                                   |
-| `/api/doc/:id/similar`   | GET    | Find semantically similar                                  |
-| `/api/graph`             | GET    | Knowledge graph of links                                   |
-| `/api/tags`              | GET    | List tags with counts                                      |
-| `/api/search`            | POST   | BM25 keyword search                                        |
-| `/api/query`             | POST   | Hybrid search                                              |
-| `/api/ask`               | POST   | AI-powered Q&A                                             |
-| `/api/presets`           | GET    | List model presets                                         |
-| `/api/presets`           | POST   | Switch preset                                              |
-| `/api/models/status`     | GET    | Download status                                            |
-| `/api/models/pull`       | POST   | Start model download                                       |
+| Endpoint                 | Method | Description                                                 |
+| :----------------------- | :----- | :---------------------------------------------------------- |
+| `/api/health`            | GET    | Health check                                                |
+| `/api/status`            | GET    | Index statistics, onboarding, health, background, bootstrap |
+| `/api/capabilities`      | GET    | Available features                                          |
+| `/api/collections`       | GET    | List collections                                            |
+| `/api/docs`              | GET    | List documents                                              |
+| `/api/docs/autocomplete` | GET    | Title/path suggestions for wiki-linking and quick switcher  |
+| `/api/doc`               | GET    | Get document content                                        |
+| `/api/events`            | GET    | Server-sent document change events                          |
+| `/api/doc/:id/links`     | GET    | Get outgoing links from doc                                 |
+| `/api/doc/:id/backlinks` | GET    | Get docs linking to this                                    |
+| `/api/doc/:id/similar`   | GET    | Find semantically similar                                   |
+| `/api/graph`             | GET    | Knowledge graph of links                                    |
+| `/api/tags`              | GET    | List tags with counts                                       |
+| `/api/search`            | POST   | BM25 keyword search                                         |
+| `/api/query`             | POST   | Hybrid search                                               |
+| `/api/ask`               | POST   | AI-powered Q&A                                              |
+| `/api/presets`           | GET    | List model presets                                          |
+| `/api/presets`           | POST   | Switch preset                                               |
+| `/api/models/status`     | GET    | Download status                                             |
+| `/api/models/pull`       | POST   | Start model download                                        |
 
 ### Write Operations
 
@@ -123,7 +123,7 @@ GET /api/health
 GET /api/status
 ```
 
-Returns index statistics plus first-run onboarding, health-center state, and background-service telemetry for the dashboard.
+Returns index statistics plus first-run onboarding, health-center state, background-service telemetry, and bootstrap/runtime-model provisioning state for the dashboard.
 
 **Response**:
 
@@ -218,6 +218,39 @@ Returns index statistics plus first-run onboarding, health-center state, and bac
       "connectedClients": 2,
       "retryMs": 2000
     }
+  },
+  "bootstrap": {
+    "runtime": {
+      "kind": "bun",
+      "strategy": "manual-install-beta",
+      "currentVersion": "1.3.6",
+      "requiredVersion": ">=1.3.0",
+      "ready": true,
+      "managedByApp": false,
+      "summary": "This beta runs on Bun 1.3.6.",
+      "detail": "Current beta installs still expect Bun to be present on the machine. Final desktop packaging work is separate."
+    },
+    "policy": {
+      "offline": false,
+      "allowDownload": true,
+      "source": "default",
+      "summary": "Models can auto-download on first use."
+    },
+    "cache": {
+      "path": "/Users/you/Library/Caches/gno",
+      "totalSizeBytes": 2147483648,
+      "totalSizeLabel": "2.0 GB"
+    },
+    "models": {
+      "activePresetId": "balanced",
+      "activePresetName": "Balanced (~2GB)",
+      "estimatedFootprint": "~2GB",
+      "downloading": false,
+      "cachedCount": 4,
+      "totalCount": 4,
+      "summary": "Balanced (~2GB) is fully cached.",
+      "entries": []
+    }
   }
 }
 ```
@@ -231,6 +264,13 @@ Returns index statistics plus first-run onboarding, health-center state, and bac
 - `watcher` shows which collections are expected, actively watched, queued, syncing, or failed
 - `embedding` reports pending/running background embedding state
 - `events` reports current SSE clients and recommended reconnect retry
+
+`bootstrap` is the install/runtime/model block:
+
+- `runtime` explains the current beta runtime strategy and version
+- `policy` explains whether models auto-download, stay offline, or require manual pull
+- `cache` shows where models live and how much disk they use
+- `models` shows active preset readiness role by role
 
 **Example**:
 

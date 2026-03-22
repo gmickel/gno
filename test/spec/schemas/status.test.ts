@@ -72,6 +72,39 @@ describe("status schema", () => {
             retryMs: 0,
           },
         },
+        bootstrap: {
+          runtime: {
+            kind: "bun",
+            strategy: "manual-install-beta",
+            currentVersion: "1.3.6",
+            requiredVersion: ">=1.3.0",
+            ready: true,
+            managedByApp: false,
+            summary: "This beta runs on Bun 1.3.6.",
+            detail: "Current beta installs still expect Bun to be present.",
+          },
+          policy: {
+            offline: false,
+            allowDownload: true,
+            source: "default",
+            summary: "Models can auto-download on first use.",
+          },
+          cache: {
+            path: "/tmp/cache",
+            totalSizeBytes: 0,
+            totalSizeLabel: "0 B",
+          },
+          models: {
+            activePresetId: "slim",
+            activePresetName: "Slim (Default, ~1GB)",
+            estimatedFootprint: "~1GB",
+            downloading: false,
+            cachedCount: 0,
+            totalCount: 4,
+            summary: "0/4 preset roles are cached for Slim (Default, ~1GB).",
+            entries: [],
+          },
+        },
       };
       expect(assertValid(status, schema)).toBe(true);
     });
@@ -139,6 +172,39 @@ describe("status schema", () => {
             retryMs: 2000,
           },
         },
+        bootstrap: {
+          runtime: {
+            kind: "bun",
+            strategy: "manual-install-beta",
+            currentVersion: "1.3.6",
+            requiredVersion: ">=1.3.0",
+            ready: true,
+            managedByApp: false,
+            summary: "This beta runs on Bun 1.3.6.",
+            detail: "Current beta installs still expect Bun to be present.",
+          },
+          policy: {
+            offline: false,
+            allowDownload: true,
+            source: "default",
+            summary: "Models can auto-download on first use.",
+          },
+          cache: {
+            path: "/tmp/cache",
+            totalSizeBytes: 1024,
+            totalSizeLabel: "1 KB",
+          },
+          models: {
+            activePresetId: "balanced",
+            activePresetName: "Balanced (~2GB)",
+            estimatedFootprint: "~2GB",
+            downloading: false,
+            cachedCount: 2,
+            totalCount: 4,
+            summary: "2/4 preset roles are cached for Balanced (~2GB).",
+            entries: [],
+          },
+        },
       };
       expect(assertValid(status, schema)).toBe(true);
     });
@@ -196,6 +262,39 @@ describe("status schema", () => {
           events: {
             connectedClients: 0,
             retryMs: 0,
+          },
+        },
+        bootstrap: {
+          runtime: {
+            kind: "bun",
+            strategy: "manual-install-beta",
+            currentVersion: "1.3.6",
+            requiredVersion: ">=1.3.0",
+            ready: true,
+            managedByApp: false,
+            summary: "This beta runs on Bun 1.3.6.",
+            detail: "Current beta installs still expect Bun to be present.",
+          },
+          policy: {
+            offline: true,
+            allowDownload: false,
+            source: "gno-offline",
+            summary: "Offline mode. Cached models only.",
+          },
+          cache: {
+            path: "/tmp/cache",
+            totalSizeBytes: 0,
+            totalSizeLabel: "0 B",
+          },
+          models: {
+            activePresetId: "slim",
+            activePresetName: "Slim (Default, ~1GB)",
+            estimatedFootprint: "~1GB",
+            downloading: false,
+            cachedCount: 0,
+            totalCount: 4,
+            summary: "0/4 preset roles are cached for Slim (Default, ~1GB).",
+            entries: [],
           },
         },
       };
@@ -269,6 +368,39 @@ describe("status schema", () => {
             retryMs: 0,
           },
         },
+        bootstrap: {
+          runtime: {
+            kind: "bun",
+            strategy: "manual-install-beta",
+            currentVersion: "1.3.6",
+            requiredVersion: ">=1.3.0",
+            ready: true,
+            managedByApp: false,
+            summary: "This beta runs on Bun 1.3.6.",
+            detail: "Current beta installs still expect Bun to be present.",
+          },
+          policy: {
+            offline: false,
+            allowDownload: true,
+            source: "default",
+            summary: "Models can auto-download on first use.",
+          },
+          cache: {
+            path: "/tmp/cache",
+            totalSizeBytes: 0,
+            totalSizeLabel: "0 B",
+          },
+          models: {
+            activePresetId: "slim",
+            activePresetName: "Slim (Default, ~1GB)",
+            estimatedFootprint: "~1GB",
+            downloading: false,
+            cachedCount: 0,
+            totalCount: 4,
+            summary: "0/4 preset roles are cached for Slim (Default, ~1GB).",
+            entries: [],
+          },
+        },
       };
       expect(assertInvalid(status, schema)).toBe(true);
     });
@@ -340,6 +472,39 @@ describe("status schema", () => {
             retryMs: 0,
           },
         },
+        bootstrap: {
+          runtime: {
+            kind: "bun",
+            strategy: "manual-install-beta",
+            currentVersion: "1.3.6",
+            requiredVersion: ">=1.3.0",
+            ready: true,
+            managedByApp: false,
+            summary: "This beta runs on Bun 1.3.6.",
+            detail: "Current beta installs still expect Bun to be present.",
+          },
+          policy: {
+            offline: false,
+            allowDownload: true,
+            source: "default",
+            summary: "Models can auto-download on first use.",
+          },
+          cache: {
+            path: "/tmp/cache",
+            totalSizeBytes: 0,
+            totalSizeLabel: "0 B",
+          },
+          models: {
+            activePresetId: "slim",
+            activePresetName: "Slim (Default, ~1GB)",
+            estimatedFootprint: "~1GB",
+            downloading: false,
+            cachedCount: 0,
+            totalCount: 4,
+            summary: "0/4 preset roles are cached for Slim (Default, ~1GB).",
+            entries: [],
+          },
+        },
       };
       expect(assertInvalid(status, schema)).toBe(true);
     });
@@ -396,6 +561,39 @@ describe("status schema", () => {
           events: {
             connectedClients: 0,
             retryMs: 0,
+          },
+        },
+        bootstrap: {
+          runtime: {
+            kind: "bun",
+            strategy: "manual-install-beta",
+            currentVersion: "1.3.6",
+            requiredVersion: ">=1.3.0",
+            ready: true,
+            managedByApp: false,
+            summary: "This beta runs on Bun 1.3.6.",
+            detail: "Current beta installs still expect Bun to be present.",
+          },
+          policy: {
+            offline: false,
+            allowDownload: true,
+            source: "default",
+            summary: "Models can auto-download on first use.",
+          },
+          cache: {
+            path: "/tmp/cache",
+            totalSizeBytes: 0,
+            totalSizeLabel: "0 B",
+          },
+          models: {
+            activePresetId: "slim",
+            activePresetName: "Slim (Default, ~1GB)",
+            estimatedFootprint: "~1GB",
+            downloading: false,
+            cachedCount: 0,
+            totalCount: 4,
+            summary: "0/4 preset roles are cached for Slim (Default, ~1GB).",
+            entries: [],
           },
         },
       };

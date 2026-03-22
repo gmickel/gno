@@ -1,0 +1,14 @@
+{
+  "assignee": null,
+  "claim_note": "",
+  "claimed_at": null,
+  "created_at": "2026-03-22T21:34:44.649410Z",
+  "depends_on": [],
+  "epic": "fn-49-desktop-beta-runtime-and-model-bootstrap",
+  "id": "fn-49-desktop-beta-runtime-and-model-bootstrap.1",
+  "priority": null,
+  "spec_path": ".flow/tasks/fn-49-desktop-beta-runtime-and-model-bootstrap.1.md",
+  "status": "todo",
+  "title": "Expose runtime and model bootstrap status",
+  "updated_at": "2026-03-22T21:34:44.761411Z"
+}

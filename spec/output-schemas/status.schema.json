@@ -16,7 +16,8 @@
     "capabilities",
     "onboarding",
     "health",
-    "background"
+    "background",
+    "bootstrap"
   ],
   "properties": {
     "indexName": {
@@ -345,6 +346,112 @@
             "retryMs": {
               "type": "integer",
               "minimum": 0
+            }
+          }
+        }
+      }
+    },
+    "bootstrap": {
+      "type": "object",
+      "required": ["runtime", "policy", "cache", "models"],
+      "properties": {
+        "runtime": {
+          "type": "object",
+          "required": [
+            "kind",
+            "strategy",
+            "currentVersion",
+            "requiredVersion",
+            "ready",
+            "managedByApp",
+            "summary",
+            "detail"
+          ],
+          "properties": {
+            "kind": { "type": "string", "enum": ["bun"] },
+            "strategy": {
+              "type": "string",
+              "enum": ["manual-install-beta"]
+            },
+            "currentVersion": { "type": "string" },
+            "requiredVersion": { "type": "string" },
+            "ready": { "type": "boolean" },
+            "managedByApp": { "type": "boolean" },
+            "summary": { "type": "string" },
+            "detail": { "type": "string" }
+          }
+        },
+        "policy": {
+          "type": "object",
+          "required": ["offline", "allowDownload", "source", "summary"],
+          "properties": {
+            "offline": { "type": "boolean" },
+            "allowDownload": { "type": "boolean" },
+            "source": {
+              "type": "string",
+              "enum": [
+                "default",
+                "hf-hub-offline",
+                "gno-offline",
+                "no-auto-download"
+              ]
+            },
+            "summary": { "type": "string" }
+          }
+        },
+        "cache": {
+          "type": "object",
+          "required": ["path", "totalSizeBytes", "totalSizeLabel"],
+          "properties": {
+            "path": { "type": "string" },
+            "totalSizeBytes": { "type": "integer", "minimum": 0 },
+            "totalSizeLabel": { "type": "string" }
+          }
+        },
+        "models": {
+          "type": "object",
+          "required": [
+            "activePresetId",
+            "activePresetName",
+            "estimatedFootprint",
+            "downloading",
+            "cachedCount",
+            "totalCount",
+            "summary",
+            "entries"
+          ],
+          "properties": {
+            "activePresetId": { "type": "string" },
+            "activePresetName": { "type": "string" },
+            "estimatedFootprint": { "type": ["string", "null"] },
+            "downloading": { "type": "boolean" },
+            "cachedCount": { "type": "integer", "minimum": 0 },
+            "totalCount": { "type": "integer", "minimum": 0 },
+            "summary": { "type": "string" },
+            "entries": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "role",
+                  "uri",
+                  "cached",
+                  "path",
+                  "sizeBytes",
+                  "statusLabel"
+                ],
+                "properties": {
+                  "role": {
+                    "type": "string",
+                    "enum": ["embed", "rerank", "expand", "gen"]
+                  },
+                  "uri": { "type": "string" },
+                  "cached": { "type": "boolean" },
+                  "path": { "type": ["string", "null"] },
+                  "sizeBytes": { "type": ["integer", "null"], "minimum": 0 },
+                  "statusLabel": { "type": "string" }
+                }
+              }
             }
           }
         }

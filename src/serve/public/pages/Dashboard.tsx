@@ -17,6 +17,7 @@ import type { AppStatusResponse, HealthActionKind } from "../../status-model";
 
 import { AddCollectionDialog } from "../components/AddCollectionDialog";
 import { AIModelSelector } from "../components/AIModelSelector";
+import { BootstrapStatus } from "../components/BootstrapStatus";
 import { CaptureButton } from "../components/CaptureButton";
 import { FirstRunWizard } from "../components/FirstRunWizard";
 import { GnoLogo } from "../components/GnoLogo";
@@ -255,6 +256,15 @@ export default function Dashboard({ navigate }: PageProps) {
               busyAction={busyAction}
               health={status.health}
               onAction={handleHealthAction}
+            />
+          </div>
+        )}
+
+        {status && (
+          <div className="mb-10">
+            <BootstrapStatus
+              bootstrap={status.bootstrap}
+              onDownloadModels={() => void handleDownloadModels()}
             />
           </div>
         )}

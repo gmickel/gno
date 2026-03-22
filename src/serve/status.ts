@@ -14,12 +14,14 @@ import type {
 
 import { getModelsCachePath } from "../app/constants";
 import { ModelCache } from "../llm/cache";
+import { envIsSet, resolveDownloadPolicy } from "../llm/policy";
 import { getActivePreset } from "../llm/registry";
 import { downloadState, type ServerContext } from "./context";
 
 const GIGABYTE = 1024 * 1024 * 1024;
 const DISK_WARN_BYTES = 4 * GIGABYTE;
 const DISK_ERROR_BYTES = 2 * GIGABYTE;
+const SIZE_REGEX = /~[\d.]+GB/;
 const SUGGESTED_FOLDERS = [
   {
     label: "Documents",
@@ -82,6 +84,26 @@ function summarizeCount(
 function toDisplayPath(path: string): string {
   const home = homedir();
   return path.startsWith(home) ? `~${path.slice(home.length)}` : path;
+}
+
+function extractEstimatedFootprint(name: string): string | null {
+  const match = name.match(SIZE_REGEX);
+  return match ? match[0] : null;
+}
+
+function resolvePolicySource(
+  env: Record<string, string | undefined>
+): AppStatusResponse["bootstrap"]["policy"]["source"] {
+  if (envIsSet(env, "HF_HUB_OFFLINE")) {
+    return "hf-hub-offline";
+  }
+  if (envIsSet(env, "GNO_OFFLINE")) {
+    return "gno-offline";
+  }
+  if (envIsSet(env, "GNO_NO_AUTO_DOWNLOAD")) {
+    return "no-auto-download";
+  }
+  return "default";
 }
 
 async function pathExists(path: string): Promise<boolean> {
@@ -413,6 +435,84 @@ async function buildDiskCheck(
   };
 }
 
+async function buildBootstrapState(
+  ctx: ServerContext
+): Promise<AppStatusResponse["bootstrap"]> {
+  const preset = getActivePreset(ctx.config);
+  const cache = new ModelCache(getModelsCachePath());
+  const entries = await cache.list();
+  const policy = resolveDownloadPolicy(process.env, {});
+  const policySource = resolvePolicySource(process.env);
+  const roleUris = [
+    { role: "embed" as const, uri: preset.embed },
+    { role: "rerank" as const, uri: preset.rerank },
+    { role: "expand" as const, uri: preset.expand ?? preset.gen },
+    { role: "gen" as const, uri: preset.gen },
+  ];
+
+  const modelEntries = await Promise.all(
+    roleUris.map(async ({ role, uri }) => {
+      const path = await cache.getCachedPath(uri);
+      const entry = entries.find((candidate) => candidate.uri === uri);
+      return {
+        role,
+        uri,
+        cached: path !== null,
+        path,
+        sizeBytes: entry?.size ?? null,
+        statusLabel: path !== null ? "Ready" : "Needs download",
+      };
+    })
+  );
+
+  const cachedCount = modelEntries.filter((entry) => entry.cached).length;
+  const totalCount = modelEntries.length;
+
+  const policySummary = policy.offline
+    ? "Offline mode. Cached models only."
+    : policy.allowDownload
+      ? "Models can auto-download on first use."
+      : "Manual model download only. Auto-download is disabled.";
+
+  return {
+    runtime: {
+      kind: "bun",
+      strategy: "manual-install-beta",
+      currentVersion: Bun.version,
+      requiredVersion: ">=1.3.0",
+      ready: true,
+      managedByApp: false,
+      summary: `This beta runs on Bun ${Bun.version}.`,
+      detail:
+        "Current beta installs still expect Bun to be present on the machine. Final desktop packaging work is separate.",
+    },
+    policy: {
+      offline: policy.offline,
+      allowDownload: policy.allowDownload,
+      source: policySource,
+      summary: policySummary,
+    },
+    cache: {
+      path: cache.dir,
+      totalSizeBytes: await cache.totalSize(),
+      totalSizeLabel: formatBytes(await cache.totalSize()),
+    },
+    models: {
+      activePresetId: preset.id,
+      activePresetName: preset.name,
+      estimatedFootprint: extractEstimatedFootprint(preset.name),
+      downloading: downloadState.active,
+      cachedCount,
+      totalCount,
+      summary:
+        cachedCount === totalCount
+          ? `${preset.name} is fully cached.`
+          : `${cachedCount}/${totalCount} preset roles are cached for ${preset.name}.`,
+      entries: modelEntries,
+    },
+  };
+}
+
 function buildOnboarding(
   status: IndexStatus,
   modelCheck: HealthCheck,
@@ -514,10 +614,11 @@ export async function buildAppStatus(
 
   const status = result.value;
   const preset = getActivePreset(ctx.config);
-  const [modelCheck, diskCheck, suggestions] = await Promise.all([
+  const [modelCheck, diskCheck, suggestions, bootstrap] = await Promise.all([
     buildModelCheck(ctx, deps),
     buildDiskCheck(status, deps),
     deps.listSuggestedCollections?.() ?? listSuggestedCollections(),
+    buildBootstrapState(ctx),
   ]);
 
   const backgroundCheck = buildBackgroundCheck(ctx, status);
@@ -592,5 +693,6 @@ export async function buildAppStatus(
         retryMs: eventState?.retryMs ?? 0,
       },
     },
+    bootstrap,
   };
 }
