@@ -47,6 +47,14 @@ This epic focuses on six foundation areas:
 - The editor and related-notes surfaces already expose useful extension points: `src/serve/public/components/editor/CodeMirrorEditor.tsx:26-39`, `src/serve/public/components/RelatedNotesSidebar.tsx:52-65`.
 - The web server currently starts as a loopback-only Bun app; desktop packaging should wrap this lifecycle rather than replace it initially: `src/serve/server.ts:119-205`.
 
+## Docs / website touchpoints
+
+- `docs/` remains the source of truth for these product/architecture decisions; do not introduce a separate ADR track for `fn-41`.
+- `docs/WEB-UI.md`, `website/features/web-ui.md`, and `website/_data/features.yml` currently describe broad create/edit/delete behavior and already advertise keyboard-first claims including `Cmd+K`; these surfaces must be updated as the actual editing contract, watcher behavior, and quick switcher land: `docs/WEB-UI.md:97-159`, `website/features/web-ui.md:34-57`, `website/_data/features.yml:56-74`.
+- `docs/comparisons/obsidian.md` and the FAQ still frame GNO primarily as complementary to Obsidian. `fn-41` needs those pages rewritten to explain the new trajectory and the remaining limits honestly: `docs/comparisons/obsidian.md:5-6`, `docs/comparisons/obsidian.md:36-54`, `docs/comparisons/obsidian.md:164-166`, `website/_data/faq.yml:19-21`.
+- `website/index.md`, `README.md`, and homepage feature copy should be updated as workspace features ship so the marketing surface matches the actual product contract, especially around agent-companion positioning, exact-hit navigation, read-only converted docs, and the quick switcher: `website/index.md:16-34`, `website/index.md:83-105`.
+- Contract-bearing docs need to move with the code: `docs/API.md`, `docs/MCP.md`, `docs/SDK.md`, `docs/WEB-UI.md`, and any website feature pages that mirror those capabilities.
+
 ## Approach
 
 ### 1. Introduce an explicit document capability contract
@@ -155,7 +163,7 @@ bun run serve
 - Search hits can open to precise document targets and those targets are linkable across integrations.
 - Editor-side linked-note workflows are materially better without introducing a new UI kit.
 - A `Cmd/Ctrl+K` quick switcher can open/create/jump through the workspace using the same fast BM25 path, deep-link contract, and fresh index state.
-- User-facing docs, API/spec docs, and comparison docs reflect the new positioning and behavior.
+- User-facing docs, API/spec docs, comparison docs, FAQ/homepage copy, and website feature pages reflect the new positioning and behavior.
 
 ## Open questions
 

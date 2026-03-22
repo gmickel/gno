@@ -12,7 +12,7 @@ Build a keyboard-first `Cmd/Ctrl+K` workspace switcher using the existing shadcn
 - The switcher uses the existing fast BM25 retrieval path for responsive title/path lookup and respects the current fresh index state from task `.3`.
 - Results can open exact deep-linked document targets from task `.4`, not just root document routes.
 - The switcher supports at least: open matching note, open recent note, and create new markdown note.
-- The UI is built with the existing shadcn/cmdk command/dialog primitives already in the repo; docs/tests cover shortcut behavior, result navigation, and create-note flow.
+- The UI is built with the existing shadcn/cmdk command/dialog primitives already in the repo; docs/tests cover shortcut behavior, result navigation, create-note flow, and website/homepage/feature copy for the new switcher.
 
 ## Notes For Implementer
 
@@ -21,3 +21,4 @@ Build a keyboard-first `Cmd/Ctrl+K` workspace switcher using the existing shadcn
 - Current app-level shortcuts only cover `/` and `?`, so add the new global entrypoint there: `src/serve/public/app.tsx:63-89`.
 - This task depends on the watch/event and deep-link contracts from tasks `.3` and `.4`; do not invent parallel routing or stale local caches inside the switcher.
 - Desktop shell work remains deferred follow-on scope; keep `fn-7` as the later home for OS-level packaging/file association.
+- Current website feature data already claims `Cmd+K`, so this task must reconcile homepage/feature/FAQ copy with the actual shipped shortcut behavior: `website/_data/features.yml:56-74`, `website/index.md:83-105`.

@@ -12,7 +12,7 @@ Replace the current blind-save editor flow with a versioned save protocol and re
 - DocumentEditor submits version markers on save, refreshes its local baseline after successful writes, and surfaces save conflicts with clear reload/restore/review choices using existing dialog primitives.
 - Add bounded local history for user-authored editable documents so recent revisions can be restored after conflict or mistaken edits.
 - Silent overwrite is no longer possible when the file changed on disk after the editor loaded it; regression tests cover stale saves, restore flow, and sequential successful saves.
-- API/Web docs and any affected schemas/specs are updated.
+- API/Web docs, FAQ/help copy for conflict behavior, and any affected schemas/specs are updated.
 
 ## Notes For Implementer
 

@@ -12,10 +12,11 @@ Define one canonical deep-link contract for documents, headings, and line target
 - Search results use existing `snippetRange` metadata to navigate to the exact hit location rather than only `/doc?uri=...`.
 - Doc View and editor honor deep-link params by scrolling/highlighting the resolved heading/line target and expose copy-link affordances.
 - API/MCP/SDK surfaces return enough target metadata to reconstruct or emit stable deep links without client-side guesswork.
-- Contract tests/docs/specs are updated, and the resulting link shape is documented as the substrate for task `.6` `Cmd/Ctrl+K` workspace switching.
+- Contract tests/docs/specs are updated, and the resulting link shape is documented in the API/MCP/SDK/Web docs as the substrate for task `.6` `Cmd/Ctrl+K` workspace switching.
 
 ## Notes For Implementer
 
 - Current search click behavior ignores `snippetRange`: `src/serve/public/pages/Search.tsx:1035-1067`.
 - Current SPA query-string handling is already stable enough to extend: `src/serve/public/app.tsx:40-60`.
 - Keep deep-link behavior compatible with the existing shadcn command/dialog primitives used by task `.6`: `src/serve/public/components/ui/command.tsx:1-183`.
+- This task should explicitly touch `docs/API.md`, `docs/MCP.md`, `docs/SDK.md`, and any website/API feature copy that mirrors linkable result payloads.
