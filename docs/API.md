@@ -123,7 +123,7 @@ GET /api/health
 GET /api/status
 ```
 
-Returns index statistics plus first-run onboarding and health-center state for the dashboard.
+Returns index statistics plus first-run onboarding, health-center state, and background-service telemetry for the dashboard.
 
 **Response**:
 
@@ -192,6 +192,32 @@ Returns index statistics plus first-run onboarding and health-center state for t
         "actionKind": "download-models"
       }
     ]
+  },
+  "background": {
+    "watcher": {
+      "expectedCollections": ["notes"],
+      "activeCollections": ["notes"],
+      "failedCollections": [],
+      "queuedCollections": [],
+      "syncingCollections": [],
+      "lastEventAt": "2025-01-15T10:31:00Z",
+      "lastSyncAt": "2025-01-15T10:31:02Z"
+    },
+    "embedding": {
+      "available": true,
+      "pendingDocCount": 0,
+      "running": false,
+      "nextRunAt": null,
+      "lastRunAt": 1736937062000,
+      "lastResult": {
+        "embedded": 12,
+        "errors": 0
+      }
+    },
+    "events": {
+      "connectedClients": 2,
+      "retryMs": 2000
+    }
   }
 }
 ```
@@ -199,6 +225,12 @@ Returns index statistics plus first-run onboarding and health-center state for t
 `onboarding.stage` is one of `add-collection`, `models`, `indexing`, or `ready`.
 
 `health.checks` gives per-area status cards for folders, indexing, models, and disk. Actions map to dashboard buttons such as add folder, run sync, or download models.
+
+`background` is the reliability block:
+
+- `watcher` shows which collections are expected, actively watched, queued, syncing, or failed
+- `embedding` reports pending/running background embedding state
+- `events` reports current SSE clients and recommended reconnect retry
 
 **Example**:
 

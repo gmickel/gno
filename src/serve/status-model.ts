@@ -55,6 +55,30 @@ export interface HealthCenterState {
   checks: HealthCheck[];
 }
 
+export interface BackgroundServiceState {
+  watcher: {
+    expectedCollections: string[];
+    activeCollections: string[];
+    failedCollections: Array<{ collection: string; reason: string }>;
+    queuedCollections: string[];
+    syncingCollections: string[];
+    lastEventAt: string | null;
+    lastSyncAt: string | null;
+  };
+  embedding: {
+    available: boolean;
+    pendingDocCount: number;
+    running: boolean;
+    nextRunAt: number | null;
+    lastRunAt: number | null;
+    lastResult: { embedded: number; errors: number } | null;
+  };
+  events: {
+    connectedClients: number;
+    retryMs: number;
+  };
+}
+
 export interface AppStatusResponse {
   indexName: string;
   configPath: string;
@@ -78,4 +102,5 @@ export interface AppStatusResponse {
   };
   onboarding: OnboardingState;
   health: HealthCenterState;
+  background: BackgroundServiceState;
 }

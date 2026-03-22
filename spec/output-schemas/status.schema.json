@@ -15,7 +15,8 @@
     "activePreset",
     "capabilities",
     "onboarding",
-    "health"
+    "health",
+    "background"
   ],
   "properties": {
     "indexName": {
@@ -240,6 +241,110 @@
                   "free-space"
                 ]
               }
+            }
+          }
+        }
+      }
+    },
+    "background": {
+      "type": "object",
+      "required": ["watcher", "embedding", "events"],
+      "properties": {
+        "watcher": {
+          "type": "object",
+          "required": [
+            "expectedCollections",
+            "activeCollections",
+            "failedCollections",
+            "queuedCollections",
+            "syncingCollections",
+            "lastEventAt",
+            "lastSyncAt"
+          ],
+          "properties": {
+            "expectedCollections": {
+              "type": "array",
+              "items": { "type": "string" }
+            },
+            "activeCollections": {
+              "type": "array",
+              "items": { "type": "string" }
+            },
+            "failedCollections": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["collection", "reason"],
+                "properties": {
+                  "collection": { "type": "string" },
+                  "reason": { "type": "string" }
+                }
+              }
+            },
+            "queuedCollections": {
+              "type": "array",
+              "items": { "type": "string" }
+            },
+            "syncingCollections": {
+              "type": "array",
+              "items": { "type": "string" }
+            },
+            "lastEventAt": {
+              "type": ["string", "null"],
+              "format": "date-time"
+            },
+            "lastSyncAt": {
+              "type": ["string", "null"],
+              "format": "date-time"
+            }
+          }
+        },
+        "embedding": {
+          "type": "object",
+          "required": [
+            "available",
+            "pendingDocCount",
+            "running",
+            "nextRunAt",
+            "lastRunAt",
+            "lastResult"
+          ],
+          "properties": {
+            "available": { "type": "boolean" },
+            "pendingDocCount": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "running": { "type": "boolean" },
+            "nextRunAt": { "type": ["integer", "null"] },
+            "lastRunAt": { "type": ["integer", "null"] },
+            "lastResult": {
+              "type": ["object", "null"],
+              "required": ["embedded", "errors"],
+              "properties": {
+                "embedded": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "errors": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              }
+            }
+          }
+        },
+        "events": {
+          "type": "object",
+          "required": ["connectedClients", "retryMs"],
+          "properties": {
+            "connectedClients": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "retryMs": {
+              "type": "integer",
+              "minimum": 0
             }
           }
         }

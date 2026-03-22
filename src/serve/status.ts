@@ -160,6 +160,51 @@ function getCheckState(checks: HealthCheck[]): HealthCenterState["state"] {
   return "healthy";
 }
 
+function buildBackgroundCheck(
+  ctx: ServerContext,
+  status: IndexStatus
+): HealthCheck | null {
+  const watchState = ctx.watchService?.getState();
+  if (!watchState || status.collections.length === 0) {
+    return null;
+  }
+
+  if (watchState.failedCollections.length > 0) {
+    return {
+      id: "background",
+      title: "Background service",
+      status: "warn",
+      summary: `${summarizeCount(watchState.failedCollections.length, "watcher")} failed to start`,
+      detail:
+        "Some folders are not being watched live. Manual sync still works, but automatic refresh may be incomplete until the watcher recovers.",
+    };
+  }
+
+  if (
+    watchState.syncingCollections.length > 0 ||
+    watchState.queuedCollections.length > 0
+  ) {
+    return {
+      id: "background",
+      title: "Background service",
+      status: "warn",
+      summary: "Watcher activity is still being processed",
+      detail:
+        "Recent file changes are queued or syncing. The workspace should catch up automatically without a restart.",
+    };
+  }
+
+  return {
+    id: "background",
+    title: "Background service",
+    status: "ok",
+    summary: `${summarizeCount(watchState.activeCollections.length, "folder")} watched live`,
+    detail: watchState.lastEventAt
+      ? `Last file event: ${watchState.lastEventAt}.`
+      : "Live watching is armed and waiting for file changes.",
+  };
+}
+
 function buildCollectionCheck(status: IndexStatus): HealthCheck {
   if (status.collections.length === 0) {
     return {
@@ -475,12 +520,18 @@ export async function buildAppStatus(
     deps.listSuggestedCollections?.() ?? listSuggestedCollections(),
   ]);
 
+  const backgroundCheck = buildBackgroundCheck(ctx, status);
   const checks = [
     buildCollectionCheck(status),
     buildIndexingCheck(status),
     modelCheck,
     diskCheck,
-  ];
+    backgroundCheck,
+  ].filter((check): check is HealthCheck => check !== null);
+
+  const embedState = ctx.scheduler?.getState();
+  const watchState = ctx.watchService?.getState();
+  const eventState = ctx.eventBus?.getState();
 
   const healthState = getCheckState(checks);
   const healthSummary =
@@ -517,6 +568,29 @@ export async function buildAppStatus(
       state: healthState,
       summary: healthSummary,
       checks,
+    },
+    background: {
+      watcher: {
+        expectedCollections: watchState?.expectedCollections ?? [],
+        activeCollections: watchState?.activeCollections ?? [],
+        failedCollections: watchState?.failedCollections ?? [],
+        queuedCollections: watchState?.queuedCollections ?? [],
+        syncingCollections: watchState?.syncingCollections ?? [],
+        lastEventAt: watchState?.lastEventAt ?? null,
+        lastSyncAt: watchState?.lastSyncAt ?? null,
+      },
+      embedding: {
+        available: ctx.scheduler != null,
+        pendingDocCount: embedState?.pendingDocCount ?? 0,
+        running: embedState?.running ?? false,
+        nextRunAt: embedState?.nextRunAt ?? null,
+        lastRunAt: embedState?.lastRunAt ?? null,
+        lastResult: embedState?.lastResult ?? null,
+      },
+      events: {
+        connectedClients: eventState?.connectedClients ?? 0,
+        retryMs: eventState?.retryMs ?? 0,
+      },
     },
   };
 }

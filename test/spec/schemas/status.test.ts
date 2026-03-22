@@ -49,6 +49,29 @@ describe("status schema", () => {
           summary: "Finish first-run setup.",
           checks: [],
         },
+        background: {
+          watcher: {
+            expectedCollections: [],
+            activeCollections: [],
+            failedCollections: [],
+            queuedCollections: [],
+            syncingCollections: [],
+            lastEventAt: null,
+            lastSyncAt: null,
+          },
+          embedding: {
+            available: false,
+            pendingDocCount: 0,
+            running: false,
+            nextRunAt: null,
+            lastRunAt: null,
+            lastResult: null,
+          },
+          events: {
+            connectedClients: 0,
+            retryMs: 0,
+          },
+        },
       };
       expect(assertValid(status, schema)).toBe(true);
     });
@@ -93,6 +116,29 @@ describe("status schema", () => {
           summary: "GNO works, but a few issues still need attention.",
           checks: [],
         },
+        background: {
+          watcher: {
+            expectedCollections: ["docs"],
+            activeCollections: ["docs"],
+            failedCollections: [],
+            queuedCollections: [],
+            syncingCollections: [],
+            lastEventAt: null,
+            lastSyncAt: null,
+          },
+          embedding: {
+            available: true,
+            pendingDocCount: 1,
+            running: false,
+            nextRunAt: null,
+            lastRunAt: null,
+            lastResult: null,
+          },
+          events: {
+            connectedClients: 1,
+            retryMs: 2000,
+          },
+        },
       };
       expect(assertValid(status, schema)).toBe(true);
     });
@@ -128,6 +174,29 @@ describe("status schema", () => {
           state: "setup-required",
           summary: "Finish first-run setup.",
           checks: [],
+        },
+        background: {
+          watcher: {
+            expectedCollections: [],
+            activeCollections: [],
+            failedCollections: [],
+            queuedCollections: [],
+            syncingCollections: [],
+            lastEventAt: null,
+            lastSyncAt: null,
+          },
+          embedding: {
+            available: false,
+            pendingDocCount: 0,
+            running: false,
+            nextRunAt: null,
+            lastRunAt: null,
+            lastResult: null,
+          },
+          events: {
+            connectedClients: 0,
+            retryMs: 0,
+          },
         },
       };
       expect(assertValid(status, schema)).toBe(true);
@@ -177,6 +246,29 @@ describe("status schema", () => {
           summary: "Finish first-run setup.",
           checks: [],
         },
+        background: {
+          watcher: {
+            expectedCollections: [],
+            activeCollections: [],
+            failedCollections: [],
+            queuedCollections: [],
+            syncingCollections: [],
+            lastEventAt: null,
+            lastSyncAt: null,
+          },
+          embedding: {
+            available: false,
+            pendingDocCount: 0,
+            running: false,
+            nextRunAt: null,
+            lastRunAt: null,
+            lastResult: null,
+          },
+          events: {
+            connectedClients: 0,
+            retryMs: 0,
+          },
+        },
       };
       expect(assertInvalid(status, schema)).toBe(true);
     });
@@ -225,6 +317,29 @@ describe("status schema", () => {
           summary: "Finish first-run setup.",
           checks: [],
         },
+        background: {
+          watcher: {
+            expectedCollections: [],
+            activeCollections: [],
+            failedCollections: [],
+            queuedCollections: [],
+            syncingCollections: [],
+            lastEventAt: null,
+            lastSyncAt: null,
+          },
+          embedding: {
+            available: false,
+            pendingDocCount: 0,
+            running: false,
+            nextRunAt: null,
+            lastRunAt: null,
+            lastResult: null,
+          },
+          events: {
+            connectedClients: 0,
+            retryMs: 0,
+          },
+        },
       };
       expect(assertInvalid(status, schema)).toBe(true);
     });
@@ -259,6 +374,29 @@ describe("status schema", () => {
           state: "setup-required",
           summary: "Finish first-run setup.",
           checks: [],
+        },
+        background: {
+          watcher: {
+            expectedCollections: [],
+            activeCollections: [],
+            failedCollections: [],
+            queuedCollections: [],
+            syncingCollections: [],
+            lastEventAt: null,
+            lastSyncAt: null,
+          },
+          embedding: {
+            available: false,
+            pendingDocCount: 0,
+            running: false,
+            nextRunAt: null,
+            lastRunAt: null,
+            lastResult: null,
+          },
+          events: {
+            connectedClients: 0,
+            retryMs: 0,
+          },
         },
       };
       expect(assertInvalid(status, schema)).toBe(true);

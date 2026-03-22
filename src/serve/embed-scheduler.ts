@@ -29,6 +29,8 @@ export interface EmbedSchedulerState {
   pendingDocCount: number;
   running: boolean;
   nextRunAt?: number;
+  lastRunAt?: number;
+  lastResult?: EmbedResult;
 }
 
 export interface EmbedResult {
@@ -79,6 +81,8 @@ export function createEmbedScheduler(deps: EmbedSchedulerDeps): EmbedScheduler {
   let firstPendingAt: number | null = null;
   let nextRunAt: number | null = null; // Accurate timer due time
   let disposed = false;
+  let lastRunAt: number | null = null;
+  let lastResult: EmbedResult | null = null;
 
   const stats = createVectorStatsPort(db);
 
@@ -179,6 +183,8 @@ export function createEmbedScheduler(deps: EmbedSchedulerDeps): EmbedScheduler {
     let result: EmbedResult;
     try {
       result = await runEmbed();
+      lastRunAt = Date.now();
+      lastResult = result;
     } finally {
       running = false;
     }
@@ -246,6 +252,12 @@ export function createEmbedScheduler(deps: EmbedSchedulerDeps): EmbedScheduler {
       // Use accurate nextRunAt from timer scheduling
       if (nextRunAt !== null) {
         state.nextRunAt = nextRunAt;
+      }
+      if (lastRunAt !== null) {
+        state.lastRunAt = lastRunAt;
+      }
+      if (lastResult) {
+        state.lastResult = lastResult;
       }
 
       return state;

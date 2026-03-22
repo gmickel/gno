@@ -184,8 +184,10 @@ export async function startServer(
     getModelUri: () => getActivePreset(ctxHolder.config).embed,
   });
   ctxHolder.scheduler = scheduler;
+  ctxHolder.current.scheduler = scheduler;
   const eventBus = new DocumentEventBus();
   ctxHolder.eventBus = eventBus;
+  ctxHolder.current.eventBus = eventBus;
   const watchService = new CollectionWatchService({
     collections: config.collections,
     store,
@@ -194,6 +196,7 @@ export async function startServer(
   });
   watchService.start();
   ctxHolder.watchService = watchService;
+  ctxHolder.current.watchService = watchService;
 
   // Shutdown controller for clean lifecycle
   const shutdownController = new AbortController();

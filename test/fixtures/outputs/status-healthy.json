@@ -106,5 +106,31 @@
         "detail": "Enough headroom for the active local models and routine indexing work."
       }
     ]
+  },
+  "background": {
+    "watcher": {
+      "expectedCollections": ["work", "notes"],
+      "activeCollections": ["work", "notes"],
+      "failedCollections": [],
+      "queuedCollections": [],
+      "syncingCollections": [],
+      "lastEventAt": "2025-12-23T10:00:00Z",
+      "lastSyncAt": "2025-12-23T10:00:00Z"
+    },
+    "embedding": {
+      "available": true,
+      "pendingDocCount": 0,
+      "running": false,
+      "nextRunAt": null,
+      "lastRunAt": 1766484000000,
+      "lastResult": {
+        "embedded": 24,
+        "errors": 0
+      }
+    },
+    "events": {
+      "connectedClients": 1,
+      "retryMs": 2000
+    }
   }
 }

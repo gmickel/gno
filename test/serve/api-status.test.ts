@@ -95,6 +95,9 @@ describe("GET /api/status", () => {
     expect(body.health.checks).toHaveLength(4);
     expect(body.activePreset.id).toBe("slim");
     expect(body.capabilities.answer).toBe(false);
+    expect(body.background.watcher.expectedCollections).toEqual([]);
+    expect(body.background.embedding.available).toBe(false);
+    expect(body.background.events.retryMs).toBe(0);
   });
 
   test("marks healthy workspace when folders, models, and index are ready", async () => {
@@ -160,5 +163,6 @@ describe("GET /api/status", () => {
       chunkCount: 12,
       embeddedCount: 12,
     });
+    expect(body.background.watcher.activeCollections).toEqual([]);
   });
 });

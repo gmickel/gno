@@ -15,6 +15,9 @@ import type {
   RerankPort,
 } from "../llm/types";
 import type { SqliteAdapter } from "../store/sqlite/adapter";
+import type { DocumentEventBus } from "./doc-events";
+import type { EmbedScheduler } from "./embed-scheduler";
+import type { CollectionWatchService } from "./watch-service";
 
 import { LlmAdapter } from "../llm/nodeLlamaCpp/adapter";
 import { resolveDownloadPolicy } from "../llm/policy";
@@ -72,6 +75,9 @@ export interface ServerContext {
     hybrid: boolean;
     answer: boolean;
   };
+  scheduler?: EmbedScheduler | null;
+  eventBus?: DocumentEventBus | null;
+  watchService?: CollectionWatchService | null;
 }
 
 /**
@@ -190,6 +196,9 @@ export async function createServerContext(
     answerPort,
     rerankPort,
     capabilities,
+    scheduler: null,
+    eventBus: null,
+    watchService: null,
   };
 }
 

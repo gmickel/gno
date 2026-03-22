@@ -40,7 +40,7 @@ export async function applyConfigChange(
   mutate: (config: Config) => Promise<MutationResult> | MutationResult,
   configPath?: string
 ): Promise<ApplyConfigResult> {
-  return applyConfigChangeCore(
+  const result = await applyConfigChangeCore(
     {
       store,
       configPath,
@@ -51,4 +51,10 @@ export async function applyConfigChange(
     },
     mutate
   );
+
+  if (result.ok) {
+    ctxHolder.watchService?.updateCollections(ctxHolder.config.collections);
+  }
+
+  return result;
 }

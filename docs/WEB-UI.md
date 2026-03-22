@@ -249,6 +249,17 @@ If models aren't downloaded, the preset selector shows a warning icon. Download 
 
 The Health Center surfaces the same issue in plain language and points you to the same fix action.
 
+### Background Reliability
+
+The dashboard health model now includes background-service state:
+
+- live watcher coverage for each configured folder
+- queued or actively syncing watcher work
+- background embedding backlog and next scheduled run
+- event-stream retry support for long-running tabs after disconnects or server restarts
+
+This is meant to reduce the “why didn’t it refresh?” class of failures in long sessions.
+
 ### Indexing Progress
 
 When syncing or adding collections, a progress indicator shows:
