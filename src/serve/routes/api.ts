@@ -50,6 +50,7 @@ import {
   type ServerContext,
 } from "../context";
 import { getJobStatus, startJob } from "../jobs";
+import { buildAppStatus, type StatusBuildDeps } from "../status";
 
 /** Mutable context holder for hot-reloading presets */
 export interface ContextHolder {
@@ -384,30 +385,20 @@ export function handleHealth(): Response {
  * GET /api/status
  * Returns index status matching status.schema.json.
  */
-export async function handleStatus(store: SqliteAdapter): Promise<Response> {
-  const result = await store.getStatus();
-  if (!result.ok) {
-    return errorResponse("RUNTIME", result.error.message, 500);
+export async function handleStatus(
+  ctx: ServerContext,
+  deps?: StatusBuildDeps
+): Promise<Response> {
+  try {
+    const status = await buildAppStatus(ctx, deps);
+    return jsonResponse(status);
+  } catch (error) {
+    return errorResponse(
+      "RUNTIME",
+      error instanceof Error ? error.message : "Failed to get status",
+      500
+    );
   }
-
-  const s = result.value;
-  return jsonResponse({
-    indexName: s.indexName,
-    configPath: s.configPath,
-    dbPath: s.dbPath,
-    collections: s.collections.map((c) => ({
-      name: c.name,
-      path: c.path,
-      documentCount: c.activeDocuments,
-      chunkCount: c.totalChunks,
-      embeddedCount: c.embeddedChunks,
-    })),
-    totalDocuments: s.activeDocuments,
-    totalChunks: s.totalChunks,
-    embeddingBacklog: s.embeddingBacklog,
-    lastUpdated: s.lastUpdatedAt,
-    healthy: s.healthy,
-  });
 }
 
 /**
@@ -2316,7 +2307,21 @@ export async function routeApi(
   }
 
   if (path === "/api/status") {
-    return handleStatus(store);
+    return handleStatus({
+      store,
+      config,
+      vectorIndex: null,
+      embedPort: null,
+      expandPort: null,
+      answerPort: null,
+      rerankPort: null,
+      capabilities: {
+        bm25: true,
+        vector: false,
+        hybrid: false,
+        answer: false,
+      },
+    });
   }
 
   if (path === "/api/collections") {

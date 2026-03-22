@@ -8,7 +8,11 @@
 
     - q: How do I install GNO?
       a: >
-        Install via Bun with bun install -g @gmickel/gno. On macOS, vector search requires Homebrew SQLite (brew install sqlite3). Run gno doctor to verify your installation.
+        Install via Bun with bun install -g @gmickel/gno. On macOS, vector search requires Homebrew SQLite (brew install sqlite3). Run gno doctor to verify your installation, or launch gno serve for a guided first-run setup in the browser.
+
+    - q: Can I set up GNO without remembering the CLI?
+      a: >
+        Yes. After install, run gno serve and open localhost:3000. The dashboard walks you through adding a folder, choosing a speed-vs-quality preset, downloading local models if needed, and checking health for indexing, models, and disk.
 
     - q: What file formats does GNO support?
       a: GNO indexes Markdown (.md) with frontmatter extraction, PDF (.pdf), Microsoft Word (.docx), Excel (.xlsx), PowerPoint (.pptx), and plain text files. It also detects document language across 30+ languages.
@@ -67,7 +71,7 @@
 
     - q: How do I change the model?
       a: >
-        Use gno models use preset then gno models pull to download. Presets are slim, balanced, quality, or slim-tuned. You can also offload inference to a remote GPU server on your network via HTTP backends.
+        Use gno models use preset then gno models pull to download, or switch presets directly in the web UI. Presets are slim, balanced, quality, or slim-tuned. You can also offload inference to a remote GPU server on your network via HTTP backends.
 
     - q: What is the fine-tuned model?
       a: >

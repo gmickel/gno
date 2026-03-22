@@ -15,6 +15,8 @@ bun install -g @gmickel/gno
 gno doctor
 ```
 
+If you want a guided setup after install, run `gno serve` and open `http://localhost:3000`. The first-run dashboard can add a folder, explain health, and trigger model downloads without more terminal work.
+
 ### SDK / Library Install
 
 ```bash
@@ -119,6 +121,8 @@ Change preset in config:
 models:
   activePreset: balanced
 ```
+
+Or change it later in the web UI from the preset picker on the dashboard.
 
 ## Verification
 

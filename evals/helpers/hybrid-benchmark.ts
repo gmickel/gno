@@ -225,7 +225,7 @@ export async function runHybridBenchmark(): Promise<HybridBenchmarkSummary> {
         config: BENCH_CONFIG,
         vectorIndex: null,
         embedPort: null,
-        genPort: null,
+        expandPort: null,
         rerankPort: null,
       },
       testCase.query,

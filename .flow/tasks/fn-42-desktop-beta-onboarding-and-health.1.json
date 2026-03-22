@@ -1,0 +1,14 @@
+{
+  "assignee": null,
+  "claim_note": "",
+  "claimed_at": null,
+  "created_at": "2026-03-22T21:09:03.380902Z",
+  "depends_on": [],
+  "epic": "fn-42-desktop-beta-onboarding-and-health",
+  "id": "fn-42-desktop-beta-onboarding-and-health.1",
+  "priority": null,
+  "spec_path": ".flow/tasks/fn-42-desktop-beta-onboarding-and-health.1.md",
+  "status": "todo",
+  "title": "Implement first-run onboarding and health center",
+  "updated_at": "2026-03-22T21:09:09.944200Z"
+}

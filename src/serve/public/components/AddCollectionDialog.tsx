@@ -44,6 +44,8 @@ export interface AddCollectionDialogProps {
   onOpenChange: (open: boolean) => void;
   /** Callback when collection created successfully */
   onSuccess?: () => void;
+  /** Optional path to prefill when opening from onboarding shortcuts */
+  initialPath?: string;
 }
 
 interface CreateCollectionResponse {
@@ -69,6 +71,7 @@ function isAbsolutePath(path: string): boolean {
 }
 
 export function AddCollectionDialog({
+  initialPath,
   open,
   onOpenChange,
   onSuccess,
@@ -106,6 +109,12 @@ export function AddCollectionDialog({
       return () => clearTimeout(timer);
     }
   }, [open]);
+
+  useEffect(() => {
+    if (open && initialPath && state === "form") {
+      setPath(initialPath);
+    }
+  }, [initialPath, open, state]);
 
   // Validation
   const pathError =

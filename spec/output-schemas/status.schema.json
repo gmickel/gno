@@ -10,7 +10,12 @@
     "totalDocuments",
     "totalChunks",
     "embeddingBacklog",
-    "healthy"
+    "healthy",
+    "recentErrors",
+    "activePreset",
+    "capabilities",
+    "onboarding",
+    "health"
   ],
   "properties": {
     "indexName": {
@@ -79,14 +84,166 @@
       "description": "Chunks awaiting embedding",
       "minimum": 0
     },
+    "recentErrors": {
+      "type": "integer",
+      "description": "Recent ingest errors in the last 24 hours",
+      "minimum": 0
+    },
     "lastUpdated": {
-      "type": "string",
+      "type": ["string", "null"],
       "description": "Last index update time (ISO 8601)",
       "format": "date-time"
     },
     "healthy": {
       "type": "boolean",
       "description": "Overall health status"
+    },
+    "activePreset": {
+      "type": "object",
+      "required": ["id", "name"],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        }
+      }
+    },
+    "capabilities": {
+      "type": "object",
+      "required": ["bm25", "vector", "hybrid", "answer"],
+      "properties": {
+        "bm25": {
+          "type": "boolean"
+        },
+        "vector": {
+          "type": "boolean"
+        },
+        "hybrid": {
+          "type": "boolean"
+        },
+        "answer": {
+          "type": "boolean"
+        }
+      }
+    },
+    "onboarding": {
+      "type": "object",
+      "required": [
+        "ready",
+        "stage",
+        "headline",
+        "detail",
+        "suggestedCollections",
+        "steps"
+      ],
+      "properties": {
+        "ready": {
+          "type": "boolean"
+        },
+        "stage": {
+          "type": "string",
+          "enum": ["add-collection", "models", "indexing", "ready"]
+        },
+        "headline": {
+          "type": "string"
+        },
+        "detail": {
+          "type": "string"
+        },
+        "suggestedCollections": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["label", "path", "reason"],
+            "properties": {
+              "label": {
+                "type": "string"
+              },
+              "path": {
+                "type": "string"
+              },
+              "reason": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "steps": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "title", "status", "detail"],
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "title": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string",
+                "enum": ["complete", "current", "upcoming"]
+              },
+              "detail": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    "health": {
+      "type": "object",
+      "required": ["state", "summary", "checks"],
+      "properties": {
+        "state": {
+          "type": "string",
+          "enum": ["healthy", "needs-attention", "setup-required"]
+        },
+        "summary": {
+          "type": "string"
+        },
+        "checks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "title", "status", "summary", "detail"],
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "title": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string",
+                "enum": ["ok", "warn", "error"]
+              },
+              "summary": {
+                "type": "string"
+              },
+              "detail": {
+                "type": "string"
+              },
+              "actionLabel": {
+                "type": "string"
+              },
+              "actionKind": {
+                "type": "string",
+                "enum": [
+                  "add-collection",
+                  "open-collections",
+                  "sync",
+                  "download-models",
+                  "free-space"
+                ]
+              }
+            }
+          }
+        }
+      }
     }
   }
 }

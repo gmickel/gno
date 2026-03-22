@@ -29,7 +29,7 @@ All endpoints are JSON-based and run entirely on your machine.
 | Endpoint                 | Method | Description                                                |
 | :----------------------- | :----- | :--------------------------------------------------------- |
 | `/api/health`            | GET    | Health check                                               |
-| `/api/status`            | GET    | Index statistics                                           |
+| `/api/status`            | GET    | Index statistics, onboarding, and health center state      |
 | `/api/capabilities`      | GET    | Available features                                         |
 | `/api/collections`       | GET    | List collections                                           |
 | `/api/docs`              | GET    | List documents                                             |
@@ -123,7 +123,7 @@ GET /api/health
 GET /api/status
 ```
 
-Returns index statistics and health.
+Returns index statistics plus first-run onboarding and health-center state for the dashboard.
 
 **Response**:
 
@@ -144,10 +144,61 @@ Returns index statistics and health.
   "totalDocuments": 142,
   "totalChunks": 1853,
   "embeddingBacklog": 0,
+  "recentErrors": 0,
   "lastUpdated": "2025-01-15T10:30:00Z",
-  "healthy": true
+  "healthy": true,
+  "activePreset": {
+    "id": "balanced",
+    "name": "Balanced (~2GB)"
+  },
+  "capabilities": {
+    "bm25": true,
+    "vector": true,
+    "hybrid": true,
+    "answer": true
+  },
+  "onboarding": {
+    "ready": false,
+    "stage": "indexing",
+    "headline": "GNO is almost ready. Finish the first indexing run",
+    "detail": "Run the first sync to populate the index from the folders you connected.",
+    "suggestedCollections": [
+      {
+        "label": "Documents",
+        "path": "/Users/you/Documents",
+        "reason": "Good default for notes and docs"
+      }
+    ],
+    "steps": [
+      {
+        "id": "folders",
+        "title": "Pick folders",
+        "status": "complete",
+        "detail": "1 folder connected."
+      }
+    ]
+  },
+  "health": {
+    "state": "needs-attention",
+    "summary": "GNO works, but a few issues still need attention before it feels reliable.",
+    "checks": [
+      {
+        "id": "models",
+        "title": "Models",
+        "status": "warn",
+        "summary": "Balanced is usable, but answer models are still missing",
+        "detail": "Core search is ready. Download the rest of the preset for best ranking and local AI answers.",
+        "actionLabel": "Download models",
+        "actionKind": "download-models"
+      }
+    ]
+  }
 }
 ```
+
+`onboarding.stage` is one of `add-collection`, `models`, `indexing`, or `ready`.
+
+`health.checks` gives per-area status cards for folders, indexing, models, and disk. Actions map to dashboard buttons such as add folder, run sync, or download models.
 
 **Example**:
 

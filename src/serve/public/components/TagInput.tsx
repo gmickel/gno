@@ -97,6 +97,7 @@ function flattenSuggestions(suggestions: TagSuggestion[]): FlatOption[] {
     const groupTags = groups.get(prefix)!;
     for (let i = 0; i < groupTags.length; i++) {
       const s = groupTags[i];
+      if (!s) continue;
       flat.push({
         tag: s.tag,
         count: s.count,
@@ -327,7 +328,10 @@ export function TagInput({
         case "Backspace":
           if (inputValue === "" && value.length > 0) {
             e.preventDefault();
-            removeTag(value[value.length - 1]);
+            const lastTag = value.at(-1);
+            if (lastTag) {
+              removeTag(lastTag);
+            }
           }
           break;
       }

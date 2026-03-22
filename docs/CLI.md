@@ -786,6 +786,7 @@ Options:
 **Features:**
 
 - **Dashboard** (`/`) - Index stats, collection overview, health status
+- **First run** (`/`) - Guided folder setup, preset chooser, and health center
 - **Search** (`/search`) - Full-text BM25 search with highlighted snippets
 - **Browse** (`/browse`) - Collection and document list with filtering
 - **Document View** (`/doc`) - Rendered document content with syntax highlighting
@@ -793,7 +794,7 @@ Options:
 **API Endpoints:**
 
 - `GET /api/health` - Health check
-- `GET /api/status` - Index status (documents, chunks, collections)
+- `GET /api/status` - Index status plus onboarding and health-center state
 - `GET /api/collections` - List collections
 - `GET /api/docs` - List documents (paginated: `?limit=20&offset=0&collection=name`)
 - `GET /api/doc` - Get document content (`?uri=gno://collection/path`)

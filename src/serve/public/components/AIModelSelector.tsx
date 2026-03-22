@@ -66,12 +66,20 @@ interface DownloadStatus {
   startedAt: number | null;
 }
 
+const PRESET_EXPLANATIONS: Record<string, string> = {
+  slim: "Fastest setup. Lowest disk use.",
+  balanced: "Better answers. Good default.",
+  quality: "Best local answers. Highest disk use.",
+  "slim-tuned": "Fine-tuned retrieval in a compact footprint.",
+};
+
 // Extract readable model name from preset name
 const SIZE_REGEX = /~[\d.]+GB/;
 const MODEL_URI_SEGMENT_RE = /\/([^/#]+?)(?:\.(?:gguf|bin|safetensors))?$/i;
 
 function extractBaseName(name: string): string {
-  return name.split("(")[0].trim();
+  const [firstPart] = name.split("(");
+  return firstPart?.trim() ?? name.trim();
 }
 
 function extractSize(name: string): string | null {
@@ -410,6 +418,9 @@ export function AIModelSelector({ onPresetChange }: AIModelSelectorProps = {}) {
               const isActive = preset.id === activeId;
               const baseName = extractBaseName(preset.name);
               const size = extractSize(preset.name);
+              const explanation =
+                PRESET_EXPLANATIONS[preset.id] ??
+                "Pick this if the trade-off fits your machine.";
 
               return (
                 <button
@@ -450,6 +461,9 @@ export function AIModelSelector({ onPresetChange }: AIModelSelectorProps = {}) {
                         {size}
                       </span>
                     )}
+                    <span className="text-[10px] text-muted-foreground/80">
+                      {explanation}
+                    </span>
                     <span className="font-mono text-[9px] text-muted-foreground/50">
                       {`expand: ${formatModelRole(preset.expand ?? preset.gen)}`}
                     </span>

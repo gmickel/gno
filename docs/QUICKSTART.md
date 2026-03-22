@@ -16,6 +16,8 @@ gno init ~/Documents --name docs --pattern "**/*.md"
 
 This creates your config and sets up the first collection.
 
+Prefer a guided UI first? Start `gno serve`, open `http://localhost:3000`, then use the first-run checklist to add a folder, choose a preset, and start indexing without touching more CLI commands.
+
 ## 2. Index Your Documents
 
 ```bash
@@ -167,6 +169,7 @@ gno serve
 
 Open http://localhost:3000 in your browser for:
 
+- First-run onboarding and health center
 - Dashboard with index stats
 - Visual search with highlighted results
 - Document browser with collection filtering

@@ -134,8 +134,11 @@ export function CaptureModal({
         const lastUsed = localStorage.getItem(STORAGE_KEY);
         if (lastUsed && data.collections.some((c) => c.name === lastUsed)) {
           setCollection(lastUsed);
-        } else if (data.collections.length > 0) {
-          setCollection(data.collections[0].name);
+        } else {
+          const firstCollection = data.collections.at(0);
+          if (firstCollection) {
+            setCollection(firstCollection.name);
+          }
         }
       }
     });

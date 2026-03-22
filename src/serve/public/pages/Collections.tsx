@@ -24,8 +24,11 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
+import type { AppStatusResponse } from "../../status-model";
+
 import { AddCollectionDialog } from "../components/AddCollectionDialog";
 import { Loader } from "../components/ai-elements/loader";
+import { CollectionsEmptyState } from "../components/CollectionsEmptyState";
 import { IndexingProgress } from "../components/IndexingProgress";
 import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
@@ -75,6 +78,7 @@ interface StatusResponse {
   totalDocuments: number;
   lastUpdated: string | null;
   healthy: boolean;
+  onboarding: AppStatusResponse["onboarding"];
 }
 
 interface SyncResponse {
@@ -249,6 +253,9 @@ function CollectionCard({
 
 export default function Collections({ navigate }: PageProps) {
   const [collections, setCollections] = useState<CollectionStats[]>([]);
+  const [onboarding, setOnboarding] = useState<
+    AppStatusResponse["onboarding"] | null
+  >(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -260,6 +267,9 @@ export default function Collections({ navigate }: PageProps) {
   );
   const [removing, setRemoving] = useState(false);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
+  const [initialCollectionPath, setInitialCollectionPath] = useState<
+    string | undefined
+  >(undefined);
 
   const loadCollections = useCallback(async () => {
     const { data, error: err } = await apiFetch<StatusResponse>("/api/status");
@@ -267,6 +277,7 @@ export default function Collections({ navigate }: PageProps) {
       setError(err);
     } else if (data) {
       setCollections(data.collections);
+      setOnboarding(data.onboarding);
       setError(null);
     }
   }, []);
@@ -452,19 +463,13 @@ export default function Collections({ navigate }: PageProps) {
 
         {/* Empty state */}
         {!error && collections.length === 0 && (
-          <div className="mx-auto max-w-md py-16 text-center">
-            <div className="mx-auto mb-4 flex size-16 items-center justify-center rounded-full bg-muted">
-              <FolderIcon className="size-8 text-muted-foreground" />
-            </div>
-            <h2 className="mb-2 font-semibold text-xl">No collections yet</h2>
-            <p className="mb-6 text-muted-foreground">
-              Add your first collection to start indexing documents.
-            </p>
-            <Button onClick={() => setAddDialogOpen(true)}>
-              <FolderPlusIcon className="mr-2 size-4" />
-              Add Collection
-            </Button>
-          </div>
+          <CollectionsEmptyState
+            onAddCollection={(path) => {
+              setInitialCollectionPath(path);
+              setAddDialogOpen(true);
+            }}
+            suggestedCollections={onboarding?.suggestedCollections ?? []}
+          />
         )}
 
         {/* Collections grid */}
@@ -495,6 +500,7 @@ export default function Collections({ navigate }: PageProps) {
 
       {/* Add collection dialog */}
       <AddCollectionDialog
+        initialPath={initialCollectionPath}
         onOpenChange={setAddDialogOpen}
         onSuccess={() => void loadCollections()}
         open={addDialogOpen}

@@ -17,7 +17,7 @@ The GNO Web UI provides a complete graphical interface to your local knowledge i
 
 | Page            | Purpose                                                         |
 | :-------------- | :-------------------------------------------------------------- |
-| **Dashboard**   | Index stats, collections, quick capture                         |
+| **Dashboard**   | First-run onboarding, health center, stats, and quick capture   |
 | **Search**      | BM25/vector/hybrid + advanced retrieval controls and tag facets |
 | **Browse**      | Paginated documents with collection and date-field sorting      |
 | **Doc View**    | View document with edit/delete actions and tag editing          |
@@ -40,11 +40,12 @@ gno serve --index research   # Use named index
 
 ### 2. Open Your Browser
 
-Navigate to `http://localhost:3000`. The dashboard shows:
+Navigate to `http://localhost:3000`. The dashboard now handles both first-run setup and ongoing health:
 
+- **First-run checklist**: Add folders, review preset, and finish the first sync
+- **Health Center**: Real status for folders, indexing, models, and disk
 - **Document count**: Total indexed documents
 - **Chunk count**: Text segments for search
-- **Collections**: Click to browse by source
 - **Quick Capture**: Create new notes instantly
 
 ### 3. Create a Note
@@ -90,7 +91,7 @@ intent: token rotation
 hyde: Refresh tokens rotate on each use.
 ```
 
-> **Note**: Models auto-download on first use. Cold start can take longer on first launch while local models download. For instant startup, set `GNO_NO_AUTO_DOWNLOAD=1` and download explicitly with `gno models pull`.
+> **Note**: Models auto-download on first use. The dashboard also exposes model download state and a one-click recovery path if the active preset still needs files. For instant startup, set `GNO_NO_AUTO_DOWNLOAD=1` and download explicitly with `gno models pull`.
 
 ---
 
@@ -195,8 +196,11 @@ View and manage your document collections:
 - **Embedded %**: Vector embedding progress
 - **Re-index**: Update collection index
 - **Remove**: Delete collection from config
+- **Quick picks**: Suggested local folders on first run
 
 ### Adding Collections
+
+On first run, the dashboard and collections page both offer quick-pick folders such as `Documents`, `Desktop`, and common Obsidian locations when they exist.
 
 Click **Add Collection** and provide:
 
@@ -222,8 +226,8 @@ Click the menu (⋮) on any collection card and select **Remove**. This:
 
 Switch between model presets without restarting:
 
-1. Click the preset selector (top-right of header)
-2. Choose: **Slim** (default), **Balanced**, or **Quality** (best answers)
+1. Click the preset selector in the header or onboarding panel
+2. Choose: **Slim** (fastest setup), **Balanced** (good default), or **Quality** (best answers)
 3. GNO reloads models automatically
 
 The preset controls both retrieval expansion and standalone answer generation.
@@ -242,6 +246,8 @@ If models aren't downloaded, the preset selector shows a warning icon. Download 
 2. Click **Download Models** button
 3. Watch progress bar as models download
 4. Capabilities auto-enable when complete
+
+The Health Center surfaces the same issue in plain language and points you to the same fix action.
 
 ### Indexing Progress
 

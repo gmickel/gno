@@ -240,7 +240,7 @@ export async function startServer(
         },
         "/api/status": {
           GET: async () =>
-            withSecurityHeaders(await handleStatus(store), isDev),
+            withSecurityHeaders(await handleStatus(ctxHolder.current), isDev),
         },
         "/api/collections": {
           GET: async () =>
