@@ -336,18 +336,18 @@ Connect GNO to Claude Desktop, Cursor, Raycast, and more:
 
 GNO exposes tools via [Model Context Protocol](https://modelcontextprotocol.io):
 
-| Tool            | Description                                            |
-| :-------------- | :----------------------------------------------------- |
-| `gno_search`    | BM25 keyword search                                    |
-| `gno_vsearch`   | Vector semantic search                                 |
-| `gno_query`     | Hybrid search (recommended)                            |
-| `gno_get`       | Retrieve document content + source/capability metadata |
-| `gno_multi_get` | Batch document retrieval                               |
-| `gno_links`     | Get outgoing links from document                       |
-| `gno_backlinks` | Get documents linking TO document                      |
-| `gno_similar`   | Find semantically similar documents                    |
-| `gno_graph`     | Get knowledge graph (nodes and edges)                  |
-| `gno_status`    | Index health check                                     |
+| Tool            | Description                           |
+| :-------------- | :------------------------------------ |
+| `gno_search`    | BM25 keyword search                   |
+| `gno_vsearch`   | Vector semantic search                |
+| `gno_query`     | Hybrid search (recommended)           |
+| `gno_get`       | Retrieve document by ID               |
+| `gno_multi_get` | Batch document retrieval              |
+| `gno_links`     | Get outgoing links from document      |
+| `gno_backlinks` | Get documents linking TO document     |
+| `gno_similar`   | Find semantically similar documents   |
+| `gno_graph`     | Get knowledge graph (nodes and edges) |
+| `gno_status`    | Index health check                    |
 
 **Design**: MCP tools are retrieval-only. Your AI assistant (Claude, GPT-4) synthesizes answers from retrieved context. Best retrieval (GNO) + best reasoning (your LLM).
 
