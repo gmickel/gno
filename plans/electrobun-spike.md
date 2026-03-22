@@ -130,3 +130,15 @@ Meaning:
   - no acceptable `open-file` / file-association path
   - no acceptable signing/distribution path
   - unacceptable shell glue or maintenance cost
+
+## Promotion path
+
+The repo-owned shell scaffold now lives in:
+
+- `desktop/electrobun-shell/`
+
+Intent:
+
+- keep the proven spike patterns
+- remove one-off fit-test naming
+- make the shell boundary explicit before fuller packaging work in `fn-51`

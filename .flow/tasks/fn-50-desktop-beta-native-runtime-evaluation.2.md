@@ -36,15 +36,19 @@ If not triggered, this task should be marked not-needed/blocked by the Electrobu
 - [ ] The repo records whether this task was needed or explicitly skipped due to the Electrobun decision.
 
 ## Done summary
+
 Did not run a broader shell comparison.
 
 Reason:
+
 - this task is fallback-only work
 - current Electrobun spike evidence still supports Electrobun as the working direction
 - no must-have gate has yet failed badly enough to justify a generic shell bakeoff
 
 Recorded the explicit skip decision in `plans/electrobun-spike.md` so the repo shows why this task was not triggered.
+
 ## Evidence
+
 - Commits:
 - Tests:
 - PRs:
