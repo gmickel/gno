@@ -24,8 +24,11 @@ Define and enforce the document capability contract that separates editable sour
 - `docs/comparisons/obsidian.md` currently says GNO works with Obsidian rather than replacing it: `docs/comparisons/obsidian.md:5-6`, `docs/comparisons/obsidian.md:36-54`, `docs/comparisons/obsidian.md:164-166`.
 
 ## Done summary
+
 Implemented the safe document capability contract, read-only converted-doc handling, editable-copy flow, and capability metadata across API/CLI/MCP/SDK.
+
 ## Evidence
+
 - Commits: e677f41, 2662e77
 - Tests: bun test test/serve/api-docs-update.test.ts, bun test test/spec/schemas/get.test.ts, bun run lint:check, bun run docs:verify
 - PRs:

@@ -22,8 +22,11 @@ Define one canonical deep-link contract for documents, headings, and line target
 - This task should explicitly touch `docs/API.md`, `docs/MCP.md`, `docs/SDK.md`, and any website/API feature copy that mirrors linkable result payloads.
 
 ## Done summary
+
 Standardized deep-link helpers, exact-hit navigation from search, source-line highlighting, copy-link actions, and updated get/mcp/spec contracts.
+
 ## Evidence
+
 - Commits: e677f41, 2662e77
 - Tests: bun test, bun run lint:check
 - PRs:

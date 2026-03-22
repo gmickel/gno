@@ -23,8 +23,11 @@ Add a watch-driven update loop so internal edits and external file changes propa
 - Current website Web UI copy and feature data will drift without explicit edits: `website/features/web-ui.md:34-57`, `website/_data/features.yml:56-74`.
 
 ## Done summary
+
 Added document event streaming, collection watch service, search/browse live refresh, and DocView/Editor external-change banners.
+
 ## Evidence
+
 - Commits: e677f41, 2662e77
 - Tests: bun test, bun run lint:check, bun run docs:verify
 - PRs:

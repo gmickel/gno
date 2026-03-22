@@ -24,8 +24,11 @@ Build a keyboard-first `Cmd/Ctrl+K` workspace switcher using the existing shadcn
 - Current website feature data already claims `Cmd+K`, so this task must reconcile homepage/feature/FAQ copy with the actual shipped shortcut behavior: `website/_data/features.yml:56-74`, `website/index.md:83-105`.
 
 ## Done summary
+
 Built the fast Cmd/Ctrl+K quick switcher with recent-doc tracking, fast BM25 lookup, deep-link navigation, and note creation handoff.
+
 ## Evidence
+
 - Commits: e677f41, 2662e77
 - Tests: bun test, bun run lint:check, bun run docs:verify
 - PRs:

@@ -23,8 +23,11 @@ Upgrade the markdown editing experience so linked-note workflows feel native ins
 - Current Obsidian comparison copy still treats quick vault navigation and editor workflows as Obsidian-only advantages: `docs/comparisons/obsidian.md:96-104`, `docs/comparisons/obsidian.md:147-166`.
 
 ## Done summary
+
 Wired wiki-link autocomplete into the editor with title suggestions, create-linked-note flow, and updated authoring docs.
+
 ## Evidence
+
 - Commits: 2662e77
 - Tests: bun test test/serve/api-docs-autocomplete.test.ts test/serve/public/lib/wiki-link.test.ts, bun run lint:check
 - PRs:
