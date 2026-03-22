@@ -15,9 +15,12 @@ import {
   FolderIcon,
   Loader2Icon,
 } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+
+import type { WikiLinkDoc } from "./WikiLinkAutocomplete";
 
 import { apiFetch } from "../hooks/use-api";
+import { getActiveWikiLinkQuery } from "../lib/wiki-link";
 import { IndexingProgress } from "./IndexingProgress";
 import { TagInput } from "./TagInput";
 import { Button } from "./ui/button";
@@ -38,10 +41,13 @@ import {
   SelectValue,
 } from "./ui/select";
 import { Textarea } from "./ui/textarea";
+import { WikiLinkAutocomplete } from "./WikiLinkAutocomplete";
 
 export interface CaptureModalProps {
   /** Whether the modal is open */
   open: boolean;
+  /** Prefill title when opening from another surface */
+  draftTitle?: string;
   /** Callback when open state changes */
   onOpenChange: (open: boolean) => void;
   /** Callback when document created successfully */
@@ -64,6 +70,10 @@ interface CollectionsResponse {
   collections: Collection[];
 }
 
+interface DocsAutocompleteResponse {
+  docs: WikiLinkDoc[];
+}
+
 const STORAGE_KEY = "gno-last-collection";
 
 function sanitizeFilename(title: string): string {
@@ -80,6 +90,7 @@ type ModalState = "form" | "submitting" | "success" | "error";
 
 export function CaptureModal({
   open,
+  draftTitle = "",
   onOpenChange,
   onSuccess,
 }: CaptureModalProps) {
@@ -89,6 +100,16 @@ export function CaptureModal({
   const [collection, setCollection] = useState("");
   const [collections, setCollections] = useState<Collection[]>([]);
   const [tags, setTags] = useState<string[]>([]);
+  const [wikiLinkDocs, setWikiLinkDocs] = useState<WikiLinkDoc[]>([]);
+  const [wikiLinkOpen, setWikiLinkOpen] = useState(false);
+  const [wikiLinkQuery, setWikiLinkQuery] = useState("");
+  const [wikiLinkRange, setWikiLinkRange] = useState<{
+    start: number;
+    end: number;
+  } | null>(null);
+  const [wikiLinkPosition, setWikiLinkPosition] = useState({ x: 24, y: 24 });
+  const [wikiLinkActiveIndex, setWikiLinkActiveIndex] = useState(-1);
+  const contentRef = useRef<HTMLTextAreaElement | null>(null);
 
   // Submission state
   const [state, setState] = useState<ModalState>("form");
@@ -99,6 +120,9 @@ export function CaptureModal({
   // Load collections
   useEffect(() => {
     if (!open) return;
+    if (draftTitle.trim()) {
+      setTitle(draftTitle);
+    }
 
     void apiFetch<CollectionsResponse>("/api/status").then(({ data }) => {
       if (data?.collections) {
@@ -115,7 +139,7 @@ export function CaptureModal({
         }
       }
     });
-  }, [open]);
+  }, [draftTitle, open]);
 
   // Reset form when modal closes
   useEffect(() => {
@@ -129,6 +153,10 @@ export function CaptureModal({
         setError(null);
         setJobId(null);
         setCreatedUri(null);
+        setWikiLinkDocs([]);
+        setWikiLinkOpen(false);
+        setWikiLinkQuery("");
+        setWikiLinkRange(null);
       }, 200);
       return () => clearTimeout(timer);
     }
@@ -197,6 +225,99 @@ export function CaptureModal({
     }
   };
 
+  const insertWikiLink = useCallback(
+    (title: string) => {
+      if (!wikiLinkRange) return;
+      const nextContent =
+        content.slice(0, wikiLinkRange.start) +
+        `[[${title}]]` +
+        content.slice(wikiLinkRange.end);
+      setContent(nextContent);
+      setWikiLinkOpen(false);
+      setWikiLinkActiveIndex(-1);
+      requestAnimationFrame(() => {
+        const pos = wikiLinkRange.start + title.length + 4;
+        contentRef.current?.focus();
+        contentRef.current?.setSelectionRange(pos, pos);
+      });
+    },
+    [content, wikiLinkRange]
+  );
+
+  const handleCreateLinkedNote = useCallback(
+    async (linkedTitle: string) => {
+      const filename = sanitizeFilename(linkedTitle) || "untitled";
+      const relPath = `${filename}.md`;
+      const { data, error: err } = await apiFetch<CreateDocResponse>(
+        "/api/docs",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            collection,
+            relPath,
+            content: `# ${linkedTitle}\n`,
+          }),
+        }
+      );
+      if (err) {
+        setError(err);
+        return;
+      }
+      insertWikiLink(linkedTitle);
+      if (data) {
+        setWikiLinkDocs((current) => [
+          ...current,
+          {
+            title: linkedTitle,
+            uri: data.uri,
+            docid: data.uri,
+            collection,
+          },
+        ]);
+      }
+    },
+    [collection, insertWikiLink]
+  );
+
+  const handleContentInput = useCallback((nextContent: string) => {
+    setContent(nextContent);
+    const cursorPos = contentRef.current?.selectionStart ?? nextContent.length;
+    const activeQuery = getActiveWikiLinkQuery(nextContent, cursorPos);
+    if (!activeQuery) {
+      setWikiLinkOpen(false);
+      setWikiLinkRange(null);
+      return;
+    }
+
+    const textareaRect = contentRef.current?.getBoundingClientRect();
+    setWikiLinkRange({ start: activeQuery.start, end: activeQuery.end });
+    setWikiLinkQuery(activeQuery.query);
+    setWikiLinkPosition({
+      x: textareaRect?.left ?? 24,
+      y: (textareaRect?.top ?? 24) + 40,
+    });
+    setWikiLinkOpen(true);
+    setWikiLinkActiveIndex(0);
+  }, []);
+
+  useEffect(() => {
+    if (!wikiLinkOpen) return;
+
+    const params = new URLSearchParams({
+      limit: "8",
+      query: wikiLinkQuery,
+    });
+    if (collection) {
+      params.set("collection", collection);
+    }
+
+    void apiFetch<DocsAutocompleteResponse>(
+      `/api/docs/autocomplete?${params.toString()}`
+    ).then(({ data }) => {
+      setWikiLinkDocs(data?.docs ?? []);
+    });
+  }, [collection, wikiLinkOpen, wikiLinkQuery]);
+
   return (
     <Dialog onOpenChange={onOpenChange} open={open}>
       <DialogContent className="max-w-lg" onKeyDown={handleKeyDown}>
@@ -249,8 +370,9 @@ export function CaptureModal({
                 className="min-h-[150px] font-mono text-sm"
                 disabled={state === "submitting"}
                 id="capture-content"
-                onChange={(e) => setContent(e.target.value)}
+                onChange={(e) => handleContentInput(e.target.value)}
                 placeholder="# My note&#10;&#10;Write your content here..."
+                ref={contentRef}
                 value={content}
               />
             </div>
@@ -382,6 +504,19 @@ export function CaptureModal({
           )}
         </DialogFooter>
       </DialogContent>
+      <WikiLinkAutocomplete
+        activeIndex={wikiLinkActiveIndex}
+        docs={wikiLinkDocs}
+        isOpen={wikiLinkOpen}
+        onActiveIndexChange={setWikiLinkActiveIndex}
+        onCreateNew={(linkedTitle) => {
+          void handleCreateLinkedNote(linkedTitle);
+        }}
+        onDismiss={() => setWikiLinkOpen(false)}
+        onSelect={(linkedTitle) => insertWikiLink(linkedTitle)}
+        position={wikiLinkPosition}
+        searchQuery={wikiLinkQuery}
+      />
     </Dialog>
   );
 }

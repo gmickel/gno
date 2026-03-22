@@ -8,6 +8,10 @@
 import type { DocumentRow, StorePort, StoreResult } from "../../store/types";
 import type { ParsedRef } from "./ref-parser";
 
+import {
+  getDocumentCapabilities,
+  type DocumentCapabilities,
+} from "../../core/document-capabilities";
 import { parseRef } from "./ref-parser";
 import { initStore } from "./shared";
 
@@ -58,6 +62,7 @@ export interface GetResponse {
     converterVersion?: string;
     mirrorHash?: string;
   };
+  capabilities: DocumentCapabilities;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -203,6 +208,7 @@ function buildResponse(ctx: BuildResponseContext): GetResult {
         language: doc.languageHint ?? undefined,
         source: buildSourceMeta(doc, config),
         conversion: buildConversionMeta(doc),
+        capabilities: buildCapabilities(doc),
       },
     };
   }
@@ -233,6 +239,7 @@ function buildResponse(ctx: BuildResponseContext): GetResult {
       language: doc.languageHint ?? undefined,
       source: buildSourceMeta(doc, config),
       conversion: buildConversionMeta(doc),
+      capabilities: buildCapabilities(doc),
     },
   };
 }
@@ -247,6 +254,7 @@ interface DocRow {
   sourceMime: string;
   sourceExt: string;
   sourceSize: number;
+  sourceMtime?: string;
   sourceHash: string;
 }
 
@@ -262,9 +270,22 @@ function buildSourceMeta(
     relPath: doc.relPath,
     mime: doc.sourceMime,
     ext: doc.sourceExt,
+    modifiedAt: doc.sourceMtime ?? undefined,
     sizeBytes: doc.sourceSize,
     sourceHash: doc.sourceHash,
   };
+}
+
+function buildCapabilities(doc: {
+  sourceExt: string;
+  sourceMime: string;
+  mirrorHash?: string | null;
+}): DocumentCapabilities {
+  return getDocumentCapabilities({
+    sourceExt: doc.sourceExt,
+    sourceMime: doc.sourceMime,
+    contentAvailable: doc.mirrorHash !== null,
+  });
 }
 
 interface ConversionDoc {

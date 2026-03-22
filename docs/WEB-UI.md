@@ -102,14 +102,16 @@ hyde: Refresh tokens rotate on each use.
 
 The split-view editor provides:
 
-| Feature              | Description                                |
-| :------------------- | :----------------------------------------- |
-| **CodeMirror 6**     | Modern editor with markdown syntax support |
-| **Live Preview**     | Side-by-side markdown rendering            |
-| **Auto-save**        | 2-second debounced saves                   |
-| **Syntax Highlight** | Code blocks with Shiki highlighting        |
-| **Unsaved Warning**  | Confirmation dialog before losing changes  |
-| **Toggle Preview**   | Show/hide preview pane                     |
+| Feature              | Description                                     |
+| :------------------- | :---------------------------------------------- |
+| **CodeMirror 6**     | Modern editor with markdown syntax support      |
+| **Live Preview**     | Side-by-side markdown rendering                 |
+| **Auto-save**        | 2-second debounced saves                        |
+| **Syntax Highlight** | Code blocks with Shiki highlighting             |
+| **Unsaved Warning**  | Confirmation dialog before losing changes       |
+| **Toggle Preview**   | Show/hide preview pane                          |
+| **Safe Editing**     | Converted source formats stay read-only         |
+| **Wiki Linking**     | `[[...]]` autocomplete and linked-note creation |
 
 ### Keyboard Shortcuts
 
@@ -117,13 +119,14 @@ Press **?** to view all shortcuts. Single-key shortcuts (no modifier needed) wor
 
 #### Global Shortcuts
 
-| Shortcut | Action             |
-| :------- | :----------------- |
-| N        | New note           |
-| /        | Focus search       |
-| T        | Cycle search depth |
-| ?        | Show help          |
-| Esc      | Close modal        |
+| Shortcut   | Action             |
+| :--------- | :----------------- |
+| N          | New note           |
+| Cmd/Ctrl+K | Quick switcher     |
+| /          | Focus search       |
+| T          | Cycle search depth |
+| ?          | Show help          |
+| Esc        | Close modal        |
 
 #### Editor Shortcuts
 
@@ -139,6 +142,12 @@ Press **?** to view all shortcuts. Single-key shortcuts (no modifier needed) wor
 
 From any document view, click **Edit** to open the split-view editor. Changes are auto-saved after 2 seconds of inactivity.
 
+### Read-only Converted Documents
+
+PDF, DOCX, PPTX, XLSX, and other converted source formats stay **read-only** in the Web UI. GNO shows their converted markdown/text for browsing and search, but it does not write edits back into the original binary file.
+
+For those documents, use **Create editable copy**. GNO creates a new markdown note with source provenance frontmatter and opens that copy in the editor.
+
 ### Creating Documents
 
 Use Quick Capture (N) for new notes:
@@ -149,6 +158,19 @@ Use Quick Capture (N) for new notes:
 4. Click **Create note**
 
 The file is written to the collection's folder and indexed immediately.
+
+### Quick Switcher
+
+Press **Cmd/Ctrl+K** to open the global quick switcher. It uses the fast BM25 path to:
+
+- jump to recent notes
+- jump straight to matching documents
+- open exact line-target deep links from search-driven flows
+- create a new note with the typed query as the suggested title
+
+### Wiki-Link Autocomplete
+
+While editing markdown, type `[[` to open note suggestions. GNO fuzzy-matches existing document titles and lets you create a linked markdown note in the current collection when no exact match exists.
 
 ### Deleting Documents
 

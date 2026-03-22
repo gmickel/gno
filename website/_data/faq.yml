@@ -13,6 +13,10 @@
     - q: What file formats does GNO support?
       a: GNO indexes Markdown (.md) with frontmatter extraction, PDF (.pdf), Microsoft Word (.docx), Excel (.xlsx), PowerPoint (.pptx), and plain text files. It also detects document language across 30+ languages.
 
+    - q: Can I edit PDFs or Word docs directly in GNO?
+      a: >
+        Not in place. GNO can view and search converted PDF/DOCX/PPTX/XLSX content, but those source files stay read-only. If you want to work on the content, use Create editable copy to generate a markdown note with source provenance.
+
     - q: Is my data sent to the cloud?
       a: No. GNO is 100% local and privacy-first. All indexing, embedding, search, and AI answers run on your machine. Zero telemetry, zero tracking. Your documents never leave your computer. It works completely offline.
 

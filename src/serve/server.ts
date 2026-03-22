@@ -13,6 +13,7 @@ import { getConfigPaths, isInitialized, loadConfig } from "../config";
 import { getActivePreset } from "../llm/registry";
 import { SqliteAdapter } from "../store/sqlite/adapter";
 import { createServerContext, disposeServerContext } from "./context";
+import { DocumentEventBus } from "./doc-events";
 import { createEmbedScheduler } from "./embed-scheduler";
 // HTML import - Bun handles bundling TSX/CSS automatically via routes
 import homepage from "./public/index.html";
@@ -21,10 +22,12 @@ import {
   handleCapabilities,
   handleCollections,
   handleCreateCollection,
+  handleCreateEditableCopy,
   handleCreateDoc,
   handleDeactivateDoc,
   handleDeleteCollection,
   handleDoc,
+  handleDocsAutocomplete,
   handleDocs,
   handleEmbed,
   handleEmbedStatus,
@@ -48,6 +51,7 @@ import {
   handleDocSimilar,
 } from "./routes/links";
 import { forbiddenResponse, isRequestAllowed } from "./security";
+import { CollectionWatchService } from "./watch-service";
 
 export interface ServeOptions {
   /** Port to listen on (default: 3000) */
@@ -168,6 +172,8 @@ export async function startServer(
     current: ctx,
     config, // Keep original config for reloading
     scheduler: null, // Will be set below
+    eventBus: null,
+    watchService: null,
   };
 
   // Create embed scheduler with getters (survives context/preset reloads)
@@ -178,6 +184,16 @@ export async function startServer(
     getModelUri: () => getActivePreset(ctxHolder.config).embed,
   });
   ctxHolder.scheduler = scheduler;
+  const eventBus = new DocumentEventBus();
+  ctxHolder.eventBus = eventBus;
+  const watchService = new CollectionWatchService({
+    collections: config.collections,
+    store,
+    scheduler,
+    eventBus,
+  });
+  watchService.start();
+  ctxHolder.watchService = watchService;
 
   // Shutdown controller for clean lifecycle
   const shutdownController = new AbortController();
@@ -185,6 +201,8 @@ export async function startServer(
   // Graceful shutdown handler
   const shutdown = async () => {
     console.log("\nShutting down...");
+    watchService.dispose();
+    eventBus.close();
     scheduler.dispose();
     await disposeServerContext(ctxHolder.current);
     await store.close();
@@ -263,6 +281,15 @@ export async function startServer(
             );
           },
         },
+        "/api/docs/autocomplete": {
+          GET: async (req: Request) => {
+            const url = new URL(req.url);
+            return withSecurityHeaders(
+              await handleDocsAutocomplete(store, url),
+              isDev
+            );
+          },
+        },
         "/api/docs/:id/deactivate": {
           POST: async (req: Request) => {
             if (!isRequestAllowed(req, port)) {
@@ -274,6 +301,20 @@ export async function startServer(
             const id = decodeURIComponent(parts[3] || "");
             return withSecurityHeaders(
               await handleDeactivateDoc(store, id),
+              isDev
+            );
+          },
+        },
+        "/api/docs/:id/editable-copy": {
+          POST: async (req: Request) => {
+            if (!isRequestAllowed(req, port)) {
+              return withSecurityHeaders(forbiddenResponse(), isDev);
+            }
+            const url = new URL(req.url);
+            const parts = url.pathname.split("/");
+            const id = decodeURIComponent(parts[3] || "");
+            return withSecurityHeaders(
+              await handleCreateEditableCopy(ctxHolder, store, id, req),
               isDev
             );
           },
@@ -295,8 +336,14 @@ export async function startServer(
         "/api/doc": {
           GET: async (req: Request) => {
             const url = new URL(req.url);
-            return withSecurityHeaders(await handleDoc(store, url), isDev);
+            return withSecurityHeaders(
+              await handleDoc(store, ctxHolder.config, url),
+              isDev
+            );
           },
+        },
+        "/api/events": {
+          GET: () => withSecurityHeaders(eventBus.createResponse(), isDev),
         },
         "/api/tags": {
           GET: async (req: Request) => {

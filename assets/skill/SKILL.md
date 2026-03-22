@@ -110,9 +110,14 @@ gno get gno://work/report.md --from 100 -l 20
 # With line numbers
 gno get gno://work/report.md --line-numbers
 
+# JSON output with capabilities metadata
+gno get gno://work/report.md --json
+
 # Multiple documents
 gno multi-get gno://work/doc1.md gno://work/doc2.md
 ```
+
+**Editable vs read-only**: `gno get --json` returns a `capabilities` field showing whether a document is editable at its source. Markdown and plain text files are editable in place. Converted documents (PDF, DOCX, XLSX) are read-only -- to edit their content, create a new markdown note instead of overwriting the binary source.
 
 ## Search Then Get (common pipeline)
 

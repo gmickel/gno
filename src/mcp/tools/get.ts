@@ -11,6 +11,10 @@ import type { ToolContext } from "../server";
 
 import { parseUri } from "../../app/constants";
 import { parseRef } from "../../cli/commands/ref-parser";
+import {
+  getDocumentCapabilities,
+  type DocumentCapabilities,
+} from "../../core/document-capabilities";
 import { runTool, type ToolResult } from "./index";
 
 interface GetInput {
@@ -42,6 +46,7 @@ interface GetResponse {
     converterVersion?: string;
     mirrorHash?: string;
   };
+  capabilities: DocumentCapabilities;
 }
 
 /**
@@ -213,6 +218,11 @@ export function handleGet(
               mirrorHash: doc.mirrorHash,
             }
           : undefined,
+        capabilities: getDocumentCapabilities({
+          sourceExt: doc.sourceExt,
+          sourceMime: doc.sourceMime,
+          contentAvailable: doc.mirrorHash !== null,
+        }),
       };
 
       return response;

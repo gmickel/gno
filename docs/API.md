@@ -26,26 +26,28 @@ All endpoints are JSON-based and run entirely on your machine.
 
 ### Read Operations
 
-| Endpoint                 | Method | Description                 |
-| :----------------------- | :----- | :-------------------------- |
-| `/api/health`            | GET    | Health check                |
-| `/api/status`            | GET    | Index statistics            |
-| `/api/capabilities`      | GET    | Available features          |
-| `/api/collections`       | GET    | List collections            |
-| `/api/docs`              | GET    | List documents              |
-| `/api/doc`               | GET    | Get document content        |
-| `/api/doc/:id/links`     | GET    | Get outgoing links from doc |
-| `/api/doc/:id/backlinks` | GET    | Get docs linking to this    |
-| `/api/doc/:id/similar`   | GET    | Find semantically similar   |
-| `/api/graph`             | GET    | Knowledge graph of links    |
-| `/api/tags`              | GET    | List tags with counts       |
-| `/api/search`            | POST   | BM25 keyword search         |
-| `/api/query`             | POST   | Hybrid search               |
-| `/api/ask`               | POST   | AI-powered Q&A              |
-| `/api/presets`           | GET    | List model presets          |
-| `/api/presets`           | POST   | Switch preset               |
-| `/api/models/status`     | GET    | Download status             |
-| `/api/models/pull`       | POST   | Start model download        |
+| Endpoint                 | Method | Description                                                |
+| :----------------------- | :----- | :--------------------------------------------------------- |
+| `/api/health`            | GET    | Health check                                               |
+| `/api/status`            | GET    | Index statistics                                           |
+| `/api/capabilities`      | GET    | Available features                                         |
+| `/api/collections`       | GET    | List collections                                           |
+| `/api/docs`              | GET    | List documents                                             |
+| `/api/docs/autocomplete` | GET    | Title/path suggestions for wiki-linking and quick switcher |
+| `/api/doc`               | GET    | Get document content                                       |
+| `/api/events`            | GET    | Server-sent document change events                         |
+| `/api/doc/:id/links`     | GET    | Get outgoing links from doc                                |
+| `/api/doc/:id/backlinks` | GET    | Get docs linking to this                                   |
+| `/api/doc/:id/similar`   | GET    | Find semantically similar                                  |
+| `/api/graph`             | GET    | Knowledge graph of links                                   |
+| `/api/tags`              | GET    | List tags with counts                                      |
+| `/api/search`            | POST   | BM25 keyword search                                        |
+| `/api/query`             | POST   | Hybrid search                                              |
+| `/api/ask`               | POST   | AI-powered Q&A                                             |
+| `/api/presets`           | GET    | List model presets                                         |
+| `/api/presets`           | POST   | Switch preset                                              |
+| `/api/models/status`     | GET    | Download status                                            |
+| `/api/models/pull`       | POST   | Start model download                                       |
 
 ### Write Operations
 
@@ -546,19 +548,50 @@ GET /api/doc?uri=gno://notes/projects/readme.md
   "relPath": "projects/readme.md",
   "tags": ["work", "project/alpha"],
   "source": {
+    "absPath": "/Users/you/notes/projects/readme.md",
     "mime": "text/markdown",
     "ext": ".md",
     "modifiedAt": "2025-01-15T09:00:00Z",
-    "sizeBytes": 4523
+    "sizeBytes": 4523,
+    "sourceHash": "7b3c..."
+  },
+  "capabilities": {
+    "editable": true,
+    "tagsEditable": true,
+    "tagsWriteback": true,
+    "canCreateEditableCopy": false,
+    "mode": "editable"
   }
 }
 ```
+
+For converted source formats such as PDF or DOCX, `capabilities.editable` is `false` and `capabilities.canCreateEditableCopy` is `true`. Those documents remain viewable/searchable, but GNO will not write converted markdown back into the original binary source file.
 
 **Example**:
 
 ```bash
 curl "http://localhost:3000/api/doc?uri=gno://notes/readme.md" | jq '.content'
 ```
+
+---
+
+### Document Autocomplete
+
+```http
+GET /api/docs/autocomplete?query=auth&collection=notes&limit=8
+```
+
+Returns lightweight document suggestions for title/path-driven UIs such as wiki-link autocomplete and the quick switcher.
+
+---
+
+### Document Events
+
+```http
+GET /api/events
+```
+
+Server-sent event stream used by the Web UI to refresh document/search state after local edits and external file changes.
 
 ---
 
@@ -991,13 +1024,14 @@ When `tags` is provided, the tags are written to the document's YAML frontmatter
 
 **Errors**:
 
-| Code             | Status | Description                  |
-| :--------------- | :----- | :--------------------------- |
-| `VALIDATION`     | 400    | Missing or invalid content   |
-| `NOT_FOUND`      | 404    | Document not found in index  |
-| `FILE_NOT_FOUND` | 404    | Source file no longer exists |
-| `CONFLICT`       | 409    | Sync job already running     |
-| `RUNTIME`        | 500    | Failed to write file         |
+| Code             | Status | Description                             |
+| :--------------- | :----- | :-------------------------------------- |
+| `VALIDATION`     | 400    | Missing or invalid content              |
+| `READ_ONLY`      | 409    | Source format cannot be edited in place |
+| `NOT_FOUND`      | 404    | Document not found in index             |
+| `FILE_NOT_FOUND` | 404    | Source file no longer exists            |
+| `CONFLICT`       | 409    | Sync job already running                |
+| `RUNTIME`        | 500    | Failed to write file                    |
 
 **Example**:
 
@@ -1007,6 +1041,14 @@ curl -X PUT "http://localhost:3000/api/docs/%23abc123" \
   -H "Content-Type: application/json" \
   -d '{"content": "# Updated\n\nNew content here."}'
 ```
+
+For read-only converted documents, create a markdown note instead:
+
+```http
+POST /api/docs/:id/editable-copy
+```
+
+This creates a new markdown document using the converted content plus source provenance frontmatter. The original PDF/DOCX/etc. is left untouched.
 
 ---
 

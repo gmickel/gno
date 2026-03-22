@@ -21,6 +21,7 @@ import {
   LinkIcon,
   Loader2Icon,
   PenIcon,
+  SquareArrowOutUpRightIcon,
   UnlinkIcon,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -52,7 +53,19 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "../components/ui/tooltip";
+import {
+  type WikiLinkDoc,
+  WikiLinkAutocomplete,
+} from "../components/WikiLinkAutocomplete";
 import { apiFetch } from "../hooks/use-api";
+import { useDocEvents } from "../hooks/use-doc-events";
+import { buildEditDeepLink, parseDocumentDeepLink } from "../lib/deep-links";
+import { waitForDocumentAvailability } from "../lib/document-availability";
+import {
+  appendLocalHistory,
+  loadLatestLocalHistory,
+} from "../lib/local-history";
+import { getActiveWikiLinkQuery } from "../lib/wiki-link";
 
 interface PageProps {
   navigate: (to: string | number) => void;
@@ -67,11 +80,45 @@ interface DocData {
   collection: string;
   relPath: string;
   source: {
+    absPath?: string;
     mime: string;
     ext: string;
     modifiedAt?: string;
     sizeBytes?: number;
+    sourceHash?: string;
   };
+  capabilities: {
+    editable: boolean;
+    tagsEditable: boolean;
+    tagsWriteback: boolean;
+    canCreateEditableCopy: boolean;
+    mode: "editable" | "read_only";
+    reason?: string;
+  };
+}
+
+interface CreateEditableCopyResponse {
+  uri: string;
+  path: string;
+  jobId: string | null;
+  note?: string;
+}
+
+interface UpdateDocResponse {
+  success: boolean;
+  docId: string;
+  uri: string;
+  path: string;
+  jobId: string | null;
+  writeBack?: "applied" | "skipped_unsupported";
+  version: {
+    sourceHash: string;
+    modifiedAt?: string;
+  };
+}
+
+interface DocsAutocompleteResponse {
+  docs: WikiLinkDoc[];
 }
 
 type SaveStatus = "saved" | "saving" | "unsaved" | "error";
@@ -128,6 +175,10 @@ function formatTime(date: Date): string {
 }
 
 export default function DocumentEditor({ navigate }: PageProps) {
+  const currentTarget = useMemo(
+    () => parseDocumentDeepLink(window.location.search),
+    []
+  );
   const [doc, setDoc] = useState<DocData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -137,10 +188,25 @@ export default function DocumentEditor({ navigate }: PageProps) {
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("saved");
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [creatingCopy, setCreatingCopy] = useState(false);
+  const [copyError, setCopyError] = useState<string | null>(null);
+  const [externalChangeNotice, setExternalChangeNotice] = useState<
+    string | null
+  >(null);
+  const [hasLocalSnapshot, setHasLocalSnapshot] = useState(false);
 
   const [showPreview, setShowPreview] = useState(true);
   const [syncScroll, setSyncScroll] = useState(true);
   const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
+  const [wikiLinkDocs, setWikiLinkDocs] = useState<WikiLinkDoc[]>([]);
+  const [wikiLinkOpen, setWikiLinkOpen] = useState(false);
+  const [wikiLinkQuery, setWikiLinkQuery] = useState("");
+  const [wikiLinkRange, setWikiLinkRange] = useState<{
+    start: number;
+    end: number;
+  } | null>(null);
+  const [wikiLinkPosition, setWikiLinkPosition] = useState({ x: 48, y: 120 });
+  const [wikiLinkActiveIndex, setWikiLinkActiveIndex] = useState(-1);
   /** Where to navigate after dialog action (-1 for back, or URL string) */
   const [pendingNavigation, setPendingNavigation] = useState<
     string | number | null
@@ -150,6 +216,8 @@ export default function DocumentEditor({ navigate }: PageProps) {
   // Event-based suppression: ignore the echo event caused by programmatic scroll
   const ignoreNextEditorScroll = useRef(false);
   const ignoreNextPreviewScroll = useRef(false);
+  const ignoreDocEventsUntilRef = useRef(0);
+  const latestDocEvent = useDocEvents();
 
   const hasUnsavedChanges = content !== originalContent;
   const parsedContent = useMemo(() => parseFrontmatter(content), [content]);
@@ -228,11 +296,15 @@ export default function DocumentEditor({ navigate }: PageProps) {
       setSaveStatus("saving");
       setSaveError(null);
 
-      const { error: err } = await apiFetch(
+      const { data, error: err } = await apiFetch<UpdateDocResponse>(
         `/api/docs/${encodeURIComponent(doc.docid)}`,
         {
           method: "PUT",
-          body: JSON.stringify({ content: contentToSave }),
+          body: JSON.stringify({
+            content: contentToSave,
+            expectedSourceHash: doc.source.sourceHash,
+            expectedModifiedAt: doc.source.modifiedAt,
+          }),
         }
       );
 
@@ -240,12 +312,118 @@ export default function DocumentEditor({ navigate }: PageProps) {
         setSaveStatus("error");
         setSaveError(err);
       } else {
+        ignoreDocEventsUntilRef.current = Date.now() + 5_000;
+        if (originalContent !== contentToSave) {
+          appendLocalHistory(doc.docid, originalContent);
+          setHasLocalSnapshot(true);
+        }
         setSaveStatus("saved");
         setOriginalContent(contentToSave);
         setLastSaved(new Date());
+        if (data) {
+          setDoc((currentDoc) =>
+            currentDoc
+              ? {
+                  ...currentDoc,
+                  source: {
+                    ...currentDoc.source,
+                    sourceHash: data.version.sourceHash,
+                    modifiedAt: data.version.modifiedAt,
+                  },
+                }
+              : currentDoc
+          );
+        }
       }
     },
     [doc]
+  );
+
+  const handleCreateEditableCopy = useCallback(async () => {
+    if (!doc?.capabilities.canCreateEditableCopy) return;
+
+    setCreatingCopy(true);
+    setCopyError(null);
+    const { data, error: err } = await apiFetch<CreateEditableCopyResponse>(
+      `/api/docs/${encodeURIComponent(doc.docid)}/editable-copy`,
+      { method: "POST" }
+    );
+    setCreatingCopy(false);
+
+    if (err) {
+      setCopyError(err);
+      return;
+    }
+
+    if (data) {
+      ignoreDocEventsUntilRef.current = Date.now() + 5_000;
+      const ready = await waitForDocumentAvailability(data.uri);
+      if (!ready) {
+        setCopyError(
+          "Created the markdown copy, but it is still indexing. Try again in a moment."
+        );
+        return;
+      }
+      navigate(`/edit?uri=${encodeURIComponent(data.uri)}`);
+    }
+  }, [doc, navigate]);
+
+  const insertWikiLink = useCallback(
+    (title: string) => {
+      if (!wikiLinkRange) return;
+      const didReplace = editorRef.current?.replaceRange(
+        wikiLinkRange.start,
+        wikiLinkRange.end,
+        `[[${title}]]`
+      );
+      if (didReplace) {
+        setWikiLinkOpen(false);
+        setWikiLinkActiveIndex(-1);
+      }
+    },
+    [wikiLinkRange]
+  );
+
+  const handleCreateLinkedNote = useCallback(
+    async (title: string) => {
+      if (!doc) return;
+      const filename = title
+        .toLowerCase()
+        .trim()
+        .replaceAll(/[^\w\s-]/g, "")
+        .replaceAll(/\s+/g, "-")
+        .replaceAll(/-+/g, "-")
+        .replace(/^-|-$/g, "");
+      const relPath = `${filename || "untitled"}.md`;
+      const { data, error: err } = await apiFetch<CreateEditableCopyResponse>(
+        "/api/docs",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            collection: doc.collection,
+            relPath,
+            content: `# ${title}\n`,
+          }),
+        }
+      );
+      if (err) {
+        setCopyError(err);
+        return;
+      }
+      insertWikiLink(title);
+      if (data) {
+        setWikiLinkDocs((current) => [
+          ...current,
+          {
+            title,
+            uri: data.uri,
+            docid: data.uri,
+            collection: doc.collection,
+          },
+        ]);
+      }
+    },
+    [doc, insertWikiLink]
   );
 
   // Debounced auto-save
@@ -262,9 +440,46 @@ export default function DocumentEditor({ navigate }: PageProps) {
         setSaveStatus("unsaved");
         debouncedSave(newContent);
       }
+
+      const cursor = editorRef.current?.getCursorInfo();
+      if (!cursor) {
+        setWikiLinkOpen(false);
+        return;
+      }
+
+      const activeQuery = getActiveWikiLinkQuery(newContent, cursor.pos);
+      if (!activeQuery) {
+        setWikiLinkOpen(false);
+        setWikiLinkRange(null);
+        return;
+      }
+
+      setWikiLinkRange({ start: activeQuery.start, end: activeQuery.end });
+      setWikiLinkQuery(activeQuery.query);
+      setWikiLinkPosition({ x: cursor.x, y: cursor.y + 8 });
+      setWikiLinkOpen(true);
+      setWikiLinkActiveIndex(0);
     },
     [originalContent, debouncedSave]
   );
+
+  useEffect(() => {
+    if (!wikiLinkOpen) return;
+
+    const params = new URLSearchParams({
+      limit: "8",
+      query: wikiLinkQuery,
+    });
+    if (doc?.collection) {
+      params.set("collection", doc.collection);
+    }
+
+    void apiFetch<DocsAutocompleteResponse>(
+      `/api/docs/autocomplete?${params.toString()}`
+    ).then(({ data }) => {
+      setWikiLinkDocs(data?.docs ?? []);
+    });
+  }, [doc?.collection, wikiLinkOpen, wikiLinkQuery]);
 
   // Force save (Cmd+S) - saves and triggers embedding
   const handleForceSave = useCallback(async () => {
@@ -274,11 +489,15 @@ export default function DocumentEditor({ navigate }: PageProps) {
     setSaveError(null);
 
     // Save document
-    const { error: err } = await apiFetch(
+    const { data, error: err } = await apiFetch<UpdateDocResponse>(
       `/api/docs/${encodeURIComponent(doc.docid)}`,
       {
         method: "PUT",
-        body: JSON.stringify({ content }),
+        body: JSON.stringify({
+          content,
+          expectedSourceHash: doc.source.sourceHash,
+          expectedModifiedAt: doc.source.modifiedAt,
+        }),
       }
     );
 
@@ -288,18 +507,31 @@ export default function DocumentEditor({ navigate }: PageProps) {
       return;
     }
 
+    ignoreDocEventsUntilRef.current = Date.now() + 5_000;
+    if (originalContent !== content) {
+      appendLocalHistory(doc.docid, originalContent);
+      setHasLocalSnapshot(true);
+    }
     setSaveStatus("saved");
     setOriginalContent(content);
     setLastSaved(new Date());
+    if (data) {
+      setDoc({
+        ...doc,
+        source: {
+          ...doc.source,
+          sourceHash: data.version.sourceHash,
+          modifiedAt: data.version.modifiedAt,
+        },
+      });
+    }
 
     // Trigger embedding (fire and forget - don't block on result)
     void apiFetch("/api/embed", { method: "POST" });
   }, [hasUnsavedChanges, doc, content]);
 
-  // Load document
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const uri = params.get("uri");
+  const loadDocument = useCallback(() => {
+    const uri = currentTarget.uri;
 
     if (!uri) {
       setError("No document URI provided");
@@ -317,14 +549,49 @@ export default function DocumentEditor({ navigate }: PageProps) {
           const docContent = data.content ?? "";
           setContent(docContent);
           setOriginalContent(docContent);
+          setHasLocalSnapshot(Boolean(loadLatestLocalHistory(data.docid)));
           // Ensure CodeMirror reflects content after async load
           requestAnimationFrame(() => {
             editorRef.current?.setValue(docContent);
+            if (currentTarget.lineStart) {
+              editorRef.current?.revealLine(currentTarget.lineStart);
+            }
           });
         }
       }
     );
-  }, []);
+  }, [currentTarget.lineStart, currentTarget.uri]);
+
+  // Load document
+  useEffect(() => {
+    loadDocument();
+  }, [loadDocument]);
+
+  useEffect(() => {
+    if (!doc || latestDocEvent?.uri !== doc.uri) {
+      return;
+    }
+    if (Date.now() < ignoreDocEventsUntilRef.current) {
+      return;
+    }
+    setExternalChangeNotice(
+      "This document changed on disk. Reload before continuing."
+    );
+  }, [doc, latestDocEvent?.changedAt, latestDocEvent?.uri]);
+
+  const reloadDocument = useCallback(() => {
+    setExternalChangeNotice(null);
+    loadDocument();
+  }, [loadDocument]);
+
+  const restoreLatestSnapshot = useCallback(() => {
+    if (!doc) return;
+    const latest = loadLatestLocalHistory(doc.docid);
+    if (!latest) return;
+    setContent(latest.content);
+    editorRef.current?.setValue(latest.content);
+    setSaveStatus("unsaved");
+  }, [doc]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -510,6 +777,70 @@ export default function DocumentEditor({ navigate }: PageProps) {
     );
   }
 
+  if (!doc.capabilities.editable) {
+    return (
+      <div className="flex min-h-screen items-center justify-center px-6">
+        <div className="w-full max-w-xl rounded-lg border border-border/50 bg-card p-6">
+          <div className="mb-4 flex items-center gap-3">
+            <AlertCircleIcon className="size-8 text-amber-500" />
+            <div>
+              <h2 className="font-semibold text-xl">Read-only document</h2>
+              <p className="text-muted-foreground text-sm">
+                {doc.capabilities.reason ??
+                  "This document cannot be edited in place."}
+              </p>
+            </div>
+          </div>
+
+          {copyError && (
+            <div className="mb-4 rounded-md border border-amber-500/30 bg-amber-500/10 p-3 text-amber-500 text-sm">
+              {copyError}
+            </div>
+          )}
+
+          <div className="flex flex-wrap gap-3">
+            {doc.capabilities.canCreateEditableCopy && (
+              <Button
+                disabled={creatingCopy}
+                onClick={() => {
+                  void handleCreateEditableCopy();
+                }}
+              >
+                {creatingCopy ? (
+                  <Loader2Icon className="mr-2 size-4 animate-spin" />
+                ) : (
+                  <PenIcon className="mr-2 size-4" />
+                )}
+                Create editable copy
+              </Button>
+            )}
+            <Button
+              onClick={() =>
+                navigate(`/doc?uri=${encodeURIComponent(doc.uri)}`)
+              }
+              variant="outline"
+            >
+              <BookOpenIcon className="mr-2 size-4" />
+              View document
+            </Button>
+            {doc.source.absPath && (
+              <Button asChild variant="outline">
+                <a
+                  href={`file://${doc.source.absPath}`}
+                  rel="noopener noreferrer"
+                  target="_blank"
+                >
+                  <SquareArrowOutUpRightIcon className="mr-2 size-4" />
+                  Open original
+                </a>
+              </Button>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex h-screen flex-col overflow-hidden">
       {/* Toolbar */}
@@ -564,6 +895,15 @@ export default function DocumentEditor({ navigate }: PageProps) {
           <div className="flex min-w-0 flex-1 items-center gap-2">
             <PenIcon className="size-4 shrink-0 text-muted-foreground" />
             <h1 className="truncate font-medium">{doc.title || doc.relPath}</h1>
+            {currentTarget.lineStart && (
+              <Badge className="shrink-0 font-mono" variant="outline">
+                L{currentTarget.lineStart}
+                {currentTarget.lineEnd &&
+                currentTarget.lineEnd !== currentTarget.lineStart
+                  ? `-${currentTarget.lineEnd}`
+                  : ""}
+              </Badge>
+            )}
             {hasUnsavedChanges && (
               <Badge
                 className="shrink-0 bg-yellow-500/20 text-yellow-500"
@@ -578,6 +918,22 @@ export default function DocumentEditor({ navigate }: PageProps) {
           <SaveStatusIndicator />
 
           <Separator className="h-5" orientation="vertical" />
+
+          <Button
+            onClick={() => {
+              void navigator.clipboard.writeText(
+                `${window.location.origin}${buildEditDeepLink({
+                  uri: doc.uri,
+                  lineStart: currentTarget.lineStart,
+                  lineEnd: currentTarget.lineEnd,
+                })}`
+              );
+            }}
+            size="sm"
+            variant="ghost"
+          >
+            <LinkIcon className="size-4" />
+          </Button>
 
           {/* Preview toggle */}
           <TooltipProvider>
@@ -647,6 +1003,26 @@ export default function DocumentEditor({ navigate }: PageProps) {
         </div>
       </header>
 
+      {externalChangeNotice && (
+        <div className="border-amber-500/30 border-b bg-amber-500/10 px-4 py-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="text-amber-500 text-sm">{externalChangeNotice}</p>
+            <Button onClick={reloadDocument} size="sm" variant="outline">
+              Reload
+            </Button>
+            {hasLocalSnapshot && (
+              <Button
+                onClick={restoreLatestSnapshot}
+                size="sm"
+                variant="outline"
+              >
+                Restore snapshot
+              </Button>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Editor area */}
       <div className="flex min-h-0 flex-1">
         {/* Editor pane */}
@@ -683,6 +1059,20 @@ export default function DocumentEditor({ navigate }: PageProps) {
           </div>
         )}
       </div>
+
+      <WikiLinkAutocomplete
+        activeIndex={wikiLinkActiveIndex}
+        docs={wikiLinkDocs}
+        isOpen={wikiLinkOpen}
+        onActiveIndexChange={setWikiLinkActiveIndex}
+        onCreateNew={(title) => {
+          void handleCreateLinkedNote(title);
+        }}
+        onDismiss={() => setWikiLinkOpen(false)}
+        onSelect={(title) => insertWikiLink(title)}
+        position={wikiLinkPosition}
+        searchQuery={wikiLinkQuery}
+      />
 
       {/* Unsaved changes dialog */}
       <Dialog onOpenChange={setShowUnsavedDialog} open={showUnsavedDialog}>

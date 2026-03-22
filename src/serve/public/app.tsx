@@ -2,9 +2,11 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
 
 import { HelpButton } from "./components/HelpButton";
+import { QuickSwitcher, saveRecentDocument } from "./components/QuickSwitcher";
 import { ShortcutHelpModal } from "./components/ShortcutHelpModal";
-import { CaptureModalProvider } from "./hooks/useCaptureModal";
+import { CaptureModalProvider, useCaptureModal } from "./hooks/useCaptureModal";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
+import { parseDocumentDeepLink } from "./lib/deep-links";
 import Ask from "./pages/Ask";
 import Browse from "./pages/Browse";
 import Collections from "./pages/Collections";
@@ -36,37 +38,48 @@ const routes: Record<Route, React.ComponentType<{ navigate: Navigate }>> = {
   "/graph": GraphView,
 };
 
-function App() {
-  // Track full location (pathname + search) for proper query param handling
-  const [location, setLocation] = useState<string>(
-    window.location.pathname + window.location.search
-  );
-  const [shortcutHelpOpen, setShortcutHelpOpen] = useState(false);
+interface AppContentProps {
+  location: string;
+  navigate: Navigate;
+  shortcutHelpOpen: boolean;
+  setShortcutHelpOpen: (open: boolean) => void;
+}
+
+function AppContent({
+  location,
+  navigate,
+  shortcutHelpOpen,
+  setShortcutHelpOpen,
+}: AppContentProps) {
+  const { openCapture } = useCaptureModal();
+  const [quickSwitcherOpen, setQuickSwitcherOpen] = useState(false);
 
   useEffect(() => {
-    const handlePopState = () =>
-      setLocation(window.location.pathname + window.location.search);
-    window.addEventListener("popstate", handlePopState);
-    return () => window.removeEventListener("popstate", handlePopState);
-  }, []);
-
-  const navigate = useCallback((to: string | number) => {
-    if (typeof to === "number") {
-      // Handle history.go(-1) style navigation
-      window.history.go(to);
+    const basePath = location.split("?")[0];
+    if (basePath !== "/doc" && basePath !== "/edit") {
       return;
     }
-    window.history.pushState({}, "", to);
-    setLocation(to);
-  }, []);
 
-  // Global keyboard shortcuts (single-key, GitHub/Gmail pattern)
+    const search = location.includes("?")
+      ? `?${location.split("?")[1] ?? ""}`
+      : "";
+    const target = parseDocumentDeepLink(search);
+    if (!target.uri) {
+      return;
+    }
+
+    saveRecentDocument({
+      uri: target.uri,
+      href: location,
+      label: decodeURIComponent(target.uri.split("/").pop() ?? target.uri),
+    });
+  }, [location]);
+
   const shortcuts = useMemo(
     () => [
       {
         key: "/",
         action: () => {
-          // Focus search input on current page or navigate to search
           const searchInput = document.querySelector<HTMLInputElement>(
             'input[type="search"], input[placeholder*="Search"], input[id*="search"]'
           );
@@ -82,18 +95,22 @@ function App() {
         key: "?",
         action: () => setShortcutHelpOpen(true),
       },
+      {
+        key: "k",
+        meta: true,
+        action: () => setQuickSwitcherOpen(true),
+      },
     ],
-    [navigate]
+    [navigate, setShortcutHelpOpen]
   );
 
   useKeyboardShortcuts(shortcuts);
 
-  // Extract base path for routing (ignore query params)
   const basePath = location.split("?")[0] as Route;
   const Page = routes[basePath] || Dashboard;
 
   return (
-    <CaptureModalProvider>
+    <>
       <div className="flex min-h-screen flex-col">
         <div className="flex-1">
           <Page key={location} navigate={navigate} />
@@ -147,9 +164,49 @@ function App() {
         </footer>
       </div>
       <HelpButton onClick={() => setShortcutHelpOpen(true)} />
+      <QuickSwitcher
+        navigate={(to) => navigate(to)}
+        onCreateNote={openCapture}
+        onOpenChange={setQuickSwitcherOpen}
+        open={quickSwitcherOpen}
+      />
       <ShortcutHelpModal
         onOpenChange={setShortcutHelpOpen}
         open={shortcutHelpOpen}
+      />
+    </>
+  );
+}
+
+function App() {
+  const [location, setLocation] = useState<string>(
+    window.location.pathname + window.location.search
+  );
+  const [shortcutHelpOpen, setShortcutHelpOpen] = useState(false);
+
+  useEffect(() => {
+    const handlePopState = () =>
+      setLocation(window.location.pathname + window.location.search);
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
+
+  const navigate = useCallback((to: string | number) => {
+    if (typeof to === "number") {
+      window.history.go(to);
+      return;
+    }
+    window.history.pushState({}, "", to);
+    setLocation(to);
+  }, []);
+
+  return (
+    <CaptureModalProvider>
+      <AppContent
+        location={location}
+        navigate={navigate}
+        setShortcutHelpOpen={setShortcutHelpOpen}
+        shortcutHelpOpen={shortcutHelpOpen}
       />
     </CaptureModalProvider>
   );

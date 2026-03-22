@@ -20,3 +20,13 @@ Define one canonical deep-link contract for documents, headings, and line target
 - Current SPA query-string handling is already stable enough to extend: `src/serve/public/app.tsx:40-60`.
 - Keep deep-link behavior compatible with the existing shadcn command/dialog primitives used by task `.6`: `src/serve/public/components/ui/command.tsx:1-183`.
 - This task should explicitly touch `docs/API.md`, `docs/MCP.md`, `docs/SDK.md`, and any website/API feature copy that mirrors linkable result payloads.
+
+## Done summary
+
+Standardized deep-link helpers, exact-hit navigation from search, source-line highlighting, copy-link actions, and updated get/mcp/spec contracts.
+
+## Evidence
+
+- Commits: e677f41, 2662e77
+- Tests: bun test, bun run lint:check
+- PRs:

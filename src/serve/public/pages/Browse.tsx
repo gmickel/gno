@@ -27,6 +27,7 @@ import {
   TableRow,
 } from "../components/ui/table";
 import { apiFetch } from "../hooks/use-api";
+import { useDocEvents } from "../hooks/use-doc-events";
 
 interface PageProps {
   navigate: (to: string | number) => void;
@@ -77,6 +78,7 @@ export default function Browse({ navigate }: PageProps) {
   const [syncTarget, setSyncTarget] = useState<SyncTarget>(null);
   const [syncError, setSyncError] = useState<string | null>(null);
   const [refreshToken, setRefreshToken] = useState(0);
+  const latestDocEvent = useDocEvents();
   const limit = 25;
 
   // Parse collection from URL on mount
@@ -133,6 +135,15 @@ export default function Browse({ navigate }: PageProps) {
     setOffset(0);
     setDocs([]);
   }, [availableDateFields, sortField]);
+
+  useEffect(() => {
+    if (!latestDocEvent?.changedAt) {
+      return;
+    }
+    setOffset(0);
+    setDocs([]);
+    setRefreshToken((current) => current + 1);
+  }, [latestDocEvent?.changedAt]);
 
   const handleCollectionChange = (value: string) => {
     const newSelected = value === "all" ? "" : value;

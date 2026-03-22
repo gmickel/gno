@@ -489,6 +489,13 @@ Retrieve a single document by reference.
       "ext": ".md",
       "modifiedAt": "2025-12-23T10:00:00Z",
       "sizeBytes": 4096
+    },
+    "capabilities": {
+      "editable": true,
+      "tagsEditable": true,
+      "tagsWriteback": true,
+      "canCreateEditableCopy": false,
+      "mode": "editable"
     }
   }
 }

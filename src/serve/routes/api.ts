@@ -13,10 +13,17 @@ import type {
   SearchOptions,
 } from "../../pipeline/types";
 import type { SqliteAdapter } from "../../store/sqlite/adapter";
+import type { DocumentEventBus } from "../doc-events";
 import type { EmbedScheduler } from "../embed-scheduler";
+import type { CollectionWatchService } from "../watch-service";
 
 import { modelsPull } from "../../cli/commands/models/pull";
 import { addCollection, removeCollection } from "../../collection";
+import {
+  buildEditableCopyContent,
+  deriveEditableCopyRelPath,
+  getDocumentCapabilities,
+} from "../../core/document-capabilities";
 import { atomicWrite } from "../../core/file-ops";
 import { normalizeStructuredQueryInput } from "../../core/structured-query";
 import {
@@ -49,6 +56,8 @@ export interface ContextHolder {
   current: ServerContext;
   config: Config;
   scheduler: EmbedScheduler | null;
+  eventBus: DocumentEventBus | null;
+  watchService: CollectionWatchService | null;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -155,6 +164,15 @@ export interface UpdateDocRequestBody {
   content?: string;
   /** Tags to set (replaces existing tags) */
   tags?: string[];
+  /** Expected source hash for optimistic concurrency */
+  expectedSourceHash?: string;
+  /** Expected source modified timestamp for optimistic concurrency */
+  expectedModifiedAt?: string;
+}
+
+export interface CreateEditableCopyRequestBody {
+  collection?: string;
+  relPath?: string;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -178,6 +196,78 @@ function parseCommaSeparatedValues(input: string): string[] {
         .filter(Boolean)
     )
   );
+}
+
+function hashContent(content: string): string {
+  const hasher = new Bun.CryptoHasher("sha256");
+  hasher.update(content);
+  return hasher.digest("hex");
+}
+
+interface SourceMeta {
+  absPath?: string;
+  mime: string;
+  ext: string;
+  modifiedAt?: string;
+  sizeBytes?: number;
+  sourceHash?: string;
+}
+
+function getCollectionByName(
+  collections: Config["collections"],
+  collectionName: string
+) {
+  return collections.find(
+    (c) => c.name.toLowerCase() === collectionName.toLowerCase()
+  );
+}
+
+async function resolveAbsoluteDocPath(
+  collections: Config["collections"],
+  doc: { collection: string; relPath: string }
+): Promise<{
+  collection: Config["collections"][number];
+  fullPath: string;
+} | null> {
+  const collection = getCollectionByName(collections, doc.collection);
+  if (!collection) {
+    return null;
+  }
+
+  const nodePath = await import("node:path"); // no bun equivalent
+  let safeRelPath: string;
+  try {
+    safeRelPath = validateRelPath(doc.relPath);
+  } catch {
+    return null;
+  }
+  return {
+    collection,
+    fullPath: nodePath.join(collection.path, safeRelPath),
+  };
+}
+
+async function buildSourceMeta(
+  collections: Config["collections"],
+  doc: {
+    collection: string;
+    relPath: string;
+    sourceMime: string;
+    sourceExt: string;
+    sourceMtime?: string | null;
+    sourceSize?: number;
+    sourceHash?: string;
+  }
+): Promise<SourceMeta> {
+  const resolved = await resolveAbsoluteDocPath(collections, doc);
+  return {
+    absPath: resolved?.fullPath,
+    mime: doc.sourceMime,
+    ext: doc.sourceExt,
+    modifiedAt: doc.sourceMtime ?? undefined,
+    sizeBytes: doc.sourceSize,
+    sourceHash: doc.sourceHash,
+  };
 }
 
 function parseQueryModesInput(value: unknown): {
@@ -692,12 +782,55 @@ export async function handleDocs(
 }
 
 /**
+ * GET /api/docs/autocomplete
+ * Query params: query, collection, limit
+ */
+export async function handleDocsAutocomplete(
+  store: SqliteAdapter,
+  url: URL
+): Promise<Response> {
+  const query = (url.searchParams.get("query") ?? "").trim().toLowerCase();
+  const collection = url.searchParams.get("collection") || undefined;
+  const limit = Math.min(Number(url.searchParams.get("limit") ?? "8") || 8, 20);
+
+  const result = await store.listDocuments(collection);
+  if (!result.ok) {
+    return errorResponse("RUNTIME", result.error.message, 500);
+  }
+
+  const candidates = result.value
+    .filter((doc) => doc.active)
+    .map((doc) => ({
+      docid: doc.docid,
+      uri: doc.uri,
+      title:
+        doc.title ??
+        doc.relPath
+          .split("/")
+          .pop()
+          ?.replace(/\.[^.]+$/, "") ??
+        doc.relPath,
+      collection: doc.collection,
+    }))
+    .filter((doc) => {
+      if (!query) return true;
+      const haystack = `${doc.title} ${doc.uri}`.toLowerCase();
+      return haystack.includes(query);
+    })
+    .sort((a, b) => a.title.localeCompare(b.title))
+    .slice(0, limit);
+
+  return jsonResponse({ docs: candidates });
+}
+
+/**
  * GET /api/doc
  * Query params: uri (required)
  * Returns single document with content.
  */
 export async function handleDoc(
   store: SqliteAdapter,
+  config: Config,
   url: URL
 ): Promise<Response> {
   const uri = url.searchParams.get("uri");
@@ -730,21 +863,25 @@ export async function handleDoc(
     tags = tagsResult.value.map((t) => t.tag);
   }
 
+  const contentAvailable = content !== null;
+  const capabilities = getDocumentCapabilities({
+    sourceExt: doc.sourceExt,
+    sourceMime: doc.sourceMime,
+    contentAvailable,
+  });
+  const source = await buildSourceMeta(config.collections, doc);
+
   return jsonResponse({
     docid: doc.docid,
     uri: doc.uri,
     title: doc.title,
     content,
-    contentAvailable: content !== null,
+    contentAvailable,
     collection: doc.collection,
     relPath: doc.relPath,
     tags,
-    source: {
-      mime: doc.sourceMime,
-      ext: doc.sourceExt,
-      modifiedAt: doc.sourceMtime,
-      sizeBytes: doc.sourceSize,
-    },
+    source,
+    capabilities,
   });
 }
 
@@ -862,6 +999,18 @@ export async function handleUpdateDoc(
   if (hasContent && typeof body.content !== "string") {
     return errorResponse("VALIDATION", "content must be a string");
   }
+  if (
+    body.expectedSourceHash !== undefined &&
+    typeof body.expectedSourceHash !== "string"
+  ) {
+    return errorResponse("VALIDATION", "expectedSourceHash must be a string");
+  }
+  if (
+    body.expectedModifiedAt !== undefined &&
+    typeof body.expectedModifiedAt !== "string"
+  ) {
+    return errorResponse("VALIDATION", "expectedModifiedAt must be a string");
+  }
 
   // Validate tags if provided
   let normalizedTags: string[] | undefined;
@@ -896,29 +1045,18 @@ export async function handleUpdateDoc(
 
   const doc = docResult.value;
 
-  // Find collection config (case-insensitive)
-  const collectionName = doc.collection.toLowerCase();
-  const collection = ctxHolder.config.collections.find(
-    (c) => c.name.toLowerCase() === collectionName
+  const resolvedDocPath = await resolveAbsoluteDocPath(
+    ctxHolder.config.collections,
+    doc
   );
-  if (!collection) {
+  if (!resolvedDocPath) {
     return errorResponse(
       "NOT_FOUND",
       `Collection not found: ${doc.collection}`,
       404
     );
   }
-
-  // Validate and resolve full path
-  // Critical: validate relPath from DB to prevent path traversal attacks
-  const nodePath = await import("node:path"); // no bun equivalent
-  let safeRelPath: string;
-  try {
-    safeRelPath = validateRelPath(doc.relPath);
-  } catch {
-    return errorResponse("VALIDATION", "Invalid document relPath in DB", 400);
-  }
-  const fullPath = nodePath.join(collection.path, safeRelPath);
+  const { collection, fullPath } = resolvedDocPath;
 
   // Verify file exists
   const file = Bun.file(fullPath);
@@ -926,9 +1064,49 @@ export async function handleUpdateDoc(
     return errorResponse("FILE_NOT_FOUND", "Source file no longer exists", 404);
   }
 
-  // Determine if we can write tags back to file
-  const isMarkdown =
-    doc.sourceMime === "text/markdown" || doc.sourceExt === ".md";
+  if (body.expectedSourceHash || body.expectedModifiedAt) {
+    const currentBytes = await file.bytes();
+    const currentSourceHash = hashContent(
+      new TextDecoder().decode(currentBytes)
+    );
+    const { stat } = await import("node:fs/promises"); // no Bun structure stat parity
+    const currentModifiedAt = (await stat(fullPath)).mtime.toISOString();
+
+    if (
+      (body.expectedSourceHash &&
+        body.expectedSourceHash !== currentSourceHash) ||
+      (body.expectedModifiedAt && body.expectedModifiedAt !== currentModifiedAt)
+    ) {
+      return jsonResponse(
+        {
+          error: {
+            code: "CONFLICT",
+            message: "Document changed on disk. Reload before saving.",
+          },
+          currentVersion: {
+            sourceHash: currentSourceHash,
+            modifiedAt: currentModifiedAt,
+          },
+        },
+        409
+      );
+    }
+  }
+
+  const capabilities = getDocumentCapabilities({
+    sourceExt: doc.sourceExt,
+    sourceMime: doc.sourceMime,
+    contentAvailable: doc.mirrorHash !== null,
+  });
+  if (hasContent && !capabilities.editable) {
+    return errorResponse(
+      "READ_ONLY",
+      capabilities.reason ??
+        "This document cannot be edited in place. Create an editable markdown copy instead.",
+      409
+    );
+  }
+
   let writeBack: "applied" | "skipped_unsupported" | undefined;
 
   try {
@@ -941,7 +1119,7 @@ export async function handleUpdateDoc(
 
     // Handle tag writeback for Markdown files
     if (hasTags && normalizedTags) {
-      if (isMarkdown) {
+      if (capabilities.tagsWriteback) {
         // Read current content if we're only updating tags
         const source = contentToWrite ?? (await file.text());
         contentToWrite = updateFrontmatterTags(source, normalizedTags);
@@ -957,9 +1135,16 @@ export async function handleUpdateDoc(
       }
     }
 
+    let currentSourceHash = doc.sourceHash;
+    let currentModifiedAt = doc.sourceMtime;
+
     // Write file if we have content to write
     if (contentToWrite !== undefined) {
+      ctxHolder.watchService?.suppress(fullPath);
       await atomicWrite(fullPath, contentToWrite);
+      currentSourceHash = hashContent(contentToWrite);
+      const { stat } = await import("node:fs/promises"); // no Bun structure stat parity
+      currentModifiedAt = (await stat(fullPath)).mtime.toISOString();
     }
 
     // Build proper file:// URI using node:url
@@ -978,6 +1163,14 @@ export async function handleUpdateDoc(
         );
         // Notify scheduler after sync completes
         ctxHolder.scheduler?.notifySyncComplete([doc.docid]);
+        ctxHolder.eventBus?.emit({
+          type: "document-changed",
+          uri: doc.uri,
+          collection: doc.collection,
+          relPath: doc.relPath,
+          origin: "save",
+          changedAt: new Date().toISOString(),
+        });
         return {
           collections: [result],
           totalDurationMs: result.durationMs,
@@ -998,6 +1191,10 @@ export async function handleUpdateDoc(
       path: fullPath,
       jobId,
       writeBack,
+      version: {
+        sourceHash: currentSourceHash,
+        modifiedAt: currentModifiedAt,
+      },
     });
   } catch (e) {
     return errorResponse(
@@ -1006,6 +1203,126 @@ export async function handleUpdateDoc(
       500
     );
   }
+}
+
+/**
+ * POST /api/docs/:id/editable-copy
+ * Create a markdown copy for a read-only/converted document.
+ */
+export async function handleCreateEditableCopy(
+  ctxHolder: ContextHolder,
+  store: SqliteAdapter,
+  docId: string,
+  req: Request
+): Promise<Response> {
+  let body: CreateEditableCopyRequestBody = {};
+  try {
+    const text = await req.text();
+    if (text) {
+      body = JSON.parse(text) as CreateEditableCopyRequestBody;
+    }
+  } catch {
+    return errorResponse("VALIDATION", "Invalid JSON body");
+  }
+
+  if (body.collection !== undefined && typeof body.collection !== "string") {
+    return errorResponse("VALIDATION", "collection must be a string");
+  }
+  if (body.relPath !== undefined && typeof body.relPath !== "string") {
+    return errorResponse("VALIDATION", "relPath must be a string");
+  }
+
+  const docResult = await store.getDocumentByDocid(docId);
+  if (!docResult.ok) {
+    return errorResponse("RUNTIME", docResult.error.message, 500);
+  }
+  if (!docResult.value) {
+    return errorResponse("NOT_FOUND", "Document not found", 404);
+  }
+
+  const doc = docResult.value;
+  const contentAvailable = doc.mirrorHash !== null;
+  const capabilities = getDocumentCapabilities({
+    sourceExt: doc.sourceExt,
+    sourceMime: doc.sourceMime,
+    contentAvailable,
+  });
+  if (capabilities.editable) {
+    return errorResponse(
+      "VALIDATION",
+      "Document is already editable in place; use the normal update route instead."
+    );
+  }
+  if (!doc.mirrorHash) {
+    return errorResponse(
+      "RUNTIME",
+      "Editable copy unavailable because converted content is missing.",
+      409
+    );
+  }
+
+  const contentResult = await store.getContent(doc.mirrorHash);
+  if (!contentResult.ok || contentResult.value === null) {
+    return errorResponse(
+      "RUNTIME",
+      "Editable copy unavailable because converted content is missing.",
+      409
+    );
+  }
+
+  const tagsResult = await store.getTagsForDoc(doc.id);
+  const tags = tagsResult.ok ? tagsResult.value.map((tag) => tag.tag) : [];
+
+  const targetCollectionName = body.collection ?? doc.collection;
+  const targetCollection = getCollectionByName(
+    ctxHolder.config.collections,
+    targetCollectionName
+  );
+  if (!targetCollection) {
+    return errorResponse(
+      "NOT_FOUND",
+      `Collection not found: ${targetCollectionName}`,
+      404
+    );
+  }
+
+  let relPath = body.relPath;
+  if (!relPath) {
+    const listResult = await store.listDocuments(targetCollection.name);
+    const existingRelPaths = listResult.ok
+      ? listResult.value.map((entry) => entry.relPath)
+      : [];
+    relPath = deriveEditableCopyRelPath(doc.relPath, existingRelPaths);
+  }
+
+  const title =
+    doc.title ??
+    doc.relPath
+      .split("/")
+      .pop()
+      ?.replace(/\.[^.]+$/, "") ??
+    "Copy";
+  const content = buildEditableCopyContent({
+    title,
+    sourceDocid: doc.docid,
+    sourceUri: doc.uri,
+    sourceMime: doc.sourceMime,
+    sourceExt: doc.sourceExt,
+    content: contentResult.value,
+    tags,
+  });
+
+  const createReq = new Request("http://localhost/api/docs", {
+    method: "POST",
+    body: JSON.stringify({
+      collection: targetCollection.name,
+      relPath,
+      content,
+      tags,
+    } satisfies CreateDocRequestBody),
+  });
+
+  return handleCreateDoc(ctxHolder, store, createReq);
 }
 
 /**
@@ -1102,6 +1419,7 @@ export async function handleCreateDoc(
       contentToWrite = updateFrontmatterTags(body.content, validatedTags);
     }
 
+    ctxHolder.watchService?.suppress(fullPath);
     await atomicWrite(fullPath, contentToWrite);
 
     // Build gno:// URI for the created document
@@ -1119,6 +1437,14 @@ export async function handleCreateDoc(
       // The sync will create a proper docid, but we don't have it here yet
       // Using normalizedRelPath as identifier since docid is generated during sync
       ctxHolder.scheduler?.notifySyncComplete([normalizedRelPath]);
+      ctxHolder.eventBus?.emit({
+        type: "document-changed",
+        uri: gnoUri,
+        collection: collection.name,
+        relPath: normalizedRelPath,
+        origin: "create",
+        changedAt: new Date().toISOString(),
+      });
       return {
         collections: [result],
         totalDurationMs: result.durationMs,
@@ -1947,6 +2273,7 @@ export function handleEmbedStatus(scheduler: EmbedScheduler | null): Response {
 // oxlint-disable-next-line typescript-eslint/require-await -- handlers are async, kept for future use
 export async function routeApi(
   store: SqliteAdapter,
+  config: Config,
   req: Request,
   url: URL
 ): Promise<Response | null> {
@@ -1999,8 +2326,12 @@ export async function routeApi(
     return handleDocs(store, url);
   }
 
+  if (path === "/api/docs/autocomplete") {
+    return handleDocsAutocomplete(store, url);
+  }
+
   if (path === "/api/doc") {
-    return handleDoc(store, url);
+    return handleDoc(store, config, url);
   }
 
   if (path === "/api/search" && req.method === "POST") {

@@ -4,7 +4,14 @@
   "title": "GNO Get Response",
   "description": "Response from gno get command",
   "type": "object",
-  "required": ["docid", "uri", "content", "totalLines", "source"],
+  "required": [
+    "docid",
+    "uri",
+    "content",
+    "totalLines",
+    "source",
+    "capabilities"
+  ],
   "properties": {
     "docid": {
       "type": "string",
@@ -99,6 +106,27 @@
         "mirrorHash": {
           "type": "string"
         }
+      }
+    },
+    "capabilities": {
+      "type": "object",
+      "required": [
+        "editable",
+        "tagsEditable",
+        "tagsWriteback",
+        "canCreateEditableCopy",
+        "mode"
+      ],
+      "properties": {
+        "editable": { "type": "boolean" },
+        "tagsEditable": { "type": "boolean" },
+        "tagsWriteback": { "type": "boolean" },
+        "canCreateEditableCopy": { "type": "boolean" },
+        "mode": {
+          "type": "string",
+          "enum": ["editable", "read_only"]
+        },
+        "reason": { "type": "string" }
       }
     },
     "tags": {

@@ -27,18 +27,18 @@ Once installed, ask Claude Desktop:
 - "What do my notes say about project X?"
 - "Get the contents of my project README"
 
-Claude uses GNO's search tools to find relevant documents, then synthesizes answers.
+Claude uses GNO's search tools to find relevant documents, then synthesizes answers. `gno_get` responses also include source metadata and capability flags so the model can tell whether a document is editable in place or should be treated as read-only converted source material.
 
 ## Available Tools
 
-| Tool            | Purpose                               |
-| --------------- | ------------------------------------- |
-| `gno_query`     | Hybrid search (best for most queries) |
-| `gno_search`    | BM25 keyword search                   |
-| `gno_vsearch`   | Semantic vector search                |
-| `gno_get`       | Get document by ID                    |
-| `gno_multi_get` | Get multiple documents                |
-| `gno_status`    | Check index health                    |
+| Tool            | Purpose                                              |
+| --------------- | ---------------------------------------------------- |
+| `gno_query`     | Hybrid search (best for most queries)                |
+| `gno_search`    | BM25 keyword search                                  |
+| `gno_vsearch`   | Semantic vector search                               |
+| `gno_get`       | Get document content plus source/capability metadata |
+| `gno_multi_get` | Get multiple documents                               |
+| `gno_status`    | Check index health                                   |
 
 ## Example Prompts
 

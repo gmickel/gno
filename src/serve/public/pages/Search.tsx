@@ -35,7 +35,9 @@ import {
 } from "../components/ui/select";
 import { Textarea } from "../components/ui/textarea";
 import { apiFetch } from "../hooks/use-api";
+import { useDocEvents } from "../hooks/use-doc-events";
 import { useKeyboardShortcuts } from "../hooks/useKeyboardShortcuts";
+import { buildDocDeepLink } from "../lib/deep-links";
 import {
   applyFiltersToUrl,
   parseFiltersFromSearch,
@@ -194,6 +196,7 @@ export default function Search({ navigate }: PageProps) {
   const [queryModeText, setQueryModeText] = useState("");
   const [queryModeError, setQueryModeError] = useState<string | null>(null);
   const [showMobileTags, setShowMobileTags] = useState(false);
+  const latestDocEvent = useDocEvents();
 
   const hybridAvailable = capabilities?.hybrid ?? false;
   const structuredQueryState = useMemo(
@@ -445,6 +448,15 @@ export default function Search({ navigate }: PageProps) {
     tagMode,
     until,
   ]);
+
+  useEffect(() => {
+    if (!latestDocEvent?.changedAt) {
+      return;
+    }
+    if (searched && query.trim()) {
+      void handleSearch();
+    }
+  }, [handleSearch, latestDocEvent?.changedAt, query, searched]);
 
   const thoroughnessDesc =
     thoroughness === "fast"
@@ -1037,7 +1049,14 @@ export default function Search({ navigate }: PageProps) {
                     className="group animate-fade-in cursor-pointer opacity-0 transition-all hover:border-primary/50 hover:bg-card/80"
                     key={`${result.docid}-${i}`}
                     onClick={() =>
-                      navigate(`/doc?uri=${encodeURIComponent(result.uri)}`)
+                      navigate(
+                        buildDocDeepLink({
+                          uri: result.uri,
+                          view: result.snippetRange ? "source" : "rendered",
+                          lineStart: result.snippetRange?.startLine,
+                          lineEnd: result.snippetRange?.endLine,
+                        })
+                      )
                     }
                     style={{ animationDelay: `${i * 0.05}s` }}
                   >
