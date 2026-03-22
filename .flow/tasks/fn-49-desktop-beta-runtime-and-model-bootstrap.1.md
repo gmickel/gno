@@ -19,15 +19,19 @@ Initial slice:
 - [ ] Tests cover the new bootstrap status paths and docs explain footprint/cache behavior accurately
 
 ## Done summary
+
 Shipped the first runtime/model bootstrap status slice for the desktop beta.
 
 Highlights:
+
 - `/api/status` now exposes a `bootstrap` block covering runtime strategy, download policy, cache location/size, and active-preset model readiness
 - dashboard now surfaces the new Bootstrap & Storage panel with plain-language runtime/cache/model status
 - docs now explain the current Bun-based beta runtime path, auto-download vs manual/offline policy, and cache visibility
 - added schema, API, and component coverage for bootstrap status
 - verified browser rendering of the new panel on the local dashboard
+
 ## Evidence
+
 - Commits:
 - Tests: bun test test/serve/api-status.test.ts test/spec/schemas/status.test.ts test/serve/public/components/BootstrapStatus.test.tsx, bun run lint:check, bun run typecheck, bun test, bun run docs:verify, browser sanity: agent-browser open http://localhost:3124; snapshot verified Bootstrap & Storage panel
 - PRs:

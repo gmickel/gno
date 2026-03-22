@@ -111,3 +111,22 @@ Best current reading:
 - `open-file` / file associations remain the main unresolved platform gap
 - tabs should be implemented in GNO app state, not native BrowserView tabs
 - only fall back to another runtime if Electrobun still fails the `open-file` / distribution gates in `fn-50`
+
+## Fallback comparison status
+
+As of the current `fn-50` review, the broader shell comparison task was **not triggered**.
+
+Reason:
+
+- Electrobun still remains the working direction
+- packaged `gno://` is proven
+- singleton is workable with app-level glue
+- no broader distribution blocker has yet forced a runtime fallback
+
+Meaning:
+
+- do **not** spend roadmap time on a generic shell bakeoff
+- only compare against another shell if Electrobun fails a must-have gate:
+  - no acceptable `open-file` / file-association path
+  - no acceptable signing/distribution path
+  - unacceptable shell glue or maintenance cost
