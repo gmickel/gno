@@ -1,0 +1,17 @@
+{
+  "name": "gno-electrobun-spike",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Electrobun fit spike for wrapping the existing GNO workspace",
+  "type": "module",
+  "scripts": {
+    "start": "electrobun dev",
+    "dev": "electrobun dev --watch"
+  },
+  "dependencies": {
+    "electrobun": "1.16.0"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
+  }
+}
