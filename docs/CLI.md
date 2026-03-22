@@ -510,8 +510,10 @@ gno skill install --force            # Overwrite existing
 Options:
 
 - `--scope <project|user>` - Installation scope (default: project)
-- `--target <claude|codex|all>` - Target agent (default: claude)
+- `--target <claude|codex|opencode|openclaw|all>` - Target agent (default: claude)
 - `--force` - Overwrite existing installation
+
+Supported targets: Claude Code, Codex, OpenCode, OpenClaw. Use `all` to install to every target.
 
 ### gno skill uninstall
 
@@ -526,7 +528,7 @@ gno skill uninstall --target all
 Options:
 
 - `-s, --scope <project|user>` - Scope to uninstall from (default: project)
-- `-t, --target <claude|codex|all>` - Target to uninstall from (default: claude)
+- `-t, --target <claude|codex|opencode|openclaw|all>` - Target to uninstall from (default: claude)
 
 ### gno skill show
 

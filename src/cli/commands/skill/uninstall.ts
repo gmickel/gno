@@ -12,6 +12,7 @@ import { CliError } from "../../errors.js";
 import { getGlobals } from "../../program.js";
 import {
   resolveSkillPaths,
+  SKILL_TARGETS,
   type SkillScope,
   type SkillTarget,
   validatePathForDeletion,
@@ -100,8 +101,7 @@ export async function uninstallSkill(
   const json = opts.json ?? globals.json;
   const quiet = opts.quiet ?? globals.quiet;
 
-  const targets: SkillTarget[] =
-    target === "all" ? ["claude", "codex"] : [target];
+  const targets: SkillTarget[] = target === "all" ? SKILL_TARGETS : [target];
 
   const results: UninstallResult[] = [];
   const notFound: string[] = [];

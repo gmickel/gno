@@ -51,92 +51,284 @@ export function normalizeTagFilters(tags?: string[]): string[] | undefined {
 // ─────────────────────────────────────────────────────────────────────────────
 
 const searchInputSchema = z.object({
-  query: z.string().min(1, "Query cannot be empty"),
-  collection: z.string().optional(),
-  limit: z.number().int().min(1).max(100).default(5),
-  minScore: z.number().min(0).max(1).optional(),
-  lang: z.string().optional(),
-  intent: z.string().optional(),
-  exclude: z.array(z.string()).optional(),
-  since: z.string().optional(),
-  until: z.string().optional(),
-  categories: z.array(z.string()).optional(),
-  author: z.string().optional(),
-  tagsAll: z.array(z.string()).optional(),
-  tagsAny: z.array(z.string()).optional(),
+  query: z
+    .string()
+    .min(1, "Query cannot be empty")
+    .describe("Search query text"),
+  collection: z
+    .string()
+    .optional()
+    .describe("Filter to a single collection name"),
+  limit: z
+    .number()
+    .int()
+    .min(1)
+    .max(100)
+    .default(5)
+    .describe("Max results to return"),
+  minScore: z
+    .number()
+    .min(0)
+    .max(1)
+    .optional()
+    .describe("Minimum relevance score (0-1). Omit to return all matches"),
+  lang: z
+    .string()
+    .optional()
+    .describe(
+      "BCP-47 language hint for tokenization (e.g. 'en', 'de'). Auto-detected if omitted"
+    ),
+  intent: z
+    .string()
+    .optional()
+    .describe(
+      "Disambiguating context for ambiguous queries (e.g. 'programming language' when query is 'python')"
+    ),
+  exclude: z
+    .array(z.string())
+    .optional()
+    .describe("Exclude documents containing any of these terms"),
+  since: z
+    .string()
+    .optional()
+    .describe(
+      "Only docs modified after this date (ISO format: 2026-03-01 or 2026-03-01T00:00:00)"
+    ),
+  until: z
+    .string()
+    .optional()
+    .describe("Only docs modified before this date (ISO format)"),
+  categories: z
+    .array(z.string())
+    .optional()
+    .describe("Require category match (from document frontmatter)"),
+  author: z
+    .string()
+    .optional()
+    .describe("Filter by author (case-insensitive substring match)"),
+  tagsAll: z
+    .array(z.string())
+    .optional()
+    .describe("Require ALL of these tags (AND filter)"),
+  tagsAny: z
+    .array(z.string())
+    .optional()
+    .describe("Require ANY of these tags (OR filter)"),
 });
 
 const captureInputSchema = z.object({
-  collection: z.string().min(1, "Collection cannot be empty"),
-  content: z.string(),
-  title: z.string().optional(),
-  path: z.string().optional(),
-  overwrite: z.boolean().default(false),
-  tags: z.array(z.string()).optional(),
+  collection: z
+    .string()
+    .min(1, "Collection cannot be empty")
+    .describe("Target collection name (must already exist)"),
+  content: z.string().describe("Document content (markdown or plain text)"),
+  title: z
+    .string()
+    .optional()
+    .describe("Document title. Auto-derived from content if omitted"),
+  path: z
+    .string()
+    .optional()
+    .describe(
+      "Relative path within collection (e.g. 'notes/meeting.md'). Auto-generated from title if omitted"
+    ),
+  overwrite: z
+    .boolean()
+    .default(false)
+    .describe("Overwrite if file already exists at path"),
+  tags: z
+    .array(z.string())
+    .optional()
+    .describe("Tags to apply to the new document"),
 });
 
 const addCollectionInputSchema = z.object({
-  path: z.string().min(1, "Path cannot be empty"),
-  name: z.string().optional(),
-  pattern: z.string().optional(),
-  include: z.array(z.string()).optional(),
-  exclude: z.array(z.string()).optional(),
-  gitPull: z.boolean().default(false),
+  path: z
+    .string()
+    .min(1, "Path cannot be empty")
+    .describe("Absolute path to the directory to index"),
+  name: z
+    .string()
+    .optional()
+    .describe("Collection name. Auto-derived from directory name if omitted"),
+  pattern: z
+    .string()
+    .optional()
+    .describe(
+      "Glob pattern for files to include (default: '**/*'). E.g. '**/*.md' for markdown only"
+    ),
+  include: z
+    .array(z.string())
+    .optional()
+    .describe("Extension allowlist (e.g. ['.md', '.pdf', '.docx'])"),
+  exclude: z
+    .array(z.string())
+    .optional()
+    .describe("Glob patterns to exclude (default: ['.git', 'node_modules'])"),
+  gitPull: z
+    .boolean()
+    .default(false)
+    .describe("Run git pull before indexing (if collection is a git repo)"),
 });
 
 const syncInputSchema = z.object({
-  collection: z.string().optional(),
-  gitPull: z.boolean().default(false),
-  runUpdateCmd: z.boolean().default(false),
+  collection: z
+    .string()
+    .optional()
+    .describe("Collection name to sync. Omit to sync all collections"),
+  gitPull: z.boolean().default(false).describe("Run git pull before syncing"),
+  runUpdateCmd: z
+    .boolean()
+    .default(false)
+    .describe("Run the collection's configured update command before syncing"),
 });
 
 const embedInputSchema = z.object({});
 
 const indexInputSchema = z.object({
-  collection: z.string().optional(),
-  gitPull: z.boolean().default(false),
+  collection: z
+    .string()
+    .optional()
+    .describe("Collection name to index. Omit to index all collections"),
+  gitPull: z.boolean().default(false).describe("Run git pull before indexing"),
 });
 
 const removeCollectionInputSchema = z.object({
-  collection: z.string().min(1, "Collection cannot be empty"),
+  collection: z
+    .string()
+    .min(1, "Collection cannot be empty")
+    .describe("Collection name to remove"),
 });
 
 const vsearchInputSchema = z.object({
-  query: z.string().min(1, "Query cannot be empty"),
-  collection: z.string().optional(),
-  limit: z.number().int().min(1).max(100).default(5),
-  minScore: z.number().min(0).max(1).optional(),
-  lang: z.string().optional(),
-  intent: z.string().optional(),
-  exclude: z.array(z.string()).optional(),
-  since: z.string().optional(),
-  until: z.string().optional(),
-  categories: z.array(z.string()).optional(),
-  author: z.string().optional(),
-  tagsAll: z.array(z.string()).optional(),
-  tagsAny: z.array(z.string()).optional(),
+  query: z
+    .string()
+    .min(1, "Query cannot be empty")
+    .describe("Search query text (matched by semantic meaning, not keywords)"),
+  collection: z
+    .string()
+    .optional()
+    .describe("Filter to a single collection name"),
+  limit: z
+    .number()
+    .int()
+    .min(1)
+    .max(100)
+    .default(5)
+    .describe("Max results to return"),
+  minScore: z
+    .number()
+    .min(0)
+    .max(1)
+    .optional()
+    .describe("Minimum similarity score (0-1)"),
+  lang: z
+    .string()
+    .optional()
+    .describe("BCP-47 language hint (e.g. 'en', 'de')"),
+  intent: z
+    .string()
+    .optional()
+    .describe("Disambiguating context for the query"),
+  exclude: z
+    .array(z.string())
+    .optional()
+    .describe("Exclude documents containing any of these terms"),
+  since: z
+    .string()
+    .optional()
+    .describe("Only docs modified after this date (ISO format)"),
+  until: z
+    .string()
+    .optional()
+    .describe("Only docs modified before this date (ISO format)"),
+  categories: z.array(z.string()).optional().describe("Require category match"),
+  author: z
+    .string()
+    .optional()
+    .describe("Filter by author (case-insensitive substring)"),
+  tagsAll: z.array(z.string()).optional().describe("Require ALL of these tags"),
+  tagsAny: z.array(z.string()).optional().describe("Require ANY of these tags"),
 });
 
 const queryModeInputSchema = z.object({
-  mode: z.enum(["term", "intent", "hyde"]),
-  text: z.string().trim().min(1, "Query mode text cannot be empty"),
+  mode: z
+    .enum(["term", "intent", "hyde"])
+    .describe(
+      "Retrieval strategy: 'term' (keyword match), 'intent' (disambiguation), 'hyde' (hypothetical document for semantic matching)"
+    ),
+  text: z
+    .string()
+    .trim()
+    .min(1, "Query mode text cannot be empty")
+    .describe("Text for this query mode"),
 });
 
 export const queryInputSchema = z.object({
-  query: z.string().min(1, "Query cannot be empty"),
-  collection: z.string().optional(),
-  limit: z.number().int().min(1).max(100).default(5),
-  minScore: z.number().min(0).max(1).optional(),
-  lang: z.string().optional(),
-  intent: z.string().optional(),
-  candidateLimit: z.number().int().min(1).max(100).optional(),
-  exclude: z.array(z.string()).optional(),
-  since: z.string().optional(),
-  until: z.string().optional(),
-  categories: z.array(z.string()).optional(),
-  author: z.string().optional(),
+  query: z
+    .string()
+    .min(1, "Query cannot be empty")
+    .describe("Search query text"),
+  collection: z
+    .string()
+    .optional()
+    .describe("Filter to a single collection name"),
+  limit: z
+    .number()
+    .int()
+    .min(1)
+    .max(100)
+    .default(5)
+    .describe("Max results to return"),
+  minScore: z
+    .number()
+    .min(0)
+    .max(1)
+    .optional()
+    .describe("Minimum relevance score (0-1)"),
+  lang: z
+    .string()
+    .optional()
+    .describe(
+      "BCP-47 language hint (e.g. 'en', 'de'). Auto-detected if omitted"
+    ),
+  intent: z
+    .string()
+    .optional()
+    .describe(
+      "Disambiguating context (e.g. 'programming language' when query is 'python')"
+    ),
+  candidateLimit: z
+    .number()
+    .int()
+    .min(1)
+    .max(100)
+    .optional()
+    .describe(
+      "Max candidates passed to reranking stage (higher = better recall, slower)"
+    ),
+  exclude: z
+    .array(z.string())
+    .optional()
+    .describe("Exclude documents containing any of these terms"),
+  since: z
+    .string()
+    .optional()
+    .describe("Only docs modified after this date (ISO format)"),
+  until: z
+    .string()
+    .optional()
+    .describe("Only docs modified before this date (ISO format)"),
+  categories: z.array(z.string()).optional().describe("Require category match"),
+  author: z
+    .string()
+    .optional()
+    .describe("Filter by author (case-insensitive substring)"),
   queryModes: z
     .array(queryModeInputSchema)
+    .describe(
+      "Structured query modes to combine multiple retrieval strategies. Max one 'hyde' entry."
+    )
     .superRefine((entries, ctx) => {
       const hydeCount = entries.filter((entry) => entry.mode === "hyde").length;
       if (hydeCount > 1) {
@@ -147,68 +339,200 @@ export const queryInputSchema = z.object({
       }
     })
     .optional(),
-  fast: z.boolean().default(false),
-  thorough: z.boolean().default(false),
-  expand: z.boolean().optional(),
-  rerank: z.boolean().optional(),
-  tagsAll: z.array(z.string()).optional(),
-  tagsAny: z.array(z.string()).optional(),
+  fast: z
+    .boolean()
+    .default(false)
+    .describe("Skip expansion and reranking (~0.7s). Use for quick lookups"),
+  thorough: z
+    .boolean()
+    .default(false)
+    .describe(
+      "Enable query expansion for best recall (~5-8s). Use when default returns no results"
+    ),
+  expand: z
+    .boolean()
+    .optional()
+    .describe("Override: enable/disable query expansion"),
+  rerank: z
+    .boolean()
+    .optional()
+    .describe("Override: enable/disable cross-encoder reranking"),
+  tagsAll: z.array(z.string()).optional().describe("Require ALL of these tags"),
+  tagsAny: z.array(z.string()).optional().describe("Require ANY of these tags"),
 });
 
 const getInputSchema = z.object({
-  ref: z.string().min(1, "Reference cannot be empty"),
-  fromLine: z.number().int().min(1).optional(),
-  lineCount: z.number().int().min(1).optional(),
-  lineNumbers: z.boolean().default(true),
+  ref: z
+    .string()
+    .min(1, "Reference cannot be empty")
+    .describe(
+      "Document reference: URI (gno://collection/path), docid (#abc123), or collection/path"
+    ),
+  fromLine: z
+    .number()
+    .int()
+    .min(1)
+    .optional()
+    .describe("Start reading from this line number"),
+  lineCount: z
+    .number()
+    .int()
+    .min(1)
+    .optional()
+    .describe("Number of lines to return (from fromLine)"),
+  lineNumbers: z
+    .boolean()
+    .default(true)
+    .describe("Include line numbers in output"),
 });
 
 const multiGetInputSchema = z.object({
-  refs: z.array(z.string()).min(1).optional(),
-  pattern: z.string().optional(),
-  maxBytes: z.number().int().min(1).default(10_240),
-  lineNumbers: z.boolean().default(true),
+  refs: z
+    .array(z.string())
+    .min(1)
+    .optional()
+    .describe("Array of document references (URIs or docids)"),
+  pattern: z
+    .string()
+    .optional()
+    .describe("Glob pattern to match documents (e.g. 'work/**/*.md')"),
+  maxBytes: z
+    .number()
+    .int()
+    .min(1)
+    .default(10_240)
+    .describe("Max bytes per document (truncates longer docs)"),
+  lineNumbers: z
+    .boolean()
+    .default(true)
+    .describe("Include line numbers in output"),
 });
 
 const statusInputSchema = z.object({});
 
 const jobStatusInputSchema = z.object({
-  jobId: z.string().min(1, "Job ID cannot be empty"),
+  jobId: z
+    .string()
+    .min(1, "Job ID cannot be empty")
+    .describe("Job ID returned by async operations (embed, index)"),
 });
 
 const listJobsInputSchema = z.object({
-  limit: z.number().int().min(1).max(100).default(10),
+  limit: z
+    .number()
+    .int()
+    .min(1)
+    .max(100)
+    .default(10)
+    .describe("Max jobs to return"),
 });
 
 const listTagsInputSchema = z.object({
-  collection: z.string().optional(),
-  prefix: z.string().optional(),
+  collection: z
+    .string()
+    .optional()
+    .describe("Filter tags to a single collection"),
+  prefix: z
+    .string()
+    .optional()
+    .describe("Filter tags by prefix (e.g. 'project/' for hierarchical tags)"),
 });
 
 const linksInputSchema = z.object({
-  ref: z.string().trim().min(1, "Reference cannot be empty"),
-  type: z.enum(["wiki", "markdown"]).optional(),
+  ref: z
+    .string()
+    .trim()
+    .min(1, "Reference cannot be empty")
+    .describe("Document reference (URI, docid, or collection/path)"),
+  type: z
+    .enum(["wiki", "markdown"])
+    .optional()
+    .describe(
+      "Filter by link type: 'wiki' ([[links]]) or 'markdown' ([links](url))"
+    ),
 });
 
 const backlinksInputSchema = z.object({
-  ref: z.string().trim().min(1, "Reference cannot be empty"),
-  collection: z.string().trim().optional(),
+  ref: z
+    .string()
+    .trim()
+    .min(1, "Reference cannot be empty")
+    .describe("Document reference to find backlinks for"),
+  collection: z
+    .string()
+    .trim()
+    .optional()
+    .describe("Filter backlinks to a single collection"),
 });
 
 const similarInputSchema = z.object({
-  ref: z.string().trim().min(1, "Reference cannot be empty"),
-  limit: z.number().int().min(1).max(50).default(5),
-  threshold: z.number().min(0).max(1).optional(),
-  crossCollection: z.boolean().default(false),
+  ref: z
+    .string()
+    .trim()
+    .min(1, "Reference cannot be empty")
+    .describe("Document reference to find similar docs for"),
+  limit: z
+    .number()
+    .int()
+    .min(1)
+    .max(50)
+    .default(5)
+    .describe("Max similar documents to return"),
+  threshold: z
+    .number()
+    .min(0)
+    .max(1)
+    .optional()
+    .describe("Minimum similarity score (0-1, default: 0.7)"),
+  crossCollection: z
+    .boolean()
+    .default(false)
+    .describe(
+      "Search across all collections (not just the document's own collection)"
+    ),
 });
 
 const graphInputSchema = z.object({
-  collection: z.string().trim().optional(),
-  limit: z.number().int().min(1).max(5000).default(2000),
-  edgeLimit: z.number().int().min(1).max(50000).default(10000),
-  includeSimilar: z.boolean().default(false),
-  threshold: z.number().min(0).max(1).default(0.7),
-  linkedOnly: z.boolean().default(true),
-  similarTopK: z.number().int().min(1).max(20).default(5),
+  collection: z
+    .string()
+    .trim()
+    .optional()
+    .describe("Filter graph to a single collection"),
+  limit: z
+    .number()
+    .int()
+    .min(1)
+    .max(5000)
+    .default(2000)
+    .describe("Max nodes in graph"),
+  edgeLimit: z
+    .number()
+    .int()
+    .min(1)
+    .max(50000)
+    .default(10000)
+    .describe("Max edges in graph"),
+  includeSimilar: z
+    .boolean()
+    .default(false)
+    .describe("Include vector-similarity edges (not just wiki/markdown links)"),
+  threshold: z
+    .number()
+    .min(0)
+    .max(1)
+    .default(0.7)
+    .describe("Similarity threshold for similar edges (0-1)"),
+  linkedOnly: z
+    .boolean()
+    .default(true)
+    .describe("Exclude isolated nodes (no links)"),
+  similarTopK: z
+    .number()
+    .int()
+    .min(1)
+    .max(20)
+    .default(5)
+    .describe("Max similar docs per node when includeSimilar=true"),
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -323,77 +647,77 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
   // Tool IDs use underscores (MCP pattern: ^[a-zA-Z0-9_-]{1,64}$)
   server.tool(
     "gno_search",
-    "BM25 full-text search across indexed documents",
+    "BM25 keyword search. Instant, best for exact terms. Use gno_query for better quality.",
     searchInputSchema.shape,
     (args) => handleSearch(args, ctx)
   );
 
   server.tool(
     "gno_vsearch",
-    "Vector/semantic similarity search",
+    "Vector semantic search. Finds conceptually similar docs even with different wording. Use gno_query for best results.",
     vsearchInputSchema.shape,
     (args) => handleVsearch(args, ctx)
   );
 
   server.tool(
     "gno_query",
-    "Hybrid search with optional expansion and reranking",
+    "Hybrid search (BM25 + vector + reranking). Best quality, recommended default. Use fast=true for speed, thorough=true for best recall.",
     queryInputSchema.shape,
     (args) => handleQuery(args, ctx)
   );
 
   server.tool(
     "gno_get",
-    "Retrieve a single document by URI, docid, or collection/path",
+    "Retrieve a single document's full content by URI (gno://collection/path), docid (#abc123), or collection/path.",
     getInputSchema.shape,
     (args) => handleGet(args, ctx)
   );
 
   server.tool(
     "gno_multi_get",
-    "Retrieve multiple documents by refs or glob pattern",
+    "Retrieve multiple documents by refs array or glob pattern. Use maxBytes to control truncation.",
     multiGetInputSchema.shape,
     (args) => handleMultiGet(args, ctx)
   );
 
   server.tool(
     "gno_status",
-    "Get index status and health information",
+    "Get index health: collection count, document count, chunk count, embedding backlog, and per-collection stats.",
     statusInputSchema.shape,
     (args) => handleStatus(args, ctx)
   );
 
   server.tool(
     "gno_list_tags",
-    "List tags with document counts",
+    "List all tags with document counts. Use prefix to filter hierarchical tags (e.g. 'project/').",
     listTagsInputSchema.shape,
     (args) => handleListTags(args, ctx)
   );
 
   server.tool(
     "gno_links",
-    "Get outgoing links from a document",
+    "Get outgoing wiki ([[links]]) and markdown links from a document.",
     linksInputSchema.shape,
     (args) => handleLinks(args, ctx)
   );
 
   server.tool(
     "gno_backlinks",
-    "Get documents linking TO a document",
+    "Find all documents that link TO a given document (incoming references).",
     backlinksInputSchema.shape,
     (args) => handleBacklinks(args, ctx)
   );
 
   server.tool(
     "gno_similar",
-    "Find semantically similar documents using vector embeddings",
+    "Find semantically similar documents using vector embeddings. Requires embeddings to exist for source document.",
     similarInputSchema.shape,
     (args) => handleSimilar(args, ctx)
   );
 
   server.tool(
     "gno_graph",
-    "Get knowledge graph of document connections (nodes and edges)",
+    "Get knowledge graph of document connections (wiki links, markdown links, optional similarity edges).",
     graphInputSchema.shape,
     (args) => handleGraph(args, ctx)
   );
@@ -401,42 +725,42 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
   if (ctx.enableWrite) {
     server.tool(
       "gno_capture",
-      "Create a new document",
+      "Create a new document in a collection. Writes to disk. Does NOT auto-embed; run gno_index after to make it searchable via vector search.",
       captureInputSchema.shape,
       (args) => handleCapture(args, ctx)
     );
 
     server.tool(
       "gno_add_collection",
-      "Add a collection and start indexing",
+      "Add a directory as a new collection and start indexing. Returns a job ID for tracking.",
       addCollectionInputSchema.shape,
       (args) => handleAddCollection(args, ctx)
     );
 
     server.tool(
       "gno_sync",
-      "Sync one or all collections",
+      "Sync files from disk into the index (FTS only, no embeddings). Does NOT auto-embed; run gno_embed after if vector search needed.",
       syncInputSchema.shape,
       (args) => handleSync(args, ctx)
     );
 
     server.tool(
       "gno_embed",
-      "Generate embeddings for unembedded chunks",
+      "Generate vector embeddings for all unembedded chunks. Async: returns a job ID. Poll with gno_job_status.",
       embedInputSchema.shape,
       (args) => handleEmbed(args, ctx)
     );
 
     server.tool(
       "gno_index",
-      "Full index: sync files + generate embeddings",
+      "Full index: sync files from disk + generate embeddings. Async: returns a job ID. Poll with gno_job_status.",
       indexInputSchema.shape,
       (args) => handleIndex(args, ctx)
     );
 
     server.tool(
       "gno_remove_collection",
-      "Remove a collection from config",
+      "Remove a collection from config and delete its indexed data.",
       removeCollectionInputSchema.shape,
       (args) => handleRemoveCollection(args, ctx)
     );
@@ -444,14 +768,14 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
 
   server.tool(
     "gno_job_status",
-    "Get status of an async job",
+    "Check status of an async job (embed, index). Returns progress percentage and completion state.",
     jobStatusInputSchema.shape,
     (args) => handleJobStatus(args, ctx)
   );
 
   server.tool(
     "gno_list_jobs",
-    "List active and recent jobs",
+    "List active and recently completed async jobs with their status and progress.",
     listJobsInputSchema.shape,
     (args) => handleListJobs(args, ctx)
   );

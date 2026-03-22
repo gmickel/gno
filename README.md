@@ -194,9 +194,11 @@ Check status: `gno mcp status`
 Skills integrate via CLI with no MCP overhead:
 
 ```bash
-gno skill install --scope user       # User-wide
-gno skill install --target codex     # Codex
-gno skill install --target all       # Both Claude + Codex
+gno skill install --scope user        # User-wide
+gno skill install --target codex      # Codex
+gno skill install --target opencode   # OpenCode
+gno skill install --target openclaw   # OpenClaw
+gno skill install --target all        # All targets
 ```
 
 > **Full setup guide**: [MCP Integration](https://gno.sh/docs/MCP/) · [CLI Reference](https://gno.sh/docs/CLI/)

@@ -13,6 +13,7 @@ import { CliError } from "../../errors.js";
 import { getGlobals } from "../../program.js";
 import {
   resolveSkillPaths,
+  SKILL_TARGETS,
   type SkillScope,
   type SkillTarget,
   validatePathForDeletion,
@@ -171,8 +172,7 @@ export async function installSkill(opts: InstallOptions = {}): Promise<void> {
   const yes = opts.yes ?? globals.yes;
   const quiet = opts.quiet ?? globals.quiet;
 
-  const targets: SkillTarget[] =
-    target === "all" ? ["claude", "codex"] : [target];
+  const targets: SkillTarget[] = target === "all" ? SKILL_TARGETS : [target];
 
   const results: InstallResult[] = [];
 

@@ -1,7 +1,6 @@
 /**
  * Path resolution for skill installation.
- * Supports Claude Code and Codex targets with project/user scopes.
- * Note: OpenCode and Amp use the same .claude path as Claude Code.
+ * Supports Claude Code, Codex, OpenCode, and OpenClaw targets with project/user scopes.
  *
  * @module src/cli/commands/skill/paths
  */
@@ -22,14 +21,25 @@ export const ENV_CLAUDE_SKILLS_DIR = "CLAUDE_SKILLS_DIR";
 /** Override Codex skills directory */
 export const ENV_CODEX_SKILLS_DIR = "CODEX_SKILLS_DIR";
 
+/** Override OpenCode skills directory */
+export const ENV_OPENCODE_SKILLS_DIR = "OPENCODE_SKILLS_DIR";
+
+/** Override OpenClaw skills directory */
+export const ENV_OPENCLAW_SKILLS_DIR = "OPENCLAW_SKILLS_DIR";
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
 // ─────────────────────────────────────────────────────────────────────────────
 
 export type SkillScope = "project" | "user";
-export type SkillTarget = "claude" | "codex";
+export type SkillTarget = "claude" | "codex" | "opencode" | "openclaw";
 
-export const SKILL_TARGETS: SkillTarget[] = ["claude", "codex"];
+export const SKILL_TARGETS: SkillTarget[] = [
+  "claude",
+  "codex",
+  "opencode",
+  "openclaw",
+];
 
 export interface SkillPathOptions {
   scope: SkillScope;
@@ -76,6 +86,18 @@ const TARGET_CONFIGS: Record<SkillTarget, TargetPathConfig> = {
     userBase: ".codex",
     skillsSubdir: "skills",
     envVar: ENV_CODEX_SKILLS_DIR,
+  },
+  opencode: {
+    projectBase: ".opencode",
+    userBase: ".config/opencode",
+    skillsSubdir: "skills",
+    envVar: ENV_OPENCODE_SKILLS_DIR,
+  },
+  openclaw: {
+    projectBase: ".openclaw",
+    userBase: ".openclaw",
+    skillsSubdir: "skills",
+    envVar: ENV_OPENCLAW_SKILLS_DIR,
   },
 };
 

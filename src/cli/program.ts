@@ -1578,7 +1578,7 @@ function wireSkillCommands(program: Command): void {
     )
     .option(
       "-t, --target <target>",
-      "target agent (claude, codex, all)",
+      "target agent (claude, codex, opencode, openclaw, all)",
       "claude"
     )
     .option("-f, --force", "overwrite existing installation")
@@ -1595,17 +1595,19 @@ function wireSkillCommands(program: Command): void {
         );
       }
       // Validate target
-      if (!["claude", "codex", "all"].includes(target)) {
+      if (
+        !["claude", "codex", "opencode", "openclaw", "all"].includes(target)
+      ) {
         throw new CliError(
           "VALIDATION",
-          `Invalid target: ${target}. Must be 'claude', 'codex', or 'all'.`
+          `Invalid target: ${target}. Must be 'claude', 'codex', 'opencode', 'openclaw', or 'all'.`
         );
       }
 
       const { installSkill } = await import("./commands/skill/install.js");
       await installSkill({
         scope: scope as "project" | "user",
-        target: target as "claude" | "codex" | "all",
+        target: target as "claude" | "codex" | "opencode" | "openclaw" | "all",
         force: Boolean(cmdOpts.force),
         json: Boolean(cmdOpts.json),
       });
@@ -1621,7 +1623,7 @@ function wireSkillCommands(program: Command): void {
     )
     .option(
       "-t, --target <target>",
-      "target agent (claude, codex, all)",
+      "target agent (claude, codex, opencode, openclaw, all)",
       "claude"
     )
     .option("--json", "JSON output")
@@ -1637,17 +1639,19 @@ function wireSkillCommands(program: Command): void {
         );
       }
       // Validate target
-      if (!["claude", "codex", "all"].includes(target)) {
+      if (
+        !["claude", "codex", "opencode", "openclaw", "all"].includes(target)
+      ) {
         throw new CliError(
           "VALIDATION",
-          `Invalid target: ${target}. Must be 'claude', 'codex', or 'all'.`
+          `Invalid target: ${target}. Must be 'claude', 'codex', 'opencode', 'openclaw', or 'all'.`
         );
       }
 
       const { uninstallSkill } = await import("./commands/skill/uninstall.js");
       await uninstallSkill({
         scope: scope as "project" | "user",
-        target: target as "claude" | "codex" | "all",
+        target: target as "claude" | "codex" | "opencode" | "openclaw" | "all",
         json: Boolean(cmdOpts.json),
       });
     });
@@ -1675,7 +1679,7 @@ function wireSkillCommands(program: Command): void {
     )
     .option(
       "-t, --target <target>",
-      "filter by target (claude, codex, all)",
+      "filter by target (claude, codex, opencode, openclaw, all)",
       "all"
     )
     .option("--json", "JSON output")
@@ -1691,17 +1695,19 @@ function wireSkillCommands(program: Command): void {
         );
       }
       // Validate target
-      if (!["claude", "codex", "all"].includes(target)) {
+      if (
+        !["claude", "codex", "opencode", "openclaw", "all"].includes(target)
+      ) {
         throw new CliError(
           "VALIDATION",
-          `Invalid target: ${target}. Must be 'claude', 'codex', or 'all'.`
+          `Invalid target: ${target}. Must be 'claude', 'codex', 'opencode', 'openclaw', or 'all'.`
         );
       }
 
       const { showPaths } = await import("./commands/skill/paths-cmd.js");
       await showPaths({
         scope: scope as "project" | "user" | "all",
-        target: target as "claude" | "codex" | "all",
+        target: target as "claude" | "codex" | "opencode" | "openclaw" | "all",
         json: Boolean(cmdOpts.json),
       });
     });

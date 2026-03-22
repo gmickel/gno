@@ -151,6 +151,26 @@ bun run website:sync-assets --og   # OG images only
 
 - OG image templates in `website/assets/images/og/` (see `website/assets/images/og/CLAUDE.md`)
 
+## Skill & MCP Optimization (Autoresearch)
+
+After adding new features or changing CLI/MCP behavior, re-run the autoresearch eval to check if the skill needs updating.
+
+**Experiment repo**: `github.com/gmickel/autoresearch-experiments` (private), dir `gno-skill/`
+**Local copy**: `~/repos/autoresearch-gno-skill/`
+
+**Workflow**:
+
+1. Add new feature to gno
+2. Run eval: `cd ~/repos/autoresearch-gno-skill && uv run eval.py > run.log 2>&1`
+3. If score < 100%: update `skill.md` in the experiment, iterate until passing
+4. Copy winning skill back: `cp skill.md ~/work/gno/assets/skill/SKILL.md`
+5. Reinstall: `gno skill install --scope user --force --target all`
+6. Commit skill changes with the feature
+
+**Eval covers**: keyword/semantic/hybrid search, retry strategy, collection/tag filtering, document retrieval (URI + line ranges), search-then-get pipeline, backlinks, similar, date filters, exclude, intent disambiguation, structured query modes, reindexing.
+
+**Skill source of truth**: `assets/skill/SKILL.md` + reference files in `assets/skill/`
+
 ## Versioning & Release
 
 Version is managed in `package.json` (single source of truth). `src/app/constants.ts` imports it.
