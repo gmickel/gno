@@ -54,7 +54,7 @@ export interface InstallOptions {
   quiet?: boolean;
 }
 
-interface InstallResult {
+export interface SkillInstallResult {
   target: SkillTarget;
   scope: SkillScope;
   path: string;
@@ -63,12 +63,12 @@ interface InstallResult {
 /**
  * Install skill to a single target.
  */
-async function installToTarget(
+export async function installSkillToTarget(
   scope: SkillScope,
   target: SkillTarget,
   force: boolean,
   overrides?: { cwd?: string; homeDir?: string }
-): Promise<InstallResult> {
+): Promise<SkillInstallResult> {
   const sourceDir = getSkillSourceDir();
   const paths = resolveSkillPaths({ scope, target, ...overrides });
 
@@ -174,10 +174,10 @@ export async function installSkill(opts: InstallOptions = {}): Promise<void> {
 
   const targets: SkillTarget[] = target === "all" ? SKILL_TARGETS : [target];
 
-  const results: InstallResult[] = [];
+  const results: SkillInstallResult[] = [];
 
   for (const t of targets) {
-    const result = await installToTarget(scope, t, force || yes, {
+    const result = await installSkillToTarget(scope, t, force || yes, {
       cwd: opts.cwd,
       homeDir: opts.homeDir,
     });

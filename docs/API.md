@@ -32,6 +32,7 @@ All endpoints are JSON-based and run entirely on your machine.
 | `/api/status`            | GET    | Index statistics, onboarding, health, background, bootstrap |
 | `/api/capabilities`      | GET    | Available features                                          |
 | `/api/collections`       | GET    | List collections                                            |
+| `/api/connectors`        | GET    | Detect in-app connector install state                       |
 | `/api/docs`              | GET    | List documents                                              |
 | `/api/docs/autocomplete` | GET    | Title/path suggestions for wiki-linking and quick switcher  |
 | `/api/doc`               | GET    | Get document content                                        |
@@ -54,6 +55,7 @@ All endpoints are JSON-based and run entirely on your machine.
 | Endpoint                   | Method | Description         |
 | :------------------------- | :----- | :------------------ |
 | `/api/collections`         | POST   | Add new collection  |
+| `/api/connectors/install`  | POST   | Install connector   |
 | `/api/collections/:name`   | DELETE | Remove collection   |
 | `/api/sync`                | POST   | Trigger re-index    |
 | `/api/docs`                | POST   | Create new document |

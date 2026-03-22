@@ -10,6 +10,7 @@ import { parseDocumentDeepLink } from "./lib/deep-links";
 import Ask from "./pages/Ask";
 import Browse from "./pages/Browse";
 import Collections from "./pages/Collections";
+import Connectors from "./pages/Connectors";
 import Dashboard from "./pages/Dashboard";
 import DocumentEditor from "./pages/DocumentEditor";
 import DocView from "./pages/DocView";
@@ -24,7 +25,8 @@ type Route =
   | "/ask"
   | "/edit"
   | "/collections"
-  | "/graph";
+  | "/graph"
+  | "/connectors";
 type Navigate = (to: string | number) => void;
 
 const routes: Record<Route, React.ComponentType<{ navigate: Navigate }>> = {
@@ -34,6 +36,7 @@ const routes: Record<Route, React.ComponentType<{ navigate: Navigate }>> = {
   "/doc": DocView,
   "/edit": DocumentEditor,
   "/collections": Collections,
+  "/connectors": Connectors,
   "/ask": Ask,
   "/graph": GraphView,
 };

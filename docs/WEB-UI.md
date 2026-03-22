@@ -23,6 +23,7 @@ The GNO Web UI provides a complete graphical interface to your local knowledge i
 | **Doc View**    | View document with edit/delete actions and tag editing          |
 | **Editor**      | Split-view markdown editor with live preview                    |
 | **Collections** | Add, remove, and re-index collections                           |
+| **Connectors**  | Install and verify core agent integrations                      |
 | **Ask**         | AI-powered Q&A with citations                                   |
 | **Graph**       | Interactive knowledge graph visualization                       |
 
@@ -270,6 +271,16 @@ The dashboard also shows a **Bootstrap & Storage** section for first-run explain
 - per-role model readiness for the active preset (`embed`, `rerank`, `expand`, `answer`)
 
 This is the user-facing source of truth for “what will download?”, “where does it live?”, and “why is this preset still incomplete?”.
+
+### Agent Connectors
+
+The **Connectors** page gives one place to:
+
+- detect whether core agent integrations are already installed
+- install supported Skill or MCP connectors without manually editing config files
+- understand the default mode in plain language:
+  - read/search by default
+  - write-capable MCP remains an advanced opt-in path
 
 ### Indexing Progress
 

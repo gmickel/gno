@@ -373,6 +373,7 @@ Open `http://localhost:3000` to:
 - **Edit**: Create, edit, and delete documents with live preview
 - **Ask**: AI-powered Q&A with citations
 - **Manage Collections**: Add, remove, and re-index collections
+- **Connect agents**: Install core Skill/MCP integrations from the app
 - **Switch presets**: Change models live without restart
 
 ### Search

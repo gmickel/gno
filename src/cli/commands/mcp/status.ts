@@ -37,7 +37,7 @@ export interface StatusOptions {
   json?: boolean;
 }
 
-interface TargetStatus {
+export interface McpTargetStatus {
   target: McpTarget;
   scope: McpScope;
   configPath: string;
@@ -47,7 +47,7 @@ interface TargetStatus {
 }
 
 interface StatusResult {
-  targets: TargetStatus[];
+  targets: McpTargetStatus[];
   summary: {
     configured: number;
     total: number;
@@ -72,11 +72,11 @@ function normalizeEntry(
   return entry as StandardMcpEntry;
 }
 
-async function checkTargetStatus(
+export async function checkMcpTargetStatus(
   target: McpTarget,
   scope: McpScope,
   options: { cwd?: string; homeDir?: string }
-): Promise<TargetStatus> {
+): Promise<McpTargetStatus> {
   const { cwd, homeDir } = options;
 
   const { configPath, configFormat } = resolveMcpConfigPath({
@@ -151,7 +151,7 @@ export async function statusMcp(opts: StatusOptions = {}): Promise<void> {
   const targets: McpTarget[] =
     targetFilter === "all" ? MCP_TARGETS : [targetFilter];
 
-  const results: TargetStatus[] = [];
+  const results: McpTargetStatus[] = [];
 
   for (const target of targets) {
     const supportsProject = TARGETS_WITH_PROJECT_SCOPE.includes(target);
@@ -163,7 +163,7 @@ export async function statusMcp(opts: StatusOptions = {}): Promise<void> {
 
       for (const scope of scopes) {
         results.push(
-          await checkTargetStatus(target, scope, {
+          await checkMcpTargetStatus(target, scope, {
             cwd: opts.cwd,
             homeDir: opts.homeDir,
           })
@@ -172,7 +172,7 @@ export async function statusMcp(opts: StatusOptions = {}): Promise<void> {
     } else if (scopeFilter === "all" || scopeFilter === "user") {
       // User scope only - skip if filtering by project
       results.push(
-        await checkTargetStatus(target, "user", {
+        await checkMcpTargetStatus(target, "user", {
           cwd: opts.cwd,
           homeDir: opts.homeDir,
         })

@@ -1,6 +1,7 @@
 import {
   BookOpen,
   CheckCircle2Icon,
+  CpuIcon,
   Database,
   FolderIcon,
   GitForkIcon,
@@ -232,6 +233,15 @@ export default function Dashboard({ navigate }: PageProps) {
           >
             <FolderIcon className="size-4" />
             Collections
+          </Button>
+          <Button
+            className="gap-2"
+            onClick={() => navigate("/connectors")}
+            size="lg"
+            variant="outline"
+          >
+            <CpuIcon className="size-4" />
+            Connectors
           </Button>
           <Button
             className="gap-2"

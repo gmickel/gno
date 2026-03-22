@@ -21,6 +21,7 @@ import {
   handleAsk,
   handleCapabilities,
   handleCollections,
+  handleConnectors,
   handleCreateCollection,
   handleCreateEditableCopy,
   handleCreateDoc,
@@ -32,6 +33,7 @@ import {
   handleEmbed,
   handleEmbedStatus,
   handleHealth,
+  handleInstallConnector,
   handleJob,
   handleModelPull,
   handleModelStatus,
@@ -234,6 +236,7 @@ export async function startServer(
         "/doc": homepage,
         "/edit": homepage,
         "/collections": homepage,
+        "/connectors": homepage,
         "/ask": homepage,
         "/graph": homepage,
 
@@ -254,6 +257,20 @@ export async function startServer(
             }
             return withSecurityHeaders(
               await handleCreateCollection(ctxHolder, store, req),
+              isDev
+            );
+          },
+        },
+        "/api/connectors": {
+          GET: async () => withSecurityHeaders(await handleConnectors(), isDev),
+        },
+        "/api/connectors/install": {
+          POST: async (req: Request) => {
+            if (!isRequestAllowed(req, port)) {
+              return withSecurityHeaders(forbiddenResponse(), isDev);
+            }
+            return withSecurityHeaders(
+              await handleInstallConnector(req),
               isDev
             );
           },

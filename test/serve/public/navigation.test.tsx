@@ -15,6 +15,7 @@ describe("web UI collections discoverability", () => {
     const html = renderToStaticMarkup(<Dashboard navigate={() => undefined} />);
 
     expect(html).toContain("Collections");
+    expect(html).toContain("Connectors");
     expect(html).toContain("Browse");
     expect(html).toContain("Graph");
   });

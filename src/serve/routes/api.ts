@@ -43,6 +43,7 @@ import { searchHybrid } from "../../pipeline/hybrid";
 import { validateQueryModes } from "../../pipeline/query-modes";
 import { searchBm25 } from "../../pipeline/search";
 import { applyConfigChange } from "../config-sync";
+import { getConnectorStatuses, installConnector } from "../connectors";
 import {
   downloadState,
   reloadServerContext,
@@ -70,6 +71,10 @@ export interface ApiError {
     code: string;
     message: string;
   };
+}
+
+export interface InstallConnectorRequestBody {
+  connectorId: string;
 }
 
 export interface SearchRequestBody {
@@ -2251,6 +2256,43 @@ export function handleEmbedStatus(scheduler: EmbedScheduler | null): Response {
     available: true,
     ...state,
   });
+}
+
+export async function handleConnectors(overrides?: {
+  cwd?: string;
+  homeDir?: string;
+}): Promise<Response> {
+  return jsonResponse({
+    connectors: await getConnectorStatuses(overrides),
+  });
+}
+
+export async function handleInstallConnector(
+  req: Request,
+  overrides?: { cwd?: string; homeDir?: string }
+): Promise<Response> {
+  let body: InstallConnectorRequestBody;
+  try {
+    body = (await req.json()) as InstallConnectorRequestBody;
+  } catch {
+    return errorResponse("VALIDATION", "Invalid JSON body");
+  }
+
+  if (!body.connectorId || typeof body.connectorId !== "string") {
+    return errorResponse("VALIDATION", "Missing or invalid connectorId");
+  }
+
+  try {
+    return jsonResponse({
+      connector: await installConnector(body.connectorId, overrides),
+    });
+  } catch (error) {
+    return errorResponse(
+      "RUNTIME",
+      error instanceof Error ? error.message : "Failed to install connector",
+      500
+    );
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
