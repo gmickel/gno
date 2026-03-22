@@ -1,0 +1,22 @@
+{
+  "branch_name": "fn-52-desktop-beta-signed-distribution",
+  "completion_review_status": "unknown",
+  "completion_reviewed_at": null,
+  "created_at": "2026-03-22T14:55:30.008346Z",
+  "default_impl": null,
+  "default_review": null,
+  "default_sync": null,
+  "depends_on_epics": [
+    "fn-41-document-workspace-foundation-for",
+    "fn-51-desktop-beta-shell-packaging-and-os",
+    "fn-43-desktop-beta-in-app-agent-connector"
+  ],
+  "id": "fn-52-desktop-beta-signed-distribution",
+  "next_task": 1,
+  "plan_review_status": "unknown",
+  "plan_reviewed_at": null,
+  "spec_path": ".flow/specs/fn-52-desktop-beta-signed-distribution.md",
+  "status": "open",
+  "title": "Desktop Beta: Signed Distribution, Updates, and Team Rollout",
+  "updated_at": "2026-03-22T14:55:32.648284Z"
+}

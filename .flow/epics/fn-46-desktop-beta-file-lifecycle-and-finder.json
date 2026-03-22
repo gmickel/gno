@@ -1,0 +1,21 @@
+{
+  "branch_name": "fn-46-desktop-beta-file-lifecycle-and-finder",
+  "completion_review_status": "unknown",
+  "completion_reviewed_at": null,
+  "created_at": "2026-03-22T14:55:28.164422Z",
+  "default_impl": null,
+  "default_review": null,
+  "default_sync": null,
+  "depends_on_epics": [
+    "fn-41-document-workspace-foundation-for",
+    "fn-45-desktop-beta-workspace-navigation"
+  ],
+  "id": "fn-46-desktop-beta-file-lifecycle-and-finder",
+  "next_task": 1,
+  "plan_review_status": "unknown",
+  "plan_reviewed_at": null,
+  "spec_path": ".flow/specs/fn-46-desktop-beta-file-lifecycle-and-finder.md",
+  "status": "open",
+  "title": "Desktop Beta: File Lifecycle and Finder Integration",
+  "updated_at": "2026-03-22T14:55:31.755161Z"
+}

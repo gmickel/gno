@@ -1,0 +1,21 @@
+{
+  "branch_name": "fn-44-desktop-beta-import-and-migration",
+  "completion_review_status": "unknown",
+  "completion_reviewed_at": null,
+  "created_at": "2026-03-22T14:55:27.553855Z",
+  "default_impl": null,
+  "default_review": null,
+  "default_sync": null,
+  "depends_on_epics": [
+    "fn-41-document-workspace-foundation-for",
+    "fn-42-desktop-beta-onboarding-and-health"
+  ],
+  "id": "fn-44-desktop-beta-import-and-migration",
+  "next_task": 1,
+  "plan_review_status": "unknown",
+  "plan_reviewed_at": null,
+  "spec_path": ".flow/specs/fn-44-desktop-beta-import-and-migration.md",
+  "status": "open",
+  "title": "Desktop Beta: Import and Migration Assistant",
+  "updated_at": "2026-03-22T14:55:31.547689Z"
+}

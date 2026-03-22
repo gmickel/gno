@@ -1,0 +1,21 @@
+{
+  "branch_name": "fn-49-desktop-beta-runtime-and-model-bootstrap",
+  "completion_review_status": "unknown",
+  "completion_reviewed_at": null,
+  "created_at": "2026-03-22T14:55:29.083834Z",
+  "default_impl": null,
+  "default_review": null,
+  "default_sync": null,
+  "depends_on_epics": [
+    "fn-41-document-workspace-foundation-for",
+    "fn-48-desktop-beta-background-service-and"
+  ],
+  "id": "fn-49-desktop-beta-runtime-and-model-bootstrap",
+  "next_task": 1,
+  "plan_review_status": "unknown",
+  "plan_reviewed_at": null,
+  "spec_path": ".flow/specs/fn-49-desktop-beta-runtime-and-model-bootstrap.md",
+  "status": "open",
+  "title": "Desktop Beta: Runtime and Model Bootstrap",
+  "updated_at": "2026-03-22T14:55:32.068837Z"
+}
