@@ -24,7 +24,12 @@ import {
   deriveEditableCopyRelPath,
   getDocumentCapabilities,
 } from "../../core/document-capabilities";
-import { atomicWrite } from "../../core/file-ops";
+import {
+  atomicWrite,
+  renameFilePath,
+  revealFilePath,
+  trashFilePath,
+} from "../../core/file-ops";
 import { normalizeStructuredQueryInput } from "../../core/structured-query";
 import {
   normalizeTag,
@@ -169,6 +174,10 @@ export interface CreateDocRequestBody {
   overwrite?: boolean;
   /** Tags to add to document (written to frontmatter for markdown) */
   tags?: string[];
+}
+
+export interface RenameDocRequestBody {
+  name: string;
 }
 
 export interface UpdateDocRequestBody {
@@ -1006,6 +1015,245 @@ export async function handleDeactivateDoc(
     path: doc.uri,
     warning: "File still exists on disk. Will be re-indexed unless excluded.",
   });
+}
+
+export async function handleRenameDoc(
+  ctxHolder: ContextHolder,
+  store: SqliteAdapter,
+  docId: string,
+  req: Request,
+  deps?: {
+    renameFilePath?: typeof renameFilePath;
+    syncCollection?: typeof defaultSyncService.syncCollection;
+  }
+): Promise<Response> {
+  let body: RenameDocRequestBody;
+  try {
+    body = (await req.json()) as RenameDocRequestBody;
+  } catch {
+    return errorResponse("VALIDATION", "Invalid JSON body");
+  }
+
+  if (!body.name || typeof body.name !== "string") {
+    return errorResponse("VALIDATION", "Missing or invalid name");
+  }
+  if (body.name.includes("/") || body.name.includes("\\")) {
+    return errorResponse("VALIDATION", "name must be a file name, not a path");
+  }
+
+  const docResult = await store.getDocumentByDocid(docId);
+  if (!docResult.ok) {
+    return errorResponse("RUNTIME", docResult.error.message, 500);
+  }
+  if (!docResult.value) {
+    return errorResponse("NOT_FOUND", "Document not found", 404);
+  }
+
+  const doc = docResult.value;
+  const resolvedDocPath = await resolveAbsoluteDocPath(
+    ctxHolder.config.collections,
+    doc
+  );
+  if (!resolvedDocPath) {
+    return errorResponse(
+      "NOT_FOUND",
+      `Collection not found: ${doc.collection}`,
+      404
+    );
+  }
+  const { collection, fullPath } = resolvedDocPath;
+  const file = Bun.file(fullPath);
+  if (!(await file.exists())) {
+    return errorResponse("FILE_NOT_FOUND", "Source file no longer exists", 404);
+  }
+
+  const capabilities = getDocumentCapabilities({
+    sourceExt: doc.sourceExt,
+    sourceMime: doc.sourceMime,
+    contentAvailable: doc.mirrorHash !== null,
+  });
+  if (!capabilities.editable) {
+    return errorResponse(
+      "READ_ONLY",
+      capabilities.reason ??
+        "This document cannot be renamed in place from GNO.",
+      409
+    );
+  }
+
+  const nodePath = await import("node:path"); // no bun equivalent
+  const directory = nodePath.dirname(doc.relPath);
+  const currentExt = nodePath.extname(doc.relPath);
+  const targetName = nodePath.extname(body.name)
+    ? body.name
+    : `${body.name}${currentExt}`;
+  const nextRelPath =
+    directory === "." ? targetName : `${directory}/${targetName}`;
+  const nextFullPath = nodePath.join(collection.path, nextRelPath);
+
+  if (nextFullPath === fullPath) {
+    return errorResponse("VALIDATION", "New name matches current file");
+  }
+  if (await Bun.file(nextFullPath).exists()) {
+    return errorResponse(
+      "CONFLICT",
+      "A file with that name already exists",
+      409
+    );
+  }
+
+  try {
+    const syncCollection =
+      deps?.syncCollection ??
+      ((collectionArg, storeArg, optionsArg) =>
+        defaultSyncService.syncCollection(collectionArg, storeArg, optionsArg));
+    ctxHolder.watchService?.suppress(fullPath);
+    ctxHolder.watchService?.suppress(nextFullPath);
+    await (deps?.renameFilePath ?? renameFilePath)(fullPath, nextFullPath);
+    await syncCollection(collection, store, { runUpdateCmd: false });
+    const nextUri = `gno://${collection.name}/${nextRelPath}`;
+    ctxHolder.eventBus?.emit({
+      type: "document-changed",
+      uri: nextUri,
+      collection: collection.name,
+      relPath: nextRelPath,
+      origin: "save",
+      changedAt: new Date().toISOString(),
+    });
+    return jsonResponse({
+      success: true,
+      uri: nextUri,
+      path: nextFullPath,
+      relPath: nextRelPath,
+    });
+  } catch (error) {
+    return errorResponse(
+      "RUNTIME",
+      error instanceof Error ? error.message : "Failed to rename document",
+      500
+    );
+  }
+}
+
+export async function handleTrashDoc(
+  ctxHolder: ContextHolder,
+  store: SqliteAdapter,
+  docId: string,
+  deps?: {
+    trashFilePath?: typeof trashFilePath;
+    syncCollection?: typeof defaultSyncService.syncCollection;
+  }
+): Promise<Response> {
+  const docResult = await store.getDocumentByDocid(docId);
+  if (!docResult.ok) {
+    return errorResponse("RUNTIME", docResult.error.message, 500);
+  }
+  if (!docResult.value) {
+    return errorResponse("NOT_FOUND", "Document not found", 404);
+  }
+
+  const doc = docResult.value;
+  const resolvedDocPath = await resolveAbsoluteDocPath(
+    ctxHolder.config.collections,
+    doc
+  );
+  if (!resolvedDocPath) {
+    return errorResponse(
+      "NOT_FOUND",
+      `Collection not found: ${doc.collection}`,
+      404
+    );
+  }
+  const { collection, fullPath } = resolvedDocPath;
+
+  const capabilities = getDocumentCapabilities({
+    sourceExt: doc.sourceExt,
+    sourceMime: doc.sourceMime,
+    contentAvailable: doc.mirrorHash !== null,
+  });
+  if (!capabilities.editable) {
+    return errorResponse(
+      "READ_ONLY",
+      capabilities.reason ??
+        "This document cannot be trashed in place from GNO.",
+      409
+    );
+  }
+
+  try {
+    const syncCollection =
+      deps?.syncCollection ??
+      ((collectionArg, storeArg, optionsArg) =>
+        defaultSyncService.syncCollection(collectionArg, storeArg, optionsArg));
+    ctxHolder.watchService?.suppress(fullPath);
+    await (deps?.trashFilePath ?? trashFilePath)(fullPath);
+    await store.markInactive(doc.collection, [doc.relPath]);
+    await syncCollection(collection, store, { runUpdateCmd: false });
+    ctxHolder.eventBus?.emit({
+      type: "document-changed",
+      uri: doc.uri,
+      collection: doc.collection,
+      relPath: doc.relPath,
+      origin: "save",
+      changedAt: new Date().toISOString(),
+    });
+    return jsonResponse({
+      success: true,
+      docId: doc.docid,
+      path: fullPath,
+      note: "Moved to Trash and removed from the current index.",
+    });
+  } catch (error) {
+    return errorResponse(
+      "RUNTIME",
+      error instanceof Error ? error.message : "Failed to trash document",
+      500
+    );
+  }
+}
+
+export async function handleRevealDoc(
+  ctxHolder: ContextHolder,
+  store: SqliteAdapter,
+  docId: string,
+  deps?: {
+    revealFilePath?: typeof revealFilePath;
+  }
+): Promise<Response> {
+  const docResult = await store.getDocumentByDocid(docId);
+  if (!docResult.ok) {
+    return errorResponse("RUNTIME", docResult.error.message, 500);
+  }
+  if (!docResult.value) {
+    return errorResponse("NOT_FOUND", "Document not found", 404);
+  }
+
+  const doc = docResult.value;
+  const resolvedDocPath = await resolveAbsoluteDocPath(
+    ctxHolder.config.collections,
+    doc
+  );
+  if (!resolvedDocPath) {
+    return errorResponse(
+      "NOT_FOUND",
+      `Collection not found: ${doc.collection}`,
+      404
+    );
+  }
+
+  try {
+    await (deps?.revealFilePath ?? revealFilePath)(resolvedDocPath.fullPath);
+    return jsonResponse({
+      success: true,
+      path: resolvedDocPath.fullPath,
+    });
+  } catch (error) {
+    return errorResponse(
+      "RUNTIME",
+      error instanceof Error ? error.message : "Failed to reveal document",
+      500
+    );
+  }
 }
 
 /**

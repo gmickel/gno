@@ -374,6 +374,7 @@ Open `http://localhost:3000` to:
 - **Ask**: AI-powered Q&A with citations
 - **Manage Collections**: Add, remove, and re-index collections
 - **Connect agents**: Install core Skill/MCP integrations from the app
+- **Manage files safely**: Rename, reveal, or move editable files to Trash with explicit index-vs-disk semantics
 - **Switch presets**: Change models live without restart
 
 ### Search

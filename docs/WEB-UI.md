@@ -189,11 +189,22 @@ While editing markdown, type `[[` to open note suggestions. GNO fuzzy-matches ex
 
 ### Deleting Documents
 
-From document view, click the trash icon. This:
+From document view, the file lifecycle actions now depend on the document type:
+
+- **Editable markdown/plaintext files**: you can rename them, reveal them in Finder, or move them to Trash
+- **Converted read-only source files**: you can reveal/open the original source, but destructive actions stay index-only unless you handle the file outside GNO
+
+For read-only source material, **Remove from index**:
 
 - Removes the document from the search index
 - Does **NOT** delete the file from disk
-- Document may re-appear on next sync unless excluded
+- The document may re-appear on next sync unless excluded
+
+For editable local files, **Move to Trash**:
+
+- Moves the file to your system Trash
+- Removes it from the current index after refresh
+- Keeps recovery semantics aligned with normal desktop expectations
 
 ---
 

@@ -40,11 +40,14 @@ import {
   handleModelStatus,
   handlePresets,
   handleQuery,
+  handleRenameDoc,
+  handleRevealDoc,
   handleSearch,
   handleSetPreset,
   handleStatus,
   handleSync,
   handleTags,
+  handleTrashDoc,
   handleUpdateDoc,
 } from "./routes/api";
 import { handleGraph } from "./routes/graph";
@@ -333,6 +336,48 @@ export async function startServer(
             const id = decodeURIComponent(parts[3] || "");
             return withSecurityHeaders(
               await handleDeactivateDoc(store, id),
+              isDev
+            );
+          },
+        },
+        "/api/docs/:id/rename": {
+          POST: async (req: Request) => {
+            if (!isRequestAllowed(req, port)) {
+              return withSecurityHeaders(forbiddenResponse(), isDev);
+            }
+            const url = new URL(req.url);
+            const parts = url.pathname.split("/");
+            const id = decodeURIComponent(parts[3] || "");
+            return withSecurityHeaders(
+              await handleRenameDoc(ctxHolder, store, id, req),
+              isDev
+            );
+          },
+        },
+        "/api/docs/:id/trash": {
+          POST: async (req: Request) => {
+            if (!isRequestAllowed(req, port)) {
+              return withSecurityHeaders(forbiddenResponse(), isDev);
+            }
+            const url = new URL(req.url);
+            const parts = url.pathname.split("/");
+            const id = decodeURIComponent(parts[3] || "");
+            return withSecurityHeaders(
+              await handleTrashDoc(ctxHolder, store, id),
+              isDev
+            );
+          },
+        },
+        "/api/docs/:id/reveal": {
+          POST: async (req: Request) => {
+            if (!isRequestAllowed(req, port)) {
+              return withSecurityHeaders(forbiddenResponse(), isDev);
+            }
+            const url = new URL(req.url);
+            const parts = url.pathname.split("/");
+            const id = decodeURIComponent(parts[3] || "");
+            return withSecurityHeaders(
+              await handleRevealDoc(ctxHolder, store, id),
               isDev
             );
           },

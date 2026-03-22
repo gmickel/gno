@@ -97,6 +97,13 @@ interface CreateEditableCopyResponse {
   note?: string;
 }
 
+interface RenameDocResponse {
+  success: boolean;
+  uri: string;
+  path: string;
+  relPath: string;
+}
+
 interface UpdateDocResponse {
   success: boolean;
   docId: string;
@@ -219,6 +226,10 @@ export default function DocView({ navigate }: PageProps) {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [renameDialogOpen, setRenameDialogOpen] = useState(false);
+  const [renaming, setRenaming] = useState(false);
+  const [renameError, setRenameError] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState("");
   const [showRawView, setShowRawView] = useState(false);
   const [creatingCopy, setCreatingCopy] = useState(false);
   const [copyError, setCopyError] = useState<string | null>(null);
@@ -391,10 +402,10 @@ export default function DocView({ navigate }: PageProps) {
     setDeleting(true);
     setDeleteError(null);
 
-    const { error: err } = await apiFetch(
-      `/api/docs/${encodeURIComponent(doc.docid)}/deactivate`,
-      { method: "POST" }
-    );
+    const endpoint = doc.capabilities.editable
+      ? `/api/docs/${encodeURIComponent(doc.docid)}/trash`
+      : `/api/docs/${encodeURIComponent(doc.docid)}/deactivate`;
+    const { error: err } = await apiFetch(endpoint, { method: "POST" });
 
     setDeleting(false);
 
@@ -406,6 +417,55 @@ export default function DocView({ navigate }: PageProps) {
     setDeleteDialogOpen(false);
     navigate(-1);
   };
+
+  const handleStartRename = useCallback(() => {
+    if (!doc) {
+      return;
+    }
+    const filename = doc.relPath.split("/").pop() ?? doc.relPath;
+    setRenameValue(filename);
+    setRenameError(null);
+    setRenameDialogOpen(true);
+  }, [doc]);
+
+  const handleRename = useCallback(async () => {
+    if (!doc) {
+      return;
+    }
+    setRenaming(true);
+    setRenameError(null);
+    const { data, error: err } = await apiFetch<RenameDocResponse>(
+      `/api/docs/${encodeURIComponent(doc.docid)}/rename`,
+      {
+        method: "POST",
+        body: JSON.stringify({ name: renameValue }),
+      }
+    );
+    setRenaming(false);
+
+    if (err) {
+      setRenameError(err);
+      return;
+    }
+
+    setRenameDialogOpen(false);
+    if (data?.uri) {
+      navigate(`/doc?uri=${encodeURIComponent(data.uri)}`);
+    }
+  }, [doc, navigate, renameValue]);
+
+  const handleReveal = useCallback(async () => {
+    if (!doc) {
+      return;
+    }
+    const { error: err } = await apiFetch(
+      `/api/docs/${encodeURIComponent(doc.docid)}/reveal`,
+      { method: "POST" }
+    );
+    if (err) {
+      setDeleteError(err);
+    }
+  }, [doc]);
 
   // Start editing tags
   const handleStartEditTags = useCallback(() => {
@@ -512,10 +572,21 @@ export default function DocView({ navigate }: PageProps) {
               <Separator className="h-6" orientation="vertical" />
               <div className="flex items-center gap-2">
                 {doc.capabilities.editable ? (
-                  <Button className="gap-1.5" onClick={handleEdit} size="sm">
-                    <PencilIcon className="size-4" />
-                    Edit
-                  </Button>
+                  <>
+                    <Button className="gap-1.5" onClick={handleEdit} size="sm">
+                      <PencilIcon className="size-4" />
+                      Edit
+                    </Button>
+                    <Button
+                      className="gap-1.5"
+                      onClick={handleStartRename}
+                      size="sm"
+                      variant="outline"
+                    >
+                      <TextIcon className="size-4" />
+                      Rename
+                    </Button>
+                  </>
                 ) : (
                   <>
                     {doc.capabilities.canCreateEditableCopy && (
@@ -536,18 +607,44 @@ export default function DocView({ navigate }: PageProps) {
                       </Button>
                     )}
                     {doc.source.absPath && (
-                      <Button asChild size="sm" variant="outline">
-                        <a
-                          href={`file://${doc.source.absPath}`}
-                          rel="noopener noreferrer"
-                          target="_blank"
+                      <>
+                        <Button
+                          className="gap-1.5"
+                          onClick={() => {
+                            void handleReveal();
+                          }}
+                          size="sm"
+                          variant="outline"
                         >
-                          <SquareArrowOutUpRightIcon className="mr-1.5 size-4" />
-                          Open original
-                        </a>
-                      </Button>
+                          <FolderOpen className="size-4" />
+                          Reveal
+                        </Button>
+                        <Button asChild size="sm" variant="outline">
+                          <a
+                            href={`file://${doc.source.absPath}`}
+                            rel="noopener noreferrer"
+                            target="_blank"
+                          >
+                            <SquareArrowOutUpRightIcon className="mr-1.5 size-4" />
+                            Open original
+                          </a>
+                        </Button>
+                      </>
                     )}
                   </>
+                )}
+                {doc.capabilities.editable && doc.source.absPath && (
+                  <Button
+                    className="gap-1.5"
+                    onClick={() => {
+                      void handleReveal();
+                    }}
+                    size="sm"
+                    variant="outline"
+                  >
+                    <FolderOpen className="size-4" />
+                    Reveal
+                  </Button>
                 )}
                 <Button
                   className="gap-1.5 text-muted-foreground hover:text-destructive"
@@ -943,23 +1040,42 @@ export default function DocView({ navigate }: PageProps) {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <TrashIcon className="size-5 text-destructive" />
-              Remove from index?
+              {doc?.capabilities.editable
+                ? "Move to Trash?"
+                : "Remove from index?"}
             </DialogTitle>
             <DialogDescription className="space-y-3 pt-2">
-              <span className="block">
-                This will remove <strong>
-                  "{doc?.title || doc?.relPath}"
-                </strong>{" "}
-                from the GNO search index.
-              </span>
-              <span className="flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-amber-500">
-                <AlertTriangleIcon className="mt-0.5 size-4 shrink-0" />
-                <span className="text-sm">
-                  The file will NOT be deleted from disk. It may be re-indexed
-                  on next sync unless you add it to the collection's exclude
-                  pattern.
-                </span>
-              </span>
+              {doc?.capabilities.editable ? (
+                <>
+                  <span className="block">
+                    This will move{" "}
+                    <strong>"{doc?.title || doc?.relPath}"</strong> to your
+                    system Trash and remove it from the current index.
+                  </span>
+                  <span className="flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-amber-500">
+                    <AlertTriangleIcon className="mt-0.5 size-4 shrink-0" />
+                    <span className="text-sm">
+                      This is reversible through Trash. GNO will stop showing
+                      the file after the current collection refresh.
+                    </span>
+                  </span>
+                </>
+              ) : (
+                <>
+                  <span className="block">
+                    This will remove{" "}
+                    <strong>"{doc?.title || doc?.relPath}"</strong> from the GNO
+                    search index.
+                  </span>
+                  <span className="flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-amber-500">
+                    <AlertTriangleIcon className="mt-0.5 size-4 shrink-0" />
+                    <span className="text-sm">
+                      The source file stays on disk. It may be re-indexed on the
+                      next sync unless you exclude it.
+                    </span>
+                  </span>
+                </>
+              )}
             </DialogDescription>
           </DialogHeader>
 
@@ -984,7 +1100,45 @@ export default function DocView({ navigate }: PageProps) {
               {deleting && (
                 <Loader2Icon className="mr-1.5 size-4 animate-spin" />
               )}
-              Remove from index
+              {doc?.capabilities.editable
+                ? "Move to Trash"
+                : "Remove from index"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog onOpenChange={setRenameDialogOpen} open={renameDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Rename document</DialogTitle>
+            <DialogDescription>
+              Rename the file on disk inside its current folder. This does not
+              move it to another collection yet.
+            </DialogDescription>
+          </DialogHeader>
+          <input
+            className="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm"
+            onChange={(event) => setRenameValue(event.target.value)}
+            value={renameValue}
+          />
+          {renameError && (
+            <div className="rounded-lg bg-destructive/10 p-3 text-destructive text-sm">
+              {renameError}
+            </div>
+          )}
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              onClick={() => setRenameDialogOpen(false)}
+              variant="outline"
+            >
+              Cancel
+            </Button>
+            <Button disabled={renaming} onClick={() => void handleRename()}>
+              {renaming && (
+                <Loader2Icon className="mr-1.5 size-4 animate-spin" />
+              )}
+              Rename
             </Button>
           </DialogFooter>
         </DialogContent>
