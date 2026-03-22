@@ -17,7 +17,7 @@ Medium.
 
 ## Why now
 
-Navigation polish compounds the value of the new workspace foundation and helps users stop bouncing back to other note apps.
+Navigation polish compounds the value of the new workspace foundation, helps users stop bouncing back to other note apps, and sets up the later multi-document tab workspace.
 
 ## Start Here
 
@@ -31,7 +31,7 @@ Navigation polish compounds the value of the new workspace foundation and helps 
 ## Dependencies
 
 - Blocked by: `fn-41-document-workspace-foundation-for`, `fn-42-desktop-beta-onboarding-and-health`
-- Unblocks: `fn-46`
+- Unblocks: `fn-46`, `fn-53`
 - This epic should extend the shipped quick-switcher/navigation foundation from `fn-41`, not replace it.
 
 ## Constraints Already Decided
@@ -39,6 +39,7 @@ Navigation polish compounds the value of the new workspace foundation and helps 
 - Cmd/Ctrl+K already exists from `fn-41`; this epic is polish/expansion, not a greenfield palette rewrite.
 - Navigation should help users stay in GNO all day without bouncing to Finder/Obsidian.
 - Keep behavior stack-agnostic so the same navigation model can survive a later native shell.
+- Full multi-document tabs and simultaneous editors live in `fn-53`, not here.
 
 ## Scope
 
@@ -50,7 +51,9 @@ Navigation polish compounds the value of the new workspace foundation and helps 
 
 ## Explicit Non-goals
 
-- File-system operations like rename/move/trash
+- full tabbed multi-document workspace
+- split editors / multi-pane editing
+- file-system operations like rename/move/trash
 - shell packaging
 
 ## Required Deliverables
@@ -64,3 +67,4 @@ Navigation polish compounds the value of the new workspace foundation and helps 
 
 - Users can reliably get back to the notes and collections they use most.
 - Quick-switcher feels like a primary navigation surface, not just a hidden shortcut.
+- Navigation model sets up a later tabbed workspace cleanly instead of fighting it.

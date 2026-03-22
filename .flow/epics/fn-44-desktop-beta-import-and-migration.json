@@ -8,7 +8,8 @@
   "default_sync": null,
   "depends_on_epics": [
     "fn-41-document-workspace-foundation-for",
-    "fn-42-desktop-beta-onboarding-and-health"
+    "fn-42-desktop-beta-onboarding-and-health",
+    "fn-43-desktop-beta-in-app-agent-connector"
   ],
   "id": "fn-44-desktop-beta-import-and-migration",
   "next_task": 1,
@@ -17,5 +18,5 @@
   "spec_path": ".flow/specs/fn-44-desktop-beta-import-and-migration.md",
   "status": "open",
   "title": "Desktop Beta: Import and Migration Assistant",
-  "updated_at": "2026-03-22T14:55:31.547689Z"
+  "updated_at": "2026-03-22T21:00:43.750670Z"
 }

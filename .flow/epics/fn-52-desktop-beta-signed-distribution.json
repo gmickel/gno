@@ -9,7 +9,8 @@
   "depends_on_epics": [
     "fn-41-document-workspace-foundation-for",
     "fn-51-desktop-beta-shell-packaging-and-os",
-    "fn-43-desktop-beta-in-app-agent-connector"
+    "fn-43-desktop-beta-in-app-agent-connector",
+    "fn-47-desktop-beta-recovery-restore-and"
   ],
   "id": "fn-52-desktop-beta-signed-distribution",
   "next_task": 1,
@@ -18,5 +19,5 @@
   "spec_path": ".flow/specs/fn-52-desktop-beta-signed-distribution.md",
   "status": "open",
   "title": "Desktop Beta: Signed Distribution, Updates, and Team Rollout",
-  "updated_at": "2026-03-22T14:55:32.648284Z"
+  "updated_at": "2026-03-22T21:00:44.160024Z"
 }
