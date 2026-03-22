@@ -271,7 +271,7 @@ export default function Dashboard({ navigate }: PageProps) {
             {/* Quick Capture Card */}
             <Card
               className="group stagger-3 animate-fade-in cursor-pointer opacity-0 transition-all duration-200 hover:-translate-y-0.5 hover:border-secondary/50 hover:bg-secondary/5 hover:shadow-lg"
-              onClick={openCapture}
+              onClick={() => openCapture()}
             >
               <CardHeader className="pb-2">
                 <CardDescription className="flex items-center gap-2">
@@ -350,7 +350,7 @@ export default function Dashboard({ navigate }: PageProps) {
       </main>
 
       {/* Floating Action Button */}
-      <CaptureButton onClick={openCapture} />
+      <CaptureButton onClick={() => openCapture()} />
     </div>
   );
 }

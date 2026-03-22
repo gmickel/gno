@@ -42,6 +42,8 @@ import { Textarea } from "./ui/textarea";
 export interface CaptureModalProps {
   /** Whether the modal is open */
   open: boolean;
+  /** Prefill title when opening from another surface */
+  draftTitle?: string;
   /** Callback when open state changes */
   onOpenChange: (open: boolean) => void;
   /** Callback when document created successfully */
@@ -80,6 +82,7 @@ type ModalState = "form" | "submitting" | "success" | "error";
 
 export function CaptureModal({
   open,
+  draftTitle = "",
   onOpenChange,
   onSuccess,
 }: CaptureModalProps) {
@@ -99,6 +102,9 @@ export function CaptureModal({
   // Load collections
   useEffect(() => {
     if (!open) return;
+    if (draftTitle.trim()) {
+      setTitle(draftTitle);
+    }
 
     void apiFetch<CollectionsResponse>("/api/status").then(({ data }) => {
       if (data?.collections) {
@@ -115,7 +121,7 @@ export function CaptureModal({
         }
       }
     });
-  }, [open]);
+  }, [draftTitle, open]);
 
   // Reset form when modal closes
   useEffect(() => {

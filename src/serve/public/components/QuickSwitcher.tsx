@@ -75,7 +75,7 @@ export interface QuickSwitcherProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   navigate: (to: string) => void;
-  onCreateNote: () => void;
+  onCreateNote: (draftTitle?: string) => void;
 }
 
 export function QuickSwitcher({
@@ -191,7 +191,7 @@ export function QuickSwitcher({
               <CommandItem
                 onSelect={() => {
                   onOpenChange(false);
-                  onCreateNote();
+                  onCreateNote(query.trim());
                 }}
                 value={`create-${query}`}
               >

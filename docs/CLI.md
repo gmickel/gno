@@ -259,6 +259,8 @@ Options:
 - `--line-numbers` - Prefix lines with numbers
 - `--source` - Include source metadata
 
+`gno get --json` also includes source capability metadata so callers can distinguish editable markdown/plaintext documents from read-only converted source files.
+
 ### gno multi-get
 
 Retrieve multiple documents at once.

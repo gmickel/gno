@@ -21,6 +21,13 @@ describe("get schema", () => {
           mime: "text/markdown",
           ext: ".md",
         },
+        capabilities: {
+          editable: true,
+          tagsEditable: true,
+          tagsWriteback: true,
+          canCreateEditableCopy: false,
+          mode: "editable",
+        },
       };
       expect(assertValid(response, schema)).toBe(true);
     });
@@ -48,6 +55,15 @@ describe("get schema", () => {
           converterVersion: "1.0.0",
           mirrorHash: "def456abc123",
         },
+        capabilities: {
+          editable: false,
+          tagsEditable: true,
+          tagsWriteback: false,
+          canCreateEditableCopy: true,
+          mode: "read_only",
+          reason:
+            "This document is derived from a source format that GNO cannot safely write back in place.",
+        },
       };
       expect(assertValid(response, schema)).toBe(true);
     });
@@ -63,6 +79,13 @@ describe("get schema", () => {
           relPath: "doc.md",
           mime: "text/markdown",
           ext: ".md",
+        },
+        capabilities: {
+          editable: true,
+          tagsEditable: true,
+          tagsWriteback: true,
+          canCreateEditableCopy: false,
+          mode: "editable",
         },
       };
       expect(assertValid(response, schema)).toBe(true);

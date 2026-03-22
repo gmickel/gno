@@ -67,6 +67,7 @@
     - AI answers with citations
     - Interactive knowledge graph visualization
     - Instant refresh after edits with external-change awareness
+    - Wiki-link autocomplete and linked-note creation
     - Keyboard-first design (Cmd+N, Cmd+K, Cmd+S)
     - Live preset switching and model download
     - 100% local, no cloud

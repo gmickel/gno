@@ -27,6 +27,7 @@ import {
   handleDeactivateDoc,
   handleDeleteCollection,
   handleDoc,
+  handleDocsAutocomplete,
   handleDocs,
   handleEmbed,
   handleEmbedStatus,
@@ -276,6 +277,15 @@ export async function startServer(
             }
             return withSecurityHeaders(
               await handleCreateDoc(ctxHolder, store, req),
+              isDev
+            );
+          },
+        },
+        "/api/docs/autocomplete": {
+          GET: async (req: Request) => {
+            const url = new URL(req.url);
+            return withSecurityHeaders(
+              await handleDocsAutocomplete(store, url),
               isDev
             );
           },

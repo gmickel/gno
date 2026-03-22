@@ -26,26 +26,28 @@ All endpoints are JSON-based and run entirely on your machine.
 
 ### Read Operations
 
-| Endpoint                 | Method | Description                 |
-| :----------------------- | :----- | :-------------------------- |
-| `/api/health`            | GET    | Health check                |
-| `/api/status`            | GET    | Index statistics            |
-| `/api/capabilities`      | GET    | Available features          |
-| `/api/collections`       | GET    | List collections            |
-| `/api/docs`              | GET    | List documents              |
-| `/api/doc`               | GET    | Get document content        |
-| `/api/doc/:id/links`     | GET    | Get outgoing links from doc |
-| `/api/doc/:id/backlinks` | GET    | Get docs linking to this    |
-| `/api/doc/:id/similar`   | GET    | Find semantically similar   |
-| `/api/graph`             | GET    | Knowledge graph of links    |
-| `/api/tags`              | GET    | List tags with counts       |
-| `/api/search`            | POST   | BM25 keyword search         |
-| `/api/query`             | POST   | Hybrid search               |
-| `/api/ask`               | POST   | AI-powered Q&A              |
-| `/api/presets`           | GET    | List model presets          |
-| `/api/presets`           | POST   | Switch preset               |
-| `/api/models/status`     | GET    | Download status             |
-| `/api/models/pull`       | POST   | Start model download        |
+| Endpoint                 | Method | Description                                                |
+| :----------------------- | :----- | :--------------------------------------------------------- |
+| `/api/health`            | GET    | Health check                                               |
+| `/api/status`            | GET    | Index statistics                                           |
+| `/api/capabilities`      | GET    | Available features                                         |
+| `/api/collections`       | GET    | List collections                                           |
+| `/api/docs`              | GET    | List documents                                             |
+| `/api/docs/autocomplete` | GET    | Title/path suggestions for wiki-linking and quick switcher |
+| `/api/doc`               | GET    | Get document content                                       |
+| `/api/events`            | GET    | Server-sent document change events                         |
+| `/api/doc/:id/links`     | GET    | Get outgoing links from doc                                |
+| `/api/doc/:id/backlinks` | GET    | Get docs linking to this                                   |
+| `/api/doc/:id/similar`   | GET    | Find semantically similar                                  |
+| `/api/graph`             | GET    | Knowledge graph of links                                   |
+| `/api/tags`              | GET    | List tags with counts                                      |
+| `/api/search`            | POST   | BM25 keyword search                                        |
+| `/api/query`             | POST   | Hybrid search                                              |
+| `/api/ask`               | POST   | AI-powered Q&A                                             |
+| `/api/presets`           | GET    | List model presets                                         |
+| `/api/presets`           | POST   | Switch preset                                              |
+| `/api/models/status`     | GET    | Download status                                            |
+| `/api/models/pull`       | POST   | Start model download                                       |
 
 ### Write Operations
 
@@ -570,6 +572,26 @@ For converted source formats such as PDF or DOCX, `capabilities.editable` is `fa
 ```bash
 curl "http://localhost:3000/api/doc?uri=gno://notes/readme.md" | jq '.content'
 ```
+
+---
+
+### Document Autocomplete
+
+```http
+GET /api/docs/autocomplete?query=auth&collection=notes&limit=8
+```
+
+Returns lightweight document suggestions for title/path-driven UIs such as wiki-link autocomplete and the quick switcher.
+
+---
+
+### Document Events
+
+```http
+GET /api/events
+```
+
+Server-sent event stream used by the Web UI to refresh document/search state after local edits and external file changes.
 
 ---
 

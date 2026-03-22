@@ -38,6 +38,14 @@ export interface CodeMirrorEditorRef {
   scrollToPercent: (percent: number) => boolean;
   /** Reveal a 1-based line number and select it. */
   revealLine: (lineNumber: number) => boolean;
+  /** Current cursor position and screen coordinates. */
+  getCursorInfo: () => {
+    pos: number;
+    x: number;
+    y: number;
+  } | null;
+  /** Replace a text range and place the cursor at the end. */
+  replaceRange: (from: number, to: number, text: string) => boolean;
 }
 
 export function CodeMirrorEditor({
@@ -193,6 +201,31 @@ export function CodeMirrorEditor({
       view.dispatch({
         selection: { anchor: line.from, head: line.to },
         scrollIntoView: true,
+      });
+      view.focus();
+      return true;
+    },
+    getCursorInfo: () => {
+      const view = viewRef.current;
+      if (!view) return null;
+
+      const pos = view.state.selection.main.head;
+      const coords = view.coordsAtPos(pos);
+      if (!coords) return null;
+
+      return {
+        pos,
+        x: coords.left,
+        y: coords.bottom,
+      };
+    },
+    replaceRange: (from: number, to: number, text: string): boolean => {
+      const view = viewRef.current;
+      if (!view) return false;
+
+      view.dispatch({
+        changes: { from, to, insert: text },
+        selection: { anchor: from + text.length },
       });
       view.focus();
       return true;

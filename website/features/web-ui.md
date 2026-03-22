@@ -45,6 +45,7 @@ Create and edit documents directly in your browser:
 - **Syntax highlighting**: Code blocks rendered with Shiki
 - **Keyboard shortcuts**: **⌘S** to save, **⌘B** for bold, **⌘I** for italic
 - **Safe editing**: Converted PDF/DOCX/etc. sources stay read-only; create a markdown copy instead
+- **Wiki linking**: Type `[[` for note autocomplete and linked-note creation
 
 ![GNO Document Editor](/assets/screenshots/webui-editor.jpg)
 

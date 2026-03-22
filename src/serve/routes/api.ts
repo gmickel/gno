@@ -782,6 +782,48 @@ export async function handleDocs(
 }
 
 /**
+ * GET /api/docs/autocomplete
+ * Query params: query, collection, limit
+ */
+export async function handleDocsAutocomplete(
+  store: SqliteAdapter,
+  url: URL
+): Promise<Response> {
+  const query = (url.searchParams.get("query") ?? "").trim().toLowerCase();
+  const collection = url.searchParams.get("collection") || undefined;
+  const limit = Math.min(Number(url.searchParams.get("limit") ?? "8") || 8, 20);
+
+  const result = await store.listDocuments(collection);
+  if (!result.ok) {
+    return errorResponse("RUNTIME", result.error.message, 500);
+  }
+
+  const candidates = result.value
+    .filter((doc) => doc.active)
+    .map((doc) => ({
+      docid: doc.docid,
+      uri: doc.uri,
+      title:
+        doc.title ??
+        doc.relPath
+          .split("/")
+          .pop()
+          ?.replace(/\.[^.]+$/, "") ??
+        doc.relPath,
+      collection: doc.collection,
+    }))
+    .filter((doc) => {
+      if (!query) return true;
+      const haystack = `${doc.title} ${doc.uri}`.toLowerCase();
+      return haystack.includes(query);
+    })
+    .sort((a, b) => a.title.localeCompare(b.title))
+    .slice(0, limit);
+
+  return jsonResponse({ docs: candidates });
+}
+
+/**
  * GET /api/doc
  * Query params: uri (required)
  * Returns single document with content.
@@ -1377,8 +1419,8 @@ export async function handleCreateDoc(
       contentToWrite = updateFrontmatterTags(body.content, validatedTags);
     }
 
-    await atomicWrite(fullPath, contentToWrite);
     ctxHolder.watchService?.suppress(fullPath);
+    await atomicWrite(fullPath, contentToWrite);
 
     // Build gno:// URI for the created document
     const gnoUri = `gno://${collection.name}/${normalizedRelPath}`;
@@ -2282,6 +2324,10 @@ export async function routeApi(
 
   if (path === "/api/docs") {
     return handleDocs(store, url);
+  }
+
+  if (path === "/api/docs/autocomplete") {
+    return handleDocsAutocomplete(store, url);
   }
 
   if (path === "/api/doc") {

@@ -21,7 +21,7 @@ import { useKeyboardShortcuts } from "./useKeyboardShortcuts";
 
 interface CaptureModalContextValue {
   /** Open the capture modal */
-  openCapture: () => void;
+  openCapture: (draftTitle?: string) => void;
   /** Whether the modal is open */
   isOpen: boolean;
 }
@@ -41,8 +41,12 @@ export function CaptureModalProvider({
   onSuccess,
 }: CaptureModalProviderProps) {
   const [open, setOpen] = useState(false);
+  const [draftTitle, setDraftTitle] = useState("");
 
-  const openCapture = useCallback(() => setOpen(true), []);
+  const openCapture = useCallback((nextDraftTitle?: string) => {
+    setDraftTitle(nextDraftTitle ?? "");
+    setOpen(true);
+  }, []);
 
   // 'n' global shortcut (single-key, skips when in text input)
   const shortcuts = useMemo(
@@ -68,7 +72,12 @@ export function CaptureModalProvider({
   return (
     <CaptureModalContext.Provider value={value}>
       {children}
-      <CaptureModal onOpenChange={setOpen} onSuccess={onSuccess} open={open} />
+      <CaptureModal
+        draftTitle={draftTitle}
+        onOpenChange={setOpen}
+        onSuccess={onSuccess}
+        open={open}
+      />
     </CaptureModalContext.Provider>
   );
 }

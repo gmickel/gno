@@ -18,10 +18,18 @@ export class DocumentEventBus {
 
   createResponse(): Response {
     const controllers = this.#controllers;
+    let streamController: ReadableStreamDefaultController<Uint8Array> | null =
+      null;
     const stream = new ReadableStream<Uint8Array>({
       start(controller) {
+        streamController = controller;
         controllers.add(controller);
         controller.enqueue(encoder.encode(": connected\n\n"));
+      },
+      cancel() {
+        if (streamController) {
+          controllers.delete(streamController);
+        }
       },
     });
 

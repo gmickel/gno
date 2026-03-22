@@ -53,6 +53,10 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "../components/ui/tooltip";
+import {
+  type WikiLinkDoc,
+  WikiLinkAutocomplete,
+} from "../components/WikiLinkAutocomplete";
 import { apiFetch } from "../hooks/use-api";
 import { useDocEvents } from "../hooks/use-doc-events";
 import { buildEditDeepLink, parseDocumentDeepLink } from "../lib/deep-links";
@@ -60,6 +64,7 @@ import {
   appendLocalHistory,
   loadLatestLocalHistory,
 } from "../lib/local-history";
+import { getActiveWikiLinkQuery } from "../lib/wiki-link";
 
 interface PageProps {
   navigate: (to: string | number) => void;
@@ -109,6 +114,10 @@ interface UpdateDocResponse {
     sourceHash: string;
     modifiedAt?: string;
   };
+}
+
+interface DocsAutocompleteResponse {
+  docs: WikiLinkDoc[];
 }
 
 type SaveStatus = "saved" | "saving" | "unsaved" | "error";
@@ -188,6 +197,15 @@ export default function DocumentEditor({ navigate }: PageProps) {
   const [showPreview, setShowPreview] = useState(true);
   const [syncScroll, setSyncScroll] = useState(true);
   const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
+  const [wikiLinkDocs, setWikiLinkDocs] = useState<WikiLinkDoc[]>([]);
+  const [wikiLinkOpen, setWikiLinkOpen] = useState(false);
+  const [wikiLinkQuery, setWikiLinkQuery] = useState("");
+  const [wikiLinkRange, setWikiLinkRange] = useState<{
+    start: number;
+    end: number;
+  } | null>(null);
+  const [wikiLinkPosition, setWikiLinkPosition] = useState({ x: 48, y: 120 });
+  const [wikiLinkActiveIndex, setWikiLinkActiveIndex] = useState(-1);
   /** Where to navigate after dialog action (-1 for back, or URL string) */
   const [pendingNavigation, setPendingNavigation] = useState<
     string | number | null
@@ -342,6 +360,64 @@ export default function DocumentEditor({ navigate }: PageProps) {
     }
   }, [doc, navigate]);
 
+  const insertWikiLink = useCallback(
+    (title: string) => {
+      if (!wikiLinkRange) return;
+      const didReplace = editorRef.current?.replaceRange(
+        wikiLinkRange.start,
+        wikiLinkRange.end,
+        `[[${title}]]`
+      );
+      if (didReplace) {
+        setWikiLinkOpen(false);
+        setWikiLinkActiveIndex(-1);
+      }
+    },
+    [wikiLinkRange]
+  );
+
+  const handleCreateLinkedNote = useCallback(
+    async (title: string) => {
+      if (!doc) return;
+      const filename = title
+        .toLowerCase()
+        .trim()
+        .replaceAll(/[^\w\s-]/g, "")
+        .replaceAll(/\s+/g, "-")
+        .replaceAll(/-+/g, "-")
+        .replace(/^-|-$/g, "");
+      const relPath = `${filename || "untitled"}.md`;
+      const { data, error: err } = await apiFetch<CreateEditableCopyResponse>(
+        "/api/docs",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            collection: doc.collection,
+            relPath,
+            content: `# ${title}\n`,
+          }),
+        }
+      );
+      if (err) {
+        setCopyError(err);
+        return;
+      }
+      insertWikiLink(title);
+      if (data) {
+        setWikiLinkDocs((current) => [
+          ...current,
+          {
+            title,
+            uri: data.uri,
+            docid: data.uri,
+            collection: doc.collection,
+          },
+        ]);
+      }
+    },
+    [doc, insertWikiLink]
+  );
+
   // Debounced auto-save
   const { debouncedFn: debouncedSave } = useDebouncedCallback(
     saveDocument,
@@ -356,9 +432,46 @@ export default function DocumentEditor({ navigate }: PageProps) {
         setSaveStatus("unsaved");
         debouncedSave(newContent);
       }
+
+      const cursor = editorRef.current?.getCursorInfo();
+      if (!cursor) {
+        setWikiLinkOpen(false);
+        return;
+      }
+
+      const activeQuery = getActiveWikiLinkQuery(newContent, cursor.pos);
+      if (!activeQuery) {
+        setWikiLinkOpen(false);
+        setWikiLinkRange(null);
+        return;
+      }
+
+      setWikiLinkRange({ start: activeQuery.start, end: activeQuery.end });
+      setWikiLinkQuery(activeQuery.query);
+      setWikiLinkPosition({ x: cursor.x, y: cursor.y + 8 });
+      setWikiLinkOpen(true);
+      setWikiLinkActiveIndex(0);
     },
     [originalContent, debouncedSave]
   );
+
+  useEffect(() => {
+    if (!wikiLinkOpen) return;
+
+    const params = new URLSearchParams({
+      limit: "8",
+      query: wikiLinkQuery,
+    });
+    if (doc?.collection) {
+      params.set("collection", doc.collection);
+    }
+
+    void apiFetch<DocsAutocompleteResponse>(
+      `/api/docs/autocomplete?${params.toString()}`
+    ).then(({ data }) => {
+      setWikiLinkDocs(data?.docs ?? []);
+    });
+  }, [doc?.collection, wikiLinkOpen, wikiLinkQuery]);
 
   // Force save (Cmd+S) - saves and triggers embedding
   const handleForceSave = useCallback(async () => {
@@ -938,6 +1051,20 @@ export default function DocumentEditor({ navigate }: PageProps) {
           </div>
         )}
       </div>
+
+      <WikiLinkAutocomplete
+        activeIndex={wikiLinkActiveIndex}
+        docs={wikiLinkDocs}
+        isOpen={wikiLinkOpen}
+        onActiveIndexChange={setWikiLinkActiveIndex}
+        onCreateNew={(title) => {
+          void handleCreateLinkedNote(title);
+        }}
+        onDismiss={() => setWikiLinkOpen(false)}
+        onSelect={(title) => insertWikiLink(title)}
+        position={wikiLinkPosition}
+        searchQuery={wikiLinkQuery}
+      />
 
       {/* Unsaved changes dialog */}
       <Dialog onOpenChange={setShowUnsavedDialog} open={showUnsavedDialog}>
