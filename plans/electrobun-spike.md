@@ -12,6 +12,7 @@ Test whether Electrobun can wrap the existing GNO Bun/web workspace without fork
 - A `gno://open?route=...` mapping can be translated into the existing web routes from `fn-41`.
 - `Utils.moveToTrash()` works in practice for a probe file.
 - `Utils.openFileDialog()` surfaces a real native macOS Open dialog when called directly from the Bun side.
+- A manual singleton workaround is feasible on top of Electrobun using a localhost control port.
 
 ## What was observed
 
@@ -26,12 +27,16 @@ Test whether Electrobun can wrap the existing GNO Bun/web workspace without fork
   - Probe file moved into Trash successfully.
 - Native dialog:
   - Folder picker dialog opened as a real macOS `Open` window when triggered directly in self-test mode.
+- Singleton workaround:
+  - first instance opened a localhost control port
+  - forced second launch via `open -n` handed off `focus` to the first instance
+  - second instance exited instead of leaving a second shell/server alive
 
 ## What still feels shaky
 
 - Dev-mode automation of app menu clicks and shortcut callbacks was inconsistent under Peekaboo-driven smoke.
 - No obvious built-in single-instance support surfaced in docs or package source.
-- Forced second launch via `open -n` spawned a second shell process and a second `gno serve` child, so the default single-instance story is not acceptable yet.
+- The singleton story currently needs app-level workaround code; not a framework-level feature.
 - No obvious file-association / `open-file` support surfaced in docs or package source.
 - Signing, notarization, updater, installer flow not tested.
 - No browser<->Bun RPC bridge into the existing React app yet; current spike stays shell-side on purpose.
@@ -41,9 +46,11 @@ Test whether Electrobun can wrap the existing GNO Bun/web workspace without fork
 - `bunx electrobun build` produced a runnable `.app` bundle in `build/dev-macos-arm64/`.
 - Generated `Info.plist` contains `CFBundleURLTypes` for `gno`.
 - I did not find `CFBundleDocumentTypes` / `LSItemContentTypes` generation in package source or built metadata.
+- Source contains a real app-level `reopen` event on macOS (`applicationShouldHandleReopen`), but this is not surfaced prominently in docs.
 - Packaged app handled `open 'gno://open?route=/search?q=packaged'` and routed into the live GNO window.
 - Plain `open app` reused the existing app bundle process.
-- Forced `open -n app` launched a second bundle instance anyway, which is the real problem for GNO.
+- Before the workaround, forced `open -n app` launched a second bundle instance and second `gno serve`.
+- After adding the control-port handoff, forced `open -n app` no longer left a second shell/server alive.
 
 ## Current spike shape
 
@@ -58,12 +65,13 @@ Test whether Electrobun can wrap the existing GNO Bun/web workspace without fork
 
 ## Initial takeaway
 
-Promising, but not decision-ready for `fn-51`.
+Promising. No longer blocked on singleton as a hard blocker, but still not decision-ready for `fn-51`.
 
 Best current reading:
 
 - good enough to keep evaluating
 - especially strong fit for “thin Bun shell around existing GNO workspace”
 - packaged `gno://` support is better than expected
-- default single-instance and file-association stories are not good enough yet
+- singleton is workable with app-level glue
+- file-association story is still unclear / weak
 - recommendation right now: keep Electrobun in the running, but do **not** lock GNO onto it until another candidate is compared against these exact gaps

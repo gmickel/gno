@@ -11,7 +11,9 @@ import { appendFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 
 const DEFAULT_PORT = 3927;
+const DEFAULT_CONTROL_PORT = 3928;
 const HEALTH_PATH = "/api/health";
+const CONTROL_PATH = "/__electrobun_spike/control";
 const STARTUP_TIMEOUT_MS = 30_000;
 const HEALTH_POLL_MS = 300;
 const WINDOW_BOUNDS = {
@@ -23,6 +25,7 @@ const WINDOW_BOUNDS = {
 
 let mainWindow: BrowserWindow | null = null;
 let serverProcess: Bun.Subprocess | null = null;
+let controlServer: Bun.Server<undefined> | null = null;
 
 function log(message: string): void {
   console.log(`[electrobun-spike] ${message}`);
@@ -58,19 +61,32 @@ function getRuntimeConfig(
   repoRoot: string;
   port: number;
   baseUrl: string;
+  controlPort: number;
+  controlUrl: string;
 } {
   const runtime = config.runtime as
-    | { gnoRepoRoot?: string; gnoServePort?: number | string }
+    | {
+        gnoRepoRoot?: string;
+        gnoServePort?: number | string;
+        gnoControlPort?: number | string;
+      }
     | undefined;
   const repoRoot = runtime?.gnoRepoRoot ?? resolve(import.meta.dir, "../../..");
   const port = Number(
     process.env.GNO_ELECTROBUN_PORT ?? runtime?.gnoServePort ?? DEFAULT_PORT
+  );
+  const controlPort = Number(
+    process.env.GNO_ELECTROBUN_CONTROL_PORT ??
+      runtime?.gnoControlPort ??
+      DEFAULT_CONTROL_PORT
   );
 
   return {
     repoRoot,
     port,
     baseUrl: getBaseUrl(port),
+    controlPort,
+    controlUrl: `http://127.0.0.1:${controlPort}${CONTROL_PATH}`,
   };
 }
 
@@ -173,6 +189,7 @@ function navigateMainWindow(target: string, baseUrl: string): void {
   void recordEvent("navigate", nextUrl);
   mainWindow.webview.loadURL(nextUrl);
   mainWindow.show();
+  mainWindow.focus();
 }
 
 async function chooseFolder(repoRoot: string): Promise<void> {
@@ -307,6 +324,7 @@ function installShortcuts(repoRoot: string, baseUrl: string): void {
 
 async function shutdown(): Promise<void> {
   log("shutting down spike");
+  void controlServer?.stop(true);
   serverProcess?.kill();
 }
 
@@ -321,11 +339,94 @@ async function runSelfTest(repoRoot: string, baseUrl: string): Promise<void> {
   await recordEvent("selftest:done");
 }
 
+async function focusExistingWindow(): Promise<void> {
+  if (!mainWindow) {
+    await recordEvent("focus-existing-window:missing");
+    return;
+  }
+
+  mainWindow.show();
+  mainWindow.focus();
+  await recordEvent("focus-existing-window");
+}
+
+function startControlServer(
+  baseUrl: string,
+  controlPort: number
+): Bun.Server<undefined> {
+  return Bun.serve({
+    port: controlPort,
+    hostname: "127.0.0.1",
+    routes: {
+      [CONTROL_PATH]: {
+        POST: async (request: Request) => {
+          let action = "focus";
+          let target: string | null = null;
+
+          try {
+            const body = (await request.json()) as {
+              action?: string;
+              target?: string;
+            };
+            action = body.action ?? action;
+            target = body.target ?? null;
+          } catch {
+            // fall back to focus
+          }
+
+          await recordEvent("control-request", `${action}:${target ?? ""}`);
+
+          if (action === "open-url" && target) {
+            navigateMainWindow(target, baseUrl);
+          } else {
+            await focusExistingWindow();
+          }
+
+          return Response.json({ ok: true });
+        },
+      },
+    },
+    fetch() {
+      return new Response("not found", { status: 404 });
+    },
+  });
+}
+
+async function handOffToExistingInstance(controlUrl: string): Promise<boolean> {
+  try {
+    const response = await fetch(controlUrl, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({ action: "focus" }),
+    });
+
+    if (!response.ok) {
+      return false;
+    }
+
+    await recordEvent("handoff-to-existing-instance", controlUrl);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 async function main(): Promise<void> {
   const config = await BuildConfig.get();
-  const { repoRoot, port, baseUrl } = getRuntimeConfig(config);
+  const { repoRoot, port, baseUrl, controlPort, controlUrl } =
+    getRuntimeConfig(config);
   await Bun.write(getEventLogPath(), "");
   await recordEvent("startup", baseUrl);
+
+  if (await handOffToExistingInstance(controlUrl)) {
+    await recordEvent("startup-exit-after-handoff");
+    process.exit(0);
+  }
+
+  controlServer = startControlServer(baseUrl, controlPort);
+  await recordEvent("control-server", String(controlPort));
   installMenu(repoRoot, baseUrl);
   installShortcuts(repoRoot, baseUrl);
   serverProcess = startGnoServer(repoRoot, port);

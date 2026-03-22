@@ -15,6 +15,7 @@ export default {
   runtime: {
     gnoRepoRoot: repoRoot,
     gnoServePort: 3927,
+    gnoControlPort: 3928,
   },
   build: {
     mac: {
