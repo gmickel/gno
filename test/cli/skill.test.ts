@@ -101,21 +101,53 @@ describe("skill CLI commands", () => {
       expect(paths.skillsDir).toBe(join(FAKE_HOME, ".codex", "skills"));
       expect(paths.gnoDir).toBe(join(FAKE_HOME, ".codex", "skills", "gno"));
     });
+
+    test("resolves user/opencode paths", () => {
+      const paths = resolveSkillPaths({
+        scope: "user",
+        target: "opencode",
+        cwd: FAKE_CWD,
+        homeDir: FAKE_HOME,
+      });
+
+      expect(paths.skillsDir).toBe(
+        join(FAKE_HOME, ".config", "opencode", "skills")
+      );
+      expect(paths.gnoDir).toBe(
+        join(FAKE_HOME, ".config", "opencode", "skills", "gno")
+      );
+    });
+
+    test("resolves user/openclaw paths", () => {
+      const paths = resolveSkillPaths({
+        scope: "user",
+        target: "openclaw",
+        cwd: FAKE_CWD,
+        homeDir: FAKE_HOME,
+      });
+
+      expect(paths.skillsDir).toBe(join(FAKE_HOME, ".openclaw", "skills"));
+      expect(paths.gnoDir).toBe(join(FAKE_HOME, ".openclaw", "skills", "gno"));
+    });
   });
 
   describe("resolveAllPaths", () => {
-    test("returns all 4 combinations for scope=all, target=all", () => {
+    test("returns all 8 combinations for scope=all, target=all", () => {
       const results = resolveAllPaths("all", "all", {
         cwd: FAKE_CWD,
         homeDir: FAKE_HOME,
       });
 
-      expect(results).toHaveLength(4);
+      expect(results).toHaveLength(8);
       const combos = results.map((r) => `${r.scope}/${r.target}`);
       expect(combos).toContain("project/claude");
       expect(combos).toContain("project/codex");
+      expect(combos).toContain("project/opencode");
+      expect(combos).toContain("project/openclaw");
       expect(combos).toContain("user/claude");
       expect(combos).toContain("user/codex");
+      expect(combos).toContain("user/opencode");
+      expect(combos).toContain("user/openclaw");
     });
 
     test("filters by scope", () => {
@@ -124,7 +156,7 @@ describe("skill CLI commands", () => {
         homeDir: FAKE_HOME,
       });
 
-      expect(results).toHaveLength(2);
+      expect(results).toHaveLength(4);
       expect(results.every((r) => r.scope === "project")).toBe(true);
     });
 
