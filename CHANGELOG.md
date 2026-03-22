@@ -9,6 +9,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+## [0.27.0] - 2026-03-22
+
+### Added
+
+- Safe document capability metadata across the API, CLI `gno get`, SDK, and MCP so callers can distinguish editable markdown/plaintext documents from read-only converted source files.
+- Read-only handling plus editable-copy creation for converted PDF/DOCX-style documents in the Web UI.
+- Deep links for document view/edit routes with source-view line targeting and exact-hit navigation from search results.
+- Watch-driven document event streaming for live refresh and external-change awareness in Search, Browse, Doc View, and the editor.
+- Wiki-link autocomplete and linked-note creation in both the full editor and Quick Capture.
+- A fast `Cmd/Ctrl+K` quick switcher with recent-document tracking and note-creation handoff.
+- Local editor snapshot history with restore support after save conflicts or mistaken edits.
+- Updated skill guidance for editable vs read-only document handling and richer `gno get --json` capability metadata.
+
+### Changed
+
+- Web/docs/website positioning now describe GNO as a safer markdown-first local workspace for agent-centric teams rather than only a retrieval layer alongside Obsidian.
+- `gno_get` / `GET /api/doc` / related docs now return richer source metadata and capability metadata.
+
+### Fixed
+
+- Preserved deep-link line targets when navigating from document view into edit mode.
+- Avoided editable-copy navigation races by waiting for the copied markdown document to become queryable before opening it.
+- Removed the ugly quick-switcher focus ring/outline clash from the command input.
+
 ## [0.26.0] - 2026-03-22
 
 ### Added
@@ -811,7 +835,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 | 0.4.0   | 2026-01-01 | Web UI and REST API                       |
 | 0.1.0   | 2025-12-30 | Initial release with full search pipeline |
 
-[Unreleased]: https://github.com/gmickel/gno/compare/v0.26.0...HEAD
+[Unreleased]: https://github.com/gmickel/gno/compare/v0.27.0...HEAD
+[0.27.0]: https://github.com/gmickel/gno/compare/v0.26.0...v0.27.0
 [0.26.0]: https://github.com/gmickel/gno/compare/v0.25.1...v0.26.0
 [0.25.1]: https://github.com/gmickel/gno/compare/v0.25.0...v0.25.1
 [0.13.2]: https://github.com/gmickel/gno/compare/v0.13.1...v0.13.2
