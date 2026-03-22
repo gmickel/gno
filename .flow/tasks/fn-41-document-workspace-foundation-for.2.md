@@ -19,3 +19,10 @@ Replace the current blind-save editor flow with a versioned save protocol and re
 - Current save flow has no optimistic concurrency markers: `src/serve/public/pages/DocumentEditor.tsx:223-255`.
 - Existing unsaved-change dialog can be extended rather than replaced: `src/serve/public/pages/DocumentEditor.tsx:394-430`, `src/serve/public/components/ui/dialog.tsx:1-142`.
 - Keep history/restore scoped to editable docs only; converted read-only assets are handled by task `.1`.
+
+## Done summary
+Added optimistic save conflicts via expected source version markers plus editor-local snapshot history and restore flow.
+## Evidence
+- Commits: e677f41, 1a34d5e, 2662e77
+- Tests: bun test test/serve/api-docs-update.test.ts, bun run lint:check
+- PRs:
