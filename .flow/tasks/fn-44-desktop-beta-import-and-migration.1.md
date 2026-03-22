@@ -19,15 +19,19 @@ Initial slice:
 - [ ] Duplicate path/collection conflicts are explained clearly in the import flow
 
 ## Done summary
+
 Shipped the first import/migration assistant slice.
 
 Highlights:
+
 - added duplicate-path validation to collection creation
 - added `/api/import/preview` with Obsidian-vault and mixed-folder detection, file-type counts, guidance, and conflict reporting
 - surfaced the preview inside the add-collection dialog before indexing starts
 - updated Obsidian/use-case/FAQ migration copy to match the real preview flow
 - verified the dialog in-browser with a real Obsidian-style folder preview
+
 ## Evidence
+
 - Commits:
 - Tests: bun test test/serve/api-collections.test.ts, bun run lint:check, bun run typecheck, bun test, bun run docs:verify, browser sanity: agent-browser open http://localhost:3127/collections; add collection dialog preview verified for GordonsVault
 - PRs:
