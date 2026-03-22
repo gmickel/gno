@@ -56,6 +56,10 @@ import {
 import { apiFetch } from "../hooks/use-api";
 import { useDocEvents } from "../hooks/use-doc-events";
 import { buildEditDeepLink, parseDocumentDeepLink } from "../lib/deep-links";
+import {
+  appendLocalHistory,
+  loadLatestLocalHistory,
+} from "../lib/local-history";
 
 interface PageProps {
   navigate: (to: string | number) => void;
@@ -179,6 +183,7 @@ export default function DocumentEditor({ navigate }: PageProps) {
   const [externalChangeNotice, setExternalChangeNotice] = useState<
     string | null
   >(null);
+  const [hasLocalSnapshot, setHasLocalSnapshot] = useState(false);
 
   const [showPreview, setShowPreview] = useState(true);
   const [syncScroll, setSyncScroll] = useState(true);
@@ -289,6 +294,10 @@ export default function DocumentEditor({ navigate }: PageProps) {
         setSaveError(err);
       } else {
         ignoreDocEventsUntilRef.current = Date.now() + 5_000;
+        if (originalContent !== contentToSave) {
+          appendLocalHistory(doc.docid, originalContent);
+          setHasLocalSnapshot(true);
+        }
         setSaveStatus("saved");
         setOriginalContent(contentToSave);
         setLastSaved(new Date());
@@ -378,6 +387,10 @@ export default function DocumentEditor({ navigate }: PageProps) {
     }
 
     ignoreDocEventsUntilRef.current = Date.now() + 5_000;
+    if (originalContent !== content) {
+      appendLocalHistory(doc.docid, originalContent);
+      setHasLocalSnapshot(true);
+    }
     setSaveStatus("saved");
     setOriginalContent(content);
     setLastSaved(new Date());
@@ -415,6 +428,7 @@ export default function DocumentEditor({ navigate }: PageProps) {
           const docContent = data.content ?? "";
           setContent(docContent);
           setOriginalContent(docContent);
+          setHasLocalSnapshot(Boolean(loadLatestLocalHistory(data.docid)));
           // Ensure CodeMirror reflects content after async load
           requestAnimationFrame(() => {
             editorRef.current?.setValue(docContent);
@@ -448,6 +462,15 @@ export default function DocumentEditor({ navigate }: PageProps) {
     setExternalChangeNotice(null);
     loadDocument();
   }, [loadDocument]);
+
+  const restoreLatestSnapshot = useCallback(() => {
+    if (!doc) return;
+    const latest = loadLatestLocalHistory(doc.docid);
+    if (!latest) return;
+    setContent(latest.content);
+    editorRef.current?.setValue(latest.content);
+    setSaveStatus("unsaved");
+  }, [doc]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -866,6 +889,15 @@ export default function DocumentEditor({ navigate }: PageProps) {
             <Button onClick={reloadDocument} size="sm" variant="outline">
               Reload
             </Button>
+            {hasLocalSnapshot && (
+              <Button
+                onClick={restoreLatestSnapshot}
+                size="sm"
+                variant="outline"
+              >
+                Restore snapshot
+              </Button>
+            )}
           </div>
         </div>
       )}
