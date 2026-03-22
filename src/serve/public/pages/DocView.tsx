@@ -52,7 +52,11 @@ import {
 import { Separator } from "../components/ui/separator";
 import { apiFetch } from "../hooks/use-api";
 import { useDocEvents } from "../hooks/use-doc-events";
-import { buildDocDeepLink, parseDocumentDeepLink } from "../lib/deep-links";
+import {
+  buildDocDeepLink,
+  buildEditDeepLink,
+  parseDocumentDeepLink,
+} from "../lib/deep-links";
 
 interface PageProps {
   navigate: (to: string | number) => void;
@@ -342,7 +346,13 @@ export default function DocView({ navigate }: PageProps) {
 
   const handleEdit = () => {
     if (doc?.capabilities.editable) {
-      navigate(`/edit?uri=${encodeURIComponent(doc.uri)}`);
+      navigate(
+        buildEditDeepLink({
+          uri: doc.uri,
+          lineStart: currentTarget.lineStart,
+          lineEnd: currentTarget.lineEnd,
+        })
+      );
     }
   };
 
