@@ -23,11 +23,26 @@ This is the first truly normie-visible desktop milestone. With Electrobun select
 
 - `desktop/electrobun-spike/`
 - `plans/electrobun-spike.md`
+- current shell-spike branch: `feat/fn-50-electrobun-spike`
+- local Electrobun checkout: `~/repos/electrobun`
 - chosen runtime decision from `fn-50`
 - runtime/model bootstrap decisions from `fn-49`
 - `src/serve/server.ts`
 - `src/serve/public/app.tsx`
 - deep-link helpers and watch service already in product
+
+## Fresh-Agent Handoff
+
+- The shell direction is Electrobun, not a generic framework search.
+- Reuse the proven spike patterns first:
+  - child-process `gno serve`
+  - packaged `gno://` support
+  - app-level singleton handoff
+- Read `plans/electrobun-spike.md` before touching shell code.
+- Expected interim reality:
+  - singleton may remain app-level glue
+  - file associations may require plist/package hook work before upstream support exists
+- Do not implement native Electrobun BrowserView tabs here; shell events should route into GNO's future app-level tab workspace.
 
 ## Dependencies
 

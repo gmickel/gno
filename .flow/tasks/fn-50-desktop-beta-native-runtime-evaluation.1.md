@@ -4,6 +4,18 @@
 
 Build an isolated Electrobun spike that wraps the current GNO Bun/web workspace with the minimum native shell needed to test fit.
 
+Fresh-agent context:
+
+- spike branch: `feat/fn-50-electrobun-spike`
+- local upstream checkout: `/Users/gordon/repos/electrobun`
+- findings doc: `plans/electrobun-spike.md`
+- this task is already complete; read it to understand the baseline before doing any follow-on work
+- main upstream issue references:
+  - `#227` singleton API gap
+  - `#304` `application:openFiles` gap
+  - `#69` reopen support request
+  - `#253` multitab template instability
+
 Goals for the spike:
 
 - boot the existing GNO web app inside Electrobun without forking the workspace UI
@@ -41,6 +53,10 @@ Current read:
 - promising for `fn-50`
 - enough evidence to continue Electrobun evaluation
 - still missing single-instance, file associations, updater/signing, and packaged-app rollout validation
+- later work proved:
+  - singleton is workable with app-level glue
+  - `open-file` remains the main unresolved gap
+  - app-level tabs, not native BrowserView tabs, should be GNO's direction
 
 ## Evidence
 

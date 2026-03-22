@@ -23,11 +23,31 @@ The shell direction is strong enough to move forward. This epic is no longer a b
 
 - `desktop/electrobun-spike/`
 - `plans/electrobun-spike.md`
+- current spike branch: `feat/fn-50-electrobun-spike`
 - `src/serve/server.ts`
 - `src/serve/public/app.tsx`
 - the watch/event/deep-link work from `fn-41`
 - upstream Electrobun issues `#227`, `#304`, `#69`, `#253`
 - local Electrobun checkout in `~/repos/electrobun`
+
+## Fresh-Agent Handoff
+
+- Working decision today: proceed with Electrobun for the mac-first beta unless `open-file` / file-association or distribution work proves unacceptable.
+- Spike evidence already lives in:
+  - `desktop/electrobun-spike/`
+  - `plans/electrobun-spike.md`
+- Local upstream checkout for investigation/patching:
+  - `/Users/gordon/repos/electrobun`
+- Important upstream gaps:
+  - `#227` no built-in single-instance API
+  - `#304` no `application:openFiles` support on macOS
+  - `#69` reopen-window request
+  - `#253` multitab template instability
+- Important conclusions already reached:
+  - packaged `gno://` works
+  - singleton is solvable with app-level glue
+  - tabs should live in GNO app state, not native BrowserView tabs
+  - the main unresolved product risk is `open-file` / file associations
 
 ## Dependencies
 

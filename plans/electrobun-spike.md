@@ -99,15 +99,15 @@ Why:
   - event journal in app cache for smoke evidence
   - optional self-test env vars for deterministic checks
 
-## Initial takeaway
+## Current recommendation
 
-Promising. No longer blocked on singleton as a hard blocker, but still not decision-ready for `fn-51`.
+Proceed with Electrobun for the mac-first desktop beta.
 
 Best current reading:
 
-- good enough to keep evaluating
 - especially strong fit for “thin Bun shell around existing GNO workspace”
 - packaged `gno://` support is better than expected
 - singleton is workable with app-level glue
-- file-association story is still unclear / weak
-- recommendation right now: keep Electrobun in the running, but do **not** lock GNO onto it until another candidate is compared against these exact gaps
+- `open-file` / file associations remain the main unresolved platform gap
+- tabs should be implemented in GNO app state, not native BrowserView tabs
+- only fall back to another runtime if Electrobun still fails the `open-file` / distribution gates in `fn-50`

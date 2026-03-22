@@ -4,6 +4,22 @@
 
 Electrobun is now the working direction for the desktop beta. This task is fallback work, not the primary path.
 
+Fresh-agent context:
+
+- current decision: continue with Electrobun unless a must-have capability still fails
+- current spike branch: `feat/fn-50-electrobun-spike`
+- local upstream checkout: `/Users/gordon/repos/electrobun`
+- baseline findings: `plans/electrobun-spike.md`
+- known upstream issues:
+  - `#227` no built-in single-instance API
+  - `#304` no `application:openFiles`
+  - `#69` reopen-window request
+  - `#253` multitab template instability
+- proven already:
+  - packaged `gno://` works
+  - singleton can be handled with app-level glue
+  - tabs should be GNO app-level, not native BrowserView tabs
+
 Only execute a broader shell comparison if Electrobun still fails a must-have capability after the focused validation work in `fn-50`:
 
 - no acceptable `open-file` / file-association path

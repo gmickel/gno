@@ -32,6 +32,19 @@ For GNO to replace Obsidian day-to-day, users need more than navigation polish. 
 - `desktop/electrobun-spike/`
 - `plans/electrobun-spike.md`
 
+## Fresh-Agent Handoff
+
+- This epic exists because Gordon wants Obsidian-like multiple editors at once, not just better navigation.
+- Tabs here mean app-level workspace tabs in GNO itself:
+  - multiple open docs/searches
+  - predictable open-in-new-tab
+  - at least one simultaneous multi-editor / split-pane workflow
+- Do not use native Electrobun BrowserView tabs as the product model.
+- Relevant prior decisions:
+  - `fn-41` deep links, optimistic conflicts, local history, read-only converted-doc contract must all survive in tabs
+  - shell/open-file work from `fn-51` should eventually target this tab model
+  - `plans/electrobun-spike.md` explains why native Electrobun tabs are the wrong direction
+
 ## Dependencies
 
 - Blocked by: `fn-41-document-workspace-foundation-for`, `fn-45-desktop-beta-workspace-navigation`
