@@ -52,6 +52,42 @@ Test whether Electrobun can wrap the existing GNO Bun/web workspace without fork
 - Before the workaround, forced `open -n app` launched a second bundle instance and second `gno serve`.
 - After adding the control-port handoff, forced `open -n app` no longer left a second shell/server alive.
 
+## Upstream issue read
+
+- `#227` open: no built-in `requestSingleInstanceLock()` equivalent yet.
+- `#304` open: `application:openFiles` support is currently missing on macOS.
+- `#69` open: dock-icon reopen window request.
+- `#253` open: the multitab-browser template has active tab/navigation problems.
+
+Interpretation:
+
+- singleton is not a first-class framework feature today, but can be worked around at app level
+- open-file / default-app handling is still the main missing product capability for GNO
+- native BrowserView-style tabs are not a stable enough foundation to base GNO tabs on right now
+
+## Temp patch read
+
+I patched a local Electrobun checkout to add an `open-file` event path:
+
+- callback type in `callbacks.h`
+- `open-file` event in `ApplicationEvents.ts`
+- FFI registration in `native.ts`
+- `application:openFiles:` bridge in macOS native wrapper
+- Windows/Linux stubs to keep the symbol table aligned
+
+This patch surface is small and plausible to upstream. I did not carry it into GNO because it belongs in Electrobun first.
+
+## Tabs recommendation for GNO
+
+If GNO ships tabs on Electrobun, they should be app-level tabs inside the existing React workspace, not native BrowserView tabs.
+
+Why:
+
+- GNO already has route/deep-link semantics from `fn-41`
+- app-level tabs can reuse one shell window and one local service lifecycle
+- open-file and deep-link events can map cleanly to `open in current tab` / `open in new tab`
+- Electrobun's current multitab template is demo-quality and has an active bug around subsequent navigation/new tabs
+
 ## Current spike shape
 
 - `desktop/electrobun-spike/`
