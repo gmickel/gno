@@ -33,6 +33,7 @@ import {
   handleEmbed,
   handleEmbedStatus,
   handleHealth,
+  handleImportPreview,
   handleInstallConnector,
   handleJob,
   handleModelPull,
@@ -271,6 +272,17 @@ export async function startServer(
             }
             return withSecurityHeaders(
               await handleInstallConnector(req),
+              isDev
+            );
+          },
+        },
+        "/api/import/preview": {
+          POST: async (req: Request) => {
+            if (!isRequestAllowed(req, port)) {
+              return withSecurityHeaders(forbiddenResponse(), isDev);
+            }
+            return withSecurityHeaders(
+              await handleImportPreview(ctxHolder, req),
               isDev
             );
           },

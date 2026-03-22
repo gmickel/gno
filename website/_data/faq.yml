@@ -26,7 +26,11 @@
 
     - q: Does GNO work with Obsidian?
       a: >
-        Yes. Point GNO at your Obsidian vault directory and it indexes everything. GNO understands wiki links ([[note]]), frontmatter tags, and can discover semantic connections between notes that Obsidian's built-in search misses. It adds hybrid search, AI answers, and a knowledge graph on top of your existing vault.
+        Yes. Point GNO at your Obsidian vault directory and it indexes everything. GNO understands wiki links ([[note]]), frontmatter tags, and can discover semantic connections between notes that Obsidian's built-in search misses. It adds hybrid search, AI answers, and a knowledge graph on top of your existing vault. The app now previews likely Obsidian vault imports before indexing so users can see what will happen first.
+
+    - q: Can GNO preview a folder before importing it?
+      a: >
+        Yes. In the app, use Collections > Add Collection and GNO will preview the folder before indexing. It detects likely Obsidian vaults, mixed work-doc folders, and obvious duplicate conflicts so you can understand the import before it starts.
 
 - category: Search & Querying
   questions:

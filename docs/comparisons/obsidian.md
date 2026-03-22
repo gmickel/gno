@@ -118,6 +118,8 @@ gno init ~/Documents/Obsidian --name vault
 gno index
 ```
 
+If you prefer the app flow, open `gno serve`, go to **Collections**, and use the import preview before indexing. GNO now detects likely Obsidian vaults and tells you up front that it will import vault files and wiki links, not the wider Obsidian plugin ecosystem.
+
 ### Enable AI Access
 
 ```bash

@@ -50,6 +50,7 @@ import {
   resetDownloadState,
   type ServerContext,
 } from "../context";
+import { analyzeImportPath } from "../import-preview";
 import { getJobStatus, startJob } from "../jobs";
 import { buildAppStatus, type StatusBuildDeps } from "../status";
 
@@ -149,6 +150,11 @@ export interface CreateCollectionRequestBody {
   include?: string;
   exclude?: string;
   gitPull?: boolean;
+}
+
+export interface ImportPreviewRequestBody {
+  path: string;
+  name?: string;
 }
 
 export interface SyncRequestBody {
@@ -495,6 +501,7 @@ export async function handleCreateCollection(
     // Map mutation error codes to HTTP status codes
     const statusMap: Record<string, number> = {
       DUPLICATE: 409,
+      DUPLICATE_PATH: 409,
       PATH_NOT_FOUND: 400,
     };
     const status = statusMap[syncResult.code] ?? 500;
@@ -537,6 +544,41 @@ export async function handleCreateCollection(
     },
     202
   );
+}
+
+/**
+ * POST /api/import/preview
+ * Preview what GNO will import from a folder before indexing starts.
+ */
+export async function handleImportPreview(
+  ctxHolder: ContextHolder,
+  req: Request
+): Promise<Response> {
+  let body: ImportPreviewRequestBody;
+  try {
+    body = (await req.json()) as ImportPreviewRequestBody;
+  } catch {
+    return errorResponse("VALIDATION", "Invalid JSON body");
+  }
+
+  if (!body.path || typeof body.path !== "string") {
+    return errorResponse("VALIDATION", "Missing or invalid path");
+  }
+  if (body.name !== undefined && typeof body.name !== "string") {
+    return errorResponse("VALIDATION", "name must be a string");
+  }
+
+  try {
+    return jsonResponse({
+      preview: await analyzeImportPath(ctxHolder.config, body.path, body.name),
+    });
+  } catch (error) {
+    return errorResponse(
+      "RUNTIME",
+      error instanceof Error ? error.message : "Failed to preview import",
+      500
+    );
+  }
 }
 
 /**
