@@ -27,6 +27,19 @@ The GNO Web UI provides a complete graphical interface to your local knowledge i
 | **Ask**         | AI-powered Q&A with citations                                   |
 | **Graph**       | Interactive knowledge graph visualization                       |
 
+### App-Level Tabs
+
+GNO now keeps an app-level tab strip inside the workspace itself.
+
+Current behavior:
+
+- multiple app tabs can stay open at once
+- each tab remembers its current route
+- the last workspace tab set is restored after reload
+- tabs live in GNO app state, not native shell BrowserView tabs
+
+This is the foundation for the later multi-document and split-pane workspace.
+
 ---
 
 ## Quick Start

@@ -84,7 +84,7 @@ await client.close();
 
 Stop grepping through thousands of Markdown files. Ask GNO questions in plain English and get cited answers from your own notes, documentation, and code.
 
-The Web UI provides a visual dashboard for search, browsing, safe editing, quick switching, linked-note creation, and AI-powered answers. First-run users get a guided onboarding flow to add folders, pick a plain-language preset, and see real health checks for models, indexing, and disk before anything feels broken. Recent notes, favorite docs, and pinned collections now stay visible outside the keyboard-only quick switcher. Converted binary sources stay read-only, while markdown/plaintext notes remain editable. Filter by [tags](/features/tags/) extracted from your frontmatter for instant precision.
+The Web UI provides a visual dashboard for search, browsing, safe editing, quick switching, linked-note creation, and AI-powered answers. First-run users get a guided onboarding flow to add folders, pick a plain-language preset, and see real health checks for models, indexing, and disk before anything feels broken. Recent notes, favorite docs, pinned collections, and the new app-level tab strip now stay visible outside the keyboard-only quick switcher. Converted binary sources stay read-only, while markdown/plaintext notes remain editable. Filter by [tags](/features/tags/) extracted from your frontmatter for instant precision.
 
 ![GNO Web UI](/assets/screenshots/webui-home.jpg)
 

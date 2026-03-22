@@ -4,10 +4,20 @@ import { createRoot } from "react-dom/client";
 import { HelpButton } from "./components/HelpButton";
 import { QuickSwitcher } from "./components/QuickSwitcher";
 import { ShortcutHelpModal } from "./components/ShortcutHelpModal";
+import { WorkspaceTabs } from "./components/WorkspaceTabs";
 import { CaptureModalProvider, useCaptureModal } from "./hooks/useCaptureModal";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
 import { parseDocumentDeepLink } from "./lib/deep-links";
 import { saveRecentDocument } from "./lib/navigation-state";
+import {
+  activateWorkspaceTab,
+  closeWorkspaceTab,
+  createWorkspaceTab,
+  loadWorkspaceState,
+  saveWorkspaceState,
+  updateActiveTabLocation,
+  type WorkspaceState,
+} from "./lib/workspace-tabs";
 import Ask from "./pages/Ask";
 import Browse from "./pages/Browse";
 import Collections from "./pages/Collections";
@@ -47,13 +57,21 @@ interface AppContentProps {
   navigate: Navigate;
   shortcutHelpOpen: boolean;
   setShortcutHelpOpen: (open: boolean) => void;
+  workspace: WorkspaceState;
+  onActivateTab: (tabId: string) => void;
+  onCloseTab: (tabId: string) => void;
+  onNewTab: () => void;
 }
 
 function AppContent({
   location,
   navigate,
+  onActivateTab,
+  onCloseTab,
+  onNewTab,
   shortcutHelpOpen,
   setShortcutHelpOpen,
+  workspace,
 }: AppContentProps) {
   const { openCapture } = useCaptureModal();
   const [quickSwitcherOpen, setQuickSwitcherOpen] = useState(false);
@@ -116,6 +134,13 @@ function AppContent({
   return (
     <>
       <div className="flex min-h-screen flex-col">
+        <WorkspaceTabs
+          activeTabId={workspace.activeTabId}
+          onActivate={onActivateTab}
+          onClose={onCloseTab}
+          onNewTab={onNewTab}
+          tabs={workspace.tabs}
+        />
         <div className="flex-1">
           <Page key={location} navigate={navigate} />
         </div>
@@ -183,17 +208,32 @@ function AppContent({
 }
 
 function App() {
-  const [location, setLocation] = useState<string>(
-    window.location.pathname + window.location.search
+  const initialLocation = window.location.pathname + window.location.search;
+  const [workspace, setWorkspace] = useState<WorkspaceState>(() =>
+    loadWorkspaceState(initialLocation)
   );
   const [shortcutHelpOpen, setShortcutHelpOpen] = useState(false);
+  const activeTab =
+    workspace.tabs.find((tab) => tab.id === workspace.activeTabId) ??
+    workspace.tabs[0];
+  const location = activeTab?.location ?? "/";
 
   useEffect(() => {
-    const handlePopState = () =>
-      setLocation(window.location.pathname + window.location.search);
+    const handlePopState = () => {
+      setWorkspace((current) =>
+        updateActiveTabLocation(
+          current,
+          window.location.pathname + window.location.search
+        )
+      );
+    };
     window.addEventListener("popstate", handlePopState);
     return () => window.removeEventListener("popstate", handlePopState);
   }, []);
+
+  useEffect(() => {
+    saveWorkspaceState(workspace);
+  }, [workspace]);
 
   const navigate = useCallback((to: string | number) => {
     if (typeof to === "number") {
@@ -201,7 +241,46 @@ function App() {
       return;
     }
     window.history.pushState({}, "", to);
-    setLocation(to);
+    setWorkspace((current) => updateActiveTabLocation(current, to));
+  }, []);
+
+  const activateTab = useCallback((tabId: string) => {
+    setWorkspace((current) => {
+      const next = activateWorkspaceTab(current, tabId);
+      const tab =
+        next.tabs.find((entry) => entry.id === next.activeTabId) ??
+        next.tabs[0];
+      if (tab) {
+        window.history.pushState({}, "", tab.location);
+      }
+      return next;
+    });
+  }, []);
+
+  const closeTab = useCallback((tabId: string) => {
+    setWorkspace((current) => {
+      const next = closeWorkspaceTab(current, tabId);
+      const tab =
+        next.tabs.find((entry) => entry.id === next.activeTabId) ??
+        next.tabs[0];
+      if (tab) {
+        window.history.replaceState({}, "", tab.location);
+      }
+      return next;
+    });
+  }, []);
+
+  const openNewTab = useCallback(() => {
+    setWorkspace((current) => {
+      const next = createWorkspaceTab(current, "/search");
+      const tab =
+        next.tabs.find((entry) => entry.id === next.activeTabId) ??
+        next.tabs[0];
+      if (tab) {
+        window.history.pushState({}, "", tab.location);
+      }
+      return next;
+    });
   }, []);
 
   return (
@@ -209,8 +288,12 @@ function App() {
       <AppContent
         location={location}
         navigate={navigate}
+        onActivateTab={activateTab}
+        onCloseTab={closeTab}
+        onNewTab={openNewTab}
         setShortcutHelpOpen={setShortcutHelpOpen}
         shortcutHelpOpen={shortcutHelpOpen}
+        workspace={workspace}
       />
     </CaptureModalProvider>
   );
