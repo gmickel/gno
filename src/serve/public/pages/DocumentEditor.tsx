@@ -60,6 +60,7 @@ import {
 import { apiFetch } from "../hooks/use-api";
 import { useDocEvents } from "../hooks/use-doc-events";
 import { buildEditDeepLink, parseDocumentDeepLink } from "../lib/deep-links";
+import { waitForDocumentAvailability } from "../lib/document-availability";
 import {
   appendLocalHistory,
   loadLatestLocalHistory,
@@ -356,6 +357,13 @@ export default function DocumentEditor({ navigate }: PageProps) {
 
     if (data) {
       ignoreDocEventsUntilRef.current = Date.now() + 5_000;
+      const ready = await waitForDocumentAvailability(data.uri);
+      if (!ready) {
+        setCopyError(
+          "Created the markdown copy, but it is still indexing. Try again in a moment."
+        );
+        return;
+      }
       navigate(`/edit?uri=${encodeURIComponent(data.uri)}`);
     }
   }, [doc, navigate]);

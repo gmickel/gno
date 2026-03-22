@@ -57,6 +57,7 @@ import {
   buildEditDeepLink,
   parseDocumentDeepLink,
 } from "../lib/deep-links";
+import { waitForDocumentAvailability } from "../lib/document-availability";
 
 interface PageProps {
   navigate: (to: string | number) => void;
@@ -373,6 +374,13 @@ export default function DocView({ navigate }: PageProps) {
     }
 
     if (data) {
+      const ready = await waitForDocumentAvailability(data.uri);
+      if (!ready) {
+        setCopyError(
+          "Created the markdown copy, but it is still indexing. Try again in a moment."
+        );
+        return;
+      }
       navigate(`/edit?uri=${encodeURIComponent(data.uri)}`);
     }
   }, [doc, navigate]);
