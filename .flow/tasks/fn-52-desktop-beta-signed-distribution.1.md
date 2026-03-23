@@ -18,14 +18,18 @@ Initial slice:
 - [ ] Distribution assumptions and missing credentials/infra are called out clearly, not hidden
 
 ## Done summary
+
 Shipped the first desktop distribution readiness slice.
 
 Highlights:
+
 - added desktop beta rollout docs with explicit signing/notarization/update prerequisites and rollback/support checklists
 - added shell-side distribution placeholders for channels and macOS signing steps
 - linked the distribution scaffolding from the shell README and CI/release docs
 - kept missing credentials/hosting assumptions explicit instead of implying signed rollout is already ready
+
 ## Evidence
+
 - Commits:
 - Tests: bun test test/desktop/distribution-scaffold.test.ts, bun run lint:check, bun run typecheck, bun test, bun run docs:verify
 - PRs:
