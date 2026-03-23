@@ -19,16 +19,20 @@ Initial slice:
 - [ ] Unsupported/read-only docs show honest restrictions instead of broken actions
 
 ## Done summary
+
 Shipped the first file lifecycle and Finder integration slice.
 
 Highlights:
+
 - added backend rename, reveal, and trash flows for supported editable/local files
 - kept read-only converted docs out of unsupported mutation paths
 - updated DocView with Rename, Reveal, and Trash/Remove semantics based on actual file capability
 - updated docs to distinguish Move to Trash vs Remove from index behavior
 - added regression coverage for rename/trash/reveal safety paths
 - verified in-browser that editable docs now expose the new file lifecycle actions
+
 ## Evidence
+
 - Commits:
 - Tests: bun test test/serve/api-docs-lifecycle.test.ts, bun run lint:check, bun run typecheck, bun test, bun run docs:verify, browser sanity: agent-browser open editable doc view on http://localhost:3130; Rename/Reveal/Trash actions visible
 - PRs:
