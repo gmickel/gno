@@ -208,6 +208,22 @@ gno models pull --embed
 gno models pull --all
 ```
 
+### Force CPU-only for testing
+
+To disable Metal/CUDA/Vulkan and force `node-llama-cpp` onto the CPU backend
+for a repro or benchmark:
+
+```bash
+NODE_LLAMA_CPP_GPU=false gno doctor --json
+NODE_LLAMA_CPP_GPU=false gno embed --yes
+```
+
+Accepted values: `false`, `off`, `none`, `disable`, `disabled`.
+
+If your machine only has GPU-backed `node-llama-cpp` binaries cached, the first
+CPU-only run may build or download a separate CPU backend. For throughput
+measurements, ignore that first run and time the second.
+
 ## Model Issues
 
 ### Models Fail to Download
