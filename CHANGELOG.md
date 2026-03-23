@@ -9,6 +9,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+### Fixed
+
+## [0.28.2] - 2026-03-23
+
+### Fixed
+
+- Updated the validated dev-tooling dependency batch: `@biomejs/biome`, `@types/react`, `lefthook`, `oxlint-tsgolint`, `playwright`, and `ultracite`.
+
+## [0.28.1] - 2026-03-23
+
+### Fixed
+
+- Updated `@modelcontextprotocol/sdk` to `1.27.1` in a narrow follow-up security/maintenance bump after the stale grouped dependency PR failed local validation.
+
+## [0.28.0] - 2026-03-23
+
+### Fixed
+
+- `gno embed` now requests full embedding threads from `node-llama-cpp` and uses an adaptive embedding-context pool on CPU-only machines, with graceful fallback when extra contexts cannot be created. Thanks @riyadist for the report and repro details.
+
+## [0.27.3] - 2026-03-23
+
+### Fixed
+
+- Excluded the archived `desktop/electrobun-spike` workspace from root type-aware lint/typecheck so CI and patch publishes no longer fail on unresolved spike-only Electrobun imports.
+
+## [0.27.2] - 2026-03-23
+
+### Fixed
+
+- Fell back gracefully for unsupported markdown fence languages in the Web UI, including Obsidian-style ````tasks` blocks that previously crashed document rendering with a frontend ShikiError. Thanks @almino for the report.
+
 ## [0.27.1] - 2026-03-22
 
 ### Fixed
@@ -841,7 +873,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 | 0.4.0   | 2026-01-01 | Web UI and REST API                       |
 | 0.1.0   | 2025-12-30 | Initial release with full search pipeline |
 
-[Unreleased]: https://github.com/gmickel/gno/compare/v0.27.1...HEAD
+[Unreleased]: https://github.com/gmickel/gno/compare/v0.28.2...HEAD
+[0.28.2]: https://github.com/gmickel/gno/compare/v0.28.1...v0.28.2
+[0.28.1]: https://github.com/gmickel/gno/compare/v0.28.0...v0.28.1
+[0.28.0]: https://github.com/gmickel/gno/compare/v0.27.3...v0.28.0
+[0.27.3]: https://github.com/gmickel/gno/compare/v0.27.2...v0.27.3
+[0.27.2]: https://github.com/gmickel/gno/compare/v0.27.1...v0.27.2
 [0.27.1]: https://github.com/gmickel/gno/compare/v0.27.0...v0.27.1
 [0.27.0]: https://github.com/gmickel/gno/compare/v0.26.0...v0.27.0
 [0.26.0]: https://github.com/gmickel/gno/compare/v0.25.1...v0.26.0

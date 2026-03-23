@@ -8,14 +8,15 @@ import {
   useRef,
   useState,
 } from "react";
-import { type BundledLanguage, codeToHtml, type ShikiTransformer } from "shiki";
+import { codeToHtml, type ShikiTransformer } from "shiki";
 
+import { resolveCodeLanguage } from "../../lib/code-language";
 import { cn } from "../../lib/utils";
 import { Button } from "../ui/button";
 
 type CodeBlockProps = HTMLAttributes<HTMLDivElement> & {
   code: string;
-  language: BundledLanguage;
+  language: string;
   showLineNumbers?: boolean;
   highlightedLines?: number[];
   scrollToLine?: number;
@@ -78,27 +79,43 @@ function createLineTransformer(
 
 export async function highlightCode(
   code: string,
-  language: BundledLanguage,
+  language: string,
   showLineNumbers = false,
   highlightedLines: number[] = []
 ) {
+  const resolvedLanguage = resolveCodeLanguage(language);
   const transformers: ShikiTransformer[] =
     showLineNumbers || highlightedLines.length > 0
       ? [createLineTransformer(showLineNumbers, highlightedLines)]
       : [];
 
-  return await Promise.all([
-    codeToHtml(code, {
-      lang: language,
-      theme: "one-light",
-      transformers,
-    }),
-    codeToHtml(code, {
-      lang: language,
-      theme: "one-dark-pro",
-      transformers,
-    }),
-  ]);
+  try {
+    return await Promise.all([
+      codeToHtml(code, {
+        lang: resolvedLanguage,
+        theme: "one-light",
+        transformers,
+      }),
+      codeToHtml(code, {
+        lang: resolvedLanguage,
+        theme: "one-dark-pro",
+        transformers,
+      }),
+    ]);
+  } catch {
+    return await Promise.all([
+      codeToHtml(code, {
+        lang: "text",
+        theme: "one-light",
+        transformers,
+      }),
+      codeToHtml(code, {
+        lang: "text",
+        theme: "one-dark-pro",
+        transformers,
+      }),
+    ]);
+  }
 }
 
 export const CodeBlock = ({
