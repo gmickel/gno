@@ -411,6 +411,10 @@ With `--verbose`, embedding errors during the embed phase are logged to stderr (
 
 Generate embeddings for chunks without vectors.
 
+On CPU-only machines, implementations may use multiple embedding contexts
+internally to improve throughput, and may fall back to fewer contexts if
+memory pressure prevents creating the full pool.
+
 **Synopsis:**
 
 ```bash

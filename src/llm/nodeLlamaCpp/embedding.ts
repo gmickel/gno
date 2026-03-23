@@ -23,23 +23,34 @@ type LlamaModel = Awaited<
 type LlamaEmbeddingContext = Awaited<
   ReturnType<LlamaModel["createEmbeddingContext"]>
 >;
+type LlamaEmbedding = Awaited<
+  ReturnType<LlamaEmbeddingContext["getEmbeddingFor"]>
+>;
+
+type Llama = Awaited<ReturnType<typeof import("node-llama-cpp").getLlama>>;
+
+interface EmbeddingWorker {
+  context: LlamaEmbeddingContext;
+  pending: number;
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Constants
 // ─────────────────────────────────────────────────────────────────────────────
 
-// Max concurrent embedding operations per batch to avoid overwhelming the context.
-// node-llama-cpp contexts may not handle high concurrency well; this provides
-// a safe default while still allowing parallelism within chunks.
-const MAX_CONCURRENT_EMBEDDINGS = 16;
+// Aim for a small pool so CPU-only runs can exploit parallel contexts without
+// multiplying RAM usage too aggressively. Additional contexts fall back
+// gracefully if memory is tight.
+const MAX_EMBEDDING_CONTEXTS = 4;
+const TARGET_CORES_PER_EMBEDDING_CONTEXT = 4;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Implementation
 // ─────────────────────────────────────────────────────────────────────────────
 
 export class NodeLlamaCppEmbedding implements EmbeddingPort {
-  private context: LlamaEmbeddingContext | null = null;
-  private contextPromise: Promise<LlmResult<LlamaEmbeddingContext>> | null =
+  private workers: EmbeddingWorker[] = [];
+  private contextsPromise: Promise<LlmResult<LlamaEmbeddingContext[]>> | null =
     null;
   private dims: number | null = null;
   private readonly manager: ModelManager;
@@ -53,21 +64,23 @@ export class NodeLlamaCppEmbedding implements EmbeddingPort {
   }
 
   async init(): Promise<LlmResult<void>> {
-    const ctx = await this.getContext();
-    if (!ctx.ok) {
-      return ctx;
+    const contexts = await this.getContexts();
+    if (!contexts.ok) {
+      return contexts;
     }
     return { ok: true, value: undefined };
   }
 
   async embed(text: string): Promise<LlmResult<number[]>> {
-    const ctx = await this.getContext();
-    if (!ctx.ok) {
-      return ctx;
+    const contexts = await this.getContexts();
+    if (!contexts.ok) {
+      return contexts;
     }
 
     try {
-      const embedding = await ctx.value.getEmbeddingFor(text);
+      const embedding = await this.runOnWorker((worker) =>
+        worker.context.getEmbeddingFor(text)
+      );
       const vector = Array.from(embedding.vector) as number[];
 
       // Cache dimensions on first call
@@ -82,9 +95,9 @@ export class NodeLlamaCppEmbedding implements EmbeddingPort {
   }
 
   async embedBatch(texts: string[]): Promise<LlmResult<number[][]>> {
-    const ctx = await this.getContext();
-    if (!ctx.ok) {
-      return ctx;
+    const contexts = await this.getContexts();
+    if (!contexts.ok) {
+      return contexts;
     }
 
     if (texts.length === 0) {
@@ -92,40 +105,26 @@ export class NodeLlamaCppEmbedding implements EmbeddingPort {
     }
 
     try {
-      // Process in chunks to avoid overwhelming the embedding context.
-      // node-llama-cpp v3.x only exposes getEmbeddingFor (single text), not a native
-      // batch method. We use allSettled within chunks to ensure all in-flight ops
-      // complete before returning (prevents orphaned operations on early failure).
-      const allResults: number[][] = [];
+      const settled = await Promise.allSettled(
+        texts.map((text) =>
+          this.runOnWorker((worker) => worker.context.getEmbeddingFor(text))
+        )
+      );
 
-      for (let i = 0; i < texts.length; i += MAX_CONCURRENT_EMBEDDINGS) {
-        const chunk = texts.slice(i, i + MAX_CONCURRENT_EMBEDDINGS);
-        const settled = await Promise.allSettled(
-          chunk.map((text) => ctx.value.getEmbeddingFor(text))
-        );
-
-        // Check for any failures in this chunk
-        const firstRejection = settled.find(
-          (r): r is PromiseRejectedResult => r.status === "rejected"
-        );
-        if (firstRejection) {
-          return {
-            ok: false,
-            error: inferenceFailedError(this.modelUri, firstRejection.reason),
-          };
-        }
-
-        // Extract results from this chunk (cast safe after rejection check)
-        const chunkResults = (
-          settled as Array<
-            PromiseFulfilledResult<
-              Awaited<ReturnType<typeof ctx.value.getEmbeddingFor>>
-            >
-          >
-        ).map((r) => Array.from(r.value.vector) as number[]);
-
-        allResults.push(...chunkResults);
+      const firstRejection = settled.find(
+        (result): result is PromiseRejectedResult =>
+          result.status === "rejected"
+      );
+      if (firstRejection) {
+        return {
+          ok: false,
+          error: inferenceFailedError(this.modelUri, firstRejection.reason),
+        };
       }
+
+      const allResults = (
+        settled as Array<PromiseFulfilledResult<LlamaEmbedding>>
+      ).map((result) => Array.from(result.value.vector) as number[]);
 
       // Cache dimensions from first result
       const firstResult = allResults[0];
@@ -147,15 +146,16 @@ export class NodeLlamaCppEmbedding implements EmbeddingPort {
   }
 
   async dispose(): Promise<void> {
-    // Clear promise first to prevent reuse of disposed context
-    this.contextPromise = null;
-    if (this.context) {
+    this.contextsPromise = null;
+    const workers = this.workers;
+    this.workers = [];
+
+    for (const worker of workers) {
       try {
-        await this.context.dispose();
+        await worker.context.dispose();
       } catch {
         // Ignore disposal errors
       }
-      this.context = null;
     }
   }
 
@@ -163,46 +163,109 @@ export class NodeLlamaCppEmbedding implements EmbeddingPort {
   // Private
   // ───────────────────────────────────────────────────────────────────────────
 
-  private getContext(): Promise<LlmResult<LlamaEmbeddingContext>> {
-    // Return cached context
-    if (this.context) {
-      return Promise.resolve({ ok: true, value: this.context });
+  private async runOnWorker<T>(
+    task: (worker: EmbeddingWorker) => Promise<T>
+  ): Promise<T> {
+    const worker = this.getLeastBusyWorker();
+    worker.pending += 1;
+    try {
+      return await task(worker);
+    } finally {
+      worker.pending -= 1;
     }
-
-    // Reuse in-flight promise to prevent concurrent context creation
-    if (this.contextPromise) {
-      return this.contextPromise;
-    }
-
-    this.contextPromise = this.createContext();
-    return this.contextPromise;
   }
 
-  private async createContext(): Promise<LlmResult<LlamaEmbeddingContext>> {
+  private getLeastBusyWorker(): EmbeddingWorker {
+    const firstWorker = this.workers[0];
+    if (!firstWorker) {
+      throw new Error("Embedding context not initialized");
+    }
+
+    let bestWorker = firstWorker;
+    for (const worker of this.workers) {
+      if (worker.pending < bestWorker.pending) {
+        bestWorker = worker;
+      }
+    }
+    return bestWorker;
+  }
+
+  private getContexts(): Promise<LlmResult<LlamaEmbeddingContext[]>> {
+    if (this.workers.length > 0) {
+      return Promise.resolve({
+        ok: true,
+        value: this.workers.map((worker) => worker.context),
+      });
+    }
+
+    if (this.contextsPromise) {
+      return this.contextsPromise;
+    }
+
+    this.contextsPromise = this.createContexts();
+    return this.contextsPromise;
+  }
+
+  private resolveTargetPoolSize(llama: Llama): number {
+    if (llama.gpu !== false) {
+      return 1;
+    }
+
+    const cpuMathCores = Math.max(1, llama.cpuMathCores);
+    return Math.max(
+      1,
+      Math.min(
+        MAX_EMBEDDING_CONTEXTS,
+        Math.ceil(cpuMathCores / TARGET_CORES_PER_EMBEDDING_CONTEXT)
+      )
+    );
+  }
+
+  private async createContexts(): Promise<LlmResult<LlamaEmbeddingContext[]>> {
     const model = await this.manager.loadModel(
       this.modelPath,
       this.modelUri,
       "embed"
     );
     if (!model.ok) {
-      this.contextPromise = null; // Allow retry
+      this.contextsPromise = null;
       return model;
     }
 
     try {
-      // Cast to access createEmbeddingContext
       const llamaModel = model.value.model as LlamaModel;
-      this.context = await llamaModel.createEmbeddingContext();
+      const llama = await this.manager.getLlama();
+      const targetPoolSize = this.resolveTargetPoolSize(llama);
+      const contextOptions = llama.gpu === false ? { threads: 0 } : undefined;
+      const contexts: LlamaEmbeddingContext[] = [];
 
-      // Cache dimensions from model (available without running embed)
+      for (let i = 0; i < targetPoolSize; i += 1) {
+        try {
+          const context =
+            await llamaModel.createEmbeddingContext(contextOptions);
+          contexts.push(context);
+        } catch (error) {
+          if (contexts.length === 0) {
+            this.contextsPromise = null;
+            return {
+              ok: false,
+              error: inferenceFailedError(this.modelUri, error),
+            };
+          }
+          break;
+        }
+      }
+
+      this.workers = contexts.map((context) => ({ context, pending: 0 }));
+
       const size = llamaModel.embeddingVectorSize;
       if (this.dims === null && typeof size === "number" && size > 0) {
         this.dims = size;
       }
 
-      return { ok: true, value: this.context };
+      return { ok: true, value: contexts };
     } catch (e) {
-      this.contextPromise = null; // Allow retry
+      this.contextsPromise = null;
       return { ok: false, error: inferenceFailedError(this.modelUri, e) };
     }
   }

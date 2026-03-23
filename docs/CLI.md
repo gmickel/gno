@@ -373,6 +373,10 @@ Options:
 
 Generate embeddings for indexed chunks.
 
+On CPU-only machines, GNO uses a small adaptive pool of embedding contexts to
+keep more cores busy. If RAM is tight, it automatically falls back to fewer
+contexts.
+
 ```bash
 gno embed
 gno embed notes
