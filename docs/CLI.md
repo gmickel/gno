@@ -52,6 +52,20 @@ All commands accept:
 
 **Offline mode**: Use `--offline` or set `HF_HUB_OFFLINE=1` to prevent auto-downloading models. Set `GNO_NO_AUTO_DOWNLOAD=1` to disable auto-download while still allowing explicit `gno models pull`.
 
+**Force CPU-only for testing**: Set `NODE_LLAMA_CPP_GPU=false` on the `gno`
+process to disable Metal/CUDA/Vulkan and force the CPU backend:
+
+```bash
+NODE_LLAMA_CPP_GPU=false gno doctor --json
+NODE_LLAMA_CPP_GPU=false gno embed --yes
+```
+
+Accepted values from `node-llama-cpp`: `false`, `off`, `none`, `disable`,
+`disabled`.
+
+> **Note:** the first CPU-only run may build or download a separate CPU backend
+> if you only have GPU-backed binaries cached. Use the second run for timing.
+
 **Output format flags** (`--json`, `--files`, `--csv`, `--md`, `--xml`) are per-command.
 See [spec/cli.md](../spec/cli.md#output-format-support-matrix) for which commands support which formats.
 
