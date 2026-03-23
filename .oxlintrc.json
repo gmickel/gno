@@ -3,6 +3,7 @@
   "ignorePatterns": [
     "node_modules/**",
     "dist/**",
+    "desktop/electrobun-spike/**",
     "tmp/**",
     "evals/**",
     "src/serve/public/components/ui/**",
