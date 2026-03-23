@@ -15,6 +15,7 @@ import {
   BookOpenIcon,
   CheckIcon,
   CloudIcon,
+  HistoryIcon,
   EyeIcon,
   EyeOffIcon,
   HomeIcon,
@@ -63,7 +64,9 @@ import { buildEditDeepLink, parseDocumentDeepLink } from "../lib/deep-links";
 import { waitForDocumentAvailability } from "../lib/document-availability";
 import {
   appendLocalHistory,
+  loadLocalHistory,
   loadLatestLocalHistory,
+  type LocalHistoryEntry,
 } from "../lib/local-history";
 import { getActiveWikiLinkQuery } from "../lib/wiki-link";
 
@@ -193,7 +196,9 @@ export default function DocumentEditor({ navigate }: PageProps) {
   const [externalChangeNotice, setExternalChangeNotice] = useState<
     string | null
   >(null);
-  const [hasLocalSnapshot, setHasLocalSnapshot] = useState(false);
+  const [historyEntries, setHistoryEntries] = useState<LocalHistoryEntry[]>([]);
+  const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
+  const [selectedHistoryIndex, setSelectedHistoryIndex] = useState(0);
 
   const [showPreview, setShowPreview] = useState(true);
   const [syncScroll, setSyncScroll] = useState(true);
@@ -220,8 +225,19 @@ export default function DocumentEditor({ navigate }: PageProps) {
   const latestDocEvent = useDocEvents();
 
   const hasUnsavedChanges = content !== originalContent;
+  const hasLocalSnapshot = historyEntries.length > 0;
   const parsedContent = useMemo(() => parseFrontmatter(content), [content]);
   const hasFrontmatter = Object.keys(parsedContent.data).length > 0;
+
+  const refreshHistoryEntries = useCallback((docId: string) => {
+    const next = loadLocalHistory(docId);
+    setHistoryEntries(next);
+    if (next.length === 0) {
+      setSelectedHistoryIndex(0);
+      return;
+    }
+    setSelectedHistoryIndex((current) => Math.min(current, next.length - 1));
+  }, []);
 
   // Reset ignore flags when sync is toggled to prevent stale state
   useEffect(() => {
@@ -315,7 +331,7 @@ export default function DocumentEditor({ navigate }: PageProps) {
         ignoreDocEventsUntilRef.current = Date.now() + 5_000;
         if (originalContent !== contentToSave) {
           appendLocalHistory(doc.docid, originalContent);
-          setHasLocalSnapshot(true);
+          refreshHistoryEntries(doc.docid);
         }
         setSaveStatus("saved");
         setOriginalContent(contentToSave);
@@ -510,7 +526,7 @@ export default function DocumentEditor({ navigate }: PageProps) {
     ignoreDocEventsUntilRef.current = Date.now() + 5_000;
     if (originalContent !== content) {
       appendLocalHistory(doc.docid, originalContent);
-      setHasLocalSnapshot(true);
+      refreshHistoryEntries(doc.docid);
     }
     setSaveStatus("saved");
     setOriginalContent(content);
@@ -549,7 +565,7 @@ export default function DocumentEditor({ navigate }: PageProps) {
           const docContent = data.content ?? "";
           setContent(docContent);
           setOriginalContent(docContent);
-          setHasLocalSnapshot(Boolean(loadLatestLocalHistory(data.docid)));
+          refreshHistoryEntries(data.docid);
           // Ensure CodeMirror reflects content after async load
           requestAnimationFrame(() => {
             editorRef.current?.setValue(docContent);
@@ -592,6 +608,18 @@ export default function DocumentEditor({ navigate }: PageProps) {
     editorRef.current?.setValue(latest.content);
     setSaveStatus("unsaved");
   }, [doc]);
+
+  const selectedHistoryEntry = historyEntries[selectedHistoryIndex] ?? null;
+
+  const restoreSelectedHistory = useCallback(() => {
+    if (!selectedHistoryEntry) {
+      return;
+    }
+    setContent(selectedHistoryEntry.content);
+    editorRef.current?.setValue(selectedHistoryEntry.content);
+    setSaveStatus("unsaved");
+    setHistoryDialogOpen(false);
+  }, [selectedHistoryEntry]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -989,6 +1017,15 @@ export default function DocumentEditor({ navigate }: PageProps) {
 
           {/* Save button */}
           <Button
+            disabled={!hasLocalSnapshot}
+            onClick={() => setHistoryDialogOpen(true)}
+            size="sm"
+            variant="outline"
+          >
+            <HistoryIcon className="mr-1.5 size-4" />
+            History
+          </Button>
+          <Button
             disabled={!hasUnsavedChanges || saveStatus === "saving"}
             onClick={handleForceSave}
             size="sm"
@@ -1059,6 +1096,86 @@ export default function DocumentEditor({ navigate }: PageProps) {
           </div>
         )}
       </div>
+
+      <Dialog onOpenChange={setHistoryDialogOpen} open={historyDialogOpen}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Local history</DialogTitle>
+            <DialogDescription>
+              Restore a recent local snapshot captured before an in-app save.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 md:grid-cols-[220px_1fr]">
+            <div className="space-y-2">
+              {historyEntries.length === 0 ? (
+                <p className="text-muted-foreground text-sm">
+                  No local snapshots yet.
+                </p>
+              ) : (
+                historyEntries.map((entry, index) => (
+                  <Button
+                    className="h-auto w-full justify-start px-3 py-2 text-left"
+                    key={entry.savedAt}
+                    onClick={() => setSelectedHistoryIndex(index)}
+                    variant={
+                      index === selectedHistoryIndex ? "secondary" : "ghost"
+                    }
+                  >
+                    <div>
+                      <div className="font-medium">
+                        {formatTime(new Date(entry.savedAt))}
+                      </div>
+                      <div className="line-clamp-2 text-muted-foreground text-xs">
+                        {entry.content.slice(0, 80) || "(empty)"}
+                      </div>
+                    </div>
+                  </Button>
+                ))
+              )}
+            </div>
+            <div className="rounded-lg border border-border/60 bg-background/70 p-4">
+              {selectedHistoryEntry ? (
+                <div className="space-y-3">
+                  <p className="text-muted-foreground text-sm">
+                    Snapshot from{" "}
+                    {new Date(selectedHistoryEntry.savedAt).toLocaleString(
+                      "en-US",
+                      {
+                        year: "numeric",
+                        month: "short",
+                        day: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      }
+                    )}
+                  </p>
+                  <pre className="max-h-[320px] overflow-auto whitespace-pre-wrap rounded-md bg-muted/40 p-3 text-sm">
+                    {selectedHistoryEntry.content || "(empty)"}
+                  </pre>
+                </div>
+              ) : (
+                <p className="text-muted-foreground text-sm">
+                  Select a snapshot to preview it.
+                </p>
+              )}
+            </div>
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              onClick={() => setHistoryDialogOpen(false)}
+              variant="outline"
+            >
+              Close
+            </Button>
+            <Button
+              disabled={!selectedHistoryEntry}
+              onClick={restoreSelectedHistory}
+            >
+              Restore selected snapshot
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <WikiLinkAutocomplete
         activeIndex={wikiLinkActiveIndex}

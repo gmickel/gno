@@ -116,6 +116,20 @@ Common causes:
 - Exclude patterns too aggressive
 - Empty directory
 
+## Recovery
+
+### I overwrote or mangled a note in the editor
+
+For editable markdown/plaintext files, GNO now keeps local snapshots before successful in-app saves.
+
+Use the editor's **History** button to:
+
+- inspect recent local snapshots
+- restore a prior version into the editor
+- recover first before touching the file in Finder or asking for support
+
+This local history is meant for common self-recovery cases, not long-term version control.
+
 ### Slow Indexing
 
 Large collections take time.
