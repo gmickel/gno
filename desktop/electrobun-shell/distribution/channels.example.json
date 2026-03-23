@@ -1,0 +1,16 @@
+{
+  "beta": {
+    "channel": "beta",
+    "platform": "macos",
+    "artifact": "gno-desktop-beta-macos-arm64.zip",
+    "notes_url": "https://gno.sh",
+    "update_mode": "manual-reinstall"
+  },
+  "stable": {
+    "channel": "stable",
+    "platform": "macos",
+    "artifact": "gno-desktop-macos-arm64.zip",
+    "notes_url": "https://gno.sh",
+    "update_mode": "manual-reinstall"
+  }
+}

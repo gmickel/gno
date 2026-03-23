@@ -31,6 +31,11 @@
 
 ## Release Process
 
+Desktop beta rollout scaffolding:
+
+- see `docs/DESKTOP-BETA-ROLLOUT.md`
+- see `desktop/electrobun-shell/distribution/`
+
 **First-time setup (npm):**
 
 1. Go to https://www.npmjs.com/package/@gmickel/gno/access

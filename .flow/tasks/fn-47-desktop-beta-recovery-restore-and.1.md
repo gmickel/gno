@@ -19,16 +19,20 @@ Initial slice:
 - [ ] Read-only docs do not expose invalid restore actions
 
 ## Done summary
+
 Shipped the first recovery/restore slice.
 
 Highlights:
+
 - promoted local history into a visible History dialog in the editor
 - added restore-selected-snapshot flow on top of the existing local snapshot model
 - kept recovery scoped to editable docs instead of exposing broken actions on read-only docs
 - made local history testable with injected storage and added regression coverage
 - updated troubleshooting docs to point users at the self-recovery path first
 - verified in-browser that the editor now exposes the visible History action
+
 ## Evidence
+
 - Commits:
 - Tests: bun test test/serve/public/local-history.test.ts test/serve/public/navigation.test.tsx, bun run lint:check, bun run typecheck, bun test, bun run docs:verify, browser sanity: agent-browser open editable doc editor on http://localhost:3131; visible History action confirmed
 - PRs:

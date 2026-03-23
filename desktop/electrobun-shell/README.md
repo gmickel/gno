@@ -34,6 +34,15 @@ Current interim plan:
 2. when shell `open-file` support exists upstream, translate incoming file paths into existing GNO workspace routes
 3. until then, keep the packaging fragment and boundary documented here instead of inventing fake runtime glue in core app code
 
+## Distribution placeholders
+
+Distribution scaffolding now lives in:
+
+- `desktop/electrobun-shell/distribution/`
+- `docs/DESKTOP-BETA-ROLLOUT.md`
+
+These are placeholders for the eventual signed/notarized beta path, not proof that credentials or hosting already exist.
+
 Fallback trigger:
 
 - only revisit another shell if Electrobun still fails a must-have capability:
