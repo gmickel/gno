@@ -31,12 +31,21 @@ function createMockContextHolder(config?: Partial<Config>): ContextHolder {
   };
 }
 
-function createMockStore(doc: DocumentRow) {
+function createMockStore(docsInput: DocumentRow | DocumentRow[]) {
+  const docs = Array.isArray(docsInput) ? docsInput : [docsInput];
   return {
     getDocumentByDocid(id: string) {
+      const doc = docs.find((entry) => entry.docid === id);
       return Promise.resolve({
         ok: true as const,
-        value: id === doc.docid ? doc : null,
+        value: doc ?? null,
+      });
+    },
+    getDocumentByUri(uri: string) {
+      const doc = docs.find((entry) => entry.uri === uri);
+      return Promise.resolve({
+        ok: true as const,
+        value: doc ?? null,
       });
     },
     markInactive() {
@@ -180,11 +189,17 @@ describe("document lifecycle API", () => {
     });
     const store = createMockStore(doc);
 
-    const res = await handleTrashDoc(ctxHolder, store as never, "#abc123", {
-      trashFilePath: async () => undefined,
-      syncCollection: async () =>
-        ({ ok: true as const, value: undefined }) as never,
-    });
+    const res = await handleTrashDoc(
+      ctxHolder,
+      store as never,
+      "#abc123",
+      undefined,
+      {
+        trashFilePath: async () => undefined,
+        syncCollection: async () =>
+          ({ ok: true as const, value: undefined }) as never,
+      }
+    );
 
     expect(res.status).toBe(200);
     const body = (await res.json()) as { success: boolean; note: string };
@@ -251,12 +266,18 @@ describe("document lifecycle API", () => {
     });
     const store = createMockStore(doc);
 
-    const res = await handleTrashDoc(ctxHolder, store as never, "#abc123", {
-      trashFilePath: async () => undefined,
-      syncCollection: async () => {
-        throw new Error("sync failed");
-      },
-    });
+    const res = await handleTrashDoc(
+      ctxHolder,
+      store as never,
+      "#abc123",
+      undefined,
+      {
+        trashFilePath: async () => undefined,
+        syncCollection: async () => {
+          throw new Error("sync failed");
+        },
+      }
+    );
 
     expect(res.status).toBe(200);
     const body = (await res.json()) as { warning?: string };
@@ -282,13 +303,73 @@ describe("document lifecycle API", () => {
     const store = createMockStore(doc);
 
     let revealedPath = "";
-    const res = await handleRevealDoc(ctxHolder, store as never, "#abc123", {
-      revealFilePath: async (path) => {
-        revealedPath = path;
-      },
-    });
+    const res = await handleRevealDoc(
+      ctxHolder,
+      store as never,
+      "#abc123",
+      undefined,
+      {
+        revealFilePath: async (path) => {
+          revealedPath = path;
+        },
+      }
+    );
 
     expect(res.status).toBe(200);
     expect(revealedPath).toBe(sourcePath);
+  });
+
+  test("trashes the exact duplicate-content document when uri query is provided", async () => {
+    const firstDoc = createDoc(tmpDir, {
+      id: 1,
+      relPath: "first.md",
+      docid: "#samehash",
+      uri: "gno://notes/first.md",
+      title: "First",
+    });
+    const secondDoc = createDoc(tmpDir, {
+      id: 2,
+      relPath: "second.md",
+      docid: "#samehash",
+      uri: "gno://notes/second.md",
+      title: "Second",
+    });
+    await writeFile(join(tmpDir, "first.md"), "# First");
+    await writeFile(join(tmpDir, "second.md"), "# Second");
+
+    const ctxHolder = createMockContextHolder({
+      collections: [
+        {
+          name: "notes",
+          path: tmpDir,
+          pattern: "**/*.md",
+          include: [],
+          exclude: [],
+        },
+      ],
+    });
+    const store = createMockStore([firstDoc, secondDoc]);
+
+    let trashedPath = "";
+    const req = new Request(
+      "http://localhost/api/docs/samehash/trash?uri=gno%3A%2F%2Fnotes%2Fsecond.md",
+      { method: "POST" }
+    );
+    const res = await handleTrashDoc(
+      ctxHolder,
+      store as never,
+      "#samehash",
+      req,
+      {
+        trashFilePath: async (path) => {
+          trashedPath = path;
+        },
+        syncCollection: async () =>
+          ({ ok: true as const, value: undefined }) as never,
+      }
+    );
+
+    expect(res.status).toBe(200);
+    expect(trashedPath).toBe(join(tmpDir, "second.md"));
   });
 });

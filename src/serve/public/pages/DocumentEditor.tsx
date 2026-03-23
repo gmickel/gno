@@ -320,6 +320,7 @@ export default function DocumentEditor({ navigate }: PageProps) {
             content: contentToSave,
             expectedSourceHash: doc.source.sourceHash,
             expectedModifiedAt: doc.source.modifiedAt,
+            uri: doc.uri,
           }),
         }
       );
@@ -362,7 +363,10 @@ export default function DocumentEditor({ navigate }: PageProps) {
     setCopyError(null);
     const { data, error: err } = await apiFetch<CreateEditableCopyResponse>(
       `/api/docs/${encodeURIComponent(doc.docid)}/editable-copy`,
-      { method: "POST" }
+      {
+        method: "POST",
+        body: JSON.stringify({ uri: doc.uri }),
+      }
     );
     setCreatingCopy(false);
 
@@ -513,6 +517,7 @@ export default function DocumentEditor({ navigate }: PageProps) {
           content,
           expectedSourceHash: doc.source.sourceHash,
           expectedModifiedAt: doc.source.modifiedAt,
+          uri: doc.uri,
         }),
       }
     );

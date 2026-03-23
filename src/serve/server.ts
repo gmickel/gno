@@ -335,7 +335,7 @@ export async function startServer(
             const parts = url.pathname.split("/");
             const id = decodeURIComponent(parts[3] || "");
             return withSecurityHeaders(
-              await handleDeactivateDoc(store, id),
+              await handleDeactivateDoc(store, id, req),
               isDev
             );
           },
@@ -363,7 +363,7 @@ export async function startServer(
             const parts = url.pathname.split("/");
             const id = decodeURIComponent(parts[3] || "");
             return withSecurityHeaders(
-              await handleTrashDoc(ctxHolder, store, id),
+              await handleTrashDoc(ctxHolder, store, id, req),
               isDev
             );
           },
@@ -377,7 +377,7 @@ export async function startServer(
             const parts = url.pathname.split("/");
             const id = decodeURIComponent(parts[3] || "");
             return withSecurityHeaders(
-              await handleRevealDoc(ctxHolder, store, id),
+              await handleRevealDoc(ctxHolder, store, id, req),
               isDev
             );
           },

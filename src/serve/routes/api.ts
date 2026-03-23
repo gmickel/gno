@@ -13,6 +13,7 @@ import type {
   SearchOptions,
 } from "../../pipeline/types";
 import type { SqliteAdapter } from "../../store/sqlite/adapter";
+import type { DocumentRow } from "../../store/types";
 import type { DocumentEventBus } from "../doc-events";
 import type { EmbedScheduler } from "../embed-scheduler";
 import type { CollectionWatchService } from "../watch-service";
@@ -179,6 +180,7 @@ export interface CreateDocRequestBody {
 
 export interface RenameDocRequestBody {
   name: string;
+  uri?: string;
 }
 
 export interface UpdateDocRequestBody {
@@ -190,11 +192,14 @@ export interface UpdateDocRequestBody {
   expectedSourceHash?: string;
   /** Expected source modified timestamp for optimistic concurrency */
   expectedModifiedAt?: string;
+  /** Exact document URI when docid is not unique across duplicate content */
+  uri?: string;
 }
 
 export interface CreateEditableCopyRequestBody {
   collection?: string;
   relPath?: string;
+  uri?: string;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -224,6 +229,11 @@ function hashContent(content: string): string {
   const hasher = new Bun.CryptoHasher("sha256");
   hasher.update(content);
   return hasher.digest("hex");
+}
+
+function readRequestedUriFromUrl(req: Request): string | undefined {
+  const value = new URL(req.url).searchParams.get("uri");
+  return value?.trim() ? value : undefined;
 }
 
 interface SourceMeta {
@@ -290,6 +300,29 @@ async function buildSourceMeta(
     sizeBytes: doc.sourceSize,
     sourceHash: doc.sourceHash,
   };
+}
+
+async function resolveDocumentReference(
+  store: Pick<SqliteAdapter, "getDocumentByDocid" | "getDocumentByUri">,
+  docId: string,
+  requestedUri?: string
+): Promise<
+  | { ok: true; value: DocumentRow | null }
+  | { ok: false; error: { message: string } }
+> {
+  if (requestedUri) {
+    const byUri = await store.getDocumentByUri(requestedUri);
+    if (!byUri.ok) {
+      return { ok: false, error: byUri.error };
+    }
+    return { ok: true, value: byUri.value };
+  }
+
+  const byDocid = await store.getDocumentByDocid(docId);
+  if (!byDocid.ok) {
+    return { ok: false, error: byDocid.error };
+  }
+  return { ok: true, value: byDocid.value };
 }
 
 function parseQueryModesInput(value: unknown): {
@@ -991,10 +1024,15 @@ export async function handleTags(
  */
 export async function handleDeactivateDoc(
   store: SqliteAdapter,
-  docId: string
+  docId: string,
+  req?: Request
 ): Promise<Response> {
   // Get document to verify it exists and get collection/relPath
-  const docResult = await store.getDocumentByDocid(docId);
+  const docResult = await resolveDocumentReference(
+    store,
+    docId,
+    req ? readRequestedUriFromUrl(req) : undefined
+  );
   if (!docResult.ok) {
     return errorResponse("RUNTIME", docResult.error.message, 500);
   }
@@ -1041,8 +1079,11 @@ export async function handleRenameDoc(
   if (body.name.includes("/") || body.name.includes("\\")) {
     return errorResponse("VALIDATION", "name must be a file name, not a path");
   }
+  if (body.uri !== undefined && typeof body.uri !== "string") {
+    return errorResponse("VALIDATION", "uri must be a string");
+  }
 
-  const docResult = await store.getDocumentByDocid(docId);
+  const docResult = await resolveDocumentReference(store, docId, body.uri);
   if (!docResult.ok) {
     return errorResponse("RUNTIME", docResult.error.message, 500);
   }
@@ -1149,12 +1190,17 @@ export async function handleTrashDoc(
   ctxHolder: ContextHolder,
   store: SqliteAdapter,
   docId: string,
+  req?: Request,
   deps?: {
     trashFilePath?: typeof trashFilePath;
     syncCollection?: typeof defaultSyncService.syncCollection;
   }
 ): Promise<Response> {
-  const docResult = await store.getDocumentByDocid(docId);
+  const docResult = await resolveDocumentReference(
+    store,
+    docId,
+    req ? readRequestedUriFromUrl(req) : undefined
+  );
   if (!docResult.ok) {
     return errorResponse("RUNTIME", docResult.error.message, 500);
   }
@@ -1235,11 +1281,16 @@ export async function handleRevealDoc(
   ctxHolder: ContextHolder,
   store: SqliteAdapter,
   docId: string,
+  req?: Request,
   deps?: {
     revealFilePath?: typeof revealFilePath;
   }
 ): Promise<Response> {
-  const docResult = await store.getDocumentByDocid(docId);
+  const docResult = await resolveDocumentReference(
+    store,
+    docId,
+    req ? readRequestedUriFromUrl(req) : undefined
+  );
   if (!docResult.ok) {
     return errorResponse("RUNTIME", docResult.error.message, 500);
   }
@@ -1316,6 +1367,9 @@ export async function handleUpdateDoc(
   ) {
     return errorResponse("VALIDATION", "expectedModifiedAt must be a string");
   }
+  if (body.uri !== undefined && typeof body.uri !== "string") {
+    return errorResponse("VALIDATION", "uri must be a string");
+  }
 
   // Validate tags if provided
   let normalizedTags: string[] | undefined;
@@ -1340,7 +1394,7 @@ export async function handleUpdateDoc(
   }
 
   // Get document to verify it exists
-  const docResult = await store.getDocumentByDocid(docId);
+  const docResult = await resolveDocumentReference(store, docId, body.uri);
   if (!docResult.ok) {
     return errorResponse("RUNTIME", docResult.error.message, 500);
   }
@@ -1536,8 +1590,11 @@ export async function handleCreateEditableCopy(
   if (body.relPath !== undefined && typeof body.relPath !== "string") {
     return errorResponse("VALIDATION", "relPath must be a string");
   }
+  if (body.uri !== undefined && typeof body.uri !== "string") {
+    return errorResponse("VALIDATION", "uri must be a string");
+  }
 
-  const docResult = await store.getDocumentByDocid(docId);
+  const docResult = await resolveDocumentReference(store, docId, body.uri);
   if (!docResult.ok) {
     return errorResponse("RUNTIME", docResult.error.message, 500);
   }

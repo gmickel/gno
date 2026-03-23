@@ -375,7 +375,10 @@ export default function DocView({ navigate }: PageProps) {
     setCopyError(null);
     const { data, error: err } = await apiFetch<CreateEditableCopyResponse>(
       `/api/docs/${encodeURIComponent(doc.docid)}/editable-copy`,
-      { method: "POST" }
+      {
+        method: "POST",
+        body: JSON.stringify({ uri: doc.uri }),
+      }
     );
     setCreatingCopy(false);
 
@@ -403,8 +406,8 @@ export default function DocView({ navigate }: PageProps) {
     setDeleteError(null);
 
     const endpoint = doc.capabilities.editable
-      ? `/api/docs/${encodeURIComponent(doc.docid)}/trash`
-      : `/api/docs/${encodeURIComponent(doc.docid)}/deactivate`;
+      ? `/api/docs/${encodeURIComponent(doc.docid)}/trash?uri=${encodeURIComponent(doc.uri)}`
+      : `/api/docs/${encodeURIComponent(doc.docid)}/deactivate?uri=${encodeURIComponent(doc.uri)}`;
     const { error: err } = await apiFetch(endpoint, { method: "POST" });
 
     setDeleting(false);
@@ -438,7 +441,7 @@ export default function DocView({ navigate }: PageProps) {
       `/api/docs/${encodeURIComponent(doc.docid)}/rename`,
       {
         method: "POST",
-        body: JSON.stringify({ name: renameValue }),
+        body: JSON.stringify({ name: renameValue, uri: doc.uri }),
       }
     );
     setRenaming(false);
@@ -459,7 +462,7 @@ export default function DocView({ navigate }: PageProps) {
       return;
     }
     const { error: err } = await apiFetch(
-      `/api/docs/${encodeURIComponent(doc.docid)}/reveal`,
+      `/api/docs/${encodeURIComponent(doc.docid)}/reveal?uri=${encodeURIComponent(doc.uri)}`,
       { method: "POST" }
     );
     if (err) {
@@ -500,6 +503,7 @@ export default function DocView({ navigate }: PageProps) {
           tags: editedTags,
           expectedSourceHash: doc.source.sourceHash,
           expectedModifiedAt: doc.source.modifiedAt,
+          uri: doc.uri,
         }),
       }
     );

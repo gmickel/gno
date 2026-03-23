@@ -48,6 +48,10 @@ function createMockStore(
       const doc = docs.find((d) => d.docid === docId);
       return Promise.resolve({ ok: true as const, value: doc ?? null });
     },
+    getDocumentByUri(uri: string) {
+      const doc = docs.find((d) => d.uri === uri);
+      return Promise.resolve({ ok: true as const, value: doc ?? null });
+    },
     getContent(mirrorHash: string) {
       return Promise.resolve({
         ok: true as const,
@@ -308,6 +312,95 @@ describe("PUT /api/docs/:id", () => {
     // Verify file was updated
     const updatedContent = await Bun.file(testFilePath).text();
     expect(updatedContent).toBe(newContent);
+  });
+
+  test("updates the exact duplicate-content document when uri is provided", async () => {
+    const firstPath = join(tmpDir, "first.md");
+    const secondPath = join(tmpDir, "second.md");
+    const sharedContent = "# Shared";
+    await writeFile(firstPath, sharedContent);
+    await writeFile(secondPath, sharedContent);
+
+    const docs: DocumentRow[] = [
+      {
+        id: 1,
+        collection: "notes",
+        relPath: "first.md",
+        sourceHash: "samehash",
+        sourceMime: "text/markdown",
+        sourceExt: ".md",
+        sourceSize: sharedContent.length,
+        sourceMtime: new Date().toISOString(),
+        docid: "#samehash",
+        uri: "gno://notes/first.md",
+        title: "First",
+        mirrorHash: null,
+        converterId: null,
+        converterVersion: null,
+        languageHint: null,
+        lastErrorCode: null,
+        lastErrorMessage: null,
+        lastErrorAt: null,
+        active: true,
+        ingestVersion: null,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+      {
+        id: 2,
+        collection: "notes",
+        relPath: "second.md",
+        sourceHash: "samehash",
+        sourceMime: "text/markdown",
+        sourceExt: ".md",
+        sourceSize: sharedContent.length,
+        sourceMtime: new Date().toISOString(),
+        docid: "#samehash",
+        uri: "gno://notes/second.md",
+        title: "Second",
+        mirrorHash: null,
+        converterId: null,
+        converterVersion: null,
+        languageHint: null,
+        lastErrorCode: null,
+        lastErrorMessage: null,
+        lastErrorAt: null,
+        active: true,
+        ingestVersion: null,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+    ];
+    const store = createMockStore(docs);
+    const ctxHolder = createMockContextHolder({
+      collections: [
+        {
+          name: "notes",
+          path: tmpDir,
+          pattern: "**/*.md",
+          include: [],
+          exclude: [],
+        },
+      ],
+    });
+
+    const req = new Request("http://localhost/api/docs/samehash", {
+      method: "PUT",
+      body: JSON.stringify({
+        content: "# Second only",
+        uri: "gno://notes/second.md",
+      }),
+    });
+    const res = await handleUpdateDoc(
+      ctxHolder,
+      store as never,
+      "#samehash",
+      req
+    );
+
+    expect(res.status).toBe(200);
+    expect(await Bun.file(firstPath).text()).toBe(sharedContent);
+    expect(await Bun.file(secondPath).text()).toBe("# Second only");
   });
 
   test("handles nested paths", async () => {
