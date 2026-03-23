@@ -6,7 +6,6 @@
  */
 
 import type { ComponentProps, FC, ReactNode } from "react";
-import type { BundledLanguage } from "shiki";
 
 import { ExternalLinkIcon } from "lucide-react";
 import { memo } from "react";
@@ -14,6 +13,10 @@ import ReactMarkdown from "react-markdown";
 import rehypeSanitize from "rehype-sanitize";
 import remarkGfm from "remark-gfm";
 
+import {
+  extractMarkdownCodeLanguage,
+  resolveCodeLanguage,
+} from "../../lib/code-language";
 import { cn } from "../../lib/utils";
 import { CodeBlock, CodeBlockCopyButton } from "../ai-elements/code-block";
 
@@ -106,8 +109,7 @@ const Pre: FC<ComponentProps<"pre">> = ({ children, ...props }) => {
   const code = String(codeElement.props.children ?? "").trim();
 
   // Extract language from className (e.g., "language-typescript")
-  const match = /language-(\w+)/.exec(className);
-  const language = (match?.[1] ?? "plaintext") as BundledLanguage;
+  const language = resolveCodeLanguage(extractMarkdownCodeLanguage(className));
 
   return (
     <div className="group/code my-4">
