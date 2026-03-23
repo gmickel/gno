@@ -38,9 +38,19 @@ function createManager(options?: {
     createContext(4, calls),
   ];
 
+  const resolvedCpuMathCores = options?.cpuMathCores ?? 16;
+  const resolvedPoolSize =
+    options?.gpu === false || options?.gpu === undefined
+      ? Math.max(1, Math.min(4, Math.ceil(resolvedCpuMathCores / 4)))
+      : 1;
   const expectedOptions =
     options?.gpu === false || options?.gpu === undefined
-      ? { threads: 0 }
+      ? {
+          threads: Math.max(
+            1,
+            Math.floor(resolvedCpuMathCores / resolvedPoolSize)
+          ),
+        }
       : undefined;
 
   const createEmbeddingContext = mock(async (opts?: { threads?: number }) => {
@@ -154,11 +164,53 @@ describe("NodeLlamaCppEmbedding", () => {
       [1, 3],
       [2, 4],
     ]);
-    expect(calls).toEqual([
-      { contextId: 1, text: "a" },
-      { contextId: 2, text: "bb" },
-      { contextId: 1, text: "ccc" },
-      { contextId: 2, text: "dddd" },
-    ]);
+    expect(calls).toHaveLength(4);
+    expect(calls.filter((call) => call.contextId === 1)).toHaveLength(2);
+    expect(calls.filter((call) => call.contextId === 2)).toHaveLength(2);
+  });
+
+  test("disposes contexts created after a concurrent dispose", async () => {
+    let resolveContext: ((context: MockEmbeddingContext) => void) | undefined;
+    const delayedContext = createContext(1, []);
+    const createEmbeddingContext = mock(
+      () =>
+        new Promise<MockEmbeddingContext>((resolve) => {
+          resolveContext = resolve;
+        })
+    );
+
+    const manager = {
+      getLlama: mock(async () => ({
+        cpuMathCores: 4,
+        gpu: false,
+      })),
+      loadModel: mock(async () => ({
+        ok: true as const,
+        value: {
+          model: {
+            createEmbeddingContext,
+            embeddingVectorSize: 2,
+          },
+        },
+      })),
+    };
+
+    const embedding = new NodeLlamaCppEmbedding(
+      manager as never,
+      "test-model",
+      "/tmp/model.gguf"
+    );
+
+    const initPromise = embedding.init();
+    while (createEmbeddingContext.mock.calls.length === 0) {
+      await Promise.resolve();
+    }
+    await embedding.dispose();
+    resolveContext?.(delayedContext);
+
+    const result = await initPromise;
+
+    expect(result.ok).toBe(false);
+    expect(delayedContext.dispose).toHaveBeenCalledTimes(1);
   });
 });

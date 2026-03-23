@@ -23,9 +23,6 @@ type LlamaModel = Awaited<
 type LlamaEmbeddingContext = Awaited<
   ReturnType<LlamaModel["createEmbeddingContext"]>
 >;
-type LlamaEmbedding = Awaited<
-  ReturnType<LlamaEmbeddingContext["getEmbeddingFor"]>
->;
 
 type Llama = Awaited<ReturnType<typeof import("node-llama-cpp").getLlama>>;
 
@@ -52,6 +49,7 @@ export class NodeLlamaCppEmbedding implements EmbeddingPort {
   private workers: EmbeddingWorker[] = [];
   private contextsPromise: Promise<LlmResult<LlamaEmbeddingContext[]>> | null =
     null;
+  private lifecycleVersion = 0;
   private dims: number | null = null;
   private readonly manager: ModelManager;
   readonly modelUri: string;
@@ -105,10 +103,29 @@ export class NodeLlamaCppEmbedding implements EmbeddingPort {
     }
 
     try {
+      const allResults = Array.from(
+        { length: texts.length },
+        () => [] as number[]
+      );
+      let nextIndex = 0;
+
       const settled = await Promise.allSettled(
-        texts.map((text) =>
-          this.runOnWorker((worker) => worker.context.getEmbeddingFor(text))
-        )
+        this.workers.map(async (worker) => {
+          while (true) {
+            const index = nextIndex;
+            nextIndex += 1;
+            if (index >= texts.length) {
+              return;
+            }
+
+            const embedding = await this.runOnSpecificWorker(
+              worker,
+              (current) =>
+                current.context.getEmbeddingFor(texts[index] as string)
+            );
+            allResults[index] = Array.from(embedding.vector) as number[];
+          }
+        })
       );
 
       const firstRejection = settled.find(
@@ -121,10 +138,6 @@ export class NodeLlamaCppEmbedding implements EmbeddingPort {
           error: inferenceFailedError(this.modelUri, firstRejection.reason),
         };
       }
-
-      const allResults = (
-        settled as Array<PromiseFulfilledResult<LlamaEmbedding>>
-      ).map((result) => Array.from(result.value.vector) as number[]);
 
       // Cache dimensions from first result
       const firstResult = allResults[0];
@@ -146,6 +159,7 @@ export class NodeLlamaCppEmbedding implements EmbeddingPort {
   }
 
   async dispose(): Promise<void> {
+    this.lifecycleVersion += 1;
     this.contextsPromise = null;
     const workers = this.workers;
     this.workers = [];
@@ -167,6 +181,13 @@ export class NodeLlamaCppEmbedding implements EmbeddingPort {
     task: (worker: EmbeddingWorker) => Promise<T>
   ): Promise<T> {
     const worker = this.getLeastBusyWorker();
+    return this.runOnSpecificWorker(worker, task);
+  }
+
+  private async runOnSpecificWorker<T>(
+    worker: EmbeddingWorker,
+    task: (worker: EmbeddingWorker) => Promise<T>
+  ): Promise<T> {
     worker.pending += 1;
     try {
       return await task(worker);
@@ -221,6 +242,14 @@ export class NodeLlamaCppEmbedding implements EmbeddingPort {
     );
   }
 
+  private resolveThreadsPerContext(llama: Llama, poolSize: number): number {
+    if (llama.gpu !== false) {
+      return 0;
+    }
+
+    return Math.max(1, Math.floor(Math.max(1, llama.cpuMathCores) / poolSize));
+  }
+
   private async createContexts(): Promise<LlmResult<LlamaEmbeddingContext[]>> {
     const model = await this.manager.loadModel(
       this.modelPath,
@@ -235,8 +264,14 @@ export class NodeLlamaCppEmbedding implements EmbeddingPort {
     try {
       const llamaModel = model.value.model as LlamaModel;
       const llama = await this.manager.getLlama();
+      const lifecycleVersion = this.lifecycleVersion;
       const targetPoolSize = this.resolveTargetPoolSize(llama);
-      const contextOptions = llama.gpu === false ? { threads: 0 } : undefined;
+      const threadsPerContext = this.resolveThreadsPerContext(
+        llama,
+        targetPoolSize
+      );
+      const contextOptions =
+        llama.gpu === false ? { threads: threadsPerContext } : undefined;
       const contexts: LlamaEmbeddingContext[] = [];
 
       for (let i = 0; i < targetPoolSize; i += 1) {
@@ -254,6 +289,23 @@ export class NodeLlamaCppEmbedding implements EmbeddingPort {
           }
           break;
         }
+      }
+
+      if (lifecycleVersion !== this.lifecycleVersion) {
+        for (const context of contexts) {
+          try {
+            await context.dispose();
+          } catch {
+            // Ignore disposal errors
+          }
+        }
+        return {
+          ok: false,
+          error: inferenceFailedError(
+            this.modelUri,
+            new Error("Embedding context disposed during initialization")
+          ),
+        };
       }
 
       this.workers = contexts.map((context) => ({ context, pending: 0 }));
