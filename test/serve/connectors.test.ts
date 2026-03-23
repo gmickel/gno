@@ -45,7 +45,11 @@ describe("connector service", () => {
     const workspace = await createTempWorkspace();
     cleanupPaths.push(join(workspace.homeDir, ".."));
 
-    const status = await installConnector("claude-code-skill", workspace);
+    const status = await installConnector(
+      "claude-code-skill",
+      { reinstall: false },
+      workspace
+    );
 
     expect(status.installed).toBe(true);
     expect(await Bun.file(join(status.path, "SKILL.md")).exists()).toBe(true);
@@ -55,11 +59,39 @@ describe("connector service", () => {
     const workspace = await createTempWorkspace();
     cleanupPaths.push(join(workspace.homeDir, ".."));
 
-    const status = await installConnector("claude-desktop-mcp", workspace);
+    const status = await installConnector(
+      "claude-desktop-mcp",
+      { reinstall: false },
+      workspace
+    );
 
     expect(status.installed).toBe(true);
     expect(await Bun.file(status.path).exists()).toBe(true);
     const content = await Bun.file(status.path).text();
     expect(content).toContain('"gno"');
+  });
+
+  test("refuses to overwrite installed connector without explicit reinstall", async () => {
+    const workspace = await createTempWorkspace();
+    cleanupPaths.push(join(workspace.homeDir, ".."));
+
+    await installConnector(
+      "claude-code-skill",
+      { reinstall: false },
+      workspace
+    );
+
+    let message = "";
+    try {
+      await installConnector(
+        "claude-code-skill",
+        { reinstall: false },
+        workspace
+      );
+    } catch (error) {
+      message = error instanceof Error ? error.message : String(error);
+    }
+
+    expect(message).toContain("already installed");
   });
 });

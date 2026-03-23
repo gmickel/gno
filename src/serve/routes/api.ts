@@ -81,6 +81,7 @@ export interface ApiError {
 
 export interface InstallConnectorRequestBody {
   connectorId: string;
+  reinstall?: boolean;
 }
 
 export interface SearchRequestBody {
@@ -1110,8 +1111,16 @@ export async function handleRenameDoc(
     ctxHolder.watchService?.suppress(fullPath);
     ctxHolder.watchService?.suppress(nextFullPath);
     await (deps?.renameFilePath ?? renameFilePath)(fullPath, nextFullPath);
-    await syncCollection(collection, store, { runUpdateCmd: false });
     const nextUri = `gno://${collection.name}/${nextRelPath}`;
+    let warning: string | undefined;
+    try {
+      await syncCollection(collection, store, {
+        runUpdateCmd: false,
+      });
+    } catch {
+      warning =
+        "File renamed on disk, but index refresh failed. Run Update All to reconcile the workspace.";
+    }
     ctxHolder.eventBus?.emit({
       type: "document-changed",
       uri: nextUri,
@@ -1125,6 +1134,7 @@ export async function handleRenameDoc(
       uri: nextUri,
       path: nextFullPath,
       relPath: nextRelPath,
+      warning,
     });
   } catch (error) {
     return errorResponse(
@@ -1188,7 +1198,15 @@ export async function handleTrashDoc(
     ctxHolder.watchService?.suppress(fullPath);
     await (deps?.trashFilePath ?? trashFilePath)(fullPath);
     await store.markInactive(doc.collection, [doc.relPath]);
-    await syncCollection(collection, store, { runUpdateCmd: false });
+    let warning: string | undefined;
+    try {
+      await syncCollection(collection, store, {
+        runUpdateCmd: false,
+      });
+    } catch {
+      warning =
+        "File moved to Trash, but index refresh failed. Run Update All to reconcile the workspace.";
+    }
     ctxHolder.eventBus?.emit({
       type: "document-changed",
       uri: doc.uri,
@@ -1202,6 +1220,7 @@ export async function handleTrashDoc(
       docId: doc.docid,
       path: fullPath,
       note: "Moved to Trash and removed from the current index.",
+      warning,
     });
   } catch (error) {
     return errorResponse(
@@ -2571,10 +2590,17 @@ export async function handleInstallConnector(
   if (!body.connectorId || typeof body.connectorId !== "string") {
     return errorResponse("VALIDATION", "Missing or invalid connectorId");
   }
+  if (body.reinstall !== undefined && typeof body.reinstall !== "boolean") {
+    return errorResponse("VALIDATION", "reinstall must be a boolean");
+  }
 
   try {
     return jsonResponse({
-      connector: await installConnector(body.connectorId, overrides),
+      connector: await installConnector(
+        body.connectorId,
+        { reinstall: body.reinstall },
+        overrides
+      ),
     });
   } catch (error) {
     return errorResponse(

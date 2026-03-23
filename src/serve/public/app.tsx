@@ -219,6 +219,13 @@ function App() {
   const location = activeTab?.location ?? "/";
 
   useEffect(() => {
+    const currentLocation = window.location.pathname + window.location.search;
+    if (location !== currentLocation) {
+      window.history.replaceState({}, "", location);
+    }
+  }, [location]);
+
+  useEffect(() => {
     const handlePopState = () => {
       setWorkspace((current) =>
         updateActiveTabLocation(

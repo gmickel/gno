@@ -192,6 +192,77 @@ describe("document lifecycle API", () => {
     expect(body.note).toContain("Moved to Trash");
   });
 
+  test("rename returns warning when sync fails after file move", async () => {
+    const doc = createDoc(tmpDir);
+    const sourcePath = join(tmpDir, "doc.md");
+    await writeFile(sourcePath, "# Hello");
+
+    const ctxHolder = createMockContextHolder({
+      collections: [
+        {
+          name: "notes",
+          path: tmpDir,
+          pattern: "**/*.md",
+          include: [],
+          exclude: [],
+        },
+      ],
+    });
+    const store = createMockStore(doc);
+    const req = new Request("http://localhost/api/docs/abc123/rename", {
+      method: "POST",
+      body: JSON.stringify({ name: "renamed.md" }),
+    });
+
+    const res = await handleRenameDoc(
+      ctxHolder,
+      store as never,
+      "#abc123",
+      req,
+      {
+        renameFilePath: async (from, to) => {
+          await rename(from, to);
+        },
+        syncCollection: async () => {
+          throw new Error("sync failed");
+        },
+      }
+    );
+
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { warning?: string };
+    expect(body.warning).toContain("index refresh failed");
+  });
+
+  test("trash returns warning when sync fails after file move", async () => {
+    const doc = createDoc(tmpDir);
+    await writeFile(join(tmpDir, "doc.md"), "# Hello");
+
+    const ctxHolder = createMockContextHolder({
+      collections: [
+        {
+          name: "notes",
+          path: tmpDir,
+          pattern: "**/*.md",
+          include: [],
+          exclude: [],
+        },
+      ],
+    });
+    const store = createMockStore(doc);
+
+    const res = await handleTrashDoc(ctxHolder, store as never, "#abc123", {
+      trashFilePath: async () => undefined,
+      syncCollection: async () => {
+        throw new Error("sync failed");
+      },
+    });
+
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { warning?: string };
+    expect(body.warning).toContain("index refresh failed");
+  });
+
   test("reveals supported source files", async () => {
     const doc = createDoc(tmpDir);
     const sourcePath = join(tmpDir, "doc.md");

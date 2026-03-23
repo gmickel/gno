@@ -64,10 +64,14 @@ export default function Connectors({ navigate }: PageProps) {
   }, [loadConnectors]);
 
   const handleInstall = async (connectorId: string) => {
+    const connector = connectors.find((entry) => entry.id === connectorId);
     setInstallingId(connectorId);
     const { error: err } = await apiFetch("/api/connectors/install", {
       method: "POST",
-      body: JSON.stringify({ connectorId }),
+      body: JSON.stringify({
+        connectorId,
+        reinstall: connector?.installed ?? false,
+      }),
     });
     setInstallingId(null);
 

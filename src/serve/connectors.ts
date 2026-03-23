@@ -182,6 +182,9 @@ export async function getConnectorStatuses(overrides?: {
 
 export async function installConnector(
   id: string,
+  options?: {
+    reinstall?: boolean;
+  },
   overrides?: { cwd?: string; homeDir?: string }
 ): Promise<ConnectorStatus> {
   const definition = CONNECTOR_DEFINITIONS.find((entry) => entry.id === id);
@@ -189,11 +192,19 @@ export async function installConnector(
     throw new Error(`Unknown connector: ${id}`);
   }
 
+  const currentStatuses = await getConnectorStatuses(overrides);
+  const currentStatus = currentStatuses.find((entry) => entry.id === id);
+  if (currentStatus?.installed && !options?.reinstall) {
+    throw new Error(
+      `${currentStatus.appName} is already installed. Reinstall explicitly to overwrite the existing GNO entry.`
+    );
+  }
+
   if (definition.installKind === "skill") {
     await installSkillToTarget(
       definition.scope,
       definition.target,
-      true,
+      options?.reinstall ?? false,
       overrides
     );
   } else {
@@ -202,7 +213,7 @@ export async function installConnector(
       definition.scope,
       buildMcpServerEntry({ enableWrite: false }),
       {
-        force: true,
+        force: options?.reinstall ?? false,
         dryRun: false,
         ...overrides,
       }

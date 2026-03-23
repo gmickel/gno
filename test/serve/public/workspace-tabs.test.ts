@@ -41,6 +41,22 @@ describe("workspace tabs", () => {
     expect(restored.activeTabId).toBe(withSecond.activeTabId);
   });
 
+  test("injects explicit current route when it is missing from restored tabs", () => {
+    const storage = createStorage();
+    const initial = loadWorkspaceState("/search", storage);
+    saveWorkspaceState(initial, storage);
+
+    const restored = loadWorkspaceState(
+      "/doc?uri=gno%3A%2F%2Fnotes%2Fa.md",
+      storage
+    );
+    expect(
+      restored.tabs.some(
+        (tab) => tab.location === "/doc?uri=gno%3A%2F%2Fnotes%2Fa.md"
+      )
+    ).toBe(true);
+  });
+
   test("updates active tab location and label", () => {
     const storage = createStorage();
     const state = loadWorkspaceState("/search", storage);
