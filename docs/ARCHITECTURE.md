@@ -231,15 +231,15 @@ GNO extracts and tracks links between documents:
 
 ### Link Types
 
-| Type     | Syntax                   | Example                    |
-| -------- | ------------------------ | -------------------------- |
-| Wiki     | `[[Target]]`             | `[[My Note]]`              |
-| Wiki     | `[[Target\|Display]]`    | `[[My Note\|click here]]`  |
-| Wiki     | `[[Target#Heading]]`     | `[[My Note#Section]]`      |
-| Wiki     | `[[collection:Target]]`  | `[[work:Project Plan]]`    |
-| Wiki     | `[Display]([[Target]])`  | `[Plan]([[Project Plan]])` |
-| Wiki     | `&#123;&#123;embed ((block-id))&#125;&#125;` | `&#123;&#123;embed ((63f1d1a8))&#125;&#125;`   |
-| Markdown | `[text](path.md)`        | `[docs](./README.md)`      |
+| Type     | Syntax                                       | Example                                      |
+| -------- | -------------------------------------------- | -------------------------------------------- |
+| Wiki     | `[[Target]]`                                 | `[[My Note]]`                                |
+| Wiki     | `[[Target\|Display]]`                        | `[[My Note\|click here]]`                    |
+| Wiki     | `[[Target#Heading]]`                         | `[[My Note#Section]]`                        |
+| Wiki     | `[[collection:Target]]`                      | `[[work:Project Plan]]`                      |
+| Wiki     | `[Display]([[Target]])`                      | `[Plan]([[Project Plan]])`                   |
+| Wiki     | `&#123;&#123;embed ((block-id))&#125;&#125;` | `&#123;&#123;embed ((63f1d1a8))&#125;&#125;` |
+| Markdown | `[text](path.md)`                            | `[docs](./README.md)`                        |
 
 External URLs (https://) are NOT stored—only internal document links.
 
