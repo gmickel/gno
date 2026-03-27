@@ -1186,6 +1186,10 @@ tr:hover td {
       direction: ltr;
     }
   }
+
+  @media (max-width: $bp-sm) {
+    padding: $space-5;
+  }
 }
 
 .use-case-label {
@@ -1200,7 +1204,7 @@ tr:hover td {
 }
 
 .use-case-content {
-  min-width: 0;
+  min-width: 0; // prevent grid blowout from nowrap code blocks
 
   h3 {
     font-family: $font-serif;
@@ -1228,12 +1232,9 @@ tr:hover td {
   flex-direction: column;
   gap: $space-2;
   margin-bottom: $space-5;
-  min-width: 0;
 
   code {
     display: block;
-    max-width: 100%;
-    box-sizing: border-box;
     padding: $space-2 $space-4;
     background: var(--color-code-bg);
     border: 1px solid var(--color-code-border);
@@ -1242,13 +1243,10 @@ tr:hover td {
     color: var(--color-accent);
     overflow-x: auto;
     white-space: nowrap;
-  }
 
-  @media (max-width: $bp-sm) {
-    code {
-      white-space: pre-wrap;
-      overflow-wrap: anywhere;
-      word-break: break-word;
+    @media (max-width: $bp-sm) {
+      white-space: normal;
+      word-break: break-all;
     }
   }
 }
@@ -1266,6 +1264,8 @@ tr:hover td {
 }
 
 .use-case-visual {
+  min-width: 0; // prevent grid blowout
+
   img {
     width: 100%;
     max-width: none;
