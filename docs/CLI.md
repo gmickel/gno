@@ -20,6 +20,7 @@ GNO command-line interface guide.
 | `gno ask`        | Search with AI answer             |
 | `gno get`        | Retrieve document content         |
 | `gno ls`         | List indexed documents            |
+| `gno daemon`     | Headless continuous indexing      |
 | `gno links`      | List outgoing links from document |
 | `gno backlinks`  | List documents linking to target  |
 | `gno similar`    | Find semantically similar docs    |
@@ -786,7 +787,52 @@ gno search "test" --json | jq '.results[].uri'
 | 1    | Validation error (bad input)  |
 | 2    | Runtime error (IO, DB, model) |
 
-## Web UI
+## Long-Running Processes
+
+### gno daemon
+
+Start a headless long-running watcher process for continuous indexing.
+
+```bash
+gno daemon
+gno daemon --no-sync-on-start
+```
+
+Options:
+
+- `--no-sync-on-start` - Skip the initial sync pass and only watch future file changes
+
+**Behavior:**
+
+- Opens the selected index DB and loads config
+- Starts the same watcher + embed scheduler used by `gno serve`
+- Runs an initial sync by default, then embeds backlog immediately
+- Stays in the foreground until `SIGINT` / `SIGTERM`
+- Does **not** start the web server or open any port
+
+**Use it when:**
+
+- you want continuous indexing without a browser or desktop shell
+- you are supervising GNO with `nohup`, launchd, or systemd
+- you want CLI / MCP queries to hit a fresh local index
+
+**Notes:**
+
+- Avoid running `gno daemon` and `gno serve` against the same index at the same time until explicit cross-process coordination exists.
+- For normie/local UI usage, prefer the desktop app or `gno serve`.
+
+**Examples:**
+
+```bash
+# Run in foreground
+gno daemon
+
+# Service-friendly shell backgrounding
+nohup gno daemon > /tmp/gno-daemon.log 2>&1 &
+
+# Watch only future changes
+gno daemon --no-sync-on-start
+```
 
 ### gno serve
 
@@ -834,6 +880,8 @@ gno serve --port 3001
 # Open in browser
 open http://localhost:3001
 ```
+
+> Want live indexing without the browser? Use `gno daemon`.
 
 ## Shell Completion
 

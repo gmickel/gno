@@ -41,6 +41,12 @@ GNO is a local knowledge engine that turns your documents into a searchable, con
 - **Default Preset Upgrade**: `slim-tuned` is now the built-in default, using the fine-tuned retrieval expansion model while keeping the same embed, rerank, and answer stack as `slim`
 - **Workspace UI Polish**: richer scholarly-dusk presentation across dashboard, tabs, search, ask, footer, and global styling without introducing external font or asset dependencies
 
+## What's New in v0.30
+
+- **Headless Daemon Mode**: `gno daemon` keeps your index fresh continuously without opening the Web UI
+- **CLI Concurrency Hardening**: read-only commands no longer trip transient `database is locked` errors when they overlap with `gno update`
+- **Web/Desktop UI Polish**: sharper workspace styling across dashboard, tabs, search, ask, and footer surfaces
+
 ### v0.24
 
 - **Structured Query Documents**: first-class multi-line query syntax using `term:`, `intent:`, and `hyde:`
@@ -145,6 +151,7 @@ gno query "ECONNREFUSED 127.0.0.1:5432" --thorough
 ```bash
 gno init ~/notes --name notes    # Point at your docs
 gno index                        # Build search index
+gno daemon                       # Keep index fresh in background (foreground process)
 gno query "auth best practices"  # Hybrid search
 gno ask "summarize the API" --answer  # AI answer with citations
 ```
@@ -174,6 +181,15 @@ Verify everything works:
 ```bash
 gno doctor
 ```
+
+Keep an index fresh continuously without opening the Web UI:
+
+```bash
+gno daemon
+```
+
+`gno daemon` runs as a foreground watcher/sync/embed process. Use `nohup`,
+launchd, or systemd if you want it supervised long-term.
 
 ### Connect to AI Agents
 

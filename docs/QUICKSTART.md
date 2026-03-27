@@ -140,6 +140,15 @@ gno update
 
 This makes re-indexing fast even for large collections. Just run `gno index` after adding or editing files.
 
+If you want continuous indexing instead of manual re-runs:
+
+```bash
+gno daemon
+```
+
+This runs the watcher + sync + embed loop in a foreground headless process. Use
+`nohup`, launchd, or systemd if you want it supervised long-term.
+
 ### Check System Health
 
 ```bash
@@ -174,6 +183,9 @@ Open http://localhost:3000 in your browser for:
 - Visual search with highlighted results
 - Document browser with collection filtering
 - Rendered document viewer with syntax highlighting
+
+Prefer a headless process instead? Run `gno daemon` to keep the index fresh
+without opening the Web UI.
 
 ## Example Session
 

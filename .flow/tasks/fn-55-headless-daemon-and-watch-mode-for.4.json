@@ -1,0 +1,14 @@
+{
+  "assignee": null,
+  "claim_note": "",
+  "claimed_at": null,
+  "created_at": "2026-03-27T21:11:49.770334Z",
+  "depends_on": ["fn-55-headless-daemon-and-watch-mode-for.3"],
+  "epic": "fn-55-headless-daemon-and-watch-mode-for",
+  "id": "fn-55-headless-daemon-and-watch-mode-for.4",
+  "priority": null,
+  "spec_path": ".flow/tasks/fn-55-headless-daemon-and-watch-mode-for.4.md",
+  "status": "todo",
+  "title": "Add daemon tests and docs updates",
+  "updated_at": "2026-03-27T21:12:24.901860Z"
+}

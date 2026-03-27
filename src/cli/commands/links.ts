@@ -315,7 +315,10 @@ export async function linksList(
   docRef: string,
   options: LinksListOptions = {}
 ): Promise<LinksListResult> {
-  const initResult = await initStore({ configPath: options.configPath });
+  const initResult = await initStore({
+    configPath: options.configPath,
+    syncConfig: false,
+  });
   if (!initResult.ok) {
     return { success: false, error: initResult.error };
   }
@@ -428,7 +431,10 @@ export async function backlinks(
   docRef: string,
   options: BacklinksOptions = {}
 ): Promise<BacklinksResult> {
-  const initResult = await initStore({ configPath: options.configPath });
+  const initResult = await initStore({
+    configPath: options.configPath,
+    syncConfig: false,
+  });
   if (!initResult.ok) {
     return { success: false, error: initResult.error };
   }
@@ -507,7 +513,10 @@ export async function similar(
   const threshold = options.threshold ?? 0.7;
   const crossCollection = options.crossCollection ?? false;
 
-  const initResult = await initStore({ configPath: options.configPath });
+  const initResult = await initStore({
+    configPath: options.configPath,
+    syncConfig: false,
+  });
   if (!initResult.ok) {
     return { success: false, error: initResult.error };
   }

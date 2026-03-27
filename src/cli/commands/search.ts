@@ -56,6 +56,7 @@ export async function search(
   const initResult = await initStore({
     configPath: options.configPath,
     collection: options.collection,
+    syncConfig: false,
   });
 
   if (!initResult.ok) {

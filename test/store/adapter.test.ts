@@ -105,6 +105,30 @@ describe("SqliteAdapter", () => {
       expect(result.error.code).toBe("MIGRATION_FAILED");
       expect(result.error.message).toContain("tokenizer mismatch");
     });
+
+    test("reopens during an active writer transaction without lock failure", async () => {
+      const first = new SqliteAdapter();
+      const second = new SqliteAdapter();
+      try {
+        const firstOpen = await first.open(dbPath, "unicode61");
+        expect(firstOpen.ok).toBe(true);
+
+        const holdTransaction = first.withTransaction(async () => {
+          await Bun.sleep(150);
+          return undefined;
+        });
+
+        await Bun.sleep(25);
+
+        const secondOpen = await second.open(dbPath, "unicode61");
+        expect(secondOpen.ok).toBe(true);
+
+        await holdTransaction;
+      } finally {
+        await second.close();
+        await first.close();
+      }
+    });
   });
 
   describe("collections sync", () => {

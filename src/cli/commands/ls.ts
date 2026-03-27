@@ -109,7 +109,10 @@ export async function ls(
     }
   }
 
-  const initResult = await initStore({ configPath: options.configPath });
+  const initResult = await initStore({
+    configPath: options.configPath,
+    syncConfig: false,
+  });
   if (!initResult.ok) {
     return { success: false, error: initResult.error };
   }

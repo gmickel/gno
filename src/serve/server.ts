@@ -8,13 +8,8 @@
 
 import type { ContextHolder } from "./routes/api";
 
-import { getIndexDbPath } from "../app/constants";
-import { getConfigPaths, isInitialized, loadConfig } from "../config";
-import { getActivePreset } from "../llm/registry";
-import { SqliteAdapter } from "../store/sqlite/adapter";
-import { createServerContext, disposeServerContext } from "./context";
+import { startBackgroundRuntime } from "./background-runtime";
 import { DocumentEventBus } from "./doc-events";
-import { createEmbedScheduler } from "./embed-scheduler";
 // HTML import - Bun handles bundling TSX/CSS automatically via routes
 import homepage from "./public/index.html";
 import {
@@ -57,7 +52,6 @@ import {
   handleDocSimilar,
 } from "./routes/links";
 import { forbiddenResponse, isRequestAllowed } from "./security";
-import { CollectionWatchService } from "./watch-service";
 
 export interface ServeOptions {
   /** Port to listen on (default: 3000) */
@@ -131,78 +125,18 @@ export async function startServer(
 ): Promise<ServeResult> {
   const port = options.port ?? 3000;
   const isDev = process.env.NODE_ENV !== "production";
-
-  // Check initialization
-  const initialized = await isInitialized(options.configPath);
-  if (!initialized) {
-    return { success: false, error: "GNO not initialized. Run: gno init" };
-  }
-
-  // Load config
-  const configResult = await loadConfig(options.configPath);
-  if (!configResult.ok) {
-    return { success: false, error: configResult.error.message };
-  }
-  const config = configResult.value;
-
-  // Open database once for server lifetime
-  const store = new SqliteAdapter();
-  const dbPath = getIndexDbPath(options.index);
-  // Use actual config path (from options or default) for consistency
-  const paths = getConfigPaths();
-  const actualConfigPath = options.configPath ?? paths.configFile;
-  store.setConfigPath(actualConfigPath);
-
-  const openResult = await store.open(dbPath, config.ftsTokenizer);
-  if (!openResult.ok) {
-    return { success: false, error: openResult.error.message };
-  }
-
-  // Sync collections and contexts from config to DB (same as CLI initStore)
-  const syncCollResult = await store.syncCollections(config.collections);
-  if (!syncCollResult.ok) {
-    await store.close();
-    return { success: false, error: syncCollResult.error.message };
-  }
-  const syncCtxResult = await store.syncContexts(config.contexts ?? []);
-  if (!syncCtxResult.ok) {
-    await store.close();
-    return { success: false, error: syncCtxResult.error.message };
-  }
-
-  // Create server context with LLM ports for hybrid search and AI answers
-  // Use holder pattern to allow hot-reloading presets
-  const ctx = await createServerContext(store, config);
-
-  const ctxHolder: ContextHolder = {
-    current: ctx,
-    config, // Keep original config for reloading
-    scheduler: null, // Will be set below
-    eventBus: null,
-    watchService: null,
-  };
-
-  // Create embed scheduler with getters (survives context/preset reloads)
-  const scheduler = createEmbedScheduler({
-    db: store.getRawDb(),
-    getEmbedPort: () => ctxHolder.current.embedPort,
-    getVectorIndex: () => ctxHolder.current.vectorIndex,
-    getModelUri: () => getActivePreset(ctxHolder.config).embed,
+  const runtimeResult = await startBackgroundRuntime({
+    configPath: options.configPath,
+    index: options.index,
+    requireCollections: false,
+    eventBus: new DocumentEventBus(),
   });
-  ctxHolder.scheduler = scheduler;
-  ctxHolder.current.scheduler = scheduler;
-  const eventBus = new DocumentEventBus();
-  ctxHolder.eventBus = eventBus;
-  ctxHolder.current.eventBus = eventBus;
-  const watchService = new CollectionWatchService({
-    collections: config.collections,
-    store,
-    scheduler,
-    eventBus,
-  });
-  watchService.start();
-  ctxHolder.watchService = watchService;
-  ctxHolder.current.watchService = watchService;
+  if (!runtimeResult.success) {
+    return { success: false, error: runtimeResult.error };
+  }
+  const runtime = runtimeResult.runtime;
+  const store = runtime.store;
+  const ctxHolder: ContextHolder = runtime.ctxHolder;
 
   // Shutdown controller for clean lifecycle
   const shutdownController = new AbortController();
@@ -210,11 +144,7 @@ export async function startServer(
   // Graceful shutdown handler
   const shutdown = async () => {
     console.log("\nShutting down...");
-    watchService.dispose();
-    eventBus.close();
-    scheduler.dispose();
-    await disposeServerContext(ctxHolder.current);
-    await store.close();
+    await runtime.dispose();
     shutdownController.abort();
   };
 
@@ -420,7 +350,12 @@ export async function startServer(
           },
         },
         "/api/events": {
-          GET: () => withSecurityHeaders(eventBus.createResponse(), isDev),
+          GET: () =>
+            withSecurityHeaders(
+              runtime.eventBus?.createResponse() ??
+                new Response("event stream unavailable", { status: 503 }),
+              isDev
+            ),
         },
         "/api/tags": {
           GET: async (req: Request) => {
@@ -568,7 +503,7 @@ export async function startServer(
       },
     });
   } catch (e) {
-    await store.close();
+    await runtime.dispose();
     return {
       success: false,
       error: e instanceof Error ? e.message : String(e),

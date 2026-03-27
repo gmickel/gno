@@ -65,6 +65,7 @@ Default output is human-readable terminal format.
 | get                | yes    | no      | no    | yes  | no    | terminal |
 | multi-get          | yes    | yes     | no    | yes  | no    | terminal |
 | ls                 | yes    | yes     | no    | yes  | no    | terminal |
+| daemon             | no     | no      | no    | no   | no    | terminal |
 | context add        | no     | no      | no    | no   | no    | terminal |
 | context list       | yes    | no      | no    | yes  | no    | terminal |
 | context check      | yes    | no      | no    | yes  | no    | terminal |
@@ -1987,6 +1988,47 @@ gno serve [--port <num>]
 ```bash
 gno serve
 gno serve --port 8080
+```
+
+---
+
+### gno daemon
+
+Start a headless long-running watcher process for continuous indexing.
+
+**Synopsis:**
+
+```bash
+gno daemon [--no-sync-on-start]
+```
+
+**Options:**
+
+| Option               | Type    | Default | Description                                       |
+| -------------------- | ------- | ------- | ------------------------------------------------- |
+| `--no-sync-on-start` | boolean | false   | Skip initial sync; only watch future file changes |
+
+**Behavior:**
+
+- Opens DB once at startup
+- Loads config and requires at least one configured collection
+- Starts the same watcher + embed scheduler used by `gno serve`
+- Runs an initial sync by default
+- Triggers embedding after initial sync completes
+- Runs in the foreground until `SIGINT` / `SIGTERM`
+- Does not start the web server or open any port
+
+**Exit Codes:**
+
+- 0: Daemon stopped gracefully
+- 2: Startup/runtime failure
+
+**Examples:**
+
+```bash
+gno daemon
+gno daemon --no-sync-on-start
+nohup gno daemon > /tmp/gno-daemon.log 2>&1 &
 ```
 
 ---
