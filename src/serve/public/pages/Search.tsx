@@ -1057,7 +1057,7 @@ export default function Search({ navigate }: PageProps) {
                 </div>
                 {results.map((result, i) => (
                   <Card
-                    className="group animate-fade-in cursor-pointer opacity-0 transition-all hover:border-primary/50 hover:bg-card/80"
+                    className="group animate-fade-in cursor-pointer opacity-0 transition-all duration-200 hover:border-primary/50 hover:bg-card/80 hover:shadow-[0_0_24px_-10px_hsl(var(--primary)/0.12)]"
                     key={`${result.docid}-${i}`}
                     onClick={() =>
                       navigate(

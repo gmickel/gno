@@ -144,45 +144,48 @@ function AppContent({
         <div className="flex-1">
           <Page key={location} navigate={navigate} />
         </div>
-        <footer className="border-t border-border/50 bg-background/80 py-4 text-center text-muted-foreground text-sm">
-          <div className="flex items-center justify-center gap-4">
+        <footer className="border-t border-border/30 bg-background/60 py-6 text-center text-sm backdrop-blur-sm">
+          <div className="ornament mx-auto mb-4 max-w-[8rem] text-muted-foreground/20">
+            <span className="text-[10px]">◆</span>
+          </div>
+          <div className="flex items-center justify-center gap-5 text-muted-foreground/60">
             <button
-              className="transition-colors hover:text-foreground"
+              className="transition-colors duration-300 hover:text-primary"
               onClick={() => navigate("/collections")}
               type="button"
             >
               Collections
             </button>
-            <span className="text-border">·</span>
+            <span className="text-border/30">—</span>
             <a
-              className="transition-colors hover:text-foreground"
+              className="transition-colors duration-300 hover:text-primary"
               href="https://github.com/gmickel/gno"
               rel="noopener noreferrer"
               target="_blank"
             >
               GitHub
             </a>
-            <span className="text-border">·</span>
+            <span className="text-border/30">—</span>
             <a
-              className="transition-colors hover:text-foreground"
+              className="transition-colors duration-300 hover:text-primary"
               href="https://discord.gg/nHEmyJB5tg"
               rel="noopener noreferrer"
               target="_blank"
             >
               Discord
             </a>
-            <span className="text-border">·</span>
+            <span className="text-border/30">—</span>
             <a
-              className="transition-colors hover:text-foreground"
+              className="transition-colors duration-300 hover:text-primary"
               href="https://gno.sh"
               rel="noopener noreferrer"
               target="_blank"
             >
               gno.sh
             </a>
-            <span className="text-border">·</span>
+            <span className="text-border/30">—</span>
             <a
-              className="transition-colors hover:text-foreground"
+              className="transition-colors duration-300 hover:text-primary"
               href="https://twitter.com/gmickel"
               rel="noopener noreferrer"
               target="_blank"

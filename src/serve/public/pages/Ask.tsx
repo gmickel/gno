@@ -783,21 +783,30 @@ export default function Ask({ navigate }: PageProps) {
           )}
 
           {conversation.length === 0 && (
-            <div className="py-10 text-center md:py-14">
-              <Sparkles className="mx-auto mb-4 size-12 text-primary/60" />
-              <h2 className="mb-2 font-medium text-lg">Ask anything</h2>
-              <p className="text-muted-foreground">
+            <div className="animate-scale-in py-14 text-center opacity-0 md:py-20">
+              <div className="relative mx-auto mb-6 size-16">
+                <div className="absolute inset-0 animate-pulse-glow rounded-full bg-primary/10" />
+                <Sparkles className="absolute inset-0 m-auto size-8 text-primary/70" />
+              </div>
+              <h2 className="mb-2 text-xl">Ask anything</h2>
+              <p className="mx-auto max-w-sm text-muted-foreground">
                 {answerAvailable
                   ? "Get AI-powered answers with citations from your documents"
                   : "AI answers not available. Install a generation model to enable."}
               </p>
+              <div
+                aria-hidden="true"
+                className="ornament mx-auto mt-6 max-w-[8rem] text-muted-foreground/20"
+              >
+                <span className="text-[10px]">◆</span>
+              </div>
             </div>
           )}
 
           {conversation.map((entry) => (
             <div className="space-y-4" key={entry.id}>
               <div className="flex justify-end">
-                <div className="max-w-[80%] rounded-lg bg-secondary px-4 py-3">
+                <div className="max-w-[80%] rounded-xl bg-secondary px-5 py-3 shadow-[0_0_20px_-8px_hsl(var(--secondary)/0.3)]">
                   <p className="text-foreground">{entry.query}</p>
                 </div>
               </div>
@@ -823,7 +832,7 @@ export default function Ask({ navigate }: PageProps) {
                 {entry.response && (
                   <>
                     {entry.response.answer && (
-                      <div className="prose prose-sm prose-invert max-w-none rounded-lg bg-card/50 p-4">
+                      <div className="prose prose-sm prose-invert max-w-none rounded-lg border border-border/30 bg-card/60 p-5 shadow-[0_0_30px_-10px_hsl(var(--primary)/0.08)]">
                         <p className="whitespace-pre-wrap leading-relaxed">
                           {renderAnswer(
                             entry.response.answer,

@@ -129,7 +129,7 @@ function CollectionCard({
 
   return (
     <Card
-      className="group relative cursor-pointer overflow-hidden transition-all hover:border-primary/30 hover:bg-card/90"
+      className="group relative cursor-pointer overflow-hidden transition-all duration-300 hover:border-primary/30 hover:bg-card/90 hover:shadow-[0_0_30px_-12px_hsl(var(--primary)/0.15)]"
       onClick={onBrowse}
       onKeyDown={(event) => {
         if (event.key === "Enter" || event.key === " ") {

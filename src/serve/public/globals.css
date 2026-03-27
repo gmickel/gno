@@ -98,16 +98,25 @@ body {
   margin: 0;
   min-height: 100vh;
 
-  /* Subtle grid pattern */
+  /* Layered background: teal radial glow + refined grid */
   background-image:
-    linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
-  background-size: 40px 40px;
+    radial-gradient(
+      ellipse at 50% 0%,
+      hsl(var(--primary) / 0.05) 0%,
+      transparent 50%
+    ),
+    linear-gradient(hsl(var(--foreground) / 0.018) 1px, transparent 1px),
+    linear-gradient(90deg, hsl(var(--foreground) / 0.018) 1px, transparent 1px);
+  background-size:
+    100% 100%,
+    32px 32px,
+    32px 32px;
+  background-attachment: fixed, scroll, scroll;
 }
 
 ::selection {
-  background-color: hsl(var(--primary) / 0.15);
-  color: hsl(var(--primary));
+  background-color: hsl(var(--primary) / 0.25);
+  color: hsl(var(--foreground));
 }
 
 /* Typography */
@@ -117,11 +126,14 @@ h3,
 h4,
 h5,
 h6 {
-  /* System serif for local-first/offline operation */
-  font-family: Georgia, "Times New Roman", serif;
-  line-height: 1.25;
+  /* Distinctive serif stack - offline-safe system fonts */
+  font-family:
+    "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia,
+    serif;
+  line-height: 1.2;
   font-weight: 600;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
 }
 
 code,
@@ -208,6 +220,44 @@ mark {
 .stagger-4 {
   animation-delay: 0.4s;
 }
+.stagger-5 {
+  animation-delay: 0.5s;
+}
+.stagger-6 {
+  animation-delay: 0.6s;
+}
+
+/* Slide-up reveal with spring-like ease */
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-up {
+  animation: slide-up 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+/* Scale entrance */
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-scale-in {
+  animation: scale-in 0.4s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
 
 /* Collapsible animations */
 @keyframes collapse-down {
@@ -281,6 +331,59 @@ mark {
 .card-lift:hover {
   transform: translateY(-2px);
   box-shadow: 0 8px 30px -10px hsl(var(--primary) / 0.2);
+}
+
+/* Text glow for hero / display elements */
+.glow-text {
+  text-shadow:
+    0 0 40px hsl(var(--primary) / 0.3),
+    0 0 80px hsl(var(--primary) / 0.15);
+}
+
+[data-theme="light"] .glow-text {
+  text-shadow: none;
+}
+
+/* Decorative ornamental divider */
+.ornament {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.ornament::before,
+.ornament::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    hsl(var(--border)),
+    transparent
+  );
+}
+
+/* Warm glass variant with secondary/gold accent */
+.glass-warm {
+  background: hsl(var(--card) / 0.8);
+  backdrop-filter: blur(16px) saturate(150%);
+  -webkit-backdrop-filter: blur(16px) saturate(150%);
+  border: 1px solid hsl(var(--secondary) / 0.12);
+  box-shadow: 0 0 30px -10px hsl(var(--secondary) / 0.08);
+}
+
+/* Vignette overlay for atmospheric depth */
+.vignette::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    ellipse at center,
+    transparent 50%,
+    hsl(var(--background) / 0.4) 100%
+  );
 }
 
 /* Focus ring with glow */
