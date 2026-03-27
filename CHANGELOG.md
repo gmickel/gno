@@ -11,6 +11,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+## [0.29.2] - 2026-03-27
+
+### Changed
+
+- Refined the `gno serve` workspace presentation with a more distinctive visual language across the dashboard, tabs, search, ask, footer, and global styling, while keeping the UI fully offline-safe.
+
 ## [0.29.1] - 2026-03-27
 
 ### Fixed
@@ -901,7 +907,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 | 0.4.0   | 2026-01-01 | Web UI and REST API                       |
 | 0.1.0   | 2025-12-30 | Initial release with full search pipeline |
 
-[Unreleased]: https://github.com/gmickel/gno/compare/v0.29.1...HEAD
+[Unreleased]: https://github.com/gmickel/gno/compare/v0.29.2...HEAD
+[0.29.2]: https://github.com/gmickel/gno/compare/v0.29.1...v0.29.2
 [0.29.1]: https://github.com/gmickel/gno/compare/v0.29.0...v0.29.1
 [0.29.0]: https://github.com/gmickel/gno/compare/v0.28.2...v0.29.0
 [0.28.2]: https://github.com/gmickel/gno/compare/v0.28.1...v0.28.2

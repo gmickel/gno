@@ -39,6 +39,7 @@ GNO is a local knowledge engine that turns your documents into a searchable, con
 - **GNO Desktop Beta**: first mac-first desktop beta shell with deep-link routing, singleton handoff, and the same onboarding/search/edit flows as `gno serve`
 - **Desktop Onboarding Polish**: guided setup now covers folders, presets, model readiness, indexing, connectors, import preview, app tabs, file actions, and recovery without drift between web and desktop
 - **Default Preset Upgrade**: `slim-tuned` is now the built-in default, using the fine-tuned retrieval expansion model while keeping the same embed, rerank, and answer stack as `slim`
+- **Workspace UI Polish**: richer scholarly-dusk presentation across dashboard, tabs, search, ask, footer, and global styling without introducing external font or asset dependencies
 
 ### v0.24
 

@@ -373,20 +373,26 @@ export default function Dashboard({ navigate }: PageProps) {
         </div>
       )}
 
-      <header className="relative border-border/50 border-b bg-card/50 backdrop-blur-sm">
-        <div className="aurora-glow absolute inset-0 opacity-30" />
-        <div className="relative px-8 py-12">
-          <div className="grid gap-6 md:grid-cols-[minmax(0,1fr)_auto] md:items-start">
+      <header className="relative overflow-hidden border-border/50 border-b bg-card/50 backdrop-blur-sm">
+        <div className="aurora-glow absolute inset-0 opacity-40" />
+        <div className="relative px-8 py-14 md:py-16">
+          <div className="grid gap-8 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
             <div className="min-w-0">
-              <div className="flex items-center gap-3">
-                <GnoLogo className="size-8 shrink-0 text-primary" />
-                <h1 className="font-bold text-4xl text-primary tracking-tight">
+              <div className="flex items-center gap-4">
+                <GnoLogo className="size-10 shrink-0 text-primary" />
+                <h1 className="glow-text font-bold text-5xl text-primary tracking-tighter">
                   GNO
                 </h1>
               </div>
-              <p className="mt-4 text-lg text-muted-foreground">
+              <p className="mt-3 text-lg tracking-wide text-muted-foreground">
                 Your Local Knowledge Index
               </p>
+              <div
+                aria-hidden="true"
+                className="ornament mt-5 max-w-[12rem] text-muted-foreground/30"
+              >
+                <span className="text-xs">✦</span>
+              </div>
             </div>
 
             <div className="flex flex-wrap items-center gap-3 md:justify-end">
@@ -441,7 +447,7 @@ export default function Dashboard({ navigate }: PageProps) {
 
         <nav className="mb-10 flex flex-wrap gap-4">
           <Button
-            className="gap-2"
+            className="gap-2 shadow-[0_0_24px_-6px_hsl(var(--primary)/0.4)]"
             onClick={() => navigate("/search")}
             size="lg"
           >
@@ -449,7 +455,7 @@ export default function Dashboard({ navigate }: PageProps) {
             Search
           </Button>
           <Button
-            className="gap-2"
+            className="gap-2 shadow-[0_0_24px_-6px_hsl(var(--secondary)/0.4)]"
             onClick={() => navigate("/ask")}
             size="lg"
             variant="secondary"
@@ -606,9 +612,9 @@ export default function Dashboard({ navigate }: PageProps) {
         )}
 
         {status && (
-          <div className="mb-10 grid animate-fade-in gap-6 opacity-0 md:grid-cols-4">
-            <Card className="group relative overflow-hidden border-primary/30 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent transition-all duration-300 hover:border-primary/50 hover:shadow-[0_0_30px_-10px_hsl(var(--primary)/0.3)]">
-              <div className="pointer-events-none absolute -top-12 -right-12 size-32 rounded-full bg-primary/10 blur-2xl" />
+          <div className="mb-10 grid animate-slide-up gap-6 opacity-0 md:grid-cols-4">
+            <Card className="group relative overflow-hidden border-primary/30 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent transition-all duration-300 hover:border-primary/50 hover:shadow-[0_0_40px_-10px_hsl(var(--primary)/0.35)]">
+              <div className="pointer-events-none absolute -top-12 -right-12 size-36 rounded-full bg-primary/10 blur-3xl transition-all duration-500 group-hover:bg-primary/15" />
               <CardHeader className="relative pb-2">
                 <CardDescription className="flex items-center gap-2 text-primary/80">
                   <Database className="size-4" />
@@ -616,7 +622,7 @@ export default function Dashboard({ navigate }: PageProps) {
                 </CardDescription>
               </CardHeader>
               <CardContent className="relative">
-                <div className="font-bold text-5xl tracking-tight text-primary">
+                <div className="glow-text font-bold text-5xl tracking-tight text-primary">
                   {status.totalDocuments.toLocaleString()}
                 </div>
                 <p className="mt-1 text-muted-foreground text-sm">
@@ -625,7 +631,7 @@ export default function Dashboard({ navigate }: PageProps) {
               </CardContent>
             </Card>
 
-            <Card className="group stagger-1 animate-fade-in opacity-0 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/50 hover:shadow-lg">
+            <Card className="group stagger-1 animate-slide-up opacity-0 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/50 hover:shadow-lg">
               <CardHeader className="pb-2">
                 <CardDescription className="flex items-center gap-2">
                   <Layers className="size-4" />
@@ -640,7 +646,7 @@ export default function Dashboard({ navigate }: PageProps) {
             </Card>
 
             <Card
-              className="group stagger-2 animate-fade-in cursor-pointer opacity-0 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/50 hover:shadow-lg"
+              className="group stagger-2 animate-slide-up cursor-pointer opacity-0 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/50 hover:shadow-lg"
               onClick={openCollections}
               onKeyDown={(event) => {
                 if (event.key === "Enter" || event.key === " ") {
@@ -673,7 +679,7 @@ export default function Dashboard({ navigate }: PageProps) {
             </Card>
 
             <Card
-              className="group stagger-3 animate-fade-in cursor-pointer opacity-0 transition-all duration-200 hover:-translate-y-0.5 hover:border-secondary/50 hover:bg-secondary/5 hover:shadow-lg"
+              className="group stagger-3 animate-slide-up cursor-pointer opacity-0 transition-all duration-200 hover:-translate-y-0.5 hover:border-secondary/50 hover:bg-secondary/5 hover:shadow-[0_0_30px_-10px_hsl(var(--secondary)/0.25)]"
               onClick={() => openCapture()}
             >
               <CardHeader className="pb-2">
@@ -697,9 +703,11 @@ export default function Dashboard({ navigate }: PageProps) {
         )}
 
         {status && status.collections.length > 0 && (
-          <section className="stagger-3 animate-fade-in opacity-0">
+          <section className="stagger-4 animate-slide-up opacity-0">
             <div className="mb-6 flex items-center justify-between gap-4 border-border/50 border-b pb-3">
-              <h2 className="font-semibold text-2xl">Collections</h2>
+              <h2 className="font-semibold text-2xl tracking-tight">
+                Collections
+              </h2>
               <Button onClick={openCollections} size="sm" variant="outline">
                 Manage Collections
               </Button>
