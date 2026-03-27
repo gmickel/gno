@@ -145,6 +145,7 @@ gno query "ECONNREFUSED 127.0.0.1:5432" --thorough
 ```bash
 gno init ~/notes --name notes    # Point at your docs
 gno index                        # Build search index
+gno daemon                       # Keep index fresh in background (foreground process)
 gno query "auth best practices"  # Hybrid search
 gno ask "summarize the API" --answer  # AI answer with citations
 ```
@@ -174,6 +175,15 @@ Verify everything works:
 ```bash
 gno doctor
 ```
+
+Keep an index fresh continuously without opening the Web UI:
+
+```bash
+gno daemon
+```
+
+`gno daemon` runs as a foreground watcher/sync/embed process. Use `nohup`,
+launchd, or systemd if you want it supervised long-term.
 
 ### Connect to AI Agents
 

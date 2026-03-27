@@ -153,6 +153,44 @@ Windows can be significantly slower due to NTFS overhead and real-time antivirus
 
 This can improve indexing speed by 2-4x on Windows.
 
+## Daemon Issues
+
+### "Daemon not refreshing after I changed config"
+
+V1 `gno daemon` reads config on startup.
+
+If you add/remove collections or change patterns while it is running:
+
+```bash
+# Stop the daemon (Ctrl+C if foreground)
+# Then restart
+gno daemon
+```
+
+### "Daemon is running but nothing updates"
+
+Check:
+
+```bash
+gno collection list
+gno ls
+```
+
+Common causes:
+
+- no collections configured
+- file changes happened outside configured patterns
+- the daemon was started with `--no-sync-on-start` and is only watching future changes
+
+### "I ran gno serve and gno daemon together"
+
+Current guidance: do not run both against the same index at the same time.
+
+Until explicit cross-process coordination exists, use one of:
+
+- `gno serve` for browser/desktop sessions
+- `gno daemon` for headless continuous indexing
+
 ## Search Issues
 
 ### No Results

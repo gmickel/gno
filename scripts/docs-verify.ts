@@ -209,6 +209,16 @@ async function testHelp() {
       fail("gno --version", `exit ${code}`);
     }
   }
+
+  // gno daemon --help
+  {
+    const { code, stdout } = await cli("daemon", "--help");
+    if (code === 0 && stdout.includes("Start headless continuous indexing")) {
+      pass("gno daemon --help");
+    } else {
+      fail("gno daemon --help", `exit ${code}`);
+    }
+  }
 }
 
 async function testInit() {

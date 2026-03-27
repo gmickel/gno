@@ -2,6 +2,7 @@ import { watch, type FSWatcher } from "node:fs";
 import { join, normalize, sep } from "node:path";
 
 import type { Collection } from "../config/types";
+import type { CollectionSyncResult } from "../ingestion";
 import type { SqliteAdapter } from "../store/sqlite/adapter";
 import type { DocumentEvent, DocumentEventBus } from "./doc-events";
 import type { EmbedScheduler } from "./embed-scheduler";
@@ -18,11 +19,26 @@ export interface CollectionWatchState {
   lastSyncAt: string | null;
 }
 
+export interface CollectionWatchCallbacks {
+  onSyncStart?: (event: { collection: string; relPaths: string[] }) => void;
+  onSyncComplete?: (event: {
+    collection: string;
+    relPaths: string[];
+    result: CollectionSyncResult;
+  }) => void;
+  onSyncError?: (event: {
+    collection: string;
+    relPaths: string[];
+    error: unknown;
+  }) => void;
+}
+
 interface CollectionWatchServiceOptions {
   collections: Collection[];
   store: SqliteAdapter;
   scheduler: EmbedScheduler | null;
-  eventBus: DocumentEventBus;
+  eventBus?: DocumentEventBus | null;
+  callbacks?: CollectionWatchCallbacks;
   watchFactory?: typeof watch;
 }
 
@@ -30,7 +46,8 @@ export class CollectionWatchService {
   #collections: Collection[];
   readonly #store: SqliteAdapter;
   readonly #scheduler: EmbedScheduler | null;
-  readonly #eventBus: DocumentEventBus;
+  readonly #eventBus: DocumentEventBus | null;
+  readonly #callbacks: CollectionWatchCallbacks | null;
   readonly #watchers = new Map<string, FSWatcher>();
   readonly #pendingByCollection = new Map<string, Set<string>>();
   readonly #timers = new Map<string, ReturnType<typeof setTimeout>>();
@@ -45,7 +62,8 @@ export class CollectionWatchService {
     this.#collections = options.collections;
     this.#store = options.store;
     this.#scheduler = options.scheduler;
-    this.#eventBus = options.eventBus;
+    this.#eventBus = options.eventBus ?? null;
+    this.#callbacks = options.callbacks ?? null;
     this.#watchFactory = options.watchFactory ?? watch;
   }
 
@@ -178,10 +196,30 @@ export class CollectionWatchService {
     this.#syncing.add(collectionName);
 
     try {
-      await defaultSyncService.syncCollection(collection, this.#store, {
-        runUpdateCmd: false,
+      this.#callbacks?.onSyncStart?.({
+        collection: collection.name,
+        relPaths,
+      });
+      const result = await defaultSyncService.syncCollection(
+        collection,
+        this.#store,
+        {
+          runUpdateCmd: false,
+        }
+      );
+      this.#callbacks?.onSyncComplete?.({
+        collection: collection.name,
+        relPaths,
+        result,
       });
       this.#afterSync(collection, relPaths);
+    } catch (error) {
+      this.#callbacks?.onSyncError?.({
+        collection: collection.name,
+        relPaths,
+        error,
+      });
+      throw error;
     } finally {
       this.#syncing.delete(collectionName);
       const remaining = this.#pendingByCollection.get(collectionName);
@@ -198,6 +236,10 @@ export class CollectionWatchService {
 
     this.#lastSyncAt = new Date().toISOString();
     this.#scheduler?.notifySyncComplete(relPaths);
+
+    if (!this.#eventBus) {
+      return;
+    }
 
     for (const relPath of relPaths) {
       const event: DocumentEvent = {

@@ -188,6 +188,7 @@ export function createProgram(): Command {
   wireGraphCommand(program);
   wireMcpCommand(program);
   wireSkillCommands(program);
+  wireDaemonCommand(program);
   wireServeCommand(program);
   wireCompletionCommand(program);
 
@@ -2037,6 +2038,30 @@ function wireGraphCommand(program: Command): void {
 // ─────────────────────────────────────────────────────────────────────────────
 // Serve Command (web UI)
 // ─────────────────────────────────────────────────────────────────────────────
+
+function wireDaemonCommand(program: Command): void {
+  program
+    .command("daemon")
+    .description("Start headless continuous indexing")
+    .option(
+      "--no-sync-on-start",
+      "skip initial sync and only watch future file changes"
+    )
+    .action(async (cmdOpts: Record<string, unknown>) => {
+      const globals = getGlobals();
+      const { daemon } = await import("./commands/daemon.js");
+      const result = await daemon({
+        configPath: globals.config,
+        index: globals.index,
+        verbose: globals.verbose,
+        quiet: globals.quiet,
+        noSyncOnStart: Boolean(cmdOpts.noSyncOnStart),
+      });
+      if (!result.success) {
+        throw new CliError("RUNTIME", result.error);
+      }
+    });
+}
 
 function wireServeCommand(program: Command): void {
   program

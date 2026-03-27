@@ -141,6 +141,12 @@ describe("CLI smoke tests", () => {
       expect(stdout).toContain("remove");
       expect(stdout).toContain("rename");
     });
+
+    test("--help includes daemon command", async () => {
+      const { code, stdout } = await cli("--help");
+      expect(code).toBe(0);
+      expect(stdout).toContain("daemon");
+    });
   });
 
   describe("error handling", () => {

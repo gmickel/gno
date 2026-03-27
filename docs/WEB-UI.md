@@ -52,6 +52,8 @@ gno serve --port 8080        # Custom port
 gno serve --index research   # Use named index
 ```
 
+If you want live indexing without a browser session, use `gno daemon` instead.
+
 ### 2. Open Your Browser
 
 Navigate to `http://localhost:3000`. The dashboard now handles both first-run setup and ongoing health:
@@ -494,6 +496,9 @@ gno serve [options]
 | `GNO_VERBOSE=1`          | Enable debug logging                                     |
 | `HF_HUB_OFFLINE=1`       | Offline mode: use cached models only                     |
 | `GNO_NO_AUTO_DOWNLOAD=1` | Disable auto-download (allow explicit `gno models pull`) |
+
+`gno serve` is not the only live-refresh path anymore. For headless continuous
+indexing without the Web UI, use `gno daemon`.
 
 ---
 
