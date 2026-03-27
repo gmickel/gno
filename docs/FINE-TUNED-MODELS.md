@@ -43,8 +43,8 @@ What must be portable is the exported artifact:
 Public/shared model:
 
 1. use the published HF model directly
-2. keep it in a custom preset such as `slim-tuned`
-3. benchmark before replacing any defaults in your own project
+2. ship it as the built-in `slim-tuned` default
+3. benchmark before replacing the other built-in presets too
 
 Private/internal model:
 
@@ -61,7 +61,7 @@ bun run research:finetune:promote <run>
 
 ## Install In GNO
 
-Recommended public preset:
+Built-in default preset:
 
 ```yaml
 models:
@@ -72,15 +72,17 @@ models:
       embed: hf:gpustack/bge-m3-GGUF/bge-m3-Q4_K_M.gguf
       rerank: hf:ggml-org/Qwen3-Reranker-0.6B-Q8_0-GGUF/qwen3-reranker-0.6b-q8_0.gguf
       expand: hf:guiltylemon/gno-expansion-slim-retrieval-v1/gno-expansion-auto-entity-lock-default-mix-lr95-f16.gguf
-      gen: hf:unsloth/Qwen3-4B-Instruct-2507-GGUF/Qwen3-4B-Instruct-2507-Q4_K_M.gguf
+      gen: hf:unsloth/Qwen3-1.7B-GGUF/Qwen3-1.7B-Q4_K_M.gguf
 ```
 
-Then:
+Already selected by default on fresh installs. To switch back manually later:
 
 ```bash
 gno models use slim-tuned
 gno query "ECONNREFUSED 127.0.0.1:5432" --thorough
 ```
+
+Once selected, the dashboard bootstrap section reports whether the tuned preset is fully cached, partially cached, or still downloading.
 
 For a private expansion model that is not published to HF yet, replace `expand:` with:
 

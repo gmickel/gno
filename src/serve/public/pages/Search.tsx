@@ -2,6 +2,7 @@ import {
   ArrowLeft,
   ChevronDown,
   FileText,
+  HomeIcon,
   Search as SearchIcon,
   SlidersHorizontal,
   XIcon,
@@ -159,7 +160,7 @@ export default function Search({ navigate }: PageProps) {
   const [searched, setSearched] = useState(false);
   const [capabilities, setCapabilities] = useState<Capabilities | null>(null);
   const [collections, setCollections] = useState<Collection[]>([]);
-  const [activePreset, setActivePreset] = useState("slim");
+  const [activePreset, setActivePreset] = useState("slim-tuned");
 
   const [showAdvanced, setShowAdvanced] = useState(
     Boolean(
@@ -437,6 +438,7 @@ export default function Search({ navigate }: PageProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     activeTags,
+    activePreset,
     author,
     candidateLimit,
     category,
@@ -517,6 +519,15 @@ export default function Search({ navigate }: PageProps) {
       <header className="glass sticky top-0 z-10 border-border/50 border-b">
         <div className="flex flex-wrap items-center justify-between gap-4 px-8 py-4">
           <div className="flex items-center gap-4">
+            <Button
+              className="gap-2 text-primary"
+              onClick={() => navigate("/")}
+              size="sm"
+              variant="ghost"
+            >
+              <HomeIcon className="size-4" />
+              GNO
+            </Button>
             <Button
               className="gap-2"
               onClick={() => navigate(-1)}

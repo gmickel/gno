@@ -40,7 +40,7 @@ export async function applyConfigChange(
   mutate: (config: Config) => Promise<MutationResult> | MutationResult,
   configPath?: string
 ): Promise<ApplyConfigResult> {
-  return applyConfigChangeCore(
+  const result = await applyConfigChangeCore(
     {
       store,
       configPath,
@@ -51,4 +51,35 @@ export async function applyConfigChange(
     },
     mutate
   );
+
+  if (result.ok) {
+    ctxHolder.watchService?.updateCollections(ctxHolder.config.collections);
+  }
+
+  return result;
+}
+
+export async function applyConfigChangeTyped<T>(
+  ctxHolder: ContextHolder,
+  store: SqliteAdapter,
+  mutate: (config: Config) => Promise<MutationResult<T>> | MutationResult<T>,
+  configPath?: string
+): Promise<ApplyConfigResult<T>> {
+  const result = await applyConfigChangeCore(
+    {
+      store,
+      configPath,
+      onConfigUpdated: (config) => {
+        ctxHolder.config = config;
+        ctxHolder.current = { ...ctxHolder.current, config };
+      },
+    },
+    mutate
+  );
+
+  if (result.ok) {
+    ctxHolder.watchService?.updateCollections(ctxHolder.config.collections);
+  }
+
+  return result;
 }

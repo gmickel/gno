@@ -16,6 +16,8 @@ gno init ~/Documents --name docs --pattern "**/*.md"
 
 This creates your config and sets up the first collection.
 
+Prefer a guided UI first? Start `gno serve`, open `http://localhost:3000`, then use the first-run checklist to add a folder, choose a preset, and start indexing without touching more CLI commands.
+
 ## 2. Index Your Documents
 
 ```bash
@@ -107,7 +109,7 @@ gno query "meeting" --tags-any urgent,priority
 
 ### Explore Links
 
-Documents can link to each other using wiki links (`[[Note]]`), markdown links (`[text](path.md)`), and Logseq-compatible variants like `[text]([[Note]])` and `{{embed [[Note]]}}`. GNO tracks these relationships:
+Documents can link to each other using wiki links (`[[Note]]`), markdown links (`[text](path.md)`), and Logseq-compatible variants like `[text]([[Note]])` and `&#123;&#123;embed [[Note]]&#125;&#125;`. GNO tracks these relationships:
 
 ```bash
 # Show links FROM a document
@@ -167,6 +169,7 @@ gno serve
 
 Open http://localhost:3000 in your browser for:
 
+- First-run onboarding and health center
 - Dashboard with index stats
 - Visual search with highlighted results
 - Document browser with collection filtering

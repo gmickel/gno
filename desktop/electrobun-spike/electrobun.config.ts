@@ -3,13 +3,15 @@ import type { ElectrobunConfig } from "electrobun";
 // node:path has no Bun equivalent.
 import { resolve } from "node:path";
 
+import pkg from "../../package.json";
+
 const repoRoot = resolve(import.meta.dir, "../..");
 
 export default {
   app: {
-    name: "GNO Electrobun Spike",
+    name: "GNO Desktop Beta",
     identifier: "tech.mickel.gno.spike",
-    version: "0.0.0",
+    version: pkg.version,
     urlSchemes: ["gno"],
   },
   runtime: {

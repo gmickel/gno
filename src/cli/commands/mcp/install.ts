@@ -46,7 +46,7 @@ export interface InstallOptions {
   quiet?: boolean;
 }
 
-interface InstallResult {
+export interface McpInstallResult {
   target: McpTarget;
   scope: McpScope;
   configPath: string;
@@ -61,7 +61,7 @@ interface InstallResult {
 /**
  * Install gno to a single target.
  */
-async function installToTarget(
+export async function installMcpToTarget(
   target: McpTarget,
   scope: McpScope,
   serverEntry: StandardMcpEntry,
@@ -71,7 +71,7 @@ async function installToTarget(
     cwd?: string;
     homeDir?: string;
   }
-): Promise<InstallResult> {
+): Promise<McpInstallResult> {
   const { force = false, dryRun = false, cwd, homeDir } = options;
 
   const { configPath, configFormat } = resolveMcpConfigPath({
@@ -165,7 +165,7 @@ export async function installMcp(opts: InstallOptions = {}): Promise<void> {
   const serverEntry = buildMcpServerEntry({ enableWrite });
 
   // Install
-  const result = await installToTarget(target, scope, serverEntry, {
+  const result = await installMcpToTarget(target, scope, serverEntry, {
     force,
     dryRun,
     cwd: opts.cwd,

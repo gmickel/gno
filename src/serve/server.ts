@@ -21,6 +21,7 @@ import {
   handleAsk,
   handleCapabilities,
   handleCollections,
+  handleConnectors,
   handleCreateCollection,
   handleCreateEditableCopy,
   handleCreateDoc,
@@ -32,16 +33,21 @@ import {
   handleEmbed,
   handleEmbedStatus,
   handleHealth,
+  handleImportPreview,
+  handleInstallConnector,
   handleJob,
   handleModelPull,
   handleModelStatus,
   handlePresets,
   handleQuery,
+  handleRenameDoc,
+  handleRevealDoc,
   handleSearch,
   handleSetPreset,
   handleStatus,
   handleSync,
   handleTags,
+  handleTrashDoc,
   handleUpdateDoc,
 } from "./routes/api";
 import { handleGraph } from "./routes/graph";
@@ -184,8 +190,10 @@ export async function startServer(
     getModelUri: () => getActivePreset(ctxHolder.config).embed,
   });
   ctxHolder.scheduler = scheduler;
+  ctxHolder.current.scheduler = scheduler;
   const eventBus = new DocumentEventBus();
   ctxHolder.eventBus = eventBus;
+  ctxHolder.current.eventBus = eventBus;
   const watchService = new CollectionWatchService({
     collections: config.collections,
     store,
@@ -194,6 +202,7 @@ export async function startServer(
   });
   watchService.start();
   ctxHolder.watchService = watchService;
+  ctxHolder.current.watchService = watchService;
 
   // Shutdown controller for clean lifecycle
   const shutdownController = new AbortController();
@@ -231,6 +240,7 @@ export async function startServer(
         "/doc": homepage,
         "/edit": homepage,
         "/collections": homepage,
+        "/connectors": homepage,
         "/ask": homepage,
         "/graph": homepage,
 
@@ -240,7 +250,7 @@ export async function startServer(
         },
         "/api/status": {
           GET: async () =>
-            withSecurityHeaders(await handleStatus(store), isDev),
+            withSecurityHeaders(await handleStatus(ctxHolder.current), isDev),
         },
         "/api/collections": {
           GET: async () =>
@@ -251,6 +261,31 @@ export async function startServer(
             }
             return withSecurityHeaders(
               await handleCreateCollection(ctxHolder, store, req),
+              isDev
+            );
+          },
+        },
+        "/api/connectors": {
+          GET: async () => withSecurityHeaders(await handleConnectors(), isDev),
+        },
+        "/api/connectors/install": {
+          POST: async (req: Request) => {
+            if (!isRequestAllowed(req, port)) {
+              return withSecurityHeaders(forbiddenResponse(), isDev);
+            }
+            return withSecurityHeaders(
+              await handleInstallConnector(req),
+              isDev
+            );
+          },
+        },
+        "/api/import/preview": {
+          POST: async (req: Request) => {
+            if (!isRequestAllowed(req, port)) {
+              return withSecurityHeaders(forbiddenResponse(), isDev);
+            }
+            return withSecurityHeaders(
+              await handleImportPreview(ctxHolder, req),
               isDev
             );
           },
@@ -300,7 +335,49 @@ export async function startServer(
             const parts = url.pathname.split("/");
             const id = decodeURIComponent(parts[3] || "");
             return withSecurityHeaders(
-              await handleDeactivateDoc(store, id),
+              await handleDeactivateDoc(store, id, req),
+              isDev
+            );
+          },
+        },
+        "/api/docs/:id/rename": {
+          POST: async (req: Request) => {
+            if (!isRequestAllowed(req, port)) {
+              return withSecurityHeaders(forbiddenResponse(), isDev);
+            }
+            const url = new URL(req.url);
+            const parts = url.pathname.split("/");
+            const id = decodeURIComponent(parts[3] || "");
+            return withSecurityHeaders(
+              await handleRenameDoc(ctxHolder, store, id, req),
+              isDev
+            );
+          },
+        },
+        "/api/docs/:id/trash": {
+          POST: async (req: Request) => {
+            if (!isRequestAllowed(req, port)) {
+              return withSecurityHeaders(forbiddenResponse(), isDev);
+            }
+            const url = new URL(req.url);
+            const parts = url.pathname.split("/");
+            const id = decodeURIComponent(parts[3] || "");
+            return withSecurityHeaders(
+              await handleTrashDoc(ctxHolder, store, id, req),
+              isDev
+            );
+          },
+        },
+        "/api/docs/:id/reveal": {
+          POST: async (req: Request) => {
+            if (!isRequestAllowed(req, port)) {
+              return withSecurityHeaders(forbiddenResponse(), isDev);
+            }
+            const url = new URL(req.url);
+            const parts = url.pathname.split("/");
+            const id = decodeURIComponent(parts[3] || "");
+            return withSecurityHeaders(
+              await handleRevealDoc(ctxHolder, store, id, req),
               isDev
             );
           },

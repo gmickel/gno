@@ -1,13 +1,23 @@
 import {
   FilePlusIcon,
   FileTextIcon,
+  FolderIcon,
   Loader2Icon,
   SearchIcon,
+  StarIcon,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { apiFetch } from "../hooks/use-api";
 import { buildDocDeepLink } from "../lib/deep-links";
+import {
+  loadFavoriteCollections,
+  loadFavoriteDocuments,
+  loadRecentDocuments,
+  type FavoriteCollection,
+  type FavoriteDoc,
+  type RecentDoc,
+} from "../lib/navigation-state";
 import {
   CommandDialog,
   CommandEmpty,
@@ -35,42 +45,6 @@ interface SearchResponse {
   results: SearchResult[];
 }
 
-interface RecentDoc {
-  uri: string;
-  href: string;
-  label: string;
-}
-
-export const RECENT_DOCS_STORAGE_KEY = "gno.recent-docs";
-
-export function saveRecentDocument(doc: RecentDoc): void {
-  const current = loadRecentDocuments().filter(
-    (entry) => entry.href !== doc.href
-  );
-  const next = [doc, ...current].slice(0, 8);
-  localStorage.setItem(RECENT_DOCS_STORAGE_KEY, JSON.stringify(next));
-}
-
-export function loadRecentDocuments(): RecentDoc[] {
-  try {
-    const raw = localStorage.getItem(RECENT_DOCS_STORAGE_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw) as unknown;
-    if (!Array.isArray(parsed)) return [];
-    return parsed.filter((entry): entry is RecentDoc => {
-      if (!entry || typeof entry !== "object") return false;
-      const candidate = entry as Record<string, unknown>;
-      return (
-        typeof candidate.uri === "string" &&
-        typeof candidate.href === "string" &&
-        typeof candidate.label === "string"
-      );
-    });
-  } catch {
-    return [];
-  }
-}
-
 export interface QuickSwitcherProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -87,6 +61,10 @@ export function QuickSwitcher({
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
   const [recentDocs, setRecentDocs] = useState<RecentDoc[]>([]);
+  const [favoriteDocs, setFavoriteDocs] = useState<FavoriteDoc[]>([]);
+  const [favoriteCollections, setFavoriteCollections] = useState<
+    FavoriteCollection[]
+  >([]);
   const [loading, setLoading] = useState(false);
   const requestIdRef = useRef(0);
 
@@ -98,6 +76,8 @@ export function QuickSwitcher({
       return;
     }
     setRecentDocs(loadRecentDocuments());
+    setFavoriteDocs(loadFavoriteDocuments());
+    setFavoriteCollections(loadFavoriteCollections());
   }, [open]);
 
   useEffect(() => {
@@ -130,6 +110,14 @@ export function QuickSwitcher({
   }, [open, query]);
 
   const recentItems = useMemo(() => recentDocs.slice(0, 6), [recentDocs]);
+  const favoriteDocItems = useMemo(
+    () => favoriteDocs.slice(0, 6),
+    [favoriteDocs]
+  );
+  const favoriteCollectionItems = useMemo(
+    () => favoriteCollections.slice(0, 6),
+    [favoriteCollections]
+  );
 
   const openTarget = useCallback(
     (target: { uri: string; lineStart?: number; lineEnd?: number }) => {
@@ -184,6 +172,44 @@ export function QuickSwitcher({
             ))}
           </CommandGroup>
         )}
+
+        {!query.trim() &&
+          (favoriteDocItems.length > 0 ||
+            favoriteCollectionItems.length > 0) && (
+            <>
+              <CommandSeparator />
+              <CommandGroup heading="Favorites">
+                {favoriteDocItems.map((item) => (
+                  <CommandItem
+                    key={item.href}
+                    onSelect={() => {
+                      navigate(item.href);
+                      onOpenChange(false);
+                    }}
+                    value={`favorite-doc-${item.label}`}
+                  >
+                    <StarIcon />
+                    <span>{item.label}</span>
+                    <CommandShortcut>Doc</CommandShortcut>
+                  </CommandItem>
+                ))}
+                {favoriteCollectionItems.map((item) => (
+                  <CommandItem
+                    key={item.href}
+                    onSelect={() => {
+                      navigate(item.href);
+                      onOpenChange(false);
+                    }}
+                    value={`favorite-collection-${item.label}`}
+                  >
+                    <FolderIcon />
+                    <span>{item.label}</span>
+                    <CommandShortcut>Collection</CommandShortcut>
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            </>
+          )}
 
         {showCreateAction && (
           <>

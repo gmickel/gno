@@ -475,7 +475,7 @@ models:
       embed: hf:gpustack/bge-m3-GGUF/bge-m3-Q4_K_M.gguf
       rerank: hf:ggml-org/Qwen3-Reranker-0.6B-Q8_0-GGUF/qwen3-reranker-0.6b-q8_0.gguf
       expand: hf:guiltylemon/gno-expansion-slim-retrieval-v1/gno-expansion-auto-entity-lock-default-mix-lr95-f16.gguf
-      gen: hf:unsloth/Qwen3-4B-Instruct-2507-GGUF/Qwen3-4B-Instruct-2507-Q4_K_M.gguf
+      gen: hf:unsloth/Qwen3-1.7B-GGUF/Qwen3-1.7B-Q4_K_M.gguf
 ```
 
 Then use it normally:
@@ -804,6 +804,7 @@ Options:
 **Features:**
 
 - **Dashboard** (`/`) - Index stats, collection overview, health status
+- **First run** (`/`) - Guided folder setup, preset chooser, and health center
 - **Search** (`/search`) - Full-text BM25 search with highlighted snippets
 - **Browse** (`/browse`) - Collection and document list with filtering
 - **Document View** (`/doc`) - Rendered document content with syntax highlighting
@@ -811,7 +812,7 @@ Options:
 **API Endpoints:**
 
 - `GET /api/health` - Health check
-- `GET /api/status` - Index status (documents, chunks, collections)
+- `GET /api/status` - Index status plus onboarding and health-center state
 - `GET /api/collections` - List collections
 - `GET /api/docs` - List documents (paginated: `?limit=20&offset=0&collection=name`)
 - `GET /api/doc` - Get document content (`?uri=gno://collection/path`)

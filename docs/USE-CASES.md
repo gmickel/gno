@@ -261,6 +261,23 @@ See [MCP Integration](MCP.md) for detailed setup.
 3. **Keep indexes updated** - Run `gno update` regularly or use `--git-pull`
 4. **Scope searches** - Use collection names to focus agent queries
 
+## Import Existing Folders
+
+GNO can now preview imports in the app before indexing starts.
+
+Good uses:
+
+- existing Obsidian vaults
+- mixed project doc folders
+- note archives with some PDFs or Office docs
+
+What the preview tells you:
+
+- likely folder type (vault, notes folder, mixed docs, binary-heavy)
+- rough file-type mix
+- duplicate path/name conflicts before indexing
+- plain-language guidance about read-only imported binaries vs editable markdown notes
+
 ## Git Integration
 
 Keep collections in sync with git repositories.

@@ -21,6 +21,182 @@
   "totalDocuments": 150,
   "totalChunks": 800,
   "embeddingBacklog": 0,
+  "recentErrors": 0,
   "lastUpdated": "2025-12-23T10:00:00Z",
-  "healthy": true
+  "healthy": true,
+  "activePreset": {
+    "id": "balanced",
+    "name": "Balanced (~2GB)"
+  },
+  "capabilities": {
+    "bm25": true,
+    "vector": true,
+    "hybrid": true,
+    "answer": true
+  },
+  "onboarding": {
+    "ready": true,
+    "stage": "ready",
+    "headline": "Workspace ready",
+    "detail": "Your folders, local models, and first index are all in place.",
+    "suggestedCollections": [],
+    "steps": [
+      {
+        "id": "folders",
+        "title": "Pick folders",
+        "status": "complete",
+        "detail": "2 folders connected."
+      },
+      {
+        "id": "preset",
+        "title": "Choose speed vs quality",
+        "status": "complete",
+        "detail": "Current preset: Balanced (~2GB). You can change this any time."
+      },
+      {
+        "id": "models",
+        "title": "Prepare local models",
+        "status": "complete",
+        "detail": "Search, reranking, and local answers are available."
+      },
+      {
+        "id": "indexing",
+        "title": "Finish first index",
+        "status": "complete",
+        "detail": "150 documents indexed so far."
+      }
+    ]
+  },
+  "health": {
+    "state": "healthy",
+    "summary": "Folders, local models, and disk all look ready.",
+    "checks": [
+      {
+        "id": "collections",
+        "title": "Folders",
+        "status": "ok",
+        "summary": "2 folders connected",
+        "detail": "150 documents active across your current sources.",
+        "actionLabel": "Manage folders",
+        "actionKind": "open-collections"
+      },
+      {
+        "id": "indexing",
+        "title": "Indexing",
+        "status": "ok",
+        "summary": "150 documents indexed",
+        "detail": "Last update: 2025-12-23T10:00:00Z.",
+        "actionLabel": "Run update",
+        "actionKind": "sync"
+      },
+      {
+        "id": "models",
+        "title": "Models",
+        "status": "ok",
+        "summary": "Balanced (~2GB) is ready",
+        "detail": "Search, reranking, and local answers are available.",
+        "actionLabel": "Download models",
+        "actionKind": "download-models"
+      },
+      {
+        "id": "disk",
+        "title": "Disk",
+        "status": "ok",
+        "summary": "12.0 GB free near ~/Library/Caches/gno",
+        "detail": "Enough headroom for the active local models and routine indexing work."
+      }
+    ]
+  },
+  "background": {
+    "watcher": {
+      "expectedCollections": ["work", "notes"],
+      "activeCollections": ["work", "notes"],
+      "failedCollections": [],
+      "queuedCollections": [],
+      "syncingCollections": [],
+      "lastEventAt": "2025-12-23T10:00:00Z",
+      "lastSyncAt": "2025-12-23T10:00:00Z"
+    },
+    "embedding": {
+      "available": true,
+      "pendingDocCount": 0,
+      "running": false,
+      "nextRunAt": null,
+      "lastRunAt": 1766484000000,
+      "lastResult": {
+        "embedded": 24,
+        "errors": 0
+      }
+    },
+    "events": {
+      "connectedClients": 1,
+      "retryMs": 2000
+    }
+  },
+  "bootstrap": {
+    "runtime": {
+      "kind": "bun",
+      "strategy": "manual-install-beta",
+      "currentVersion": "1.3.6",
+      "requiredVersion": ">=1.3.0",
+      "ready": true,
+      "managedByApp": false,
+      "summary": "This beta runs on Bun 1.3.6.",
+      "detail": "Current beta installs still expect Bun to be present on the machine. Final desktop packaging work is separate."
+    },
+    "policy": {
+      "offline": false,
+      "allowDownload": true,
+      "source": "default",
+      "summary": "Models can auto-download on first use."
+    },
+    "cache": {
+      "path": "/Users/user/Library/Caches/gno",
+      "totalSizeBytes": 2147483648,
+      "totalSizeLabel": "2.0 GB"
+    },
+    "models": {
+      "activePresetId": "balanced",
+      "activePresetName": "Balanced (~2GB)",
+      "estimatedFootprint": "~2GB",
+      "downloading": false,
+      "cachedCount": 4,
+      "totalCount": 4,
+      "summary": "Balanced (~2GB) is fully cached.",
+      "entries": [
+        {
+          "role": "embed",
+          "uri": "hf:gpustack/bge-m3-GGUF/bge-m3-Q4_K_M.gguf",
+          "cached": true,
+          "path": "/Users/user/Library/Caches/gno/bge-m3-Q4_K_M.gguf",
+          "sizeBytes": 536870912,
+          "statusLabel": "Ready"
+        },
+        {
+          "role": "rerank",
+          "uri": "hf:ggml-org/Qwen3-Reranker-0.6B-Q8_0-GGUF/qwen3-reranker-0.6b-q8_0.gguf",
+          "cached": true,
+          "path": "/Users/user/Library/Caches/gno/qwen3-reranker-0.6b-q8_0.gguf",
+          "sizeBytes": 268435456,
+          "statusLabel": "Ready"
+        },
+        {
+          "role": "expand",
+          "uri": "hf:bartowski/Qwen2.5-3B-Instruct-GGUF/Qwen2.5-3B-Instruct-Q4_K_M.gguf",
+          "cached": true,
+          "path": "/Users/user/Library/Caches/gno/Qwen2.5-3B-Instruct-Q4_K_M.gguf",
+          "sizeBytes": 671088640,
+          "statusLabel": "Ready"
+        },
+        {
+          "role": "gen",
+          "uri": "hf:bartowski/Qwen2.5-3B-Instruct-GGUF/Qwen2.5-3B-Instruct-Q4_K_M.gguf",
+          "cached": true,
+          "path": "/Users/user/Library/Caches/gno/Qwen2.5-3B-Instruct-Q4_K_M.gguf",
+          "sizeBytes": 671088640,
+          "statusLabel": "Ready"
+        }
+      ]
+    }
+  }
 }

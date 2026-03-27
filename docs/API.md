@@ -26,34 +26,36 @@ All endpoints are JSON-based and run entirely on your machine.
 
 ### Read Operations
 
-| Endpoint                 | Method | Description                                                |
-| :----------------------- | :----- | :--------------------------------------------------------- |
-| `/api/health`            | GET    | Health check                                               |
-| `/api/status`            | GET    | Index statistics                                           |
-| `/api/capabilities`      | GET    | Available features                                         |
-| `/api/collections`       | GET    | List collections                                           |
-| `/api/docs`              | GET    | List documents                                             |
-| `/api/docs/autocomplete` | GET    | Title/path suggestions for wiki-linking and quick switcher |
-| `/api/doc`               | GET    | Get document content                                       |
-| `/api/events`            | GET    | Server-sent document change events                         |
-| `/api/doc/:id/links`     | GET    | Get outgoing links from doc                                |
-| `/api/doc/:id/backlinks` | GET    | Get docs linking to this                                   |
-| `/api/doc/:id/similar`   | GET    | Find semantically similar                                  |
-| `/api/graph`             | GET    | Knowledge graph of links                                   |
-| `/api/tags`              | GET    | List tags with counts                                      |
-| `/api/search`            | POST   | BM25 keyword search                                        |
-| `/api/query`             | POST   | Hybrid search                                              |
-| `/api/ask`               | POST   | AI-powered Q&A                                             |
-| `/api/presets`           | GET    | List model presets                                         |
-| `/api/presets`           | POST   | Switch preset                                              |
-| `/api/models/status`     | GET    | Download status                                            |
-| `/api/models/pull`       | POST   | Start model download                                       |
+| Endpoint                 | Method | Description                                                 |
+| :----------------------- | :----- | :---------------------------------------------------------- |
+| `/api/health`            | GET    | Health check                                                |
+| `/api/status`            | GET    | Index statistics, onboarding, health, background, bootstrap |
+| `/api/capabilities`      | GET    | Available features                                          |
+| `/api/collections`       | GET    | List collections                                            |
+| `/api/connectors`        | GET    | Detect in-app connector install state                       |
+| `/api/docs`              | GET    | List documents                                              |
+| `/api/docs/autocomplete` | GET    | Title/path suggestions for wiki-linking and quick switcher  |
+| `/api/doc`               | GET    | Get document content                                        |
+| `/api/events`            | GET    | Server-sent document change events                          |
+| `/api/doc/:id/links`     | GET    | Get outgoing links from doc                                 |
+| `/api/doc/:id/backlinks` | GET    | Get docs linking to this                                    |
+| `/api/doc/:id/similar`   | GET    | Find semantically similar                                   |
+| `/api/graph`             | GET    | Knowledge graph of links                                    |
+| `/api/tags`              | GET    | List tags with counts                                       |
+| `/api/search`            | POST   | BM25 keyword search                                         |
+| `/api/query`             | POST   | Hybrid search                                               |
+| `/api/ask`               | POST   | AI-powered Q&A                                              |
+| `/api/presets`           | GET    | List model presets                                          |
+| `/api/presets`           | POST   | Switch preset                                               |
+| `/api/models/status`     | GET    | Download status                                             |
+| `/api/models/pull`       | POST   | Start model download                                        |
 
 ### Write Operations
 
 | Endpoint                   | Method | Description         |
 | :------------------------- | :----- | :------------------ |
 | `/api/collections`         | POST   | Add new collection  |
+| `/api/connectors/install`  | POST   | Install connector   |
 | `/api/collections/:name`   | DELETE | Remove collection   |
 | `/api/sync`                | POST   | Trigger re-index    |
 | `/api/docs`                | POST   | Create new document |
@@ -123,7 +125,7 @@ GET /api/health
 GET /api/status
 ```
 
-Returns index statistics and health.
+Returns index statistics plus first-run onboarding, health-center state, background-service telemetry, and bootstrap/runtime-model provisioning state for the dashboard.
 
 **Response**:
 
@@ -144,10 +146,133 @@ Returns index statistics and health.
   "totalDocuments": 142,
   "totalChunks": 1853,
   "embeddingBacklog": 0,
+  "recentErrors": 0,
   "lastUpdated": "2025-01-15T10:30:00Z",
-  "healthy": true
+  "healthy": true,
+  "activePreset": {
+    "id": "balanced",
+    "name": "Balanced (~2GB)"
+  },
+  "capabilities": {
+    "bm25": true,
+    "vector": true,
+    "hybrid": true,
+    "answer": true
+  },
+  "onboarding": {
+    "ready": false,
+    "stage": "indexing",
+    "headline": "GNO is almost ready. Finish the first indexing run",
+    "detail": "Run the first sync to populate the index from the folders you connected.",
+    "suggestedCollections": [
+      {
+        "label": "Documents",
+        "path": "/Users/you/Documents",
+        "reason": "Good default for notes and docs"
+      }
+    ],
+    "steps": [
+      {
+        "id": "folders",
+        "title": "Pick folders",
+        "status": "complete",
+        "detail": "1 folder connected."
+      }
+    ]
+  },
+  "health": {
+    "state": "needs-attention",
+    "summary": "GNO works, but a few issues still need attention before it feels reliable.",
+    "checks": [
+      {
+        "id": "models",
+        "title": "Models",
+        "status": "warn",
+        "summary": "Balanced is usable, but answer models are still missing",
+        "detail": "Core search is ready. Download the rest of the preset for best ranking and local AI answers.",
+        "actionLabel": "Download models",
+        "actionKind": "download-models"
+      }
+    ]
+  },
+  "background": {
+    "watcher": {
+      "expectedCollections": ["notes"],
+      "activeCollections": ["notes"],
+      "failedCollections": [],
+      "queuedCollections": [],
+      "syncingCollections": [],
+      "lastEventAt": "2025-01-15T10:31:00Z",
+      "lastSyncAt": "2025-01-15T10:31:02Z"
+    },
+    "embedding": {
+      "available": true,
+      "pendingDocCount": 0,
+      "running": false,
+      "nextRunAt": null,
+      "lastRunAt": 1736937062000,
+      "lastResult": {
+        "embedded": 12,
+        "errors": 0
+      }
+    },
+    "events": {
+      "connectedClients": 2,
+      "retryMs": 2000
+    }
+  },
+  "bootstrap": {
+    "runtime": {
+      "kind": "bun",
+      "strategy": "manual-install-beta",
+      "currentVersion": "1.3.6",
+      "requiredVersion": ">=1.3.0",
+      "ready": true,
+      "managedByApp": false,
+      "summary": "This beta runs on Bun 1.3.6.",
+      "detail": "Current beta installs still expect Bun to be present on the machine. Final desktop packaging work is separate."
+    },
+    "policy": {
+      "offline": false,
+      "allowDownload": true,
+      "source": "default",
+      "summary": "Models can auto-download on first use."
+    },
+    "cache": {
+      "path": "/Users/you/Library/Caches/gno",
+      "totalSizeBytes": 2147483648,
+      "totalSizeLabel": "2.0 GB"
+    },
+    "models": {
+      "activePresetId": "balanced",
+      "activePresetName": "Balanced (~2GB)",
+      "estimatedFootprint": "~2GB",
+      "downloading": false,
+      "cachedCount": 4,
+      "totalCount": 4,
+      "summary": "Balanced (~2GB) is fully cached.",
+      "entries": []
+    }
+  }
 }
 ```
+
+`onboarding.stage` is one of `add-collection`, `models`, `indexing`, or `ready`.
+
+`health.checks` gives per-area status cards for folders, indexing, models, and disk. Actions map to dashboard buttons such as add folder, run sync, or download models.
+
+`background` is the reliability block:
+
+- `watcher` shows which collections are expected, actively watched, queued, syncing, or failed
+- `embedding` reports pending/running background embedding state
+- `events` reports current SSE clients and recommended reconnect retry
+
+`bootstrap` is the install/runtime/model block:
+
+- `runtime` explains the current beta runtime strategy and version
+- `policy` explains whether models auto-download, stay offline, or require manual pull
+- `cache` shows where models live and how much disk they use
+- `models` shows active preset readiness role by role
 
 **Example**:
 
@@ -1410,13 +1535,18 @@ GET /api/presets
 {
   "presets": [
     {
-      "id": "slim",
-      "name": "Slim (Default, ~1GB)",
+      "id": "slim-tuned",
+      "name": "GNO Slim Tuned (Default, ~1GB)",
       "embed": "hf:...bge-m3-Q4...",
       "rerank": "hf:...reranker-Q4...",
-      "expand": "hf:...expansion-model...",
-      "gen": "hf:...qwen3-1.7b-Q4...",
+      "expand": "hf:...gno-expansion-auto-entity-lock-default-mix...",
+      "gen": "hf:...qwen3-4b-Q4...",
       "active": true
+    },
+    {
+      "id": "slim",
+      "name": "Slim (~1GB)",
+      "active": false
     },
     {
       "id": "balanced",
@@ -1424,7 +1554,7 @@ GET /api/presets
       "active": false
     }
   ],
-  "activePreset": "slim"
+  "activePreset": "slim-tuned"
 }
 ```
 

@@ -1,0 +1,14 @@
+{
+  "assignee": null,
+  "claim_note": "",
+  "claimed_at": null,
+  "created_at": "2026-03-22T21:57:50.958878Z",
+  "depends_on": [],
+  "epic": "fn-44-desktop-beta-import-and-migration",
+  "id": "fn-44-desktop-beta-import-and-migration.1",
+  "priority": null,
+  "spec_path": ".flow/tasks/fn-44-desktop-beta-import-and-migration.1.md",
+  "status": "todo",
+  "title": "Add import preview assistant for existing folders",
+  "updated_at": "2026-03-22T21:57:51.064421Z"
+}

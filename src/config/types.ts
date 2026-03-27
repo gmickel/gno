@@ -177,8 +177,18 @@ export type ModelPreset = z.infer<typeof ModelPresetSchema>;
 /** Default model presets */
 export const DEFAULT_MODEL_PRESETS: ModelPreset[] = [
   {
+    id: "slim-tuned",
+    name: "GNO Slim Tuned (Default, ~1GB)",
+    embed: "hf:gpustack/bge-m3-GGUF/bge-m3-Q4_K_M.gguf",
+    rerank:
+      "hf:ggml-org/Qwen3-Reranker-0.6B-Q8_0-GGUF/qwen3-reranker-0.6b-q8_0.gguf",
+    expand:
+      "hf:guiltylemon/gno-expansion-slim-retrieval-v1/gno-expansion-auto-entity-lock-default-mix-lr95-f16.gguf",
+    gen: "hf:unsloth/Qwen3-1.7B-GGUF/Qwen3-1.7B-Q4_K_M.gguf",
+  },
+  {
     id: "slim",
-    name: "Slim (Default, ~1GB)",
+    name: "Slim (~1GB)",
     embed: "hf:gpustack/bge-m3-GGUF/bge-m3-Q4_K_M.gguf",
     rerank:
       "hf:ggml-org/Qwen3-Reranker-0.6B-Q8_0-GGUF/qwen3-reranker-0.6b-q8_0.gguf",
@@ -209,7 +219,7 @@ export const DEFAULT_MODEL_PRESETS: ModelPreset[] = [
 
 export const ModelConfigSchema = z.object({
   /** Active preset ID */
-  activePreset: z.string().default("slim"),
+  activePreset: z.string().default("slim-tuned"),
   /** Model presets */
   presets: z.array(ModelPresetSchema).default(DEFAULT_MODEL_PRESETS),
   /** Model load timeout in ms */

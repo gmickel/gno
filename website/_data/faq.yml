@@ -8,7 +8,11 @@
 
     - q: How do I install GNO?
       a: >
-        Install via Bun with bun install -g @gmickel/gno. On macOS, vector search requires Homebrew SQLite (brew install sqlite3). Run gno doctor to verify your installation.
+        Install via Bun with bun install -g @gmickel/gno. On macOS, vector search requires Homebrew SQLite (brew install sqlite3). Run gno doctor to verify your installation, or launch gno serve for a guided first-run setup in the browser.
+
+    - q: Can I set up GNO without remembering the CLI?
+      a: >
+        Yes. After install, run gno serve and open localhost:3000. The dashboard walks you through adding a folder, choosing a speed-vs-quality preset, downloading local models if needed, and checking health for indexing, models, and disk.
 
     - q: What file formats does GNO support?
       a: GNO indexes Markdown (.md) with frontmatter extraction, PDF (.pdf), Microsoft Word (.docx), Excel (.xlsx), PowerPoint (.pptx), and plain text files. It also detects document language across 30+ languages.
@@ -22,7 +26,11 @@
 
     - q: Does GNO work with Obsidian?
       a: >
-        Yes. Point GNO at your Obsidian vault directory and it indexes everything. GNO understands wiki links ([[note]]), frontmatter tags, and can discover semantic connections between notes that Obsidian's built-in search misses. It adds hybrid search, AI answers, and a knowledge graph on top of your existing vault.
+        Yes. Point GNO at your Obsidian vault directory and it indexes everything. GNO understands wiki links ([[note]]), frontmatter tags, and can discover semantic connections between notes that Obsidian's built-in search misses. It adds hybrid search, AI answers, and a knowledge graph on top of your existing vault. The app now previews likely Obsidian vault imports before indexing so users can see what will happen first.
+
+    - q: Can GNO preview a folder before importing it?
+      a: >
+        Yes. In the app, use Collections > Add Collection and GNO will preview the folder before indexing. It detects likely Obsidian vaults, mixed work-doc folders, and obvious duplicate conflicts so you can understand the import before it starts.
 
 - category: Search & Querying
   questions:
@@ -60,14 +68,14 @@
   questions:
     - q: What LLM models does GNO use?
       a: >
-        GNO uses local models via node-llama-cpp. Default presets are slim (~1GB, fast), balanced (~2GB), quality (~2.5GB), and slim-tuned (fine-tuned retrieval model from Hugging Face). Each preset has separate models for embedding, reranking, query expansion, and answer generation.
+        GNO uses local models via node-llama-cpp. The default preset is slim-tuned (~1GB) with the fine-tuned local expansion model plus the same embed, rerank, and answer stack as slim. Other built-in presets are slim, balanced (~2GB), and quality (~2.5GB).
 
     - q: Do I need an API key?
       a: No. GNO runs entirely locally with no API keys or cloud services required. Models are downloaded once and run on your machine.
 
     - q: How do I change the model?
       a: >
-        Use gno models use preset then gno models pull to download. Presets are slim, balanced, quality, or slim-tuned. You can also offload inference to a remote GPU server on your network via HTTP backends.
+        Use gno models use preset then gno models pull to download, or switch presets directly in the web UI. Presets are slim-tuned, slim, balanced, or quality. You can also offload inference to a remote GPU server on your network via HTTP backends.
 
     - q: What is the fine-tuned model?
       a: >

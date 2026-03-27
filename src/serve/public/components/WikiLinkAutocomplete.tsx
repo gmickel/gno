@@ -69,7 +69,8 @@ function fuzzyScore(text: string, query: string): number {
   const substringIdx = lowerText.indexOf(lowerQuery);
   if (substringIdx !== -1) {
     // Bonus for word boundary
-    if (substringIdx === 0 || /\W/.test(text[substringIdx - 1])) {
+    const previousChar = substringIdx > 0 ? text.charAt(substringIdx - 1) : "";
+    if (substringIdx === 0 || /\W/.test(previousChar)) {
       return 800 + (query.length / text.length) * 50;
     }
     return 700 + (query.length / text.length) * 50;
@@ -92,7 +93,8 @@ function fuzzyScore(text: string, query: string): number {
     }
 
     // Word boundary bonus
-    if (foundIdx === 0 || /\W/.test(text[foundIdx - 1])) {
+    const previousChar = foundIdx > 0 ? text.charAt(foundIdx - 1) : "";
+    if (foundIdx === 0 || /\W/.test(previousChar)) {
       score += 20;
     }
 
@@ -151,6 +153,7 @@ function HighlightedText({
   let isHighlighted = false;
 
   for (let i = 0; i < text.length; i++) {
+    const currentChar = text.charAt(i);
     const charIsHighlighted = indexSet.has(i);
 
     if (charIsHighlighted !== isHighlighted) {
@@ -169,10 +172,10 @@ function HighlightedText({
           )
         );
       }
-      currentRun = text[i];
+      currentRun = currentChar;
       isHighlighted = charIsHighlighted;
     } else {
-      currentRun += text[i];
+      currentRun += currentChar;
     }
   }
 
@@ -273,12 +276,18 @@ export function WikiLinkAutocomplete({
           e.preventDefault();
           e.stopPropagation();
           if (activeIndex >= 0 && activeIndex < filteredDocs.length) {
-            onSelect(filteredDocs[activeIndex].doc.title);
+            const activeDoc = filteredDocs.at(activeIndex);
+            if (activeDoc) {
+              onSelect(activeDoc.doc.title);
+            }
           } else if (activeIndex === createOptionIndex && showCreateOption) {
             onCreateNew?.(searchQuery.trim());
           } else if (filteredDocs.length > 0) {
             // Default to first result if nothing selected
-            onSelect(filteredDocs[0].doc.title);
+            const firstDoc = filteredDocs.at(0);
+            if (firstDoc) {
+              onSelect(firstDoc.doc.title);
+            }
           } else if (showCreateOption) {
             onCreateNew?.(searchQuery.trim());
           }

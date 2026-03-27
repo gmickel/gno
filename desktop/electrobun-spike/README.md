@@ -1,4 +1,4 @@
-# GNO Electrobun Spike
+# GNO Desktop Beta (Archived Spike)
 
 Thin Electrobun wrapper around the existing GNO Bun/web app.
 

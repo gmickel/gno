@@ -60,6 +60,7 @@ export interface CollectionError {
     | "VALIDATION"
     | "NOT_FOUND"
     | "DUPLICATE"
+    | "DUPLICATE_PATH"
     | "PATH_NOT_FOUND"
     | "HAS_REFERENCES";
   message: string;

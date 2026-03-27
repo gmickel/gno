@@ -30,7 +30,7 @@ describe("getModelConfig", () => {
     const config = makeConfig();
     const modelConfig = getModelConfig(config);
 
-    expect(modelConfig.activePreset).toBe("slim");
+    expect(modelConfig.activePreset).toBe("slim-tuned");
     expect(modelConfig.presets).toEqual(DEFAULT_MODEL_PRESETS);
     expect(modelConfig.loadTimeout).toBe(60_000);
     expect(modelConfig.inferenceTimeout).toBe(30_000);
@@ -58,12 +58,12 @@ describe("getModelConfig", () => {
 });
 
 describe("getActivePreset", () => {
-  test("returns slim preset by default", () => {
+  test("returns slim-tuned preset by default", () => {
     const config = makeConfig();
     const preset = getActivePreset(config);
 
-    expect(preset.id).toBe("slim");
-    expect(preset.name).toBe("Slim (Default, ~1GB)");
+    expect(preset.id).toBe("slim-tuned");
+    expect(preset.name).toBe("GNO Slim Tuned (Default, ~1GB)");
     expect(preset.embed).toContain("bge-m3");
   });
 
@@ -93,7 +93,7 @@ describe("getActivePreset", () => {
     });
     const preset = getActivePreset(config);
 
-    expect(preset.id).toBe("slim");
+    expect(preset.id).toBe("slim-tuned");
   });
 });
 
@@ -143,8 +143,37 @@ describe("listPresets", () => {
     });
     const presets = listPresets(config);
 
-    expect(presets).toHaveLength(1);
-    expect(presets[0]?.id).toBe("custom");
+    expect(presets.map((p) => p.id)).toContain("slim-tuned");
+    expect(presets.map((p) => p.id)).toContain("slim");
+    expect(presets.map((p) => p.id)).toContain("balanced");
+    expect(presets.map((p) => p.id)).toContain("quality");
+    expect(presets.map((p) => p.id)).toContain("custom");
+    expect(presets.at(-1)?.id).toBe("custom");
+  });
+
+  test("custom preset with built-in id overrides default entry", () => {
+    const config = makeConfig({
+      activePreset: "quality",
+      presets: [
+        {
+          id: "quality",
+          name: "Quality Tuned",
+          embed: "hf:custom/embed.gguf",
+          rerank: "hf:custom/rerank.gguf",
+          gen: "hf:custom/gen.gguf",
+        },
+      ],
+      loadTimeout: 60_000,
+      inferenceTimeout: 30_000,
+      expandContextSize: 2_048,
+      warmModelTtl: 300_000,
+    });
+
+    const presets = listPresets(config);
+    const quality = presets.find((preset) => preset.id === "quality");
+
+    expect(quality?.name).toBe("Quality Tuned");
+    expect(presets.filter((preset) => preset.id === "quality")).toHaveLength(1);
   });
 });
 

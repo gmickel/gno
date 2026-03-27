@@ -25,6 +25,7 @@ import {
   handleCollections,
   handleCreateCollection,
   handleDeleteCollection,
+  handleImportPreview,
 } from "../../src/serve/routes/api";
 import { safeRm } from "../helpers/cleanup";
 
@@ -205,6 +206,95 @@ describe("POST /api/collections", () => {
     expect(res.status).toBe(409);
     const body = (await res.json()) as ErrorBody;
     expect(body.error.code).toBe("DUPLICATE");
+  });
+
+  test("rejects duplicate collection path", async () => {
+    await writeConfig({
+      collections: [
+        {
+          name: "existing",
+          path: tmpDir,
+          pattern: "**/*.md",
+          include: [],
+          exclude: [],
+        },
+      ],
+    });
+
+    const store = createMockStore();
+    const ctxHolder = createMockContextHolder({
+      collections: [
+        {
+          name: "existing",
+          path: tmpDir,
+          pattern: "**/*.md",
+          include: [],
+          exclude: [],
+        },
+      ],
+    });
+    const req = new Request("http://localhost/api/collections", {
+      method: "POST",
+      body: JSON.stringify({ path: tmpDir, name: "new-name" }),
+    });
+    const res = await handleCreateCollection(ctxHolder, store as never, req);
+    expect(res.status).toBe(409);
+    const body = (await res.json()) as ErrorBody;
+    expect(body.error.code).toBe("DUPLICATE_PATH");
+  });
+
+  test("returns success when display name is mixed case but collection is normalized", async () => {
+    const store = createMockStore();
+    const ctxHolder = createMockContextHolder();
+    const req = new Request("http://localhost/api/collections", {
+      method: "POST",
+      body: JSON.stringify({ path: tmpDir, name: "SW2" }),
+    });
+
+    const res = await handleCreateCollection(ctxHolder, store as never, req);
+    expect(res.status).toBe(202);
+    const body = (await res.json()) as {
+      collection: { name: string; path: string };
+      jobId: string;
+    };
+    expect(body.collection.name).toBe("sw2");
+    expect(body.collection.path).toBe(tmpDir);
+    expect(body.jobId.length).toBeGreaterThan(0);
+  });
+});
+
+describe("POST /api/import/preview", () => {
+  test("detects Obsidian-style vaults and duplicate conflicts", async () => {
+    const tmpDir = await mkdtemp(join(tmpdir(), "gno-import-"));
+    await Bun.write(join(tmpDir, "note.md"), "# Hello");
+    await Bun.$`mkdir -p ${join(tmpDir, ".obsidian")}`.quiet();
+
+    const ctxHolder = createMockContextHolder({
+      collections: [
+        {
+          name: "existing",
+          path: tmpDir,
+          pattern: "**/*.md",
+          include: [],
+          exclude: [],
+        },
+      ],
+    });
+    const req = new Request("http://localhost/api/import/preview", {
+      method: "POST",
+      body: JSON.stringify({ path: tmpDir }),
+    });
+
+    const res = await handleImportPreview(ctxHolder, req);
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      preview: { folderType: string; conflicts: string[]; guidance: string[] };
+    };
+    expect(body.preview.folderType).toBe("obsidian-vault");
+    expect(body.preview.conflicts[0]).toContain("already indexed");
+    expect(body.preview.guidance[0]).toContain("Obsidian");
+
+    await safeRm(tmpDir);
   });
 });
 

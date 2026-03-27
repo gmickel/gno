@@ -73,6 +73,16 @@ export async function addCollection(
     };
   }
 
+  // Check for duplicate path
+  const existingPath = config.collections.find((c) => c.path === absolutePath);
+  if (existingPath) {
+    return {
+      ok: false,
+      code: "DUPLICATE_PATH",
+      message: `Path is already indexed by collection "${existingPath.name}"`,
+    };
+  }
+
   // Parse include/exclude lists
   const includeList = parseList(input.include);
   const excludeList =

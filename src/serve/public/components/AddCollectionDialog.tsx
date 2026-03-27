@@ -44,6 +44,8 @@ export interface AddCollectionDialogProps {
   onOpenChange: (open: boolean) => void;
   /** Callback when collection created successfully */
   onSuccess?: () => void;
+  /** Optional path to prefill when opening from onboarding shortcuts */
+  initialPath?: string;
 }
 
 interface CreateCollectionResponse {
@@ -52,6 +54,25 @@ interface CreateCollectionResponse {
     path: string;
   };
   jobId: string;
+}
+
+interface ImportPreview {
+  path: string;
+  suggestedName: string;
+  folderType: "obsidian-vault" | "notes-folder" | "mixed-docs" | "binary-heavy";
+  counts: {
+    markdown: number;
+    text: number;
+    pdf: number;
+    office: number;
+    other: number;
+    folders: number;
+    scannedFiles: number;
+    truncated: boolean;
+  };
+  signals: string[];
+  guidance: string[];
+  conflicts: string[];
 }
 
 type DialogState = "form" | "submitting" | "success" | "error";
@@ -69,6 +90,7 @@ function isAbsolutePath(path: string): boolean {
 }
 
 export function AddCollectionDialog({
+  initialPath,
   open,
   onOpenChange,
   onSuccess,
@@ -76,7 +98,7 @@ export function AddCollectionDialog({
   // Form state
   const [path, setPath] = useState("");
   const [name, setName] = useState("");
-  const [pattern, setPattern] = useState("**/*.md");
+  const [pattern, setPattern] = useState("**/*");
   const [exclude, setExclude] = useState("node_modules/**");
   const [advancedOpen, setAdvancedOpen] = useState(false);
 
@@ -85,6 +107,8 @@ export function AddCollectionDialog({
   const [error, setError] = useState<string | null>(null);
   const [jobId, setJobId] = useState<string | null>(null);
   const [createdName, setCreatedName] = useState<string | null>(null);
+  const [preview, setPreview] = useState<ImportPreview | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
 
   // Auto-fill name from path
   const derivedName = name || getFolderName(path);
@@ -95,22 +119,62 @@ export function AddCollectionDialog({
       const timer = setTimeout(() => {
         setPath("");
         setName("");
-        setPattern("**/*.md");
+        setPattern("**/*");
         setExclude("node_modules/**");
         setAdvancedOpen(false);
         setState("form");
         setError(null);
         setJobId(null);
         setCreatedName(null);
+        setPreview(null);
+        setPreviewLoading(false);
       }, 200);
       return () => clearTimeout(timer);
     }
   }, [open]);
 
+  useEffect(() => {
+    if (open && initialPath && state === "form") {
+      setPath(initialPath);
+    }
+  }, [initialPath, open, state]);
+
   // Validation
   const pathError =
     path && !isAbsolutePath(path) ? "Path must be absolute" : null;
-  const isValid = path.trim() && !pathError;
+  const previewConflict = preview?.conflicts[0] ?? null;
+  const isValid = path.trim() && !pathError && !previewConflict;
+
+  useEffect(() => {
+    if (!open || !path.trim() || pathError) {
+      setPreview(null);
+      setPreviewLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    const timer = setTimeout(() => {
+      setPreviewLoading(true);
+      void apiFetch<{ preview: ImportPreview }>("/api/import/preview", {
+        method: "POST",
+        body: JSON.stringify({
+          path: path.trim(),
+          name: derivedName || undefined,
+        }),
+      }).then(({ data }) => {
+        if (cancelled) {
+          return;
+        }
+        setPreview(data?.preview ?? null);
+        setPreviewLoading(false);
+      });
+    }, 250);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [derivedName, open, path, pathError]);
 
   // Submit handler
   const handleSubmit = useCallback(async () => {
@@ -126,7 +190,7 @@ export function AddCollectionDialog({
         body: JSON.stringify({
           path: path.trim(),
           name: derivedName || undefined,
-          pattern: pattern.trim() || "**/*.md",
+          pattern: pattern.trim() || "**/*",
           exclude: exclude.trim() || undefined,
         }),
       }
@@ -214,6 +278,58 @@ export function AddCollectionDialog({
               )}
             </div>
 
+            {(previewLoading || preview) && (
+              <div className="rounded-lg border border-border/60 bg-background/70 p-4">
+                <div className="mb-2 flex items-center justify-between gap-3">
+                  <div className="font-medium text-sm">Import preview</div>
+                  {previewLoading && (
+                    <Loader2Icon className="size-4 animate-spin text-muted-foreground" />
+                  )}
+                </div>
+                {preview && (
+                  <div className="space-y-3 text-sm">
+                    <p className="text-muted-foreground">
+                      {preview.folderType === "obsidian-vault"
+                        ? "Looks like an Obsidian vault."
+                        : preview.folderType === "notes-folder"
+                          ? "Looks like a note-heavy folder."
+                          : preview.folderType === "binary-heavy"
+                            ? "Looks binary-heavy."
+                            : "Looks like a mixed work-doc folder."}
+                    </p>
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <div>{preview.counts.markdown} markdown</div>
+                      <div>{preview.counts.text} text</div>
+                      <div>{preview.counts.pdf} pdf</div>
+                      <div>{preview.counts.office} office docs</div>
+                    </div>
+                    {preview.signals.length > 0 && (
+                      <div className="space-y-1">
+                        {preview.signals.map((signal) => (
+                          <p
+                            className="text-muted-foreground text-xs"
+                            key={signal}
+                          >
+                            {signal}
+                          </p>
+                        ))}
+                      </div>
+                    )}
+                    {preview.guidance.map((item) => (
+                      <p className="text-muted-foreground text-xs" key={item}>
+                        {item}
+                      </p>
+                    ))}
+                    {preview.conflicts.map((conflict) => (
+                      <p className="text-destructive text-xs" key={conflict}>
+                        {conflict}
+                      </p>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Name override */}
             <div className="space-y-2">
               <label
@@ -270,12 +386,12 @@ export function AddCollectionDialog({
                     disabled={state === "submitting"}
                     id="collection-pattern"
                     onChange={(e) => setPattern(e.target.value)}
-                    placeholder="**/*.md"
+                    placeholder="**/*"
                     value={pattern}
                   />
                   <p className="text-muted-foreground text-xs">
-                    Default: <code className="text-[11px]">**/*.md</code> (all
-                    markdown files)
+                    Default: <code className="text-[11px]">**/*</code> (all
+                    supported document files)
                   </p>
                 </div>
 

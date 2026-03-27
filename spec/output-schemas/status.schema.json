@@ -10,7 +10,14 @@
     "totalDocuments",
     "totalChunks",
     "embeddingBacklog",
-    "healthy"
+    "healthy",
+    "recentErrors",
+    "activePreset",
+    "capabilities",
+    "onboarding",
+    "health",
+    "background",
+    "bootstrap"
   ],
   "properties": {
     "indexName": {
@@ -79,14 +86,377 @@
       "description": "Chunks awaiting embedding",
       "minimum": 0
     },
+    "recentErrors": {
+      "type": "integer",
+      "description": "Recent ingest errors in the last 24 hours",
+      "minimum": 0
+    },
     "lastUpdated": {
-      "type": "string",
+      "type": ["string", "null"],
       "description": "Last index update time (ISO 8601)",
       "format": "date-time"
     },
     "healthy": {
       "type": "boolean",
       "description": "Overall health status"
+    },
+    "activePreset": {
+      "type": "object",
+      "required": ["id", "name"],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        }
+      }
+    },
+    "capabilities": {
+      "type": "object",
+      "required": ["bm25", "vector", "hybrid", "answer"],
+      "properties": {
+        "bm25": {
+          "type": "boolean"
+        },
+        "vector": {
+          "type": "boolean"
+        },
+        "hybrid": {
+          "type": "boolean"
+        },
+        "answer": {
+          "type": "boolean"
+        }
+      }
+    },
+    "onboarding": {
+      "type": "object",
+      "required": [
+        "ready",
+        "stage",
+        "headline",
+        "detail",
+        "suggestedCollections",
+        "steps"
+      ],
+      "properties": {
+        "ready": {
+          "type": "boolean"
+        },
+        "stage": {
+          "type": "string",
+          "enum": ["add-collection", "models", "indexing", "ready"]
+        },
+        "headline": {
+          "type": "string"
+        },
+        "detail": {
+          "type": "string"
+        },
+        "suggestedCollections": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["label", "path", "reason"],
+            "properties": {
+              "label": {
+                "type": "string"
+              },
+              "path": {
+                "type": "string"
+              },
+              "reason": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "steps": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "title", "status", "detail"],
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "title": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string",
+                "enum": ["complete", "current", "upcoming"]
+              },
+              "detail": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    "health": {
+      "type": "object",
+      "required": ["state", "summary", "checks"],
+      "properties": {
+        "state": {
+          "type": "string",
+          "enum": ["healthy", "needs-attention", "setup-required"]
+        },
+        "summary": {
+          "type": "string"
+        },
+        "checks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "title", "status", "summary", "detail"],
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "title": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string",
+                "enum": ["ok", "warn", "error"]
+              },
+              "summary": {
+                "type": "string"
+              },
+              "detail": {
+                "type": "string"
+              },
+              "actionLabel": {
+                "type": "string"
+              },
+              "actionKind": {
+                "type": "string",
+                "enum": [
+                  "add-collection",
+                  "open-collections",
+                  "sync",
+                  "embed",
+                  "download-models",
+                  "free-space"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "background": {
+      "type": "object",
+      "required": ["watcher", "embedding", "events"],
+      "properties": {
+        "watcher": {
+          "type": "object",
+          "required": [
+            "expectedCollections",
+            "activeCollections",
+            "failedCollections",
+            "queuedCollections",
+            "syncingCollections",
+            "lastEventAt",
+            "lastSyncAt"
+          ],
+          "properties": {
+            "expectedCollections": {
+              "type": "array",
+              "items": { "type": "string" }
+            },
+            "activeCollections": {
+              "type": "array",
+              "items": { "type": "string" }
+            },
+            "failedCollections": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["collection", "reason"],
+                "properties": {
+                  "collection": { "type": "string" },
+                  "reason": { "type": "string" }
+                }
+              }
+            },
+            "queuedCollections": {
+              "type": "array",
+              "items": { "type": "string" }
+            },
+            "syncingCollections": {
+              "type": "array",
+              "items": { "type": "string" }
+            },
+            "lastEventAt": {
+              "type": ["string", "null"],
+              "format": "date-time"
+            },
+            "lastSyncAt": {
+              "type": ["string", "null"],
+              "format": "date-time"
+            }
+          }
+        },
+        "embedding": {
+          "type": "object",
+          "required": [
+            "available",
+            "pendingDocCount",
+            "running",
+            "nextRunAt",
+            "lastRunAt",
+            "lastResult"
+          ],
+          "properties": {
+            "available": { "type": "boolean" },
+            "pendingDocCount": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "running": { "type": "boolean" },
+            "nextRunAt": { "type": ["integer", "null"] },
+            "lastRunAt": { "type": ["integer", "null"] },
+            "lastResult": {
+              "type": ["object", "null"],
+              "required": ["embedded", "errors"],
+              "properties": {
+                "embedded": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "errors": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              }
+            }
+          }
+        },
+        "events": {
+          "type": "object",
+          "required": ["connectedClients", "retryMs"],
+          "properties": {
+            "connectedClients": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "retryMs": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        }
+      }
+    },
+    "bootstrap": {
+      "type": "object",
+      "required": ["runtime", "policy", "cache", "models"],
+      "properties": {
+        "runtime": {
+          "type": "object",
+          "required": [
+            "kind",
+            "strategy",
+            "currentVersion",
+            "requiredVersion",
+            "ready",
+            "managedByApp",
+            "summary",
+            "detail"
+          ],
+          "properties": {
+            "kind": { "type": "string", "enum": ["bun"] },
+            "strategy": {
+              "type": "string",
+              "enum": ["manual-install-beta"]
+            },
+            "currentVersion": { "type": "string" },
+            "requiredVersion": { "type": "string" },
+            "ready": { "type": "boolean" },
+            "managedByApp": { "type": "boolean" },
+            "summary": { "type": "string" },
+            "detail": { "type": "string" }
+          }
+        },
+        "policy": {
+          "type": "object",
+          "required": ["offline", "allowDownload", "source", "summary"],
+          "properties": {
+            "offline": { "type": "boolean" },
+            "allowDownload": { "type": "boolean" },
+            "source": {
+              "type": "string",
+              "enum": [
+                "default",
+                "hf-hub-offline",
+                "gno-offline",
+                "no-auto-download"
+              ]
+            },
+            "summary": { "type": "string" }
+          }
+        },
+        "cache": {
+          "type": "object",
+          "required": ["path", "totalSizeBytes", "totalSizeLabel"],
+          "properties": {
+            "path": { "type": "string" },
+            "totalSizeBytes": { "type": "integer", "minimum": 0 },
+            "totalSizeLabel": { "type": "string" }
+          }
+        },
+        "models": {
+          "type": "object",
+          "required": [
+            "activePresetId",
+            "activePresetName",
+            "estimatedFootprint",
+            "downloading",
+            "cachedCount",
+            "totalCount",
+            "summary",
+            "entries"
+          ],
+          "properties": {
+            "activePresetId": { "type": "string" },
+            "activePresetName": { "type": "string" },
+            "estimatedFootprint": { "type": ["string", "null"] },
+            "downloading": { "type": "boolean" },
+            "cachedCount": { "type": "integer", "minimum": 0 },
+            "totalCount": { "type": "integer", "minimum": 0 },
+            "summary": { "type": "string" },
+            "entries": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "role",
+                  "uri",
+                  "cached",
+                  "path",
+                  "sizeBytes",
+                  "statusLabel"
+                ],
+                "properties": {
+                  "role": {
+                    "type": "string",
+                    "enum": ["embed", "rerank", "expand", "gen"]
+                  },
+                  "uri": { "type": "string" },
+                  "cached": { "type": "boolean" },
+                  "path": { "type": ["string", "null"] },
+                  "sizeBytes": { "type": ["integer", "null"], "minimum": 0 },
+                  "statusLabel": { "type": "string" }
+                }
+              }
+            }
+          }
+        }
+      }
     }
   }
 }

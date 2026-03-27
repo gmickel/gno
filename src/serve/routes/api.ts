@@ -6,6 +6,7 @@
  */
 
 import type { Config, ModelPreset } from "../../config/types";
+import type { Collection } from "../../config/types";
 import type {
   AskResult,
   Citation,
@@ -13,6 +14,7 @@ import type {
   SearchOptions,
 } from "../../pipeline/types";
 import type { SqliteAdapter } from "../../store/sqlite/adapter";
+import type { DocumentRow } from "../../store/types";
 import type { DocumentEventBus } from "../doc-events";
 import type { EmbedScheduler } from "../embed-scheduler";
 import type { CollectionWatchService } from "../watch-service";
@@ -24,7 +26,12 @@ import {
   deriveEditableCopyRelPath,
   getDocumentCapabilities,
 } from "../../core/document-capabilities";
-import { atomicWrite } from "../../core/file-ops";
+import {
+  atomicWrite,
+  renameFilePath,
+  revealFilePath,
+  trashFilePath,
+} from "../../core/file-ops";
 import { normalizeStructuredQueryInput } from "../../core/structured-query";
 import {
   normalizeTag,
@@ -42,14 +49,17 @@ import {
 import { searchHybrid } from "../../pipeline/hybrid";
 import { validateQueryModes } from "../../pipeline/query-modes";
 import { searchBm25 } from "../../pipeline/search";
-import { applyConfigChange } from "../config-sync";
+import { applyConfigChange, applyConfigChangeTyped } from "../config-sync";
+import { getConnectorStatuses, installConnector } from "../connectors";
 import {
   downloadState,
   reloadServerContext,
   resetDownloadState,
   type ServerContext,
 } from "../context";
+import { analyzeImportPath } from "../import-preview";
 import { getJobStatus, startJob } from "../jobs";
+import { buildAppStatus, type StatusBuildDeps } from "../status";
 
 /** Mutable context holder for hot-reloading presets */
 export interface ContextHolder {
@@ -69,6 +79,11 @@ export interface ApiError {
     code: string;
     message: string;
   };
+}
+
+export interface InstallConnectorRequestBody {
+  connectorId: string;
+  reinstall?: boolean;
 }
 
 export interface SearchRequestBody {
@@ -145,6 +160,11 @@ export interface CreateCollectionRequestBody {
   gitPull?: boolean;
 }
 
+export interface ImportPreviewRequestBody {
+  path: string;
+  name?: string;
+}
+
 export interface SyncRequestBody {
   collection?: string;
   gitPull?: boolean;
@@ -159,6 +179,11 @@ export interface CreateDocRequestBody {
   tags?: string[];
 }
 
+export interface RenameDocRequestBody {
+  name: string;
+  uri?: string;
+}
+
 export interface UpdateDocRequestBody {
   /** New content (optional if only updating tags) */
   content?: string;
@@ -168,11 +193,14 @@ export interface UpdateDocRequestBody {
   expectedSourceHash?: string;
   /** Expected source modified timestamp for optimistic concurrency */
   expectedModifiedAt?: string;
+  /** Exact document URI when docid is not unique across duplicate content */
+  uri?: string;
 }
 
 export interface CreateEditableCopyRequestBody {
   collection?: string;
   relPath?: string;
+  uri?: string;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -202,6 +230,11 @@ function hashContent(content: string): string {
   const hasher = new Bun.CryptoHasher("sha256");
   hasher.update(content);
   return hasher.digest("hex");
+}
+
+function readRequestedUriFromUrl(req: Request): string | undefined {
+  const value = new URL(req.url).searchParams.get("uri");
+  return value?.trim() ? value : undefined;
 }
 
 interface SourceMeta {
@@ -268,6 +301,29 @@ async function buildSourceMeta(
     sizeBytes: doc.sourceSize,
     sourceHash: doc.sourceHash,
   };
+}
+
+async function resolveDocumentReference(
+  store: Pick<SqliteAdapter, "getDocumentByDocid" | "getDocumentByUri">,
+  docId: string,
+  requestedUri?: string
+): Promise<
+  | { ok: true; value: DocumentRow | null }
+  | { ok: false; error: { message: string } }
+> {
+  if (requestedUri) {
+    const byUri = await store.getDocumentByUri(requestedUri);
+    if (!byUri.ok) {
+      return { ok: false, error: byUri.error };
+    }
+    return { ok: true, value: byUri.value };
+  }
+
+  const byDocid = await store.getDocumentByDocid(docId);
+  if (!byDocid.ok) {
+    return { ok: false, error: byDocid.error };
+  }
+  return { ok: true, value: byDocid.value };
 }
 
 function parseQueryModesInput(value: unknown): {
@@ -384,30 +440,20 @@ export function handleHealth(): Response {
  * GET /api/status
  * Returns index status matching status.schema.json.
  */
-export async function handleStatus(store: SqliteAdapter): Promise<Response> {
-  const result = await store.getStatus();
-  if (!result.ok) {
-    return errorResponse("RUNTIME", result.error.message, 500);
+export async function handleStatus(
+  ctx: ServerContext,
+  deps?: StatusBuildDeps
+): Promise<Response> {
+  try {
+    const status = await buildAppStatus(ctx, deps);
+    return jsonResponse(status);
+  } catch (error) {
+    return errorResponse(
+      "RUNTIME",
+      error instanceof Error ? error.message : "Failed to get status",
+      500
+    );
   }
-
-  const s = result.value;
-  return jsonResponse({
-    indexName: s.indexName,
-    configPath: s.configPath,
-    dbPath: s.dbPath,
-    collections: s.collections.map((c) => ({
-      name: c.name,
-      path: c.path,
-      documentCount: c.activeDocuments,
-      chunkCount: c.totalChunks,
-      embeddedCount: c.embeddedChunks,
-    })),
-    totalDocuments: s.activeDocuments,
-    totalChunks: s.totalChunks,
-    embeddingBacklog: s.embeddingBacklog,
-    lastUpdated: s.lastUpdatedAt,
-    healthy: s.healthy,
-  });
 }
 
 /**
@@ -481,32 +527,45 @@ export async function handleCreateCollection(
   const name = body.name || path.basename(body.path);
 
   // Persist config and sync to DB (mutation happens inside with fresh config)
-  const syncResult = await applyConfigChange(ctxHolder, store, async (cfg) => {
-    const addResult = await addCollection(cfg, {
-      path: body.path,
-      name,
-      pattern: body.pattern,
-      include: body.include,
-      exclude: body.exclude,
-    });
+  const syncResult = await applyConfigChangeTyped<Collection>(
+    ctxHolder,
+    store,
+    async (cfg) => {
+      const addResult = await addCollection(cfg, {
+        path: body.path,
+        name,
+        pattern: body.pattern,
+        include: body.include,
+        exclude: body.exclude,
+      });
 
-    if (!addResult.ok) {
-      return { ok: false, error: addResult.message, code: addResult.code };
+      if (!addResult.ok) {
+        return { ok: false, error: addResult.message, code: addResult.code };
+      }
+      return {
+        ok: true,
+        config: addResult.config,
+        value: addResult.collection,
+      };
     }
-    return { ok: true, config: addResult.config };
-  });
+  );
   if (!syncResult.ok) {
     // Map mutation error codes to HTTP status codes
     const statusMap: Record<string, number> = {
       DUPLICATE: 409,
+      DUPLICATE_PATH: 409,
       PATH_NOT_FOUND: 400,
     };
     const status = statusMap[syncResult.code] ?? 500;
     return errorResponse(syncResult.code, syncResult.error, status);
   }
 
-  // Find the newly added collection from config
-  const collection = syncResult.config.collections.find((c) => c.name === name);
+  const collection =
+    syncResult.value ??
+    syncResult.config.collections.find((c) => c.path === body.path.trim()) ??
+    syncResult.config.collections.find(
+      (c) => c.name === name || c.name === name.toLowerCase()
+    );
   if (!collection) {
     return errorResponse("RUNTIME", "Collection not found after add", 500);
   }
@@ -515,9 +574,10 @@ export async function handleCreateCollection(
       gitPull: body.gitPull,
       runUpdateCmd: true,
     });
-    // Notify scheduler after sync completes (triggers debounced embed)
     if (result.filesAdded > 0 || result.filesUpdated > 0) {
-      ctxHolder.scheduler?.notifySyncComplete(["add-batch"]);
+      if (ctxHolder.scheduler) {
+        await ctxHolder.scheduler.triggerNow();
+      }
     }
     return {
       collections: [result],
@@ -541,6 +601,41 @@ export async function handleCreateCollection(
     },
     202
   );
+}
+
+/**
+ * POST /api/import/preview
+ * Preview what GNO will import from a folder before indexing starts.
+ */
+export async function handleImportPreview(
+  ctxHolder: ContextHolder,
+  req: Request
+): Promise<Response> {
+  let body: ImportPreviewRequestBody;
+  try {
+    body = (await req.json()) as ImportPreviewRequestBody;
+  } catch {
+    return errorResponse("VALIDATION", "Invalid JSON body");
+  }
+
+  if (!body.path || typeof body.path !== "string") {
+    return errorResponse("VALIDATION", "Missing or invalid path");
+  }
+  if (body.name !== undefined && typeof body.name !== "string") {
+    return errorResponse("VALIDATION", "name must be a string");
+  }
+
+  try {
+    return jsonResponse({
+      preview: await analyzeImportPath(ctxHolder.config, body.path, body.name),
+    });
+  } catch (error) {
+    return errorResponse(
+      "RUNTIME",
+      error instanceof Error ? error.message : "Failed to preview import",
+      500
+    );
+  }
 }
 
 /**
@@ -638,9 +733,10 @@ export async function handleSync(
       gitPull: body.gitPull,
       runUpdateCmd: true,
     });
-    // Notify scheduler after sync completes (triggers debounced embed)
     if (result.totalFilesAdded > 0 || result.totalFilesUpdated > 0) {
-      ctxHolder.scheduler?.notifySyncComplete(["sync-batch"]);
+      if (ctxHolder.scheduler) {
+        await ctxHolder.scheduler.triggerNow();
+      }
     }
     return result;
   });
@@ -943,10 +1039,15 @@ export async function handleTags(
  */
 export async function handleDeactivateDoc(
   store: SqliteAdapter,
-  docId: string
+  docId: string,
+  req?: Request
 ): Promise<Response> {
   // Get document to verify it exists and get collection/relPath
-  const docResult = await store.getDocumentByDocid(docId);
+  const docResult = await resolveDocumentReference(
+    store,
+    docId,
+    req ? readRequestedUriFromUrl(req) : undefined
+  );
   if (!docResult.ok) {
     return errorResponse("RUNTIME", docResult.error.message, 500);
   }
@@ -968,6 +1069,276 @@ export async function handleDeactivateDoc(
     path: doc.uri,
     warning: "File still exists on disk. Will be re-indexed unless excluded.",
   });
+}
+
+export async function handleRenameDoc(
+  ctxHolder: ContextHolder,
+  store: SqliteAdapter,
+  docId: string,
+  req: Request,
+  deps?: {
+    renameFilePath?: typeof renameFilePath;
+    syncCollection?: typeof defaultSyncService.syncCollection;
+  }
+): Promise<Response> {
+  let body: RenameDocRequestBody;
+  try {
+    body = (await req.json()) as RenameDocRequestBody;
+  } catch {
+    return errorResponse("VALIDATION", "Invalid JSON body");
+  }
+
+  if (!body.name || typeof body.name !== "string") {
+    return errorResponse("VALIDATION", "Missing or invalid name");
+  }
+  if (body.name.includes("/") || body.name.includes("\\")) {
+    return errorResponse("VALIDATION", "name must be a file name, not a path");
+  }
+  if (body.uri !== undefined && typeof body.uri !== "string") {
+    return errorResponse("VALIDATION", "uri must be a string");
+  }
+
+  const docResult = await resolveDocumentReference(store, docId, body.uri);
+  if (!docResult.ok) {
+    return errorResponse("RUNTIME", docResult.error.message, 500);
+  }
+  if (!docResult.value) {
+    return errorResponse("NOT_FOUND", "Document not found", 404);
+  }
+
+  const doc = docResult.value;
+  const resolvedDocPath = await resolveAbsoluteDocPath(
+    ctxHolder.config.collections,
+    doc
+  );
+  if (!resolvedDocPath) {
+    return errorResponse(
+      "NOT_FOUND",
+      `Collection not found: ${doc.collection}`,
+      404
+    );
+  }
+  const { collection, fullPath } = resolvedDocPath;
+  const file = Bun.file(fullPath);
+  if (!(await file.exists())) {
+    return errorResponse("FILE_NOT_FOUND", "Source file no longer exists", 404);
+  }
+
+  const capabilities = getDocumentCapabilities({
+    sourceExt: doc.sourceExt,
+    sourceMime: doc.sourceMime,
+    contentAvailable: doc.mirrorHash !== null,
+  });
+  if (!capabilities.editable) {
+    return errorResponse(
+      "READ_ONLY",
+      capabilities.reason ??
+        "This document cannot be renamed in place from GNO.",
+      409
+    );
+  }
+
+  const nodePath = await import("node:path"); // no bun equivalent
+  const directory = nodePath.dirname(doc.relPath);
+  const currentExt = nodePath.extname(doc.relPath);
+  const targetName = nodePath.extname(body.name)
+    ? body.name
+    : `${body.name}${currentExt}`;
+  const nextRelPath =
+    directory === "." ? targetName : `${directory}/${targetName}`;
+  const nextFullPath = nodePath.join(collection.path, nextRelPath);
+
+  if (nextFullPath === fullPath) {
+    return errorResponse("VALIDATION", "New name matches current file");
+  }
+  if (await Bun.file(nextFullPath).exists()) {
+    return errorResponse(
+      "CONFLICT",
+      "A file with that name already exists",
+      409
+    );
+  }
+
+  try {
+    const syncCollection =
+      deps?.syncCollection ??
+      ((collectionArg, storeArg, optionsArg) =>
+        defaultSyncService.syncCollection(collectionArg, storeArg, optionsArg));
+    ctxHolder.watchService?.suppress(fullPath);
+    ctxHolder.watchService?.suppress(nextFullPath);
+    await (deps?.renameFilePath ?? renameFilePath)(fullPath, nextFullPath);
+    const nextUri = `gno://${collection.name}/${nextRelPath}`;
+    let warning: string | undefined;
+    try {
+      await syncCollection(collection, store, {
+        runUpdateCmd: false,
+      });
+    } catch {
+      warning =
+        "File renamed on disk, but index refresh failed. Run Update All to reconcile the workspace.";
+    }
+    ctxHolder.eventBus?.emit({
+      type: "document-changed",
+      uri: nextUri,
+      collection: collection.name,
+      relPath: nextRelPath,
+      origin: "save",
+      changedAt: new Date().toISOString(),
+    });
+    return jsonResponse({
+      success: true,
+      uri: nextUri,
+      path: nextFullPath,
+      relPath: nextRelPath,
+      warning,
+    });
+  } catch (error) {
+    return errorResponse(
+      "RUNTIME",
+      error instanceof Error ? error.message : "Failed to rename document",
+      500
+    );
+  }
+}
+
+export async function handleTrashDoc(
+  ctxHolder: ContextHolder,
+  store: SqliteAdapter,
+  docId: string,
+  req?: Request,
+  deps?: {
+    trashFilePath?: typeof trashFilePath;
+    syncCollection?: typeof defaultSyncService.syncCollection;
+  }
+): Promise<Response> {
+  const docResult = await resolveDocumentReference(
+    store,
+    docId,
+    req ? readRequestedUriFromUrl(req) : undefined
+  );
+  if (!docResult.ok) {
+    return errorResponse("RUNTIME", docResult.error.message, 500);
+  }
+  if (!docResult.value) {
+    return errorResponse("NOT_FOUND", "Document not found", 404);
+  }
+
+  const doc = docResult.value;
+  const resolvedDocPath = await resolveAbsoluteDocPath(
+    ctxHolder.config.collections,
+    doc
+  );
+  if (!resolvedDocPath) {
+    return errorResponse(
+      "NOT_FOUND",
+      `Collection not found: ${doc.collection}`,
+      404
+    );
+  }
+  const { collection, fullPath } = resolvedDocPath;
+
+  const capabilities = getDocumentCapabilities({
+    sourceExt: doc.sourceExt,
+    sourceMime: doc.sourceMime,
+    contentAvailable: doc.mirrorHash !== null,
+  });
+  if (!capabilities.editable) {
+    return errorResponse(
+      "READ_ONLY",
+      capabilities.reason ??
+        "This document cannot be trashed in place from GNO.",
+      409
+    );
+  }
+
+  try {
+    const syncCollection =
+      deps?.syncCollection ??
+      ((collectionArg, storeArg, optionsArg) =>
+        defaultSyncService.syncCollection(collectionArg, storeArg, optionsArg));
+    ctxHolder.watchService?.suppress(fullPath);
+    await (deps?.trashFilePath ?? trashFilePath)(fullPath);
+    await store.markInactive(doc.collection, [doc.relPath]);
+    let warning: string | undefined;
+    try {
+      await syncCollection(collection, store, {
+        runUpdateCmd: false,
+      });
+    } catch {
+      warning =
+        "File moved to Trash, but index refresh failed. Run Update All to reconcile the workspace.";
+    }
+    ctxHolder.eventBus?.emit({
+      type: "document-changed",
+      uri: doc.uri,
+      collection: doc.collection,
+      relPath: doc.relPath,
+      origin: "save",
+      changedAt: new Date().toISOString(),
+    });
+    return jsonResponse({
+      success: true,
+      docId: doc.docid,
+      path: fullPath,
+      note: "Moved to Trash and removed from the current index.",
+      warning,
+    });
+  } catch (error) {
+    return errorResponse(
+      "RUNTIME",
+      error instanceof Error ? error.message : "Failed to trash document",
+      500
+    );
+  }
+}
+
+export async function handleRevealDoc(
+  ctxHolder: ContextHolder,
+  store: SqliteAdapter,
+  docId: string,
+  req?: Request,
+  deps?: {
+    revealFilePath?: typeof revealFilePath;
+  }
+): Promise<Response> {
+  const docResult = await resolveDocumentReference(
+    store,
+    docId,
+    req ? readRequestedUriFromUrl(req) : undefined
+  );
+  if (!docResult.ok) {
+    return errorResponse("RUNTIME", docResult.error.message, 500);
+  }
+  if (!docResult.value) {
+    return errorResponse("NOT_FOUND", "Document not found", 404);
+  }
+
+  const doc = docResult.value;
+  const resolvedDocPath = await resolveAbsoluteDocPath(
+    ctxHolder.config.collections,
+    doc
+  );
+  if (!resolvedDocPath) {
+    return errorResponse(
+      "NOT_FOUND",
+      `Collection not found: ${doc.collection}`,
+      404
+    );
+  }
+
+  try {
+    await (deps?.revealFilePath ?? revealFilePath)(resolvedDocPath.fullPath);
+    return jsonResponse({
+      success: true,
+      path: resolvedDocPath.fullPath,
+    });
+  } catch (error) {
+    return errorResponse(
+      "RUNTIME",
+      error instanceof Error ? error.message : "Failed to reveal document",
+      500
+    );
+  }
 }
 
 /**
@@ -1011,6 +1382,9 @@ export async function handleUpdateDoc(
   ) {
     return errorResponse("VALIDATION", "expectedModifiedAt must be a string");
   }
+  if (body.uri !== undefined && typeof body.uri !== "string") {
+    return errorResponse("VALIDATION", "uri must be a string");
+  }
 
   // Validate tags if provided
   let normalizedTags: string[] | undefined;
@@ -1035,7 +1409,7 @@ export async function handleUpdateDoc(
   }
 
   // Get document to verify it exists
-  const docResult = await store.getDocumentByDocid(docId);
+  const docResult = await resolveDocumentReference(store, docId, body.uri);
   if (!docResult.ok) {
     return errorResponse("RUNTIME", docResult.error.message, 500);
   }
@@ -1231,8 +1605,11 @@ export async function handleCreateEditableCopy(
   if (body.relPath !== undefined && typeof body.relPath !== "string") {
     return errorResponse("VALIDATION", "relPath must be a string");
   }
+  if (body.uri !== undefined && typeof body.uri !== "string") {
+    return errorResponse("VALIDATION", "uri must be a string");
+  }
 
-  const docResult = await store.getDocumentByDocid(docId);
+  const docResult = await resolveDocumentReference(store, docId, body.uri);
   if (!docResult.ok) {
     return errorResponse("RUNTIME", docResult.error.message, 500);
   }
@@ -2041,7 +2418,11 @@ export interface SetPresetRequestBody {
  */
 export async function handleSetPreset(
   ctxHolder: ContextHolder,
-  req: Request
+  req: Request,
+  deps?: {
+    applyConfigChangeFn?: typeof applyConfigChange;
+    reloadServerContextFn?: typeof reloadServerContext;
+  }
 ): Promise<Response> {
   let body: SetPresetRequestBody;
   try {
@@ -2060,22 +2441,45 @@ export async function handleSetPreset(
     return errorResponse("NOT_FOUND", `Unknown preset: ${body.presetId}`, 404);
   }
 
-  // Update config with new active preset (use getModelConfig to get defaults)
-  const currentModelConfig = getModelConfig(ctxHolder.config);
-  const newConfig: Config = {
-    ...ctxHolder.config,
-    models: {
-      ...currentModelConfig,
-      activePreset: body.presetId,
-    },
-  };
-
   console.log(`Switching to preset: ${preset.name}`);
 
-  // Reload context with new config
+  const syncResult = await (deps?.applyConfigChangeFn ?? applyConfigChange)(
+    ctxHolder,
+    ctxHolder.current.store,
+    async (config) => {
+      const currentModelConfig = getModelConfig(config);
+      return {
+        ok: true,
+        config: {
+          ...config,
+          models: {
+            activePreset: body.presetId,
+            presets: config.models?.presets ?? [],
+            loadTimeout:
+              config.models?.loadTimeout ?? currentModelConfig.loadTimeout,
+            inferenceTimeout:
+              config.models?.inferenceTimeout ??
+              currentModelConfig.inferenceTimeout,
+            expandContextSize:
+              config.models?.expandContextSize ??
+              currentModelConfig.expandContextSize,
+            warmModelTtl:
+              config.models?.warmModelTtl ?? currentModelConfig.warmModelTtl,
+          },
+        },
+      };
+    }
+  );
+
+  if (!syncResult.ok) {
+    return errorResponse("RUNTIME", syncResult.error, 500);
+  }
+
   try {
-    ctxHolder.current = await reloadServerContext(ctxHolder.current, newConfig);
-    ctxHolder.config = newConfig;
+    ctxHolder.current = await (
+      deps?.reloadServerContextFn ?? reloadServerContext
+    )(ctxHolder.current, syncResult.config);
+    ctxHolder.config = syncResult.config;
   } catch (e) {
     return errorResponse(
       "RUNTIME",
@@ -2159,6 +2563,14 @@ export function handleModelPull(ctxHolder: ContextHolder): Response {
           ctxHolder.config
         );
         console.log("Context reloaded");
+        if (ctxHolder.scheduler) {
+          void ctxHolder.scheduler.triggerNow().catch((error) => {
+            console.error(
+              "Failed to trigger embedding after model download:",
+              error
+            );
+          });
+        }
       } catch (e) {
         console.error("Failed to reload context:", e);
       }
@@ -2262,6 +2674,50 @@ export function handleEmbedStatus(scheduler: EmbedScheduler | null): Response {
   });
 }
 
+export async function handleConnectors(overrides?: {
+  cwd?: string;
+  homeDir?: string;
+}): Promise<Response> {
+  return jsonResponse({
+    connectors: await getConnectorStatuses(overrides),
+  });
+}
+
+export async function handleInstallConnector(
+  req: Request,
+  overrides?: { cwd?: string; homeDir?: string }
+): Promise<Response> {
+  let body: InstallConnectorRequestBody;
+  try {
+    body = (await req.json()) as InstallConnectorRequestBody;
+  } catch {
+    return errorResponse("VALIDATION", "Invalid JSON body");
+  }
+
+  if (!body.connectorId || typeof body.connectorId !== "string") {
+    return errorResponse("VALIDATION", "Missing or invalid connectorId");
+  }
+  if (body.reinstall !== undefined && typeof body.reinstall !== "boolean") {
+    return errorResponse("VALIDATION", "reinstall must be a boolean");
+  }
+
+  try {
+    return jsonResponse({
+      connector: await installConnector(
+        body.connectorId,
+        { reinstall: body.reinstall },
+        overrides
+      ),
+    });
+  } catch (error) {
+    return errorResponse(
+      "RUNTIME",
+      error instanceof Error ? error.message : "Failed to install connector",
+      500
+    );
+  }
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Router
 // ─────────────────────────────────────────────────────────────────────────────
@@ -2316,7 +2772,21 @@ export async function routeApi(
   }
 
   if (path === "/api/status") {
-    return handleStatus(store);
+    return handleStatus({
+      store,
+      config,
+      vectorIndex: null,
+      embedPort: null,
+      expandPort: null,
+      answerPort: null,
+      rerankPort: null,
+      capabilities: {
+        bm25: true,
+        vector: false,
+        hybrid: false,
+        answer: false,
+      },
+    });
   }
 
   if (path === "/api/collections") {

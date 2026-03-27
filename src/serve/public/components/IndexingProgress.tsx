@@ -50,6 +50,19 @@ interface CollectionResult {
   durationMs: number;
 }
 
+function isNoopSyncResult(result: SyncResult | undefined): boolean {
+  if (!result) {
+    return false;
+  }
+
+  return (
+    result.totalFilesProcessed === 0 &&
+    result.totalFilesAdded === 0 &&
+    result.totalFilesUpdated === 0 &&
+    result.totalFilesErrored === 0
+  );
+}
+
 export interface IndexingProgressProps {
   /** Job ID to poll */
   jobId: string;
@@ -211,8 +224,9 @@ export function IndexingProgress({
         >
           <CheckCircle2Icon className="size-4 text-green-500" />
           <span className="text-muted-foreground">
-            {result?.totalFilesProcessed ?? 0} files in{" "}
-            {formatDuration(result?.totalDurationMs ?? 0)}
+            {isNoopSyncResult(result)
+              ? "Up to date"
+              : `${result?.totalFilesProcessed ?? 0} files in ${formatDuration(result?.totalDurationMs ?? 0)}`}
           </span>
         </div>
       );
@@ -281,6 +295,11 @@ export function IndexingProgress({
       {/* Success summary */}
       {status?.status === "completed" && status.result && (
         <div className="space-y-2">
+          {isNoopSyncResult(status.result) && (
+            <div className="rounded-lg border border-green-500/30 bg-green-500/10 p-3 text-green-500 text-sm">
+              No file changes found. Workspace is already up to date.
+            </div>
+          )}
           <div className="flex flex-wrap gap-2">
             <Badge className="gap-1" variant="outline">
               <FileTextIcon className="size-3" />

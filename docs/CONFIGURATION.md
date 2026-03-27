@@ -194,6 +194,8 @@ Model configuration for embeddings and AI answers.
 | `balanced` | ~2GB   | Slightly larger model         |
 | `quality`  | ~2.5GB | Best answers, complex content |
 
+The dashboard bootstrap panel uses these preset footprints as the plain-language disk estimate for first-run setup.
+
 > **Note**: When using GNO standalone with `--answer`, the **quality** preset is required for documents containing Markdown tables or other structured content. The smaller models in slim/balanced presets cannot reliably parse tabular data. When GNO is used via MCP, skill, or CLI by AI agents (Claude Code, Codex, etc.), the agent handles answer generation, so any preset works for retrieval.
 
 ### Model Details
@@ -231,6 +233,16 @@ Model URIs support:
 - `file:/path/to/model.gguf` - Local file
 - `http://host:port/path#modelname` - Remote HTTP endpoint (OpenAI-compatible)
 
+### Download Policy
+
+Model provisioning follows one of three modes:
+
+- default: auto-download allowed on first use
+- offline: cached models only (`HF_HUB_OFFLINE=1` or `GNO_OFFLINE=1`)
+- manual: no auto-download, but explicit `gno models pull` still works (`GNO_NO_AUTO_DOWNLOAD=1`)
+
+The dashboard bootstrap panel reflects the active mode in plain language.
+
 ### Using A Fine-Tuned Local Model
 
 Fine-tuned expansion models can be paired with a separate answer model via a custom preset:
@@ -244,7 +256,7 @@ models:
       embed: hf:gpustack/bge-m3-GGUF/bge-m3-Q4_K_M.gguf
       rerank: hf:ggml-org/Qwen3-Reranker-0.6B-Q8_0-GGUF/qwen3-reranker-0.6b-q8_0.gguf
       expand: hf:guiltylemon/gno-expansion-slim-retrieval-v1/gno-expansion-auto-entity-lock-default-mix-lr95-f16.gguf
-      gen: hf:unsloth/Qwen3-4B-Instruct-2507-GGUF/Qwen3-4B-Instruct-2507-Q4_K_M.gguf
+      gen: hf:unsloth/Qwen3-1.7B-GGUF/Qwen3-1.7B-Q4_K_M.gguf
 ```
 
 Notes:

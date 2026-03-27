@@ -178,6 +178,12 @@ describe("getModelsCachePath", () => {
     const path = getModelsCachePath(dirs);
     expect(path).toBe(join(dirs.cache, "models"));
   });
+
+  test("does not append models twice when cache dir already ends with models", () => {
+    const dirs = { config: "/c", data: "/d", cache: "/k/models" };
+    const path = getModelsCachePath(dirs);
+    expect(path).toBe("/k/models");
+  });
 });
 
 describe("URI utilities", () => {

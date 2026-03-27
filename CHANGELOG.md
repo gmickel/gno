@@ -11,6 +11,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+## [0.29.0] - 2026-03-27
+
+### Added
+
+- First public `GNO Desktop Beta` shell naming and rollout surfaces for the mac-first desktop app path.
+- Full desktop-beta onboarding flow in the Web UI and desktop shell, including folder setup, plain-language preset selection, health checks, bootstrap/runtime visibility, connector center, import preview, app tabs, file lifecycle actions, and recovery history.
+- Explicit in-wizard sync progress plus clearer blocked-state handling for first indexing and embedding completion.
+
+### Changed
+
+- `slim-tuned` is now the built-in default preset, using the fine-tuned expansion model while keeping the same embed, rerank, and answer models as `slim`.
+- Fresh onboarding now skips the model-prep step when the active preset is already ready.
+- Desktop shell now exposes standard edit menu actions so paste/select-all work like a normal app.
+
+### Fixed
+
+- Collection add no longer throws a false “Collection not found after add” error after successful mixed-case name normalization.
+- Fresh sandboxes and alternate runtime launches no longer mis-detect model readiness when `GNO_CACHE_DIR` already points at a `models` directory.
+- No-op `Update All` runs now report a stable up-to-date result instead of flashing away.
+- Onboarding sync/add flows now trigger embedding immediately when models are ready, preventing the final step from looking stuck after indexing starts.
+
 ## [0.28.2] - 2026-03-23
 
 ### Fixed
@@ -217,7 +238,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Structured query mode inputs across CLI/API/MCP (`term`, `intent`, `hyde`) with validation and explain metadata.
 - Temporal retrieval upgrades: query recency intent detection, explicit/relative date range parsing, and recency sorting with frontmatter-date fallback.
 - Frontmatter date-field extraction and date-aware browse sorting (`sortField`/`sortOrder`) in web API and UI.
-- Logseq link compatibility for alias links (`[text]([[Target]])`) and block embeds (`{{embed ((block-id))}}`).
+- Logseq link compatibility for alias links (`[text]([[Target]])`) and block embeds (`&#123;&#123;embed ((block-id))&#125;&#125;`).
 
 ### Changed
 

@@ -6,7 +6,7 @@
  */
 
 import { homedir, platform } from "node:os";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 
 // Bun supports JSON imports natively - version single source of truth
 import pkg from "../../package.json";
@@ -232,7 +232,9 @@ export function getConfigPath(dirs: ResolvedDirs = resolveDirs()): string {
  * Get path to models cache directory.
  */
 export function getModelsCachePath(dirs: ResolvedDirs = resolveDirs()): string {
-  return join(dirs.cache, "models");
+  return basename(dirs.cache) === "models"
+    ? dirs.cache
+    : join(dirs.cache, "models");
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

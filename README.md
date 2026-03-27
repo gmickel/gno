@@ -34,7 +34,13 @@ GNO is a local knowledge engine that turns your documents into a searchable, con
 
 ---
 
-## What's New in v0.24
+## What's New in v0.29
+
+- **GNO Desktop Beta**: first mac-first desktop beta shell with deep-link routing, singleton handoff, and the same onboarding/search/edit flows as `gno serve`
+- **Desktop Onboarding Polish**: guided setup now covers folders, presets, model readiness, indexing, connectors, import preview, app tabs, file actions, and recovery without drift between web and desktop
+- **Default Preset Upgrade**: `slim-tuned` is now the built-in default, using the fine-tuned retrieval expansion model while keeping the same embed, rerank, and answer stack as `slim`
+
+### v0.24
 
 - **Structured Query Documents**: first-class multi-line query syntax using `term:`, `intent:`, and `hyde:`
 - **Cross-Surface Rollout**: works across CLI, API, MCP, SDK, and Web Search/Ask
@@ -65,7 +71,7 @@ models:
       embed: hf:gpustack/bge-m3-GGUF/bge-m3-Q4_K_M.gguf
       rerank: hf:ggml-org/Qwen3-Reranker-0.6B-Q8_0-GGUF/qwen3-reranker-0.6b-q8_0.gguf
       expand: hf:guiltylemon/gno-expansion-slim-retrieval-v1/gno-expansion-auto-entity-lock-default-mix-lr95-f16.gguf
-      gen: hf:unsloth/Qwen3-4B-Instruct-2507-GGUF/Qwen3-4B-Instruct-2507-Q4_K_M.gguf
+      gen: hf:unsloth/Qwen3-1.7B-GGUF/Qwen3-1.7B-Q4_K_M.gguf
 ```
 
 Then:
@@ -373,6 +379,8 @@ Open `http://localhost:3000` to:
 - **Edit**: Create, edit, and delete documents with live preview
 - **Ask**: AI-powered Q&A with citations
 - **Manage Collections**: Add, remove, and re-index collections
+- **Connect agents**: Install core Skill/MCP integrations from the app
+- **Manage files safely**: Rename, reveal, or move editable files to Trash with explicit index-vs-disk semantics
 - **Switch presets**: Change models live without restart
 
 ### Search

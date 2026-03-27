@@ -1,6 +1,6 @@
 {
   "compilerOptions": {
-    "lib": ["ESNext"],
+    "lib": ["ESNext", "DOM", "DOM.Iterable"],
     "target": "ESNext",
     "module": "Preserve",
     "moduleDetection": "force",
@@ -24,5 +24,10 @@
       "bun-types": ["./node_modules/bun-types"]
     }
   },
-  "exclude": ["node_modules", "src/serve/public", "desktop/electrobun-spike"]
+  "exclude": [
+    "node_modules",
+    "src/serve/public",
+    "desktop/electrobun-shell",
+    "desktop/electrobun-spike"
+  ]
 }

@@ -1,6 +1,8 @@
 # Installation
 
-GNO requires [Bun](https://bun.sh/) as its JavaScript runtime.
+GNO currently requires [Bun](https://bun.sh/) as its JavaScript runtime.
+
+> **Beta runtime note**: This is still the current beta path. GNO does not yet bundle Bun for end users. The app and API now surface this explicitly in the dashboard bootstrap panel so runtime assumptions are visible instead of implicit.
 
 ## Quick Install
 
@@ -14,6 +16,8 @@ bun install -g @gmickel/gno
 # Verify installation
 gno doctor
 ```
+
+If you want a guided setup after install, run `gno serve` and open `http://localhost:3000`. The first-run dashboard can add a folder, explain health, show bootstrap/runtime status, and trigger model downloads without more terminal work.
 
 ### SDK / Library Install
 
@@ -95,7 +99,7 @@ gno doctor
 GNO downloads AI models on first use. Pre-download to avoid first-run delays:
 
 ```bash
-# Download all models (slim preset, ~1GB)
+# Download all models (slim-tuned preset, ~1GB)
 gno models pull --all
 
 # Or download specific models
@@ -107,18 +111,28 @@ gno models pull --gen     # Required for --answer
 
 Model presets control disk usage:
 
-| Preset   | Embed     | Rerank                 | Expand        | Answer        |
-| -------- | --------- | ---------------------- | ------------- | ------------- |
-| slim     | bge-m3-Q4 | Qwen3-Reranker-0.6B-Q8 | Qwen3-1.7B-Q4 | Qwen3-1.7B-Q4 |
-| balanced | bge-m3-Q4 | Qwen3-Reranker-0.6B-Q8 | Qwen2.5-3B-Q4 | Qwen2.5-3B-Q4 |
-| quality  | bge-m3-Q4 | Qwen3-Reranker-0.6B-Q8 | Qwen3-4B-Q4   | Qwen3-4B-Q4   |
+| Preset     | Embed     | Rerank                 | Expand                   | Answer        |
+| ---------- | --------- | ---------------------- | ------------------------ | ------------- |
+| slim-tuned | bge-m3-Q4 | Qwen3-Reranker-0.6B-Q8 | GNO Slim Tuned expansion | Qwen3-1.7B-Q4 |
+| slim       | bge-m3-Q4 | Qwen3-Reranker-0.6B-Q8 | Qwen3-1.7B-Q4            | Qwen3-1.7B-Q4 |
+| balanced   | bge-m3-Q4 | Qwen3-Reranker-0.6B-Q8 | Qwen2.5-3B-Q4            | Qwen2.5-3B-Q4 |
+| quality    | bge-m3-Q4 | Qwen3-Reranker-0.6B-Q8 | Qwen3-4B-Q4              | Qwen3-4B-Q4   |
 
 Change preset in config:
 
 ```yaml
 models:
-  activePreset: balanced
+  activePreset: slim-tuned
 ```
+
+Or change it later in the web UI from the preset picker on the dashboard.
+
+The dashboard also shows:
+
+- whether models will auto-download or stay manual/offline
+- where the cache lives
+- current cache size on disk
+- which preset roles are still missing
 
 ## Verification
 

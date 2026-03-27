@@ -619,7 +619,7 @@ async function benchmarkRetrieval(
         config: runtime.config,
         vectorIndex: runtime.vectorIndex,
         embedPort: runtime.vectorIndex ? runtime.embedPort : null,
-        genPort,
+        expandPort: genPort,
         rerankPort: runtime.rerankPort,
       },
       testCase.query,

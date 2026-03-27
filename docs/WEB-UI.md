@@ -17,14 +17,28 @@ The GNO Web UI provides a complete graphical interface to your local knowledge i
 
 | Page            | Purpose                                                         |
 | :-------------- | :-------------------------------------------------------------- |
-| **Dashboard**   | Index stats, collections, quick capture                         |
+| **Dashboard**   | First-run onboarding, health center, stats, and quick capture   |
 | **Search**      | BM25/vector/hybrid + advanced retrieval controls and tag facets |
 | **Browse**      | Paginated documents with collection and date-field sorting      |
 | **Doc View**    | View document with edit/delete actions and tag editing          |
 | **Editor**      | Split-view markdown editor with live preview                    |
 | **Collections** | Add, remove, and re-index collections                           |
+| **Connectors**  | Install and verify core agent integrations                      |
 | **Ask**         | AI-powered Q&A with citations                                   |
 | **Graph**       | Interactive knowledge graph visualization                       |
+
+### App-Level Tabs
+
+GNO now keeps an app-level tab strip inside the workspace itself.
+
+Current behavior:
+
+- multiple app tabs can stay open at once
+- each tab remembers its current route
+- the last workspace tab set is restored after reload
+- tabs live in GNO app state, not native shell BrowserView tabs
+
+This is the foundation for the later multi-document and split-pane workspace.
 
 ---
 
@@ -40,11 +54,12 @@ gno serve --index research   # Use named index
 
 ### 2. Open Your Browser
 
-Navigate to `http://localhost:3000`. The dashboard shows:
+Navigate to `http://localhost:3000`. The dashboard now handles both first-run setup and ongoing health:
 
+- **First-run checklist**: Add folders, review preset, and finish the first sync
+- **Health Center**: Real status for folders, indexing, models, and disk
 - **Document count**: Total indexed documents
 - **Chunk count**: Text segments for search
-- **Collections**: Click to browse by source
 - **Quick Capture**: Create new notes instantly
 
 ### 3. Create a Note
@@ -90,7 +105,7 @@ intent: token rotation
 hyde: Refresh tokens rotate on each use.
 ```
 
-> **Note**: Models auto-download on first use. Cold start can take longer on first launch while local models download. For instant startup, set `GNO_NO_AUTO_DOWNLOAD=1` and download explicitly with `gno models pull`.
+> **Note**: Models auto-download on first use. The dashboard also exposes model download state and a one-click recovery path if the active preset still needs files. For instant startup, set `GNO_NO_AUTO_DOWNLOAD=1` and download explicitly with `gno models pull`.
 
 ---
 
@@ -174,11 +189,22 @@ While editing markdown, type `[[` to open note suggestions. GNO fuzzy-matches ex
 
 ### Deleting Documents
 
-From document view, click the trash icon. This:
+From document view, the file lifecycle actions now depend on the document type:
+
+- **Editable markdown/plaintext files**: you can rename them, reveal them in Finder, or move them to Trash
+- **Converted read-only source files**: you can reveal/open the original source, but destructive actions stay index-only unless you handle the file outside GNO
+
+For read-only source material, **Remove from index**:
 
 - Removes the document from the search index
 - Does **NOT** delete the file from disk
-- Document may re-appear on next sync unless excluded
+- The document may re-appear on next sync unless excluded
+
+For editable local files, **Move to Trash**:
+
+- Moves the file to your system Trash
+- Removes it from the current index after refresh
+- Keeps recovery semantics aligned with normal desktop expectations
 
 ---
 
@@ -195,8 +221,11 @@ View and manage your document collections:
 - **Embedded %**: Vector embedding progress
 - **Re-index**: Update collection index
 - **Remove**: Delete collection from config
+- **Quick picks**: Suggested local folders on first run
 
 ### Adding Collections
+
+On first run, the dashboard and collections page both offer quick-pick folders such as `Documents`, `Desktop`, and common Obsidian locations when they exist.
 
 Click **Add Collection** and provide:
 
@@ -222,8 +251,8 @@ Click the menu (⋮) on any collection card and select **Remove**. This:
 
 Switch between model presets without restarting:
 
-1. Click the preset selector (top-right of header)
-2. Choose: **Slim** (default), **Balanced**, or **Quality** (best answers)
+1. Click the preset selector in the header or onboarding panel
+2. Choose: **Slim** (fastest setup), **Balanced** (good default), or **Quality** (best answers)
 3. GNO reloads models automatically
 
 The preset controls both retrieval expansion and standalone answer generation.
@@ -242,6 +271,52 @@ If models aren't downloaded, the preset selector shows a warning icon. Download 
 2. Click **Download Models** button
 3. Watch progress bar as models download
 4. Capabilities auto-enable when complete
+
+The Health Center surfaces the same issue in plain language and points you to the same fix action.
+
+### Background Reliability
+
+The dashboard health model now includes background-service state:
+
+- live watcher coverage for each configured folder
+- queued or actively syncing watcher work
+- background embedding backlog and next scheduled run
+- event-stream retry support for long-running tabs after disconnects or server restarts
+
+This is meant to reduce the “why didn’t it refresh?” class of failures in long sessions.
+
+### Bootstrap & Storage
+
+The dashboard also shows a **Bootstrap & Storage** section for first-run explainability:
+
+- current beta runtime strategy (`Bun` today, not yet bundled by the app)
+- whether local models can auto-download or require manual pull
+- current cache path and total disk usage
+- per-role model readiness for the active preset (`embed`, `rerank`, `expand`, `answer`)
+
+This is the user-facing source of truth for “what will download?”, “where does it live?”, and “why is this preset still incomplete?”.
+
+### Recents and Favorites
+
+Navigation is no longer only a hidden keyboard trick.
+
+GNO now keeps:
+
+- **Recent documents** so you can jump back to what you were just reading
+- **Favorite documents** for high-traffic notes
+- **Pinned collections** for the folders you live in every day
+
+These shortcuts are visible on the dashboard and shared with the quick-switcher, so the same navigation model works with or without the keyboard.
+
+### Agent Connectors
+
+The **Connectors** page gives one place to:
+
+- detect whether core agent integrations are already installed
+- install supported Skill or MCP connectors without manually editing config files
+- understand the default mode in plain language:
+  - read/search by default
+  - write-capable MCP remains an advanced opt-in path
 
 ### Indexing Progress
 
