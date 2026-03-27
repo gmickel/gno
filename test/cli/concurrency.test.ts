@@ -1,9 +1,12 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { mkdir, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { safeRm } from "../helpers/cleanup";
+
+const PROJECT_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 
 describe("CLI concurrent read/write access", () => {
   let testDir: string;
@@ -31,13 +34,13 @@ describe("CLI concurrent read/write access", () => {
     };
 
     await Bun.$`bun src/index.ts init ${join(testDir, "notes")} --name notes`
-      .cwd("/Users/gordon/work/gno")
+      .cwd(PROJECT_ROOT)
       .env(env)
       .quiet();
 
     const update = Bun.spawn({
       cmd: ["bun", "src/index.ts", "update", "--yes"],
-      cwd: "/Users/gordon/work/gno",
+      cwd: PROJECT_ROOT,
       env,
       stdout: "ignore",
       stderr: "ignore",
@@ -46,7 +49,7 @@ describe("CLI concurrent read/write access", () => {
     await Bun.sleep(50);
 
     const lsDuringUpdate = await Bun.$`bun src/index.ts ls --json`
-      .cwd("/Users/gordon/work/gno")
+      .cwd(PROJECT_ROOT)
       .env(env)
       .quiet()
       .text();
@@ -60,7 +63,7 @@ describe("CLI concurrent read/write access", () => {
     expect(parsedDuringUpdate.meta.total).toBeGreaterThanOrEqual(0);
 
     const lsAfterUpdate = await Bun.$`bun src/index.ts ls --json`
-      .cwd("/Users/gordon/work/gno")
+      .cwd(PROJECT_ROOT)
       .env(env)
       .quiet()
       .text();

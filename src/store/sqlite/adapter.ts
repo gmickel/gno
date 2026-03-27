@@ -132,6 +132,9 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
           if (!isDatabaseLockedError(cause)) {
             throw cause;
           }
+          // Another process may be switching journal mode or holding a write
+          // lock during startup. In that case we keep the connection usable and
+          // rely on the existing DB journal mode instead of failing open().
         }
       }
 
