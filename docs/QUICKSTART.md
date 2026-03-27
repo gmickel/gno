@@ -109,7 +109,7 @@ gno query "meeting" --tags-any urgent,priority
 
 ### Explore Links
 
-Documents can link to each other using wiki links (`[[Note]]`), markdown links (`[text](path.md)`), and Logseq-compatible variants like `[text]([[Note]])` and `{{embed [[Note]]}}`. GNO tracks these relationships:
+Documents can link to each other using wiki links (`[[Note]]`), markdown links (`[text](path.md)`), and Logseq-compatible variants like `[text]([[Note]])` and `&#123;&#123;embed [[Note]]&#125;&#125;`. GNO tracks these relationships:
 
 ```bash
 # Show links FROM a document

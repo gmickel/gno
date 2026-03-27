@@ -238,7 +238,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Structured query mode inputs across CLI/API/MCP (`term`, `intent`, `hyde`) with validation and explain metadata.
 - Temporal retrieval upgrades: query recency intent detection, explicit/relative date range parsing, and recency sorting with frontmatter-date fallback.
 - Frontmatter date-field extraction and date-aware browse sorting (`sortField`/`sortOrder`) in web API and UI.
-- Logseq link compatibility for alias links (`[text]([[Target]])`) and block embeds (`{{embed ((block-id))}}`).
+- Logseq link compatibility for alias links (`[text]([[Target]])`) and block embeds (`&#123;&#123;embed ((block-id))&#125;&#125;`).
 
 ### Changed
 
