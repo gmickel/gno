@@ -15,6 +15,7 @@ const HEALTH_PATH = "/api/health";
 const CONTROL_PATH = "/__gno_shell/control";
 const STARTUP_TIMEOUT_MS = 30_000;
 const HEALTH_POLL_MS = 300;
+const APP_WINDOW_TITLE = "GNO Desktop Beta";
 
 type WindowHandle = {
   show(): void;
@@ -105,7 +106,7 @@ function startServer(repoRoot: string, port: number): Bun.Subprocess {
 
 function createWindow(url: string): WindowHandle {
   return new BrowserWindow({
-    title: "GNO",
+    title: APP_WINDOW_TITLE,
     url,
     frame: {
       width: 1440,

@@ -1,6 +1,8 @@
 // node:path has no Bun equivalent.
 import { resolve } from "node:path";
 
+import pkg from "../../package.json";
+
 interface ShellElectrobunConfig {
   app: {
     name: string;
@@ -16,9 +18,9 @@ const repoRoot = resolve(import.meta.dir, "../..");
 
 export default {
   app: {
-    name: "GNO",
+    name: "GNO Desktop Beta",
     identifier: "tech.mickel.gno.beta",
-    version: "0.0.0",
+    version: pkg.version,
     urlSchemes: ["gno"],
   },
   runtime: {

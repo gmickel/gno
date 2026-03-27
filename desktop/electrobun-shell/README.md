@@ -1,4 +1,4 @@
-# GNO Electrobun Shell
+# GNO Desktop Beta Shell
 
 Repo-owned Electrobun shell scaffold for the mac-first desktop beta.
 

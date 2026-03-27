@@ -68,14 +68,14 @@
   questions:
     - q: What LLM models does GNO use?
       a: >
-        GNO uses local models via node-llama-cpp. Default presets are slim (~1GB, fast), balanced (~2GB), quality (~2.5GB), and slim-tuned (fine-tuned retrieval model from Hugging Face). Each preset has separate models for embedding, reranking, query expansion, and answer generation.
+        GNO uses local models via node-llama-cpp. The default preset is slim-tuned (~1GB) with the fine-tuned local expansion model plus the same embed, rerank, and answer stack as slim. Other built-in presets are slim, balanced (~2GB), and quality (~2.5GB).
 
     - q: Do I need an API key?
       a: No. GNO runs entirely locally with no API keys or cloud services required. Models are downloaded once and run on your machine.
 
     - q: How do I change the model?
       a: >
-        Use gno models use preset then gno models pull to download, or switch presets directly in the web UI. Presets are slim, balanced, quality, or slim-tuned. You can also offload inference to a remote GPU server on your network via HTTP backends.
+        Use gno models use preset then gno models pull to download, or switch presets directly in the web UI. Presets are slim-tuned, slim, balanced, or quality. You can also offload inference to a remote GPU server on your network via HTTP backends.
 
     - q: What is the fine-tuned model?
       a: >

@@ -1,6 +1,6 @@
-# Desktop Beta Rollout
+# GNO Desktop Beta Rollout
 
-Desktop beta rollout checklist for the Electrobun-based GNO app.
+Rollout checklist for the first public GNO Desktop Beta app.
 
 ## Current status
 

@@ -86,6 +86,8 @@ Stop grepping through thousands of Markdown files. Ask GNO questions in plain En
 
 The Web UI provides a visual dashboard for search, browsing, safe editing, quick switching, linked-note creation, and AI-powered answers. First-run users get a guided onboarding flow to add folders, pick a plain-language preset, and see real health checks for models, indexing, and disk before anything feels broken. Recent notes, favorite docs, pinned collections, and the new app-level tab strip now stay visible outside the keyboard-only quick switcher. Converted binary sources stay read-only, while markdown/plaintext notes remain editable. Filter by [tags](/features/tags/) extracted from your frontmatter for instant precision.
 
+The first `GNO Desktop Beta` now wraps that same workspace in a thin native shell on macOS, keeping deep links, singleton handoff, and desktop-style onboarding aligned with the web experience instead of inventing a second product surface.
+
 ![GNO Web UI](/assets/screenshots/webui-home.jpg)
 
 ![GNO Search](/assets/screenshots/webui-search.jpg)

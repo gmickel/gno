@@ -137,7 +137,7 @@ async function waitForServerReady(url: string): Promise<void> {
 
 function createWindow(url: string): BrowserWindow {
   const window = new BrowserWindow({
-    title: "GNO Electrobun Spike",
+    title: "GNO Desktop Beta",
     url,
     frame: WINDOW_BOUNDS,
   });
@@ -452,7 +452,7 @@ void main().catch(async (error) => {
   log(`startup failed: ${message}`);
   await Utils.showMessageBox({
     type: "error",
-    title: "GNO Electrobun Spike failed",
+    title: "GNO Desktop Beta failed",
     message,
     buttons: ["Quit"],
     defaultId: 0,
