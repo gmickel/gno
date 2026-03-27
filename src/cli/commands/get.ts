@@ -110,7 +110,10 @@ export async function get(
     return { success: false, error: parsed.error, isValidation: true };
   }
 
-  const initResult = await initStore({ configPath: options.configPath });
+  const initResult = await initStore({
+    configPath: options.configPath,
+    syncConfig: false,
+  });
   if (!initResult.ok) {
     return { success: false, error: initResult.error };
   }

@@ -250,7 +250,10 @@ export async function multiGet(
   const maxBytes = options.maxBytes ?? 10_240;
   const allRefs = splitRefs(refs);
 
-  const initResult = await initStore({ configPath: options.configPath });
+  const initResult = await initStore({
+    configPath: options.configPath,
+    syncConfig: false,
+  });
   if (!initResult.ok) {
     return { success: false, error: initResult.error };
   }

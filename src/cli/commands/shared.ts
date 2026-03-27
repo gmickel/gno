@@ -36,6 +36,8 @@ export interface InitStoreOptions {
   indexName?: string;
   /** Filter to single collection by name */
   collection?: string;
+  /** Sync collections/contexts from config into DB on open */
+  syncConfig?: boolean;
 }
 
 /**
@@ -97,6 +99,10 @@ export async function initStore(
   const openResult = await store.open(dbPath, config.ftsTokenizer);
   if (!openResult.ok) {
     return { ok: false, error: openResult.error.message };
+  }
+
+  if (options.syncConfig === false) {
+    return { ok: true, store, config, collections, actualConfigPath };
   }
 
   // Sync collections from config to DB

@@ -50,6 +50,12 @@ const SET_META = `
     updated_at = datetime('now')
 `;
 
+const HAS_SCHEMA_META_TABLE = `
+  SELECT name
+  FROM sqlite_master
+  WHERE type = 'table' AND name = 'schema_meta'
+`;
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Migration Runner
 // ─────────────────────────────────────────────────────────────────────────────
@@ -104,8 +110,12 @@ export function runMigrations(
   ftsTokenizer: FtsTokenizer
 ): StoreResult<MigrationResult> {
   try {
-    // Bootstrap schema_meta table
-    db.exec(BOOTSTRAP_META_TABLE);
+    const hasSchemaMetaTable = db
+      .query<{ name: string }, []>(HAS_SCHEMA_META_TABLE)
+      .get();
+    if (!hasSchemaMetaTable) {
+      db.exec(BOOTSTRAP_META_TABLE);
+    }
 
     // Get current version
     const currentVersion = getSchemaVersion(db);

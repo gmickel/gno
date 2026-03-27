@@ -82,6 +82,13 @@ const SQLITE_EXT_REGEX = /\.sqlite$/;
 /** Regex to strip index- prefix from db name */
 const INDEX_PREFIX_REGEX = /^index-/;
 
+function isDatabaseLockedError(cause: unknown): boolean {
+  return (
+    cause instanceof Error &&
+    cause.message.toLowerCase().includes("database is locked")
+  );
+}
+
 export class SqliteAdapter implements StorePort, SqliteDbProvider {
   private db: Database | null = null;
   private dbPath = "";
@@ -114,7 +121,18 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
         this.db.exec("PRAGMA synchronous = OFF");
         this.db.exec("PRAGMA temp_store = MEMORY");
       } else {
-        this.db.exec("PRAGMA journal_mode = WAL");
+        try {
+          const journalMode = this.db
+            .query<{ journal_mode: string }, []>("PRAGMA journal_mode")
+            .get()?.journal_mode;
+          if (journalMode?.toLowerCase() !== "wal") {
+            this.db.exec("PRAGMA journal_mode = WAL");
+          }
+        } catch (cause) {
+          if (!isDatabaseLockedError(cause)) {
+            throw cause;
+          }
+        }
       }
 
       // Load fts5-snowball extension if using snowball tokenizer

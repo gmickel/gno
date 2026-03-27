@@ -49,7 +49,10 @@ export type GraphCommandResult =
 export async function graph(
   options: GraphOptions = {}
 ): Promise<GraphCommandResult> {
-  const initResult = await initStore({ configPath: options.configPath });
+  const initResult = await initStore({
+    configPath: options.configPath,
+    syncConfig: false,
+  });
   if (!initResult.ok) {
     return { success: false, error: initResult.error };
   }
