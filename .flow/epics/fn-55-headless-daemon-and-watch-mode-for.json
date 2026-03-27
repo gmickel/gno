@@ -7,7 +7,7 @@
   "plan_review_status": "unknown",
   "plan_reviewed_at": null,
   "spec_path": ".flow/specs/fn-55-headless-daemon-and-watch-mode-for.md",
-  "status": "open",
+  "status": "done",
   "title": "Headless daemon and watch mode for continuous indexing",
-  "updated_at": "2026-03-27T21:11:34.613190Z"
+  "updated_at": "2026-03-27T21:35:58.411179Z"
 }

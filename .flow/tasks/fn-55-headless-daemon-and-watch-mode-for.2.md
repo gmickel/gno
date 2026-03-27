@@ -21,11 +21,10 @@ Focus on:
 - [ ] Runtime has explicit lifecycle methods.
 
 ## Done summary
+Extracted a reusable background runtime from the existing `gno serve` startup path.
 
-TBD
-
+Added a shared runtime module that owns DB/config/context/scheduler/watcher lifecycle so both `gno serve` and `gno daemon` can reuse the same background indexing machinery.
 ## Evidence
-
-- Commits:
-- Tests:
+- Commits: f0053ee
+- Tests: bun run lint:check, bun run typecheck, bun test, bun run docs:verify, mise exec ruby@3.3.6 -- make build
 - PRs:

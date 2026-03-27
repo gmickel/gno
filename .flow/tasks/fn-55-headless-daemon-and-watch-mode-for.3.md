@@ -24,11 +24,10 @@ Focus on:
 - [ ] The command does not start the web server.
 
 ## Done summary
+Implemented the `gno daemon` command and long-running lifecycle.
 
-TBD
-
+The daemon now starts a headless watcher process, performs an initial sync by default, triggers embedding after sync, logs lifecycle events, supports `--no-sync-on-start`, and shuts down cleanly on SIGINT/SIGTERM without starting the web server.
 ## Evidence
-
-- Commits:
-- Tests:
+- Commits: f0053ee
+- Tests: bun run lint:check, bun run typecheck, bun test, bun run docs:verify, mise exec ruby@3.3.6 -- make build
 - PRs:

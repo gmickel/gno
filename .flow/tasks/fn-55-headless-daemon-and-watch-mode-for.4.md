@@ -26,11 +26,10 @@ Required docs scope:
 - [ ] Fresh users can understand one-shot vs continuous indexing paths from docs alone.
 
 ## Done summary
+Added daemon tests and completed docs/spec/website updates.
 
-TBD
-
+Covered the new runtime/daemon/watcher paths with tests, updated CLI/spec/quickstart/troubleshooting/web-ui docs and homepage copy, and extended the docs verifier to check `gno daemon --help`.
 ## Evidence
-
-- Commits:
-- Tests:
+- Commits: f0053ee
+- Tests: bun run lint:check, bun run typecheck, bun test, bun run docs:verify, mise exec ruby@3.3.6 -- make build
 - PRs:
