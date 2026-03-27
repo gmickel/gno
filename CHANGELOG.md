@@ -11,6 +11,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+## [0.29.1] - 2026-03-27
+
+### Fixed
+
+- Desktop/Web document trashing no longer depends on a separately installed global `trash` CLI. GNO now uses built-in platform-aware trash behavior instead.
+- Trashing a document now reports failure if the document cannot be marked inactive in the index, avoiding false-success UI states that could leave stale search results behind.
+
 ## [0.29.0] - 2026-03-27
 
 ### Added

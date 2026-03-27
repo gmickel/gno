@@ -1258,7 +1258,16 @@ export async function handleTrashDoc(
         defaultSyncService.syncCollection(collectionArg, storeArg, optionsArg));
     ctxHolder.watchService?.suppress(fullPath);
     await (deps?.trashFilePath ?? trashFilePath)(fullPath);
-    await store.markInactive(doc.collection, [doc.relPath]);
+    const markInactiveResult = await store.markInactive(doc.collection, [
+      doc.relPath,
+    ]);
+    if (!markInactiveResult.ok) {
+      return errorResponse(
+        "RUNTIME",
+        `File moved to Trash, but removing it from the current index failed: ${markInactiveResult.error.message}`,
+        500
+      );
+    }
     let warning: string | undefined;
     try {
       await syncCollection(collection, store, {

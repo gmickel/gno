@@ -5,7 +5,7 @@ import { join } from "node:path";
 
 import type { Config } from "../../src/config/types";
 import type { ContextHolder } from "../../src/serve/routes/api";
-import type { DocumentRow } from "../../src/store/types";
+import type { DocumentRow, StoreResult } from "../../src/store/types";
 
 import {
   handleRenameDoc,
@@ -31,7 +31,12 @@ function createMockContextHolder(config?: Partial<Config>): ContextHolder {
   };
 }
 
-function createMockStore(docsInput: DocumentRow | DocumentRow[]) {
+function createMockStore(
+  docsInput: DocumentRow | DocumentRow[],
+  overrides?: {
+    markInactive?: () => Promise<StoreResult<number>>;
+  }
+) {
   const docs = Array.isArray(docsInput) ? docsInput : [docsInput];
   return {
     getDocumentByDocid(id: string) {
@@ -49,7 +54,10 @@ function createMockStore(docsInput: DocumentRow | DocumentRow[]) {
       });
     },
     markInactive() {
-      return Promise.resolve({ ok: true as const, value: undefined });
+      if (overrides?.markInactive) {
+        return overrides.markInactive();
+      }
+      return Promise.resolve({ ok: true as const, value: 1 });
     },
   };
 }
@@ -282,6 +290,54 @@ describe("document lifecycle API", () => {
     expect(res.status).toBe(200);
     const body = (await res.json()) as { warning?: string };
     expect(body.warning).toContain("index refresh failed");
+  });
+
+  test("trash returns error when markInactive fails after file move", async () => {
+    const doc = createDoc(tmpDir);
+    await writeFile(join(tmpDir, "doc.md"), "# Hello");
+
+    const ctxHolder = createMockContextHolder({
+      collections: [
+        {
+          name: "notes",
+          path: tmpDir,
+          pattern: "**/*.md",
+          include: [],
+          exclude: [],
+        },
+      ],
+    });
+
+    let syncCalled = false;
+    const store = createMockStore(doc, {
+      markInactive: async () => ({
+        ok: false as const,
+        error: {
+          code: "QUERY_FAILED",
+          message: "database is locked",
+        },
+      }),
+    });
+
+    const res = await handleTrashDoc(
+      ctxHolder,
+      store as never,
+      "#abc123",
+      undefined,
+      {
+        trashFilePath: async () => undefined,
+        syncCollection: async () => {
+          syncCalled = true;
+          return { ok: true as const, value: undefined } as never;
+        },
+      }
+    );
+
+    expect(syncCalled).toBe(false);
+    expect(res.status).toBe(500);
+    const body = (await res.json()) as { error?: { message?: string } };
+    expect(body.error?.message).toContain("database is locked");
+    expect(body.error?.message).toContain("moved to Trash");
   });
 
   test("reveals supported source files", async () => {
