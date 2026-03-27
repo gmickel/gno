@@ -1,26 +1,23 @@
 # fn-55-headless-daemon-and-watch-mode-for.1 Design dedicated CLI daemon/watch mode
 
 ## Description
+Define the exact CLI and runtime contract for headless continuous indexing.
 
-Design the dedicated headless CLI mode for continuous indexing.
+This task sets the product/engineering boundary before implementation begins. It should resolve the command shape, startup behavior, shutdown behavior, config semantics, and how the daemon relates to the existing `gno serve` path.
 
-Current workaround is `gno serve`, which already runs the watcher + embed scheduler, but that is the wrong UX for users who just want a daemon process. This task should define the CLI contract and the runtime boundary before implementation starts.
-
-Focus on:
-
-- command shape (`gno daemon` / `gno watch` / `gno update --watch`)
-- reuse of current watch/sync/embed code
-- foreground/background behavior
-- signal handling and logs
-- service-manager friendliness
-
+Required outputs:
+- final decision on `gno daemon` as the v1 command name
+- final decision that v1 is foreground-only (no built-in start/stop/status)
+- startup sequence (`watch` + initial sync + embed scheduling)
+- config reload policy (restart required in v1)
+- logging and exit-code contract
+- explicit note that watch-mode scope is being absorbed here from the older `fn-8` placeholder
 ## Acceptance
-
-- [ ] Proposed CLI contract is written down.
-- [ ] Reuse plan for current watcher/scheduler is explicit.
-- [ ] Long-running process lifecycle requirements are listed.
-- [ ] Service/deployment expectations are documented enough to implement safely.
-
+- [ ] CLI command shape is final.
+- [ ] Startup/shutdown behavior is explicitly documented.
+- [ ] Config reload policy is explicit.
+- [ ] Logging contract is explicit.
+- [ ] Scope boundary vs `gno serve` and `fn-8` is explicit.
 ## Done summary
 
 TBD
