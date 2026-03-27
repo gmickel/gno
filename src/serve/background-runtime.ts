@@ -200,7 +200,7 @@ export async function startBackgroundRuntime(
           return;
         }
         disposed = true;
-        await watchService.dispose();
+        await Promise.resolve(watchService.dispose());
         options.eventBus?.close();
         scheduler.dispose();
         await (deps.disposeServerContext ?? disposeServerContext)(
