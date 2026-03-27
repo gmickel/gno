@@ -41,6 +41,12 @@ GNO is a local knowledge engine that turns your documents into a searchable, con
 - **Default Preset Upgrade**: `slim-tuned` is now the built-in default, using the fine-tuned retrieval expansion model while keeping the same embed, rerank, and answer stack as `slim`
 - **Workspace UI Polish**: richer scholarly-dusk presentation across dashboard, tabs, search, ask, footer, and global styling without introducing external font or asset dependencies
 
+## What's New in v0.30
+
+- **Headless Daemon Mode**: `gno daemon` keeps your index fresh continuously without opening the Web UI
+- **CLI Concurrency Hardening**: read-only commands no longer trip transient `database is locked` errors when they overlap with `gno update`
+- **Web/Desktop UI Polish**: sharper workspace styling across dashboard, tabs, search, ask, and footer surfaces
+
 ### v0.24
 
 - **Structured Query Documents**: first-class multi-line query syntax using `term:`, `intent:`, and `hyde:`

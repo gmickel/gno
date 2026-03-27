@@ -11,6 +11,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+## [0.30.0] - 2026-03-27
+
+### Added
+
+- Added `gno daemon`, a headless continuous-indexing mode that reuses GNO's existing watcher/sync/embed pipeline without starting the Web UI server.
+
+### Changed
+
+- Elevated the in-app workspace presentation across the web/desktop shell path with stronger visual hierarchy, cleaner tabs/footer treatment, and a more intentional dashboard/search/ask aesthetic.
+- Clarified product docs around when to use the desktop app, `gno serve`, and the new headless daemon mode.
+
+### Fixed
+
+- Read-only CLI commands no longer take unnecessary write locks on startup, avoiding transient `database is locked` failures when they overlap with `gno update`.
+- `gno daemon --no-sync-on-start` now behaves correctly and skips the initial sync pass.
+
 ## [0.29.2] - 2026-03-27
 
 ### Changed
@@ -907,7 +923,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 | 0.4.0   | 2026-01-01 | Web UI and REST API                       |
 | 0.1.0   | 2025-12-30 | Initial release with full search pipeline |
 
-[Unreleased]: https://github.com/gmickel/gno/compare/v0.29.2...HEAD
+[Unreleased]: https://github.com/gmickel/gno/compare/v0.30.0...HEAD
+[0.30.0]: https://github.com/gmickel/gno/compare/v0.29.2...v0.30.0
 [0.29.2]: https://github.com/gmickel/gno/compare/v0.29.1...v0.29.2
 [0.29.1]: https://github.com/gmickel/gno/compare/v0.29.0...v0.29.1
 [0.29.0]: https://github.com/gmickel/gno/compare/v0.28.2...v0.29.0
