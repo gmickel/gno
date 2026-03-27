@@ -1,0 +1,14 @@
+{
+  "assignee": null,
+  "claim_note": "",
+  "claimed_at": null,
+  "created_at": "2026-03-27T14:29:17.823333Z",
+  "depends_on": [],
+  "epic": "fn-54-re-evaluate-markit-as-a-unified",
+  "id": "fn-54-re-evaluate-markit-as-a-unified.1",
+  "priority": null,
+  "spec_path": ".flow/tasks/fn-54-re-evaluate-markit-as-a-unified.1.md",
+  "status": "todo",
+  "title": "Re-run converter evaluation once markit stabilizes",
+  "updated_at": "2026-03-27T14:30:20.012181Z"
+}
