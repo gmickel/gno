@@ -22,6 +22,8 @@ import {
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
+import type { AppStatusResponse } from "../../status-model";
+
 import { apiFetch } from "../hooks/use-api";
 import { cn } from "../lib/utils";
 import { Badge } from "./ui/badge";
@@ -146,6 +148,7 @@ export function AIModelSelector({
   const [switching, setSwitching] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [modelsNeeded, setModelsNeeded] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
   const [menuPosition, setMenuPosition] = useState<{
     left: number;
@@ -241,6 +244,14 @@ export function AIModelSelector({
         if (presetsData) {
           checkCapabilities(presetsData.capabilities);
         }
+        const { data: statusData } =
+          await apiFetch<AppStatusResponse>("/api/status");
+        if (statusData) {
+          setModelsNeeded(
+            statusData.bootstrap.models.cachedCount <
+              statusData.bootstrap.models.totalCount
+          );
+        }
 
         if (data.failed.length > 0) {
           setError(`Failed: ${data.failed.map((f) => f.type).join(", ")}`);
@@ -259,6 +270,14 @@ export function AIModelSelector({
         checkCapabilities(data.capabilities);
       }
       setLoading(false);
+    });
+
+    void apiFetch<AppStatusResponse>("/api/status").then(({ data }) => {
+      if (data) {
+        setModelsNeeded(
+          data.bootstrap.models.cachedCount < data.bootstrap.models.totalCount
+        );
+      }
     });
 
     void apiFetch<DownloadStatus>("/api/models/status").then(({ data }) => {
@@ -288,6 +307,26 @@ export function AIModelSelector({
       "Switch between presets without redoing setup.")
     : "Select a preset";
 
+  const syncFromStatus = useCallback(
+    async (status: AppStatusResponse | null) => {
+      if (!status) {
+        return;
+      }
+
+      const readyModels =
+        status.bootstrap.models.cachedCount >=
+        status.bootstrap.models.totalCount;
+      setModelsNeeded(!readyModels);
+      checkCapabilities(status.capabilities);
+
+      if (!readyModels) {
+        setNotice("Switched preset. Downloading required models...");
+        await handleDownload();
+      }
+    },
+    [checkCapabilities]
+  );
+
   const handleSelect = async (id: string) => {
     if (id === activeId || switching || downloading) return;
 
@@ -315,6 +354,11 @@ export function AIModelSelector({
       onPresetChange?.(data.activePreset);
       checkCapabilities(data.capabilities);
       setOpen(false);
+      const presetName = presets.find((preset) => preset.id === id)?.name ?? id;
+      setNotice(`Switched to ${presetName}`);
+      const { data: statusData } =
+        await apiFetch<AppStatusResponse>("/api/status");
+      await syncFromStatus(statusData);
     }
   };
 
@@ -336,6 +380,14 @@ export function AIModelSelector({
 
     void pollStatus();
   };
+
+  useEffect(() => {
+    if (!notice) {
+      return;
+    }
+    const timer = window.setTimeout(() => setNotice(null), 3000);
+    return () => window.clearTimeout(timer);
+  }, [notice]);
 
   // Loading skeleton
   if (loading) {
@@ -692,6 +744,8 @@ export function AIModelSelector({
           </div>
         </div>
       )}
+
+      {notice && <div className="mt-2 text-primary text-xs">{notice}</div>}
     </div>
   );
 }

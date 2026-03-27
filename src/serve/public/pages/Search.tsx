@@ -438,6 +438,7 @@ export default function Search({ navigate }: PageProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     activeTags,
+    activePreset,
     author,
     candidateLimit,
     category,
