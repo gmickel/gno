@@ -364,7 +364,7 @@ mark {
   );
 }
 
-/* Warm glass variant with secondary/gold accent */
+/* Warm glass variant with secondary/gold accent. Reserved for future cards. */
 .glass-warm {
   background: hsl(var(--card) / 0.8);
   backdrop-filter: blur(16px) saturate(150%);
@@ -373,7 +373,7 @@ mark {
   box-shadow: 0 0 30px -10px hsl(var(--secondary) / 0.08);
 }
 
-/* Vignette overlay for atmospheric depth */
+/* Vignette overlay for atmospheric depth. Requires position: relative on host. */
 .vignette::after {
   content: "";
   position: absolute;
