@@ -1,0 +1,16 @@
+{
+  "branch_name": "fn-56-windows-packaging-and-runtime",
+  "created_at": "2026-03-27T19:47:40.391810Z",
+  "depends_on_epics": [
+    "fn-51-desktop-beta-shell-packaging-and-os",
+    "fn-52-desktop-beta-signed-distribution"
+  ],
+  "id": "fn-56-windows-packaging-and-runtime",
+  "next_task": 1,
+  "plan_review_status": "unknown",
+  "plan_reviewed_at": null,
+  "spec_path": ".flow/specs/fn-56-windows-packaging-and-runtime.md",
+  "status": "open",
+  "title": "Windows packaging and runtime validation for GNO",
+  "updated_at": "2026-03-27T19:48:28.198863Z"
+}

@@ -1,0 +1,13 @@
+{
+  "branch_name": "fn-55-headless-daemon-and-watch-mode-for",
+  "created_at": "2026-03-27T19:47:40.388808Z",
+  "depends_on_epics": [],
+  "id": "fn-55-headless-daemon-and-watch-mode-for",
+  "next_task": 1,
+  "plan_review_status": "unknown",
+  "plan_reviewed_at": null,
+  "spec_path": ".flow/specs/fn-55-headless-daemon-and-watch-mode-for.md",
+  "status": "open",
+  "title": "Headless daemon and watch mode for continuous indexing",
+  "updated_at": "2026-03-27T19:48:28.194775Z"
+}

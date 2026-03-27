@@ -1,0 +1,14 @@
+{
+  "assignee": null,
+  "claim_note": "",
+  "claimed_at": null,
+  "created_at": "2026-03-27T19:47:48.814819Z",
+  "depends_on": [],
+  "epic": "fn-56-windows-packaging-and-runtime",
+  "id": "fn-56-windows-packaging-and-runtime.1",
+  "priority": null,
+  "spec_path": ".flow/tasks/fn-56-windows-packaging-and-runtime.1.md",
+  "status": "todo",
+  "title": "Validate Windows runtime and SQLite extension story",
+  "updated_at": "2026-03-27T19:48:28.217137Z"
+}
