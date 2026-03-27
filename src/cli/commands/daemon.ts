@@ -6,6 +6,7 @@ import { startBackgroundRuntime } from "../../serve/background-runtime";
 export interface DaemonOptions {
   configPath?: string;
   index?: string;
+  offline?: boolean;
   verbose?: boolean;
   quiet?: boolean;
   noSyncOnStart?: boolean;
@@ -81,6 +82,7 @@ export async function daemon(
     configPath: options.configPath,
     index: options.index,
     requireCollections: true,
+    offline: options.offline,
     watchCallbacks: {
       onSyncStart: ({ collection, relPaths }) => {
         if (!options.quiet) {

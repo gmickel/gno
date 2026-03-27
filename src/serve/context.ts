@@ -80,13 +80,18 @@ export interface ServerContext {
   watchService?: CollectionWatchService | null;
 }
 
+export interface CreateServerContextOptions {
+  offline?: boolean;
+}
+
 /**
  * Initialize server context with LLM ports.
  * Attempts to load models; missing models are logged but don't fail.
  */
 export async function createServerContext(
   store: SqliteAdapter,
-  config: Config
+  config: Config,
+  options: CreateServerContextOptions = {}
 ): Promise<ServerContext> {
   let embedPort: EmbeddingPort | null = null;
   let expandPort: GenerationPort | null = null;
@@ -99,7 +104,9 @@ export async function createServerContext(
     const llm = new LlmAdapter(config);
 
     // Resolve download policy from env (serve has no CLI flags)
-    const policy = resolveDownloadPolicy(process.env, {});
+    const policy = resolveDownloadPolicy(process.env, {
+      offline: options.offline ?? false,
+    });
 
     // Progress callback updates downloadState for WebUI polling
     const createPortOptions = (type: ModelType): CreatePortOptions => ({
@@ -231,8 +238,9 @@ export async function disposeServerContext(ctx: ServerContext): Promise<void> {
  */
 export async function reloadServerContext(
   ctx: ServerContext,
-  newConfig?: Config
+  newConfig?: Config,
+  options: CreateServerContextOptions = {}
 ): Promise<ServerContext> {
   await disposeServerContext(ctx);
-  return createServerContext(ctx.store, newConfig ?? ctx.config);
+  return createServerContext(ctx.store, newConfig ?? ctx.config, options);
 }

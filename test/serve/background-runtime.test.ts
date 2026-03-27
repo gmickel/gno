@@ -159,4 +159,106 @@ describe("startBackgroundRuntime", () => {
     expect(disposeContext).toHaveBeenCalledTimes(1);
     expect(close).toHaveBeenCalledTimes(1);
   });
+
+  test("passes offline flag into server context creation", async () => {
+    const createServerContext = mock(
+      async () =>
+        ({
+          store: {} as never,
+          config: {
+            version: "1.0",
+            ftsTokenizer: "unicode61",
+            collections: [],
+            contexts: [],
+          },
+          vectorIndex: null,
+          embedPort: null,
+          expandPort: null,
+          answerPort: null,
+          rerankPort: null,
+          capabilities: {
+            bm25: true,
+            vector: false,
+            hybrid: false,
+            answer: false,
+          },
+        }) as never
+    );
+
+    const result = await startBackgroundRuntime(
+      {
+        offline: true,
+      },
+      {
+        isInitialized: async () => true,
+        loadConfig: async () =>
+          ({
+            ok: true,
+            value: {
+              version: "1.0",
+              ftsTokenizer: "unicode61",
+              collections: [
+                {
+                  name: "notes",
+                  path: "/tmp/notes",
+                  pattern: "**/*.md",
+                  include: [],
+                  exclude: [],
+                },
+              ],
+              contexts: [],
+            },
+          }) as never,
+        ensureDirectories: (async () => ({
+          ok: true,
+          value: undefined,
+        })) as never,
+        getConfigPaths: () =>
+          ({
+            configDir: "/tmp/config",
+            configFile: "/tmp/config/index.yml",
+            dataDir: "/tmp/data",
+            cacheDir: "/tmp/cache",
+          }) as never,
+        storeFactory: () =>
+          ({
+            setConfigPath: () => undefined,
+            open: async () => ({ ok: true, value: undefined }),
+            syncCollections: async () => ({ ok: true, value: undefined }),
+            syncContexts: async () => ({ ok: true, value: undefined }),
+            getRawDb: () => ({}) as never,
+            close: async () => undefined,
+          }) as never,
+        createServerContext,
+        createEmbedScheduler: () =>
+          ({
+            notifySyncComplete: () => undefined,
+            triggerNow: async () => null,
+            getState: () => ({ pendingDocCount: 0, running: false }),
+            dispose: () => undefined,
+          }) as never,
+        watchServiceFactory: () =>
+          ({
+            start: () => undefined,
+            dispose: () => undefined,
+            getState: () => ({
+              expectedCollections: [],
+              activeCollections: [],
+              failedCollections: [],
+              queuedCollections: [],
+              syncingCollections: [],
+              lastEventAt: null,
+              lastSyncAt: null,
+            }),
+          }) as never,
+      }
+    );
+
+    expect(result.success).toBe(true);
+    expect(createServerContext).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      expect.objectContaining({ offline: true })
+    );
+  });
 });

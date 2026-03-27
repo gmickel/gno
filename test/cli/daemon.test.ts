@@ -2,6 +2,9 @@ import { describe, expect, mock, test } from "bun:test";
 
 import { daemon } from "../../src/cli/commands/daemon";
 
+type StartBackgroundRuntimeFn =
+  typeof import("../../src/serve/background-runtime").startBackgroundRuntime;
+
 describe("daemon command", () => {
   test("returns startup errors from background runtime", async () => {
     const result = await daemon(
@@ -183,5 +186,78 @@ describe("daemon command", () => {
 
     expect(result).toEqual({ success: true });
     expect(syncAll).toHaveBeenCalledTimes(0);
+  });
+
+  test("passes offline flag through to background runtime", async () => {
+    const startBackgroundRuntime = mock(
+      async () =>
+        ({
+          success: true as const,
+          runtime: {
+            config: {
+              version: "1.0",
+              ftsTokenizer: "unicode61",
+              collections: [
+                {
+                  name: "notes",
+                  path: "/tmp/notes",
+                  pattern: "**/*.md",
+                  include: [],
+                  exclude: [],
+                },
+              ],
+              contexts: [],
+            },
+            store: {} as never,
+            actualConfigPath: "/tmp/config/index.yml",
+            ctxHolder: {} as never,
+            scheduler: {} as never,
+            eventBus: null,
+            watchService: {
+              getState: () => ({
+                expectedCollections: ["notes"],
+                activeCollections: ["notes"],
+                failedCollections: [],
+                queuedCollections: [],
+                syncingCollections: [],
+                lastEventAt: null,
+                lastSyncAt: null,
+              }),
+            } as never,
+            syncAll: async () => ({
+              syncResult: {
+                collections: [],
+                totalDurationMs: 0,
+                totalFilesProcessed: 0,
+                totalFilesAdded: 0,
+                totalFilesUpdated: 0,
+                totalFilesErrored: 0,
+                totalFilesSkipped: 0,
+              },
+              embedResult: null,
+            }),
+            dispose: async () => undefined,
+          },
+        }) satisfies Awaited<ReturnType<StartBackgroundRuntimeFn>>
+    ) as unknown as StartBackgroundRuntimeFn;
+
+    const controller = new AbortController();
+    setTimeout(() => controller.abort(), 0);
+
+    await daemon(
+      {
+        offline: true,
+        signal: controller.signal,
+      },
+      {
+        startBackgroundRuntime,
+      }
+    );
+
+    expect(startBackgroundRuntime).toHaveBeenCalledWith(
+      expect.objectContaining({
+        offline: true,
+      })
+    );
   });
 });

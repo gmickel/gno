@@ -20,6 +20,7 @@ import { getActivePreset } from "../llm/registry";
 import { SqliteAdapter } from "../store/sqlite/adapter";
 import {
   createServerContext,
+  type CreateServerContextOptions,
   disposeServerContext,
   type ServerContext,
 } from "./context";
@@ -30,6 +31,7 @@ export interface BackgroundRuntimeOptions {
   configPath?: string;
   index?: string;
   requireCollections?: boolean;
+  offline?: boolean;
   eventBus?: DocumentEventBus | null;
   watchCallbacks?: CollectionWatchCallbacks;
 }
@@ -65,7 +67,8 @@ type BackgroundRuntimeDeps = {
   storeFactory?: () => SqliteAdapter;
   createServerContext?: (
     store: SqliteAdapter,
-    config: Config
+    config: Config,
+    options?: CreateServerContextOptions
   ) => Promise<ServerContext>;
   disposeServerContext?: (ctx: ServerContext) => Promise<void>;
   createEmbedScheduler?: typeof createEmbedScheduler;
@@ -135,7 +138,10 @@ export async function startBackgroundRuntime(
 
   const ctx = await (deps.createServerContext ?? createServerContext)(
     store,
-    config
+    config,
+    {
+      offline: options.offline ?? false,
+    }
   );
 
   const ctxHolder: ContextHolder = {

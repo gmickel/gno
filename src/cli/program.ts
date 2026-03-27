@@ -2053,6 +2053,7 @@ function wireDaemonCommand(program: Command): void {
       const result = await daemon({
         configPath: globals.config,
         index: globals.index,
+        offline: globals.offline,
         verbose: globals.verbose,
         quiet: globals.quiet,
         noSyncOnStart: cmdOpts.syncOnStart === false,
