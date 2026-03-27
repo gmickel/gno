@@ -2055,7 +2055,7 @@ function wireDaemonCommand(program: Command): void {
         index: globals.index,
         verbose: globals.verbose,
         quiet: globals.quiet,
-        noSyncOnStart: Boolean(cmdOpts.noSyncOnStart),
+        noSyncOnStart: cmdOpts.syncOnStart === false,
       });
       if (!result.success) {
         throw new CliError("RUNTIME", result.error);

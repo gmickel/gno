@@ -24,10 +24,13 @@ Required outputs:
 - [ ] Scope boundary vs `gno serve` and `fn-8` is explicit.
 
 ## Done summary
+
 Finalized the fn-55 daemon product/engineering contract.
 
 Locked the v1 shape to `gno daemon` as a foreground-only headless watcher process with `--no-sync-on-start`, no built-in process manager, no service installers, and explicit separation from `gno serve`.
+
 ## Evidence
+
 - Commits: f0053ee
 - Tests: bun run lint:check, bun run typecheck, bun test, bun run docs:verify, mise exec ruby@3.3.6 -- make build
 - PRs:
