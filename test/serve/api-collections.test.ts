@@ -242,6 +242,25 @@ describe("POST /api/collections", () => {
     const body = (await res.json()) as ErrorBody;
     expect(body.error.code).toBe("DUPLICATE_PATH");
   });
+
+  test("returns success when display name is mixed case but collection is normalized", async () => {
+    const store = createMockStore();
+    const ctxHolder = createMockContextHolder();
+    const req = new Request("http://localhost/api/collections", {
+      method: "POST",
+      body: JSON.stringify({ path: tmpDir, name: "SW2" }),
+    });
+
+    const res = await handleCreateCollection(ctxHolder, store as never, req);
+    expect(res.status).toBe(202);
+    const body = (await res.json()) as {
+      collection: { name: string; path: string };
+      jobId: string;
+    };
+    expect(body.collection.name).toBe("sw2");
+    expect(body.collection.path).toBe(tmpDir);
+    expect(body.jobId.length).toBeGreaterThan(0);
+  });
 });
 
 describe("POST /api/import/preview", () => {

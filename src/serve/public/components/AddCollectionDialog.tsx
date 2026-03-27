@@ -98,7 +98,7 @@ export function AddCollectionDialog({
   // Form state
   const [path, setPath] = useState("");
   const [name, setName] = useState("");
-  const [pattern, setPattern] = useState("**/*.md");
+  const [pattern, setPattern] = useState("**/*");
   const [exclude, setExclude] = useState("node_modules/**");
   const [advancedOpen, setAdvancedOpen] = useState(false);
 
@@ -119,7 +119,7 @@ export function AddCollectionDialog({
       const timer = setTimeout(() => {
         setPath("");
         setName("");
-        setPattern("**/*.md");
+        setPattern("**/*");
         setExclude("node_modules/**");
         setAdvancedOpen(false);
         setState("form");
@@ -190,7 +190,7 @@ export function AddCollectionDialog({
         body: JSON.stringify({
           path: path.trim(),
           name: derivedName || undefined,
-          pattern: pattern.trim() || "**/*.md",
+          pattern: pattern.trim() || "**/*",
           exclude: exclude.trim() || undefined,
         }),
       }
@@ -386,12 +386,12 @@ export function AddCollectionDialog({
                     disabled={state === "submitting"}
                     id="collection-pattern"
                     onChange={(e) => setPattern(e.target.value)}
-                    placeholder="**/*.md"
+                    placeholder="**/*"
                     value={pattern}
                   />
                   <p className="text-muted-foreground text-xs">
-                    Default: <code className="text-[11px]">**/*.md</code> (all
-                    markdown files)
+                    Default: <code className="text-[11px]">**/*</code> (all
+                    supported document files)
                   </p>
                 </div>
 

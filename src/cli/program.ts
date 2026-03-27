@@ -542,7 +542,7 @@ function wireSearchCommands(program: Command): void {
       const configResult = await loadConfig(globals.config);
       const activePresetId = configResult.ok
         ? getActivePreset(configResult.value).id
-        : "slim";
+        : "slim-tuned";
       const candidateLimit = cmdOpts.candidateLimit
         ? parsePositiveInt("candidate-limit", cmdOpts.candidateLimit)
         : undefined;
@@ -655,7 +655,7 @@ function wireSearchCommands(program: Command): void {
       const configResult = await loadConfig(globals.config);
       const activePresetId = configResult.ok
         ? getActivePreset(configResult.value).id
-        : "slim";
+        : "slim-tuned";
       const candidateLimit = cmdOpts.candidateLimit
         ? parsePositiveInt("candidate-limit", cmdOpts.candidateLimit)
         : undefined;

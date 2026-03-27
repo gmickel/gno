@@ -1535,13 +1535,18 @@ GET /api/presets
 {
   "presets": [
     {
-      "id": "slim",
-      "name": "Slim (Default, ~1GB)",
+      "id": "slim-tuned",
+      "name": "GNO Slim Tuned (Default, ~1GB)",
       "embed": "hf:...bge-m3-Q4...",
       "rerank": "hf:...reranker-Q4...",
-      "expand": "hf:...expansion-model...",
-      "gen": "hf:...qwen3-1.7b-Q4...",
+      "expand": "hf:...gno-expansion-auto-entity-lock-default-mix...",
+      "gen": "hf:...qwen3-4b-Q4...",
       "active": true
+    },
+    {
+      "id": "slim",
+      "name": "Slim (~1GB)",
+      "active": false
     },
     {
       "id": "balanced",
@@ -1549,7 +1554,7 @@ GET /api/presets
       "active": false
     }
   ],
-  "activePreset": "slim"
+  "activePreset": "slim-tuned"
 }
 ```
 

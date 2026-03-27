@@ -17,6 +17,7 @@ import {
   FolderIcon,
   FolderMinusIcon,
   FolderPlusIcon,
+  HomeIcon,
   LayersIcon,
   Loader2Icon,
   MoreVerticalIcon,
@@ -351,6 +352,15 @@ export default function Collections({ navigate }: PageProps) {
         <div className="flex flex-wrap items-start justify-between gap-4 px-8 py-4">
           <div className="space-y-2">
             <div className="flex flex-wrap items-center gap-3">
+              <Button
+                className="gap-2 text-primary"
+                onClick={() => navigate("/")}
+                size="sm"
+                variant="ghost"
+              >
+                <HomeIcon className="size-4" />
+                GNO
+              </Button>
               <Button
                 className="gap-2"
                 onClick={() => navigate(-1)}

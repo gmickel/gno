@@ -238,6 +238,7 @@
                   "add-collection",
                   "open-collections",
                   "sync",
+                  "embed",
                   "download-models",
                   "free-space"
                 ]

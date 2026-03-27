@@ -4,6 +4,7 @@ export type HealthActionKind =
   | "add-collection"
   | "open-collections"
   | "sync"
+  | "embed"
   | "download-models"
   | "free-space";
 

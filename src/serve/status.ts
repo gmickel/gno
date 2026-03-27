@@ -287,8 +287,8 @@ function buildIndexingCheck(status: IndexStatus): HealthCheck {
       summary: `${summarizeCount(status.embeddingBacklog, "chunk")} still waiting on embeddings`,
       detail:
         "Search works, but semantic and answer features will improve once embeddings finish.",
-      actionLabel: "Run update",
-      actionKind: "sync",
+      actionLabel: "Finish embeddings",
+      actionKind: "embed",
     };
   }
 
@@ -539,20 +539,26 @@ function buildOnboarding(
       status: "complete",
       detail: `Current preset: ${presetName}. You can change this any time.`,
     },
-    {
-      id: "models",
-      title: "Prepare local models",
-      status: modelsReady ? "complete" : foldersReady ? "current" : "upcoming",
-      detail: modelCheck.detail,
-    },
+    ...(!modelsReady
+      ? ([
+          {
+            id: "models",
+            title: "Prepare local models",
+            status: foldersReady ? "current" : "upcoming",
+            detail: modelCheck.detail,
+          },
+        ] satisfies AppStatusResponse["onboarding"]["steps"])
+      : []),
     {
       id: "indexing",
       title: "Finish first index",
       status: indexedReady ? "complete" : foldersReady ? "current" : "upcoming",
       detail:
-        status.activeDocuments > 0
-          ? `${summarizeCount(status.activeDocuments, "document")} indexed so far.`
-          : "Run the first sync to scan your folders and build the search index.",
+        status.activeDocuments > 0 && status.embeddingBacklog > 0
+          ? `${summarizeCount(status.embeddingBacklog, "chunk")} still waiting on embeddings.`
+          : status.activeDocuments > 0
+            ? `${summarizeCount(status.activeDocuments, "document")} indexed so far.`
+            : "Run the first sync to scan your folders and build the search index.",
     },
   ] satisfies AppStatusResponse["onboarding"]["steps"];
 
@@ -585,9 +591,11 @@ function buildOnboarding(
       stage: "indexing",
       headline: "GNO is almost ready. Finish the first indexing run",
       detail:
-        status.activeDocuments > 0
-          ? "The first sync started. Let embeddings finish so semantic search and answers can fully light up."
-          : "Run the first sync to populate the index from the folders you connected.",
+        status.activeDocuments > 0 && status.embeddingBacklog > 0
+          ? `Finish embeddings for ${summarizeCount(status.embeddingBacklog, "chunk")} to unlock semantic search and local answers.`
+          : status.activeDocuments > 0
+            ? "The first sync started. Let embeddings finish so semantic search and answers can fully light up."
+            : "Run the first sync to populate the index from the folders you connected.",
       suggestedCollections: suggestions,
       steps,
     };

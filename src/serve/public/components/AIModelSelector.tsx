@@ -11,16 +11,20 @@
 
 import {
   AlertCircle,
+  BadgeCheck,
   Check,
   ChevronDown,
   Download,
   Loader2,
+  ScanSearch,
   Sparkles,
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 
 import { apiFetch } from "../hooks/use-api";
 import { cn } from "../lib/utils";
+import { Badge } from "./ui/badge";
 
 interface Preset {
   id: string;
@@ -72,6 +76,12 @@ const PRESET_EXPLANATIONS: Record<string, string> = {
   quality: "Best local answers. Highest disk use.",
   "slim-tuned": "Fine-tuned retrieval in a compact footprint.",
 };
+const BUILTIN_PRESET_IDS = new Set([
+  "slim-tuned",
+  "slim",
+  "balanced",
+  "quality",
+]);
 
 // Extract readable model name from preset name
 const SIZE_REGEX = /~[\d.]+GB/;
@@ -115,9 +125,21 @@ function formatModelRole(uri: string | undefined): string {
 
 export interface AIModelSelectorProps {
   onPresetChange?: (presetId: string) => void;
+  showDetails?: boolean;
+  showDownloadAction?: boolean;
+  showLabel?: boolean;
 }
 
-export function AIModelSelector({ onPresetChange }: AIModelSelectorProps = {}) {
+function isCustomPreset(preset: Preset): boolean {
+  return !BUILTIN_PRESET_IDS.has(preset.id);
+}
+
+export function AIModelSelector({
+  onPresetChange,
+  showDetails = false,
+  showDownloadAction = true,
+  showLabel = true,
+}: AIModelSelectorProps = {}) {
   const [presets, setPresets] = useState<Preset[]>([]);
   const [activeId, setActiveId] = useState<string>("");
   const [loading, setLoading] = useState(true);
@@ -125,6 +147,11 @@ export function AIModelSelector({ onPresetChange }: AIModelSelectorProps = {}) {
   const [error, setError] = useState<string | null>(null);
   const [modelsNeeded, setModelsNeeded] = useState(false);
   const [open, setOpen] = useState(false);
+  const [menuPosition, setMenuPosition] = useState<{
+    left: number;
+    top: number;
+    width: number;
+  } | null>(null);
 
   // Download state
   const [downloading, setDownloading] = useState(false);
@@ -133,20 +160,56 @@ export function AIModelSelector({ onPresetChange }: AIModelSelectorProps = {}) {
   );
   const pollInterval = useRef<ReturnType<typeof setInterval> | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
 
   // Click outside to close
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
+      const target = e.target as Node;
       if (
-        containerRef.current &&
-        !containerRef.current.contains(e.target as Node)
+        (containerRef.current && containerRef.current.contains(target)) ||
+        (menuRef.current && menuRef.current.contains(target))
       ) {
-        setOpen(false);
+        return;
       }
+      setOpen(false);
     }
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  const updateMenuPosition = useCallback(() => {
+    if (!triggerRef.current || typeof window === "undefined") {
+      return;
+    }
+
+    const rect = triggerRef.current.getBoundingClientRect();
+    const width = Math.min(360, window.innerWidth - 32);
+    const left = Math.max(
+      16,
+      Math.min(rect.left, window.innerWidth - width - 16)
+    );
+    const top = rect.bottom + 8;
+
+    setMenuPosition({ left, top, width });
+  }, []);
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    updateMenuPosition();
+
+    const handlePosition = () => updateMenuPosition();
+    window.addEventListener("resize", handlePosition);
+    window.addEventListener("scroll", handlePosition, true);
+    return () => {
+      window.removeEventListener("resize", handlePosition);
+      window.removeEventListener("scroll", handlePosition, true);
+    };
+  }, [open, updateMenuPosition]);
 
   // Check capabilities
   const checkCapabilities = useCallback((caps: Capabilities) => {
@@ -220,6 +283,10 @@ export function AIModelSelector({ onPresetChange }: AIModelSelectorProps = {}) {
   }, [downloading, pollStatus]);
 
   const activePreset = presets.find((p) => p.id === activeId);
+  const activeExplanation = activePreset
+    ? (PRESET_EXPLANATIONS[activePreset.id] ??
+      "Switch between presets without redoing setup.")
+    : "Select a preset";
 
   const handleSelect = async (id: string) => {
     if (id === activeId || switching || downloading) return;
@@ -274,9 +341,11 @@ export function AIModelSelector({ onPresetChange }: AIModelSelectorProps = {}) {
   if (loading) {
     return (
       <div className="flex items-center gap-2">
-        <span className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground/40">
-          Preset
-        </span>
+        {showLabel && (
+          <span className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground/40">
+            Preset
+          </span>
+        )}
         <div
           className={cn(
             "h-7 w-24 rounded",
@@ -295,10 +364,17 @@ export function AIModelSelector({ onPresetChange }: AIModelSelectorProps = {}) {
   return (
     <div className="relative" ref={containerRef}>
       {/* Label */}
-      <div className="flex items-center gap-2">
-        <span className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground/40">
-          Preset
-        </span>
+      <div
+        className={cn(
+          "flex items-start",
+          showLabel ? "flex-col gap-2" : "flex-row"
+        )}
+      >
+        {showLabel && (
+          <span className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground/40">
+            Preset
+          </span>
+        )}
 
         {/* Tube Display Button */}
         <button
@@ -325,6 +401,7 @@ export function AIModelSelector({ onPresetChange }: AIModelSelectorProps = {}) {
           )}
           disabled={switching}
           onClick={() => setOpen(!open)}
+          ref={triggerRef}
           type="button"
         >
           {/* Status indicator */}
@@ -367,158 +444,251 @@ export function AIModelSelector({ onPresetChange }: AIModelSelectorProps = {}) {
       </div>
 
       {/* Dropdown Panel */}
-      {open && (
-        <div
-          className={cn(
-            "absolute top-full right-0 z-50 mt-2",
-            "min-w-[240px] rounded-md border p-1",
-            // Panel styling - instrument panel aesthetic
-            "border-[hsl(var(--secondary)/0.2)]",
-            "bg-card/95 backdrop-blur-sm",
-            "shadow-[0_8px_32px_-8px_hsl(var(--secondary)/0.2),0_0_1px_hsl(var(--secondary)/0.1)]",
-            // Entrance animation
-            "animate-in fade-in-0 zoom-in-95 slide-in-from-top-2",
-            "duration-200"
-          )}
-        >
-          {/* Download progress */}
-          {downloading && downloadStatus && (
-            <div className="mb-2 space-y-2 rounded bg-[hsl(var(--secondary)/0.05)] p-2">
-              <div className="flex items-center justify-between">
-                <span className="font-mono text-[10px] text-muted-foreground">
-                  {downloadStatus.currentType || "Preparing..."}
-                </span>
-                <span className="font-mono text-[10px] text-[hsl(var(--secondary)/0.7)]">
-                  {downloadStatus.progress?.percent.toFixed(0) ?? 0}%
-                </span>
-              </div>
-              {/* Vintage meter bar */}
-              <div className="relative h-1.5 overflow-hidden rounded-full bg-muted/50">
-                <div
-                  className={cn(
-                    "absolute inset-y-0 left-0 rounded-full",
-                    "bg-gradient-to-r from-[hsl(var(--secondary)/0.6)] to-[hsl(var(--secondary))]",
-                    "shadow-[0_0_8px_hsl(var(--secondary)/0.5)]",
-                    "transition-all duration-300"
-                  )}
-                  style={{ width: `${downloadStatus.progress?.percent ?? 0}%` }}
-                />
-              </div>
-              {downloadStatus.completed.length > 0 && (
-                <p className="font-mono text-[9px] text-muted-foreground/60">
-                  Done: {downloadStatus.completed.join(", ")}
-                </p>
-              )}
-            </div>
-          )}
-
-          {/* Preset options */}
-          <div className="space-y-0.5">
-            {presets.map((preset) => {
-              const isActive = preset.id === activeId;
-              const baseName = extractBaseName(preset.name);
-              const size = extractSize(preset.name);
-              const explanation =
-                PRESET_EXPLANATIONS[preset.id] ??
-                "Pick this if the trade-off fits your machine.";
-
-              return (
-                <button
-                  className={cn(
-                    "group/item flex w-full items-center justify-between gap-3",
-                    "rounded px-3 py-2.5",
-                    "transition-all duration-150",
-                    // Base
-                    "text-muted-foreground",
-                    // Hover
-                    !isActive &&
-                      "hover:bg-[hsl(var(--secondary)/0.08)] hover:text-foreground",
-                    // Active state
-                    isActive && [
-                      "bg-[hsl(var(--secondary)/0.1)]",
-                      "text-[hsl(var(--secondary))]",
-                    ],
-                    // Disabled
-                    (switching || downloading) &&
-                      "pointer-events-none opacity-50"
-                  )}
-                  disabled={switching || downloading}
-                  key={preset.id}
-                  onClick={() => handleSelect(preset.id)}
-                  type="button"
-                >
-                  <div className="flex flex-col items-start gap-0.5">
-                    <span
-                      className={cn(
-                        "font-medium text-sm",
-                        isActive && "text-[hsl(var(--secondary))]"
-                      )}
-                    >
-                      {baseName}
-                    </span>
-                    {size && (
-                      <span className="font-mono text-[10px] text-muted-foreground/60">
-                        {size}
-                      </span>
+      {open &&
+        menuPosition &&
+        createPortal(
+          <div
+            className={cn(
+              "fixed z-[120]",
+              "rounded-md border p-1",
+              "max-h-[min(420px,calc(100vh-6rem))] overflow-y-auto",
+              "border-[hsl(var(--secondary)/0.2)]",
+              "bg-card/95 backdrop-blur-sm",
+              "shadow-[0_8px_32px_-8px_hsl(var(--secondary)/0.2),0_0_1px_hsl(var(--secondary)/0.1)]",
+              "animate-in fade-in-0 zoom-in-95 slide-in-from-top-2",
+              "duration-200"
+            )}
+            ref={menuRef}
+            style={{
+              left: `${menuPosition.left}px`,
+              top: `${menuPosition.top}px`,
+              width: `${menuPosition.width}px`,
+            }}
+          >
+            {/* Download progress */}
+            {downloading && downloadStatus && (
+              <div className="mb-2 space-y-2 rounded bg-[hsl(var(--secondary)/0.05)] p-2">
+                <div className="flex items-center justify-between">
+                  <span className="font-mono text-[10px] text-muted-foreground">
+                    {downloadStatus.currentType || "Preparing..."}
+                  </span>
+                  <span className="font-mono text-[10px] text-[hsl(var(--secondary)/0.7)]">
+                    {downloadStatus.progress?.percent.toFixed(0) ?? 0}%
+                  </span>
+                </div>
+                <div className="relative h-1.5 overflow-hidden rounded-full bg-muted/50">
+                  <div
+                    className={cn(
+                      "absolute inset-y-0 left-0 rounded-full",
+                      "bg-gradient-to-r from-[hsl(var(--secondary)/0.6)] to-[hsl(var(--secondary))]",
+                      "shadow-[0_0_8px_hsl(var(--secondary)/0.5)]",
+                      "transition-all duration-300"
                     )}
-                    <span className="text-[10px] text-muted-foreground/80">
-                      {explanation}
-                    </span>
-                    <span className="font-mono text-[9px] text-muted-foreground/50">
-                      {`expand: ${formatModelRole(preset.expand ?? preset.gen)}`}
-                    </span>
-                    <span className="font-mono text-[9px] text-muted-foreground/50">
-                      {`answer: ${formatModelRole(preset.gen)}`}
-                    </span>
-                  </div>
-
-                  {isActive && (
-                    <Check className="size-4 text-[hsl(var(--secondary))]" />
-                  )}
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Error / Download prompt */}
-          {(error || modelsNeeded) && !downloading && (
-            <>
-              <div className="my-1 border-t border-border/50" />
-              <div className="space-y-2 p-2">
-                {error && (
-                  <p className="font-mono text-[10px] text-amber-500">
-                    {error}
+                    style={{
+                      width: `${downloadStatus.progress?.percent ?? 0}%`,
+                    }}
+                  />
+                </div>
+                {downloadStatus.completed.length > 0 && (
+                  <p className="font-mono text-[9px] text-muted-foreground/60">
+                    Done: {downloadStatus.completed.join(", ")}
                   </p>
                 )}
-                {modelsNeeded && (
+              </div>
+            )}
+
+            <div className="space-y-0.5">
+              {presets.map((preset) => {
+                const isActive = preset.id === activeId;
+                const baseName = extractBaseName(preset.name);
+                const size = extractSize(preset.name);
+                const explanation =
+                  PRESET_EXPLANATIONS[preset.id] ??
+                  "Pick this if the trade-off fits your machine.";
+
+                return (
                   <button
                     className={cn(
-                      "flex w-full items-center justify-center gap-2",
-                      "rounded border px-3 py-2",
-                      "border-[hsl(var(--secondary)/0.3)]",
-                      "bg-[hsl(var(--secondary)/0.05)]",
-                      "font-medium text-[hsl(var(--secondary))] text-xs",
-                      "transition-all duration-200",
-                      "hover:border-[hsl(var(--secondary)/0.5)]",
-                      "hover:bg-[hsl(var(--secondary)/0.1)]",
-                      "hover:shadow-[0_0_12px_-4px_hsl(var(--secondary)/0.3)]"
+                      "group/item flex w-full items-center justify-between gap-3",
+                      "rounded px-3 py-2.5 text-left",
+                      "transition-all duration-150",
+                      "text-muted-foreground",
+                      !isActive &&
+                        "hover:bg-[hsl(var(--secondary)/0.08)] hover:text-foreground",
+                      isActive && [
+                        "bg-[hsl(var(--secondary)/0.1)]",
+                        "text-[hsl(var(--secondary))]",
+                      ],
+                      (switching || downloading) &&
+                        "pointer-events-none opacity-50"
                     )}
-                    onClick={handleDownload}
+                    disabled={switching || downloading}
+                    key={preset.id}
+                    onClick={() => handleSelect(preset.id)}
                     type="button"
                   >
-                    <Download className="size-3.5" />
-                    Download Preset Models
-                  </button>
-                )}
-              </div>
-            </>
-          )}
+                    <div className="flex flex-col items-start gap-0.5">
+                      <span
+                        className={cn(
+                          "font-medium text-sm",
+                          isActive && "text-[hsl(var(--secondary))]"
+                        )}
+                      >
+                        {baseName}
+                      </span>
+                      {size && (
+                        <span className="font-mono text-[10px] text-muted-foreground/60">
+                          {size}
+                        </span>
+                      )}
+                      <span className="text-[10px] text-muted-foreground/80">
+                        {explanation}
+                      </span>
+                      <span className="font-mono text-[9px] text-muted-foreground/50">
+                        {`expand: ${formatModelRole(preset.expand ?? preset.gen)}`}
+                      </span>
+                      <span className="font-mono text-[9px] text-muted-foreground/50">
+                        {`answer: ${formatModelRole(preset.gen)}`}
+                      </span>
+                    </div>
 
-          {/* Footer note */}
-          <div className="mt-1 border-t border-border/30 px-3 py-2">
-            <p className="font-mono text-[9px] text-muted-foreground/50">
-              Controls retrieval expansion and AI answers
-            </p>
+                    {isActive && (
+                      <Check className="size-4 text-[hsl(var(--secondary))]" />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+
+            {(error || modelsNeeded) && !downloading && (
+              <>
+                <div className="my-1 border-t border-border/50" />
+                <div className="space-y-2 p-2">
+                  {error && (
+                    <p className="font-mono text-[10px] text-amber-500">
+                      {error}
+                    </p>
+                  )}
+                  {modelsNeeded && (
+                    <button
+                      className={cn(
+                        "flex w-full items-center justify-center gap-2",
+                        "rounded border px-3 py-2",
+                        "border-[hsl(var(--secondary)/0.3)]",
+                        "bg-[hsl(var(--secondary)/0.05)]",
+                        "font-medium text-[hsl(var(--secondary))] text-xs",
+                        "transition-all duration-200",
+                        "hover:border-[hsl(var(--secondary)/0.5)]",
+                        "hover:bg-[hsl(var(--secondary)/0.1)]",
+                        "hover:shadow-[0_0_12px_-4px_hsl(var(--secondary)/0.3)]"
+                      )}
+                      onClick={handleDownload}
+                      type="button"
+                    >
+                      <Download className="size-3.5" />
+                      Download Preset Models
+                    </button>
+                  )}
+                </div>
+              </>
+            )}
+
+            <div className="mt-1 border-t border-border/30 px-3 py-2">
+              <p className="font-mono text-[9px] text-muted-foreground/50">
+                Controls retrieval expansion and AI answers
+              </p>
+            </div>
+          </div>,
+          document.body
+        )}
+
+      {showDetails && activePreset && (
+        <div className="mt-4 rounded-2xl border border-secondary/20 bg-background/80 shadow-sm">
+          <div
+            className="border-border/50 border-b"
+            style={{ padding: "20px 24px" }}
+          >
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <div className="mb-3 flex flex-wrap items-center gap-2">
+                  <div className="font-semibold text-base">
+                    {activePreset.name}
+                  </div>
+                  {extractSize(activePreset.name) && (
+                    <Badge variant="outline">
+                      {extractSize(activePreset.name)}
+                    </Badge>
+                  )}
+                  {isCustomPreset(activePreset) && (
+                    <Badge className="border-secondary/30 bg-secondary/10 text-secondary hover:bg-secondary/10">
+                      Tuned
+                    </Badge>
+                  )}
+                </div>
+                <p className="text-muted-foreground text-sm">
+                  {activeExplanation}
+                </p>
+              </div>
+              <Badge variant="outline">{`${presets.length} presets available`}</Badge>
+            </div>
+          </div>
+
+          <div style={{ padding: "20px 24px" }}>
+            <div className="grid gap-4 md:grid-cols-2">
+              <div
+                className="rounded-xl border border-border/60 bg-card/70 shadow-none"
+                style={{ padding: "16px" }}
+              >
+                <div className="mb-2 flex items-center gap-2 font-medium text-sm">
+                  <ScanSearch className="size-4 text-secondary" />
+                  Retrieval profile
+                </div>
+                <p className="text-muted-foreground text-sm">
+                  {activePreset.id === "slim"
+                    ? "Quickest local setup with the lightest footprint."
+                    : activePreset.id === "balanced"
+                      ? "Good general-purpose trade-off for most projects."
+                      : activePreset.id === "quality"
+                        ? "Highest local answer quality with heavier resource use."
+                        : "Custom tuned profile layered on top of the built-in options."}
+                </p>
+              </div>
+              <div
+                className="rounded-xl border border-border/60 bg-card/70 shadow-none"
+                style={{ padding: "16px" }}
+              >
+                <div className="mb-2 flex items-center gap-2 font-medium text-sm">
+                  <BadgeCheck className="size-4 text-secondary" />
+                  Active models
+                </div>
+                <div className="space-y-1 font-mono text-[11px] text-muted-foreground">
+                  <div>{`expand: ${formatModelRole(activePreset.expand ?? activePreset.gen)}`}</div>
+                  <div>{`answer: ${formatModelRole(activePreset.gen)}`}</div>
+                  <div>{`rerank: ${formatModelRole(activePreset.rerank)}`}</div>
+                </div>
+              </div>
+            </div>
+
+            {showDownloadAction && (error || modelsNeeded) && !downloading && (
+              <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-500/25 bg-amber-500/10 px-4 py-4">
+                <p className="text-amber-500 text-sm">
+                  {error ?? "This preset still needs local model files."}
+                </p>
+                <button
+                  className={cn(
+                    "flex items-center justify-center gap-2 rounded border px-3 py-2",
+                    "border-[hsl(var(--secondary)/0.3)] bg-[hsl(var(--secondary)/0.05)]",
+                    "font-medium text-[hsl(var(--secondary))] text-xs transition-all duration-200",
+                    "hover:border-[hsl(var(--secondary)/0.5)] hover:bg-[hsl(var(--secondary)/0.1)]"
+                  )}
+                  onClick={handleDownload}
+                  type="button"
+                >
+                  <Download className="size-3.5" />
+                  Download preset models
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}

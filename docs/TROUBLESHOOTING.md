@@ -271,7 +271,7 @@ Large models need RAM. Try smaller preset:
 ```yaml
 # In config
 models:
-  activePreset: slim
+  activePreset: slim-tuned
 ```
 
 ## Database Issues

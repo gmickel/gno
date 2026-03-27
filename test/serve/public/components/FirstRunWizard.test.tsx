@@ -33,13 +33,18 @@ describe("FirstRunWizard", () => {
         onboarding={onboarding}
         onAddCollection={() => undefined}
         onDownloadModels={() => undefined}
+        onEmbed={() => undefined}
         onSync={() => undefined}
       />
     );
 
     expect(html).toContain("Start by connecting the folders you care about");
-    expect(html).toContain("Choose how GNO should feel");
+    expect(html).toContain("Setup wizard");
+    expect(html).toContain("Step 1 of 1");
     expect(html).toContain("Documents");
     expect(html).toContain("Add first folder");
+    expect(html).toContain(
+      "You can jump between steps without losing progress."
+    );
   });
 });

@@ -13,15 +13,15 @@ function createMockContext(): ServerContext {
     collections: [],
     contexts: [],
     models: {
-      activePreset: "slim",
+      activePreset: "slim-tuned",
       loadTimeout: 60_000,
       inferenceTimeout: 30_000,
       expandContextSize: 2_048,
       warmModelTtl: 300_000,
       presets: [
         {
-          id: "slim",
-          name: "Slim (Default, ~1GB)",
+          id: "slim-tuned",
+          name: "GNO Slim Tuned (Default, ~1GB)",
           embed: "hf:embed",
           rerank: "hf:rerank",
           expand: "hf:expand",
@@ -93,7 +93,7 @@ describe("GET /api/status", () => {
     expect(body.onboarding.suggestedCollections).toHaveLength(1);
     expect(body.health.state).toBe("setup-required");
     expect(body.health.checks).toHaveLength(4);
-    expect(body.activePreset.id).toBe("slim");
+    expect(body.activePreset.id).toBe("slim-tuned");
     expect(body.capabilities.answer).toBe(false);
     expect(body.background.watcher.expectedCollections).toEqual([]);
     expect(body.background.embedding.available).toBe(false);
@@ -157,6 +157,9 @@ describe("GET /api/status", () => {
     const body = (await res.json()) as AppStatusResponse;
 
     expect(body.onboarding.ready).toBe(true);
+    expect(body.onboarding.steps.map((step) => step.id)).not.toContain(
+      "models"
+    );
     expect(body.health.state).toBe("healthy");
     expect(body.healthy).toBe(true);
     expect(body.collections[0]).toEqual({

@@ -21,7 +21,7 @@ export interface ResolvedDepthPolicy {
 export const DEFAULT_THOROUGH_CANDIDATE_LIMIT = 40;
 
 function normalizePresetId(presetId?: string): string {
-  return presetId?.trim().toLowerCase() || "slim";
+  return presetId?.trim().toLowerCase() || "slim-tuned";
 }
 
 export function balancedUsesExpansion(presetId?: string): boolean {

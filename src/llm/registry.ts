@@ -18,11 +18,27 @@ import { DEFAULT_MODEL_PRESETS } from "../config/types";
  * Get model config with defaults.
  */
 export function getModelConfig(config: Config): ModelConfig {
+  const customPresets = config.models?.presets ?? [];
+  const presetsById = new Map(
+    DEFAULT_MODEL_PRESETS.map((preset) => [preset.id, preset] as const)
+  );
+
+  for (const preset of customPresets) {
+    presetsById.set(preset.id, preset);
+  }
+
+  const mergedPresets = [
+    ...DEFAULT_MODEL_PRESETS.map(
+      (preset) => presetsById.get(preset.id) ?? preset
+    ),
+    ...customPresets.filter(
+      (preset) => !DEFAULT_MODEL_PRESETS.some((base) => base.id === preset.id)
+    ),
+  ];
+
   return {
-    activePreset: config.models?.activePreset ?? "slim",
-    presets: config.models?.presets?.length
-      ? config.models.presets
-      : DEFAULT_MODEL_PRESETS,
+    activePreset: config.models?.activePreset ?? "slim-tuned",
+    presets: mergedPresets,
     loadTimeout: config.models?.loadTimeout ?? 60_000,
     inferenceTimeout: config.models?.inferenceTimeout ?? 30_000,
     expandContextSize: config.models?.expandContextSize ?? 2_048,

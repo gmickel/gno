@@ -3,6 +3,7 @@ import {
   CheckCircle2Icon,
   CpuIcon,
   Database,
+  DownloadIcon,
   FolderHeartIcon,
   FolderIcon,
   GitForkIcon,
@@ -33,6 +34,7 @@ import {
   CardDescription,
   CardHeader,
 } from "../components/ui/card";
+import { Progress } from "../components/ui/progress";
 import { apiFetch } from "../hooks/use-api";
 import { useCaptureModal } from "../hooks/useCaptureModal";
 import {
@@ -47,6 +49,47 @@ import {
 
 interface SyncResponse {
   jobId: string;
+}
+
+interface EmbedResponse {
+  embedded?: number;
+  errors?: number;
+  running?: boolean;
+  pendingCount?: number;
+  note?: string;
+}
+
+interface SyncResultSummary {
+  collections: Array<{
+    collection: string;
+    filesProcessed: number;
+    filesAdded: number;
+    filesUpdated: number;
+    filesUnchanged: number;
+    filesErrored: number;
+    durationMs: number;
+  }>;
+  totalDurationMs: number;
+  totalFilesProcessed: number;
+  totalFilesAdded: number;
+  totalFilesUpdated: number;
+  totalFilesErrored: number;
+  totalFilesSkipped: number;
+}
+
+interface DownloadProgressState {
+  downloadedBytes: number;
+  totalBytes: number;
+  percent: number;
+}
+
+interface ModelDownloadStatus {
+  active: boolean;
+  currentType: string | null;
+  progress: DownloadProgressState | null;
+  completed: string[];
+  failed: Array<{ type: string; error: string }>;
+  startedAt: number | null;
 }
 
 interface PageProps {
@@ -68,6 +111,8 @@ export default function Dashboard({ navigate }: PageProps) {
   const [favoriteCollections, setFavoriteCollections] = useState<
     FavoriteCollection[]
   >([]);
+  const [modelDownloadStatus, setModelDownloadStatus] =
+    useState<ModelDownloadStatus | null>(null);
   const { openCapture } = useCaptureModal();
 
   const openCollections = () => navigate("/collections");
@@ -94,6 +139,51 @@ export default function Dashboard({ navigate }: PageProps) {
     setFavoriteCollections(loadFavoriteCollections());
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+    let intervalId: ReturnType<typeof setInterval> | null = null;
+
+    async function pollModelStatus(): Promise<void> {
+      const { data } =
+        await apiFetch<ModelDownloadStatus>("/api/models/status");
+      if (cancelled || !data) {
+        return;
+      }
+
+      setModelDownloadStatus(data);
+
+      if (!data.active && intervalId) {
+        clearInterval(intervalId);
+        intervalId = null;
+        void loadStatus();
+      }
+    }
+
+    void pollModelStatus();
+
+    if (
+      busyAction === "download-models" ||
+      status?.bootstrap.models.downloading ||
+      modelDownloadStatus?.active
+    ) {
+      intervalId = setInterval(() => {
+        void pollModelStatus();
+      }, 1000);
+    }
+
+    return () => {
+      cancelled = true;
+      if (intervalId) {
+        clearInterval(intervalId);
+      }
+    };
+  }, [
+    busyAction,
+    loadStatus,
+    modelDownloadStatus?.active,
+    status?.bootstrap.models.downloading,
+  ]);
+
   const handleSync = useCallback(async () => {
     setSyncing(true);
     setSyncJobId(null);
@@ -113,10 +203,23 @@ export default function Dashboard({ navigate }: PageProps) {
     }
   }, []);
 
-  const handleSyncComplete = () => {
+  const handleSyncComplete = (result?: SyncResultSummary) => {
     setSyncing(false);
-    setSyncJobId(null);
     void loadStatus();
+
+    const isNoop =
+      !!result &&
+      result.totalFilesProcessed === 0 &&
+      result.totalFilesAdded === 0 &&
+      result.totalFilesUpdated === 0 &&
+      result.totalFilesErrored === 0;
+
+    window.setTimeout(
+      () => {
+        setSyncJobId(null);
+      },
+      isNoop ? 2500 : 1200
+    );
   };
 
   const handleOpenAddCollection = (path?: string) => {
@@ -136,8 +239,34 @@ export default function Dashboard({ navigate }: PageProps) {
       return;
     }
 
+    const { data } = await apiFetch<ModelDownloadStatus>("/api/models/status");
+    if (data) {
+      setModelDownloadStatus(data);
+    }
     void loadStatus();
   }, [loadStatus]);
+
+  const handleEmbedNow = useCallback(async () => {
+    setBusyAction("embed");
+    const { data, error: err } = await apiFetch<EmbedResponse>("/api/embed", {
+      method: "POST",
+    });
+    setBusyAction(null);
+
+    if (err) {
+      setError(err);
+      return;
+    }
+
+    if (data?.errors && data.errors > 0) {
+      setError(`Embedding failed for ${data.errors} chunks.`);
+    }
+
+    void loadStatus();
+  }, [loadStatus]);
+
+  const isModelDownloadBlocking =
+    busyAction === "download-models" || modelDownloadStatus?.active;
 
   const handleHealthAction = (action: HealthActionKind) => {
     if (action === "add-collection") {
@@ -152,6 +281,11 @@ export default function Dashboard({ navigate }: PageProps) {
 
     if (action === "sync") {
       void handleSync();
+      return;
+    }
+
+    if (action === "embed") {
+      void handleEmbedNow();
       return;
     }
 
@@ -174,18 +308,89 @@ export default function Dashboard({ navigate }: PageProps) {
 
   return (
     <div className="min-h-screen">
+      {isModelDownloadBlocking && (
+        <div className="fixed inset-0 z-[90] bg-background/85 backdrop-blur-sm">
+          <div className="flex min-h-screen items-center justify-center px-6">
+            <Card className="w-full max-w-2xl border-primary/30 bg-card/95 shadow-2xl">
+              <CardHeader className="space-y-3">
+                <div className="flex items-center gap-3">
+                  <div className="flex size-11 items-center justify-center rounded-full bg-primary/12 text-primary">
+                    <DownloadIcon className="size-5" />
+                  </div>
+                  <div>
+                    <div className="font-semibold text-xl">
+                      Downloading local models
+                    </div>
+                    <CardDescription className="mt-1 text-sm">
+                      GNO is preparing the active preset. Keep this page open
+                      until the download finishes.
+                    </CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-5">
+                <div className="rounded-xl border border-border/60 bg-background/70 p-4">
+                  <div className="mb-2 flex items-center justify-between gap-3">
+                    <span className="font-medium text-sm">
+                      {modelDownloadStatus?.currentType
+                        ? `Current step: ${modelDownloadStatus.currentType}`
+                        : "Preparing download"}
+                    </span>
+                    <span className="font-mono text-muted-foreground text-xs">
+                      {modelDownloadStatus?.progress
+                        ? `${modelDownloadStatus.progress.percent.toFixed(0)}%`
+                        : "Starting..."}
+                    </span>
+                  </div>
+                  <Progress
+                    value={modelDownloadStatus?.progress?.percent ?? 5}
+                  />
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="rounded-xl border border-border/60 bg-background/70 p-4">
+                    <div className="mb-2 font-medium text-sm">Completed</div>
+                    <p className="text-muted-foreground text-sm">
+                      {modelDownloadStatus?.completed.length
+                        ? modelDownloadStatus.completed.join(", ")
+                        : "Nothing completed yet."}
+                    </p>
+                  </div>
+                  <div className="rounded-xl border border-border/60 bg-background/70 p-4">
+                    <div className="mb-2 font-medium text-sm">
+                      Why this blocks
+                    </div>
+                    <p className="text-muted-foreground text-sm">
+                      Search can partially work while files stream in, but
+                      results and first-run status are clearer once the preset
+                      download finishes.
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      )}
+
       <header className="relative border-border/50 border-b bg-card/50 backdrop-blur-sm">
         <div className="aurora-glow absolute inset-0 opacity-30" />
         <div className="relative px-8 py-12">
-          <div className="mb-2 flex flex-col justify-between gap-4 md:flex-row md:items-center">
-            <div className="flex items-center gap-3">
-              <GnoLogo className="size-8 text-primary" />
-              <h1 className="font-bold text-4xl text-primary tracking-tight">
-                GNO
-              </h1>
+          <div className="grid gap-6 md:grid-cols-[minmax(0,1fr)_auto] md:items-start">
+            <div className="min-w-0">
+              <div className="flex items-center gap-3">
+                <GnoLogo className="size-8 shrink-0 text-primary" />
+                <h1 className="font-bold text-4xl text-primary tracking-tight">
+                  GNO
+                </h1>
+              </div>
+              <p className="mt-4 text-lg text-muted-foreground">
+                Your Local Knowledge Index
+              </p>
             </div>
-            <div className="flex flex-wrap items-center gap-3">
-              <AIModelSelector />
+
+            <div className="flex flex-wrap items-center gap-3 md:justify-end">
+              <AIModelSelector showLabel={false} />
               <Button
                 disabled={syncing}
                 onClick={() => void handleSync()}
@@ -201,11 +406,8 @@ export default function Dashboard({ navigate }: PageProps) {
               </Button>
             </div>
           </div>
-          <p className="text-lg text-muted-foreground">
-            Your Local Knowledge Index
-          </p>
 
-          {syncJobId && (
+          {syncJobId && (!status || status.onboarding.ready) && (
             <div className="mt-4 rounded-lg border border-border/50 bg-background/50 p-4">
               <IndexingProgress
                 jobId={syncJobId}
@@ -227,7 +429,12 @@ export default function Dashboard({ navigate }: PageProps) {
               onboarding={status.onboarding}
               onAddCollection={handleOpenAddCollection}
               onDownloadModels={() => void handleDownloadModels()}
+              onEmbed={() => void handleEmbedNow()}
               onSync={() => void handleSync()}
+              onSyncComplete={handleSyncComplete}
+              embedding={busyAction === "embed"}
+              syncJobId={syncJobId}
+              syncing={syncing}
             />
           </section>
         )}

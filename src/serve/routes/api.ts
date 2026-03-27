@@ -6,6 +6,7 @@
  */
 
 import type { Config, ModelPreset } from "../../config/types";
+import type { Collection } from "../../config/types";
 import type {
   AskResult,
   Citation,
@@ -48,7 +49,7 @@ import {
 import { searchHybrid } from "../../pipeline/hybrid";
 import { validateQueryModes } from "../../pipeline/query-modes";
 import { searchBm25 } from "../../pipeline/search";
-import { applyConfigChange } from "../config-sync";
+import { applyConfigChange, applyConfigChangeTyped } from "../config-sync";
 import { getConnectorStatuses, installConnector } from "../connectors";
 import {
   downloadState,
@@ -526,20 +527,28 @@ export async function handleCreateCollection(
   const name = body.name || path.basename(body.path);
 
   // Persist config and sync to DB (mutation happens inside with fresh config)
-  const syncResult = await applyConfigChange(ctxHolder, store, async (cfg) => {
-    const addResult = await addCollection(cfg, {
-      path: body.path,
-      name,
-      pattern: body.pattern,
-      include: body.include,
-      exclude: body.exclude,
-    });
+  const syncResult = await applyConfigChangeTyped<Collection>(
+    ctxHolder,
+    store,
+    async (cfg) => {
+      const addResult = await addCollection(cfg, {
+        path: body.path,
+        name,
+        pattern: body.pattern,
+        include: body.include,
+        exclude: body.exclude,
+      });
 
-    if (!addResult.ok) {
-      return { ok: false, error: addResult.message, code: addResult.code };
+      if (!addResult.ok) {
+        return { ok: false, error: addResult.message, code: addResult.code };
+      }
+      return {
+        ok: true,
+        config: addResult.config,
+        value: addResult.collection,
+      };
     }
-    return { ok: true, config: addResult.config };
-  });
+  );
   if (!syncResult.ok) {
     // Map mutation error codes to HTTP status codes
     const statusMap: Record<string, number> = {
@@ -551,8 +560,12 @@ export async function handleCreateCollection(
     return errorResponse(syncResult.code, syncResult.error, status);
   }
 
-  // Find the newly added collection from config
-  const collection = syncResult.config.collections.find((c) => c.name === name);
+  const collection =
+    syncResult.value ??
+    syncResult.config.collections.find((c) => c.path === body.path.trim()) ??
+    syncResult.config.collections.find(
+      (c) => c.name === name || c.name === name.toLowerCase()
+    );
   if (!collection) {
     return errorResponse("RUNTIME", "Collection not found after add", 500);
   }
@@ -561,9 +574,10 @@ export async function handleCreateCollection(
       gitPull: body.gitPull,
       runUpdateCmd: true,
     });
-    // Notify scheduler after sync completes (triggers debounced embed)
     if (result.filesAdded > 0 || result.filesUpdated > 0) {
-      ctxHolder.scheduler?.notifySyncComplete(["add-batch"]);
+      if (ctxHolder.scheduler) {
+        await ctxHolder.scheduler.triggerNow();
+      }
     }
     return {
       collections: [result],
@@ -719,9 +733,10 @@ export async function handleSync(
       gitPull: body.gitPull,
       runUpdateCmd: true,
     });
-    // Notify scheduler after sync completes (triggers debounced embed)
     if (result.totalFilesAdded > 0 || result.totalFilesUpdated > 0) {
-      ctxHolder.scheduler?.notifySyncComplete(["sync-batch"]);
+      if (ctxHolder.scheduler) {
+        await ctxHolder.scheduler.triggerNow();
+      }
     }
     return result;
   });
@@ -2403,7 +2418,11 @@ export interface SetPresetRequestBody {
  */
 export async function handleSetPreset(
   ctxHolder: ContextHolder,
-  req: Request
+  req: Request,
+  deps?: {
+    applyConfigChangeFn?: typeof applyConfigChange;
+    reloadServerContextFn?: typeof reloadServerContext;
+  }
 ): Promise<Response> {
   let body: SetPresetRequestBody;
   try {
@@ -2422,22 +2441,45 @@ export async function handleSetPreset(
     return errorResponse("NOT_FOUND", `Unknown preset: ${body.presetId}`, 404);
   }
 
-  // Update config with new active preset (use getModelConfig to get defaults)
-  const currentModelConfig = getModelConfig(ctxHolder.config);
-  const newConfig: Config = {
-    ...ctxHolder.config,
-    models: {
-      ...currentModelConfig,
-      activePreset: body.presetId,
-    },
-  };
-
   console.log(`Switching to preset: ${preset.name}`);
 
-  // Reload context with new config
+  const syncResult = await (deps?.applyConfigChangeFn ?? applyConfigChange)(
+    ctxHolder,
+    ctxHolder.current.store,
+    async (config) => {
+      const currentModelConfig = getModelConfig(config);
+      return {
+        ok: true,
+        config: {
+          ...config,
+          models: {
+            activePreset: body.presetId,
+            presets: config.models?.presets ?? [],
+            loadTimeout:
+              config.models?.loadTimeout ?? currentModelConfig.loadTimeout,
+            inferenceTimeout:
+              config.models?.inferenceTimeout ??
+              currentModelConfig.inferenceTimeout,
+            expandContextSize:
+              config.models?.expandContextSize ??
+              currentModelConfig.expandContextSize,
+            warmModelTtl:
+              config.models?.warmModelTtl ?? currentModelConfig.warmModelTtl,
+          },
+        },
+      };
+    }
+  );
+
+  if (!syncResult.ok) {
+    return errorResponse("RUNTIME", syncResult.error, 500);
+  }
+
   try {
-    ctxHolder.current = await reloadServerContext(ctxHolder.current, newConfig);
-    ctxHolder.config = newConfig;
+    ctxHolder.current = await (
+      deps?.reloadServerContextFn ?? reloadServerContext
+    )(ctxHolder.current, syncResult.config);
+    ctxHolder.config = syncResult.config;
   } catch (e) {
     return errorResponse(
       "RUNTIME",
@@ -2521,6 +2563,14 @@ export function handleModelPull(ctxHolder: ContextHolder): Response {
           ctxHolder.config
         );
         console.log("Context reloaded");
+        if (ctxHolder.scheduler) {
+          void ctxHolder.scheduler.triggerNow().catch((error) => {
+            console.error(
+              "Failed to trigger embedding after model download:",
+              error
+            );
+          });
+        }
       } catch (e) {
         console.error("Failed to reload context:", e);
       }
