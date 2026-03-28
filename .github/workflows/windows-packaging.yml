@@ -45,7 +45,7 @@ jobs:
 
       - name: Verify packaged runtime
         working-directory: desktop/electrobun-shell
-        run: bun run verify:packaged-runtime
+        run: bun scripts/verify-packaged-runtime.ts
 
       - name: Upload packaged runtime proof
         uses: actions/upload-artifact@v7

@@ -79,5 +79,5 @@ Build + packaged runtime verify:
 
 ```bash
 bun run build
-bun run verify:packaged-runtime
+bun scripts/verify-packaged-runtime.ts
 ```

@@ -31,6 +31,14 @@ MSI / installer polish can follow after runtime proof and tester feedback.
 
 ## Manual tester checklist
 
+Verifier command:
+
+```bash
+cd desktop/electrobun-shell
+bun run build
+bun scripts/verify-packaged-runtime.ts
+```
+
 - launch app normally
 - onboarding works
 - add-folder paste works

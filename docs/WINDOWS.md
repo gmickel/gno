@@ -65,6 +65,12 @@ If you want to smoke the desktop beta manually:
    - singleton handoff
    - indexing/search on a real folder
 
+```bash
+cd desktop/electrobun-shell
+bun run build
+bun scripts/verify-packaged-runtime.ts
+```
+
 ## Why `windows-arm64` Is Not Supported Yet
 
 Current vendored/runtime proof covers `windows-x64` only:
