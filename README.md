@@ -183,6 +183,10 @@ Verify everything works:
 gno doctor
 ```
 
+**Windows**: current validated target is `windows-x64`. See
+[docs/WINDOWS.md](./docs/WINDOWS.md) for the support stance and packaged desktop
+beta notes.
+
 Keep an index fresh continuously without opening the Web UI:
 
 ```bash

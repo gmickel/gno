@@ -90,6 +90,18 @@ describe("FTS search", () => {
     expect(result.value[0]?.docid).toBe("#hash_hel");
   });
 
+  test("opens with snowball tokenizer and vendored stemmer", async () => {
+    const snowballAdapter = new SqliteAdapter();
+    const snowballDbPath = join(testDir, "snowball.sqlite");
+    const result = await snowballAdapter.open(
+      snowballDbPath,
+      "snowball english"
+    );
+
+    expect(result.ok).toBe(true);
+    await snowballAdapter.close();
+  });
+
   test("returns multiple matches ranked by score", async () => {
     await setupDocument("doc1.md", "Apple pie recipe", [
       { seq: 0, pos: 0, text: "Apple pie recipe", startLine: 1, endLine: 1 },

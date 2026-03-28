@@ -2,6 +2,7 @@
 import { resolve } from "node:path";
 
 import pkg from "../../package.json";
+import { DEFAULT_GNO_RUNTIME_FOLDER } from "./src/shared/runtime-layout";
 
 interface ShellElectrobunConfig {
   app: {
@@ -12,6 +13,7 @@ interface ShellElectrobunConfig {
   };
   runtime?: Record<string, unknown>;
   build?: Record<string, unknown>;
+  scripts?: Record<string, string>;
 }
 
 const repoRoot = resolve(import.meta.dir, "../..");
@@ -25,10 +27,14 @@ export default {
   },
   runtime: {
     gnoRepoRoot: repoRoot,
+    gnoRuntimeFolder: DEFAULT_GNO_RUNTIME_FOLDER,
     gnoServePort: 3927,
     gnoControlPort: 3928,
   },
   build: {
+    copy: {
+      ".generated/gno-runtime": DEFAULT_GNO_RUNTIME_FOLDER,
+    },
     mac: {
       bundleCEF: false,
     },
@@ -38,5 +44,9 @@ export default {
     win: {
       bundleCEF: false,
     },
+  },
+  scripts: {
+    preBuild: "./scripts/stage-gno-runtime.ts",
+    postPackage: "",
   },
 } satisfies ShellElectrobunConfig;

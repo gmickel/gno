@@ -16,5 +16,10 @@ describe("desktop distribution scaffold", () => {
         "desktop/electrobun-shell/distribution/macos-signing-checklist.md"
       ).exists()
     ).toBe(true);
+    expect(
+      await Bun.file(
+        "desktop/electrobun-shell/distribution/windows-packaging-checklist.md"
+      ).exists()
+    ).toBe(true);
   });
 });

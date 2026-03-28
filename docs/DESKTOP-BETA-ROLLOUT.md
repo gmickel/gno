@@ -19,6 +19,24 @@ What is still external / missing:
 
 This means desktop distribution is **not** yet a push-button release. This doc is the handoff/checklist for getting there without tribal knowledge.
 
+## Windows packaging stance
+
+Current recommendation:
+
+- support `windows-x64` first
+- ship a portable packaged artifact first
+- defer MSI/installer polish until after runtime proof and tester feedback
+- do not claim `windows-arm64` support yet
+
+Windows proof should validate the packaged artifact, not just source checkout:
+
+1. bundled Bun runtime inside the app
+2. staged GNO runtime inside app resources
+3. `gno doctor --json` inside packaged runtime
+4. vendored `fts5-snowball.dll` load
+5. `sqlite-vec` load
+6. packaged shell startup/self-test
+
 ## Beta channel checklist
 
 Before cutting a desktop beta:

@@ -39,6 +39,8 @@ __pycache__/
 !vendor/fts5-snowball/**/*.so
 .Python
 build/
+desktop/electrobun-shell/.generated/
+desktop/electrobun-shell/artifacts/
 develop-eggs/
 downloads/
 eggs/

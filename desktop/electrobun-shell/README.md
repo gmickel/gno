@@ -41,6 +41,10 @@ Distribution scaffolding now lives in:
 - `desktop/electrobun-shell/distribution/`
 - `docs/DESKTOP-BETA-ROLLOUT.md`
 
+Windows-specific packaging notes now live in:
+
+- `desktop/electrobun-shell/distribution/windows-packaging-checklist.md`
+
 These are placeholders for the eventual signed/notarized beta path, not proof that credentials or hosting already exist.
 
 Fallback trigger:
@@ -69,4 +73,11 @@ Optional env:
 ```bash
 GNO_ELECTROBUN_PORT=3927 bun run start
 GNO_ELECTROBUN_SELFTEST=1 bun run start
+```
+
+Build + packaged runtime verify:
+
+```bash
+bun run build
+bun run verify:packaged-runtime
 ```

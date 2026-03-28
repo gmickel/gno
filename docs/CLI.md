@@ -727,6 +727,14 @@ gno doctor
 gno doctor --json
 ```
 
+Checks include:
+
+- config + database presence
+- SQLite FTS5 availability
+- vendored `fts5-snowball` extension loading
+- `sqlite-vec` extension loading
+- local model cache readiness
+
 ### gno cleanup
 
 Remove orphaned content.

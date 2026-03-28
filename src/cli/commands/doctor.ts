@@ -16,6 +16,7 @@ import { getIndexDbPath, getModelsCachePath } from "../../app/constants";
 import { getConfigPaths, isInitialized, loadConfig } from "../../config";
 import { ModelCache } from "../../llm/cache";
 import { getActivePreset } from "../../llm/registry";
+import { loadFts5Snowball } from "../../store/sqlite/fts5-snowball";
 import {
   getCustomSqlitePath,
   getExtensionLoadingMode,
@@ -219,6 +220,17 @@ async function checkSqliteExtensions(): Promise<DoctorCheck[]> {
     name: "sqlite-json",
     status: jsonAvailable ? "ok" : "warn",
     message: jsonAvailable ? "JSON1 available" : "JSON1 not available",
+  });
+
+  // Probe vendored fts5-snowball extension
+  const snowballResult = loadFts5Snowball(db);
+  checks.push({
+    name: "fts5-snowball",
+    status: snowballResult.loaded ? "ok" : "error",
+    message: snowballResult.loaded
+      ? "fts5-snowball loaded"
+      : (snowballResult.error ?? "fts5-snowball failed to load"),
+    details: snowballResult.path ? [`Path: ${snowballResult.path}`] : undefined,
   });
 
   // Probe sqlite-vec extension

@@ -10,6 +10,10 @@
       a: >
         Install via Bun with bun install -g @gmickel/gno. On macOS, vector search requires Homebrew SQLite (brew install sqlite3). Run gno doctor to verify your installation, or launch gno serve for a guided first-run setup in the browser.
 
+    - q: Does GNO support Windows?
+      a: >
+        Yes, with the current support target set to windows-x64. The CLI path is supported via Bun/global install today. Desktop packaging is in beta with packaged-runtime validation focused on x64 first. Windows arm64 is not supported yet.
+
     - q: Can I set up GNO without remembering the CLI?
       a: >
         Yes. After install, run gno serve and open localhost:3000. The dashboard walks you through adding a folder, choosing a speed-vs-quality preset, downloading local models if needed, and checking health for indexing, models, and disk.
