@@ -53,3 +53,10 @@ jobs:
           name: packaged-runtime-proof-windows
           path: |
             desktop/electrobun-shell/artifacts/*.json
+
+      - name: Upload Windows desktop package
+        uses: actions/upload-artifact@v7
+        with:
+          name: gno-desktop-beta-windows-build
+          path: |
+            desktop/electrobun-shell/build/dev-win-x64/**
