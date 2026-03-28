@@ -193,6 +193,30 @@ gno context add "project-b:" "Frontend React app"
 gno context add "personal:" "Personal notes and journal"
 ```
 
+## Headless Continuous Indexing
+
+Keep an index fresh without leaving the Web UI or desktop app open.
+
+### Setup
+
+```bash
+gno init ~/notes --name notes
+gno index
+gno daemon
+```
+
+### When This Fits
+
+- terminal-only workflows
+- local agent/skill setups that need a fresh index
+- machines where you want indexing to keep running after your browser closes
+
+### Important Constraints
+
+- `gno daemon` is foreground-only in v0.30
+- use `nohup`, launchd, or systemd if you want supervision
+- avoid running `gno daemon` and `gno serve` against the same index at the same time
+
 ## AI Agent Integration
 
 Use GNO as a knowledge base for AI assistants like Claude Code, Codex, OpenCode, OpenClaw, or any MCP-compatible agent.

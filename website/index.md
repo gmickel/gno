@@ -88,9 +88,9 @@ The Web UI provides a visual dashboard for search, browsing, safe editing, quick
 
 The first `GNO Desktop Beta` now wraps that same workspace in a thin native shell on macOS, keeping deep links, singleton handoff, and desktop-style onboarding aligned with the web experience instead of inventing a second product surface.
 
-Prefer terminal-only continuous indexing? `gno daemon` runs the same
-watch/sync/embed loop headlessly, so CLI and agent workflows can stay fresh
-without a browser or desktop shell open.
+Prefer terminal-only continuous indexing? [`gno daemon`](/features/daemon-mode/)
+runs the same watch/sync/embed loop headlessly, so CLI and agent workflows can
+stay fresh without a browser or desktop shell open.
 
 ![GNO Web UI](/assets/screenshots/webui-home.jpg)
 

@@ -12,7 +12,7 @@ benefits:
   - 100% local processing
   - No API keys required
   - Cited answers from your docs
-  - Multiple model presets (slim, balanced, quality)
+  - Multiple model presets (slim-tuned, slim, balanced, quality)
 commands:
   - "gno ask 'your question' --answer"
   - "gno models use balanced"
@@ -40,14 +40,15 @@ GNO will:
 
 Choose the right balance of speed and quality:
 
-| Preset   | Speed  | Quality | Use Case               |
-| -------- | ------ | ------- | ---------------------- |
-| slim     | Fast   | Good    | Default, quick lookups |
-| balanced | Medium | Good    | Slightly larger model  |
-| quality  | Slower | Best    | Complex questions      |
+| Preset     | Speed  | Quality | Use Case                               |
+| ---------- | ------ | ------- | -------------------------------------- |
+| slim-tuned | Fast   | Good    | Default, tuned retrieval with slim gen |
+| slim       | Fast   | Good    | Quick lookups                          |
+| balanced   | Medium | Good    | Slightly larger model                  |
+| quality    | Slower | Best    | Complex questions                      |
 
 ```bash
-gno models use slim
+gno models use slim-tuned
 gno models pull
 ```
 

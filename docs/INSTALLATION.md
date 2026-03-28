@@ -19,6 +19,16 @@ gno doctor
 
 If you want a guided setup after install, run `gno serve` and open `http://localhost:3000`. The first-run dashboard can add a folder, explain health, show bootstrap/runtime status, and trigger model downloads without more terminal work.
 
+If you want a headless long-running process instead, run:
+
+```bash
+gno daemon
+```
+
+`gno daemon` keeps the same watch/sync/embed loop running without the Web UI or
+desktop shell. It stays in the foreground; use `nohup`, launchd, or systemd if
+you want supervision.
+
 ### SDK / Library Install
 
 ```bash
@@ -215,5 +225,6 @@ rm -rf ~/.cache/gno          # Linux
 ## Next Steps
 
 - [Quickstart Guide](QUICKSTART.md) - Index and search in 5 minutes
+- [Daemon Mode](DAEMON.md) - Headless continuous indexing
 - [CLI Reference](CLI.md) - Full command documentation
 - [Configuration](CONFIGURATION.md) - Customize collections and settings

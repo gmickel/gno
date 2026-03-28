@@ -149,6 +149,8 @@ gno daemon
 This runs the watcher + sync + embed loop in a foreground headless process. Use
 `nohup`, launchd, or systemd if you want it supervised long-term.
 
+Need the full behavior and troubleshooting guide? See [Daemon Mode](DAEMON.md).
+
 ### Check System Health
 
 ```bash

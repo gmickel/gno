@@ -20,6 +20,7 @@ GNO is a local knowledge engine that turns your documents into a searchable, con
 
 - [Quick Start](#quick-start)
 - [Installation](#installation)
+- [Daemon Mode](#daemon-mode)
 - [Search Modes](#search-modes)
 - [Agent Integration](#agent-integration)
 - [Web UI](#web-ui)
@@ -191,6 +192,8 @@ gno daemon
 `gno daemon` runs as a foreground watcher/sync/embed process. Use `nohup`,
 launchd, or systemd if you want it supervised long-term.
 
+See also: [docs/DAEMON.md](./docs/DAEMON.md)
+
 ### Connect to AI Agents
 
 #### MCP Server (Claude Desktop, Cursor, Zed, etc.)
@@ -225,6 +228,25 @@ gno skill install --target all        # All targets
 ```
 
 > **Full setup guide**: [MCP Integration](https://gno.sh/docs/MCP/) · [CLI Reference](https://gno.sh/docs/CLI/)
+
+---
+
+## Daemon Mode
+
+Use `gno daemon` when you want continuous indexing without the browser or
+desktop shell open.
+
+```bash
+gno daemon
+gno daemon --no-sync-on-start
+nohup gno daemon > /tmp/gno-daemon.log 2>&1 &
+```
+
+It reuses the same watch/sync/embed runtime as `gno serve`, but stays
+headless. In v0.30 it is foreground-only and does not expose built-in
+`start/stop/status` management.
+
+[Daemon guide →](https://gno.sh/docs/DAEMON/)
 
 ---
 

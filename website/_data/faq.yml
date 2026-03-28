@@ -14,6 +14,10 @@
       a: >
         Yes. After install, run gno serve and open localhost:3000. The dashboard walks you through adding a folder, choosing a speed-vs-quality preset, downloading local models if needed, and checking health for indexing, models, and disk.
 
+    - q: Can GNO keep indexing without the browser open?
+      a: >
+        Yes. Run gno daemon for headless continuous indexing. It keeps the same watch, sync, and embed loop alive without starting the Web UI. In v0.30 it stays in the foreground, so use nohup, launchd, or systemd if you want supervision.
+
     - q: What file formats does GNO support?
       a: GNO indexes Markdown (.md) with frontmatter extraction, PDF (.pdf), Microsoft Word (.docx), Excel (.xlsx), PowerPoint (.pptx), and plain text files. It also detects document language across 30+ languages.
 
@@ -59,6 +63,10 @@
     - q: How do I add multiple document folders?
       a: >
         Use gno collection add path --name name for each folder, then run gno update to index them all. You can add Obsidian vaults, project docs, research folders, and code repos—any directory on your machine.
+
+    - q: When should I use gno serve versus gno daemon?
+      a: >
+        Use gno serve when you want the browser dashboard, REST API, or desktop shell integration. Use gno daemon when you only want headless continuous indexing. In v0.30 avoid running both against the same index at the same time.
 
     - q: Can I exclude certain files or folders?
       a: >

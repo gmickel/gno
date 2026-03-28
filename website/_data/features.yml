@@ -22,19 +22,36 @@
 - slug: local-llm
   title: Local LLM Answers
   headline: AI Answers Without the Cloud
-  description: Get cited, grounded answers from your own documents using local language models. Run locally or offload to a GPU server on your network—no cloud APIs, no data sharing. Multiple presets from slim (~1GB) to quality (~2.5GB).
+  description: Get cited, grounded answers from your own documents using local language models. Run locally or offload to a GPU server on your network—no cloud APIs, no data sharing. Default to slim-tuned (~1GB) or move up through balanced and quality.
   icon: local-llm
   benefits:
     - 100% local processing
     - Remote GPU server support via HTTP backends
     - No API keys required
     - Cited answers with source documents
-    - Multiple model presets (slim, balanced, quality, slim-tuned)
+    - Multiple model presets (slim-tuned, slim, balanced, quality)
     - Separate expansion and generation models
   commands:
     - "gno ask 'your question' --answer"
     - "gno models use balanced"
     - "gno models pull"
+
+- slug: daemon-mode
+  title: Daemon Mode
+  headline: Keep GNO Fresh Without the Web UI
+  description: Run GNO as a headless long-running watcher process. `gno daemon` keeps the same watch, sync, and embedding loop alive for terminal, agent, and local automation workflows.
+  icon: rocket
+  benefits:
+    - Continuous indexing without opening the browser
+    - Reuses the same watch/sync/embed runtime as `gno serve`
+    - Great fit for CLI, skills, and local automation
+    - Foreground process keeps lifecycle simple and observable
+    - Supports `--no-sync-on-start` for watcher-only startup
+    - Works with `--offline` and manual download policy
+  commands:
+    - "gno daemon"
+    - "gno daemon --no-sync-on-start"
+    - "nohup gno daemon > /tmp/gno-daemon.log 2>&1 &"
 
 - slug: fine-tuned-models
   title: Fine-Tuned Models
