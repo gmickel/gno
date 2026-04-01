@@ -11,6 +11,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+## [0.31.1] - 2026-04-01
+
+### Fixed
+
+- Relaxed Windows-only CI assumptions in the desktop runtime-layout tests so path separator differences no longer fail the test suite on `win32`.
+- Increased the Windows timeout budget for the concurrent CLI access regression test, avoiding false negatives from slower process startup on GitHub Actions runners.
+
 ## [0.31.0] - 2026-04-01
 
 ### Added
