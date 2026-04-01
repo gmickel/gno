@@ -71,6 +71,7 @@ export async function index(options: IndexOptions = {}): Promise<IndexResult> {
       const { embed } = await import("./embed");
       const result = await embed({
         configPath: options.configPath,
+        collection: options.collection,
         verbose: options.verbose,
       });
       if (result.success) {
@@ -95,6 +96,15 @@ export function formatIndex(
   result: IndexResult,
   options: IndexOptions
 ): string {
+  function formatDuration(seconds: number): string {
+    if (seconds < 60) {
+      return `${seconds.toFixed(1)}s`;
+    }
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}m ${secs.toFixed(0)}s`;
+  }
+
   if (!result.success) {
     return `Error: ${result.error}`;
   }
@@ -110,10 +120,12 @@ export function formatIndex(
   } else if (result.embedResult) {
     lines.push("");
     const { embedded, errors, duration } = result.embedResult;
-    const errPart = errors > 0 ? ` (${errors} errors)` : "";
     lines.push(
-      `Embedded ${embedded} chunks in ${(duration / 1000).toFixed(1)}s${errPart}`
+      `Embedded ${embedded.toLocaleString()} chunks in ${formatDuration(duration)}`
     );
+    if (errors > 0) {
+      lines.push(`${errors.toLocaleString()} chunks failed to embed.`);
+    }
   }
 
   return lines.join("\n");

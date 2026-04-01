@@ -11,6 +11,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+## [0.31.0] - 2026-04-01
+
+### Added
+
+- Added first packaged `windows-x64` desktop beta build plumbing, including packaged-runtime validation, Windows packaging workflow coverage, and release-asset support for the Windows desktop zip.
+- Added explicit Windows support docs covering current target scope, packaged-runtime validation, and manual validation guidance for the desktop beta.
+
+### Changed
+
+- `gno index <collection>` now scopes the embedding phase to that collection instead of consuming unrelated global backlog from other collections.
+- Release automation now publishes the packaged Windows desktop beta zip alongside the normal npm/GitHub release flow.
+
+### Fixed
+
+- CLI index summaries no longer divide embed duration by `1000` twice, so long embedding runs report realistic times instead of bogus sub-second output.
+
 ## [0.30.0] - 2026-03-27
 
 ### Added

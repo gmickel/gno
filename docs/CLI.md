@@ -384,6 +384,10 @@ Options:
 
 **Incremental**: Both `gno index` and `gno update` are incremental. Files are tracked by SHA-256 hash. Only new or modified files are processed. Unchanged files are skipped instantly.
 
+**Collection scoping**: `gno index notes` now scopes both sync and embedding to
+`notes`. It no longer burns through unrelated embedding backlog from other
+collections.
+
 ### gno embed
 
 Generate embeddings for indexed chunks.

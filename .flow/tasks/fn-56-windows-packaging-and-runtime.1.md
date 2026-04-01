@@ -22,6 +22,7 @@ Focus on:
 - [ ] Recommendation recorded for Windows distribution shape and support scope.
 
 ## Done summary
+
 Implemented Windows packaging/runtime validation end-to-end.
 
 - staged the real GNO runtime into Electrobun app resources before build
@@ -30,7 +31,9 @@ Implemented Windows packaging/runtime validation end-to-end.
 - added shell self-test mode for headless packaged launcher validation
 - added Windows packaging workflow, support docs, rollout/docs updates, and support-target guidance (windows-x64 first, arm64 unsupported)
 - added tests for runtime layout, shell packaging scaffolding, and snowball tokenizer load
+
 ## Evidence
+
 - Commits:
 - Tests: bun run lint:check, bun run typecheck, bun test, bun run docs:verify, mise exec ruby@3.3.6 -- make build, cd desktop/electrobun-shell && bun run build, cd desktop/electrobun-shell && bun run verify:packaged-runtime
 - PRs:

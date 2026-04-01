@@ -78,3 +78,8 @@ Current vendored/runtime proof covers `windows-x64` only:
 - vendored `fts5-snowball.dll` is present for `windows-x64`
 - packaged runtime validation is scoped to `windows-x64`
 - native dependency/runtime proof for `windows-arm64` is still missing
+
+## Release Asset
+
+Starting with the first release that carries this work, GitHub releases can
+include a packaged Windows desktop beta zip for `windows-x64`.

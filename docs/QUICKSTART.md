@@ -128,6 +128,9 @@ gno similar my-note.md
 # Full re-index (sync + embeddings)
 gno index
 
+# Re-index one collection only
+gno index projects
+
 # Or just sync files without re-embedding (faster)
 gno update
 ```

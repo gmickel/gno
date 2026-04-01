@@ -26,6 +26,7 @@ describe("VectorStatsPort", () => {
         id INTEGER PRIMARY KEY,
         mirror_hash TEXT,
         title TEXT,
+        collection TEXT,
         active INTEGER DEFAULT 1
       );
 
@@ -173,6 +174,34 @@ describe("VectorStatsPort", () => {
         expect(result.value).toBe(1); // stale vector
       }
     });
+
+    test("can scope backlog count to one collection", async () => {
+      db.exec(`
+        INSERT INTO documents (id, mirror_hash, collection, active) VALUES
+          (1, 'h1', 'notes', 1),
+          (2, 'h2', 'other', 1);
+        INSERT INTO content_chunks (mirror_hash, seq, text) VALUES
+          ('h1', 0, 'notes chunk'),
+          ('h2', 0, 'other chunk');
+      `);
+
+      const stats = createVectorStatsPort(db);
+      const notes = await stats.countBacklog("test-model", {
+        collection: "notes",
+      });
+      const other = await stats.countBacklog("test-model", {
+        collection: "other",
+      });
+
+      expect(notes.ok).toBe(true);
+      expect(other.ok).toBe(true);
+      if (notes.ok) {
+        expect(notes.value).toBe(1);
+      }
+      if (other.ok) {
+        expect(other.value).toBe(1);
+      }
+    });
   });
 
   describe("getBacklog", () => {
@@ -270,6 +299,28 @@ describe("VectorStatsPort", () => {
       if (result.ok) {
         expect(result.value).toHaveLength(1);
         expect(result.value[0]?.reason).toBe("changed");
+      }
+    });
+
+    test("can scope backlog rows to one collection", async () => {
+      db.exec(`
+        INSERT INTO documents (id, mirror_hash, collection, active) VALUES
+          (1, 'h1', 'notes', 1),
+          (2, 'h2', 'other', 1);
+        INSERT INTO content_chunks (mirror_hash, seq, text) VALUES
+          ('h1', 0, 'notes chunk'),
+          ('h2', 0, 'other chunk');
+      `);
+
+      const stats = createVectorStatsPort(db);
+      const notes = await stats.getBacklog("test-model", {
+        collection: "notes",
+      });
+
+      expect(notes.ok).toBe(true);
+      if (notes.ok) {
+        expect(notes.value).toHaveLength(1);
+        expect(notes.value[0]?.mirrorHash).toBe("h1");
       }
     });
   });
