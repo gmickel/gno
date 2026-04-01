@@ -17,6 +17,33 @@ import { err, ok } from "../types";
  * Uses EXISTS-based queries to avoid duplicates from multiple docs sharing mirror_hash.
  */
 export function createVectorStatsPort(db: Database): VectorStatsPort {
+  function buildActiveDocumentExistsClause(collection?: string): {
+    sql: string;
+    params: string[];
+  } {
+    if (collection) {
+      return {
+        sql: `
+          EXISTS (
+            SELECT 1 FROM documents d
+            WHERE d.mirror_hash = c.mirror_hash AND d.active = 1 AND d.collection = ?
+          )
+        `,
+        params: [collection],
+      };
+    }
+
+    return {
+      sql: `
+        EXISTS (
+          SELECT 1 FROM documents d
+          WHERE d.mirror_hash = c.mirror_hash AND d.active = 1
+        )
+      `,
+      params: [],
+    };
+  }
+
   return {
     countVectors(model: string): Promise<StoreResult<number>> {
       try {
@@ -36,19 +63,18 @@ export function createVectorStatsPort(db: Database): VectorStatsPort {
       }
     },
 
-    countBacklog(model: string): Promise<StoreResult<number>> {
+    countBacklog(
+      model: string,
+      options?: { collection?: string }
+    ): Promise<StoreResult<number>> {
       try {
+        const activeDoc = buildActiveDocumentExistsClause(options?.collection);
         // Count chunks needing embedding (fast for progress display)
         // Uses EXISTS to avoid duplicates when multiple docs share mirror_hash
-        const result = db
-          .prepare(
-            `
+        const sql = `
           SELECT COUNT(*) as count
           FROM content_chunks c
-          WHERE EXISTS (
-            SELECT 1 FROM documents d
-            WHERE d.mirror_hash = c.mirror_hash AND d.active = 1
-          )
+          WHERE ${activeDoc.sql}
           AND NOT EXISTS (
             SELECT 1 FROM content_vectors v
             WHERE v.mirror_hash = c.mirror_hash
@@ -56,9 +82,10 @@ export function createVectorStatsPort(db: Database): VectorStatsPort {
               AND v.model = ?
               AND v.embedded_at >= c.created_at
           )
-        `
-          )
-          .get(model) as { count: number };
+        `;
+        const result = db.prepare(sql).get(...activeDoc.params, model) as {
+          count: number;
+        };
         return Promise.resolve(ok(result.count));
       } catch (e) {
         return Promise.resolve(
@@ -72,11 +99,16 @@ export function createVectorStatsPort(db: Database): VectorStatsPort {
 
     getBacklog(
       model: string,
-      options?: { limit?: number; after?: { mirrorHash: string; seq: number } }
+      options?: {
+        limit?: number;
+        after?: { mirrorHash: string; seq: number };
+        collection?: string;
+      }
     ): Promise<StoreResult<BacklogItem[]>> {
       try {
         const limit = options?.limit ?? 1000;
         const after = options?.after;
+        const activeDoc = buildActiveDocumentExistsClause(options?.collection);
 
         // Seek pagination: use cursor to avoid skipping items as backlog shrinks
         // Query structure changes based on whether we have a cursor
@@ -95,10 +127,7 @@ export function createVectorStatsPort(db: Database): VectorStatsPort {
               ELSE 'changed'
             END as reason
           FROM content_chunks c
-          WHERE EXISTS (
-            SELECT 1 FROM documents d
-            WHERE d.mirror_hash = c.mirror_hash AND d.active = 1
-          )
+          WHERE ${activeDoc.sql}
           AND NOT EXISTS (
             SELECT 1 FROM content_vectors v
             WHERE v.mirror_hash = c.mirror_hash
@@ -123,10 +152,7 @@ export function createVectorStatsPort(db: Database): VectorStatsPort {
               ELSE 'changed'
             END as reason
           FROM content_chunks c
-          WHERE EXISTS (
-            SELECT 1 FROM documents d
-            WHERE d.mirror_hash = c.mirror_hash AND d.active = 1
-          )
+          WHERE ${activeDoc.sql}
           AND NOT EXISTS (
             SELECT 1 FROM content_vectors v
             WHERE v.mirror_hash = c.mirror_hash
@@ -139,8 +165,16 @@ export function createVectorStatsPort(db: Database): VectorStatsPort {
         `;
 
         const params = after
-          ? [model, model, after.mirrorHash, after.mirrorHash, after.seq, limit]
-          : [model, model, limit];
+          ? [
+              model,
+              ...activeDoc.params,
+              model,
+              after.mirrorHash,
+              after.mirrorHash,
+              after.seq,
+              limit,
+            ]
+          : [model, ...activeDoc.params, model, limit];
 
         const results = db.prepare(sql).all(...params) as BacklogItem[];
         return Promise.resolve(ok(results));

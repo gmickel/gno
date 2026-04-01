@@ -108,11 +108,14 @@ export interface VectorStatsPort {
   countVectors(model: string): Promise<StoreResult<number>>;
 
   /** Count chunks needing embedding for a model */
-  countBacklog(model: string): Promise<StoreResult<number>>;
+  countBacklog(
+    model: string,
+    options?: { collection?: string }
+  ): Promise<StoreResult<number>>;
 
   /** Get chunks needing embedding for a model (seek pagination) */
   getBacklog(
     model: string,
-    options?: { limit?: number; after?: BacklogCursor }
+    options?: { limit?: number; after?: BacklogCursor; collection?: string }
   ): Promise<StoreResult<BacklogItem[]>>;
 }

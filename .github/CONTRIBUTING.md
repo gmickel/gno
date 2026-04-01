@@ -65,6 +65,7 @@ Tag push triggers full CI + npm publish via OIDC (no token needed).
 
 ```bash
 gh workflow run ci.yml                        # run all platforms
+gh workflow run windows-packaging.yml         # build + verify packaged Windows desktop runtime
 gh workflow run publish.yml -f publish=false  # dry run
 gh workflow run publish.yml -f publish=true   # actual publish
 ```

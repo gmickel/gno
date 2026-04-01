@@ -69,6 +69,65 @@ jobs:
         env:
           CI: "true"
 
+  package-windows-desktop:
+    needs: test
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: "Set TEMP to D: drive (Windows)"
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path "D:/Temp" | Out-Null
+          echo "TEMP=D:/Temp" >> $env:GITHUB_ENV
+          echo "TMP=D:/Temp" >> $env:GITHUB_ENV
+
+      - name: Install root dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Install shell dependencies
+        working-directory: desktop/electrobun-shell
+        run: bun install --frozen-lockfile
+
+      - name: Build desktop shell
+        working-directory: desktop/electrobun-shell
+        run: bun run build
+
+      - name: Verify packaged runtime
+        working-directory: desktop/electrobun-shell
+        run: bun scripts/verify-packaged-runtime.ts
+
+      - name: Archive Windows desktop build
+        id: archive_windows
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path "desktop/electrobun-shell/artifacts" | Out-Null
+          $buildDir = Get-ChildItem "desktop/electrobun-shell/build" -Directory | Select-Object -First 1
+          if (-not $buildDir) { throw "No Windows desktop build directory found" }
+          $zipPath = "desktop/electrobun-shell/artifacts/gno-desktop-beta-windows-x64.zip"
+          if (Test-Path $zipPath) { Remove-Item $zipPath -Force }
+          Compress-Archive -Path (Join-Path $buildDir.FullName '*') -DestinationPath $zipPath -Force
+          "zip_path=$zipPath" >> $env:GITHUB_OUTPUT
+
+      - name: Upload packaged runtime proof
+        uses: actions/upload-artifact@v7
+        with:
+          name: packaged-runtime-proof-windows
+          path: |
+            desktop/electrobun-shell/artifacts/*.json
+
+      - name: Upload Windows desktop package
+        uses: actions/upload-artifact@v7
+        with:
+          name: gno-desktop-beta-windows-release
+          path: ${{ steps.archive_windows.outputs.zip_path }}
+
   pack-test:
     needs: test
     runs-on: ubuntu-latest
@@ -142,13 +201,19 @@ jobs:
         # No token needed - uses OIDC trusted publishing
 
   release:
-    needs: publish
+    needs: [publish, package-windows-desktop]
     runs-on: ubuntu-latest
     permissions:
       contents: write
 
     steps:
       - uses: actions/checkout@v6
+
+      - name: Download Windows desktop package
+        uses: actions/download-artifact@v5
+        with:
+          name: gno-desktop-beta-windows-release
+          path: release-assets
 
       - name: Extract version from tag
         id: version
@@ -178,3 +243,5 @@ jobs:
           body: ${{ steps.changelog.outputs.notes }}
           draft: false
           prerelease: false
+          files: |
+            release-assets/*.zip

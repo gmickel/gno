@@ -18,3 +18,4 @@ Current repo placeholders:
 
 - `channels.example.json`
 - `macos-signing-checklist.md`
+- `windows-packaging-checklist.md`

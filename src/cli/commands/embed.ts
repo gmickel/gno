@@ -44,6 +44,8 @@ import {
 export interface EmbedOptions {
   /** Override config path */
   configPath?: string;
+  /** Restrict embedding work to a single collection */
+  collection?: string;
   /** Override model URI */
   model?: string;
   /** Batch size for embedding */
@@ -102,6 +104,7 @@ interface BatchContext {
   embedPort: EmbeddingPort;
   vectorIndex: VectorIndexPort;
   modelUri: string;
+  collection?: string;
   batchSize: number;
   force: boolean;
   showProgress: boolean;
@@ -127,10 +130,11 @@ async function processBatches(ctx: BatchContext): Promise<BatchResult> {
   while (embedded + errors < ctx.totalToEmbed) {
     // Get next batch using seek pagination (cursor-based)
     const batchResult = ctx.force
-      ? await getActiveChunks(ctx.db, ctx.batchSize, cursor)
+      ? await getActiveChunks(ctx.db, ctx.batchSize, cursor, ctx.collection)
       : await ctx.stats.getBacklog(ctx.modelUri, {
           limit: ctx.batchSize,
           after: cursor,
+          collection: ctx.collection,
         });
 
     if (!batchResult.ok) {
@@ -247,6 +251,7 @@ interface EmbedContext {
  */
 async function initEmbedContext(
   configPath?: string,
+  collection?: string,
   model?: string
 ): Promise<({ ok: true } & EmbedContext) | { ok: false; error: string }> {
   const initialized = await isInitialized(configPath);
@@ -259,6 +264,12 @@ async function initEmbedContext(
     return { ok: false, error: configResult.error.message };
   }
   const config = configResult.value;
+  if (
+    collection &&
+    !config.collections.some((candidate) => candidate.name === collection)
+  ) {
+    return { ok: false, error: `Collection not found: ${collection}` };
+  }
 
   const preset = getActivePreset(config);
   const modelUri = model ?? preset.embed;
@@ -289,7 +300,11 @@ export async function embed(options: EmbedOptions = {}): Promise<EmbedResult> {
   const dryRun = options.dryRun ?? false;
 
   // Initialize config and store
-  const initResult = await initEmbedContext(options.configPath, options.model);
+  const initResult = await initEmbedContext(
+    options.configPath,
+    options.collection,
+    options.model
+  );
   if (!initResult.ok) {
     return { success: false, error: initResult.error };
   }
@@ -306,8 +321,8 @@ export async function embed(options: EmbedOptions = {}): Promise<EmbedResult> {
 
     // Get backlog count first (before loading model)
     const backlogResult = force
-      ? await getActiveChunkCount(db)
-      : await stats.countBacklog(modelUri);
+      ? await getActiveChunkCount(db, options.collection)
+      : await stats.countBacklog(modelUri, { collection: options.collection });
 
     if (!backlogResult.ok) {
       return { success: false, error: backlogResult.error.message };
@@ -392,6 +407,7 @@ export async function embed(options: EmbedOptions = {}): Promise<EmbedResult> {
       embedPort,
       vectorIndex,
       modelUri,
+      collection: options.collection,
       batchSize,
       force,
       showProgress: !options.json,
@@ -443,19 +459,23 @@ export async function embed(options: EmbedOptions = {}): Promise<EmbedResult> {
 // Helper: Get all active chunks (for --force mode)
 // ─────────────────────────────────────────────────────────────────────────────
 
-function getActiveChunkCount(db: Database): Promise<StoreResult<number>> {
+function getActiveChunkCount(
+  db: Database,
+  collection?: string
+): Promise<StoreResult<number>> {
   try {
+    const collectionClause = collection ? " AND d.collection = ?" : "";
     const result = db
       .prepare(
         `
         SELECT COUNT(*) as count FROM content_chunks c
         WHERE EXISTS (
           SELECT 1 FROM documents d
-          WHERE d.mirror_hash = c.mirror_hash AND d.active = 1
+          WHERE d.mirror_hash = c.mirror_hash AND d.active = 1${collectionClause}
         )
       `
       )
-      .get() as { count: number };
+      .get(...(collection ? [collection] : [])) as { count: number };
     return Promise.resolve(ok(result.count));
   } catch (e) {
     return Promise.resolve(
@@ -470,9 +490,11 @@ function getActiveChunkCount(db: Database): Promise<StoreResult<number>> {
 function getActiveChunks(
   db: Database,
   limit: number,
-  after?: { mirrorHash: string; seq: number }
+  after?: { mirrorHash: string; seq: number },
+  collection?: string
 ): Promise<StoreResult<BacklogItem[]>> {
   try {
+    const collectionClause = collection ? " AND d.collection = ?" : "";
     // Include title for contextual embedding
     const sql = after
       ? `
@@ -482,7 +504,7 @@ function getActiveChunks(
         FROM content_chunks c
         WHERE EXISTS (
           SELECT 1 FROM documents d
-          WHERE d.mirror_hash = c.mirror_hash AND d.active = 1
+          WHERE d.mirror_hash = c.mirror_hash AND d.active = 1${collectionClause}
         )
         AND (c.mirror_hash > ? OR (c.mirror_hash = ? AND c.seq > ?))
         ORDER BY c.mirror_hash, c.seq
@@ -495,15 +517,21 @@ function getActiveChunks(
         FROM content_chunks c
         WHERE EXISTS (
           SELECT 1 FROM documents d
-          WHERE d.mirror_hash = c.mirror_hash AND d.active = 1
+          WHERE d.mirror_hash = c.mirror_hash AND d.active = 1${collectionClause}
         )
         ORDER BY c.mirror_hash, c.seq
         LIMIT ?
       `;
 
     const params = after
-      ? [after.mirrorHash, after.mirrorHash, after.seq, limit]
-      : [limit];
+      ? [
+          ...(collection ? [collection] : []),
+          after.mirrorHash,
+          after.mirrorHash,
+          after.seq,
+          limit,
+        ]
+      : [...(collection ? [collection] : []), limit];
 
     const results = db.prepare(sql).all(...params) as BacklogItem[];
     return Promise.resolve(ok(results));

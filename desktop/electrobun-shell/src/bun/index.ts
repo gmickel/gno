@@ -5,9 +5,19 @@ import Electrobun, {
   BuildConfig,
   BrowserWindow,
   GlobalShortcut,
+  Utils,
 } from "electrobun/bun";
+// node:fs: sync existence checks for packaged runtime artifacts.
+import { existsSync } from "node:fs";
 // node:path has no Bun equivalent.
 import { join, resolve } from "node:path";
+
+import {
+  DEFAULT_GNO_RUNTIME_FOLDER,
+  getBundledBunPath,
+  getPackagedRuntimeEntrypoint,
+  getResourcesFolder,
+} from "../shared/runtime-layout";
 
 const DEFAULT_PORT = 3927;
 const DEFAULT_CONTROL_PORT = 3928;
@@ -16,6 +26,7 @@ const CONTROL_PATH = "/__gno_shell/control";
 const STARTUP_TIMEOUT_MS = 30_000;
 const HEALTH_POLL_MS = 300;
 const APP_WINDOW_TITLE = "GNO Desktop Beta";
+const SELFTEST_FLAG = "1";
 
 type WindowHandle = {
   show(): void;
@@ -29,14 +40,43 @@ let mainWindow: WindowHandle | null = null;
 let serverProcess: Bun.Subprocess | null = null;
 let controlServer: Bun.Server<undefined> | null = null;
 
-function getServeCommand(repoRoot: string, port: number): string[] {
-  return [
-    "bun",
-    join(repoRoot, "src/index.ts"),
-    "serve",
-    "--port",
-    String(port),
-  ];
+interface ServeRuntimeTarget {
+  bunBinary: string;
+  cwd: string;
+  entrypoint: string;
+  source: "packaged" | "repo";
+}
+
+function resolveServeRuntime(
+  repoRoot: string,
+  runtimeFolder: string
+): ServeRuntimeTarget {
+  const resourcesFolder = getResourcesFolder();
+  const packagedEntrypoint = getPackagedRuntimeEntrypoint(
+    resourcesFolder,
+    runtimeFolder
+  );
+  const packagedBun = getBundledBunPath();
+
+  if (existsSync(packagedEntrypoint) && existsSync(packagedBun)) {
+    return {
+      bunBinary: packagedBun,
+      cwd: join(resourcesFolder, "app", runtimeFolder),
+      entrypoint: packagedEntrypoint,
+      source: "packaged",
+    };
+  }
+
+  return {
+    bunBinary: "bun",
+    cwd: repoRoot,
+    entrypoint: join(repoRoot, "src/index.ts"),
+    source: "repo",
+  };
+}
+
+function getServeCommand(target: ServeRuntimeTarget, port: number): string[] {
+  return [target.bunBinary, target.entrypoint, "serve", "--port", String(port)];
 }
 
 function getBaseUrl(port: number): string {
@@ -91,10 +131,10 @@ async function waitForServerReady(url: string): Promise<void> {
   throw new Error(`timed out waiting for ${url}: ${lastError}`);
 }
 
-function startServer(repoRoot: string, port: number): Bun.Subprocess {
+function startServer(target: ServeRuntimeTarget, port: number): Bun.Subprocess {
   return Bun.spawn({
-    cmd: getServeCommand(repoRoot, port),
-    cwd: repoRoot,
+    cmd: getServeCommand(target, port),
+    cwd: target.cwd,
     stdout: "inherit",
     stderr: "inherit",
     env: {
@@ -241,6 +281,7 @@ function getRuntimeConfig(
   config: Awaited<ReturnType<typeof BuildConfig.get>>
 ): {
   repoRoot: string;
+  runtimeFolder: string;
   port: number;
   baseUrl: string;
   controlPort: number;
@@ -249,6 +290,7 @@ function getRuntimeConfig(
   const runtime = config.runtime as
     | {
         gnoRepoRoot?: string;
+        gnoRuntimeFolder?: string;
         gnoServePort?: number | string;
         gnoControlPort?: number | string;
       }
@@ -265,6 +307,7 @@ function getRuntimeConfig(
 
   return {
     repoRoot,
+    runtimeFolder: runtime?.gnoRuntimeFolder ?? DEFAULT_GNO_RUNTIME_FOLDER,
     port,
     baseUrl: getBaseUrl(port),
     controlPort,
@@ -281,8 +324,9 @@ async function shutdown(): Promise<void> {
 
 async function main(): Promise<void> {
   const config = await BuildConfig.get();
-  const { repoRoot, port, baseUrl, controlPort, controlUrl } =
+  const { repoRoot, runtimeFolder, port, baseUrl, controlPort, controlUrl } =
     getRuntimeConfig(config);
+  const serveRuntime = resolveServeRuntime(repoRoot, runtimeFolder);
 
   if (await handOffToExistingInstance(controlUrl)) {
     process.exit(0);
@@ -291,8 +335,20 @@ async function main(): Promise<void> {
   controlServer = startControlServer(baseUrl, controlPort);
   installMenu(baseUrl);
   installShortcuts(baseUrl);
-  serverProcess = startServer(repoRoot, port);
+  console.log(
+    `[gno-electrobun-shell] launching GNO runtime from ${serveRuntime.source}`
+  );
+  serverProcess = startServer(serveRuntime, port);
   await waitForServerReady(baseUrl);
+  if (process.env.GNO_ELECTROBUN_SELFTEST === SELFTEST_FLAG) {
+    const response = await fetch(`${baseUrl}/api/status`);
+    if (!response.ok) {
+      throw new Error(`self-test status probe failed: ${response.status}`);
+    }
+    await shutdown();
+    Utils.quit();
+    return;
+  }
   mainWindow = createWindow(baseUrl);
 }
 

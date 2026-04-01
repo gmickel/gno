@@ -61,10 +61,10 @@ file changes.
 
 ## `daemon` vs `serve`
 
-| Command | Best for |
-| :------ | :------- |
-| `gno serve` | browser sessions, desktop shell, REST API, dashboard |
-| `gno daemon` | headless continuous indexing only |
+| Command      | Best for                                             |
+| :----------- | :--------------------------------------------------- |
+| `gno serve`  | browser sessions, desktop shell, REST API, dashboard |
+| `gno daemon` | headless continuous indexing only                    |
 
 Avoid running both against the same index at the same time in v0.30.
 

@@ -48,7 +48,7 @@ import { createGnoClient } from "@gmickel/gno";
 | Bun       | 1.0+    | JavaScript runtime                         |
 | macOS     | 12+     | Homebrew SQLite required for vector search |
 | Linux     | Any     | Works out of box                           |
-| Windows   | 10+     | Experimental, some tests may fail          |
+| Windows   | 11+ x64 | CLI supported; desktop packaging in beta   |
 
 ## Platform-Specific Setup
 
@@ -88,11 +88,21 @@ gno doctor
 
 ### Windows
 
-Experimental support. Core functionality works, but some tests may fail.
+Current recommendation:
+
+- target `windows-x64`
+- use the CLI today via Bun/global install
+- treat packaged desktop artifacts as beta/runtime-validated, not broad GA
+- `windows-arm64` is not supported yet
 
 ```bash
 gno doctor
 ```
+
+See also:
+
+- [Windows Support](WINDOWS.md)
+- [Desktop Beta Rollout](DESKTOP-BETA-ROLLOUT.md)
 
 ## Capabilities Matrix
 
@@ -158,6 +168,11 @@ gno doctor --json
   "checks": [
     { "name": "config", "status": "ok", "message": "Config loaded" },
     { "name": "database", "status": "ok", "message": "Database found" },
+    {
+      "name": "fts5-snowball",
+      "status": "ok",
+      "message": "fts5-snowball loaded"
+    },
     { "name": "sqlite-vec", "status": "ok", "message": "sqlite-vec loaded" },
     { "name": "embed-model", "status": "ok", "message": "embed model cached" },
     {
@@ -175,6 +190,10 @@ Status meanings:
 - `ok` - Component working
 - `warn` - Optional component missing (functionality limited)
 - `error` - Required component failing
+
+On Windows x64, `gno doctor --json` is also the quickest way to confirm the
+packaged/runtime proof path: FTS5, vendored `fts5-snowball.dll`, and
+`sqlite-vec` should all report `ok`.
 
 ## Troubleshooting
 

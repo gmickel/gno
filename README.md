@@ -48,6 +48,13 @@ GNO is a local knowledge engine that turns your documents into a searchable, con
 - **CLI Concurrency Hardening**: read-only commands no longer trip transient `database is locked` errors when they overlap with `gno update`
 - **Web/Desktop UI Polish**: sharper workspace styling across dashboard, tabs, search, ask, and footer surfaces
 
+## What's New in v0.31
+
+- **Windows Desktop Beta Artifact**: release flow now includes a packaged `windows-x64` desktop beta zip, not just source-level support claims
+- **Packaged Runtime Proof**: Windows desktop packaging validates bundled Bun + staged GNO runtime + FTS5 + vendored snowball + `sqlite-vec`
+- **Scoped Index Fix**: `gno index <collection>` now embeds only that collection instead of accidentally burning through unrelated backlog from other collections
+- **CLI Reporting Fix**: long embed runs now report sane durations instead of bogus sub-second summaries
+
 ### v0.24
 
 - **Structured Query Documents**: first-class multi-line query syntax using `term:`, `intent:`, and `hyde:`
@@ -182,6 +189,10 @@ Verify everything works:
 ```bash
 gno doctor
 ```
+
+**Windows**: current validated target is `windows-x64`. See
+[docs/WINDOWS.md](./docs/WINDOWS.md) for the support stance and packaged desktop
+beta notes.
 
 Keep an index fresh continuously without opening the Web UI:
 
