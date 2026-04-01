@@ -12,7 +12,7 @@
 
     - q: Does GNO support Windows?
       a: >
-        Yes, with the current support target set to windows-x64. The CLI path is supported via Bun/global install today. Desktop packaging is in beta with packaged-runtime validation focused on x64 first. Windows arm64 is not supported yet.
+        Yes. The current support target is windows-x64. The CLI path works via Bun/global install, and the desktop beta now ships as a packaged Windows zip on GitHub Releases. Windows arm64 is not supported yet.
 
     - q: Can I set up GNO without remembering the CLI?
       a: >

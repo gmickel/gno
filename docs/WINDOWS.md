@@ -83,3 +83,7 @@ Current vendored/runtime proof covers `windows-x64` only:
 
 Starting with the first release that carries this work, GitHub releases can
 include a packaged Windows desktop beta zip for `windows-x64`.
+
+Current public beta artifact:
+
+- `gno-desktop-beta-windows-x64.zip` on the latest qualifying GitHub release

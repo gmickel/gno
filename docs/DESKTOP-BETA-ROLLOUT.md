@@ -46,7 +46,9 @@ Before cutting a desktop beta:
 3. `bun test`
 4. `bun run docs:verify`
 5. verify shell scaffold assumptions still match `desktop/electrobun-shell/README.md`
-6. confirm app-level tabs, file lifecycle, recovery, connectors, and import flows on target macOS
+6. confirm app-level tabs, file lifecycle, recovery, connectors, and import flows on target release platforms:
+   - macOS
+   - Windows x64
 
 ## Signing prerequisites
 
@@ -56,6 +58,9 @@ Required before shipping a signed macOS beta:
 - notarization API key / app-specific credentials
 - bundle identifier confirmation
 - release storage location for signed artifacts
+
+Windows beta currently ships as an unsigned packaged zip artifact. Treat that as
+the supported Windows beta distribution path until MSI/installer work lands.
 
 ## Update strategy
 

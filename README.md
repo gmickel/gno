@@ -190,9 +190,9 @@ Verify everything works:
 gno doctor
 ```
 
-**Windows**: current validated target is `windows-x64`. See
-[docs/WINDOWS.md](./docs/WINDOWS.md) for the support stance and packaged desktop
-beta notes.
+**Windows**: current validated target is `windows-x64`, with a packaged
+desktop beta zip now published on GitHub Releases. See
+[docs/WINDOWS.md](./docs/WINDOWS.md) for support scope and validation notes.
 
 Keep an index fresh continuously without opening the Web UI:
 
