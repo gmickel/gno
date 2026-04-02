@@ -17,6 +17,7 @@ import type { SqliteAdapter } from "../../store/sqlite/adapter";
 import type { DocumentRow } from "../../store/types";
 import type { DocumentEventBus } from "../doc-events";
 import type { EmbedScheduler } from "../embed-scheduler";
+import type { StartJobError } from "../jobs";
 import type { CollectionWatchService } from "../watch-service";
 
 import { modelsPull } from "../../cli/commands/models/pull";
@@ -58,7 +59,7 @@ import {
   type ServerContext,
 } from "../context";
 import { analyzeImportPath } from "../import-preview";
-import { getJobStatus, startJob } from "../jobs";
+import { getActiveJob, getJobStatus, startJob } from "../jobs";
 import { buildAppStatus, type StatusBuildDeps } from "../status";
 
 /** Mutable context holder for hot-reloading presets */
@@ -78,6 +79,7 @@ export interface ApiError {
   error: {
     code: string;
     message: string;
+    details?: Record<string, unknown>;
   };
 }
 
@@ -211,8 +213,28 @@ function jsonResponse(data: unknown, status = 200): Response {
   return Response.json(data, { status });
 }
 
-function errorResponse(code: string, message: string, status = 400): Response {
-  return jsonResponse({ error: { code, message } }, status);
+function errorResponse(
+  code: string,
+  message: string,
+  status = 400,
+  details?: Record<string, unknown>
+): Response {
+  return jsonResponse(
+    {
+      error: {
+        code,
+        message,
+        ...(details ? { details } : {}),
+      },
+    },
+    status
+  );
+}
+
+function jobConflictResponse(jobResult: StartJobError): Response {
+  return errorResponse("CONFLICT", jobResult.error, 409, {
+    activeJobId: jobResult.activeJobId,
+  });
 }
 
 function parseCommaSeparatedValues(input: string): string[] {
@@ -591,7 +613,7 @@ export async function handleCreateCollection(
   });
 
   if (!jobResult.ok) {
-    return errorResponse("CONFLICT", jobResult.error, 409);
+    return jobConflictResponse(jobResult);
   }
 
   return jsonResponse(
@@ -742,7 +764,7 @@ export async function handleSync(
   });
 
   if (!jobResult.ok) {
-    return errorResponse("CONFLICT", jobResult.error, 409);
+    return jobConflictResponse(jobResult);
   }
 
   return jsonResponse({ jobId: jobResult.jobId }, 202);
@@ -2617,6 +2639,16 @@ export function handleJob(jobId: string): Response {
     return errorResponse("NOT_FOUND", "Job not found or expired", 404);
   }
   return jsonResponse(status);
+}
+
+/**
+ * GET /api/jobs/active
+ * Returns the current active job, or null when idle.
+ */
+export function handleActiveJob(): Response {
+  return jsonResponse({
+    activeJob: getActiveJob(),
+  });
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

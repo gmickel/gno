@@ -37,6 +37,7 @@ export interface StartJobError {
   ok: false;
   error: string;
   status: 409;
+  activeJobId: string;
 }
 
 export type StartJobResult = StartJobSuccess | StartJobError;
@@ -84,6 +85,7 @@ export function startJob(
       ok: false,
       error: `Job ${activeJobId} already running`,
       status: 409,
+      activeJobId,
     };
   }
 
@@ -140,6 +142,16 @@ export function getJobStatus(jobId: string): JobStatus | undefined {
  */
 export function getActiveJobId(): string | null {
   return activeJobId;
+}
+
+/**
+ * Get the currently active job status, if any.
+ */
+export function getActiveJob(): JobStatus | null {
+  if (!activeJobId) {
+    return null;
+  }
+  return jobs.get(activeJobId) ?? null;
 }
 
 /**

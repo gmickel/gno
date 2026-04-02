@@ -11,6 +11,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+## [0.32.0] - 2026-04-02
+
+### Added
+
+- Added `GET /api/jobs/active` so clients can discover the currently running background job without scraping a `409` error message.
+
+### Changed
+
+- Job-conflict `409` API responses now include structured `error.details.activeJobId` metadata.
+
 ## [0.31.2] - 2026-04-02
 
 ### Fixed
@@ -952,7 +962,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 | 0.4.0   | 2026-01-01 | Web UI and REST API                       |
 | 0.1.0   | 2025-12-30 | Initial release with full search pipeline |
 
-[Unreleased]: https://github.com/gmickel/gno/compare/v0.31.2...HEAD
+[Unreleased]: https://github.com/gmickel/gno/compare/v0.32.0...HEAD
+[0.32.0]: https://github.com/gmickel/gno/compare/v0.31.2...v0.32.0
 [0.31.2]: https://github.com/gmickel/gno/compare/v0.31.1...v0.31.2
 [0.31.1]: https://github.com/gmickel/gno/compare/v0.31.0...v0.31.1
 [0.30.0]: https://github.com/gmickel/gno/compare/v0.29.2...v0.30.0

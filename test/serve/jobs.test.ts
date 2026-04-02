@@ -8,6 +8,7 @@ import type { SyncResult } from "../../src/ingestion";
 
 import {
   clearAllJobs,
+  getActiveJob,
   getActiveJobId,
   getAllJobs,
   getJobStatus,
@@ -75,6 +76,7 @@ describe("jobs", () => {
     if (!second.ok) {
       expect(second.status).toBe(409);
       expect(second.error).toContain("already running");
+      expect(second.activeJobId).toBe(first.ok ? first.jobId : "");
     }
 
     resolveJob?.();
@@ -181,5 +183,30 @@ describe("jobs", () => {
     expect(second.ok).toBe(true);
 
     await new Promise((r) => setTimeout(r, 50));
+  });
+
+  test("getActiveJob returns the active job status", async () => {
+    let resolveJob: (() => void) | undefined;
+    const jobPromise = new Promise<void>((resolve) => {
+      resolveJob = resolve;
+    });
+
+    const result = startJob("sync", async () => {
+      await jobPromise;
+      return mockSyncResult();
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      return;
+    }
+
+    const active = getActiveJob();
+    expect(active?.id).toBe(result.jobId);
+    expect(active?.type).toBe("sync");
+    expect(active?.status).toBe("running");
+
+    resolveJob?.();
+    await new Promise((r) => setTimeout(r, 10));
   });
 });

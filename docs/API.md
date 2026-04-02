@@ -61,6 +61,7 @@ All endpoints are JSON-based and run entirely on your machine.
 | `/api/docs`                | POST   | Create new document |
 | `/api/docs/:id`            | PUT    | Update document     |
 | `/api/docs/:id/deactivate` | POST   | Unindex document    |
+| `/api/jobs/active`         | GET    | Get active job      |
 | `/api/jobs/:id`            | GET    | Poll job status     |
 
 ---
@@ -453,6 +454,20 @@ Trigger re-indexing of all collections or a specific one.
 }
 ```
 
+**Error** (sync already running):
+
+```json
+{
+  "error": {
+    "code": "CONFLICT",
+    "message": "Job 550e8400-e29b-41d4-a716-446655440000 already running",
+    "details": {
+      "activeJobId": "550e8400-e29b-41d4-a716-446655440000"
+    }
+  }
+}
+```
+
 **Example**:
 
 ```bash
@@ -547,6 +562,41 @@ while true; do
   sleep 1
 done
 ```
+
+---
+
+### Active Job
+
+```http
+GET /api/jobs/active
+```
+
+Return the current active background job in structured form, or `null` when the
+server is idle.
+
+**Response** (idle):
+
+```json
+{
+  "activeJob": null
+}
+```
+
+**Response** (running):
+
+```json
+{
+  "activeJob": {
+    "id": "550e8400-e29b-41d4-a716-446655440000",
+    "type": "sync",
+    "status": "running",
+    "createdAt": 1704067200000
+  }
+}
+```
+
+Use this when a client needs the active job id without scraping it out of a
+`409 CONFLICT` message.
 
 ---
 

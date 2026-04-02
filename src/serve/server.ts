@@ -13,6 +13,7 @@ import { DocumentEventBus } from "./doc-events";
 // HTML import - Bun handles bundling TSX/CSS automatically via routes
 import homepage from "./public/index.html";
 import {
+  handleActiveJob,
   handleAsk,
   handleCapabilities,
   handleCollections,
@@ -420,6 +421,9 @@ export async function startServer(
             }
             return withSecurityHeaders(handleModelPull(ctxHolder), isDev);
           },
+        },
+        "/api/jobs/active": {
+          GET: () => withSecurityHeaders(handleActiveJob(), isDev),
         },
         "/api/jobs/:id": {
           GET: (req: Request) => {
