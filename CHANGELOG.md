@@ -11,6 +11,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+## [0.33.0] - 2026-04-02
+
+### Added
+
+- Added a packaging matrix for CLI vs desktop support on macOS and Linux, including support tiers, artifact guidance, and runtime bundling assumptions.
+- Added a repo-local macOS desktop release command for the Electrobun shell that signs, notarizes, staples, and verifies versioned desktop beta zip/DMG artifacts.
+- Added a macOS desktop packaging job to the release workflow so tagged releases can build notarized desktop beta artifacts in CI once the release environment is configured.
+
+### Changed
+
+- Installation and desktop rollout docs now describe Linux desktop as experimental and macOS desktop as the primary beta target.
+
 ## [0.32.0] - 2026-04-02
 
 ### Added
@@ -962,7 +974,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 | 0.4.0   | 2026-01-01 | Web UI and REST API                       |
 | 0.1.0   | 2025-12-30 | Initial release with full search pipeline |
 
-[Unreleased]: https://github.com/gmickel/gno/compare/v0.32.0...HEAD
+[Unreleased]: https://github.com/gmickel/gno/compare/v0.33.0...HEAD
+[0.33.0]: https://github.com/gmickel/gno/compare/v0.32.0...v0.33.0
 [0.32.0]: https://github.com/gmickel/gno/compare/v0.31.2...v0.32.0
 [0.31.2]: https://github.com/gmickel/gno/compare/v0.31.1...v0.31.2
 [0.31.1]: https://github.com/gmickel/gno/compare/v0.31.0...v0.31.1
