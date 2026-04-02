@@ -35,9 +35,11 @@ Keep the output focused on the current GNO desktop shell/runtime, not Sparkle or
 - [ ] Required signing/notarization prerequisites are documented in-repo.
 
 ## Done summary
+
 Implemented the first real macOS desktop-beta release pipeline for GNO.
 
 Changes:
+
 - added `desktop/electrobun-shell/scripts/release-macos.ts`
 - added `bun run release:macos`
 - signs nested native binaries and app bundle with Developer ID + hardened runtime
@@ -47,7 +49,9 @@ Changes:
 - documented local and CI credential/setup requirements
 
 Local proof was run successfully with real Apple credentials and produced notarized/stapled macOS artifacts.
+
 ## Evidence
+
 - Commits:
 - Tests: bun run release:macos --help, bun run release:macos --dry-run, bun run lint:check, bun run typecheck, bun test, bun run docs:verify, local notarized macOS release run completed successfully
 - PRs:
