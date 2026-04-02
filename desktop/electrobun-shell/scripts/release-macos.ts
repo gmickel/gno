@@ -23,7 +23,6 @@ type NotarySubmitResult = {
 const shellRoot = resolve(import.meta.dir, "..");
 const buildDir = join(shellRoot, "build");
 const artifactsDir = join(shellRoot, "artifacts");
-const releaseDir = join(artifactsDir, "release-macos");
 
 function parseArgs(argv: string[]): CliOptions {
   const flags = new Set(argv);
@@ -198,6 +197,7 @@ async function main(): Promise<void> {
   const resolvedArtifactsDir = resolve(
     process.env.ELECTROBUN_ARTIFACT_DIR ?? artifactsDir
   );
+  const resolvedReleaseDir = join(resolvedArtifactsDir, "release-macos");
   const version = shellConfig.app.version;
   const appName = shellConfig.app.name;
   const artifactBase = `${slugify(appName)}-${version}`;
@@ -217,6 +217,7 @@ async function main(): Promise<void> {
           skipBuild: options.skipBuild,
           buildDir: resolvedBuildDir,
           artifactsDir: resolvedArtifactsDir,
+          releaseDir: resolvedReleaseDir,
           appName,
           artifactBase,
           signingIdentity,
@@ -228,6 +229,11 @@ async function main(): Promise<void> {
     );
     return;
   }
+
+  console.log(`>>> shell root: ${shellRoot}`);
+  console.log(`>>> build dir: ${resolvedBuildDir}`);
+  console.log(`>>> artifacts dir: ${resolvedArtifactsDir}`);
+  console.log(`>>> release dir: ${resolvedReleaseDir}`);
 
   if (!options.skipBuild) {
     runCommand([process.execPath, "run", "build"], shellRoot);
@@ -244,7 +250,7 @@ async function main(): Promise<void> {
   }
 
   const builtApp = await findBuiltAppBundle(resolvedBuildDir);
-  await mkdir(releaseDir, { recursive: true });
+  await mkdir(resolvedReleaseDir, { recursive: true });
   const tempRoot = await mkdtemp(join(tmpdir(), "gno-release-macos-"));
   const workingApp = join(tempRoot, basename(builtApp));
 
@@ -328,7 +334,7 @@ async function main(): Promise<void> {
     shellRoot
   );
 
-  const finalZip = join(releaseDir, `${artifactBase}.zip`);
+  const finalZip = join(resolvedReleaseDir, `${artifactBase}.zip`);
   await rm(finalZip, { force: true });
   console.log(">>> Creating final stapled zip");
   runCommand(
@@ -397,12 +403,12 @@ async function main(): Promise<void> {
     );
     console.log(">>> Stapling DMG");
     runCommand(["xcrun", "stapler", "staple", dmgPath], shellRoot);
-    finalDmg = join(releaseDir, `${artifactBase}.dmg`);
+    finalDmg = join(resolvedReleaseDir, `${artifactBase}.dmg`);
     await rm(finalDmg, { force: true });
     await cp(dmgPath, finalDmg, { force: true });
   }
 
-  const manifestPath = join(releaseDir, `${artifactBase}.json`);
+  const manifestPath = join(resolvedReleaseDir, `${artifactBase}.json`);
   await Bun.write(
     manifestPath,
     JSON.stringify(
