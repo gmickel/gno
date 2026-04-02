@@ -8,7 +8,8 @@
     "start": "electrobun dev",
     "dev": "electrobun dev --watch",
     "build": "electrobun build",
-    "verify:packaged-runtime": "bun run scripts/verify-packaged-runtime.ts"
+    "verify:packaged-runtime": "bun run scripts/verify-packaged-runtime.ts",
+    "release:macos": "bun run scripts/release-macos.ts"
   },
   "dependencies": {
     "electrobun": "1.16.0"

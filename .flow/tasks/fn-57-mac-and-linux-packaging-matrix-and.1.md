@@ -24,14 +24,18 @@ Focus on:
 - [ ] Result is concrete enough to drive docs and release work.
 
 ## Done summary
+
 Defined the macOS/Linux packaging matrix and support tiers.
 
 Changes:
+
 - added a user-facing packaging matrix doc for CLI vs desktop surfaces
 - clarified macOS/Linux support tiers, artifact shapes, and runtime bundling assumptions
 - linked install and desktop rollout docs to the new matrix
 - documented Linux desktop as experimental and macOS desktop as the primary beta target
+
 ## Evidence
+
 - Commits:
 - Tests: bun run lint:check, bun run typecheck, bun test, bun run docs:verify
 - PRs:
