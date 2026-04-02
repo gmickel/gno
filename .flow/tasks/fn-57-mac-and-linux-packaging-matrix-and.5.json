@@ -1,0 +1,14 @@
+{
+  "assignee": null,
+  "claim_note": "",
+  "claimed_at": null,
+  "created_at": "2026-04-02T20:33:23.101046Z",
+  "depends_on": ["fn-57-mac-and-linux-packaging-matrix-and.2"],
+  "epic": "fn-57-mac-and-linux-packaging-matrix-and",
+  "id": "fn-57-mac-and-linux-packaging-matrix-and.5",
+  "priority": null,
+  "spec_path": ".flow/tasks/fn-57-mac-and-linux-packaging-matrix-and.5.md",
+  "status": "todo",
+  "title": "Prove linux-x64 desktop runtime and artifact path",
+  "updated_at": "2026-04-02T20:33:23.819559Z"
+}

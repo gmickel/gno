@@ -40,6 +40,7 @@ Distribution scaffolding now lives in:
 
 - `desktop/electrobun-shell/distribution/`
 - `docs/DESKTOP-BETA-ROLLOUT.md`
+- `docs/PACKAGING.md`
 
 Windows-specific packaging notes now live in:
 

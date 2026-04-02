@@ -19,6 +19,10 @@ What is still external / missing:
 
 This means desktop distribution is **not** yet a push-button release. This doc is the handoff/checklist for getting there without tribal knowledge.
 
+See also:
+
+- [Packaging Matrix](PACKAGING.md)
+
 ## Windows packaging stance
 
 Current recommendation:
@@ -61,6 +65,16 @@ Required before shipping a signed macOS beta:
 
 Windows beta currently ships as an unsigned packaged zip artifact. Treat that as
 the supported Windows beta distribution path until MSI/installer work lands.
+
+## macOS / Linux stance
+
+Current recommendation:
+
+- macOS desktop is the primary desktop beta target
+- ship signed/notarized macOS app bundles first
+- Linux desktop should stay experimental until there is packaged-runtime proof
+  on an explicit baseline distro
+- if Linux desktop is offered, start with `linux-x64` on Ubuntu `22.04+`
 
 ## Update strategy
 

@@ -43,12 +43,12 @@ import { createGnoClient } from "@gmickel/gno";
 
 ## Requirements
 
-| Component | Version | Notes                                      |
-| --------- | ------- | ------------------------------------------ |
-| Bun       | 1.0+    | JavaScript runtime                         |
-| macOS     | 12+     | Homebrew SQLite required for vector search |
-| Linux     | Any     | Works out of box                           |
-| Windows   | 11+ x64 | CLI supported; desktop packaging in beta   |
+| Component | Version | Notes                                       |
+| --------- | ------- | ------------------------------------------- |
+| Bun       | 1.0+    | JavaScript runtime                          |
+| macOS     | 12+     | Homebrew SQLite required for vector search  |
+| Linux     | x64     | CLI supported; desktop remains experimental |
+| Windows   | 11+ x64 | CLI supported; desktop packaging in beta    |
 
 ## Platform-Specific Setup
 
@@ -80,7 +80,14 @@ If sqlite-vec shows a warning, BM25 search still works but vector search is disa
 
 ### Linux
 
-Works out of box. No additional dependencies needed.
+Current recommendation:
+
+- `linux-x64` CLI is supported
+- desktop shell on Linux is still experimental
+- Ubuntu `22.04+` is the first sensible Linux desktop baseline if/when that
+  path is published
+
+No additional dependencies are required for the CLI path.
 
 ```bash
 gno doctor
@@ -101,6 +108,7 @@ gno doctor
 
 See also:
 
+- [Packaging Matrix](PACKAGING.md)
 - [Windows Support](WINDOWS.md)
 - [Desktop Beta Rollout](DESKTOP-BETA-ROLLOUT.md)
 
