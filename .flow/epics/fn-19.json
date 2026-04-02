@@ -7,7 +7,7 @@
   "plan_review_status": "unknown",
   "plan_reviewed_at": null,
   "spec_path": ".flow/specs/fn-19.md",
-  "status": "open",
+  "status": "done",
   "title": "Enforce maxBytes limit before file read (stat-based)",
-  "updated_at": "2026-01-09T11:24:14.990147Z"
+  "updated_at": "2026-04-02T19:31:19.723944Z"
 }

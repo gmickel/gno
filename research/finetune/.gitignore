@@ -1,4 +1,7 @@
 outputs/
-data/generated/
+data/generated/*
+!data/generated/README.md
+!data/generated/qmd-import.jsonl
+!data/generated/qmd-import-report.json
 data/mlx/
 .venv-export/

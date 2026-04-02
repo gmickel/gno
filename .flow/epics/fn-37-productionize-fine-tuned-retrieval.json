@@ -7,7 +7,7 @@
   "plan_review_status": "unknown",
   "plan_reviewed_at": null,
   "spec_path": ".flow/specs/fn-37-productionize-fine-tuned-retrieval.md",
-  "status": "open",
+  "status": "done",
   "title": "Productionize fine-tuned retrieval models",
-  "updated_at": "2026-03-09T12:41:10.404682Z"
+  "updated_at": "2026-04-02T19:31:20.881107Z"
 }

@@ -7,7 +7,7 @@
   "plan_review_status": "unknown",
   "plan_reviewed_at": null,
   "spec_path": ".flow/specs/fn-15.md",
-  "status": "open",
+  "status": "done",
   "title": "T13.19: Job polling with backoff/timeout in Raycast extension",
-  "updated_at": "2026-01-09T11:24:14.383747Z"
+  "updated_at": "2026-04-02T19:46:40.377299Z"
 }

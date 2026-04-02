@@ -80,7 +80,7 @@
     "research:finetune:autonomous:confirm-winner": "bun research/finetune/autonomous/scripts/confirm-winner.ts",
     "research:finetune:autonomous:check-promotion-targets": "bun research/finetune/autonomous/scripts/check-promotion-targets.ts",
     "research:finetune:validate": "bun research/finetune/scripts/validate-sandbox.ts",
-    "research:finetune:qmd-import": "bun research/finetune/scripts/import-qmd-training.ts",
+    "research:finetune:qmd-import:legacy": "bun research/finetune/scripts/import-qmd-training.ts",
     "research:finetune:mlx:build-dataset": "bun research/finetune/scripts/build-mlx-dataset.ts",
     "research:finetune:build-variant-dataset": "bun research/finetune/scripts/build-variant-dataset.ts",
     "research:finetune:list-mix-variants": "bun research/finetune/scripts/list-mix-variants.ts",

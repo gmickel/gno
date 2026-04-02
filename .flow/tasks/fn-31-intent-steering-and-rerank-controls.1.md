@@ -16,10 +16,17 @@ TBD
 
 ## Done summary
 
-TBD
+Implemented intent steering and rerank controls across retrieval surfaces.
+
+Evidence in code/docs/specs:
+
+- CLI/API/Web/MCP support `intent` and `candidateLimit`
+- config supports `models.expandContextSize`
+- rerank normalization tests cover intent-aware deduplication behavior
+- docs/specs/schemas updated across surfaces
 
 ## Evidence
 
 - Commits:
-- Tests:
+- Tests: test/pipeline/rerank-normalization.test.ts, test/serve/routes/query.test.ts, test/serve/public/retrieval-filters.test.ts, test/sdk/client.test.ts
 - PRs:

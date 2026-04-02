@@ -33,6 +33,8 @@ research/finetune/
 │   ├── export-contract.md
 │   └── reward-contract.md
 ├── data/
+│   ├── generated/
+│   │   └── README.md
 │   ├── promotion/
 │   │   └── promotion-cases.jsonl
 │   ├── splits/
@@ -53,12 +55,6 @@ research/finetune/
 ```
 
 ## Quick Start
-
-Import qmd examples into the sandbox schema:
-
-```bash
-bun run research:finetune:qmd-import
-```
 
 Build an MLX LoRA training dataset:
 
@@ -156,7 +152,21 @@ Current seeded sources:
 - `data/training/gno-disambiguation-hardcases.jsonl`
 - `data/training/gno-lexical-preservation-hardcases.jsonl`
 - `data/training/gno-ask-hardcases.jsonl`
-- generated qmd import via `bun run research:finetune:qmd-import`
+- frozen imported qmd snapshot in `data/generated/qmd-import.jsonl`
+
+### Frozen imported corpus
+
+The `qmd-import.jsonl` corpus is committed to this repo as a frozen snapshot.
+
+- normal finetune work should consume the committed snapshot directly
+- normal finetune work does **not** require a local `qmd` checkout
+- imported examples are adapted into GNO's schema and filtered for obvious temporal/release drift
+- GNO-specific hardcases are then layered on top via the mix configs; the qmd snapshot is seed data, not the whole training story
+
+See:
+
+- `data/generated/README.md`
+- `data/generated/qmd-import-report.json`
 
 Current training mix:
 
@@ -250,9 +260,10 @@ Practical lesson so far:
 
 ## External Reference Mapping
 
-Reference stack:
+Historical upstream reference:
 
-- `/Users/gordon/repos/qmd/finetune`
+- `qmd/finetune` from the OSS qmd repo
+- used only to create the committed frozen snapshot; not required for routine sandbox use
 
 Borrowed ideas:
 

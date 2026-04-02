@@ -86,3 +86,13 @@ Optional X-GNO-Token header if GNO_API_TOKEN preference set
 
 - [ ] Implementation complete
 - [ ] Tests passing
+
+## Done summary
+
+Superseded by the existing GNO MCP + installed skill workflow. Raycast-specific implementation no longer planned.
+
+## Evidence
+
+- Commits:
+- Tests:
+- PRs:

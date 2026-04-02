@@ -10,7 +10,7 @@
   "plan_review_status": "unknown",
   "plan_reviewed_at": null,
   "spec_path": ".flow/specs/fn-56-windows-packaging-and-runtime.md",
-  "status": "open",
+  "status": "done",
   "title": "Windows packaging and runtime validation for GNO",
-  "updated_at": "2026-03-27T19:48:28.198863Z"
+  "updated_at": "2026-04-02T19:31:22.723382Z"
 }

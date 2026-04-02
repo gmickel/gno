@@ -45,3 +45,13 @@ Similar to search.tsx but uses gnoQuery/apiQuery
 
 - [ ] Implementation complete
 - [ ] Tests passing
+
+## Done summary
+
+Superseded by the existing GNO MCP + installed skill workflow. Raycast-specific implementation no longer planned.
+
+## Evidence
+
+- Commits:
+- Tests:
+- PRs:

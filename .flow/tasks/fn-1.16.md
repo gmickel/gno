@@ -88,3 +88,13 @@ export default async function Command() {
 
 - [ ] Implementation complete
 - [ ] Tests passing
+
+## Done summary
+
+Superseded by the existing GNO MCP + installed skill workflow. Raycast-specific implementation no longer planned.
+
+## Evidence
+
+- Commits:
+- Tests:
+- PRs:

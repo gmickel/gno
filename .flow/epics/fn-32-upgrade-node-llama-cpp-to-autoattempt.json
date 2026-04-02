@@ -7,7 +7,7 @@
   "plan_review_status": "unknown",
   "plan_reviewed_at": null,
   "spec_path": ".flow/specs/fn-32-upgrade-node-llama-cpp-to-autoattempt.md",
-  "status": "open",
+  "status": "done",
   "title": "Upgrade node-llama-cpp to autoAttempt build path",
-  "updated_at": "2026-03-08T14:52:56.356149Z"
+  "updated_at": "2026-04-02T19:31:20.220859Z"
 }
