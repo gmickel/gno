@@ -443,12 +443,12 @@ export default function Browse({ navigate }: PageProps) {
         {/* Document Table */}
         {docs.length > 0 && (
           <div className="animate-fade-in opacity-0">
-            <Table>
+            <Table className="table-fixed">
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[50%]">Document</TableHead>
-                  <TableHead>Collection</TableHead>
-                  <TableHead className="text-right">Type</TableHead>
+                  <TableHead className="w-[68%]">Document</TableHead>
+                  <TableHead className="w-[220px]">Collection</TableHead>
+                  <TableHead className="w-[72px] text-right">Type</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -460,14 +460,14 @@ export default function Browse({ navigate }: PageProps) {
                       navigate(`/doc?uri=${encodeURIComponent(doc.uri)}`)
                     }
                   >
-                    <TableCell>
+                    <TableCell className="align-top whitespace-normal">
                       <div className="flex items-center gap-2">
                         <FileText className="size-4 shrink-0 text-muted-foreground" />
                         <div className="min-w-0">
-                          <div className="truncate font-medium transition-colors group-hover:text-primary">
+                          <div className="break-words font-medium leading-tight transition-colors group-hover:text-primary">
                             {doc.title || doc.relPath}
                           </div>
-                          <div className="truncate font-mono text-muted-foreground text-xs">
+                          <div className="break-all font-mono text-muted-foreground text-xs leading-relaxed">
                             {doc.relPath}
                           </div>
                         </div>
@@ -499,9 +499,9 @@ export default function Browse({ navigate }: PageProps) {
                         <ChevronRight className="ml-auto size-4 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
                       </div>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="align-top whitespace-normal">
                       <Badge
-                        className="cursor-pointer font-mono text-xs transition-colors hover:border-primary hover:text-primary"
+                        className="inline-flex min-h-[2.5rem] max-w-[180px] cursor-pointer items-center px-3 py-1 text-center whitespace-normal break-words font-mono text-xs leading-tight transition-colors hover:border-primary hover:text-primary"
                         onClick={(event) => {
                           event.stopPropagation();
                           navigateToCollection(doc.collection);
@@ -511,7 +511,7 @@ export default function Browse({ navigate }: PageProps) {
                         {doc.collection}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="align-top text-right">
                       <Badge
                         className="font-mono text-xs"
                         variant={getExtBadgeVariant(doc.sourceExt)}

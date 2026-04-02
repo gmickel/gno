@@ -170,7 +170,9 @@ function LinkItem({
       <Tooltip>
         <TooltipTrigger asChild>
           <div className="min-w-0 flex-1">
-            <span className="block truncate">{displayText}</span>
+            <span className="block break-words font-medium leading-tight whitespace-normal">
+              {displayText}
+            </span>
             {link.targetAnchor && (
               <span className="block truncate text-[10px] opacity-60">
                 #{link.targetAnchor}

@@ -260,7 +260,7 @@ function RelatedNoteItem({
       {/* Title with tooltip for long names */}
       <Tooltip>
         <TooltipTrigger asChild>
-          <h4 className="truncate font-mono text-[13px] text-foreground/90 group-hover:text-foreground">
+          <h4 className="line-clamp-3 break-words font-mono text-[13px] leading-tight text-foreground/90 group-hover:text-foreground">
             {doc.title || "Untitled"}
           </h4>
         </TooltipTrigger>

@@ -167,7 +167,9 @@ function BacklinkItem({
       <Tooltip>
         <TooltipTrigger asChild>
           <div className="min-w-0 flex-1">
-            <span className="block truncate">{displayName}</span>
+            <span className="block break-words font-medium leading-tight whitespace-normal">
+              {displayName}
+            </span>
             {/* Line reference as subtitle */}
             <span className="block truncate text-[10px] opacity-60">
               L{backlink.startLine}:{backlink.startCol}
