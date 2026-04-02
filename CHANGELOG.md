@@ -11,6 +11,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+## [0.33.1] - 2026-04-02
+
+### Fixed
+
+- Fixed the macOS desktop release workflow so notarized desktop beta artifacts are uploaded from the correct runner paths and can be attached to GitHub releases.
+
 ## [0.33.0] - 2026-04-02
 
 ### Added
@@ -974,7 +980,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 | 0.4.0   | 2026-01-01 | Web UI and REST API                       |
 | 0.1.0   | 2025-12-30 | Initial release with full search pipeline |
 
-[Unreleased]: https://github.com/gmickel/gno/compare/v0.33.0...HEAD
+[Unreleased]: https://github.com/gmickel/gno/compare/v0.33.1...HEAD
+[0.33.1]: https://github.com/gmickel/gno/compare/v0.33.0...v0.33.1
 [0.33.0]: https://github.com/gmickel/gno/compare/v0.32.0...v0.33.0
 [0.32.0]: https://github.com/gmickel/gno/compare/v0.31.2...v0.32.0
 [0.31.2]: https://github.com/gmickel/gno/compare/v0.31.1...v0.31.2

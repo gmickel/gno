@@ -185,23 +185,32 @@ jobs:
         env:
           APPLE_SIGNING_IDENTITY: ${{ vars.APPLE_SIGNING_IDENTITY }}
           NOTARYTOOL_PROFILE: notarytool-profile
+          ELECTROBUN_BUILD_DIR: ${{ github.workspace }}/desktop/electrobun-shell/build
+          ELECTROBUN_ARTIFACT_DIR: ${{ github.workspace }}/desktop/electrobun-shell/artifacts
         run: bun run release:macos
+
+      - name: List macOS release artifacts
+        run: |
+          set -euo pipefail
+          find "$GITHUB_WORKSPACE/desktop/electrobun-shell/artifacts" -maxdepth 3 -type f -print | sort
 
       - name: Upload packaged runtime proof
         uses: actions/upload-artifact@v7
         with:
           name: packaged-runtime-proof-macos
+          if-no-files-found: error
           path: |
-            desktop/electrobun-shell/artifacts/*.json
+            ${{ github.workspace }}/desktop/electrobun-shell/artifacts/*.json
 
       - name: Upload macOS desktop package
         uses: actions/upload-artifact@v7
         with:
           name: gno-desktop-beta-macos-release
+          if-no-files-found: error
           path: |
-            desktop/electrobun-shell/artifacts/release-macos/*.zip
-            desktop/electrobun-shell/artifacts/release-macos/*.dmg
-            desktop/electrobun-shell/artifacts/release-macos/*.json
+            ${{ github.workspace }}/desktop/electrobun-shell/artifacts/release-macos/*.zip
+            ${{ github.workspace }}/desktop/electrobun-shell/artifacts/release-macos/*.dmg
+            ${{ github.workspace }}/desktop/electrobun-shell/artifacts/release-macos/*.json
 
   pack-test:
     needs: test
