@@ -11,6 +11,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+## [0.33.4] - 2026-04-03
+
+### Fixed
+
+- Improved web UI regression coverage with Bun-first DOM interaction tests and a repo-local browser smoke path for search, capture, and document flows.
+
 ## [0.33.3] - 2026-04-03
 
 ### Fixed
@@ -992,7 +998,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 | 0.4.0   | 2026-01-01 | Web UI and REST API                       |
 | 0.1.0   | 2025-12-30 | Initial release with full search pipeline |
 
-[Unreleased]: https://github.com/gmickel/gno/compare/v0.33.3...HEAD
+[Unreleased]: https://github.com/gmickel/gno/compare/v0.33.4...HEAD
+[0.33.4]: https://github.com/gmickel/gno/compare/v0.33.3...v0.33.4
 [0.33.3]: https://github.com/gmickel/gno/compare/v0.33.2...v0.33.3
 [0.33.2]: https://github.com/gmickel/gno/compare/v0.33.1...v0.33.2
 [0.33.1]: https://github.com/gmickel/gno/compare/v0.33.0...v0.33.1
