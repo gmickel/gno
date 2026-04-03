@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Improved graph loading by reducing redundant server-side graph work and tuning the client-side graph defaults for faster initial render.
 - Improved browser smoke coverage for Browse flows and stabilized the direct-child browse API assertion in tests.
+
 ## [0.33.4] - 2026-04-03
 
 ### Fixed
