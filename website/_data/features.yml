@@ -79,6 +79,7 @@
     - Split-view markdown editor with live preview
     - Quick capture (Cmd+N) for instant note creation
     - Safe markdown/plaintext editing with read-only converted docs
+    - Cross-collection tree browser with folder detail panes
     - Collection management (add, remove, re-index)
     - Visual search with BM25, vector, and hybrid modes
     - AI answers with citations

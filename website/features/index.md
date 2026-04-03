@@ -1,16 +1,16 @@
 ---
 layout: fullwidth
 title: Features
-headline: Everything You Need for Local Search
-description: GNO features overview. Hybrid search, local LLM answers, multi-format indexing, privacy-first design, MCP integration, and collections.
-keywords: gno features, local search features, hybrid search, local llm, privacy search
+headline: Search, Workspace, Agent Memory, and Builder Surface
+description: "Explore GNO's full feature set: hybrid search, browse tree, knowledge graph, local AI answers, multi-format indexing, agent integrations, MCP, SDK, and privacy-first local workflows."
+keywords: gno features, local knowledge workspace, hybrid search, browse tree, knowledge graph, local llm, agent memory, privacy first
 permalink: /features/
 og_image: /assets/images/og/og-template.png
 ---
 
 <section class="hero" style="padding-bottom: 2rem;">
   <h1 class="hero-title">Features</h1>
-  <p class="hero-description">Everything you need for powerful local document search</p>
+  <p class="hero-description">Everything GNO now does as a local knowledge workspace, not just a search box.</p>
 </section>
 
 <section class="features">
@@ -33,6 +33,6 @@ og_image: /assets/images/og/og-template.png
   <h2>Ready to Get Started?</h2>
   <div class="hero-actions" style="margin-top: 1.5rem;">
     <a href="{{ '/docs/QUICKSTART/' | relative_url }}" class="btn btn-primary btn-lg">Quick Start</a>
-    <a href="{{ '/faq/' | relative_url }}" class="btn btn-secondary btn-lg">FAQ</a>
+    <a href="{{ '/features/web-ui/' | relative_url }}" class="btn btn-secondary btn-lg">See the Workspace</a>
   </div>
 </section>

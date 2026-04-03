@@ -6,6 +6,7 @@ import {
   createWorkspaceTab,
   loadWorkspaceState,
   saveWorkspaceState,
+  updateActiveTabBrowseState,
   updateActiveTabLocation,
   type WorkspaceStorageLike,
 } from "../../../src/serve/public/lib/workspace-tabs";
@@ -65,6 +66,21 @@ describe("workspace tabs", () => {
       "/doc?uri=gno%3A%2F%2Fnotes%2Fa.md"
     );
     expect(next.tabs[0]?.label).toContain("a.md");
+  });
+
+  test("persists active tab browse tree state", () => {
+    const storage = createStorage();
+    const state = loadWorkspaceState("/browse?collection=notes", storage);
+    const next = updateActiveTabBrowseState(state, {
+      expandedNodeIds: ["collection:notes", "folder:notes:projects"],
+    });
+    saveWorkspaceState(next, storage);
+
+    const restored = loadWorkspaceState("/", storage);
+    expect(restored.tabs[0]?.browseState?.expandedNodeIds).toEqual([
+      "collection:notes",
+      "folder:notes:projects",
+    ]);
   });
 
   test("close active tab activates a neighbor", () => {

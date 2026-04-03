@@ -1,8 +1,14 @@
 # GNO vs grep/ripgrep
 
-A comparison of GNO with traditional text search tools like `grep` and `ripgrep` (rg).
+This comparison matters because many developers reach for `rg` first and only later realize they are trying to search a knowledge base, not just strings in code.
 
-grep and ripgrep are excellent for exact pattern matching in code. GNO adds semantic understanding for knowledge-base search.
+GNO and grep/ripgrep are complementary, but they solve different search problems. `grep` and `rg` are excellent for exact pattern matching in code and shell pipelines. GNO adds semantic retrieval, ranking, multi-format indexing, and workspace/agent surfaces for knowledge-base search.
+
+## At a Glance
+
+- Choose **ripgrep** when you know the exact symbol, string, or regex.
+- Choose **GNO** when you need concepts, ranking, cross-file meaning, PDFs/docs, or AI-assisted retrieval.
+- Use **both** if your workflow spans code search and knowledge search.
 
 ## Quick Summary
 
@@ -54,6 +60,8 @@ GNO's semantic search understands that "authentication", "login", "sign in", and
 
 ## When to Use GNO
 
+GNO is for questions like "what did we decide?" or "where have I seen this idea before?", not just "where does this exact token appear?"
+
 **Concept search**: You're looking for ideas, not exact strings.
 
 ```bash
@@ -92,6 +100,8 @@ gno query "what did we decide about the API redesign"
 ```
 
 ## When to Use grep/ripgrep
+
+grep/ripgrep are still the right answer for exact code lookup and shell-native pattern work.
 
 **Exact patterns**: You know the exact string or regex.
 

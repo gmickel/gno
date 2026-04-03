@@ -1,9 +1,9 @@
 ---
 layout: feature
 title: Web UI
-headline: Visual Search at Your Fingertips
-description: A local web dashboard for searching, browsing, creating, and editing documents. Full-featured markdown editor with live preview, keyboard shortcuts, and AI-powered answers—all running 100% locally.
-keywords: gno web ui, local search dashboard, document browser, visual search, ai answers web interface, markdown editor, note taking
+headline: A Local Knowledge Workspace, Not Just a Dashboard
+description: GNO's web UI is now a full local knowledge workspace for searching, browsing, graph exploration, safe editing, note capture, and AI answers across your own documents.
+keywords: gno web ui, local knowledge workspace, document browser, browse tree, knowledge graph, ai answers web interface, markdown editor
 icon: globe
 slug: web-ui
 permalink: /features/web-ui/
@@ -12,6 +12,7 @@ benefits:
   - Split-view markdown editor with live preview
   - Quick capture for instant note creation
   - Safe markdown/plaintext editing with read-only converted docs
+  - Cross-collection tree browse workspace with folder detail panes
   - Visual search with BM25, vector, and hybrid modes
   - AI answers with citations
   - Keyboard-first design
@@ -84,6 +85,16 @@ See your index at a glance:
 - **Health status**: Is everything working?
 - **Collections**: Jump to any source
 - **Live updates**: Reindex changes show up without manual refresh after edits
+
+### Browse Workspace
+
+Navigate your indexed notes like a real workspace, not just a flat table:
+
+- **Cross-collection tree**: browse all collections from one sidebar
+- **Folder detail panes**: inspect subfolders and direct documents for the selected node
+- **Tab-scoped state**: each app tab can keep its own expanded browse context
+- **Pinned collections**: keep favorite roots close while moving through the tree
+- **Breadcrumbs**: jump back up the current folder path quickly
 
 ### Three Search Modes
 

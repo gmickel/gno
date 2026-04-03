@@ -30,7 +30,10 @@ import {
   FrontmatterDisplay,
   parseFrontmatter,
 } from "../components/FrontmatterDisplay";
-import { OutgoingLinksPanel } from "../components/OutgoingLinksPanel";
+import {
+  OutgoingLinksPanel,
+  type OutgoingLink,
+} from "../components/OutgoingLinksPanel";
 import { RelatedNotesSidebar } from "../components/RelatedNotesSidebar";
 import { TagInput } from "../components/TagInput";
 import { Badge } from "../components/ui/badge";
@@ -246,6 +249,9 @@ export default function DocView({ navigate }: PageProps) {
   const [savingTags, setSavingTags] = useState(false);
   const [tagSaveError, setTagSaveError] = useState<string | null>(null);
   const [tagSaveSuccess, setTagSaveSuccess] = useState(false);
+  const [resolvedWikiLinks, setResolvedWikiLinks] = useState<OutgoingLink[]>(
+    []
+  );
 
   // Request sequencing - ignore stale responses on rapid navigation
   const requestIdRef = useRef(0);
@@ -303,6 +309,19 @@ export default function DocView({ navigate }: PageProps) {
   }, [loadDocument]);
 
   useEffect(() => {
+    if (!doc?.docid) {
+      setResolvedWikiLinks([]);
+      return;
+    }
+
+    void apiFetch<{ links: OutgoingLink[] }>(
+      `/api/doc/${encodeURIComponent(doc.docid)}/links?type=wiki`
+    ).then(({ data }) => {
+      setResolvedWikiLinks(data?.links ?? []);
+    });
+  }, [doc?.docid]);
+
+  useEffect(() => {
     if (latestDocEvent?.uri !== currentUri) {
       return;
     }
@@ -350,6 +369,7 @@ export default function DocView({ navigate }: PageProps) {
   }, [doc?.content, isMarkdown]);
 
   const hasFrontmatter = Object.keys(parsedContent.data).length > 0;
+  const showStandaloneTags = !hasFrontmatter || editingTags;
 
   useEffect(() => {
     if (currentTarget.view === "source" || currentTarget.lineStart) {
@@ -535,6 +555,569 @@ export default function DocView({ navigate }: PageProps) {
     setTimeout(() => setTagSaveSuccess(false), 2000);
   }, [doc, editedTags]);
 
+  const renderDocumentInfoPanels = () => (
+    <div className="space-y-4">
+      <Card>
+        <CardContent className="py-3">
+          <div className="grid gap-3 sm:grid-cols-3 xl:grid-cols-1">
+            <div className="flex items-center gap-3">
+              <FolderOpen className="size-4 text-muted-foreground" />
+              <div>
+                <div className="text-muted-foreground text-xs">Collection</div>
+                <div className="font-medium">
+                  {doc?.collection || "Unknown"}
+                </div>
+              </div>
+            </div>
+            {doc?.source.sizeBytes !== undefined && (
+              <div className="flex items-center gap-3">
+                <HardDrive className="size-4 text-muted-foreground" />
+                <div>
+                  <div className="text-muted-foreground text-xs">Size</div>
+                  <div className="font-medium">
+                    {formatBytes(doc.source.sizeBytes)}
+                  </div>
+                </div>
+              </div>
+            )}
+            {doc?.source.modifiedAt && (
+              <div className="flex items-center gap-3">
+                <Calendar className="size-4 text-muted-foreground" />
+                <div>
+                  <div className="text-muted-foreground text-xs">Modified</div>
+                  <div className="font-medium">
+                    {formatDate(doc.source.modifiedAt)}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+          <div className="mt-3 border-border/50 border-t pt-3">
+            <div className="mb-1 text-muted-foreground text-xs">Path</div>
+            <code className="break-all font-mono text-muted-foreground text-xs">
+              {doc?.uri}
+            </code>
+            {doc?.capabilities.reason && (
+              <p className="mt-2 text-amber-500 text-xs">
+                {doc.capabilities.reason}
+              </p>
+            )}
+            <div className="mt-2 flex flex-wrap gap-2">
+              {currentTarget.lineStart && (
+                <Badge className="font-mono" variant="outline">
+                  L{currentTarget.lineStart}
+                  {currentTarget.lineEnd &&
+                  currentTarget.lineEnd !== currentTarget.lineStart
+                    ? `-${currentTarget.lineEnd}`
+                    : ""}
+                </Badge>
+              )}
+              <Button
+                onClick={() => {
+                  if (!doc) {
+                    return;
+                  }
+                  void navigator.clipboard.writeText(
+                    `${window.location.origin}${buildDocDeepLink({
+                      uri: doc.uri,
+                      view:
+                        currentTarget.view === "source" ||
+                        currentTarget.lineStart
+                          ? "source"
+                          : "rendered",
+                      lineStart: currentTarget.lineStart,
+                      lineEnd: currentTarget.lineEnd,
+                    })}`
+                  );
+                }}
+                size="sm"
+                variant="outline"
+              >
+                <LinkIcon className="mr-1.5 size-4" />
+                Copy link
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {hasFrontmatter && (
+        <Card>
+          <CardHeader className="pb-0">
+            <CardTitle className="flex items-center justify-between text-base">
+              <span>Frontmatter</span>
+              {!editingTags && (
+                <div className="flex items-center gap-2">
+                  {tagSaveSuccess && (
+                    <span className="flex items-center gap-1 text-green-500 text-xs">
+                      <CheckIcon className="size-3" />
+                      Saved
+                    </span>
+                  )}
+                  <Button
+                    className="gap-1 text-xs"
+                    onClick={handleStartEditTags}
+                    size="sm"
+                    variant="ghost"
+                  >
+                    <PencilIcon className="size-3" />
+                    Edit tags
+                  </Button>
+                </div>
+              )}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-3">
+            <FrontmatterDisplay
+              className="rounded-lg border border-border/40 bg-muted/10 p-3"
+              content={doc?.content ?? ""}
+            />
+          </CardContent>
+        </Card>
+      )}
+
+      {showStandaloneTags && (
+        <Card>
+          <CardContent className="py-4">
+            <div className="flex items-start gap-3">
+              <TagIcon className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+              <div className="min-w-0 flex-1">
+                <div className="mb-2 flex items-center justify-between">
+                  <div className="text-muted-foreground text-xs">Tags</div>
+                  {!editingTags && (
+                    <Button
+                      className="gap-1 text-xs"
+                      onClick={handleStartEditTags}
+                      size="sm"
+                      variant="ghost"
+                    >
+                      <PencilIcon className="size-3" />
+                      Edit
+                    </Button>
+                  )}
+                  {tagSaveSuccess && (
+                    <span className="flex items-center gap-1 text-green-500 text-xs">
+                      <CheckIcon className="size-3" />
+                      Saved
+                    </span>
+                  )}
+                </div>
+
+                {!editingTags && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {doc?.tags.length === 0 ? (
+                      <span className="text-muted-foreground/60 text-sm italic">
+                        No tags
+                      </span>
+                    ) : (
+                      doc?.tags.map((tag) => (
+                        <Badge
+                          className="font-mono text-xs"
+                          key={tag}
+                          variant="outline"
+                        >
+                          {tag}
+                        </Badge>
+                      ))
+                    )}
+                  </div>
+                )}
+
+                {editingTags && (
+                  <div className="space-y-3">
+                    <TagInput
+                      aria-label="Edit document tags"
+                      disabled={savingTags}
+                      onChange={setEditedTags}
+                      placeholder="Add tags..."
+                      value={editedTags}
+                    />
+
+                    {tagSaveError && (
+                      <p className="text-destructive text-xs">{tagSaveError}</p>
+                    )}
+
+                    <div className="flex items-center gap-2">
+                      <Button
+                        disabled={savingTags}
+                        onClick={handleSaveTags}
+                        size="sm"
+                      >
+                        {savingTags && (
+                          <Loader2Icon className="mr-1.5 size-3 animate-spin" />
+                        )}
+                        Save
+                      </Button>
+                      <Button
+                        disabled={savingTags}
+                        onClick={handleCancelEditTags}
+                        size="sm"
+                        variant="outline"
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+
+  const renderDocumentInfoRail = () => (
+    <div className="space-y-4">
+      <Card>
+        <CardHeader className="pb-0">
+          <CardTitle className="text-base">Document Info</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3 pt-3">
+          <div className="space-y-2 text-sm">
+            <div className="flex items-start gap-2">
+              <FolderOpen className="mt-0.5 size-3.5 text-muted-foreground" />
+              <div className="min-w-0">
+                <div className="text-[11px] text-muted-foreground uppercase tracking-wider">
+                  Collection
+                </div>
+                <div className="font-medium">
+                  {doc?.collection || "Unknown"}
+                </div>
+              </div>
+            </div>
+            {doc?.source.sizeBytes !== undefined && (
+              <div className="flex items-start gap-2">
+                <HardDrive className="mt-0.5 size-3.5 text-muted-foreground" />
+                <div>
+                  <div className="text-[11px] text-muted-foreground uppercase tracking-wider">
+                    Size
+                  </div>
+                  <div className="font-medium">
+                    {formatBytes(doc.source.sizeBytes)}
+                  </div>
+                </div>
+              </div>
+            )}
+            {doc?.source.modifiedAt && (
+              <div className="flex items-start gap-2">
+                <Calendar className="mt-0.5 size-3.5 text-muted-foreground" />
+                <div>
+                  <div className="text-[11px] text-muted-foreground uppercase tracking-wider">
+                    Modified
+                  </div>
+                  <div className="font-medium">
+                    {formatDate(doc.source.modifiedAt)}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="border-border/50 border-t pt-3">
+            <div className="mb-1 text-[11px] text-muted-foreground uppercase tracking-wider">
+              Path
+            </div>
+            <code className="break-all font-mono text-[11px] text-muted-foreground">
+              {doc?.uri}
+            </code>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            {currentTarget.lineStart && (
+              <Badge className="font-mono" variant="outline">
+                L{currentTarget.lineStart}
+                {currentTarget.lineEnd &&
+                currentTarget.lineEnd !== currentTarget.lineStart
+                  ? `-${currentTarget.lineEnd}`
+                  : ""}
+              </Badge>
+            )}
+            <Button
+              onClick={() => {
+                if (!doc) {
+                  return;
+                }
+                void navigator.clipboard.writeText(
+                  `${window.location.origin}${buildDocDeepLink({
+                    uri: doc.uri,
+                    view:
+                      currentTarget.view === "source" || currentTarget.lineStart
+                        ? "source"
+                        : "rendered",
+                    lineStart: currentTarget.lineStart,
+                    lineEnd: currentTarget.lineEnd,
+                  })}`
+                );
+              }}
+              size="sm"
+              variant="outline"
+            >
+              <LinkIcon className="mr-1.5 size-4" />
+              Copy link
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {hasFrontmatter && (
+        <Card>
+          <CardHeader className="pb-0">
+            <CardTitle className="flex items-center justify-between text-base">
+              <span>Frontmatter</span>
+              {!editingTags && (
+                <Button
+                  className="gap-1 text-xs"
+                  onClick={handleStartEditTags}
+                  size="sm"
+                  variant="ghost"
+                >
+                  <PencilIcon className="size-3" />
+                  Edit tags
+                </Button>
+              )}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-3">
+            <FrontmatterDisplay
+              className="grid-cols-1 sm:grid-cols-1 lg:grid-cols-1"
+              content={doc?.content ?? ""}
+            />
+          </CardContent>
+        </Card>
+      )}
+
+      {showStandaloneTags && (
+        <Card>
+          <CardHeader className="pb-0">
+            <CardTitle className="text-base">Tags</CardTitle>
+          </CardHeader>
+          <CardContent className="pt-3">
+            {editingTags ? (
+              <div className="space-y-3">
+                <TagInput
+                  aria-label="Edit document tags"
+                  disabled={savingTags}
+                  onChange={setEditedTags}
+                  placeholder="Add tags..."
+                  value={editedTags}
+                />
+                {tagSaveError && (
+                  <p className="text-destructive text-xs">{tagSaveError}</p>
+                )}
+                <div className="flex items-center gap-2">
+                  <Button
+                    disabled={savingTags}
+                    onClick={handleSaveTags}
+                    size="sm"
+                  >
+                    {savingTags && (
+                      <Loader2Icon className="mr-1.5 size-3 animate-spin" />
+                    )}
+                    Save
+                  </Button>
+                  <Button
+                    disabled={savingTags}
+                    onClick={handleCancelEditTags}
+                    size="sm"
+                    variant="outline"
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-wrap gap-1.5">
+                {doc?.tags.length === 0 ? (
+                  <span className="text-muted-foreground/60 text-sm italic">
+                    No tags
+                  </span>
+                ) : (
+                  doc?.tags.map((tag) => (
+                    <Badge
+                      className="font-mono text-xs"
+                      key={tag}
+                      variant="outline"
+                    >
+                      {tag}
+                    </Badge>
+                  ))
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+
+  const renderDocumentOverviewCard = () => (
+    <Card>
+      <CardContent className="space-y-3 py-3">
+        <div className="flex items-center justify-between">
+          <div className="font-semibold text-sm">Overview</div>
+          <div className="flex items-center gap-2">
+            {tagSaveSuccess && (
+              <span className="flex items-center gap-1 text-green-500 text-xs">
+                <CheckIcon className="size-3" />
+                Saved
+              </span>
+            )}
+            {(hasFrontmatter || doc?.tags.length) && !editingTags && (
+              <Button
+                className="gap-1 text-xs"
+                onClick={handleStartEditTags}
+                size="sm"
+                variant="ghost"
+              >
+                <PencilIcon className="size-3" />
+                Edit tags
+              </Button>
+            )}
+          </div>
+        </div>
+
+        <div className="grid gap-2 md:grid-cols-3">
+          <div className="rounded-lg bg-muted/15 px-3 py-2.5">
+            <div className="mb-1 flex items-center gap-2 text-[10px] text-muted-foreground uppercase tracking-wider">
+              <FolderOpen className="size-3.5" />
+              Collection
+            </div>
+            <div className="font-medium text-sm">
+              {doc?.collection || "Unknown"}
+            </div>
+          </div>
+
+          {doc?.source.sizeBytes !== undefined && (
+            <div className="rounded-lg bg-muted/15 px-3 py-2.5">
+              <div className="mb-1 flex items-center gap-2 text-[10px] text-muted-foreground uppercase tracking-wider">
+                <HardDrive className="size-3.5" />
+                Size
+              </div>
+              <div className="font-medium text-sm">
+                {formatBytes(doc.source.sizeBytes)}
+              </div>
+            </div>
+          )}
+
+          {doc?.source.modifiedAt && (
+            <div className="rounded-lg bg-muted/15 px-3 py-2.5">
+              <div className="mb-1 flex items-center gap-2 text-[10px] text-muted-foreground uppercase tracking-wider">
+                <Calendar className="size-3.5" />
+                Modified
+              </div>
+              <div className="font-medium text-sm">
+                {formatDate(doc.source.modifiedAt)}
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="space-y-1.5">
+          <div className="text-[10px] text-muted-foreground uppercase tracking-wider">
+            Path
+          </div>
+          <code className="block break-all font-mono text-[11px] text-muted-foreground">
+            {doc?.uri}
+          </code>
+          <div className="flex flex-wrap gap-2 pt-1">
+            {currentTarget.lineStart && (
+              <Badge className="font-mono" variant="outline">
+                L{currentTarget.lineStart}
+                {currentTarget.lineEnd &&
+                currentTarget.lineEnd !== currentTarget.lineStart
+                  ? `-${currentTarget.lineEnd}`
+                  : ""}
+              </Badge>
+            )}
+            <Button
+              onClick={() => {
+                if (!doc) {
+                  return;
+                }
+                void navigator.clipboard.writeText(
+                  `${window.location.origin}${buildDocDeepLink({
+                    uri: doc.uri,
+                    view:
+                      currentTarget.view === "source" || currentTarget.lineStart
+                        ? "source"
+                        : "rendered",
+                    lineStart: currentTarget.lineStart,
+                    lineEnd: currentTarget.lineEnd,
+                  })}`
+                );
+              }}
+              size="sm"
+              variant="outline"
+            >
+              <LinkIcon className="mr-1.5 size-4" />
+              Copy link
+            </Button>
+          </div>
+        </div>
+
+        {(hasFrontmatter || showStandaloneTags) && (
+          <div className="rounded-lg border border-border/40 bg-muted/10 p-2.5">
+            {hasFrontmatter ? (
+              <FrontmatterDisplay content={doc?.content ?? ""} />
+            ) : editingTags ? (
+              <div className="space-y-3">
+                <TagInput
+                  aria-label="Edit document tags"
+                  disabled={savingTags}
+                  onChange={setEditedTags}
+                  placeholder="Add tags..."
+                  value={editedTags}
+                />
+                {tagSaveError && (
+                  <p className="text-destructive text-xs">{tagSaveError}</p>
+                )}
+                <div className="flex items-center gap-2">
+                  <Button
+                    disabled={savingTags}
+                    onClick={handleSaveTags}
+                    size="sm"
+                  >
+                    {savingTags && (
+                      <Loader2Icon className="mr-1.5 size-3 animate-spin" />
+                    )}
+                    Save
+                  </Button>
+                  <Button
+                    disabled={savingTags}
+                    onClick={handleCancelEditTags}
+                    size="sm"
+                    variant="outline"
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-wrap gap-1.5">
+                {doc?.tags.length === 0 ? (
+                  <span className="text-muted-foreground/60 text-sm italic">
+                    No tags
+                  </span>
+                ) : (
+                  doc?.tags.map((tag) => (
+                    <Badge
+                      className="font-mono text-xs"
+                      key={tag}
+                      variant="outline"
+                    >
+                      {tag}
+                    </Badge>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+
   return (
     <div className="min-h-screen">
       {/* Header */}
@@ -667,9 +1250,15 @@ export default function DocView({ navigate }: PageProps) {
         </div>
       </header>
 
-      <div className="mx-auto flex max-w-7xl gap-8 px-8">
+      <div className="mx-auto flex max-w-[1800px] gap-5 px-8">
+        {doc && (
+          <aside className="hidden w-64 shrink-0 space-y-4 py-6 min-[1800px]:block">
+            <div className="sticky top-24">{renderDocumentInfoRail()}</div>
+          </aside>
+        )}
+
         {/* Main content */}
-        <main className="min-w-0 flex-1 py-8">
+        <main className="min-w-0 flex-1 py-6">
           {/* Loading */}
           {loading && (
             <div className="flex flex-col items-center justify-center gap-4 py-20">
@@ -693,7 +1282,7 @@ export default function DocView({ navigate }: PageProps) {
 
           {/* Document */}
           {doc && (
-            <div className="animate-fade-in space-y-6 opacity-0">
+            <div className="animate-fade-in space-y-4 opacity-0">
               {externalChangeNotice && (
                 <Card className="border-amber-500/40 bg-amber-500/10">
                   <CardContent className="flex flex-wrap items-center justify-between gap-3 py-3">
@@ -744,189 +1333,9 @@ export default function DocView({ navigate }: PageProps) {
                 </nav>
               )}
 
-              {/* Metadata */}
-              <Card>
-                <CardContent className="py-4">
-                  <div className="grid gap-4 sm:grid-cols-3">
-                    <div className="flex items-center gap-3">
-                      <FolderOpen className="size-4 text-muted-foreground" />
-                      <div>
-                        <div className="text-muted-foreground text-xs">
-                          Collection
-                        </div>
-                        <div className="font-medium">
-                          {doc.collection || "Unknown"}
-                        </div>
-                      </div>
-                    </div>
-                    {doc.source.sizeBytes !== undefined && (
-                      <div className="flex items-center gap-3">
-                        <HardDrive className="size-4 text-muted-foreground" />
-                        <div>
-                          <div className="text-muted-foreground text-xs">
-                            Size
-                          </div>
-                          <div className="font-medium">
-                            {formatBytes(doc.source.sizeBytes)}
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                    {doc.source.modifiedAt && (
-                      <div className="flex items-center gap-3">
-                        <Calendar className="size-4 text-muted-foreground" />
-                        <div>
-                          <div className="text-muted-foreground text-xs">
-                            Modified
-                          </div>
-                          <div className="font-medium">
-                            {formatDate(doc.source.modifiedAt)}
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                  <div className="mt-4 border-border/50 border-t pt-4">
-                    <div className="mb-1 text-muted-foreground text-xs">
-                      Path
-                    </div>
-                    <code className="break-all font-mono text-muted-foreground text-sm">
-                      {doc.uri}
-                    </code>
-                    {doc.capabilities.reason && (
-                      <p className="mt-2 text-amber-500 text-xs">
-                        {doc.capabilities.reason}
-                      </p>
-                    )}
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      {currentTarget.lineStart && (
-                        <Badge className="font-mono" variant="outline">
-                          L{currentTarget.lineStart}
-                          {currentTarget.lineEnd &&
-                          currentTarget.lineEnd !== currentTarget.lineStart
-                            ? `-${currentTarget.lineEnd}`
-                            : ""}
-                        </Badge>
-                      )}
-                      <Button
-                        onClick={() => {
-                          void navigator.clipboard.writeText(
-                            `${window.location.origin}${buildDocDeepLink({
-                              uri: doc.uri,
-                              view:
-                                currentTarget.view === "source" ||
-                                currentTarget.lineStart
-                                  ? "source"
-                                  : "rendered",
-                              lineStart: currentTarget.lineStart,
-                              lineEnd: currentTarget.lineEnd,
-                            })}`
-                          );
-                        }}
-                        size="sm"
-                        variant="outline"
-                      >
-                        <LinkIcon className="mr-1.5 size-4" />
-                        Copy link
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Tags */}
-              <Card>
-                <CardContent className="py-4">
-                  <div className="flex items-start gap-3">
-                    <TagIcon className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-                    <div className="min-w-0 flex-1">
-                      <div className="mb-2 flex items-center justify-between">
-                        <div className="text-muted-foreground text-xs">
-                          Tags
-                        </div>
-                        {!editingTags && (
-                          <Button
-                            className="gap-1 text-xs"
-                            onClick={handleStartEditTags}
-                            size="sm"
-                            variant="ghost"
-                          >
-                            <PencilIcon className="size-3" />
-                            Edit
-                          </Button>
-                        )}
-                        {tagSaveSuccess && (
-                          <span className="flex items-center gap-1 text-green-500 text-xs">
-                            <CheckIcon className="size-3" />
-                            Saved
-                          </span>
-                        )}
-                      </div>
-
-                      {/* Display mode */}
-                      {!editingTags && (
-                        <div className="flex flex-wrap gap-1.5">
-                          {doc.tags.length === 0 ? (
-                            <span className="text-muted-foreground/60 text-sm italic">
-                              No tags
-                            </span>
-                          ) : (
-                            doc.tags.map((tag) => (
-                              <Badge
-                                className="font-mono text-xs"
-                                key={tag}
-                                variant="outline"
-                              >
-                                {tag}
-                              </Badge>
-                            ))
-                          )}
-                        </div>
-                      )}
-
-                      {/* Edit mode */}
-                      {editingTags && (
-                        <div className="space-y-3">
-                          <TagInput
-                            aria-label="Edit document tags"
-                            disabled={savingTags}
-                            onChange={setEditedTags}
-                            placeholder="Add tags..."
-                            value={editedTags}
-                          />
-
-                          {tagSaveError && (
-                            <p className="text-destructive text-xs">
-                              {tagSaveError}
-                            </p>
-                          )}
-
-                          <div className="flex items-center gap-2">
-                            <Button
-                              disabled={savingTags}
-                              onClick={handleSaveTags}
-                              size="sm"
-                            >
-                              {savingTags && (
-                                <Loader2Icon className="mr-1.5 size-3 animate-spin" />
-                              )}
-                              Save
-                            </Button>
-                            <Button
-                              disabled={savingTags}
-                              onClick={handleCancelEditTags}
-                              size="sm"
-                              variant="outline"
-                            >
-                              Cancel
-                            </Button>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+              <div className="min-[1800px]:hidden">
+                {renderDocumentOverviewCard()}
+              </div>
 
               {/* Content */}
               <Card>
@@ -958,7 +1367,7 @@ export default function DocView({ navigate }: PageProps) {
                     )}
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="pt-4">
+                <CardContent className="pt-3">
                   {!doc.contentAvailable && (
                     <div className="rounded-lg border border-border/50 bg-muted/30 p-6 text-center">
                       <p className="text-muted-foreground">
@@ -968,14 +1377,12 @@ export default function DocView({ navigate }: PageProps) {
                   )}
                   {doc.contentAvailable && isMarkdown && !showRawView && (
                     <div className="space-y-4">
-                      {hasFrontmatter && (
-                        <FrontmatterDisplay
-                          className="rounded-lg border border-border/40 bg-muted/10 p-4"
-                          content={doc.content ?? ""}
+                      <div className="rounded-lg border border-border/40 bg-gradient-to-br from-background to-muted/10 p-4 shadow-inner">
+                        <MarkdownPreview
+                          collection={doc.collection}
+                          content={parsedContent.body}
+                          wikiLinks={resolvedWikiLinks}
                         />
-                      )}
-                      <div className="rounded-lg border border-border/40 bg-gradient-to-br from-background to-muted/10 p-6 shadow-inner">
-                        <MarkdownPreview content={parsedContent.body} />
                       </div>
                     </div>
                   )}
@@ -1018,25 +1425,27 @@ export default function DocView({ navigate }: PageProps) {
 
         {/* Right sidebar - Link panels */}
         {doc && (
-          <aside className="hidden w-72 shrink-0 space-y-4 py-8 lg:block">
-            <BacklinksPanel
-              docId={doc.docid}
-              onNavigate={(uri) =>
-                navigate(`/doc?uri=${encodeURIComponent(uri)}`)
-              }
-            />
-            <OutgoingLinksPanel
-              docId={doc.docid}
-              onNavigate={(uri) =>
-                navigate(`/doc?uri=${encodeURIComponent(uri)}`)
-              }
-            />
-            <RelatedNotesSidebar
-              docId={doc.docid}
-              onNavigate={(uri) =>
-                navigate(`/doc?uri=${encodeURIComponent(uri)}`)
-              }
-            />
+          <aside className="hidden w-72 shrink-0 space-y-4 py-6 lg:block">
+            <div className="sticky top-24 space-y-4">
+              <BacklinksPanel
+                docId={doc.docid}
+                onNavigate={(uri) =>
+                  navigate(`/doc?uri=${encodeURIComponent(uri)}`)
+                }
+              />
+              <OutgoingLinksPanel
+                docId={doc.docid}
+                onNavigate={(uri) =>
+                  navigate(`/doc?uri=${encodeURIComponent(uri)}`)
+                }
+              />
+              <RelatedNotesSidebar
+                docId={doc.docid}
+                onNavigate={(uri) =>
+                  navigate(`/doc?uri=${encodeURIComponent(uri)}`)
+                }
+              />
+            </div>
           </aside>
         )}
       </div>

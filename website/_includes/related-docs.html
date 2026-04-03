@@ -5,7 +5,28 @@ contains '/docs/' %}
   <h2 class="related-docs-title">Continue Reading</h2>
 
   <div class="related-docs-grid">
-    {% if page.url contains 'QUICKSTART' %}
+    {% if page.url contains '/comparisons/' %}
+    <a
+      href="{{ '/features/web-ui/' | relative_url }}"
+      class="related-docs-card"
+    >
+      <span class="related-docs-icon">🧭</span>
+      <span class="related-docs-label">Web Workspace</span>
+      <span class="related-docs-desc"
+        >See browse tree, graph, and editing together</span
+      >
+    </a>
+    <a
+      href="{{ '/docs/QUICKSTART/' | relative_url }}"
+      class="related-docs-card"
+    >
+      <span class="related-docs-icon">🚀</span>
+      <span class="related-docs-label">Quick Start</span>
+      <span class="related-docs-desc"
+        >Try GNO on your own files in minutes</span
+      >
+    </a>
+    {% elsif page.url contains 'QUICKSTART' %}
     <a href="{{ '/docs/CLI/' | relative_url }}" class="related-docs-card">
       <span class="related-docs-icon">📖</span>
       <span class="related-docs-label">CLI Reference</span>

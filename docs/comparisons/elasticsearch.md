@@ -1,8 +1,8 @@
 # GNO vs Elasticsearch
 
-A comparison of GNO with Elasticsearch for document search.
+GNO and Elasticsearch both solve search problems, but they target very different scales and workflows.
 
-Elasticsearch is an enterprise-grade distributed search engine. GNO is a local-first personal knowledge search tool. They serve different use cases.
+Elasticsearch is an enterprise-grade distributed search engine for large teams and production search stacks. GNO is a local-first knowledge workspace for personal, team, and agent-centric document retrieval. They serve different use cases.
 
 ## Quick Summary
 

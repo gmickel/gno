@@ -425,7 +425,7 @@ gno serve --port 8080        # Custom port
 Open `http://localhost:3000` to:
 
 - **Search**: BM25, vector, or hybrid modes with visual results
-- **Browse**: Paginated document list, filter by collection
+- **Browse**: Cross-collection tree workspace with folder detail panes and per-tab browse context
 - **Edit**: Create, edit, and delete documents with live preview
 - **Ask**: AI-powered Q&A with citations
 - **Manage Collections**: Add, remove, and re-index collections
@@ -458,6 +458,17 @@ Full-featured markdown editor with:
 ![GNO Document Viewer](./assets/screenshots/webui-doc-view.jpg)
 
 View documents with full context: outgoing links, backlinks, and AI-powered related notes sidebar.
+
+### Browse Workspace
+
+![GNO Collections](./assets/screenshots/webui-collections.jpg)
+
+Navigate your notes like a real workspace, not just a flat list:
+
+- Cross-collection tree sidebar
+- Folder detail panes
+- Pinned collections and per-tab browse state
+- Direct jump from folder structure into notes
 
 ### Knowledge Graph
 

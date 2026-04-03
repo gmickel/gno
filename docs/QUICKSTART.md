@@ -1,6 +1,6 @@
 # Quickstart
 
-Get searching in under 5 minutes.
+Get from local folders to hybrid search, workspace browsing, and AI answers in under 5 minutes.
 
 > **Prerequisites**: See [Installation](INSTALLATION.md) for setup. Run `gno doctor` to verify.
 

@@ -1,8 +1,8 @@
 # GNO vs GPT4All
 
-**Verdict**: GPT4All is a desktop LLM chat app with LocalDocs; GNO is a search-first CLI tool. Different focus areas.
+**Verdict**: GPT4All is a desktop local LLM chat app with LocalDocs. GNO is a local knowledge workspace with stronger search, browse, graph, CLI, API, and agent integration surfaces.
 
-GPT4All is one of the most popular ways to run local LLMs. It focuses on providing an easy desktop chat experience with optional document context via LocalDocs. GNO focuses on document search and retrieval, with LLMs used for reranking and RAG answers.
+GPT4All is one of the most popular ways to run local LLMs. It focuses on an easy desktop chat experience with optional document context via LocalDocs. GNO focuses on document retrieval and workspace navigation first, with LLMs used for reranking and grounded RAG answers.
 
 ## Get Started
 

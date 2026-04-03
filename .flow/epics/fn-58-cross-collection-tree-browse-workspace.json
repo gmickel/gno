@@ -1,0 +1,16 @@
+{
+  "branch_name": "fn-58-cross-collection-tree-browse-workspace",
+  "created_at": "2026-04-03T19:28:32.724219Z",
+  "depends_on_epics": [
+    "fn-45-desktop-beta-workspace-navigation",
+    "fn-53-desktop-beta-app-level-tabs-and-multi"
+  ],
+  "id": "fn-58-cross-collection-tree-browse-workspace",
+  "next_task": 1,
+  "plan_review_status": "unknown",
+  "plan_reviewed_at": null,
+  "spec_path": ".flow/specs/fn-58-cross-collection-tree-browse-workspace.md",
+  "status": "done",
+  "title": "Cross-Collection Tree Browse Workspace",
+  "updated_at": "2026-04-03T19:53:26.781344Z"
+}

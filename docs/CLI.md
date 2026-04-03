@@ -1,6 +1,6 @@
 # CLI Reference
 
-GNO command-line interface guide.
+Command-line guide for GNO's local knowledge engine and workspace tooling.
 
 > **Full specification**: See [spec/cli.md](../spec/cli.md) for exhaustive command documentation.
 

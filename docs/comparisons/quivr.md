@@ -1,8 +1,8 @@
 # GNO vs Quivr
 
-**Verdict**: GNO is a ready-to-use search tool, Quivr is a Python framework for building RAG applications. GNO excels at personal document search with zero setup, Quivr is designed for developers building custom AI products.
+**Verdict**: Quivr is a framework for building RAG products. GNO is a ready-to-use local knowledge workspace and retrieval engine. Choose Quivr to build a product, GNO to search and work on your own corpus immediately.
 
-Both tools enable semantic search over documents with AI assistance. Quivr is YC-backed and focused on framework flexibility, while GNO prioritizes simplicity and immediate productivity.
+Both tools enable semantic search over documents with AI assistance. Quivr is focused on framework flexibility, while GNO prioritizes immediate productivity, local workflows, and agent-ready retrieval.
 
 ## Get Started
 

@@ -3,30 +3,77 @@ layout: default
 ---
 
 <div class="content content-home">
-  <section class="hero">
+  <section class="hero hero--split">
     <div class="hero-aurora" aria-hidden="true"></div>
-    <span class="hero-badge">
-      {% include icons.html icon="brain" size="16" %} Local Knowledge Engine
-    </span>
-    <h1 class="hero-title">Search Every File You Own</h1>
-    <p class="hero-tagline">
-      Obsidian vaults. Project docs. PDFs. Code. One hybrid search
-      pipeline&mdash;fully local, fully private.
-    </p>
-    <p class="hero-description">
-      Point GNO at any directory on your machine. It indexes
-      everything&mdash;Markdown, PDF, Office docs&mdash;and makes it searchable
-      from the CLI, a web dashboard, or your AI coding agent. No cloud. No API
-      keys. Your data never leaves your machine.
-    </p>
+    <div class="hero-copy">
+      <span class="hero-badge">
+        {% include icons.html icon="brain" size="16" %} Local Knowledge Engine
+      </span>
+      <h1 class="hero-title">
+        Your Notes, Docs, Agents, and Search Stack in One Local Workspace
+      </h1>
+      <p class="hero-tagline">
+        Search, browse, graph, edit, capture, and cite across everything you
+        own.
+      </p>
+      <p class="hero-description">
+        GNO has grown beyond a hybrid search CLI. It is now a full local
+        knowledge workspace with a fast web UI, app-level tabs, cross-collection
+        browse tree, knowledge graph, AI answers, and direct integrations for
+        coding agents and MCP clients.
+      </p>
+      <div class="hero-proof">
+        <div class="hero-proof-item">
+          <span class="hero-proof-value">100%</span>
+          <span class="hero-proof-label">local + private</span>
+        </div>
+        <div class="hero-proof-item">
+          <span class="hero-proof-value">Search + Graph</span>
+          <span class="hero-proof-label">real daily-driver workspace</span>
+        </div>
+        <div class="hero-proof-item">
+          <span class="hero-proof-value">Skills + MCP</span>
+          <span class="hero-proof-label">agent memory without cloud drift</span>
+        </div>
+      </div>
+    </div>
 
-    <div class="hero-demo">
-      <img
-        src="{{ '/assets/demos/hero.gif' | relative_url }}"
-        alt="GNO hybrid search demo showing CLI query with instant results"
-        class="demo-gif"
-        loading="lazy"
-      />
+    <div class="hero-showcase">
+      <div class="hero-showcase-main">
+        <img
+          src="{{ '/assets/screenshots/webui-home.jpg' | relative_url }}"
+          alt="GNO web UI dashboard with search, tabs, and workspace surfaces"
+          loading="lazy"
+        />
+        <div class="hero-showcase-caption">
+          <span>Current workspace</span>
+          <strong>Search, tabs, capture, and health in one shell</strong>
+        </div>
+      </div>
+      <div class="hero-showcase-stack">
+        <div class="hero-showcase-mini">
+          <img
+            src="{{ '/assets/screenshots/webui-collections.jpg' | relative_url }}"
+            alt="GNO cross-collection browse workspace tree and collections view"
+            loading="lazy"
+          />
+          <div class="hero-showcase-caption">
+            <span>Browse</span>
+            <strong>Cross-collection tree + folder detail panes</strong>
+          </div>
+        </div>
+        <div class="hero-showcase-mini">
+          <img
+            src="{{ '/assets/screenshots/webui-graph.jpg' | relative_url }}"
+            alt="GNO knowledge graph visualization"
+            loading="lazy"
+          />
+          <div class="hero-showcase-caption">
+            <span>Graph</span>
+            <strong>Wiki, markdown, and similarity edges</strong>
+          </div>
+        </div>
+      </div>
     </div>
 
     <div class="hero-actions">
@@ -43,6 +90,11 @@ layout: default
       >
         View on GitHub
       </a>
+      <a
+        href="{{ '/features/web-ui/' | relative_url }}"
+        class="btn btn-secondary btn-lg"
+        >Explore the Workspace</a
+      >
     </div>
   </section>
 
@@ -149,6 +201,32 @@ layout: default
         >
         <span class="integration-name">Raycast</span>
       </a>
+    </div>
+  </section>
+
+  <section class="proof-strip">
+    <div class="proof-card">
+      <span class="proof-kicker">For humans</span>
+      <h3>Stop bouncing between Obsidian, Finder, grep, and browser tabs</h3>
+      <p>
+        Search, browse, graph, edit, and capture in one local product surface.
+      </p>
+    </div>
+    <div class="proof-card">
+      <span class="proof-kicker">For agents</span>
+      <h3>Give Claude Code, Codex, Cursor, and MCP clients a real memory</h3>
+      <p>
+        Skills for low-overhead retrieval, MCP for richer tool access, both on
+        your own files.
+      </p>
+    </div>
+    <div class="proof-card">
+      <span class="proof-kicker">For builders</span>
+      <h3>One index, many surfaces</h3>
+      <p>
+        CLI, REST API, SDK, web workspace, desktop shell, and agent integrations
+        all point at the same local knowledge engine.
+      </p>
     </div>
   </section>
 
@@ -277,45 +355,45 @@ layout: default
   </section>
 
   <section class="whats-new">
-    <h2 class="section-title">What's New in v0.26</h2>
+    <h2 class="section-title">What GNO Feels Like Now</h2>
     <div class="whats-new-grid">
       <div class="whats-new-item">
-        <h3>Skills for Every Agent</h3>
+        <h3>Daily-Driver Workspace</h3>
         <p>
-          One-line install for Claude Code, Codex, OpenCode, and OpenClaw. Zero
-          MCP overhead, on-demand retrieval.
+          App-level tabs, quick switcher, safe editing, capture flows, and a
+          browse tree that finally makes the workspace feel spatial.
         </p>
         <a href="{{ '/features/agent-integration/' | relative_url }}"
-          >Learn more &rarr;</a
+          >Workspace tour &rarr;</a
         >
       </div>
       <div class="whats-new-item">
-        <h3>Fine-Tuned Retrieval</h3>
+        <h3>Real Browse + Graph Surfaces</h3>
         <p>
-          Published <code>slim-retrieval-v1</code> on Hugging Face. Train your
-          own with local MLX LoRA, export portable GGUF.
+          Search is no longer the only entry point. Browse collections as a
+          tree, inspect folders directly, and jump through a knowledge graph.
         </p>
-        <a href="{{ '/features/fine-tuned-models/' | relative_url }}"
-          >Learn more &rarr;</a
+        <a href="{{ '/features/graph-view/' | relative_url }}"
+          >See graph view &rarr;</a
         >
       </div>
       <div class="whats-new-item">
-        <h3>SDK &amp; Library Mode</h3>
+        <h3>Agent-Ready by Default</h3>
         <p>
-          Import GNO directly into Bun/TypeScript apps.
-          <code>createGnoClient()</code> for programmatic search without
-          subprocess overhead.
+          Skill installs for coding agents, MCP server for desktop/editor
+          clients, and retrieval that stays grounded in your own local corpus.
         </p>
-        <a href="{{ '/docs/SDK/' | relative_url }}">Learn more &rarr;</a>
+        <a href="{{ '/features/agent-integration/' | relative_url }}"
+          >Agent integration &rarr;</a
+        >
       </div>
       <div class="whats-new-item">
-        <h3>Structured Queries</h3>
+        <h3>Builder Surface Included</h3>
         <p>
-          Multi-line query documents with <code>term:</code>,
-          <code>intent:</code>, and <code>hyde:</code> for explicit retrieval
-          control.
+          SDK, API, CLI, and desktop/web surfaces stay aligned, so internal
+          tools and local products can reuse the same index and retrieval stack.
         </p>
-        <a href="{{ '/docs/SYNTAX/' | relative_url }}">Learn more &rarr;</a>
+        <a href="{{ '/docs/SDK/' | relative_url }}">SDK + API &rarr;</a>
       </div>
     </div>
   </section>

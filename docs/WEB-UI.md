@@ -1,6 +1,6 @@
 # Web UI
 
-A local web dashboard for visual search, document browsing, editing, and AI-powered answers.
+A local knowledge workspace for visual search, cross-collection browsing, graph exploration, safe editing, and AI-powered answers.
 
 ```bash
 gno serve
@@ -19,7 +19,7 @@ The GNO Web UI provides a complete graphical interface to your local knowledge i
 | :-------------- | :-------------------------------------------------------------- |
 | **Dashboard**   | First-run onboarding, health center, stats, and quick capture   |
 | **Search**      | BM25/vector/hybrid + advanced retrieval controls and tag facets |
-| **Browse**      | Paginated documents with collection and date-field sorting      |
+| **Browse**      | Cross-collection tree workspace with folder detail panes        |
 | **Doc View**    | View document with edit/delete actions and tag editing          |
 | **Editor**      | Split-view markdown editor with live preview                    |
 | **Collections** | Add, remove, and re-index collections                           |
@@ -352,13 +352,15 @@ Advanced retrieval panel adds structured controls:
 
 Browse all indexed documents:
 
-- Filter by collection
-- Sort by modified time or extracted frontmatter date fields
-- Paginated results (25 per page)
+- Cross-collection tree sidebar with collection roots and nested folders
+- Folder detail pane with subfolders and direct documents for the selected node
+- Tab-scoped browse state so each workspace tab can keep its own expanded tree context
+- Sort by modified time or extracted frontmatter date fields inside the current folder scope
+- Paginated direct-document results (25 per page)
 - Click any document to view content
-- URL query state (`/browse?collection=...`, `/doc?uri=...`) updates reactively on in-app navigation and browser back/forward
-- Breadcrumb navigation within collections
-- Edit and delete actions on each document
+- URL query state (`/browse?collection=...&path=...`, `/doc?uri=...`) updates reactively on in-app navigation and browser back/forward
+- Breadcrumb navigation within collections and folders
+- Pin collections and favorite documents from the browser itself
 
 ### AI Answers
 

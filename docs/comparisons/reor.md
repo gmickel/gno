@@ -1,8 +1,8 @@
 # GNO vs Reor
 
-**Verdict**: Reor is a note-taking app with automatic linking; GNO is a search tool with CLI and MCP access.
+**Verdict**: Reor is an AI-assisted note-taking app. GNO is a local knowledge workspace that now covers search, browse, graph, and agent access more broadly across existing folders.
 
-Both use local LLMs and vector search, but serve different workflows. Reor is for writing and organizing notes with AI assistance. GNO is for searching existing documents from anywhere (terminal, AI assistants, REST API).
+Both use local LLMs and vector search, but they serve different workflows. Reor is for writing and organizing notes with AI assistance. GNO is for searching, browsing, graphing, and reusing existing documents from anywhere: terminal, web UI, desktop shell, REST API, or AI assistants.
 
 ## Get Started
 

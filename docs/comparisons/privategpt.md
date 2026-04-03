@@ -1,8 +1,13 @@
 # GNO vs PrivateGPT
 
-**Verdict**: Both are privacy-first local RAG solutions. PrivateGPT is a Python-based server with Gradio UI and multiple LLM backend options, GNO is a TypeScript CLI with MCP integration and REST API. Choose PrivateGPT for flexible LLM backends and Python ecosystem, GNO for developer workflows and AI agent integration.
+**Verdict**: Both are privacy-first local RAG solutions. PrivateGPT is a Python-first server/app stack, while GNO is a local knowledge workspace with stronger retrieval UX, agent integration, and TypeScript/Bun tooling.
 
-Both tools enable private document Q&A using local LLMs. Here's how they compare.
+The real choice is "Python-centric local RAG stack" versus "developer-first local workspace that spans CLI, web UI, desktop shell, SDK, and agents."
+
+## At a Glance
+
+- Choose **PrivateGPT** if you want a Python-heavy local RAG server with flexible backend options.
+- Choose **GNO** if you want stronger search quality, simpler local setup, and direct CLI/API/agent workflows on top of your own files.
 
 ## Get Started
 
@@ -62,6 +67,8 @@ PGPT_PROFILES=ollama make run
 
 ## GNO Advantages
 
+GNO is stronger when search quality, lightweight setup, and agent access matter more than backend flexibility.
+
 **CLI-first design**: Full-featured command line for scripting and automation.
 
 ```bash
@@ -87,6 +94,8 @@ gno ask "how does caching work" --depth thorough --answer
 **Skills**: Native integration for Claude Code, Codex, OpenCode, OpenClaw.
 
 ## PrivateGPT Advantages
+
+PrivateGPT is stronger when Python ecosystem fit and backend/provider flexibility matter more than a unified local workspace.
 
 **Multiple LLM backends**: Switch between Ollama, llama.cpp, OpenAI, Azure, Gemini, SageMaker, and vLLM via config profiles.
 

@@ -1,6 +1,6 @@
 # REST API
 
-HTTP API for programmatic access to GNO search and retrieval.
+Programmatic access to the same local knowledge workspace that powers the CLI, web UI, desktop shell, and agent integrations.
 
 ```bash
 gno serve

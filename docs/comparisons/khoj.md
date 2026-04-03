@@ -1,8 +1,13 @@
 # GNO vs Khoj
 
-**Verdict**: Both offer semantic search over local documents with AI chat. Khoj is a full-featured personal AI platform with cloud LLM support, mobile access, and custom agents. GNO is CLI-first with MCP integration and REST API. Choose Khoj for multi-platform personal assistant, GNO for developer workflows and AI agent integration.
+**Verdict**: Khoj is a broader personal AI platform. GNO is a tighter local knowledge workspace for developer workflows, stronger retrieval, CLI/API use, and AI agent integration.
 
-Both tools provide semantic search for local documents with AI-powered RAG features. Here's how they compare.
+The main difference is product shape: Khoj feels like a personal assistant platform, while GNO feels like a local retrieval and workspace engine.
+
+## At a Glance
+
+- Choose **Khoj** if you want a broader assistant-style product with mobile/Notion/cloud-provider flexibility.
+- Choose **GNO** if you want stronger retrieval controls, a local workspace, CLI/API surfaces, and tighter integration with coding agents.
 
 ## Get Started
 
@@ -83,6 +88,8 @@ docker-compose up
 
 ## GNO Advantages
 
+GNO is stronger when the question is "how do I search and reuse my own corpus across tools?" rather than "how do I build a personal AI assistant?"
+
 **CLI-first design**: Full-featured command line for scripting and automation.
 
 ```bash
@@ -114,6 +121,8 @@ gno ask "how does caching work" --depth thorough --answer
 **MIT License**: Permissive licensing for commercial use.
 
 ## Khoj Advantages
+
+Khoj is stronger when the assistant surface itself is the product and you want broad integrations across devices and cloud models.
 
 **Multi-platform access**: Browser, Obsidian, Emacs, Desktop, Phone, WhatsApp integration.
 

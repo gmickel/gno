@@ -1,7 +1,7 @@
 # GNO Documentation Site
 title: GNO
-tagline: Search Every File You Own
-description: "Search every file you own. GNO indexes Obsidian vaults, project docs, PDFs, and Office files with hybrid BM25 + vector search. Works with Claude Code, Codex, Cursor, and 10+ AI agents. 100% local, fully private."
+tagline: Local Knowledge Workspace for Humans and Agents
+description: "GNO is a local knowledge workspace for search, browse, graph, editing, and AI answers across Markdown, PDFs, Office docs, code, and research folders. Works with Claude Code, Codex, Cursor, MCP clients, and local workflows. 100% local, fully private."
 url: "https://www.gno.sh"
 baseurl: ""
 
@@ -19,7 +19,7 @@ social:
     - https://twitter.com/gmickel
 logo: /assets/images/logo.png
 og_image: /assets/images/og/og-image.png
-version: "0.26.0"
+version: "0.33.4"
 lang: en_US
 
 # Build settings

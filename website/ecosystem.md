@@ -1,13 +1,13 @@
 ---
 layout: page
 title: Ecosystem
-headline: Tools That Pair with GNO
-description: Discover Gordon's other open source projects that integrate with GNO for powerful AI-native workflows. CLI tools for structured development, Google Sheets automation, and Outlook control.
-keywords: gno integrations, ai tools, developer tools, claude code, ai workflow, sheets cli, outlook automation
+headline: AI-Native Tools That Pair with GNO
+description: "Discover the companion tools around GNO for AI-native work: structured development, spreadsheet automation, and Outlook workflows that all benefit from local search and grounded retrieval."
+keywords: gno ecosystem, ai native tools, developer workflow tools, claude code tooling, local search integrations, sheets cli, outlook automation
 permalink: /ecosystem/
 ---
 
-GNO is designed to be one piece of a larger AI-native toolkit. These companion projects by the same author work seamlessly with GNO to create powerful, local-first workflows.
+GNO is not meant to live alone. These companion projects extend the same local-first, AI-native workflow around planning, spreadsheet automation, and communication.
 
 ## The Tools
 

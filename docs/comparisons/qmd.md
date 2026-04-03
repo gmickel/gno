@@ -1,8 +1,13 @@
 # GNO vs QMD
 
-**Verdict**: GNO offers more features (Web UI, REST API, RAG answers, multi-format support) while QMD focuses on markdown-only simplicity. Choose GNO for a complete knowledge platform, QMD for lightweight markdown search.
+**Verdict**: QMD focuses on markdown-only simplicity. GNO is a broader local knowledge workspace with web UI, graph, API, agent integrations, and safer multi-format handling on top of stronger retrieval.
 
-Both tools provide semantic search for local documents with AI-powered features. Here's how they compare.
+The tradeoff is lightweight markdown-only focus versus a more complete local workspace and agent memory surface.
+
+## At a Glance
+
+- Choose **QMD** if you want a smaller markdown-only semantic search tool and do not need workspace UI, API, or agent integrations.
+- Choose **GNO** if you want a fuller local product surface around search: browse tree, graph, answers, web UI, SDK, CLI, and agent tooling.
 
 ## Get Started
 

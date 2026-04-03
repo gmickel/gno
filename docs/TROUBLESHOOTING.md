@@ -1,6 +1,6 @@
 # Troubleshooting
 
-Common issues and solutions.
+Common issues and solutions for GNO's local search engine, workspace UI, models, and agent integrations.
 
 ## Quick Diagnosis
 

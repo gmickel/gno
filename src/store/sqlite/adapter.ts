@@ -564,6 +564,39 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
     }
   }
 
+  async listActiveDocumentsForBrowse(
+    collection?: string
+  ): Promise<StoreResult<DocumentRow[]>> {
+    try {
+      const db = this.ensureOpen();
+      const rows = collection
+        ? db
+            .query<DbDocumentRow, [string]>(
+              `SELECT * FROM documents
+               WHERE collection = ? AND active = 1
+               ORDER BY rel_path ASC, id ASC`
+            )
+            .all(collection)
+        : db
+            .query<DbDocumentRow, []>(
+              `SELECT * FROM documents
+               WHERE active = 1
+               ORDER BY collection ASC, rel_path ASC, id ASC`
+            )
+            .all();
+
+      return ok(rows.map(mapDocumentRow));
+    } catch (cause) {
+      return err(
+        "QUERY_FAILED",
+        cause instanceof Error
+          ? cause.message
+          : "Failed to list active browse documents",
+        cause
+      );
+    }
+  }
+
   async getDocumentsByMirrorHashes(
     mirrorHashes: string[],
     options: {
@@ -624,6 +657,8 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
     collection?: string;
     limit: number;
     offset: number;
+    pathPrefix?: string;
+    directChildrenOnly?: boolean;
     tagsAll?: string[];
     tagsAny?: string[];
     since?: string;
@@ -635,7 +670,15 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
   }): Promise<StoreResult<{ documents: DocumentRow[]; total: number }>> {
     try {
       const db = this.ensureOpen();
-      const { collection, limit, offset, tagsAll, tagsAny } = options;
+      const {
+        collection,
+        limit,
+        offset,
+        pathPrefix,
+        directChildrenOnly,
+        tagsAll,
+        tagsAny,
+      } = options;
 
       // Build WHERE conditions and params
       const conditions: string[] = ["d.active = 1"];
@@ -644,6 +687,22 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
       if (collection) {
         conditions.push("d.collection = ?");
         params.push(collection);
+      }
+
+      const normalizedPathPrefix = pathPrefix
+        ?.replaceAll("\\", "/")
+        .replace(/^\/+|\/+$/g, "");
+
+      if (normalizedPathPrefix) {
+        conditions.push("d.rel_path LIKE ?");
+        params.push(`${normalizedPathPrefix}/%`);
+
+        if (directChildrenOnly) {
+          conditions.push("substr(d.rel_path, ?) NOT LIKE '%/%'");
+          params.push(normalizedPathPrefix.length + 2);
+        }
+      } else if (directChildrenOnly) {
+        conditions.push("d.rel_path NOT LIKE '%/%'");
       }
 
       if (options.since) {
@@ -1988,9 +2047,6 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
         // sqlite-vec not loaded
       }
 
-      // Build active filter clause (always active=1 for consistency)
-      const activeClause = "AND d.active = 1";
-
       const wikiTitleExpr = (alias: string): string =>
         `lower(trim(${alias}.title))`;
 
@@ -2063,45 +2119,79 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
           )
         ORDER BY t.id LIMIT 1
       `;
+      interface ResolvedEdgeRow {
+        source_id: number;
+        source_docid: string;
+        target_id: number;
+        target_docid: string;
+        link_type: "wiki" | "markdown";
+        weight: number;
+      }
 
-      // Phase 1: Compute degrees for all documents (unique neighbor count)
-      // Degree = count of unique neighbors (in + out), not raw link occurrences
-      interface DegreeRow {
+      interface UnresolvedCountRow {
+        unresolved: number | null;
+      }
+
+      interface NodeMetaRow {
         id: number;
         docid: string;
         uri: string;
         title: string | null;
         collection: string;
         rel_path: string;
-        degree: number;
       }
 
-      const degreeQuery = `
-        WITH outgoing AS (
-          SELECT DISTINCT
-            d.id as doc_id,
-            CASE dl.link_type
-              WHEN 'wiki' THEN (
-                ${wikiBestMatch(
-                  "COALESCE(dl.target_collection, d.collection)",
-                  "dl.target_ref_norm"
-                )}
-              )
-              WHEN 'markdown' THEN (
-                SELECT t.id FROM documents t
-                WHERE t.active = 1
-                  AND t.collection = COALESCE(dl.target_collection, d.collection)
-                  AND t.rel_path = dl.target_ref_norm
-                ORDER BY t.id LIMIT 1
-              )
-            END as target_id
-          FROM documents d
-          JOIN doc_links dl ON dl.source_doc_id = d.id
-          WHERE 1=1 ${activeClause}
-            ${collection ? "AND d.collection = ?" : ""}
-        ),
-        incoming AS (
-          SELECT DISTINCT
+      const edgeParams: string[] = [];
+      let edgeCollectionClause = "";
+      if (collection) {
+        edgeCollectionClause = "AND src.collection = ? AND tgt.collection = ?";
+        edgeParams.push(collection, collection);
+      }
+
+      const resolvedEdgeQuery = `
+        SELECT
+          src.id as source_id,
+          src.docid as source_docid,
+          tgt.id as target_id,
+          tgt.docid as target_docid,
+          dl.link_type,
+          COUNT(*) as weight
+        FROM documents src
+        JOIN doc_links dl ON dl.source_doc_id = src.id
+        JOIN documents tgt ON tgt.id = CASE dl.link_type
+          WHEN 'wiki' THEN (${wikiBestMatch(
+            "COALESCE(dl.target_collection, src.collection)",
+            "dl.target_ref_norm"
+          )})
+          WHEN 'markdown' THEN (
+            SELECT md.id FROM documents md
+            WHERE md.active = 1
+              AND md.collection = COALESCE(dl.target_collection, src.collection)
+              AND md.rel_path = dl.target_ref_norm
+            ORDER BY md.id LIMIT 1
+          )
+        END
+        WHERE src.active = 1 AND tgt.active = 1
+          ${edgeCollectionClause}
+        GROUP BY src.id, src.docid, tgt.id, tgt.docid, dl.link_type
+        ORDER BY weight DESC, src.id ASC, tgt.id ASC
+      `;
+
+      const resolvedEdgeRows = db
+        .query<ResolvedEdgeRow, string[]>(resolvedEdgeQuery)
+        .all(...edgeParams);
+
+      const unresolvedParams: string[] = [];
+      let unresolvedCollectionClause = "";
+      if (collection) {
+        unresolvedCollectionClause = "AND src.collection = ?";
+        unresolvedParams.push(collection);
+      }
+      const unresolvedQuery = `
+        SELECT
+          SUM(CASE WHEN target_id IS NULL THEN 1 ELSE 0 END) as unresolved
+        FROM (
+          SELECT
             CASE dl.link_type
               WHEN 'wiki' THEN (
                 ${wikiBestMatch(
@@ -2116,238 +2206,147 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
                   AND t.rel_path = dl.target_ref_norm
                 ORDER BY t.id LIMIT 1
               )
-            END as doc_id,
-            src.id as source_id
+            END as target_id
           FROM documents src
           JOIN doc_links dl ON dl.source_doc_id = src.id
           WHERE src.active = 1
-            ${collection ? "AND COALESCE(dl.target_collection, src.collection) = ?" : ""}
-        ),
-        degrees AS (
-          SELECT doc_id, COUNT(DISTINCT target_id) as out_deg
-          FROM outgoing WHERE target_id IS NOT NULL GROUP BY doc_id
-        ),
-        in_degrees AS (
-          SELECT doc_id, COUNT(DISTINCT source_id) as in_deg
-          FROM incoming WHERE doc_id IS NOT NULL GROUP BY doc_id
+            ${unresolvedCollectionClause}
         )
-        SELECT
-          d.id, d.docid, d.uri, d.title, d.collection, d.rel_path,
-          COALESCE(deg.out_deg, 0) + COALESCE(indeg.in_deg, 0) as degree
-        FROM documents d
-        LEFT JOIN degrees deg ON deg.doc_id = d.id
-        LEFT JOIN in_degrees indeg ON indeg.doc_id = d.id
-        WHERE 1=1 ${activeClause}
-          ${collection ? "AND d.collection = ?" : ""}
-          ${linkedOnly ? "AND (deg.out_deg > 0 OR indeg.in_deg > 0)" : ""}
-        ORDER BY degree DESC, d.id ASC
-        LIMIT ?
       `;
+      const unresolvedRow = db
+        .query<UnresolvedCountRow, string[]>(unresolvedQuery)
+        .get(...unresolvedParams);
+      const totalEdgesUnresolved = unresolvedRow?.unresolved ?? 0;
 
-      // Build query params
-      const params: (string | number)[] = [];
-      if (collection) {
-        params.push(collection); // for outgoing CTE
-        params.push(collection); // for incoming CTE
-        params.push(collection); // for main query
+      const outNeighbors = new Map<number, Set<number>>();
+      const inNeighbors = new Map<number, Set<number>>();
+      const connectedNodeIds = new Set<number>();
+
+      for (const row of resolvedEdgeRows) {
+        connectedNodeIds.add(row.source_id);
+        connectedNodeIds.add(row.target_id);
+
+        const sourceSet = outNeighbors.get(row.source_id) ?? new Set<number>();
+        sourceSet.add(row.target_id);
+        outNeighbors.set(row.source_id, sourceSet);
+
+        const targetSet = inNeighbors.get(row.target_id) ?? new Set<number>();
+        targetSet.add(row.source_id);
+        inNeighbors.set(row.target_id, targetSet);
       }
-      params.push(limitNodes); // LIMIT param
 
-      const degreeRows = db
-        .query<DegreeRow, (string | number)[]>(degreeQuery)
-        .all(...params);
-
-      // Get total count with a separate query (only if we hit the limit)
-      let totalNodes = degreeRows.length;
-      if (degreeRows.length === limitNodes) {
-        const countParams: (string | number)[] = [];
-        if (collection) {
-          countParams.push(collection); // outgoing CTE
-          countParams.push(collection); // incoming CTE
-          countParams.push(collection); // main query
-        }
-        const countQuery = `
-          WITH outgoing AS (
-            SELECT DISTINCT
-              d.id as doc_id,
-              CASE dl.link_type
-                WHEN 'wiki' THEN (
-                  ${wikiBestMatch(
-                    "COALESCE(dl.target_collection, d.collection)",
-                    "dl.target_ref_norm"
-                  )}
-                )
-                WHEN 'markdown' THEN (
-                  SELECT t.id FROM documents t
-                  WHERE t.active = 1
-                    AND t.collection = COALESCE(dl.target_collection, d.collection)
-                    AND t.rel_path = dl.target_ref_norm
-                  ORDER BY t.id LIMIT 1
-                )
-              END as target_id
-            FROM documents d
-            JOIN doc_links dl ON dl.source_doc_id = d.id
-            WHERE 1=1 ${activeClause}
-              ${collection ? "AND d.collection = ?" : ""}
-          ),
-          incoming AS (
-            SELECT DISTINCT
-              CASE dl.link_type
-                WHEN 'wiki' THEN (
-                  ${wikiBestMatch(
-                    "COALESCE(dl.target_collection, src.collection)",
-                    "dl.target_ref_norm"
-                  )}
-                )
-                WHEN 'markdown' THEN (
-                  SELECT t.id FROM documents t
-                  WHERE t.active = 1
-                    AND t.collection = COALESCE(dl.target_collection, src.collection)
-                    AND t.rel_path = dl.target_ref_norm
-                  ORDER BY t.id LIMIT 1
-                )
-              END as doc_id,
-              src.id as source_id
-            FROM documents src
-            JOIN doc_links dl ON dl.source_doc_id = src.id
-            WHERE src.active = 1
-              ${collection ? "AND COALESCE(dl.target_collection, src.collection) = ?" : ""}
-          ),
-          degrees AS (
-            SELECT doc_id, COUNT(DISTINCT target_id) as out_deg
-            FROM outgoing WHERE target_id IS NOT NULL GROUP BY doc_id
-          ),
-          in_degrees AS (
-            SELECT doc_id, COUNT(DISTINCT source_id) as in_deg
-            FROM incoming WHERE doc_id IS NOT NULL GROUP BY doc_id
+      const connectedIdList = [...connectedNodeIds].sort((a, b) => a - b);
+      const connectedMetaMap = new Map<number, NodeMetaRow>();
+      if (connectedIdList.length > 0) {
+        const placeholders = connectedIdList.map(() => "?").join(",");
+        const connectedRows = db
+          .query<NodeMetaRow, number[]>(
+            `SELECT id, docid, uri, title, collection, rel_path
+             FROM documents
+             WHERE id IN (${placeholders})`
           )
-          SELECT COUNT(*) as cnt
-          FROM documents d
-          LEFT JOIN degrees deg ON deg.doc_id = d.id
-          LEFT JOIN in_degrees indeg ON indeg.doc_id = d.id
-          WHERE 1=1 ${activeClause}
-            ${collection ? "AND d.collection = ?" : ""}
-            ${linkedOnly ? "AND (deg.out_deg > 0 OR indeg.in_deg > 0)" : ""}
-        `;
-        const cnt = db
-          .query<{ cnt: number }, (string | number)[]>(countQuery)
-          .get(...countParams);
-        totalNodes = cnt?.cnt ?? degreeRows.length;
+          .all(...connectedIdList);
+        for (const row of connectedRows) {
+          connectedMetaMap.set(row.id, row);
+        }
       }
 
-      const truncatedNodes = totalNodes > limitNodes;
-      const selectedRows = degreeRows;
-      const nodeIds = new Set(selectedRows.map((r) => r.id));
-      const nodeDocids = new Set(selectedRows.map((r) => r.docid));
+      const connectedNodes = connectedIdList
+        .map((id) => {
+          const meta = connectedMetaMap.get(id);
+          if (!meta) {
+            return null;
+          }
+          return {
+            ...meta,
+            degree:
+              (outNeighbors.get(id)?.size ?? 0) +
+              (inNeighbors.get(id)?.size ?? 0),
+          };
+        })
+        .filter((row): row is NodeMetaRow & { degree: number } => row !== null)
+        .sort((a, b) => b.degree - a.degree || a.id - b.id);
 
-      // Build nodes array
-      const nodes = selectedRows.map((r) => ({
-        id: r.docid,
-        uri: r.uri,
-        title: r.title,
-        collection: r.collection,
-        relPath: r.rel_path,
-        degree: r.degree,
+      let totalNodes = linkedOnly ? connectedNodes.length : 0;
+      if (!linkedOnly) {
+        const countParams: string[] = [];
+        let countClause = "";
+        if (collection) {
+          countClause = "WHERE active = 1 AND collection = ?";
+          countParams.push(collection);
+        } else {
+          countClause = "WHERE active = 1";
+        }
+        const countRow = db
+          .query<{ cnt: number }, string[]>(
+            `SELECT COUNT(*) as cnt FROM documents ${countClause}`
+          )
+          .get(...countParams);
+        totalNodes = countRow?.cnt ?? connectedNodes.length;
+      }
+
+      const selectedNodeRows = [...connectedNodes];
+      if (!linkedOnly && selectedNodeRows.length < limitNodes) {
+        const remaining = limitNodes - selectedNodeRows.length;
+        const excluded = selectedNodeRows.map((row) => row.id);
+        const isolatedParams: (string | number)[] = [];
+        const conditions = ["active = 1"];
+        if (collection) {
+          conditions.push("collection = ?");
+          isolatedParams.push(collection);
+        }
+        if (excluded.length > 0) {
+          const placeholders = excluded.map(() => "?").join(",");
+          conditions.push(`id NOT IN (${placeholders})`);
+          isolatedParams.push(...excluded);
+        }
+        isolatedParams.push(remaining);
+
+        const isolatedRows = db
+          .query<NodeMetaRow, (string | number)[]>(
+            `SELECT id, docid, uri, title, collection, rel_path
+             FROM documents
+             WHERE ${conditions.join(" AND ")}
+             ORDER BY id ASC
+             LIMIT ?`
+          )
+          .all(...isolatedParams)
+          .map((row) => ({ ...row, degree: 0 }));
+        selectedNodeRows.push(...isolatedRows);
+      }
+
+      const nodes = selectedNodeRows.slice(0, limitNodes).map((row) => ({
+        id: row.docid,
+        uri: row.uri,
+        title: row.title,
+        collection: row.collection,
+        relPath: row.rel_path,
+        degree: row.degree,
       }));
 
-      // Phase 2: Fetch edges restricted to selected node IDs
-      // Only edges where BOTH source and target are in our node set
-      interface EdgeRow {
-        source_docid: string;
-        target_docid: string;
-        link_type: "wiki" | "markdown";
-        weight: number;
-      }
+      const truncatedNodes = totalNodes > nodes.length;
+      const selectedDocids = new Set(nodes.map((node) => node.id));
+      const nodeDocids = new Set(nodes.map((node) => node.id));
 
-      let totalEdgesUnresolved = 0;
       const edgeMap = new Map<
         string,
         { type: "wiki" | "markdown" | "similar"; weight: number }
       >();
-
-      if (nodeIds.size > 0) {
-        // Interpolate numeric IDs to avoid SQLite parameter limits on large lists.
-        // nodeIds are sourced from DB results, so injection risk is not user-controlled.
-        const nodeIdList = [...nodeIds].join(",");
-
-        // Count total edges and unresolved for meta
-        interface CountRow {
-          total: number;
-          unresolved: number;
+      for (const row of resolvedEdgeRows) {
+        if (
+          !selectedDocids.has(row.source_docid) ||
+          !selectedDocids.has(row.target_docid)
+        ) {
+          continue;
         }
-
-        const countQuery = `
-          SELECT
-            COUNT(*) as total,
-            SUM(CASE WHEN target_id IS NULL THEN 1 ELSE 0 END) as unresolved
-          FROM (
-            SELECT
-              dl.source_doc_id,
-              CASE dl.link_type
-                WHEN 'wiki' THEN (
-                  ${wikiBestMatch(
-                    "COALESCE(dl.target_collection, d.collection)",
-                    "dl.target_ref_norm"
-                  )}
-                )
-                WHEN 'markdown' THEN (
-                  SELECT t.id FROM documents t
-                  WHERE t.active = 1
-                    AND t.collection = COALESCE(dl.target_collection, d.collection)
-                    AND t.rel_path = dl.target_ref_norm
-                  ORDER BY t.id LIMIT 1
-                )
-              END as target_id
-            FROM documents d
-            JOIN doc_links dl ON dl.source_doc_id = d.id
-            WHERE d.id IN (${nodeIdList}) ${activeClause}
-          )
-        `;
-
-        const countRow = db.query<CountRow, []>(countQuery).get();
-        totalEdgesUnresolved = countRow?.unresolved ?? 0;
-
-        // Fetch collapsed edges (group by source, target, type with count as weight)
-        const edgeQuery = `
-          SELECT
-            src.docid as source_docid,
-            tgt.docid as target_docid,
-            dl.link_type,
-            COUNT(*) as weight
-          FROM documents src
-          JOIN doc_links dl ON dl.source_doc_id = src.id
-          JOIN documents tgt ON tgt.id = CASE dl.link_type
-            WHEN 'wiki' THEN (${wikiBestMatch(
-              "COALESCE(dl.target_collection, src.collection)",
-              "dl.target_ref_norm"
-            )})
-            WHEN 'markdown' THEN (
-              SELECT md.id FROM documents md
-              WHERE md.active = 1
-                AND md.collection = COALESCE(dl.target_collection, src.collection)
-                AND md.rel_path = dl.target_ref_norm
-              ORDER BY md.id LIMIT 1
-            )
-          END
-          WHERE src.id IN (${nodeIdList})
-            AND tgt.id IN (${nodeIdList})
-            ${activeClause.replace("d.", "src.")}
-          GROUP BY src.docid, tgt.docid, dl.link_type
-          ORDER BY weight DESC, src.docid, tgt.docid
-        `;
-
-        const edgeRows = db.query<EdgeRow, []>(edgeQuery).all();
-
-        for (const row of edgeRows) {
-          const key = `${row.source_docid}:${row.target_docid}:${row.link_type}`;
-          edgeMap.set(key, { type: row.link_type, weight: row.weight });
-        }
+        const key = `${row.source_docid}:${row.target_docid}:${row.link_type}`;
+        edgeMap.set(key, { type: row.link_type, weight: row.weight });
       }
 
       // Phase 3: Similarity edges (if requested)
       let similarTruncatedByComputeBudget = false;
 
-      if (includeSimilar && nodeIds.size > 0 && similarAvailable) {
+      if (includeSimilar && nodeDocids.size > 0 && similarAvailable) {
         // Cap similarity work to avoid blocking the server event loop
         const SIMILARITY_NODE_CAP = 200;
         const nodesForSimilarity = [...nodeDocids].slice(

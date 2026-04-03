@@ -1,12 +1,13 @@
 ---
 layout: page
 title: Frequently Asked Questions
-description: Common questions about GNO local search. Installation, configuration, search modes, AI answers, MCP integration, and troubleshooting.
-keywords: gno faq, local search questions, gno help, common issues, how to use gno
+headline: Answers for Search, Workspace, and Agent Use
+description: Common questions about GNO's local knowledge workspace. Covers installation, hybrid search, web UI, browse tree, AI answers, MCP, skills, privacy, and troubleshooting.
+keywords: gno faq, local knowledge workspace, hybrid search faq, gno web ui, gno mcp, gno skills, local rag help
 permalink: /faq/
 ---
 
-Find answers to common questions about GNO.
+Find answers to common questions about GNO's search engine, workspace UI, and agent integrations.
 
 {% for category in site.data.faq %}
 

@@ -39,6 +39,11 @@ async function main(): Promise<void> {
     join(collectionDir, "smoke-note.md"),
     "# Smoke Test Note\n\nThis note powers the browser smoke test.\n\nsmoke-search-needle\n"
   );
+  await mkdir(join(collectionDir, "projects"), { recursive: true });
+  await Bun.write(
+    join(collectionDir, "projects", "roadmap.md"),
+    "# Roadmap\n\nBrowse tree smoke folder.\n"
+  );
 
   const originalEnv = {
     GNO_CONFIG_DIR: process.env.GNO_CONFIG_DIR,
@@ -124,6 +129,17 @@ async function main(): Promise<void> {
       await waitForHealthy(baseUrl);
 
       const page = await browser.newPage();
+      await page.goto(`${baseUrl}/browse?collection=notes`, {
+        waitUntil: "networkidle",
+      });
+      await page.getByRole("tree", { name: "Browse tree" }).waitFor();
+      await page.getByRole("treeitem", { name: /projects/i }).click();
+      await page.waitForURL(/\/browse\?collection=notes&path=projects/);
+      await page
+        .locator("table")
+        .getByText("Roadmap", { exact: true })
+        .waitFor();
+
       await page.goto(`${baseUrl}/search`, { waitUntil: "networkidle" });
       await page.getByRole("textbox").fill("smoke-search-needle");
       await page

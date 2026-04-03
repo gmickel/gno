@@ -15,6 +15,7 @@ import homepage from "./public/index.html";
 import {
   handleActiveJob,
   handleAsk,
+  handleBrowseTree,
   handleCapabilities,
   handleCollections,
   handleConnectors,
@@ -255,6 +256,10 @@ export async function startServer(
               isDev
             );
           },
+        },
+        "/api/browse/tree": {
+          GET: async () =>
+            withSecurityHeaders(await handleBrowseTree(store), isDev),
         },
         "/api/docs/:id/deactivate": {
           POST: async (req: Request) => {

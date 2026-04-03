@@ -1,8 +1,8 @@
 # GNO vs Kotaemon
 
-**Verdict**: Both offer hybrid search with reranking. Kotaemon is UI-first with Gradio and advanced citation previews, GNO is CLI-first with MCP integration and REST API. Choose Kotaemon for document Q&A with visual citations, GNO for developer workflows and AI agent integration.
+**Verdict**: Kotaemon is UI-first for document Q&A. GNO is a local knowledge workspace with stronger CLI/API/agent surfaces and a broader day-to-day workflow around search, browse, graph, and editing.
 
-Both tools provide semantic search for local documents with AI-powered RAG features. Here's how they compare.
+Both tools provide semantic search for local documents with AI-powered RAG features. Here's how they compare when the question is "document Q&A app" versus "search + workspace + agent memory."
 
 ## Get Started
 

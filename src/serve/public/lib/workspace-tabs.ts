@@ -2,11 +2,16 @@ export interface WorkspaceTab {
   id: string;
   label: string;
   location: string;
+  browseState?: WorkspaceTabBrowseState;
 }
 
 export interface WorkspaceState {
   tabs: WorkspaceTab[];
   activeTabId: string;
+}
+
+export interface WorkspaceTabBrowseState {
+  expandedNodeIds: string[];
 }
 
 export interface WorkspaceStorageLike {
@@ -43,6 +48,13 @@ function getLocationLabel(location: string): string {
       return "Search";
     case "/browse": {
       const collection = params.get("collection");
+      const browsePath = (params.get("path") ?? "")
+        .replace(/^\/+|\/+$/g, "")
+        .trim();
+      if (collection && browsePath) {
+        const leaf = browsePath.split("/").at(-1) ?? browsePath;
+        return `Browse: ${collection} / ${leaf}`;
+      }
       return collection ? `Browse: ${collection}` : "Browse";
     }
     case "/ask":
@@ -68,6 +80,19 @@ function getLocationLabel(location: string): string {
   }
 }
 
+function isWorkspaceTabBrowseState(
+  value: unknown
+): value is WorkspaceTabBrowseState {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+  const candidate = value as Record<string, unknown>;
+  return (
+    Array.isArray(candidate.expandedNodeIds) &&
+    candidate.expandedNodeIds.every((entry) => typeof entry === "string")
+  );
+}
+
 function isWorkspaceTab(value: unknown): value is WorkspaceTab {
   if (!value || typeof value !== "object") {
     return false;
@@ -76,7 +101,9 @@ function isWorkspaceTab(value: unknown): value is WorkspaceTab {
   return (
     typeof candidate.id === "string" &&
     typeof candidate.label === "string" &&
-    typeof candidate.location === "string"
+    typeof candidate.location === "string" &&
+    (candidate.browseState === undefined ||
+      isWorkspaceTabBrowseState(candidate.browseState))
   );
 }
 
@@ -184,6 +211,37 @@ export function createWorkspaceTab(
   return {
     tabs: [...state.tabs, tab],
     activeTabId: tab.id,
+  };
+}
+
+export function updateActiveTabBrowseState(
+  state: WorkspaceState,
+  nextBrowseState:
+    | WorkspaceTabBrowseState
+    | ((current: WorkspaceTabBrowseState) => WorkspaceTabBrowseState)
+): WorkspaceState {
+  const nextTabs = state.tabs.map((tab) => {
+    if (tab.id !== state.activeTabId) {
+      return tab;
+    }
+
+    const currentBrowseState: WorkspaceTabBrowseState = tab.browseState ?? {
+      expandedNodeIds: [],
+    };
+    const resolvedBrowseState =
+      typeof nextBrowseState === "function"
+        ? nextBrowseState(currentBrowseState)
+        : nextBrowseState;
+
+    return {
+      ...tab,
+      browseState: resolvedBrowseState,
+    };
+  });
+
+  return {
+    tabs: nextTabs,
+    activeTabId: state.activeTabId,
   };
 }
 

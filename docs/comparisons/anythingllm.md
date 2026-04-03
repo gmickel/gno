@@ -1,8 +1,13 @@
 # GNO vs AnythingLLM
 
-**Verdict**: Both have MCP support. AnythingLLM is GUI-first with workspaces, agents, and multi-user for teams. GNO is CLI-first, lightweight, and privacy-focused for developers.
+**Verdict**: AnythingLLM is a GUI-first multi-user RAG app. GNO is a local knowledge workspace for developers and agent-heavy teams that want stronger retrieval, safer local workflows, and first-class CLI/API/agent access.
 
-AnythingLLM is a full-stack RAG application with workspace isolation, no-code agent builder, and team collaboration. GNO is a local knowledge engine focused on search quality, CLI workflows, and AI agent integration.
+AnythingLLM is a full-stack RAG application with workspace isolation, no-code agent builder, and team collaboration. GNO is a local knowledge engine and workspace focused on retrieval quality, local-first operation, CLI workflows, web/desktop browsing, and AI agent integration.
+
+## At a Glance
+
+- Choose **AnythingLLM** if you want a collaborative, GUI-heavy RAG application with broad provider and vector-store choice.
+- Choose **GNO** if you want stronger search quality, simpler local setup, and developer/agent workflows built into the product surface.
 
 ## Get Started
 

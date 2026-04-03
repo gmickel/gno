@@ -1,6 +1,6 @@
 # SDK
 
-Import GNO directly into another Bun or TypeScript app.
+Import GNO directly into another Bun or TypeScript app and reuse the same local search, retrieval, and indexing engine in-process.
 
 No CLI subprocesses. No local server required.
 

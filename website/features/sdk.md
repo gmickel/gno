@@ -1,9 +1,9 @@
 ---
 layout: feature
 title: SDK
-headline: Embed GNO Directly
-description: Import GNO into another Bun or TypeScript app. Open a store with inline config, run retrieval directly, and trigger update/index flows without CLI subprocesses or a local server.
-keywords: gno sdk, bun sdk, typescript sdk, local search sdk, retrieval sdk
+headline: Embed the Local Knowledge Engine Directly
+description: Import GNO into another Bun or TypeScript app. Reuse the same search, retrieval, document, and indexing engine directly in-process without a CLI subprocess or local server.
+keywords: gno sdk, bun sdk, typescript sdk, local search sdk, retrieval sdk, local knowledge sdk
 icon: code
 slug: sdk
 permalink: /features/sdk/

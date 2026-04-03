@@ -1,9 +1,9 @@
 ---
 layout: feature
 title: Tag System
-headline: Classify and Filter Your Knowledge
-description: Add tags to documents for instant filtering. Automatic frontmatter extraction, hierarchical tags, and powerful AND/OR filters across CLI, Web UI, and MCP.
-keywords: document tags, tagging system, metadata filtering, hierarchical tags, frontmatter tags, tag autocomplete
+headline: Frontmatter Tags That Stay Useful Everywhere
+description: Add tags to documents for instant filtering across CLI, Web UI, and MCP. GNO supports frontmatter extraction, hierarchical tags, tag autocomplete, and AND/OR retrieval filters.
+keywords: document tags, tagging system, metadata filtering, hierarchical tags, frontmatter tags, tag autocomplete, local search filters
 icon: tag
 slug: tags
 permalink: /features/tags/

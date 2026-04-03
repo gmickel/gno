@@ -1,9 +1,9 @@
 ---
 layout: feature
 title: Daemon Mode
-headline: Keep GNO Fresh Without the Web UI
-description: Run GNO as a headless long-running watcher process. gno daemon keeps the same watch, sync, and embedding loop alive for terminal, agent, and local automation workflows.
-keywords: gno daemon, continuous indexing, headless watcher, local daemon, background indexing, terminal workflow
+headline: Keep the Index Fresh Without Opening the Workspace
+description: Run GNO as a headless long-running watcher process. gno daemon keeps the same watch, sync, and embedding loop alive for terminal, agent, and local automation workflows without the web UI.
+keywords: gno daemon, continuous indexing, headless watcher, local daemon, background indexing, terminal workflow, agent memory daemon
 icon: rocket
 slug: daemon-mode
 permalink: /features/daemon-mode/

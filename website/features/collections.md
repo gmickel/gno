@@ -1,9 +1,9 @@
 ---
 layout: feature
 title: Collections
-headline: Organize Your Knowledge
-description: Group documents by source directory with patterns, includes, and excludes. Search specific collections or across everything.
-keywords: document collections, organize documents, file patterns, search scope, document groups
+headline: Turn Folders Into a Searchable Workspace
+description: Group documents by source directory with patterns, includes, excludes, and collection-aware browsing. Collections are the foundation for search scope, workspace tree navigation, and per-source context.
+keywords: document collections, local workspace folders, search scope, browse tree, collection management, file patterns
 icon: collections
 slug: collections
 permalink: /features/collections/

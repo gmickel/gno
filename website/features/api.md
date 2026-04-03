@@ -1,9 +1,9 @@
 ---
 layout: feature
 title: REST API
-headline: Build Anything with Your Knowledge
-description: HTTP API for programmatic access to GNO search and retrieval. Build custom tools, automate workflows, integrate with any language.
-keywords: gno api, rest api, http api, search api, local api, programmatic search
+headline: Programmatic Access to the Same Local Workspace
+description: HTTP API for GNO search, retrieval, documents, graph data, model state, and workspace automation. Build custom tools, internal apps, and local AI workflows in any language.
+keywords: gno api, local search api, retrieval api, document api, knowledge graph api, local rag api, programmatic search
 icon: code
 slug: api
 permalink: /features/api/
