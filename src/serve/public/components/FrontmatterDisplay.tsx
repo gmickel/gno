@@ -29,6 +29,103 @@ interface ParsedFrontmatter {
   body: string;
 }
 
+const INLINE_ARRAY_REGEX = /^\[([^\]]*)\]$/;
+
+function normalizeScalar(value: string): unknown {
+  const trimmed = value.trim();
+  if (
+    (trimmed.startsWith('"') && trimmed.endsWith('"')) ||
+    (trimmed.startsWith("'") && trimmed.endsWith("'"))
+  ) {
+    return trimmed.slice(1, -1);
+  }
+  if (/^-?\d+\.?\d*$/.test(trimmed)) {
+    return Number.parseFloat(trimmed);
+  }
+  if (trimmed === "true") return true;
+  if (trimmed === "false") return false;
+  return trimmed;
+}
+
+function parseYamlFrontmatterBlock(yamlBlock: string): Record<string, unknown> {
+  const data: Record<string, unknown> = {};
+  const lines = yamlBlock.split("\n");
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i]?.trimEnd();
+    if (!line || line.trimStart().startsWith("#")) {
+      continue;
+    }
+
+    const match = line.match(/^([^:]+):\s*(.*)$/);
+    if (!match) {
+      continue;
+    }
+
+    const [, rawKey = "", rawValue = ""] = match;
+    const key = rawKey.trim();
+    const value = rawValue.trim();
+
+    const inlineArrayMatch = INLINE_ARRAY_REGEX.exec(value);
+    if (inlineArrayMatch?.[1]) {
+      data[key] = inlineArrayMatch[1]
+        .split(",")
+        .map((item) => normalizeScalar(item))
+        .filter((item) => item !== "");
+      continue;
+    }
+
+    if (value.length === 0) {
+      const arrayItems: unknown[] = [];
+      let multilineValue: string[] = [];
+      let multilineMode = false;
+
+      for (let j = i + 1; j < lines.length; j++) {
+        const nextLine = lines[j];
+        if (nextLine === undefined) {
+          break;
+        }
+
+        const trimmedNext = nextLine.trimEnd();
+        if (!trimmedNext) {
+          if (multilineMode) {
+            multilineValue.push("");
+          }
+          continue;
+        }
+
+        if (!/^\s/.test(nextLine)) {
+          break;
+        }
+
+        const arrayMatch = nextLine.match(/^\s*-\s*(.*)$/);
+        if (arrayMatch) {
+          arrayItems.push(normalizeScalar(arrayMatch[1] ?? ""));
+          i = j;
+          continue;
+        }
+
+        multilineMode = true;
+        multilineValue.push(nextLine.trim());
+        i = j;
+      }
+
+      if (arrayItems.length > 0) {
+        data[key] = arrayItems;
+      } else if (multilineValue.length > 0) {
+        data[key] = multilineValue.join("\n");
+      } else {
+        data[key] = "";
+      }
+      continue;
+    }
+
+    data[key] = normalizeScalar(value);
+  }
+
+  return data;
+}
+
 /**
  * Parse YAML frontmatter from markdown content.
  * Returns empty data if no frontmatter found.
@@ -49,69 +146,25 @@ export function parseFrontmatter(content: string): ParsedFrontmatter {
 
   const yamlBlock = trimmed.slice(4, endIndex).trim();
   const body = trimmed.slice(endIndex + 4).trimStart();
-
-  // Parse YAML manually (simple key: value pairs)
-  const data: Record<string, unknown> = {};
-  let currentKey: string | null = null;
-  let multilineValue: string[] = [];
-
-  for (const line of yamlBlock.split("\n")) {
-    // Check for multiline continuation (starts with spaces and not a new key)
-    if (currentKey && line.match(/^\s+/) && !line.includes(":")) {
-      multilineValue.push(line.trim());
-      continue;
-    }
-
-    // Save previous multiline value
-    if (currentKey && multilineValue.length > 0) {
-      const existing = data[currentKey];
-      if (typeof existing === "string" && existing.endsWith("|")) {
-        data[currentKey] = multilineValue.join("\n");
-      } else if (typeof existing === "string") {
-        data[currentKey] = `${existing}\n${multilineValue.join("\n")}`;
-      } else {
-        data[currentKey] = multilineValue.join("\n");
-      }
-      multilineValue = [];
-    }
-
-    // Parse new key: value
-    const match = line.match(/^([^:]+):\s*(.*)$/);
-    if (match) {
-      const [, rawKey = "", rawValue = ""] = match;
-      currentKey = rawKey.trim();
-      let value: unknown = rawValue.trim();
-
-      // Remove surrounding quotes
-      if (
-        (value as string).startsWith('"') &&
-        (value as string).endsWith('"')
-      ) {
-        value = (value as string).slice(1, -1);
-      }
-
-      // Parse numbers
-      if (/^-?\d+\.?\d*$/.test(value as string)) {
-        value = Number.parseFloat(value as string);
-      }
-
-      data[currentKey] = value;
+  if (typeof Bun !== "undefined" && Bun.YAML) {
+    try {
+      const parsed = Bun.YAML.parse(yamlBlock);
+      return {
+        data:
+          parsed && typeof parsed === "object"
+            ? (parsed as Record<string, unknown>)
+            : {},
+        body,
+      };
+    } catch {
+      // Fall through to the browser-safe parser below.
     }
   }
 
-  // Handle trailing multiline
-  if (currentKey && multilineValue.length > 0) {
-    const existing = data[currentKey];
-    if (typeof existing === "string" && existing.endsWith("|")) {
-      data[currentKey] = multilineValue.join("\n");
-    } else if (typeof existing === "string") {
-      data[currentKey] = `${existing}\n${multilineValue.join("\n")}`;
-    } else {
-      data[currentKey] = multilineValue.join("\n");
-    }
-  }
-
-  return { data, body };
+  return {
+    data: parseYamlFrontmatterBlock(yamlBlock),
+    body,
+  };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -236,9 +289,55 @@ interface ValueDisplayProps {
 const ValueDisplay: FC<ValueDisplayProps> = ({ keyName, value }) => {
   // Handle arrays (tags, etc.)
   if (Array.isArray(value)) {
+    const normalizedValues = value.filter(
+      (item): item is string | number =>
+        typeof item === "string" || typeof item === "number"
+    );
+
+    if (normalizedValues.length === 0) {
+      return null;
+    }
+
+    if (isTagsKey(keyName)) {
+      return (
+        <div className="flex flex-wrap gap-1.5">
+          {normalizedValues.map((item, i) => (
+            <Badge
+              className="rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5 font-mono text-[11px] text-primary"
+              key={`${item}-${i}`}
+              variant="outline"
+            >
+              {String(item)}
+            </Badge>
+          ))}
+        </div>
+      );
+    }
+
+    if (
+      normalizedValues.every((item) => typeof item === "string" && isUrl(item))
+    ) {
+      return (
+        <div className="space-y-2">
+          {normalizedValues.map((item, i) => (
+            <a
+              className="flex max-w-full items-start gap-1 text-primary hover:underline"
+              href={String(item)}
+              key={`${item}-${i}`}
+              rel="noopener noreferrer"
+              target="_blank"
+            >
+              <span className="break-all">{String(item)}</span>
+              <ExternalLinkIcon className="mt-0.5 size-3 shrink-0 opacity-60" />
+            </a>
+          ))}
+        </div>
+      );
+    }
+
     return (
-      <div className="flex flex-wrap gap-1">
-        {value.map((item, i) => (
+      <div className="flex flex-wrap gap-1.5">
+        {normalizedValues.map((item, i) => (
           <Badge
             className="font-mono text-xs"
             key={`${item}-${i}`}
@@ -319,15 +418,15 @@ const FrontmatterItem: FC<FrontmatterItemProps> = ({
   return (
     <div
       className={cn(
-        "group min-w-0 rounded-lg bg-muted/20 p-3 transition-colors hover:bg-muted/30",
+        "group min-w-0 rounded-lg bg-muted/20 p-2.5 transition-colors hover:bg-muted/30",
         isLarge && "col-span-full"
       )}
     >
-      <div className="mb-1.5 flex items-center gap-1.5 text-muted-foreground text-xs">
+      <div className="mb-1 flex items-center gap-1.5 text-muted-foreground text-[11px]">
         {icon}
         <span className="uppercase tracking-wider">{formatKey(keyName)}</span>
       </div>
-      <div className="text-sm">
+      <div className="text-sm leading-relaxed">
         <ValueDisplay keyName={keyName} value={value} />
       </div>
     </div>

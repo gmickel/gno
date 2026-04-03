@@ -14,9 +14,15 @@ import rehypeSanitize from "rehype-sanitize";
 import remarkGfm from "remark-gfm";
 
 import {
+  normalizeWikiName,
+  parseTargetParts,
+  stripWikiMdExt,
+} from "../../../../core/links";
+import {
   extractMarkdownCodeLanguage,
   resolveCodeLanguage,
 } from "../../lib/code-language";
+import { buildDocDeepLink } from "../../lib/deep-links";
 import { cn } from "../../lib/utils";
 import { CodeBlock, CodeBlockCopyButton } from "../ai-elements/code-block";
 
@@ -25,6 +31,53 @@ export interface MarkdownPreviewProps {
   content: string;
   /** Additional CSS classes */
   className?: string;
+  /** Current collection for wiki-link resolution */
+  collection?: string;
+  /** Resolved outgoing wiki links for the current document */
+  wikiLinks?: Array<{
+    targetRef: string;
+    targetCollection?: string;
+    targetAnchor?: string;
+    resolvedUri?: string;
+  }>;
+}
+
+const WIKI_LINK_REGEX = /\[\[([^\]|]+(?:\|[^\]]+)?)\]\]/g;
+
+function renderMarkdownWithWikiLinks(
+  content: string,
+  collection?: string,
+  wikiLinks?: MarkdownPreviewProps["wikiLinks"]
+): string {
+  if (!content.includes("[[")) {
+    return content;
+  }
+
+  const resolvedWikiLinkMap = new Map<string, string>();
+  for (const link of wikiLinks ?? []) {
+    const targetCollection = link.targetCollection || collection || "";
+    const targetRefKey = normalizeWikiName(stripWikiMdExt(link.targetRef));
+    const targetAnchorKey = (link.targetAnchor ?? "").trim().toLowerCase();
+    const key = `${targetCollection}::${targetRefKey}::${targetAnchorKey}`;
+    if (link.resolvedUri) {
+      resolvedWikiLinkMap.set(key, buildDocDeepLink({ uri: link.resolvedUri }));
+    }
+  }
+
+  return content.replace(WIKI_LINK_REGEX, (match, rawContent: string) => {
+    const [rawTarget, rawAlias] = rawContent.split("|");
+    const displayText = rawAlias?.trim() || rawTarget?.trim() || match;
+    const parsed = parseTargetParts(rawTarget ?? "");
+    const targetCollection = parsed.collection || collection || "";
+    const targetRefKey = normalizeWikiName(stripWikiMdExt(parsed.ref));
+    const targetAnchorKey = (parsed.anchor ?? "").trim().toLowerCase();
+    const key = `${targetCollection}::${targetRefKey}::${targetAnchorKey}`;
+    const href =
+      resolvedWikiLinkMap.get(key) ||
+      `/search?query=${encodeURIComponent(stripWikiMdExt(parsed.ref))}`;
+
+    return `[${displayText}](${href})`;
+  });
 }
 
 // Inline code styling
@@ -319,7 +372,7 @@ const components = {
  * Sanitizes HTML to prevent XSS attacks.
  */
 export const MarkdownPreview = memo(
-  ({ content, className }: MarkdownPreviewProps) => {
+  ({ content, className, collection, wikiLinks }: MarkdownPreviewProps) => {
     if (!content) {
       return (
         <div className={cn("text-muted-foreground italic", className)}>
@@ -327,6 +380,12 @@ export const MarkdownPreview = memo(
         </div>
       );
     }
+
+    const renderedContent = renderMarkdownWithWikiLinks(
+      content,
+      collection,
+      wikiLinks
+    );
 
     return (
       <div
@@ -342,7 +401,7 @@ export const MarkdownPreview = memo(
           rehypePlugins={[rehypeSanitize]}
           remarkPlugins={[remarkGfm]}
         >
-          {content}
+          {renderedContent}
         </ReactMarkdown>
       </div>
     );

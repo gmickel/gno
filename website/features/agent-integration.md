@@ -1,9 +1,9 @@
 ---
 layout: feature
 title: AI Agent Integration
-headline: Full GNO Access, Zero Overhead
-description: Give AI coding agents full GNO access via SKILL.md files—no MCP server, no context window pollution. One-line install for Claude Code, Codex, OpenCode, OpenClaw, and Amp.
-keywords: ai agent skill, claude code skill, codex skill, opencode skill, openclaw skill, knowledge retrieval, skill.md, ai agent memory, local knowledge
+headline: Agent Memory Without Prompt Bloat
+description: Give AI coding agents full GNO access via SKILL.md files with zero MCP overhead. One-line install for Claude Code, Codex, OpenCode, OpenClaw, and Amp for grounded local retrieval on demand.
+keywords: ai agent memory, claude code skill, codex skill, local retrieval skill, skill.md, local knowledge for agents, coding agent memory
 icon: agent
 slug: agent-integration
 permalink: /features/agent-integration/

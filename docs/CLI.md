@@ -1,6 +1,12 @@
+---
+title: CLI Reference
+description: Command-line reference for GNO search, indexing, retrieval, graph, model, collection, and agent integration workflows.
+keywords: gno cli, local search cli, hybrid search cli, semantic search command line, agent memory cli
+---
+
 # CLI Reference
 
-GNO command-line interface guide.
+Command-line guide for GNO's local knowledge engine and workspace tooling.
 
 > **Full specification**: See [spec/cli.md](../spec/cli.md) for exhaustive command documentation.
 

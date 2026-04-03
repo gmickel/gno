@@ -1,3 +1,9 @@
+---
+title: Glossary
+description: Key GNO terms explained, including BM25, RRF, HyDE, collections, MCP, tags, and retrieval stages.
+keywords: gno glossary, bm25, hyde, rrf, local search terms, retrieval glossary
+---
+
 # Glossary
 
 Key terms and concepts in GNO.

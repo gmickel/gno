@@ -36,6 +36,10 @@
       a: >
         Yes. Point GNO at your Obsidian vault directory and it indexes everything. GNO understands wiki links ([[note]]), frontmatter tags, and can discover semantic connections between notes that Obsidian's built-in search misses. It adds hybrid search, AI answers, and a knowledge graph on top of your existing vault. The app now previews likely Obsidian vault imports before indexing so users can see what will happen first.
 
+    - q: Is GNO an Obsidian alternative?
+      a: >
+        Increasingly, yes, depending on what you need. Obsidian still wins on plugins, Canvas, Excalidraw, and broad note-app customization. GNO now covers search, browse tree navigation, graph exploration, safe editing, AI answers, and agent access much better than a typical "search sidecar." If you care more about retrieval and AI workflows than plugins, GNO is becoming a serious local workspace alternative.
+
     - q: Can GNO preview a folder before importing it?
       a: >
         Yes. In the app, use Collections > Add Collection and GNO will preview the folder before indexing. It detects likely Obsidian vaults, mixed work-doc folders, and obvious duplicate conflicts so you can understand the import before it starts.
@@ -99,12 +103,28 @@
       a: >
         Install GNO as a skill with gno skill install --scope user. This works with Claude Code, Codex, OpenCode, and OpenClaw. Your agent can then search your knowledge base on demand with zero context window pollution.
 
+    - q: Can GNO act like memory for Claude Code?
+      a: >
+        Yes. That is one of the strongest current use cases. Install GNO as a skill for Claude Code and your agent can query your notes, docs, and project files on demand without stuffing all of that context into every prompt. You get grounded retrieval with much lower context pollution than pasting notes into the chat manually.
+
     - q: How do I use GNO with Cursor, Zed, or Windsurf?
       a: >
         Install GNO as an MCP server with gno mcp install --target cursor (or zed, windsurf, amp, etc.). GNO provides 19 MCP tools for search, retrieval, indexing, and graph exploration.
 
     - q: What is MCP?
       a: Model Context Protocol (MCP) is a standard for AI assistants to access external tools. GNO provides an MCP server so Claude Desktop, Cursor, Zed, Windsurf, Amp, Raycast, and more can search your documents.
+
+    - q: Can I use GNO as a local RAG system for notes?
+      a: >
+        Yes. GNO is a local RAG system for notes, docs, and mixed personal knowledge bases. It indexes Markdown, PDFs, Office docs, and text; retrieves with BM25, vector search, and hybrid reranking; and can answer questions with citations using local models. You can use it from the CLI, the workspace UI, the SDK, the REST API, or via AI agents.
+
+    - q: Is GNO a private search engine for Markdown and Office files?
+      a: >
+        Yes. GNO is built exactly for that kind of local, privacy-first document search. It handles Markdown, PDF, DOCX, XLSX, PPTX, and plain text; stores the index locally; works offline; and does not send your files to the cloud. For many users, it acts like a private search engine for their personal knowledge base.
+
+    - q: Can GNO be an MCP server for a personal knowledge base?
+      a: >
+        Yes. GNO's MCP server is designed for that. Once installed into Claude Desktop, Cursor, Zed, Windsurf, Amp, Raycast, or another client, the assistant can search and retrieve from your personal knowledge base using local tools instead of relying on pasted context or cloud-hosted memory layers.
 
     - q: Can I use GNO in scripts?
       a: >

@@ -1,18 +1,31 @@
 import {
   ArrowLeft,
-  ChevronRight,
-  FileText,
   FolderOpen,
   HomeIcon,
   RefreshCw,
   StarIcon,
 } from "lucide-react";
-import { Fragment, useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
+import {
+  createBrowseNodeId,
+  findBrowseNode,
+  getBrowseAncestorIds,
+  getImmediateChildFolders,
+} from "../../browse-tree";
 import { Loader } from "../components/ai-elements/loader";
-import { IndexingProgress } from "../components/IndexingProgress";
+import { BrowseDetailPane } from "../components/BrowseDetailPane";
+import { BrowseOverview } from "../components/BrowseOverview";
+import { BrowseTreeSidebar } from "../components/BrowseTreeSidebar";
+import { BrowseWorkspaceCard } from "../components/BrowseWorkspaceCard";
 import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "../components/ui/dialog";
 import {
   Select,
   SelectContent,
@@ -20,16 +33,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../components/ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "../components/ui/table";
 import { apiFetch } from "../hooks/use-api";
 import { useDocEvents } from "../hooks/use-doc-events";
+import { useWorkspace } from "../hooks/useWorkspace";
+import {
+  buildBrowseCrumbs,
+  buildBrowseLocation,
+  formatDateFieldLabel,
+  parseBrowseLocation,
+  type BrowseDocument,
+  type BrowseTreeResponse,
+  type DocsResponse,
+} from "../lib/browse";
 import {
   loadFavoriteCollections,
   loadFavoriteDocuments,
@@ -39,30 +54,7 @@ import {
 
 interface PageProps {
   navigate: (to: string | number) => void;
-}
-
-interface Collection {
-  name: string;
-  path: string;
-}
-
-interface Document {
-  docid: string;
-  uri: string;
-  title: string | null;
-  collection: string;
-  relPath: string;
-  sourceExt: string;
-}
-
-interface DocsResponse {
-  documents: Document[];
-  total: number;
-  limit: number;
-  offset: number;
-  availableDateFields: string[];
-  sortField: string;
-  sortOrder: "asc" | "desc";
+  location?: string;
 }
 
 interface SyncResponse {
@@ -71,14 +63,26 @@ interface SyncResponse {
 
 type SyncTarget = { kind: "all" } | { kind: "collection"; name: string } | null;
 
-export default function Browse({ navigate }: PageProps) {
-  const [collections, setCollections] = useState<Collection[]>([]);
-  const [selected, setSelected] = useState<string>("");
-  const [docs, setDocs] = useState<Document[]>([]);
+export default function Browse({ navigate, location }: PageProps) {
+  const { activeTab, updateActiveTabBrowseState } = useWorkspace();
+  const latestDocEvent = useDocEvents();
+  const resolvedLocation =
+    location ?? `${window.location.pathname}${window.location.search}`;
+  const selection = useMemo(
+    () =>
+      parseBrowseLocation(
+        resolvedLocation.includes("?")
+          ? `?${resolvedLocation.split("?")[1] ?? ""}`
+          : ""
+      ),
+    [resolvedLocation]
+  );
+  const [tree, setTree] = useState<BrowseTreeResponse | null>(null);
+  const [docs, setDocs] = useState<BrowseDocument[]>([]);
   const [total, setTotal] = useState(0);
   const [offset, setOffset] = useState(0);
-  const [loading, setLoading] = useState(false);
-  const [initialLoad, setInitialLoad] = useState(true);
+  const [treeLoading, setTreeLoading] = useState(true);
+  const [docsLoading, setDocsLoading] = useState(false);
   const [availableDateFields, setAvailableDateFields] = useState<string[]>([]);
   const [sortField, setSortField] = useState("modified");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
@@ -88,24 +92,58 @@ export default function Browse({ navigate }: PageProps) {
   const [refreshToken, setRefreshToken] = useState(0);
   const [favoriteDocHrefs, setFavoriteDocHrefs] = useState<string[]>([]);
   const [favoriteCollections, setFavoriteCollections] = useState<string[]>([]);
-  const latestDocEvent = useDocEvents();
+  const [mobileTreeOpen, setMobileTreeOpen] = useState(false);
   const limit = 25;
 
-  // Parse collection from URL on mount
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const collection = params.get("collection");
-    if (collection) {
-      setSelected(collection);
+  const selectedCollection = selection.collection;
+  const selectedPath = selection.path;
+  const selectedNodeId = selectedCollection
+    ? createBrowseNodeId(selectedCollection, selectedPath)
+    : null;
+  const selectedNode = tree
+    ? findBrowseNode(tree.collections, selectedCollection, selectedPath)
+    : null;
+
+  const expandedNodeIds = useMemo(() => {
+    const persisted = activeTab?.browseState?.expandedNodeIds ?? [];
+    const ancestors = selectedPath
+      ? getBrowseAncestorIds(selectedCollection, selectedPath)
+      : [];
+    return [...new Set([...persisted, ...ancestors])];
+  }, [
+    activeTab?.browseState?.expandedNodeIds,
+    selectedCollection,
+    selectedPath,
+  ]);
+
+  const childFolders = useMemo(() => {
+    if (!tree) {
+      return [];
     }
-  }, []);
+    if (!selectedCollection) {
+      return tree.collections;
+    }
+    return getImmediateChildFolders(
+      tree.collections,
+      selectedCollection,
+      selectedPath
+    );
+  }, [selectedCollection, selectedPath, tree]);
+
+  const crumbs = useMemo(
+    () =>
+      selectedCollection
+        ? buildBrowseCrumbs(selectedCollection, selectedPath)
+        : [],
+    [selectedCollection, selectedPath]
+  );
 
   useEffect(() => {
-    void apiFetch<Collection[]>("/api/collections").then(({ data }) => {
-      if (data) {
-        setCollections(data);
-      }
-    });
+    setOffset(0);
+    setDocs([]);
+  }, [selectedCollection, selectedPath]);
+
+  useEffect(() => {
     setFavoriteDocHrefs(loadFavoriteDocuments().map((entry) => entry.href));
     setFavoriteCollections(
       loadFavoriteCollections().map((entry) => entry.name)
@@ -113,22 +151,68 @@ export default function Browse({ navigate }: PageProps) {
   }, []);
 
   useEffect(() => {
-    setLoading(true);
+    void apiFetch<BrowseTreeResponse>("/api/browse/tree").then(({ data }) => {
+      setTree(
+        data ?? { collections: [], totalCollections: 0, totalDocuments: 0 }
+      );
+      setTreeLoading(false);
+    });
+  }, [refreshToken]);
+
+  useEffect(() => {
+    if (!tree) {
+      return;
+    }
+
+    if (!selectedCollection) {
+      return;
+    }
+
+    const node = findBrowseNode(
+      tree.collections,
+      selectedCollection,
+      selectedPath
+    );
+    if (node) {
+      return;
+    }
+
+    const collectionRoot = findBrowseNode(tree.collections, selectedCollection);
+    if (collectionRoot) {
+      navigate(buildBrowseLocation(selectedCollection));
+      return;
+    }
+
+    navigate("/browse");
+  }, [navigate, selectedCollection, selectedPath, tree]);
+
+  useEffect(() => {
+    if (!selectedCollection) {
+      setDocs([]);
+      setTotal(0);
+      setOffset(0);
+      return;
+    }
+
+    setDocsLoading(true);
     const params = new URLSearchParams({
+      collection: selectedCollection,
       limit: String(limit),
       offset: String(offset),
       sortField,
       sortOrder,
+      directChildrenOnly: "true",
     });
-    if (selected) {
-      params.set("collection", selected);
+    if (selectedPath) {
+      params.set("pathPrefix", selectedPath);
     }
-    const url = `/api/docs?${params.toString()}`;
 
-    void apiFetch<DocsResponse>(url).then(({ data }) => {
-      setLoading(false);
-      setInitialLoad(false);
-      if (data) {
+    void apiFetch<DocsResponse>(`/api/docs?${params.toString()}`).then(
+      ({ data }) => {
+        setDocsLoading(false);
+        if (!data) {
+          return;
+        }
         setAvailableDateFields(data.availableDateFields ?? []);
         setSortField(data.sortField);
         setSortOrder(data.sortOrder);
@@ -137,18 +221,16 @@ export default function Browse({ navigate }: PageProps) {
         );
         setTotal(data.total);
       }
-    });
-  }, [selected, offset, refreshToken, sortField, sortOrder]);
-
-  useEffect(() => {
-    if (sortField === "modified" || availableDateFields.includes(sortField)) {
-      return;
-    }
-    setSortField("modified");
-    setSortOrder("desc");
-    setOffset(0);
-    setDocs([]);
-  }, [availableDateFields, sortField]);
+    );
+  }, [
+    limit,
+    offset,
+    refreshToken,
+    selectedCollection,
+    selectedPath,
+    sortField,
+    sortOrder,
+  ]);
 
   useEffect(() => {
     if (!latestDocEvent?.changedAt) {
@@ -159,20 +241,57 @@ export default function Browse({ navigate }: PageProps) {
     setRefreshToken((current) => current + 1);
   }, [latestDocEvent?.changedAt]);
 
-  const handleCollectionChange = (value: string) => {
-    const newSelected = value === "all" ? "" : value;
-    setSelected(newSelected);
-    setOffset(0);
-    setDocs([]);
-    // Update URL for shareable deep-links
-    const url = newSelected
-      ? `/browse?collection=${encodeURIComponent(newSelected)}`
-      : "/browse";
-    window.history.pushState({}, "", url);
-  };
+  useEffect(() => {
+    const persisted = activeTab?.browseState?.expandedNodeIds ?? [];
+    const ancestors = selectedPath
+      ? getBrowseAncestorIds(selectedCollection, selectedPath)
+      : [];
+    const merged = [...new Set([...persisted, ...ancestors])];
+    if (merged.length === persisted.length) {
+      return;
+    }
+    updateActiveTabBrowseState({
+      expandedNodeIds: merged,
+    });
+  }, [
+    activeTab?.browseState?.expandedNodeIds,
+    selectedCollection,
+    selectedPath,
+    updateActiveTabBrowseState,
+  ]);
 
   const handleLoadMore = () => {
-    setOffset((prev) => prev + limit);
+    setOffset((current) => current + limit);
+  };
+
+  const handleSelectNode = (collection: string, path?: string) => {
+    setDocs([]);
+    setOffset(0);
+    setMobileTreeOpen(false);
+    navigate(buildBrowseLocation(collection, path));
+  };
+
+  const handleToggleNode = (nodeId: string) => {
+    updateActiveTabBrowseState((current) => {
+      const next = new Set(current.expandedNodeIds);
+      if (next.has(nodeId)) {
+        next.delete(nodeId);
+      } else {
+        next.add(nodeId);
+      }
+      return {
+        expandedNodeIds: [...next],
+      };
+    });
+  };
+
+  const handleToggleFavoriteCollection = (collection: string) => {
+    const next = toggleFavoriteCollection({
+      name: collection,
+      href: buildBrowseLocation(collection),
+      label: collection,
+    });
+    setFavoriteCollections(next.map((entry) => entry.name));
   };
 
   const handleSortChange = (value: string) => {
@@ -186,25 +305,9 @@ export default function Browse({ navigate }: PageProps) {
     setDocs([]);
   };
 
-  const navigateToCollection = (collection: string) => {
-    const nextValue = collection.trim();
-    if (!nextValue) {
-      return;
-    }
-    setSelected(nextValue);
-    setOffset(0);
-    setDocs([]);
-    window.history.pushState(
-      {},
-      "",
-      `/browse?collection=${encodeURIComponent(nextValue)}`
-    );
-  };
-
   const handleReindex = async () => {
     setSyncError(null);
-
-    const body = selected ? { collection: selected } : {};
+    const body = selectedCollection ? { collection: selectedCollection } : {};
     const { data, error } = await apiFetch<SyncResponse>("/api/sync", {
       method: "POST",
       body: JSON.stringify(body),
@@ -218,36 +321,27 @@ export default function Browse({ navigate }: PageProps) {
     if (data?.jobId) {
       setSyncJobId(data.jobId);
       setSyncTarget(
-        selected ? { kind: "collection", name: selected } : { kind: "all" }
+        selectedCollection
+          ? { kind: "collection", name: selectedCollection }
+          : { kind: "all" }
       );
     }
   };
 
-  const formatDateFieldLabel = (field: string) =>
-    field
-      .split("_")
-      .filter((token) => token.length > 0)
-      .map((token) => token.charAt(0).toUpperCase() + token.slice(1))
-      .join(" ");
-
-  const getExtBadgeVariant = (ext: string) => {
-    switch (ext.toLowerCase()) {
-      case ".md":
-      case ".markdown":
-        return "default";
-      case ".pdf":
-        return "destructive";
-      case ".docx":
-      case ".doc":
-        return "secondary";
-      default:
-        return "outline";
-    }
-  };
+  const renderSidebar = () => (
+    <BrowseTreeSidebar
+      collections={tree?.collections ?? []}
+      expandedNodeIds={expandedNodeIds}
+      favoriteCollections={favoriteCollections}
+      onSelect={handleSelectNode}
+      onToggle={handleToggleNode}
+      onToggleFavoriteCollection={handleToggleFavoriteCollection}
+      selectedNodeId={selectedNodeId}
+    />
+  );
 
   return (
     <div className="min-h-screen">
-      {/* Header */}
       <header className="glass sticky top-0 z-10 border-border/50 border-b">
         <div className="flex flex-wrap items-center justify-between gap-4 px-8 py-4">
           <div className="flex items-center gap-4">
@@ -272,23 +366,15 @@ export default function Browse({ navigate }: PageProps) {
             <h1 className="font-semibold text-xl">Browse</h1>
           </div>
           <div className="flex flex-wrap items-center justify-end gap-3">
-            <Select
-              onValueChange={handleCollectionChange}
-              value={selected || "all"}
+            <Button
+              className="gap-2 lg:hidden"
+              onClick={() => setMobileTreeOpen(true)}
+              size="sm"
+              variant="outline"
             >
-              <SelectTrigger className="w-[200px]">
-                <FolderOpen className="mr-2 size-4 text-muted-foreground" />
-                <SelectValue placeholder="All Collections" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Collections</SelectItem>
-                {collections.map((c) => (
-                  <SelectItem key={c.name} value={c.name}>
-                    {c.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              <FolderOpen className="size-4" />
+              Tree
+            </Button>
             <Select
               onValueChange={handleSortChange}
               value={`${sortField}:${sortOrder}`}
@@ -300,19 +386,22 @@ export default function Browse({ navigate }: PageProps) {
                 <SelectItem value="modified:desc">Newest Modified</SelectItem>
                 <SelectItem value="modified:asc">Oldest Modified</SelectItem>
                 {availableDateFields.map((field) => (
-                  <Fragment key={field}>
-                    <SelectItem value={`${field}:desc`}>
-                      {`Newest by ${formatDateFieldLabel(field)}`}
-                    </SelectItem>
-                    <SelectItem value={`${field}:asc`}>
-                      {`Oldest by ${formatDateFieldLabel(field)}`}
-                    </SelectItem>
-                  </Fragment>
+                  <SelectItem key={`${field}:desc`} value={`${field}:desc`}>
+                    {`Newest by ${formatDateFieldLabel(field)}`}
+                  </SelectItem>
+                ))}
+                {availableDateFields.map((field) => (
+                  <SelectItem key={`${field}:asc`} value={`${field}:asc`}>
+                    {`Oldest by ${formatDateFieldLabel(field)}`}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
             <Badge className="font-mono" variant="outline">
-              {total.toLocaleString()} docs
+              {selectedNode?.documentCount ??
+                tree?.totalDocuments.toLocaleString() ??
+                0}{" "}
+              docs
             </Badge>
             <Button
               className="gap-2"
@@ -323,29 +412,25 @@ export default function Browse({ navigate }: PageProps) {
               <FolderOpen className="size-4" />
               Collections
             </Button>
-            {selected && (
+            {selectedCollection && (
               <Button
                 className="gap-2"
                 onClick={() =>
-                  setFavoriteCollections(
-                    toggleFavoriteCollection({
-                      name: selected,
-                      href: `/browse?collection=${encodeURIComponent(selected)}`,
-                      label: selected,
-                    }).map((entry) => entry.name)
-                  )
+                  handleToggleFavoriteCollection(selectedCollection)
                 }
                 size="sm"
                 variant="outline"
               >
                 <StarIcon
                   className={`size-4 ${
-                    favoriteCollections.includes(selected)
+                    favoriteCollections.includes(selectedCollection)
                       ? "fill-current text-secondary"
                       : ""
                   }`}
                 />
-                {favoriteCollections.includes(selected) ? "Pinned" : "Pin"}
+                {favoriteCollections.includes(selectedCollection)
+                  ? "Pinned"
+                  : "Pin"}
               </Button>
             )}
             <Button
@@ -355,203 +440,108 @@ export default function Browse({ navigate }: PageProps) {
               size="sm"
             >
               <RefreshCw className="size-4" />
-              {selected ? "Re-index This Collection" : "Re-index All"}
+              {selectedCollection ? "Re-index This Collection" : "Re-index All"}
             </Button>
           </div>
         </div>
       </header>
 
-      <main className="mx-auto max-w-6xl p-8">
-        <div className="mb-6 rounded-2xl border border-border/60 bg-card/70 p-4 shadow-sm">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div className="space-y-1">
-              <p className="font-medium text-sm tracking-[0.18em] uppercase">
-                Collection Controls
-              </p>
-              <p className="max-w-2xl text-muted-foreground text-sm">
-                Add folders, remove sources, and re-index after external edits
-                from the collections view.
-              </p>
-              {selected && (
-                <div className="flex items-center gap-2">
-                  <span className="text-muted-foreground text-sm">
-                    Current collection:
-                  </span>
-                  <Badge className="font-mono text-xs" variant="secondary">
-                    {selected}
-                  </Badge>
-                </div>
-              )}
+      <div className="flex min-h-[calc(100vh-73px)]">
+        <aside className="hidden w-[320px] shrink-0 border-border/40 border-r bg-card/30 lg:block">
+          {treeLoading ? (
+            <div className="flex h-full items-center justify-center">
+              <Loader className="text-primary" size={24} />
             </div>
+          ) : (
+            renderSidebar()
+          )}
+        </aside>
 
-            <div className="flex min-h-9 items-center">
-              {syncJobId ? (
-                <IndexingProgress
-                  className="justify-end"
-                  compact
-                  jobId={syncJobId}
-                  onComplete={() => {
-                    setSyncError(null);
-                    setSyncJobId(null);
-                    setSyncTarget(null);
-                    setRefreshToken((current) => current + 1);
-                  }}
-                  onError={(error) => {
-                    setSyncError(error);
-                    setSyncJobId(null);
-                    setSyncTarget(null);
-                  }}
-                />
-              ) : syncError ? (
-                <p className="text-destructive text-sm">{syncError}</p>
-              ) : syncTarget ? (
-                <p className="text-muted-foreground text-sm">
-                  Re-index queued for{" "}
-                  <span className="font-medium text-foreground">
-                    {syncTarget.kind === "all"
-                      ? "all collections"
-                      : syncTarget.name}
-                  </span>
-                  .
+        <main className="min-w-0 flex-1 p-8">
+          <div className="mx-auto max-w-6xl space-y-6">
+            <BrowseWorkspaceCard
+              crumbs={crumbs}
+              navigate={navigate}
+              onSyncComplete={() => {
+                setSyncError(null);
+                setSyncJobId(null);
+                setSyncTarget(null);
+                setRefreshToken((current) => current + 1);
+              }}
+              onSyncError={(error) => {
+                setSyncError(error);
+                setSyncJobId(null);
+                setSyncTarget(null);
+              }}
+              selectedCollection={selectedCollection}
+              syncError={syncError}
+              syncJobId={syncJobId}
+              syncTarget={syncTarget}
+            />
+
+            {treeLoading ? (
+              <div className="flex flex-col items-center justify-center gap-4 py-20">
+                <Loader className="text-primary" size={32} />
+                <p className="text-muted-foreground">
+                  Loading workspace tree...
                 </p>
-              ) : null}
-            </div>
-          </div>
-        </div>
-
-        {/* Initial loading */}
-        {initialLoad && loading && (
-          <div className="flex flex-col items-center justify-center gap-4 py-20">
-            <Loader className="text-primary" size={32} />
-            <p className="text-muted-foreground">Loading documents...</p>
-          </div>
-        )}
-
-        {/* Empty state */}
-        {!loading && docs.length === 0 && (
-          <div className="py-20 text-center">
-            <FileText className="mx-auto mb-4 size-12 text-muted-foreground" />
-            <h3 className="mb-2 font-medium text-lg">No documents found</h3>
-            <p className="text-muted-foreground">
-              {selected
-                ? "This collection is empty"
-                : "Index some documents to get started"}
-            </p>
-          </div>
-        )}
-
-        {/* Document Table */}
-        {docs.length > 0 && (
-          <div className="animate-fade-in opacity-0">
-            <Table className="table-fixed">
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[68%]">Document</TableHead>
-                  <TableHead className="w-[220px]">Collection</TableHead>
-                  <TableHead className="w-[72px] text-right">Type</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {docs.map((doc, _i) => (
-                  <TableRow
-                    className="group cursor-pointer"
-                    key={doc.docid}
-                    onClick={() =>
-                      navigate(`/doc?uri=${encodeURIComponent(doc.uri)}`)
-                    }
-                  >
-                    <TableCell className="align-top whitespace-normal">
-                      <div className="flex items-center gap-2">
-                        <FileText className="size-4 shrink-0 text-muted-foreground" />
-                        <div className="min-w-0">
-                          <div className="break-words font-medium leading-tight transition-colors group-hover:text-primary">
-                            {doc.title || doc.relPath}
-                          </div>
-                          <div className="break-all font-mono text-muted-foreground text-xs leading-relaxed">
-                            {doc.relPath}
-                          </div>
-                        </div>
-                        <Button
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            const next = toggleFavoriteDocument({
-                              uri: doc.uri,
-                              href: `/doc?uri=${encodeURIComponent(doc.uri)}`,
-                              label: doc.title || doc.relPath,
-                            });
-                            setFavoriteDocHrefs(
-                              next.map((entry) => entry.href)
-                            );
-                          }}
-                          size="icon-sm"
-                          variant="ghost"
-                        >
-                          <StarIcon
-                            className={`size-4 ${
-                              favoriteDocHrefs.includes(
-                                `/doc?uri=${encodeURIComponent(doc.uri)}`
-                              )
-                                ? "fill-current text-secondary"
-                                : "text-muted-foreground"
-                            }`}
-                          />
-                        </Button>
-                        <ChevronRight className="ml-auto size-4 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
-                      </div>
-                    </TableCell>
-                    <TableCell className="align-top whitespace-normal">
-                      <Badge
-                        className="inline-flex min-h-[2.5rem] max-w-[180px] cursor-pointer items-center px-3 py-1 text-center whitespace-normal break-words font-mono text-xs leading-tight transition-colors hover:border-primary hover:text-primary"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          navigateToCollection(doc.collection);
-                        }}
-                        variant="outline"
-                      >
-                        {doc.collection}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="align-top text-right">
-                      <Badge
-                        className="font-mono text-xs"
-                        variant={getExtBadgeVariant(doc.sourceExt)}
-                      >
-                        {doc.sourceExt}
-                      </Badge>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-
-            {/* Load More */}
-            {offset + limit < total && (
-              <div className="mt-8 text-center">
-                <Button
-                  className="gap-2"
-                  disabled={loading}
-                  onClick={handleLoadMore}
-                  variant="outline"
-                >
-                  {loading ? (
-                    <>
-                      <Loader size={16} />
-                      Loading...
-                    </>
-                  ) : (
-                    <>
-                      Load More
-                      <Badge className="ml-1" variant="secondary">
-                        {Math.min(limit, total - docs.length)} remaining
-                      </Badge>
-                    </>
-                  )}
-                </Button>
               </div>
+            ) : !selectedCollection ? (
+              <BrowseOverview
+                collections={tree?.collections ?? []}
+                favoriteCollections={favoriteCollections}
+                onSelectCollection={(collection) =>
+                  handleSelectNode(collection)
+                }
+                onToggleFavoriteCollection={handleToggleFavoriteCollection}
+              />
+            ) : (
+              <BrowseDetailPane
+                childFolders={childFolders}
+                docs={docs}
+                docsLoading={docsLoading}
+                favoriteDocHrefs={favoriteDocHrefs}
+                onLoadMore={handleLoadMore}
+                onOpenDoc={(uri) =>
+                  navigate(`/doc?uri=${encodeURIComponent(uri)}`)
+                }
+                onSelectCollection={(collection) =>
+                  handleSelectNode(collection)
+                }
+                onSelectFolder={handleSelectNode}
+                onToggleFavoriteDocument={(doc) => {
+                  const next = toggleFavoriteDocument({
+                    uri: doc.uri,
+                    href: `/doc?uri=${encodeURIComponent(doc.uri)}`,
+                    label: doc.title || doc.relPath,
+                  });
+                  setFavoriteDocHrefs(next.map((entry) => entry.href));
+                }}
+                selectedNode={selectedNode}
+                selectedPath={selectedPath}
+                total={total}
+              />
             )}
           </div>
-        )}
-      </main>
+        </main>
+      </div>
+
+      <Dialog onOpenChange={setMobileTreeOpen} open={mobileTreeOpen}>
+        <DialogContent className="max-w-xl p-0">
+          <DialogHeader className="px-6 pt-6">
+            <DialogTitle>Workspace Tree</DialogTitle>
+          </DialogHeader>
+          <div className="h-[70vh] border-border/40 border-t">
+            {treeLoading ? (
+              <div className="flex h-full items-center justify-center">
+                <Loader className="text-primary" size={24} />
+              </div>
+            ) : (
+              renderSidebar()
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

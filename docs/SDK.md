@@ -1,6 +1,12 @@
+---
+title: SDK
+description: Embed GNO directly in Bun or TypeScript apps with in-process search, retrieval, document access, and indexing.
+keywords: gno sdk, local search sdk, retrieval sdk, bun sdk, typescript knowledge sdk
+---
+
 # SDK
 
-Import GNO directly into another Bun or TypeScript app.
+Import GNO directly into another Bun or TypeScript app and reuse the same local search, retrieval, and indexing engine in-process.
 
 No CLI subprocesses. No local server required.
 

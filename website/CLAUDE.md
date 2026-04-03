@@ -68,10 +68,10 @@ cp ../assets/screenshots/*.{jpg,png} assets/screenshots/
 - DPR: 2.0
 - Cmd+Shift+P → "Capture screenshot"
 
-**Brandbird:**
+**Framing / Polish App:**
 
-- Canvas: 2960 × 2010 px
-- Template: "gno"
+- Canvas: `2960 × 2010 px`
+- Keep the existing GNO framing / visual treatment consistent
 
 ## Terminal Demos (VHS)
 

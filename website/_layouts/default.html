@@ -12,9 +12,11 @@
     <title>
       {% if page.title %}{{ page.title }} | {% endif %}{{ site.title }}
     </title>
+    {% assign page_excerpt_fallback = page.excerpt | default: content |
+    strip_html | strip_newlines | replace: " ", " " | truncate: 160 %}
     <meta
       name="description"
-      content="{{ page.description | default: site.description | strip_html | truncate: 160 }}"
+      content="{{ page.description | default: page_excerpt_fallback | default: site.description | strip_html | truncate: 160 }}"
     />
 
     <!-- Favicon -->
@@ -43,7 +45,7 @@
     />
     <meta
       property="og:description"
-      content="{{ page.description | default: site.description | strip_html | truncate: 200 }}"
+      content="{{ page.description | default: page_excerpt_fallback | default: site.description | strip_html | truncate: 200 }}"
     />
     <meta property="og:type" content="website" />
     <meta property="og:url" content="{{ page.url | absolute_url }}" />
@@ -68,7 +70,7 @@
     />
     <meta
       name="twitter:description"
-      content="{{ page.description | default: site.description | strip_html | truncate: 200 }}"
+      content="{{ page.description | default: page_excerpt_fallback | default: site.description | strip_html | truncate: 200 }}"
     />
     <meta
       name="twitter:image"

@@ -1,3 +1,9 @@
+---
+title: Windows Support
+description: Current Windows support status for GNO CLI and desktop packaging, including runtime scope and expectations.
+keywords: gno windows, windows support, local search windows, desktop beta windows
+---
+
 # Windows Support
 
 Windows support in GNO currently targets `windows-x64`.

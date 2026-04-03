@@ -190,34 +190,17 @@ function SimilarityBar({ score }: { score: number }) {
   const percentage = Math.round(score * 100);
 
   return (
-    <div className="group/bar relative mt-1.5">
-      {/* Label */}
-      <div className="mb-0.5 flex items-center justify-between">
-        <span className="font-mono text-[9px] text-muted-foreground/60 uppercase tracking-wider">
-          Similarity
-        </span>
-        <span className="font-mono text-[10px] text-primary/80 tabular-nums">
-          {percentage}%
-        </span>
-      </div>
-
-      {/* Bar track - glass effect */}
-      <div className="relative h-1.5 overflow-hidden rounded-full bg-muted/30 shadow-[inset_0_1px_2px_rgba(0,0,0,0.2)]">
-        {/* Fill - teal glow */}
+    <div className="mt-1 flex items-center gap-2">
+      {/* Bar track */}
+      <div className="relative h-1 flex-1 overflow-hidden rounded-full bg-muted/30">
         <div
-          className={cn(
-            "absolute inset-y-0 left-0 rounded-full",
-            "bg-gradient-to-r from-primary/70 via-primary to-primary/80",
-            "transition-all duration-500 ease-out",
-            // Subtle glow on high scores
-            score > 0.7 && "shadow-[0_0_8px_hsl(var(--primary)/0.5)]"
-          )}
+          className="absolute inset-y-0 left-0 rounded-full bg-primary/60"
           style={{ width: `${percentage}%` }}
-        >
-          {/* Shimmer effect */}
-          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent opacity-0 transition-opacity duration-300 group-hover/bar:opacity-100" />
-        </div>
+        />
       </div>
+      <span className="shrink-0 font-mono text-[9px] text-muted-foreground/50 tabular-nums">
+        {percentage}%
+      </span>
     </div>
   );
 }
@@ -238,16 +221,13 @@ function RelatedNoteItem({
   return (
     <button
       className={cn(
-        // Base - specimen card feel
-        "group relative w-full rounded-sm text-left",
-        "border border-border/40 bg-card/50",
-        "p-2.5 transition-all duration-200",
-        // Hover state - lift and glow
-        "hover:border-primary/30 hover:bg-card/80",
-        "hover:shadow-[0_2px_12px_-4px_hsl(var(--primary)/0.2)]",
-        // Focus state
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50",
-        // Stagger animation
+        "group relative flex min-w-0 w-full items-start gap-2",
+        "rounded px-2 py-1.5 text-left",
+        "font-mono text-xs",
+        "transition-all duration-150",
+        "text-primary/90 hover:bg-muted/20",
+        "cursor-pointer hover:translate-x-0.5",
+        "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary/50",
         "animate-fade-in opacity-0"
       )}
       onClick={onNavigate}
@@ -257,43 +237,29 @@ function RelatedNoteItem({
       }}
       type="button"
     >
-      {/* Title with tooltip for long names */}
+      <span
+        className={cn(
+          "mt-0.5 flex size-5 shrink-0 items-center justify-center rounded",
+          "bg-primary/15 transition-colors duration-150",
+          "group-hover:bg-primary/25"
+        )}
+      >
+        <SparklesIcon className="size-3" />
+      </span>
+
       <Tooltip>
         <TooltipTrigger asChild>
-          <h4 className="line-clamp-3 break-words font-mono text-[13px] leading-tight text-foreground/90 group-hover:text-foreground">
-            {doc.title || "Untitled"}
-          </h4>
+          <div className="min-w-0 flex-1">
+            <span className="block break-words font-medium leading-tight whitespace-normal text-foreground/90 group-hover:text-foreground">
+              {doc.title || "Untitled"}
+            </span>
+            <SimilarityBar score={doc.score} />
+          </div>
         </TooltipTrigger>
         <TooltipContent side="left" className="max-w-[300px]">
           <p className="break-words">{doc.title || "Untitled"}</p>
         </TooltipContent>
       </Tooltip>
-
-      {/* Collection badge - brass plate style */}
-      <div className="mt-1 flex items-center gap-1.5">
-        <span
-          className={cn(
-            "inline-flex items-center gap-1 rounded px-1.5 py-0.5",
-            "bg-secondary/10 font-mono text-[10px] text-secondary/80",
-            "transition-colors group-hover:bg-secondary/15 group-hover:text-secondary"
-          )}
-        >
-          {doc.collection}
-        </span>
-      </div>
-
-      {/* Similarity bar */}
-      <SimilarityBar score={doc.score} />
-
-      {/* Hover indicator - brass accent */}
-      <div
-        className={cn(
-          "absolute right-2 top-2 opacity-0 transition-opacity",
-          "group-hover:opacity-100"
-        )}
-      >
-        <SparklesIcon className="size-3.5 text-secondary/60" />
-      </div>
     </button>
   );
 }
@@ -406,19 +372,19 @@ export function RelatedNotesSidebar({
   }
 
   return (
-    <div className={cn("space-y-1", className)}>
+    <div className={cn("min-w-0 overflow-hidden px-1", className)}>
       <Collapsible onOpenChange={setIsOpen} open={isOpen}>
         {/* Header */}
-        <div className="flex items-center gap-1 px-2 py-1">
+        <div className="flex items-center gap-1">
           <CollapsibleTrigger
             className={cn(
-              "flex flex-1 items-center gap-1.5 rounded-sm px-1.5 py-1",
+              "flex flex-1 items-center gap-2 rounded-sm px-2 py-1.5",
               "transition-colors duration-150",
-              "hover:bg-muted/30"
+              "hover:bg-muted/20"
             )}
           >
             {/* Chevron */}
-            <span className="flex size-4 shrink-0 items-center justify-center text-muted-foreground/60 transition-transform duration-200">
+            <span className="flex size-4 shrink-0 items-center justify-center text-muted-foreground/50 transition-transform duration-200">
               {isOpen ? (
                 <ChevronDownIcon className="size-3.5" />
               ) : (
@@ -427,13 +393,13 @@ export function RelatedNotesSidebar({
             </span>
 
             {/* Title */}
-            <span className="flex-1 text-left font-mono text-[11px] text-muted-foreground uppercase tracking-wider">
+            <span className="flex-1 text-left font-mono text-[10px] text-muted-foreground/60 uppercase tracking-[0.15em]">
               Related Notes
             </span>
 
             {/* Count badge */}
             {similar.length > 0 && (
-              <span className="rounded bg-primary/10 px-1.5 py-0.5 font-mono text-[10px] text-primary/80 tabular-nums">
+              <span className="rounded bg-primary/12 px-1.5 py-0.5 font-mono text-[10px] text-primary tabular-nums">
                 {similar.length}
               </span>
             )}
@@ -442,9 +408,9 @@ export function RelatedNotesSidebar({
           {/* Hide button */}
           <button
             className={cn(
-              "flex size-6 items-center justify-center rounded-sm",
-              "text-muted-foreground/50 transition-colors",
-              "hover:bg-muted/30 hover:text-muted-foreground"
+              "flex size-5 items-center justify-center rounded-sm",
+              "text-muted-foreground/40 transition-colors",
+              "hover:bg-muted/20 hover:text-muted-foreground"
             )}
             onClick={handleToggleVisibility}
             title="Hide related notes"
@@ -472,7 +438,7 @@ export function RelatedNotesSidebar({
           ) : similar.length === 0 ? (
             <RelatedNotesEmpty />
           ) : (
-            <div className="space-y-1.5 p-2">
+            <div className="space-y-0.5 p-2">
               {similar.map((doc, index) => (
                 <RelatedNoteItem
                   doc={doc}

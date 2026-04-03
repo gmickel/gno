@@ -1,3 +1,9 @@
+---
+title: Installation
+description: Install GNO with Bun, verify local runtime requirements, and get the local knowledge workspace ready on macOS, Linux, or Windows.
+keywords: install gno, bun install gno, local knowledge workspace install, hybrid search install
+---
+
 # Installation
 
 GNO currently requires [Bun](https://bun.sh/) as its JavaScript runtime.

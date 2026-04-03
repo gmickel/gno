@@ -1,6 +1,12 @@
+---
+title: MCP Integration
+description: Connect GNO as a local MCP server for Claude Desktop, Cursor, Zed, Windsurf, Amp, Raycast, and other AI clients.
+keywords: gno mcp, local mcp server, claude desktop mcp, cursor mcp, personal knowledge base mcp
+---
+
 # MCP Integration
 
-Use GNO as an MCP server for AI assistants like Claude Desktop, Cursor, and others.
+Use GNO as a local MCP server for Claude Desktop, Cursor, Zed, Windsurf, Amp, Raycast, and other AI clients that need grounded access to your own documents.
 
 > **Full specification**: See [spec/mcp.md](../spec/mcp.md) for complete tool and resource schemas.
 

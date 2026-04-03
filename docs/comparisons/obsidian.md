@@ -1,8 +1,14 @@
 # GNO vs Obsidian Search
 
-A comparison of GNO with Obsidian's built-in search.
+If you are comparing GNO to Obsidian, the real question is no longer just "search quality." It is whether you want a note app with a huge plugin ecosystem, or a local knowledge workspace built around retrieval, graph navigation, safe editing, and agent access.
 
-**Key insight**: GNO and Obsidian can work together today, but GNO is moving toward a markdown-first local workspace for agent-centric teams. Obsidian still leads on plugins and canvas-style tooling; GNO leads on retrieval, external access, and safe multi-format handling.
+**Key insight**: GNO and Obsidian can work together today, but GNO is now credible as a markdown-first local workspace for people who care more about retrieval, AI access, and multi-surface workflows than plugin sprawl. Obsidian still leads on plugins, Canvas, and broad note-app customization. GNO leads on hybrid retrieval, external access, safe multi-format handling, and local agent workflows.
+
+## At a Glance
+
+- Choose **Obsidian** if your workflow depends on its plugin ecosystem, Canvas, Dataview, or Excalidraw.
+- Choose **GNO** if you want better search, safer multi-format indexing, CLI/API access, graph exploration, and direct integration with coding agents.
+- Use **both** if Obsidian remains your editor of choice but you want a much stronger local search/agent layer on top of the same vault.
 
 ## Quick Summary
 
@@ -55,6 +61,8 @@ gno mcp install --target claude
 
 ## When to Use GNO (with Obsidian)
 
+GNO wins when you need your notes outside the Obsidian app itself.
+
 **CLI search**: Quick searches without opening Obsidian.
 
 ```bash
@@ -94,6 +102,8 @@ gno query "project alpha" --format json | jq '.results[].path'
 ```
 
 ## When to Use Obsidian Search
+
+Obsidian wins when the value is in the note app surface itself, not just retrieval.
 
 **Visual exploration**: Graph view with interactive features, Canvas.
 

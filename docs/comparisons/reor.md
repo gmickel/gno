@@ -1,8 +1,14 @@
 # GNO vs Reor
 
-**Verdict**: Reor is a note-taking app with automatic linking; GNO is a search tool with CLI and MCP access.
+**Verdict**: Reor is an AI-assisted note-taking app. GNO is a local knowledge workspace that now covers search, browse, graph, and agent access more broadly across existing folders.
 
-Both use local LLMs and vector search, but serve different workflows. Reor is for writing and organizing notes with AI assistance. GNO is for searching existing documents from anywhere (terminal, AI assistants, REST API).
+Both use local LLMs and vector search, but they serve different workflows. Reor is for writing and organizing notes with AI assistance. GNO is for searching, browsing, graphing, and reusing existing documents from anywhere: terminal, web UI, desktop shell, REST API, or AI assistants.
+
+## At a Glance
+
+- Choose **Reor** if you primarily want an AI-native note-taking app.
+- Choose **GNO** if you primarily want a search and workspace layer across existing files and folders.
+- Reor is note-taking-first. GNO is retrieval/workspace-first.
 
 ## Get Started
 
@@ -44,6 +50,8 @@ gno init ~/notes --name notes && gno index
 | **License**              | MIT                            | AGPL-3.0                   |
 
 ## GNO Advantages
+
+GNO wins when your source material already exists and you want to make it searchable, navigable, and reusable across tools.
 
 **Multi-format search**: Index PDFs, Word docs, Excel, PowerPoint alongside Markdown. Search everything from one place.
 
@@ -98,6 +106,8 @@ gno query "meeting notes" --collection work
 
 ## Reor Advantages
 
+Reor wins when the act of taking and organizing notes inside the app is the main workflow.
+
 **Automatic note linking**: Related notes appear in sidebar while writing. No manual linking required.
 
 **Visual note editor**: Full-featured Markdown editor with Obsidian-like experience.
@@ -144,3 +154,9 @@ gno mcp install --target claude
 ```
 
 This gives you Reor's note-taking and auto-linking plus GNO's CLI, MCP, and multi-format search.
+
+## Next Steps
+
+- Want to see the workspace/graph side? Open [Web UI](../WEB-UI.md).
+- Want agent memory on top of your note folders? See [MCP Integration](../MCP.md).
+- Want to try it on your own notes? Start with [Quickstart](../QUICKSTART.md).

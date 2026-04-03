@@ -2,7 +2,8 @@
 SoftwareApplication, BreadcrumbList, Article/TechArticle {% endcomment %} {%
 assign page_url = page.url | absolute_url %} {% assign page_title = page.title |
 default: site.title %} {% assign page_description = page.description | default:
-site.description | strip_html | truncate: 160 %}
+page.excerpt | default: content | default: site.description | strip_html |
+truncate: 160 %}
 
 <script type="application/ld+json">
   {
@@ -62,12 +63,13 @@ site.description | strip_html | truncate: 160 %}
         },
         "featureList": [
           "Hybrid BM25 + Vector Search with Cross-Encoder Reranking",
+          "Cross-Collection Browse Tree and Workspace Tabs",
           "AI Answers with Citations from Local LLMs",
           "Markdown, PDF, DOCX, XLSX, PPTX Indexing",
           "MCP Server for Claude Desktop, Cursor, Zed, and 10+ Clients",
           "AI Agent Skills for Claude Code, Codex, OpenCode, OpenClaw",
           "TypeScript SDK for Embedding Search in Apps",
-          "Knowledge Graph Visualization",
+          "Knowledge Graph Visualization with Wiki, Markdown, and Similarity Links",
           "Fine-Tuned Retrieval Models on Hugging Face",
           "100% Local and Privacy-First"
         ]

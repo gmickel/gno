@@ -1,9 +1,9 @@
 ---
 layout: feature
 title: Knowledge Graph
-headline: See How Your Ideas Connect
-description: Interactive force-directed graph visualization of document connections. Explore wiki links, markdown links, and semantic similarity as a navigable constellation. CLI, Web UI, and API access.
-keywords: knowledge graph, graph view, document visualization, force graph, wiki links visualization, note connections, zettelkasten graph
+headline: Explore Connections, Not Just Results
+description: Interactive graph visualization of document connections across your local knowledge base. Explore wiki links, markdown links, and semantic similarity, then jump straight into the source note.
+keywords: knowledge graph, graph view, note graph, document graph, wiki links visualization, local knowledge graph, zettelkasten graph
 icon: graph
 slug: graph-view
 permalink: /features/graph-view/

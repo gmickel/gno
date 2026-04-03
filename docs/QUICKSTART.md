@@ -1,6 +1,12 @@
+---
+title: Quickstart
+description: Get from local folders to hybrid search, browse, graph, and AI answers with GNO in under five minutes.
+keywords: gno quickstart, local rag quickstart, semantic search quickstart, note search quickstart
+---
+
 # Quickstart
 
-Get searching in under 5 minutes.
+Get from local folders to hybrid search, workspace browsing, and AI answers in under 5 minutes.
 
 > **Prerequisites**: See [Installation](INSTALLATION.md) for setup. Run `gno doctor` to verify.
 

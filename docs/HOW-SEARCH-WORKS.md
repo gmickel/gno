@@ -1,3 +1,9 @@
+---
+title: How Search Works
+description: "Deep dive into GNO's search pipeline: BM25, vector search, query expansion, HyDE, reciprocal rank fusion, and reranking."
+keywords: how hybrid search works, bm25 vector fusion, hyde retrieval, reranking pipeline, gno search
+---
+
 # How Search Works
 
 GNO uses a sophisticated multi-stage search pipeline that combines traditional keyword search with modern neural techniques. This document explains how your queries are processed, expanded, and ranked.

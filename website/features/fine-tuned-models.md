@@ -1,9 +1,9 @@
 ---
 layout: feature
 title: Fine-Tuned Models
-headline: Train Local, Ship Portable
-description: Fine-tune retrieval models locally, publish portable GGUF artifacts, benchmark them against the shipped baseline, and use them in GNO with HF-backed custom presets.
-keywords: fine-tuned models, gguf, mlx lora, local finetuning, retrieval model, qwen3
+headline: Fine-Tune Retrieval, Not Just Chat
+description: Fine-tune GNO retrieval models locally, benchmark them, export portable GGUF artifacts, and ship them back into the product with Hugging Face-backed presets.
+keywords: fine tuned retrieval model, gguf retrieval, mlx lora, local fine tuning, gno models, qwen3 retrieval
 icon: brain
 slug: fine-tuned-models
 permalink: /features/fine-tuned-models/

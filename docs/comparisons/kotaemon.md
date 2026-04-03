@@ -1,8 +1,14 @@
 # GNO vs Kotaemon
 
-**Verdict**: Both offer hybrid search with reranking. Kotaemon is UI-first with Gradio and advanced citation previews, GNO is CLI-first with MCP integration and REST API. Choose Kotaemon for document Q&A with visual citations, GNO for developer workflows and AI agent integration.
+**Verdict**: Kotaemon is UI-first for document Q&A. GNO is a local knowledge workspace with stronger CLI/API/agent surfaces and a broader day-to-day workflow around search, browse, graph, and editing.
 
-Both tools provide semantic search for local documents with AI-powered RAG features. Here's how they compare.
+Both tools provide semantic search for local documents with AI-powered RAG features. Here's how they compare when the question is "document Q&A app" versus "search + workspace + agent memory."
+
+## At a Glance
+
+- Choose **Kotaemon** if you want a document Q&A interface with rich citation previews and cloud-model flexibility.
+- Choose **GNO** if you want retrieval, browse, graph, CLI/API access, and AI-agent integration around the same local corpus.
+- Kotaemon is Q&A-first. GNO is workspace-first.
 
 ## Get Started
 
@@ -68,6 +74,8 @@ pip install kotaemon
 
 ## GNO Advantages
 
+GNO wins when the documents need to be useful outside a single question-answer UI.
+
 **CLI-first design**: Full-featured command line for scripting and automation.
 
 ```bash
@@ -97,6 +105,8 @@ gno ask "how does caching work" --depth thorough --answer
 **Incremental indexing**: SHA-256 tracking, only re-indexes changed files.
 
 ## Kotaemon Advantages
+
+Kotaemon wins when citation presentation and document-Q&A UI are the main event.
 
 **Advanced citations**: In-browser PDF viewer with highlighted passages and relevance scores. See exactly where answers come from.
 
@@ -131,3 +141,9 @@ gno ask "how does caching work" --depth thorough --answer
 **GNO**: TypeScript/Bun, SQLite + node-llama-cpp, designed for CLI and MCP integration. Single-user, local-first.
 
 **Kotaemon**: Python/Gradio, supports multiple LLM backends, designed for interactive document Q&A. Can run locally or containerized.
+
+## Next Steps
+
+- See how GNO handles grounded answers in [Web UI](../WEB-UI.md).
+- See how the agent side differs in [MCP Integration](../MCP.md).
+- Want the search pipeline details? Read [How Search Works](../HOW-SEARCH-WORKS.md).

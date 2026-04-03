@@ -50,6 +50,7 @@ import {
 import { searchHybrid } from "../../pipeline/hybrid";
 import { validateQueryModes } from "../../pipeline/query-modes";
 import { searchBm25 } from "../../pipeline/search";
+import { buildBrowseTree, normalizeBrowsePath } from "../browse-tree";
 import { applyConfigChange, applyConfigChangeTyped } from "../config-sync";
 import { getConnectorStatuses, installConnector } from "../connectors";
 import {
@@ -780,6 +781,12 @@ export async function handleDocs(
   url: URL
 ): Promise<Response> {
   const collection = url.searchParams.get("collection") || undefined;
+  const pathPrefix = normalizeBrowsePath(url.searchParams.get("pathPrefix"));
+  const directChildrenOnlyParam = (
+    url.searchParams.get("directChildrenOnly") ?? ""
+  )
+    .trim()
+    .toLowerCase();
   const sortFieldRaw = (url.searchParams.get("sortField") ?? "modified")
     .trim()
     .toLowerCase();
@@ -818,6 +825,15 @@ export async function handleDocs(
     return errorResponse("VALIDATION", "sortOrder must be 'asc' or 'desc'");
   }
   const sortOrder: "asc" | "desc" = sortOrderRaw === "asc" ? "asc" : "desc";
+  const directChildrenOnly =
+    directChildrenOnlyParam === "1" || directChildrenOnlyParam === "true";
+
+  if (pathPrefix && !collection) {
+    return errorResponse(
+      "VALIDATION",
+      "pathPrefix requires a collection filter"
+    );
+  }
 
   // Parse tag filters
   let tagsAll: string[] | undefined;
@@ -867,6 +883,8 @@ export async function handleDocs(
     collection,
     limit,
     offset,
+    pathPrefix: pathPrefix || undefined,
+    directChildrenOnly,
     tagsAll,
     tagsAny,
     sortField: sortFieldRaw,
@@ -893,9 +911,38 @@ export async function handleDocs(
     total,
     limit,
     offset,
+    pathPrefix,
+    directChildrenOnly,
     availableDateFields,
     sortField: sortFieldRaw,
     sortOrder,
+  });
+}
+
+export async function handleBrowseTree(
+  store: SqliteAdapter
+): Promise<Response> {
+  const [collectionsResult, documentsResult] = await Promise.all([
+    store.getCollections(),
+    store.listActiveDocumentsForBrowse(),
+  ]);
+
+  if (!collectionsResult.ok) {
+    return errorResponse("RUNTIME", collectionsResult.error.message, 500);
+  }
+  if (!documentsResult.ok) {
+    return errorResponse("RUNTIME", documentsResult.error.message, 500);
+  }
+
+  const collections = buildBrowseTree(
+    collectionsResult.value,
+    documentsResult.value
+  );
+
+  return jsonResponse({
+    collections,
+    totalCollections: collections.length,
+    totalDocuments: documentsResult.value.length,
   });
 }
 

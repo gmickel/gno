@@ -41,8 +41,23 @@ void mock.module("../../../../src/serve/public/components/editor", () => ({
 void mock.module(
   "../../../../src/serve/public/components/FrontmatterDisplay",
   () => ({
-    FrontmatterDisplay: () => null,
-    parseFrontmatter: (content: string) => ({ data: {}, body: content }),
+    FrontmatterDisplay: ({ content }: { content: string }) => (
+      <div>
+        {content.includes("sources:") ? "Frontmatter card" : "No frontmatter"}
+      </div>
+    ),
+    parseFrontmatter: (content: string) => {
+      if (!content.startsWith("---")) {
+        return { data: {}, body: content };
+      }
+      return {
+        data: {
+          tags: ["work"],
+          sources: ["https://example.com"],
+        },
+        body: content.replace(/^---[\s\S]*?---\n\n/u, ""),
+      };
+    },
   })
 );
 
@@ -61,7 +76,8 @@ describe("DocView DOM interactions", () => {
           docid: "doc-1",
           uri: "file:///tmp/notes/alpha.md",
           title: "Alpha Note",
-          content: "# Alpha Note\n\nBody",
+          content:
+            "---\ntags:\n  - work\nsources:\n  - https://example.com\n---\n\n# Alpha Note\n\nSee [[Beta Note]].",
           contentAvailable: true,
           collection: "notes",
           relPath: "alpha.md",
@@ -91,6 +107,26 @@ describe("DocView DOM interactions", () => {
           meta: { total: 2 },
         });
       }
+      if (endpoint === "/api/doc/doc-1/links?type=wiki") {
+        return apiOk({
+          links: [
+            {
+              targetRef: "Beta Note",
+              targetRefNorm: "beta note",
+              linkType: "wiki",
+              startLine: 1,
+              startCol: 1,
+              endLine: 1,
+              endCol: 12,
+              source: "parsed",
+              resolved: true,
+              resolvedDocid: "#beta",
+              resolvedUri: "gno://notes/Beta%20Note.md",
+              resolvedTitle: "Beta Note",
+            },
+          ],
+        });
+      }
       if (endpoint === "/api/docs/doc-1" && options?.method === "PUT") {
         return apiOk({
           success: true,
@@ -113,21 +149,30 @@ describe("DocView DOM interactions", () => {
     const { user } = renderWithUser(<DocView navigate={navigate} />);
 
     await screen.findByRole("heading", { name: "Alpha Note" });
+    expect(screen.getAllByText("Frontmatter card").length).toBeGreaterThan(0);
 
-    await user.click(screen.getAllByRole("button", { name: "Edit" })[1]!);
-    const input = await screen.findByRole("combobox", {
-      name: "Edit document tags",
-    });
+    await user.click(screen.getAllByRole("button", { name: "Edit tags" })[0]!);
+    const input = (
+      await screen.findAllByRole("combobox", {
+        name: "Edit document tags",
+      })
+    )[0]!;
     await user.click(input);
     await user.type(input, "proj");
     await screen.findByRole("listbox");
     await user.keyboard("{ArrowDown}{Enter}");
 
-    await user.click(screen.getByRole("button", { name: "Save" }));
+    await user.click(screen.getAllByRole("button", { name: "Save" })[0]!);
 
     await waitFor(() => {
-      expect(screen.getByText("Saved")).toBeTruthy();
+      expect(screen.getAllByText("Saved").length).toBeGreaterThan(0);
     });
-    expect(screen.getByText("project/docs")).toBeTruthy();
+    expect(apiFetch).toHaveBeenCalledWith(
+      "/api/docs/doc-1",
+      expect.objectContaining({
+        method: "PUT",
+        body: expect.stringContaining("project/docs"),
+      })
+    );
   });
 });

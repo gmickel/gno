@@ -1,9 +1,9 @@
 ---
 layout: feature
 title: MCP Integration
-headline: Give Your AI Assistant Memory
-description: Connect GNO to Claude Desktop, Cursor, Zed, Windsurf, Amp, Raycast, and more via MCP. 19 tools for search, retrieval, graph exploration, and indexing. Your AI can search and cite your local documents.
-keywords: mcp server, claude desktop mcp, cursor mcp, zed mcp, windsurf mcp, amp mcp, model context protocol, ai assistant memory, local knowledge mcp
+headline: Tool Access for Desktop and Editor Clients
+description: Connect GNO to Claude Desktop, Cursor, Zed, Windsurf, Amp, Raycast, and more via MCP. Search, retrieval, graph exploration, document access, and indexing tools over one local server.
+keywords: mcp server, claude desktop mcp, cursor mcp, zed mcp, windsurf mcp, model context protocol, local knowledge mcp, ai assistant memory
 icon: mcp-integration
 slug: mcp-integration
 permalink: /features/mcp-integration/

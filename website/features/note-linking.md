@@ -1,9 +1,9 @@
 ---
 layout: feature
 title: Note Linking
-headline: Navigate Your Knowledge Graph
-description: Wiki links, backlinks, and semantic similarity for connected notes. Build a personal knowledge graph with bidirectional navigation, cross-collection links, and AI-powered related note discovery.
-keywords: wiki links, backlinks, zettelkasten, note linking, knowledge graph, bidirectional links, similar documents
+headline: Wiki Links, Backlinks, and Related Notes
+description: Build a connected local knowledge base with wiki links, backlinks, cross-collection links, semantic related notes, and direct graph navigation inside GNO.
+keywords: wiki links, backlinks, zettelkasten, note linking, knowledge graph, bidirectional links, related notes
 icon: link
 slug: note-linking
 permalink: /features/note-linking/

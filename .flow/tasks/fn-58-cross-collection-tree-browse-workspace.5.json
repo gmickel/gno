@@ -1,0 +1,17 @@
+{
+  "assignee": null,
+  "claim_note": "",
+  "claimed_at": null,
+  "created_at": "2026-04-03T19:32:32.236301Z",
+  "depends_on": [
+    "fn-58-cross-collection-tree-browse-workspace.3",
+    "fn-58-cross-collection-tree-browse-workspace.4"
+  ],
+  "epic": "fn-58-cross-collection-tree-browse-workspace",
+  "id": "fn-58-cross-collection-tree-browse-workspace.5",
+  "priority": 5,
+  "spec_path": ".flow/tasks/fn-58-cross-collection-tree-browse-workspace.5.md",
+  "status": "todo",
+  "title": "Polish accessibility, mobile fallback, tests, and docs for Browse 2.0",
+  "updated_at": "2026-04-03T19:32:47.902649Z"
+}

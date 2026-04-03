@@ -250,41 +250,37 @@ export function OutgoingLinksPanel({
 
   return (
     <Collapsible
-      className={cn(
-        // Container styling - dark manuscript edge
-        "border-border/40 border-l",
-        "bg-gradient-to-b from-[#050505] to-[#0a0a0a]",
-        className
-      )}
+      className={cn("px-1", className)}
       onOpenChange={setIsOpen}
       open={isOpen}
     >
       {/* Header trigger */}
       <CollapsibleTrigger
         className={cn(
-          "group flex w-full items-center gap-2 px-3 py-2.5",
+          "group flex w-full items-center gap-2",
+          "rounded-sm px-2 py-1.5",
           "transition-colors duration-150",
-          "hover:bg-[#4db8a8]/5"
+          "hover:bg-muted/20"
         )}
       >
         {/* Chevron */}
         <ChevronDownIcon
           className={cn(
-            "size-4 shrink-0 text-muted-foreground/60",
+            "size-3.5 shrink-0 text-muted-foreground/50",
             "transition-transform duration-200",
             !isOpen && "-rotate-90"
           )}
         />
 
         {/* Title */}
-        <span className="flex-1 text-left font-mono text-[11px] uppercase tracking-wider text-muted-foreground">
+        <span className="flex-1 text-left font-mono text-[10px] text-muted-foreground/60 uppercase tracking-[0.15em]">
           Outgoing Links
         </span>
 
         {/* Count badges */}
         {!loading && links.length > 0 && (
           <div className="flex items-center gap-1.5">
-            <span className="rounded bg-[#4db8a8]/15 px-1.5 py-0.5 font-mono text-[10px] tabular-nums text-[#4db8a8]">
+            <span className="rounded bg-primary/12 px-1.5 py-0.5 font-mono text-[10px] tabular-nums text-primary">
               {links.length}
             </span>
             {brokenCount > 0 && (
@@ -295,7 +291,7 @@ export function OutgoingLinksPanel({
           </div>
         )}
 
-        {/* Loading indicator in header */}
+        {/* Loading indicator */}
         {loading && (
           <Loader2Icon className="size-3.5 animate-spin text-muted-foreground/50" />
         )}

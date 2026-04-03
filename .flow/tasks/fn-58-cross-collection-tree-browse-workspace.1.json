@@ -1,0 +1,14 @@
+{
+  "assignee": null,
+  "claim_note": "",
+  "claimed_at": null,
+  "created_at": "2026-04-03T19:32:32.193358Z",
+  "depends_on": [],
+  "epic": "fn-58-cross-collection-tree-browse-workspace",
+  "id": "fn-58-cross-collection-tree-browse-workspace.1",
+  "priority": 1,
+  "spec_path": ".flow/tasks/fn-58-cross-collection-tree-browse-workspace.1.md",
+  "status": "todo",
+  "title": "Add browse tree data model and derivation layer",
+  "updated_at": "2026-04-03T19:32:32.193515Z"
+}

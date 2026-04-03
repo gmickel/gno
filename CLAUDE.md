@@ -125,6 +125,24 @@ bun run website:sync-assets        # Sync all website assets (OG, screenshots, h
 bun run website:sync-assets --og   # OG images only
 ```
 
+## Website Screenshots
+
+For docs/website screenshots:
+
+- source screenshots live in `/assets/screenshots/`
+- for local website dev, copy them into `website/assets/screenshots/`
+
+```bash
+cp website/../assets/screenshots/*.{jpg,png} website/assets/screenshots/
+```
+
+Capture settings:
+
+- Chrome DevTools dimensions: `1380 × 880`
+- Chrome DevTools DPR: `2.0`
+- Chrome DevTools command palette: `Cmd+Shift+P` → `Capture screenshot`
+- if you use a framing/polish app, export on a `2960 × 2010 px` canvas and keep the existing GNO visual treatment consistent
+
 ## Directory Structure
 
 **docs/** - User-facing documentation only. Published to website.

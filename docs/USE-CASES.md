@@ -1,3 +1,9 @@
+---
+title: Use Cases
+description: Real-world workflows for using GNO as a local knowledge workspace for notes, teams, agents, and research.
+keywords: local rag use cases, knowledge workspace workflows, second brain search, agent memory workflows
+---
+
 # Use Cases
 
 Real-world workflows for common scenarios.
@@ -8,7 +14,7 @@ You've built a personal knowledge base. Maybe it's Obsidian, maybe it's thousand
 
 The dream: hook it up to your AI assistant. Ask Claude "have I worked on something like this before?" and get a real answer grounded in your actual notes.
 
-The reality with existing tools: search is terrible. Obsidian MCP servers find nothing useful. Keyword search misses conceptual matches. Your second brain is locked away.
+The reality with existing tools: search is terrible, workspace navigation is fragmented, and AI integrations often feel bolted on. Obsidian MCP servers find nothing useful. Keyword search misses conceptual matches. Your second brain is locked away.
 
 ### GNO Fixes This
 

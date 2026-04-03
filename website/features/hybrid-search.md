@@ -1,9 +1,9 @@
 ---
 layout: feature
 title: Hybrid Search
-headline: The Best of Keywords and Semantics
-description: GNO combines BM25 full-text search with vector similarity search using reciprocal rank fusion. Get accurate results whether you search for exact terms or conceptual matches.
-keywords: hybrid search, bm25, vector search, semantic search, reciprocal rank fusion
+headline: Exact Terms, Concepts, and Retrieval Control
+description: GNO combines BM25 full-text search with vector similarity, reciprocal rank fusion, query expansion, and reranking. Search for exact terms or conceptual matches from one local engine.
+keywords: hybrid search, bm25, vector search, semantic search, reciprocal rank fusion, query expansion, reranking
 icon: hybrid-search
 slug: hybrid-search
 permalink: /features/hybrid-search/

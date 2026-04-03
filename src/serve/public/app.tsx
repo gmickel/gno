@@ -7,6 +7,7 @@ import { ShortcutHelpModal } from "./components/ShortcutHelpModal";
 import { WorkspaceTabs } from "./components/WorkspaceTabs";
 import { CaptureModalProvider, useCaptureModal } from "./hooks/useCaptureModal";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
+import { WorkspaceProvider } from "./hooks/useWorkspace";
 import { parseDocumentDeepLink } from "./lib/deep-links";
 import { saveRecentDocument } from "./lib/navigation-state";
 import {
@@ -16,6 +17,7 @@ import {
   loadWorkspaceState,
   saveWorkspaceState,
   updateActiveTabLocation,
+  updateActiveTabBrowseState,
   type WorkspaceState,
 } from "./lib/workspace-tabs";
 import Ask from "./pages/Ask";
@@ -40,7 +42,12 @@ type Route =
   | "/connectors";
 type Navigate = (to: string | number) => void;
 
-const routes: Record<Route, React.ComponentType<{ navigate: Navigate }>> = {
+interface RoutePageProps {
+  navigate: Navigate;
+  location?: string;
+}
+
+const routes: Record<Route, React.ComponentType<RoutePageProps>> = {
   "/": Dashboard,
   "/search": Search,
   "/browse": Browse,
@@ -130,6 +137,7 @@ function AppContent({
 
   const basePath = location.split("?")[0] as Route;
   const Page = routes[basePath] || Dashboard;
+  const pageKey = basePath === "/browse" ? basePath : location;
 
   return (
     <>
@@ -142,7 +150,7 @@ function AppContent({
           tabs={workspace.tabs}
         />
         <div className="flex-1">
-          <Page key={location} navigate={navigate} />
+          <Page key={pageKey} location={location} navigate={navigate} />
         </div>
         <footer className="border-t border-border/30 bg-background/60 py-6 text-center text-sm backdrop-blur-sm">
           <div className="ornament mx-auto mb-4 max-w-[8rem] text-muted-foreground/20">
@@ -293,19 +301,35 @@ function App() {
     });
   }, []);
 
+  const updateActiveBrowseState = useCallback(
+    (nextBrowseState: Parameters<typeof updateActiveTabBrowseState>[1]) => {
+      setWorkspace((current) =>
+        updateActiveTabBrowseState(current, nextBrowseState)
+      );
+    },
+    []
+  );
+
   return (
-    <CaptureModalProvider>
-      <AppContent
-        location={location}
-        navigate={navigate}
-        onActivateTab={activateTab}
-        onCloseTab={closeTab}
-        onNewTab={openNewTab}
-        setShortcutHelpOpen={setShortcutHelpOpen}
-        shortcutHelpOpen={shortcutHelpOpen}
-        workspace={workspace}
-      />
-    </CaptureModalProvider>
+    <WorkspaceProvider
+      value={{
+        activeTab: activeTab ?? null,
+        updateActiveTabBrowseState: updateActiveBrowseState,
+      }}
+    >
+      <CaptureModalProvider>
+        <AppContent
+          location={location}
+          navigate={navigate}
+          onActivateTab={activateTab}
+          onCloseTab={closeTab}
+          onNewTab={openNewTab}
+          setShortcutHelpOpen={setShortcutHelpOpen}
+          shortcutHelpOpen={shortcutHelpOpen}
+          workspace={workspace}
+        />
+      </CaptureModalProvider>
+    </WorkspaceProvider>
   );
 }
 

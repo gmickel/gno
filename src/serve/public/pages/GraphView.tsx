@@ -298,8 +298,8 @@ export default function GraphView({ navigate }: PageProps) {
     if (includeSimilar) {
       params.set("includeSimilar", "true");
     }
-    params.set("limit", "2000");
-    params.set("edgeLimit", "10000");
+    params.set("limit", "600");
+    params.set("edgeLimit", "2200");
 
     const url = `/api/graph?${params.toString()}`;
     const { data, error: fetchError } = await apiFetch<GraphResponse>(url);
@@ -632,14 +632,14 @@ export default function GraphView({ navigate }: PageProps) {
           <Suspense fallback={<GraphLoading />}>
             <ForceGraph2D
               backgroundColor={COLORS.canvas}
-              cooldownTicks={100}
+              cooldownTicks={45}
               graphData={forceGraphData}
               linkColor={(link: any) => link.color}
               linkCurvature={0.1}
               linkDirectionalParticleColor={() => COLORS.nodeDefault}
               linkDirectionalParticles={
                 // Disable particles on large graphs for performance
-                forceGraphData.links.length > 500 ? 0 : 1
+                forceGraphData.links.length > 250 ? 0 : 1
               }
               linkDirectionalParticleWidth={1.5}
               linkWidth={(link: any) =>
@@ -670,6 +670,7 @@ export default function GraphView({ navigate }: PageProps) {
               onZoom={(transform: { k: number }) => {
                 pointerScaleRef.current = transform.k;
               }}
+              warmupTicks={20}
               ref={graphRef}
             />
           </Suspense>
