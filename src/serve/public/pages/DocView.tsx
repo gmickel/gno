@@ -1250,9 +1250,9 @@ export default function DocView({ navigate }: PageProps) {
         </div>
       </header>
 
-      <div className="mx-auto flex max-w-[1800px] gap-5 px-8">
+      <div className="mx-auto flex max-w-[1800px] gap-4 px-6 xl:px-8">
         {doc && (
-          <aside className="hidden w-64 shrink-0 space-y-4 py-6 min-[1800px]:block">
+          <aside className="hidden w-52 shrink-0 space-y-4 py-6 lg:block xl:w-56">
             <div className="sticky top-24">{renderDocumentInfoRail()}</div>
           </aside>
         )}
@@ -1333,9 +1333,7 @@ export default function DocView({ navigate }: PageProps) {
                 </nav>
               )}
 
-              <div className="min-[1800px]:hidden">
-                {renderDocumentOverviewCard()}
-              </div>
+              <div className="lg:hidden">{renderDocumentOverviewCard()}</div>
 
               {/* Content */}
               <Card>
@@ -1425,7 +1423,7 @@ export default function DocView({ navigate }: PageProps) {
 
         {/* Right sidebar - Link panels */}
         {doc && (
-          <aside className="hidden w-72 shrink-0 space-y-4 py-6 lg:block">
+          <aside className="hidden w-64 shrink-0 space-y-4 py-6 lg:block 2xl:w-72">
             <div className="sticky top-24 space-y-4">
               <BacklinksPanel
                 docId={doc.docid}
