@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.34.0] - 2026-04-04
+
 ### Added
 
 - Added a cross-collection Browse 2.0 workspace with a real tree sidebar, folder detail panes, and tab-scoped browse state restoration.
