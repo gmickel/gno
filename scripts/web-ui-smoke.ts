@@ -133,6 +133,7 @@ async function main(): Promise<void> {
         waitUntil: "networkidle",
       });
       await page.getByRole("tree", { name: "Browse tree" }).waitFor();
+      await page.getByRole("button", { name: "Expand notes" }).click();
       await page.getByRole("treeitem", { name: /projects/i }).click();
       await page.waitForURL(/\/browse\?collection=notes&path=projects/);
       await page

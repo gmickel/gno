@@ -1,3 +1,9 @@
+---
+title: Use Cases
+description: Real-world workflows for using GNO as a local knowledge workspace for notes, teams, agents, and research.
+keywords: local rag use cases, knowledge workspace workflows, second brain search, agent memory workflows
+---
+
 # Use Cases
 
 Real-world workflows for common scenarios.

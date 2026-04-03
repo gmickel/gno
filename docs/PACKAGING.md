@@ -1,3 +1,9 @@
+---
+title: Packaging Matrix
+description: Packaging and support matrix for GNO CLI and desktop shell across macOS and Linux.
+keywords: gno packaging, desktop shell packaging, cli support matrix, mac linux packaging
+---
+
 # Packaging Matrix
 
 Support matrix for what GNO should actually ship on macOS and Linux.

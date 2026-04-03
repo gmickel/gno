@@ -4,6 +4,12 @@
 
 GPT4All is one of the most popular ways to run local LLMs. It focuses on an easy desktop chat experience with optional document context via LocalDocs. GNO focuses on document retrieval and workspace navigation first, with LLMs used for reranking and grounded RAG answers.
 
+## At a Glance
+
+- Choose **GPT4All** if your main goal is "run local chat models with a desktop app."
+- Choose **GNO** if your main goal is "search, browse, and reuse my knowledge base across humans and agents."
+- GPT4All is chat-first with document context. GNO is retrieval-first with workspace surfaces.
+
 ## Get Started
 
 ```bash
@@ -43,6 +49,8 @@ gno init ~/notes --name notes && gno index
 
 ## GNO Advantages
 
+GNO wins when search quality and knowledge reuse matter more than local-chat model variety.
+
 **Hybrid search**: Combines BM25 keyword search with vector semantic search for better results.
 
 ```bash
@@ -79,6 +87,8 @@ gno query "meeting notes" --collection work
 **More file formats**: Index Excel (XLSX) and PowerPoint (PPTX) files.
 
 ## GPT4All Advantages
+
+GPT4All wins when the local chat app itself is the product you want.
 
 **Easy LLM access**: Download and run thousands of LLMs with a few clicks. No CLI needed.
 
@@ -129,3 +139,9 @@ gno query "project requirements" --format json
 # Or let Claude search via MCP while using GPT4All for other chats
 gno mcp install --target claude
 ```
+
+## Next Steps
+
+- Want grounded answers instead of general local chat? See [MCP Integration](../MCP.md) and [Web UI](../WEB-UI.md).
+- Want to compare retrieval quality directly? Read [How Search Works](../HOW-SEARCH-WORKS.md).
+- Ready to try it? Use the [Quickstart](../QUICKSTART.md).

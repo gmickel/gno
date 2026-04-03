@@ -1,3 +1,9 @@
+---
+title: Configuration
+description: Configure collections, models, exclusions, remote inference endpoints, and runtime behavior for GNO's local knowledge workspace.
+keywords: gno config, local search configuration, collections config, model presets, remote inference config
+---
+
 # Configuration
 
 GNO configuration reference.

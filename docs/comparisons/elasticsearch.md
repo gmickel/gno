@@ -4,6 +4,12 @@ GNO and Elasticsearch both solve search problems, but they target very different
 
 Elasticsearch is an enterprise-grade distributed search engine for large teams and production search stacks. GNO is a local-first knowledge workspace for personal, team, and agent-centric document retrieval. They serve different use cases.
 
+## At a Glance
+
+- Choose **Elasticsearch** if you need distributed search infrastructure, analytics, and multi-tenant scale.
+- Choose **GNO** if you want a local search and workspace product you can install and use immediately on your own documents.
+- Think of Elasticsearch as infrastructure you operate, and GNO as a product you work in.
+
 ## Quick Summary
 
 | Aspect              | GNO                        | Elasticsearch         |
@@ -94,6 +100,8 @@ gno query "budget projections"
 
 ## When to Use Elasticsearch
 
+Elasticsearch wins when the search problem is really an infrastructure problem.
+
 **Enterprise scale**: Millions of documents, complex requirements.
 
 ```json
@@ -165,3 +173,9 @@ If you outgrow GNO (millions of documents, multi-user requirements, complex anal
 | Log analytics              | Elasticsearch  |
 | Enterprise document search | Elasticsearch  |
 | Privacy-critical documents | GNO            |
+
+## Next Steps
+
+- Want to see the product surface Elasticsearch does not try to be? Start with [Web UI](../WEB-UI.md).
+- Want the retrieval side in more detail? Read [How Search Works](../HOW-SEARCH-WORKS.md).
+- Want to try GNO directly? Follow the [Quickstart](../QUICKSTART.md).

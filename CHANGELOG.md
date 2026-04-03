@@ -9,8 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Added a cross-collection Browse 2.0 workspace with a real tree sidebar, folder detail panes, and tab-scoped browse state restoration.
+- Added richer document rendering in the web workspace, including clickable frontmatter links, clickable resolved wiki links in note content, and denser document metadata/frontmatter presentation.
+- Added a broad website/content refresh across the homepage, feature pages, docs metadata, FAQ, and comparison pages to better position GNO as a local knowledge workspace for humans and agents.
+
 ### Fixed
 
+- Improved graph loading by reducing redundant server-side graph work and tuning the client-side graph defaults for faster initial render.
+- Improved browser smoke coverage for Browse flows and stabilized the direct-child browse API assertion in tests.
 ## [0.33.4] - 2026-04-03
 
 ### Fixed

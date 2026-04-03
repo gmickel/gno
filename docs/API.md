@@ -1,3 +1,9 @@
+---
+title: REST API
+description: HTTP API for GNO search, retrieval, documents, graph data, model state, and workspace automation from the same local knowledge engine.
+keywords: gno api, local search api, retrieval api, document api, local rag api, knowledge graph api
+---
+
 # REST API
 
 Programmatic access to the same local knowledge workspace that powers the CLI, web UI, desktop shell, and agent integrations.

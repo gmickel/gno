@@ -1,3 +1,9 @@
+---
+title: Web UI
+description: GNO's local web workspace for search, browse tree navigation, graph exploration, safe editing, and AI answers.
+keywords: gno web ui, local knowledge workspace, browse tree, knowledge graph ui, note search app
+---
+
 # Web UI
 
 A local knowledge workspace for visual search, cross-collection browsing, graph exploration, safe editing, and AI-powered answers.

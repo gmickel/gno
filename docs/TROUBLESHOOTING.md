@@ -1,3 +1,9 @@
+---
+title: Troubleshooting
+description: Diagnose and fix common GNO issues across installation, models, indexing, workspace UI, and agent integrations.
+keywords: gno troubleshooting, local search issues, model install issues, indexing issues, mcp troubleshooting
+---
+
 # Troubleshooting
 
 Common issues and solutions for GNO's local search engine, workspace UI, models, and agent integrations.

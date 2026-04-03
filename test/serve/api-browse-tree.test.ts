@@ -118,7 +118,7 @@ describe("browse tree API", () => {
     const folderBody = (await folderResponse.json()) as {
       documents: Array<{ relPath: string }>;
     };
-    expect(folderBody.documents.map((doc) => doc.relPath)).toEqual([
+    expect(folderBody.documents.map((doc) => doc.relPath).sort()).toEqual([
       "projects/gno/spec.md",
       "projects/gno/tasks.md",
     ]);

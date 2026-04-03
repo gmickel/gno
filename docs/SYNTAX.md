@@ -1,3 +1,9 @@
+---
+title: Structured Query Syntax
+description: Use GNO's structured query syntax with term, intent, and hyde controls for explicit retrieval behavior.
+keywords: gno syntax, structured query syntax, hyde query, intent query, retrieval controls
+---
+
 # Structured Query Syntax
 
 GNO supports a first-class multi-line query document syntax for `query` and `ask` flows.

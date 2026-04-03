@@ -1,3 +1,9 @@
+---
+title: Fine-Tuned Models
+description: Use, benchmark, and publish GNO fine-tuned retrieval models with portable GGUF artifacts and Hugging Face-backed presets.
+keywords: gno fine tuned models, retrieval model, gguf retrieval, mlx lora, local fine tuning
+---
+
 # Fine-Tuned Models
 
 Guide for using fine-tuned local generation models with `gno`.

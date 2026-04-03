@@ -1,3 +1,9 @@
+---
+title: Daemon Mode
+description: Run GNO as a headless watcher process for continuous local indexing without the web UI or desktop shell.
+keywords: gno daemon, continuous indexing, local watcher, headless indexing, background knowledge index
+---
+
 # Daemon Mode
 
 Run GNO as a headless long-running watcher process.

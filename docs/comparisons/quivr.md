@@ -4,6 +4,12 @@
 
 Both tools enable semantic search over documents with AI assistance. Quivr is focused on framework flexibility, while GNO prioritizes immediate productivity, local workflows, and agent-ready retrieval.
 
+## At a Glance
+
+- Choose **Quivr** if you are building a RAG product/framework in Python.
+- Choose **GNO** if you want a complete local retrieval and workspace product today.
+- Quivr is framework-first. GNO is operator/user-first.
+
 ## Get Started
 
 ```bash
@@ -42,6 +48,8 @@ pip install quivr-core
 
 ## GNO Advantages
 
+GNO wins when "working immediately on my own notes/docs" matters more than "building a custom RAG app."
+
 **Zero setup**: Single install command, no external databases or Python environments. SQLite embedded means no PostgreSQL, no Docker, no configuration files.
 
 ```bash
@@ -66,6 +74,8 @@ gno serve  # http://localhost:3000
 **Local-first privacy**: All processing happens on your machine. No API keys required for basic functionality.
 
 ## Quivr Advantages
+
+Quivr wins when you want to compose your own product stack rather than adopt an opinionated local workspace.
 
 **Framework flexibility**: Build custom RAG applications with configurable components. Define workflows in YAML, swap LLM providers, integrate custom parsers.
 
@@ -112,3 +122,9 @@ answer = brain.ask("What is the main topic?")
 | **Embedding**    | Local (llama.cpp)  | Configurable               |
 | **Config**       | CLI flags, presets | YAML workflows             |
 | **Distribution** | npm package        | pip package                |
+
+## Next Steps
+
+- Want the packaged workspace side? See [Web UI](../WEB-UI.md).
+- Want the programmable surface? Read [SDK](../SDK.md) and [API](../API.md).
+- Want to try the product, not a framework? Start with [Quickstart](../QUICKSTART.md).
