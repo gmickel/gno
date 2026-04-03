@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.34.1] - 2026-04-04
+
+### Fixed
+
+- Fixed the desktop release workflows to stop uploading redundant proof-only artifacts, preventing transient GitHub artifact `ENOTFOUND` failures from sinking otherwise successful macOS packaging runs.
+
 ## [0.34.0] - 2026-04-04
 
 ### Added
