@@ -25,7 +25,8 @@ test/
 │   ├── conversion/ # Converter test files
 │   └── outputs/   # Expected outputs
 └── helpers/       # Test utilities
-    └── cleanup.ts # DB cleanup helpers
+    ├── cleanup.ts # DB cleanup helpers
+    └── dom.tsx    # DOM render/location helpers
 ```
 
 ## Running Tests
@@ -33,6 +34,13 @@ test/
 ```bash
 # All tests
 bun test
+
+# Web UI DOM suite
+bun run test:web
+
+# Browser smoke path (requires Chromium once)
+bun run test:e2e:install
+bun run test:e2e
 
 # Specific directory
 bun test test/cli/
@@ -46,6 +54,44 @@ bun test --watch
 ```
 
 ## Test Patterns
+
+### DOM React Tests
+
+Interactive React tests run under `bun test` with `happy-dom` preloaded via
+`bunfig.toml`.
+
+Use `test/helpers/dom.tsx`:
+
+```typescript
+import { screen } from "@testing-library/react";
+
+import { renderWithUser } from "../../helpers/dom";
+
+const { user } = renderWithUser(<MyComponent />);
+await user.click(screen.getByRole("button", { name: "Open" }));
+```
+
+### Module Mocking For UI Tests
+
+For modules like `apiFetch`, install the mock before importing the component,
+then use dynamic import:
+
+```typescript
+import { mock, test } from "bun:test";
+
+const apiFetch = mock(async () => ({ data: null, error: null }));
+
+void mock.module("../../../src/serve/public/hooks/use-api", () => ({
+  apiFetch,
+}));
+
+test("component", async () => {
+  const { MyComponent } = await import("../../../src/serve/public/MyComponent");
+  // render and assert
+});
+```
+
+This keeps Bun's existing `mock.module()` pattern working for DOM tests.
 
 ### Basic Test
 
@@ -112,6 +158,7 @@ afterEach(() => {
 ## Guidelines
 
 - Use `bun:test` imports, not jest/vitest
+- Prefer `bun run test:web` for interactive React coverage
 - Prefer async/await over done callbacks
 - Don't use `.only` or `.skip` in committed code
 - Keep test suites reasonably flat

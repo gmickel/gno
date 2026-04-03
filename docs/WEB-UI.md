@@ -553,6 +553,37 @@ Browser
 
 ---
 
+## Testing
+
+The Web UI now has three test layers:
+
+```bash
+# Existing Bun suite, including DOM interaction tests
+bun run test:web
+
+# One-time Chromium install for browser smoke
+bun run test:e2e:install
+
+# Repo-local browser smoke path
+bun run test:e2e
+```
+
+Notes:
+
+- DOM interaction tests stay Bun-first: `bun:test` + `@testing-library/react`
+  - `@testing-library/user-event`.
+- The DOM shim uses `happy-dom`, not `jsdom`, because Bun recommends the
+  `happy-dom` preload path for browser-like tests.
+- Shared setup lives in `test/preload/happy-dom.ts`.
+- Shared render helpers live in `test/helpers/dom.tsx`.
+- For module mocks like `apiFetch`, apply `mock.module()` before dynamic
+  imports so the mocked dependency is active when the page/component module
+  loads.
+- Browser smoke uses Playwright against a temp config/index and a real `gno serve`
+  process.
+
+---
+
 ## Troubleshooting
 
 ### "Port already in use"
