@@ -31,14 +31,18 @@ Do not overreach into a full Sparkle/appcast updater unless GNO actually needs t
 - [ ] `docs/DESKTOP-BETA-ROLLOUT.md` and related install docs reflect the real macOS beta release path.
 
 ## Done summary
+
 Shipped the macOS desktop beta artifact and release workflow.
 
 What landed:
+
 - release workflow now includes a macOS desktop packaging job
 - GitHub release environment secrets/vars are wired for Developer ID + notarytool use
 - tagged release `v0.33.3` completed successfully with macOS desktop packaging, Windows desktop packaging, npm publish, and release creation
 - workflow pathing issues for macOS artifact upload were debugged and resolved through follow-up fixes
+
 ## Evidence
+
 - Commits:
 - Tests: GitHub Actions publish run 23944474698 succeeded for v0.33.3, macOS desktop packaging job succeeded in CI, npm publish succeeded for 0.33.3, GitHub release job succeeded for 0.33.3
 - PRs:

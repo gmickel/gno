@@ -1,6 +1,7 @@
 # fn-54-re-evaluate-markit-as-a-unified.1 Re-run converter evaluation once markit stabilizes
 
 ## Description
+
 The 2026-04 re-check shows that `markit` has materially improved and is worth keeping on the radar, but it is still not ready to replace GNO's current converter stack.
 
 What changed since the earlier evaluation:
@@ -21,12 +22,15 @@ Future follow-up should be biased toward either:
 - experimental/partial adoption for happy-path formats only
 
 Not a full replacement.
+
 ## Acceptance
+
 - [ ] Re-check upstream release/test maturity.
 - [ ] Re-run GNO fixture smoke on PDF/DOCX/PPTX/XLSX.
 - [ ] Re-confirm `.xlsm` status.
 - [ ] Re-check sparse XLSX behavior rather than assuming it is fixed.
 - [ ] Record a future-facing recommendation: no adoption, experimental partial adoption, or broader adoption.
+
 ## Done summary
 
 TBD
