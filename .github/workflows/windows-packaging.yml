@@ -47,13 +47,6 @@ jobs:
         working-directory: desktop/electrobun-shell
         run: bun scripts/verify-packaged-runtime.ts
 
-      - name: Upload packaged runtime proof
-        uses: actions/upload-artifact@v7
-        with:
-          name: packaged-runtime-proof-windows
-          path: |
-            desktop/electrobun-shell/artifacts/*.json
-
       - name: Upload Windows desktop package
         uses: actions/upload-artifact@v7
         with:
