@@ -115,13 +115,6 @@ jobs:
           Compress-Archive -Path (Join-Path $buildDir.FullName '*') -DestinationPath $zipPath -Force
           "zip_path=$zipPath" >> $env:GITHUB_OUTPUT
 
-      - name: Upload packaged runtime proof
-        uses: actions/upload-artifact@v7
-        with:
-          name: packaged-runtime-proof-windows
-          path: |
-            desktop/electrobun-shell/artifacts/*.json
-
       - name: Upload Windows desktop package
         uses: actions/upload-artifact@v7
         with:
@@ -192,14 +185,6 @@ jobs:
           bun scripts/release-macos.ts
           test -d "$ELECTROBUN_ARTIFACT_DIR"
           find "$ELECTROBUN_ARTIFACT_DIR" -maxdepth 3 -type f -print | sort
-
-      - name: Upload packaged runtime proof
-        uses: actions/upload-artifact@v7
-        with:
-          name: packaged-runtime-proof-macos
-          if-no-files-found: warn
-          path: |
-            ${{ github.workspace }}/desktop/electrobun-shell/artifacts/release-macos/*.json
 
       - name: Upload macOS desktop package
         uses: actions/upload-artifact@v7
