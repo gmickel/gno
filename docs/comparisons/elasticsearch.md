@@ -33,9 +33,9 @@ Elasticsearch is an enterprise-grade distributed search engine for large teams a
 | **Cost**             | Free                          | License fees at scale      |
 | **Query DSL**        | Simple CLI flags              | Complex JSON DSL           |
 | **Aggregations**     | Basic                         | Powerful analytics         |
-
-| **REST API** | ✓ `gno serve` | ✓ Native |
-| **Web UI** | ✓ `gno serve` | ✓ Kibana |
+| **REST API**         | ✓ `gno serve`                 | ✓ Native                   |
+| **Web UI**           | ✓ `gno serve`                 | ✓ Kibana                   |
+| **Headless Daemon**  | ✓ `gno daemon`                | ✓ Native server            |
 
 ## The Key Difference
 
@@ -80,6 +80,12 @@ gno mcp install --target cursor
 
 # RAG-style answers
 gno ask "how does our auth work" --answer
+```
+
+**Headless indexing**: Run GNO as a small always-on indexer without carrying the full web workspace.
+
+```bash
+gno daemon
 ```
 
 **Team knowledge (small scale)**: Shared docs on a network drive or synced folder.

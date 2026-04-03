@@ -31,9 +31,9 @@ GNO and grep/ripgrep are complementary, but they solve different search problems
 | **Speed (large corpus)** | Fast (indexed)          | Slow (full scan)        |
 | **Regex**                | Basic patterns          | Full regex power        |
 | **Pipeline**             | JSON output             | Native stdin/stdout     |
-
-| **REST API** | ✓ `gno serve` | ✗ |
-| **Web UI** | ✓ `gno serve` | ✗ |
+| **REST API**             | ✓ `gno serve`           | ✗                       |
+| **Web UI**               | ✓ `gno serve`           | ✗                       |
+| **Headless Daemon**      | ✓ `gno daemon`          | ✗                       |
 
 ### Shell & Integration
 

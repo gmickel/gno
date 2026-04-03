@@ -36,6 +36,7 @@ If you are comparing GNO to Obsidian, the real question is no longer just "searc
 | **Plugins**            | MCP ecosystem                                                         | Obsidian plugins     |
 | **REST API**           | ✓ `gno serve`                                                         | ✗                    |
 | **Web UI**             | ✓ `gno serve`                                                         | ✓ (Obsidian app)     |
+| **Headless Daemon**    | ✓ `gno daemon`                                                        | ✗                    |
 
 ## Complementary Workflow
 
@@ -77,6 +78,12 @@ gno query "authentication best practices"
 gno mcp install --target cursor
 
 # Now your AI assistant can search your Obsidian vault
+```
+
+**Headless sync loop**: Keep your vault index fresh for shell and agent workflows without leaving the web workspace open.
+
+```bash
+gno daemon
 ```
 
 **RAG answers**: Get AI-generated answers with citations from your notes.

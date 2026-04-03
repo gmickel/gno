@@ -44,6 +44,7 @@ PGPT_PROFILES=ollama make run
 | **Web UI**           | ✓ `gno serve`                  | ✓ Gradio                                                                |
 | **REST API**         | ✓                              | ✓ FastAPI (OpenAI-compatible)                                           |
 | **CLI**              | ✓ Full-featured                | ✗ Scripts only                                                          |
+| **Headless Daemon**  | ✓ `gno daemon`                 | ✓ Server mode                                                           |
 | **MCP Support**      | ✓ 10+ targets                  | ✗                                                                       |
 | **Local LLMs**       | ✓ node-llama-cpp               | ✓ llama.cpp, Ollama                                                     |
 | **Database**         | SQLite (embedded)              | Qdrant (requires service)                                               |
@@ -88,6 +89,12 @@ gno ask "how does caching work" --depth thorough --answer
 ```
 
 **Zero-dependency database**: SQLite embedded, no external services needed.
+
+**Headless continuous indexing**: Keep your local corpus current for APIs, agents, or shell workflows without launching the workspace.
+
+```bash
+gno daemon
+```
 
 **Single command install**: npm/bun global install, ready in seconds.
 

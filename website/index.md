@@ -26,7 +26,7 @@ keywords: local search workspace, semantic search, obsidian alternative, knowled
   <div class="home-surface-card">
     <span class="home-surface-label">Builder</span>
     <h3>CLI, API, SDK, and desktop/web all point at the same engine</h3>
-    <p>Use it from the shell, embed it in Bun apps, wire it into internal tools, or keep it running headlessly with <a href="/features/daemon-mode/">daemon mode</a>.</p>
+    <p>Use it from the shell, embed it in Bun apps, wire it into internal tools, or keep it running headlessly with <a href="/features/daemon-mode/">daemon mode</a> so agents and automations always see a fresh local index.</p>
   </div>
 </div>
 

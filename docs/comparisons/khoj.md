@@ -45,6 +45,7 @@ docker-compose up
 | **CLI**              | ✓ Full-featured           | ✓ Server command only |
 | **Web UI**           | ✓ `gno serve`             | ✓ Gradio-based        |
 | **REST API**         | ✓                         | ✓                     |
+| **Headless Daemon**  | ✓ `gno daemon`            | ✓ Server mode         |
 | **MCP Support**      | ✓ 10+ targets             | ✗                     |
 | **Query Expansion**  | ✓ LLM-powered             | ✗                     |
 | **HyDE**             | ✓                         | ✗                     |

@@ -32,20 +32,21 @@ gno init ~/notes --name notes && gno index
 
 ## Feature Comparison
 
-| Feature           | GNO                            | GPT4All                 |
-| ----------------- | ------------------------------ | ----------------------- |
-| **Primary Focus** | Document search                | Local LLM chat          |
-| **LocalDocs/RAG** | ✓ Core feature                 | ✓ LocalDocs feature     |
-| **Search Modes**  | BM25, Vector, Hybrid           | Vector only             |
-| **Reranking**     | ✓ Cross-encoder                | ✗                       |
-| **CLI**           | ✓ Full-featured                | Python SDK only         |
-| **REST API**      | ✓                              | ✓ OpenAI-compatible     |
-| **MCP Support**   | ✓                              | ✗                       |
-| **Desktop App**   | ✗                              | ✓                       |
-| **Model Library** | 3 presets                      | Thousands of models     |
-| **GPU Support**   | CPU only                       | ✓ Vulkan (NVIDIA/AMD)   |
-| **File Formats**  | MD, PDF, DOCX, XLSX, PPTX, TXT | PDF, DOCX, TXT, MD, RST |
-| **License**       | MIT                            | MIT                     |
+| Feature             | GNO                            | GPT4All                 |
+| ------------------- | ------------------------------ | ----------------------- |
+| **Primary Focus**   | Document search                | Local LLM chat          |
+| **LocalDocs/RAG**   | ✓ Core feature                 | ✓ LocalDocs feature     |
+| **Search Modes**    | BM25, Vector, Hybrid           | Vector only             |
+| **Reranking**       | ✓ Cross-encoder                | ✗                       |
+| **CLI**             | ✓ Full-featured                | Python SDK only         |
+| **REST API**        | ✓                              | ✓ OpenAI-compatible     |
+| **MCP Support**     | ✓                              | ✗                       |
+| **Headless Daemon** | ✓ `gno daemon`                 | ✗                       |
+| **Desktop App**     | ✗                              | ✓                       |
+| **Model Library**   | 3 presets                      | Thousands of models     |
+| **GPU Support**     | CPU only                       | ✓ Vulkan (NVIDIA/AMD)   |
+| **File Formats**    | MD, PDF, DOCX, XLSX, PPTX, TXT | PDF, DOCX, TXT, MD, RST |
+| **License**         | MIT                            | MIT                     |
 
 ## GNO Advantages
 
@@ -82,6 +83,12 @@ gno query "database migrations" --format json | jq '.results[].path'
 gno init ~/work --name work
 gno init ~/personal --name personal
 gno query "meeting notes" --collection work
+```
+
+**Headless continuous indexing**: Keep your corpus fresh for agents and scripts without opening the workspace.
+
+```bash
+gno daemon
 ```
 
 **More file formats**: Index Excel (XLSX) and PowerPoint (PPTX) files.

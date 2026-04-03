@@ -40,6 +40,7 @@ pip install quivr-core
 | **CLI**              | ✓ Full-featured                 | ✗ Library-based                    |
 | **Web UI**           | ✓ Built-in                      | ✗ Build your own                   |
 | **REST API**         | ✓ Built-in                      | ✗ Build your own                   |
+| **Headless Daemon**  | ✓ `gno daemon`                  | ✓ Build it yourself                |
 | **MCP Support**      | ✓                               | ✗                                  |
 | **LLM Providers**    | Local (llama.cpp)               | OpenAI, Anthropic, Mistral, Ollama |
 | **Workflow Config**  | Presets (slim/balanced/quality) | YAML-based custom workflows        |
@@ -69,6 +70,12 @@ gno query "API design patterns" --format json
 
 ```bash
 gno serve  # http://localhost:3000
+```
+
+**Headless daemon mode**: Keep indexing and embedding live for scripts, agents, or local automation without running the browser shell.
+
+```bash
+gno daemon
 ```
 
 **Local-first privacy**: All processing happens on your machine. No API keys required for basic functionality.

@@ -46,6 +46,7 @@ docker pull mintplexlabs/anythingllm
 | **LLM Providers**        | Local only (llama.cpp)          | 30+ (OpenAI, Anthropic, Ollama, Azure, AWS, etc.)                               |
 | **Search Quality**       | Hybrid (BM25 + vector + rerank) | Vector similarity                                                               |
 | **Setup**                | npm/bun install                 | Desktop download or Docker                                                      |
+| **Headless Daemon**      | ✓ `gno daemon`                  | ✓ Docker/server mode                                                            |
 | **Embedding Widget**     | ✗                               | ✓ (Docker)                                                                      |
 | **Browser Extension**    | ✗                               | ✓                                                                               |
 | **REST API**             | ✓                               | ✓                                                                               |
@@ -62,6 +63,12 @@ docker pull mintplexlabs/anythingllm
 **Privacy**: 100% local, no network calls, no cloud dependencies. AnythingLLM can use cloud LLMs.
 
 **AI agent integration**: Native MCP server for Claude Desktop, Cursor, Zed, Windsurf, Amp, Raycast, and more (11 targets). Skills for Claude Code, Codex, OpenCode, OpenClaw.
+
+**Headless indexing**: Keep the same watch/sync/embed loop hot for shells, agents, and automations without opening the workspace UI.
+
+```bash
+gno daemon
+```
 
 **Incremental indexing**: SHA-256 change detection, only re-indexes modified files.
 

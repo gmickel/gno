@@ -43,6 +43,7 @@ pip install kotaemon
 | **CLI**             | ✓ Full-featured          | ✗                         |
 | **Web UI**          | ✓ `gno serve`            | ✓ Gradio                  |
 | **REST API**        | ✓                        | ✗                         |
+| **Headless Daemon** | ✓ `gno daemon`           | ✓ Server mode             |
 | **MCP Support**     | ✓                        | ✗                         |
 | **Multi-modal**     | ✗                        | ✓ Figures, tables         |
 | **Query Expansion** | ✓ LLM-powered            | ✗                         |
@@ -86,6 +87,12 @@ gno query "authentication flow" --format json | jq '.results[0]'
 
 ```bash
 gno mcp install --target cursor
+```
+
+**Headless indexing**: Keep retrieval hot for scripts or AI assistants without running the full workspace UI.
+
+```bash
+gno daemon
 ```
 
 **REST API**: Programmatic access for custom integrations.

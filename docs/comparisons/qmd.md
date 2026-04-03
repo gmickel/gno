@@ -42,6 +42,7 @@ qmd init && qmd index
 | **AI Answers (RAG)**    | ✓ `gno ask --answer`                     | ✗                     |
 | **Web UI**              | ✓ `gno serve`                            | ✗                     |
 | **REST API**            | ✓ `gno serve`                            | ✗                     |
+| **Headless Daemon**     | ✓ `gno daemon`                           | ✗                     |
 | **Languages**           | 30+ (auto-detect)                        | English-focused       |
 | **MCP Install CLI**     | ✓ 10+ targets                            | ✗ Manual config       |
 | **Skills**              | ✓ Claude Code, Codex, OpenCode, OpenClaw | ✗                     |
@@ -79,6 +80,12 @@ gno mcp install --target cursor
 ```
 
 **Skills**: Native integration for Claude Code, Codex, OpenCode, and OpenClaw via CLI.
+
+**Headless continuous indexing**: Run the watcher/sync/embed loop without opening the web workspace.
+
+```bash
+gno daemon
+```
 
 **RAG answers with citations**: Get AI-generated answers with source citations.
 

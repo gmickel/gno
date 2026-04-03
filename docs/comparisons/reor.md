@@ -45,6 +45,7 @@ gno init ~/notes --name notes && gno index
 | **Graph View**           | ✓ Interactive force graph      | ✗                          |
 | **MCP Support**          | ✓                              | ✗                          |
 | **REST API**             | ✓                              | ✗                          |
+| **Headless Daemon**      | ✓ `gno daemon`                 | ✗                          |
 | **Local LLMs**           | ✓ node-llama-cpp               | ✓ Ollama + Transformers.js |
 | **Vector Database**      | SQLite + vec                   | LanceDB                    |
 | **License**              | MIT                            | AGPL-3.0                   |
@@ -65,6 +66,12 @@ gno query "Q4 budget projections"  # finds in XLSX, PDF, MD
 
 ```bash
 gno query "authentication" --format json | jq '.results[].path'
+```
+
+**Headless indexing**: Keep the same corpus fresh for scripts or AI tools without opening the workspace.
+
+```bash
+gno daemon
 ```
 
 **Knowledge graph**: Interactive force-directed graph visualization of document connections.
