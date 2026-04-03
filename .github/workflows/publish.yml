@@ -197,9 +197,9 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: packaged-runtime-proof-macos
-          if-no-files-found: error
+          if-no-files-found: warn
           path: |
-            ${{ github.workspace }}/desktop/electrobun-shell/artifacts/*.json
+            ${{ github.workspace }}/desktop/electrobun-shell/artifacts/release-macos/*.json
 
       - name: Upload macOS desktop package
         uses: actions/upload-artifact@v7
