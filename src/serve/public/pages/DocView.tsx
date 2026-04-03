@@ -203,6 +203,9 @@ function parseBreadcrumbs(
 
   for (let i = 0; i < parts.length; i++) {
     const part = parts[i];
+    if (!part) {
+      continue;
+    }
     currentPath = currentPath ? `${currentPath}/${part}` : part;
 
     // Last segment is the file - no link

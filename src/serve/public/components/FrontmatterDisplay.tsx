@@ -78,8 +78,9 @@ export function parseFrontmatter(content: string): ParsedFrontmatter {
     // Parse new key: value
     const match = line.match(/^([^:]+):\s*(.*)$/);
     if (match) {
-      currentKey = match[1].trim();
-      let value: unknown = match[2].trim();
+      const [, rawKey = "", rawValue = ""] = match;
+      currentKey = rawKey.trim();
+      let value: unknown = rawValue.trim();
 
       // Remove surrounding quotes
       if (

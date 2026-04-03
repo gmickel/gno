@@ -286,7 +286,7 @@ export default function Search({ navigate }: PageProps) {
       if (!hybridAvailable) return "fast";
       const currentIdx = THOROUGHNESS_ORDER.indexOf(current);
       const nextIdx = (currentIdx + 1) % THOROUGHNESS_ORDER.length;
-      return THOROUGHNESS_ORDER[nextIdx];
+      return THOROUGHNESS_ORDER[nextIdx] ?? "fast";
     });
   }, [hybridAvailable]);
 
