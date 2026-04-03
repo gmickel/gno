@@ -33,10 +33,7 @@ import {
   type CodeMirrorEditorRef,
   MarkdownPreview,
 } from "../components/editor";
-import {
-  FrontmatterDisplay,
-  parseFrontmatter,
-} from "../components/FrontmatterDisplay";
+import { parseFrontmatter } from "../components/FrontmatterDisplay";
 import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
 import {
@@ -227,7 +224,6 @@ export default function DocumentEditor({ navigate }: PageProps) {
   const hasUnsavedChanges = content !== originalContent;
   const hasLocalSnapshot = historyEntries.length > 0;
   const parsedContent = useMemo(() => parseFrontmatter(content), [content]);
-  const hasFrontmatter = Object.keys(parsedContent.data).length > 0;
 
   const refreshHistoryEntries = useCallback((docId: string) => {
     const next = loadLocalHistory(docId);
@@ -1090,12 +1086,6 @@ export default function DocumentEditor({ navigate }: PageProps) {
             ref={previewRef}
           >
             <div className="mx-auto max-w-3xl">
-              {hasFrontmatter && (
-                <FrontmatterDisplay
-                  className="mb-4 rounded-lg border border-border/40 bg-muted/10 p-4"
-                  content={content}
-                />
-              )}
               <MarkdownPreview content={parsedContent.body} />
             </div>
           </div>

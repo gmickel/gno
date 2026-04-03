@@ -13,7 +13,6 @@ import {
   Loader2Icon,
   PencilIcon,
   SquareArrowOutUpRightIcon,
-  TagIcon,
   TextIcon,
   TrashIcon,
 } from "lucide-react";
@@ -38,12 +37,7 @@ import { RelatedNotesSidebar } from "../components/RelatedNotesSidebar";
 import { TagInput } from "../components/TagInput";
 import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "../components/ui/card";
+import { Card, CardContent } from "../components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -555,346 +549,127 @@ export default function DocView({ navigate }: PageProps) {
     setTimeout(() => setTagSaveSuccess(false), 2000);
   }, [doc, editedTags]);
 
-  const renderDocumentInfoPanels = () => (
-    <div className="space-y-4">
-      <Card>
-        <CardContent className="py-3">
-          <div className="grid gap-3 sm:grid-cols-3 xl:grid-cols-1">
-            <div className="flex items-center gap-3">
-              <FolderOpen className="size-4 text-muted-foreground" />
-              <div>
-                <div className="text-muted-foreground text-xs">Collection</div>
-                <div className="font-medium">
-                  {doc?.collection || "Unknown"}
-                </div>
-              </div>
-            </div>
-            {doc?.source.sizeBytes !== undefined && (
-              <div className="flex items-center gap-3">
-                <HardDrive className="size-4 text-muted-foreground" />
-                <div>
-                  <div className="text-muted-foreground text-xs">Size</div>
-                  <div className="font-medium">
-                    {formatBytes(doc.source.sizeBytes)}
-                  </div>
-                </div>
-              </div>
-            )}
-            {doc?.source.modifiedAt && (
-              <div className="flex items-center gap-3">
-                <Calendar className="size-4 text-muted-foreground" />
-                <div>
-                  <div className="text-muted-foreground text-xs">Modified</div>
-                  <div className="font-medium">
-                    {formatDate(doc.source.modifiedAt)}
-                  </div>
-                </div>
-              </div>
-            )}
+  /** Slim left rail — archival catalogue style, no Card chrome */
+  const renderDocumentFactsRail = () => (
+    <nav aria-label="Document facts" className="space-y-0">
+      {/* Section: Properties */}
+      <div className="px-3 pb-3">
+        <div className="mb-2.5 font-mono text-[10px] text-muted-foreground/50 uppercase tracking-[0.15em]">
+          Properties
+        </div>
+        <dl className="space-y-2.5 text-[13px]">
+          <div className="flex items-center gap-2">
+            <FolderOpen className="size-3.5 shrink-0 text-muted-foreground/60" />
+            <dt className="sr-only">Collection</dt>
+            <dd className="truncate font-medium">
+              {doc?.collection || "Unknown"}
+            </dd>
           </div>
-          <div className="mt-3 border-border/50 border-t pt-3">
-            <div className="mb-1 text-muted-foreground text-xs">Path</div>
-            <code className="break-all font-mono text-muted-foreground text-xs">
-              {doc?.uri}
-            </code>
-            {doc?.capabilities.reason && (
-              <p className="mt-2 text-amber-500 text-xs">
-                {doc.capabilities.reason}
-              </p>
-            )}
-            <div className="mt-2 flex flex-wrap gap-2">
-              {currentTarget.lineStart && (
-                <Badge className="font-mono" variant="outline">
-                  L{currentTarget.lineStart}
-                  {currentTarget.lineEnd &&
-                  currentTarget.lineEnd !== currentTarget.lineStart
-                    ? `-${currentTarget.lineEnd}`
-                    : ""}
-                </Badge>
-              )}
-              <Button
-                onClick={() => {
-                  if (!doc) {
-                    return;
-                  }
-                  void navigator.clipboard.writeText(
-                    `${window.location.origin}${buildDocDeepLink({
-                      uri: doc.uri,
-                      view:
-                        currentTarget.view === "source" ||
-                        currentTarget.lineStart
-                          ? "source"
-                          : "rendered",
-                      lineStart: currentTarget.lineStart,
-                      lineEnd: currentTarget.lineEnd,
-                    })}`
-                  );
-                }}
-                size="sm"
-                variant="outline"
-              >
-                <LinkIcon className="mr-1.5 size-4" />
-                Copy link
-              </Button>
+          {doc?.source.sizeBytes !== undefined && (
+            <div className="flex items-center gap-2">
+              <HardDrive className="size-3.5 shrink-0 text-muted-foreground/60" />
+              <dt className="sr-only">Size</dt>
+              <dd className="font-mono text-muted-foreground">
+                {formatBytes(doc.source.sizeBytes)}
+              </dd>
             </div>
-          </div>
-        </CardContent>
-      </Card>
+          )}
+          {doc?.source.modifiedAt && (
+            <div className="flex items-center gap-2">
+              <Calendar className="size-3.5 shrink-0 text-muted-foreground/60" />
+              <dt className="sr-only">Modified</dt>
+              <dd className="text-muted-foreground">
+                {formatDate(doc.source.modifiedAt)}
+              </dd>
+            </div>
+          )}
+        </dl>
+      </div>
 
-      {hasFrontmatter && (
-        <Card>
-          <CardHeader className="pb-0">
-            <CardTitle className="flex items-center justify-between text-base">
-              <span>Frontmatter</span>
+      {/* Divider */}
+      <div className="mx-3 border-border/20 border-t" />
+
+      {/* Section: Path */}
+      <div className="px-3 py-3">
+        <div className="mb-1.5 font-mono text-[10px] text-muted-foreground/50 uppercase tracking-[0.15em]">
+          Path
+        </div>
+        <code className="block break-all font-mono text-[11px] leading-relaxed text-muted-foreground/70">
+          {doc?.uri}
+        </code>
+        <div className="mt-2 flex flex-wrap items-center gap-1.5">
+          {currentTarget.lineStart && (
+            <span className="rounded bg-muted/30 px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
+              L{currentTarget.lineStart}
+              {currentTarget.lineEnd &&
+              currentTarget.lineEnd !== currentTarget.lineStart
+                ? `-${currentTarget.lineEnd}`
+                : ""}
+            </span>
+          )}
+          <button
+            className="inline-flex cursor-pointer items-center gap-1 rounded px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground/60 transition-colors hover:bg-muted/20 hover:text-muted-foreground"
+            onClick={() => {
+              if (!doc) return;
+              void navigator.clipboard.writeText(
+                `${window.location.origin}${buildDocDeepLink({
+                  uri: doc.uri,
+                  view:
+                    currentTarget.view === "source" || currentTarget.lineStart
+                      ? "source"
+                      : "rendered",
+                  lineStart: currentTarget.lineStart,
+                  lineEnd: currentTarget.lineEnd,
+                })}`
+              );
+            }}
+            type="button"
+          >
+            <LinkIcon className="size-3" />
+            Copy link
+          </button>
+        </div>
+      </div>
+
+      {/* Divider + Frontmatter/Tags */}
+      {(hasFrontmatter || showStandaloneTags) && (
+        <>
+          <div className="mx-3 border-border/20 border-t" />
+          <div className="px-3 py-3">
+            <div className="mb-2 flex items-center justify-between">
+              <span className="font-mono text-[10px] text-muted-foreground/50 uppercase tracking-[0.15em]">
+                {hasFrontmatter ? "Metadata" : "Tags"}
+              </span>
               {!editingTags && (
-                <div className="flex items-center gap-2">
-                  {tagSaveSuccess && (
-                    <span className="flex items-center gap-1 text-green-500 text-xs">
-                      <CheckIcon className="size-3" />
-                      Saved
-                    </span>
-                  )}
-                  <Button
-                    className="gap-1 text-xs"
-                    onClick={handleStartEditTags}
-                    size="sm"
-                    variant="ghost"
-                  >
-                    <PencilIcon className="size-3" />
-                    Edit tags
-                  </Button>
-                </div>
-              )}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="pt-3">
-            <FrontmatterDisplay
-              className="rounded-lg border border-border/40 bg-muted/10 p-3"
-              content={doc?.content ?? ""}
-            />
-          </CardContent>
-        </Card>
-      )}
-
-      {showStandaloneTags && (
-        <Card>
-          <CardContent className="py-4">
-            <div className="flex items-start gap-3">
-              <TagIcon className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-              <div className="min-w-0 flex-1">
-                <div className="mb-2 flex items-center justify-between">
-                  <div className="text-muted-foreground text-xs">Tags</div>
-                  {!editingTags && (
-                    <Button
-                      className="gap-1 text-xs"
-                      onClick={handleStartEditTags}
-                      size="sm"
-                      variant="ghost"
-                    >
-                      <PencilIcon className="size-3" />
-                      Edit
-                    </Button>
-                  )}
-                  {tagSaveSuccess && (
-                    <span className="flex items-center gap-1 text-green-500 text-xs">
-                      <CheckIcon className="size-3" />
-                      Saved
-                    </span>
-                  )}
-                </div>
-
-                {!editingTags && (
-                  <div className="flex flex-wrap gap-1.5">
-                    {doc?.tags.length === 0 ? (
-                      <span className="text-muted-foreground/60 text-sm italic">
-                        No tags
-                      </span>
-                    ) : (
-                      doc?.tags.map((tag) => (
-                        <Badge
-                          className="font-mono text-xs"
-                          key={tag}
-                          variant="outline"
-                        >
-                          {tag}
-                        </Badge>
-                      ))
-                    )}
-                  </div>
-                )}
-
-                {editingTags && (
-                  <div className="space-y-3">
-                    <TagInput
-                      aria-label="Edit document tags"
-                      disabled={savingTags}
-                      onChange={setEditedTags}
-                      placeholder="Add tags..."
-                      value={editedTags}
-                    />
-
-                    {tagSaveError && (
-                      <p className="text-destructive text-xs">{tagSaveError}</p>
-                    )}
-
-                    <div className="flex items-center gap-2">
-                      <Button
-                        disabled={savingTags}
-                        onClick={handleSaveTags}
-                        size="sm"
-                      >
-                        {savingTags && (
-                          <Loader2Icon className="mr-1.5 size-3 animate-spin" />
-                        )}
-                        Save
-                      </Button>
-                      <Button
-                        disabled={savingTags}
-                        onClick={handleCancelEditTags}
-                        size="sm"
-                        variant="outline"
-                      >
-                        Cancel
-                      </Button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-    </div>
-  );
-
-  const renderDocumentInfoRail = () => (
-    <div className="space-y-4">
-      <Card>
-        <CardHeader className="pb-0">
-          <CardTitle className="text-base">Document Info</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3 pt-3">
-          <div className="space-y-2 text-sm">
-            <div className="flex items-start gap-2">
-              <FolderOpen className="mt-0.5 size-3.5 text-muted-foreground" />
-              <div className="min-w-0">
-                <div className="text-[11px] text-muted-foreground uppercase tracking-wider">
-                  Collection
-                </div>
-                <div className="font-medium">
-                  {doc?.collection || "Unknown"}
-                </div>
-              </div>
-            </div>
-            {doc?.source.sizeBytes !== undefined && (
-              <div className="flex items-start gap-2">
-                <HardDrive className="mt-0.5 size-3.5 text-muted-foreground" />
-                <div>
-                  <div className="text-[11px] text-muted-foreground uppercase tracking-wider">
-                    Size
-                  </div>
-                  <div className="font-medium">
-                    {formatBytes(doc.source.sizeBytes)}
-                  </div>
-                </div>
-              </div>
-            )}
-            {doc?.source.modifiedAt && (
-              <div className="flex items-start gap-2">
-                <Calendar className="mt-0.5 size-3.5 text-muted-foreground" />
-                <div>
-                  <div className="text-[11px] text-muted-foreground uppercase tracking-wider">
-                    Modified
-                  </div>
-                  <div className="font-medium">
-                    {formatDate(doc.source.modifiedAt)}
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-
-          <div className="border-border/50 border-t pt-3">
-            <div className="mb-1 text-[11px] text-muted-foreground uppercase tracking-wider">
-              Path
-            </div>
-            <code className="break-all font-mono text-[11px] text-muted-foreground">
-              {doc?.uri}
-            </code>
-          </div>
-
-          <div className="flex flex-wrap gap-2">
-            {currentTarget.lineStart && (
-              <Badge className="font-mono" variant="outline">
-                L{currentTarget.lineStart}
-                {currentTarget.lineEnd &&
-                currentTarget.lineEnd !== currentTarget.lineStart
-                  ? `-${currentTarget.lineEnd}`
-                  : ""}
-              </Badge>
-            )}
-            <Button
-              onClick={() => {
-                if (!doc) {
-                  return;
-                }
-                void navigator.clipboard.writeText(
-                  `${window.location.origin}${buildDocDeepLink({
-                    uri: doc.uri,
-                    view:
-                      currentTarget.view === "source" || currentTarget.lineStart
-                        ? "source"
-                        : "rendered",
-                    lineStart: currentTarget.lineStart,
-                    lineEnd: currentTarget.lineEnd,
-                  })}`
-                );
-              }}
-              size="sm"
-              variant="outline"
-            >
-              <LinkIcon className="mr-1.5 size-4" />
-              Copy link
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      {hasFrontmatter && (
-        <Card>
-          <CardHeader className="pb-0">
-            <CardTitle className="flex items-center justify-between text-base">
-              <span>Frontmatter</span>
-              {!editingTags && (
-                <Button
-                  className="gap-1 text-xs"
+                <button
+                  className="flex cursor-pointer items-center gap-1 rounded px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground/40 transition-colors hover:bg-muted/20 hover:text-muted-foreground"
                   onClick={handleStartEditTags}
-                  size="sm"
-                  variant="ghost"
+                  type="button"
                 >
-                  <PencilIcon className="size-3" />
-                  Edit tags
-                </Button>
+                  <PencilIcon className="size-2.5" />
+                  Edit
+                </button>
               )}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="pt-3">
-            <FrontmatterDisplay
-              className="grid-cols-1 sm:grid-cols-1 lg:grid-cols-1"
-              content={doc?.content ?? ""}
-            />
-          </CardContent>
-        </Card>
-      )}
-
-      {showStandaloneTags && (
-        <Card>
-          <CardHeader className="pb-0">
-            <CardTitle className="text-base">Tags</CardTitle>
-          </CardHeader>
-          <CardContent className="pt-3">
+              {tagSaveSuccess && (
+                <span className="flex items-center gap-1 text-[10px] text-green-500">
+                  <CheckIcon className="size-2.5" />
+                </span>
+              )}
+            </div>
+            {hasFrontmatter && (
+              <FrontmatterDisplay
+                className="grid-cols-1 gap-2 sm:grid-cols-1 lg:grid-cols-1 [&>div]:rounded-none [&>div]:bg-transparent [&>div]:p-0 [&>div]:border-b [&>div]:border-border/10 [&>div]:pb-2 [&>div:last-child]:border-0 [&>div:last-child]:pb-0 [&_a]:text-[11px] [&_a]:leading-snug [&_.text-sm]:text-[12px]"
+                content={doc?.content ?? ""}
+              />
+            )}
             {editingTags ? (
-              <div className="space-y-3">
+              <div
+                className={
+                  hasFrontmatter
+                    ? "mt-3 space-y-2 border-border/20 border-t pt-3"
+                    : "space-y-2"
+                }
+              >
                 <TagInput
                   aria-label="Edit document tags"
                   disabled={savingTags}
@@ -905,14 +680,14 @@ export default function DocView({ navigate }: PageProps) {
                 {tagSaveError && (
                   <p className="text-destructive text-xs">{tagSaveError}</p>
                 )}
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5">
                   <Button
                     disabled={savingTags}
                     onClick={handleSaveTags}
                     size="sm"
                   >
                     {savingTags && (
-                      <Loader2Icon className="mr-1.5 size-3 animate-spin" />
+                      <Loader2Icon className="mr-1 size-3 animate-spin" />
                     )}
                     Save
                   </Button>
@@ -927,28 +702,29 @@ export default function DocView({ navigate }: PageProps) {
                 </div>
               </div>
             ) : (
-              <div className="flex flex-wrap gap-1.5">
-                {doc?.tags.length === 0 ? (
-                  <span className="text-muted-foreground/60 text-sm italic">
-                    No tags
-                  </span>
-                ) : (
-                  doc?.tags.map((tag) => (
-                    <Badge
-                      className="font-mono text-xs"
-                      key={tag}
-                      variant="outline"
-                    >
-                      {tag}
-                    </Badge>
-                  ))
-                )}
-              </div>
+              !hasFrontmatter && (
+                <div className="flex flex-wrap gap-1">
+                  {doc?.tags.length === 0 ? (
+                    <span className="text-[11px] text-muted-foreground/40 italic">
+                      No tags
+                    </span>
+                  ) : (
+                    doc?.tags.map((tag) => (
+                      <span
+                        className="rounded-full bg-primary/10 px-2 py-0.5 font-mono text-[10px] text-primary/80"
+                        key={tag}
+                      >
+                        {tag}
+                      </span>
+                    ))
+                  )}
+                </div>
+              )
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </>
       )}
-    </div>
+    </nav>
   );
 
   const renderDocumentOverviewCard = () => (
@@ -1058,10 +834,17 @@ export default function DocView({ navigate }: PageProps) {
 
         {(hasFrontmatter || showStandaloneTags) && (
           <div className="rounded-lg border border-border/40 bg-muted/10 p-2.5">
-            {hasFrontmatter ? (
+            {hasFrontmatter && (
               <FrontmatterDisplay content={doc?.content ?? ""} />
-            ) : editingTags ? (
-              <div className="space-y-3">
+            )}
+            {editingTags ? (
+              <div
+                className={
+                  hasFrontmatter
+                    ? "mt-3 space-y-3 border-border/30 border-t pt-3"
+                    : "space-y-3"
+                }
+              >
                 <TagInput
                   aria-label="Edit document tags"
                   disabled={savingTags}
@@ -1094,23 +877,25 @@ export default function DocView({ navigate }: PageProps) {
                 </div>
               </div>
             ) : (
-              <div className="flex flex-wrap gap-1.5">
-                {doc?.tags.length === 0 ? (
-                  <span className="text-muted-foreground/60 text-sm italic">
-                    No tags
-                  </span>
-                ) : (
-                  doc?.tags.map((tag) => (
-                    <Badge
-                      className="font-mono text-xs"
-                      key={tag}
-                      variant="outline"
-                    >
-                      {tag}
-                    </Badge>
-                  ))
-                )}
-              </div>
+              !hasFrontmatter && (
+                <div className="flex flex-wrap gap-1.5">
+                  {doc?.tags.length === 0 ? (
+                    <span className="text-muted-foreground/60 text-sm italic">
+                      No tags
+                    </span>
+                  ) : (
+                    doc?.tags.map((tag) => (
+                      <Badge
+                        className="font-mono text-xs"
+                        key={tag}
+                        variant="outline"
+                      >
+                        {tag}
+                      </Badge>
+                    ))
+                  )}
+                </div>
+              )
             )}
           </div>
         )}
@@ -1250,15 +1035,16 @@ export default function DocView({ navigate }: PageProps) {
         </div>
       </header>
 
-      <div className="mx-auto flex max-w-[1800px] gap-4 px-6 xl:px-8">
+      <div className="mx-auto flex max-w-[1800px] gap-5 px-6 xl:px-8">
+        {/* Left rail — document facts, only on ultra-wide */}
         {doc && (
-          <aside className="hidden w-52 shrink-0 space-y-4 py-6 lg:block xl:w-56">
-            <div className="sticky top-24">{renderDocumentInfoRail()}</div>
+          <aside className="hidden w-[200px] shrink-0 border-border/15 border-r pr-2 py-6 lg:block">
+            <div className="sticky top-24">{renderDocumentFactsRail()}</div>
           </aside>
         )}
 
         {/* Main content */}
-        <main className="min-w-0 flex-1 py-6">
+        <main className="min-w-0 flex-1 px-4 py-6">
           {/* Loading */}
           {loading && (
             <div className="flex flex-col items-center justify-center gap-4 py-20">
@@ -1317,7 +1103,7 @@ export default function DocView({ navigate }: PageProps) {
                       )}
                       {crumb.path ? (
                         <button
-                          className="text-muted-foreground transition-colors hover:text-foreground hover:underline"
+                          className="cursor-pointer text-muted-foreground transition-colors hover:text-foreground hover:underline"
                           onClick={() => navigate(crumb.path)}
                           type="button"
                         >
@@ -1336,95 +1122,90 @@ export default function DocView({ navigate }: PageProps) {
               <div className="lg:hidden">{renderDocumentOverviewCard()}</div>
 
               {/* Content */}
-              <Card>
-                <CardHeader className="pb-0">
-                  <CardTitle className="flex items-center justify-between text-lg">
-                    <span className="flex items-center gap-2">
-                      <FileText className="size-4" />
-                      Content
-                    </span>
-                    {isMarkdown && doc.contentAvailable && (
-                      <Button
-                        className="gap-1.5"
-                        onClick={() => setShowRawView(!showRawView)}
-                        size="sm"
-                        variant="ghost"
-                      >
-                        {showRawView ? (
-                          <>
-                            <TextIcon className="size-4" />
-                            <span className="hidden sm:inline">Rendered</span>
-                          </>
-                        ) : (
-                          <>
-                            <CodeIcon className="size-4" />
-                            <span className="hidden sm:inline">Source</span>
-                          </>
-                        )}
-                      </Button>
+              <div className="relative">
+                {/* Source/Rendered toggle pill */}
+                {isMarkdown && doc.contentAvailable && (
+                  <button
+                    className="z-10 flex cursor-pointer items-center gap-1.5 rounded-full border border-border/30 bg-background/80 px-3 py-1 font-mono text-[11px] text-muted-foreground backdrop-blur-sm transition-colors hover:border-primary/30 hover:text-primary"
+                    onClick={() => setShowRawView(!showRawView)}
+                    style={{
+                      position: "absolute",
+                      top: "0.75rem",
+                      right: "0.75rem",
+                      left: "auto",
+                    }}
+                    type="button"
+                  >
+                    {showRawView ? (
+                      <>
+                        <TextIcon className="size-3" />
+                        Rendered
+                      </>
+                    ) : (
+                      <>
+                        <CodeIcon className="size-3" />
+                        Source
+                      </>
                     )}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="pt-3">
-                  {!doc.contentAvailable && (
-                    <div className="rounded-lg border border-border/50 bg-muted/30 p-6 text-center">
-                      <p className="text-muted-foreground">
-                        Content not available (document may need re-indexing)
-                      </p>
-                    </div>
-                  )}
-                  {doc.contentAvailable && isMarkdown && !showRawView && (
-                    <div className="space-y-4">
-                      <div className="rounded-lg border border-border/40 bg-gradient-to-br from-background to-muted/10 p-4 shadow-inner">
-                        <MarkdownPreview
-                          collection={doc.collection}
-                          content={parsedContent.body}
-                          wikiLinks={resolvedWikiLinks}
-                        />
-                      </div>
-                    </div>
-                  )}
-                  {doc.contentAvailable && isMarkdown && showRawView && (
-                    <CodeBlock
-                      code={doc.content ?? ""}
-                      highlightedLines={highlightedLines}
-                      language={"markdown" as BundledLanguage}
-                      scrollToLine={currentTarget.lineStart}
-                      showLineNumbers
-                    >
-                      <CodeBlockCopyButton />
-                    </CodeBlock>
-                  )}
-                  {doc.contentAvailable && isCodeFile && !isMarkdown && (
-                    <CodeBlock
-                      code={doc.content ?? ""}
-                      highlightedLines={highlightedLines}
-                      language={
-                        getLanguageFromExt(doc.source.ext) as BundledLanguage
-                      }
-                      scrollToLine={currentTarget.lineStart}
-                      showLineNumbers
-                    >
-                      <CodeBlockCopyButton />
-                    </CodeBlock>
-                  )}
-                  {doc.contentAvailable && !isCodeFile && (
-                    <div className="rounded-lg border border-border/50 bg-muted/30 p-6">
-                      <pre className="whitespace-pre-wrap font-mono text-sm leading-relaxed">
-                        {doc.content}
-                      </pre>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+                  </button>
+                )}
+
+                {!doc.contentAvailable && (
+                  <div className="rounded-lg border border-border/50 bg-muted/30 p-6 text-center">
+                    <p className="text-muted-foreground">
+                      Content not available (document may need re-indexing)
+                    </p>
+                  </div>
+                )}
+                {doc.contentAvailable && isMarkdown && !showRawView && (
+                  <div className="rounded-lg border border-border/40 bg-gradient-to-br from-background to-muted/10 p-4 shadow-inner">
+                    <MarkdownPreview
+                      collection={doc.collection}
+                      content={parsedContent.body}
+                      wikiLinks={resolvedWikiLinks}
+                    />
+                  </div>
+                )}
+                {doc.contentAvailable && isMarkdown && showRawView && (
+                  <CodeBlock
+                    code={doc.content ?? ""}
+                    highlightedLines={highlightedLines}
+                    language={"markdown" as BundledLanguage}
+                    scrollToLine={currentTarget.lineStart}
+                    showLineNumbers
+                  >
+                    <CodeBlockCopyButton />
+                  </CodeBlock>
+                )}
+                {doc.contentAvailable && isCodeFile && !isMarkdown && (
+                  <CodeBlock
+                    code={doc.content ?? ""}
+                    highlightedLines={highlightedLines}
+                    language={
+                      getLanguageFromExt(doc.source.ext) as BundledLanguage
+                    }
+                    scrollToLine={currentTarget.lineStart}
+                    showLineNumbers
+                  >
+                    <CodeBlockCopyButton />
+                  </CodeBlock>
+                )}
+                {doc.contentAvailable && !isCodeFile && (
+                  <div className="rounded-lg border border-border/50 bg-muted/30 p-6">
+                    <pre className="whitespace-pre-wrap font-mono text-sm leading-relaxed">
+                      {doc.content}
+                    </pre>
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </main>
 
-        {/* Right sidebar - Link panels */}
+        {/* Right rail — relationships */}
         {doc && (
-          <aside className="hidden w-64 shrink-0 space-y-4 py-6 lg:block 2xl:w-72">
-            <div className="sticky top-24 space-y-4">
+          <aside className="hidden w-[240px] min-w-0 shrink-0 overflow-hidden border-border/15 border-l pl-2 py-6 lg:block">
+            <div className="sticky top-24 min-w-0 space-y-1 overflow-hidden">
               <BacklinksPanel
                 docId={doc.docid}
                 onNavigate={(uri) =>

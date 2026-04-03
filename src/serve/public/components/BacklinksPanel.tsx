@@ -247,22 +247,22 @@ export function BacklinksPanel({
 
   return (
     <Collapsible
-      className={cn("", className)}
+      className={cn("px-1", className)}
       onOpenChange={setIsOpen}
       open={isOpen}
     >
-      {/* Panel header - drawer handle aesthetic */}
+      {/* Panel header */}
       <CollapsibleTrigger
         aria-label={`${isOpen ? "Collapse" : "Expand"} backlinks panel`}
         className={cn(
           "group flex w-full items-center gap-2",
           "rounded-sm px-2 py-1.5",
           "transition-colors duration-150",
-          "hover:bg-[#4db8a8]/5"
+          "hover:bg-muted/20"
         )}
       >
         {/* Chevron */}
-        <span className="flex size-4 shrink-0 items-center justify-center text-[#d4a053]/50">
+        <span className="flex size-4 shrink-0 items-center justify-center text-muted-foreground/50">
           {isOpen ? (
             <ChevronDownIcon className="size-3.5 transition-transform duration-200" />
           ) : (
@@ -270,12 +270,12 @@ export function BacklinksPanel({
           )}
         </span>
 
-        {/* Title - brass label */}
-        <span className="flex-1 text-left font-mono text-[11px] text-[#d4a053]/70 uppercase tracking-wider">
+        {/* Title */}
+        <span className="flex-1 text-left font-mono text-[10px] text-muted-foreground/60 uppercase tracking-[0.15em]">
           Backlinks
         </span>
 
-        {/* Count badge - teal for active, muted otherwise */}
+        {/* Count badge */}
         {!loading && (
           <span
             className={cn(
@@ -283,7 +283,7 @@ export function BacklinksPanel({
               "font-mono text-[10px] tabular-nums",
               "transition-colors duration-150",
               totalCount > 0
-                ? "bg-[#4db8a8]/15 text-[#4db8a8]"
+                ? "bg-primary/12 text-primary"
                 : "bg-muted/20 text-muted-foreground/60"
             )}
           >
@@ -291,9 +291,9 @@ export function BacklinksPanel({
           </span>
         )}
 
-        {/* Loading indicator - teal spinner */}
+        {/* Loading indicator */}
         {loading && (
-          <span className="size-3 animate-spin rounded-full border border-[#d4a053]/20 border-t-[#4db8a8]/60" />
+          <span className="size-3 animate-spin rounded-full border border-muted/30 border-t-primary/60" />
         )}
       </CollapsibleTrigger>
 
