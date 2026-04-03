@@ -4,44 +4,60 @@
 
 Revisit [`markit`](https://github.com/Michaelliv/markit) as a possible single replacement for GNO's current document-conversion stack once the upstream project has matured enough to trust in core ingest paths.
 
-Current conclusion: promising for happy-path PDF/DOCX/XLSX/PPTX conversion, but not ready for production adoption in GNO because the project is still brand new, has no real automated test suite, does not support `.xlsm`, and mis-handles sparse XLSX sheets by shifting cells left instead of honoring cell coordinates.
+Current conclusion after the 2026-04 re-check:
+
+- upstream is meaningfully healthier than before: real releases, active commits, and a real Bun test suite now exist
+- happy-path conversion quality for GNO's sample PDF/DOCX/PPTX/XLSX fixtures is good
+- however, `markit` is still not ready as a full production replacement for GNO because:
+  - `.xlsm` remains unsupported
+  - the XLSX converter still ignores sparse cell coordinates and likely shifts cells left on irregular sheets
+  - npm/TypeScript build ergonomics still look rough even though `bun test` passes locally
+
+That means `markit` is now credible for future experimental/partial adoption work, but still not a clean drop-in replacement for GNO's current converter stack.
 
 ## Scope
 
-- Re-evaluate upstream project maturity and maintenance health.
-- Re-run smoke tests on GNO conversion fixtures and real-world failing spreadsheets.
+- Re-check upstream maturity and maintenance health.
+- Re-run smoke tests on GNO conversion fixtures and key failure modes.
 - Compare output quality and failure behavior against GNO's current `markitdown-ts` + `officeparser` adapters.
 - Decide whether to:
   - keep current adapters,
   - add `markit` as an experimental optional adapter, or
   - replace specific formats only.
 
-## Approach
+## Current Assessment
 
-1. Check upstream stability signals:
-   - release cadence
-   - issue volume / responsiveness
-   - automated tests
-   - supported formats, especially `.xlsm`
-2. Re-run the converter bakeoff on:
-   - GNO fixture corpus
-   - at least one sparse XLSX sheet
-   - at least one real spreadsheet that previously failed in GNO
-3. Document exact wins/regressions by format.
-4. Only consider migration if `markit` is at least parity on:
-   - PDF
-   - DOCX
-   - PPTX
-   - XLSX
-   - error handling / determinism
+Re-check findings:
+
+- upstream releases now exist through `v0.5.0`
+- upstream test suite exists and passed locally via `bun test`
+- GNO fixture smoke passed for:
+  - PDF
+  - DOCX
+  - PPTX
+  - XLSX
+- `.xlsm` still fails as unsupported
+- sparse-sheet behavior still appears unresolved from code inspection because the XLSX converter iterates cells in order rather than honoring coordinate gaps
+
+## Recommended Next Step
+
+Do **not** replace GNO's converter stack wholesale yet.
+
+If we revisit this again, the most promising future work is:
+
+1. verify sparse-sheet behavior on a real irregular workbook
+2. decide whether to add `markit` as an experimental optional adapter for happy-path formats only
+3. keep `.xlsm` and irregular-sheet handling on the blocker list until upstream closes the gap
 
 ## Quick commands
 
-- `cd /Users/gordon/tmp/markit && bun install && bun run build`
+- `cd /Users/gordon/tmp/markit && bun install`
 - `bun test`
-- `bun dist/main.js /Users/gordon/work/gno/test/fixtures/conversion/xlsx/sample.xlsx -q`
-- `bun dist/main.js /Users/gordon/work/gno/test/fixtures/conversion/pptx/sample.pptx -q`
-- `cd /Users/gordon/work/gno && bun test test/converters/integration.test.ts`
+- `bun run src/main.ts /Users/gordon/work/gno/test/fixtures/conversion/xlsx/sample.xlsx -q`
+- `bun run src/main.ts /Users/gordon/work/gno/test/fixtures/conversion/docx/sample.docx -q`
+- `bun run src/main.ts /Users/gordon/work/gno/test/fixtures/conversion/pptx/sample.pptx -q`
+- `bun run src/main.ts /Users/gordon/work/gno/test/fixtures/conversion/pdf/sample.pdf -q`
+- `cp /Users/gordon/work/gno/test/fixtures/conversion/xlsx/sample.xlsx /tmp/markit-sample.xlsm && bun run src/main.ts /tmp/markit-sample.xlsm -q`
 
 ## Acceptance
 
@@ -49,7 +65,7 @@ Current conclusion: promising for happy-path PDF/DOCX/XLSX/PPTX conversion, but 
 - [ ] GNO fixture smoke rerun and documented.
 - [ ] `.xlsm` support (or continued lack of support) explicitly re-evaluated.
 - [ ] Sparse-sheet XLSX behavior re-tested.
-- [ ] Clear go/no-go recommendation recorded for GNO adoption.
+- [ ] Clear recommendation is recorded for future work, without forcing premature adoption.
 
 ## References
 
