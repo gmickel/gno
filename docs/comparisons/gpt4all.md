@@ -32,21 +32,21 @@ gno init ~/notes --name notes && gno index
 
 ## Feature Comparison
 
-| Feature             | GNO                            | GPT4All                 |
-| ------------------- | ------------------------------ | ----------------------- |
-| **Primary Focus**   | Document search                | Local LLM chat          |
-| **LocalDocs/RAG**   | ✓ Core feature                 | ✓ LocalDocs feature     |
-| **Search Modes**    | BM25, Vector, Hybrid           | Vector only             |
-| **Reranking**       | ✓ Cross-encoder                | ✗                       |
-| **CLI**             | ✓ Full-featured                | Python SDK only         |
-| **REST API**        | ✓                              | ✓ OpenAI-compatible     |
-| **MCP Support**     | ✓                              | ✗                       |
-| **Headless Daemon** | ✓ `gno daemon`                 | ✗                       |
-| **Desktop App**     | ✗                              | ✓                       |
-| **Model Library**   | 3 presets                      | Thousands of models     |
-| **GPU Support**     | CPU only                       | ✓ Vulkan (NVIDIA/AMD)   |
-| **File Formats**    | MD, PDF, DOCX, XLSX, PPTX, TXT | PDF, DOCX, TXT, MD, RST |
-| **License**         | MIT                            | MIT                     |
+| Feature             | GNO                                                      | GPT4All                 |
+| ------------------- | -------------------------------------------------------- | ----------------------- |
+| **Primary Focus**   | Document search                                          | Local LLM chat          |
+| **LocalDocs/RAG**   | ✓ Core feature                                           | ✓ LocalDocs feature     |
+| **Search Modes**    | BM25, Vector, Hybrid                                     | Vector only             |
+| **Reranking**       | ✓ Cross-encoder                                          | ✗                       |
+| **CLI**             | ✓ Full-featured                                          | Python SDK only         |
+| **REST API**        | ✓                                                        | ✓ OpenAI-compatible     |
+| **MCP Support**     | ✓                                                        | ✗                       |
+| **Headless Daemon** | ✓ `gno daemon`                                           | ✗                       |
+| **Desktop App**     | ✗                                                        | ✓                       |
+| **Model Library**   | 3 presets                                                | Thousands of models     |
+| **GPU Support**     | ✓ Auto backend (Metal/CUDA/Vulkan) + remote GPU via HTTP | ✓ Vulkan (NVIDIA/AMD)   |
+| **File Formats**    | MD, PDF, DOCX, XLSX, PPTX, TXT                           | PDF, DOCX, TXT, MD, RST |
+| **License**         | MIT                                                      | MIT                     |
 
 ## GNO Advantages
 
@@ -90,6 +90,8 @@ gno query "meeting notes" --collection work
 ```bash
 gno daemon
 ```
+
+**Flexible acceleration**: Local models can use `node-llama-cpp` GPU backends when available, and GNO can also offload inference to remote GPU servers over HTTP.
 
 **More file formats**: Index Excel (XLSX) and PowerPoint (PPTX) files.
 
