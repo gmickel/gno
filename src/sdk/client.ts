@@ -16,6 +16,10 @@ import type { VectorIndexPort } from "../store/vector";
 import type {
   GnoAskOptions,
   GnoClient,
+  GnoCreateFolderOptions,
+  GnoCreateFolderResult,
+  GnoCreateNoteOptions,
+  GnoCreateNoteResult,
   GnoClientInitOptions,
   GnoEmbedOptions,
   GnoEmbedResult,
@@ -31,8 +35,15 @@ import type {
 
 import { getIndexDbPath } from "../app/constants";
 import { ConfigSchema, loadConfig } from "../config";
+import { atomicWrite, createFolderPath } from "../core/file-ops";
+import { planCreateFolder } from "../core/file-refactors";
+import { resolveNoteCreatePlan } from "../core/note-creation";
+import { resolveNotePreset } from "../core/note-presets";
+import { extractSections } from "../core/sections";
 import { normalizeStructuredQueryInput } from "../core/structured-query";
+import { parseAndValidateTagFilter } from "../core/tags";
 import { defaultSyncService, type SyncResult } from "../ingestion";
+import { updateFrontmatterTags } from "../ingestion/frontmatter";
 import { LlmAdapter } from "../llm/nodeLlamaCpp/adapter";
 import { resolveDownloadPolicy } from "../llm/policy";
 import {
@@ -604,6 +615,141 @@ class GnoClientImpl implements GnoClient {
       embedSkipped: false,
       embedResult,
     };
+  }
+
+  async createNote(
+    options: GnoCreateNoteOptions
+  ): Promise<GnoCreateNoteResult> {
+    this.assertOpen();
+    const collection = this.getCollections(options.collection)[0];
+    if (!collection) {
+      throw sdkError(
+        "VALIDATION",
+        `Collection not found: ${options.collection}`
+      );
+    }
+
+    const existingList = await this.store.listDocuments(collection.name);
+    if (!existingList.ok) {
+      throw sdkError("STORE", existingList.error.message, {
+        cause: existingList.error.cause,
+      });
+    }
+
+    const plan = resolveNoteCreatePlan(
+      {
+        collection: collection.name,
+        title: options.title,
+        relPath: options.relPath,
+        folderPath: options.folderPath,
+        collisionPolicy: options.collisionPolicy,
+      },
+      existingList.value.map((doc) => doc.relPath)
+    );
+    const fullPath = `${collection.path}/${plan.relPath}`;
+
+    if (plan.openedExisting) {
+      const existingDoc = await this.store.getDocument(
+        collection.name,
+        plan.relPath
+      );
+      if (!existingDoc.ok || !existingDoc.value) {
+        throw sdkError("NOT_FOUND", "Existing note could not be resolved");
+      }
+      return {
+        uri: existingDoc.value.uri,
+        path: fullPath,
+        relPath: plan.relPath,
+        created: false,
+        openedExisting: true,
+      };
+    }
+
+    const validatedTags = options.tags?.length
+      ? parseAndValidateTagFilter(options.tags.join(","))
+      : [];
+    const presetContent = resolveNotePreset({
+      presetId: options.presetId,
+      title:
+        options.title?.trim() ||
+        plan.filename.replace(/\.[^.]+$/u, "") ||
+        "Untitled",
+      tags: validatedTags,
+      body: options.content,
+    });
+
+    let contentToWrite =
+      presetContent?.content ??
+      options.content ??
+      `# ${options.title?.trim() || "Untitled"}\n`;
+    if (
+      validatedTags.length > 0 &&
+      [".md", ".markdown"].includes(
+        plan.filename.slice(plan.filename.lastIndexOf(".")).toLowerCase()
+      )
+    ) {
+      contentToWrite = updateFrontmatterTags(contentToWrite, validatedTags);
+    }
+
+    await mkdir(dirname(fullPath), { recursive: true });
+    await atomicWrite(fullPath, contentToWrite);
+    const syncResults = await defaultSyncService.syncFiles(
+      collection,
+      this.store,
+      [plan.relPath],
+      {
+        runUpdateCmd: false,
+        gitPull: false,
+      }
+    );
+    const syncResult = syncResults[0];
+    if (!syncResult || syncResult.status === "error") {
+      throw sdkError(
+        "RUNTIME",
+        syncResult?.errorMessage ?? "Failed to sync created note"
+      );
+    }
+
+    return {
+      uri: `gno://${collection.name}/${plan.relPath}`,
+      path: fullPath,
+      relPath: plan.relPath,
+      created: true,
+      openedExisting: false,
+      createdWithSuffix: plan.createdWithSuffix,
+    };
+  }
+
+  async createFolder(
+    options: GnoCreateFolderOptions
+  ): Promise<GnoCreateFolderResult> {
+    this.assertOpen();
+    const collection = this.getCollections(options.collection)[0];
+    if (!collection) {
+      throw sdkError(
+        "VALIDATION",
+        `Collection not found: ${options.collection}`
+      );
+    }
+
+    const folderPath = planCreateFolder({
+      parentPath: options.parentPath,
+      name: options.name,
+    });
+    const fullPath = `${collection.path}/${folderPath}`;
+    await createFolderPath(fullPath);
+
+    return {
+      collection: collection.name,
+      folderPath,
+      path: fullPath,
+    };
+  }
+
+  async getSections(ref: string) {
+    this.assertOpen();
+    const document = await getDocumentByRef(this.store, this.config, ref, {});
+    return extractSections(document.content);
   }
 
   async close(): Promise<void> {

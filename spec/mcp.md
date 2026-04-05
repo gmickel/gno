@@ -637,7 +637,7 @@ Create a new document in a collection (write-enabled).
     },
     "content": {
       "type": "string",
-      "description": "Document content (markdown)"
+      "description": "Document content (markdown). Optional when presetId provides the scaffold."
     },
     "title": {
       "type": "string",
@@ -646,6 +646,27 @@ Create a new document in a collection (write-enabled).
     "path": {
       "type": "string",
       "description": "Optional relative path within the collection"
+    },
+    "folderPath": {
+      "type": "string",
+      "description": "Optional folder path within the collection"
+    },
+    "collisionPolicy": {
+      "type": "string",
+      "enum": ["error", "open_existing", "create_with_suffix"],
+      "description": "How to handle name collisions"
+    },
+    "presetId": {
+      "type": "string",
+      "enum": [
+        "blank",
+        "project-note",
+        "research-note",
+        "decision-note",
+        "prompt-pattern",
+        "source-summary"
+      ],
+      "description": "Optional note preset scaffold"
     },
     "overwrite": {
       "type": "boolean",
@@ -658,7 +679,7 @@ Create a new document in a collection (write-enabled).
       "description": "Tags to apply to the document"
     }
   },
-  "required": ["collection", "content"]
+  "required": ["collection"]
 }
 ```
 
@@ -667,6 +688,9 @@ Create a new document in a collection (write-enabled).
 - Paths must be relative, no `..` escapes, no NUL bytes
 - Sensitive subpaths are rejected (`.ssh`, `.gnupg`, `.git`, `node_modules`, etc.)
 - If `path` is omitted, a `.md` filename is generated from the title or heading
+- `folderPath` lets clients create inside a specific subfolder
+- `collisionPolicy` supports `error`, `open_existing`, or `create_with_suffix`
+- `presetId` applies a structured note scaffold before write
 - Tags are validated and normalized to lowercase
 - For Markdown files, tags are added to frontmatter
 - For non-Markdown files, tags are stored as user-source in the database

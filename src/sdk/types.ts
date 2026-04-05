@@ -5,6 +5,9 @@
  */
 
 import type { Config } from "../config/types";
+import type { NoteCollisionPolicy } from "../core/note-creation";
+import type { NotePresetId } from "../core/note-presets";
+import type { DocumentSection } from "../core/sections";
 import type { SyncResult } from "../ingestion";
 import type { DownloadPolicy } from "../llm/policy";
 import type {
@@ -106,6 +109,38 @@ export interface GnoIndexResult {
   embedResult?: GnoEmbedResult;
 }
 
+export interface GnoCreateNoteOptions {
+  collection: string;
+  title?: string;
+  relPath?: string;
+  folderPath?: string;
+  content?: string;
+  collisionPolicy?: NoteCollisionPolicy;
+  presetId?: NotePresetId;
+  tags?: string[];
+}
+
+export interface GnoCreateNoteResult {
+  uri: string;
+  path: string;
+  relPath: string;
+  created: boolean;
+  openedExisting: boolean;
+  createdWithSuffix?: boolean;
+}
+
+export interface GnoCreateFolderOptions {
+  collection: string;
+  name: string;
+  parentPath?: string;
+}
+
+export interface GnoCreateFolderResult {
+  collection: string;
+  folderPath: string;
+  path: string;
+}
+
 export interface GnoClient {
   readonly config: Config;
   readonly dbPath: string;
@@ -134,5 +169,8 @@ export interface GnoClient {
   update(options?: GnoUpdateOptions): Promise<SyncResult>;
   embed(options?: GnoEmbedOptions): Promise<GnoEmbedResult>;
   index(options?: GnoIndexOptions): Promise<GnoIndexResult>;
+  createNote(options: GnoCreateNoteOptions): Promise<GnoCreateNoteResult>;
+  createFolder(options: GnoCreateFolderOptions): Promise<GnoCreateFolderResult>;
+  getSections(ref: string): Promise<DocumentSection[]>;
   close(): Promise<void>;
 }

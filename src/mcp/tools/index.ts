@@ -121,7 +121,12 @@ const captureInputSchema = z.object({
     .string()
     .min(1, "Collection cannot be empty")
     .describe("Target collection name (must already exist)"),
-  content: z.string().describe("Document content (markdown or plain text)"),
+  content: z
+    .string()
+    .optional()
+    .describe(
+      "Document content (markdown or plain text). Optional when presetId provides a scaffold."
+    ),
   title: z
     .string()
     .optional()
@@ -132,6 +137,25 @@ const captureInputSchema = z.object({
     .describe(
       "Relative path within collection (e.g. 'notes/meeting.md'). Auto-generated from title if omitted"
     ),
+  folderPath: z
+    .string()
+    .optional()
+    .describe("Optional folder path within the collection"),
+  collisionPolicy: z
+    .enum(["error", "open_existing", "create_with_suffix"])
+    .optional()
+    .describe("How to handle name collisions"),
+  presetId: z
+    .enum([
+      "blank",
+      "project-note",
+      "research-note",
+      "decision-note",
+      "prompt-pattern",
+      "source-summary",
+    ])
+    .optional()
+    .describe("Optional note preset scaffold"),
   overwrite: z
     .boolean()
     .default(false)

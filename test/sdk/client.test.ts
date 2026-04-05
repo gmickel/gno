@@ -194,6 +194,37 @@ describe("SDK client", () => {
     expect(result.content).toContain("JWT");
   });
 
+  test("creates notes with folder context and preset scaffolds", async () => {
+    const result = await client.createNote({
+      collection: "fixtures",
+      title: "SDK Project",
+      folderPath: "generated",
+      presetId: "project-note",
+    });
+
+    expect(result.relPath).toBe("generated/sdk-project.md");
+
+    const created = await client.get("fixtures/generated/sdk-project.md");
+    expect(created.content).toContain("## Goal");
+    expect(created.content).toContain('category: "project"');
+  });
+
+  test("creates folders directly through the SDK", async () => {
+    const result = await client.createFolder({
+      collection: "fixtures",
+      parentPath: "generated",
+      name: "nested",
+    });
+
+    expect(result.folderPath).toBe("generated/nested");
+  });
+
+  test("extracts sections through the SDK", async () => {
+    const sections = await client.getSections("fixtures/authentication.md");
+    expect(sections.length).toBeGreaterThan(0);
+    expect(sections[0]?.anchor).toBeTruthy();
+  });
+
   test("multi-gets several documents", async () => {
     const result = await client.multiGet([
       "fixtures/authentication.md",
