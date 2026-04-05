@@ -140,4 +140,60 @@ describe("QuickSwitcher DOM interactions", () => {
     ).toBeTruthy();
     expect(screen.queryByText("Infrastructure.md")).toBeNull();
   });
+
+  test("arrow keys change the selected command item", async () => {
+    apiFetch.mockImplementation(async (...args: unknown[]) => {
+      const endpoint = typeof args[0] === "string" ? args[0] : "";
+      if (endpoint === "/api/search") {
+        return apiOk({
+          results: [],
+        });
+      }
+      return apiOk({});
+    });
+
+    const { QuickSwitcher } =
+      await import("../../../../src/serve/public/components/QuickSwitcher");
+    localStorage.setItem(
+      RECENT_DOCS_STORAGE_KEY,
+      JSON.stringify([
+        {
+          uri: "gno://notes/One.md",
+          href: "/doc?uri=gno%3A%2F%2Fnotes%2FOne.md",
+          label: "One.md",
+        },
+        {
+          uri: "gno://notes/Two.md",
+          href: "/doc?uri=gno%3A%2F%2Fnotes%2FTwo.md",
+          label: "Two.md",
+        },
+      ])
+    );
+
+    const { user } = renderWithUser(
+      <QuickSwitcher
+        location="/browse?collection=notes"
+        navigate={() => undefined}
+        onCreateNote={() => undefined}
+        onOpenChange={() => undefined}
+        open={true}
+      />
+    );
+
+    const input = screen.getByRole("combobox");
+    await user.click(input);
+    const before = document.querySelector('[cmdk-item][data-selected="true"]');
+    await user.keyboard("{ArrowDown}");
+
+    const firstSelected = document.querySelector(
+      '[cmdk-item][data-selected="true"]'
+    );
+    expect(firstSelected?.textContent).not.toBe(before?.textContent);
+
+    await user.keyboard("{ArrowDown}");
+    const secondSelected = document.querySelector(
+      '[cmdk-item][data-selected="true"]'
+    );
+    expect(secondSelected?.textContent).not.toBe(firstSelected?.textContent);
+  });
 });

@@ -158,6 +158,14 @@ mark {
   outline: none;
 }
 
+/* Command palette input must not inherit the global browser-style focus ring */
+[data-slot="command-input"]:focus,
+[data-slot="command-input"]:focus-visible,
+[data-slot="command-input-wrapper"]:focus-within {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
 /* Custom scrollbar */
 ::-webkit-scrollbar {
   width: 8px;
