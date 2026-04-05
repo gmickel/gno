@@ -43,6 +43,19 @@ export function BrowseDetailPane({
   selectedPath: string;
   total: number;
 }) {
+  const formatModified = (value?: string) => {
+    if (!value) return "—";
+    try {
+      return new Date(value).toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      });
+    } catch {
+      return value;
+    }
+  };
+
   if (docsLoading && docs.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center gap-4 py-20">
@@ -107,7 +120,8 @@ export function BrowseDetailPane({
           <Table className="table-fixed">
             <TableHeader>
               <TableRow>
-                <TableHead className="w-[68%]">Document</TableHead>
+                <TableHead className="w-[56%]">Document</TableHead>
+                <TableHead className="w-[130px]">Modified</TableHead>
                 <TableHead className="w-[220px]">Collection</TableHead>
                 <TableHead className="w-[72px] text-right">Type</TableHead>
               </TableRow>
@@ -150,6 +164,9 @@ export function BrowseDetailPane({
                       </Button>
                       <ChevronRight className="ml-auto size-4 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
                     </div>
+                  </TableCell>
+                  <TableCell className="align-top whitespace-normal text-muted-foreground text-xs">
+                    {formatModified(doc.updatedAt)}
                   </TableCell>
                   <TableCell className="align-top whitespace-normal">
                     <Badge

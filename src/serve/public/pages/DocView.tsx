@@ -306,6 +306,10 @@ export default function DocView({ navigate }: PageProps) {
     []
   );
   const currentUri = currentTarget.uri;
+  const currentHash = useMemo(
+    () => window.location.hash.replace(/^#/u, ""),
+    []
+  );
   const highlightedLines = useMemo(() => {
     if (!currentTarget.lineStart) return [];
     const end = currentTarget.lineEnd ?? currentTarget.lineStart;
@@ -419,6 +423,19 @@ export default function DocView({ navigate }: PageProps) {
       setShowRawView(true);
     }
   }, [currentTarget.lineStart, currentTarget.view]);
+
+  useEffect(() => {
+    if (!currentHash || showRawView || loading) {
+      return;
+    }
+
+    requestAnimationFrame(() => {
+      document
+        .getElementById(currentHash)
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+      setActiveSectionAnchor(currentHash);
+    });
+  }, [currentHash, loading, showRawView]);
 
   const breadcrumbs = doc ? parseBreadcrumbs(doc.collection, doc.relPath) : [];
   const sections = useMemo(

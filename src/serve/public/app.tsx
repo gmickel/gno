@@ -220,7 +220,8 @@ function AppContent({
 }
 
 function App() {
-  const initialLocation = window.location.pathname + window.location.search;
+  const initialLocation =
+    window.location.pathname + window.location.search + window.location.hash;
   const [workspace, setWorkspace] = useState<WorkspaceState>(() =>
     loadWorkspaceState(initialLocation)
   );
@@ -231,7 +232,8 @@ function App() {
   const location = activeTab?.location ?? "/";
 
   useEffect(() => {
-    const currentLocation = window.location.pathname + window.location.search;
+    const currentLocation =
+      window.location.pathname + window.location.search + window.location.hash;
     if (location !== currentLocation) {
       window.history.replaceState({}, "", location);
     }
@@ -242,7 +244,9 @@ function App() {
       setWorkspace((current) =>
         updateActiveTabLocation(
           current,
-          window.location.pathname + window.location.search
+          window.location.pathname +
+            window.location.search +
+            window.location.hash
         )
       );
     };

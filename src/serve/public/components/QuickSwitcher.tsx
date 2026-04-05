@@ -211,6 +211,30 @@ export function QuickSwitcher({
     () => getWorkspaceActions({ location }),
     [location]
   );
+  const matchingWorkspaceActions = useMemo(
+    () =>
+      workspaceActions.filter((action) => {
+        if (
+          ["new-note", "new-note-in-context", "create-folder-here"].includes(
+            action.id
+          )
+        ) {
+          return true;
+        }
+        if (!normalizedQuery) {
+          return true;
+        }
+        const haystack = [
+          action.label,
+          action.description ?? "",
+          ...action.keywords,
+        ]
+          .join(" ")
+          .toLowerCase();
+        return haystack.includes(normalizedQuery);
+      }),
+    [normalizedQuery, workspaceActions]
+  );
   const exactResult = useMemo(() => {
     if (!normalizedQuery) {
       return null;
@@ -348,6 +372,38 @@ export function QuickSwitcher({
           </>
         )}
 
+        {filteredSections.length > 0 && (
+          <CommandGroup heading="Sections">
+            {filteredSections.map((section) => {
+              const target = parseDocumentDeepLink(
+                location.includes("?") ? `?${location.split("?")[1] ?? ""}` : ""
+              );
+              if (!target.uri) {
+                return null;
+              }
+              return (
+                <CommandItem
+                  key={section.anchor}
+                  onSelect={() => {
+                    navigate(
+                      `${buildDocDeepLink({
+                        uri: target.uri,
+                        view: "rendered",
+                      })}#${section.anchor}`
+                    );
+                    onOpenChange(false);
+                  }}
+                  value={`${section.title} section heading outline`}
+                >
+                  <SearchIcon />
+                  <span>{section.title}</span>
+                  <CommandShortcut>{`H${section.level}`}</CommandShortcut>
+                </CommandItem>
+              );
+            })}
+          </CommandGroup>
+        )}
+
         {showCreateAction && (
           <>
             <CommandGroup heading="Actions">
@@ -376,7 +432,7 @@ export function QuickSwitcher({
                 <span>Create new note</span>
                 <CommandShortcut>{query.trim()}</CommandShortcut>
               </CommandItem>
-              {workspaceActions
+              {matchingWorkspaceActions
                 .filter((action) =>
                   [
                     "new-note-in-context",
@@ -398,7 +454,12 @@ export function QuickSwitcher({
                         query.trim()
                       )
                     }
-                    value={`${action.label} ${action.keywords.join(" ")} ${query}`}
+                    value={`${
+                      action.id === "new-note-in-context" ||
+                      action.id === "new-note"
+                        ? `${action.label} ${action.keywords.join(" ")} ${query}`
+                        : `${action.label} ${action.keywords.join(" ")}`
+                    }`}
                   >
                     <FolderIcon />
                     <span>{action.label}</span>
@@ -415,7 +476,7 @@ export function QuickSwitcher({
         )}
 
         <CommandGroup heading="Go To">
-          {workspaceActions
+          {matchingWorkspaceActions
             .filter((action) => action.group === "Go To" && action.available)
             .map((action) => (
               <CommandItem
@@ -455,38 +516,6 @@ export function QuickSwitcher({
                 <CommandShortcut>Preset</CommandShortcut>
               </CommandItem>
             ))}
-          </CommandGroup>
-        )}
-
-        {filteredSections.length > 0 && (
-          <CommandGroup heading="Sections">
-            {filteredSections.map((section) => {
-              const target = parseDocumentDeepLink(
-                location.includes("?") ? `?${location.split("?")[1] ?? ""}` : ""
-              );
-              if (!target.uri) {
-                return null;
-              }
-              return (
-                <CommandItem
-                  key={section.anchor}
-                  onSelect={() => {
-                    navigate(
-                      `${buildDocDeepLink({
-                        uri: target.uri,
-                        view: "rendered",
-                      })}#${section.anchor}`
-                    );
-                    onOpenChange(false);
-                  }}
-                  value={`${section.title} section heading outline`}
-                >
-                  <SearchIcon />
-                  <span>{section.title}</span>
-                  <CommandShortcut>{`H${section.level}`}</CommandShortcut>
-                </CommandItem>
-              );
-            })}
           </CommandGroup>
         )}
 

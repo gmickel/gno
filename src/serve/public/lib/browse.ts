@@ -7,6 +7,7 @@ export interface BrowseDocument {
   collection: string;
   relPath: string;
   sourceExt: string;
+  updatedAt?: string;
 }
 
 export interface DocsResponse {
