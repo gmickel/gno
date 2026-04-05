@@ -22,6 +22,7 @@ function Command({
         "flex h-full w-full flex-col overflow-hidden rounded-md bg-popover text-popover-foreground",
         className
       )}
+      cmdk-root=""
       data-slot="command"
       {...props}
     />
@@ -33,13 +34,17 @@ function CommandDialog({
   description = "Search for a command to run...",
   children,
   className,
+  commandKey,
   showCloseButton = true,
+  shouldFilter = true,
   ...props
 }: React.ComponentProps<typeof Dialog> & {
   title?: string;
   description?: string;
   className?: string;
+  commandKey?: React.Key;
   showCloseButton?: boolean;
+  shouldFilter?: boolean;
 }) {
   return (
     <Dialog {...props}>
@@ -51,7 +56,11 @@ function CommandDialog({
         className={cn("overflow-hidden border-none p-0 shadow-2xl", className)}
         showCloseButton={showCloseButton}
       >
-        <Command className="**:data-[slot=command-input-wrapper]:h-12 [&_[cmdk-group]:not([hidden])_~[cmdk-group]]:pt-0 [&_[cmdk-group]]:px-2 [&_[cmdk-input-wrapper]_svg]:h-4 [&_[cmdk-input-wrapper]_svg]:w-4 [&_[cmdk-input]]:h-12 [&_[cmdk-item]]:px-2 [&_[cmdk-item]]:py-1.5 [&_[cmdk-item]_svg]:h-4 [&_[cmdk-item]_svg]:w-4">
+        <Command
+          className="**:data-[slot=command-input-wrapper]:h-12 [&_[cmdk-group]:not([hidden])_~[cmdk-group]]:pt-0 [&_[cmdk-group]]:px-2 [&_[cmdk-input-wrapper]_svg]:h-4 [&_[cmdk-input-wrapper]_svg]:w-4 [&_[cmdk-input]]:h-12 [&_[cmdk-item]]:px-2 [&_[cmdk-item]]:py-1.5 [&_[cmdk-item]_svg]:h-4 [&_[cmdk-item]_svg]:w-4"
+          key={commandKey}
+          shouldFilter={shouldFilter}
+        >
           {children}
         </Command>
       </DialogContent>
@@ -71,10 +80,11 @@ function CommandInput({
       <SearchIcon className="size-4 shrink-0 text-muted-foreground/50" />
       <CommandPrimitive.Input
         className={cn(
-          "appearance-none flex h-10 w-full rounded-none border-none bg-transparent px-0 py-3 text-sm shadow-none outline-none ring-0 placeholder:text-muted-foreground focus:border-none focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 disabled:cursor-not-allowed disabled:opacity-50",
+          "appearance-none flex h-10 w-full rounded-none border-none bg-transparent px-0 py-3 text-sm placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50",
           className
         )}
         data-slot="command-input"
+        style={{ boxShadow: "none", outline: "none" }}
         {...props}
       />
     </div>
@@ -145,7 +155,7 @@ function CommandItem({
   return (
     <CommandPrimitive.Item
       className={cn(
-        "relative flex cursor-pointer select-none items-center gap-2 rounded-sm border border-transparent px-2 py-1.5 text-sm outline-hidden transition-colors duration-150 data-[disabled=true]:pointer-events-none data-[disabled=true]:cursor-not-allowed data-[disabled=true]:opacity-50 aria-selected:border-primary/55 aria-selected:bg-primary/20 aria-selected:text-primary data-[selected=true]:border-primary/55 data-[selected=true]:bg-primary/20 data-[selected=true]:text-primary [&_svg:not([class*='size-'])]:size-4 [&_svg:not([class*='text-'])]:text-muted-foreground [&_svg]:pointer-events-none [&_svg]:shrink-0 aria-selected:shadow-[inset_3px_0_0_hsl(var(--primary)),inset_0_0_0_1px_hsl(var(--primary)/0.24)] data-[selected=true]:shadow-[inset_3px_0_0_hsl(var(--primary)),inset_0_0_0_1px_hsl(var(--primary)/0.24)] aria-selected:[&_[data-slot=command-shortcut]]:text-primary/95 data-[selected=true]:[&_[data-slot=command-shortcut]]:text-primary/95 aria-selected:[&_svg]:text-primary data-[selected=true]:[&_svg]:text-primary",
+        "relative flex cursor-pointer select-none items-center gap-2 rounded-sm px-2 py-1.5 text-sm data-[disabled=true]:pointer-events-none data-[disabled=true]:cursor-not-allowed data-[disabled=true]:opacity-50 [&_svg:not([class*='size-'])]:size-4 [&_svg:not([class*='text-'])]:text-muted-foreground [&_svg]:pointer-events-none [&_svg]:shrink-0",
         className
       )}
       data-slot="command-item"

@@ -819,9 +819,8 @@ export default function DocView({ navigate }: PageProps) {
     setTimeout(() => setTagSaveSuccess(false), 2000);
   }, [doc, editedTags]);
 
-  /** Slim left rail — archival catalogue style, no Card chrome */
-  const renderDocumentFactsRail = () => (
-    <nav aria-label="Document facts" className="space-y-0">
+  const renderPropertiesPathRail = () => (
+    <nav aria-label="Document properties" className="space-y-0">
       {/* Section: Properties */}
       <div className="px-3 pb-3">
         <div className="mb-2.5 font-mono text-[10px] text-muted-foreground/50 uppercase tracking-[0.15em]">
@@ -900,11 +899,15 @@ export default function DocView({ navigate }: PageProps) {
           </button>
         </div>
       </div>
+    </nav>
+  );
 
-      {/* Divider + Frontmatter/Tags */}
+  /** Left rail — metadata + outline */
+  const renderDocumentFactsRail = () => (
+    <nav aria-label="Document facts" className="space-y-0">
+      {/* Frontmatter + tags */}
       {(hasFrontmatter || showStandaloneTags) && (
         <>
-          <div className="mx-3 border-border/20 border-t" />
           <div className="px-3 py-3">
             <div className="mb-2 flex items-center justify-between">
               <span className="font-mono text-[10px] text-muted-foreground/50 uppercase tracking-[0.15em]">
@@ -1389,10 +1392,12 @@ export default function DocView({ navigate }: PageProps) {
       </header>
 
       <div className="mx-auto flex max-w-[1800px] gap-5 px-6 xl:px-8">
-        {/* Left rail — document facts, only on ultra-wide */}
+        {/* Left rail — metadata + outline */}
         {doc && (
           <aside className="hidden w-[200px] shrink-0 border-border/15 border-r pr-2 py-6 lg:block">
-            <div className="sticky top-24">{renderDocumentFactsRail()}</div>
+            <div className="sticky top-24 max-h-[calc(100vh-7rem)] overflow-y-auto pr-1">
+              {renderDocumentFactsRail()}
+            </div>
           </aside>
         )}
 
@@ -1555,10 +1560,11 @@ export default function DocView({ navigate }: PageProps) {
           )}
         </main>
 
-        {/* Right rail — relationships */}
+        {/* Right rail — properties/path + relationships */}
         {doc && (
-          <aside className="hidden w-[240px] min-w-0 shrink-0 overflow-hidden border-border/15 border-l pl-2 py-6 lg:block">
-            <div className="sticky top-24 min-w-0 space-y-1 overflow-hidden">
+          <aside className="hidden w-[250px] min-w-0 shrink-0 overflow-hidden border-border/15 border-l pl-2 pt-2 pb-6 lg:block">
+            <div className="sticky top-18 min-w-0 max-h-[calc(100vh-5.5rem)] space-y-1 overflow-y-auto overflow-x-hidden pr-1">
+              {renderPropertiesPathRail()}
               <BacklinksPanel
                 docId={doc.docid}
                 onNavigate={(uri) =>

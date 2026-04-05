@@ -183,17 +183,75 @@ describe("QuickSwitcher DOM interactions", () => {
     const input = screen.getByRole("combobox");
     await user.click(input);
     const before = document.querySelector('[cmdk-item][data-selected="true"]');
+    expect(before?.textContent).toContain("One.md");
     await user.keyboard("{ArrowDown}");
 
     const firstSelected = document.querySelector(
       '[cmdk-item][data-selected="true"]'
     );
-    expect(firstSelected?.textContent).not.toBe(before?.textContent);
+    expect(firstSelected?.textContent).toContain("Two.md");
 
     await user.keyboard("{ArrowDown}");
     const secondSelected = document.querySelector(
       '[cmdk-item][data-selected="true"]'
     );
-    expect(secondSelected?.textContent).not.toBe(firstSelected?.textContent);
+    expect(secondSelected?.textContent).toContain("Create new note");
+  });
+
+  test("keeps visible section matches ahead of generic actions", async () => {
+    apiFetch.mockImplementation(async (...args: unknown[]) => {
+      const endpoint = typeof args[0] === "string" ? args[0] : "";
+      if (endpoint.startsWith("/api/doc?uri=")) {
+        return apiOk({
+          docid: "doc-1",
+          uri: "file:///tmp/notes/weekly.md",
+        });
+      }
+      if (endpoint === "/api/doc/doc-1/sections") {
+        return apiOk({
+          sections: [
+            {
+              anchor: "why-co-work",
+              level: 2,
+              line: 18,
+              title: "Why Co-Work",
+            },
+            {
+              anchor: "weekly-risks",
+              level: 2,
+              line: 24,
+              title: "Weekly Risks",
+            },
+          ],
+        });
+      }
+      if (endpoint === "/api/search") {
+        return apiOk({
+          results: [],
+        });
+      }
+      return apiOk({});
+    });
+
+    const { QuickSwitcher } =
+      await import("../../../../src/serve/public/components/QuickSwitcher");
+    const { user } = renderWithUser(
+      <QuickSwitcher
+        location="/doc?uri=file%3A%2F%2F%2Ftmp%2Fnotes%2Fweekly.md"
+        navigate={() => undefined}
+        onCreateNote={() => undefined}
+        onOpenChange={() => undefined}
+        open={true}
+      />
+    );
+
+    await user.type(screen.getByRole("combobox"), "week");
+    expect(await screen.findByText("Weekly Risks")).toBeTruthy();
+    await user.keyboard("{ArrowDown}");
+
+    const selected = document.querySelector(
+      '[cmdk-item][data-selected="true"]'
+    );
+    expect(selected?.textContent).toContain("Weekly Risks");
   });
 });

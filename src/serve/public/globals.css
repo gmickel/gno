@@ -158,12 +158,51 @@ mark {
   outline: none;
 }
 
-/* Command palette input must not inherit the global browser-style focus ring */
-[data-slot="command-input"]:focus,
-[data-slot="command-input"]:focus-visible,
-[data-slot="command-input-wrapper"]:focus-within {
+/* Command palette: own focus + selection treatment; do not inherit global rings */
+[cmdk-input] {
   outline: none !important;
   box-shadow: none !important;
+}
+
+[cmdk-input]:focus,
+[cmdk-input]:focus-visible,
+[cmdk-root] [data-slot="command-input-wrapper"],
+[cmdk-root] [data-slot="command-input-wrapper"]:focus-within {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+[cmdk-root] [data-slot="command-input-wrapper"] {
+  border-bottom: 1px solid hsl(var(--border) / 0.7);
+  background: hsl(var(--muted) / 0.2);
+}
+
+[cmdk-root] [data-slot="command-input-wrapper"]:focus-within {
+  border-bottom-color: hsl(var(--primary) / 0.45);
+  background: hsl(var(--card) / 0.96);
+}
+
+[cmdk-root] [cmdk-item] {
+  border: 1px solid transparent;
+  transition:
+    background-color 140ms ease,
+    border-color 140ms ease,
+    color 140ms ease,
+    box-shadow 140ms ease;
+}
+
+[cmdk-root] [cmdk-item][data-selected="true"] {
+  background: hsl(var(--primary) / 0.18);
+  border-color: hsl(var(--primary) / 0.38);
+  color: hsl(var(--foreground));
+  box-shadow:
+    inset 3px 0 0 hsl(var(--primary)),
+    inset 0 0 0 1px hsl(var(--primary) / 0.18);
+}
+
+[cmdk-root] [cmdk-item][data-selected="true"] svg,
+[cmdk-root] [cmdk-item][data-selected="true"] [data-slot="command-shortcut"] {
+  color: hsl(var(--primary));
 }
 
 /* Custom scrollbar */

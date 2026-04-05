@@ -297,12 +297,31 @@ export function QuickSwitcher({
         section.title.toLowerCase().includes(normalizedQuery)
     );
   }, [query, sections]);
+  const hasQuery = query.trim().length > 0;
+  const hasPriorityMatches =
+    filteredSections.length > 0 ||
+    results.length > 0 ||
+    filteredRecentItems.length > 0 ||
+    filteredFavoriteDocItems.length > 0 ||
+    filteredFavoriteCollectionItems.length > 0;
+  const commandKey = useMemo(
+    () =>
+      [
+        normalizedQuery || "__empty__",
+        filteredSections.map((section) => section.anchor).join(","),
+        results.map((result) => result.docid).join(","),
+        filteredRecentItems.map((item) => item.href).join(","),
+      ].join("|"),
+    [filteredRecentItems, filteredSections, normalizedQuery, results]
+  );
 
   return (
     <CommandDialog
+      commandKey={commandKey}
       description="Jump to notes, open recent documents, or create a new note."
       onOpenChange={onOpenChange}
       open={open}
+      shouldFilter={false}
       title="Quick Switcher"
     >
       <CommandInput
@@ -316,63 +335,7 @@ export function QuickSwitcher({
           {loading ? "Searching..." : "No matching documents."}
         </CommandEmpty>
 
-        {filteredRecentItems.length > 0 && (
-          <CommandGroup heading="Recent">
-            {filteredRecentItems.map((item) => (
-              <CommandItem
-                key={item.href}
-                onSelect={() => {
-                  navigate(item.href);
-                  onOpenChange(false);
-                }}
-                value={`recent-${item.href}-${item.label}`}
-              >
-                <FileTextIcon />
-                <span>{item.label}</span>
-                <CommandShortcut>Recent</CommandShortcut>
-              </CommandItem>
-            ))}
-          </CommandGroup>
-        )}
-
-        {(filteredFavoriteDocItems.length > 0 ||
-          filteredFavoriteCollectionItems.length > 0) && (
-          <>
-            <CommandSeparator />
-            <CommandGroup heading="Favorites">
-              {filteredFavoriteDocItems.map((item) => (
-                <CommandItem
-                  key={item.href}
-                  onSelect={() => {
-                    navigate(item.href);
-                    onOpenChange(false);
-                  }}
-                  value={`favorite-doc-${item.href}`}
-                >
-                  <StarIcon />
-                  <span>{item.label}</span>
-                  <CommandShortcut>Doc</CommandShortcut>
-                </CommandItem>
-              ))}
-              {filteredFavoriteCollectionItems.map((item) => (
-                <CommandItem
-                  key={item.href}
-                  onSelect={() => {
-                    navigate(item.href);
-                    onOpenChange(false);
-                  }}
-                  value={`favorite-collection-${item.href}`}
-                >
-                  <FolderIcon />
-                  <span>{item.label}</span>
-                  <CommandShortcut>Collection</CommandShortcut>
-                </CommandItem>
-              ))}
-            </CommandGroup>
-          </>
-        )}
-
-        {filteredSections.length > 0 && (
+        {hasQuery && filteredSections.length > 0 && (
           <CommandGroup heading="Sections">
             {filteredSections.map((section) => {
               const target = parseDocumentDeepLink(
@@ -404,7 +367,154 @@ export function QuickSwitcher({
           </CommandGroup>
         )}
 
-        {showCreateAction && (
+        {hasQuery && results.length > 0 && (
+          <CommandGroup heading="Documents">
+            {results.map((result) => (
+              <CommandItem
+                key={result.docid}
+                onSelect={() =>
+                  openTarget({
+                    uri: result.uri,
+                    lineStart: result.snippetRange?.startLine,
+                    lineEnd: result.snippetRange?.endLine,
+                  })
+                }
+                value={`${result.title ?? result.uri} ${result.uri}`}
+              >
+                {loading ? (
+                  <Loader2Icon className="animate-spin" />
+                ) : (
+                  <SearchIcon />
+                )}
+                <div className="min-w-0 flex-1">
+                  <div className="truncate">{result.title || result.uri}</div>
+                  <div className="truncate text-muted-foreground text-xs">
+                    {result.uri}
+                  </div>
+                </div>
+                {result.snippetRange && (
+                  <CommandShortcut>
+                    L{result.snippetRange.startLine}
+                    {result.snippetRange.endLine !==
+                    result.snippetRange.startLine
+                      ? `-${result.snippetRange.endLine}`
+                      : ""}
+                  </CommandShortcut>
+                )}
+              </CommandItem>
+            ))}
+          </CommandGroup>
+        )}
+
+        {!hasQuery && filteredRecentItems.length > 0 && (
+          <CommandGroup heading="Recent">
+            {filteredRecentItems.map((item) => (
+              <CommandItem
+                key={item.href}
+                onSelect={() => {
+                  navigate(item.href);
+                  onOpenChange(false);
+                }}
+                value={`recent-${item.href}-${item.label}`}
+              >
+                <FileTextIcon />
+                <span>{item.label}</span>
+                <CommandShortcut>Recent</CommandShortcut>
+              </CommandItem>
+            ))}
+          </CommandGroup>
+        )}
+
+        {!hasQuery &&
+          (filteredFavoriteDocItems.length > 0 ||
+            filteredFavoriteCollectionItems.length > 0) && (
+            <>
+              <CommandSeparator />
+              <CommandGroup heading="Favorites">
+                {filteredFavoriteDocItems.map((item) => (
+                  <CommandItem
+                    key={item.href}
+                    onSelect={() => {
+                      navigate(item.href);
+                      onOpenChange(false);
+                    }}
+                    value={`favorite-doc-${item.href}`}
+                  >
+                    <StarIcon />
+                    <span>{item.label}</span>
+                    <CommandShortcut>Doc</CommandShortcut>
+                  </CommandItem>
+                ))}
+                {filteredFavoriteCollectionItems.map((item) => (
+                  <CommandItem
+                    key={item.href}
+                    onSelect={() => {
+                      navigate(item.href);
+                      onOpenChange(false);
+                    }}
+                    value={`favorite-collection-${item.href}`}
+                  >
+                    <FolderIcon />
+                    <span>{item.label}</span>
+                    <CommandShortcut>Collection</CommandShortcut>
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            </>
+          )}
+
+        {!hasQuery && filteredSections.length > 0 && (
+          <CommandGroup heading="Sections">
+            {filteredSections.map((section) => {
+              const target = parseDocumentDeepLink(
+                location.includes("?") ? `?${location.split("?")[1] ?? ""}` : ""
+              );
+              if (!target.uri) {
+                return null;
+              }
+              return (
+                <CommandItem
+                  key={section.anchor}
+                  onSelect={() => {
+                    navigate(
+                      `${buildDocDeepLink({
+                        uri: target.uri,
+                        view: "rendered",
+                      })}#${section.anchor}`
+                    );
+                    onOpenChange(false);
+                  }}
+                  value={`${section.title} section heading outline`}
+                >
+                  <SearchIcon />
+                  <span>{section.title}</span>
+                  <CommandShortcut>{`H${section.level}`}</CommandShortcut>
+                </CommandItem>
+              );
+            })}
+          </CommandGroup>
+        )}
+
+        {hasQuery && filteredRecentItems.length > 0 && (
+          <CommandGroup heading="Recent">
+            {filteredRecentItems.map((item) => (
+              <CommandItem
+                key={item.href}
+                onSelect={() => {
+                  navigate(item.href);
+                  onOpenChange(false);
+                }}
+                value={`recent-${item.href}-${item.label}`}
+              >
+                <FileTextIcon />
+                <span>{item.label}</span>
+                <CommandShortcut>Recent</CommandShortcut>
+              </CommandItem>
+            ))}
+          </CommandGroup>
+        )}
+
+        {showCreateAction && (!hasQuery || !hasPriorityMatches) && (
           <>
             <CommandGroup heading="Actions">
               {exactResult && (
@@ -520,45 +630,6 @@ export function QuickSwitcher({
         )}
 
         {!query.trim() && <CommandSeparator />}
-
-        {query.trim() && (
-          <CommandGroup heading="Documents">
-            {results.map((result) => (
-              <CommandItem
-                key={result.docid}
-                onSelect={() =>
-                  openTarget({
-                    uri: result.uri,
-                    lineStart: result.snippetRange?.startLine,
-                    lineEnd: result.snippetRange?.endLine,
-                  })
-                }
-                value={`${result.title ?? result.uri} ${result.uri}`}
-              >
-                {loading ? (
-                  <Loader2Icon className="animate-spin" />
-                ) : (
-                  <SearchIcon />
-                )}
-                <div className="min-w-0 flex-1">
-                  <div className="truncate">{result.title || result.uri}</div>
-                  <div className="truncate text-muted-foreground text-xs">
-                    {result.uri}
-                  </div>
-                </div>
-                {result.snippetRange && (
-                  <CommandShortcut>
-                    L{result.snippetRange.startLine}
-                    {result.snippetRange.endLine !==
-                    result.snippetRange.startLine
-                      ? `-${result.snippetRange.endLine}`
-                      : ""}
-                  </CommandShortcut>
-                )}
-              </CommandItem>
-            ))}
-          </CommandGroup>
-        )}
       </CommandList>
     </CommandDialog>
   );
