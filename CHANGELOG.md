@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.35.0] - 2026-04-05
+
+### Added
+
+- Added workspace-native note authoring flows across the web workspace, including place-aware note creation from Browse, note presets, editor preset insertion, section outline/deep links, and a stronger command palette for note/navigation actions.
+- Added reference-aware file operations for editable notes, including move, duplicate, folder creation, refactor warning previews, and shared note/file operation contracts that now span the Web UI, SDK, and MCP surfaces.
+- Added new programmatic surfaces for note workflows: REST endpoints for note presets, sections, folder creation, file refactor planning, move, and duplicate; new MCP write tools for folder/note refactors; and SDK parity for note creation, folder creation, sections, rename, move, and duplicate.
+- Added the Scholarly Dusk design-system ADR and linked the new note-workspace epics/tasks to it so future UI work stays visually coherent.
+
+### Fixed
+
+- Fixed Windows/macOS path normalization issues so note/file workflows and desktop runtime-layout helpers keep POSIX-stable relpaths/URIs across platforms, unblocking green Windows CI again.
+
 ## [0.34.1] - 2026-04-04
 
 ### Fixed
