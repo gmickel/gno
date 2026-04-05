@@ -9,7 +9,7 @@ import { realpath } from "node:fs/promises";
 // node:os for homedir (no Bun os utils)
 import { homedir } from "node:os";
 // node:path for path utils (no Bun path utils)
-import { isAbsolute, join, normalize, sep } from "node:path";
+import { isAbsolute, join, posix as pathPosix } from "node:path";
 
 import { toAbsolutePath } from "../config/paths";
 
@@ -48,8 +48,9 @@ export function validateRelPath(relPath: string): string {
     throw new Error("relPath contains invalid characters");
   }
 
-  const normalized = normalize(relPath);
-  const segments = normalized.split(sep);
+  const normalizedInput = relPath.replaceAll("\\", "/");
+  const normalized = pathPosix.normalize(normalizedInput);
+  const segments = normalized.split("/");
   if (segments.includes("..")) {
     throw new Error("relPath cannot escape collection root");
   }
