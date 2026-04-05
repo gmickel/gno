@@ -49,4 +49,25 @@ describe("QuickSwitcher DOM interactions", () => {
       draftTitle: "Project Plan",
     });
   });
+
+  test("shows core actions even before typing", async () => {
+    const { QuickSwitcher } =
+      await import("../../../../src/serve/public/components/QuickSwitcher");
+    const { user } = renderWithUser(
+      <QuickSwitcher
+        location="/doc?uri=file%3A%2F%2F%2Ftmp%2Fnotes%2Falpha.md"
+        navigate={() => undefined}
+        onCreateNote={() => undefined}
+        onOpenChange={() => undefined}
+        open={true}
+      />
+    );
+
+    expect(await screen.findByText("Create new note")).toBeTruthy();
+    expect(screen.getByText("Rename current note")).toBeTruthy();
+    expect(screen.getByText("Move current note")).toBeTruthy();
+    expect(screen.getByText("Duplicate current note")).toBeTruthy();
+
+    await user.click(screen.getByText("Home"));
+  });
 });

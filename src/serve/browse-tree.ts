@@ -17,6 +17,10 @@ type BrowseDocumentLike = Pick<
   DocumentRow,
   "collection" | "relPath" | "active"
 >;
+type BrowseFolderLike = {
+  collection: string;
+  path: string;
+};
 
 export function normalizeBrowsePath(path?: string | null): string {
   return (path ?? "").replaceAll("\\", "/").replace(/^\/+|\/+$/g, "");
@@ -56,9 +60,39 @@ function sortNodes(nodes: BrowseTreeNode[]): void {
   }
 }
 
+function ensureFolderNode(
+  root: BrowseTreeNode,
+  collection: string,
+  folderPath: string
+): BrowseTreeNode {
+  const normalizedFolderPath = normalizeBrowsePath(folderPath);
+  const parts = normalizedFolderPath.split("/").filter(Boolean);
+  let current = root;
+  let currentPath = "";
+
+  for (const part of parts) {
+    currentPath = currentPath ? `${currentPath}/${part}` : part;
+    let next = current.children.find((child) => child.path === currentPath);
+    if (!next) {
+      next = createNode({
+        kind: "folder",
+        collection,
+        path: currentPath,
+        name: part,
+        depth: current.depth + 1,
+      });
+      current.children.push(next);
+    }
+    current = next;
+  }
+
+  return current;
+}
+
 export function buildBrowseTree(
   collections: BrowseCollectionLike[],
-  documents: BrowseDocumentLike[]
+  documents: BrowseDocumentLike[],
+  folders: BrowseFolderLike[] = []
 ): BrowseTreeNode[] {
   const roots = new Map<string, BrowseTreeNode>();
 
@@ -103,26 +137,40 @@ export function buildBrowseTree(
       continue;
     }
 
-    let current = root;
+    const current = ensureFolderNode(
+      root,
+      doc.collection,
+      folderParts.join("/")
+    );
+
+    let pointer = root;
     let currentPath = "";
     for (const part of folderParts) {
       currentPath = currentPath ? `${currentPath}/${part}` : part;
-      let next = current.children.find((child) => child.path === currentPath);
+      const next = pointer.children.find((child) => child.path === currentPath);
       if (!next) {
-        next = createNode({
-          kind: "folder",
-          collection: doc.collection,
-          path: currentPath,
-          name: part,
-          depth: current.depth + 1,
-        });
-        current.children.push(next);
+        continue;
       }
       next.documentCount += 1;
-      current = next;
+      pointer = next;
     }
 
     current.directDocumentCount += 1;
+  }
+
+  for (const folder of folders) {
+    let root = roots.get(folder.collection);
+    if (!root) {
+      root = createNode({
+        kind: "collection",
+        collection: folder.collection,
+        path: "",
+        name: folder.collection,
+        depth: 0,
+      });
+      roots.set(folder.collection, root);
+    }
+    ensureFolderNode(root, folder.collection, folder.path);
   }
 
   const sortedRoots = [...roots.values()].sort((a, b) =>

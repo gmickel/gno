@@ -99,4 +99,21 @@ describe("browse tree model", () => {
     const projectChildren = getImmediateChildFolders(tree, "notes", "projects");
     expect(projectChildren.map((node) => node.name)).toEqual(["gno"]);
   });
+
+  test("merges empty filesystem folders into the tree", () => {
+    const tree = buildBrowseTree(
+      [{ name: "notes" }],
+      [],
+      [
+        { collection: "notes", path: "projects" },
+        { collection: "notes", path: "projects/research" },
+      ]
+    );
+
+    const rootChildren = getImmediateChildFolders(tree, "notes");
+    expect(rootChildren.map((node) => node.name)).toEqual(["projects"]);
+
+    const projectChildren = getImmediateChildFolders(tree, "notes", "projects");
+    expect(projectChildren.map((node) => node.name)).toEqual(["research"]);
+  });
 });

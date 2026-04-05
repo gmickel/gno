@@ -5,6 +5,8 @@
  * @module src/serve/routes/api
  */
 
+// node:fs/promises structure walk has no Bun equivalent
+import { readdir } from "node:fs/promises";
 // node:path has no Bun equivalent
 import { posix as pathPosix } from "node:path";
 
@@ -365,6 +367,53 @@ async function listCollectionRelPaths(
     throw new Error(result.error.message);
   }
   return result.value.map((entry) => entry.relPath);
+}
+
+const BROWSE_HIDDEN_DIRS = new Set([".git", ".obsidian", "node_modules"]);
+
+async function listCollectionFolders(
+  collections: Array<{ name: string; path: string }>
+): Promise<Array<{ collection: string; path: string }>> {
+  const folders: Array<{ collection: string; path: string }> = [];
+
+  async function walk(
+    collection: string,
+    rootPath: string,
+    relativePath = ""
+  ): Promise<void> {
+    const currentPath = relativePath ? `${rootPath}/${relativePath}` : rootPath;
+    let entries;
+    try {
+      entries = await readdir(currentPath, {
+        withFileTypes: true,
+      });
+    } catch {
+      return;
+    }
+
+    for (const entry of entries) {
+      if (!entry.isDirectory()) {
+        continue;
+      }
+      if (entry.name.startsWith(".") || BROWSE_HIDDEN_DIRS.has(entry.name)) {
+        continue;
+      }
+      const nextRelativePath = relativePath
+        ? `${relativePath}/${entry.name}`
+        : entry.name;
+      folders.push({
+        collection,
+        path: normalizeBrowsePath(nextRelativePath),
+      });
+      await walk(collection, rootPath, nextRelativePath);
+    }
+  }
+
+  for (const collection of collections) {
+    await walk(collection.name, collection.path);
+  }
+
+  return folders;
 }
 
 async function getRefactorSnapshot(
@@ -1032,9 +1081,11 @@ export async function handleBrowseTree(
     return errorResponse("RUNTIME", documentsResult.error.message, 500);
   }
 
+  const folders = await listCollectionFolders(collectionsResult.value);
   const collections = buildBrowseTree(
     collectionsResult.value,
-    documentsResult.value
+    documentsResult.value,
+    folders
   );
 
   return jsonResponse({

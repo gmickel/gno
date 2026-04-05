@@ -167,7 +167,7 @@ export function QuickSwitcher({
     [navigate, onOpenChange]
   );
 
-  const showCreateAction = query.trim().length > 0;
+  const showCreateAction = true;
   const actionHandlers = useMemo(
     () => ({
       navigate,
