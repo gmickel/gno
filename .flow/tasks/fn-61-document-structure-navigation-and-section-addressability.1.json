@@ -1,0 +1,14 @@
+{
+  "assignee": null,
+  "claim_note": "",
+  "claimed_at": null,
+  "created_at": "2026-04-05T12:10:00Z",
+  "depends_on": [],
+  "epic": "fn-61-document-structure-navigation-and-section-addressability",
+  "id": "fn-61-document-structure-navigation-and-section-addressability.1",
+  "priority": 1,
+  "spec_path": ".flow/tasks/fn-61-document-structure-navigation-and-section-addressability.1.md",
+  "status": "todo",
+  "title": "Build shared heading extraction and stable section anchor contract",
+  "updated_at": "2026-04-05T12:10:00Z"
+}

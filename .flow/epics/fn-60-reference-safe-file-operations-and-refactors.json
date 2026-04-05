@@ -7,7 +7,7 @@
     "fn-59-workspace-native-note-creation-and-open-or-create"
   ],
   "id": "fn-60-reference-safe-file-operations-and-refactors",
-  "next_task": 1,
+  "next_task": 5,
   "plan_review_status": "unknown",
   "plan_reviewed_at": null,
   "spec_path": ".flow/specs/fn-60-reference-safe-file-operations-and-refactors.md",

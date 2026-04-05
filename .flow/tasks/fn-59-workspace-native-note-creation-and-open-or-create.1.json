@@ -1,0 +1,14 @@
+{
+  "assignee": null,
+  "claim_note": "",
+  "claimed_at": null,
+  "created_at": "2026-04-05T12:10:00Z",
+  "depends_on": [],
+  "epic": "fn-59-workspace-native-note-creation-and-open-or-create",
+  "id": "fn-59-workspace-native-note-creation-and-open-or-create.1",
+  "priority": 1,
+  "spec_path": ".flow/tasks/fn-59-workspace-native-note-creation-and-open-or-create.1.md",
+  "status": "todo",
+  "title": "Define shared note-creation resolver and place-aware API contract",
+  "updated_at": "2026-04-05T12:10:00Z"
+}

@@ -1,0 +1,17 @@
+{
+  "assignee": null,
+  "claim_note": "",
+  "claimed_at": null,
+  "created_at": "2026-04-05T12:10:00Z",
+  "depends_on": [
+    "fn-60-reference-safe-file-operations-and-refactors.2",
+    "fn-60-reference-safe-file-operations-and-refactors.3"
+  ],
+  "epic": "fn-60-reference-safe-file-operations-and-refactors",
+  "id": "fn-60-reference-safe-file-operations-and-refactors.4",
+  "priority": 1,
+  "spec_path": ".flow/tasks/fn-60-reference-safe-file-operations-and-refactors.4.md",
+  "status": "todo",
+  "title": "Polish file-op docs website and end-to-end safety coverage",
+  "updated_at": "2026-04-05T12:10:00Z"
+}

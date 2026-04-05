@@ -1,0 +1,14 @@
+{
+  "assignee": null,
+  "claim_note": "",
+  "claimed_at": null,
+  "created_at": "2026-04-05T12:10:00Z",
+  "depends_on": [],
+  "epic": "fn-63-workspace-native-commands-and-agent-callable-actions",
+  "id": "fn-63-workspace-native-commands-and-agent-callable-actions.1",
+  "priority": 1,
+  "spec_path": ".flow/tasks/fn-63-workspace-native-commands-and-agent-callable-actions.1.md",
+  "status": "todo",
+  "title": "Define typed workspace action registry and context model",
+  "updated_at": "2026-04-05T12:10:00Z"
+}

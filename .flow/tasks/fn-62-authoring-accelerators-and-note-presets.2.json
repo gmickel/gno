@@ -1,0 +1,14 @@
+{
+  "assignee": null,
+  "claim_note": "",
+  "claimed_at": null,
+  "created_at": "2026-04-05T12:10:00Z",
+  "depends_on": ["fn-62-authoring-accelerators-and-note-presets.1"],
+  "epic": "fn-62-authoring-accelerators-and-note-presets",
+  "id": "fn-62-authoring-accelerators-and-note-presets.2",
+  "priority": 1,
+  "spec_path": ".flow/tasks/fn-62-authoring-accelerators-and-note-presets.2.md",
+  "status": "todo",
+  "title": "Add preset-aware note creation across capture browse and open-or-create flows",
+  "updated_at": "2026-04-05T12:10:00Z"
+}
