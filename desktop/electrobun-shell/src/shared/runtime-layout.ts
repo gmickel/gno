@@ -10,7 +10,7 @@ export function getResourcesFolder(
   platformName: NodeJS.Platform = process.platform
 ): string {
   if (platformName === "win32") {
-    return win32.resolve(win32.dirname(execPath), "resources");
+    return win32.join(win32.dirname(execPath), "resources");
   }
   const execDir = dirname(execPath);
   if (platformName === "darwin") {
