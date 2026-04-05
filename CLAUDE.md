@@ -149,6 +149,7 @@ Capture settings:
 
 - QUICKSTART.md, CLI.md, CONFIGURATION.md, etc.
 - Do NOT put internal docs, spikes, plans, or dev notes here
+- `docs/adr/` - Architecture Decision Records (design system, conventions). Use `000-template.md` for new ADRs.
 
 **notes/** - Internal documentation, spikes, plans, dev notes (gitignored)
 
@@ -161,7 +162,7 @@ Capture settings:
 
 **src/mcp/** - MCP server (see `src/mcp/CLAUDE.md`)
 
-**src/serve/** - Web UI server (see `src/serve/CLAUDE.md`)
+**src/serve/** - Web UI server (see `src/serve/CLAUDE.md`); UI design system in `docs/adr/001-scholarly-dusk-design-system.md`
 
 **test/** - Test suite (see `test/CLAUDE.md`)
 
