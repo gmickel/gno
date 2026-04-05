@@ -11,6 +11,7 @@ This epic centers on heading/section navigation, but should also cover the broad
 - DocView now has much better metadata/frontmatter/link panels.
 - GNO already supports deep links with line targets and note-level navigation.
 - The current gap is inside-document navigation and section-level addressability.
+- `docs/adr/001-scholarly-dusk-design-system.md` defines the rail/panel/layout vocabulary this work should extend.
 
 ## Why now
 
@@ -30,6 +31,7 @@ Medium.
 - `src/serve/routes/api.ts`
 - `docs/WEB-UI.md`
 - `docs/API.md`
+- `docs/adr/001-scholarly-dusk-design-system.md`
 
 ## Scope
 
@@ -53,6 +55,7 @@ Medium.
 
 - Prefer section/heading addressability first; block-level identity can come later if still needed.
 - Build this as a reusable document-structure layer, not a DocView-only ornament.
+- Structure navigation UI should extend Scholarly Dusk rails/panels instead of adding generic editor chrome.
 
 ## Requirements
 
@@ -75,6 +78,7 @@ Medium.
   - jump
   - maybe open in source/editor at heading
 - empty-state behavior for docs without headings
+- section/navigation controls that match existing Scholarly Dusk rail density and typography
 
 ## Technical Deliverables
 
@@ -86,7 +90,8 @@ Medium.
   - slug stability
   - section deep links
   - DocView section navigation behavior
-- docs + website updates
+- docs updates in `docs/`
+- website updates where reading/navigation/workspace capabilities are described
 
 ## Architecture Rule
 
@@ -116,4 +121,5 @@ Expose it through shared types/helpers so all applicable surfaces can stay in pa
 - [ ] Long notes expose a heading/section navigator in DocView.
 - [ ] Users can jump to and deep-link specific sections.
 - [ ] Section extraction and anchor generation live in shared logic.
-- [ ] Docs, website, and tests reflect section-level navigation/addressability.
+- [ ] New UI follows `docs/adr/001-scholarly-dusk-design-system.md`.
+- [ ] Docs in `docs/`, website copy/pages, and tests all reflect section-level navigation/addressability.

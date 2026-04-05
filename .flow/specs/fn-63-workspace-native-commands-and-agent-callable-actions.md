@@ -16,7 +16,9 @@ The command system should not just be UI polish. It should provide one shared ac
 
 - Quick-switcher, recents, favorites, and pinned collections already exist.
 - Tabs and Browse now provide strong workspace context.
+- The workspace already has a `?` shortcuts/help surface via `ShortcutHelpModal`; command work should build on that instead of replacing it blindly.
 - Upcoming epics define note creation, file ops, structure navigation, and presets. Those need a coherent command/action layer.
+- `docs/adr/001-scholarly-dusk-design-system.md` defines the aesthetic/interaction language command surfaces should inherit.
 
 ## Why now
 
@@ -31,16 +33,19 @@ Medium to hard.
 ## Start Here
 
 - `src/serve/public/components/QuickSwitcher.tsx`
+- `src/serve/public/components/ShortcutHelpModal.tsx`
 - `src/serve/public/hooks/useKeyboardShortcuts.ts`
 - `src/serve/public/app.tsx`
 - future action/command layer under `src/serve/public/lib/*`
 - `docs/WEB-UI.md`
 - `docs/API.md`
 - `docs/MCP.md`
+- `docs/adr/001-scholarly-dusk-design-system.md`
 
 ## Scope
 
 - command palette evolution of quick-switcher
+- integration with the existing `?` help/shortcuts surface
 - typed action registry
 - context-aware commands
 - command execution for:
@@ -65,6 +70,7 @@ Medium to hard.
 - Commands should feel native to GNO's workspace, not copied from Obsidian mechanically.
 - Prefer fewer powerful actions over a giant weak command list.
 - Action semantics should be shared and typed, not duplicated across modal handlers.
+- The command palette must extend the Scholarly Dusk visual language instead of reverting to generic command-menu styling.
 
 ## Requirements
 
@@ -101,6 +107,8 @@ Medium to hard.
 - context hints
 - keyboard-first flows
 - strong empty states when a command requires context the user does not currently have
+- Scholarly Dusk-consistent panel, typography, and action-row treatment
+- existing `?` help surface updated so new commands stay discoverable
 
 ## Technical Deliverables
 
@@ -112,7 +120,8 @@ Medium to hard.
   - command filtering/ranking
   - context gating
   - execution behavior for representative actions
-- docs + website updates
+- docs updates in `docs/`
+- website updates where command/workspace navigation capabilities are described
 
 ## Architecture Rule
 
@@ -144,4 +153,6 @@ That means parity across applicable surfaces:
 - [ ] GNO has a real command palette / action surface, not just a document jumper.
 - [ ] Core workspace operations are available as typed, context-aware actions.
 - [ ] Action semantics are reusable outside the immediate UI.
-- [ ] Docs, website, and tests reflect the new command/action model.
+- [ ] New UI follows `docs/adr/001-scholarly-dusk-design-system.md`.
+- [ ] Existing `?` help surface is updated for discoverability.
+- [ ] Docs in `docs/`, website copy/pages, and tests all reflect the new command/action model.

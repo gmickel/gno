@@ -12,6 +12,7 @@ This epic is about making rename/move/duplicate/new-folder operations feel safe 
 - Editable docs can already be renamed/revealed/trashed in some surfaces.
 - Browse/tree now gives the app enough folder context to support serious file operations.
 - GNO already extracts wiki links, markdown links, backlinks, and related notes. File refactors have to respect those realities.
+- `docs/adr/001-scholarly-dusk-design-system.md` is the canonical UI/UX reference for all new workspace surfaces.
 
 ## Why now
 
@@ -32,6 +33,7 @@ Hard.
 - `src/ingestion/*`
 - `docs/WEB-UI.md`
 - `docs/API.md`
+- `docs/adr/001-scholarly-dusk-design-system.md`
 
 ## Scope
 
@@ -57,6 +59,7 @@ Hard.
 - File ops should be safe by default, not clever by default.
 - Backlinks and outgoing links are product features; file ops must preserve them where possible.
 - If a refactor cannot be made safe, the app should say so explicitly.
+- Confirmation, preview, and warning flows must use the Scholarly Dusk design language consistently with existing rails/dialogs.
 
 ## Requirements
 
@@ -85,6 +88,7 @@ Hard.
 - create-folder action
 - refactor preview/warnings
 - success confirmation with updated location
+- no generic admin-tool styling; dialogs and previews should feel like core workspace surfaces
 
 ## Technical Deliverables
 
@@ -97,7 +101,8 @@ Hard.
   - duplicate semantics
   - create-folder behavior
   - read-only doc refusal
-- docs + website updates
+- docs updates in `docs/`
+- website updates where file organization/workspace capabilities are described
 
 ## Architecture Rule
 
@@ -136,4 +141,5 @@ Matching surfaces must share:
 - [ ] File operations preserve or explicitly warn on affected references/backlinks.
 - [ ] Read-only source files remain protected.
 - [ ] File-op semantics live in a reusable refactor layer, not only in the UI.
-- [ ] Docs, website, and tests reflect the new organization/file-op model.
+- [ ] New UI follows `docs/adr/001-scholarly-dusk-design-system.md`.
+- [ ] Docs in `docs/`, website copy/pages, and tests all reflect the new organization/file-op model.

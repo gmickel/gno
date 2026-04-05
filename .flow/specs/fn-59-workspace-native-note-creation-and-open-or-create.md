@@ -20,6 +20,7 @@ This is the first "Obsidian replacement" epic that shifts GNO from "great place 
 - `fn-45-desktop-beta-workspace-navigation` established recents, favorites, and quick-switcher behavior.
 - `fn-53-desktop-beta-app-level-tabs-and-multi` established tab-scoped workspace context.
 - `fn-58-cross-collection-tree-browse-workspace` established place-aware navigation and current-folder context.
+- `docs/adr/001-scholarly-dusk-design-system.md` is the canonical UI/UX reference for all `gno serve` workspace work.
 - Today GNO can create notes, but it still feels modal-first and global, not place-first and workspace-native.
 
 ## Why now
@@ -43,6 +44,7 @@ Medium.
 - `docs/WEB-UI.md`
 - `docs/API.md`
 - `docs/MCP.md`
+- `docs/adr/001-scholarly-dusk-design-system.md`
 
 ## Scope
 
@@ -69,6 +71,7 @@ Medium.
 - "Open or create" should be deterministic and explainable.
 - Humans and agents should hit the same path resolution rules.
 - Avoid magic location rules that depend on hidden UI state only.
+- Any new UI affordances must follow the Scholarly Dusk design system instead of introducing a parallel visual language.
 
 ## Requirements
 
@@ -107,6 +110,7 @@ Medium.
   - open-or-create
 - clear location hint before creation
 - clear duplicate-name handling
+- creation affordances and action rows that match the Scholarly Dusk rail/button/panel vocabulary
 
 ## Technical Deliverables
 
@@ -121,8 +125,8 @@ Medium.
   - collision behavior
   - browse-scoped creation
   - quick-switcher create/open-or-create behavior
-- docs updates
-- website updates where note-creation claims are surfaced
+- docs updates in `docs/`
+- website updates where note-creation claims or workspace flows are described
 
 ## Architecture Rule
 
@@ -155,4 +159,5 @@ Create one shared creation contract that guarantees parity across:
 - [ ] Quick-switcher supports a real open-or-create flow.
 - [ ] Wiki-link create flow follows the same core path-resolution contract.
 - [ ] Shared creation semantics exist outside UI-only code.
-- [ ] Docs, website, and tests reflect the new note-creation model.
+- [ ] New UI follows `docs/adr/001-scholarly-dusk-design-system.md`.
+- [ ] Docs in `docs/`, website copy/pages, and tests all reflect the new note-creation model.

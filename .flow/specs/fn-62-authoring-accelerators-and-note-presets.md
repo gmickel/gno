@@ -17,6 +17,7 @@ This is not about daily notes or a sprawling template marketplace. It is about h
 - Wiki-link autocomplete already exists.
 - Metadata/frontmatter handling is already part of the product identity.
 - The current gap is repetition: people keep creating the same note shapes manually.
+- `docs/adr/001-scholarly-dusk-design-system.md` is the canonical design reference for editor/create flows.
 
 ## Why now
 
@@ -35,6 +36,7 @@ Medium.
 - `src/serve/routes/api.ts`
 - `docs/WEB-UI.md`
 - `docs/API.md`
+- `docs/adr/001-scholarly-dusk-design-system.md`
 
 ## Scope
 
@@ -58,6 +60,7 @@ Medium.
 - Favor a small number of strong presets over a huge template system.
 - Presets should produce structured, durable notes that help both humans and agents.
 - Frontmatter should be explicit, not hidden magic.
+- Preset pickers and insert surfaces must feel native to the Scholarly Dusk workspace, not like bolted-on productivity widgets.
 
 ## Requirements
 
@@ -88,6 +91,7 @@ Medium.
 - clear preview of what the preset adds
 - frontmatter/body scaffold visible before save
 - lightweight insert surface inside editor when useful
+- UI treatment consistent with Scholarly Dusk typography, chips, rails, and command surfaces
 
 ## Technical Deliverables
 
@@ -97,7 +101,8 @@ Medium.
   - preset expansion
   - frontmatter generation
   - editor/capture flows using presets
-- docs + website updates
+- docs updates in `docs/`
+- website updates where note creation/editor flows are described
 
 ## Architecture Rule
 
@@ -136,4 +141,5 @@ Matching surfaces must share:
 - [ ] Presets can scaffold frontmatter and body content.
 - [ ] Preset semantics live in shared typed logic.
 - [ ] No daily-note or generic template sprawl is introduced.
-- [ ] Docs, website, and tests reflect the new authoring accelerator model.
+- [ ] New UI follows `docs/adr/001-scholarly-dusk-design-system.md`.
+- [ ] Docs in `docs/`, website copy/pages, and tests all reflect the new authoring accelerator model.
