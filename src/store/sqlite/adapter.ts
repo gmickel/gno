@@ -114,28 +114,28 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
       this.db.exec("PRAGMA foreign_keys = ON");
       this.db.exec("PRAGMA busy_timeout = 5000");
 
-      // CI mode: trade durability for speed (no fsync, memory journal)
-      // Safe for tests since we don't need crash recovery
+      // Keep WAL everywhere so readers can continue while a writer is active.
+      // CI still relaxes fsync/temp-store for speed, but MEMORY journal mode
+      // breaks the cross-process read/write behavior we rely on in CLI tests.
+      try {
+        const journalMode = this.db
+          .query<{ journal_mode: string }, []>("PRAGMA journal_mode")
+          .get()?.journal_mode;
+        if (journalMode?.toLowerCase() !== "wal") {
+          this.db.exec("PRAGMA journal_mode = WAL");
+        }
+      } catch (cause) {
+        if (!isDatabaseLockedError(cause)) {
+          throw cause;
+        }
+        // Another process may be switching journal mode or holding a write
+        // lock during startup. In that case we keep the connection usable and
+        // rely on the existing DB journal mode instead of failing open().
+      }
+
       if (process.env.CI) {
-        this.db.exec("PRAGMA journal_mode = MEMORY");
         this.db.exec("PRAGMA synchronous = OFF");
         this.db.exec("PRAGMA temp_store = MEMORY");
-      } else {
-        try {
-          const journalMode = this.db
-            .query<{ journal_mode: string }, []>("PRAGMA journal_mode")
-            .get()?.journal_mode;
-          if (journalMode?.toLowerCase() !== "wal") {
-            this.db.exec("PRAGMA journal_mode = WAL");
-          }
-        } catch (cause) {
-          if (!isDatabaseLockedError(cause)) {
-            throw cause;
-          }
-          // Another process may be switching journal mode or holding a write
-          // lock during startup. In that case we keep the connection usable and
-          // rely on the existing DB journal mode instead of failing open().
-        }
       }
 
       // Load fts5-snowball extension if using snowball tokenizer

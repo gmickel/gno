@@ -129,6 +129,29 @@ describe("SqliteAdapter", () => {
         await first.close();
       }
     });
+
+    test("keeps WAL journal mode in CI for cross-process reads", async () => {
+      const previousCi = process.env.CI;
+      process.env.CI = "true";
+
+      try {
+        const result = await adapter.open(dbPath, "unicode61");
+        expect(result.ok).toBe(true);
+
+        const journalMode = adapter
+          .getRawDb()
+          .query<{ journal_mode: string }, []>("PRAGMA journal_mode")
+          .get()?.journal_mode;
+
+        expect(journalMode?.toLowerCase()).toBe("wal");
+      } finally {
+        if (previousCi === undefined) {
+          delete process.env.CI;
+        } else {
+          process.env.CI = previousCi;
+        }
+      }
+    });
   });
 
   describe("collections sync", () => {
