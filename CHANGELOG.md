@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.36.0] - 2026-04-06
+
+### Added
+
+- Added a much stronger note command palette experience in the web workspace, including place-aware creation, section-first query results, keyboard navigation that follows visible ordering, and better help/discoverability around note-native actions.
+
+### Changed
+
+- Rebalanced the desktop document view rails so metadata and outline stay together on the left, while properties/path and relationship panels live on the right with tighter sticky behavior for long-note reading.
+
+### Fixed
+
+- Fixed command palette focus/selection styling so the input no longer inherits the global outline ring and selected items are visually obvious while using arrow keys or narrowing results.
+- Fixed command palette result ordering so `cmdk` no longer fights the app's grouped ordering, preventing invisible selection jumps to non-visible items.
+
 ## [0.35.0] - 2026-04-05
 
 ### Added
@@ -1026,7 +1041,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 | 0.4.0   | 2026-01-01 | Web UI and REST API                       |
 | 0.1.0   | 2025-12-30 | Initial release with full search pipeline |
 
-[Unreleased]: https://github.com/gmickel/gno/compare/v0.33.4...HEAD
+[Unreleased]: https://github.com/gmickel/gno/compare/v0.36.0...HEAD
+[0.36.0]: https://github.com/gmickel/gno/compare/v0.35.0...v0.36.0
+[0.35.0]: https://github.com/gmickel/gno/compare/v0.34.1...v0.35.0
+[0.34.1]: https://github.com/gmickel/gno/compare/v0.34.0...v0.34.1
+[0.34.0]: https://github.com/gmickel/gno/compare/v0.33.4...v0.34.0
 [0.33.4]: https://github.com/gmickel/gno/compare/v0.33.3...v0.33.4
 [0.33.3]: https://github.com/gmickel/gno/compare/v0.33.2...v0.33.3
 [0.33.2]: https://github.com/gmickel/gno/compare/v0.33.1...v0.33.2
