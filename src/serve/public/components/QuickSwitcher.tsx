@@ -158,7 +158,19 @@ export function QuickSwitcher({
     return () => clearTimeout(timer);
   }, [open, query]);
 
-  const recentItems = useMemo(() => recentDocs.slice(0, 6), [recentDocs]);
+  const recentItems = useMemo(() => {
+    const seenHref = new Set<string>();
+    const seenUri = new Set<string>();
+    return recentDocs
+      .filter((doc) => {
+        if (seenHref.has(doc.href) || seenUri.has(doc.uri)) return false;
+        seenHref.add(doc.href);
+        seenUri.add(doc.uri);
+        return true;
+      })
+      .slice(0, 6);
+  }, [recentDocs]);
+  const normalizedQuery = query.trim().toLowerCase();
   const favoriteDocItems = useMemo(
     () => favoriteDocs.slice(0, 6),
     [favoriteDocs]
@@ -167,12 +179,39 @@ export function QuickSwitcher({
     () => favoriteCollections.slice(0, 6),
     [favoriteCollections]
   );
+  const filteredRecentItems = useMemo(
+    () =>
+      recentItems.filter(
+        (item) =>
+          !normalizedQuery ||
+          item.label.toLowerCase().includes(normalizedQuery) ||
+          item.uri.toLowerCase().includes(normalizedQuery)
+      ),
+    [normalizedQuery, recentItems]
+  );
+  const filteredFavoriteDocItems = useMemo(
+    () =>
+      favoriteDocItems.filter(
+        (item) =>
+          !normalizedQuery ||
+          item.label.toLowerCase().includes(normalizedQuery) ||
+          item.uri.toLowerCase().includes(normalizedQuery)
+      ),
+    [favoriteDocItems, normalizedQuery]
+  );
+  const filteredFavoriteCollectionItems = useMemo(
+    () =>
+      favoriteCollectionItems.filter(
+        (item) =>
+          !normalizedQuery || item.label.toLowerCase().includes(normalizedQuery)
+      ),
+    [favoriteCollectionItems, normalizedQuery]
+  );
   const workspaceActions = useMemo(
     () => getWorkspaceActions({ location }),
     [location]
   );
   const exactResult = useMemo(() => {
-    const normalizedQuery = query.trim().toLowerCase();
     if (!normalizedQuery) {
       return null;
     }
@@ -191,7 +230,7 @@ export function QuickSwitcher({
         );
       }) ?? null
     );
-  }, [query, results]);
+  }, [normalizedQuery, results]);
 
   const openTarget = useCallback(
     (target: { uri: string; lineStart?: number; lineEnd?: number }) => {
@@ -253,16 +292,16 @@ export function QuickSwitcher({
           {loading ? "Searching..." : "No matching documents."}
         </CommandEmpty>
 
-        {recentItems.length > 0 && !query.trim() && (
+        {filteredRecentItems.length > 0 && (
           <CommandGroup heading="Recent">
-            {recentItems.map((item) => (
+            {filteredRecentItems.map((item) => (
               <CommandItem
                 key={item.href}
                 onSelect={() => {
                   navigate(item.href);
                   onOpenChange(false);
                 }}
-                value={item.label}
+                value={`recent-${item.href}-${item.label}`}
               >
                 <FileTextIcon />
                 <span>{item.label}</span>
@@ -272,43 +311,42 @@ export function QuickSwitcher({
           </CommandGroup>
         )}
 
-        {!query.trim() &&
-          (favoriteDocItems.length > 0 ||
-            favoriteCollectionItems.length > 0) && (
-            <>
-              <CommandSeparator />
-              <CommandGroup heading="Favorites">
-                {favoriteDocItems.map((item) => (
-                  <CommandItem
-                    key={item.href}
-                    onSelect={() => {
-                      navigate(item.href);
-                      onOpenChange(false);
-                    }}
-                    value={`favorite-doc-${item.label}`}
-                  >
-                    <StarIcon />
-                    <span>{item.label}</span>
-                    <CommandShortcut>Doc</CommandShortcut>
-                  </CommandItem>
-                ))}
-                {favoriteCollectionItems.map((item) => (
-                  <CommandItem
-                    key={item.href}
-                    onSelect={() => {
-                      navigate(item.href);
-                      onOpenChange(false);
-                    }}
-                    value={`favorite-collection-${item.label}`}
-                  >
-                    <FolderIcon />
-                    <span>{item.label}</span>
-                    <CommandShortcut>Collection</CommandShortcut>
-                  </CommandItem>
-                ))}
-              </CommandGroup>
-            </>
-          )}
+        {(filteredFavoriteDocItems.length > 0 ||
+          filteredFavoriteCollectionItems.length > 0) && (
+          <>
+            <CommandSeparator />
+            <CommandGroup heading="Favorites">
+              {filteredFavoriteDocItems.map((item) => (
+                <CommandItem
+                  key={item.href}
+                  onSelect={() => {
+                    navigate(item.href);
+                    onOpenChange(false);
+                  }}
+                  value={`favorite-doc-${item.href}`}
+                >
+                  <StarIcon />
+                  <span>{item.label}</span>
+                  <CommandShortcut>Doc</CommandShortcut>
+                </CommandItem>
+              ))}
+              {filteredFavoriteCollectionItems.map((item) => (
+                <CommandItem
+                  key={item.href}
+                  onSelect={() => {
+                    navigate(item.href);
+                    onOpenChange(false);
+                  }}
+                  value={`favorite-collection-${item.href}`}
+                >
+                  <FolderIcon />
+                  <span>{item.label}</span>
+                  <CommandShortcut>Collection</CommandShortcut>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </>
+        )}
 
         {showCreateAction && (
           <>

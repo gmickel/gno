@@ -1,6 +1,7 @@
 import { screen } from "@testing-library/react";
 import { beforeEach, describe, expect, mock, test } from "bun:test";
 
+import { RECENT_DOCS_STORAGE_KEY } from "../../../../src/serve/public/lib/navigation-state";
 import { apiOk, renderWithUser } from "../../../helpers/dom";
 
 const apiFetch = mock(async (..._args: unknown[]) => apiOk<unknown>({}));
@@ -12,6 +13,7 @@ void mock.module("../../../../src/serve/public/hooks/use-api", () => ({
 describe("QuickSwitcher DOM interactions", () => {
   beforeEach(() => {
     apiFetch.mockReset();
+    localStorage.clear();
   });
 
   test("offers contextual note creation inside browse location", async () => {
@@ -90,5 +92,52 @@ describe("QuickSwitcher DOM interactions", () => {
     expect(screen.getByText("Intro")).toBeTruthy();
 
     await user.click(screen.getByText("Home"));
+  });
+
+  test("filters recent items when typing", async () => {
+    apiFetch.mockImplementation(async (...args: unknown[]) => {
+      const endpoint = typeof args[0] === "string" ? args[0] : "";
+      if (endpoint === "/api/search") {
+        return apiOk({
+          results: [],
+        });
+      }
+      return apiOk({});
+    });
+
+    const { QuickSwitcher } =
+      await import("../../../../src/serve/public/components/QuickSwitcher");
+    const navigate = mock(() => undefined);
+    localStorage.setItem(
+      RECENT_DOCS_STORAGE_KEY,
+      JSON.stringify([
+        {
+          uri: "gno://notes/Autoresearch - Karpathy nanochat.md",
+          href: "/doc?uri=gno%3A%2F%2Fnotes%2FAutoresearch%20-%20Karpathy%20nanochat.md",
+          label: "Autoresearch - Karpathy nanochat.md",
+        },
+        {
+          uri: "gno://notes/Infrastructure.md",
+          href: "/doc?uri=gno%3A%2F%2Fnotes%2FInfrastructure.md",
+          label: "Infrastructure.md",
+        },
+      ])
+    );
+    const { user } = renderWithUser(
+      <QuickSwitcher
+        location="/browse?collection=notes"
+        navigate={navigate}
+        onCreateNote={() => undefined}
+        onOpenChange={() => undefined}
+        open={true}
+      />
+    );
+
+    await user.type(screen.getByRole("combobox"), "Karpathy");
+
+    expect(
+      await screen.findByText("Autoresearch - Karpathy nanochat.md")
+    ).toBeTruthy();
+    expect(screen.queryByText("Infrastructure.md")).toBeNull();
   });
 });
