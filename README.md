@@ -427,10 +427,12 @@ Open `http://localhost:3000` to:
 - **Search**: BM25, vector, or hybrid modes with visual results
 - **Browse**: Cross-collection tree workspace with folder detail panes and per-tab browse context
 - **Edit**: Create, edit, and delete documents with live preview
+- **Create in place**: New notes in the current folder/collection with presets and command-palette flows
 - **Ask**: AI-powered Q&A with citations
 - **Manage Collections**: Add, remove, and re-index collections
 - **Connect agents**: Install core Skill/MCP integrations from the app
 - **Manage files safely**: Rename, reveal, or move editable files to Trash with explicit index-vs-disk semantics
+- **Refactor files safely**: Move, duplicate, and organize editable notes with reference warnings
 - **Switch presets**: Change models live without restart
 
 ### Search
@@ -445,19 +447,20 @@ Three retrieval modes: BM25 (keyword), Vector (semantic), or Hybrid (best of bot
 
 Full-featured markdown editor with:
 
-| Feature                 | Description                          |
-| :---------------------- | :----------------------------------- |
-| **Split View**          | Side-by-side editor and live preview |
-| **Auto-save**           | 2-second debounced saves             |
-| **Syntax Highlighting** | CodeMirror 6 with markdown support   |
-| **Keyboard Shortcuts**  | ⌘S save, ⌘B bold, ⌘I italic, ⌘K link |
-| **Quick Capture**       | ⌘N creates new note from anywhere    |
+| Feature                 | Description                                  |
+| :---------------------- | :------------------------------------------- |
+| **Split View**          | Side-by-side editor and live preview         |
+| **Auto-save**           | 2-second debounced saves                     |
+| **Syntax Highlighting** | CodeMirror 6 with markdown support           |
+| **Keyboard Shortcuts**  | ⌘S save, ⌘B bold, ⌘I italic, ⌘K link         |
+| **Quick Capture**       | ⌘N creates new note from anywhere            |
+| **Presets**             | Structured note scaffolds and insert actions |
 
 ### Document Viewer
 
 ![GNO Document Viewer](./assets/screenshots/webui-doc-view.jpg)
 
-View documents with full context: outgoing links, backlinks, and AI-powered related notes sidebar.
+View documents with full context: outgoing links, backlinks, section outline, and AI-powered related notes sidebar.
 
 ### Browse Workspace
 
@@ -467,6 +470,7 @@ Navigate your notes like a real workspace, not just a flat list:
 
 - Cross-collection tree sidebar
 - Folder detail panes
+- Create note and create folder from current browse context
 - Pinned collections and per-tab browse state
 - Direct jump from folder structure into notes
 
@@ -516,24 +520,30 @@ curl -X POST http://localhost:3000/api/ask \
 curl http://localhost:3000/api/status
 ```
 
-| Endpoint                   | Method | Description                 |
-| :------------------------- | :----- | :-------------------------- |
-| `/api/query`               | POST   | Hybrid search (recommended) |
-| `/api/search`              | POST   | BM25 keyword search         |
-| `/api/ask`                 | POST   | AI-powered Q&A              |
-| `/api/docs`                | GET    | List documents              |
-| `/api/docs`                | POST   | Create document             |
-| `/api/docs/:id`            | PUT    | Update document content     |
-| `/api/docs/:id/deactivate` | POST   | Remove from index           |
-| `/api/doc`                 | GET    | Get document content        |
-| `/api/collections`         | POST   | Add collection              |
-| `/api/collections/:name`   | DELETE | Remove collection           |
-| `/api/sync`                | POST   | Trigger re-index            |
-| `/api/status`              | GET    | Index statistics            |
-| `/api/presets`             | GET    | List model presets          |
-| `/api/presets`             | POST   | Switch preset               |
-| `/api/models/pull`         | POST   | Download models             |
-| `/api/models/status`       | GET    | Download progress           |
+| Endpoint                      | Method | Description                 |
+| :---------------------------- | :----- | :-------------------------- |
+| `/api/query`                  | POST   | Hybrid search (recommended) |
+| `/api/search`                 | POST   | BM25 keyword search         |
+| `/api/ask`                    | POST   | AI-powered Q&A              |
+| `/api/docs`                   | GET    | List documents              |
+| `/api/docs`                   | POST   | Create document             |
+| `/api/docs/:id`               | PUT    | Update document content     |
+| `/api/docs/:id/move`          | POST   | Move editable document      |
+| `/api/docs/:id/duplicate`     | POST   | Duplicate editable document |
+| `/api/docs/:id/refactor-plan` | POST   | Preview file-op warnings    |
+| `/api/docs/:id/deactivate`    | POST   | Remove from index           |
+| `/api/doc`                    | GET    | Get document content        |
+| `/api/doc/:id/sections`       | GET    | Get document sections       |
+| `/api/collections`            | POST   | Add collection              |
+| `/api/collections/:name`      | DELETE | Remove collection           |
+| `/api/folders`                | POST   | Create folder               |
+| `/api/sync`                   | POST   | Trigger re-index            |
+| `/api/status`                 | GET    | Index statistics            |
+| `/api/note-presets`           | GET    | List note presets           |
+| `/api/presets`                | GET    | List model presets          |
+| `/api/presets`                | POST   | Switch preset               |
+| `/api/models/pull`            | POST   | Download models             |
+| `/api/models/status`          | GET    | Download progress           |
 
 No authentication. No rate limits. Build custom tools, automate workflows, integrate with any language.
 

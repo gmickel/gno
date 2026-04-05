@@ -8,6 +8,8 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import type { CaptureModalOpenOptions } from "../hooks/useCaptureModal";
+
 import { apiFetch } from "../hooks/use-api";
 import { buildDocDeepLink } from "../lib/deep-links";
 import {
@@ -18,6 +20,10 @@ import {
   type FavoriteDoc,
   type RecentDoc,
 } from "../lib/navigation-state";
+import {
+  getWorkspaceActions,
+  runWorkspaceAction,
+} from "../lib/workspace-actions";
 import {
   CommandDialog,
   CommandEmpty,
@@ -46,13 +52,15 @@ interface SearchResponse {
 }
 
 export interface QuickSwitcherProps {
+  location: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   navigate: (to: string) => void;
-  onCreateNote: (draftTitle?: string) => void;
+  onCreateNote: (options?: string | CaptureModalOpenOptions) => void;
 }
 
 export function QuickSwitcher({
+  location,
   open,
   onOpenChange,
   navigate,
@@ -118,6 +126,31 @@ export function QuickSwitcher({
     () => favoriteCollections.slice(0, 6),
     [favoriteCollections]
   );
+  const workspaceActions = useMemo(
+    () => getWorkspaceActions({ location }),
+    [location]
+  );
+  const exactResult = useMemo(() => {
+    const normalizedQuery = query.trim().toLowerCase();
+    if (!normalizedQuery) {
+      return null;
+    }
+
+    return (
+      results.find((result) => {
+        const normalizedTitle = (result.title ?? "").trim().toLowerCase();
+        const normalizedLeaf = decodeURIComponent(
+          result.uri.split("/").pop() ?? ""
+        )
+          .replace(/\.[^.]+$/u, "")
+          .toLowerCase();
+        return (
+          normalizedTitle === normalizedQuery ||
+          normalizedLeaf === normalizedQuery
+        );
+      }) ?? null
+    );
+  }, [query, results]);
 
   const openTarget = useCallback(
     (target: { uri: string; lineStart?: number; lineEnd?: number }) => {
@@ -135,6 +168,14 @@ export function QuickSwitcher({
   );
 
   const showCreateAction = query.trim().length > 0;
+  const actionHandlers = useMemo(
+    () => ({
+      navigate,
+      openCapture: onCreateNote,
+      closePalette: () => onOpenChange(false),
+    }),
+    [navigate, onCreateNote, onOpenChange]
+  );
 
   return (
     <CommandDialog
@@ -214,10 +255,24 @@ export function QuickSwitcher({
         {showCreateAction && (
           <>
             <CommandGroup heading="Actions">
+              {exactResult && (
+                <CommandItem
+                  onSelect={() =>
+                    openTarget({
+                      uri: exactResult.uri,
+                    })
+                  }
+                  value={`open-exact-${query}`}
+                >
+                  <FileTextIcon />
+                  <span>Open exact match</span>
+                  <CommandShortcut>Exact</CommandShortcut>
+                </CommandItem>
+              )}
               <CommandItem
                 onSelect={() => {
                   onOpenChange(false);
-                  onCreateNote(query.trim());
+                  onCreateNote({ draftTitle: query.trim() });
                 }}
                 value={`create-${query}`}
               >
@@ -225,10 +280,67 @@ export function QuickSwitcher({
                 <span>Create new note</span>
                 <CommandShortcut>{query.trim()}</CommandShortcut>
               </CommandItem>
+              {workspaceActions
+                .filter((action) =>
+                  [
+                    "new-note-in-context",
+                    "create-folder-here",
+                    "rename-current-note",
+                    "move-current-note",
+                    "duplicate-current-note",
+                  ].includes(action.id)
+                )
+                .map((action) => (
+                  <CommandItem
+                    disabled={!action.available}
+                    key={action.id}
+                    onSelect={() =>
+                      runWorkspaceAction(
+                        action,
+                        { location },
+                        actionHandlers,
+                        query.trim()
+                      )
+                    }
+                    value={`${action.label} ${action.keywords.join(" ")} ${query}`}
+                  >
+                    <FolderIcon />
+                    <span>{action.label}</span>
+                    <CommandShortcut>
+                      {action.id === "new-note-in-context"
+                        ? "Context"
+                        : "Action"}
+                    </CommandShortcut>
+                  </CommandItem>
+                ))}
             </CommandGroup>
             <CommandSeparator />
           </>
         )}
+
+        <CommandGroup heading="Go To">
+          {workspaceActions
+            .filter((action) => action.group === "Go To" && action.available)
+            .map((action) => (
+              <CommandItem
+                key={action.id}
+                onSelect={() =>
+                  runWorkspaceAction(
+                    action,
+                    { location },
+                    actionHandlers,
+                    query.trim()
+                  )
+                }
+                value={`${action.label} ${action.keywords.join(" ")}`}
+              >
+                <FolderIcon />
+                <span>{action.label}</span>
+              </CommandItem>
+            ))}
+        </CommandGroup>
+
+        {!query.trim() && <CommandSeparator />}
 
         {query.trim() && (
           <CommandGroup heading="Documents">

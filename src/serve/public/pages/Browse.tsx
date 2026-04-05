@@ -1,7 +1,9 @@
 import {
   ArrowLeft,
+  FilePlus2,
   FolderOpen,
   HomeIcon,
+  FolderPlus,
   RefreshCw,
   StarIcon,
 } from "lucide-react";
@@ -26,6 +28,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "../components/ui/dialog";
+import { Input } from "../components/ui/input";
 import {
   Select,
   SelectContent,
@@ -35,6 +38,7 @@ import {
 } from "../components/ui/select";
 import { apiFetch } from "../hooks/use-api";
 import { useDocEvents } from "../hooks/use-doc-events";
+import { useCaptureModal } from "../hooks/useCaptureModal";
 import { useWorkspace } from "../hooks/useWorkspace";
 import {
   buildBrowseCrumbs,
@@ -51,6 +55,7 @@ import {
   toggleFavoriteCollection,
   toggleFavoriteDocument,
 } from "../lib/navigation-state";
+import { subscribeWorkspaceActionRequest } from "../lib/workspace-events";
 
 interface PageProps {
   navigate: (to: string | number) => void;
@@ -61,10 +66,18 @@ interface SyncResponse {
   jobId: string;
 }
 
+interface CreateFolderResponse {
+  success: boolean;
+  collection: string;
+  folderPath: string;
+  path: string;
+}
+
 type SyncTarget = { kind: "all" } | { kind: "collection"; name: string } | null;
 
 export default function Browse({ navigate, location }: PageProps) {
   const { activeTab, updateActiveTabBrowseState } = useWorkspace();
+  const { openCapture } = useCaptureModal();
   const latestDocEvent = useDocEvents();
   const resolvedLocation =
     location ?? `${window.location.pathname}${window.location.search}`;
@@ -93,6 +106,12 @@ export default function Browse({ navigate, location }: PageProps) {
   const [favoriteDocHrefs, setFavoriteDocHrefs] = useState<string[]>([]);
   const [favoriteCollections, setFavoriteCollections] = useState<string[]>([]);
   const [mobileTreeOpen, setMobileTreeOpen] = useState(false);
+  const [createFolderOpen, setCreateFolderOpen] = useState(false);
+  const [createFolderName, setCreateFolderName] = useState("");
+  const [createFolderError, setCreateFolderError] = useState<string | null>(
+    null
+  );
+  const [creatingFolder, setCreatingFolder] = useState(false);
   const limit = 25;
 
   const selectedCollection = selection.collection;
@@ -100,9 +119,28 @@ export default function Browse({ navigate, location }: PageProps) {
   const selectedNodeId = selectedCollection
     ? createBrowseNodeId(selectedCollection, selectedPath)
     : null;
-  const selectedNode = tree
+  const resolvedSelectedNode = tree
     ? findBrowseNode(tree.collections, selectedCollection, selectedPath)
     : null;
+  const selectedNode =
+    resolvedSelectedNode ??
+    (selectedCollection
+      ? {
+          id:
+            selectedNodeId ??
+            createBrowseNodeId(selectedCollection, selectedPath),
+          kind: selectedPath ? "folder" : "collection",
+          collection: selectedCollection,
+          path: selectedPath,
+          name: selectedPath.split("/").at(-1) ?? selectedCollection,
+          depth: selectedPath
+            ? selectedPath.split("/").filter(Boolean).length
+            : 0,
+          documentCount: docs.length,
+          directDocumentCount: docs.length,
+          children: [],
+        }
+      : null);
 
   const expandedNodeIds = useMemo(() => {
     const persisted = activeTab?.browseState?.expandedNodeIds ?? [];
@@ -176,13 +214,14 @@ export default function Browse({ navigate, location }: PageProps) {
     if (node) {
       return;
     }
-
+    if (selectedPath) {
+      return;
+    }
     const collectionRoot = findBrowseNode(tree.collections, selectedCollection);
     if (collectionRoot) {
       navigate(buildBrowseLocation(selectedCollection));
       return;
     }
-
     navigate("/browse");
   }, [navigate, selectedCollection, selectedPath, tree]);
 
@@ -240,6 +279,16 @@ export default function Browse({ navigate, location }: PageProps) {
     setDocs([]);
     setRefreshToken((current) => current + 1);
   }, [latestDocEvent?.changedAt]);
+
+  useEffect(() => {
+    return subscribeWorkspaceActionRequest("create-folder-here", () => {
+      if (!selectedCollection) {
+        return;
+      }
+      setCreateFolderError(null);
+      setCreateFolderOpen(true);
+    });
+  }, [selectedCollection]);
 
   useEffect(() => {
     const persisted = activeTab?.browseState?.expandedNodeIds ?? [];
@@ -328,6 +377,38 @@ export default function Browse({ navigate, location }: PageProps) {
     }
   };
 
+  const handleCreateFolder = async () => {
+    if (!selectedCollection || !createFolderName.trim()) {
+      return;
+    }
+
+    setCreatingFolder(true);
+    setCreateFolderError(null);
+    const { data, error } = await apiFetch<CreateFolderResponse>(
+      "/api/folders",
+      {
+        method: "POST",
+        body: JSON.stringify({
+          collection: selectedCollection,
+          parentPath: selectedPath || undefined,
+          name: createFolderName.trim(),
+        }),
+      }
+    );
+    setCreatingFolder(false);
+
+    if (error) {
+      setCreateFolderError(error);
+      return;
+    }
+    if (data?.folderPath) {
+      setCreateFolderOpen(false);
+      setCreateFolderName("");
+      navigate(buildBrowseLocation(selectedCollection, data.folderPath));
+      setRefreshToken((current) => current + 1);
+    }
+  };
+
   const renderSidebar = () => (
     <BrowseTreeSidebar
       collections={tree?.collections ?? []}
@@ -412,6 +493,37 @@ export default function Browse({ navigate, location }: PageProps) {
               <FolderOpen className="size-4" />
               Collections
             </Button>
+            {selectedCollection && (
+              <Button
+                className="gap-2"
+                onClick={() =>
+                  openCapture({
+                    defaultCollection: selectedCollection,
+                    defaultFolderPath: selectedPath || undefined,
+                    draftTitle: "",
+                  })
+                }
+                size="sm"
+                variant="outline"
+              >
+                <FilePlus2 className="size-4" />
+                New Note
+              </Button>
+            )}
+            {selectedCollection && (
+              <Button
+                className="gap-2"
+                onClick={() => {
+                  setCreateFolderOpen(true);
+                  setCreateFolderError(null);
+                }}
+                size="sm"
+                variant="outline"
+              >
+                <FolderPlus className="size-4" />
+                New Folder
+              </Button>
+            )}
             {selectedCollection && (
               <Button
                 className="gap-2"
@@ -539,6 +651,45 @@ export default function Browse({ navigate, location }: PageProps) {
             ) : (
               renderSidebar()
             )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog onOpenChange={setCreateFolderOpen} open={createFolderOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Create folder</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <Input
+              autoFocus
+              onChange={(event) => setCreateFolderName(event.target.value)}
+              placeholder="research"
+              value={createFolderName}
+            />
+            {selectedCollection && (
+              <p className="font-mono text-xs text-muted-foreground">
+                {selectedCollection}
+                {selectedPath ? ` / ${selectedPath}` : ""}
+              </p>
+            )}
+            {createFolderError && (
+              <p className="text-destructive text-sm">{createFolderError}</p>
+            )}
+            <div className="flex justify-end gap-2">
+              <Button
+                onClick={() => setCreateFolderOpen(false)}
+                variant="outline"
+              >
+                Cancel
+              </Button>
+              <Button
+                disabled={!createFolderName.trim() || creatingFolder}
+                onClick={() => void handleCreateFolder()}
+              >
+                {creatingFolder ? "Creating..." : "Create Folder"}
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>

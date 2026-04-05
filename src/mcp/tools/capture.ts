@@ -15,6 +15,15 @@ import { buildUri } from "../../app/constants";
 import { MCP_ERRORS } from "../../core/errors";
 import { withWriteLock } from "../../core/file-lock";
 import { atomicWrite } from "../../core/file-ops";
+import {
+  resolveNoteCreatePlan,
+  type NoteCollisionPolicy,
+} from "../../core/note-creation";
+import {
+  getNotePreset,
+  resolveNotePreset,
+  type NotePresetId,
+} from "../../core/note-presets";
 import { normalizeTag, validateTag } from "../../core/tags";
 import {
   normalizeCollectionName,
@@ -27,10 +36,13 @@ import { runTool, type ToolResult } from "./index";
 
 interface CaptureInput {
   collection: string;
-  content: string;
+  content?: string;
   title?: string;
   path?: string;
   overwrite?: boolean;
+  folderPath?: string;
+  collisionPolicy?: NoteCollisionPolicy;
+  presetId?: NotePresetId;
   tags?: string[];
 }
 
@@ -123,17 +135,46 @@ export function handleCapture(
           );
         }
 
+        if (args.presetId && !getNotePreset(args.presetId)) {
+          throw new Error(
+            `${MCP_ERRORS.INVALID_INPUT.code}: Unknown presetId: ${args.presetId}`
+          );
+        }
+
+        const existingDocs = await ctx.store.listDocuments(collectionName);
+        if (!existingDocs.ok) {
+          throw new Error(existingDocs.error.message);
+        }
+
         let relPath: string;
-        if (args.path) {
-          try {
-            relPath = ensureMarkdownExtension(validateRelPath(args.path));
-          } catch (error) {
-            const message =
-              error instanceof Error ? error.message : String(error);
-            throw new Error(`${MCP_ERRORS.INVALID_PATH.code}: ${message}`);
+        try {
+          const plan = resolveNoteCreatePlan(
+            {
+              collection: collection.name,
+              relPath: args.path
+                ? ensureMarkdownExtension(validateRelPath(args.path))
+                : undefined,
+              title:
+                args.title?.trim() ||
+                generateFilename(args.title, args.content ?? "").replace(
+                  /\.md$/u,
+                  ""
+                ),
+              folderPath: args.folderPath,
+              collisionPolicy: args.collisionPolicy,
+            },
+            existingDocs.value.map((doc) => doc.relPath)
+          );
+          if (plan.openedExisting) {
+            throw new Error(
+              `${MCP_ERRORS.CONFLICT.code}: Existing note resolution is not supported through gno_capture yet`
+            );
           }
-        } else {
-          relPath = generateFilename(args.title, args.content);
+          relPath = plan.relPath;
+        } catch (error) {
+          const message =
+            error instanceof Error ? error.message : String(error);
+          throw new Error(`${MCP_ERRORS.INVALID_PATH.code}: ${message}`);
         }
 
         assertNotSensitive(relPath);
@@ -164,12 +205,30 @@ export function handleCapture(
         }
 
         // Update frontmatter with tags for Markdown files
-        let contentToWrite = args.content;
+        const resolvedPreset = resolveNotePreset({
+          presetId: args.presetId,
+          title:
+            args.title?.trim() ||
+            relPath
+              .split("/")
+              .pop()
+              ?.replace(/\.[^.]+$/u, "") ||
+            "Untitled",
+          tags: normalizedTags,
+          body: args.content,
+        });
+        let contentToWrite =
+          resolvedPreset?.content ??
+          args.content ??
+          `# ${args.title?.trim() || "Untitled"}\n`;
         const isMarkdown =
           relPath.endsWith(".md") || relPath.endsWith(".markdown");
         if (isMarkdown && normalizedTags.length > 0) {
           // Use shared utility that handles all frontmatter edge cases
-          contentToWrite = updateFrontmatterTags(args.content, normalizedTags);
+          contentToWrite = updateFrontmatterTags(
+            contentToWrite,
+            normalizedTags
+          );
         }
 
         await mkdir(dirname(absPath), { recursive: true });

@@ -19,24 +19,30 @@ import {
   handleCapabilities,
   handleCollections,
   handleConnectors,
+  handleCreateFolder,
   handleCreateCollection,
   handleCreateEditableCopy,
   handleCreateDoc,
   handleDeactivateDoc,
   handleDeleteCollection,
   handleDoc,
+  handleDocSections,
   handleDocsAutocomplete,
   handleDocs,
+  handleDuplicateDoc,
   handleEmbed,
   handleEmbedStatus,
   handleHealth,
   handleImportPreview,
   handleInstallConnector,
+  handleMoveDoc,
+  handleNotePresets,
   handleJob,
   handleModelPull,
   handleModelStatus,
   handlePresets,
   handleQuery,
+  handleRefactorPlan,
   handleRenameDoc,
   handleRevealDoc,
   handleSearch,
@@ -257,6 +263,21 @@ export async function startServer(
             );
           },
         },
+        "/api/note-presets": {
+          GET: async () =>
+            withSecurityHeaders(await handleNotePresets(), isDev),
+        },
+        "/api/folders": {
+          POST: async (req: Request) => {
+            if (!isRequestAllowed(req, port)) {
+              return withSecurityHeaders(forbiddenResponse(), isDev);
+            }
+            return withSecurityHeaders(
+              await handleCreateFolder(ctxHolder, req),
+              isDev
+            );
+          },
+        },
         "/api/browse/tree": {
           GET: async () =>
             withSecurityHeaders(await handleBrowseTree(store), isDev),
@@ -286,6 +307,48 @@ export async function startServer(
             const id = decodeURIComponent(parts[3] || "");
             return withSecurityHeaders(
               await handleRenameDoc(ctxHolder, store, id, req),
+              isDev
+            );
+          },
+        },
+        "/api/docs/:id/move": {
+          POST: async (req: Request) => {
+            if (!isRequestAllowed(req, port)) {
+              return withSecurityHeaders(forbiddenResponse(), isDev);
+            }
+            const url = new URL(req.url);
+            const parts = url.pathname.split("/");
+            const id = decodeURIComponent(parts[3] || "");
+            return withSecurityHeaders(
+              await handleMoveDoc(ctxHolder, store, id, req),
+              isDev
+            );
+          },
+        },
+        "/api/docs/:id/duplicate": {
+          POST: async (req: Request) => {
+            if (!isRequestAllowed(req, port)) {
+              return withSecurityHeaders(forbiddenResponse(), isDev);
+            }
+            const url = new URL(req.url);
+            const parts = url.pathname.split("/");
+            const id = decodeURIComponent(parts[3] || "");
+            return withSecurityHeaders(
+              await handleDuplicateDoc(ctxHolder, store, id, req),
+              isDev
+            );
+          },
+        },
+        "/api/docs/:id/refactor-plan": {
+          POST: async (req: Request) => {
+            if (!isRequestAllowed(req, port)) {
+              return withSecurityHeaders(forbiddenResponse(), isDev);
+            }
+            const url = new URL(req.url);
+            const parts = url.pathname.split("/");
+            const id = decodeURIComponent(parts[3] || "");
+            return withSecurityHeaders(
+              await handleRefactorPlan(ctxHolder, store, id, req),
               isDev
             );
           },
@@ -475,6 +538,17 @@ export async function startServer(
             const id = decodeURIComponent(parts[3] || "");
             return withSecurityHeaders(
               await handleDocLinks(store, id, url),
+              isDev
+            );
+          },
+        },
+        "/api/doc/:id/sections": {
+          GET: async (req: Request) => {
+            const url = new URL(req.url);
+            const parts = url.pathname.split("/");
+            const id = decodeURIComponent(parts[3] || "");
+            return withSecurityHeaders(
+              await handleDocSections(store, id, req),
               isDev
             );
           },

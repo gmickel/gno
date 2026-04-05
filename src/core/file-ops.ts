@@ -5,7 +5,7 @@
  */
 
 // node:fs/promises for rename/unlink (no Bun equivalent for structure ops)
-import { mkdir, rename, unlink } from "node:fs/promises";
+import { copyFile, mkdir, rename, unlink } from "node:fs/promises";
 // node:os platform/homedir/tmpdir: no Bun equivalent
 import { homedir, platform as getPlatform, tmpdir } from "node:os";
 // node:path dirname/join/parse: no Bun equivalent
@@ -46,6 +46,17 @@ export async function renameFilePath(
   nextPath: string
 ): Promise<void> {
   await rename(currentPath, nextPath);
+}
+
+export async function copyFilePath(
+  currentPath: string,
+  nextPath: string
+): Promise<void> {
+  await copyFile(currentPath, nextPath);
+}
+
+export async function createFolderPath(path: string): Promise<void> {
+  await mkdir(path, { recursive: true });
 }
 
 type TrashFileDeps = {

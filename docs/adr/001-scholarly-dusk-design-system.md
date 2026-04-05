@@ -164,9 +164,16 @@ All buttons use the shadcn `Button` component with `cursor-pointer` baked into t
 For toggle pills overlaid on content (e.g., Source/Rendered toggle):
 
 ```tsx
+const floatingControlStyle = {
+  position: "absolute",
+  top: "0.75rem",
+  right: "0.75rem",
+  left: "auto",
+} as const;
+
 <button
   className="z-10 flex cursor-pointer items-center gap-1.5 rounded-full border border-border/30 bg-background/80 px-3 py-1 font-mono text-[11px] text-muted-foreground backdrop-blur-sm transition-colors hover:border-primary/30 hover:text-primary"
-  style={{ position: "absolute", top: "0.75rem", right: "0.75rem", left: "auto" }}
+  style={floatingControlStyle}
 >
 ```
 

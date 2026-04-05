@@ -5,6 +5,9 @@
  * @module src/serve/routes/api
  */
 
+// node:path has no Bun equivalent
+import { posix as pathPosix } from "node:path";
+
 import type { Config, ModelPreset } from "../../config/types";
 import type { Collection } from "../../config/types";
 import type {
@@ -29,10 +32,31 @@ import {
 } from "../../core/document-capabilities";
 import {
   atomicWrite,
+  copyFilePath,
+  createFolderPath,
   renameFilePath,
   revealFilePath,
   trashFilePath,
 } from "../../core/file-ops";
+import {
+  buildRefactorWarnings,
+  planCreateFolder,
+  planDuplicateRefactor,
+  planMoveRefactor,
+  planRenameRefactor,
+} from "../../core/file-refactors";
+import {
+  resolveNoteCreatePlan,
+  sanitizeNoteFilename,
+  type NoteCollisionPolicy,
+} from "../../core/note-creation";
+import {
+  getNotePreset,
+  NOTE_PRESETS,
+  resolveNotePreset,
+  type NotePresetId,
+} from "../../core/note-presets";
+import { extractSections } from "../../core/sections";
 import { normalizeStructuredQueryInput } from "../../core/structured-query";
 import {
   normalizeTag,
@@ -175,15 +199,44 @@ export interface SyncRequestBody {
 
 export interface CreateDocRequestBody {
   collection: string;
-  relPath: string;
-  content: string;
+  relPath?: string;
+  title?: string;
+  folderPath?: string;
+  content?: string;
   overwrite?: boolean;
+  collisionPolicy?: NoteCollisionPolicy;
+  presetId?: NotePresetId;
   /** Tags to add to document (written to frontmatter for markdown) */
   tags?: string[];
 }
 
 export interface RenameDocRequestBody {
   name: string;
+  uri?: string;
+}
+
+export interface MoveDocRequestBody {
+  folderPath: string;
+  name?: string;
+  uri?: string;
+}
+
+export interface DuplicateDocRequestBody {
+  folderPath?: string;
+  name?: string;
+  uri?: string;
+}
+
+export interface CreateFolderRequestBody {
+  collection: string;
+  parentPath?: string;
+  name: string;
+}
+
+export interface RefactorPlanRequestBody {
+  operation: "rename" | "move" | "duplicate";
+  name?: string;
+  folderPath?: string;
   uri?: string;
 }
 
@@ -300,6 +353,51 @@ async function resolveAbsoluteDocPath(
   return {
     collection,
     fullPath: nodePath.join(collection.path, safeRelPath),
+  };
+}
+
+async function listCollectionRelPaths(
+  store: Pick<SqliteAdapter, "listDocuments">,
+  collection: string
+): Promise<string[]> {
+  const result = await store.listDocuments(collection);
+  if (!result.ok) {
+    throw new Error(result.error.message);
+  }
+  return result.value.map((entry) => entry.relPath);
+}
+
+async function getRefactorSnapshot(
+  store: Partial<Pick<SqliteAdapter, "getLinksForDoc" | "getBacklinksForDoc">>,
+  documentId: number
+) {
+  if (!store.getLinksForDoc || !store.getBacklinksForDoc) {
+    return {
+      backlinks: 0,
+      wikiLinks: 0,
+      markdownLinks: 0,
+    };
+  }
+
+  const [linksResult, backlinksResult] = await Promise.all([
+    store.getLinksForDoc(documentId),
+    store.getBacklinksForDoc(documentId),
+  ]);
+
+  if (!linksResult.ok) {
+    throw new Error(linksResult.error.message);
+  }
+  if (!backlinksResult.ok) {
+    throw new Error(backlinksResult.error.message);
+  }
+
+  return {
+    backlinks: backlinksResult.value.length,
+    wikiLinks: linksResult.value.filter((entry) => entry.linkType === "wiki")
+      .length,
+    markdownLinks: linksResult.value.filter(
+      (entry) => entry.linkType === "markdown"
+    ).length,
   };
 }
 
@@ -946,6 +1044,54 @@ export async function handleBrowseTree(
   });
 }
 
+export async function handleNotePresets(): Promise<Response> {
+  return jsonResponse({
+    presets: NOTE_PRESETS.map((preset) => ({
+      id: preset.id,
+      label: preset.label,
+      description: preset.description,
+      defaultTags: preset.defaultTags ?? [],
+      frontmatter: preset.frontmatter ?? {},
+      preview: resolveNotePreset({
+        presetId: preset.id,
+        title: "Untitled",
+      })?.content,
+    })),
+  });
+}
+
+export async function handleDocSections(
+  store: SqliteAdapter,
+  docId: string,
+  req?: Request
+): Promise<Response> {
+  const docResult = await resolveDocumentReference(
+    store,
+    docId,
+    req ? readRequestedUriFromUrl(req) : undefined
+  );
+  if (!docResult.ok) {
+    return errorResponse("RUNTIME", docResult.error.message, 500);
+  }
+  if (!docResult.value) {
+    return errorResponse("NOT_FOUND", "Document not found", 404);
+  }
+
+  const doc = docResult.value;
+  if (!doc.mirrorHash) {
+    return jsonResponse({ sections: [] });
+  }
+
+  const contentResult = await store.getContent(doc.mirrorHash);
+  if (!contentResult.ok || contentResult.value === null) {
+    return errorResponse("RUNTIME", "Mirror content unavailable", 409);
+  }
+
+  return jsonResponse({
+    sections: extractSections(contentResult.value),
+  });
+}
+
 /**
  * GET /api/docs/autocomplete
  * Query params: query, collection, limit
@@ -1254,17 +1400,137 @@ export async function handleRenameDoc(
       origin: "save",
       changedAt: new Date().toISOString(),
     });
+    const refactorWarnings = buildRefactorWarnings(
+      await getRefactorSnapshot(store, doc.id),
+      {
+        filenameChanged: true,
+      }
+    );
     return jsonResponse({
       success: true,
       uri: nextUri,
       path: nextFullPath,
       relPath: nextRelPath,
+      refactorWarnings,
       warning,
     });
   } catch (error) {
     return errorResponse(
       "RUNTIME",
       error instanceof Error ? error.message : "Failed to rename document",
+      500
+    );
+  }
+}
+
+export async function handleRefactorPlan(
+  ctxHolder: ContextHolder,
+  store: SqliteAdapter,
+  docId: string,
+  req: Request
+): Promise<Response> {
+  let body: RefactorPlanRequestBody;
+  try {
+    body = (await req.json()) as RefactorPlanRequestBody;
+  } catch {
+    return errorResponse("VALIDATION", "Invalid JSON body");
+  }
+
+  const docResult = await resolveDocumentReference(store, docId, body.uri);
+  if (!docResult.ok) {
+    return errorResponse("RUNTIME", docResult.error.message, 500);
+  }
+  if (!docResult.value) {
+    return errorResponse("NOT_FOUND", "Document not found", 404);
+  }
+
+  const doc = docResult.value;
+  const capabilities = getDocumentCapabilities({
+    sourceExt: doc.sourceExt,
+    sourceMime: doc.sourceMime,
+    contentAvailable: doc.mirrorHash !== null,
+  });
+  if (!capabilities.editable) {
+    return errorResponse(
+      "READ_ONLY",
+      capabilities.reason ??
+        "This document cannot be refactored in place from GNO.",
+      409
+    );
+  }
+
+  const snapshot = await getRefactorSnapshot(store, doc.id);
+  const collection = getCollectionByName(
+    ctxHolder.config.collections,
+    doc.collection
+  );
+  if (!collection) {
+    return errorResponse(
+      "NOT_FOUND",
+      `Collection not found: ${doc.collection}`,
+      404
+    );
+  }
+
+  try {
+    if (body.operation === "rename") {
+      if (!body.name?.trim()) {
+        return errorResponse("VALIDATION", "Missing or invalid name");
+      }
+      const plan = planRenameRefactor({
+        collection: collection.name,
+        currentRelPath: doc.relPath,
+        nextName: body.name.trim(),
+      });
+      return jsonResponse({
+        operation: body.operation,
+        ...plan,
+        refactorWarnings: buildRefactorWarnings(snapshot, {
+          filenameChanged: true,
+        }),
+      });
+    }
+
+    if (body.operation === "move") {
+      if (!body.folderPath?.trim()) {
+        return errorResponse("VALIDATION", "Missing or invalid folderPath");
+      }
+      const plan = planMoveRefactor({
+        collection: collection.name,
+        currentRelPath: doc.relPath,
+        folderPath: body.folderPath.trim(),
+        nextName: body.name?.trim(),
+      });
+      return jsonResponse({
+        operation: body.operation,
+        ...plan,
+        refactorWarnings: buildRefactorWarnings(snapshot, {
+          folderChanged: true,
+          filenameChanged: Boolean(body.name?.trim()),
+        }),
+      });
+    }
+
+    if (body.operation === "duplicate") {
+      const plan = planDuplicateRefactor({
+        collection: collection.name,
+        currentRelPath: doc.relPath,
+        folderPath: body.folderPath?.trim(),
+        nextName: body.name?.trim(),
+        existingRelPaths: await listCollectionRelPaths(store, collection.name),
+      });
+      return jsonResponse({
+        operation: body.operation,
+        ...plan,
+        refactorWarnings: buildRefactorWarnings(snapshot),
+      });
+    }
+
+    return errorResponse("VALIDATION", "Unsupported operation");
+  } catch (error) {
+    return errorResponse(
+      "RUNTIME",
+      error instanceof Error ? error.message : "Failed to build refactor plan",
       500
     );
   }
@@ -1365,6 +1631,307 @@ export async function handleTrashDoc(
     return errorResponse(
       "RUNTIME",
       error instanceof Error ? error.message : "Failed to trash document",
+      500
+    );
+  }
+}
+
+export async function handleMoveDoc(
+  ctxHolder: ContextHolder,
+  store: SqliteAdapter,
+  docId: string,
+  req: Request
+): Promise<Response> {
+  let body: MoveDocRequestBody;
+  try {
+    body = (await req.json()) as MoveDocRequestBody;
+  } catch {
+    return errorResponse("VALIDATION", "Invalid JSON body");
+  }
+
+  if (!body.folderPath || typeof body.folderPath !== "string") {
+    return errorResponse("VALIDATION", "Missing or invalid folderPath");
+  }
+  if (body.name !== undefined && typeof body.name !== "string") {
+    return errorResponse("VALIDATION", "name must be a string");
+  }
+  if (body.uri !== undefined && typeof body.uri !== "string") {
+    return errorResponse("VALIDATION", "uri must be a string");
+  }
+
+  const docResult = await resolveDocumentReference(store, docId, body.uri);
+  if (!docResult.ok) {
+    return errorResponse("RUNTIME", docResult.error.message, 500);
+  }
+  if (!docResult.value) {
+    return errorResponse("NOT_FOUND", "Document not found", 404);
+  }
+  const doc = docResult.value;
+  const capabilities = getDocumentCapabilities({
+    sourceExt: doc.sourceExt,
+    sourceMime: doc.sourceMime,
+    contentAvailable: doc.mirrorHash !== null,
+  });
+  if (!capabilities.editable) {
+    return errorResponse(
+      "READ_ONLY",
+      capabilities.reason ?? "This document cannot be moved in place from GNO.",
+      409
+    );
+  }
+
+  const resolvedDocPath = await resolveAbsoluteDocPath(
+    ctxHolder.config.collections,
+    doc
+  );
+  if (!resolvedDocPath) {
+    return errorResponse(
+      "NOT_FOUND",
+      `Collection not found: ${doc.collection}`,
+      404
+    );
+  }
+  const { collection, fullPath } = resolvedDocPath;
+
+  let plan;
+  try {
+    plan = planMoveRefactor({
+      collection: collection.name,
+      currentRelPath: doc.relPath,
+      folderPath: body.folderPath,
+      nextName: body.name?.trim(),
+    });
+  } catch (error) {
+    return errorResponse(
+      "VALIDATION",
+      error instanceof Error ? error.message : "Invalid move target"
+    );
+  }
+
+  const nodePath = await import("node:path"); // no bun equivalent
+  const nextFullPath = nodePath.join(collection.path, plan.nextRelPath);
+  if (await Bun.file(nextFullPath).exists()) {
+    return errorResponse(
+      "CONFLICT",
+      "A file with that name already exists at the destination",
+      409
+    );
+  }
+
+  try {
+    ctxHolder.watchService?.suppress(fullPath);
+    ctxHolder.watchService?.suppress(nextFullPath);
+    const { mkdir } = await import("node:fs/promises"); // structure ops need fs
+    await mkdir(nodePath.dirname(nextFullPath), { recursive: true });
+    await renameFilePath(fullPath, nextFullPath);
+    let warning: string | undefined;
+    try {
+      await defaultSyncService.syncCollection(collection, store, {
+        runUpdateCmd: false,
+      });
+    } catch {
+      warning =
+        "File moved on disk, but index refresh failed. Run Update All to reconcile the workspace.";
+    }
+    ctxHolder.eventBus?.emit({
+      type: "document-changed",
+      uri: plan.nextUri,
+      collection: collection.name,
+      relPath: plan.nextRelPath,
+      origin: "save",
+      changedAt: new Date().toISOString(),
+    });
+    return jsonResponse({
+      success: true,
+      uri: plan.nextUri,
+      path: nextFullPath,
+      relPath: plan.nextRelPath,
+      refactorWarnings: buildRefactorWarnings(
+        await getRefactorSnapshot(store, doc.id),
+        {
+          folderChanged: true,
+          filenameChanged: Boolean(body.name?.trim()),
+        }
+      ),
+      warning,
+    });
+  } catch (error) {
+    return errorResponse(
+      "RUNTIME",
+      error instanceof Error ? error.message : "Failed to move document",
+      500
+    );
+  }
+}
+
+export async function handleDuplicateDoc(
+  ctxHolder: ContextHolder,
+  store: SqliteAdapter,
+  docId: string,
+  req: Request
+): Promise<Response> {
+  let body: DuplicateDocRequestBody;
+  try {
+    body = (await req.json()) as DuplicateDocRequestBody;
+  } catch {
+    return errorResponse("VALIDATION", "Invalid JSON body");
+  }
+
+  if (body.name !== undefined && typeof body.name !== "string") {
+    return errorResponse("VALIDATION", "name must be a string");
+  }
+  if (body.folderPath !== undefined && typeof body.folderPath !== "string") {
+    return errorResponse("VALIDATION", "folderPath must be a string");
+  }
+  if (body.uri !== undefined && typeof body.uri !== "string") {
+    return errorResponse("VALIDATION", "uri must be a string");
+  }
+
+  const docResult = await resolveDocumentReference(store, docId, body.uri);
+  if (!docResult.ok) {
+    return errorResponse("RUNTIME", docResult.error.message, 500);
+  }
+  if (!docResult.value) {
+    return errorResponse("NOT_FOUND", "Document not found", 404);
+  }
+  const doc = docResult.value;
+  const capabilities = getDocumentCapabilities({
+    sourceExt: doc.sourceExt,
+    sourceMime: doc.sourceMime,
+    contentAvailable: doc.mirrorHash !== null,
+  });
+  if (!capabilities.editable) {
+    return errorResponse(
+      "READ_ONLY",
+      capabilities.reason ??
+        "This document cannot be duplicated in place from GNO.",
+      409
+    );
+  }
+
+  const resolvedDocPath = await resolveAbsoluteDocPath(
+    ctxHolder.config.collections,
+    doc
+  );
+  if (!resolvedDocPath) {
+    return errorResponse(
+      "NOT_FOUND",
+      `Collection not found: ${doc.collection}`,
+      404
+    );
+  }
+  const { collection, fullPath } = resolvedDocPath;
+
+  let plan;
+  try {
+    plan = planDuplicateRefactor({
+      collection: collection.name,
+      currentRelPath: doc.relPath,
+      folderPath: body.folderPath?.trim(),
+      nextName: body.name?.trim(),
+      existingRelPaths: await listCollectionRelPaths(store, collection.name),
+    });
+  } catch (error) {
+    return errorResponse(
+      "VALIDATION",
+      error instanceof Error ? error.message : "Invalid duplicate target"
+    );
+  }
+
+  const nodePath = await import("node:path"); // no bun equivalent
+  const nextFullPath = nodePath.join(collection.path, plan.nextRelPath);
+
+  try {
+    const { mkdir } = await import("node:fs/promises"); // structure ops need fs
+    await mkdir(nodePath.dirname(nextFullPath), { recursive: true });
+    await copyFilePath(fullPath, nextFullPath);
+    let warning: string | undefined;
+    try {
+      await defaultSyncService.syncCollection(collection, store, {
+        runUpdateCmd: false,
+      });
+    } catch {
+      warning =
+        "File duplicated on disk, but index refresh failed. Run Update All to reconcile the workspace.";
+    }
+    ctxHolder.eventBus?.emit({
+      type: "document-changed",
+      uri: plan.nextUri,
+      collection: collection.name,
+      relPath: plan.nextRelPath,
+      origin: "create",
+      changedAt: new Date().toISOString(),
+    });
+    return jsonResponse({
+      success: true,
+      uri: plan.nextUri,
+      path: nextFullPath,
+      relPath: plan.nextRelPath,
+      refactorWarnings: buildRefactorWarnings(
+        await getRefactorSnapshot(store, doc.id)
+      ),
+      warning,
+    });
+  } catch (error) {
+    return errorResponse(
+      "RUNTIME",
+      error instanceof Error ? error.message : "Failed to duplicate document",
+      500
+    );
+  }
+}
+
+export async function handleCreateFolder(
+  ctxHolder: ContextHolder,
+  req: Request
+): Promise<Response> {
+  let body: CreateFolderRequestBody;
+  try {
+    body = (await req.json()) as CreateFolderRequestBody;
+  } catch {
+    return errorResponse("VALIDATION", "Invalid JSON body");
+  }
+
+  if (!body.collection || typeof body.collection !== "string") {
+    return errorResponse("VALIDATION", "Missing or invalid collection");
+  }
+  if (!body.name || typeof body.name !== "string") {
+    return errorResponse("VALIDATION", "Missing or invalid folder name");
+  }
+  if (body.parentPath !== undefined && typeof body.parentPath !== "string") {
+    return errorResponse("VALIDATION", "parentPath must be a string");
+  }
+
+  const collection = getCollectionByName(
+    ctxHolder.config.collections,
+    body.collection
+  );
+  if (!collection) {
+    return errorResponse(
+      "NOT_FOUND",
+      `Collection not found: ${body.collection}`,
+      404
+    );
+  }
+
+  try {
+    const folderPath = planCreateFolder({
+      parentPath: body.parentPath,
+      name: body.name,
+    });
+    const nodePath = await import("node:path"); // no bun equivalent
+    const fullPath = nodePath.join(collection.path, folderPath);
+    await createFolderPath(fullPath);
+    return jsonResponse({
+      success: true,
+      collection: collection.name,
+      folderPath,
+      path: fullPath,
+    });
+  } catch (error) {
+    return errorResponse(
+      "RUNTIME",
+      error instanceof Error ? error.message : "Failed to create folder",
       500
     );
   }
@@ -1801,14 +2368,34 @@ export async function handleCreateDoc(
   if (!body.collection || typeof body.collection !== "string") {
     return errorResponse("VALIDATION", "Missing or invalid collection");
   }
-  if (!body.relPath || typeof body.relPath !== "string") {
-    return errorResponse("VALIDATION", "Missing or invalid relPath");
+  if (body.relPath !== undefined && typeof body.relPath !== "string") {
+    return errorResponse("VALIDATION", "relPath must be a string");
   }
-  if (!body.content || typeof body.content !== "string") {
-    return errorResponse("VALIDATION", "Missing or invalid content");
+  if (body.title !== undefined && typeof body.title !== "string") {
+    return errorResponse("VALIDATION", "title must be a string");
+  }
+  if (body.folderPath !== undefined && typeof body.folderPath !== "string") {
+    return errorResponse("VALIDATION", "folderPath must be a string");
+  }
+  if (body.content !== undefined && typeof body.content !== "string") {
+    return errorResponse("VALIDATION", "content must be a string");
   }
   if (body.overwrite !== undefined && typeof body.overwrite !== "boolean") {
     return errorResponse("VALIDATION", "overwrite must be a boolean");
+  }
+  if (
+    body.collisionPolicy !== undefined &&
+    body.collisionPolicy !== "error" &&
+    body.collisionPolicy !== "open_existing" &&
+    body.collisionPolicy !== "create_with_suffix"
+  ) {
+    return errorResponse(
+      "VALIDATION",
+      "collisionPolicy must be one of: error, open_existing, create_with_suffix"
+    );
+  }
+  if (body.presetId !== undefined && !getNotePreset(body.presetId)) {
+    return errorResponse("VALIDATION", "Unknown presetId");
   }
 
   // Validate tags if provided
@@ -1837,19 +2424,60 @@ export async function handleCreateDoc(
     );
   }
 
-  // Validate relPath - no path traversal
-  let normalizedRelPath: string;
+  const existingRelPaths = await listCollectionRelPaths(store, collection.name);
+  let createPlan;
   try {
-    normalizedRelPath = validateRelPath(body.relPath);
+    createPlan = resolveNoteCreatePlan(
+      {
+        collection: collection.name,
+        relPath: body.relPath,
+        title:
+          body.title?.trim() ||
+          (body.relPath
+            ? pathPosix.basename(body.relPath).replace(/\.[^.]+$/, "")
+            : sanitizeNoteFilename("untitled")),
+        folderPath: body.folderPath,
+        collisionPolicy: body.collisionPolicy,
+      },
+      existingRelPaths
+    );
   } catch (e) {
     return errorResponse(
       "VALIDATION",
-      e instanceof Error ? e.message : String(e)
+      e instanceof Error ? e.message : String(e),
+      409
     );
   }
 
+  const normalizedRelPath = createPlan.relPath;
+
   const nodePath = await import("node:path"); // no bun equivalent
   const fullPath = nodePath.join(collection.path, normalizedRelPath);
+
+  if (createPlan.openedExisting) {
+    const existingDocResult = await store.getDocument(
+      collection.name,
+      normalizedRelPath
+    );
+    if (!existingDocResult.ok) {
+      return errorResponse("RUNTIME", existingDocResult.error.message, 500);
+    }
+    if (!existingDocResult.value) {
+      return errorResponse(
+        "CONFLICT",
+        "File exists, but indexed document could not be resolved",
+        409
+      );
+    }
+    return jsonResponse({
+      uri: existingDocResult.value.uri,
+      path: fullPath,
+      relPath: normalizedRelPath,
+      created: false,
+      openedExisting: true,
+      note: "Existing note opened.",
+    });
+  }
 
   try {
     // Check if file already exists
@@ -1868,10 +2496,26 @@ export async function handleCreateDoc(
     await mkdir(parentDir, { recursive: true });
 
     // Inject tags into frontmatter for markdown files
-    let contentToWrite = body.content;
+    const presetContent = body.presetId
+      ? resolveNotePreset({
+          presetId: body.presetId,
+          title:
+            body.title?.trim() ||
+            pathPosix.basename(normalizedRelPath).replace(/\.[^.]+$/, ""),
+          tags: validatedTags,
+          body: body.content,
+        })
+      : null;
+    let contentToWrite =
+      presetContent?.content ??
+      body.content ??
+      `# ${
+        body.title?.trim() ||
+        pathPosix.basename(normalizedRelPath).replace(/\.[^.]+$/, "")
+      }\n`;
     const ext = nodePath.extname(normalizedRelPath).toLowerCase();
     if (validatedTags.length > 0 && (ext === ".md" || ext === ".markdown")) {
-      contentToWrite = updateFrontmatterTags(body.content, validatedTags);
+      contentToWrite = updateFrontmatterTags(contentToWrite, validatedTags);
     }
 
     ctxHolder.watchService?.suppress(fullPath);
@@ -1917,6 +2561,10 @@ export async function handleCreateDoc(
         uri: gnoUri,
         path: fullPath,
         jobId: jobResult.ok ? jobResult.jobId : null,
+        relPath: normalizedRelPath,
+        created: true,
+        openedExisting: false,
+        createdWithSuffix: createPlan.createdWithSuffix,
         note: jobResult.ok
           ? "File created. Sync job started - poll /api/jobs/:id for status."
           : "File created. Sync skipped (another job running).",

@@ -54,17 +54,24 @@ curl http://localhost:3000/api/status | jq
 
 ## Available Endpoints
 
-| Endpoint             | Method   | Description                 |
-| :------------------- | :------- | :-------------------------- |
-| `/api/status`        | GET      | Index statistics            |
-| `/api/search`        | POST     | BM25 keyword search         |
-| `/api/query`         | POST     | Hybrid search (recommended) |
-| `/api/ask`           | POST     | AI-powered Q&A              |
-| `/api/docs`          | GET      | List documents              |
-| `/api/doc`           | GET      | Get document content        |
-| `/api/presets`       | GET/POST | Model preset management     |
-| `/api/models/pull`   | POST     | Download models             |
-| `/api/models/status` | GET      | Download progress           |
+| Endpoint                      | Method   | Description                                 |
+| :---------------------------- | :------- | :------------------------------------------ |
+| `/api/status`                 | GET      | Index statistics                            |
+| `/api/search`                 | POST     | BM25 keyword search                         |
+| `/api/query`                  | POST     | Hybrid search (recommended)                 |
+| `/api/ask`                    | POST     | AI-powered Q&A                              |
+| `/api/docs`                   | GET      | List documents                              |
+| `/api/docs`                   | POST     | Create notes with title/path/folder context |
+| `/api/doc`                    | GET      | Get document content                        |
+| `/api/doc/:id/sections`       | GET      | Get heading/section structure               |
+| `/api/note-presets`           | GET      | List note presets                           |
+| `/api/docs/:id/move`          | POST     | Move editable note                          |
+| `/api/docs/:id/duplicate`     | POST     | Duplicate editable note                     |
+| `/api/docs/:id/refactor-plan` | POST     | Preview rename/move warnings                |
+| `/api/folders`                | POST     | Create folder in collection                 |
+| `/api/presets`                | GET/POST | Model preset management                     |
+| `/api/models/pull`            | POST     | Download models                             |
+| `/api/models/status`          | GET      | Download progress                           |
 
 ## Language Integrations
 

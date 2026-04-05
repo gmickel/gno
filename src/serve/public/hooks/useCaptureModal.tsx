@@ -19,9 +19,16 @@ import {
 import { CaptureModal } from "../components/CaptureModal";
 import { useKeyboardShortcuts } from "./useKeyboardShortcuts";
 
+export interface CaptureModalOpenOptions {
+  draftTitle?: string;
+  defaultCollection?: string;
+  defaultFolderPath?: string;
+  presetId?: string;
+}
+
 interface CaptureModalContextValue {
   /** Open the capture modal */
-  openCapture: (draftTitle?: string) => void;
+  openCapture: (options?: string | CaptureModalOpenOptions) => void;
   /** Whether the modal is open */
   isOpen: boolean;
 }
@@ -42,11 +49,27 @@ export function CaptureModalProvider({
 }: CaptureModalProviderProps) {
   const [open, setOpen] = useState(false);
   const [draftTitle, setDraftTitle] = useState("");
+  const [defaultCollection, setDefaultCollection] = useState("");
+  const [defaultFolderPath, setDefaultFolderPath] = useState("");
+  const [presetId, setPresetId] = useState("");
 
-  const openCapture = useCallback((nextDraftTitle?: string) => {
-    setDraftTitle(nextDraftTitle ?? "");
-    setOpen(true);
-  }, []);
+  const openCapture = useCallback(
+    (options?: string | CaptureModalOpenOptions) => {
+      if (typeof options === "string") {
+        setDraftTitle(options);
+        setDefaultCollection("");
+        setDefaultFolderPath("");
+        setPresetId("");
+      } else {
+        setDraftTitle(options?.draftTitle ?? "");
+        setDefaultCollection(options?.defaultCollection ?? "");
+        setDefaultFolderPath(options?.defaultFolderPath ?? "");
+        setPresetId(options?.presetId ?? "");
+      }
+      setOpen(true);
+    },
+    []
+  );
 
   // 'n' global shortcut (single-key, skips when in text input)
   const shortcuts = useMemo(
@@ -73,10 +96,13 @@ export function CaptureModalProvider({
     <CaptureModalContext.Provider value={value}>
       {children}
       <CaptureModal
+        defaultCollection={defaultCollection}
+        defaultFolderPath={defaultFolderPath}
         draftTitle={draftTitle}
         onOpenChange={setOpen}
         onSuccess={onSuccess}
         open={open}
+        presetId={presetId}
       />
     </CaptureModalContext.Provider>
   );

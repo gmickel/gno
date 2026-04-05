@@ -8,6 +8,10 @@ import type { ContextHolder } from "../../src/serve/routes/api";
 import type { DocumentRow, StoreResult } from "../../src/store/types";
 
 import {
+  handleCreateDoc,
+  handleCreateFolder,
+  handleDuplicateDoc,
+  handleMoveDoc,
   handleRenameDoc,
   handleRevealDoc,
   handleTrashDoc,
@@ -427,5 +431,137 @@ describe("document lifecycle API", () => {
 
     expect(res.status).toBe(200);
     expect(trashedPath).toBe(join(tmpDir, "second.md"));
+  });
+
+  test("creates a new note by title and folder path", async () => {
+    const ctxHolder = createMockContextHolder({
+      collections: [
+        {
+          name: "notes",
+          path: tmpDir,
+          pattern: "**/*.md",
+          include: [],
+          exclude: [],
+        },
+      ],
+    });
+    const store = {
+      listDocuments: async () => ({ ok: true as const, value: [] }),
+    };
+    const req = new Request("http://localhost/api/docs", {
+      method: "POST",
+      body: JSON.stringify({
+        collection: "notes",
+        title: "Project Plan",
+        folderPath: "projects",
+        content: "# Project Plan\n",
+      }),
+    });
+
+    const res = await handleCreateDoc(ctxHolder, store as never, req);
+    expect(res.status).toBe(202);
+    const body = (await res.json()) as { relPath: string };
+    expect(body.relPath).toBe("projects/project-plan.md");
+  });
+
+  test("creates folders inside a collection", async () => {
+    const ctxHolder = createMockContextHolder({
+      collections: [
+        {
+          name: "notes",
+          path: tmpDir,
+          pattern: "**/*.md",
+          include: [],
+          exclude: [],
+        },
+      ],
+    });
+
+    const req = new Request("http://localhost/api/folders", {
+      method: "POST",
+      body: JSON.stringify({
+        collection: "notes",
+        parentPath: "projects",
+        name: "research",
+      }),
+    });
+
+    const res = await handleCreateFolder(ctxHolder, req);
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { folderPath: string };
+    expect(body.folderPath).toBe("projects/research");
+  });
+
+  test("duplicates editable markdown files", async () => {
+    const doc = createDoc(tmpDir);
+    const sourcePath = join(tmpDir, "doc.md");
+    await writeFile(sourcePath, "# Hello");
+
+    const ctxHolder = createMockContextHolder({
+      collections: [
+        {
+          name: "notes",
+          path: tmpDir,
+          pattern: "**/*.md",
+          include: [],
+          exclude: [],
+        },
+      ],
+    });
+    const store = {
+      ...createMockStore(doc),
+      listDocuments: async () =>
+        ({ ok: true as const, value: [doc] }) as StoreResult<DocumentRow[]>,
+      getLinksForDoc: async () => ({ ok: true as const, value: [] }) as never,
+      getBacklinksForDoc: async () =>
+        ({ ok: true as const, value: [] }) as never,
+    };
+    const req = new Request("http://localhost/api/docs/abc123/duplicate", {
+      method: "POST",
+      body: JSON.stringify({ name: "copy.md" }),
+    });
+
+    const res = await handleDuplicateDoc(
+      ctxHolder,
+      store as never,
+      "#abc123",
+      req
+    );
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { relPath: string };
+    expect(body.relPath).toBe("copy.md");
+  });
+
+  test("moves editable markdown files to another folder", async () => {
+    const doc = createDoc(tmpDir);
+    const sourcePath = join(tmpDir, "doc.md");
+    await writeFile(sourcePath, "# Hello");
+
+    const ctxHolder = createMockContextHolder({
+      collections: [
+        {
+          name: "notes",
+          path: tmpDir,
+          pattern: "**/*.md",
+          include: [],
+          exclude: [],
+        },
+      ],
+    });
+    const store = {
+      ...createMockStore(doc),
+      getLinksForDoc: async () => ({ ok: true as const, value: [] }) as never,
+      getBacklinksForDoc: async () =>
+        ({ ok: true as const, value: [] }) as never,
+    };
+    const req = new Request("http://localhost/api/docs/abc123/move", {
+      method: "POST",
+      body: JSON.stringify({ folderPath: "projects" }),
+    });
+
+    const res = await handleMoveDoc(ctxHolder, store as never, "#abc123", req);
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { relPath: string };
+    expect(body.relPath).toBe("projects/doc.md");
   });
 });

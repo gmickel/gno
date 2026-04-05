@@ -135,6 +135,7 @@ The split-view editor provides:
 | **Toggle Preview**   | Show/hide preview pane                          |
 | **Safe Editing**     | Converted source formats stay read-only         |
 | **Wiki Linking**     | `[[...]]` autocomplete and linked-note creation |
+| **Preset Insert**    | Insert structured note scaffolds from presets   |
 
 ### Keyboard Shortcuts
 
@@ -145,7 +146,7 @@ Press **?** to view all shortcuts. Single-key shortcuts (no modifier needed) wor
 | Shortcut   | Action             |
 | :--------- | :----------------- |
 | N          | New note           |
-| Cmd/Ctrl+K | Quick switcher     |
+| Cmd/Ctrl+K | Command palette    |
 | /          | Focus search       |
 | T          | Cycle search depth |
 | ?          | Show help          |
@@ -177,19 +178,28 @@ Use Quick Capture (N) for new notes:
 
 1. Enter a title (generates filename automatically)
 2. Write content in markdown
-3. Select target collection
-4. Click **Create note**
+3. Select target collection and optional preset
+4. Create directly in the current Browse folder when opened from Browse or the command palette
+5. Click **Create note**
 
 The file is written to the collection's folder and indexed immediately.
 
+Quick Capture now supports:
+
+- place-aware creation from the current Browse collection/folder
+- preset-aware note scaffolds
+- command-palette create flows without losing current workspace context
+
 ### Quick Switcher
 
-Press **Cmd/Ctrl+K** to open the global quick switcher. It uses the fast BM25 path to:
+Press **Cmd/Ctrl+K** to open the global command palette. It uses the fast BM25 path to:
 
 - jump to recent notes
 - jump straight to matching documents
 - open exact line-target deep links from search-driven flows
 - create a new note with the typed query as the suggested title
+- create in the current Browse location when context is available
+- jump to core workspace surfaces
 
 ### Wiki-Link Autocomplete
 
@@ -213,6 +223,17 @@ For editable local files, **Move to Trash**:
 - Moves the file to your system Trash
 - Removes it from the current index after refresh
 - Keeps recovery semantics aligned with normal desktop expectations
+
+### File Operations
+
+Editable notes now support richer organization flows:
+
+- **Rename** in place
+- **Move** to another folder in the same collection
+- **Duplicate** into the current or another folder
+- **Create folder** from Browse
+
+GNO surfaces reference warnings when backlinks or link paths may need review after a refactor.
 
 ---
 
@@ -360,6 +381,7 @@ Browse all indexed documents:
 
 - Cross-collection tree sidebar with collection roots and nested folders
 - Folder detail pane with subfolders and direct documents for the selected node
+- New note and new folder actions from the current Browse context
 - Tab-scoped browse state so each workspace tab can keep its own expanded tree context
 - Sort by modified time or extracted frontmatter date fields inside the current folder scope
 - Paginated direct-document results (25 per page)
@@ -428,6 +450,14 @@ The document view includes a collapsible sidebar with link information:
 - Broken links shown with red indicator when target doesn't exist
 
 **Related Notes Panel**: Shows semantically similar documents based on vector similarity. Toggle on/off, with similarity scores shown as percentage bars. Great for discovering connections you didn't know existed.
+
+### Document Outline
+
+Long notes now expose a heading-aware outline in the facts rail:
+
+- jump to sections quickly
+- copy deep links to section anchors
+- keep a live sense of where you are in long notes
 
 ### Wiki Link Autocomplete
 

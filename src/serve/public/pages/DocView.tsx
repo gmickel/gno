@@ -5,6 +5,7 @@ import {
   CheckIcon,
   ChevronRightIcon,
   CodeIcon,
+  CopyIcon,
   FileText,
   FolderOpen,
   HardDrive,
@@ -18,6 +19,7 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { extractSections } from "../../../core/sections";
 import {
   CodeBlock,
   CodeBlockCopyButton,
@@ -46,6 +48,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "../components/ui/dialog";
+import { Input } from "../components/ui/input";
 import { Separator } from "../components/ui/separator";
 import { apiFetch } from "../hooks/use-api";
 import { useDocEvents } from "../hooks/use-doc-events";
@@ -55,6 +58,7 @@ import {
   parseDocumentDeepLink,
 } from "../lib/deep-links";
 import { waitForDocumentAvailability } from "../lib/document-availability";
+import { subscribeWorkspaceActionRequest } from "../lib/workspace-events";
 
 interface PageProps {
   navigate: (to: string | number) => void;
@@ -99,6 +103,29 @@ interface RenameDocResponse {
   uri: string;
   path: string;
   relPath: string;
+  refactorWarnings?: {
+    warnings: string[];
+  };
+}
+
+interface MoveDocResponse {
+  success: boolean;
+  uri: string;
+  path: string;
+  relPath: string;
+  refactorWarnings?: {
+    warnings: string[];
+  };
+}
+
+interface DuplicateDocResponse {
+  success: boolean;
+  uri: string;
+  path: string;
+  relPath: string;
+  refactorWarnings?: {
+    warnings: string[];
+  };
 }
 
 interface UpdateDocResponse {
@@ -219,6 +246,12 @@ function parseBreadcrumbs(
   return segments;
 }
 
+function getParentPath(relPath: string): string {
+  const parts = relPath.split("/").filter(Boolean);
+  parts.pop();
+  return parts.join("/");
+}
+
 export default function DocView({ navigate }: PageProps) {
   const [doc, setDoc] = useState<DocData | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -230,6 +263,19 @@ export default function DocView({ navigate }: PageProps) {
   const [renaming, setRenaming] = useState(false);
   const [renameError, setRenameError] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
+  const [renameWarnings, setRenameWarnings] = useState<string[]>([]);
+  const [moveDialogOpen, setMoveDialogOpen] = useState(false);
+  const [moving, setMoving] = useState(false);
+  const [moveError, setMoveError] = useState<string | null>(null);
+  const [moveFolderPath, setMoveFolderPath] = useState("");
+  const [moveName, setMoveName] = useState("");
+  const [moveWarnings, setMoveWarnings] = useState<string[]>([]);
+  const [duplicateDialogOpen, setDuplicateDialogOpen] = useState(false);
+  const [duplicating, setDuplicating] = useState(false);
+  const [duplicateError, setDuplicateError] = useState<string | null>(null);
+  const [duplicateFolderPath, setDuplicateFolderPath] = useState("");
+  const [duplicateName, setDuplicateName] = useState("");
+  const [duplicateWarnings, setDuplicateWarnings] = useState<string[]>([]);
   const [showRawView, setShowRawView] = useState(false);
   const [creatingCopy, setCreatingCopy] = useState(false);
   const [copyError, setCopyError] = useState<string | null>(null);
@@ -245,6 +291,9 @@ export default function DocView({ navigate }: PageProps) {
   const [tagSaveSuccess, setTagSaveSuccess] = useState(false);
   const [resolvedWikiLinks, setResolvedWikiLinks] = useState<OutgoingLink[]>(
     []
+  );
+  const [activeSectionAnchor, setActiveSectionAnchor] = useState<string | null>(
+    null
   );
 
   // Request sequencing - ignore stale responses on rapid navigation
@@ -372,6 +421,37 @@ export default function DocView({ navigate }: PageProps) {
   }, [currentTarget.lineStart, currentTarget.view]);
 
   const breadcrumbs = doc ? parseBreadcrumbs(doc.collection, doc.relPath) : [];
+  const sections = useMemo(
+    () => extractSections(parsedContent.body),
+    [parsedContent.body]
+  );
+
+  useEffect(() => {
+    if (showRawView || sections.length === 0) {
+      setActiveSectionAnchor(sections[0]?.anchor ?? null);
+      return;
+    }
+
+    const updateActiveSection = () => {
+      let current = sections[0]?.anchor ?? null;
+      for (const section of sections) {
+        const element = document.getElementById(section.anchor);
+        if (!element) {
+          continue;
+        }
+        if (element.getBoundingClientRect().top <= 160) {
+          current = section.anchor;
+        }
+      }
+      setActiveSectionAnchor(current);
+    };
+
+    updateActiveSection();
+    window.addEventListener("scroll", updateActiveSection, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", updateActiveSection);
+    };
+  }, [sections, showRawView]);
 
   const handleEdit = () => {
     if (doc?.capabilities.editable) {
@@ -445,8 +525,28 @@ export default function DocView({ navigate }: PageProps) {
     const filename = doc.relPath.split("/").pop() ?? doc.relPath;
     setRenameValue(filename);
     setRenameError(null);
+    setRenameWarnings([]);
     setRenameDialogOpen(true);
   }, [doc]);
+
+  useEffect(() => {
+    if (!renameDialogOpen || !doc || !renameValue.trim()) {
+      return;
+    }
+    void apiFetch<{ refactorWarnings?: { warnings: string[] } }>(
+      `/api/docs/${encodeURIComponent(doc.docid)}/refactor-plan`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          operation: "rename",
+          name: renameValue,
+          uri: doc.uri,
+        }),
+      }
+    ).then(({ data }) => {
+      setRenameWarnings(data?.refactorWarnings?.warnings ?? []);
+    });
+  }, [doc, renameDialogOpen, renameValue]);
 
   const handleRename = useCallback(async () => {
     if (!doc) {
@@ -473,6 +573,159 @@ export default function DocView({ navigate }: PageProps) {
       navigate(`/doc?uri=${encodeURIComponent(data.uri)}`);
     }
   }, [doc, navigate, renameValue]);
+
+  const handleStartMove = useCallback(() => {
+    if (!doc) {
+      return;
+    }
+    setMoveFolderPath(getParentPath(doc.relPath));
+    setMoveName(doc.relPath.split("/").pop() ?? doc.relPath);
+    setMoveError(null);
+    setMoveWarnings([]);
+    setMoveDialogOpen(true);
+  }, [doc]);
+
+  useEffect(() => {
+    if (!moveDialogOpen || !doc || !moveFolderPath.trim()) {
+      return;
+    }
+    void apiFetch<{ refactorWarnings?: { warnings: string[] } }>(
+      `/api/docs/${encodeURIComponent(doc.docid)}/refactor-plan`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          operation: "move",
+          folderPath: moveFolderPath,
+          name: moveName,
+          uri: doc.uri,
+        }),
+      }
+    ).then(({ data }) => {
+      setMoveWarnings(data?.refactorWarnings?.warnings ?? []);
+    });
+  }, [doc, moveDialogOpen, moveFolderPath, moveName]);
+
+  const handleMove = useCallback(async () => {
+    if (!doc) {
+      return;
+    }
+    setMoving(true);
+    setMoveError(null);
+    const { data, error: err } = await apiFetch<MoveDocResponse>(
+      `/api/docs/${encodeURIComponent(doc.docid)}/move`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          folderPath: moveFolderPath,
+          name: moveName,
+          uri: doc.uri,
+        }),
+      }
+    );
+    setMoving(false);
+
+    if (err) {
+      setMoveError(err);
+      return;
+    }
+
+    setMoveDialogOpen(false);
+    if (data?.uri) {
+      navigate(`/doc?uri=${encodeURIComponent(data.uri)}`);
+    }
+  }, [doc, moveFolderPath, moveName, navigate]);
+
+  const handleStartDuplicate = useCallback(() => {
+    if (!doc) {
+      return;
+    }
+    setDuplicateFolderPath(getParentPath(doc.relPath));
+    setDuplicateName(doc.relPath.split("/").pop() ?? doc.relPath);
+    setDuplicateError(null);
+    setDuplicateWarnings([]);
+    setDuplicateDialogOpen(true);
+  }, [doc]);
+
+  useEffect(() => {
+    if (!duplicateDialogOpen || !doc) {
+      return;
+    }
+    void apiFetch<{ refactorWarnings?: { warnings: string[] } }>(
+      `/api/docs/${encodeURIComponent(doc.docid)}/refactor-plan`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          operation: "duplicate",
+          folderPath: duplicateFolderPath || undefined,
+          name: duplicateName || undefined,
+          uri: doc.uri,
+        }),
+      }
+    ).then(({ data }) => {
+      setDuplicateWarnings(data?.refactorWarnings?.warnings ?? []);
+    });
+  }, [doc, duplicateDialogOpen, duplicateFolderPath, duplicateName]);
+
+  const handleDuplicate = useCallback(async () => {
+    if (!doc) {
+      return;
+    }
+    setDuplicating(true);
+    setDuplicateError(null);
+    const { data, error: err } = await apiFetch<DuplicateDocResponse>(
+      `/api/docs/${encodeURIComponent(doc.docid)}/duplicate`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          folderPath: duplicateFolderPath || undefined,
+          name: duplicateName || undefined,
+          uri: doc.uri,
+        }),
+      }
+    );
+    setDuplicating(false);
+
+    if (err) {
+      setDuplicateError(err);
+      return;
+    }
+
+    setDuplicateDialogOpen(false);
+    if (data?.uri) {
+      navigate(`/doc?uri=${encodeURIComponent(data.uri)}`);
+    }
+  }, [doc, duplicateFolderPath, duplicateName, navigate]);
+
+  useEffect(() => {
+    const unsubscribers = [
+      subscribeWorkspaceActionRequest("rename-current-note", () => {
+        if (doc?.capabilities.editable) {
+          handleStartRename();
+        }
+      }),
+      subscribeWorkspaceActionRequest("move-current-note", () => {
+        if (doc?.capabilities.editable) {
+          handleStartMove();
+        }
+      }),
+      subscribeWorkspaceActionRequest("duplicate-current-note", () => {
+        if (doc?.capabilities.editable) {
+          handleStartDuplicate();
+        }
+      }),
+    ];
+
+    return () => {
+      for (const unsubscribe of unsubscribers) {
+        unsubscribe();
+      }
+    };
+  }, [
+    doc?.capabilities.editable,
+    handleStartDuplicate,
+    handleStartMove,
+    handleStartRename,
+  ]);
 
   const handleReveal = useCallback(async () => {
     if (!doc) {
@@ -724,6 +977,71 @@ export default function DocView({ navigate }: PageProps) {
           </div>
         </>
       )}
+
+      {sections.length > 0 && (
+        <>
+          <div className="mx-3 border-border/20 border-t" />
+          <div className="px-3 py-3">
+            <div className="mb-2 font-mono text-[10px] text-muted-foreground/50 uppercase tracking-[0.15em]">
+              Outline
+            </div>
+            <div className="space-y-0.5">
+              {sections.map((section) => (
+                <div
+                  className={`flex items-center gap-1 rounded px-1 py-0.5 ${
+                    activeSectionAnchor === section.anchor
+                      ? "bg-primary/10 text-primary"
+                      : "text-muted-foreground"
+                  }`}
+                  key={section.anchor}
+                  style={{ paddingLeft: `${section.level * 10}px` }}
+                >
+                  <button
+                    className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 rounded px-1 py-0.5 text-left text-xs transition-colors hover:bg-muted/20 hover:text-foreground"
+                    onClick={() => {
+                      setShowRawView(false);
+                      requestAnimationFrame(() => {
+                        document
+                          .getElementById(section.anchor)
+                          ?.scrollIntoView({
+                            behavior: "smooth",
+                            block: "start",
+                          });
+                        window.history.replaceState(
+                          {},
+                          "",
+                          `${buildDocDeepLink({
+                            uri: doc?.uri ?? "",
+                            view: "rendered",
+                          })}#${section.anchor}`
+                        );
+                      });
+                    }}
+                    type="button"
+                  >
+                    <ChevronRightIcon className="size-3 shrink-0" />
+                    <span className="truncate">{section.title}</span>
+                  </button>
+                  <button
+                    className="cursor-pointer rounded p-1 transition-colors hover:bg-muted/20 hover:text-foreground"
+                    onClick={() => {
+                      void navigator.clipboard.writeText(
+                        `${window.location.origin}${buildDocDeepLink({
+                          uri: doc?.uri ?? "",
+                          view: "rendered",
+                        })}#${section.anchor}`
+                      );
+                    }}
+                    type="button"
+                  >
+                    <CopyIcon className="size-3" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
     </nav>
   );
 
@@ -960,6 +1278,24 @@ export default function DocView({ navigate }: PageProps) {
                     >
                       <TextIcon className="size-4" />
                       Rename
+                    </Button>
+                    <Button
+                      className="gap-1.5"
+                      onClick={handleStartMove}
+                      size="sm"
+                      variant="outline"
+                    >
+                      <FolderOpen className="size-4" />
+                      Move
+                    </Button>
+                    <Button
+                      className="gap-1.5"
+                      onClick={handleStartDuplicate}
+                      size="sm"
+                      variant="outline"
+                    >
+                      <CopyIcon className="size-4" />
+                      Duplicate
                     </Button>
                   </>
                 ) : (
@@ -1322,6 +1658,13 @@ export default function DocView({ navigate }: PageProps) {
               {renameError}
             </div>
           )}
+          {renameWarnings.length > 0 && (
+            <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-amber-500 text-sm">
+              {renameWarnings.map((warning) => (
+                <div key={warning}>{warning}</div>
+              ))}
+            </div>
+          )}
           <DialogFooter className="gap-2 sm:gap-0">
             <Button
               onClick={() => setRenameDialogOpen(false)}
@@ -1334,6 +1677,102 @@ export default function DocView({ navigate }: PageProps) {
                 <Loader2Icon className="mr-1.5 size-4 animate-spin" />
               )}
               Rename
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog onOpenChange={setMoveDialogOpen} open={moveDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Move document</DialogTitle>
+            <DialogDescription>
+              Move the current note to another folder inside this collection.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <Input
+              onChange={(event) => setMoveFolderPath(event.target.value)}
+              placeholder="projects/research"
+              value={moveFolderPath}
+            />
+            <Input
+              onChange={(event) => setMoveName(event.target.value)}
+              placeholder="note.md"
+              value={moveName}
+            />
+            {moveError && (
+              <div className="rounded-lg bg-destructive/10 p-3 text-destructive text-sm">
+                {moveError}
+              </div>
+            )}
+            {moveWarnings.length > 0 && (
+              <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-amber-500 text-sm">
+                {moveWarnings.map((warning) => (
+                  <div key={warning}>{warning}</div>
+                ))}
+              </div>
+            )}
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button onClick={() => setMoveDialogOpen(false)} variant="outline">
+              Cancel
+            </Button>
+            <Button disabled={moving} onClick={() => void handleMove()}>
+              {moving && <Loader2Icon className="mr-1.5 size-4 animate-spin" />}
+              Move
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog onOpenChange={setDuplicateDialogOpen} open={duplicateDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Duplicate document</DialogTitle>
+            <DialogDescription>
+              Create a copy of this note in the current or another folder.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <Input
+              onChange={(event) => setDuplicateFolderPath(event.target.value)}
+              placeholder="projects/research"
+              value={duplicateFolderPath}
+            />
+            <Input
+              onChange={(event) => setDuplicateName(event.target.value)}
+              placeholder="note-copy.md"
+              value={duplicateName}
+            />
+            {duplicateError && (
+              <div className="rounded-lg bg-destructive/10 p-3 text-destructive text-sm">
+                {duplicateError}
+              </div>
+            )}
+            {duplicateWarnings.length > 0 && (
+              <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-amber-500 text-sm">
+                {duplicateWarnings.map((warning) => (
+                  <div key={warning}>{warning}</div>
+                ))}
+              </div>
+            )}
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              onClick={() => setDuplicateDialogOpen(false)}
+              variant="outline"
+            >
+              Cancel
+            </Button>
+            <Button
+              disabled={duplicating}
+              onClick={() => void handleDuplicate()}
+            >
+              {duplicating && (
+                <Loader2Icon className="mr-1.5 size-4 animate-spin" />
+              )}
+              Duplicate
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -41,7 +41,9 @@ All endpoints are JSON-based and run entirely on your machine.
 | `/api/connectors`        | GET    | Detect in-app connector install state                       |
 | `/api/docs`              | GET    | List documents                                              |
 | `/api/docs/autocomplete` | GET    | Title/path suggestions for wiki-linking and quick switcher  |
+| `/api/note-presets`      | GET    | List note presets and scaffold previews                     |
 | `/api/doc`               | GET    | Get document content                                        |
+| `/api/doc/:id/sections`  | GET    | Get extracted heading/section structure                     |
 | `/api/events`            | GET    | Server-sent document change events                          |
 | `/api/doc/:id/links`     | GET    | Get outgoing links from doc                                 |
 | `/api/doc/:id/backlinks` | GET    | Get docs linking to this                                    |
@@ -58,17 +60,21 @@ All endpoints are JSON-based and run entirely on your machine.
 
 ### Write Operations
 
-| Endpoint                   | Method | Description         |
-| :------------------------- | :----- | :------------------ |
-| `/api/collections`         | POST   | Add new collection  |
-| `/api/connectors/install`  | POST   | Install connector   |
-| `/api/collections/:name`   | DELETE | Remove collection   |
-| `/api/sync`                | POST   | Trigger re-index    |
-| `/api/docs`                | POST   | Create new document |
-| `/api/docs/:id`            | PUT    | Update document     |
-| `/api/docs/:id/deactivate` | POST   | Unindex document    |
-| `/api/jobs/active`         | GET    | Get active job      |
-| `/api/jobs/:id`            | GET    | Poll job status     |
+| Endpoint                      | Method | Description                            |
+| :---------------------------- | :----- | :------------------------------------- |
+| `/api/collections`            | POST   | Add new collection                     |
+| `/api/connectors/install`     | POST   | Install connector                      |
+| `/api/collections/:name`      | DELETE | Remove collection                      |
+| `/api/sync`                   | POST   | Trigger re-index                       |
+| `/api/docs`                   | POST   | Create new document                    |
+| `/api/docs/:id`               | PUT    | Update document                        |
+| `/api/docs/:id/refactor-plan` | POST   | Preview rename/move/duplicate warnings |
+| `/api/docs/:id/move`          | POST   | Move editable document                 |
+| `/api/docs/:id/duplicate`     | POST   | Duplicate editable document            |
+| `/api/docs/:id/deactivate`    | POST   | Unindex document                       |
+| `/api/folders`                | POST   | Create folder in collection            |
+| `/api/jobs/active`            | GET    | Get active job                         |
+| `/api/jobs/:id`               | GET    | Poll job status                        |
 
 ---
 

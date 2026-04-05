@@ -42,11 +42,12 @@ Create and edit documents directly in your browser:
 - **Split-view editing**: CodeMirror 6 editor with live markdown preview
 - **Auto-save**: Changes saved automatically with 2-second debounce
 - **Quick capture**: Press **N** anywhere to create a new note instantly
-- **Quick switcher**: Press **⌘K** / **Ctrl+K** to jump to recent or matching notes
+- **Command palette**: Press **⌘K** / **Ctrl+K** to jump, open, or create in context
 - **Syntax highlighting**: Code blocks rendered with Shiki
 - **Keyboard shortcuts**: **⌘S** to save, **⌘B** for bold, **⌘I** for italic
 - **Safe editing**: Converted PDF/DOCX/etc. sources stay read-only; create a markdown copy instead
 - **Wiki linking**: Type `[[` for note autocomplete and linked-note creation
+- **Preset scaffolds**: Apply note presets and insert structured sections while editing
 
 ![GNO Document Editor](/assets/screenshots/webui-editor.jpg)
 
@@ -59,6 +60,7 @@ View documents with full context:
 - **Related notes**: AI-powered suggestions based on semantic similarity
 - **Quick navigation**: Click any link to jump to that document
 - **Deep links**: Copy links to exact documents and source-view line targets
+- **Outline rail**: Jump to sections and copy deep links to note headings
 - **External change awareness**: Reload when a file changes on disk
 
 ![GNO Document Viewer](/assets/screenshots/webui-doc-view.jpg)
@@ -92,6 +94,7 @@ Navigate your indexed notes like a real workspace, not just a flat table:
 
 - **Cross-collection tree**: browse all collections from one sidebar
 - **Folder detail panes**: inspect subfolders and direct documents for the selected node
+- **In-place creation**: create notes and folders from the current browse context
 - **Tab-scoped state**: each app tab can keep its own expanded browse context
 - **Pinned collections**: keep favorite roots close while moving through the tree
 - **Breadcrumbs**: jump back up the current folder path quickly

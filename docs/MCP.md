@@ -633,6 +633,17 @@ Returns collection counts, document totals, and health status.
 
 Create a new document (requires `--enable-write`).
 
+Common fields:
+
+```yaml
+collection: "notes"
+title: "Project Plan"
+folderPath: "projects/gno" # Optional
+collisionPolicy: "create_with_suffix" # Optional: error|open_existing|create_with_suffix
+presetId: "project-note" # Optional
+content: "# Project Plan\n" # Optional when preset provides scaffold
+```
+
 ### gno_add_collection
 
 Add a folder to the index (requires `--enable-write`).

@@ -18,6 +18,7 @@ import {
   parseTargetParts,
   stripWikiMdExt,
 } from "../../../../core/links";
+import { slugifySectionTitle } from "../../../../core/sections";
 import {
   extractMarkdownCodeLanguage,
   resolveCodeLanguage,
@@ -126,9 +127,34 @@ const Link: FC<ComponentProps<"a"> & { node?: unknown }> = ({
   );
 };
 
+function flattenNodeText(node: ReactNode): string {
+  if (typeof node === "string" || typeof node === "number") {
+    return String(node);
+  }
+  if (!node || typeof node === "boolean") {
+    return "";
+  }
+  if (Array.isArray(node)) {
+    return node.map((child) => flattenNodeText(child)).join("");
+  }
+  if (
+    typeof node === "object" &&
+    "props" in node &&
+    node.props &&
+    typeof node.props === "object" &&
+    "children" in node.props
+  ) {
+    return flattenNodeText(node.props.children as ReactNode);
+  }
+  return "";
+}
+
 // Heading styles with proper hierarchy
 const createHeading =
-  (level: 1 | 2 | 3 | 4 | 5 | 6): FC<{ children?: ReactNode }> =>
+  (
+    level: 1 | 2 | 3 | 4 | 5 | 6,
+    anchorCounts: Map<string, number>
+  ): FC<{ children?: ReactNode }> =>
   ({ children }) => {
     const Tag = `h${level}` as const;
     const sizes = {
@@ -139,8 +165,15 @@ const createHeading =
       5: "text-base mt-3 mb-1 font-semibold",
       6: "text-sm mt-3 mb-1 font-semibold text-muted-foreground",
     };
+    const baseAnchor = slugifySectionTitle(flattenNodeText(children));
+    const seen = (anchorCounts.get(baseAnchor) ?? 0) + 1;
+    anchorCounts.set(baseAnchor, seen);
+    const anchor = seen === 1 ? baseAnchor : `${baseAnchor}-${seen}`;
     return (
-      <Tag className={cn("font-serif tracking-tight", sizes[level])}>
+      <Tag
+        className={cn("scroll-mt-24 font-serif tracking-tight", sizes[level])}
+        id={anchor}
+      >
         {children}
       </Tag>
     );
@@ -343,30 +376,6 @@ const Image: FC<ComponentProps<"img"> & { node?: unknown }> = ({
   />
 );
 
-// Component mapping for react-markdown
-const components = {
-  h1: createHeading(1),
-  h2: createHeading(2),
-  h3: createHeading(3),
-  h4: createHeading(4),
-  h5: createHeading(5),
-  h6: createHeading(6),
-  p: Paragraph,
-  a: Link,
-  code: InlineCode,
-  pre: Pre,
-  blockquote: Blockquote,
-  ul: UnorderedList,
-  ol: OrderedList,
-  table: Table,
-  thead: TableHead,
-  tr: TableRow,
-  td: TableCell,
-  th: TableHeaderCell,
-  hr: Hr,
-  img: Image,
-};
-
 /**
  * Renders markdown content with syntax highlighting and proper styling.
  * Sanitizes HTML to prevent XSS attacks.
@@ -386,6 +395,29 @@ export const MarkdownPreview = memo(
       collection,
       wikiLinks
     );
+    const anchorCounts = new Map<string, number>();
+    const components = {
+      h1: createHeading(1, anchorCounts),
+      h2: createHeading(2, anchorCounts),
+      h3: createHeading(3, anchorCounts),
+      h4: createHeading(4, anchorCounts),
+      h5: createHeading(5, anchorCounts),
+      h6: createHeading(6, anchorCounts),
+      p: Paragraph,
+      a: Link,
+      code: InlineCode,
+      pre: Pre,
+      blockquote: Blockquote,
+      ul: UnorderedList,
+      ol: OrderedList,
+      table: Table,
+      thead: TableHead,
+      tr: TableRow,
+      td: TableCell,
+      th: TableHeaderCell,
+      hr: Hr,
+      img: Image,
+    };
 
     return (
       <div

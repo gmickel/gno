@@ -13,6 +13,13 @@ void mock.module("../../../../src/serve/public/hooks/use-doc-events", () => ({
   useDocEvents: () => null,
 }));
 
+void mock.module("../../../../src/serve/public/hooks/useCaptureModal", () => ({
+  useCaptureModal: () => ({
+    openCapture: () => undefined,
+    isOpen: false,
+  }),
+}));
+
 describe("Browse page DOM interactions", () => {
   beforeEach(() => {
     apiFetch.mockReset();

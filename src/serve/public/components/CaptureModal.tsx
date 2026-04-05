@@ -19,6 +19,11 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { WikiLinkDoc } from "./WikiLinkAutocomplete";
 
+import {
+  getNotePreset,
+  NOTE_PRESETS,
+  resolveNotePreset,
+} from "../../../core/note-presets";
 import { apiFetch } from "../hooks/use-api";
 import { getActiveWikiLinkQuery } from "../lib/wiki-link";
 import { IndexingProgress } from "./IndexingProgress";
@@ -48,6 +53,12 @@ export interface CaptureModalProps {
   open: boolean;
   /** Prefill title when opening from another surface */
   draftTitle?: string;
+  /** Default collection from current workspace context */
+  defaultCollection?: string;
+  /** Default folder path from current workspace context */
+  defaultFolderPath?: string;
+  /** Optional preset id */
+  presetId?: string;
   /** Callback when open state changes */
   onOpenChange: (open: boolean) => void;
   /** Callback when document created successfully */
@@ -62,8 +73,11 @@ interface Collection {
 interface CreateDocResponse {
   uri: string;
   path: string;
-  jobId: string;
+  jobId: string | null;
   note: string;
+  openedExisting?: boolean;
+  created?: boolean;
+  relPath?: string;
 }
 
 interface CollectionsResponse {
@@ -91,8 +105,11 @@ type ModalState = "form" | "submitting" | "success" | "error";
 export function CaptureModal({
   open,
   draftTitle = "",
+  defaultCollection = "",
+  defaultFolderPath = "",
   onOpenChange,
   onSuccess,
+  presetId = "",
 }: CaptureModalProps) {
   // Form state
   const [title, setTitle] = useState("");
@@ -100,6 +117,9 @@ export function CaptureModal({
   const [collection, setCollection] = useState("");
   const [collections, setCollections] = useState<Collection[]>([]);
   const [tags, setTags] = useState<string[]>([]);
+  const [selectedPresetId, setSelectedPresetId] = useState<string>(presetId);
+  const [contentTouched, setContentTouched] = useState(false);
+  const [lastGeneratedContent, setLastGeneratedContent] = useState("");
   const [wikiLinkDocs, setWikiLinkDocs] = useState<WikiLinkDoc[]>([]);
   const [wikiLinkOpen, setWikiLinkOpen] = useState(false);
   const [wikiLinkQuery, setWikiLinkQuery] = useState("");
@@ -123,6 +143,7 @@ export function CaptureModal({
     if (draftTitle.trim()) {
       setTitle(draftTitle);
     }
+    setSelectedPresetId(presetId || "blank");
 
     void apiFetch<CollectionsResponse>("/api/status").then(({ data }) => {
       if (data?.collections) {
@@ -130,9 +151,17 @@ export function CaptureModal({
           data.collections.map((c) => ({ name: c.name, path: c.path }))
         );
 
-        // Restore last used collection or default to first
+        const requestedCollection = defaultCollection.trim();
         const lastUsed = localStorage.getItem(STORAGE_KEY);
-        if (lastUsed && data.collections.some((c) => c.name === lastUsed)) {
+        if (
+          requestedCollection &&
+          data.collections.some((c) => c.name === requestedCollection)
+        ) {
+          setCollection(requestedCollection);
+        } else if (
+          lastUsed &&
+          data.collections.some((c) => c.name === lastUsed)
+        ) {
           setCollection(lastUsed);
         } else {
           const firstCollection = data.collections.at(0);
@@ -142,7 +171,7 @@ export function CaptureModal({
         }
       }
     });
-  }, [draftTitle, open]);
+  }, [defaultCollection, draftTitle, open, presetId]);
 
   // Reset form when modal closes
   useEffect(() => {
@@ -152,6 +181,9 @@ export function CaptureModal({
         setTitle("");
         setContent("");
         setTags([]);
+        setContentTouched(false);
+        setLastGeneratedContent("");
+        setSelectedPresetId("blank");
         setState("form");
         setError(null);
         setJobId(null);
@@ -168,15 +200,50 @@ export function CaptureModal({
   // Validate form
   const isValid = title.trim() && content.trim() && collection;
 
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    const resolved = resolveNotePreset({
+      presetId: selectedPresetId || "blank",
+      title: title.trim() || draftTitle.trim() || "Untitled",
+      tags,
+    });
+    const generatedContent = resolved?.content ?? "";
+    const shouldApply =
+      !contentTouched || !content.trim() || content === lastGeneratedContent;
+
+    setLastGeneratedContent(generatedContent);
+    if (shouldApply) {
+      setContent(generatedContent);
+      if (resolved?.tags) {
+        const nextTags = resolved.tags;
+        const sameTags =
+          nextTags.length === tags.length &&
+          nextTags.every((tag, index) => tags[index] === tag);
+        if (!sameTags) {
+          setTags(nextTags);
+        }
+      }
+    }
+  }, [
+    content,
+    contentTouched,
+    draftTitle,
+    lastGeneratedContent,
+    open,
+    selectedPresetId,
+    tags,
+    title,
+  ]);
+
   // Submit form
   const handleSubmit = useCallback(async () => {
     if (!isValid) return;
 
     setState("submitting");
     setError(null);
-
-    const filename = sanitizeFilename(title) || "untitled";
-    const relPath = `${filename}.md`;
 
     // Include tags in the POST request (server writes to frontmatter)
     const { data, error: err } = await apiFetch<CreateDocResponse>(
@@ -185,8 +252,11 @@ export function CaptureModal({
         method: "POST",
         body: JSON.stringify({
           collection,
-          relPath,
+          title,
+          folderPath: defaultFolderPath || undefined,
           content,
+          presetId: selectedPresetId || undefined,
+          collisionPolicy: "create_with_suffix",
           ...(tags.length > 0 && { tags }),
         }),
       }
@@ -207,7 +277,16 @@ export function CaptureModal({
       setCreatedUri(data.uri);
       onSuccess?.(data.uri);
     }
-  }, [isValid, title, collection, content, tags, onSuccess]);
+  }, [
+    collection,
+    content,
+    defaultFolderPath,
+    isValid,
+    onSuccess,
+    selectedPresetId,
+    tags,
+    title,
+  ]);
 
   // Handle keyboard submit
   const handleKeyDown = useCallback(
@@ -249,16 +328,16 @@ export function CaptureModal({
 
   const handleCreateLinkedNote = useCallback(
     async (linkedTitle: string) => {
-      const filename = sanitizeFilename(linkedTitle) || "untitled";
-      const relPath = `${filename}.md`;
       const { data, error: err } = await apiFetch<CreateDocResponse>(
         "/api/docs",
         {
           method: "POST",
           body: JSON.stringify({
             collection,
-            relPath,
+            title: linkedTitle,
+            folderPath: defaultFolderPath || undefined,
             content: `# ${linkedTitle}\n`,
+            collisionPolicy: "open_existing",
           }),
         }
       );
@@ -279,10 +358,11 @@ export function CaptureModal({
         ]);
       }
     },
-    [collection, insertWikiLink]
+    [collection, defaultFolderPath, insertWikiLink]
   );
 
   const handleContentInput = useCallback((nextContent: string) => {
+    setContentTouched(true);
     setContent(nextContent);
     const cursorPos = contentRef.current?.selectionStart ?? nextContent.length;
     const activeQuery = getActiveWikiLinkQuery(nextContent, cursorPos);
@@ -413,6 +493,48 @@ export function CaptureModal({
                 </p>
               )}
             </div>
+
+            {/* Preset */}
+            <div>
+              <label
+                className="mb-1.5 block font-medium text-sm"
+                htmlFor="capture-preset"
+              >
+                Preset
+              </label>
+              <Select
+                disabled={state === "submitting"}
+                onValueChange={setSelectedPresetId}
+                value={selectedPresetId}
+              >
+                <SelectTrigger className="w-full" id="capture-preset">
+                  <SelectValue placeholder="Select a preset" />
+                </SelectTrigger>
+                <SelectContent>
+                  {NOTE_PRESETS.map((preset) => (
+                    <SelectItem key={preset.id} value={preset.id}>
+                      {preset.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {getNotePreset(selectedPresetId)?.description && (
+                <p className="mt-1 text-muted-foreground text-xs">
+                  {getNotePreset(selectedPresetId)?.description}
+                </p>
+              )}
+            </div>
+
+            {defaultFolderPath && (
+              <div className="rounded-lg border border-border/50 bg-muted/20 p-3">
+                <div className="mb-1 font-mono text-[10px] text-muted-foreground uppercase tracking-[0.14em]">
+                  Target location
+                </div>
+                <div className="font-mono text-xs text-muted-foreground">
+                  {collection || defaultCollection} / {defaultFolderPath}
+                </div>
+              </div>
+            )}
 
             {/* Tags */}
             <div>

@@ -205,6 +205,7 @@ function AppContent({
       </div>
       <HelpButton onClick={() => setShortcutHelpOpen(true)} />
       <QuickSwitcher
+        location={location}
         navigate={(to) => navigate(to)}
         onCreateNote={openCapture}
         onOpenChange={setQuickSwitcherOpen}

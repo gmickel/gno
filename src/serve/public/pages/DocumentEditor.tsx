@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { NOTE_PRESETS, resolveNotePreset } from "../../../core/note-presets";
 import { Loader } from "../components/ai-elements/loader";
 import {
   CodeMirrorEditor,
@@ -44,6 +45,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "../components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../components/ui/select";
 import { Separator } from "../components/ui/separator";
 import {
   Tooltip,
@@ -196,6 +204,7 @@ export default function DocumentEditor({ navigate }: PageProps) {
   const [historyEntries, setHistoryEntries] = useState<LocalHistoryEntry[]>([]);
   const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
   const [selectedHistoryIndex, setSelectedHistoryIndex] = useState(0);
+  const [insertPresetId, setInsertPresetId] = useState("project-note");
 
   const [showPreview, setShowPreview] = useState(true);
   const [syncScroll, setSyncScroll] = useState(true);
@@ -383,6 +392,30 @@ export default function DocumentEditor({ navigate }: PageProps) {
       navigate(`/edit?uri=${encodeURIComponent(data.uri)}`);
     }
   }, [doc, navigate]);
+
+  const handleInsertPreset = useCallback(() => {
+    const resolved = resolveNotePreset({
+      presetId: insertPresetId,
+      title: doc?.title ?? "Untitled",
+    });
+    if (!resolved) {
+      return;
+    }
+
+    const scaffold =
+      hasUnsavedChanges || content.trim().length > 0
+        ? resolved.body.replace(/^# .*?\n+/u, "").trim()
+        : resolved.content.trim();
+    if (!scaffold) {
+      return;
+    }
+
+    const insertion =
+      hasUnsavedChanges || content.trim().length > 0
+        ? `\n\n${scaffold}\n`
+        : `${scaffold}\n`;
+    editorRef.current?.insertAtCursor(insertion);
+  }, [content, doc?.title, hasUnsavedChanges, insertPresetId]);
 
   const insertWikiLink = useCallback(
     (title: string) => {
@@ -962,6 +995,25 @@ export default function DocumentEditor({ navigate }: PageProps) {
             variant="ghost"
           >
             <LinkIcon className="size-4" />
+          </Button>
+
+          {/* Preview toggle */}
+          <Select onValueChange={setInsertPresetId} value={insertPresetId}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Preset" />
+            </SelectTrigger>
+            <SelectContent>
+              {NOTE_PRESETS.filter((preset) => preset.id !== "blank").map(
+                (preset) => (
+                  <SelectItem key={preset.id} value={preset.id}>
+                    {preset.label}
+                  </SelectItem>
+                )
+              )}
+            </SelectContent>
+          </Select>
+          <Button onClick={handleInsertPreset} size="sm" variant="outline">
+            Insert preset
           </Button>
 
           {/* Preview toggle */}
