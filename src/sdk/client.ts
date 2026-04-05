@@ -21,22 +21,37 @@ import type {
   GnoCreateNoteOptions,
   GnoCreateNoteResult,
   GnoClientInitOptions,
+  GnoDuplicateNoteOptions,
   GnoEmbedOptions,
   GnoEmbedResult,
   GnoGetOptions,
   GnoIndexOptions,
   GnoIndexResult,
   GnoListOptions,
+  GnoMoveNoteOptions,
   GnoMultiGetOptions,
   GnoQueryOptions,
+  GnoRefactorNoteResult,
+  GnoRenameNoteOptions,
   GnoUpdateOptions,
   GnoVectorSearchOptions,
 } from "./types";
 
 import { getIndexDbPath } from "../app/constants";
 import { ConfigSchema, loadConfig } from "../config";
-import { atomicWrite, createFolderPath } from "../core/file-ops";
-import { planCreateFolder } from "../core/file-refactors";
+import {
+  atomicWrite,
+  copyFilePath,
+  createFolderPath,
+  renameFilePath,
+} from "../core/file-ops";
+import {
+  buildRefactorWarnings,
+  planCreateFolder,
+  planDuplicateRefactor,
+  planMoveRefactor,
+  planRenameRefactor,
+} from "../core/file-refactors";
 import { resolveNoteCreatePlan } from "../core/note-creation";
 import { resolveNotePreset } from "../core/note-presets";
 import { extractSections } from "../core/sections";
@@ -743,6 +758,186 @@ class GnoClientImpl implements GnoClient {
       collection: collection.name,
       folderPath,
       path: fullPath,
+    };
+  }
+
+  async renameNote(
+    options: GnoRenameNoteOptions
+  ): Promise<GnoRefactorNoteResult> {
+    this.assertOpen();
+    const doc = await getDocumentByRef(
+      this.store,
+      this.config,
+      options.ref,
+      {}
+    );
+    const stored = await this.store.getDocumentByUri(doc.uri);
+    if (!stored.ok || !stored.value) {
+      throw sdkError("NOT_FOUND", "Document not found");
+    }
+    const storedDoc = stored.value;
+    const collection = this.getCollections(storedDoc.collection)[0];
+    if (!collection) {
+      throw sdkError(
+        "VALIDATION",
+        `Collection not found: ${storedDoc.collection}`
+      );
+    }
+    const plan = planRenameRefactor({
+      collection: collection.name,
+      currentRelPath: storedDoc.relPath,
+      nextName: options.name,
+    });
+    const currentPath = `${collection.path}/${storedDoc.relPath}`;
+    const nextPath = `${collection.path}/${plan.nextRelPath}`;
+    await renameFilePath(currentPath, nextPath);
+    await defaultSyncService.syncCollection(collection, this.store, {
+      runUpdateCmd: false,
+    });
+    const linksResult = await this.store.getLinksForDoc(storedDoc.id);
+    const backlinksResult = await this.store.getBacklinksForDoc(storedDoc.id);
+    if (!linksResult.ok || !backlinksResult.ok) {
+      throw sdkError("STORE", "Failed to compute refactor warnings");
+    }
+    return {
+      uri: plan.nextUri,
+      path: nextPath,
+      relPath: plan.nextRelPath,
+      warnings: buildRefactorWarnings(
+        {
+          backlinks: backlinksResult.value.length,
+          wikiLinks: linksResult.value.filter(
+            (entry) => entry.linkType === "wiki"
+          ).length,
+          markdownLinks: linksResult.value.filter(
+            (entry) => entry.linkType === "markdown"
+          ).length,
+        },
+        { filenameChanged: true }
+      ).warnings,
+    };
+  }
+
+  async moveNote(options: GnoMoveNoteOptions): Promise<GnoRefactorNoteResult> {
+    this.assertOpen();
+    const doc = await getDocumentByRef(
+      this.store,
+      this.config,
+      options.ref,
+      {}
+    );
+    const stored = await this.store.getDocumentByUri(doc.uri);
+    if (!stored.ok || !stored.value) {
+      throw sdkError("NOT_FOUND", "Document not found");
+    }
+    const storedDoc = stored.value;
+    const collection = this.getCollections(storedDoc.collection)[0];
+    if (!collection) {
+      throw sdkError(
+        "VALIDATION",
+        `Collection not found: ${storedDoc.collection}`
+      );
+    }
+    const plan = planMoveRefactor({
+      collection: collection.name,
+      currentRelPath: storedDoc.relPath,
+      folderPath: options.folderPath,
+      nextName: options.name,
+    });
+    const currentPath = `${collection.path}/${storedDoc.relPath}`;
+    const nextPath = `${collection.path}/${plan.nextRelPath}`;
+    await mkdir(dirname(nextPath), { recursive: true });
+    await renameFilePath(currentPath, nextPath);
+    await defaultSyncService.syncCollection(collection, this.store, {
+      runUpdateCmd: false,
+    });
+    const linksResult = await this.store.getLinksForDoc(storedDoc.id);
+    const backlinksResult = await this.store.getBacklinksForDoc(storedDoc.id);
+    if (!linksResult.ok || !backlinksResult.ok) {
+      throw sdkError("STORE", "Failed to compute refactor warnings");
+    }
+    return {
+      uri: plan.nextUri,
+      path: nextPath,
+      relPath: plan.nextRelPath,
+      warnings: buildRefactorWarnings(
+        {
+          backlinks: backlinksResult.value.length,
+          wikiLinks: linksResult.value.filter(
+            (entry) => entry.linkType === "wiki"
+          ).length,
+          markdownLinks: linksResult.value.filter(
+            (entry) => entry.linkType === "markdown"
+          ).length,
+        },
+        {
+          folderChanged: true,
+          filenameChanged: Boolean(options.name),
+        }
+      ).warnings,
+    };
+  }
+
+  async duplicateNote(
+    options: GnoDuplicateNoteOptions
+  ): Promise<GnoRefactorNoteResult> {
+    this.assertOpen();
+    const doc = await getDocumentByRef(
+      this.store,
+      this.config,
+      options.ref,
+      {}
+    );
+    const stored = await this.store.getDocumentByUri(doc.uri);
+    if (!stored.ok || !stored.value) {
+      throw sdkError("NOT_FOUND", "Document not found");
+    }
+    const storedDoc = stored.value;
+    const collection = this.getCollections(storedDoc.collection)[0];
+    if (!collection) {
+      throw sdkError(
+        "VALIDATION",
+        `Collection not found: ${storedDoc.collection}`
+      );
+    }
+    const docsResult = await this.store.listDocuments(collection.name);
+    if (!docsResult.ok) {
+      throw sdkError("STORE", docsResult.error.message, {
+        cause: docsResult.error.cause,
+      });
+    }
+    const plan = planDuplicateRefactor({
+      collection: collection.name,
+      currentRelPath: storedDoc.relPath,
+      folderPath: options.folderPath,
+      nextName: options.name,
+      existingRelPaths: docsResult.value.map((entry) => entry.relPath),
+    });
+    const currentPath = `${collection.path}/${storedDoc.relPath}`;
+    const nextPath = `${collection.path}/${plan.nextRelPath}`;
+    await mkdir(dirname(nextPath), { recursive: true });
+    await copyFilePath(currentPath, nextPath);
+    await defaultSyncService.syncCollection(collection, this.store, {
+      runUpdateCmd: false,
+    });
+    const linksResult = await this.store.getLinksForDoc(storedDoc.id);
+    const backlinksResult = await this.store.getBacklinksForDoc(storedDoc.id);
+    if (!linksResult.ok || !backlinksResult.ok) {
+      throw sdkError("STORE", "Failed to compute refactor warnings");
+    }
+    return {
+      uri: plan.nextUri,
+      path: nextPath,
+      relPath: plan.nextRelPath,
+      warnings: buildRefactorWarnings({
+        backlinks: backlinksResult.value.length,
+        wikiLinks: linksResult.value.filter(
+          (entry) => entry.linkType === "wiki"
+        ).length,
+        markdownLinks: linksResult.value.filter(
+          (entry) => entry.linkType === "markdown"
+        ).length,
+      }).warnings,
     };
   }
 

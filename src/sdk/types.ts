@@ -141,6 +141,30 @@ export interface GnoCreateFolderResult {
   path: string;
 }
 
+export interface GnoRenameNoteOptions {
+  ref: string;
+  name: string;
+}
+
+export interface GnoMoveNoteOptions {
+  ref: string;
+  folderPath: string;
+  name?: string;
+}
+
+export interface GnoDuplicateNoteOptions {
+  ref: string;
+  folderPath?: string;
+  name?: string;
+}
+
+export interface GnoRefactorNoteResult {
+  uri: string;
+  path: string;
+  relPath: string;
+  warnings: string[];
+}
+
 export interface GnoClient {
   readonly config: Config;
   readonly dbPath: string;
@@ -171,6 +195,11 @@ export interface GnoClient {
   index(options?: GnoIndexOptions): Promise<GnoIndexResult>;
   createNote(options: GnoCreateNoteOptions): Promise<GnoCreateNoteResult>;
   createFolder(options: GnoCreateFolderOptions): Promise<GnoCreateFolderResult>;
+  renameNote(options: GnoRenameNoteOptions): Promise<GnoRefactorNoteResult>;
+  moveNote(options: GnoMoveNoteOptions): Promise<GnoRefactorNoteResult>;
+  duplicateNote(
+    options: GnoDuplicateNoteOptions
+  ): Promise<GnoRefactorNoteResult>;
   getSections(ref: string): Promise<DocumentSection[]>;
   close(): Promise<void>;
 }

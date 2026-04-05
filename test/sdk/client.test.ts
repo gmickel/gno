@@ -225,6 +225,51 @@ describe("SDK client", () => {
     expect(sections[0]?.anchor).toBeTruthy();
   });
 
+  test("renames notes through the SDK", async () => {
+    const created = await client.createNote({
+      collection: "fixtures",
+      title: "Rename Me",
+      folderPath: "generated",
+      content: "# Rename Me\n",
+    });
+    const renamed = await client.renameNote({
+      ref: created.uri,
+      name: "renamed.md",
+    });
+
+    expect(renamed.relPath).toBe("generated/renamed.md");
+  });
+
+  test("moves notes through the SDK", async () => {
+    const created = await client.createNote({
+      collection: "fixtures",
+      title: "Move Me",
+      folderPath: "generated",
+      content: "# Move Me\n",
+    });
+    const moved = await client.moveNote({
+      ref: created.uri,
+      folderPath: "generated/archive",
+    });
+
+    expect(moved.relPath).toBe("generated/archive/move-me.md");
+  });
+
+  test("duplicates notes through the SDK", async () => {
+    const created = await client.createNote({
+      collection: "fixtures",
+      title: "Duplicate Me",
+      folderPath: "generated",
+      content: "# Duplicate Me\n",
+    });
+    const duplicated = await client.duplicateNote({
+      ref: created.uri,
+      folderPath: "generated/archive",
+    });
+
+    expect(duplicated.relPath).toBe("generated/archive/duplicate-me.md");
+  });
+
   test("multi-gets several documents", async () => {
     const result = await client.multiGet([
       "fixtures/authentication.md",
