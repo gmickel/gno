@@ -8,10 +8,12 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import type { DocumentSection } from "../../../core/sections";
 import type { CaptureModalOpenOptions } from "../hooks/useCaptureModal";
 
+import { NOTE_PRESETS } from "../../../core/note-presets";
 import { apiFetch } from "../hooks/use-api";
-import { buildDocDeepLink } from "../lib/deep-links";
+import { buildDocDeepLink, parseDocumentDeepLink } from "../lib/deep-links";
 import {
   loadFavoriteCollections,
   loadFavoriteDocuments,
@@ -51,6 +53,15 @@ interface SearchResponse {
   results: SearchResult[];
 }
 
+interface DocLookupResponse {
+  docid: string;
+  uri: string;
+}
+
+interface SectionsResponse {
+  sections: DocumentSection[];
+}
+
 export interface QuickSwitcherProps {
   location: string;
   open: boolean;
@@ -73,6 +84,7 @@ export function QuickSwitcher({
   const [favoriteCollections, setFavoriteCollections] = useState<
     FavoriteCollection[]
   >([]);
+  const [sections, setSections] = useState<DocumentSection[]>([]);
   const [loading, setLoading] = useState(false);
   const requestIdRef = useRef(0);
 
@@ -87,6 +99,35 @@ export function QuickSwitcher({
     setFavoriteDocs(loadFavoriteDocuments());
     setFavoriteCollections(loadFavoriteCollections());
   }, [open]);
+
+  useEffect(() => {
+    if (!open || !location.startsWith("/doc?")) {
+      setSections([]);
+      return;
+    }
+
+    const target = parseDocumentDeepLink(
+      location.includes("?") ? `?${location.split("?")[1] ?? ""}` : ""
+    );
+    if (!target.uri) {
+      setSections([]);
+      return;
+    }
+
+    void apiFetch<DocLookupResponse>(
+      `/api/doc?uri=${encodeURIComponent(target.uri)}`
+    ).then(({ data }) => {
+      if (!data?.docid) {
+        setSections([]);
+        return;
+      }
+      void apiFetch<SectionsResponse>(
+        `/api/doc/${encodeURIComponent(data.docid)}/sections`
+      ).then(({ data: sectionData }) => {
+        setSections(sectionData?.sections ?? []);
+      });
+    });
+  }, [location, open]);
 
   useEffect(() => {
     if (!open) return;
@@ -176,6 +217,23 @@ export function QuickSwitcher({
     }),
     [navigate, onCreateNote, onOpenChange]
   );
+  const filteredPresetActions = useMemo(() => {
+    const normalizedQuery = query.trim().toLowerCase();
+    return NOTE_PRESETS.filter((preset) => preset.id !== "blank").filter(
+      (preset) =>
+        !normalizedQuery ||
+        preset.label.toLowerCase().includes(normalizedQuery) ||
+        preset.description.toLowerCase().includes(normalizedQuery)
+    );
+  }, [query]);
+  const filteredSections = useMemo(() => {
+    const normalizedQuery = query.trim().toLowerCase();
+    return sections.filter(
+      (section) =>
+        !normalizedQuery ||
+        section.title.toLowerCase().includes(normalizedQuery)
+    );
+  }, [query, sections]);
 
   return (
     <CommandDialog
@@ -339,6 +397,60 @@ export function QuickSwitcher({
               </CommandItem>
             ))}
         </CommandGroup>
+
+        {filteredPresetActions.length > 0 && (
+          <CommandGroup heading="Presets">
+            {filteredPresetActions.map((preset) => (
+              <CommandItem
+                key={preset.id}
+                onSelect={() => {
+                  onCreateNote({
+                    draftTitle: query.trim() || undefined,
+                    presetId: preset.id,
+                  });
+                  onOpenChange(false);
+                }}
+                value={`${preset.label} ${preset.description} preset`}
+              >
+                <FilePlusIcon />
+                <span>{preset.label}</span>
+                <CommandShortcut>Preset</CommandShortcut>
+              </CommandItem>
+            ))}
+          </CommandGroup>
+        )}
+
+        {filteredSections.length > 0 && (
+          <CommandGroup heading="Sections">
+            {filteredSections.map((section) => {
+              const target = parseDocumentDeepLink(
+                location.includes("?") ? `?${location.split("?")[1] ?? ""}` : ""
+              );
+              if (!target.uri) {
+                return null;
+              }
+              return (
+                <CommandItem
+                  key={section.anchor}
+                  onSelect={() => {
+                    navigate(
+                      `${buildDocDeepLink({
+                        uri: target.uri,
+                        view: "rendered",
+                      })}#${section.anchor}`
+                    );
+                    onOpenChange(false);
+                  }}
+                  value={`${section.title} section heading outline`}
+                >
+                  <SearchIcon />
+                  <span>{section.title}</span>
+                  <CommandShortcut>{`H${section.level}`}</CommandShortcut>
+                </CommandItem>
+              );
+            })}
+          </CommandGroup>
+        )}
 
         {!query.trim() && <CommandSeparator />}
 

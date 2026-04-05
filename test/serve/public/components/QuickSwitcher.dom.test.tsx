@@ -51,6 +51,25 @@ describe("QuickSwitcher DOM interactions", () => {
   });
 
   test("shows core actions even before typing", async () => {
+    apiFetch.mockImplementation(async (...args: unknown[]) => {
+      const endpoint = typeof args[0] === "string" ? args[0] : "";
+      if (endpoint.startsWith("/api/doc?uri=")) {
+        return apiOk({
+          docid: "doc-1",
+          uri: "file:///tmp/notes/alpha.md",
+        });
+      }
+      if (endpoint === "/api/doc/doc-1/sections") {
+        return apiOk({
+          sections: [
+            { anchor: "intro", level: 2, line: 4, title: "Intro" },
+            { anchor: "details", level: 2, line: 10, title: "Details" },
+          ],
+        });
+      }
+      return apiOk({});
+    });
+
     const { QuickSwitcher } =
       await import("../../../../src/serve/public/components/QuickSwitcher");
     const { user } = renderWithUser(
@@ -67,6 +86,8 @@ describe("QuickSwitcher DOM interactions", () => {
     expect(screen.getByText("Rename current note")).toBeTruthy();
     expect(screen.getByText("Move current note")).toBeTruthy();
     expect(screen.getByText("Duplicate current note")).toBeTruthy();
+    expect(screen.getByText("Project Note")).toBeTruthy();
+    expect(screen.getByText("Intro")).toBeTruthy();
 
     await user.click(screen.getByText("Home"));
   });
