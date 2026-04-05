@@ -434,6 +434,7 @@ Open `http://localhost:3000` to:
 - **Manage files safely**: Rename, reveal, or move editable files to Trash with explicit index-vs-disk semantics
 - **Refactor files safely**: Move, duplicate, and organize editable notes with reference warnings
 - **Switch presets**: Change models live without restart
+- **Command palette**: Jump, create, refactor, and section-navigate from one keyboard-first surface
 
 ### Search
 

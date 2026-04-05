@@ -32,6 +32,12 @@ import { handleSearch } from "./search";
 import { handleStatus } from "./status";
 import { handleSync } from "./sync";
 import { handleVsearch } from "./vsearch";
+import {
+  handleCreateFolder,
+  handleDuplicateNote,
+  handleMoveNote,
+  handleRenameNote,
+} from "./workspace-write";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Shared Helpers
@@ -222,6 +228,29 @@ const removeCollectionInputSchema = z.object({
     .string()
     .min(1, "Collection cannot be empty")
     .describe("Collection name to remove"),
+});
+
+const createFolderInputSchema = z.object({
+  collection: z.string().min(1, "Collection cannot be empty"),
+  name: z.string().min(1, "Folder name cannot be empty"),
+  parentPath: z.string().optional(),
+});
+
+const renameNoteInputSchema = z.object({
+  ref: z.string().min(1, "ref cannot be empty"),
+  name: z.string().min(1, "name cannot be empty"),
+});
+
+const moveNoteInputSchema = z.object({
+  ref: z.string().min(1, "ref cannot be empty"),
+  folderPath: z.string().min(1, "folderPath cannot be empty"),
+  name: z.string().optional(),
+});
+
+const duplicateNoteInputSchema = z.object({
+  ref: z.string().min(1, "ref cannot be empty"),
+  folderPath: z.string().optional(),
+  name: z.string().optional(),
 });
 
 const vsearchInputSchema = z.object({
@@ -787,6 +816,34 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
       "Remove a collection from config and delete its indexed data.",
       removeCollectionInputSchema.shape,
       (args) => handleRemoveCollection(args, ctx)
+    );
+
+    server.tool(
+      "gno_create_folder",
+      "Create a folder inside an existing collection.",
+      createFolderInputSchema.shape,
+      (args) => handleCreateFolder(args, ctx)
+    );
+
+    server.tool(
+      "gno_rename_note",
+      "Rename an editable note in place.",
+      renameNoteInputSchema.shape,
+      (args) => handleRenameNote(args, ctx)
+    );
+
+    server.tool(
+      "gno_move_note",
+      "Move an editable note to another folder in the same collection.",
+      moveNoteInputSchema.shape,
+      (args) => handleMoveNote(args, ctx)
+    );
+
+    server.tool(
+      "gno_duplicate_note",
+      "Duplicate an editable note into the current or another folder.",
+      duplicateNoteInputSchema.shape,
+      (args) => handleDuplicateNote(args, ctx)
     );
   }
 

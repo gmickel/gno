@@ -98,6 +98,7 @@ Navigate your indexed notes like a real workspace, not just a flat table:
 - **Tab-scoped state**: each app tab can keep its own expanded browse context
 - **Pinned collections**: keep favorite roots close while moving through the tree
 - **Breadcrumbs**: jump back up the current folder path quickly
+- **Command actions**: rename, move, duplicate, and section-jump flows from the palette
 
 ### Three Search Modes
 

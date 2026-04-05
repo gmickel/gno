@@ -29,6 +29,11 @@ interface ShortcutGroup {
   shortcuts: ShortcutItem[];
 }
 
+interface CommandExampleGroup {
+  title: string;
+  commands: string[];
+}
+
 const shortcutGroups: ShortcutGroup[] = [
   {
     title: "Global",
@@ -58,6 +63,29 @@ const footerShortcut: ShortcutItem = {
   keys: "Ctrl+Enter",
   description: "Submit form",
 };
+
+const commandExamples: CommandExampleGroup[] = [
+  {
+    title: "Create",
+    commands: [
+      "new note",
+      "new note in current location",
+      "create folder here",
+      "Project Note",
+      "Research Note",
+    ],
+  },
+  {
+    title: "Current Note",
+    commands: [
+      "rename current note",
+      "move current note",
+      "duplicate current note",
+      "Intro",
+      "Details",
+    ],
+  },
+];
 
 function KeyCombo({ keys }: { keys: string }) {
   const parts = keys.split("+");
@@ -201,6 +229,31 @@ export function ShortcutHelpModal({
             </span>
           </div>
           <KeyCombo keys={footerShortcut.keys} />
+        </div>
+
+        <div className="mt-4 space-y-3 rounded-md border border-[hsl(var(--secondary)/0.12)] bg-[hsl(var(--secondary)/0.03)] p-3">
+          <div className="font-mono text-[10px] uppercase tracking-[0.15em] text-[hsl(var(--secondary)/0.7)]">
+            Command Palette Examples
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            {commandExamples.map((group) => (
+              <div className="space-y-1" key={group.title}>
+                <div className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground/60">
+                  {group.title}
+                </div>
+                <div className="space-y-1">
+                  {group.commands.map((command) => (
+                    <div
+                      className="rounded px-2 py-1 font-mono text-[11px] text-muted-foreground/80"
+                      key={command}
+                    >
+                      {command}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </DialogContent>
     </Dialog>

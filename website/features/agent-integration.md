@@ -40,6 +40,8 @@ gno skill install --target all       # All supported agents
 
 Your agent now has access to `/gno` commands that search your knowledge base only when needed.
 
+For write-capable workflows, GNO now also has stronger place-aware note creation semantics underneath the app and MCP surfaces, so future agent write actions can stay aligned with the same collection/folder/preset rules instead of inventing one-off behaviors.
+
 ## How It Works
 
 1. **Install** creates a `SKILL.md` in your agent's config

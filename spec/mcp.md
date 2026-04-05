@@ -1129,6 +1129,85 @@ Add a folder as a new collection and start indexing (write-enabled).
 
 ---
 
+### gno_create_folder
+
+Create a folder inside an existing collection (write-enabled).
+
+**Input Schema:**
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "collection": { "type": "string" },
+    "name": { "type": "string" },
+    "parentPath": { "type": "string" }
+  },
+  "required": ["collection", "name"]
+}
+```
+
+---
+
+### gno_rename_note
+
+Rename an editable note in place (write-enabled).
+
+**Input Schema:**
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "ref": { "type": "string" },
+    "name": { "type": "string" }
+  },
+  "required": ["ref", "name"]
+}
+```
+
+---
+
+### gno_move_note
+
+Move an editable note to another folder in the same collection (write-enabled).
+
+**Input Schema:**
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "ref": { "type": "string" },
+    "folderPath": { "type": "string" },
+    "name": { "type": "string" }
+  },
+  "required": ["ref", "folderPath"]
+}
+```
+
+---
+
+### gno_duplicate_note
+
+Duplicate an editable note into the current or another folder (write-enabled).
+
+**Input Schema:**
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "ref": { "type": "string" },
+    "folderPath": { "type": "string" },
+    "name": { "type": "string" }
+  },
+  "required": ["ref"]
+}
+```
+
+---
+
 ### gno_sync
 
 Reindex one or all collections (write-enabled).

@@ -200,6 +200,11 @@ Press **Cmd/Ctrl+K** to open the global command palette. It uses the fast BM25 p
 - create a new note with the typed query as the suggested title
 - create in the current Browse location when context is available
 - jump to core workspace surfaces
+- trigger current-note actions like rename, move, and duplicate
+- jump directly to named sections in the current note
+- create from note presets without opening a separate picker first
+
+Press **?** to see both keyboard shortcuts and example command-palette phrases.
 
 ### Wiki-Link Autocomplete
 
