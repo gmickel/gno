@@ -65,13 +65,13 @@ function CommandInput({
 }: React.ComponentProps<typeof CommandPrimitive.Input>) {
   return (
     <div
-      className="flex h-11 items-center gap-2 border-border/20 border-b bg-muted/10 px-3 outline-hidden ring-0 shadow-none focus-within:border-border/20 focus-within:bg-background/95 focus-within:ring-0 focus-within:shadow-none focus-within:outline-hidden"
+      className="flex h-11 items-center gap-2 border-border/20 border-b bg-muted/10 px-3 ring-0 shadow-none outline-none focus-within:border-border/20 focus-within:bg-background/95 focus-within:ring-0 focus-within:shadow-none focus-within:outline-none"
       data-slot="command-input-wrapper"
     >
       <SearchIcon className="size-4 shrink-0 text-muted-foreground/50" />
       <CommandPrimitive.Input
         className={cn(
-          "flex h-10 w-full rounded-none border-none bg-transparent px-0 py-3 text-sm shadow-none outline-none ring-0 placeholder:text-muted-foreground focus:border-none focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 disabled:cursor-not-allowed disabled:opacity-50",
+          "appearance-none flex h-10 w-full rounded-none border-none bg-transparent px-0 py-3 text-sm shadow-none outline-none ring-0 placeholder:text-muted-foreground focus:border-none focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 disabled:cursor-not-allowed disabled:opacity-50",
           className
         )}
         data-slot="command-input"
@@ -145,7 +145,7 @@ function CommandItem({
   return (
     <CommandPrimitive.Item
       className={cn(
-        "relative flex cursor-pointer select-none items-center gap-2 rounded-sm border border-transparent px-2 py-1.5 text-sm outline-hidden transition-colors duration-150 data-[disabled=true]:pointer-events-none data-[selected=true]:border-primary/45 data-[selected=true]:bg-primary/18 data-[selected=true]:text-primary data-[disabled=true]:cursor-not-allowed data-[disabled=true]:opacity-50 [&_svg:not([class*='size-'])]:size-4 [&_svg:not([class*='text-'])]:text-muted-foreground [&_svg]:pointer-events-none [&_svg]:shrink-0 data-[selected=true]:shadow-[inset_2px_0_0_hsl(var(--primary)),inset_0_0_0_1px_hsl(var(--primary)/0.18)] [&[data-selected=true]_[data-slot=command-shortcut]]:text-primary/90 [&[data-selected=true]_svg]:text-primary",
+        "relative flex cursor-pointer select-none items-center gap-2 rounded-sm border border-transparent px-2 py-1.5 text-sm outline-hidden transition-colors duration-150 data-[disabled=true]:pointer-events-none data-[disabled=true]:cursor-not-allowed data-[disabled=true]:opacity-50 aria-selected:border-primary/55 aria-selected:bg-primary/20 aria-selected:text-primary data-[selected=true]:border-primary/55 data-[selected=true]:bg-primary/20 data-[selected=true]:text-primary [&_svg:not([class*='size-'])]:size-4 [&_svg:not([class*='text-'])]:text-muted-foreground [&_svg]:pointer-events-none [&_svg]:shrink-0 aria-selected:shadow-[inset_3px_0_0_hsl(var(--primary)),inset_0_0_0_1px_hsl(var(--primary)/0.24)] data-[selected=true]:shadow-[inset_3px_0_0_hsl(var(--primary)),inset_0_0_0_1px_hsl(var(--primary)/0.24)] aria-selected:[&_[data-slot=command-shortcut]]:text-primary/95 data-[selected=true]:[&_[data-slot=command-shortcut]]:text-primary/95 aria-selected:[&_svg]:text-primary data-[selected=true]:[&_svg]:text-primary",
         className
       )}
       data-slot="command-item"
