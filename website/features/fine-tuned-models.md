@@ -88,5 +88,6 @@ The model that looks best during training can still perform worse after export o
 ## Learn More
 
 - [Fine-Tuned Models Guide](/docs/FINE-TUNED-MODELS/)
+- [Benchmarks](/features/benchmarks/)
 - [Configuration](/docs/CONFIGURATION/)
 - [CLI Reference](/docs/CLI/)

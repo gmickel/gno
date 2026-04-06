@@ -55,6 +55,8 @@ gno query "authentication best practices"
 
 When stdout is a TTY, GNO can also wrap the visible `gno://...` result URI in a clickable terminal hyperlink that resolves to the source file path, with best-effort line hints when available.
 
+For teams tuning retrieval quality over time, GNO now also ships dedicated benchmark workflows for hybrid retrieval and code embeddings. See [Benchmarks](/features/benchmarks/).
+
 ### Tag Filtering
 
 Combine hybrid search with tag filters for precise results:

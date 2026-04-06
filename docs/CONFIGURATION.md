@@ -235,6 +235,23 @@ Notes:
 - collection-scoped overrides are only meaningful when an operation resolves a specific collection
 - if a future benchmark shows a code-specific embedding model wins on source-code retrieval, prefer using `models.embed` on code collections instead of replacing the global default for every collection
 
+Current code-focused recommendation:
+
+```yaml
+collections:
+  - name: gno-code
+    path: /Users/you/work/gno/src
+    pattern: "**/*.{ts,tsx,js,jsx,go,rs,py,swift,c}"
+    models:
+      embed: "hf:Qwen/Qwen3-Embedding-0.6B-GGUF/Qwen3-Embedding-0.6B-Q8_0.gguf"
+```
+
+This still uses normal GNO model provisioning rules:
+
+- it auto-downloads on first use by default
+- it respects `GNO_NO_AUTO_DOWNLOAD` / offline policy the same way preset models do
+- it is currently best treated as a code-collection override, not a blanket replacement for the global default, because it trades higher embedding latency for better code retrieval quality
+
 ### Model Details
 
 All presets use:

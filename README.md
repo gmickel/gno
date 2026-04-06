@@ -870,6 +870,34 @@ If a model turns out to be better specifically for code, the intended user story
 
 That lets GNO stay sane by default while still giving power users a clean path to code-specialist retrieval.
 
+Current code-focused recommendation:
+
+```yaml
+collections:
+  - name: gno-code
+    path: /Users/you/work/gno/src
+    pattern: "**/*.{ts,tsx,js,jsx,go,rs,py,swift,c}"
+    models:
+      embed: "hf:Qwen/Qwen3-Embedding-0.6B-GGUF/Qwen3-Embedding-0.6B-Q8_0.gguf"
+```
+
+GNO treats that override like any other model URI:
+
+- auto-downloads on first use by default
+- manual-only if `GNO_NO_AUTO_DOWNLOAD=1`
+- offline-safe if the model is already cached
+
+Why this is the current recommendation:
+
+- matches `bge-m3` on the tiny canonical benchmark
+- significantly beats `bge-m3` on the real GNO `src/serve` code slice
+- also beats `bge-m3` on a pinned public-OSS code slice
+
+Trade-off:
+
+- Qwen is slower to embed than `bge-m3`
+- use it where code retrieval quality matters, not necessarily as the global default for every collection
+
 ---
 
 ## License

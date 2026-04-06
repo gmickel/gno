@@ -24,6 +24,7 @@ Result pages:
 
 - [canonical.md](./canonical.md)
 - [repo-serve.md](./repo-serve.md)
+- [oss-slices.md](./oss-slices.md)
 
 Primary use:
 
@@ -33,4 +34,4 @@ bun scripts/code-embedding-benchmark.ts --candidate bge-m3-incumbent --fixture r
 bun scripts/code-embedding-benchmark.ts --candidate bge-m3-incumbent --fixture oss-slices --write
 ```
 
-If a code-specific winner emerges on `repo-serve`, document it as a per-collection `models.embed` recommendation for code collections rather than immediately replacing the global default.
+If a code-specific winner emerges on `repo-serve` and also holds on `oss-slices`, document it as a per-collection `models.embed` recommendation for code collections rather than immediately replacing the global default.

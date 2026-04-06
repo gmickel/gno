@@ -57,6 +57,23 @@ Notes:
 - the `oss-slices` fixture lets us compare models on pinned public OSS repo slices without vendoring third-party code into GNO
 - some challengers are most realistic to evaluate via an HTTP embedding server first, then map to a final runtime URI once we decide they are worth deeper testing
 
+## Current winner for code
+
+Current best result:
+
+- `Qwen3-Embedding-0.6B-GGUF`
+
+Why:
+
+- ties `bge-m3` on the canonical benchmark
+- substantially outperforms `bge-m3` on the real GNO `repo-serve` slice
+- also cleanly outperforms `bge-m3` on the pinned `oss-slices` public-OSS fixture
+- uses the same native GGUF embedding runtime GNO already ships
+
+Current non-recommendation:
+
+- `jina-code-embeddings-0.5b-GGUF` is not currently recommended in GNO's native runtime despite promising canonical scores, because it produced embedding-id/runtime issues and collapsed on the real-code slice
+
 ## If a code-specific winner emerges
 
 Do two things:
@@ -76,7 +93,14 @@ collections:
     path: /Users/you/work/gno/src
     pattern: "**/*.{ts,tsx,js,jsx,go,rs,py,swift,c}"
     models:
-      embed: "http://your-embedding-server/v1/embeddings#your-code-model"
+      embed: "hf:Qwen/Qwen3-Embedding-0.6B-GGUF/Qwen3-Embedding-0.6B-Q8_0.gguf"
 ```
 
 That recommendation belongs in `docs/CONFIGURATION.md`, relevant benchmark docs, and any future benchmark/results page.
+
+Latency note:
+
+- `Qwen3-Embedding-0.6B-GGUF` is currently slower than `bge-m3`
+- the recommendation is therefore:
+  - keep `bge-m3` globally for mixed/prose collections
+  - use Qwen specifically where code retrieval quality matters more than embedding speed

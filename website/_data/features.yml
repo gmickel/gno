@@ -73,6 +73,24 @@
     - "gno models pull --gen"
     - "gno query 'topic' --thorough"
 
+- slug: benchmarks
+  title: Benchmarks
+  headline: Measure Before You Switch
+  description: Benchmark retrieval models and code embedding candidates against fixed corpora, real GNO code slices, and pinned public OSS slices before changing defaults. GNO's research loops are built around measurable wins, not vibes.
+  icon: brain
+  benefits:
+    - Regression-first retrieval evaluation
+    - Canonical benchmark corpora for stable comparisons
+    - Real GNO code slice benchmark for product-shaped signal
+    - Public OSS slices for generalization checks
+    - Autonomous candidate search with bounded budgets
+    - Per-collection model recommendations backed by results
+  commands:
+    - "bun run eval:hybrid"
+    - "bun run bench:code-embeddings --candidate bge-m3-incumbent --write"
+    - "bun run research:embeddings:autonomous:list-search-candidates"
+    - "bun run research:embeddings:autonomous:search --dry-run"
+
 - slug: web-ui
   title: Web UI
   headline: Your Knowledge Dashboard
