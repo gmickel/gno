@@ -14,7 +14,7 @@ import type { AskOptions, AskResult, Citation } from "../../pipeline/types";
 
 import { LlmAdapter } from "../../llm/nodeLlamaCpp/adapter";
 import { resolveDownloadPolicy } from "../../llm/policy";
-import { getActivePreset } from "../../llm/registry";
+import { resolveModelUri } from "../../llm/registry";
 import {
   generateGroundedAnswer,
   processAnswerResult,
@@ -90,7 +90,6 @@ export async function ask(
   let rerankPort: RerankPort | null = null;
 
   try {
-    const preset = getActivePreset(config);
     const llm = new LlmAdapter(config);
 
     // Resolve download policy from env/flags
@@ -106,7 +105,12 @@ export async function ask(
       : undefined;
 
     // Create embedding port
-    const embedUri = options.embedModel ?? preset.embed;
+    const embedUri = resolveModelUri(
+      config,
+      "embed",
+      options.embedModel,
+      options.collection
+    );
     const embedResult = await llm.createEmbeddingPort(embedUri, {
       policy,
       onProgress: downloadProgress
@@ -119,8 +123,12 @@ export async function ask(
 
     // Create expansion port when expansion is enabled.
     if (!options.noExpand && !options.queryModes?.length) {
-      const expandUri =
-        options.expandModel ?? options.genModel ?? preset.expand;
+      const expandUri = resolveModelUri(
+        config,
+        "expand",
+        options.expandModel ?? options.genModel,
+        options.collection
+      );
       const genResult = await llm.createExpansionPort(expandUri, {
         policy,
         onProgress: downloadProgress
@@ -134,7 +142,12 @@ export async function ask(
 
     // Create answer generation port when answers are requested.
     if (options.answer) {
-      const genUri = options.genModel ?? preset.gen;
+      const genUri = resolveModelUri(
+        config,
+        "gen",
+        options.genModel,
+        options.collection
+      );
       const genResult = await llm.createGenerationPort(genUri, {
         policy,
         onProgress: downloadProgress
@@ -148,7 +161,12 @@ export async function ask(
 
     // Create rerank port (unless --fast or --no-rerank)
     if (!options.noRerank) {
-      const rerankUri = options.rerankModel ?? preset.rerank;
+      const rerankUri = resolveModelUri(
+        config,
+        "rerank",
+        options.rerankModel,
+        options.collection
+      );
       const rerankResult = await llm.createRerankPort(rerankUri, {
         policy,
         onProgress: downloadProgress

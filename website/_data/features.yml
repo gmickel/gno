@@ -32,6 +32,7 @@
     - No API keys required
     - Cited answers with source documents
     - Multiple model presets (slim-tuned, slim, balanced, quality)
+    - Optional per-collection model overrides layered on top of presets
     - Separate expansion and generation models
   commands:
     - "gno ask 'your question' --answer"

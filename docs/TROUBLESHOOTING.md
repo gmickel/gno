@@ -304,6 +304,23 @@ If search snippets still look oddly split for a supported code file:
 2. re-sync the collection
 3. use `gno query --explain` to inspect the retrieval path
 
+### Collection model overrides not taking effect
+
+Collection-specific model overrides only apply when the operation resolves a specific collection.
+
+Resolution order:
+
+1. collection role override
+2. active preset role
+3. built-in default fallback
+
+Checks:
+
+1. confirm the collection name in `index.yml` matches exactly
+2. confirm the override is nested under that collection's `models:` block
+3. confirm the operation actually targets that collection
+4. if a CLI command also passes an explicit `--model`/`--embed-model`/`--rerank-model` style override, that explicit CLI override still wins
+
 ### Force CPU-only for testing
 
 To disable Metal/CUDA/Vulkan and force `node-llama-cpp` onto the CPU backend

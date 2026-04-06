@@ -5,7 +5,12 @@
  * @module src/llm/registry
  */
 
-import type { Config, ModelConfig, ModelPreset } from "../config/types";
+import type {
+  CollectionModelOverrides,
+  Config,
+  ModelConfig,
+  ModelPreset,
+} from "../config/types";
 import type { ModelType } from "./types";
 
 import { DEFAULT_MODEL_PRESETS } from "../config/types";
@@ -91,6 +96,16 @@ export function getAnswerModelUri(config: Config, override?: string): string {
   return preset.gen;
 }
 
+export function getCollectionModelOverrides(
+  config: Config,
+  collection?: string
+): CollectionModelOverrides | undefined {
+  if (!collection) {
+    return undefined;
+  }
+  return config.collections.find((item) => item.name === collection)?.models;
+}
+
 /**
  * Resolve a model URI for a given type.
  * Uses override if provided, otherwise from active preset.
@@ -98,10 +113,15 @@ export function getAnswerModelUri(config: Config, override?: string): string {
 export function resolveModelUri(
   config: Config,
   type: ModelType,
-  override?: string
+  override?: string,
+  collection?: string
 ): string {
   if (override) {
     return override;
+  }
+  const collectionModels = getCollectionModelOverrides(config, collection);
+  if (collectionModels?.[type]) {
+    return collectionModels[type];
   }
   const preset = getActivePreset(config);
   if (type === "expand") {

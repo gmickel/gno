@@ -99,9 +99,20 @@ export const CollectionSchema = z.object({
       message: "Invalid BCP-47 language code (e.g., en, de, zh-CN, und)",
     })
     .optional(),
+
+  /** Optional per-collection model overrides */
+  models: z
+    .object({
+      embed: z.string().min(1).optional(),
+      rerank: z.string().min(1).optional(),
+      expand: z.string().min(1).optional(),
+      gen: z.string().min(1).optional(),
+    })
+    .optional(),
 });
 
 export type Collection = z.infer<typeof CollectionSchema>;
+export type CollectionModelOverrides = NonNullable<Collection["models"]>;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Context Schema

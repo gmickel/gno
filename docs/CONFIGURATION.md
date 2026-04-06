@@ -207,6 +207,33 @@ The dashboard bootstrap panel uses these preset footprints as the plain-language
 
 > **Note**: When using GNO standalone with `--answer`, the **quality** preset is required for documents containing Markdown tables or other structured content. The smaller models in slim/balanced presets cannot reliably parse tabular data. When GNO is used via MCP, skill, or CLI by AI agents (Claude Code, Codex, etc.), the agent handles answer generation, so any preset works for retrieval.
 
+### Per-collection model overrides
+
+Collections can override model roles without replacing the global preset system.
+
+Example:
+
+```yaml
+collections:
+  - name: work
+    path: /Users/you/work/docs
+    models:
+      rerank: "file:/models/work-rerank.gguf"
+      expand: "file:/models/work-expand.gguf"
+```
+
+Resolution order:
+
+1. collection role override
+2. active preset role
+3. built-in default fallback
+
+Notes:
+
+- overrides are partial; you only set the roles you need
+- global preset remains the base layer for everything else
+- collection-scoped overrides are only meaningful when an operation resolves a specific collection
+
 ### Model Details
 
 All presets use:

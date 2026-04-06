@@ -89,11 +89,19 @@ Non-goals:
 - [ ] ADR-004 and configuration docs explain the final precedence model and debug story.
 
 ## Done summary
+Implemented collection-scoped model overrides layered on top of the existing preset system.
 
-TBD
+Delivered:
 
+- added optional `models` overrides on collections in config schema
+- added collection-aware model resolution with explicit precedence:
+  1. collection role override
+  2. active preset role
+  3. built-in default fallback
+- threaded collection-aware model resolution through CLI, SDK, and MCP collection-targeted retrieval/embed paths
+- added ADR-004 plus configuration/troubleshooting/website copy for the new resolution model
+- added registry/config coverage for collection override resolution and persistence
 ## Evidence
-
 - Commits:
-- Tests:
+- Tests: bun test test/llm/registry.test.ts test/config/loader.test.ts test/config/saver.test.ts, bun run lint:check, bun run docs:verify, make -C website sync-docs
 - PRs:
