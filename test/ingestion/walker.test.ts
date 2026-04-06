@@ -133,7 +133,7 @@ describe("FileWalker", () => {
 
   describe("empty include fallback to SUPPORTED_EXTENSIONS", () => {
     test("uses SUPPORTED_EXTENSIONS when include is empty", async () => {
-      const { entries, skipped } = await walker.walk({
+      const { entries } = await walker.walk({
         root: FIXTURES_ROOT,
         pattern: "**/*",
         include: [], // Empty = fallback to SUPPORTED_EXTENSIONS
@@ -147,10 +147,9 @@ describe("FileWalker", () => {
         expect(SUPPORTED_EXTENSIONS).toContain(ext);
       }
 
-      // .ts files should be skipped (not supported)
-      const tsSkipped = skipped.filter((s) => s.relPath.endsWith(".ts"));
-      expect(tsSkipped.length).toBeGreaterThan(0);
-      expect(tsSkipped.every((s) => s.reason === "EXCLUDED")).toBe(true);
+      // Supported code files should now be included by the fallback set too.
+      const tsEntries = entries.filter((e) => e.relPath.endsWith(".ts"));
+      expect(tsEntries.length).toBeGreaterThan(0);
     });
 
     test("finds .md and .txt files with empty include", async () => {
@@ -178,17 +177,17 @@ describe("FileWalker", () => {
         maxBytes: 10_000_000,
       });
 
-      // No .ts or .js files in entries
+      // Supported code files should now be present in entries
       const codeFiles = entries.filter(
         (e) => e.relPath.endsWith(".ts") || e.relPath.endsWith(".js")
       );
-      expect(codeFiles).toEqual([]);
+      expect(codeFiles.length).toBeGreaterThan(0);
 
-      // They should be in skipped
-      const skippedCode = skipped.filter(
-        (s) => s.relPath.endsWith(".ts") || s.relPath.endsWith(".js")
+      // Truly unsupported extensions should still be skipped
+      const skippedUnsupported = skipped.filter((s) =>
+        s.relPath.endsWith(".xyz")
       );
-      expect(skippedCode.length).toBeGreaterThan(0);
+      expect(skippedUnsupported).toEqual([]);
     });
 
     test("explicit include overrides fallback", async () => {
