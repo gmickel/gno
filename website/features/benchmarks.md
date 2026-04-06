@@ -68,6 +68,26 @@ Current fixtures:
 - `repo-serve` — real GNO `src/serve` slice
 - `oss-slices` — pinned public OSS repo slices
 
+## Current Results
+
+Current code-embedding numbers, as documented in the benchmark artifacts:
+
+| Fixture | `bge-m3` vector nDCG@10 | `Qwen3-Embedding-0.6B-GGUF` vector nDCG@10 | Notes |
+| ------- | ----------------------- | ------------------------------------------ | ----- |
+| `repo-serve` | `0.1003` | `0.6872` | Real GNO `src/serve` slice |
+| `oss-slices` | `0.6116` | `1.0` | Pinned public OSS slices |
+
+Interpretation:
+
+- Qwen ties the incumbent on the tiny canonical corpus, then wins hard on both the real GNO code slice and the public OSS slice
+- this is why the current recommendation is collection-scoped, not a blanket default change
+- `jina-code-embeddings-0.5b-GGUF` is not listed as a current winner because it hit native-runtime embedding-id failures and collapsed on `repo-serve`
+
+Full benchmark artifacts live in the repository under:
+
+- `evals/fixtures/code-embedding-benchmark/`
+- `research/embeddings/`
+
 ## Current Code Winner
 
 Current best result:

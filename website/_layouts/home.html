@@ -511,6 +511,20 @@ layout: default
       </a>
 
       <a
+        href="{{ '/features/benchmarks/' | relative_url }}"
+        class="feature-card"
+      >
+        <div class="feature-card-icon">
+          {% include icons.html icon="brain" size="24" %}
+        </div>
+        <h3 class="feature-card-title">Benchmarks</h3>
+        <p class="feature-card-description">
+          Measure retrieval and embedding changes against fixed corpora, real
+          GNO code, and public OSS slices before changing defaults.
+        </p>
+      </a>
+
+      <a
         href="{{ '/features/graph-view/' | relative_url }}"
         class="feature-card"
       >
