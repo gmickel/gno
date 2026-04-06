@@ -64,14 +64,18 @@ Non-goal:
 - [ ] Documentation targets for the chosen flow are identified.
 
 ## Done summary
+
 Implemented and documented clean reindex semantics for global embedding model changes.
 
 Delivered:
+
 - made status/backlog reporting model-aware for the active embedding model across web status, CLI status, SDK status, and MCP status
 - kept old vectors in place while counting readiness/backlog against the newly active embed model
 - updated preset-switch flows to signal when the embedding model changed and a fresh `gno embed` pass is needed
 - documented the operator recovery path in CLI/API/config/troubleshooting docs
+
 ## Evidence
+
 - Commits:
 - Tests: bun test test/store/adapter.test.ts test/serve/api-presets.test.ts test/serve/api-status.test.ts test/mcp/tools/status.test.ts, bun run lint:check, bun run docs:verify
 - PRs:

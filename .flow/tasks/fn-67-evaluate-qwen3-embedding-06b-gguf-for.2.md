@@ -69,14 +69,18 @@ Docs owned by this task:
 - [ ] The task ends with a concrete recommendation or an explicit “not enough evidence” call.
 
 ## Done summary
+
 Ran the new general-collection benchmark lane through GNO's real indexing and retrieval pipeline.
 
 Delivered:
+
 - added `general-embedding-benchmark` helper and CLI script
 - wrote durable baseline + challenger artifacts for `bge-m3` and `Qwen3-Embedding-0.6B-GGUF`
 - verified Qwen materially beats the incumbent on the public multilingual markdown fixture
 - published vector/hybrid and same-language/cross-language breakdowns
+
 ## Evidence
+
 - Commits:
 - Tests: bun scripts/general-embedding-benchmark.ts --candidate bge-m3-incumbent --cache-dir /tmp/gno-general-bench-cache --write, bun scripts/general-embedding-benchmark.ts --candidate qwen3-embedding-0.6b --cache-dir /tmp/gno-general-bench-cache --write, bun test test/research/general-embedding-benchmark.test.ts, bun run lint:check
 - PRs:
