@@ -202,7 +202,7 @@ export async function runEmbed(
 
   const backlogResult = force
     ? await getActiveChunkCount(db)
-    : await stats.countBacklog(modelUri);
+    : await stats.countBacklog(modelUri, { collection: options.collection });
   if (!backlogResult.ok) {
     throw sdkError("STORE", backlogResult.error.message, {
       cause: backlogResult.error.cause,
@@ -264,6 +264,7 @@ export async function runEmbed(
         statsPort: stats,
         embedPort,
         vectorIndex,
+        collection: options.collection,
         modelUri,
         batchSize,
       });

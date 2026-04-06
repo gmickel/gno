@@ -173,6 +173,9 @@ If you edit/create files that should be searchable via vector search:
 gno index              # Full re-index (sync + embed)
 # or
 gno embed              # Embed only (if already synced)
+gno embed travel       # Embed one collection only
+# or
+gno embed --collection travel
 ```
 
 MCP `gno.sync` and `gno.capture` do NOT auto-embed. Use CLI for embedding.
@@ -205,6 +208,10 @@ If you want to remove old vectors after switching:
 gno collection clear-embeddings gno-code        # stale models only
 gno collection clear-embeddings gno-code --all  # remove everything, then re-embed
 ```
+
+MCP-equivalent write tool:
+
+- `gno_clear_collection_embeddings`
 
 ## Reference Documentation
 

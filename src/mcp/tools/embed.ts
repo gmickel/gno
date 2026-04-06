@@ -11,14 +11,16 @@ import { acquireWriteLock, type WriteLockHandle } from "../../core/file-lock";
 import { JobError } from "../../core/job-manager";
 import { embedBacklog } from "../../embed";
 import { LlmAdapter } from "../../llm/nodeLlamaCpp/adapter";
-import { getActivePreset } from "../../llm/registry";
+import { resolveModelUri } from "../../llm/registry";
 import {
   createVectorIndexPort,
   createVectorStatsPort,
 } from "../../store/vector";
 import { runTool, type ToolResult } from "./index";
 
-type EmbedInput = Record<string, never>;
+interface EmbedInput {
+  collection?: string;
+}
 
 interface EmbedResultOutput {
   jobId: string;
@@ -57,9 +59,23 @@ export function handleEmbed(
           );
         }
 
-        // Get model from active preset
-        const preset = getActivePreset(ctx.config);
-        const modelUri = preset.embed;
+        const requestedCollection = args.collection?.trim();
+        const collection = requestedCollection
+          ? ctx.collections.find((item) => item.name === requestedCollection)
+          : null;
+
+        if (requestedCollection && !collection) {
+          throw new Error(
+            `${MCP_ERRORS.NOT_FOUND.code}: Collection not found: ${requestedCollection}`
+          );
+        }
+
+        const modelUri = resolveModelUri(
+          ctx.config,
+          "embed",
+          undefined,
+          collection?.name
+        );
 
         const jobId = await ctx.jobManager.startTypedJobWithLock(
           "embed",
@@ -74,7 +90,7 @@ export function handleEmbed(
             if (!embedResult.ok) {
               throw new Error(
                 `MODEL_NOT_FOUND: Embedding model not cached. ` +
-                  `Model: ${modelUri}, Preset: ${preset.name}. ` +
+                  `Model: ${modelUri}. ` +
                   `Run 'gno models pull embed' first.`
               );
             }
@@ -108,6 +124,7 @@ export function handleEmbed(
                 statsPort,
                 embedPort,
                 vectorIndex,
+                collection: collection?.name,
                 modelUri,
                 batchSize: 32,
               });

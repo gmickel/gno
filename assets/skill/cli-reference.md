@@ -72,6 +72,12 @@ gno collection rename <old> <new>
 gno collection clear-embeddings <name> [--all] [--json]
 ```
 
+### gno embed
+
+```bash
+gno embed [collection] [--collection <name>] [--force] [--model <uri>] [--batch-size <n>] [--dry-run]
+```
+
 ## Indexing
 
 ### gno update

@@ -25,6 +25,7 @@ export interface EmbedBacklogDeps {
   statsPort: VectorStatsPort;
   embedPort: EmbeddingPort;
   vectorIndex: VectorIndexPort;
+  collection?: string;
   modelUri: string;
   batchSize?: number;
 }
@@ -52,7 +53,7 @@ interface Cursor {
 export async function embedBacklog(
   deps: EmbedBacklogDeps
 ): Promise<StoreResult<EmbedBacklogResult>> {
-  const { statsPort, embedPort, vectorIndex, modelUri } = deps;
+  const { statsPort, embedPort, vectorIndex, modelUri, collection } = deps;
   const batchSize = deps.batchSize ?? 32;
 
   let embedded = 0;
@@ -65,6 +66,7 @@ export async function embedBacklog(
       const batchResult = await statsPort.getBacklog(modelUri, {
         limit: batchSize,
         after: cursor,
+        collection,
       });
 
       if (!batchResult.ok) {

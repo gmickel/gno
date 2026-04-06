@@ -13,6 +13,7 @@ import type { ToolContext } from "../server";
 import { normalizeTag } from "../../core/tags";
 import { handleAddCollection } from "./add-collection";
 import { handleCapture } from "./capture";
+import { handleClearCollectionEmbeddings } from "./clear-collection-embeddings";
 import { handleEmbed } from "./embed";
 import { handleGet } from "./get";
 import { handleIndex } from "./index-cmd";
@@ -213,7 +214,12 @@ const syncInputSchema = z.object({
     .describe("Run the collection's configured update command before syncing"),
 });
 
-const embedInputSchema = z.object({});
+const embedInputSchema = z.object({
+  collection: z
+    .string()
+    .optional()
+    .describe("Collection name to embed. Omit to embed all collections"),
+});
 
 const indexInputSchema = z.object({
   collection: z
@@ -228,6 +234,17 @@ const removeCollectionInputSchema = z.object({
     .string()
     .min(1, "Collection cannot be empty")
     .describe("Collection name to remove"),
+});
+
+const clearCollectionEmbeddingsInputSchema = z.object({
+  collection: z
+    .string()
+    .min(1, "Collection cannot be empty")
+    .describe("Collection name to clean"),
+  mode: z
+    .enum(["stale", "all"])
+    .default("stale")
+    .describe("Cleanup mode: stale models only, or all embeddings"),
 });
 
 const createFolderInputSchema = z.object({
@@ -799,7 +816,7 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
 
     server.tool(
       "gno_embed",
-      "Generate vector embeddings for all unembedded chunks. Async: returns a job ID. Poll with gno_job_status.",
+      "Generate vector embeddings for all unembedded chunks, optionally scoped to one collection. Async: returns a job ID. Poll with gno_job_status.",
       embedInputSchema.shape,
       (args) => handleEmbed(args, ctx)
     );
@@ -816,6 +833,13 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
       "Remove a collection from config and delete its indexed data.",
       removeCollectionInputSchema.shape,
       (args) => handleRemoveCollection(args, ctx)
+    );
+
+    server.tool(
+      "gno_clear_collection_embeddings",
+      "Remove stale or all embeddings for one collection.",
+      clearCollectionEmbeddingsInputSchema.shape,
+      (args) => handleClearCollectionEmbeddings(args, ctx)
     );
 
     server.tool(

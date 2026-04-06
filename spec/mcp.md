@@ -1249,7 +1249,12 @@ Generate embeddings for unembedded chunks (write-enabled). Runs as background jo
 ```json
 {
   "type": "object",
-  "properties": {}
+  "properties": {
+    "collection": {
+      "type": "string",
+      "description": "Optional collection name to embed"
+    }
+  }
 }
 ```
 
@@ -1278,6 +1283,32 @@ Generate embeddings for unembedded chunks (write-enabled). Runs as background jo
 - Requires `--enable-write` flag
 - Fails fast if embedding model not cached (run `gno models pull embed` first)
 - Poll job status with `gno_job_status`
+
+---
+
+### gno_clear_collection_embeddings
+
+Clear stale or all embeddings for one collection (write-enabled).
+
+**Input Schema:**
+
+```json
+{
+  "type": "object",
+  "required": ["collection"],
+  "properties": {
+    "collection": {
+      "type": "string",
+      "description": "Collection name"
+    },
+    "mode": {
+      "type": "string",
+      "enum": ["stale", "all"],
+      "default": "stale"
+    }
+  }
+}
+```
 
 ---
 

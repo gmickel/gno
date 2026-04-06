@@ -395,6 +395,19 @@ gno embed --collection notes
 
 Shared vectors still referenced by other active collections are retained.
 
+### gno embed
+
+Generate embeddings for all collections or one collection.
+
+```bash
+gno embed
+gno embed travel
+gno embed --collection travel
+```
+
+If you only want one collection to catch up after a model change, use the
+positional collection argument or `--collection`.
+
 ## Indexing Commands
 
 ### gno update

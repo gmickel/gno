@@ -14,7 +14,7 @@ import { normalizeCollectionName } from "../../core/validation";
 import { embedBacklog } from "../../embed";
 import { defaultSyncService } from "../../ingestion";
 import { LlmAdapter } from "../../llm/nodeLlamaCpp/adapter";
-import { getActivePreset } from "../../llm/registry";
+import { resolveModelUri } from "../../llm/registry";
 import {
   createVectorIndexPort,
   createVectorStatsPort,
@@ -101,9 +101,12 @@ export function handleIndex(
           runUpdateCmd: false,
         };
 
-        // Get model from active preset
-        const preset = getActivePreset(ctx.config);
-        const modelUri = preset.embed;
+        const modelUri = resolveModelUri(
+          ctx.config,
+          "embed",
+          undefined,
+          collection?.name
+        );
 
         const jobId = await ctx.jobManager.startTypedJobWithLock(
           "index",
@@ -137,7 +140,7 @@ export function handleIndex(
             if (!embedResult.ok) {
               throw new Error(
                 `MODEL_NOT_FOUND: Embedding model not cached. ` +
-                  `Model: ${modelUri}, Preset: ${preset.name}. ` +
+                  `Model: ${modelUri}. ` +
                   `Run 'gno models pull embed' first.`
               );
             }
@@ -171,6 +174,7 @@ export function handleIndex(
                 statsPort,
                 embedPort,
                 vectorIndex,
+                collection: collection?.name,
                 modelUri,
                 batchSize: 32,
               });
