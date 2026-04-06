@@ -50,6 +50,11 @@ import {
 } from "../components/ui/dialog";
 import { Input } from "../components/ui/input";
 import { Separator } from "../components/ui/separator";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "../components/ui/tooltip";
 import { apiFetch } from "../hooks/use-api";
 import { useDocEvents } from "../hooks/use-doc-events";
 import {
@@ -904,7 +909,10 @@ export default function DocView({ navigate }: PageProps) {
 
   /** Left rail — metadata + outline */
   const renderDocumentFactsRail = () => (
-    <nav aria-label="Document facts" className="space-y-0">
+    <nav
+      aria-label="Document facts"
+      className="w-full min-w-0 max-w-full space-y-0 overflow-x-hidden"
+    >
       {/* Frontmatter + tags */}
       {(hasFrontmatter || showStandaloneTags) && (
         <>
@@ -1005,19 +1013,19 @@ export default function DocView({ navigate }: PageProps) {
             <div className="mb-2 font-mono text-[10px] text-muted-foreground/50 uppercase tracking-[0.15em]">
               Outline
             </div>
-            <div className="space-y-0.5">
+            <div className="w-full min-w-0 max-w-full space-y-0.5 overflow-x-hidden">
               {sections.map((section) => (
                 <div
-                  className={`flex items-center gap-1 rounded px-1 py-0.5 ${
+                  className={`group relative w-full min-w-0 max-w-full overflow-hidden rounded px-1 py-0.5 ${
                     activeSectionAnchor === section.anchor
                       ? "bg-primary/10 text-primary"
                       : "text-muted-foreground"
                   }`}
                   key={section.anchor}
-                  style={{ paddingLeft: `${section.level * 10}px` }}
+                  style={{ paddingLeft: `${section.level * 7}px` }}
                 >
                   <button
-                    className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 rounded px-1 py-0.5 text-left text-xs transition-colors hover:bg-muted/20 hover:text-foreground"
+                    className="flex w-full min-w-0 max-w-full cursor-pointer items-start gap-2 overflow-hidden rounded px-1 py-0.5 pr-7 text-left text-xs transition-colors hover:bg-muted/20 hover:text-foreground"
                     onClick={() => {
                       setShowRawView(false);
                       requestAnimationFrame(() => {
@@ -1040,10 +1048,21 @@ export default function DocView({ navigate }: PageProps) {
                     type="button"
                   >
                     <ChevronRightIcon className="size-3 shrink-0" />
-                    <span className="truncate">{section.title}</span>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div className="min-w-0 max-w-full flex-1 overflow-hidden">
+                          <span className="line-clamp-2 block break-words leading-snug">
+                            {section.title}
+                          </span>
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent side="right" className="max-w-[320px]">
+                        <p className="break-words">{section.title}</p>
+                      </TooltipContent>
+                    </Tooltip>
                   </button>
                   <button
-                    className="cursor-pointer rounded p-1 transition-colors hover:bg-muted/20 hover:text-foreground"
+                    className="absolute top-1 right-1 cursor-pointer rounded p-1 opacity-0 transition-all hover:bg-muted/20 hover:text-foreground focus-visible:opacity-100 group-hover:opacity-100"
                     onClick={() => {
                       void navigator.clipboard.writeText(
                         `${window.location.origin}${buildDocDeepLink({
@@ -1394,9 +1413,17 @@ export default function DocView({ navigate }: PageProps) {
       <div className="mx-auto flex max-w-[1800px] gap-5 px-6 xl:px-8">
         {/* Left rail — metadata + outline */}
         {doc && (
-          <aside className="hidden w-[200px] shrink-0 border-border/15 border-r pr-2 py-6 lg:block">
-            <div className="sticky top-24 max-h-[calc(100vh-7rem)] overflow-y-auto pr-1">
-              {renderDocumentFactsRail()}
+          <aside
+            className="hidden min-w-0 flex-none border-border/15 border-r pr-2 pt-2 pb-6 lg:block"
+            style={{ width: 252, minWidth: 252, maxWidth: 252, flexBasis: 252 }}
+          >
+            <div
+              className="sticky min-w-0 max-w-full overflow-x-hidden overflow-y-auto pr-1"
+              style={{ top: 72, maxHeight: "calc(100vh - 5.5rem)" }}
+            >
+              <div className="min-w-0 max-w-full overflow-hidden">
+                {renderDocumentFactsRail()}
+              </div>
             </div>
           </aside>
         )}
@@ -1520,6 +1547,7 @@ export default function DocView({ navigate }: PageProps) {
                     <MarkdownPreview
                       collection={doc.collection}
                       content={parsedContent.body}
+                      docUri={doc.uri}
                       wikiLinks={resolvedWikiLinks}
                     />
                   </div>
@@ -1562,8 +1590,14 @@ export default function DocView({ navigate }: PageProps) {
 
         {/* Right rail — properties/path + relationships */}
         {doc && (
-          <aside className="hidden w-[250px] min-w-0 shrink-0 overflow-hidden border-border/15 border-l pl-2 pt-2 pb-6 lg:block">
-            <div className="sticky top-18 min-w-0 max-h-[calc(100vh-5.5rem)] space-y-1 overflow-y-auto overflow-x-hidden pr-1">
+          <aside
+            className="hidden min-w-0 flex-none overflow-hidden border-border/15 border-l pl-2 pt-2 pb-6 lg:block"
+            style={{ width: 250, minWidth: 250, maxWidth: 250, flexBasis: 250 }}
+          >
+            <div
+              className="sticky min-w-0 space-y-1 overflow-y-auto overflow-x-hidden pr-1"
+              style={{ top: 72, maxHeight: "calc(100vh - 5.5rem)" }}
+            >
               {renderPropertiesPathRail()}
               <BacklinksPanel
                 docId={doc.docid}

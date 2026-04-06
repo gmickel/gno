@@ -430,6 +430,24 @@ async function resolveAbsoluteDocPath(
   };
 }
 
+function isAbsoluteFilesystemPath(pathValue: string): boolean {
+  return /^(?:\/(?:Users|home|var|tmp|private|Volumes)\/|[A-Za-z]:[\\/])/.test(
+    pathValue
+  );
+}
+
+async function isPathWithinRoot(
+  root: string,
+  candidate: string
+): Promise<boolean> {
+  const nodePath = await import("node:path"); // no bun equivalent
+  const relative = nodePath.relative(root, candidate);
+  return (
+    relative === "" ||
+    (!relative.startsWith("..") && !nodePath.isAbsolute(relative))
+  );
+}
+
 async function listCollectionRelPaths(
   store: Pick<SqliteAdapter, "listDocuments">,
   collection: string
@@ -1442,6 +1460,98 @@ export async function handleDoc(
     tags,
     source,
     capabilities,
+  });
+}
+
+/**
+ * GET /api/doc-asset
+ * Query params:
+ *   - path (required): relative to current doc, or absolute filesystem path
+ *   - uri (required for relative paths): current document uri
+ */
+export async function handleDocAsset(
+  store: SqliteAdapter,
+  config: Config,
+  url: URL
+): Promise<Response> {
+  const assetPath = url.searchParams.get("path")?.trim();
+  if (!assetPath) {
+    return errorResponse("VALIDATION", "Missing path parameter");
+  }
+
+  let resolvedPath: string | null = null;
+
+  if (isAbsoluteFilesystemPath(assetPath)) {
+    for (const collection of config.collections) {
+      if (await isPathWithinRoot(collection.path, assetPath)) {
+        resolvedPath = assetPath;
+        break;
+      }
+    }
+
+    if (!resolvedPath) {
+      return errorResponse(
+        "FORBIDDEN",
+        "Absolute asset path is outside configured collections",
+        403
+      );
+    }
+  } else {
+    const uri = url.searchParams.get("uri");
+    if (!uri) {
+      return errorResponse(
+        "VALIDATION",
+        "uri is required for relative asset paths"
+      );
+    }
+
+    const docResult = await store.getDocumentByUri(uri);
+    if (!docResult.ok) {
+      return errorResponse("RUNTIME", docResult.error.message, 500);
+    }
+    if (!docResult.value) {
+      return errorResponse("NOT_FOUND", "Document not found", 404);
+    }
+
+    const resolvedDoc = await resolveAbsoluteDocPath(
+      config.collections,
+      docResult.value
+    );
+    if (!resolvedDoc) {
+      return errorResponse(
+        "NOT_FOUND",
+        "Document path could not be resolved",
+        404
+      );
+    }
+
+    const nodePath = await import("node:path"); // no bun equivalent
+    const candidate = nodePath.resolve(
+      nodePath.dirname(resolvedDoc.fullPath),
+      assetPath
+    );
+
+    if (!(await isPathWithinRoot(resolvedDoc.collection.path, candidate))) {
+      return errorResponse(
+        "FORBIDDEN",
+        "Asset path escapes collection root",
+        403
+      );
+    }
+
+    resolvedPath = candidate;
+  }
+
+  const file = Bun.file(resolvedPath);
+  if (!(await file.exists())) {
+    return errorResponse("NOT_FOUND", "Asset not found", 404);
+  }
+
+  return new Response(file, {
+    headers: {
+      "Cache-Control": "no-store",
+      "Content-Type": file.type || "application/octet-stream",
+    },
   });
 }
 
@@ -3794,6 +3904,10 @@ export async function routeApi(
 
   if (path === "/api/doc") {
     return handleDoc(store, config, url);
+  }
+
+  if (path === "/api/doc-asset") {
+    return handleDocAsset(store, config, url);
   }
 
   if (path === "/api/search" && req.method === "POST") {

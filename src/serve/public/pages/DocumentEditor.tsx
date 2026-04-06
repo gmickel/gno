@@ -1138,7 +1138,7 @@ export default function DocumentEditor({ navigate }: PageProps) {
             ref={previewRef}
           >
             <div className="mx-auto max-w-3xl">
-              <MarkdownPreview content={parsedContent.body} />
+              <MarkdownPreview content={parsedContent.body} docUri={doc?.uri} />
             </div>
           </div>
         )}

@@ -27,6 +27,7 @@ import {
   handleDeactivateDoc,
   handleDeleteCollection,
   handleDoc,
+  handleDocAsset,
   handleDocSections,
   handleDocsAutocomplete,
   handleDocs,
@@ -419,6 +420,15 @@ export async function startServer(
             const url = new URL(req.url);
             return withSecurityHeaders(
               await handleDoc(store, ctxHolder.config, url),
+              isDev
+            );
+          },
+        },
+        "/api/doc-asset": {
+          GET: async (req: Request) => {
+            const url = new URL(req.url);
+            return withSecurityHeaders(
+              await handleDocAsset(store, ctxHolder.config, url),
               isDev
             );
           },

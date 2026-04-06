@@ -303,8 +303,9 @@ const ValueDisplay: FC<ValueDisplayProps> = ({ keyName, value }) => {
         <div className="flex flex-wrap gap-1.5">
           {normalizedValues.map((item, i) => (
             <Badge
-              className="rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5 font-mono text-[11px] text-primary"
+              className="max-w-full overflow-hidden rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5 font-mono text-[11px] text-primary whitespace-nowrap text-ellipsis"
               key={`${item}-${i}`}
+              title={String(item)}
               variant="outline"
             >
               {String(item)}
@@ -339,8 +340,9 @@ const ValueDisplay: FC<ValueDisplayProps> = ({ keyName, value }) => {
       <div className="flex flex-wrap gap-1.5">
         {normalizedValues.map((item, i) => (
           <Badge
-            className="font-mono text-xs"
+            className="max-w-full overflow-hidden font-mono text-xs whitespace-nowrap text-ellipsis"
             key={`${item}-${i}`}
+            title={String(item)}
             variant="secondary"
           >
             {String(item)}

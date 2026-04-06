@@ -41,9 +41,46 @@ export interface MarkdownPreviewProps {
     targetAnchor?: string;
     resolvedUri?: string;
   }>;
+  /** Current document URI for resolving note-relative assets */
+  docUri?: string;
 }
 
 const WIKI_LINK_REGEX = /\[\[([^\]|]+(?:\|[^\]]+)?)\]\]/g;
+const EXTERNAL_OR_APP_SCHEME_REGEX = /^(?:[a-z][a-z\d+.-]*:|\/\/)/i;
+const ABSOLUTE_FILESYSTEM_PATH_REGEX =
+  /^(?:\/(?:Users|home|var|tmp|private|Volumes)\/|[A-Za-z]:[\\/])/;
+
+function resolveMarkdownAssetSrc(
+  src: string | undefined,
+  docUri?: string
+): string | undefined {
+  if (!src) {
+    return src;
+  }
+
+  const trimmed = src.trim();
+  if (trimmed.length === 0) {
+    return trimmed;
+  }
+
+  if (EXTERNAL_OR_APP_SCHEME_REGEX.test(trimmed)) {
+    return trimmed;
+  }
+
+  if (ABSOLUTE_FILESYSTEM_PATH_REGEX.test(trimmed)) {
+    return `/api/doc-asset?path=${encodeURIComponent(trimmed)}`;
+  }
+
+  if (trimmed.startsWith("/")) {
+    return trimmed;
+  }
+
+  if (!docUri) {
+    return trimmed;
+  }
+
+  return `/api/doc-asset?uri=${encodeURIComponent(docUri)}&path=${encodeURIComponent(trimmed)}`;
+}
 
 function renderMarkdownWithWikiLinks(
   content: string,
@@ -364,6 +401,7 @@ const Image: FC<ComponentProps<"img"> & { node?: unknown }> = ({
   alt,
   className,
   node: _node,
+  src,
   ...props
 }) => (
   <img
@@ -372,6 +410,7 @@ const Image: FC<ComponentProps<"img"> & { node?: unknown }> = ({
       "my-4 max-w-full rounded-lg border border-border/40",
       className
     )}
+    src={src}
     {...props}
   />
 );
@@ -381,7 +420,13 @@ const Image: FC<ComponentProps<"img"> & { node?: unknown }> = ({
  * Sanitizes HTML to prevent XSS attacks.
  */
 export const MarkdownPreview = memo(
-  ({ content, className, collection, wikiLinks }: MarkdownPreviewProps) => {
+  ({
+    content,
+    className,
+    collection,
+    wikiLinks,
+    docUri,
+  }: MarkdownPreviewProps) => {
     if (!content) {
       return (
         <div className={cn("text-muted-foreground italic", className)}>
@@ -416,7 +461,17 @@ export const MarkdownPreview = memo(
       td: TableCell,
       th: TableHeaderCell,
       hr: Hr,
-      img: Image,
+      img: ({
+        node,
+        src,
+        ...props
+      }: ComponentProps<"img"> & { node?: unknown }) => (
+        <Image
+          {...props}
+          node={node}
+          src={resolveMarkdownAssetSrc(src, docUri)}
+        />
+      ),
     };
 
     return (

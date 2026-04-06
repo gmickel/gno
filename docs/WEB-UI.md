@@ -125,17 +125,18 @@ hyde: Refresh tokens rotate on each use.
 
 The split-view editor provides:
 
-| Feature              | Description                                     |
-| :------------------- | :---------------------------------------------- |
-| **CodeMirror 6**     | Modern editor with markdown syntax support      |
-| **Live Preview**     | Side-by-side markdown rendering                 |
-| **Auto-save**        | 2-second debounced saves                        |
-| **Syntax Highlight** | Code blocks with Shiki highlighting             |
-| **Unsaved Warning**  | Confirmation dialog before losing changes       |
-| **Toggle Preview**   | Show/hide preview pane                          |
-| **Safe Editing**     | Converted source formats stay read-only         |
-| **Wiki Linking**     | `[[...]]` autocomplete and linked-note creation |
-| **Preset Insert**    | Insert structured note scaffolds from presets   |
+| Feature              | Description                                               |
+| :------------------- | :-------------------------------------------------------- |
+| **CodeMirror 6**     | Modern editor with markdown syntax support                |
+| **Live Preview**     | Side-by-side markdown rendering                           |
+| **Local Images**     | Relative markdown images resolve against the current note |
+| **Auto-save**        | 2-second debounced saves                                  |
+| **Syntax Highlight** | Code blocks with Shiki highlighting                       |
+| **Unsaved Warning**  | Confirmation dialog before losing changes                 |
+| **Toggle Preview**   | Show/hide preview pane                                    |
+| **Safe Editing**     | Converted source formats stay read-only                   |
+| **Wiki Linking**     | `[[...]]` autocomplete and linked-note creation           |
+| **Preset Insert**    | Insert structured note scaffolds from presets             |
 
 ### Keyboard Shortcuts
 

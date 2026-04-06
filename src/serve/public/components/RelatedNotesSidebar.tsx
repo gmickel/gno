@@ -250,14 +250,14 @@ function RelatedNoteItem({
       <Tooltip>
         <TooltipTrigger asChild>
           <div className="min-w-0 flex-1">
-            <span className="block break-words font-medium leading-tight whitespace-normal text-foreground/90 group-hover:text-foreground">
+            <span className="line-clamp-2 block break-all font-medium leading-tight text-foreground/90 group-hover:text-foreground">
               {doc.title || "Untitled"}
             </span>
             <SimilarityBar score={doc.score} />
           </div>
         </TooltipTrigger>
         <TooltipContent side="left" className="max-w-[300px]">
-          <p className="break-words">{doc.title || "Untitled"}</p>
+          <p className="break-all">{doc.title || "Untitled"}</p>
         </TooltipContent>
       </Tooltip>
     </button>
