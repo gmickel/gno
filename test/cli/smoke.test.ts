@@ -347,6 +347,26 @@ describe("CLI smoke tests", () => {
       expect(parsed[0].include).toContain(".ts");
       expect(parsed[0].exclude).toContain("node_modules");
     });
+
+    test("collection add can set initial embed override", async () => {
+      const collPath = join(testDir, "code-model");
+      await mkdir(collPath, { recursive: true });
+
+      const { code } = await cli(
+        "collection",
+        "add",
+        collPath,
+        "--name",
+        "code-model",
+        "--embed-model",
+        "hf:Qwen/Qwen3-Embedding-0.6B-GGUF/Qwen3-Embedding-0.6B-Q8_0.gguf"
+      );
+      expect(code).toBe(0);
+
+      const { stdout } = await cli("collection", "list", "--json");
+      const parsed = JSON.parse(stdout.trim());
+      expect(parsed[0].models.embed).toContain("Qwen3-Embedding-0.6B");
+    });
   });
 
   describe("context commands", () => {

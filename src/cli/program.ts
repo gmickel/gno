@@ -1264,10 +1264,12 @@ function wireManagementCommands(program: Command): void {
     .option("--pattern <glob>", "file matching pattern")
     .option("--include <exts>", "extension allowlist (CSV)")
     .option("--exclude <patterns>", "exclude patterns (CSV)")
+    .option("--embed-model <uri>", "collection-specific embedding model URI")
     .option("--update <cmd>", "shell command to run before indexing")
     .action(async (path: string, cmdOpts: Record<string, unknown>) => {
       const { collectionAdd } = await import("./commands/collection");
       await collectionAdd(path, {
+        embedModel: cmdOpts.embedModel as string | undefined,
         name: cmdOpts.name as string,
         pattern: cmdOpts.pattern as string | undefined,
         include: cmdOpts.include as string | undefined,

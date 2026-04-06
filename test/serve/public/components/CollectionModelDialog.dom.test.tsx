@@ -50,11 +50,13 @@ describe("CollectionModelDialog DOM interactions", () => {
             expand: "preset",
             gen: "preset",
           },
+          include: [".ts", ".tsx"],
           models: {
             rerank: "hf:custom/rerank.gguf",
           },
           name: "docs",
           path: "/tmp/docs",
+          pattern: "**/*.{ts,tsx}",
         }}
         onOpenChange={onOpenChange}
         onSaved={onSaved}
@@ -67,6 +69,10 @@ describe("CollectionModelDialog DOM interactions", () => {
     expect(screen.getByText("hf:baseline/embed.gguf")).toBeTruthy();
     expect(screen.getAllByText("inherits").length).toBeGreaterThan(0);
     expect(screen.getByText("override")).toBeTruthy();
+    expect(screen.getByText("Recommended for code collections")).toBeTruthy();
+    expect(
+      screen.getByRole("button", { name: /apply recommendation/i })
+    ).toBeTruthy();
 
     const inputs = screen.getAllByPlaceholderText(
       "Leave empty to inherit from preset"
@@ -74,9 +80,8 @@ describe("CollectionModelDialog DOM interactions", () => {
     const embedInput = inputs[0];
     expect(embedInput).toBeTruthy();
 
-    await user.type(
-      embedInput as HTMLElement,
-      "hf:Qwen/Qwen3-Embedding-0.6B-GGUF/model.gguf"
+    await user.click(
+      screen.getByRole("button", { name: /apply recommendation/i })
     );
 
     expect(

@@ -23,6 +23,8 @@ export interface AddCollectionInput {
   exclude?: string[] | string;
   /** Update command to run before sync */
   updateCmd?: string;
+  /** Optional initial model overrides */
+  models?: Partial<Record<ModelType, string>>;
 }
 
 /**

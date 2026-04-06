@@ -210,7 +210,7 @@ Add a new collection to the index.
 **Synopsis:**
 
 ```bash
-gno collection add <path> --name <name> [--pattern <glob>] [--include <csv-ext>] [--exclude <csv>] [--update <cmd>] [--language <code>]
+gno collection add <path> --name <name> [--pattern <glob>] [--include <csv-ext>] [--exclude <csv>] [--update <cmd>] [--embed-model <uri>] [--language <code>]
 ```
 
 **Arguments:**
@@ -220,14 +220,15 @@ gno collection add <path> --name <name> [--pattern <glob>] [--include <csv-ext>]
 
 **Options:**
 
-| Option       | Type   | Default                                    | Description                                |
-| ------------ | ------ | ------------------------------------------ | ------------------------------------------ |
-| `--name`     | string | required                                   | Unique collection identifier               |
-| `--pattern`  | glob   | `**/*`                                     | File matching glob pattern                 |
-| `--include`  | csv    | -                                          | Extension allowlist                        |
-| `--exclude`  | csv    | `.git,node_modules,.venv,.idea,dist,build` | Exclude patterns                           |
-| `--update`   | string | -                                          | Shell command to run before indexing       |
-| `--language` | string | -                                          | BCP-47 language hint (e.g., en, de, zh-CN) |
+| Option          | Type   | Default                                    | Description                                          |
+| --------------- | ------ | ------------------------------------------ | ---------------------------------------------------- |
+| `--name`        | string | required                                   | Unique collection identifier                         |
+| `--pattern`     | glob   | `**/*`                                     | File matching glob pattern                           |
+| `--include`     | csv    | -                                          | Extension allowlist                                  |
+| `--exclude`     | csv    | `.git,node_modules,.venv,.idea,dist,build` | Exclude patterns                                     |
+| `--update`      | string | -                                          | Shell command to run before indexing                 |
+| `--embed-model` | string | -                                          | Initial collection-specific embedding model override |
+| `--language`    | string | -                                          | BCP-47 language hint (e.g., en, de, zh-CN)           |
 
 **Exit Codes:**
 

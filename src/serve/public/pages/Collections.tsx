@@ -78,12 +78,14 @@ interface CollectionStats {
   documentCount: number;
   chunkCount: number;
   embeddedCount: number;
+  include?: string[];
   models?: Partial<Record<"embed" | "rerank" | "expand" | "gen", string>>;
   effectiveModels?: Record<"embed" | "rerank" | "expand" | "gen", string>;
   modelSources?: Record<
     "embed" | "rerank" | "expand" | "gen",
     "override" | "preset" | "default"
   >;
+  pattern?: string;
 }
 
 interface StatusResponse {
@@ -346,8 +348,10 @@ export default function Collections({ navigate }: PageProps) {
         ...collection,
         activePresetId: config?.activePresetId,
         effectiveModels: config?.effectiveModels,
+        include: config?.include,
         models: config?.models,
         modelSources: config?.modelSources,
+        pattern: config?.pattern,
       };
     });
 

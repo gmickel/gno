@@ -42,7 +42,11 @@ gno init [<path>] [options]
 gno collection add <path> --name <name> [options]
 ```
 
-Options same as `init`.
+Options same as `init`, plus:
+
+| Option                | Description                                          |
+| --------------------- | ---------------------------------------------------- |
+| `--embed-model <uri>` | Initial collection-specific embedding model override |
 
 ### gno collection list
 

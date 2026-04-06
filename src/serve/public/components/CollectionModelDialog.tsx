@@ -44,10 +44,12 @@ export interface CollectionModelDetails {
   chunkCount: number;
   documentCount: number;
   effectiveModels?: Record<ModelRole, string>;
+  include?: string[];
   modelSources?: Record<ModelRole, ModelSource>;
   models?: Partial<Record<ModelRole, string>>;
   name: string;
   path: string;
+  pattern?: string;
 }
 
 interface UpdateCollectionResponse {
@@ -70,6 +72,56 @@ function normalizeValue(value: string | undefined): string {
   return value?.trim() ?? "";
 }
 
+const CODE_EMBED_RECOMMENDATION =
+  "hf:Qwen/Qwen3-Embedding-0.6B-GGUF/Qwen3-Embedding-0.6B-Q8_0.gguf";
+
+const CODE_PATH_HINTS = [
+  "/src",
+  "/lib",
+  "/app",
+  "/apps",
+  "/packages",
+  "/server",
+  "/services",
+] as const;
+
+const CODE_EXT_HINTS = [
+  ".ts",
+  ".tsx",
+  ".js",
+  ".jsx",
+  ".go",
+  ".rs",
+  ".py",
+  ".swift",
+  ".c",
+] as const;
+
+function collectionLooksCodeHeavy(collection: CollectionModelDetails): boolean {
+  const path = collection.path.toLowerCase();
+  if (
+    CODE_PATH_HINTS.some(
+      (hint) => path.endsWith(hint) || path.includes(`${hint}/`)
+    )
+  ) {
+    return true;
+  }
+
+  const includeValues = collection.include ?? [];
+  if (
+    includeValues.some((value) =>
+      CODE_EXT_HINTS.some((ext) => value.includes(ext))
+    )
+  ) {
+    return true;
+  }
+
+  const pattern = collection.pattern?.toLowerCase() ?? "";
+  return CODE_EXT_HINTS.some(
+    (ext) => pattern.includes(ext) || pattern.includes(ext.replace(".", ""))
+  );
+}
+
 export function CollectionModelDialog({
   collection,
   onOpenChange,
@@ -84,6 +136,8 @@ export function CollectionModelDialog({
   });
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const showCodeRecommendation =
+    collection !== null && collectionLooksCodeHeavy(collection);
 
   useEffect(() => {
     if (!open || !collection) {
@@ -220,6 +274,39 @@ export function CollectionModelDialog({
                       {effectiveValue}
                     </span>
                   </div>
+
+                  {role === "embed" && showCodeRecommendation ? (
+                    <div className="rounded-lg border border-secondary/25 bg-secondary/8 px-4 py-3">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                        <div className="space-y-1">
+                          <p className="font-mono text-[10px] text-secondary uppercase tracking-[0.15em]">
+                            Recommended for code collections
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            Benchmark-backed code recommendation. Keep the
+                            active preset for prose collections; use Qwen on
+                            code-heavy trees.
+                          </p>
+                          <p className="break-all font-mono text-[11px] text-foreground/85">
+                            {CODE_EMBED_RECOMMENDATION}
+                          </p>
+                        </div>
+                        <Button
+                          className="shrink-0"
+                          onClick={() =>
+                            setDraft((current) => ({
+                              ...current,
+                              embed: CODE_EMBED_RECOMMENDATION,
+                            }))
+                          }
+                          size="sm"
+                          variant="secondary"
+                        >
+                          Apply recommendation
+                        </Button>
+                      </div>
+                    </div>
+                  ) : null}
 
                   <div className="flex flex-col gap-2 sm:flex-row">
                     <Input
