@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.39.1] - 2026-04-06
+
+### Changed
+
+- Clarified the upgrade path after the default embed-model switch to `Qwen3-Embedding-0.6B-GGUF`, including the explicit `gno models pull --embed` + `gno embed` re-embed step for existing collections.
+
 ## [0.39.0] - 2026-04-06
 
 ### Added

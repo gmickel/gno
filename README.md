@@ -87,13 +87,26 @@ gno daemon
 
 ## What's New
 
-> Latest release: [v0.37.0](./CHANGELOG.md#0370---2026-04-06)  
+> Latest release: [v0.39.1](./CHANGELOG.md#0391---2026-04-06)  
 > Full release history: [CHANGELOG.md](./CHANGELOG.md)
 
 - **Retrieval Quality Upgrade**: stronger BM25 lexical handling, code-aware chunking, terminal result hyperlinks, and per-collection model overrides
 - **Code Embedding Benchmarks**: new benchmark workflow across canonical, real-GNO, and pinned OSS slices for comparing alternate embedding models
 - **Default Embed Model**: built-in presets now use `Qwen3-Embedding-0.6B-GGUF` after it beat `bge-m3` on both code and multilingual prose benchmark lanes
 - **Regression Fixes**: tightened phrase/negation/hyphen/underscore BM25 behavior, cleaned non-TTY hyperlink output, improved `gno doctor` chunking visibility, and fixed the embedding autoresearch harness
+
+### Upgrading Existing Collections
+
+If you already had collections indexed before the default embed-model switch to
+`Qwen3-Embedding-0.6B-GGUF`, run:
+
+```bash
+gno models pull --embed
+gno embed
+```
+
+That regenerates embeddings for the new default model. Old vectors are kept
+until you explicitly clear stale embeddings.
 
 ### Fine-Tuned Model Quick Use
 
