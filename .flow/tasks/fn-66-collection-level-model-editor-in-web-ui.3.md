@@ -1,6 +1,7 @@
 # fn-66-collection-level-model-editor-in-web-ui.3 Document collection model editing and recovery flows
 
 ## Description
+
 Finish docs/website coverage for the collection model editor and the operator flow around it.
 
 Start here:
@@ -38,6 +39,7 @@ Run:
 - docs verification after copy changes
 
 ## Acceptance
+
 - [ ] Web UI docs show where to edit collection model overrides.
 - [ ] API docs cover the collection model override payloads.
 - [ ] Configuration/troubleshooting docs explain inheritance and re-embed implications.
@@ -45,9 +47,11 @@ Run:
 - [ ] README only changes if the new UI meaningfully improves the getting-started story.
 
 ## Done summary
+
 TBD
 
 ## Evidence
+
 - Commits:
 - Tests:
 - PRs:

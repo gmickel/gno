@@ -1,6 +1,7 @@
 # fn-67-evaluate-qwen3-embedding-06b-gguf-for.2 Run general-collection benchmark lane for Qwen3 vs bge-m3 using the existing retrieval pipeline
 
 ## Description
+
 Run the actual comparison using GNO's shipped indexing and retrieval path.
 
 Start here:
@@ -60,6 +61,7 @@ Docs owned by this task:
 - `website/features/benchmarks.md` if the outcome is worth surfacing immediately
 
 ## Acceptance
+
 - [ ] `bge-m3` and Qwen3 are compared on the new public multilingual markdown fixture.
 - [ ] Comparison uses GNO's real indexing/search pipeline, not a detached cosine-only script.
 - [ ] Results break out vector vs hybrid and same-language vs cross-language behavior.
@@ -67,9 +69,11 @@ Docs owned by this task:
 - [ ] The task ends with a concrete recommendation or an explicit “not enough evidence” call.
 
 ## Done summary
+
 TBD
 
 ## Evidence
+
 - Commits:
 - Tests:
 - PRs:

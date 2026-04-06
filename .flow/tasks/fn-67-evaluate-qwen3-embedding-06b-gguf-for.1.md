@@ -1,6 +1,7 @@
 # fn-67-evaluate-qwen3-embedding-06b-gguf-for.1 Create multilingual public markdown benchmark fixtures for general collections
 
 ## Description
+
 Build a reproducible public markdown corpus for evaluating embedding models on normal collections.
 
 Start here:
@@ -61,6 +62,7 @@ Docs:
 - make explicit that this fixture exists because product-default decisions must not rely on private corpora
 
 ## Acceptance
+
 - [ ] A new general markdown benchmark fixture exists with no private content.
 - [ ] Source provenance and license info are pinned for every vendored source.
 - [ ] The fixture covers multiple languages and cross-language retrieval cases.
@@ -68,9 +70,11 @@ Docs:
 - [ ] Fixture docs explain why this lane is separate from the code benchmark.
 
 ## Done summary
+
 TBD
 
 ## Evidence
+
 - Commits:
 - Tests:
 - PRs:

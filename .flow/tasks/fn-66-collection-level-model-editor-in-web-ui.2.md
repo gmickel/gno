@@ -1,6 +1,7 @@
 # fn-66-collection-level-model-editor-in-web-ui.2 Build collection-level model editor UX in the web app
 
 ## Description
+
 Build the user-facing collection model editor once the API exists.
 
 Start here:
@@ -58,6 +59,7 @@ Tests:
   - switch active preset and confirm inherited rows update
 
 ## Acceptance
+
 - [ ] The Collections page exposes a collection-level model editor.
 - [ ] Users can set, update, and clear overrides for individual roles.
 - [ ] The UI shows effective model URIs and inheritance source clearly.
@@ -65,9 +67,11 @@ Tests:
 - [ ] Save/load/error states are handled without forcing manual config edits.
 
 ## Done summary
+
 TBD
 
 ## Evidence
+
 - Commits:
 - Tests:
 - PRs:

@@ -1,6 +1,7 @@
 # fn-67-evaluate-qwen3-embedding-06b-gguf-for Evaluate Qwen3-Embedding-0.6B-GGUF for general multilingual collections
 
 ## Overview
+
 Determine whether `Qwen3-Embedding-0.6B-GGUF` is better than the current `bge-m3` default for normal markdown/prose collections, not just code-heavy collections.
 
 This epic should reuse GNO's real indexing + retrieval pipeline, avoid any Gordon/private content, and build a reproducible multilingual benchmark lane from public markdown sources.
@@ -10,6 +11,7 @@ It must also answer the operator question that blocks any future default change:
 - if the global embedding model changes, what is the clean reindex story in CLI, API, and web UI?
 
 ## Scope
+
 Included:
 
 - a reproducible multilingual markdown benchmark fixture built from public OSS/public-doc markdown
@@ -28,6 +30,7 @@ Excluded:
 - path/file-type override design; covered by `fn-65`
 
 ## Approach
+
 ### Prior context
 
 - Current default embed model in presets is `bge-m3`:
@@ -41,7 +44,7 @@ Excluded:
   - 100+ languages
   - instruction-aware retrieval
   - llama.cpp guidance uses `--pooling last`
-  Source: [Qwen model card](https://huggingface.co/Qwen/Qwen3-Embedding-0.6B-GGUF)
+    Source: [Qwen model card](https://huggingface.co/Qwen/Qwen3-Embedding-0.6B-GGUF)
 
 ### Reuse anchors
 
@@ -149,6 +152,7 @@ Design clean reindex semantics for global embedding model changes.
 Publish the benchmark outcome and the default-model recommendation only if warranted by the evidence.
 
 ## Quick commands
+
 - `bun run lint:check`
 - `bun test`
 - `bun run docs:verify`
@@ -156,6 +160,7 @@ Publish the benchmark outcome and the default-model recommendation only if warra
 - `bun run bench:code-embeddings --candidate bge-m3-incumbent --fixture oss-slices --dry-run`
 
 ## Acceptance
+
 - [ ] A public multilingual markdown benchmark fixture exists with pinned provenance and no private content.
 - [ ] Qwen3 and bge-m3 are compared through GNO's real indexing/search pipeline for normal collections.
 - [ ] The result distinguishes same-language vs cross-language retrieval and vector vs hybrid behavior.
@@ -163,6 +168,7 @@ Publish the benchmark outcome and the default-model recommendation only if warra
 - [ ] Docs and benchmark pages clearly say whether Qwen should stay code-only, become a global recommendation, or remain experimental.
 
 ## References
+
 - `src/config/types.ts`
 - `src/cli/commands/models/use.ts`
 - `src/cli/commands/embed.ts`

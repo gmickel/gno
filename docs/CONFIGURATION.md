@@ -445,19 +445,19 @@ Override paths (applied before platform defaults):
 
 **Linux** (XDG):
 
-| Path | Purpose |
-|------|---------|
-| `~/.config/gno/index.yml` | Config |
-| `~/.local/share/gno/index-default.sqlite` | Database |
-| `~/.cache/gno/models/` | Model cache |
+| Path                                      | Purpose     |
+| ----------------------------------------- | ----------- |
+| `~/.config/gno/index.yml`                 | Config      |
+| `~/.local/share/gno/index-default.sqlite` | Database    |
+| `~/.cache/gno/models/`                    | Model cache |
 
 **macOS**:
 
-| Path | Purpose |
-|------|---------|
-| `~/Library/Application Support/gno/config/index.yml` | Config |
-| `~/Library/Application Support/gno/data/index-default.sqlite` | Database |
-| `~/Library/Caches/gno/models/` | Model cache |
+| Path                                                          | Purpose     |
+| ------------------------------------------------------------- | ----------- |
+| `~/Library/Application Support/gno/config/index.yml`          | Config      |
+| `~/Library/Application Support/gno/data/index-default.sqlite` | Database    |
+| `~/Library/Caches/gno/models/`                                | Model cache |
 
 Run `gno doctor` to see resolved paths for your system.
 

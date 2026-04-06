@@ -1,6 +1,7 @@
 # fn-67-evaluate-qwen3-embedding-06b-gguf-for.3 Design clean reindex semantics for global embedding model changes
 
 ## Description
+
 Figure out the clean operator flow when the active global embedding model changes.
 
 Start here:
@@ -55,6 +56,7 @@ Non-goal:
 - do not silently change default models in this task
 
 ## Acceptance
+
 - [ ] The repo has an explicit recommended behavior for active global embed-model changes.
 - [ ] The recommendation covers CLI, API, and web UI status/recovery flow.
 - [ ] The design states whether plain `gno embed` is sufficient or whether another action is needed.
@@ -62,9 +64,11 @@ Non-goal:
 - [ ] Documentation targets for the chosen flow are identified.
 
 ## Done summary
+
 TBD
 
 ## Evidence
+
 - Commits:
 - Tests:
 - PRs:

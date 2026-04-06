@@ -1,6 +1,7 @@
 # fn-66-collection-level-model-editor-in-web-ui Collection-level model editor in web UI
 
 ## Overview
+
 Collection-level model overrides shipped in config and runtime under `fn-64`, but the web app still only exposes global preset switching.
 
 This follow-up makes collection-scoped model selection usable without hand-editing `~/.config/gno/index.yml`.
@@ -18,6 +19,7 @@ Secondary goals:
 This is a UI/editor epic, not a new model system.
 
 ## Scope
+
 Included:
 
 - read/write API support for collection-level `models` overrides
@@ -35,6 +37,7 @@ Excluded:
 - per-folder config files or any config outside central `index.yml`
 
 ## Approach
+
 ### Prior context
 
 - Collection-scoped model overrides already exist in config/runtime:
@@ -141,12 +144,14 @@ Build collection-level model editor UX in the web app.
 Document collection model editing and recovery flows.
 
 ## Quick commands
+
 - `bun run lint:check`
 - `bun test`
 - `bun run docs:verify`
 - `bun run website:sync-docs`
 
 ## Acceptance
+
 - [ ] The web app can read and persist collection-level model overrides without hand-editing YAML.
 - [ ] Users can see effective per-role model URIs and whether each value is inherited or overridden.
 - [ ] Clearing an override returns the role to preset inheritance cleanly.
@@ -154,6 +159,7 @@ Document collection model editing and recovery flows.
 - [ ] API, Web UI docs, configuration docs, and website copy stay in sync.
 
 ## References
+
 - `src/config/types.ts`
 - `src/llm/registry.ts`
 - `src/config/saver.ts`

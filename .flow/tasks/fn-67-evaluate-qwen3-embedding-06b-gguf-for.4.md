@@ -1,6 +1,7 @@
 # fn-67-evaluate-qwen3-embedding-06b-gguf-for.4 Publish benchmark outcome and default-model recommendation if warranted
 
 ## Description
+
 Close the loop once evidence and reindex semantics exist.
 
 Start here:
@@ -43,6 +44,7 @@ Possible follow-up from this task:
 - if UI work is needed for the new recovery flow, cross-link to `fn-66`
 
 ## Acceptance
+
 - [ ] Published docs say clearly whether Qwen should remain specialized or become the new general recommendation.
 - [ ] Any recommendation change includes the required reindex/recovery guidance.
 - [ ] Benchmark pages and research docs agree with README/configuration copy.
@@ -50,9 +52,11 @@ Possible follow-up from this task:
 - [ ] If evidence is not strong enough to change defaults, the docs say so plainly.
 
 ## Done summary
+
 TBD
 
 ## Evidence
+
 - Commits:
 - Tests:
 - PRs:

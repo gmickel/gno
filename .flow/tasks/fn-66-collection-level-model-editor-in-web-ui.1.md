@@ -1,6 +1,7 @@
 # fn-66-collection-level-model-editor-in-web-ui.1 Add collection model override read/write API and effective-resolution payloads
 
 ## Description
+
 Add the backend/API surface needed for a real collection-level model editor.
 
 Start here:
@@ -51,6 +52,7 @@ Docs owned by this task if the payload/API changes:
 - `docs/CONFIGURATION.md` if wire format examples need adjustment
 
 ## Acceptance
+
 - [ ] Collections API exposes raw overrides plus effective per-role model resolution for UI use.
 - [ ] A write path exists for setting and clearing collection model overrides.
 - [ ] Clearing one override does not clobber other roles.
@@ -58,9 +60,11 @@ Docs owned by this task if the payload/API changes:
 - [ ] API docs reflect the final request/response shape.
 
 ## Done summary
+
 TBD
 
 ## Evidence
+
 - Commits:
 - Tests:
 - PRs:
