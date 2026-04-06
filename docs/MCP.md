@@ -661,7 +661,7 @@ Poll job status with `gno_job_status`. Fails fast if embedding model not cached.
 Optional input:
 
 ```yaml
-collection: "notes"   # limit embedding work to one collection
+collection: "notes" # limit embedding work to one collection
 ```
 
 ### gno_index
@@ -685,7 +685,7 @@ Clear stale or all embeddings for one collection (requires `--enable-write`).
 
 ```yaml
 collection: "notes"
-mode: "stale"   # or "all"
+mode: "stale" # or "all"
 ```
 
 Use `mode: "stale"` to remove embeddings for models that are no longer the
