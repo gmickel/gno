@@ -3,11 +3,11 @@ import {
   CpuIcon,
   Loader2Icon,
   RotateCcwIcon,
+  SparklesIcon,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { apiFetch } from "../hooks/use-api";
-import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
 import {
   Dialog,
@@ -62,10 +62,6 @@ interface CollectionModelDialogProps {
   onOpenChange: (open: boolean) => void;
   onSaved: () => void;
   open: boolean;
-}
-
-function sourceBadgeVariant(source: ModelSource): "outline" | "secondary" {
-  return source === "override" ? "secondary" : "outline";
 }
 
 function normalizeValue(value: string | undefined): string {
@@ -204,158 +200,162 @@ export function CollectionModelDialog({
 
   return (
     <Dialog onOpenChange={onOpenChange} open={open}>
-      <DialogContent className="max-w-4xl border-border/50 bg-[#0f1115] p-0 shadow-[0_30px_90px_-35px_rgba(0,0,0,0.8)]">
-        <DialogHeader className="border-border/30 border-b px-6 py-5 text-left">
+      <DialogContent className="flex max-h-[85vh] max-w-3xl flex-col gap-0 overflow-x-hidden border-none bg-[#0f1115] p-0 shadow-[0_30px_90px_-35px_rgba(0,0,0,0.8)]">
+        {/* Header */}
+        <DialogHeader className="shrink-0 border-border/20 border-b px-6 pt-5 pb-4 text-left">
           <div className="flex items-start justify-between gap-4">
-            <div className="space-y-2">
-              <div className="flex flex-wrap items-center gap-2">
-                <Badge
-                  className="font-mono uppercase tracking-[0.12em]"
-                  variant="outline"
-                >
+            <div className="min-w-0 space-y-1.5">
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                <span className="rounded bg-muted/40 px-2 py-0.5 font-mono text-[10px] text-muted-foreground/70 uppercase tracking-[0.12em]">
                   Collection models
-                </Badge>
-                <Badge className="font-mono" variant="outline">
+                </span>
+                <span className="rounded bg-muted/30 px-2 py-0.5 font-mono text-[10px] text-muted-foreground/50 tracking-[0.05em]">
                   preset: {collection?.activePresetId ?? "unknown"}
-                </Badge>
+                </span>
               </div>
-              <DialogTitle className="font-[Iowan_Old_Style,Palatino_Linotype,Palatino,Book_Antiqua,Georgia,serif] text-2xl">
+              <DialogTitle className="font-[Iowan_Old_Style,Palatino_Linotype,Palatino,Book_Antiqua,Georgia,serif] text-2xl leading-tight">
                 {collection?.name ?? "Collection"}
               </DialogTitle>
-              <DialogDescription className="max-w-3xl text-muted-foreground">
+              <DialogDescription className="text-muted-foreground/70 text-[13px]">
                 Override model roles for one collection without changing the
                 active preset for the rest of the workspace.
               </DialogDescription>
             </div>
-            <div className="hidden min-w-[240px] space-y-2 border-border/20 border-l pl-4 lg:block">
-              <p className="font-mono text-[10px] text-muted-foreground/60 uppercase tracking-[0.15em]">
+            <div className="hidden shrink-0 max-w-[200px] space-y-1 border-border/15 border-l pl-4 lg:block">
+              <p className="font-mono text-[10px] text-muted-foreground/50 uppercase tracking-[0.15em]">
                 Path
               </p>
-              <p className="break-all font-mono text-[11px] text-muted-foreground/80">
+              <p
+                className="break-all font-mono text-[10px] leading-relaxed text-muted-foreground/50"
+                title={collection?.path}
+              >
                 {collection?.path}
               </p>
             </div>
           </div>
         </DialogHeader>
 
-        <div className="space-y-0">
-          {MODEL_ROLES.map((role) => {
-            const source = collection?.modelSources?.[role] ?? "preset";
-            const effectiveValue = collection?.effectiveModels?.[role] ?? "";
-            const draftValue = draft[role];
+        {/* Scrollable model roles */}
+        <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden">
+          <div className="divide-y divide-border/15">
+            {MODEL_ROLES.map((role) => {
+              const source = collection?.modelSources?.[role] ?? "preset";
+              const effectiveValue = collection?.effectiveModels?.[role] ?? "";
+              const draftValue = draft[role];
+              const isOverride = source === "override";
 
-            return (
-              <div
-                className="grid gap-4 border-border/20 border-t px-6 py-5 lg:grid-cols-[220px_minmax(0,1fr)]"
-                key={role}
-              >
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <CpuIcon className="size-4 text-secondary" />
-                    <h3 className="font-medium text-sm">{ROLE_LABELS[role]}</h3>
+              return (
+                <div
+                  className="grid gap-x-5 gap-y-3 px-6 py-4 lg:grid-cols-[180px_minmax(0,1fr)]"
+                  key={role}
+                >
+                  {/* Left: role info */}
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <CpuIcon className="size-3.5 text-secondary/70" />
+                      <h3 className="font-medium text-[13px]">
+                        {ROLE_LABELS[role]}
+                      </h3>
+                    </div>
+                    <p className="text-muted-foreground/50 text-xs leading-relaxed">
+                      {ROLE_NOTES[role]}
+                    </p>
                   </div>
-                  <p className="text-muted-foreground text-sm">
-                    {ROLE_NOTES[role]}
-                  </p>
-                </div>
 
-                <div className="space-y-3">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Badge
-                      className="font-mono uppercase tracking-[0.12em]"
-                      variant={sourceBadgeVariant(source)}
+                  {/* Right: controls */}
+                  <div className="space-y-2.5">
+                    {/* Source + effective model */}
+                    <div className="flex items-baseline gap-2">
+                      <span
+                        className={`shrink-0 rounded px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.1em] ${
+                          isOverride
+                            ? "bg-secondary/15 text-secondary/80"
+                            : "bg-muted/40 text-muted-foreground/50"
+                        }`}
+                      >
+                        {isOverride ? "override" : "inherits"}
+                      </span>
+                      <span className="font-mono text-[9px] text-muted-foreground/35 uppercase tracking-[0.12em]">
+                        effective
+                      </span>
+                    </div>
+                    <p
+                      className="break-all font-mono text-[11px] leading-relaxed text-foreground/70"
+                      title={effectiveValue}
                     >
-                      {source === "override" ? "override" : "inherits"}
-                    </Badge>
-                    <span className="font-mono text-[11px] text-muted-foreground/70 uppercase tracking-[0.15em]">
-                      effective
-                    </span>
-                    <span className="break-all font-mono text-[11px] text-foreground/85">
                       {effectiveValue}
-                    </span>
-                  </div>
+                    </p>
 
-                  {role === "embed" && showCodeRecommendation ? (
-                    <div className="rounded-lg border border-secondary/25 bg-secondary/8 px-4 py-3">
-                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                        <div className="space-y-1">
-                          <p className="font-mono text-[10px] text-secondary uppercase tracking-[0.15em]">
-                            Recommended for code collections
+                    {/* Code embed recommendation */}
+                    {role === "embed" && showCodeRecommendation ? (
+                      <button
+                        className="flex w-full cursor-pointer items-center gap-2.5 rounded-md border border-secondary/15 bg-secondary/5 px-3 py-2 text-left transition-colors hover:border-secondary/25 hover:bg-secondary/8"
+                        onClick={() =>
+                          setDraft((current) => ({
+                            ...current,
+                            embed: CODE_EMBED_RECOMMENDATION,
+                          }))
+                        }
+                        type="button"
+                      >
+                        <SparklesIcon className="size-3.5 shrink-0 text-secondary/60" />
+                        <div className="min-w-0">
+                          <p className="text-[11px] text-foreground/70">
+                            Apply code-optimized embedding
                           </p>
-                          <p className="text-sm text-muted-foreground">
-                            Benchmark-backed code recommendation. Keep the
-                            active preset for prose collections; use Qwen on
-                            code-heavy trees.
-                          </p>
-                          <p className="break-all font-mono text-[11px] text-foreground/85">
+                          <p className="truncate font-mono text-[10px] text-muted-foreground/40">
                             {CODE_EMBED_RECOMMENDATION}
                           </p>
                         </div>
-                        <Button
-                          className="shrink-0"
-                          onClick={() =>
-                            setDraft((current) => ({
-                              ...current,
-                              embed: CODE_EMBED_RECOMMENDATION,
-                            }))
-                          }
-                          size="sm"
-                          variant="secondary"
-                        >
-                          Apply recommendation
-                        </Button>
-                      </div>
-                    </div>
-                  ) : null}
+                      </button>
+                    ) : null}
 
-                  <div className="flex flex-col gap-2 sm:flex-row">
-                    <Input
-                      className="font-mono text-[12px]"
-                      onChange={(event) =>
-                        setDraft((current) => ({
-                          ...current,
-                          [role]: event.target.value,
-                        }))
-                      }
-                      placeholder="Leave empty to inherit from preset"
-                      value={draftValue}
-                    />
-                    <Button
-                      className="shrink-0"
-                      disabled={draftValue.trim().length === 0}
-                      onClick={() =>
-                        setDraft((current) => ({
-                          ...current,
-                          [role]: "",
-                        }))
-                      }
-                      size="sm"
-                      variant="outline"
-                    >
-                      <RotateCcwIcon className="size-4" />
-                      Reset
-                    </Button>
+                    {/* Input + reset */}
+                    <div className="flex items-center gap-1.5">
+                      <Input
+                        className="h-8 border-border/20 bg-muted/10 font-mono text-[11px] placeholder:text-muted-foreground/25"
+                        onChange={(event) =>
+                          setDraft((current) => ({
+                            ...current,
+                            [role]: event.target.value,
+                          }))
+                        }
+                        placeholder="Leave empty to inherit from preset"
+                        value={draftValue}
+                      />
+                      <Button
+                        className="size-8 shrink-0 border-border/20 text-muted-foreground/30 hover:text-muted-foreground/60"
+                        disabled={draftValue.trim().length === 0}
+                        onClick={() =>
+                          setDraft((current) => ({
+                            ...current,
+                            [role]: "",
+                          }))
+                        }
+                        size="icon-sm"
+                        variant="outline"
+                      >
+                        <RotateCcwIcon className="size-3" />
+                      </Button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
 
-        <div className="space-y-3 border-border/30 border-t px-6 py-5">
+          {/* Warnings */}
           {collection && embedChanged && collection.documentCount > 0 ? (
-            <div className="rounded-lg border border-secondary/30 bg-secondary/10 px-4 py-3 text-sm">
-              <div className="flex items-start gap-2">
-                <AlertTriangleIcon className="mt-0.5 size-4 shrink-0 text-secondary" />
-                <div className="space-y-1">
-                  <p className="font-medium text-secondary">
-                    Embedding change requires follow-up work
+            <div className="border-border/15 border-t px-6 py-3">
+              <div className="flex items-start gap-2.5 rounded-md border border-secondary/15 bg-secondary/5 px-3 py-2.5">
+                <AlertTriangleIcon className="mt-0.5 size-3.5 shrink-0 text-secondary/60" />
+                <div>
+                  <p className="font-medium text-secondary/80 text-xs">
+                    Re-index needed after save
                   </p>
-                  <p className="text-muted-foreground">
-                    This collection already has {collection.documentCount}{" "}
-                    documents and {collection.chunkCount} chunks. After saving,
-                    re-index or run embeddings for this collection so vector
-                    search catches up to the new embedding model.
+                  <p className="mt-0.5 text-muted-foreground/50 text-xs">
+                    {collection.documentCount} docs / {collection.chunkCount}{" "}
+                    chunks will need re-embedding for the new model.
                   </p>
                 </div>
               </div>
@@ -363,21 +363,31 @@ export function CollectionModelDialog({
           ) : null}
 
           {error ? (
-            <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-destructive text-sm">
-              {error}
+            <div className="border-border/15 border-t px-6 py-3">
+              <div className="rounded-md border border-destructive/25 bg-destructive/8 px-3 py-2.5 text-destructive text-xs">
+                {error}
+              </div>
             </div>
           ) : null}
         </div>
 
-        <DialogFooter className="border-border/30 border-t px-6 py-4">
-          <Button onClick={() => onOpenChange(false)} variant="outline">
+        {/* Footer — always visible */}
+        <DialogFooter className="shrink-0 border-border/20 border-t px-6 py-3">
+          <Button
+            className="border-border/20 text-xs"
+            onClick={() => onOpenChange(false)}
+            size="sm"
+            variant="outline"
+          >
             Cancel
           </Button>
           <Button
+            className="text-xs"
             disabled={!hasChanges || saving}
             onClick={() => void handleSave()}
+            size="sm"
           >
-            {saving ? <Loader2Icon className="size-4 animate-spin" /> : null}
+            {saving ? <Loader2Icon className="size-3.5 animate-spin" /> : null}
             Save model settings
           </Button>
         </DialogFooter>
