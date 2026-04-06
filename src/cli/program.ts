@@ -1495,34 +1495,43 @@ function wireManagementCommands(program: Command): void {
 
   // embed - Generate embeddings
   program
-    .command("embed")
+    .command("embed [collection]")
     .description("Generate embeddings for indexed documents")
+    .option("--collection <name>", "restrict to one collection")
     .option("--model <uri>", "embedding model URI")
     .option("--batch-size <num>", "batch size", "32")
     .option("--force", "regenerate all embeddings")
     .option("--dry-run", "show what would be done")
     .option("--json", "JSON output")
-    .action(async (cmdOpts: Record<string, unknown>) => {
-      const globals = getGlobals();
-      const format = getFormat(cmdOpts);
+    .action(
+      async (
+        collectionArg: string | undefined,
+        cmdOpts: Record<string, unknown>
+      ) => {
+        const globals = getGlobals();
+        const format = getFormat(cmdOpts);
 
-      const { embed, formatEmbed } = await import("./commands/embed");
-      const opts = {
-        model: cmdOpts.model as string | undefined,
-        batchSize: parsePositiveInt("batch-size", cmdOpts.batchSize),
-        force: Boolean(cmdOpts.force),
-        dryRun: Boolean(cmdOpts.dryRun),
-        yes: globals.yes,
-        json: format === "json",
-        verbose: globals.verbose,
-      };
-      const result = await embed(opts);
+        const { embed, formatEmbed } = await import("./commands/embed");
+        const collection =
+          collectionArg ?? (cmdOpts.collection as string | undefined);
+        const opts = {
+          collection,
+          model: cmdOpts.model as string | undefined,
+          batchSize: parsePositiveInt("batch-size", cmdOpts.batchSize),
+          force: Boolean(cmdOpts.force),
+          dryRun: Boolean(cmdOpts.dryRun),
+          yes: globals.yes,
+          json: format === "json",
+          verbose: globals.verbose,
+        };
+        const result = await embed(opts);
 
-      if (!result.success) {
-        throw new CliError("RUNTIME", result.error ?? "Embed failed");
+        if (!result.success) {
+          throw new CliError("RUNTIME", result.error ?? "Embed failed");
+        }
+        process.stdout.write(`${formatEmbed(result, opts)}\n`);
       }
-      process.stdout.write(`${formatEmbed(result, opts)}\n`);
-    });
+    );
 
   // cleanup - Clean stale data
   program

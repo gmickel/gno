@@ -286,6 +286,28 @@ gno collection clear-embeddings <name> [--all] [--json]
 - `all` removes every embedding for that collection and requires a new `gno embed --collection <name>` run
 - embeddings shared by active documents in other collections are retained
 
+---
+
+### gno embed
+
+Generate embeddings for indexed chunks.
+
+**Synopsis:**
+
+```bash
+gno embed [collection] [--collection <name>] [--force] [--model <uri>] [--batch-size <n>] [--dry-run] [--yes] [--json]
+```
+
+**Arguments:**
+| Arg | Type | Description |
+|-----|------|-------------|
+| `[collection]` | string | Optional collection name shortcut |
+
+**Behavior note:**
+
+- `[collection]` and `--collection <name>` are aliases
+- if provided, embedding work is scoped to that collection only
+
 ````
 
 **Output (JSON):**
