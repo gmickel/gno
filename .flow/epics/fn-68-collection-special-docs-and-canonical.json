@@ -1,0 +1,13 @@
+{
+  "branch_name": "fn-68-collection-special-docs-and-canonical",
+  "created_at": "2026-04-06T19:40:09.377722Z",
+  "depends_on_epics": [],
+  "id": "fn-68-collection-special-docs-and-canonical",
+  "next_task": 1,
+  "plan_review_status": "unknown",
+  "plan_reviewed_at": null,
+  "spec_path": ".flow/specs/fn-68-collection-special-docs-and-canonical.md",
+  "status": "open",
+  "title": "Collection special docs and canonical paths",
+  "updated_at": "2026-04-06T19:40:09.377977Z"
+}

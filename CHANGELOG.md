@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.40.2] - 2026-04-06
+
+### Fixed
+
+- Fixed Web UI document layout regressions in the left outline rail, including width blowouts, sticky behavior, and long-title handling in dense note views.
+- Fixed local markdown image rendering in Doc View and editor preview by resolving note-relative asset paths against the current document instead of the web root.
+
 ## [0.40.1] - 2026-04-06
 
 ### Changed
@@ -1105,7 +1112,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 | 0.4.0   | 2026-01-01 | Web UI and REST API                       |
 | 0.1.0   | 2025-12-30 | Initial release with full search pipeline |
 
-[Unreleased]: https://github.com/gmickel/gno/compare/v0.36.0...HEAD
+[Unreleased]: https://github.com/gmickel/gno/compare/v0.40.2...HEAD
+[0.40.2]: https://github.com/gmickel/gno/compare/v0.40.1...v0.40.2
+[0.40.1]: https://github.com/gmickel/gno/compare/v0.40.0...v0.40.1
+[0.40.0]: https://github.com/gmickel/gno/compare/v0.39.1...v0.40.0
+[0.39.1]: https://github.com/gmickel/gno/compare/v0.39.0...v0.39.1
+[0.39.0]: https://github.com/gmickel/gno/compare/v0.38.0...v0.39.0
+[0.38.0]: https://github.com/gmickel/gno/compare/v0.37.0...v0.38.0
+[0.37.0]: https://github.com/gmickel/gno/compare/v0.36.0...v0.37.0
 [0.36.0]: https://github.com/gmickel/gno/compare/v0.35.0...v0.36.0
 [0.35.0]: https://github.com/gmickel/gno/compare/v0.34.1...v0.35.0
 [0.34.1]: https://github.com/gmickel/gno/compare/v0.34.0...v0.34.1
