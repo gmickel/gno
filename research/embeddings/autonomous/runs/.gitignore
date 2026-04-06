@@ -1,3 +1,4 @@
 *.json
 *.benchmark.json
+*.cache/
 !.gitignore

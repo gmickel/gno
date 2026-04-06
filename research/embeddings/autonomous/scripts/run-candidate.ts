@@ -29,6 +29,7 @@ if (!candidate) {
 
 const outDir = join(repoRoot, config.logging.runDir);
 await mkdir(outDir, { recursive: true });
+const sharedCacheDir = join(outDir, `${candidate.id}.cache`);
 
 runCommand(config.metric.validationCommand);
 runCommand(config.metric.smokeCommand);
@@ -45,20 +46,20 @@ for (const fixture of [
     `${candidate.id}.${fixture}.benchmark.json`
   );
   benchmarkPaths[fixture] = benchmarkPath;
-  runCommand(
-    [
-      "bun",
-      "scripts/code-embedding-benchmark.ts",
-      "--model",
-      candidate.runtime.uri,
-      "--label",
-      candidate.label,
-      "--fixture",
-      fixture,
-      "--out",
-      benchmarkPath,
-    ].join(" ")
-  );
+  runCommand([
+    "bun",
+    "scripts/code-embedding-benchmark.ts",
+    "--model",
+    candidate.runtime.uri,
+    "--label",
+    candidate.label,
+    "--fixture",
+    fixture,
+    "--cache-dir",
+    sharedCacheDir,
+    "--out",
+    benchmarkPath,
+  ]);
   benchmarks[fixture] = await Bun.file(benchmarkPath).json();
 }
 
@@ -105,9 +106,9 @@ await Bun.write(
 
 console.log(resultPath);
 
-function runCommand(command: string): void {
+function runCommand(command: string | string[]): void {
   const proc = Bun.spawnSync({
-    cmd: command.split(" "),
+    cmd: Array.isArray(command) ? command : command.split(" "),
     cwd: repoRoot,
     stdout: "inherit",
     stderr: "inherit",

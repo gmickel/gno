@@ -14,6 +14,8 @@ interface CliOptions {
   out?: string;
   dryRun: boolean;
   fixture?: string;
+  cacheDir?: string;
+  dbPath?: string;
 }
 
 function parseArgs(args: string[]): CliOptions {
@@ -43,9 +45,15 @@ function parseArgs(args: string[]): CliOptions {
       case "--fixture":
         options.fixture = args[++index];
         break;
+      case "--cache-dir":
+        options.cacheDir = args[++index];
+        break;
+      case "--db-path":
+        options.dbPath = args[++index];
+        break;
       default:
         throw new Error(
-          `Unknown argument: ${arg}. Use --candidate <id> or --model <uri> [--label <name>] [--fixture <id>] [--write] [--out <path>] [--dry-run]`
+          `Unknown argument: ${arg}. Use --candidate <id> or --model <uri> [--label <name>] [--fixture <id>] [--cache-dir <path>] [--db-path <path>] [--write] [--out <path>] [--dry-run]`
         );
     }
   }
@@ -131,6 +139,8 @@ if (options.dryRun) {
         embedModel: model,
         runtimeKind: candidate?.runtimeKind ?? "direct",
         fixture: options.fixture ?? "canonical",
+        cacheDir: options.cacheDir ?? null,
+        dbPath: options.dbPath ?? null,
         write: options.write,
         out: options.out ?? null,
       },
@@ -145,6 +155,8 @@ const summary = await runCodeEmbeddingBenchmark({
   embedModel: model,
   label: options.label ?? candidate?.label ?? model,
   fixture: options.fixture,
+  cacheDir: options.cacheDir,
+  dbPath: options.dbPath,
 });
 
 console.log(

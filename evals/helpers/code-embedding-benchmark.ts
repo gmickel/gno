@@ -165,12 +165,21 @@ function computeMetrics(
   rankedDocs: string[],
   testCase: CodeEmbeddingBenchmarkCase
 ): MetricSummary {
+  const dedupedRankedDocs = dedupeRankedDocs(rankedDocs);
   return {
-    recallAt5: round(computeRecall(rankedDocs, testCase.relevantDocs, 5)),
-    recallAt10: round(computeRecall(rankedDocs, testCase.relevantDocs, 10)),
-    ndcgAt10: round(computeNdcg(rankedDocs, testCase.judgments, 10)),
-    mrr: round(computeMrr(rankedDocs, testCase.relevantDocs)),
+    recallAt5: round(
+      computeRecall(dedupedRankedDocs, testCase.relevantDocs, 5)
+    ),
+    recallAt10: round(
+      computeRecall(dedupedRankedDocs, testCase.relevantDocs, 10)
+    ),
+    ndcgAt10: round(computeNdcg(dedupedRankedDocs, testCase.judgments, 10)),
+    mrr: round(computeMrr(dedupedRankedDocs, testCase.relevantDocs)),
   };
+}
+
+export function dedupeRankedDocs(rankedDocs: string[]): string[] {
+  return [...new Set(rankedDocs)];
 }
 
 async function loadCases(): Promise<CodeEmbeddingBenchmarkCase[]> {
