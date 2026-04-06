@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.37.0] - 2026-04-06
+
+### Added
+
+- Added a retrieval-quality upgrade pass across BM25 lexical handling, code-aware chunking, terminal result hyperlinks, and per-collection model overrides.
+- Added a code-embedding benchmark workflow with canonical, real-GNO, and pinned OSS benchmark slices plus a bounded autonomous search harness for comparing alternate embedding models.
+- Added benchmark/result pages and documentation that now recommend `Qwen3-Embedding-0.6B-GGUF` as the current code-specialist embedding model for per-collection code overrides.
+- Added ADRs for BM25 query semantics, code-aware chunking, and collection-model resolution, plus a follow-up Flow epic for more granular path/file-type model resolution.
+
+### Fixed
+
+- Fixed BM25 lexical search so quoted phrases, negation, hyphenated technical terms, underscores, and filepath/title/body weighting behave intentionally and are protected by regression tests.
+- Fixed CLI retrieval output to emit TTY-only OSC 8 hyperlinks without leaking escape sequences into structured or non-TTY output.
+- Fixed code-chunking visibility so `gno doctor` now reports the automatic code-aware chunking mode and supported extensions.
+- Fixed the embedding autoresearch harness so candidate runtime wiring, dual-fixture scoring, and leaderboard/result loading work correctly in the tracked branch/CI path.
+
 ## [0.36.0] - 2026-04-06
 
 ### Added
