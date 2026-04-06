@@ -233,6 +233,7 @@ Notes:
 - overrides are partial; you only set the roles you need
 - global preset remains the base layer for everything else
 - collection-scoped overrides are only meaningful when an operation resolves a specific collection
+- the Web UI Collections page can now edit these overrides directly and shows effective per-role model resolution
 - if a future benchmark shows a code-specific embedding model wins on source-code retrieval, prefer using `models.embed` on code collections instead of replacing the global default for every collection
 
 Current code-focused recommendation:

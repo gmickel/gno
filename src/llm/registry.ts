@@ -15,6 +15,10 @@ import type { ModelType } from "./types";
 
 import { DEFAULT_MODEL_PRESETS } from "../config/types";
 
+export type ModelResolutionSource = "override" | "preset" | "default";
+export type ModelResolutionMap = Record<ModelType, string>;
+export type ModelResolutionSourceMap = Record<ModelType, ModelResolutionSource>;
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Registry Functions
 // ─────────────────────────────────────────────────────────────────────────────
@@ -128,6 +132,55 @@ export function resolveModelUri(
     return preset.expand ?? preset.gen;
   }
   return preset[type];
+}
+
+export function resolveModelSource(
+  config: Config,
+  type: ModelType,
+  override?: string,
+  collection?: string
+): ModelResolutionSource {
+  if (override) {
+    return "override";
+  }
+  const collectionModels = getCollectionModelOverrides(config, collection);
+  if (collectionModels?.[type]) {
+    return "override";
+  }
+
+  const modelConfig = getModelConfig(config);
+  const preset = modelConfig.presets.find(
+    (p) => p.id === modelConfig.activePreset
+  );
+  if (preset) {
+    return "preset";
+  }
+
+  return "default";
+}
+
+export function getCollectionEffectiveModels(
+  config: Config,
+  collection?: string
+): ModelResolutionMap {
+  return {
+    embed: resolveModelUri(config, "embed", undefined, collection),
+    rerank: resolveModelUri(config, "rerank", undefined, collection),
+    expand: resolveModelUri(config, "expand", undefined, collection),
+    gen: resolveModelUri(config, "gen", undefined, collection),
+  };
+}
+
+export function getCollectionModelSources(
+  config: Config,
+  collection?: string
+): ModelResolutionSourceMap {
+  return {
+    embed: resolveModelSource(config, "embed", undefined, collection),
+    rerank: resolveModelSource(config, "rerank", undefined, collection),
+    expand: resolveModelSource(config, "expand", undefined, collection),
+    gen: resolveModelSource(config, "gen", undefined, collection),
+  };
 }
 
 /**

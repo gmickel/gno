@@ -202,6 +202,23 @@ describe("collection CLI commands", () => {
 
       expect(result.value.collections[0]?.updateCmd).toBe("git pull");
     });
+
+    test("sets initial embed override", async () => {
+      await collectionAdd(TEST_COLLECTION_PATH, {
+        embedModel:
+          "hf:Qwen/Qwen3-Embedding-0.6B-GGUF/Qwen3-Embedding-0.6B-Q8_0.gguf",
+        name: "code",
+      });
+
+      const result = await loadConfigFromPath(TEST_CONFIG_PATH);
+      if (!result.ok) {
+        return;
+      }
+
+      expect(result.value.collections[0]?.models?.embed).toContain(
+        "Qwen3-Embedding-0.6B"
+      );
+    });
   });
 
   describe("collectionList", () => {

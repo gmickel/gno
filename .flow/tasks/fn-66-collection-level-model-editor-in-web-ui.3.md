@@ -48,10 +48,18 @@ Run:
 
 ## Done summary
 
-TBD
+Updated docs and website copy for collection model editing and recovery.
+
+Delivered:
+
+- documented richer collection API payloads and new PATCH endpoint
+- documented the collection model editor in Web UI docs
+- added config/troubleshooting guidance for inheritance and re-embedding after embed changes
+- updated website feature copy to mention the collection-level model editor
+- synced website docs from `/docs`
 
 ## Evidence
 
 - Commits:
-- Tests:
+- Tests: bun run docs:verify, make -C website sync-docs, bun run lint:check
 - PRs:

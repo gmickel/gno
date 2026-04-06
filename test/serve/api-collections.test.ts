@@ -26,6 +26,7 @@ import {
   handleCreateCollection,
   handleDeleteCollection,
   handleImportPreview,
+  handleUpdateCollection,
 } from "../../src/serve/routes/api";
 import { safeRm } from "../helpers/cleanup";
 
@@ -127,20 +128,183 @@ function createMockContextHolder(config?: Partial<Config>): ContextHolder {
 
 describe("GET /api/collections", () => {
   test("returns empty list when no collections", async () => {
-    const store = createMockStore();
-    const res = await handleCollections(store as never);
+    const res = await handleCollections({
+      version: "1.0",
+      ftsTokenizer: "unicode61",
+      collections: [],
+      contexts: [],
+    });
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body).toEqual([]);
   });
 
   test("returns collections list", async () => {
-    const store = createMockStore();
-    store.collections.push({ name: "docs", path: "/path/to/docs" });
-    const res = await handleCollections(store as never);
+    const res = await handleCollections({
+      version: "1.0",
+      ftsTokenizer: "unicode61",
+      collections: [
+        {
+          name: "docs",
+          path: "/path/to/docs",
+          pattern: "**/*.md",
+          include: [],
+          exclude: [],
+          models: {
+            embed: "hf:test/embed.gguf",
+          },
+        },
+      ],
+      contexts: [],
+    });
     expect(res.status).toBe(200);
-    const body = await res.json();
-    expect(body).toEqual([{ name: "docs", path: "/path/to/docs" }]);
+    const body = (await res.json()) as Array<{
+      activePresetId: string;
+      effectiveModels: { embed: string };
+      modelSources: { embed: string };
+      models?: { embed?: string };
+      name: string;
+      path: string;
+    }>;
+    expect(body[0]?.name).toBe("docs");
+    expect(body[0]?.path).toBe("/path/to/docs");
+    expect(body[0]?.models?.embed).toBe("hf:test/embed.gguf");
+    expect(body[0]?.effectiveModels.embed).toBe("hf:test/embed.gguf");
+    expect(body[0]?.modelSources.embed).toBe("override");
+    expect(body[0]?.activePresetId).toBe("slim-tuned");
+  });
+});
+
+describe("PATCH /api/collections/:name", () => {
+  let tmpDir: string;
+
+  beforeEach(async () => {
+    tmpDir = await mkdtemp(join(tmpdir(), "gno-test-"));
+    await writeConfig({
+      collections: [
+        {
+          name: "docs",
+          path: tmpDir,
+          pattern: "**/*.md",
+          include: [],
+          exclude: [],
+        },
+      ],
+    });
+  });
+
+  afterEach(async () => {
+    await safeRm(tmpDir);
+  });
+
+  test("sets collection embed override", async () => {
+    const store = createMockStore();
+    const ctxHolder = createMockContextHolder({
+      collections: [
+        {
+          name: "docs",
+          path: tmpDir,
+          pattern: "**/*.md",
+          include: [],
+          exclude: [],
+        },
+      ],
+    });
+
+    const req = new Request("http://localhost/api/collections/docs", {
+      method: "PATCH",
+      body: JSON.stringify({
+        models: {
+          embed:
+            "hf:Qwen/Qwen3-Embedding-0.6B-GGUF/Qwen3-Embedding-0.6B-Q8_0.gguf",
+        },
+      }),
+    });
+
+    const res = await handleUpdateCollection(
+      ctxHolder,
+      store as never,
+      "docs",
+      req
+    );
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      collection: {
+        effectiveModels: { embed: string };
+        modelSources: { embed: string };
+        models?: { embed?: string };
+      };
+      success: boolean;
+    };
+    expect(body.success).toBe(true);
+    expect(body.collection.models?.embed).toContain("Qwen3-Embedding-0.6B");
+    expect(body.collection.effectiveModels.embed).toContain(
+      "Qwen3-Embedding-0.6B"
+    );
+    expect(body.collection.modelSources.embed).toBe("override");
+  });
+
+  test("clears one role override without clobbering siblings", async () => {
+    await writeConfig({
+      collections: [
+        {
+          name: "docs",
+          path: tmpDir,
+          pattern: "**/*.md",
+          include: [],
+          exclude: [],
+          models: {
+            embed: "hf:test/embed.gguf",
+            rerank: "hf:test/rerank.gguf",
+          },
+        },
+      ],
+    });
+
+    const store = createMockStore();
+    const ctxHolder = createMockContextHolder({
+      collections: [
+        {
+          name: "docs",
+          path: tmpDir,
+          pattern: "**/*.md",
+          include: [],
+          exclude: [],
+          models: {
+            embed: "hf:test/embed.gguf",
+            rerank: "hf:test/rerank.gguf",
+          },
+        },
+      ],
+    });
+
+    const req = new Request("http://localhost/api/collections/docs", {
+      method: "PATCH",
+      body: JSON.stringify({
+        models: {
+          embed: null,
+        },
+      }),
+    });
+
+    const res = await handleUpdateCollection(
+      ctxHolder,
+      store as never,
+      "docs",
+      req
+    );
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      collection: {
+        effectiveModels: { embed: string; rerank: string };
+        modelSources: { embed: string; rerank: string };
+        models?: { embed?: string; rerank?: string };
+      };
+    };
+    expect(body.collection.models?.embed).toBeUndefined();
+    expect(body.collection.models?.rerank).toBe("hf:test/rerank.gguf");
+    expect(body.collection.modelSources.embed).toBe("preset");
+    expect(body.collection.modelSources.rerank).toBe("override");
   });
 });
 

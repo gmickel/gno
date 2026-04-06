@@ -253,6 +253,7 @@ View and manage your document collections:
 - **Document count**: Files indexed
 - **Chunk count**: Text segments created
 - **Embedded %**: Vector embedding progress
+- **Model settings**: Per-collection override editor with inherited-vs-overridden role display
 - **Re-index**: Update collection index
 - **Remove**: Delete collection from config
 - **Quick picks**: Suggested local folders on first run
@@ -276,6 +277,25 @@ Click the menu (⋮) on any collection card and select **Remove**. This:
 - Removes collection from configuration
 - Keeps indexed documents in database
 - Documents won't appear in future syncs
+
+### Collection Model Settings
+
+Use the menu (⋮) on any collection card and select **Model settings**.
+
+The dialog shows:
+
+- the active preset backing the rest of the workspace
+- one row per role: `embed`, `rerank`, `expand`, `gen`
+- the effective model URI for each role
+- whether the role is inherited from the active preset or overridden on the collection
+
+You can:
+
+- paste a model URI into one role without redefining the rest
+- clear one role override and return it to preset inheritance
+- keep the global preset unchanged for all other collections
+
+If you change the collection's **embed** model on an already-indexed collection, GNO warns that vector search quality will depend on running embeddings for that collection again.
 
 ---
 

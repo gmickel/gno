@@ -97,6 +97,7 @@ export async function addCollection(
     pattern: input.pattern ?? DEFAULT_PATTERN,
     include: includeList,
     exclude: excludeList,
+    models: input.models,
     updateCmd: input.updateCmd,
   };
 

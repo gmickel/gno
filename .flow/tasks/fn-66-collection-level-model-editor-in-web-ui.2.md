@@ -68,10 +68,18 @@ Tests:
 
 ## Done summary
 
-TBD
+Built the collection-level model editor in the web UI.
+
+Delivered:
+
+- added `CollectionModelDialog` with per-role override editing and reset-to-inherit actions
+- merged `/api/status` collection stats with `/api/collections` model metadata on the Collections page
+- added a `Model settings` action to collection cards
+- surfaced override badges on collection cards and warning copy when embed changes require re-embedding
+- added DOM coverage for dialog render/save behavior
 
 ## Evidence
 
 - Commits:
-- Tests:
+- Tests: bun test test/serve/public/components/CollectionModelDialog.dom.test.tsx test/serve/api-collections.test.ts, bun run lint:check
 - PRs:

@@ -335,6 +335,7 @@ Add a collection to index.
 ```bash
 gno collection add ~/notes --name notes
 gno collection add ~/code --name code --pattern "**/*.ts" --exclude node_modules
+gno collection add ~/work/gno/src --name gno-code --embed-model "hf:Qwen/Qwen3-Embedding-0.6B-GGUF/Qwen3-Embedding-0.6B-Q8_0.gguf"
 ```
 
 Options:
@@ -343,7 +344,10 @@ Options:
 - `--pattern <glob>` - File matching pattern
 - `--include <exts>` - Extension allowlist (CSV)
 - `--exclude <patterns>` - Exclude patterns (CSV)
+- `--embed-model <uri>` - Initial collection-specific embedding model override
 - `--update <cmd>` - Shell command to run before indexing
+
+Use `--embed-model` when one collection should use a different embedding model from the active global preset. This is the clean CLI path for code collections that should keep the rest of the workspace on `bge-m3`.
 
 ### gno collection list
 

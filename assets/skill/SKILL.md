@@ -177,6 +177,28 @@ gno embed              # Embed only (if already synced)
 
 MCP `gno.sync` and `gno.capture` do NOT auto-embed. Use CLI for embedding.
 
+## Collection-specific embedding models
+
+Collections can override the global embedding model with `models.embed`.
+
+CLI path:
+
+```bash
+gno collection add ~/work/gno/src \
+  --name gno-code \
+  --embed-model "hf:Qwen/Qwen3-Embedding-0.6B-GGUF/Qwen3-Embedding-0.6B-Q8_0.gguf"
+```
+
+Good default guidance:
+
+- keep the global preset for mixed notes/docs collections
+- use a collection-specific embed override for code-heavy collections when benchmark guidance says so
+- after changing an embed model on an existing populated collection, run:
+
+```bash
+gno embed --collection gno-code
+```
+
 ## Reference Documentation
 
 | Topic                                                 | File                                 |

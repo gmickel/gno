@@ -61,10 +61,18 @@ Docs owned by this task if the payload/API changes:
 
 ## Done summary
 
-TBD
+Implemented collection model override API support.
+
+Delivered:
+
+- added pure `updateCollection()` helper for per-collection model override patches
+- expanded `/api/collections` to return raw overrides plus effective model URIs and inheritance sources
+- added `PATCH /api/collections/:name` for partial per-role override set/clear
+- wired server routing for collection updates
+- added API coverage for list/update behaviors and sibling-preserving clear semantics
 
 ## Evidence
 
 - Commits:
-- Tests:
+- Tests: bun test test/serve/api-collections.test.ts, bun run lint:check
 - PRs:

@@ -12,6 +12,7 @@ import {
 import { CliError } from "../../errors";
 
 interface AddOptions {
+  embedModel?: string;
   name?: string;
   pattern?: string;
   include?: string;
@@ -51,6 +52,11 @@ export async function collectionAdd(
     pattern: options.pattern,
     include: options.include,
     exclude: options.exclude,
+    models: options.embedModel
+      ? {
+          embed: options.embedModel,
+        }
+      : undefined,
     updateCmd: options.update,
   });
 

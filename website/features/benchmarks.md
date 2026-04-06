@@ -72,10 +72,10 @@ Current fixtures:
 
 Current code-embedding numbers, as documented in the benchmark artifacts:
 
-| Fixture | `bge-m3` vector nDCG@10 | `Qwen3-Embedding-0.6B-GGUF` vector nDCG@10 | Notes |
-| ------- | ----------------------- | ------------------------------------------ | ----- |
-| `repo-serve` | `0.1003` | `0.6872` | Real GNO `src/serve` slice |
-| `oss-slices` | `0.6116` | `1.0` | Pinned public OSS slices |
+| Fixture      | `bge-m3` vector nDCG@10 | `Qwen3-Embedding-0.6B-GGUF` vector nDCG@10 | Notes                      |
+| ------------ | ----------------------- | ------------------------------------------ | -------------------------- |
+| `repo-serve` | `0.1003`                | `0.6872`                                   | Real GNO `src/serve` slice |
+| `oss-slices` | `0.6116`                | `1.0`                                      | Pinned public OSS slices   |
 
 Interpretation:
 

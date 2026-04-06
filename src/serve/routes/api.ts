@@ -10,8 +10,12 @@ import { readdir } from "node:fs/promises";
 // node:path has no Bun equivalent
 import { posix as pathPosix } from "node:path";
 
-import type { Config, ModelPreset } from "../../config/types";
-import type { Collection } from "../../config/types";
+import type {
+  Collection,
+  CollectionModelOverrides,
+  Config,
+  ModelPreset,
+} from "../../config/types";
 import type {
   AskResult,
   Citation,
@@ -26,7 +30,11 @@ import type { StartJobError } from "../jobs";
 import type { CollectionWatchService } from "../watch-service";
 
 import { modelsPull } from "../../cli/commands/models/pull";
-import { addCollection, removeCollection } from "../../collection";
+import {
+  addCollection,
+  removeCollection,
+  updateCollection,
+} from "../../collection";
 import {
   buildEditableCopyContent,
   deriveEditableCopyRelPath,
@@ -68,7 +76,13 @@ import {
 import { validateRelPath } from "../../core/validation";
 import { defaultSyncService, type SyncResult } from "../../ingestion";
 import { updateFrontmatterTags } from "../../ingestion/frontmatter";
-import { getModelConfig, getPreset, listPresets } from "../../llm/registry";
+import {
+  getCollectionEffectiveModels,
+  getCollectionModelSources,
+  getModelConfig,
+  getPreset,
+  listPresets,
+} from "../../llm/registry";
 import {
   generateGroundedAnswer,
   processAnswerResult,
@@ -187,6 +201,59 @@ export interface CreateCollectionRequestBody {
   include?: string;
   exclude?: string;
   gitPull?: boolean;
+}
+
+export interface UpdateCollectionRequestBody {
+  models?: {
+    embed?: string | null;
+    rerank?: string | null;
+    expand?: string | null;
+    gen?: string | null;
+  };
+}
+
+export interface CollectionResponse {
+  name: string;
+  path: string;
+  pattern: string;
+  include: string[];
+  exclude: string[];
+  updateCmd?: string;
+  languageHint?: string;
+  models?: CollectionModelOverrides;
+  effectiveModels: {
+    embed: string;
+    rerank: string;
+    expand: string;
+    gen: string;
+  };
+  modelSources: {
+    embed: "override" | "preset" | "default";
+    rerank: "override" | "preset" | "default";
+    expand: "override" | "preset" | "default";
+    gen: "override" | "preset" | "default";
+  };
+  activePresetId: string;
+}
+
+function serializeCollection(
+  config: Config,
+  collection: Collection
+): CollectionResponse {
+  const modelConfig = getModelConfig(config);
+  return {
+    name: collection.name,
+    path: collection.path,
+    pattern: collection.pattern,
+    include: collection.include,
+    exclude: collection.exclude,
+    updateCmd: collection.updateCmd,
+    languageHint: collection.languageHint,
+    models: collection.models,
+    effectiveModels: getCollectionEffectiveModels(config, collection.name),
+    modelSources: getCollectionModelSources(config, collection.name),
+    activePresetId: modelConfig.activePreset,
+  };
 }
 
 export interface ImportPreviewRequestBody {
@@ -630,19 +697,9 @@ export async function handleStatus(
  * GET /api/collections
  * Returns list of collections.
  */
-export async function handleCollections(
-  store: SqliteAdapter
-): Promise<Response> {
-  const result = await store.getCollections();
-  if (!result.ok) {
-    return errorResponse("RUNTIME", result.error.message, 500);
-  }
-
+export async function handleCollections(config: Config): Promise<Response> {
   return jsonResponse(
-    result.value.map((c) => ({
-      name: c.name,
-      path: c.path,
-    }))
+    config.collections.map((c) => serializeCollection(config, c))
   );
 }
 
@@ -847,6 +904,86 @@ export async function handleDeleteCollection(
     success: true,
     collection: name,
     note: "Collection removed from config. Indexed documents remain in DB.",
+  });
+}
+
+/**
+ * PATCH /api/collections/:name
+ * Update collection model overrides.
+ */
+export async function handleUpdateCollection(
+  ctxHolder: ContextHolder,
+  store: SqliteAdapter,
+  name: string,
+  req: Request
+): Promise<Response> {
+  let body: UpdateCollectionRequestBody;
+  try {
+    body = (await req.json()) as UpdateCollectionRequestBody;
+  } catch {
+    return errorResponse("VALIDATION", "Invalid JSON body");
+  }
+
+  if (body.models !== undefined && typeof body.models !== "object") {
+    return errorResponse("VALIDATION", "models must be an object");
+  }
+  if (!body.models) {
+    return errorResponse("VALIDATION", "Missing models patch");
+  }
+
+  for (const [role, value] of Object.entries(body.models)) {
+    if (!["embed", "rerank", "expand", "gen"].includes(role)) {
+      return errorResponse("VALIDATION", `Unknown model role: ${role}`);
+    }
+    if (value !== undefined && value !== null && typeof value !== "string") {
+      return errorResponse("VALIDATION", `${role} must be a string or null`);
+    }
+  }
+
+  const syncResult = await applyConfigChangeTyped<Collection>(
+    ctxHolder,
+    store,
+    (cfg) => {
+      const result = updateCollection(cfg, {
+        name,
+        models: body.models,
+      });
+      if (!result.ok) {
+        return Promise.resolve({
+          ok: false as const,
+          error: result.message,
+          code: result.code,
+        });
+      }
+      return Promise.resolve({
+        ok: true as const,
+        config: result.config,
+        value: result.collection,
+      });
+    }
+  );
+
+  if (!syncResult.ok) {
+    const statusMap: Record<string, number> = {
+      NOT_FOUND: 404,
+      VALIDATION: 400,
+    };
+    const status = statusMap[syncResult.code] ?? 500;
+    return errorResponse(syncResult.code, syncResult.error, status);
+  }
+
+  const collection =
+    syncResult.value ??
+    syncResult.config.collections.find(
+      (item) => item.name === name.toLowerCase()
+    );
+  if (!collection) {
+    return errorResponse("RUNTIME", "Collection not found after update", 500);
+  }
+
+  return jsonResponse({
+    success: true,
+    collection: serializeCollection(syncResult.config, collection),
   });
 }
 
@@ -3577,7 +3714,7 @@ export async function routeApi(
   }
 
   if (path === "/api/collections") {
-    return handleCollections(store);
+    return handleCollections(config);
   }
 
   if (path === "/api/docs") {

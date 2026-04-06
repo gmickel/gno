@@ -333,10 +333,33 @@ GET /api/collections
 
 ```json
 [
-  { "name": "notes", "path": "/Users/you/notes" },
-  { "name": "work", "path": "/Users/you/work/docs" }
+  {
+    "name": "notes",
+    "path": "/Users/you/notes",
+    "pattern": "**/*.md",
+    "include": [],
+    "exclude": [".git", "node_modules"],
+    "models": {
+      "embed": "hf:Qwen/Qwen3-Embedding-0.6B-GGUF/Qwen3-Embedding-0.6B-Q8_0.gguf"
+    },
+    "effectiveModels": {
+      "embed": "hf:Qwen/Qwen3-Embedding-0.6B-GGUF/Qwen3-Embedding-0.6B-Q8_0.gguf",
+      "rerank": "hf:ggml-org/Qwen3-Reranker-0.6B-Q8_0-GGUF/qwen3-reranker-0.6b-q8_0.gguf",
+      "expand": "hf:guiltylemon/gno-expansion-slim-retrieval-v1/gno-expansion-auto-entity-lock-default-mix-lr95-f16.gguf",
+      "gen": "hf:unsloth/Qwen3-1.7B-GGUF/Qwen3-1.7B-Q4_K_M.gguf"
+    },
+    "modelSources": {
+      "embed": "override",
+      "rerank": "preset",
+      "expand": "preset",
+      "gen": "preset"
+    },
+    "activePresetId": "slim-tuned"
+  }
 ]
 ```
+
+`effectiveModels` and `modelSources` exist so clients can show inherited-vs-overridden collection model state without re-implementing preset resolution logic.
 
 ---
 
@@ -430,6 +453,76 @@ Remove a collection from the config. Indexed documents remain in DB but won't ap
 
 ```bash
 curl -X DELETE http://localhost:3000/api/collections/notes
+```
+
+---
+
+### Update Collection Model Overrides
+
+```http
+PATCH /api/collections/:name
+```
+
+Update per-collection model overrides without changing the global active preset.
+
+**Request Body**:
+
+```json
+{
+  "models": {
+    "embed": "hf:Qwen/Qwen3-Embedding-0.6B-GGUF/Qwen3-Embedding-0.6B-Q8_0.gguf",
+    "rerank": null
+  }
+}
+```
+
+Rules:
+
+- omitted roles are left unchanged
+- string values set/replace one override
+- `null` clears one override and returns that role to preset inheritance
+
+**Response**:
+
+```json
+{
+  "success": true,
+  "collection": {
+    "name": "notes",
+    "path": "/Users/you/notes",
+    "models": {
+      "embed": "hf:Qwen/Qwen3-Embedding-0.6B-GGUF/Qwen3-Embedding-0.6B-Q8_0.gguf"
+    },
+    "effectiveModels": {
+      "embed": "hf:Qwen/Qwen3-Embedding-0.6B-GGUF/Qwen3-Embedding-0.6B-Q8_0.gguf",
+      "rerank": "hf:ggml-org/Qwen3-Reranker-0.6B-Q8_0-GGUF/qwen3-reranker-0.6b-q8_0.gguf",
+      "expand": "hf:guiltylemon/gno-expansion-slim-retrieval-v1/gno-expansion-auto-entity-lock-default-mix-lr95-f16.gguf",
+      "gen": "hf:unsloth/Qwen3-1.7B-GGUF/Qwen3-1.7B-Q4_K_M.gguf"
+    },
+    "modelSources": {
+      "embed": "override",
+      "rerank": "preset",
+      "expand": "preset",
+      "gen": "preset"
+    },
+    "activePresetId": "slim-tuned"
+  }
+}
+```
+
+**Errors**:
+
+| Code         | Status | Description                        |
+| :----------- | :----- | :--------------------------------- |
+| `VALIDATION` | 400    | Invalid body or invalid role value |
+| `NOT_FOUND`  | 404    | Collection does not exist          |
+
+**Example**:
+
+```bash
+curl -X PATCH http://localhost:3000/api/collections/notes \
+  -H "Content-Type: application/json" \
+  -d '{"models":{"embed":"hf:Qwen/Qwen3-Embedding-0.6B-GGUF/Qwen3-Embedding-0.6B-Q8_0.gguf"}}'
 ```
 
 ---

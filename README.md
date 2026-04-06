@@ -85,45 +85,15 @@ gno daemon
 
 ---
 
-## What's New in v0.29
+## What's New
 
-- **GNO Desktop Beta**: first mac-first desktop beta shell with deep-link routing, singleton handoff, and the same onboarding/search/edit flows as `gno serve`
-- **Desktop Onboarding Polish**: guided setup now covers folders, presets, model readiness, indexing, connectors, import preview, app tabs, file actions, and recovery without drift between web and desktop
-- **Default Preset Upgrade**: `slim-tuned` is now the built-in default, using the fine-tuned retrieval expansion model while keeping the same embed, rerank, and answer stack as `slim`
-- **Workspace UI Polish**: richer scholarly-dusk presentation across dashboard, tabs, search, ask, footer, and global styling without introducing external font or asset dependencies
+> Latest release: [v0.37.0](./CHANGELOG.md#0370---2026-04-06)  
+> Full release history: [CHANGELOG.md](./CHANGELOG.md)
 
-## What's New in v0.30
-
-- **Headless Daemon Mode**: `gno daemon` keeps your index fresh continuously without opening the Web UI
-- **CLI Concurrency Hardening**: read-only commands no longer trip transient `database is locked` errors when they overlap with `gno update`
-- **Web/Desktop UI Polish**: sharper workspace styling across dashboard, tabs, search, ask, and footer surfaces
-
-## What's New in v0.31
-
-- **Windows Desktop Beta Artifact**: release flow now includes a packaged `windows-x64` desktop beta zip, not just source-level support claims
-- **Packaged Runtime Proof**: Windows desktop packaging validates bundled Bun + staged GNO runtime + FTS5 + vendored snowball + `sqlite-vec`
-- **Scoped Index Fix**: `gno index <collection>` now embeds only that collection instead of accidentally burning through unrelated backlog from other collections
-- **CLI Reporting Fix**: long embed runs now report sane durations instead of bogus sub-second summaries
-
-### v0.24
-
-- **Structured Query Documents**: first-class multi-line query syntax using `term:`, `intent:`, and `hyde:`
-- **Cross-Surface Rollout**: works across CLI, API, MCP, SDK, and Web Search/Ask
-- **Portable Retrieval Prompts**: save/share advanced retrieval intent as one text payload instead of repeated flags or JSON arrays
-
-### v0.23
-
-- **SDK / Library Mode**: package-root importable SDK with `createGnoClient(...)` for direct retrieval, document access, and indexing flows
-- **Inline Config Support**: embed GNO in another app without writing YAML config files
-- **Programmatic Indexing**: call `update`, `embed`, and `index` directly from Bun/TypeScript
-- **Docs & Website**: dedicated SDK guide, feature page, homepage section, and architecture docs
-
-### v0.22
-
-- **Promoted Slim Retrieval Model**: published `slim-retrieval-v1` on Hugging Face for direct `hf:` installation in GNO
-- **Fine-Tuning Workflow**: local MLX LoRA training, portable GGUF export, automatic checkpoint selection, promotion bundles, and repeatable benchmark comparisons
-- **Autonomous Search Harness**: bounded candidate search with early-stop guards, repeated incumbent confirmation, and promotion targets
-- **Public Docs & Site**: fine-tuned model docs and feature pages now point at the published HF model and the `slim-tuned` preset
+- **Retrieval Quality Upgrade**: stronger BM25 lexical handling, code-aware chunking, terminal result hyperlinks, and per-collection model overrides
+- **Code Embedding Benchmarks**: new benchmark workflow across canonical, real-GNO, and pinned OSS slices for comparing alternate embedding models
+- **Recommended Code Embed Model**: docs and benchmark pages now point to `Qwen3-Embedding-0.6B-GGUF` as the current code-specialist embedding option
+- **Regression Fixes**: tightened phrase/negation/hyphen/underscore BM25 behavior, cleaned non-TTY hyperlink output, improved `gno doctor` chunking visibility, and fixed the embedding autoresearch harness
 
 ### Fine-Tuned Model Quick Use
 
@@ -149,58 +119,6 @@ gno query "ECONNREFUSED 127.0.0.1:5432" --thorough
 ```
 
 > Full guide: [Fine-Tuned Models](https://gno.sh/docs/FINE-TUNED-MODELS/) · [Feature page](https://gno.sh/features/fine-tuned-models/)
-
-## What's New in v0.21
-
-- **Ask CLI Query Modes**: `gno ask` now accepts repeatable `--query-mode term|intent|hyde` entries, matching the existing Ask API and Web controls
-
-### v0.20
-
-- **Improved Model Init Fallbacks**: upgraded `node-llama-cpp` to `3.17.1` and switched to `build: "autoAttempt"` for better backend selection/fallback behavior
-
-### v0.19
-
-- **Exclusion Filters**: explicit `exclude` controls across CLI, API, Web, and MCP to hard-prune unwanted docs by title/path/body text
-- **Ask Query-Mode Parity**: Ask now supports structured `term` / `intent` / `hyde` controls in both API and Web UI
-
-### v0.18
-
-- **Intent Steering**: optional `intent` control for ambiguous queries across CLI, API, Web, and MCP query flows
-- **Rerank Controls**: `candidateLimit` lets you tune rerank cost vs. recall on slower or memory-constrained machines
-- **Stability**: query expansion now uses a bounded configurable context size (`models.expandContextSize`, default `2048`)
-- **Rerank Efficiency**: identical chunk texts are deduplicated before scoring and expanded back out deterministically
-
-### v0.17
-
-- **Structured Query Modes**: `term`, `intent`, and `hyde` controls across CLI, API, MCP, and Web
-- **Temporal Retrieval Upgrades**: `since`/`until`, date-range parsing, and recency sorting with frontmatter-date fallback
-- **Web Retrieval UX Polish**: richer advanced controls in Search and Ask (collection/date/category/author/tags + query modes)
-- **Metadata-Aware Retrieval**: ingestion now materializes document metadata/date fields for better filtering and ranking
-- **Migration Reliability**: SQLite-compatible migration path for existing indexes (including older SQLite engines)
-
-### v0.15
-
-- **HTTP Backends**: Offload embedding, reranking, and generation to remote GPU servers
-- Simple URI config: `http://host:port/path#modelname`
-- Works with llama-server, Ollama, LocalAI, vLLM
-- Run GNO on lightweight machines while GPU inference runs on your network
-
-### v0.13
-
-- **Knowledge Graph**: Interactive force-directed visualization of document connections
-- **Graph with Similarity**: See semantic similarity as golden edges (not just wiki/markdown links)
-- **CLI**: `gno graph` command with collection filtering and similarity options
-- **Web UI**: `/graph` page with zoom, pan, collection filter, similarity toggle
-- **MCP**: `gno_graph` tool for AI agents to explore document relationships
-- **REST API**: `/api/graph` endpoint with full query parameters
-
-### v0.12
-
-- **Note Linking**: Wiki-style `[[links]]`, backlinks, and AI-powered related notes
-- **Tag System**: Filter searches by frontmatter tags with `--tags-any`/`--tags-all`
-- **Web UI**: Outgoing links panel, backlinks panel, related notes sidebar
-- **CLI**: `gno links`, `gno backlinks`, `gno similar` commands
-- **MCP**: `gno_links`, `gno_backlinks`, `gno_similar` tools
 
 ---
 
