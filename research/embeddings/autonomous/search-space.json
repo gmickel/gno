@@ -1,0 +1,12 @@
+{
+  "id": "code-embedding-search-space-v1",
+  "incumbentId": "bge-m3-incumbent",
+  "candidates": [
+    {
+      "id": "bge-m3-incumbent",
+      "label": "bge-m3 incumbent",
+      "embedModel": "hf:gpustack/bge-m3-GGUF/bge-m3-Q4_K_M.gguf",
+      "notes": "Run this first to establish the baseline artifact."
+    }
+  ]
+}
