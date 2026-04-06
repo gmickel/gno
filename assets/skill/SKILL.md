@@ -199,6 +199,13 @@ Good default guidance:
 gno embed --collection gno-code
 ```
 
+If you want to remove old vectors after switching:
+
+```bash
+gno collection clear-embeddings gno-code        # stale models only
+gno collection clear-embeddings gno-code --all  # remove everything, then re-embed
+```
+
 ## Reference Documentation
 
 | Topic                                                 | File                                 |

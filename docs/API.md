@@ -527,6 +527,47 @@ curl -X PATCH http://localhost:3000/api/collections/notes \
 
 ---
 
+### Clear Collection Embeddings
+
+```http
+POST /api/collections/:name/embeddings/clear
+```
+
+Clear embeddings for one collection.
+
+**Request Body**:
+
+```json
+{
+  "mode": "stale"
+}
+```
+
+Modes:
+
+- `stale` - remove embeddings for models other than the active embed model for that collection
+- `all` - remove all embeddings for that collection
+
+**Response**:
+
+```json
+{
+  "success": true,
+  "stats": {
+    "collection": "notes",
+    "mode": "stale",
+    "deletedVectors": 24,
+    "deletedModels": ["hf:old/model.gguf"],
+    "protectedSharedVectors": 3
+  },
+  "note": "Some shared vectors were retained because other active collections still use the same content."
+}
+```
+
+If `mode` is `all`, the response note points users to `gno embed --collection <name>`.
+
+---
+
 ### Sync / Re-index
 
 ```http

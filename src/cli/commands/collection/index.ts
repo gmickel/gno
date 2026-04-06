@@ -5,6 +5,7 @@
  */
 
 export { collectionAdd } from "./add";
+export { collectionClearEmbeddings } from "./clear-embeddings";
 export { collectionList } from "./list";
 export { collectionRemove } from "./remove";
 export { collectionRename } from "./rename";

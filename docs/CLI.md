@@ -374,6 +374,27 @@ Rename a collection.
 gno collection rename notes work-notes
 ```
 
+### gno collection clear-embeddings
+
+Clear embeddings for one collection.
+
+```bash
+gno collection clear-embeddings notes          # Safe default: stale models only
+gno collection clear-embeddings notes --all    # Remove every embedding for this collection
+```
+
+Behavior:
+
+- default mode is `stale`
+- `stale` removes models that are no longer the active embed model for that collection
+- `all` removes every embedding for that collection and then you should run:
+
+```bash
+gno embed --collection notes
+```
+
+Shared vectors still referenced by other active collections are retained.
+
 ## Indexing Commands
 
 ### gno update

@@ -376,6 +376,22 @@ The same logic also applies after upgrading to a release where the built-in
 default embedding model changed. Old vectors are kept, but GNO counts backlog
 against the new active embed model so the need to re-embed is visible.
 
+### I want to remove old embeddings after switching models
+
+Use collection-level cleanup when you want to reclaim space or remove stale
+models explicitly:
+
+```bash
+gno collection clear-embeddings my-collection         # stale models only
+gno collection clear-embeddings my-collection --all   # remove everything
+```
+
+Then, if you used `--all`:
+
+```bash
+gno embed --collection my-collection
+```
+
 ### Force CPU-only for testing
 
 To disable Metal/CUDA/Vulkan and force `node-llama-cpp` onto the CPU backend

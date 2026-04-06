@@ -1,0 +1,14 @@
+{
+  "assignee": null,
+  "claim_note": "",
+  "claimed_at": null,
+  "created_at": "2026-04-06T14:31:03.185189Z",
+  "depends_on": ["fn-67-evaluate-qwen3-embedding-06b-gguf-for.3"],
+  "epic": "fn-67-evaluate-qwen3-embedding-06b-gguf-for",
+  "id": "fn-67-evaluate-qwen3-embedding-06b-gguf-for.5",
+  "priority": 5,
+  "spec_path": ".flow/tasks/fn-67-evaluate-qwen3-embedding-06b-gguf-for.5.md",
+  "status": "todo",
+  "title": "Add collection-level embedding cleanup actions",
+  "updated_at": "2026-04-06T14:31:03.185381Z"
+}

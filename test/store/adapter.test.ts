@@ -1211,5 +1211,152 @@ describe("SqliteAdapter", () => {
       }
       expect(content.value).toBeNull();
     });
+
+    test("clears stale embeddings for one collection and protects shared vectors", async () => {
+      await adapter.syncCollections([
+        {
+          name: "notes",
+          path: "/notes",
+          pattern: "**/*",
+          include: [],
+          exclude: [],
+        },
+        {
+          name: "other",
+          path: "/other",
+          pattern: "**/*",
+          include: [],
+          exclude: [],
+        },
+      ]);
+
+      await adapter.upsertDocument({
+        collection: "notes",
+        relPath: "owned.md",
+        sourceHash: "owned_doc",
+        sourceMime: "text/markdown",
+        sourceExt: ".md",
+        sourceSize: 100,
+        sourceMtime: "2024-01-01T00:00:00Z",
+        mirrorHash: "owned_mirror",
+      });
+      await adapter.upsertDocument({
+        collection: "notes",
+        relPath: "shared.md",
+        sourceHash: "shared_doc_notes",
+        sourceMime: "text/markdown",
+        sourceExt: ".md",
+        sourceSize: 100,
+        sourceMtime: "2024-01-01T00:00:00Z",
+        mirrorHash: "shared_mirror",
+      });
+      await adapter.upsertDocument({
+        collection: "other",
+        relPath: "shared.md",
+        sourceHash: "shared_doc_other",
+        sourceMime: "text/markdown",
+        sourceExt: ".md",
+        sourceSize: 100,
+        sourceMtime: "2024-01-01T00:00:00Z",
+        mirrorHash: "shared_mirror",
+      });
+
+      await adapter.upsertContent("owned_mirror", "# Owned");
+      await adapter.upsertContent("shared_mirror", "# Shared");
+      await adapter.upsertChunks("owned_mirror", [
+        { seq: 0, pos: 0, text: "# Owned", startLine: 1, endLine: 1 },
+      ]);
+      await adapter.upsertChunks("shared_mirror", [
+        { seq: 0, pos: 0, text: "# Shared", startLine: 1, endLine: 1 },
+      ]);
+
+      const db = adapter.getRawDb();
+      db.prepare(
+        `INSERT INTO content_vectors (mirror_hash, seq, model, embedding, embedded_at)
+         VALUES (?, ?, ?, ?, datetime('now'))`
+      ).run("owned_mirror", 0, "old-model", new Uint8Array([0, 0, 0, 0]));
+      db.prepare(
+        `INSERT INTO content_vectors (mirror_hash, seq, model, embedding, embedded_at)
+         VALUES (?, ?, ?, ?, datetime('now'))`
+      ).run("owned_mirror", 0, "active-model", new Uint8Array([0, 0, 0, 0]));
+      db.prepare(
+        `INSERT INTO content_vectors (mirror_hash, seq, model, embedding, embedded_at)
+         VALUES (?, ?, ?, ?, datetime('now'))`
+      ).run("shared_mirror", 0, "old-model", new Uint8Array([0, 0, 0, 0]));
+
+      const result = await adapter.clearEmbeddingsForCollection("notes", {
+        mode: "stale",
+        activeModel: "active-model",
+      });
+      expect(result.ok).toBe(true);
+      if (!result.ok) {
+        return;
+      }
+
+      expect(result.value.deletedVectors).toBe(1);
+      expect(result.value.deletedModels).toEqual(["old-model"]);
+      expect(result.value.protectedSharedVectors).toBe(1);
+
+      const rows = db
+        .query<{ mirror_hash: string; model: string }, []>(
+          "SELECT mirror_hash, model FROM content_vectors ORDER BY mirror_hash, model"
+        )
+        .all();
+      expect(rows).toEqual([
+        { mirror_hash: "owned_mirror", model: "active-model" },
+        { mirror_hash: "shared_mirror", model: "old-model" },
+      ]);
+    });
+
+    test("clears all embeddings for one collection", async () => {
+      await adapter.syncCollections([
+        {
+          name: "notes",
+          path: "/notes",
+          pattern: "**/*",
+          include: [],
+          exclude: [],
+        },
+      ]);
+
+      await adapter.upsertDocument({
+        collection: "notes",
+        relPath: "owned.md",
+        sourceHash: "owned_all_doc",
+        sourceMime: "text/markdown",
+        sourceExt: ".md",
+        sourceSize: 100,
+        sourceMtime: "2024-01-01T00:00:00Z",
+        mirrorHash: "owned_all_mirror",
+      });
+      await adapter.upsertContent("owned_all_mirror", "# Owned");
+      await adapter.upsertChunks("owned_all_mirror", [
+        { seq: 0, pos: 0, text: "# Owned", startLine: 1, endLine: 1 },
+      ]);
+
+      const db = adapter.getRawDb();
+      for (const model of ["old-model", "active-model"]) {
+        db.prepare(
+          `INSERT INTO content_vectors (mirror_hash, seq, model, embedding, embedded_at)
+           VALUES (?, ?, ?, ?, datetime('now'))`
+        ).run("owned_all_mirror", 0, model, new Uint8Array([0, 0, 0, 0]));
+      }
+
+      const result = await adapter.clearEmbeddingsForCollection("notes", {
+        mode: "all",
+        activeModel: "active-model",
+      });
+      expect(result.ok).toBe(true);
+      if (!result.ok) {
+        return;
+      }
+
+      expect(result.value.deletedVectors).toBe(2);
+      expect(result.value.deletedModels.sort()).toEqual([
+        "active-model",
+        "old-model",
+      ]);
+      expect(result.value.protectedSharedVectors).toBe(0);
+    });
   });
 });

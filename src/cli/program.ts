@@ -1310,6 +1310,20 @@ function wireManagementCommands(program: Command): void {
       await collectionRename(oldName, newName);
     });
 
+  collectionCmd
+    .command("clear-embeddings <name>")
+    .description("Clear stale or all embeddings for a collection")
+    .option("--all", "remove all embeddings for the collection")
+    .option("--json", "JSON output")
+    .action(async (name: string, cmdOpts: Record<string, unknown>) => {
+      const { collectionClearEmbeddings } =
+        await import("./commands/collection");
+      await collectionClearEmbeddings(name, {
+        all: Boolean(cmdOpts.all),
+        json: Boolean(cmdOpts.json),
+      });
+    });
+
   // context subcommands
   const contextCmd = program
     .command("context")

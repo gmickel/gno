@@ -4,6 +4,7 @@ import { join } from "node:path";
 
 import {
   collectionAdd,
+  collectionClearEmbeddings,
   collectionList,
   collectionRemove,
   collectionRename,
@@ -292,6 +293,19 @@ describe("collection CLI commands", () => {
       await collectionList({});
 
       expect(stdoutOutput.join("")).toContain("No collections");
+    });
+  });
+
+  describe("collectionClearEmbeddings", () => {
+    test("clears stale embeddings for a collection", async () => {
+      await collectionAdd(TEST_COLLECTION_PATH, {
+        name: "notes",
+      });
+
+      await collectionClearEmbeddings("notes");
+
+      expect(stdoutOutput.join("")).toContain("Cleared");
+      expect(stdoutOutput.join("")).toContain("Mode: stale");
     });
   });
 

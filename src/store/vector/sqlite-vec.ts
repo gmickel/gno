@@ -51,7 +51,7 @@ export function decodeEmbedding(blob: Uint8Array): Float32Array {
  * Generate deterministic table name from model URI.
  * First 8 chars of SHA256 hash.
  */
-function modelTableName(modelUri: string): string {
+export function modelTableName(modelUri: string): string {
   const hash = createHash("sha256").update(modelUri).digest("hex").slice(0, 8);
   return `vec_${hash}`;
 }

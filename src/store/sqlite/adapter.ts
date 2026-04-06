@@ -24,6 +24,7 @@ import type {
   DocLinkSource,
   DocumentInput,
   DocumentRow,
+  EmbeddingCleanupStats,
   FtsResult,
   FtsSearchOptions,
   GetGraphOptions,
@@ -45,6 +46,7 @@ import { buildUri, deriveDocid } from "../../app/constants";
 import { normalizeWikiName, stripWikiMdExt } from "../../core/links";
 import { migrations, runMigrations } from "../migrations";
 import { err, ok } from "../types";
+import { modelTableName } from "../vector/sqlite-vec";
 import { loadFts5Snowball } from "./fts5-snowball";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -2973,6 +2975,126 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
       return err(
         "QUERY_FAILED",
         cause instanceof Error ? cause.message : "Failed to cleanup orphans",
+        cause
+      );
+    }
+  }
+
+  async clearEmbeddingsForCollection(
+    collection: string,
+    options: { mode: "stale" | "all"; activeModel?: string }
+  ): Promise<StoreResult<EmbeddingCleanupStats>> {
+    try {
+      const db = this.ensureOpen();
+      const collectionName = collection.toLowerCase();
+
+      if (options.mode === "stale" && !options.activeModel) {
+        return err(
+          "INVALID_INPUT",
+          "activeModel is required for stale embedding cleanup"
+        );
+      }
+
+      const filterSql = options.mode === "stale" ? "AND cv.model != ?" : "";
+      const filterParams =
+        options.mode === "stale" ? [options.activeModel ?? ""] : [];
+
+      const deletableRows = db
+        .query<{ mirror_hash: string; model: string; seq: number }, string[]>(
+          `
+          SELECT DISTINCT cv.mirror_hash, cv.seq, cv.model
+          FROM content_vectors cv
+          WHERE EXISTS (
+            SELECT 1 FROM documents d
+            WHERE d.collection = ?
+              AND d.mirror_hash = cv.mirror_hash
+          )
+          ${filterSql}
+          AND NOT EXISTS (
+            SELECT 1 FROM documents d2
+            WHERE d2.mirror_hash = cv.mirror_hash
+              AND d2.collection != ?
+              AND d2.active = 1
+          )
+        `
+        )
+        .all(collectionName, ...filterParams, collectionName);
+
+      const protectedRow = db
+        .query<{ count: number }, string[]>(
+          `
+          SELECT COUNT(*) as count
+          FROM (
+            SELECT DISTINCT cv.mirror_hash, cv.seq, cv.model
+            FROM content_vectors cv
+            WHERE EXISTS (
+              SELECT 1 FROM documents d
+              WHERE d.collection = ?
+                AND d.mirror_hash = cv.mirror_hash
+            )
+            ${filterSql}
+            AND EXISTS (
+              SELECT 1 FROM documents d2
+              WHERE d2.mirror_hash = cv.mirror_hash
+                AND d2.collection != ?
+                AND d2.active = 1
+            )
+          )
+        `
+        )
+        .get(collectionName, ...filterParams, collectionName);
+
+      const deletedModels = [...new Set(deletableRows.map((row) => row.model))];
+
+      const transaction = db.transaction(() => {
+        const deleteVectorStmt = db.prepare(
+          `DELETE FROM content_vectors WHERE mirror_hash = ? AND seq = ? AND model = ?`
+        );
+        const vecDeleteStatements = new Map<
+          string,
+          ReturnType<typeof db.prepare> | null
+        >();
+
+        for (const row of deletableRows) {
+          deleteVectorStmt.run(row.mirror_hash, row.seq, row.model);
+
+          let deleteVecStmt = vecDeleteStatements.get(row.model);
+          if (deleteVecStmt === undefined) {
+            try {
+              deleteVecStmt = db.prepare(
+                `DELETE FROM ${modelTableName(row.model)} WHERE chunk_id = ?`
+              );
+            } catch {
+              deleteVecStmt = null;
+            }
+            vecDeleteStatements.set(row.model, deleteVecStmt);
+          }
+
+          if (deleteVecStmt) {
+            try {
+              deleteVecStmt.run(`${row.mirror_hash}:${row.seq}`);
+            } catch {
+              // Best effort; a later vec sync/rebuild can recover.
+            }
+          }
+        }
+      });
+
+      transaction();
+
+      return ok({
+        collection: collectionName,
+        deletedVectors: deletableRows.length,
+        deletedModels,
+        mode: options.mode,
+        protectedSharedVectors: protectedRow?.count ?? 0,
+      });
+    } catch (cause) {
+      return err(
+        "QUERY_FAILED",
+        cause instanceof Error
+          ? cause.message
+          : "Failed to clear collection embeddings",
         cause
       );
     }

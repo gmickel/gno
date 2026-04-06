@@ -66,6 +66,12 @@ gno collection remove <name>
 gno collection rename <old> <new>
 ```
 
+### gno collection clear-embeddings
+
+```bash
+gno collection clear-embeddings <name> [--all] [--json]
+```
+
 ## Indexing
 
 ### gno update

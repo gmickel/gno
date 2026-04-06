@@ -17,6 +17,7 @@ import {
   handleAsk,
   handleBrowseTree,
   handleCapabilities,
+  handleClearCollectionEmbeddings,
   handleCollections,
   handleConnectors,
   handleCreateFolder,
@@ -543,6 +544,25 @@ export async function startServer(
             );
             return withSecurityHeaders(
               await handleDeleteCollection(ctxHolder, store, name),
+              isDev
+            );
+          },
+        },
+        "/api/collections/:name/embeddings/clear": {
+          POST: async (req: Request) => {
+            if (!isRequestAllowed(req, port)) {
+              return withSecurityHeaders(forbiddenResponse(), isDev);
+            }
+            const url = new URL(req.url);
+            const parts = url.pathname.split("/");
+            const name = decodeURIComponent(parts.at(-3) || "");
+            return withSecurityHeaders(
+              await handleClearCollectionEmbeddings(
+                ctxHolder,
+                store,
+                name,
+                req
+              ),
               isDev
             );
           },
