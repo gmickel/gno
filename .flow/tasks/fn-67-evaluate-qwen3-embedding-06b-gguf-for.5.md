@@ -66,15 +66,19 @@ Tests:
 - [ ] Docs and skill text explain when to use cleanup vs re-embed.
 
 ## Done summary
+
 Added collection-level embedding cleanup actions across CLI, API, and Web UI.
 
 Delivered:
+
 - added store-level collection embedding cleanup with `stale` and `all` modes
 - protected vectors shared by active documents in other collections from accidental deletion
 - added `gno collection clear-embeddings <name> [--all]`
 - added Web UI Embedding cleanup action on collection cards
 - added API route for cleanup and docs/skill updates for stale-vs-all usage
+
 ## Evidence
+
 - Commits:
 - Tests: bun test test/store/adapter.test.ts test/serve/api-collections.test.ts test/cli/collection.test.ts test/cli/smoke.test.ts, bun run lint:check, bun run docs:verify
 - PRs:
