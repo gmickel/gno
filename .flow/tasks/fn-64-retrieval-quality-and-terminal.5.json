@@ -1,0 +1,14 @@
+{
+  "assignee": null,
+  "claim_note": "",
+  "claimed_at": null,
+  "created_at": "2026-04-06T06:27:05.207600Z",
+  "depends_on": [],
+  "epic": "fn-64-retrieval-quality-and-terminal",
+  "id": "fn-64-retrieval-quality-and-terminal.5",
+  "priority": 5,
+  "spec_path": ".flow/tasks/fn-64-retrieval-quality-and-terminal.5.md",
+  "status": "todo",
+  "title": "Add per-collection model configuration with clear resolution rules",
+  "updated_at": "2026-04-06T06:27:05.207768Z"
+}

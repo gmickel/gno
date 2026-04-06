@@ -8,7 +8,7 @@
 import type { SearchOptions, SearchResults } from "../../pipeline/types";
 
 import { LlmAdapter } from "../../llm/nodeLlamaCpp/adapter";
-import { getActivePreset } from "../../llm/registry";
+import { resolveModelUri } from "../../llm/registry";
 import { formatQueryForEmbedding } from "../../pipeline/contextual";
 import {
   searchVectorWithEmbedding,
@@ -40,6 +40,8 @@ export type VsearchCommandOptions = SearchOptions & {
   xml?: boolean;
   /** Output files only */
   files?: boolean;
+  /** Terminal hyperlink policy */
+  terminalLinks?: FormatOptions["terminalLinks"];
 };
 
 export type VsearchResult =
@@ -76,8 +78,12 @@ export async function vsearch(
 
   try {
     // Get model URI from preset
-    const preset = getActivePreset(config);
-    const modelUri = options.model ?? preset.embed;
+    const modelUri = resolveModelUri(
+      config,
+      "embed",
+      options.model,
+      options.collection
+    );
 
     // Create LLM adapter for embeddings
     const llm = new LlmAdapter(config);
@@ -187,6 +193,7 @@ export function formatVsearch(
     format: getFormatType(options),
     full: options.full,
     lineNumbers: options.lineNumbers,
+    terminalLinks: options.terminalLinks,
   };
 
   return formatSearchResults(result.data, formatOpts);

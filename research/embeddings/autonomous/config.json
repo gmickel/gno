@@ -1,0 +1,67 @@
+{
+  "id": "gno-code-embedding-autonomous-v1",
+  "task": "code-embedding-model-selection",
+  "sandboxRoot": "research/embeddings",
+  "allowedRoots": [
+    "research/embeddings/",
+    "evals/helpers/code-embedding-benchmark.ts",
+    "evals/fixtures/code-embedding-benchmark/",
+    "scripts/code-embedding-benchmark.ts"
+  ],
+  "mutationTargets": [
+    "research/embeddings/autonomous/search-space.json",
+    "research/embeddings/autonomous/policy.md",
+    "research/embeddings/README.md",
+    "evals/helpers/code-embedding-benchmark.ts",
+    "scripts/code-embedding-benchmark.ts"
+  ],
+  "disallowedRoots": [
+    "src/",
+    "docs/",
+    "website/",
+    "spec/output-schemas/",
+    "research/finetune/"
+  ],
+  "budget": {
+    "maxRuntimeMinutes": 45,
+    "maxRunsPerSession": 5,
+    "confirmationRuns": 3
+  },
+  "metric": {
+    "baselineArtifact": "evals/fixtures/code-embedding-benchmark/latest.json",
+    "validationCommand": "bun run lint:check",
+    "smokeCommand": "bun test test/research/code-embedding-benchmark.test.ts test/research/code-embedding-autonomous.test.ts",
+    "fixtures": {
+      "primary": "canonical",
+      "secondary": "repo-serve"
+    },
+    "decision": {
+      "primary": "vector",
+      "weights": {
+        "primaryVectorNdcgAt10": 1000,
+        "primaryVectorRecallAt5": 150,
+        "secondaryVectorNdcgAt10": 700,
+        "secondaryHybridNdcgAt10": 150,
+        "primaryVectorP95Ms": -0.02,
+        "secondaryVectorP95Ms": -0.01
+      },
+      "minimums": {
+        "primaryVectorNdcgDelta": 0.005,
+        "secondaryVectorNdcgDelta": 0
+      }
+    }
+  },
+  "logging": {
+    "runDir": "research/embeddings/autonomous/runs",
+    "requiredFields": [
+      "candidateId",
+      "embedModel",
+      "benchmarkPath",
+      "decision",
+      "runtimeSeconds"
+    ]
+  },
+  "promotion": {
+    "humanApprovalRequired": true
+  }
+}

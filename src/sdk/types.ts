@@ -84,6 +84,7 @@ export interface GnoUpdateOptions {
 }
 
 export interface GnoEmbedOptions {
+  collection?: string;
   model?: string;
   batchSize?: number;
   force?: boolean;

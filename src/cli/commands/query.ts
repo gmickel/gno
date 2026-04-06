@@ -14,7 +14,7 @@ import type { HybridSearchOptions, SearchResults } from "../../pipeline/types";
 
 import { LlmAdapter } from "../../llm/nodeLlamaCpp/adapter";
 import { resolveDownloadPolicy } from "../../llm/policy";
-import { getActivePreset } from "../../llm/registry";
+import { resolveModelUri } from "../../llm/registry";
 import { type HybridSearchDeps, searchHybrid } from "../../pipeline/hybrid";
 import {
   createVectorIndexPort,
@@ -58,6 +58,7 @@ export interface QueryFormatOptions {
   format: "terminal" | "json" | "files" | "csv" | "md" | "xml";
   full?: boolean;
   lineNumbers?: boolean;
+  terminalLinks?: import("../format/search-results").FormatOptions["terminalLinks"];
 }
 
 export type QueryResult =
@@ -97,7 +98,6 @@ export async function query(
   let rerankPort: RerankPort | null = null;
 
   try {
-    const preset = getActivePreset(config);
     const llm = new LlmAdapter(config);
 
     // Resolve download policy from env/flags
@@ -113,7 +113,12 @@ export async function query(
       : undefined;
 
     // Create embedding port (for vector search)
-    const embedUri = options.embedModel ?? preset.embed;
+    const embedUri = resolveModelUri(
+      config,
+      "embed",
+      options.embedModel,
+      options.collection
+    );
     const embedResult = await llm.createEmbeddingPort(embedUri, {
       policy,
       onProgress: downloadProgress
@@ -127,8 +132,12 @@ export async function query(
     // Create expansion port - optional.
     // Skip when structured query modes are provided.
     if (!options.noExpand && !options.queryModes?.length) {
-      const expandUri =
-        options.expandModel ?? options.genModel ?? preset.expand;
+      const expandUri = resolveModelUri(
+        config,
+        "expand",
+        options.expandModel ?? options.genModel,
+        options.collection
+      );
       const genResult = await llm.createExpansionPort(expandUri, {
         policy,
         onProgress: downloadProgress
@@ -142,7 +151,12 @@ export async function query(
 
     // Create rerank port - optional
     if (!options.noRerank) {
-      const rerankUri = options.rerankModel ?? preset.rerank;
+      const rerankUri = resolveModelUri(
+        config,
+        "rerank",
+        options.rerankModel,
+        options.collection
+      );
       const rerankResult = await llm.createRerankPort(rerankUri, {
         policy,
         onProgress: downloadProgress
@@ -260,5 +274,6 @@ export function formatQuery(
     format: options.format,
     full: options.full,
     lineNumbers: options.lineNumbers,
+    terminalLinks: options.terminalLinks,
   });
 }

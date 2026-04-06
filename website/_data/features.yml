@@ -7,11 +7,13 @@
   icon: hybrid-search
   benefits:
     - Exact keyword matching with BM25 full-text search
+    - Intentional handling for quoted phrases and technical compounds like real-time and gpt-4
     - Semantic similarity with vector embeddings
     - Reciprocal rank fusion combines both pipelines
     - Query expansion with HyDE and lexical variants
     - Cross-encoder reranking for precision
     - Strong signal detection skips expansion when confident
+    - Clickable terminal hyperlinks for TTY search workflows
     - Configurable fast/balanced/thorough modes
   commands:
     - "gno search 'exact terms'"
@@ -30,6 +32,7 @@
     - No API keys required
     - Cited answers with source documents
     - Multiple model presets (slim-tuned, slim, balanced, quality)
+    - Optional per-collection model overrides layered on top of presets
     - Separate expansion and generation models
   commands:
     - "gno ask 'your question' --answer"
@@ -70,6 +73,24 @@
     - "gno models pull --gen"
     - "gno query 'topic' --thorough"
 
+- slug: benchmarks
+  title: Benchmarks
+  headline: Measure Before You Switch
+  description: Benchmark retrieval models and code embedding candidates against fixed corpora, real GNO code slices, and pinned public OSS slices before changing defaults. GNO's research loops are built around measurable wins, not vibes.
+  icon: brain
+  benefits:
+    - Regression-first retrieval evaluation
+    - Canonical benchmark corpora for stable comparisons
+    - Real GNO code slice benchmark for product-shaped signal
+    - Public OSS slices for generalization checks
+    - Autonomous candidate search with bounded budgets
+    - Per-collection model recommendations backed by results
+  commands:
+    - "bun run eval:hybrid"
+    - "bun run bench:code-embeddings --candidate bge-m3-incumbent --write"
+    - "bun run research:embeddings:autonomous:list-search-candidates"
+    - "bun run research:embeddings:autonomous:search --dry-run"
+
 - slug: web-ui
   title: Web UI
   headline: Your Knowledge Dashboard
@@ -103,6 +124,7 @@
     - PDF text extraction
     - Office documents (DOCX, XLSX, PPTX)
     - Plain text files
+    - Automatic structural first-pass chunking for ts/js/python/go/rust family
     - Automatic language detection (30+ languages)
     - Content deduplication via mirror hashing
     - Incremental indexing with SHA-256 change detection

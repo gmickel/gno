@@ -612,7 +612,8 @@ export class SyncService {
       const chunks = this.chunker.chunk(
         artifact.markdown,
         DEFAULT_CHUNK_PARAMS,
-        artifact.languageHint ?? collection.languageHint
+        artifact.languageHint ?? collection.languageHint,
+        entry.relPath
       );
 
       // 10. Convert to ChunkInput for store

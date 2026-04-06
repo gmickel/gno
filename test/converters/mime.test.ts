@@ -59,6 +59,16 @@ describe("DefaultMimeDetector", () => {
         "application/vnd.openxmlformats-officedocument.presentationml.presentation"
       );
     });
+
+    test(".swift -> text/plain", () => {
+      const result = detector.detect("/path/to/file.swift", new Uint8Array(0));
+      expect(result.mime).toBe("text/plain");
+    });
+
+    test(".c -> text/plain", () => {
+      const result = detector.detect("/path/to/file.c", new Uint8Array(0));
+      expect(result.mime).toBe("text/plain");
+    });
   });
 
   describe("magic byte sniffing", () => {
@@ -147,6 +157,8 @@ describe("isSupportedExtension", () => {
     expect(isSupportedExtension(".docx")).toBe(true);
     expect(isSupportedExtension(".xlsx")).toBe(true);
     expect(isSupportedExtension(".pptx")).toBe(true);
+    expect(isSupportedExtension(".swift")).toBe(true);
+    expect(isSupportedExtension(".c")).toBe(true);
   });
 
   test("returns false for unsupported extensions", () => {
@@ -164,5 +176,7 @@ describe("SUPPORTED_EXTENSIONS", () => {
     expect(SUPPORTED_EXTENSIONS).toContain(".docx");
     expect(SUPPORTED_EXTENSIONS).toContain(".xlsx");
     expect(SUPPORTED_EXTENSIONS).toContain(".pptx");
+    expect(SUPPORTED_EXTENSIONS).toContain(".swift");
+    expect(SUPPORTED_EXTENSIONS).toContain(".c");
   });
 });

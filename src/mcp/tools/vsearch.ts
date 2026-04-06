@@ -13,7 +13,7 @@ import { parseUri } from "../../app/constants";
 import { createNonTtyProgressRenderer } from "../../cli/progress";
 import { LlmAdapter } from "../../llm/nodeLlamaCpp/adapter";
 import { resolveDownloadPolicy } from "../../llm/policy";
-import { getActivePreset } from "../../llm/registry";
+import { resolveModelUri } from "../../llm/registry";
 import { formatQueryForEmbedding } from "../../pipeline/contextual";
 import {
   searchVectorWithEmbedding,
@@ -118,8 +118,12 @@ export function handleVsearch(
       }
 
       // Get model from active preset
-      const preset = getActivePreset(ctx.config);
-      const modelUri = preset.embed;
+      const modelUri = resolveModelUri(
+        ctx.config,
+        "embed",
+        undefined,
+        args.collection
+      );
 
       // Resolve download policy from env (MCP has no CLI flags)
       const policy = resolveDownloadPolicy(process.env, {});

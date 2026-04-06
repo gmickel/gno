@@ -10,7 +10,7 @@
   "plan_review_status": "unknown",
   "plan_reviewed_at": null,
   "spec_path": ".flow/specs/fn-57-mac-and-linux-packaging-matrix-and.md",
-  "status": "done",
+  "status": "open",
   "title": "Mac and Linux packaging matrix and support tiers",
   "updated_at": "2026-04-02T20:30:12.350993Z"
 }

@@ -82,7 +82,7 @@ Optional X-GNO-Token header if GNO_API_TOKEN preference set
 - [ ] Error envelope parsing
 - [ ] Optional token auth
 
-## Acceptance Criteria
+## Acceptance
 
 - [ ] Implementation complete
 - [ ] Tests passing

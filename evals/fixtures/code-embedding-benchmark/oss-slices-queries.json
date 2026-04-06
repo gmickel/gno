@@ -1,0 +1,104 @@
+[
+  {
+    "id": "oss-retry-backoff",
+    "caseSet": "nl2code",
+    "query": "retry helper with exponential backoff for transient network and timeout failures",
+    "relevantDocs": ["opencode-retry/packages/util/src/retry.ts"],
+    "judgments": [
+      { "docid": "opencode-retry/packages/util/src/retry.ts", "relevance": 3 }
+    ]
+  },
+  {
+    "id": "oss-rpc-bridge",
+    "caseSet": "nl2code",
+    "query": "browser preload bridge that batches internal rpc requests and resolves pending responses",
+    "relevantDocs": [
+      "electrobun-internal-rpc/package/src/bun/preload/internalRpc.ts"
+    ],
+    "judgments": [
+      {
+        "docid": "electrobun-internal-rpc/package/src/bun/preload/internalRpc.ts",
+        "relevance": 3
+      }
+    ]
+  },
+  {
+    "id": "oss-windows-job-object",
+    "caseSet": "nl2code",
+    "query": "windows-specific process control using job objects in a desktop application",
+    "relevantDocs": [
+      "opencode-job-object/packages/desktop/src-tauri/src/job_object.rs"
+    ],
+    "judgments": [
+      {
+        "docid": "opencode-job-object/packages/desktop/src-tauri/src/job_object.rs",
+        "relevance": 3
+      }
+    ]
+  },
+  {
+    "id": "oss-go-wrapper",
+    "caseSet": "nl2code",
+    "query": "golang wrapper that shells out or bridges execution for prompt evaluation",
+    "relevantDocs": ["promptfoo-go-wrapper/src/golang/wrapper.go"],
+    "judgments": [
+      { "docid": "promptfoo-go-wrapper/src/golang/wrapper.go", "relevance": 3 }
+    ]
+  },
+  {
+    "id": "oss-sqlite-store",
+    "caseSet": "nl2code",
+    "query": "python sqlite store base class with migrations and namespace helpers",
+    "relevantDocs": [
+      "langgraph-sqlite-base/libs/checkpoint-sqlite/langgraph/store/sqlite/base.py"
+    ],
+    "judgments": [
+      {
+        "docid": "langgraph-sqlite-base/libs/checkpoint-sqlite/langgraph/store/sqlite/base.py",
+        "relevance": 3
+      }
+    ]
+  },
+  {
+    "id": "oss-file-access-tool",
+    "caseSet": "nl2code",
+    "query": "python tool that reads csv files safely and copies them into a docker container",
+    "relevantDocs": [
+      "openai-cookbook-file-access/examples/object_oriented_agentic_approach/resources/registry/tools/file_access_tool.py"
+    ],
+    "judgments": [
+      {
+        "docid": "openai-cookbook-file-access/examples/object_oriented_agentic_approach/resources/registry/tools/file_access_tool.py",
+        "relevance": 3
+      }
+    ]
+  },
+  {
+    "id": "oss-identifier-pendingRequests",
+    "caseSet": "identifier",
+    "query": "pendingRequests",
+    "relevantDocs": [
+      "electrobun-internal-rpc/package/src/bun/preload/internalRpc.ts"
+    ],
+    "judgments": [
+      {
+        "docid": "electrobun-internal-rpc/package/src/bun/preload/internalRpc.ts",
+        "relevance": 2
+      }
+    ]
+  },
+  {
+    "id": "oss-identifier-migrations",
+    "caseSet": "identifier",
+    "query": "MIGRATIONS",
+    "relevantDocs": [
+      "langgraph-sqlite-base/libs/checkpoint-sqlite/langgraph/store/sqlite/base.py"
+    ],
+    "judgments": [
+      {
+        "docid": "langgraph-sqlite-base/libs/checkpoint-sqlite/langgraph/store/sqlite/base.py",
+        "relevance": 2
+      }
+    ]
+  }
+]

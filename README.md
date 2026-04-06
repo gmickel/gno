@@ -1,6 +1,6 @@
 # GNO
 
-**Your Local Second Brain**: Index, search, and synthesize your entire digital life.
+**Local search, retrieval, and synthesis for the files you actually work in.**
 
 [![npm](./assets/badges/npm.svg)](https://www.npmjs.com/package/@gmickel/gno)
 [![MIT License](./assets/badges/license.svg)](./LICENSE)
@@ -12,7 +12,57 @@
 
 ![GNO](./assets/og-image.png)
 
-GNO is a local knowledge engine that turns your documents into a searchable, connected knowledge graph. Index notes, code, PDFs, and Office docs. Get hybrid search, AI answers with citations, and wiki-style note linking—all 100% offline.
+GNO is a local knowledge engine for notes, code, PDFs, Office docs, meeting transcripts, and reference material. It gives you fast keyword search, semantic retrieval, grounded answers with citations, wiki-style linking, and a real workspace UI, while keeping the whole stack local by default.
+
+Use it when:
+
+- your notes live in more than one folder
+- your important knowledge is split across Markdown, code, PDFs, and Office files
+- you want one retrieval layer that works from the CLI, browser, MCP, and a Bun/TypeScript SDK
+- you want better local context for agents without shipping your docs to a cloud API
+
+### What GNO Gives You
+
+- **Fast local search**: BM25 for exact hits, vectors for concepts, hybrid for best quality
+- **Real retrieval surfaces**: CLI, Web UI, REST API, MCP, SDK
+- **Local-first answers**: grounded synthesis with citations when you want answers, raw retrieval when you do not
+- **Connected knowledge**: backlinks, related notes, graph view, cross-collection navigation
+- **Operational fit**: daemon mode, model presets, remote GPU backends, safe config/state on disk
+
+### One-Minute Tour
+
+```bash
+# Install
+bun install -g @gmickel/gno
+
+# Add a few collections
+gno init ~/notes --name notes
+gno collection add ~/work/docs --name work-docs --pattern "**/*.{md,pdf,docx}"
+gno collection add ~/work/gno/src --name gno-code --pattern "**/*.{ts,tsx,js,jsx}"
+
+# Add context so retrieval results come back with the right framing
+gno context add "notes:" "Personal notes, journal entries, and long-form ideas"
+gno context add "work-docs:" "Architecture docs, runbooks, RFCs, meeting notes"
+gno context add "gno-code:" "Source code for the GNO application"
+
+# Index + embed
+gno update --yes
+gno embed
+
+# Search in the way that fits the question
+gno search "DEC-0054"                            # exact keyword / identifier
+gno vsearch "retry failed jobs with backoff"     # natural-language semantic lookup
+gno query "JWT refresh token rotation" --explain # hybrid retrieval with score traces
+
+# Retrieve documents or export context for an agent
+gno get "gno://work-docs/architecture/auth.md"
+gno multi-get "gno-code/**/*.ts" --max-bytes 30000 --md
+gno query "deployment process" --all --files --min-score 0.35
+
+# Run the workspace
+gno serve
+gno daemon
+```
 
 ---
 
@@ -265,6 +315,14 @@ headless. In v0.30 it is foreground-only and does not expose built-in
 
 Embed GNO directly in another Bun or TypeScript app. No CLI subprocesses. No local server required.
 
+Install:
+
+```bash
+bun add @gmickel/gno
+```
+
+Minimal client:
+
 ```ts
 import { createDefaultConfig, createGnoClient } from "@gmickel/gno";
 
@@ -295,6 +353,43 @@ console.log(results.results[0]?.uri);
 await client.close();
 ```
 
+More SDK examples:
+
+```ts
+import { createGnoClient } from "@gmickel/gno";
+
+const client = await createGnoClient({
+  configPath: "/Users/me/.config/gno/index.yml",
+});
+
+// Fast exact search
+const bm25 = await client.search("DEC-0054", {
+  collection: "work-docs",
+});
+
+// Semantic code lookup
+const semantic = await client.vsearch("retry failed jobs with backoff", {
+  collection: "gno-code",
+});
+
+// Hybrid retrieval with explicit intent
+const hybrid = await client.query("token refresh", {
+  collection: "work-docs",
+  intent: "JWT refresh token rotation in our auth stack",
+  candidateLimit: 12,
+});
+
+// Fetch content directly
+const doc = await client.get("gno://work-docs/auth/refresh.md");
+const bundle = await client.multiGet(["gno-code/**/*.ts"], { maxBytes: 25000 });
+
+// Indexing / embedding
+await client.update({ collection: "work-docs" });
+await client.embed({ collection: "gno-code" });
+
+await client.close();
+```
+
 Core SDK surface:
 
 - `createGnoClient({ config | configPath, dbPath? })`
@@ -302,12 +397,6 @@ Core SDK surface:
 - `get`, `multiGet`, `list`, `status`
 - `update`, `embed`, `index`
 - `close`
-
-Install in an app:
-
-```bash
-bun add @gmickel/gno
-```
 
 Full guide: [SDK docs](https://gno.sh/docs/SDK/)
 
@@ -337,6 +426,31 @@ gno ask "what did we decide" --answer # AI synthesis
 ```
 
 Output formats: `--json`, `--files`, `--csv`, `--md`, `--xml`
+
+### Common CLI Recipes
+
+```bash
+# Search one collection
+gno search "PostgreSQL connection pool" --collection work-docs
+
+# Export retrieval results for an agent
+gno query "authentication flow" --json -n 10
+gno query "deployment rollback" --all --files --min-score 0.4
+
+# Retrieve a document by URI or docid
+gno get "gno://work-docs/runbooks/deploy.md"
+gno get "#abc123"
+
+# Fetch many documents at once
+gno multi-get "work-docs/**/*.md" --max-bytes 20000 --md
+
+# Inspect how the hybrid rank was assembled
+gno query "refresh token rotation" --explain
+
+# Work with filters
+gno query "meeting notes" --since "last month" --category "meeting,notes"
+gno search "incident review" --tags-all "status/active,team/platform"
+```
 
 ### Retrieval V2 Controls
 
@@ -381,6 +495,20 @@ gno skill install --scope user
 ![GNO Skill in Claude Code](./assets/screenshots/claudecodeskill.jpg)
 
 Then ask your agent: _"Search my notes for the auth discussion"_
+
+Agent-friendly CLI examples:
+
+```bash
+# Structured retrieval output for an agent
+gno query "authentication" --json -n 10
+
+# File list for downstream retrieval
+gno query "error handling" --all --files --min-score 0.35
+
+# Full document content when the agent already knows the ref
+gno get "gno://work-docs/api-reference.md" --full
+gno multi-get "work-docs/**/*.md" --md --max-bytes 30000
+```
 
 [Skill setup guide →](https://gno.sh/docs/integrations/skills/)
 
@@ -655,7 +783,7 @@ See:
 Offload inference to a GPU server on your network:
 
 ```yaml
-# ~/.config/gno/config.yaml
+# ~/.config/gno/index.yml
 models:
   activePreset: remote-gpu
   presets:
@@ -714,6 +842,61 @@ bun run eval:hybrid:delta
 
 - Benchmark guide: [evals/README.md](./evals/README.md)
 - Latest baseline snapshot: [evals/fixtures/hybrid-baseline/latest.json](./evals/fixtures/hybrid-baseline/latest.json)
+
+### Code Embedding Benchmark Harness
+
+GNO also has a dedicated harness for comparing alternate embedding models on code retrieval without touching product defaults:
+
+```bash
+# Establish the current incumbent baseline
+bun run bench:code-embeddings --candidate bge-m3-incumbent --write
+
+# Add candidate model URIs to the search space, then inspect them
+bun run research:embeddings:autonomous:list-search-candidates
+
+# Benchmark one candidate explicitly
+bun run research:embeddings:autonomous:run-candidate bge-m3-incumbent
+
+# Or let the bounded search harness walk the remaining candidates later
+bun run research:embeddings:autonomous:search --dry-run
+```
+
+See [research/embeddings/README.md](./research/embeddings/README.md).
+
+If a model turns out to be better specifically for code, the intended user story is:
+
+- keep the default global preset for mixed prose/docs collections
+- use per-collection `models.embed` overrides for code collections
+
+That lets GNO stay sane by default while still giving power users a clean path to code-specialist retrieval.
+
+Current code-focused recommendation:
+
+```yaml
+collections:
+  - name: gno-code
+    path: /Users/you/work/gno/src
+    pattern: "**/*.{ts,tsx,js,jsx,go,rs,py,swift,c}"
+    models:
+      embed: "hf:Qwen/Qwen3-Embedding-0.6B-GGUF/Qwen3-Embedding-0.6B-Q8_0.gguf"
+```
+
+GNO treats that override like any other model URI:
+
+- auto-downloads on first use by default
+- manual-only if `GNO_NO_AUTO_DOWNLOAD=1`
+- offline-safe if the model is already cached
+
+Why this is the current recommendation:
+
+- matches `bge-m3` on the tiny canonical benchmark
+- significantly beats `bge-m3` on the real GNO `src/serve` code slice
+- also beats `bge-m3` on a pinned public-OSS code slice
+
+Trade-off:
+
+- Qwen is slower to embed than `bge-m3`
+- use it where code retrieval quality matters, not necessarily as the global default for every collection
 
 ---
 

@@ -1,0 +1,14 @@
+{
+  "assignee": null,
+  "claim_note": "",
+  "claimed_at": null,
+  "created_at": "2026-04-06T11:09:24.721809Z",
+  "depends_on": [],
+  "epic": "fn-65-granular-model-resolution-for-path-and",
+  "id": "fn-65-granular-model-resolution-for-path-and.1",
+  "priority": 1,
+  "spec_path": ".flow/tasks/fn-65-granular-model-resolution-for-path-and.1.md",
+  "status": "todo",
+  "title": "Design path and file-type model override semantics",
+  "updated_at": "2026-04-06T11:09:24.722024Z"
+}

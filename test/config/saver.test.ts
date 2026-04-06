@@ -43,6 +43,7 @@ describe("saveConfigToPath", () => {
     const config: Config = {
       version: "1.0",
       ftsTokenizer: "porter",
+      editorUriTemplate: "vscode://file/{path}:{line}:{col}",
       collections: [
         {
           name: "notes",
@@ -52,6 +53,9 @@ describe("saveConfigToPath", () => {
           exclude: [".git", "node_modules"],
           updateCmd: "git pull",
           languageHint: "en",
+          models: {
+            embed: "file:/models/notes-embed.gguf",
+          },
         },
       ],
       contexts: [
@@ -80,9 +84,15 @@ describe("saveConfigToPath", () => {
     if (loadResult.ok) {
       expect(loadResult.value.version).toBe("1.0");
       expect(loadResult.value.ftsTokenizer).toBe("porter");
+      expect(loadResult.value.editorUriTemplate).toBe(
+        "vscode://file/{path}:{line}:{col}"
+      );
       expect(loadResult.value.collections).toHaveLength(1);
       expect(loadResult.value.collections[0]?.name).toBe("notes");
       expect(loadResult.value.collections[0]?.updateCmd).toBe("git pull");
+      expect(loadResult.value.collections[0]?.models?.embed).toBe(
+        "file:/models/notes-embed.gguf"
+      );
       expect(loadResult.value.contexts).toHaveLength(2);
     }
   });

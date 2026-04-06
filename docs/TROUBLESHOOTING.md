@@ -248,6 +248,30 @@ This shows scoring breakdown for each result:
 4. **Adjust min-score** - Filter low-confidence results: `--min-score 0.3`
 5. **Try expansion** - On `slim` / `slim-tuned`, balanced mode already expands by default. On larger presets, try `--thorough` or remove `--no-expand` if recall seems too low.
 
+**Lexical edge cases:**
+
+- hyphenated technical terms like `real-time`, `gpt-4`, and `DEC-0054` are handled intentionally by BM25 search
+- quoted phrases are supported: `gno search '"zero downtime deploy"'`
+- negation requires at least one positive term: `gno search 'dashboard -lag'`
+- unmatched quotes fail as a validation error instead of surfacing raw SQLite FTS syntax noise
+
+## Terminal Links Not Clickable
+
+CLI OSC 8 hyperlinks only appear when:
+
+- you are using terminal output (not `--json`, `--csv`, `--xml`, `--files`, or `--md`)
+- stdout is a TTY
+- the result has an absolute path available
+
+If you want editor-specific deep links, configure either:
+
+- `editorUriTemplate` in `~/.config/gno/index.yml`
+- `GNO_EDITOR_URI_TEMPLATE` in the environment
+
+Env override wins over YAML config.
+
+If your template uses `{line}` but a result has no line hint, GNO falls back to plain text for that result rather than inventing `:1`.
+
 **Score Interpretation:**
 
 Scores are normalized 0-1 per query. A 0.8 doesn't mean "80% confident" - it means "ranked high relative to other results for this query." Scores are NOT comparable across different queries.
@@ -265,6 +289,37 @@ gno models pull --embed
 # Or all models
 gno models pull --all
 ```
+
+### Code-aware chunking not active
+
+Run `gno doctor` and look for the `code-chunking` check.
+
+- automatic first pass currently applies to `.ts`, `.tsx`, `.js`, `.jsx`, `.py`, `.go`, and `.rs`
+- unsupported extensions fall back to the default markdown chunker
+- files without useful structural boundaries also fall back to the default chunker
+
+If search snippets still look oddly split for a supported code file:
+
+1. confirm the file extension is one of the supported code types
+2. re-sync the collection
+3. use `gno query --explain` to inspect the retrieval path
+
+### Collection model overrides not taking effect
+
+Collection-specific model overrides only apply when the operation resolves a specific collection.
+
+Resolution order:
+
+1. collection role override
+2. active preset role
+3. built-in default fallback
+
+Checks:
+
+1. confirm the collection name in `index.yml` matches exactly
+2. confirm the override is nested under that collection's `models:` block
+3. confirm the operation actually targets that collection
+4. if a CLI command also passes an explicit `--model`/`--embed-model`/`--rerank-model` style override, that explicit CLI override still wins
 
 ### Force CPU-only for testing
 

@@ -21,6 +21,169 @@ const MAX_OVERLAP_PERCENT = 0.5;
 
 /** Regex for sentence ending followed by whitespace and capital letter (global) */
 const SENTENCE_END_REGEX = /[.!?](\s+)[A-Z]/g;
+const MIN_CODE_CHUNK_PERCENT = 0.35;
+
+type CodeChunkLanguage =
+  | "typescript"
+  | "tsx"
+  | "javascript"
+  | "jsx"
+  | "python"
+  | "go"
+  | "rust";
+
+const CODE_CHUNK_MODE = "automatic";
+
+const CODE_EXTENSION_MAP: Record<string, CodeChunkLanguage> = {
+  ".ts": "typescript",
+  ".tsx": "tsx",
+  ".js": "javascript",
+  ".jsx": "jsx",
+  ".py": "python",
+  ".go": "go",
+  ".rs": "rust",
+};
+
+const CODE_SUPPORTED_EXTENSIONS = Object.keys(CODE_EXTENSION_MAP);
+
+const CODE_BREAKPOINT_PATTERNS: Record<CodeChunkLanguage, RegExp[]> = {
+  typescript: [
+    /^\s*import\s.+$/gm,
+    /^\s*export\s+(?:default\s+)?(?:class|function|interface|type|enum)\b.*$/gm,
+    /^\s*(?:export\s+)?(?:async\s+)?function\s+\w+/gm,
+    /^\s*(?:export\s+)?class\s+\w+/gm,
+    /^\s*(?:export\s+)?interface\s+\w+/gm,
+    /^\s*(?:export\s+)?type\s+\w+\s*=/gm,
+    /^\s*(?:export\s+)?enum\s+\w+/gm,
+    /^\s*(?:export\s+)?(?:const|let|var)\s+\w+\s*=\s*(?:async\s*)?\([^)]*\)\s*=>/gm,
+  ],
+  tsx: [
+    /^\s*import\s.+$/gm,
+    /^\s*export\s+(?:default\s+)?(?:class|function|interface|type|enum)\b.*$/gm,
+    /^\s*(?:export\s+)?(?:async\s+)?function\s+\w+/gm,
+    /^\s*(?:export\s+)?class\s+\w+/gm,
+    /^\s*(?:export\s+)?interface\s+\w+/gm,
+    /^\s*(?:export\s+)?type\s+\w+\s*=/gm,
+    /^\s*(?:export\s+)?enum\s+\w+/gm,
+    /^\s*(?:export\s+)?(?:const|let|var)\s+\w+\s*=\s*(?:async\s*)?\([^)]*\)\s*=>/gm,
+  ],
+  javascript: [
+    /^\s*import\s.+$/gm,
+    /^\s*export\s+(?:default\s+)?(?:class|function)\b.*$/gm,
+    /^\s*(?:export\s+)?(?:async\s+)?function\s+\w+/gm,
+    /^\s*(?:export\s+)?class\s+\w+/gm,
+    /^\s*(?:export\s+)?(?:const|let|var)\s+\w+\s*=\s*(?:async\s*)?\([^)]*\)\s*=>/gm,
+  ],
+  jsx: [
+    /^\s*import\s.+$/gm,
+    /^\s*export\s+(?:default\s+)?(?:class|function)\b.*$/gm,
+    /^\s*(?:export\s+)?(?:async\s+)?function\s+\w+/gm,
+    /^\s*(?:export\s+)?class\s+\w+/gm,
+    /^\s*(?:export\s+)?(?:const|let|var)\s+\w+\s*=\s*(?:async\s*)?\([^)]*\)\s*=>/gm,
+  ],
+  python: [
+    /^\s*(?:from|import)\s+\w+/gm,
+    /^\s*@[\w.]+/gm,
+    /^\s*(?:async\s+def|def|class)\s+\w+/gm,
+  ],
+  go: [/^\s*import\s+(?:\(|")/gm, /^\s*(?:func|type|const|var)\s+\w+/gm],
+  rust: [
+    /^\s*use\s+[A-Za-z0-9_:{}*, ]+;/gm,
+    /^\s*(?:pub\s+)?(?:fn|struct|enum|trait|impl)\b/gm,
+  ],
+};
+
+export interface CodeChunkingStatus {
+  mode: typeof CODE_CHUNK_MODE;
+  supportedExtensions: string[];
+}
+
+export function getCodeChunkingStatus(): CodeChunkingStatus {
+  return {
+    mode: CODE_CHUNK_MODE,
+    supportedExtensions: [...CODE_SUPPORTED_EXTENSIONS],
+  };
+}
+
+function detectCodeChunkLanguage(
+  sourcePath?: string
+): CodeChunkLanguage | null {
+  if (!sourcePath) {
+    return null;
+  }
+
+  const normalized = sourcePath.toLowerCase();
+  const matchedExtension = Object.keys(CODE_EXTENSION_MAP).find((extension) =>
+    normalized.endsWith(extension)
+  );
+
+  if (!matchedExtension) {
+    return null;
+  }
+
+  return CODE_EXTENSION_MAP[matchedExtension] ?? null;
+}
+
+function collectStructuralBreakPoints(
+  text: string,
+  sourcePath?: string
+): number[] {
+  const language = detectCodeChunkLanguage(sourcePath);
+  if (!language) {
+    return [];
+  }
+
+  const patterns = CODE_BREAKPOINT_PATTERNS[language];
+  if (!patterns) {
+    return [];
+  }
+
+  const points = new Set<number>();
+  for (const pattern of patterns) {
+    pattern.lastIndex = 0;
+    let match: RegExpExecArray | null = null;
+    while (true) {
+      match = pattern.exec(text);
+      if (!match) {
+        break;
+      }
+      if (match.index > 0) {
+        points.add(match.index);
+      }
+    }
+  }
+
+  return [...points].sort((a, b) => a - b);
+}
+
+function findStructuralBreakPoint(
+  breakPoints: number[],
+  currentPos: number,
+  target: number,
+  windowSize: number,
+  minChunkChars: number
+): number | null {
+  if (breakPoints.length === 0) {
+    return null;
+  }
+
+  const minStart = currentPos + minChunkChars;
+  const start = Math.max(minStart, target - windowSize);
+  const end = target + windowSize;
+  const candidates = breakPoints.filter(
+    (point) => point >= start && point <= end
+  );
+  if (candidates.length === 0) {
+    return null;
+  }
+
+  const beforeTarget = candidates.filter((point) => point <= target);
+  if (beforeTarget.length > 0) {
+    return beforeTarget.at(-1) ?? null;
+  }
+
+  return candidates[0] ?? null;
+}
 
 /**
  * Line index for O(1) line number lookups.
@@ -160,7 +323,8 @@ export class MarkdownChunker implements ChunkerPort {
   chunk(
     markdown: string,
     params?: ChunkParams,
-    documentLanguageHint?: string
+    documentLanguageHint?: string,
+    sourcePath?: string
   ): ChunkOutput[] {
     if (!markdown || markdown.trim().length === 0) {
       return [];
@@ -172,9 +336,14 @@ export class MarkdownChunker implements ChunkerPort {
     const maxChars = maxTokens * CHARS_PER_TOKEN;
     const overlapChars = Math.floor(maxChars * overlapPercent);
     const windowSize = Math.floor(maxChars * 0.1); // 10% window for break search
+    const minCodeChunkChars = Math.floor(maxChars * MIN_CODE_CHUNK_PERCENT);
 
     // Build line index once for O(log n) lookups
     const lineIndex = buildLineIndex(markdown);
+    const structuralBreakPoints = collectStructuralBreakPoints(
+      markdown,
+      sourcePath
+    );
 
     const chunks: ChunkOutput[] = [];
     let pos = 0;
@@ -185,12 +354,23 @@ export class MarkdownChunker implements ChunkerPort {
       const targetEnd = pos + maxChars;
 
       let endPos: number;
+      let usedStructuralBreak = false;
       if (targetEnd >= markdown.length) {
         // Last chunk - take rest
         endPos = markdown.length;
       } else {
-        // Find a good break point
-        endPos = findBreakPoint(markdown, targetEnd, windowSize);
+        const structuralBreakPoint = findStructuralBreakPoint(
+          structuralBreakPoints,
+          pos,
+          targetEnd,
+          windowSize,
+          minCodeChunkChars
+        );
+        usedStructuralBreak = structuralBreakPoint !== null;
+        endPos =
+          structuralBreakPoint ??
+          // Find a good prose break point
+          findBreakPoint(markdown, targetEnd, windowSize);
       }
 
       // Extract chunk text - preserve exactly (no trim!)
@@ -224,8 +404,9 @@ export class MarkdownChunker implements ChunkerPort {
         break;
       }
 
-      // Calculate next position with overlap
-      const nextPos = endPos - overlapChars;
+      // Structural chunks should begin on the detected boundary, not in the
+      // middle of the previous code block due to overlap backtracking.
+      const nextPos = usedStructuralBreak ? endPos : endPos - overlapChars;
       pos = Math.max(pos + 1, nextPos); // Ensure we always advance
     }
 

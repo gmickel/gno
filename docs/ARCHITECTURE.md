@@ -69,7 +69,7 @@ File on disk
     │
     ├─[ mirrorHash exists ]─► Reuse content (deduplication)
     │
-    ▼ Chunker (~800 tokens, 15% overlap)
+    ▼ Chunker (~800 tokens, 15% overlap, code-aware for ts/js/python/go/rust family)
     │
     ▼ Store (SQLite: documents, content, chunks, document-level FTS)
     │
@@ -92,7 +92,7 @@ User query
     │
     ▼ [Optional] Query expansion (LLM variants + HyDE)
     │
-    ▼ Document-level BM25 Search (FTS5 + Snowball stemmer)
+    ▼ Document-level BM25 Search (FTS5 + Snowball stemmer, weighted title/path/body)
     │
     ▼ Chunk-level Vector Search (sqlite-vec KNN)
     │
@@ -154,15 +154,15 @@ CLI/MCP/Web UI/SDK → new Adapter() → adapter.createPort() → Port interface
 
 ### Storage
 
-| Table           | Purpose                                        |
-| --------------- | ---------------------------------------------- |
-| documents       | Source file tracking (path, hash, docid)       |
-| content         | Canonical markdown by mirrorHash               |
-| content_chunks  | Chunked text (800 tokens each)                 |
-| documents_fts   | Document-level FTS5 with Snowball stemmer      |
-| content_vectors | Chunk embeddings with title context (optional) |
-| doc_tags        | Document tags (frontmatter and user-added)     |
-| doc_links       | Wiki and markdown links between documents      |
+| Table           | Purpose                                                                        |
+| --------------- | ------------------------------------------------------------------------------ |
+| documents       | Source file tracking (path, hash, docid)                                       |
+| content         | Canonical markdown by mirrorHash                                               |
+| content_chunks  | Chunked text (800 tokens each; structural first-pass for supported code files) |
+| documents_fts   | Document-level FTS5 with Snowball stemmer                                      |
+| content_vectors | Chunk embeddings with title context (optional)                                 |
+| doc_tags        | Document tags (frontmatter and user-added)                                     |
+| doc_links       | Wiki and markdown links between documents                                      |
 
 ### Content Addressing
 
@@ -189,7 +189,7 @@ Models are GGUF-quantized for efficiency. First use triggers automatic download.
 
 | Mode     | Description                                                      |
 | -------- | ---------------------------------------------------------------- |
-| BM25     | Document-level keyword matching via FTS5 + Snowball              |
+| BM25     | Document-level keyword matching via weighted FTS5 + Snowball     |
 | Vector   | Chunk-level semantic similarity with contextual embeddings       |
 | Hybrid   | BM25 + vector with RRF fusion (2× original weight, tiered bonus) |
 | Reranked | Hybrid + full-document cross-encoder (32K context)               |

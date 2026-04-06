@@ -19,7 +19,7 @@ import type {
 import type { GnoEmbedOptions, GnoEmbedResult } from "./types";
 
 import { embedBacklog } from "../embed";
-import { getActivePreset } from "../llm/registry";
+import { resolveModelUri } from "../llm/registry";
 import { formatDocForEmbedding } from "../pipeline/contextual";
 import { err, ok } from "../store/types";
 import {
@@ -191,8 +191,12 @@ export async function runEmbed(
   const batchSize = options.batchSize ?? 32;
   const force = options.force ?? false;
   const dryRun = options.dryRun ?? false;
-  const preset = getActivePreset(runtime.config);
-  const modelUri = options.model ?? preset.embed;
+  const modelUri = resolveModelUri(
+    runtime.config,
+    "embed",
+    options.model,
+    options.collection
+  );
   const db = runtime.store.getRawDb();
   const stats: VectorStatsPort = createVectorStatsPort(db);
 

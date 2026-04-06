@@ -41,7 +41,7 @@ Similar to search.tsx but uses gnoQuery/apiQuery
 - [ ] Loading state (may be slower)
 - [ ] Actions: Open, ShowInFinder, CopyPath
 
-## Acceptance Criteria
+## Acceptance
 
 - [ ] Implementation complete
 - [ ] Tests passing

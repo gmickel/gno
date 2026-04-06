@@ -7,7 +7,7 @@
 
 SQLite lower() ASCII-only; consider title_norm/rel_path_norm fields or JS-normalized comparisons.
 
-## Acceptance Criteria
+## Acceptance
 
 - [ ] Implementation complete
 - [ ] Tests passing

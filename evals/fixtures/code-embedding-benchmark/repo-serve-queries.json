@@ -1,0 +1,23 @@
+[
+  {
+    "id": "serve-search-page",
+    "caseSet": "nl2code",
+    "query": "search page component that manages retrieval filters and navigates to a document from the results list",
+    "relevantDocs": ["public/pages/Search.tsx"],
+    "judgments": [{ "docid": "public/pages/Search.tsx", "relevance": 3 }]
+  },
+  {
+    "id": "serve-api-query-route",
+    "caseSet": "nl2code",
+    "query": "api route that handles hybrid search requests and returns query results",
+    "relevantDocs": ["routes/api.ts"],
+    "judgments": [{ "docid": "routes/api.ts", "relevance": 3 }]
+  },
+  {
+    "id": "serve-status-model",
+    "caseSet": "identifier",
+    "query": "StatusModel",
+    "relevantDocs": ["status-model.ts"],
+    "judgments": [{ "docid": "status-model.ts", "relevance": 2 }]
+  }
+]

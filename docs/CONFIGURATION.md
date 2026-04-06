@@ -54,6 +54,9 @@ contexts:
 # Model configuration
 models:
   activePreset: balanced
+
+# Optional terminal hyperlink target template for CLI search output
+editorUriTemplate: "vscode://file/{path}:{line}:{col}"
 ```
 
 ## Collections
@@ -204,6 +207,51 @@ The dashboard bootstrap panel uses these preset footprints as the plain-language
 
 > **Note**: When using GNO standalone with `--answer`, the **quality** preset is required for documents containing Markdown tables or other structured content. The smaller models in slim/balanced presets cannot reliably parse tabular data. When GNO is used via MCP, skill, or CLI by AI agents (Claude Code, Codex, etc.), the agent handles answer generation, so any preset works for retrieval.
 
+### Per-collection model overrides
+
+Collections can override model roles without replacing the global preset system.
+
+Example:
+
+```yaml
+collections:
+  - name: work
+    path: /Users/you/work/docs
+    models:
+      rerank: "file:/models/work-rerank.gguf"
+      expand: "file:/models/work-expand.gguf"
+```
+
+Resolution order:
+
+1. collection role override
+2. active preset role
+3. built-in default fallback
+
+Notes:
+
+- overrides are partial; you only set the roles you need
+- global preset remains the base layer for everything else
+- collection-scoped overrides are only meaningful when an operation resolves a specific collection
+- if a future benchmark shows a code-specific embedding model wins on source-code retrieval, prefer using `models.embed` on code collections instead of replacing the global default for every collection
+
+Current code-focused recommendation:
+
+```yaml
+collections:
+  - name: gno-code
+    path: /Users/you/work/gno/src
+    pattern: "**/*.{ts,tsx,js,jsx,go,rs,py,swift,c}"
+    models:
+      embed: "hf:Qwen/Qwen3-Embedding-0.6B-GGUF/Qwen3-Embedding-0.6B-Q8_0.gguf"
+```
+
+This still uses normal GNO model provisioning rules:
+
+- it auto-downloads on first use by default
+- it respects `GNO_NO_AUTO_DOWNLOAD` / offline policy the same way preset models do
+- it is currently best treated as a code-collection override, not a blanket replacement for the global default, because it trades higher embedding latency for better code retrieval quality
+
 ### Model Details
 
 All presets use:
@@ -218,6 +266,36 @@ All presets use:
 | quality  | bge-m3-Q4 | Qwen3-Reranker-0.6B-Q8 | Qwen3-4B-Q4   |
 
 The reranker's 32K context window allows scoring complete documents (tables, code, all sections) rather than truncated snippets.
+
+## Terminal Hyperlinks
+
+CLI retrieval commands (`gno search`, `gno vsearch`, `gno query`) can emit OSC 8 hyperlinks in terminal output when stdout is a TTY.
+
+Configure the target URI template in YAML:
+
+```yaml
+editorUriTemplate: "vscode://file/{path}:{line}:{col}"
+```
+
+Or override it via environment:
+
+```bash
+export GNO_EDITOR_URI_TEMPLATE="vscode://file/{path}:{line}:{col}"
+```
+
+Precedence:
+
+1. `GNO_EDITOR_URI_TEMPLATE`
+2. `editorUriTemplate` in `index.yml`
+3. default fallback `file://{path}`
+
+Supported placeholders:
+
+- `{path}` absolute filesystem path
+- `{line}` best-effort line number from the result snippet, when available
+- `{col}` best-effort column placeholder (`1` when line is available)
+
+If the chosen template requires `{line}` but a result has no line hint, GNO falls back to plain text for that result instead of inventing `:1`.
 
 ### Custom Models
 

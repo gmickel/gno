@@ -24,7 +24,7 @@ import { resolveDepthPolicy } from "../../core/depth-policy";
 import { normalizeStructuredQueryInput } from "../../core/structured-query";
 import { LlmAdapter } from "../../llm/nodeLlamaCpp/adapter";
 import { resolveDownloadPolicy } from "../../llm/policy";
-import { getActivePreset } from "../../llm/registry";
+import { getActivePreset, resolveModelUri } from "../../llm/registry";
 import { type HybridSearchDeps, searchHybrid } from "../../pipeline/hybrid";
 import {
   createVectorIndexPort,
@@ -171,10 +171,16 @@ export function handleQuery(
       let expandPort: GenerationPort | null = null;
       let rerankPort: RerankPort | null = null;
       let vectorIndex: VectorIndexPort | null = null;
+      const embedUri = resolveModelUri(
+        ctx.config,
+        "embed",
+        undefined,
+        args.collection
+      );
 
       try {
         // Create embedding port (for vector search) - optional
-        const embedResult = await llm.createEmbeddingPort(preset.embed, {
+        const embedResult = await llm.createEmbeddingPort(embedUri, {
           policy,
           onProgress: (progress) => downloadProgress("embed", progress),
         });
@@ -197,7 +203,7 @@ export function handleQuery(
         // Create expansion port - optional
         if (!noExpand && !hasStructuredModes) {
           const genResult = await llm.createExpansionPort(
-            preset.expand ?? preset.gen,
+            resolveModelUri(ctx.config, "expand", undefined, args.collection),
             {
               policy,
               onProgress: (progress) => downloadProgress("expand", progress),
@@ -210,10 +216,13 @@ export function handleQuery(
 
         // Create rerank port - optional
         if (!noRerank) {
-          const rerankResult = await llm.createRerankPort(preset.rerank, {
-            policy,
-            onProgress: (progress) => downloadProgress("rerank", progress),
-          });
+          const rerankResult = await llm.createRerankPort(
+            resolveModelUri(ctx.config, "rerank", undefined, args.collection),
+            {
+              policy,
+              onProgress: (progress) => downloadProgress("rerank", progress),
+            }
+          );
           if (rerankResult.ok) {
             rerankPort = rerankResult.value;
           }
@@ -226,7 +235,7 @@ export function handleQuery(
             const dimensions = embedPort.dimensions();
             const db = ctx.store.getRawDb();
             const vectorResult = await createVectorIndexPort(db, {
-              model: preset.embed,
+              model: embedUri,
               dimensions,
             });
             if (vectorResult.ok) {

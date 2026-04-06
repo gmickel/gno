@@ -19,7 +19,7 @@ import {
 } from "../../config";
 import { LlmAdapter } from "../../llm/nodeLlamaCpp/adapter";
 import { resolveDownloadPolicy } from "../../llm/policy";
-import { getActivePreset } from "../../llm/registry";
+import { resolveModelUri } from "../../llm/registry";
 import { formatDocForEmbedding } from "../../pipeline/contextual";
 import { SqliteAdapter } from "../../store/sqlite/adapter";
 import { err, ok } from "../../store/types";
@@ -271,8 +271,7 @@ async function initEmbedContext(
     return { ok: false, error: `Collection not found: ${collection}` };
   }
 
-  const preset = getActivePreset(config);
-  const modelUri = model ?? preset.embed;
+  const modelUri = resolveModelUri(config, "embed", model, collection);
 
   const store = new SqliteAdapter();
   const dbPath = getIndexDbPath();

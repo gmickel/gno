@@ -141,4 +141,49 @@ describe("MarkdownChunker", () => {
     expect(chunks[0]?.text).toBe(text);
     expect(chunks[0]?.pos).toBe(0);
   });
+
+  test("prefers structural code boundaries for supported source files", () => {
+    const imports = [
+      'import { readFile } from "node:fs/promises";',
+      'import { join } from "node:path";',
+      "",
+    ].join("\n");
+
+    const makeFunction = (name: string): string =>
+      [
+        `export function ${name}(): string {`,
+        '  const lines = ["start",',
+        ...Array.from({ length: 220 }, (_, i) => `    "line-${name}-${i}",`),
+        "  ];",
+        '  return lines.join("\\n");',
+        "}",
+        "",
+      ].join("\n");
+
+    const text = `${imports}${makeFunction("loadConfig")}${makeFunction("renderProfile")}${makeFunction("saveConfig")}`;
+
+    const chunks = chunker.chunk(text, undefined, "en", "src/example.ts");
+
+    expect(chunks.length).toBeGreaterThan(1);
+    expect(chunks[0]?.text.startsWith("import { readFile }")).toBe(true);
+    expect(
+      chunks.some((chunk) =>
+        chunk.text.startsWith("export function renderProfile")
+      )
+    ).toBe(true);
+    expect(
+      chunks.some((chunk) => chunk.text.includes("export function saveConfig"))
+    ).toBe(true);
+  });
+
+  test("falls back to prose chunking when no structural breakpoints exist", () => {
+    const text = "x".repeat(3_500);
+
+    const chunks = chunker.chunk(text, undefined, "en", "src/example.rs");
+
+    expect(chunks.length).toBeGreaterThan(1);
+    const secondChunk = chunks[1];
+    expect(secondChunk).toBeDefined();
+    expect(secondChunk?.pos).toBeGreaterThan(0);
+  });
 });

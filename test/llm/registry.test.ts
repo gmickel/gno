@@ -112,6 +112,58 @@ describe("resolveModelUri", () => {
 
     expect(resolveModelUri(config, "embed", override)).toBe(override);
   });
+
+  test("returns collection override when provided", () => {
+    const config: Config = {
+      version: "1.0",
+      ftsTokenizer: "unicode61",
+      collections: [
+        {
+          name: "work",
+          path: "/tmp/work",
+          pattern: "**/*",
+          include: [],
+          exclude: [],
+          models: {
+            embed: "file:/custom/work-embed.gguf",
+            rerank: "file:/custom/work-rerank.gguf",
+          },
+        },
+      ],
+      contexts: [],
+    };
+
+    expect(resolveModelUri(config, "embed", undefined, "work")).toBe(
+      "file:/custom/work-embed.gguf"
+    );
+    expect(resolveModelUri(config, "rerank", undefined, "work")).toBe(
+      "file:/custom/work-rerank.gguf"
+    );
+  });
+
+  test("falls back to active preset for unspecified collection role", () => {
+    const config: Config = {
+      version: "1.0",
+      ftsTokenizer: "unicode61",
+      collections: [
+        {
+          name: "work",
+          path: "/tmp/work",
+          pattern: "**/*",
+          include: [],
+          exclude: [],
+          models: {
+            rerank: "file:/custom/work-rerank.gguf",
+          },
+        },
+      ],
+      contexts: [],
+    };
+
+    expect(resolveModelUri(config, "embed", undefined, "work")).toContain(
+      "bge-m3"
+    );
+  });
 });
 
 describe("listPresets", () => {

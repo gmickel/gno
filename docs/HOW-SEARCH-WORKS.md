@@ -186,6 +186,10 @@ Fast keyword search using SQLite FTS5 with document-level indexing. Best for:
 
 **Snowball stemming**: FTS5 uses the Snowball stemmer supporting 20+ languages. "running" matches "run", "scored" matches "score", plurals match singulars.
 
+**Weighted BM25 fields**: `gno search` intentionally favors title hits first, then filepath hits, then body-only mentions. This helps code/doc lookups like `auth-flow`, `DEC-0054`, and `jwt token rotation` rank the expected document above a weak incidental body mention.
+
+**Lexical query grammar**: BM25 search supports plain prefix terms, quoted phrases, and negation with at least one positive term. Hyphenated compounds like `real-time`, `gpt-4`, and `multi-agent` are handled intentionally rather than relying on accidental tokenizer behavior.
+
 ```bash
 gno search "useEffect cleanup"
 ```
@@ -199,6 +203,8 @@ Pure semantic search using embeddings. Best for:
 - Finding related content
 
 **Contextual chunking**: Each chunk is embedded with its document title prepended (`title: My Doc | text: ...`). This helps the embedding model understand context. A chunk about "configuration" in a React doc is different from one in a database doc.
+
+**Code-aware chunking (automatic first pass)**: for `.ts`, `.tsx`, `.js`, `.jsx`, `.py`, `.go`, and `.rs`, GNO prefers structural breakpoints such as imports, functions, classes, and type definitions before falling back to the default markdown/prose chunker. Unsupported extensions and files without useful structural boundaries continue through the default chunker unchanged.
 
 ```bash
 gno vsearch "how to prevent memory leaks in React"

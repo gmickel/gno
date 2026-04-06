@@ -1,0 +1,50 @@
+[
+  {
+    "id": "opencode-retry",
+    "label": "opencode retry utility",
+    "repoUrl": "https://github.com/anomalyco/opencode.git",
+    "repoPath": "/Users/gordon/repos/opencode",
+    "commit": "562f06713155cf5558929d1598ef2c5b908509b3",
+    "relativePath": "packages/util/src/retry.ts"
+  },
+  {
+    "id": "opencode-job-object",
+    "label": "opencode windows job object",
+    "repoUrl": "https://github.com/anomalyco/opencode.git",
+    "repoPath": "/Users/gordon/repos/opencode",
+    "commit": "562f06713155cf5558929d1598ef2c5b908509b3",
+    "relativePath": "packages/desktop/src-tauri/src/job_object.rs"
+  },
+  {
+    "id": "electrobun-internal-rpc",
+    "label": "electrobun internal rpc bridge",
+    "repoUrl": "https://github.com/blackboardsh/electrobun.git",
+    "repoPath": "/Users/gordon/repos/electrobun",
+    "commit": "99402ac041ef37fcd7575ba42651b28d195ee7aa",
+    "relativePath": "package/src/bun/preload/internalRpc.ts"
+  },
+  {
+    "id": "promptfoo-go-wrapper",
+    "label": "promptfoo golang wrapper",
+    "repoUrl": "https://github.com/promptfoo/promptfoo.git",
+    "repoPath": "/Users/gordon/repos/promptfoo",
+    "commit": "6b4ed863686fa49e922d697bbf725555cd8adaa0",
+    "relativePath": "src/golang/wrapper.go"
+  },
+  {
+    "id": "langgraph-sqlite-base",
+    "label": "langgraph sqlite store base",
+    "repoUrl": "https://github.com/langchain-ai/langgraph.git",
+    "repoPath": "/Users/gordon/repos/langgraph",
+    "commit": "e00a02757964a95a9426a5d953c9adb0ab9d7f63",
+    "relativePath": "libs/checkpoint-sqlite/langgraph/store/sqlite/base.py"
+  },
+  {
+    "id": "openai-cookbook-file-access",
+    "label": "openai cookbook file access tool",
+    "repoUrl": "https://github.com/openai/openai-cookbook.git",
+    "repoPath": "/Users/gordon/repos/openai-cookbook",
+    "commit": "c2d6fbe04fa19709ededb1e617d9a7fa5aec6cdb",
+    "relativePath": "examples/object_oriented_agentic_approach/resources/registry/tools/file_access_tool.py"
+  }
+]

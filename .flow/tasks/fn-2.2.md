@@ -7,7 +7,7 @@
 
 Avoid per-target queries; resolve wiki links in bulk with candidate key sets + ranking.
 
-## Acceptance Criteria
+## Acceptance
 
 - [ ] Implementation complete
 - [ ] Tests passing

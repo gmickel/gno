@@ -53,23 +53,172 @@ import { loadFts5Snowball } from "./fts5-snowball";
 
 /** Whitespace regex for splitting FTS5 tokens */
 const WHITESPACE_REGEX = /\s+/;
+const SINGLE_LINE_QUERY_PATTERN = /[\r\n]/;
+const DOUBLE_QUOTE_PATTERN = /"/g;
+const FTS5_FIELD_WEIGHTS = {
+  filepath: 1.5,
+  title: 4.0,
+  body: 1.0,
+} as const;
+
+function sanitizeFts5Term(term: string): string {
+  return term.replace(/[^\p{L}\p{N}'_]/gu, "").toLowerCase();
+}
+
+function isCompoundToken(token: string): boolean {
+  return /^[\p{L}\p{N}][\p{L}\p{N}'+-]*[-+][\p{L}\p{N}][\p{L}\p{N}'+-]*$/u.test(
+    token
+  );
+}
+
+function sanitizeCompoundTerm(term: string): string {
+  return term
+    .split(/[-+]/)
+    .map((part) => sanitizeFts5Term(part))
+    .filter((part) => part.length > 0)
+    .join(" ");
+}
+
+type FtsQueryBuildResult =
+  | { ok: true; query: string }
+  | { ok: false; error: string };
 
 /**
- * Escape a query string for safe FTS5 MATCH.
- * Wraps each token in double quotes to treat as literal terms.
- * Handles special chars: ? * - + ( ) " : ^ etc.
+ * Narrow lexical grammar for BM25/FTS queries.
+ *
+ * Supported:
+ * - plain terms -> prefix match
+ * - quoted phrases -> phrase match
+ * - negation with at least one positive term
+ * - hyphenated compounds handled intentionally
  */
-function escapeFts5Query(query: string): string {
-  // Split on whitespace, filter empty, quote each token
-  return query
-    .split(WHITESPACE_REGEX)
-    .filter((t) => t.length > 0)
-    .map((token) => {
-      // Escape internal double quotes by doubling them
-      const escaped = token.replace(/"/g, '""');
-      return `"${escaped}"`;
-    })
-    .join(" ");
+function buildFts5Query(query: string): FtsQueryBuildResult {
+  const trimmed = query.trim();
+  if (!trimmed) {
+    return { ok: false, error: "Search query cannot be empty" };
+  }
+
+  if (SINGLE_LINE_QUERY_PATTERN.test(trimmed)) {
+    return {
+      ok: false,
+      error: "Lexical query must be a single line. Remove newline characters.",
+    };
+  }
+
+  const quoteCount = (trimmed.match(DOUBLE_QUOTE_PATTERN) ?? []).length;
+  if (quoteCount % 2 === 1) {
+    return {
+      ok: false,
+      error:
+        'Lexical query has an unmatched double quote ("). Add the closing quote or remove it.',
+    };
+  }
+
+  const positive: string[] = [];
+  const negative: string[] = [];
+  let i = 0;
+
+  while (i < trimmed.length) {
+    while (i < trimmed.length && /\s/.test(trimmed[i]!)) {
+      i += 1;
+    }
+    if (i >= trimmed.length) {
+      break;
+    }
+
+    const negated = trimmed[i] === "-";
+    if (negated) {
+      i += 1;
+    }
+
+    if (i < trimmed.length && trimmed[i] === '"') {
+      const start = i + 1;
+      i += 1;
+      while (i < trimmed.length && trimmed[i] !== '"') {
+        i += 1;
+      }
+      const phrase = trimmed.slice(start, i).trim();
+      i += 1;
+
+      if (!phrase) {
+        continue;
+      }
+
+      const sanitized = phrase
+        .split(WHITESPACE_REGEX)
+        .map((token) =>
+          isCompoundToken(token)
+            ? sanitizeCompoundTerm(token)
+            : sanitizeFts5Term(token)
+        )
+        .filter((token) => token.length > 0)
+        .join(" ");
+      if (!sanitized) {
+        continue;
+      }
+
+      const ftsPhrase = `"${sanitized}"`;
+      if (negated) {
+        negative.push(ftsPhrase);
+      } else {
+        positive.push(ftsPhrase);
+      }
+      continue;
+    }
+
+    const start = i;
+    while (i < trimmed.length && !/[\s"]/.test(trimmed[i]!)) {
+      i += 1;
+    }
+    const token = trimmed.slice(start, i);
+    if (!token) {
+      continue;
+    }
+
+    if (isCompoundToken(token)) {
+      const sanitized = sanitizeCompoundTerm(token);
+      if (!sanitized) {
+        continue;
+      }
+      const ftsPhrase = `"${sanitized}"`;
+      if (negated) {
+        negative.push(ftsPhrase);
+      } else {
+        positive.push(ftsPhrase);
+      }
+      continue;
+    }
+
+    const sanitized = sanitizeFts5Term(token);
+    if (!sanitized) {
+      continue;
+    }
+    const ftsTerm = `"${sanitized}"*`;
+    if (negated) {
+      negative.push(ftsTerm);
+    } else {
+      positive.push(ftsTerm);
+    }
+  }
+
+  if (positive.length === 0 && negative.length === 0) {
+    return { ok: false, error: "Search query has no searchable terms" };
+  }
+
+  if (positive.length === 0) {
+    return {
+      ok: false,
+      error:
+        "Negation requires at least one positive search term in lexical queries.",
+    };
+  }
+
+  let ftsQuery = positive.join(" AND ");
+  for (const negation of negative) {
+    ftsQuery = `${ftsQuery} NOT ${negation}`;
+  }
+
+  return { ok: true, query: ftsQuery };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1028,10 +1177,14 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
     try {
       const db = this.ensureOpen();
       const limit = options.limit ?? 20;
+      const builtQuery = buildFts5Query(query);
+      if (!builtQuery.ok) {
+        return err("INVALID_INPUT", builtQuery.error);
+      }
 
       // Build tag filter conditions using EXISTS subqueries
       const tagConditions: string[] = [];
-      const params: (string | number)[] = [escapeFts5Query(query)];
+      const params: (string | number)[] = [];
 
       // tagsAny: document has at least one of these tags
       if (options.tagsAny && options.tagsAny.length > 0) {
@@ -1075,17 +1228,35 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
       if (options.collection) {
         params.push(options.collection);
       }
+
+      const hasOuterFilters =
+        tagConditions.length > 0 || Boolean(options.collection);
+      const ftsLimit = hasOuterFilters ? limit * 10 : limit;
       params.push(limit);
 
-      // Document-level FTS search using documents_fts
-      // Uses bm25() for relevance ranking (more negative = better match)
-      // Snippet from body column (index 2) with highlight markers
+      // Document-level FTS search using an FTS-first CTE to keep collection and
+      // metadata filters from degrading the query plan into a broad scan.
       const sql = `
+        WITH fts_matches AS (
+          SELECT
+            rowid,
+            ${options.snippet ? "snippet(documents_fts, 2, '<mark>', '</mark>', '...', 32) as snippet," : ""}
+            bm25(
+              documents_fts,
+              ${FTS5_FIELD_WEIGHTS.filepath},
+              ${FTS5_FIELD_WEIGHTS.title},
+              ${FTS5_FIELD_WEIGHTS.body}
+            ) as score
+          FROM documents_fts
+          WHERE documents_fts MATCH ?
+          ORDER BY score
+          LIMIT ?
+        )
         SELECT
           d.mirror_hash,
           0 as seq,
-          bm25(documents_fts) as score,
-          ${options.snippet ? "snippet(documents_fts, 2, '<mark>', '</mark>', '...', 32) as snippet," : ""}
+          fm.score as score,
+          ${options.snippet ? "fm.snippet as snippet," : ""}
           d.docid,
           d.uri,
           d.title,
@@ -1097,12 +1268,12 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
           d.frontmatter_date,
           d.source_size,
           d.source_hash
-        FROM documents_fts fts
-        JOIN documents d ON d.id = fts.rowid AND d.active = 1
-        WHERE documents_fts MATCH ?
+        FROM fts_matches fm
+        JOIN documents d ON d.id = fm.rowid AND d.active = 1
+        WHERE 1 = 1
         ${tagConditions.length > 0 ? `AND ${tagConditions.join(" AND ")}` : ""}
         ${options.collection ? "AND d.collection = ?" : ""}
-        ORDER BY bm25(documents_fts)
+        ORDER BY fm.score
         LIMIT ?
       `;
 
@@ -1124,7 +1295,10 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
         source_hash: string | null;
       }
 
-      const rows = db.query<FtsRow, (string | number)[]>(sql).all(...params);
+      const queryParams = [builtQuery.query, ftsLimit, ...params];
+      const rows = db
+        .query<FtsRow, (string | number)[]>(sql)
+        .all(...queryParams);
 
       return ok(
         rows.map((r) => ({

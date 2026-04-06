@@ -27,8 +27,12 @@ GNO's hybrid search combines two powerful search paradigms:
 
 Traditional keyword matching that excels at finding exact terms. When you search for "authentication JWT", BM25 finds documents containing those exact words.
 
+BM25 search also handles quoted phrases, negation with a positive term, and technical compounds like `real-time`, `gpt-4`, and `DEC-0054` intentionally instead of relying on accidental tokenizer behavior.
+
 ```bash
 gno search "authentication JWT"
+gno search '"zero downtime deploy"'
+gno search 'dashboard -lag'
 ```
 
 ### Vector Similarity Search
@@ -39,6 +43,8 @@ Semantic search using embeddings. When you search for "how to protect my app", v
 gno vsearch "how to protect my app"
 ```
 
+For supported code files (`.ts`, `.tsx`, `.js`, `.jsx`, `.py`, `.go`, `.rs`), GNO also prefers structural chunk boundaries such as imports, functions, classes, and type definitions before falling back to the default chunker.
+
 ### Reciprocal Rank Fusion
 
 The `query` command combines both methods using RRF, a proven algorithm that merges ranked lists. Documents that score well in both methods rise to the top.
@@ -46,6 +52,10 @@ The `query` command combines both methods using RRF, a proven algorithm that mer
 ```bash
 gno query "authentication best practices"
 ```
+
+When stdout is a TTY, GNO can also wrap the visible `gno://...` result URI in a clickable terminal hyperlink that resolves to the source file path, with best-effort line hints when available.
+
+For teams tuning retrieval quality over time, GNO now also ships dedicated benchmark workflows for hybrid retrieval and code embeddings. See [Benchmarks](/features/benchmarks/).
 
 ### Tag Filtering
 

@@ -105,7 +105,8 @@ export interface ChunkerPort {
   chunk(
     markdown: string,
     params?: ChunkParams,
-    documentLanguageHint?: string
+    documentLanguageHint?: string,
+    sourcePath?: string
   ): ChunkOutput[];
 }
 

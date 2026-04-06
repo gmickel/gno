@@ -140,7 +140,7 @@ Returns outgoing links from a document.
 \`\`\`
 ```
 
-## Acceptance Criteria
+## Acceptance
 
 - [ ] All spec files updated with correct formats
 - [ ] All user docs updated with examples
@@ -151,12 +151,6 @@ Returns outgoing links from a document.
 - [ ] CHANGELOG.md updated
 - [ ] No stale docs referencing old behavior
 - [ ] All internal CLAUDE.md files updated
-
-## Acceptance Criteria
-
-- [ ] Implementation complete
-- [ ] Tests passing
-- [ ] Documentation updated
 
 ## Done summary
 

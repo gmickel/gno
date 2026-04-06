@@ -61,6 +61,7 @@ import { defaultSyncService, type SyncResult } from "../ingestion";
 import { updateFrontmatterTags } from "../ingestion/frontmatter";
 import { LlmAdapter } from "../llm/nodeLlamaCpp/adapter";
 import { resolveDownloadPolicy } from "../llm/policy";
+import { resolveModelUri } from "../llm/registry";
 import {
   generateGroundedAnswer,
   processAnswerResult,
@@ -209,6 +210,7 @@ class GnoClientImpl implements GnoClient {
     expand?: boolean;
     answer?: boolean;
     rerank?: boolean;
+    collection?: string;
     requiredEmbed?: boolean;
     requiredExpand?: boolean;
     requiredAnswer?: boolean;
@@ -228,7 +230,12 @@ class GnoClientImpl implements GnoClient {
 
     if (options.embed) {
       const embedResult = await this.llm.createEmbeddingPort(
-        options.embedModel,
+        resolveModelUri(
+          this.config,
+          "embed",
+          options.embedModel,
+          options.collection
+        ),
         {
           policy: this.downloadPolicy,
         }
@@ -267,7 +274,12 @@ class GnoClientImpl implements GnoClient {
 
     if (options.expand) {
       const genResult = await this.llm.createExpansionPort(
-        options.expandModel ?? options.genModel,
+        resolveModelUri(
+          this.config,
+          "expand",
+          options.expandModel ?? options.genModel,
+          options.collection
+        ),
         {
           policy: this.downloadPolicy,
         }
@@ -285,9 +297,17 @@ class GnoClientImpl implements GnoClient {
     }
 
     if (options.answer) {
-      const genResult = await this.llm.createGenerationPort(options.genModel, {
-        policy: this.downloadPolicy,
-      });
+      const genResult = await this.llm.createGenerationPort(
+        resolveModelUri(
+          this.config,
+          "gen",
+          options.genModel,
+          options.collection
+        ),
+        {
+          policy: this.downloadPolicy,
+        }
+      );
       if (genResult.ok) {
         answerPort = genResult.value;
       } else if (options.requiredAnswer) {
@@ -305,7 +325,12 @@ class GnoClientImpl implements GnoClient {
 
     if (options.rerank) {
       const rerankResult = await this.llm.createRerankPort(
-        options.rerankModel,
+        resolveModelUri(
+          this.config,
+          "rerank",
+          options.rerankModel,
+          options.collection
+        ),
         {
           policy: this.downloadPolicy,
         }
@@ -364,6 +389,7 @@ class GnoClientImpl implements GnoClient {
       embed: true,
       requiredEmbed: true,
       embedModel: options.model,
+      collection: options.collection,
     });
 
     try {
@@ -431,6 +457,7 @@ class GnoClientImpl implements GnoClient {
       expandModel: options.expandModel,
       genModel: options.genModel,
       rerankModel: options.rerankModel,
+      collection: options.collection,
     });
 
     try {
@@ -483,6 +510,7 @@ class GnoClientImpl implements GnoClient {
       genModel: options.genModel,
       embedModel: options.embedModel,
       rerankModel: options.rerankModel,
+      collection: options.collection,
     });
 
     try {

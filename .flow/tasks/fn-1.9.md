@@ -63,7 +63,7 @@ async function gnoSearch(query: string, limit = 10): Promise<SearchResult[]> {
 - [ ] isGnoInstalled check
 - [ ] Error handling for all cases
 
-## Acceptance Criteria
+## Acceptance
 
 - [ ] Implementation complete
 - [ ] Tests passing
