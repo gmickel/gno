@@ -5,6 +5,8 @@
  * @module src/cli/format/searchResults
  */
 
+import { pathToFileURL } from "node:url";
+
 import type { SearchResults } from "../../pipeline/types";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -15,6 +17,10 @@ export interface FormatOptions {
   full?: boolean;
   lineNumbers?: boolean;
   format: "terminal" | "json" | "files" | "csv" | "md" | "xml";
+  terminalLinks?: {
+    isTTY: boolean;
+    editorUriTemplate?: string | null;
+  };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -76,7 +82,9 @@ function formatTerminal(data: SearchResults, options: FormatOptions): string {
 
   const lines: string[] = [];
   for (const r of data.results) {
-    lines.push(`[${r.docid}] ${r.uri} (score: ${r.score.toFixed(2)})`);
+    lines.push(
+      `[${r.docid}] ${formatTerminalUri(r, options)} (score: ${r.score.toFixed(2)})`
+    );
     if (r.title) {
       lines.push(`  ${r.title}`);
     }
@@ -98,6 +106,55 @@ function formatTerminal(data: SearchResults, options: FormatOptions): string {
     `${data.meta.totalResults} result(s) for "${data.meta.query}" (${data.meta.mode})`
   );
   return lines.join("\n");
+}
+
+function formatTerminalUri(
+  result: SearchResults["results"][number],
+  options: FormatOptions
+): string {
+  const links = options.terminalLinks;
+  if (!links?.isTTY || !result.source.absPath) {
+    return result.uri;
+  }
+
+  const target = buildTerminalLinkTarget(
+    result.source.absPath,
+    result.snippetRange?.startLine,
+    links.editorUriTemplate ?? undefined
+  );
+
+  if (!target) {
+    return result.uri;
+  }
+
+  return wrapOsc8(target, result.uri);
+}
+
+function buildTerminalLinkTarget(
+  absPath: string,
+  line: number | undefined,
+  template?: string
+): string | null {
+  if (template) {
+    if (line === undefined && template.includes("{line}")) {
+      return null;
+    }
+
+    const withPath = template.replaceAll("{path}", absPath);
+    const withLine = withPath.replaceAll(
+      "{line}",
+      line !== undefined ? String(line) : ""
+    );
+    return withLine.replaceAll("{col}", line !== undefined ? "1" : "");
+  }
+
+  return pathToFileURL(absPath).toString();
+}
+
+function wrapOsc8(target: string, label: string): string {
+  const OSC = "\u001B]8;;";
+  const BEL = "\u0007";
+  return `${OSC}${target}${BEL}${label}${OSC}${BEL}`;
 }
 
 function formatMarkdown(data: SearchResults, options: FormatOptions): string {

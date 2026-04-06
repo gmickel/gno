@@ -54,6 +54,9 @@ contexts:
 # Model configuration
 models:
   activePreset: balanced
+
+# Optional terminal hyperlink target template for CLI search output
+editorUriTemplate: "vscode://file/{path}:{line}:{col}"
 ```
 
 ## Collections
@@ -218,6 +221,36 @@ All presets use:
 | quality  | bge-m3-Q4 | Qwen3-Reranker-0.6B-Q8 | Qwen3-4B-Q4   |
 
 The reranker's 32K context window allows scoring complete documents (tables, code, all sections) rather than truncated snippets.
+
+## Terminal Hyperlinks
+
+CLI retrieval commands (`gno search`, `gno vsearch`, `gno query`) can emit OSC 8 hyperlinks in terminal output when stdout is a TTY.
+
+Configure the target URI template in YAML:
+
+```yaml
+editorUriTemplate: "vscode://file/{path}:{line}:{col}"
+```
+
+Or override it via environment:
+
+```bash
+export GNO_EDITOR_URI_TEMPLATE="vscode://file/{path}:{line}:{col}"
+```
+
+Precedence:
+
+1. `GNO_EDITOR_URI_TEMPLATE`
+2. `editorUriTemplate` in `index.yml`
+3. default fallback `file://{path}`
+
+Supported placeholders:
+
+- `{path}` absolute filesystem path
+- `{line}` best-effort line number from the result snippet, when available
+- `{col}` best-effort column placeholder (`1` when line is available)
+
+If the chosen template requires `{line}` but a result has no line hint, GNO falls back to plain text for that result instead of inventing `:1`.
 
 ### Custom Models
 

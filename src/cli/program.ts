@@ -131,6 +131,41 @@ async function writeOutput(
   }
 }
 
+async function resolveTerminalLinkPolicy(
+  format: "terminal" | "json" | "files" | "csv" | "md" | "xml"
+): Promise<
+  | {
+      isTTY: boolean;
+      editorUriTemplate?: string | null;
+    }
+  | undefined
+> {
+  if (format !== "terminal") {
+    return undefined;
+  }
+
+  const globals = getGlobals();
+  const envTemplate = process.env.GNO_EDITOR_URI_TEMPLATE?.trim();
+  if (envTemplate) {
+    return {
+      isTTY: process.stdout.isTTY ?? false,
+      editorUriTemplate: envTemplate,
+    };
+  }
+
+  const { loadConfig } = await import("../config");
+  const configResult = await loadConfig(globals.config);
+  const configTemplate = configResult.ok
+    ? configResult.value.editorUriTemplate?.trim()
+    : undefined;
+
+  return {
+    isTTY: process.stdout.isTTY ?? false,
+    editorUriTemplate:
+      configTemplate && configTemplate.length > 0 ? configTemplate : null,
+  };
+}
+
 function parseCsvValues(raw: unknown): string[] | undefined {
   if (typeof raw !== "string") {
     return undefined;
@@ -317,6 +352,7 @@ function wireSearchCommands(program: Command): void {
         files: format === "files",
         full: Boolean(cmdOpts.full),
         lineNumbers: Boolean(cmdOpts.lineNumbers),
+        terminalLinks: await resolveTerminalLinkPolicy(format),
       });
       await writeOutput(output, format);
     });
@@ -425,6 +461,7 @@ function wireSearchCommands(program: Command): void {
         files: format === "files",
         full: Boolean(cmdOpts.full),
         lineNumbers: Boolean(cmdOpts.lineNumbers),
+        terminalLinks: await resolveTerminalLinkPolicy(format),
       });
       await writeOutput(output, format);
     });
@@ -594,6 +631,7 @@ function wireSearchCommands(program: Command): void {
         format,
         full: Boolean(cmdOpts.full),
         lineNumbers: Boolean(cmdOpts.lineNumbers),
+        terminalLinks: await resolveTerminalLinkPolicy(format),
       });
       await writeOutput(output, format);
     });

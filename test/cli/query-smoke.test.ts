@@ -57,6 +57,35 @@ describe("query command", () => {
       expect(output).toContain("gno://work/doc.md");
     });
 
+    test("formats terminal output with hyperlink policy when tty enabled", () => {
+      const seeded = createSearchResult();
+      const first = seeded.results[0];
+      expect(first).toBeDefined();
+      const result = {
+        success: true as const,
+        data: createSearchResult({
+          results: [
+            {
+              ...first!,
+              source: {
+                relPath: "doc.md",
+                absPath: "/tmp/work/doc.md",
+                mime: "text/markdown",
+                ext: ".md",
+              },
+            },
+          ],
+        }),
+      };
+      const output = formatQuery(result, {
+        format: "terminal",
+        terminalLinks: { isTTY: true, editorUriTemplate: null },
+      });
+
+      expect(output).toContain("\u001B]8;;file:///tmp/work/doc.md\u0007");
+      expect(output).toContain("gno://work/doc.md");
+    });
+
     test("formats markdown output with headers", () => {
       const result = { success: true as const, data: createSearchResult() };
       const output = formatQuery(result, { format: "md" });

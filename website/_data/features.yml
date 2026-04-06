@@ -13,6 +13,7 @@
     - Query expansion with HyDE and lexical variants
     - Cross-encoder reranking for precision
     - Strong signal detection skips expansion when confident
+    - Clickable terminal hyperlinks for TTY search workflows
     - Configurable fast/balanced/thorough modes
   commands:
     - "gno search 'exact terms'"

@@ -58,6 +58,7 @@ export interface QueryFormatOptions {
   format: "terminal" | "json" | "files" | "csv" | "md" | "xml";
   full?: boolean;
   lineNumbers?: boolean;
+  terminalLinks?: import("../format/search-results").FormatOptions["terminalLinks"];
 }
 
 export type QueryResult =
@@ -260,5 +261,6 @@ export function formatQuery(
     format: options.format,
     full: options.full,
     lineNumbers: options.lineNumbers,
+    terminalLinks: options.terminalLinks,
   });
 }

@@ -196,6 +196,7 @@ Additional options:
 - `--query-mode` is opt-in for explicit intent control and replaces generated expansion for that query.
 - Use `term` for exact lexical constraints, `intent` for semantic reformulations, and `hyde` for one hypothetical answer passage.
 - Multi-line structured query documents are also supported. See [Structured Query Syntax](./SYNTAX.md).
+- In terminal output, `gno search`, `gno vsearch`, and `gno query` can wrap the visible `gno://...` URI in an OSC 8 hyperlink when stdout is a TTY. Configure the target with `editorUriTemplate` in `~/.config/gno/index.yml` or override it with `GNO_EDITOR_URI_TEMPLATE`. Env override wins. If unset, GNO falls back to `file://` links using absolute paths when available.
 
 ```bash
 # Existing call (still valid)

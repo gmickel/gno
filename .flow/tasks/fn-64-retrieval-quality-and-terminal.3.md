@@ -97,11 +97,17 @@ Related prior work to reuse:
 - [ ] Website hybrid-search copy reflects the terminal-link capability only if the feature ships in this task.
 
 ## Done summary
+Implemented TTY-only OSC 8 terminal hyperlinks for `gno search`, `gno vsearch`, and `gno query` through the shared formatter.
 
-TBD
+Delivered:
 
+- added explicit formatter terminal-link policy injection instead of hidden process-state reads in the formatter
+- added top-level `editorUriTemplate` YAML config plus `GNO_EDITOR_URI_TEMPLATE` env override with documented precedence
+- preserved plain text for non-TTY output and all structured formats
+- used `source.absPath` for link targets and best-effort snippet line hints without fabricating `:1`
+- documented terminal hyperlink behavior in CLI/config/troubleshooting docs and hybrid-search feature copy
+- added dedicated formatter tests plus query-format coverage for hyperlink output
 ## Evidence
-
 - Commits:
-- Tests:
+- Tests: bun test test/cli/search-results-format.test.ts test/cli/query-smoke.test.ts test/config/loader.test.ts test/config/saver.test.ts, bun run lint:check, bun run docs:verify, make -C website sync-docs
 - PRs:

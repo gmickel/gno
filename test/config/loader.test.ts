@@ -61,6 +61,19 @@ describe("loadConfigFromPath", () => {
       expect(prefixCtx?.scopeType).toBe("prefix");
       expect(prefixCtx?.scopeKey).toBe("gno://notes/projects");
     });
+
+    test("loads optional editorUriTemplate", async () => {
+      const result = await loadConfigFromPath(
+        join(FIXTURES_DIR, "valid-full.yml")
+      );
+
+      expect(result.ok).toBe(true);
+      if (!result.ok) {
+        return;
+      }
+
+      expect(result.value.editorUriTemplate).toBeUndefined();
+    });
   });
 
   describe("error cases", () => {

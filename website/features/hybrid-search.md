@@ -53,6 +53,8 @@ The `query` command combines both methods using RRF, a proven algorithm that mer
 gno query "authentication best practices"
 ```
 
+When stdout is a TTY, GNO can also wrap the visible `gno://...` result URI in a clickable terminal hyperlink that resolves to the source file path, with best-effort line hints when available.
+
 ### Tag Filtering
 
 Combine hybrid search with tag filters for precise results:

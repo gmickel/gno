@@ -255,6 +255,23 @@ This shows scoring breakdown for each result:
 - negation requires at least one positive term: `gno search 'dashboard -lag'`
 - unmatched quotes fail as a validation error instead of surfacing raw SQLite FTS syntax noise
 
+## Terminal Links Not Clickable
+
+CLI OSC 8 hyperlinks only appear when:
+
+- you are using terminal output (not `--json`, `--csv`, `--xml`, `--files`, or `--md`)
+- stdout is a TTY
+- the result has an absolute path available
+
+If you want editor-specific deep links, configure either:
+
+- `editorUriTemplate` in `~/.config/gno/index.yml`
+- `GNO_EDITOR_URI_TEMPLATE` in the environment
+
+Env override wins over YAML config.
+
+If your template uses `{line}` but a result has no line hint, GNO falls back to plain text for that result rather than inventing `:1`.
+
 **Score Interpretation:**
 
 Scores are normalized 0-1 per query. A 0.8 doesn't mean "80% confident" - it means "ranked high relative to other results for this query." Scores are NOT comparable across different queries.

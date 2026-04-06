@@ -245,6 +245,9 @@ export const ConfigSchema = z.object({
   /** FTS tokenizer (immutable after init) */
   ftsTokenizer: z.enum(FTS_TOKENIZERS).default(DEFAULT_FTS_TOKENIZER),
 
+  /** Optional terminal hyperlink editor URI template */
+  editorUriTemplate: z.string().min(1).optional(),
+
   /** Collection definitions */
   collections: z.array(CollectionSchema).default([]),
 

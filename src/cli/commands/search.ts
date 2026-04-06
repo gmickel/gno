@@ -31,6 +31,8 @@ export type SearchCommandOptions = SearchOptions & {
   xml?: boolean;
   /** Output files only */
   files?: boolean;
+  /** Terminal hyperlink policy */
+  terminalLinks?: FormatOptions["terminalLinks"];
 };
 
 export type SearchResult =
@@ -132,6 +134,7 @@ export function formatSearch(
     format: getFormatType(options),
     full: options.full,
     lineNumbers: options.lineNumbers,
+    terminalLinks: options.terminalLinks,
   };
 
   return formatSearchResults(result.data, formatOpts);
