@@ -90,11 +90,15 @@ Non-goals:
 - [ ] `spec/evals.md` documents the regression matrix and extension guidance.
 
 ## Done summary
+Added a focused BM25 lexical regression matrix before any behavior changes.
 
-TBD
+Delivered:
+- new focused store-level regression coverage for hyphenated compounds, digit-hyphen identifiers, underscore-heavy identifiers, title/body ranking, filepath/body ranking, collection-filter stability, and malformed lexical input stability
+- fixture-backed CLI smoke coverage for user-visible hyphen/underscore behavior and unmatched-quote stability
+- a new `Lexical Regression Matrix` section in `spec/evals.md`
 
+This task intentionally did not change production BM25 semantics; it only locked expectations in tests/specs.
 ## Evidence
-
 - Commits:
-- Tests:
+- Tests: bun test test/store/fts-lexical-regression.test.ts test/cli/search-fixtures.test.ts, bun run lint:check
 - PRs:

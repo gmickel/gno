@@ -83,6 +83,19 @@ beforeAll(async () => {
   const srcFixtures = join(import.meta.dir, "../fixtures/docs");
   await cp(srcFixtures, fixturesDir, { recursive: true });
 
+  await Bun.write(
+    join(fixturesDir, "lexical-regression.md"),
+    `# Lexical Regression Tokens
+
+These tokens exist to protect CLI-visible BM25 behavior.
+
+- real-time dashboard
+- snake_case identifier
+- DEC-0054 design note
+- gpt-4 model note
+`
+  );
+
   // Set isolated environment
   process.env.GNO_CONFIG_DIR = join(testDir, "config");
   process.env.GNO_DATA_DIR = join(testDir, "data");
@@ -142,6 +155,26 @@ describe("BM25 search with fixtures", () => {
     const { code, stdout } = await cli("search", "dockerfile alpine");
     expect(code).toBe(0);
     expect(stdout).toContain("docker-deployment.md");
+  });
+
+  test("finds hyphenated lexical token in user-visible CLI output", async () => {
+    const { code, stdout } = await cli("search", "real-time");
+    expect(code).toBe(0);
+    expect(stdout).toContain("lexical-regression.md");
+  });
+
+  test("finds underscore-heavy lexical token in user-visible CLI output", async () => {
+    const { code, stdout } = await cli("search", "snake_case");
+    expect(code).toBe(0);
+    expect(stdout).toContain("lexical-regression.md");
+  });
+
+  test("does not leak raw FTS syntax errors for unmatched quotes", async () => {
+    const { code, stdout, stderr } = await cli("search", '"unterminated');
+    expect(code).toBe(0);
+    expect(stderr).not.toContain("fts5:");
+    expect(stderr).not.toContain("malformed MATCH");
+    expect(stdout).toContain("No results found.");
   });
 });
 

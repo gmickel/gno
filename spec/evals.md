@@ -135,6 +135,36 @@ Current manual benchmark:
   - covers baseline, adversarial, multilingual, and ask-style retrieval cases
   - writes artifacts to `evals/fixtures/retrieval-candidate-benchmark/`
 
+## Lexical Regression Matrix
+
+Not every BM25 search regression belongs in broad hybrid/model benchmarks.
+Protect lexical edge cases with focused deterministic tests.
+
+Protected token classes:
+
+- hyphen compounds:
+  - `real-time`
+  - `multi-agent`
+  - `gpt-4`
+- digit-hyphen identifiers:
+  - `DEC-0054`
+- underscore identifiers:
+  - `snake_case`
+- ranking expectations:
+  - title vs body
+  - filepath vs body
+- collection-filter stability
+- malformed lexical input stability
+
+Current homes for this matrix:
+
+- `test/store/fts-lexical-regression.test.ts`
+- `test/cli/search-fixtures.test.ts`
+
+Rule:
+
+- any BM25/parser fix for a lexical edge case should add or tighten a regression in this matrix before behavior changes land
+
 ## Custom Scorers
 
 Evalite doesn't include IR-specific scorers. Create them in `evals/scorers/ir-metrics.ts`:
