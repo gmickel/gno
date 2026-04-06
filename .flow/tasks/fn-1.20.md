@@ -59,7 +59,7 @@ if (!data.capabilities.answer) {
 - Model switching can take a few seconds (unload/load)
 - Download can take minutes (show progress toast)
 
-## Acceptance Criteria
+## Acceptance
 
 - [ ] Implementation complete
 - [ ] Tests passing

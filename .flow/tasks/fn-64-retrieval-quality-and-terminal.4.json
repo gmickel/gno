@@ -1,0 +1,14 @@
+{
+  "assignee": null,
+  "claim_note": "",
+  "claimed_at": null,
+  "created_at": "2026-04-06T06:01:44.136304Z",
+  "depends_on": [],
+  "epic": "fn-64-retrieval-quality-and-terminal",
+  "id": "fn-64-retrieval-quality-and-terminal.4",
+  "priority": 3,
+  "spec_path": ".flow/tasks/fn-64-retrieval-quality-and-terminal.4.md",
+  "status": "todo",
+  "title": "Implement code-aware chunking with graceful fallback and retrieval validation",
+  "updated_at": "2026-04-06T06:01:44.136471Z"
+}

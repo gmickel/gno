@@ -25,7 +25,7 @@ gno-raycast/src/lib/cli.test.ts
 
 Use Bun test (bun:test) to match GNO codebase style
 
-## Acceptance Criteria
+## Acceptance
 
 - [ ] Implementation complete
 - [ ] Tests passing

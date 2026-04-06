@@ -46,7 +46,7 @@ Submit extension to Raycast Store.
 
 https://developers.raycast.com/basics/publish-an-extension
 
-## Acceptance Criteria
+## Acceptance
 
 - [ ] Implementation complete
 - [ ] Tests passing

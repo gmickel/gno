@@ -11,7 +11,7 @@ Screenshots need updating to show new v0.12 features:
 
 Current screenshots in assets/screenshots/ are outdated.
 
-## Acceptance Criteria
+## Acceptance
 
 - [ ] Implementation complete
 - [ ] Tests passing

@@ -81,7 +81,7 @@ export default function SearchCommand() {
 - [ ] Empty state
 - [ ] Error handling (gno not installed)
 
-## Acceptance Criteria
+## Acceptance
 
 - [ ] Implementation complete
 - [ ] Tests passing

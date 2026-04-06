@@ -92,7 +92,7 @@ export default function CaptureCommand() {
 - [ ] Success toast + popToRoot
 - [ ] Error handling
 
-## Acceptance Criteria
+## Acceptance
 
 - [ ] Implementation complete
 - [ ] Tests passing

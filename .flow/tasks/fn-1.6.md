@@ -42,7 +42,7 @@ Prepare all assets required for Raycast Store submission.
 
 https://developers.raycast.com/basics/prepare-an-extension-for-store
 
-## Acceptance Criteria
+## Acceptance
 
 - [ ] Implementation complete
 - [ ] Tests passing

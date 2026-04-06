@@ -87,7 +87,7 @@ function DocumentDetail({ docid }: { docid: string }) {
 - [ ] Loading states
 - [ ] Error handling
 
-## Acceptance Criteria
+## Acceptance
 
 - [ ] Implementation complete
 - [ ] Tests passing

@@ -30,7 +30,7 @@ Test the REST API client module (src/lib/api.ts).
 
 gno-raycast/src/lib/api.test.ts
 
-## Acceptance Criteria
+## Acceptance
 
 - [ ] Implementation complete
 - [ ] Tests passing

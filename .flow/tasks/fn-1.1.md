@@ -28,7 +28,7 @@ docs/RAYCAST.md (syncs to website)
 - [ ] Troubleshooting section
 - [ ] Link from README.md
 
-## Acceptance Criteria
+## Acceptance
 
 - [ ] Implementation complete
 - [ ] Tests passing

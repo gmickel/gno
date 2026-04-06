@@ -97,7 +97,7 @@ export default function AskCommand() {
 - [ ] Cold start loading indicator
 - [ ] Error handling
 
-## Acceptance Criteria
+## Acceptance
 
 - [ ] Implementation complete
 - [ ] Tests passing

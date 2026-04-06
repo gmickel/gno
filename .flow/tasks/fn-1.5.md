@@ -44,7 +44,7 @@ Implement robust error handling across all commands.
 - Create src/lib/fallback.ts for CLI fallback logic
 - Update each command to use error handling
 
-## Acceptance Criteria
+## Acceptance
 
 - [ ] Implementation complete
 - [ ] Tests passing

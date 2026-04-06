@@ -21,7 +21,7 @@ Create CLAUDE.md in gno-raycast/ directory for AI agent context.
 
 gno-raycast/CLAUDE.md
 
-## Acceptance Criteria
+## Acceptance
 
 - [ ] Implementation complete
 - [ ] Tests passing

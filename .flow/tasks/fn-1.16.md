@@ -84,7 +84,7 @@ export default async function Command() {
 - [ ] Success HUD
 - [ ] Error handling
 
-## Acceptance Criteria
+## Acceptance
 
 - [ ] Implementation complete
 - [ ] Tests passing

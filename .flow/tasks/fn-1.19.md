@@ -64,7 +64,7 @@ function getSearchParams(depth: "fast" | "balanced" | "thorough") {
 - For "fast" mode, could use `/api/search` (BM25) instead of `/api/query`
 - Show timing indicator like web UI (~2s, ~5s)
 
-## Acceptance Criteria
+## Acceptance
 
 - [ ] Implementation complete
 - [ ] Tests passing

@@ -36,7 +36,7 @@ gno-raycast/
 - [ ] Create types.ts with SearchResult, AskResponse, etc.
 - [ ] Verify extension loads in Raycast
 
-## Acceptance Criteria
+## Acceptance
 
 - [ ] Implementation complete
 - [ ] Tests passing

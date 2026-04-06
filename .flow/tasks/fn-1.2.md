@@ -27,7 +27,7 @@ Update main README and website to include Raycast extension.
 - [ ] website features.yml
 - [ ] website index.md
 
-## Acceptance Criteria
+## Acceptance
 
 - [ ] Implementation complete
 - [ ] Tests passing
