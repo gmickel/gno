@@ -292,11 +292,75 @@ describe("FTS lexical regressions", () => {
     });
 
     const result = await adapter.searchFts('"unterminated');
+    expect(result.ok).toBe(false);
+    if (result.ok) {
+      return;
+    }
+
+    expect(result.error.code).toBe("INVALID_INPUT");
+    expect(result.error.message).toContain("unmatched double quote");
+  });
+
+  test("supports quoted phrases intentionally", async () => {
+    await setupDocument({
+      relPath: "phrase.md",
+      markdown: "The exact phrase zero downtime deploy appears here.",
+      chunks: [
+        {
+          seq: 0,
+          pos: 0,
+          text: "The exact phrase zero downtime deploy appears here.",
+          startLine: 1,
+          endLine: 1,
+        },
+      ],
+    });
+
+    const result = await adapter.searchFts('"zero downtime deploy"');
     expect(result.ok).toBe(true);
     if (!result.ok) {
       return;
     }
 
-    expect(result.value).toHaveLength(0);
+    expect(result.value).toHaveLength(1);
+    expect(result.value[0]?.relPath).toBe("phrase.md");
+  });
+
+  test("supports negation with a positive term", async () => {
+    await setupDocument({
+      relPath: "include.md",
+      markdown: "dashboard metrics",
+      chunks: [
+        {
+          seq: 0,
+          pos: 0,
+          text: "dashboard metrics",
+          startLine: 1,
+          endLine: 1,
+        },
+      ],
+    });
+    await setupDocument({
+      relPath: "exclude.md",
+      markdown: "dashboard lag",
+      chunks: [
+        {
+          seq: 0,
+          pos: 0,
+          text: "dashboard lag",
+          startLine: 1,
+          endLine: 1,
+        },
+      ],
+    });
+
+    const result = await adapter.searchFts("dashboard -lag");
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      return;
+    }
+
+    expect(result.value).toHaveLength(1);
+    expect(result.value[0]?.relPath).toBe("include.md");
   });
 });

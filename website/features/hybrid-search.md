@@ -27,8 +27,12 @@ GNO's hybrid search combines two powerful search paradigms:
 
 Traditional keyword matching that excels at finding exact terms. When you search for "authentication JWT", BM25 finds documents containing those exact words.
 
+BM25 search also handles quoted phrases, negation with a positive term, and technical compounds like `real-time`, `gpt-4`, and `DEC-0054` intentionally instead of relying on accidental tokenizer behavior.
+
 ```bash
 gno search "authentication JWT"
+gno search '"zero downtime deploy"'
+gno search 'dashboard -lag'
 ```
 
 ### Vector Similarity Search

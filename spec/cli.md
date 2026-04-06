@@ -512,6 +512,14 @@ Important notes:
 - When all results have equal raw scores, they all receive `1.0`
 - Queries with explicit recency intent (`latest`, `newest`, `recent`) are ordered newest-first using canonical frontmatter date when present, falling back to source modified time.
 
+**Lexical query semantics:**
+
+- plain terms use prefix matching
+- quoted phrases are supported
+- negation is supported only when at least one positive term exists
+- hyphenated compounds such as `real-time`, `gpt-4`, and `DEC-0054` are handled intentionally
+- malformed lexical syntax returns exit code `1`
+
 **Output (JSON):**
 See [Output Schemas](./output-schemas/search-result.schema.json)
 

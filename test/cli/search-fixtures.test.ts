@@ -171,10 +171,17 @@ describe("BM25 search with fixtures", () => {
 
   test("does not leak raw FTS syntax errors for unmatched quotes", async () => {
     const { code, stdout, stderr } = await cli("search", '"unterminated');
-    expect(code).toBe(0);
+    expect(code).toBe(1);
     expect(stderr).not.toContain("fts5:");
     expect(stderr).not.toContain("malformed MATCH");
-    expect(stdout).toContain("No results found.");
+    expect(stderr).toContain("unmatched double quote");
+    expect(stdout).toBe("");
+  });
+
+  test("supports quoted phrases in user-visible CLI output", async () => {
+    const { code, stdout } = await cli("search", '"gpt-4 model"');
+    expect(code).toBe(0);
+    expect(stdout).toContain("lexical-regression.md");
   });
 });
 

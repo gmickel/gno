@@ -7,6 +7,7 @@
   icon: hybrid-search
   benefits:
     - Exact keyword matching with BM25 full-text search
+    - Intentional handling for quoted phrases and technical compounds like real-time and gpt-4
     - Semantic similarity with vector embeddings
     - Reciprocal rank fusion combines both pipelines
     - Query expansion with HyDE and lexical variants

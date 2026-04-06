@@ -106,11 +106,19 @@ Non-goals:
 - [ ] Docs and website hybrid-search copy reflect the final behavior.
 
 ## Done summary
+Implemented BM25 lexical hardening in the SQLite adapter.
 
-TBD
-
+Delivered:
+- replaced the whitespace-quote FTS helper with a narrow explicit lexical grammar
+- added intentional handling for quoted phrases, negation, hyphen/plus compounds, and underscore-heavy identifiers
+- preserved stable INVALID_INPUT behavior for malformed lexical input
+- switched BM25 scoring to explicit filepath/title/body weights
+- moved FTS search to an FTS-first CTE to keep filtered searches predictable
+- preserved raw BM25 score semantics for higher-layer normalization
+- updated lexical regression tests and CLI-visible fixture tests
+- documented the lexical grammar and weighted BM25 behavior in CLI/search/architecture/troubleshooting docs and the CLI spec
+- synced website docs and hybrid-search copy
 ## Evidence
-
 - Commits:
-- Tests:
+- Tests: bun test test/store/fts-lexical-regression.test.ts test/store/fts.test.ts test/cli/search-fixtures.test.ts, bun run lint, bun run docs:verify, make -C website sync-docs
 - PRs:

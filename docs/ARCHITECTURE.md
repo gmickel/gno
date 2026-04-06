@@ -92,7 +92,7 @@ User query
     │
     ▼ [Optional] Query expansion (LLM variants + HyDE)
     │
-    ▼ Document-level BM25 Search (FTS5 + Snowball stemmer)
+    ▼ Document-level BM25 Search (FTS5 + Snowball stemmer, weighted title/path/body)
     │
     ▼ Chunk-level Vector Search (sqlite-vec KNN)
     │
@@ -189,7 +189,7 @@ Models are GGUF-quantized for efficiency. First use triggers automatic download.
 
 | Mode     | Description                                                      |
 | -------- | ---------------------------------------------------------------- |
-| BM25     | Document-level keyword matching via FTS5 + Snowball              |
+| BM25     | Document-level keyword matching via weighted FTS5 + Snowball     |
 | Vector   | Chunk-level semantic similarity with contextual embeddings       |
 | Hybrid   | BM25 + vector with RRF fusion (2× original weight, tiered bonus) |
 | Reranked | Hybrid + full-document cross-encoder (32K context)               |

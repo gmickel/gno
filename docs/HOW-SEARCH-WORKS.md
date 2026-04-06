@@ -186,6 +186,10 @@ Fast keyword search using SQLite FTS5 with document-level indexing. Best for:
 
 **Snowball stemming**: FTS5 uses the Snowball stemmer supporting 20+ languages. "running" matches "run", "scored" matches "score", plurals match singulars.
 
+**Weighted BM25 fields**: `gno search` intentionally favors title hits first, then filepath hits, then body-only mentions. This helps code/doc lookups like `auth-flow`, `DEC-0054`, and `jwt token rotation` rank the expected document above a weak incidental body mention.
+
+**Lexical query grammar**: BM25 search supports plain prefix terms, quoted phrases, and negation with at least one positive term. Hyphenated compounds like `real-time`, `gpt-4`, and `multi-agent` are handled intentionally rather than relying on accidental tokenizer behavior.
+
 ```bash
 gno search "useEffect cleanup"
 ```

@@ -248,6 +248,13 @@ This shows scoring breakdown for each result:
 4. **Adjust min-score** - Filter low-confidence results: `--min-score 0.3`
 5. **Try expansion** - On `slim` / `slim-tuned`, balanced mode already expands by default. On larger presets, try `--thorough` or remove `--no-expand` if recall seems too low.
 
+**Lexical edge cases:**
+
+- hyphenated technical terms like `real-time`, `gpt-4`, and `DEC-0054` are handled intentionally by BM25 search
+- quoted phrases are supported: `gno search '"zero downtime deploy"'`
+- negation requires at least one positive term: `gno search 'dashboard -lag'`
+- unmatched quotes fail as a validation error instead of surfacing raw SQLite FTS syntax noise
+
 **Score Interpretation:**
 
 Scores are normalized 0-1 per query. A 0.8 doesn't mean "80% confident" - it means "ranked high relative to other results for this query." Scores are NOT comparable across different queries.
