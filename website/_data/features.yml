@@ -104,6 +104,7 @@
     - PDF text extraction
     - Office documents (DOCX, XLSX, PPTX)
     - Plain text files
+    - Automatic structural first-pass chunking for ts/js/python/go/rust family
     - Automatic language detection (30+ languages)
     - Content deduplication via mirror hashing
     - Incremental indexing with SHA-256 change detection

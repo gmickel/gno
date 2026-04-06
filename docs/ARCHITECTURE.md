@@ -69,7 +69,7 @@ File on disk
     │
     ├─[ mirrorHash exists ]─► Reuse content (deduplication)
     │
-    ▼ Chunker (~800 tokens, 15% overlap)
+    ▼ Chunker (~800 tokens, 15% overlap, code-aware for ts/js/python/go/rust family)
     │
     ▼ Store (SQLite: documents, content, chunks, document-level FTS)
     │
@@ -154,15 +154,15 @@ CLI/MCP/Web UI/SDK → new Adapter() → adapter.createPort() → Port interface
 
 ### Storage
 
-| Table           | Purpose                                        |
-| --------------- | ---------------------------------------------- |
-| documents       | Source file tracking (path, hash, docid)       |
-| content         | Canonical markdown by mirrorHash               |
-| content_chunks  | Chunked text (800 tokens each)                 |
-| documents_fts   | Document-level FTS5 with Snowball stemmer      |
-| content_vectors | Chunk embeddings with title context (optional) |
-| doc_tags        | Document tags (frontmatter and user-added)     |
-| doc_links       | Wiki and markdown links between documents      |
+| Table           | Purpose                                                                        |
+| --------------- | ------------------------------------------------------------------------------ |
+| documents       | Source file tracking (path, hash, docid)                                       |
+| content         | Canonical markdown by mirrorHash                                               |
+| content_chunks  | Chunked text (800 tokens each; structural first-pass for supported code files) |
+| documents_fts   | Document-level FTS5 with Snowball stemmer                                      |
+| content_vectors | Chunk embeddings with title context (optional)                                 |
+| doc_tags        | Document tags (frontmatter and user-added)                                     |
+| doc_links       | Wiki and markdown links between documents                                      |
 
 ### Content Addressing
 

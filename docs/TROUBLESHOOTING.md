@@ -273,6 +273,20 @@ gno models pull --embed
 gno models pull --all
 ```
 
+### Code-aware chunking not active
+
+Run `gno doctor` and look for the `code-chunking` check.
+
+- automatic first pass currently applies to `.ts`, `.tsx`, `.js`, `.jsx`, `.py`, `.go`, and `.rs`
+- unsupported extensions fall back to the default markdown chunker
+- files without useful structural boundaries also fall back to the default chunker
+
+If search snippets still look oddly split for a supported code file:
+
+1. confirm the file extension is one of the supported code types
+2. re-sync the collection
+3. use `gno query --explain` to inspect the retrieval path
+
 ### Force CPU-only for testing
 
 To disable Metal/CUDA/Vulkan and force `node-llama-cpp` onto the CPU backend

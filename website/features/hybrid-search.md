@@ -43,6 +43,8 @@ Semantic search using embeddings. When you search for "how to protect my app", v
 gno vsearch "how to protect my app"
 ```
 
+For supported code files (`.ts`, `.tsx`, `.js`, `.jsx`, `.py`, `.go`, `.rs`), GNO also prefers structural chunk boundaries such as imports, functions, classes, and type definitions before falling back to the default chunker.
+
 ### Reciprocal Rank Fusion
 
 The `query` command combines both methods using RRF, a proven algorithm that merges ranked lists. Documents that score well in both methods rise to the top.

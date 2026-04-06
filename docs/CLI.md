@@ -756,6 +756,7 @@ gno doctor --json
 Checks include:
 
 - config + database presence
+- code-chunking mode + supported extensions
 - SQLite FTS5 availability
 - vendored `fts5-snowball` extension loading
 - `sqlite-vec` extension loading

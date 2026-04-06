@@ -110,11 +110,17 @@ Observability/debug expectation:
 - [ ] ADR-003 and the search/architecture docs explain the new chunking policy and fallback behavior.
 
 ## Done summary
+Implemented automatic first-pass code-aware chunking for `.ts`, `.tsx`, `.js`, `.jsx`, `.py`, `.go`, and `.rs` by extending the existing chunker with structural breakpoint heuristics while preserving the existing chunk output shape and prose fallback path.
 
-TBD
-
+Delivered:
+- code-aware structural breakpoints in `src/ingestion/chunker.ts`
+- source-path aware chunker interface + sync wiring in `src/ingestion/types.ts` and `src/ingestion/sync.ts`
+- first-pass operator visibility via `gno doctor` in `src/cli/commands/doctor.ts`
+- code-file ingestion support through `text/plain` MIME mapping for the supported extensions in `src/converters/mime.ts`
+- chunker unit coverage and sync+search integration coverage in `test/ingestion/chunker.test.ts` and `test/ingestion/sync-code-chunking.test.ts`
+- docs + website updates describing the automatic mode, supported extensions, and fallback behavior
+- ADR-003 documenting the automatic-only first pass, supported extensions, fallback rules, and non-goals
 ## Evidence
-
 - Commits:
-- Tests:
+- Tests: bun test test/ingestion/chunker.test.ts test/ingestion/sync-code-chunking.test.ts test/ingestion/sync-tags.test.ts test/pipeline/search-n1.test.ts, bun run lint, bun run docs:verify, make -C website sync-docs
 - PRs:

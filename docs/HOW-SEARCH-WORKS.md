@@ -204,6 +204,8 @@ Pure semantic search using embeddings. Best for:
 
 **Contextual chunking**: Each chunk is embedded with its document title prepended (`title: My Doc | text: ...`). This helps the embedding model understand context. A chunk about "configuration" in a React doc is different from one in a database doc.
 
+**Code-aware chunking (automatic first pass)**: for `.ts`, `.tsx`, `.js`, `.jsx`, `.py`, `.go`, and `.rs`, GNO prefers structural breakpoints such as imports, functions, classes, and type definitions before falling back to the default markdown/prose chunker. Unsupported extensions and files without useful structural boundaries continue through the default chunker unchanged.
+
 ```bash
 gno vsearch "how to prevent memory leaks in React"
 ```

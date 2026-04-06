@@ -14,6 +14,7 @@ import type { Config } from "../../config/types";
 
 import { getIndexDbPath, getModelsCachePath } from "../../app/constants";
 import { getConfigPaths, isInitialized, loadConfig } from "../../config";
+import { getCodeChunkingStatus } from "../../ingestion/chunker";
 import { ModelCache } from "../../llm/cache";
 import { getActivePreset } from "../../llm/registry";
 import { loadFts5Snowball } from "../../store/sqlite/fts5-snowball";
@@ -120,6 +121,19 @@ async function checkModels(config: Config): Promise<DoctorCheck[]> {
   }
 
   return checks;
+}
+
+function checkCodeChunking(): DoctorCheck {
+  const status = getCodeChunkingStatus();
+  return {
+    name: "code-chunking",
+    status: "ok",
+    message: `${status.mode} structural chunking for ${status.supportedExtensions.join(", ")}`,
+    details: [
+      "Unsupported extensions fall back to the default markdown chunker.",
+      "Chunking mode is automatic-only in the first pass.",
+    ],
+  };
 }
 
 async function checkNodeLlamaCpp(): Promise<DoctorCheck> {
@@ -318,6 +332,9 @@ export async function doctor(
   // SQLite extension checks
   const sqliteChecks = await checkSqliteExtensions();
   checks.push(...sqliteChecks);
+
+  // Code chunking capability
+  checks.push(checkCodeChunking());
 
   // Determine overall health
   const hasErrors = checks.some((c) => c.status === "error");

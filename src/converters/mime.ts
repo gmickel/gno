@@ -20,6 +20,13 @@ export interface MimeDetector {
 const EXTENSION_MAP: Record<string, string> = {
   ".md": "text/markdown",
   ".txt": "text/plain",
+  ".ts": "text/plain",
+  ".tsx": "text/plain",
+  ".js": "text/plain",
+  ".jsx": "text/plain",
+  ".py": "text/plain",
+  ".go": "text/plain",
+  ".rs": "text/plain",
   ".pdf": "application/pdf",
   ".docx":
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document",

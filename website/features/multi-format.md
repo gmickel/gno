@@ -45,12 +45,15 @@ GNO intelligently processes multiple document formats:
 ### Plain Text
 
 - Any .txt file
-- Code files (configurable)
+- Code files (automatic structural first pass for ts/js/python/go/rust family)
 - Log files
 
 ## Intelligent Chunking
 
 GNO splits documents into semantic chunks for better search:
+
+- prose and markdown use the default semantic chunker
+- supported code files prefer structural breakpoints before falling back to the default chunker
 
 ```bash
 # Initialize with all formats

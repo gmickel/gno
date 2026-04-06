@@ -172,6 +172,8 @@ Text segment (~800 tokens) created during indexing. Each chunk is:
 - Part of document-level FTS5 index
 - Optionally embedded for vector search with contextual prefix
 
+For supported code files (`.ts`, `.tsx`, `.js`, `.jsx`, `.py`, `.go`, `.rs`), GNO first tries structural chunk boundaries such as imports, functions, classes, and type definitions before falling back to the default chunker.
+
 ### Contextual Chunking
 
 Technique where each chunk is embedded with its document title prepended: `title: My Doc | text: chunk content...`. Helps the embedding model understand context. A chunk about "configuration" in a React doc is semantically different from one in a database doc. Based on Anthropic's contextual retrieval research.
