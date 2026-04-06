@@ -102,6 +102,7 @@
     - Safe markdown/plaintext editing with read-only converted docs
     - Cross-collection tree browser with folder detail panes
     - Collection management (add, remove, re-index)
+    - Collection-level model editor with per-role overrides
     - Visual search with BM25, vector, and hybrid modes
     - AI answers with citations
     - Interactive knowledge graph visualization

@@ -12,6 +12,7 @@
 import {
   AlertCircleIcon,
   ArrowLeftIcon,
+  CpuIcon,
   DatabaseIcon,
   FileTextIcon,
   FolderIcon,
@@ -29,6 +30,10 @@ import type { AppStatusResponse } from "../../status-model";
 
 import { AddCollectionDialog } from "../components/AddCollectionDialog";
 import { Loader } from "../components/ai-elements/loader";
+import {
+  CollectionModelDialog,
+  type CollectionModelDetails,
+} from "../components/CollectionModelDialog";
 import { CollectionsEmptyState } from "../components/CollectionsEmptyState";
 import { IndexingProgress } from "../components/IndexingProgress";
 import { Badge } from "../components/ui/badge";
@@ -67,11 +72,18 @@ interface PageProps {
 }
 
 interface CollectionStats {
+  activePresetId?: string;
   name: string;
   path: string;
   documentCount: number;
   chunkCount: number;
   embeddedCount: number;
+  models?: Partial<Record<"embed" | "rerank" | "expand" | "gen", string>>;
+  effectiveModels?: Record<"embed" | "rerank" | "expand" | "gen", string>;
+  modelSources?: Record<
+    "embed" | "rerank" | "expand" | "gen",
+    "override" | "preset" | "default"
+  >;
 }
 
 interface StatusResponse {
@@ -86,10 +98,13 @@ interface SyncResponse {
   jobId: string;
 }
 
+interface CollectionsResponseItem extends CollectionModelDetails {}
+
 interface CollectionCardProps {
   actionsDisabled: boolean;
   collection: CollectionStats;
   onBrowse: () => void;
+  onModelSettings: () => void;
   onReindex: () => void;
   onRemove: () => void;
   isReindexing: boolean;
@@ -118,6 +133,7 @@ function CollectionCard({
   actionsDisabled,
   collection,
   onBrowse,
+  onModelSettings,
   onReindex,
   onRemove,
   isReindexing,
@@ -164,6 +180,17 @@ function CollectionCard({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                disabled={actionsDisabled}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onModelSettings();
+                }}
+              >
+                <CpuIcon className="mr-2 size-4" />
+                Model settings
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
               <DropdownMenuItem
                 disabled={actionsDisabled || isReindexing}
                 onClick={(event) => {
@@ -244,6 +271,27 @@ function CollectionCard({
           </div>
         )}
 
+        {collection.modelSources ? (
+          <div className="mt-3 flex flex-wrap items-center gap-2 border-border/30 border-t pt-3">
+            {(["embed", "rerank", "expand", "gen"] as const).map((role) => {
+              const source = collection.modelSources?.[role];
+              if (source !== "override") {
+                return null;
+              }
+
+              return (
+                <Badge
+                  className="font-mono text-[10px] uppercase tracking-[0.12em]"
+                  key={role}
+                  variant="secondary"
+                >
+                  {role} override
+                </Badge>
+              );
+            })}
+          </div>
+        ) : null}
+
         <div className="mt-3 border-border/40 border-t pt-3 text-muted-foreground text-xs">
           Click card to browse documents in this collection.
         </div>
@@ -268,19 +316,44 @@ export default function Collections({ navigate }: PageProps) {
   );
   const [removing, setRemoving] = useState(false);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
+  const [modelDialogCollection, setModelDialogCollection] =
+    useState<CollectionStats | null>(null);
   const [initialCollectionPath, setInitialCollectionPath] = useState<
     string | undefined
   >(undefined);
 
   const loadCollections = useCallback(async () => {
-    const { data, error: err } = await apiFetch<StatusResponse>("/api/status");
-    if (err) {
-      setError(err);
-    } else if (data) {
-      setCollections(data.collections);
-      setOnboarding(data.onboarding);
-      setError(null);
+    const [statusResult, collectionsResult] = await Promise.all([
+      apiFetch<StatusResponse>("/api/status"),
+      apiFetch<CollectionsResponseItem[]>("/api/collections"),
+    ]);
+
+    if (statusResult.error) {
+      setError(statusResult.error);
+      return;
     }
+
+    if (!statusResult.data) {
+      return;
+    }
+
+    const collectionsByName = new Map(
+      (collectionsResult.data ?? []).map((item) => [item.name, item] as const)
+    );
+    const merged = statusResult.data.collections.map((collection) => {
+      const config = collectionsByName.get(collection.name);
+      return {
+        ...collection,
+        activePresetId: config?.activePresetId,
+        effectiveModels: config?.effectiveModels,
+        models: config?.models,
+        modelSources: config?.modelSources,
+      };
+    });
+
+    setCollections(merged);
+    setOnboarding(statusResult.data.onboarding);
+    setError(collectionsResult.error ?? null);
   }, []);
 
   // Initial load
@@ -500,6 +573,7 @@ export default function Collections({ navigate }: PageProps) {
                     `/browse?collection=${encodeURIComponent(collection.name)}`
                   )
                 }
+                onModelSettings={() => setModelDialogCollection(collection)}
                 onReindex={() => void handleReindex(collection.name)}
                 onRemove={() => setRemoveDialog(collection)}
               />
@@ -514,6 +588,17 @@ export default function Collections({ navigate }: PageProps) {
         onOpenChange={setAddDialogOpen}
         onSuccess={() => void loadCollections()}
         open={addDialogOpen}
+      />
+
+      <CollectionModelDialog
+        collection={modelDialogCollection}
+        onOpenChange={(open) => {
+          if (!open) {
+            setModelDialogCollection(null);
+          }
+        }}
+        onSaved={() => void loadCollections()}
+        open={!!modelDialogCollection}
       />
 
       {/* Remove confirmation dialog */}

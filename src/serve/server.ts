@@ -51,6 +51,7 @@ import {
   handleSync,
   handleTags,
   handleTrashDoc,
+  handleUpdateCollection,
   handleUpdateDoc,
 } from "./routes/api";
 import { handleGraph } from "./routes/graph";
@@ -192,7 +193,10 @@ export async function startServer(
         },
         "/api/collections": {
           GET: async () =>
-            withSecurityHeaders(await handleCollections(store), isDev),
+            withSecurityHeaders(
+              await handleCollections(ctxHolder.config),
+              isDev
+            ),
           POST: async (req: Request) => {
             if (!isRequestAllowed(req, port)) {
               return withSecurityHeaders(forbiddenResponse(), isDev);
@@ -516,6 +520,19 @@ export async function startServer(
             withSecurityHeaders(handleEmbedStatus(ctxHolder.scheduler), isDev),
         },
         "/api/collections/:name": {
+          PATCH: async (req: Request) => {
+            if (!isRequestAllowed(req, port)) {
+              return withSecurityHeaders(forbiddenResponse(), isDev);
+            }
+            const url = new URL(req.url);
+            const name = decodeURIComponent(
+              url.pathname.split("/").pop() || ""
+            );
+            return withSecurityHeaders(
+              await handleUpdateCollection(ctxHolder, store, name, req),
+              isDev
+            );
+          },
           DELETE: async (req: Request) => {
             if (!isRequestAllowed(req, port)) {
               return withSecurityHeaders(forbiddenResponse(), isDev);

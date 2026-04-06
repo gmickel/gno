@@ -5,6 +5,7 @@
  */
 
 import type { Collection, Config } from "../config/types";
+import type { ModelType } from "../llm/types";
 
 /**
  * Input for adding a collection.
@@ -40,6 +41,16 @@ export interface RenameCollectionInput {
   oldName: string;
   /** New collection name (case-insensitive) */
   newName: string;
+}
+
+/**
+ * Input for updating a collection.
+ */
+export interface UpdateCollectionInput {
+  /** Collection name (case-insensitive) */
+  name: string;
+  /** Partial model override patch; null clears one role */
+  models?: Partial<Record<ModelType, string | null>>;
 }
 
 /**

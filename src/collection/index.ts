@@ -7,6 +7,7 @@
 
 export { addCollection } from "./add";
 export { removeCollection } from "./remove";
+export { updateCollection } from "./update";
 export type {
   AddCollectionInput,
   CollectionError,
@@ -14,4 +15,5 @@ export type {
   CollectionSuccess,
   RemoveCollectionInput,
   RenameCollectionInput,
+  UpdateCollectionInput,
 } from "./types";

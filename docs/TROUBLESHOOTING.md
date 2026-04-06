@@ -122,6 +122,40 @@ Common causes:
 - Exclude patterns too aggressive
 - Empty directory
 
+### "I changed a collection embedding model and vector results look stale"
+
+Collection-level `models.embed` overrides do not rewrite old vectors immediately.
+
+After changing the embed model for an existing collection:
+
+```bash
+# Re-run embeddings for that collection
+gno embed --collection my-collection
+```
+
+Or re-index that collection from the Web UI / API and let embedding catch up.
+
+Until that finishes:
+
+- BM25 still works
+- vector/hybrid quality may lag behind the new collection setting
+- the Collections page warns about this when you save an embed override
+
+### "The collection model override I entered does not load"
+
+Check:
+
+- the URI is valid (`hf:` or `file:` or your configured HTTP embedding backend)
+- the model is available locally or auto-download is allowed
+- `GNO_NO_AUTO_DOWNLOAD` / offline mode is not blocking first use
+
+Useful commands:
+
+```bash
+gno doctor
+gno models pull
+```
+
 ## Recovery
 
 ### I overwrote or mangled a note in the editor
