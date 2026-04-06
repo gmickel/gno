@@ -367,6 +367,20 @@ describe("CLI smoke tests", () => {
       const parsed = JSON.parse(stdout.trim());
       expect(parsed[0].models.embed).toContain("Qwen3-Embedding-0.6B");
     });
+
+    test("collection clear-embeddings works", async () => {
+      const collPath = join(testDir, "cleanup");
+      await mkdir(collPath, { recursive: true });
+      await cli("collection", "add", collPath, "--name", "cleanup");
+
+      const { code, stdout } = await cli(
+        "collection",
+        "clear-embeddings",
+        "cleanup"
+      );
+      expect(code).toBe(0);
+      expect(stdout).toContain("Mode: stale");
+    });
   });
 
   describe("context commands", () => {

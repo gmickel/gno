@@ -11,11 +11,13 @@ benefits:
   - Regression-first retrieval quality checks
   - Hybrid benchmark snapshots and deltas
   - Code embedding benchmark across canonical, repo, and OSS slices
+  - Multilingual markdown benchmark for general collection defaults
   - Bounded autonomous search loops
   - Per-collection model recommendations backed by benchmark results
 commands:
   - "bun run eval:hybrid"
   - "bun run bench:code-embeddings --candidate bge-m3-incumbent --write"
+  - "bun run bench:general-embeddings --candidate qwen3-embedding-0.6b --write"
   - "bun run research:embeddings:autonomous:list-search-candidates"
   - "bun run research:embeddings:autonomous:search --dry-run"
 ---
@@ -68,6 +70,19 @@ Current fixtures:
 - `repo-serve` — real GNO `src/serve` slice
 - `oss-slices` — pinned public OSS repo slices
 
+### General Multilingual Markdown
+
+For default-model questions on normal docs collections:
+
+```bash
+bun run bench:general-embeddings --candidate bge-m3-incumbent --write
+bun run bench:general-embeddings --candidate qwen3-embedding-0.6b --write
+```
+
+Current fixture:
+
+- `general-embedding-benchmark` — vendored multilingual FastAPI docs snapshots
+
 ## Current Results
 
 Current code-embedding numbers, as documented in the benchmark artifacts:
@@ -94,10 +109,10 @@ Current best result:
 
 - `Qwen3-Embedding-0.6B-GGUF`
 
-Practical recommendation:
+Current product stance:
 
-- keep `bge-m3` as the global default for mixed notes/docs collections
-- use `Qwen3-Embedding-0.6B-GGUF` as a per-collection `models.embed` override for code-heavy collections
+- built-in presets now use `Qwen3-Embedding-0.6B-GGUF` as the default embed model
+- collection-level overrides still matter when one collection should diverge from that default
 
 Example:
 
@@ -110,7 +125,22 @@ collections:
       embed: "hf:Qwen/Qwen3-Embedding-0.6B-GGUF/Qwen3-Embedding-0.6B-Q8_0.gguf"
 ```
 
-That gives you a code-specialist embedder without forcing every prose-heavy collection onto the slower model.
+That gives you an explicit collection override when one collection should diverge from the new default.
+
+## Current General Multilingual Candidate
+
+Current public-docs benchmark numbers:
+
+| Fixture                   | `bge-m3` vector nDCG@10 | `bge-m3` hybrid nDCG@10 | `Qwen3-Embedding-0.6B-GGUF` vector nDCG@10 | `Qwen3-Embedding-0.6B-GGUF` hybrid nDCG@10 |
+| ------------------------- | ----------------------- | ----------------------- | ------------------------------------------ | ------------------------------------------ |
+| multilingual FastAPI docs | `0.350`                 | `0.642`                 | `0.859`                                    | `0.947`                                    |
+
+Interpretation:
+
+- Qwen is now the strongest general multilingual embedding model we have
+  measured, not just the strongest code-specialist candidate
+- this benchmark lane was strong enough to justify switching built-in presets to Qwen
+- existing users still need a fresh embed pass after upgrading so current collections catch up
 
 ## Autonomous Search, Bounded
 

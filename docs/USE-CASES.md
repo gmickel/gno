@@ -370,7 +370,7 @@ GNO auto-detects query language using [franc](https://github.com/wooorm/franc). 
 
 ### Multilingual Embedding
 
-The default bge-m3 embedding model supports 100+ languages. Vector search works across languages - a German query can find relevant English documents and vice versa.
+The default `Qwen3-Embedding-0.6B-GGUF` embedding model supports strong multilingual retrieval. Vector search works across languages - a German query can find relevant English documents and vice versa.
 
 ## Incremental Updates
 

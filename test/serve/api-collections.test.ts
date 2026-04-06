@@ -22,6 +22,7 @@ import type { Config } from "../../src/config/types";
 import type { ContextHolder } from "../../src/serve/routes/api";
 
 import {
+  handleClearCollectionEmbeddings,
   handleCollections,
   handleCreateCollection,
   handleDeleteCollection,
@@ -104,6 +105,24 @@ function createMockStore() {
     },
     syncContexts() {
       return Promise.resolve({ ok: true as const, value: undefined });
+    },
+    clearEmbeddingsForCollection(
+      collection: string,
+      options: { mode: "stale" | "all" }
+    ) {
+      return Promise.resolve({
+        ok: true as const,
+        value: {
+          collection,
+          deletedVectors: options.mode === "all" ? 4 : 2,
+          deletedModels:
+            options.mode === "all"
+              ? ["active-model", "old-model"]
+              : ["old-model"],
+          mode: options.mode,
+          protectedSharedVectors: 1,
+        },
+      });
     },
   };
 }
@@ -305,6 +324,90 @@ describe("PATCH /api/collections/:name", () => {
     expect(body.collection.models?.rerank).toBe("hf:test/rerank.gguf");
     expect(body.collection.modelSources.embed).toBe("preset");
     expect(body.collection.modelSources.rerank).toBe("override");
+  });
+});
+
+describe("POST /api/collections/:name/embeddings/clear", () => {
+  let tmpDir: string;
+
+  beforeEach(async () => {
+    tmpDir = await mkdtemp(join(tmpdir(), "gno-test-"));
+  });
+
+  afterEach(async () => {
+    await safeRm(tmpDir);
+  });
+
+  test("clears stale embeddings for a collection", async () => {
+    const store = createMockStore();
+    const ctxHolder = createMockContextHolder({
+      collections: [
+        {
+          name: "docs",
+          path: tmpDir,
+          pattern: "**/*.md",
+          include: [],
+          exclude: [],
+        },
+      ],
+    });
+
+    const req = new Request(
+      "http://localhost/api/collections/docs/embeddings/clear",
+      {
+        method: "POST",
+        body: JSON.stringify({ mode: "stale" }),
+      }
+    );
+    const res = await handleClearCollectionEmbeddings(
+      ctxHolder,
+      store as never,
+      "docs",
+      req
+    );
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      stats: {
+        deletedVectors: number;
+        mode: string;
+        protectedSharedVectors: number;
+      };
+      success: boolean;
+    };
+    expect(body.success).toBe(true);
+    expect(body.stats.mode).toBe("stale");
+    expect(body.stats.deletedVectors).toBe(2);
+    expect(body.stats.protectedSharedVectors).toBe(1);
+  });
+
+  test("rejects invalid mode", async () => {
+    const store = createMockStore();
+    const ctxHolder = createMockContextHolder({
+      collections: [
+        {
+          name: "docs",
+          path: tmpDir,
+          pattern: "**/*.md",
+          include: [],
+          exclude: [],
+        },
+      ],
+    });
+
+    const req = new Request(
+      "http://localhost/api/collections/docs/embeddings/clear",
+      {
+        method: "POST",
+        body: JSON.stringify({ mode: "bogus" }),
+      }
+    );
+    const res = await handleClearCollectionEmbeddings(
+      ctxHolder,
+      store as never,
+      "docs",
+      req
+    );
+    expect(res.status).toBe(400);
   });
 });
 

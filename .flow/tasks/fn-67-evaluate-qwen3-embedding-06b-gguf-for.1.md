@@ -71,10 +71,17 @@ Docs:
 
 ## Done summary
 
-TBD
+Built the new public multilingual markdown benchmark fixture for general collections.
+
+Delivered:
+
+- vendored a FastAPI multilingual docs slice under `evals/fixtures/general-embedding-benchmark/corpus/`
+- added pinned provenance/license metadata in `sources.json`
+- added same-language and cross-language benchmark cases in `queries.json`
+- added fixture README and harness smoke coverage
 
 ## Evidence
 
 - Commits:
-- Tests:
+- Tests: bun test test/research/general-embedding-benchmark.test.ts, bun run lint:check
 - PRs:

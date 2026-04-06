@@ -82,6 +82,7 @@ import {
   getModelConfig,
   getPreset,
   listPresets,
+  resolveModelUri,
 } from "../../llm/registry";
 import {
   generateGroundedAnswer,
@@ -210,6 +211,10 @@ export interface UpdateCollectionRequestBody {
     expand?: string | null;
     gen?: string | null;
   };
+}
+
+export interface ClearCollectionEmbeddingsRequestBody {
+  mode?: "stale" | "all";
 }
 
 export interface CollectionResponse {
@@ -984,6 +989,62 @@ export async function handleUpdateCollection(
   return jsonResponse({
     success: true,
     collection: serializeCollection(syncResult.config, collection),
+  });
+}
+
+/**
+ * POST /api/collections/:name/embeddings/clear
+ * Clear stale or all embeddings for a collection.
+ */
+export async function handleClearCollectionEmbeddings(
+  ctxHolder: ContextHolder,
+  store: SqliteAdapter,
+  name: string,
+  req: Request
+): Promise<Response> {
+  let body: ClearCollectionEmbeddingsRequestBody;
+  try {
+    body = (await req.json()) as ClearCollectionEmbeddingsRequestBody;
+  } catch {
+    return errorResponse("VALIDATION", "Invalid JSON body");
+  }
+
+  const mode = body.mode ?? "stale";
+  if (mode !== "stale" && mode !== "all") {
+    return errorResponse("VALIDATION", "mode must be 'stale' or 'all'");
+  }
+
+  const collection = ctxHolder.config.collections.find(
+    (item) => item.name === name.toLowerCase()
+  );
+  if (!collection) {
+    return errorResponse("NOT_FOUND", `Collection not found: ${name}`, 404);
+  }
+
+  const activeModel = resolveModelUri(
+    ctxHolder.config,
+    "embed",
+    undefined,
+    collection.name
+  );
+  const result = await store.clearEmbeddingsForCollection(collection.name, {
+    mode,
+    activeModel,
+  });
+  if (!result.ok) {
+    const status = result.error.code === "INVALID_INPUT" ? 400 : 500;
+    return errorResponse(result.error.code, result.error.message, status);
+  }
+
+  return jsonResponse({
+    success: true,
+    stats: result.value,
+    note:
+      mode === "all"
+        ? `Run gno embed --collection ${collection.name} to rebuild active embeddings.`
+        : result.value.protectedSharedVectors > 0
+          ? "Some shared vectors were retained because other active collections still use the same content."
+          : undefined,
   });
 }
 
@@ -3356,6 +3417,7 @@ export async function handleSetPreset(
   }
 
   console.log(`Switching to preset: ${preset.name}`);
+  const previousEmbedModel = resolveModelUri(ctxHolder.config, "embed");
 
   const syncResult = await (deps?.applyConfigChangeFn ?? applyConfigChange)(
     ctxHolder,
@@ -3405,6 +3467,11 @@ export async function handleSetPreset(
   return jsonResponse({
     success: true,
     activePreset: body.presetId,
+    embedModelChanged: previousEmbedModel !== preset.embed,
+    note:
+      previousEmbedModel !== preset.embed
+        ? "Embedding model changed. Existing collections may need gno embed so vector results catch up."
+        : undefined,
     capabilities: ctxHolder.current.capabilities,
   });
 }

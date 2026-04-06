@@ -254,6 +254,7 @@ View and manage your document collections:
 - **Chunk count**: Text segments created
 - **Embedded %**: Vector embedding progress
 - **Model settings**: Per-collection override editor with inherited-vs-overridden role display
+- **Embedding cleanup**: Clear stale or all embeddings for one collection
 - **Re-index**: Update collection index
 - **Remove**: Delete collection from config
 - **Quick picks**: Suggested local folders on first run
@@ -296,6 +297,20 @@ You can:
 - keep the global preset unchanged for all other collections
 
 If you change the collection's **embed** model on an already-indexed collection, GNO warns that vector search quality will depend on running embeddings for that collection again.
+
+### Embedding Cleanup
+
+Use the menu (⋮) on any collection card and select **Embedding cleanup**.
+
+Choices:
+
+- **Clear stale embeddings**: removes embeddings for models that are no longer the active embed model for that collection
+- **Clear all embeddings**: removes every embedding for that collection
+
+Notes:
+
+- shared vectors still referenced by other active collections are retained
+- after **Clear all embeddings**, run embeddings again for that collection
 
 ---
 

@@ -24,6 +24,7 @@ import type {
   DocLinkSource,
   DocumentInput,
   DocumentRow,
+  EmbeddingCleanupStats,
   FtsResult,
   FtsSearchOptions,
   GetGraphOptions,
@@ -45,6 +46,7 @@ import { buildUri, deriveDocid } from "../../app/constants";
 import { normalizeWikiName, stripWikiMdExt } from "../../core/links";
 import { migrations, runMigrations } from "../migrations";
 import { err, ok } from "../types";
+import { modelTableName } from "../vector/sqlite-vec";
 import { loadFts5Snowball } from "./fts5-snowball";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -2696,9 +2698,12 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
   // Status
   // ─────────────────────────────────────────────────────────────────────────
 
-  async getStatus(): Promise<StoreResult<IndexStatus>> {
+  async getStatus(options?: {
+    embedModel?: string;
+  }): Promise<StoreResult<IndexStatus>> {
     try {
       const db = this.ensureOpen();
+      const embedModel = options?.embedModel ?? null;
 
       // Get version
       const versionRow = db
@@ -2729,7 +2734,7 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
       }
 
       const collectionStats = db
-        .query<CollectionStat, []>(
+        .query<CollectionStat, [string | null, string | null]>(
           `
           SELECT
             c.name,
@@ -2741,15 +2746,26 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
             (SELECT COUNT(*) FROM content_chunks cc
              JOIN documents d2 ON d2.mirror_hash = cc.mirror_hash
              WHERE d2.collection = c.name AND d2.active = 1) as chunk_count,
-            (SELECT COUNT(*) FROM content_vectors cv
-             JOIN documents d3 ON d3.mirror_hash = cv.mirror_hash
-             WHERE d3.collection = c.name AND d3.active = 1) as embedded_count
+            (SELECT COUNT(*) FROM content_chunks cc
+             WHERE EXISTS (
+               SELECT 1 FROM documents d3
+               WHERE d3.collection = c.name
+                 AND d3.active = 1
+                 AND d3.mirror_hash = cc.mirror_hash
+             )
+             AND EXISTS (
+               SELECT 1 FROM content_vectors cv
+               WHERE cv.mirror_hash = cc.mirror_hash
+                 AND cv.seq = cc.seq
+                 AND (? IS NULL OR cv.model = ?)
+                 AND cv.embedded_at >= cc.created_at
+             )) as embedded_count
           FROM collections c
           LEFT JOIN documents d ON d.collection = c.name
           GROUP BY c.name, c.path
         `
         )
-        .all();
+        .all(embedModel, embedModel);
 
       // Get totals
       const totalsRow = db
@@ -2773,7 +2789,7 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
       // Embedding backlog: chunks from active docs without vectors
       // Uses EXISTS to avoid duplicates when multiple docs share mirror_hash
       const backlogRow = db
-        .query<{ count: number }, []>(
+        .query<{ count: number }, [string | null, string | null]>(
           `
           SELECT COUNT(*) as count FROM content_chunks c
           WHERE EXISTS (
@@ -2782,11 +2798,14 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
           )
           AND NOT EXISTS (
             SELECT 1 FROM content_vectors v
-            WHERE v.mirror_hash = c.mirror_hash AND v.seq = c.seq
+            WHERE v.mirror_hash = c.mirror_hash
+              AND v.seq = c.seq
+              AND (? IS NULL OR v.model = ?)
+              AND v.embedded_at >= c.created_at
           )
         `
         )
-        .get();
+        .get(embedModel, embedModel);
 
       // Recent errors (last 24h)
       const recentErrorsRow = db
@@ -2956,6 +2975,126 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
       return err(
         "QUERY_FAILED",
         cause instanceof Error ? cause.message : "Failed to cleanup orphans",
+        cause
+      );
+    }
+  }
+
+  async clearEmbeddingsForCollection(
+    collection: string,
+    options: { mode: "stale" | "all"; activeModel?: string }
+  ): Promise<StoreResult<EmbeddingCleanupStats>> {
+    try {
+      const db = this.ensureOpen();
+      const collectionName = collection.toLowerCase();
+
+      if (options.mode === "stale" && !options.activeModel) {
+        return err(
+          "INVALID_INPUT",
+          "activeModel is required for stale embedding cleanup"
+        );
+      }
+
+      const filterSql = options.mode === "stale" ? "AND cv.model != ?" : "";
+      const filterParams =
+        options.mode === "stale" ? [options.activeModel ?? ""] : [];
+
+      const deletableRows = db
+        .query<{ mirror_hash: string; model: string; seq: number }, string[]>(
+          `
+          SELECT DISTINCT cv.mirror_hash, cv.seq, cv.model
+          FROM content_vectors cv
+          WHERE EXISTS (
+            SELECT 1 FROM documents d
+            WHERE d.collection = ?
+              AND d.mirror_hash = cv.mirror_hash
+          )
+          ${filterSql}
+          AND NOT EXISTS (
+            SELECT 1 FROM documents d2
+            WHERE d2.mirror_hash = cv.mirror_hash
+              AND d2.collection != ?
+              AND d2.active = 1
+          )
+        `
+        )
+        .all(collectionName, ...filterParams, collectionName);
+
+      const protectedRow = db
+        .query<{ count: number }, string[]>(
+          `
+          SELECT COUNT(*) as count
+          FROM (
+            SELECT DISTINCT cv.mirror_hash, cv.seq, cv.model
+            FROM content_vectors cv
+            WHERE EXISTS (
+              SELECT 1 FROM documents d
+              WHERE d.collection = ?
+                AND d.mirror_hash = cv.mirror_hash
+            )
+            ${filterSql}
+            AND EXISTS (
+              SELECT 1 FROM documents d2
+              WHERE d2.mirror_hash = cv.mirror_hash
+                AND d2.collection != ?
+                AND d2.active = 1
+            )
+          )
+        `
+        )
+        .get(collectionName, ...filterParams, collectionName);
+
+      const deletedModels = [...new Set(deletableRows.map((row) => row.model))];
+
+      const transaction = db.transaction(() => {
+        const deleteVectorStmt = db.prepare(
+          `DELETE FROM content_vectors WHERE mirror_hash = ? AND seq = ? AND model = ?`
+        );
+        const vecDeleteStatements = new Map<
+          string,
+          ReturnType<typeof db.prepare> | null
+        >();
+
+        for (const row of deletableRows) {
+          deleteVectorStmt.run(row.mirror_hash, row.seq, row.model);
+
+          let deleteVecStmt = vecDeleteStatements.get(row.model);
+          if (deleteVecStmt === undefined) {
+            try {
+              deleteVecStmt = db.prepare(
+                `DELETE FROM ${modelTableName(row.model)} WHERE chunk_id = ?`
+              );
+            } catch {
+              deleteVecStmt = null;
+            }
+            vecDeleteStatements.set(row.model, deleteVecStmt);
+          }
+
+          if (deleteVecStmt) {
+            try {
+              deleteVecStmt.run(`${row.mirror_hash}:${row.seq}`);
+            } catch {
+              // Best effort; a later vec sync/rebuild can recover.
+            }
+          }
+        }
+      });
+
+      transaction();
+
+      return ok({
+        collection: collectionName,
+        deletedVectors: deletableRows.length,
+        deletedModels,
+        mode: options.mode,
+        protectedSharedVectors: protectedRow?.count ?? 0,
+      });
+    } catch (cause) {
+      return err(
+        "QUERY_FAILED",
+        cause instanceof Error
+          ? cause.message
+          : "Failed to clear collection embeddings",
         cause
       );
     }

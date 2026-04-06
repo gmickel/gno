@@ -355,6 +355,43 @@ Checks:
 3. confirm the operation actually targets that collection
 4. if a CLI command also passes an explicit `--model`/`--embed-model`/`--rerank-model` style override, that explicit CLI override still wins
 
+### I switched the global preset and vector search looks stale
+
+If `gno models use <preset>` changes the active embedding model:
+
+- old vectors are kept
+- GNO now counts backlog/readiness against the new embed model
+- vector and hybrid retrieval may look incomplete until embeddings catch up
+
+Fix:
+
+```bash
+gno models use quality
+gno embed
+```
+
+The same idea applies in the Web UI after switching the active preset.
+
+The same logic also applies after upgrading to a release where the built-in
+default embedding model changed. Old vectors are kept, but GNO counts backlog
+against the new active embed model so the need to re-embed is visible.
+
+### I want to remove old embeddings after switching models
+
+Use collection-level cleanup when you want to reclaim space or remove stale
+models explicitly:
+
+```bash
+gno collection clear-embeddings my-collection         # stale models only
+gno collection clear-embeddings my-collection --all   # remove everything
+```
+
+Then, if you used `--all`:
+
+```bash
+gno embed --collection my-collection
+```
+
 ### Force CPU-only for testing
 
 To disable Metal/CUDA/Vulkan and force `node-llama-cpp` onto the CPU backend

@@ -64,7 +64,7 @@ describe("getActivePreset", () => {
 
     expect(preset.id).toBe("slim-tuned");
     expect(preset.name).toBe("GNO Slim Tuned (Default, ~1GB)");
-    expect(preset.embed).toContain("bge-m3");
+    expect(preset.embed).toContain("Qwen3-Embedding-0.6B");
   });
 
   test("returns configured active preset", () => {
@@ -101,7 +101,7 @@ describe("resolveModelUri", () => {
   test("returns active preset URI for type", () => {
     const config = makeConfig();
 
-    expect(resolveModelUri(config, "embed")).toContain("bge-m3");
+    expect(resolveModelUri(config, "embed")).toContain("Qwen3-Embedding-0.6B");
     expect(resolveModelUri(config, "rerank")).toContain("qwen3-reranker");
     expect(resolveModelUri(config, "gen")).toContain("Qwen3-1.7B");
   });
@@ -161,7 +161,7 @@ describe("resolveModelUri", () => {
     };
 
     expect(resolveModelUri(config, "embed", undefined, "work")).toContain(
-      "bge-m3"
+      "Qwen3-Embedding-0.6B"
     );
   });
 });

@@ -69,9 +69,9 @@ describe("CollectionModelDialog DOM interactions", () => {
     expect(screen.getByText("hf:baseline/embed.gguf")).toBeTruthy();
     expect(screen.getAllByText("inherits").length).toBeGreaterThan(0);
     expect(screen.getByText("override")).toBeTruthy();
-    expect(screen.getByText("Recommended for code collections")).toBeTruthy();
+    expect(screen.getByText("Apply code-optimized embedding")).toBeTruthy();
     expect(
-      screen.getByRole("button", { name: /apply recommendation/i })
+      screen.getByRole("button", { name: /apply code-optimized embedding/i })
     ).toBeTruthy();
 
     const inputs = screen.getAllByPlaceholderText(
@@ -81,12 +81,10 @@ describe("CollectionModelDialog DOM interactions", () => {
     expect(embedInput).toBeTruthy();
 
     await user.click(
-      screen.getByRole("button", { name: /apply recommendation/i })
+      screen.getByRole("button", { name: /apply code-optimized embedding/i })
     );
 
-    expect(
-      screen.getByText("Embedding change requires follow-up work")
-    ).toBeTruthy();
+    expect(screen.getByText("Re-index needed after save")).toBeTruthy();
 
     await user.click(
       screen.getByRole("button", { name: /save model settings/i })

@@ -527,6 +527,47 @@ curl -X PATCH http://localhost:3000/api/collections/notes \
 
 ---
 
+### Clear Collection Embeddings
+
+```http
+POST /api/collections/:name/embeddings/clear
+```
+
+Clear embeddings for one collection.
+
+**Request Body**:
+
+```json
+{
+  "mode": "stale"
+}
+```
+
+Modes:
+
+- `stale` - remove embeddings for models other than the active embed model for that collection
+- `all` - remove all embeddings for that collection
+
+**Response**:
+
+```json
+{
+  "success": true,
+  "stats": {
+    "collection": "notes",
+    "mode": "stale",
+    "deletedVectors": 24,
+    "deletedModels": ["hf:old/model.gguf"],
+    "protectedSharedVectors": 3
+  },
+  "note": "Some shared vectors were retained because other active collections still use the same content."
+}
+```
+
+If `mode` is `all`, the response note points users to `gno embed --collection <name>`.
+
+---
+
 ### Sync / Re-index
 
 ```http
@@ -1692,7 +1733,7 @@ GET /api/presets
     {
       "id": "slim-tuned",
       "name": "GNO Slim Tuned (Default, ~1GB)",
-      "embed": "hf:...bge-m3-Q4...",
+      "embed": "hf:...Qwen3-Embedding-0.6B-Q8_0...",
       "rerank": "hf:...reranker-Q4...",
       "expand": "hf:...gno-expansion-auto-entity-lock-default-mix...",
       "gen": "hf:...qwen3-4b-Q4...",
@@ -1737,6 +1778,8 @@ Switch to a different model preset. Reloads models automatically.
 {
   "success": true,
   "activePreset": "quality",
+  "embedModelChanged": true,
+  "note": "Embedding model changed. Existing collections may need gno embed so vector results catch up.",
   "capabilities": {
     "bm25": true,
     "vector": true,
@@ -1745,6 +1788,10 @@ Switch to a different model preset. Reloads models automatically.
   }
 }
 ```
+
+If `embedModelChanged` is `true`, old vectors are kept but no longer count toward
+the active embedding model's backlog/readiness. Run `gno embed` (or re-index in
+the Web UI) so vector and hybrid search catch up.
 
 **Example**:
 

@@ -9,6 +9,7 @@ import type { IndexStatus } from "../../store/types";
 
 import { getIndexDbPath } from "../../app/constants";
 import { getConfigPaths, isInitialized, loadConfig } from "../../config";
+import { resolveModelUri } from "../../llm/registry";
 import { SqliteAdapter } from "../../store/sqlite/adapter";
 
 /**
@@ -148,7 +149,9 @@ export async function status(
   }
 
   try {
-    const statusResult = await store.getStatus();
+    const statusResult = await store.getStatus({
+      embedModel: resolveModelUri(config, "embed"),
+    });
     if (!statusResult.ok) {
       return { success: false, error: statusResult.error.message };
     }

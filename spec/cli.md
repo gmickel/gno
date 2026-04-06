@@ -255,6 +255,39 @@ List all configured collections.
 gno collection list [--json|--md]
 ```
 
+---
+
+### gno collection clear-embeddings
+
+Clear embeddings for one collection.
+
+**Synopsis:**
+
+```bash
+gno collection clear-embeddings <name> [--all] [--json]
+```
+
+**Arguments:**
+| Arg | Type | Description |
+|-----|------|-------------|
+| `<name>` | string | Collection name |
+
+**Options:**
+
+| Option   | Type    | Default | Description                                                                  |
+| -------- | ------- | ------- | ---------------------------------------------------------------------------- |
+| `--all`  | boolean | false   | Remove all embeddings for the collection (default only removes stale models) |
+| `--json` | boolean | false   | JSON output                                                                  |
+
+**Behavior:**
+
+- default mode is `stale`
+- `stale` removes embeddings for models that are not the current embed model for that collection
+- `all` removes every embedding for that collection and requires a new `gno embed --collection <name>` run
+- embeddings shared by active documents in other collections are retained
+
+````
+
 **Output (JSON):**
 
 ```json
@@ -268,7 +301,7 @@ gno collection list [--json|--md]
     "updateCmd": null
   }
 ]
-```
+````
 
 **Exit Codes:**
 
@@ -946,6 +979,11 @@ gno models use <preset>
 
 - 0: Success
 - 1: Unknown preset
+
+**Behavior note:**
+
+- if the preset switch changes the active embedding model, terminal output should
+  tell the user to run `gno embed`
 
 ---
 

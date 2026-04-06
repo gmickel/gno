@@ -403,6 +403,14 @@ export interface CleanupStats {
   expiredCache: number;
 }
 
+export interface EmbeddingCleanupStats {
+  collection: string;
+  deletedVectors: number;
+  deletedModels: string[];
+  mode: "stale" | "all";
+  protectedSharedVectors: number;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Graph Types
 // ─────────────────────────────────────────────────────────────────────────────
@@ -846,7 +854,9 @@ export interface StorePort {
   /**
    * Get index status with counts and health info.
    */
-  getStatus(): Promise<StoreResult<IndexStatus>>;
+  getStatus(options?: {
+    embedModel?: string;
+  }): Promise<StoreResult<IndexStatus>>;
 
   // ─────────────────────────────────────────────────────────────────────────
   // Errors
@@ -870,4 +880,12 @@ export interface StorePort {
    * Remove orphaned content, chunks, vectors, and expired cache.
    */
   cleanupOrphans(): Promise<StoreResult<CleanupStats>>;
+
+  /**
+   * Remove embeddings for a collection.
+   */
+  clearEmbeddingsForCollection(
+    collection: string,
+    options: { mode: "stale" | "all"; activeModel?: string }
+  ): Promise<StoreResult<EmbeddingCleanupStats>>;
 }

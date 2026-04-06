@@ -7,6 +7,7 @@
 import type { IndexStatus } from "../../store/types";
 import type { ToolContext } from "../server";
 
+import { resolveModelUri } from "../../llm/registry";
 import { runTool, type ToolResult } from "./index";
 
 type StatusInput = Record<string, never>;
@@ -66,7 +67,9 @@ export function handleStatus(
     ctx,
     "gno_status",
     async () => {
-      const result = await ctx.store.getStatus();
+      const result = await ctx.store.getStatus({
+        embedModel: resolveModelUri(ctx.config, "embed"),
+      });
       if (!result.ok) {
         throw new Error(result.error.message);
       }

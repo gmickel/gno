@@ -1,0 +1,142 @@
+[
+  {
+    "id": "en-overview-same",
+    "caseSet": "same-language",
+    "queryLanguage": "en",
+    "query": "high performance Python framework for building APIs with type hints",
+    "relevantDocs": ["en/index.md"],
+    "judgments": [{ "docid": "en/index.md", "relevance": 3 }]
+  },
+  {
+    "id": "de-overview-same",
+    "caseSet": "same-language",
+    "queryLanguage": "de",
+    "query": "hoch performantes Python Webframework für APIs",
+    "relevantDocs": ["de/index.md"],
+    "judgments": [{ "docid": "de/index.md", "relevance": 3 }]
+  },
+  {
+    "id": "fr-overview-same",
+    "caseSet": "same-language",
+    "queryLanguage": "fr",
+    "query": "framework Python rapide pour créer des API",
+    "relevantDocs": ["fr/index.md"],
+    "judgments": [{ "docid": "fr/index.md", "relevance": 3 }]
+  },
+  {
+    "id": "es-overview-same",
+    "caseSet": "same-language",
+    "queryLanguage": "es",
+    "query": "framework de alto rendimiento para construir APIs con Python",
+    "relevantDocs": ["es/index.md"],
+    "judgments": [{ "docid": "es/index.md", "relevance": 3 }]
+  },
+  {
+    "id": "zh-overview-same",
+    "caseSet": "same-language",
+    "queryLanguage": "zh",
+    "query": "用于构建 API 的高性能 Python Web 框架",
+    "relevantDocs": ["zh/index.md"],
+    "judgments": [{ "docid": "zh/index.md", "relevance": 3 }]
+  },
+  {
+    "id": "en-features-same",
+    "caseSet": "same-language",
+    "queryLanguage": "en",
+    "query": "automatic docs with OpenAPI Swagger UI and ReDoc",
+    "relevantDocs": ["en/features.md"],
+    "judgments": [{ "docid": "en/features.md", "relevance": 3 }]
+  },
+  {
+    "id": "de-features-same",
+    "caseSet": "same-language",
+    "queryLanguage": "de",
+    "query": "automatische Dokumentation mit OpenAPI und Swagger UI",
+    "relevantDocs": ["de/features.md"],
+    "judgments": [{ "docid": "de/features.md", "relevance": 3 }]
+  },
+  {
+    "id": "fr-features-same",
+    "caseSet": "same-language",
+    "queryLanguage": "fr",
+    "query": "documentation automatique OpenAPI Swagger UI et ReDoc",
+    "relevantDocs": ["fr/features.md"],
+    "judgments": [{ "docid": "fr/features.md", "relevance": 3 }]
+  },
+  {
+    "id": "es-async-same",
+    "caseSet": "same-language",
+    "queryLanguage": "es",
+    "query": "cuándo usar async def y await en funciones de ruta",
+    "relevantDocs": ["es/async.md"],
+    "judgments": [{ "docid": "es/async.md", "relevance": 3 }]
+  },
+  {
+    "id": "zh-async-same",
+    "caseSet": "same-language",
+    "queryLanguage": "zh",
+    "query": "什么时候应该在路径操作函数中使用 async def 和 await",
+    "relevantDocs": ["zh/async.md"],
+    "judgments": [{ "docid": "zh/async.md", "relevance": 3 }]
+  },
+  {
+    "id": "pt-overview-cross",
+    "caseSet": "cross-language",
+    "queryLanguage": "pt",
+    "query": "framework web rápido para APIs com Python e type hints",
+    "relevantDocs": [
+      "en/index.md",
+      "de/index.md",
+      "fr/index.md",
+      "es/index.md",
+      "zh/index.md"
+    ],
+    "judgments": [
+      { "docid": "en/index.md", "relevance": 3 },
+      { "docid": "de/index.md", "relevance": 3 },
+      { "docid": "fr/index.md", "relevance": 3 },
+      { "docid": "es/index.md", "relevance": 3 },
+      { "docid": "zh/index.md", "relevance": 3 }
+    ]
+  },
+  {
+    "id": "it-features-cross",
+    "caseSet": "cross-language",
+    "queryLanguage": "it",
+    "query": "documentazione automatica con OpenAPI Swagger UI e ReDoc",
+    "relevantDocs": [
+      "en/features.md",
+      "de/features.md",
+      "fr/features.md",
+      "es/features.md",
+      "zh/features.md"
+    ],
+    "judgments": [
+      { "docid": "en/features.md", "relevance": 3 },
+      { "docid": "de/features.md", "relevance": 3 },
+      { "docid": "fr/features.md", "relevance": 3 },
+      { "docid": "es/features.md", "relevance": 3 },
+      { "docid": "zh/features.md", "relevance": 3 }
+    ]
+  },
+  {
+    "id": "pt-async-cross",
+    "caseSet": "cross-language",
+    "queryLanguage": "pt",
+    "query": "quando usar async def e await em funções de rota",
+    "relevantDocs": [
+      "en/async.md",
+      "de/async.md",
+      "fr/async.md",
+      "es/async.md",
+      "zh/async.md"
+    ],
+    "judgments": [
+      { "docid": "en/async.md", "relevance": 3 },
+      { "docid": "de/async.md", "relevance": 3 },
+      { "docid": "fr/async.md", "relevance": 3 },
+      { "docid": "es/async.md", "relevance": 3 },
+      { "docid": "zh/async.md", "relevance": 3 }
+    ]
+  }
+]

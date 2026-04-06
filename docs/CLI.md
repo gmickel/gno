@@ -347,7 +347,7 @@ Options:
 - `--embed-model <uri>` - Initial collection-specific embedding model override
 - `--update <cmd>` - Shell command to run before indexing
 
-Use `--embed-model` when one collection should use a different embedding model from the active global preset. This is the clean CLI path for code collections that should keep the rest of the workspace on `bge-m3`.
+Use `--embed-model` when one collection should use a different embedding model from the active global preset.
 
 ### gno collection list
 
@@ -373,6 +373,27 @@ Rename a collection.
 ```bash
 gno collection rename notes work-notes
 ```
+
+### gno collection clear-embeddings
+
+Clear embeddings for one collection.
+
+```bash
+gno collection clear-embeddings notes          # Safe default: stale models only
+gno collection clear-embeddings notes --all    # Remove every embedding for this collection
+```
+
+Behavior:
+
+- default mode is `stale`
+- `stale` removes models that are no longer the active embed model for that collection
+- `all` removes every embedding for that collection and then you should run:
+
+```bash
+gno embed --collection notes
+```
+
+Shared vectors still referenced by other active collections are retained.
 
 ## Indexing Commands
 
@@ -481,6 +502,17 @@ gno models use balanced   # Larger model, ~2GB disk
 gno models use quality    # Best answers, ~2.5GB disk
 ```
 
+If the preset switch changes the embedding model, GNO now tells you directly:
+
+```bash
+gno models use quality
+# ...
+# Embedding model changed. Run: gno embed
+```
+
+That keeps old vectors intact, but marks the new model as the active target. Run
+`gno embed` so vector and hybrid retrieval catch up to the new preset.
+
 ### gno models pull
 
 Download models.
@@ -504,7 +536,7 @@ models:
   presets:
     - id: slim-tuned
       name: GNO Slim Tuned
-      embed: hf:gpustack/bge-m3-GGUF/bge-m3-Q4_K_M.gguf
+      embed: hf:Qwen/Qwen3-Embedding-0.6B-GGUF/Qwen3-Embedding-0.6B-Q8_0.gguf
       rerank: hf:ggml-org/Qwen3-Reranker-0.6B-Q8_0-GGUF/qwen3-reranker-0.6b-q8_0.gguf
       expand: hf:guiltylemon/gno-expansion-slim-retrieval-v1/gno-expansion-auto-entity-lock-default-mix-lr95-f16.gguf
       gen: hf:unsloth/Qwen3-1.7B-GGUF/Qwen3-1.7B-Q4_K_M.gguf

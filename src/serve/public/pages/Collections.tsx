@@ -100,12 +100,25 @@ interface SyncResponse {
   jobId: string;
 }
 
+interface EmbeddingCleanupResponse {
+  note?: string;
+  stats: {
+    collection: string;
+    deletedVectors: number;
+    deletedModels: string[];
+    mode: "stale" | "all";
+    protectedSharedVectors: number;
+  };
+  success: boolean;
+}
+
 interface CollectionsResponseItem extends CollectionModelDetails {}
 
 interface CollectionCardProps {
   actionsDisabled: boolean;
   collection: CollectionStats;
   onBrowse: () => void;
+  onEmbeddingCleanup: () => void;
   onModelSettings: () => void;
   onReindex: () => void;
   onRemove: () => void;
@@ -135,6 +148,7 @@ function CollectionCard({
   actionsDisabled,
   collection,
   onBrowse,
+  onEmbeddingCleanup,
   onModelSettings,
   onReindex,
   onRemove,
@@ -191,6 +205,16 @@ function CollectionCard({
               >
                 <CpuIcon className="mr-2 size-4" />
                 Model settings
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                disabled={actionsDisabled}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onEmbeddingCleanup();
+                }}
+              >
+                <DatabaseIcon className="mr-2 size-4" />
+                Embedding cleanup
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem
@@ -316,6 +340,14 @@ export default function Collections({ navigate }: PageProps) {
   const [removeDialog, setRemoveDialog] = useState<CollectionStats | null>(
     null
   );
+  const [embeddingCleanupDialog, setEmbeddingCleanupDialog] =
+    useState<CollectionStats | null>(null);
+  const [embeddingCleanupBusy, setEmbeddingCleanupBusy] = useState<
+    "stale" | "all" | null
+  >(null);
+  const [embeddingCleanupNote, setEmbeddingCleanupNote] = useState<
+    string | null
+  >(null);
   const [removing, setRemoving] = useState(false);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [modelDialogCollection, setModelDialogCollection] =
@@ -408,6 +440,34 @@ export default function Collections({ navigate }: PageProps) {
     if (!err) {
       await loadCollections();
     }
+  };
+
+  const handleEmbeddingCleanup = async (mode: "stale" | "all") => {
+    if (!embeddingCleanupDialog) return;
+
+    setEmbeddingCleanupBusy(mode);
+    setEmbeddingCleanupNote(null);
+
+    const { data, error: err } = await apiFetch<EmbeddingCleanupResponse>(
+      `/api/collections/${encodeURIComponent(embeddingCleanupDialog.name)}/embeddings/clear`,
+      {
+        method: "POST",
+        body: JSON.stringify({ mode }),
+      }
+    );
+
+    setEmbeddingCleanupBusy(null);
+
+    if (err) {
+      setEmbeddingCleanupNote(err);
+      return;
+    }
+
+    setEmbeddingCleanupNote(
+      data?.note ??
+        `Cleared ${data?.stats.deletedVectors ?? 0} embedding(s) for ${embeddingCleanupDialog.name}.`
+    );
+    await loadCollections();
   };
 
   // Loading state
@@ -577,6 +637,10 @@ export default function Collections({ navigate }: PageProps) {
                     `/browse?collection=${encodeURIComponent(collection.name)}`
                   )
                 }
+                onEmbeddingCleanup={() => {
+                  setEmbeddingCleanupDialog(collection);
+                  setEmbeddingCleanupNote(null);
+                }}
                 onModelSettings={() => setModelDialogCollection(collection)}
                 onReindex={() => void handleReindex(collection.name)}
                 onRemove={() => setRemoveDialog(collection)}
@@ -604,6 +668,80 @@ export default function Collections({ navigate }: PageProps) {
         onSaved={() => void loadCollections()}
         open={!!modelDialogCollection}
       />
+
+      <Dialog
+        onOpenChange={(open) => {
+          if (!open) {
+            setEmbeddingCleanupDialog(null);
+            setEmbeddingCleanupBusy(null);
+            setEmbeddingCleanupNote(null);
+          }
+        }}
+        open={!!embeddingCleanupDialog}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Embedding cleanup</DialogTitle>
+            <DialogDescription>
+              Remove stale embeddings or clear all embeddings for{" "}
+              <strong>{embeddingCleanupDialog?.name}</strong>.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 text-sm">
+            <div className="rounded-lg border border-border/40 bg-card/70 p-3">
+              <p className="font-medium">Clear stale embeddings</p>
+              <p className="mt-1 text-muted-foreground">
+                Removes embeddings for models that are not the currently active
+                embed model for this collection.
+              </p>
+            </div>
+            <div className="rounded-lg border border-secondary/30 bg-secondary/8 p-3">
+              <p className="font-medium text-secondary">Clear all embeddings</p>
+              <p className="mt-1 text-muted-foreground">
+                Removes every embedding for this collection. You will need to
+                run embeddings again afterward.
+              </p>
+            </div>
+            {embeddingCleanupNote ? (
+              <div className="rounded-lg border border-border/40 bg-card/70 p-3 text-muted-foreground">
+                {embeddingCleanupNote}
+              </div>
+            ) : null}
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              onClick={() => {
+                setEmbeddingCleanupDialog(null);
+                setEmbeddingCleanupBusy(null);
+                setEmbeddingCleanupNote(null);
+              }}
+              variant="outline"
+            >
+              Cancel
+            </Button>
+            <Button
+              disabled={embeddingCleanupBusy !== null}
+              onClick={() => void handleEmbeddingCleanup("stale")}
+              variant="outline"
+            >
+              {embeddingCleanupBusy === "stale" ? (
+                <Loader2Icon className="mr-1.5 size-4 animate-spin" />
+              ) : null}
+              Clear stale
+            </Button>
+            <Button
+              disabled={embeddingCleanupBusy !== null}
+              onClick={() => void handleEmbeddingCleanup("all")}
+              variant="destructive"
+            >
+              {embeddingCleanupBusy === "all" ? (
+                <Loader2Icon className="mr-1.5 size-4 animate-spin" />
+              ) : null}
+              Clear all
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Remove confirmation dialog */}
       <Dialog

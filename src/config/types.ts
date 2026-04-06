@@ -190,7 +190,7 @@ export const DEFAULT_MODEL_PRESETS: ModelPreset[] = [
   {
     id: "slim-tuned",
     name: "GNO Slim Tuned (Default, ~1GB)",
-    embed: "hf:gpustack/bge-m3-GGUF/bge-m3-Q4_K_M.gguf",
+    embed: "hf:Qwen/Qwen3-Embedding-0.6B-GGUF/Qwen3-Embedding-0.6B-Q8_0.gguf",
     rerank:
       "hf:ggml-org/Qwen3-Reranker-0.6B-Q8_0-GGUF/qwen3-reranker-0.6b-q8_0.gguf",
     expand:
@@ -200,7 +200,7 @@ export const DEFAULT_MODEL_PRESETS: ModelPreset[] = [
   {
     id: "slim",
     name: "Slim (~1GB)",
-    embed: "hf:gpustack/bge-m3-GGUF/bge-m3-Q4_K_M.gguf",
+    embed: "hf:Qwen/Qwen3-Embedding-0.6B-GGUF/Qwen3-Embedding-0.6B-Q8_0.gguf",
     rerank:
       "hf:ggml-org/Qwen3-Reranker-0.6B-Q8_0-GGUF/qwen3-reranker-0.6b-q8_0.gguf",
     expand: "hf:unsloth/Qwen3-1.7B-GGUF/Qwen3-1.7B-Q4_K_M.gguf",
@@ -209,7 +209,7 @@ export const DEFAULT_MODEL_PRESETS: ModelPreset[] = [
   {
     id: "balanced",
     name: "Balanced (~2GB)",
-    embed: "hf:gpustack/bge-m3-GGUF/bge-m3-Q4_K_M.gguf",
+    embed: "hf:Qwen/Qwen3-Embedding-0.6B-GGUF/Qwen3-Embedding-0.6B-Q8_0.gguf",
     rerank:
       "hf:ggml-org/Qwen3-Reranker-0.6B-Q8_0-GGUF/qwen3-reranker-0.6b-q8_0.gguf",
     expand:
@@ -219,7 +219,7 @@ export const DEFAULT_MODEL_PRESETS: ModelPreset[] = [
   {
     id: "quality",
     name: "Quality (Best Answers, ~2.5GB)",
-    embed: "hf:gpustack/bge-m3-GGUF/bge-m3-Q4_K_M.gguf",
+    embed: "hf:Qwen/Qwen3-Embedding-0.6B-GGUF/Qwen3-Embedding-0.6B-Q8_0.gguf",
     rerank:
       "hf:ggml-org/Qwen3-Reranker-0.6B-Q8_0-GGUF/qwen3-reranker-0.6b-q8_0.gguf",
     expand:

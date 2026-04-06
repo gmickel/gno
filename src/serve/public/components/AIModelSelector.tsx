@@ -55,6 +55,8 @@ interface SetPresetResponse {
   success: boolean;
   activePreset: string;
   capabilities: Capabilities;
+  embedModelChanged?: boolean;
+  note?: string;
 }
 
 interface DownloadProgress {
@@ -355,7 +357,12 @@ export function AIModelSelector({
       checkCapabilities(data.capabilities);
       setOpen(false);
       const presetName = presets.find((preset) => preset.id === id)?.name ?? id;
-      setNotice(`Switched to ${presetName}`);
+      setNotice(
+        data.embedModelChanged
+          ? (data.note ??
+              `Switched to ${presetName}. Run embeddings again so vector results catch up.`)
+          : `Switched to ${presetName}`
+      );
       const { data: statusData } =
         await apiFetch<AppStatusResponse>("/api/status");
       await syncFromStatus(statusData);

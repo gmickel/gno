@@ -180,7 +180,7 @@ Technique where each chunk is embedded with its document title prepended: `title
 
 ### Embedding
 
-Vector representation of a chunk. 1024-dimensional float array from bge-m3 model, with contextual title prefix.
+Vector representation of a chunk, produced by the active embedding model with contextual title prefix.
 
 ### mirrorHash
 
@@ -190,7 +190,7 @@ SHA-256 hash of canonical markdown. Used for content-addressed storage and dedup
 
 ### Embed Model
 
-Neural network that converts text to vectors. Default: bge-m3 (multilingual, 1024 dims).
+Neural network that converts text to vectors. Default built-in preset choice: `Qwen3-Embedding-0.6B-GGUF`.
 
 ### Rerank Model
 
