@@ -947,6 +947,11 @@ gno models use <preset>
 - 0: Success
 - 1: Unknown preset
 
+**Behavior note:**
+
+- if the preset switch changes the active embedding model, terminal output should
+  tell the user to run `gno embed`
+
 ---
 
 ### gno models pull

@@ -481,6 +481,17 @@ gno models use balanced   # Larger model, ~2GB disk
 gno models use quality    # Best answers, ~2.5GB disk
 ```
 
+If the preset switch changes the embedding model, GNO now tells you directly:
+
+```bash
+gno models use quality
+# ...
+# Embedding model changed. Run: gno embed
+```
+
+That keeps old vectors intact, but marks the new model as the active target. Run
+`gno embed` so vector and hybrid retrieval catch up to the new preset.
+
 ### gno models pull
 
 Download models.

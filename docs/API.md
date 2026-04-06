@@ -1737,6 +1737,8 @@ Switch to a different model preset. Reloads models automatically.
 {
   "success": true,
   "activePreset": "quality",
+  "embedModelChanged": true,
+  "note": "Embedding model changed. Existing collections may need gno embed so vector results catch up.",
   "capabilities": {
     "bm25": true,
     "vector": true,
@@ -1745,6 +1747,10 @@ Switch to a different model preset. Reloads models automatically.
   }
 }
 ```
+
+If `embedModelChanged` is `true`, old vectors are kept but no longer count toward
+the active embedding model's backlog/readiness. Run `gno embed` (or re-index in
+the Web UI) so vector and hybrid search catch up.
 
 **Example**:
 

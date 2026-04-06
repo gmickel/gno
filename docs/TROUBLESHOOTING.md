@@ -355,6 +355,23 @@ Checks:
 3. confirm the operation actually targets that collection
 4. if a CLI command also passes an explicit `--model`/`--embed-model`/`--rerank-model` style override, that explicit CLI override still wins
 
+### I switched the global preset and vector search looks stale
+
+If `gno models use <preset>` changes the active embedding model:
+
+- old vectors are kept
+- GNO now counts backlog/readiness against the new embed model
+- vector and hybrid retrieval may look incomplete until embeddings catch up
+
+Fix:
+
+```bash
+gno models use quality
+gno embed
+```
+
+The same idea applies in the Web UI after switching the active preset.
+
 ### Force CPU-only for testing
 
 To disable Metal/CUDA/Vulkan and force `node-llama-cpp` onto the CPU backend

@@ -816,6 +816,26 @@ Trade-off:
 - Qwen is slower to embed than `bge-m3`
 - use it where code retrieval quality matters, not necessarily as the global default for every collection
 
+### General Multilingual Embedding Benchmark
+
+GNO also now has a separate public-docs benchmark lane for normal markdown/prose
+collections:
+
+```bash
+bun run bench:general-embeddings --candidate bge-m3-incumbent --write
+bun run bench:general-embeddings --candidate qwen3-embedding-0.6b --write
+```
+
+Current signal on the public multilingual FastAPI-docs fixture:
+
+- `bge-m3`: vector nDCG@10 `0.350`, hybrid nDCG@10 `0.642`
+- `Qwen3-Embedding-0.6B-GGUF`: vector nDCG@10 `0.859`, hybrid nDCG@10 `0.947`
+
+Interpretation:
+
+- Qwen is now the strongest general multilingual embedding candidate we have tested
+- but GNO still keeps `bge-m3` as the shipped default until the re-embed/default-switch story is fully settled
+
 ---
 
 ## License

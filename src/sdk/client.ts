@@ -621,7 +621,11 @@ class GnoClientImpl implements GnoClient {
 
   async status(): Promise<IndexStatus> {
     this.assertOpen();
-    return unwrapStore(await this.store.getStatus());
+    return unwrapStore(
+      await this.store.getStatus({
+        embedModel: resolveModelUri(this.config, "embed"),
+      })
+    );
   }
 
   async update(options: GnoUpdateOptions = {}): Promise<SyncResult> {

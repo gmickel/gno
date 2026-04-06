@@ -1071,6 +1071,67 @@ describe("SqliteAdapter", () => {
       expect(result.value.collections).toHaveLength(1);
       expect(result.value.collections[0]?.name).toBe("notes");
     });
+
+    test("status can scope embedded counts and backlog to one embed model", async () => {
+      await adapter.syncCollections([
+        {
+          name: "notes",
+          path: "/notes",
+          pattern: "**/*",
+          include: [],
+          exclude: [],
+        },
+      ]);
+
+      await adapter.upsertDocument({
+        collection: "notes",
+        relPath: "model-test.md",
+        sourceHash: "status_hash_model",
+        sourceMime: "text/markdown",
+        sourceExt: ".md",
+        sourceSize: 100,
+        sourceMtime: "2024-01-01T00:00:00Z",
+        mirrorHash: "status_mirror_model",
+      });
+
+      await adapter.upsertContent("status_mirror_model", "# Test");
+      await adapter.upsertChunks("status_mirror_model", [
+        { seq: 0, pos: 0, text: "# Test", startLine: 1, endLine: 1 },
+      ]);
+
+      const vectorDb = adapter.getRawDb();
+      vectorDb
+        .prepare(
+          `INSERT INTO content_vectors (mirror_hash, seq, model, embedding, embedded_at)
+           VALUES (?, ?, ?, ?, datetime('now'))`
+        )
+        .run(
+          "status_mirror_model",
+          0,
+          "old-embed-model",
+          new Uint8Array([0, 0, 0, 0])
+        );
+
+      const staleStatus = await adapter.getStatus({
+        embedModel: "new-embed-model",
+      });
+      expect(staleStatus.ok).toBe(true);
+      if (!staleStatus.ok) {
+        return;
+      }
+      expect(staleStatus.value.embeddingBacklog).toBe(1);
+      expect(staleStatus.value.collections[0]?.embeddedChunks).toBe(0);
+
+      const freshStatus = await adapter.getStatus({
+        embedModel: "old-embed-model",
+      });
+      expect(freshStatus.ok).toBe(true);
+      if (!freshStatus.ok) {
+        return;
+      }
+      expect(freshStatus.value.embeddingBacklog).toBe(0);
+      expect(freshStatus.value.collections[0]?.embeddedChunks).toBe(1);
+    });
   });
 
   describe("errors", () => {

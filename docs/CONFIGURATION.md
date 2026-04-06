@@ -253,6 +253,26 @@ This still uses normal GNO model provisioning rules:
 - it respects `GNO_NO_AUTO_DOWNLOAD` / offline policy the same way preset models do
 - it is currently best treated as a code-collection override, not a blanket replacement for the global default, because it trades higher embedding latency for better code retrieval quality
 
+### Current general multilingual benchmark signal
+
+On the public multilingual markdown benchmark lane, `Qwen3-Embedding-0.6B-GGUF`
+currently beats `bge-m3` by a large margin on both vector-only and hybrid
+retrieval.
+
+Current product stance:
+
+- keep `bge-m3` as the shipped global default for now
+- treat Qwen as the leading candidate for multilingual prose/docs collections
+- only flip the shipped default after enough evidence and a clean re-embed UX
+
+Why not switch the default immediately?
+
+- changing the global embed model means existing collections need a fresh
+  `gno embed` pass
+- GNO now treats backlog/readiness as model-aware after a preset switch, but the
+  product story is still safer if the default change is a deliberate follow-up
+  release decision, not an incidental benchmark reaction
+
 ### Model Details
 
 All presets use:

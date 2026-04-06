@@ -1,0 +1,686 @@
+{
+  "generatedAt": "2026-04-06T13:24:22.734Z",
+  "label": "Qwen3 Embedding 0.6B",
+  "runtime": {
+    "embedModel": "hf:Qwen/Qwen3-Embedding-0.6B-GGUF/Qwen3-Embedding-0.6B-Q8_0.gguf",
+    "collection": "general-docs",
+    "corpusDir": "/Users/gordon/work/gno/evals/fixtures/general-embedding-benchmark/corpus",
+    "queryCount": 13,
+    "limit": 10
+  },
+  "corpus": {
+    "docCount": 15,
+    "languages": ["en", "de", "fr", "es", "zh"],
+    "topics": ["index", "features", "async"],
+    "sourceRepo": "https://github.com/fastapi/fastapi",
+    "commit": "c3c9dd6b1a08bcda766e7b43eafe72c4c5e9e193",
+    "license": "MIT"
+  },
+  "indexing": {
+    "embedded": 98,
+    "errors": 0,
+    "durationSeconds": 24.65,
+    "searchAvailable": true
+  },
+  "vector": {
+    "metrics": {
+      "recallAt5": 0.9385,
+      "recallAt10": 0.9692,
+      "ndcgAt10": 0.8594,
+      "mrr": 0.8462
+    },
+    "latency": {
+      "p50Ms": 289.37,
+      "p95Ms": 399.84,
+      "meanMs": 302.52
+    }
+  },
+  "hybrid": {
+    "metrics": {
+      "recallAt5": 0.9385,
+      "recallAt10": 0.9692,
+      "ndcgAt10": 0.947,
+      "mrr": 0.9615
+    },
+    "latency": {
+      "p50Ms": 290.13,
+      "p95Ms": 384.45,
+      "meanMs": 298.45
+    }
+  },
+  "bySet": {
+    "same-language": {
+      "vector": {
+        "recallAt5": 1,
+        "recallAt10": 1,
+        "ndcgAt10": 0.8492,
+        "mrr": 0.8
+      },
+      "hybrid": {
+        "recallAt5": 1,
+        "recallAt10": 1,
+        "ndcgAt10": 0.9631,
+        "mrr": 0.95
+      }
+    },
+    "cross-language": {
+      "vector": {
+        "recallAt5": 0.7333,
+        "recallAt10": 0.8667,
+        "ndcgAt10": 0.8935,
+        "mrr": 1
+      },
+      "hybrid": {
+        "recallAt5": 0.7333,
+        "recallAt10": 0.8667,
+        "ndcgAt10": 0.8935,
+        "mrr": 1
+      }
+    }
+  },
+  "cases": [
+    {
+      "id": "en-overview-same",
+      "caseSet": "same-language",
+      "query": "high performance Python framework for building APIs with type hints",
+      "queryLanguage": "en",
+      "relevantDocs": ["en/index.md"],
+      "vectorTopDocs": [
+        "fr/index.md",
+        "es/index.md",
+        "de/index.md",
+        "en/index.md",
+        "zh/index.md",
+        "fr/features.md",
+        "es/features.md",
+        "fr/features.md",
+        "de/features.md",
+        "de/index.md"
+      ],
+      "hybridTopDocs": [
+        "en/index.md",
+        "fr/index.md",
+        "es/index.md",
+        "de/index.md",
+        "zh/index.md",
+        "fr/features.md",
+        "es/features.md",
+        "fr/features.md",
+        "de/features.md",
+        "de/index.md"
+      ],
+      "vectorMetrics": {
+        "recallAt5": 1,
+        "recallAt10": 1,
+        "ndcgAt10": 0.4307,
+        "mrr": 0.25
+      },
+      "hybridMetrics": {
+        "recallAt5": 1,
+        "recallAt10": 1,
+        "ndcgAt10": 1,
+        "mrr": 1
+      },
+      "vectorLatencyMs": 399.84,
+      "hybridLatencyMs": 384.45
+    },
+    {
+      "id": "de-overview-same",
+      "caseSet": "same-language",
+      "query": "hoch performantes Python Webframework für APIs",
+      "queryLanguage": "de",
+      "relevantDocs": ["de/index.md"],
+      "vectorTopDocs": [
+        "de/index.md",
+        "es/index.md",
+        "fr/index.md",
+        "de/index.md",
+        "zh/index.md",
+        "de/features.md",
+        "es/features.md",
+        "de/index.md",
+        "en/index.md",
+        "fr/features.md"
+      ],
+      "hybridTopDocs": [
+        "de/index.md",
+        "es/index.md",
+        "fr/index.md",
+        "de/index.md",
+        "zh/index.md",
+        "de/features.md",
+        "es/features.md",
+        "de/index.md",
+        "en/index.md",
+        "fr/features.md"
+      ],
+      "vectorMetrics": {
+        "recallAt5": 1,
+        "recallAt10": 1,
+        "ndcgAt10": 1,
+        "mrr": 1
+      },
+      "hybridMetrics": {
+        "recallAt5": 1,
+        "recallAt10": 1,
+        "ndcgAt10": 1,
+        "mrr": 1
+      },
+      "vectorLatencyMs": 357.42,
+      "hybridLatencyMs": 331.33
+    },
+    {
+      "id": "fr-overview-same",
+      "caseSet": "same-language",
+      "query": "framework Python rapide pour créer des API",
+      "queryLanguage": "fr",
+      "relevantDocs": ["fr/index.md"],
+      "vectorTopDocs": [
+        "fr/index.md",
+        "fr/features.md",
+        "es/index.md",
+        "de/index.md",
+        "fr/features.md",
+        "de/features.md",
+        "es/features.md",
+        "de/index.md",
+        "fr/index.md",
+        "zh/index.md"
+      ],
+      "hybridTopDocs": [
+        "fr/index.md",
+        "fr/features.md",
+        "fr/async.md",
+        "es/index.md",
+        "de/index.md",
+        "fr/features.md",
+        "de/features.md",
+        "es/features.md",
+        "de/index.md",
+        "fr/index.md"
+      ],
+      "vectorMetrics": {
+        "recallAt5": 1,
+        "recallAt10": 1,
+        "ndcgAt10": 1,
+        "mrr": 1
+      },
+      "hybridMetrics": {
+        "recallAt5": 1,
+        "recallAt10": 1,
+        "ndcgAt10": 1,
+        "mrr": 1
+      },
+      "vectorLatencyMs": 306.56,
+      "hybridLatencyMs": 290.9
+    },
+    {
+      "id": "es-overview-same",
+      "caseSet": "same-language",
+      "query": "framework de alto rendimiento para construir APIs con Python",
+      "queryLanguage": "es",
+      "relevantDocs": ["es/index.md"],
+      "vectorTopDocs": [
+        "es/index.md",
+        "fr/index.md",
+        "de/index.md",
+        "de/index.md",
+        "es/features.md",
+        "zh/index.md",
+        "de/features.md",
+        "fr/features.md",
+        "en/index.md",
+        "fr/features.md"
+      ],
+      "hybridTopDocs": [
+        "es/index.md",
+        "fr/index.md",
+        "de/index.md",
+        "de/index.md",
+        "es/features.md",
+        "zh/index.md",
+        "de/features.md",
+        "fr/features.md",
+        "en/index.md",
+        "fr/features.md"
+      ],
+      "vectorMetrics": {
+        "recallAt5": 1,
+        "recallAt10": 1,
+        "ndcgAt10": 1,
+        "mrr": 1
+      },
+      "hybridMetrics": {
+        "recallAt5": 1,
+        "recallAt10": 1,
+        "ndcgAt10": 1,
+        "mrr": 1
+      },
+      "vectorLatencyMs": 290.45,
+      "hybridLatencyMs": 284.01
+    },
+    {
+      "id": "zh-overview-same",
+      "caseSet": "same-language",
+      "query": "用于构建 API 的高性能 Python Web 框架",
+      "queryLanguage": "zh",
+      "relevantDocs": ["zh/index.md"],
+      "vectorTopDocs": [
+        "es/index.md",
+        "zh/index.md",
+        "de/index.md",
+        "fr/index.md",
+        "en/index.md",
+        "de/index.md",
+        "de/index.md",
+        "fr/index.md",
+        "de/index.md",
+        "fr/index.md"
+      ],
+      "hybridTopDocs": [
+        "es/index.md",
+        "zh/index.md",
+        "de/index.md",
+        "fr/index.md",
+        "en/index.md",
+        "de/index.md",
+        "de/index.md",
+        "fr/index.md",
+        "de/index.md",
+        "fr/index.md"
+      ],
+      "vectorMetrics": {
+        "recallAt5": 1,
+        "recallAt10": 1,
+        "ndcgAt10": 0.6309,
+        "mrr": 0.5
+      },
+      "hybridMetrics": {
+        "recallAt5": 1,
+        "recallAt10": 1,
+        "ndcgAt10": 0.6309,
+        "mrr": 0.5
+      },
+      "vectorLatencyMs": 283.27,
+      "hybridLatencyMs": 292.63
+    },
+    {
+      "id": "en-features-same",
+      "caseSet": "same-language",
+      "query": "automatic docs with OpenAPI Swagger UI and ReDoc",
+      "queryLanguage": "en",
+      "relevantDocs": ["en/features.md"],
+      "vectorTopDocs": [
+        "fr/features.md",
+        "de/features.md",
+        "es/features.md",
+        "en/features.md",
+        "fr/features.md",
+        "fr/index.md",
+        "fr/index.md",
+        "es/features.md",
+        "es/index.md",
+        "fr/index.md"
+      ],
+      "hybridTopDocs": [
+        "en/features.md",
+        "fr/features.md",
+        "fr/index.md",
+        "es/index.md",
+        "de/index.md",
+        "en/index.md",
+        "de/features.md",
+        "es/features.md",
+        "fr/features.md",
+        "fr/index.md"
+      ],
+      "vectorMetrics": {
+        "recallAt5": 1,
+        "recallAt10": 1,
+        "ndcgAt10": 0.4307,
+        "mrr": 0.25
+      },
+      "hybridMetrics": {
+        "recallAt5": 1,
+        "recallAt10": 1,
+        "ndcgAt10": 1,
+        "mrr": 1
+      },
+      "vectorLatencyMs": 286.19,
+      "hybridLatencyMs": 288.87
+    },
+    {
+      "id": "de-features-same",
+      "caseSet": "same-language",
+      "query": "automatische Dokumentation mit OpenAPI und Swagger UI",
+      "queryLanguage": "de",
+      "relevantDocs": ["de/features.md"],
+      "vectorTopDocs": [
+        "de/features.md",
+        "fr/features.md",
+        "es/features.md",
+        "en/features.md",
+        "fr/features.md",
+        "fr/index.md",
+        "de/index.md",
+        "de/index.md",
+        "es/index.md",
+        "fr/index.md"
+      ],
+      "hybridTopDocs": [
+        "de/features.md",
+        "de/index.md",
+        "fr/features.md",
+        "es/features.md",
+        "en/features.md",
+        "fr/features.md",
+        "fr/index.md",
+        "de/index.md",
+        "es/index.md",
+        "fr/index.md"
+      ],
+      "vectorMetrics": {
+        "recallAt5": 1,
+        "recallAt10": 1,
+        "ndcgAt10": 1,
+        "mrr": 1
+      },
+      "hybridMetrics": {
+        "recallAt5": 1,
+        "recallAt10": 1,
+        "ndcgAt10": 1,
+        "mrr": 1
+      },
+      "vectorLatencyMs": 285.57,
+      "hybridLatencyMs": 272.33
+    },
+    {
+      "id": "fr-features-same",
+      "caseSet": "same-language",
+      "query": "documentation automatique OpenAPI Swagger UI et ReDoc",
+      "queryLanguage": "fr",
+      "relevantDocs": ["fr/features.md"],
+      "vectorTopDocs": [
+        "fr/features.md",
+        "de/features.md",
+        "es/features.md",
+        "en/features.md",
+        "fr/features.md",
+        "fr/index.md",
+        "fr/index.md",
+        "fr/index.md",
+        "es/index.md",
+        "de/index.md"
+      ],
+      "hybridTopDocs": [
+        "fr/features.md",
+        "fr/index.md",
+        "de/features.md",
+        "es/features.md",
+        "en/features.md",
+        "fr/features.md",
+        "fr/index.md",
+        "fr/index.md",
+        "es/index.md",
+        "de/index.md"
+      ],
+      "vectorMetrics": {
+        "recallAt5": 1,
+        "recallAt10": 1,
+        "ndcgAt10": 1,
+        "mrr": 1
+      },
+      "hybridMetrics": {
+        "recallAt5": 1,
+        "recallAt10": 1,
+        "ndcgAt10": 1,
+        "mrr": 1
+      },
+      "vectorLatencyMs": 289.78,
+      "hybridLatencyMs": 296.11
+    },
+    {
+      "id": "es-async-same",
+      "caseSet": "same-language",
+      "query": "cuándo usar async def y await en funciones de ruta",
+      "queryLanguage": "es",
+      "relevantDocs": ["es/async.md"],
+      "vectorTopDocs": [
+        "es/async.md",
+        "de/async.md",
+        "fr/async.md",
+        "es/async.md",
+        "fr/async.md",
+        "fr/async.md",
+        "de/async.md",
+        "de/async.md",
+        "zh/async.md",
+        "es/async.md"
+      ],
+      "hybridTopDocs": [
+        "es/async.md",
+        "de/async.md",
+        "fr/async.md",
+        "es/async.md",
+        "fr/async.md",
+        "fr/async.md",
+        "de/async.md",
+        "de/async.md",
+        "zh/async.md",
+        "es/async.md"
+      ],
+      "vectorMetrics": {
+        "recallAt5": 1,
+        "recallAt10": 1,
+        "ndcgAt10": 1,
+        "mrr": 1
+      },
+      "hybridMetrics": {
+        "recallAt5": 1,
+        "recallAt10": 1,
+        "ndcgAt10": 1,
+        "mrr": 1
+      },
+      "vectorLatencyMs": 289.37,
+      "hybridLatencyMs": 300.7
+    },
+    {
+      "id": "zh-async-same",
+      "caseSet": "same-language",
+      "query": "什么时候应该在路径操作函数中使用 async def 和 await",
+      "queryLanguage": "zh",
+      "relevantDocs": ["zh/async.md"],
+      "vectorTopDocs": [
+        "zh/async.md",
+        "de/async.md",
+        "es/async.md",
+        "en/async.md",
+        "de/async.md",
+        "de/async.md",
+        "zh/async.md",
+        "de/async.md",
+        "es/async.md",
+        "fr/async.md"
+      ],
+      "hybridTopDocs": [
+        "zh/async.md",
+        "de/async.md",
+        "es/async.md",
+        "en/async.md",
+        "de/async.md",
+        "de/async.md",
+        "zh/async.md",
+        "de/async.md",
+        "es/async.md",
+        "fr/async.md"
+      ],
+      "vectorMetrics": {
+        "recallAt5": 1,
+        "recallAt10": 1,
+        "ndcgAt10": 1,
+        "mrr": 1
+      },
+      "hybridMetrics": {
+        "recallAt5": 1,
+        "recallAt10": 1,
+        "ndcgAt10": 1,
+        "mrr": 1
+      },
+      "vectorLatencyMs": 298.61,
+      "hybridLatencyMs": 290.13
+    },
+    {
+      "id": "pt-overview-cross",
+      "caseSet": "cross-language",
+      "query": "framework web rápido para APIs com Python e type hints",
+      "queryLanguage": "pt",
+      "relevantDocs": [
+        "en/index.md",
+        "de/index.md",
+        "fr/index.md",
+        "es/index.md",
+        "zh/index.md"
+      ],
+      "vectorTopDocs": [
+        "fr/index.md",
+        "es/index.md",
+        "de/index.md",
+        "de/index.md",
+        "fr/features.md",
+        "de/features.md",
+        "es/features.md",
+        "fr/features.md",
+        "zh/index.md",
+        "en/index.md"
+      ],
+      "hybridTopDocs": [
+        "fr/index.md",
+        "es/index.md",
+        "de/index.md",
+        "de/index.md",
+        "fr/features.md",
+        "de/features.md",
+        "es/features.md",
+        "fr/features.md",
+        "zh/index.md",
+        "en/index.md"
+      ],
+      "vectorMetrics": {
+        "recallAt5": 0.6,
+        "recallAt10": 1,
+        "ndcgAt10": 0.9428,
+        "mrr": 1
+      },
+      "hybridMetrics": {
+        "recallAt5": 0.6,
+        "recallAt10": 1,
+        "ndcgAt10": 0.9428,
+        "mrr": 1
+      },
+      "vectorLatencyMs": 277.66,
+      "hybridLatencyMs": 282.47
+    },
+    {
+      "id": "it-features-cross",
+      "caseSet": "cross-language",
+      "query": "documentazione automatica con OpenAPI Swagger UI e ReDoc",
+      "queryLanguage": "it",
+      "relevantDocs": [
+        "en/features.md",
+        "de/features.md",
+        "fr/features.md",
+        "es/features.md",
+        "zh/features.md"
+      ],
+      "vectorTopDocs": [
+        "fr/features.md",
+        "de/features.md",
+        "es/features.md",
+        "en/features.md",
+        "fr/index.md",
+        "fr/index.md",
+        "fr/features.md",
+        "es/index.md",
+        "fr/index.md",
+        "es/features.md"
+      ],
+      "hybridTopDocs": [
+        "fr/features.md",
+        "de/features.md",
+        "es/features.md",
+        "en/features.md",
+        "fr/index.md",
+        "fr/index.md",
+        "fr/features.md",
+        "es/index.md",
+        "fr/index.md",
+        "es/features.md"
+      ],
+      "vectorMetrics": {
+        "recallAt5": 0.8,
+        "recallAt10": 0.8,
+        "ndcgAt10": 0.8688,
+        "mrr": 1
+      },
+      "hybridMetrics": {
+        "recallAt5": 0.8,
+        "recallAt10": 0.8,
+        "ndcgAt10": 0.8688,
+        "mrr": 1
+      },
+      "vectorLatencyMs": 283.03,
+      "hybridLatencyMs": 283.06
+    },
+    {
+      "id": "pt-async-cross",
+      "caseSet": "cross-language",
+      "query": "quando usar async def e await em funções de rota",
+      "queryLanguage": "pt",
+      "relevantDocs": [
+        "en/async.md",
+        "de/async.md",
+        "fr/async.md",
+        "es/async.md",
+        "zh/async.md"
+      ],
+      "vectorTopDocs": [
+        "es/async.md",
+        "de/async.md",
+        "fr/async.md",
+        "de/async.md",
+        "zh/async.md",
+        "es/async.md",
+        "fr/async.md",
+        "de/async.md",
+        "de/async.md",
+        "fr/async.md"
+      ],
+      "hybridTopDocs": [
+        "es/async.md",
+        "de/async.md",
+        "fr/async.md",
+        "de/async.md",
+        "zh/async.md",
+        "es/async.md",
+        "fr/async.md",
+        "de/async.md",
+        "de/async.md",
+        "fr/async.md"
+      ],
+      "vectorMetrics": {
+        "recallAt5": 0.8,
+        "recallAt10": 0.8,
+        "ndcgAt10": 0.8688,
+        "mrr": 1
+      },
+      "hybridMetrics": {
+        "recallAt5": 0.8,
+        "recallAt10": 0.8,
+        "ndcgAt10": 0.8688,
+        "mrr": 1
+      },
+      "vectorLatencyMs": 284.95,
+      "hybridLatencyMs": 282.86
+    }
+  ]
+}

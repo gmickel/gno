@@ -106,8 +106,10 @@ describe("POST /api/presets", () => {
     const body = (await res.json()) as {
       success: boolean;
       activePreset: string;
+      embedModelChanged: boolean;
     };
     expect(body.success).toBe(true);
     expect(body.activePreset).toBe("balanced");
+    expect(body.embedModelChanged).toBe(true);
   });
 });

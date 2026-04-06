@@ -11,11 +11,13 @@ benefits:
   - Regression-first retrieval quality checks
   - Hybrid benchmark snapshots and deltas
   - Code embedding benchmark across canonical, repo, and OSS slices
+  - Multilingual markdown benchmark for general collection defaults
   - Bounded autonomous search loops
   - Per-collection model recommendations backed by benchmark results
 commands:
   - "bun run eval:hybrid"
   - "bun run bench:code-embeddings --candidate bge-m3-incumbent --write"
+  - "bun run bench:general-embeddings --candidate qwen3-embedding-0.6b --write"
   - "bun run research:embeddings:autonomous:list-search-candidates"
   - "bun run research:embeddings:autonomous:search --dry-run"
 ---
@@ -68,6 +70,19 @@ Current fixtures:
 - `repo-serve` — real GNO `src/serve` slice
 - `oss-slices` — pinned public OSS repo slices
 
+### General Multilingual Markdown
+
+For default-model questions on normal docs collections:
+
+```bash
+bun run bench:general-embeddings --candidate bge-m3-incumbent --write
+bun run bench:general-embeddings --candidate qwen3-embedding-0.6b --write
+```
+
+Current fixture:
+
+- `general-embedding-benchmark` — vendored multilingual FastAPI docs snapshots
+
 ## Current Results
 
 Current code-embedding numbers, as documented in the benchmark artifacts:
@@ -111,6 +126,21 @@ collections:
 ```
 
 That gives you a code-specialist embedder without forcing every prose-heavy collection onto the slower model.
+
+## Current General Multilingual Candidate
+
+Current public-docs benchmark numbers:
+
+| Fixture                   | `bge-m3` vector nDCG@10 | `bge-m3` hybrid nDCG@10 | `Qwen3-Embedding-0.6B-GGUF` vector nDCG@10 | `Qwen3-Embedding-0.6B-GGUF` hybrid nDCG@10 |
+| ------------------------- | ----------------------- | ----------------------- | ------------------------------------------ | ------------------------------------------ |
+| multilingual FastAPI docs | `0.350`                 | `0.642`                 | `0.859`                                    | `0.947`                                    |
+
+Interpretation:
+
+- Qwen is now the strongest general multilingual embedding candidate we have
+  measured, not just the strongest code-specialist candidate
+- but GNO still keeps `bge-m3` as the shipped default until the global
+  re-embed/default-switch story is intentionally productized
 
 ## Autonomous Search, Bounded
 

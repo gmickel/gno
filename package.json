@@ -71,6 +71,8 @@
     "eval:hybrid:delta": "bun scripts/hybrid-benchmark.ts --delta",
     "bench:code-embeddings": "bun scripts/code-embedding-benchmark.ts",
     "bench:code-embeddings:write": "bun scripts/code-embedding-benchmark.ts --write",
+    "bench:general-embeddings": "bun scripts/general-embedding-benchmark.ts",
+    "bench:general-embeddings:write": "bun scripts/general-embedding-benchmark.ts --write",
     "eval:retrieval-candidates": "bun scripts/retrieval-candidate-benchmark.ts",
     "eval:retrieval-candidates:write": "bun scripts/retrieval-candidate-benchmark.ts --write",
     "eval:watch": "bun --bun evalite watch",

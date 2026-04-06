@@ -846,7 +846,9 @@ export interface StorePort {
   /**
    * Get index status with counts and health info.
    */
-  getStatus(): Promise<StoreResult<IndexStatus>>;
+  getStatus(options?: {
+    embedModel?: string;
+  }): Promise<StoreResult<IndexStatus>>;
 
   // ─────────────────────────────────────────────────────────────────────────
   // Errors

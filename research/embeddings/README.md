@@ -1,6 +1,7 @@
-# Code Embedding Research
+# Embedding Research
 
-Harnesses for evaluating alternate embedding models on code retrieval.
+Harnesses for evaluating alternate embedding models on both code retrieval and
+general multilingual markdown collections.
 
 This research lane is intentionally separate from `research/finetune/`:
 
@@ -11,8 +12,11 @@ This research lane is intentionally separate from `research/finetune/`:
 Core pieces:
 
 - `scripts/code-embedding-benchmark.ts`
+- `scripts/general-embedding-benchmark.ts`
 - `evals/helpers/code-embedding-benchmark.ts`
+- `evals/helpers/general-embedding-benchmark.ts`
 - `evals/fixtures/code-embedding-benchmark/`
+- `evals/fixtures/general-embedding-benchmark/`
 - `research/embeddings/autonomous/`
 
 Suggested workflow:
@@ -35,8 +39,31 @@ bun run research:embeddings:autonomous:run-candidate <candidate-id>
 bun run research:embeddings:autonomous:search --dry-run
 ```
 
+For the general multilingual markdown lane:
+
+```bash
+# Establish general-docs baseline
+bun run bench:general-embeddings --candidate bge-m3-incumbent --write
+
+# Compare the strongest challenger so far
+bun run bench:general-embeddings --candidate qwen3-embedding-0.6b --write
+```
+
 Do not change product defaults from this harness directly.
 Promotion remains a human decision.
+
+## Benchmark lanes
+
+### Code
+
+- `evals/fixtures/code-embedding-benchmark/`
+- compares code-specialist behavior on canonical, repo, and OSS code slices
+
+### General multilingual markdown
+
+- `evals/fixtures/general-embedding-benchmark/`
+- compares prose/docs retrieval on public multilingual markdown only
+- currently sourced from vendored FastAPI docs snapshots
 
 ## First model shortlist
 
@@ -103,4 +130,25 @@ Latency note:
 - `Qwen3-Embedding-0.6B-GGUF` is currently slower than `bge-m3`
 - the recommendation is therefore:
   - keep `bge-m3` globally for mixed/prose collections
-  - use Qwen specifically where code retrieval quality matters more than embedding speed
+- use Qwen specifically where code retrieval quality matters more than embedding speed
+
+## Current general multilingual winner
+
+Current best general-docs result:
+
+- `Qwen3-Embedding-0.6B-GGUF`
+
+Public multilingual markdown benchmark numbers:
+
+- `bge-m3`: vector nDCG@10 `0.350`, hybrid nDCG@10 `0.642`
+- `Qwen3-Embedding-0.6B-GGUF`: vector nDCG@10 `0.859`, hybrid nDCG@10 `0.947`
+
+Interpretation:
+
+- Qwen materially outperforms the incumbent on the new multilingual prose/docs
+  lane too
+- this makes Qwen the strongest current candidate for a future default embed
+  model on general collections
+- but GNO should still keep `bge-m3` as the shipped default until the
+  re-embed/default-switch UX is fully settled and the broader evaluation lane
+  grows beyond one public corpus

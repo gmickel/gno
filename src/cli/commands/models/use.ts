@@ -7,7 +7,7 @@
 
 import { createDefaultConfig, loadConfig } from "../../../config";
 import { saveConfig } from "../../../config/saver";
-import { getPreset, listPresets } from "../../../llm/registry";
+import { getPreset, listPresets, resolveModelUri } from "../../../llm/registry";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -19,7 +19,12 @@ export interface ModelsUseOptions {
 }
 
 export type ModelsUseResult =
-  | { success: true; preset: string; name: string }
+  | {
+      success: true;
+      preset: string;
+      name: string;
+      embedModelChanged: boolean;
+    }
   | { success: false; error: string };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -36,6 +41,7 @@ export async function modelsUse(
   // Load existing config or create default
   const configResult = await loadConfig(options.configPath);
   const config = configResult.ok ? configResult.value : createDefaultConfig();
+  const previousEmbedModel = resolveModelUri(config, "embed");
 
   // Check if preset exists
   const preset = getPreset(config, presetId);
@@ -72,7 +78,12 @@ export async function modelsUse(
     };
   }
 
-  return { success: true, preset: presetId, name: preset.name };
+  return {
+    success: true,
+    preset: presetId,
+    name: preset.name,
+    embedModelChanged: previousEmbedModel !== preset.embed,
+  };
 }
 
 /**
@@ -82,5 +93,9 @@ export function formatModelsUse(result: ModelsUseResult): string {
   if (!result.success) {
     return `Error: ${result.error}`;
   }
-  return `Switched to preset: ${result.preset} (${result.name})`;
+  const lines = [`Switched to preset: ${result.preset} (${result.name})`];
+  if (result.embedModelChanged) {
+    lines.push("Embedding model changed. Run: gno embed");
+  }
+  return lines.join("\n");
 }

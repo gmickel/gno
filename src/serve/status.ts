@@ -15,7 +15,7 @@ import type {
 import { getModelsCachePath } from "../app/constants";
 import { ModelCache } from "../llm/cache";
 import { envIsSet, resolveDownloadPolicy } from "../llm/policy";
-import { getActivePreset } from "../llm/registry";
+import { getActivePreset, resolveModelUri } from "../llm/registry";
 import { downloadState, type ServerContext } from "./context";
 
 const GIGABYTE = 1024 * 1024 * 1024;
@@ -615,7 +615,9 @@ export async function buildAppStatus(
   ctx: ServerContext,
   deps: StatusBuildDeps = {}
 ): Promise<AppStatusResponse> {
-  const result = await ctx.store.getStatus();
+  const result = await ctx.store.getStatus({
+    embedModel: resolveModelUri(ctx.config, "embed"),
+  });
   if (!result.ok) {
     throw result.error;
   }

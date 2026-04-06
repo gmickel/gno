@@ -82,6 +82,7 @@ import {
   getModelConfig,
   getPreset,
   listPresets,
+  resolveModelUri,
 } from "../../llm/registry";
 import {
   generateGroundedAnswer,
@@ -3356,6 +3357,7 @@ export async function handleSetPreset(
   }
 
   console.log(`Switching to preset: ${preset.name}`);
+  const previousEmbedModel = resolveModelUri(ctxHolder.config, "embed");
 
   const syncResult = await (deps?.applyConfigChangeFn ?? applyConfigChange)(
     ctxHolder,
@@ -3405,6 +3407,11 @@ export async function handleSetPreset(
   return jsonResponse({
     success: true,
     activePreset: body.presetId,
+    embedModelChanged: previousEmbedModel !== preset.embed,
+    note:
+      previousEmbedModel !== preset.embed
+        ? "Embedding model changed. Existing collections may need gno embed so vector results catch up."
+        : undefined,
     capabilities: ctxHolder.current.capabilities,
   });
 }

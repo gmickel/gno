@@ -52,11 +52,13 @@ Possible follow-up from this task:
 - [ ] If evidence is not strong enough to change defaults, the docs say so plainly.
 
 ## Done summary
+Published the benchmark outcome and the current recommendation.
 
-TBD
-
+Delivered:
+- documented the new general multilingual benchmark lane in README, research docs, configuration docs, and website benchmarks page
+- published the actual comparison numbers for `bge-m3` vs `Qwen3-Embedding-0.6B-GGUF`
+- recorded the current stance: Qwen is the strongest general multilingual candidate, but GNO keeps `bge-m3` as the shipped default until a deliberate default-switch follow-up lands
 ## Evidence
-
 - Commits:
-- Tests:
+- Tests: bun run docs:verify, make -C website sync-docs, bun run lint:check
 - PRs:
