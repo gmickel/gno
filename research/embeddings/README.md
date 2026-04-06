@@ -55,3 +55,27 @@ Notes:
 - the canonical benchmark corpus is intentionally small and language-diverse
 - the `repo-serve` fixture lets us compare models on actual GNO code under `src/serve`
 - some challengers are most realistic to evaluate via an HTTP embedding server first, then map to a final runtime URI once we decide they are worth deeper testing
+
+## If a code-specific winner emerges
+
+Do two things:
+
+1. document the benchmark result in:
+   - `evals/fixtures/code-embedding-benchmark/canonical.md`
+   - `evals/fixtures/code-embedding-benchmark/repo-serve.md`
+2. document a user-facing config recommendation:
+   - keep the current global preset if it still works well for prose/mixed collections
+   - use per-collection `models.embed` overrides for code collections
+
+Example pattern:
+
+```yaml
+collections:
+  - name: gno-code
+    path: /Users/you/work/gno/src
+    pattern: "**/*.{ts,tsx,js,jsx,go,rs,py,swift,c}"
+    models:
+      embed: "http://your-embedding-server/v1/embeddings#your-code-model"
+```
+
+That recommendation belongs in `docs/CONFIGURATION.md`, relevant benchmark docs, and any future benchmark/results page.

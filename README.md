@@ -863,6 +863,13 @@ bun run research:embeddings:autonomous:search --dry-run
 
 See [research/embeddings/README.md](./research/embeddings/README.md).
 
+If a model turns out to be better specifically for code, the intended user story is:
+
+- keep the default global preset for mixed prose/docs collections
+- use per-collection `models.embed` overrides for code collections
+
+That lets GNO stay sane by default while still giving power users a clean path to code-specialist retrieval.
+
 ---
 
 ## License
