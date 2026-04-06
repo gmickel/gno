@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.38.0] - 2026-04-06
+
+### Added
+
+- Added a collection-level model editor in the web UI, including per-role override editing, inherited-vs-overridden effective model display, and code-collection recommendations for the embedding model.
+- Added richer collection API payloads plus `PATCH /api/collections/:name` so clients can inspect and update collection-scoped model overrides without hand-editing YAML.
+- Added `gno collection add --embed-model` so collection-specific embedding model overrides can be set directly from the CLI.
+
+### Changed
+
+- Updated CLI, API, configuration, Web UI, troubleshooting, and agent-skill docs to cover collection-scoped model overrides and the follow-up embedding workflow after changing a collection's embedding model.
+
 ## [0.37.0] - 2026-04-06
 
 ### Added
