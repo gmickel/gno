@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.40.0] - 2026-04-06
+
+### Added
+
+- Added collection-scoped embedding ergonomics across CLI, Web UI, API, and MCP, including `gno embed [collection]` / `gno embed --collection <name>` plus collection embedding cleanup actions for stale or all vectors.
+- Added `gno_clear_collection_embeddings` to MCP so agents can explicitly remove stale or all embeddings for one collection when write tools are enabled.
+
+### Changed
+
+- Updated CLI, MCP, Web UI, and skill docs so collection-scoped embed/re-embed/cleanup flows are documented consistently after the default embed-model switch.
+
 ## [0.39.1] - 2026-04-06
 
 ### Changed
