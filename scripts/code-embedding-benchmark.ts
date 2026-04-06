@@ -52,13 +52,20 @@ function parseArgs(args: string[]): CliOptions {
   return options;
 }
 
-async function resolveCandidate(
-  candidateId: string
-): Promise<{ id: string; label: string; embedModel: string }> {
+async function resolveCandidate(candidateId: string): Promise<{
+  id: string;
+  label: string;
+  embedModel: string;
+  runtimeKind: string;
+}> {
   const searchSpace = (await Bun.file(
     join(import.meta.dir, "../research/embeddings/autonomous/search-space.json")
   ).json()) as {
-    candidates: Array<{ id: string; label?: string; embedModel: string }>;
+    candidates: Array<{
+      id: string;
+      label?: string;
+      runtime: { kind: string; uri: string };
+    }>;
   };
   const candidate = searchSpace.candidates.find(
     (item) => item.id === candidateId
@@ -69,7 +76,8 @@ async function resolveCandidate(
   return {
     id: candidate.id,
     label: candidate.label ?? candidate.id,
-    embedModel: candidate.embedModel,
+    embedModel: candidate.runtime.uri,
+    runtimeKind: candidate.runtime.kind,
   };
 }
 
@@ -121,6 +129,7 @@ if (options.dryRun) {
         candidateId: candidate?.id ?? null,
         label: options.label ?? candidate?.label ?? model,
         embedModel: model,
+        runtimeKind: candidate?.runtimeKind ?? "direct",
         fixture: options.fixture ?? "canonical",
         write: options.write,
         out: options.out ?? null,

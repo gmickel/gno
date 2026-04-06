@@ -19,6 +19,6 @@ for (const candidate of searchSpace.candidates) {
       ? ` score=${row.weightedScore.toFixed(2)}`
       : "";
   console.log(
-    `- ${candidate.id}: status=${status}${score}, model=${candidate.embedModel}`
+    `- ${candidate.id}: status=${status}${score}, runtime=${candidate.runtime.kind}, uri=${candidate.runtime.uri}`
   );
 }

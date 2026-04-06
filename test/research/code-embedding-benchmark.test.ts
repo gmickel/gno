@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
+import fixtures from "../../evals/fixtures/code-embedding-benchmark/fixtures.json";
 import queries from "../../evals/fixtures/code-embedding-benchmark/queries.json";
 
 interface QueryCase {
@@ -65,5 +66,12 @@ describe("code embedding benchmark fixtures", () => {
       fixture: string;
     };
     expect(output.fixture).toBe("repo-serve");
+  });
+
+  test("fixtures include canonical, repo-serve, and oss-slices", () => {
+    const ids = fixtures.map((fixture) => fixture.id);
+    expect(ids).toContain("canonical");
+    expect(ids).toContain("repo-serve");
+    expect(ids).toContain("oss-slices");
   });
 });

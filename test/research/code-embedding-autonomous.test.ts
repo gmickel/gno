@@ -10,6 +10,18 @@ describe("code embedding autonomous harness", () => {
     expect(ids).toContain(searchSpace.incumbentId);
   });
 
+  test("candidates declare runtime kind and uri", () => {
+    for (const candidate of searchSpace.candidates) {
+      expect(["native", "http"]).toContain(candidate.runtime.kind);
+      expect(candidate.runtime.uri.length).toBeGreaterThan(0);
+    }
+  });
+
+  test("config declares primary and secondary fixtures", () => {
+    expect(config.metric.fixtures.primary.length).toBeGreaterThan(0);
+    expect(config.metric.fixtures.secondary?.length ?? 0).toBeGreaterThan(0);
+  });
+
   test("allowed roots stay inside research/embeddings or benchmark harness files", () => {
     for (const root of config.allowedRoots) {
       expect(

@@ -88,6 +88,7 @@
     "research:embeddings:autonomous:list-search-candidates": "bun research/embeddings/autonomous/scripts/list-search-candidates.ts",
     "research:embeddings:autonomous:run-candidate": "bun research/embeddings/autonomous/scripts/run-candidate.ts",
     "research:embeddings:autonomous:leaderboard": "bun research/embeddings/autonomous/scripts/leaderboard.ts",
+    "research:embeddings:autonomous:confirm-winner": "bun research/embeddings/autonomous/scripts/confirm-winner.ts",
     "research:embeddings:autonomous:search": "bun research/embeddings/autonomous/scripts/search.ts",
     "research:finetune:qmd-import:legacy": "bun research/finetune/scripts/import-qmd-training.ts",
     "research:finetune:mlx:build-dataset": "bun research/finetune/scripts/build-mlx-dataset.ts",

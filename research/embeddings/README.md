@@ -54,6 +54,7 @@ Notes:
 
 - the canonical benchmark corpus is intentionally small and language-diverse
 - the `repo-serve` fixture lets us compare models on actual GNO code under `src/serve`
+- the `oss-slices` fixture lets us compare models on pinned public OSS repo slices without vendoring third-party code into GNO
 - some challengers are most realistic to evaluate via an HTTP embedding server first, then map to a final runtime URI once we decide they are worth deeper testing
 
 ## If a code-specific winner emerges

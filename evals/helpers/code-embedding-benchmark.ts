@@ -44,6 +44,16 @@ interface CodeEmbeddingFixture {
   queriesPath: string;
   include: string[];
   languages: string[];
+  sourceManifestPath?: string;
+}
+
+interface SourceFixtureFile {
+  id: string;
+  label: string;
+  repoUrl: string;
+  repoPath: string;
+  commit: string;
+  relativePath: string;
 }
 
 interface MetricSummary {
@@ -215,6 +225,39 @@ async function loadCasesForFixture(
   ).json()) as CodeEmbeddingBenchmarkCase[];
 }
 
+async function loadSourceManifest(
+  fixture: CodeEmbeddingFixture
+): Promise<SourceFixtureFile[]> {
+  if (!fixture.sourceManifestPath) {
+    return [];
+  }
+  return (await Bun.file(
+    fixture.sourceManifestPath
+  ).json()) as SourceFixtureFile[];
+}
+
+async function materializeFixtureCorpus(
+  fixture: CodeEmbeddingFixture,
+  tempDir: string
+): Promise<string> {
+  if (!fixture.sourceManifestPath) {
+    return fixture.corpusDir;
+  }
+
+  const manifest = await loadSourceManifest(fixture);
+  const corpusDir = join(tempDir, `fixture-${fixture.id}`);
+  for (const entry of manifest) {
+    const sourcePath = join(entry.repoPath, entry.relativePath);
+    const sourceFile = Bun.file(sourcePath);
+    if (!(await sourceFile.exists())) {
+      throw new Error(`Missing OSS source file: ${sourcePath}`);
+    }
+    const outputPath = join(corpusDir, entry.id, entry.relativePath);
+    await Bun.write(outputPath, await sourceFile.text());
+  }
+  return corpusDir;
+}
+
 async function listCorpusDocs(
   corpusDir: string,
   include: string[]
@@ -236,9 +279,19 @@ export async function runCodeEmbeddingBenchmark(
 ): Promise<CodeEmbeddingBenchmarkSummary> {
   const fixture = await loadFixture(input.fixture);
   const tempDir = await mkdtemp(join(tmpdir(), "gno-code-embed-bench-"));
+  const corpusDir = await materializeFixtureCorpus(fixture, tempDir);
   const cases = await loadCasesForFixture(fixture);
-  const corpusDocs = await listCorpusDocs(fixture.corpusDir, fixture.include);
-  const client = await buildClient(input, tempDir, fixture);
+  const corpusDocs = await listCorpusDocs(corpusDir, fixture.include);
+  const client = await buildClient(
+    {
+      ...input,
+    },
+    tempDir,
+    {
+      ...fixture,
+      corpusDir,
+    }
+  );
   const limit = input.limit ?? 10;
 
   try {
@@ -308,7 +361,7 @@ export async function runCodeEmbeddingBenchmark(
       runtime: {
         embedModel: input.embedModel,
         collection: fixture.collection,
-        corpusDir: fixture.corpusDir,
+        corpusDir,
         queryCount: cases.length,
         limit,
       },

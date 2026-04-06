@@ -34,5 +34,15 @@
     "queriesPath": "evals/fixtures/code-embedding-benchmark/repo-serve-queries.json",
     "include": [".ts", ".tsx"],
     "languages": ["typescript", "tsx"]
+  },
+  {
+    "id": "oss-slices",
+    "label": "Pinned OSS repo slices",
+    "collection": "oss-slices",
+    "corpusDir": "",
+    "queriesPath": "evals/fixtures/code-embedding-benchmark/oss-slices-queries.json",
+    "include": [".ts", ".tsx", ".py", ".go", ".rs"],
+    "languages": ["typescript", "tsx", "python", "go", "rust"],
+    "sourceManifestPath": "evals/fixtures/code-embedding-benchmark/oss-slices.json"
   }
 ]

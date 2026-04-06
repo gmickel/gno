@@ -24,24 +24,30 @@
   ],
   "budget": {
     "maxRuntimeMinutes": 45,
-    "maxRunsPerSession": 5
+    "maxRunsPerSession": 5,
+    "confirmationRuns": 3
   },
   "metric": {
     "baselineArtifact": "evals/fixtures/code-embedding-benchmark/latest.json",
     "validationCommand": "bun run lint:check",
     "smokeCommand": "bun test test/research/code-embedding-benchmark.test.ts test/research/code-embedding-autonomous.test.ts",
+    "fixtures": {
+      "primary": "canonical",
+      "secondary": "repo-serve"
+    },
     "decision": {
       "primary": "vector",
       "weights": {
-        "vectorNdcgAt10": 1000,
-        "vectorRecallAt5": 150,
-        "hybridNdcgAt10": 250,
-        "vectorP95Ms": -0.02,
-        "hybridP95Ms": -0.01
+        "primaryVectorNdcgAt10": 1000,
+        "primaryVectorRecallAt5": 150,
+        "secondaryVectorNdcgAt10": 700,
+        "secondaryHybridNdcgAt10": 150,
+        "primaryVectorP95Ms": -0.02,
+        "secondaryVectorP95Ms": -0.01
       },
       "minimums": {
-        "vectorNdcgDelta": 0.005,
-        "hybridNdcgDelta": 0
+        "primaryVectorNdcgDelta": 0.005,
+        "secondaryVectorNdcgDelta": 0
       }
     }
   },

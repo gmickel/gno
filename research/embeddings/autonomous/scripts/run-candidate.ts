@@ -2,7 +2,11 @@
 import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
 
-import { loadHarnessConfig, loadSearchSpace } from "../lib/results";
+import {
+  extractFixtureMetrics,
+  loadHarnessConfig,
+  loadSearchSpace,
+} from "../lib/results";
 
 const repoRoot = join(import.meta.dir, "../../../..");
 const candidateId = process.argv[2];
@@ -25,29 +29,58 @@ if (!candidate) {
 
 const outDir = join(repoRoot, config.logging.runDir);
 await mkdir(outDir, { recursive: true });
-const benchmarkPath = join(outDir, `${candidate.id}.benchmark.json`);
 
 runCommand(config.metric.validationCommand);
 runCommand(config.metric.smokeCommand);
 
 const startedAt = Date.now();
-runCommand(
-  `bun scripts/code-embedding-benchmark.ts --candidate ${candidate.id} --out ${benchmarkPath}`
-);
+const benchmarkPaths: Record<string, string> = {};
+const benchmarks: Record<string, object> = {};
+for (const fixture of [
+  config.metric.fixtures.primary,
+  config.metric.fixtures.secondary,
+].filter(Boolean) as string[]) {
+  const benchmarkPath = join(
+    outDir,
+    `${candidate.id}.${fixture}.benchmark.json`
+  );
+  benchmarkPaths[fixture] = benchmarkPath;
+  runCommand(
+    [
+      "bun",
+      "scripts/code-embedding-benchmark.ts",
+      "--model",
+      candidate.runtime.uri,
+      "--label",
+      candidate.label,
+      "--fixture",
+      fixture,
+      "--out",
+      benchmarkPath,
+    ].join(" ")
+  );
+  benchmarks[fixture] = await Bun.file(benchmarkPath).json();
+}
 
-const benchmark = (await Bun.file(benchmarkPath).json()) as {
-  vector?: {
-    metrics?: { ndcgAt10?: number; recallAt5?: number };
-    latency?: { p95Ms?: number };
-  };
-  hybrid?: { metrics?: { ndcgAt10?: number }; latency?: { p95Ms?: number } };
-};
+const primary = extractFixtureMetrics(
+  { benchmarks } as never,
+  config.metric.fixtures.primary
+);
+const secondary = config.metric.fixtures.secondary
+  ? extractFixtureMetrics(
+      { benchmarks } as never,
+      config.metric.fixtures.secondary
+    )
+  : {
+      vectorNdcgAt10: 0,
+      vectorRecallAt5: 0,
+      hybridNdcgAt10: 0,
+    };
 const weightedScore =
-  (benchmark.vector?.metrics?.ndcgAt10 ?? 0) * 1000 +
-  (benchmark.vector?.metrics?.recallAt5 ?? 0) * 150 +
-  (benchmark.hybrid?.metrics?.ndcgAt10 ?? 0) * 250 -
-  (benchmark.vector?.latency?.p95Ms ?? 0) * 0.02 -
-  (benchmark.hybrid?.latency?.p95Ms ?? 0) * 0.01;
+  primary.vectorNdcgAt10 * 1000 +
+  primary.vectorRecallAt5 * 150 +
+  secondary.vectorNdcgAt10 * 700 +
+  secondary.hybridNdcgAt10 * 150;
 
 const resultPath = join(outDir, `${candidate.id}.result.json`);
 await Bun.write(
@@ -56,9 +89,9 @@ await Bun.write(
     {
       candidateId: candidate.id,
       label: candidate.label,
-      embedModel: candidate.embedModel,
-      benchmarkPath,
-      benchmark,
+      runtime: candidate.runtime,
+      benchmarkPaths,
+      benchmarks,
       decision:
         candidate.id === searchSpace.incumbentId ? "baseline" : "pending",
       weightedScore: Number(weightedScore.toFixed(4)),

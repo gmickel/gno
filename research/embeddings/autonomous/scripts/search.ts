@@ -37,6 +37,7 @@ if (dryRun) {
         searchSpaceId: searchSpace.id,
         selected: selected.map((item) => item.id),
         completed: [...completedCandidateIds],
+        fixtures: config.metric.fixtures,
       },
       null,
       2
