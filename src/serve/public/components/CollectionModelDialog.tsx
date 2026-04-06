@@ -204,7 +204,7 @@ export function CollectionModelDialog({
 
   return (
     <Dialog onOpenChange={onOpenChange} open={open}>
-      <DialogContent className="max-w-4xl border-border/40 bg-gradient-to-br from-background to-muted/10 p-0 shadow-[0_30px_90px_-35px_rgba(0,0,0,0.8)]">
+      <DialogContent className="max-w-4xl border-border/50 bg-card/98 p-0 shadow-[0_30px_90px_-35px_rgba(0,0,0,0.8)] backdrop-blur-xl">
         <DialogHeader className="border-border/30 border-b px-6 py-5 text-left">
           <div className="flex items-start justify-between gap-4">
             <div className="space-y-2">
