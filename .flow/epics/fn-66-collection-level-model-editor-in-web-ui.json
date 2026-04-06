@@ -1,0 +1,13 @@
+{
+  "branch_name": "fn-66-collection-level-model-editor-in-web-ui",
+  "created_at": "2026-04-06T12:22:31.594696Z",
+  "depends_on_epics": [],
+  "id": "fn-66-collection-level-model-editor-in-web-ui",
+  "next_task": 1,
+  "plan_review_status": "unknown",
+  "plan_reviewed_at": null,
+  "spec_path": ".flow/specs/fn-66-collection-level-model-editor-in-web-ui.md",
+  "status": "open",
+  "title": "Collection-level model editor in web UI",
+  "updated_at": "2026-04-06T12:22:31.594924Z"
+}

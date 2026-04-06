@@ -444,6 +444,7 @@ Override paths (applied before platform defaults):
 ## File Locations
 
 **Linux** (XDG):
+
 | Path | Purpose |
 |------|---------|
 | `~/.config/gno/index.yml` | Config |
@@ -451,6 +452,7 @@ Override paths (applied before platform defaults):
 | `~/.cache/gno/models/` | Model cache |
 
 **macOS**:
+
 | Path | Purpose |
 |------|---------|
 | `~/Library/Application Support/gno/config/index.yml` | Config |

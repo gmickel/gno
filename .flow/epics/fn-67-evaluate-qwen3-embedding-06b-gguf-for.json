@@ -1,0 +1,13 @@
+{
+  "branch_name": "fn-67-evaluate-qwen3-embedding-06b-gguf-for",
+  "created_at": "2026-04-06T12:22:31.603773Z",
+  "depends_on_epics": [],
+  "id": "fn-67-evaluate-qwen3-embedding-06b-gguf-for",
+  "next_task": 1,
+  "plan_review_status": "unknown",
+  "plan_reviewed_at": null,
+  "spec_path": ".flow/specs/fn-67-evaluate-qwen3-embedding-06b-gguf-for.md",
+  "status": "open",
+  "title": "Evaluate Qwen3-Embedding-0.6B-GGUF for general multilingual collections",
+  "updated_at": "2026-04-06T12:22:31.603957Z"
+}

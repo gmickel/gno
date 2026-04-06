@@ -1,0 +1,14 @@
+{
+  "assignee": null,
+  "claim_note": "",
+  "claimed_at": null,
+  "created_at": "2026-04-06T12:22:48.219766Z",
+  "depends_on": ["fn-66-collection-level-model-editor-in-web-ui.1"],
+  "epic": "fn-66-collection-level-model-editor-in-web-ui",
+  "id": "fn-66-collection-level-model-editor-in-web-ui.2",
+  "priority": 2,
+  "spec_path": ".flow/tasks/fn-66-collection-level-model-editor-in-web-ui.2.md",
+  "status": "todo",
+  "title": "Build collection-level model editor UX in the web app",
+  "updated_at": "2026-04-06T12:22:48.219961Z"
+}

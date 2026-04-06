@@ -170,6 +170,8 @@ nav:
     items:
       - title: Glossary
         url: /docs/GLOSSARY/
+      - title: Benchmarks
+        url: /features/benchmarks/
       - title: Changelog
         url: /changelog/
       - title: Ecosystem

@@ -1,0 +1,14 @@
+{
+  "assignee": null,
+  "claim_note": "",
+  "claimed_at": null,
+  "created_at": "2026-04-06T12:22:48.244361Z",
+  "depends_on": [],
+  "epic": "fn-67-evaluate-qwen3-embedding-06b-gguf-for",
+  "id": "fn-67-evaluate-qwen3-embedding-06b-gguf-for.1",
+  "priority": 1,
+  "spec_path": ".flow/tasks/fn-67-evaluate-qwen3-embedding-06b-gguf-for.1.md",
+  "status": "todo",
+  "title": "Create multilingual public markdown benchmark fixtures for general collections",
+  "updated_at": "2026-04-06T12:22:48.244565Z"
+}

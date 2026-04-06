@@ -1,0 +1,14 @@
+{
+  "assignee": null,
+  "claim_note": "",
+  "claimed_at": null,
+  "created_at": "2026-04-06T12:22:48.258290Z",
+  "depends_on": ["fn-67-evaluate-qwen3-embedding-06b-gguf-for.1"],
+  "epic": "fn-67-evaluate-qwen3-embedding-06b-gguf-for",
+  "id": "fn-67-evaluate-qwen3-embedding-06b-gguf-for.2",
+  "priority": 2,
+  "spec_path": ".flow/tasks/fn-67-evaluate-qwen3-embedding-06b-gguf-for.2.md",
+  "status": "todo",
+  "title": "Run general-collection benchmark lane for Qwen3 vs bge-m3 using the existing retrieval pipeline",
+  "updated_at": "2026-04-06T12:22:48.258495Z"
+}
