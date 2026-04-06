@@ -251,7 +251,7 @@ This still uses normal GNO model provisioning rules:
 
 - it auto-downloads on first use by default
 - it respects `GNO_NO_AUTO_DOWNLOAD` / offline policy the same way preset models do
-- it is currently best treated as a code-collection override, not a blanket replacement for the global default, because it trades higher embedding latency for better code retrieval quality
+- it is now the same embed model the built-in presets use, so this override is mostly useful when one collection should diverge from the global default or when migrating older configs explicitly
 
 ### Current general multilingual benchmark signal
 
@@ -261,30 +261,22 @@ retrieval.
 
 Current product stance:
 
-- keep `bge-m3` as the shipped global default for now
-- treat Qwen as the leading candidate for multilingual prose/docs collections
-- only flip the shipped default after enough evidence and a clean re-embed UX
-
-Why not switch the default immediately?
-
-- changing the global embed model means existing collections need a fresh
-  `gno embed` pass
-- GNO now treats backlog/readiness as model-aware after a preset switch, but the
-  product story is still safer if the default change is a deliberate follow-up
-  release decision, not an incidental benchmark reaction
+- `Qwen3-Embedding-0.6B-GGUF` is now the built-in preset default
+- existing users who upgrade may need a fresh `gno embed` pass because their old vectors were created with `bge-m3`
+- GNO now counts readiness/backlog against the active embed model, so the need to re-embed is visible immediately after a preset/default change
 
 ### Model Details
 
 All presets use:
 
-- **bge-m3** for embeddings (1024 dimensions, multilingual)
+- **Qwen3-Embedding-0.6B** for embeddings (multilingual)
 - **Qwen3-Reranker-0.6B** for reranking (scores best chunk per document)
 
-| Preset   | Embed     | Rerank                 | Gen           |
-| -------- | --------- | ---------------------- | ------------- |
-| slim     | bge-m3-Q4 | Qwen3-Reranker-0.6B-Q8 | Qwen3-1.7B-Q4 |
-| balanced | bge-m3-Q4 | Qwen3-Reranker-0.6B-Q8 | Qwen2.5-3B-Q4 |
-| quality  | bge-m3-Q4 | Qwen3-Reranker-0.6B-Q8 | Qwen3-4B-Q4   |
+| Preset   | Embed                   | Rerank                 | Gen           |
+| -------- | ----------------------- | ---------------------- | ------------- |
+| slim     | Qwen3-Embedding-0.6B-Q8 | Qwen3-Reranker-0.6B-Q8 | Qwen3-1.7B-Q4 |
+| balanced | Qwen3-Embedding-0.6B-Q8 | Qwen3-Reranker-0.6B-Q8 | Qwen2.5-3B-Q4 |
+| quality  | Qwen3-Embedding-0.6B-Q8 | Qwen3-Reranker-0.6B-Q8 | Qwen3-4B-Q4   |
 
 The reranker's 32K context window allows scoring complete documents (tables, code, all sections) rather than truncated snippets.
 

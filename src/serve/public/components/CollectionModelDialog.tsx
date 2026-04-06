@@ -133,7 +133,9 @@ export function CollectionModelDialog({
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const showCodeRecommendation =
-    collection !== null && collectionLooksCodeHeavy(collection);
+    collection !== null &&
+    collectionLooksCodeHeavy(collection) &&
+    collection.effectiveModels?.embed !== CODE_EMBED_RECOMMENDATION;
 
   useEffect(() => {
     if (!open || !collection) {

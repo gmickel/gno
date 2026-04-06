@@ -147,8 +147,7 @@ Interpretation:
 
 - Qwen materially outperforms the incumbent on the new multilingual prose/docs
   lane too
-- this makes Qwen the strongest current candidate for a future default embed
-  model on general collections
-- but GNO should still keep `bge-m3` as the shipped default until the
-  re-embed/default-switch UX is fully settled and the broader evaluation lane
-  grows beyond one public corpus
+- this was strong enough to justify switching the built-in preset default embed
+  model from `bge-m3` to `Qwen3-Embedding-0.6B-GGUF`
+- existing users still need a fresh `gno embed` pass after upgrading if they
+  want vector and hybrid retrieval to catch up to the new default

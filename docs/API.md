@@ -1692,7 +1692,7 @@ GET /api/presets
     {
       "id": "slim-tuned",
       "name": "GNO Slim Tuned (Default, ~1GB)",
-      "embed": "hf:...bge-m3-Q4...",
+      "embed": "hf:...Qwen3-Embedding-0.6B-Q8_0...",
       "rerank": "hf:...reranker-Q4...",
       "expand": "hf:...gno-expansion-auto-entity-lock-default-mix...",
       "gen": "hf:...qwen3-4b-Q4...",

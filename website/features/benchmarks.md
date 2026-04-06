@@ -109,10 +109,10 @@ Current best result:
 
 - `Qwen3-Embedding-0.6B-GGUF`
 
-Practical recommendation:
+Current product stance:
 
-- keep `bge-m3` as the global default for mixed notes/docs collections
-- use `Qwen3-Embedding-0.6B-GGUF` as a per-collection `models.embed` override for code-heavy collections
+- built-in presets now use `Qwen3-Embedding-0.6B-GGUF` as the default embed model
+- collection-level overrides still matter when one collection should diverge from that default
 
 Example:
 
@@ -125,7 +125,7 @@ collections:
       embed: "hf:Qwen/Qwen3-Embedding-0.6B-GGUF/Qwen3-Embedding-0.6B-Q8_0.gguf"
 ```
 
-That gives you a code-specialist embedder without forcing every prose-heavy collection onto the slower model.
+That gives you an explicit collection override when one collection should diverge from the new default.
 
 ## Current General Multilingual Candidate
 
@@ -137,10 +137,10 @@ Current public-docs benchmark numbers:
 
 Interpretation:
 
-- Qwen is now the strongest general multilingual embedding candidate we have
+- Qwen is now the strongest general multilingual embedding model we have
   measured, not just the strongest code-specialist candidate
-- but GNO still keeps `bge-m3` as the shipped default until the global
-  re-embed/default-switch story is intentionally productized
+- this benchmark lane was strong enough to justify switching built-in presets to Qwen
+- existing users still need a fresh embed pass after upgrading so current collections catch up
 
 ## Autonomous Search, Bounded
 

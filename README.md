@@ -92,7 +92,7 @@ gno daemon
 
 - **Retrieval Quality Upgrade**: stronger BM25 lexical handling, code-aware chunking, terminal result hyperlinks, and per-collection model overrides
 - **Code Embedding Benchmarks**: new benchmark workflow across canonical, real-GNO, and pinned OSS slices for comparing alternate embedding models
-- **Recommended Code Embed Model**: docs and benchmark pages now point to `Qwen3-Embedding-0.6B-GGUF` as the current code-specialist embedding option
+- **Default Embed Model**: built-in presets now use `Qwen3-Embedding-0.6B-GGUF` after it beat `bge-m3` on both code and multilingual prose benchmark lanes
 - **Regression Fixes**: tightened phrase/negation/hyphen/underscore BM25 behavior, cleaned non-TTY hyperlink output, improved `gno doctor` chunking visibility, and fixed the embedding autoresearch harness
 
 ### Fine-Tuned Model Quick Use
@@ -103,7 +103,7 @@ models:
   presets:
     - id: slim-tuned
       name: GNO Slim Tuned
-      embed: hf:gpustack/bge-m3-GGUF/bge-m3-Q4_K_M.gguf
+      embed: hf:Qwen/Qwen3-Embedding-0.6B-GGUF/Qwen3-Embedding-0.6B-Q8_0.gguf
       rerank: hf:ggml-org/Qwen3-Reranker-0.6B-Q8_0-GGUF/qwen3-reranker-0.6b-q8_0.gguf
       expand: hf:guiltylemon/gno-expansion-slim-retrieval-v1/gno-expansion-auto-entity-lock-default-mix-lr95-f16.gguf
       gen: hf:unsloth/Qwen3-1.7B-GGUF/Qwen3-1.7B-Q4_K_M.gguf
@@ -659,11 +659,11 @@ graph TD
 
 Models auto-download on first use to `~/.cache/gno/models/`. For deterministic startup, set `GNO_NO_AUTO_DOWNLOAD=1` and use `gno models pull` explicitly. Alternatively, offload to a GPU server on your network using HTTP backends.
 
-| Model               | Purpose                               | Size         |
-| :------------------ | :------------------------------------ | :----------- |
-| bge-m3              | Embeddings (1024-dim, multilingual)   | ~500MB       |
-| Qwen3-Reranker-0.6B | Cross-encoder reranking (32K context) | ~700MB       |
-| Qwen/SmolLM         | Query expansion + AI answers          | ~600MB-1.2GB |
+| Model                | Purpose                               | Size         |
+| :------------------- | :------------------------------------ | :----------- |
+| Qwen3-Embedding-0.6B | Embeddings (multilingual)             | ~640MB       |
+| Qwen3-Reranker-0.6B  | Cross-encoder reranking (32K context) | ~700MB       |
+| Qwen/SmolLM          | Query expansion + AI answers          | ~600MB-1.2GB |
 
 ### Model Presets
 
@@ -814,7 +814,7 @@ Why this is the current recommendation:
 Trade-off:
 
 - Qwen is slower to embed than `bge-m3`
-- use it where code retrieval quality matters, not necessarily as the global default for every collection
+- existing users upgrading to the new default may need to run `gno embed` again so vector and hybrid retrieval catch up
 
 ### General Multilingual Embedding Benchmark
 
@@ -833,8 +833,9 @@ Current signal on the public multilingual FastAPI-docs fixture:
 
 Interpretation:
 
-- Qwen is now the strongest general multilingual embedding candidate we have tested
-- but GNO still keeps `bge-m3` as the shipped default until the re-embed/default-switch story is fully settled
+- Qwen is now the strongest general multilingual embedding model we have tested
+- built-in presets now use Qwen by default
+- existing users may need to run `gno embed` again after upgrading so current collections catch up
 
 ---
 

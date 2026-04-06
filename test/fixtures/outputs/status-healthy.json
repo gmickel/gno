@@ -166,9 +166,9 @@
       "entries": [
         {
           "role": "embed",
-          "uri": "hf:gpustack/bge-m3-GGUF/bge-m3-Q4_K_M.gguf",
+          "uri": "hf:Qwen/Qwen3-Embedding-0.6B-GGUF/Qwen3-Embedding-0.6B-Q8_0.gguf",
           "cached": true,
-          "path": "/Users/user/Library/Caches/gno/bge-m3-Q4_K_M.gguf",
+          "path": "/Users/user/Library/Caches/gno/Qwen3-Embedding-0.6B-Q8_0.gguf",
           "sizeBytes": 536870912,
           "statusLabel": "Ready"
         },

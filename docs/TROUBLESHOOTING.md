@@ -372,6 +372,10 @@ gno embed
 
 The same idea applies in the Web UI after switching the active preset.
 
+The same logic also applies after upgrading to a release where the built-in
+default embedding model changed. Old vectors are kept, but GNO counts backlog
+against the new active embed model so the need to re-embed is visible.
+
 ### Force CPU-only for testing
 
 To disable Metal/CUDA/Vulkan and force `node-llama-cpp` onto the CPU backend

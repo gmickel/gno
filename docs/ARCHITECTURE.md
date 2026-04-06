@@ -179,7 +179,7 @@ All models run locally via node-llama-cpp:
 
 | Model  | Purpose                    | Default                              |
 | ------ | -------------------------- | ------------------------------------ |
-| Embed  | Generate vector embeddings | bge-m3-Q4 (1024 dims)                |
+| Embed  | Generate vector embeddings | Qwen3-Embedding-0.6B-Q8              |
 | Rerank | Cross-encoder scoring      | Qwen3-Reranker-0.6B-Q8 (32K context) |
 | Gen    | Answer generation          | Qwen3-1.7B-Q4                        |
 

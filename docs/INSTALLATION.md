@@ -145,12 +145,12 @@ gno models pull --gen     # Required for --answer
 
 Model presets control disk usage:
 
-| Preset     | Embed     | Rerank                 | Expand                   | Answer        |
-| ---------- | --------- | ---------------------- | ------------------------ | ------------- |
-| slim-tuned | bge-m3-Q4 | Qwen3-Reranker-0.6B-Q8 | GNO Slim Tuned expansion | Qwen3-1.7B-Q4 |
-| slim       | bge-m3-Q4 | Qwen3-Reranker-0.6B-Q8 | Qwen3-1.7B-Q4            | Qwen3-1.7B-Q4 |
-| balanced   | bge-m3-Q4 | Qwen3-Reranker-0.6B-Q8 | Qwen2.5-3B-Q4            | Qwen2.5-3B-Q4 |
-| quality    | bge-m3-Q4 | Qwen3-Reranker-0.6B-Q8 | Qwen3-4B-Q4              | Qwen3-4B-Q4   |
+| Preset     | Embed                   | Rerank                 | Expand                   | Answer        |
+| ---------- | ----------------------- | ---------------------- | ------------------------ | ------------- |
+| slim-tuned | Qwen3-Embedding-0.6B-Q8 | Qwen3-Reranker-0.6B-Q8 | GNO Slim Tuned expansion | Qwen3-1.7B-Q4 |
+| slim       | Qwen3-Embedding-0.6B-Q8 | Qwen3-Reranker-0.6B-Q8 | Qwen3-1.7B-Q4            | Qwen3-1.7B-Q4 |
+| balanced   | Qwen3-Embedding-0.6B-Q8 | Qwen3-Reranker-0.6B-Q8 | Qwen2.5-3B-Q4            | Qwen2.5-3B-Q4 |
+| quality    | Qwen3-Embedding-0.6B-Q8 | Qwen3-Reranker-0.6B-Q8 | Qwen3-4B-Q4              | Qwen3-4B-Q4   |
 
 Change preset in config:
 

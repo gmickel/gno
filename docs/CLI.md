@@ -347,7 +347,7 @@ Options:
 - `--embed-model <uri>` - Initial collection-specific embedding model override
 - `--update <cmd>` - Shell command to run before indexing
 
-Use `--embed-model` when one collection should use a different embedding model from the active global preset. This is the clean CLI path for code collections that should keep the rest of the workspace on `bge-m3`.
+Use `--embed-model` when one collection should use a different embedding model from the active global preset.
 
 ### gno collection list
 
@@ -515,7 +515,7 @@ models:
   presets:
     - id: slim-tuned
       name: GNO Slim Tuned
-      embed: hf:gpustack/bge-m3-GGUF/bge-m3-Q4_K_M.gguf
+      embed: hf:Qwen/Qwen3-Embedding-0.6B-GGUF/Qwen3-Embedding-0.6B-Q8_0.gguf
       rerank: hf:ggml-org/Qwen3-Reranker-0.6B-Q8_0-GGUF/qwen3-reranker-0.6b-q8_0.gguf
       expand: hf:guiltylemon/gno-expansion-slim-retrieval-v1/gno-expansion-auto-entity-lock-default-mix-lr95-f16.gguf
       gen: hf:unsloth/Qwen3-1.7B-GGUF/Qwen3-1.7B-Q4_K_M.gguf
