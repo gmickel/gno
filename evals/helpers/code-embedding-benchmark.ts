@@ -18,9 +18,6 @@ import { computeMrr, computeNdcg, computeRecall } from "../scorers/ir-metrics";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const FIXTURE_ROOT = join(__dirname, "../fixtures/code-embedding-benchmark");
-const CORPUS_DIR = join(FIXTURE_ROOT, "corpus");
-const QUERIES_PATH = join(FIXTURE_ROOT, "queries.json");
-const COLLECTION = "codebench";
 
 export interface CodeEmbeddingBenchmarkCase {
   id: string;
@@ -36,6 +33,17 @@ export interface CodeEmbeddingBenchmarkOptions {
   cacheDir?: string;
   dbPath?: string;
   limit?: number;
+  fixture?: string;
+}
+
+interface CodeEmbeddingFixture {
+  id: string;
+  label: string;
+  collection: string;
+  corpusDir: string;
+  queriesPath: string;
+  include: string[];
+  languages: string[];
 }
 
 interface MetricSummary {
@@ -156,20 +164,21 @@ function computeMetrics(
 }
 
 async function loadCases(): Promise<CodeEmbeddingBenchmarkCase[]> {
-  return (await Bun.file(QUERIES_PATH).json()) as CodeEmbeddingBenchmarkCase[];
+  throw new Error("use loadCasesForFixture");
 }
 
 async function buildClient(
   input: CodeEmbeddingBenchmarkOptions,
-  tempDir: string
+  tempDir: string,
+  fixture: CodeEmbeddingFixture
 ): Promise<GnoClient> {
   const config = createDefaultConfig();
   config.collections = [
     {
-      name: COLLECTION,
-      path: CORPUS_DIR,
+      name: fixture.collection,
+      path: fixture.corpusDir,
       pattern: "**/*",
-      include: [".ts", ".tsx", ".js", ".jsx", ".py", ".go", ".rs"],
+      include: fixture.include,
       exclude: [],
       models: { embed: input.embedModel },
     },
@@ -182,11 +191,41 @@ async function buildClient(
   });
 }
 
-async function listCorpusDocs(): Promise<string[]> {
+async function loadFixtures(): Promise<CodeEmbeddingFixture[]> {
+  return (await Bun.file(
+    join(FIXTURE_ROOT, "fixtures.json")
+  ).json()) as CodeEmbeddingFixture[];
+}
+
+async function loadFixture(id?: string): Promise<CodeEmbeddingFixture> {
+  const fixtures = await loadFixtures();
+  const fixtureId = id ?? "canonical";
+  const fixture = fixtures.find((item) => item.id === fixtureId);
+  if (!fixture) {
+    throw new Error(`Unknown code embedding fixture: ${fixtureId}`);
+  }
+  return fixture;
+}
+
+async function loadCasesForFixture(
+  fixture: CodeEmbeddingFixture
+): Promise<CodeEmbeddingBenchmarkCase[]> {
+  return (await Bun.file(
+    fixture.queriesPath
+  ).json()) as CodeEmbeddingBenchmarkCase[];
+}
+
+async function listCorpusDocs(
+  corpusDir: string,
+  include: string[]
+): Promise<string[]> {
   const docs: string[] = [];
-  const glob = new Bun.Glob("**/*.{ts,tsx,js,jsx,py,go,rs}");
-  for await (const match of glob.scan({ cwd: CORPUS_DIR })) {
-    docs.push(match);
+  for (const ext of include) {
+    const normalized = ext.startsWith(".") ? ext.slice(1) : ext;
+    const glob = new Bun.Glob(`**/*.${normalized}`);
+    for await (const match of glob.scan({ cwd: corpusDir })) {
+      docs.push(match);
+    }
   }
   docs.sort();
   return docs;
@@ -195,15 +234,16 @@ async function listCorpusDocs(): Promise<string[]> {
 export async function runCodeEmbeddingBenchmark(
   input: CodeEmbeddingBenchmarkOptions
 ): Promise<CodeEmbeddingBenchmarkSummary> {
+  const fixture = await loadFixture(input.fixture);
   const tempDir = await mkdtemp(join(tmpdir(), "gno-code-embed-bench-"));
-  const cases = await loadCases();
-  const corpusDocs = await listCorpusDocs();
-  const client = await buildClient(input, tempDir);
+  const cases = await loadCasesForFixture(fixture);
+  const corpusDocs = await listCorpusDocs(fixture.corpusDir, fixture.include);
+  const client = await buildClient(input, tempDir, fixture);
   const limit = input.limit ?? 10;
 
   try {
-    await client.index({ collection: COLLECTION, noEmbed: true });
-    const embedResult = await client.embed({ collection: COLLECTION });
+    await client.index({ collection: fixture.collection, noEmbed: true });
+    const embedResult = await client.embed({ collection: fixture.collection });
 
     const caseResults: CaseResult[] = [];
     const vectorLatencies: number[] = [];
@@ -212,7 +252,7 @@ export async function runCodeEmbeddingBenchmark(
     for (const testCase of cases) {
       const vectorStart = performance.now();
       const vectorResult = await client.vsearch(testCase.query, {
-        collection: COLLECTION,
+        collection: fixture.collection,
         limit,
       });
       const vectorLatencyMs = performance.now() - vectorStart;
@@ -220,7 +260,7 @@ export async function runCodeEmbeddingBenchmark(
 
       const hybridStart = performance.now();
       const hybridResult = await client.query(testCase.query, {
-        collection: COLLECTION,
+        collection: fixture.collection,
         limit,
         noExpand: true,
         noRerank: true,
@@ -267,14 +307,14 @@ export async function runCodeEmbeddingBenchmark(
       label: input.label ?? input.embedModel,
       runtime: {
         embedModel: input.embedModel,
-        collection: COLLECTION,
-        corpusDir: CORPUS_DIR,
+        collection: fixture.collection,
+        corpusDir: fixture.corpusDir,
         queryCount: cases.length,
         limit,
       },
       corpus: {
         docCount: corpusDocs.length,
-        languages: ["typescript", "javascript", "python", "go", "rust"],
+        languages: fixture.languages,
       },
       indexing: {
         embedded: embedResult.embedded,

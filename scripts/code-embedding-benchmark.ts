@@ -13,6 +13,7 @@ interface CliOptions {
   write: boolean;
   out?: string;
   dryRun: boolean;
+  fixture?: string;
 }
 
 function parseArgs(args: string[]): CliOptions {
@@ -39,9 +40,12 @@ function parseArgs(args: string[]): CliOptions {
       case "--dry-run":
         options.dryRun = true;
         break;
+      case "--fixture":
+        options.fixture = args[++index];
+        break;
       default:
         throw new Error(
-          `Unknown argument: ${arg}. Use --candidate <id> or --model <uri> [--label <name>] [--write] [--out <path>] [--dry-run]`
+          `Unknown argument: ${arg}. Use --candidate <id> or --model <uri> [--label <name>] [--fixture <id>] [--write] [--out <path>] [--dry-run]`
         );
     }
   }
@@ -117,6 +121,7 @@ if (options.dryRun) {
         candidateId: candidate?.id ?? null,
         label: options.label ?? candidate?.label ?? model,
         embedModel: model,
+        fixture: options.fixture ?? "canonical",
         write: options.write,
         out: options.out ?? null,
       },
@@ -130,6 +135,7 @@ if (options.dryRun) {
 const summary = await runCodeEmbeddingBenchmark({
   embedModel: model,
   label: options.label ?? candidate?.label ?? model,
+  fixture: options.fixture,
 });
 
 console.log(

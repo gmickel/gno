@@ -1,0 +1,38 @@
+[
+  {
+    "id": "canonical",
+    "label": "Canonical code embedding fixture",
+    "collection": "codebench",
+    "corpusDir": "evals/fixtures/code-embedding-benchmark/corpus",
+    "queriesPath": "evals/fixtures/code-embedding-benchmark/queries.json",
+    "include": [
+      ".ts",
+      ".tsx",
+      ".js",
+      ".jsx",
+      ".py",
+      ".go",
+      ".rs",
+      ".swift",
+      ".c"
+    ],
+    "languages": [
+      "typescript",
+      "javascript",
+      "python",
+      "go",
+      "rust",
+      "swift",
+      "c"
+    ]
+  },
+  {
+    "id": "repo-serve",
+    "label": "GNO serve slice",
+    "collection": "repo-serve",
+    "corpusDir": "src/serve",
+    "queriesPath": "evals/fixtures/code-embedding-benchmark/repo-serve-queries.json",
+    "include": [".ts", ".tsx"],
+    "languages": ["typescript", "tsx"]
+  }
+]

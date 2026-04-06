@@ -54,5 +54,19 @@
     "query": "LruCache",
     "relevantDocs": ["rust/lru_cache.rs"],
     "judgments": [{ "docid": "rust/lru_cache.rs", "relevance": 2 }]
+  },
+  {
+    "id": "nl-swift-network-client",
+    "caseSet": "nl2code",
+    "query": "swift network client that fetches json and throws when the http status code is not 2xx",
+    "relevantDocs": ["swift/network_client.swift"],
+    "judgments": [{ "docid": "swift/network_client.swift", "relevance": 3 }]
+  },
+  {
+    "id": "nl-c-token-bucket",
+    "caseSet": "nl2code",
+    "query": "c implementation of a token bucket rate limiter with refill logic",
+    "relevantDocs": ["c/token_bucket.c"],
+    "judgments": [{ "docid": "c/token_bucket.c", "relevance": 3 }]
   }
 ]

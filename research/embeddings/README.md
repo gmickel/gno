@@ -21,6 +21,9 @@ Suggested workflow:
 # 1. Establish or refresh the incumbent baseline
 bun run bench:code-embeddings --candidate bge-m3-incumbent --write
 
+# Optional: benchmark against a real repo slice instead of the fixed corpus
+bun run bench:code-embeddings --candidate bge-m3-incumbent --fixture repo-serve --write
+
 # 2. Add candidate model URIs to the autonomous search space
 $EDITOR research/embeddings/autonomous/search-space.json
 
@@ -34,3 +37,21 @@ bun run research:embeddings:autonomous:search --dry-run
 
 Do not change product defaults from this harness directly.
 Promotion remains a human decision.
+
+## First model shortlist
+
+Baseline:
+
+- `bge-m3` (current incumbent)
+
+First challenger batch:
+
+- `Qwen3-Embedding-0.6B`
+- `jina-code-embeddings-0.5b`
+- `F2LLM-0.6B`
+
+Notes:
+
+- the canonical benchmark corpus is intentionally small and language-diverse
+- the `repo-serve` fixture lets us compare models on actual GNO code under `src/serve`
+- some challengers are most realistic to evaluate via an HTTP embedding server first, then map to a final runtime URI once we decide they are worth deeper testing

@@ -43,4 +43,27 @@ describe("code embedding benchmark fixtures", () => {
     expect(output.candidateId).toBe("bge-m3-incumbent");
     expect(output.embedModel).toContain("bge-m3");
   });
+
+  test("benchmark script supports fixture selection in dry-run mode", () => {
+    const result = Bun.spawnSync({
+      cmd: [
+        "bun",
+        "scripts/code-embedding-benchmark.ts",
+        "--candidate",
+        "bge-m3-incumbent",
+        "--fixture",
+        "repo-serve",
+        "--dry-run",
+      ],
+      cwd: "/Users/gordon/work/gno",
+      stdout: "pipe",
+      stderr: "pipe",
+    });
+
+    expect(result.exitCode).toBe(0);
+    const output = JSON.parse(new TextDecoder().decode(result.stdout)) as {
+      fixture: string;
+    };
+    expect(output.fixture).toBe("repo-serve");
+  });
 });

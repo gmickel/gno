@@ -7,6 +7,24 @@
       "label": "bge-m3 incumbent",
       "embedModel": "hf:gpustack/bge-m3-GGUF/bge-m3-Q4_K_M.gguf",
       "notes": "Run this first to establish the baseline artifact."
+    },
+    {
+      "id": "qwen3-embedding-0.6b",
+      "label": "Qwen3 Embedding 0.6B",
+      "embedModel": "Qwen/Qwen3-Embedding-0.6B",
+      "notes": "Strong dense retrieval challenger. Likely best tested through an HTTP embedding server (TEI or equivalent) before adding a final runtime URI."
+    },
+    {
+      "id": "jina-code-embeddings-0.5b",
+      "label": "jina code embeddings 0.5b",
+      "embedModel": "jinaai/jina-code-embeddings-0.5b",
+      "notes": "Purpose-built code embedding model across 15+ languages. Likely test through an HTTP embedding server first."
+    },
+    {
+      "id": "f2llm-0.6b",
+      "label": "F2LLM 0.6B",
+      "embedModel": "codefuse-ai/F2LLM-0.6B",
+      "notes": "General open embedding baseline with plausible code-retrieval value. Likely test through an HTTP embedding server first."
     }
   ]
 }
