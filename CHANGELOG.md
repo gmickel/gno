@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.39.0] - 2026-04-06
+
+### Added
+
+- Added a new public multilingual markdown benchmark lane for general collections, with vendored FastAPI docs fixtures, same-language and cross-language relevance cases, and committed benchmark artifacts for `bge-m3` and `Qwen3-Embedding-0.6B-GGUF`.
+- Added collection-level embedding cleanup across CLI, Web UI, and API, including stale-vs-all modes and protection for vectors still shared by active documents in other collections.
+
+### Changed
+
+- Switched built-in preset embedding models from `bge-m3` to `Qwen3-Embedding-0.6B-GGUF` after it materially outperformed `bge-m3` on both code and multilingual prose benchmark lanes.
+- Status/backlog reporting is now model-aware for the active embedding model across CLI, Web UI, SDK, and MCP, so preset/default embed-model changes immediately surface the need to re-embed.
+- Preset switching in CLI/Web/API now explicitly tells users when the embedding model changed and embeddings need to be regenerated.
+
 ## [0.38.0] - 2026-04-06
 
 ### Added
