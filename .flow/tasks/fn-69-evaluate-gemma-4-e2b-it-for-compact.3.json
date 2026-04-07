@@ -1,0 +1,14 @@
+{
+  "assignee": null,
+  "claim_note": "",
+  "claimed_at": null,
+  "created_at": "2026-04-07T08:45:19Z",
+  "depends_on": ["fn-69-evaluate-gemma-4-e2b-it-for-compact.2"],
+  "epic": "fn-69-evaluate-gemma-4-e2b-it-for-compact",
+  "id": "fn-69-evaluate-gemma-4-e2b-it-for-compact.3",
+  "priority": 3,
+  "spec_path": ".flow/tasks/fn-69-evaluate-gemma-4-e2b-it-for-compact.3.md",
+  "status": "todo",
+  "title": "Assess runtime fit and preset viability",
+  "updated_at": "2026-04-07T08:45:19Z"
+}

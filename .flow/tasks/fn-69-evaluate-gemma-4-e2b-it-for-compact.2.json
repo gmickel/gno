@@ -1,0 +1,14 @@
+{
+  "assignee": null,
+  "claim_note": "",
+  "claimed_at": null,
+  "created_at": "2026-04-07T08:45:19Z",
+  "depends_on": ["fn-69-evaluate-gemma-4-e2b-it-for-compact.1"],
+  "epic": "fn-69-evaluate-gemma-4-e2b-it-for-compact",
+  "id": "fn-69-evaluate-gemma-4-e2b-it-for-compact.2",
+  "priority": 2,
+  "spec_path": ".flow/tasks/fn-69-evaluate-gemma-4-e2b-it-for-compact.2.md",
+  "status": "todo",
+  "title": "Run Gemma 4 E2B-it vs the current compact answer model",
+  "updated_at": "2026-04-07T08:45:19Z"
+}
