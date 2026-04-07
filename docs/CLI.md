@@ -423,6 +423,19 @@ gno collection clear-embeddings notes --all
 gno embed --collection notes
 ```
 
+If a run still hits model/runtime problems, use verbose mode to see concrete
+sample failures and GNO's retry hint:
+
+```bash
+gno --verbose embed --force
+gno --verbose embed --collection notes
+```
+
+If the error mentions `Object is disposed`, rerun the command once. GNO now
+resets the embedding port automatically after that class of node-llama-cpp
+failure, but a fresh rerun is still the safest last resort when a run was
+interrupted mid-way.
+
 ## Indexing Commands
 
 ### gno update

@@ -117,10 +117,12 @@ export async function createVectorIndexPort(
   `);
 
   // Prepared statements for vec0 table (if available)
-  const upsertVecStmt = searchAvailable
-    ? db.prepare(
-        `INSERT OR REPLACE INTO ${tableName} (chunk_id, embedding) VALUES (?, ?)`
-      )
+  const deleteVecChunkStmt = searchAvailable
+    ? db.prepare(`DELETE FROM ${tableName} WHERE chunk_id = ?`)
+    : null;
+
+  const insertVecStmt = searchAvailable
+    ? db.prepare(`INSERT INTO ${tableName} (chunk_id, embedding) VALUES (?, ?)`)
     : null;
 
   const searchStmt = searchAvailable
@@ -175,12 +177,15 @@ export async function createVectorIndexPort(
       }
 
       // 2. Best-effort update vec0 (graceful degradation)
-      if (upsertVecStmt) {
+      if (deleteVecChunkStmt && insertVecStmt) {
         try {
           db.transaction(() => {
             for (const row of rows) {
               const chunkId = `${row.mirrorHash}:${row.seq}`;
-              upsertVecStmt.run(chunkId, encodeEmbedding(row.embedding));
+              // sqlite-vec vec0 tables do not reliably support OR REPLACE semantics.
+              // Delete first, then insert the fresh vector row.
+              deleteVecChunkStmt.run(chunkId);
+              insertVecStmt.run(chunkId, encodeEmbedding(row.embedding));
             }
           })();
         } catch (e) {

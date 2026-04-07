@@ -396,6 +396,31 @@ Then, if you used `--all`:
 gno embed --collection my-collection
 ```
 
+### Embedding run says `Object is disposed` or a batch failed partway through
+
+GNO now retries smaller batches, resets the embedding port when node-llama-cpp
+disposes a context unexpectedly, and prints sample failures in verbose mode.
+
+The safest retry commands are:
+
+```bash
+gno --verbose embed --force
+```
+
+or for one collection:
+
+```bash
+gno --verbose embed --collection my-collection
+```
+
+If you changed embedding formatting/profile behavior for the same model URI,
+prefer a full reset first:
+
+```bash
+gno collection clear-embeddings my-collection --all
+gno embed --collection my-collection
+```
+
 ### Force CPU-only for testing
 
 To disable Metal/CUDA/Vulkan and force `node-llama-cpp` onto the CPU backend
