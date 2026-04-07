@@ -71,6 +71,9 @@ export type EmbedResult =
       duration: number;
       model: string;
       searchAvailable: boolean;
+      errorSamples?: string[];
+      suggestion?: string;
+      syncError?: string;
     }
   | { success: false; error: string };
 
@@ -85,6 +88,30 @@ function formatDuration(seconds: number): string {
   const mins = Math.floor(seconds / 60);
   const secs = seconds % 60;
   return `${mins}m ${secs.toFixed(0)}s`;
+}
+
+function formatLlmFailure(
+  error: { message: string; cause?: unknown } | undefined
+): string {
+  if (!error) {
+    return "Unknown embedding failure";
+  }
+  const cause =
+    error.cause &&
+    typeof error.cause === "object" &&
+    "message" in error.cause &&
+    typeof error.cause.message === "string"
+      ? error.cause.message
+      : typeof error.cause === "string"
+        ? error.cause
+        : "";
+  return cause && cause !== error.message
+    ? `${error.message} - ${cause}`
+    : error.message;
+}
+
+function isDisposedBatchError(message: string): boolean {
+  return message.toLowerCase().includes("object is disposed");
 }
 
 async function checkVecAvailable(
@@ -111,10 +138,20 @@ interface BatchContext {
   showProgress: boolean;
   totalToEmbed: number;
   verbose: boolean;
+  recreateEmbedPort?: () => Promise<
+    { ok: true; value: EmbeddingPort } | { ok: false; error: string }
+  >;
 }
 
 type BatchResult =
-  | { ok: true; embedded: number; errors: number; duration: number }
+  | {
+      ok: true;
+      embedded: number;
+      errors: number;
+      duration: number;
+      errorSamples: string[];
+      suggestion?: string;
+    }
   | { ok: false; error: string };
 
 interface Cursor {
@@ -126,7 +163,20 @@ async function processBatches(ctx: BatchContext): Promise<BatchResult> {
   const startTime = Date.now();
   let embedded = 0;
   let errors = 0;
+  const errorSamples: string[] = [];
+  let suggestion: string | undefined;
   let cursor: Cursor | undefined;
+
+  const pushErrorSamples = (samples: string[]): void => {
+    for (const sample of samples) {
+      if (errorSamples.length >= 5) {
+        break;
+      }
+      if (!errorSamples.includes(sample)) {
+        errorSamples.push(sample);
+      }
+    }
+  };
 
   while (embedded + errors < ctx.totalToEmbed) {
     // Get next batch using seek pagination (cursor-based)
@@ -161,6 +211,89 @@ async function processBatches(ctx: BatchContext): Promise<BatchResult> {
       )
     );
     if (!batchEmbedResult.ok) {
+      const formattedError = formatLlmFailure(batchEmbedResult.error);
+      if (ctx.recreateEmbedPort && isDisposedBatchError(formattedError)) {
+        if (ctx.verbose) {
+          process.stderr.write(
+            "\n[embed] Embedding port disposed; recreating model/contexts and retrying batch once\n"
+          );
+        }
+        const recreated = await ctx.recreateEmbedPort();
+        if (recreated.ok) {
+          ctx.embedPort = recreated.value;
+          const retryResult = await embedTextsWithRecovery(
+            ctx.embedPort,
+            batch.map((b) =>
+              formatDocForEmbedding(b.text, b.title ?? undefined, ctx.modelUri)
+            )
+          );
+          if (retryResult.ok) {
+            if (ctx.verbose) {
+              process.stderr.write(
+                "\n[embed] Retry after port reset succeeded\n"
+              );
+            }
+            pushErrorSamples(retryResult.value.failureSamples);
+            suggestion ||= retryResult.value.retrySuggestion;
+
+            const retryVectors: VectorRow[] = [];
+            for (const [idx, item] of batch.entries()) {
+              const embedding = retryResult.value.vectors[idx];
+              if (!embedding) {
+                errors += 1;
+                continue;
+              }
+              retryVectors.push({
+                mirrorHash: item.mirrorHash,
+                seq: item.seq,
+                model: ctx.modelUri,
+                embedding: new Float32Array(embedding),
+              });
+            }
+
+            if (retryVectors.length === 0) {
+              if (ctx.verbose) {
+                process.stderr.write(
+                  "\n[embed] No recoverable embeddings in retry batch\n"
+                );
+              }
+              continue;
+            }
+
+            const retryStoreResult =
+              await ctx.vectorIndex.upsertVectors(retryVectors);
+            if (!retryStoreResult.ok) {
+              if (ctx.verbose) {
+                process.stderr.write(
+                  `\n[embed] Store failed: ${retryStoreResult.error.message}\n`
+                );
+              }
+              pushErrorSamples([retryStoreResult.error.message]);
+              suggestion ??=
+                "Store write failed. Rerun `gno embed` once more; if it repeats, run `gno doctor` and `gno vec sync`.";
+              errors += retryVectors.length;
+              continue;
+            }
+
+            embedded += retryVectors.length;
+            if (ctx.showProgress) {
+              const embeddedDisplay = Math.min(embedded, ctx.totalToEmbed);
+              const completed = Math.min(embedded + errors, ctx.totalToEmbed);
+              const pct = (completed / ctx.totalToEmbed) * 100;
+              const elapsed = (Date.now() - startTime) / 1000;
+              const rate = embedded / Math.max(elapsed, 0.001);
+              const eta =
+                Math.max(0, ctx.totalToEmbed - completed) /
+                Math.max(rate, 0.001);
+              process.stdout.write(
+                `\rEmbedding: ${embeddedDisplay.toLocaleString()}/${ctx.totalToEmbed.toLocaleString()} (${pct.toFixed(1)}%) | ${rate.toFixed(1)} chunks/s | ETA ${formatDuration(eta)}`
+              );
+            }
+            continue;
+          }
+        }
+      }
+
       if (ctx.verbose) {
         const err = batchEmbedResult.error;
         const cause = err.cause;
@@ -178,6 +311,9 @@ async function processBatches(ctx: BatchContext): Promise<BatchResult> {
           `\n[embed] Batch failed (${batch.length} chunks: ${titles}${batch.length > 3 ? "..." : ""}): ${err.message}${causeMsg ? ` - ${causeMsg}` : ""}\n`
         );
       }
+      pushErrorSamples([formattedError]);
+      suggestion =
+        "Try rerunning the same command. If failures persist, rerun with `gno --verbose embed --batch-size 1` to isolate failing chunks.";
       errors += batch.length;
       continue;
     }
@@ -190,6 +326,13 @@ async function processBatches(ctx: BatchContext): Promise<BatchResult> {
       process.stderr.write(
         `\n[embed] Batch fallback (${batch.length} chunks: ${titles}${batch.length > 3 ? "..." : ""}): ${batchEmbedResult.value.batchError ?? "unknown batch error"}\n`
       );
+    }
+    pushErrorSamples(batchEmbedResult.value.failureSamples);
+    suggestion ||= batchEmbedResult.value.retrySuggestion;
+    if (ctx.verbose && batchEmbedResult.value.failureSamples.length > 0) {
+      for (const sample of batchEmbedResult.value.failureSamples) {
+        process.stderr.write(`\n[embed] Sample failure: ${sample}\n`);
+      }
     }
 
     const vectors: VectorRow[] = [];
@@ -221,6 +364,9 @@ async function processBatches(ctx: BatchContext): Promise<BatchResult> {
           `\n[embed] Store failed: ${storeResult.error.message}\n`
         );
       }
+      pushErrorSamples([storeResult.error.message]);
+      suggestion ??=
+        "Store write failed. Rerun `gno embed` once more; if it repeats, run `gno doctor` and `gno vec sync`.";
       errors += vectors.length;
       continue;
     }
@@ -229,13 +375,15 @@ async function processBatches(ctx: BatchContext): Promise<BatchResult> {
 
     // Progress output
     if (ctx.showProgress) {
-      const pct = ((embedded + errors) / ctx.totalToEmbed) * 100;
+      const embeddedDisplay = Math.min(embedded, ctx.totalToEmbed);
+      const completed = Math.min(embedded + errors, ctx.totalToEmbed);
+      const pct = (completed / ctx.totalToEmbed) * 100;
       const elapsed = (Date.now() - startTime) / 1000;
       const rate = embedded / Math.max(elapsed, 0.001);
       const eta =
-        (ctx.totalToEmbed - embedded - errors) / Math.max(rate, 0.001);
+        Math.max(0, ctx.totalToEmbed - completed) / Math.max(rate, 0.001);
       process.stdout.write(
-        `\rEmbedding: ${embedded.toLocaleString()}/${ctx.totalToEmbed.toLocaleString()} (${pct.toFixed(1)}%) | ${rate.toFixed(1)} chunks/s | ETA ${formatDuration(eta)}`
+        `\rEmbedding: ${embeddedDisplay.toLocaleString()}/${ctx.totalToEmbed.toLocaleString()} (${pct.toFixed(1)}%) | ${rate.toFixed(1)} chunks/s | ETA ${formatDuration(eta)}`
       );
     }
   }
@@ -249,6 +397,8 @@ async function processBatches(ctx: BatchContext): Promise<BatchResult> {
     embedded,
     errors,
     duration: (Date.now() - startTime) / 1000,
+    errorSamples,
+    suggestion,
   };
 }
 
@@ -354,6 +504,7 @@ export async function embed(options: EmbedOptions = {}): Promise<EmbedResult> {
         duration: 0,
         model: modelUri,
         searchAvailable: vecAvailable,
+        errorSamples: [],
       };
     }
 
@@ -366,6 +517,7 @@ export async function embed(options: EmbedOptions = {}): Promise<EmbedResult> {
         duration: 0,
         model: modelUri,
         searchAvailable: vecAvailable,
+        errorSamples: [],
       };
     }
 
@@ -382,6 +534,27 @@ export async function embed(options: EmbedOptions = {}): Promise<EmbedResult> {
       : undefined;
 
     const llm = new LlmAdapter(config);
+    const recreateEmbedPort = async () => {
+      if (embedPort) {
+        await embedPort.dispose();
+      }
+      await llm.getManager().dispose(modelUri);
+      const recreated = await llm.createEmbeddingPort(modelUri, {
+        policy,
+        onProgress: downloadProgress
+          ? (progress) => downloadProgress("embed", progress)
+          : undefined,
+      });
+      if (!recreated.ok) {
+        return { ok: false as const, error: recreated.error.message };
+      }
+      const initResult = await recreated.value.init();
+      if (!initResult.ok) {
+        await recreated.value.dispose();
+        return { ok: false as const, error: initResult.error.message };
+      }
+      return { ok: true as const, value: recreated.value };
+    };
     const embedResult = await llm.createEmbeddingPort(modelUri, {
       policy,
       onProgress: downloadProgress
@@ -428,6 +601,7 @@ export async function embed(options: EmbedOptions = {}): Promise<EmbedResult> {
       showProgress: !options.json,
       totalToEmbed,
       verbose: options.verbose ?? false,
+      recreateEmbedPort,
     });
 
     if (!result.ok) {
@@ -447,10 +621,27 @@ export async function embed(options: EmbedOptions = {}): Promise<EmbedResult> {
           }
         }
         vectorIndex.vecDirty = false;
-      } else if (!options.json) {
-        process.stdout.write(
-          `\n[vec] Sync failed: ${syncResult.error.message}\n`
-        );
+      } else {
+        if (!options.json) {
+          process.stdout.write(
+            `\n[vec] Sync failed: ${syncResult.error.message}\n`
+          );
+        }
+        return {
+          success: true,
+          embedded: result.embedded,
+          errors: result.errors,
+          duration: result.duration,
+          model: modelUri,
+          searchAvailable: vectorIndex.searchAvailable,
+          errorSamples: [
+            ...result.errorSamples,
+            syncResult.error.message,
+          ].slice(0, 5),
+          suggestion:
+            "Vector index sync failed after embedding. Rerun `gno embed` once more. If it repeats, run `gno vec sync`.",
+          syncError: syncResult.error.message,
+        };
       }
     }
 
@@ -461,6 +652,8 @@ export async function embed(options: EmbedOptions = {}): Promise<EmbedResult> {
       duration: result.duration,
       model: modelUri,
       searchAvailable: vectorIndex.searchAvailable,
+      errorSamples: result.errorSamples,
+      suggestion: result.suggestion,
     };
   } finally {
     if (embedPort) {
@@ -585,6 +778,9 @@ export function formatEmbed(
         duration: result.duration,
         model: result.model,
         searchAvailable: result.searchAvailable,
+        errorSamples: result.errorSamples ?? [],
+        suggestion: result.suggestion,
+        syncError: result.syncError,
       },
       null,
       2
@@ -606,12 +802,24 @@ export function formatEmbed(
 
   if (result.errors > 0) {
     lines.push(`${result.errors} chunks failed to embed.`);
+    if ((result.errorSamples?.length ?? 0) > 0) {
+      for (const sample of result.errorSamples ?? []) {
+        lines.push(`Sample error: ${sample}`);
+      }
+    }
+    if (result.suggestion) {
+      lines.push(`Hint: ${result.suggestion}`);
+    }
   }
 
   if (!result.searchAvailable) {
     lines.push(
       "Warning: sqlite-vec not available. Embeddings stored but KNN search disabled."
     );
+  }
+
+  if (result.syncError) {
+    lines.push(`Vec sync error: ${result.syncError}`);
   }
 
   return lines.join("\n");

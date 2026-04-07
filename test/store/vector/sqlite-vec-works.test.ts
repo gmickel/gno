@@ -229,4 +229,67 @@ describe("sqlite-vec integration", () => {
       db.close();
     }
   });
+
+  test("upsert replaces an existing vec row without leaving vecDirty behind", async () => {
+    if (isDarwin && mode === "unavailable" && !isCI) {
+      return;
+    }
+
+    const db = new Database(":memory:");
+
+    try {
+      db.exec(`
+        CREATE TABLE content_vectors (
+          mirror_hash TEXT NOT NULL,
+          seq INTEGER NOT NULL,
+          model TEXT NOT NULL,
+          embedding BLOB NOT NULL,
+          embedded_at TEXT DEFAULT CURRENT_TIMESTAMP,
+          PRIMARY KEY (mirror_hash, seq, model)
+        );
+      `);
+
+      const result = await createVectorIndexPort(db, {
+        model: "replace-test",
+        dimensions: 4,
+      });
+
+      if (!(result.ok && result.value.searchAvailable)) {
+        return;
+      }
+
+      const port = result.value;
+
+      await port.upsertVectors([
+        {
+          mirrorHash: "doc1",
+          seq: 0,
+          model: "replace-test",
+          embedding: new Float32Array([1, 0, 0, 0]),
+        },
+      ]);
+
+      await port.upsertVectors([
+        {
+          mirrorHash: "doc1",
+          seq: 0,
+          model: "replace-test",
+          embedding: new Float32Array([0, 1, 0, 0]),
+        },
+      ]);
+
+      expect(port.vecDirty).toBe(false);
+
+      const searchResult = await port.searchNearest(
+        new Float32Array([0, 1, 0, 0]),
+        1
+      );
+      expect(searchResult.ok).toBe(true);
+      if (searchResult.ok) {
+        expect(searchResult.value[0]?.mirrorHash).toBe("doc1");
+      }
+    } finally {
+      db.close();
+    }
+  });
 });

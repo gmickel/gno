@@ -122,6 +122,15 @@ gno collection clear-embeddings my-collection --all
 gno embed my-collection
 ```
 
+If a re-embed run still reports failures, rerun with:
+
+```bash
+gno --verbose embed --force
+```
+
+Recent releases now print sample embedding errors and a concrete retry hint when
+batch recovery cannot fully recover on its own.
+
 Model guides:
 
 - [Code Embeddings](./docs/guides/code-embeddings.md)

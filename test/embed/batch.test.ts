@@ -9,13 +9,15 @@ function createEmbedPort(
     modelUri?: string;
     batchOk?: boolean;
     batchValues?: number[][];
+    batchFailsForLengths?: number[];
     singleFailures?: number[];
   } = {}
 ) {
   const failures = new Set(options.singleFailures ?? []);
+  const batchLengthFailures = new Set(options.batchFailsForLengths ?? []);
   let singleCall = 0;
   const embedBatch = mock(async (texts: string[]) => {
-    if (options.batchOk === false) {
+    if (options.batchOk === false || batchLengthFailures.has(texts.length)) {
       return {
         ok: false as const,
         error: {
@@ -100,6 +102,7 @@ describe("embedTextsWithRecovery", () => {
       [1.1, 1.2, 1.3],
     ]);
     expect(result.value.fallbackErrors).toBe(0);
+    expect(result.value.retrySuggestion).toBeUndefined();
     expect(embed).toHaveBeenCalledTimes(2);
   });
 
@@ -122,6 +125,8 @@ describe("embedTextsWithRecovery", () => {
       [2.1, 2.2, 2.3],
     ]);
     expect(result.value.fallbackErrors).toBe(1);
+    expect(result.value.failureSamples).toEqual(["single failed"]);
+    expect(result.value.retrySuggestion).toContain("--batch-size 1");
   });
 
   test("skips batch mode for untrusted compatibility profiles", async () => {
@@ -144,5 +149,92 @@ describe("embedTextsWithRecovery", () => {
     expect(result.value.batchError).toContain("disabled");
     expect(embedBatch).toHaveBeenCalledTimes(0);
     expect(embed).toHaveBeenCalledTimes(2);
+  });
+
+  test("downshifts to smaller batches before falling back to single-item embeds", async () => {
+    const embedPort = createEmbedPort({
+      batchFailsForLengths: [4],
+    });
+    const { embedBatch, embed } = embedPort as unknown as {
+      embedBatch: ReturnType<typeof mock>;
+      embed: ReturnType<typeof mock>;
+    };
+
+    const result = await embedTextsWithRecovery(embedPort, [
+      "a",
+      "b",
+      "c",
+      "d",
+    ]);
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      return;
+    }
+    expect(result.value.batchFailed).toBe(true);
+    expect(result.value.vectors).toEqual([
+      [0.1, 0.2, 0.3],
+      [1.1, 1.2, 1.3],
+      [0.1, 0.2, 0.3],
+      [1.1, 1.2, 1.3],
+    ]);
+    expect(embedBatch).toHaveBeenCalledTimes(3);
+    expect(embed).toHaveBeenCalledTimes(0);
+  });
+
+  test("resets the embedding port when a whole failed batch becomes unrecoverable", async () => {
+    let reset = false;
+    const embed = mock(async () => {
+      if (!reset) {
+        return {
+          ok: false as const,
+          error: {
+            code: "INFERENCE_FAILED" as const,
+            message: "single failed",
+            cause: "worker poisoned",
+            retryable: true,
+          },
+        };
+      }
+      return {
+        ok: true as const,
+        value: [0.5, 0.6, 0.7],
+      };
+    });
+    const embedBatch = mock(async () => ({
+      ok: false as const,
+      error: {
+        code: "INFERENCE_FAILED" as const,
+        message: "batch failed",
+        cause: "worker poisoned",
+        retryable: true,
+      },
+    }));
+    const init = mock(async () => ({ ok: true as const, value: undefined }));
+    const dispose = mock(async () => {
+      reset = true;
+    });
+    const embedPort = {
+      embed,
+      embedBatch,
+      init,
+      dispose,
+      modelUri: "hf:test/embed.gguf",
+      dimensions: () => 3,
+    } as unknown as EmbeddingPort;
+
+    const result = await embedTextsWithRecovery(embedPort, ["a", "b"]);
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      return;
+    }
+    expect(dispose).toHaveBeenCalledTimes(1);
+    expect(init).toHaveBeenCalledTimes(1);
+    expect(result.value.fallbackErrors).toBe(0);
+    expect(result.value.vectors).toEqual([
+      [0.5, 0.6, 0.7],
+      [0.5, 0.6, 0.7],
+    ]);
   });
 });
