@@ -6,7 +6,7 @@ Improve GNO's embedding compatibility layer so strong challenger models can work
 more reliably without rewriting the whole embedding runtime.
 
 This epic intentionally covers the contained, additive improvements that should
- raise the quality bar for embedding model support:
+raise the quality bar for embedding model support:
 
 1. model-specific embedding formatting
 2. batch fallback to single-item embedding on batch failure
