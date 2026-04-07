@@ -52,20 +52,28 @@ const JINA_PROFILE: EmbeddingCompatibilityProfile = {
   ],
 };
 
-function matches(uri: string | undefined, pattern: RegExp): boolean {
-  return Boolean(uri && pattern.test(uri));
+function normalizeModelUri(modelUri?: string): string {
+  return modelUri?.toLowerCase() ?? "";
+}
+
+function hasAllTerms(haystack: string, terms: string[]): boolean {
+  return terms.every((term) => haystack.includes(term));
 }
 
 export function getEmbeddingCompatibilityProfile(
   modelUri?: string
 ): EmbeddingCompatibilityProfile {
-  if (matches(modelUri, /qwen.*embed|embed.*qwen/i)) {
+  const normalizedUri = normalizeModelUri(modelUri);
+
+  if (hasAllTerms(normalizedUri, ["qwen", "embed"])) {
     return QWEN_PROFILE;
   }
 
   if (
-    matches(modelUri, /jina.*embeddings-v4-text-code/i) ||
-    matches(modelUri, /jina.*code-embeddings/i)
+    normalizedUri.includes("jina-embeddings-v4-text-code") ||
+    normalizedUri.includes("jina-code-embeddings") ||
+    hasAllTerms(normalizedUri, ["jina", "embeddings-v4-text-code"]) ||
+    hasAllTerms(normalizedUri, ["jina", "code-embeddings"])
   ) {
     return JINA_PROFILE;
   }
