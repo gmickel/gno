@@ -353,7 +353,9 @@ export async function searchVector(
   }
 
   // Embed query with contextual formatting
-  const embedResult = await embedPort.embed(formatQueryForEmbedding(query));
+  const embedResult = await embedPort.embed(
+    formatQueryForEmbedding(query, embedPort.modelUri)
+  );
   if (!embedResult.ok) {
     return err(
       "QUERY_FAILED",

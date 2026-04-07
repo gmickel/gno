@@ -242,24 +242,14 @@ Notes:
 - global preset remains the base layer for everything else
 - collection-scoped overrides are only meaningful when an operation resolves a specific collection
 - the Web UI Collections page can now edit these overrides directly and shows effective per-role model resolution
-- if a future benchmark shows a code-specific embedding model wins on source-code retrieval, prefer using `models.embed` on code collections instead of replacing the global default for every collection
-
-Current code-focused recommendation:
-
-```yaml
-collections:
-  - name: gno-code
-    path: /Users/you/work/gno/src
-    pattern: "**/*.{ts,tsx,js,jsx,go,rs,py,swift,c}"
-    models:
-      embed: "hf:Qwen/Qwen3-Embedding-0.6B-GGUF/Qwen3-Embedding-0.6B-Q8_0.gguf"
-```
+- use collection overrides when one collection should intentionally diverge from the workspace default
+- if a future benchmark shows a different code-specific embedding model wins on source-code retrieval, prefer using `models.embed` on code collections instead of replacing the global default for every collection
 
 This still uses normal GNO model provisioning rules:
 
 - it auto-downloads on first use by default
 - it respects `GNO_NO_AUTO_DOWNLOAD` / offline policy the same way preset models do
-- it is now the same embed model the built-in presets use, so this override is mostly useful when one collection should diverge from the global default or when migrating older configs explicitly
+- it is most useful when one collection should diverge from the global default or when migrating older configs explicitly
 
 ### Current general multilingual benchmark signal
 
@@ -272,6 +262,7 @@ Current product stance:
 - `Qwen3-Embedding-0.6B-GGUF` is now the built-in preset default
 - existing users who upgrade may need a fresh `gno embed` pass because their old vectors were created with `bge-m3`
 - GNO now counts readiness/backlog against the active embed model, so the need to re-embed is visible immediately after a preset/default change
+- if a future release changes the formatting profile for an active embedding model, re-embed is also required because the stored document vectors were produced differently
 
 ### Model Details
 

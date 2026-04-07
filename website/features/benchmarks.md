@@ -89,13 +89,13 @@ Current code-embedding numbers, as documented in the benchmark artifacts:
 
 | Fixture      | `bge-m3` vector nDCG@10 | `Qwen3-Embedding-0.6B-GGUF` vector nDCG@10 | Notes                      |
 | ------------ | ----------------------- | ------------------------------------------ | -------------------------- |
-| `repo-serve` | `0.1003`                | `0.6872`                                   | Real GNO `src/serve` slice |
+| `repo-serve` | `0.1003`                | `0.8102`                                   | Real GNO `src/serve` slice |
 | `oss-slices` | `0.6116`                | `1.0`                                      | Pinned public OSS slices   |
 
 Interpretation:
 
 - Qwen ties the incumbent on the tiny canonical corpus, then wins hard on both the real GNO code slice and the public OSS slice
-- this is why the current recommendation is collection-scoped, not a blanket default change
+- this is one of the reasons Qwen became the built-in default embed model
 - `jina-code-embeddings-0.5b-GGUF` is not listed as a current winner because it hit native-runtime embedding-id failures and collapsed on `repo-serve`
 
 Full benchmark artifacts live in the repository under:
@@ -125,7 +125,7 @@ collections:
       embed: "hf:Qwen/Qwen3-Embedding-0.6B-GGUF/Qwen3-Embedding-0.6B-Q8_0.gguf"
 ```
 
-That gives you an explicit collection override when one collection should diverge from the new default.
+That gives you an explicit collection override only when one collection should diverge from the new default.
 
 ## Current General Multilingual Candidate
 
@@ -133,7 +133,7 @@ Current public-docs benchmark numbers:
 
 | Fixture                   | `bge-m3` vector nDCG@10 | `bge-m3` hybrid nDCG@10 | `Qwen3-Embedding-0.6B-GGUF` vector nDCG@10 | `Qwen3-Embedding-0.6B-GGUF` hybrid nDCG@10 |
 | ------------------------- | ----------------------- | ----------------------- | ------------------------------------------ | ------------------------------------------ |
-| multilingual FastAPI docs | `0.350`                 | `0.642`                 | `0.859`                                    | `0.947`                                    |
+| multilingual FastAPI docs | `0.3508`                | `0.6756`                | `0.9891`                                   | `0.9891`                                   |
 
 Interpretation:
 

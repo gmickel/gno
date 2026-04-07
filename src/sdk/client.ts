@@ -401,7 +401,7 @@ class GnoClientImpl implements GnoClient {
       }
 
       const queryEmbedResult = await ports.embedPort.embed(
-        formatQueryForEmbedding(query)
+        formatQueryForEmbedding(query, ports.embedPort.modelUri)
       );
       if (!queryEmbedResult.ok) {
         throw sdkError("MODEL", queryEmbedResult.error.message, {

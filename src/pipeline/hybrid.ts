@@ -18,6 +18,7 @@ import type {
   SearchResults,
 } from "./types";
 
+import { embedTextsWithRecovery } from "../embed/batch";
 import { err, ok } from "../store/types";
 import { createChunkLookup } from "./chunk-lookup";
 import { formatQueryForEmbedding } from "./contextual";
@@ -213,7 +214,9 @@ async function searchVectorChunks(
   }
 
   // Embed query with contextual formatting
-  const embedResult = await embedPort.embed(formatQueryForEmbedding(query));
+  const embedResult = await embedPort.embed(
+    formatQueryForEmbedding(query, embedPort.modelUri)
+  );
   if (!embedResult.ok) {
     return [];
   }
@@ -443,17 +446,6 @@ export async function searchHybrid(
   const vectorStartedAt = performance.now();
 
   if (vectorAvailable && vectorIndex && embedPort) {
-    // Original query (increase limit when post-filters are active).
-    const vecChunks = await searchVectorChunks(vectorIndex, embedPort, query, {
-      limit: limit * 2 * retrievalMultiplier,
-    });
-
-    vecCount = vecChunks.length;
-    if (vecCount > 0) {
-      rankedInputs.push(toRankedInput("vector", vecChunks));
-    }
-
-    // Semantic variants + HyDE (optional; run in parallel and ignore failures)
     const vectorVariantQueries = [
       ...(expansion?.vectorQueries?.map((query) => ({
         source: "vector_variant" as const,
@@ -464,22 +456,72 @@ export async function searchHybrid(
         : []),
     ];
 
-    if (vectorVariantQueries.length > 0) {
-      const optionalVectorResults = await Promise.allSettled(
-        vectorVariantQueries.map((variant) =>
-          searchVectorChunks(vectorIndex, embedPort, variant.query, {
-            limit: limit * retrievalMultiplier,
-          })
+    if (vectorVariantQueries.length === 0) {
+      const vecChunks = await searchVectorChunks(
+        vectorIndex,
+        embedPort,
+        query,
+        {
+          limit: limit * 2 * retrievalMultiplier,
+        }
+      );
+
+      vecCount = vecChunks.length;
+      if (vecCount > 0) {
+        rankedInputs.push(toRankedInput("vector", vecChunks));
+      }
+    } else {
+      const batchedQueries = [
+        {
+          source: "vector" as const,
+          query,
+          limit: limit * 2 * retrievalMultiplier,
+        },
+        ...vectorVariantQueries.map((variant) => ({
+          ...variant,
+          limit: limit * retrievalMultiplier,
+        })),
+      ];
+
+      const embedResult = await embedTextsWithRecovery(
+        embedPort,
+        batchedQueries.map((variant) =>
+          formatQueryForEmbedding(variant.query, embedPort.modelUri)
         )
       );
 
-      for (const [index, settled] of optionalVectorResults.entries()) {
-        if (settled.status !== "fulfilled" || settled.value.length === 0) {
-          continue;
+      if (!embedResult.ok) {
+        counters.fallbackEvents.push("vector_embed_error");
+      } else {
+        if (embedResult.value.batchFailed) {
+          counters.fallbackEvents.push("vector_embed_batch_fallback");
         }
-        const variant = vectorVariantQueries[index];
-        if (variant) {
-          rankedInputs.push(toRankedInput(variant.source, settled.value));
+
+        for (const [index, variant] of batchedQueries.entries()) {
+          const embedding = embedResult.value.vectors[index];
+          if (!embedding || !variant) {
+            continue;
+          }
+
+          const searchResult = await vectorIndex.searchNearest(
+            new Float32Array(embedding),
+            variant.limit
+          );
+          if (!searchResult.ok || searchResult.value.length === 0) {
+            continue;
+          }
+
+          const chunks = searchResult.value.map((item) => ({
+            mirrorHash: item.mirrorHash,
+            seq: item.seq,
+          }));
+          if (variant.source === "vector") {
+            vecCount = chunks.length;
+          }
+          if (chunks.length === 0) {
+            continue;
+          }
+          rankedInputs.push(toRankedInput(variant.source, chunks));
         }
       }
     }

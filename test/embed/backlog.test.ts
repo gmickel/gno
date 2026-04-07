@@ -7,7 +7,11 @@
 import { describe, expect, mock, test } from "bun:test";
 
 import type { EmbeddingPort } from "../../src/llm/types";
-import type { VectorIndexPort, VectorStatsPort } from "../../src/store/vector";
+import type {
+  VectorIndexPort,
+  VectorRow,
+  VectorStatsPort,
+} from "../../src/store/vector";
 
 import { embedBacklog } from "../../src/embed/backlog";
 
@@ -206,5 +210,70 @@ describe("embedBacklog", () => {
 
     // vecDirty should still be true since sync failed
     expect(vectorIndex.vecDirty).toBe(true);
+  });
+
+  test("falls back to per-item embedding and stores partial successes", async () => {
+    const embedPort = {
+      embedBatch: mock(() =>
+        Promise.resolve({
+          ok: false as const,
+          error: {
+            code: "INFERENCE_FAILED" as const,
+            message: "batch failed",
+            retryable: true,
+          },
+        })
+      ),
+      embed: mock((text: string) =>
+        Promise.resolve(
+          text.includes("second")
+            ? {
+                ok: false as const,
+                error: {
+                  code: "INFERENCE_FAILED" as const,
+                  message: "single failed",
+                  retryable: true,
+                },
+              }
+            : { ok: true as const, value: [0.1, 0.2, 0.3] }
+        )
+      ),
+      dimensions: () => 3,
+      init: () => Promise.resolve({ ok: true as const, value: undefined }),
+      dispose: () => Promise.resolve(),
+      modelUri: "hf:test/embed.gguf",
+    } as unknown as EmbeddingPort;
+
+    const vectorIndex = createMockVectorIndex();
+    const upserts: VectorRow[][] = [];
+    vectorIndex.upsertVectors = mock((rows: VectorRow[]) => {
+      upserts.push(rows);
+      return Promise.resolve({ ok: true as const, value: undefined });
+    }) as typeof vectorIndex.upsertVectors;
+
+    const result = await embedBacklog({
+      statsPort: createMockStatsPort([
+        { mirrorHash: "abc123", seq: 0, text: "first content", title: "First" },
+        {
+          mirrorHash: "abc123",
+          seq: 1,
+          text: "second content",
+          title: "Second",
+        },
+      ]),
+      embedPort,
+      vectorIndex,
+      modelUri: "hf:test/embed.gguf",
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      return;
+    }
+    expect(result.value.embedded).toBe(1);
+    expect(result.value.errors).toBe(1);
+    expect(upserts).toHaveLength(1);
+    expect(upserts[0]).toHaveLength(1);
+    expect(upserts[0]?.[0]?.seq).toBe(0);
   });
 });

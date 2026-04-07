@@ -45,10 +45,17 @@ Tests / smoke:
 
 ## Done summary
 
-TBD
+Implemented indexing-time batch fallback to per-item embedding.
+
+Delivered:
+
+- added shared embed batch recovery helper with profile-aware batch trust
+- updated shared backlog embedding path to recover partial successes
+- updated SDK force-embed path and CLI embed path to store successful vectors from failed batches
+- added regression coverage for full batch success, fallback, and partial recovery
 
 ## Evidence
 
 - Commits:
-- Tests:
+- Tests: bun test test/embed/batch.test.ts test/embed/backlog.test.ts, bun run lint:check
 - PRs:

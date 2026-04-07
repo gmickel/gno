@@ -10,6 +10,8 @@
  * @module src/pipeline/contextual
  */
 
+import { getEmbeddingCompatibilityProfile } from "../llm/embedding-compatibility";
+
 // Top-level regex for performance
 const HEADING_REGEX = /^##?\s+(.+)$/m;
 const SUBHEADING_REGEX = /^##\s+(.+)$/m;
@@ -19,8 +21,16 @@ const EXT_REGEX = /\.\w+$/;
  * Format document text for embedding.
  * Prepends title for contextual retrieval.
  */
-export function formatDocForEmbedding(text: string, title?: string): string {
+export function formatDocForEmbedding(
+  text: string,
+  title?: string,
+  modelUri?: string
+): string {
+  const profile = getEmbeddingCompatibilityProfile(modelUri);
   const safeTitle = title?.trim() || "none";
+  if (profile.documentFormat === "raw-text") {
+    return title?.trim() ? `${title.trim()}\n${text}` : text;
+  }
   return `title: ${safeTitle} | text: ${text}`;
 }
 
@@ -28,7 +38,14 @@ export function formatDocForEmbedding(text: string, title?: string): string {
  * Format query for embedding.
  * Uses task-prefixed format for asymmetric retrieval.
  */
-export function formatQueryForEmbedding(query: string): string {
+export function formatQueryForEmbedding(
+  query: string,
+  modelUri?: string
+): string {
+  const profile = getEmbeddingCompatibilityProfile(modelUri);
+  if (profile.queryFormat === "qwen-instruct") {
+    return `Instruct: Retrieve relevant documents for the given query\nQuery: ${query}`;
+  }
   return `task: search result | query: ${query}`;
 }
 

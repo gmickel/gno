@@ -37,10 +37,17 @@ Tests / smoke:
 
 ## Done summary
 
-TBD
+Updated docs and benchmark guidance for compatibility profiles and re-embed implications.
+
+Delivered:
+
+- documented that formatting-profile changes require re-embedding while batching/runtime-only changes do not
+- removed stale code-only Qwen recommendation copy now that Qwen is already the global default embed model
+- updated benchmark pages and research docs with current profile-aware smoke numbers
+- documented current compatibility story for Qwen, Jina-style challengers, and Nomic-style challengers
 
 ## Evidence
 
 - Commits:
-- Tests:
+- Tests: bun run docs:verify, bun run lint:check, make -C website build, .flow/bin/flowctl validate --all
 - PRs:

@@ -819,33 +819,23 @@ More model docs:
 - [Per-Collection Models](./docs/guides/per-collection-models.md)
 - [Bring Your Own Models](./docs/guides/bring-your-own-models.md)
 
-Current code-focused recommendation:
+Current product stance:
 
-```yaml
-collections:
-  - name: gno-code
-    path: /Users/you/work/gno/src
-    pattern: "**/*.{ts,tsx,js,jsx,go,rs,py,swift,c}"
-    models:
-      embed: "hf:Qwen/Qwen3-Embedding-0.6B-GGUF/Qwen3-Embedding-0.6B-Q8_0.gguf"
-```
+- `Qwen3-Embedding-0.6B-GGUF` is already the global default embed model
+- you do **not** need a collection override just to get Qwen on code collections
+- use a collection override only when one collection should intentionally diverge from that default
 
-GNO treats that override like any other model URI:
+Why Qwen is the current default:
 
-- auto-downloads on first use by default
-- manual-only if `GNO_NO_AUTO_DOWNLOAD=1`
-- offline-safe if the model is already cached
-
-Why this is the current recommendation:
-
-- matches `bge-m3` on the tiny canonical benchmark
+- matches or exceeds `bge-m3` on the tiny canonical benchmark
 - significantly beats `bge-m3` on the real GNO `src/serve` code slice
 - also beats `bge-m3` on a pinned public-OSS code slice
+- also beats `bge-m3` on the multilingual prose/docs benchmark lane
 
-Trade-off:
+Current trade-off:
 
 - Qwen is slower to embed than `bge-m3`
-- existing users upgrading to the new default may need to run `gno embed` again so vector and hybrid retrieval catch up
+- existing users upgrading or adopting a new embedding formatting profile may need to run `gno embed` again so stored vectors match the current formatter/runtime path
 
 ### General Multilingual Embedding Benchmark
 
@@ -859,8 +849,8 @@ bun run bench:general-embeddings --candidate qwen3-embedding-0.6b --write
 
 Current signal on the public multilingual FastAPI-docs fixture:
 
-- `bge-m3`: vector nDCG@10 `0.350`, hybrid nDCG@10 `0.642`
-- `Qwen3-Embedding-0.6B-GGUF`: vector nDCG@10 `0.859`, hybrid nDCG@10 `0.947`
+- `bge-m3`: vector nDCG@10 `0.3508`, hybrid nDCG@10 `0.6756`
+- `Qwen3-Embedding-0.6B-GGUF`: vector nDCG@10 `0.9891`, hybrid nDCG@10 `0.9891`
 
 Interpretation:
 

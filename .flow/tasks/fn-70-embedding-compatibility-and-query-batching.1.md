@@ -50,10 +50,17 @@ Tests / smoke:
 
 ## Done summary
 
-TBD
+Implemented embedding compatibility profiles and model-aware formatting.
+
+Delivered:
+
+- added explicit embedding compatibility profiles with a curated Qwen profile and conservative Jina batch-trust downgrade
+- updated query/doc embedding formatters to accept model URIs and apply profile-aware formatting
+- threaded model-aware formatting through indexing, vector search, CLI, MCP, SDK, and benchmark helper call sites
+- added regression tests for profile lookup, Qwen formatting, and fallback behavior
 
 ## Evidence
 
 - Commits:
-- Tests:
+- Tests: bun test test/pipeline/contextual.test.ts, bun run lint:check
 - PRs:

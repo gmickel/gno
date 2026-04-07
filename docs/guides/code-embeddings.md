@@ -18,11 +18,16 @@ That default is already strong on:
 
 So for many users, the right answer is: do nothing.
 
+Recent compatibility work also made the current Qwen path more intentional:
+
+- model-specific query/doc formatting is now explicit
+- indexing can recover item-by-item if batch embedding fails
+- batched vector-query embedding keeps the current Qwen path efficient
+
 ## When To Override
 
 Use a collection-level embed override when:
 
-- one collection is mostly source code
 - you want to test a code-specialist challenger
 - one collection should diverge from the global default without changing the rest of the workspace
 
@@ -30,18 +35,11 @@ Do not use a code-specific override for a mixed docs + notes + code collection u
 
 ## Recommended Pattern
 
-Keep the global preset sane.
+Today, the recommended pattern is simpler:
 
-Override only the code collection:
-
-```yaml
-collections:
-  - name: gno-code
-    path: /Users/you/work/gno/src
-    pattern: "**/*.{ts,tsx,js,jsx,go,rs,py,swift,c}"
-    models:
-      embed: "hf:Qwen/Qwen3-Embedding-0.6B-GGUF/Qwen3-Embedding-0.6B-Q8_0.gguf"
-```
+- keep the built-in default as-is
+- do **not** add a collection override just to get Qwen on code collections, because Qwen is already the global default embed model
+- only add a collection override when one collection should intentionally diverge from that default
 
 If your code lives next to markdown docs, prefer splitting them into separate collections:
 
@@ -51,8 +49,6 @@ collections:
     path: /Users/you/work/project/src
     pattern: "**/*.{ts,tsx,js,jsx,go,rs,py,swift,c}"
     models:
-      embed: "hf:Qwen/Qwen3-Embedding-0.6B-GGUF/Qwen3-Embedding-0.6B-Q8_0.gguf"
-
   - name: project-docs
     path: /Users/you/work/project/docs
     pattern: "**/*.md"
@@ -60,7 +56,7 @@ collections:
 
 ## CLI
 
-New collection:
+New collection with an intentional override:
 
 ```bash
 gno collection add ~/work/gno/src \
@@ -90,7 +86,7 @@ Collections page:
 4. save
 5. run the suggested re-embed flow
 
-For code-shaped collections, the dialog can surface a benchmark-backed code recommendation directly.
+For code-shaped collections, the dialog can surface benchmark-backed guidance. Use it when you are intentionally diverging from the global default, not just to re-apply the current default.
 
 ## Why Qwen Is The Current Default
 
@@ -104,7 +100,8 @@ GNO benchmarked `Qwen3-Embedding-0.6B-GGUF` against `bge-m3` on:
 Current result:
 
 - Qwen won strongly enough to become the built-in default
-- collection overrides still matter when one collection should diverge from that default
+- collection overrides still matter only when one collection should diverge from that default
+- recent smoke runs on the current Qwen path remain healthy after the compatibility/profile work landed
 
 See:
 

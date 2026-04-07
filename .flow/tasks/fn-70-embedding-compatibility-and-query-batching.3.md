@@ -44,10 +44,17 @@ Tests / smoke:
 
 ## Done summary
 
-TBD
+Implemented batched vector-query embedding in hybrid retrieval.
+
+Delivered:
+
+- hybrid retrieval now batch-embeds original/vector/HyDE query embeddings when variants are present
+- single-query vector behavior remains unchanged
+- batch recovery helper is reused so untrusted profiles degrade safely
+- added regression coverage proving batch path on hybrid and unchanged single-query behavior
 
 ## Evidence
 
 - Commits:
-- Tests:
+- Tests: bun test test/pipeline/hybrid-query-batching.test.ts, bun run lint:check
 - PRs:
