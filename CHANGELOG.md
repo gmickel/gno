@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.41.0] - 2026-04-07
+
+### Added
+
+- Added embedding compatibility profiles plus safer indexing fallback behavior, including model-aware query/document formatting, batch-to-single-item embed recovery, and batched vector-query embedding in hybrid retrieval.
+
+### Changed
+
+- Improved the default Qwen embedding path for both indexing and retrieval while keeping the full retrieval stack intact, and documented the required `gno embed --force` or clear-and-reembed migration path for formatting/profile changes.
+
 ## [0.40.2] - 2026-04-06
 
 ### Fixed
@@ -1112,7 +1122,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 | 0.4.0   | 2026-01-01 | Web UI and REST API                       |
 | 0.1.0   | 2025-12-30 | Initial release with full search pipeline |
 
-[Unreleased]: https://github.com/gmickel/gno/compare/v0.40.2...HEAD
+[Unreleased]: https://github.com/gmickel/gno/compare/v0.41.0...HEAD
+[0.41.0]: https://github.com/gmickel/gno/compare/v0.40.2...v0.41.0
 [0.40.2]: https://github.com/gmickel/gno/compare/v0.40.1...v0.40.2
 [0.40.1]: https://github.com/gmickel/gno/compare/v0.40.0...v0.40.1
 [0.40.0]: https://github.com/gmickel/gno/compare/v0.39.1...v0.40.0
