@@ -1,0 +1,14 @@
+{
+  "assignee": null,
+  "claim_note": "",
+  "claimed_at": null,
+  "created_at": "2026-04-07T09:05:00Z",
+  "depends_on": ["fn-70-embedding-compatibility-and-query-batching.1"],
+  "epic": "fn-70-embedding-compatibility-and-query-batching",
+  "id": "fn-70-embedding-compatibility-and-query-batching.2",
+  "priority": 2,
+  "spec_path": ".flow/tasks/fn-70-embedding-compatibility-and-query-batching.2.md",
+  "status": "todo",
+  "title": "Add indexing-time batch fallback to per-item embedding",
+  "updated_at": "2026-04-07T09:05:00Z"
+}

@@ -1,0 +1,18 @@
+{
+  "assignee": null,
+  "claim_note": "",
+  "claimed_at": null,
+  "created_at": "2026-04-07T09:05:00Z",
+  "depends_on": [
+    "fn-70-embedding-compatibility-and-query-batching.1",
+    "fn-70-embedding-compatibility-and-query-batching.2",
+    "fn-70-embedding-compatibility-and-query-batching.3"
+  ],
+  "epic": "fn-70-embedding-compatibility-and-query-batching",
+  "id": "fn-70-embedding-compatibility-and-query-batching.4",
+  "priority": 4,
+  "spec_path": ".flow/tasks/fn-70-embedding-compatibility-and-query-batching.4.md",
+  "status": "todo",
+  "title": "Document re-embed implications and benchmark outcomes",
+  "updated_at": "2026-04-07T09:05:00Z"
+}
