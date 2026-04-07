@@ -108,6 +108,20 @@ gno embed
 That regenerates embeddings for the new default model. Old vectors are kept
 until you explicitly clear stale embeddings.
 
+If the release also changes the embedding formatting/profile behavior for your
+active model, prefer one of these stronger migration paths:
+
+```bash
+gno embed --force
+```
+
+or per collection:
+
+```bash
+gno collection clear-embeddings my-collection --all
+gno embed my-collection
+```
+
 Model guides:
 
 - [Code Embeddings](./docs/guides/code-embeddings.md)

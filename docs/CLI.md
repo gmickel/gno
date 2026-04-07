@@ -408,6 +408,21 @@ gno embed --collection travel
 If you only want one collection to catch up after a model change, use the
 positional collection argument or `--collection`.
 
+If the active embedding model keeps the same URI but changes formatting/profile
+behavior, `stale` cleanup is not enough because the vectors are still tagged
+with the same model URI. In that case, use either:
+
+```bash
+gno embed --force
+```
+
+or a per-collection reset:
+
+```bash
+gno collection clear-embeddings notes --all
+gno embed --collection notes
+```
+
 ## Indexing Commands
 
 ### gno update
