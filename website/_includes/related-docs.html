@@ -100,15 +100,86 @@ contains '/docs/' %}
       <span class="related-docs-desc">How GNO works</span>
     </a>
     {% elsif page.url contains 'CONFIGURATION' %}
-    <a href="{{ '/docs/CLI/' | relative_url }}" class="related-docs-card">
-      <span class="related-docs-icon">📖</span>
-      <span class="related-docs-label">CLI Reference</span>
-      <span class="related-docs-desc">All commands and options</span>
+    <a
+      href="{{ '/docs/guides/per-collection-models/' | relative_url }}"
+      class="related-docs-card"
+    >
+      <span class="related-docs-icon">🗂️</span>
+      <span class="related-docs-label">Per-Collection Models</span>
+      <span class="related-docs-desc"
+        >Override one collection without changing the workspace</span
+      >
     </a>
-    <a href="{{ '/docs/USE-CASES/' | relative_url }}" class="related-docs-card">
-      <span class="related-docs-icon">💡</span>
-      <span class="related-docs-label">Use Cases</span>
-      <span class="related-docs-desc">Real-world workflows</span>
+    <a
+      href="{{ '/docs/guides/bring-your-own-models/' | relative_url }}"
+      class="related-docs-card"
+    >
+      <span class="related-docs-icon">🧩</span>
+      <span class="related-docs-label">Bring Your Own Models</span>
+      <span class="related-docs-desc"
+        >Use custom GGUFs and remote model servers</span
+      >
+    </a>
+    {% elsif page.url contains '/guides/code-embeddings/' %}
+    <a
+      href="{{ '/docs/guides/per-collection-models/' | relative_url }}"
+      class="related-docs-card"
+    >
+      <span class="related-docs-icon">🗂️</span>
+      <span class="related-docs-label">Per-Collection Models</span>
+      <span class="related-docs-desc"
+        >Inheritance, UI, CLI, and API overrides</span
+      >
+    </a>
+    <a
+      href="{{ '/features/benchmarks/' | relative_url }}"
+      class="related-docs-card"
+    >
+      <span class="related-docs-icon">📊</span>
+      <span class="related-docs-label">Benchmarks</span>
+      <span class="related-docs-desc">See why Qwen became the default</span>
+    </a>
+    {% elsif page.url contains '/guides/per-collection-models/' %}
+    <a
+      href="{{ '/docs/guides/bring-your-own-models/' | relative_url }}"
+      class="related-docs-card"
+    >
+      <span class="related-docs-icon">🧩</span>
+      <span class="related-docs-label">Bring Your Own Models</span>
+      <span class="related-docs-desc"
+        >Use local GGUFs or remote HTTP endpoints</span
+      >
+    </a>
+    <a
+      href="{{ '/docs/guides/code-embeddings/' | relative_url }}"
+      class="related-docs-card"
+    >
+      <span class="related-docs-icon">💻</span>
+      <span class="related-docs-label">Code Embeddings</span>
+      <span class="related-docs-desc"
+        >Tune code collections without touching prose</span
+      >
+    </a>
+    {% elsif page.url contains '/guides/bring-your-own-models/' %}
+    <a
+      href="{{ '/docs/guides/per-collection-models/' | relative_url }}"
+      class="related-docs-card"
+    >
+      <span class="related-docs-icon">🗂️</span>
+      <span class="related-docs-label">Per-Collection Models</span>
+      <span class="related-docs-desc"
+        >Apply custom models to one collection only</span
+      >
+    </a>
+    <a
+      href="{{ '/features/local-llm/' | relative_url }}"
+      class="related-docs-card"
+    >
+      <span class="related-docs-icon">🧠</span>
+      <span class="related-docs-label">Local LLM Answers</span>
+      <span class="related-docs-desc"
+        >Run local or remote answer models with citations</span
+      >
     </a>
     {% elsif page.url contains 'ARCHITECTURE' %}
     <a href="{{ '/docs/GLOSSARY/' | relative_url }}" class="related-docs-card">

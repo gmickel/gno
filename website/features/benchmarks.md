@@ -3,7 +3,7 @@ layout: feature
 title: Benchmarks
 headline: Measure Retrieval Before You Change Defaults
 description: Benchmark retrieval models and code embedding candidates against fixed corpora, real GNO code, and pinned public OSS slices. Use bounded autonomous search to find better models without turning research into chaos.
-keywords: retrieval benchmark, code embedding benchmark, local model evaluation, autoresearch, gno benchmarks
+keywords: retrieval benchmark, code embedding benchmark, multilingual embedding benchmark, per collection model recommendation, local model evaluation, autoresearch
 icon: brain
 slug: benchmarks
 permalink: /features/benchmarks/
@@ -164,5 +164,8 @@ It is a bounded model-comparison loop designed to be trustworthy enough for prod
 
 - [Hybrid Search](/features/hybrid-search/)
 - [Fine-Tuned Models](/features/fine-tuned-models/)
+- [Code Embeddings](/docs/guides/code-embeddings/)
+- [Per-Collection Models](/docs/guides/per-collection-models/)
+- [Bring Your Own Models](/docs/guides/bring-your-own-models/)
 - [Configuration](/docs/CONFIGURATION/)
 - [How Search Works](/docs/HOW-SEARCH-WORKS/)

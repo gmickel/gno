@@ -87,7 +87,7 @@ gno daemon
 
 ## What's New
 
-> Latest release: [v0.39.1](./CHANGELOG.md#0391---2026-04-06)  
+> Latest release: [v0.40.2](./CHANGELOG.md#0402---2026-04-06)  
 > Full release history: [CHANGELOG.md](./CHANGELOG.md)
 
 - **Retrieval Quality Upgrade**: stronger BM25 lexical handling, code-aware chunking, terminal result hyperlinks, and per-collection model overrides
@@ -107,6 +107,12 @@ gno embed
 
 That regenerates embeddings for the new default model. Old vectors are kept
 until you explicitly clear stale embeddings.
+
+Model guides:
+
+- [Code Embeddings](./docs/guides/code-embeddings.md)
+- [Per-Collection Models](./docs/guides/per-collection-models.md)
+- [Bring Your Own Models](./docs/guides/bring-your-own-models.md)
 
 ### Fine-Tuned Model Quick Use
 
@@ -672,22 +678,23 @@ graph TD
 
 Models auto-download on first use to `~/.cache/gno/models/`. For deterministic startup, set `GNO_NO_AUTO_DOWNLOAD=1` and use `gno models pull` explicitly. Alternatively, offload to a GPU server on your network using HTTP backends.
 
-| Model                | Purpose                               | Size         |
-| :------------------- | :------------------------------------ | :----------- |
-| Qwen3-Embedding-0.6B | Embeddings (multilingual)             | ~640MB       |
-| Qwen3-Reranker-0.6B  | Cross-encoder reranking (32K context) | ~700MB       |
-| Qwen/SmolLM          | Query expansion + AI answers          | ~600MB-1.2GB |
+| Model                  | Purpose                               | Size         |
+| :--------------------- | :------------------------------------ | :----------- |
+| Qwen3-Embedding-0.6B   | Embeddings (multilingual)             | ~640MB       |
+| Qwen3-Reranker-0.6B    | Cross-encoder reranking (32K context) | ~700MB       |
+| Qwen3 / Qwen2.5 family | Query expansion + AI answers          | ~600MB-2.5GB |
 
 ### Model Presets
 
-| Preset     | Disk   | Best For                     |
-| :--------- | :----- | :--------------------------- |
-| `slim`     | ~1GB   | Fast, good quality (default) |
-| `balanced` | ~2GB   | Slightly larger model        |
-| `quality`  | ~2.5GB | Best answers                 |
+| Preset       | Disk   | Best For                                                |
+| :----------- | :----- | :------------------------------------------------------ |
+| `slim-tuned` | ~1GB   | Current default, tuned retrieval in a compact footprint |
+| `slim`       | ~1GB   | Fast, good quality                                      |
+| `balanced`   | ~2GB   | Slightly larger model                                   |
+| `quality`    | ~2.5GB | Best answers                                            |
 
 ```bash
-gno models use slim
+gno models use slim-tuned
 gno models pull --all  # Optional: pre-download models (auto-downloads on first use)
 ```
 
@@ -720,7 +727,7 @@ models:
   presets:
     - id: remote-gpu
       name: Remote GPU Server
-      embed: "http://192.168.1.100:8081/v1/embeddings#bge-m3"
+      embed: "http://192.168.1.100:8081/v1/embeddings#qwen3-embedding-0.6b"
       rerank: "http://192.168.1.100:8082/v1/completions#reranker"
       expand: "http://192.168.1.100:8083/v1/chat/completions#gno-expand"
       gen: "http://192.168.1.100:8083/v1/chat/completions#qwen3-4b"
@@ -729,6 +736,11 @@ models:
 Works with llama-server, Ollama, LocalAI, vLLM, or any OpenAI-compatible server.
 
 > **Configuration**: [Model Setup](https://gno.sh/docs/CONFIGURATION/)
+
+Remote/BYOM guides:
+
+- [Bring Your Own Models](./docs/guides/bring-your-own-models.md)
+- [Per-Collection Models](./docs/guides/per-collection-models.md)
 
 ---
 
@@ -800,6 +812,12 @@ If a model turns out to be better specifically for code, the intended user story
 - use per-collection `models.embed` overrides for code collections
 
 That lets GNO stay sane by default while still giving power users a clean path to code-specialist retrieval.
+
+More model docs:
+
+- [Code Embeddings](./docs/guides/code-embeddings.md)
+- [Per-Collection Models](./docs/guides/per-collection-models.md)
+- [Bring Your Own Models](./docs/guides/bring-your-own-models.md)
 
 Current code-focused recommendation:
 

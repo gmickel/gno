@@ -66,7 +66,7 @@
   questions:
     - q: Where is the config file located?
       a: >
-        On macOS and Linux it is at ~/.config/gno/config.yaml. On Windows it is at %APPDATA%\gno\config.yaml. Run gno doctor to see your exact path.
+        On macOS and Linux the default file is ~/.config/gno/config/index.yml. On Windows it is under %APPDATA%\gno\config\index.yml. Run gno doctor to see the exact resolved paths for your machine.
 
     - q: How do I add multiple document folders?
       a: >
@@ -92,6 +92,22 @@
     - q: How do I change the model?
       a: >
         Use gno models use preset then gno models pull to download, or switch presets directly in the web UI. Presets are slim-tuned, slim, balanced, or quality. You can also offload inference to a remote GPU server on your network via HTTP backends.
+
+    - q: Can I use a different embedding model for one collection only?
+      a: >
+        Yes. GNO supports per-collection model overrides. Add models.embed under one collection in index.yml, set it in the Web UI collection model dialog, or use gno collection add --embed-model when creating a new collection. This is the recommended way to tune code collections without changing the rest of the workspace.
+
+    - q: Can I bring my own GGUF or remote model server to GNO?
+      a: >
+        Yes. GNO accepts Hugging Face URIs (hf:org/repo/file.gguf), local file URIs (file:/path/to/model.gguf), and remote OpenAI-compatible HTTP endpoints (http://host:port/path#modelname). You can use them in a custom preset globally or as per-collection overrides for one folder.
+
+    - q: Can I run models on another machine, like a Windows box running Ollama?
+      a: >
+        Yes. That is a supported pattern. Run GNO on one machine, run an OpenAI-compatible server such as Ollama, LM Studio, or vLLM on another machine on your LAN, and point GNO at that host with HTTP model URIs. This works well for embed, answer, and expansion roles. Rerank support depends more on the server because GNO currently expects a completions-style rerank path.
+
+    - q: What should I do after switching the embedding model?
+      a: >
+        Re-embed so vector and hybrid search catch up to the new model. Run gno embed for everything or gno embed collection-name for one collection. After the new vectors exist, you can optionally run gno collection clear-embeddings collection-name to remove stale old-model vectors.
 
     - q: What is the fine-tuned model?
       a: >

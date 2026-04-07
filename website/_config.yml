@@ -19,7 +19,7 @@ social:
     - https://twitter.com/gmickel
 logo: /assets/images/logo.png
 og_image: /assets/images/og/og-image.png
-version: "0.33.4"
+version: "0.40.2"
 lang: en_US
 
 # Build settings
@@ -121,6 +121,12 @@ nav:
   - title: Guides
     icon: lightbulb
     items:
+      - title: Code Embeddings
+        url: /docs/guides/code-embeddings/
+      - title: Per-Collection Models
+        url: /docs/guides/per-collection-models/
+      - title: Bring Your Own Models
+        url: /docs/guides/bring-your-own-models/
       - title: How Search Works
         url: /docs/HOW-SEARCH-WORKS/
       - title: Use Cases

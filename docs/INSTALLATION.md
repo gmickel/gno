@@ -77,7 +77,7 @@ gno doctor
 Expected output:
 
 ```
-✓ config - Config loaded: ~/.config/gno/config.yml
+✓ config - Config loaded: ~/.config/gno/config/index.yml
 ✓ database - Database found: ~/.local/share/gno/index.sqlite
 ✓ sqlite-vec - sqlite-vec loaded (vv0.1.7-alpha.2)
 ```
@@ -160,6 +160,12 @@ models:
 ```
 
 Or change it later in the web UI from the preset picker on the dashboard.
+
+Need model overrides instead of a full preset switch?
+
+- [Per-Collection Models](guides/per-collection-models.md)
+- [Bring Your Own Models](guides/bring-your-own-models.md)
+- [Code Embeddings](guides/code-embeddings.md)
 
 The dashboard also shows:
 

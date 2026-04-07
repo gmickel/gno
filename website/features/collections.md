@@ -2,8 +2,8 @@
 layout: feature
 title: Collections
 headline: Turn Folders Into a Searchable Workspace
-description: Group documents by source directory with patterns, includes, excludes, and collection-aware browsing. Collections are the foundation for search scope, workspace tree navigation, and per-source context.
-keywords: document collections, local workspace folders, search scope, browse tree, collection management, file patterns
+description: Group documents by source directory with patterns, includes, excludes, collection-aware browsing, and per-collection model overrides. Collections are the scope boundary for search, retrieval tuning, and workspace navigation.
+keywords: document collections, local workspace folders, collection model overrides, per collection embeddings, browse tree, collection management
 icon: collections
 slug: collections
 permalink: /features/collections/
@@ -93,3 +93,9 @@ gno collection list --json
 - **work**: Company documentation
 - **papers**: Research PDFs
 - **code**: Project README files
+
+## Learn More
+
+- [Per-Collection Models](/docs/guides/per-collection-models/)
+- [Code Embeddings](/docs/guides/code-embeddings/)
+- [Configuration](/docs/CONFIGURATION/)

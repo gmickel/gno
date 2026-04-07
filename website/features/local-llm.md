@@ -2,8 +2,8 @@
 layout: feature
 title: Local LLM Answers
 headline: Grounded Answers on Your Own Corpus
-description: Get cited, grounded answers from your own documents using local language models or a local network GPU server. GNO keeps retrieval grounded in your notes, docs, and code.
-keywords: local llm, ai answers, grounded answers, cited responses, private ai, local rag, local knowledge workspace
+description: Get cited, grounded answers from your own documents using local language models or a local network GPU server. Keep the shipped presets, override them globally, or bring your own GGUF and HTTP-backed models when needed.
+keywords: local llm, ai answers, grounded answers, private ai, bring your own model, custom gguf, remote model server
 icon: local-llm
 slug: local-llm
 permalink: /features/local-llm/
@@ -57,13 +57,13 @@ gno models pull
 Run on lightweight machines by offloading inference to a GPU server on your network:
 
 ```yaml
-# ~/.config/gno/config.yaml
+# ~/.config/gno/config/index.yml
 models:
   activePreset: remote-gpu
   presets:
     - id: remote-gpu
       name: Remote GPU Server
-      embed: "http://192.168.1.100:8081/v1/embeddings#bge-m3"
+      embed: "http://192.168.1.100:8081/v1/embeddings#qwen3-embedding-0.6b"
       rerank: "http://192.168.1.100:8082/v1/completions#reranker"
       gen: "http://192.168.1.100:8083/v1/chat/completions#qwen3-4b"
 ```
@@ -81,3 +81,9 @@ Everything runs on your machine (or your network):
 - No API keys or subscriptions
 - Works completely offline
 - Your data never leaves your network
+
+## Learn More
+
+- [Bring Your Own Models](/docs/guides/bring-your-own-models/)
+- [Per-Collection Models](/docs/guides/per-collection-models/)
+- [Configuration](/docs/CONFIGURATION/)

@@ -322,16 +322,17 @@ Notes:
 Switch between model presets without restarting:
 
 1. Click the preset selector in the header or onboarding panel
-2. Choose: **Slim** (fastest setup), **Balanced** (good default), or **Quality** (best answers)
+2. Choose: **Slim Tuned** (current default), **Slim** (fastest setup), **Balanced**, or **Quality**
 3. GNO reloads models automatically
 
 The preset controls both retrieval expansion and standalone answer generation.
 
-| Preset   | Disk   | Best For                     |
-| :------- | :----- | :--------------------------- |
-| Slim     | ~1GB   | Fast, good quality (default) |
-| Balanced | ~2GB   | Slightly larger model        |
-| Quality  | ~2.5GB | Best answer quality          |
+| Preset     | Disk   | Best For                                                |
+| :--------- | :----- | :------------------------------------------------------ |
+| Slim Tuned | ~1GB   | Current default, tuned retrieval in a compact footprint |
+| Slim       | ~1GB   | Fast, good quality                                      |
+| Balanced   | ~2GB   | Slightly larger model                                   |
+| Quality    | ~2.5GB | Best answer quality                                     |
 
 ### Model Download
 

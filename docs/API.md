@@ -163,8 +163,8 @@ Returns index statistics plus first-run onboarding, health-center state, backgro
   "lastUpdated": "2025-01-15T10:30:00Z",
   "healthy": true,
   "activePreset": {
-    "id": "balanced",
-    "name": "Balanced (~2GB)"
+    "id": "slim-tuned",
+    "name": "GNO Slim Tuned (Default, ~1GB)"
   },
   "capabilities": {
     "bm25": true,
@@ -257,13 +257,13 @@ Returns index statistics plus first-run onboarding, health-center state, backgro
       "totalSizeLabel": "2.0 GB"
     },
     "models": {
-      "activePresetId": "balanced",
-      "activePresetName": "Balanced (~2GB)",
-      "estimatedFootprint": "~2GB",
+      "activePresetId": "slim-tuned",
+      "activePresetName": "GNO Slim Tuned (Default, ~1GB)",
+      "estimatedFootprint": "~1GB",
       "downloading": false,
       "cachedCount": 4,
       "totalCount": 4,
-      "summary": "Balanced (~2GB) is fully cached.",
+      "summary": "GNO Slim Tuned (Default, ~1GB) is fully cached.",
       "entries": []
     }
   }

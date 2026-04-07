@@ -53,7 +53,7 @@ contexts:
 
 # Model configuration
 models:
-  activePreset: balanced
+  activePreset: slim-tuned
 
 # Optional terminal hyperlink target template for CLI search output
 editorUriTemplate: "vscode://file/{path}:{line}:{col}"
@@ -65,15 +65,16 @@ Collections define what gets indexed.
 
 ### Collection Fields
 
-| Field          | Type   | Default   | Description                   |
-| -------------- | ------ | --------- | ----------------------------- |
-| `name`         | string | required  | Unique identifier (lowercase) |
-| `path`         | string | required  | Absolute path to directory    |
-| `pattern`      | glob   | `**/*`    | File matching pattern         |
-| `include`      | array  | see below | Extension allowlist           |
-| `exclude`      | array  | see below | Patterns to skip              |
-| `updateCmd`    | string | -         | Shell command before indexing |
-| `languageHint` | string | -         | BCP-47 language code          |
+| Field          | Type   | Default   | Description                    |
+| -------------- | ------ | --------- | ------------------------------ |
+| `name`         | string | required  | Unique identifier (lowercase)  |
+| `path`         | string | required  | Absolute path to directory     |
+| `pattern`      | glob   | `**/*`    | File matching pattern          |
+| `include`      | array  | see below | Extension allowlist            |
+| `exclude`      | array  | see below | Patterns to skip               |
+| `updateCmd`    | string | -         | Shell command before indexing  |
+| `languageHint` | string | -         | BCP-47 language code           |
+| `models`       | object | -         | Per-collection model overrides |
 
 ### Default Include Extensions
 
@@ -197,11 +198,12 @@ Model configuration for embeddings and AI answers.
 
 ### Presets
 
-| Preset     | Disk   | Best For                      |
-| ---------- | ------ | ----------------------------- |
-| `slim`     | ~1GB   | Fast, good quality (default)  |
-| `balanced` | ~2GB   | Slightly larger model         |
-| `quality`  | ~2.5GB | Best answers, complex content |
+| Preset       | Disk   | Best For                                                |
+| ------------ | ------ | ------------------------------------------------------- |
+| `slim-tuned` | ~1GB   | Current default, tuned retrieval in a compact footprint |
+| `slim`       | ~1GB   | Fast, good quality                                      |
+| `balanced`   | ~2GB   | Slightly larger model                                   |
+| `quality`    | ~2.5GB | Best answers, complex content                           |
 
 The dashboard bootstrap panel uses these preset footprints as the plain-language disk estimate for first-run setup.
 
@@ -210,6 +212,12 @@ The dashboard bootstrap panel uses these preset footprints as the plain-language
 ### Per-collection model overrides
 
 Collections can override model roles without replacing the global preset system.
+
+Guides:
+
+- [Per-Collection Models](guides/per-collection-models.md)
+- [Code Embeddings](guides/code-embeddings.md)
+- [Bring Your Own Models](guides/bring-your-own-models.md)
 
 Example:
 
@@ -312,6 +320,10 @@ If the chosen template requires `{line}` but a result has no line hint, GNO fall
 
 ### Custom Models
 
+Need a more example-driven guide?
+
+- [Bring Your Own Models](guides/bring-your-own-models.md)
+
 ```yaml
 models:
   activePreset: custom
@@ -350,7 +362,7 @@ models:
   presets:
     - id: slim-tuned
       name: GNO Slim Tuned
-      embed: hf:gpustack/bge-m3-GGUF/bge-m3-Q4_K_M.gguf
+      embed: hf:Qwen/Qwen3-Embedding-0.6B-GGUF/Qwen3-Embedding-0.6B-Q8_0.gguf
       rerank: hf:ggml-org/Qwen3-Reranker-0.6B-Q8_0-GGUF/qwen3-reranker-0.6b-q8_0.gguf
       expand: hf:guiltylemon/gno-expansion-slim-retrieval-v1/gno-expansion-auto-entity-lock-default-mix-lr95-f16.gguf
       gen: hf:unsloth/Qwen3-1.7B-GGUF/Qwen3-1.7B-Q4_K_M.gguf
@@ -376,7 +388,7 @@ models:
   presets:
     - id: remote
       name: Remote GPU Server
-      embed: "http://192.168.1.100:8081/v1/embeddings#bge-m3"
+      embed: "http://192.168.1.100:8081/v1/embeddings#qwen3-embedding-0.6b"
       rerank: "http://192.168.1.100:8082/v1/completions#qwen3-reranker"
       expand: "http://192.168.1.100:8083/v1/chat/completions#gno-expand"
       gen: "http://192.168.1.100:8083/v1/chat/completions#qwen3-4b"
