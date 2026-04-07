@@ -486,7 +486,11 @@ async function ensureVectorIndex(runtime: {
       const batch = rows.slice(index, index + EMBED_BATCH_SIZE);
       const embedBatchResult = await embedPort.embedBatch(
         batch.map((row) =>
-          formatDocForEmbedding(row.text, row.title ?? undefined)
+          formatDocForEmbedding(
+            row.text,
+            row.title ?? undefined,
+            embedPort.modelUri
+          )
         )
       );
       if (!embedBatchResult.ok) {

@@ -97,7 +97,7 @@ export async function vsearch(
     try {
       // Embed query with contextual formatting (also determines dimensions)
       const queryEmbedResult = await embedPort.embed(
-        formatQueryForEmbedding(query)
+        formatQueryForEmbedding(query, embedPort.modelUri)
       );
       if (!queryEmbedResult.ok) {
         return { success: false, error: queryEmbedResult.error.message };

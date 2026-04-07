@@ -376,6 +376,10 @@ The same logic also applies after upgrading to a release where the built-in
 default embedding model changed. Old vectors are kept, but GNO counts backlog
 against the new active embed model so the need to re-embed is visible.
 
+The same is true if a release changes the formatting profile for your active
+embedding model. If document/query vectors are produced differently after the
+upgrade, run `gno embed` again so stored vectors match the new formatter.
+
 ### I want to remove old embeddings after switching models
 
 Use collection-level cleanup when you want to reclaim space or remove stale

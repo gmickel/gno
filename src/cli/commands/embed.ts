@@ -17,6 +17,7 @@ import {
   isInitialized,
   loadConfig,
 } from "../../config";
+import { embedTextsWithRecovery } from "../../embed/batch";
 import { LlmAdapter } from "../../llm/nodeLlamaCpp/adapter";
 import { resolveDownloadPolicy } from "../../llm/policy";
 import { resolveModelUri } from "../../llm/registry";
@@ -153,8 +154,11 @@ async function processBatches(ctx: BatchContext): Promise<BatchResult> {
     }
 
     // Embed batch with contextual formatting (title prefix)
-    const batchEmbedResult = await ctx.embedPort.embedBatch(
-      batch.map((b) => formatDocForEmbedding(b.text, b.title ?? undefined))
+    const batchEmbedResult = await embedTextsWithRecovery(
+      ctx.embedPort,
+      batch.map((b) =>
+        formatDocForEmbedding(b.text, b.title ?? undefined, ctx.modelUri)
+      )
     );
     if (!batchEmbedResult.ok) {
       if (ctx.verbose) {
@@ -178,25 +182,37 @@ async function processBatches(ctx: BatchContext): Promise<BatchResult> {
       continue;
     }
 
-    // Validate batch/embedding count match
-    const embeddings = batchEmbedResult.value;
-    if (embeddings.length !== batch.length) {
-      if (ctx.verbose) {
-        process.stderr.write(
-          `\n[embed] Count mismatch: got ${embeddings.length}, expected ${batch.length}\n`
-        );
-      }
-      errors += batch.length;
-      continue;
+    if (ctx.verbose && batchEmbedResult.value.batchFailed) {
+      const titles = batch
+        .slice(0, 3)
+        .map((b) => b.title ?? b.mirrorHash.slice(0, 8))
+        .join(", ");
+      process.stderr.write(
+        `\n[embed] Batch fallback (${batch.length} chunks: ${titles}${batch.length > 3 ? "..." : ""}): ${batchEmbedResult.value.batchError ?? "unknown batch error"}\n`
+      );
     }
 
-    // Store vectors (embeddedAt set by DB)
-    const vectors: VectorRow[] = batch.map((b, idx) => ({
-      mirrorHash: b.mirrorHash,
-      seq: b.seq,
-      model: ctx.modelUri,
-      embedding: new Float32Array(embeddings[idx] as number[]),
-    }));
+    const vectors: VectorRow[] = [];
+    for (const [idx, item] of batch.entries()) {
+      const embedding = batchEmbedResult.value.vectors[idx];
+      if (!embedding) {
+        errors += 1;
+        continue;
+      }
+      vectors.push({
+        mirrorHash: item.mirrorHash,
+        seq: item.seq,
+        model: ctx.modelUri,
+        embedding: new Float32Array(embedding),
+      });
+    }
+
+    if (vectors.length === 0) {
+      if (ctx.verbose) {
+        process.stderr.write("\n[embed] No recoverable embeddings in batch\n");
+      }
+      continue;
+    }
 
     const storeResult = await ctx.vectorIndex.upsertVectors(vectors);
     if (!storeResult.ok) {
@@ -205,11 +221,11 @@ async function processBatches(ctx: BatchContext): Promise<BatchResult> {
           `\n[embed] Store failed: ${storeResult.error.message}\n`
         );
       }
-      errors += batch.length;
+      errors += vectors.length;
       continue;
     }
 
-    embedded += batch.length;
+    embedded += vectors.length;
 
     // Progress output
     if (ctx.showProgress) {

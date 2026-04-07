@@ -149,7 +149,7 @@ export function handleVsearch(
       try {
         // Embed query with contextual formatting
         const queryEmbedResult = await embedPort.embed(
-          formatQueryForEmbedding(args.query)
+          formatQueryForEmbedding(args.query, embedPort.modelUri)
         );
         if (!queryEmbedResult.ok) {
           throw new Error(queryEmbedResult.error.message);

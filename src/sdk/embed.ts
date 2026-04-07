@@ -19,6 +19,7 @@ import type {
 import type { GnoEmbedOptions, GnoEmbedResult } from "./types";
 
 import { embedBacklog } from "../embed";
+import { embedTextsWithRecovery } from "../embed/batch";
 import { resolveModelUri } from "../llm/registry";
 import { formatDocForEmbedding } from "../pipeline/contextual";
 import { err, ok } from "../store/types";
@@ -139,29 +140,45 @@ async function forceEmbedAll(
       cursor = { mirrorHash: lastItem.mirrorHash, seq: lastItem.seq };
     }
 
-    const embedResult = await embedPort.embedBatch(
+    const embedResult = await embedTextsWithRecovery(
+      embedPort,
       batch.map((item) =>
-        formatDocForEmbedding(item.text, item.title ?? undefined)
+        formatDocForEmbedding(
+          item.text,
+          item.title ?? undefined,
+          embedPort.modelUri
+        )
       )
     );
-    if (!embedResult.ok || embedResult.value.length !== batch.length) {
+
+    if (!embedResult.ok) {
       errors += batch.length;
       continue;
     }
 
-    const vectors: VectorRow[] = batch.map((item, idx) => ({
-      mirrorHash: item.mirrorHash,
-      seq: item.seq,
-      model: modelUri,
-      embedding: new Float32Array(embedResult.value[idx] as number[]),
-    }));
-    const storeResult = await vectorIndex.upsertVectors(vectors);
-    if (!storeResult.ok) {
-      errors += batch.length;
-      continue;
+    const vectors: VectorRow[] = [];
+    for (const [idx, item] of batch.entries()) {
+      const embedding = embedResult.value.vectors[idx];
+      if (!embedding) {
+        errors += 1;
+        continue;
+      }
+      vectors.push({
+        mirrorHash: item.mirrorHash,
+        seq: item.seq,
+        model: modelUri,
+        embedding: new Float32Array(embedding),
+      });
     }
 
-    embedded += batch.length;
+    if (vectors.length > 0) {
+      const storeResult = await vectorIndex.upsertVectors(vectors);
+      if (!storeResult.ok) {
+        errors += vectors.length;
+        continue;
+      }
+      embedded += vectors.length;
+    }
   }
 
   if (vectorIndex.vecDirty) {

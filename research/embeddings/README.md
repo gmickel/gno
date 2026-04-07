@@ -101,7 +101,23 @@ Current non-recommendation:
 
 - `jina-code-embeddings-0.5b-GGUF` is not currently recommended in GNO's native runtime despite promising canonical scores, because it produced embedding-id/runtime issues and collapsed on the real-code slice
 
-## If a code-specific winner emerges
+## Compatibility notes
+
+GNO now has an explicit embedding compatibility layer rather than assuming every
+GGUF embedding model behaves like the same model with a different filename.
+
+Current practical outcome:
+
+- Qwen remains the healthy shipped path
+- Jina-style challengers are still treated cautiously in the native runtime
+- Nomic-style challengers may still need deeper runtime work even when tiny-fixture scores look strong
+
+Important operator note:
+
+- runtime-only embedding changes do not require re-embedding
+- formatting-profile changes do require re-embedding, because stored document vectors were produced differently
+
+## If a future code-specific winner emerges
 
 Do two things:
 
@@ -128,9 +144,8 @@ That recommendation belongs in `docs/CONFIGURATION.md`, relevant benchmark docs,
 Latency note:
 
 - `Qwen3-Embedding-0.6B-GGUF` is currently slower than `bge-m3`
-- the recommendation is therefore:
-  - keep `bge-m3` globally for mixed/prose collections
-- use Qwen specifically where code retrieval quality matters more than embedding speed
+- but it won strongly enough on both code and multilingual prose/docs to become the current global default
+- collection overrides remain useful only when one collection should intentionally diverge from that default
 
 ## Current general multilingual winner
 
@@ -140,8 +155,8 @@ Current best general-docs result:
 
 Public multilingual markdown benchmark numbers:
 
-- `bge-m3`: vector nDCG@10 `0.350`, hybrid nDCG@10 `0.642`
-- `Qwen3-Embedding-0.6B-GGUF`: vector nDCG@10 `0.859`, hybrid nDCG@10 `0.947`
+- `bge-m3`: vector nDCG@10 `0.3508`, hybrid nDCG@10 `0.6756`
+- `Qwen3-Embedding-0.6B-GGUF`: vector nDCG@10 `0.9891`, hybrid nDCG@10 `0.9891`
 
 Interpretation:
 

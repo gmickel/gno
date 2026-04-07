@@ -16,6 +16,7 @@ import type {
 
 import { formatDocForEmbedding } from "../pipeline/contextual";
 import { err, ok } from "../store/types";
+import { embedTextsWithRecovery } from "./batch";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -85,9 +86,14 @@ export async function embedBacklog(
       }
 
       // Embed batch with contextual formatting (title prefix)
-      const embedResult = await embedPort.embedBatch(
+      const embedResult = await embedTextsWithRecovery(
+        embedPort,
         batch.map((b: BacklogItem) =>
-          formatDocForEmbedding(b.text, b.title ?? undefined)
+          formatDocForEmbedding(
+            b.text,
+            b.title ?? undefined,
+            embedPort.modelUri
+          )
         )
       );
 
@@ -96,28 +102,29 @@ export async function embedBacklog(
         continue;
       }
 
-      // Validate batch/embedding count match
-      const embeddings = embedResult.value;
-      if (embeddings.length !== batch.length) {
-        errors += batch.length;
-        continue;
+      const vectors: VectorRow[] = [];
+      for (const [idx, item] of batch.entries()) {
+        const embedding = embedResult.value.vectors[idx];
+        if (!embedding) {
+          errors += 1;
+          continue;
+        }
+        vectors.push({
+          mirrorHash: item.mirrorHash,
+          seq: item.seq,
+          model: modelUri,
+          embedding: new Float32Array(embedding),
+        });
       }
 
-      // Store vectors (embeddedAt set by DB)
-      const vectors: VectorRow[] = batch.map((b: BacklogItem, idx: number) => ({
-        mirrorHash: b.mirrorHash,
-        seq: b.seq,
-        model: modelUri,
-        embedding: new Float32Array(embeddings[idx] as number[]),
-      }));
-
-      const storeResult = await vectorIndex.upsertVectors(vectors);
-      if (!storeResult.ok) {
-        errors += batch.length;
-        continue;
+      if (vectors.length > 0) {
+        const storeResult = await vectorIndex.upsertVectors(vectors);
+        if (!storeResult.ok) {
+          errors += vectors.length;
+          continue;
+        }
+        embedded += vectors.length;
       }
-
-      embedded += batch.length;
     }
 
     // Sync vec index once at end if any vec0 writes failed

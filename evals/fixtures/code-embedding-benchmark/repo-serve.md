@@ -25,11 +25,12 @@ Interpretation:
 As of 2026-04-06:
 
 - `bge-m3`: vector nDCG@10 `0.1003`
-- `Qwen3-Embedding-0.6B-GGUF`: vector nDCG@10 `0.6872`
+- `Qwen3-Embedding-0.6B-GGUF`: vector nDCG@10 `0.8102`
 - `jina-code-embeddings-0.5b-GGUF`: vector nDCG@10 `0.0` under the current native runtime, with embedding-id errors during indexing
 
 Current recommendation:
 
-- keep `bge-m3` as the global default for mixed/prose collections
-- use `Qwen3-Embedding-0.6B-GGUF` as the current code-specialist embedding model for code-heavy collections
+- built-in presets now use `Qwen3-Embedding-0.6B-GGUF` as the global default embed model
+- do not add a collection override just to get Qwen on code collections
+- use collection-level overrides only when one collection should intentionally diverge from the global default
 - do not recommend `jina-code-embeddings-0.5b-GGUF` in GNO's current native runtime until its embedding-id/runtime issues are understood and fixed

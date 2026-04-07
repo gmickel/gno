@@ -6,6 +6,7 @@
 
 import { describe, expect, test } from "bun:test";
 
+import { getEmbeddingCompatibilityProfile } from "../../src/llm/embedding-compatibility";
 import {
   extractTitle,
   formatDocForEmbedding,
@@ -26,6 +27,16 @@ describe("formatQueryForEmbedding", () => {
   test("preserves query with special characters", () => {
     const formatted = formatQueryForEmbedding("what is async/await?");
     expect(formatted).toBe("task: search result | query: what is async/await?");
+  });
+
+  test("uses Qwen instruct query formatting for Qwen embedding models", () => {
+    const formatted = formatQueryForEmbedding(
+      "how to deploy",
+      "hf:Qwen/Qwen3-Embedding-0.6B-GGUF/Qwen3-Embedding-0.6B-Q8_0.gguf"
+    );
+    expect(formatted).toBe(
+      "Instruct: Retrieve relevant documents for the given query\nQuery: how to deploy"
+    );
   });
 });
 
@@ -58,6 +69,41 @@ describe("formatDocForEmbedding", () => {
   test("handles whitespace-only title", () => {
     const formatted = formatDocForEmbedding("Content", "   ");
     expect(formatted).toBe("title: none | text: Content");
+  });
+
+  test("uses raw text formatting for Qwen embedding documents", () => {
+    const formatted = formatDocForEmbedding(
+      "Some content",
+      "My Title",
+      "hf:Qwen/Qwen3-Embedding-0.6B-GGUF/Qwen3-Embedding-0.6B-Q8_0.gguf"
+    );
+    expect(formatted).toBe("My Title\nSome content");
+  });
+});
+
+describe("getEmbeddingCompatibilityProfile", () => {
+  test("returns Qwen profile for Qwen embedding URIs", () => {
+    const profile = getEmbeddingCompatibilityProfile(
+      "hf:Qwen/Qwen3-Embedding-0.6B-GGUF/Qwen3-Embedding-0.6B-Q8_0.gguf"
+    );
+    expect(profile.id).toBe("qwen-embedding");
+    expect(profile.batchEmbeddingTrusted).toBe(true);
+  });
+
+  test("marks Jina embedding families as batch-untrusted", () => {
+    const profile = getEmbeddingCompatibilityProfile(
+      "hf:jinaai/jina-embeddings-v4-text-code-GGUF/jina-embeddings-v4-text-code-Q5_K_M.gguf"
+    );
+    expect(profile.id).toBe("jina-embedding");
+    expect(profile.batchEmbeddingTrusted).toBe(false);
+  });
+
+  test("returns default profile for unknown models", () => {
+    const profile = getEmbeddingCompatibilityProfile(
+      "hf:test/other-embed.gguf"
+    );
+    expect(profile.id).toBe("default");
+    expect(profile.batchEmbeddingTrusted).toBe(true);
   });
 });
 
