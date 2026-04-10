@@ -208,6 +208,7 @@ function normalizeRunArtifact(
 
   const benchmark = "benchmark" in raw ? raw.benchmark : undefined;
   const benchmarkPath = "benchmarkPath" in raw ? raw.benchmarkPath : undefined;
+  const embedModel = "embedModel" in raw ? raw.embedModel : undefined;
   return {
     candidateId: raw.candidateId,
     label: raw.label,
@@ -215,7 +216,7 @@ function normalizeRunArtifact(
       raw.runtime ??
       ({
         kind: "native",
-        uri: raw.embedModel ?? "",
+        uri: embedModel ?? "",
       } as EmbeddingRuntimeSpec),
     benchmarkPaths: benchmarkPath ? { canonical: benchmarkPath } : {},
     benchmarks: benchmark ? { canonical: benchmark } : {},

@@ -13,6 +13,7 @@ import {
   LinkIcon,
   Loader2Icon,
   PencilIcon,
+  Share2Icon,
   SquareArrowOutUpRightIcon,
   TextIcon,
   TrashIcon,
@@ -63,6 +64,10 @@ import {
   parseDocumentDeepLink,
 } from "../lib/deep-links";
 import { waitForDocumentAvailability } from "../lib/document-availability";
+import {
+  downloadPublishArtifactFile,
+  type PublishExportResponse,
+} from "../lib/publish-export";
 import { subscribeWorkspaceActionRequest } from "../lib/workspace-events";
 
 interface PageProps {
@@ -287,6 +292,11 @@ export default function DocView({ navigate }: PageProps) {
   const [externalChangeNotice, setExternalChangeNotice] = useState<
     string | null
   >(null);
+  const [exportingPublishArtifact, setExportingPublishArtifact] =
+    useState(false);
+  const [publishExportError, setPublishExportError] = useState<string | null>(
+    null
+  );
 
   // Tag editing state
   const [editingTags, setEditingTags] = useState(false);
@@ -517,6 +527,32 @@ export default function DocView({ navigate }: PageProps) {
       navigate(`/edit?uri=${encodeURIComponent(data.uri)}`);
     }
   }, [doc, navigate]);
+
+  const handlePublishExport = useCallback(async () => {
+    if (!doc) {
+      return;
+    }
+
+    setPublishExportError(null);
+    setExportingPublishArtifact(true);
+    const { data, error: err } = await apiFetch<PublishExportResponse>(
+      "/api/publish/export",
+      {
+        body: JSON.stringify({ target: doc.uri }),
+        method: "POST",
+      }
+    );
+    setExportingPublishArtifact(false);
+
+    if (err) {
+      setPublishExportError(err);
+      return;
+    }
+
+    if (data) {
+      downloadPublishArtifactFile(data);
+    }
+  }, [doc]);
 
   const handleDelete = async () => {
     if (!doc) return;
@@ -1311,6 +1347,22 @@ export default function DocView({ navigate }: PageProps) {
                     </Button>
                     <Button
                       className="gap-1.5"
+                      disabled={exportingPublishArtifact}
+                      onClick={() => {
+                        void handlePublishExport();
+                      }}
+                      size="sm"
+                      variant="outline"
+                    >
+                      {exportingPublishArtifact ? (
+                        <Loader2Icon className="size-4 animate-spin" />
+                      ) : (
+                        <Share2Icon className="size-4" />
+                      )}
+                      Export for gno.sh
+                    </Button>
+                    <Button
+                      className="gap-1.5"
                       onClick={handleStartRename}
                       size="sm"
                       variant="outline"
@@ -1356,6 +1408,22 @@ export default function DocView({ navigate }: PageProps) {
                         Create editable copy
                       </Button>
                     )}
+                    <Button
+                      className="gap-1.5"
+                      disabled={exportingPublishArtifact}
+                      onClick={() => {
+                        void handlePublishExport();
+                      }}
+                      size="sm"
+                      variant="outline"
+                    >
+                      {exportingPublishArtifact ? (
+                        <Loader2Icon className="size-4 animate-spin" />
+                      ) : (
+                        <Share2Icon className="size-4" />
+                      )}
+                      Export for gno.sh
+                    </Button>
                     {doc.source.absPath && (
                       <>
                         <Button
@@ -1408,6 +1476,9 @@ export default function DocView({ navigate }: PageProps) {
             </>
           )}
         </div>
+        {publishExportError && (
+          <p className="pt-2 text-destructive text-sm">{publishExportError}</p>
+        )}
       </header>
 
       <div className="mx-auto flex max-w-[1800px] gap-5 px-6 xl:px-8">

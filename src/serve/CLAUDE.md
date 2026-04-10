@@ -67,22 +67,23 @@ Answer generation uses shared module to stay in sync with CLI:
 
 ## API Endpoints
 
-| Endpoint             | Method | Description                                |
-| -------------------- | ------ | ------------------------------------------ |
-| `/api/health`        | GET    | Health check                               |
-| `/api/status`        | GET    | Index stats, onboarding, health, bootstrap |
-| `/api/capabilities`  | GET    | Available features                         |
-| `/api/collections`   | GET    | List collections                           |
-| `/api/docs`          | GET    | List documents                             |
-| `/api/doc`           | GET    | Get document content                       |
-| `/api/search`        | POST   | BM25 search                                |
-| `/api/query`         | POST   | Hybrid search                              |
-| `/api/ask`           | POST   | AI answer with citations                   |
-| `/api/presets`       | GET    | List model presets                         |
-| `/api/presets`       | POST   | Switch preset (hot-reload)                 |
-| `/api/models/status` | GET    | Download progress                          |
-| `/api/models/pull`   | POST   | Start model download                       |
-| `/api/tags`          | GET    | List tags (with counts)                    |
+| Endpoint              | Method | Description                                |
+| --------------------- | ------ | ------------------------------------------ |
+| `/api/health`         | GET    | Health check                               |
+| `/api/status`         | GET    | Index stats, onboarding, health, bootstrap |
+| `/api/capabilities`   | GET    | Available features                         |
+| `/api/collections`    | GET    | List collections                           |
+| `/api/publish/export` | POST   | Export gno.sh publish artifact JSON        |
+| `/api/docs`           | GET    | List documents                             |
+| `/api/doc`            | GET    | Get document content                       |
+| `/api/search`         | POST   | BM25 search                                |
+| `/api/query`          | POST   | Hybrid search                              |
+| `/api/ask`            | POST   | AI answer with citations                   |
+| `/api/presets`        | GET    | List model presets                         |
+| `/api/presets`        | POST   | Switch preset (hot-reload)                 |
+| `/api/models/status`  | GET    | Download progress                          |
+| `/api/models/pull`    | POST   | Start model download                       |
+| `/api/tags`           | GET    | List tags (with counts)                    |
 
 ## Frontend
 

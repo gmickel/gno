@@ -410,7 +410,19 @@ gno query "refresh token rotation" --explain
 # Work with filters
 gno query "meeting notes" --since "last month" --category "meeting,notes"
 gno search "incident review" --tags-all "status/active,team/platform"
+
+# Export a publish artifact for gno.sh
+gno publish export work-docs --out ~/Downloads/work-docs.json
+gno publish export "gno://work-docs/runbooks/deploy.md" --out ~/Downloads/deploy.json
 ```
+
+The local web UI exposes the same export flow:
+
+- Collections page → collection menu → `Export for gno.sh`
+- Document view → `Export for gno.sh`
+
+Both actions download the same JSON artifact the CLI writes, ready for upload at
+`https://gno.sh/studio`.
 
 ### Retrieval V2 Controls
 

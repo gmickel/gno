@@ -22,6 +22,7 @@ Fast local semantic search. Index once, search instantly. No cloud, no API keys.
 - User wants to **tag, categorize, or filter** documents
 - User asks about **backlinks, wiki links, or related notes**
 - User wants to **visualize document connections** or see a **knowledge graph**
+- User wants to **export a note or collection for gno.sh publishing**
 
 ## Quick Start
 
@@ -44,6 +45,7 @@ gno search "your query"               # BM25 keyword search
 | **Context**  | `context add/list/rm/check`                                      | Add hints to improve search relevance                     |
 | **Models**   | `models list/use/pull/clear/path`                                | Manage local AI models                                    |
 | **Serve**    | `serve`                                                          | Web UI for browsing and searching                         |
+| **Publish**  | `publish export`                                                 | Export gno.sh publish artifacts                           |
 | **MCP**      | `mcp`, `mcp install/uninstall/status`                            | AI assistant integration                                  |
 | **Skill**    | `skill install/uninstall/show/paths`                             | Install skill for AI agents                               |
 | **Admin**    | `status`, `doctor`, `cleanup`, `reset`, `vec`, `completion`      | Maintenance and diagnostics                               |

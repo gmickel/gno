@@ -89,6 +89,12 @@ export {
   status,
 } from "./status";
 export {
+  formatPublishExport,
+  publishExport,
+  type PublishExportOptions,
+  type PublishExportResult,
+} from "./publish";
+export {
   formatUpdate,
   type UpdateOptions,
   type UpdateResult,

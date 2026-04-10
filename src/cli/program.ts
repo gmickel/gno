@@ -216,6 +216,7 @@ export function createProgram(): Command {
   wireSearchCommands(program);
   wireOnboardingCommands(program);
   wireManagementCommands(program);
+  wirePublishCommand(program);
   wireVecCommands(program);
   wireRetrievalCommands(program);
   wireTagsCommands(program);
@@ -1619,6 +1620,71 @@ function wireVecCommands(program: Command): void {
 
       process.stdout.write(
         `${formatVecRebuild(result, { json: format === "json" })}\n`
+      );
+    });
+}
+
+function wirePublishCommand(program: Command): void {
+  const publishCmd = program
+    .command("publish")
+    .description("Export publish artifacts for gno.sh");
+
+  publishCmd
+    .command("export <target>")
+    .description("Export a collection or document ref as a gno.sh artifact")
+    .requiredOption("--out <path>", "output artifact path")
+    .option(
+      "--visibility <mode>",
+      "visibility hint (public, secret-link, invite-only, encrypted)",
+      "public"
+    )
+    .option("--slug <slug>", "route slug override")
+    .option("--title <title>", "space title override")
+    .option("--summary <summary>", "space summary override")
+    .option("--json", "JSON output")
+    .action(async (target: string, cmdOpts: Record<string, unknown>) => {
+      const format = getFormat(cmdOpts);
+      assertFormatSupported(CMD.publishExport, format);
+      const globals = getGlobals();
+
+      const visibility = cmdOpts.visibility as string;
+      if (
+        !["public", "secret-link", "invite-only", "encrypted"].includes(
+          visibility
+        )
+      ) {
+        throw new CliError(
+          "VALIDATION",
+          `Invalid visibility: ${visibility}. Must be public, secret-link, invite-only, or encrypted.`
+        );
+      }
+
+      const { formatPublishExport, publishExport } =
+        await import("./commands/publish");
+      const result = await publishExport(target, {
+        configPath: globals.config,
+        json: format === "json",
+        out: String(cmdOpts.out),
+        slug: cmdOpts.slug as string | undefined,
+        summary: cmdOpts.summary as string | undefined,
+        title: cmdOpts.title as string | undefined,
+        visibility: visibility as
+          | "encrypted"
+          | "invite-only"
+          | "public"
+          | "secret-link",
+      });
+
+      if (!result.success) {
+        throw new CliError(
+          result.isValidation ? "VALIDATION" : "RUNTIME",
+          result.error
+        );
+      }
+
+      await writeOutput(
+        formatPublishExport(result, { json: format === "json" }),
+        format
       );
     });
 }

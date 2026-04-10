@@ -91,6 +91,11 @@ import {
 import { searchHybrid } from "../../pipeline/hybrid";
 import { validateQueryModes } from "../../pipeline/query-modes";
 import { searchBm25 } from "../../pipeline/search";
+import {
+  derivePublishArtifactFilename,
+  type PublishVisibility,
+} from "../../publish/artifact";
+import { exportPublishArtifact } from "../../publish/export-service";
 import { buildBrowseTree, normalizeBrowsePath } from "../browse-tree";
 import { applyConfigChange, applyConfigChangeTyped } from "../config-sync";
 import { getConnectorStatuses, installConnector } from "../connectors";
@@ -331,6 +336,14 @@ export interface CreateEditableCopyRequestBody {
   collection?: string;
   relPath?: string;
   uri?: string;
+}
+
+export interface PublishExportRequestBody {
+  slug?: string;
+  summary?: string;
+  target: string;
+  title?: string;
+  visibility?: PublishVisibility;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -724,6 +737,64 @@ export async function handleCollections(config: Config): Promise<Response> {
   return jsonResponse(
     config.collections.map((c) => serializeCollection(config, c))
   );
+}
+
+/**
+ * POST /api/publish/export
+ * Build a gno.sh-compatible publish artifact for a collection or single doc.
+ */
+export async function handlePublishExport(
+  config: Config,
+  store: SqliteAdapter,
+  req: Request
+): Promise<Response> {
+  let body: PublishExportRequestBody;
+  try {
+    body = (await req.json()) as PublishExportRequestBody;
+  } catch {
+    return errorResponse("VALIDATION", "Invalid JSON body");
+  }
+
+  if (!body.target || typeof body.target !== "string") {
+    return errorResponse("VALIDATION", "Missing or invalid target");
+  }
+  if (body.slug !== undefined && typeof body.slug !== "string") {
+    return errorResponse("VALIDATION", "slug must be a string");
+  }
+  if (body.summary !== undefined && typeof body.summary !== "string") {
+    return errorResponse("VALIDATION", "summary must be a string");
+  }
+  if (body.title !== undefined && typeof body.title !== "string") {
+    return errorResponse("VALIDATION", "title must be a string");
+  }
+
+  try {
+    const artifact = await exportPublishArtifact({
+      collections: config.collections,
+      options: {
+        routeSlug: body.slug,
+        summary: body.summary,
+        title: body.title,
+        visibility: body.visibility,
+      },
+      store,
+      target: body.target.trim(),
+    });
+
+    return jsonResponse({
+      artifact,
+      fileName: derivePublishArtifactFilename(artifact),
+      uploadUrl: "https://gno.sh/studio",
+    });
+  } catch (error) {
+    return errorResponse(
+      "RUNTIME",
+      error instanceof Error
+        ? error.message
+        : "Failed to export publish artifact",
+      500
+    );
+  }
 }
 
 /**
@@ -3892,6 +3963,10 @@ export async function routeApi(
 
   if (path === "/api/collections") {
     return handleCollections(config);
+  }
+
+  if (path === "/api/publish/export" && req.method === "POST") {
+    return handlePublishExport(config, store, req);
   }
 
   if (path === "/api/docs") {

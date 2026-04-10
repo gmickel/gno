@@ -42,6 +42,7 @@ import {
   handleJob,
   handleModelPull,
   handleModelStatus,
+  handlePublishExport,
   handlePresets,
   handleQuery,
   handleRefactorPlan,
@@ -230,6 +231,17 @@ export async function startServer(
             }
             return withSecurityHeaders(
               await handleImportPreview(ctxHolder, req),
+              isDev
+            );
+          },
+        },
+        "/api/publish/export": {
+          POST: async (req: Request) => {
+            if (!isRequestAllowed(req, port)) {
+              return withSecurityHeaders(forbiddenResponse(), isDev);
+            }
+            return withSecurityHeaders(
+              await handlePublishExport(ctxHolder.config, store, req),
               isDev
             );
           },

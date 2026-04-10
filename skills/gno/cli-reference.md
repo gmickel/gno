@@ -478,6 +478,34 @@ gno serve [options]
 
 Features: Dashboard, search, browse collections, document viewer, AI Q&A with citations.
 
+## Publish
+
+### gno publish export
+
+Export a note or collection as a gno.sh publish artifact JSON.
+
+```bash
+gno publish export <target> --out <path.json> [options]
+```
+
+| Option         | Default  | Description                                                |
+| -------------- | -------- | ---------------------------------------------------------- |
+| `--out`        | required | Output path for the exported artifact JSON                 |
+| `--visibility` | public   | One of `public`, `secret-link`, `invite-only`, `encrypted` |
+| `--slug`       | auto     | Override the published route slug                          |
+| `--title`      | auto     | Override the exported title                                |
+| `--summary`    | auto     | Override the exported summary                              |
+| `--json`       | false    | Structured result output                                   |
+
+Examples:
+
+```bash
+gno publish export work-docs --out ~/Downloads/work-docs.json
+gno publish export "gno://work-docs/runbooks/deploy.md" --out ~/Downloads/deploy.json
+```
+
+On success, upload the JSON file at `https://gno.sh/studio`.
+
 ## Skill Management
 
 ### gno skill install
