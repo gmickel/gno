@@ -414,6 +414,8 @@ gno search "incident review" --tags-all "status/active,team/platform"
 # Export a publish artifact for gno.sh
 gno publish export work-docs --out ~/Downloads/work-docs.json
 gno publish export "gno://work-docs/runbooks/deploy.md" --out ~/Downloads/deploy.json
+# Or let GNO choose ~/Downloads/<slug>-<YYYYMMDD>.json automatically
+gno publish export work-docs
 ```
 
 The local web UI exposes the same export flow:

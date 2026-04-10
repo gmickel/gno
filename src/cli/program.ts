@@ -1625,6 +1625,12 @@ function wireVecCommands(program: Command): void {
 }
 
 function wirePublishCommand(program: Command): void {
+  const visibilityValues = [
+    "public",
+    "secret-link",
+    "invite-only",
+    "encrypted",
+  ] as const;
   const publishCmd = program
     .command("publish")
     .description("Export publish artifacts for gno.sh");
@@ -1632,7 +1638,7 @@ function wirePublishCommand(program: Command): void {
   publishCmd
     .command("export <target>")
     .description("Export a collection or document ref as a gno.sh artifact")
-    .requiredOption("--out <path>", "output artifact path")
+    .option("--out <path>", "output artifact path")
     .option(
       "--visibility <mode>",
       "visibility hint (public, secret-link, invite-only, encrypted)",
@@ -1649,8 +1655,8 @@ function wirePublishCommand(program: Command): void {
 
       const visibility = cmdOpts.visibility as string;
       if (
-        !["public", "secret-link", "invite-only", "encrypted"].includes(
-          visibility
+        !visibilityValues.includes(
+          visibility as (typeof visibilityValues)[number]
         )
       ) {
         throw new CliError(
@@ -1664,7 +1670,7 @@ function wirePublishCommand(program: Command): void {
       const result = await publishExport(target, {
         configPath: globals.config,
         json: format === "json",
-        out: String(cmdOpts.out),
+        out: typeof cmdOpts.out === "string" ? cmdOpts.out : undefined,
         slug: cmdOpts.slug as string | undefined,
         summary: cmdOpts.summary as string | undefined,
         title: cmdOpts.title as string | undefined,

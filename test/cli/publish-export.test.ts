@@ -1,11 +1,17 @@
 import { describe, expect, it } from "bun:test";
 
-import { formatPublishExport } from "../../src/cli/commands/publish";
+import {
+  buildDefaultPublishExportPath,
+  formatPublishExport,
+} from "../../src/cli/commands/publish";
 import {
   buildExportedMetadata,
+  derivePublishArtifactFilename,
   deriveExportedSlug,
+  derivePublishSlug,
   deriveExportedSummary,
   deriveExportedTitle,
+  MAX_PUBLISH_SLUG_LENGTH,
 } from "../../src/publish/artifact";
 
 describe("publish export helpers", () => {
@@ -30,6 +36,16 @@ describe("publish export helpers", () => {
         title: null,
       })
     ).toBe("readme");
+
+    expect(
+      deriveExportedSlug({
+        relPath: "日本語/!!!.md",
+        title: "!!!",
+      })
+    ).toBe("untitled");
+
+    const longSlug = derivePublishSlug(["a".repeat(120)]);
+    expect(longSlug.length).toBe(MAX_PUBLISH_SLUG_LENGTH);
   });
 
   it("prefers frontmatter summary and builds filtered metadata", () => {
@@ -50,7 +66,14 @@ describe("publish export helpers", () => {
           languageHint: "en",
           relPath: "notes/atlas.md",
         },
-        { audience: "clients", title: "Atlas" },
+        {
+          audience: "clients",
+          password: "secret",
+          tags: ["ignore-me"],
+          title: "Atlas",
+          topics: ["launch", "ops"],
+          token: "should-not-export",
+        },
         [{ source: "frontmatter", tag: "atlas" }]
       )
     ).toEqual({
@@ -63,7 +86,31 @@ describe("publish export helpers", () => {
       sourceRelPath: "notes/atlas.md",
       tags: ["atlas"],
       audience: "clients",
+      topics: ["launch", "ops"],
     });
+  });
+
+  it("builds default output paths in Downloads when --out is omitted", () => {
+    const artifact = {
+      version: 1 as const,
+      source: "atlas",
+      exportedAt: "2026-04-10T13:45:00.000Z",
+      spaces: [
+        {
+          routeSlug: "atlas",
+          sourceType: "collection" as const,
+          title: "Atlas",
+          summary: "Atlas summary",
+          visibility: "public" as const,
+          notes: [],
+        },
+      ],
+    };
+
+    expect(derivePublishArtifactFilename(artifact)).toBe("atlas.json");
+    expect(buildDefaultPublishExportPath(artifact)).toContain(
+      "/Downloads/atlas-20260410.json"
+    );
   });
 
   it("formats successful export output with the next step", () => {

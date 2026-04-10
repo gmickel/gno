@@ -485,17 +485,17 @@ Features: Dashboard, search, browse collections, document viewer, AI Q&A with ci
 Export a note or collection as a gno.sh publish artifact JSON.
 
 ```bash
-gno publish export <target> --out <path.json> [options]
+gno publish export <target> [--out <path.json>] [options]
 ```
 
-| Option         | Default  | Description                                                |
-| -------------- | -------- | ---------------------------------------------------------- |
-| `--out`        | required | Output path for the exported artifact JSON                 |
-| `--visibility` | public   | One of `public`, `secret-link`, `invite-only`, `encrypted` |
-| `--slug`       | auto     | Override the published route slug                          |
-| `--title`      | auto     | Override the exported title                                |
-| `--summary`    | auto     | Override the exported summary                              |
-| `--json`       | false    | Structured result output                                   |
+| Option         | Default | Description                                                   |
+| -------------- | ------- | ------------------------------------------------------------- |
+| `--out`        | auto    | Output path, defaults to `~/Downloads/<slug>-<YYYYMMDD>.json` |
+| `--visibility` | public  | One of `public`, `secret-link`, `invite-only`, `encrypted`    |
+| `--slug`       | auto    | Override the published route slug                             |
+| `--title`      | auto    | Override the exported title                                   |
+| `--summary`    | auto    | Override the exported summary                                 |
+| `--json`       | false   | Structured result output                                      |
 
 Examples:
 

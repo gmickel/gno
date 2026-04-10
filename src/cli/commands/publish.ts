@@ -5,7 +5,9 @@
  */
 
 import { mkdir, writeFile } from "node:fs/promises";
+import { homedir } from "node:os";
 import { dirname } from "node:path";
+import { join } from "node:path";
 
 import type {
   PublishArtifact,
@@ -19,7 +21,7 @@ import { initStore } from "./shared";
 export interface PublishExportOptions {
   configPath?: string;
   json?: boolean;
-  out: string;
+  out?: string;
   slug?: string;
   summary?: string;
   title?: string;
@@ -37,18 +39,28 @@ export type PublishExportResult =
     }
   | { success: false; error: string; isValidation?: boolean };
 
+function formatExportDateStamp(isoTimestamp: string): string {
+  return isoTimestamp.slice(0, 10).replaceAll("-", "");
+}
+
+export function buildDefaultPublishExportPath(
+  artifact: PublishArtifact
+): string {
+  const fileName = derivePublishArtifactFilename(artifact).replace(
+    /\.json$/u,
+    ""
+  );
+  return join(
+    homedir(),
+    "Downloads",
+    `${fileName}-${formatExportDateStamp(artifact.exportedAt)}.json`
+  );
+}
+
 export async function publishExport(
   target: string,
   options: PublishExportOptions
 ): Promise<PublishExportResult> {
-  if (!options.out.trim()) {
-    return {
-      success: false,
-      error: "--out is required",
-      isValidation: true,
-    };
-  }
-
   const initResult = await initStore({
     configPath: options.configPath,
     syncConfig: false,
@@ -71,15 +83,17 @@ export async function publishExport(
       store,
       target,
     });
+    const outPath =
+      options.out?.trim() || buildDefaultPublishExportPath(artifact);
 
-    await mkdir(dirname(options.out), { recursive: true });
-    await writeFile(options.out, JSON.stringify(artifact, null, 2));
+    await mkdir(dirname(outPath), { recursive: true });
+    await writeFile(outPath, JSON.stringify(artifact, null, 2));
 
     return {
       success: true,
       data: {
         artifact,
-        outPath: options.out,
+        outPath,
         uploadUrl: "https://gno.sh/studio",
       },
     };

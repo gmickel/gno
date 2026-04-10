@@ -39,11 +39,68 @@ export interface PublishArtifact {
   version: 1;
 }
 
+export const PUBLISH_VISIBILITY_VALUES = [
+  "public",
+  "secret-link",
+  "invite-only",
+  "encrypted",
+] as const;
+
+export const MAX_PUBLISH_SLUG_LENGTH = 80;
+
+const ALLOWED_FRONTMATTER_METADATA_KEYS = new Set([
+  "audience",
+  "canonical",
+  "canonicalUrl",
+  "canonicalURL",
+  "coverAlt",
+  "coverImage",
+  "icon",
+  "image",
+  "layout",
+  "publishedAt",
+  "readingTime",
+  "series",
+  "seriesOrder",
+  "status",
+  "subtitle",
+  "theme",
+  "topic",
+  "topics",
+]);
+
+export const isPublishVisibility = (
+  value: unknown
+): value is PublishVisibility =>
+  typeof value === "string" &&
+  PUBLISH_VISIBILITY_VALUES.includes(value as PublishVisibility);
+
 export const slugify = (value: string) =>
   value
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/(^-|-$)/g, "");
+
+function toPublishSlugCandidate(value: string): string {
+  return slugify(value).slice(0, MAX_PUBLISH_SLUG_LENGTH).replace(/-+$/g, "");
+}
+
+export function derivePublishSlug(
+  candidates: Array<string>,
+  fallback = "untitled"
+): string {
+  for (const candidate of candidates) {
+    const slug = toPublishSlugCandidate(candidate);
+    if (slug.length > 0) {
+      return slug;
+    }
+  }
+
+  return fallback;
+}
+
+export const normalizePublishSlug = (value: string, fallback?: string) =>
+  derivePublishSlug([value], fallback);
 
 const basenameWithoutExt = (value: string) =>
   value
@@ -57,14 +114,11 @@ export const deriveExportedTitle = (
 
 export const deriveExportedSlug = (
   doc: Pick<DocumentRow, "relPath" | "title">
-) => {
-  const titleSlug = slugify(deriveExportedTitle(doc));
-  if (titleSlug.length > 0) {
-    return titleSlug;
-  }
-
-  return slugify(doc.relPath.replace(/\.[^.]+$/, "").replaceAll("/", "-"));
-};
+) =>
+  derivePublishSlug([
+    deriveExportedTitle(doc),
+    doc.relPath.replace(/\.[^.]+$/, "").replaceAll("/", "-"),
+  ]);
 
 export const deriveExportedSummary = (
   markdown: string,
@@ -138,11 +192,26 @@ export const buildExportedMetadata = (
   metadata.sourceRelPath = doc.relPath;
 
   for (const [key, value] of Object.entries(parsedFrontmatter)) {
-    if (key === "tags" || key === "title" || key === "summary") {
+    if (
+      key === "tags" ||
+      key === "title" ||
+      key === "summary" ||
+      !ALLOWED_FRONTMATTER_METADATA_KEYS.has(key)
+    ) {
       continue;
     }
     if (typeof value === "string" && value.trim()) {
       metadata[key] = value.trim();
+      continue;
+    }
+    if (Array.isArray(value)) {
+      const cleaned = value
+        .filter((entry): entry is string => typeof entry === "string")
+        .map((entry) => entry.trim())
+        .filter(Boolean);
+      if (cleaned.length > 0) {
+        metadata[key] = cleaned;
+      }
     }
   }
 
@@ -177,6 +246,7 @@ export const buildPublishArtifact = (input: {
 
 export const derivePublishArtifactFilename = (artifact: PublishArtifact) => {
   const routeSlug =
-    artifact.spaces[0]?.routeSlug.trim() || slugify(artifact.source);
+    artifact.spaces[0]?.routeSlug.trim() ||
+    normalizePublishSlug(artifact.source, "publish-artifact");
   return `${routeSlug || "publish-artifact"}.json`;
 };

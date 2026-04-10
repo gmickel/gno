@@ -93,6 +93,7 @@ import { validateQueryModes } from "../../pipeline/query-modes";
 import { searchBm25 } from "../../pipeline/search";
 import {
   derivePublishArtifactFilename,
+  isPublishVisibility,
   type PublishVisibility,
 } from "../../publish/artifact";
 import { exportPublishArtifact } from "../../publish/export-service";
@@ -766,6 +767,12 @@ export async function handlePublishExport(
   }
   if (body.title !== undefined && typeof body.title !== "string") {
     return errorResponse("VALIDATION", "title must be a string");
+  }
+  if (body.visibility !== undefined && !isPublishVisibility(body.visibility)) {
+    return errorResponse(
+      "VALIDATION",
+      "visibility must be public, secret-link, invite-only, or encrypted"
+    );
   }
 
   try {

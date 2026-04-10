@@ -12,9 +12,11 @@ import { parseFrontmatter } from "../ingestion/frontmatter";
 import {
   buildPublishArtifact,
   buildExportedMetadata,
+  derivePublishSlug,
   deriveExportedSlug,
   deriveExportedSummary,
   deriveExportedTitle,
+  isPublishVisibility,
   type PublishArtifact,
   type PublishArtifactNote,
   type PublishVisibility,
@@ -25,6 +27,18 @@ export interface PublishExportCoreOptions {
   summary?: string;
   title?: string;
   visibility?: PublishVisibility;
+}
+
+function resolveVisibility(visibility?: string): PublishVisibility {
+  if (visibility === undefined) {
+    return "public";
+  }
+  if (!isPublishVisibility(visibility)) {
+    throw new Error(
+      `Invalid visibility: ${visibility}. Must be public, secret-link, invite-only, or encrypted.`
+    );
+  }
+  return visibility;
 }
 
 async function lookupDocument(
@@ -151,7 +165,11 @@ async function exportCollectionArtifact(
   const summary =
     options.summary ??
     `Published snapshot of the ${collection.name} collection from local GNO.`;
-  const routeSlug = options.routeSlug ?? collection.name;
+  const routeSlug = derivePublishSlug([
+    options.routeSlug ?? "",
+    collection.name,
+    target,
+  ]);
 
   return buildPublishArtifact({
     homeNoteSlug: chooseHomeNoteSlug(notes),
@@ -161,7 +179,7 @@ async function exportCollectionArtifact(
     sourceType: "collection",
     summary,
     title,
-    visibility: options.visibility ?? "public",
+    visibility: resolveVisibility(options.visibility),
   });
 }
 
@@ -193,12 +211,12 @@ async function exportDocumentArtifact(
         title,
       },
     ],
-    routeSlug: options.routeSlug ?? slug,
+    routeSlug: derivePublishSlug([options.routeSlug ?? "", slug, target]),
     source: doc.uri,
     sourceType: "note",
     summary,
     title,
-    visibility: options.visibility ?? "public",
+    visibility: resolveVisibility(options.visibility),
   });
 }
 
