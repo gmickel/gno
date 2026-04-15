@@ -611,6 +611,8 @@ Everything runs locally. No cloud, no accounts, no data leaving your machine.
 
 GNO is local-first, but sometimes you want a URL to send someone. [**gno.sh**](https://gno.sh/publish) is the hosted reader on top of GNO — a polished, reading-first page for a single note or a whole collection, without mounting your vault or syncing anything.
 
+![gno.sh publish reader](./assets/screenshots/publish-reader.jpg)
+
 The workflow is deliberately explicit: **export locally → upload artifact → share URL**. Your private notes and metadata stay on your machine. Only what you export leaves.
 
 ```bash
