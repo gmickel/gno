@@ -27,6 +27,7 @@ Use it when:
 - **Real retrieval surfaces**: CLI, Web UI, REST API, MCP, SDK
 - **Local-first answers**: grounded synthesis with citations when you want answers, raw retrieval when you do not
 - **Connected knowledge**: backlinks, related notes, graph view, cross-collection navigation
+- **Shareable, not synced**: export a note or collection to [gno.sh](https://gno.sh/publish) as a polished reader page — public, secret, invite-only, or end-to-end encrypted
 - **Operational fit**: daemon mode, model presets, remote GPU backends, safe config/state on disk
 
 ### One-Minute Tour
@@ -74,6 +75,7 @@ gno daemon
 - [Search Modes](#search-modes)
 - [Agent Integration](#agent-integration)
 - [Web UI](#web-ui)
+- [Publish to gno.sh](#publish-to-gnosh)
 - [REST API](#rest-api)
 - [SDK](#sdk)
 - [How It Works](#how-it-works)
@@ -90,6 +92,7 @@ gno daemon
 > Latest release: [v0.40.2](./CHANGELOG.md#0402---2026-04-06)  
 > Full release history: [CHANGELOG.md](./CHANGELOG.md)
 
+- **Publish to [gno.sh](https://gno.sh/publish)**: new `gno publish export` CLI and Web UI action produce a self-contained artifact you upload to the hosted reader — public, secret, invite-only, or end-to-end encrypted
 - **Retrieval Quality Upgrade**: stronger BM25 lexical handling, code-aware chunking, terminal result hyperlinks, and per-collection model overrides
 - **Code Embedding Benchmarks**: new benchmark workflow across canonical, real-GNO, and pinned OSS slices for comparing alternate embedding models
 - **Default Embed Model**: built-in presets now use `Qwen3-Embedding-0.6B-GGUF` after it beat `bge-m3` on both code and multilingual prose benchmark lanes
@@ -601,6 +604,45 @@ Ask questions in natural language. GNO searches your documents and synthesizes a
 Everything runs locally. No cloud, no accounts, no data leaving your machine.
 
 > **Detailed docs**: [Web UI Guide](https://gno.sh/docs/WEB-UI/)
+
+---
+
+## Publish to gno.sh
+
+GNO is local-first, but sometimes you want a URL to send someone. [**gno.sh**](https://gno.sh/publish) is the hosted reader on top of GNO — a polished, reading-first page for a single note or a whole collection, without mounting your vault or syncing anything.
+
+The workflow is deliberately explicit: **export locally → upload artifact → share URL**. Your private notes and metadata stay on your machine. Only what you export leaves.
+
+```bash
+# Export a single note
+gno publish export "gno://work-docs/runbooks/deploy.md" --out ~/Downloads/deploy.json
+
+# Export a whole collection
+gno publish export work-docs --out ~/Downloads/work-docs.json
+
+# Let GNO pick the path (~/Downloads/<slug>-<YYYYMMDD>.json)
+gno publish export work-docs
+```
+
+Or use the Web UI:
+
+- **Collections page** → collection menu → **Export for gno.sh**
+- **Document view** → **Export for gno.sh**
+
+Upload the artifact at [gno.sh/studio](https://gno.sh/studio) and pick a visibility mode:
+
+| Mode                     | Use When                                            |
+| :----------------------- | :-------------------------------------------------- |
+| **Public**               | Open URL, indexable — talks, blog posts, portfolios |
+| **Secret link**          | Unguessable token, rotate / revoke / expire         |
+| **Invite-only**          | Private space for specific people                   |
+| **End-to-end encrypted** | WebCrypto bundle, passphrase decrypts in-browser    |
+
+**Reader experience**: editorial serif typography, drop caps, hanging punctuation, table of contents, keyboard shortcuts (`j/k`, `/`), scoped Pagefind-style search, and backlinks restricted to the published subset. Nothing leaks that you didn't publish.
+
+Republishing an artifact updates the same URL — no churn for your readers.
+
+> **Full story**: [gno.sh/publish](https://gno.sh/publish) · **Try it**: [gno.sh/studio](https://gno.sh/studio)
 
 ---
 
