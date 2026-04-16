@@ -653,6 +653,11 @@ Upload the artifact at [gno.sh/studio](https://gno.sh/studio) and pick a visibil
 
 Republishing a public, secret-link, or invite-only artifact updates the same URL. Encrypted shares should be replaced from a fresh local export so the server never needs your plaintext.
 
+Encrypted source-backed publish on `gno.sh` is intentionally disabled. For encrypted shares, use:
+
+- `gno publish export --visibility encrypted --passphrase ...`, or
+- the browser-side encrypted markdown upload path in `gno.sh/studio`
+
 > **Full story**: [gno.sh/publish](https://gno.sh/publish) · **Try it**: [gno.sh/studio](https://gno.sh/studio)
 
 ---
