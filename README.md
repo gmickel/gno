@@ -8,6 +8,9 @@
 [![Twitter](./assets/badges/twitter.svg)](https://twitter.com/gmickel)
 [![Discord](./assets/badges/discord.svg)](https://discord.gg/nHEmyJB5tg)
 
+> [!TIP]
+> **[gno.sh/publish](https://gno.sh/publish) is live.** Turn any GNO note or collection into a polished, reader-first URL — editorial typography, scoped search, and four visibility modes from public to end-to-end encrypted. **[See the reader →](#publish-to-gnosh)**
+
 > **ClawdHub**: GNO skills bundled for Clawdbot — [clawdhub.com/gmickel/gno](https://clawdhub.com/gmickel/gno)
 
 ![GNO](./assets/og-image.png)
