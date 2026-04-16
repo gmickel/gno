@@ -2,8 +2,6 @@ import { randomBytes, webcrypto } from "node:crypto";
 
 import type { EncryptedArtifactPayload, PublishArtifactNote } from "./artifact";
 
-import { slugify } from "./artifact";
-
 const { subtle } = webcrypto;
 
 const PBKDF2_ITERATIONS = 210_000;
@@ -19,6 +17,7 @@ type MetadataEntry = {
 
 type NoteBlock =
   | { type: "paragraph"; text: string }
+  | { type: "markdown"; markdown: string }
   | { type: "heading"; depth: 2 | 3; id: string; text: string }
   | { type: "list"; items: string[]; style: "ordered" | "unordered" }
   | { code: string; language: string; type: "code" }
@@ -108,120 +107,12 @@ const filterMetadata = (
   }));
 };
 
-const parseMarkdownBlocks = (markdown: string): NoteBlock[] => {
-  const blocks: NoteBlock[] = [];
-  const lines = stripFrontmatter(markdown).split("\n");
-  let paragraph: string[] = [];
-  let listItems: string[] = [];
-  let codeFence: { code: string[]; language: string } | null = null;
-
-  const flushParagraph = () => {
-    if (paragraph.length === 0) {
-      return;
-    }
-
-    blocks.push({
-      type: "paragraph",
-      text: paragraph.join(" ").trim(),
-    });
-    paragraph = [];
-  };
-
-  const flushList = () => {
-    if (listItems.length === 0) {
-      return;
-    }
-
-    blocks.push({
-      type: "list",
-      style: "unordered",
-      items: listItems,
-    });
-    listItems = [];
-  };
-
-  for (const line of lines) {
-    if (codeFence) {
-      if (line.startsWith("```")) {
-        blocks.push({
-          type: "code",
-          language: codeFence.language || "text",
-          code: codeFence.code.join("\n"),
-        });
-        codeFence = null;
-        continue;
-      }
-
-      codeFence.code.push(line);
-      continue;
-    }
-
-    const trimmed = line.trim();
-    if (!trimmed) {
-      flushParagraph();
-      flushList();
-      continue;
-    }
-
-    const codeMatch = trimmed.match(/^```([\w-]*)$/);
-    if (codeMatch) {
-      flushParagraph();
-      flushList();
-      codeFence = { code: [], language: codeMatch[1] || "text" };
-      continue;
-    }
-
-    const headingMatch = trimmed.match(/^(#{1,3})\s+(.*)$/);
-    if (headingMatch) {
-      flushParagraph();
-      flushList();
-      const headingText = headingMatch[2] ?? "";
-      blocks.push({
-        type: "heading",
-        depth: headingMatch[1] === "###" ? 3 : 2,
-        id: slugify(headingText),
-        text: headingText,
-      });
-      continue;
-    }
-
-    const imageMatch = trimmed.match(/^!\[(.*?)\]\((.*?)\)$/);
-    if (imageMatch) {
-      flushParagraph();
-      flushList();
-      const alt = imageMatch[1] ?? "";
-      const src = imageMatch[2] ?? "";
-      blocks.push({
-        type: "image",
-        alt,
-        src,
-        caption: alt,
-      });
-      continue;
-    }
-
-    const listMatch = trimmed.match(/^[-*]\s+(.*)$/);
-    if (listMatch) {
-      flushParagraph();
-      listItems.push(listMatch[1] ?? "");
-      continue;
-    }
-
-    paragraph.push(trimmed);
-  }
-
-  flushParagraph();
-  flushList();
-
-  if (blocks.length === 0) {
-    blocks.push({
-      type: "paragraph",
-      text: markdown.trim(),
-    });
-  }
-
-  return blocks;
-};
+const parseMarkdownBlocks = (markdown: string): NoteBlock[] => [
+  {
+    type: "markdown",
+    markdown: stripFrontmatter(markdown).trim(),
+  },
+];
 
 const getOutline = (blocks: NoteBlock[]) =>
   blocks.flatMap((block) =>
