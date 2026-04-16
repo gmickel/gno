@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.42.0] - 2026-04-16
+
+### Added
+
+- Added the first `gno.sh` publish artifact export flow, including `gno publish export <target>` with route slug, title, summary, and visibility controls for note or collection exports.
+
+### Fixed
+
+- Fixed publish artifact export validation and normalization so generated artifacts are safer to import into `gno.sh`.
+
+### Changed
+
+- Updated README positioning and launch copy to promote the hosted `gno.sh` publishing path and show the publish reader flow more clearly.
+
 ## [0.41.1] - 2026-04-07
 
 ### Fixed
