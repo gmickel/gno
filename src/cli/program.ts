@@ -1641,8 +1641,12 @@ function wirePublishCommand(program: Command): void {
     .option("--out <path>", "output artifact path")
     .option(
       "--visibility <mode>",
-      "visibility hint (public, secret-link, invite-only, encrypted)",
+      "visibility mode (public, secret-link, invite-only, encrypted)",
       "public"
+    )
+    .option(
+      "--passphrase <value>",
+      "required for encrypted export; encrypts locally before upload"
     )
     .option("--slug <slug>", "route slug override")
     .option("--title <title>", "space title override")
@@ -1654,6 +1658,8 @@ function wirePublishCommand(program: Command): void {
       const globals = getGlobals();
 
       const visibility = cmdOpts.visibility as string;
+      const passphrase =
+        typeof cmdOpts.passphrase === "string" ? cmdOpts.passphrase : undefined;
       if (
         !visibilityValues.includes(
           visibility as (typeof visibilityValues)[number]
@@ -1664,6 +1670,12 @@ function wirePublishCommand(program: Command): void {
           `Invalid visibility: ${visibility}. Must be public, secret-link, invite-only, or encrypted.`
         );
       }
+      if (visibility === "encrypted" && !passphrase?.trim()) {
+        throw new CliError(
+          "VALIDATION",
+          "Encrypted publish export requires --passphrase."
+        );
+      }
 
       const { formatPublishExport, publishExport } =
         await import("./commands/publish");
@@ -1671,6 +1683,7 @@ function wirePublishCommand(program: Command): void {
         configPath: globals.config,
         json: format === "json",
         out: typeof cmdOpts.out === "string" ? cmdOpts.out : undefined,
+        encryptionPassphrase: passphrase,
         slug: cmdOpts.slug as string | undefined,
         summary: cmdOpts.summary as string | undefined,
         title: cmdOpts.title as string | undefined,

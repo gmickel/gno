@@ -32,12 +32,36 @@ export interface PublishArtifactSpace {
   visibility: PublishVisibility;
 }
 
-export interface PublishArtifact {
+export interface EncryptedArtifactPayload {
+  ciphertext: string;
+  iterations: number;
+  iv: string;
+  salt: string;
+}
+
+export interface EncryptedPublishArtifactSpace {
+  encryptedPayload: EncryptedArtifactPayload;
+  routeSlug: string;
+  secretToken: string;
+  sourceType: "note" | "collection";
+  visibility: "encrypted";
+}
+
+export interface PublishArtifactV1 {
   exportedAt: string;
   source: string;
   spaces: PublishArtifactSpace[];
   version: 1;
 }
+
+export interface PublishArtifactV2 {
+  exportedAt: string;
+  source: string;
+  spaces: EncryptedPublishArtifactSpace[];
+  version: 2;
+}
+
+export type PublishArtifact = PublishArtifactV1 | PublishArtifactV2;
 
 export const PUBLISH_VISIBILITY_VALUES = [
   "public",
@@ -242,6 +266,27 @@ export const buildPublishArtifact = (input: {
     },
   ],
   version: 1 as const,
+});
+
+export const buildEncryptedPublishArtifact = (input: {
+  encryptedPayload: EncryptedArtifactPayload;
+  routeSlug: string;
+  secretToken: string;
+  source: string;
+  sourceType: "note" | "collection";
+}) => ({
+  exportedAt: new Date().toISOString(),
+  source: input.source,
+  spaces: [
+    {
+      encryptedPayload: input.encryptedPayload,
+      routeSlug: input.routeSlug,
+      secretToken: input.secretToken,
+      sourceType: input.sourceType,
+      visibility: "encrypted" as const,
+    },
+  ],
+  version: 2 as const,
 });
 
 export const derivePublishArtifactFilename = (artifact: PublishArtifact) => {

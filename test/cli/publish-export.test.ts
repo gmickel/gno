@@ -5,6 +5,7 @@ import {
   formatPublishExport,
 } from "../../src/cli/commands/publish";
 import {
+  buildEncryptedPublishArtifact,
   buildExportedMetadata,
   derivePublishArtifactFilename,
   deriveExportedSlug,
@@ -13,6 +14,7 @@ import {
   deriveExportedTitle,
   MAX_PUBLISH_SLUG_LENGTH,
 } from "../../src/publish/artifact";
+import { buildEncryptedArtifactPayload } from "../../src/publish/encrypted-export";
 
 describe("publish export helpers", () => {
   it("derives stable titles and slugs from document rows", () => {
@@ -142,5 +144,45 @@ describe("publish export helpers", () => {
 
     expect(formatted).toContain("Exported collection to /tmp/atlas.json");
     expect(formatted).toContain("open https://gno.sh/studio");
+  });
+
+  it("builds encrypted export artifacts without plaintext note content", async () => {
+    const markdown = "# Spicy Fajita Pasta\n\nSecret family recipe notes.";
+    const encrypted = await buildEncryptedArtifactPayload({
+      exportedAt: "2026-04-16T12:00:00.000Z",
+      notes: [
+        {
+          markdown,
+          metadata: {
+            tags: ["recipes"],
+          },
+          slug: "spicy-fajita-pasta",
+          summary: "Creamy fajita pasta.",
+          title: "Spicy Fajita Pasta",
+        },
+      ],
+      passphrase: "correct horse battery staple",
+      routeSlug: "spicy-fajita-pasta",
+      sourceType: "note",
+      summary: "Creamy fajita pasta.",
+      title: "Spicy Fajita Pasta",
+    });
+
+    const artifact = buildEncryptedPublishArtifact({
+      encryptedPayload: encrypted.encryptedPayload,
+      routeSlug: "spicy-fajita-pasta",
+      secretToken: encrypted.secretToken,
+      source: "gno://recipes/spicy-fajita-pasta.md",
+      sourceType: "note",
+    });
+
+    const serialized = JSON.stringify(artifact);
+
+    expect(artifact.version).toBe(2);
+    expect(artifact.spaces[0]?.visibility).toBe("encrypted");
+    expect(serialized).not.toContain(markdown);
+    expect(serialized).not.toContain("Secret family recipe notes.");
+    expect(serialized).not.toContain("Spicy Fajita Pasta");
+    expect(serialized).not.toContain("Creamy fajita pasta.");
   });
 });

@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-04-16
+
+### Added
+
+- Added true local-first encrypted publishing for `gno publish export`, including a v2 encrypted artifact envelope, local AES-GCM encryption before upload, and `--passphrase` support for encrypted exports.
+
+### Changed
+
+- Clarified the hosted publishing story around `gno.sh`, including the exact encrypted publish boundary: ciphertext is produced locally in GNO before upload, and readers decrypt in-browser.
+
+### Fixed
+
+- Fixed the encrypted publish contract so exported encrypted artifacts no longer contain plaintext note content.
+
 ## [0.42.0] - 2026-04-16
 
 ### Added

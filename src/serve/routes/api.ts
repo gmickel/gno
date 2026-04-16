@@ -340,6 +340,7 @@ export interface CreateEditableCopyRequestBody {
 }
 
 export interface PublishExportRequestBody {
+  encryptionPassphrase?: string;
   slug?: string;
   summary?: string;
   target: string;
@@ -765,6 +766,12 @@ export async function handlePublishExport(
   if (body.summary !== undefined && typeof body.summary !== "string") {
     return errorResponse("VALIDATION", "summary must be a string");
   }
+  if (
+    body.encryptionPassphrase !== undefined &&
+    typeof body.encryptionPassphrase !== "string"
+  ) {
+    return errorResponse("VALIDATION", "encryptionPassphrase must be a string");
+  }
   if (body.title !== undefined && typeof body.title !== "string") {
     return errorResponse("VALIDATION", "title must be a string");
   }
@@ -779,6 +786,7 @@ export async function handlePublishExport(
     const artifact = await exportPublishArtifact({
       collections: config.collections,
       options: {
+        encryptionPassphrase: body.encryptionPassphrase,
         routeSlug: body.slug,
         summary: body.summary,
         title: body.title,

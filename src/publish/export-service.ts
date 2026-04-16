@@ -10,6 +10,7 @@ import type { DocumentRow, StorePort, TagRow } from "../store/types";
 import { parseRef } from "../cli/commands/ref-parser";
 import { parseFrontmatter } from "../ingestion/frontmatter";
 import {
+  buildEncryptedPublishArtifact,
   buildPublishArtifact,
   buildExportedMetadata,
   derivePublishSlug,
@@ -21,8 +22,10 @@ import {
   type PublishArtifactNote,
   type PublishVisibility,
 } from "./artifact";
+import { buildEncryptedArtifactPayload } from "./encrypted-export";
 
 export interface PublishExportCoreOptions {
+  encryptionPassphrase?: string;
   routeSlug?: string;
   summary?: string;
   title?: string;
@@ -170,6 +173,34 @@ async function exportCollectionArtifact(
     collection.name,
     target,
   ]);
+  const visibility = resolveVisibility(options.visibility);
+
+  if (visibility === "encrypted") {
+    if (!options.encryptionPassphrase) {
+      throw new Error(
+        "Encrypted publish export requires --passphrase or encryptionPassphrase."
+      );
+    }
+
+    const encrypted = await buildEncryptedArtifactPayload({
+      exportedAt: new Date().toISOString(),
+      homeNoteSlug: chooseHomeNoteSlug(notes),
+      notes,
+      passphrase: options.encryptionPassphrase,
+      routeSlug,
+      sourceType: "collection",
+      summary,
+      title,
+    });
+
+    return buildEncryptedPublishArtifact({
+      encryptedPayload: encrypted.encryptedPayload,
+      routeSlug,
+      secretToken: encrypted.secretToken,
+      source: collection.name,
+      sourceType: "collection",
+    });
+  }
 
   return buildPublishArtifact({
     homeNoteSlug: chooseHomeNoteSlug(notes),
@@ -179,7 +210,7 @@ async function exportCollectionArtifact(
     sourceType: "collection",
     summary,
     title,
-    visibility: resolveVisibility(options.visibility),
+    visibility,
   });
 }
 
@@ -200,6 +231,42 @@ async function exportDocumentArtifact(
   const summary =
     options.summary ?? deriveExportedSummary(markdown, frontmatter);
   const slug = deriveExportedSlug(doc);
+  const visibility = resolveVisibility(options.visibility);
+  const routeSlug = derivePublishSlug([options.routeSlug ?? "", slug, target]);
+
+  if (visibility === "encrypted") {
+    if (!options.encryptionPassphrase) {
+      throw new Error(
+        "Encrypted publish export requires --passphrase or encryptionPassphrase."
+      );
+    }
+
+    const encrypted = await buildEncryptedArtifactPayload({
+      exportedAt: new Date().toISOString(),
+      notes: [
+        {
+          markdown,
+          metadata: buildExportedMetadata(doc, frontmatter, tags),
+          slug,
+          summary,
+          title,
+        },
+      ],
+      passphrase: options.encryptionPassphrase,
+      routeSlug,
+      sourceType: "note",
+      summary,
+      title,
+    });
+
+    return buildEncryptedPublishArtifact({
+      encryptedPayload: encrypted.encryptedPayload,
+      routeSlug,
+      secretToken: encrypted.secretToken,
+      source: doc.uri,
+      sourceType: "note",
+    });
+  }
 
   return buildPublishArtifact({
     notes: [
@@ -211,12 +278,12 @@ async function exportDocumentArtifact(
         title,
       },
     ],
-    routeSlug: derivePublishSlug([options.routeSlug ?? "", slug, target]),
+    routeSlug,
     source: doc.uri,
     sourceType: "note",
     summary,
     title,
-    visibility: resolveVisibility(options.visibility),
+    visibility,
   });
 }
 

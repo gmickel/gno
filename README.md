@@ -9,7 +9,7 @@
 [![Discord](./assets/badges/discord.svg)](https://discord.gg/nHEmyJB5tg)
 
 > [!TIP]
-> **[gno.sh/publish](https://gno.sh/publish) is live.** Turn any GNO note or collection into a polished, reader-first URL — editorial typography, scoped search, and four visibility modes from public to end-to-end encrypted. **[See the reader →](#publish-to-gnosh)**
+> **[gno.sh/publish](https://gno.sh/publish) is live.** Turn any GNO note or collection into a polished, reader-first URL — editorial typography, scoped search, and four visibility modes from public to encrypted-before-upload. **[See the reader →](#publish-to-gnosh)**
 
 > **ClawdHub**: GNO skills bundled for Clawdbot — [clawdhub.com/gmickel/gno](https://clawdhub.com/gmickel/gno)
 
@@ -30,7 +30,7 @@ Use it when:
 - **Real retrieval surfaces**: CLI, Web UI, REST API, MCP, SDK
 - **Local-first answers**: grounded synthesis with citations when you want answers, raw retrieval when you do not
 - **Connected knowledge**: backlinks, related notes, graph view, cross-collection navigation
-- **Shareable, not synced**: export a note or collection to [gno.sh](https://gno.sh/publish) as a polished reader page — public, secret, invite-only, or end-to-end encrypted
+- **Shareable, not synced**: export a note or collection to [gno.sh](https://gno.sh/publish) as a polished reader page — public, secret, invite-only, or locally encrypted before upload
 - **Operational fit**: daemon mode, model presets, remote GPU backends, safe config/state on disk
 
 ### One-Minute Tour
@@ -92,10 +92,10 @@ gno daemon
 
 ## What's New
 
-> Latest release: [v0.40.2](./CHANGELOG.md#0402---2026-04-06)  
+> Latest release: [v1.0.0](./CHANGELOG.md#100---2026-04-16)  
 > Full release history: [CHANGELOG.md](./CHANGELOG.md)
 
-- **Publish to [gno.sh](https://gno.sh/publish)**: new `gno publish export` CLI and Web UI action produce a self-contained artifact you upload to the hosted reader — public, secret, invite-only, or end-to-end encrypted
+- **Publish to [gno.sh](https://gno.sh/publish)**: new `gno publish export` CLI and Web UI action produce a self-contained artifact you upload to the hosted reader — public, secret, invite-only, or locally encrypted before upload
 - **Retrieval Quality Upgrade**: stronger BM25 lexical handling, code-aware chunking, terminal result hyperlinks, and per-collection model overrides
 - **Code Embedding Benchmarks**: new benchmark workflow across canonical, real-GNO, and pinned OSS slices for comparing alternate embedding models
 - **Default Embed Model**: built-in presets now use `Qwen3-Embedding-0.6B-GGUF` after it beat `bge-m3` on both code and multilingual prose benchmark lanes
@@ -625,6 +625,12 @@ gno publish export "gno://work-docs/runbooks/deploy.md" --out ~/Downloads/deploy
 # Export a whole collection
 gno publish export work-docs --out ~/Downloads/work-docs.json
 
+# Export an encrypted note (ciphertext is created locally before upload)
+gno publish export "gno://work-docs/runbooks/deploy.md" \
+  --visibility encrypted \
+  --passphrase "correct horse battery staple" \
+  --out ~/Downloads/deploy-encrypted.json
+
 # Let GNO pick the path (~/Downloads/<slug>-<YYYYMMDD>.json)
 gno publish export work-docs
 ```
@@ -636,16 +642,16 @@ Or use the Web UI:
 
 Upload the artifact at [gno.sh/studio](https://gno.sh/studio) and pick a visibility mode:
 
-| Mode                     | Use When                                            |
-| :----------------------- | :-------------------------------------------------- |
-| **Public**               | Open URL, indexable — talks, blog posts, portfolios |
-| **Secret link**          | Unguessable token, rotate / revoke / expire         |
-| **Invite-only**          | Private space for specific people                   |
-| **End-to-end encrypted** | WebCrypto bundle, passphrase decrypts in-browser    |
+| Mode            | Use When                                                       |
+| :-------------- | :------------------------------------------------------------- |
+| **Public**      | Open URL, indexable — talks, blog posts, portfolios            |
+| **Secret link** | Unguessable token, rotate / revoke / expire                    |
+| **Invite-only** | Private space for specific people                              |
+| **Encrypted**   | GNO encrypts locally before upload; readers decrypt in-browser |
 
 **Reader experience**: editorial serif typography, drop caps, hanging punctuation, table of contents, keyboard shortcuts (`j/k`, `/`), scoped Pagefind-style search, and backlinks restricted to the published subset. Nothing leaks that you didn't publish.
 
-Republishing an artifact updates the same URL — no churn for your readers.
+Republishing a public, secret-link, or invite-only artifact updates the same URL. Encrypted shares should be replaced from a fresh local export so the server never needs your plaintext.
 
 > **Full story**: [gno.sh/publish](https://gno.sh/publish) · **Try it**: [gno.sh/studio](https://gno.sh/studio)
 

@@ -20,6 +20,7 @@ import { initStore } from "./shared";
 
 export interface PublishExportOptions {
   configPath?: string;
+  encryptionPassphrase?: string;
   json?: boolean;
   out?: string;
   slug?: string;
@@ -76,6 +77,7 @@ export async function publishExport(
       collections,
       options: {
         routeSlug: options.slug,
+        encryptionPassphrase: options.encryptionPassphrase,
         summary: options.summary,
         title: options.title,
         visibility: options.visibility,
