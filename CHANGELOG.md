@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-04-19
+
+### Fixed
+
+- Fixed indexing of password-protected PDFs and XLSX files so GNO records clean per-file `PERMISSION` errors, avoids leaking raw binary error text, and continues indexing the rest of the collection without noisy dependency stack traces.
+
 ## [1.0.0] - 2026-04-16
 
 ### Added
@@ -1150,6 +1156,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 | Version | Date       | Highlights                                |
 | ------- | ---------- | ----------------------------------------- |
 | 0.12.0  | 2026-01-05 | Note linking, backlinks, related notes    |
+| 1.0.1   | 2026-04-19 | Clean password-protected file indexing    |
+| 1.0.0   | 2026-04-16 | Encrypted publish export                  |
+| 0.42.0  | 2026-04-16 | First gno.sh publish artifact export      |
 | 0.11.0  | 2026-01-05 | MCP embed/index tools, server embed sched |
 | 0.10.0  | 2026-01-04 | Tag system with filtering                 |
 | 0.9.0   | 2026-01-02 | MCP write operations                      |
@@ -1157,7 +1166,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 | 0.4.0   | 2026-01-01 | Web UI and REST API                       |
 | 0.1.0   | 2025-12-30 | Initial release with full search pipeline |
 
-[Unreleased]: https://github.com/gmickel/gno/compare/v0.41.1...HEAD
+[Unreleased]: https://github.com/gmickel/gno/compare/v1.0.1...HEAD
+[1.0.1]: https://github.com/gmickel/gno/compare/v1.0.0...v1.0.1
+[1.0.0]: https://github.com/gmickel/gno/compare/v0.42.0...v1.0.0
+[0.42.0]: https://github.com/gmickel/gno/compare/v0.41.1...v0.42.0
 [0.41.1]: https://github.com/gmickel/gno/compare/v0.41.0...v0.41.1
 [0.41.0]: https://github.com/gmickel/gno/compare/v0.40.2...v0.41.0
 [0.40.2]: https://github.com/gmickel/gno/compare/v0.40.1...v0.40.2
