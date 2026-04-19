@@ -11,6 +11,7 @@ import {
   convertError,
   corruptError,
   isRetryable,
+  permissionError,
   timeoutError,
   tooLargeError,
   unsupportedError,
@@ -63,6 +64,10 @@ describe("isRetryable", () => {
 
   test("UNSUPPORTED is not retryable", () => {
     expect(isRetryable("UNSUPPORTED")).toBe(false);
+  });
+
+  test("PERMISSION is not retryable", () => {
+    expect(isRetryable("PERMISSION")).toBe(false);
   });
 
   test("TOO_LARGE is not retryable", () => {
@@ -145,5 +150,28 @@ describe("adapterError", () => {
     expect(error.retryable).toBe(true);
     // Cause is normalized to { name, message } for safe serialization
     expect(error.cause).toEqual({ name: "Error", message: "Library error" });
+  });
+});
+
+describe("permissionError", () => {
+  test("creates PERMISSION error", () => {
+    const input = makeInput({});
+    const cause = new Error("No password given");
+    const error = permissionError(
+      input,
+      "test-converter",
+      "File is password-protected",
+      cause,
+      { protection: "pdf" }
+    );
+
+    expect(error.code).toBe("PERMISSION");
+    expect(error.message).toBe("File is password-protected");
+    expect(error.retryable).toBe(false);
+    expect(error.details).toEqual({ protection: "pdf" });
+    expect(error.cause).toEqual({
+      name: "Error",
+      message: "No password given",
+    });
   });
 });

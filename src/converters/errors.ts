@@ -180,6 +180,29 @@ export function corruptError(
 }
 
 /**
+ * Create an error for permission-gated files (for example password-protected documents).
+ */
+export function permissionError(
+  input: Pick<ConvertInput, "sourcePath" | "mime" | "ext">,
+  converterId: string,
+  message: string,
+  cause?: unknown,
+  details?: Record<string, unknown>
+): ConvertError {
+  return convertError("PERMISSION", {
+    message,
+    retryable: false,
+    fatal: false,
+    converterId,
+    sourcePath: input.sourcePath,
+    mime: input.mime,
+    ext: input.ext,
+    cause,
+    details,
+  });
+}
+
+/**
  * Create an error for adapter-level failures.
  */
 export function adapterError(

@@ -453,6 +453,9 @@ Options:
 
 Use `gno update` when you only need keyword search, or when you want to quickly sync changes and run `gno embed` separately.
 
+Password-protected PDFs and XLSX files are recorded as per-file `PERMISSION`
+errors and skipped without aborting the rest of the run.
+
 ### gno index
 
 Full index end-to-end: runs `gno update` then `gno embed`. This is the recommended command for most users.

@@ -33,6 +33,9 @@ gno index
 
 This runs both BM25 (keyword) and vector indexing. GNO indexes Markdown, PDF, DOCX, XLSX, PPTX, and plain text.
 
+Password-protected PDFs and XLSX files are reported as per-file errors and do
+not stop the rest of indexing.
+
 > **Note**: On first run, GNO may download local models (embedding ~500MB; optional rerank/gen models can add ~700MB-1.2GB). Subsequent runs use cache. To avoid startup downloads, set `GNO_NO_AUTO_DOWNLOAD=1` and run `gno models pull` explicitly.
 
 Check what's indexed:
