@@ -964,3 +964,7 @@ Interpretation:
 <p align="center">
   made with ❤️ by <a href="https://twitter.com/gmickel">@gmickel</a>
 </p>
+
+## Download History
+
+[![Download History](https://skill-history.com/chart/gmickel/gno.svg)](https://skill-history.com/gmickel/gno)
