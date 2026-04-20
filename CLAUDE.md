@@ -249,6 +249,92 @@ See `website/assets/images/og/CLAUDE.md` for template details.
 - Configure npm trusted publisher at https://www.npmjs.com/package/@gmickel/gno/access
   - Owner: `gmickel`, Repo: `gno`, Workflow: `publish.yml`
 
+## Agent Skill Package / ClawHub Release
+
+The agent skill at `assets/skill/` ships on **two independent
+distribution channels**. Both point at the same source files.
+
+### Channel 1 — npm package (`@gmickel/gno`)
+
+Shipped automatically with the CLI on every `vX.Y.Z` tag. Users install
+it via `gno skill install --target {claude,codex,opencode,openclaw,all}`.
+Always matches the CLI version. Nothing to do separately — `bun run
+version:patch` + tag + push covers it.
+
+### Channel 2 — ClawHub (<https://clawhub.ai/gmickel/gno>)
+
+Manually published via the ClawHub dashboard. **As of gno 1.0.4 the
+ClawHub skill version mirrors the CLI version** (e.g. CLI 1.0.4 →
+ClawHub skill 1.0.4). Earlier ClawHub history used an independent
+`0.14.x` track; ignore that and bump forward. ClawHub's form may
+auto-suggest a patch off the last ClawHub version — overwrite it with
+the current CLI version.
+
+Only bump when the skill's text content materially changes (new flag
+to teach the model, new subcommand, new behaviour). A CLI-only release
+with no `assets/skill/*` changes does **not** need a ClawHub upload.
+
+**When to bump ClawHub skill version:**
+
+- `assets/skill/SKILL.md` teaches a new capability
+- `assets/skill/cli-reference.md` documents a new flag the agent should
+  reach for
+- Obsidian/publish/index behaviour changes that the model should know
+  about
+- README install instructions change
+
+**When NOT to bump:**
+
+- CLI internals, performance work, test-only changes, infra
+- Docs inside the website/ tree (not in the skill package)
+
+**Publish to ClawHub:**
+
+1. Ensure `assets/skill/` is up to date on `main` and committed. The
+   folder must contain (at least):
+   - `SKILL.md` — required
+   - `README.md` — rendered on the ClawHub listing page
+   - `cli-reference.md`, `mcp-reference.md`, `examples.md` — progressive
+     disclosure references the agent pulls on demand
+2. Stage a clean drop-in folder (use the CLI version):
+   ```bash
+   VER=$(jq -r .version package.json)
+   rm -rf ~/Downloads/gno-skill-$VER
+   mkdir -p ~/Downloads/gno-skill-$VER
+   cp assets/skill/*.md ~/Downloads/gno-skill-$VER/
+   ```
+3. Sign in at <https://clawhub.ai> with GitHub (@gmickel).
+4. Open <https://clawhub.ai/gmickel/gno>, hit "Publish new version" (or
+   the "Upload" button on the skill page).
+5. Form fields:
+   - SLUG: `gno`
+   - DISPLAY NAME: `Gno`
+   - OWNER: `@gmickel`
+   - VERSION: match the CLI (`jq -r .version package.json`). E.g. for
+     CLI 1.0.4 use `1.0.4`. Do not follow ClawHub's auto-suggested
+     patch from its own independent history.
+   - TAGS: `latest`
+   - LICENSE: MIT-0 (check the rights checkbox)
+   - CHANGELOG: short list of what changed in this skill bump
+6. Drag `~/Downloads/gno-skill-$VER/` into the "Drop a folder" zone.
+   ClawHub flattens outer wrappers automatically.
+7. Hit "Publish skill".
+8. Verify the listing renders the new README, and confirm the new
+   version appears in the Versions tab.
+
+**VirusTotal / OpenClaw security scans** flag the skill as "suspicious"
+because it requests `Bash(gno:*)`. That's expected for a CLI-driving
+skill and can be left as-is — do not try to remove the tool request.
+
+**Install paths users should know about** (documented in
+`assets/skill/README.md`):
+
+- `gno skill install --target <agent>` — pulls straight from the locally
+  installed CLI, always in sync with your CLI version
+- `openclaw skills install gno` — pulls the ClawHub release; use when
+  managing OpenClaw workspaces centrally or when the user doesn't have
+  the CLI installed yet
+
 ## CI/CD
 
 See [.github/CONTRIBUTING.md](.github/CONTRIBUTING.md) for CI matrix, caching, and release process.
