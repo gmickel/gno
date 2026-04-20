@@ -1651,6 +1651,10 @@ function wirePublishCommand(program: Command): void {
     .option("--slug <slug>", "route slug override")
     .option("--title <title>", "space title override")
     .option("--summary <summary>", "space summary override")
+    .option(
+      "--preview",
+      "print sanitized markdown + warnings instead of writing the artifact"
+    )
     .option("--json", "JSON output")
     .action(async (target: string, cmdOpts: Record<string, unknown>) => {
       const format = getFormat(cmdOpts);
@@ -1684,6 +1688,7 @@ function wirePublishCommand(program: Command): void {
         json: format === "json",
         out: typeof cmdOpts.out === "string" ? cmdOpts.out : undefined,
         encryptionPassphrase: passphrase,
+        preview: cmdOpts.preview === true,
         slug: cmdOpts.slug as string | undefined,
         summary: cmdOpts.summary as string | undefined,
         title: cmdOpts.title as string | undefined,

@@ -13,9 +13,11 @@ import type {
   PublishArtifact,
   PublishVisibility,
 } from "../../publish/artifact";
+import type { SanitizeWarning } from "../../publish/obsidian-sanitize";
 
 import { derivePublishArtifactFilename, slugify } from "../../publish/artifact";
 import { exportPublishArtifact } from "../../publish/export-service";
+import { formatSanitizeWarnings } from "../../publish/obsidian-sanitize";
 import { initStore } from "./shared";
 
 export interface PublishExportOptions {
@@ -23,6 +25,7 @@ export interface PublishExportOptions {
   encryptionPassphrase?: string;
   json?: boolean;
   out?: string;
+  preview?: boolean;
   slug?: string;
   summary?: string;
   title?: string;
@@ -35,7 +38,10 @@ export type PublishExportResult =
       data: {
         artifact: PublishArtifact;
         outPath: string;
+        preview?: string;
         uploadUrl: string;
+        warnings: SanitizeWarning[];
+        warningsDisplay: string[];
       };
     }
   | { success: false; error: string; isValidation?: boolean };
@@ -73,7 +79,7 @@ export async function publishExport(
   const { collections, store } = initResult;
 
   try {
-    const artifact = await exportPublishArtifact({
+    const { artifact, warnings } = await exportPublishArtifact({
       collections,
       options: {
         routeSlug: options.slug,
@@ -85,6 +91,28 @@ export async function publishExport(
       store,
       target,
     });
+    const warningsDisplay = formatSanitizeWarnings(warnings);
+
+    if (options.preview) {
+      const preview =
+        artifact.version === 1
+          ? (artifact.spaces[0]?.notes
+              .map((note) => `\n# ${note.title}\n\n${note.markdown.trim()}`)
+              .join("\n\n---\n") ?? "")
+          : "(Encrypted artifact — preview unavailable)";
+      return {
+        success: true,
+        data: {
+          artifact,
+          outPath: "",
+          preview,
+          uploadUrl: "https://gno.sh/studio",
+          warnings,
+          warningsDisplay,
+        },
+      };
+    }
+
     const outPath =
       options.out?.trim() || buildDefaultPublishExportPath(artifact);
 
@@ -97,6 +125,8 @@ export async function publishExport(
         artifact,
         outPath,
         uploadUrl: "https://gno.sh/studio",
+        warnings,
+        warningsDisplay,
       },
     };
   } catch (error) {
@@ -129,8 +159,25 @@ export function formatPublishExport(
     return JSON.stringify(result.data, null, 2);
   }
 
-  const { artifact, outPath, uploadUrl } = result.data;
+  const { artifact, outPath, preview, uploadUrl, warningsDisplay } =
+    result.data;
   const space = artifact.spaces[0];
+  const warningsSection =
+    warningsDisplay.length > 0
+      ? ["", "Preprocessor notes:", ...warningsDisplay]
+      : [];
+
+  if (preview !== undefined) {
+    return [
+      `Preview (no file written) — ${space?.sourceType ?? "artifact"}`,
+      `Route slug: ${space?.routeSlug ?? slugify(artifact.source)}`,
+      `Visibility: ${space?.visibility ?? "public"}`,
+      ...warningsSection,
+      "",
+      "─── sanitized markdown ───",
+      preview.trim(),
+    ].join("\n");
+  }
 
   return [
     `Exported ${space?.sourceType ?? "artifact"} to ${outPath}`,
@@ -138,5 +185,6 @@ export function formatPublishExport(
     `Visibility: ${space?.visibility ?? "public"}`,
     `Filename: ${derivePublishArtifactFilename(artifact)}`,
     `Next: open ${uploadUrl} and drop ${outPath} into the upload zone.`,
+    ...warningsSection,
   ].join("\n");
 }

@@ -23,6 +23,11 @@ import {
   type PublishVisibility,
 } from "./artifact";
 import { buildEncryptedArtifactPayload } from "./encrypted-export";
+import {
+  isPublishDisabledByFrontmatter,
+  sanitizeObsidianMarkdown,
+  type SanitizeWarning,
+} from "./obsidian-sanitize";
 
 export interface PublishExportCoreOptions {
   encryptionPassphrase?: string;
@@ -129,7 +134,8 @@ async function exportCollectionArtifact(
   store: StorePort,
   collections: Collection[],
   target: string,
-  options: PublishExportCoreOptions
+  options: PublishExportCoreOptions,
+  warnings: SanitizeWarning[]
 ) {
   const collection = resolveCollection(collections, target);
   if (!collection) {
@@ -151,7 +157,13 @@ async function exportCollectionArtifact(
 
   const notes: PublishArtifactNote[] = [];
   for (const doc of activeDocs) {
-    const markdown = await loadDocumentMarkdown(store, doc);
+    const rawMarkdown = await loadDocumentMarkdown(store, doc);
+    if (isPublishDisabledByFrontmatter(rawMarkdown)) {
+      continue;
+    }
+    const sanitized = sanitizeObsidianMarkdown(rawMarkdown);
+    warnings.push(...sanitized.warnings);
+    const markdown = sanitized.markdown;
     const tags = await loadDocumentTags(store, doc);
     const frontmatter = parseFrontmatter(markdown).metadata;
     const title = deriveExportedTitle(doc);
@@ -162,6 +174,12 @@ async function exportCollectionArtifact(
       summary: deriveExportedSummary(markdown, frontmatter),
       title,
     });
+  }
+
+  if (notes.length === 0) {
+    throw new Error(
+      `Collection "${collection.name}" has no publishable documents (all notes carry publish: false frontmatter)`
+    );
   }
 
   const title = options.title ?? collection.name;
@@ -217,14 +235,23 @@ async function exportCollectionArtifact(
 async function exportDocumentArtifact(
   store: StorePort,
   target: string,
-  options: PublishExportCoreOptions
+  options: PublishExportCoreOptions,
+  warnings: SanitizeWarning[]
 ) {
   const doc = await lookupDocument(store, target);
   if (!doc?.active) {
     throw new Error(`Document not found: ${target}`);
   }
 
-  const markdown = await loadDocumentMarkdown(store, doc);
+  const rawMarkdown = await loadDocumentMarkdown(store, doc);
+  if (isPublishDisabledByFrontmatter(rawMarkdown)) {
+    throw new Error(
+      `Refused to export: ${doc.uri} has publish: false in frontmatter`
+    );
+  }
+  const sanitized = sanitizeObsidianMarkdown(rawMarkdown);
+  warnings.push(...sanitized.warnings);
+  const markdown = sanitized.markdown;
   const tags = await loadDocumentTags(store, doc);
   const frontmatter = parseFrontmatter(markdown).metadata;
   const title = options.title ?? deriveExportedTitle(doc);
@@ -287,19 +314,31 @@ async function exportDocumentArtifact(
   });
 }
 
+export interface ExportPublishArtifactResult {
+  artifact: PublishArtifact;
+  warnings: SanitizeWarning[];
+}
+
 export async function exportPublishArtifact(input: {
   collections: Collection[];
   options: PublishExportCoreOptions;
   store: StorePort;
   target: string;
-}): Promise<PublishArtifact> {
-  return (
+}): Promise<ExportPublishArtifactResult> {
+  const warnings: SanitizeWarning[] = [];
+  const artifact =
     (await exportCollectionArtifact(
       input.store,
       input.collections,
       input.target,
-      input.options
+      input.options,
+      warnings
     )) ??
-    (await exportDocumentArtifact(input.store, input.target, input.options))
-  );
+    (await exportDocumentArtifact(
+      input.store,
+      input.target,
+      input.options,
+      warnings
+    ));
+  return { artifact, warnings };
 }

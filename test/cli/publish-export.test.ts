@@ -137,6 +137,8 @@ describe("publish export helpers", () => {
           },
           outPath: "/tmp/atlas.json",
           uploadUrl: "https://gno.sh/studio",
+          warnings: [],
+          warningsDisplay: [],
         },
       },
       { json: false }

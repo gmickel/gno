@@ -783,7 +783,7 @@ export async function handlePublishExport(
   }
 
   try {
-    const artifact = await exportPublishArtifact({
+    const { artifact, warnings } = await exportPublishArtifact({
       collections: config.collections,
       options: {
         encryptionPassphrase: body.encryptionPassphrase,
@@ -800,6 +800,7 @@ export async function handlePublishExport(
       artifact,
       fileName: derivePublishArtifactFilename(artifact),
       uploadUrl: "https://gno.sh/studio",
+      warnings,
     });
   } catch (error) {
     return errorResponse(
