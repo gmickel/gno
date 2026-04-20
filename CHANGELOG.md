@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.2] - 2026-04-20
+
+### Fixed
+
+- Fixed `gno publish export` leaking raw Obsidian syntax into published artifacts. Wikilinks (`[[Note]]`, `[[Note|alias]]`), image embeds (`![[image.png]]`), `_internal/` private-path references, and Obsidian nav-sidebar lines are now sanitized out of the artifact before it is uploaded to `gno.sh`.
+- Fixed `gno publish export` honoring a `publish: false` frontmatter field so notes flagged as non-publishable are refused (for single-note exports) or silently skipped (for collection exports), matching Obsidian's own publish convention.
+
+### Added
+
+- Added `gno publish export --preview` which prints the sanitized markdown plus a preprocessor report (dropped embeds, stripped private references, converted wikilinks, dropped nav-sidebar lines) instead of writing the artifact to disk, so authors can confirm the output before uploading to `gno.sh`.
+- Added a preprocessor warnings channel on the local serve API publish-export route so the same report is visible to UI clients.
+
 ## [1.0.1] - 2026-04-19
 
 ### Fixed
@@ -1156,6 +1168,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 | Version | Date       | Highlights                                |
 | ------- | ---------- | ----------------------------------------- |
 | 0.12.0  | 2026-01-05 | Note linking, backlinks, related notes    |
+| 1.0.2   | 2026-04-20 | Obsidian syntax sanitizer + export preview |
 | 1.0.1   | 2026-04-19 | Clean password-protected file indexing    |
 | 1.0.0   | 2026-04-16 | Encrypted publish export                  |
 | 0.42.0  | 2026-04-16 | First gno.sh publish artifact export      |
@@ -1166,7 +1179,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 | 0.4.0   | 2026-01-01 | Web UI and REST API                       |
 | 0.1.0   | 2025-12-30 | Initial release with full search pipeline |
 
-[Unreleased]: https://github.com/gmickel/gno/compare/v1.0.1...HEAD
+[Unreleased]: https://github.com/gmickel/gno/compare/v1.0.2...HEAD
+[1.0.2]: https://github.com/gmickel/gno/compare/v1.0.1...v1.0.2
 [1.0.1]: https://github.com/gmickel/gno/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/gmickel/gno/compare/v0.42.0...v1.0.0
 [0.42.0]: https://github.com/gmickel/gno/compare/v0.41.1...v0.42.0
