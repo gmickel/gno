@@ -504,23 +504,50 @@ Export a note or collection as a gno.sh publish artifact JSON.
 gno publish export <target> [--out <path.json>] [options]
 ```
 
-| Option         | Default | Description                                                   |
-| -------------- | ------- | ------------------------------------------------------------- |
-| `--out`        | auto    | Output path, defaults to `~/Downloads/<slug>-<YYYYMMDD>.json` |
-| `--visibility` | public  | One of `public`, `secret-link`, `invite-only`, `encrypted`    |
-| `--slug`       | auto    | Override the published route slug                             |
-| `--title`      | auto    | Override the exported title                                   |
-| `--summary`    | auto    | Override the exported summary                                 |
-| `--json`       | false   | Structured result output                                      |
+| Option         | Default | Description                                                                |
+| -------------- | ------- | -------------------------------------------------------------------------- |
+| `--out`        | auto    | Output path, defaults to `~/Downloads/<slug>-<YYYYMMDD>.json`              |
+| `--visibility` | public  | One of `public`, `secret-link`, `invite-only`, `encrypted`                 |
+| `--slug`       | auto    | Override the published route slug                                          |
+| `--title`      | auto    | Override the exported title                                                |
+| `--summary`    | auto    | Override the exported summary                                              |
+| `--passphrase` | none    | Required for `--visibility encrypted`; encrypts locally before upload      |
+| `--preview`    | false   | Print sanitized markdown + preprocessor report instead of writing artifact |
+| `--json`       | false   | Structured result output                                                   |
 
 Examples:
 
 ```bash
 gno publish export work-docs --out ~/Downloads/work-docs.json
 gno publish export "gno://work-docs/runbooks/deploy.md" --out ~/Downloads/deploy.json
+
+# Encrypted share — ciphertext produced locally before upload
+gno publish export "gno://work-docs/offer-letter.md" \
+  --visibility encrypted --passphrase "correct horse battery staple"
+
+# Inspect what the sanitizer strips before writing anything
+gno publish export "gno://vault/my-note.md" --preview
 ```
 
 On success, upload the JSON file at `https://gno.sh/studio`.
+
+**Obsidian pre-processor (v1.0.2+)**: before the artifact is written, the
+export pipeline runs a sanitizer over each note's markdown. It:
+
+- drops the navigation-sidebar idiom (`[[Hub]] | [[Related]]` immediately
+  under the frontmatter)
+- strips any `[[_internal/...]]` references (privacy guard — the
+  `_internal/` convention is treated as never-publish)
+- converts `[[Target|Alias]]` to the alias text, and `[[Target]]` to the
+  tail segment of the target
+- drops `![[image.png]]` embeds (attachments are not bundled yet) with a
+  warning so the author can migrate to `![alt](url)` or wait for bundling
+- refuses to export a note whose frontmatter contains `publish: false`
+  (single-note export errors; collection export silently skips)
+
+Every sanitizer decision surfaces in the CLI output as a "Preprocessor
+notes" section, on the `--json` response under `warnings`, and on
+`--preview` as a structured report — so nothing is silently lost.
 
 ## Skill Management
 

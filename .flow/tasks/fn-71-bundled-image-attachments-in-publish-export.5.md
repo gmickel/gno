@@ -24,8 +24,8 @@ Requirements:
 - Fixture vault under `test/fixtures/publish/vault-with-images/` (in
   `~/work/gno`). Contains:
   - `note.md` with `# Title\n\nHero:\n\n![[cover.png]]\n\nInline:
-    ![[logo.png|Our Logo]]\n\nMissing: ![[ghost.png]]\n\nOversize:
-    ![[huge.png]]\n`
+![[logo.png|Our Logo]]\n\nMissing: ![[ghost.png]]\n\nOversize:
+![[huge.png]]\n`
   - `cover.png` (real PNG, ~200 KB)
   - `attachments/logo.png` (real PNG, ~40 KB)
   - `huge.png` (PNG over the per-asset cap, to exercise the skip path)
