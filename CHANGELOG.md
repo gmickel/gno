@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.3] - 2026-04-20
+
+Re-release of 1.0.2 with a CHANGELOG formatting fix so the Publish workflow's
+`lint:check` step passes on CI. No code or behavior change from 1.0.2; the
+1.0.2 tag never produced an npm release.
+
 ## [1.0.2] - 2026-04-20
 
 ### Fixed
@@ -1165,21 +1171,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Version History
 
-| Version | Date       | Highlights                                |
-| ------- | ---------- | ----------------------------------------- |
-| 0.12.0  | 2026-01-05 | Note linking, backlinks, related notes    |
+| Version | Date       | Highlights                                 |
+| ------- | ---------- | ------------------------------------------ |
+| 0.12.0  | 2026-01-05 | Note linking, backlinks, related notes     |
+| 1.0.3   | 2026-04-20 | Re-release of 1.0.2 (CI format fix)        |
 | 1.0.2   | 2026-04-20 | Obsidian syntax sanitizer + export preview |
-| 1.0.1   | 2026-04-19 | Clean password-protected file indexing    |
-| 1.0.0   | 2026-04-16 | Encrypted publish export                  |
-| 0.42.0  | 2026-04-16 | First gno.sh publish artifact export      |
-| 0.11.0  | 2026-01-05 | MCP embed/index tools, server embed sched |
-| 0.10.0  | 2026-01-04 | Tag system with filtering                 |
-| 0.9.0   | 2026-01-02 | MCP write operations                      |
-| 0.8.0   | 2026-01-02 | Document editor, collections management   |
-| 0.4.0   | 2026-01-01 | Web UI and REST API                       |
-| 0.1.0   | 2025-12-30 | Initial release with full search pipeline |
+| 1.0.1   | 2026-04-19 | Clean password-protected file indexing     |
+| 1.0.0   | 2026-04-16 | Encrypted publish export                   |
+| 0.42.0  | 2026-04-16 | First gno.sh publish artifact export       |
+| 0.11.0  | 2026-01-05 | MCP embed/index tools, server embed sched  |
+| 0.10.0  | 2026-01-04 | Tag system with filtering                  |
+| 0.9.0   | 2026-01-02 | MCP write operations                       |
+| 0.8.0   | 2026-01-02 | Document editor, collections management    |
+| 0.4.0   | 2026-01-01 | Web UI and REST API                        |
+| 0.1.0   | 2025-12-30 | Initial release with full search pipeline  |
 
-[Unreleased]: https://github.com/gmickel/gno/compare/v1.0.2...HEAD
+[Unreleased]: https://github.com/gmickel/gno/compare/v1.0.3...HEAD
+[1.0.3]: https://github.com/gmickel/gno/compare/v1.0.2...v1.0.3
 [1.0.2]: https://github.com/gmickel/gno/compare/v1.0.1...v1.0.2
 [1.0.1]: https://github.com/gmickel/gno/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/gmickel/gno/compare/v0.42.0...v1.0.0
