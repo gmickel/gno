@@ -2378,37 +2378,49 @@ async function runServeStatus(deps: ServeStatusDeps): Promise<void> {
         `Warning: pid ${foreign.pid} is live but recorded gno version ${foreign.recordedVersion} differs from current ${foreign.currentVersion}; refusing to claim ownership.\n`
       );
     }
-    return;
-  }
-
-  process.stdout.write("gno serve status\n");
-  process.stdout.write(`${"─".repeat(50)}\n`);
-  if (status.running) {
-    const portText =
-      status.port === null ? "(unknown port)" : `port ${status.port}`;
-    process.stdout.write(`  running  yes (pid ${status.pid}, ${portText})\n`);
-    if (status.version) {
-      process.stdout.write(`  version  ${status.version}\n`);
+  } else {
+    process.stdout.write("gno serve status\n");
+    process.stdout.write(`${"─".repeat(50)}\n`);
+    if (status.running) {
+      const portText =
+        status.port === null ? "(unknown port)" : `port ${status.port}`;
+      process.stdout.write(`  running  yes (pid ${status.pid}, ${portText})\n`);
+      if (status.version) {
+        process.stdout.write(`  version  ${status.version}\n`);
+      }
+      if (status.started_at) {
+        process.stdout.write(
+          `  started  ${status.started_at} (uptime ${status.uptime_seconds ?? 0}s)\n`
+        );
+      }
+    } else {
+      process.stdout.write("  running  no\n");
     }
-    if (status.started_at) {
-      process.stdout.write(
-        `  started  ${status.started_at} (uptime ${status.uptime_seconds ?? 0}s)\n`
+    process.stdout.write(`  pid-file ${status.pid_file}\n`);
+    process.stdout.write(`  log-file ${status.log_file}`);
+    if (status.log_size_bytes === null) {
+      process.stdout.write(" (missing)\n");
+    } else {
+      process.stdout.write(` (${status.log_size_bytes} bytes)\n`);
+    }
+
+    if (foreign) {
+      process.stderr.write(
+        `Warning: pid ${foreign.pid} is live but recorded gno version ${foreign.recordedVersion} differs from current ${foreign.currentVersion}; refusing to claim ownership.\n`
       );
     }
-  } else {
-    process.stdout.write("  running  no\n");
-  }
-  process.stdout.write(`  pid-file ${status.pid_file}\n`);
-  process.stdout.write(`  log-file ${status.log_file}`);
-  if (status.log_size_bytes === null) {
-    process.stdout.write(" (missing)\n");
-  } else {
-    process.stdout.write(` (${status.log_size_bytes} bytes)\n`);
   }
 
-  if (foreign) {
-    process.stderr.write(
-      `Warning: pid ${foreign.pid} is live but recorded gno version ${foreign.recordedVersion} differs from current ${foreign.currentVersion}; refusing to claim ownership.\n`
+  // Spec: `--status` exits 3 (NOT_RUNNING) when no live matching process is
+  // found. The stdout payload stays schema-clean — we've already written it —
+  // so throw a NOT_RUNNING *after* output so the envelope only hits stderr
+  // and the exit code propagates through `runCli -> exitCodeFor`. A
+  // live-foreign pid is also "not ours", so we cannot claim running:true for
+  // it; `statusProcess` already reports `running:false` in that case.
+  if (!status.running) {
+    throw new CliError(
+      "NOT_RUNNING",
+      `gno serve is not running (pid-file ${status.pid_file}${foreign ? `; live-foreign pid ${foreign.pid}` : ""})`
     );
   }
 }
