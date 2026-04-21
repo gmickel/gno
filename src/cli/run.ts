@@ -11,7 +11,7 @@ import { fileURLToPath } from "node:url";
 
 import { CLI_NAME, PRODUCT_NAME } from "../app/constants";
 import { CliError, exitCodeFor, formatErrorForOutput } from "./errors";
-import { createProgram, resetGlobals, setCliArgv } from "./program";
+import { createProgram, resetGlobals } from "./program";
 
 /**
  * Check if argv contains --json flag (before end-of-options marker).
@@ -169,15 +169,11 @@ Run '${CLI_NAME} --help' for full command list.
  * No process.exit() - caller sets process.exitCode.
  */
 export async function runCli(argv: string[]): Promise<number> {
-  // Reset global state for clean invocation (important for testing)
+  // Reset global state for clean invocation (important for testing).
+  // The detach paths (runServeDetach / runDaemonDetach) read argv from
+  // Commander's per-invocation `Command.rawArgs` via `resolveCliArgv()`,
+  // so no separate process-global capture is needed here.
   resetGlobals();
-
-  // Capture the user-facing argv slice (drop `[execPath, scriptPath]` the
-  // same way Commander does internally) so the detach paths can re-exec the
-  // requested invocation rather than `process.argv`. Programmatic callers
-  // pass synthetic argv like `["node", "gno", "serve", "--detach"]`; without
-  // this capture the child would re-exec the host process's actual argv.
-  setCliArgv(argv.slice(2));
 
   const isJson = argvWantsJson(argv);
 
