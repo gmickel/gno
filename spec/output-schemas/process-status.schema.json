@@ -101,6 +101,22 @@
       "then": {
         "properties": { "uptime_seconds": { "type": "null" } }
       }
+    },
+    {
+      "description": "a live serve must report the listening port as an integer",
+      "if": {
+        "properties": {
+          "cmd": { "const": "serve" },
+          "running": { "const": true }
+        },
+        "required": ["cmd", "running"]
+      },
+      "then": {
+        "properties": {
+          "port": { "type": "integer", "minimum": 1, "maximum": 65535 }
+        },
+        "required": ["port"]
+      }
     }
   ]
 }

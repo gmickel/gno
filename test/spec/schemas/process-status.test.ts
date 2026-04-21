@@ -250,6 +250,22 @@ describe("process-status schema", () => {
       expect(assertInvalid(status, schema)).toBe(true);
     });
 
+    test("rejects live serve with null port (serve liveness invariant)", () => {
+      const status = {
+        running: true,
+        pid: 1234,
+        port: null,
+        cmd: "serve",
+        version: "1.1.0",
+        started_at: "2026-04-21T19:30:00Z",
+        uptime_seconds: 10,
+        pid_file: "/tmp/serve.pid",
+        log_file: "/tmp/serve.log",
+        log_size_bytes: 0,
+      };
+      expect(assertInvalid(status, schema)).toBe(true);
+    });
+
     test("rejects running:false with numeric uptime_seconds (stale invariant)", () => {
       const status = {
         running: false,
