@@ -215,6 +215,66 @@ describe("detach helper", () => {
       await expectRejects(readPidFile(pidFile), /invalid started_at/);
     });
 
+    test("readPidFile rejects a non-integer (float) pid", async () => {
+      const pidFile = join(tmpDir, "float-pid.pid");
+      await writeFile(
+        pidFile,
+        JSON.stringify({
+          pid: 1234.5,
+          cmd: "serve",
+          version: VERSION,
+          started_at: new Date().toISOString(),
+          port: 3000,
+        })
+      );
+      await expectRejects(readPidFile(pidFile), /invalid pid/);
+    });
+
+    test("readPidFile rejects a non-integer (float) port", async () => {
+      const pidFile = join(tmpDir, "float-port.pid");
+      await writeFile(
+        pidFile,
+        JSON.stringify({
+          pid: 1234,
+          cmd: "serve",
+          version: VERSION,
+          started_at: new Date().toISOString(),
+          port: 3000.5,
+        })
+      );
+      await expectRejects(readPidFile(pidFile), /invalid port/);
+    });
+
+    test("readPidFile rejects an out-of-range (too high) port", async () => {
+      const pidFile = join(tmpDir, "high-port.pid");
+      await writeFile(
+        pidFile,
+        JSON.stringify({
+          pid: 1234,
+          cmd: "serve",
+          version: VERSION,
+          started_at: new Date().toISOString(),
+          port: 99_999,
+        })
+      );
+      await expectRejects(readPidFile(pidFile), /invalid port/);
+    });
+
+    test("readPidFile rejects an out-of-range (zero) port", async () => {
+      const pidFile = join(tmpDir, "zero-port.pid");
+      await writeFile(
+        pidFile,
+        JSON.stringify({
+          pid: 1234,
+          cmd: "serve",
+          version: VERSION,
+          started_at: new Date().toISOString(),
+          port: 0,
+        })
+      );
+      await expectRejects(readPidFile(pidFile), /invalid port/);
+    });
+
     test("writePidFile is atomic (no temp file left behind)", async () => {
       const pidFile = join(tmpDir, "atomic.pid");
       await writePidFile(pidFile, {
@@ -491,16 +551,41 @@ describe("detach helper", () => {
   });
 
   describe("verifyPidFileMatchesSelf", () => {
-    test("returns true when no pid-file exists yet", async () => {
-      expect(
-        await verifyPidFileMatchesSelf({
-          pidFile: join(tmpDir, "missing.pid"),
-          selfPid: 1234,
-        })
-      ).toBe(true);
+    test("returns false when pid-file never appears within timeout", async () => {
+      // Parent crashed between Bun.spawn and writePidFile — the child must
+      // NOT keep booting unmanaged; it must exit.
+      const result = await verifyPidFileMatchesSelf({
+        pidFile: join(tmpDir, "never-written.pid"),
+        selfPid: 1234,
+        timeoutMs: 50,
+        pollIntervalMs: 10,
+      });
+      expect(result).toBe(false);
     });
 
-    test("returns true when pid-file pid matches self", async () => {
+    test("polls and returns true when pid-file appears mid-wait and matches self", async () => {
+      const pidFile = join(tmpDir, "late-write.pid");
+      // Start the verify with a generous budget, then write the pid-file
+      // after a short delay — the poll should catch it.
+      const verifyPromise = verifyPidFileMatchesSelf({
+        pidFile,
+        selfPid: 5555,
+        timeoutMs: 1000,
+        pollIntervalMs: 20,
+      });
+      setTimeout(() => {
+        void writePidFile(pidFile, {
+          pid: 5555,
+          cmd: "serve",
+          version: VERSION,
+          started_at: new Date().toISOString(),
+          port: 3000,
+        });
+      }, 80);
+      expect(await verifyPromise).toBe(true);
+    });
+
+    test("returns true on the fast path when pid-file already matches", async () => {
       const pidFile = join(tmpDir, "match.pid");
       await writePidFile(pidFile, {
         pid: 5555,
@@ -509,9 +594,13 @@ describe("detach helper", () => {
         started_at: new Date().toISOString(),
         port: 3000,
       });
-      expect(await verifyPidFileMatchesSelf({ pidFile, selfPid: 5555 })).toBe(
-        true
-      );
+      expect(
+        await verifyPidFileMatchesSelf({
+          pidFile,
+          selfPid: 5555,
+          timeoutMs: 200,
+        })
+      ).toBe(true);
     });
 
     test("returns false when pid-file points at another pid", async () => {
@@ -523,9 +612,13 @@ describe("detach helper", () => {
         started_at: new Date().toISOString(),
         port: 3000,
       });
-      expect(await verifyPidFileMatchesSelf({ pidFile, selfPid: 1234 })).toBe(
-        false
-      );
+      expect(
+        await verifyPidFileMatchesSelf({
+          pidFile,
+          selfPid: 1234,
+          timeoutMs: 200,
+        })
+      ).toBe(false);
     });
   });
 

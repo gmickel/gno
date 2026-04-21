@@ -185,8 +185,15 @@ export async function readPidFile(
   }
 
   const record = parsed as Record<string, unknown>;
-  if (typeof record.pid !== "number" || record.pid < 1) {
-    throw new CliError("RUNTIME", `Pid-file has invalid pid: ${path}`);
+  if (
+    typeof record.pid !== "number" ||
+    !Number.isInteger(record.pid) ||
+    record.pid < 1
+  ) {
+    throw new CliError(
+      "RUNTIME",
+      `Pid-file has invalid pid (must be a positive integer): ${path}`
+    );
   }
   if (!isDetachKind(record.cmd)) {
     throw new CliError(
@@ -211,14 +218,21 @@ export async function readPidFile(
     );
   }
 
-  const port =
-    typeof record.port === "number"
-      ? record.port
-      : record.port === null || record.port === undefined
-        ? null
-        : undefined;
-  if (port === undefined) {
-    throw new CliError("RUNTIME", `Pid-file has invalid port: ${path}`);
+  let port: number | null;
+  if (record.port === null || record.port === undefined) {
+    port = null;
+  } else if (
+    typeof record.port === "number" &&
+    Number.isInteger(record.port) &&
+    record.port >= 1 &&
+    record.port <= 65_535
+  ) {
+    port = record.port;
+  } else {
+    throw new CliError(
+      "RUNTIME",
+      `Pid-file has invalid port (must be null or an integer in 1..65535): ${path}`
+    );
   }
 
   return {
@@ -302,27 +316,57 @@ async function reapOrphanedChild(
 }
 
 /**
- * Child-side pid-file self-check. Read the pid-file and verify its `pid`
- * matches ours; if not, we're a racing duplicate and should exit rather
- * than stomp on the winner. Called from the child-side wiring in fn-72.3/.4
- * immediately after the detach branch is skipped.
+ * Child-side pid-file self-check. Polls the pid-file for a bounded window,
+ * requiring that it eventually appear AND point at our pid. If the pid-file
+ * never materializes (e.g. parent crashed between `Bun.spawn` and
+ * `writePidFile`), or points at another pid (we're the losing racer in a
+ * concurrent-start edge case), returns `false` so the child can exit
+ * rather than boot unmanaged.
  *
- * Returns true if the pid-file was missing (caller should keep booting) or
- * if it matches our pid (we are the legitimate owner). Returns false if
- * another pid owns it.
+ * Called from the child-side wiring in fn-72.3/.4 immediately after the
+ * detach branch is skipped (`--__detached-child` sentinel present).
+ *
+ * Why a poll: the parent's spawn → pid-file-write sequence is not atomic.
+ * The child may start before the parent finishes writing. Polling a few
+ * hundred ms gives the parent time to register us without stalling the
+ * child indefinitely on a legitimately crashed parent.
  */
 export async function verifyPidFileMatchesSelf(options: {
   pidFile: string;
   selfPid?: number;
+  /** Total wait budget for the pid-file to appear. Default 3s. */
+  timeoutMs?: number;
+  /** Poll interval while waiting. Default 50ms. */
+  pollIntervalMs?: number;
+  /** Sleep override for deterministic tests. */
+  sleep?: (ms: number) => Promise<void>;
 }): Promise<boolean> {
   const selfPid = options.selfPid ?? process.pid;
-  const payload = await readPidFile(options.pidFile);
-  if (!payload) {
-    // No pid-file yet — the parent is between spawn and write. Keep booting;
-    // the parent will write a pid-file pointing at us.
-    return true;
+  const timeoutMs = options.timeoutMs ?? 3_000;
+  const pollIntervalMs = options.pollIntervalMs ?? 50;
+  const sleep = options.sleep ?? defaultSleep;
+
+  const deadline = Date.now() + timeoutMs;
+  // First pass: readPidFile now and if it already matches, short-circuit.
+  // Then poll while the file is missing.
+  while (Date.now() < deadline) {
+    const payload = await readPidFile(options.pidFile);
+    if (payload) {
+      return payload.pid === selfPid;
+    }
+    await sleep(pollIntervalMs);
   }
-  return payload.pid === selfPid;
+
+  // Final check after the deadline so we don't lose a race in the last
+  // poll interval.
+  const payload = await readPidFile(options.pidFile);
+  if (payload) {
+    return payload.pid === selfPid;
+  }
+
+  // Parent never registered us — safest action is to exit so the operator
+  // doesn't end up with an unmanaged orphan.
+  return false;
 }
 
 export function isProcessAlive(pid: number): boolean {
