@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-04-21
+
+### Fixed
+
+- Fixed `gno collection clear-embeddings` to bootstrap the data directory before opening SQLite, which removes the Windows-only `unable to open database file` failure seen in CI and in fresh local environments.
+- Fixed publish export default output path resolution across platforms. `gno publish export` now resolves the user's Downloads directory more carefully: `USERPROFILE` on Windows, `XDG_DOWNLOAD_DIR` or `user-dirs.dirs` on Linux, and `~/Downloads` fallback on macOS/Linux when no override exists.
+- Fixed Windows-brittle benchmark and publish tests by removing hardcoded POSIX paths and raw `"bun"` executable assumptions.
+
 ## [1.0.5] - 2026-04-21
 
 ### Changed
@@ -1201,7 +1209,8 @@ Re-release of 1.0.2 with a CHANGELOG formatting fix so the Publish workflow's
 | 0.4.0   | 2026-01-01 | Web UI and REST API                        |
 | 0.1.0   | 2025-12-30 | Initial release with full search pipeline  |
 
-[Unreleased]: https://github.com/gmickel/gno/compare/v1.0.5...HEAD
+[Unreleased]: https://github.com/gmickel/gno/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/gmickel/gno/compare/v1.0.5...v1.1.0
 [1.0.5]: https://github.com/gmickel/gno/compare/v1.0.4...v1.0.5
 [1.0.4]: https://github.com/gmickel/gno/compare/v1.0.3...v1.0.4
 [1.0.3]: https://github.com/gmickel/gno/compare/v1.0.2...v1.0.3
