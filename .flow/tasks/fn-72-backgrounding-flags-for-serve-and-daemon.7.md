@@ -22,6 +22,8 @@ The in-repo `website/` directory is legacy and not actively published — do NOT
 - Grep for `nohup gno` across `docs/` and replace every hit with the new `--detach` equivalent.
 - Each `docs/*.md` file that documents `gno serve` or `gno daemon` gets: full flag list updated, a "Managing the process" subsection with `--status`/`--stop` examples.
 - Add a troubleshooting entry: "pid-file exists but `--status` says not running" → stale detection / `--detach` auto-cleans.
+- Add a troubleshooting entry for the **live-foreign case**: pid-file records a running process whose gno version doesn't match the current binary (e.g. user upgraded gno while the old detached process is still running). `--stop` will refuse to signal; guide the operator to `kill <pid>` manually and delete the pid-file. <!-- Updated by plan-sync: fn-72.2 shipped the live-foreign refuse-to-signal behavior; operators need docs for it -->
+- Add a troubleshooting entry for the **start-lock error**: "another serve/daemon start is in progress (lock-file ...startlock)". Explain that stale locks (>30s) auto-recover; for locks stuck inside the 30s window the operator can delete the `.startlock` sidecar manually. <!-- Updated by plan-sync: fn-72.2 shipped an atomic start-lock; operators need to know the lock-file is real and how to recover it -->
 - CHANGELOG entry: one line each for the five new flags, plus a note about the new exit code 3.
 
 ## Investigation targets
@@ -43,6 +45,8 @@ The in-repo `website/` directory is legacy and not actively published — do NOT
 - Grep for `nohup gno` across `docs/` and replace every hit with the new `--detach` equivalent. At least 6 hits expected.
 - Each `docs/*.md` file that documents `gno serve` or `gno daemon` gets: full flag list updated, a "Managing the process" subsection with `--status`/`--stop` examples.
 - Add a troubleshooting entry: "pid-file exists but `--status` says not running" → stale detection / `--detach` auto-cleans.
+- Add a troubleshooting entry for the **live-foreign case**: pid-file records a running process whose gno version doesn't match the current binary (e.g. user upgraded gno while the old detached process is still running). `--stop` will refuse to signal; guide the operator to `kill <pid>` manually and delete the pid-file. <!-- Updated by plan-sync: fn-72.2 shipped the live-foreign refuse-to-signal behavior; operators need docs for it -->
+- Add a troubleshooting entry for the **start-lock error**: "another serve/daemon start is in progress (lock-file ...startlock)". Explain that stale locks (>30s) auto-recover; for locks stuck inside the 30s window the operator can delete the `.startlock` sidecar manually. <!-- Updated by plan-sync: fn-72.2 shipped an atomic start-lock; operators need to know the lock-file is real and how to recover it -->
 - CHANGELOG entry: one line each for the five new flags, plus a note about the new exit code 3.
 - Run `bun run website:build` locally and verify rendered output in `website/_site/` is correct.
 

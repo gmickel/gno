@@ -14,12 +14,13 @@ Add the five new flags to `gno serve` and route through `src/cli/detach.ts`.
 
 - Use Commander's `addOption(new Option(...).conflicts([...]))` to make `--detach`, `--status`, `--stop` mutually exclusive. See Commander v14 docs — the project is on `commander ^14.0.2`.
 - In the action handler, branch early based on which mode was requested:
-  - `--status` → call `statusProcess()`, format per `getGlobals().json`, return.
-  - `--stop` → call `stopProcess()`, handle `NOT_RUNNING` exit 3, return.
-  - `--detach` → call `guardDoubleStart()`, then `spawnDetached()`, print `PID <n> listening on http://localhost:<port>`, return.
-  - **Detached-child mode** (`--__detached-child` flag set by parent spawn): proceed with normal `startServer()` flow. Install the daemon-style SIGTERM/SIGINT handler that unlinks the pid-file on shutdown.
+  - `--status` → call `statusProcess({ kind: "serve", pidFile, logFile })`, format per `getGlobals().json`, return. Optionally pair with `inspectForeignLive({ kind: "serve", pidFile })` to surface operator-facing live-foreign warnings (live pid, matching kind, version mismatch) that the `process-status@1.0` schema can't encode. <!-- Updated by plan-sync: fn-72.2 added kind+logFile to statusProcess signature and shipped inspectForeignLive sidecar -->
+  - `--stop` → call `stopProcess({ kind: "serve", pidFile })`; switch on the returned `StopOutcome` union — `"stopped"` → exit 0, `"not-running"` → throw `CliError("NOT_RUNNING")` (exit 3), `"timeout"` → throw `CliError("RUNTIME")`, `"foreign-live"` → throw `CliError("VALIDATION")` with the pid/version guidance from the payload. Do NOT attempt to signal the pid yourself when `stopProcess` returns `foreign-live`. <!-- Updated by plan-sync: fn-72.2 made stopProcess return a StopOutcome discriminated union instead of void -->
+  - `--detach` → call `spawnDetached({ kind: "serve", argv, pidFile, logFile, port })` directly. `spawnDetached` acquires an internal start-lock and re-invokes `guardDoubleStart(pidFile, "serve")` under the lock, so callers do NOT need a separate guard call. Print `PID <n> listening on http://localhost:<port>`, return. <!-- Updated by plan-sync: fn-72.2 folded guardDoubleStart + atomic start-lock inside spawnDetached -->
+  - **Detached-child mode** (`DETACHED_CHILD_FLAG` sentinel from `src/cli/detach.ts` — value `--__detached-child` — set by parent spawn): call `verifyPidFileMatchesSelf({ pidFile })` early; if it returns `false` the parent never registered us, exit cleanly rather than boot unmanaged. On success proceed with normal `startServer()` flow and install the daemon-style SIGTERM/SIGINT handler that unlinks the pid-file on shutdown. <!-- Updated by plan-sync: fn-72.2 exported DETACHED_CHILD_FLAG constant + verifyPidFileMatchesSelf helper (bounded child-side poll replaces the "assert pid === process.pid on first tick" sketch in the epic spec) -->
   - Neither set → normal foreground behavior (unchanged).
-- Pid-file and log-file defaults: `resolveProcessPaths("serve")`.
+- Pid-file and log-file defaults: `resolveProcessPaths("serve", { pidFile: opts.pidFile, logFile: opts.logFile, cwd: process.cwd() })` — user-supplied `--pid-file`/`--log-file` pass through `toAbsolutePath` so `~` + relative paths both work.
+- `guardDoubleStart` now requires `kind` as its second arg (`guardDoubleStart(pidFile, "serve")`). Only needed if you want to pre-validate before calling `spawnDetached` for a better error message; otherwise rely on `spawnDetached`'s internal call. <!-- Updated by plan-sync: fn-72.2 added kind param to guardDoubleStart -->
 - Status payload includes port from the running server's pid-file metadata.
 
 ## Investigation targets
@@ -38,8 +39,12 @@ Add the five new flags to `gno serve` and route through `src/cli/detach.ts`.
 
 ## Key context
 
-- The `--__detached-child` sentinel flag must **not** appear in `--help`; hide with Commander's `Option#hideHelp()`.
+- The sentinel flag literal (`--__detached-child`, exported as `DETACHED_CHILD_FLAG` from `src/cli/detach.ts`) must **not** appear in `--help`; hide with Commander's `Option#hideHelp()`. Import and reference the constant rather than hard-coding the string. <!-- Updated by plan-sync: fn-72.2 exports the sentinel as a constant -->
 - Graceful shutdown: the detached-child serve must unlink its own pid-file in the SIGTERM handler before exiting.
+- `spawnDetached` throws `CliError("VALIDATION")` on Windows pointing at WSL — Commander's default error handler (via `runCli`) surfaces this cleanly, no extra wrapping needed.
+- LLM-thread hazard was retired in fn-72.2 (ad-hoc spike confirmed parent exits ~32ms even with `node-llama-cpp` adapter lazy-imported). The remaining validation is confirming it still holds when `startServer` is actually wired up with a real collection — native threads don't load until `ModelManager.getLlama()` fires. <!-- Updated by plan-sync: fn-72.2 retired the LLM-thread hazard; the epic spec's earlier "still open" framing no longer applies -->
+- `spawnDetached` has an internal start-lock sidecar (`<pidFile>.startlock`, O_CREAT | O_EXCL) that serializes concurrent `--detach` invocations in the same `GNO_DATA_DIR`. Stale locks (>30s) are auto-recovered. No caller action needed, but integration tests that concurrently spawn should be aware the second call gets a clear VALIDATION error rather than a silent race.
+- If `spawnDetached` successfully spawns the child but then fails to write the pid-file, it synchronously reaps the orphan (SIGTERM → SIGKILL) before throwing `CliError("RUNTIME")`. No dangling processes on pid-file write failure.
 
 ## Acceptance
 

@@ -5,7 +5,11 @@
  * @module src/cli/program
  */
 
-import { Command } from "commander";
+import { Command, Option } from "commander";
+// node:fs sync unlink — Bun has no equivalent; used only in the detached-
+// child signal handler where we need a synchronous cleanup on the signal
+// path.
+import { unlinkSync } from "node:fs";
 
 import {
   CLI_NAME,
@@ -22,6 +26,7 @@ import {
   type GlobalOptions,
   parseGlobalOptions,
 } from "./context";
+import { DETACHED_CHILD_FLAG } from "./detach";
 import { CliError } from "./errors";
 import {
   assertFormatSupported,
@@ -2218,26 +2223,298 @@ function wireDaemonCommand(program: Command): void {
 }
 
 function wireServeCommand(program: Command): void {
-  program
+  const serveCmd = program
     .command("serve")
     .description("Start web UI server")
-    .option("-p, --port <num>", "port to listen on", "3000")
-    .action(async (cmdOpts: Record<string, unknown>) => {
-      const globals = getGlobals();
-      const port = parsePositiveInt("port", cmdOpts.port);
+    .option("-p, --port <num>", "port to listen on", "3000");
 
-      const { serve } = await import("./commands/serve.js");
-      const result = await serve({
-        port,
-        configPath: globals.config,
-        index: globals.index,
-      });
+  // --detach / --status / --stop are mutually exclusive. Use Commander's
+  // Option API so the conflict error is the native "option '--status'
+  // cannot be used with option '--detach'" surface.
+  serveCmd.addOption(
+    new Option(
+      "--detach",
+      "run as a detached background process (macOS/Linux only)"
+    ).conflicts(["status", "stop"])
+  );
+  serveCmd.addOption(
+    new Option(
+      "--status",
+      "show status of the detached serve process (use --json for machine output)"
+    ).conflicts(["detach", "stop"])
+  );
+  serveCmd.addOption(
+    new Option(
+      "--stop",
+      "stop the detached serve process (SIGTERM then SIGKILL fallback)"
+    ).conflicts(["detach", "status"])
+  );
+  serveCmd.addOption(new Option("--pid-file <path>", "override pid-file path"));
+  serveCmd.addOption(
+    new Option("--log-file <path>", "override log-file path (append-only)")
+  );
+  // Sentinel flag set by the parent when re-exec'ing the detached child.
+  // Hidden from --help; Commander consumes it via addOption so it doesn't
+  // leak into user-visible argv.
+  serveCmd.addOption(
+    new Option(
+      `${DETACHED_CHILD_FLAG}`,
+      "internal detached-child marker"
+    ).hideHelp()
+  );
 
-      if (!result.success) {
-        throw new CliError("RUNTIME", result.error ?? "Server failed to start");
-      }
-      // Server runs until SIGINT/SIGTERM - no output needed here
+  serveCmd.action(async (cmdOpts: Record<string, unknown>) => {
+    await handleServeAction(cmdOpts);
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Serve lifecycle branching (detach / status / stop / detached-child / fg)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Route `gno serve` through the detach helpers based on which mutex flag the
+ * user set. The four early branches return without touching `startServer()`;
+ * only the foreground + detached-child paths boot the runtime.
+ */
+async function handleServeAction(
+  cmdOpts: Record<string, unknown>
+): Promise<void> {
+  const globals = getGlobals();
+  const port = parsePositiveInt("port", cmdOpts.port);
+
+  const {
+    resolveProcessPaths,
+    statusProcess,
+    stopProcess,
+    spawnDetached,
+    inspectForeignLive,
+    verifyPidFileMatchesSelf,
+    DETACHED_CHILD_FLAG: childFlag,
+  } = await import("./detach.js");
+
+  const paths = resolveProcessPaths("serve", {
+    pidFile: cmdOpts.pidFile as string | undefined,
+    logFile: cmdOpts.logFile as string | undefined,
+    cwd: process.cwd(),
+  });
+
+  if (cmdOpts.status) {
+    await runServeStatus({
+      paths,
+      json: globals.json,
+      statusProcess,
+      inspectForeignLive,
     });
+    return;
+  }
+
+  if (cmdOpts.stop) {
+    await runServeStop({ pidFile: paths.pidFile, stopProcess });
+    return;
+  }
+
+  if (cmdOpts.detach) {
+    await runServeDetach({
+      port,
+      paths,
+      spawnDetached,
+    });
+    return;
+  }
+
+  // Detached-child path: the parent spawned us with DETACHED_CHILD_FLAG.
+  // Confirm the pid-file points at us before booting; if the parent never
+  // registered us, exit cleanly rather than run unmanaged. On success,
+  // install a shutdown hook that unlinks the pid-file.
+  const isDetachedChild = Boolean(
+    (cmdOpts as Record<string, unknown>)[toCamelCase(childFlag)]
+  );
+  if (isDetachedChild) {
+    const matched = await verifyPidFileMatchesSelf({ pidFile: paths.pidFile });
+    if (!matched) {
+      // Parent crashed before registering us, or another racer won.
+      return;
+    }
+    installPidFileCleanup(paths.pidFile);
+  }
+
+  const { serve } = await import("./commands/serve.js");
+  const result = await serve({
+    port,
+    configPath: globals.config,
+    index: globals.index,
+  });
+
+  if (!result.success) {
+    throw new CliError("RUNTIME", result.error ?? "Server failed to start");
+  }
+  // Server runs until SIGINT/SIGTERM - no output needed here
+}
+
+interface ServeStatusDeps {
+  paths: { pidFile: string; logFile: string };
+  json: boolean;
+  statusProcess: typeof import("./detach.js").statusProcess;
+  inspectForeignLive: typeof import("./detach.js").inspectForeignLive;
+}
+
+async function runServeStatus(deps: ServeStatusDeps): Promise<void> {
+  const status = await deps.statusProcess({
+    kind: "serve",
+    pidFile: deps.paths.pidFile,
+    logFile: deps.paths.logFile,
+  });
+  const foreign = await deps.inspectForeignLive({
+    kind: "serve",
+    pidFile: deps.paths.pidFile,
+  });
+
+  if (deps.json) {
+    process.stdout.write(`${JSON.stringify(status, null, 2)}\n`);
+    if (foreign) {
+      // Operator-facing warning on stderr so --json stdout stays schema-clean.
+      process.stderr.write(
+        `Warning: pid ${foreign.pid} is live but recorded gno version ${foreign.recordedVersion} differs from current ${foreign.currentVersion}; refusing to claim ownership.\n`
+      );
+    }
+    return;
+  }
+
+  process.stdout.write("gno serve status\n");
+  process.stdout.write(`${"─".repeat(50)}\n`);
+  if (status.running) {
+    const portText =
+      status.port === null ? "(unknown port)" : `port ${status.port}`;
+    process.stdout.write(`  running  yes (pid ${status.pid}, ${portText})\n`);
+    if (status.version) {
+      process.stdout.write(`  version  ${status.version}\n`);
+    }
+    if (status.started_at) {
+      process.stdout.write(
+        `  started  ${status.started_at} (uptime ${status.uptime_seconds ?? 0}s)\n`
+      );
+    }
+  } else {
+    process.stdout.write("  running  no\n");
+  }
+  process.stdout.write(`  pid-file ${status.pid_file}\n`);
+  process.stdout.write(`  log-file ${status.log_file}`);
+  if (status.log_size_bytes === null) {
+    process.stdout.write(" (missing)\n");
+  } else {
+    process.stdout.write(` (${status.log_size_bytes} bytes)\n`);
+  }
+
+  if (foreign) {
+    process.stderr.write(
+      `Warning: pid ${foreign.pid} is live but recorded gno version ${foreign.recordedVersion} differs from current ${foreign.currentVersion}; refusing to claim ownership.\n`
+    );
+  }
+}
+
+interface ServeStopDeps {
+  pidFile: string;
+  stopProcess: typeof import("./detach.js").stopProcess;
+}
+
+async function runServeStop(deps: ServeStopDeps): Promise<void> {
+  const outcome = await deps.stopProcess({
+    kind: "serve",
+    pidFile: deps.pidFile,
+  });
+
+  switch (outcome.kind) {
+    case "stopped":
+      process.stdout.write(
+        `Stopped gno serve (pid ${outcome.pid}, ${outcome.signal})\n`
+      );
+      return;
+    case "not-running":
+      throw new CliError(
+        "NOT_RUNNING",
+        `gno serve is not running (pid-file ${outcome.pidFile} missing or stale)`
+      );
+    case "timeout":
+      throw new CliError(
+        "RUNTIME",
+        `gno serve (pid ${outcome.pid}) did not exit after SIGTERM + SIGKILL. Investigate manually.`
+      );
+    case "foreign-live":
+      throw new CliError(
+        "VALIDATION",
+        `gno serve (pid ${outcome.pid}) is live but was started by gno ${outcome.payload.version}; this binary is ${VERSION}. Refusing to signal pid ${outcome.pid}; terminate it manually and delete ${deps.pidFile}.`
+      );
+    default: {
+      const exhaustive: never = outcome;
+      throw new Error(`unreachable stop outcome: ${String(exhaustive)}`);
+    }
+  }
+}
+
+interface ServeDetachDeps {
+  port: number;
+  paths: { pidFile: string; logFile: string };
+  spawnDetached: typeof import("./detach.js").spawnDetached;
+}
+
+async function runServeDetach(deps: ServeDetachDeps): Promise<void> {
+  // Strip --detach from the re-exec argv so the child takes the foreground /
+  // detached-child branch instead of re-spawning itself in an infinite loop.
+  const childArgv = stripDetachFlag(process.argv.slice(2));
+  const result = await deps.spawnDetached({
+    kind: "serve",
+    argv: childArgv,
+    pidFile: deps.paths.pidFile,
+    logFile: deps.paths.logFile,
+    port: deps.port,
+  });
+  process.stdout.write(
+    `PID ${result.pid} listening on http://localhost:${deps.port}\n`
+  );
+}
+
+/**
+ * Remove `--detach` (and its short/long variants) from an argv slice while
+ * preserving the order and value of every other argument. We only strip the
+ * literal long form because that's the only form we register.
+ */
+function stripDetachFlag(argv: string[]): string[] {
+  return argv.filter((a) => a !== "--detach");
+}
+
+/**
+ * Install a one-shot SIGINT/SIGTERM handler that unlinks the pid-file before
+ * the default signal handling (startServer's own shutdown) runs. Uses a sync
+ * unlink so the pid-file is gone even if the subsequent async teardown
+ * misbehaves.
+ */
+function installPidFileCleanup(pidFile: string): void {
+  const cleanup = () => {
+    try {
+      unlinkSync(pidFile);
+    } catch {
+      // Already gone or permission-denied — nothing actionable here.
+    }
+  };
+  process.once("SIGINT", cleanup);
+  process.once("SIGTERM", cleanup);
+  // Also run on a clean (`exit(0)`) path so crashes leave a stale pid-file
+  // that `--status` can detect via liveness check, but orderly shutdown
+  // (e.g. startServer returned) still cleans up.
+  process.once("beforeExit", cleanup);
+}
+
+/**
+ * Commander lowercases a long option name into camelCase for `cmdOpts`. The
+ * sentinel flag `--__detached-child` maps to `__detachedChild` on the opts
+ * bag; we derive that programmatically so the constant stays the single
+ * source of truth.
+ */
+function toCamelCase(longFlag: string): string {
+  return longFlag
+    .replace(/^-+/, "")
+    .replace(/-([a-z])/g, (_, c: string) => c.toUpperCase());
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

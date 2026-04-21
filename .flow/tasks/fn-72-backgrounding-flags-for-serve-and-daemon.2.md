@@ -119,10 +119,10 @@ Build the shared helper that both `gno serve` and `gno daemon` will call through
 
 ## Done summary
 
-TBD
+Shipped the shared src/cli/detach.ts helper (resolveProcessPaths, spawnDetached with atomic start-lock + synchronous orphan reap, readPidFile/writePidFile with strict int/port-range validation, isProcessAlive, guardDoubleStart, statusProcess matching process-status@1.0, inspectForeignLive sidecar for live-foreign warnings, stopProcess with SIGTERM→SIGKILL escalation and foreign-live outcome, verifyPidFileMatchesSelf with bounded child-side poll) plus NOT_RUNNING=3 wired into CliErrorCode + exitCodeFor. Windows --detach is gated with a VALIDATION error pointing to WSL. 54 unit tests cover path resolution, pid-file round-trip and validation, liveness, spawn success/failure/concurrency, guard double-start, status/stop/foreign-live semantics, and child-side self-check. Ad-hoc LLM-thread spike confirmed parent exits in ~32ms even after importing node-llama-cpp adapter (lazy-imported, no native threads until ModelManager.getLlama). Reviewed via codex through five fix rounds (version cross-check, entry-script in re-exec, live-foreign block, synchronous orphan reap + start-lock + self-check, bounded poll + tighter validation); final verdict SHIP.
 
 ## Evidence
 
-- Commits:
-- Tests:
+- Commits: 25322bb, 5059970, 9569f39, b797b4e, bd4f838, 92904de
+- Tests: bun run lint:check, bun test test/cli/detach.test.ts, bun test test/cli/ test/spec/, bun test
 - PRs:

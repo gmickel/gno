@@ -12,10 +12,12 @@ Add the same five flags to `gno daemon`, routing through the shared `src/cli/det
 
 ## Approach
 
-- Mirror the flag wiring and mode-branching from fn-72.3.
-- `resolveProcessPaths("daemon")` for default pid/log.
-- Daemon status payload has no `port` field (daemon is headless) — schema allows `port: null`.
+- Mirror the flag wiring and mode-branching from fn-72.3 — same `spawnDetached({ kind: "daemon", ... })` / `statusProcess({ kind: "daemon", pidFile, logFile })` / `stopProcess({ kind: "daemon", pidFile })` / `verifyPidFileMatchesSelf({ pidFile })` / `inspectForeignLive({ kind: "daemon", pidFile })` shape. <!-- Updated by plan-sync: fn-72.2 helpers all take kind + return StopOutcome union -->
+- `resolveProcessPaths("daemon", { pidFile: opts.pidFile, logFile: opts.logFile, cwd: process.cwd() })` for default pid/log.
+- Daemon status payload has no `port` field (daemon is headless) — schema allows `port: null`, and `statusProcess` already forces `port: null` when `kind === "daemon"` regardless of what's in the pid-file. No caller action needed. <!-- Updated by plan-sync: fn-72.2 statusProcess normalizes port to null for daemon -->
+- When `stopProcess` returns `{ kind: "foreign-live", pid, payload }`, throw `CliError("VALIDATION")` with the operator guidance from the payload — do NOT attempt `process.kill` on that pid; identity can't be proven across a gno version mismatch. <!-- Updated by plan-sync: fn-72.2 added foreign-live StopOutcome variant -->
 - The existing `createSignalPromise` at `src/cli/commands/daemon.ts:34-64` already handles SIGTERM/SIGINT; extend it to unlink the pid-file when running as a detached child.
+- When running as detached-child (sentinel `DETACHED_CHILD_FLAG` present in argv — imported from `src/cli/detach.ts`), call `verifyPidFileMatchesSelf({ pidFile })` BEFORE `startBackgroundRuntime` so we exit cleanly if the parent crashed mid-write. <!-- Updated by plan-sync: fn-72.2 shipped verifyPidFileMatchesSelf helper -->
 - Keep `--no-sync-on-start` working.
 
 ## Investigation targets
@@ -34,6 +36,9 @@ Add the same five flags to `gno daemon`, routing through the shared `src/cli/det
 
 - Keep `DaemonDeps` injection seam intact — existing tests mock `logger` and `startBackgroundRuntime`.
 - The signal-handler extension should write "shutting down, unlinking pid-file" at verbose level only.
+- Sentinel flag is exported as `DETACHED_CHILD_FLAG` from `src/cli/detach.ts` (value: `--__detached-child`). Hide with Commander's `Option#hideHelp()`. <!-- Updated by plan-sync: fn-72.2 exports the sentinel as a constant — reuse it, don't hard-code the string -->
+- LLM-thread hazard was retired by the fn-72.2 ad-hoc spike (parent exits ~32ms even with `node-llama-cpp` adapter in the module graph). The remaining validation is confirming it holds when `startBackgroundRuntime` is wired up — native threads don't load until `ModelManager.getLlama()` fires, so detach-before-runtime-init should be safe. <!-- Updated by plan-sync: fn-72.2 retired the LLM-thread hazard flagged by the epic spec -->
+- `spawnDetached`'s internal start-lock (`<pidFile>.startlock`) serializes concurrent `--detach` invocations — no need for caller-level serialization in the daemon action.
 
 ## Acceptance
 

@@ -22,7 +22,9 @@ This task spans two repos. Open two PRs, one per repo, and coordinate the merge 
 **Files in `~/work/gno` (this repo):**
 
 - `assets/skill/cli-reference.md` — serve section ~L492, daemon section ~L321. Add all five new flags. Triggers a ClawHub skill version bump at release time (per root `CLAUDE.md` rules).
-- `docs/adr/005-daemon-detach-lifecycle.md` — new ADR using `docs/adr/000-template.md` as template. Document: why `resolveDirs().data` over `~/.gno/`; why JSON pid-file over bare PID; why exit code 3; why `taskkill` fallback on Windows; why the `--__detached-child` sentinel is hidden from `--help`.
+- `docs/adr/005-daemon-detach-lifecycle.md` — new ADR using `docs/adr/000-template.md` as template. Document: why `resolveDirs().data` over `~/.gno/`; why JSON pid-file over bare PID (and why strict validation + version cross-check — not a bare integer); why exit code 3; why Windows has NO native detach (clean VALIDATION error pointing to WSL — `taskkill` was NOT ultimately implemented, fn-72.6 is blocked); why the `DETACHED_CHILD_FLAG` sentinel (`--__detached-child`, exported from `src/cli/detach.ts`) is hidden from `--help`; why a sidecar `.startlock` via O_CREAT|O_EXCL rather than a lock inside the pid-file; why `stopProcess` returns a `StopOutcome` discriminated union (including `foreign-live`) rather than throwing for every non-success path; why the child runs a bounded `verifyPidFileMatchesSelf` poll rather than the simpler "assert on first tick" originally sketched in the epic spec. <!-- Updated by plan-sync: fn-72.2 shipped start-lock, StopOutcome union, verifyPidFileMatchesSelf, strict pid-file validation, and retired native Windows detach — the ADR should cover those decisions too -->
+
+Note: the `~/.gno` convention documented elsewhere is irrelevant here; defaults come from `resolveDirs().data` and honour `GNO_DATA_DIR`.
 
 ## Approach
 
