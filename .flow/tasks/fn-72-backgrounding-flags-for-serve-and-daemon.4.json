@@ -1,0 +1,14 @@
+{
+  "assignee": null,
+  "claim_note": "",
+  "claimed_at": null,
+  "created_at": "2026-04-21T19:49:58.501973Z",
+  "depends_on": ["fn-72-backgrounding-flags-for-serve-and-daemon.2"],
+  "epic": "fn-72-backgrounding-flags-for-serve-and-daemon",
+  "id": "fn-72-backgrounding-flags-for-serve-and-daemon.4",
+  "priority": null,
+  "spec_path": ".flow/tasks/fn-72-backgrounding-flags-for-serve-and-daemon.4.md",
+  "status": "todo",
+  "title": "Wire detach/status/stop flags into gno daemon",
+  "updated_at": "2026-04-21T19:51:59.321539Z"
+}

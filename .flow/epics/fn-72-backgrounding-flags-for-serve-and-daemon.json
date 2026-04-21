@@ -1,0 +1,18 @@
+{
+  "branch_name": "fn-72-backgrounding-flags-for-serve-and-daemon",
+  "completion_review_status": "unknown",
+  "completion_reviewed_at": null,
+  "created_at": "2026-04-21T19:48:33.353011Z",
+  "default_impl": null,
+  "default_review": null,
+  "default_sync": null,
+  "depends_on_epics": ["fn-55-headless-daemon-and-watch-mode-for"],
+  "id": "fn-72-backgrounding-flags-for-serve-and-daemon",
+  "next_task": 1,
+  "plan_review_status": "unknown",
+  "plan_reviewed_at": null,
+  "spec_path": ".flow/specs/fn-72-backgrounding-flags-for-serve-and-daemon.md",
+  "status": "open",
+  "title": "Backgrounding flags for serve and daemon",
+  "updated_at": "2026-04-21T20:27:01.782644Z"
+}
