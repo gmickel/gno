@@ -1,4 +1,5 @@
 import { describe, expect, it } from "bun:test";
+import { join } from "node:path";
 
 import {
   buildDefaultPublishExportPath,
@@ -110,8 +111,8 @@ describe("publish export helpers", () => {
     };
 
     expect(derivePublishArtifactFilename(artifact)).toBe("atlas.json");
-    expect(buildDefaultPublishExportPath(artifact)).toContain(
-      "/Downloads/atlas-20260410.json"
+    expect(buildDefaultPublishExportPath(artifact)).toEndWith(
+      join("Downloads", "atlas-20260410.json")
     );
   });
 

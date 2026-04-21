@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { join } from "node:path";
 
 import fixtures from "../../evals/fixtures/code-embedding-benchmark/fixtures.json";
 import queries from "../../evals/fixtures/code-embedding-benchmark/queries.json";
@@ -7,6 +8,8 @@ interface QueryCase {
   id: string;
   relevantDocs: string[];
 }
+
+const REPO_ROOT = join(import.meta.dir, "../..");
 
 describe("code embedding benchmark fixtures", () => {
   test("all relevant docs exist in the corpus", async () => {
@@ -25,13 +28,13 @@ describe("code embedding benchmark fixtures", () => {
   test("benchmark script supports dry-run candidate resolution", () => {
     const result = Bun.spawnSync({
       cmd: [
-        "bun",
+        process.execPath,
         "scripts/code-embedding-benchmark.ts",
         "--candidate",
         "bge-m3-incumbent",
         "--dry-run",
       ],
-      cwd: "/Users/gordon/work/gno",
+      cwd: REPO_ROOT,
       stdout: "pipe",
       stderr: "pipe",
     });
@@ -48,7 +51,7 @@ describe("code embedding benchmark fixtures", () => {
   test("benchmark script supports fixture selection in dry-run mode", () => {
     const result = Bun.spawnSync({
       cmd: [
-        "bun",
+        process.execPath,
         "scripts/code-embedding-benchmark.ts",
         "--candidate",
         "bge-m3-incumbent",
@@ -56,7 +59,7 @@ describe("code embedding benchmark fixtures", () => {
         "repo-serve",
         "--dry-run",
       ],
-      cwd: "/Users/gordon/work/gno",
+      cwd: REPO_ROOT,
       stdout: "pipe",
       stderr: "pipe",
     });
