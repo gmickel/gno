@@ -14,6 +14,7 @@ import { VERSION } from "../../src/app/constants";
 import {
   DETACHED_CHILD_FLAG,
   guardDoubleStart,
+  inspectForeignLive,
   isProcessAlive,
   readPidFile,
   resolveProcessPaths,
@@ -370,6 +371,58 @@ describe("detach helper", () => {
     test("includes DETACHED_CHILD_FLAG sentinel", () => {
       expect(DETACHED_CHILD_FLAG).toBe("--__detached-child");
     });
+
+    test.skipIf(process.platform === "win32")(
+      "kills the spawned child and throws RUNTIME when pid-file write fails",
+      async () => {
+        // Force writePidFile to fail by making the pid-file path itself a
+        // directory — atomicWrite's rename(tmpFile, pidFile) will fail with
+        // EISDIR. The parent-dir mkdir in spawnDetached succeeds normally.
+        const pidFile = join(tmpDir, "data", "pid-is-a-dir.pid");
+        await mkdir(pidFile, { recursive: true });
+
+        const heartbeatScript = `
+          setInterval(() => {
+            process.stdout.write('alive\\n');
+          }, 200);
+        `;
+        const scriptPath = join(tmpDir, "write-fail-child.mjs");
+        await writeFile(scriptPath, heartbeatScript);
+
+        let caught: unknown;
+        let childPid: number | undefined;
+        try {
+          await spawnDetached({
+            kind: "serve",
+            argv: [scriptPath],
+            pidFile,
+            logFile: join(tmpDir, "data", "write-fail.log"),
+            port: 4243,
+            entryScript: null,
+          });
+        } catch (error) {
+          caught = error;
+          const msg = error instanceof Error ? error.message : "";
+          const match = msg.match(/pid (\d+)\)/);
+          if (match) {
+            childPid = Number(match[1]);
+          }
+        }
+
+        expect(caught).toBeInstanceOf(CliError);
+        const err = caught as CliError;
+        expect(err.code).toBe("RUNTIME");
+        expect(err.message).toMatch(/failed to write pid-file/);
+        expect(err.message).toMatch(/child was signaled/);
+
+        // Give the SIGTERM/SIGKILL fire-and-forget a moment to land, then
+        // confirm the orphan is gone.
+        await new Promise((r) => setTimeout(r, 1500));
+        if (childPid !== undefined) {
+          expect(isProcessAlive(childPid)).toBe(false);
+        }
+      }
+    );
   });
 
   describe("guardDoubleStart", () => {
@@ -447,7 +500,7 @@ describe("detach helper", () => {
 
   describe("statusProcess", () => {
     test("reports not-running when no pid-file exists", async () => {
-      const { status } = await statusProcess({
+      const status = await statusProcess({
         kind: "serve",
         pidFile: join(tmpDir, "missing.pid"),
         logFile: join(tmpDir, "missing.log"),
@@ -475,7 +528,7 @@ describe("detach helper", () => {
         port: 3000,
       });
 
-      const { status } = await statusProcess({
+      const status = await statusProcess({
         kind: "serve",
         pidFile,
         logFile,
@@ -502,7 +555,7 @@ describe("detach helper", () => {
         port: null,
       });
 
-      const { status } = await statusProcess({
+      const status = await statusProcess({
         kind: "daemon",
         pidFile,
         logFile,
@@ -512,7 +565,7 @@ describe("detach helper", () => {
       expect(status.port).toBeNull();
     });
 
-    test("surfaces live-foreign warning when version differs on a live pid", async () => {
+    test("reports version mismatch on live pid as not-running in the schema payload", async () => {
       const pidFile = join(tmpDir, "version-status.pid");
       const logFile = join(tmpDir, "version-status.log");
       await writePidFile(pidFile, {
@@ -523,23 +576,15 @@ describe("detach helper", () => {
         port: 3000,
       });
 
-      const result = await statusProcess({
+      const status = await statusProcess({
         kind: "serve",
         pidFile,
         logFile,
       });
 
-      // Schema-shape payload must report running:false (we can't prove
-      // identity) but the helper must flag the live-foreign condition so the
-      // command layer can warn the operator.
-      expect(result.status.running).toBe(false);
-      expect(result.status.version).toBe("0.0.0-orphaned");
-      expect(result.status.uptime_seconds).toBeNull();
-      expect(result.foreignLive).toEqual({
-        pid: process.pid,
-        recordedVersion: "0.0.0-orphaned",
-        currentVersion: VERSION,
-      });
+      expect(status.running).toBe(false);
+      expect(status.version).toBe("0.0.0-orphaned");
+      expect(status.uptime_seconds).toBeNull();
     });
 
     test("reports stale pid-file as not-running with metadata preserved", async () => {
@@ -553,7 +598,7 @@ describe("detach helper", () => {
         port: null,
       });
 
-      const { status } = await statusProcess({
+      const status = await statusProcess({
         kind: "daemon",
         pidFile,
         logFile,
@@ -577,13 +622,76 @@ describe("detach helper", () => {
         port: null,
       });
 
-      const { status } = await statusProcess({
+      const status = await statusProcess({
         kind: "serve",
         pidFile,
         logFile,
       });
 
       expect(status.running).toBe(false);
+    });
+  });
+
+  describe("inspectForeignLive", () => {
+    test("returns null when no pid-file exists", async () => {
+      expect(
+        await inspectForeignLive({
+          kind: "serve",
+          pidFile: join(tmpDir, "missing.pid"),
+        })
+      ).toBeNull();
+    });
+
+    test("returns null when versions match on a live pid", async () => {
+      const pidFile = join(tmpDir, "match.pid");
+      await writePidFile(pidFile, {
+        pid: process.pid,
+        cmd: "serve",
+        version: VERSION,
+        started_at: new Date().toISOString(),
+        port: 3000,
+      });
+      expect(await inspectForeignLive({ kind: "serve", pidFile })).toBeNull();
+    });
+
+    test("returns null when pid is dead", async () => {
+      const pidFile = join(tmpDir, "dead-pid.pid");
+      await writePidFile(pidFile, {
+        pid: 2_147_483_646,
+        cmd: "serve",
+        version: "0.0.0-orphaned",
+        started_at: new Date().toISOString(),
+        port: 3000,
+      });
+      expect(await inspectForeignLive({ kind: "serve", pidFile })).toBeNull();
+    });
+
+    test("returns null when cmds disagree", async () => {
+      const pidFile = join(tmpDir, "wrong-kind.pid");
+      await writePidFile(pidFile, {
+        pid: process.pid,
+        cmd: "daemon",
+        version: "0.0.0-orphaned",
+        started_at: new Date().toISOString(),
+        port: null,
+      });
+      expect(await inspectForeignLive({ kind: "serve", pidFile })).toBeNull();
+    });
+
+    test("surfaces signal on live + matching cmd + mismatched version", async () => {
+      const pidFile = join(tmpDir, "foreign.pid");
+      await writePidFile(pidFile, {
+        pid: process.pid,
+        cmd: "serve",
+        version: "0.0.0-orphaned",
+        started_at: new Date().toISOString(),
+        port: 3000,
+      });
+      expect(await inspectForeignLive({ kind: "serve", pidFile })).toEqual({
+        pid: process.pid,
+        recordedVersion: "0.0.0-orphaned",
+        currentVersion: VERSION,
+      });
     });
   });
 

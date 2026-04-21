@@ -66,20 +66,17 @@ export interface ProcessStatus {
   log_size_bytes: number | null;
 }
 
-/** Status result plus any operator-facing ambiguity the schema can't encode. */
-export interface StatusResult {
-  status: ProcessStatus;
-  /**
-   * Set when we see a live pid we can't safely claim as ours (e.g. gno was
-   * upgraded while the old detached process still runs). The schema payload
-   * must report `running:false`, but callers should render this warning
-   * alongside it so operators aren't surprised.
-   */
-  foreignLive?: {
-    pid: number;
-    recordedVersion: string;
-    currentVersion: string;
-  };
+/**
+ * Operator-facing ambiguity the `process-status@1.0` schema can't encode.
+ *
+ * Returned by `inspectForeignLive()` as a sidecar to `statusProcess()`. It
+ * signals that a pid-file's pid is live and names the same command, but
+ * records a different gno version — so we can't safely claim it as "ours".
+ */
+export interface ForeignLiveSignal {
+  pid: number;
+  recordedVersion: string;
+  currentVersion: string;
 }
 
 /** Outcome classification for `stopProcess`. */
@@ -402,7 +399,32 @@ export async function spawnDetached(
     port: options.port ?? null,
   };
 
-  await writePidFile(options.pidFile, payload);
+  // If the pid-file write fails (disk full, permission race, bad path on an
+  // overridden --pid-file), we MUST NOT leave the child orphaned — there'd be
+  // no pid-file for `--status`/`--stop` and the operator has no way to find
+  // it. Best-effort kill the detached child, then rethrow.
+  try {
+    await writePidFile(options.pidFile, payload);
+  } catch (error) {
+    try {
+      process.kill(child.pid, "SIGTERM");
+    } catch {
+      /* already gone */
+    }
+    // Escalate to SIGKILL after a short grace period. We can't wait here
+    // without blocking the caller, so fire-and-forget.
+    setTimeout(() => {
+      try {
+        process.kill(child.pid, "SIGKILL");
+      } catch {
+        /* already gone */
+      }
+    }, 1000).unref();
+    throw new CliError(
+      "RUNTIME",
+      `spawned ${options.kind} (pid ${child.pid}) but failed to write pid-file ${options.pidFile}; child was signaled. Original error: ${error instanceof Error ? error.message : String(error)}`
+    );
+  }
 
   return {
     pid: child.pid,
@@ -528,34 +550,35 @@ export interface StatusOptions {
 }
 
 /**
- * Resolve the `process-status@1.0` payload for one process kind, plus any
- * operator-facing ambiguity the schema can't encode (e.g. a live pid whose
- * recorded version disagrees with the current binary).
+ * Resolve the `process-status@1.0` payload for one process kind.
+ *
+ * Returns the bare schema-shape payload — callers can JSON-serialize it
+ * directly for `--status --json`. For the operator-facing live-foreign
+ * warning (a live pid whose recorded gno version disagrees with the current
+ * binary), call `inspectForeignLive()` as a sidecar.
  *
  * Safe to call on Windows — without a pid-file the payload is simply
  * `running:false` with everything else null.
  */
 export async function statusProcess(
   options: StatusOptions
-): Promise<StatusResult> {
+): Promise<ProcessStatus> {
   const now = options.now ?? Date.now;
   const logSize = await fileSizeOrNull(options.logFile);
   const payload = await readPidFile(options.pidFile);
 
   if (!payload) {
     return {
-      status: {
-        running: false,
-        pid: null,
-        port: null,
-        cmd: options.kind,
-        version: null,
-        started_at: null,
-        uptime_seconds: null,
-        pid_file: options.pidFile,
-        log_file: options.logFile,
-        log_size_bytes: logSize,
-      },
+      running: false,
+      pid: null,
+      port: null,
+      cmd: options.kind,
+      version: null,
+      started_at: null,
+      uptime_seconds: null,
+      pid_file: options.pidFile,
+      log_file: options.logFile,
+      log_size_bytes: logSize,
     };
   }
 
@@ -591,16 +614,7 @@ export async function statusProcess(
   const runningFinal =
     running && !(effectiveKind === "serve" && portForRunningServe === null);
 
-  const foreignLive =
-    alive && kindMatches && !versionMatches
-      ? {
-          pid: payload.pid,
-          recordedVersion: payload.version,
-          currentVersion: VERSION,
-        }
-      : undefined;
-
-  const status: ProcessStatus = {
+  return {
     running: runningFinal,
     pid: payload.pid,
     port:
@@ -617,8 +631,37 @@ export async function statusProcess(
     log_file: options.logFile,
     log_size_bytes: logSize,
   };
+}
 
-  return foreignLive ? { status, foreignLive } : { status };
+/**
+ * Inspect the pid-file for a "live-foreign" signal — a live pid whose
+ * recorded gno version disagrees with the currently running binary. Returns
+ * `null` when no pid-file, when the pid is dead, when cmds disagree, or
+ * when versions match. Callers pair this with `statusProcess()` to surface
+ * operator-facing ambiguity the schema doesn't encode.
+ */
+export async function inspectForeignLive(options: {
+  kind: DetachKind;
+  pidFile: string;
+}): Promise<ForeignLiveSignal | null> {
+  const payload = await readPidFile(options.pidFile);
+  if (!payload) {
+    return null;
+  }
+  if (payload.cmd !== options.kind) {
+    return null;
+  }
+  if (!isProcessAlive(payload.pid)) {
+    return null;
+  }
+  if (versionMatchesPidFile(payload)) {
+    return null;
+  }
+  return {
+    pid: payload.pid,
+    recordedVersion: payload.version,
+    currentVersion: VERSION,
+  };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
