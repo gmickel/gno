@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.5] - 2026-04-21
+
+### Changed
+
+- Updated key dependencies on the 1.0.x line, including `evalite`, `lucide-react`, `shiki`, and `softprops/action-gh-release`.
+- Thanks [@dependabot](https://github.com/dependabot) for the upgrade PRs.
+
 ## [1.0.4] - 2026-04-20
 
 ### Changed
@@ -1194,7 +1201,8 @@ Re-release of 1.0.2 with a CHANGELOG formatting fix so the Publish workflow's
 | 0.4.0   | 2026-01-01 | Web UI and REST API                        |
 | 0.1.0   | 2025-12-30 | Initial release with full search pipeline  |
 
-[Unreleased]: https://github.com/gmickel/gno/compare/v1.0.4...HEAD
+[Unreleased]: https://github.com/gmickel/gno/compare/v1.0.5...HEAD
+[1.0.5]: https://github.com/gmickel/gno/compare/v1.0.4...v1.0.5
 [1.0.4]: https://github.com/gmickel/gno/compare/v1.0.3...v1.0.4
 [1.0.3]: https://github.com/gmickel/gno/compare/v1.0.2...v1.0.3
 [1.0.2]: https://github.com/gmickel/gno/compare/v1.0.1...v1.0.2
