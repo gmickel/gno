@@ -44,6 +44,15 @@ import {
 const globalState: { current: GlobalOptions | null } = { current: null };
 
 /**
+ * Argv slice (everything after `[execPath, scriptPath]`) captured by `runCli`
+ * before `parseAsync` runs. The detach paths re-exec from this slice rather
+ * than `process.argv.slice(2)` so programmatic callers
+ * (`runCli(["node", "gno", "daemon", "--detach", ...])`) get a child argv that
+ * matches the requested invocation, not the host process's argv.
+ */
+const cliArgvState: { current: string[] | null } = { current: null };
+
+/**
  * Get resolved global options. Must be called after command parsing.
  * Throws if called before preAction hook runs.
  */
@@ -55,11 +64,32 @@ export function getGlobals(): GlobalOptions {
 }
 
 /**
+ * Capture the user-facing argv slice (post-`[execPath, scriptPath]`) for the
+ * detach helpers. Must be called from `runCli` before `parseAsync`.
+ */
+export function setCliArgv(argv: string[]): void {
+  cliArgvState.current = [...argv];
+}
+
+/**
+ * Read the captured argv slice. Falls back to `process.argv.slice(2)` for
+ * any code path that hasn't gone through `runCli` (e.g. tests that exercise
+ * `program.parseAsync` directly), preserving the legacy behavior.
+ *
+ * Exported for tests; production callers go through `runDaemonDetach` /
+ * `runServeDetach` which both call this internally.
+ */
+export function getCliArgv(): string[] {
+  return cliArgvState.current ?? process.argv.slice(2);
+}
+
+/**
  * Reset global state (for testing).
  * Resets both option state and color state to avoid test pollution.
  */
 export function resetGlobals(): void {
   globalState.current = null;
+  cliArgvState.current = null;
   // Reset colors to default (true) - will be set by applyGlobalOptions on next run
   setColorsEnabled(true);
 }
@@ -2487,7 +2517,11 @@ interface DaemonDetachDeps {
 async function runDaemonDetach(deps: DaemonDetachDeps): Promise<void> {
   // Strip --detach from the re-exec argv so the child takes the foreground /
   // detached-child branch instead of re-spawning itself in an infinite loop.
-  const childArgv = stripDetachFlag(process.argv.slice(2));
+  // We pull from `getCliArgv()` (set by `runCli` before parseAsync) rather
+  // than `process.argv.slice(2)` so programmatic callers
+  // (`runCli(["node", "gno", "daemon", "--detach", ...])`) re-exec with the
+  // requested daemon argv instead of the host process's argv.
+  const childArgv = stripDetachFlag(getCliArgv());
   const result = await deps.spawnDetached({
     kind: "daemon",
     argv: childArgv,
@@ -2797,7 +2831,10 @@ interface ServeDetachDeps {
 async function runServeDetach(deps: ServeDetachDeps): Promise<void> {
   // Strip --detach from the re-exec argv so the child takes the foreground /
   // detached-child branch instead of re-spawning itself in an infinite loop.
-  const childArgv = stripDetachFlag(process.argv.slice(2));
+  // Pull from `getCliArgv()` (set by `runCli` before parseAsync) so
+  // programmatic callers (`runCli(["node", "gno", "serve", "--detach", ...])`)
+  // re-exec with the requested serve argv instead of the host process argv.
+  const childArgv = stripDetachFlag(getCliArgv());
   const result = await deps.spawnDetached({
     kind: "serve",
     argv: childArgv,
