@@ -888,7 +888,13 @@ describe("detach integration (Unix)", () => {
   // ───────────────────────────────────────────────────────────────────────────
   // Case 8: foreign-live --status --json envelope shape
   // ───────────────────────────────────────────────────────────────────────────
-  test(
+  // Skipped on Windows: the foreign-live half of the case spawns a detached
+  // child process (`Bun.spawn({ detached: true, ... })`) to hold a stable
+  // pid alive while we probe it. That mechanic is exactly what this epic
+  // declines to support on Windows; running it on win32 would flake or
+  // hang outside the case-16 coverage. The pure-CLI half (no foreign
+  // signal) is already exercised by case 9 below, which IS Windows-safe.
+  test.skipIf(IS_WIN)(
     "case 8: --status --json carries foreign_live details when applicable; absent otherwise",
     async () => {
       const pidFile = join(testDir, "data", "serve.pid");
