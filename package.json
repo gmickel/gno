@@ -155,7 +155,7 @@
     "commander": "^14.0.2",
     "embla-carousel-react": "^8.6.0",
     "franc": "^6.2.0",
-    "lucide-react": "^0.563.0",
+    "lucide-react": "^1.8.0",
     "markitdown-ts": "^0.0.9",
     "minimatch": "^10.1.1",
     "nanoid": "^5.1.6",
