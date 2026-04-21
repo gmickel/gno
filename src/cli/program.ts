@@ -2226,7 +2226,15 @@ function wireServeCommand(program: Command): void {
   const serveCmd = program
     .command("serve")
     .description("Start web UI server")
-    .option("-p, --port <num>", "port to listen on", "3000");
+    .option("-p, --port <num>", "port to listen on", "3000")
+    // Local `--json` so `gno serve --status --json` parses cleanly in any
+    // argv position. Global `--json` already exists on the root program
+    // (see line 208); resolution goes through `getFormat()` /
+    // `getGlobals()` which precedence-merges local over global.
+    .option(
+      "--json",
+      "JSON output (applies to --status; see process-status schema)"
+    );
 
   // --detach / --status / --stop are mutually exclusive. Use Commander's
   // Option API so the conflict error is the native "option '--status'
@@ -2300,9 +2308,12 @@ async function handleServeAction(
   });
 
   if (cmdOpts.status) {
+    // Local --json wins over global so `gno serve --status --json` and
+    // `gno --json serve --status` both produce the same result.
+    const json = Boolean(cmdOpts.json) || globals.json;
     await runServeStatus({
       paths,
-      json: globals.json,
+      json,
       statusProcess,
       inspectForeignLive,
     });
