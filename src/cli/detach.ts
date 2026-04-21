@@ -169,11 +169,21 @@ export async function readPidFile(
       `Pid-file has invalid cmd (expected "serve" or "daemon"): ${path}`
     );
   }
-  if (typeof record.version !== "string") {
+  if (typeof record.version !== "string" || record.version.length === 0) {
     throw new CliError("RUNTIME", `Pid-file is missing version: ${path}`);
   }
   if (typeof record.started_at !== "string") {
     throw new CliError("RUNTIME", `Pid-file is missing started_at: ${path}`);
+  }
+  // started_at must be a parseable ISO datetime. An invalid value would later
+  // produce NaN through Date.parse() and violate the process-status@1.0
+  // schema invariant that live processes report an integer uptime_seconds.
+  const startedAtMs = Date.parse(record.started_at);
+  if (!Number.isFinite(startedAtMs)) {
+    throw new CliError(
+      "RUNTIME",
+      `Pid-file has invalid started_at (not a parseable ISO datetime): ${path}`
+    );
   }
 
   const port =
@@ -343,10 +353,27 @@ export async function spawnDetached(
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
+ * Does the pid-file's recorded version match the binary currently running?
+ *
+ * PID-reuse mitigation (per epic spec): after liveness passes we cross-check
+ * the stored `cmd` *and* `version`. A mismatched version is evidence that
+ * either (a) the original process crashed and a newer binary is starting
+ * while an unrelated process has reused the pid, or (b) the user upgraded
+ * gno and the old daemon is orphaned. In both cases the pid-file cannot be
+ * trusted to refer to the current binary — treat it as stale.
+ */
+function versionMatchesPidFile(payload: PidFilePayload): boolean {
+  return payload.version === VERSION;
+}
+
+/**
  * Block a second detach when a matching process is already running.
  *
- * - Live + matching `cmd` → throw `CliError("VALIDATION")` with pid/port hint.
+ * - Live + matching `cmd` + matching `version` → throw `CliError("VALIDATION")`
+ *   with pid/port hint.
  * - Live + mismatched `cmd` → throw (someone else's pid-file).
+ * - Live + matching `cmd` but mismatched `version` → treat as stale (PID-reuse
+ *   mitigation / orphaned-after-upgrade), unlink, return.
  * - Dead (ESRCH) → unlink the stale pid-file and return.
  */
 export async function guardDoubleStart(
@@ -370,6 +397,15 @@ export async function guardDoubleStart(
       "VALIDATION",
       `pid-file ${pidFile} is owned by a running ${existing.cmd} (pid ${existing.pid}), not ${kind}`
     );
+  }
+
+  if (!versionMatchesPidFile(existing)) {
+    // Same cmd but a different gno version wrote this pid-file. We can't
+    // safely assume the reused pid is still our process — treat as stale.
+    await unlink(pidFile).catch(() => {
+      /* stale — removed by someone else is fine */
+    });
+    return;
   }
 
   const portSuffix =
@@ -441,9 +477,13 @@ export async function statusProcess(
     payload.cmd === options.kind ? payload.cmd : options.kind;
 
   const alive = isProcessAlive(payload.pid);
-  // Cross-check cmd to mitigate PID reuse after a crash.
+  // Cross-check cmd AND version to mitigate PID reuse after a crash. A
+  // mismatched version means the pid-file was written by a different gno
+  // binary than the one currently running, so we can't trust the pid to
+  // still be "ours".
   const kindMatches = payload.cmd === options.kind;
-  const running = alive && kindMatches;
+  const versionMatches = versionMatchesPidFile(payload);
+  const running = alive && kindMatches && versionMatches;
   const uptimeSeconds = running
     ? Math.max(0, Math.floor((now() - Date.parse(payload.started_at)) / 1000))
     : null;
@@ -557,6 +597,17 @@ export async function stopProcess(options: StopOptions): Promise<StopOutcome> {
       "VALIDATION",
       `pid-file ${options.pidFile} is owned by a running ${payload.cmd} (pid ${payload.pid}), not ${options.kind}`
     );
+  }
+
+  if (!versionMatchesPidFile(payload)) {
+    // Version mismatch on a live pid: either PID reuse after a crash, or an
+    // orphan from an older gno version. Either way we must NOT send signals
+    // to that pid — we might be killing an unrelated process. Treat as not
+    // running and unlink the stale pid-file.
+    await unlink(options.pidFile).catch(() => {
+      /* ignore */
+    });
+    return { kind: "not-running", pidFile: options.pidFile };
   }
 
   try {

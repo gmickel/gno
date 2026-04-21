@@ -48,10 +48,10 @@ Update CLI spec and add a JSON schema for `--status --json` output **before** an
 
 ## Done summary
 
-TBD
+Spec-first groundwork for fn-72: documented --detach/--pid-file/--log-file/--status/--stop on `gno serve` and `gno daemon` with mutex and NOT_RUNNING (exit 3), added process-status@1.0 JSON schema with cross-field invariants (cmd<->port, running<->liveness, live-serve-needs-port), and landed a 17-test Ajv contract suite. Reviewed via codex through three fix rounds (schema invariants, --stop behavior alignment, retracted overstated LLM-thread-hazard claim from spike); final verdict SHIP.
 
 ## Evidence
 
-- Commits:
-- Tests:
+- Commits: 7a0dd905eec3f1f5dab1ff855d2fdf02fc62c2c4, 4250277a56d81e16fa5c6eeaa2503cc4fb7990c0, 3280461fc8449d11f7c9467b18a846d53fe9cc04, 2919d82225d5985aa5f66aad29472376ac34c4e2
+- Tests: bun run lint:check, bun test test/spec/schemas/process-status.test.ts, bun test test/spec/schemas/, bun test
 - PRs:

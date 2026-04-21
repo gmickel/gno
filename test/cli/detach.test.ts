@@ -198,6 +198,21 @@ describe("detach helper", () => {
       await expectRejects(readPidFile(pidFile), /missing version/);
     });
 
+    test("readPidFile rejects non-parseable started_at", async () => {
+      const pidFile = join(tmpDir, "bad-started-at.pid");
+      await writeFile(
+        pidFile,
+        JSON.stringify({
+          pid: 1,
+          cmd: "serve",
+          version: VERSION,
+          started_at: "not-a-date",
+          port: 3000,
+        })
+      );
+      await expectRejects(readPidFile(pidFile), /invalid started_at/);
+    });
+
     test("writePidFile is atomic (no temp file left behind)", async () => {
       const pidFile = join(tmpDir, "atomic.pid");
       await writePidFile(pidFile, {
@@ -359,6 +374,22 @@ describe("detach helper", () => {
         /owned by a running daemon/
       );
     });
+
+    test("treats a version mismatch on a live pid as stale and unlinks", async () => {
+      const pidFile = join(tmpDir, "version-mismatch.pid");
+      await writePidFile(pidFile, {
+        pid: process.pid,
+        cmd: "serve",
+        version: "0.0.0-orphaned",
+        started_at: new Date().toISOString(),
+        port: 3000,
+      });
+
+      // Must NOT throw even though the pid is live — the version mismatch
+      // signals PID reuse / orphan, so we fall through to "stale".
+      await guardDoubleStart(pidFile, "serve");
+      expect(await Bun.file(pidFile).exists()).toBe(false);
+    });
   });
 
   describe("statusProcess", () => {
@@ -426,6 +457,28 @@ describe("detach helper", () => {
 
       expect(status.running).toBe(true);
       expect(status.port).toBeNull();
+    });
+
+    test("reports version mismatch on live pid as not-running", async () => {
+      const pidFile = join(tmpDir, "version-status.pid");
+      const logFile = join(tmpDir, "version-status.log");
+      await writePidFile(pidFile, {
+        pid: process.pid,
+        cmd: "serve",
+        version: "0.0.0-orphaned",
+        started_at: new Date().toISOString(),
+        port: 3000,
+      });
+
+      const status = await statusProcess({
+        kind: "serve",
+        pidFile,
+        logFile,
+      });
+
+      expect(status.running).toBe(false);
+      expect(status.version).toBe("0.0.0-orphaned");
+      expect(status.uptime_seconds).toBeNull();
     });
 
     test("reports stale pid-file as not-running with metadata preserved", async () => {
@@ -600,6 +653,36 @@ describe("detach helper", () => {
       });
 
       expect(result).toEqual({ kind: "timeout", pid: 7777 });
+    });
+
+    test("treats version mismatch as not-running and does NOT send signals", async () => {
+      const pidFile = join(tmpDir, "stop-version.pid");
+      await writePidFile(pidFile, {
+        pid: 9876,
+        cmd: "serve",
+        version: "0.0.0-orphaned",
+        started_at: new Date().toISOString(),
+        port: 3000,
+      });
+
+      const sent: Array<NodeJS.Signals | number> = [];
+      const result = await stopProcess({
+        kind: "serve",
+        pidFile,
+        isAlive: () => true,
+        kill: (_pid, signal) => {
+          sent.push(signal);
+        },
+        sleep: () => Promise.resolve(),
+      });
+
+      expect(result).toEqual({
+        kind: "not-running",
+        pidFile,
+      });
+      // Critically: NO signals sent to the reused pid.
+      expect(sent).toEqual([]);
+      expect(await Bun.file(pidFile).exists()).toBe(false);
     });
 
     test("rejects VALIDATION when pid-file belongs to a different kind", async () => {
