@@ -49,6 +49,7 @@ Add the five new flags to `gno serve` and route through `src/cli/detach.ts`.
 - [ ] `--detach` / `--status` / `--stop` conflict errors use Commander's native message
 - [ ] `gno serve --detach` twice → second call errors with "already running"
 - [ ] Detached-child unlinks pid-file on clean shutdown
+- [ ] **LLM-thread hazard validated:** manually run `gno serve --detach` with at least one configured collection and confirm the parent exits within the 1s budget while `node-llama-cpp` is reachable in the module graph. Record outcome in done summary; if parent hangs, restructure detach to happen at the top-level program action before Commander dispatch.
 - [ ] `bun run lint:check && bun test` green
 
 ## Done summary

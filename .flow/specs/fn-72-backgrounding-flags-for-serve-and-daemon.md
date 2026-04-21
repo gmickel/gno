@@ -25,7 +25,7 @@ Default paths live under `resolveDirs().data` (env-configurable via `GNO_DATA_DI
 
 ## Approach
 
-**Derisk first.** fn-72.9 is a throwaway spike that proves `Bun.spawn({ detached: true, stdio: ["ignore", fd, fd] }).unref()` works in this repo's environment and doesn't hang on LLM native threads. Runs in parallel with fn-72.1 (spec work).
+**Derisk first.** fn-72.9 is a throwaway spike that proves `Bun.spawn({ detached: true, stdio: ["ignore", fd, fd] }).unref()` works in this repo's environment. **fn-72.9 did NOT validate the LLM native-thread hazard** (variant 2 ran `ask --help`, which exits before lazy LLM imports). That risk is still open and is addressed in fn-72.2 with an ad-hoc validation step and in the acceptance criteria of fn-72.3/fn-72.4. Runs in parallel with fn-72.1 (spec work).
 
 **Single shared helper** at `src/cli/detach.ts` — both `wireServeCommand` and `wireDaemonCommand` route through it. No duplicated logic.
 
@@ -57,8 +57,8 @@ Default paths live under `resolveDirs().data` (env-configurable via `GNO_DATA_DI
 
 ## Risks
 
-- **`unref()` is required, not optional** on Bun — `detached: true` alone will not let the parent exit. Document clearly in `detach.ts`. fn-72.9 spike validates this first.
-- **LLM native threads holding parent open** — `src/llm/nodeLlamaCpp/lifecycle.ts` keeps threads alive. Detach must happen early in the action handler, before any port/runtime instantiation. fn-72.9 spike validates this too.
+- **`unref()` is required, not optional** on Bun — `detached: true` alone will not let the parent exit. Document clearly in `detach.ts`. fn-72.9 spike validated this on a heartbeat child.
+- **LLM native threads holding parent open — STILL OPEN.** `src/llm/nodeLlamaCpp/lifecycle.ts` keeps threads alive. Detach must happen early in the action handler, before any port/runtime instantiation. fn-72.9 did **not** validate this (`ask --help` exits before lazy imports load). fn-72.2 carries an ad-hoc validation step; fn-72.3 and fn-72.4 must confirm real serve/daemon subcommands detach cleanly, and restructure to detach at the top-level program action if Commander-dispatch-time detachment proves insufficient.
 - **Double-start race** is narrow but real. Mitigation: parent writes pid-file after spawn returns; child re-reads and asserts `pid === process.pid` on first tick, exits 1 if mismatch.
 - **Stale pid-file after crash** — JSON metadata (cmd+version) lets `--status` distinguish "our crashed process" from "unrelated PID reuse".
 - **Working directory inheritance** — child inherits parent cwd. Resolve all paths to absolute before spawning.
@@ -119,7 +119,7 @@ bun test test/cli/detach.test.ts test/cli/detach.integration.test.ts
 
 ## Acceptance
 
-- [ ] Spike (fn-72.9) validates Bun detach + unref + stdio fd on macOS with no LLM-thread hang.
+- [ ] Spike (fn-72.9) validates Bun detach + unref + stdio fd on macOS with a trivial heartbeat child. LLM-thread hazard remains open; fn-72.2/.3/.4 acceptance confirms real serve/daemon subcommands detach cleanly with `node-llama-cpp` in the module graph.
 - [ ] `gno serve --detach` and `gno daemon --detach` spawn a detached child on macOS/Linux; parent exits 0 with PID printed.
 - [ ] `--pid-file <path>` and `--log-file <path>` override defaults; user-supplied `~`-paths expand.
 - [ ] `--status` prints pid/uptime/port and supports `--json` matching the new schema.
@@ -137,19 +137,19 @@ bun test test/cli/detach.test.ts test/cli/detach.integration.test.ts
 
 ## Early proof point
 
-Task fn-72.9 (spike) validates Bun detach + unref + stdio fd in this repo's environment — plus the LLM native-thread hazard — before any real helper code is written. If the spike fails, either restructure `detach.ts` to detach earlier in the action handler, or re-evaluate whether to ship this feature at all and instead document launchd/systemd as the recommended path.
+Task fn-72.9 (spike) validates Bun detach + unref + stdio fd in this repo's environment on a trivial heartbeat child. The LLM native-thread hazard was **not** retired by the spike (variant 2 ran `ask --help`, which exits before lazy LLM imports load). fn-72.2 carries an ad-hoc validation step, and fn-72.3/fn-72.4 must confirm the real serve/daemon subcommands detach cleanly with `node-llama-cpp` reachable. If they don't, restructure `detach.ts` / top-level program action to detach earlier, or re-evaluate whether to ship this feature and instead document launchd/systemd as the recommended path.
 
 ## Requirement coverage
 
-| Req | Description                                                                                    | Task(s)          | Gap justification                                   |
-| --- | ---------------------------------------------------------------------------------------------- | ---------------- | --------------------------------------------------- |
-| R0  | Derisking spike — validate Bun detach + LLM thread lifecycle before building                   | fn-72.9          | —                                                   |
-| R1  | Spec + schemas + exit-code table updated before implementation                                 | fn-72.1          | —                                                   |
-| R2  | Shared `src/cli/detach.ts` helper (spawn, pid-file, liveness, stop, status)                    | fn-72.2          | —                                                   |
-| R3  | New `NOT_RUNNING` exit code (3) in error model + spec                                          | fn-72.2          | —                                                   |
-| R4  | `gno serve` wiring with all five flags + mutex                                                 | fn-72.3          | —                                                   |
-| R5  | `gno daemon` wiring with all five flags + mutex                                                | fn-72.4          | —                                                   |
-| R6  | Integration tests: spawn, status, stop, stale cleanup, double-start guard, Windows clean error | fn-72.5          | —                                                   |
-| R7  | Windows `--detach` clean error + WSL guidance (no native Windows backgrounding)                | fn-72.2, fn-72.5 | fn-72.6 blocked; native Windows detach out of scope |
-| R8  | In-repo `docs/` + README + CHANGELOG updates                                                   | fn-72.7          | —                                                   |
-| R9  | External website (`~/work/gno.sh`) + skill reference + ADR + production deploy                 | fn-72.8          | —                                                   |
+| Req | Description                                                                                    | Task(s)                            | Gap justification                                                                                  |
+| --- | ---------------------------------------------------------------------------------------------- | ---------------------------------- | -------------------------------------------------------------------------------------------------- |
+| R0  | Derisking spike — validate Bun detach mechanics (LLM-thread hazard deferred to fn-72.2/.3/.4)  | fn-72.9, fn-72.2, fn-72.3, fn-72.4 | Spike only covered Bun detach+unref+stdio; LLM-thread validation lands with real subcommand wiring |
+| R1  | Spec + schemas + exit-code table updated before implementation                                 | fn-72.1                            | —                                                                                                  |
+| R2  | Shared `src/cli/detach.ts` helper (spawn, pid-file, liveness, stop, status)                    | fn-72.2                            | —                                                                                                  |
+| R3  | New `NOT_RUNNING` exit code (3) in error model + spec                                          | fn-72.2                            | —                                                                                                  |
+| R4  | `gno serve` wiring with all five flags + mutex                                                 | fn-72.3                            | —                                                                                                  |
+| R5  | `gno daemon` wiring with all five flags + mutex                                                | fn-72.4                            | —                                                                                                  |
+| R6  | Integration tests: spawn, status, stop, stale cleanup, double-start guard, Windows clean error | fn-72.5                            | —                                                                                                  |
+| R7  | Windows `--detach` clean error + WSL guidance (no native Windows backgrounding)                | fn-72.2, fn-72.5                   | fn-72.6 blocked; native Windows detach out of scope                                                |
+| R8  | In-repo `docs/` + README + CHANGELOG updates                                                   | fn-72.7                            | —                                                                                                  |
+| R9  | External website (`~/work/gno.sh`) + skill reference + ADR + production deploy                 | fn-72.8                            | —                                                                                                  |

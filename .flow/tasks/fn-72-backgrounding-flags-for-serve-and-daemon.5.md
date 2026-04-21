@@ -19,7 +19,7 @@ End-to-end tests that actually spawn detached subprocesses and exercise the full
   3. Double-start guard: `serve --detach` twice → second exits 1 with "already running".
   4. Stale pid-file: write a pid-file pointing at a dead PID → `serve --status` returns "not running" (exit 3) → `serve --detach` succeeds and overwrites.
   5. SIGKILL fallback: spawn a detached serve that ignores SIGTERM → `--stop` eventually sends SIGKILL. (Accept a slower test; real-world timeout.)
-  6. `--stop` with no pid-file → exits 3 with clear message.
+  6. `--stop` with no pid-file → exits 3 silently (no `--json` envelope — per `spec/cli.md` Error Output section, `--stop` does not accept `--json`).
   7. **Windows-only**: `serve --detach` → exits 1 with clean `VALIDATION` error message referencing WSL.
 - Cases 1-6: skip on `process.platform === "win32"`.
 - Case 7: runs only on `process.platform === "win32"`.
@@ -53,7 +53,7 @@ End-to-end tests that actually spawn detached subprocesses and exercise the full
   3. Double-start guard: `serve --detach` twice → second exits 1 with "already running".
   4. Stale pid-file: write a pid-file pointing at a dead PID → `serve --status` returns "not running" (exit 3) → `serve --detach` succeeds and overwrites.
   5. SIGKILL fallback: spawn a detached serve that ignores SIGTERM (use a mock child via a test harness flag, or accept slower test using a real graceful timeout) → `--stop` eventually sends SIGKILL.
-  6. `--stop` with no pid-file → exits 3 with clear message.
+  6. `--stop` with no pid-file → exits 3 silently (no error envelope).
 - Use 20s timeouts for each test (repo convention for win32 — see existing concurrency tests).
 - Clean up via `safeRm` from `test/helpers/cleanup.ts` in `afterEach`.
 

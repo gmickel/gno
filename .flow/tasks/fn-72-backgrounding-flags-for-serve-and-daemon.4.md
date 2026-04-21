@@ -43,6 +43,7 @@ Add the same five flags to `gno daemon`, routing through the shared `src/cli/det
 - [ ] Mutex + double-start guards behave identically to serve
 - [ ] Existing `--no-sync-on-start` still works
 - [ ] Detached-child unlinks pid-file on clean shutdown
+- [ ] **LLM-thread hazard validated:** manually run `gno daemon --detach --no-sync-on-start` with at least one configured collection and confirm the parent exits within the 1s budget while `node-llama-cpp` is reachable. Record outcome in done summary; if parent hangs, restructure detach to happen at the top-level program action before Commander dispatch.
 - [ ] `bun run lint:check && bun test test/cli/daemon.test.ts` green
 
 ## Done summary
