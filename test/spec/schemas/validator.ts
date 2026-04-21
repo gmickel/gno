@@ -26,6 +26,7 @@ async function loadAllSchemas(): Promise<void> {
     "mcp-remove-result",
     "mcp-job-status",
     "mcp-job-list",
+    "process-status",
     "tags-list",
     "links-list",
     "backlinks",

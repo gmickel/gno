@@ -17,6 +17,7 @@ New flags on both `gno serve` and `gno daemon`:
 `--detach`, `--status`, and `--stop` are mutually exclusive (Commander `.conflicts()`).
 
 Default paths live under `resolveDirs().data` (env-configurable via `GNO_DATA_DIR`), **not** `~/.gno/`:
+
 - `{data}/serve.pid`, `{data}/serve.log`
 - `{data}/daemon.pid`, `{data}/daemon.log`
 
@@ -70,6 +71,7 @@ Default paths live under `resolveDirs().data` (env-configurable via `GNO_DATA_DI
 The public site now lives at **`~/work/gno.sh`** (separate Vite + TanStack Router repo). The in-repo `website/` directory is legacy and not actively published — do NOT update it. Website edits ship as a separate PR in the gno.sh repo; coordinate the merge so gno.sh doesn't document flags that haven't shipped in gno yet. Post-merge deploy: `DEPLOY_HOST=root@178.104.180.89 ./scripts/deploy-prod.sh`.
 
 Key gno.sh files that mention `gno serve` or `gno daemon`:
+
 - `src/lib/gno-docs.tsx:581-705` — CLI reference (inline JSX, not markdown).
 - `src/lib/product-pages.ts:566-592` — daemon-mode feature page (has stale `nohup` example).
 - `src/lib/product-pages.ts:663, 731-733` — FAQ about daemon lifecycle.
@@ -139,15 +141,15 @@ Task fn-72.9 (spike) validates Bun detach + unref + stdio fd in this repo's envi
 
 ## Requirement coverage
 
-| Req | Description | Task(s) | Gap justification |
-|-----|-------------|---------|-------------------|
-| R0  | Derisking spike — validate Bun detach + LLM thread lifecycle before building | fn-72.9 | — |
-| R1  | Spec + schemas + exit-code table updated before implementation | fn-72.1 | — |
-| R2  | Shared `src/cli/detach.ts` helper (spawn, pid-file, liveness, stop, status) | fn-72.2 | — |
-| R3  | New `NOT_RUNNING` exit code (3) in error model + spec | fn-72.2 | — |
-| R4  | `gno serve` wiring with all five flags + mutex | fn-72.3 | — |
-| R5  | `gno daemon` wiring with all five flags + mutex | fn-72.4 | — |
-| R6  | Integration tests: spawn, status, stop, stale cleanup, double-start guard, Windows clean error | fn-72.5 | — |
-| R7  | Windows `--detach` clean error + WSL guidance (no native Windows backgrounding) | fn-72.2, fn-72.5 | fn-72.6 blocked; native Windows detach out of scope |
-| R8  | In-repo `docs/` + README + CHANGELOG updates | fn-72.7 | — |
-| R9  | External website (`~/work/gno.sh`) + skill reference + ADR + production deploy | fn-72.8 | — |
+| Req | Description                                                                                    | Task(s)          | Gap justification                                   |
+| --- | ---------------------------------------------------------------------------------------------- | ---------------- | --------------------------------------------------- |
+| R0  | Derisking spike — validate Bun detach + LLM thread lifecycle before building                   | fn-72.9          | —                                                   |
+| R1  | Spec + schemas + exit-code table updated before implementation                                 | fn-72.1          | —                                                   |
+| R2  | Shared `src/cli/detach.ts` helper (spawn, pid-file, liveness, stop, status)                    | fn-72.2          | —                                                   |
+| R3  | New `NOT_RUNNING` exit code (3) in error model + spec                                          | fn-72.2          | —                                                   |
+| R4  | `gno serve` wiring with all five flags + mutex                                                 | fn-72.3          | —                                                   |
+| R5  | `gno daemon` wiring with all five flags + mutex                                                | fn-72.4          | —                                                   |
+| R6  | Integration tests: spawn, status, stop, stale cleanup, double-start guard, Windows clean error | fn-72.5          | —                                                   |
+| R7  | Windows `--detach` clean error + WSL guidance (no native Windows backgrounding)                | fn-72.2, fn-72.5 | fn-72.6 blocked; native Windows detach out of scope |
+| R8  | In-repo `docs/` + README + CHANGELOG updates                                                   | fn-72.7          | —                                                   |
+| R9  | External website (`~/work/gno.sh`) + skill reference + ADR + production deploy                 | fn-72.8          | —                                                   |

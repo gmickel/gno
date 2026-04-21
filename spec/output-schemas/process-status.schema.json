@@ -1,0 +1,68 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "gno://schemas/process-status@1.0",
+  "title": "GNO Process Status",
+  "description": "Status of a detached gno serve or daemon process, reported by --status --json",
+  "type": "object",
+  "required": [
+    "running",
+    "pid",
+    "port",
+    "cmd",
+    "version",
+    "started_at",
+    "uptime_seconds",
+    "pid_file",
+    "log_file",
+    "log_size_bytes"
+  ],
+  "properties": {
+    "running": {
+      "type": "boolean",
+      "description": "Whether a live matching process was found via pid-file + liveness probe"
+    },
+    "pid": {
+      "type": ["integer", "null"],
+      "minimum": 1,
+      "description": "Process ID from the pid-file, or null when no pid-file exists"
+    },
+    "port": {
+      "type": ["integer", "null"],
+      "minimum": 1,
+      "maximum": 65535,
+      "description": "Listening port (serve only). Always null for daemon."
+    },
+    "cmd": {
+      "type": "string",
+      "enum": ["serve", "daemon"],
+      "description": "Which command the status is reporting on"
+    },
+    "version": {
+      "type": ["string", "null"],
+      "description": "GNO version recorded when the process was started; null when no pid-file exists"
+    },
+    "started_at": {
+      "type": ["string", "null"],
+      "format": "date-time",
+      "description": "ISO 8601 timestamp of when the detached process was started; null when no pid-file exists"
+    },
+    "uptime_seconds": {
+      "type": ["integer", "null"],
+      "minimum": 0,
+      "description": "Seconds since started_at, computed at status-read time; null when not running"
+    },
+    "pid_file": {
+      "type": "string",
+      "description": "Absolute path to the pid-file that was consulted"
+    },
+    "log_file": {
+      "type": "string",
+      "description": "Absolute path to the log-file the detached process writes to"
+    },
+    "log_size_bytes": {
+      "type": ["integer", "null"],
+      "minimum": 0,
+      "description": "Current size of the log-file in bytes, or null when the file does not exist"
+    }
+  }
+}
