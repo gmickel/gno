@@ -180,6 +180,51 @@ describe("gno serve backgrounding flags", () => {
       expect(payload.cmd).toBe("serve");
     });
 
+    test("foreign-live --status --json keeps stderr a single JSON envelope", async () => {
+      // Write a pid-file that points at a live pid (this test process)
+      // but with a deliberately wrong version string. statusProcess will
+      // flag `running:false` (version cross-check fails) AND
+      // inspectForeignLive will return a signal. Stderr must remain a
+      // single JSON envelope (no plain-text warning mixed in).
+      await mkdir(join(testDir, "data"), { recursive: true });
+      const payload = {
+        pid: process.pid,
+        cmd: "serve",
+        version: "0.0.0-foreign-test",
+        started_at: new Date().toISOString(),
+        port: 3333,
+      };
+      await writeFile(pidFile, `${JSON.stringify(payload)}\n`);
+
+      const { code, stdout, stderr } = await cli(
+        "serve",
+        "--status",
+        "--json",
+        "--pid-file",
+        pidFile,
+        "--log-file",
+        logFile
+      );
+      expect(code).toBe(3);
+
+      // Stdout: process-status payload (one JSON object)
+      const statusPayload = JSON.parse(stdout) as Record<string, unknown>;
+      expect(statusPayload.running).toBe(false);
+      expect(statusPayload.cmd).toBe("serve");
+
+      // Stderr: exactly one JSON object (the NOT_RUNNING envelope).
+      const stderrTrimmed = stderr.trim();
+      expect(() => JSON.parse(stderrTrimmed)).not.toThrow();
+      const envelope = JSON.parse(stderrTrimmed) as {
+        error: { code: string; details?: { foreign_live?: unknown } };
+      };
+      expect(envelope.error.code).toBe("NOT_RUNNING");
+      expect(envelope.error.details?.foreign_live).toMatchObject({
+        pid: process.pid,
+        recorded_version: "0.0.0-foreign-test",
+      });
+    });
+
     test("exits 0 when pid-file points at a live matching process", async () => {
       // The current bun test runner is itself a live PID we can safely
       // probe with kill(0). Write a pid-file claiming ownership by this

@@ -2407,12 +2407,9 @@ async function runServeStatus(deps: ServeStatusDeps): Promise<void> {
 
   if (deps.json) {
     process.stdout.write(`${JSON.stringify(status, null, 2)}\n`);
-    if (foreign) {
-      // Operator-facing warning on stderr so --json stdout stays schema-clean.
-      process.stderr.write(
-        `Warning: pid ${foreign.pid} is live but recorded gno version ${foreign.recordedVersion} differs from current ${foreign.currentVersion}; refusing to claim ownership.\n`
-      );
-    }
+    // In JSON mode, foreign-live metadata flows into the NOT_RUNNING
+    // envelope's `details` payload below so stderr stays a single JSON
+    // object that machine clients can parse deterministically.
   } else {
     process.stdout.write("gno serve status\n");
     process.stdout.write(`${"─".repeat(50)}\n`);
@@ -2440,6 +2437,8 @@ async function runServeStatus(deps: ServeStatusDeps): Promise<void> {
     }
 
     if (foreign) {
+      // Terminal mode: emit the operator-facing warning on stderr. JSON
+      // clients get the same data via the NOT_RUNNING envelope's details.
       process.stderr.write(
         `Warning: pid ${foreign.pid} is live but recorded gno version ${foreign.recordedVersion} differs from current ${foreign.currentVersion}; refusing to claim ownership.\n`
       );
@@ -2455,7 +2454,18 @@ async function runServeStatus(deps: ServeStatusDeps): Promise<void> {
   if (!status.running) {
     throw new CliError(
       "NOT_RUNNING",
-      `gno serve is not running (pid-file ${status.pid_file}${foreign ? `; live-foreign pid ${foreign.pid}` : ""})`
+      `gno serve is not running (pid-file ${status.pid_file}${foreign ? `; live-foreign pid ${foreign.pid}` : ""})`,
+      {
+        details: foreign
+          ? {
+              foreign_live: {
+                pid: foreign.pid,
+                recorded_version: foreign.recordedVersion,
+                current_version: foreign.currentVersion,
+              },
+            }
+          : undefined,
+      }
     );
   }
 }
