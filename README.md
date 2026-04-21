@@ -420,7 +420,7 @@ gno search "incident review" --tags-all "status/active,team/platform"
 # Export a publish artifact for gno.sh
 gno publish export work-docs --out ~/Downloads/work-docs.json
 gno publish export "gno://work-docs/runbooks/deploy.md" --out ~/Downloads/deploy.json
-# Or let GNO choose ~/Downloads/<slug>-<YYYYMMDD>.json automatically
+# Or let GNO choose your Downloads folder automatically
 gno publish export work-docs
 ```
 
@@ -631,7 +631,7 @@ gno publish export "gno://work-docs/runbooks/deploy.md" \
   --passphrase "correct horse battery staple" \
   --out ~/Downloads/deploy-encrypted.json
 
-# Let GNO pick the path (~/Downloads/<slug>-<YYYYMMDD>.json)
+# Let GNO pick the path in your Downloads folder
 gno publish export work-docs
 ```
 

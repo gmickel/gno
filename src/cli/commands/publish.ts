@@ -5,7 +5,6 @@
  */
 
 import { mkdir, writeFile } from "node:fs/promises";
-import { homedir } from "node:os";
 import { dirname } from "node:path";
 import { join } from "node:path";
 
@@ -15,6 +14,7 @@ import type {
 } from "../../publish/artifact";
 import type { SanitizeWarning } from "../../publish/obsidian-sanitize";
 
+import { resolveDownloadsDir } from "../../core/user-dirs";
 import { derivePublishArtifactFilename, slugify } from "../../publish/artifact";
 import { exportPublishArtifact } from "../../publish/export-service";
 import { formatSanitizeWarnings } from "../../publish/obsidian-sanitize";
@@ -50,16 +50,16 @@ function formatExportDateStamp(isoTimestamp: string): string {
   return isoTimestamp.slice(0, 10).replaceAll("-", "");
 }
 
-export function buildDefaultPublishExportPath(
+export async function buildDefaultPublishExportPath(
   artifact: PublishArtifact
-): string {
+): Promise<string> {
   const fileName = derivePublishArtifactFilename(artifact).replace(
     /\.json$/u,
     ""
   );
+  const downloadsDir = await resolveDownloadsDir();
   return join(
-    homedir(),
-    "Downloads",
+    downloadsDir,
     `${fileName}-${formatExportDateStamp(artifact.exportedAt)}.json`
   );
 }
@@ -114,7 +114,7 @@ export async function publishExport(
     }
 
     const outPath =
-      options.out?.trim() || buildDefaultPublishExportPath(artifact);
+      options.out?.trim() || (await buildDefaultPublishExportPath(artifact));
 
     await mkdir(dirname(outPath), { recursive: true });
     await writeFile(outPath, JSON.stringify(artifact, null, 2));

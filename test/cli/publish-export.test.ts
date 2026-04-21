@@ -5,6 +5,7 @@ import {
   buildDefaultPublishExportPath,
   formatPublishExport,
 } from "../../src/cli/commands/publish";
+import { resolveDownloadsDir } from "../../src/core/user-dirs";
 import {
   buildEncryptedPublishArtifact,
   buildExportedMetadata,
@@ -93,7 +94,59 @@ describe("publish export helpers", () => {
     });
   });
 
-  it("builds default output paths in Downloads when --out is omitted", () => {
+  it("prefers USERPROFILE for Windows downloads paths", async () => {
+    const path = await resolveDownloadsDir({
+      env: {
+        HOME: "/msys/home/gordon",
+        USERPROFILE: "C:\\Users\\gordon",
+      },
+      homeDir: "/msys/home/gordon",
+      platform: "win32",
+    });
+
+    expect(path).toBe(join("C:\\Users\\gordon", "Downloads"));
+  });
+
+  it("honors XDG_DOWNLOAD_DIR on Linux", async () => {
+    const path = await resolveDownloadsDir({
+      env: {
+        HOME: "/home/gordon",
+        XDG_DOWNLOAD_DIR: "$HOME/Inbox",
+      },
+      homeDir: "/home/gordon",
+      platform: "linux",
+    });
+
+    expect(path).toBe("/home/gordon/Inbox");
+  });
+
+  it("reads localized Linux downloads dirs from user-dirs.dirs", async () => {
+    const path = await resolveDownloadsDir({
+      env: {
+        HOME: "/home/gordon",
+      },
+      homeDir: "/home/gordon",
+      platform: "linux",
+      readTextFile: async () =>
+        'XDG_DESKTOP_DIR="$HOME/Desktop"\nXDG_DOWNLOAD_DIR="$HOME/Téléchargements"\n',
+    });
+
+    expect(path).toBe("/home/gordon/Téléchargements");
+  });
+
+  it("falls back to home Downloads when no platform override exists", async () => {
+    const path = await resolveDownloadsDir({
+      env: {
+        HOME: "/Users/gordon",
+      },
+      homeDir: "/Users/gordon",
+      platform: "darwin",
+    });
+
+    expect(path).toBe("/Users/gordon/Downloads");
+  });
+
+  it("builds default output paths in the resolved downloads dir when --out is omitted", async () => {
     const artifact = {
       version: 1 as const,
       source: "atlas",
@@ -111,7 +164,7 @@ describe("publish export helpers", () => {
     };
 
     expect(derivePublishArtifactFilename(artifact)).toBe("atlas.json");
-    expect(buildDefaultPublishExportPath(artifact)).toEndWith(
+    expect(await buildDefaultPublishExportPath(artifact)).toEndWith(
       join("Downloads", "atlas-20260410.json")
     );
   });
