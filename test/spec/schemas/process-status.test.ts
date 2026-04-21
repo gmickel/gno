@@ -185,5 +185,85 @@ describe("process-status schema", () => {
       };
       expect(assertInvalid(status, schema)).toBe(true);
     });
+
+    test("rejects daemon with numeric port (cmd↔port invariant)", () => {
+      const status = {
+        running: true,
+        pid: 1234,
+        port: 8080,
+        cmd: "daemon",
+        version: "1.1.0",
+        started_at: "2026-04-21T19:30:00Z",
+        uptime_seconds: 10,
+        pid_file: "/tmp/daemon.pid",
+        log_file: "/tmp/daemon.log",
+        log_size_bytes: 0,
+      };
+      expect(assertInvalid(status, schema)).toBe(true);
+    });
+
+    test("rejects running:true with null pid (running invariant)", () => {
+      const status = {
+        running: true,
+        pid: null,
+        port: 3000,
+        cmd: "serve",
+        version: "1.1.0",
+        started_at: "2026-04-21T19:30:00Z",
+        uptime_seconds: 10,
+        pid_file: "/tmp/serve.pid",
+        log_file: "/tmp/serve.log",
+        log_size_bytes: 0,
+      };
+      expect(assertInvalid(status, schema)).toBe(true);
+    });
+
+    test("rejects running:true with null uptime_seconds (running invariant)", () => {
+      const status = {
+        running: true,
+        pid: 1234,
+        port: 3000,
+        cmd: "serve",
+        version: "1.1.0",
+        started_at: "2026-04-21T19:30:00Z",
+        uptime_seconds: null,
+        pid_file: "/tmp/serve.pid",
+        log_file: "/tmp/serve.log",
+        log_size_bytes: 0,
+      };
+      expect(assertInvalid(status, schema)).toBe(true);
+    });
+
+    test("rejects running:true with null version (running invariant)", () => {
+      const status = {
+        running: true,
+        pid: 1234,
+        port: 3000,
+        cmd: "serve",
+        version: null,
+        started_at: "2026-04-21T19:30:00Z",
+        uptime_seconds: 10,
+        pid_file: "/tmp/serve.pid",
+        log_file: "/tmp/serve.log",
+        log_size_bytes: 0,
+      };
+      expect(assertInvalid(status, schema)).toBe(true);
+    });
+
+    test("rejects running:false with numeric uptime_seconds (stale invariant)", () => {
+      const status = {
+        running: false,
+        pid: 99_999,
+        port: null,
+        cmd: "daemon",
+        version: "1.1.0",
+        started_at: "2026-04-21T10:00:00Z",
+        uptime_seconds: 3600,
+        pid_file: "/tmp/daemon.pid",
+        log_file: "/tmp/daemon.log",
+        log_size_bytes: 0,
+      };
+      expect(assertInvalid(status, schema)).toBe(true);
+    });
   });
 });

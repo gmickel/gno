@@ -47,26 +47,34 @@ Derisking spike. Prove Bun's `detached: true` + `stdio: ["ignore", fd, fd]` + `.
 
 ## Done summary
 
-Spike confirmed Bun `spawn({ detached: true, stdio: ["ignore", fd, fd] }).unref()` lets the parent exit cleanly (~17 ms) on macOS with both a heartbeat child and a gno CLI child, and the detached child survives parent exit while writing to its inherited log fd — fn-72.2 can proceed.
+Spike confirmed Bun `spawn({ detached: true, stdio: ["ignore", fd, fd] }).unref()` lets the parent exit cleanly (~17 ms) on macOS with a heartbeat child, and the detached child survives parent exit while writing to its inherited log fd. **The LLM-thread hazard was NOT retired by this spike** (see below) — fn-72.2 must still treat it as an open risk.
 
 ## Findings for fn-72.2
 
-- `Bun.spawn` with `detached: true`, `stdio: ["ignore", fd, fd]` (numeric fd from `node:fs.openSync(path, "a")`), plus `child.unref()` is sufficient. Parent exits in ~17 ms on macOS (Bun 1.3.5) — well under the 1s budget.
+- `Bun.spawn` with `detached: true`, `stdio: ["ignore", fd, fd]` (numeric fd from `node:fs.openSync(path, "a")`), plus `child.unref()` is sufficient for a trivial child. Parent exits in ~17 ms on macOS (Bun 1.3.5) — well under the 1s budget.
 - Confirmed `child.unref()` is mandatory: `detached: true` alone sets the session leader but does not release the event-loop reference to the subprocess handle.
 - Numeric fd from `openSync` is correct — the parent's fd is duped into the child at spawn time, so closing the parent's fd (or letting it close on exit) does not kill the child's stdout/stderr.
 - Child confirmed `process.kill(parentPid, 0)` returns `ESRCH` ~2s after parent exit — parent really is gone.
-- Variant 2 (`bun src/index.ts ask --help`) spawned detached exited cleanly and wrote Commander's help text to the log fd. The gno CLI's module graph does not have import side-effects that would keep the detached parent alive; LLM native threads live inside the child process where the command body runs.
+
+## LLM-thread hazard — still open
+
+**Variant 2 did NOT validate this risk.** Running `bun src/index.ts ask --help` returns from Commander before the lazy LLM imports fire, so the spike never actually loaded `node-llama-cpp` in the parent. The "parent exit" measurement for variant 2 is only meaningful for help-path code; it says nothing about whether native threads from `src/llm/nodeLlamaCpp/lifecycle.ts` would hold the event loop open.
+
+fn-72.2 must still:
+
+- Detach **before** any code path that touches an LLM port. This is enforced by the overall design anyway (detach is the first await in the action handler, before any port/runtime instantiation), but the spike did not prove that constraint is forgiving.
+- If, during fn-72.2 implementation, detach ends up sequenced after any module load that reaches `lifecycle.ts`, run an ad-hoc test with a real LLM-loading path (e.g. `gno ask "x" --detach` once wired) to confirm parent still exits. Either outcome is acceptable; the hazard being unproven only means fn-72.2 cannot assume immunity.
 
 ## Implications for fn-72.2 (`src/cli/detach.ts` helper)
 
 - Detach path: `openSync(logPath, "a")` → `Bun.spawn({ cmd: [process.execPath, ...argvMinusDetach, sentinel], stdio: ["ignore", fd, fd], detached: true, cwd, env }).unref()`. Then write pid-file atomically and exit 0.
-- No need to restructure `wireServeCommand`/`wireDaemonCommand` to detach before imports — CLI module graph is safe. Detach can happen inside the action handler as the first await, before any port/runtime instantiation.
+- Detach happens inside the action handler as the first await, before any port/runtime instantiation. If that ordering proves insufficient under a real LLM-loading path, restructure to detach at the top-level program action.
 - `fs.closeSync(fd)` in the parent after spawn — the child has its own dup.
 - Sentinel flag (e.g. `--__detached-child`) tells the re-invoked command body to skip the detach branch and run normally.
 
 ## Surprises
 
-None. Bun's detach behaved exactly as the docs suggest. No LLM-thread hazard materialized because the LLM only loads when the command body runs, which is always in the child.
+None on the Bun side; detach behaved exactly as docs suggest. The only correction from a post-spike review: variant 2's LLM-thread claim was overstated (see above).
 
 ## Artifact
 

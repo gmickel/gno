@@ -64,5 +64,43 @@
       "minimum": 0,
       "description": "Current size of the log-file in bytes, or null when the file does not exist"
     }
-  }
+  },
+  "allOf": [
+    {
+      "description": "daemon never exposes a port",
+      "if": {
+        "properties": { "cmd": { "const": "daemon" } },
+        "required": ["cmd"]
+      },
+      "then": {
+        "properties": { "port": { "type": "null" } }
+      }
+    },
+    {
+      "description": "when running, pid/version/started_at/uptime_seconds must all be populated",
+      "if": {
+        "properties": { "running": { "const": true } },
+        "required": ["running"]
+      },
+      "then": {
+        "properties": {
+          "pid": { "type": "integer", "minimum": 1 },
+          "version": { "type": "string" },
+          "started_at": { "type": "string", "format": "date-time" },
+          "uptime_seconds": { "type": "integer", "minimum": 0 }
+        },
+        "required": ["pid", "version", "started_at", "uptime_seconds"]
+      }
+    },
+    {
+      "description": "when not running, uptime_seconds must be null (the process has no live uptime to report)",
+      "if": {
+        "properties": { "running": { "const": false } },
+        "required": ["running"]
+      },
+      "then": {
+        "properties": { "uptime_seconds": { "type": "null" } }
+      }
+    }
+  ]
 }

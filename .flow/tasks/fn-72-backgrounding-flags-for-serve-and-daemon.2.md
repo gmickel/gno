@@ -34,11 +34,11 @@ Build the shared helper that both `gno serve` and `gno daemon` will call through
 - Update `exitCodeFor` to map `NOT_RUNNING → 3`.
 - Update `runCli` error handling at `src/cli/run.ts:201-248`.
 
-**Spike findings (fn-72.9) — applied:** <!-- Updated by plan-sync: spike proved no LLM-thread hazard -->
+**Spike findings (fn-72.9) — applied:** <!-- Updated by plan-sync: LLM-thread hazard remains open -->
 
-- Parent exits in ~17ms on macOS (Bun 1.3.5) with `detached: true` + numeric-fd stdio + `.unref()` — well under 1s budget.
-- **No LLM-thread hang.** The gno CLI's module graph has no import side-effects that keep the detached parent alive; LLM native threads only start inside the child when the command body runs. Detach can happen inside the action handler as the first await, before any port/runtime instantiation — no restructuring of `wireServeCommand`/`wireDaemonCommand` required.
+- Parent exits in ~17ms on macOS (Bun 1.3.5) with `detached: true` + numeric-fd stdio + `.unref()` on a trivial heartbeat child — well under 1s budget.
 - Child confirmed `process.kill(parentPid, 0)` returns `ESRCH` ~2s after parent exit — detachment is real.
+- **LLM-thread hazard NOT retired by the spike.** Variant 2 used `ask --help`, which exits in Commander before any lazy LLM imports fire, so `node-llama-cpp` never actually loaded in the parent. fn-72.2 must still guarantee detach happens before any code path that touches an LLM port, and should run an ad-hoc test with a real LLM-loading path once `--detach` is wired to confirm parent still exits. If that fails, restructure to detach at the top-level program action before Commander dispatch.
 
 ## Investigation targets
 
@@ -105,7 +105,7 @@ Build the shared helper that both `gno serve` and `gno daemon` will call through
 - **Bun gotcha:** `detached: true` alone won't let the parent exit. `.unref()` is required, not optional.
 - **Bun gotcha:** pass a numeric fd for stdio redirection to a file; `Bun.file()` objects get closed on parent exit.
 - PID reuse mitigation: after `kill(pid, 0)` success, cross-check stored `cmd`/`version` fields.
-- Detach can happen as the first await in the action handler — the fn-72.9 spike confirmed no LLM-thread hazard in the CLI module graph, so no restructuring of `wireServeCommand`/`wireDaemonCommand` is required before spawning. <!-- Updated by plan-sync: fn-72.9 disproved the LLM-thread hang hypothesis -->
+- Detach is attempted as the first await in the action handler. The fn-72.9 spike did NOT validate the LLM-thread hazard (variant 2 ran `ask --help`, which exits before lazy LLM imports). If an ad-hoc test with a real LLM-loading command shows the parent hanging, restructure to detach at the top-level program action before Commander dispatch. <!-- Updated by plan-sync: fn-72.9 LLM-thread hazard remains open -->
 
 ## Acceptance
 
@@ -114,7 +114,7 @@ Build the shared helper that both `gno serve` and `gno daemon` will call through
 - [ ] `NOT_RUNNING` exit code (3) wired in `src/cli/errors.ts` + `src/cli/run.ts`
 - [ ] Unit tests cover: default path resolution, `expandPath` user overrides, atomic pid-file write+read, stale detection via `ESRCH`, JSON payload shape round-trip, Windows-platform error message
 - [ ] Tests use `GNO_DATA_DIR` env var to sandbox (no writes to `~/.local/share/gno`)
-- [ ] Spike findings from fn-72.9 applied (or documented as N/A if spike was clean)
+- [ ] Spike findings from fn-72.9 applied (note: LLM-thread hazard remains open; validate with an ad-hoc detach test against a real LLM-loading command once wired, document outcome in done summary)
 - [ ] `bun run lint:check && bun test test/cli/detach.test.ts` green
 
 ## Done summary

@@ -2232,7 +2232,9 @@ Errors are written to stderr. With `--json` flag, errors are also returned as:
 }
 ```
 
-Error codes match exit codes: `VALIDATION` (exit 1), `RUNTIME` (exit 2).
+Error codes match exit codes: `VALIDATION` (exit 1), `RUNTIME` (exit 2), `NOT_RUNNING` (exit 3).
+
+**`NOT_RUNNING` is not an error envelope.** `gno serve|daemon --status --json` and `--stop` return a `process-status`-shaped payload on stdout with exit 3 when no live matching process is found. The error envelope above is reserved for `VALIDATION` and `RUNTIME` failures where the command could not produce its structured output at all.
 
 ---
 
