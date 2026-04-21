@@ -204,8 +204,13 @@ export async function runCli(argv: string[]): Promise<number> {
   } catch (err) {
     // Handle CliError with proper JSON formatting
     if (err instanceof CliError) {
-      const output = formatErrorForOutput(err, { json: isJson });
-      process.stderr.write(`${output}\n`);
+      // `silent` is reserved for codes whose exit value carries the meaning
+      // (e.g. NOT_RUNNING from `--stop` per spec/cli.md). Skip stderr but
+      // still propagate the code.
+      if (!err.silent) {
+        const output = formatErrorForOutput(err, { json: isJson });
+        process.stderr.write(`${output}\n`);
+      }
       return exitCodeFor(err);
     }
 

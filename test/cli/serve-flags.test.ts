@@ -215,8 +215,8 @@ describe("gno serve backgrounding flags", () => {
   });
 
   describe("--stop", () => {
-    test("exits 3 when no pid-file exists", async () => {
-      const { code, stderr } = await cli(
+    test("exits 3 silently when no pid-file exists", async () => {
+      const { code, stdout, stderr } = await cli(
         "serve",
         "--stop",
         "--pid-file",
@@ -225,7 +225,10 @@ describe("gno serve backgrounding flags", () => {
         logFile
       );
       expect(code).toBe(3);
-      expect(stderr).toContain("not running");
+      // Per spec/cli.md: --stop with no pid-file exits 3 silently (no
+      // envelope on either stream).
+      expect(stdout).toBe("");
+      expect(stderr).toBe("");
     });
 
     test("exits 3 when pid-file is stale (dead pid)", async () => {
@@ -287,6 +290,39 @@ describe("gno serve backgrounding flags", () => {
       );
       expect(code).toBe(1);
       expect(stderr).toContain("--json");
+    });
+  });
+
+  describe("--port irrelevance to management commands", () => {
+    test("`--status --port nope` does not validate port", async () => {
+      // Management branches return before binding a port; an irrelevant
+      // --port value must not break them.
+      const { code } = await cli(
+        "serve",
+        "--status",
+        "--port",
+        "nope",
+        "--pid-file",
+        pidFile,
+        "--log-file",
+        logFile
+      );
+      // No live process → exit 3, NOT exit 1 from port parsing.
+      expect(code).toBe(3);
+    });
+
+    test("`--stop --port nope` does not validate port", async () => {
+      const { code } = await cli(
+        "serve",
+        "--stop",
+        "--port",
+        "nope",
+        "--pid-file",
+        pidFile,
+        "--log-file",
+        logFile
+      );
+      expect(code).toBe(3);
     });
   });
 

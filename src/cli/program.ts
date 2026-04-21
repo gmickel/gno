@@ -2289,7 +2289,10 @@ async function handleServeAction(
   cmdOpts: Record<string, unknown>
 ): Promise<void> {
   const globals = getGlobals();
-  const port = parsePositiveInt("port", cmdOpts.port);
+  // NB: do NOT parse --port here. The status/stop branches don't need it
+  // and rejecting `gno serve --status --port nope` on irrelevant input
+  // would break management commands. parsePositiveInt is called inside
+  // the foreground + detach paths where the port actually matters.
 
   const {
     resolveProcessPaths,
@@ -2341,6 +2344,7 @@ async function handleServeAction(
   }
 
   if (cmdOpts.detach) {
+    const port = parsePositiveInt("port", cmdOpts.port);
     await runServeDetach({
       port,
       paths,
@@ -2364,6 +2368,11 @@ async function handleServeAction(
     }
     installPidFileCleanup(paths.pidFile);
   }
+
+  // Foreground + detached-child both need to actually bind a port; validate
+  // here (after the management branches have returned) so a bad --port only
+  // breaks invocations that would have used it.
+  const port = parsePositiveInt("port", cmdOpts.port);
 
   const { serve } = await import("./commands/serve.js");
   const result = await serve({
@@ -2469,9 +2478,12 @@ async function runServeStop(deps: ServeStopDeps): Promise<void> {
       );
       return;
     case "not-running":
+      // Per spec/cli.md: `--stop` with no pid-file exits 3 silently (no
+      // error envelope on either stream, no `--json` support).
       throw new CliError(
         "NOT_RUNNING",
-        `gno serve is not running (pid-file ${outcome.pidFile} missing or stale)`
+        `gno serve is not running (pid-file ${outcome.pidFile} missing or stale)`,
+        { silent: true }
       );
     case "timeout":
       throw new CliError(
