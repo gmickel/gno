@@ -73,10 +73,23 @@ describe("gno daemon backgrounding flags", () => {
   let testDir: string;
   let pidFile: string;
   let logFile: string;
+  // Snapshot the env vars we mutate so afterEach restores prior values
+  // exactly. Unconditional deletion would clobber values set by the outer
+  // test process (CI runners, dev shells) for any test file that runs
+  // after this one in the same `bun test` invocation.
+  const ENV_KEYS = ["GNO_CONFIG_DIR", "GNO_DATA_DIR", "GNO_CACHE_DIR"] as const;
+  let envSnapshot: Partial<Record<(typeof ENV_KEYS)[number], string>>;
 
   beforeEach(async () => {
     testDir = getTestDir();
     await mkdir(testDir, { recursive: true });
+    envSnapshot = {};
+    for (const key of ENV_KEYS) {
+      const prior = process.env[key];
+      if (prior !== undefined) {
+        envSnapshot[key] = prior;
+      }
+    }
     process.env.GNO_CONFIG_DIR = join(testDir, "config");
     process.env.GNO_DATA_DIR = join(testDir, "data");
     process.env.GNO_CACHE_DIR = join(testDir, "cache");
@@ -86,9 +99,14 @@ describe("gno daemon backgrounding flags", () => {
 
   afterEach(async () => {
     await safeRm(testDir);
-    Reflect.deleteProperty(process.env, "GNO_CONFIG_DIR");
-    Reflect.deleteProperty(process.env, "GNO_DATA_DIR");
-    Reflect.deleteProperty(process.env, "GNO_CACHE_DIR");
+    for (const key of ENV_KEYS) {
+      const prior = envSnapshot[key];
+      if (prior === undefined) {
+        Reflect.deleteProperty(process.env, key);
+      } else {
+        process.env[key] = prior;
+      }
+    }
   });
 
   describe("mutual exclusion", () => {
