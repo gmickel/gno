@@ -292,8 +292,9 @@ describe("detach helper", () => {
           pidFile,
           logFile,
           port: 4242,
-          // run the actual script instead of the CLI sentinel-reinvocation
-          execPath: process.execPath,
+          // Self-contained script: skip the default `process.argv[1]`
+          // prepend by opting the entry script out.
+          entryScript: null,
         });
 
         expect(result.pid).toBeGreaterThan(0);
@@ -315,6 +316,54 @@ describe("detach helper", () => {
         } catch {
           /* already exited */
         }
+      }
+    );
+
+    test.skipIf(process.platform === "win32")(
+      "default re-exec includes the CLI entry script before user argv",
+      async () => {
+        // Echo the full argv and exit immediately so the child's first line
+        // in the log file captures what cmdPrefix was used.
+        const logFile = join(tmpDir, "data", "argv-echo.log");
+        const pidFile = join(tmpDir, "data", "argv-echo.pid");
+
+        const echoScript = `
+          process.stdout.write(JSON.stringify(process.argv) + '\\n');
+          process.exit(0);
+        `;
+        const echoPath = join(tmpDir, "echo-argv.mjs");
+        await writeFile(echoPath, echoScript);
+
+        // Simulate a real CLI entry: cmdPrefix = [bun, src/index.ts].
+        // We use our echo script as the "entry" so the child actually runs.
+        const result = await spawnDetached({
+          kind: "serve",
+          argv: ["serve", "--port", "3000"],
+          pidFile,
+          logFile,
+          port: 3000,
+          cmdPrefix: [process.execPath, echoPath],
+        });
+
+        expect(result.pid).toBeGreaterThan(0);
+
+        // Give the child a moment to flush + exit.
+        await new Promise((r) => setTimeout(r, 400));
+        const logged = await readFile(logFile, "utf8");
+        const argv = JSON.parse(logged.trim()) as string[];
+        // argv[0] = bun, argv[1] = echoPath (our stand-in entry script),
+        // then the user argv, then the sentinel. Critically argv[1] must
+        // be present — that's what the bug was.
+        expect(argv[0]).toContain("bun");
+        // Bun may resolve the script path through /private/var symlinks on
+        // macOS; compare by basename to stay portable.
+        expect(argv[1]?.endsWith("echo-argv.mjs")).toBe(true);
+        expect(argv.slice(2)).toEqual([
+          "serve",
+          "--port",
+          "3000",
+          DETACHED_CHILD_FLAG,
+        ]);
       }
     );
 
@@ -375,7 +424,7 @@ describe("detach helper", () => {
       );
     });
 
-    test("treats a version mismatch on a live pid as stale and unlinks", async () => {
+    test("blocks with VALIDATION when a live pid records a different gno version", async () => {
       const pidFile = join(tmpDir, "version-mismatch.pid");
       await writePidFile(pidFile, {
         pid: process.pid,
@@ -385,16 +434,20 @@ describe("detach helper", () => {
         port: 3000,
       });
 
-      // Must NOT throw even though the pid is live — the version mismatch
-      // signals PID reuse / orphan, so we fall through to "stale".
-      await guardDoubleStart(pidFile, "serve");
-      expect(await Bun.file(pidFile).exists()).toBe(false);
+      // Live-foreign: must block the double-start rather than silently
+      // unlinking and allowing a second serve to race the orphan.
+      await expectRejects(
+        guardDoubleStart(pidFile, "serve"),
+        /pid-file.*records a running serve/
+      );
+      // Critically: pid-file stays in place so the operator still sees it.
+      expect(await Bun.file(pidFile).exists()).toBe(true);
     });
   });
 
   describe("statusProcess", () => {
     test("reports not-running when no pid-file exists", async () => {
-      const status = await statusProcess({
+      const { status } = await statusProcess({
         kind: "serve",
         pidFile: join(tmpDir, "missing.pid"),
         logFile: join(tmpDir, "missing.log"),
@@ -422,7 +475,7 @@ describe("detach helper", () => {
         port: 3000,
       });
 
-      const status = await statusProcess({
+      const { status } = await statusProcess({
         kind: "serve",
         pidFile,
         logFile,
@@ -449,7 +502,7 @@ describe("detach helper", () => {
         port: null,
       });
 
-      const status = await statusProcess({
+      const { status } = await statusProcess({
         kind: "daemon",
         pidFile,
         logFile,
@@ -459,7 +512,7 @@ describe("detach helper", () => {
       expect(status.port).toBeNull();
     });
 
-    test("reports version mismatch on live pid as not-running", async () => {
+    test("surfaces live-foreign warning when version differs on a live pid", async () => {
       const pidFile = join(tmpDir, "version-status.pid");
       const logFile = join(tmpDir, "version-status.log");
       await writePidFile(pidFile, {
@@ -470,15 +523,23 @@ describe("detach helper", () => {
         port: 3000,
       });
 
-      const status = await statusProcess({
+      const result = await statusProcess({
         kind: "serve",
         pidFile,
         logFile,
       });
 
-      expect(status.running).toBe(false);
-      expect(status.version).toBe("0.0.0-orphaned");
-      expect(status.uptime_seconds).toBeNull();
+      // Schema-shape payload must report running:false (we can't prove
+      // identity) but the helper must flag the live-foreign condition so the
+      // command layer can warn the operator.
+      expect(result.status.running).toBe(false);
+      expect(result.status.version).toBe("0.0.0-orphaned");
+      expect(result.status.uptime_seconds).toBeNull();
+      expect(result.foreignLive).toEqual({
+        pid: process.pid,
+        recordedVersion: "0.0.0-orphaned",
+        currentVersion: VERSION,
+      });
     });
 
     test("reports stale pid-file as not-running with metadata preserved", async () => {
@@ -492,7 +553,7 @@ describe("detach helper", () => {
         port: null,
       });
 
-      const status = await statusProcess({
+      const { status } = await statusProcess({
         kind: "daemon",
         pidFile,
         logFile,
@@ -516,7 +577,7 @@ describe("detach helper", () => {
         port: null,
       });
 
-      const status = await statusProcess({
+      const { status } = await statusProcess({
         kind: "serve",
         pidFile,
         logFile,
@@ -655,15 +716,16 @@ describe("detach helper", () => {
       expect(result).toEqual({ kind: "timeout", pid: 7777 });
     });
 
-    test("treats version mismatch as not-running and does NOT send signals", async () => {
+    test("returns foreign-live on version mismatch and does NOT signal/unlink", async () => {
       const pidFile = join(tmpDir, "stop-version.pid");
-      await writePidFile(pidFile, {
+      const payload = {
         pid: 9876,
-        cmd: "serve",
+        cmd: "serve" as const,
         version: "0.0.0-orphaned",
         started_at: new Date().toISOString(),
         port: 3000,
-      });
+      };
+      await writePidFile(pidFile, payload);
 
       const sent: Array<NodeJS.Signals | number> = [];
       const result = await stopProcess({
@@ -677,12 +739,14 @@ describe("detach helper", () => {
       });
 
       expect(result).toEqual({
-        kind: "not-running",
-        pidFile,
+        kind: "foreign-live",
+        pid: 9876,
+        payload,
       });
-      // Critically: NO signals sent to the reused pid.
+      // Critically: NO signals sent to the pid we can't verify.
       expect(sent).toEqual([]);
-      expect(await Bun.file(pidFile).exists()).toBe(false);
+      // Pid-file stays in place so the operator still sees the orphan.
+      expect(await Bun.file(pidFile).exists()).toBe(true);
     });
 
     test("rejects VALIDATION when pid-file belongs to a different kind", async () => {

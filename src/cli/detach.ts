@@ -66,11 +66,37 @@ export interface ProcessStatus {
   log_size_bytes: number | null;
 }
 
+/** Status result plus any operator-facing ambiguity the schema can't encode. */
+export interface StatusResult {
+  status: ProcessStatus;
+  /**
+   * Set when we see a live pid we can't safely claim as ours (e.g. gno was
+   * upgraded while the old detached process still runs). The schema payload
+   * must report `running:false`, but callers should render this warning
+   * alongside it so operators aren't surprised.
+   */
+  foreignLive?: {
+    pid: number;
+    recordedVersion: string;
+    currentVersion: string;
+  };
+}
+
 /** Outcome classification for `stopProcess`. */
 export type StopOutcome =
   | { kind: "not-running"; pidFile: string }
   | { kind: "stopped"; pid: number; signal: "SIGTERM" | "SIGKILL" }
-  | { kind: "timeout"; pid: number };
+  | { kind: "timeout"; pid: number }
+  | {
+      /**
+       * Live pid whose version disagrees with this binary. We refused to
+       * signal it because we can't prove identity. Caller must surface the
+       * ambiguity to the operator (typically via a VALIDATION error).
+       */
+      kind: "foreign-live";
+      pid: number;
+      payload: PidFilePayload;
+    };
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Paths
@@ -255,7 +281,16 @@ export const DETACHED_CHILD_FLAG = "--__detached-child";
 
 export interface SpawnDetachedOptions {
   kind: DetachKind;
-  /** Argv to re-invoke (typically `process.argv.slice(2)` minus `--detach`). */
+  /**
+   * Argv to re-invoke (typically `process.argv.slice(2)` minus `--detach`).
+   *
+   * By default we build the full child command as
+   * `[execPath, entryScript, ...argv, DETACHED_CHILD_FLAG]`, where
+   * `entryScript` comes from `process.argv[1]`. This matches how Bun and
+   * Node launch a script (`bun src/index.ts serve` / `node dist/index.js
+   * serve`). Tests or callers that want to run a standalone file can
+   * override the prefix via `cmd` below.
+   */
   argv: string[];
   pidFile: string;
   logFile: string;
@@ -263,6 +298,18 @@ export interface SpawnDetachedOptions {
   env?: Record<string, string | undefined>;
   /** Override for the parent executable path. Defaults to `process.execPath`. */
   execPath?: string;
+  /**
+   * Full child command prefix (everything before user argv). Defaults to
+   * `[execPath, process.argv[1]]` so the re-exec matches the way Bun/Node
+   * originally launched the parent. Omit `execPath` if you set this.
+   */
+  cmdPrefix?: string[];
+  /**
+   * Override for the script path passed to the child runtime. Defaults to
+   * `process.argv[1]`. Set to `null` to omit (for callers passing a
+   * self-contained executable like a single `.mjs` file).
+   */
+  entryScript?: string | null;
   /** Optional port to embed in the pid-file payload (serve only). */
   port?: number | null;
   /** Working directory for the child. Defaults to `process.cwd()`. */
@@ -307,6 +354,23 @@ export async function spawnDetached(
   const execPath = options.execPath ?? process.execPath;
   const cwd = options.cwd ?? process.cwd();
 
+  // Build the child command prefix. By default we re-invoke the same script
+  // the parent was launched with (process.argv[1]), so `bun src/index.ts
+  // serve --detach` spawns `bun src/index.ts serve ...` in the child rather
+  // than `bun serve ...`. Callers can opt out by passing `entryScript: null`
+  // (single-file executables) or override the prefix wholesale via
+  // `cmdPrefix`.
+  let cmdPrefix: string[];
+  if (options.cmdPrefix) {
+    cmdPrefix = options.cmdPrefix;
+  } else {
+    const entryScript =
+      options.entryScript === undefined
+        ? (process.argv[1] ?? null)
+        : options.entryScript;
+    cmdPrefix = entryScript === null ? [execPath] : [execPath, entryScript];
+  }
+
   await mkdir(dirname(options.logFile), { recursive: true });
   await mkdir(dirname(options.pidFile), { recursive: true });
 
@@ -314,7 +378,7 @@ export async function spawnDetached(
   let child: ReturnType<typeof Bun.spawn>;
   try {
     child = Bun.spawn({
-      cmd: [execPath, ...options.argv, DETACHED_CHILD_FLAG],
+      cmd: [...cmdPrefix, ...options.argv, DETACHED_CHILD_FLAG],
       stdio: ["ignore", fd, fd],
       detached: true,
       cwd,
@@ -356,14 +420,39 @@ export async function spawnDetached(
  * Does the pid-file's recorded version match the binary currently running?
  *
  * PID-reuse mitigation (per epic spec): after liveness passes we cross-check
- * the stored `cmd` *and* `version`. A mismatched version is evidence that
- * either (a) the original process crashed and a newer binary is starting
- * while an unrelated process has reused the pid, or (b) the user upgraded
- * gno and the old daemon is orphaned. In both cases the pid-file cannot be
- * trusted to refer to the current binary — treat it as stale.
+ * the stored `cmd` *and* `version`. A mismatched version is a "live-foreign"
+ * signal: we have a live pid claiming to be ours but we can't prove identity.
+ * Two realistic causes:
+ *
+ *   (a) User upgraded gno while the old detached process is still running.
+ *   (b) Original process crashed and an unrelated process inherited the pid.
+ *
+ * In neither case is it safe to issue signals to the pid, nor to
+ * double-start into the same data dir, nor to claim "not running" — that
+ * would lose track of (a) and let two detached processes fight over the
+ * same port or watcher. Surface the ambiguity to the operator and make
+ * them resolve it.
  */
 function versionMatchesPidFile(payload: PidFilePayload): boolean {
   return payload.version === VERSION;
+}
+
+function formatLiveForeignError(
+  kind: DetachKind,
+  pidFile: string,
+  existing: PidFilePayload,
+  action: "start" | "stop" | "status"
+): CliError {
+  const hint =
+    action === "start"
+      ? `refusing to start a second ${kind}. If the old process is defunct, terminate it manually (\`kill ${existing.pid}\` or \`kill -9 ${existing.pid}\`) and delete ${pidFile}.`
+      : action === "stop"
+        ? `refusing to signal pid ${existing.pid} without stronger identity proof. Terminate the old process manually and delete ${pidFile}.`
+        : `cannot verify liveness safely.`;
+  return new CliError(
+    "VALIDATION",
+    `pid-file ${pidFile} records a running ${kind} (pid ${existing.pid}) from gno ${existing.version}, but this binary is ${VERSION}: ${hint}`
+  );
 }
 
 /**
@@ -372,8 +461,9 @@ function versionMatchesPidFile(payload: PidFilePayload): boolean {
  * - Live + matching `cmd` + matching `version` → throw `CliError("VALIDATION")`
  *   with pid/port hint.
  * - Live + mismatched `cmd` → throw (someone else's pid-file).
- * - Live + matching `cmd` but mismatched `version` → treat as stale (PID-reuse
- *   mitigation / orphaned-after-upgrade), unlink, return.
+ * - Live + matching `cmd` but mismatched `version` → throw VALIDATION with
+ *   operator guidance. This is live-foreign: we can't prove identity, so we
+ *   neither double-start nor silently unlink an active pid.
  * - Dead (ESRCH) → unlink the stale pid-file and return.
  */
 export async function guardDoubleStart(
@@ -400,12 +490,7 @@ export async function guardDoubleStart(
   }
 
   if (!versionMatchesPidFile(existing)) {
-    // Same cmd but a different gno version wrote this pid-file. We can't
-    // safely assume the reused pid is still our process — treat as stale.
-    await unlink(pidFile).catch(() => {
-      /* stale — removed by someone else is fine */
-    });
-    return;
+    throw formatLiveForeignError(kind, pidFile, existing, "start");
   }
 
   const portSuffix =
@@ -443,30 +528,34 @@ export interface StatusOptions {
 }
 
 /**
- * Resolve the `process-status@1.0` payload for one process kind.
+ * Resolve the `process-status@1.0` payload for one process kind, plus any
+ * operator-facing ambiguity the schema can't encode (e.g. a live pid whose
+ * recorded version disagrees with the current binary).
  *
  * Safe to call on Windows — without a pid-file the payload is simply
  * `running:false` with everything else null.
  */
 export async function statusProcess(
   options: StatusOptions
-): Promise<ProcessStatus> {
+): Promise<StatusResult> {
   const now = options.now ?? Date.now;
   const logSize = await fileSizeOrNull(options.logFile);
   const payload = await readPidFile(options.pidFile);
 
   if (!payload) {
     return {
-      running: false,
-      pid: null,
-      port: null,
-      cmd: options.kind,
-      version: null,
-      started_at: null,
-      uptime_seconds: null,
-      pid_file: options.pidFile,
-      log_file: options.logFile,
-      log_size_bytes: logSize,
+      status: {
+        running: false,
+        pid: null,
+        port: null,
+        cmd: options.kind,
+        version: null,
+        started_at: null,
+        uptime_seconds: null,
+        pid_file: options.pidFile,
+        log_file: options.logFile,
+        log_size_bytes: logSize,
+      },
     };
   }
 
@@ -502,7 +591,16 @@ export async function statusProcess(
   const runningFinal =
     running && !(effectiveKind === "serve" && portForRunningServe === null);
 
-  return {
+  const foreignLive =
+    alive && kindMatches && !versionMatches
+      ? {
+          pid: payload.pid,
+          recordedVersion: payload.version,
+          currentVersion: VERSION,
+        }
+      : undefined;
+
+  const status: ProcessStatus = {
     running: runningFinal,
     pid: payload.pid,
     port:
@@ -519,6 +617,8 @@ export async function statusProcess(
     log_file: options.logFile,
     log_size_bytes: logSize,
   };
+
+  return foreignLive ? { status, foreignLive } : { status };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -600,14 +700,12 @@ export async function stopProcess(options: StopOptions): Promise<StopOutcome> {
   }
 
   if (!versionMatchesPidFile(payload)) {
-    // Version mismatch on a live pid: either PID reuse after a crash, or an
-    // orphan from an older gno version. Either way we must NOT send signals
-    // to that pid — we might be killing an unrelated process. Treat as not
-    // running and unlink the stale pid-file.
-    await unlink(options.pidFile).catch(() => {
-      /* ignore */
-    });
-    return { kind: "not-running", pidFile: options.pidFile };
+    // Live pid, matching kind, but a different gno version wrote the
+    // pid-file. Could be an orphan from a pre-upgrade process we still
+    // need to manage, or could be PID reuse — either way we can't prove
+    // identity, so we MUST NOT send signals to that pid. Surface the
+    // ambiguity and leave the pid-file in place for the operator.
+    return { kind: "foreign-live", pid: payload.pid, payload };
   }
 
   try {
