@@ -21,6 +21,7 @@ import {
   spawnDetached,
   statusProcess,
   stopProcess,
+  verifyPidFileMatchesSelf,
   writePidFile,
 } from "../../src/cli/detach";
 import { CliError } from "../../src/cli/errors";
@@ -373,7 +374,7 @@ describe("detach helper", () => {
     });
 
     test.skipIf(process.platform === "win32")(
-      "kills the spawned child and throws RUNTIME when pid-file write fails",
+      "kills the spawned child and throws RUNTIME when pid-file write fails (SIGTERM-ignoring child)",
       async () => {
         // Force writePidFile to fail by making the pid-file path itself a
         // directory — atomicWrite's rename(tmpFile, pidFile) will fail with
@@ -381,13 +382,19 @@ describe("detach helper", () => {
         const pidFile = join(tmpDir, "data", "pid-is-a-dir.pid");
         await mkdir(pidFile, { recursive: true });
 
-        const heartbeatScript = `
+        // Child installs a SIGTERM handler that ignores the signal, so the
+        // reaper MUST fall through to SIGKILL. Proves the cleanup is
+        // synchronous-enough to work even when the caller is about to exit.
+        const stubbornScript = `
+          process.on('SIGTERM', () => {
+            // swallow — only SIGKILL should take us down
+          });
           setInterval(() => {
             process.stdout.write('alive\\n');
           }, 200);
         `;
         const scriptPath = join(tmpDir, "write-fail-child.mjs");
-        await writeFile(scriptPath, heartbeatScript);
+        await writeFile(scriptPath, stubbornScript);
 
         let caught: unknown;
         let childPid: number | undefined;
@@ -413,16 +420,113 @@ describe("detach helper", () => {
         const err = caught as CliError;
         expect(err.code).toBe("RUNTIME");
         expect(err.message).toMatch(/failed to write pid-file/);
-        expect(err.message).toMatch(/child was signaled/);
+        expect(err.message).toMatch(/signaled and reaped/);
 
-        // Give the SIGTERM/SIGKILL fire-and-forget a moment to land, then
-        // confirm the orphan is gone.
-        await new Promise((r) => setTimeout(r, 1500));
+        // By the time spawnDetached throws, the reaper has already polled
+        // past SIGTERM + SIGKILL synchronously. The child must be gone NOW.
         if (childPid !== undefined) {
           expect(isProcessAlive(childPid)).toBe(false);
         }
       }
     );
+
+    test.skipIf(process.platform === "win32")(
+      "concurrent --detach invocations: lock-file serializes, one wins",
+      async () => {
+        const logFile = join(tmpDir, "data", "concurrent.log");
+        const pidFile = join(tmpDir, "data", "concurrent.pid");
+
+        const heartbeatScript = `
+          setInterval(() => {
+            process.stdout.write('alive\\n');
+            process.exit(0);
+          }, 100);
+        `;
+        const scriptPath = join(tmpDir, "concurrent-child.mjs");
+        await writeFile(scriptPath, heartbeatScript);
+
+        const attempt = (): Promise<
+          { ok: true; pid: number } | { ok: false; message: string }
+        > =>
+          spawnDetached({
+            kind: "serve",
+            argv: [scriptPath],
+            pidFile,
+            logFile,
+            port: 4244,
+            entryScript: null,
+          })
+            .then((result) => ({ ok: true as const, pid: result.pid }))
+            .catch((error: Error) => ({
+              ok: false as const,
+              message: error.message,
+            }));
+
+        const [a, b] = await Promise.all([attempt(), attempt()]);
+
+        const winners = [a, b].filter((r) => r.ok);
+        const losers = [a, b].filter((r) => !r.ok);
+
+        // Exactly one detach must succeed. The loser either hit the
+        // start-lock or hit guardDoubleStart under the lock — both are
+        // VALIDATION errors with human-readable guidance.
+        expect(winners.length).toBe(1);
+        expect(losers.length).toBe(1);
+        const loser = losers[0] as { ok: false; message: string };
+        expect(loser.message).toMatch(
+          /another serve start is in progress|already running/
+        );
+
+        // Best-effort terminate the winner so the test doesn't leak a
+        // process.
+        if (winners[0]?.ok === true) {
+          try {
+            process.kill(winners[0].pid, "SIGKILL");
+          } catch {
+            /* already exited */
+          }
+        }
+      }
+    );
+  });
+
+  describe("verifyPidFileMatchesSelf", () => {
+    test("returns true when no pid-file exists yet", async () => {
+      expect(
+        await verifyPidFileMatchesSelf({
+          pidFile: join(tmpDir, "missing.pid"),
+          selfPid: 1234,
+        })
+      ).toBe(true);
+    });
+
+    test("returns true when pid-file pid matches self", async () => {
+      const pidFile = join(tmpDir, "match.pid");
+      await writePidFile(pidFile, {
+        pid: 5555,
+        cmd: "serve",
+        version: VERSION,
+        started_at: new Date().toISOString(),
+        port: 3000,
+      });
+      expect(await verifyPidFileMatchesSelf({ pidFile, selfPid: 5555 })).toBe(
+        true
+      );
+    });
+
+    test("returns false when pid-file points at another pid", async () => {
+      const pidFile = join(tmpDir, "mismatch.pid");
+      await writePidFile(pidFile, {
+        pid: 7777,
+        cmd: "serve",
+        version: VERSION,
+        started_at: new Date().toISOString(),
+        port: 3000,
+      });
+      expect(await verifyPidFileMatchesSelf({ pidFile, selfPid: 1234 })).toBe(
+        false
+      );
+    });
   });
 
   describe("guardDoubleStart", () => {

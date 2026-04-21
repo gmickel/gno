@@ -12,7 +12,9 @@
 
 // node:fs.openSync/closeSync — Bun has no equivalent and we specifically need
 // a numeric fd (not a `Bun.file()` object, which Bun closes on parent exit).
-import { closeSync, openSync } from "node:fs";
+// We also use openSync with "wx" for atomic lock-file creation in
+// guardDoubleStart.
+import { closeSync, openSync, statSync, unlinkSync } from "node:fs";
 // node:fs/promises — stat/unlink structural ops not covered by Bun APIs.
 import { mkdir, stat, unlink } from "node:fs/promises";
 // node:path — no Bun path utils.
@@ -252,6 +254,77 @@ export async function writePidFile(
  *   don't incorrectly clean up someone else's pid.
  * - Any other errno → rethrown for the caller to surface.
  */
+/**
+ * SIGTERM then SIGKILL a child we spawned but failed to register, awaiting
+ * its exit between each escalation. We keep the Bun subprocess handle so we
+ * can `await child.exited` (a Promise that resolves when the OS reaps the
+ * child) instead of relying on `kill -0`, which would report a zombie as
+ * still alive. Called only from the pid-file-write-failure path.
+ */
+async function reapOrphanedChild(
+  child: ReturnType<typeof Bun.spawn>
+): Promise<void> {
+  const pid = child.pid;
+  try {
+    process.kill(pid, "SIGTERM");
+  } catch (error) {
+    if (isErrnoException(error) && error.code === "ESRCH") {
+      return;
+    }
+    // EPERM or other: we can't signal it, nothing more to do.
+    return;
+  }
+
+  // Wait up to 1s for SIGTERM to land.
+  const raced = await Promise.race([
+    child.exited,
+    new Promise<"timeout">((resolve) => {
+      setTimeout(() => resolve("timeout"), 1000).unref();
+    }),
+  ]);
+  if (raced !== "timeout") {
+    return;
+  }
+
+  try {
+    process.kill(pid, "SIGKILL");
+  } catch {
+    return;
+  }
+
+  // Wait up to 500ms for SIGKILL — bounded so the caller doesn't hang.
+  await Promise.race([
+    child.exited,
+    new Promise<void>((resolve) => {
+      setTimeout(() => resolve(), 500).unref();
+    }),
+  ]);
+}
+
+/**
+ * Child-side pid-file self-check. Read the pid-file and verify its `pid`
+ * matches ours; if not, we're a racing duplicate and should exit rather
+ * than stomp on the winner. Called from the child-side wiring in fn-72.3/.4
+ * immediately after the detach branch is skipped.
+ *
+ * Returns true if the pid-file was missing (caller should keep booting) or
+ * if it matches our pid (we are the legitimate owner). Returns false if
+ * another pid owns it.
+ */
+export async function verifyPidFileMatchesSelf(options: {
+  pidFile: string;
+  selfPid?: number;
+}): Promise<boolean> {
+  const selfPid = options.selfPid ?? process.pid;
+  const payload = await readPidFile(options.pidFile);
+  if (!payload) {
+    // No pid-file yet — the parent is between spawn and write. Keep booting;
+    // the parent will write a pid-file pointing at us.
+    return true;
+  }
+  return payload.pid === selfPid;
+}
+
 export function isProcessAlive(pid: number): boolean {
   try {
     process.kill(pid, 0);
@@ -331,6 +404,72 @@ function openLogFd(logFile: string): number {
 }
 
 /**
+ * Derive the start-lock path from a pid-file path. A sidecar lock-file that
+ * exists only for the brief window between "decide to start" and "pid-file
+ * durably written" serializes concurrent `--detach` invocations against
+ * each other in the same `GNO_DATA_DIR`.
+ */
+function startLockPath(pidFile: string): string {
+  return `${pidFile}.startlock`;
+}
+
+/**
+ * Acquire an exclusive start-lock via `open(O_CREAT | O_EXCL)`. Returns the
+ * lock path on success. Throws `CliError("VALIDATION")` if another starter
+ * holds the lock. Stale locks (leftover from a crash) are detected via a
+ * short age threshold and recovered automatically.
+ */
+function acquireStartLock(pidFile: string, kind: DetachKind): string {
+  const lockPath = startLockPath(pidFile);
+  // "wx" = O_CREAT | O_EXCL | O_WRONLY — atomic create-or-fail.
+  try {
+    const fd = openSync(lockPath, "wx");
+    closeSync(fd);
+    return lockPath;
+  } catch (error) {
+    if (!isErrnoException(error) || error.code !== "EEXIST") {
+      throw error;
+    }
+  }
+
+  // Lock exists. If it's old (>30s), assume a previous start crashed before
+  // releasing it — unlink and retry once.
+  const STALE_LOCK_MS = 30_000;
+  try {
+    const info = statSync(lockPath);
+    if (Date.now() - info.mtimeMs > STALE_LOCK_MS) {
+      try {
+        unlinkSync(lockPath);
+      } catch {
+        /* race with another cleanup — fall through */
+      }
+      try {
+        const fd = openSync(lockPath, "wx");
+        closeSync(fd);
+        return lockPath;
+      } catch {
+        /* someone else won the retry */
+      }
+    }
+  } catch {
+    /* stat failed — treat as live lock */
+  }
+
+  throw new CliError(
+    "VALIDATION",
+    `another ${kind} start is in progress (lock-file ${lockPath}). If no other ${kind} start is running, delete the lock-file manually and retry.`
+  );
+}
+
+function releaseStartLock(lockPath: string): void {
+  try {
+    unlinkSync(lockPath);
+  } catch {
+    /* already gone — fine */
+  }
+}
+
+/**
  * Spawn a detached background child, write the pid-file, and return the pid.
  *
  * Windows is explicitly unsupported: we throw a `CliError("VALIDATION")` with
@@ -371,63 +510,69 @@ export async function spawnDetached(
   await mkdir(dirname(options.logFile), { recursive: true });
   await mkdir(dirname(options.pidFile), { recursive: true });
 
-  const fd = openLogFd(options.logFile);
-  let child: ReturnType<typeof Bun.spawn>;
-  try {
-    child = Bun.spawn({
-      cmd: [...cmdPrefix, ...options.argv, DETACHED_CHILD_FLAG],
-      stdio: ["ignore", fd, fd],
-      detached: true,
-      cwd,
-      env: { ...process.env, ...options.env },
-    });
-    // `.unref()` is mandatory — `detached: true` alone keeps the parent's
-    // event loop tied to the child handle. See spike findings in
-    // `.flow/tasks/fn-72-backgrounding-flags-for-serve-and-daemon.9.md`.
-    child.unref();
-  } finally {
-    // The child has its own dup of the fd; closing the parent's copy is safe
-    // and prevents leaking an fd in the parent.
-    closeSync(fd);
-  }
+  // Serialize the guard+spawn+pid-file-write sequence against concurrent
+  // `--detach` invocations via an atomic lock-file (O_CREAT | O_EXCL). Two
+  // parents can't both pass `guardDoubleStart` and then both spawn children
+  // into the same data dir — only one holds the lock at a time.
+  const lockPath = acquireStartLock(options.pidFile, options.kind);
 
-  const payload: PidFilePayload = {
-    pid: child.pid,
-    cmd: options.kind,
-    version: VERSION,
-    started_at: new Date().toISOString(),
-    port: options.port ?? null,
-  };
-
-  // If the pid-file write fails (disk full, permission race, bad path on an
-  // overridden --pid-file), we MUST NOT leave the child orphaned — there'd be
-  // no pid-file for `--status`/`--stop` and the operator has no way to find
-  // it. Best-effort kill the detached child, then rethrow.
+  let payload: PidFilePayload;
+  let childPid: number;
   try {
-    await writePidFile(options.pidFile, payload);
-  } catch (error) {
+    // Re-check the pid-file *under the lock*. An earlier concurrent starter
+    // may have completed while we were waiting at file-system boundaries.
+    await guardDoubleStart(options.pidFile, options.kind);
+
+    const fd = openLogFd(options.logFile);
+    let child: ReturnType<typeof Bun.spawn>;
     try {
-      process.kill(child.pid, "SIGTERM");
-    } catch {
-      /* already gone */
+      child = Bun.spawn({
+        cmd: [...cmdPrefix, ...options.argv, DETACHED_CHILD_FLAG],
+        stdio: ["ignore", fd, fd],
+        detached: true,
+        cwd,
+        env: { ...process.env, ...options.env },
+      });
+      // `.unref()` is mandatory — `detached: true` alone keeps the parent's
+      // event loop tied to the child handle. See spike findings in
+      // `.flow/tasks/fn-72-backgrounding-flags-for-serve-and-daemon.9.md`.
+      child.unref();
+    } finally {
+      // The child has its own dup of the fd; closing the parent's copy is
+      // safe and prevents leaking an fd in the parent.
+      closeSync(fd);
     }
-    // Escalate to SIGKILL after a short grace period. We can't wait here
-    // without blocking the caller, so fire-and-forget.
-    setTimeout(() => {
-      try {
-        process.kill(child.pid, "SIGKILL");
-      } catch {
-        /* already gone */
-      }
-    }, 1000).unref();
-    throw new CliError(
-      "RUNTIME",
-      `spawned ${options.kind} (pid ${child.pid}) but failed to write pid-file ${options.pidFile}; child was signaled. Original error: ${error instanceof Error ? error.message : String(error)}`
-    );
+    childPid = child.pid;
+
+    payload = {
+      pid: child.pid,
+      cmd: options.kind,
+      version: VERSION,
+      started_at: new Date().toISOString(),
+      port: options.port ?? null,
+    };
+
+    // If the pid-file write fails (disk full, permission race, bad path on
+    // an overridden --pid-file), we MUST NOT leave the child orphaned —
+    // there'd be no pid-file for `--status`/`--stop` and the operator has
+    // no way to find it. Synchronously reap the child: SIGTERM → poll →
+    // SIGKILL → poll. This blocks until cleanup lands (or the timeout
+    // budget is exhausted), so the CliError we throw reflects reality.
+    try {
+      await writePidFile(options.pidFile, payload);
+    } catch (error) {
+      await reapOrphanedChild(child);
+      throw new CliError(
+        "RUNTIME",
+        `spawned ${options.kind} (pid ${child.pid}) but failed to write pid-file ${options.pidFile}; child was signaled and reaped. Original error: ${error instanceof Error ? error.message : String(error)}`
+      );
+    }
+  } finally {
+    releaseStartLock(lockPath);
   }
 
   return {
-    pid: child.pid,
+    pid: childPid,
     pidFile: options.pidFile,
     logFile: options.logFile,
     payload,
