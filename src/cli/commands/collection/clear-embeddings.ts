@@ -3,7 +3,7 @@
  */
 
 import { getIndexDbPath } from "../../../app/constants";
-import { loadConfig } from "../../../config";
+import { ensureDirectories, loadConfig } from "../../../config";
 import { resolveModelUri } from "../../../llm/registry";
 import { SqliteAdapter } from "../../../store/sqlite/adapter";
 import { CliError } from "../../errors";
@@ -31,6 +31,11 @@ export async function collectionClearEmbeddings(
   );
   if (!collection) {
     throw new CliError("VALIDATION", `Collection not found: ${name}`);
+  }
+
+  const ensureResult = await ensureDirectories();
+  if (!ensureResult.ok) {
+    throw new CliError("RUNTIME", ensureResult.error.message);
   }
 
   const store = new SqliteAdapter();

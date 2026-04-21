@@ -47,12 +47,14 @@ describe("collection CLI commands", () => {
 
     // Override config path env var
     process.env.GNO_CONFIG_DIR = join(TEST_DIR, "config");
+    process.env.GNO_DATA_DIR = join(TEST_DIR, "data");
   });
 
   afterEach(async () => {
     // Restore mocks
     process.stdout.write = originalWrite;
-    process.env.GNO_CONFIG_DIR = undefined;
+    Reflect.deleteProperty(process.env, "GNO_CONFIG_DIR");
+    Reflect.deleteProperty(process.env, "GNO_DATA_DIR");
 
     // Clean up temp dir
     await safeRm(TEST_DIR);
@@ -306,6 +308,9 @@ describe("collection CLI commands", () => {
 
       expect(stdoutOutput.join("")).toContain("Cleared");
       expect(stdoutOutput.join("")).toContain("Mode: stale");
+      expect(
+        await Bun.file(join(TEST_DIR, "data", "index-default.sqlite")).exists()
+      ).toBe(true);
     });
   });
 
