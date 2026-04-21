@@ -2307,6 +2307,21 @@ async function handleServeAction(
     cwd: process.cwd(),
   });
 
+  // Per `spec/cli.md`, `--json` is only defined for `gno serve --status`.
+  // Silently accepting `--json` on --detach / --stop / foreground would let
+  // users think they'll get structured output; fail fast instead. Commander
+  // hoists `--json` to the root when both root and sub-command declare it
+  // (verified against commander@14.0.2), so we consult the local flag first
+  // and fall back to the global flag only if the user is mixing `serve`
+  // with anything but `--status`.
+  const jsonRequested = Boolean(cmdOpts.json) || globals.json;
+  if (jsonRequested && !cmdOpts.status) {
+    throw new CliError(
+      "VALIDATION",
+      "--json is only supported with `gno serve --status`"
+    );
+  }
+
   if (cmdOpts.status) {
     // Local --json wins over global so `gno serve --status --json` and
     // `gno --json serve --status` both produce the same result.

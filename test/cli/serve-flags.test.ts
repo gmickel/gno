@@ -256,6 +256,40 @@ describe("gno serve backgrounding flags", () => {
     });
   });
 
+  describe("--json gated to --status", () => {
+    test("`--json` without `--status` is rejected (exit 1)", async () => {
+      const { code, stderr } = await cli(
+        "serve",
+        "--stop",
+        "--json",
+        "--pid-file",
+        pidFile,
+        "--log-file",
+        logFile
+      );
+      expect(code).toBe(1);
+      expect(stderr).toContain("--json");
+      expect(stderr).toContain("--status");
+    });
+
+    test("`--json` alone (no --status) is rejected before runtime boot", async () => {
+      // We don't want the foreground server to actually start during the
+      // test, so pair --json with --detach which short-circuits; the
+      // validation should fire before the detach branch.
+      const { code, stderr } = await cli(
+        "serve",
+        "--detach",
+        "--json",
+        "--pid-file",
+        pidFile,
+        "--log-file",
+        logFile
+      );
+      expect(code).toBe(1);
+      expect(stderr).toContain("--json");
+    });
+  });
+
   describe("--pid-file / --log-file override", () => {
     test("status reports user-supplied absolute paths verbatim", async () => {
       const customPid = join(testDir, "custom.pid");
