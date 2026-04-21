@@ -2198,28 +2198,304 @@ function wireGraphCommand(program: Command): void {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function wireDaemonCommand(program: Command): void {
-  program
+  const daemonCmd = program
     .command("daemon")
     .description("Start headless continuous indexing")
     .option(
       "--no-sync-on-start",
       "skip initial sync and only watch future file changes"
     )
-    .action(async (cmdOpts: Record<string, unknown>) => {
-      const globals = getGlobals();
-      const { daemon } = await import("./commands/daemon.js");
-      const result = await daemon({
-        configPath: globals.config,
-        index: globals.index,
-        offline: globals.offline,
-        verbose: globals.verbose,
-        quiet: globals.quiet,
-        noSyncOnStart: cmdOpts.syncOnStart === false,
-      });
-      if (!result.success) {
-        throw new CliError("RUNTIME", result.error);
-      }
+    // Local `--json` so `gno daemon --status --json` parses cleanly in any
+    // argv position. Mirrors the serve wiring: gated to --status only.
+    .option(
+      "--json",
+      "JSON output (applies to --status; see process-status schema)"
+    );
+
+  // --detach / --status / --stop are mutually exclusive. Use Commander's
+  // Option API so the conflict error is the native "option '--status'
+  // cannot be used with option '--detach'" surface.
+  daemonCmd.addOption(
+    new Option(
+      "--detach",
+      "run as a detached background process (macOS/Linux only)"
+    ).conflicts(["status", "stop"])
+  );
+  daemonCmd.addOption(
+    new Option(
+      "--status",
+      "show status of the detached daemon process (use --json for machine output)"
+    ).conflicts(["detach", "stop"])
+  );
+  daemonCmd.addOption(
+    new Option(
+      "--stop",
+      "stop the detached daemon process (SIGTERM then SIGKILL fallback)"
+    ).conflicts(["detach", "status"])
+  );
+  daemonCmd.addOption(
+    new Option("--pid-file <path>", "override pid-file path")
+  );
+  daemonCmd.addOption(
+    new Option("--log-file <path>", "override log-file path (append-only)")
+  );
+  // Sentinel flag set by the parent when re-exec'ing the detached child.
+  // Hidden from --help; Commander consumes it via addOption so it doesn't
+  // leak into user-visible argv.
+  daemonCmd.addOption(
+    new Option(
+      `${DETACHED_CHILD_FLAG}`,
+      "internal detached-child marker"
+    ).hideHelp()
+  );
+
+  daemonCmd.action(async (cmdOpts: Record<string, unknown>) => {
+    await handleDaemonAction(cmdOpts);
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Daemon lifecycle branching (detach / status / stop / detached-child / fg)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Route `gno daemon` through the detach helpers based on which mutex flag the
+ * user set. The four early branches return without touching `daemon()`; only
+ * the foreground + detached-child paths boot the runtime.
+ *
+ * Mirrors `handleServeAction` exactly — same helper imports, same JSON
+ * gating, same detached-child verification + pid-file cleanup. Daemon has no
+ * `--port`, so the foreground path skips port validation entirely.
+ */
+async function handleDaemonAction(
+  cmdOpts: Record<string, unknown>
+): Promise<void> {
+  const globals = getGlobals();
+
+  const {
+    resolveProcessPaths,
+    statusProcess,
+    stopProcess,
+    spawnDetached,
+    inspectForeignLive,
+    verifyPidFileMatchesSelf,
+    DETACHED_CHILD_FLAG: childFlag,
+  } = await import("./detach.js");
+
+  const paths = resolveProcessPaths("daemon", {
+    pidFile: cmdOpts.pidFile as string | undefined,
+    logFile: cmdOpts.logFile as string | undefined,
+    cwd: process.cwd(),
+  });
+
+  // Per `spec/cli.md`, `--json` is only defined for `gno daemon --status`.
+  // Silently accepting `--json` on --detach / --stop / foreground would let
+  // users think they'll get structured output; fail fast instead. Mirrors
+  // the serve wiring at handleServeAction.
+  const jsonRequested = Boolean(cmdOpts.json) || globals.json;
+  if (jsonRequested && !cmdOpts.status) {
+    throw new CliError(
+      "VALIDATION",
+      "--json is only supported with `gno daemon --status`"
+    );
+  }
+
+  if (cmdOpts.status) {
+    const json = Boolean(cmdOpts.json) || globals.json;
+    await runDaemonStatus({
+      paths,
+      json,
+      statusProcess,
+      inspectForeignLive,
     });
+    return;
+  }
+
+  if (cmdOpts.stop) {
+    await runDaemonStop({ pidFile: paths.pidFile, stopProcess });
+    return;
+  }
+
+  if (cmdOpts.detach) {
+    await runDaemonDetach({
+      paths,
+      spawnDetached,
+    });
+    return;
+  }
+
+  // Detached-child path: the parent spawned us with DETACHED_CHILD_FLAG.
+  // Confirm the pid-file points at us before booting; if the parent never
+  // registered us, exit cleanly rather than run unmanaged. On success,
+  // install a shutdown hook that unlinks the pid-file. The daemon's own
+  // `createSignalPromise` (in commands/daemon.ts) already drains SIGINT/
+  // SIGTERM cleanly; `installPidFileCleanup` adds the unlink on top so the
+  // pid-file disappears even if the runtime teardown misbehaves.
+  const isDetachedChild = Boolean(
+    (cmdOpts as Record<string, unknown>)[toCamelCase(childFlag)]
+  );
+  if (isDetachedChild) {
+    const matched = await verifyPidFileMatchesSelf({ pidFile: paths.pidFile });
+    if (!matched) {
+      // Parent crashed before registering us, or another racer won.
+      return;
+    }
+    installPidFileCleanup(paths.pidFile);
+  }
+
+  const { daemon } = await import("./commands/daemon.js");
+  const result = await daemon({
+    configPath: globals.config,
+    index: globals.index,
+    offline: globals.offline,
+    verbose: globals.verbose,
+    quiet: globals.quiet,
+    noSyncOnStart: cmdOpts.syncOnStart === false,
+  });
+  if (!result.success) {
+    throw new CliError("RUNTIME", result.error);
+  }
+}
+
+interface DaemonStatusDeps {
+  paths: { pidFile: string; logFile: string };
+  json: boolean;
+  statusProcess: typeof import("./detach.js").statusProcess;
+  inspectForeignLive: typeof import("./detach.js").inspectForeignLive;
+}
+
+async function runDaemonStatus(deps: DaemonStatusDeps): Promise<void> {
+  const status = await deps.statusProcess({
+    kind: "daemon",
+    pidFile: deps.paths.pidFile,
+    logFile: deps.paths.logFile,
+  });
+  const foreign = await deps.inspectForeignLive({
+    kind: "daemon",
+    pidFile: deps.paths.pidFile,
+  });
+
+  if (deps.json) {
+    process.stdout.write(`${JSON.stringify(status, null, 2)}\n`);
+    // In JSON mode, foreign-live metadata flows into the NOT_RUNNING
+    // envelope's `details` payload below so stderr stays a single JSON
+    // object that machine clients can parse deterministically.
+  } else {
+    process.stdout.write("gno daemon status\n");
+    process.stdout.write(`${"─".repeat(50)}\n`);
+    if (status.running) {
+      // Daemon is headless — no port to print.
+      process.stdout.write(`  running  yes (pid ${status.pid})\n`);
+      if (status.version) {
+        process.stdout.write(`  version  ${status.version}\n`);
+      }
+      if (status.started_at) {
+        process.stdout.write(
+          `  started  ${status.started_at} (uptime ${status.uptime_seconds ?? 0}s)\n`
+        );
+      }
+    } else {
+      process.stdout.write("  running  no\n");
+    }
+    process.stdout.write(`  pid-file ${status.pid_file}\n`);
+    process.stdout.write(`  log-file ${status.log_file}`);
+    if (status.log_size_bytes === null) {
+      process.stdout.write(" (missing)\n");
+    } else {
+      process.stdout.write(` (${status.log_size_bytes} bytes)\n`);
+    }
+
+    if (foreign) {
+      // Terminal mode: emit the operator-facing warning on stderr. JSON
+      // clients get the same data via the NOT_RUNNING envelope's details.
+      process.stderr.write(
+        `Warning: pid ${foreign.pid} is live but recorded gno version ${foreign.recordedVersion} differs from current ${foreign.currentVersion}; refusing to claim ownership.\n`
+      );
+    }
+  }
+
+  // Spec: `--status` exits 3 (NOT_RUNNING) when no live matching process is
+  // found. The stdout payload stays schema-clean — we've already written it —
+  // so throw a NOT_RUNNING *after* output so the envelope only hits stderr
+  // and the exit code propagates through `runCli -> exitCodeFor`.
+  if (!status.running) {
+    throw new CliError(
+      "NOT_RUNNING",
+      `gno daemon is not running (pid-file ${status.pid_file}${foreign ? `; live-foreign pid ${foreign.pid}` : ""})`,
+      {
+        details: foreign
+          ? {
+              foreign_live: {
+                pid: foreign.pid,
+                recorded_version: foreign.recordedVersion,
+                current_version: foreign.currentVersion,
+              },
+            }
+          : undefined,
+      }
+    );
+  }
+}
+
+interface DaemonStopDeps {
+  pidFile: string;
+  stopProcess: typeof import("./detach.js").stopProcess;
+}
+
+async function runDaemonStop(deps: DaemonStopDeps): Promise<void> {
+  const outcome = await deps.stopProcess({
+    kind: "daemon",
+    pidFile: deps.pidFile,
+  });
+
+  switch (outcome.kind) {
+    case "stopped":
+      process.stdout.write(
+        `Stopped gno daemon (pid ${outcome.pid}, ${outcome.signal})\n`
+      );
+      return;
+    case "not-running":
+      // Per spec/cli.md: `--stop` with no pid-file exits 3 silently (no
+      // error envelope on either stream, no `--json` support).
+      throw new CliError(
+        "NOT_RUNNING",
+        `gno daemon is not running (pid-file ${outcome.pidFile} missing or stale)`,
+        { silent: true }
+      );
+    case "timeout":
+      throw new CliError(
+        "RUNTIME",
+        `gno daemon (pid ${outcome.pid}) did not exit after SIGTERM + SIGKILL. Investigate manually.`
+      );
+    case "foreign-live":
+      throw new CliError(
+        "VALIDATION",
+        `gno daemon (pid ${outcome.pid}) is live but was started by gno ${outcome.payload.version}; this binary is ${VERSION}. Refusing to signal pid ${outcome.pid}; terminate it manually and delete ${deps.pidFile}.`
+      );
+    default: {
+      const exhaustive: never = outcome;
+      throw new Error(`unreachable stop outcome: ${String(exhaustive)}`);
+    }
+  }
+}
+
+interface DaemonDetachDeps {
+  paths: { pidFile: string; logFile: string };
+  spawnDetached: typeof import("./detach.js").spawnDetached;
+}
+
+async function runDaemonDetach(deps: DaemonDetachDeps): Promise<void> {
+  // Strip --detach from the re-exec argv so the child takes the foreground /
+  // detached-child branch instead of re-spawning itself in an infinite loop.
+  const childArgv = stripDetachFlag(process.argv.slice(2));
+  const result = await deps.spawnDetached({
+    kind: "daemon",
+    argv: childArgv,
+    pidFile: deps.paths.pidFile,
+    logFile: deps.paths.logFile,
+  });
+  // Daemon is headless — print pid only (no URL).
+  process.stdout.write(`PID ${result.pid}\n`);
 }
 
 function wireServeCommand(program: Command): void {
