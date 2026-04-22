@@ -92,7 +92,7 @@ gno daemon
 
 ## What's New
 
-> Latest release: [v1.0.0](./CHANGELOG.md#100---2026-04-16)  
+> Latest release: [v1.1.0](./CHANGELOG.md#110---2026-04-21)  
 > Full release history: [CHANGELOG.md](./CHANGELOG.md)
 
 - **Publish to [gno.sh](https://gno.sh/publish)**: new `gno publish export` CLI and Web UI action produce a self-contained artifact you upload to the hosted reader — public, secret, invite-only, or locally encrypted before upload

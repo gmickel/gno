@@ -25,11 +25,12 @@ This checks:
 
 ## Exit Codes
 
-| Code | Meaning          | Common Causes                  |
-| ---- | ---------------- | ------------------------------ |
-| 0    | Success          | Command completed              |
-| 1    | Validation error | Bad arguments, missing options |
-| 2    | Runtime error    | IO, database, model failures   |
+| Code | Meaning          | Common Causes                                                                                      |
+| ---- | ---------------- | -------------------------------------------------------------------------------------------------- |
+| 0    | Success          | Command completed                                                                                  |
+| 1    | Validation error | Bad arguments, missing options                                                                     |
+| 2    | Runtime error    | IO, database, model failures                                                                       |
+| 3    | `NOT_RUNNING`    | `gno serve --status` / `--stop` or `gno daemon --status` / `--stop` found no live matching process |
 
 ## Installation Issues
 
