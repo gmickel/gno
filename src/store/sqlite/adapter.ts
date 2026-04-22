@@ -1048,6 +1048,41 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
     }
   }
 
+  async getContentBatch(
+    mirrorHashes: string[]
+  ): Promise<StoreResult<Map<string, string>>> {
+    try {
+      const db = this.ensureOpen();
+
+      if (mirrorHashes.length === 0) {
+        return ok(new Map());
+      }
+
+      interface DbContentRow {
+        mirror_hash: string;
+        markdown: string;
+      }
+
+      const placeholders = mirrorHashes.map(() => "?").join(", ");
+      const rows = db
+        .query<DbContentRow, string[]>(
+          `SELECT mirror_hash, markdown FROM content
+           WHERE mirror_hash IN (${placeholders})`
+        )
+        .all(...mirrorHashes);
+
+      return ok(
+        new Map(rows.map((row) => [row.mirror_hash, row.markdown] as const))
+      );
+    } catch (cause) {
+      return err(
+        "QUERY_FAILED",
+        cause instanceof Error ? cause.message : "Failed to get content batch",
+        cause
+      );
+    }
+  }
+
   // ─────────────────────────────────────────────────────────────────────────
   // Chunks
   // ─────────────────────────────────────────────────────────────────────────

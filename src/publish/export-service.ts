@@ -9,6 +9,7 @@ import type { DocumentRow, StorePort, TagRow } from "../store/types";
 
 import { parseRef } from "../cli/commands/ref-parser";
 import { parseFrontmatter } from "../ingestion/frontmatter";
+import { getContentBatch } from "../store/content-batch";
 import {
   buildEncryptedPublishArtifact,
   buildPublishArtifact,
@@ -155,16 +156,40 @@ async function exportCollectionArtifact(
     throw new Error(`Collection "${collection.name}" has no active documents`);
   }
 
+  const contentResult = await getContentBatch(
+    store,
+    activeDocs
+      .map((doc) => doc.mirrorHash)
+      .filter((mirrorHash): mirrorHash is string => Boolean(mirrorHash))
+  );
+  if (!contentResult.ok) {
+    throw new Error(contentResult.error.message);
+  }
+
+  const tagsResult = await store.getTagsBatch(activeDocs.map((doc) => doc.id));
+  if (!tagsResult.ok) {
+    throw new Error(tagsResult.error.message);
+  }
+
+  const contentByHash = contentResult.value;
+  const tagsByDocId = tagsResult.value;
+
   const notes: PublishArtifactNote[] = [];
   for (const doc of activeDocs) {
-    const rawMarkdown = await loadDocumentMarkdown(store, doc);
+    if (!doc.mirrorHash) {
+      throw new Error(`Document has no converted content: ${doc.uri}`);
+    }
+    const rawMarkdown = contentByHash.get(doc.mirrorHash);
+    if (rawMarkdown === undefined) {
+      throw new Error(`Unable to load content for ${doc.uri}`);
+    }
     if (isPublishDisabledByFrontmatter(rawMarkdown)) {
       continue;
     }
     const sanitized = sanitizeObsidianMarkdown(rawMarkdown);
     warnings.push(...sanitized.warnings);
     const markdown = sanitized.markdown;
-    const tags = await loadDocumentTags(store, doc);
+    const tags = tagsByDocId.get(doc.id) ?? [];
     const frontmatter = parseFrontmatter(markdown).metadata;
     const title = deriveExportedTitle(doc);
     notes.push({

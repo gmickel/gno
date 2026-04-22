@@ -41,6 +41,27 @@ import { getLockPath, getManifestLockPath, withLock } from "./lockfile";
 const HF_QUANT_PATTERN = /^([^/]+)\/([^/:]+):(\w+)$/;
 const HF_PATH_PATTERN = /^([^/]+)\/([^/]+)\/(.+\.gguf)$/;
 
+async function computeSha256(path: string): Promise<string> {
+  const hasher = new Bun.CryptoHasher("sha256");
+  const reader = Bun.file(path).stream().getReader();
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) {
+        break;
+      }
+      if (value) {
+        hasher.update(value);
+      }
+    }
+  } finally {
+    reader.releaseLock();
+  }
+
+  return hasher.digest("hex");
+}
+
 export type ParsedModelUri =
   | {
       scheme: "hf";
@@ -588,11 +609,18 @@ export class ModelCache {
   ): Promise<void> {
     // Get file size outside lock (IO-bound, doesn't need protection)
     let size = 0;
+    let checksum = "";
     try {
       const stats = await stat(modelPath);
       size = stats.size;
     } catch {
       // Ignore
+    }
+
+    try {
+      checksum = await computeSha256(modelPath);
+    } catch {
+      // Best-effort metadata only
     }
 
     await this.updateManifest((manifest) => {
@@ -605,7 +633,7 @@ export class ModelCache {
         type,
         path: modelPath,
         size,
-        checksum: "", // TODO: compute SHA-256 for large files
+        checksum,
         cachedAt: new Date().toISOString(),
       });
     });

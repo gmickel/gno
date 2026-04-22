@@ -11,6 +11,7 @@ import type { StorePort } from "../store/types";
 import type { VectorIndexPort } from "../store/vector/types";
 import type { SearchOptions, SearchResult, SearchResults } from "./types";
 
+import { getContentBatch } from "../store/content-batch";
 import { err, ok } from "../store/types";
 import { createChunkLookup } from "./chunk-lookup";
 import { formatQueryForEmbedding } from "./contextual";
@@ -249,14 +250,21 @@ export async function searchVectorWithEmbedding(
 
   // For --full, fetch full content and build results
   if (options.full) {
+    const fullContentResult = await getContentBatch(
+      store,
+      [...bestByDocid.values()]
+        .map(({ doc }) => doc.mirrorHash)
+        .filter((mirrorHash): mirrorHash is string => Boolean(mirrorHash))
+    );
+    if (!fullContentResult.ok) {
+      return err("QUERY_FAILED", fullContentResult.error.message);
+    }
+    const fullContentByHash = fullContentResult.value;
+
     for (const { doc, chunk, score } of bestByDocid.values()) {
-      let fullContent: string | undefined;
-      if (doc.mirrorHash) {
-        const contentResult = await store.getContent(doc.mirrorHash);
-        if (contentResult.ok && contentResult.value) {
-          fullContent = contentResult.value;
-        }
-      }
+      const fullContent = doc.mirrorHash
+        ? fullContentByHash.get(doc.mirrorHash)
+        : undefined;
 
       const collectionPath = collectionPaths.get(doc.collection);
 

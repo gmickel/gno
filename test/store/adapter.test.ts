@@ -784,6 +784,20 @@ describe("SqliteAdapter", () => {
       expect(result.value).toBeNull();
     });
 
+    test("retrieves content in batch", async () => {
+      await adapter.upsertContent("hash-1", "alpha");
+      await adapter.upsertContent("hash-2", "beta");
+
+      const result = await adapter.getContentBatch(["hash-1", "hash-2"]);
+      expect(result.ok).toBe(true);
+      if (!result.ok) {
+        return;
+      }
+
+      expect(result.value.get("hash-1")).toBe("alpha");
+      expect(result.value.get("hash-2")).toBe("beta");
+    });
+
     test("upsert is idempotent", async () => {
       const mirrorHash = "idem_hash";
       const markdown = "content";

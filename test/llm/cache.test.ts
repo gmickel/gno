@@ -136,6 +136,31 @@ describe("ModelCache", () => {
       expect(entries).toEqual([]);
     });
 
+    test("stores SHA-256 checksum when adding a cached model", async () => {
+      const modelPath = join(tempDir, "checksummed-model.gguf");
+      const modelContent = "test content";
+      await writeFile(modelPath, modelContent);
+
+      const cachePrivate = cache as unknown as {
+        addToManifest: (
+          uri: string,
+          type: "embed" | "rerank" | "expand" | "gen",
+          path: string
+        ) => Promise<void>;
+      };
+      await cachePrivate.addToManifest(
+        "hf:test/model/model.gguf",
+        "embed",
+        modelPath
+      );
+
+      const entries = await cache.list();
+      expect(entries).toHaveLength(1);
+      expect(entries[0]?.checksum).toBe(
+        new Bun.CryptoHasher("sha256").update(modelContent).digest("hex")
+      );
+    });
+
     test("returns entries from manifest", async () => {
       const manifestPath = join(tempDir, "manifest.json");
       const modelPath = join(tempDir, "model.gguf");

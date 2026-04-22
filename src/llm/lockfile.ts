@@ -5,7 +5,7 @@
  * @module src/llm/lockfile
  */
 
-import { open, rename, rm, stat } from "node:fs/promises";
+import { open, readFile, rename, rm, stat } from "node:fs/promises";
 // node:os: hostname and user for lock ownership
 import { hostname, userInfo } from "node:os";
 // node:path: join for manifest lock path
@@ -68,6 +68,48 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+async function readLockMeta(lockPath: string): Promise<LockMeta | null> {
+  try {
+    const parsed = JSON.parse(
+      await readFile(lockPath, "utf-8")
+    ) as Partial<LockMeta>;
+    if (
+      typeof parsed.pid !== "number" ||
+      typeof parsed.hostname !== "string" ||
+      typeof parsed.user !== "string" ||
+      typeof parsed.createdAt !== "string"
+    ) {
+      return null;
+    }
+    return {
+      pid: parsed.pid,
+      hostname: parsed.hostname,
+      user: parsed.user,
+      createdAt: parsed.createdAt,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function isProcessAlive(pid: number): boolean {
+  if (!Number.isInteger(pid) || pid <= 0) {
+    return false;
+  }
+
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (error) {
+    return (
+      error !== null &&
+      typeof error === "object" &&
+      "code" in error &&
+      error.code === "EPERM"
+    );
+  }
+}
+
 /**
  * Check if a lockfile is stale (older than TTL or owner process dead).
  */
@@ -81,9 +123,12 @@ async function isLockStale(lockPath: string, ttlMs: number): Promise<boolean> {
       return true;
     }
 
-    // TODO: Could also check if PID is alive on same hostname
-    // For now, just use TTL-based staleness
-    return false;
+    const meta = await readLockMeta(lockPath);
+    if (!meta || meta.hostname !== hostname()) {
+      return false;
+    }
+
+    return !isProcessAlive(meta.pid);
   } catch {
     // Lock doesn't exist or can't be read
     return true;

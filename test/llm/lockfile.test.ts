@@ -3,8 +3,8 @@
  */
 
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { mkdir, stat } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { mkdir, stat, writeFile } from "node:fs/promises";
+import { hostname, tmpdir } from "node:os";
 import { join } from "node:path";
 
 import {
@@ -105,6 +105,49 @@ describe("acquireLock", () => {
     // Should recover the stale lock
     expect(lock2).not.toBeNull();
     await lock2?.release();
+  });
+
+  test("recovers recent lock when same-host owner pid is dead", async () => {
+    const lockPath = join(testDir, "dead-owner.lock");
+    await writeFile(
+      lockPath,
+      JSON.stringify({
+        pid: 999_999,
+        hostname: hostname(),
+        user: "test",
+        createdAt: new Date().toISOString(),
+      })
+    );
+
+    const lock = await acquireLock(lockPath, {
+      ttlMs: 60_000,
+      maxRetries: 5,
+      retryDelayMs: 10,
+    });
+
+    expect(lock).not.toBeNull();
+    await lock?.release();
+  });
+
+  test("does not steal recent lock when same-host owner pid is alive", async () => {
+    const lockPath = join(testDir, "live-owner.lock");
+    await writeFile(
+      lockPath,
+      JSON.stringify({
+        pid: process.pid,
+        hostname: hostname(),
+        user: "test",
+        createdAt: new Date().toISOString(),
+      })
+    );
+
+    const lock = await acquireLock(lockPath, {
+      ttlMs: 60_000,
+      maxRetries: 2,
+      retryDelayMs: 10,
+    });
+
+    expect(lock).toBeNull();
   });
 });
 

@@ -694,6 +694,14 @@ export interface StorePort {
    */
   getContent(mirrorHash: string): Promise<StoreResult<string | null>>;
 
+  /**
+   * Batch fetch markdown content for multiple mirror hashes.
+   * Returns a map of mirrorHash -> markdown for hashes that exist.
+   */
+  getContentBatch?(
+    mirrorHashes: string[]
+  ): Promise<StoreResult<Map<string, string>>>;
+
   // ─────────────────────────────────────────────────────────────────────────
   // Chunks
   // ─────────────────────────────────────────────────────────────────────────

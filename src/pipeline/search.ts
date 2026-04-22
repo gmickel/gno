@@ -15,6 +15,7 @@ import type {
   SearchResults,
 } from "./types";
 
+import { getContentBatch } from "../store/content-batch";
 import { err, ok } from "../store/types";
 import { createChunkLookup } from "./chunk-lookup";
 import { matchesExcludedChunks, matchesExcludedText } from "./exclude";
@@ -277,14 +278,21 @@ export async function searchBm25(
     const sortedEntries = [...bestByDocid.values()].sort(
       (a, b) => a.score - b.score
     );
+    const fullContentResult = await getContentBatch(
+      store,
+      sortedEntries
+        .map(({ fts }) => fts.mirrorHash)
+        .filter((mirrorHash): mirrorHash is string => Boolean(mirrorHash))
+    );
+    if (!fullContentResult.ok) {
+      return err("QUERY_FAILED", fullContentResult.error.message);
+    }
+    const fullContentByHash = fullContentResult.value;
+
     for (const { fts, chunk } of sortedEntries) {
-      let fullContent: string | undefined;
-      if (fts.mirrorHash) {
-        const contentResult = await store.getContent(fts.mirrorHash);
-        if (contentResult.ok && contentResult.value) {
-          fullContent = contentResult.value;
-        }
-      }
+      const fullContent = fts.mirrorHash
+        ? fullContentByHash.get(fts.mirrorHash)
+        : undefined;
       const collectionPath = fts.collection
         ? collectionPaths.get(fts.collection)
         : undefined;
