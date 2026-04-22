@@ -87,10 +87,10 @@ The in-repo `website/` directory is legacy and not actively published — do NOT
 
 ## Done summary
 
-TBD
+Updated docs/CLI.md, docs/DAEMON.md, docs/WEB-UI.md, docs/QUICKSTART.md, docs/TROUBLESHOOTING.md, README.md, and CHANGELOG.md to document the new --detach/--status/--stop/--pid-file/--log-file management surface for `gno serve` and `gno daemon`, including the NOT_RUNNING (exit 3) contract, --json gating to --status, silent --stop, live-foreign refusal, and start-lock recovery. All `nohup gno` examples removed from docs/ and README.md; one-minute tour now picks serve XOR daemon --detach.
 
 ## Evidence
 
-- Commits:
-- Tests:
+- Commits: d224bdec7d77ee54de2b9128c2a3a78ab98be6b6, fd84cfa, dd9b45d, 71b74e6c6e6ac4604d86c11d7e329ca647705a5e
+- Tests: bun run lint:check
 - PRs:

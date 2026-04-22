@@ -21,7 +21,7 @@ This task spans two repos. Open two PRs, one per repo, and coordinate the merge 
 
 **Files in `~/work/gno` (this repo):**
 
-- `assets/skill/cli-reference.md` — serve section ~L492, daemon section ~L321. Add all five new flags. Triggers a ClawHub skill version bump at release time (per root `CLAUDE.md` rules). Document the `--json` gating rule (only `--status` accepts `--json`) and the silent `--stop` behavior (no stderr when no pid-file) so the agent doesn't try to parse stderr for a NOT_RUNNING envelope. <!-- Updated by plan-sync: fn-72.3 added --json gating + silent --stop; agents reading the skill reference need to know -->
+- `assets/skill/cli-reference.md` — serve section ~L482-495 (table only has `-p, --port` + `--host` today; add the five new flags as a sibling table); daemon section is **not yet present** in this file — fn-72.7 documented daemon in `docs/CLI.md` but the skill reference has no `### gno daemon` block at all, so add one. Triggers a ClawHub skill version bump at release time (per root `CLAUDE.md` rules). Document the `--json` gating rule (only `--status` accepts `--json`) and the silent `--stop` behavior (no stderr when no pid-file) so the agent doesn't try to parse stderr for a NOT_RUNNING envelope. Quote the literal gating error strings the agent will see — ``--json is only supported with `gno serve --status` `` and ``--json is only supported with `gno daemon --status` `` — so failed-call recovery is deterministic. Cross-link the shared contract to `docs/CLI.md#long-running-processes` (that's the anchor fn-72.7 actually shipped). <!-- Updated by plan-sync: fn-72.7 shipped the docs/CLI.md "Long-Running Processes" section as the canonical contract under anchor #long-running-processes; the skill section in assets/skill/cli-reference.md still only lists -p/--host and has no gno daemon entry at all, so fn-72.8 has more surface to add than the original spec hinted at -->
 - `docs/adr/005-daemon-detach-lifecycle.md` — new ADR using `docs/adr/000-template.md` as template. Document:
   - why `resolveDirs().data` over `~/.gno/`;
   - why JSON pid-file over bare PID (and why strict validation + version cross-check — not a bare integer);
@@ -122,31 +122,7 @@ Verify after deploy:
 - `assets/skill/` changes trigger a ClawHub release. Do NOT publish to ClawHub from this task — that's a manual dashboard step post-merge.
 - `~/work/gno.sh` uses Vite + TanStack Router; CLI docs are inline JSX (NOT markdown). Edit TSX directly.
 
-## Approach
-
-- **Website:** User was emphatic that website docs land with the feature. These three files are NOT auto-synced — they must be edited directly in `website/`. Verify with `bun run website:build` that the bento card, FAQ, and feature page all render correctly.
-- **Skill:** Update `assets/skill/cli-reference.md` with the new flags so Claude/Codex/OpenClaw agents can reach for them. Per root `CLAUDE.md`, new flags the agent should know about require a ClawHub version bump. Add a line to the session-completion checklist / PR description noting the ClawHub republish is needed post-merge.
-- **ADR:** Document the design decisions — why `resolveDirs().data` over `~/.gno/`, why JSON pid-file over bare PID, why exit code 3 for `NOT_RUNNING`, why `taskkill` fallback on Windows, why detach sentinel is a hidden internal flag.
-
-## Investigation targets
-
-**Required:**
-
-- `website/features/daemon-mode.md` — full file (it's short)
-- `website/_data/features.yml` — `daemon-mode` entry
-- `website/_data/faq.yml` — daemon-related Q&As
-- `assets/skill/cli-reference.md` — serve + daemon flag tables
-- `docs/adr/000-template.md` — ADR format
-- `docs/adr/004-*.md` — most recent ADR for style reference
-
-**Optional:**
-
-- Root `CLAUDE.md` ClawHub publish workflow section — exact steps for post-release skill bump
-
-## Key context
-
-- `website/_data/faq.yml` currently says daemon "in v0.30 stays in the foreground" — that claim becomes false.
-- `assets/skill/` changes trigger a ClawHub release per root `CLAUDE.md` rules. Note the bump in CHANGELOG + release notes; do NOT publish to ClawHub from this task (manual dashboard step post-merge).
+<!-- Updated by plan-sync: dropped a stale "## Approach / ## Investigation targets / ## Key context" trio that referenced the legacy in-repo website/ tree (website/features/daemon-mode.md, website/_data/features.yml, website/_data/faq.yml). The earlier sections in this file already make the in-repo website/ off-limits and route all marketing-doc work to ~/work/gno.sh. The fn-72.7 done summary confirms the in-repo website/ was untouched and is treated as legacy. -->
 
 ## Acceptance
 
@@ -155,6 +131,8 @@ Verify after deploy:
 - [ ] `~/work/gno.sh/src/lib/product-pages.ts` FAQ entries no longer claim users must reach for nohup/launchd/systemd
 - [ ] `bun run dev` in `~/work/gno.sh` renders the updated CLI reference and daemon-mode page without errors
 - [ ] `~/work/gno/assets/skill/cli-reference.md` lists all five new flags AND documents `--json`-gated-to-`--status` + silent `--stop` <!-- Updated by plan-sync: fn-72.3 added gating + silent behaviors that agents need to know about -->
+- [ ] `~/work/gno/assets/skill/cli-reference.md` quotes the literal `--json` gating error strings (``--json is only supported with `gno serve --status` `` / ``--json is only supported with `gno daemon --status` ``) and cross-links the shared contract to `docs/CLI.md#long-running-processes` <!-- Updated by plan-sync: fn-72.7 shipped both the literal error wording and the #long-running-processes anchor; the skill should mirror them so agents can match on the exact text -->
+- [ ] `~/work/gno/assets/skill/cli-reference.md` adds a `### gno daemon` section (currently absent — only `gno serve` is documented) covering the headless-watcher purpose plus the shared management contract <!-- Updated by plan-sync: discovered during fn-72.7 review that the skill reference has no daemon section at all; fn-72.8 needs to add the whole subcommand, not just amend an existing block -->
 - [ ] `~/work/gno/docs/adr/005-daemon-detach-lifecycle.md` filed using `000-template.md`, covering all decisions enumerated above (including fn-72.3-introduced ones: --json gating, silent --stop, status-exits-3, single-envelope foreign-live, sync unlinkSync cleanup, stripDetachFlag minimalism; and fn-72.4-introduced ones: resolveCliArgv per-invocation argv source, daemon stacking installPidFileCleanup on top of createSignalPromise) <!-- Updated by plan-sync: fn-72.3 + fn-72.4 added several design decisions worth recording in the ADR -->
 - [ ] Separate PR opened on `~/work/gno.sh` repo
 - [ ] Gno repo PR description notes a post-merge ClawHub skill republish is required
