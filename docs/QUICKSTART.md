@@ -155,13 +155,15 @@ This makes re-indexing fast even for large collections. Just run `gno index` aft
 If you want continuous indexing instead of manual re-runs:
 
 ```bash
-gno daemon
+gno daemon            # foreground (Ctrl+C to stop)
+gno daemon --detach   # background (macOS/Linux); use --status / --stop to manage
 ```
 
-This runs the watcher + sync + embed loop in a foreground headless process. Use
-`nohup`, launchd, or systemd if you want it supervised long-term.
+`--detach` self-backgrounds, prints the child PID, and exits 0. Manage the
+detached process with `gno daemon --status` and `gno daemon --stop`.
 
-Need the full behavior and troubleshooting guide? See [Daemon Mode](DAEMON.md).
+Need the full behavior, lifecycle controls, and troubleshooting guide? See
+[Daemon Mode](DAEMON.md).
 
 ### Check System Health
 

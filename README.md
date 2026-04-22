@@ -264,14 +264,17 @@ Use `gno daemon` when you want continuous indexing without the browser or
 desktop shell open.
 
 ```bash
-gno daemon
+gno daemon                  # foreground (Ctrl+C to stop)
 gno daemon --no-sync-on-start
-nohup gno daemon > /tmp/gno-daemon.log 2>&1 &
+gno daemon --detach         # background (macOS/Linux); auto-writes pid + log files
+gno daemon --status         # check the detached process
+gno daemon --stop           # SIGTERM with 10s timeout, SIGKILL fallback
 ```
 
 It reuses the same watch/sync/embed runtime as `gno serve`, but stays
-headless. In v0.30 it is foreground-only and does not expose built-in
-`start/stop/status` management.
+headless. `--detach` / `--status` / `--stop` give you symmetric lifecycle
+controls so you don't need `nohup`, `launchd`, or `systemd` units. The same
+flag set is available on `gno serve`.
 
 [Daemon guide →](https://gno.sh/docs/DAEMON/)
 

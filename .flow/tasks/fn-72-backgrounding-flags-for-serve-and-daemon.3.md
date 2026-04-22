@@ -59,10 +59,14 @@ Add the five new flags to `gno serve` and route through `src/cli/detach.ts`.
 
 ## Done summary
 
-TBD
+Wired `--detach` / `--status` / `--stop` / `--pid-file` / `--log-file` into `gno serve` via the shared `src/cli/detach.ts` helper, with a hidden `--__detached-child` sentinel and pid-file unlink on SIGINT/SIGTERM/beforeExit. The five-flag mutex uses Commander's native `Option.conflicts()`; `--json` is gated to `--status` only and routes foreign-live metadata through `CliError.details` so JSON-mode stderr stays a single envelope.
+
+Acceptance verified end-to-end on macOS: `--detach` parent exits ~30 ms with `node-llama-cpp` reachable in the module graph (LLM-thread hazard does not materialize); `--status` reports running/stopped with schema-conformant JSON and exit 3 when no live process; `--stop` SIGTERMs gracefully and exits 3 silently when nothing to stop; double-start blocked; pid-file unlinked on clean shutdown. 14 regression tests in `test/cli/serve-flags.test.ts`; full suite 1789 pass; lint clean.
+
+Codex review note: reviewer repeatedly flagged absent daemon wiring. The epic's requirement-coverage table at `.flow/specs/fn-72-backgrounding-flags-for-serve-and-daemon.md:151` explicitly assigns R5 ("gno daemon wiring with all five flags + mutex") to task fn-72.4 (status: todo), not fn-72.3. The fn-72.3 task spec lists files limited to serve-only surfaces. Daemon parity will land in fn-72.4, which is the next task and a sibling, not a dependency, of fn-72.3. SHIP overridden on factual scope grounds; no other valid concerns remained after iterative fixes (status exit-3, --json gating, silent --stop, port deferral, JSON envelope hygiene).
 
 ## Evidence
 
-- Commits:
-- Tests:
+- Commits: bfffd083, 9aac5106, 154d7079, c3fc4a08, ebbbfa1c, 79b40462
+- Tests: bun test test/cli/serve-flags.test.ts, bun test, bun run lint:check, manual: bun src/index.ts serve --port 3459 --detach --pid-file /tmp/x --log-file /tmp/y (parent exits in ~30ms with node-llama-cpp reachable), manual: bun src/index.ts serve --status --json (exit 3, schema-clean stdout), manual: bun src/index.ts serve --stop (exit 3 silently, no stderr)
 - PRs:

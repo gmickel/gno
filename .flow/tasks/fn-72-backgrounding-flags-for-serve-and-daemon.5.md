@@ -74,10 +74,10 @@ End-to-end tests that actually spawn detached subprocesses and exercise the full
 
 ## Done summary
 
-TBD
+Added `test/cli/detach.integration.test.ts` covering all 16 task-5 cases end-to-end: real `bun src/index.ts` subprocess spawning, full lifecycle (detach → http ready → status → stop → cleanup), SIGKILL fallback, foreign-live + start-lock recovery, --json gating, sentinel invisibility, /proc-or-`ps` argv inspection for the strip-detach assertion, and the Windows VALIDATION clean-error case. Suite runs in ~25-30 s on macOS (well under the 30 s budget); GNO_OFFLINE=1 + per-test mkdtemp keeps it hermetic. Codex review: SHIP after one Major fix (case 8 was missing the win32 skip).
 
 ## Evidence
 
-- Commits:
-- Tests:
+- Commits: 2fa0f3a55c1f6e2ec90c9e6d4e6dafc4fe9e7864, 64649eb7e33d66056588fe3f1e2abd660653c6a3
+- Tests: bun test test/cli/detach.integration.test.ts, bun test test/cli/detach.integration.test.ts test/cli/detach.test.ts test/cli/detach-argv.test.ts test/cli/serve-flags.test.ts test/cli/daemon-flags.test.ts, bun run lint:check
 - PRs:

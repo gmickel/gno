@@ -61,10 +61,10 @@ Add the same five flags to `gno daemon`, routing through the shared `src/cli/det
 
 ## Done summary
 
-TBD
+Wired `--detach` / `--status` / `--stop` / `--pid-file` / `--log-file` into `gno daemon` via the shared `src/cli/detach.ts` helper, mirroring the fn-72.3 serve pattern (handleDaemonAction + runDaemonStatus / runDaemonStop / runDaemonDetach helpers reusing stripDetachFlag, installPidFileCleanup, toCamelCase). `--json` is gated to `--status` only with the same VALIDATION error as serve. Added new `test/cli/daemon-flags.test.ts` (12 tests) and `test/cli/detach-argv.test.ts` (4 regression tests) plus a per-invocation `resolveCliArgv(cmd)` helper that sources detach child argv from Commander's `Command.rawArgs` (not `process.argv`), fixing a process-state-taint bug surfaced in impl-review for both serve and daemon detach paths.
 
 ## Evidence
 
-- Commits:
-- Tests:
+- Commits: 7c2c72a, a922329, 7a3971c, 759a906
+- Tests: bun run lint:check, bun test test/cli/daemon.test.ts test/cli/daemon-flags.test.ts test/cli/serve-flags.test.ts test/cli/detach.test.ts test/cli/detach-argv.test.ts, bun test test/cli/, live: gno daemon --detach --no-sync-on-start (parent exits ~20-30ms with node-llama-cpp reachable), live: gno daemon --status / --stop end-to-end with real config + collection
 - PRs:

@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Added `--detach` to `gno serve` and `gno daemon` to self-spawn a detached background child (macOS/Linux); parent prints `{pid, url}` (serve) or `{pid}` (daemon) and exits 0.
+- Added `--status` to `gno serve` and `gno daemon` to inspect the recorded pid-file with liveness check; pair with `--json` for the [`process-status` schema](spec/output-schemas/process-status.schema.json) on stdout.
+- Added `--stop` to `gno serve` and `gno daemon` for graceful SIGTERM (10s timeout) with SIGKILL fallback; silent when nothing is running (rely on exit code 3, not stderr).
+- Added `--pid-file <path>` and `--log-file <path>` to `gno serve` and `gno daemon` to override the default `{data}/{kind}.{pid,log}` locations.
+- Added `NOT_RUNNING` exit code (`3`) emitted by `--status` and `--stop` when no live matching process is found. `--status` still emits the schema-shaped payload on stdout in JSON mode; `--stop` is silent and scripts should branch on the exit code.
+
+### Changed
+
+- `--json` is now restricted to `--status` on both `gno serve` and `gno daemon`. Combining `--json` with `--detach`, `--stop`, or the foreground path raises a `VALIDATION` error (exit 1) so callers can't silently expect structured output.
+- Documented the live-foreign case (operator upgraded gno while a detached process from an older binary is still running). `--stop` refuses to signal foreign-version pids; `--status --json` surfaces `details.foreign_live = { pid, recorded_version, current_version }` on the NOT_RUNNING envelope.
+
 ## [1.1.0] - 2026-04-21
 
 ### Fixed
