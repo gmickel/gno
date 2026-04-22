@@ -25,11 +25,12 @@ This checks:
 
 ## Exit Codes
 
-| Code | Meaning          | Common Causes                  |
-| ---- | ---------------- | ------------------------------ |
-| 0    | Success          | Command completed              |
-| 1    | Validation error | Bad arguments, missing options |
-| 2    | Runtime error    | IO, database, model failures   |
+| Code | Meaning          | Common Causes                                                                                      |
+| ---- | ---------------- | -------------------------------------------------------------------------------------------------- |
+| 0    | Success          | Command completed                                                                                  |
+| 1    | Validation error | Bad arguments, missing options                                                                     |
+| 2    | Runtime error    | IO, database, model failures                                                                       |
+| 3    | `NOT_RUNNING`    | `gno serve --status` / `--stop` or `gno daemon --status` / `--stop` found no live matching process |
 
 ## Installation Issues
 
@@ -199,12 +200,13 @@ This can improve indexing speed by 2-4x on Windows.
 
 V1 `gno daemon` reads config on startup.
 
-If you add/remove collections or change patterns while it is running:
+If you add/remove collections or change patterns while it is running, restart it:
 
 ```bash
-# Stop the daemon (Ctrl+C if foreground)
-# Then restart
-gno daemon
+# Foreground: Ctrl+C, then re-run gno daemon
+# Detached: stop and re-launch
+gno daemon --stop
+gno daemon --detach
 ```
 
 ### "Daemon is running but nothing updates"
@@ -214,6 +216,7 @@ Check:
 ```bash
 gno collection list
 gno ls
+gno daemon --status
 ```
 
 Common causes:
@@ -230,6 +233,77 @@ Until explicit cross-process coordination exists, use one of:
 
 - `gno serve` for browser/desktop sessions
 - `gno daemon` for headless continuous indexing
+
+### "pid-file exists but `--status` says not running"
+
+The recorded pid is dead. `--status` reports stale pid-files as `running:false`
+and exits with code `3` (`NOT_RUNNING`). The next `--detach` cleans the stale
+pid-file automatically before spawning the new child — no manual cleanup
+needed.
+
+```bash
+gno daemon --status      # exits 3, "running no"
+gno daemon --detach      # succeeds, replaces stale pid-file
+```
+
+### "live-foreign pid: refusing to signal"
+
+You upgraded gno while a detached `serve` or `daemon` was still running. The
+new binary refuses to manage the old process because it was started by a
+different version. `--stop` errors with `VALIDATION` (exit 1):
+
+```
+gno daemon (pid 12345) is live but was started by gno 1.0.4; this binary is 1.1.0.
+Refusing to signal pid 12345; terminate it manually and delete /path/to/daemon.pid.
+```
+
+Resolve manually:
+
+```bash
+kill 12345
+rm /path/to/daemon.pid
+gno daemon --detach
+```
+
+`--status --json` exposes the same metadata to machine consumers via a
+`NOT_RUNNING` envelope on stderr:
+
+```json
+{
+  "code": "NOT_RUNNING",
+  "details": {
+    "foreign_live": {
+      "pid": 12345,
+      "recorded_version": "1.0.4",
+      "current_version": "1.1.0"
+    }
+  }
+}
+```
+
+The stdout payload is still schema-shaped (`running:false`); foreign-live
+clients can rely on `details.foreign_live` to distinguish "nothing running"
+from "live but unmanageable".
+
+### "another serve/daemon start is in progress"
+
+`--detach` takes out an atomic start-lock (a `.startlock` sidecar next to the
+pid-file) for the duration of the spawn. Two parallel `--detach` invocations
+race for the same lock; the loser sees:
+
+```
+another gno daemon start is in progress (lock-file /path/to/daemon.pid.startlock)
+```
+
+Stale locks (>30s old) auto-recover on the next attempt. If a fresh lock is
+stuck inside the 30s window — for example because the racing process was
+killed mid-spawn — delete the `.startlock` sidecar manually before retrying.
+
+### "`--stop` exited 3 but printed nothing"
+
+That's by design. `--stop` is silent when there is no pid-file (or the
+recorded pid is dead): no error envelope, no stderr text, just exit code 3
+(`NOT_RUNNING`). Script `--stop` against the exit code, not stderr.
 
 ## Search Issues
 

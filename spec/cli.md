@@ -9,11 +9,12 @@ This document specifies the command-line interface for GNO, a local knowledge in
 
 ### Exit Codes
 
-| Code | Name       | Description                                                   |
-| ---- | ---------- | ------------------------------------------------------------- |
-| 0    | SUCCESS    | Command completed successfully                                |
-| 1    | VALIDATION | Validation or usage error (bad args, missing required params) |
-| 2    | RUNTIME    | Runtime failure (IO, DB, conversion, model, network)          |
+| Code | Name        | Description                                                   |
+| ---- | ----------- | ------------------------------------------------------------- |
+| 0    | SUCCESS     | Command completed successfully                                |
+| 1    | VALIDATION  | Validation or usage error (bad args, missing required params) |
+| 2    | RUNTIME     | Runtime failure (IO, DB, conversion, model, network)          |
+| 3    | NOT_RUNNING | `--status`/`--stop` found no live matching process            |
 
 ### Global Flags
 
@@ -65,7 +66,7 @@ Default output is human-readable terminal format.
 | get                | yes    | no      | no    | yes  | no    | terminal |
 | multi-get          | yes    | yes     | no    | yes  | no    | terminal |
 | ls                 | yes    | yes     | no    | yes  | no    | terminal |
-| daemon             | no     | no      | no    | no   | no    | terminal |
+| daemon             | yes¹   | no      | no    | no   | no    | terminal |
 | context add        | no     | no      | no    | no   | no    | terminal |
 | context list       | yes    | no      | no    | yes  | no    | terminal |
 | context check      | yes    | no      | no    | yes  | no    | terminal |
@@ -91,9 +92,11 @@ Default output is human-readable terminal format.
 | backlinks          | yes    | no      | no    | yes  | no    | terminal |
 | similar            | yes    | no      | no    | yes  | no    | terminal |
 | graph              | yes    | no      | no    | no   | no    | terminal |
-| serve              | no     | no      | no    | no   | no    | terminal |
+| serve              | yes¹   | no      | no    | no   | no    | terminal |
 | completion         | no     | no      | no    | no   | no    | terminal |
 | completion install | yes    | no      | no    | no   | no    | terminal |
+
+¹ `--json` applies only to `--status` on `gno serve` and `gno daemon` (see [process-status schema](./output-schemas/process-status.schema.json)).
 
 ---
 
@@ -2031,14 +2034,25 @@ Start web UI server for visual search and browse.
 **Synopsis:**
 
 ```bash
-gno serve [--port <num>]
+gno serve [--port <num>] [--detach] [--pid-file <path>] [--log-file <path>]
+gno serve --status [--json]
+gno serve --stop
 ```
 
 **Options:**
 
-| Option       | Type   | Default | Description       |
-| ------------ | ------ | ------- | ----------------- |
-| `-p, --port` | number | 3000    | Port to listen on |
+| Option              | Type    | Default            | Description                                                      |
+| ------------------- | ------- | ------------------ | ---------------------------------------------------------------- |
+| `-p, --port`        | number  | 3000               | Port to listen on                                                |
+| `--detach`          | boolean | false              | Self-spawn a detached child; parent prints `{pid,url}` and exits |
+| `--pid-file <path>` | string  | `{data}/serve.pid` | Override pid-file location (JSON metadata, absolute path)        |
+| `--log-file <path>` | string  | `{data}/serve.log` | Override log-file location (append mode)                         |
+| `--status`          | boolean | false              | Read pid-file, check liveness, print status (JSON with `--json`) |
+| `--stop`            | boolean | false              | Graceful SIGTERM with 10s timeout → SIGKILL fallback             |
+
+`--detach`, `--status`, and `--stop` are mutually exclusive. Passing more than one produces a `VALIDATION` error (exit 1).
+
+Default paths live under `resolveDirs().data` (honours `GNO_DATA_DIR`). Only one serve instance per `GNO_DATA_DIR`; double-start is blocked.
 
 **Behavior:**
 
@@ -2046,17 +2060,35 @@ gno serve [--port <num>]
 - Closes database on SIGINT/SIGTERM
 - Sets CSP header: `default-src 'self'; script-src 'self'`
 - Health check at `/api/health` returns `{ok:true}`
+- On `--detach`: forks a detached child with stdio redirected to `--log-file`, writes pid-file JSON (`{pid, port, cmd:"serve", version, started_at}`), prints `{pid, url}` on stdout, exits 0
+- On `--status`: output matches the [process-status schema](./output-schemas/process-status.schema.json). Liveness via `process.kill(pid, 0)`; stale pid-files (ESRCH) are reported as `running:false`
+- On `--stop`: sends SIGTERM, polls every 100ms for up to 10s, falls back to SIGKILL, polls 2s more, unlinks pid-file if the process cleaned up after itself
+- **Windows**: `--detach` is unsupported and returns a `VALIDATION` error pointing to WSL. `--status` / `--stop` / `--pid-file` / `--log-file` remain parseable but have nothing to manage.
 
 **Exit Codes:**
 
-- 0: Server stopped gracefully
-- 2: Server failed to start (DB error, port in use)
+- 0: Server stopped gracefully, `--detach` succeeded, `--stop` completed, or `--status` found a live process
+- 1: Validation error (mutex violation, bad flag combination, Windows `--detach`)
+- 2: Server failed to start (DB error, port in use, spawn failure)
+- 3: `--status` or `--stop` found no live matching process (`NOT_RUNNING`)
 
 **Examples:**
 
 ```bash
 gno serve
 gno serve --port 8080
+
+# Backgrounding
+gno serve --detach
+gno serve --status
+gno serve --status --json
+gno serve --stop
+
+# Custom paths
+gno serve --detach --pid-file /tmp/gno-serve.pid --log-file /tmp/gno-serve.log
+
+# Mutually exclusive — errors with VALIDATION
+gno serve --detach --stop
 ```
 
 ---
@@ -2068,14 +2100,25 @@ Start a headless long-running watcher process for continuous indexing.
 **Synopsis:**
 
 ```bash
-gno daemon [--no-sync-on-start]
+gno daemon [--no-sync-on-start] [--detach] [--pid-file <path>] [--log-file <path>]
+gno daemon --status [--json]
+gno daemon --stop
 ```
 
 **Options:**
 
-| Option               | Type    | Default | Description                                       |
-| -------------------- | ------- | ------- | ------------------------------------------------- |
-| `--no-sync-on-start` | boolean | false   | Skip initial sync; only watch future file changes |
+| Option               | Type    | Default             | Description                                                      |
+| -------------------- | ------- | ------------------- | ---------------------------------------------------------------- |
+| `--no-sync-on-start` | boolean | false               | Skip initial sync; only watch future file changes                |
+| `--detach`           | boolean | false               | Self-spawn a detached child; parent prints `{pid}` and exits     |
+| `--pid-file <path>`  | string  | `{data}/daemon.pid` | Override pid-file location (JSON metadata, absolute path)        |
+| `--log-file <path>`  | string  | `{data}/daemon.log` | Override log-file location (append mode)                         |
+| `--status`           | boolean | false               | Read pid-file, check liveness, print status (JSON with `--json`) |
+| `--stop`             | boolean | false               | Graceful SIGTERM with 10s timeout → SIGKILL fallback             |
+
+`--detach`, `--status`, and `--stop` are mutually exclusive. Passing more than one produces a `VALIDATION` error (exit 1).
+
+Default paths live under `resolveDirs().data` (honours `GNO_DATA_DIR`). Only one daemon instance per `GNO_DATA_DIR`; double-start is blocked.
 
 **Behavior:**
 
@@ -2086,18 +2129,35 @@ gno daemon [--no-sync-on-start]
 - Triggers embedding after initial sync completes
 - Runs in the foreground until `SIGINT` / `SIGTERM`
 - Does not start the web server or open any port
+- On `--detach`: forks a detached child with stdio redirected to `--log-file`, writes pid-file JSON (`{pid, cmd:"daemon", version, started_at}`, no `port`), prints `{pid}` on stdout, exits 0
+- On `--status`: output matches the [process-status schema](./output-schemas/process-status.schema.json); `port` is always `null`
+- On `--stop`: SIGTERM → 10s poll → SIGKILL → 2s poll; the daemon's own signal handler unlinks the pid-file, `--stop` unlinks as fallback
+- **Windows**: `--detach` is unsupported and returns a `VALIDATION` error pointing to WSL.
 
 **Exit Codes:**
 
-- 0: Daemon stopped gracefully
+- 0: Daemon stopped gracefully, `--detach` succeeded, `--stop` completed, or `--status` found a live process
+- 1: Validation error (mutex violation, bad flag combination, Windows `--detach`)
 - 2: Startup/runtime failure
+- 3: `--status` or `--stop` found no live matching process (`NOT_RUNNING`)
 
 **Examples:**
 
 ```bash
 gno daemon
 gno daemon --no-sync-on-start
-nohup gno daemon > /tmp/gno-daemon.log 2>&1 &
+
+# Backgrounding
+gno daemon --detach
+gno daemon --status
+gno daemon --status --json
+gno daemon --stop
+
+# Custom paths
+gno daemon --detach --log-file /tmp/gno-daemon.log
+
+# Mutually exclusive — errors with VALIDATION
+gno daemon --status --stop
 ```
 
 ---
@@ -2172,7 +2232,9 @@ Errors are written to stderr. With `--json` flag, errors are also returned as:
 }
 ```
 
-Error codes match exit codes: `VALIDATION` (exit 1), `RUNTIME` (exit 2).
+Error codes match exit codes: `VALIDATION` (exit 1), `RUNTIME` (exit 2), `NOT_RUNNING` (exit 3).
+
+**`NOT_RUNNING` is not an error envelope.** `gno serve|daemon --status --json` returns a `process-status`-shaped payload on stdout with exit 3 when no live matching process is found (it reports observable state, not failure). `--stop` exits 3 silently when there is nothing to stop and does not accept `--json`. The error envelope above is reserved for `VALIDATION` and `RUNTIME` failures where the command could not produce its structured output at all.
 
 ---
 

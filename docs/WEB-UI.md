@@ -53,12 +53,26 @@ This is the foundation for the later multi-document and split-pane workspace.
 ### 1. Start the Server
 
 ```bash
-gno serve                    # Default port 3000
+gno serve                    # Default port 3000 (foreground)
 gno serve --port 8080        # Custom port
 gno serve --index research   # Use named index
+gno serve --detach           # Background (macOS/Linux only)
 ```
 
 If you want live indexing without a browser session, use `gno daemon` instead.
+
+### Manage the Detached Server
+
+```bash
+gno serve --detach           # Start; parent prints {pid, url} and exits 0
+gno serve --status           # Inspect the running process
+gno serve --status --json    # Machine-readable status (exits 3 when not running)
+gno serve --stop             # Graceful SIGTERM with 10s timeout, SIGKILL fallback
+```
+
+See [CLI reference](CLI.md#long-running-processes) for the full management
+contract (mutex flags, `--json` gating, exit codes, `--pid-file` / `--log-file`
+overrides, live-foreign handling).
 
 ### 2. Open Your Browser
 
@@ -563,10 +577,19 @@ Tag changes are saved to the document's frontmatter (for markdown files).
 gno serve [options]
 ```
 
-| Flag               | Description       | Default |
-| :----------------- | :---------------- | :------ |
-| `-p, --port <num>` | Port to listen on | 3000    |
-| `--index <name>`   | Use named index   | default |
+| Flag                | Description                                                               | Default            |
+| :------------------ | :------------------------------------------------------------------------ | :----------------- |
+| `-p, --port <num>`  | Port to listen on                                                         | 3000               |
+| `--index <name>`    | Use named index                                                           | default            |
+| `--detach`          | Self-spawn a detached background process (macOS/Linux only)               | false              |
+| `--status`          | Read pid-file, check liveness, print status (`--json` for machine output) | false              |
+| `--stop`            | SIGTERM the running process with 10s timeout, SIGKILL fallback            | false              |
+| `--pid-file <path>` | Override pid-file location                                                | `{data}/serve.pid` |
+| `--log-file <path>` | Override log-file location (append-only)                                  | `{data}/serve.log` |
+
+`--detach`, `--status`, `--stop` are mutually exclusive. `--json` is gated to
+`--status`. See [CLI reference](CLI.md#long-running-processes) for the full
+management contract.
 
 ### Environment Variables
 

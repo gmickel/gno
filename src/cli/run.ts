@@ -169,7 +169,10 @@ Run '${CLI_NAME} --help' for full command list.
  * No process.exit() - caller sets process.exitCode.
  */
 export async function runCli(argv: string[]): Promise<number> {
-  // Reset global state for clean invocation (important for testing)
+  // Reset global state for clean invocation (important for testing).
+  // The detach paths (runServeDetach / runDaemonDetach) read argv from
+  // Commander's per-invocation `Command.rawArgs` via `resolveCliArgv()`,
+  // so no separate process-global capture is needed here.
   resetGlobals();
 
   const isJson = argvWantsJson(argv);
@@ -204,8 +207,13 @@ export async function runCli(argv: string[]): Promise<number> {
   } catch (err) {
     // Handle CliError with proper JSON formatting
     if (err instanceof CliError) {
-      const output = formatErrorForOutput(err, { json: isJson });
-      process.stderr.write(`${output}\n`);
+      // `silent` is reserved for codes whose exit value carries the meaning
+      // (e.g. NOT_RUNNING from `--stop` per spec/cli.md). Skip stderr but
+      // still propagate the code.
+      if (!err.silent) {
+        const output = formatErrorForOutput(err, { json: isJson });
+        process.stderr.write(`${output}\n`);
+      }
       return exitCodeFor(err);
     }
 

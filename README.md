@@ -63,9 +63,9 @@ gno get "gno://work-docs/architecture/auth.md"
 gno multi-get "gno-code/**/*.ts" --max-bytes 30000 --md
 gno query "deployment process" --all --files --min-score 0.35
 
-# Run the workspace
-gno serve
-gno daemon
+# Run the workspace (pick one — don't run both against the same index concurrently)
+gno serve            # browser/desktop session with the Web UI
+gno daemon --detach  # headless continuous indexing (background; --status / --stop to manage)
 ```
 
 ---
@@ -92,7 +92,7 @@ gno daemon
 
 ## What's New
 
-> Latest release: [v1.0.0](./CHANGELOG.md#100---2026-04-16)  
+> Latest release: [v1.1.0](./CHANGELOG.md#110---2026-04-21)  
 > Full release history: [CHANGELOG.md](./CHANGELOG.md)
 
 - **Publish to [gno.sh](https://gno.sh/publish)**: new `gno publish export` CLI and Web UI action produce a self-contained artifact you upload to the hosted reader — public, secret, invite-only, or locally encrypted before upload
@@ -175,10 +175,12 @@ gno query "ECONNREFUSED 127.0.0.1:5432" --thorough
 ```bash
 gno init ~/notes --name notes    # Point at your docs
 gno index                        # Build search index
-gno daemon                       # Keep index fresh in background (foreground process)
+gno daemon --detach              # Keep index fresh in the background (macOS/Linux)
 gno query "auth best practices"  # Hybrid search
 gno ask "summarize the API" --answer  # AI answer with citations
 ```
+
+Manage the detached process with `gno daemon --status` and `gno daemon --stop`.
 
 ![GNO CLI](./assets/screenshots/cli.jpg)
 
@@ -213,11 +215,13 @@ desktop beta zip now published on GitHub Releases. See
 Keep an index fresh continuously without opening the Web UI:
 
 ```bash
-gno daemon
+gno daemon            # foreground (Ctrl+C to stop)
+gno daemon --detach   # background (macOS/Linux); use --status / --stop to manage
 ```
 
-`gno daemon` runs as a foreground watcher/sync/embed process. Use `nohup`,
-launchd, or systemd if you want it supervised long-term.
+`gno daemon` runs the watch/sync/embed loop headless. `--detach` self-spawns a
+detached child and exits 0; `gno daemon --status` and `gno daemon --stop` give
+you lifecycle control without `nohup`, `launchd`, or `systemd` units.
 
 See also: [docs/DAEMON.md](./docs/DAEMON.md)
 
@@ -264,14 +268,17 @@ Use `gno daemon` when you want continuous indexing without the browser or
 desktop shell open.
 
 ```bash
-gno daemon
+gno daemon                  # foreground (Ctrl+C to stop)
 gno daemon --no-sync-on-start
-nohup gno daemon > /tmp/gno-daemon.log 2>&1 &
+gno daemon --detach         # background (macOS/Linux); auto-writes pid + log files
+gno daemon --status         # check the detached process
+gno daemon --stop           # SIGTERM with 10s timeout, SIGKILL fallback
 ```
 
 It reuses the same watch/sync/embed runtime as `gno serve`, but stays
-headless. In v0.30 it is foreground-only and does not expose built-in
-`start/stop/status` management.
+headless. `--detach` / `--status` / `--stop` give you symmetric lifecycle
+controls so you don't need `nohup`, `launchd`, or `systemd` units. The same
+flag set is available on `gno serve`.
 
 [Daemon guide →](https://gno.sh/docs/DAEMON/)
 

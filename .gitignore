@@ -96,3 +96,7 @@ htmlcov/
 .vercel
 docs/NOTES.md
 notes/
+
+# fn-72.9/72.2 throwaway spikes (Bun detach validation)
+scripts/spike-detach.ts
+scripts/spike-detach-llm.ts

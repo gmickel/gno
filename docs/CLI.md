@@ -897,13 +897,66 @@ gno search "test" --json | jq '.results[].uri'
 
 ## Exit Codes
 
-| Code | Meaning                       |
-| ---- | ----------------------------- |
-| 0    | Success                       |
-| 1    | Validation error (bad input)  |
-| 2    | Runtime error (IO, DB, model) |
+| Code | Meaning                                                              |
+| ---- | -------------------------------------------------------------------- |
+| 0    | Success                                                              |
+| 1    | Validation error (bad input)                                         |
+| 2    | Runtime error (IO, DB, model)                                        |
+| 3    | `NOT_RUNNING` — `--status` / `--stop` found no live matching process |
+
+Exit code `3` is reserved for `gno serve --status` / `--stop` and `gno daemon --status` / `--stop`. See [Long-Running Processes](#long-running-processes) below for the management contract.
 
 ## Long-Running Processes
+
+Both `gno daemon` and `gno serve` ship with a symmetric set of management flags so you can self-background, inspect, and stop them without `nohup`, `launchd`, or `systemd` units. The contract is identical for both commands.
+
+| Flag                | Purpose                                                                                           |
+| ------------------- | ------------------------------------------------------------------------------------------------- |
+| `--detach`          | Self-spawn a detached child; parent prints `pid` (+ url for serve) and exits 0. macOS/Linux only. |
+| `--status`          | Read pid-file, check liveness, print status. Pair with `--json` for machine output.               |
+| `--stop`            | SIGTERM the recorded pid, poll up to 10s, fall back to SIGKILL.                                   |
+| `--pid-file <path>` | Override pid-file location (defaults to `{data}/{kind}.pid`).                                     |
+| `--log-file <path>` | Override log-file location (append-only; defaults to `{data}/{kind}.log`).                        |
+
+`--detach`, `--status`, and `--stop` are mutually exclusive (Commander emits a clean conflict error if you combine them).
+
+**`--json` is gated to `--status`.** Passing `--json` with `--detach`, `--stop`, or the foreground path produces a `VALIDATION` error (exit 1). The message names the command you invoked:
+
+```
+--json is only supported with `gno serve --status`
+--json is only supported with `gno daemon --status`
+```
+
+`--detach` writes a JSON pid-file at `{data}/{kind}.pid` containing `{pid, port?, cmd, version, started_at}` (port is omitted for `daemon`). `{data}` resolves to `resolveDirs().data` (honours `GNO_DATA_DIR`); pass `--pid-file` to override.
+
+**`--status` exit codes:**
+
+- `0` — a live matching process was found; stdout carries the [process-status payload](../spec/output-schemas/process-status.schema.json) (terminal table without `--json`, JSON object with `--json`).
+- `3` (`NOT_RUNNING`) — no live matching process. **The stdout payload is still emitted in JSON mode** so machine consumers always get the schema-shaped result; the `NOT_RUNNING` envelope only appears on stderr in JSON mode (and not at all in terminal mode).
+
+**`--stop` exit codes:**
+
+- `0` — process stopped (SIGTERM clean, or SIGKILL fallback).
+- `3` (`NOT_RUNNING`) — no pid-file or the recorded pid is dead. **Silent**: nothing is written to stderr (no error envelope), so script `--stop` against the exit code, not stderr text.
+- `1` (`VALIDATION`) — refusing to signal a live foreign-version pid (see live-foreign case below); the message tells the operator to terminate manually and delete the pid-file.
+- `2` (`RUNTIME`) — SIGTERM + SIGKILL both timed out.
+
+**Live-foreign case (operator upgraded gno mid-run).** If the pid-file records a live process whose `version` doesn't match the current binary, `--stop` refuses to signal it (the binary that started it is the only one trusted to manage its lifecycle). `--status --json` returns `running:false` plus a NOT_RUNNING envelope on stderr that carries:
+
+```json
+{
+  "code": "NOT_RUNNING",
+  "details": {
+    "foreign_live": {
+      "pid": 12345,
+      "recorded_version": "1.0.4",
+      "current_version": "1.1.0"
+    }
+  }
+}
+```
+
+Operators should `kill <pid>` manually and remove the pid-file before relaunching.
 
 ### gno daemon
 
@@ -912,42 +965,45 @@ Start a headless long-running watcher process for continuous indexing.
 ```bash
 gno daemon
 gno daemon --no-sync-on-start
+gno daemon --detach
 ```
 
 Options:
 
 - `--no-sync-on-start` - Skip the initial sync pass and only watch future file changes
+- `--detach` / `--status` / `--stop` / `--pid-file <path>` / `--log-file <path>` - see [shared management contract](#long-running-processes) above
 
 **Behavior:**
 
 - Opens the selected index DB and loads config
 - Starts the same watcher + embed scheduler used by `gno serve`
 - Runs an initial sync by default, then embeds backlog immediately
-- Stays in the foreground until `SIGINT` / `SIGTERM`
+- Foreground: stays in the foreground until `SIGINT` / `SIGTERM`
+- Detached: parent prints `PID <pid>` and exits 0; child writes to `{data}/daemon.log` (or `--log-file`) in append mode
 - Does **not** start the web server or open any port
-
-**Use it when:**
-
-- you want continuous indexing without a browser or desktop shell
-- you are supervising GNO with `nohup`, launchd, or systemd
-- you want CLI / MCP queries to hit a fresh local index
 
 **Notes:**
 
 - Avoid running `gno daemon` and `gno serve` against the same index at the same time until explicit cross-process coordination exists.
 - For normie/local UI usage, prefer the desktop app or `gno serve`.
 
-**Examples:**
+**Managing the daemon:**
 
 ```bash
-# Run in foreground
-gno daemon
+# Start detached
+gno daemon --detach
 
-# Service-friendly shell backgrounding
-nohup gno daemon > /tmp/gno-daemon.log 2>&1 &
+# Check status (terminal)
+gno daemon --status
 
-# Watch only future changes
-gno daemon --no-sync-on-start
+# Check status (machine-readable; exits 3 when not running)
+gno daemon --status --json
+
+# Stop gracefully (SIGTERM with 10s timeout, SIGKILL fallback)
+gno daemon --stop
+
+# Override paths
+gno daemon --detach --pid-file /tmp/gd.pid --log-file /tmp/gd.log
 ```
 
 ### gno serve
@@ -957,11 +1013,13 @@ Start a local web server for visual search and document browsing.
 ```bash
 gno serve
 gno serve --port 8080
+gno serve --detach
 ```
 
 Options:
 
 - `-p, --port <num>` - Port to listen on (default: 3000)
+- `--detach` / `--status` / `--stop` / `--pid-file <path>` / `--log-file <path>` - see [shared management contract](#long-running-processes) above
 
 **Features:**
 
@@ -987,17 +1045,26 @@ Options:
 - CSRF protection for mutations
 - DNS rebinding protection
 
-**Example:**
+**Managing the server:**
 
 ```bash
-# Start server
+# Start in foreground
 gno serve --port 3001
 
-# Open in browser
-open http://localhost:3001
+# Start detached (parent prints {pid, url} and exits 0)
+gno serve --detach --port 3001
+
+# Check status (exit 3 when not running)
+gno serve --status
+gno serve --status --json
+
+# Stop gracefully
+gno serve --stop
 ```
 
 > Want live indexing without the browser? Use `gno daemon`.
+
+> **Windows note**: `--detach` is **not supported** on Windows and returns a `VALIDATION` error pointing to WSL. `--status` / `--stop` / `--pid-file` / `--log-file` remain parseable but have nothing to manage in the absence of a detached child.
 
 ## Shell Completion
 
