@@ -63,9 +63,9 @@ gno get "gno://work-docs/architecture/auth.md"
 gno multi-get "gno-code/**/*.ts" --max-bytes 30000 --md
 gno query "deployment process" --all --files --min-score 0.35
 
-# Run the workspace
-gno serve
-gno daemon
+# Run the workspace (pick one — don't run both against the same index concurrently)
+gno serve            # browser/desktop session with the Web UI
+gno daemon --detach  # headless continuous indexing (background; --status / --stop to manage)
 ```
 
 ---
