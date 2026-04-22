@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-04-22
+
 ### Added
 
 - Added `--detach` to `gno serve` and `gno daemon` to self-spawn a detached background child (macOS/Linux); parent prints `{pid, url}` (serve) or `{pid}` (daemon) and exits 0.
