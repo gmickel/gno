@@ -175,10 +175,12 @@ gno query "ECONNREFUSED 127.0.0.1:5432" --thorough
 ```bash
 gno init ~/notes --name notes    # Point at your docs
 gno index                        # Build search index
-gno daemon                       # Keep index fresh in background (foreground process)
+gno daemon --detach              # Keep index fresh in the background (macOS/Linux)
 gno query "auth best practices"  # Hybrid search
 gno ask "summarize the API" --answer  # AI answer with citations
 ```
+
+Manage the detached process with `gno daemon --status` and `gno daemon --stop`.
 
 ![GNO CLI](./assets/screenshots/cli.jpg)
 
@@ -213,11 +215,13 @@ desktop beta zip now published on GitHub Releases. See
 Keep an index fresh continuously without opening the Web UI:
 
 ```bash
-gno daemon
+gno daemon            # foreground (Ctrl+C to stop)
+gno daemon --detach   # background (macOS/Linux); use --status / --stop to manage
 ```
 
-`gno daemon` runs as a foreground watcher/sync/embed process. Use `nohup`,
-launchd, or systemd if you want it supervised long-term.
+`gno daemon` runs the watch/sync/embed loop headless. `--detach` self-spawns a
+detached child and exits 0; `gno daemon --status` and `gno daemon --stop` give
+you lifecycle control without `nohup`, `launchd`, or `systemd` units.
 
 See also: [docs/DAEMON.md](./docs/DAEMON.md)
 

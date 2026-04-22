@@ -920,10 +920,11 @@ Both `gno daemon` and `gno serve` ship with a symmetric set of management flags 
 
 `--detach`, `--status`, and `--stop` are mutually exclusive (Commander emits a clean conflict error if you combine them).
 
-**`--json` is gated to `--status`.** Passing `--json` with `--detach`, `--stop`, or the foreground path produces a `VALIDATION` error (exit 1):
+**`--json` is gated to `--status`.** Passing `--json` with `--detach`, `--stop`, or the foreground path produces a `VALIDATION` error (exit 1). The message names the command you invoked:
 
 ```
 --json is only supported with `gno serve --status`
+--json is only supported with `gno daemon --status`
 ```
 
 `--detach` writes a JSON pid-file at `{data}/{kind}.pid` containing `{pid, port?, cmd, version, started_at}` (port is omitted for `daemon`). `{data}` resolves to `resolveDirs().data` (honours `GNO_DATA_DIR`); pass `--pid-file` to override.
