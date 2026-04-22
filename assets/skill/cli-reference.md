@@ -496,10 +496,11 @@ Features: Dashboard, search, browse collections, document viewer, AI Q&A with ci
 
 #### Long-running process flags (shared with `gno daemon`)
 
-`gno serve` and `gno daemon` share an identical management contract. The
-full spec is reproduced in this section; the canonical source is the
-project CLI reference shipped alongside each release (`docs/CLI.md` in the
-gno repo, mirrored at <https://gno.sh/docs/cli>).
+`gno serve` and `gno daemon` share an identical management contract.
+The full spec is reproduced in this section so installed copies of this
+skill stay self-contained. The canonical source in the gno repo is
+`docs/CLI.md#long-running-processes` (kept in sync with this section
+on every release).
 
 | Flag                | Purpose                                                                                      |
 | ------------------- | -------------------------------------------------------------------------------------------- |
