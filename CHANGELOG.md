@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.1] - 2026-04-22
+
+### Fixed
+
+- Fixed several retrieval and publish-export hot paths to batch content/tag loading instead of issuing repeated per-document reads for `--full` search results and collection publish exports.
+- Fixed model-cache manifest metadata to persist SHA-256 checksums for downloaded model files instead of leaving checksum fields empty.
+- Fixed model-cache lock recovery so recent lockfiles from the same host are reclaimed when the recorded owner PID is no longer alive, reducing false lock contention after crashed downloads.
+
 ## [1.2.0] - 2026-04-22
 
 ### Added
