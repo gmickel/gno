@@ -142,7 +142,9 @@ current_version}`) and can decide whether to terminate the foreign
 ### Positive
 
 - One contract for both commands; users learn it once.
-- `nohup` examples gone from in-repo docs and the public website.
+- `nohup` examples removed from in-repo docs (`docs/`, `README.md`,
+  `assets/skill/`). The matching `~/work/gno.sh` website edits land in
+  the paired gno.sh PR for fn-72.8.
 - Pipelines can branch on `$?` instead of grep-on-stderr.
 - Pid-file collisions (PID reuse, foreign upgrade) are surfaced rather
   than silently mishandled.
