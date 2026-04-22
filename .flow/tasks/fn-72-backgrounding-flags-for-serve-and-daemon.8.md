@@ -141,10 +141,10 @@ Verify after deploy:
 
 ## Done summary
 
-TBD
+Documented the new `--detach`/`--status`/`--stop`/`--pid-file`/`--log-file` lifecycle in `assets/skill/cli-reference.md` (added a fresh `gno daemon` section, mirrored the `gno serve` flag table, recorded `--json` gating + silent `--stop` + exit code 3 + the literal stderr error strings) and filed `docs/adr/005-daemon-detach-lifecycle.md` capturing every fn-72.2/.3/.4 design decision (resolveDirs storage, JSON pid-file + strict validation, exit code 3, Windows-no-detach + WSL pointer, hidden DETACHED_CHILD_FLAG, sidecar `.startlock`, bounded child poll, `StopOutcome` union, sync `installPidFileCleanup` stacked on `createSignalPromise`, `--json` gating + silent `--stop` + status-exits-3 rationale, single-envelope foreign-live, minimal `stripDetachFlag`, `resolveCliArgv` per-invocation argv source). In the paired `~/work/gno.sh` repo, replaced the stale `nohup gno daemon …` recipe in the daemon-mode feature page with native `--detach`/`--status`/`--stop` commands + benefits, added a "Long-running processes" section to the CLI reference doc, added `gno serve --detach` to the web-ui commands list, and de-staled the daemon FAQ entries; verified locally with `bun run dev` on Vite :3344 that `/docs/cli` and `/features/daemon-mode` render the new content and the stale `nohup` recipe is gone. Codex impl-review verdict: SHIP after one fix loop (initial NEEDS_WORK on a repo-relative skill link + an over-broad ADR claim, both addressed).
 
 ## Evidence
 
-- Commits:
-- Tests:
+- Commits: dc7e519, 550250f, 7d25890, gno.sh:0432374
+- Tests: bun run lint:check, bun run dev (gno.sh: /docs/cli + /features/daemon-mode rendered new flags, no stale nohup recipe), codex impl-review SHIP
 - PRs:
