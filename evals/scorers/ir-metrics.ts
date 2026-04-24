@@ -7,61 +7,15 @@
 
 import { createScorer } from "evalite";
 
+export {
+  computeMrr,
+  computeNdcg,
+  computeRecall,
+} from "../../src/bench/metrics";
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Pure Metric Functions (for inline scorers)
 // ─────────────────────────────────────────────────────────────────────────────
-
-/**
- * Compute Recall@K: fraction of relevant docs in top K results.
- */
-export function computeRecall(
-  output: string[],
-  expected: string[],
-  k: number
-): number {
-  if (expected.length === 0) return 1;
-  const topK = output.slice(0, k);
-  const hits = expected.filter((docid) => topK.includes(docid)).length;
-  return hits / expected.length;
-}
-
-/**
- * Compute nDCG@K: normalized discounted cumulative gain.
- */
-export function computeNdcg(
-  output: string[],
-  judgments: Array<{ docid: string; relevance: number }>,
-  k: number
-): number {
-  if (judgments.length === 0) return 1;
-  const relMap = new Map(judgments.map((j) => [j.docid, j.relevance]));
-  const dcg = output.slice(0, k).reduce((sum, docid, i) => {
-    const rel = relMap.get(docid) ?? 0;
-    return sum + (2 ** rel - 1) / Math.log2(i + 2);
-  }, 0);
-  const idcg = [...judgments]
-    .sort((a, b) => b.relevance - a.relevance)
-    .slice(0, k)
-    .reduce((sum, j, i) => sum + (2 ** j.relevance - 1) / Math.log2(i + 2), 0);
-  return idcg > 0 ? dcg / idcg : 1;
-}
-
-/**
- * Compute Mean Reciprocal Rank (single-query form).
- * Returns reciprocal rank of first relevant hit in output.
- */
-export function computeMrr(output: string[], expected: string[]): number {
-  if (expected.length === 0) {
-    return 1;
-  }
-  const expectedSet = new Set(expected);
-  for (const [index, docid] of output.entries()) {
-    if (expectedSet.has(docid)) {
-      return 1 / (index + 1);
-    }
-  }
-  return 0;
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Recall@K Scorer

@@ -5,6 +5,9 @@ Evaluation harness for search ranking and answer generation quality using [Evali
 ## Quick Start
 
 ```bash
+# Run public fixture benchmark against an indexed GNO corpus
+gno bench docs/examples/bench-fixture.json
+
 # Run all evals and update scores.md
 bun run evals
 
@@ -35,6 +38,8 @@ bun run eval evals/vsearch.eval.ts
 See [scores.md](scores.md) for latest results. Updated automatically by `bun run evals`.
 
 ## Eval Overview
+
+`gno bench <fixture.json>` is the public, local fixture runner for your own corpora. The Evalite suites below remain internal release/development gates.
 
 | Eval                     | What it tests                                    | Status                       |
 | ------------------------ | ------------------------------------------------ | ---------------------------- |

@@ -402,6 +402,19 @@ gno query "my search" --explain
 
 This includes stage timings (`lang`, `expansion`, `bm25`, `vector`, `fusion`, `rerank`, `assembly`, `total`), fallback counters, and per-result fusion/rerank score components.
 
+## Benchmark Your Own Retrieval
+
+Use `gno bench <fixture.json>` to measure retrieval quality on an indexed corpus with stable fixtures. This is separate from the internal Evalite suites and is meant for project-owned regression tracking.
+
+```bash
+gno bench bench.json
+gno bench bench.json --mode bm25 --mode no-rerank --mode thorough --json
+```
+
+Fixtures define queries, expected documents or `gno://` URIs, optional graded judgments, optional collection filters, query modes, and mode settings. GNO reports Precision@K, Recall@K, F1@K, MRR, nDCG@K, and latency summaries per mode.
+
+Use mode comparisons to decide whether a corpus benefits from BM25, vector, hybrid, no-rerank, or thorough retrieval before changing defaults.
+
 ## Graceful Degradation
 
 GNO works even when components are missing:

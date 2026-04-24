@@ -880,11 +880,13 @@ bun run lint && bun run typecheck
 Use retrieval benchmark commands to track quality and latency over time:
 
 ```bash
+gno bench docs/examples/bench-fixture.json
 bun run eval:hybrid
 bun run eval:hybrid:baseline
 bun run eval:hybrid:delta
 ```
 
+- Public fixture runner: `gno bench <fixture.json>` reports Precision@K, Recall@K, F1@K, MRR, nDCG@K, and latency across BM25/vector/hybrid modes.
 - Benchmark guide: [evals/README.md](./evals/README.md)
 - Latest baseline snapshot: [evals/fixtures/hybrid-baseline/latest.json](./evals/fixtures/hybrid-baseline/latest.json)
 

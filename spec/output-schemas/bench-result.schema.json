@@ -1,0 +1,120 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "GNO Bench Result",
+  "type": "object",
+  "required": ["fixture", "generatedAt", "modes", "meta"],
+  "additionalProperties": false,
+  "properties": {
+    "fixture": {
+      "type": "object",
+      "required": ["path", "version", "queryCount", "topK"],
+      "additionalProperties": false,
+      "properties": {
+        "path": { "type": "string", "minLength": 1 },
+        "name": { "type": "string" },
+        "version": { "const": 1 },
+        "queryCount": { "type": "integer", "minimum": 1 },
+        "topK": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "generatedAt": { "type": "string", "format": "date-time" },
+    "modes": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "type",
+          "status",
+          "queryCount",
+          "failures",
+          "metrics",
+          "latency",
+          "cases"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "name": { "type": "string", "minLength": 1 },
+          "type": { "type": "string", "enum": ["bm25", "vector", "hybrid"] },
+          "status": { "type": "string", "enum": ["ok", "failed"] },
+          "queryCount": { "type": "integer", "minimum": 1 },
+          "failures": { "type": "integer", "minimum": 0 },
+          "metrics": { "$ref": "#/definitions/metrics" },
+          "latency": { "$ref": "#/definitions/latency" },
+          "cases": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": [
+                "id",
+                "query",
+                "topK",
+                "expected",
+                "hits",
+                "topDocs",
+                "metrics",
+                "latencyMs"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "id": { "type": "string", "minLength": 1 },
+                "query": { "type": "string", "minLength": 1 },
+                "topK": { "type": "integer", "minimum": 1 },
+                "expected": {
+                  "type": "array",
+                  "items": { "type": "string", "minLength": 1 }
+                },
+                "hits": {
+                  "type": "array",
+                  "items": { "type": "string", "minLength": 1 }
+                },
+                "topDocs": {
+                  "type": "array",
+                  "items": { "type": "string", "minLength": 1 }
+                },
+                "metrics": { "$ref": "#/definitions/metrics" },
+                "latencyMs": { "type": "number", "minimum": 0 },
+                "error": { "type": "string" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "meta": {
+      "type": "object",
+      "required": ["indexName"],
+      "additionalProperties": false,
+      "properties": {
+        "indexName": { "type": "string", "minLength": 1 },
+        "collection": { "type": "string", "minLength": 1 }
+      }
+    }
+  },
+  "definitions": {
+    "metrics": {
+      "type": "object",
+      "required": ["precisionAtK", "recallAtK", "f1AtK", "mrr", "ndcgAtK"],
+      "additionalProperties": false,
+      "properties": {
+        "precisionAtK": { "type": "number", "minimum": 0, "maximum": 1 },
+        "recallAtK": { "type": "number", "minimum": 0, "maximum": 1 },
+        "f1AtK": { "type": "number", "minimum": 0, "maximum": 1 },
+        "mrr": { "type": "number", "minimum": 0, "maximum": 1 },
+        "ndcgAtK": { "type": "number", "minimum": 0, "maximum": 1 }
+      }
+    },
+    "latency": {
+      "type": "object",
+      "required": ["p50Ms", "p95Ms", "meanMs"],
+      "additionalProperties": false,
+      "properties": {
+        "p50Ms": { "type": "number", "minimum": 0 },
+        "p95Ms": { "type": "number", "minimum": 0 },
+        "meanMs": { "type": "number", "minimum": 0 }
+      }
+    }
+  }
+}

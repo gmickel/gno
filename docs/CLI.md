@@ -23,6 +23,7 @@ Command-line guide for GNO's local knowledge engine and workspace tooling.
 | `gno search`     | BM25 full-text search             |
 | `gno vsearch`    | Vector similarity search          |
 | `gno query`      | Hybrid search (BM25 + vector)     |
+| `gno bench`      | Benchmark retrieval fixtures      |
 | `gno ask`        | Search with AI answer             |
 | `gno get`        | Retrieve document content         |
 | `gno ls`         | List indexed documents            |
@@ -236,6 +237,29 @@ The `--explain` flag outputs:
 - Fallback/counter summary (`fallbacks=...`, cache counters for expansion/rerank)
 
 See [How Search Works](HOW-SEARCH-WORKS.md) for details on the scoring pipeline.
+
+### gno bench
+
+Run a retrieval benchmark fixture against the current index.
+
+```bash
+gno bench docs/examples/bench-fixture.json
+gno bench bench.json --mode bm25 --mode no-rerank --json
+gno bench bench.json --top-k 5 --candidate-limit 40
+```
+
+Fixtures are JSON (`version: 1`) with `queries`, expected documents/URIs, optional `collection`, optional `modes`, and optional graded `judgments`.
+
+Mode aliases:
+
+- `bm25`
+- `vector`
+- `hybrid`
+- `fast`
+- `no-rerank`
+- `thorough`
+
+Output reports Precision@K, Recall@K, F1@K, MRR, nDCG@K, and latency summaries per mode. See [spec/bench-fixture.schema.json](../spec/bench-fixture.schema.json) and [bench-result.schema.json](../spec/output-schemas/bench-result.schema.json).
 
 ### gno ask
 
