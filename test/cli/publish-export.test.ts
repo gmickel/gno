@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { join } from "node:path";
+import { join, win32 } from "node:path";
 
 import {
   buildDefaultPublishExportPath,
@@ -104,7 +104,7 @@ describe("publish export helpers", () => {
       platform: "win32",
     });
 
-    expect(path).toBe(join("C:\\Users\\gordon", "Downloads"));
+    expect(path).toBe(win32.join("C:\\Users\\gordon", "Downloads"));
   });
 
   it("honors XDG_DOWNLOAD_DIR on Linux", async () => {

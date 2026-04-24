@@ -10,6 +10,8 @@
 // CRITICAL: Import setup FIRST to configure custom SQLite before any Database use
 import "./setup";
 import { Database } from "bun:sqlite";
+// node:path basename: no Bun path utilities.
+import { basename } from "node:path";
 
 import type { Collection, Context, FtsTokenizer } from "../../config/types";
 import type {
@@ -2751,11 +2753,9 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
 
       // Derive indexName from dbPath (basename without extension)
       const indexName =
-        this.dbPath
-          .split("/")
-          .pop()
-          ?.replace(SQLITE_EXT_REGEX, "")
-          ?.replace(INDEX_PREFIX_REGEX, "") || "default";
+        basename(this.dbPath)
+          .replace(SQLITE_EXT_REGEX, "")
+          .replace(INDEX_PREFIX_REGEX, "") || "default";
 
       // Get collection stats with chunk counts
       interface CollectionStat {
