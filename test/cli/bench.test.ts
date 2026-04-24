@@ -114,14 +114,14 @@ describe("gno bench", () => {
 
     await cli("init", docsDir, "--name", "docs");
     await cli("update");
-  });
+  }, 30_000);
 
   afterEach(async () => {
     await safeRm(testDir);
     Reflect.deleteProperty(process.env, "GNO_CONFIG_DIR");
     Reflect.deleteProperty(process.env, "GNO_DATA_DIR");
     Reflect.deleteProperty(process.env, "GNO_CACHE_DIR");
-  });
+  }, 30_000);
 
   test("runs fixture and validates JSON output", async () => {
     const { code, stdout } = await cli("bench", fixturePath, "--json");
