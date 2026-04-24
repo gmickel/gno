@@ -131,6 +131,18 @@ gno query "auth" --json | jq -r '.results[0].uri' | xargs gno get
 gno search "error handling" --json | jq -r '.results[].uri' | xargs gno multi-get
 ```
 
+## MCP Retrieval Strategy
+
+When using GNO through MCP, prefer `gno_query` first for normal questions. It returns snippets plus `uri`, `docid`, and often `line`; follow with `gno_get` using `fromLine`/`lineCount` for a bounded read, or `gno_multi_get` to batch top result refs.
+
+Use narrower tools when the request tells you to:
+
+- `gno_search`: exact phrase, filename, identifier, stack trace, error text
+- `gno_vsearch`: conceptual similarity when exact wording differs
+- `gno_status`: stale results, missing embeddings, vector unavailable
+
+For ambiguous terms, pass `intent` instead of bloating the query text. For typed retrieval, use `queryModes`: `term` for lexical anchors, `intent` for disambiguation, one `hyde` for a hypothetical answer/document.
+
 ## Document Links & Similarity
 
 ```bash

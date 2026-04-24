@@ -137,6 +137,8 @@ describe("searchHybrid targeted document lookup", () => {
     expect(captured.hashes).toEqual(["hash_a"]);
     expect(captured.activeOnly).toBe(true);
     expect(result.value.results).toHaveLength(1);
+    expect(result.value.meta.mode).toBe("bm25_only");
+    expect(result.value.meta.vectorsUsed).toBe(false);
 
     const timingLine = result.value.meta.explain?.lines.find(
       (line) => line.stage === "timing"

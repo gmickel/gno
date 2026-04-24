@@ -75,6 +75,45 @@ const TEST_COLLECTIONS: CollectionRow[] = [
 ];
 
 describe("searchVectorWithEmbedding N+1 guard", () => {
+  test("returns actionable guidance when vector index is unavailable", async () => {
+    const vectorIndex: VectorIndexPort = {
+      searchAvailable: false,
+      model: "test-model",
+      dimensions: 3,
+      loadError: "sqlite-vec failed to load",
+      guidance: "Run `gno doctor` for sqlite-vec diagnostics.",
+      vecDirty: false,
+      upsertVectors: async () => ({ ok: true, value: undefined }),
+      deleteVectorsForMirror: async () => ({ ok: true, value: undefined }),
+      searchNearest: async () => {
+        throw new Error("should not search when unavailable");
+      },
+      rebuildVecIndex: async () => ({ ok: true, value: undefined }),
+      syncVecIndex: async () => ({ ok: true, value: { added: 0, removed: 0 } }),
+    };
+
+    const result = await searchVectorWithEmbedding(
+      {
+        store: {} as StorePort,
+        vectorIndex,
+        embedPort: {} as EmbeddingPort,
+        config: {} as Config,
+      },
+      "vector query",
+      new Float32Array([0.1, 0.2, 0.3]),
+      { limit: 5 }
+    );
+
+    expect(result.ok).toBe(false);
+    if (result.ok) {
+      return;
+    }
+
+    expect(result.error.code).toBe("VEC_SEARCH_UNAVAILABLE");
+    expect(result.error.message).toContain("sqlite-vec failed to load");
+    expect(result.error.message).toContain("gno doctor");
+  });
+
   test("uses getDocumentsByMirrorHashes and never listDocuments", async () => {
     const captured: { hashes: string[]; activeOnly?: boolean } = { hashes: [] };
 

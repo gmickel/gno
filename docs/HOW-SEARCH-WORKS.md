@@ -206,6 +206,8 @@ Pure semantic search using embeddings. Best for:
 
 **Code-aware chunking (automatic first pass)**: for `.ts`, `.tsx`, `.js`, `.jsx`, `.py`, `.go`, and `.rs`, GNO prefers structural breakpoints such as imports, functions, classes, and type definitions before falling back to the default markdown/prose chunker. Unsupported extensions and files without useful structural boundaries continue through the default chunker unchanged.
 
+GNO also benchmarks this against a real tree-sitter AST chunker. The latest canonical code fixture showed no retrieval-quality gain (`nDCG@10` stayed `0.963`), so production indexing keeps the lighter heuristic chunker for now.
+
 ```bash
 gno vsearch "how to prevent memory leaks in React"
 ```

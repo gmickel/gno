@@ -114,3 +114,22 @@ Docs must clearly state:
 - full AST dependency on every supported platform/file type
 - per-language deep semantic analysis
 - collection-specific chunking configuration
+
+## 2026-04-24 AST Benchmark Follow-up
+
+GNO now has an experimental benchmark harness:
+
+```bash
+bun run bench:ast-chunking -- --fixture canonical --write
+```
+
+It compares the current heuristic chunker with real tree-sitter parsing via `web-tree-sitter` and VS Code's WASM grammars for TypeScript, TSX, JavaScript, JSX, Python, Go, and Rust. Production chunking is unchanged.
+
+Latest canonical fixture result:
+
+| Mode      | Recall@5 | Recall@10 | nDCG@10 |   MRR | parse ms | chunk ms | chunks | fallbacks |
+| --------- | -------: | --------: | ------: | ----: | -------: | -------: | -----: | --------: |
+| Heuristic |    1.000 |     1.000 |   0.963 | 0.950 |      0.0 |      2.0 |      9 |         0 |
+| AST       |    1.000 |     1.000 |   0.963 | 0.950 |     17.1 |      1.7 |      8 |         2 |
+
+Decision: **do not ship AST chunking yet**. The canonical benchmark showed no retrieval-quality gain, added parser latency, and requires dev-only grammar assets (`@vscode/tree-sitter-wasm`, 22.1 MB unpacked). Reconsider AST chunking only if larger code embedding fixtures show durable nDCG/recall gains, parse failure fallback stays clean, and package impact is justified.

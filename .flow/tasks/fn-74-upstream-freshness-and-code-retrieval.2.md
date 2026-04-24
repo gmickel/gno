@@ -24,7 +24,7 @@ This task must protect GNO's packaging constraints: Bun runtime, npm package ins
 
 ## Done summary
 
-TBD
+Upgraded sqlite-vec to 0.1.9 after freshness check against npm/GitHub, fixed doctor version rendering, and verified sqlite-vec loads in repo and tarball install smoke.
 
 ## Evidence
 

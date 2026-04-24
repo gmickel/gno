@@ -24,7 +24,7 @@ This task is not a blind version bump. Check upstream release notes/changelog, u
 
 ## Done summary
 
-TBD
+Upgraded node-llama-cpp to 3.18.1 after freshness check against npm/GitHub, kept it in trustedDependencies, and verified it loads through doctor and tarball install smoke.
 
 ## Evidence
 

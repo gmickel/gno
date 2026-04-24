@@ -37,6 +37,58 @@ GNO's MCP tools are **retrieval-focused**. The MCP server returns search results
 2. Client LLM synthesizes the answer from retrieved context
 3. Result: Best retrieval (GNO) + best synthesis (Claude/Codex)
 
+## Agent Retrieval Playbook
+
+For most questions, start with `gno_query`. It combines BM25, vector search, and reranking, then returns `uri`, `docid`, snippets, and line anchors for follow-up retrieval.
+
+Use the narrower tools when the request is explicit:
+
+| Tool            | Use When                                                              | Follow-up                                    |
+| --------------- | --------------------------------------------------------------------- | -------------------------------------------- |
+| `gno_search`    | Exact phrases, filenames, identifiers, error messages, known symbols  | `gno_get` around result `line`               |
+| `gno_vsearch`   | Conceptual similarity where exact wording may differ                  | `gno_get` or `gno_multi_get` top results     |
+| `gno_query`     | Default choice; mixed lexical + semantic + reranked retrieval         | `gno_multi_get` for top URIs                 |
+| `gno_get`       | One known `gno://` URI, `#docid`, or `collection/path`                | Use `fromLine` + `lineCount` first           |
+| `gno_multi_get` | Batch several top result refs or glob-matched docs                    | Keep `maxBytes` bounded                      |
+| `gno_status`    | Results look stale, vector search fails, or embeddings may be missing | Run write-enabled `gno_index` or `gno_embed` |
+
+For ambiguous terms, pass `intent` instead of stuffing extra words into `query`:
+
+```json
+{
+  "query": "python",
+  "intent": "programming language, not the animal"
+}
+```
+
+For structured retrieval, use `queryModes` to combine typed strategies:
+
+```json
+{
+  "query": "API rate limiting",
+  "queryModes": [
+    { "mode": "term", "text": "token bucket" },
+    { "mode": "intent", "text": "HTTP middleware throttling" },
+    {
+      "mode": "hyde",
+      "text": "A design note describing request throttling with per-client refill windows."
+    }
+  ]
+}
+```
+
+When a search result includes `line`, fetch a bounded range first:
+
+```json
+{
+  "ref": "gno://work/service.ts",
+  "fromLine": 120,
+  "lineCount": 40
+}
+```
+
+Use `gno_multi_get` after search/query when several top documents are needed. Pass the result `uri` or `docid` values as `refs`, and cap `maxBytes` to avoid flooding the client context.
+
 ## Security Model
 
 ### Write Tool Gating

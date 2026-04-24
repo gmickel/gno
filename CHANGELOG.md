@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Added an experimental AST chunking benchmark harness that compares real tree-sitter chunk boundaries against GNO's heuristic code chunker without changing production chunking behavior.
+
+### Changed
+
+- Upgraded `node-llama-cpp` to 3.18.1 and `sqlite-vec` to 0.1.9 after upstream release checks and local smoke validation.
+- Pinned direct dependencies and devDependencies to exact versions, keeping only compatibility peer ranges.
+- Improved MCP tool descriptions and docs so agents better use `intent`, `queryModes`, line-range `gno_get`, and batched `gno_multi_get` workflows.
+
 ## [1.3.1] - 2026-04-24
 
 ### Fixed

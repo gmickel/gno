@@ -268,8 +268,11 @@ async function checkSqliteExtensions(): Promise<DoctorCheck[]> {
 
   let vecMessage: string;
   if (sqliteVecAvailable) {
+    const formattedVersion = sqliteVecVersion.startsWith("v")
+      ? sqliteVecVersion
+      : `v${sqliteVecVersion}`;
     vecMessage = sqliteVecVersion
-      ? `sqlite-vec loaded (v${sqliteVecVersion})`
+      ? `sqlite-vec loaded (${formattedVersion})`
       : "sqlite-vec loaded";
   } else if (mode === "unavailable") {
     vecMessage =
