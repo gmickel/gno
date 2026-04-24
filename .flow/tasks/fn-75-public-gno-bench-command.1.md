@@ -18,11 +18,8 @@ This is intentionally separate from the upstream freshness epic. It should be ta
 - [ ] Document in `docs/CLI.md`, `docs/HOW-SEARCH-WORKS.md` or eval docs, README if user-facing enough, and website docs if applicable.
 
 ## Done summary
-
-TBD
-
+Implemented public `gno bench <fixture>` with fixture/result schemas, BM25/vector/hybrid mode comparisons, IR metrics, docs, example fixture, tests, and patch version bump.
 ## Evidence
-
-- Commits:
-- Tests:
+- Commits: cc7ce8cd33e4887e58f972707fb6cc8a0c0ba357
+- Tests: bun test test/spec/schemas/bench.test.ts test/cli/bench.test.ts, bun run typecheck, bun run lint:check, real CLI smoke: init/update/bench --json/terminal on temp corpus, bun run docs:verify, bun test
 - PRs:
