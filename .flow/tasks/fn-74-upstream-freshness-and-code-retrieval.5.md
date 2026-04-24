@@ -28,11 +28,8 @@ Compare against QMD's concise MCP guidance, but implement in GNO's vocabulary an
 - [ ] Run targeted MCP tests plus full gate as appropriate.
 
 ## Done summary
-
-TBD
-
+Improved MCP tool descriptions and retrieval guidance without schema changes, added assertions for description nudges, updated MCP docs/spec/skill, and verified autoresearch skill eval remains 100%.
 ## Evidence
-
 - Commits:
 - Tests:
 - PRs:

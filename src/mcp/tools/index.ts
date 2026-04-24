@@ -53,6 +53,20 @@ export function normalizeTagFilters(tags?: string[]): string[] | undefined {
   return [...new Set(tags.map(normalizeTag))];
 }
 
+export const MCP_TOOL_DESCRIPTIONS = {
+  search:
+    "BM25 keyword search. Fast exact-term lookup for names, identifiers, error text, and known phrases. Results include uri/docid and line when available; use gno_get with fromLine/lineCount or gno_multi_get for full context. Use gno_query when wording is uncertain.",
+  vsearch:
+    "Vector semantic search. Finds conceptually similar docs with different wording. Best after embeddings are current; use intent to disambiguate short terms. Use gno_query for default hybrid retrieval.",
+  query:
+    "Hybrid search (BM25 + vector + optional expansion/reranking). Recommended default. Use intent for ambiguous terms, queryModes to combine term/intent/hyde strategies, fast=true for quick lookup, thorough=true when recall matters, and candidateLimit to trade latency for coverage.",
+  get: "Retrieve one document by gno:// URI, docid (#abc123), or collection/path. After search results include line, pass fromLine and lineCount to fetch only the relevant range before expanding to the full document.",
+  multiGet:
+    "Retrieve multiple documents by refs array or glob pattern. Use after gno_search/gno_query to batch top result URIs/docids; set maxBytes and lineNumbers to control context size.",
+  status:
+    "Get index health: collection count, document count, chunk count, embedding backlog, and per-collection stats. Check first when vector/hybrid results look stale or unavailable.",
+} as const;
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Shared Input Schemas
 // ─────────────────────────────────────────────────────────────────────────────
@@ -61,7 +75,9 @@ const searchInputSchema = z.object({
   query: z
     .string()
     .min(1, "Query cannot be empty")
-    .describe("Search query text"),
+    .describe(
+      "Exact keyword, identifier, filename, error text, or phrase to match with BM25"
+    ),
   collection: z
     .string()
     .optional()
@@ -89,7 +105,7 @@ const searchInputSchema = z.object({
     .string()
     .optional()
     .describe(
-      "Disambiguating context for ambiguous queries (e.g. 'programming language' when query is 'python')"
+      "Disambiguating context for ambiguous queries; not searched directly (e.g. 'programming language' when query is 'python')"
     ),
   exclude: z
     .array(z.string())
@@ -274,7 +290,9 @@ const vsearchInputSchema = z.object({
   query: z
     .string()
     .min(1, "Query cannot be empty")
-    .describe("Search query text (matched by semantic meaning, not keywords)"),
+    .describe(
+      "Natural-language concept to match semantically; use gno_search for exact error text or identifiers"
+    ),
   collection: z
     .string()
     .optional()
@@ -299,7 +317,9 @@ const vsearchInputSchema = z.object({
   intent: z
     .string()
     .optional()
-    .describe("Disambiguating context for the query"),
+    .describe(
+      "Disambiguating context for ambiguous terms; steers snippet choice without becoming the searched text"
+    ),
   exclude: z
     .array(z.string())
     .optional()
@@ -325,20 +345,24 @@ const queryModeInputSchema = z.object({
   mode: z
     .enum(["term", "intent", "hyde"])
     .describe(
-      "Retrieval strategy: 'term' (keyword match), 'intent' (disambiguation), 'hyde' (hypothetical document for semantic matching)"
+      "Retrieval strategy: 'term' for exact lexical anchors, 'intent' for disambiguation, 'hyde' for one hypothetical answer/document to improve semantic matching"
     ),
   text: z
     .string()
     .trim()
     .min(1, "Query mode text cannot be empty")
-    .describe("Text for this query mode"),
+    .describe(
+      "Text for this query mode; keep term modes concise and hyde modes answer-shaped"
+    ),
 });
 
 export const queryInputSchema = z.object({
   query: z
     .string()
     .min(1, "Query cannot be empty")
-    .describe("Search query text"),
+    .describe(
+      "Primary user query; combine with intent or queryModes for ambiguous requests"
+    ),
   collection: z
     .string()
     .optional()
@@ -366,7 +390,7 @@ export const queryInputSchema = z.object({
     .string()
     .optional()
     .describe(
-      "Disambiguating context (e.g. 'programming language' when query is 'python')"
+      "Disambiguating context (e.g. 'programming language' when query is 'python'); steers expansion, rerank, and snippet choice"
     ),
   candidateLimit: z
     .number()
@@ -375,7 +399,7 @@ export const queryInputSchema = z.object({
     .max(100)
     .optional()
     .describe(
-      "Max candidates passed to reranking stage (higher = better recall, slower)"
+      "Max candidates passed to reranking stage; raise when top results miss relevant docs, lower for latency"
     ),
   exclude: z
     .array(z.string())
@@ -397,7 +421,7 @@ export const queryInputSchema = z.object({
   queryModes: z
     .array(queryModeInputSchema)
     .describe(
-      "Structured query modes to combine multiple retrieval strategies. Max one 'hyde' entry."
+      "Structured query modes for typed retrieval: combine term anchors, intent disambiguation, and at most one hyde hypothetical document"
     )
     .superRefine((entries, ctx) => {
       const hydeCount = entries.filter((entry) => entry.mode === "hyde").length;
@@ -417,7 +441,7 @@ export const queryInputSchema = z.object({
     .boolean()
     .default(false)
     .describe(
-      "Enable query expansion for best recall (~5-8s). Use when default returns no results"
+      "Enable query expansion for best recall (~5-8s). Use for broad research or when default results miss likely docs"
     ),
   expand: z
     .boolean()
@@ -443,13 +467,17 @@ const getInputSchema = z.object({
     .int()
     .min(1)
     .optional()
-    .describe("Start reading from this line number"),
+    .describe(
+      "Start reading from this line number; use the line returned by search/query results"
+    ),
   lineCount: z
     .number()
     .int()
     .min(1)
     .optional()
-    .describe("Number of lines to return (from fromLine)"),
+    .describe(
+      "Number of lines to return from fromLine; prefer a small range before fetching full docs"
+    ),
   lineNumbers: z
     .boolean()
     .default(true)
@@ -461,7 +489,9 @@ const multiGetInputSchema = z.object({
     .array(z.string())
     .min(1)
     .optional()
-    .describe("Array of document references (URIs or docids)"),
+    .describe(
+      "Array of document references from search/query results (gno:// URIs or docids)"
+    ),
   pattern: z
     .string()
     .optional()
@@ -471,7 +501,9 @@ const multiGetInputSchema = z.object({
     .int()
     .min(1)
     .default(10_240)
-    .describe("Max bytes per document (truncates longer docs)"),
+    .describe(
+      "Max bytes per document; lower this when batching many top search results"
+    ),
   lineNumbers: z
     .boolean()
     .default(true)
@@ -717,42 +749,42 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
   // Tool IDs use underscores (MCP pattern: ^[a-zA-Z0-9_-]{1,64}$)
   server.tool(
     "gno_search",
-    "BM25 keyword search. Instant, best for exact terms. Use gno_query for better quality.",
+    MCP_TOOL_DESCRIPTIONS.search,
     searchInputSchema.shape,
     (args) => handleSearch(args, ctx)
   );
 
   server.tool(
     "gno_vsearch",
-    "Vector semantic search. Finds conceptually similar docs even with different wording. Use gno_query for best results.",
+    MCP_TOOL_DESCRIPTIONS.vsearch,
     vsearchInputSchema.shape,
     (args) => handleVsearch(args, ctx)
   );
 
   server.tool(
     "gno_query",
-    "Hybrid search (BM25 + vector + reranking). Best quality, recommended default. Use fast=true for speed, thorough=true for best recall.",
+    MCP_TOOL_DESCRIPTIONS.query,
     queryInputSchema.shape,
     (args) => handleQuery(args, ctx)
   );
 
   server.tool(
     "gno_get",
-    "Retrieve a single document's full content by URI (gno://collection/path), docid (#abc123), or collection/path.",
+    MCP_TOOL_DESCRIPTIONS.get,
     getInputSchema.shape,
     (args) => handleGet(args, ctx)
   );
 
   server.tool(
     "gno_multi_get",
-    "Retrieve multiple documents by refs array or glob pattern. Use maxBytes to control truncation.",
+    MCP_TOOL_DESCRIPTIONS.multiGet,
     multiGetInputSchema.shape,
     (args) => handleMultiGet(args, ctx)
   );
 
   server.tool(
     "gno_status",
-    "Get index health: collection count, document count, chunk count, embedding backlog, and per-collection stats.",
+    MCP_TOOL_DESCRIPTIONS.status,
     statusInputSchema.shape,
     (args) => handleStatus(args, ctx)
   );

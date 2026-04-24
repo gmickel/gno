@@ -79,7 +79,7 @@ Expected output:
 ```
 ✓ config - Config loaded: ~/.config/gno/config/index.yml
 ✓ database - Database found: ~/.local/share/gno/index.sqlite
-✓ sqlite-vec - sqlite-vec loaded (vv0.1.7-alpha.2)
+✓ sqlite-vec - sqlite-vec loaded (v0.1.9)
 ```
 
 If sqlite-vec shows a warning, BM25 search still works but vector search is disabled.

@@ -4,7 +4,10 @@
 
 import { describe, expect, test } from "bun:test";
 
-import { queryInputSchema } from "../../../src/mcp/tools/index";
+import {
+  MCP_TOOL_DESCRIPTIONS,
+  queryInputSchema,
+} from "../../../src/mcp/tools/index";
 
 describe("gno_query schema", () => {
   test("accepts structured query modes and trims text", () => {
@@ -76,5 +79,13 @@ describe("gno_query schema", () => {
     expect(result.data.intent).toBe("web performance and latency");
     expect(result.data.candidateLimit).toBe(12);
     expect(result.data.exclude).toEqual(["reviews", "hiring"]);
+  });
+
+  test("tool description nudges agent retrieval controls", () => {
+    expect(MCP_TOOL_DESCRIPTIONS.query).toContain("intent");
+    expect(MCP_TOOL_DESCRIPTIONS.query).toContain("queryModes");
+    expect(MCP_TOOL_DESCRIPTIONS.query).toContain("candidateLimit");
+    expect(MCP_TOOL_DESCRIPTIONS.get).toContain("fromLine");
+    expect(MCP_TOOL_DESCRIPTIONS.multiGet).toContain("batch top result");
   });
 });

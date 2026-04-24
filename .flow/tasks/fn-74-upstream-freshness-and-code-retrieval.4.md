@@ -25,11 +25,8 @@ QMD 2.1 added `web-tree-sitter` with grammars for TypeScript/TSX/JavaScript/Pyth
 - [ ] Run benchmark before/after and full gate as appropriate.
 
 ## Done summary
-
-TBD
-
+Added a real tree-sitter AST chunking benchmark harness, tests, and recorded benchmark artifacts. The canonical fixture showed no retrieval gain over heuristic chunking, so AST chunking is documented as rejected for production for now.
 ## Evidence
-
 - Commits:
 - Tests:
 - PRs:

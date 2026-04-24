@@ -1,7 +1,7 @@
 # GNO MCP Specification
 
 **Version:** 1.0.0
-**Last Updated:** 2026-01-02
+**Last Updated:** 2026-04-24
 **Protocol:** Model Context Protocol (MCP) over stdio
 **Transport:** JSON-RPC 2.0
 
@@ -76,6 +76,17 @@ Collection names are case-insensitive on input and normalized to lowercase in re
 
 ## Tools
 
+### Agent Retrieval Playbook
+
+- Prefer `gno_query` for normal questions. It is the default hybrid path and returns `uri`, `docid`, snippets, and `line` anchors for follow-up reads.
+- Use `gno_search` for exact phrases, filenames, identifiers, error messages, and known symbols.
+- Use `gno_vsearch` for semantic similarity when wording differs and embeddings are current.
+- Use `intent` to disambiguate short or overloaded terms without changing the searched text.
+- Use `queryModes` when the caller has typed retrieval text: `term` for lexical anchors, `intent` for disambiguation, and at most one `hyde` hypothetical answer/document.
+- After search/query returns a `line`, call `gno_get` with `fromLine` and `lineCount` before fetching whole documents.
+- Use `gno_multi_get` to batch the top result refs. Keep `maxBytes` bounded to avoid flooding client context.
+- Check `gno_status` when results look stale, vector search is unavailable, or embedding backlog may explain missing results.
+
 ### gno_search
 
 BM25 keyword search over indexed documents.
@@ -88,7 +99,7 @@ BM25 keyword search over indexed documents.
   "properties": {
     "query": {
       "type": "string",
-      "description": "Search query text"
+      "description": "Exact keyword, identifier, filename, error text, or phrase to match with BM25"
     },
     "collection": {
       "type": "string",
@@ -275,7 +286,7 @@ Vector semantic search over indexed documents.
 
 ### gno_query
 
-Hybrid search combining BM25 and vector retrieval with optional expansion and reranking.
+Hybrid search combining BM25 and vector retrieval with optional expansion and reranking. Recommended default for agent retrieval.
 
 **Input Schema:**
 
@@ -285,7 +296,7 @@ Hybrid search combining BM25 and vector retrieval with optional expansion and re
   "properties": {
     "query": {
       "type": "string",
-      "description": "Search query text"
+      "description": "Primary user query; combine with intent or queryModes for ambiguous requests"
     },
     "collection": {
       "type": "string",
@@ -310,11 +321,11 @@ Hybrid search combining BM25 and vector retrieval with optional expansion and re
     },
     "intent": {
       "type": "string",
-      "description": "Optional disambiguating context for ambiguous queries"
+      "description": "Disambiguating context; steers expansion, rerank, and snippet choice without being searched directly"
     },
     "candidateLimit": {
       "type": "integer",
-      "description": "Maximum candidates sent to reranking (1-100)",
+      "description": "Maximum candidates sent to reranking (1-100); raise for recall, lower for latency",
       "minimum": 1,
       "maximum": 100
     },
@@ -342,7 +353,7 @@ Hybrid search combining BM25 and vector retrieval with optional expansion and re
     },
     "queryModes": {
       "type": "array",
-      "description": "Optional structured mode entries for retrieval",
+      "description": "Typed retrieval entries: term anchors, intent disambiguation, and at most one hyde hypothetical document",
       "items": {
         "type": "object",
         "properties": {
@@ -375,7 +386,7 @@ Hybrid search combining BM25 and vector retrieval with optional expansion and re
     },
     "thorough": {
       "type": "boolean",
-      "description": "Thorough mode: enable expansion (~5-8s)",
+      "description": "Thorough mode: enable expansion for broad research or missed recall (~5-8s)",
       "default": false
     },
     "tagsAll": {
@@ -446,12 +457,12 @@ Retrieve a single document by reference.
     },
     "fromLine": {
       "type": "integer",
-      "description": "Start at line number (1-indexed)",
+      "description": "Start at line number (1-indexed); use search/query result line anchors",
       "minimum": 1
     },
     "lineCount": {
       "type": "integer",
-      "description": "Number of lines to return",
+      "description": "Number of lines to return; prefer a small range before fetching full docs",
       "minimum": 1
     },
     "lineNumbers": {
@@ -521,7 +532,7 @@ Retrieve multiple documents by pattern or list.
   "properties": {
     "refs": {
       "type": "array",
-      "description": "Array of document references",
+      "description": "Array of document references from search/query results (gno:// URIs or docids)",
       "items": {
         "type": "string"
       }
@@ -532,7 +543,7 @@ Retrieve multiple documents by pattern or list.
     },
     "maxBytes": {
       "type": "integer",
-      "description": "Maximum bytes per document before truncation",
+      "description": "Maximum bytes per document before truncation; lower when batching many refs",
       "default": 10240
     },
     "lineNumbers": {

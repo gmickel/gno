@@ -112,6 +112,7 @@ bun run eval:watch    # Watch mode for development
 | `test-rerank-size.ts`       | Tests reranker performance at different document sizes (1K-128K chars). Used to identify optimal chunk size for reranking. |
 | `docs-verify.ts`            | Verifies documentation is up-to-date with implementation.                                                                  |
 | `hybrid-benchmark.ts`       | Runs hybrid benchmark and writes baseline artifacts to `evals/fixtures/hybrid-baseline/`.                                  |
+| `ast-chunking-benchmark.ts` | Compares heuristic code chunking with experimental tree-sitter AST chunking and writes evidence artifacts.                 |
 | `generate-test-fixtures.ts` | Generates test fixtures for unit tests.                                                                                    |
 | `og-screenshots.ts`         | Generates PNG screenshots from OG image HTML templates using Playwright.                                                   |
 | `sync-assets.ts`            | Syncs all website assets: OG images, screenshots, README hero. Run before release.                                         |
@@ -121,6 +122,7 @@ bun run eval:watch    # Watch mode for development
 ```bash
 bun scripts/perf-test.ts           # Run full performance test suite
 bun scripts/test-rerank-size.ts    # Test rerank scaling with doc size
+bun run bench:ast-chunking -- --fixture canonical --write
 bun run website:sync-assets        # Sync all website assets (OG, screenshots, hero)
 bun run website:sync-assets --og   # OG images only
 ```
@@ -202,6 +204,14 @@ bun run release:trigger  # trigger CI with publish (uses OIDC, no token needed)
 gh workflow run publish.yml -f publish=false  # dry run
 gh workflow run publish.yml -f publish=true   # actual publish
 ```
+
+**Dependency policy:**
+
+- Keep direct `dependencies` and `devDependencies` pinned to exact versions.
+- Keep compatibility-only `peerDependencies` ranged when they describe supported host versions.
+- Run `bun install --frozen-lockfile` before release and after dependency edits.
+- For native/runtime deps, explicitly check upstream freshness and package scripts before release maintenance: `node-llama-cpp`, `sqlite-vec`, `web-tree-sitter`, and any package listed in `trustedDependencies`.
+- Only add packages to `trustedDependencies` when their lifecycle scripts are required and reviewed.
 
 **Post-merge workflow (EVERY merge to main):**
 
