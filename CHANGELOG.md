@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.1] - 2026-04-24
+
+### Fixed
+
+- Fixed Windows path handling for named-index status output and publish export Downloads directory resolution.
+
 ## [1.3.0] - 2026-04-24
 
 ### Added
@@ -1244,7 +1250,8 @@ Re-release of 1.0.2 with a CHANGELOG formatting fix so the Publish workflow's
 | 0.4.0   | 2026-01-01 | Web UI and REST API                        |
 | 0.1.0   | 2025-12-30 | Initial release with full search pipeline  |
 
-[Unreleased]: https://github.com/gmickel/gno/compare/v1.3.0...HEAD
+[Unreleased]: https://github.com/gmickel/gno/compare/v1.3.1...HEAD
+[1.3.1]: https://github.com/gmickel/gno/compare/v1.3.0...v1.3.1
 [1.3.0]: https://github.com/gmickel/gno/compare/v1.2.1...v1.3.0
 [1.2.1]: https://github.com/gmickel/gno/compare/v1.2.0...v1.2.1
 [1.2.0]: https://github.com/gmickel/gno/compare/v1.1.0...v1.2.0
