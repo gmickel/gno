@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-04-24
+
 ### Added
 
 - Added an experimental AST chunking benchmark harness that compares real tree-sitter chunk boundaries against GNO's heuristic code chunker without changing production chunking behavior.
@@ -16,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Upgraded `node-llama-cpp` to 3.18.1 and `sqlite-vec` to 0.1.9 after upstream release checks and local smoke validation.
 - Pinned direct dependencies and devDependencies to exact versions, keeping only compatibility peer ranges.
 - Improved MCP tool descriptions and docs so agents better use `intent`, `queryModes`, line-range `gno_get`, and batched `gno_multi_get` workflows.
+- Documented that the tree-sitter AST chunking benchmark did not improve retrieval score on the canonical code fixture, so production indexing keeps the heuristic chunker.
 
 ## [1.3.1] - 2026-04-24
 
@@ -1260,7 +1263,8 @@ Re-release of 1.0.2 with a CHANGELOG formatting fix so the Publish workflow's
 | 0.4.0   | 2026-01-01 | Web UI and REST API                        |
 | 0.1.0   | 2025-12-30 | Initial release with full search pipeline  |
 
-[Unreleased]: https://github.com/gmickel/gno/compare/v1.3.1...HEAD
+[Unreleased]: https://github.com/gmickel/gno/compare/v1.4.0...HEAD
+[1.4.0]: https://github.com/gmickel/gno/compare/v1.3.1...v1.4.0
 [1.3.1]: https://github.com/gmickel/gno/compare/v1.3.0...v1.3.1
 [1.3.0]: https://github.com/gmickel/gno/compare/v1.2.1...v1.3.0
 [1.2.1]: https://github.com/gmickel/gno/compare/v1.2.0...v1.2.1
