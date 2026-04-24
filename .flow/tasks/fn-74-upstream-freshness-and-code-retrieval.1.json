@@ -1,0 +1,14 @@
+{
+  "assignee": null,
+  "claim_note": "",
+  "claimed_at": null,
+  "created_at": "2026-04-24T12:26:59.461666Z",
+  "depends_on": [],
+  "epic": "fn-74-upstream-freshness-and-code-retrieval",
+  "id": "fn-74-upstream-freshness-and-code-retrieval.1",
+  "priority": 1,
+  "spec_path": ".flow/tasks/fn-74-upstream-freshness-and-code-retrieval.1.md",
+  "status": "todo",
+  "title": "Evaluate and upgrade node-llama-cpp",
+  "updated_at": "2026-04-24T12:28:39.088686Z"
+}

@@ -1,0 +1,13 @@
+{
+  "branch_name": "fn-77-future-onnx-and-transformersjs-runtime",
+  "created_at": "2026-04-24T12:31:00.118547Z",
+  "depends_on_epics": [],
+  "id": "fn-77-future-onnx-and-transformersjs-runtime",
+  "next_task": 1,
+  "plan_review_status": "unknown",
+  "plan_reviewed_at": null,
+  "spec_path": ".flow/specs/fn-77-future-onnx-and-transformersjs-runtime.md",
+  "status": "open",
+  "title": "Future ONNX and Transformers.js runtime evaluation",
+  "updated_at": "2026-04-24T12:31:27.279460Z"
+}

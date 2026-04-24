@@ -1,0 +1,14 @@
+{
+  "assignee": null,
+  "claim_note": "",
+  "claimed_at": null,
+  "created_at": "2026-04-24T12:31:05.403873Z",
+  "depends_on": [],
+  "epic": "fn-77-future-onnx-and-transformersjs-runtime",
+  "id": "fn-77-future-onnx-and-transformersjs-runtime.1",
+  "priority": 1,
+  "spec_path": ".flow/tasks/fn-77-future-onnx-and-transformersjs-runtime.1.md",
+  "status": "todo",
+  "title": "Evaluate ONNX and Transformers.js runtime path",
+  "updated_at": "2026-04-24T12:31:33.939271Z"
+}
