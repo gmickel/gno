@@ -18,8 +18,11 @@ QMD pinned all dependencies after lockfile/build-script drift. GNO already uses 
 - [ ] Changelog documents dependency policy change.
 
 ## Done summary
+
 Converted direct dependencies/devDependencies to exact pins, documented the pin/freshness policy, made CSS build use the pinned local Tailwind CLI, and verified frozen install/package smoke.
+
 ## Evidence
+
 - Commits:
 - Tests:
 - PRs:
