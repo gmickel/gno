@@ -10,6 +10,8 @@ import { join } from "node:path";
 import { ModelCache } from "../../src/llm/cache";
 import { safeRm } from "../helpers/cleanup";
 
+const GGUF_BYTES = new Uint8Array([0x47, 0x47, 0x55, 0x46, 0, 0, 0, 0]);
+
 describe("ModelCache", () => {
   let tempDir: string;
   let cache: ModelCache;
@@ -41,7 +43,7 @@ describe("ModelCache", () => {
 
     test("returns path for file: URI when file exists", async () => {
       const modelPath = join(tempDir, "test-model.gguf");
-      await writeFile(modelPath, "test content");
+      await writeFile(modelPath, GGUF_BYTES);
 
       const result = await cache.resolve(`file:${modelPath}`, "embed");
       expect(result.ok).toBe(true);
@@ -52,7 +54,7 @@ describe("ModelCache", () => {
 
     test("returns path for absolute path when file exists", async () => {
       const modelPath = join(tempDir, "test-model.gguf");
-      await writeFile(modelPath, "test content");
+      await writeFile(modelPath, GGUF_BYTES);
 
       const result = await cache.resolve(modelPath, "embed");
       expect(result.ok).toBe(true);
@@ -67,6 +69,19 @@ describe("ModelCache", () => {
       if (!result.ok) {
         expect(result.error.code).toBe("MODEL_NOT_CACHED");
       }
+    });
+
+    test("rejects invalid user-owned GGUF path without deleting it", async () => {
+      const modelPath = join(tempDir, "bad-user-model.gguf");
+      await writeFile(modelPath, "not gguf");
+
+      const result = await cache.resolve(`file:${modelPath}`, "embed");
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.code).toBe("INVALID_MODEL_FILE");
+      }
+      expect(await Bun.file(modelPath).exists()).toBe(true);
     });
 
     test("returns error for invalid URI", async () => {
@@ -86,7 +101,7 @@ describe("ModelCache", () => {
 
     test("returns true for file: URI when file exists", async () => {
       const modelPath = join(tempDir, "local-model.gguf");
-      await writeFile(modelPath, "test content");
+      await writeFile(modelPath, GGUF_BYTES);
 
       const isCached = await cache.isCached(`file:${modelPath}`);
       expect(isCached).toBe(true);
@@ -99,7 +114,7 @@ describe("ModelCache", () => {
 
     test("returns true for absolute path when file exists", async () => {
       const modelPath = join(tempDir, "local-model.gguf");
-      await writeFile(modelPath, "test content");
+      await writeFile(modelPath, GGUF_BYTES);
 
       const isCached = await cache.isCached(modelPath);
       expect(isCached).toBe(true);
@@ -128,6 +143,37 @@ describe("ModelCache", () => {
       const isCached = await cache.isCached("hf:test/model/model.gguf");
       expect(isCached).toBe(false);
     });
+
+    test("removes cached HTML model and manifest entry", async () => {
+      const modelPath = join(tempDir, "html-model.gguf");
+      await writeFile(modelPath, "<html><body>login</body></html>");
+      const manifestPath = join(tempDir, "manifest.json");
+      await writeFile(
+        manifestPath,
+        JSON.stringify({
+          version: "1.0",
+          models: [
+            {
+              uri: "hf:test/html/model.gguf",
+              type: "embed",
+              path: modelPath,
+              size: 32,
+              checksum: "",
+              cachedAt: new Date().toISOString(),
+            },
+          ],
+        })
+      );
+
+      const result = await cache.resolve("hf:test/html/model.gguf", "embed");
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.code).toBe("MODEL_DOWNLOAD_INTERCEPTED");
+      }
+      expect(await Bun.file(modelPath).exists()).toBe(false);
+      expect(await cache.list()).toEqual([]);
+    });
   });
 
   describe("list", () => {
@@ -138,7 +184,7 @@ describe("ModelCache", () => {
 
     test("stores SHA-256 checksum when adding a cached model", async () => {
       const modelPath = join(tempDir, "checksummed-model.gguf");
-      const modelContent = "test content";
+      const modelContent = GGUF_BYTES;
       await writeFile(modelPath, modelContent);
 
       const cachePrivate = cache as unknown as {
@@ -231,7 +277,7 @@ describe("ModelCache", () => {
   describe("ensureModel", () => {
     test("returns cached path if model exists", async () => {
       const modelPath = join(tempDir, "test-model.gguf");
-      await writeFile(modelPath, "test content");
+      await writeFile(modelPath, GGUF_BYTES);
 
       // file: URIs are always "cached" if file exists
       const result = await cache.ensureModel(`file:${modelPath}`, "embed", {

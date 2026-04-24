@@ -66,6 +66,14 @@ export interface VectorIndexOptions {
   distanceMetric?: "cosine" | "l2";
 }
 
+const SQLITE_VEC_GUIDANCE =
+  "Run `gno doctor` for sqlite-vec diagnostics. On macOS, verify Homebrew SQLite/sqlite-vec installation and see TROUBLESHOOTING.md.";
+
+function formatUnavailableMessage(loadError?: string): string {
+  const reason = loadError ? ` Reason: ${loadError}` : "";
+  return `Vector search requires sqlite-vec. Embeddings are stored, but KNN search is disabled.${reason} ${SQLITE_VEC_GUIDANCE}`;
+}
+
 /**
  * Create a VectorIndexPort for a specific model.
  * sqlite-vec is optional - storage works without it, search disabled.
@@ -147,6 +155,7 @@ export async function createVectorIndexPort(
     model,
     dimensions,
     loadError,
+    guidance: searchAvailable ? undefined : SQLITE_VEC_GUIDANCE,
     get vecDirty() {
       return vecDirty;
     },
@@ -235,10 +244,7 @@ export async function createVectorIndexPort(
     ): Promise<StoreResult<VectorSearchResult[]>> {
       if (!(searchAvailable && searchStmt)) {
         return Promise.resolve(
-          err(
-            "VEC_SEARCH_UNAVAILABLE",
-            "Vector search requires sqlite-vec. Embeddings stored but KNN search disabled."
-          )
+          err("VEC_SEARCH_UNAVAILABLE", formatUnavailableMessage(loadError))
         );
       }
 

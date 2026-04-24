@@ -31,6 +31,12 @@ interface EmbeddingWorker {
   pending: number;
 }
 
+interface TokenizingModel {
+  trainContextSize?: number;
+  tokenize(text: string): readonly number[];
+  detokenize(tokens: readonly number[]): string;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Constants
 // ─────────────────────────────────────────────────────────────────────────────
@@ -51,6 +57,9 @@ export class NodeLlamaCppEmbedding implements EmbeddingPort {
     null;
   private lifecycleVersion = 0;
   private dims: number | null = null;
+  private llamaModel: TokenizingModel | null = null;
+  private warnedSingleTruncation = false;
+  private warnedBatchTruncation = false;
   private readonly manager: ModelManager;
   readonly modelUri: string;
   private readonly modelPath: string;
@@ -76,8 +85,12 @@ export class NodeLlamaCppEmbedding implements EmbeddingPort {
     }
 
     try {
+      const prepared = this.truncateForEmbedding(text, "single");
+      if (!prepared.ok) {
+        return { ok: false, error: prepared.error };
+      }
       const embedding = await this.runOnWorker((worker) =>
-        worker.context.getEmbeddingFor(text)
+        worker.context.getEmbeddingFor(prepared.value.text)
       );
       const vector = Array.from(embedding.vector) as number[];
 
@@ -103,6 +116,15 @@ export class NodeLlamaCppEmbedding implements EmbeddingPort {
     }
 
     try {
+      const preparedTexts: string[] = [];
+      for (const text of texts) {
+        const prepared = this.truncateForEmbedding(text, "batch");
+        if (!prepared.ok) {
+          return { ok: false, error: prepared.error };
+        }
+        preparedTexts.push(prepared.value.text);
+      }
+
       const allResults = Array.from(
         { length: texts.length },
         () => [] as number[]
@@ -114,14 +136,14 @@ export class NodeLlamaCppEmbedding implements EmbeddingPort {
           while (true) {
             const index = nextIndex;
             nextIndex += 1;
-            if (index >= texts.length) {
+            if (index >= preparedTexts.length) {
               return;
             }
 
             const embedding = await this.runOnSpecificWorker(
               worker,
               (current) =>
-                current.context.getEmbeddingFor(texts[index] as string)
+                current.context.getEmbeddingFor(preparedTexts[index] as string)
             );
             allResults[index] = Array.from(embedding.vector) as number[];
           }
@@ -263,6 +285,7 @@ export class NodeLlamaCppEmbedding implements EmbeddingPort {
 
     try {
       const llamaModel = model.value.model as LlamaModel;
+      this.llamaModel = llamaModel as TokenizingModel;
       const llama = await this.manager.getLlama();
       const lifecycleVersion = this.lifecycleVersion;
       const targetPoolSize = this.resolveTargetPoolSize(llama);
@@ -319,6 +342,49 @@ export class NodeLlamaCppEmbedding implements EmbeddingPort {
     } catch (e) {
       this.contextsPromise = null;
       return { ok: false, error: inferenceFailedError(this.modelUri, e) };
+    }
+  }
+
+  private truncateForEmbedding(
+    text: string,
+    mode: "single" | "batch"
+  ): LlmResult<{ text: string }> {
+    const model = this.llamaModel;
+    const rawLimit =
+      typeof model?.trainContextSize === "number" &&
+      Number.isFinite(model.trainContextSize) &&
+      model.trainContextSize > 0
+        ? Math.floor(model.trainContextSize)
+        : undefined;
+    if (!model || rawLimit === undefined) {
+      return { ok: true, value: { text } };
+    }
+
+    const limit = Math.max(1, rawLimit - 4);
+    try {
+      const tokens = model.tokenize(text);
+      if (tokens.length <= limit) {
+        return { ok: true, value: { text } };
+      }
+
+      const truncatedText = model.detokenize(tokens.slice(0, limit));
+      const shouldWarn =
+        mode === "single"
+          ? !this.warnedSingleTruncation
+          : !this.warnedBatchTruncation;
+      if (shouldWarn) {
+        if (mode === "single") {
+          this.warnedSingleTruncation = true;
+        } else {
+          this.warnedBatchTruncation = true;
+        }
+        console.warn(
+          `[llama] Truncated embedding input from ${tokens.length} to ${limit} tokens`
+        );
+      }
+      return { ok: true, value: { text: truncatedText } };
+    } catch (error) {
+      return { ok: false, error: inferenceFailedError(this.modelUri, error) };
     }
   }
 }

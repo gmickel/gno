@@ -63,6 +63,18 @@ describe("search-result schema", () => {
       };
       expect(assertValid(result, schema)).toBe(true);
     });
+
+    test("validates indexed URI and line field", () => {
+      const result = {
+        docid: "#abc123",
+        score: 0.5,
+        uri: "gno://work/doc.md?index=research",
+        line: 42,
+        snippet: "text",
+        source: { relPath: "doc.md", mime: "text/markdown", ext: ".md" },
+      };
+      expect(assertValid(result, schema)).toBe(true);
+    });
   });
 
   describe("invalid inputs", () => {

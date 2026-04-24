@@ -8,6 +8,7 @@
 import type { DocumentRow, StorePort, StoreResult } from "../../store/types";
 import type { ParsedRef } from "./ref-parser";
 
+import { decorateUriForIndex, parseUri } from "../../app/constants";
 import {
   getDocumentCapabilities,
   type DocumentCapabilities,
@@ -22,6 +23,8 @@ import { initStore } from "./shared";
 export interface GetCommandOptions {
   /** Override config path */
   configPath?: string;
+  /** Index name */
+  indexName?: string;
   /** --from <line>, overrides :line suffix */
   from?: number;
   /** -l <lines> */
@@ -109,9 +112,13 @@ export async function get(
   if ("error" in parsed) {
     return { success: false, error: parsed.error, isValidation: true };
   }
+  const explicitIndexName =
+    parsed.type === "uri" ? parseUri(parsed.value)?.indexName : undefined;
+  const indexName = explicitIndexName ?? options.indexName;
 
   const initResult = await initStore({
     configPath: options.configPath,
+    indexName,
     syncConfig: false,
   });
   if (!initResult.ok) {
@@ -120,7 +127,7 @@ export async function get(
   const { store, config } = initResult;
 
   try {
-    return await fetchDocument(store, parsed, options, config);
+    return await fetchDocument(store, parsed, options, config, indexName);
   } finally {
     await store.close();
   }
@@ -152,7 +159,8 @@ async function fetchDocument(
   store: StorePort,
   parsed: ParsedRef,
   options: GetCommandOptions,
-  config: ConfigLike
+  config: ConfigLike,
+  indexName?: string
 ): Promise<GetResult> {
   const docResult = await lookupDocument(store, parsed);
   if (!docResult.ok) {
@@ -182,6 +190,7 @@ async function fetchDocument(
     parsed,
     options,
     config,
+    indexName,
   });
 }
 
@@ -191,10 +200,11 @@ interface BuildResponseContext {
   parsed: ParsedRef;
   options: GetCommandOptions;
   config: ConfigLike;
+  indexName?: string;
 }
 
 function buildResponse(ctx: BuildResponseContext): GetResult {
-  const { doc, fullContent, parsed, options, config } = ctx;
+  const { doc, fullContent, parsed, options, config, indexName } = ctx;
   const lines = fullContent.split("\n");
   const totalLines = lines.length;
 
@@ -204,7 +214,7 @@ function buildResponse(ctx: BuildResponseContext): GetResult {
       success: true,
       data: {
         docid: doc.docid,
-        uri: doc.uri,
+        uri: decorateUriForIndex(doc.uri, indexName),
         title: doc.title ?? undefined,
         content: "",
         totalLines,
@@ -232,7 +242,7 @@ function buildResponse(ctx: BuildResponseContext): GetResult {
     success: true,
     data: {
       docid: doc.docid,
-      uri: doc.uri,
+      uri: decorateUriForIndex(doc.uri, indexName),
       title: doc.title ?? undefined,
       content,
       totalLines,

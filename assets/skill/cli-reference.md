@@ -196,6 +196,7 @@ gno get <ref> [--from <line>] [-l <lines>] [--line-numbers] [--source]
 Ref formats:
 
 - `gno://collection/path` — Full URI
+- `gno://collection/path?index=name` — Full URI emitted from a non-default index
 - `collection/path` — Relative path
 - `#docid` — Document ID
 - `gno://docs/file.md:120` — With line number
@@ -377,6 +378,10 @@ Presets: `slim` (~1GB), `balanced` (~2GB), `quality` (~2.5GB)
 ```bash
 gno models pull [--all|--embed|--rerank|--gen] [--force]
 ```
+
+Cached/local model files are validated as GGUF before use. If the cache contains
+HTML or another non-GGUF response, rerun with `--force` after fixing network
+access.
 
 ### gno models clear
 

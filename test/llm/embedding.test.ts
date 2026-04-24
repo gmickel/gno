@@ -28,6 +28,7 @@ function createManager(options?: {
   gpu?: false | "cuda";
   contexts?: MockEmbeddingContext[];
   failAtContextIndex?: number;
+  trainContextSize?: number;
 }) {
   const calls: Array<{ contextId: number; text: string }> = [];
   let createContextCallCount = 0;
@@ -81,6 +82,9 @@ function createManager(options?: {
         model: {
           createEmbeddingContext,
           embeddingVectorSize: 2,
+          trainContextSize: options?.trainContextSize,
+          tokenize: (text: string) => text.split(""),
+          detokenize: (tokens: readonly string[]) => tokens.join(""),
         },
       },
     })),
@@ -167,6 +171,40 @@ describe("NodeLlamaCppEmbedding", () => {
     expect(calls).toHaveLength(4);
     expect(calls.filter((call) => call.contextId === 1)).toHaveLength(2);
     expect(calls.filter((call) => call.contextId === 2)).toHaveLength(2);
+  });
+
+  test("truncates oversized embedding input by token limit", async () => {
+    const { calls, manager } = createManager({
+      cpuMathCores: 4,
+      trainContextSize: 8,
+    });
+    const embedding = new NodeLlamaCppEmbedding(
+      manager as never,
+      "test-model",
+      "/tmp/model.gguf"
+    );
+
+    const result = await embedding.embed("abcdefghijk");
+
+    expect(result.ok).toBe(true);
+    expect(calls[0]?.text).toBe("abcd");
+  });
+
+  test("truncates oversized batch items before embedding", async () => {
+    const { calls, manager } = createManager({
+      cpuMathCores: 4,
+      trainContextSize: 7,
+    });
+    const embedding = new NodeLlamaCppEmbedding(
+      manager as never,
+      "test-model",
+      "/tmp/model.gguf"
+    );
+
+    const result = await embedding.embedBatch(["abcdef", "xy"]);
+
+    expect(result.ok).toBe(true);
+    expect(calls.map((call) => call.text)).toEqual(["abc", "xy"]);
   });
 
   test("disposes contexts created after a concurrent dispose", async () => {

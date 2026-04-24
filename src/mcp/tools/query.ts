@@ -18,7 +18,7 @@ import type {
 } from "../../pipeline/types";
 import type { ToolContext } from "../server";
 
-import { parseUri } from "../../app/constants";
+import { decorateUriForIndex, parseUri } from "../../app/constants";
 import { createNonTtyProgressRenderer } from "../../cli/progress";
 import { resolveDepthPolicy } from "../../core/depth-policy";
 import { normalizeStructuredQueryInput } from "../../core/structured-query";
@@ -76,6 +76,7 @@ function enrichWithAbsPath(
 
     return {
       ...r,
+      uri: decorateUriForIndex(r.uri, ctx.indexName),
       source: {
         ...r.source,
         absPath: pathJoin(collection.path, r.source.relPath),

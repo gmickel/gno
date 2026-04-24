@@ -207,6 +207,10 @@ GNO works with reduced capabilities when components are missing:
 
 Run `gno doctor` to check component status.
 
+Embedding inputs are clamped to the active local model context when tokenizer
+metadata is available. Chunking remains the first guardrail; the runtime clamp
+keeps pathological direct inputs from reaching native inference oversized.
+
 ## File Locations
 
 **Linux** (XDG standard):

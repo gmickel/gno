@@ -13,7 +13,12 @@ import { join as pathJoin } from "node:path";
 import type { DocumentRow, TagCount } from "../../store/types";
 import type { ToolContext } from "../server";
 
-import { buildUri, parseUri, URI_PREFIX } from "../../app/constants";
+import {
+  buildUri,
+  decorateUriForIndex,
+  parseUri,
+  URI_PREFIX,
+} from "../../app/constants";
 import { MCP_ERRORS } from "../../core/errors";
 import { normalizeTag, validateTag } from "../../core/tags";
 import { normalizeCollectionName } from "../../core/validation";
@@ -64,7 +69,8 @@ function formatResourceContent(
   const langLine = doc.languageHint
     ? `\n     language: ${doc.languageHint}`
     : "";
-  const header = `<!-- ${doc.uri}
+  const displayUri = decorateUriForIndex(doc.uri, ctx.indexName);
+  const header = `<!-- ${displayUri}
      docid: ${doc.docid}
      source: ${absPath}
      mime: ${doc.sourceMime}${langLine}
@@ -94,7 +100,7 @@ export function registerResources(server: McpServer, ctx: ToolContext): void {
 
       return {
         resources: listResult.value.map((doc) => ({
-          uri: doc.uri,
+          uri: decorateUriForIndex(doc.uri, ctx.indexName),
           name: doc.relPath,
           mimeType: doc.sourceMime || "text/markdown",
           description: doc.title ?? undefined,
@@ -160,7 +166,10 @@ export function registerResources(server: McpServer, ctx: ToolContext): void {
       const formattedContent = formatResourceContent(doc, content, ctx);
 
       // Build canonical URI
-      const canonicalUri = buildUri(collection, path);
+      const canonicalUri = decorateUriForIndex(
+        buildUri(collection, path),
+        parsed.indexName ?? ctx.indexName
+      );
 
       return {
         contents: [

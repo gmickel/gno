@@ -19,7 +19,7 @@ import {
   type FormatOptions,
   formatSearchResults,
 } from "../format/search-results";
-import { initStore } from "./shared";
+import { decorateSearchResultsForIndex, initStore } from "./shared";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -28,6 +28,8 @@ import { initStore } from "./shared";
 export type VsearchCommandOptions = SearchOptions & {
   /** Override config path */
   configPath?: string;
+  /** Index name */
+  indexName?: string;
   /** Override model URI */
   model?: string;
   /** Output as JSON */
@@ -66,6 +68,7 @@ export async function vsearch(
 
   const initResult = await initStore({
     configPath: options.configPath,
+    indexName: options.indexName,
     collection: options.collection,
     syncConfig: false,
   });
@@ -137,7 +140,10 @@ export async function vsearch(
         return { success: false, error: result.error.message };
       }
 
-      return { success: true, data: result.value };
+      return {
+        success: true,
+        data: decorateSearchResultsForIndex(result.value, options.indexName),
+      };
     } finally {
       await embedPort.dispose();
     }

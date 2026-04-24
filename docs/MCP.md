@@ -788,6 +788,10 @@ gno://work/src/main.ts
 Resource format:
 
 - `gno://<collection>/<relative-path>`
+- Non-default indexes may appear as output-only metadata:
+  `gno://<collection>/<relative-path>?index=<name>`. Document resources and
+  read tools accept indexed URIs; mixed-index multi-get requests should be
+  split by index.
 
 ## Clarifications
 

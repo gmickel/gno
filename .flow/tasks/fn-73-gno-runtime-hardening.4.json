@@ -1,0 +1,14 @@
+{
+  "assignee": null,
+  "claim_note": "",
+  "claimed_at": null,
+  "created_at": "2026-04-24T08:30:17.078663Z",
+  "depends_on": [],
+  "epic": "fn-73-gno-runtime-hardening",
+  "id": "fn-73-gno-runtime-hardening.4",
+  "priority": 4,
+  "spec_path": ".flow/tasks/fn-73-gno-runtime-hardening.4.md",
+  "status": "todo",
+  "title": "Runtime vector guidance",
+  "updated_at": "2026-04-24T08:30:17.078887Z"
+}

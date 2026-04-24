@@ -9,7 +9,7 @@ import { join as pathJoin } from "node:path";
 import type { DocumentRow, StorePort } from "../../store/types";
 import type { ToolContext } from "../server";
 
-import { parseUri } from "../../app/constants";
+import { decorateUriForIndex, parseUri } from "../../app/constants";
 import { parseRef } from "../../cli/commands/ref-parser";
 import { runTool, type ToolResult } from "./index";
 
@@ -232,7 +232,7 @@ export function handleMultiGet(
 
         documents.push({
           docid: doc.docid,
-          uri: doc.uri,
+          uri: decorateUriForIndex(doc.uri, ctx.indexName),
           title: doc.title ?? undefined,
           content,
           totalLines: (contentResult.value ?? "").split("\n").length,

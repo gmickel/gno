@@ -90,6 +90,7 @@ gno ask "summarize project goals" --answer --max-answer-tokens 200
 ```bash
 # By URI
 gno get gno://work/readme.md
+gno get "gno://work/readme.md?index=research"
 
 # By document ID
 gno get "#a1b2c3d4"
@@ -204,6 +205,7 @@ gno models use quality
 
 # Download models
 gno models pull
+gno models pull --force
 ```
 
 ## Note Linking

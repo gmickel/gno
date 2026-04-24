@@ -12,7 +12,7 @@ import {
   type FormatOptions,
   formatSearchResults,
 } from "../format/search-results";
-import { initStore } from "./shared";
+import { decorateSearchResultsForIndex, initStore } from "./shared";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -21,6 +21,8 @@ import { initStore } from "./shared";
 export type SearchCommandOptions = SearchOptions & {
   /** Override config path */
   configPath?: string;
+  /** Index name */
+  indexName?: string;
   /** Output as JSON */
   json?: boolean;
   /** Output as Markdown */
@@ -57,6 +59,7 @@ export async function search(
 
   const initResult = await initStore({
     configPath: options.configPath,
+    indexName: options.indexName,
     collection: options.collection,
     syncConfig: false,
   });
@@ -83,7 +86,10 @@ export async function search(
       };
     }
 
-    return { success: true, data: result.value };
+    return {
+      success: true,
+      data: decorateSearchResultsForIndex(result.value, options.indexName),
+    };
   } finally {
     await store.close();
   }

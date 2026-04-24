@@ -528,7 +528,14 @@ export async function searchHybrid(
   }
   timings.vectorMs = performance.now() - vectorStartedAt;
 
-  explainLines.push(explainVector(vecCount, vectorAvailable));
+  explainLines.push(
+    explainVector(
+      vecCount,
+      vectorAvailable,
+      vectorIndex?.loadError,
+      vectorIndex?.guidance
+    )
+  );
 
   // ─────────────────────────────────────────────────────────────────────────
   // 3. RRF Fusion
@@ -800,6 +807,7 @@ export async function searchHybrid(
       score: candidate.blendedScore,
       uri: doc.uri,
       title: doc.title ?? undefined,
+      line: snippetChunk.startLine,
       snippet,
       snippetLanguage: chunk.language ?? undefined,
       snippetRange,

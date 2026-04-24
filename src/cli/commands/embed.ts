@@ -45,6 +45,8 @@ import {
 export interface EmbedOptions {
   /** Override config path */
   configPath?: string;
+  /** Index name */
+  indexName?: string;
   /** Restrict embedding work to a single collection */
   collection?: string;
   /** Override model URI */
@@ -417,6 +419,7 @@ interface EmbedContext {
  */
 async function initEmbedContext(
   configPath?: string,
+  indexName?: string,
   collection?: string,
   model?: string
 ): Promise<({ ok: true } & EmbedContext) | { ok: false; error: string }> {
@@ -440,9 +443,9 @@ async function initEmbedContext(
   const modelUri = resolveModelUri(config, "embed", model, collection);
 
   const store = new SqliteAdapter();
-  const dbPath = getIndexDbPath();
+  const dbPath = getIndexDbPath(indexName);
   const paths = getConfigPaths();
-  store.setConfigPath(paths.configFile);
+  store.setConfigPath(configPath ?? paths.configFile);
 
   const openResult = await store.open(dbPath, config.ftsTokenizer);
   if (!openResult.ok) {
@@ -467,6 +470,7 @@ export async function embed(options: EmbedOptions = {}): Promise<EmbedResult> {
   // Initialize config and store
   const initResult = await initEmbedContext(
     options.configPath,
+    options.indexName,
     options.collection,
     options.model
   );

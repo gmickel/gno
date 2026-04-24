@@ -51,6 +51,14 @@ gno://collection/relative/path/to/file.md
 
 Used in search results and resource access.
 
+Non-default index outputs may append output-only metadata:
+
+```
+gno://collection/relative/path.md?index=research
+```
+
+Stored document URIs remain canonical without the query string.
+
 ## Search Terms
 
 ### BM25

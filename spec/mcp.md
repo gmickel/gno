@@ -161,6 +161,7 @@ BM25 keyword search over indexed documents.
         "docid": "#a1b2c3d4",
         "score": 0.85,
         "uri": "gno://work/doc.md",
+        "line": 12,
         "snippet": "...",
         "source": {
           "absPath": "/path/to/doc.md",

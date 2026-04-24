@@ -43,7 +43,19 @@ describe("ModelManager", () => {
     expect(mockGetLlama).toHaveBeenCalledTimes(1);
     expect(mockGetLlama).toHaveBeenCalledWith({
       build: "autoAttempt",
+      gpu: "auto",
       logLevel: "error",
     });
+  });
+
+  test("resolves GPU env values", async () => {
+    const { resolveLlamaGpuMode } =
+      await import("../../src/llm/nodeLlamaCpp/lifecycle");
+
+    expect(resolveLlamaGpuMode({})).toBe("auto");
+    expect(resolveLlamaGpuMode({ GNO_LLAMA_GPU: "metal" })).toBe("metal");
+    expect(resolveLlamaGpuMode({ NODE_LLAMA_CPP_GPU: "cuda" })).toBe("cuda");
+    expect(resolveLlamaGpuMode({ GNO_LLAMA_GPU: "off" })).toBe(false);
+    expect(resolveLlamaGpuMode({ GNO_LLAMA_GPU: "bogus" })).toBe("auto");
   });
 });

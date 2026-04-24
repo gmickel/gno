@@ -16,12 +16,47 @@ import { loadFailedError, outOfMemoryError, timeoutError } from "../errors";
 
 type Llama = Awaited<ReturnType<typeof import("node-llama-cpp").getLlama>>;
 type LlamaModel = Awaited<ReturnType<Llama["loadModel"]>>;
+export type LlamaGpuMode = "auto" | "metal" | "vulkan" | "cuda" | false;
 
 interface CachedModel {
   uri: string;
   type: ModelType;
   model: LlamaModel;
   loadedAt: number;
+}
+
+let invalidGpuModeWarned = false;
+let gpuFallbackWarned = false;
+
+export function resolveLlamaGpuMode(
+  env: NodeJS.ProcessEnv = process.env
+): LlamaGpuMode {
+  const raw = (env.GNO_LLAMA_GPU ?? env.NODE_LLAMA_CPP_GPU ?? "auto")
+    .trim()
+    .toLowerCase();
+  if (!raw || raw === "auto") {
+    return "auto";
+  }
+  if (raw === "metal" || raw === "vulkan" || raw === "cuda") {
+    return raw;
+  }
+  if (
+    raw === "false" ||
+    raw === "off" ||
+    raw === "none" ||
+    raw === "disable" ||
+    raw === "disabled" ||
+    raw === "0"
+  ) {
+    return false;
+  }
+  if (!invalidGpuModeWarned) {
+    invalidGpuModeWarned = true;
+    console.warn(
+      `[llama] Invalid GNO_LLAMA_GPU/NODE_LLAMA_CPP_GPU value "${raw}", using auto`
+    );
+  }
+  return "auto";
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -48,11 +83,32 @@ export class ModelManager {
   async getLlama(): Promise<Llama> {
     if (!this.llama) {
       const { getLlama, LlamaLogLevel } = await import("node-llama-cpp");
+      const gpu = resolveLlamaGpuMode();
       // Suppress model loading warnings (vocab tokens, pooling type)
-      this.llama = await getLlama({
-        build: "autoAttempt",
-        logLevel: LlamaLogLevel.error,
-      });
+      try {
+        this.llama = await getLlama({
+          build: "autoAttempt",
+          gpu,
+          logLevel: LlamaLogLevel.error,
+        });
+      } catch (error) {
+        if (gpu === "auto" || gpu === false) {
+          throw error;
+        }
+        if (!gpuFallbackWarned) {
+          gpuFallbackWarned = true;
+          console.warn(
+            `[llama] GPU backend "${gpu}" failed, retrying with CPU: ${
+              error instanceof Error ? error.message : String(error)
+            }`
+          );
+        }
+        this.llama = await getLlama({
+          build: "autoAttempt",
+          gpu: false,
+          logLevel: LlamaLogLevel.error,
+        });
+      }
     }
     return this.llama;
   }

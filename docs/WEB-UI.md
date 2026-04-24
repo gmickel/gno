@@ -127,7 +127,7 @@ intent: token rotation
 hyde: Refresh tokens rotate on each use.
 ```
 
-> **Note**: Models auto-download on first use. The dashboard also exposes model download state and a one-click recovery path if the active preset still needs files. For instant startup, set `GNO_NO_AUTO_DOWNLOAD=1` and download explicitly with `gno models pull`.
+> **Note**: Models auto-download on first use. The dashboard also exposes model download state and a one-click recovery path if the active preset still needs files. For instant startup, set `GNO_NO_AUTO_DOWNLOAD=1` and download explicitly with `gno models pull`. Cached GGUF files are validated before load; intercepted HTML/non-GGUF cache entries are removed and surfaced as actionable model download errors.
 
 ---
 

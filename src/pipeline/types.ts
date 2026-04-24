@@ -43,6 +43,8 @@ export interface SearchResult {
   score: number;
   uri: string;
   title?: string;
+  /** Best source line for editor/agent anchors (1-indexed) */
+  line?: number;
   snippet: string;
   snippetLanguage?: string;
   snippetRange?: SnippetRange;

@@ -9,7 +9,7 @@ import { join as pathJoin } from "node:path";
 import type { DocumentRow, StorePort } from "../../store/types";
 import type { ToolContext } from "../server";
 
-import { parseUri } from "../../app/constants";
+import { decorateUriForIndex, parseUri } from "../../app/constants";
 import { parseRef } from "../../cli/commands/ref-parser";
 import {
   getDocumentCapabilities,
@@ -196,7 +196,12 @@ export function handleGet(
 
       const response: GetResponse = {
         docid: doc.docid,
-        uri: doc.uri,
+        uri: decorateUriForIndex(
+          doc.uri,
+          parsed.type === "uri"
+            ? (parseUri(parsed.value)?.indexName ?? ctx.indexName)
+            : ctx.indexName
+        ),
         title: doc.title ?? undefined,
         content,
         totalLines,

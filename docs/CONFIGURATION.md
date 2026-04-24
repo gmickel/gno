@@ -457,6 +457,14 @@ Override paths (applied before platform defaults):
 | `GNO_DATA_DIR`   | Override database directory |
 | `GNO_CACHE_DIR`  | Override model cache        |
 
+Runtime/model env vars:
+
+| Variable               | Description                                                        |
+| ---------------------- | ------------------------------------------------------------------ |
+| `GNO_LLAMA_GPU`        | Local llama backend: `auto`, `metal`, `vulkan`, `cuda`, or CPU off |
+| `NODE_LLAMA_CPP_GPU`   | Compatibility alias used when `GNO_LLAMA_GPU` is unset             |
+| `GNO_NO_AUTO_DOWNLOAD` | Disable automatic model downloads; explicit `models pull` allowed  |
+
 ## File Locations
 
 **Linux** (XDG):

@@ -59,16 +59,18 @@ All commands accept:
 
 **Offline mode**: Use `--offline` or set `HF_HUB_OFFLINE=1` to prevent auto-downloading models. Set `GNO_NO_AUTO_DOWNLOAD=1` to disable auto-download while still allowing explicit `gno models pull`.
 
-**Force CPU-only for testing**: Set `NODE_LLAMA_CPP_GPU=false` on the `gno`
-process to disable Metal/CUDA/Vulkan and force the CPU backend:
+**GPU backend selection**: Set `GNO_LLAMA_GPU` to choose the local
+`node-llama-cpp` backend. `GNO_LLAMA_GPU` wins over the compatibility alias
+`NODE_LLAMA_CPP_GPU`.
 
 ```bash
-NODE_LLAMA_CPP_GPU=false gno doctor --json
-NODE_LLAMA_CPP_GPU=false gno embed --yes
+GNO_LLAMA_GPU=metal gno embed --yes
+GNO_LLAMA_GPU=false gno doctor --json
 ```
 
-Accepted values from `node-llama-cpp`: `false`, `off`, `none`, `disable`,
-`disabled`.
+Accepted values: `auto`, `metal`, `vulkan`, `cuda`, or CPU-only values
+`false`, `off`, `none`, `disable`, `disabled`, `0`. Invalid values warn once
+and use `auto`.
 
 > **Note:** the first CPU-only run may build or download a separate CPU backend
 > if you only have GPU-backed binaries cached. Use the second run for timing.
@@ -127,6 +129,11 @@ gno search 'dashboard -lag'
 gno search 'DEC-0054'
 ```
 
+JSON results include a top-level `line` anchor when the matching chunk is known.
+For non-default indexes, emitted `gno://` URIs include output-only index
+metadata, e.g. `gno://docs/api.md?index=research`; readers such as `gno get`
+can round-trip that URI back to the named index.
+
 ### gno vsearch
 
 Semantic similarity search using vector embeddings with contextual chunking.
@@ -139,6 +146,11 @@ gno vsearch "authentication best practices" --json
 **Contextual embeddings**: Each chunk is embedded with its document title prepended, helping the model distinguish context (e.g., "configuration" in React vs database docs).
 
 Same options as `gno search`, including temporal/category/author and tag filters. Requires embed model.
+
+If sqlite-vec cannot load at runtime, `gno vsearch` fails with the preserved
+load/probe reason and a `gno doctor` recovery hint. BM25 search continues to
+work; `gno query` degrades to BM25-only and includes the vector reason in
+`--explain`.
 
 If `--intent` is provided, vector search uses it only to steer snippet selection toward the intended interpretation. It is not embedded or searched directly.
 
@@ -569,6 +581,11 @@ gno models pull --expand
 gno models pull --gen
 gno models pull --force   # Re-download even if cached
 ```
+
+Downloaded and cached local GGUF files are validated before use. If a proxy,
+firewall, captive portal, or HTML error page is cached instead of a GGUF, GNO
+removes the bad cached file and reports a specific recovery error. Explicit
+`file:` or absolute model paths are validated but never deleted.
 
 ### Using A Fine-Tuned GGUF
 

@@ -122,9 +122,19 @@ export function explainBm25(count: number): ExplainLine {
   return { stage: "bm25", message: `${count} candidates` };
 }
 
-export function explainVector(count: number, available: boolean): ExplainLine {
+export function explainVector(
+  count: number,
+  available: boolean,
+  unavailableReason?: string,
+  guidance?: string
+): ExplainLine {
   if (!available) {
-    return { stage: "vector", message: "unavailable (sqlite-vec not loaded)" };
+    const detail = unavailableReason ? `: ${unavailableReason}` : "";
+    const hint = guidance ? `; ${guidance}` : "";
+    return {
+      stage: "vector",
+      message: `unavailable (sqlite-vec not loaded${detail})${hint}`,
+    };
   }
   return { stage: "vector", message: `${count} candidates` };
 }

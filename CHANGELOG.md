@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Added `line` to structured search result JSON and indexed URI output metadata (`?index=<name>`) for non-default indexes.
+- Added explicit local llama backend selection with `GNO_LLAMA_GPU` plus GGUF cache validation for downloaded/local model files.
+
+### Fixed
+
+- Fixed `gno status`, `update`, `index`, `embed`, and retrieval/search readers to honor named indexes consistently.
+- Hardened sqlite-vec diagnostics, oversized embedding inputs, and pathological one-line chunking.
+
 ## [1.2.1] - 2026-04-22
 
 ### Fixed

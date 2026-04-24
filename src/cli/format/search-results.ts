@@ -119,7 +119,7 @@ function formatTerminalUri(
 
   const target = buildTerminalLinkTarget(
     result.source.absPath,
-    result.snippetRange?.startLine,
+    result.line ?? result.snippetRange?.startLine,
     links.editorUriTemplate ?? undefined
   );
 

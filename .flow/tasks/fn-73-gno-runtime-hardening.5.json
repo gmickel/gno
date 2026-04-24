@@ -1,0 +1,14 @@
+{
+  "assignee": null,
+  "claim_note": "",
+  "claimed_at": null,
+  "created_at": "2026-04-24T08:30:17.206208Z",
+  "depends_on": [],
+  "epic": "fn-73-gno-runtime-hardening",
+  "id": "fn-73-gno-runtime-hardening.5",
+  "priority": 5,
+  "spec_path": ".flow/tasks/fn-73-gno-runtime-hardening.5.md",
+  "status": "todo",
+  "title": "Embedding input guardrail",
+  "updated_at": "2026-04-24T08:30:17.206400Z"
+}

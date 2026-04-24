@@ -1469,6 +1469,7 @@ If query text includes recency intent (`latest`, `newest`, `recent`), results ar
     {
       "docid": "abc123",
       "uri": "gno://notes/auth.md",
+      "line": 42,
       "title": "Authentication Guide",
       "collection": "notes",
       "tags": ["backend", "auth"],

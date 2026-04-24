@@ -19,8 +19,13 @@
     },
     "uri": {
       "type": "string",
-      "description": "Document URI (gno://collection/path)",
-      "pattern": "^gno://[^/]+/.+"
+      "description": "Document URI (gno://collection/path, optionally with ?index= for non-default indexes)",
+      "pattern": "^gno://[^/]+/.+(\\?index=[^\\s]+)?$"
+    },
+    "line": {
+      "type": "integer",
+      "description": "Best matching/source line (1-indexed)",
+      "minimum": 1
     },
     "title": {
       "type": "string",

@@ -37,7 +37,11 @@ import type {
   GnoVectorSearchOptions,
 } from "./types";
 
-import { getIndexDbPath } from "../app/constants";
+import {
+  decorateUriForIndex,
+  getIndexDbPath,
+  parseUri,
+} from "../app/constants";
 import { ConfigSchema, loadConfig } from "../config";
 import {
   atomicWrite,
@@ -88,6 +92,7 @@ interface OpenedClientState {
   store: SqliteAdapter;
   llm: LlmAdapter;
   downloadPolicy: DownloadPolicy;
+  indexName?: string;
 }
 
 interface RuntimePorts {
@@ -158,6 +163,7 @@ async function resolveClientState(
     llm: new LlmAdapter(config, options.cacheDir),
     downloadPolicy:
       options.downloadPolicy ?? resolveDownloadPolicy(process.env, {}),
+    indexName: options.indexName,
   };
 }
 
@@ -170,6 +176,7 @@ class GnoClientImpl implements GnoClient {
   private readonly store: SqliteAdapter;
   private readonly llm: LlmAdapter;
   private readonly downloadPolicy: DownloadPolicy;
+  private readonly indexName?: string;
   private closed = false;
 
   constructor(state: OpenedClientState) {
@@ -180,6 +187,7 @@ class GnoClientImpl implements GnoClient {
     this.store = state.store;
     this.llm = state.llm;
     this.downloadPolicy = state.downloadPolicy;
+    this.indexName = state.indexName;
   }
 
   isOpen(): boolean {
@@ -371,12 +379,24 @@ class GnoClientImpl implements GnoClient {
     }
   }
 
+  private decorateSearchResults(results: SearchResults): SearchResults {
+    return {
+      ...results,
+      results: results.results.map((result) => ({
+        ...result,
+        uri: decorateUriForIndex(result.uri, this.indexName),
+      })),
+    };
+  }
+
   async search(
     query: string,
     options: import("../pipeline/types").SearchOptions = {}
   ): Promise<SearchResults> {
     this.assertOpen();
-    return unwrapStore(await searchBm25(this.store, query, options));
+    return this.decorateSearchResults(
+      unwrapStore(await searchBm25(this.store, query, options))
+    );
   }
 
   async vsearch(
@@ -409,17 +429,19 @@ class GnoClientImpl implements GnoClient {
         });
       }
 
-      return unwrapStore(
-        await searchVectorWithEmbedding(
-          {
-            store: this.store,
-            vectorIndex: ports.vectorIndex,
-            embedPort: ports.embedPort,
-            config: this.config,
-          },
-          query,
-          new Float32Array(queryEmbedResult.value),
-          options
+      return this.decorateSearchResults(
+        unwrapStore(
+          await searchVectorWithEmbedding(
+            {
+              store: this.store,
+              vectorIndex: ports.vectorIndex,
+              embedPort: ports.embedPort,
+              config: this.config,
+            },
+            query,
+            new Float32Array(queryEmbedResult.value),
+            options
+          )
         )
       );
     } finally {
@@ -461,18 +483,20 @@ class GnoClientImpl implements GnoClient {
     });
 
     try {
-      return unwrapStore(
-        await searchHybrid(
-          {
-            store: this.store,
-            config: this.config,
-            vectorIndex: ports.vectorIndex,
-            embedPort: ports.embedPort,
-            expandPort: ports.expandPort,
-            rerankPort: ports.rerankPort,
-          },
-          query,
-          options
+      return this.decorateSearchResults(
+        unwrapStore(
+          await searchHybrid(
+            {
+              store: this.store,
+              config: this.config,
+              vectorIndex: ports.vectorIndex,
+              embedPort: ports.embedPort,
+              expandPort: ports.expandPort,
+              rerankPort: ports.rerankPort,
+            },
+            query,
+            options
+          )
         )
       );
     } finally {
@@ -606,17 +630,48 @@ class GnoClientImpl implements GnoClient {
 
   async get(ref: string, options: GnoGetOptions = {}) {
     this.assertOpen();
-    return getDocumentByRef(this.store, this.config, ref, options);
+    const explicitIndex = ref.startsWith("gno://")
+      ? parseUri(ref)?.indexName
+      : undefined;
+    const result = await getDocumentByRef(
+      this.store,
+      this.config,
+      ref,
+      options
+    );
+    return {
+      ...result,
+      uri: decorateUriForIndex(result.uri, explicitIndex ?? this.indexName),
+    };
   }
 
   async multiGet(refs: string[], options: GnoMultiGetOptions = {}) {
     this.assertOpen();
-    return multiGetDocuments(this.store, this.config, refs, options);
+    const result = await multiGetDocuments(
+      this.store,
+      this.config,
+      refs,
+      options
+    );
+    return {
+      ...result,
+      documents: result.documents.map((doc) => ({
+        ...doc,
+        uri: decorateUriForIndex(doc.uri, this.indexName),
+      })),
+    };
   }
 
   async list(options: GnoListOptions = {}) {
     this.assertOpen();
-    return listDocuments(this.store, options);
+    const result = await listDocuments(this.store, options);
+    return {
+      ...result,
+      documents: result.documents.map((doc) => ({
+        ...doc,
+        uri: decorateUriForIndex(doc.uri, this.indexName),
+      })),
+    };
   }
 
   async status(): Promise<IndexStatus> {

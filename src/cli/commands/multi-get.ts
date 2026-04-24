@@ -10,6 +10,7 @@ import { minimatch } from "minimatch";
 import type { DocumentRow, StorePort, StoreResult } from "../../store/types";
 import type { ParsedRef } from "./ref-parser";
 
+import { decorateUriForIndex, parseUri } from "../../app/constants";
 import { isGlobPattern, parseRef, splitRefs } from "./ref-parser";
 import { initStore } from "./shared";
 
@@ -20,6 +21,8 @@ import { initStore } from "./shared";
 export interface MultiGetCommandOptions {
   /** Override config path */
   configPath?: string;
+  /** Index name */
+  indexName?: string;
   /** Max bytes per document (default 10240) */
   maxBytes?: number;
   /** Include line numbers */
@@ -170,6 +173,7 @@ function truncateContent(
 interface FetchContext {
   store: StorePort;
   config: ConfigLike;
+  indexName?: string;
   maxBytes: number;
   documents: MultiGetDocument[];
   skipped: SkippedDoc[];
@@ -222,7 +226,7 @@ async function fetchSingleDocument(
 
   ctx.documents.push({
     docid: doc.docid,
-    uri: doc.uri,
+    uri: decorateUriForIndex(doc.uri, ctx.indexName),
     title: doc.title ?? undefined,
     content,
     truncated: truncated || undefined,
@@ -249,9 +253,18 @@ export async function multiGet(
 ): Promise<MultiGetResult> {
   const maxBytes = options.maxBytes ?? 10_240;
   const allRefs = splitRefs(refs);
+  const indexResolution = resolveMultiGetIndex(allRefs, options.indexName);
+  if (!indexResolution.ok) {
+    return {
+      success: false,
+      error: indexResolution.error,
+      isValidation: true,
+    };
+  }
 
   const initResult = await initStore({
     configPath: options.configPath,
+    indexName: indexResolution.indexName,
     syncConfig: false,
   });
   if (!initResult.ok) {
@@ -267,6 +280,7 @@ export async function multiGet(
     const ctx: FetchContext = {
       store,
       config,
+      indexName: indexResolution.indexName,
       maxBytes,
       documents: [],
       skipped: [],
@@ -299,6 +313,53 @@ export async function multiGet(
   } finally {
     await store.close();
   }
+}
+
+function resolveMultiGetIndex(
+  refs: string[],
+  globalIndexName?: string
+): { ok: true; indexName?: string } | { ok: false; error: string } {
+  const explicitIndexes = new Set<string>();
+  let hasUnindexedRef = false;
+
+  for (const ref of refs) {
+    const parsed = parseRef(ref);
+    if ("error" in parsed || parsed.type !== "uri") {
+      hasUnindexedRef = true;
+      continue;
+    }
+    const indexName = parseUri(parsed.value)?.indexName;
+    if (indexName) {
+      explicitIndexes.add(indexName);
+    } else {
+      hasUnindexedRef = true;
+    }
+  }
+
+  if (explicitIndexes.size === 0) {
+    return { ok: true, indexName: globalIndexName };
+  }
+  if (explicitIndexes.size > 1) {
+    return {
+      ok: false,
+      error: `multi-get cannot mix explicit indexes: ${[...explicitIndexes].sort().join(", ")}`,
+    };
+  }
+
+  const explicitIndex = [...explicitIndexes][0];
+  if (
+    hasUnindexedRef &&
+    globalIndexName &&
+    explicitIndex &&
+    globalIndexName !== explicitIndex
+  ) {
+    return {
+      ok: false,
+      error: `multi-get cannot mix indexed refs (${explicitIndex}) with unindexed refs while --index is ${globalIndexName}`,
+    };
+  }
+
+  return { ok: true, indexName: explicitIndex ?? globalIndexName };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

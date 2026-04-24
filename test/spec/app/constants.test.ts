@@ -21,8 +21,10 @@ import {
   MCP_SERVER_NAME,
   MCP_TOOL_PREFIX,
   PRODUCT_NAME,
+  decorateUriForIndex,
   parseUri,
   resolveDirs,
+  stripUriIndex,
   URI_PREFIX,
   URI_SCHEME,
 } from "../../../src/app/constants";
@@ -203,6 +205,15 @@ describe("URI utilities", () => {
     test("preserves slashes", () => {
       expect(buildUri("notes", "a/b/c/d.md")).toBe("gno://notes/a/b/c/d.md");
     });
+
+    test("adds non-default index query metadata", () => {
+      expect(buildUri("notes", "a/b.md", { indexName: "research index" })).toBe(
+        "gno://notes/a/b.md?index=research%20index"
+      );
+      expect(buildUri("notes", "a/b.md", { indexName: "default" })).toBe(
+        "gno://notes/a/b.md"
+      );
+    });
   });
 
   describe("parseUri", () => {
@@ -224,6 +235,15 @@ describe("URI utilities", () => {
       expect(result).toEqual({ collection: "notes", path: "" });
     });
 
+    test("parses index query metadata", () => {
+      const result = parseUri("gno://work/my%3Ffile.md?index=research%20idx");
+      expect(result).toEqual({
+        collection: "work",
+        path: "my?file.md",
+        indexName: "research idx",
+      });
+    });
+
     test("returns null for invalid URI", () => {
       expect(parseUri("file:///foo/bar")).toBeNull();
       expect(parseUri("https://example.com")).toBeNull();
@@ -237,6 +257,14 @@ describe("URI utilities", () => {
     const uri = buildUri(collection, path);
     const parsed = parseUri(uri);
     expect(parsed).toEqual({ collection, path });
+  });
+
+  test("decorates and strips index metadata", () => {
+    const uri = "gno://work/contracts/nda.docx";
+    expect(decorateUriForIndex(uri, "alt")).toBe(
+      "gno://work/contracts/nda.docx?index=alt"
+    );
+    expect(stripUriIndex("gno://work/contracts/nda.docx?index=alt")).toBe(uri);
   });
 });
 

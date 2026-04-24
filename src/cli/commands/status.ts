@@ -18,6 +18,8 @@ import { SqliteAdapter } from "../../store/sqlite/adapter";
 export interface StatusOptions {
   /** Override config path */
   configPath?: string;
+  /** Index name */
+  indexName?: string;
   /** Output as JSON */
   json?: boolean;
   /** Output as Markdown */
@@ -137,11 +139,11 @@ export async function status(
 
   // Open database
   const store = new SqliteAdapter();
-  const dbPath = getIndexDbPath();
+  const dbPath = getIndexDbPath(options.indexName);
   const paths = getConfigPaths();
 
   // Set configPath for status output
-  store.setConfigPath(paths.configFile);
+  store.setConfigPath(options.configPath ?? paths.configFile);
 
   const openResult = await store.open(dbPath, config.ftsTokenizer);
   if (!openResult.ok) {

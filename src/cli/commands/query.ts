@@ -25,7 +25,7 @@ import {
   createProgressRenderer,
   createThrottledProgressRenderer,
 } from "../progress";
-import { initStore } from "./shared";
+import { decorateSearchResultsForIndex, initStore } from "./shared";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -34,6 +34,8 @@ import { initStore } from "./shared";
 export type QueryCommandOptions = HybridSearchOptions & {
   /** Override config path */
   configPath?: string;
+  /** Index name */
+  indexName?: string;
   /** Override embedding model */
   embedModel?: string;
   /** Override expansion model */
@@ -83,6 +85,7 @@ export async function query(
 
   const initResult = await initStore({
     configPath: options.configPath,
+    indexName: options.indexName,
     collection: options.collection,
     syncConfig: false,
   });
@@ -208,7 +211,10 @@ export async function query(
       return { success: false, error: result.error.message };
     }
 
-    return { success: true, data: result.value };
+    return {
+      success: true,
+      data: decorateSearchResultsForIndex(result.value, options.indexName),
+    };
   } finally {
     if (embedPort) {
       await embedPort.dispose();

@@ -14,6 +14,8 @@ import { formatSyncResultLines, initStore } from "./shared";
 export interface UpdateOptions {
   /** Override config path */
   configPath?: string;
+  /** Index name */
+  indexName?: string;
   /** Run git pull in git repositories before scanning */
   gitPull?: boolean;
   /** Verbose output */
@@ -33,7 +35,10 @@ export type UpdateResult =
 export async function update(
   options: UpdateOptions = {}
 ): Promise<UpdateResult> {
-  const initResult = await initStore({ configPath: options.configPath });
+  const initResult = await initStore({
+    configPath: options.configPath,
+    indexName: options.indexName,
+  });
   if (!initResult.ok) {
     return { success: false, error: initResult.error };
   }

@@ -57,6 +57,7 @@ export interface ToolContext {
   config: Config;
   collections: Collection[];
   actualConfigPath: string;
+  indexName?: string;
   toolMutex: Mutex;
   jobManager: JobManager;
   serverInstanceId: string;
@@ -164,6 +165,7 @@ export async function startMcpServer(options: McpServerOptions): Promise<void> {
     config,
     collections,
     actualConfigPath,
+    indexName: options.indexName,
     toolMutex,
     jobManager,
     serverInstanceId,

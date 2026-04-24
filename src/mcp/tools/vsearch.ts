@@ -9,7 +9,7 @@ import { join as pathJoin } from "node:path";
 import type { SearchResult, SearchResults } from "../../pipeline/types";
 import type { ToolContext } from "../server";
 
-import { parseUri } from "../../app/constants";
+import { decorateUriForIndex, parseUri } from "../../app/constants";
 import { createNonTtyProgressRenderer } from "../../cli/progress";
 import { LlmAdapter } from "../../llm/nodeLlamaCpp/adapter";
 import { resolveDownloadPolicy } from "../../llm/policy";
@@ -60,6 +60,7 @@ function enrichWithAbsPath(
 
     return {
       ...r,
+      uri: decorateUriForIndex(r.uri, ctx.indexName),
       source: {
         ...r.source,
         absPath: pathJoin(collection.path, r.source.relPath),

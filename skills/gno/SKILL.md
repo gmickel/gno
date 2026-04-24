@@ -88,6 +88,9 @@ gno search "your query"               # BM25 keyword search
 --no-pager        Disable paging
 ```
 
+Non-default index search results may include `?index=<name>` on `gno://` URIs.
+Keep that query string when passing the URI to `gno get`.
+
 ## Important: Embedding After Changes
 
 If you edit/create files that should be searchable via vector search:

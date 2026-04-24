@@ -42,7 +42,7 @@ import type {
 } from "../types";
 import type { SqliteDbProvider } from "./types";
 
-import { buildUri, deriveDocid } from "../../app/constants";
+import { buildUri, deriveDocid, stripUriIndex } from "../../app/constants";
 import { normalizeWikiName, stripWikiMdExt } from "../../core/links";
 import { migrations, runMigrations } from "../migrations";
 import { err, ok } from "../types";
@@ -675,9 +675,10 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
   ): Promise<StoreResult<DocumentRow | null>> {
     try {
       const db = this.ensureOpen();
+      const canonicalUri = stripUriIndex(uri);
       const row = db
         .query<DbDocumentRow, [string]>("SELECT * FROM documents WHERE uri = ?")
-        .get(uri);
+        .get(canonicalUri);
 
       return ok(row ? mapDocumentRow(row) : null);
     } catch (cause) {

@@ -7,8 +7,9 @@
 
 import type { Collection, Config } from "../../config/types";
 import type { SyncResult } from "../../ingestion";
+import type { SearchResults } from "../../pipeline/types";
 
-import { getIndexDbPath } from "../../app/constants";
+import { decorateUriForIndex, getIndexDbPath } from "../../app/constants";
 import { getConfigPaths, isInitialized, loadConfig } from "../../config";
 import { SqliteAdapter } from "../../store/sqlite/adapter";
 
@@ -120,6 +121,22 @@ export async function initStore(
   }
 
   return { ok: true, store, config, collections, actualConfigPath };
+}
+
+export function decorateSearchResultsForIndex(
+  data: SearchResults,
+  indexName?: string
+): SearchResults {
+  if (!indexName) {
+    return data;
+  }
+  return {
+    ...data,
+    results: data.results.map((result) => ({
+      ...result,
+      uri: decorateUriForIndex(result.uri, indexName),
+    })),
+  };
 }
 
 /**

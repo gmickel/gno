@@ -154,6 +154,38 @@ describe("gno search smoke tests", () => {
     }
     expect(valid).toBe(true);
     expect(parsed.meta.mode).toBe("bm25");
+    expect(parsed.results[0]?.line).toBeGreaterThan(0);
+  });
+
+  test("--index decorates search result URIs", async () => {
+    await cli("--index", "alt", "update");
+
+    const { code, stdout } = await cli(
+      "--index",
+      "alt",
+      "search",
+      "markdown",
+      "--json"
+    );
+
+    expect(code).toBe(0);
+    const parsed = JSON.parse(stdout);
+    expect(parsed.results[0]?.uri).toContain("?index=alt");
+
+    const getResult = await cli("get", parsed.results[0].uri, "--json");
+    expect(getResult.code).toBe(0);
+    expect(JSON.parse(getResult.stdout).uri).toContain("?index=alt");
+  });
+
+  test("status honors --index", async () => {
+    await cli("--index", "alt", "update");
+
+    const { code, stdout } = await cli("--index", "alt", "status", "--json");
+
+    expect(code).toBe(0);
+    const parsed = JSON.parse(stdout);
+    expect(parsed.indexName).toBe("alt");
+    expect(parsed.totalDocuments).toBe(1);
   });
 
   test("search --files outputs line protocol", async () => {

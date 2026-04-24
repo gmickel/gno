@@ -60,6 +60,8 @@ export interface VectorIndexPort {
   readonly dimensions: number;
   /** Error message if sqlite-vec failed to load (for diagnostics) */
   readonly loadError?: string;
+  /** User-facing recovery guidance when search is unavailable */
+  readonly guidance?: string;
   /** True if vec0 inserts failed during this session (needs sync) */
   vecDirty: boolean;
 

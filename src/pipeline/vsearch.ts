@@ -50,6 +50,16 @@ export interface VectorSearchDeps {
   config: Config;
 }
 
+function vectorUnavailableMessage(vectorIndex: VectorIndexPort): string {
+  const reason = vectorIndex.loadError
+    ? ` Reason: ${vectorIndex.loadError}`
+    : "";
+  const guidance = vectorIndex.guidance
+    ? ` ${vectorIndex.guidance}`
+    : " Run: gno doctor";
+  return `Vector search unavailable.${reason}${guidance}`;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Search Function (with pre-computed embedding)
 // ─────────────────────────────────────────────────────────────────────────────
@@ -82,10 +92,7 @@ export async function searchVectorWithEmbedding(
 
   // Check if vector search is available
   if (!vectorIndex.searchAvailable) {
-    return err(
-      "VEC_SEARCH_UNAVAILABLE",
-      "Vector search requires sqlite-vec. Run: gno embed"
-    );
+    return err("VEC_SEARCH_UNAVAILABLE", vectorUnavailableMessage(vectorIndex));
   }
 
   // Search nearest neighbors
@@ -220,6 +227,7 @@ export async function searchVectorWithEmbedding(
       score,
       uri: doc.uri,
       title: doc.title ?? undefined,
+      line: chunk.startLine,
       snippet: chunk.text,
       snippetLanguage: chunk.language ?? undefined,
       snippetRange: {
@@ -273,6 +281,7 @@ export async function searchVectorWithEmbedding(
         score,
         uri: doc.uri,
         title: doc.title ?? undefined,
+        line: chunk.startLine,
         snippet: fullContent ?? chunk.text,
         snippetLanguage: chunk.language ?? undefined,
         // --full: no snippetRange (full doc content)
@@ -354,10 +363,7 @@ export async function searchVector(
 
   // Check if vector search is available
   if (!vectorIndex.searchAvailable) {
-    return err(
-      "VEC_SEARCH_UNAVAILABLE",
-      "Vector search requires sqlite-vec. Run: gno embed"
-    );
+    return err("VEC_SEARCH_UNAVAILABLE", vectorUnavailableMessage(vectorIndex));
   }
 
   // Embed query with contextual formatting

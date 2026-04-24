@@ -36,13 +36,13 @@ All commands accept these flags:
 
 Commands that produce structured output support these format flags:
 
-| Flag      | Description                                           |
-| --------- | ----------------------------------------------------- |
-| `--json`  | JSON output (array or object depending on command)    |
-| `--files` | Line protocol: `#docid,<score>,gno://collection/path` |
-| `--csv`   | Comma-separated values with header row                |
-| `--md`    | Markdown formatted output                             |
-| `--xml`   | XML formatted output                                  |
+| Flag      | Description                                                                                                    |
+| --------- | -------------------------------------------------------------------------------------------------------------- |
+| `--json`  | JSON output (array or object depending on command)                                                             |
+| `--files` | Line protocol: `#docid,<score>,gno://collection/path` (`?index=<name>` may be present for non-default indexes) |
+| `--csv`   | Comma-separated values with header row                                                                         |
+| `--md`    | Markdown formatted output                                                                                      |
+| `--xml`   | XML formatted output                                                                                           |
 
 Default output is human-readable terminal format.
 

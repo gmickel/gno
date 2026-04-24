@@ -1,0 +1,18 @@
+{
+  "branch_name": "feat/runtime-hardening",
+  "completion_review_status": "unknown",
+  "completion_reviewed_at": null,
+  "created_at": "2026-04-24T08:30:04.500122Z",
+  "default_impl": null,
+  "default_review": null,
+  "default_sync": null,
+  "depends_on_epics": [],
+  "id": "fn-73-gno-runtime-hardening",
+  "next_task": 1,
+  "plan_review_status": "unknown",
+  "plan_reviewed_at": null,
+  "spec_path": ".flow/specs/fn-73-gno-runtime-hardening.md",
+  "status": "open",
+  "title": "GNO Runtime Hardening",
+  "updated_at": "2026-04-24T08:30:07.744065Z"
+}

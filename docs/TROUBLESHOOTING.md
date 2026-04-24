@@ -68,6 +68,11 @@ GNO auto-detects Homebrew SQLite. If still failing:
 gno doctor --json | jq '.checks[] | select(.name == "sqlite-vec")'
 ```
 
+Runtime vector failures preserve the original sqlite-vec load/probe reason.
+`gno vsearch` returns that reason directly; `gno query --explain` includes it
+while degrading to BM25-only. Repeated status/API checks should not spam the
+same warning.
+
 ### Bun Version Too Old
 
 ```bash
@@ -495,23 +500,58 @@ gno collection clear-embeddings my-collection --all
 gno embed --collection my-collection
 ```
 
-### Force CPU-only for testing
+### GPU Backend Selection
 
-To disable Metal/CUDA/Vulkan and force `node-llama-cpp` onto the CPU backend
-for a repro or benchmark:
+Set `GNO_LLAMA_GPU` to force a local backend while debugging runtime issues.
+`GNO_LLAMA_GPU` takes precedence over `NODE_LLAMA_CPP_GPU`.
 
 ```bash
-NODE_LLAMA_CPP_GPU=false gno doctor --json
-NODE_LLAMA_CPP_GPU=false gno embed --yes
+GNO_LLAMA_GPU=metal gno embed --yes
+GNO_LLAMA_GPU=vulkan gno doctor --json
+GNO_LLAMA_GPU=false gno embed --yes
 ```
 
-Accepted values: `false`, `off`, `none`, `disable`, `disabled`.
+Accepted values: `auto`, `metal`, `vulkan`, `cuda`, `false`, `off`, `none`,
+`disable`, `disabled`, `0`. If an explicit GPU backend fails during init, GNO
+warns once and retries CPU.
 
 If your machine only has GPU-backed `node-llama-cpp` binaries cached, the first
 CPU-only run may build or download a separate CPU backend. For throughput
 measurements, ignore that first run and time the second.
 
 ## Model Issues
+
+### Downloaded Model Is Not GGUF
+
+GNO validates the first bytes of every local GGUF model before loading it. If a
+cached Hugging Face download is actually HTML or another non-GGUF response, GNO
+removes the bad cache entry and reports whether it looked like proxy, firewall,
+or captive portal interception.
+
+Recovery:
+
+```bash
+gno models pull --force --all
+gno doctor
+```
+
+Explicit `file:` and absolute model paths are validated too, but GNO never
+deletes user-owned model files. Replace the file with a real `.gguf` export if
+the error names a user path.
+
+### Large Document Or Native Embedding Failure
+
+GNO chunks large documents before embedding and clamps oversized direct
+embedding inputs to the active model context when tokenizer metadata is
+available. If native inference still fails on a pathological document, run:
+
+```bash
+gno update
+gno embed --force --verbose
+```
+
+Check the sample error path, then split the document or remove generated
+single-line blobs from the collection.
 
 ### Models Fail to Download
 

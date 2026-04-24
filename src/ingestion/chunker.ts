@@ -372,6 +372,12 @@ export class MarkdownChunker implements ChunkerPort {
           // Find a good prose break point
           findBreakPoint(markdown, targetEnd, windowSize);
       }
+      if (endPos <= pos) {
+        endPos = Math.min(markdown.length, pos + maxChars);
+      }
+      if (endPos - pos > maxChars + windowSize) {
+        endPos = Math.min(markdown.length, pos + maxChars);
+      }
 
       // Extract chunk text - preserve exactly (no trim!)
       // This maintains accurate pos/line mappings and Markdown semantics

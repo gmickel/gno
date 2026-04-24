@@ -14,6 +14,8 @@ import { formatSyncResultLines, initStore } from "./shared";
 export interface IndexOptions {
   /** Override config path */
   configPath?: string;
+  /** Index name */
+  indexName?: string;
   /** Scope to single collection */
   collection?: string;
   /** Run ingestion only, skip embedding */
@@ -46,6 +48,7 @@ export type IndexResult =
 export async function index(options: IndexOptions = {}): Promise<IndexResult> {
   const initResult = await initStore({
     configPath: options.configPath,
+    indexName: options.indexName,
     collection: options.collection,
   });
   if (!initResult.ok) {
@@ -71,6 +74,7 @@ export async function index(options: IndexOptions = {}): Promise<IndexResult> {
       const { embed } = await import("./embed");
       const result = await embed({
         configPath: options.configPath,
+        indexName: options.indexName,
         collection: options.collection,
         verbose: options.verbose,
       });

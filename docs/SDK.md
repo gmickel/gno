@@ -169,6 +169,11 @@ const listed = await client.list({ limit: 20 });
 
 `get()` returns source metadata plus capability metadata, so embedded apps can tell whether a document is editable in place or should be treated as read-only converted source material.
 
+Clients opened with a non-default `indexName` decorate returned `gno://` URIs
+with `?index=<name>` so search/list results can round-trip back to the same
+index. `get()` also accepts indexed URIs and strips the query metadata before
+same-store lookup.
+
 ### Status
 
 ```ts

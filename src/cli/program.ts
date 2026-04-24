@@ -311,6 +311,7 @@ function wireSearchCommands(program: Command): void {
     .action(async (queryText: string, cmdOpts: Record<string, unknown>) => {
       const format = getFormat(cmdOpts);
       assertFormatSupported(CMD.search, format);
+      const globals = getGlobals();
 
       // Validate empty query
       if (!queryText.trim()) {
@@ -348,6 +349,8 @@ function wireSearchCommands(program: Command): void {
 
       const { search, formatSearch } = await import("./commands/search");
       const result = await search(queryText, {
+        configPath: globals.config,
+        indexName: globals.index,
         limit,
         minScore,
         collection: cmdOpts.collection as string | undefined,
@@ -425,6 +428,7 @@ function wireSearchCommands(program: Command): void {
     .action(async (queryText: string, cmdOpts: Record<string, unknown>) => {
       const format = getFormat(cmdOpts);
       assertFormatSupported(CMD.vsearch, format);
+      const globals = getGlobals();
 
       // Validate empty query
       if (!queryText.trim()) {
@@ -462,6 +466,8 @@ function wireSearchCommands(program: Command): void {
 
       const { vsearch, formatVsearch } = await import("./commands/vsearch");
       const result = await vsearch(queryText, {
+        configPath: globals.config,
+        indexName: globals.index,
         limit,
         minScore,
         collection: cmdOpts.collection as string | undefined,
@@ -631,6 +637,8 @@ function wireSearchCommands(program: Command): void {
 
       const { query, formatQuery } = await import("./commands/query");
       const result = await query(queryText, {
+        configPath: globals.config,
+        indexName: globals.index,
         limit,
         minScore,
         collection: cmdOpts.collection as string | undefined,
@@ -885,6 +893,8 @@ function wireOnboardingCommands(program: Command): void {
         const globals = getGlobals();
         const { index, formatIndex } = await import("./commands/index-cmd");
         const opts = {
+          configPath: globals.config,
+          indexName: globals.index,
           collection,
           noEmbed: cmdOpts.embed === false,
           gitPull: Boolean(cmdOpts.gitPull),
@@ -911,7 +921,12 @@ function wireOnboardingCommands(program: Command): void {
       assertFormatSupported(CMD.status, format);
 
       const { status, formatStatus } = await import("./commands/status");
-      const result = await status({ json: format === "json" });
+      const globals = getGlobals();
+      const result = await status({
+        configPath: globals.config,
+        indexName: globals.index,
+        json: format === "json",
+      });
 
       if (!result.success) {
         throw new CliError("RUNTIME", result.error ?? "Status failed");
@@ -969,6 +984,7 @@ function wireRetrievalCommands(program: Command): void {
       const { get, formatGet } = await import("./commands/get");
       const result = await get(ref, {
         configPath: globals.config,
+        indexName: globals.index,
         from: cmdOpts.from as number | undefined,
         limit: cmdOpts.limit as number | undefined,
         lineNumbers: Boolean(cmdOpts.lineNumbers),
@@ -1014,6 +1030,7 @@ function wireRetrievalCommands(program: Command): void {
       const { multiGet, formatMultiGet } = await import("./commands/multi-get");
       const result = await multiGet(refs, {
         configPath: globals.config,
+        indexName: globals.index,
         maxBytes: cmdOpts.maxBytes as number | undefined,
         lineNumbers: Boolean(cmdOpts.lineNumbers),
         json: format === "json",
@@ -1515,6 +1532,8 @@ function wireManagementCommands(program: Command): void {
       const globals = getGlobals();
       const { update, formatUpdate } = await import("./commands/update");
       const opts = {
+        configPath: globals.config,
+        indexName: globals.index,
         gitPull: Boolean(cmdOpts.gitPull),
         verbose: globals.verbose,
       };
@@ -1548,6 +1567,8 @@ function wireManagementCommands(program: Command): void {
         const collection =
           collectionArg ?? (cmdOpts.collection as string | undefined);
         const opts = {
+          configPath: globals.config,
+          indexName: globals.index,
           collection,
           model: cmdOpts.model as string | undefined,
           batchSize: parsePositiveInt("batch-size", cmdOpts.batchSize),

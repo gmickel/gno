@@ -778,7 +778,7 @@ graph TD
 
 ## Local Models
 
-Models auto-download on first use to `~/.cache/gno/models/`. For deterministic startup, set `GNO_NO_AUTO_DOWNLOAD=1` and use `gno models pull` explicitly. Alternatively, offload to a GPU server on your network using HTTP backends.
+Models auto-download on first use to `~/.cache/gno/models/`. GNO validates cached GGUF files before loading and removes intercepted HTML/non-GGUF cache entries with a clear recovery error. For deterministic startup, set `GNO_NO_AUTO_DOWNLOAD=1` and use `gno models pull` explicitly. Alternatively, offload to a GPU server on your network using HTTP backends.
 
 | Model                  | Purpose                               | Size         |
 | :--------------------- | :------------------------------------ | :----------- |

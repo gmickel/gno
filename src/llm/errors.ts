@@ -15,6 +15,8 @@ export type LlmErrorCode =
   | "MODEL_DOWNLOAD_FAILED"
   | "MODEL_LOAD_FAILED"
   | "MODEL_CORRUPTED"
+  | "INVALID_MODEL_FILE"
+  | "MODEL_DOWNLOAD_INTERCEPTED"
   | "INFERENCE_FAILED"
   | "TIMEOUT"
   | "OUT_OF_MEMORY"
@@ -157,6 +159,36 @@ export function corruptedError(uri: string, cause?: unknown): LlmError {
     retryable: false,
     cause,
     suggestion: "Run: gno models clear && gno models pull",
+  });
+}
+
+export function invalidModelFileError(
+  uri: string,
+  path: string,
+  details?: string
+): LlmError {
+  return llmError("INVALID_MODEL_FILE", {
+    message: `Model file is not a GGUF file: ${path}${details ? ` (${details})` : ""}`,
+    modelUri: uri,
+    retryable: false,
+    suggestion: "Remove the file or run: gno models pull --force",
+  });
+}
+
+export function modelDownloadInterceptedError(
+  uri: string,
+  path: string,
+  owner: "cache" | "user"
+): LlmError {
+  return llmError("MODEL_DOWNLOAD_INTERCEPTED", {
+    message:
+      `Model file looks like HTML instead of GGUF: ${path}. ` +
+      `A proxy, firewall, or captive portal likely intercepted the download.` +
+      (owner === "cache" ? " The cached file was removed." : ""),
+    modelUri: uri,
+    retryable: false,
+    suggestion:
+      "Check network access to Hugging Face, then run: gno models pull --force",
   });
 }
 

@@ -359,10 +359,15 @@ When adding new commands or modifying outputs:
   - MCP.md (for `gno mcp`)
 - [ ] website/\_data/features.yml - Feature bento cards current?
 - [ ] website/ - Auto-synced from docs/ via `bun run website:sync-docs`
+- [ ] ~/work/gno.sh - Website docs/reference pages updated for new user-facing GNO behavior
 - [ ] Flow-Next - Are epic/task specs up to date?
 
 **Website sync**: The `website/docs/` directory is auto-populated from `docs/` during build.
 Run `bun run website:sync-docs` to manually sync. CHANGELOG.md is also copied.
+
+**Hosted website docs**: New features, CLI/MCP/API output changes, model behavior,
+and troubleshooting updates must also be reflected in `~/work/gno.sh` when they
+affect website docs, product pages, install pages, comparisons, or FAQs.
 
 If you change behavior, update docs in the same commit. Never leave docs out of sync.
 

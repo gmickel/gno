@@ -143,6 +143,11 @@ gno models pull --expand  # Required for local query expansion
 gno models pull --gen     # Required for --answer
 ```
 
+GNO validates cached/local `.gguf` files before loading them. If a network
+proxy, firewall, captive portal, or Hugging Face HTML error page is cached
+instead of a model, GNO removes the bad cached file and asks you to retry with
+`gno models pull --force`.
+
 Model presets control disk usage:
 
 | Preset     | Embed                   | Rerank                 | Expand                   | Answer        |

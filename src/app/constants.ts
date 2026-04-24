@@ -244,22 +244,39 @@ export function getModelsCachePath(dirs: ResolvedDirs = resolveDirs()): string {
 /**
  * Build a gno:// URI from collection and relative path.
  */
-export function buildUri(collection: string, relativePath: string): string {
+export interface BuildUriOptions {
+  indexName?: string;
+}
+
+export interface ParsedGnoUri {
+  collection: string;
+  path: string;
+  indexName?: string;
+}
+
+export function buildUri(
+  collection: string,
+  relativePath: string,
+  options: BuildUriOptions = {}
+): string {
   // URL-encode special chars in path segments but preserve slashes
   const encodedPath = relativePath
     .split("/")
     .map((segment) => encodeURIComponent(segment))
     .join("/");
-  return `${URI_PREFIX}${collection}/${encodedPath}`;
+  const uri = `${URI_PREFIX}${collection}/${encodedPath}`;
+  const indexName = options.indexName?.trim();
+  if (!indexName || indexName === DEFAULT_INDEX_NAME) {
+    return uri;
+  }
+  return `${uri}?index=${encodeURIComponent(indexName)}`;
 }
 
 /**
  * Parse a gno:// URI into collection and path components.
  * Returns null if not a valid gno:// URI or if decoding fails.
  */
-export function parseUri(
-  uri: string
-): { collection: string; path: string } | null {
+export function parseUri(uri: string): ParsedGnoUri | null {
   if (!uri.startsWith(URI_PREFIX)) {
     return null;
   }
@@ -269,18 +286,57 @@ export function parseUri(
 
   if (slashIndex === -1) {
     // gno://collection (no path)
-    return { collection: rest, path: "" };
+    const [collectionWithQuery, query = ""] = rest.split("?", 2);
+    const indexName = new URLSearchParams(query).get("index")?.trim();
+    return indexName
+      ? {
+          collection: collectionWithQuery ?? rest,
+          path: "",
+          indexName,
+        }
+      : { collection: collectionWithQuery ?? rest, path: "" };
   }
 
   const collection = rest.slice(0, slashIndex);
+  const pathAndQuery = rest.slice(slashIndex + 1);
+  const queryIndex = pathAndQuery.indexOf("?");
+  const encodedPath =
+    queryIndex === -1 ? pathAndQuery : pathAndQuery.slice(0, queryIndex);
+  const query = queryIndex === -1 ? "" : pathAndQuery.slice(queryIndex + 1);
 
   // decodeURIComponent throws on malformed percent-encoding
   try {
-    const path = decodeURIComponent(rest.slice(slashIndex + 1));
-    return { collection, path };
+    const path = decodeURIComponent(encodedPath);
+    const indexName = new URLSearchParams(query).get("index")?.trim();
+    return indexName ? { collection, path, indexName } : { collection, path };
   } catch {
     return null;
   }
+}
+
+/**
+ * Add output-only index metadata to a canonical gno:// URI.
+ */
+export function decorateUriForIndex(uri: string, indexName?: string): string {
+  const parsed = parseUri(uri);
+  const normalizedIndex = indexName?.trim();
+  if (!parsed || !normalizedIndex || normalizedIndex === DEFAULT_INDEX_NAME) {
+    return stripUriIndex(uri);
+  }
+  return buildUri(parsed.collection, parsed.path, {
+    indexName: normalizedIndex,
+  });
+}
+
+/**
+ * Remove output-only index metadata from a gno:// URI.
+ */
+export function stripUriIndex(uri: string): string {
+  const parsed = parseUri(uri);
+  if (!parsed) {
+    return uri;
+  }
+  return buildUri(parsed.collection, parsed.path);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

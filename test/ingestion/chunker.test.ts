@@ -186,4 +186,23 @@ describe("MarkdownChunker", () => {
     expect(secondChunk).toBeDefined();
     expect(secondChunk?.pos).toBeGreaterThan(0);
   });
+
+  test("chunks giant one-line content without stalling", () => {
+    const text = "x".repeat(120_000);
+    const chunks = chunker.chunk(text, {
+      maxTokens: 100,
+      overlapPercent: 0.1,
+    });
+
+    expect(chunks.length).toBeGreaterThan(10);
+    for (let i = 0; i < chunks.length; i += 1) {
+      const chunk = chunks[i];
+      expect(chunk?.startLine).toBe(1);
+      expect(chunk?.endLine).toBe(1);
+      expect(chunk?.text.length).toBeLessThanOrEqual(440);
+      if (i > 0) {
+        expect(chunk?.pos).toBeGreaterThan(chunks[i - 1]?.pos ?? -1);
+      }
+    }
+  });
 });
