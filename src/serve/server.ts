@@ -154,9 +154,8 @@ export async function startServer(
   const shutdownController = new AbortController();
 
   // Graceful shutdown handler
-  const shutdown = async () => {
+  const shutdown = () => {
     console.log("\nShutting down...");
-    await runtime.dispose();
     shutdownController.abort();
   };
 
@@ -663,5 +662,6 @@ export async function startServer(
   });
 
   await server.stop(true);
+  await runtime.dispose();
   return { success: true };
 }
