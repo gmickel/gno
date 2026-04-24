@@ -677,6 +677,58 @@ function wireSearchCommands(program: Command): void {
       await writeOutput(output, format);
     });
 
+  // bench - Retrieval benchmark fixture runner
+  program
+    .command("bench <fixture>")
+    .description("Run retrieval quality benchmarks from a fixture")
+    .option("-c, --collection <name>", "override fixture collection")
+    .option("-k, --top-k <num>", "override top-k metric cutoff")
+    .option(
+      "--mode <name>",
+      "benchmark mode (repeatable): bm25, vector, hybrid, fast, no-rerank, thorough",
+      (value: string, previous: string[] = []) => [...previous, value],
+      []
+    )
+    .option("-C, --candidate-limit <num>", "max candidates passed to reranking")
+    .option("--json", "JSON output")
+    .action(async (fixture: string, cmdOpts: Record<string, unknown>) => {
+      const format = getFormat(cmdOpts);
+      assertFormatSupported(CMD.bench, format);
+      const globals = getGlobals();
+      const topK = cmdOpts.topK
+        ? parsePositiveInt("top-k", cmdOpts.topK)
+        : undefined;
+      const candidateLimit = cmdOpts.candidateLimit
+        ? parsePositiveInt("candidate-limit", cmdOpts.candidateLimit)
+        : undefined;
+
+      const { bench, formatBench } = await import("./commands/bench");
+      const result = await bench(fixture, {
+        configPath: globals.config,
+        indexName: globals.index,
+        collection: cmdOpts.collection as string | undefined,
+        topK,
+        candidateLimit,
+        modes:
+          Array.isArray(cmdOpts.mode) && cmdOpts.mode.length > 0
+            ? (cmdOpts.mode as string[])
+            : undefined,
+        json: format === "json",
+      });
+
+      if (!result.success) {
+        throw new CliError(
+          result.isValidation ? "VALIDATION" : "RUNTIME",
+          result.error
+        );
+      }
+
+      await writeOutput(
+        formatBench(result, { json: format === "json" }),
+        format
+      );
+    });
+
   // ask - Human-friendly query with grounded answer
   program
     .command("ask <query>")

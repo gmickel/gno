@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "metadata": {
+    "name": "Documentation retrieval smoke",
+    "description": "Small example fixture for comparing GNO retrieval modes.",
+    "tags": ["example", "retrieval"]
+  },
+  "collection": "docs",
+  "topK": 5,
+  "candidateLimit": 20,
+  "modes": ["bm25", "fast", "no-rerank", "thorough"],
+  "queries": [
+    {
+      "id": "search-pipeline",
+      "query": "how hybrid search works",
+      "expected": ["HOW-SEARCH-WORKS.md"],
+      "judgments": [{ "doc": "HOW-SEARCH-WORKS.md", "relevance": 3 }]
+    },
+    {
+      "id": "cli-reference",
+      "query": "bench command fixture schema",
+      "expected": ["CLI.md"],
+      "queryModes": [
+        { "mode": "term", "text": "bench fixture schema" },
+        {
+          "mode": "intent",
+          "text": "CLI command documentation for benchmark fixtures"
+        }
+      ]
+    }
+  ]
+}

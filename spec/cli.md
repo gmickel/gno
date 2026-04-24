@@ -62,6 +62,7 @@ Default output is human-readable terminal format.
 | search             | yes    | yes     | yes   | yes  | yes   | terminal |
 | vsearch            | yes    | yes     | yes   | yes  | yes   | terminal |
 | query              | yes    | yes     | yes   | yes  | yes   | terminal |
+| bench              | yes    | no      | no    | no   | no    | terminal |
 | ask                | yes    | no      | no    | yes  | no    | terminal |
 | get                | yes    | no      | no    | yes  | no    | terminal |
 | multi-get          | yes    | yes     | no    | yes  | no    | terminal |
@@ -673,6 +674,54 @@ gno query <query> [-n <num>] [--min-score <num>] [-c <collection>] [--since <dat
 - 0: Success (degrades gracefully if vectors unavailable)
 - 1: Invalid options
 - 2: DB or model failure
+
+---
+
+### gno bench
+
+Run retrieval quality benchmarks against an already indexed GNO corpus.
+
+**Synopsis:**
+
+```bash
+gno bench <fixture.json> [-c <collection>] [-k <num>] [--mode <name>]... [-C <num>] [--json]
+```
+
+**Fixture schema:** [`spec/bench-fixture.schema.json`](./bench-fixture.schema.json)
+
+**JSON output schema:** [`spec/output-schemas/bench-result.schema.json`](./output-schemas/bench-result.schema.json)
+
+**Options:**
+
+| Option                  | Type     | Description                                                                                     |
+| ----------------------- | -------- | ----------------------------------------------------------------------------------------------- |
+| `-c, --collection`      | string   | Override fixture/query collection                                                               |
+| `-k, --top-k`           | integer  | Override top-k cutoff used for Precision@K, Recall@K, F1@K, MRR, and nDCG@K                     |
+| `--mode`                | string[] | Override fixture modes. Repeatable: `bm25`, `vector`, `hybrid`, `fast`, `no-rerank`, `thorough` |
+| `-C, --candidate-limit` | integer  | Override candidate limit for hybrid/rerank modes                                                |
+| `--json`                | boolean  | Emit structured benchmark result                                                                |
+
+Fixtures support:
+
+- `version: 1`
+- optional `metadata`, `collection`, `topK`, `candidateLimit`
+- `modes` as aliases or objects with `type`, `noExpand`, `noRerank`, `candidateLimit`, `limit`, and `queryModes`
+- `queries[]` with `id`, `query`, expected documents/URIs, optional `collection`, optional `topK`, optional `queryModes`, and optional graded `judgments`
+
+Metrics reported per mode and per query:
+
+- `precisionAtK`
+- `recallAtK`
+- `f1AtK`
+- `mrr`
+- `ndcgAtK`
+- latency summaries (`p50Ms`, `p95Ms`, `meanMs`)
+
+**Exit Codes:**
+
+- 0: Fixture loaded and benchmark ran
+- 1: Invalid fixture, mode, or options
+- 2: Runtime failure
 
 ---
 

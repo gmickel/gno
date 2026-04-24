@@ -1,0 +1,137 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "GNO Bench Fixture",
+  "type": "object",
+  "required": ["version", "queries"],
+  "additionalProperties": false,
+  "properties": {
+    "version": { "const": 1 },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "tags": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "collection": { "type": "string", "minLength": 1 },
+    "topK": { "type": "integer", "minimum": 1 },
+    "candidateLimit": { "type": "integer", "minimum": 1 },
+    "modes": {
+      "type": "array",
+      "items": {
+        "oneOf": [
+          {
+            "type": "string",
+            "enum": [
+              "bm25",
+              "vector",
+              "hybrid",
+              "fast",
+              "no-rerank",
+              "thorough"
+            ]
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "name": { "type": "string", "minLength": 1 },
+              "type": {
+                "type": "string",
+                "enum": ["bm25", "vector", "hybrid"]
+              },
+              "mode": {
+                "type": "string",
+                "enum": [
+                  "bm25",
+                  "vector",
+                  "hybrid",
+                  "fast",
+                  "no-rerank",
+                  "thorough"
+                ]
+              },
+              "noExpand": { "type": "boolean" },
+              "noRerank": { "type": "boolean" },
+              "candidateLimit": { "type": "integer", "minimum": 1 },
+              "limit": { "type": "integer", "minimum": 1 },
+              "queryModes": {
+                "type": "array",
+                "items": { "$ref": "#/definitions/queryMode" }
+              }
+            }
+          }
+        ]
+      }
+    },
+    "queries": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "query"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "query": { "type": "string", "minLength": 1 },
+          "expected": {
+            "type": "array",
+            "items": { "type": "string", "minLength": 1 }
+          },
+          "expectedDocuments": {
+            "type": "array",
+            "items": { "type": "string", "minLength": 1 }
+          },
+          "expectedUris": {
+            "type": "array",
+            "items": { "type": "string", "minLength": 1 }
+          },
+          "judgments": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["relevance"],
+              "additionalProperties": false,
+              "properties": {
+                "docid": { "type": "string", "minLength": 1 },
+                "doc": { "type": "string", "minLength": 1 },
+                "uri": { "type": "string", "minLength": 1 },
+                "relevance": { "type": "number", "minimum": 0 }
+              },
+              "anyOf": [
+                { "required": ["docid"] },
+                { "required": ["doc"] },
+                { "required": ["uri"] }
+              ]
+            }
+          },
+          "collection": { "type": "string", "minLength": 1 },
+          "topK": { "type": "integer", "minimum": 1 },
+          "queryModes": {
+            "type": "array",
+            "items": { "$ref": "#/definitions/queryMode" }
+          }
+        },
+        "anyOf": [
+          { "required": ["expected"] },
+          { "required": ["expectedDocuments"] },
+          { "required": ["expectedUris"] },
+          { "required": ["judgments"] }
+        ]
+      }
+    }
+  },
+  "definitions": {
+    "queryMode": {
+      "type": "object",
+      "required": ["mode", "text"],
+      "additionalProperties": false,
+      "properties": {
+        "mode": { "type": "string", "enum": ["term", "intent", "hyde"] },
+        "text": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}
