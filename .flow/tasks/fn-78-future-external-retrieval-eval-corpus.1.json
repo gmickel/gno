@@ -1,0 +1,14 @@
+{
+  "assignee": null,
+  "claim_note": "",
+  "claimed_at": null,
+  "created_at": "2026-04-24T12:31:05.464814Z",
+  "depends_on": [],
+  "epic": "fn-78-future-external-retrieval-eval-corpus",
+  "id": "fn-78-future-external-retrieval-eval-corpus.1",
+  "priority": 1,
+  "spec_path": ".flow/tasks/fn-78-future-external-retrieval-eval-corpus.1.md",
+  "status": "todo",
+  "title": "Import external retrieval eval fixtures safely",
+  "updated_at": "2026-04-24T12:31:51.758636Z"
+}

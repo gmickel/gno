@@ -1,0 +1,13 @@
+{
+  "branch_name": "fn-74-upstream-freshness-and-code-retrieval",
+  "created_at": "2026-04-24T12:26:32.136350Z",
+  "depends_on_epics": [],
+  "id": "fn-74-upstream-freshness-and-code-retrieval",
+  "next_task": 1,
+  "plan_review_status": "unknown",
+  "plan_reviewed_at": null,
+  "spec_path": ".flow/specs/fn-74-upstream-freshness-and-code-retrieval.md",
+  "status": "open",
+  "title": "Upstream freshness and code retrieval quality",
+  "updated_at": "2026-04-24T12:26:48.598576Z"
+}

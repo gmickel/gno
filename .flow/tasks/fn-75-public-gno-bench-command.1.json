@@ -1,0 +1,14 @@
+{
+  "assignee": null,
+  "claim_note": "",
+  "claimed_at": null,
+  "created_at": "2026-04-24T12:28:15.092321Z",
+  "depends_on": [],
+  "epic": "fn-75-public-gno-bench-command",
+  "id": "fn-75-public-gno-bench-command.1",
+  "priority": 1,
+  "spec_path": ".flow/tasks/fn-75-public-gno-bench-command.1.md",
+  "status": "todo",
+  "title": "Design and implement public gno bench command",
+  "updated_at": "2026-04-24T12:29:20.153839Z"
+}

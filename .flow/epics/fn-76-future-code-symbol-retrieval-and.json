@@ -1,0 +1,13 @@
+{
+  "branch_name": "fn-76-future-code-symbol-retrieval-and",
+  "created_at": "2026-04-24T12:31:00.053122Z",
+  "depends_on_epics": ["fn-74-upstream-freshness-and-code-retrieval"],
+  "id": "fn-76-future-code-symbol-retrieval-and",
+  "next_task": 1,
+  "plan_review_status": "unknown",
+  "plan_reviewed_at": null,
+  "spec_path": ".flow/specs/fn-76-future-code-symbol-retrieval-and.md",
+  "status": "open",
+  "title": "Future code symbol retrieval and navigation",
+  "updated_at": "2026-04-24T12:32:25.532182Z"
+}
