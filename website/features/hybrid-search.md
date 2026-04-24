@@ -45,6 +45,8 @@ gno vsearch "how to protect my app"
 
 For supported code files (`.ts`, `.tsx`, `.js`, `.jsx`, `.py`, `.go`, `.rs`), GNO also prefers structural chunk boundaries such as imports, functions, classes, and type definitions before falling back to the default chunker.
 
+That production chunker was benchmarked against a real tree-sitter AST chunker. The AST version did not improve retrieval score on the canonical code fixture (`nDCG@10` stayed `0.963`), so GNO keeps the faster heuristic path.
+
 ### Reciprocal Rank Fusion
 
 The `query` command combines both methods using RRF, a proven algorithm that merges ranked lists. Documents that score well in both methods rise to the top.
