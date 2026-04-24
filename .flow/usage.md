@@ -75,7 +75,7 @@ Task tracking for AI agents. All state lives in `.flow/`.
 ## Evidence JSON Format
 
 ```json
-{ "commits": ["abc123"], "tests": ["npm test"], "prs": [] }
+{"commits": ["abc123"], "tests": ["npm test"], "prs": []}
 ```
 
 ## Parallel Worktrees
@@ -92,5 +92,5 @@ Migration is optional — existing repos work without changes.
 
 ## More Info
 
-- Human docs: https://github.com/gmickel/gmickel-claude-marketplace/blob/main/plugins/flow-next/docs/flowctl.md
+- Human docs: https://github.com/gmickel/flow-next/blob/main/plugins/flow-next/docs/flowctl.md
 - CLI reference: `.flow/bin/flowctl --help`
