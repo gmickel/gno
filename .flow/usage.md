@@ -75,7 +75,7 @@ Task tracking for AI agents. All state lives in `.flow/`.
 ## Evidence JSON Format
 
 ```json
-{"commits": ["abc123"], "tests": ["npm test"], "prs": []}
+{ "commits": ["abc123"], "tests": ["npm test"], "prs": [] }
 ```
 
 ## Parallel Worktrees

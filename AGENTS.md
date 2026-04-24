@@ -394,11 +394,13 @@ If you change behavior, update docs in the same commit. Never leave docs out of 
 Work is NOT complete until pushed to remote.
 
 <!-- BEGIN FLOW-NEXT -->
+
 ## Flow-Next
 
 This project uses Flow-Next for task tracking. Use `.flow/bin/flowctl` instead of markdown TODOs or TodoWrite.
 
 **Quick commands:**
+
 ```bash
 .flow/bin/flowctl list                # List all epics + tasks
 .flow/bin/flowctl epics               # List all epics
@@ -443,15 +445,18 @@ EOF
 ```
 
 After creating a spec, choose next step:
+
 - `$flow-next-plan <epic-id>` — research + break into tasks
 - `$flow-next-interview <epic-id>` — deep Q&A to refine the spec
 
 **Rules:**
+
 - Use `.flow/bin/flowctl` for ALL task tracking
 - Do NOT create markdown TODOs or use TodoWrite
 - Re-anchor (re-read spec + status) before every task
 
 **More info:** `.flow/bin/flowctl --help` or read `.flow/usage.md`
+
 <!-- END FLOW-NEXT -->
 
 # Oxlint + Oxfmt Code Standards
