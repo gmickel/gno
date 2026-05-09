@@ -636,7 +636,7 @@ interface GraphInput {
 }
 
 function formatGraphResult(data: GraphResult): string {
-  const { nodes, links, meta } = data;
+  const { meta, report } = data;
   const lines: string[] = [];
 
   lines.push(
@@ -659,22 +659,31 @@ function formatGraphResult(data: GraphResult): string {
 
   lines.push("");
   lines.push("Top nodes by degree:");
-  const topNodes = [...nodes].sort((a, b) => b.degree - a.degree).slice(0, 10);
-  for (const node of topNodes) {
+  for (const node of report.hubs) {
     const title = node.title ? ` "${node.title}"` : "";
     lines.push(`  [${node.id}] ${node.uri}${title} (degree: ${node.degree})`);
   }
 
-  const edgeTypes = new Map<string, number>();
-  for (const link of links) {
-    edgeTypes.set(link.type, (edgeTypes.get(link.type) ?? 0) + 1);
+  if (report.bridgeCandidates.length > 0) {
+    lines.push("");
+    lines.push("Bridge candidates:");
+    for (const node of report.bridgeCandidates) {
+      const title = node.title ? ` "${node.title}"` : "";
+      lines.push(`  [${node.id}] ${node.uri}${title} (degree: ${node.degree})`);
+    }
   }
 
   lines.push("");
   lines.push("Edge breakdown:");
-  for (const [type, count] of edgeTypes) {
+  for (const [type, count] of Object.entries(report.edgeTypes)) {
     lines.push(`  ${type}: ${count}`);
   }
+
+  lines.push("");
+  lines.push(
+    `Unresolved links: ${report.unresolvedLinks.total} (wiki: ${report.unresolvedLinks.byType.wiki}, markdown: ${report.unresolvedLinks.byType.markdown})`
+  );
+  lines.push(`Isolated documents: ${report.isolated.total}`);
 
   return lines.join("\n");
 }

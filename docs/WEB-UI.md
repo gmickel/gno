@@ -468,6 +468,7 @@ The Graph page (`/graph`) provides an interactive visualization of document rela
 - Three edge types: wiki links, markdown links, similarity edges
 - Collection filter dropdown
 - Similarity toggle (when embeddings available)
+- Header health stats for top degree, unresolved links, and isolated documents
 - Truncation warning when graph exceeds limits
 - Click any node to navigate to that document
 

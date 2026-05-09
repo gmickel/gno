@@ -1998,6 +1998,7 @@ gno graph [-c, --collection <name>] [--limit <num>] [--edge-limit <num>] [--simi
 **Behavior:**
 
 - Returns nodes (documents) and links (edges) as graph data
+- Includes a graph report with hubs, bridge candidates, isolated documents, unresolved links, and edge-type counts
 - Edges include wiki links, markdown links, and optionally similarity edges
 - Node degree reflects total unique connections (in + out)
 - When collection is filtered, degree may reflect links outside the filter
@@ -2027,6 +2028,25 @@ Schema: `graph.schema.json`
       "weight": 1
     }
   ],
+  "report": {
+    "hubs": [
+      {
+        "id": "#abc123",
+        "uri": "gno://notes/note.md",
+        "title": "My Note",
+        "collection": "notes",
+        "relPath": "note.md",
+        "degree": 5
+      }
+    ],
+    "bridgeCandidates": [],
+    "isolated": { "total": 2, "examples": [] },
+    "unresolvedLinks": {
+      "total": 5,
+      "byType": { "wiki": 4, "markdown": 1 }
+    },
+    "edgeTypes": { "wiki": 280, "markdown": 40, "similar": 0 }
+  },
   "meta": {
     "collection": null,
     "nodeLimit": 2000,

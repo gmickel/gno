@@ -53,6 +53,15 @@ interface GraphNode {
   degree: number;
 }
 
+interface GraphReportNode {
+  id: string;
+  uri: string;
+  title: string | null;
+  collection: string;
+  relPath: string;
+  degree: number;
+}
+
 interface GraphLink {
   source: string;
   target: string;
@@ -78,9 +87,31 @@ interface GraphMeta {
   warnings: string[];
 }
 
+interface GraphReport {
+  hubs: GraphReportNode[];
+  bridgeCandidates: GraphReportNode[];
+  isolated: {
+    total: number;
+    examples: GraphReportNode[];
+  };
+  unresolvedLinks: {
+    total: number;
+    byType: {
+      wiki: number;
+      markdown: number;
+    };
+  };
+  edgeTypes: {
+    wiki: number;
+    markdown: number;
+    similar: number;
+  };
+}
+
 interface GraphResponse {
   nodes: GraphNode[];
   links: GraphLink[];
+  report: GraphReport;
   meta: GraphMeta;
 }
 
@@ -578,6 +609,21 @@ export default function GraphView({ navigate }: PageProps) {
                 {graphData.links.length.toLocaleString()}
               </span>{" "}
               edges
+              <span className="text-border">•</span>
+              <span className="text-[#f5d78e]">
+                {graphData.report.hubs[0]?.degree ?? 0}
+              </span>{" "}
+              top degree
+              <span className="text-border">•</span>
+              <span className="text-[#d4a053]">
+                {graphData.report.unresolvedLinks.total.toLocaleString()}
+              </span>{" "}
+              unresolved
+              <span className="text-border">•</span>
+              <span className="text-[#4db8a8]">
+                {graphData.report.isolated.total.toLocaleString()}
+              </span>{" "}
+              isolated
             </div>
           )}
 

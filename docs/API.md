@@ -1184,6 +1184,25 @@ Returns a knowledge graph of document links (wiki links, markdown links, and opt
       "weight": 0.85
     }
   ],
+  "report": {
+    "hubs": [
+      {
+        "id": "#abc123",
+        "uri": "gno://notes/readme.md",
+        "title": "Project README",
+        "collection": "notes",
+        "relPath": "readme.md",
+        "degree": 5
+      }
+    ],
+    "bridgeCandidates": [],
+    "isolated": { "total": 3, "examples": [] },
+    "unresolvedLinks": {
+      "total": 2,
+      "byType": { "wiki": 2, "markdown": 0 }
+    },
+    "edgeTypes": { "wiki": 55, "markdown": 12, "similar": 0 }
+  },
   "meta": {
     "collection": null,
     "nodeLimit": 2000,
@@ -1204,20 +1223,25 @@ Returns a knowledge graph of document links (wiki links, markdown links, and opt
 }
 ```
 
-| Field                   | Description                                      |
-| :---------------------- | :----------------------------------------------- |
-| `nodes[].id`            | Document ID (hash)                               |
-| `nodes[].uri`           | Virtual URI                                      |
-| `nodes[].title`         | Document title                                   |
-| `nodes[].collection`    | Source collection                                |
-| `nodes[].relPath`       | Relative path in collection                      |
-| `nodes[].degree`        | Number of connections (in + out)                 |
-| `links[].source`        | Source node ID                                   |
-| `links[].target`        | Target node ID                                   |
-| `links[].type`          | Link type: `wiki`, `markdown`, or `similar`      |
-| `links[].weight`        | Edge weight (count for links, score for similar) |
-| `meta.truncated`        | True if results hit limit                        |
-| `meta.similarAvailable` | True if similarity edges can be computed         |
+| Field                     | Description                                      |
+| :------------------------ | :----------------------------------------------- |
+| `nodes[].id`              | Document ID (hash)                               |
+| `nodes[].uri`             | Virtual URI                                      |
+| `nodes[].title`           | Document title                                   |
+| `nodes[].collection`      | Source collection                                |
+| `nodes[].relPath`         | Relative path in collection                      |
+| `nodes[].degree`          | Number of connections (in + out)                 |
+| `links[].source`          | Source node ID                                   |
+| `links[].target`          | Target node ID                                   |
+| `links[].type`            | Link type: `wiki`, `markdown`, or `similar`      |
+| `links[].weight`          | Edge weight (count for links, score for similar) |
+| `report.hubs`             | Highest-degree documents                         |
+| `report.bridgeCandidates` | Documents with both incoming and outgoing links  |
+| `report.isolated`         | Count and examples of documents with no links    |
+| `report.unresolvedLinks`  | Count of links whose target could not resolve    |
+| `report.edgeTypes`        | Edge counts by `wiki`, `markdown`, and `similar` |
+| `meta.truncated`          | True if results hit limit                        |
+| `meta.similarAvailable`   | True if similarity edges can be computed         |
 
 **Example**:
 

@@ -819,7 +819,9 @@ linkedOnly: true           # Exclude isolated nodes (default: true)
 similarTopK: 5             # Similar docs per node (1-20, default: 5)
 ```
 
-Returns graph data with nodes (documents) and links (edges). Edge types: `wiki`, `markdown`, `similar`.
+Returns graph data with nodes (documents), links (edges), and a report with
+hubs, bridge candidates, isolated documents, unresolved links, and edge-type
+counts. Edge types: `wiki`, `markdown`, `similar`.
 
 **Use cases**:
 

@@ -981,7 +981,7 @@ Find semantically similar documents using vector embeddings.
 
 ### gno_graph
 
-Get knowledge graph of document connections (nodes and edges).
+Get knowledge graph of document connections plus graph-health report fields.
 
 **Input Schema:**
 
@@ -1037,6 +1037,10 @@ Get knowledge graph of document connections (nodes and edges).
 ```
 
 **Output Schema:** `gno://schemas/graph@1.0`
+
+The structured response includes `report.hubs`, `report.bridgeCandidates`,
+`report.isolated`, `report.unresolvedLinks`, and `report.edgeTypes` so agents
+can assess graph health before deeper traversal.
 
 **Response:**
 

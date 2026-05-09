@@ -443,6 +443,9 @@ describe("MCP link tools integration", () => {
       // Should have at least 1 edge (edges may be deduplicated/collapsed)
       expect(links.length).toBeGreaterThanOrEqual(1);
       expect(links.every((l) => l.type === "markdown")).toBe(true);
+      expect(result.value.report.hubs).toHaveLength(2);
+      expect(result.value.report.edgeTypes.markdown).toBeGreaterThanOrEqual(1);
+      expect(result.value.report.unresolvedLinks.total).toBe(0);
 
       // Both docs should have degree >= 1 (connected to each other)
       expect(nodes.every((n) => n.degree >= 1)).toBe(true);

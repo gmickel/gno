@@ -4,7 +4,7 @@
   "title": "GNO Graph",
   "description": "Knowledge graph of document links",
   "type": "object",
-  "required": ["nodes", "links", "meta"],
+  "required": ["nodes", "links", "report", "meta"],
   "properties": {
     "nodes": {
       "type": "array",
@@ -65,6 +65,73 @@
             "type": "number",
             "description": "Edge weight (link count or similarity score)",
             "minimum": 0
+          }
+        }
+      }
+    },
+    "report": {
+      "type": "object",
+      "description": "Graph health and topology report",
+      "required": [
+        "hubs",
+        "bridgeCandidates",
+        "isolated",
+        "unresolvedLinks",
+        "edgeTypes"
+      ],
+      "properties": {
+        "hubs": {
+          "type": "array",
+          "description": "Highest-degree documents",
+          "items": { "$ref": "#/definitions/reportNode" }
+        },
+        "bridgeCandidates": {
+          "type": "array",
+          "description": "Bridge-like documents with both incoming and outgoing links",
+          "items": { "$ref": "#/definitions/reportNode" }
+        },
+        "isolated": {
+          "type": "object",
+          "required": ["total", "examples"],
+          "properties": {
+            "total": {
+              "type": "integer",
+              "description": "Total isolated active documents in scope",
+              "minimum": 0
+            },
+            "examples": {
+              "type": "array",
+              "description": "Example isolated documents",
+              "items": { "$ref": "#/definitions/reportNode" }
+            }
+          }
+        },
+        "unresolvedLinks": {
+          "type": "object",
+          "required": ["total", "byType"],
+          "properties": {
+            "total": {
+              "type": "integer",
+              "description": "Total unresolved wiki/markdown links in scope",
+              "minimum": 0
+            },
+            "byType": {
+              "type": "object",
+              "required": ["wiki", "markdown"],
+              "properties": {
+                "wiki": { "type": "integer", "minimum": 0 },
+                "markdown": { "type": "integer", "minimum": 0 }
+              }
+            }
+          }
+        },
+        "edgeTypes": {
+          "type": "object",
+          "required": ["wiki", "markdown", "similar"],
+          "properties": {
+            "wiki": { "type": "integer", "minimum": 0 },
+            "markdown": { "type": "integer", "minimum": 0 },
+            "similar": { "type": "integer", "minimum": 0 }
           }
         }
       }
@@ -158,6 +225,39 @@
           "items": {
             "type": "string"
           }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "reportNode": {
+      "type": "object",
+      "required": ["id", "uri", "collection", "relPath", "degree"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Document ID (#hex)"
+        },
+        "uri": {
+          "type": "string",
+          "description": "Document URI (gno://collection/path)"
+        },
+        "title": {
+          "type": ["string", "null"],
+          "description": "Document title"
+        },
+        "collection": {
+          "type": "string",
+          "description": "Collection name"
+        },
+        "relPath": {
+          "type": "string",
+          "description": "Relative path within collection"
+        },
+        "degree": {
+          "type": "integer",
+          "description": "Total degree (in + out unique neighbors)",
+          "minimum": 0
         }
       }
     }

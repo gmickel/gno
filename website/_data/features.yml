@@ -267,6 +267,7 @@
   benefits:
     - Interactive force-directed visualization
     - Wiki links, markdown links, and golden similarity edges
+    - Graph health report with hubs, unresolved links, and isolates
     - Filter by collection
     - Click nodes to navigate to documents
     - Zoom, pan, and explore

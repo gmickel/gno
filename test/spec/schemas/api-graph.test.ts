@@ -13,11 +13,23 @@ describe("graph schema", () => {
     schema = await loadSchema("graph");
   });
 
+  function report(overrides: Record<string, unknown> = {}) {
+    return {
+      hubs: [],
+      bridgeCandidates: [],
+      isolated: { total: 0, examples: [] },
+      unresolvedLinks: { total: 0, byType: { wiki: 0, markdown: 0 } },
+      edgeTypes: { wiki: 0, markdown: 0, similar: 0 },
+      ...overrides,
+    };
+  }
+
   describe("valid inputs", () => {
     test("validates minimal response", () => {
       const response = {
         nodes: [],
         links: [],
+        report: report(),
         meta: {
           collection: null,
           nodeLimit: 2000,
@@ -67,6 +79,29 @@ describe("graph schema", () => {
             weight: 2,
           },
         ],
+        report: report({
+          hubs: [
+            {
+              id: "#abc123",
+              uri: "gno://notes/doc1.md",
+              title: "Document 1",
+              collection: "notes",
+              relPath: "doc1.md",
+              degree: 3,
+            },
+          ],
+          bridgeCandidates: [
+            {
+              id: "#abc123",
+              uri: "gno://notes/doc1.md",
+              title: "Document 1",
+              collection: "notes",
+              relPath: "doc1.md",
+              degree: 3,
+            },
+          ],
+          edgeTypes: { wiki: 1, markdown: 0, similar: 0 },
+        }),
         meta: {
           collection: "notes",
           nodeLimit: 2000,
@@ -117,6 +152,9 @@ describe("graph schema", () => {
             weight: 0.85,
           },
         ],
+        report: report({
+          edgeTypes: { wiki: 0, markdown: 1, similar: 1 },
+        }),
         meta: {
           collection: null,
           nodeLimit: 2000,
@@ -151,6 +189,25 @@ describe("graph schema", () => {
           },
         ],
         links: [],
+        report: report({
+          isolated: {
+            total: 400,
+            examples: [
+              {
+                id: "#def456",
+                uri: "gno://notes/isolated.md",
+                title: "Isolated",
+                collection: "notes",
+                relPath: "isolated.md",
+                degree: 0,
+              },
+            ],
+          },
+          unresolvedLinks: {
+            total: 10,
+            byType: { wiki: 7, markdown: 3 },
+          },
+        }),
         meta: {
           collection: null,
           nodeLimit: 100,

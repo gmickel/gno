@@ -434,6 +434,22 @@ export interface GraphNode {
   degree: number;
 }
 
+/** Compact graph report node summary */
+export interface GraphReportNode {
+  /** Document ID (#hex) */
+  id: string;
+  /** Document URI (gno://collection/path) */
+  uri: string;
+  /** Document title */
+  title: string | null;
+  /** Collection name */
+  collection: string;
+  /** Relative path within collection */
+  relPath: string;
+  /** Total degree (in + out unique neighbors) */
+  degree: number;
+}
+
 /** Graph link (edge) between two nodes */
 export interface GraphLink {
   /** Source node ID (docid) */
@@ -444,6 +460,30 @@ export interface GraphLink {
   type: GraphLinkType;
   /** Edge weight (link count for wiki/md, similarity score for similar) */
   weight: number;
+}
+
+/** Graph report summary over the current graph result */
+export interface GraphReport {
+  /** Highest-degree documents */
+  hubs: GraphReportNode[];
+  /** Bridge-like documents with both incoming and outgoing links */
+  bridgeCandidates: GraphReportNode[];
+  /** Isolated documents with no resolved explicit graph links */
+  isolated: {
+    /** Total isolated active documents in scope */
+    total: number;
+    /** First isolated documents by stable document id order */
+    examples: GraphReportNode[];
+  };
+  /** Unresolved explicit links */
+  unresolvedLinks: {
+    /** Total unresolved wiki/markdown links in scope */
+    total: number;
+    /** Unresolved links by type */
+    byType: Record<Exclude<GraphLinkType, "similar">, number>;
+  };
+  /** Edge breakdown by type before edge-limit truncation */
+  edgeTypes: Record<GraphLinkType, number>;
 }
 
 /** Graph metadata with truncation info */
@@ -484,6 +524,7 @@ export interface GraphMeta {
 export interface GraphResult {
   nodes: GraphNode[];
   links: GraphLink[];
+  report: GraphReport;
   meta: GraphMeta;
 }
 

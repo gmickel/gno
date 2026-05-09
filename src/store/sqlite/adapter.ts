@@ -30,6 +30,8 @@ import type {
   FtsResult,
   FtsSearchOptions,
   GetGraphOptions,
+  GraphLinkType,
+  GraphReportNode,
   GraphResult,
   IndexStatus,
   IngestErrorInput,
@@ -2342,8 +2344,9 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
         weight: number;
       }
 
-      interface UnresolvedCountRow {
-        unresolved: number | null;
+      interface UnresolvedByTypeRow {
+        link_type: "wiki" | "markdown";
+        unresolved: number;
       }
 
       interface NodeMetaRow {
@@ -2403,9 +2406,11 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
       }
       const unresolvedQuery = `
         SELECT
-          SUM(CASE WHEN target_id IS NULL THEN 1 ELSE 0 END) as unresolved
+          link_type,
+          COUNT(*) as unresolved
         FROM (
           SELECT
+            dl.link_type,
             CASE dl.link_type
               WHEN 'wiki' THEN (
                 ${wikiBestMatch(
@@ -2426,11 +2431,21 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
           WHERE src.active = 1
             ${unresolvedCollectionClause}
         )
+        WHERE target_id IS NULL
+        GROUP BY link_type
       `;
-      const unresolvedRow = db
-        .query<UnresolvedCountRow, string[]>(unresolvedQuery)
-        .get(...unresolvedParams);
-      const totalEdgesUnresolved = unresolvedRow?.unresolved ?? 0;
+      const unresolvedRows = db
+        .query<UnresolvedByTypeRow, string[]>(unresolvedQuery)
+        .all(...unresolvedParams);
+      const unresolvedByType: Record<"wiki" | "markdown", number> = {
+        wiki: 0,
+        markdown: 0,
+      };
+      for (const row of unresolvedRows) {
+        unresolvedByType[row.link_type] = row.unresolved;
+      }
+      const totalEdgesUnresolved =
+        unresolvedByType.wiki + unresolvedByType.markdown;
 
       const outNeighbors = new Map<number, Set<number>>();
       const inNeighbors = new Map<number, Set<number>>();
@@ -2480,6 +2495,46 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
         })
         .filter((row): row is NodeMetaRow & { degree: number } => row !== null)
         .sort((a, b) => b.degree - a.degree || a.id - b.id);
+
+      const toReportNode = (
+        row: NodeMetaRow & { degree: number }
+      ): GraphReportNode => ({
+        id: row.docid,
+        uri: row.uri,
+        title: row.title,
+        collection: row.collection,
+        relPath: row.rel_path,
+        degree: row.degree,
+      });
+
+      const isolatedBaseParams: (string | number)[] = [];
+      const isolatedBaseConditions = ["active = 1"];
+      if (collection) {
+        isolatedBaseConditions.push("collection = ?");
+        isolatedBaseParams.push(collection);
+      }
+      if (connectedIdList.length > 0) {
+        const placeholders = connectedIdList.map(() => "?").join(",");
+        isolatedBaseConditions.push(`id NOT IN (${placeholders})`);
+        isolatedBaseParams.push(...connectedIdList);
+      }
+      const isolatedWhereClause = isolatedBaseConditions.join(" AND ");
+      const isolatedCountRow = db
+        .query<{ cnt: number }, (string | number)[]>(
+          `SELECT COUNT(*) as cnt FROM documents WHERE ${isolatedWhereClause}`
+        )
+        .get(...isolatedBaseParams);
+      const isolatedTotal = isolatedCountRow?.cnt ?? 0;
+      const isolatedExampleRows = db
+        .query<NodeMetaRow, (string | number)[]>(
+          `SELECT id, docid, uri, title, collection, rel_path
+           FROM documents
+           WHERE ${isolatedWhereClause}
+           ORDER BY id ASC
+           LIMIT 10`
+        )
+        .all(...isolatedBaseParams)
+        .map((row) => ({ ...row, degree: 0 }));
 
       let totalNodes = linkedOnly ? connectedNodes.length : 0;
       if (!linkedOnly) {
@@ -2690,6 +2745,15 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
         };
       });
 
+      const edgeTypes: Record<GraphLinkType, number> = {
+        wiki: 0,
+        markdown: 0,
+        similar: 0,
+      };
+      for (const edge of allEdges) {
+        edgeTypes[edge.type] += 1;
+      }
+
       const truncatedEdges = allEdges.length > limitEdges;
       const links = allEdges.slice(0, limitEdges);
 
@@ -2704,6 +2768,26 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
       return ok({
         nodes,
         links,
+        report: {
+          hubs: connectedNodes.slice(0, 10).map(toReportNode),
+          bridgeCandidates: connectedNodes
+            .filter(
+              (row) =>
+                (inNeighbors.get(row.id)?.size ?? 0) > 0 &&
+                (outNeighbors.get(row.id)?.size ?? 0) > 0
+            )
+            .slice(0, 10)
+            .map(toReportNode),
+          isolated: {
+            total: isolatedTotal,
+            examples: isolatedExampleRows.map(toReportNode),
+          },
+          unresolvedLinks: {
+            total: totalEdgesUnresolved,
+            byType: unresolvedByType,
+          },
+          edgeTypes,
+        },
         meta: {
           collection,
           nodeLimit: limitNodes,

@@ -798,6 +798,107 @@ describe("SqliteAdapter links", () => {
   });
 
   describe("getGraph", () => {
+    test("reports hubs, bridge candidates, isolates, unresolved links, and edge breakdown", async () => {
+      const hubId = await createTestDoc("notes", "hub.md", "Hub");
+      const spokeAId = await createTestDoc("notes", "spoke-a.md", "Spoke A");
+      const spokeBId = await createTestDoc("notes", "spoke-b.md", "Spoke B");
+      await createTestDoc("notes", "isolated.md", "Isolated");
+
+      const hubDoc = await adapter.getDocument("notes", "hub.md");
+      expect(hubDoc.ok).toBe(true);
+      if (!hubDoc.ok || !hubDoc.value) return;
+
+      await adapter.setDocLinks(
+        hubId,
+        [
+          {
+            targetRef: "Spoke A",
+            targetRefNorm: "spoke a",
+            linkType: "wiki",
+            startLine: 1,
+            startCol: 1,
+            endLine: 1,
+            endCol: 12,
+          },
+          {
+            targetRef: "spoke-b.md",
+            targetRefNorm: "spoke-b.md",
+            linkType: "markdown",
+            startLine: 2,
+            startCol: 1,
+            endLine: 2,
+            endCol: 20,
+          },
+        ],
+        "parsed"
+      );
+      await adapter.setDocLinks(
+        spokeAId,
+        [
+          {
+            targetRef: "hub.md",
+            targetRefNorm: "hub.md",
+            linkType: "markdown",
+            startLine: 1,
+            startCol: 1,
+            endLine: 1,
+            endCol: 15,
+          },
+        ],
+        "parsed"
+      );
+      await adapter.setDocLinks(
+        spokeBId,
+        [
+          {
+            targetRef: "missing",
+            targetRefNorm: "missing",
+            linkType: "wiki",
+            startLine: 1,
+            startCol: 1,
+            endLine: 1,
+            endCol: 11,
+          },
+        ],
+        "parsed"
+      );
+
+      const graph = await adapter.getGraph({
+        collection: "notes",
+        linkedOnly: false,
+        limitNodes: 10,
+        limitEdges: 1,
+        includeSimilar: true,
+      });
+      expect(graph.ok).toBe(true);
+      if (!graph.ok) return;
+
+      expect(graph.value.report.hubs[0]?.id).toBe(hubDoc.value.docid);
+      expect(graph.value.report.hubs[0]?.degree).toBe(3);
+      expect(
+        graph.value.report.bridgeCandidates.some(
+          (node) => node.id === hubDoc.value?.docid
+        )
+      ).toBe(true);
+      expect(graph.value.report.isolated.total).toBe(1);
+      expect(graph.value.report.isolated.examples[0]?.title).toBe("Isolated");
+      expect(graph.value.report.unresolvedLinks).toEqual({
+        total: 1,
+        byType: { wiki: 1, markdown: 0 },
+      });
+      expect(graph.value.report.edgeTypes).toEqual({
+        wiki: 1,
+        markdown: 2,
+        similar: 0,
+      });
+      expect(graph.value.links).toHaveLength(1);
+      expect(graph.value.meta.truncated).toBe(true);
+      expect(graph.value.meta.warnings).toContain("Edges truncated: 3 → 1");
+      expect(graph.value.meta.warnings).toContain(
+        "Similarity edges unavailable: sqlite-vec not loaded"
+      );
+    });
+
     test("resolves wiki links to subfolder rel_path by basename", async () => {
       const sourceId = await createTestDoc("notes", "source.md", "Source");
       await createTestDoc("notes", "projects/task.md", "Different Title");

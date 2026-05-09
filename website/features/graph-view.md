@@ -32,6 +32,7 @@ See your document connections at a glance. The Knowledge Graph renders your note
 - **Wiki links**: `[[Document Name]]` connections shown as teal edges
 - **Markdown links**: `[text](path.md)` shown as lighter edges
 - **Similar documents**: Optional gold edges for semantically related notes (requires vector index)
+- **Graph health**: Header stats expose top-degree hubs, unresolved links, and isolated documents
 
 ## Web UI
 
@@ -141,6 +142,16 @@ curl "http://localhost:3000/api/graph?collection=notes&includeSimilar=true&limit
       "weight": 1
     }
   ],
+  "report": {
+    "hubs": [],
+    "bridgeCandidates": [],
+    "isolated": { "total": 0, "examples": [] },
+    "unresolvedLinks": {
+      "total": 0,
+      "byType": { "wiki": 0, "markdown": 0 }
+    },
+    "edgeTypes": { "wiki": 1, "markdown": 0, "similar": 0 }
+  },
   "meta": {
     "totalNodes": 150,
     "totalEdges": 320,
