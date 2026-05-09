@@ -50,9 +50,8 @@ Testing focus:
 - Quality gates include graph-analysis tests, `bun run lint:check`, `bun test` where feasible, docs verification, and website sync/check commands relevant to changed docs.
 
 ## Done summary
-
-_To be completed when the task is implemented._
-
+Implemented deterministic graph community detection and surfaced community IDs/summaries through graph reports, MCP formatting, schemas, the Web UI legend/filter, docs, skill guidance, and hosted gno.sh content. Added coverage for multi-community graphs, isolates, sparse graphs, large-graph skip behavior, and stable assignments.
 ## Evidence
-
-_To be completed when the task is implemented._
+- Commits: d6035eb39271b8caf02221fb29252d784142cb7f, gno.sh:2fb94d34c0409ee9d92dfd2e366d0ffcf0d48280
+- Tests: bun run lint:check, bun run typecheck, bun test, bun test test/core/graph-analysis.test.ts test/store/links.test.ts test/spec/schemas/api-graph.test.ts test/mcp/links-integration.test.ts test/pipeline/hybrid-doc-lookup.test.ts, bun run docs:verify, bun run website:build (failed: missing Ruby bundler 2.5.22 after docs sync), GNO_DATA_DIR=/tmp/gno-graph-ui-smoke bun run serve -- --port 3999 + agent-browser open http://localhost:3999/graph && agent-browser snapshot -i, cd /Users/gordon/work/gno.sh && bun run check, cd /Users/gordon/work/gno.sh && bun run typecheck, cd /Users/gordon/work/gno.sh && bun run build
+- PRs:
