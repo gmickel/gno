@@ -142,6 +142,14 @@ describe("CLI smoke tests", () => {
       expect(stdout).toContain("rename");
     });
 
+    test("mcp serve --help shows stdio server help", async () => {
+      const { code, stdout, stderr } = await cli("mcp", "serve", "--help");
+      expect(code).toBe(0);
+      expect(stderr).toBe("");
+      expect(stdout).toContain("Start MCP server");
+      expect(stdout).toContain("--enable-write");
+    });
+
     test("--help includes daemon command", async () => {
       const { code, stdout } = await cli("--help");
       expect(code).toBe(0);

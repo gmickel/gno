@@ -1165,8 +1165,6 @@ function wireRetrievalCommands(program: Command): void {
 
 function wireMcpCommand(program: Command): void {
   // mcp - Start MCP server (stdio transport) or manage MCP configuration
-  // CRITICAL: helpOption(false) on server command prevents --help from writing
-  // to stdout which would corrupt the JSON-RPC stream
   const mcpCmd = program
     .command("mcp")
     .description("MCP server and configuration");
@@ -1175,7 +1173,6 @@ function wireMcpCommand(program: Command): void {
   mcpCmd
     .command("serve", { isDefault: true })
     .description("Start MCP server (stdio transport)")
-    .helpOption(false)
     .option(
       "--enable-write",
       "Enable write operations (capture, add-collection, sync, remove-collection)"
