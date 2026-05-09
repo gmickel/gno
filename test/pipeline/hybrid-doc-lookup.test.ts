@@ -484,11 +484,81 @@ describe("searchHybrid targeted document lookup", () => {
     );
 
     expect(result.ok).toBe(true);
-    expect(requestedDocids).toHaveLength(2);
+    expect(requestedDocids).toHaveLength(4);
     if (result.ok) {
       expect(result.value.meta.graphExpansion?.candidateCount).toBe(2);
       expect(result.value.meta.graphExpansion?.maxCandidates).toBe(2);
     }
+  });
+
+  test("graph expansion caps candidates after active filters", async () => {
+    const store = createGraphStore(
+      [
+        {
+          source: "#seed",
+          target: "#dropone",
+          type: "wiki",
+          weight: 4,
+          confidence: "explicit",
+          audit: { resolution: "exact-title", matchCount: 1 },
+        },
+        {
+          source: "#seed",
+          target: "#droptwo",
+          type: "wiki",
+          weight: 3,
+          confidence: "explicit",
+          audit: { resolution: "exact-title", matchCount: 1 },
+        },
+        {
+          source: "#seed",
+          target: "#valid",
+          type: "wiki",
+          weight: 1,
+          confidence: "explicit",
+          audit: { resolution: "exact-title", matchCount: 1 },
+        },
+      ],
+      {
+        docs: ["seed", "dropone", "droptwo", "valid"],
+        docMetadata: {
+          seed: { tags: ["keep"], sourceMtime: NOW, language: "en" },
+          dropone: { tags: ["drop"], sourceMtime: NOW, language: "en" },
+          droptwo: { tags: ["drop"], sourceMtime: NOW, language: "en" },
+          valid: { tags: ["keep"], sourceMtime: NOW, language: "en" },
+        },
+      }
+    );
+
+    const result = await searchHybrid(
+      {
+        store: store as StorePort,
+        config: {} as Config,
+        vectorIndex: null,
+        embedPort: null,
+        expandPort: null,
+        rerankPort: null,
+      },
+      "seed query",
+      {
+        noExpand: true,
+        noRerank: true,
+        candidateLimit: 1,
+        limit: 5,
+        tagsAll: ["keep"],
+      }
+    );
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      return;
+    }
+
+    expect(result.value.results.map((r) => r.source.relPath)).toContain(
+      "valid.md"
+    );
+    expect(result.value.meta.graphExpansion?.candidateCount).toBe(1);
+    expect(result.value.meta.graphExpansion?.maxCandidates).toBe(1);
   });
 
   test("graph expansion keeps candidates within active filters", async () => {

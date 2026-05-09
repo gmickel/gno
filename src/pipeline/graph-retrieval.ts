@@ -309,7 +309,6 @@ export async function expandGraphCandidates(
 
   const rankedNeighborDocids = [...neighborScores.entries()]
     .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
-    .slice(0, maxCandidates)
     .map(([docid]) => docid);
   if (rankedNeighborDocids.length === 0) {
     meta.fallbackReasons.push("graph_no_new_candidates");
@@ -329,7 +328,12 @@ export async function expandGraphCandidates(
     (doc) => doc.mirrorHash && matchesDocumentFilters(doc, options)
   );
   const docs = await filterDocsByTags(store, metadataFilteredDocs, options);
-  const hashes = docs
+  const docByDocid = new Map(docs.map((doc) => [doc.docid, doc]));
+  const rankedDocs = rankedNeighborDocids
+    .map((docid) => docByDocid.get(docid))
+    .filter((doc): doc is DocumentRow => Boolean(doc?.mirrorHash))
+    .slice(0, maxCandidates);
+  const hashes = rankedDocs
     .map((doc) => doc.mirrorHash)
     .filter((hash): hash is string => Boolean(hash));
   const chunksResult = await store.getChunksBatch(hashes);
@@ -338,10 +342,7 @@ export async function expandGraphCandidates(
     return { candidates: [], meta };
   }
 
-  const docByDocid = new Map(docs.map((doc) => [doc.docid, doc]));
-  const candidates = rankedNeighborDocids
-    .map((docid) => docByDocid.get(docid))
-    .filter((doc): doc is DocumentRow => Boolean(doc?.mirrorHash))
+  const candidates = rankedDocs
     .map((doc) => {
       const mirrorHash = doc.mirrorHash as string;
       const seq = chooseCandidateSeq(
