@@ -41,8 +41,11 @@ Testing focus if implemented:
 - Quality gates include targeted tests or decision evidence, `bun run lint:check`, `bun test` where feasible, docs verification, and website sync/check commands relevant to changed docs.
 
 ## Done summary
+
 Reconciled code-symbol graph work with the existing fn-76 future symbol retrieval epic and the fn-74 AST benchmark outcome. Added ADR-006 to defer code-symbol graph nodes until stronger benchmark or workflow evidence exists, keeping document graph retrieval stable and document nodes primary.
+
 ## Evidence
+
 - Commits: 2a1068d90dafba29c544f6d35588c362f31f481b
 - Tests: bun run lint:check, bun run typecheck, bun test, bun test test/ingestion/ast-chunking-benchmark.test.ts test/ingestion/chunker.test.ts test/ingestion/sync-code-chunking.test.ts test/core/graph-analysis.test.ts, bun run docs:verify, bun run website:build (failed: missing Bundler 2.5.22 after docs sync; docs sync step completed), bun run website:sync-docs (failed: script not found)
 - PRs:
