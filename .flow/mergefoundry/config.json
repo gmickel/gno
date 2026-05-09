@@ -1,0 +1,140 @@
+{
+  "backend": "claude",
+  "base_branch": "main",
+  "enabled": false,
+  "log_dir": ".flow/mergefoundry/logs",
+  "max_workers": 4,
+  "review_mode": "none",
+  "run_branch_prefix": "mf-",
+  "worker_timeout": 7200,
+  "worktree_dir": ".worktrees",
+  "execution": {
+    "mode": "local_trusted",
+    "sandbox_provider": "auto",
+    "allow_network": true,
+    "lima_instance": "mergefoundry",
+    "remote_runner_id": null
+  },
+  "impl_backend": "claude:sonnet",
+  "review_backend": "claude:sonnet",
+  "sync_backend": "claude:sonnet",
+  "resolve_backend": "claude:sonnet",
+  "fix_backend": "claude:sonnet",
+  "readiness_backend": "claude:haiku",
+  "plan_backend": "claude:sonnet",
+  "plan_review_model": "claude:opus",
+  "auditor_backend": "claude:haiku",
+  "auditor_timeout_ms": 300000,
+  "sync_mode": "auto",
+  "sync_failure_mode": "warn",
+  "max_impl_attempts": 3,
+  "max_review_attempts": 3,
+  "max_sync_attempts": 2,
+  "max_resolve_attempts": 2,
+  "pre_dispatch_freshness": true,
+  "verification": {
+    "required": true,
+    "commands": [],
+    "allow_degraded": true
+  },
+  "worker_path_policy": {
+    "protected_patterns": [
+      ".env*",
+      "**/*.pem",
+      "**/*.key",
+      "dist/**",
+      "coverage/**",
+      ".next/**",
+      ".flow/mergefoundry/**",
+      "node_modules/**"
+    ],
+    "ignored_patterns": [
+      "dist/**",
+      "coverage/**",
+      ".next/**",
+      "node_modules/**",
+      ".flow/mergefoundry/**"
+    ]
+  },
+  "review_risk_policy": {
+    "enabled": true,
+    "low_patterns": [
+      "docs/**",
+      "**/*.md",
+      "**/*.mdx",
+      "**/*.test.ts",
+      "**/*.test.tsx",
+      "**/*.spec.ts",
+      "**/*.spec.tsx"
+    ],
+    "high_patterns": [
+      "src/core/**",
+      "src/mergefoundryd/**",
+      "**/auth/**",
+      "**/permissions/**",
+      "**/migrations/**",
+      "**/*.sql",
+      "src/lib/config.ts"
+    ],
+    "rerun_verification_tiers": ["high"]
+  },
+  "worker_memory": {
+    "enabled": true,
+    "max_decisions": 6,
+    "max_retry_notes": 6,
+    "max_files_touched": 12
+  },
+  "auditors_enabled": false,
+  "auditors": [
+    "contract-drift",
+    "spec-drift",
+    "doc-drift",
+    "changelog-drift",
+    "adr-drift",
+    "test-drift"
+  ],
+  "auditor_max_attempts": 3,
+  "auditor_remediation_timeout_ms": 1800000,
+  "auto_rebase": true,
+  "ai_conflict_resolution": true,
+  "conflict_policy": "autonomous",
+  "max_rebase_attempts": 3,
+  "max_merge_error_retries": 3,
+  "plan_depth": "short",
+  "plan_research": "grep",
+  "plan_review_backend": "none",
+  "review_synthesis_mode": "auto",
+  "review_synthesis_timeout_ms": 7200000,
+  "review_synthesis_max_attempts": 2,
+  "worker_role_prompts": {},
+  "worker_tool_policies": {},
+  "runtime_validation": {
+    "enabled": false,
+    "stage_policies": {
+      "implementation": "off",
+      "review": "off",
+      "certification": "off",
+      "handoff": "off"
+    },
+    "browser": {
+      "enabled": false,
+      "target": null,
+      "connection": "open",
+      "mode": "smoke",
+      "template_id": null,
+      "engine": "chrome",
+      "allowed_domains": [],
+      "session": null,
+      "session_name": null,
+      "state_path": null
+    },
+    "cli": {
+      "enabled": false,
+      "cwd": null,
+      "attach_pid": null,
+      "mode": "smoke",
+      "template_id": null,
+      "command": []
+    }
+  }
+}
