@@ -50,9 +50,8 @@ Testing focus:
 - Quality gates include store/API/MCP tests, `bun run lint:check`, `bun test` where feasible, docs verification, and website sync/check commands relevant to changed docs.
 
 ## Done summary
-
-_To be completed when the task is implemented._
-
+Added graph edge confidence and audit metadata across the store graph contract, CLI/MCP output, Web UI graph legend/styling, schemas, docs, and agent skill guidance. Edges now distinguish explicit, inferred, ambiguous, and similarity relationships with report-level audit rollups.
 ## Evidence
-
-_To be completed when the task is implemented._
+- Commits: db0a84aa7437d305d884a088eb2443cb3fc3542b, gno.sh:29022397df79c1de5679b38170d99eadd903f6aa
+- Tests: bun run lint:check, bun test, bun run docs:verify, cd website && mise exec -- make build, cd /Users/gordon/repos/autoresearch-gno-skill && uv run eval.py > run.log 2>&1 (score 100.0, 48/48)
+- PRs:
