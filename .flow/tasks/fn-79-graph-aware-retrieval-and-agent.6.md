@@ -1,3 +1,8 @@
+---
+satisfies:
+  - R6
+---
+
 # Scoped code-symbol graph foundation
 
 ## Description

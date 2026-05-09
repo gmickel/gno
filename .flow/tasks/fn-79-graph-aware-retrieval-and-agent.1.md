@@ -1,3 +1,10 @@
+---
+satisfies:
+  - R1
+  - R8
+  - R9
+---
+
 # Graph report and stats over existing document graph
 
 ## Description
