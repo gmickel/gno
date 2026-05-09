@@ -379,6 +379,20 @@ Run `bun run website:sync-docs` to manually sync. CHANGELOG.md is also copied.
 and troubleshooting updates must also be reflected in `~/work/gno.sh` when they
 affect website docs, product pages, install pages, comparisons, or FAQs.
 
+**Hosted website source/deploy**:
+
+- Canonical hosted website repo: `~/work/gno.sh` (`git@github.com:gmickel/gno.sh.git`).
+- Do not treat this repo's legacy `website/` directory as the production website.
+- After merging website changes to `gno.sh` `main`, deploy from `~/work/gno.sh`:
+
+```bash
+DEPLOY_HOST=root@178.104.180.89 ./scripts/deploy-prod.sh
+```
+
+- The deploy script resets remote `/srv/gno-sh/repo` to `origin/main`, installs with Bun, builds/prerenders, and restarts `gno-sh`.
+- Verify with `curl -fsSI https://gno.sh`, `ssh root@178.104.180.89 "systemctl is-active gno-sh"`, and confirm remote `git rev-parse --short HEAD` matches `origin/main`.
+- Remote `.env.production` is intentionally untracked; seeing it in remote `git status` is expected.
+
 If you change behavior, update docs in the same commit. Never leave docs out of sync.
 
 ## Session Completion
