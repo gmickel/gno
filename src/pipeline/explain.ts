@@ -175,6 +175,7 @@ interface StageTimingsInput {
   expansionMs: number;
   bm25Ms: number;
   vectorMs: number;
+  graphMs: number;
   fusionMs: number;
   rerankMs: number;
   assemblyMs: number;
@@ -190,6 +191,7 @@ export function explainTimings(timings: StageTimingsInput): ExplainLine {
       `expansion=${fmt(timings.expansionMs)}`,
       `bm25=${fmt(timings.bm25Ms)}`,
       `vector=${fmt(timings.vectorMs)}`,
+      `graph=${fmt(timings.graphMs)}`,
       `fusion=${fmt(timings.fusionMs)}`,
       `rerank=${fmt(timings.rerankMs)}`,
       `assembly=${fmt(timings.assemblyMs)}`,

@@ -750,6 +750,18 @@ export interface StorePort {
   ): Promise<StoreResult<DocumentRow[]>>;
 
   /**
+   * Fetch documents by docids in batch.
+   * Useful for graph traversal pipelines to avoid per-node document lookups.
+   */
+  getDocumentsByDocids(
+    docids: string[],
+    options?: {
+      collection?: string;
+      activeOnly?: boolean;
+    }
+  ): Promise<StoreResult<DocumentRow[]>>;
+
+  /**
    * List documents with pagination support.
    * Returns documents and total count for efficient browsing.
    */

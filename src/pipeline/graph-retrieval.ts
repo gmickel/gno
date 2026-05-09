@@ -5,12 +5,15 @@
  */
 
 import type {
+  ChunkRow,
   DocumentRow,
   GraphEdgeConfidence,
   GraphLink,
   StorePort,
 } from "../store/types";
 import type { FusionCandidate } from "./types";
+
+import { isWithinTemporalRange } from "./temporal";
 
 export interface GraphRetrievalMeta {
   attempted: boolean;
@@ -50,6 +53,102 @@ const confidenceWeight = (confidence: GraphEdgeConfidence): number => {
     case "similarity":
       return 0.25;
   }
+};
+
+const matchesDocumentFilters = (
+  doc: DocumentRow,
+  options: {
+    since?: string;
+    until?: string;
+    categories?: string[];
+    author?: string;
+  }
+): boolean => {
+  if (
+    !isWithinTemporalRange(doc.sourceMtime, {
+      since: options.since,
+      until: options.until,
+    })
+  ) {
+    return false;
+  }
+  if (
+    options.author &&
+    !doc.author?.toLowerCase().includes(options.author.toLowerCase())
+  ) {
+    return false;
+  }
+  if (options.categories?.length) {
+    const allowed = new Set(options.categories.map((c) => c.toLowerCase()));
+    const contentTypeMatch = doc.contentType
+      ? allowed.has(doc.contentType.toLowerCase())
+      : false;
+    const categoryMatch = (doc.categories ?? []).some((c) =>
+      allowed.has(c.toLowerCase())
+    );
+    if (!contentTypeMatch && !categoryMatch) {
+      return false;
+    }
+  }
+  return true;
+};
+
+const filterDocsByTags = async (
+  store: StorePort,
+  docs: DocumentRow[],
+  options: { tagsAll?: string[]; tagsAny?: string[] }
+): Promise<DocumentRow[]> => {
+  if (!options.tagsAll?.length && !options.tagsAny?.length) {
+    return docs;
+  }
+
+  const tagsResult = await store.getTagsBatch(docs.map((doc) => doc.id));
+  if (!tagsResult.ok) {
+    return [];
+  }
+
+  return docs.filter((doc) => {
+    const docTags = new Set(
+      (tagsResult.value.get(doc.id) ?? []).map((tag) => tag.tag)
+    );
+    if (options.tagsAll?.length) {
+      const hasAll = options.tagsAll.every((tag) => docTags.has(tag));
+      if (!hasAll) {
+        return false;
+      }
+    }
+    if (options.tagsAny?.length) {
+      const hasAny = options.tagsAny.some((tag) => docTags.has(tag));
+      if (!hasAny) {
+        return false;
+      }
+    }
+    return true;
+  });
+};
+
+const chooseCandidateSeq = (
+  doc: DocumentRow,
+  chunks: ChunkRow[],
+  preferredSeqByHash: Map<string, number>,
+  lang?: string
+): number | null => {
+  if (!doc.mirrorHash) {
+    return null;
+  }
+
+  const preferredSeq = preferredSeqByHash.get(doc.mirrorHash);
+  if (preferredSeq !== undefined) {
+    const preferredChunk = chunks.find((chunk) => chunk.seq === preferredSeq);
+    if (preferredChunk && (!lang || preferredChunk.language === lang)) {
+      return preferredSeq;
+    }
+  }
+
+  const chunk = lang
+    ? chunks.find((candidate) => candidate.language === lang)
+    : chunks[0];
+  return chunk?.seq ?? null;
 };
 
 const createMeta = (
@@ -95,6 +194,13 @@ export async function expandGraphCandidates(
     limit?: number;
     candidateLimit?: number;
     disabled?: boolean;
+    lang?: string;
+    tagsAll?: string[];
+    tagsAny?: string[];
+    since?: string;
+    until?: string;
+    categories?: string[];
+    author?: string;
   } = {}
 ): Promise<GraphRetrievalResult> {
   const maxCandidates = Math.max(
@@ -122,6 +228,12 @@ export async function expandGraphCandidates(
   meta.attempted = true;
   const seedCandidates = fusedCandidates.slice(0, GRAPH_SEED_LIMIT);
   const seedHashes = [...new Set(seedCandidates.map((c) => c.mirrorHash))];
+  const preferredSeqByHash = new Map<string, number>();
+  for (const candidate of fusedCandidates) {
+    if (!preferredSeqByHash.has(candidate.mirrorHash)) {
+      preferredSeqByHash.set(candidate.mirrorHash, candidate.seq);
+    }
+  }
   const seedDocsResult = await store.getDocumentsByMirrorHashes(seedHashes, {
     collection: options.collection,
     activeOnly: true,
@@ -204,19 +316,46 @@ export async function expandGraphCandidates(
     return { candidates: [], meta };
   }
 
-  const docs: DocumentRow[] = [];
-  for (const docid of rankedNeighborDocids) {
-    const docResult = await store.getDocumentByDocid(docid);
-    if (docResult.ok && docResult.value?.mirrorHash) {
-      docs.push(docResult.value);
-    }
+  const docsResult = await store.getDocumentsByDocids(rankedNeighborDocids, {
+    collection: options.collection,
+    activeOnly: true,
+  });
+  if (!docsResult.ok) {
+    meta.fallbackReasons.push("graph_neighbor_lookup_failed");
+    return { candidates: [], meta };
+  }
+
+  const metadataFilteredDocs = docsResult.value.filter(
+    (doc) => doc.mirrorHash && matchesDocumentFilters(doc, options)
+  );
+  const docs = await filterDocsByTags(store, metadataFilteredDocs, options);
+  const hashes = docs
+    .map((doc) => doc.mirrorHash)
+    .filter((hash): hash is string => Boolean(hash));
+  const chunksResult = await store.getChunksBatch(hashes);
+  if (!chunksResult.ok) {
+    meta.fallbackReasons.push("graph_neighbor_chunks_failed");
+    return { candidates: [], meta };
   }
 
   const docByDocid = new Map(docs.map((doc) => [doc.docid, doc]));
   const candidates = rankedNeighborDocids
     .map((docid) => docByDocid.get(docid))
     .filter((doc): doc is DocumentRow => Boolean(doc?.mirrorHash))
-    .map((doc) => ({ mirrorHash: doc.mirrorHash as string, seq: 0 }));
+    .map((doc) => {
+      const mirrorHash = doc.mirrorHash as string;
+      const seq = chooseCandidateSeq(
+        doc,
+        chunksResult.value.get(mirrorHash) ?? [],
+        preferredSeqByHash,
+        options.lang
+      );
+      return seq === null ? null : { mirrorHash, seq };
+    })
+    .filter(
+      (candidate): candidate is { mirrorHash: string; seq: number } =>
+        candidate !== null
+    );
 
   meta.enabled = candidates.length > 0;
   meta.candidateCount = candidates.length;

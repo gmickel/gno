@@ -23,7 +23,12 @@ const NOW = "2026-02-22T00:00:00.000Z";
 const makeDoc = (
   id: number,
   mirrorHash: string,
-  metadata?: { sourceMtime?: string; frontmatterDate?: string | null }
+  metadata?: {
+    sourceMtime?: string;
+    frontmatterDate?: string | null;
+    categories?: string[];
+    author?: string;
+  }
 ): DocumentRow => ({
   id,
   collection: "notes",
@@ -48,16 +53,22 @@ const makeDoc = (
   createdAt: NOW,
   updatedAt: NOW,
   frontmatterDate: metadata?.frontmatterDate ?? null,
+  categories: metadata?.categories ?? null,
+  author: metadata?.author ?? null,
 });
 
-const makeChunk = (mirrorHash: string, seq: number): ChunkRow => ({
+const makeChunk = (
+  mirrorHash: string,
+  seq: number,
+  language = "en"
+): ChunkRow => ({
   mirrorHash,
   seq,
   pos: seq * 100,
   text: `Chunk ${mirrorHash}:${seq}`,
   startLine: seq + 1,
   endLine: seq + 1,
-  language: "en",
+  language,
   tokenCount: 20,
   createdAt: NOW,
 });
@@ -123,12 +134,20 @@ const createGraphStore = (
   options: {
     docs?: string[];
     fts?: string[];
-    onGetDocumentByDocid?: (docid: string) => void;
+    docMetadata?: Record<
+      string,
+      Parameters<typeof makeDoc>[2] & { tags?: string[]; language?: string }
+    >;
+    chunkSeqs?: Record<string, number[]>;
+    onGetDocumentsByDocids?: (docids: string[]) => void;
   } = {}
 ): Partial<StorePort> => {
   const hashes = options.docs ?? ["seed", "explicit", "inferred", "ambiguous"];
   const docs = new Map(
-    hashes.map((hash, index) => [`#${hash}`, makeDoc(index + 1, hash)])
+    hashes.map((hash, index) => [
+      `#${hash}`,
+      makeDoc(index + 1, hash, options.docMetadata?.[hash]),
+    ])
   );
   return {
     searchFts: async () => ({
@@ -140,8 +159,16 @@ const createGraphStore = (
       value: makeGraph(links, hashes.map(graphNode)),
     }),
     getDocumentByDocid: async (docid) => {
-      options.onGetDocumentByDocid?.(docid);
       return { ok: true as const, value: docs.get(docid) ?? null };
+    },
+    getDocumentsByDocids: async (docids) => {
+      options.onGetDocumentsByDocids?.(docids);
+      return {
+        ok: true as const,
+        value: docids
+          .map((docid) => docs.get(docid))
+          .filter((doc): doc is DocumentRow => Boolean(doc)),
+      };
     },
     getDocumentsByMirrorHashes: async (requestedHashes) => ({
       ok: true as const,
@@ -156,9 +183,28 @@ const createGraphStore = (
     getChunksBatch: async (requestedHashes) => {
       const map = new Map<string, ChunkRow[]>();
       for (const hash of requestedHashes) {
-        map.set(hash, [makeChunk(hash, 0)]);
+        const seqs = options.chunkSeqs?.[hash] ?? [0];
+        const language = options.docMetadata?.[hash]?.language ?? "en";
+        map.set(
+          hash,
+          seqs.map((seq) => makeChunk(hash, seq, language))
+        );
       }
       return { ok: true as const, value: map };
+    },
+    getTagsBatch: async (documentIds) => {
+      const values = new Map();
+      for (const doc of docs.values()) {
+        if (!documentIds.includes(doc.id)) {
+          continue;
+        }
+        const tags = options.docMetadata?.[doc.mirrorHash ?? ""]?.tags ?? [];
+        values.set(
+          doc.id,
+          tags.map((tag) => ({ tag, source: "frontmatter" as const }))
+        );
+      }
+      return { ok: true as const, value: values };
     },
   };
 };
@@ -420,7 +466,7 @@ describe("searchHybrid targeted document lookup", () => {
       })),
       {
         docs: ["seed", "one", "two", "three", "four"],
-        onGetDocumentByDocid: (docid) => requestedDocids.push(docid),
+        onGetDocumentsByDocids: (docids) => requestedDocids.push(...docids),
       }
     );
 
@@ -443,6 +489,145 @@ describe("searchHybrid targeted document lookup", () => {
       expect(result.value.meta.graphExpansion?.candidateCount).toBe(2);
       expect(result.value.meta.graphExpansion?.maxCandidates).toBe(2);
     }
+  });
+
+  test("graph expansion keeps candidates within active filters", async () => {
+    const store = createGraphStore(
+      [
+        {
+          source: "#seed",
+          target: "#valid",
+          type: "wiki",
+          weight: 1,
+          confidence: "explicit",
+          audit: { resolution: "exact-title", matchCount: 1 },
+        },
+        {
+          source: "#seed",
+          target: "#wrongtag",
+          type: "wiki",
+          weight: 1,
+          confidence: "explicit",
+          audit: { resolution: "exact-title", matchCount: 1 },
+        },
+        {
+          source: "#seed",
+          target: "#old",
+          type: "wiki",
+          weight: 1,
+          confidence: "explicit",
+          audit: { resolution: "exact-title", matchCount: 1 },
+        },
+        {
+          source: "#seed",
+          target: "#fr",
+          type: "wiki",
+          weight: 1,
+          confidence: "explicit",
+          audit: { resolution: "exact-title", matchCount: 1 },
+        },
+      ],
+      {
+        docs: ["seed", "valid", "wrongtag", "old", "fr"],
+        docMetadata: {
+          seed: { tags: ["keep"], sourceMtime: NOW, language: "en" },
+          valid: { tags: ["keep"], sourceMtime: NOW, language: "en" },
+          wrongtag: { tags: ["drop"], sourceMtime: NOW, language: "en" },
+          old: {
+            tags: ["keep"],
+            sourceMtime: "2025-01-01T00:00:00.000Z",
+            language: "en",
+          },
+          fr: { tags: ["keep"], sourceMtime: NOW, language: "fr" },
+        },
+      }
+    );
+
+    const result = await searchHybrid(
+      {
+        store: store as StorePort,
+        config: {} as Config,
+        vectorIndex: null,
+        embedPort: null,
+        expandPort: null,
+        rerankPort: null,
+      },
+      "seed query",
+      {
+        noExpand: true,
+        noRerank: true,
+        limit: 5,
+        tagsAll: ["keep"],
+        since: "2026-01-01",
+        lang: "en",
+      }
+    );
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      return;
+    }
+
+    expect(result.value.results.map((r) => r.source.relPath)).toContain(
+      "valid.md"
+    );
+    expect(result.value.results.map((r) => r.source.relPath)).not.toContain(
+      "wrongtag.md"
+    );
+    expect(result.value.results.map((r) => r.source.relPath)).not.toContain(
+      "old.md"
+    );
+    expect(result.value.results.map((r) => r.source.relPath)).not.toContain(
+      "fr.md"
+    );
+    expect(result.value.meta.graphExpansion?.candidateCount).toBe(1);
+  });
+
+  test("graph expansion reuses existing candidate seq for document-level boosts", async () => {
+    const store = createGraphStore(
+      [
+        {
+          source: "#seed",
+          target: "#related",
+          type: "wiki",
+          weight: 1,
+          confidence: "explicit",
+          audit: { resolution: "exact-title", matchCount: 1 },
+        },
+      ],
+      {
+        docs: ["seed", "related"],
+        fts: ["seed", "related"],
+        chunkSeqs: { seed: [0], related: [2] },
+      }
+    );
+
+    const result = await searchHybrid(
+      {
+        store: store as StorePort,
+        config: {} as Config,
+        vectorIndex: null,
+        embedPort: null,
+        expandPort: null,
+        rerankPort: null,
+      },
+      "seed query",
+      { noExpand: true, noRerank: true, limit: 5, explain: true }
+    );
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      return;
+    }
+
+    const related = result.value.results.find(
+      (entry) => entry.source.relPath === "related.md"
+    );
+    expect(related?.snippet).toBe("Chunk related:2");
+    const timingLine = result.value.meta.explain?.lines.find(
+      (line) => line.stage === "timing"
+    );
+    expect(timingLine?.message).toContain("graph=");
   });
 
   test("explicit graph neighbors outrank inferred and ambiguous neighbors", async () => {

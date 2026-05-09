@@ -1016,6 +1016,59 @@ describe("SqliteAdapter links", () => {
       ).toBe(false);
     });
 
+    test("merged graph edges keep best available confidence", async () => {
+      const sourceId = await createTestDoc("notes", "source.md", "Source");
+      await createTestDoc("notes", "projects/task.md", "Target Task");
+      await createTestDoc("notes", "archive/task.md", "Archive Task");
+
+      const target = await adapter.getDocument("notes", "projects/task.md");
+      expect(target.ok).toBe(true);
+      if (!target.ok || !target.value) return;
+      const targetValue = target.value;
+
+      await adapter.setDocLinks(
+        sourceId,
+        [
+          {
+            targetRef: "task.md",
+            targetRefNorm: "task.md",
+            linkType: "wiki",
+            startLine: 1,
+            startCol: 1,
+            endLine: 1,
+            endCol: 12,
+          },
+          {
+            targetRef: "projects/task.md",
+            targetRefNorm: "projects/task.md",
+            linkType: "wiki",
+            startLine: 2,
+            startCol: 1,
+            endLine: 2,
+            endCol: 19,
+          },
+        ],
+        "parsed"
+      );
+
+      const graph = await adapter.getGraph({
+        collection: "notes",
+        linkedOnly: false,
+        limitNodes: 100,
+        limitEdges: 100,
+      });
+      expect(graph.ok).toBe(true);
+      if (!graph.ok) return;
+
+      const edge = graph.value.links.find(
+        (link) => link.target === targetValue.docid
+      );
+      expect(edge).toBeDefined();
+      expect(edge?.weight).toBe(2);
+      expect(edge?.confidence).toBe("explicit");
+      expect(edge?.audit.matchCount).toBe(2);
+    });
+
     test("detects stable communities across deterministic graph runs", async () => {
       const a1 = await createTestDoc("notes", "a1.md", "Alpha 1");
       const a2 = await createTestDoc("notes", "a2.md", "Alpha 2");

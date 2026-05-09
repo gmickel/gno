@@ -270,6 +270,7 @@ export async function searchHybrid(
     expansionMs: 0,
     bm25Ms: 0,
     vectorMs: 0,
+    graphMs: 0,
     fusionMs: 0,
     rerankMs: 0,
     assemblyMs: 0,
@@ -546,21 +547,32 @@ export async function searchHybrid(
     options.candidateLimit ?? pipelineConfig.rerankCandidates;
   let fusedCandidates = rrfFuse(rankedInputs, pipelineConfig.rrf);
 
+  timings.fusionMs = performance.now() - fusionStartedAt;
+  const graphStartedAt = performance.now();
   const graphExpansion = await expandGraphCandidates(store, fusedCandidates, {
     collection: options.collection,
     includeSimilar: vectorAvailable,
     limit,
     candidateLimit,
     disabled: options.noGraph,
+    lang: options.lang,
+    tagsAll: options.tagsAll,
+    tagsAny: options.tagsAny,
+    since: temporalRange.since,
+    until: temporalRange.until,
+    categories: options.categories,
+    author: options.author,
   });
+  timings.graphMs = performance.now() - graphStartedAt;
   if (graphExpansion.candidates.length > 0) {
+    const graphFusionStartedAt = performance.now();
     rankedInputs.push(toRankedInput("graph", graphExpansion.candidates));
     fusedCandidates = rrfFuse(rankedInputs, pipelineConfig.rrf);
+    timings.fusionMs += performance.now() - graphFusionStartedAt;
   }
   if (graphExpansion.meta.fallbackReasons.length > 0) {
     counters.fallbackEvents.push(...graphExpansion.meta.fallbackReasons);
   }
-  timings.fusionMs = performance.now() - fusionStartedAt;
   explainLines.push({
     stage: "graph",
     message: graphExpansion.meta.attempted

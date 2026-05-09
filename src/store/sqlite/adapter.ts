@@ -812,6 +812,59 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
     }
   }
 
+  async getDocumentsByDocids(
+    docids: string[],
+    options: {
+      collection?: string;
+      activeOnly?: boolean;
+    } = {}
+  ): Promise<StoreResult<DocumentRow[]>> {
+    try {
+      if (docids.length === 0) {
+        return ok([]);
+      }
+
+      const uniqueDocids = [
+        ...new Set(docids.filter((docid) => docid.trim().length > 0)),
+      ];
+      if (uniqueDocids.length === 0) {
+        return ok([]);
+      }
+
+      const db = this.ensureOpen();
+      const rows: DbDocumentRow[] = [];
+      const SQL_PARAM_LIMIT = options.collection ? 899 : 900;
+
+      for (let i = 0; i < uniqueDocids.length; i += SQL_PARAM_LIMIT) {
+        const batch = uniqueDocids.slice(i, i + SQL_PARAM_LIMIT);
+        const placeholders = batch.map(() => "?").join(",");
+        const clauses = [`docid IN (${placeholders})`];
+        const params: string[] = [...batch];
+
+        if (options.activeOnly ?? true) {
+          clauses.push("active = 1");
+        }
+        if (options.collection) {
+          clauses.push("collection = ?");
+          params.push(options.collection);
+        }
+
+        const sql = `SELECT * FROM documents WHERE ${clauses.join(" AND ")} ORDER BY id`;
+        rows.push(...db.query<DbDocumentRow, string[]>(sql).all(...params));
+      }
+
+      return ok(rows.map(mapDocumentRow));
+    } catch (cause) {
+      return err(
+        "QUERY_FAILED",
+        cause instanceof Error
+          ? cause.message
+          : "Failed to get documents by docids",
+        cause
+      );
+    }
+  }
+
   async listDocumentsPaginated(options: {
     collection?: string;
     limit: number;
@@ -2695,10 +2748,16 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
         nextAudit: GraphEdgeAudit
       ): void => {
         if (
-          confidenceRank[nextConfidence] > confidenceRank[current.confidence]
+          confidenceRank[nextConfidence] < confidenceRank[current.confidence]
         ) {
           current.confidence = nextConfidence;
-          current.audit = nextAudit;
+          current.audit = {
+            ...nextAudit,
+            matchCount: Math.max(
+              current.audit.matchCount ?? 0,
+              nextAudit.matchCount ?? 0
+            ),
+          };
           return;
         }
         if (
