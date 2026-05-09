@@ -136,7 +136,7 @@ gno search "error handling" --json | jq -r '.results[].uri' | xargs gno multi-ge
 When using GNO through MCP, prefer this retrieval order:
 
 1. Check `gno_status` first when freshness, missing vectors, or stale results are plausible.
-2. Use `gno_query` first for normal content questions. It returns snippets plus `uri`, `docid`, and often `line`.
+2. Use `gno_query` first for normal content questions. It returns snippets plus `uri`, `docid`, and often `line`; it also adds bounded one-hop graph neighbors from top seeds when graph data exists.
 3. Use graph/link expansion for relationship context: `gno_graph_neighbors` for nearby documents, `gno_graph_path` for "how are X and Y connected?", `gno_links`/`gno_backlinks` for one-document link expansion, and `gno_similar` for semantic neighbors. Prefer `explicit` graph edges over `inferred`, `ambiguous`, or `similarity` edges when confidence matters.
 4. Use `gno_get` with `fromLine`/`lineCount` for targeted reads, or `gno_multi_get` to batch top refs.
 

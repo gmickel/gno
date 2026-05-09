@@ -62,6 +62,7 @@ export function rrfFuse(
       i.source === "vector_variant" ||
       i.source === "hyde"
   );
+  const graphInputs = inputs.filter((i) => i.source === "graph");
 
   // Process BM25 sources
   // Original query gets 2x weight to prevent dilution by expansion variants
@@ -132,6 +133,33 @@ export function rrfFuse(
       }
 
       // Add RRF contribution
+      candidate.fusionScore += rrfContribution(result.rank, config.k, weight);
+      if (!candidate.sources.includes(input.source)) {
+        candidate.sources.push(input.source);
+      }
+    }
+  }
+
+  // Process graph expansion sources.
+  for (const input of graphInputs) {
+    const weight = config.bm25Weight * 0.8;
+
+    for (const result of input.results) {
+      const key = `${result.mirrorHash}:${result.seq}`;
+      let candidate = candidates.get(key);
+
+      if (!candidate) {
+        candidate = {
+          mirrorHash: result.mirrorHash,
+          seq: result.seq,
+          bm25Rank: null,
+          vecRank: null,
+          fusionScore: 0,
+          sources: [],
+        };
+        candidates.set(key, candidate);
+      }
+
       candidate.fusionScore += rrfContribution(result.rank, config.k, weight);
       if (!candidate.sources.includes(input.source)) {
         candidate.sources.push(input.source);

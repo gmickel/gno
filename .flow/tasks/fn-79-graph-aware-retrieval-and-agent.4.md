@@ -1,14 +1,21 @@
+---
+satisfies:
+  - R4
+---
+
 # Bounded graph-aware retrieval expansion in gno_query
 
 ## Description
 
 Use graph structure as a retrieval adjunct inside `gno_query`: retrieve candidates first, expand bounded one-hop or policy-driven graph neighbors, then score/rerank the combined candidate set without replacing the existing hybrid pipeline.
 
-The behavior must degrade to current retrieval when graph data, embeddings, or similarity edges are unavailable. Expansion should prefer explicit links over inferred/similar edges and must expose enough explain/debug output to understand when graph expansion changed the candidate set.
+The behavior must degrade to current retrieval when graph data, embeddings, or similarity edges are unavailable. Expansion should prefer explicit links over inferred, ambiguous, or similarity edges and must expose enough explain/debug output to understand when graph expansion changed the candidate set.
 
 Docs, Web UI updates when affected, and hosted website updates are part of this task, including search docs, MCP docs, and `~/work/gno.sh` website content.
 
 ## Implementation Notes
+
+<!-- Updated by plan-sync: fn-79-graph-aware-retrieval-and-agent.3 shipped `GraphLink.confidence`/`audit` and `GraphResult.report.edgeConfidence`/`audit`; retrieval expansion should weight `explicit`, `inferred`, `ambiguous`, and `similarity` edges against those concrete fields. -->
 
 Start from `src/pipeline/hybrid.ts`, `src/mcp/tools/query.ts`, `src/cli/commands/query.ts`, and graph access in `src/store/sqlite/adapter.ts`.
 
@@ -16,7 +23,7 @@ Design goal: graph expansion is a candidate-generation/ranking signal, not a rep
 
 - run the current BM25/vector candidate path;
 - select a bounded seed set from top candidates;
-- expand one hop through graph edges using confidence-aware weights;
+- expand one hop through `GraphResult.links` using `confidence`/`audit`-aware weights;
 - dedupe candidates;
 - send the combined set through existing scoring/rerank behavior where feasible;
 - expose explain metadata for graph candidates and fallback reasons.
@@ -28,7 +35,7 @@ Testing focus:
 - Query where a linked neighbor improves recall.
 - Query where graph expansion is unavailable and output matches current behavior.
 - Candidate cap enforcement.
-- Explicit-link neighbor outranking inferred/similar neighbor when all else is equal.
+- Explicit-link neighbor outranking inferred, ambiguous, or similarity neighbors when all else is equal.
 - Explain metadata and MCP/CLI output stability.
 - Retrieval eval update or documented reason why deterministic unit coverage is sufficient for the slice.
 
@@ -36,7 +43,7 @@ Testing focus:
 
 - `gno_query` can use bounded graph expansion as an optional/default-safe retrieval adjunct, depending on the design decision made during implementation.
 - Candidate expansion is bounded and avoids graph-wide explosion.
-- Explicit link neighbors receive stronger treatment than inferred/similarity neighbors.
+- Explicit link neighbors receive stronger treatment than inferred, ambiguous, or similarity neighbors.
 - Explain/debug output identifies graph expansion activity, candidate counts, and fallback reasons.
 - Tests cover improved recall scenarios, no-graph fallback, no-embedding fallback, bounded expansion limits, and rerank/scoring interactions.
 - Retrieval evals are updated or added where appropriate to measure graph expansion impact.

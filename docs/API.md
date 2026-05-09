@@ -1567,6 +1567,7 @@ Combined BM25 + vector search with optional reranking. **Recommended for best re
   ],
   "noExpand": false,
   "noRerank": false,
+  "noGraph": false,
   "tagsAll": "backend",
   "tagsAny": "auth,security"
 }
@@ -1589,6 +1590,7 @@ Combined BM25 + vector search with optional reranking. **Recommended for best re
 | `queryModes`     | array   | —       | Optional structured mode entries (`term`, `intent`, `hyde`)                                                                      |
 | `noExpand`       | boolean | false   | Disable query expansion                                                                                                          |
 | `noRerank`       | boolean | false   | Disable cross-encoder reranking                                                                                                  |
+| `noGraph`        | boolean | false   | Disable bounded one-hop graph neighbor expansion                                                                                 |
 | `tagsAll`        | string  | —       | Comma-separated tags (must have ALL)                                                                                             |
 | `tagsAny`        | string  | —       | Comma-separated tags (must have ANY)                                                                                             |
 
@@ -1598,6 +1600,7 @@ Combined BM25 + vector search with optional reranking. **Recommended for best re
 - `intent` is orthogonal to `queryModes`: intent steers scoring/prompting, while query modes inject caller-provided retrieval expansions.
 - `queryModes` is optional and only needed for explicit retrieval intent control.
 - If `queryModes` is provided, generated expansion is skipped and provided entries are used directly.
+- By default, `/api/query` can add capped one-hop graph neighbors after initial retrieval. Explicit links are weighted above inferred, ambiguous, and similarity edges. Set `noGraph` to disable this adjunct.
 - `query` can also be a multi-line structured query document using `term:`, `intent:`, and `hyde:` lines. See [Structured Query Syntax](./SYNTAX.md).
 
 **Response**:

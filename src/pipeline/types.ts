@@ -81,6 +81,20 @@ export interface SearchMeta {
   author?: string;
   /** Rerank candidate limit used */
   candidateLimit?: number;
+  /** Bounded graph expansion summary, when hybrid query evaluates graph neighbors */
+  graphExpansion?: {
+    enabled: boolean;
+    seedCount: number;
+    candidateCount: number;
+    maxCandidates: number;
+    edgeConfidence: {
+      explicit: number;
+      inferred: number;
+      ambiguous: number;
+      similarity: number;
+    };
+    fallbackReasons: string[];
+  };
   /** Explicit exclusion terms applied */
   exclude?: string[];
   /** Explain data (when --explain is used) */
@@ -160,6 +174,8 @@ export type HybridSearchOptions = SearchOptions & {
   candidateLimit?: number;
   /** Enable explain output */
   explain?: boolean;
+  /** Disable bounded one-hop graph candidate expansion */
+  noGraph?: boolean;
   /** Language hint for prompt selection (does NOT filter retrieval, only affects expansion prompts) */
   queryLanguageHint?: string;
 };
@@ -225,7 +241,8 @@ export type FusionSource =
   | "vector"
   | "bm25_variant"
   | "vector_variant"
-  | "hyde";
+  | "hyde"
+  | "graph";
 
 /** Fusion candidate with ranks from different sources */
 export interface FusionCandidate {

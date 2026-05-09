@@ -379,6 +379,11 @@ Hybrid search combining BM25 and vector retrieval with optional expansion and re
       "description": "Enable cross-encoder reranking",
       "default": true
     },
+    "noGraph": {
+      "type": "boolean",
+      "description": "Disable bounded one-hop graph neighbor expansion",
+      "default": false
+    },
     "fast": {
       "type": "boolean",
       "description": "Fast mode: skip expansion and reranking (~0.7s)",
@@ -414,6 +419,7 @@ Compatibility / migration notes:
 - `intent` is orthogonal to `queryModes`: intent steers scoring/prompting, while query modes inject caller-provided retrieval expansions.
 - `candidateLimit` tunes rerank cost without changing retrieval contracts.
 - `exclude` hard-prunes matching docs after retrieval using title/path/body text.
+- `gno_query` can add capped one-hop graph neighbors after initial retrieval. Explicit links receive stronger treatment than inferred, ambiguous, or similarity edges; set `noGraph` to disable this adjunct.
 - `queryModes` is optional; use it only when clients need explicit retrieval intent control.
 - When `queryModes` is present, generated expansion is skipped and provided entries are used directly.
 

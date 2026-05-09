@@ -104,6 +104,7 @@
     - Collection management (add, remove, re-index)
     - Collection-level model editor with per-role overrides
     - Visual search with BM25, vector, and hybrid modes
+    - Graph-aware query expansion from linked notes
     - AI answers with citations
     - Interactive knowledge graph visualization
     - Instant refresh after edits with external-change awareness

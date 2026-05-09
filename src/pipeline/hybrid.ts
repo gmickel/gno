@@ -37,6 +37,7 @@ import {
   explainVector,
 } from "./explain";
 import { type RankedInput, rrfFuse, toRankedInput } from "./fusion";
+import { expandGraphCandidates } from "./graph-retrieval";
 import { selectBestChunkForSteering } from "./intent";
 import { detectQueryLanguage } from "./query-language";
 import {
@@ -541,8 +542,31 @@ export async function searchHybrid(
   // 3. RRF Fusion
   // ─────────────────────────────────────────────────────────────────────────
   const fusionStartedAt = performance.now();
-  const fusedCandidates = rrfFuse(rankedInputs, pipelineConfig.rrf);
+  const candidateLimit =
+    options.candidateLimit ?? pipelineConfig.rerankCandidates;
+  let fusedCandidates = rrfFuse(rankedInputs, pipelineConfig.rrf);
+
+  const graphExpansion = await expandGraphCandidates(store, fusedCandidates, {
+    collection: options.collection,
+    includeSimilar: vectorAvailable,
+    limit,
+    candidateLimit,
+    disabled: options.noGraph,
+  });
+  if (graphExpansion.candidates.length > 0) {
+    rankedInputs.push(toRankedInput("graph", graphExpansion.candidates));
+    fusedCandidates = rrfFuse(rankedInputs, pipelineConfig.rrf);
+  }
+  if (graphExpansion.meta.fallbackReasons.length > 0) {
+    counters.fallbackEvents.push(...graphExpansion.meta.fallbackReasons);
+  }
   timings.fusionMs = performance.now() - fusionStartedAt;
+  explainLines.push({
+    stage: "graph",
+    message: graphExpansion.meta.attempted
+      ? `seeds=${graphExpansion.meta.seedCount}, candidates=${graphExpansion.meta.candidateCount}/${graphExpansion.meta.maxCandidates}, explicit=${graphExpansion.meta.edgeConfidence.explicit}, inferred=${graphExpansion.meta.edgeConfidence.inferred}, ambiguous=${graphExpansion.meta.edgeConfidence.ambiguous}, similarity=${graphExpansion.meta.edgeConfidence.similarity}`
+      : `skipped (${graphExpansion.meta.fallbackReasons.join(", ") || "disabled"})`,
+  });
   explainLines.push(
     explainFusion(pipelineConfig.rrf.k, fusedCandidates.length)
   );
@@ -551,8 +575,6 @@ export async function searchHybrid(
   // 4. Reranking
   // ─────────────────────────────────────────────────────────────────────────
   const rerankStartedAt = performance.now();
-  const candidateLimit =
-    options.candidateLimit ?? pipelineConfig.rerankCandidates;
   const rerankResult = await rerankCandidates(
     { rerankPort: options.noRerank ? null : rerankPort, store },
     query,
@@ -888,6 +910,14 @@ export async function searchHybrid(
       categories: options.categories,
       author: options.author,
       candidateLimit,
+      graphExpansion: {
+        enabled: graphExpansion.meta.enabled,
+        seedCount: graphExpansion.meta.seedCount,
+        candidateCount: graphExpansion.meta.candidateCount,
+        maxCandidates: graphExpansion.meta.maxCandidates,
+        edgeConfidence: graphExpansion.meta.edgeConfidence,
+        fallbackReasons: graphExpansion.meta.fallbackReasons,
+      },
       queryLanguage,
       queryModes: queryModeSummary,
       explain: explainData,

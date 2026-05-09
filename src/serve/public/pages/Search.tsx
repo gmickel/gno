@@ -388,6 +388,7 @@ export default function Search({ navigate }: PageProps) {
       if (!useBm25) {
         body.noExpand = depthPolicy.noExpand;
         body.noRerank = depthPolicy.noRerank;
+        body.noGraph = thoroughness === "fast";
         if (queryModes.length > 0) {
           body.queryModes = queryModes;
         }

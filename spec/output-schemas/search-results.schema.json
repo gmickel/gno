@@ -233,6 +233,54 @@
           "description": "Max candidates sent to reranking (if applicable)",
           "minimum": 1
         },
+        "graphExpansion": {
+          "type": "object",
+          "description": "Bounded one-hop graph retrieval expansion summary",
+          "required": [
+            "enabled",
+            "seedCount",
+            "candidateCount",
+            "maxCandidates",
+            "edgeConfidence",
+            "fallbackReasons"
+          ],
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "description": "Whether graph expansion added candidates"
+            },
+            "seedCount": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Number of top retrieval seeds used for graph expansion"
+            },
+            "candidateCount": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Number of graph neighbors added to the candidate set"
+            },
+            "maxCandidates": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Graph candidate cap applied"
+            },
+            "edgeConfidence": {
+              "type": "object",
+              "required": ["explicit", "inferred", "ambiguous", "similarity"],
+              "properties": {
+                "explicit": { "type": "integer", "minimum": 0 },
+                "inferred": { "type": "integer", "minimum": 0 },
+                "ambiguous": { "type": "integer", "minimum": 0 },
+                "similarity": { "type": "integer", "minimum": 0 }
+              }
+            },
+            "fallbackReasons": {
+              "type": "array",
+              "items": { "type": "string" },
+              "description": "Reasons graph expansion did not add candidates, if any"
+            }
+          }
+        },
         "exclude": {
           "type": "array",
           "description": "Explicit exclusion terms applied",

@@ -453,6 +453,10 @@ export const queryInputSchema = z.object({
     .boolean()
     .optional()
     .describe("Override: enable/disable cross-encoder reranking"),
+  noGraph: z
+    .boolean()
+    .optional()
+    .describe("Disable bounded one-hop graph neighbor expansion"),
   tagsAll: z.array(z.string()).optional().describe("Require ALL of these tags"),
   tagsAny: z.array(z.string()).optional().describe("Require ANY of these tags"),
 });

@@ -50,6 +50,7 @@ interface QueryInput {
   thorough?: boolean;
   expand?: boolean;
   rerank?: boolean;
+  noGraph?: boolean;
   tagsAll?: string[];
   tagsAny?: string[];
 }
@@ -271,6 +272,7 @@ export function handleQuery(
           author: args.author,
           noExpand,
           noRerank,
+          noGraph: args.noGraph || args.fast,
           queryModes,
           tagsAll: normalizeTagFilters(args.tagsAll),
           tagsAny: normalizeTagFilters(args.tagsAny),
