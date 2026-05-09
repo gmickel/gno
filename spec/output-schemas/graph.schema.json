@@ -37,6 +37,10 @@
             "type": "integer",
             "description": "Total degree (in + out unique neighbors)",
             "minimum": 0
+          },
+          "communityId": {
+            "type": "string",
+            "description": "Optional deterministic community id"
           }
         }
       }
@@ -117,7 +121,8 @@
         "unresolvedLinks",
         "edgeTypes",
         "edgeConfidence",
-        "audit"
+        "audit",
+        "communities"
       ],
       "properties": {
         "hubs": {
@@ -193,6 +198,27 @@
             "inferredEdges": { "type": "integer", "minimum": 0 },
             "ambiguousEdges": { "type": "integer", "minimum": 0 },
             "similarityEdges": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "communities": {
+          "type": "object",
+          "description": "Deterministic community analysis over returned nodes",
+          "required": ["total", "algorithm", "skipped", "assignments", "top"],
+          "properties": {
+            "total": { "type": "integer", "minimum": 0 },
+            "algorithm": {
+              "type": "string",
+              "enum": ["deterministic-label-propagation"]
+            },
+            "skipped": { "type": "boolean" },
+            "assignments": {
+              "type": "object",
+              "additionalProperties": { "type": "string" }
+            },
+            "top": {
+              "type": "array",
+              "items": { "$ref": "#/definitions/community" }
+            }
           }
         }
       }
@@ -319,6 +345,25 @@
           "type": "integer",
           "description": "Total degree (in + out unique neighbors)",
           "minimum": 0
+        },
+        "communityId": {
+          "type": "string",
+          "description": "Optional deterministic community id"
+        }
+      }
+    },
+    "community": {
+      "type": "object",
+      "required": ["id", "label", "size", "edgeCount", "density", "topNodes"],
+      "properties": {
+        "id": { "type": "string" },
+        "label": { "type": "string" },
+        "size": { "type": "integer", "minimum": 1 },
+        "edgeCount": { "type": "integer", "minimum": 0 },
+        "density": { "type": "number", "minimum": 0 },
+        "topNodes": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/reportNode" }
         }
       }
     }

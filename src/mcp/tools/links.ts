@@ -725,6 +725,19 @@ function formatGraphResult(data: GraphResult): string {
     lines.push(`  ${confidence}: ${count}`);
   }
 
+  if (report.communities.skipped) {
+    lines.push("");
+    lines.push("Communities: skipped for graph size");
+  } else {
+    lines.push("");
+    lines.push(`Communities: ${report.communities.total}`);
+    for (const community of report.communities.top.slice(0, 5)) {
+      lines.push(
+        `  ${community.id}: ${community.label} (${community.size} docs, ${community.edgeCount} internal edges)`
+      );
+    }
+  }
+
   lines.push("");
   lines.push(
     `Unresolved links: ${report.unresolvedLinks.total} (wiki: ${report.unresolvedLinks.byType.wiki}, markdown: ${report.unresolvedLinks.byType.markdown})`

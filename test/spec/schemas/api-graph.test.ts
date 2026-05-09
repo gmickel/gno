@@ -22,6 +22,13 @@ describe("graph schema", () => {
       edgeTypes: { wiki: 0, markdown: 0, similar: 0 },
       edgeConfidence: { explicit: 0, inferred: 0, ambiguous: 0, similarity: 0 },
       audit: { inferredEdges: 0, ambiguousEdges: 0, similarityEdges: 0 },
+      communities: {
+        total: 0,
+        algorithm: "deterministic-label-propagation",
+        skipped: false,
+        assignments: {},
+        top: [],
+      },
       ...overrides,
     };
   }
@@ -63,6 +70,7 @@ describe("graph schema", () => {
             collection: "notes",
             relPath: "doc1.md",
             degree: 3,
+            communityId: "c1",
           },
           {
             id: "#def456",
@@ -92,6 +100,7 @@ describe("graph schema", () => {
               collection: "notes",
               relPath: "doc1.md",
               degree: 3,
+              communityId: "c1",
             },
           ],
           bridgeCandidates: [
@@ -102,9 +111,36 @@ describe("graph schema", () => {
               collection: "notes",
               relPath: "doc1.md",
               degree: 3,
+              communityId: "c1",
             },
           ],
           edgeTypes: { wiki: 1, markdown: 0, similar: 0 },
+          communities: {
+            total: 1,
+            algorithm: "deterministic-label-propagation",
+            skipped: false,
+            assignments: { "#abc123": "c1" },
+            top: [
+              {
+                id: "c1",
+                label: "Document 1",
+                size: 2,
+                edgeCount: 1,
+                density: 1,
+                topNodes: [
+                  {
+                    id: "#abc123",
+                    uri: "gno://notes/doc1.md",
+                    title: "Document 1",
+                    collection: "notes",
+                    relPath: "doc1.md",
+                    degree: 3,
+                    communityId: "c1",
+                  },
+                ],
+              },
+            ],
+          },
         }),
         meta: {
           collection: "notes",

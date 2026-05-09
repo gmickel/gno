@@ -51,6 +51,7 @@ interface GraphNode {
   collection: string;
   relPath: string;
   degree: number;
+  communityId?: string;
 }
 
 interface GraphReportNode {
@@ -60,6 +61,16 @@ interface GraphReportNode {
   collection: string;
   relPath: string;
   degree: number;
+  communityId?: string;
+}
+
+interface GraphCommunity {
+  id: string;
+  label: string;
+  size: number;
+  edgeCount: number;
+  density: number;
+  topNodes: GraphReportNode[];
 }
 
 interface GraphLink {
@@ -128,6 +139,13 @@ interface GraphReport {
     ambiguousEdges: number;
     similarityEdges: number;
   };
+  communities: {
+    total: number;
+    algorithm: "deterministic-label-propagation";
+    skipped: boolean;
+    assignments: Record<string, string>;
+    top: GraphCommunity[];
+  };
 }
 
 interface GraphResponse {
@@ -189,6 +207,22 @@ function getCollectionColor(collection: string): string {
     hash = ((hash << 5) - hash + collection.charCodeAt(i)) | 0;
   }
   return palette[Math.abs(hash) % palette.length]!;
+}
+
+function getCommunityColor(communityId: string | undefined): string | null {
+  if (!communityId) return null;
+  const palette = [
+    "#4db8a8",
+    "#d4a053",
+    "#6ba3d6",
+    "#a8c686",
+    "#c9a7c7",
+    "#e2a76f",
+    "#f5d78e",
+    "#7c9eb2",
+  ];
+  const index = Math.max(0, Number.parseInt(communityId.slice(1), 10) - 1);
+  return palette[index % palette.length] ?? null;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -295,6 +329,7 @@ export default function GraphView({ navigate }: PageProps) {
   // Filter state
   const [selectedCollection, setSelectedCollection] = useState<string>("_all");
   const [includeSimilar, setIncludeSimilar] = useState(false);
+  const [selectedCommunity, setSelectedCommunity] = useState<string>("_all");
 
   // UI state
   const [showTruncationBanner, setShowTruncationBanner] = useState(true);
@@ -344,6 +379,7 @@ export default function GraphView({ navigate }: PageProps) {
     setLoading(true);
     setError(null);
     setShowTruncationBanner(true);
+    setSelectedCommunity("_all");
     clearZoomTimeouts();
 
     const params = new URLSearchParams();
@@ -424,28 +460,47 @@ export default function GraphView({ navigate }: PageProps) {
   const forceGraphData = useMemo(() => {
     if (!graphData) return { nodes: [], links: [] };
 
+    const visibleNodeIds = new Set(
+      graphData.nodes
+        .filter(
+          (node) =>
+            selectedCommunity === "_all" ||
+            node.communityId === selectedCommunity
+        )
+        .map((node) => node.id)
+    );
+
     return {
-      nodes: graphData.nodes.map((n) => ({
-        ...n,
-        // Add computed properties for rendering
-        color: getCollectionColor(n.collection),
-        size: Math.max(4, Math.min(20, 4 + Math.sqrt(n.degree) * 2)),
-      })),
-      links: graphData.links.map((l) => ({
-        ...l,
-        color:
-          l.confidence === "ambiguous"
-            ? COLORS.edgeAmbiguous
-            : l.confidence === "inferred"
-              ? COLORS.edgeInferred
-              : l.type === "similar"
-                ? COLORS.edgeSimilar
-                : l.type === "wiki"
-                  ? COLORS.edgeWiki
-                  : COLORS.edgeMarkdown,
-      })),
+      nodes: graphData.nodes
+        .filter((node) => visibleNodeIds.has(node.id))
+        .map((n) => ({
+          ...n,
+          // Add computed properties for rendering
+          color:
+            getCommunityColor(n.communityId) ??
+            getCollectionColor(n.collection),
+          size: Math.max(4, Math.min(20, 4 + Math.sqrt(n.degree) * 2)),
+        })),
+      links: graphData.links
+        .filter(
+          (link) =>
+            visibleNodeIds.has(link.source) && visibleNodeIds.has(link.target)
+        )
+        .map((l) => ({
+          ...l,
+          color:
+            l.confidence === "ambiguous"
+              ? COLORS.edgeAmbiguous
+              : l.confidence === "inferred"
+                ? COLORS.edgeInferred
+                : l.type === "similar"
+                  ? COLORS.edgeSimilar
+                  : l.type === "wiki"
+                    ? COLORS.edgeWiki
+                    : COLORS.edgeMarkdown,
+        })),
     };
-  }, [graphData]);
+  }, [graphData, selectedCommunity]);
 
   // Node canvas rendering for custom aesthetics
   // biome-ignore lint: dynamic import typing
@@ -552,6 +607,27 @@ export default function GraphView({ navigate }: PageProps) {
             <HomeIcon className="size-4" />
             <span className="hidden sm:inline">Dashboard</span>
           </Button>
+
+          {graphData &&
+            !graphData.report.communities.skipped &&
+            graphData.report.communities.top.length > 0 && (
+              <Select
+                onValueChange={setSelectedCommunity}
+                value={selectedCommunity}
+              >
+                <SelectTrigger className="h-8 w-[170px] border-border/50 bg-background/50 text-xs">
+                  <SelectValue placeholder="All communities" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="_all">All communities</SelectItem>
+                  {graphData.report.communities.top.map((community) => (
+                    <SelectItem key={community.id} value={community.id}>
+                      {community.id} · {community.size} docs
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
 
           <div className="h-4 w-px bg-border/50" />
 
@@ -662,6 +738,11 @@ export default function GraphView({ navigate }: PageProps) {
                 {graphData.report.audit.ambiguousEdges.toLocaleString()}
               </span>{" "}
               ambiguous
+              <span className="text-border">•</span>
+              <span className="text-[#6ba3d6]">
+                {graphData.report.communities.total.toLocaleString()}
+              </span>{" "}
+              communities
             </div>
           )}
 
@@ -694,6 +775,48 @@ export default function GraphView({ navigate }: PageProps) {
           onDismiss={() => setShowTruncationBanner(false)}
         />
       )}
+
+      {graphData &&
+        !loading &&
+        !graphData.report.communities.skipped &&
+        graphData.report.communities.top.length > 0 && (
+          <div className="absolute right-4 bottom-4 z-20 hidden max-w-xs rounded-lg border border-border/30 bg-[#0f1115]/85 p-3 shadow-lg backdrop-blur-md md:block">
+            <p className="mb-2 font-mono text-[#4db8a8] text-[10px] uppercase tracking-[0.12em]">
+              Communities
+            </p>
+            <div className="space-y-1.5">
+              {graphData.report.communities.top.slice(0, 6).map((community) => (
+                <button
+                  className={cn(
+                    "flex w-full items-center gap-2 rounded px-1.5 py-1 text-left text-xs transition-colors hover:bg-white/5",
+                    selectedCommunity === community.id && "bg-white/10"
+                  )}
+                  key={community.id}
+                  onClick={() =>
+                    setSelectedCommunity((current) =>
+                      current === community.id ? "_all" : community.id
+                    )
+                  }
+                  type="button"
+                >
+                  <span
+                    className="size-2.5 shrink-0 rounded-full"
+                    style={{
+                      backgroundColor:
+                        getCommunityColor(community.id) ?? COLORS.nodeDefault,
+                    }}
+                  />
+                  <span className="min-w-0 flex-1 truncate text-muted-foreground">
+                    {community.label}
+                  </span>
+                  <span className="font-mono text-[#d4a053]">
+                    {community.size}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
       {/* Graph canvas */}
       <div className="h-full pt-12">

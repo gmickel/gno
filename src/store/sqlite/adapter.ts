@@ -49,6 +49,7 @@ import type {
 import type { SqliteDbProvider } from "./types";
 
 import { buildUri, deriveDocid, stripUriIndex } from "../../app/constants";
+import { analyzeGraphCommunities } from "../../core/graph-analysis";
 import { normalizeWikiName, stripWikiMdExt } from "../../core/links";
 import { migrations, runMigrations } from "../migrations";
 import { err, ok } from "../types";
@@ -2905,6 +2906,16 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
         edgeConfidence[edge.confidence] += 1;
       }
 
+      const communityAnalysis = analyzeGraphCommunities(nodes, allEdges);
+      warnings.push(...communityAnalysis.warnings);
+      const nodesWithCommunities = nodes.map((node) => {
+        const communityId = communityAnalysis.assignments[node.id];
+        return communityId ? { ...node, communityId } : node;
+      });
+      const communityByNodeId = new Map(
+        Object.entries(communityAnalysis.assignments)
+      );
+
       const truncatedEdges = allEdges.length > limitEdges;
       const links = allEdges.slice(0, limitEdges);
 
@@ -2917,10 +2928,13 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
       }
 
       return ok({
-        nodes,
+        nodes: nodesWithCommunities,
         links,
         report: {
-          hubs: connectedNodes.slice(0, 10).map(toReportNode),
+          hubs: connectedNodes.slice(0, 10).map((node) => ({
+            ...toReportNode(node),
+            communityId: communityByNodeId.get(node.docid),
+          })),
           bridgeCandidates: connectedNodes
             .filter(
               (row) =>
@@ -2928,10 +2942,16 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
                 (outNeighbors.get(row.id)?.size ?? 0) > 0
             )
             .slice(0, 10)
-            .map(toReportNode),
+            .map((node) => ({
+              ...toReportNode(node),
+              communityId: communityByNodeId.get(node.docid),
+            })),
           isolated: {
             total: isolatedTotal,
-            examples: isolatedExampleRows.map(toReportNode),
+            examples: isolatedExampleRows.map((node) => ({
+              ...toReportNode(node),
+              communityId: communityByNodeId.get(node.docid),
+            })),
           },
           unresolvedLinks: {
             total: totalEdgesUnresolved,
@@ -2944,6 +2964,13 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
             ambiguousEdges: edgeConfidence.ambiguous,
             similarityEdges: edgeConfidence.similarity,
           },
+          communities: {
+            total: communityAnalysis.total,
+            algorithm: communityAnalysis.algorithm,
+            skipped: communityAnalysis.skipped,
+            assignments: communityAnalysis.assignments,
+            top: communityAnalysis.communities,
+          },
         },
         meta: {
           collection,
@@ -2953,7 +2980,7 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
           // totalEdges = collapsed edge count within selected nodes (matches allEdges)
           totalEdges: allEdges.length,
           totalEdgesUnresolved,
-          returnedNodes: nodes.length,
+          returnedNodes: nodesWithCommunities.length,
           returnedEdges: links.length,
           truncated: truncatedNodes || truncatedEdges,
           linkedOnly,

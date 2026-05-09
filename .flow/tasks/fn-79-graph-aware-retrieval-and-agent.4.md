@@ -51,8 +51,11 @@ Testing focus:
 - Quality gates include targeted retrieval tests/evals, `bun run lint:check`, `bun test`, docs verification, and website sync/check commands relevant to changed docs.
 
 ## Done summary
+
 Implemented bounded graph-aware retrieval expansion for hybrid query, with confidence-weighted one-hop graph candidates, explain metadata, and noGraph controls across CLI, MCP, API, and Web UI. Updated schemas, docs, website content, skill guidance, and regression tests for graph recall, fallback, bounds, ranking, and rerank interaction.
+
 ## Evidence
+
 - Commits: b5e5aef3c2638abdb589e5ec61a4d4acb1b4b2b6, gno.sh:034fd99ee79e74a46e036c615716ae178b389dee
 - Tests: bun run lint:check, bun run typecheck, bun test, bun run docs:verify, bun test test/pipeline/hybrid-doc-lookup.test.ts test/serve/public/pages/Search.dom.test.tsx, cd /Users/gordon/work/gno.sh && bun run typecheck, cd /Users/gordon/work/gno.sh && bun run build, bun run website:build (failed: missing Ruby bundler 2.5.22 after docs sync)
 - PRs:

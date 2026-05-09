@@ -145,7 +145,7 @@ Use narrower tools when the request tells you to:
 - `gno_search`: exact phrase, filename, identifier, stack trace, error text
 - `gno_vsearch`: conceptual similarity when exact wording differs
 - `gno_status`: stale results, missing embeddings, vector unavailable
-- `gno_graph`: graph report/stats, hubs, isolates, unresolved links, edge confidence/audit, unfamiliar corpus overview
+- `gno_graph`: graph report/stats, hubs, isolates, unresolved links, edge confidence/audit, communities, unfamiliar corpus overview
 - `gno_graph_neighbors`: relationship/corpus-navigation questions around a known document
 - `gno_graph_path`: "how are X and Y connected?" questions
 

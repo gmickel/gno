@@ -902,6 +902,9 @@ describe("SqliteAdapter links", () => {
         ambiguousEdges: 0,
         similarityEdges: 0,
       });
+      expect(graph.value.report.communities.total).toBeGreaterThanOrEqual(2);
+      expect(graph.value.report.communities.skipped).toBe(false);
+      expect(graph.value.nodes.every((node) => node.communityId)).toBe(true);
       expect(graph.value.links).toHaveLength(1);
       expect(graph.value.meta.truncated).toBe(true);
       expect(graph.value.meta.warnings).toContain("Edges truncated: 3 → 1");
@@ -1011,6 +1014,118 @@ describe("SqliteAdapter links", () => {
       expect(
         graph.value.links.some((link) => link.target === docBValue.docid)
       ).toBe(false);
+    });
+
+    test("detects stable communities across deterministic graph runs", async () => {
+      const a1 = await createTestDoc("notes", "a1.md", "Alpha 1");
+      const a2 = await createTestDoc("notes", "a2.md", "Alpha 2");
+      const b1 = await createTestDoc("notes", "b1.md", "Beta 1");
+      const b2 = await createTestDoc("notes", "b2.md", "Beta 2");
+
+      await adapter.setDocLinks(
+        a1,
+        [
+          {
+            targetRef: "a2.md",
+            targetRefNorm: "a2.md",
+            linkType: "markdown",
+            startLine: 1,
+            startCol: 1,
+            endLine: 1,
+            endCol: 8,
+          },
+        ],
+        "parsed"
+      );
+      await adapter.setDocLinks(
+        a2,
+        [
+          {
+            targetRef: "a1.md",
+            targetRefNorm: "a1.md",
+            linkType: "markdown",
+            startLine: 1,
+            startCol: 1,
+            endLine: 1,
+            endCol: 8,
+          },
+        ],
+        "parsed"
+      );
+      await adapter.setDocLinks(
+        b1,
+        [
+          {
+            targetRef: "b2.md",
+            targetRefNorm: "b2.md",
+            linkType: "markdown",
+            startLine: 1,
+            startCol: 1,
+            endLine: 1,
+            endCol: 8,
+          },
+        ],
+        "parsed"
+      );
+      await adapter.setDocLinks(
+        b2,
+        [
+          {
+            targetRef: "b1.md",
+            targetRefNorm: "b1.md",
+            linkType: "markdown",
+            startLine: 1,
+            startCol: 1,
+            endLine: 1,
+            endCol: 8,
+          },
+        ],
+        "parsed"
+      );
+
+      const first = await adapter.getGraph({
+        collection: "notes",
+        limitNodes: 10,
+        limitEdges: 10,
+      });
+      const second = await adapter.getGraph({
+        collection: "notes",
+        limitNodes: 10,
+        limitEdges: 10,
+      });
+      expect(first.ok).toBe(true);
+      expect(second.ok).toBe(true);
+      if (!first.ok || !second.ok) return;
+
+      expect(first.value.report.communities.total).toBe(2);
+      expect(first.value.report.communities.assignments).toEqual(
+        second.value.report.communities.assignments
+      );
+      expect(first.value.report.communities.top.map((c) => c.id)).toEqual([
+        "c1",
+        "c2",
+      ]);
+    });
+
+    test("skips community detection for large returned graphs", async () => {
+      for (let i = 0; i < 2001; i++) {
+        await createTestDoc("notes", `large-${i}.md`, `Large ${i}`);
+      }
+
+      const graph = await adapter.getGraph({
+        collection: "notes",
+        linkedOnly: false,
+        limitNodes: 2001,
+        limitEdges: 10,
+      });
+      expect(graph.ok).toBe(true);
+      if (!graph.ok) return;
+
+      expect(graph.value.report.communities.skipped).toBe(true);
+      expect(graph.value.report.communities.top).toEqual([]);
+      expect(graph.value.meta.warnings).toContain(
+        "Community detection skipped: graph has 2001 nodes (cap 2000)"
+      );
     });
   });
 });

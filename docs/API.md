@@ -1167,7 +1167,8 @@ Returns a knowledge graph of document links (wiki links, markdown links, and opt
       "title": "Project README",
       "collection": "notes",
       "relPath": "readme.md",
-      "degree": 5
+      "degree": 5,
+      "communityId": "c1"
     }
   ],
   "links": [
@@ -1210,7 +1211,23 @@ Returns a knowledge graph of document links (wiki links, markdown links, and opt
       "ambiguous": 1,
       "similarity": 0
     },
-    "audit": { "inferredEdges": 6, "ambiguousEdges": 1, "similarityEdges": 0 }
+    "audit": { "inferredEdges": 6, "ambiguousEdges": 1, "similarityEdges": 0 },
+    "communities": {
+      "total": 2,
+      "algorithm": "deterministic-label-propagation",
+      "skipped": false,
+      "assignments": { "#abc123": "c1" },
+      "top": [
+        {
+          "id": "c1",
+          "label": "Project README",
+          "size": 12,
+          "edgeCount": 18,
+          "density": 0.27,
+          "topNodes": []
+        }
+      ]
+    }
   },
   "meta": {
     "collection": null,
@@ -1240,12 +1257,14 @@ Returns a knowledge graph of document links (wiki links, markdown links, and opt
 | `nodes[].collection`      | Source collection                                                                      |
 | `nodes[].relPath`         | Relative path in collection                                                            |
 | `nodes[].degree`          | Number of connections (in + out)                                                       |
+| `nodes[].communityId`     | Optional deterministic community id                                                    |
 | `links[].source`          | Source node ID                                                                         |
 | `links[].target`          | Target node ID                                                                         |
 | `links[].type`            | Link type: `wiki`, `markdown`, or `similar`                                            |
 | `links[].weight`          | Edge weight (count for links, score for similar)                                       |
 | `links[].confidence`      | `explicit`, `inferred`, `ambiguous`, or `similarity`                                   |
 | `links[].audit`           | Resolution metadata such as exact title/path, fallback, ambiguity, or similarity score |
+| `report.communities`      | Deterministic cluster summary; skipped with warning for very large returned graphs     |
 | `report.hubs`             | Highest-degree documents                                                               |
 | `report.bridgeCandidates` | Documents with both incoming and outgoing links                                        |
 | `report.isolated`         | Count and examples of documents with no links                                          |

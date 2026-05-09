@@ -53,6 +53,7 @@ gno serve
 ### Filtering
 
 - **Collection filter**: Focus on a single collection
+- **Community filter**: Focus on one detected cluster
 - **Similar toggle**: Show/hide semantic similarity edges (golden lines)
 
 ### Legend
@@ -62,6 +63,7 @@ The bottom-right legend shows edge types:
 - Teal: Wiki links (`[[...]]`)
 - Light teal: Markdown links (`[...](...)`)
 - Gold: Similarity connections (when enabled)
+- Community swatches: deterministic clusters for returned nodes
 
 ## CLI Access
 
@@ -140,7 +142,8 @@ curl "http://localhost:3000/api/graph?collection=notes&includeSimilar=true&limit
       "title": "My Note",
       "collection": "notes",
       "relPath": "my-note.md",
-      "degree": 5
+      "degree": 5,
+      "communityId": "c1"
     }
   ],
   "links": [
@@ -168,7 +171,14 @@ curl "http://localhost:3000/api/graph?collection=notes&includeSimilar=true&limit
       "ambiguous": 0,
       "similarity": 0
     },
-    "audit": { "inferredEdges": 0, "ambiguousEdges": 0, "similarityEdges": 0 }
+    "audit": { "inferredEdges": 0, "ambiguousEdges": 0, "similarityEdges": 0 },
+    "communities": {
+      "total": 3,
+      "algorithm": "deterministic-label-propagation",
+      "skipped": false,
+      "assignments": { "doc-123": "c1" },
+      "top": []
+    }
   },
   "meta": {
     "totalNodes": 150,

@@ -1046,8 +1046,9 @@ Get knowledge graph of document connections plus graph-health report fields.
 
 The structured response includes `report.hubs`, `report.bridgeCandidates`,
 `report.isolated`, `report.unresolvedLinks`, `report.edgeTypes`,
-`report.edgeConfidence`, and per-edge `confidence` / `audit` metadata so agents
-can assess graph health and trust before deeper traversal.
+`report.edgeConfidence`, `report.communities`, node `communityId` assignments,
+and per-edge `confidence` / `audit` metadata so agents can assess graph health,
+clusters, and trust before deeper traversal.
 
 **Response:**
 
@@ -1067,7 +1068,8 @@ can assess graph health and trust before deeper traversal.
         "title": "README",
         "collection": "notes",
         "relPath": "readme.md",
-        "degree": 12
+        "degree": 12,
+        "communityId": "c1"
       }
     ],
     "links": [

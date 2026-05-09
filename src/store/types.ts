@@ -454,6 +454,8 @@ export interface GraphNode {
   relPath: string;
   /** Total degree (in + out unique neighbors) */
   degree: number;
+  /** Optional deterministic community id from graph analysis */
+  communityId?: string;
 }
 
 /** Compact graph report node summary */
@@ -470,6 +472,24 @@ export interface GraphReportNode {
   relPath: string;
   /** Total degree (in + out unique neighbors) */
   degree: number;
+  /** Optional deterministic community id from graph analysis */
+  communityId?: string;
+}
+
+/** Deterministic graph community summary */
+export interface GraphCommunity {
+  /** Stable community id within this graph response */
+  id: string;
+  /** Human-readable label derived from the highest-degree member */
+  label: string;
+  /** Number of returned nodes assigned to this community */
+  size: number;
+  /** Internal edge count before edge-limit truncation */
+  edgeCount: number;
+  /** Internal density, 0-1 */
+  density: number;
+  /** Highest-degree example nodes in the community */
+  topNodes: GraphReportNode[];
 }
 
 /** Graph link (edge) between two nodes */
@@ -517,6 +537,19 @@ export interface GraphReport {
     inferredEdges: number;
     ambiguousEdges: number;
     similarityEdges: number;
+  };
+  /** Optional deterministic community/cluster analysis over returned nodes */
+  communities: {
+    /** Number of detected communities */
+    total: number;
+    /** Algorithm used for deterministic cluster labels */
+    algorithm: "deterministic-label-propagation";
+    /** Whether community detection was skipped for graph size */
+    skipped: boolean;
+    /** Node docid to community id map */
+    assignments: Record<string, string>;
+    /** Top communities by size */
+    top: GraphCommunity[];
   };
 }
 

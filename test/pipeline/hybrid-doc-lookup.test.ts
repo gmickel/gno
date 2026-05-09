@@ -82,6 +82,13 @@ const makeGraph = (
     edgeTypes: { wiki: 0, markdown: 0, similar: 0 },
     edgeConfidence: { explicit: 0, inferred: 0, ambiguous: 0, similarity: 0 },
     audit: { inferredEdges: 0, ambiguousEdges: 0, similarityEdges: 0 },
+    communities: {
+      total: 0,
+      algorithm: "deterministic-label-propagation",
+      skipped: false,
+      assignments: {},
+      top: [],
+    },
   },
   meta: {
     collection: "notes",

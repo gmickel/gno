@@ -823,7 +823,8 @@ Options:
 
 Export knowledge graph of document links (wiki links, markdown links, similarity edges).
 JSON output includes a `report` block with hubs, bridge candidates, isolated
-documents, unresolved-link counts, and edge-type totals.
+documents, unresolved-link counts, edge-type totals, and deterministic
+community summaries.
 
 ```bash
 gno graph                           # JSON output (default)
