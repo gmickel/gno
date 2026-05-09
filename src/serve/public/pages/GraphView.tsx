@@ -67,6 +67,17 @@ interface GraphLink {
   target: string;
   type: "wiki" | "markdown" | "similar";
   weight: number;
+  confidence: "explicit" | "inferred" | "ambiguous" | "similarity";
+  audit: {
+    resolution:
+      | "exact-title"
+      | "exact-path"
+      | "path-fallback"
+      | "ambiguous-fallback"
+      | "similarity";
+    matchCount?: number;
+    score?: number;
+  };
 }
 
 interface GraphMeta {
@@ -106,6 +117,17 @@ interface GraphReport {
     markdown: number;
     similar: number;
   };
+  edgeConfidence: {
+    explicit: number;
+    inferred: number;
+    ambiguous: number;
+    similarity: number;
+  };
+  audit: {
+    inferredEdges: number;
+    ambiguousEdges: number;
+    similarityEdges: number;
+  };
 }
 
 interface GraphResponse {
@@ -142,6 +164,8 @@ const COLORS = {
   edgeWiki: "rgba(77, 184, 168, 0.4)", // Teal threads
   edgeMarkdown: "rgba(77, 184, 168, 0.25)", // Fainter teal
   edgeSimilar: "rgba(212, 160, 83, 0.3)", // Gold similarity
+  edgeInferred: "rgba(124, 158, 178, 0.35)",
+  edgeAmbiguous: "rgba(245, 215, 142, 0.55)",
 
   // Background
   canvas: "#050505", // Deep black - observatory darkness
@@ -410,11 +434,15 @@ export default function GraphView({ navigate }: PageProps) {
       links: graphData.links.map((l) => ({
         ...l,
         color:
-          l.type === "similar"
-            ? COLORS.edgeSimilar
-            : l.type === "wiki"
-              ? COLORS.edgeWiki
-              : COLORS.edgeMarkdown,
+          l.confidence === "ambiguous"
+            ? COLORS.edgeAmbiguous
+            : l.confidence === "inferred"
+              ? COLORS.edgeInferred
+              : l.type === "similar"
+                ? COLORS.edgeSimilar
+                : l.type === "wiki"
+                  ? COLORS.edgeWiki
+                  : COLORS.edgeMarkdown,
       })),
     };
   }, [graphData]);
@@ -624,6 +652,16 @@ export default function GraphView({ navigate }: PageProps) {
                 {graphData.report.isolated.total.toLocaleString()}
               </span>{" "}
               isolated
+              <span className="text-border">•</span>
+              <span className="text-[#7c9eb2]">
+                {graphData.report.audit.inferredEdges.toLocaleString()}
+              </span>{" "}
+              inferred
+              <span className="text-border">•</span>
+              <span className="text-[#f5d78e]">
+                {graphData.report.audit.ambiguousEdges.toLocaleString()}
+              </span>{" "}
+              ambiguous
             </div>
           )}
 
@@ -764,6 +802,20 @@ export default function GraphView({ navigate }: PageProps) {
               <span className="text-muted-foreground">Similarity</span>
             </div>
           )}
+          <div className="flex items-center gap-2">
+            <span
+              className="size-2 rounded-full"
+              style={{ backgroundColor: COLORS.edgeInferred }}
+            />
+            <span className="text-muted-foreground">Inferred</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span
+              className="size-2 rounded-full"
+              style={{ backgroundColor: COLORS.edgeAmbiguous }}
+            />
+            <span className="text-muted-foreground">Ambiguous</span>
+          </div>
         </div>
       </div>
     </div>

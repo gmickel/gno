@@ -720,10 +720,17 @@ function formatGraphResult(data: GraphResult): string {
   for (const [type, count] of Object.entries(report.edgeTypes)) {
     lines.push(`  ${type}: ${count}`);
   }
+  lines.push("Confidence:");
+  for (const [confidence, count] of Object.entries(report.edgeConfidence)) {
+    lines.push(`  ${confidence}: ${count}`);
+  }
 
   lines.push("");
   lines.push(
     `Unresolved links: ${report.unresolvedLinks.total} (wiki: ${report.unresolvedLinks.byType.wiki}, markdown: ${report.unresolvedLinks.byType.markdown})`
+  );
+  lines.push(
+    `Audit: inferred ${report.audit.inferredEdges}, ambiguous ${report.audit.ambiguousEdges}, similarity ${report.audit.similarityEdges}`
   );
   lines.push(`Isolated documents: ${report.isolated.total}`);
 
@@ -834,7 +841,7 @@ function formatGraphNeighborsResult(data: GraphNeighborsResult): string {
   for (const item of data.neighbors) {
     const title = item.node.title ? ` "${item.node.title}"` : "";
     lines.push(
-      `  [${item.direction}] ${item.node.uri}${title} (${item.edge.type}, weight: ${item.edge.weight})`
+      `  [${item.direction}] ${item.node.uri}${title} (${item.edge.type}, ${item.edge.confidence}, weight: ${item.edge.weight})`
     );
   }
   return lines.join("\n");

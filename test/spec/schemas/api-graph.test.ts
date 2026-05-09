@@ -20,6 +20,8 @@ describe("graph schema", () => {
       isolated: { total: 0, examples: [] },
       unresolvedLinks: { total: 0, byType: { wiki: 0, markdown: 0 } },
       edgeTypes: { wiki: 0, markdown: 0, similar: 0 },
+      edgeConfidence: { explicit: 0, inferred: 0, ambiguous: 0, similarity: 0 },
+      audit: { inferredEdges: 0, ambiguousEdges: 0, similarityEdges: 0 },
       ...overrides,
     };
   }
@@ -77,6 +79,8 @@ describe("graph schema", () => {
             target: "#def456",
             type: "wiki",
             weight: 2,
+            confidence: "explicit",
+            audit: { resolution: "exact-title", matchCount: 1 },
           },
         ],
         report: report({
@@ -144,16 +148,32 @@ describe("graph schema", () => {
           },
         ],
         links: [
-          { source: "#abc123", target: "#def456", type: "markdown", weight: 1 },
+          {
+            source: "#abc123",
+            target: "#def456",
+            type: "markdown",
+            weight: 1,
+            confidence: "explicit",
+            audit: { resolution: "exact-path", matchCount: 1 },
+          },
           {
             source: "#abc123",
             target: "#def456",
             type: "similar",
             weight: 0.85,
+            confidence: "similarity",
+            audit: { resolution: "similarity", score: 0.85 },
           },
         ],
         report: report({
           edgeTypes: { wiki: 0, markdown: 1, similar: 1 },
+          edgeConfidence: {
+            explicit: 1,
+            inferred: 0,
+            ambiguous: 0,
+            similarity: 1,
+          },
+          audit: { inferredEdges: 0, ambiguousEdges: 0, similarityEdges: 1 },
         }),
         meta: {
           collection: null,

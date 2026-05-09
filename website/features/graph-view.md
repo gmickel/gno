@@ -148,7 +148,9 @@ curl "http://localhost:3000/api/graph?collection=notes&includeSimilar=true&limit
       "source": "doc-123",
       "target": "doc-456",
       "type": "wiki",
-      "weight": 1
+      "weight": 1,
+      "confidence": "explicit",
+      "audit": { "resolution": "exact-title", "matchCount": 1 }
     }
   ],
   "report": {
@@ -159,7 +161,14 @@ curl "http://localhost:3000/api/graph?collection=notes&includeSimilar=true&limit
       "total": 0,
       "byType": { "wiki": 0, "markdown": 0 }
     },
-    "edgeTypes": { "wiki": 1, "markdown": 0, "similar": 0 }
+    "edgeTypes": { "wiki": 1, "markdown": 0, "similar": 0 },
+    "edgeConfidence": {
+      "explicit": 1,
+      "inferred": 0,
+      "ambiguous": 0,
+      "similarity": 0
+    },
+    "audit": { "inferredEdges": 0, "ambiguousEdges": 0, "similarityEdges": 0 }
   },
   "meta": {
     "totalNodes": 150,

@@ -324,6 +324,7 @@ gno graph --from <ref> --to <ref> [--max-depth 6]
 | `--json`           | -       | JSON output                    |
 
 **Edge types**: `wiki` (wiki links), `markdown` (md links), `similar` (vector similarity).
+JSON edges include `confidence` (`explicit`, `inferred`, `ambiguous`, `similarity`) and `audit` metadata so agents can prefer exact links over fallback or collision-prone matches.
 
 **Web UI**: Access interactive graph at `http://localhost:3000/graph` via `gno serve`.
 

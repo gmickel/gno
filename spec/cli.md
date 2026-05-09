@@ -2025,7 +2025,9 @@ Schema: `graph.schema.json`
       "source": "#abc123",
       "target": "#def456",
       "type": "wiki",
-      "weight": 1
+      "weight": 1,
+      "confidence": "explicit",
+      "audit": { "resolution": "exact-title", "matchCount": 1 }
     }
   ],
   "report": {
@@ -2045,7 +2047,14 @@ Schema: `graph.schema.json`
       "total": 5,
       "byType": { "wiki": 4, "markdown": 1 }
     },
-    "edgeTypes": { "wiki": 280, "markdown": 40, "similar": 0 }
+    "edgeTypes": { "wiki": 280, "markdown": 40, "similar": 0 },
+    "edgeConfidence": {
+      "explicit": 300,
+      "inferred": 18,
+      "ambiguous": 2,
+      "similarity": 0
+    },
+    "audit": { "inferredEdges": 18, "ambiguousEdges": 2, "similarityEdges": 0 }
   },
   "meta": {
     "collection": null,

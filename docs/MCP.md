@@ -821,7 +821,9 @@ similarTopK: 5             # Similar docs per node (1-20, default: 5)
 
 Returns graph data with nodes (documents), links (edges), and a report with
 hubs, bridge candidates, isolated documents, unresolved links, and edge-type
-counts. Edge types: `wiki`, `markdown`, `similar`.
+counts. Each edge also includes `confidence` (`explicit`, `inferred`,
+`ambiguous`, or `similarity`) and `audit` metadata describing exact matches,
+fallback matches, collision-prone matches, or similarity scores.
 
 **Use cases**:
 

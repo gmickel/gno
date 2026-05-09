@@ -418,6 +418,28 @@ export interface EmbeddingCleanupStats {
 /** Graph link type (wiki, markdown, or similarity) */
 export type GraphLinkType = "wiki" | "markdown" | "similar";
 
+/** Trust classification for graph edges */
+export type GraphEdgeConfidence =
+  | "explicit"
+  | "inferred"
+  | "ambiguous"
+  | "similarity";
+
+/** Audit metadata explaining how an edge was derived */
+export interface GraphEdgeAudit {
+  /** Resolution path used to create the edge */
+  resolution:
+    | "exact-title"
+    | "exact-path"
+    | "path-fallback"
+    | "ambiguous-fallback"
+    | "similarity";
+  /** Number of equally ranked target candidates, when applicable */
+  matchCount?: number;
+  /** Similarity score copied from weight for similarity edges */
+  score?: number;
+}
+
 /** Graph node representing a document */
 export interface GraphNode {
   /** Document ID (#hex) - primary identifier */
@@ -460,6 +482,10 @@ export interface GraphLink {
   type: GraphLinkType;
   /** Edge weight (link count for wiki/md, similarity score for similar) */
   weight: number;
+  /** Trust classification for retrieval and agent audit */
+  confidence: GraphEdgeConfidence;
+  /** Audit metadata for how this edge was resolved */
+  audit: GraphEdgeAudit;
 }
 
 /** Graph report summary over the current graph result */
@@ -484,6 +510,14 @@ export interface GraphReport {
   };
   /** Edge breakdown by type before edge-limit truncation */
   edgeTypes: Record<GraphLinkType, number>;
+  /** Edge confidence breakdown before edge-limit truncation */
+  edgeConfidence: Record<GraphEdgeConfidence, number>;
+  /** Explicit links resolved through fallback or ambiguous matching */
+  audit: {
+    inferredEdges: number;
+    ambiguousEdges: number;
+    similarityEdges: number;
+  };
 }
 
 /** Graph metadata with truncation info */

@@ -46,8 +46,11 @@ Testing focus:
 - Quality gates include targeted MCP/CLI tests, `bun run lint:check`, `bun test` where feasible, docs verification, and website sync/check commands relevant to changed docs.
 
 ## Done summary
+
 Exposed graph neighbor and shortest-path traversal through MCP tools and `gno graph`, reusing the existing graph report/meta contract. Updated agent skill guidance, CLI/MCP docs/specs, hosted website copy, and regression tests for schemas, formatted output, and CLI JSON output.
+
 ## Evidence
+
 - Commits: 88a6a6d2beda15e9ab343a7a49864187390ae6f3, 50b2c308a18c0355acc185d78c3ccea6fe6673a7
 - Tests: bun run lint:check, bun test, bun run docs:verify, bun run website:build (failed: missing Bundler 2.5.22 for website/Gemfile.lock), cd /Users/gordon/work/gno.sh && bun run typecheck, cd /Users/gordon/work/gno.sh && bun run lint, cd /Users/gordon/work/gno.sh && bun test, cd /Users/gordon/work/gno.sh && bun run build
 - PRs:

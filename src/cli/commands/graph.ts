@@ -312,10 +312,18 @@ export function formatDot(result: GraphResult): string {
   for (const link of result.links) {
     const style =
       link.type === "similar"
-        ? ' [style=dashed, color="#888888", dir=none]'
-        : "";
+        ? 'style=dashed, color="#888888", dir=none'
+        : link.confidence === "ambiguous"
+          ? 'style=dotted, color="#d97706"'
+          : link.confidence === "inferred"
+            ? 'style=dashed, color="#64748b"'
+            : "";
+    const attrs = [
+      style,
+      `label="${escapeDot(`${link.type}/${link.confidence}`)}"`,
+    ].filter(Boolean);
     lines.push(
-      `  "${escapeDot(link.source)}" -> "${escapeDot(link.target)}"${style};`
+      `  "${escapeDot(link.source)}" -> "${escapeDot(link.target)}" [${attrs.join(", ")}];`
     );
   }
 
@@ -347,7 +355,9 @@ export function formatMermaid(result: GraphResult): string {
     const sourceId = nodeIds.get(link.source) ?? link.source;
     const targetId = nodeIds.get(link.target) ?? link.target;
     const arrow = link.type === "similar" ? "---" : "-->";
-    lines.push(`  ${sourceId} ${arrow} ${targetId}`);
+    lines.push(
+      `  ${sourceId} ${arrow}|${escapeMermaid(`${link.type}/${link.confidence}`)}| ${targetId}`
+    );
   }
 
   return lines.join("\n");
@@ -385,7 +395,7 @@ export function formatGraph(
     for (const item of data.neighbors) {
       const title = item.node.title ? ` "${item.node.title}"` : "";
       lines.push(
-        `  [${item.direction}] ${item.node.uri}${title} (${item.edge.type}, weight: ${item.edge.weight})`
+        `  [${item.direction}] ${item.node.uri}${title} (${item.edge.type}, ${item.edge.confidence}, weight: ${item.edge.weight})`
       );
     }
     return lines.join("\n");

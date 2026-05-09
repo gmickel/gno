@@ -46,7 +46,14 @@
       "description": "Graph edges between documents",
       "items": {
         "type": "object",
-        "required": ["source", "target", "type", "weight"],
+        "required": [
+          "source",
+          "target",
+          "type",
+          "weight",
+          "confidence",
+          "audit"
+        ],
         "properties": {
           "source": {
             "type": "string",
@@ -65,6 +72,37 @@
             "type": "number",
             "description": "Edge weight (link count or similarity score)",
             "minimum": 0
+          },
+          "confidence": {
+            "type": "string",
+            "enum": ["explicit", "inferred", "ambiguous", "similarity"],
+            "description": "Trust classification for retrieval and agent audit"
+          },
+          "audit": {
+            "type": "object",
+            "description": "Metadata explaining how the edge was derived",
+            "required": ["resolution"],
+            "properties": {
+              "resolution": {
+                "type": "string",
+                "enum": [
+                  "exact-title",
+                  "exact-path",
+                  "path-fallback",
+                  "ambiguous-fallback",
+                  "similarity"
+                ]
+              },
+              "matchCount": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "score": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              }
+            }
           }
         }
       }
@@ -77,7 +115,9 @@
         "bridgeCandidates",
         "isolated",
         "unresolvedLinks",
-        "edgeTypes"
+        "edgeTypes",
+        "edgeConfidence",
+        "audit"
       ],
       "properties": {
         "hubs": {
@@ -132,6 +172,27 @@
             "wiki": { "type": "integer", "minimum": 0 },
             "markdown": { "type": "integer", "minimum": 0 },
             "similar": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "edgeConfidence": {
+          "type": "object",
+          "description": "Edge confidence counts before edge-limit truncation",
+          "required": ["explicit", "inferred", "ambiguous", "similarity"],
+          "properties": {
+            "explicit": { "type": "integer", "minimum": 0 },
+            "inferred": { "type": "integer", "minimum": 0 },
+            "ambiguous": { "type": "integer", "minimum": 0 },
+            "similarity": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "audit": {
+          "type": "object",
+          "description": "Graph audit rollups for fallback and similarity edges",
+          "required": ["inferredEdges", "ambiguousEdges", "similarityEdges"],
+          "properties": {
+            "inferredEdges": { "type": "integer", "minimum": 0 },
+            "ambiguousEdges": { "type": "integer", "minimum": 0 },
+            "similarityEdges": { "type": "integer", "minimum": 0 }
           }
         }
       }

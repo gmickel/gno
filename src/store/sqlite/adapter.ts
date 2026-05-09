@@ -30,6 +30,8 @@ import type {
   FtsResult,
   FtsSearchOptions,
   GetGraphOptions,
+  GraphEdgeConfidence,
+  GraphEdgeAudit,
   GraphLinkType,
   GraphReportNode,
   GraphResult,
@@ -2335,13 +2337,38 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
           )
         ORDER BY t.id LIMIT 1
       `;
+
+      const wikiBestRank = (
+        collectionExpr: string,
+        targetRefExpr: string
+      ): string => `
+        SELECT MIN(${wikiOrder("t", targetRefExpr)}) FROM documents t
+        WHERE t.active = 1
+          AND t.collection = ${collectionExpr}
+          AND ${wikiMatch("t", targetRefExpr)}
+      `;
+
+      const wikiBestRankMatchCount = (
+        collectionExpr: string,
+        targetRefExpr: string
+      ): string => `
+        SELECT COUNT(*) FROM documents t
+        WHERE t.active = 1
+          AND t.collection = ${collectionExpr}
+          AND ${wikiMatch("t", targetRefExpr)}
+          AND ${wikiOrder("t", targetRefExpr)} = (${wikiBestRank(
+            collectionExpr,
+            targetRefExpr
+          )})
+      `;
       interface ResolvedEdgeRow {
         source_id: number;
         source_docid: string;
         target_id: number;
         target_docid: string;
         link_type: "wiki" | "markdown";
-        weight: number;
+        match_rank: number | null;
+        match_count: number | null;
       }
 
       interface UnresolvedByTypeRow {
@@ -2372,7 +2399,20 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
           tgt.id as target_id,
           tgt.docid as target_docid,
           dl.link_type,
-          COUNT(*) as weight
+          CASE dl.link_type
+            WHEN 'wiki' THEN (${wikiBestRank(
+              "COALESCE(dl.target_collection, src.collection)",
+              "dl.target_ref_norm"
+            )})
+            WHEN 'markdown' THEN 5
+          END as match_rank,
+          CASE dl.link_type
+            WHEN 'wiki' THEN (${wikiBestRankMatchCount(
+              "COALESCE(dl.target_collection, src.collection)",
+              "dl.target_ref_norm"
+            )})
+            WHEN 'markdown' THEN 1
+          END as match_count
         FROM documents src
         JOIN doc_links dl ON dl.source_doc_id = src.id
         JOIN documents tgt ON tgt.id = CASE dl.link_type
@@ -2390,8 +2430,7 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
         END
         WHERE src.active = 1 AND tgt.active = 1
           ${edgeCollectionClause}
-        GROUP BY src.id, src.docid, tgt.id, tgt.docid, dl.link_type
-        ORDER BY weight DESC, src.id ASC, tgt.id ASC
+        ORDER BY src.id ASC, tgt.id ASC, dl.link_type ASC
       `;
 
       const resolvedEdgeRows = db
@@ -2597,9 +2636,89 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
       const selectedDocids = new Set(nodes.map((node) => node.id));
       const nodeDocids = new Set(nodes.map((node) => node.id));
 
+      const confidenceRank: Record<GraphEdgeConfidence, number> = {
+        explicit: 1,
+        inferred: 2,
+        ambiguous: 3,
+        similarity: 4,
+      };
+      const classifyResolvedEdge = (
+        linkType: "wiki" | "markdown",
+        matchRank: number | null,
+        matchCount: number | null
+      ): { confidence: GraphEdgeConfidence; audit: GraphEdgeAudit } => {
+        if (linkType === "markdown") {
+          return {
+            confidence: "explicit",
+            audit: { resolution: "exact-path", matchCount: 1 },
+          };
+        }
+
+        const count = matchCount ?? 0;
+        if (count > 1) {
+          return {
+            confidence: "ambiguous",
+            audit: {
+              resolution: "ambiguous-fallback",
+              matchCount: count,
+            },
+          };
+        }
+
+        if (matchRank === 1 || matchRank === 2) {
+          return {
+            confidence: "explicit",
+            audit: { resolution: "exact-title", matchCount: count || 1 },
+          };
+        }
+        if (matchRank === 5 || matchRank === 6) {
+          return {
+            confidence: "explicit",
+            audit: { resolution: "exact-path", matchCount: count || 1 },
+          };
+        }
+
+        return {
+          confidence: "inferred",
+          audit: { resolution: "path-fallback", matchCount: count || 1 },
+        };
+      };
+      const mergeAudit = (
+        current: {
+          type: GraphLinkType;
+          weight: number;
+          confidence: GraphEdgeConfidence;
+          audit: GraphEdgeAudit;
+        },
+        nextConfidence: GraphEdgeConfidence,
+        nextAudit: GraphEdgeAudit
+      ): void => {
+        if (
+          confidenceRank[nextConfidence] > confidenceRank[current.confidence]
+        ) {
+          current.confidence = nextConfidence;
+          current.audit = nextAudit;
+          return;
+        }
+        if (
+          nextAudit.matchCount !== undefined &&
+          (current.audit.matchCount ?? 0) < nextAudit.matchCount
+        ) {
+          current.audit = {
+            ...current.audit,
+            matchCount: nextAudit.matchCount,
+          };
+        }
+      };
+
       const edgeMap = new Map<
         string,
-        { type: "wiki" | "markdown" | "similar"; weight: number }
+        {
+          type: GraphLinkType;
+          weight: number;
+          confidence: GraphEdgeConfidence;
+          audit: GraphEdgeAudit;
+        }
       >();
       for (const row of resolvedEdgeRows) {
         if (
@@ -2609,7 +2728,23 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
           continue;
         }
         const key = `${row.source_docid}:${row.target_docid}:${row.link_type}`;
-        edgeMap.set(key, { type: row.link_type, weight: row.weight });
+        const { confidence, audit } = classifyResolvedEdge(
+          row.link_type,
+          row.match_rank,
+          row.match_count
+        );
+        const existing = edgeMap.get(key);
+        if (existing) {
+          existing.weight += 1;
+          mergeAudit(existing, confidence, audit);
+        } else {
+          edgeMap.set(key, {
+            type: row.link_type,
+            weight: 1,
+            confidence,
+            audit,
+          });
+        }
       }
 
       // Phase 3: Similarity edges (if requested)
@@ -2716,7 +2851,12 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
               // Keep max score
               const existing = edgeMap.get(key);
               if (!existing || clampedScore > existing.weight) {
-                edgeMap.set(key, { type: "similar", weight: clampedScore });
+                edgeMap.set(key, {
+                  type: "similar",
+                  weight: clampedScore,
+                  confidence: "similarity",
+                  audit: { resolution: "similarity", score: clampedScore },
+                });
               }
             }
           } catch {
@@ -2742,6 +2882,8 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
           target: parts[1] ?? "",
           type: val.type,
           weight: val.weight,
+          confidence: val.confidence,
+          audit: val.audit,
         };
       });
 
@@ -2752,6 +2894,15 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
       };
       for (const edge of allEdges) {
         edgeTypes[edge.type] += 1;
+      }
+      const edgeConfidence: Record<GraphEdgeConfidence, number> = {
+        explicit: 0,
+        inferred: 0,
+        ambiguous: 0,
+        similarity: 0,
+      };
+      for (const edge of allEdges) {
+        edgeConfidence[edge.confidence] += 1;
       }
 
       const truncatedEdges = allEdges.length > limitEdges;
@@ -2787,6 +2938,12 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
             byType: unresolvedByType,
           },
           edgeTypes,
+          edgeConfidence,
+          audit: {
+            inferredEdges: edgeConfidence.inferred,
+            ambiguousEdges: edgeConfidence.ambiguous,
+            similarityEdges: edgeConfidence.similarity,
+          },
         },
         meta: {
           collection,

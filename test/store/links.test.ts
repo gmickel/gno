@@ -891,6 +891,17 @@ describe("SqliteAdapter links", () => {
         markdown: 2,
         similar: 0,
       });
+      expect(graph.value.report.edgeConfidence).toEqual({
+        explicit: 3,
+        inferred: 0,
+        ambiguous: 0,
+        similarity: 0,
+      });
+      expect(graph.value.report.audit).toEqual({
+        inferredEdges: 0,
+        ambiguousEdges: 0,
+        similarityEdges: 0,
+      });
       expect(graph.value.links).toHaveLength(1);
       expect(graph.value.meta.truncated).toBe(true);
       expect(graph.value.meta.warnings).toContain("Edges truncated: 3 → 1");
@@ -944,6 +955,11 @@ describe("SqliteAdapter links", () => {
           link.source === sourceValue.docid && link.target === targetValue.docid
       );
       expect(edge).toBeDefined();
+      expect(edge?.confidence).toBe("inferred");
+      expect(edge?.audit).toEqual({
+        resolution: "path-fallback",
+        matchCount: 1,
+      });
     });
 
     test("resolves ambiguous basename deterministically by id", async () => {
@@ -985,6 +1001,13 @@ describe("SqliteAdapter links", () => {
         (link) => link.target === docAValue.docid
       );
       expect(edge).toBeDefined();
+      expect(edge?.confidence).toBe("ambiguous");
+      expect(edge?.audit).toEqual({
+        resolution: "ambiguous-fallback",
+        matchCount: 2,
+      });
+      expect(graph.value.report.edgeConfidence.ambiguous).toBe(1);
+      expect(graph.value.report.audit.ambiguousEdges).toBe(1);
       expect(
         graph.value.links.some((link) => link.target === docBValue.docid)
       ).toBe(false);

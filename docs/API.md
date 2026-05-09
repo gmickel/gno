@@ -1181,7 +1181,9 @@ Returns a knowledge graph of document links (wiki links, markdown links, and opt
       "source": "#abc123",
       "target": "#ghi789",
       "type": "similar",
-      "weight": 0.85
+      "weight": 0.85,
+      "confidence": "similarity",
+      "audit": { "resolution": "similarity", "score": 0.85 }
     }
   ],
   "report": {
@@ -1201,7 +1203,14 @@ Returns a knowledge graph of document links (wiki links, markdown links, and opt
       "total": 2,
       "byType": { "wiki": 2, "markdown": 0 }
     },
-    "edgeTypes": { "wiki": 55, "markdown": 12, "similar": 0 }
+    "edgeTypes": { "wiki": 55, "markdown": 12, "similar": 0 },
+    "edgeConfidence": {
+      "explicit": 60,
+      "inferred": 6,
+      "ambiguous": 1,
+      "similarity": 0
+    },
+    "audit": { "inferredEdges": 6, "ambiguousEdges": 1, "similarityEdges": 0 }
   },
   "meta": {
     "collection": null,
@@ -1223,25 +1232,29 @@ Returns a knowledge graph of document links (wiki links, markdown links, and opt
 }
 ```
 
-| Field                     | Description                                      |
-| :------------------------ | :----------------------------------------------- |
-| `nodes[].id`              | Document ID (hash)                               |
-| `nodes[].uri`             | Virtual URI                                      |
-| `nodes[].title`           | Document title                                   |
-| `nodes[].collection`      | Source collection                                |
-| `nodes[].relPath`         | Relative path in collection                      |
-| `nodes[].degree`          | Number of connections (in + out)                 |
-| `links[].source`          | Source node ID                                   |
-| `links[].target`          | Target node ID                                   |
-| `links[].type`            | Link type: `wiki`, `markdown`, or `similar`      |
-| `links[].weight`          | Edge weight (count for links, score for similar) |
-| `report.hubs`             | Highest-degree documents                         |
-| `report.bridgeCandidates` | Documents with both incoming and outgoing links  |
-| `report.isolated`         | Count and examples of documents with no links    |
-| `report.unresolvedLinks`  | Count of links whose target could not resolve    |
-| `report.edgeTypes`        | Edge counts by `wiki`, `markdown`, and `similar` |
-| `meta.truncated`          | True if results hit limit                        |
-| `meta.similarAvailable`   | True if similarity edges can be computed         |
+| Field                     | Description                                                                            |
+| :------------------------ | :------------------------------------------------------------------------------------- |
+| `nodes[].id`              | Document ID (hash)                                                                     |
+| `nodes[].uri`             | Virtual URI                                                                            |
+| `nodes[].title`           | Document title                                                                         |
+| `nodes[].collection`      | Source collection                                                                      |
+| `nodes[].relPath`         | Relative path in collection                                                            |
+| `nodes[].degree`          | Number of connections (in + out)                                                       |
+| `links[].source`          | Source node ID                                                                         |
+| `links[].target`          | Target node ID                                                                         |
+| `links[].type`            | Link type: `wiki`, `markdown`, or `similar`                                            |
+| `links[].weight`          | Edge weight (count for links, score for similar)                                       |
+| `links[].confidence`      | `explicit`, `inferred`, `ambiguous`, or `similarity`                                   |
+| `links[].audit`           | Resolution metadata such as exact title/path, fallback, ambiguity, or similarity score |
+| `report.hubs`             | Highest-degree documents                                                               |
+| `report.bridgeCandidates` | Documents with both incoming and outgoing links                                        |
+| `report.isolated`         | Count and examples of documents with no links                                          |
+| `report.unresolvedLinks`  | Count of links whose target could not resolve                                          |
+| `report.edgeTypes`        | Edge counts by `wiki`, `markdown`, and `similar`                                       |
+| `report.edgeConfidence`   | Edge counts by confidence class                                                        |
+| `report.audit`            | Rollups for inferred, ambiguous, and similarity edges                                  |
+| `meta.truncated`          | True if results hit limit                                                              |
+| `meta.similarAvailable`   | True if similarity edges can be computed                                               |
 
 **Example**:
 
