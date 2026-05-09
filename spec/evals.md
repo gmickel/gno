@@ -1014,6 +1014,15 @@ JSON contains:
 - All eval results with scores
 - Traces for debugging
 
+## Graph-Aware Retrieval Coverage
+
+Bounded graph expansion in `gno_query` is covered by deterministic unit tests
+instead of the broad retrieval eval fixtures. The current eval corpus is focused
+on textual relevance judgments and does not carry stable wiki/markdown graph
+edges with confidence/audit metadata. Unit coverage asserts linked-neighbor
+recall, no-graph fallback, no-embedding fallback, candidate caps, confidence
+ordering, and rerank interaction without LLM or fixture drift.
+
 ## Acceptance Criteria
 
 ### EPIC 11 Complete When:

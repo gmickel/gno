@@ -1,3 +1,8 @@
+---
+satisfies:
+  - R6
+---
+
 # Scoped code-symbol graph foundation
 
 ## Description
@@ -42,8 +47,10 @@ Testing focus if implemented:
 
 ## Done summary
 
-_To be completed when the task is implemented._
+Reconciled code-symbol graph work with the existing fn-76 future symbol retrieval epic and the fn-74 AST benchmark outcome. Added ADR-006 to defer code-symbol graph nodes until stronger benchmark or workflow evidence exists, keeping document graph retrieval stable and document nodes primary.
 
 ## Evidence
 
-_To be completed when the task is implemented._
+- Commits: 2a1068d90dafba29c544f6d35588c362f31f481b
+- Tests: bun run lint:check, bun run typecheck, bun test, bun test test/ingestion/ast-chunking-benchmark.test.ts test/ingestion/chunker.test.ts test/ingestion/sync-code-chunking.test.ts test/core/graph-analysis.test.ts, bun run docs:verify, bun run website:build (failed: missing Bundler 2.5.22 after docs sync; docs sync step completed), bun run website:sync-docs (failed: script not found)
+- PRs:

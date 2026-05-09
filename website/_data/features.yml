@@ -104,6 +104,7 @@
     - Collection management (add, remove, re-index)
     - Collection-level model editor with per-role overrides
     - Visual search with BM25, vector, and hybrid modes
+    - Graph-aware query expansion from linked notes
     - AI answers with citations
     - Interactive knowledge graph visualization
     - Instant refresh after edits with external-change awareness
@@ -154,10 +155,10 @@
 - slug: mcp-integration
   title: MCP Integration
   headline: Give Your AI Assistant Memory
-  description: Connect GNO to Claude Desktop, Cursor, Zed, Windsurf, Amp, Raycast, LM Studio, LibreChat, and more via MCP. 19 tools for search, retrieval, indexing, and graph exploration. Your AI assistant can search and cite your local documents.
+  description: Connect GNO to Claude Desktop, Cursor, Zed, Windsurf, Amp, Raycast, LM Studio, LibreChat, and more via MCP. 21 tools for search, retrieval, indexing, and graph exploration. Your AI assistant can search and cite your local documents.
   icon: mcp-integration
   benefits:
-    - 19 MCP tools (search, query, get, graph, capture, and more)
+    - 21 MCP tools (search, query, get, graph, graph path, capture, and more)
     - Works with Claude Desktop, Cursor, Zed, Windsurf, Amp
     - Also supports Raycast, LM Studio, LibreChat
     - Resource URIs for direct document access
@@ -267,6 +268,7 @@
   benefits:
     - Interactive force-directed visualization
     - Wiki links, markdown links, and golden similarity edges
+    - Graph health report with hubs, unresolved links, and isolates
     - Filter by collection
     - Click nodes to navigate to documents
     - Zoom, pan, and explore

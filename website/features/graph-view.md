@@ -32,6 +32,7 @@ See your document connections at a glance. The Knowledge Graph renders your note
 - **Wiki links**: `[[Document Name]]` connections shown as teal edges
 - **Markdown links**: `[text](path.md)` shown as lighter edges
 - **Similar documents**: Optional gold edges for semantically related notes (requires vector index)
+- **Graph health**: Header stats expose top-degree hubs, unresolved links, and isolated documents
 
 ## Web UI
 
@@ -52,6 +53,7 @@ gno serve
 ### Filtering
 
 - **Collection filter**: Focus on a single collection
+- **Community filter**: Focus on one detected cluster
 - **Similar toggle**: Show/hide semantic similarity edges (golden lines)
 
 ### Legend
@@ -61,6 +63,7 @@ The bottom-right legend shows edge types:
 - Teal: Wiki links (`[[...]]`)
 - Light teal: Markdown links (`[...](...)`)
 - Gold: Similarity connections (when enabled)
+- Community swatches: deterministic clusters for returned nodes
 
 ## CLI Access
 
@@ -72,6 +75,12 @@ gno graph
 
 # Filter by collection
 gno graph --collection notes
+
+# Expand around one document
+gno graph --neighbors gno://notes/auth.md
+
+# Explain how two docs connect
+gno graph --from gno://notes/a.md --to gno://notes/b.md
 
 # JSON output
 gno graph --json
@@ -85,15 +94,18 @@ gno graph --limit 500 --edge-limit 2000
 
 ### Options
 
-| Flag            | Description                 | Default |
-| --------------- | --------------------------- | ------- |
-| `--collection`  | Filter to single collection | all     |
-| `--limit`       | Max nodes to return         | 2000    |
-| `--edge-limit`  | Max edges to return         | 10000   |
-| `--similar`     | Include similarity edges    | false   |
-| `--threshold`   | Similarity threshold (0-1)  | 0.7     |
-| `--linked-only` | Exclude isolated nodes      | true    |
-| `--json`        | JSON output                 | false   |
+| Flag             | Description                 | Default |
+| ---------------- | --------------------------- | ------- |
+| `--collection`   | Filter to single collection | all     |
+| `--limit`        | Max nodes to return         | 2000    |
+| `--edge-limit`   | Max edges to return         | 10000   |
+| `--similar`      | Include similarity edges    | false   |
+| `--threshold`    | Similarity threshold (0-1)  | 0.7     |
+| `--linked-only`  | Exclude isolated nodes      | true    |
+| `--neighbors`    | Show graph neighbors        | -       |
+| `--from`, `--to` | Find shortest graph path    | -       |
+| `--max-depth`    | Max path hops               | 6       |
+| `--json`         | JSON output                 | false   |
 
 ## REST API
 
@@ -130,7 +142,8 @@ curl "http://localhost:3000/api/graph?collection=notes&includeSimilar=true&limit
       "title": "My Note",
       "collection": "notes",
       "relPath": "my-note.md",
-      "degree": 5
+      "degree": 5,
+      "communityId": "c1"
     }
   ],
   "links": [
@@ -138,9 +151,35 @@ curl "http://localhost:3000/api/graph?collection=notes&includeSimilar=true&limit
       "source": "doc-123",
       "target": "doc-456",
       "type": "wiki",
-      "weight": 1
+      "weight": 1,
+      "confidence": "explicit",
+      "audit": { "resolution": "exact-title", "matchCount": 1 }
     }
   ],
+  "report": {
+    "hubs": [],
+    "bridgeCandidates": [],
+    "isolated": { "total": 0, "examples": [] },
+    "unresolvedLinks": {
+      "total": 0,
+      "byType": { "wiki": 0, "markdown": 0 }
+    },
+    "edgeTypes": { "wiki": 1, "markdown": 0, "similar": 0 },
+    "edgeConfidence": {
+      "explicit": 1,
+      "inferred": 0,
+      "ambiguous": 0,
+      "similarity": 0
+    },
+    "audit": { "inferredEdges": 0, "ambiguousEdges": 0, "similarityEdges": 0 },
+    "communities": {
+      "total": 3,
+      "algorithm": "deterministic-label-propagation",
+      "skipped": false,
+      "assignments": { "doc-123": "c1" },
+      "top": []
+    }
+  },
   "meta": {
     "totalNodes": 150,
     "totalEdges": 320,

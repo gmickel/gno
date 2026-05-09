@@ -30,6 +30,10 @@ import type {
   FtsResult,
   FtsSearchOptions,
   GetGraphOptions,
+  GraphEdgeConfidence,
+  GraphEdgeAudit,
+  GraphLinkType,
+  GraphReportNode,
   GraphResult,
   IndexStatus,
   IngestErrorInput,
@@ -45,6 +49,7 @@ import type {
 import type { SqliteDbProvider } from "./types";
 
 import { buildUri, deriveDocid, stripUriIndex } from "../../app/constants";
+import { analyzeGraphCommunities } from "../../core/graph-analysis";
 import { normalizeWikiName, stripWikiMdExt } from "../../core/links";
 import { migrations, runMigrations } from "../migrations";
 import { err, ok } from "../types";
@@ -802,6 +807,59 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
         cause instanceof Error
           ? cause.message
           : "Failed to get documents by mirror hashes",
+        cause
+      );
+    }
+  }
+
+  async getDocumentsByDocids(
+    docids: string[],
+    options: {
+      collection?: string;
+      activeOnly?: boolean;
+    } = {}
+  ): Promise<StoreResult<DocumentRow[]>> {
+    try {
+      if (docids.length === 0) {
+        return ok([]);
+      }
+
+      const uniqueDocids = [
+        ...new Set(docids.filter((docid) => docid.trim().length > 0)),
+      ];
+      if (uniqueDocids.length === 0) {
+        return ok([]);
+      }
+
+      const db = this.ensureOpen();
+      const rows: DbDocumentRow[] = [];
+      const SQL_PARAM_LIMIT = options.collection ? 899 : 900;
+
+      for (let i = 0; i < uniqueDocids.length; i += SQL_PARAM_LIMIT) {
+        const batch = uniqueDocids.slice(i, i + SQL_PARAM_LIMIT);
+        const placeholders = batch.map(() => "?").join(",");
+        const clauses = [`docid IN (${placeholders})`];
+        const params: string[] = [...batch];
+
+        if (options.activeOnly ?? true) {
+          clauses.push("active = 1");
+        }
+        if (options.collection) {
+          clauses.push("collection = ?");
+          params.push(options.collection);
+        }
+
+        const sql = `SELECT * FROM documents WHERE ${clauses.join(" AND ")} ORDER BY id`;
+        rows.push(...db.query<DbDocumentRow, string[]>(sql).all(...params));
+      }
+
+      return ok(rows.map(mapDocumentRow));
+    } catch (cause) {
+      return err(
+        "QUERY_FAILED",
+        cause instanceof Error
+          ? cause.message
+          : "Failed to get documents by docids",
         cause
       );
     }
@@ -2333,17 +2391,43 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
           )
         ORDER BY t.id LIMIT 1
       `;
+
+      const wikiBestRank = (
+        collectionExpr: string,
+        targetRefExpr: string
+      ): string => `
+        SELECT MIN(${wikiOrder("t", targetRefExpr)}) FROM documents t
+        WHERE t.active = 1
+          AND t.collection = ${collectionExpr}
+          AND ${wikiMatch("t", targetRefExpr)}
+      `;
+
+      const wikiBestRankMatchCount = (
+        collectionExpr: string,
+        targetRefExpr: string
+      ): string => `
+        SELECT COUNT(*) FROM documents t
+        WHERE t.active = 1
+          AND t.collection = ${collectionExpr}
+          AND ${wikiMatch("t", targetRefExpr)}
+          AND ${wikiOrder("t", targetRefExpr)} = (${wikiBestRank(
+            collectionExpr,
+            targetRefExpr
+          )})
+      `;
       interface ResolvedEdgeRow {
         source_id: number;
         source_docid: string;
         target_id: number;
         target_docid: string;
         link_type: "wiki" | "markdown";
-        weight: number;
+        match_rank: number | null;
+        match_count: number | null;
       }
 
-      interface UnresolvedCountRow {
-        unresolved: number | null;
+      interface UnresolvedByTypeRow {
+        link_type: "wiki" | "markdown";
+        unresolved: number;
       }
 
       interface NodeMetaRow {
@@ -2369,7 +2453,20 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
           tgt.id as target_id,
           tgt.docid as target_docid,
           dl.link_type,
-          COUNT(*) as weight
+          CASE dl.link_type
+            WHEN 'wiki' THEN (${wikiBestRank(
+              "COALESCE(dl.target_collection, src.collection)",
+              "dl.target_ref_norm"
+            )})
+            WHEN 'markdown' THEN 5
+          END as match_rank,
+          CASE dl.link_type
+            WHEN 'wiki' THEN (${wikiBestRankMatchCount(
+              "COALESCE(dl.target_collection, src.collection)",
+              "dl.target_ref_norm"
+            )})
+            WHEN 'markdown' THEN 1
+          END as match_count
         FROM documents src
         JOIN doc_links dl ON dl.source_doc_id = src.id
         JOIN documents tgt ON tgt.id = CASE dl.link_type
@@ -2387,8 +2484,7 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
         END
         WHERE src.active = 1 AND tgt.active = 1
           ${edgeCollectionClause}
-        GROUP BY src.id, src.docid, tgt.id, tgt.docid, dl.link_type
-        ORDER BY weight DESC, src.id ASC, tgt.id ASC
+        ORDER BY src.id ASC, tgt.id ASC, dl.link_type ASC
       `;
 
       const resolvedEdgeRows = db
@@ -2403,9 +2499,11 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
       }
       const unresolvedQuery = `
         SELECT
-          SUM(CASE WHEN target_id IS NULL THEN 1 ELSE 0 END) as unresolved
+          link_type,
+          COUNT(*) as unresolved
         FROM (
           SELECT
+            dl.link_type,
             CASE dl.link_type
               WHEN 'wiki' THEN (
                 ${wikiBestMatch(
@@ -2426,11 +2524,21 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
           WHERE src.active = 1
             ${unresolvedCollectionClause}
         )
+        WHERE target_id IS NULL
+        GROUP BY link_type
       `;
-      const unresolvedRow = db
-        .query<UnresolvedCountRow, string[]>(unresolvedQuery)
-        .get(...unresolvedParams);
-      const totalEdgesUnresolved = unresolvedRow?.unresolved ?? 0;
+      const unresolvedRows = db
+        .query<UnresolvedByTypeRow, string[]>(unresolvedQuery)
+        .all(...unresolvedParams);
+      const unresolvedByType: Record<"wiki" | "markdown", number> = {
+        wiki: 0,
+        markdown: 0,
+      };
+      for (const row of unresolvedRows) {
+        unresolvedByType[row.link_type] = row.unresolved;
+      }
+      const totalEdgesUnresolved =
+        unresolvedByType.wiki + unresolvedByType.markdown;
 
       const outNeighbors = new Map<number, Set<number>>();
       const inNeighbors = new Map<number, Set<number>>();
@@ -2480,6 +2588,46 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
         })
         .filter((row): row is NodeMetaRow & { degree: number } => row !== null)
         .sort((a, b) => b.degree - a.degree || a.id - b.id);
+
+      const toReportNode = (
+        row: NodeMetaRow & { degree: number }
+      ): GraphReportNode => ({
+        id: row.docid,
+        uri: row.uri,
+        title: row.title,
+        collection: row.collection,
+        relPath: row.rel_path,
+        degree: row.degree,
+      });
+
+      const isolatedBaseParams: (string | number)[] = [];
+      const isolatedBaseConditions = ["active = 1"];
+      if (collection) {
+        isolatedBaseConditions.push("collection = ?");
+        isolatedBaseParams.push(collection);
+      }
+      if (connectedIdList.length > 0) {
+        const placeholders = connectedIdList.map(() => "?").join(",");
+        isolatedBaseConditions.push(`id NOT IN (${placeholders})`);
+        isolatedBaseParams.push(...connectedIdList);
+      }
+      const isolatedWhereClause = isolatedBaseConditions.join(" AND ");
+      const isolatedCountRow = db
+        .query<{ cnt: number }, (string | number)[]>(
+          `SELECT COUNT(*) as cnt FROM documents WHERE ${isolatedWhereClause}`
+        )
+        .get(...isolatedBaseParams);
+      const isolatedTotal = isolatedCountRow?.cnt ?? 0;
+      const isolatedExampleRows = db
+        .query<NodeMetaRow, (string | number)[]>(
+          `SELECT id, docid, uri, title, collection, rel_path
+           FROM documents
+           WHERE ${isolatedWhereClause}
+           ORDER BY id ASC
+           LIMIT 10`
+        )
+        .all(...isolatedBaseParams)
+        .map((row) => ({ ...row, degree: 0 }));
 
       let totalNodes = linkedOnly ? connectedNodes.length : 0;
       if (!linkedOnly) {
@@ -2542,9 +2690,95 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
       const selectedDocids = new Set(nodes.map((node) => node.id));
       const nodeDocids = new Set(nodes.map((node) => node.id));
 
+      const confidenceRank: Record<GraphEdgeConfidence, number> = {
+        explicit: 1,
+        inferred: 2,
+        ambiguous: 3,
+        similarity: 4,
+      };
+      const classifyResolvedEdge = (
+        linkType: "wiki" | "markdown",
+        matchRank: number | null,
+        matchCount: number | null
+      ): { confidence: GraphEdgeConfidence; audit: GraphEdgeAudit } => {
+        if (linkType === "markdown") {
+          return {
+            confidence: "explicit",
+            audit: { resolution: "exact-path", matchCount: 1 },
+          };
+        }
+
+        const count = matchCount ?? 0;
+        if (count > 1) {
+          return {
+            confidence: "ambiguous",
+            audit: {
+              resolution: "ambiguous-fallback",
+              matchCount: count,
+            },
+          };
+        }
+
+        if (matchRank === 1 || matchRank === 2) {
+          return {
+            confidence: "explicit",
+            audit: { resolution: "exact-title", matchCount: count || 1 },
+          };
+        }
+        if (matchRank === 5 || matchRank === 6) {
+          return {
+            confidence: "explicit",
+            audit: { resolution: "exact-path", matchCount: count || 1 },
+          };
+        }
+
+        return {
+          confidence: "inferred",
+          audit: { resolution: "path-fallback", matchCount: count || 1 },
+        };
+      };
+      const mergeAudit = (
+        current: {
+          type: GraphLinkType;
+          weight: number;
+          confidence: GraphEdgeConfidence;
+          audit: GraphEdgeAudit;
+        },
+        nextConfidence: GraphEdgeConfidence,
+        nextAudit: GraphEdgeAudit
+      ): void => {
+        if (
+          confidenceRank[nextConfidence] < confidenceRank[current.confidence]
+        ) {
+          current.confidence = nextConfidence;
+          current.audit = {
+            ...nextAudit,
+            matchCount: Math.max(
+              current.audit.matchCount ?? 0,
+              nextAudit.matchCount ?? 0
+            ),
+          };
+          return;
+        }
+        if (
+          nextAudit.matchCount !== undefined &&
+          (current.audit.matchCount ?? 0) < nextAudit.matchCount
+        ) {
+          current.audit = {
+            ...current.audit,
+            matchCount: nextAudit.matchCount,
+          };
+        }
+      };
+
       const edgeMap = new Map<
         string,
-        { type: "wiki" | "markdown" | "similar"; weight: number }
+        {
+          type: GraphLinkType;
+          weight: number;
+          confidence: GraphEdgeConfidence;
+          audit: GraphEdgeAudit;
+        }
       >();
       for (const row of resolvedEdgeRows) {
         if (
@@ -2554,7 +2788,23 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
           continue;
         }
         const key = `${row.source_docid}:${row.target_docid}:${row.link_type}`;
-        edgeMap.set(key, { type: row.link_type, weight: row.weight });
+        const { confidence, audit } = classifyResolvedEdge(
+          row.link_type,
+          row.match_rank,
+          row.match_count
+        );
+        const existing = edgeMap.get(key);
+        if (existing) {
+          existing.weight += 1;
+          mergeAudit(existing, confidence, audit);
+        } else {
+          edgeMap.set(key, {
+            type: row.link_type,
+            weight: 1,
+            confidence,
+            audit,
+          });
+        }
       }
 
       // Phase 3: Similarity edges (if requested)
@@ -2661,7 +2911,12 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
               // Keep max score
               const existing = edgeMap.get(key);
               if (!existing || clampedScore > existing.weight) {
-                edgeMap.set(key, { type: "similar", weight: clampedScore });
+                edgeMap.set(key, {
+                  type: "similar",
+                  weight: clampedScore,
+                  confidence: "similarity",
+                  audit: { resolution: "similarity", score: clampedScore },
+                });
               }
             }
           } catch {
@@ -2687,8 +2942,38 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
           target: parts[1] ?? "",
           type: val.type,
           weight: val.weight,
+          confidence: val.confidence,
+          audit: val.audit,
         };
       });
+
+      const edgeTypes: Record<GraphLinkType, number> = {
+        wiki: 0,
+        markdown: 0,
+        similar: 0,
+      };
+      for (const edge of allEdges) {
+        edgeTypes[edge.type] += 1;
+      }
+      const edgeConfidence: Record<GraphEdgeConfidence, number> = {
+        explicit: 0,
+        inferred: 0,
+        ambiguous: 0,
+        similarity: 0,
+      };
+      for (const edge of allEdges) {
+        edgeConfidence[edge.confidence] += 1;
+      }
+
+      const communityAnalysis = analyzeGraphCommunities(nodes, allEdges);
+      warnings.push(...communityAnalysis.warnings);
+      const nodesWithCommunities = nodes.map((node) => {
+        const communityId = communityAnalysis.assignments[node.id];
+        return communityId ? { ...node, communityId } : node;
+      });
+      const communityByNodeId = new Map(
+        Object.entries(communityAnalysis.assignments)
+      );
 
       const truncatedEdges = allEdges.length > limitEdges;
       const links = allEdges.slice(0, limitEdges);
@@ -2702,8 +2987,50 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
       }
 
       return ok({
-        nodes,
+        nodes: nodesWithCommunities,
         links,
+        report: {
+          hubs: connectedNodes.slice(0, 10).map((node) => ({
+            ...toReportNode(node),
+            communityId: communityByNodeId.get(node.docid),
+          })),
+          bridgeCandidates: connectedNodes
+            .filter(
+              (row) =>
+                (inNeighbors.get(row.id)?.size ?? 0) > 0 &&
+                (outNeighbors.get(row.id)?.size ?? 0) > 0
+            )
+            .slice(0, 10)
+            .map((node) => ({
+              ...toReportNode(node),
+              communityId: communityByNodeId.get(node.docid),
+            })),
+          isolated: {
+            total: isolatedTotal,
+            examples: isolatedExampleRows.map((node) => ({
+              ...toReportNode(node),
+              communityId: communityByNodeId.get(node.docid),
+            })),
+          },
+          unresolvedLinks: {
+            total: totalEdgesUnresolved,
+            byType: unresolvedByType,
+          },
+          edgeTypes,
+          edgeConfidence,
+          audit: {
+            inferredEdges: edgeConfidence.inferred,
+            ambiguousEdges: edgeConfidence.ambiguous,
+            similarityEdges: edgeConfidence.similarity,
+          },
+          communities: {
+            total: communityAnalysis.total,
+            algorithm: communityAnalysis.algorithm,
+            skipped: communityAnalysis.skipped,
+            assignments: communityAnalysis.assignments,
+            top: communityAnalysis.communities,
+          },
+        },
         meta: {
           collection,
           nodeLimit: limitNodes,
@@ -2712,7 +3039,7 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
           // totalEdges = collapsed edge count within selected nodes (matches allEdges)
           totalEdges: allEdges.length,
           totalEdgesUnresolved,
-          returnedNodes: nodes.length,
+          returnedNodes: nodesWithCommunities.length,
           returnedEdges: links.length,
           truncated: truncatedNodes || truncatedEdges,
           linkedOnly,

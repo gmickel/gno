@@ -379,6 +379,11 @@ Hybrid search combining BM25 and vector retrieval with optional expansion and re
       "description": "Enable cross-encoder reranking",
       "default": true
     },
+    "noGraph": {
+      "type": "boolean",
+      "description": "Disable bounded one-hop graph neighbor expansion",
+      "default": false
+    },
     "fast": {
       "type": "boolean",
       "description": "Fast mode: skip expansion and reranking (~0.7s)",
@@ -414,6 +419,7 @@ Compatibility / migration notes:
 - `intent` is orthogonal to `queryModes`: intent steers scoring/prompting, while query modes inject caller-provided retrieval expansions.
 - `candidateLimit` tunes rerank cost without changing retrieval contracts.
 - `exclude` hard-prunes matching docs after retrieval using title/path/body text.
+- `gno_query` can add capped one-hop graph neighbors after initial retrieval. Explicit links receive stronger treatment than inferred, ambiguous, or similarity edges; set `noGraph` to disable this adjunct.
 - `queryModes` is optional; use it only when clients need explicit retrieval intent control.
 - When `queryModes` is present, generated expansion is skipped and provided entries are used directly.
 
@@ -981,7 +987,7 @@ Find semantically similar documents using vector embeddings.
 
 ### gno_graph
 
-Get knowledge graph of document connections (nodes and edges).
+Get knowledge graph of document connections plus graph-health report fields.
 
 **Input Schema:**
 
@@ -1038,6 +1044,12 @@ Get knowledge graph of document connections (nodes and edges).
 
 **Output Schema:** `gno://schemas/graph@1.0`
 
+The structured response includes `report.hubs`, `report.bridgeCandidates`,
+`report.isolated`, `report.unresolvedLinks`, `report.edgeTypes`,
+`report.edgeConfidence`, `report.communities`, node `communityId` assignments,
+and per-edge `confidence` / `audit` metadata so agents can assess graph health,
+clusters, and trust before deeper traversal.
+
 **Response:**
 
 ```json
@@ -1056,7 +1068,8 @@ Get knowledge graph of document connections (nodes and edges).
         "title": "README",
         "collection": "notes",
         "relPath": "readme.md",
-        "degree": 12
+        "degree": 12,
+        "communityId": "c1"
       }
     ],
     "links": [
@@ -1092,6 +1105,49 @@ Get knowledge graph of document connections (nodes and edges).
 **Errors:**
 
 - Collection not found: returns `isError: true`
+
+---
+
+### gno_graph_neighbors
+
+Find incoming and outgoing graph neighbors for one document/node.
+
+**Input Schema:** same graph filter fields as `gno_graph`, plus:
+
+```json
+{
+  "ref": "notes/readme.md",
+  "direction": "both"
+}
+```
+
+- `ref`: URI, `#docid`, `collection/path`, `relPath`, or exact title.
+- `direction`: `both`, `out`, or `in` (default: `both`).
+
+Use for relationship questions, missed related docs, and corpus navigation after
+`gno_query` finds a seed document. Follow with `gno_get` for evidence.
+
+---
+
+### gno_graph_path
+
+Find the shortest relationship path between two documents/nodes.
+
+**Input Schema:** same graph filter fields as `gno_graph`, plus:
+
+```json
+{
+  "from": "notes/a.md",
+  "to": "notes/b.md",
+  "maxDepth": 6
+}
+```
+
+- `from`, `to`: URI, `#docid`, `collection/path`, `relPath`, or exact title.
+- `maxDepth`: maximum hops to search (1-12, default: 6).
+
+Use for "how are X and Y connected?" prompts. Run `gno_query` first when either
+endpoint is unknown, then read path nodes with `gno_get`.
 
 ---
 

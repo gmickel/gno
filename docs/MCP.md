@@ -819,7 +819,13 @@ linkedOnly: true           # Exclude isolated nodes (default: true)
 similarTopK: 5             # Similar docs per node (1-20, default: 5)
 ```
 
-Returns graph data with nodes (documents) and links (edges). Edge types: `wiki`, `markdown`, `similar`.
+Returns graph data with nodes (documents), links (edges), and a report with
+hubs, bridge candidates, isolated documents, unresolved links, and edge-type
+counts. The report also includes deterministic community summaries and node
+`communityId` assignments when the returned graph is small enough to analyze.
+Each edge also includes `confidence` (`explicit`, `inferred`,
+`ambiguous`, or `similarity`) and `audit` metadata describing exact matches,
+fallback matches, collision-prone matches, or similarity scores.
 
 **Use cases**:
 
@@ -827,6 +833,39 @@ Returns graph data with nodes (documents) and links (edges). Edge types: `wiki`,
 - Build custom visualizations
 - Analyze knowledge graph structure
 - Find highly connected "hub" documents
+- Spot clusters/communities for agent navigation
+
+### gno_graph_neighbors
+
+Find graph neighbors for a document or graph node.
+
+```
+ref: "notes/readme.md"     # URI, #docid, collection/path, relPath, or exact title
+direction: "both"          # "both", "out", or "in" (default: "both")
+collection: "notes"        # Optional: filter to single collection
+includeSimilar: false      # Optional: include similarity edges
+```
+
+Use this when an agent already has a seed document and needs relationship
+context, nearby references, or likely missed related docs. For normal content
+questions, start with `gno_query`; follow graph neighbors with `gno_get` on the
+returned refs.
+
+### gno_graph_path
+
+Find the shortest relationship path between two documents or graph nodes.
+
+```
+from: "notes/a.md"         # Starting ref
+to: "notes/b.md"           # Target ref
+maxDepth: 6                # Max hops (1-12, default: 6)
+collection: "notes"        # Optional
+includeSimilar: false      # Optional
+```
+
+Use this for "how are X and Y connected?" prompts. If either endpoint is
+unknown, run `gno_query` first to find candidate refs, then use `gno_get` on
+path nodes for grounded evidence.
 
 ## Resources
 

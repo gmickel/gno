@@ -1167,7 +1167,8 @@ Returns a knowledge graph of document links (wiki links, markdown links, and opt
       "title": "Project README",
       "collection": "notes",
       "relPath": "readme.md",
-      "degree": 5
+      "degree": 5,
+      "communityId": "c1"
     }
   ],
   "links": [
@@ -1181,9 +1182,53 @@ Returns a knowledge graph of document links (wiki links, markdown links, and opt
       "source": "#abc123",
       "target": "#ghi789",
       "type": "similar",
-      "weight": 0.85
+      "weight": 0.85,
+      "confidence": "similarity",
+      "audit": { "resolution": "similarity", "score": 0.85 }
     }
   ],
+  "report": {
+    "hubs": [
+      {
+        "id": "#abc123",
+        "uri": "gno://notes/readme.md",
+        "title": "Project README",
+        "collection": "notes",
+        "relPath": "readme.md",
+        "degree": 5
+      }
+    ],
+    "bridgeCandidates": [],
+    "isolated": { "total": 3, "examples": [] },
+    "unresolvedLinks": {
+      "total": 2,
+      "byType": { "wiki": 2, "markdown": 0 }
+    },
+    "edgeTypes": { "wiki": 55, "markdown": 12, "similar": 0 },
+    "edgeConfidence": {
+      "explicit": 60,
+      "inferred": 6,
+      "ambiguous": 1,
+      "similarity": 0
+    },
+    "audit": { "inferredEdges": 6, "ambiguousEdges": 1, "similarityEdges": 0 },
+    "communities": {
+      "total": 2,
+      "algorithm": "deterministic-label-propagation",
+      "skipped": false,
+      "assignments": { "#abc123": "c1" },
+      "top": [
+        {
+          "id": "c1",
+          "label": "Project README",
+          "size": 12,
+          "edgeCount": 18,
+          "density": 0.27,
+          "topNodes": []
+        }
+      ]
+    }
+  },
   "meta": {
     "collection": null,
     "nodeLimit": 2000,
@@ -1204,20 +1249,31 @@ Returns a knowledge graph of document links (wiki links, markdown links, and opt
 }
 ```
 
-| Field                   | Description                                      |
-| :---------------------- | :----------------------------------------------- |
-| `nodes[].id`            | Document ID (hash)                               |
-| `nodes[].uri`           | Virtual URI                                      |
-| `nodes[].title`         | Document title                                   |
-| `nodes[].collection`    | Source collection                                |
-| `nodes[].relPath`       | Relative path in collection                      |
-| `nodes[].degree`        | Number of connections (in + out)                 |
-| `links[].source`        | Source node ID                                   |
-| `links[].target`        | Target node ID                                   |
-| `links[].type`          | Link type: `wiki`, `markdown`, or `similar`      |
-| `links[].weight`        | Edge weight (count for links, score for similar) |
-| `meta.truncated`        | True if results hit limit                        |
-| `meta.similarAvailable` | True if similarity edges can be computed         |
+| Field                     | Description                                                                            |
+| :------------------------ | :------------------------------------------------------------------------------------- |
+| `nodes[].id`              | Document ID (hash)                                                                     |
+| `nodes[].uri`             | Virtual URI                                                                            |
+| `nodes[].title`           | Document title                                                                         |
+| `nodes[].collection`      | Source collection                                                                      |
+| `nodes[].relPath`         | Relative path in collection                                                            |
+| `nodes[].degree`          | Number of connections (in + out)                                                       |
+| `nodes[].communityId`     | Optional deterministic community id                                                    |
+| `links[].source`          | Source node ID                                                                         |
+| `links[].target`          | Target node ID                                                                         |
+| `links[].type`            | Link type: `wiki`, `markdown`, or `similar`                                            |
+| `links[].weight`          | Edge weight (count for links, score for similar)                                       |
+| `links[].confidence`      | `explicit`, `inferred`, `ambiguous`, or `similarity`                                   |
+| `links[].audit`           | Resolution metadata such as exact title/path, fallback, ambiguity, or similarity score |
+| `report.communities`      | Deterministic cluster summary; skipped with warning for very large returned graphs     |
+| `report.hubs`             | Highest-degree documents                                                               |
+| `report.bridgeCandidates` | Documents with both incoming and outgoing links                                        |
+| `report.isolated`         | Count and examples of documents with no links                                          |
+| `report.unresolvedLinks`  | Count of links whose target could not resolve                                          |
+| `report.edgeTypes`        | Edge counts by `wiki`, `markdown`, and `similar`                                       |
+| `report.edgeConfidence`   | Edge counts by confidence class                                                        |
+| `report.audit`            | Rollups for inferred, ambiguous, and similarity edges                                  |
+| `meta.truncated`          | True if results hit limit                                                              |
+| `meta.similarAvailable`   | True if similarity edges can be computed                                               |
 
 **Example**:
 
@@ -1530,6 +1586,7 @@ Combined BM25 + vector search with optional reranking. **Recommended for best re
   ],
   "noExpand": false,
   "noRerank": false,
+  "noGraph": false,
   "tagsAll": "backend",
   "tagsAny": "auth,security"
 }
@@ -1552,6 +1609,7 @@ Combined BM25 + vector search with optional reranking. **Recommended for best re
 | `queryModes`     | array   | —       | Optional structured mode entries (`term`, `intent`, `hyde`)                                                                      |
 | `noExpand`       | boolean | false   | Disable query expansion                                                                                                          |
 | `noRerank`       | boolean | false   | Disable cross-encoder reranking                                                                                                  |
+| `noGraph`        | boolean | false   | Disable bounded one-hop graph neighbor expansion                                                                                 |
 | `tagsAll`        | string  | —       | Comma-separated tags (must have ALL)                                                                                             |
 | `tagsAny`        | string  | —       | Comma-separated tags (must have ANY)                                                                                             |
 
@@ -1561,6 +1619,7 @@ Combined BM25 + vector search with optional reranking. **Recommended for best re
 - `intent` is orthogonal to `queryModes`: intent steers scoring/prompting, while query modes inject caller-provided retrieval expansions.
 - `queryModes` is optional and only needed for explicit retrieval intent control.
 - If `queryModes` is provided, generated expansion is skipped and provided entries are used directly.
+- By default, `/api/query` can add capped one-hop graph neighbors after initial retrieval. Explicit links are weighted above inferred, ambiguous, and similarity edges. Set `noGraph` to disable this adjunct.
 - `query` can also be a multi-line structured query document using `term:`, `intent:`, and `hyde:` lines. See [Structured Query Syntax](./SYNTAX.md).
 
 **Response**:

@@ -10,6 +10,8 @@ import type {
   BacklinkRow,
   DocLinkRow,
   DocumentRow,
+  GraphLink,
+  GraphNode,
   GraphResult,
 } from "../../store/types";
 import type { ToolContext } from "../server";
@@ -635,8 +637,48 @@ interface GraphInput {
   similarTopK?: number;
 }
 
+interface GraphNeighborsInput extends GraphInput {
+  ref: string;
+  direction?: "both" | "out" | "in";
+}
+
+interface GraphPathInput extends GraphInput {
+  from: string;
+  to: string;
+  maxDepth?: number;
+}
+
+interface GraphNeighbor {
+  node: GraphNode;
+  direction: "out" | "in";
+  edge: GraphLink;
+}
+
+interface GraphNeighborsResult {
+  source: GraphNode;
+  neighbors: GraphNeighbor[];
+  meta: GraphResult["meta"] & {
+    direction: "both" | "out" | "in";
+    totalNeighbors: number;
+  };
+}
+
+interface GraphPathResult {
+  from: GraphNode;
+  to: GraphNode;
+  path: {
+    nodes: GraphNode[];
+    edges: GraphLink[];
+  } | null;
+  meta: GraphResult["meta"] & {
+    maxDepth: number;
+    found: boolean;
+    hops: number;
+  };
+}
+
 function formatGraphResult(data: GraphResult): string {
-  const { nodes, links, meta } = data;
+  const { meta, report } = data;
   const lines: string[] = [];
 
   lines.push(
@@ -659,22 +701,51 @@ function formatGraphResult(data: GraphResult): string {
 
   lines.push("");
   lines.push("Top nodes by degree:");
-  const topNodes = [...nodes].sort((a, b) => b.degree - a.degree).slice(0, 10);
-  for (const node of topNodes) {
+  for (const node of report.hubs) {
     const title = node.title ? ` "${node.title}"` : "";
     lines.push(`  [${node.id}] ${node.uri}${title} (degree: ${node.degree})`);
   }
 
-  const edgeTypes = new Map<string, number>();
-  for (const link of links) {
-    edgeTypes.set(link.type, (edgeTypes.get(link.type) ?? 0) + 1);
+  if (report.bridgeCandidates.length > 0) {
+    lines.push("");
+    lines.push("Bridge candidates:");
+    for (const node of report.bridgeCandidates) {
+      const title = node.title ? ` "${node.title}"` : "";
+      lines.push(`  [${node.id}] ${node.uri}${title} (degree: ${node.degree})`);
+    }
   }
 
   lines.push("");
   lines.push("Edge breakdown:");
-  for (const [type, count] of edgeTypes) {
+  for (const [type, count] of Object.entries(report.edgeTypes)) {
     lines.push(`  ${type}: ${count}`);
   }
+  lines.push("Confidence:");
+  for (const [confidence, count] of Object.entries(report.edgeConfidence)) {
+    lines.push(`  ${confidence}: ${count}`);
+  }
+
+  if (report.communities.skipped) {
+    lines.push("");
+    lines.push("Communities: skipped for graph size");
+  } else {
+    lines.push("");
+    lines.push(`Communities: ${report.communities.total}`);
+    for (const community of report.communities.top.slice(0, 5)) {
+      lines.push(
+        `  ${community.id}: ${community.label} (${community.size} docs, ${community.edgeCount} internal edges)`
+      );
+    }
+  }
+
+  lines.push("");
+  lines.push(
+    `Unresolved links: ${report.unresolvedLinks.total} (wiki: ${report.unresolvedLinks.byType.wiki}, markdown: ${report.unresolvedLinks.byType.markdown})`
+  );
+  lines.push(
+    `Audit: inferred ${report.audit.inferredEdges}, ambiguous ${report.audit.ambiguousEdges}, similarity ${report.audit.similarityEdges}`
+  );
+  lines.push(`Isolated documents: ${report.isolated.total}`);
 
   return lines.join("\n");
 }
@@ -718,5 +789,231 @@ export function handleGraph(
       return result.value;
     },
     formatGraphResult
+  );
+}
+
+async function getValidatedGraph(
+  args: GraphInput,
+  ctx: ToolContext
+): Promise<GraphResult> {
+  let collection: string | undefined;
+  if (args.collection) {
+    collection = normalizeCollectionName(args.collection);
+    const exists = ctx.collections.some(
+      (c) => c.name.toLowerCase() === collection?.toLowerCase()
+    );
+    if (!exists) {
+      throw new Error(
+        `${MCP_ERRORS.NOT_FOUND.code}: Collection not found: ${args.collection}`
+      );
+    }
+  }
+
+  const result = await ctx.store.getGraph({
+    collection,
+    limitNodes: args.limit ?? 2000,
+    limitEdges: args.edgeLimit ?? 10000,
+    includeSimilar: args.includeSimilar ?? false,
+    threshold: args.threshold ?? 0.7,
+    linkedOnly: args.linkedOnly ?? true,
+    similarTopK: args.similarTopK ?? 5,
+  });
+
+  if (!result.ok) {
+    throw new Error(result.error.message);
+  }
+
+  return result.value;
+}
+
+function resolveGraphNode(graph: GraphResult, ref: string): GraphNode | null {
+  const normalized = ref.trim().toLowerCase();
+  return (
+    graph.nodes.find((node) => {
+      const title = node.title?.toLowerCase();
+      return (
+        node.id.toLowerCase() === normalized ||
+        node.uri.toLowerCase() === normalized ||
+        node.relPath.toLowerCase() === normalized ||
+        `${node.collection}/${node.relPath}`.toLowerCase() === normalized ||
+        title === normalized
+      );
+    }) ?? null
+  );
+}
+
+function formatGraphNeighborsResult(data: GraphNeighborsResult): string {
+  if (data.neighbors.length === 0) {
+    return `No graph neighbors found for ${data.source.uri} (direction=${data.meta.direction})`;
+  }
+
+  const lines = [
+    `Found ${data.neighbors.length} graph neighbors for ${data.source.uri}:`,
+    "",
+  ];
+  for (const item of data.neighbors) {
+    const title = item.node.title ? ` "${item.node.title}"` : "";
+    lines.push(
+      `  [${item.direction}] ${item.node.uri}${title} (${item.edge.type}, ${item.edge.confidence}, weight: ${item.edge.weight})`
+    );
+  }
+  return lines.join("\n");
+}
+
+export function handleGraphNeighbors(
+  args: GraphNeighborsInput,
+  ctx: ToolContext
+): Promise<ToolResult> {
+  return runTool(
+    ctx,
+    "gno_graph_neighbors",
+    async () => {
+      const graph = await getValidatedGraph(args, ctx);
+      const source = resolveGraphNode(graph, args.ref);
+      if (!source) {
+        throw new Error(
+          `${MCP_ERRORS.NOT_FOUND.code}: Graph node not found: ${args.ref}`
+        );
+      }
+
+      const direction = args.direction ?? "both";
+      const nodesById = new Map(graph.nodes.map((node) => [node.id, node]));
+      const neighbors: GraphNeighbor[] = [];
+
+      for (const edge of graph.links) {
+        if (direction !== "in" && edge.source === source.id) {
+          const node = nodesById.get(edge.target);
+          if (node) neighbors.push({ node, direction: "out", edge });
+        }
+        if (direction !== "out" && edge.target === source.id) {
+          const node = nodesById.get(edge.source);
+          if (node) neighbors.push({ node, direction: "in", edge });
+        }
+      }
+
+      neighbors.sort((a, b) => {
+        if (a.direction !== b.direction) {
+          return a.direction.localeCompare(b.direction);
+        }
+        if (a.edge.type !== b.edge.type) {
+          return a.edge.type.localeCompare(b.edge.type);
+        }
+        return a.node.uri.localeCompare(b.node.uri);
+      });
+
+      return {
+        source,
+        neighbors,
+        meta: {
+          ...graph.meta,
+          direction,
+          totalNeighbors: neighbors.length,
+        },
+      };
+    },
+    formatGraphNeighborsResult
+  );
+}
+
+function findShortestPath(
+  graph: GraphResult,
+  from: GraphNode,
+  to: GraphNode,
+  maxDepth: number
+): { nodes: GraphNode[]; edges: GraphLink[] } | null {
+  const nodesById = new Map(graph.nodes.map((node) => [node.id, node]));
+  const adjacency = new Map<string, Array<{ next: string; edge: GraphLink }>>();
+  for (const edge of graph.links) {
+    const sourceEdges = adjacency.get(edge.source) ?? [];
+    sourceEdges.push({ next: edge.target, edge });
+    adjacency.set(edge.source, sourceEdges);
+
+    const reverseEdges = adjacency.get(edge.target) ?? [];
+    reverseEdges.push({ next: edge.source, edge });
+    adjacency.set(edge.target, reverseEdges);
+  }
+
+  const queue: Array<{ id: string; pathEdges: GraphLink[] }> = [
+    { id: from.id, pathEdges: [] },
+  ];
+  const visited = new Set([from.id]);
+
+  while (queue.length > 0) {
+    const current = queue.shift();
+    if (!current) break;
+    if (current.id === to.id) {
+      const nodeIds = [from.id];
+      let cursor = from.id;
+      for (const edge of current.pathEdges) {
+        cursor = edge.source === cursor ? edge.target : edge.source;
+        nodeIds.push(cursor);
+      }
+      return {
+        nodes: nodeIds
+          .map((id) => nodesById.get(id))
+          .filter((node): node is GraphNode => node !== undefined),
+        edges: current.pathEdges,
+      };
+    }
+    if (current.pathEdges.length >= maxDepth) continue;
+
+    const edges = adjacency.get(current.id) ?? [];
+    edges.sort((a, b) => a.next.localeCompare(b.next));
+    for (const { next, edge } of edges) {
+      if (visited.has(next)) continue;
+      visited.add(next);
+      queue.push({ id: next, pathEdges: [...current.pathEdges, edge] });
+    }
+  }
+
+  return null;
+}
+
+function formatGraphPathResult(data: GraphPathResult): string {
+  if (!data.path) {
+    return `No graph path found from ${data.from.uri} to ${data.to.uri} within ${data.meta.maxDepth} hops`;
+  }
+
+  const route = data.path.nodes.map((node) => node.uri).join(" -> ");
+  return `Graph path (${data.meta.hops} hops):\n${route}`;
+}
+
+export function handleGraphPath(
+  args: GraphPathInput,
+  ctx: ToolContext
+): Promise<ToolResult> {
+  return runTool(
+    ctx,
+    "gno_graph_path",
+    async () => {
+      const graph = await getValidatedGraph(args, ctx);
+      const from = resolveGraphNode(graph, args.from);
+      if (!from) {
+        throw new Error(
+          `${MCP_ERRORS.NOT_FOUND.code}: Graph node not found: ${args.from}`
+        );
+      }
+      const to = resolveGraphNode(graph, args.to);
+      if (!to) {
+        throw new Error(
+          `${MCP_ERRORS.NOT_FOUND.code}: Graph node not found: ${args.to}`
+        );
+      }
+
+      const maxDepth = args.maxDepth ?? 6;
+      const path = findShortestPath(graph, from, to, maxDepth);
+      return {
+        from,
+        to,
+        path,
+        meta: {
+          ...graph.meta,
+          maxDepth,
+          found: path !== null,
+          hops: path ? path.edges.length : 0,
+        },
+      };
+    },
+    formatGraphPathResult
   );
 }

@@ -21,6 +21,8 @@ import { handleJobStatus } from "./job-status";
 import {
   handleBacklinks,
   handleGraph,
+  handleGraphNeighbors,
+  handleGraphPath,
   handleLinks,
   handleSimilar,
 } from "./links";
@@ -451,6 +453,10 @@ export const queryInputSchema = z.object({
     .boolean()
     .optional()
     .describe("Override: enable/disable cross-encoder reranking"),
+  noGraph: z
+    .boolean()
+    .optional()
+    .describe("Disable bounded one-hop graph neighbor expansion"),
   tagsAll: z.array(z.string()).optional().describe("Require ALL of these tags"),
   tagsAny: z.array(z.string()).optional().describe("Require ANY of these tags"),
 });
@@ -637,6 +643,40 @@ const graphInputSchema = z.object({
     .describe("Max similar docs per node when includeSimilar=true"),
 });
 
+const graphNeighborsInputSchema = graphInputSchema.extend({
+  ref: z
+    .string()
+    .trim()
+    .min(1, "Reference cannot be empty")
+    .describe(
+      "Document/node reference: gno URI, #docid, collection/path, relPath, or exact title"
+    ),
+  direction: z
+    .enum(["both", "out", "in"])
+    .default("both")
+    .describe("Which graph edges to follow from the reference node"),
+});
+
+const graphPathInputSchema = graphInputSchema.extend({
+  from: z
+    .string()
+    .trim()
+    .min(1, "From reference cannot be empty")
+    .describe("Starting document/node reference"),
+  to: z
+    .string()
+    .trim()
+    .min(1, "To reference cannot be empty")
+    .describe("Target document/node reference"),
+  maxDepth: z
+    .number()
+    .int()
+    .min(1)
+    .max(12)
+    .default(6)
+    .describe("Maximum relationship hops to search"),
+});
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Tool Result Type
 // ─────────────────────────────────────────────────────────────────────────────
@@ -798,30 +838,44 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
 
   server.tool(
     "gno_links",
-    "Get outgoing wiki ([[links]]) and markdown links from a document.",
+    "Get outgoing wiki ([[links]]) and markdown links from one document. Use after gno_query when you need immediate local expansion from a known source document; use gno_graph_neighbors for bidirectional graph navigation.",
     linksInputSchema.shape,
     (args) => handleLinks(args, ctx)
   );
 
   server.tool(
     "gno_backlinks",
-    "Find all documents that link TO a given document (incoming references).",
+    "Find all documents that link TO a given document. Use after gno_query/gno_get to discover incoming references around a known target; use gno_graph_path for 'how are X and Y connected?' questions.",
     backlinksInputSchema.shape,
     (args) => handleBacklinks(args, ctx)
   );
 
   server.tool(
     "gno_similar",
-    "Find semantically similar documents using vector embeddings. Requires embeddings to exist for source document.",
+    "Find semantically similar documents using vector embeddings. Use for local expansion when wording differs; use gno_query as the default retrieval entry point and gno_graph_neighbors/path for explicit relationship questions.",
     similarInputSchema.shape,
     (args) => handleSimilar(args, ctx)
   );
 
   server.tool(
     "gno_graph",
-    "Get knowledge graph of document connections (wiki links, markdown links, optional similarity edges).",
+    "Get graph report/stats plus nodes/edges for corpus navigation. Use for unfamiliar corpus structure, hubs/isolates/unresolved links, or custom graph analysis; do not replace normal retrieval with this. Start with gno_query for content questions, then graph tools for relationship context, then gno_get for targeted reads.",
     graphInputSchema.shape,
     (args) => handleGraph(args, ctx)
+  );
+
+  server.tool(
+    "gno_graph_neighbors",
+    "Find graph neighbors around a document/node. Use for relationship questions, missed obvious related docs, or unfamiliar corpus navigation after gno_query identifies a seed; returns incoming/outgoing wiki, markdown, and optional similarity edges. Follow with gno_get for targeted reads.",
+    graphNeighborsInputSchema.shape,
+    (args) => handleGraphNeighbors(args, ctx)
+  );
+
+  server.tool(
+    "gno_graph_path",
+    "Find the shortest relationship path between two documents/nodes. Use for prompts like 'how are X and Y connected?' or to explain corpus relationships. Use gno_query for finding candidate refs first, then gno_get on path nodes for evidence.",
+    graphPathInputSchema.shape,
+    (args) => handleGraphPath(args, ctx)
   );
 
   if (ctx.enableWrite) {

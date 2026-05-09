@@ -9,7 +9,7 @@ slug: mcp-integration
 permalink: /features/mcp-integration/
 og_image: /assets/images/og/og-mcp-integration.png
 benefits:
-  - 19 MCP tools for search, retrieval, graph, and indexing
+  - 21 MCP tools for search, retrieval, graph traversal, and indexing
   - Works with Claude Desktop, Cursor, Zed, Windsurf, Amp
   - Also supports Raycast, LM Studio, LibreChat
   - One-command install for 10+ clients
@@ -94,19 +94,21 @@ Once connected, your AI assistant can use:
 
 **Read Tools:**
 
-| Tool            | Description                    |
-| --------------- | ------------------------------ |
-| `gno_search`    | BM25 keyword search            |
-| `gno_vsearch`   | Vector similarity search       |
-| `gno_query`     | Hybrid search with reranking   |
-| `gno_get`       | Retrieve document content      |
-| `gno_multi_get` | Batch document retrieval       |
-| `gno_status`    | Check index status             |
-| `gno_list_tags` | List all tags                  |
-| `gno_links`     | Get outgoing links             |
-| `gno_backlinks` | Get incoming backlinks         |
-| `gno_similar`   | Find semantically similar docs |
-| `gno_graph`     | Knowledge graph data           |
+| Tool                  | Description                    |
+| --------------------- | ------------------------------ |
+| `gno_search`          | BM25 keyword search            |
+| `gno_vsearch`         | Vector similarity search       |
+| `gno_query`           | Hybrid search with reranking   |
+| `gno_get`             | Retrieve document content      |
+| `gno_multi_get`       | Batch document retrieval       |
+| `gno_status`          | Check index status             |
+| `gno_list_tags`       | List all tags                  |
+| `gno_links`           | Get outgoing links             |
+| `gno_backlinks`       | Get incoming backlinks         |
+| `gno_similar`         | Find semantically similar docs |
+| `gno_graph`           | Knowledge graph data           |
+| `gno_graph_neighbors` | Nearby graph relationships     |
+| `gno_graph_path`      | Shortest path between docs     |
 
 **Write Tools (opt-in with `--enable-write`):**
 

@@ -13,11 +13,32 @@ describe("graph schema", () => {
     schema = await loadSchema("graph");
   });
 
+  function report(overrides: Record<string, unknown> = {}) {
+    return {
+      hubs: [],
+      bridgeCandidates: [],
+      isolated: { total: 0, examples: [] },
+      unresolvedLinks: { total: 0, byType: { wiki: 0, markdown: 0 } },
+      edgeTypes: { wiki: 0, markdown: 0, similar: 0 },
+      edgeConfidence: { explicit: 0, inferred: 0, ambiguous: 0, similarity: 0 },
+      audit: { inferredEdges: 0, ambiguousEdges: 0, similarityEdges: 0 },
+      communities: {
+        total: 0,
+        algorithm: "deterministic-label-propagation",
+        skipped: false,
+        assignments: {},
+        top: [],
+      },
+      ...overrides,
+    };
+  }
+
   describe("valid inputs", () => {
     test("validates minimal response", () => {
       const response = {
         nodes: [],
         links: [],
+        report: report(),
         meta: {
           collection: null,
           nodeLimit: 2000,
@@ -49,6 +70,7 @@ describe("graph schema", () => {
             collection: "notes",
             relPath: "doc1.md",
             degree: 3,
+            communityId: "c1",
           },
           {
             id: "#def456",
@@ -65,8 +87,61 @@ describe("graph schema", () => {
             target: "#def456",
             type: "wiki",
             weight: 2,
+            confidence: "explicit",
+            audit: { resolution: "exact-title", matchCount: 1 },
           },
         ],
+        report: report({
+          hubs: [
+            {
+              id: "#abc123",
+              uri: "gno://notes/doc1.md",
+              title: "Document 1",
+              collection: "notes",
+              relPath: "doc1.md",
+              degree: 3,
+              communityId: "c1",
+            },
+          ],
+          bridgeCandidates: [
+            {
+              id: "#abc123",
+              uri: "gno://notes/doc1.md",
+              title: "Document 1",
+              collection: "notes",
+              relPath: "doc1.md",
+              degree: 3,
+              communityId: "c1",
+            },
+          ],
+          edgeTypes: { wiki: 1, markdown: 0, similar: 0 },
+          communities: {
+            total: 1,
+            algorithm: "deterministic-label-propagation",
+            skipped: false,
+            assignments: { "#abc123": "c1" },
+            top: [
+              {
+                id: "c1",
+                label: "Document 1",
+                size: 2,
+                edgeCount: 1,
+                density: 1,
+                topNodes: [
+                  {
+                    id: "#abc123",
+                    uri: "gno://notes/doc1.md",
+                    title: "Document 1",
+                    collection: "notes",
+                    relPath: "doc1.md",
+                    degree: 3,
+                    communityId: "c1",
+                  },
+                ],
+              },
+            ],
+          },
+        }),
         meta: {
           collection: "notes",
           nodeLimit: 2000,
@@ -109,14 +184,33 @@ describe("graph schema", () => {
           },
         ],
         links: [
-          { source: "#abc123", target: "#def456", type: "markdown", weight: 1 },
+          {
+            source: "#abc123",
+            target: "#def456",
+            type: "markdown",
+            weight: 1,
+            confidence: "explicit",
+            audit: { resolution: "exact-path", matchCount: 1 },
+          },
           {
             source: "#abc123",
             target: "#def456",
             type: "similar",
             weight: 0.85,
+            confidence: "similarity",
+            audit: { resolution: "similarity", score: 0.85 },
           },
         ],
+        report: report({
+          edgeTypes: { wiki: 0, markdown: 1, similar: 1 },
+          edgeConfidence: {
+            explicit: 1,
+            inferred: 0,
+            ambiguous: 0,
+            similarity: 1,
+          },
+          audit: { inferredEdges: 0, ambiguousEdges: 0, similarityEdges: 1 },
+        }),
         meta: {
           collection: null,
           nodeLimit: 2000,
@@ -151,6 +245,25 @@ describe("graph schema", () => {
           },
         ],
         links: [],
+        report: report({
+          isolated: {
+            total: 400,
+            examples: [
+              {
+                id: "#def456",
+                uri: "gno://notes/isolated.md",
+                title: "Isolated",
+                collection: "notes",
+                relPath: "isolated.md",
+                degree: 0,
+              },
+            ],
+          },
+          unresolvedLinks: {
+            total: 10,
+            byType: { wiki: 7, markdown: 3 },
+          },
+        }),
         meta: {
           collection: null,
           nodeLimit: 100,

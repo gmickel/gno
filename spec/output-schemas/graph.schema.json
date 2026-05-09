@@ -4,7 +4,7 @@
   "title": "GNO Graph",
   "description": "Knowledge graph of document links",
   "type": "object",
-  "required": ["nodes", "links", "meta"],
+  "required": ["nodes", "links", "report", "meta"],
   "properties": {
     "nodes": {
       "type": "array",
@@ -37,6 +37,10 @@
             "type": "integer",
             "description": "Total degree (in + out unique neighbors)",
             "minimum": 0
+          },
+          "communityId": {
+            "type": "string",
+            "description": "Optional deterministic community id"
           }
         }
       }
@@ -46,7 +50,14 @@
       "description": "Graph edges between documents",
       "items": {
         "type": "object",
-        "required": ["source", "target", "type", "weight"],
+        "required": [
+          "source",
+          "target",
+          "type",
+          "weight",
+          "confidence",
+          "audit"
+        ],
         "properties": {
           "source": {
             "type": "string",
@@ -65,6 +76,149 @@
             "type": "number",
             "description": "Edge weight (link count or similarity score)",
             "minimum": 0
+          },
+          "confidence": {
+            "type": "string",
+            "enum": ["explicit", "inferred", "ambiguous", "similarity"],
+            "description": "Trust classification for retrieval and agent audit"
+          },
+          "audit": {
+            "type": "object",
+            "description": "Metadata explaining how the edge was derived",
+            "required": ["resolution"],
+            "properties": {
+              "resolution": {
+                "type": "string",
+                "enum": [
+                  "exact-title",
+                  "exact-path",
+                  "path-fallback",
+                  "ambiguous-fallback",
+                  "similarity"
+                ]
+              },
+              "matchCount": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "score": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              }
+            }
+          }
+        }
+      }
+    },
+    "report": {
+      "type": "object",
+      "description": "Graph health and topology report",
+      "required": [
+        "hubs",
+        "bridgeCandidates",
+        "isolated",
+        "unresolvedLinks",
+        "edgeTypes",
+        "edgeConfidence",
+        "audit",
+        "communities"
+      ],
+      "properties": {
+        "hubs": {
+          "type": "array",
+          "description": "Highest-degree documents",
+          "items": { "$ref": "#/definitions/reportNode" }
+        },
+        "bridgeCandidates": {
+          "type": "array",
+          "description": "Bridge-like documents with both incoming and outgoing links",
+          "items": { "$ref": "#/definitions/reportNode" }
+        },
+        "isolated": {
+          "type": "object",
+          "required": ["total", "examples"],
+          "properties": {
+            "total": {
+              "type": "integer",
+              "description": "Total isolated active documents in scope",
+              "minimum": 0
+            },
+            "examples": {
+              "type": "array",
+              "description": "Example isolated documents",
+              "items": { "$ref": "#/definitions/reportNode" }
+            }
+          }
+        },
+        "unresolvedLinks": {
+          "type": "object",
+          "required": ["total", "byType"],
+          "properties": {
+            "total": {
+              "type": "integer",
+              "description": "Total unresolved wiki/markdown links in scope",
+              "minimum": 0
+            },
+            "byType": {
+              "type": "object",
+              "required": ["wiki", "markdown"],
+              "properties": {
+                "wiki": { "type": "integer", "minimum": 0 },
+                "markdown": { "type": "integer", "minimum": 0 }
+              }
+            }
+          }
+        },
+        "edgeTypes": {
+          "type": "object",
+          "required": ["wiki", "markdown", "similar"],
+          "properties": {
+            "wiki": { "type": "integer", "minimum": 0 },
+            "markdown": { "type": "integer", "minimum": 0 },
+            "similar": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "edgeConfidence": {
+          "type": "object",
+          "description": "Edge confidence counts before edge-limit truncation",
+          "required": ["explicit", "inferred", "ambiguous", "similarity"],
+          "properties": {
+            "explicit": { "type": "integer", "minimum": 0 },
+            "inferred": { "type": "integer", "minimum": 0 },
+            "ambiguous": { "type": "integer", "minimum": 0 },
+            "similarity": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "audit": {
+          "type": "object",
+          "description": "Graph audit rollups for fallback and similarity edges",
+          "required": ["inferredEdges", "ambiguousEdges", "similarityEdges"],
+          "properties": {
+            "inferredEdges": { "type": "integer", "minimum": 0 },
+            "ambiguousEdges": { "type": "integer", "minimum": 0 },
+            "similarityEdges": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "communities": {
+          "type": "object",
+          "description": "Deterministic community analysis over returned nodes",
+          "required": ["total", "algorithm", "skipped", "assignments", "top"],
+          "properties": {
+            "total": { "type": "integer", "minimum": 0 },
+            "algorithm": {
+              "type": "string",
+              "enum": ["deterministic-label-propagation"]
+            },
+            "skipped": { "type": "boolean" },
+            "assignments": {
+              "type": "object",
+              "additionalProperties": { "type": "string" }
+            },
+            "top": {
+              "type": "array",
+              "items": { "$ref": "#/definitions/community" }
+            }
           }
         }
       }
@@ -158,6 +312,58 @@
           "items": {
             "type": "string"
           }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "reportNode": {
+      "type": "object",
+      "required": ["id", "uri", "collection", "relPath", "degree"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Document ID (#hex)"
+        },
+        "uri": {
+          "type": "string",
+          "description": "Document URI (gno://collection/path)"
+        },
+        "title": {
+          "type": ["string", "null"],
+          "description": "Document title"
+        },
+        "collection": {
+          "type": "string",
+          "description": "Collection name"
+        },
+        "relPath": {
+          "type": "string",
+          "description": "Relative path within collection"
+        },
+        "degree": {
+          "type": "integer",
+          "description": "Total degree (in + out unique neighbors)",
+          "minimum": 0
+        },
+        "communityId": {
+          "type": "string",
+          "description": "Optional deterministic community id"
+        }
+      }
+    },
+    "community": {
+      "type": "object",
+      "required": ["id", "label", "size", "edgeCount", "density", "topNodes"],
+      "properties": {
+        "id": { "type": "string" },
+        "label": { "type": "string" },
+        "size": { "type": "integer", "minimum": 1 },
+        "edgeCount": { "type": "integer", "minimum": 0 },
+        "density": { "type": "number", "minimum": 0 },
+        "topNodes": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/reportNode" }
         }
       }
     }

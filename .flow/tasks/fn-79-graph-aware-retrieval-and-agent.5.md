@@ -1,3 +1,8 @@
+---
+satisfies:
+  - R5
+---
+
 # Community detection and graph-analysis integration
 
 ## Description
@@ -10,7 +15,9 @@ Docs, Web UI updates when affected, and hosted website updates are part of this 
 
 ## Implementation Notes
 
-Start from the stabilized graph report/confidence output from tasks 1-3 and the Web UI graph surface at `src/serve/public/pages/GraphView.tsx`.
+<!-- Updated by plan-sync: fn-79-graph-aware-retrieval-and-agent.1 established `gno_graph` / `gno graph` as the graph-report surface via `GraphResult.report` + `meta` -->
+
+Start from the stabilized `GraphResult.report` / `GraphMeta` and confidence output from tasks 1-3 plus the Web UI graph surface at `src/serve/public/pages/GraphView.tsx`.
 
 Implementation should be pragmatic:
 
@@ -20,8 +27,8 @@ Implementation should be pragmatic:
 
 Expected user surfaces:
 
-- Graph report community summary.
-- MCP graph report/stats community metadata.
+- `gno_graph` / `gno graph` report community summary.
+- `gno_graph` community metadata for MCP consumers.
 - Web UI graph community colors/legend/filtering or an explicit decision not to expose UI controls yet, with rationale.
 
 Testing focus:
@@ -44,8 +51,10 @@ Testing focus:
 
 ## Done summary
 
-_To be completed when the task is implemented._
+Implemented deterministic graph community detection and surfaced community IDs/summaries through graph reports, MCP formatting, schemas, the Web UI legend/filter, docs, skill guidance, and hosted gno.sh content. Added coverage for multi-community graphs, isolates, sparse graphs, large-graph skip behavior, and stable assignments.
 
 ## Evidence
 
-_To be completed when the task is implemented._
+- Commits: d6035eb39271b8caf02221fb29252d784142cb7f, gno.sh:2fb94d34c0409ee9d92dfd2e366d0ffcf0d48280
+- Tests: bun run lint:check, bun run typecheck, bun test, bun test test/core/graph-analysis.test.ts test/store/links.test.ts test/spec/schemas/api-graph.test.ts test/mcp/links-integration.test.ts test/pipeline/hybrid-doc-lookup.test.ts, bun run docs:verify, bun run website:build (failed: missing Ruby bundler 2.5.22 after docs sync), GNO_DATA_DIR=/tmp/gno-graph-ui-smoke bun run serve -- --port 3999 + agent-browser open http://localhost:3999/graph && agent-browser snapshot -i, cd /Users/gordon/work/gno.sh && bun run check, cd /Users/gordon/work/gno.sh && bun run typecheck, cd /Users/gordon/work/gno.sh && bun run build
+- PRs:

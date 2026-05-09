@@ -11,8 +11,13 @@ import { mkdtemp } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
+import type { ToolContext } from "../../src/mcp/server";
 import type { DocLinkInput, DocumentInput } from "../../src/store/types";
 
+import {
+  handleGraphNeighbors,
+  handleGraphPath,
+} from "../../src/mcp/tools/links";
 import { SqliteAdapter } from "../../src/store/sqlite/adapter";
 import { safeRm } from "../helpers/cleanup";
 
@@ -82,6 +87,43 @@ describe("MCP link tools integration", () => {
     expect(contentResult.ok).toBe(true);
 
     return result.value.id;
+  }
+
+  function toolContext(): ToolContext {
+    return {
+      store,
+      config: {
+        version: "1.0",
+        ftsTokenizer: "porter",
+        collections: [],
+        contexts: [],
+      },
+      collections: [
+        {
+          name: "notes",
+          path: tmpDir,
+          pattern: "**/*.md",
+          include: [],
+          exclude: [],
+        },
+        {
+          name: "docs",
+          path: tmpDir,
+          pattern: "**/*.md",
+          include: [],
+          exclude: [],
+        },
+      ],
+      actualConfigPath: join(tmpDir, "config.yml"),
+      toolMutex: {
+        acquire: async () => () => {},
+      } as ToolContext["toolMutex"],
+      jobManager: {} as ToolContext["jobManager"],
+      serverInstanceId: "test",
+      writeLockPath: join(tmpDir, ".lock"),
+      enableWrite: false,
+      isShuttingDown: () => false,
+    };
   }
 
   describe("gno_links integration", () => {
@@ -443,6 +485,9 @@ describe("MCP link tools integration", () => {
       // Should have at least 1 edge (edges may be deduplicated/collapsed)
       expect(links.length).toBeGreaterThanOrEqual(1);
       expect(links.every((l) => l.type === "markdown")).toBe(true);
+      expect(result.value.report.hubs).toHaveLength(2);
+      expect(result.value.report.edgeTypes.markdown).toBeGreaterThanOrEqual(1);
+      expect(result.value.report.unresolvedLinks.total).toBe(0);
 
       // Both docs should have degree >= 1 (connected to each other)
       expect(nodes.every((n) => n.degree >= 1)).toBe(true);
@@ -552,6 +597,69 @@ describe("MCP link tools integration", () => {
       expect(getChunks.value).toHaveLength(2);
       expect(getChunks.value[0]?.text).toBe("# Header");
       expect(getChunks.value[1]?.text).toBe("Long content for chunking...");
+    });
+
+    test("graph neighbors tool returns formatted relationship output", async () => {
+      const docAId = await createTestDoc(
+        "notes",
+        "doc-a.md",
+        "Document A",
+        "Links to doc-b.md"
+      );
+      await createTestDoc("notes", "doc-b.md", "Document B", "Target");
+      await store.setDocLinks(
+        docAId,
+        [
+          {
+            targetRef: "doc-b.md",
+            targetRefNorm: "doc-b.md",
+            linkType: "markdown",
+            startLine: 1,
+            startCol: 10,
+            endLine: 1,
+            endCol: 25,
+          },
+        ],
+        "parsed"
+      );
+
+      const result = await handleGraphNeighbors(
+        {
+          ref: "gno://notes/doc-a.md",
+          collection: "notes",
+          direction: "out",
+        },
+        toolContext()
+      );
+
+      expect(result.isError).toBeFalsy();
+      expect(result.content[0]?.text).toContain("graph neighbors");
+      expect(result.content[0]?.text).toContain("gno://notes/doc-b.md");
+      expect(result.structuredContent?.meta).toMatchObject({
+        direction: "out",
+        totalNeighbors: 1,
+      });
+    });
+
+    test("graph path tool returns formatted path output", async () => {
+      await createTestDoc("notes", "doc-a.md", "Document A", "A");
+
+      const result = await handleGraphPath(
+        {
+          from: "gno://notes/doc-a.md",
+          to: "gno://notes/doc-a.md",
+          collection: "notes",
+          linkedOnly: false,
+        },
+        toolContext()
+      );
+
+      expect(result.isError).toBeFalsy();
+      expect(result.content[0]?.text).toContain("Graph path (0 hops)");
+      expect(result.structuredContent?.meta).toMatchObject({
+        found: true,
+        hops: 0,
+      });
     });
   });
 });

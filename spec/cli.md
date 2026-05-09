@@ -635,7 +635,7 @@ Hybrid search combining BM25 and vector retrieval with optional expansion and re
 **Synopsis:**
 
 ```bash
-gno query <query> [-n <num>] [--min-score <num>] [-c <collection>] [--since <date>] [--until <date>] [--category <values>] [--author <text>] [--intent <text>] [--exclude <values>] [-C <num>] [--tags-all <tags>] [--tags-any <tags>] [--full] [--line-numbers] [--lang <bcp47>] [--no-expand] [--no-rerank] [--query-mode <mode:text>]... [--explain] [--json|--files|--csv|--md|--xml]
+gno query <query> [-n <num>] [--min-score <num>] [-c <collection>] [--since <date>] [--until <date>] [--category <values>] [--author <text>] [--intent <text>] [--exclude <values>] [-C <num>] [--tags-all <tags>] [--tags-any <tags>] [--full] [--line-numbers] [--lang <bcp47>] [--no-expand] [--no-rerank] [--no-graph] [--query-mode <mode:text>]... [--explain] [--json|--files|--csv|--md|--xml]
 ```
 
 **Options:** Same as `gno search`, plus:
@@ -645,6 +645,7 @@ gno query <query> [-n <num>] [--min-score <num>] [-c <collection>] [--since <dat
 |--------|------|-------------|
 | `--no-expand` | boolean | Disable query expansion |
 | `--no-rerank` | boolean | Disable cross-encoder reranking |
+| `--no-graph` | boolean | Disable bounded one-hop graph neighbor expansion |
 | `--intent` | string | Disambiguating context for ambiguous queries; steers expansion, rerank chunk/snippet choice, and disables strong-signal bypass without being searched directly |
 | `--exclude` | string | Hard-prune docs containing any comma-separated term in title/path/body |
 | `-C, --candidate-limit` | integer | Max candidates passed to reranking (default 20) |
@@ -654,9 +655,11 @@ gno query <query> [-n <num>] [--min-score <num>] [-c <collection>] [--since <dat
 **Compatibility / Migration:**
 
 - Legacy query invocations remain valid (`gno query "<text>"`, `--fast`, `--thorough`, `--no-expand`, `--no-rerank`).
+- `--fast` skips query expansion, graph expansion, and reranking.
 - `--intent` is orthogonal to `--query-mode`: intent steers scoring/prompting, while query modes inject caller-provided retrieval expansions.
 - `--query-mode` is optional and additive to the command surface.
 - If one or more `--query-mode` entries are provided, generated expansion is bypassed and provided entries are used as retrieval intents.
+- By default, `gno query` can add a capped one-hop graph-neighbor candidate set after BM25/vector retrieval. Explicit links are weighted above inferred, ambiguous, or similarity edges. Use `--no-graph` to disable this adjunct.
 
 **Explain Output (stderr):**
 
@@ -664,6 +667,7 @@ gno query <query> [-n <num>] [--min-score <num>] [-c <collection>] [--since <dat
 [explain] expansion: enabled (3 lexical, 2 semantic variants)
 [explain] bm25: 45 candidates
 [explain] vector: 38 candidates
+[explain] graph: seeds=5, candidates=4/20, explicit=3, inferred=1, ambiguous=0, similarity=0
 [explain] fusion: RRF k=60, 52 unique candidates
 [explain] rerank: top 20 reranked
 [explain] result 1: score=0.92 (bm25=0.85, vec=0.78, rerank=0.95)
@@ -1998,6 +2002,7 @@ gno graph [-c, --collection <name>] [--limit <num>] [--edge-limit <num>] [--simi
 **Behavior:**
 
 - Returns nodes (documents) and links (edges) as graph data
+- Includes a graph report with hubs, bridge candidates, isolated documents, unresolved links, and edge-type counts
 - Edges include wiki links, markdown links, and optionally similarity edges
 - Node degree reflects total unique connections (in + out)
 - When collection is filtered, degree may reflect links outside the filter
@@ -2024,9 +2029,37 @@ Schema: `graph.schema.json`
       "source": "#abc123",
       "target": "#def456",
       "type": "wiki",
-      "weight": 1
+      "weight": 1,
+      "confidence": "explicit",
+      "audit": { "resolution": "exact-title", "matchCount": 1 }
     }
   ],
+  "report": {
+    "hubs": [
+      {
+        "id": "#abc123",
+        "uri": "gno://notes/note.md",
+        "title": "My Note",
+        "collection": "notes",
+        "relPath": "note.md",
+        "degree": 5
+      }
+    ],
+    "bridgeCandidates": [],
+    "isolated": { "total": 2, "examples": [] },
+    "unresolvedLinks": {
+      "total": 5,
+      "byType": { "wiki": 4, "markdown": 1 }
+    },
+    "edgeTypes": { "wiki": 280, "markdown": 40, "similar": 0 },
+    "edgeConfidence": {
+      "explicit": 300,
+      "inferred": 18,
+      "ambiguous": 2,
+      "similarity": 0
+    },
+    "audit": { "inferredEdges": 18, "ambiguousEdges": 2, "similarityEdges": 0 }
+  },
   "meta": {
     "collection": null,
     "nodeLimit": 2000,

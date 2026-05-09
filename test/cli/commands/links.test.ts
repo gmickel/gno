@@ -446,3 +446,53 @@ describe("gno similar", () => {
     expect(stderr).toContain("threshold");
   });
 });
+
+describe("gno graph traversal", () => {
+  test("returns neighbors for a graph ref", async () => {
+    const { code, stdout } = await cli(
+      "graph",
+      "--neighbors",
+      "gno://notes/source.md",
+      "--direction",
+      "out",
+      "--json"
+    );
+
+    expect(code).toBe(0);
+    const data = JSON.parse(stdout) as {
+      neighbors: Array<{ node: { uri: string }; direction: string }>;
+      meta: { mode: string; direction: string; totalNeighbors: number };
+    };
+    expect(data.meta).toMatchObject({
+      mode: "neighbors",
+      direction: "out",
+    });
+    expect(data.meta.totalNeighbors).toBeGreaterThan(0);
+    expect(
+      data.neighbors.some((item) => item.node.uri.includes("target"))
+    ).toBe(true);
+  });
+
+  test("returns a graph path payload", async () => {
+    const { code, stdout } = await cli(
+      "graph",
+      "--from",
+      "gno://notes/source.md",
+      "--to",
+      "gno://notes/source.md",
+      "--json"
+    );
+
+    expect(code).toBe(0);
+    const data = JSON.parse(stdout) as {
+      path: { nodes: Array<{ uri: string }>; edges: unknown[] };
+      meta: { mode: string; found: boolean; hops: number };
+    };
+    expect(data.meta).toMatchObject({
+      mode: "path",
+      found: true,
+      hops: 0,
+    });
+    expect(data.path.nodes[0]?.uri).toBe("gno://notes/source.md");
+  });
+});

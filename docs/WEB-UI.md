@@ -467,7 +467,9 @@ The Graph page (`/graph`) provides an interactive visualization of document rela
 - Nodes represent documents, edges represent links
 - Three edge types: wiki links, markdown links, similarity edges
 - Collection filter dropdown
+- Community color legend and filter when graph analysis is available
 - Similarity toggle (when embeddings available)
+- Header health stats for top degree, unresolved links, and isolated documents
 - Truncation warning when graph exceeds limits
 - Click any node to navigate to that document
 

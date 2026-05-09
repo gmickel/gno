@@ -288,13 +288,28 @@ The document appearing in both lists wins, even if another document ranked #1 in
 
 Not all searches are equal. Original queries get **2× weight** to prevent dilution by LLM-generated variants:
 
-| Source          | Weight | Reasoning                  |
-| --------------- | ------ | -------------------------- |
-| Original BM25   | 2.0    | Direct match to user query |
-| Original Vector | 2.0    | Direct semantic match      |
-| BM25 variants   | 1.0    | LLM-generated, less direct |
-| Vector variants | 1.0    | LLM-generated, less direct |
-| HyDE passage    | 1.4    | Powerful but indirect      |
+| Source          | Weight | Reasoning                     |
+| --------------- | ------ | ----------------------------- |
+| Original BM25   | 2.0    | Direct match to user query    |
+| Original Vector | 2.0    | Direct semantic match         |
+| BM25 variants   | 1.0    | LLM-generated, less direct    |
+| Vector variants | 1.0    | LLM-generated, less direct    |
+| HyDE passage    | 1.4    | Powerful but indirect         |
+| Graph neighbors | 0.8    | Linked context from top seeds |
+
+## Graph-Aware Candidate Expansion
+
+`gno query` also uses the document graph as a retrieval adjunct. After BM25 and vector candidates are found, GNO takes the top seeds, follows a bounded one-hop set of graph neighbors, and feeds those added candidates back through fusion and reranking.
+
+This is not graph traversal mode. Missing graph data, missing embeddings, or unavailable similarity edges degrade to the normal hybrid path. Explicit wiki/markdown links are weighted above inferred path fallbacks, ambiguous matches, and vector-similarity edges.
+
+Use `gno query "topic" --explain` to inspect graph activity:
+
+```text
+[explain] graph: seeds=5, candidates=4/20, explicit=3, inferred=1, ambiguous=0, similarity=0
+```
+
+Use `--no-graph` when you need to compare pure BM25/vector retrieval without graph-neighbor candidates.
 
 ### Tiered Top-Rank Bonus
 
