@@ -133,13 +133,21 @@ gno search "error handling" --json | jq -r '.results[].uri' | xargs gno multi-ge
 
 ## MCP Retrieval Strategy
 
-When using GNO through MCP, prefer `gno_query` first for normal questions. It returns snippets plus `uri`, `docid`, and often `line`; follow with `gno_get` using `fromLine`/`lineCount` for a bounded read, or `gno_multi_get` to batch top result refs.
+When using GNO through MCP, prefer this retrieval order:
+
+1. Check `gno_status` first when freshness, missing vectors, or stale results are plausible.
+2. Use `gno_query` first for normal content questions. It returns snippets plus `uri`, `docid`, and often `line`.
+3. Use graph/link expansion for relationship context: `gno_graph_neighbors` for nearby documents, `gno_graph_path` for "how are X and Y connected?", `gno_links`/`gno_backlinks` for one-document link expansion, and `gno_similar` for semantic neighbors.
+4. Use `gno_get` with `fromLine`/`lineCount` for targeted reads, or `gno_multi_get` to batch top refs.
 
 Use narrower tools when the request tells you to:
 
 - `gno_search`: exact phrase, filename, identifier, stack trace, error text
 - `gno_vsearch`: conceptual similarity when exact wording differs
 - `gno_status`: stale results, missing embeddings, vector unavailable
+- `gno_graph`: graph report/stats, hubs, isolates, unresolved links, unfamiliar corpus overview
+- `gno_graph_neighbors`: relationship/corpus-navigation questions around a known document
+- `gno_graph_path`: "how are X and Y connected?" questions
 
 For ambiguous terms, pass `intent` instead of bloating the query text. For typed retrieval, use `queryModes`: `term` for lexical anchors, `intent` for disambiguation, one `hyde` for a hypothetical answer/document.
 
@@ -164,6 +172,8 @@ gno similar gno://notes/auth.md --threshold 0.85
 # Knowledge graph
 gno graph --json
 gno graph -c notes --similar   # Include similarity edges
+gno graph --neighbors gno://notes/auth.md
+gno graph --from gno://notes/a.md --to gno://notes/b.md
 ```
 
 ## Global Flags

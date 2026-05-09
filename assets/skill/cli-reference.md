@@ -304,6 +304,8 @@ Generate knowledge graph of document connections.
 
 ```bash
 gno graph [options]
+gno graph --neighbors <ref> [--direction both|out|in]
+gno graph --from <ref> --to <ref> [--max-depth 6]
 ```
 
 | Option             | Default | Description                    |
@@ -315,6 +317,10 @@ gno graph [options]
 | `--threshold`      | 0.7     | Similarity threshold (0-1)     |
 | `--linked-only`    | true    | Exclude isolated nodes         |
 | `--similar-top-k`  | 5       | Similar docs per node (max 20) |
+| `--neighbors`      | -       | Show graph neighbors for ref   |
+| `--direction`      | both    | Neighbor direction             |
+| `--from`, `--to`   | -       | Find shortest graph path       |
+| `--max-depth`      | 6       | Max path hops                  |
 | `--json`           | -       | JSON output                    |
 
 **Edge types**: `wiki` (wiki links), `markdown` (md links), `similar` (vector similarity).

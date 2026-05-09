@@ -2223,6 +2223,11 @@ function wireGraphCommand(program: Command): void {
     .option("--threshold <n>", "similarity threshold (default 0.7)")
     .option("--include-isolated", "include nodes with no links")
     .option("--similar-top-k <n>", "similar docs per node (default 5)")
+    .option("--neighbors <ref>", "show graph neighbors for document/node ref")
+    .option("--direction <dir>", "neighbor direction: both, out, in", "both")
+    .option("--from <ref>", "path start document/node ref")
+    .option("--to <ref>", "path target document/node ref")
+    .option("--max-depth <n>", "max path hops (default 6)")
     .option("--json", "JSON output (default)")
     .option("--dot", "Graphviz DOT output")
     .option("--mermaid", "Mermaid diagram output")
@@ -2259,6 +2264,25 @@ function wireGraphCommand(program: Command): void {
       const similarTopK = cmdOpts.similarTopK
         ? parsePositiveInt("similar-top-k", cmdOpts.similarTopK)
         : undefined;
+      const maxDepth = cmdOpts.maxDepth
+        ? parsePositiveInt("max-depth", cmdOpts.maxDepth)
+        : undefined;
+      if (
+        cmdOpts.direction !== "both" &&
+        cmdOpts.direction !== "out" &&
+        cmdOpts.direction !== "in"
+      ) {
+        throw new CliError(
+          "VALIDATION",
+          "--direction must be one of: both, out, in"
+        );
+      }
+      if (cmdOpts.neighbors && (cmdOpts.from || cmdOpts.to)) {
+        throw new CliError(
+          "VALIDATION",
+          "--neighbors cannot be combined with --from/--to"
+        );
+      }
 
       const { graph, formatGraph } = await import("./commands/graph.js");
       const result = await graph({
@@ -2271,6 +2295,11 @@ function wireGraphCommand(program: Command): void {
         includeIsolated: Boolean(cmdOpts.includeIsolated),
         similarTopK,
         format,
+        neighbors: cmdOpts.neighbors as string | undefined,
+        direction: cmdOpts.direction as "both" | "out" | "in",
+        from: cmdOpts.from as string | undefined,
+        to: cmdOpts.to as string | undefined,
+        maxDepth,
       });
 
       if (!result.success) {

@@ -32,11 +32,54 @@ export interface GraphOptions {
   similarTopK?: number;
   /** Output format: json (default), dot, mermaid */
   format?: "json" | "dot" | "mermaid";
+  /** Show neighbors for a graph node/ref */
+  neighbors?: string;
+  /** Neighbor direction */
+  direction?: "both" | "out" | "in";
+  /** Path start graph node/ref */
+  from?: string;
+  /** Path target graph node/ref */
+  to?: string;
+  /** Max path hops */
+  maxDepth?: number;
 }
 
 export type GraphCommandResult =
   | { success: true; data: GraphResult }
+  | { success: true; data: GraphNeighborsCliResult }
+  | { success: true; data: GraphPathCliResult }
   | { success: false; error: string; isValidation?: boolean };
+
+type GraphNode = GraphResult["nodes"][number];
+type GraphLink = GraphResult["links"][number];
+
+interface GraphNeighborCliItem {
+  node: GraphNode;
+  direction: "out" | "in";
+  edge: GraphLink;
+}
+
+interface GraphNeighborsCliResult {
+  source: GraphNode;
+  neighbors: GraphNeighborCliItem[];
+  meta: GraphResult["meta"] & {
+    mode: "neighbors";
+    direction: "both" | "out" | "in";
+    totalNeighbors: number;
+  };
+}
+
+interface GraphPathCliResult {
+  from: GraphNode;
+  to: GraphNode;
+  path: { nodes: GraphNode[]; edges: GraphLink[] } | null;
+  meta: GraphResult["meta"] & {
+    mode: "path";
+    maxDepth: number;
+    found: boolean;
+    hops: number;
+  };
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Command: graph
@@ -74,10 +117,160 @@ export async function graph(
       return { success: false, error: result.error.message };
     }
 
+    if (options.neighbors) {
+      const source = resolveGraphNode(result.value, options.neighbors);
+      if (!source) {
+        return {
+          success: false,
+          error: `Graph node not found: ${options.neighbors}`,
+          isValidation: true,
+        };
+      }
+      const direction = options.direction ?? "both";
+      const neighbors = getGraphNeighbors(result.value, source, direction);
+      return {
+        success: true,
+        data: {
+          source,
+          neighbors,
+          meta: {
+            ...result.value.meta,
+            mode: "neighbors",
+            direction,
+            totalNeighbors: neighbors.length,
+          },
+        },
+      };
+    }
+
+    if (options.from || options.to) {
+      if (!(options.from && options.to)) {
+        return {
+          success: false,
+          error: "--from and --to must be used together",
+          isValidation: true,
+        };
+      }
+      const from = resolveGraphNode(result.value, options.from);
+      const to = resolveGraphNode(result.value, options.to);
+      if (!from || !to) {
+        return {
+          success: false,
+          error: `Graph node not found: ${from ? options.to : options.from}`,
+          isValidation: true,
+        };
+      }
+      const maxDepth = options.maxDepth ?? 6;
+      const path = findShortestPath(result.value, from, to, maxDepth);
+      return {
+        success: true,
+        data: {
+          from,
+          to,
+          path,
+          meta: {
+            ...result.value.meta,
+            mode: "path",
+            maxDepth,
+            found: path !== null,
+            hops: path ? path.edges.length : 0,
+          },
+        },
+      };
+    }
+
     return { success: true, data: result.value };
   } finally {
     await store.close();
   }
+}
+
+function resolveGraphNode(
+  graphResult: GraphResult,
+  ref: string
+): GraphNode | null {
+  const normalized = ref.trim().toLowerCase();
+  return (
+    graphResult.nodes.find((node) => {
+      const title = node.title?.toLowerCase();
+      return (
+        node.id.toLowerCase() === normalized ||
+        node.uri.toLowerCase() === normalized ||
+        node.relPath.toLowerCase() === normalized ||
+        `${node.collection}/${node.relPath}`.toLowerCase() === normalized ||
+        title === normalized
+      );
+    }) ?? null
+  );
+}
+
+function getGraphNeighbors(
+  graphResult: GraphResult,
+  source: GraphNode,
+  direction: "both" | "out" | "in"
+): GraphNeighborCliItem[] {
+  const nodesById = new Map(graphResult.nodes.map((node) => [node.id, node]));
+  const neighbors: GraphNeighborCliItem[] = [];
+  for (const edge of graphResult.links) {
+    if (direction !== "in" && edge.source === source.id) {
+      const node = nodesById.get(edge.target);
+      if (node) neighbors.push({ node, direction: "out", edge });
+    }
+    if (direction !== "out" && edge.target === source.id) {
+      const node = nodesById.get(edge.source);
+      if (node) neighbors.push({ node, direction: "in", edge });
+    }
+  }
+  return neighbors.sort((a, b) => a.node.uri.localeCompare(b.node.uri));
+}
+
+function findShortestPath(
+  graphResult: GraphResult,
+  from: GraphNode,
+  to: GraphNode,
+  maxDepth: number
+): { nodes: GraphNode[]; edges: GraphLink[] } | null {
+  const nodesById = new Map(graphResult.nodes.map((node) => [node.id, node]));
+  const adjacency = new Map<string, Array<{ next: string; edge: GraphLink }>>();
+  for (const edge of graphResult.links) {
+    const sourceEdges = adjacency.get(edge.source) ?? [];
+    sourceEdges.push({ next: edge.target, edge });
+    adjacency.set(edge.source, sourceEdges);
+
+    const targetEdges = adjacency.get(edge.target) ?? [];
+    targetEdges.push({ next: edge.source, edge });
+    adjacency.set(edge.target, targetEdges);
+  }
+
+  const queue: Array<{ id: string; edges: GraphLink[] }> = [
+    { id: from.id, edges: [] },
+  ];
+  const visited = new Set([from.id]);
+  while (queue.length > 0) {
+    const current = queue.shift();
+    if (!current) break;
+    if (current.id === to.id) {
+      const nodeIds = [from.id];
+      let cursor = from.id;
+      for (const edge of current.edges) {
+        cursor = edge.source === cursor ? edge.target : edge.source;
+        nodeIds.push(cursor);
+      }
+      return {
+        nodes: nodeIds
+          .map((id) => nodesById.get(id))
+          .filter((node): node is GraphNode => node !== undefined),
+        edges: current.edges,
+      };
+    }
+    if (current.edges.length >= maxDepth) continue;
+    for (const { next, edge } of adjacency.get(current.id) ?? []) {
+      if (visited.has(next)) continue;
+      visited.add(next);
+      queue.push({ id: next, edges: [...current.edges, edge] });
+    }
+  }
+  return null;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -177,6 +370,36 @@ export function formatGraph(
   }
 
   const { data } = result;
+
+  if ("neighbors" in data) {
+    if (options.format === "json" || !options.format) {
+      return JSON.stringify(data, null, 2);
+    }
+    if (data.neighbors.length === 0) {
+      return `No graph neighbors found for ${data.source.uri} (direction=${data.meta.direction})`;
+    }
+    const lines = [
+      `Found ${data.neighbors.length} graph neighbors for ${data.source.uri}:`,
+      "",
+    ];
+    for (const item of data.neighbors) {
+      const title = item.node.title ? ` "${item.node.title}"` : "";
+      lines.push(
+        `  [${item.direction}] ${item.node.uri}${title} (${item.edge.type}, weight: ${item.edge.weight})`
+      );
+    }
+    return lines.join("\n");
+  }
+
+  if ("path" in data) {
+    if (options.format === "json" || !options.format) {
+      return JSON.stringify(data, null, 2);
+    }
+    if (!data.path) {
+      return `No graph path found from ${data.from.uri} to ${data.to.uri} within ${data.meta.maxDepth} hops`;
+    }
+    return `Graph path (${data.meta.hops} hops):\n${data.path.nodes.map((node) => node.uri).join(" -> ")}`;
+  }
 
   switch (options.format) {
     case "dot":

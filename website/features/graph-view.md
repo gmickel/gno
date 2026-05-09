@@ -74,6 +74,12 @@ gno graph
 # Filter by collection
 gno graph --collection notes
 
+# Expand around one document
+gno graph --neighbors gno://notes/auth.md
+
+# Explain how two docs connect
+gno graph --from gno://notes/a.md --to gno://notes/b.md
+
 # JSON output
 gno graph --json
 
@@ -86,15 +92,18 @@ gno graph --limit 500 --edge-limit 2000
 
 ### Options
 
-| Flag            | Description                 | Default |
-| --------------- | --------------------------- | ------- |
-| `--collection`  | Filter to single collection | all     |
-| `--limit`       | Max nodes to return         | 2000    |
-| `--edge-limit`  | Max edges to return         | 10000   |
-| `--similar`     | Include similarity edges    | false   |
-| `--threshold`   | Similarity threshold (0-1)  | 0.7     |
-| `--linked-only` | Exclude isolated nodes      | true    |
-| `--json`        | JSON output                 | false   |
+| Flag             | Description                 | Default |
+| ---------------- | --------------------------- | ------- |
+| `--collection`   | Filter to single collection | all     |
+| `--limit`        | Max nodes to return         | 2000    |
+| `--edge-limit`   | Max edges to return         | 10000   |
+| `--similar`      | Include similarity edges    | false   |
+| `--threshold`    | Similarity threshold (0-1)  | 0.7     |
+| `--linked-only`  | Exclude isolated nodes      | true    |
+| `--neighbors`    | Show graph neighbors        | -       |
+| `--from`, `--to` | Find shortest graph path    | -       |
+| `--max-depth`    | Max path hops               | 6       |
+| `--json`         | JSON output                 | false   |
 
 ## REST API
 

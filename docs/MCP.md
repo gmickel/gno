@@ -830,6 +830,38 @@ counts. Edge types: `wiki`, `markdown`, `similar`.
 - Analyze knowledge graph structure
 - Find highly connected "hub" documents
 
+### gno_graph_neighbors
+
+Find graph neighbors for a document or graph node.
+
+```
+ref: "notes/readme.md"     # URI, #docid, collection/path, relPath, or exact title
+direction: "both"          # "both", "out", or "in" (default: "both")
+collection: "notes"        # Optional: filter to single collection
+includeSimilar: false      # Optional: include similarity edges
+```
+
+Use this when an agent already has a seed document and needs relationship
+context, nearby references, or likely missed related docs. For normal content
+questions, start with `gno_query`; follow graph neighbors with `gno_get` on the
+returned refs.
+
+### gno_graph_path
+
+Find the shortest relationship path between two documents or graph nodes.
+
+```
+from: "notes/a.md"         # Starting ref
+to: "notes/b.md"           # Target ref
+maxDepth: 6                # Max hops (1-12, default: 6)
+collection: "notes"        # Optional
+includeSimilar: false      # Optional
+```
+
+Use this for "how are X and Y connected?" prompts. If either endpoint is
+unknown, run `gno_query` first to find candidate refs, then use `gno_get` on
+path nodes for grounded evidence.
+
 ## Resources
 
 Access documents via GNO URIs:

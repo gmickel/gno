@@ -154,10 +154,10 @@
 - slug: mcp-integration
   title: MCP Integration
   headline: Give Your AI Assistant Memory
-  description: Connect GNO to Claude Desktop, Cursor, Zed, Windsurf, Amp, Raycast, LM Studio, LibreChat, and more via MCP. 19 tools for search, retrieval, indexing, and graph exploration. Your AI assistant can search and cite your local documents.
+  description: Connect GNO to Claude Desktop, Cursor, Zed, Windsurf, Amp, Raycast, LM Studio, LibreChat, and more via MCP. 21 tools for search, retrieval, indexing, and graph exploration. Your AI assistant can search and cite your local documents.
   icon: mcp-integration
   benefits:
-    - 19 MCP tools (search, query, get, graph, capture, and more)
+    - 21 MCP tools (search, query, get, graph, graph path, capture, and more)
     - Works with Claude Desktop, Cursor, Zed, Windsurf, Amp
     - Also supports Raycast, LM Studio, LibreChat
     - Resource URIs for direct document access

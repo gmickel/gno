@@ -1,3 +1,8 @@
+---
+satisfies:
+  - R5
+---
+
 # Community detection and graph-analysis integration
 
 ## Description
@@ -10,7 +15,9 @@ Docs, Web UI updates when affected, and hosted website updates are part of this 
 
 ## Implementation Notes
 
-Start from the stabilized graph report/confidence output from tasks 1-3 and the Web UI graph surface at `src/serve/public/pages/GraphView.tsx`.
+<!-- Updated by plan-sync: fn-79-graph-aware-retrieval-and-agent.1 established `gno_graph` / `gno graph` as the graph-report surface via `GraphResult.report` + `meta` -->
+
+Start from the stabilized `GraphResult.report` / `GraphMeta` and confidence output from tasks 1-3 plus the Web UI graph surface at `src/serve/public/pages/GraphView.tsx`.
 
 Implementation should be pragmatic:
 
@@ -20,8 +27,8 @@ Implementation should be pragmatic:
 
 Expected user surfaces:
 
-- Graph report community summary.
-- MCP graph report/stats community metadata.
+- `gno_graph` / `gno graph` report community summary.
+- `gno_graph` community metadata for MCP consumers.
 - Web UI graph community colors/legend/filtering or an explicit decision not to expose UI controls yet, with rationale.
 
 Testing focus:

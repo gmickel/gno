@@ -36,8 +36,11 @@ Testing focus:
 - Quality gates include targeted tests, `bun run lint:check`, `bun test` where feasible, docs verification, and website sync/check commands relevant to changed docs.
 
 ## Done summary
+
 Implemented graph health reporting over the existing document graph, including hubs, bridge candidates, isolates, unresolved-link counts by type, edge-type totals, and truncation/similarity fallback metadata across CLI/API/MCP/Web UI surfaces. Updated GNO docs, schemas, tests, website content, and hosted gno.sh references.
+
 ## Evidence
+
 - Commits: f22b0e90d8424da30bab5c3e2c4ac388478529f6, gno.sh:54b038015e5acc28e417c055a758614c6d150dd3
 - Tests: bun test test/store/links.test.ts test/mcp/links-integration.test.ts test/spec/schemas/api-graph.test.ts test/mcp/tools/links.test.ts, bun run lint:check, bun run docs:verify, bun test, mise exec -- bun run website:build, cd /Users/gordon/work/gno.sh && bun run check, cd /Users/gordon/work/gno.sh && bun run typecheck, cd /Users/gordon/work/gno.sh && bun run build
 - PRs:

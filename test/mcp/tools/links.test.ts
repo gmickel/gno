@@ -418,6 +418,17 @@ const graphInputSchema = z.object({
   similarTopK: z.number().int().min(1).max(20).default(5),
 });
 
+const graphNeighborsInputSchema = graphInputSchema.extend({
+  ref: z.string().min(1),
+  direction: z.enum(["both", "out", "in"]).default("both"),
+});
+
+const graphPathInputSchema = graphInputSchema.extend({
+  from: z.string().min(1),
+  to: z.string().min(1),
+  maxDepth: z.number().int().min(1).max(12).default(6),
+});
+
 const graphOutputSchema = z.object({
   nodes: z.array(
     z.object({
@@ -614,5 +625,61 @@ describe("gno_graph schema", () => {
     };
     const result = graphOutputSchema.safeParse(validOutput);
     expect(result.success).toBe(true);
+  });
+});
+
+describe("gno_graph_neighbors schema", () => {
+  test("neighbors input requires non-empty ref", () => {
+    const result = graphNeighborsInputSchema.safeParse({ ref: "" });
+    expect(result.success).toBe(false);
+  });
+
+  test("neighbors input defaults direction and graph limits", () => {
+    const result = graphNeighborsInputSchema.safeParse({
+      ref: "notes/readme.md",
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.direction).toBe("both");
+      expect(result.data.limit).toBe(2000);
+    }
+  });
+
+  test("neighbors input rejects invalid direction", () => {
+    const result = graphNeighborsInputSchema.safeParse({
+      ref: "notes/readme.md",
+      direction: "sideways",
+    });
+    expect(result.success).toBe(false);
+  });
+});
+
+describe("gno_graph_path schema", () => {
+  test("path input requires from and to refs", () => {
+    const result = graphPathInputSchema.safeParse({
+      from: "notes/a.md",
+    });
+    expect(result.success).toBe(false);
+  });
+
+  test("path input accepts max depth", () => {
+    const result = graphPathInputSchema.safeParse({
+      from: "notes/a.md",
+      to: "notes/b.md",
+      maxDepth: 4,
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.maxDepth).toBe(4);
+    }
+  });
+
+  test("path input rejects excessive max depth", () => {
+    const result = graphPathInputSchema.safeParse({
+      from: "notes/a.md",
+      to: "notes/b.md",
+      maxDepth: 13,
+    });
+    expect(result.success).toBe(false);
   });
 });

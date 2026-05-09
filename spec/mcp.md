@@ -1099,6 +1099,49 @@ can assess graph health before deeper traversal.
 
 ---
 
+### gno_graph_neighbors
+
+Find incoming and outgoing graph neighbors for one document/node.
+
+**Input Schema:** same graph filter fields as `gno_graph`, plus:
+
+```json
+{
+  "ref": "notes/readme.md",
+  "direction": "both"
+}
+```
+
+- `ref`: URI, `#docid`, `collection/path`, `relPath`, or exact title.
+- `direction`: `both`, `out`, or `in` (default: `both`).
+
+Use for relationship questions, missed related docs, and corpus navigation after
+`gno_query` finds a seed document. Follow with `gno_get` for evidence.
+
+---
+
+### gno_graph_path
+
+Find the shortest relationship path between two documents/nodes.
+
+**Input Schema:** same graph filter fields as `gno_graph`, plus:
+
+```json
+{
+  "from": "notes/a.md",
+  "to": "notes/b.md",
+  "maxDepth": 6
+}
+```
+
+- `from`, `to`: URI, `#docid`, `collection/path`, `relPath`, or exact title.
+- `maxDepth`: maximum hops to search (1-12, default: 6).
+
+Use for "how are X and Y connected?" prompts. Run `gno_query` first when either
+endpoint is unknown, then read path nodes with `gno_get`.
+
+---
+
 ### gno_add_collection
 
 Add a folder as a new collection and start indexing (write-enabled).

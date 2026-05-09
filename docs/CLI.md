@@ -827,6 +827,8 @@ gno graph --dot                     # Graphviz DOT format
 gno graph --mermaid                 # Mermaid diagram format
 gno graph -c notes                  # Single collection
 gno graph --include-similar         # Add similarity edges
+gno graph --neighbors gno://notes/auth.md
+gno graph --from gno://notes/a.md --to gno://notes/b.md
 ```
 
 Options:
@@ -838,6 +840,10 @@ Options:
 - `--threshold <num>` - Similarity threshold (default: 0.7)
 - `--include-isolated` - Include nodes with no links
 - `--similar-top-k <n>` - Similar docs per node (default: 5)
+- `--neighbors <ref>` - Show incoming/outgoing graph neighbors for a document/node
+- `--direction <both|out|in>` - Neighbor direction (default: `both`)
+- `--from <ref>` / `--to <ref>` - Find shortest relationship path
+- `--max-depth <n>` - Max path hops for `--from`/`--to` (default: 6)
 - `--json` - JSON output (default)
 - `--dot` - Graphviz DOT format
 - `--mermaid` - Mermaid diagram format

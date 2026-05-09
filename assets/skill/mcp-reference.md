@@ -53,6 +53,17 @@ gno mcp install -t claude-code -s project # Project scope
 gno mcp status
 ```
 
+## Retrieval Order
+
+For normal questions, start with `gno_query`, then read targeted snippets with
+`gno_get` or batch refs with `gno_multi_get`. Check `gno_status` first when
+freshness or embeddings may be stale.
+
+Use graph tools for relationship context: `gno_graph` for corpus report/stats,
+`gno_graph_neighbors` for nearby incoming/outgoing graph context, and
+`gno_graph_path` for "how are X and Y connected?" questions. Use
+`gno_links`, `gno_backlinks`, and `gno_similar` for one-document expansion.
+
 ## Uninstall
 
 ```bash
