@@ -8,20 +8,22 @@ import {
 interface MockEmbeddingContext {
   dispose: ReturnType<typeof mock<() => Promise<void>>>;
   getEmbeddingFor: ReturnType<
-    typeof mock<(text: string) => Promise<{ vector: number[] }>>
+    typeof mock<
+      (input: string | readonly number[]) => Promise<{ vector: number[] }>
+    >
   >;
 }
 
 function createContext(
   contextId: number,
-  calls: Array<{ contextId: number; text: string }>
+  calls: Array<{ contextId: number; input: string | readonly number[] }>
 ): MockEmbeddingContext {
   return {
     dispose: mock(() => Promise.resolve()),
-    getEmbeddingFor: mock(async (text: string) => {
-      calls.push({ contextId, text });
+    getEmbeddingFor: mock(async (input: string | readonly number[]) => {
+      calls.push({ contextId, input });
       await Promise.resolve();
-      return { vector: [contextId, text.length] };
+      return { vector: [contextId, input.length] };
     }),
   };
 }
@@ -33,7 +35,8 @@ function createManager(options?: {
   failAtContextIndex?: number;
   trainContextSize?: number;
 }) {
-  const calls: Array<{ contextId: number; text: string }> = [];
+  const calls: Array<{ contextId: number; input: string | readonly number[] }> =
+    [];
   let createContextCallCount = 0;
   const contexts = options?.contexts ?? [
     createContext(1, calls),
@@ -47,18 +50,23 @@ function createManager(options?: {
     options?.gpu === false || options?.gpu === undefined
       ? process.env.GNO_EMBED_CONTEXTS
         ? Number.parseInt(process.env.GNO_EMBED_CONTEXTS, 10)
-        : Math.max(1, Math.min(4, Math.ceil(resolvedCpuMathCores / 4)))
+        : Math.max(1, Math.min(2, Math.ceil(resolvedCpuMathCores / 4)))
       : 1;
   const expectedOptions =
     options?.gpu === false || options?.gpu === undefined
       ? {
-          contextSize: 2_048,
-          threads: Math.max(
-            1,
-            Math.floor(resolvedCpuMathCores / resolvedPoolSize)
-          ),
+          contextSize: process.env.GNO_EMBED_CONTEXT_SIZE
+            ? Number.parseInt(process.env.GNO_EMBED_CONTEXT_SIZE, 10)
+            : 2_048,
+          threads: process.env.GNO_EMBED_THREADS
+            ? Number.parseInt(process.env.GNO_EMBED_THREADS, 10)
+            : Math.max(1, Math.floor(resolvedCpuMathCores / resolvedPoolSize)),
         }
-      : { contextSize: 2_048 };
+      : {
+          contextSize: process.env.GNO_EMBED_CONTEXT_SIZE
+            ? Number.parseInt(process.env.GNO_EMBED_CONTEXT_SIZE, 10)
+            : 2_048,
+        };
 
   const createEmbeddingContext = mock(async (opts?: { threads?: number }) => {
     const currentIndex = createContextCallCount;
@@ -89,8 +97,10 @@ function createManager(options?: {
           createEmbeddingContext,
           embeddingVectorSize: 2,
           trainContextSize: options?.trainContextSize,
-          tokenize: (text: string) => text.split(""),
-          detokenize: (tokens: readonly string[]) => tokens.join(""),
+          tokenize: (text: string) =>
+            Array.from(text, (char) => char.charCodeAt(0)),
+          detokenize: (tokens: readonly number[]) =>
+            tokens.map((token) => String.fromCharCode(token)).join(""),
         },
       },
     })),
@@ -102,6 +112,8 @@ function createManager(options?: {
 describe("NodeLlamaCppEmbedding", () => {
   afterEach(() => {
     delete process.env.GNO_EMBED_CONTEXTS;
+    delete process.env.GNO_EMBED_CONTEXT_SIZE;
+    delete process.env.GNO_EMBED_THREADS;
   });
 
   test("keeps CPU context pool single on constrained Windows machines", () => {
@@ -126,7 +138,7 @@ describe("NodeLlamaCppEmbedding", () => {
     ).toBe(2);
   });
 
-  test("uses adaptive CPU context pool on 24GB Windows machines", () => {
+  test("caps default adaptive CPU context pool at two on 24GB Windows machines", () => {
     expect(
       resolveEmbeddingContextPoolSize({
         gpu: false,
@@ -134,10 +146,10 @@ describe("NodeLlamaCppEmbedding", () => {
         platformName: "win32",
         totalMemoryBytes: 24 * 1024 * 1024 * 1024,
       })
-    ).toBe(4);
+    ).toBe(2);
   });
 
-  test("keeps CPU context pool adaptive outside low-memory Windows", () => {
+  test("keeps CPU context pool adaptive outside low-memory Windows capped at two", () => {
     expect(
       resolveEmbeddingContextPoolSize({
         gpu: false,
@@ -145,7 +157,7 @@ describe("NodeLlamaCppEmbedding", () => {
         platformName: "darwin",
         totalMemoryBytes: 16 * 1024 * 1024 * 1024,
       })
-    ).toBe(4);
+    ).toBe(2);
   });
 
   test("allows explicit CPU context pool override", () => {
@@ -176,6 +188,48 @@ describe("NodeLlamaCppEmbedding", () => {
     expect(result.ok).toBe(true);
     expect(createEmbeddingContext).toHaveBeenCalledTimes(4);
     expect(embedding.dimensions()).toBe(2);
+  });
+
+  test("allows explicit CPU threads per embedding context override", async () => {
+    process.env.GNO_EMBED_CONTEXTS = "2";
+    process.env.GNO_EMBED_THREADS = "6";
+    const { createEmbeddingContext, manager } = createManager({
+      cpuMathCores: 16,
+    });
+    const embedding = new NodeLlamaCppEmbedding(
+      manager as never,
+      "test-model",
+      "/tmp/model.gguf"
+    );
+
+    const result = await embedding.init();
+
+    expect(result.ok).toBe(true);
+    expect(createEmbeddingContext).toHaveBeenCalledWith({
+      contextSize: 2_048,
+      threads: 6,
+    });
+  });
+
+  test("allows explicit embedding context size override", async () => {
+    process.env.GNO_EMBED_CONTEXTS = "1";
+    process.env.GNO_EMBED_CONTEXT_SIZE = "512";
+    const { createEmbeddingContext, manager } = createManager({
+      cpuMathCores: 16,
+    });
+    const embedding = new NodeLlamaCppEmbedding(
+      manager as never,
+      "test-model",
+      "/tmp/model.gguf"
+    );
+
+    const result = await embedding.init();
+
+    expect(result.ok).toBe(true);
+    expect(createEmbeddingContext).toHaveBeenCalledWith({
+      contextSize: 512,
+      threads: 16,
+    });
   });
 
   test("keeps a single context when GPU is enabled", async () => {
@@ -256,7 +310,7 @@ describe("NodeLlamaCppEmbedding", () => {
     const result = await embedding.embed("abcdefghijk");
 
     expect(result.ok).toBe(true);
-    expect(calls[0]?.text).toBe("abcd");
+    expect(calls[0]?.input).toEqual([97, 98, 99, 100]);
   });
 
   test("truncates oversized batch items before embedding", async () => {
@@ -273,7 +327,10 @@ describe("NodeLlamaCppEmbedding", () => {
     const result = await embedding.embedBatch(["abcdef", "xy"]);
 
     expect(result.ok).toBe(true);
-    expect(calls.map((call) => call.text)).toEqual(["abc", "xy"]);
+    expect(calls.map((call) => call.input)).toEqual([
+      [97, 98, 99],
+      [120, 121],
+    ]);
   });
 
   test("disposes contexts created after a concurrent dispose", async () => {

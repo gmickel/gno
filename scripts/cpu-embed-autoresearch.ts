@@ -22,12 +22,14 @@ interface Args {
   allowDownload: boolean;
   chunks: number;
   configPath?: string;
+  contextSize?: number;
   delayMs: number;
   dimensions: number;
   contexts: number[];
   cpuCores: number;
   model?: string;
   real: boolean;
+  threads?: number;
   warmup: number;
 }
 
@@ -66,12 +68,14 @@ function parseArgs(argv: string[]): Args {
     allowDownload: false,
     chunks: 256,
     configPath: undefined,
+    contextSize: undefined,
     delayMs: 40,
     dimensions: 1024,
     contexts: DEFAULT_CONTEXTS,
     cpuCores: navigator.hardwareConcurrency || 8,
     model: undefined,
     real: false,
+    threads: undefined,
     warmup: 8,
   };
 
@@ -84,6 +88,9 @@ function parseArgs(argv: string[]): Args {
       case "--config":
         args.configPath = argv[(i += 1)];
         break;
+      case "--context-size":
+        args.contextSize = parsePositiveInt(argv[(i += 1)], 2_048);
+        break;
       case "--delay-ms":
         args.delayMs = parsePositiveInt(argv[(i += 1)], args.delayMs);
         break;
@@ -95,6 +102,9 @@ function parseArgs(argv: string[]): Args {
         break;
       case "--cpu-cores":
         args.cpuCores = parsePositiveInt(argv[(i += 1)], args.cpuCores);
+        break;
+      case "--threads":
+        args.threads = parsePositiveInt(argv[(i += 1)], args.cpuCores);
         break;
       case "--contexts":
         args.contexts = (argv[(i += 1)] ?? "")
@@ -136,11 +146,13 @@ Options:
   --model <uri>      Model URI/path for --real (default: active/default embed model)
   --allow-download   Allow --real to download the model if not cached
   --config <path>    Config path for --real model preset resolution
+  --context-size <n> GNO_EMBED_CONTEXT_SIZE override for --real
   --warmup <n>       Warmup chunks before timing --real (default: 8)
   --delay-ms <n>     Per-chunk mock native latency (default: 40)
   --dimensions <n>   Mock vector dimensions (default: 1024)
   --contexts <csv>   Context counts to compare (default: 1,2,4)
   --cpu-cores <n>    CPU core count for heuristic display
+  --threads <n>      GNO_EMBED_THREADS override for --real
 `);
 }
 
@@ -261,7 +273,15 @@ async function runRealVariant(
   texts: string[]
 ): Promise<BenchmarkResult> {
   const previousOverride = process.env.GNO_EMBED_CONTEXTS;
+  const previousThreads = process.env.GNO_EMBED_THREADS;
+  const previousContextSize = process.env.GNO_EMBED_CONTEXT_SIZE;
   process.env.GNO_EMBED_CONTEXTS = String(contexts);
+  if (args.threads !== undefined) {
+    process.env.GNO_EMBED_THREADS = String(args.threads);
+  }
+  if (args.contextSize !== undefined) {
+    process.env.GNO_EMBED_CONTEXT_SIZE = String(args.contextSize);
+  }
   const { adapter, port } = await createRealEmbeddingPort(args);
 
   try {
@@ -302,6 +322,16 @@ async function runRealVariant(
     } else {
       process.env.GNO_EMBED_CONTEXTS = previousOverride;
     }
+    if (previousThreads === undefined) {
+      delete process.env.GNO_EMBED_THREADS;
+    } else {
+      process.env.GNO_EMBED_THREADS = previousThreads;
+    }
+    if (previousContextSize === undefined) {
+      delete process.env.GNO_EMBED_CONTEXT_SIZE;
+    } else {
+      process.env.GNO_EMBED_CONTEXT_SIZE = previousContextSize;
+    }
   }
 }
 
@@ -326,6 +356,12 @@ function printHeuristic(args: Args): void {
     console.log(
       `Model: ${args.model ?? "active/default embed model"}; warmup: ${args.warmup} chunk(s)`
     );
+    if (args.threads !== undefined) {
+      console.log(`Threads per context override: ${args.threads}`);
+    }
+    if (args.contextSize !== undefined) {
+      console.log(`Context size override: ${args.contextSize}`);
+    }
   }
   const memoryCases = [12, 16, 24, Math.round(totalmem() / BYTES_PER_GIB)];
   console.log("Windows CPU context heuristic:");

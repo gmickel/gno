@@ -466,11 +466,13 @@ Runtime/model env vars:
 | `GNO_LLAMA_BUILD`           | Backend build mode: default `never`; set `autoAttempt` to opt in   |
 | `GNO_LLAMA_INIT_TIMEOUT_MS` | Backend initialization timeout; default `30000` ms                 |
 | `GNO_EMBED_CONTEXTS`        | Override CPU embedding context count, clamped to `1`-`4`           |
+| `GNO_EMBED_CONTEXT_SIZE`    | Override native embedding context size; minimum `128`              |
+| `GNO_EMBED_THREADS`         | Override CPU threads per embedding context                         |
 | `GNO_NO_AUTO_DOWNLOAD`      | Disable automatic model downloads; explicit `models pull` allowed  |
 
 On Windows CPU-only runs, GNO defaults to one embedding context below 16GB RAM,
-two contexts from 16GB, and the CPU-core heuristic from 24GB. Increase
-`GNO_EMBED_CONTEXTS` only when memory headroom is clear.
+and at most two contexts from 16GB upward. Increase `GNO_EMBED_CONTEXTS` only
+when memory headroom is clear and a real benchmark shows a gain.
 
 ## File Locations
 

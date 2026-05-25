@@ -9,9 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Improved Windows CPU embedding throughput defaults by using two native
-  embedding contexts on 16GB+ machines while keeping 8-12GB systems on a single
-  context.
+- Improved CPU embedding throughput defaults by using at most two native
+  embedding contexts automatically, keeping low-memory Windows systems on a
+  single context, and preserving `GNO_EMBED_CONTEXTS=4` as an explicit
+  benchmark-driven override.
 
 ### Added
 

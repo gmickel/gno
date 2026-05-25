@@ -20,6 +20,12 @@ Added --real mode to the CPU embedding autoresearch script so benchmark variants
   4 contexts 68.7 chunks/s on the cached default GGUF model. On this machine,
   extra contexts were effectively flat, so real-path data should drive future
   tuning decisions over synthetic scheduler data.
+- Follow-up iteration: production now pre-tokenizes embedding inputs to avoid
+  duplicate tokenization, avoids a duplicate vector array copy, caps automatic
+  CPU contexts at two while preserving `GNO_EMBED_CONTEXTS=4` as an explicit
+  override, and exposes real benchmark knobs for context size and threads.
+  512-chunk evidence after the cap: 1 context 71.7 chunks/s, 2 contexts 72.3
+  chunks/s, explicit 4 contexts 71.3 chunks/s.
 
 ## Evidence
 
@@ -30,4 +36,6 @@ Added --real mode to the CPU embedding autoresearch script so benchmark variants
   - `bun test test/llm/embedding.test.ts test/embed/batch.test.ts test/embed/backlog.test.ts`
   - `bun run lint:check`
   - `bun run typecheck`
+  - `bun run docs:verify`
+  - `bun test`
 - PRs:

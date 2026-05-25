@@ -39,6 +39,8 @@ interface TokenizingModel {
   detokenize(tokens: readonly number[]): string;
 }
 
+type EmbeddingInput = Parameters<LlamaEmbeddingContext["getEmbeddingFor"]>[0];
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Constants
 // ─────────────────────────────────────────────────────────────────────────────
@@ -46,13 +48,18 @@ interface TokenizingModel {
 // Aim for a small pool so CPU-only runs can exploit parallel contexts without
 // multiplying RAM usage too aggressively. Additional contexts fall back
 // gracefully if memory is tight.
-const MAX_EMBEDDING_CONTEXTS = 4;
+const MAX_DEFAULT_EMBEDDING_CONTEXTS = 2;
+const MAX_EMBEDDING_CONTEXTS_OVERRIDE = 4;
 const TARGET_CORES_PER_EMBEDDING_CONTEXT = 4;
 const CONSTRAINED_WINDOWS_THRESHOLD_BYTES = 16 * 1024 * 1024 * 1024;
 const MID_MEMORY_WINDOWS_THRESHOLD_BYTES = 24 * 1024 * 1024 * 1024;
 const LOW_MEMORY_WINDOWS_CONTEXTS = 1;
 const MID_MEMORY_WINDOWS_CONTEXTS = 2;
 const DEFAULT_EMBEDDING_CONTEXT_SIZE = 2_048;
+
+function embeddingVectorToArray(vector: readonly number[]): number[] {
+  return Array.isArray(vector) ? (vector as number[]) : Array.from(vector);
+}
 
 function resolveEmbeddingContextPoolOverride(
   env: NodeJS.ProcessEnv = process.env
@@ -65,7 +72,35 @@ function resolveEmbeddingContextPoolOverride(
   if (!(Number.isFinite(parsed) && parsed > 0)) {
     return undefined;
   }
-  return Math.max(1, Math.min(MAX_EMBEDDING_CONTEXTS, parsed));
+  return Math.max(1, Math.min(MAX_EMBEDDING_CONTEXTS_OVERRIDE, parsed));
+}
+
+function resolveThreadsPerContextOverride(
+  env: NodeJS.ProcessEnv = process.env
+): number | undefined {
+  const raw = env.GNO_EMBED_THREADS;
+  if (!raw) {
+    return undefined;
+  }
+  const parsed = Number.parseInt(raw, 10);
+  if (!(Number.isFinite(parsed) && parsed > 0)) {
+    return undefined;
+  }
+  return Math.max(1, parsed);
+}
+
+function resolveEmbeddingContextSizeOverride(
+  env: NodeJS.ProcessEnv = process.env
+): number | undefined {
+  const raw = env.GNO_EMBED_CONTEXT_SIZE;
+  if (!raw) {
+    return undefined;
+  }
+  const parsed = Number.parseInt(raw, 10);
+  if (!(Number.isFinite(parsed) && parsed > 0)) {
+    return undefined;
+  }
+  return Math.max(128, parsed);
 }
 
 export function resolveEmbeddingContextPoolSize(options: {
@@ -97,7 +132,7 @@ export function resolveEmbeddingContextPoolSize(options: {
   const adaptivePoolSize = Math.max(
     1,
     Math.min(
-      MAX_EMBEDDING_CONTEXTS,
+      MAX_DEFAULT_EMBEDDING_CONTEXTS,
       Math.ceil(cpuMathCores / TARGET_CORES_PER_EMBEDDING_CONTEXT)
     )
   );
@@ -156,9 +191,9 @@ export class NodeLlamaCppEmbedding implements EmbeddingPort {
         return { ok: false, error: prepared.error };
       }
       const embedding = await this.runOnWorker((worker) =>
-        worker.context.getEmbeddingFor(prepared.value.text)
+        worker.context.getEmbeddingFor(prepared.value.input)
       );
-      const vector = Array.from(embedding.vector) as number[];
+      const vector = embeddingVectorToArray(embedding.vector);
 
       // Cache dimensions on first call
       if (this.dims === null) {
@@ -182,13 +217,13 @@ export class NodeLlamaCppEmbedding implements EmbeddingPort {
     }
 
     try {
-      const preparedTexts: string[] = [];
+      const preparedInputs: EmbeddingInput[] = [];
       for (const text of texts) {
         const prepared = this.truncateForEmbedding(text, "batch");
         if (!prepared.ok) {
           return { ok: false, error: prepared.error };
         }
-        preparedTexts.push(prepared.value.text);
+        preparedInputs.push(prepared.value.input);
       }
 
       const allResults = Array.from(
@@ -202,16 +237,19 @@ export class NodeLlamaCppEmbedding implements EmbeddingPort {
           while (true) {
             const index = nextIndex;
             nextIndex += 1;
-            if (index >= preparedTexts.length) {
+            if (index >= preparedInputs.length) {
               return;
             }
 
+            const input = preparedInputs[index];
+            if (input === undefined) {
+              return;
+            }
             const embedding = await this.runOnSpecificWorker(
               worker,
-              (current) =>
-                current.context.getEmbeddingFor(preparedTexts[index] as string)
+              (current) => current.context.getEmbeddingFor(input)
             );
-            allResults[index] = Array.from(embedding.vector) as number[];
+            allResults[index] = embeddingVectorToArray(embedding.vector);
           }
         })
       );
@@ -327,6 +365,11 @@ export class NodeLlamaCppEmbedding implements EmbeddingPort {
       return 0;
     }
 
+    const override = resolveThreadsPerContextOverride();
+    if (override !== undefined) {
+      return override;
+    }
+
     return Math.max(1, Math.floor(Math.max(1, llama.cpuMathCores) / poolSize));
   }
 
@@ -346,6 +389,8 @@ export class NodeLlamaCppEmbedding implements EmbeddingPort {
       this.llamaModel = llamaModel as TokenizingModel;
       const llama = await this.manager.getLlama();
       const lifecycleVersion = this.lifecycleVersion;
+      this.embeddingContextSize =
+        resolveEmbeddingContextSizeOverride() ?? DEFAULT_EMBEDDING_CONTEXT_SIZE;
       const targetPoolSize = this.resolveTargetPoolSize(llama);
       const threadsPerContext = this.resolveThreadsPerContext(
         llama,
@@ -411,7 +456,7 @@ export class NodeLlamaCppEmbedding implements EmbeddingPort {
   private truncateForEmbedding(
     text: string,
     mode: "single" | "batch"
-  ): LlmResult<{ text: string }> {
+  ): LlmResult<{ input: EmbeddingInput }> {
     const model = this.llamaModel;
     const modelLimit =
       typeof model?.trainContextSize === "number" &&
@@ -420,7 +465,7 @@ export class NodeLlamaCppEmbedding implements EmbeddingPort {
         ? Math.floor(model.trainContextSize)
         : undefined;
     if (!model) {
-      return { ok: true, value: { text } };
+      return { ok: true, value: { input: text } };
     }
 
     const rawLimit =
@@ -431,10 +476,13 @@ export class NodeLlamaCppEmbedding implements EmbeddingPort {
     try {
       const tokens = model.tokenize(text);
       if (tokens.length <= limit) {
-        return { ok: true, value: { text } };
+        return {
+          ok: true,
+          value: { input: tokens as EmbeddingInput },
+        };
       }
 
-      const truncatedText = model.detokenize(tokens.slice(0, limit));
+      const truncatedTokens = tokens.slice(0, limit);
       const shouldWarn =
         mode === "single"
           ? !this.warnedSingleTruncation
@@ -449,7 +497,10 @@ export class NodeLlamaCppEmbedding implements EmbeddingPort {
           `[llama] Truncated embedding input from ${tokens.length} to ${limit} tokens`
         );
       }
-      return { ok: true, value: { text: truncatedText } };
+      return {
+        ok: true,
+        value: { input: truncatedTokens as EmbeddingInput },
+      };
     } catch (error) {
       return { ok: false, error: inferenceFailedError(this.modelUri, error) };
     }
