@@ -16,7 +16,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Added a CPU embedding autoresearch benchmark script for comparing context pool
-  variants and validating the Windows memory heuristic.
+  variants with synthetic scheduler checks or real cached/downloaded GGUF
+  embedding runs, and validating the Windows memory heuristic.
 
 ## [1.5.2] - 2026-05-25
 

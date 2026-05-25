@@ -2,31 +2,39 @@
 /**
  * CPU embedding autoresearch harness.
  *
- * This script benchmarks the scheduling behavior of GNO's native embedding
- * context pool without requiring a local GGUF model. It uses delayed mock
- * embedding contexts to measure the throughput impact of context-count choices
- * and prints the same Windows memory heuristic that production uses.
+ * By default this script benchmarks GNO's embedding context-pool scheduler
+ * without requiring a local GGUF model. Use --real to run the same benchmark
+ * through the production LlmAdapter, ModelCache, NodeLlamaCppEmbedding, and
+ * node-llama-cpp code path with a cached or downloadable GGUF model.
  */
 
 // Bun does not expose total system memory; node:os is the narrow runtime API.
 import { totalmem } from "node:os";
 
+import { createDefaultConfig, loadConfig } from "../src/config";
+import { LlmAdapter } from "../src/llm/nodeLlamaCpp/adapter";
 import {
   NodeLlamaCppEmbedding,
   resolveEmbeddingContextPoolSize,
 } from "../src/llm/nodeLlamaCpp/embedding";
 
 interface Args {
+  allowDownload: boolean;
   chunks: number;
+  configPath?: string;
   delayMs: number;
   dimensions: number;
   contexts: number[];
   cpuCores: number;
+  model?: string;
+  real: boolean;
+  warmup: number;
 }
 
 interface BenchmarkResult {
   contexts: number;
   durationMs: number;
+  initMs?: number;
   chunksPerSecond: number;
   speedup: number;
 }
@@ -42,13 +50,29 @@ function parsePositiveInt(value: string | undefined, fallback: number): number {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 }
 
+function parseNonNegativeInt(
+  value: string | undefined,
+  fallback: number
+): number {
+  if (!value) {
+    return fallback;
+  }
+  const parsed = Number.parseInt(value, 10);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : fallback;
+}
+
 function parseArgs(argv: string[]): Args {
   const args: Args = {
+    allowDownload: false,
     chunks: 256,
+    configPath: undefined,
     delayMs: 40,
     dimensions: 1024,
     contexts: DEFAULT_CONTEXTS,
     cpuCores: navigator.hardwareConcurrency || 8,
+    model: undefined,
+    real: false,
+    warmup: 8,
   };
 
   for (let i = 0; i < argv.length; i += 1) {
@@ -57,11 +81,17 @@ function parseArgs(argv: string[]): Args {
       case "--chunks":
         args.chunks = parsePositiveInt(argv[(i += 1)], args.chunks);
         break;
+      case "--config":
+        args.configPath = argv[(i += 1)];
+        break;
       case "--delay-ms":
         args.delayMs = parsePositiveInt(argv[(i += 1)], args.delayMs);
         break;
       case "--dimensions":
         args.dimensions = parsePositiveInt(argv[(i += 1)], args.dimensions);
+        break;
+      case "--model":
+        args.model = argv[(i += 1)];
         break;
       case "--cpu-cores":
         args.cpuCores = parsePositiveInt(argv[(i += 1)], args.cpuCores);
@@ -74,6 +104,15 @@ function parseArgs(argv: string[]): Args {
         if (args.contexts.length === 0) {
           args.contexts = DEFAULT_CONTEXTS;
         }
+        break;
+      case "--allow-download":
+        args.allowDownload = true;
+        break;
+      case "--real":
+        args.real = true;
+        break;
+      case "--warmup":
+        args.warmup = parseNonNegativeInt(argv[(i += 1)], args.warmup);
         break;
       case "--help":
       case "-h":
@@ -93,6 +132,11 @@ Usage:
 
 Options:
   --chunks <n>       Synthetic chunks to embed (default: 256)
+  --real             Use production GGUF embedding path instead of synthetic mocks
+  --model <uri>      Model URI/path for --real (default: active/default embed model)
+  --allow-download   Allow --real to download the model if not cached
+  --config <path>    Config path for --real model preset resolution
+  --warmup <n>       Warmup chunks before timing --real (default: 8)
   --delay-ms <n>     Per-chunk mock native latency (default: 40)
   --dimensions <n>   Mock vector dimensions (default: 1024)
   --contexts <csv>   Context counts to compare (default: 1,2,4)
@@ -187,7 +231,102 @@ async function runVariant(
   };
 }
 
+async function createRealEmbeddingPort(args: Args) {
+  const config =
+    args.configPath === undefined
+      ? createDefaultConfig()
+      : await loadConfig(args.configPath).then((result) => {
+          if (!result.ok) {
+            throw new Error(result.error.message);
+          }
+          return result.value;
+        });
+  const adapter = new LlmAdapter(config);
+  const portResult = await adapter.createEmbeddingPort(args.model, {
+    policy: {
+      allowDownload: args.allowDownload,
+      offline: !args.allowDownload,
+    },
+  });
+  if (!portResult.ok) {
+    await adapter.dispose();
+    throw new Error(portResult.error.message);
+  }
+  return { adapter, port: portResult.value };
+}
+
+async function runRealVariant(
+  args: Args,
+  contexts: number,
+  texts: string[]
+): Promise<BenchmarkResult> {
+  const previousOverride = process.env.GNO_EMBED_CONTEXTS;
+  process.env.GNO_EMBED_CONTEXTS = String(contexts);
+  const { adapter, port } = await createRealEmbeddingPort(args);
+
+  try {
+    const initStarted = performance.now();
+    const initResult = await port.init();
+    const initMs = performance.now() - initStarted;
+    if (!initResult.ok) {
+      throw new Error(initResult.error.message);
+    }
+
+    if (args.warmup > 0) {
+      const warmupTexts = texts.slice(0, Math.min(args.warmup, texts.length));
+      const warmupResult = await port.embedBatch(warmupTexts);
+      if (!warmupResult.ok) {
+        throw new Error(warmupResult.error.message);
+      }
+    }
+
+    const started = performance.now();
+    const result = await port.embedBatch(texts);
+    const durationMs = performance.now() - started;
+    if (!result.ok) {
+      throw new Error(result.error.message);
+    }
+
+    return {
+      contexts,
+      durationMs,
+      initMs,
+      chunksPerSecond: args.chunks / (durationMs / 1000),
+      speedup: 1,
+    };
+  } finally {
+    await port.dispose();
+    await adapter.dispose();
+    if (previousOverride === undefined) {
+      delete process.env.GNO_EMBED_CONTEXTS;
+    } else {
+      process.env.GNO_EMBED_CONTEXTS = previousOverride;
+    }
+  }
+}
+
+function createBenchmarkTexts(chunks: number): string[] {
+  return Array.from({ length: chunks }, (_, index) => {
+    const suffix = index.toString().padStart(4, "0");
+    const body = [
+      "CPU embedding benchmark chunk",
+      suffix,
+      "with mixed prose, code identifiers, filenames, and repeated project terms.",
+      "The benchmark intentionally resembles indexed note chunks rather than one-word inputs.",
+      "query embedding retrieval sqlite vector llama context scheduling windows cpu throughput",
+    ].join(" ");
+    return `title: cpu-embed-${suffix}\ntext: ${body}`;
+  });
+}
+
 function printHeuristic(args: Args): void {
+  const mode = args.real ? "real GGUF path" : "synthetic scheduler path";
+  console.log(`Mode: ${mode}`);
+  if (args.real) {
+    console.log(
+      `Model: ${args.model ?? "active/default embed model"}; warmup: ${args.warmup} chunk(s)`
+    );
+  }
   const memoryCases = [12, 16, 24, Math.round(totalmem() / BYTES_PER_GIB)];
   console.log("Windows CPU context heuristic:");
   for (const gib of [...new Set(memoryCases)].sort((a, b) => a - b)) {
@@ -204,13 +343,25 @@ function printHeuristic(args: Args): void {
 
 function printResults(results: BenchmarkResult[]): void {
   const baseline = results[0]?.chunksPerSecond ?? 1;
-  console.log("| contexts | duration | chunks/s | speedup |");
-  console.log("| ---: | ---: | ---: | ---: |");
+  const hasInit = results.some((result) => result.initMs !== undefined);
+  if (hasInit) {
+    console.log("| contexts | init | embed duration | chunks/s | speedup |");
+    console.log("| ---: | ---: | ---: | ---: | ---: |");
+  } else {
+    console.log("| contexts | duration | chunks/s | speedup |");
+    console.log("| ---: | ---: | ---: | ---: |");
+  }
   for (const result of results) {
     result.speedup = result.chunksPerSecond / baseline;
-    console.log(
-      `| ${result.contexts} | ${(result.durationMs / 1000).toFixed(2)}s | ${result.chunksPerSecond.toFixed(1)} | ${result.speedup.toFixed(2)}x |`
-    );
+    if (hasInit) {
+      console.log(
+        `| ${result.contexts} | ${((result.initMs ?? 0) / 1000).toFixed(2)}s | ${(result.durationMs / 1000).toFixed(2)}s | ${result.chunksPerSecond.toFixed(1)} | ${result.speedup.toFixed(2)}x |`
+      );
+    } else {
+      console.log(
+        `| ${result.contexts} | ${(result.durationMs / 1000).toFixed(2)}s | ${result.chunksPerSecond.toFixed(1)} | ${result.speedup.toFixed(2)}x |`
+      );
+    }
   }
 }
 
@@ -218,8 +369,13 @@ const args = parseArgs(Bun.argv.slice(2));
 printHeuristic(args);
 
 const results: BenchmarkResult[] = [];
+const texts = createBenchmarkTexts(args.chunks);
 for (const contexts of args.contexts) {
-  results.push(await runVariant(args, contexts));
+  if (args.real) {
+    results.push(await runRealVariant(args, contexts, texts));
+  } else {
+    results.push(await runVariant(args, contexts));
+  }
 }
 
 printResults(results);
