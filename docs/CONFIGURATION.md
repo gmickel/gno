@@ -465,6 +465,7 @@ Runtime/model env vars:
 | `NODE_LLAMA_CPP_GPU`        | Compatibility alias used when `GNO_LLAMA_GPU` is unset             |
 | `GNO_LLAMA_BUILD`           | Backend build mode: default `never`; set `autoAttempt` to opt in   |
 | `GNO_LLAMA_INIT_TIMEOUT_MS` | Backend initialization timeout; default `30000` ms                 |
+| `GNO_EMBED_CONTEXTS`        | Override CPU embedding context count, clamped to `1`-`4`           |
 | `GNO_NO_AUTO_DOWNLOAD`      | Disable automatic model downloads; explicit `models pull` allowed  |
 
 ## File Locations

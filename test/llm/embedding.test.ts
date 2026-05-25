@@ -1,4 +1,4 @@
-import { describe, expect, mock, test } from "bun:test";
+import { afterEach, describe, expect, mock, test } from "bun:test";
 
 import {
   NodeLlamaCppEmbedding,
@@ -45,7 +45,9 @@ function createManager(options?: {
   const resolvedCpuMathCores = options?.cpuMathCores ?? 16;
   const resolvedPoolSize =
     options?.gpu === false || options?.gpu === undefined
-      ? Math.max(1, Math.min(4, Math.ceil(resolvedCpuMathCores / 4)))
+      ? process.env.GNO_EMBED_CONTEXTS
+        ? Number.parseInt(process.env.GNO_EMBED_CONTEXTS, 10)
+        : Math.max(1, Math.min(4, Math.ceil(resolvedCpuMathCores / 4)))
       : 1;
   const expectedOptions =
     options?.gpu === false || options?.gpu === undefined
@@ -98,6 +100,10 @@ function createManager(options?: {
 }
 
 describe("NodeLlamaCppEmbedding", () => {
+  afterEach(() => {
+    delete process.env.GNO_EMBED_CONTEXTS;
+  });
+
   test("caps CPU context pool on low-memory Windows machines", () => {
     expect(
       resolveEmbeddingContextPoolSize({
@@ -120,7 +126,20 @@ describe("NodeLlamaCppEmbedding", () => {
     ).toBe(4);
   });
 
+  test("allows explicit CPU context pool override", () => {
+    expect(
+      resolveEmbeddingContextPoolSize({
+        env: { GNO_EMBED_CONTEXTS: "3" },
+        gpu: false,
+        cpuMathCores: 16,
+        platformName: "win32",
+        totalMemoryBytes: 16 * 1024 * 1024 * 1024,
+      })
+    ).toBe(3);
+  });
+
   test("creates a CPU context pool capped at 4", async () => {
+    process.env.GNO_EMBED_CONTEXTS = "4";
     const { createEmbeddingContext, manager } = createManager({
       cpuMathCores: 16,
     });
@@ -155,6 +174,7 @@ describe("NodeLlamaCppEmbedding", () => {
   });
 
   test("falls back to fewer contexts if additional ones fail to create", async () => {
+    process.env.GNO_EMBED_CONTEXTS = "4";
     const { createEmbeddingContext, manager } = createManager({
       cpuMathCores: 16,
       failAtContextIndex: 1,
@@ -174,6 +194,7 @@ describe("NodeLlamaCppEmbedding", () => {
   });
 
   test("distributes batch work across contexts and preserves order", async () => {
+    process.env.GNO_EMBED_CONTEXTS = "2";
     const { calls, manager } = createManager({ cpuMathCores: 8 });
     const embedding = new NodeLlamaCppEmbedding(
       manager as never,

@@ -52,14 +52,34 @@ const LOW_MEMORY_WINDOWS_THRESHOLD_BYTES = 24 * 1024 * 1024 * 1024;
 const LOW_MEMORY_WINDOWS_CONTEXTS = 1;
 const DEFAULT_EMBEDDING_CONTEXT_SIZE = 2_048;
 
+function resolveEmbeddingContextPoolOverride(
+  env: NodeJS.ProcessEnv = process.env
+): number | undefined {
+  const raw = env.GNO_EMBED_CONTEXTS;
+  if (!raw) {
+    return undefined;
+  }
+  const parsed = Number.parseInt(raw, 10);
+  if (!(Number.isFinite(parsed) && parsed > 0)) {
+    return undefined;
+  }
+  return Math.max(1, Math.min(MAX_EMBEDDING_CONTEXTS, parsed));
+}
+
 export function resolveEmbeddingContextPoolSize(options: {
   gpu: Llama["gpu"];
   cpuMathCores: number;
+  env?: NodeJS.ProcessEnv;
   platformName?: NodeJS.Platform;
   totalMemoryBytes?: number;
 }): number {
   if (options.gpu !== false) {
     return 1;
+  }
+
+  const override = resolveEmbeddingContextPoolOverride(options.env);
+  if (override !== undefined) {
+    return override;
   }
 
   const platformName = options.platformName ?? platform();
