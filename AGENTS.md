@@ -106,17 +106,18 @@ bun run eval:watch    # Watch mode for development
 
 **scripts/** - Development and testing utilities (not published)
 
-| Script                      | Purpose                                                                                                                                                                            |
-| --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `perf-test.ts`              | Performance testing for search pipeline. Tests different configurations (expand/rerank combinations) and measures timing.                                                          |
-| `test-rerank-size.ts`       | Tests reranker performance at different document sizes (1K-128K chars). Used to identify optimal chunk size for reranking.                                                         |
-| `docs-verify.ts`            | Verifies documentation is up-to-date with implementation.                                                                                                                          |
-| `hybrid-benchmark.ts`       | Runs hybrid benchmark and writes baseline artifacts to `evals/fixtures/hybrid-baseline/`.                                                                                          |
-| `ast-chunking-benchmark.ts` | Compares heuristic code chunking with experimental tree-sitter AST chunking and writes evidence artifacts.                                                                         |
-| `cpu-embed-autoresearch.ts` | Benchmarks CPU embedding context-count variants with synthetic scheduling or real GGUF embedding paths, and prints the Windows memory heuristic used by the native embedding path. |
-| `generate-test-fixtures.ts` | Generates test fixtures for unit tests.                                                                                                                                            |
-| `og-screenshots.ts`         | Generates PNG screenshots from OG image HTML templates using Playwright.                                                                                                           |
-| `sync-assets.ts`            | Syncs all website assets: OG images, screenshots, README hero. Run before release.                                                                                                 |
+| Script                            | Purpose                                                                                                                                                                            |
+| --------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `perf-test.ts`                    | Performance testing for search pipeline. Tests different configurations (expand/rerank combinations) and measures timing.                                                          |
+| `test-rerank-size.ts`             | Tests reranker performance at different document sizes (1K-128K chars). Used to identify optimal chunk size for reranking.                                                         |
+| `docs-verify.ts`                  | Verifies documentation is up-to-date with implementation.                                                                                                                          |
+| `hybrid-benchmark.ts`             | Runs hybrid benchmark and writes baseline artifacts to `evals/fixtures/hybrid-baseline/`.                                                                                          |
+| `ast-chunking-benchmark.ts`       | Compares heuristic code chunking with experimental tree-sitter AST chunking and writes evidence artifacts.                                                                         |
+| `cpu-embed-autoresearch.ts`       | Benchmarks CPU embedding context-count variants with synthetic scheduling or real GGUF embedding paths, and prints the Windows memory heuristic used by the native embedding path. |
+| `native-embedding-batch-probe.ts` | Probes whether the installed node-llama-cpp binding can retrieve distinct embeddings from a multi-sequence native batch.                                                           |
+| `generate-test-fixtures.ts`       | Generates test fixtures for unit tests.                                                                                                                                            |
+| `og-screenshots.ts`               | Generates PNG screenshots from OG image HTML templates using Playwright.                                                                                                           |
+| `sync-assets.ts`                  | Syncs all website assets: OG images, screenshots, README hero. Run before release.                                                                                                 |
 
 **Usage:**
 
@@ -125,6 +126,7 @@ bun scripts/perf-test.ts           # Run full performance test suite
 bun scripts/test-rerank-size.ts    # Test rerank scaling with doc size
 bun run bench:cpu-embeddings       # Compare CPU embedding context scheduling variants
 bun run bench:cpu-embeddings -- --real --contexts 1,2,4 --chunks 128
+bun run bench:cpu-embeddings:native-batch-probe
 bun run bench:ast-chunking -- --fixture canonical --write
 bun run website:sync-assets        # Sync all website assets (OG, screenshots, hero)
 bun run website:sync-assets --og   # OG images only
