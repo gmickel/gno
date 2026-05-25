@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Improved CPU embedding throughput defaults by using at most two native
+  embedding contexts automatically, keeping low-memory Windows systems on a
+  single context, and preserving `GNO_EMBED_CONTEXTS=4` as an explicit
+  benchmark-driven override.
+
+### Added
+
+- Added a CPU embedding autoresearch benchmark script for comparing context pool
+  variants with synthetic scheduler checks or real cached/downloaded GGUF
+  embedding runs, and validating the Windows memory heuristic.
+- Added a native embedding batch probe that verifies whether node-llama-cpp can
+  retrieve distinct embeddings from multi-sequence native batches.
+
 ## [1.5.2] - 2026-05-25
 
 ### Fixed

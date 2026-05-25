@@ -1,0 +1,13 @@
+{
+  "branch_name": "fn-80-cpu-embedding-autoresearch-and",
+  "created_at": "2026-05-25T16:05:49.517156Z",
+  "depends_on_epics": [],
+  "id": "fn-80-cpu-embedding-autoresearch-and",
+  "next_task": 1,
+  "plan_review_status": "unknown",
+  "plan_reviewed_at": null,
+  "spec_path": ".flow/specs/fn-80-cpu-embedding-autoresearch-and.md",
+  "status": "open",
+  "title": "CPU embedding autoresearch and optimization",
+  "updated_at": "2026-05-25T16:06:00.647196Z"
+}

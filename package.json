@@ -74,6 +74,8 @@
     "bench:code-embeddings:write": "bun scripts/code-embedding-benchmark.ts --write",
     "bench:general-embeddings": "bun scripts/general-embedding-benchmark.ts",
     "bench:general-embeddings:write": "bun scripts/general-embedding-benchmark.ts --write",
+    "bench:cpu-embeddings": "bun scripts/cpu-embed-autoresearch.ts",
+    "bench:cpu-embeddings:native-batch-probe": "bun scripts/native-embedding-batch-probe.ts",
     "eval:retrieval-candidates": "bun scripts/retrieval-candidate-benchmark.ts",
     "eval:retrieval-candidates:write": "bun scripts/retrieval-candidate-benchmark.ts --write",
     "eval:watch": "bun --bun evalite watch",

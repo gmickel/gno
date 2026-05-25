@@ -532,9 +532,9 @@ debugging:
 GNO_LLAMA_INIT_TIMEOUT_MS=60000 gno doctor
 ```
 
-CPU embedding uses a small adaptive context pool. On low-memory Windows
-machines, GNO caps this to one context by default. Override only if you have
-headroom:
+CPU embedding uses a small adaptive context pool. On Windows, GNO keeps one
+context below 16GB RAM and uses at most two contexts from 16GB upward. Override
+only if you have headroom and `bench:cpu-embeddings -- --real` shows a gain:
 
 ```bash
 GNO_EMBED_CONTEXTS=2 gno embed --yes
