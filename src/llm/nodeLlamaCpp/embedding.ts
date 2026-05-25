@@ -48,8 +48,10 @@ interface TokenizingModel {
 // gracefully if memory is tight.
 const MAX_EMBEDDING_CONTEXTS = 4;
 const TARGET_CORES_PER_EMBEDDING_CONTEXT = 4;
-const LOW_MEMORY_WINDOWS_THRESHOLD_BYTES = 24 * 1024 * 1024 * 1024;
+const CONSTRAINED_WINDOWS_THRESHOLD_BYTES = 16 * 1024 * 1024 * 1024;
+const MID_MEMORY_WINDOWS_THRESHOLD_BYTES = 24 * 1024 * 1024 * 1024;
 const LOW_MEMORY_WINDOWS_CONTEXTS = 1;
+const MID_MEMORY_WINDOWS_CONTEXTS = 2;
 const DEFAULT_EMBEDDING_CONTEXT_SIZE = 2_048;
 
 function resolveEmbeddingContextPoolOverride(
@@ -86,19 +88,28 @@ export function resolveEmbeddingContextPoolSize(options: {
   const totalMemoryBytes = options.totalMemoryBytes ?? totalmem();
   if (
     platformName === "win32" &&
-    totalMemoryBytes <= LOW_MEMORY_WINDOWS_THRESHOLD_BYTES
+    totalMemoryBytes < CONSTRAINED_WINDOWS_THRESHOLD_BYTES
   ) {
     return LOW_MEMORY_WINDOWS_CONTEXTS;
   }
 
   const cpuMathCores = Math.max(1, options.cpuMathCores);
-  return Math.max(
+  const adaptivePoolSize = Math.max(
     1,
     Math.min(
       MAX_EMBEDDING_CONTEXTS,
       Math.ceil(cpuMathCores / TARGET_CORES_PER_EMBEDDING_CONTEXT)
     )
   );
+
+  if (
+    platformName === "win32" &&
+    totalMemoryBytes < MID_MEMORY_WINDOWS_THRESHOLD_BYTES
+  ) {
+    return Math.min(MID_MEMORY_WINDOWS_CONTEXTS, adaptivePoolSize);
+  }
+
+  return adaptivePoolSize;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

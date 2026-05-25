@@ -113,6 +113,7 @@ bun run eval:watch    # Watch mode for development
 | `docs-verify.ts`            | Verifies documentation is up-to-date with implementation.                                                                  |
 | `hybrid-benchmark.ts`       | Runs hybrid benchmark and writes baseline artifacts to `evals/fixtures/hybrid-baseline/`.                                  |
 | `ast-chunking-benchmark.ts` | Compares heuristic code chunking with experimental tree-sitter AST chunking and writes evidence artifacts.                 |
+| `cpu-embed-autoresearch.ts` | Benchmarks CPU embedding context-count variants and prints the Windows memory heuristic used by the native embedding path. |
 | `generate-test-fixtures.ts` | Generates test fixtures for unit tests.                                                                                    |
 | `og-screenshots.ts`         | Generates PNG screenshots from OG image HTML templates using Playwright.                                                   |
 | `sync-assets.ts`            | Syncs all website assets: OG images, screenshots, README hero. Run before release.                                         |
@@ -122,6 +123,7 @@ bun run eval:watch    # Watch mode for development
 ```bash
 bun scripts/perf-test.ts           # Run full performance test suite
 bun scripts/test-rerank-size.ts    # Test rerank scaling with doc size
+bun run bench:cpu-embeddings       # Compare CPU embedding context scheduling variants
 bun run bench:ast-chunking -- --fixture canonical --write
 bun run website:sync-assets        # Sync all website assets (OG, screenshots, hero)
 bun run website:sync-assets --og   # OG images only

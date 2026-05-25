@@ -104,7 +104,18 @@ describe("NodeLlamaCppEmbedding", () => {
     delete process.env.GNO_EMBED_CONTEXTS;
   });
 
-  test("caps CPU context pool on low-memory Windows machines", () => {
+  test("keeps CPU context pool single on constrained Windows machines", () => {
+    expect(
+      resolveEmbeddingContextPoolSize({
+        gpu: false,
+        cpuMathCores: 16,
+        platformName: "win32",
+        totalMemoryBytes: 12 * 1024 * 1024 * 1024,
+      })
+    ).toBe(1);
+  });
+
+  test("uses two CPU contexts on 16GB Windows machines", () => {
     expect(
       resolveEmbeddingContextPoolSize({
         gpu: false,
@@ -112,7 +123,18 @@ describe("NodeLlamaCppEmbedding", () => {
         platformName: "win32",
         totalMemoryBytes: 16 * 1024 * 1024 * 1024,
       })
-    ).toBe(1);
+    ).toBe(2);
+  });
+
+  test("uses adaptive CPU context pool on 24GB Windows machines", () => {
+    expect(
+      resolveEmbeddingContextPoolSize({
+        gpu: false,
+        cpuMathCores: 16,
+        platformName: "win32",
+        totalMemoryBytes: 24 * 1024 * 1024 * 1024,
+      })
+    ).toBe(4);
   });
 
   test("keeps CPU context pool adaptive outside low-memory Windows", () => {

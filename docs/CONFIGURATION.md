@@ -468,6 +468,10 @@ Runtime/model env vars:
 | `GNO_EMBED_CONTEXTS`        | Override CPU embedding context count, clamped to `1`-`4`           |
 | `GNO_NO_AUTO_DOWNLOAD`      | Disable automatic model downloads; explicit `models pull` allowed  |
 
+On Windows CPU-only runs, GNO defaults to one embedding context below 16GB RAM,
+two contexts from 16GB, and the CPU-core heuristic from 24GB. Increase
+`GNO_EMBED_CONTEXTS` only when memory headroom is clear.
+
 ## File Locations
 
 **Linux** (XDG):

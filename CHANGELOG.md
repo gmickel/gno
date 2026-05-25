@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Improved Windows CPU embedding throughput defaults by using two native
+  embedding contexts on 16GB+ machines while keeping 8-12GB systems on a single
+  context.
+
+### Added
+
+- Added a CPU embedding autoresearch benchmark script for comparing context pool
+  variants and validating the Windows memory heuristic.
+
 ## [1.5.2] - 2026-05-25
 
 ### Fixed
