@@ -5,6 +5,10 @@
  * @module src/llm/nodeLlamaCpp/lifecycle
  */
 
+import type { LlamaOptions } from "node-llama-cpp";
+
+import { platform } from "node:os";
+
 import type { ModelConfig } from "../../config/types";
 import type { LlmResult, LoadedModel, ModelType } from "../types";
 
@@ -17,6 +21,12 @@ import { loadFailedError, outOfMemoryError, timeoutError } from "../errors";
 type Llama = Awaited<ReturnType<typeof import("node-llama-cpp").getLlama>>;
 type LlamaModel = Awaited<ReturnType<Llama["loadModel"]>>;
 export type LlamaGpuMode = "auto" | "metal" | "vulkan" | "cuda" | false;
+export type LlamaBuildMode = "never" | "autoAttempt";
+
+type LlamaInitOptions = LlamaOptions & {
+  build: LlamaBuildMode;
+  gpu: LlamaGpuMode;
+};
 
 interface CachedModel {
   uri: string;
@@ -26,7 +36,11 @@ interface CachedModel {
 }
 
 let invalidGpuModeWarned = false;
+let invalidBuildModeWarned = false;
 let gpuFallbackWarned = false;
+let backendTimeoutWarned = false;
+
+const DEFAULT_BACKEND_INIT_TIMEOUT_MS = 30_000;
 
 export function resolveLlamaGpuMode(
   env: NodeJS.ProcessEnv = process.env
@@ -59,6 +73,56 @@ export function resolveLlamaGpuMode(
   return "auto";
 }
 
+export function resolveLlamaBuildMode(
+  env: NodeJS.ProcessEnv = process.env
+): LlamaBuildMode {
+  const raw = (env.GNO_LLAMA_BUILD ?? "never").trim().toLowerCase();
+  if (
+    !raw ||
+    raw === "never" ||
+    raw === "prebuilt" ||
+    raw === "prebuilt-only"
+  ) {
+    return "never";
+  }
+  if (
+    raw === "autoattempt" ||
+    raw === "auto-attempt" ||
+    raw === "source" ||
+    raw === "build"
+  ) {
+    return "autoAttempt";
+  }
+  if (!invalidBuildModeWarned) {
+    invalidBuildModeWarned = true;
+    console.warn(`[llama] Invalid GNO_LLAMA_BUILD value "${raw}", using never`);
+  }
+  return "never";
+}
+
+export function resolveLlamaBackendInitTimeoutMs(
+  env: NodeJS.ProcessEnv = process.env
+): number {
+  const raw = env.GNO_LLAMA_INIT_TIMEOUT_MS;
+  if (!raw) {
+    return DEFAULT_BACKEND_INIT_TIMEOUT_MS;
+  }
+  const parsed = Number.parseInt(raw, 10);
+  return Number.isFinite(parsed) && parsed > 0
+    ? parsed
+    : DEFAULT_BACKEND_INIT_TIMEOUT_MS;
+}
+
+export function shouldRetryLlamaWithCpu(
+  gpu: LlamaGpuMode,
+  platformName = platform()
+): boolean {
+  if (gpu === false) {
+    return false;
+  }
+  return gpu !== "auto" || platformName === "win32";
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // ModelManager
 // ─────────────────────────────────────────────────────────────────────────────
@@ -84,15 +148,21 @@ export class ModelManager {
     if (!this.llama) {
       const { getLlama, LlamaLogLevel } = await import("node-llama-cpp");
       const gpu = resolveLlamaGpuMode();
+      const build = resolveLlamaBuildMode();
+      const timeoutMs = resolveLlamaBackendInitTimeoutMs();
       // Suppress model loading warnings (vocab tokens, pooling type)
       try {
-        this.llama = await getLlama({
-          build: "autoAttempt",
-          gpu,
-          logLevel: LlamaLogLevel.error,
-        });
+        this.llama = await this.getLlamaWithTimeout(
+          getLlama,
+          {
+            build,
+            gpu,
+            logLevel: LlamaLogLevel.error,
+          },
+          timeoutMs
+        );
       } catch (error) {
-        if (gpu === "auto" || gpu === false) {
+        if (!shouldRetryLlamaWithCpu(gpu)) {
           throw error;
         }
         if (!gpuFallbackWarned) {
@@ -103,14 +173,46 @@ export class ModelManager {
             }`
           );
         }
-        this.llama = await getLlama({
-          build: "autoAttempt",
-          gpu: false,
-          logLevel: LlamaLogLevel.error,
-        });
+        this.llama = await this.getLlamaWithTimeout(
+          getLlama,
+          {
+            build,
+            gpu: false,
+            logLevel: LlamaLogLevel.error,
+          },
+          timeoutMs
+        );
       }
     }
     return this.llama;
+  }
+
+  private async getLlamaWithTimeout(
+    getLlama: (options: LlamaInitOptions) => Promise<Llama>,
+    options: LlamaInitOptions,
+    timeoutMs: number
+  ): Promise<Llama> {
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+    try {
+      return await Promise.race([
+        getLlama(options),
+        new Promise<never>((_, reject) => {
+          timeoutId = setTimeout(() => {
+            if (!backendTimeoutWarned) {
+              backendTimeoutWarned = true;
+              console.warn(
+                `[llama] Backend initialization timed out after ${timeoutMs}ms`
+              );
+            }
+            reject(new Error(`Backend init timeout after ${timeoutMs}ms`));
+          }, timeoutMs);
+        }),
+      ]);
+    } finally {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+    }
   }
 
   /**

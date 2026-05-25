@@ -73,6 +73,11 @@ Accepted values: `auto`, `metal`, `vulkan`, `cuda`, or CPU-only values
 `false`, `off`, `none`, `disable`, `disabled`, `0`. Invalid values warn once
 and use `auto`.
 
+GNO uses prebuilt `node-llama-cpp` backends by default. Set
+`GNO_LLAMA_BUILD=autoAttempt` only if you intentionally want to allow local
+source builds. Backend initialization is capped by `GNO_LLAMA_INIT_TIMEOUT_MS`
+when set, otherwise 30 seconds.
+
 > **Note:** the first CPU-only run may build or download a separate CPU backend
 > if you only have GPU-backed binaries cached. Use the second run for timing.
 

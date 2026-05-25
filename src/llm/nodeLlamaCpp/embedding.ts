@@ -4,6 +4,8 @@
  * @module src/llm/nodeLlamaCpp/embedding
  */
 
+import { platform, totalmem } from "node:os";
+
 import type { EmbeddingPort, LlmResult } from "../types";
 import type { ModelManager } from "./lifecycle";
 
@@ -46,6 +48,38 @@ interface TokenizingModel {
 // gracefully if memory is tight.
 const MAX_EMBEDDING_CONTEXTS = 4;
 const TARGET_CORES_PER_EMBEDDING_CONTEXT = 4;
+const LOW_MEMORY_WINDOWS_THRESHOLD_BYTES = 24 * 1024 * 1024 * 1024;
+const LOW_MEMORY_WINDOWS_CONTEXTS = 1;
+const DEFAULT_EMBEDDING_CONTEXT_SIZE = 2_048;
+
+export function resolveEmbeddingContextPoolSize(options: {
+  gpu: Llama["gpu"];
+  cpuMathCores: number;
+  platformName?: NodeJS.Platform;
+  totalMemoryBytes?: number;
+}): number {
+  if (options.gpu !== false) {
+    return 1;
+  }
+
+  const platformName = options.platformName ?? platform();
+  const totalMemoryBytes = options.totalMemoryBytes ?? totalmem();
+  if (
+    platformName === "win32" &&
+    totalMemoryBytes <= LOW_MEMORY_WINDOWS_THRESHOLD_BYTES
+  ) {
+    return LOW_MEMORY_WINDOWS_CONTEXTS;
+  }
+
+  const cpuMathCores = Math.max(1, options.cpuMathCores);
+  return Math.max(
+    1,
+    Math.min(
+      MAX_EMBEDDING_CONTEXTS,
+      Math.ceil(cpuMathCores / TARGET_CORES_PER_EMBEDDING_CONTEXT)
+    )
+  );
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Implementation
@@ -58,6 +92,7 @@ export class NodeLlamaCppEmbedding implements EmbeddingPort {
   private lifecycleVersion = 0;
   private dims: number | null = null;
   private llamaModel: TokenizingModel | null = null;
+  private embeddingContextSize = DEFAULT_EMBEDDING_CONTEXT_SIZE;
   private warnedSingleTruncation = false;
   private warnedBatchTruncation = false;
   private readonly manager: ModelManager;
@@ -250,18 +285,10 @@ export class NodeLlamaCppEmbedding implements EmbeddingPort {
   }
 
   private resolveTargetPoolSize(llama: Llama): number {
-    if (llama.gpu !== false) {
-      return 1;
-    }
-
-    const cpuMathCores = Math.max(1, llama.cpuMathCores);
-    return Math.max(
-      1,
-      Math.min(
-        MAX_EMBEDDING_CONTEXTS,
-        Math.ceil(cpuMathCores / TARGET_CORES_PER_EMBEDDING_CONTEXT)
-      )
-    );
+    return resolveEmbeddingContextPoolSize({
+      gpu: llama.gpu,
+      cpuMathCores: llama.cpuMathCores,
+    });
   }
 
   private resolveThreadsPerContext(llama: Llama, poolSize: number): number {
@@ -294,7 +321,12 @@ export class NodeLlamaCppEmbedding implements EmbeddingPort {
         targetPoolSize
       );
       const contextOptions =
-        llama.gpu === false ? { threads: threadsPerContext } : undefined;
+        llama.gpu === false
+          ? {
+              contextSize: this.embeddingContextSize,
+              threads: threadsPerContext,
+            }
+          : { contextSize: this.embeddingContextSize };
       const contexts: LlamaEmbeddingContext[] = [];
 
       for (let i = 0; i < targetPoolSize; i += 1) {
@@ -350,16 +382,20 @@ export class NodeLlamaCppEmbedding implements EmbeddingPort {
     mode: "single" | "batch"
   ): LlmResult<{ text: string }> {
     const model = this.llamaModel;
-    const rawLimit =
+    const modelLimit =
       typeof model?.trainContextSize === "number" &&
       Number.isFinite(model.trainContextSize) &&
       model.trainContextSize > 0
         ? Math.floor(model.trainContextSize)
         : undefined;
-    if (!model || rawLimit === undefined) {
+    if (!model) {
       return { ok: true, value: { text } };
     }
 
+    const rawLimit =
+      modelLimit === undefined
+        ? this.embeddingContextSize
+        : Math.min(modelLimit, this.embeddingContextSize);
     const limit = Math.max(1, rawLimit - 4);
     try {
       const tokens = model.tokenize(text);

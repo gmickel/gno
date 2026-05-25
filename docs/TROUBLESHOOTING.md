@@ -513,11 +513,24 @@ GNO_LLAMA_GPU=false gno embed --yes
 
 Accepted values: `auto`, `metal`, `vulkan`, `cuda`, `false`, `off`, `none`,
 `disable`, `disabled`, `0`. If an explicit GPU backend fails during init, GNO
-warns once and retries CPU.
+warns once and retries CPU. On Windows, GNO also retries CPU when automatic
+backend selection fails, because broken Vulkan/CUDA probes can otherwise fall
+into native build tooling.
 
-If your machine only has GPU-backed `node-llama-cpp` binaries cached, the first
-CPU-only run may build or download a separate CPU backend. For throughput
-measurements, ignore that first run and time the second.
+GNO uses prebuilt `node-llama-cpp` backends by default and does not source-build
+native backends during normal commands. If you intentionally want local source
+build fallback, set:
+
+```bash
+GNO_LLAMA_BUILD=autoAttempt gno doctor
+```
+
+Backend initialization times out after 30 seconds by default. Override only for
+debugging:
+
+```bash
+GNO_LLAMA_INIT_TIMEOUT_MS=60000 gno doctor
+```
 
 ## Model Issues
 

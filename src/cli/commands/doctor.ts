@@ -16,6 +16,7 @@ import { getIndexDbPath, getModelsCachePath } from "../../app/constants";
 import { getConfigPaths, isInitialized, loadConfig } from "../../config";
 import { getCodeChunkingStatus } from "../../ingestion/chunker";
 import { ModelCache } from "../../llm/cache";
+import { LlmAdapter } from "../../llm/nodeLlamaCpp/adapter";
 import { getActivePreset } from "../../llm/registry";
 import { loadFts5Snowball } from "../../store/sqlite/fts5-snowball";
 import {
@@ -136,11 +137,10 @@ function checkCodeChunking(): DoctorCheck {
   };
 }
 
-async function checkNodeLlamaCpp(): Promise<DoctorCheck> {
+async function checkNodeLlamaCpp(config: Config): Promise<DoctorCheck> {
+  const llm = new LlmAdapter(config);
   try {
-    const { getLlama } = await import("node-llama-cpp");
-    // Just check that we can get the llama instance
-    await getLlama();
+    await llm.getManager().getLlama();
     return {
       name: "node-llama-cpp",
       status: "ok",
@@ -153,6 +153,8 @@ async function checkNodeLlamaCpp(): Promise<DoctorCheck> {
       status: "error",
       message: `node-llama-cpp failed: ${message}`,
     };
+  } finally {
+    await llm.dispose();
   }
 }
 
@@ -330,7 +332,7 @@ export async function doctor(
   checks.push(...modelChecks);
 
   // node-llama-cpp check
-  checks.push(await checkNodeLlamaCpp());
+  checks.push(await checkNodeLlamaCpp(config));
 
   // SQLite extension checks
   const sqliteChecks = await checkSqliteExtensions();

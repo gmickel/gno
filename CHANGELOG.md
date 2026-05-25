@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Hardened local model backend startup on Windows by making `node-llama-cpp`
+  source builds opt-in, timing out backend initialization, retrying CPU when
+  automatic backend selection fails, and capping CPU embedding contexts on
+  low-memory Windows machines.
+
 ## [1.5.1] - 2026-05-09
 
 ### Fixed

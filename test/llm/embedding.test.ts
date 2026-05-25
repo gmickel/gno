@@ -1,6 +1,9 @@
 import { describe, expect, mock, test } from "bun:test";
 
-import { NodeLlamaCppEmbedding } from "../../src/llm/nodeLlamaCpp/embedding";
+import {
+  NodeLlamaCppEmbedding,
+  resolveEmbeddingContextPoolSize,
+} from "../../src/llm/nodeLlamaCpp/embedding";
 
 interface MockEmbeddingContext {
   dispose: ReturnType<typeof mock<() => Promise<void>>>;
@@ -47,12 +50,13 @@ function createManager(options?: {
   const expectedOptions =
     options?.gpu === false || options?.gpu === undefined
       ? {
+          contextSize: 2_048,
           threads: Math.max(
             1,
             Math.floor(resolvedCpuMathCores / resolvedPoolSize)
           ),
         }
-      : undefined;
+      : { contextSize: 2_048 };
 
   const createEmbeddingContext = mock(async (opts?: { threads?: number }) => {
     const currentIndex = createContextCallCount;
@@ -94,6 +98,28 @@ function createManager(options?: {
 }
 
 describe("NodeLlamaCppEmbedding", () => {
+  test("caps CPU context pool on low-memory Windows machines", () => {
+    expect(
+      resolveEmbeddingContextPoolSize({
+        gpu: false,
+        cpuMathCores: 16,
+        platformName: "win32",
+        totalMemoryBytes: 16 * 1024 * 1024 * 1024,
+      })
+    ).toBe(1);
+  });
+
+  test("keeps CPU context pool adaptive outside low-memory Windows", () => {
+    expect(
+      resolveEmbeddingContextPoolSize({
+        gpu: false,
+        cpuMathCores: 16,
+        platformName: "darwin",
+        totalMemoryBytes: 16 * 1024 * 1024 * 1024,
+      })
+    ).toBe(4);
+  });
+
   test("creates a CPU context pool capped at 4", async () => {
     const { createEmbeddingContext, manager } = createManager({
       cpuMathCores: 16,

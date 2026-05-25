@@ -1,11 +1,17 @@
 import { afterEach, describe, expect, mock, test } from "bun:test";
 
+let mockPlatformValue: NodeJS.Platform = "darwin";
+
 const mockGetLlama = mock(async (_options?: unknown) => ({
   loadModel: mock(async () => ({
     dispose: async () => {
       // no-op
     },
   })),
+}));
+
+void mock.module("node:os", () => ({
+  platform: () => mockPlatformValue,
 }));
 
 void mock.module("node-llama-cpp", () => ({
@@ -18,11 +24,22 @@ void mock.module("node-llama-cpp", () => ({
 describe("ModelManager", () => {
   afterEach(async () => {
     mockGetLlama.mockClear();
+    mockGetLlama.mockImplementation(async (_options?: unknown) => ({
+      loadModel: mock(async () => ({
+        dispose: async () => {
+          // no-op
+        },
+      })),
+    }));
+    mockPlatformValue = "darwin";
+    delete process.env.GNO_LLAMA_BUILD;
+    delete process.env.GNO_LLAMA_GPU;
+    delete process.env.GNO_LLAMA_INIT_TIMEOUT_MS;
     const lifecycle = await import("../../src/llm/nodeLlamaCpp/lifecycle");
     await lifecycle.resetModelManager();
   });
 
-  test("uses autoAttempt build mode when initializing llama", async () => {
+  test("uses prebuilt-only build mode when initializing llama by default", async () => {
     const { ModelManager } =
       await import("../../src/llm/nodeLlamaCpp/lifecycle");
 
@@ -42,6 +59,29 @@ describe("ModelManager", () => {
     expect(second).toBe(first);
     expect(mockGetLlama).toHaveBeenCalledTimes(1);
     expect(mockGetLlama).toHaveBeenCalledWith({
+      build: "never",
+      gpu: "auto",
+      logLevel: "error",
+    });
+  });
+
+  test("allows opt-in source builds for llama backends", async () => {
+    process.env.GNO_LLAMA_BUILD = "autoAttempt";
+    const { ModelManager } =
+      await import("../../src/llm/nodeLlamaCpp/lifecycle");
+
+    const manager = new ModelManager({
+      activePreset: "slim",
+      presets: [],
+      loadTimeout: 60_000,
+      inferenceTimeout: 30_000,
+      expandContextSize: 2_048,
+      warmModelTtl: 300_000,
+    });
+
+    await manager.getLlama();
+
+    expect(mockGetLlama).toHaveBeenCalledWith({
       build: "autoAttempt",
       gpu: "auto",
       logLevel: "error",
@@ -57,5 +97,86 @@ describe("ModelManager", () => {
     expect(resolveLlamaGpuMode({ NODE_LLAMA_CPP_GPU: "cuda" })).toBe("cuda");
     expect(resolveLlamaGpuMode({ GNO_LLAMA_GPU: "off" })).toBe(false);
     expect(resolveLlamaGpuMode({ GNO_LLAMA_GPU: "bogus" })).toBe("auto");
+  });
+
+  test("resolves build env values", async () => {
+    const { resolveLlamaBuildMode } =
+      await import("../../src/llm/nodeLlamaCpp/lifecycle");
+
+    expect(resolveLlamaBuildMode({})).toBe("never");
+    expect(resolveLlamaBuildMode({ GNO_LLAMA_BUILD: "prebuilt" })).toBe(
+      "never"
+    );
+    expect(resolveLlamaBuildMode({ GNO_LLAMA_BUILD: "autoAttempt" })).toBe(
+      "autoAttempt"
+    );
+    expect(resolveLlamaBuildMode({ GNO_LLAMA_BUILD: "source" })).toBe(
+      "autoAttempt"
+    );
+  });
+
+  test("retries CPU when Windows auto backend initialization fails", async () => {
+    mockPlatformValue = "win32";
+    mockGetLlama
+      .mockImplementationOnce(async () => {
+        throw new Error("Binding binary load test timed out");
+      })
+      .mockImplementationOnce(async (_options?: unknown) => ({
+        loadModel: mock(async () => ({
+          dispose: async () => {
+            // no-op
+          },
+        })),
+      }));
+    const { ModelManager } =
+      await import("../../src/llm/nodeLlamaCpp/lifecycle");
+
+    const manager = new ModelManager({
+      activePreset: "slim",
+      presets: [],
+      loadTimeout: 60_000,
+      inferenceTimeout: 30_000,
+      expandContextSize: 2_048,
+      warmModelTtl: 300_000,
+    });
+
+    await manager.getLlama();
+
+    expect(mockGetLlama.mock.calls).toHaveLength(2);
+    expect(mockGetLlama.mock.calls[0]?.[0]).toEqual({
+      build: "never",
+      gpu: "auto",
+      logLevel: "error",
+    });
+    expect(mockGetLlama.mock.calls[1]?.[0]).toEqual({
+      build: "never",
+      gpu: false,
+      logLevel: "error",
+    });
+  });
+
+  test("times out backend initialization", async () => {
+    process.env.GNO_LLAMA_GPU = "false";
+    process.env.GNO_LLAMA_INIT_TIMEOUT_MS = "1";
+    mockGetLlama.mockImplementation(() => new Promise<never>(() => undefined));
+    const { ModelManager } =
+      await import("../../src/llm/nodeLlamaCpp/lifecycle");
+
+    const manager = new ModelManager({
+      activePreset: "slim",
+      presets: [],
+      loadTimeout: 60_000,
+      inferenceTimeout: 30_000,
+      expandContextSize: 2_048,
+      warmModelTtl: 300_000,
+    });
+
+    try {
+      await manager.getLlama();
+      throw new Error("expected getLlama to fail");
+    } catch (error) {
+      expect(error).toBeInstanceOf(Error);
+      expect((error as Error).message).toBe("Backend init timeout after 1ms");
+    }
   });
 });
