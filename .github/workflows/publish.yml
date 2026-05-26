@@ -214,26 +214,15 @@ jobs:
       - name: Build CSS
         run: bun run build:css
 
-      - name: Pack
-        run: npm pack
-
-      - name: Test packed tarball
-        run: |
-          # Install from tarball globally (use npm - bun has issues with local tarballs)
-          npm install -g ./gmickel-gno-*.tgz
-
-          # Verify CLI works
-          gno --version
-          gno --help
-
-          # Run doctor (may fail if no index, but should at least run)
-          gno doctor --json || true
+      - name: Test packed package
+        run: GNO_PACKAGE_SMOKE_KEEP_TEMP=1 bun run test:package
 
       - name: Upload artifact
         uses: actions/upload-artifact@v7
         with:
           name: npm-package
-          path: gmickel-gno-*.tgz
+          path: /tmp/gno-package-smoke-*/pack/gmickel-gno-*.tgz
+          if-no-files-found: ignore
 
   publish:
     needs: pack-test

@@ -175,6 +175,18 @@ Before claiming a surface as Supported/Beta:
 - `bun run typecheck`
 - `bun test`
 - `bun run docs:verify`
+- `bun run test:package`
+
+CLI package proof:
+
+- packs the npm tarball from the same `package.json` file allowlist used for
+  publish
+- verifies required runtime files ship, including `src/embed/retry.ts`
+- installs from the tarball into isolated `HOME`, `GNO_*`, npm cache, and npm
+  prefix paths
+- runs packaged `gno --version`, `gno --help`, and `gno doctor --json`
+- asserts the packaged doctor JSON includes the `embedding-fingerprint` check
+  and its `embeddingFingerprint` payload
 
 Desktop-specific proof:
 

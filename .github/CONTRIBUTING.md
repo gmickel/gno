@@ -46,6 +46,8 @@ Desktop beta rollout scaffolding:
 ```bash
 bun run lint:check      # Must pass
 bun test                # Must pass
+bun run docs:verify     # Must pass
+bun run test:package    # Must pass
 bun run eval            # Must pass 70% threshold
 ```
 

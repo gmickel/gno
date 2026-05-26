@@ -60,6 +60,7 @@
     "test:web": "bun test test/serve/public --timeout 30000",
     "test:e2e": "bun scripts/web-ui-smoke.ts",
     "test:e2e:install": "bunx playwright install chromium",
+    "test:package": "bun scripts/package-smoke.ts",
     "test:watch": "bun test --watch",
     "test:coverage": "bun test --coverage",
     "test:coverage:html": "bun test --coverage --html",
@@ -130,7 +131,7 @@
     "version:patch": "npm version patch --no-git-tag-version",
     "version:minor": "npm version minor --no-git-tag-version",
     "version:major": "npm version major --no-git-tag-version",
-    "prerelease": "bun run lint:check && bun test",
+    "prerelease": "bun run lint:check && bun test && bun run docs:verify && bun run test:package",
     "release:dry-run": "gh workflow run publish.yml -f publish=false",
     "release:trigger": "gh workflow run publish.yml -f publish=true",
     "prepare": "lefthook install"
