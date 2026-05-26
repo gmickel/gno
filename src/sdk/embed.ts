@@ -28,7 +28,6 @@ import {
 import { resolveModelUri } from "../llm/registry";
 import { err, ok } from "../store/types";
 import { createVectorIndexPort, createVectorStatsPort } from "../store/vector";
-import { getStoredEmbeddingFingerprint } from "../store/vector/freshness";
 import { sdkError } from "./errors";
 
 interface EmbedRuntimeOptions {
@@ -262,28 +261,25 @@ export async function runEmbed(
   const db = runtime.store.getRawDb();
   const stats: VectorStatsPort = createVectorStatsPort(db);
 
-  const backlogResult = force
-    ? await getActiveChunkCount(db)
-    : await stats.countBacklog(
-        modelUri,
-        getStoredEmbeddingFingerprint(db, modelUri),
-        { collection: options.collection }
-      );
-  if (!backlogResult.ok) {
-    throw sdkError("STORE", backlogResult.error.message, {
-      cause: backlogResult.error.cause,
-    });
-  }
+  let totalToEmbed = 0;
+  if (force) {
+    const forceCount = await getActiveChunkCount(db);
+    if (!forceCount.ok) {
+      throw sdkError("STORE", forceCount.error.message, {
+        cause: forceCount.error.cause,
+      });
+    }
 
-  const totalToEmbed = backlogResult.value;
-  if (totalToEmbed === 0 || dryRun) {
-    return {
-      embedded: totalToEmbed,
-      errors: 0,
-      duration: 0,
-      model: modelUri,
-      searchAvailable: await checkVecAvailable(db),
-    };
+    totalToEmbed = forceCount.value;
+    if (totalToEmbed === 0 || dryRun) {
+      return {
+        embedded: totalToEmbed,
+        errors: 0,
+        duration: 0,
+        model: modelUri,
+        searchAvailable: await checkVecAvailable(db),
+      };
+    }
   }
 
   const embedResult = await runtime.llm.createEmbeddingPort(modelUri, {
@@ -315,6 +311,36 @@ export async function runEmbed(
     }
 
     const vectorIndex = vectorResult.value;
+    if (!force) {
+      const embedFingerprint = getEmbeddingFingerprint({
+        modelUri,
+        dimensions: vectorIndex.dimensions,
+      });
+      const backlogResult = await stats.countBacklog(
+        modelUri,
+        embedFingerprint,
+        {
+          collection: options.collection,
+        }
+      );
+      if (!backlogResult.ok) {
+        throw sdkError("STORE", backlogResult.error.message, {
+          cause: backlogResult.error.cause,
+        });
+      }
+
+      totalToEmbed = backlogResult.value;
+      if (totalToEmbed === 0 || dryRun) {
+        return {
+          embedded: totalToEmbed,
+          errors: 0,
+          duration: 0,
+          model: modelUri,
+          searchAvailable: vectorIndex.searchAvailable,
+        };
+      }
+    }
+
     const startedAt = Date.now();
     let result: { embedded: number; errors: number };
     if (force) {

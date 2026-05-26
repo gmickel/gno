@@ -37,7 +37,6 @@ import {
   type VectorIndexPort,
   type VectorStatsPort,
 } from "../../store/vector";
-import { getStoredEmbeddingFingerprint } from "../../store/vector/freshness";
 import { getGlobals } from "../program";
 import {
   createProgressRenderer,
@@ -447,45 +446,26 @@ export async function embed(options: EmbedOptions = {}): Promise<EmbedResult> {
     // Create stats port for backlog detection
     const stats: VectorStatsPort = createVectorStatsPort(db);
 
-    // Get backlog count first (before loading model)
-    const backlogResult = force
-      ? await getActiveChunkCount(db, options.collection)
-      : await stats.countBacklog(
-          modelUri,
-          getStoredEmbeddingFingerprint(db, modelUri),
-          { collection: options.collection }
-        );
+    let totalToEmbed = 0;
+    if (force) {
+      const forceCount = await getActiveChunkCount(db, options.collection);
+      if (!forceCount.ok) {
+        return { success: false, error: forceCount.error.message };
+      }
+      totalToEmbed = forceCount.value;
 
-    if (!backlogResult.ok) {
-      return { success: false, error: backlogResult.error.message };
-    }
-
-    const totalToEmbed = backlogResult.value;
-
-    if (totalToEmbed === 0) {
-      const vecAvailable = await checkVecAvailable(db);
-      return {
-        success: true,
-        embedded: 0,
-        errors: 0,
-        duration: 0,
-        model: modelUri,
-        searchAvailable: vecAvailable,
-        errorSamples: [],
-      };
-    }
-
-    if (dryRun) {
-      const vecAvailable = await checkVecAvailable(db);
-      return {
-        success: true,
-        embedded: totalToEmbed,
-        errors: 0,
-        duration: 0,
-        model: modelUri,
-        searchAvailable: vecAvailable,
-        errorSamples: [],
-      };
+      if (totalToEmbed === 0 || dryRun) {
+        const vecAvailable = await checkVecAvailable(db);
+        return {
+          success: true,
+          embedded: totalToEmbed,
+          errors: 0,
+          duration: 0,
+          model: modelUri,
+          searchAvailable: vecAvailable,
+          errorSamples: [],
+        };
+      }
     }
 
     // Create LLM adapter and embedding port with auto-download
@@ -554,6 +534,38 @@ export async function embed(options: EmbedOptions = {}): Promise<EmbedResult> {
       return { success: false, error: vectorResult.error.message };
     }
     vectorIndex = vectorResult.value;
+
+    if (!force) {
+      const embedFingerprint = getEmbeddingFingerprint({
+        modelUri,
+        dimensions,
+      });
+      const backlogResult = await stats.countBacklog(
+        modelUri,
+        embedFingerprint,
+        {
+          collection: options.collection,
+        }
+      );
+
+      if (!backlogResult.ok) {
+        return { success: false, error: backlogResult.error.message };
+      }
+
+      totalToEmbed = backlogResult.value;
+
+      if (totalToEmbed === 0 || dryRun) {
+        return {
+          success: true,
+          embedded: totalToEmbed,
+          errors: 0,
+          duration: 0,
+          model: modelUri,
+          searchAvailable: vectorIndex.searchAvailable,
+          errorSamples: [],
+        };
+      }
+    }
 
     // Process batches
     const result = await processBatches({
