@@ -57,9 +57,8 @@ Do not blindly retry validation/configuration errors, missing models, or unsuppo
 - [ ] Tests cover one transient chunk failure that succeeds on retry and one permanent failure that stays counted as an error.
 
 ## Done summary
-
-_Not started._
-
+Implemented bounded same-run retry for failed embedding chunks in the shared backlog processor and CLI embed loop while preserving DB-backed doctor pending/stale semantics. The SDK force-only embed loop is aligned with the same shared embed/store helper and retry cap; package smoke and hosted website tasks were not touched.
 ## Evidence
-
-_Not started._
+- Commits: 78670e732dd5d444d1602f74c4bb62ef16fe04a4
+- Tests: bun test test/embed/backlog.test.ts test/embed/batch.test.ts test/cli/embed.test.ts, bun test test/serve/embed-scheduler.test.ts, bun test, bunx tsc --noEmit, bunx oxlint --type-aware --type-check, bunx oxfmt --check src/cli/commands/embed.ts src/embed/backlog.ts src/embed/retry.ts src/sdk/embed.ts test/embed/backlog.test.ts, bun run docs:verify, bun run lint:check (failed only on pre-existing formatting in .flow/tasks/fn-81-embedding-and-package-hardening.2.md; task files passed targeted formatter check)
+- PRs:
