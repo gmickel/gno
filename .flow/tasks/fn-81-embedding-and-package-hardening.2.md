@@ -54,8 +54,11 @@ Doctor should be the richer diagnostic surface. `gno status` should consume fing
 - [ ] `spec/cli.md`, `spec/output-schemas/doctor.schema.json`, user docs, and changelog/docs release notes match the implemented behavior.
 
 ## Done summary
+
 Exposed embedding fingerprint freshness in gno doctor terminal/JSON output, including current fingerprint, pending/stale chunks, legacy vector counts, and stored fingerprint groups. Updated the doctor JSON schema/tests plus in-repo CLI, troubleshooting, installation, README, and changelog docs.
+
 ## Evidence
+
 - Commits: 658a072e55376e7a992e013a8e0e1cff3ac62699
 - Tests: bun run lint:check, bun run typecheck, bun test test/spec/schemas/doctor.test.ts test/spec/schemas/status.test.ts, bun test, bun run docs:verify, bun src/index.ts doctor --json | jq -e '.checks[] | select(.name == "embedding-fingerprint") | .embeddingFingerprint.pendingChunks >= 0'
 - PRs:
