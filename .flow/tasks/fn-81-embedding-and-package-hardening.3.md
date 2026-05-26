@@ -3,6 +3,7 @@ satisfies: [R4]
 ---
 
 <!-- Updated by plan-sync: fn-81-embedding-and-package-hardening.1 kept duplicate embed loops in cli/sdk helpers, not only the old top-level cursor path -->
+<!-- Updated by plan-sync: fn-81-embedding-and-package-hardening.2 now reads `store.getStatus({ embedModel }).value.embeddingBacklog` into the `embedding-fingerprint` doctor check, so retry work must preserve that pending/stale contract -->
 
 ## Description
 
@@ -16,6 +17,7 @@ Make transient embedding failures retry within the same command run in both the 
 - Reuse `embedTextsWithRecovery()` from `src/embed/batch.ts:56`; do not introduce a second embedding recovery implementation.
 - Add retry state outside the forward cursor loop in `src/embed/backlog.ts:54`.
 - Align the separate CLI loop in `src/cli/commands/embed.ts:166` (`processBatches`) so CLI and shared paths do not diverge.
+- Preserve the `SqliteAdapter.getStatus({ embedModel })` backlog semantics that task 2 now exposes as `embedding-fingerprint.embeddingFingerprint.pendingChunks`; if retry timing changes those counts, update doctor contract/tests in the same patch.
 - Audit the force-only SDK batch loop in `src/sdk/embed.ts:116`; it now duplicates batch iteration and fingerprint writes, so retry behavior there must either stay intentionally out of scope or be kept explicitly aligned.
 - Retry only after later progress or final backlog drain; cap per-chunk attempts and preserve sample failure messages.
 - Treat retry state as in-memory only. Interrupted runs should still resume from normal backlog state on the next invocation.
@@ -29,6 +31,8 @@ Make transient embedding failures retry within the same command run in both the 
 - `src/cli/commands/embed.ts:166` — CLI `processBatches()` loop.
 - `src/cli/commands/embed.ts:221` — CLI batch failure/retry branch.
 - `src/cli/commands/embed.ts:330` — CLI fallback/sample reporting.
+- `src/cli/commands/doctor.ts:208` — doctor fingerprint check now reads active model + backlog counts.
+- `src/cli/commands/doctor.ts:270` — `pendingChunks` currently comes from `statusResult.value.embeddingBacklog`.
 - `test/embed/backlog.test.ts:215` — partial success storage coverage.
 - `test/embed/batch.test.ts:86` — fallback tests.
 
@@ -41,12 +45,13 @@ Make transient embedding failures retry within the same command run in both the 
 
 ## Key context
 
-Do not blindly retry validation/configuration errors, missing models, or unsupported dimensions. Transient classification may start conservative; permanent failures must remain visible in final summaries.
+Do not blindly retry validation/configuration errors, missing models, or unsupported dimensions. Transient classification may start conservative; permanent failures must remain visible in final summaries. The retry queue also feeds doctor-visible pending/stale counts now, so delayed retries must not silently undercount backlog health.
 
 ## Acceptance
 
 - [ ] Shared backlog retry queue retries failed chunks after later progress or final drain.
 - [ ] CLI embed loop uses matching retry semantics and summary counts.
+- [ ] `gno doctor` pending/stale fingerprint counts remain consistent with retry behavior, or the doctor contract/tests are updated in the same patch.
 - [ ] Retry attempts are capped per chunk and cannot loop forever.
 - [ ] Permanent failures include sample metadata and clear rerun/verbose guidance.
 - [ ] Tests cover one transient chunk failure that succeeds on retry and one permanent failure that stays counted as an error.
