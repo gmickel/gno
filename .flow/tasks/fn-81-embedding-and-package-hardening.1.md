@@ -49,9 +49,8 @@ Current primary key is `(mirror_hash, seq, model)`. If implementation wants mult
 - [ ] Tests cover fresh, stale timestamp, stale fingerprint, mixed fingerprint, and legacy empty-fingerprint cases.
 
 ## Done summary
-
-_Not started._
-
+Added vector embedding fingerprints to the DB freshness contract, vector writes, backlog/status counts, and DB spec. Tests cover fresh vectors, stale timestamps, stale/mixed fingerprints, and legacy empty-fingerprint rows.
 ## Evidence
-
-_Not started._
+- Commits: 0fb89eec272d0826f3d3abc39cedd32ee5e0df66
+- Tests: bun run lint:check, bun test test/store/vector/stats.test.ts test/store/vector/sqlite-vec.test.ts test/store/adapter.test.ts test/store/migrations.test.ts test/embed/backlog.test.ts test/spec/schemas/status.test.ts, bun test, bun run docs:verify
+- PRs:
