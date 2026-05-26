@@ -11,6 +11,9 @@ import { join } from "node:path";
 import { createVectorStatsPort } from "../../../src/store/vector/stats";
 import { safeRm } from "../../helpers/cleanup";
 
+const TEST_FINGERPRINT = "test-fingerprint";
+const OTHER_FINGERPRINT = "other-fingerprint";
+
 describe("VectorStatsPort", () => {
   let db: Database;
   let testDir: string;
@@ -47,6 +50,7 @@ describe("VectorStatsPort", () => {
         mirror_hash TEXT NOT NULL,
         seq INTEGER NOT NULL,
         model TEXT NOT NULL,
+        embed_fingerprint TEXT NOT NULL DEFAULT '',
         embedding BLOB NOT NULL,
         embedded_at TEXT DEFAULT CURRENT_TIMESTAMP,
         PRIMARY KEY (mirror_hash, seq, model)
@@ -102,12 +106,14 @@ describe("VectorStatsPort", () => {
         INSERT INTO documents (id, mirror_hash, active) VALUES (1, 'h1', 1);
         INSERT INTO content_chunks (mirror_hash, seq, text, created_at)
         VALUES ('h1', 0, 'chunk text', datetime('now', '-1 minute'));
-        INSERT INTO content_vectors (mirror_hash, seq, model, embedding, embedded_at)
-        VALUES ('h1', 0, 'test-model', x'00000000', datetime('now'));
+        INSERT INTO content_vectors (
+          mirror_hash, seq, model, embed_fingerprint, embedding, embedded_at
+        )
+        VALUES ('h1', 0, 'test-model', '${TEST_FINGERPRINT}', x'00000000', datetime('now'));
       `);
 
       const stats = createVectorStatsPort(db);
-      const result = await stats.countBacklog("test-model");
+      const result = await stats.countBacklog("test-model", TEST_FINGERPRINT);
 
       expect(result.ok).toBe(true);
       if (result.ok) {
@@ -123,12 +129,14 @@ describe("VectorStatsPort", () => {
           ('h1', 0, 'chunk 0'),
           ('h1', 1, 'chunk 1'),
           ('h1', 2, 'chunk 2');
-        INSERT INTO content_vectors (mirror_hash, seq, model, embedding, embedded_at)
-        VALUES ('h1', 0, 'test-model', x'00000000', datetime('now'));
+        INSERT INTO content_vectors (
+          mirror_hash, seq, model, embed_fingerprint, embedding, embedded_at
+        )
+        VALUES ('h1', 0, 'test-model', '${TEST_FINGERPRINT}', x'00000000', datetime('now'));
       `);
 
       const stats = createVectorStatsPort(db);
-      const result = await stats.countBacklog("test-model");
+      const result = await stats.countBacklog("test-model", TEST_FINGERPRINT);
 
       expect(result.ok).toBe(true);
       if (result.ok) {
@@ -148,7 +156,7 @@ describe("VectorStatsPort", () => {
       `);
 
       const stats = createVectorStatsPort(db);
-      const result = await stats.countBacklog("test-model");
+      const result = await stats.countBacklog("test-model", TEST_FINGERPRINT);
 
       expect(result.ok).toBe(true);
       if (result.ok) {
@@ -162,16 +170,78 @@ describe("VectorStatsPort", () => {
         INSERT INTO documents (id, mirror_hash, active) VALUES (1, 'h1', 1);
         INSERT INTO content_chunks (mirror_hash, seq, text, created_at)
         VALUES ('h1', 0, 'updated chunk', datetime('now'));
-        INSERT INTO content_vectors (mirror_hash, seq, model, embedding, embedded_at)
-        VALUES ('h1', 0, 'test-model', x'00000000', datetime('now', '-1 minute'));
+        INSERT INTO content_vectors (
+          mirror_hash, seq, model, embed_fingerprint, embedding, embedded_at
+        )
+        VALUES ('h1', 0, 'test-model', '${TEST_FINGERPRINT}', x'00000000', datetime('now', '-1 minute'));
       `);
 
       const stats = createVectorStatsPort(db);
-      const result = await stats.countBacklog("test-model");
+      const result = await stats.countBacklog("test-model", TEST_FINGERPRINT);
 
       expect(result.ok).toBe(true);
       if (result.ok) {
         expect(result.value).toBe(1); // stale vector
+      }
+    });
+
+    test("counts stale fingerprint vectors as backlog", async () => {
+      db.exec(`
+        INSERT INTO documents (id, mirror_hash, active) VALUES (1, 'h1', 1);
+        INSERT INTO content_chunks (mirror_hash, seq, text, created_at)
+        VALUES ('h1', 0, 'chunk text', datetime('now', '-1 minute'));
+        INSERT INTO content_vectors (
+          mirror_hash, seq, model, embed_fingerprint, embedding, embedded_at
+        )
+        VALUES ('h1', 0, 'test-model', '${OTHER_FINGERPRINT}', x'00000000', datetime('now'));
+      `);
+
+      const stats = createVectorStatsPort(db);
+      const result = await stats.countBacklog("test-model", TEST_FINGERPRINT);
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value).toBe(1);
+      }
+    });
+
+    test("counts mixed fingerprint rows by exact current fingerprint", async () => {
+      db.exec(`
+        INSERT INTO documents (id, mirror_hash, active) VALUES (1, 'h1', 1);
+        INSERT INTO content_chunks (mirror_hash, seq, text, created_at) VALUES
+          ('h1', 0, 'current chunk', datetime('now', '-1 minute')),
+          ('h1', 1, 'stale chunk', datetime('now', '-1 minute'));
+        INSERT INTO content_vectors (
+          mirror_hash, seq, model, embed_fingerprint, embedding, embedded_at
+        ) VALUES
+          ('h1', 0, 'test-model', '${TEST_FINGERPRINT}', x'00000000', datetime('now')),
+          ('h1', 1, 'test-model', '${OTHER_FINGERPRINT}', x'00000000', datetime('now'));
+      `);
+
+      const stats = createVectorStatsPort(db);
+      const result = await stats.countBacklog("test-model", TEST_FINGERPRINT);
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value).toBe(1);
+      }
+    });
+
+    test("treats legacy empty-fingerprint rows as backlog", async () => {
+      db.exec(`
+        INSERT INTO documents (id, mirror_hash, active) VALUES (1, 'h1', 1);
+        INSERT INTO content_chunks (mirror_hash, seq, text, created_at)
+        VALUES ('h1', 0, 'legacy chunk', datetime('now', '-1 minute'));
+        INSERT INTO content_vectors (mirror_hash, seq, model, embedding, embedded_at)
+        VALUES ('h1', 0, 'test-model', x'00000000', datetime('now'));
+      `);
+
+      const stats = createVectorStatsPort(db);
+      const result = await stats.countBacklog("test-model", TEST_FINGERPRINT);
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value).toBe(1);
       }
     });
 
@@ -186,10 +256,10 @@ describe("VectorStatsPort", () => {
       `);
 
       const stats = createVectorStatsPort(db);
-      const notes = await stats.countBacklog("test-model", {
+      const notes = await stats.countBacklog("test-model", TEST_FINGERPRINT, {
         collection: "notes",
       });
-      const other = await stats.countBacklog("test-model", {
+      const other = await stats.countBacklog("test-model", TEST_FINGERPRINT, {
         collection: "other",
       });
 
@@ -210,12 +280,14 @@ describe("VectorStatsPort", () => {
         INSERT INTO documents (id, mirror_hash, active) VALUES (1, 'h1', 1);
         INSERT INTO content_chunks (mirror_hash, seq, text, created_at)
         VALUES ('h1', 0, 'chunk', datetime('now', '-1 minute'));
-        INSERT INTO content_vectors (mirror_hash, seq, model, embedding, embedded_at)
-        VALUES ('h1', 0, 'test-model', x'00000000', datetime('now'));
+        INSERT INTO content_vectors (
+          mirror_hash, seq, model, embed_fingerprint, embedding, embedded_at
+        )
+        VALUES ('h1', 0, 'test-model', '${TEST_FINGERPRINT}', x'00000000', datetime('now'));
       `);
 
       const stats = createVectorStatsPort(db);
-      const result = await stats.getBacklog("test-model");
+      const result = await stats.getBacklog("test-model", TEST_FINGERPRINT);
 
       expect(result.ok).toBe(true);
       if (result.ok) {
@@ -232,7 +304,7 @@ describe("VectorStatsPort", () => {
       `);
 
       const stats = createVectorStatsPort(db);
-      const result = await stats.getBacklog("test-model");
+      const result = await stats.getBacklog("test-model", TEST_FINGERPRINT);
 
       expect(result.ok).toBe(true);
       if (result.ok) {
@@ -256,7 +328,9 @@ describe("VectorStatsPort", () => {
       const stats = createVectorStatsPort(db);
 
       // Get first 2
-      const result1 = await stats.getBacklog("test-model", { limit: 2 });
+      const result1 = await stats.getBacklog("test-model", TEST_FINGERPRINT, {
+        limit: 2,
+      });
       expect(result1.ok).toBe(true);
       if (!result1.ok) {
         return;
@@ -267,7 +341,7 @@ describe("VectorStatsPort", () => {
 
       // Get next 2 using cursor from last item
       const lastItem = result1.value[1];
-      const result2 = await stats.getBacklog("test-model", {
+      const result2 = await stats.getBacklog("test-model", TEST_FINGERPRINT, {
         limit: 2,
         after: {
           mirrorHash: lastItem?.mirrorHash ?? "",
@@ -288,12 +362,14 @@ describe("VectorStatsPort", () => {
         INSERT INTO documents (id, mirror_hash, active) VALUES (1, 'h1', 1);
         INSERT INTO content_chunks (mirror_hash, seq, text, created_at)
         VALUES ('h1', 0, 'updated chunk', datetime('now'));
-        INSERT INTO content_vectors (mirror_hash, seq, model, embedding, embedded_at)
-        VALUES ('h1', 0, 'test-model', x'00000000', datetime('now', '-1 minute'));
+        INSERT INTO content_vectors (
+          mirror_hash, seq, model, embed_fingerprint, embedding, embedded_at
+        )
+        VALUES ('h1', 0, 'test-model', '${TEST_FINGERPRINT}', x'00000000', datetime('now', '-1 minute'));
       `);
 
       const stats = createVectorStatsPort(db);
-      const result = await stats.getBacklog("test-model");
+      const result = await stats.getBacklog("test-model", TEST_FINGERPRINT);
 
       expect(result.ok).toBe(true);
       if (result.ok) {
@@ -313,7 +389,7 @@ describe("VectorStatsPort", () => {
       `);
 
       const stats = createVectorStatsPort(db);
-      const notes = await stats.getBacklog("test-model", {
+      const notes = await stats.getBacklog("test-model", TEST_FINGERPRINT, {
         collection: "notes",
       });
 

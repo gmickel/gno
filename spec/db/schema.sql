@@ -167,6 +167,7 @@ CREATE TABLE IF NOT EXISTS content_vectors (
   mirror_hash TEXT NOT NULL,
   seq INTEGER NOT NULL,
   model TEXT NOT NULL,              -- Model identifier (e.g., 'bge-m3')
+  embed_fingerprint TEXT NOT NULL DEFAULT '',
   embedding BLOB NOT NULL,          -- Float32Array serialized
   embedded_at TEXT NOT NULL DEFAULT (datetime('now')),
   PRIMARY KEY (mirror_hash, seq, model),
@@ -174,6 +175,8 @@ CREATE TABLE IF NOT EXISTS content_vectors (
 );
 
 CREATE INDEX IF NOT EXISTS idx_vectors_model ON content_vectors(model);
+CREATE INDEX IF NOT EXISTS idx_vectors_freshness
+  ON content_vectors(model, embed_fingerprint, mirror_hash, seq, embedded_at);
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- LLM Cache (EPIC 6+)

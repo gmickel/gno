@@ -17,6 +17,7 @@ import type {
 import { formatDocForEmbedding } from "../pipeline/contextual";
 import { err, ok } from "../store/types";
 import { embedTextsWithRecovery } from "./batch";
+import { getEmbeddingFingerprint } from "./fingerprint";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -56,6 +57,10 @@ export async function embedBacklog(
 ): Promise<StoreResult<EmbedBacklogResult>> {
   const { statsPort, embedPort, vectorIndex, modelUri, collection } = deps;
   const batchSize = deps.batchSize ?? 32;
+  const embedFingerprint = getEmbeddingFingerprint({
+    modelUri,
+    dimensions: vectorIndex.dimensions,
+  });
 
   let embedded = 0;
   let errors = 0;
@@ -64,11 +69,15 @@ export async function embedBacklog(
   try {
     while (true) {
       // Get next batch using seek pagination
-      const batchResult = await statsPort.getBacklog(modelUri, {
-        limit: batchSize,
-        after: cursor,
-        collection,
-      });
+      const batchResult = await statsPort.getBacklog(
+        modelUri,
+        embedFingerprint,
+        {
+          limit: batchSize,
+          after: cursor,
+          collection,
+        }
+      );
 
       if (!batchResult.ok) {
         return err("QUERY_FAILED", batchResult.error.message);
@@ -113,6 +122,7 @@ export async function embedBacklog(
           mirrorHash: item.mirrorHash,
           seq: item.seq,
           model: modelUri,
+          embedFingerprint,
           embedding: new Float32Array(embedding),
         });
       }

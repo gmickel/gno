@@ -65,6 +65,7 @@ export function createVectorStatsPort(db: Database): VectorStatsPort {
 
     countBacklog(
       model: string,
+      embedFingerprint: string,
       options?: { collection?: string }
     ): Promise<StoreResult<number>> {
       try {
@@ -80,10 +81,13 @@ export function createVectorStatsPort(db: Database): VectorStatsPort {
             WHERE v.mirror_hash = c.mirror_hash
               AND v.seq = c.seq
               AND v.model = ?
+              AND v.embed_fingerprint = ?
               AND v.embedded_at >= c.created_at
           )
         `;
-        const result = db.prepare(sql).get(...activeDoc.params, model) as {
+        const result = db
+          .prepare(sql)
+          .get(...activeDoc.params, model, embedFingerprint) as {
           count: number;
         };
         return Promise.resolve(ok(result.count));
@@ -99,6 +103,7 @@ export function createVectorStatsPort(db: Database): VectorStatsPort {
 
     getBacklog(
       model: string,
+      embedFingerprint: string,
       options?: {
         limit?: number;
         after?: { mirrorHash: string; seq: number };
@@ -123,6 +128,7 @@ export function createVectorStatsPort(db: Database): VectorStatsPort {
                 WHERE v.mirror_hash = c.mirror_hash
                   AND v.seq = c.seq
                   AND v.model = ?
+                  AND v.embed_fingerprint = ?
               ) THEN 'new'
               ELSE 'changed'
             END as reason
@@ -133,6 +139,7 @@ export function createVectorStatsPort(db: Database): VectorStatsPort {
             WHERE v.mirror_hash = c.mirror_hash
               AND v.seq = c.seq
               AND v.model = ?
+              AND v.embed_fingerprint = ?
               AND v.embedded_at >= c.created_at
           )
           AND (c.mirror_hash > ? OR (c.mirror_hash = ? AND c.seq > ?))
@@ -148,6 +155,7 @@ export function createVectorStatsPort(db: Database): VectorStatsPort {
                 WHERE v.mirror_hash = c.mirror_hash
                   AND v.seq = c.seq
                   AND v.model = ?
+                  AND v.embed_fingerprint = ?
               ) THEN 'new'
               ELSE 'changed'
             END as reason
@@ -158,6 +166,7 @@ export function createVectorStatsPort(db: Database): VectorStatsPort {
             WHERE v.mirror_hash = c.mirror_hash
               AND v.seq = c.seq
               AND v.model = ?
+              AND v.embed_fingerprint = ?
               AND v.embedded_at >= c.created_at
           )
           ORDER BY c.mirror_hash, c.seq
@@ -167,14 +176,23 @@ export function createVectorStatsPort(db: Database): VectorStatsPort {
         const params = after
           ? [
               model,
+              embedFingerprint,
               ...activeDoc.params,
               model,
+              embedFingerprint,
               after.mirrorHash,
               after.mirrorHash,
               after.seq,
               limit,
             ]
-          : [model, ...activeDoc.params, model, limit];
+          : [
+              model,
+              embedFingerprint,
+              ...activeDoc.params,
+              model,
+              embedFingerprint,
+              limit,
+            ];
 
         const results = db.prepare(sql).all(...params) as BacklogItem[];
         return Promise.resolve(ok(results));

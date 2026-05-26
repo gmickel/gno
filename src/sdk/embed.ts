@@ -20,6 +20,7 @@ import type { GnoEmbedOptions, GnoEmbedResult } from "./types";
 
 import { embedBacklog } from "../embed";
 import { embedTextsWithRecovery } from "../embed/batch";
+import { getEmbeddingFingerprint } from "../embed/fingerprint";
 import { resolveModelUri } from "../llm/registry";
 import { formatDocForEmbedding } from "../pipeline/contextual";
 import { err, ok } from "../store/types";
@@ -28,6 +29,7 @@ import {
   createVectorStatsPort,
   type VectorRow,
 } from "../store/vector";
+import { getStoredEmbeddingFingerprint } from "../store/vector/freshness";
 import { sdkError } from "./errors";
 
 interface EmbedRuntimeOptions {
@@ -121,6 +123,10 @@ async function forceEmbedAll(
   let embedded = 0;
   let errors = 0;
   let cursor: { mirrorHash: string; seq: number } | undefined;
+  const embedFingerprint = getEmbeddingFingerprint({
+    modelUri,
+    dimensions: vectorIndex.dimensions,
+  });
 
   while (true) {
     const batchResult = await getActiveChunks(db, batchSize, cursor);
@@ -167,6 +173,7 @@ async function forceEmbedAll(
         mirrorHash: item.mirrorHash,
         seq: item.seq,
         model: modelUri,
+        embedFingerprint,
         embedding: new Float32Array(embedding),
       });
     }
@@ -219,7 +226,11 @@ export async function runEmbed(
 
   const backlogResult = force
     ? await getActiveChunkCount(db)
-    : await stats.countBacklog(modelUri, { collection: options.collection });
+    : await stats.countBacklog(
+        modelUri,
+        getStoredEmbeddingFingerprint(db, modelUri),
+        { collection: options.collection }
+      );
   if (!backlogResult.ok) {
     throw sdkError("STORE", backlogResult.error.message, {
       cause: backlogResult.error.cause,

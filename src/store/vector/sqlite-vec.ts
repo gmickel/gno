@@ -116,8 +116,10 @@ export async function createVectorIndexPort(
 
   // Prepared statements for content_vectors table
   const upsertVectorStmt = db.prepare(`
-    INSERT OR REPLACE INTO content_vectors (mirror_hash, seq, model, embedding, embedded_at)
-    VALUES (?, ?, ?, ?, datetime('now'))
+    INSERT OR REPLACE INTO content_vectors (
+      mirror_hash, seq, model, embed_fingerprint, embedding, embedded_at
+    )
+    VALUES (?, ?, ?, ?, ?, datetime('now'))
   `);
 
   const deleteVectorStmt = db.prepare(`
@@ -172,6 +174,7 @@ export async function createVectorIndexPort(
               row.mirrorHash,
               row.seq,
               row.model,
+              row.embedFingerprint,
               encodeEmbedding(row.embedding)
             );
           }

@@ -56,6 +56,7 @@ function createMockEmbedPort() {
     dimensions: () => 3,
     init: () => Promise.resolve({ ok: true }),
     dispose: () => Promise.resolve(),
+    modelUri: "test-model",
   } as unknown as EmbeddingPort;
 }
 
@@ -275,5 +276,7 @@ describe("embedBacklog", () => {
     expect(upserts).toHaveLength(1);
     expect(upserts[0]).toHaveLength(1);
     expect(upserts[0]?.[0]?.seq).toBe(0);
+    expect(typeof upserts[0]?.[0]?.embedFingerprint).toBe("string");
+    expect(upserts[0]?.[0]?.embedFingerprint.length).toBeGreaterThan(0);
   });
 });

@@ -24,6 +24,7 @@ import { join } from "node:path";
 import type { Collection, Context } from "../../src/config/types";
 import type { ChunkInput, DocumentInput } from "../../src/store/types";
 
+import { getEmbeddingFingerprint } from "../../src/embed/fingerprint";
 import { SqliteAdapter } from "../../src/store";
 import { safeRm } from "../helpers/cleanup";
 
@@ -67,7 +68,7 @@ describe("SqliteAdapter", () => {
       expect(result.value.applied).toContain(2);
       expect(result.value.applied).toContain(3);
       expect(result.value.applied).toContain(4);
-      expect(result.value.currentVersion).toBe(7);
+      expect(result.value.currentVersion).toBe(8);
       expect(result.value.ftsTokenizer).toBe("unicode61");
     });
 
@@ -85,7 +86,7 @@ describe("SqliteAdapter", () => {
       }
 
       expect(result.value.applied).toHaveLength(0);
-      expect(result.value.currentVersion).toBe(7);
+      expect(result.value.currentVersion).toBe(8);
     });
 
     test("rejects tokenizer mismatch", async () => {
@@ -1074,7 +1075,7 @@ describe("SqliteAdapter", () => {
         return;
       }
 
-      expect(result.value.version).toBe("7");
+      expect(result.value.version).toBe("8");
       expect(result.value.ftsTokenizer).toBe("unicode61");
       expect(result.value.dbPath).toBe(dbPath);
       expect(result.value.totalDocuments).toBe(1);
@@ -1114,15 +1115,22 @@ describe("SqliteAdapter", () => {
       ]);
 
       const vectorDb = adapter.getRawDb();
+      const oldModelFingerprint = getEmbeddingFingerprint({
+        modelUri: "old-embed-model",
+        dimensions: 1,
+      });
       vectorDb
         .prepare(
-          `INSERT INTO content_vectors (mirror_hash, seq, model, embedding, embedded_at)
-           VALUES (?, ?, ?, ?, datetime('now'))`
+          `INSERT INTO content_vectors (
+             mirror_hash, seq, model, embed_fingerprint, embedding, embedded_at
+           )
+           VALUES (?, ?, ?, ?, ?, datetime('now'))`
         )
         .run(
           "status_mirror_model",
           0,
           "old-embed-model",
+          oldModelFingerprint,
           new Uint8Array([0, 0, 0, 0])
         );
 
@@ -1145,6 +1153,17 @@ describe("SqliteAdapter", () => {
       }
       expect(freshStatus.value.embeddingBacklog).toBe(0);
       expect(freshStatus.value.collections[0]?.embeddedChunks).toBe(1);
+
+      const fingerprintStatus = await adapter.getStatus({
+        embedModel: "old-embed-model",
+        embedFingerprint: "different-fingerprint",
+      });
+      expect(fingerprintStatus.ok).toBe(true);
+      if (!fingerprintStatus.ok) {
+        return;
+      }
+      expect(fingerprintStatus.value.embeddingBacklog).toBe(1);
+      expect(fingerprintStatus.value.collections[0]?.embeddedChunks).toBe(0);
     });
   });
 

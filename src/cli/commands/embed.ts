@@ -18,6 +18,7 @@ import {
   loadConfig,
 } from "../../config";
 import { embedTextsWithRecovery } from "../../embed/batch";
+import { getEmbeddingFingerprint } from "../../embed/fingerprint";
 import { LlmAdapter } from "../../llm/nodeLlamaCpp/adapter";
 import { resolveDownloadPolicy } from "../../llm/policy";
 import { resolveModelUri } from "../../llm/registry";
@@ -32,6 +33,7 @@ import {
   type VectorRow,
   type VectorStatsPort,
 } from "../../store/vector";
+import { getStoredEmbeddingFingerprint } from "../../store/vector/freshness";
 import { getGlobals } from "../program";
 import {
   createProgressRenderer,
@@ -168,6 +170,10 @@ async function processBatches(ctx: BatchContext): Promise<BatchResult> {
   const errorSamples: string[] = [];
   let suggestion: string | undefined;
   let cursor: Cursor | undefined;
+  const embedFingerprint = getEmbeddingFingerprint({
+    modelUri: ctx.modelUri,
+    dimensions: ctx.vectorIndex.dimensions,
+  });
 
   const pushErrorSamples = (samples: string[]): void => {
     for (const sample of samples) {
@@ -184,7 +190,7 @@ async function processBatches(ctx: BatchContext): Promise<BatchResult> {
     // Get next batch using seek pagination (cursor-based)
     const batchResult = ctx.force
       ? await getActiveChunks(ctx.db, ctx.batchSize, cursor, ctx.collection)
-      : await ctx.stats.getBacklog(ctx.modelUri, {
+      : await ctx.stats.getBacklog(ctx.modelUri, embedFingerprint, {
           limit: ctx.batchSize,
           after: cursor,
           collection: ctx.collection,
@@ -249,6 +255,7 @@ async function processBatches(ctx: BatchContext): Promise<BatchResult> {
                 mirrorHash: item.mirrorHash,
                 seq: item.seq,
                 model: ctx.modelUri,
+                embedFingerprint,
                 embedding: new Float32Array(embedding),
               });
             }
@@ -348,6 +355,7 @@ async function processBatches(ctx: BatchContext): Promise<BatchResult> {
         mirrorHash: item.mirrorHash,
         seq: item.seq,
         model: ctx.modelUri,
+        embedFingerprint,
         embedding: new Float32Array(embedding),
       });
     }
@@ -491,7 +499,11 @@ export async function embed(options: EmbedOptions = {}): Promise<EmbedResult> {
     // Get backlog count first (before loading model)
     const backlogResult = force
       ? await getActiveChunkCount(db, options.collection)
-      : await stats.countBacklog(modelUri, { collection: options.collection });
+      : await stats.countBacklog(
+          modelUri,
+          getStoredEmbeddingFingerprint(db, modelUri),
+          { collection: options.collection }
+        );
 
     if (!backlogResult.ok) {
       return { success: false, error: backlogResult.error.message };
