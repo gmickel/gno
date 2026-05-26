@@ -10,14 +10,16 @@ import type { StoreResult } from "../store/types";
 import type {
   BacklogItem,
   VectorIndexPort,
-  VectorRow,
   VectorStatsPort,
 } from "../store/vector";
 
-import { formatDocForEmbedding } from "../pipeline/contextual";
 import { err, ok } from "../store/types";
-import { embedTextsWithRecovery } from "./batch";
 import { getEmbeddingFingerprint } from "./fingerprint";
+import {
+  chunkRetryKey,
+  embedAndStoreBatch,
+  MAX_EMBED_CHUNK_ATTEMPTS,
+} from "./retry";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -65,6 +67,65 @@ export async function embedBacklog(
   let embedded = 0;
   let errors = 0;
   let cursor: Cursor | undefined;
+  const retryQueue = new Map<string, { item: BacklogItem; attempts: number }>();
+
+  const enqueueRetryItems = (items: BacklogItem[], attempts: number): void => {
+    for (const item of items) {
+      const key = chunkRetryKey(item);
+      const existing = retryQueue.get(key);
+      retryQueue.set(key, {
+        item,
+        attempts: Math.max(existing?.attempts ?? 0, attempts),
+      });
+    }
+  };
+
+  const drainRetryQueue = async (): Promise<number> => {
+    if (retryQueue.size === 0) {
+      return 0;
+    }
+
+    let retryEmbedded = 0;
+    const entries = [...retryQueue.values()].filter(
+      (entry) => entry.attempts < MAX_EMBED_CHUNK_ATTEMPTS
+    );
+
+    for (let idx = 0; idx < entries.length; idx += batchSize) {
+      const slice = entries.slice(idx, idx + batchSize);
+      for (const entry of slice) {
+        retryQueue.delete(chunkRetryKey(entry.item));
+        entry.attempts += 1;
+      }
+
+      const retryResult = await embedAndStoreBatch({
+        embedPort,
+        vectorIndex,
+        items: slice.map((entry) => entry.item),
+        modelUri,
+        embedFingerprint,
+      });
+
+      embedded += retryResult.embedded;
+      errors += retryResult.errors;
+      retryEmbedded += retryResult.embedded;
+
+      const retryByKey = new Set(
+        retryResult.retryItems.map((item) => chunkRetryKey(item))
+      );
+      for (const entry of slice) {
+        if (!retryByKey.has(chunkRetryKey(entry.item))) {
+          continue;
+        }
+        if (entry.attempts >= MAX_EMBED_CHUNK_ATTEMPTS) {
+          errors += 1;
+        } else {
+          retryQueue.set(chunkRetryKey(entry.item), entry);
+        }
+      }
+    }
+
+    return retryEmbedded;
+  };
 
   try {
     while (true) {
@@ -94,48 +155,24 @@ export async function embedBacklog(
         cursor = { mirrorHash: lastItem.mirrorHash, seq: lastItem.seq };
       }
 
-      // Embed batch with contextual formatting (title prefix)
-      const embedResult = await embedTextsWithRecovery(
+      const beforeEmbedded = embedded;
+      const batchStoreResult = await embedAndStoreBatch({
         embedPort,
-        batch.map((b: BacklogItem) =>
-          formatDocForEmbedding(
-            b.text,
-            b.title ?? undefined,
-            embedPort.modelUri
-          )
-        )
-      );
+        vectorIndex,
+        items: batch,
+        modelUri,
+        embedFingerprint,
+      });
+      embedded += batchStoreResult.embedded;
+      errors += batchStoreResult.errors;
+      enqueueRetryItems(batchStoreResult.retryItems, 1);
 
-      if (!embedResult.ok) {
-        errors += batch.length;
-        continue;
-      }
-
-      const vectors: VectorRow[] = [];
-      for (const [idx, item] of batch.entries()) {
-        const embedding = embedResult.value.vectors[idx];
-        if (!embedding) {
-          errors += 1;
-          continue;
-        }
-        vectors.push({
-          mirrorHash: item.mirrorHash,
-          seq: item.seq,
-          model: modelUri,
-          embedFingerprint,
-          embedding: new Float32Array(embedding),
-        });
-      }
-
-      if (vectors.length > 0) {
-        const storeResult = await vectorIndex.upsertVectors(vectors);
-        if (!storeResult.ok) {
-          errors += vectors.length;
-          continue;
-        }
-        embedded += vectors.length;
+      if (embedded > beforeEmbedded) {
+        await drainRetryQueue();
       }
     }
+
+    await drainRetryQueue();
 
     // Sync vec index once at end if any vec0 writes failed
     let syncError: string | undefined;

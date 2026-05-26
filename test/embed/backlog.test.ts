@@ -279,4 +279,135 @@ describe("embedBacklog", () => {
     expect(typeof upserts[0]?.[0]?.embedFingerprint).toBe("string");
     expect(upserts[0]?.[0]?.embedFingerprint.length).toBeGreaterThan(0);
   });
+
+  test("retries a transient failed chunk within the same run", async () => {
+    const failuresByText = new Map<string, number>();
+    const embedPort = {
+      embedBatch: mock(() =>
+        Promise.resolve({
+          ok: false as const,
+          error: {
+            code: "INFERENCE_FAILED" as const,
+            message: "batch failed",
+            retryable: true,
+          },
+        })
+      ),
+      embed: mock((text: string) => {
+        const count = failuresByText.get(text) ?? 0;
+        failuresByText.set(text, count + 1);
+        if (text.includes("second") && count === 0) {
+          return Promise.resolve({
+            ok: false as const,
+            error: {
+              code: "INFERENCE_FAILED" as const,
+              message: "single failed once",
+              retryable: true,
+            },
+          });
+        }
+        return Promise.resolve({ ok: true as const, value: [0.1, 0.2, 0.3] });
+      }),
+      dimensions: () => 3,
+      init: () => Promise.resolve({ ok: true as const, value: undefined }),
+      dispose: () => Promise.resolve(),
+      modelUri: "hf:test/embed.gguf",
+    } as unknown as EmbeddingPort;
+
+    const vectorIndex = createMockVectorIndex();
+    const upserts: VectorRow[][] = [];
+    vectorIndex.upsertVectors = mock((rows: VectorRow[]) => {
+      upserts.push(rows);
+      return Promise.resolve({ ok: true as const, value: undefined });
+    }) as typeof vectorIndex.upsertVectors;
+
+    const result = await embedBacklog({
+      statsPort: createMockStatsPort([
+        { mirrorHash: "abc123", seq: 0, text: "first content", title: "First" },
+        {
+          mirrorHash: "abc123",
+          seq: 1,
+          text: "second content",
+          title: "Second",
+        },
+      ]),
+      embedPort,
+      vectorIndex,
+      modelUri: "hf:test/embed.gguf",
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      return;
+    }
+    expect(result.value.embedded).toBe(2);
+    expect(result.value.errors).toBe(0);
+    expect(upserts).toHaveLength(2);
+    expect(upserts[0]?.map((row) => row.seq)).toEqual([0]);
+    expect(upserts[1]?.map((row) => row.seq)).toEqual([1]);
+  });
+
+  test("counts a permanently failed chunk after retry cap", async () => {
+    const embedPort = {
+      embedBatch: mock(() =>
+        Promise.resolve({
+          ok: false as const,
+          error: {
+            code: "INFERENCE_FAILED" as const,
+            message: "batch failed",
+            retryable: true,
+          },
+        })
+      ),
+      embed: mock((text: string) =>
+        Promise.resolve(
+          text.includes("second")
+            ? {
+                ok: false as const,
+                error: {
+                  code: "INFERENCE_FAILED" as const,
+                  message: "single failed",
+                  retryable: true,
+                },
+              }
+            : { ok: true as const, value: [0.1, 0.2, 0.3] }
+        )
+      ),
+      dimensions: () => 3,
+      init: () => Promise.resolve({ ok: true as const, value: undefined }),
+      dispose: () => Promise.resolve(),
+      modelUri: "hf:test/embed.gguf",
+    } as unknown as EmbeddingPort;
+
+    const vectorIndex = createMockVectorIndex();
+    const upserts: VectorRow[][] = [];
+    vectorIndex.upsertVectors = mock((rows: VectorRow[]) => {
+      upserts.push(rows);
+      return Promise.resolve({ ok: true as const, value: undefined });
+    }) as typeof vectorIndex.upsertVectors;
+
+    const result = await embedBacklog({
+      statsPort: createMockStatsPort([
+        { mirrorHash: "abc123", seq: 0, text: "first content", title: "First" },
+        {
+          mirrorHash: "abc123",
+          seq: 1,
+          text: "second content",
+          title: "Second",
+        },
+      ]),
+      embedPort,
+      vectorIndex,
+      modelUri: "hf:test/embed.gguf",
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      return;
+    }
+    expect(result.value.embedded).toBe(1);
+    expect(result.value.errors).toBe(1);
+    expect(upserts).toHaveLength(1);
+    expect(upserts[0]?.map((row) => row.seq)).toEqual([0]);
+  });
 });
