@@ -19,15 +19,15 @@ import type {
 import type { GnoEmbedOptions, GnoEmbedResult } from "./types";
 
 import { embedBacklog } from "../embed";
-import { embedTextsWithRecovery } from "../embed/batch";
-import { resolveModelUri } from "../llm/registry";
-import { formatDocForEmbedding } from "../pipeline/contextual";
-import { err, ok } from "../store/types";
+import { getEmbeddingFingerprint } from "../embed/fingerprint";
 import {
-  createVectorIndexPort,
-  createVectorStatsPort,
-  type VectorRow,
-} from "../store/vector";
+  chunkRetryKey,
+  embedAndStoreBatch,
+  MAX_EMBED_CHUNK_ATTEMPTS,
+} from "../embed/retry";
+import { resolveModelUri } from "../llm/registry";
+import { err, ok } from "../store/types";
+import { createVectorIndexPort, createVectorStatsPort } from "../store/vector";
 import { sdkError } from "./errors";
 
 interface EmbedRuntimeOptions {
@@ -121,6 +121,68 @@ async function forceEmbedAll(
   let embedded = 0;
   let errors = 0;
   let cursor: { mirrorHash: string; seq: number } | undefined;
+  const retryQueue = new Map<string, { item: BacklogItem; attempts: number }>();
+  const embedFingerprint = getEmbeddingFingerprint({
+    modelUri,
+    dimensions: vectorIndex.dimensions,
+  });
+
+  const enqueueRetryItems = (items: BacklogItem[], attempts: number): void => {
+    for (const item of items) {
+      const key = chunkRetryKey(item);
+      const existing = retryQueue.get(key);
+      retryQueue.set(key, {
+        item,
+        attempts: Math.max(existing?.attempts ?? 0, attempts),
+      });
+    }
+  };
+
+  const drainRetryQueue = async (): Promise<number> => {
+    if (retryQueue.size === 0) {
+      return 0;
+    }
+
+    let retryEmbedded = 0;
+    const entries = [...retryQueue.values()].filter(
+      (entry) => entry.attempts < MAX_EMBED_CHUNK_ATTEMPTS
+    );
+
+    for (let idx = 0; idx < entries.length; idx += batchSize) {
+      const slice = entries.slice(idx, idx + batchSize);
+      for (const entry of slice) {
+        retryQueue.delete(chunkRetryKey(entry.item));
+        entry.attempts += 1;
+      }
+
+      const retryResult = await embedAndStoreBatch({
+        embedPort,
+        vectorIndex,
+        items: slice.map((entry) => entry.item),
+        modelUri,
+        embedFingerprint,
+      });
+      embedded += retryResult.embedded;
+      errors += retryResult.errors;
+      retryEmbedded += retryResult.embedded;
+
+      const retryByKey = new Set(
+        retryResult.retryItems.map((item) => chunkRetryKey(item))
+      );
+      for (const entry of slice) {
+        if (!retryByKey.has(chunkRetryKey(entry.item))) {
+          continue;
+        }
+        if (entry.attempts >= MAX_EMBED_CHUNK_ATTEMPTS) {
+          errors += 1;
+        } else {
+          retryQueue.set(chunkRetryKey(entry.item), entry);
+        }
+      }
+    }
+
+    return retryEmbedded;
+  };
 
   while (true) {
     const batchResult = await getActiveChunks(db, batchSize, cursor);
@@ -140,45 +202,27 @@ async function forceEmbedAll(
       cursor = { mirrorHash: lastItem.mirrorHash, seq: lastItem.seq };
     }
 
-    const embedResult = await embedTextsWithRecovery(
+    const beforeEmbedded = embedded;
+    const embedResult = await embedAndStoreBatch({
       embedPort,
-      batch.map((item) =>
-        formatDocForEmbedding(
-          item.text,
-          item.title ?? undefined,
-          embedPort.modelUri
-        )
-      )
-    );
+      vectorIndex,
+      items: batch,
+      modelUri,
+      embedFingerprint,
+    });
+    embedded += embedResult.embedded;
+    errors += embedResult.errors;
+    enqueueRetryItems(embedResult.retryItems, 1);
 
-    if (!embedResult.ok) {
-      errors += batch.length;
-      continue;
+    if (embedded > beforeEmbedded) {
+      await drainRetryQueue();
     }
+  }
 
-    const vectors: VectorRow[] = [];
-    for (const [idx, item] of batch.entries()) {
-      const embedding = embedResult.value.vectors[idx];
-      if (!embedding) {
-        errors += 1;
-        continue;
-      }
-      vectors.push({
-        mirrorHash: item.mirrorHash,
-        seq: item.seq,
-        model: modelUri,
-        embedding: new Float32Array(embedding),
-      });
-    }
-
-    if (vectors.length > 0) {
-      const storeResult = await vectorIndex.upsertVectors(vectors);
-      if (!storeResult.ok) {
-        errors += vectors.length;
-        continue;
-      }
-      embedded += vectors.length;
-    }
+  await drainRetryQueue();
+  if (retryQueue.size > 0) {
+    errors += retryQueue.size;
+    retryQueue.clear();
   }
 
   if (vectorIndex.vecDirty) {
@@ -217,24 +261,25 @@ export async function runEmbed(
   const db = runtime.store.getRawDb();
   const stats: VectorStatsPort = createVectorStatsPort(db);
 
-  const backlogResult = force
-    ? await getActiveChunkCount(db)
-    : await stats.countBacklog(modelUri, { collection: options.collection });
-  if (!backlogResult.ok) {
-    throw sdkError("STORE", backlogResult.error.message, {
-      cause: backlogResult.error.cause,
-    });
-  }
+  let totalToEmbed = 0;
+  if (force) {
+    const forceCount = await getActiveChunkCount(db);
+    if (!forceCount.ok) {
+      throw sdkError("STORE", forceCount.error.message, {
+        cause: forceCount.error.cause,
+      });
+    }
 
-  const totalToEmbed = backlogResult.value;
-  if (totalToEmbed === 0 || dryRun) {
-    return {
-      embedded: totalToEmbed,
-      errors: 0,
-      duration: 0,
-      model: modelUri,
-      searchAvailable: await checkVecAvailable(db),
-    };
+    totalToEmbed = forceCount.value;
+    if (totalToEmbed === 0 || dryRun) {
+      return {
+        embedded: totalToEmbed,
+        errors: 0,
+        duration: 0,
+        model: modelUri,
+        searchAvailable: await checkVecAvailable(db),
+      };
+    }
   }
 
   const embedResult = await runtime.llm.createEmbeddingPort(modelUri, {
@@ -266,6 +311,36 @@ export async function runEmbed(
     }
 
     const vectorIndex = vectorResult.value;
+    if (!force) {
+      const embedFingerprint = getEmbeddingFingerprint({
+        modelUri,
+        dimensions: vectorIndex.dimensions,
+      });
+      const backlogResult = await stats.countBacklog(
+        modelUri,
+        embedFingerprint,
+        {
+          collection: options.collection,
+        }
+      );
+      if (!backlogResult.ok) {
+        throw sdkError("STORE", backlogResult.error.message, {
+          cause: backlogResult.error.cause,
+        });
+      }
+
+      totalToEmbed = backlogResult.value;
+      if (totalToEmbed === 0 || dryRun) {
+        return {
+          embedded: totalToEmbed,
+          errors: 0,
+          duration: 0,
+          model: modelUri,
+          searchAvailable: vectorIndex.searchAvailable,
+        };
+      }
+    }
+
     const startedAt = Date.now();
     let result: { embedded: number; errors: number };
     if (force) {

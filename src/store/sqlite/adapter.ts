@@ -53,6 +53,7 @@ import { analyzeGraphCommunities } from "../../core/graph-analysis";
 import { normalizeWikiName, stripWikiMdExt } from "../../core/links";
 import { migrations, runMigrations } from "../migrations";
 import { err, ok } from "../types";
+import { getStoredEmbeddingFingerprint } from "../vector/freshness";
 import { modelTableName } from "../vector/sqlite-vec";
 import { loadFts5Snowball } from "./fts5-snowball";
 
@@ -3065,10 +3066,14 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
 
   async getStatus(options?: {
     embedModel?: string;
+    embedFingerprint?: string;
   }): Promise<StoreResult<IndexStatus>> {
     try {
       const db = this.ensureOpen();
       const embedModel = options?.embedModel ?? null;
+      const embedFingerprint =
+        options?.embedFingerprint ??
+        (embedModel ? getStoredEmbeddingFingerprint(db, embedModel) : null);
 
       // Get version
       const versionRow = db
@@ -3097,7 +3102,7 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
       }
 
       const collectionStats = db
-        .query<CollectionStat, [string | null, string | null]>(
+        .query<CollectionStat, [string | null, string | null, string | null]>(
           `
           SELECT
             c.name,
@@ -3120,7 +3125,10 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
                SELECT 1 FROM content_vectors cv
                WHERE cv.mirror_hash = cc.mirror_hash
                  AND cv.seq = cc.seq
-                 AND (? IS NULL OR cv.model = ?)
+                 AND (? IS NULL OR (
+                   cv.model = ?
+                   AND cv.embed_fingerprint = ?
+                 ))
                  AND cv.embedded_at >= cc.created_at
              )) as embedded_count
           FROM collections c
@@ -3128,7 +3136,7 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
           GROUP BY c.name, c.path
         `
         )
-        .all(embedModel, embedModel);
+        .all(embedModel, embedModel, embedFingerprint);
 
       // Get totals
       const totalsRow = db
@@ -3152,7 +3160,10 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
       // Embedding backlog: chunks from active docs without vectors
       // Uses EXISTS to avoid duplicates when multiple docs share mirror_hash
       const backlogRow = db
-        .query<{ count: number }, [string | null, string | null]>(
+        .query<
+          { count: number },
+          [string | null, string | null, string | null]
+        >(
           `
           SELECT COUNT(*) as count FROM content_chunks c
           WHERE EXISTS (
@@ -3163,12 +3174,15 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
             SELECT 1 FROM content_vectors v
             WHERE v.mirror_hash = c.mirror_hash
               AND v.seq = c.seq
-              AND (? IS NULL OR v.model = ?)
+              AND (? IS NULL OR (
+                v.model = ?
+                AND v.embed_fingerprint = ?
+              ))
               AND v.embedded_at >= c.created_at
           )
         `
         )
-        .get(embedModel, embedModel);
+        .get(embedModel, embedModel, embedFingerprint);
 
       // Recent errors (last 24h)
       const recentErrorsRow = db

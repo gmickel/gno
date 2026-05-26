@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Added `gno doctor` embedding fingerprint diagnostics for current freshness
+  fingerprint, pending/stale chunks, legacy vectors, and mixed stored
+  fingerprint groups.
+
 ## [1.6.0] - 2026-05-25
 
 ### Changed

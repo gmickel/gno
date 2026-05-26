@@ -901,6 +901,8 @@ Checks include:
 - vendored `fts5-snowball` extension loading
 - `sqlite-vec` extension loading
 - local model cache readiness
+- embedding fingerprint freshness: current fingerprint, pending/stale chunks,
+  legacy empty-fingerprint vectors, and mixed stored fingerprint groups
 
 ### gno cleanup
 

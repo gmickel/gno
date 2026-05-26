@@ -21,6 +21,7 @@ import { migration as m004 } from "./004-doc-links";
 import { migration as m005 } from "./005-graph-indexes";
 import { migration as m006 } from "./006-document-metadata";
 import { migration as m007 } from "./007-document-date-fields";
+import { migration as m008 } from "./008-vector-fingerprints";
 
 /** All migrations in order */
-export const migrations = [m001, m002, m003, m004, m005, m006, m007];
+export const migrations = [m001, m002, m003, m004, m005, m006, m007, m008];

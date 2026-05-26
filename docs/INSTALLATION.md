@@ -23,6 +23,10 @@ bun install -g @gmickel/gno
 gno doctor
 ```
 
+Release packages are smoke-tested with `bun run test:package`, which installs
+the packed npm tarball into isolated temp paths and verifies packaged
+`gno --version`, `gno --help`, and `gno doctor --json` before publish.
+
 If you want a guided setup after install, run `gno serve` and open `http://localhost:3000`. The first-run dashboard can add a folder, explain health, show bootstrap/runtime status, and trigger model downloads without more terminal work.
 
 If you want a headless long-running process instead, run:
@@ -205,7 +209,12 @@ gno doctor --json
       "status": "warn",
       "message": "rerank model not cached"
     },
-    { "name": "gen-model", "status": "ok", "message": "gen model cached" }
+    { "name": "gen-model", "status": "ok", "message": "gen model cached" },
+    {
+      "name": "embedding-fingerprint",
+      "status": "ok",
+      "message": "current abc123def456, 0 pending/stale, 0 legacy, 1 group"
+    }
   ]
 }
 ```

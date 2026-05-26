@@ -16,6 +16,7 @@ export interface VectorRow {
   mirrorHash: string;
   seq: number;
   model: string;
+  embedFingerprint: string;
   embedding: Float32Array;
   // embeddedAt is set by DB via datetime('now')
 }
@@ -112,12 +113,14 @@ export interface VectorStatsPort {
   /** Count chunks needing embedding for a model */
   countBacklog(
     model: string,
+    embedFingerprint: string,
     options?: { collection?: string }
   ): Promise<StoreResult<number>>;
 
   /** Get chunks needing embedding for a model (seek pagination) */
   getBacklog(
     model: string,
+    embedFingerprint: string,
     options?: { limit?: number; after?: BacklogCursor; collection?: string }
   ): Promise<StoreResult<BacklogItem[]>>;
 }

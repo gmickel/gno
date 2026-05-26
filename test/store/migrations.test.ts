@@ -52,7 +52,7 @@ describe("store migrations", () => {
 
       const upgradeResult = runMigrations(db, migrations, "unicode61");
       expect(upgradeResult.ok).toBe(true);
-      expect(getSchemaVersion(db)).toBe(7);
+      expect(getSchemaVersion(db)).toBe(8);
 
       const indexedRow = db
         .query<{ indexed_at: string | null }, []>(
@@ -61,6 +61,12 @@ describe("store migrations", () => {
         .get();
       expect(indexedRow).toBeDefined();
       expect(indexedRow?.indexed_at).not.toBeNull();
+
+      const vectorColumns = db
+        .query<{ name: string }, []>("PRAGMA table_info(content_vectors)")
+        .all()
+        .map((column) => column.name);
+      expect(vectorColumns).toContain("embed_fingerprint");
     } finally {
       db.close();
     }

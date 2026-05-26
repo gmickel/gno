@@ -2,22 +2,32 @@
 satisfies: [R7]
 ---
 
+<!-- Updated by plan-sync: fn-81-embedding-and-package-hardening.2 shipped public `embedding-fingerprint` doctor diagnostics plus `gno embed` / `gno embed --force` recovery guidance; hosted docs must reflect those exact terms before release -->
+<!-- Updated by plan-sync: fn-81-embedding-and-package-hardening.3 aligned same-run retry across backlog and `gno embed --force`, so hosted docs must describe retry/recovery for the force path too, not only generic embed wording -->
+<!-- Updated by plan-sync: fn-81-embedding-and-package-hardening.4 shipped `scripts/package-smoke.ts` as `bun run test:package`, using `npm pack` + tarball install smoke, required tarball entries including `src/embed/retry.ts`, and exact `embedding-fingerprint.embeddingFingerprint` doctor JSON assertions; hosted docs must describe that shipped release gate precisely -->
+
 ## Description
+
 Update and deploy the canonical hosted website repo at `/Users/gordon/work/gno.sh` for the user-facing behavior and release-gate changes from this spec. This is a release blocker. Do not mark the spec complete, call the implementation shipped, tag/release, or hand off as done while the hosted website is stale for shipped behavior.
 
 **Size:** M
-**Files:** `/Users/gordon/work/gno.sh/**`, `/Users/gordon/work/gno/docs/**` as source references only
+**Files:** `/Users/gordon/work/gno.sh/**`, `/Users/gordon/work/gno/docs/**`, `/Users/gordon/work/gno/scripts/package-smoke.ts`, `/Users/gordon/work/gno/package.json`, `/Users/gordon/work/gno/spec/cli.md`, `/Users/gordon/work/gno/spec/output-schemas/doctor.schema.json`, `/Users/gordon/work/gno/README.md`, `/Users/gordon/work/gno/CHANGELOG.md` as source references only
 
 ## Approach
+
 - Treat `/Users/gordon/work/gno.sh` as the production website source. Do not use this repo's legacy `website/` tree as a substitute.
-- Compare all in-repo docs/spec/changelog changes from tasks `.1` to `.4` against the public website. Update every affected product, install, docs/reference, troubleshooting, FAQ, and comparison page.
-- Cover embedding fingerprints, doctor diagnostics/JSON, same-run embed retry behavior, package smoke/release gates, and any changed recovery command guidance.
+- Compare shipped user-facing behavior plus all in-repo docs/spec/changelog changes from tasks `.1` to `.4` against the public website. Update every affected product, install, docs/reference, troubleshooting, FAQ, and comparison page.
+- Cover embedding fingerprints, doctor diagnostics/JSON, same-run retry behavior in both normal backlog and `gno embed --force` flows, exact package smoke/release gate behavior from task `.4`, and any changed recovery command guidance.
+- Use the shipped doctor terms from task 2 exactly where user-facing: `embedding-fingerprint`, current fingerprint, pending/stale chunks, legacy vectors, mixed fingerprint groups, plus `gno embed` / `gno embed --force` recovery guidance.
+- Describe the shipped package gate precisely where user-facing: `scripts/package-smoke.ts`, exposed as `bun run test:package`, tarball-first via `npm pack`, install from the npm tarball into isolated temp paths, required package contents including `src/embed/retry.ts`, and packaged `gno doctor --json` asserting the `embedding-fingerprint.embeddingFingerprint` payload shape (`currentFingerprint`, `pendingChunks`, `legacyChunks`, `mixedGroups`, `groups`).
 - Keep website copy conservative: public docs must not claim behavior that is not implemented and verified in GNO.
 - Build and deploy from `/Users/gordon/work/gno.sh` in the same delivery path when website changes are part of the shipped work.
 - If deployment cannot happen, do not hide it. Record the blocker and exact remaining deploy/verification command in Flow evidence.
 
 ## Investigation targets
+
 **Required**
+
 - `AGENTS.md:383` — hosted website docs requirement.
 - `AGENTS.md:389` — canonical hosted website repo path.
 - `/Users/gordon/work/gno.sh` — production website source.
@@ -25,17 +35,24 @@ Update and deploy the canonical hosted website repo at `/Users/gordon/work/gno.s
 - `/Users/gordon/work/gno/docs/TROUBLESHOOTING.md` — source troubleshooting guidance.
 - `/Users/gordon/work/gno/docs/INSTALLATION.md` — source doctor/install verification guidance.
 - `/Users/gordon/work/gno/docs/PACKAGING.md` — source package/release verification guidance.
+- `/Users/gordon/work/gno/scripts/package-smoke.ts` — shipped tarball smoke implementation and exact assertions.
+- `/Users/gordon/work/gno/package.json` — `test:package` script entry and prerelease wiring.
+- `/Users/gordon/work/gno/spec/cli.md` — source doctor JSON/terminal contract.
+- `/Users/gordon/work/gno/spec/output-schemas/doctor.schema.json` — shipped machine-readable doctor shape.
+- `/Users/gordon/work/gno/README.md` — high-level doctor/re-embed messaging already updated in-repo.
 - `/Users/gordon/work/gno/CHANGELOG.md` — shipped behavior summary if user-visible.
 
-**Optional**
-- `/Users/gordon/work/gno/README.md` — high-level migration/release messaging.
-
 ## Key context
-The instruction files say new features, CLI/MCP/API output changes, model behavior, and troubleshooting updates must also be reflected in `/Users/gordon/work/gno.sh` when they affect website docs, product pages, install pages, comparisons, or FAQs. This spec changes CLI diagnostics, embedding behavior, troubleshooting, install/release verification, and likely public docs. Website drift is user-visible drift.
+
+The instruction files say new features, CLI/MCP/API output changes, model behavior, and troubleshooting updates must also be reflected in `/Users/gordon/work/gno.sh` when they affect website docs, product pages, install pages, comparisons, or FAQs. This spec changes CLI diagnostics, embedding behavior, troubleshooting, install/release verification, and likely public docs. Task 2 changed the in-repo public doc surface (`README.md`, `docs/CLI.md`, `docs/INSTALLATION.md`, `docs/TROUBLESHOOTING.md`, `CHANGELOG.md`), task 3 broadened the shipped retry behavior to cover `gno embed --force`, and task 4 hardened the public release gate around `bun run test:package` with tarball install/package-content/fingerprint-shape proof. Website drift remains release-blocking until deploy/verification is done or explicitly blocked in evidence.
 
 ## Acceptance
+
 - [ ] `/Users/gordon/work/gno.sh` is audited against all user-facing changes from this spec, not just the obvious reference page.
-- [ ] Hosted docs reflect shipped fingerprint diagnostics, retry behavior, doctor JSON/user guidance, and package smoke gate wherever user-facing.
+- [ ] Hosted docs reflect shipped fingerprint diagnostics, retry behavior for `gno embed` and `gno embed --force`, doctor JSON/user guidance, and the exact package smoke gate wherever user-facing.
+- [ ] Hosted docs use the implemented doctor terminology and recovery commands from tasks 2 and 3 (`embedding-fingerprint`, `gno embed`, `gno embed --force`, same-run retry guidance) rather than older generic wording.
+- [ ] Hosted docs name the actual release gate from task `.4` as `bun run test:package` / `scripts/package-smoke.ts`, describe npm tarball-first install verification, and mention required packed contents including `src/embed/retry.ts` when that proof is user-facing.
+- [ ] Hosted docs describe the packaged doctor proof at the implemented fidelity: `gno doctor --json` must include the `embedding-fingerprint` check and its `embeddingFingerprint` payload shape, not just “doctor passes”.
 - [ ] Hosted docs avoid claims that go beyond implemented GNO behavior.
 - [ ] Website repo checks/build pass using that repo's package manager/runtime.
 - [ ] Production deploy runs from `/Users/gordon/work/gno.sh` when the behavior is shipped.
@@ -44,8 +61,10 @@ The instruction files say new features, CLI/MCP/API output changes, model behavi
 
 ## Done summary
 
-_Not started._
+Updated the canonical hosted website repo with public docs for embedding fingerprint diagnostics, same-run embed retry recovery, and the packed npm package smoke gate. Website changes were committed and pushed to gno.sh main, but production deploy is blocked by SSH timeout to root@178.104.180.89:22; live site remains stale for the new /docs/packaging page until deploy runs.
 
 ## Evidence
 
-_Not started._
+- Commits: 2e6881abc0b5d5c064da4ba6901492779733f110
+- Tests: cd /Users/gordon/work/gno.sh && bun run typecheck (pass), cd /Users/gordon/work/gno.sh && bun run test (pass: 76 passed, 3 skipped), cd /Users/gordon/work/gno.sh && bun run check (pass after formatting), cd /Users/gordon/work/gno.sh && bun run build (pass; prerendered /docs/packaging), cd /Users/gordon/work/gno.sh && git push origin main (pass; 2e6881a pushed), cd /Users/gordon/work/gno.sh && DEPLOY_HOST=root@178.104.180.89 ./scripts/deploy-prod.sh (blocked: ssh connect to host 178.104.180.89 port 22 Operation timed out), curl -fsSI https://gno.sh (pass: HTTP/2 200), curl -fsSL https://gno.sh/docs/packaging | head -20 (blocked/stale: HTTP 404 because deploy did not complete), ssh -o ConnectTimeout=15 root@178.104.180.89 "systemctl is-active gno-sh && cd /srv/gno-sh/repo && git rev-parse --short HEAD" (blocked: ssh connect to host 178.104.180.89 port 22 Operation timed out)
+- PRs:

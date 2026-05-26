@@ -17,13 +17,15 @@ import { getConfigPaths, isInitialized, loadConfig } from "../../config";
 import { getCodeChunkingStatus } from "../../ingestion/chunker";
 import { ModelCache } from "../../llm/cache";
 import { LlmAdapter } from "../../llm/nodeLlamaCpp/adapter";
-import { getActivePreset } from "../../llm/registry";
+import { getActivePreset, resolveModelUri } from "../../llm/registry";
+import { SqliteAdapter } from "../../store/sqlite/adapter";
 import { loadFts5Snowball } from "../../store/sqlite/fts5-snowball";
 import {
   getCustomSqlitePath,
   getExtensionLoadingMode,
   getLoadAttempts,
 } from "../../store/sqlite/setup";
+import { getStoredEmbeddingFingerprint } from "../../store/vector/freshness";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -37,6 +39,25 @@ export interface DoctorCheck {
   message: string;
   /** Additional diagnostic details (shown in verbose/json output) */
   details?: string[];
+  /** Embedding fingerprint diagnostics for machine consumers */
+  embeddingFingerprint?: EmbeddingFingerprintHealth;
+}
+
+export interface EmbeddingFingerprintGroup {
+  model: string;
+  fingerprint: string;
+  count: number;
+  current: boolean;
+  legacy: boolean;
+}
+
+export interface EmbeddingFingerprintHealth {
+  model: string;
+  currentFingerprint: string;
+  pendingChunks: number;
+  legacyChunks: number;
+  mixedGroups: number;
+  groups: EmbeddingFingerprintGroup[];
 }
 
 export interface DoctorOptions {
@@ -135,6 +156,160 @@ function checkCodeChunking(): DoctorCheck {
       "Chunking mode is automatic-only in the first pass.",
     ],
   };
+}
+
+const FINGERPRINT_DISPLAY_LENGTH = 12;
+
+function shortFingerprint(fingerprint: string): string {
+  return fingerprint.slice(0, FINGERPRINT_DISPLAY_LENGTH);
+}
+
+function describeFingerprintGroup(group: EmbeddingFingerprintGroup): string {
+  if (group.current) {
+    return "current";
+  }
+  if (group.legacy) {
+    return "legacy";
+  }
+  return "stale";
+}
+
+async function checkEmbeddingFingerprints(
+  config: Config
+): Promise<DoctorCheck> {
+  const dbPath = getIndexDbPath();
+  try {
+    await stat(dbPath);
+  } catch {
+    return {
+      name: "embedding-fingerprint",
+      status: "warn",
+      message: "Database not found. Run: gno init",
+    };
+  }
+
+  const store = new SqliteAdapter();
+  const paths = getConfigPaths();
+  store.setConfigPath(paths.configFile);
+
+  const openResult = await store.open(dbPath, config.ftsTokenizer);
+  if (!openResult.ok) {
+    return {
+      name: "embedding-fingerprint",
+      status: "warn",
+      message: `Fingerprint health unavailable: ${openResult.error.message}`,
+      details: ["Run: gno doctor --json", "Then run: gno embed"],
+    };
+  }
+
+  try {
+    const db = store.getRawDb();
+    const model = resolveModelUri(config, "embed");
+    const currentFingerprint = getStoredEmbeddingFingerprint(db, model);
+    const statusResult = await store.getStatus({ embedModel: model });
+    if (!statusResult.ok) {
+      return {
+        name: "embedding-fingerprint",
+        status: "warn",
+        message: `Fingerprint health unavailable: ${statusResult.error.message}`,
+        details: ["Run: gno embed"],
+      };
+    }
+
+    const legacyChunks =
+      db
+        .query<{ count: number }, [string]>(
+          `
+          SELECT COUNT(*) as count
+          FROM content_vectors v
+          JOIN content_chunks c
+            ON c.mirror_hash = v.mirror_hash
+           AND c.seq = v.seq
+          WHERE v.model = ?
+            AND v.embed_fingerprint = ''
+            AND EXISTS (
+              SELECT 1 FROM documents d
+              WHERE d.mirror_hash = c.mirror_hash
+                AND d.active = 1
+            )
+        `
+        )
+        .get(model)?.count ?? 0;
+
+    const groups = db
+      .query<{ model: string; fingerprint: string; count: number }, []>(
+        `
+        SELECT
+          v.model as model,
+          v.embed_fingerprint as fingerprint,
+          COUNT(*) as count
+        FROM content_vectors v
+        JOIN content_chunks c
+          ON c.mirror_hash = v.mirror_hash
+         AND c.seq = v.seq
+        WHERE EXISTS (
+          SELECT 1 FROM documents d
+          WHERE d.mirror_hash = c.mirror_hash
+            AND d.active = 1
+        )
+        GROUP BY v.model, v.embed_fingerprint
+        ORDER BY count DESC, v.model ASC, v.embed_fingerprint ASC
+      `
+      )
+      .all()
+      .map((group) => ({
+        model: group.model,
+        fingerprint: group.fingerprint,
+        count: group.count,
+        current:
+          group.model === model && group.fingerprint === currentFingerprint,
+        legacy: group.fingerprint === "",
+      }));
+
+    const mixedGroups = groups.length;
+    const pendingChunks = statusResult.value.embeddingBacklog;
+    const hasWarnings =
+      pendingChunks > 0 || legacyChunks > 0 || mixedGroups > 1;
+
+    const health: EmbeddingFingerprintHealth = {
+      model,
+      currentFingerprint,
+      pendingChunks,
+      legacyChunks,
+      mixedGroups,
+      groups,
+    };
+
+    const message =
+      `current ${shortFingerprint(currentFingerprint)}, ` +
+      `${pendingChunks} pending/stale, ${legacyChunks} legacy, ` +
+      `${mixedGroups} group${mixedGroups === 1 ? "" : "s"}`;
+    const details: string[] = [];
+
+    if (hasWarnings) {
+      details.push("Run: gno embed");
+      details.push("If vectors still look stale, run: gno embed --force");
+      for (const group of groups) {
+        const label = describeFingerprintGroup(group);
+        const fingerprint = group.legacy
+          ? "(empty)"
+          : shortFingerprint(group.fingerprint);
+        details.push(
+          `${label}: ${group.count} chunks model=${group.model} fingerprint=${fingerprint}`
+        );
+      }
+    }
+
+    return {
+      name: "embedding-fingerprint",
+      status: hasWarnings ? "warn" : "ok",
+      message,
+      details: details.length > 0 ? details : undefined,
+      embeddingFingerprint: health,
+    };
+  } finally {
+    await store.close();
+  }
 }
 
 async function checkNodeLlamaCpp(config: Config): Promise<DoctorCheck> {
@@ -340,6 +515,9 @@ export async function doctor(
 
   // Code chunking capability
   checks.push(checkCodeChunking());
+
+  // Embedding fingerprint freshness
+  checks.push(await checkEmbeddingFingerprints(config));
 
   // Determine overall health
   const hasErrors = checks.some((c) => c.status === "error");

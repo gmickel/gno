@@ -22,6 +22,7 @@ import { createVectorIndexPort } from "../../../src/store/vector/sqlite-vec";
 const isCI = Boolean(process.env.CI);
 const isDarwin = platform() === "darwin";
 const mode = getExtensionLoadingMode();
+const TEST_FINGERPRINT = "test-fingerprint";
 
 describe("sqlite-vec integration", () => {
   test("vector search works end-to-end", async () => {
@@ -43,6 +44,7 @@ describe("sqlite-vec integration", () => {
           mirror_hash TEXT NOT NULL,
           seq INTEGER NOT NULL,
           model TEXT NOT NULL,
+          embed_fingerprint TEXT NOT NULL DEFAULT '',
           embedding BLOB NOT NULL,
           embedded_at TEXT DEFAULT CURRENT_TIMESTAMP,
           PRIMARY KEY (mirror_hash, seq, model)
@@ -79,18 +81,21 @@ describe("sqlite-vec integration", () => {
           mirrorHash: "doc1",
           seq: 0,
           model: "test-model",
+          embedFingerprint: TEST_FINGERPRINT,
           embedding: new Float32Array([1.0, 0.0, 0.0, 0.0]), // Unit vector in x
         },
         {
           mirrorHash: "doc2",
           seq: 0,
           model: "test-model",
+          embedFingerprint: TEST_FINGERPRINT,
           embedding: new Float32Array([0.0, 1.0, 0.0, 0.0]), // Unit vector in y
         },
         {
           mirrorHash: "doc3",
           seq: 0,
           model: "test-model",
+          embedFingerprint: TEST_FINGERPRINT,
           embedding: new Float32Array([0.9, 0.1, 0.0, 0.0]), // Close to doc1
         },
       ];
@@ -138,6 +143,7 @@ describe("sqlite-vec integration", () => {
           mirror_hash TEXT NOT NULL,
           seq INTEGER NOT NULL,
           model TEXT NOT NULL,
+          embed_fingerprint TEXT NOT NULL DEFAULT '',
           embedding BLOB NOT NULL,
           embedded_at TEXT DEFAULT CURRENT_TIMESTAMP,
           PRIMARY KEY (mirror_hash, seq, model)
@@ -181,6 +187,7 @@ describe("sqlite-vec integration", () => {
           mirror_hash TEXT NOT NULL,
           seq INTEGER NOT NULL,
           model TEXT NOT NULL,
+          embed_fingerprint TEXT NOT NULL DEFAULT '',
           embedding BLOB NOT NULL,
           embedded_at TEXT DEFAULT CURRENT_TIMESTAMP,
           PRIMARY KEY (mirror_hash, seq, model)
@@ -204,6 +211,7 @@ describe("sqlite-vec integration", () => {
           mirrorHash: "rebuild1",
           seq: 0,
           model: "rebuild-test",
+          embedFingerprint: TEST_FINGERPRINT,
           embedding: new Float32Array([1, 0, 0, 0]),
         },
       ]);
@@ -243,6 +251,7 @@ describe("sqlite-vec integration", () => {
           mirror_hash TEXT NOT NULL,
           seq INTEGER NOT NULL,
           model TEXT NOT NULL,
+          embed_fingerprint TEXT NOT NULL DEFAULT '',
           embedding BLOB NOT NULL,
           embedded_at TEXT DEFAULT CURRENT_TIMESTAMP,
           PRIMARY KEY (mirror_hash, seq, model)
@@ -265,6 +274,7 @@ describe("sqlite-vec integration", () => {
           mirrorHash: "doc1",
           seq: 0,
           model: "replace-test",
+          embedFingerprint: TEST_FINGERPRINT,
           embedding: new Float32Array([1, 0, 0, 0]),
         },
       ]);
@@ -274,6 +284,7 @@ describe("sqlite-vec integration", () => {
           mirrorHash: "doc1",
           seq: 0,
           model: "replace-test",
+          embedFingerprint: TEST_FINGERPRINT,
           embedding: new Float32Array([0, 1, 0, 0]),
         },
       ]);

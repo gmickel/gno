@@ -984,6 +984,7 @@ export interface StorePort {
    */
   getStatus(options?: {
     embedModel?: string;
+    embedFingerprint?: string;
   }): Promise<StoreResult<IndexStatus>>;
 
   // ─────────────────────────────────────────────────────────────────────────

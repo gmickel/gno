@@ -16,6 +16,7 @@ async function loadAllSchemas(): Promise<void> {
     "search-result",
     "search-results",
     "status",
+    "doctor",
     "get",
     "multi-get",
     "ask",

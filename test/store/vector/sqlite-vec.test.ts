@@ -17,6 +17,8 @@ import {
 } from "../../../src/store/vector/sqlite-vec";
 import { safeRm } from "../../helpers/cleanup";
 
+const TEST_FINGERPRINT = "test-fingerprint";
+
 describe("encodeEmbedding/decodeEmbedding", () => {
   test("round-trips Float32Array correctly", () => {
     const original = new Float32Array([1.0, 2.0, 3.0, 4.0]);
@@ -74,6 +76,7 @@ describe("createVectorIndexPort", () => {
         mirror_hash TEXT NOT NULL,
         seq INTEGER NOT NULL,
         model TEXT NOT NULL,
+        embed_fingerprint TEXT NOT NULL DEFAULT '',
         embedding BLOB NOT NULL,
         embedded_at TEXT DEFAULT CURRENT_TIMESTAMP,
         PRIMARY KEY (mirror_hash, seq, model)
@@ -120,12 +123,14 @@ describe("createVectorIndexPort", () => {
         mirrorHash: "hash1",
         seq: 0,
         model: "test-model",
+        embedFingerprint: TEST_FINGERPRINT,
         embedding: new Float32Array([1.0, 2.0, 3.0, 4.0]),
       },
       {
         mirrorHash: "hash1",
         seq: 1,
         model: "test-model",
+        embedFingerprint: TEST_FINGERPRINT,
         embedding: new Float32Array([5.0, 6.0, 7.0, 8.0]),
       },
     ];
@@ -136,8 +141,13 @@ describe("createVectorIndexPort", () => {
     // Verify stored in content_vectors
     const rows = db
       .prepare("SELECT * FROM content_vectors WHERE model = ?")
-      .all("test-model") as { mirror_hash: string; seq: number }[];
+      .all("test-model") as {
+      embed_fingerprint: string;
+      mirror_hash: string;
+      seq: number;
+    }[];
     expect(rows.length).toBe(2);
+    expect(rows[0]?.embed_fingerprint).toBe(TEST_FINGERPRINT);
   });
 
   test("upsertVectors replaces existing vectors", async () => {
@@ -158,6 +168,7 @@ describe("createVectorIndexPort", () => {
         mirrorHash: "hash1",
         seq: 0,
         model: "test-model",
+        embedFingerprint: TEST_FINGERPRINT,
         embedding: new Float32Array([1.0, 2.0, 3.0, 4.0]),
       },
     ]);
@@ -168,15 +179,18 @@ describe("createVectorIndexPort", () => {
         mirrorHash: "hash1",
         seq: 0,
         model: "test-model",
+        embedFingerprint: "updated-fingerprint",
         embedding: new Float32Array([9.0, 9.0, 9.0, 9.0]),
       },
     ]);
 
     // Should still be 1 row
     const rows = db.prepare("SELECT * FROM content_vectors").all() as {
+      embed_fingerprint: string;
       mirror_hash: string;
     }[];
     expect(rows.length).toBe(1);
+    expect(rows[0]?.embed_fingerprint).toBe("updated-fingerprint");
   });
 
   test("deleteVectorsForMirror removes vectors for mirror hash", async () => {
@@ -197,12 +211,14 @@ describe("createVectorIndexPort", () => {
         mirrorHash: "hash1",
         seq: 0,
         model: "test-model",
+        embedFingerprint: TEST_FINGERPRINT,
         embedding: new Float32Array([1, 2, 3, 4]),
       },
       {
         mirrorHash: "hash2",
         seq: 0,
         model: "test-model",
+        embedFingerprint: TEST_FINGERPRINT,
         embedding: new Float32Array([5, 6, 7, 8]),
       },
     ]);
