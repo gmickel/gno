@@ -459,6 +459,23 @@ The same is true if a release changes the formatting profile for your active
 embedding model. If document/query vectors are produced differently after the
 upgrade, run `gno embed` again so stored vectors match the new formatter.
 
+`gno doctor` reports this as the `embedding-fingerprint` check. It shows the
+current fingerprint, pending/stale chunks, legacy empty-fingerprint vectors, and
+stored fingerprint groups. Warnings mean vector search can still run, but you
+should re-embed:
+
+```bash
+gno doctor
+gno embed
+```
+
+If doctor still reports stale or mixed vectors after a normal embed, force a
+full refresh:
+
+```bash
+gno embed --force
+```
+
 ### I want to remove old embeddings after switching models
 
 Use collection-level cleanup when you want to reclaim space or remove stale

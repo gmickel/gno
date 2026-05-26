@@ -205,7 +205,12 @@ gno doctor --json
       "status": "warn",
       "message": "rerank model not cached"
     },
-    { "name": "gen-model", "status": "ok", "message": "gen model cached" }
+    { "name": "gen-model", "status": "ok", "message": "gen model cached" },
+    {
+      "name": "embedding-fingerprint",
+      "status": "ok",
+      "message": "current abc123def456, 0 pending/stale, 0 legacy, 1 group"
+    }
   ]
 }
 ```

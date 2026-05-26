@@ -29,6 +29,76 @@
           "message": {
             "type": "string",
             "description": "Human-readable status message"
+          },
+          "details": {
+            "type": "array",
+            "description": "Additional diagnostic details and recovery guidance",
+            "items": {
+              "type": "string"
+            }
+          },
+          "embeddingFingerprint": {
+            "type": "object",
+            "description": "Embedding freshness fingerprint diagnostics",
+            "required": [
+              "model",
+              "currentFingerprint",
+              "pendingChunks",
+              "legacyChunks",
+              "mixedGroups",
+              "groups"
+            ],
+            "properties": {
+              "model": {
+                "type": "string"
+              },
+              "currentFingerprint": {
+                "type": "string"
+              },
+              "pendingChunks": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "legacyChunks": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "mixedGroups": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "groups": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "model",
+                    "fingerprint",
+                    "count",
+                    "current",
+                    "legacy"
+                  ],
+                  "properties": {
+                    "model": {
+                      "type": "string"
+                    },
+                    "fingerprint": {
+                      "type": "string"
+                    },
+                    "count": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "current": {
+                      "type": "boolean"
+                    },
+                    "legacy": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       }

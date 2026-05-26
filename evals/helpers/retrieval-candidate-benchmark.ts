@@ -21,6 +21,7 @@ import type { VectorIndexPort, VectorRow } from "../../src/store/vector/types";
 
 import { createDefaultConfig } from "../../src/config";
 import { DEFAULT_MODEL_PRESETS } from "../../src/config/types";
+import { getEmbeddingFingerprint } from "../../src/embed/fingerprint";
 import { LlmAdapter } from "../../src/llm/nodeLlamaCpp/adapter";
 import {
   processAnswerResult,
@@ -502,6 +503,10 @@ async function ensureVectorIndex(runtime: {
         mirrorHash: row.mirrorHash,
         seq: row.seq,
         model: embedUri,
+        embedFingerprint: getEmbeddingFingerprint({
+          modelUri: embedUri,
+          dimensions: embedBatchResult.value[batchIndex]?.length,
+        }),
         embedding: new Float32Array(embedBatchResult.value[batchIndex] ?? []),
       }));
       const upsertResult = await vectorIndex.upsertVectors(vectorRows);

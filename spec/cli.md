@@ -1180,10 +1180,41 @@ gno doctor [--json|--md]
       "name": "node-llama-cpp",
       "status": "ok",
       "message": "node-llama-cpp loaded successfully"
+    },
+    {
+      "name": "embedding-fingerprint",
+      "status": "warn",
+      "message": "current abc123def456, 12 pending/stale, 3 legacy, 2 groups",
+      "details": [
+        "Run: gno embed",
+        "If vectors still look stale, run: gno embed --force"
+      ],
+      "embeddingFingerprint": {
+        "model": "hf:Qwen/Qwen3-Embedding-0.6B-GGUF:Qwen3-Embedding-0.6B-Q8_0.gguf",
+        "currentFingerprint": "abc123def4567890",
+        "pendingChunks": 12,
+        "legacyChunks": 3,
+        "mixedGroups": 2,
+        "groups": [
+          {
+            "model": "hf:Qwen/Qwen3-Embedding-0.6B-GGUF:Qwen3-Embedding-0.6B-Q8_0.gguf",
+            "fingerprint": "abc123def4567890",
+            "count": 42,
+            "current": true,
+            "legacy": false
+          }
+        ]
+      }
     }
   ]
 }
 ```
+
+The `embedding-fingerprint` check is additive doctor-only diagnostics. It uses
+the active embed model and stored vector dimensions to report the current
+freshness fingerprint, pending/stale chunks, legacy empty-fingerprint vectors,
+and stored fingerprint groups. Stale, legacy, and mixed groups are warnings;
+recover with `gno embed`, or `gno embed --force` if vectors still look stale.
 
 **Exit Codes:**
 
