@@ -1,0 +1,18 @@
+{
+  "assignee": null,
+  "claim_note": "",
+  "claimed_at": null,
+  "created_at": "2026-05-26T11:16:16.226116Z",
+  "depends_on": [
+    "fn-81-embedding-and-package-hardening.2",
+    "fn-81-embedding-and-package-hardening.3",
+    "fn-81-embedding-and-package-hardening.4"
+  ],
+  "id": "fn-81-embedding-and-package-hardening.5",
+  "priority": null,
+  "spec": "fn-81-embedding-and-package-hardening",
+  "spec_path": ".flow/tasks/fn-81-embedding-and-package-hardening.5.md",
+  "status": "todo",
+  "title": "Update hosted website docs",
+  "updated_at": "2026-05-26T11:18:24.372664Z"
+}

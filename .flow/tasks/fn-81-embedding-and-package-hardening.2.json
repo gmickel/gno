@@ -1,0 +1,14 @@
+{
+  "assignee": null,
+  "claim_note": "",
+  "claimed_at": null,
+  "created_at": "2026-05-26T11:13:03.063622Z",
+  "depends_on": ["fn-81-embedding-and-package-hardening.1"],
+  "id": "fn-81-embedding-and-package-hardening.2",
+  "priority": null,
+  "spec": "fn-81-embedding-and-package-hardening",
+  "spec_path": ".flow/tasks/fn-81-embedding-and-package-hardening.2.md",
+  "status": "todo",
+  "title": "Expose fingerprint health in doctor and docs",
+  "updated_at": "2026-05-26T11:14:37.689621Z"
+}
