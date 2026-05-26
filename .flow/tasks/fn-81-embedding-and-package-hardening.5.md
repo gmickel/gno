@@ -60,8 +60,11 @@ The instruction files say new features, CLI/MCP/API output changes, model behavi
 - [ ] If deploy is blocked, Flow evidence explicitly says the hosted website remains stale and lists the exact remaining command/verification steps.
 
 ## Done summary
+
 Updated the canonical hosted website repo with public docs for embedding fingerprint diagnostics, same-run embed retry recovery, and the packed npm package smoke gate. Website changes were committed and pushed to gno.sh main, but production deploy is blocked by SSH timeout to root@178.104.180.89:22; live site remains stale for the new /docs/packaging page until deploy runs.
+
 ## Evidence
+
 - Commits: 2e6881abc0b5d5c064da4ba6901492779733f110
 - Tests: cd /Users/gordon/work/gno.sh && bun run typecheck (pass), cd /Users/gordon/work/gno.sh && bun run test (pass: 76 passed, 3 skipped), cd /Users/gordon/work/gno.sh && bun run check (pass after formatting), cd /Users/gordon/work/gno.sh && bun run build (pass; prerendered /docs/packaging), cd /Users/gordon/work/gno.sh && git push origin main (pass; 2e6881a pushed), cd /Users/gordon/work/gno.sh && DEPLOY_HOST=root@178.104.180.89 ./scripts/deploy-prod.sh (blocked: ssh connect to host 178.104.180.89 port 22 Operation timed out), curl -fsSI https://gno.sh (pass: HTTP/2 200), curl -fsSL https://gno.sh/docs/packaging | head -20 (blocked/stale: HTTP 404 because deploy did not complete), ssh -o ConnectTimeout=15 root@178.104.180.89 "systemctl is-active gno-sh && cd /srv/gno-sh/repo && git rev-parse --short HEAD" (blocked: ssh connect to host 178.104.180.89 port 22 Operation timed out)
 - PRs:

@@ -58,8 +58,11 @@ Avoid `npm link` as proof; it does not test packed file layout. Task 3 moved ret
 - [ ] Packaging/release docs mention the new gate if wired into prerelease or CI.
 
 ## Done summary
+
 Added a reusable tarball-first package smoke gate exposed as `bun run test:package`, with isolated npm/global install paths, packed file assertions including `src/embed/retry.ts`, and packaged doctor fingerprint JSON shape validation. Updated publish CI and package/release docs to use the same local gate.
+
 ## Evidence
+
 - Commits: 8dca5768d6e7f0fd5ed7b937e84870188c8735c1
 - Tests: bun test test/spec/schemas/doctor.test.ts, bun run docs:verify, bun run lint:check, bun run test:package, bun run typecheck, bun test
 - PRs:
