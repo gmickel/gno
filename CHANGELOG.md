@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.7.1] - 2026-05-30
+
+### Changed
+
+- Made query-time graph expansion opt-in with `gno query --graph` and
+  `graph: true` for API/MCP callers, keeping default hybrid queries on the
+  faster BM25/vector/rerank path.
+
 ## [1.7.0] - 2026-05-26
 
 ### Added
