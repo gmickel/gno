@@ -519,6 +519,23 @@ gno embed --collection my-collection
 
 ### GPU Backend Selection
 
+Before forcing a backend, check what `node-llama-cpp` actually detects on this
+machine. This works on Linux, Windows, and macOS and reports the active GPU
+backend (CUDA / Vulkan / Metal), available VRAM, and which prebuilt binary is in
+use:
+
+```bash
+bunx --bun node-llama-cpp inspect gpu
+```
+
+(`npx --no node-llama-cpp inspect gpu` works too.) Read the result before
+reaching for `GNO_LLAMA_GPU`:
+
+- If CUDA or Vulkan shows as `available` here but GNO still runs on CPU, the
+  backend is being selected or initialized incorrectly — continue below.
+- If it does _not_ show as available, the GPU driver/toolchain is the problem,
+  not GNO (e.g. missing CUDA runtime, no WSL GPU passthrough, stale Vulkan ICD).
+
 Set `GNO_LLAMA_GPU` to force a local backend while debugging runtime issues.
 `GNO_LLAMA_GPU` takes precedence over `NODE_LLAMA_CPP_GPU`.
 
