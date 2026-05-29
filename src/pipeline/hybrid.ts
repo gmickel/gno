@@ -554,7 +554,7 @@ export async function searchHybrid(
     includeSimilar: vectorAvailable,
     limit,
     candidateLimit,
-    disabled: options.noGraph,
+    disabled: !options.graph || options.noGraph,
     lang: options.lang,
     tagsAll: options.tagsAll,
     tagsAny: options.tagsAny,

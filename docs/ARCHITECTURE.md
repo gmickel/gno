@@ -96,7 +96,7 @@ User query
     │
     ▼ Chunk-level Vector Search (sqlite-vec KNN)
     │
-    ▼ Bounded graph expansion (top seeds → one-hop neighbors)
+    ▼ [Optional] Bounded graph expansion (top seeds → one-hop neighbors)
     │
     ▼ RRF Fusion (k=60, 2× weight for original, tiered bonus)
     │
@@ -110,14 +110,14 @@ User query
 ### Retrieval V2 Controls
 
 - **Structured query modes**: callers can pass explicit `term`, `intent`, and `hyde` entries.
-- **Graph expansion**: hybrid query uses the current document graph as a bounded candidate-generation signal. It starts from top BM25/vector seeds, follows one-hop neighbors, caps added candidates, and weights explicit links above inferred, ambiguous, or similarity edges.
+- **Graph expansion**: when `--graph` is passed, hybrid query uses the current document graph as a bounded candidate-generation signal. It starts from top BM25/vector seeds, follows one-hop neighbors, caps added candidates, and weights explicit links above inferred, ambiguous, or similarity edges.
 - **Compatibility**: existing query calls still work; structured modes are opt-in.
 - **Mode behavior**: when structured modes are present, generated expansion is skipped for that query.
 
 ### Observability Surfaces
 
 - `--explain` includes per-stage timings (`lang`, `expansion`, `bm25`, `vector`, `fusion`, `rerank`, `assembly`, `total`).
-- `--explain` includes graph expansion seed/candidate counts, edge-confidence counts, and fallback reasons.
+- `--explain` includes graph expansion seed/candidate counts, edge-confidence counts, and fallback reasons when graph expansion is enabled or skipped.
 - Explain output includes fallback + cache counters for retrieval diagnostics.
 - Result explain lines include score components (bm25/vector/fusion/rerank/blended).
 - `gno ask --json` may include `meta.answerContext` with selected/dropped source explain details.

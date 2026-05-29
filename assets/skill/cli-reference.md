@@ -154,7 +154,7 @@ gno query <query> [options]
 
 | Flag         | Time  | Description                    |
 | ------------ | ----- | ------------------------------ |
-| `--fast`     | ~0.7s | Skip expansion, graph, rerank  |
+| `--fast`     | ~0.7s | Skip expansion and rerank      |
 | (default)    | ~2-3s | Skip expansion, with reranking |
 | `--thorough` | ~5-8s | Full pipeline with expansion   |
 
@@ -164,7 +164,8 @@ Additional options:
 | ------------- | --------------------------------- |
 | `--no-expand` | Disable query expansion           |
 | `--no-rerank` | Disable reranking                 |
-| `--no-graph`  | Disable graph-neighbor candidates |
+| `--graph`     | Enable graph-neighbor candidates  |
+| `--no-graph`  | Compatibility no-op by default    |
 | `--explain`   | Print retrieval details to stderr |
 
 ### gno ask

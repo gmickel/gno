@@ -539,7 +539,8 @@ function wireSearchCommands(program: Command): void {
     )
     .option("--no-expand", "disable query expansion")
     .option("--no-rerank", "disable reranking")
-    .option("--no-graph", "disable graph neighbor expansion")
+    .option("--graph", "enable graph neighbor expansion")
+    .option("--no-graph", "compatibility no-op; graph is off by default")
     .option(
       "--query-mode <mode:text>",
       "structured mode entry (repeatable): term:<text>, intent:<text>, or hyde:<text>",
@@ -656,6 +657,7 @@ function wireSearchCommands(program: Command): void {
         lineNumbers: Boolean(cmdOpts.lineNumbers),
         noExpand: depthPolicy.noExpand,
         noRerank: depthPolicy.noRerank,
+        graph: Boolean(cmdOpts.graph),
         noGraph: Boolean(cmdOpts.fast) || cmdOpts.graph === false,
         candidateLimit: depthPolicy.candidateLimit,
         queryModes,

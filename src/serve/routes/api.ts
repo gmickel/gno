@@ -173,6 +173,7 @@ export interface QueryRequestBody {
   noExpand?: boolean;
   noRerank?: boolean;
   noGraph?: boolean;
+  graph?: boolean;
   /** Comma-separated tags - filter to docs having ALL (AND) */
   tagsAll?: string;
   /** Comma-separated tags - filter to docs having ANY (OR) */
@@ -3311,6 +3312,7 @@ export async function handleQuery(
       queryModes: normalizedQueryModes,
       noExpand: body.noExpand,
       noRerank: body.noRerank,
+      graph: body.graph === true,
       noGraph: body.noGraph,
       tagsAll,
       tagsAny,

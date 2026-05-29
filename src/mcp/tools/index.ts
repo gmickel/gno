@@ -456,7 +456,11 @@ export const queryInputSchema = z.object({
   noGraph: z
     .boolean()
     .optional()
-    .describe("Disable bounded one-hop graph neighbor expansion"),
+    .describe("Compatibility no-op unless graph is also true"),
+  graph: z
+    .boolean()
+    .optional()
+    .describe("Enable bounded one-hop graph neighbor expansion"),
   tagsAll: z.array(z.string()).optional().describe("Require ALL of these tags"),
   tagsAny: z.array(z.string()).optional().describe("Require ANY of these tags"),
 });

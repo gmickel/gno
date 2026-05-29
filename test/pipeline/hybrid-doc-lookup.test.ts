@@ -358,7 +358,7 @@ describe("searchHybrid targeted document lookup", () => {
     expect(result.value.results[1]?.source.relPath).toBe("hash_a.md");
   });
 
-  test("expands one-hop graph neighbors when embeddings are unavailable", async () => {
+  test("skips graph expansion by default", async () => {
     const store = createGraphStore([
       {
         source: "#seed",
@@ -381,6 +381,45 @@ describe("searchHybrid targeted document lookup", () => {
       },
       "seed query",
       { noExpand: true, noRerank: true, limit: 2, explain: true }
+    );
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      return;
+    }
+
+    expect(result.value.results.map((r) => r.source.relPath)).not.toContain(
+      "explicit.md"
+    );
+    expect(result.value.meta.graphExpansion?.enabled).toBe(false);
+    expect(result.value.meta.graphExpansion?.fallbackReasons).toContain(
+      "graph_disabled"
+    );
+  });
+
+  test("expands one-hop graph neighbors when explicitly enabled and embeddings are unavailable", async () => {
+    const store = createGraphStore([
+      {
+        source: "#seed",
+        target: "#explicit",
+        type: "wiki",
+        weight: 1,
+        confidence: "explicit",
+        audit: { resolution: "exact-title", matchCount: 1 },
+      },
+    ]);
+
+    const result = await searchHybrid(
+      {
+        store: store as StorePort,
+        config: {} as Config,
+        vectorIndex: null,
+        embedPort: null,
+        expandPort: null,
+        rerankPort: null,
+      },
+      "seed query",
+      { graph: true, noExpand: true, noRerank: true, limit: 2, explain: true }
     );
 
     expect(result.ok).toBe(true);
@@ -441,7 +480,7 @@ describe("searchHybrid targeted document lookup", () => {
     const emptyGraph = await searchHybrid(
       { ...deps, store: graphStore as StorePort },
       "seed query",
-      { noExpand: true, noRerank: true, limit: 2 }
+      { graph: true, noExpand: true, noRerank: true, limit: 2 }
     );
 
     expect(withoutGraph.ok).toBe(true);
@@ -480,7 +519,13 @@ describe("searchHybrid targeted document lookup", () => {
         rerankPort: null,
       },
       "seed query",
-      { noExpand: true, noRerank: true, candidateLimit: 2, limit: 5 }
+      {
+        graph: true,
+        noExpand: true,
+        noRerank: true,
+        candidateLimit: 2,
+        limit: 5,
+      }
     );
 
     expect(result.ok).toBe(true);
@@ -543,6 +588,7 @@ describe("searchHybrid targeted document lookup", () => {
       {
         noExpand: true,
         noRerank: true,
+        graph: true,
         candidateLimit: 1,
         limit: 5,
         tagsAll: ["keep"],
@@ -626,6 +672,7 @@ describe("searchHybrid targeted document lookup", () => {
       {
         noExpand: true,
         noRerank: true,
+        graph: true,
         limit: 5,
         tagsAll: ["keep"],
         since: "2026-01-01",
@@ -682,7 +729,7 @@ describe("searchHybrid targeted document lookup", () => {
         rerankPort: null,
       },
       "seed query",
-      { noExpand: true, noRerank: true, limit: 5, explain: true }
+      { graph: true, noExpand: true, noRerank: true, limit: 5, explain: true }
     );
 
     expect(result.ok).toBe(true);
@@ -738,7 +785,7 @@ describe("searchHybrid targeted document lookup", () => {
         rerankPort: null,
       },
       "seed query",
-      { noExpand: true, noRerank: true, limit: 4 }
+      { graph: true, noExpand: true, noRerank: true, limit: 4 }
     );
 
     expect(result.ok).toBe(true);
@@ -793,7 +840,7 @@ describe("searchHybrid targeted document lookup", () => {
         rerankPort,
       },
       "seed query",
-      { noExpand: true, limit: 2 }
+      { graph: true, noExpand: true, limit: 2 }
     );
 
     expect(result.ok).toBe(true);

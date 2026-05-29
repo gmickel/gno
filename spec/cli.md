@@ -635,7 +635,7 @@ Hybrid search combining BM25 and vector retrieval with optional expansion and re
 **Synopsis:**
 
 ```bash
-gno query <query> [-n <num>] [--min-score <num>] [-c <collection>] [--since <date>] [--until <date>] [--category <values>] [--author <text>] [--intent <text>] [--exclude <values>] [-C <num>] [--tags-all <tags>] [--tags-any <tags>] [--full] [--line-numbers] [--lang <bcp47>] [--no-expand] [--no-rerank] [--no-graph] [--query-mode <mode:text>]... [--explain] [--json|--files|--csv|--md|--xml]
+gno query <query> [-n <num>] [--min-score <num>] [-c <collection>] [--since <date>] [--until <date>] [--category <values>] [--author <text>] [--intent <text>] [--exclude <values>] [-C <num>] [--tags-all <tags>] [--tags-any <tags>] [--full] [--line-numbers] [--lang <bcp47>] [--no-expand] [--no-rerank] [--graph] [--no-graph] [--query-mode <mode:text>]... [--explain] [--json|--files|--csv|--md|--xml]
 ```
 
 **Options:** Same as `gno search`, plus:
@@ -645,7 +645,8 @@ gno query <query> [-n <num>] [--min-score <num>] [-c <collection>] [--since <dat
 |--------|------|-------------|
 | `--no-expand` | boolean | Disable query expansion |
 | `--no-rerank` | boolean | Disable cross-encoder reranking |
-| `--no-graph` | boolean | Disable bounded one-hop graph neighbor expansion |
+| `--graph` | boolean | Enable bounded one-hop graph neighbor expansion |
+| `--no-graph` | boolean | Compatibility no-op; graph expansion is off unless `--graph` is passed |
 | `--intent` | string | Disambiguating context for ambiguous queries; steers expansion, rerank chunk/snippet choice, and disables strong-signal bypass without being searched directly |
 | `--exclude` | string | Hard-prune docs containing any comma-separated term in title/path/body |
 | `-C, --candidate-limit` | integer | Max candidates passed to reranking (default 20) |
@@ -655,11 +656,11 @@ gno query <query> [-n <num>] [--min-score <num>] [-c <collection>] [--since <dat
 **Compatibility / Migration:**
 
 - Legacy query invocations remain valid (`gno query "<text>"`, `--fast`, `--thorough`, `--no-expand`, `--no-rerank`).
-- `--fast` skips query expansion, graph expansion, and reranking.
+- `--fast` skips query expansion and reranking. Graph expansion is already off unless `--graph` is passed.
 - `--intent` is orthogonal to `--query-mode`: intent steers scoring/prompting, while query modes inject caller-provided retrieval expansions.
 - `--query-mode` is optional and additive to the command surface.
 - If one or more `--query-mode` entries are provided, generated expansion is bypassed and provided entries are used as retrieval intents.
-- By default, `gno query` can add a capped one-hop graph-neighbor candidate set after BM25/vector retrieval. Explicit links are weighted above inferred, ambiguous, or similarity edges. Use `--no-graph` to disable this adjunct.
+- By default, `gno query` does not expand through the document graph. Use `--graph` to add a capped one-hop graph-neighbor candidate set after BM25/vector retrieval. Explicit links are weighted above inferred, ambiguous, or similarity edges.
 
 **Explain Output (stderr):**
 

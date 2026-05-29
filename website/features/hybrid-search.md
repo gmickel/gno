@@ -55,7 +55,7 @@ The `query` command combines both methods using RRF, a proven algorithm that mer
 gno query "authentication best practices"
 ```
 
-`gno query` also uses the document graph as a bounded retrieval signal. It starts from the top BM25/vector seeds, adds capped one-hop neighbors, and weights explicit wiki/markdown links above inferred, ambiguous, or similarity edges before reranking.
+`gno query --graph` also uses the document graph as a bounded retrieval signal. It starts from the top BM25/vector seeds, adds capped one-hop neighbors, and weights explicit wiki/markdown links above inferred, ambiguous, or similarity edges before reranking. Graph expansion is off by default for low-latency queries.
 
 When stdout is a TTY, GNO can also wrap the visible `gno://...` result URI in a clickable terminal hyperlink that resolves to the source file path, with best-effort line hints when available.
 

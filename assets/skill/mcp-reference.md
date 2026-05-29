@@ -56,9 +56,8 @@ gno mcp status
 ## Retrieval Order
 
 For normal questions, start with `gno_query`, then read targeted snippets with
-`gno_get` or batch refs with `gno_multi_get`. `gno_query` already does bounded
-one-hop graph expansion from top seeds; pass `noGraph: true` only when comparing
-pure BM25/vector retrieval. Check `gno_status` first when freshness or
+`gno_get` or batch refs with `gno_multi_get`. Pass `graph: true` only when
+linked context is worth the extra latency. Check `gno_status` first when freshness or
 embeddings may be stale.
 
 Use graph tools for relationship context: `gno_graph` for corpus report/stats,

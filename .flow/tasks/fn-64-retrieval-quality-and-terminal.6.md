@@ -1,6 +1,7 @@
 # fn-64-retrieval-quality-and-terminal.6 Optimize query-time graph expansion latency
 
 ## Description
+
 Query-time graph expansion currently dominates hybrid retrieval latency on a realistic Growth Factors vault. Repro from WSL install:
 
 ```bash
@@ -22,6 +23,7 @@ Observed timings on ~871 docs / ~4,858 links:
 Adding `--no-graph` drops the same query to ~2.4s internal timing, so the bottleneck is full graph resolution during candidate expansion.
 
 ## Acceptance
+
 - [ ] Reproduce the slow graph stage with the command above or an equivalent fixture.
 - [ ] Query-time graph expansion avoids full `getGraph()` recomputation for every query.
 - [ ] Use seed-doc scoped outgoing/backlink lookup or a cached graph projection.
@@ -29,9 +31,11 @@ Adding `--no-graph` drops the same query to ~2.4s internal timing, so the bottle
 - [ ] Add regression coverage for graph expansion latency/SQL scope where practical.
 
 ## Done summary
+
 TBD
 
 ## Evidence
+
 - Commits:
 - Tests:
 - PRs:

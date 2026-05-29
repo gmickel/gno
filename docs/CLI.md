@@ -171,7 +171,7 @@ gno query "auth" --fast              # Fastest: ~0.7s
 gno query "auth" --thorough          # Full pipeline: ~5-8s
 gno query "auth" --tags-all work,backend   # Filter by tags
 gno query "performance" --intent "web performance and latency"
-gno query "auth" --no-graph          # Disable graph-neighbor candidates
+gno query "auth" --graph             # Enable graph-neighbor candidates
 gno query "auth flow" --query-mode term:"jwt refresh token" --query-mode intent:"how refresh token rotation works"
 gno query $'auth flow\nterm: "refresh token"\nintent: token rotation'
 ```
@@ -179,7 +179,7 @@ gno query $'auth flow\nterm: "refresh token"\nintent: token rotation'
 **Search modes**:
 
 - **Default** (~2-3s on slim): Preset-aware balanced mode. On `slim` / `slim-tuned`, uses expansion + reranking; on larger presets, keeps reranking on and expansion off by default.
-- `--fast` (~0.7s): Skip query expansion, graph expansion, and reranking. Use for quick lookups.
+- `--fast` (~0.7s): Skip query expansion and reranking. Use for quick lookups.
 - `--thorough` (~5-8s): Expansion + reranking with a wider candidate pool. Best recall.
 
 **Pipeline features**:
@@ -193,11 +193,12 @@ gno query $'auth flow\nterm: "refresh token"\nintent: token rotation'
 
 Additional options:
 
-- `--fast` - Skip query expansion, graph expansion, and reranking (fastest, ~0.7s)
+- `--fast` - Skip query expansion and reranking (fastest, ~0.7s)
 - `--thorough` - Use the widest retrieval/rerank budget (slower, best recall)
 - `--no-expand` - Disable query expansion
 - `--no-rerank` - Disable cross-encoder reranking
-- `--no-graph` - Disable bounded one-hop graph neighbor expansion
+- `--graph` - Enable bounded one-hop graph neighbor expansion
+- `--no-graph` - Compatibility no-op; graph expansion is off unless `--graph` is passed
 - `--intent <text>` - Disambiguating context for ambiguous queries. Steers expansion, rerank chunk/snippet choice, and disables strong-signal bypass, but is not searched directly.
 - `--exclude <values>` - Hard-prune docs containing any comma-separated term in title/path/body
 - `-C, --candidate-limit <n>` - Max candidates passed to reranking (default: 20)
@@ -215,7 +216,7 @@ Additional options:
 - Existing calls keep working (`gno query "..."`, `--fast`, `--thorough`, `--no-expand`, `--no-rerank`).
 - `--intent` is orthogonal to `--query-mode`: intent steers scoring/prompting, while query modes inject caller-provided retrieval expansions.
 - `--query-mode` is opt-in for explicit intent control and replaces generated expansion for that query.
-- Graph-neighbor expansion is default-safe: if graph data, embeddings, or similarity edges are unavailable, query falls back to the normal BM25/vector path.
+- Graph-neighbor expansion is opt-in: pass `--graph` when linked context matters. If graph data, embeddings, or similarity edges are unavailable, query falls back to the normal BM25/vector path.
 - Use `term` for exact lexical constraints, `intent` for semantic reformulations, and `hyde` for one hypothetical answer passage.
 - Multi-line structured query documents are also supported. See [Structured Query Syntax](./SYNTAX.md).
 - In terminal output, `gno search`, `gno vsearch`, and `gno query` can wrap the visible `gno://...` URI in an OSC 8 hyperlink when stdout is a TTY. Configure the target with `editorUriTemplate` in `~/.config/gno/index.yml` or override it with `GNO_EDITOR_URI_TEMPLATE`. Env override wins. If unset, GNO falls back to `file://` links using absolute paths when available.
