@@ -700,6 +700,10 @@ Create a new document in a collection (write-enabled).
       "type": "array",
       "items": { "type": "string" },
       "description": "Tags to apply to the document"
+    },
+    "source": {
+      "type": "object",
+      "description": "Optional provenance metadata; written under structured source frontmatter"
     }
   },
   "required": ["collection"]
@@ -714,11 +718,20 @@ Create a new document in a collection (write-enabled).
 - `folderPath` lets clients create inside a specific subfolder
 - `collisionPolicy` supports `error`, `open_existing`, or `create_with_suffix`
 - `presetId` applies a structured note scaffold before write
+- Content is required unless `presetId` can scaffold a non-empty note
+- Default generated captures use `inbox/YYYY-MM-DD/capture-<body-hash>.md`
+- Collision checks include indexed documents and disk-only files
+- Capture writes structured `source:` frontmatter with `kind`, `capturedAt`,
+  and optional `url`, `uri`, `docid`, `mime`, `ext`, `author`, `observedAt`,
+  `externalId`, and `title`
 - Tags are validated and normalized to lowercase
 - For Markdown files, tags are added to frontmatter
 - For non-Markdown files, tags are stored as user-source in the database
+- Receipts distinguish write result from sync and embedding state; capture does
+  not imply embedding unless `embed.status` is `completed`
 
-**Output Schema:** `gno://schemas/mcp-capture-result@1.0`
+**Output Schema:** `gno://schemas/mcp-capture-result@1.0`, compatible with the
+shared `gno://schemas/capture-receipt@1.0` contract.
 
 ---
 
@@ -1667,6 +1680,7 @@ Tools are versioned via the server version. Breaking changes require major versi
 Output schemas include version in `$id`:
 
 - `gno://schemas/search-result@1.0`
+- `gno://schemas/capture-receipt@1.0`
 
 Clients should check schema version for compatibility.
 

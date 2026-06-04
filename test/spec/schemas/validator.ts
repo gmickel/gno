@@ -21,6 +21,7 @@ async function loadAllSchemas(): Promise<void> {
     "multi-get",
     "ask",
     "error",
+    "capture-receipt",
     "mcp-capture-result",
     "mcp-add-collection-result",
     "mcp-sync-result",

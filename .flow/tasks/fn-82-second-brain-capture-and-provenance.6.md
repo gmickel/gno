@@ -6,6 +6,12 @@ Close the spec by proving cross-surface parity and synchronizing all user-facing
 
 This is not a loose docs cleanup task. It owns the final parity check and ensures no surface tells a different story about capture, provenance, collision policy, sync/FTS ingestion, or embedding. Task 1 owns canonical schema/status snippets; this task owns the final sweep and drift fix.
 
+Task 1 delivered `src/core/capture.ts`,
+`spec/output-schemas/capture-receipt.schema.json`, expanded
+`spec/output-schemas/mcp-capture-result.schema.json`, and canonical status
+vocabulary in `spec/mcp.md`. Treat those as authoritative for the final
+docs/website parity sweep.
+
 Expected files:
 
 - `README.md`

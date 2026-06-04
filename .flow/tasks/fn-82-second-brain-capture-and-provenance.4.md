@@ -4,6 +4,11 @@
 
 Upgrade the existing MCP `gno_capture` tool in place so it uses the shared capture core and returns the canonical provenance receipt with documented legacy compatibility fields.
 
+Task 1 delivered the shared contract in `src/core/capture.ts`, expanded
+`spec/output-schemas/mcp-capture-result.schema.json`, and introduced the shared
+`gno://schemas/capture-receipt@1.0` schema. Preserve MCP-required legacy fields
+while filling shared receipt fields from `buildCaptureReceipt()`.
+
 Do not create a second MCP capture tool. Keep write tools opt-in and server-enforced. Tool annotations/schema improvements are useful for client UX but are not the write gate.
 
 Expected files:

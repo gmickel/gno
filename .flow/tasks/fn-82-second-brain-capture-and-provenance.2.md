@@ -4,6 +4,12 @@
 
 Add the missing `gno capture` CLI surface using the shared capture core from task 1.
 
+Task 1 delivered the shared contract in `src/core/capture.ts` and the canonical
+receipt schema `spec/output-schemas/capture-receipt.schema.json`. Use
+`planCapture()` and `buildCaptureReceipt()` rather than reimplementing content
+hashing, UTC inbox paths, source frontmatter, tag normalization, or collision
+status fields.
+
 The command is a thin adapter: parse Commander options, read content or scaffold intent, pass normalized input to the shared core, and format the shared receipt as human text, JSON, or quiet output.
 
 Expected files:

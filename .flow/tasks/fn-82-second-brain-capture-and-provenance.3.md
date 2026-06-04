@@ -6,6 +6,11 @@ Expose capture-with-provenance through REST/API and SDK while preserving raw not
 
 This task should add `POST /api/capture` or an explicitly documented equivalent route that delegates to the shared core. It should add `client.capture(input)` unless the implementation proves the existing `createNote()` can expose capture semantics cleanly without mixing raw note creation and provenance capture concepts.
 
+Task 1 delivered the shared contract in `src/core/capture.ts` and the canonical
+receipt schema `spec/output-schemas/capture-receipt.schema.json`. API/SDK
+adapters should call `planCapture()` and `buildCaptureReceipt()` and only own
+transport-specific validation, sync job reporting, and local path/store access.
+
 Expected files:
 
 - `src/serve/server.ts`
