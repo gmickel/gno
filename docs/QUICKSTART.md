@@ -152,6 +152,20 @@ gno update
 
 This makes re-indexing fast even for large collections. Just run `gno index` after adding or editing files.
 
+### Capture New Notes
+
+Use `gno capture` for quick second-brain entries with provenance metadata:
+
+```bash
+gno capture "thought to remember"
+gno capture --file ./clip.md --source-url https://example.com --source-kind web --json
+```
+
+Generated captures land under `inbox/YYYY-MM-DD/capture-<body-hash>.md` in UTC.
+The JSON receipt reports the file write, sync status, and embed status
+separately; capture does not imply embedding unless the receipt says embedding
+completed.
+
 If you want continuous indexing instead of manual re-runs:
 
 ```bash
