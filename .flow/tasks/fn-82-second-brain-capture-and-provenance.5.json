@@ -1,0 +1,17 @@
+{
+  "assignee": null,
+  "claim_note": "",
+  "claimed_at": null,
+  "created_at": "2026-06-04T22:34:49.238779Z",
+  "depends_on": [
+    "fn-82-second-brain-capture-and-provenance.1",
+    "fn-82-second-brain-capture-and-provenance.3"
+  ],
+  "id": "fn-82-second-brain-capture-and-provenance.5",
+  "priority": 5,
+  "spec": "fn-82-second-brain-capture-and-provenance",
+  "spec_path": ".flow/tasks/fn-82-second-brain-capture-and-provenance.5.md",
+  "status": "todo",
+  "title": "Wire Web UI quick capture to provenance flow",
+  "updated_at": "2026-06-04T22:44:50.960269Z"
+}

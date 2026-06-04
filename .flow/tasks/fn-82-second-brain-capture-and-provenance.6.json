@@ -1,0 +1,19 @@
+{
+  "assignee": null,
+  "claim_note": "",
+  "claimed_at": null,
+  "created_at": "2026-06-04T22:34:49.434329Z",
+  "depends_on": [
+    "fn-82-second-brain-capture-and-provenance.2",
+    "fn-82-second-brain-capture-and-provenance.3",
+    "fn-82-second-brain-capture-and-provenance.4",
+    "fn-82-second-brain-capture-and-provenance.5"
+  ],
+  "id": "fn-82-second-brain-capture-and-provenance.6",
+  "priority": 6,
+  "spec": "fn-82-second-brain-capture-and-provenance",
+  "spec_path": ".flow/tasks/fn-82-second-brain-capture-and-provenance.6.md",
+  "status": "todo",
+  "title": "Close docs hosted site skill and golden parity tests",
+  "updated_at": "2026-06-04T22:44:51.129561Z"
+}

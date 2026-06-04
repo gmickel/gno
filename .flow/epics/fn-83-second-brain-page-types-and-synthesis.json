@@ -1,0 +1,13 @@
+{
+  "branch_name": "fn-83-second-brain-page-types-and-synthesis",
+  "created_at": "2026-06-04T21:46:23.621331Z",
+  "depends_on_epics": ["fn-82-second-brain-capture-and-provenance"],
+  "id": "fn-83-second-brain-page-types-and-synthesis",
+  "next_task": 1,
+  "plan_review_status": "unknown",
+  "plan_reviewed_at": null,
+  "spec_path": ".flow/specs/fn-83-second-brain-page-types-and-synthesis.md",
+  "status": "open",
+  "title": "Second-brain page types and synthesis templates",
+  "updated_at": "2026-06-04T22:34:47.902514Z"
+}

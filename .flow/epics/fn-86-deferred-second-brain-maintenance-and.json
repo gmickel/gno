@@ -1,0 +1,13 @@
+{
+  "branch_name": "fn-86-deferred-second-brain-maintenance-and",
+  "created_at": "2026-06-04T21:46:24.465664Z",
+  "depends_on_epics": ["fn-82-second-brain-capture-and-provenance"],
+  "id": "fn-86-deferred-second-brain-maintenance-and",
+  "next_task": 1,
+  "plan_review_status": "unknown",
+  "plan_reviewed_at": null,
+  "spec_path": ".flow/specs/fn-86-deferred-second-brain-maintenance-and.md",
+  "status": "open",
+  "title": "Deferred second-brain maintenance and dream cycle",
+  "updated_at": "2026-06-04T22:34:48.263072Z"
+}

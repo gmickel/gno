@@ -1,0 +1,28 @@
+{
+  "branch_name": "fn-82-second-brain-capture-and-provenance",
+  "completion_review_status": "unknown",
+  "completion_reviewed_at": null,
+  "created_at": "2026-06-04T21:46:23.343605Z",
+  "default_impl": null,
+  "default_review": null,
+  "default_sync": null,
+  "depends_on_epics": [],
+  "id": "fn-82-second-brain-capture-and-provenance",
+  "next_task": 1,
+  "plan_review_status": "ship",
+  "plan_reviewed_at": "2026-06-04T23:02:30.922160Z",
+  "spec_path": ".flow/specs/fn-82-second-brain-capture-and-provenance.md",
+  "status": "open",
+  "title": "Second-brain capture and provenance foundation",
+  "tracker": {
+    "baseHashFlow": null,
+    "baseHashTracker": null,
+    "id": null,
+    "identifier": null,
+    "lastSyncedAt": null,
+    "mergeBaseFlow": null,
+    "mergeBaseTracker": null,
+    "url": null
+  },
+  "updated_at": "2026-06-04T23:02:30.922343Z"
+}

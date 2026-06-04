@@ -1,0 +1,14 @@
+{
+  "assignee": null,
+  "claim_note": "",
+  "claimed_at": null,
+  "created_at": "2026-06-04T22:34:49.045454Z",
+  "depends_on": ["fn-82-second-brain-capture-and-provenance.1"],
+  "id": "fn-82-second-brain-capture-and-provenance.4",
+  "priority": 4,
+  "spec": "fn-82-second-brain-capture-and-provenance",
+  "spec_path": ".flow/tasks/fn-82-second-brain-capture-and-provenance.4.md",
+  "status": "todo",
+  "title": "Upgrade MCP gno_capture to provenance receipts",
+  "updated_at": "2026-06-04T22:49:24.665871Z"
+}

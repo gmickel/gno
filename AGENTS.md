@@ -413,60 +413,38 @@ If you change behavior, update docs in the same commit. Never leave docs out of 
 Work is NOT complete until pushed to remote.
 
 <!-- BEGIN FLOW-NEXT -->
-
 ## Flow-Next
 
 This project uses Flow-Next for task tracking. Use `.flow/bin/flowctl` instead of markdown TODOs or TodoWrite.
 
 **Quick commands:**
-
 ```bash
-.flow/bin/flowctl list                # List all epics + tasks
-.flow/bin/flowctl epics               # List all epics
-.flow/bin/flowctl tasks --epic fn-N   # List tasks for epic
-.flow/bin/flowctl ready --epic fn-N   # What's ready
-.flow/bin/flowctl show fn-N.M         # View task
-.flow/bin/flowctl start fn-N.M        # Claim task
+.flow/bin/flowctl list # List all specs + tasks
+.flow/bin/flowctl specs # List all specs
+.flow/bin/flowctl tasks --spec fn-N # List tasks for spec
+.flow/bin/flowctl ready --spec fn-N # What's ready
+.flow/bin/flowctl show fn-N.M # View task
+.flow/bin/flowctl start fn-N.M # Claim task
 .flow/bin/flowctl done fn-N.M --summary-file s.md --evidence-json e.json
 ```
 
 **Creating a spec** ("create a spec", "spec out X", "write a spec for X"):
 
-A spec = an epic. Create one directly — do NOT use `$flow-next-plan` (that breaks specs into tasks).
+Create one directly — do NOT use `$flow-next-plan` (that breaks specs into tasks). The canonical 7-section spec scaffold lives at `.flow/templates/spec.md` (copied here by `$flow-next-setup`) — read it for the section list, scope ownership, and `## Decision Context` H3 conditional. To customize the scaffold for this project, copy `.flow/templates/spec.md` to `<repo-root>/SPEC.md` and edit there — the discovery cascade prefers it (first match wins): `<repo_root>/SPEC.md` → `<repo_root>/spec.md` → `.flow/templates/spec.md` → bundled plugin template.
 
 ```bash
-.flow/bin/flowctl epic create --title "Short title" --json
-.flow/bin/flowctl epic set-plan <epic-id> --file - --json <<'EOF'
+.flow/bin/flowctl spec create --title "Short title" --json
+.flow/bin/flowctl spec set-plan <spec-id> --file - --json <<'EOF'
 # Title
 
-## Goal & Context
-Why this exists, what problem it solves.
-
-## Architecture & Data Models
-System design, data flow, key components.
-
-## API Contracts
-Endpoints, interfaces, input/output shapes.
-
-## Edge Cases & Constraints
-Failure modes, limits, performance requirements.
-
-## Acceptance Criteria
-- [ ] Testable criterion 1
-- [ ] Testable criterion 2
-
-## Boundaries
-What's explicitly out of scope.
-
-## Decision Context
-Why this approach over alternatives.
+# ... fill the 7 canonical sections (see SPEC.md / .flow/templates/spec.md)
 EOF
 ```
 
 After creating a spec, choose next step:
 
-- `$flow-next-plan <epic-id>` — research + break into tasks
-- `$flow-next-interview <epic-id>` — deep Q&A to refine the spec
+- `$flow-next-plan <spec-id>` — research + break into tasks
+- `$flow-next-interview <spec-id>` — deep Q&A to refine the spec
 
 **Rules:**
 
@@ -474,8 +452,9 @@ After creating a spec, choose next step:
 - Do NOT create markdown TODOs or use TodoWrite
 - Re-anchor (re-read spec + status) before every task
 
-**More info:** `.flow/bin/flowctl --help` or read `.flow/usage.md`
+**Optional — codebase feature map:** `$flow-next-map` wraps [openclaw/clawpatch](https://github.com/openclaw/clawpatch)'s `clawpatch map` command to build a semantic feature index under `.clawpatch/features/*.json`. When present, `repo-scout` and `context-scout` use it to anchor R-IDs and `Investigation targets` to concrete codebase regions. Provider-free by default; install via `pnpm add -g clawpatch` (Node 22+).
 
+**More info:** `.flow/bin/flowctl --help` or read `.flow/usage.md`
 <!-- END FLOW-NEXT -->
 
 # Oxlint + Oxfmt Code Standards

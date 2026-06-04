@@ -4,6 +4,7 @@
   },
   "planSync": {
     "crossEpic": true,
+    "crossSpec": true,
     "enabled": true
   },
   "review": {
@@ -11,5 +12,31 @@
   },
   "scouts": {
     "github": false
+  },
+  "tracker": {
+    "conflictTiebreak": "always-ask",
+    "enabled": false,
+    "perEvent": {
+      "capture": "off",
+      "completionReview": "off",
+      "interview": "off",
+      "makePr": "off",
+      "plan": "off",
+      "resolvePr": "off",
+      "work": {
+        "done": "off",
+        "firstClaim": "off"
+      }
+    },
+    "perTracker": {
+      "labelMap": {},
+      "priorityMap": {},
+      "projectId": null,
+      "teamId": null
+    },
+    "provenance": null,
+    "staleAfterHours": 24,
+    "type": null,
+    "version": 1
   }
 }

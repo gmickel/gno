@@ -19,9 +19,8 @@ Initial slice:
 - [ ] Contract is ready to enforce parity across applicable surfaces
 
 ## Done summary
-
+Superseded. Current code already provides the preset/authoring accelerator baseline; remaining structured frontmatter/content-matrix/docs hardening is moved to fn-82-second-brain-capture-and-provenance.1.
 ## Evidence
-
 - Commits:
 - Tests:
 - PRs:
