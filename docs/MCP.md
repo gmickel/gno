@@ -694,7 +694,27 @@ folderPath: "projects/gno" # Optional
 collisionPolicy: "create_with_suffix" # Optional: error|open_existing|create_with_suffix
 presetId: "project-note" # Optional
 content: "# Project Plan\n" # Optional when preset provides scaffold
+source:
+  kind: "web" # direct|web|email|meeting|chat|file|api|unknown
+  url: "https://example.com/source"
+  title: "Source page"
+tags: ["project/gno"]
 ```
+
+`gno_capture` writes the same structured `source:` frontmatter and returns the
+same provenance receipt contract as CLI, REST, and SDK capture. The MCP result
+also preserves legacy fields: `docid`, `absPath`, `overwritten`, and
+`serverInstanceId`.
+
+Collision handling checks both indexed documents and disk-only files. Use
+`collisionPolicy: "open_existing"` to return an existing receipt without
+rewriting content, `create_with_suffix` to create the next available filename,
+or legacy `overwrite: true` to replace the target path and return
+`collisionPolicyResult: "overwritten"`.
+
+MCP capture runs under the server write lock and syncs the written file into FTS
+before returning `sync.status: "completed"`. It does not auto-embed; run
+`gno_embed` or `gno_index` when vector search should include the new note.
 
 ### gno_add_collection
 

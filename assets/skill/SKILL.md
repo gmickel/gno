@@ -223,8 +223,14 @@ unless `embed.status` is `completed`.
 
 Programmatic capture uses the same receipt contract:
 
+- MCP: `gno_capture` (requires `gno mcp --enable-write`)
 - REST: `POST /api/capture`
 - SDK: `client.capture({ collection, content, source, tags })`
+
+MCP capture writes structured `source:` frontmatter, runs under the MCP write
+lock, syncs the file for FTS, and preserves legacy MCP fields (`docid`,
+`absPath`, `overwritten`, `serverInstanceId`) alongside the shared receipt. It
+does not auto-embed.
 
 ## Collection-specific embedding models
 

@@ -10,6 +10,7 @@ import { z } from "zod";
 
 import type { ToolContext } from "../server";
 
+import { CAPTURE_MAX_TEXT_BYTES } from "../../core/capture";
 import { normalizeTag } from "../../core/tags";
 import { handleAddCollection } from "./add-collection";
 import { handleCapture } from "./capture";
@@ -148,6 +149,7 @@ const captureInputSchema = z.object({
     .describe("Target collection name (must already exist)"),
   content: z
     .string()
+    .max(CAPTURE_MAX_TEXT_BYTES)
     .optional()
     .describe(
       "Document content (markdown or plain text). Optional when presetId provides a scaffold."
@@ -189,6 +191,39 @@ const captureInputSchema = z.object({
     .array(z.string())
     .optional()
     .describe("Tags to apply to the new document"),
+  source: z
+    .object({
+      kind: z
+        .enum([
+          "direct",
+          "web",
+          "email",
+          "meeting",
+          "chat",
+          "file",
+          "api",
+          "unknown",
+        ])
+        .optional()
+        .describe("Capture source kind"),
+      title: z.string().optional().describe("Human source title"),
+      url: z.string().optional().describe("Source URL"),
+      uri: z.string().optional().describe("Source URI"),
+      docid: z.string().optional().describe("Source GNO doc ID"),
+      mime: z.string().optional().describe("Source MIME type"),
+      ext: z.string().optional().describe("Source file extension"),
+      author: z.string().optional().describe("Source author"),
+      observedAt: z
+        .string()
+        .optional()
+        .describe("When the source was observed"),
+      capturedAt: z.string().optional().describe("Capture timestamp override"),
+      externalId: z.string().optional().describe("External system/source ID"),
+    })
+    .optional()
+    .describe(
+      "Structured provenance metadata written under source frontmatter"
+    ),
 });
 
 const addCollectionInputSchema = z.object({

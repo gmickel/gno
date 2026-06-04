@@ -9,54 +9,39 @@ import { mkdir } from "node:fs/promises";
 // node:path for path utils (no Bun path utils)
 import { dirname, extname, join } from "node:path";
 
+import type { NoteCollisionPolicy } from "../../core/note-creation";
+import type { NotePresetId } from "../../core/note-presets";
 import type { ToolContext } from "../server";
 
-import { buildUri } from "../../app/constants";
+import {
+  buildCaptureReceipt,
+  listCaptureDiskRelPaths,
+  planCapture,
+  type CaptureInput as SharedCaptureInput,
+  type CaptureReceipt,
+} from "../../core/capture";
 import { MCP_ERRORS } from "../../core/errors";
 import { withWriteLock } from "../../core/file-lock";
 import { atomicWrite } from "../../core/file-ops";
-import {
-  resolveNoteCreatePlan,
-  type NoteCollisionPolicy,
-} from "../../core/note-creation";
-import {
-  getNotePreset,
-  resolveNotePreset,
-  type NotePresetId,
-} from "../../core/note-presets";
-import { normalizeTag, validateTag } from "../../core/tags";
-import {
-  normalizeCollectionName,
-  validateRelPath,
-} from "../../core/validation";
+import { normalizeCollectionName } from "../../core/validation";
 import { defaultSyncService } from "../../ingestion";
-import { updateFrontmatterTags } from "../../ingestion/frontmatter";
-import { extractTitle } from "../../pipeline/contextual";
 import { runTool, type ToolResult } from "./index";
 
-interface CaptureInput {
-  collection: string;
-  content?: string;
-  title?: string;
+interface CaptureInput extends Omit<
+  SharedCaptureInput,
+  "relPath" | "collisionPolicy" | "presetId"
+> {
   path?: string;
-  overwrite?: boolean;
-  folderPath?: string;
   collisionPolicy?: NoteCollisionPolicy;
   presetId?: NotePresetId;
-  tags?: string[];
 }
 
-interface CaptureResult {
+type McpCaptureResult = CaptureReceipt & {
   docid: string;
-  uri: string;
   absPath: string;
-  collection: string;
-  relPath: string;
-  created: boolean;
   overwritten: boolean;
   serverInstanceId: string;
-  tags?: string[];
-}
+};
 
 const SENSITIVE_SUBPATHS = new Set([
   ".ssh",
@@ -66,16 +51,6 @@ const SENSITIVE_SUBPATHS = new Set([
   ".git",
   "node_modules",
 ]);
-
-function sanitizeFilename(title: string): string {
-  return title
-    .toLowerCase()
-    .trim()
-    .replaceAll(/[^\w\s-]/g, "")
-    .replaceAll(/\s+/g, "-")
-    .replaceAll(/-+/g, "-")
-    .replace(/^-|-$/g, "");
-}
 
 function ensureMarkdownExtension(relPath: string): string {
   return extname(relPath) ? relPath : `${relPath}.md`;
@@ -90,26 +65,40 @@ function assertNotSensitive(relPath: string): void {
   }
 }
 
-function generateFilename(title: string | undefined, content: string): string {
-  const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-  const fallback = `note-${timestamp}.md`;
-  const baseTitle = title?.trim() || extractTitle(content, fallback);
-  const slug = sanitizeFilename(baseTitle);
-  const safeSlug = slug || `note-${timestamp}`;
-  return `${safeSlug}.md`;
-}
-
-function formatCaptureResult(result: CaptureResult): string {
+function formatCaptureResult(result: McpCaptureResult): string {
   const lines: string[] = [];
   lines.push(`Doc: ${result.docid}`);
   lines.push(`URI: ${result.uri}`);
   lines.push(`Path: ${result.absPath}`);
   lines.push(`Created: ${result.created ? "yes" : "no"}`);
+  lines.push(`Opened existing: ${result.openedExisting ? "yes" : "no"}`);
   lines.push(`Overwritten: ${result.overwritten ? "yes" : "no"}`);
-  if (result.tags && result.tags.length > 0) {
+  lines.push(`Collision: ${result.collisionPolicyResult}`);
+  lines.push(`Sync: ${result.sync.status}`);
+  lines.push(`Embed: ${result.embed.status}`);
+  lines.push(`Content hash: ${result.contentHash}`);
+  if (result.tags.length > 0) {
     lines.push(`Tags: ${result.tags.join(", ")}`);
   }
   return lines.join("\n");
+}
+
+function buildSharedInput(
+  args: CaptureInput,
+  collectionName: string
+): SharedCaptureInput {
+  return {
+    collection: collectionName,
+    content: args.content,
+    title: args.title,
+    relPath: args.path ? ensureMarkdownExtension(args.path) : undefined,
+    folderPath: args.folderPath,
+    collisionPolicy: args.collisionPolicy,
+    presetId: args.presetId,
+    tags: args.tags,
+    source: args.source,
+    overwrite: args.overwrite,
+  };
 }
 
 export function handleCapture(
@@ -135,109 +124,57 @@ export function handleCapture(
           );
         }
 
-        if (args.presetId && !getNotePreset(args.presetId)) {
-          throw new Error(
-            `${MCP_ERRORS.INVALID_INPUT.code}: Unknown presetId: ${args.presetId}`
-          );
-        }
-
         const existingDocs = await ctx.store.listDocuments(collectionName);
         if (!existingDocs.ok) {
           throw new Error(existingDocs.error.message);
         }
 
-        let relPath: string;
+        let plan;
         try {
-          const plan = resolveNoteCreatePlan(
-            {
-              collection: collection.name,
-              relPath: args.path
-                ? ensureMarkdownExtension(validateRelPath(args.path))
-                : undefined,
-              title:
-                args.title?.trim() ||
-                generateFilename(args.title, args.content ?? "").replace(
-                  /\.md$/u,
-                  ""
-                ),
-              folderPath: args.folderPath,
-              collisionPolicy: args.collisionPolicy,
-            },
-            existingDocs.value.map((doc) => doc.relPath)
-          );
-          if (plan.openedExisting) {
-            throw new Error(
-              `${MCP_ERRORS.CONFLICT.code}: Existing note resolution is not supported through gno_capture yet`
-            );
-          }
-          relPath = plan.relPath;
+          plan = planCapture({
+            input: buildSharedInput(args, collection.name),
+            existingRelPaths: existingDocs.value.map((doc) => doc.relPath),
+            diskRelPaths: await listCaptureDiskRelPaths(collection.path),
+          });
         } catch (error) {
           const message =
             error instanceof Error ? error.message : String(error);
-          throw new Error(`${MCP_ERRORS.INVALID_PATH.code}: ${message}`);
+          throw new Error(`${MCP_ERRORS.INVALID_INPUT.code}: ${message}`);
         }
 
-        assertNotSensitive(relPath);
+        assertNotSensitive(plan.relPath);
 
-        // Validate and normalize tags
-        let normalizedTags: string[] = [];
-        if (args.tags && args.tags.length > 0) {
-          for (const tag of args.tags) {
-            const normalized = normalizeTag(tag);
-            if (!validateTag(normalized)) {
-              throw new Error(
-                `${MCP_ERRORS.INVALID_INPUT.code}: Invalid tag "${tag}". Tags must be lowercase, alphanumeric with hyphens/dots/slashes.`
-              );
-            }
-            normalizedTags.push(normalized);
-          }
-          // Dedupe
-          normalizedTags = [...new Set(normalizedTags)];
-        }
+        const absPath = join(collection.path, plan.relPath);
+        const existingFile = Bun.file(absPath);
+        const exists = await existingFile.exists();
 
-        const absPath = join(collection.path, relPath);
-        const file = Bun.file(absPath);
-        const exists = await file.exists();
-        if (exists && !args.overwrite) {
-          throw new Error(
-            `${MCP_ERRORS.CONFLICT.code}: File exists: ${relPath}`
+        if (plan.openedExisting) {
+          const docResult = await ctx.store.getDocument(
+            collectionName,
+            plan.relPath
           );
-        }
-
-        // Update frontmatter with tags for Markdown files
-        const resolvedPreset = resolveNotePreset({
-          presetId: args.presetId,
-          title:
-            args.title?.trim() ||
-            relPath
-              .split("/")
-              .pop()
-              ?.replace(/\.[^.]+$/u, "") ||
-            "Untitled",
-          tags: normalizedTags,
-          body: args.content,
-        });
-        let contentToWrite =
-          resolvedPreset?.content ??
-          args.content ??
-          `# ${args.title?.trim() || "Untitled"}\n`;
-        const isMarkdown =
-          relPath.endsWith(".md") || relPath.endsWith(".markdown");
-        if (isMarkdown && normalizedTags.length > 0) {
-          // Use shared utility that handles all frontmatter edge cases
-          contentToWrite = updateFrontmatterTags(
-            contentToWrite,
-            normalizedTags
-          );
+          const existingDoc = docResult.ok ? docResult.value : undefined;
+          return buildCaptureReceipt({
+            plan,
+            absPath,
+            docid: existingDoc?.docid ?? "",
+            sync: {
+              status: existingDoc ? "completed" : "skipped",
+              reason: existingDoc
+                ? "Existing capture already indexed."
+                : "Existing capture opened from disk but is not indexed yet.",
+            },
+            serverInstanceId: ctx.serverInstanceId,
+          }) as McpCaptureResult;
         }
 
         await mkdir(dirname(absPath), { recursive: true });
-        await atomicWrite(absPath, contentToWrite);
+        await atomicWrite(absPath, plan.content);
 
         const results = await defaultSyncService.syncFiles(
           collection,
           ctx.store,
-          [relPath],
+          [plan.relPath],
           { runUpdateCmd: false, gitPull: false }
         );
         const syncResult = results[0];
@@ -254,64 +191,41 @@ export function handleCapture(
 
         let docid = syncResult.docid;
         let documentId: number | undefined;
-        if (!docid) {
-          const docResult = await ctx.store.getDocument(
-            collectionName,
-            relPath
-          );
-          if (!docResult.ok) {
-            throw new Error(docResult.error.message);
-          }
-          if (!docResult.value) {
-            throw new Error("RUNTIME: Document missing after sync");
-          }
-          docid = docResult.value.docid;
+        const docResult = await ctx.store.getDocument(
+          collectionName,
+          plan.relPath
+        );
+        if (docResult.ok && docResult.value) {
+          docid = docid ?? docResult.value.docid;
           documentId = docResult.value.id;
-        } else {
-          // Get document id for tag storage
-          const docResult = await ctx.store.getDocument(
-            collectionName,
-            relPath
-          );
-          if (docResult.ok && docResult.value) {
-            documentId = docResult.value.id;
-          }
+        }
+        if (!docid) {
+          throw new Error("RUNTIME: Document missing after sync");
         }
 
-        // For non-markdown files, store tags as user-source in DB
-        // (Markdown files get tags from frontmatter during sync)
-        let tagsStored = isMarkdown; // Markdown tags stored via frontmatter sync
-        if (!isMarkdown && normalizedTags.length > 0 && documentId) {
+        const isMarkdown =
+          plan.relPath.endsWith(".md") || plan.relPath.endsWith(".markdown");
+        if (!isMarkdown && plan.tags.length > 0 && documentId) {
           const tagResult = await ctx.store.setDocTags(
             documentId,
-            normalizedTags,
+            plan.tags,
             "user"
           );
-          if (tagResult.ok) {
-            tagsStored = true;
-          } else {
-            // Log warning - document created but tags not stored
+          if (!tagResult.ok) {
             console.error(
               `[MCP] Warning: Document created but tags not stored: ${tagResult.error.message}`
             );
           }
         }
 
-        // Only include tags in response if confirmed stored
-        const confirmedTags =
-          tagsStored && normalizedTags.length > 0 ? normalizedTags : undefined;
-
-        return {
-          docid,
-          uri: buildUri(collectionName, relPath),
+        return buildCaptureReceipt({
+          plan,
           absPath,
-          collection: collectionName,
-          relPath,
-          created: !exists,
-          overwritten: exists,
+          docid,
+          sync: { status: "completed" },
+          overwritten: exists && args.overwrite === true,
           serverInstanceId: ctx.serverInstanceId,
-          tags: confirmedTags,
-        };
+        }) as McpCaptureResult;
       });
     },
     formatCaptureResult

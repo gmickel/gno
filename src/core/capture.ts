@@ -540,10 +540,12 @@ export function planCapture(options: PlanCaptureOptions): CapturePlan {
       relPath: options.input.relPath ?? generatedRelPath,
       title,
       folderPath: options.input.folderPath,
-      collisionPolicy,
+      collisionPolicy: options.input.overwrite ? "error" : collisionPolicy,
     },
-    existing
+    options.input.overwrite ? [] : existing
   );
+  const overwritten =
+    options.input.overwrite && existing.has(createPlan.relPath);
 
   return {
     collection: options.input.collection,
@@ -558,11 +560,13 @@ export function planCapture(options: PlanCaptureOptions): CapturePlan {
     openedExisting: createPlan.openedExisting,
     createdWithSuffix: createPlan.createdWithSuffix,
     collisionPolicy,
-    collisionPolicyResult: createPlan.openedExisting
-      ? "opened_existing"
-      : createPlan.createdWithSuffix
-        ? "created_with_suffix"
-        : "created",
+    collisionPolicyResult: overwritten
+      ? "overwritten"
+      : createPlan.openedExisting
+        ? "opened_existing"
+        : createPlan.createdWithSuffix
+          ? "created_with_suffix"
+          : "created",
   };
 }
 

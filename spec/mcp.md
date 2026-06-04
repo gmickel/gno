@@ -703,7 +703,32 @@ Create a new document in a collection (write-enabled).
     },
     "source": {
       "type": "object",
-      "description": "Optional provenance metadata; written under structured source frontmatter"
+      "description": "Optional provenance metadata; written under structured source frontmatter",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "direct",
+            "web",
+            "email",
+            "meeting",
+            "chat",
+            "file",
+            "api",
+            "unknown"
+          ]
+        },
+        "title": { "type": "string" },
+        "url": { "type": "string", "format": "uri" },
+        "uri": { "type": "string" },
+        "docid": { "type": "string" },
+        "mime": { "type": "string" },
+        "ext": { "type": "string" },
+        "author": { "type": "string" },
+        "observedAt": { "type": "string", "format": "date-time" },
+        "capturedAt": { "type": "string", "format": "date-time" },
+        "externalId": { "type": "string" }
+      }
     }
   },
   "required": ["collection"]
@@ -717,6 +742,9 @@ Create a new document in a collection (write-enabled).
 - If `path` is omitted, a `.md` filename is generated from the title or heading
 - `folderPath` lets clients create inside a specific subfolder
 - `collisionPolicy` supports `error`, `open_existing`, or `create_with_suffix`
+- Legacy `overwrite: true` overwrites an existing target path and returns
+  `collisionPolicyResult: "overwritten"`; otherwise existing targets follow
+  `collisionPolicy`
 - `presetId` applies a structured note scaffold before write
 - Content is required unless `presetId` can scaffold a non-empty note
 - Default generated captures use `inbox/YYYY-MM-DD/capture-<body-hash>.md`
@@ -729,6 +757,8 @@ Create a new document in a collection (write-enabled).
 - For non-Markdown files, tags are stored as user-source in the database
 - Receipts distinguish write result from sync and embedding state; capture does
   not imply embedding unless `embed.status` is `completed`
+- Writes run under the MCP write lock and are only registered when the server
+  starts with `--enable-write` or `GNO_MCP_ENABLE_WRITE=1`
 
 **Output Schema:** `gno://schemas/mcp-capture-result@1.0`, compatible with the
 shared `gno://schemas/capture-receipt@1.0` contract.
