@@ -166,6 +166,10 @@ The JSON receipt reports the file write, sync status, and embed status
 separately; capture does not imply embedding unless the receipt says embedding
 completed.
 
+In the Web UI, press **N** for Quick Capture. Basic capture is still title plus
+content; open **Source** to add provenance fields. The success view reports the
+same write, FTS sync, and embed states as the CLI/API receipt.
+
 If you want continuous indexing instead of manual re-runs:
 
 ```bash

@@ -45,13 +45,16 @@ Implementation notes:
 - [ ] **R8:** MCP docs/spec/skill reference and hosted `gno.sh` MCP docs explain provenance, write gating, locks, legacy `overwrite`, collision behavior, and no-auto-embed semantics.
 
 ## Done summary
+
 Upgraded MCP `gno_capture` to the shared capture/provenance receipt contract.
 
 - Replaced MCP-specific planning/content assembly with `planCapture()` and `buildCaptureReceipt()` while preserving legacy `docid`, `absPath`, `overwritten`, and `serverInstanceId` fields.
 - Added shared source metadata to the MCP input schema and kept write gating/locking plus sync behavior.
 - Added MCP tests for write-tool absence when disabled, direct disabled-handler rejection, provenance receipts, `open_existing`, legacy overwrite, and shared text-size validation.
 - Updated MCP spec/docs, skill references, and hosted `gno.sh` MCP docs.
+
 ## Evidence
+
 - Commits:
 - Tests: {'command': 'bun test test/mcp/tools/capture.test.ts test/core/capture.test.ts test/spec/schemas/mcp-capture-result.test.ts', 'result': 'pass', 'evidence': '17 pass, 0 fail'}, {'command': 'bun run lint:check', 'result': 'pass', 'evidence': 'oxlint type-aware/type-check passed; oxfmt check passed'}
 - PRs:

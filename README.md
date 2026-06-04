@@ -543,8 +543,8 @@ Open `http://localhost:3000` to:
 - **Browse**: Cross-collection tree workspace with folder detail panes and per-tab browse context
 - **Edit**: Create, edit, and delete documents with live preview
 - **Create in place**: New notes in the current folder/collection with presets and command-palette flows
-- **Capture with provenance**: `gno capture` writes quick notes to an editable collection with structured `source:` metadata and a receipt that separates write, sync, and embed state
-- **Same capture contract everywhere**: CLI, REST `/api/capture`, and SDK `client.capture()` return the same provenance receipt shape
+- **Capture with provenance**: `gno capture` and Web UI Quick Capture write quick notes to an editable collection with structured `source:` metadata and a receipt that separates write, sync, and embed state
+- **Same capture contract everywhere**: CLI, MCP `gno_capture`, REST `/api/capture`, SDK `client.capture()`, and Web UI Quick Capture return the same provenance receipt shape
 - **Ask**: AI-powered Q&A with citations
 - **Manage Collections**: Add, remove, and re-index collections
 - **Connect agents**: Install core Skill/MCP integrations from the app
