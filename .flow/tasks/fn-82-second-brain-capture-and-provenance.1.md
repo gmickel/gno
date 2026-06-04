@@ -9,6 +9,7 @@ This task owns the remaining contract-hardening work from superseded `fn-59` and
 The task owns the canonical core model and facade for capture input, source/provenance metadata, deterministic identity/hash rules, content/preset validation, text safety, frontmatter serialization/merge behavior, collision planning, legacy overwrite handling/rejection, write outcome, and receipt construction. It should reuse existing note-creation and preset primitives instead of introducing a second note-writing path.
 
 Existing baseline to reuse:
+
 - `src/core/note-creation.ts` for current relPath/folder/title/collision planning
 - `src/core/note-presets.ts` for current preset definitions and scaffold resolution
 - `src/serve/routes/api.ts` `POST /api/docs` for raw API note creation
@@ -17,6 +18,7 @@ Existing baseline to reuse:
 - Web quick capture, Browse, command palette, and editor preset insert implementations as current UI baseline
 
 Expected files:
+
 - `src/core/note-creation.ts`
 - `src/core/note-presets.ts`
 - `src/core/document-capabilities.ts`
@@ -35,6 +37,7 @@ Expected files:
 - `test/spec/schemas/*capture*.test.ts`
 
 Implementation notes:
+
 - Build one shared capture facade/planner that owns path planning, content assembly, structured frontmatter merge, hash, text safety, collision result, write outcome, and receipt construction.
 - Harden current `resolveNoteCreatePlan` behavior for capture by including disk-only collisions in addition to indexed relPaths.
 - Close current MCP parity gap where `gno_capture` rejects `open_existing` even though the shared resolver supports it.

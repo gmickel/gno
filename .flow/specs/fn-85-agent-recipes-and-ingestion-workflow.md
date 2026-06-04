@@ -1,11 +1,13 @@
 # Agent recipes and ingestion workflow playbooks
 
 ## Goal & Context
+
 Ship reusable, agent-facing workflows that teach Codex/Claude/OpenCode users how to operate GNO as a second brain across capture, meeting notes, email context, source summaries, and brain-first lookup. Keep this as docs/skills/playbooks first; runtime integrations can follow later.
 
 Inspiration: `garrytan/gbrain` cloned at `/tmp/gbrain`, especially `skills/RESOLVER.md`, meeting/email/calendar/X recipes, brain-first lookup, entity detection, and operational discipline docs. Use as inspiration only; do not copy code verbatim.
 
 ## Architecture & Data Models
+
 Add a recipe layer to GNO’s existing skill assets:
 
 - `assets/skill/recipes/brain-first-lookup.md`
@@ -31,6 +33,7 @@ Core protocol:
 5. Prefer evidence and citations over unsupported synthesis.
 
 ## API Contracts
+
 No new runtime API required initially. This spec is satisfied by docs/skill assets, with optional helper commands only if they naturally fall out of other specs.
 
 Possible future command:
@@ -41,6 +44,7 @@ gno recipes show meeting-ingestion
 ```
 
 ## Edge Cases & Constraints
+
 - Recipes must not claim integrations exist before they do.
 - Avoid prescribing one external email/calendar provider.
 - Keep privacy boundaries explicit: GNO indexes local/exported files unless the user intentionally captures external data.
@@ -48,6 +52,7 @@ gno recipes show meeting-ingestion
 - Avoid always-on entity capture instructions that imply GNO mutates automatically.
 
 ## Acceptance Criteria
+
 - [ ] Agent skill assets include a recipe resolver or concise routing table.
 - [ ] Recipes cover brain-first lookup, capture, idea capture, source summary, meeting ingestion, email-context workflow, and citation/provenance practice.
 - [ ] Recipes reference actual GNO commands and clearly mark future/optional surfaces.
@@ -56,12 +61,15 @@ gno recipes show meeting-ingestion
 - [ ] Autoresearch GNO skill eval is rerun and `assets/skill/SKILL.md` is updated if score regresses.
 
 ## Documentation Requirement
+
 Every implementation task from this spec must update all relevant GNO documentation surfaces in the same change set: repo docs/specs, CLI/MCP/API references, skill assets where applicable, and the hosted website repo at `/Users/gordon/work/gno.sh`. Do not mark the spec or a user-facing task complete while hosted website docs remain stale.
 
 ## Boundaries
+
 - No native Gmail/Calendar/Slack connectors in this spec.
 - No background agent/minion runtime.
 - No autonomous signal detector.
 
 ## Decision Context
+
 The gbrain comparison showed that a lot of second-brain value lives in repeatable agent behavior, not just code. GNO can gain that value cheaply by shipping high-quality recipes that match its existing CLI/MCP surfaces.

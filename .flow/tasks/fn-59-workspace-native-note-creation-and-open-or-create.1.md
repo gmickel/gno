@@ -23,8 +23,11 @@ This task is contract/data-first. It should not yet ship all final UI affordance
 - [ ] Tests are updated for core creation semantics
 
 ## Done summary
+
 Superseded. Current code already provides the note-creation baseline; remaining path/collision/open-existing/docs hardening is moved to fn-82-second-brain-capture-and-provenance.1.
+
 ## Evidence
+
 - Commits:
 - Tests:
 - PRs:

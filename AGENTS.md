@@ -413,11 +413,13 @@ If you change behavior, update docs in the same commit. Never leave docs out of 
 Work is NOT complete until pushed to remote.
 
 <!-- BEGIN FLOW-NEXT -->
+
 ## Flow-Next
 
 This project uses Flow-Next for task tracking. Use `.flow/bin/flowctl` instead of markdown TODOs or TodoWrite.
 
 **Quick commands:**
+
 ```bash
 .flow/bin/flowctl list # List all specs + tasks
 .flow/bin/flowctl specs # List all specs
@@ -455,6 +457,7 @@ After creating a spec, choose next step:
 **Optional — codebase feature map:** `$flow-next-map` wraps [openclaw/clawpatch](https://github.com/openclaw/clawpatch)'s `clawpatch map` command to build a semantic feature index under `.clawpatch/features/*.json`. When present, `repo-scout` and `context-scout` use it to anchor R-IDs and `Investigation targets` to concrete codebase regions. Provider-free by default; install via `pnpm add -g clawpatch` (Node 22+).
 
 **More info:** `.flow/bin/flowctl --help` or read `.flow/usage.md`
+
 <!-- END FLOW-NEXT -->
 
 # Oxlint + Oxfmt Code Standards

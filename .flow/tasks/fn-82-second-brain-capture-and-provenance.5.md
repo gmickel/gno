@@ -7,6 +7,7 @@ Update the Web UI quick capture path so it uses the same capture/provenance flow
 This task should extend the existing quick capture modal rather than creating a separate product surface. Provenance fields should be available as progressive detail, not required for basic capture.
 
 Expected files:
+
 - `src/serve/public/components/CaptureModal.tsx`
 - `src/serve/public/*` adjacent state/components as needed
 - `src/serve/routes/api.ts` only if UI needs route response changes from task 3
@@ -19,6 +20,7 @@ Expected files:
 - relevant serve/UI tests
 
 UX requirements:
+
 - Basic text capture remains one quick action.
 - Optional provenance fields include kind, title, URL, author, observed date, and external id where practical.
 - Success state tells the user whether the note is written, sync/FTS ingested, and embedded/pending/skipped/failed.

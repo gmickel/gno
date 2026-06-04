@@ -19,8 +19,11 @@ Initial slice:
 - [ ] Epic ships without docs/website drift
 
 ## Done summary
+
 Superseded. Current code already provides the note-creation baseline; remaining path/collision/open-existing/docs hardening is moved to fn-82-second-brain-capture-and-provenance.1.
+
 ## Evidence
+
 - Commits:
 - Tests:
 - PRs:

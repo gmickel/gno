@@ -1,6 +1,7 @@
 # Deferred second-brain maintenance and dream cycle
 
 ## Goal & Context
+
 Capture the autonomous “dream cycle” idea as a deferred roadmap spec. The near-term GNO shape should be explicit `gno audit` / `gno maintain` commands that report and optionally prepare safe fixes, not always-on autonomous mutation.
 
 Inspiration: `garrytan/gbrain` cloned at `/tmp/gbrain`, especially dream-cycle, contradiction probes, stale/citation checks, queue health, and operational discipline docs. Use as inspiration only; do not copy code verbatim.
@@ -8,6 +9,7 @@ Inspiration: `garrytan/gbrain` cloned at `/tmp/gbrain`, especially dream-cycle, 
 This spec is intentionally deferred. Build capture, provenance, templates, typed graph, and recipes first.
 
 ## Architecture & Data Models
+
 Phase 1: explicit read-only audits.
 
 ```bash
@@ -46,12 +48,14 @@ Phase 3: optional scheduled maintenance.
 - Mutating jobs require explicit config and per-operation safeguards.
 
 ## API Contracts
+
 - CLI first: `audit` and `maintain` command groups.
 - REST/API may expose read-only audit reports for Web UI health panels.
 - MCP read-only audit tools can be available by default.
 - MCP maintenance/apply tools require existing write gate plus explicit command options.
 
 ## Edge Cases & Constraints
+
 - Do not call this autonomous by default.
 - Do not create an always-on signal detector in this spec.
 - Do not overwrite compiled synthesis without user approval.
@@ -60,6 +64,7 @@ Phase 3: optional scheduled maintenance.
 - Audits must be useful on local-only/offline installs.
 
 ## Acceptance Criteria
+
 - [ ] Deferred status is clear in Flow, docs, and any task breakdown.
 - [ ] `gno audit` read-only command group is specified before any mutating maintenance work.
 - [ ] `gno maintain` requires dry-run/apply semantics and safe previews.
@@ -68,13 +73,16 @@ Phase 3: optional scheduled maintenance.
 - [ ] Docs explicitly say always-on autonomous mutation is out of scope until the explicit commands prove useful.
 
 ## Documentation Requirement
+
 Every implementation task from this spec must update all relevant GNO documentation surfaces in the same change set: repo docs/specs, CLI/MCP/API references, skill assets where applicable, and the hosted website repo at `/Users/gordon/work/gno.sh`. Do not mark the spec or a user-facing task complete while hosted website docs remain stale.
 
 ## Boundaries
+
 - Deferred until capture/provenance/templates/typed graph exist.
 - No durable subagent queue/minion system.
 - No external enrichment pipeline.
 - No hidden overnight note mutation.
 
 ## Decision Context
+
 The dream-cycle concept is good, but GNO’s product fit is local-first trust and explicit user control. The safe path is to build observable audits and opt-in maintenance first, then revisit automation once users trust the reports.

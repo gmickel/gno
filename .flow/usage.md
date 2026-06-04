@@ -196,7 +196,7 @@ The project's strategic intent and canonical vocabulary live **outside** `.flow/
 ## Evidence JSON Format
 
 ```json
-{"commits": ["abc123"], "tests": ["npm test"], "prs": []}
+{ "commits": ["abc123"], "tests": ["npm test"], "prs": [] }
 ```
 
 ## Parallel Worktrees

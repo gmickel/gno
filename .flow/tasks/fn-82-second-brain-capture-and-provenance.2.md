@@ -7,6 +7,7 @@ Add the missing `gno capture` CLI surface using the shared capture core from tas
 The command is a thin adapter: parse Commander options, read content or scaffold intent, pass normalized input to the shared core, and format the shared receipt as human text, JSON, or quiet output.
 
 Expected files:
+
 - `src/cli/program.ts`
 - `src/cli/commands/capture*.ts`
 - `spec/cli.md`
@@ -19,6 +20,7 @@ Expected files:
 - tests under `test/cli` or the repo's existing CLI-command test location
 
 CLI contract:
+
 - content source modes: inline argument, `--stdin`, `--file`, or scaffold-only mode when `--preset` can generate non-empty content
 - `--collection`, `--folder`, `--path`, `--title`, `--preset`, `--tags`
 - `--collision-policy <error|open_existing|create_with_suffix>`

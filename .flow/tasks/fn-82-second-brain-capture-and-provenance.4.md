@@ -7,6 +7,7 @@ Upgrade the existing MCP `gno_capture` tool in place so it uses the shared captu
 Do not create a second MCP capture tool. Keep write tools opt-in and server-enforced. Tool annotations/schema improvements are useful for client UX but are not the write gate.
 
 Expected files:
+
 - `src/mcp/tools/capture.ts`
 - `src/mcp/tools/index.ts`
 - `src/mcp/server.ts` only if write-gate/metadata plumbing needs it
@@ -20,6 +21,7 @@ Expected files:
 - `test/spec/schemas/mcp-capture-result.test.ts`
 
 Implementation notes:
+
 - Existing MCP `overwrite` is not an alias for `collisionPolicy`; it must be handled through shared core legacy overwrite behavior or rejected globally.
 - Keep MCP compatibility fields that existing schema/docs imply: `docid`, `absPath`, `overwritten`, and `serverInstanceId` where available/required.
 - Shared contract supports `open_existing`; MCP should support it through shared core unless a deliberate breaking limitation is documented in task 1.

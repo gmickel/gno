@@ -7,6 +7,7 @@ Close the spec by proving cross-surface parity and synchronizing all user-facing
 This is not a loose docs cleanup task. It owns the final parity check and ensures no surface tells a different story about capture, provenance, collision policy, sync/FTS ingestion, or embedding. Task 1 owns canonical schema/status snippets; this task owns the final sweep and drift fix.
 
 Expected files:
+
 - `README.md`
 - `docs/CLI.md`
 - `docs/API.md`
@@ -30,6 +31,7 @@ Expected files:
 - cross-surface parity tests under the most appropriate existing test directory
 
 Parity target:
+
 - Same logical input through CLI, API, MCP, and SDK writes the same frontmatter/body and returns the same receipt fields except known transport metadata.
 - Docs state the same field names, default UTC path, collision behavior, editable-collection requirement, binary/NUL/size rejection, write gates, sync/FTS state, and embed/vector behavior.
 

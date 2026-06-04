@@ -19,8 +19,11 @@ Initial slice:
 - [ ] Tests cover parity between quick-switcher and wiki-link create flows
 
 ## Done summary
+
 Superseded. Current code already provides the note-creation baseline; remaining path/collision/open-existing/docs hardening is moved to fn-82-second-brain-capture-and-provenance.1.
+
 ## Evidence
+
 - Commits:
 - Tests:
 - PRs:
