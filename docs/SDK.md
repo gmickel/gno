@@ -174,6 +174,32 @@ with `?index=<name>` so search/list results can round-trip back to the same
 index. `get()` also accepts indexed URIs and strips the query metadata before
 same-store lookup.
 
+### Capture
+
+Capture a note with provenance and receive the shared capture receipt.
+
+```ts
+const receipt = await client.capture({
+  collection: "notes",
+  content: "thought to remember",
+  source: {
+    kind: "web",
+    url: "https://example.com",
+  },
+  tags: ["inbox", "research"],
+});
+
+console.log(receipt.uri, receipt.sync.status, receipt.embed.status);
+```
+
+`client.capture()` writes into an editable collection, syncs the created file
+directly, and returns `sync.status: "completed"` when ingestion succeeds.
+Embedding is separate; `embed.status` remains `not_requested` until you run
+`client.embed()` or `client.index()` without `noEmbed`.
+
+Use `client.createNote()` for lower-level raw note creation without provenance
+capture semantics.
+
 ### Status
 
 ```ts

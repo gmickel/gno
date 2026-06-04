@@ -209,6 +209,30 @@ describe("SDK client", () => {
     expect(created.content).toContain('category: "project"');
   });
 
+  test("captures notes with provenance receipt through the SDK", async () => {
+    const result = await client.capture({
+      collection: "fixtures",
+      content: "Captured from SDK",
+      source: {
+        kind: "api",
+        externalId: "sdk-test",
+      },
+      tags: ["SDK", "Inbox"],
+    });
+
+    expect(result.uri).toStartWith("gno://fixtures/inbox/");
+    expect(result.created).toBe(true);
+    expect(result.sync.status).toBe("completed");
+    expect(result.embed.status).toBe("not_requested");
+    expect(result.source.kind).toBe("api");
+    expect(result.source.externalId).toBe("sdk-test");
+    expect(result.tags).toEqual(["sdk", "inbox"]);
+
+    const created = await client.get(result.uri);
+    expect(created.content).toContain("Captured from SDK");
+    expect(created.content).toContain("source:");
+  });
+
   test("creates folders directly through the SDK", async () => {
     const result = await client.createFolder({
       collection: "fixtures",

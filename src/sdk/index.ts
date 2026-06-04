@@ -29,6 +29,8 @@ export { GnoSdkError, sdkError } from "./errors";
 export { createGnoClient } from "./client";
 export type {
   GnoAskOptions,
+  GnoCaptureOptions,
+  GnoCaptureResult,
   GnoClient,
   GnoClientInitOptions,
   GnoEmbedOptions,

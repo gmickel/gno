@@ -66,6 +66,7 @@ All endpoints are JSON-based and run entirely on your machine.
 | `/api/connectors/install`     | POST   | Install connector                      |
 | `/api/collections/:name`      | DELETE | Remove collection                      |
 | `/api/sync`                   | POST   | Trigger re-index                       |
+| `/api/capture`                | POST   | Capture note with provenance receipt   |
 | `/api/docs`                   | POST   | Create new document                    |
 | `/api/docs/:id`               | PUT    | Update document                        |
 | `/api/docs/:id/refactor-plan` | POST   | Preview rename/move/duplicate warnings |
@@ -1286,6 +1287,65 @@ curl "http://localhost:3000/api/graph?includeSimilar=true&threshold=0.8" | jq
 
 # Get all nodes including isolated ones
 curl "http://localhost:3000/api/graph?linkedOnly=false&limit=500" | jq
+```
+
+---
+
+### Capture Note
+
+```http
+POST /api/capture
+```
+
+Capture a note into an editable collection with structured provenance. This is
+the API equivalent of `gno capture`; use `/api/docs` for lower-level raw note
+creation without capture semantics.
+
+**Request Body**:
+
+```json
+{
+  "collection": "notes",
+  "content": "thought to remember",
+  "source": {
+    "kind": "web",
+    "url": "https://example.com"
+  },
+  "tags": ["inbox", "research"]
+}
+```
+
+Path defaults match the CLI: without `relPath`, `folderPath`, or `title`, GNO
+writes to `inbox/YYYY-MM-DD/capture-<body-hash>.md` using UTC capture time.
+`collisionPolicy` accepts `error`, `open_existing`, or `create_with_suffix`;
+collision checks include indexed documents and disk-only files.
+
+**Response** (202 Accepted):
+
+The response is the shared capture receipt. `sync.status` is usually `pending`
+with a `jobId` because the REST API syncs asynchronously; poll
+`/api/jobs/:id` for completion. `embed.status` is `not_requested` unless a
+separate embed job completes.
+
+```json
+{
+  "uri": "gno://notes/inbox/2026-06-04/capture-abc123.md",
+  "collection": "notes",
+  "relPath": "inbox/2026-06-04/capture-abc123.md",
+  "created": true,
+  "openedExisting": false,
+  "createdWithSuffix": false,
+  "contentHash": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+  "source": {
+    "kind": "web",
+    "url": "https://example.com",
+    "capturedAt": "2026-06-04T12:34:56.000Z"
+  },
+  "tags": ["inbox", "research"],
+  "sync": { "status": "pending", "jobId": "..." },
+  "embed": { "status": "not_requested" },
+  "collisionPolicyResult": "created"
+}
 ```
 
 ---

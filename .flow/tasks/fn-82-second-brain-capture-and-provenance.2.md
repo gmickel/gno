@@ -45,6 +45,7 @@ CLI contract:
 - [ ] **R7:** `spec/cli.md`, `docs/CLI.md`, `docs/QUICKSTART.md`, `README.md`, skill CLI reference, and hosted `gno.sh` quickstart/docs are updated with CLI-specific examples only, reusing canonical task-1 schema wording.
 
 ## Done summary
+
 Implemented the CLI capture surface on the shared capture core.
 
 - Added `gno capture [content...]` with inline/stdin/file source handling, collection/path/folder/title/preset/tags options, collision policy, provenance source flags, JSON receipts, and quiet URI-only output.
@@ -52,7 +53,9 @@ Implemented the CLI capture surface on the shared capture core.
 - Capture writes the planned file, runs syncFiles for FTS ingestion, and returns a receipt with separate sync and embed states.
 - Added CLI tests for JSON receipt/source/tags, quiet output, conflicting content sources, and disk-only collision suffixing.
 - Updated repo CLI docs/spec/README/skill assets and hosted `/Users/gordon/work/gno.sh/src/lib/gno-docs.tsx` for CLI capture examples and receipt semantics.
+
 ## Evidence
+
 - Commits:
 - Tests: {'command': 'bun test test/cli/capture.test.ts test/core/capture.test.ts test/spec/schemas/capture-receipt.test.ts test/spec/schemas/mcp-capture-result.test.ts', 'result': 'pass', 'evidence': '18 pass, 0 fail'}, {'command': 'bun run lint:check', 'result': 'pass', 'evidence': 'Found 0 warnings and 0 errors; formatting check passed'}
 - PRs:

@@ -544,6 +544,7 @@ Open `http://localhost:3000` to:
 - **Edit**: Create, edit, and delete documents with live preview
 - **Create in place**: New notes in the current folder/collection with presets and command-palette flows
 - **Capture with provenance**: `gno capture` writes quick notes to an editable collection with structured `source:` metadata and a receipt that separates write, sync, and embed state
+- **Same capture contract everywhere**: CLI, REST `/api/capture`, and SDK `client.capture()` return the same provenance receipt shape
 - **Ask**: AI-powered Q&A with citations
 - **Manage Collections**: Add, remove, and re-index collections
 - **Connect agents**: Install core Skill/MCP integrations from the app

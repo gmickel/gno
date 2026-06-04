@@ -23,6 +23,7 @@ import {
   handleCreateFolder,
   handleCreateCollection,
   handleCreateEditableCopy,
+  handleCreateCapture,
   handleCreateDoc,
   handleDeactivateDoc,
   handleDeleteCollection,
@@ -252,6 +253,17 @@ export async function startServer(
             }
             return withSecurityHeaders(
               await handleSync(ctxHolder, store, req),
+              isDev
+            );
+          },
+        },
+        "/api/capture": {
+          POST: async (req: Request) => {
+            if (!isRequestAllowed(req, port)) {
+              return withSecurityHeaders(forbiddenResponse(), isDev);
+            }
+            return withSecurityHeaders(
+              await handleCreateCapture(ctxHolder, store, req),
               isDev
             );
           },

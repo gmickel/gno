@@ -165,6 +165,25 @@ export function hashCaptureContent(content: string): string {
     .digest("hex");
 }
 
+export async function listCaptureDiskRelPaths(
+  collectionPath: string
+): Promise<string[]> {
+  const paths: string[] = [];
+  const glob = new Bun.Glob("**/*");
+  for await (const relPath of glob.scan({
+    cwd: collectionPath,
+    onlyFiles: true,
+    followSymlinks: false,
+  })) {
+    try {
+      paths.push(validateRelPath(relPath.split("\\").join("/")));
+    } catch {
+      // Ignore unsafe/unrepresentable disk paths for collision planning.
+    }
+  }
+  return paths;
+}
+
 function validateTextContent(content: string): void {
   if (content.includes("\0")) {
     throw new Error("Capture content contains a NUL byte.");

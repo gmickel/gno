@@ -221,6 +221,11 @@ captures land under `inbox/YYYY-MM-DD/capture-<body-hash>.md` unless `--path`,
 `--folder`, or `--title` overrides the path. Capture does not imply embedding
 unless `embed.status` is `completed`.
 
+Programmatic capture uses the same receipt contract:
+
+- REST: `POST /api/capture`
+- SDK: `client.capture({ collection, content, source, tags })`
+
 ## Collection-specific embedding models
 
 Collections can override the global embedding model with `models.embed`.

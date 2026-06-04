@@ -15,6 +15,8 @@ import type { IndexStatus, StoreResult } from "../store/types";
 import type { VectorIndexPort } from "../store/vector";
 import type {
   GnoAskOptions,
+  GnoCaptureOptions,
+  GnoCaptureResult,
   GnoClient,
   GnoCreateFolderOptions,
   GnoCreateFolderResult,
@@ -43,6 +45,12 @@ import {
   parseUri,
 } from "../app/constants";
 import { ConfigSchema, loadConfig } from "../config";
+import {
+  buildCaptureReceipt,
+  type CapturePlan,
+  listCaptureDiskRelPaths,
+  planCapture,
+} from "../core/capture";
 import {
   atomicWrite,
   copyFilePath,
@@ -820,6 +828,97 @@ class GnoClientImpl implements GnoClient {
       openedExisting: false,
       createdWithSuffix: plan.createdWithSuffix,
     };
+  }
+
+  async capture(options: GnoCaptureOptions): Promise<GnoCaptureResult> {
+    this.assertOpen();
+    const collection = this.getCollections(options.collection)[0];
+    if (!collection) {
+      throw sdkError(
+        "VALIDATION",
+        `Collection not found: ${options.collection}`
+      );
+    }
+
+    const existingList = await this.store.listDocuments(collection.name);
+    if (!existingList.ok) {
+      throw sdkError("STORE", existingList.error.message, {
+        cause: existingList.error.cause,
+      });
+    }
+    let plan: CapturePlan;
+    try {
+      plan = planCapture({
+        input: {
+          ...options,
+          collection: collection.name,
+        },
+        existingRelPaths: existingList.value.map((doc) => doc.relPath),
+        diskRelPaths: await listCaptureDiskRelPaths(collection.path),
+      });
+    } catch (error) {
+      throw sdkError(
+        "VALIDATION",
+        error instanceof Error ? error.message : String(error)
+      );
+    }
+
+    const fullPath = `${collection.path}/${plan.relPath}`;
+    if (plan.openedExisting) {
+      const existingDoc = await this.store.getDocument(
+        collection.name,
+        plan.relPath
+      );
+      if (!existingDoc.ok) {
+        throw sdkError("STORE", existingDoc.error.message, {
+          cause: existingDoc.error.cause,
+        });
+      }
+      return buildCaptureReceipt({
+        plan,
+        absPath: fullPath,
+        docid: existingDoc.value?.docid,
+        sync: existingDoc.value
+          ? { status: "completed" }
+          : {
+              status: "skipped",
+              reason: "Existing file is not indexed yet.",
+            },
+      });
+    }
+
+    await mkdir(dirname(fullPath), { recursive: true });
+    await atomicWrite(fullPath, plan.content);
+    const syncResults = await defaultSyncService.syncFiles(
+      collection,
+      this.store,
+      [plan.relPath],
+      {
+        runUpdateCmd: false,
+        gitPull: false,
+      }
+    );
+    const syncResult = syncResults[0];
+    const docResult = await this.store.getDocument(
+      collection.name,
+      plan.relPath
+    );
+    const docid = docResult.ok ? docResult.value?.docid : undefined;
+    return buildCaptureReceipt({
+      plan,
+      absPath: fullPath,
+      docid: syncResult?.docid ?? docid,
+      sync:
+        syncResult?.status === "error"
+          ? {
+              status: "failed",
+              error:
+                syncResult.errorMessage ??
+                syncResult.errorCode ??
+                "Unknown sync error",
+            }
+          : { status: "completed" },
+    });
   }
 
   async createFolder(

@@ -20,6 +20,7 @@ import type { NotePresetId } from "../../core/note-presets";
 import { getIndexDbPath } from "../../app/constants";
 import {
   buildCaptureReceipt,
+  listCaptureDiskRelPaths,
   planCapture,
   serializeCaptureReceipt,
 } from "../../core/capture";
@@ -127,19 +128,6 @@ function validateCollisionPolicy(
   }
 }
 
-async function listDiskRelPaths(collectionPath: string): Promise<string[]> {
-  const paths: string[] = [];
-  const glob = new Bun.Glob("**/*");
-  for await (const relPath of glob.scan({
-    cwd: collectionPath,
-    onlyFiles: true,
-    followSymlinks: false,
-  })) {
-    paths.push(relPath.split("\\").join("/"));
-  }
-  return paths;
-}
-
 export async function capture(
   options: CaptureCliOptions
 ): Promise<CaptureReceipt> {
@@ -176,7 +164,7 @@ export async function capture(
     if (!existingDocs.ok) {
       throw new Error(existingDocs.error.message);
     }
-    const diskRelPaths = await listDiskRelPaths(collection.path);
+    const diskRelPaths = await listCaptureDiskRelPaths(collection.path);
     let plan: CapturePlan;
     try {
       plan = planCapture({
