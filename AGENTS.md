@@ -61,9 +61,11 @@ test("hello world", () => {
 });
 ```
 
-## Evals (Quality Gates)
+## Evals (Opt-In Quality Checks)
 
-Local-only evaluation suite using Evalite v1. Run before releases as part of DoD.
+Local-only evaluation suite using Evalite v1. Run only when explicitly requested
+or when working on retrieval/answer-quality changes. Evalite is not part of the
+standard release workflow because generation-backed suites are machine-intensive.
 
 **Commands:**
 
@@ -95,7 +97,7 @@ bun run eval:watch    # Watch mode for development
 
 **Key Design Decisions:**
 
-- No CI integration - evals are local-only, part of release DoD
+- No CI integration - evals are local-only and opt-in
 - Temp DB per run (isolated from global gno install)
 - In-memory Evalite storage by default
 - LLM-as-judge requires OPENAI_API_KEY (skips gracefully if not set)

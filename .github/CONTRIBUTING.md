@@ -48,8 +48,10 @@ bun run lint:check      # Must pass
 bun test                # Must pass
 bun run docs:verify     # Must pass
 bun run test:package    # Must pass
-bun run eval            # Must pass 70% threshold
 ```
+
+Evalite suites are local-only and opt-in. Run `bun run eval` only when Gordon
+explicitly asks or when changing retrieval/answer quality behavior.
 
 **Release:**
 
