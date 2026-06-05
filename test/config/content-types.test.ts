@@ -7,6 +7,7 @@ import { join } from "node:path";
 import type { Config, ContentTypeConfig } from "../../src/config";
 
 import {
+  fingerprintContentTypeRules,
   normalizeConfigContentTypes,
   normalizeContentTypes,
 } from "../../src/config";
@@ -97,6 +98,26 @@ describe("normalizeContentTypes", () => {
     expect(result.rules[0]?.graphHints).toEqual(["mentions", "works_at"]);
     expect(result.rules[0]?.searchBoost).toBe(1.15);
     expect(result.rules[0]?.temporal).toBe(true);
+  });
+
+  test("fingerprint ignores reserved no-op fields", () => {
+    const base = normalizeContentTypes([
+      { id: "person", prefixes: ["people/"], preset: "person" },
+    ]);
+    const withNoOps = normalizeContentTypes([
+      {
+        id: "person",
+        prefixes: ["people/"],
+        preset: "person",
+        graphHints: ["mentions"],
+        searchBoost: 1.15,
+        temporal: true,
+      },
+    ]);
+
+    expect(fingerprintContentTypeRules(withNoOps.rules)).toBe(
+      fingerprintContentTypeRules(base.rules)
+    );
   });
 });
 

@@ -71,6 +71,7 @@ const MAX_CONCURRENCY = 16;
  * Documents with ingestVersion < INGEST_VERSION will be re-processed.
  */
 export const INGEST_VERSION = 5;
+const EMPTY_CONTENT_TYPE_RULES_FINGERPRINT = fingerprintContentTypeRules([]);
 
 /**
  * Decide whether to process a file or skip it.
@@ -112,7 +113,13 @@ function decideAction(
     return { kind: "repair", reason: "ingest version outdated" };
   }
 
-  if (existing.contentTypeRulesFingerprint !== contentTypeRulesFingerprint) {
+  const hasLegacyEmptyRulesFingerprint =
+    existing.contentTypeRulesFingerprint === null &&
+    contentTypeRulesFingerprint === EMPTY_CONTENT_TYPE_RULES_FINGERPRINT;
+  if (
+    existing.contentTypeRulesFingerprint !== contentTypeRulesFingerprint &&
+    !hasLegacyEmptyRulesFingerprint
+  ) {
     return { kind: "repair", reason: "content type rules changed" };
   }
 
@@ -242,17 +249,30 @@ function inferPathContentType(
   return { contentType: "prose", source: "fallback" };
 }
 
+function normalizeFrontmatterScalar(value: string): string {
+  const trimmed = value.trim();
+  if (trimmed.length < 2) {
+    return trimmed;
+  }
+  const first = trimmed[0];
+  const last = trimmed.at(-1);
+  if ((first === '"' && last === '"') || (first === "'" && last === "'")) {
+    return trimmed.slice(1, -1).trim();
+  }
+  return trimmed;
+}
+
 function parseCategories(input: unknown): string[] {
   if (Array.isArray(input)) {
     return input
       .filter((v): v is string => typeof v === "string")
-      .map((v) => v.trim().toLowerCase())
+      .map((v) => normalizeFrontmatterScalar(v).toLowerCase())
       .filter((v) => v.length > 0);
   }
   if (typeof input === "string") {
     return input
       .split(",")
-      .map((v) => v.trim().toLowerCase())
+      .map((v) => normalizeFrontmatterScalar(v).toLowerCase())
       .filter((v) => v.length > 0);
   }
   return [];
@@ -280,7 +300,9 @@ export function extractDocumentMetadata(
   const metadata = parsed.metadata;
   const typedRules = new Map(contentTypeRules.map((rule) => [rule.id, rule]));
   const rawFrontmatterType =
-    typeof metadata.type === "string" ? metadata.type.trim() : "";
+    typeof metadata.type === "string"
+      ? normalizeFrontmatterScalar(metadata.type)
+      : "";
   const frontmatterType = typedRules.get(rawFrontmatterType)?.id;
   const prefixType =
     frontmatterType === undefined

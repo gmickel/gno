@@ -118,10 +118,6 @@ export function fingerprintContentTypeRules(
   const canonical = rules.map((rule) => ({
     id: rule.id,
     prefixes: rule.prefixes,
-    preset: rule.preset,
-    graphHints: rule.graphHints ?? [],
-    searchBoost: rule.searchBoost ?? null,
-    temporal: rule.temporal ?? false,
   }));
   const hasher = new Bun.CryptoHasher("sha256");
   hasher.update(JSON.stringify(canonical));

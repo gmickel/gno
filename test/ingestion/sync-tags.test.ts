@@ -4,6 +4,7 @@
  * @module test/ingestion/sync-tags
  */
 
+import { Database } from "bun:sqlite";
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -73,6 +74,24 @@ describe("SyncService tag extraction", () => {
     expect(freeText.contentType).toBe("prose");
     expect(freeText.contentTypeSource).toBe("fallback");
     expect(freeText.categories).toContain("foo");
+  });
+
+  test("normalizes quoted frontmatter type and categories", () => {
+    const rules: NormalizedContentTypeRule[] = [
+      { id: "person", prefixes: ["people/"], preset: "person" },
+    ];
+
+    const metadata = extractDocumentMetadata(
+      "---\ntype: \"person\"\ncategory: 'team'\n---\n# Jane\n",
+      "misc/jane.md",
+      ".md",
+      rules
+    );
+
+    expect(metadata.contentType).toBe("person");
+    expect(metadata.contentTypeSource).toBe("frontmatter-type");
+    expect(metadata.categories).toContain("person");
+    expect(metadata.categories).toContain("team");
   });
 
   test("configured prefix wins before path heuristics", () => {
@@ -256,6 +275,29 @@ This is #work related.
     expect(updatedDoc.value.contentType).toBe("person");
     expect(updatedDoc.value.categories).toContain("person");
     expect(updatedDoc.value.contentTypeRulesFingerprint).toBeTruthy();
+  });
+
+  test("does not reprocess legacy null fingerprints for empty content type rules", async () => {
+    await writeFile(join(collectionDir, "legacy.md"), "# Legacy");
+
+    const syncService = new SyncService();
+    await syncService.syncCollection(collection, adapter);
+    const initialDoc = await adapter.getDocument("docs", "legacy.md");
+    expect(initialDoc.ok).toBe(true);
+    if (!initialDoc.ok || !initialDoc.value) return;
+
+    const db = new Database(dbPath);
+    db.run("UPDATE documents SET content_type_rules_fingerprint = NULL");
+    db.close();
+
+    const result = await syncService.syncCollection(collection, adapter);
+
+    expect(result.filesUnchanged).toBe(1);
+    expect(result.filesUpdated).toBe(0);
+    const legacyDoc = await adapter.getDocument("docs", "legacy.md");
+    expect(legacyDoc.ok).toBe(true);
+    if (!legacyDoc.ok || !legacyDoc.value) return;
+    expect(legacyDoc.value.contentTypeRulesFingerprint).toBeNull();
   });
 
   test("uses date precedence for canonical frontmatter date", async () => {
