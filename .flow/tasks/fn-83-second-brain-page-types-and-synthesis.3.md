@@ -45,5 +45,8 @@ Make frontmatter `type` the canonical `contentType` — gated on a configured `c
 - [ ] `docs/HOW-SEARCH-WORKS.md` updated; `bun run lint:check && bun test` green.
 
 ## Done summary
-
+Implemented configured content type inference during sync: canonical frontmatter type matches, prefix fallback, preserved path heuristics, and config-fingerprint based reprocessing. Search result JSON/schema surfaces now include contentType and categories across BM25/vector/hybrid paths, with docs and regression tests updated.
 ## Evidence
+- Commits: c1f3cd7d2273e56a79137add85d20a9aa8825e56, 37bbdc6c05fef19229b53c94abdd77f7030c89c9
+- Tests: bun run lint:check && bun test, bun test test/config/content-types.test.ts test/ingestion/sync-tags.test.ts test/store/fts.test.ts test/cli/search-smoke.test.ts
+- PRs:
