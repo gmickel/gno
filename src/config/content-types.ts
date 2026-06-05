@@ -117,6 +117,7 @@ export function fingerprintContentTypeRules(
 ): string {
   const canonical = rules.map((rule) => ({
     id: rule.id,
+    preset: rule.preset,
     prefixes: rule.prefixes,
   }));
   const hasher = new Bun.CryptoHasher("sha256");

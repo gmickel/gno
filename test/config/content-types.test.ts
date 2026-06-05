@@ -119,6 +119,19 @@ describe("normalizeContentTypes", () => {
       fingerprintContentTypeRules(base.rules)
     );
   });
+
+  test("fingerprint changes when preset changes", () => {
+    const personPreset = normalizeContentTypes([
+      { id: "person", prefixes: ["people/"], preset: "person" },
+    ]);
+    const meetingPreset = normalizeContentTypes([
+      { id: "person", prefixes: ["people/"], preset: "meeting" },
+    ]);
+
+    expect(fingerprintContentTypeRules(meetingPreset.rules)).not.toBe(
+      fingerprintContentTypeRules(personPreset.rules)
+    );
+  });
 });
 
 describe("normalizeConfigContentTypes", () => {

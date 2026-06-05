@@ -94,6 +94,25 @@ describe("SyncService tag extraction", () => {
     expect(metadata.categories).toContain("team");
   });
 
+  test("indexes inline and block frontmatter categories as filters", () => {
+    const inline = extractDocumentMetadata(
+      "---\ncategories: [person, relationship]\n---\n# Jane\n",
+      "misc/jane.md",
+      ".md"
+    );
+    expect(inline.categories).toContain("person");
+    expect(inline.categories).toContain("relationship");
+    expect(inline.categories).not.toContain("[person");
+
+    const block = extractDocumentMetadata(
+      "---\ncategories:\n  - person\n  - relationship\n---\n# Jane\n",
+      "misc/jane.md",
+      ".md"
+    );
+    expect(block.categories).toContain("person");
+    expect(block.categories).toContain("relationship");
+  });
+
   test("configured prefix wins before path heuristics", () => {
     const rules: NormalizedContentTypeRule[] = [
       { id: "person", prefixes: ["people/"], preset: "person" },
