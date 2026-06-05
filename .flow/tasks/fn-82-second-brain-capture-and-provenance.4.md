@@ -4,6 +4,11 @@
 
 Upgrade the existing MCP `gno_capture` tool in place so it uses the shared capture core and returns the canonical provenance receipt with documented legacy compatibility fields.
 
+Task 1 delivered the shared contract in `src/core/capture.ts`, expanded
+`spec/output-schemas/mcp-capture-result.schema.json`, and introduced the shared
+`gno://schemas/capture-receipt@1.0` schema. Preserve MCP-required legacy fields
+while filling shared receipt fields from `buildCaptureReceipt()`.
+
 Do not create a second MCP capture tool. Keep write tools opt-in and server-enforced. Tool annotations/schema improvements are useful for client UX but are not the write gate.
 
 Expected files:
@@ -41,8 +46,15 @@ Implementation notes:
 
 ## Done summary
 
+Upgraded MCP `gno_capture` to the shared capture/provenance receipt contract.
+
+- Replaced MCP-specific planning/content assembly with `planCapture()` and `buildCaptureReceipt()` while preserving legacy `docid`, `absPath`, `overwritten`, and `serverInstanceId` fields.
+- Added shared source metadata to the MCP input schema and kept write gating/locking plus sync behavior.
+- Added MCP tests for write-tool absence when disabled, direct disabled-handler rejection, provenance receipts, `open_existing`, legacy overwrite, and shared text-size validation.
+- Updated MCP spec/docs, skill references, and hosted `gno.sh` MCP docs.
+
 ## Evidence
 
 - Commits:
-- Tests:
+- Tests: {'command': 'bun test test/mcp/tools/capture.test.ts test/core/capture.test.ts test/spec/schemas/mcp-capture-result.test.ts', 'result': 'pass', 'evidence': '17 pass, 0 fail'}, {'command': 'bun run lint:check', 'result': 'pass', 'evidence': 'oxlint type-aware/type-check passed; oxfmt check passed'}
 - PRs:

@@ -68,8 +68,15 @@ Implementation notes:
 
 ## Done summary
 
+Implemented shared capture/provenance core and canonical receipt schema.
+
+- Added src/core/capture.ts with shared capture input/source/receipt types, content validation, body hash generation, UTC inbox default path planning, indexed+disk collision planning, structured source frontmatter merge/extraction, legacy gno*source*\* mapping, and receipt builder.
+- Added capture core tests for generated paths, disk-only collisions, preset-only scaffolds, invalid content, provenance validation, frontmatter merge/extraction, and receipt status fields.
+- Added spec/output-schemas/capture-receipt.schema.json and expanded MCP capture schema/test coverage for shared receipt fields while preserving MCP compatibility fields.
+- Updated spec/mcp.md with canonical provenance, generated path, collision, and receipt semantics.
+
 ## Evidence
 
 - Commits:
-- Tests:
+- Tests: {'command': 'bun test test/core/capture.test.ts test/spec/schemas/capture-receipt.test.ts test/spec/schemas/mcp-capture-result.test.ts', 'result': 'pass', 'evidence': '14 pass, 0 fail'}, {'command': 'bun run lint:check', 'result': 'pass', 'evidence': 'Found 0 warnings and 0 errors; formatting check passed'}
 - PRs:

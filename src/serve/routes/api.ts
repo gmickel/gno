@@ -5,10 +5,10 @@
  * @module src/serve/routes/api
  */
 
-// node:fs/promises structure walk has no Bun equivalent
-import { readdir } from "node:fs/promises";
+// node:fs/promises structure ops have no Bun equivalent
+import { mkdir, readdir } from "node:fs/promises";
 // node:path has no Bun equivalent
-import { posix as pathPosix } from "node:path";
+import { dirname, join as pathJoin, posix as pathPosix } from "node:path";
 
 import type {
   Collection,
@@ -35,6 +35,14 @@ import {
   removeCollection,
   updateCollection,
 } from "../../collection";
+import {
+  buildCaptureReceipt,
+  listCaptureDiskRelPaths,
+  planCapture,
+  type CapturePlan,
+  type PublicCaptureInput,
+} from "../../core/capture";
+import { writeCapturePlanFile } from "../../core/capture-write";
 import {
   buildEditableCopyContent,
   deriveEditableCopyRelPath,
@@ -291,6 +299,8 @@ export interface CreateDocRequestBody {
   /** Tags to add to document (written to frontmatter for markdown) */
   tags?: string[];
 }
+
+export interface CreateCaptureRequestBody extends PublicCaptureInput {}
 
 export interface RenameDocRequestBody {
   name: string;
@@ -2796,6 +2806,157 @@ export async function handleCreateEditableCopy(
 }
 
 /**
+ * POST /api/capture
+ * Capture a note with structured provenance.
+ */
+export async function handleCreateCapture(
+  ctxHolder: ContextHolder,
+  store: SqliteAdapter,
+  req: Request
+): Promise<Response> {
+  let body: CreateCaptureRequestBody;
+  try {
+    body = (await req.json()) as CreateCaptureRequestBody;
+  } catch {
+    return errorResponse("VALIDATION", "Invalid JSON body");
+  }
+
+  if (!body.collection || typeof body.collection !== "string") {
+    return errorResponse("VALIDATION", "Missing or invalid collection");
+  }
+  if (body.content !== undefined && typeof body.content !== "string") {
+    return errorResponse("VALIDATION", "content must be a string");
+  }
+  if (body.title !== undefined && typeof body.title !== "string") {
+    return errorResponse("VALIDATION", "title must be a string");
+  }
+  if (body.relPath !== undefined && typeof body.relPath !== "string") {
+    return errorResponse("VALIDATION", "relPath must be a string");
+  }
+  if (body.folderPath !== undefined && typeof body.folderPath !== "string") {
+    return errorResponse("VALIDATION", "folderPath must be a string");
+  }
+  if ("overwrite" in body) {
+    return errorResponse(
+      "VALIDATION",
+      "overwrite is not supported by /api/capture; use collisionPolicy instead"
+    );
+  }
+
+  const collectionName = body.collection.toLowerCase();
+  const collection = ctxHolder.config.collections.find(
+    (candidate) => candidate.name.toLowerCase() === collectionName
+  );
+  if (!collection) {
+    return errorResponse(
+      "NOT_FOUND",
+      `Collection not found: ${body.collection}`,
+      404
+    );
+  }
+
+  let plan: CapturePlan;
+  try {
+    plan = planCapture({
+      input: {
+        ...body,
+        collection: collection.name,
+      },
+      existingRelPaths: await listCollectionRelPaths(store, collection.name),
+      diskRelPaths: await listCaptureDiskRelPaths(collection.path),
+    });
+  } catch (error) {
+    return errorResponse(
+      "VALIDATION",
+      error instanceof Error ? error.message : String(error),
+      409
+    );
+  }
+
+  const fullPath = pathJoin(collection.path, plan.relPath);
+  if (plan.openedExisting) {
+    const existingDoc = await store.getDocument(collection.name, plan.relPath);
+    if (!existingDoc.ok) {
+      return errorResponse("RUNTIME", existingDoc.error.message, 500);
+    }
+    return jsonResponse(
+      buildCaptureReceipt({
+        plan,
+        absPath: fullPath,
+        docid: existingDoc.value?.docid,
+        sync: existingDoc.value
+          ? { status: "completed" }
+          : {
+              status: "skipped",
+              reason: "Existing file is not indexed yet.",
+            },
+      })
+    );
+  }
+
+  try {
+    await mkdir(dirname(fullPath), { recursive: true });
+    ctxHolder.watchService?.suppress(fullPath);
+    await writeCapturePlanFile(plan, fullPath);
+
+    const gnoUri = `gno://${collection.name}/${plan.relPath}`;
+    const jobResult = startJob("sync", async (): Promise<SyncResult> => {
+      const result = await defaultSyncService.syncCollection(
+        collection,
+        store,
+        { runUpdateCmd: false }
+      );
+      ctxHolder.scheduler?.notifySyncComplete([plan.relPath]);
+      ctxHolder.eventBus?.emit({
+        type: "document-changed",
+        uri: gnoUri,
+        collection: collection.name,
+        relPath: plan.relPath,
+        origin: "create",
+        changedAt: new Date().toISOString(),
+      });
+      return {
+        collections: [result],
+        totalDurationMs: result.durationMs,
+        totalFilesProcessed: result.filesProcessed,
+        totalFilesAdded: result.filesAdded,
+        totalFilesUpdated: result.filesUpdated,
+        totalFilesErrored: result.filesErrored,
+        totalFilesSkipped: result.filesSkipped,
+      };
+    });
+
+    return jsonResponse(
+      buildCaptureReceipt({
+        plan,
+        absPath: fullPath,
+        sync: jobResult.ok
+          ? {
+              status: "pending",
+              jobId: jobResult.jobId,
+              reason: "Sync job started; poll /api/jobs/:id for status.",
+            }
+          : {
+              status: "skipped",
+              jobId: jobResult.activeJobId,
+              reason: "Sync skipped because another job is running.",
+              error: jobResult.error,
+            },
+      }),
+      202
+    );
+  } catch (error) {
+    return errorResponse(
+      "RUNTIME",
+      `Failed to capture document: ${
+        error instanceof Error ? error.message : String(error)
+      }`,
+      500
+    );
+  }
+}
+
+/**
  * POST /api/docs
  * Create a new document in a collection.
  * Returns 202 with jobId for async sync.
@@ -3987,6 +4148,31 @@ export async function routeApi(
 
   if (path === "/api/publish/export" && req.method === "POST") {
     return handlePublishExport(config, store, req);
+  }
+
+  if (path === "/api/capture" && req.method === "POST") {
+    const ctxHolder: ContextHolder = {
+      current: {
+        config,
+        store,
+        vectorIndex: null,
+        embedPort: null,
+        expandPort: null,
+        answerPort: null,
+        rerankPort: null,
+        capabilities: {
+          bm25: true,
+          vector: false,
+          hybrid: false,
+          answer: false,
+        },
+      },
+      config,
+      scheduler: null,
+      eventBus: null,
+      watchService: null,
+    };
+    return handleCreateCapture(ctxHolder, store, req);
   }
 
   if (path === "/api/docs") {

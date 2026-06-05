@@ -349,3 +349,19 @@ gno search "common term" --min-score 0.7
 # Get full content
 gno search "term" --full
 ```
+
+## Capture Notes
+
+### CLI capture with provenance
+
+```bash
+gno capture "thought to remember"
+gno capture --file ./clip.md --source-url https://example.com --source-kind web --json
+```
+
+### Web UI quick capture
+
+Press **N** in `gno serve`, write the note, and open **Source** only when you
+need provenance fields such as URL, author, observed date, or external id. The
+success view reports the write result, FTS sync state, and embed state
+separately.

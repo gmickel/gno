@@ -2,10 +2,10 @@
  * CaptureModal - Quick document creation modal.
  *
  * Features:
- * - Title, content, collection fields
+ * - Title, content, collection, provenance fields
  * - Auto-generates filename from title
  * - Remembers last used collection
- * - Shows IndexingProgress after creation
+ * - Shows capture receipt status after creation
  */
 
 import {
@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import type { CaptureReceipt, CaptureSourceKind } from "../../../core/capture";
 import type { WikiLinkDoc } from "./WikiLinkAutocomplete";
 
 import {
@@ -80,6 +81,8 @@ interface CreateDocResponse {
   relPath?: string;
 }
 
+type CaptureResponse = CaptureReceipt;
+
 interface CollectionsResponse {
   collections: Collection[];
 }
@@ -102,6 +105,36 @@ function sanitizeFilename(title: string): string {
 
 type ModalState = "form" | "submitting" | "success" | "error";
 
+const SOURCE_KINDS: CaptureSourceKind[] = [
+  "direct",
+  "web",
+  "email",
+  "meeting",
+  "chat",
+  "file",
+  "api",
+  "unknown",
+];
+
+function statusLabel(status: CaptureReceipt["sync"]["status"]): string {
+  switch (status) {
+    case "completed":
+      return "Completed";
+    case "pending":
+      return "Pending";
+    case "running":
+      return "Running";
+    case "skipped":
+      return "Skipped";
+    case "failed":
+      return "Failed";
+    case "not_requested":
+      return "Not requested";
+    default:
+      return "Unknown";
+  }
+}
+
 export function CaptureModal({
   open,
   draftTitle = "",
@@ -118,6 +151,12 @@ export function CaptureModal({
   const [collections, setCollections] = useState<Collection[]>([]);
   const [tags, setTags] = useState<string[]>([]);
   const [selectedPresetId, setSelectedPresetId] = useState<string>(presetId);
+  const [sourceKind, setSourceKind] = useState<CaptureSourceKind>("direct");
+  const [sourceTitle, setSourceTitle] = useState("");
+  const [sourceUrl, setSourceUrl] = useState("");
+  const [sourceAuthor, setSourceAuthor] = useState("");
+  const [sourceObservedAt, setSourceObservedAt] = useState("");
+  const [sourceExternalId, setSourceExternalId] = useState("");
   const [contentTouched, setContentTouched] = useState(false);
   const [lastGeneratedContent, setLastGeneratedContent] = useState("");
   const [wikiLinkDocs, setWikiLinkDocs] = useState<WikiLinkDoc[]>([]);
@@ -136,6 +175,9 @@ export function CaptureModal({
   const [error, setError] = useState<string | null>(null);
   const [jobId, setJobId] = useState<string | null>(null);
   const [createdUri, setCreatedUri] = useState<string | null>(null);
+  const [captureReceipt, setCaptureReceipt] = useState<CaptureResponse | null>(
+    null
+  );
 
   // Load collections
   useEffect(() => {
@@ -181,6 +223,12 @@ export function CaptureModal({
         setTitle("");
         setContent("");
         setTags([]);
+        setSourceKind("direct");
+        setSourceTitle("");
+        setSourceUrl("");
+        setSourceAuthor("");
+        setSourceObservedAt("");
+        setSourceExternalId("");
         setContentTouched(false);
         setLastGeneratedContent("");
         setSelectedPresetId("blank");
@@ -188,6 +236,7 @@ export function CaptureModal({
         setError(null);
         setJobId(null);
         setCreatedUri(null);
+        setCaptureReceipt(null);
         setWikiLinkDocs([]);
         setWikiLinkOpen(false);
         setWikiLinkQuery("");
@@ -245,18 +294,35 @@ export function CaptureModal({
     setState("submitting");
     setError(null);
 
-    // Include tags in the POST request (server writes to frontmatter)
-    const { data, error: err } = await apiFetch<CreateDocResponse>(
-      "/api/docs",
+    const source = {
+      kind: sourceKind,
+      ...(sourceTitle.trim() && { title: sourceTitle.trim() }),
+      ...(sourceUrl.trim() && { url: sourceUrl.trim() }),
+      ...(sourceAuthor.trim() && { author: sourceAuthor.trim() }),
+      ...(sourceObservedAt.trim() && { observedAt: sourceObservedAt.trim() }),
+      ...(sourceExternalId.trim() && { externalId: sourceExternalId.trim() }),
+    };
+    const presetOnly =
+      selectedPresetId &&
+      selectedPresetId !== "blank" &&
+      content === lastGeneratedContent;
+    const submitPresetId =
+      presetOnly && selectedPresetId && selectedPresetId !== "blank"
+        ? selectedPresetId
+        : undefined;
+
+    const { data, error: err } = await apiFetch<CaptureResponse>(
+      "/api/capture",
       {
         method: "POST",
         body: JSON.stringify({
           collection,
           title,
           folderPath: defaultFolderPath || undefined,
-          content,
-          presetId: selectedPresetId || undefined,
+          content: presetOnly ? undefined : content,
+          presetId: submitPresetId,
           collisionPolicy: "create_with_suffix",
+          source,
           ...(tags.length > 0 && { tags }),
         }),
       }
@@ -273,8 +339,9 @@ export function CaptureModal({
       localStorage.setItem(STORAGE_KEY, collection);
 
       setState("success");
-      setJobId(data.jobId);
+      setJobId(data.sync.jobId ?? null);
       setCreatedUri(data.uri);
+      setCaptureReceipt(data);
       onSuccess?.(data.uri);
     }
   }, [
@@ -282,8 +349,15 @@ export function CaptureModal({
     content,
     defaultFolderPath,
     isValid,
+    lastGeneratedContent,
     onSuccess,
     selectedPresetId,
+    sourceAuthor,
+    sourceExternalId,
+    sourceKind,
+    sourceObservedAt,
+    sourceTitle,
+    sourceUrl,
     tags,
     title,
   ]);
@@ -552,6 +626,116 @@ export function CaptureModal({
                 value={tags}
               />
             </div>
+
+            <details className="rounded-lg border border-border/50 p-3">
+              <summary className="cursor-pointer font-medium text-sm">
+                Source
+              </summary>
+              <div className="mt-3 grid gap-3">
+                <div>
+                  <label
+                    className="mb-1.5 block font-medium text-sm"
+                    htmlFor="capture-source-kind"
+                  >
+                    Kind
+                  </label>
+                  <Select
+                    disabled={state === "submitting"}
+                    onValueChange={(value) =>
+                      setSourceKind(value as CaptureSourceKind)
+                    }
+                    value={sourceKind}
+                  >
+                    <SelectTrigger className="w-full" id="capture-source-kind">
+                      <SelectValue placeholder="Source kind" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {SOURCE_KINDS.map((kind) => (
+                        <SelectItem key={kind} value={kind}>
+                          {kind}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div>
+                    <label
+                      className="mb-1.5 block font-medium text-sm"
+                      htmlFor="capture-source-title"
+                    >
+                      Source title
+                    </label>
+                    <Input
+                      disabled={state === "submitting"}
+                      id="capture-source-title"
+                      onChange={(e) => setSourceTitle(e.target.value)}
+                      value={sourceTitle}
+                    />
+                  </div>
+                  <div>
+                    <label
+                      className="mb-1.5 block font-medium text-sm"
+                      htmlFor="capture-source-author"
+                    >
+                      Author
+                    </label>
+                    <Input
+                      disabled={state === "submitting"}
+                      id="capture-source-author"
+                      onChange={(e) => setSourceAuthor(e.target.value)}
+                      value={sourceAuthor}
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label
+                    className="mb-1.5 block font-medium text-sm"
+                    htmlFor="capture-source-url"
+                  >
+                    URL
+                  </label>
+                  <Input
+                    disabled={state === "submitting"}
+                    id="capture-source-url"
+                    onChange={(e) => setSourceUrl(e.target.value)}
+                    type="url"
+                    value={sourceUrl}
+                  />
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div>
+                    <label
+                      className="mb-1.5 block font-medium text-sm"
+                      htmlFor="capture-source-observed"
+                    >
+                      Observed
+                    </label>
+                    <Input
+                      disabled={state === "submitting"}
+                      id="capture-source-observed"
+                      onChange={(e) => setSourceObservedAt(e.target.value)}
+                      type="datetime-local"
+                      value={sourceObservedAt}
+                    />
+                  </div>
+                  <div>
+                    <label
+                      className="mb-1.5 block font-medium text-sm"
+                      htmlFor="capture-source-external-id"
+                    >
+                      External ID
+                    </label>
+                    <Input
+                      disabled={state === "submitting"}
+                      id="capture-source-external-id"
+                      onChange={(e) => setSourceExternalId(e.target.value)}
+                      value={sourceExternalId}
+                    />
+                  </div>
+                </div>
+              </div>
+            </details>
           </div>
         )}
 
@@ -581,12 +765,66 @@ export function CaptureModal({
                 <CheckCircle2Icon className="size-5 text-green-500" />
               </div>
               <div>
-                <h3 className="font-medium">Note created successfully</h3>
+                <h3 className="font-medium">
+                  {captureReceipt?.openedExisting
+                    ? "Opened existing note"
+                    : "Note captured"}
+                </h3>
                 <p className="text-muted-foreground text-sm">
-                  Indexing in progress...
+                  {captureReceipt?.relPath ?? createdUri}
                 </p>
               </div>
             </div>
+
+            {captureReceipt && (
+              <div className="grid gap-2 rounded-lg border border-border/50 p-3 text-sm">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-muted-foreground">Write</span>
+                  <span className="font-medium">
+                    {captureReceipt.createdWithSuffix
+                      ? "Created with suffix"
+                      : captureReceipt.overwritten
+                        ? "Overwritten"
+                        : captureReceipt.openedExisting
+                          ? "Opened existing"
+                          : "Created"}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-muted-foreground">FTS sync</span>
+                  <span className="font-medium">
+                    {statusLabel(captureReceipt.sync.status)}
+                  </span>
+                </div>
+                {captureReceipt.sync.reason && (
+                  <p className="text-muted-foreground text-xs">
+                    {captureReceipt.sync.reason}
+                  </p>
+                )}
+                {captureReceipt.sync.error && (
+                  <p className="text-destructive text-xs">
+                    {captureReceipt.sync.error}
+                  </p>
+                )}
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-muted-foreground">Embedding</span>
+                  <span className="font-medium">
+                    {statusLabel(captureReceipt.embed.status)}
+                  </span>
+                </div>
+                {captureReceipt.embed.reason && (
+                  <p className="text-muted-foreground text-xs">
+                    {captureReceipt.embed.reason}
+                  </p>
+                )}
+                {captureReceipt.sync.status === "pending" && !jobId && (
+                  <p className="text-muted-foreground text-xs">
+                    Sync is pending without a job id. Check status or run sync
+                    from the collections page.
+                  </p>
+                )}
+              </div>
+            )}
 
             {jobId && (
               <div className="rounded-lg border border-border/50 p-3">

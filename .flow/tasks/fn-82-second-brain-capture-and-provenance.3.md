@@ -6,6 +6,11 @@ Expose capture-with-provenance through REST/API and SDK while preserving raw not
 
 This task should add `POST /api/capture` or an explicitly documented equivalent route that delegates to the shared core. It should add `client.capture(input)` unless the implementation proves the existing `createNote()` can expose capture semantics cleanly without mixing raw note creation and provenance capture concepts.
 
+Task 1 delivered the shared contract in `src/core/capture.ts` and the canonical
+receipt schema `spec/output-schemas/capture-receipt.schema.json`. API/SDK
+adapters should call `planCapture()` and `buildCaptureReceipt()` and only own
+transport-specific validation, sync job reporting, and local path/store access.
+
 Expected files:
 
 - `src/serve/server.ts`
@@ -38,8 +43,15 @@ Design decisions:
 
 ## Done summary
 
+Added REST and SDK capture parity on the shared capture core.
+
+- Added SDK `client.capture(input)` with shared `CaptureInput`/`CaptureReceipt` types, file write, sync, and receipt status reporting.
+- Added `POST /api/capture` with CSRF-gated server route plus fallback router handling for tests and API consumers.
+- API capture writes provenance frontmatter, supports shared collision planning, starts async sync jobs, and returns the canonical capture receipt with pending/completed/skipped sync state.
+- Updated repo API/SDK docs, README, skill docs, and hosted `/Users/gordon/work/gno.sh/src/lib/gno-docs.tsx` for REST/SDK capture parity.
+
 ## Evidence
 
 - Commits:
-- Tests:
+- Tests: {'command': 'bun test test/serve/api-docs-lifecycle.test.ts test/sdk/client.test.ts test/cli/capture.test.ts test/core/capture.test.ts test/spec/schemas/capture-receipt.test.ts test/spec/schemas/mcp-capture-result.test.ts', 'result': 'pass', 'evidence': '50 pass, 0 fail'}, {'command': 'bun run lint:check', 'result': 'pass', 'evidence': 'oxlint type-aware/type-check passed; oxfmt check passed'}
 - PRs:

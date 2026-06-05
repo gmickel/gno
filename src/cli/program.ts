@@ -247,6 +247,7 @@ export function createProgram(): Command {
   // Wire command groups
   wireSearchCommands(program);
   wireOnboardingCommands(program);
+  wireCaptureCommand(program);
   wireManagementCommands(program);
   wirePublishCommand(program);
   wireVecCommands(program);
@@ -1007,6 +1008,69 @@ function wireOnboardingCommands(program: Command): void {
         `${formatDoctor(result, { json: format === "json" })}\n`
       );
     });
+}
+
+function wireCaptureCommand(program: Command): void {
+  program
+    .command("capture [content...]")
+    .description("Capture a note with provenance")
+    .option("--stdin", "read capture content from stdin")
+    .option("--file <path>", "read capture content from a text/markdown file")
+    .option("-c, --collection <name>", "target collection")
+    .option("--title <title>", "capture title")
+    .option("--path <relPath>", "explicit relative path inside collection")
+    .option("--folder <relPath>", "folder path inside collection")
+    .option("--preset <id>", "note preset scaffold")
+    .option("--tags <tags>", "comma-separated tags")
+    .option(
+      "--collision-policy <policy>",
+      "error, open_existing, or create_with_suffix"
+    )
+    .option(
+      "--source-kind <kind>",
+      "direct, web, email, meeting, chat, file, api, or unknown"
+    )
+    .option("--source-url <url>", "source URL")
+    .option("--source-title <title>", "source title")
+    .option("--source-author <author>", "source author")
+    .option("--source-date <date>", "source observed date/time")
+    .option("--source-id <id>", "source external id")
+    .option("--json", "JSON output")
+    .action(
+      async (contentParts: string[], cmdOpts: Record<string, unknown>) => {
+        const format = getFormat(cmdOpts);
+        assertFormatSupported(CMD.capture, format);
+        const globals = getGlobals();
+        const { capture, formatCaptureReceipt } =
+          await import("./commands/capture");
+        const receipt = await capture({
+          configPath: globals.config,
+          indexName: globals.index,
+          inlineContent:
+            contentParts.length > 0 ? contentParts.join(" ") : undefined,
+          stdin: Boolean(cmdOpts.stdin),
+          file: cmdOpts.file as string | undefined,
+          collection: cmdOpts.collection as string | undefined,
+          title: cmdOpts.title as string | undefined,
+          path: cmdOpts.path as string | undefined,
+          folder: cmdOpts.folder as string | undefined,
+          preset: cmdOpts.preset as never,
+          tags: cmdOpts.tags as string | undefined,
+          collisionPolicy: cmdOpts.collisionPolicy as never,
+          sourceKind: cmdOpts.sourceKind as never,
+          sourceUrl: cmdOpts.sourceUrl as string | undefined,
+          sourceTitle: cmdOpts.sourceTitle as string | undefined,
+          sourceAuthor: cmdOpts.sourceAuthor as string | undefined,
+          sourceDate: cmdOpts.sourceDate as string | undefined,
+          sourceId: cmdOpts.sourceId as string | undefined,
+        });
+        const output = formatCaptureReceipt(receipt, {
+          json: format === "json",
+          quiet: globals.quiet,
+        });
+        await writeOutput(output, format);
+      }
+    );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

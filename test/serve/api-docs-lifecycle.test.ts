@@ -8,6 +8,7 @@ import type { ContextHolder } from "../../src/serve/routes/api";
 import type { DocumentRow, StoreResult } from "../../src/store/types";
 
 import {
+  handleCreateCapture,
   handleCreateDoc,
   handleCreateFolder,
   handleDuplicateDoc,
@@ -15,6 +16,7 @@ import {
   handleRenameDoc,
   handleRevealDoc,
   handleTrashDoc,
+  routeApi,
 } from "../../src/serve/routes/api";
 import { safeRm } from "../helpers/cleanup";
 
@@ -462,6 +464,145 @@ describe("document lifecycle API", () => {
     expect(res.status).toBe(202);
     const body = (await res.json()) as { relPath: string };
     expect(body.relPath).toBe("projects/project-plan.md");
+  });
+
+  test("captures a note with provenance receipt", async () => {
+    const ctxHolder = createMockContextHolder({
+      collections: [
+        {
+          name: "notes",
+          path: tmpDir,
+          pattern: "**/*.md",
+          include: [],
+          exclude: [],
+        },
+      ],
+    });
+    const store = {
+      listDocuments: async () => ({ ok: true as const, value: [] }),
+      getDocument: async () => ({ ok: true as const, value: null }),
+    };
+    const req = new Request("http://localhost/api/capture", {
+      method: "POST",
+      body: JSON.stringify({
+        collection: "notes",
+        content: "Captured from API",
+        source: {
+          kind: "web",
+          url: "https://example.com/api",
+        },
+      }),
+    });
+
+    const res = await handleCreateCapture(ctxHolder, store as never, req);
+    expect(res.status).toBe(202);
+    const body = (await res.json()) as {
+      relPath: string;
+      source: { kind: string; url: string };
+      sync: { status: string; jobId?: string };
+      embed: { status: string };
+    };
+    expect(body.relPath).toStartWith("inbox/");
+    expect(body.source.kind).toBe("web");
+    expect(body.source.url).toBe("https://example.com/api");
+    expect(body.sync.status).toBe("pending");
+    expect(body.embed.status).toBe("not_requested");
+
+    const content = await Bun.file(join(tmpDir, body.relPath)).text();
+    expect(content).toContain("Captured from API");
+    expect(content).toContain("source:");
+    await Bun.sleep(20);
+  });
+
+  test("rejects invalid capture runtime shapes", async () => {
+    const ctxHolder = createMockContextHolder({
+      collections: [
+        {
+          name: "notes",
+          path: tmpDir,
+          pattern: "**/*.md",
+          include: [],
+          exclude: [],
+        },
+      ],
+    });
+    const store = {
+      listDocuments: async () => ({ ok: true as const, value: [] }),
+    };
+
+    for (const body of [
+      {
+        collection: "notes",
+        content: "Captured from API",
+        source: "web",
+      },
+      {
+        collection: "notes",
+        content: "Captured from API",
+        tags: "research",
+      },
+      {
+        collection: "notes",
+        content: "Captured from API",
+        overwrite: true,
+      },
+    ]) {
+      const req = new Request("http://localhost/api/capture", {
+        method: "POST",
+        body: JSON.stringify(body),
+      });
+
+      const res = await handleCreateCapture(ctxHolder, store as never, req);
+      expect(res.status).toBeGreaterThanOrEqual(400);
+      const responseBody = (await res.json()) as { error: { code: string } };
+      expect(responseBody.error.code).toBe("VALIDATION");
+    }
+  });
+
+  test("fallback router wires POST /api/capture", async () => {
+    const existing = createDoc(tmpDir, {
+      relPath: "existing.md",
+      uri: "gno://notes/existing.md",
+    });
+    await writeFile(join(tmpDir, "existing.md"), "# Existing\n");
+    const config: Config = {
+      version: "1.0",
+      ftsTokenizer: "unicode61",
+      collections: [
+        {
+          name: "notes",
+          path: tmpDir,
+          pattern: "**/*.md",
+          include: [],
+          exclude: [],
+        },
+      ],
+      contexts: [],
+    };
+    const store = {
+      listDocuments: async () => ({ ok: true as const, value: [existing] }),
+      getDocument: async () => ({ ok: true as const, value: existing }),
+    };
+    const req = new Request("http://localhost/api/capture", {
+      method: "POST",
+      body: JSON.stringify({
+        collection: "notes",
+        relPath: "existing.md",
+        content: "# Existing\n",
+        collisionPolicy: "open_existing",
+      }),
+    });
+
+    const res = await routeApi(store as never, config, req, new URL(req.url));
+    expect(res?.status).toBe(200);
+    const body = (await res?.json()) as {
+      openedExisting: boolean;
+      docid: string;
+      sync: { status: string };
+    };
+    expect(body.openedExisting).toBe(true);
+    expect(body.docid).toBe("#abc123");
+    expect(body.sync.status).toBe("completed");
   });
 
   test("creates folders inside a collection", async () => {

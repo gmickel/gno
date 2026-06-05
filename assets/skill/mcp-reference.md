@@ -68,6 +68,21 @@ community summaries,
 Graph edges include confidence/audit metadata; prefer `explicit` edges when
 answers depend on link certainty.
 
+## Capture
+
+`gno_capture` is available only when MCP starts with `--enable-write` or
+`GNO_MCP_ENABLE_WRITE=1`. It writes quick notes with structured `source:`
+frontmatter and returns the same provenance receipt shape as CLI, REST, and SDK
+capture, plus legacy MCP fields (`docid`, `absPath`, `overwritten`,
+`serverInstanceId`).
+
+Use `collisionPolicy: "open_existing"` to return an existing note without
+rewriting, `create_with_suffix` to create the next available path, or legacy
+`overwrite: true` to replace the target path. Capture content must be text, and
+non-overwrite captures fail instead of replacing a late-arriving file. MCP
+capture syncs the file for FTS but does not auto-embed; run `gno_embed` or
+`gno_index` afterward when vector search should include it.
+
 ## Uninstall
 
 ```bash

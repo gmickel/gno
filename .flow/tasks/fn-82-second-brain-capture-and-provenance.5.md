@@ -38,8 +38,16 @@ UX requirements:
 
 ## Done summary
 
+Wired Web UI Quick Capture to the shared capture/provenance flow.
+
+- Switched the modal submit path from `/api/docs` to `/api/capture` while preserving the fast title/content flow.
+- Added optional progressive Source fields for kind, title, URL, author, observed date, and external id.
+- Replaced success copy with receipt-driven write, FTS sync, and embed statuses, including pending-without-job and skipped/deferred sync messaging.
+- Added DOM coverage for basic capture, missing collections, provenance payloads, skipped/no-job sync, and receipt status rendering.
+- Updated Web UI docs, quickstart/README references, skill examples, and hosted `/Users/gordon/work/gno.sh/src/lib/gno-docs.tsx`.
+
 ## Evidence
 
 - Commits:
-- Tests:
+- Tests: {'command': 'bun test test/serve/public/components/CaptureModal.dom.test.tsx test/serve/api-docs-lifecycle.test.ts test/core/capture.test.ts test/spec/schemas/capture-receipt.test.ts', 'result': 'pass', 'evidence': '29 pass, 0 fail'}, {'command': 'bun run lint:check', 'result': 'pass', 'evidence': 'oxlint type-aware/type-check passed; oxfmt check passed'}
 - PRs:

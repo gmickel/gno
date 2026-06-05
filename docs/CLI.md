@@ -319,6 +319,41 @@ JSON output also includes `meta.queryModes` when structured query modes are supp
 - `--tags-all <tags>` - Filter: docs must have ALL tags
 - `--tags-any <tags>` - Filter: docs must have ANY tag
 
+## Capture Commands
+
+### gno capture
+
+Capture a note into an editable collection with structured provenance.
+
+```bash
+gno capture "thought to remember"
+gno capture --stdin --collection notes --preset source-summary --tags inbox,gno
+gno capture --file ./clip.md --source-url https://example.com --source-kind web --json
+gno capture "meeting note" --quiet
+```
+
+Content source modes are mutually exclusive: inline argument, `--stdin`, or
+`--file`. Content is required unless `--preset` can scaffold a non-empty note.
+All capture inputs must be text; binary-like file/stdin content is rejected
+before writing.
+
+Path behavior:
+
+- `--path` writes to an explicit relative path.
+- `--folder` and `--title` create a safe markdown path.
+- With no path, folder, or title, GNO writes to
+  `inbox/YYYY-MM-DD/capture-<body-hash>.md` using UTC capture time.
+- `--collision-policy` accepts `error`, `open_existing`, or
+  `create_with_suffix`.
+- Collision checks include indexed documents and disk-only files.
+- Capture writes use exclusive create semantics so a late-arriving file fails
+  instead of being replaced.
+
+Provenance flags write structured `source:` frontmatter. `--source-date` maps to
+`source.observedAt`; `--source-id` maps to `source.externalId`. `--json` returns
+the shared capture receipt with write, sync, and embed status; quiet mode prints
+only the URI.
+
 ## Document Commands
 
 ### gno get

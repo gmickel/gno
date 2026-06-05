@@ -1,68 +1,64 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "gno://schemas/mcp-capture-result@1.0",
-  "title": "GNO MCP Capture Result",
-  "description": "Result payload for gno_capture",
+  "$id": "gno://schemas/capture-receipt@1.0",
+  "title": "GNO Capture Receipt",
+  "description": "Shared receipt returned by capture surfaces after a write/open decision.",
   "type": "object",
   "required": [
-    "docid",
     "uri",
-    "absPath",
     "collection",
     "relPath",
     "created",
     "openedExisting",
     "createdWithSuffix",
-    "overwritten",
     "contentHash",
     "source",
     "tags",
     "sync",
     "embed",
-    "collisionPolicyResult",
-    "serverInstanceId"
+    "collisionPolicyResult"
   ],
   "properties": {
-    "docid": {
-      "type": "string",
-      "description": "Document ID"
-    },
     "uri": {
       "type": "string",
-      "description": "Document URI",
+      "description": "GNO URI for the captured note.",
       "pattern": "^gno://[^/]+/.+"
     },
-    "absPath": {
+    "docid": {
       "type": "string",
-      "description": "Absolute path to the created file"
+      "description": "Document id when sync has resolved it."
     },
     "collection": {
       "type": "string",
-      "description": "Normalized collection name"
+      "description": "Target collection name."
     },
     "relPath": {
       "type": "string",
-      "description": "Relative path within collection"
+      "description": "Relative path within the collection."
+    },
+    "absPath": {
+      "type": "string",
+      "description": "Absolute path when the local surface exposes it."
     },
     "created": {
       "type": "boolean",
-      "description": "True if file was created"
+      "description": "True when a new file was written."
     },
     "openedExisting": {
       "type": "boolean",
-      "description": "True if an existing file was opened"
+      "description": "True when collision policy selected an existing file."
     },
     "createdWithSuffix": {
       "type": "boolean",
-      "description": "True if a suffixed path was created"
+      "description": "True when a suffixed path was created after collision."
     },
     "overwritten": {
       "type": "boolean",
-      "description": "True if existing file was overwritten"
+      "description": "Legacy compatibility flag for overwrite-capable surfaces."
     },
     "contentHash": {
       "type": "string",
-      "description": "SHA-256 hash of normalized capture body content",
+      "description": "SHA-256 hash of normalized capture body content.",
       "pattern": "^[a-f0-9]{64}$"
     },
     "source": {
@@ -113,11 +109,6 @@
         "overwritten",
         "conflict"
       ]
-    },
-    "serverInstanceId": {
-      "type": "string",
-      "description": "Server instance UUID",
-      "format": "uuid"
     }
   },
   "definitions": {

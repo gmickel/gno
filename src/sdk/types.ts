@@ -5,6 +5,7 @@
  */
 
 import type { Config } from "../config/types";
+import type { CaptureInput, CaptureReceipt } from "../core/capture";
 import type { NoteCollisionPolicy } from "../core/note-creation";
 import type { NotePresetId } from "../core/note-presets";
 import type { DocumentSection } from "../core/sections";
@@ -130,6 +131,10 @@ export interface GnoCreateNoteResult {
   createdWithSuffix?: boolean;
 }
 
+export interface GnoCaptureOptions extends Omit<CaptureInput, "overwrite"> {}
+
+export type GnoCaptureResult = CaptureReceipt;
+
 export interface GnoCreateFolderOptions {
   collection: string;
   name: string;
@@ -194,6 +199,7 @@ export interface GnoClient {
   update(options?: GnoUpdateOptions): Promise<SyncResult>;
   embed(options?: GnoEmbedOptions): Promise<GnoEmbedResult>;
   index(options?: GnoIndexOptions): Promise<GnoIndexResult>;
+  capture(options: GnoCaptureOptions): Promise<GnoCaptureResult>;
   createNote(options: GnoCreateNoteOptions): Promise<GnoCreateNoteResult>;
   createFolder(options: GnoCreateFolderOptions): Promise<GnoCreateFolderResult>;
   renameNote(options: GnoRenameNoteOptions): Promise<GnoRefactorNoteResult>;

@@ -84,7 +84,7 @@ Navigate to `http://localhost:3000`. The dashboard now handles both first-run se
 - **Chunk count**: Text segments for search
 - **Quick Capture**: Create new notes instantly
 
-### 3. Create a Note
+### 3. Capture a Note
 
 Press **N** (or click the floating + button) to open Quick Capture:
 
@@ -92,9 +92,14 @@ Press **N** (or click the floating + button) to open Quick Capture:
 2. Write your content (markdown supported)
 3. Select a collection
 4. Add tags (optional, with autocomplete)
-5. Click **Create note**
+5. Open **Source** when you want provenance metadata such as kind, URL, author,
+   observed time, or external id
+6. Click **Create note**
 
-The document is saved to disk and indexed automatically.
+The document is saved to disk with structured `source:` frontmatter. The
+success state shows the write result, FTS sync state, and embedding state
+separately. Quick Capture syncs for FTS when possible, but it does not imply
+embedding; run embed/index when vector search should include the new note.
 
 ### 4. Search
 

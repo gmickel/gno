@@ -64,6 +64,7 @@ Default output is human-readable terminal format.
 | query              | yes    | yes     | yes   | yes  | yes   | terminal |
 | bench              | yes    | no      | no    | no   | no    | terminal |
 | ask                | yes    | no      | no    | yes  | no    | terminal |
+| capture            | yes    | no      | no    | no   | no    | terminal |
 | get                | yes    | no      | no    | yes  | no    | terminal |
 | multi-get          | yes    | yes     | no    | yes  | no    | terminal |
 | ls                 | yes    | yes     | no    | yes  | no    | terminal |
@@ -778,6 +779,52 @@ Notes:
 ```bash
 gno ask "how do we deploy to staging"
 gno ask "termination clause" --collection work --answer
+```
+
+---
+
+### gno capture
+
+Capture a note into an editable collection with structured provenance.
+
+**Synopsis:**
+
+```bash
+gno capture [content...] [--stdin|--file <path>] [--collection <name>] [--title <title>] [--path <relPath>] [--folder <relPath>] [--preset <id>] [--tags <tags>] [--collision-policy <policy>] [--source-kind <kind>] [--source-url <url>] [--source-title <title>] [--source-author <author>] [--source-date <date>] [--source-id <id>] [--json]
+```
+
+**Content Sources:**
+
+- Inline argument, `--stdin`, and `--file` are mutually exclusive.
+- Content is required unless `--preset` can scaffold a non-empty note.
+- `--json` wins over global `--quiet`; quiet prints only the created/opened URI.
+
+**Provenance:**
+
+Capture writes structured `source:` frontmatter and returns the shared
+[`capture-receipt`](./output-schemas/capture-receipt.schema.json). `--source-date`
+maps to `source.observedAt`; `--source-id` maps to `source.externalId`.
+
+**Path and Collision Rules:**
+
+- Explicit `--path` wins.
+- Without `--path`, `--folder`/`--title` produce a safe markdown filename.
+- Without path, folder, or title, GNO writes to
+  `inbox/YYYY-MM-DD/capture-<body-hash>.md` using UTC capture time.
+- Default collision policy is `open_existing` for generated hash paths and
+  `error` for explicit/title/folder paths.
+- Collision checks include indexed documents and disk-only files.
+- Content must be text; NUL or binary-like control bytes are rejected.
+- Capture writes use exclusive create semantics so a file that appears after
+  planning is not replaced.
+
+**Examples:**
+
+```bash
+gno capture "thought to remember"
+gno capture --stdin --collection notes --preset source-summary --tags inbox,gno
+gno capture --file ./clip.md --source-url https://example.com --source-kind web --json
+gno capture "meeting note" --quiet
 ```
 
 ---

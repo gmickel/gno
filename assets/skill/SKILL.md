@@ -207,6 +207,34 @@ gno embed --collection travel
 
 MCP `gno.sync` and `gno.capture` do NOT auto-embed. Use CLI for embedding.
 
+## Capture Notes
+
+Use `gno capture` for quick second-brain writes into an editable collection:
+
+```bash
+gno capture "thought to remember"
+gno capture --file ./clip.md --source-url https://example.com --source-kind web --json
+```
+
+The JSON receipt reports write, sync, and embed status separately. Generated
+captures land under `inbox/YYYY-MM-DD/capture-<body-hash>.md` unless `--path`,
+`--folder`, or `--title` overrides the path. Capture does not imply embedding
+unless `embed.status` is `completed`. Capture inputs must be text; binary-like
+file/stdin content is rejected before writing. CLI, REST, SDK, and Web capture
+writes fail instead of replacing late-arriving files; legacy `overwrite` is
+MCP-only.
+
+Programmatic capture uses the same receipt contract:
+
+- MCP: `gno_capture` (requires `gno mcp --enable-write`)
+- REST: `POST /api/capture`
+- SDK: `client.capture({ collection, content, source, tags })`
+
+MCP capture writes structured `source:` frontmatter, runs under the MCP write
+lock, syncs the file for FTS, and preserves legacy MCP fields (`docid`,
+`absPath`, `overwritten`, `serverInstanceId`) alongside the shared receipt. It
+does not auto-embed.
+
 ## Collection-specific embedding models
 
 Collections can override the global embedding model with `models.embed`.
