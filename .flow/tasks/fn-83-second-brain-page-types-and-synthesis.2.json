@@ -1,0 +1,14 @@
+{
+  "assignee": null,
+  "claim_note": "",
+  "claimed_at": null,
+  "created_at": "2026-06-05T08:49:50.898672Z",
+  "depends_on": ["fn-83-second-brain-page-types-and-synthesis.1"],
+  "id": "fn-83-second-brain-page-types-and-synthesis.2",
+  "priority": null,
+  "spec": "fn-83-second-brain-page-types-and-synthesis",
+  "spec_path": ".flow/tasks/fn-83-second-brain-page-types-and-synthesis.2.md",
+  "status": "todo",
+  "title": "contentTypes config schema + closed-graph validation",
+  "updated_at": "2026-06-05T09:06:38.609818Z"
+}
