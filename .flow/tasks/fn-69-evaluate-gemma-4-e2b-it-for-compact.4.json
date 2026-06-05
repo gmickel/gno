@@ -7,9 +7,9 @@
     "fn-69-evaluate-gemma-4-e2b-it-for-compact.2",
     "fn-69-evaluate-gemma-4-e2b-it-for-compact.3"
   ],
-  "epic": "fn-69-evaluate-gemma-4-e2b-it-for-compact",
   "id": "fn-69-evaluate-gemma-4-e2b-it-for-compact.4",
   "priority": 4,
+  "spec": "fn-69-evaluate-gemma-4-e2b-it-for-compact",
   "spec_path": ".flow/tasks/fn-69-evaluate-gemma-4-e2b-it-for-compact.4.md",
   "status": "todo",
   "title": "Publish the outcome and any follow-up path",

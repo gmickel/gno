@@ -7,9 +7,9 @@
     "fn-59-workspace-native-note-creation-and-open-or-create.2",
     "fn-59-workspace-native-note-creation-and-open-or-create.3"
   ],
-  "epic": "fn-59-workspace-native-note-creation-and-open-or-create",
   "id": "fn-59-workspace-native-note-creation-and-open-or-create.4",
   "priority": 1,
+  "spec": "fn-59-workspace-native-note-creation-and-open-or-create",
   "spec_path": ".flow/tasks/fn-59-workspace-native-note-creation-and-open-or-create.4.md",
   "status": "todo",
   "title": "Polish note-creation docs website and end-to-end coverage",

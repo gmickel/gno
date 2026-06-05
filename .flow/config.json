@@ -38,5 +38,13 @@
     "staleAfterHours": 24,
     "type": null,
     "version": 1
+  },
+  "work": {
+    "delegate": false,
+    "delegateConsent": false,
+    "delegateDecision": "auto",
+    "delegateEffort": "medium",
+    "delegateModel": "gpt-5.2",
+    "delegateSandbox": "yolo"
   }
 }

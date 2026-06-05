@@ -6,9 +6,9 @@
   "depends_on": [
     "fn-61-document-structure-navigation-and-section-addressability.1"
   ],
-  "epic": "fn-61-document-structure-navigation-and-section-addressability",
   "id": "fn-61-document-structure-navigation-and-section-addressability.2",
   "priority": 1,
+  "spec": "fn-61-document-structure-navigation-and-section-addressability",
   "spec_path": ".flow/tasks/fn-61-document-structure-navigation-and-section-addressability.2.md",
   "status": "todo",
   "title": "Add outline pane and section navigation to DocView",

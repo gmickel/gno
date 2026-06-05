@@ -7,9 +7,9 @@
     "fn-67-evaluate-qwen3-embedding-06b-gguf-for.2",
     "fn-67-evaluate-qwen3-embedding-06b-gguf-for.3"
   ],
-  "epic": "fn-67-evaluate-qwen3-embedding-06b-gguf-for",
   "id": "fn-67-evaluate-qwen3-embedding-06b-gguf-for.4",
   "priority": 4,
+  "spec": "fn-67-evaluate-qwen3-embedding-06b-gguf-for",
   "spec_path": ".flow/tasks/fn-67-evaluate-qwen3-embedding-06b-gguf-for.4.md",
   "status": "todo",
   "title": "Publish benchmark outcome and default-model recommendation if warranted",

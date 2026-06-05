@@ -7,9 +7,9 @@
     "fn-62-authoring-accelerators-and-note-presets.2",
     "fn-62-authoring-accelerators-and-note-presets.3"
   ],
-  "epic": "fn-62-authoring-accelerators-and-note-presets",
   "id": "fn-62-authoring-accelerators-and-note-presets.4",
   "priority": 1,
+  "spec": "fn-62-authoring-accelerators-and-note-presets",
   "spec_path": ".flow/tasks/fn-62-authoring-accelerators-and-note-presets.4.md",
   "status": "todo",
   "title": "Polish preset docs website and end-to-end authoring coverage",

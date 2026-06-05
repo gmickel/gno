@@ -7,9 +7,9 @@
     "fn-58-cross-collection-tree-browse-workspace.3",
     "fn-58-cross-collection-tree-browse-workspace.4"
   ],
-  "epic": "fn-58-cross-collection-tree-browse-workspace",
   "id": "fn-58-cross-collection-tree-browse-workspace.5",
   "priority": 5,
+  "spec": "fn-58-cross-collection-tree-browse-workspace",
   "spec_path": ".flow/tasks/fn-58-cross-collection-tree-browse-workspace.5.md",
   "status": "todo",
   "title": "Polish accessibility, mobile fallback, tests, and docs for Browse 2.0",

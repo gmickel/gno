@@ -7,9 +7,9 @@
     "fn-41-document-workspace-foundation-for.3",
     "fn-41-document-workspace-foundation-for.4"
   ],
-  "epic": "fn-41-document-workspace-foundation-for",
   "id": "fn-41-document-workspace-foundation-for.6",
   "priority": 6,
+  "spec": "fn-41-document-workspace-foundation-for",
   "spec_path": ".flow/tasks/fn-41-document-workspace-foundation-for.6.md",
   "status": "todo",
   "title": "Build the fast Cmd/Ctrl+K workspace switcher",

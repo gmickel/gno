@@ -7,9 +7,9 @@
     "fn-72-backgrounding-flags-for-serve-and-daemon.3",
     "fn-72-backgrounding-flags-for-serve-and-daemon.4"
   ],
-  "epic": "fn-72-backgrounding-flags-for-serve-and-daemon",
   "id": "fn-72-backgrounding-flags-for-serve-and-daemon.5",
   "priority": null,
+  "spec": "fn-72-backgrounding-flags-for-serve-and-daemon",
   "spec_path": ".flow/tasks/fn-72-backgrounding-flags-for-serve-and-daemon.5.md",
   "status": "todo",
   "title": "Integration tests: detach, status, stop, stale, double-start",

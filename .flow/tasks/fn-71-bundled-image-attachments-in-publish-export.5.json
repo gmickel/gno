@@ -8,9 +8,9 @@
     "fn-71-bundled-image-attachments-in-publish-export.3",
     "fn-71-bundled-image-attachments-in-publish-export.4"
   ],
-  "epic": "fn-71-bundled-image-attachments-in-publish-export",
   "id": "fn-71-bundled-image-attachments-in-publish-export.5",
   "priority": 5,
+  "spec": "fn-71-bundled-image-attachments-in-publish-export",
   "spec_path": ".flow/tasks/fn-71-bundled-image-attachments-in-publish-export.5.md",
   "status": "todo",
   "title": "End-to-end smoke, docs, and CHANGELOG",

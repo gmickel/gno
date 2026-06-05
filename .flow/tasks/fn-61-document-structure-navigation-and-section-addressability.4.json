@@ -7,9 +7,9 @@
     "fn-61-document-structure-navigation-and-section-addressability.2",
     "fn-61-document-structure-navigation-and-section-addressability.3"
   ],
-  "epic": "fn-61-document-structure-navigation-and-section-addressability",
   "id": "fn-61-document-structure-navigation-and-section-addressability.4",
   "priority": 1,
+  "spec": "fn-61-document-structure-navigation-and-section-addressability",
   "spec_path": ".flow/tasks/fn-61-document-structure-navigation-and-section-addressability.4.md",
   "status": "todo",
   "title": "Polish section-navigation docs website and end-to-end coverage",

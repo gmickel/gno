@@ -6,9 +6,9 @@
   "depends_on": [
     "fn-63-workspace-native-commands-and-agent-callable-actions.1"
   ],
-  "epic": "fn-63-workspace-native-commands-and-agent-callable-actions",
   "id": "fn-63-workspace-native-commands-and-agent-callable-actions.2",
   "priority": 1,
+  "spec": "fn-63-workspace-native-commands-and-agent-callable-actions",
   "spec_path": ".flow/tasks/fn-63-workspace-native-commands-and-agent-callable-actions.2.md",
   "status": "todo",
   "title": "Evolve quick-switcher into a command palette and integrate the existing help surface",

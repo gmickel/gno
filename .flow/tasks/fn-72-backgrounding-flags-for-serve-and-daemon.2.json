@@ -7,9 +7,9 @@
     "fn-72-backgrounding-flags-for-serve-and-daemon.1",
     "fn-72-backgrounding-flags-for-serve-and-daemon.9"
   ],
-  "epic": "fn-72-backgrounding-flags-for-serve-and-daemon",
   "id": "fn-72-backgrounding-flags-for-serve-and-daemon.2",
   "priority": null,
+  "spec": "fn-72-backgrounding-flags-for-serve-and-daemon",
   "spec_path": ".flow/tasks/fn-72-backgrounding-flags-for-serve-and-daemon.2.md",
   "status": "todo",
   "title": "Shared src/cli/detach.ts helper + NOT_RUNNING exit code",
