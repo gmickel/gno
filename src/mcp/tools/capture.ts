@@ -183,6 +183,7 @@ export function handleCapture(
           return buildCaptureReceipt({
             plan,
             absPath,
+            docid: "",
             sync: {
               status: "failed",
               error: "RUNTIME: Sync result missing",
@@ -195,6 +196,7 @@ export function handleCapture(
           return buildCaptureReceipt({
             plan,
             absPath,
+            docid: "",
             sync: {
               status: "failed",
               error: `INGEST_ERROR: ${syncResult.errorCode ?? "ERROR"} - ${
@@ -220,6 +222,7 @@ export function handleCapture(
           return buildCaptureReceipt({
             plan,
             absPath,
+            docid: "",
             sync: {
               status: "failed",
               error: "RUNTIME: Document missing after sync",

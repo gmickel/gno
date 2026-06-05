@@ -257,6 +257,7 @@ describe("gno_capture MCP", () => {
       status: "failed",
       error: "INGEST_ERROR: PARSE_ERROR - bad markdown",
     });
+    expect(result.structuredContent?.docid).toBe("");
     expect(result.structuredContent?.relPath).toBe("sync-failed.md");
     expect(await Bun.file(join(tmpDir, "sync-failed.md")).text()).toContain(
       "Written before sync fails"
