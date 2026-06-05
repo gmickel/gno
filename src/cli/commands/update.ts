@@ -5,7 +5,11 @@
  * @module src/cli/commands/update
  */
 
-import { defaultSyncService, type SyncResult } from "../../ingestion";
+import {
+  defaultSyncService,
+  type SyncResult,
+  withContentTypeRules,
+} from "../../ingestion";
 import { formatSyncResultLines, initStore } from "./shared";
 
 /**
@@ -43,14 +47,21 @@ export async function update(
     return { success: false, error: initResult.error };
   }
 
-  const { store, collections } = initResult;
+  const { store, collections, config } = initResult;
 
   try {
     // Run sync service
-    const result = await defaultSyncService.syncAll(collections, store, {
-      gitPull: options.gitPull,
-      runUpdateCmd: true,
-    });
+    const result = await defaultSyncService.syncAll(
+      collections,
+      store,
+      withContentTypeRules(
+        {
+          gitPull: options.gitPull,
+          runUpdateCmd: true,
+        },
+        config
+      )
+    );
 
     return { success: true, result };
   } finally {

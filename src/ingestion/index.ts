@@ -10,12 +10,14 @@ export { defaultChunker, MarkdownChunker } from "./chunker";
 export { defaultLanguageDetector, SimpleLanguageDetector } from "./language";
 // Sync service
 export { defaultSyncService, SyncService } from "./sync";
+export { resolveContentTypeRules, withContentTypeRules } from "./sync-options";
 // Types
 export type {
   ChunkerPort,
   ChunkOutput,
   ChunkParams,
   CollectionSyncResult,
+  ContentTypeSource,
   FileSyncResult,
   FileSyncStatus,
   LanguageDetectorPort,

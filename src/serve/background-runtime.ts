@@ -17,6 +17,7 @@ import {
   loadConfig,
 } from "../config";
 import { defaultSyncService } from "../ingestion";
+import { withContentTypeRules } from "../ingestion";
 import { getActivePreset } from "../llm/registry";
 import { SqliteAdapter } from "../store/sqlite/adapter";
 import {
@@ -80,6 +81,7 @@ type BackgroundRuntimeDeps = {
     scheduler: EmbedScheduler | null;
     eventBus?: DocumentEventBus | null;
     callbacks?: CollectionWatchCallbacks;
+    syncOptions?: Parameters<typeof withContentTypeRules>[0];
   }) => CollectionWatchService;
 };
 
@@ -175,6 +177,7 @@ export async function startBackgroundRuntime(
     scheduler,
     eventBus: options.eventBus ?? null,
     callbacks: options.watchCallbacks,
+    syncOptions: withContentTypeRules({}, config),
   });
   watchService.start();
   ctxHolder.watchService = watchService;
@@ -193,10 +196,17 @@ export async function startBackgroundRuntime(
       eventBus: options.eventBus ?? null,
       watchService,
       async syncAll(syncOptions = {}) {
-        const syncResult = await syncAllService(config.collections, store, {
-          gitPull: syncOptions.gitPull,
-          runUpdateCmd: syncOptions.runUpdateCmd,
-        });
+        const syncResult = await syncAllService(
+          config.collections,
+          store,
+          withContentTypeRules(
+            {
+              gitPull: syncOptions.gitPull,
+              runUpdateCmd: syncOptions.runUpdateCmd,
+            },
+            config
+          )
+        );
 
         let embedResult: EmbedResult | null = null;
         if (syncOptions.triggerEmbed !== false) {

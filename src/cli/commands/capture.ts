@@ -26,7 +26,7 @@ import {
 } from "../../core/capture";
 import { writeCapturePlanFile } from "../../core/capture-write";
 import { withWriteLock } from "../../core/file-lock";
-import { defaultSyncService } from "../../ingestion";
+import { defaultSyncService, withContentTypeRules } from "../../ingestion";
 import { CliError } from "../errors";
 import { initStore } from "./shared";
 
@@ -140,7 +140,7 @@ export async function capture(
     throw new CliError("VALIDATION", storeInit.error);
   }
 
-  const { store, collections } = storeInit;
+  const { store, collections, config } = storeInit;
   try {
     const collectionName = options.collection?.trim();
     const collection = collectionName
@@ -222,10 +222,13 @@ export async function capture(
         collection,
         store,
         [plan.relPath],
-        {
-          runUpdateCmd: false,
-          gitPull: false,
-        }
+        withContentTypeRules(
+          {
+            runUpdateCmd: false,
+            gitPull: false,
+          },
+          config
+        )
       );
       const syncResult = syncResults[0];
       const docResult = await store.getDocument(collection.name, plan.relPath);

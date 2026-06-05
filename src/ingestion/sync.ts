@@ -10,6 +10,7 @@ import { stat } from "node:fs/promises";
 // node:path for join (no Bun path utils)
 import { join } from "node:path";
 
+import type { NormalizedContentTypeRule } from "../config";
 import type { Collection } from "../config/types";
 import type {
   ChunkInput,
@@ -22,6 +23,7 @@ import type {
 import type {
   ChunkerPort,
   CollectionSyncResult,
+  ContentTypeSource,
   FileSyncResult,
   ProcessDecision,
   SyncOptions,
@@ -30,6 +32,7 @@ import type {
   WalkerPort,
 } from "./types";
 
+import { fingerprintContentTypeRules } from "../config";
 import { getDefaultMimeDetector, type MimeDetector } from "../converters/mime";
 import {
   type ConversionPipeline,
@@ -76,7 +79,8 @@ export const INGEST_VERSION = 5;
  */
 function decideAction(
   existing: DocumentRow | null,
-  sourceHash: string
+  sourceHash: string,
+  contentTypeRulesFingerprint: string
 ): ProcessDecision {
   // No existing doc - must process
   if (!existing) {
@@ -106,6 +110,10 @@ function decideAction(
     existing.ingestVersion < INGEST_VERSION
   ) {
     return { kind: "repair", reason: "ingest version outdated" };
+  }
+
+  if (existing.contentTypeRulesFingerprint !== contentTypeRulesFingerprint) {
+    return { kind: "repair", reason: "content type rules changed" };
   }
 
   // All good - skip
@@ -143,6 +151,7 @@ function extractTags(markdown: string): string[] {
 
 interface DocumentMetadata {
   contentType?: string;
+  contentTypeSource: ContentTypeSource;
   categories?: string[];
   author?: string;
   frontmatterDate?: string;
@@ -210,21 +219,27 @@ function normalizeDate(value: unknown): string | undefined {
   return parsed.toISOString();
 }
 
-function inferContentType(relPath: string, ext: string): string {
+function inferPathContentType(
+  relPath: string,
+  ext: string
+): {
+  contentType: string;
+  source: ContentTypeSource;
+} {
   const lowerPath = relPath.toLowerCase();
   if (CODE_EXTENSIONS.has(ext.toLowerCase())) {
-    return "code";
+    return { contentType: "code", source: "path-ext" };
   }
   if (/(meeting|standup|retro|minutes)/.test(lowerPath)) {
-    return "meeting";
+    return { contentType: "meeting", source: "path-ext" };
   }
   if (/(spec|rfc|adr|design)/.test(lowerPath)) {
-    return "spec";
+    return { contentType: "spec", source: "path-ext" };
   }
   if (/(notes|journal|log)/.test(lowerPath)) {
-    return "notes";
+    return { contentType: "notes", source: "path-ext" };
   }
-  return "prose";
+  return { contentType: "prose", source: "fallback" };
 }
 
 function parseCategories(input: unknown): string[] {
@@ -243,14 +258,41 @@ function parseCategories(input: unknown): string[] {
   return [];
 }
 
-function extractDocumentMetadata(
+function matchPrefixContentType(
+  relPath: string,
+  rules: NormalizedContentTypeRule[]
+): string | undefined {
+  for (const rule of rules) {
+    if (rule.prefixes.some((prefix) => relPath.startsWith(prefix))) {
+      return rule.id;
+    }
+  }
+  return undefined;
+}
+
+export function extractDocumentMetadata(
   markdown: string,
   relPath: string,
-  ext: string
+  ext: string,
+  contentTypeRules: NormalizedContentTypeRule[] = []
 ): DocumentMetadata {
   const parsed = parseFrontmatter(markdown);
   const metadata = parsed.metadata;
-  const contentType = inferContentType(relPath, ext);
+  const typedRules = new Map(contentTypeRules.map((rule) => [rule.id, rule]));
+  const rawFrontmatterType =
+    typeof metadata.type === "string" ? metadata.type.trim() : "";
+  const frontmatterType = typedRules.get(rawFrontmatterType)?.id;
+  const prefixType =
+    frontmatterType === undefined
+      ? matchPrefixContentType(relPath, contentTypeRules)
+      : undefined;
+  const inferred = inferPathContentType(relPath, ext);
+  const contentType = frontmatterType ?? prefixType ?? inferred.contentType;
+  const contentTypeSource: ContentTypeSource = frontmatterType
+    ? "frontmatter-type"
+    : prefixType
+      ? "prefix"
+      : inferred.source;
   const categories = new Set<string>([contentType]);
 
   const fmCategories = parseCategories(
@@ -299,6 +341,7 @@ function extractDocumentMetadata(
 
   return {
     contentType,
+    contentTypeSource,
     categories: [...categories],
     author,
     frontmatterDate,
@@ -488,6 +531,10 @@ export class SyncService {
       const hasher = new Bun.CryptoHasher("sha256");
       hasher.update(bytes);
       const sourceHash = hasher.digest("hex");
+      const contentTypeRules = options.contentTypeRules ?? [];
+      const contentTypeRulesFingerprint =
+        options.contentTypeRulesFingerprint ??
+        fingerprintContentTypeRules(contentTypeRules);
 
       // 4. Check existing doc for skip/repair decision
       const existingResult = await store.getDocument(
@@ -495,7 +542,11 @@ export class SyncService {
         entry.relPath
       );
       const existing = existingResult.ok ? existingResult.value : null;
-      const decision = decideAction(existing, sourceHash);
+      const decision = decideAction(
+        existing,
+        sourceHash,
+        contentTypeRulesFingerprint
+      );
 
       if (decision.kind === "skip") {
         return { relPath: entry.relPath, status: "unchanged" };
@@ -565,7 +616,8 @@ export class SyncService {
       const extractedMetadata = extractDocumentMetadata(
         artifact.markdown,
         entry.relPath,
-        mime.ext
+        mime.ext,
+        contentTypeRules
       );
 
       // 7. Upsert document - EXPLICITLY clear error fields on success
@@ -588,6 +640,7 @@ export class SyncService {
         author: extractedMetadata.author,
         frontmatterDate: extractedMetadata.frontmatterDate,
         dateFields: extractedMetadata.dateFields,
+        contentTypeRulesFingerprint,
         // Clear error fields on success (requires store to handle undefined → null)
         lastErrorCode: undefined,
         lastErrorMessage: undefined,
@@ -711,6 +764,8 @@ export class SyncService {
         status,
         docid,
         mirrorHash: artifact.mirrorHash,
+        contentType: extractedMetadata.contentType,
+        contentTypeSource: extractedMetadata.contentTypeSource,
       };
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown error";
@@ -828,6 +883,13 @@ export class SyncService {
     options: SyncOptions = {}
   ): Promise<CollectionSyncResult> {
     const startTime = Date.now();
+    const syncOptions: SyncOptions = {
+      ...options,
+      contentTypeRules: options.contentTypeRules ?? [],
+      contentTypeRulesFingerprint:
+        options.contentTypeRulesFingerprint ??
+        fingerprintContentTypeRules(options.contentTypeRules ?? []),
+    };
     const errors: Array<{ relPath: string; code: string; message: string }> =
       [];
 
@@ -892,6 +954,7 @@ export class SyncService {
     let unchanged = 0;
     let errored = 0;
     let dynamicSkipped = 0;
+    const fileResults: FileSyncResult[] = [];
 
     if (concurrency === 1) {
       // Sequential processing with batched transactions (Windows perf)
@@ -905,8 +968,9 @@ export class SyncService {
               collection,
               entry,
               store,
-              options
+              syncOptions
             );
+            fileResults.push(result);
             switch (result.status) {
               case "added":
                 added += 1;
@@ -970,8 +1034,9 @@ export class SyncService {
               collection,
               entry,
               store,
-              options
+              syncOptions
             );
+            fileResults.push(result);
             results.push(result);
           } finally {
             semaphore.release();
@@ -1044,6 +1109,7 @@ export class SyncService {
       filesSkipped: skipped.length + dynamicSkipped,
       filesMarkedInactive: markedInactive,
       durationMs: Date.now() - startTime,
+      files: fileResults,
       errors,
     };
   }

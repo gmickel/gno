@@ -118,6 +118,8 @@ export interface DocumentRow {
   active: boolean;
   /** Ingest schema version for backfill detection */
   ingestVersion: number | null;
+  /** Fingerprint of normalized content type rules used for derived metadata */
+  contentTypeRulesFingerprint?: string | null;
 
   // Error tracking
   lastErrorCode: string | null;
@@ -264,6 +266,8 @@ export interface DocumentInput {
   lastErrorMessage?: string;
   /** Ingest schema version for backfill detection */
   ingestVersion?: number;
+  /** Fingerprint of normalized content type rules used for derived metadata */
+  contentTypeRulesFingerprint?: string;
 }
 
 /** Result of upserting a document */
@@ -345,6 +349,8 @@ export interface FtsResult {
   frontmatterDate?: string;
   sourceSize?: number;
   sourceHash?: string;
+  contentType?: string;
+  categories?: string[];
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

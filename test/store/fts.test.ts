@@ -422,6 +422,34 @@ describe("FTS search", () => {
     expect(notesResults.value[0]?.relPath).toBe("meeting.md");
   });
 
+  test("returns content type and categories with FTS results", async () => {
+    await setupDocument(
+      "people/jane.md",
+      "Jane knows retrieval",
+      [
+        {
+          seq: 0,
+          pos: 0,
+          text: "Jane knows retrieval",
+          startLine: 1,
+          endLine: 1,
+        },
+      ],
+      {
+        contentType: "person",
+        categories: ["person", "relationship"],
+      }
+    );
+
+    const result = await adapter.searchFts("retrieval", {
+      categories: ["person"],
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value[0]?.contentType).toBe("person");
+    expect(result.value[0]?.categories).toEqual(["person", "relationship"]);
+  });
+
   test("filters by author substring", async () => {
     await setupDocument(
       "gordon.md",

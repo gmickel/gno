@@ -15,6 +15,8 @@ describe("search-result schema", () => {
         docid: "#a1b2c3",
         score: 0.78,
         uri: "gno://work/doc.md",
+        contentType: "prose",
+        categories: ["prose"],
         snippet: "sample text",
         source: {
           relPath: "doc.md",

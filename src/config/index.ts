@@ -7,6 +7,7 @@
 export { createDefaultConfig } from "./defaults";
 export {
   type ConfigWarning,
+  fingerprintContentTypeRules,
   formatConfigWarning,
   formatConfigWarnings,
   normalizeConfigContentTypes,

@@ -24,7 +24,7 @@ import { writeCapturePlanFile } from "../../core/capture-write";
 import { MCP_ERRORS } from "../../core/errors";
 import { withWriteLock } from "../../core/file-lock";
 import { normalizeCollectionName } from "../../core/validation";
-import { defaultSyncService } from "../../ingestion";
+import { defaultSyncService, withContentTypeRules } from "../../ingestion";
 import { runTool, type ToolResult } from "./index";
 
 interface CaptureInput extends Omit<
@@ -176,7 +176,10 @@ export function handleCapture(
           collection,
           ctx.store,
           [plan.relPath],
-          { runUpdateCmd: false, gitPull: false }
+          withContentTypeRules(
+            { runUpdateCmd: false, gitPull: false },
+            ctx.config
+          )
         );
         const syncResult = results[0];
         if (!syncResult) {

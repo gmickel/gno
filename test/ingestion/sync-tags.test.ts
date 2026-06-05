@@ -5,13 +5,18 @@
  */
 
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { mkdtemp, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
+import type { NormalizedContentTypeRule } from "../../src/config";
 import type { Collection } from "../../src/config/types";
 
-import { INGEST_VERSION, SyncService } from "../../src/ingestion/sync";
+import {
+  extractDocumentMetadata,
+  INGEST_VERSION,
+  SyncService,
+} from "../../src/ingestion/sync";
 import { SqliteAdapter } from "../../src/store/sqlite/adapter";
 import { safeRm } from "../helpers/cleanup";
 
@@ -42,6 +47,48 @@ describe("SyncService tag extraction", () => {
 
     const syncResult = await adapter.syncCollections([collection]);
     expect(syncResult.ok).toBe(true);
+  });
+
+  test("frontmatter type maps to canonical content type only for configured ids", () => {
+    const rules: NormalizedContentTypeRule[] = [
+      { id: "person", prefixes: ["people/"], preset: "person" },
+    ];
+
+    const configured = extractDocumentMetadata(
+      "---\ntype: person\n---\n# Jane\n",
+      "misc/jane.md",
+      ".md",
+      rules
+    );
+    expect(configured.contentType).toBe("person");
+    expect(configured.contentTypeSource).toBe("frontmatter-type");
+    expect(configured.categories).toContain("person");
+
+    const freeText = extractDocumentMetadata(
+      "---\ntype: foo\n---\n# Foo\n",
+      "misc/foo.md",
+      ".md",
+      rules
+    );
+    expect(freeText.contentType).toBe("prose");
+    expect(freeText.contentTypeSource).toBe("fallback");
+    expect(freeText.categories).toContain("foo");
+  });
+
+  test("configured prefix wins before path heuristics", () => {
+    const rules: NormalizedContentTypeRule[] = [
+      { id: "person", prefixes: ["people/"], preset: "person" },
+    ];
+
+    const metadata = extractDocumentMetadata(
+      "# Meeting notes\n",
+      "people/meeting-notes.md",
+      ".md",
+      rules
+    );
+
+    expect(metadata.contentType).toBe("person");
+    expect(metadata.contentTypeSource).toBe("prefix");
   });
 
   afterEach(async () => {
@@ -180,6 +227,35 @@ This is #work related.
     if (!docResult.ok || !docResult.value) return;
 
     expect(docResult.value.ingestVersion).toBe(INGEST_VERSION);
+  });
+
+  test("reprocesses unchanged documents when content type rules fingerprint changes", async () => {
+    await mkdir(join(collectionDir, "people"), { recursive: true });
+    await writeFile(join(collectionDir, "people", "jane.md"), "# Jane");
+
+    const syncService = new SyncService();
+    await syncService.syncCollection(collection, adapter, {
+      contentTypeRules: [],
+    });
+    const initialDoc = await adapter.getDocument("docs", "people/jane.md");
+    expect(initialDoc.ok).toBe(true);
+    if (!initialDoc.ok || !initialDoc.value) return;
+    expect(initialDoc.value.contentType).toBe("prose");
+
+    const result = await syncService.syncCollection(collection, adapter, {
+      contentTypeRules: [
+        { id: "person", prefixes: ["people/"], preset: "person" },
+      ],
+    });
+
+    expect(result.filesUpdated).toBe(1);
+    expect(result.files?.[0]?.contentTypeSource).toBe("prefix");
+    const updatedDoc = await adapter.getDocument("docs", "people/jane.md");
+    expect(updatedDoc.ok).toBe(true);
+    if (!updatedDoc.ok || !updatedDoc.value) return;
+    expect(updatedDoc.value.contentType).toBe("person");
+    expect(updatedDoc.value.categories).toContain("person");
+    expect(updatedDoc.value.contentTypeRulesFingerprint).toBeTruthy();
   });
 
   test("uses date precedence for canonical frontmatter date", async () => {

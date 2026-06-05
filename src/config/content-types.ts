@@ -112,6 +112,22 @@ export function normalizeConfigContentTypes(
   };
 }
 
+export function fingerprintContentTypeRules(
+  rules: NormalizedContentTypeRule[]
+): string {
+  const canonical = rules.map((rule) => ({
+    id: rule.id,
+    prefixes: rule.prefixes,
+    preset: rule.preset,
+    graphHints: rule.graphHints ?? [],
+    searchBoost: rule.searchBoost ?? null,
+    temporal: rule.temporal ?? false,
+  }));
+  const hasher = new Bun.CryptoHasher("sha256");
+  hasher.update(JSON.stringify(canonical));
+  return hasher.digest("hex");
+}
+
 export function formatConfigWarning(warning: ConfigWarning): string {
   return `[config] ${warning.path}: ${warning.message}`;
 }

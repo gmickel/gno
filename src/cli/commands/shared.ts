@@ -171,6 +171,16 @@ export function formatSyncResultLines(
         lines.push(`    [${err.code}] ${err.relPath}: ${err.message}`);
       }
     }
+    if (options.verbose && c.files?.length) {
+      for (const file of c.files) {
+        if (!file.contentType || !file.contentTypeSource) {
+          continue;
+        }
+        lines.push(
+          `    [${file.status}] ${file.relPath}: contentType=${file.contentType} (${file.contentTypeSource})`
+        );
+      }
+    }
   }
 
   lines.push("");
