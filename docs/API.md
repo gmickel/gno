@@ -1596,6 +1596,8 @@ If query text includes recency intent (`latest`, `newest`, `recent`), results ar
       "line": 42,
       "title": "Authentication Guide",
       "collection": "notes",
+      "contentType": "meeting",
+      "categories": ["meeting", "notes"],
       "tags": ["backend", "auth"],
       "score": 0.87,
       "chunk": {
@@ -1704,6 +1706,8 @@ Combined BM25 + vector search with optional reranking. **Recommended for best re
       "uri": "gno://notes/auth.md",
       "title": "Authentication Guide",
       "collection": "notes",
+      "contentType": "meeting",
+      "categories": ["meeting", "notes"],
       "tags": ["backend", "auth"],
       "score": 0.92,
       "chunk": {
@@ -1720,6 +1724,11 @@ Combined BM25 + vector search with optional reranking. **Recommended for best re
   }
 }
 ```
+
+JSON search/query results include `contentType` when a configured content type
+or built-in heuristic is available, plus the full `categories` array used by
+category filters. Plain text, CSV, Markdown, and XML formatters keep their
+existing shapes.
 
 **Example**:
 

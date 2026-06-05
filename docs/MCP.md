@@ -571,6 +571,11 @@ tagsAny: ["urgent"]         # Optional: must have ANY tag
 Limit: 5 (default)
 ```
 
+Structured search results include per-result `contentType` and `categories`
+fields, alongside `tags`, `docid`, `uri`, scores, and source metadata. Use those
+fields when an agent needs to distinguish canonical typed pages from broader
+category filters.
+
 ### gno_vsearch
 
 Vector semantic search.
