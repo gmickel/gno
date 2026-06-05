@@ -43,4 +43,10 @@ Add the 4 new second-brain presets to the shared core and make them flow through
 
 ## Done summary
 
+Added four second-brain note presets with flat frontmatter and synthesis/timeline scaffolds, preserved existing preset IDs, and derived the MCP capture preset enum from the shared preset registry. Updated in-repo docs/spec surfaces and added core/capture/MCP schema regression coverage.
+
 ## Evidence
+
+- Commits: 4102d42aa3270631d4e27cd83675c94cbe7bc293
+- Tests: bun test test/core/note-presets.test.ts test/core/capture.test.ts test/mcp, bun run lint:check && bun test, isolated CLI smoke: bun src/index.ts capture --preset person --title Jane Doe --folder people --collection notes --json; bun src/index.ts capture --preset meeting --title Weekly sync --folder meetings --collection notes --json
+- PRs:

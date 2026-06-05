@@ -174,6 +174,8 @@ BM25 keyword search over indexed documents.
         "uri": "gno://work/doc.md",
         "line": 12,
         "snippet": "...",
+        "contentType": "meeting",
+        "categories": ["meeting", "notes"],
         "source": {
           "absPath": "/path/to/doc.md",
           "relPath": "doc.md",
@@ -418,6 +420,10 @@ Hybrid search combining BM25 and vector retrieval with optional expansion and re
 
 Validation note: `queryModes[].text` is trimmed and must remain non-empty; only one `mode: "hyde"` entry is allowed.
 
+Search result items include `contentType` when available and always include
+`categories` as the category/content-type filter set. Text output remains
+human-oriented; structured clients should read `structuredContent.results`.
+
 Compatibility / migration notes:
 
 - Existing `gno_query` tool calls remain valid without `queryModes`.
@@ -432,7 +438,15 @@ Compatibility / migration notes:
 
 ```json
 {
-  "results": [...],
+  "results": [
+    {
+      "docid": "#a1b2c3d4",
+      "uri": "gno://work/doc.md",
+      "contentType": "meeting",
+      "categories": ["meeting", "notes"],
+      "score": 0.92
+    }
+  ],
   "meta": {
     "query": "query",
     "mode": "hybrid",
@@ -687,7 +701,11 @@ Create a new document in a collection (write-enabled).
         "research-note",
         "decision-note",
         "prompt-pattern",
-        "source-summary"
+        "source-summary",
+        "idea-original",
+        "person",
+        "company-project",
+        "meeting"
       ],
       "description": "Optional note preset scaffold"
     },

@@ -554,9 +554,10 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
           collection, rel_path, source_hash, source_mime, source_ext,
           source_size, source_mtime, source_ctime, docid, uri, title, mirror_hash,
           converter_id, converter_version, language_hint, content_type, categories,
-          author, frontmatter_date, date_fields, active, indexed_at, last_error_code,
-          last_error_message, last_error_at, ingest_version, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, datetime('now'), ?, ?, ?, ?, datetime('now'))
+          author, frontmatter_date, date_fields, content_type_rules_fingerprint,
+          active, indexed_at, last_error_code, last_error_message, last_error_at,
+          ingest_version, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, datetime('now'), ?, ?, ?, ?, datetime('now'))
         ON CONFLICT(collection, rel_path) DO UPDATE SET
           source_hash = excluded.source_hash,
           source_mime = excluded.source_mime,
@@ -576,6 +577,7 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
           author = excluded.author,
           frontmatter_date = excluded.frontmatter_date,
           date_fields = excluded.date_fields,
+          content_type_rules_fingerprint = excluded.content_type_rules_fingerprint,
           active = 1,
           indexed_at = datetime('now'),
           last_error_code = excluded.last_error_code,
@@ -605,6 +607,7 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
           doc.author ?? null,
           doc.frontmatterDate ?? null,
           doc.dateFields ? JSON.stringify(doc.dateFields) : null,
+          doc.contentTypeRulesFingerprint ?? null,
           doc.lastErrorCode ?? null,
           doc.lastErrorMessage ?? null,
           doc.lastErrorCode ? new Date().toISOString() : null,
@@ -1366,7 +1369,9 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
           d.source_mtime,
           d.frontmatter_date,
           d.source_size,
-          d.source_hash
+          d.source_hash,
+          d.content_type,
+          d.categories
         FROM fts_matches fm
         JOIN documents d ON d.id = fm.rowid AND d.active = 1
         WHERE 1 = 1
@@ -1392,6 +1397,8 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
         frontmatter_date: string | null;
         source_size: number | null;
         source_hash: string | null;
+        content_type: string | null;
+        categories: string | null;
       }
 
       const queryParams = [builtQuery.query, ftsLimit, ...params];
@@ -1416,6 +1423,8 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
           frontmatterDate: r.frontmatter_date ?? undefined,
           sourceSize: r.source_size ?? undefined,
           sourceHash: r.source_hash ?? undefined,
+          contentType: r.content_type ?? undefined,
+          categories: parseCategoriesJson(r.categories) ?? undefined,
         }))
       );
     } catch (cause) {
@@ -3522,6 +3531,7 @@ interface DbDocumentRow {
   author: string | null;
   frontmatter_date: string | null;
   date_fields: string | null;
+  content_type_rules_fingerprint: string | null;
   indexed_at: string | null;
   active: number;
   ingest_version: number | null;
@@ -3580,19 +3590,23 @@ function mapContextRow(row: DbContextRow): ContextRow {
   };
 }
 
-function mapDocumentRow(row: DbDocumentRow): DocumentRow {
-  let categories: string[] | null = null;
-  if (row.categories) {
-    try {
-      const parsed = JSON.parse(row.categories);
-      if (Array.isArray(parsed)) {
-        categories = parsed.filter((v): v is string => typeof v === "string");
-      }
-    } catch {
-      categories = null;
-    }
+function parseCategoriesJson(raw: string | null): string[] | null {
+  if (!raw) {
+    return null;
   }
+  try {
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) {
+      return parsed.filter((v): v is string => typeof v === "string");
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
 
+function mapDocumentRow(row: DbDocumentRow): DocumentRow {
+  const categories = parseCategoriesJson(row.categories);
   let dateFields: Record<string, string> | null = null;
   if (row.date_fields) {
     try {
@@ -3638,6 +3652,7 @@ function mapDocumentRow(row: DbDocumentRow): DocumentRow {
     indexedAt: row.indexed_at,
     active: row.active === 1,
     ingestVersion: row.ingest_version,
+    contentTypeRulesFingerprint: row.content_type_rules_fingerprint,
     lastErrorCode: row.last_error_code,
     lastErrorMessage: row.last_error_message,
     lastErrorAt: row.last_error_at,

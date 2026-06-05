@@ -10,7 +10,12 @@ import type { SyncResult } from "../../ingestion";
 import type { SearchResults } from "../../pipeline/types";
 
 import { decorateUriForIndex, getIndexDbPath } from "../../app/constants";
-import { getConfigPaths, isInitialized, loadConfig } from "../../config";
+import {
+  getConfigPaths,
+  isInitialized,
+  loadConfig,
+  writeConfigWarningsToStderr,
+} from "../../config";
 import { SqliteAdapter } from "../../store/sqlite/adapter";
 
 /**
@@ -61,6 +66,7 @@ export async function initStore(
   if (!configResult.ok) {
     return { ok: false, error: configResult.error.message };
   }
+  writeConfigWarningsToStderr(configResult.warnings);
   const config = configResult.value;
 
   // Filter to single collection if specified
@@ -163,6 +169,16 @@ export function formatSyncResultLines(
     if (options.verbose && c.errors.length > 0) {
       for (const err of c.errors) {
         lines.push(`    [${err.code}] ${err.relPath}: ${err.message}`);
+      }
+    }
+    if (options.verbose && c.files?.length) {
+      for (const file of c.files) {
+        if (!file.contentType || !file.contentTypeSource) {
+          continue;
+        }
+        lines.push(
+          `    [${file.status}] ${file.relPath}: contentType=${file.contentType} (${file.contentTypeSource})`
+        );
       }
     }
   }

@@ -5,6 +5,7 @@
  * @module src/ingestion/types
  */
 
+import type { NormalizedContentTypeRule } from "../config";
 import type { Collection } from "../config/types";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -132,7 +133,17 @@ export interface SyncOptions {
    * SQLite operations are serialized regardless of this setting.
    */
   concurrency?: number;
+  /** Normalized content type rules from config.contentTypes. */
+  contentTypeRules?: NormalizedContentTypeRule[];
+  /** Stable hash of the normalized content type rules, used for re-derivation. */
+  contentTypeRulesFingerprint?: string;
 }
+
+export type ContentTypeSource =
+  | "frontmatter-type"
+  | "prefix"
+  | "path-ext"
+  | "fallback";
 
 /** Per-file sync status */
 export type FileSyncStatus =
@@ -148,6 +159,8 @@ export interface FileSyncResult {
   status: FileSyncStatus;
   docid?: string;
   mirrorHash?: string;
+  contentType?: string;
+  contentTypeSource?: ContentTypeSource;
   errorCode?: string;
   errorMessage?: string;
 }
@@ -163,6 +176,7 @@ export interface CollectionSyncResult {
   filesSkipped: number;
   filesMarkedInactive: number;
   durationMs: number;
+  files?: FileSyncResult[];
   errors: Array<{
     relPath: string;
     code: string;

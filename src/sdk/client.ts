@@ -44,7 +44,11 @@ import {
   getIndexDbPath,
   parseUri,
 } from "../app/constants";
-import { ConfigSchema, loadConfig } from "../config";
+import {
+  ConfigSchema,
+  loadConfig,
+  normalizeConfigContentTypes,
+} from "../config";
 import {
   buildCaptureReceipt,
   type CapturePlan,
@@ -70,7 +74,11 @@ import { resolveNotePreset } from "../core/note-presets";
 import { extractSections } from "../core/sections";
 import { normalizeStructuredQueryInput } from "../core/structured-query";
 import { parseAndValidateTagFilter } from "../core/tags";
-import { defaultSyncService, type SyncResult } from "../ingestion";
+import {
+  defaultSyncService,
+  type SyncResult,
+  withContentTypeRules,
+} from "../ingestion";
 import { updateFrontmatterTags } from "../ingestion/frontmatter";
 import { LlmAdapter } from "../llm/nodeLlamaCpp/adapter";
 import { resolveDownloadPolicy } from "../llm/policy";
@@ -141,7 +149,7 @@ async function resolveClientState(
         parsed.error.issues[0]?.message ?? "Invalid config"
       );
     }
-    config = parsed.data;
+    config = normalizeConfigContentTypes(parsed.data).config;
     configPath = null;
     configSource = "inline";
   } else {
@@ -695,10 +703,17 @@ class GnoClientImpl implements GnoClient {
   async update(options: GnoUpdateOptions = {}): Promise<SyncResult> {
     this.assertOpen();
     const collections = this.getCollections(options.collection);
-    return defaultSyncService.syncAll(collections, this.store, {
-      gitPull: options.gitPull,
-      runUpdateCmd: true,
-    });
+    return defaultSyncService.syncAll(
+      collections,
+      this.store,
+      withContentTypeRules(
+        {
+          gitPull: options.gitPull,
+          runUpdateCmd: true,
+        },
+        this.config
+      )
+    );
   }
 
   async embed(options: GnoEmbedOptions = {}): Promise<GnoEmbedResult> {
@@ -808,10 +823,13 @@ class GnoClientImpl implements GnoClient {
       collection,
       this.store,
       [plan.relPath],
-      {
-        runUpdateCmd: false,
-        gitPull: false,
-      }
+      withContentTypeRules(
+        {
+          runUpdateCmd: false,
+          gitPull: false,
+        },
+        this.config
+      )
     );
     const syncResult = syncResults[0];
     if (!syncResult || syncResult.status === "error") {
@@ -903,10 +921,13 @@ class GnoClientImpl implements GnoClient {
       collection,
       this.store,
       [plan.relPath],
-      {
-        runUpdateCmd: false,
-        gitPull: false,
-      }
+      withContentTypeRules(
+        {
+          runUpdateCmd: false,
+          gitPull: false,
+        },
+        this.config
+      )
     );
     const syncResult = syncResults[0];
     const docResult = await this.store.getDocument(
@@ -987,9 +1008,11 @@ class GnoClientImpl implements GnoClient {
     const currentPath = `${collection.path}/${storedDoc.relPath}`;
     const nextPath = `${collection.path}/${plan.nextRelPath}`;
     await renameFilePath(currentPath, nextPath);
-    await defaultSyncService.syncCollection(collection, this.store, {
-      runUpdateCmd: false,
-    });
+    await defaultSyncService.syncCollection(
+      collection,
+      this.store,
+      withContentTypeRules({ runUpdateCmd: false }, this.config)
+    );
     const linksResult = await this.store.getLinksForDoc(storedDoc.id);
     const backlinksResult = await this.store.getBacklinksForDoc(storedDoc.id);
     if (!linksResult.ok || !backlinksResult.ok) {
@@ -1044,9 +1067,11 @@ class GnoClientImpl implements GnoClient {
     const nextPath = `${collection.path}/${plan.nextRelPath}`;
     await mkdir(dirname(nextPath), { recursive: true });
     await renameFilePath(currentPath, nextPath);
-    await defaultSyncService.syncCollection(collection, this.store, {
-      runUpdateCmd: false,
-    });
+    await defaultSyncService.syncCollection(
+      collection,
+      this.store,
+      withContentTypeRules({ runUpdateCmd: false }, this.config)
+    );
     const linksResult = await this.store.getLinksForDoc(storedDoc.id);
     const backlinksResult = await this.store.getBacklinksForDoc(storedDoc.id);
     if (!linksResult.ok || !backlinksResult.ok) {
@@ -1113,9 +1138,11 @@ class GnoClientImpl implements GnoClient {
     const nextPath = `${collection.path}/${plan.nextRelPath}`;
     await mkdir(dirname(nextPath), { recursive: true });
     await copyFilePath(currentPath, nextPath);
-    await defaultSyncService.syncCollection(collection, this.store, {
-      runUpdateCmd: false,
-    });
+    await defaultSyncService.syncCollection(
+      collection,
+      this.store,
+      withContentTypeRules({ runUpdateCmd: false }, this.config)
+    );
     const linksResult = await this.store.getLinksForDoc(storedDoc.id);
     const backlinksResult = await this.store.getBacklinksForDoc(storedDoc.id);
     if (!linksResult.ok || !backlinksResult.ok) {

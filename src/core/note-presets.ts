@@ -14,7 +14,11 @@ export type NotePresetId =
   | "research-note"
   | "decision-note"
   | "prompt-pattern"
-  | "source-summary";
+  | "source-summary"
+  | "idea-original"
+  | "person"
+  | "company-project"
+  | "meeting";
 
 export interface NotePresetDefinition {
   id: NotePresetId;
@@ -104,14 +108,14 @@ export const NOTE_PRESETS: NotePresetDefinition[] = [
   {
     id: "decision-note",
     label: "Decision Note",
-    description: "Context, decision, rationale, and consequences.",
+    description: "Current synthesis, decision, rationale, and timeline.",
     defaultTags: ["decision"],
     frontmatter: {
       category: "decision",
       status: "proposed",
     },
     body: (title) =>
-      `# ${title}\n\n## Context\n\n## Decision\n\n## Rationale\n\n## Consequences\n`,
+      `# ${title}\n\n## Current Synthesis\n\n## Decision\n\n## Rationale\n\n## Consequences\n\n## Timeline\n`,
   },
   {
     id: "prompt-pattern",
@@ -127,14 +131,66 @@ export const NOTE_PRESETS: NotePresetDefinition[] = [
   {
     id: "source-summary",
     label: "Source Summary",
-    description: "Summarize an article, paper, or external source cleanly.",
+    description: "Summarize a source with synthesis above evidence timeline.",
     defaultTags: ["source", "summary"],
     frontmatter: {
       category: "source-summary",
       sources: [],
     },
     body: (title) =>
-      `# ${title}\n\n## Summary\n\n## Important Claims\n\n## Evidence / Quotes\n\n## Takeaways\n`,
+      `# ${title}\n\n## Current Synthesis\n\n## Important Claims\n\n## Assessment\n\n## Timeline\n\n## Evidence / Quotes\n`,
+  },
+  {
+    id: "idea-original",
+    label: "Original Idea",
+    description:
+      "Capture exact phrasing, context, related concepts, and publish potential.",
+    frontmatter: {
+      type: "idea-original",
+      category: "idea-original",
+      tags: [],
+    },
+    body: (title) =>
+      `# ${title}\n\n## Current Synthesis\n\n## Open Threads\n\n## Assessment\n\n## Timeline\n\n## Exact Phrasing\n\n## Related Concepts\n`,
+  },
+  {
+    id: "person",
+    label: "Person",
+    description:
+      "Track current state, relationship, assessment, open threads, and timeline.",
+    frontmatter: {
+      type: "person",
+      category: "person",
+      tags: [],
+    },
+    body: (title) =>
+      `# ${title}\n\n## Current Synthesis\n\n## Open Threads\n\n## Assessment\n\n## Timeline\n\n## Relationship\n`,
+  },
+  {
+    id: "company-project",
+    label: "Company / Project",
+    description:
+      "Track state, changes, decisions, people, open threads, and timeline.",
+    frontmatter: {
+      type: "company-project",
+      category: "company-project",
+      tags: [],
+    },
+    body: (title) =>
+      `# ${title}\n\n## Current Synthesis\n\n## Open Threads\n\n## Assessment\n\n## Timeline\n\n## Decisions\n\n## People\n`,
+  },
+  {
+    id: "meeting",
+    label: "Meeting",
+    description:
+      "Put analysis above the timeline; keep transcript, notes, and actions below.",
+    frontmatter: {
+      type: "meeting",
+      category: "meeting",
+      tags: [],
+    },
+    body: (title) =>
+      `# ${title}\n\n## Current Synthesis\n\n## Open Threads\n\n## Assessment\n\n## Timeline\n\n## Transcript / Notes\n\n## Action Items\n`,
   },
 ];
 

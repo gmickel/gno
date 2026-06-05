@@ -14,6 +14,7 @@ import {
   type ApplyConfigResult,
   type MutationResult,
 } from "../core/config-mutation";
+import { withContentTypeRules } from "../ingestion";
 
 /**
  * Apply a config mutation atomically with serialization.
@@ -53,7 +54,10 @@ export async function applyConfigChange(
   );
 
   if (result.ok) {
-    ctxHolder.watchService?.updateCollections(ctxHolder.config.collections);
+    ctxHolder.watchService?.updateCollections(
+      ctxHolder.config.collections,
+      withContentTypeRules({}, ctxHolder.config)
+    );
   }
 
   return result;
@@ -78,7 +82,10 @@ export async function applyConfigChangeTyped<T>(
   );
 
   if (result.ok) {
-    ctxHolder.watchService?.updateCollections(ctxHolder.config.collections);
+    ctxHolder.watchService?.updateCollections(
+      ctxHolder.config.collections,
+      withContentTypeRules({}, ctxHolder.config)
+    );
   }
 
   return result;

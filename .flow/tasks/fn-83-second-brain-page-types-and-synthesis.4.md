@@ -40,4 +40,10 @@ Cross-cutting documentation sync so no surface is stale at spec completion: agen
 
 ## Done summary
 
+Synced the second-brain page-type, synthesis, timeline, and contentTypes behavior across repo docs, skill assets, hosted gno.sh docs/product surfaces, and the changelog. Added the final API/MCP metadata examples requested by review without changing product behavior.
+
 ## Evidence
+
+- Commits: 7a14baa, 78d5464, dc43338
+- Tests: GNO: bun run lint:check && bun test && bun run docs:verify, gno.sh: bun run typecheck && bun run check && bun test, RepoPrompt impl review: VERDICT=SHIP
+- PRs:

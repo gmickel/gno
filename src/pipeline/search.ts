@@ -117,6 +117,8 @@ function buildSearchResult(ctx: BuildResultContext): SearchResult {
     score: fts.score, // Raw score, normalized later as batch
     uri: fts.uri ?? "",
     title: fts.title,
+    contentType: fts.contentType,
+    categories: fts.categories,
     line: chunk?.startLine,
     snippet,
     snippetLanguage: chunk?.language ?? undefined,

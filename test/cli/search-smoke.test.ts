@@ -155,6 +155,8 @@ describe("gno search smoke tests", () => {
     expect(valid).toBe(true);
     expect(parsed.meta.mode).toBe("bm25");
     expect(parsed.results[0]?.line).toBeGreaterThan(0);
+    expect(typeof parsed.results[0]?.contentType).toBe("string");
+    expect(Array.isArray(parsed.results[0]?.categories)).toBe(true);
   });
 
   test("--index decorates search result URIs", async () => {

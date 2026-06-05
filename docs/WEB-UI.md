@@ -91,10 +91,11 @@ Press **N** (or click the floating + button) to open Quick Capture:
 1. Enter a title
 2. Write your content (markdown supported)
 3. Select a collection
-4. Add tags (optional, with autocomplete)
-5. Open **Source** when you want provenance metadata such as kind, URL, author,
+4. Choose a note preset when you want a scaffold
+5. Add tags (optional, with autocomplete)
+6. Open **Source** when you want provenance metadata such as kind, URL, author,
    observed time, or external id
-6. Click **Create note**
+7. Click **Create note**
 
 The document is saved to disk with structured `source:` frontmatter. The
 success state shows the write result, FTS sync state, and embedding state
@@ -208,7 +209,15 @@ Quick Capture now supports:
 
 - place-aware creation from the current Browse collection/folder
 - preset-aware note scaffolds
+- typed second-brain scaffolds: `idea-original`, `person`, `company-project`,
+  and `meeting`
 - command-palette create flows without losing current workspace context
+
+The typed second-brain presets use a synthesis/timeline pattern: keep the current
+assessment above `## Timeline`, then put dated evidence, transcript excerpts, raw
+meeting notes, or action items below it. When `contentTypes` rules are configured,
+matching preset frontmatter or folder prefixes are indexed as `contentType` for
+JSON search/query results.
 
 ### Quick Switcher
 

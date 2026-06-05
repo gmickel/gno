@@ -55,6 +55,23 @@ contexts:
 models:
   activePreset: slim-tuned
 
+# Optional schema-lite content type rules
+contentTypes:
+  - id: person
+    prefixes:
+      - people/
+      - contacts/
+    preset: person
+    graphHints:
+      - mentions
+      - works_at
+    searchBoost: 1.15
+  - id: meeting
+    prefixes:
+      - meetings/
+    preset: meeting
+    temporal: true
+
 # Optional terminal hyperlink target template for CLI search output
 editorUriTemplate: "vscode://file/{path}:{line}:{col}"
 ```
@@ -308,6 +325,41 @@ Supported placeholders:
 - `{col}` best-effort column placeholder (`1` when line is available)
 
 If the chosen template requires `{line}` but a result has no line hint, GNO falls back to plain text for that result instead of inventing `:1`.
+
+## Content Types
+
+`contentTypes` is an opt-in, schema-lite typing layer for second-brain pages. It is not a mutable ontology. Empty or absent `contentTypes` keeps legacy behavior.
+
+```yaml
+contentTypes:
+  - id: person
+    prefixes: [people/, contacts/]
+    preset: person
+  - id: meeting
+    prefixes: [meetings/]
+    preset: meeting
+    temporal: true
+```
+
+Fields:
+
+| Field         | Type     | Description                                                           |
+| ------------- | -------- | --------------------------------------------------------------------- |
+| `id`          | string   | Stable content type ID, such as `person` or `meeting`                 |
+| `prefixes`    | string[] | Relative path prefixes that map documents to this type                |
+| `preset`      | string   | Note preset used by future type-aware creation and ingestion behavior |
+| `temporal`    | boolean  | Accepted metadata flag for time-oriented pages                        |
+| `searchBoost` | number   | Reserved for future ranking; accepted but no-op in this release       |
+| `graphHints`  | string[] | Reserved for typed graph work; accepted but no-op in this release     |
+
+Validation is warning-based after YAML parsing:
+
+- unknown `preset` references warn and the content type entry is dropped
+- exact duplicate prefixes are deduped
+- overlapping prefixes are retained, for example `people/` and `people/team/`
+- rules are normalized longest-prefix-first for future matching
+
+Reserved `graphHints` vocabulary is centralized in the config API for future graph work. Current documented hints: `mentions`, `works_at`, `attended`, `decided`, `related_to`.
 
 ### Custom Models
 

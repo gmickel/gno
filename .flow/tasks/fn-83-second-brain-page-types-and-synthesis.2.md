@@ -26,7 +26,7 @@ Add an opt-in, schema-lite `contentTypes` config key (NOT a mutable ontology) wi
 
 - `src/config/types.ts:171-229` (ModelPreset pattern), `:252-270` (ConfigSchema slot).
 - `src/config/loader.ts:18-19,51-131` — result type + `loadConfigFromPath`; where the warnings field + post-parse normalization land.
-- `src/core/note-presets.ts:11-17` — `NotePresetId` for post-parse `preset` resolution.
+- `src/core/note-presets.ts:11-21` — `NotePresetId` for post-parse `preset` resolution. <!-- Updated by plan-sync: fn-83-second-brain-page-types-and-synthesis.1 used expanded NotePresetId union range 11-21 not planned 11-17 -->
 
 **Optional:**
 
@@ -45,4 +45,10 @@ Add an opt-in, schema-lite `contentTypes` config key (NOT a mutable ontology) wi
 
 ## Done summary
 
+Added schema-lite contentTypes config support with post-parse normalization/warnings, closed-graph preset validation, reserved no-op fields, and docs/spec/tests. The implementation is limited to config parsing/normalization and does not add ingestion or search behavior.
+
 ## Evidence
+
+- Commits: e927c16b0805d3d2da2e89e40b6b18ff56220cf8
+- Tests: bun run lint:check, bun test
+- PRs:

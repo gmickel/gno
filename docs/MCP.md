@@ -571,6 +571,11 @@ tagsAny: ["urgent"]         # Optional: must have ANY tag
 Limit: 5 (default)
 ```
 
+Structured search results include per-result `contentType` and `categories`
+fields, alongside `tags`, `docid`, `uri`, scores, and source metadata. Use those
+fields when an agent needs to distinguish canonical typed pages from broader
+category filters.
+
 ### gno_vsearch
 
 Vector semantic search.
@@ -692,7 +697,7 @@ collection: "notes"
 title: "Project Plan"
 folderPath: "projects/gno" # Optional
 collisionPolicy: "create_with_suffix" # Optional: error|open_existing|create_with_suffix
-presetId: "project-note" # Optional
+presetId: "project-note" # Optional: blank|project-note|research-note|decision-note|prompt-pattern|source-summary|idea-original|person|company-project|meeting
 content: "# Project Plan\n" # Optional when preset provides scaffold
 source:
   kind: "web" # direct|web|email|meeting|chat|file|api|unknown

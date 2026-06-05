@@ -41,6 +41,21 @@ A single indexed file. Each document has:
 - `sourceHash`: SHA-256 of original file content
 - `mirrorHash`: SHA-256 of canonical markdown
 
+### Note Preset
+
+A built-in markdown scaffold used by CLI capture, REST capture, SDK capture, MCP
+`gno_capture`, and Web UI Quick Capture. Presets such as `person`,
+`company-project`, `meeting`, and `idea-original` emit flat frontmatter and
+section headings so new notes start with a useful second-brain shape.
+
+### Content Type
+
+An optional schema-lite document type configured with `contentTypes` in
+`index.yml`. A frontmatter `type` becomes canonical `contentType` only when it
+matches a configured content type ID; otherwise it remains a normal category
+filter. JSON search/query results expose `contentType` and `categories` per
+result.
+
 ### Virtual URI
 
 GNO's internal document identifier format:

@@ -361,6 +361,29 @@ GNO retrieves more candidates than you request, then filters down:
 | Reranking               | Top 20                 |
 | Final output            | Your requested `limit` |
 
+## Content Types and Categories
+
+GNO stores a canonical `contentType` and category filters for every indexed document. JSON search/query results include both fields per result:
+
+```json
+{
+  "contentType": "person",
+  "categories": ["person", "relationship"]
+}
+```
+
+Content type inference is additive and follows this order:
+
+1. Frontmatter `type` becomes canonical `contentType` only when it exactly matches a configured `contentTypes[].id`.
+2. Otherwise, configured `contentTypes[].prefixes` apply, longest prefix first.
+3. Frontmatter `category` / `categories` / unconfigured `type` remain category filters only.
+4. Existing path and extension heuristics classify code, meetings, specs, notes, or prose.
+5. Fallback is `prose`.
+
+The `--category` filter checks both canonical `contentType` and category filters, so `gno search --category person --json` matches pages whose configured type is `person` as well as pages categorized as `person`.
+
+GNO persists a fingerprint of the normalized `contentTypes` rules used during ingestion. If you edit prefixes or type IDs later, unchanged files are reprocessed on the next sync so stored `contentType` metadata is re-derived; this is not tied only to an ingest-version bump.
+
 ## Controlling Search Behavior
 
 ### Search Modes

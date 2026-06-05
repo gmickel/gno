@@ -7,6 +7,10 @@
 
 import type { ZodError } from "zod";
 
+import {
+  normalizeConfigContentTypes,
+  type ConfigWarning,
+} from "./content-types";
 import { configExists, expandPath, getConfigPaths } from "./paths";
 import { CONFIG_VERSION, type Config, ConfigSchema } from "./types";
 
@@ -15,7 +19,7 @@ import { CONFIG_VERSION, type Config, ConfigSchema } from "./types";
 // ─────────────────────────────────────────────────────────────────────────────
 
 export type LoadResult<T> =
-  | { ok: true; value: T }
+  | { ok: true; value: T; warnings: ConfigWarning[] }
   | { ok: false; error: LoadError };
 
 export type LoadError =
@@ -128,7 +132,12 @@ export async function loadConfigFromPath(
     };
   }
 
-  return { ok: true, value: result.data };
+  const normalized = normalizeConfigContentTypes(result.data);
+  return {
+    ok: true,
+    value: normalized.config,
+    warnings: normalized.warnings,
+  };
 }
 
 /**

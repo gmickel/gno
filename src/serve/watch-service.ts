@@ -2,7 +2,7 @@ import { watch, type FSWatcher } from "node:fs";
 import { join, normalize, sep } from "node:path";
 
 import type { Collection } from "../config/types";
-import type { CollectionSyncResult } from "../ingestion";
+import type { CollectionSyncResult, SyncOptions } from "../ingestion";
 import type { SqliteAdapter } from "../store/sqlite/adapter";
 import type { DocumentEvent, DocumentEventBus } from "./doc-events";
 import type { EmbedScheduler } from "./embed-scheduler";
@@ -39,6 +39,7 @@ interface CollectionWatchServiceOptions {
   scheduler: EmbedScheduler | null;
   eventBus?: DocumentEventBus | null;
   callbacks?: CollectionWatchCallbacks;
+  syncOptions?: SyncOptions;
   watchFactory?: typeof watch;
 }
 
@@ -48,6 +49,7 @@ export class CollectionWatchService {
   readonly #scheduler: EmbedScheduler | null;
   readonly #eventBus: DocumentEventBus | null;
   readonly #callbacks: CollectionWatchCallbacks | null;
+  #syncOptions: SyncOptions;
   readonly #watchers = new Map<string, FSWatcher>();
   readonly #pendingByCollection = new Map<string, Set<string>>();
   readonly #timers = new Map<string, ReturnType<typeof setTimeout>>();
@@ -64,6 +66,7 @@ export class CollectionWatchService {
     this.#scheduler = options.scheduler;
     this.#eventBus = options.eventBus ?? null;
     this.#callbacks = options.callbacks ?? null;
+    this.#syncOptions = options.syncOptions ?? {};
     this.#watchFactory = options.watchFactory ?? watch;
   }
 
@@ -71,8 +74,14 @@ export class CollectionWatchService {
     this.updateCollections(this.#collections);
   }
 
-  updateCollections(collections: Collection[]): void {
+  updateCollections(
+    collections: Collection[],
+    syncOptions?: SyncOptions
+  ): void {
     this.#collections = collections;
+    if (syncOptions) {
+      this.#syncOptions = syncOptions;
+    }
     const nextNames = new Set(collections.map((collection) => collection.name));
 
     for (const [collectionName, watcher] of this.#watchers) {
@@ -204,6 +213,7 @@ export class CollectionWatchService {
         collection,
         this.#store,
         {
+          ...this.#syncOptions,
           runUpdateCmd: false,
         }
       );

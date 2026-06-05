@@ -3,6 +3,8 @@
   "score": 0.85,
   "uri": "gno://work/contracts/nda.docx",
   "title": "Non-Disclosure Agreement",
+  "contentType": "contract",
+  "categories": ["contract", "legal"],
   "snippetLanguage": "en",
   "context": "Legal contracts folder",
   "snippet": "This Non-Disclosure Agreement (\"Agreement\") is entered into...",

@@ -117,6 +117,78 @@ function parseTagsValue(
   return [];
 }
 
+function parseInlineArrayValue(value: string): string[] | undefined {
+  const inlineMatch = INLINE_ARRAY_REGEX.exec(value.trim());
+  if (!inlineMatch) {
+    return undefined;
+  }
+  const rawItems = inlineMatch[1];
+  if (rawItems === undefined) {
+    return [];
+  }
+
+  return rawItems
+    .split(",")
+    .map((item) => unquoteScalar(item.trim()))
+    .filter((item) => item.length > 0);
+}
+
+function unquoteScalar(value: string): string {
+  const trimmed = value.trim();
+  if (trimmed.length < 2) {
+    return trimmed;
+  }
+  const first = trimmed[0];
+  const last = trimmed.at(-1);
+  if ((first === '"' && last === '"') || (first === "'" && last === "'")) {
+    return trimmed.slice(1, -1).trim();
+  }
+  return trimmed;
+}
+
+function parseBlockArrayValue(lines: string[], startIdx: number): string[] {
+  const items: string[] = [];
+  for (let i = startIdx + 1; i < lines.length; i++) {
+    const line = lines[i];
+    if (line === undefined) break;
+    const itemMatch = YAML_ARRAY_ITEM_REGEX.exec(line);
+    if (itemMatch?.[1]) {
+      const item = unquoteScalar(itemMatch[1]);
+      if (item.length > 0) {
+        items.push(item);
+      }
+      continue;
+    }
+    if (
+      line.trim().length > 0 &&
+      !line.startsWith(" ") &&
+      !line.startsWith("\t")
+    ) {
+      break;
+    }
+  }
+  return items;
+}
+
+function parseMetadataValue(
+  value: string,
+  lines: string[],
+  startIdx: number
+): string | string[] | undefined {
+  const trimmed = value.trim();
+  const inlineArray = parseInlineArrayValue(trimmed);
+  if (inlineArray) {
+    return inlineArray;
+  }
+
+  if (trimmed.length === 0) {
+    const blockArray = parseBlockArrayValue(lines, startIdx);
+    return blockArray.length > 0 ? blockArray : undefined;
+  }
+
+  return unquoteScalar(trimmed);
+}
+
 /**
  * Parse frontmatter from markdown source.
  * Returns extracted tags and metadata.
@@ -170,8 +242,11 @@ export function parseFrontmatter(source: string): FrontmatterResult {
       if (colonIdx > 0) {
         const key = line.slice(0, colonIdx).trim();
         const value = line.slice(colonIdx + 1).trim();
-        if (key !== "tags" && value.length > 0) {
-          result.metadata[key] = value;
+        if (key !== "tags") {
+          const metadataValue = parseMetadataValue(value, lines, i);
+          if (metadataValue !== undefined) {
+            result.metadata[key] = metadataValue;
+          }
         }
       }
     }

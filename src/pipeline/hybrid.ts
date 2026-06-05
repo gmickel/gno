@@ -841,6 +841,8 @@ export async function searchHybrid(
       score: candidate.blendedScore,
       uri: doc.uri,
       title: doc.title ?? undefined,
+      contentType: doc.contentType ?? undefined,
+      categories: doc.categories ?? undefined,
       line: snippetChunk.startLine,
       snippet,
       snippetLanguage: chunk.language ?? undefined,

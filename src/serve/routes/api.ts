@@ -82,7 +82,11 @@ import {
   validateTag,
 } from "../../core/tags";
 import { validateRelPath } from "../../core/validation";
-import { defaultSyncService, type SyncResult } from "../../ingestion";
+import {
+  defaultSyncService,
+  type SyncResult,
+  withContentTypeRules,
+} from "../../ingestion";
 import { updateFrontmatterTags } from "../../ingestion/frontmatter";
 import {
   getCollectionEffectiveModels,
@@ -919,10 +923,17 @@ export async function handleCreateCollection(
     return errorResponse("RUNTIME", "Collection not found after add", 500);
   }
   const jobResult = startJob("add", async (): Promise<SyncResult> => {
-    const result = await defaultSyncService.syncCollection(collection, store, {
-      gitPull: body.gitPull,
-      runUpdateCmd: true,
-    });
+    const result = await defaultSyncService.syncCollection(
+      collection,
+      store,
+      withContentTypeRules(
+        {
+          gitPull: body.gitPull,
+          runUpdateCmd: true,
+        },
+        syncResult.config
+      )
+    );
     if (result.filesAdded > 0 || result.filesUpdated > 0) {
       if (ctxHolder.scheduler) {
         await ctxHolder.scheduler.triggerNow();
@@ -1214,10 +1225,17 @@ export async function handleSync(
 
   // Start background sync job
   const jobResult = startJob("sync", async (): Promise<SyncResult> => {
-    const result = await defaultSyncService.syncAll(collections, store, {
-      gitPull: body.gitPull,
-      runUpdateCmd: true,
-    });
+    const result = await defaultSyncService.syncAll(
+      collections,
+      store,
+      withContentTypeRules(
+        {
+          gitPull: body.gitPull,
+          runUpdateCmd: true,
+        },
+        ctxHolder.config
+      )
+    );
     if (result.totalFilesAdded > 0 || result.totalFilesUpdated > 0) {
       if (ctxHolder.scheduler) {
         await ctxHolder.scheduler.triggerNow();
@@ -1843,9 +1861,11 @@ export async function handleRenameDoc(
     const nextUri = `gno://${collection.name}/${nextRelPath}`;
     let warning: string | undefined;
     try {
-      await syncCollection(collection, store, {
-        runUpdateCmd: false,
-      });
+      await syncCollection(
+        collection,
+        store,
+        withContentTypeRules({ runUpdateCmd: false }, ctxHolder.config)
+      );
     } catch {
       warning =
         "File renamed on disk, but index refresh failed. Run Update All to reconcile the workspace.";
@@ -2063,9 +2083,11 @@ export async function handleTrashDoc(
     }
     let warning: string | undefined;
     try {
-      await syncCollection(collection, store, {
-        runUpdateCmd: false,
-      });
+      await syncCollection(
+        collection,
+        store,
+        withContentTypeRules({ runUpdateCmd: false }, ctxHolder.config)
+      );
     } catch {
       warning =
         "File moved to Trash, but index refresh failed. Run Update All to reconcile the workspace.";
@@ -2184,9 +2206,11 @@ export async function handleMoveDoc(
     await renameFilePath(fullPath, nextFullPath);
     let warning: string | undefined;
     try {
-      await defaultSyncService.syncCollection(collection, store, {
-        runUpdateCmd: false,
-      });
+      await defaultSyncService.syncCollection(
+        collection,
+        store,
+        withContentTypeRules({ runUpdateCmd: false }, ctxHolder.config)
+      );
     } catch {
       warning =
         "File moved on disk, but index refresh failed. Run Update All to reconcile the workspace.";
@@ -2305,9 +2329,11 @@ export async function handleDuplicateDoc(
     await copyFilePath(fullPath, nextFullPath);
     let warning: string | undefined;
     try {
-      await defaultSyncService.syncCollection(collection, store, {
-        runUpdateCmd: false,
-      });
+      await defaultSyncService.syncCollection(
+        collection,
+        store,
+        withContentTypeRules({ runUpdateCmd: false }, ctxHolder.config)
+      );
     } catch {
       warning =
         "File duplicated on disk, but index refresh failed. Run Update All to reconcile the workspace.";
@@ -2636,7 +2662,7 @@ export async function handleUpdateDoc(
         const result = await defaultSyncService.syncCollection(
           collection,
           store,
-          { runUpdateCmd: false }
+          withContentTypeRules({ runUpdateCmd: false }, ctxHolder.config)
         );
         // Notify scheduler after sync completes
         ctxHolder.scheduler?.notifySyncComplete([doc.docid]);
@@ -2904,7 +2930,7 @@ export async function handleCreateCapture(
       const result = await defaultSyncService.syncCollection(
         collection,
         store,
-        { runUpdateCmd: false }
+        withContentTypeRules({ runUpdateCmd: false }, ctxHolder.config)
       );
       ctxHolder.scheduler?.notifySyncComplete([plan.relPath]);
       ctxHolder.eventBus?.emit({
@@ -3140,7 +3166,7 @@ export async function handleCreateDoc(
       const result = await defaultSyncService.syncCollection(
         collection,
         store,
-        { runUpdateCmd: false }
+        withContentTypeRules({ runUpdateCmd: false }, ctxHolder.config)
       );
       // Notify scheduler after sync completes (use gnoUri as docid placeholder)
       // The sync will create a proper docid, but we don't have it here yet

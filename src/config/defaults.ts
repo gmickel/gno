@@ -16,5 +16,6 @@ export function createDefaultConfig(): Config {
     ftsTokenizer: DEFAULT_FTS_TOKENIZER,
     collections: [],
     contexts: [],
+    contentTypes: [],
   };
 }

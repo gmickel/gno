@@ -18,7 +18,7 @@ import {
   normalizeCollectionName,
   validateCollectionRoot,
 } from "../../core/validation";
-import { defaultSyncService } from "../../ingestion";
+import { defaultSyncService, withContentTypeRules } from "../../ingestion";
 import { runTool, type ToolResult } from "./index";
 
 interface AddCollectionInput {
@@ -147,10 +147,13 @@ export function handleAddCollection(
             const result = await defaultSyncService.syncCollection(
               collection,
               ctx.store,
-              {
-                gitPull: args.gitPull ?? false,
-                runUpdateCmd: false,
-              }
+              withContentTypeRules(
+                {
+                  gitPull: args.gitPull ?? false,
+                  runUpdateCmd: false,
+                },
+                ctx.config
+              )
             );
 
             return {

@@ -12,7 +12,7 @@ import { MCP_ERRORS } from "../../core/errors";
 import { acquireWriteLock, type WriteLockHandle } from "../../core/file-lock";
 import { JobError } from "../../core/job-manager";
 import { normalizeCollectionName } from "../../core/validation";
-import { defaultSyncService } from "../../ingestion";
+import { defaultSyncService, withContentTypeRules } from "../../ingestion";
 import { runTool, type ToolResult } from "./index";
 
 interface SyncInput {
@@ -101,10 +101,13 @@ export function handleSync(
           ? [collection.name]
           : ctx.collections.map((entry) => entry.name);
 
-        const options = {
-          gitPull: args.gitPull ?? false,
-          runUpdateCmd: args.runUpdateCmd ?? false,
-        };
+        const options = withContentTypeRules(
+          {
+            gitPull: args.gitPull ?? false,
+            runUpdateCmd: args.runUpdateCmd ?? false,
+          },
+          ctx.config
+        );
 
         const jobId = await ctx.jobManager.startJobWithLock(
           "sync",
@@ -133,7 +136,10 @@ export function handleSync(
           jobId,
           collections,
           status: "started",
-          options,
+          options: {
+            gitPull: options.gitPull ?? false,
+            runUpdateCmd: options.runUpdateCmd ?? false,
+          },
         };
 
         return result;

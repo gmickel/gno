@@ -359,6 +359,27 @@ gno capture "thought to remember"
 gno capture --file ./clip.md --source-url https://example.com --source-kind web --json
 ```
 
+### Typed second-brain presets
+
+```bash
+# Original idea: preserve exact phrasing and related concepts
+gno capture --preset idea-original --title "Local-first inbox triage" --folder ideas/
+
+# Person page: current synthesis plus relationship/open threads/timeline
+gno capture --preset person --title "Jane Doe" --folder people/
+
+# Company/project page: state, decisions, people, and timeline
+gno capture --preset company-project --title "Acme renewal" --folder projects/
+
+# Meeting page: analysis above raw notes, transcript, and action items
+gno capture --preset meeting --title "Weekly sync" --folder meetings/
+```
+
+For these presets, keep current synthesis above `## Timeline`; put dated evidence
+and raw chronology below it. If `contentTypes` are configured in `index.yml`,
+matching frontmatter `type` or path prefixes become `contentType` in JSON search
+results.
+
 ### Web UI quick capture
 
 Press **N** in `gno serve`, write the note, and open **Source** only when you

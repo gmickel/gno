@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Added second-brain note presets for original ideas, people,
+  company/projects, and meetings, using flat preset frontmatter and a
+  synthesis/timeline page pattern across capture surfaces.
+- Added optional `contentTypes` config for schema-lite second-brain typing,
+  warning-based rule normalization, and canonical `contentType` exposure in
+  JSON search/query results.
+- Updated repo docs, hosted docs, and bundled agent skill references for typed
+  presets, synthesis/timeline pages, and content-type search metadata.
+
 ## [1.8.0] - 2026-06-05
 
 ### Added

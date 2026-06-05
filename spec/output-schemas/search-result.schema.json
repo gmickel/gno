@@ -31,6 +31,17 @@
       "type": "string",
       "description": "Extracted document title (optional)"
     },
+    "contentType": {
+      "type": "string",
+      "description": "Canonical inferred content type"
+    },
+    "categories": {
+      "type": "array",
+      "description": "Category filters associated with the document",
+      "items": {
+        "type": "string"
+      }
+    },
     "snippetLanguage": {
       "type": "string",
       "description": "Language of snippet content (BCP-47 or 'und')"

@@ -7,7 +7,12 @@
 import type { Config } from "../config/types";
 import type { SqliteAdapter } from "../store/sqlite/adapter";
 
-import { loadConfig, saveConfig } from "../config";
+import {
+  formatConfigWarnings,
+  loadConfig,
+  normalizeConfigContentTypes,
+  saveConfig,
+} from "../config";
 
 export interface ConfigMutationContext {
   store: SqliteAdapter;
@@ -53,6 +58,9 @@ export async function applyConfigChange<T = void>(
         code: "LOAD_ERROR",
       };
     }
+    for (const warning of formatConfigWarnings(loadResult.warnings)) {
+      console.warn(warning);
+    }
 
     const mutationResult = await mutate(loadResult.value);
     if (!mutationResult.ok) {
@@ -63,7 +71,11 @@ export async function applyConfigChange<T = void>(
       };
     }
 
-    const newConfig = mutationResult.config;
+    const normalized = normalizeConfigContentTypes(mutationResult.config);
+    for (const warning of formatConfigWarnings(normalized.warnings)) {
+      console.warn(warning);
+    }
+    const newConfig = normalized.config;
     const saveResult = await saveConfig(newConfig, ctx.configPath);
     if (!saveResult.ok) {
       return {

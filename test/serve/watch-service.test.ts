@@ -132,4 +132,59 @@ describe("CollectionWatchService", () => {
     expect(onSyncComplete).toHaveBeenCalledTimes(1);
     service.dispose();
   });
+
+  test("updateCollections refreshes sync options for later watcher syncs", async () => {
+    let watcherCallback:
+      | ((eventType: string, filename: string) => void)
+      | undefined;
+    const seenFingerprints: Array<string | undefined> = [];
+
+    defaultSyncService.syncCollection = (async (
+      _collection,
+      _store,
+      options
+    ) => {
+      seenFingerprints.push(options?.contentTypeRulesFingerprint);
+      return {
+        collection: "notes",
+        filesProcessed: 1,
+        filesAdded: 0,
+        filesUpdated: 1,
+        filesUnchanged: 0,
+        filesErrored: 0,
+        filesSkipped: 0,
+        filesMarkedInactive: 0,
+        durationMs: 3,
+        errors: [],
+      };
+    }) as typeof defaultSyncService.syncCollection;
+
+    const service = new CollectionWatchService({
+      collections: [createCollection("notes", "/tmp/notes")],
+      eventBus: null,
+      scheduler: null,
+      store: {} as never,
+      syncOptions: { contentTypeRulesFingerprint: "before" },
+      watchFactory: ((
+        _path: string,
+        _options: { recursive: boolean },
+        callback: WatchListener<string>
+      ) => {
+        watcherCallback = callback as typeof watcherCallback;
+        return {
+          close: () => undefined,
+        };
+      }) as never,
+    });
+
+    service.start();
+    service.updateCollections([createCollection("notes", "/tmp/notes")], {
+      contentTypeRulesFingerprint: "after",
+    });
+    watcherCallback?.("change", "doc.md");
+    await Bun.sleep(350);
+
+    expect(seenFingerprints).toEqual(["after"]);
+    service.dispose();
+  });
 });

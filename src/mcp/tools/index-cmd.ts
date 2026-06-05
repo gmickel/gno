@@ -12,7 +12,7 @@ import { acquireWriteLock, type WriteLockHandle } from "../../core/file-lock";
 import { JobError } from "../../core/job-manager";
 import { normalizeCollectionName } from "../../core/validation";
 import { embedBacklog } from "../../embed";
-import { defaultSyncService } from "../../ingestion";
+import { defaultSyncService, withContentTypeRules } from "../../ingestion";
 import { LlmAdapter } from "../../llm/nodeLlamaCpp/adapter";
 import { resolveModelUri } from "../../llm/registry";
 import {
@@ -95,11 +95,14 @@ export function handleIndex(
           ? [collection.name]
           : ctx.collections.map((entry) => entry.name);
 
-        const options = {
-          gitPull: args.gitPull ?? false,
-          // Security: MCP never runs updateCmd by default
-          runUpdateCmd: false,
-        };
+        const options = withContentTypeRules(
+          {
+            gitPull: args.gitPull ?? false,
+            // Security: MCP never runs updateCmd by default
+            runUpdateCmd: false,
+          },
+          ctx.config
+        );
 
         const modelUri = resolveModelUri(
           ctx.config,
@@ -203,7 +206,10 @@ export function handleIndex(
           collections,
           status: "started",
           phases: ["sync", "embed"],
-          options,
+          options: {
+            gitPull: options.gitPull ?? false,
+            runUpdateCmd: options.runUpdateCmd ?? false,
+          },
         };
 
         return result;

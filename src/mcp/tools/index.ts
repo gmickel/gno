@@ -11,6 +11,7 @@ import { z } from "zod";
 import type { ToolContext } from "../server";
 
 import { CAPTURE_MAX_TEXT_BYTES } from "../../core/capture";
+import { NOTE_PRESETS, type NotePresetId } from "../../core/note-presets";
 import { normalizeTag } from "../../core/tags";
 import { handleAddCollection } from "./add-collection";
 import { handleCapture } from "./capture";
@@ -142,7 +143,12 @@ const searchInputSchema = z.object({
     .describe("Require ANY of these tags (OR filter)"),
 });
 
-const captureInputSchema = z.object({
+const notePresetIds = NOTE_PRESETS.map((preset) => preset.id) as [
+  NotePresetId,
+  ...NotePresetId[],
+];
+
+export const captureInputSchema = z.object({
   collection: z
     .string()
     .min(1, "Collection cannot be empty")
@@ -173,14 +179,7 @@ const captureInputSchema = z.object({
     .optional()
     .describe("How to handle name collisions"),
   presetId: z
-    .enum([
-      "blank",
-      "project-note",
-      "research-note",
-      "decision-note",
-      "prompt-pattern",
-      "source-summary",
-    ])
+    .enum(notePresetIds)
     .optional()
     .describe("Optional note preset scaffold"),
   overwrite: z
