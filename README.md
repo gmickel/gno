@@ -92,9 +92,12 @@ gno daemon --detach  # headless continuous indexing (background; --status / --st
 
 ## What's New
 
-> Latest release: [v1.1.0](./CHANGELOG.md#110---2026-04-21)  
+> Latest release: [v1.8.0](./CHANGELOG.md#180---2026-06-05)  
 > Full release history: [CHANGELOG.md](./CHANGELOG.md)
 
+- **Second-brain capture**: `gno capture`, REST `/api/capture`, SDK
+  `client.capture()`, MCP `gno_capture`, and Web UI Quick Capture write
+  provenance-rich notes from text, stdin, or files
 - **Publish to [gno.sh](https://gno.sh/publish)**: new `gno publish export` CLI and Web UI action produce a self-contained artifact you upload to the hosted reader — public, secret, invite-only, or locally encrypted before upload
 - **Retrieval Quality Upgrade**: stronger BM25 lexical handling, code-aware chunking, terminal result hyperlinks, and per-collection model overrides
 - **Code Embedding Benchmarks**: new benchmark workflow across canonical, real-GNO, and pinned OSS slices for comparing alternate embedding models

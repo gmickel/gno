@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.8.0] - 2026-06-05
+
+### Added
+
+- Added `gno capture` for second-brain note capture from inline text, stdin, or
+  files, with provenance frontmatter, tags, presets, JSON receipts, and quiet URI
+  output.
+- Added shared capture support across REST `/api/capture`, SDK
+  `client.capture()`, MCP `gno_capture`, and Web UI Quick Capture, including
+  parity tests and structured capture receipt schemas.
+
+### Changed
+
+- Hardened capture writes with shared runtime validation, text-only input checks,
+  disk-aware collision planning, exclusive create semantics, and MCP-only legacy
+  overwrite handling.
+- Updated GNO docs, specs, website sync, and bundled agent skill references for
+  capture provenance behavior.
+
 ## [1.7.1] - 2026-05-30
 
 ### Changed
@@ -1329,7 +1348,9 @@ Re-release of 1.0.2 with a CHANGELOG formatting fix so the Publish workflow's
 | 0.4.0   | 2026-01-01 | Web UI and REST API                        |
 | 0.1.0   | 2025-12-30 | Initial release with full search pipeline  |
 
-[Unreleased]: https://github.com/gmickel/gno/compare/v1.7.0...HEAD
+[Unreleased]: https://github.com/gmickel/gno/compare/v1.8.0...HEAD
+[1.8.0]: https://github.com/gmickel/gno/compare/v1.7.1...v1.8.0
+[1.7.1]: https://github.com/gmickel/gno/compare/v1.7.0...v1.7.1
 [1.7.0]: https://github.com/gmickel/gno/compare/v1.6.0...v1.7.0
 [1.6.0]: https://github.com/gmickel/gno/compare/v1.5.2...v1.6.0
 [1.5.2]: https://github.com/gmickel/gno/compare/v1.5.1...v1.5.2
