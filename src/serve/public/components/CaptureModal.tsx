@@ -307,7 +307,7 @@ export function CaptureModal({
       selectedPresetId !== "blank" &&
       content === lastGeneratedContent;
     const submitPresetId =
-      selectedPresetId && selectedPresetId !== "blank"
+      presetOnly && selectedPresetId && selectedPresetId !== "blank"
         ? selectedPresetId
         : undefined;
 

@@ -122,6 +122,44 @@ describe("capture core", () => {
     ).toThrow("collisionPolicy must be one of");
   });
 
+  test("rejects invalid runtime source and tags shapes in shared core", () => {
+    expect(() =>
+      planCapture({
+        input: {
+          collection: "notes",
+          content: "hello",
+          source: "web" as never,
+        },
+        existingRelPaths: [],
+        now: FIXED_NOW,
+      })
+    ).toThrow("source must be an object");
+
+    expect(() =>
+      planCapture({
+        input: {
+          collection: "notes",
+          content: "hello",
+          tags: "research" as never,
+        },
+        existingRelPaths: [],
+        now: FIXED_NOW,
+      })
+    ).toThrow("tags must be an array");
+
+    expect(() =>
+      planCapture({
+        input: {
+          collection: "notes",
+          content: "hello",
+          tags: ["ok", 42] as never,
+        },
+        existingRelPaths: [],
+        now: FIXED_NOW,
+      })
+    ).toThrow("tags must be an array");
+  });
+
   test("validates source URLs and dates", () => {
     expect(() =>
       planCapture({

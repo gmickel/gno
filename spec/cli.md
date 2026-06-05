@@ -815,8 +815,8 @@ maps to `source.observedAt`; `--source-id` maps to `source.externalId`.
   `error` for explicit/title/folder paths.
 - Collision checks include indexed documents and disk-only files.
 - Content must be text; NUL or binary-like control bytes are rejected.
-- Non-overwrite captures use exclusive create semantics so a file that appears
-  after planning is not replaced.
+- Capture writes use exclusive create semantics so a file that appears after
+  planning is not replaced.
 
 **Examples:**
 

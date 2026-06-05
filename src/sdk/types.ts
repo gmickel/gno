@@ -131,7 +131,7 @@ export interface GnoCreateNoteResult {
   createdWithSuffix?: boolean;
 }
 
-export interface GnoCaptureOptions extends CaptureInput {}
+export interface GnoCaptureOptions extends Omit<CaptureInput, "overwrite"> {}
 
 export type GnoCaptureResult = CaptureReceipt;
 

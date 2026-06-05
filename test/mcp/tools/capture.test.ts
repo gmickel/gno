@@ -10,6 +10,7 @@ import { join } from "node:path";
 import type { ToolContext } from "../../../src/mcp/server";
 
 import { CAPTURE_MAX_TEXT_BYTES } from "../../../src/core/capture";
+import { defaultSyncService } from "../../../src/ingestion";
 import { handleCapture } from "../../../src/mcp/tools/capture";
 import { registerTools } from "../../../src/mcp/tools/index";
 import { SqliteAdapter } from "../../../src/store/sqlite/adapter";
@@ -18,6 +19,8 @@ import { safeRm } from "../../helpers/cleanup";
 describe("gno_capture MCP", () => {
   let tmpDir: string;
   let store: SqliteAdapter;
+  const originalSyncFiles =
+    defaultSyncService.syncFiles.bind(defaultSyncService);
 
   beforeEach(async () => {
     tmpDir = await mkdtemp(join(tmpdir(), "gno-mcp-capture-"));
@@ -37,6 +40,7 @@ describe("gno_capture MCP", () => {
   });
 
   afterEach(async () => {
+    defaultSyncService.syncFiles = originalSyncFiles;
     await store.close();
     await safeRm(tmpDir);
   });
@@ -209,6 +213,53 @@ describe("gno_capture MCP", () => {
     );
     expect(await Bun.file(join(tmpDir, "overwrite.md")).text()).toContain(
       "Updated"
+    );
+  });
+
+  test("rejects sensitive directories at any path depth", async () => {
+    const result = await handleCapture(
+      {
+        collection: "notes",
+        content: "secret",
+        path: "project/.git/config.md",
+      },
+      toolContext(true)
+    );
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0]?.text).toContain("sensitive directory: .git");
+    expect(
+      await Bun.file(join(tmpDir, "project/.git/config.md")).exists()
+    ).toBe(false);
+  });
+
+  test("returns failed sync receipt after a successful write", async () => {
+    defaultSyncService.syncFiles = (async () => [
+      {
+        status: "error",
+        path: "sync-failed.md",
+        errorCode: "PARSE_ERROR",
+        errorMessage: "bad markdown",
+      },
+    ]) as unknown as typeof defaultSyncService.syncFiles;
+
+    const result = await handleCapture(
+      {
+        collection: "notes",
+        content: "Written before sync fails",
+        path: "sync-failed.md",
+      },
+      toolContext(true)
+    );
+
+    expect(result.isError).toBeUndefined();
+    expect(result.structuredContent?.sync).toEqual({
+      status: "failed",
+      error: "INGEST_ERROR: PARSE_ERROR - bad markdown",
+    });
+    expect(result.structuredContent?.relPath).toBe("sync-failed.md");
+    expect(await Bun.file(join(tmpDir, "sync-failed.md")).text()).toContain(
+      "Written before sync fails"
     );
   });
 

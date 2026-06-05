@@ -514,6 +514,51 @@ describe("document lifecycle API", () => {
     await Bun.sleep(20);
   });
 
+  test("rejects invalid capture runtime shapes", async () => {
+    const ctxHolder = createMockContextHolder({
+      collections: [
+        {
+          name: "notes",
+          path: tmpDir,
+          pattern: "**/*.md",
+          include: [],
+          exclude: [],
+        },
+      ],
+    });
+    const store = {
+      listDocuments: async () => ({ ok: true as const, value: [] }),
+    };
+
+    for (const body of [
+      {
+        collection: "notes",
+        content: "Captured from API",
+        source: "web",
+      },
+      {
+        collection: "notes",
+        content: "Captured from API",
+        tags: "research",
+      },
+      {
+        collection: "notes",
+        content: "Captured from API",
+        overwrite: true,
+      },
+    ]) {
+      const req = new Request("http://localhost/api/capture", {
+        method: "POST",
+        body: JSON.stringify(body),
+      });
+
+      const res = await handleCreateCapture(ctxHolder, store as never, req);
+      expect(res.status).toBeGreaterThanOrEqual(400);
+      const responseBody = (await res.json()) as { error: { code: string } };
+      expect(responseBody.error.code).toBe("VALIDATION");
+    }
+  });
+
   test("fallback router wires POST /api/capture", async () => {
     const existing = createDoc(tmpDir, {
       relPath: "existing.md",

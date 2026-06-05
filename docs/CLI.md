@@ -346,8 +346,8 @@ Path behavior:
 - `--collision-policy` accepts `error`, `open_existing`, or
   `create_with_suffix`.
 - Collision checks include indexed documents and disk-only files.
-- Non-overwrite captures use exclusive create semantics so a late-arriving file
-  fails instead of being replaced.
+- Capture writes use exclusive create semantics so a late-arriving file fails
+  instead of being replaced.
 
 Provenance flags write structured `source:` frontmatter. `--source-date` maps to
 `source.observedAt`; `--source-id` maps to `source.externalId`. `--json` returns

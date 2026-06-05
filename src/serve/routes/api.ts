@@ -39,8 +39,8 @@ import {
   buildCaptureReceipt,
   listCaptureDiskRelPaths,
   planCapture,
-  type CaptureInput,
   type CapturePlan,
+  type PublicCaptureInput,
 } from "../../core/capture";
 import { writeCapturePlanFile } from "../../core/capture-write";
 import {
@@ -300,7 +300,7 @@ export interface CreateDocRequestBody {
   tags?: string[];
 }
 
-export interface CreateCaptureRequestBody extends CaptureInput {}
+export interface CreateCaptureRequestBody extends PublicCaptureInput {}
 
 export interface RenameDocRequestBody {
   name: string;
@@ -2835,6 +2835,12 @@ export async function handleCreateCapture(
   }
   if (body.folderPath !== undefined && typeof body.folderPath !== "string") {
     return errorResponse("VALIDATION", "folderPath must be a string");
+  }
+  if ("overwrite" in body) {
+    return errorResponse(
+      "VALIDATION",
+      "overwrite is not supported by /api/capture; use collisionPolicy instead"
+    );
   }
 
   const collectionName = body.collection.toLowerCase();

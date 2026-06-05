@@ -103,6 +103,8 @@ export interface CaptureInput {
   overwrite?: boolean;
 }
 
+export type PublicCaptureInput = Omit<CaptureInput, "overwrite">;
+
 export interface CapturePlan {
   collection: string;
   relPath: string;
@@ -223,6 +225,15 @@ function normalizeCollisionPolicy(
   return policy;
 }
 
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    !Array.isArray(value) &&
+    Object.getPrototypeOf(value) === Object.prototype
+  );
+}
+
 function normalizeIsoDate(value: string, field: string): string {
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) {
@@ -235,6 +246,9 @@ function normalizeSource(
   source: Partial<CaptureSource> | undefined,
   capturedAt: string
 ): CaptureSource {
+  if (source !== undefined && !isPlainObject(source)) {
+    throw new Error("source must be an object.");
+  }
   const kind = source?.kind ?? "direct";
   if (!VALID_SOURCE_KINDS.has(kind)) {
     throw new Error(`Unsupported source.kind: ${kind}`);
@@ -291,8 +305,14 @@ function normalizeSource(
 }
 
 function normalizeCaptureTags(tags: string[] | undefined): string[] {
+  if (tags !== undefined && !Array.isArray(tags)) {
+    throw new Error("tags must be an array of strings.");
+  }
   const normalized: string[] = [];
   for (const tag of tags ?? []) {
+    if (typeof tag !== "string") {
+      throw new Error("tags must be an array of strings.");
+    }
     const value = normalizeTag(tag);
     if (!validateTag(value)) {
       throw new Error(

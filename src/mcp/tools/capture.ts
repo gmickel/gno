@@ -57,11 +57,12 @@ function ensureMarkdownExtension(relPath: string): string {
 }
 
 function assertNotSensitive(relPath: string): void {
-  const firstSegment = relPath.split(/[\\/]/)[0];
-  if (firstSegment && SENSITIVE_SUBPATHS.has(firstSegment)) {
-    throw new Error(
-      `${MCP_ERRORS.INVALID_PATH.code}: Cannot write to sensitive directory: ${firstSegment}`
-    );
+  for (const segment of relPath.split(/[\\/]/)) {
+    if (segment && SENSITIVE_SUBPATHS.has(segment)) {
+      throw new Error(
+        `${MCP_ERRORS.INVALID_PATH.code}: Cannot write to sensitive directory: ${segment}`
+      );
+    }
   }
 }
 
@@ -179,14 +180,30 @@ export function handleCapture(
         );
         const syncResult = results[0];
         if (!syncResult) {
-          throw new Error("RUNTIME: Sync result missing");
+          return buildCaptureReceipt({
+            plan,
+            absPath,
+            sync: {
+              status: "failed",
+              error: "RUNTIME: Sync result missing",
+            },
+            overwritten: exists && args.overwrite === true,
+            serverInstanceId: ctx.serverInstanceId,
+          }) as McpCaptureResult;
         }
         if (syncResult.status === "error") {
-          throw new Error(
-            `INGEST_ERROR: ${syncResult.errorCode ?? "ERROR"} - ${
-              syncResult.errorMessage ?? "Unknown error"
-            }`
-          );
+          return buildCaptureReceipt({
+            plan,
+            absPath,
+            sync: {
+              status: "failed",
+              error: `INGEST_ERROR: ${syncResult.errorCode ?? "ERROR"} - ${
+                syncResult.errorMessage ?? "Unknown error"
+              }`,
+            },
+            overwritten: exists && args.overwrite === true,
+            serverInstanceId: ctx.serverInstanceId,
+          }) as McpCaptureResult;
         }
 
         let docid = syncResult.docid;
@@ -200,7 +217,16 @@ export function handleCapture(
           documentId = docResult.value.id;
         }
         if (!docid) {
-          throw new Error("RUNTIME: Document missing after sync");
+          return buildCaptureReceipt({
+            plan,
+            absPath,
+            sync: {
+              status: "failed",
+              error: "RUNTIME: Document missing after sync",
+            },
+            overwritten: exists && args.overwrite === true,
+            serverInstanceId: ctx.serverInstanceId,
+          }) as McpCaptureResult;
         }
 
         const isMarkdown =

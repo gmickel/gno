@@ -220,8 +220,9 @@ The JSON receipt reports write, sync, and embed status separately. Generated
 captures land under `inbox/YYYY-MM-DD/capture-<body-hash>.md` unless `--path`,
 `--folder`, or `--title` overrides the path. Capture does not imply embedding
 unless `embed.status` is `completed`. Capture inputs must be text; binary-like
-file/stdin content is rejected before writing, and non-overwrite captures fail
-instead of replacing a late-arriving file.
+file/stdin content is rejected before writing. CLI, REST, SDK, and Web capture
+writes fail instead of replacing late-arriving files; legacy `overwrite` is
+MCP-only.
 
 Programmatic capture uses the same receipt contract:
 

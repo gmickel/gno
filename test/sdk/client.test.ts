@@ -249,6 +249,20 @@ describe("SDK client", () => {
     }
   });
 
+  test("rejects legacy overwrite through SDK capture", async () => {
+    try {
+      await client.capture({
+        collection: "fixtures",
+        content: "Bad overwrite",
+        overwrite: true,
+      } as never);
+      throw new Error("expected capture to reject overwrite");
+    } catch (error) {
+      expect(error).toBeInstanceOf(Error);
+      expect((error as Error).message).toContain("overwrite is not supported");
+    }
+  });
+
   test("creates folders directly through the SDK", async () => {
     const result = await client.createFolder({
       collection: "fixtures",

@@ -847,11 +847,20 @@ class GnoClientImpl implements GnoClient {
         cause: existingList.error.cause,
       });
     }
+    const { overwrite: _unsupportedOverwrite, ...captureOptions } =
+      options as GnoCaptureOptions & { overwrite?: unknown };
+    if (_unsupportedOverwrite !== undefined) {
+      throw sdkError(
+        "VALIDATION",
+        "overwrite is not supported by client.capture(); use collisionPolicy instead"
+      );
+    }
+
     let plan: CapturePlan;
     try {
       plan = planCapture({
         input: {
-          ...options,
+          ...captureOptions,
           collection: collection.name,
         },
         existingRelPaths: existingList.value.map((doc) => doc.relPath),
