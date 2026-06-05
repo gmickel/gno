@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Added second-brain note presets for original ideas, people,
+  company/projects, and meetings, using flat preset frontmatter and a
+  synthesis/timeline page pattern across capture surfaces.
+
 ## [1.8.0] - 2026-06-05
 
 ### Added

@@ -797,6 +797,9 @@ gno capture [content...] [--stdin|--file <path>] [--collection <name>] [--title 
 
 - Inline argument, `--stdin`, and `--file` are mutually exclusive.
 - Content is required unless `--preset` can scaffold a non-empty note.
+- `--preset` accepts: `blank`, `project-note`, `research-note`,
+  `decision-note`, `prompt-pattern`, `source-summary`, `idea-original`,
+  `person`, `company-project`, `meeting`.
 - `--json` wins over global `--quiet`; quiet prints only the created/opened URI.
 
 **Provenance:**

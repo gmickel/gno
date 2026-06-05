@@ -687,7 +687,11 @@ Create a new document in a collection (write-enabled).
         "research-note",
         "decision-note",
         "prompt-pattern",
-        "source-summary"
+        "source-summary",
+        "idea-original",
+        "person",
+        "company-project",
+        "meeting"
       ],
       "description": "Optional note preset scaffold"
     },

@@ -337,6 +337,17 @@ Content source modes are mutually exclusive: inline argument, `--stdin`, or
 All capture inputs must be text; binary-like file/stdin content is rejected
 before writing.
 
+Preset IDs: `blank`, `project-note`, `research-note`, `decision-note`,
+`prompt-pattern`, `source-summary`, `idea-original`, `person`,
+`company-project`, `meeting`.
+
+Second-brain presets use a synthesis/timeline pattern: keep the current
+assessment above `## Timeline`, then place dated evidence below it. Use
+`idea-original` for exact idea phrasing and related concepts, `person` for
+relationship and current-state notes, `company-project` for organizations or
+active workstreams, and `meeting` when transcript, raw notes, and action items
+should live below the analysis.
+
 Path behavior:
 
 - `--path` writes to an explicit relative path.

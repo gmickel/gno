@@ -182,6 +182,7 @@ Capture a note with provenance and receive the shared capture receipt.
 const receipt = await client.capture({
   collection: "notes",
   content: "thought to remember",
+  presetId: "person",
   source: {
     kind: "web",
     url: "https://example.com",
@@ -196,9 +197,12 @@ console.log(receipt.uri, receipt.sync.status, receipt.embed.status);
 directly, and returns `sync.status: "completed"` when ingestion succeeds.
 Embedding is separate; `embed.status` remains `not_requested` until you run
 `client.embed()` or `client.index()` without `noEmbed`. Capture content must be
-text, `collisionPolicy` is validated at runtime, and `client.capture()` does not
-accept legacy `overwrite`. Capture writes use exclusive create semantics so a
-late-arriving file fails instead of being replaced.
+text, `presetId` accepts `blank`, `project-note`, `research-note`,
+`decision-note`, `prompt-pattern`, `source-summary`, `idea-original`, `person`,
+`company-project`, or `meeting`, `collisionPolicy` is validated at runtime, and
+`client.capture()` does not accept legacy `overwrite`. Capture writes use
+exclusive create semantics so a late-arriving file fails instead of being
+replaced.
 
 Use `client.createNote()` for lower-level raw note creation without provenance
 capture semantics.

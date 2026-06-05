@@ -692,7 +692,7 @@ collection: "notes"
 title: "Project Plan"
 folderPath: "projects/gno" # Optional
 collisionPolicy: "create_with_suffix" # Optional: error|open_existing|create_with_suffix
-presetId: "project-note" # Optional
+presetId: "project-note" # Optional: blank|project-note|research-note|decision-note|prompt-pattern|source-summary|idea-original|person|company-project|meeting
 content: "# Project Plan\n" # Optional when preset provides scaffold
 source:
   kind: "web" # direct|web|email|meeting|chat|file|api|unknown

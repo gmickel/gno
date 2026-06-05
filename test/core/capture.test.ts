@@ -69,6 +69,32 @@ describe("capture core", () => {
     expect(plan.tags).toContain("project");
   });
 
+  test("captures second-brain presets without authoring source in preset body", () => {
+    const plan = planCapture({
+      input: {
+        collection: "notes",
+        title: "Jane Doe",
+        presetId: "person",
+        source: {
+          kind: "web",
+          title: "Profile",
+          author: "Researcher",
+          url: "https://example.com/profile",
+        },
+      },
+      existingRelPaths: [],
+      now: FIXED_NOW,
+    });
+
+    expect(plan.content).toContain('type: "person"');
+    expect(plan.content).toContain('category: "person"');
+    expect(plan.content).toContain("## Timeline");
+    expect(plan.content).toContain("source:");
+    expect(plan.content).toContain('  title: "Profile"');
+    expect(plan.content).toContain('  author: "Researcher"');
+    expect(plan.content).not.toContain("label:");
+  });
+
   test("rejects empty content without a preset", () => {
     expect(() =>
       planCapture({

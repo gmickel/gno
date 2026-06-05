@@ -1307,6 +1307,7 @@ creation without capture semantics.
 {
   "collection": "notes",
   "content": "thought to remember",
+  "presetId": "person",
   "source": {
     "kind": "web",
     "url": "https://example.com"
@@ -1317,6 +1318,10 @@ creation without capture semantics.
 
 Path defaults match the CLI: without `relPath`, `folderPath`, or `title`, GNO
 writes to `inbox/YYYY-MM-DD/capture-<body-hash>.md` using UTC capture time.
+`presetId` accepts `blank`, `project-note`, `research-note`, `decision-note`,
+`prompt-pattern`, `source-summary`, `idea-original`, `person`,
+`company-project`, or `meeting`; content is optional when the preset scaffolds
+a note.
 `collisionPolicy` accepts `error`, `open_existing`, or `create_with_suffix`;
 `/api/capture` does not accept legacy `overwrite`. Collision checks include
 indexed documents and disk-only files. Capture content must be text, and capture
