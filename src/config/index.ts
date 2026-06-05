@@ -5,6 +5,15 @@
  */
 
 export { createDefaultConfig } from "./defaults";
+export {
+  type ConfigWarning,
+  formatConfigWarning,
+  formatConfigWarnings,
+  normalizeConfigContentTypes,
+  normalizeContentTypes,
+  type NormalizedContentTypeRule,
+  writeConfigWarningsToStderr,
+} from "./content-types";
 // Loading
 export {
   isInitialized,
@@ -40,6 +49,10 @@ export {
   CollectionSchema,
   type Config,
   ConfigSchema,
+  CONTENT_TYPE_GRAPH_HINTS,
+  type ContentTypeConfig,
+  type ContentTypeGraphHint,
+  ContentTypeSchema,
   type Context,
   ContextSchema,
   DEFAULT_EXCLUDES,

@@ -10,7 +10,12 @@ import type { SyncResult } from "../../ingestion";
 import type { SearchResults } from "../../pipeline/types";
 
 import { decorateUriForIndex, getIndexDbPath } from "../../app/constants";
-import { getConfigPaths, isInitialized, loadConfig } from "../../config";
+import {
+  getConfigPaths,
+  isInitialized,
+  loadConfig,
+  writeConfigWarningsToStderr,
+} from "../../config";
 import { SqliteAdapter } from "../../store/sqlite/adapter";
 
 /**
@@ -61,6 +66,7 @@ export async function initStore(
   if (!configResult.ok) {
     return { ok: false, error: configResult.error.message };
   }
+  writeConfigWarningsToStderr(configResult.warnings);
   const config = configResult.value;
 
   // Filter to single collection if specified

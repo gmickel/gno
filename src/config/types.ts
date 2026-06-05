@@ -246,6 +246,37 @@ export const ModelConfigSchema = z.object({
 export type ModelConfig = z.infer<typeof ModelConfigSchema>;
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Content Type Schema
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const CONTENT_TYPE_GRAPH_HINTS = [
+  "mentions",
+  "works_at",
+  "attended",
+  "decided",
+  "related_to",
+] as const;
+
+export type ContentTypeGraphHint = (typeof CONTENT_TYPE_GRAPH_HINTS)[number];
+
+export const ContentTypeSchema = z.object({
+  /** Stable content type identifier */
+  id: z.string().min(1),
+  /** Relative path prefixes that map to this content type */
+  prefixes: z.array(z.string().min(1)),
+  /** Note preset ID, resolved post-parse so unknown refs warn-and-drop */
+  preset: z.string().min(1),
+  /** Reserved for fn-84 typed graph hints; accepted but no-op in fn-83 */
+  graphHints: z.array(z.string().min(1)).optional(),
+  /** Reserved for future ranking; accepted but no-op in fn-83 */
+  searchBoost: z.number().finite().optional(),
+  /** Marks time-oriented content types; accepted but no-op in fn-83 */
+  temporal: z.boolean().optional(),
+});
+
+export type ContentTypeConfig = z.infer<typeof ContentTypeSchema>;
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Config Schema (root)
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -265,11 +296,16 @@ export const ConfigSchema = z.object({
   /** Context metadata */
   contexts: z.array(ContextSchema).default([]),
 
+  /** Opt-in schema-lite content type rules */
+  contentTypes: z.array(ContentTypeSchema).default([]),
+
   /** Model configuration */
   models: ModelConfigSchema.optional(),
 });
 
-export type Config = z.infer<typeof ConfigSchema>;
+export type Config = Omit<z.infer<typeof ConfigSchema>, "contentTypes"> & {
+  contentTypes?: ContentTypeConfig[];
+};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Scope Utilities

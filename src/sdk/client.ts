@@ -44,7 +44,11 @@ import {
   getIndexDbPath,
   parseUri,
 } from "../app/constants";
-import { ConfigSchema, loadConfig } from "../config";
+import {
+  ConfigSchema,
+  loadConfig,
+  normalizeConfigContentTypes,
+} from "../config";
 import {
   buildCaptureReceipt,
   type CapturePlan,
@@ -141,7 +145,7 @@ async function resolveClientState(
         parsed.error.issues[0]?.message ?? "Invalid config"
       );
     }
-    config = parsed.data;
+    config = normalizeConfigContentTypes(parsed.data).config;
     configPath = null;
     configSource = "inline";
   } else {

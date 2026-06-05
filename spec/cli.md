@@ -206,6 +206,47 @@ gno init --tokenizer porter
 gno init ~/docs/german --name german --language de
 ```
 
+**Config Shape (`index.yml`):**
+
+```yaml
+version: "1.0"
+ftsTokenizer: snowball english
+editorUriTemplate: "vscode://file/{path}:{line}:{col}"
+collections:
+  - name: notes
+    path: /Users/you/notes
+    pattern: "**/*"
+    include: []
+    exclude: [.git, node_modules]
+    updateCmd: git pull
+    languageHint: en
+    models:
+      embed: file:/models/embed.gguf
+contexts:
+  - scopeType: global
+    scopeKey: /
+    text: Shared retrieval context
+models:
+  activePreset: slim-tuned
+contentTypes:
+  - id: person
+    prefixes: [people/, contacts/]
+    preset: person
+    graphHints: [mentions, works_at]
+    searchBoost: 1.15
+  - id: meeting
+    prefixes: [meetings/]
+    preset: meeting
+    temporal: true
+```
+
+`contentTypes` is optional and defaults to `[]`. It is schema-lite and opt-in:
+Zod validates `id`, `prefixes`, `preset`, `graphHints`, `searchBoost`, and
+`temporal`, while `preset` remains a permissive string. Post-parse normalization
+warns and drops unknown preset references, dedupes exact duplicate prefixes,
+retains overlapping prefixes, and sorts rules longest-prefix-first. `searchBoost`
+and `graphHints` are accepted but reserved/no-op in this phase.
+
 ---
 
 ### gno collection add

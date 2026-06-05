@@ -11,6 +11,7 @@ import type {
 import { getIndexDbPath } from "../app/constants";
 import {
   ensureDirectories,
+  formatConfigWarnings,
   getConfigPaths,
   isInitialized,
   loadConfig,
@@ -102,6 +103,9 @@ export async function startBackgroundRuntime(
   );
   if (!configResult.ok) {
     return { success: false, error: configResult.error.message };
+  }
+  for (const warning of formatConfigWarnings(configResult.warnings)) {
+    console.warn(warning);
   }
   const config = configResult.value;
 
