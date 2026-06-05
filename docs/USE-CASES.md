@@ -63,6 +63,38 @@ All local. All private. Your data never leaves your machine.
 
 Your second brain finally becomes accessible.
 
+### Typed Second-Brain Pages
+
+Use capture presets when you want the note structure to carry intent:
+
+```bash
+gno capture --preset idea-original --title "Local-first inbox triage" --folder ideas/
+gno capture --preset person --title "Jane Doe" --folder people/
+gno capture --preset company-project --title "Acme renewal" --folder projects/
+gno capture --preset meeting --title "Weekly sync" --folder meetings/
+```
+
+The `person`, `company-project`, and `meeting` templates keep the current
+synthesis above `## Timeline` and the evidence trail below it. That lets an agent
+answer "what is current?" without confusing it with raw meeting notes, dated
+changes, or transcript fragments.
+
+Add optional `contentTypes` rules when folders map cleanly to page types:
+
+```yaml
+contentTypes:
+  - id: person
+    prefixes: [people/]
+    preset: person
+  - id: meeting
+    prefixes: [meetings/]
+    preset: meeting
+    temporal: true
+```
+
+Then `gno search --category person --json` can return both legacy categories and
+canonical `contentType` metadata for scripted workflows.
+
 ## Personal Notes
 
 Index and search your note-taking system.
@@ -169,6 +201,10 @@ gno query "budget discussion Q4"
 # Get AI summary
 gno ask "what did we decide about the timeline" --answer
 ```
+
+For new meeting pages, use `gno capture --preset meeting`. Keep the synthesis,
+decisions, and follow-ups above `## Timeline`; put raw notes, transcript excerpts,
+and dated evidence below it.
 
 ## Multi-Project Setup
 

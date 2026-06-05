@@ -214,7 +214,20 @@ Use `gno capture` for quick second-brain writes into an editable collection:
 ```bash
 gno capture "thought to remember"
 gno capture --file ./clip.md --source-url https://example.com --source-kind web --json
+gno capture --preset person --title "Jane Doe" --folder people/
+gno capture --preset meeting --title "Weekly sync" --folder meetings/
 ```
+
+Preset IDs: `blank`, `project-note`, `research-note`, `decision-note`,
+`prompt-pattern`, `source-summary`, `idea-original`, `person`,
+`company-project`, `meeting`.
+
+For second-brain pages, prefer the typed presets:
+
+- `idea-original`: exact idea phrasing, context, related concepts, publish potential.
+- `person`: current state, relationship, assessment, open threads, timeline.
+- `company-project`: state, changes, decisions, people, timeline.
+- `meeting`: synthesis/action analysis above `## Timeline`; raw notes below.
 
 The JSON receipt reports write, sync, and embed status separately. Generated
 captures land under `inbox/YYYY-MM-DD/capture-<body-hash>.md` unless `--path`,

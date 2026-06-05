@@ -124,6 +124,15 @@ gno capture --file ./clip.md --source-url https://example.com --source-kind web 
 gno capture "meeting note" --quiet
 ```
 
+Preset IDs: `blank`, `project-note`, `research-note`, `decision-note`,
+`prompt-pattern`, `source-summary`, `idea-original`, `person`,
+`company-project`, `meeting`.
+
+Second-brain presets keep current synthesis above `## Timeline` and dated
+evidence below it. Use `idea-original` for exact idea wording, `person` for
+relationship/current-state notes, `company-project` for organizations or active
+workstreams, and `meeting` for analysis above transcript/raw notes/action items.
+
 Important behavior:
 
 - Inline content, `--stdin`, and `--file` are mutually exclusive.

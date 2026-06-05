@@ -159,6 +159,8 @@ Use `gno capture` for quick second-brain entries with provenance metadata:
 ```bash
 gno capture "thought to remember"
 gno capture --file ./clip.md --source-url https://example.com --source-kind web --json
+gno capture --preset person --title "Jane Doe" --folder people/
+gno capture --preset meeting --title "Weekly sync" --folder meetings/
 ```
 
 Generated captures land under `inbox/YYYY-MM-DD/capture-<body-hash>.md` in UTC.
@@ -166,9 +168,16 @@ The JSON receipt reports the file write, sync status, and embed status
 separately; capture does not imply embedding unless the receipt says embedding
 completed.
 
+Use `idea-original`, `person`, `company-project`, or `meeting` when the note is a
+typed second-brain page. Those presets keep current synthesis above
+`## Timeline` and dated evidence or raw notes below it. If you configure
+`contentTypes` in `index.yml`, matching `type` frontmatter or folder prefixes are
+indexed as `contentType` and show up in JSON search/query results.
+
 In the Web UI, press **N** for Quick Capture. Basic capture is still title plus
-content; open **Source** to add provenance fields. The success view reports the
-same write, FTS sync, and embed states as the CLI/API receipt.
+content; choose a preset when you want a scaffold, and open **Source** to add
+provenance fields. The success view reports the same write, FTS sync, and embed
+states as the CLI/API receipt.
 
 If you want continuous indexing instead of manual re-runs:
 

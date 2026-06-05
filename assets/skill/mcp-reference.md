@@ -76,6 +76,12 @@ frontmatter and returns the same provenance receipt shape as CLI, REST, and SDK
 capture, plus legacy MCP fields (`docid`, `absPath`, `overwritten`,
 `serverInstanceId`).
 
+`presetId` accepts `blank`, `project-note`, `research-note`, `decision-note`,
+`prompt-pattern`, `source-summary`, `idea-original`, `person`,
+`company-project`, or `meeting`. The typed second-brain presets use flat
+frontmatter (`type`, `category`, `tags`) and a synthesis/timeline page pattern;
+provenance still comes from the capture `source` fields, not the preset.
+
 Use `collisionPolicy: "open_existing"` to return an existing note without
 rewriting, `create_with_suffix` to create the next available path, or legacy
 `overwrite: true` to replace the target path. Capture content must be text, and

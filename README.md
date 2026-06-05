@@ -97,7 +97,11 @@ gno daemon --detach  # headless continuous indexing (background; --status / --st
 
 - **Second-brain capture**: `gno capture`, REST `/api/capture`, SDK
   `client.capture()`, MCP `gno_capture`, and Web UI Quick Capture write
-  provenance-rich notes from text, stdin, or files
+  provenance-rich notes from text, stdin, or files, including typed presets for
+  ideas, people, company/projects, and meetings
+- **Schema-lite content types**: optional `contentTypes` rules map configured
+  frontmatter `type` values or path prefixes to canonical `contentType` metadata
+  in JSON search/query results
 - **Publish to [gno.sh](https://gno.sh/publish)**: new `gno publish export` CLI and Web UI action produce a self-contained artifact you upload to the hosted reader — public, secret, invite-only, or locally encrypted before upload
 - **Retrieval Quality Upgrade**: stronger BM25 lexical handling, code-aware chunking, terminal result hyperlinks, and per-collection model overrides
 - **Code Embedding Benchmarks**: new benchmark workflow across canonical, real-GNO, and pinned OSS slices for comparing alternate embedding models
@@ -546,7 +550,7 @@ Open `http://localhost:3000` to:
 - **Browse**: Cross-collection tree workspace with folder detail panes and per-tab browse context
 - **Edit**: Create, edit, and delete documents with live preview
 - **Create in place**: New notes in the current folder/collection with presets and command-palette flows
-- **Capture with provenance**: `gno capture` and Web UI Quick Capture write quick notes to an editable collection with structured `source:` metadata and a receipt that separates write, sync, and embed state
+- **Capture with provenance**: `gno capture` and Web UI Quick Capture write quick notes to an editable collection with structured `source:` metadata, typed preset scaffolds, and a receipt that separates write, sync, and embed state
 - **Same capture contract everywhere**: CLI, MCP `gno_capture`, REST `/api/capture`, SDK `client.capture()`, and Web UI Quick Capture return the same provenance receipt shape
 - **Ask**: AI-powered Q&A with citations
 - **Manage Collections**: Add, remove, and re-index collections
