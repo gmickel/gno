@@ -12,7 +12,7 @@
   "plan_review_status": "ship",
   "plan_reviewed_at": "2026-06-04T23:02:30.922160Z",
   "spec_path": ".flow/specs/fn-82-second-brain-capture-and-provenance.md",
-  "status": "open",
+  "status": "done",
   "title": "Second-brain capture and provenance foundation",
   "tracker": {
     "baseHashFlow": null,
@@ -24,5 +24,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-06-04T23:02:30.922343Z"
+  "updated_at": "2026-06-05T08:20:36.754180Z"
 }
