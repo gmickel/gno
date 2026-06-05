@@ -44,8 +44,11 @@ Add an opt-in, schema-lite `contentTypes` config key (NOT a mutable ontology) wi
 - [ ] `bun run lint:check && bun test` green.
 
 ## Done summary
+
 Added schema-lite contentTypes config support with post-parse normalization/warnings, closed-graph preset validation, reserved no-op fields, and docs/spec/tests. The implementation is limited to config parsing/normalization and does not add ingestion or search behavior.
+
 ## Evidence
+
 - Commits: e927c16b0805d3d2da2e89e40b6b18ff56220cf8
 - Tests: bun run lint:check, bun test
 - PRs:
