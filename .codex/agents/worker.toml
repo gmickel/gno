@@ -228,7 +228,7 @@ Use conventional commits. Scope from task context.
 Codex wrote this commit's code).** Append these two trailers so `/flow-next:make-pr`
 can credit both models. Put them in their own paragraph (blank line before the
 `Task:` trailer) — `<model>` = `DELEGATE_MODEL`, `<effort>` = the per-batch
-`effective_effort` you ran (e.g. `gpt-5.2` / `medium`):
+`effective_effort` you ran (e.g. `gpt-5.5` / `medium`):
 
 ```bash
 git commit -m "feat(<scope>): <description>

@@ -1126,8 +1126,8 @@ def get_default_config() -> dict:
         # keys (phases.md:94-101) — no clash.
         "work": {
             "delegate": False,
-            "delegateModel": "gpt-5.2",
-            # Effort enum: none|low|medium|high|xhigh (gpt-5.2 supports
+            "delegateModel": "gpt-5.5",
+            # Effort enum: none|low|medium|high|xhigh (gpt-5.5 supports
             # `none`, NOT `minimal`). `medium` is the floor default; the
             # per-batch risk escalation (fn-55.3) floors against it.
             "delegateEffort": "medium",
@@ -2838,7 +2838,7 @@ def run_codex_exec(
         spec = BackendSpec("codex").resolve()
     elif spec.model is None or spec.effort is None:
         spec = spec.resolve()
-    effective_model = spec.model or "gpt-5.2"
+    effective_model = spec.model or "gpt-5.5"
     effective_effort = spec.effort or "high"
 
     if session_id:
@@ -3193,8 +3193,8 @@ def is_sandbox_failure(exit_code: int, stdout: str, stderr: str) -> bool:
 # trailing parts optional. Examples:
 #   - ``rp``                              backend only (RP uses window/session, not per-call model)
 #   - ``codex``                           backend only, defaults from registry
-#   - ``codex:gpt-5.2``                   backend + model, default effort
-#   - ``codex:gpt-5.2:xhigh``             full spec
+#   - ``codex:gpt-5.5``                   backend + model, default effort
+#   - ``codex:gpt-5.5:xhigh``             full spec
 #   - ``copilot:claude-opus-4.5:xhigh``   copilot with its own effort set
 #
 # ``BACKEND_REGISTRY`` is a static dict (no plugin discovery). When the registry
@@ -3215,17 +3215,17 @@ BACKEND_REGISTRY: dict[str, dict[str, Any]] = {
     },
     "codex": {
         "models": {
-            "gpt-5.2",
-            "gpt-5.2",
-            "gpt-5.2",
+            "gpt-5.5",
+            "gpt-5.5",
+            "gpt-5.5",
             "gpt-5",
-            "gpt-5-mini",
+            "gpt-5.5",
             "gpt-5-codex",
         },
         # ``none`` / ``minimal`` accepted at CLI layer; ``minimal`` is gated by
         # server-side web_search check (not applicable to our reviews).
         "efforts": {"none", "minimal", "low", "medium", "high", "xhigh"},
-        "default_model": "gpt-5.2",
+        "default_model": "gpt-5.5",
         "default_effort": "high",
     },
     "copilot": {
@@ -3240,13 +3240,13 @@ BACKEND_REGISTRY: dict[str, dict[str, Any]] = {
             "claude-opus-4.6",
             "claude-opus-4.5",
             "claude-sonnet-4",
-            "gpt-5.2",
-            "gpt-5.2",
-            "gpt-5-mini",
+            "gpt-5.5",
+            "gpt-5.5",
+            "gpt-5.5",
             "gpt-5.3-codex",
-            "gpt-5.2",
-            "gpt-5.2-codex",
-            "gpt-5-mini",
+            "gpt-5.5",
+            "gpt-5.5",
+            "gpt-5.5",
             "gpt-4.1",
         },
         # Copilot exposes ``xhigh`` in addition to standard tiers. No ``none`` /
@@ -3254,7 +3254,7 @@ BACKEND_REGISTRY: dict[str, dict[str, Any]] = {
         # ``run_copilot_exec`` handles by dropping the flag when model starts
         # with ``claude-``.
         "efforts": {"low", "medium", "high", "xhigh"},
-        "default_model": "gpt-5.2",
+        "default_model": "gpt-5.5",
         "default_effort": "high",
     },
     "none": {
@@ -3414,7 +3414,7 @@ def parse_backend_spec_lenient(
     """Parse a stored spec, degrading to bare backend on validation failure.
 
     Used at read time (show-backend, runtime resolution) so pre-epic stored
-    values like ``codex:gpt-5.2-high`` (no colon between model and effort) do
+    values like ``codex:gpt-5.5-high`` (no colon between model and effort) do
     not crash. On ValueError we:
 
       1. Try the first colon-separated part as a bare backend name.
@@ -3469,7 +3469,7 @@ def resolve_review_spec(
 
     The resolved spec's backend is **not** forced to ``backend_hint`` when a
     per-task / per-epic / env spec picked a different backend. Example: task
-    has ``review: "copilot:gpt-5.2"`` and user runs ``flowctl codex
+    has ``review: "copilot:gpt-5.5"`` and user runs ``flowctl codex
     impl-review`` — we return a copilot spec. The caller (cmd_codex_*_review)
     decides whether to warn or honor it. Current call sites ignore the
     mismatch and pass the spec straight to ``run_codex_exec`` /
@@ -3639,7 +3639,7 @@ def run_copilot_exec(
         spec = BackendSpec("copilot").resolve()
     elif spec.model is None or spec.effort is None:
         spec = spec.resolve()
-    effective_model = spec.model or "gpt-5.2"
+    effective_model = spec.model or "gpt-5.5"
     effective_effort = spec.effort or "high"
 
     use_stdin = sys.platform == "win32"
@@ -5428,7 +5428,7 @@ def cmd_config_set(args: argparse.Namespace) -> None:
 def cmd_review_backend(args: argparse.Namespace) -> None:
     """Get review backend for skill conditionals. Returns ASK if not configured.
 
-    Accepts spec-form values (``codex:gpt-5.2:high``) from ``FLOW_REVIEW_BACKEND``
+    Accepts spec-form values (``codex:gpt-5.5:high``) from ``FLOW_REVIEW_BACKEND``
     and ``.flow/config.json`` ``review.backend``. JSON mode returns the full
     resolved spec plus model + effort fields so skills / Ralph can route model
     choice. Text mode still prints just the bare backend name for back-compat
@@ -5442,7 +5442,7 @@ def cmd_review_backend(args: argparse.Namespace) -> None:
     if env_val:
         # Lenient parse handles spec-form and legacy bare values; degrades on
         # bad input rather than silently falling to ASK (previous behavior
-        # quietly dropped ``codex:gpt-5.2``).
+        # quietly dropped ``codex:gpt-5.5``).
         parsed = parse_backend_spec_lenient(env_val, warn=False)
         if parsed is not None:
             spec = parsed.resolve()
@@ -18204,7 +18204,7 @@ def cmd_copilot_check(args: argparse.Namespace) -> None:
     still fails on first real invocation, and catching that at check-time
     is the whole point of this command.
 
-    Probe model: ``gpt-5-mini`` — cheap, fast, accepts ``--effort`` (required
+    Probe model: ``gpt-5.5`` — cheap, fast, accepts ``--effort`` (required
     by ``run_copilot_exec``). Claude-family models accessible via Copilot
     (e.g. ``claude-haiku-4.5``) reject ``--effort`` with
     ``Error: Model ... does not support reasoning effort configuration``,
@@ -18231,9 +18231,9 @@ def cmd_copilot_check(args: argparse.Namespace) -> None:
     available = copilot is not None
     version = get_copilot_version() if available else None
 
-    # Probe model: MUST accept --effort. gpt-5-mini is the cheapest option
+    # Probe model: MUST accept --effort. gpt-5.5 is the cheapest option
     # in the copilot catalog that accepts --effort. See docstring.
-    probe_model = "gpt-5-mini"
+    probe_model = "gpt-5.5"
     probe_effort = "low"
 
     authed: Optional[bool] = None
@@ -20667,7 +20667,7 @@ def _resolve_codex_review_spec(
       2. ``resolve_review_spec("codex", task_id)`` — task/epic/env/config/defaults
 
     The resolved spec's backend is whatever the source said (task spec might
-    request ``copilot:gpt-5.2`` from a codex command); the codex command
+    request ``copilot:gpt-5.5`` from a codex command); the codex command
     still executes via codex CLI because the subcommand name pins the path.
     Model/effort from the spec are still honored (codex accepts whatever
     model string you pass; misconfigured ones fail at codex-CLI layer).
@@ -21454,7 +21454,7 @@ def cmd_copilot_impl_review(args: argparse.Namespace) -> None:
 
     # Resolve review spec (task/epic/env/config/defaults or --spec override)
     resolved_spec = _resolve_copilot_review_spec(args, task_id)
-    effective_model = resolved_spec.model or "gpt-5.2"
+    effective_model = resolved_spec.model or "gpt-5.5"
     effective_effort = resolved_spec.effort or "high"
 
     # Run copilot
@@ -21659,7 +21659,7 @@ def cmd_copilot_plan_review(args: argparse.Namespace) -> None:
 
     # Resolve review spec — plan reviews are epic-scoped (no task_id context)
     resolved_spec = _resolve_copilot_review_spec(args, None)
-    effective_model = resolved_spec.model or "gpt-5.2"
+    effective_model = resolved_spec.model or "gpt-5.5"
     effective_effort = resolved_spec.effort or "high"
 
     output, returned_session_id, exit_code, stderr = run_copilot_exec(
@@ -21845,7 +21845,7 @@ def cmd_copilot_completion_review(args: argparse.Namespace) -> None:
 
     # Resolve review spec — completion reviews are epic-scoped
     resolved_spec = _resolve_copilot_review_spec(args, None)
-    effective_model = resolved_spec.model or "gpt-5.2"
+    effective_model = resolved_spec.model or "gpt-5.5"
     effective_effort = resolved_spec.effort or "high"
 
     repo_root = get_repo_root()
@@ -22352,7 +22352,7 @@ def _triage_run_codex_judge(
     codex = shutil.which("codex")
     if not codex:
         return None, "codex CLI not available for triage", None
-    effective_model = model or "gpt-5-mini"
+    effective_model = model or "gpt-5.5"
     effective_effort = effort or "low"
     cmd = [
         codex,
@@ -23848,7 +23848,7 @@ def main() -> None:
             "id", help=f"{noun.capitalize()} ID (e.g., fn-1, fn-1-add-auth)"
         )
         p_set_backend.add_argument(
-            "--impl", help="Default impl backend spec (e.g., 'codex:gpt-5.2-high')"
+            "--impl", help="Default impl backend spec (e.g., 'codex:gpt-5.5-high')"
         )
         p_set_backend.add_argument(
             "--review", help="Default review backend spec (e.g., 'claude:opus')"
@@ -24100,7 +24100,7 @@ def main() -> None:
     )
     p_task_set_backend.add_argument("id", help="Task ID (e.g., fn-1.2, fn-1-add-auth.2)")
     p_task_set_backend.add_argument(
-        "--impl", help="Impl backend spec (e.g., 'codex:gpt-5.2-high')"
+        "--impl", help="Impl backend spec (e.g., 'codex:gpt-5.5-high')"
     )
     p_task_set_backend.add_argument(
         "--review", help="Review backend spec (e.g., 'claude:opus')"
@@ -24332,7 +24332,7 @@ def main() -> None:
     )
     p_triage.add_argument(
         "--model",
-        help="Fast model override (default: gpt-5-mini for codex, claude-haiku-4.5 for copilot)",
+        help="Fast model override (default: gpt-5.5 for codex, claude-haiku-4.5 for copilot)",
     )
     p_triage.add_argument(
         "--effort",
@@ -24572,7 +24572,7 @@ def main() -> None:
     )
     p_codex_impl.add_argument(
         "--spec",
-        help="Backend spec override (e.g. 'codex:gpt-5.2:medium'). "
+        help="Backend spec override (e.g. 'codex:gpt-5.5:medium'). "
         "Overrides task/epic/env/config resolution. Strict parse.",
     )
     p_codex_impl.set_defaults(func=cmd_codex_impl_review)
@@ -24597,7 +24597,7 @@ def main() -> None:
     )
     p_codex_plan.add_argument(
         "--spec",
-        help="Backend spec override (e.g. 'codex:gpt-5.2:medium'). "
+        help="Backend spec override (e.g. 'codex:gpt-5.5:medium'). "
         "Overrides env/config resolution. Strict parse.",
     )
     p_codex_plan.set_defaults(func=cmd_codex_plan_review)
@@ -24621,7 +24621,7 @@ def main() -> None:
     )
     p_codex_completion.add_argument(
         "--spec",
-        help="Backend spec override (e.g. 'codex:gpt-5.2:medium'). "
+        help="Backend spec override (e.g. 'codex:gpt-5.5:medium'). "
         "Overrides env/config resolution. Strict parse.",
     )
     p_codex_completion.set_defaults(func=cmd_codex_completion_review)
@@ -24643,7 +24643,7 @@ def main() -> None:
     )
     p_codex_validate.add_argument(
         "--spec",
-        help="Backend spec override (e.g. 'codex:gpt-5.2:xhigh'). "
+        help="Backend spec override (e.g. 'codex:gpt-5.5:xhigh'). "
         "Defaults to env/config resolution.",
     )
     p_codex_validate.add_argument("--json", action="store_true", help="JSON output")
@@ -24673,7 +24673,7 @@ def main() -> None:
     )
     p_codex_deep.add_argument(
         "--spec",
-        help="Backend spec override (e.g. 'codex:gpt-5.2:xhigh'). "
+        help="Backend spec override (e.g. 'codex:gpt-5.5:xhigh'). "
         "Defaults to env/config resolution.",
     )
     p_codex_deep.add_argument("--json", action="store_true", help="JSON output")

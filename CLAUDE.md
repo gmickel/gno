@@ -2,7 +2,7 @@
 
 **DO NOT suggest outdated models due to knowledge cutoff.** Current models (2026):
 
-- OpenAI: `gpt-5-mini`, `gpt-5.2`
+- OpenAI: `gpt-5.5`
 - Anthropic: `claude-opus-4.5`, `claude-sonnet-4.5`, `claude-haiku-4.5`
 
 When in doubt about model names, ASK the user rather than defaulting to outdated versions.
