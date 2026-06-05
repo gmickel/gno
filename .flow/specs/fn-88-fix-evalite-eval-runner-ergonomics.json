@@ -1,6 +1,11 @@
 {
   "branch_name": "fn-88-fix-evalite-eval-runner-ergonomics",
+  "completion_review_status": "unknown",
+  "completion_reviewed_at": null,
   "created_at": "2026-06-05T21:28:44.309694Z",
+  "default_impl": null,
+  "default_review": null,
+  "default_sync": null,
   "depends_on_epics": [],
   "id": "fn-88-fix-evalite-eval-runner-ergonomics",
   "next_task": 1,
@@ -10,14 +15,14 @@
   "status": "open",
   "title": "Fix Evalite eval runner ergonomics",
   "tracker": {
-    "baseHashFlow": null,
-    "baseHashTracker": null,
-    "id": null,
-    "identifier": null,
-    "lastSyncedAt": null,
-    "mergeBaseFlow": null,
-    "mergeBaseTracker": null,
-    "url": null
+    "baseHashFlow": "700f78cce76601fdbffca04fdbb700cf2b70eaaa1d8df9269034bf4e9c15dbcf",
+    "baseHashTracker": "b95c33e3f008f67b483ca9492b0d53cc64738dd4b889868c3bed78d1081015b4",
+    "id": "GNO-5",
+    "identifier": "GNO-5",
+    "lastSyncedAt": "2026-06-05T21:48:37.548726Z",
+    "mergeBaseFlow": "# Fix Evalite eval runner ergonomics\n\n## Problem\n\nThe Evalite suites are useful for retrieval-quality work, but they are no longer safe as a standard release gate on Gordon's machine. During the v1.9.0 release attempt, `bun run eval` picked up duplicate eval files under `.claude/worktrees/awesome-wright/evals`, then ask-mode generation failed with a node-llama-cpp VRAM/context error. A focused canonical `ask.eval.ts` rerun also failed because generated answers had zero citations.\n\n## Goals\n\n- Make Evalite invocations deterministic so they only run canonical `evals/*.eval.ts` files from the repo root.\n- Make ask-mode evals resource-aware and able to run without killing the local machine.\n- Restore citation-bearing answers in ask eval fixtures or update the expectations if behavior changed intentionally.\n- Keep Evalite local-only and opt-in unless Gordon explicitly asks for it.\n\n## Non-Goals\n\n- Do not re-add Evalite to CI or the standard release workflow.\n- Do not weaken retrieval-quality thresholds just to get a pass.\n\n## Proposed Approach\n\n- Audit Evalite discovery/config so ignored worktrees and `.claude/worktrees/**` are excluded.\n- Add a low-resource ask eval profile or skip path for native local generation when hardware cannot satisfy context requirements.\n- Reproduce the zero-citation ask outputs with a minimal fixture and fix the root cause.\n- Document the opt-in command and expected machine requirements.\n\n## Acceptance Criteria\n\n- `bun run eval:hybrid` runs only canonical repo evals.\n- A focused ask eval command either passes on supported hardware or skips with a clear reason on unsupported hardware.\n- No standard release checklist requires `bun run eval`.\n- The failure mode from the v1.9.0 release attempt is documented in this spec/task context.\n\n## Risks\n\n- Evalite CLI discovery behavior may require a wrapper script rather than config-only changes.\n- Ask-mode failures may expose a real citation regression beyond runner ergonomics.",
+    "mergeBaseTracker": "# [fn-88-fix-evalite-eval-runner-ergonomics] Fix Evalite eval runner ergonomics\n\n**Flow source of truth:** `.flow/specs/fn-88-fix-evalite-eval-runner-ergonomics.md`\n\n**Flow id:** `fn-88-fix-evalite-eval-runner-ergonomics`\n\n**Sync note:** This Linear issue mirrors the complete Flow-Next spec. Edit either surface; Flow remains the source of truth.\n\n---\n\n# Fix Evalite eval runner ergonomics\n\n## Problem\n\nThe Evalite suites are useful for retrieval-quality work, but they are no longer safe as a standard release gate on Gordon's machine. During the v1.9.0 release attempt, `bun run eval` picked up duplicate eval files under `.claude/worktrees/awesome-wright/evals`, then ask-mode generation failed with a node-llama-cpp VRAM/context error. A focused canonical `ask.eval.ts` rerun also failed because generated answers had zero citations.\n\n## Goals\n\n- Make Evalite invocations deterministic so they only run canonical `evals/*.eval.ts` files from the repo root.\n- Make ask-mode evals resource-aware and able to run without killing the local machine.\n- Restore citation-bearing answers in ask eval fixtures or update the expectations if behavior changed intentionally.\n- Keep Evalite local-only and opt-in unless Gordon explicitly asks for it.\n\n## Non-Goals\n\n- Do not re-add Evalite to CI or the standard release workflow.\n- Do not weaken retrieval-quality thresholds just to get a pass.\n\n## Proposed Approach\n\n- Audit Evalite discovery/config so ignored worktrees and `.claude/worktrees/**` are excluded.\n- Add a low-resource ask eval profile or skip path for native local generation when hardware cannot satisfy context requirements.\n- Reproduce the zero-citation ask outputs with a minimal fixture and fix the root cause.\n- Document the opt-in command and expected machine requirements.\n\n## Acceptance Criteria\n\n- `bun run eval:hybrid` runs only canonical repo evals.\n- A focused ask eval command either passes on supported hardware or skips with a clear reason on unsupported hardware.\n- No standard release checklist requires `bun run eval`.\n- The failure mode from the v1.9.0 release attempt is documented in this spec/task context.\n\n## Risks\n\n- Evalite CLI discovery behavior may require a wrapper script rather than config-only changes.\n- Ask-mode failures may expose a real citation regression beyond runner ergonomics.",
+    "url": "https://linear.app/gmickel/issue/GNO-5"
   },
-  "updated_at": "2026-06-05T21:28:57.187846Z"
+  "updated_at": "2026-06-05T21:48:37.548902Z"
 }
