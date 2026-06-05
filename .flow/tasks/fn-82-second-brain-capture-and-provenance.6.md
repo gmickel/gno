@@ -52,9 +52,13 @@ Parity target:
 - [ ] **R7:** If this task is part of a release/ship pass, hosted deployment requirements and post-deploy verification are recorded before closeout.
 
 ## Done summary
+Closed capture/provenance parity and docs/site synchronization for fn-82.
 
+- Added a cross-surface golden parity test covering CLI, REST/API, MCP, and SDK with the same logical capture input, normalized dynamic capturedAt metadata, equivalent frontmatter/body, and stable receipt fields.
+- Swept repo docs, specs, schemas, skill assets, Web UI docs, and hosted `gno.sh` docs/product copy for capture semantics: raw note creation vs capture, editable copy provenance, default UTC path, collision behavior, MCP write gating, legacy overwrite, sync/FTS, and no-auto-embed behavior.
+- Verified hosted `/Users/gordon/work/gno.sh` locally with typecheck and production build/prerender.
+- Required `bun run website:sync-docs` was attempted and is blocked because `website:sync-docs` is not defined in `package.json`.
 ## Evidence
-
 - Commits:
-- Tests:
+- Tests: {'command': 'bun test test/capture/parity.test.ts', 'result': 'pass', 'evidence': '1 pass, 0 fail'}, {'command': 'bun run docs:verify', 'result': 'pass', 'evidence': '12 passed, 0 failed, 2 skipped; documentation verification passed'}, {'command': 'bun run lint:check', 'result': 'pass', 'evidence': 'oxlint type-aware/type-check passed; oxfmt check passed'}, {'command': 'bun test', 'result': 'pass', 'evidence': '1919 pass, 1 skip, 0 fail'}, {'command': 'cd /Users/gordon/work/gno.sh && bun run typecheck', 'result': 'pass', 'evidence': 'tsc --noEmit passed'}, {'command': 'cd /Users/gordon/work/gno.sh && bun run build', 'result': 'pass', 'evidence': 'vite build and prerender completed; 67 pages prerendered'}, {'command': 'bun run website:sync-docs', 'result': 'blocked', 'evidence': 'Script not found: website:sync-docs'}
 - PRs:
