@@ -814,6 +814,9 @@ maps to `source.observedAt`; `--source-id` maps to `source.externalId`.
 - Default collision policy is `open_existing` for generated hash paths and
   `error` for explicit/title/folder paths.
 - Collision checks include indexed documents and disk-only files.
+- Content must be text; NUL or binary-like control bytes are rejected.
+- Non-overwrite captures use exclusive create semantics so a file that appears
+  after planning is not replaced.
 
 **Examples:**
 

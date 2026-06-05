@@ -4,8 +4,8 @@
  * @module src/core/file-ops
  */
 
-// node:fs/promises for rename/unlink (no Bun equivalent for structure ops)
-import { copyFile, mkdir, rename, unlink } from "node:fs/promises";
+// node:fs/promises for rename/unlink/link (no Bun equivalent for structure ops or exclusive hard-link create)
+import { copyFile, link, mkdir, rename, unlink } from "node:fs/promises";
 // node:os platform/homedir/tmpdir: no Bun equivalent
 import { homedir, platform as getPlatform, tmpdir } from "node:os";
 // node:path dirname/join/parse: no Bun equivalent
@@ -25,6 +25,25 @@ export async function atomicWrite(
     });
     throw e;
   }
+}
+
+export async function atomicCreate(
+  path: string,
+  content: string
+): Promise<void> {
+  const tempPath = `${path}.tmp.${crypto.randomUUID()}`;
+  await Bun.write(tempPath, content);
+  try {
+    await link(tempPath, path);
+  } catch (e) {
+    await unlink(tempPath).catch(() => {
+      /* ignore cleanup errors */
+    });
+    throw e;
+  }
+  await unlink(tempPath).catch(() => {
+    /* ignore cleanup errors */
+  });
 }
 
 async function runCommand(cmd: string[]): Promise<void> {

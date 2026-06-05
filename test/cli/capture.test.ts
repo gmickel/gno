@@ -138,6 +138,24 @@ describe("gno capture", () => {
     expect(payload.error.message).toContain("Use only one content source");
   });
 
+  test("rejects binary-like file captures", async () => {
+    const binaryPath = join(testDir, "clip.bin");
+    await writeFile(binaryPath, Buffer.from([0x47, 0x49, 0x46, 0x01, 0x02]));
+    const result = await cli(
+      "capture",
+      "--file",
+      binaryPath,
+      "--collection",
+      "notes",
+      "--json"
+    );
+
+    expect(result.code).toBe(1);
+    const payload = JSON.parse(result.stderr);
+    expect(payload.error.code).toBe("VALIDATION");
+    expect(payload.error.message).toContain("binary-like");
+  });
+
   test("detects disk-only collisions", async () => {
     await writeFile(join(notesDir, "project-plan.md"), "# Existing\n");
     const result = await cli(

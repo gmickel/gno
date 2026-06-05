@@ -51,6 +51,7 @@ import {
   listCaptureDiskRelPaths,
   planCapture,
 } from "../core/capture";
+import { writeCapturePlanFile } from "../core/capture-write";
 import {
   atomicWrite,
   copyFilePath,
@@ -888,7 +889,7 @@ class GnoClientImpl implements GnoClient {
     }
 
     await mkdir(dirname(fullPath), { recursive: true });
-    await atomicWrite(fullPath, plan.content);
+    await writeCapturePlanFile(plan, fullPath);
     const syncResults = await defaultSyncService.syncFiles(
       collection,
       this.store,

@@ -233,6 +233,22 @@ describe("SDK client", () => {
     expect(created.content).toContain("source:");
   });
 
+  test("rejects invalid capture collision policies at runtime", async () => {
+    try {
+      await client.capture({
+        collection: "fixtures",
+        content: "Bad policy",
+        collisionPolicy: "replace" as never,
+      });
+      throw new Error("expected capture to reject invalid collision policy");
+    } catch (error) {
+      expect(error).toBeInstanceOf(Error);
+      expect((error as Error).message).toContain(
+        "collisionPolicy must be one of"
+      );
+    }
+  });
+
   test("creates folders directly through the SDK", async () => {
     const result = await client.createFolder({
       collection: "fixtures",

@@ -117,6 +117,7 @@ export interface CapturePlan {
   createdWithSuffix: boolean;
   collisionPolicy: NoteCollisionPolicy;
   collisionPolicyResult: CaptureCollisionPolicyResult;
+  overwrite: boolean;
 }
 
 export interface PlanCaptureOptions {
@@ -136,6 +137,11 @@ const VALID_SOURCE_KINDS = new Set<CaptureSourceKind>([
   "file",
   "api",
   "unknown",
+]);
+const VALID_COLLISION_POLICIES = new Set<NoteCollisionPolicy>([
+  "error",
+  "open_existing",
+  "create_with_suffix",
 ]);
 const URL_SOURCE_FIELDS = new Set(["url", "uri"]);
 const LEGACY_SOURCE_FIELD_MAP: Record<string, keyof CaptureSource> = {
@@ -188,11 +194,33 @@ function validateTextContent(content: string): void {
   if (content.includes("\0")) {
     throw new Error("Capture content contains a NUL byte.");
   }
+  for (let index = 0; index < content.length; index += 1) {
+    const code = content.charCodeAt(index);
+    const isAllowedWhitespace = code === 9 || code === 10 || code === 13;
+    if ((code < 32 || code === 127) && !isAllowedWhitespace) {
+      throw new Error("Capture content must be text, not binary-like data.");
+    }
+  }
   if (new TextEncoder().encode(content).byteLength > CAPTURE_MAX_TEXT_BYTES) {
     throw new Error(
       `Capture content exceeds ${CAPTURE_MAX_TEXT_BYTES} byte limit.`
     );
   }
+}
+
+function normalizeCollisionPolicy(
+  policy: CaptureInput["collisionPolicy"] | undefined,
+  fallback: NoteCollisionPolicy
+): NoteCollisionPolicy {
+  if (policy === undefined) {
+    return fallback;
+  }
+  if (!VALID_COLLISION_POLICIES.has(policy)) {
+    throw new Error(
+      "collisionPolicy must be one of: error, open_existing, create_with_suffix"
+    );
+  }
+  return policy;
 }
 
 function normalizeIsoDate(value: string, field: string): string {
@@ -338,6 +366,54 @@ function stripYamlString(value: string): string {
   return trimmed;
 }
 
+function parseInlineTagList(value: string): string[] {
+  const trimmed = value.trim();
+  if (!trimmed || trimmed === "[]") {
+    return [];
+  }
+  if (!(trimmed.startsWith("[") && trimmed.endsWith("]"))) {
+    return [stripYamlString(trimmed)];
+  }
+  return trimmed
+    .slice(1, -1)
+    .split(",")
+    .map((tag) => stripYamlString(tag))
+    .filter((tag) => tag.length > 0);
+}
+
+function readFrontmatterTags(lines: string[]): string[] {
+  const tags: string[] = [];
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index];
+    if (!line?.startsWith("tags:")) {
+      continue;
+    }
+    tags.push(...parseInlineTagList(line.slice("tags:".length)));
+    for (
+      let nestedIndex = index + 1;
+      nestedIndex < lines.length;
+      nestedIndex += 1
+    ) {
+      const nested = lines[nestedIndex];
+      if (!nested?.startsWith("  ")) {
+        break;
+      }
+      const item = nested.trim();
+      if (item.startsWith("-")) {
+        const tag = stripYamlString(item.slice(1));
+        if (tag) {
+          tags.push(tag);
+        }
+      }
+    }
+  }
+  return normalizeCaptureTags(tags);
+}
+
+function shouldSkipNestedFrontmatterLine(line: string): boolean {
+  return line.startsWith("  ") || line.trim() === "";
+}
+
 export function extractCaptureSourceFromFrontmatter(
   content: string
 ): Partial<CaptureSource> {
@@ -417,18 +493,36 @@ export function mergeCaptureFrontmatter(input: {
   tags: string[];
   title?: string;
 }): string {
+  return mergeCaptureFrontmatterAndTags(input).content;
+}
+
+function mergeCaptureFrontmatterAndTags(input: {
+  content: string;
+  source: CaptureSource;
+  tags: string[];
+  title?: string;
+}): { content: string; tags: string[] } {
   const { lines, body, hasFrontmatter } = splitFrontmatter(input.content);
   const nextLines: string[] = [];
   let skippingSource = false;
-  let hasTags = false;
+  let skippingTags = false;
   let hasTitle = false;
+  const mergedTags = [
+    ...new Set([...readFrontmatterTags(lines), ...input.tags]),
+  ];
 
   for (const line of lines) {
     if (skippingSource) {
-      if (line.startsWith("  ") || line.trim() === "") {
+      if (shouldSkipNestedFrontmatterLine(line)) {
         continue;
       }
       skippingSource = false;
+    }
+    if (skippingTags) {
+      if (shouldSkipNestedFrontmatterLine(line)) {
+        continue;
+      }
+      skippingTags = false;
     }
 
     if (line.startsWith("source:")) {
@@ -436,7 +530,8 @@ export function mergeCaptureFrontmatter(input: {
       continue;
     }
     if (line.startsWith("tags:")) {
-      hasTags = true;
+      skippingTags = true;
+      continue;
     }
     if (line.startsWith("title:")) {
       hasTitle = true;
@@ -447,19 +542,21 @@ export function mergeCaptureFrontmatter(input: {
   if (input.title && !hasTitle) {
     nextLines.unshift(`title: ${JSON.stringify(input.title)}`);
   }
-  if (input.tags.length > 0 && !hasTags) {
+  if (mergedTags.length > 0) {
     nextLines.push("tags:");
-    for (const tag of input.tags) {
+    for (const tag of mergedTags) {
       nextLines.push(`  - ${JSON.stringify(tag)}`);
     }
   }
   nextLines.push(...sourceFrontmatterLines(input.source));
 
   const normalizedBody = hasFrontmatter ? body : input.content;
-  return (
-    `---\n${nextLines.join("\n")}\n---\n\n${normalizedBody.trimStart()}`.trimEnd() +
-    "\n"
-  );
+  return {
+    content:
+      `---\n${nextLines.join("\n")}\n---\n\n${normalizedBody.trimStart()}`.trimEnd() +
+      "\n",
+    tags: mergedTags,
+  };
 }
 
 function buildCaptureContent(input: {
@@ -494,16 +591,16 @@ function buildCaptureContent(input: {
   });
   const rawContent =
     resolvedPreset?.content ?? body ?? `# ${input.title || "Untitled"}\n`;
-  const content = mergeCaptureFrontmatter({
+  const merged = mergeCaptureFrontmatterAndTags({
     content: rawContent,
     source: input.source,
     tags: resolvedPreset?.tags ?? input.tags,
     title: input.title,
   });
   return {
-    content,
+    content: merged.content,
     body: body ?? resolvedPreset?.body ?? "",
-    tags: resolvedPreset?.tags ?? input.tags,
+    tags: merged.tags,
   };
 }
 
@@ -531,21 +628,22 @@ export function planCapture(options: PlanCaptureOptions): CapturePlan {
     options.existingRelPaths,
     options.diskRelPaths
   );
-  const collisionPolicy =
-    options.input.collisionPolicy ??
-    (generatedRelPath ? "open_existing" : "error");
+  const collisionPolicy = normalizeCollisionPolicy(
+    options.input.collisionPolicy,
+    generatedRelPath ? "open_existing" : "error"
+  );
+  const overwrite = options.input.overwrite === true;
   const createPlan = resolveNoteCreatePlan(
     {
       collection: options.input.collection,
       relPath: options.input.relPath ?? generatedRelPath,
       title,
       folderPath: options.input.folderPath,
-      collisionPolicy: options.input.overwrite ? "error" : collisionPolicy,
+      collisionPolicy: overwrite ? "error" : collisionPolicy,
     },
-    options.input.overwrite ? [] : existing
+    overwrite ? [] : existing
   );
-  const overwritten =
-    options.input.overwrite && existing.has(createPlan.relPath);
+  const overwritten = overwrite && existing.has(createPlan.relPath);
 
   return {
     collection: options.input.collection,
@@ -567,6 +665,7 @@ export function planCapture(options: PlanCaptureOptions): CapturePlan {
         : createPlan.createdWithSuffix
           ? "created_with_suffix"
           : "created",
+    overwrite,
   };
 }
 

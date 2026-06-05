@@ -219,7 +219,9 @@ gno capture --file ./clip.md --source-url https://example.com --source-kind web 
 The JSON receipt reports write, sync, and embed status separately. Generated
 captures land under `inbox/YYYY-MM-DD/capture-<body-hash>.md` unless `--path`,
 `--folder`, or `--title` overrides the path. Capture does not imply embedding
-unless `embed.status` is `completed`.
+unless `embed.status` is `completed`. Capture inputs must be text; binary-like
+file/stdin content is rejected before writing, and non-overwrite captures fail
+instead of replacing a late-arriving file.
 
 Programmatic capture uses the same receipt contract:
 

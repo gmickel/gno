@@ -747,8 +747,11 @@ Create a new document in a collection (write-enabled).
   `collisionPolicy`
 - `presetId` applies a structured note scaffold before write
 - Content is required unless `presetId` can scaffold a non-empty note
+- Content must be text; NUL or binary-like control bytes are rejected
 - Default generated captures use `inbox/YYYY-MM-DD/capture-<body-hash>.md`
 - Collision checks include indexed documents and disk-only files
+- Non-overwrite captures fail instead of replacing a file that appears after
+  planning
 - Capture writes structured `source:` frontmatter with `kind`, `capturedAt`,
   and optional `url`, `uri`, `docid`, `mime`, `ext`, `author`, `observedAt`,
   `externalId`, and `title`

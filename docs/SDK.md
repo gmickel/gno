@@ -195,7 +195,10 @@ console.log(receipt.uri, receipt.sync.status, receipt.embed.status);
 `client.capture()` writes into an editable collection, syncs the created file
 directly, and returns `sync.status: "completed"` when ingestion succeeds.
 Embedding is separate; `embed.status` remains `not_requested` until you run
-`client.embed()` or `client.index()` without `noEmbed`.
+`client.embed()` or `client.index()` without `noEmbed`. Capture content must be
+text, `collisionPolicy` is validated at runtime, and non-overwrite captures use
+exclusive create semantics so a late-arriving file fails instead of being
+replaced.
 
 Use `client.createNote()` for lower-level raw note creation without provenance
 capture semantics.

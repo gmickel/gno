@@ -302,6 +302,14 @@ export function CaptureModal({
       ...(sourceObservedAt.trim() && { observedAt: sourceObservedAt.trim() }),
       ...(sourceExternalId.trim() && { externalId: sourceExternalId.trim() }),
     };
+    const presetOnly =
+      selectedPresetId &&
+      selectedPresetId !== "blank" &&
+      content === lastGeneratedContent;
+    const submitPresetId =
+      selectedPresetId && selectedPresetId !== "blank"
+        ? selectedPresetId
+        : undefined;
 
     const { data, error: err } = await apiFetch<CaptureResponse>(
       "/api/capture",
@@ -311,8 +319,8 @@ export function CaptureModal({
           collection,
           title,
           folderPath: defaultFolderPath || undefined,
-          content,
-          presetId: selectedPresetId || undefined,
+          content: presetOnly ? undefined : content,
+          presetId: submitPresetId,
           collisionPolicy: "create_with_suffix",
           source,
           ...(tags.length > 0 && { tags }),
@@ -341,6 +349,7 @@ export function CaptureModal({
     content,
     defaultFolderPath,
     isValid,
+    lastGeneratedContent,
     onSuccess,
     selectedPresetId,
     sourceAuthor,

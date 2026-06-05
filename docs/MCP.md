@@ -710,7 +710,8 @@ Collision handling checks both indexed documents and disk-only files. Use
 `collisionPolicy: "open_existing"` to return an existing receipt without
 rewriting content, `create_with_suffix` to create the next available filename,
 or legacy `overwrite: true` to replace the target path and return
-`collisionPolicyResult: "overwritten"`.
+`collisionPolicyResult: "overwritten"`. Capture content must be text, and
+non-overwrite captures fail instead of replacing a late-arriving file.
 
 MCP capture runs under the server write lock and syncs the written file into FTS
 before returning `sync.status: "completed"`. It does not auto-embed; run

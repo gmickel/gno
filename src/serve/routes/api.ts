@@ -42,6 +42,7 @@ import {
   type CaptureInput,
   type CapturePlan,
 } from "../../core/capture";
+import { writeCapturePlanFile } from "../../core/capture-write";
 import {
   buildEditableCopyContent,
   deriveEditableCopyRelPath,
@@ -2890,7 +2891,7 @@ export async function handleCreateCapture(
   try {
     await mkdir(dirname(fullPath), { recursive: true });
     ctxHolder.watchService?.suppress(fullPath);
-    await atomicWrite(fullPath, plan.content);
+    await writeCapturePlanFile(plan, fullPath);
 
     const gnoUri = `gno://${collection.name}/${plan.relPath}`;
     const jobResult = startJob("sync", async (): Promise<SyncResult> => {

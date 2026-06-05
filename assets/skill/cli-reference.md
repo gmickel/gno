@@ -127,8 +127,11 @@ gno capture "meeting note" --quiet
 Important behavior:
 
 - Inline content, `--stdin`, and `--file` are mutually exclusive.
+- Capture accepts text only; binary-like file/stdin content is rejected before
+  writing.
 - Without `--path`, `--folder`, or `--title`, captures use
   `inbox/YYYY-MM-DD/capture-<body-hash>.md` in UTC.
+- Non-overwrite captures fail instead of replacing a late-arriving file.
 - `--json` returns a capture receipt with separate write, sync, and embed status.
 - Capture syncs the file into FTS but does not imply embedding unless
   `embed.status` is `completed`.

@@ -20,9 +20,9 @@ import {
   type CaptureInput as SharedCaptureInput,
   type CaptureReceipt,
 } from "../../core/capture";
+import { writeCapturePlanFile } from "../../core/capture-write";
 import { MCP_ERRORS } from "../../core/errors";
 import { withWriteLock } from "../../core/file-lock";
-import { atomicWrite } from "../../core/file-ops";
 import { normalizeCollectionName } from "../../core/validation";
 import { defaultSyncService } from "../../ingestion";
 import { runTool, type ToolResult } from "./index";
@@ -169,7 +169,7 @@ export function handleCapture(
         }
 
         await mkdir(dirname(absPath), { recursive: true });
-        await atomicWrite(absPath, plan.content);
+        await writeCapturePlanFile(plan, absPath);
 
         const results = await defaultSyncService.syncFiles(
           collection,

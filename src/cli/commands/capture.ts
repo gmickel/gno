@@ -24,8 +24,8 @@ import {
   planCapture,
   serializeCaptureReceipt,
 } from "../../core/capture";
+import { writeCapturePlanFile } from "../../core/capture-write";
 import { withWriteLock } from "../../core/file-lock";
-import { atomicWrite } from "../../core/file-ops";
 import { defaultSyncService } from "../../ingestion";
 import { CliError } from "../errors";
 import { initStore } from "./shared";
@@ -217,7 +217,7 @@ export async function capture(
       }
 
       await mkdir(dirname(absPath), { recursive: true });
-      await atomicWrite(absPath, plan.content);
+      await writeCapturePlanFile(plan, absPath);
       const syncResults = await defaultSyncService.syncFiles(
         collection,
         store,

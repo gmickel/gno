@@ -230,4 +230,69 @@ describe("CaptureModal DOM interactions", () => {
       externalId: "src-1",
     });
   });
+
+  test("submits untouched preset scaffold as preset only", async () => {
+    apiFetch.mockImplementation(async (...args: unknown[]) => {
+      const endpoint = typeof args[0] === "string" ? args[0] : "";
+      if (endpoint === "/api/status") {
+        return apiOk({
+          collections: [{ name: "notes", path: "/tmp/notes" }],
+        });
+      }
+      if (endpoint === "/api/capture") {
+        return apiOk({
+          uri: "gno://notes/research-brief.md",
+          collection: "notes",
+          relPath: "research-brief.md",
+          created: true,
+          openedExisting: false,
+          createdWithSuffix: false,
+          overwritten: false,
+          contentHash:
+            "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+          source: {
+            kind: "direct",
+            capturedAt: "2026-06-04T12:34:56.000Z",
+          },
+          tags: ["research"],
+          sync: { status: "pending", jobId: "job-123" },
+          embed: {
+            status: "not_requested",
+            reason: "Capture does not embed automatically.",
+          },
+          collisionPolicyResult: "created",
+        });
+      }
+      return apiOk({});
+    });
+
+    const { CaptureModal } =
+      await import("../../../../src/serve/public/components/CaptureModal");
+    const { user } = renderWithUser(
+      <CaptureModal
+        onOpenChange={() => undefined}
+        open={true}
+        presetId="research-note"
+      />
+    );
+
+    await screen.findByRole("dialog", { name: "New note" });
+    await user.type(screen.getByLabelText("Title"), "Research brief");
+    await waitFor(() => {
+      expect(
+        (screen.getByLabelText("Content") as HTMLTextAreaElement).value
+      ).toContain("## Summary");
+    });
+    await user.click(screen.getByRole("button", { name: "Create note" }));
+
+    await screen.findByText("Note captured");
+    const captureCall = apiFetch.mock.calls.find(
+      (call) => call[0] === "/api/capture"
+    );
+    const body = JSON.parse(
+      (captureCall?.[1] as { body: string } | undefined)?.body ?? "{}"
+    );
+    expect(body.presetId).toBe("research-note");
+    expect(body.content).toBeUndefined();
+  });
 });

@@ -1,4 +1,7 @@
 import { describe, expect, test } from "bun:test";
+import { mkdir } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 import {
   buildCaptureReceipt,
@@ -7,6 +10,7 @@ import {
   mergeCaptureFrontmatter,
   planCapture,
 } from "../../src/core/capture";
+import { writeCapturePlanFile } from "../../src/core/capture-write";
 
 const FIXED_NOW = new Date("2026-06-04T12:34:56.000Z");
 
@@ -91,6 +95,33 @@ describe("capture core", () => {
     ).toThrow("NUL byte");
   });
 
+  test("rejects binary-like control bytes without NUL", () => {
+    expect(() =>
+      planCapture({
+        input: {
+          collection: "notes",
+          content: "GIF89a\u0001\u0002\u0003payload",
+        },
+        existingRelPaths: [],
+        now: FIXED_NOW,
+      })
+    ).toThrow("binary-like");
+  });
+
+  test("rejects invalid runtime collision policies in shared core", () => {
+    expect(() =>
+      planCapture({
+        input: {
+          collection: "notes",
+          content: "hello",
+          collisionPolicy: "replace" as never,
+        },
+        existingRelPaths: [],
+        now: FIXED_NOW,
+      })
+    ).toThrow("collisionPolicy must be one of");
+  });
+
   test("validates source URLs and dates", () => {
     expect(() =>
       planCapture({
@@ -135,10 +166,54 @@ describe("capture core", () => {
     });
 
     expect(merged).toContain('category: "research"');
-    expect(merged).toContain("tags: [old]");
+    expect(merged).toContain("tags:");
+    expect(merged).toContain('  - "old"');
+    expect(merged).toContain('  - "new"');
     expect(merged).toContain("source:");
     expect(merged).toContain('  url: "https://example.com"');
     expect(merged).toContain("# Body");
+  });
+
+  test("receipt tags match merged frontmatter tags", () => {
+    const plan = planCapture({
+      input: {
+        collection: "notes",
+        title: "Tagged",
+        content: "---\ntags:\n  - old\n---\n\n# Tagged\n",
+        tags: ["new"],
+      },
+      existingRelPaths: [],
+      now: FIXED_NOW,
+    });
+
+    expect(plan.tags).toEqual(["old", "new"]);
+    expect(plan.content).toContain('  - "old"');
+    expect(plan.content).toContain('  - "new"');
+  });
+
+  test("exclusive capture writes do not overwrite late-arriving files", async () => {
+    const testDir = join(tmpdir(), `gno-capture-write-${Date.now()}`);
+    await mkdir(testDir, { recursive: true });
+    const target = join(testDir, "race.md");
+    const plan = planCapture({
+      input: {
+        collection: "notes",
+        relPath: "race.md",
+        content: "new content",
+      },
+      existingRelPaths: [],
+      now: FIXED_NOW,
+    });
+    await Bun.write(target, "late content");
+
+    try {
+      await writeCapturePlanFile(plan, target);
+      throw new Error("expected writeCapturePlanFile to fail");
+    } catch (error) {
+      expect(error).toBeInstanceOf(Error);
+      expect((error as Error).message).toContain("File already exists");
+    }
+    expect(await Bun.file(target).text()).toBe("late content");
   });
 
   test("extracts structured and legacy source fields", () => {

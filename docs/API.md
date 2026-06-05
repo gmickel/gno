@@ -1318,7 +1318,9 @@ creation without capture semantics.
 Path defaults match the CLI: without `relPath`, `folderPath`, or `title`, GNO
 writes to `inbox/YYYY-MM-DD/capture-<body-hash>.md` using UTC capture time.
 `collisionPolicy` accepts `error`, `open_existing`, or `create_with_suffix`;
-collision checks include indexed documents and disk-only files.
+collision checks include indexed documents and disk-only files. Capture content
+must be text, and non-overwrite captures use exclusive create semantics so a
+late-arriving file fails instead of being replaced.
 
 **Response** (202 Accepted):
 
