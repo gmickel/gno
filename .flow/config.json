@@ -15,28 +15,28 @@
   },
   "tracker": {
     "conflictTiebreak": "always-ask",
-    "enabled": false,
+    "enabled": true,
     "perEvent": {
-      "capture": "off",
-      "completionReview": "off",
-      "interview": "off",
-      "makePr": "off",
-      "plan": "off",
-      "resolvePr": "off",
+      "capture": "reconcile",
+      "completionReview": "reconcile",
+      "interview": "reconcile",
+      "makePr": "comment",
+      "plan": "reconcile",
+      "resolvePr": "comment",
       "work": {
-        "done": "off",
-        "firstClaim": "off"
+        "done": "comment",
+        "firstClaim": "push"
       }
     },
     "perTracker": {
       "labelMap": {},
       "priorityMap": {},
       "projectId": null,
-      "teamId": null
+      "teamId": "ccfc7aae-89d7-417a-a58f-8b32cae471d9"
     },
-    "provenance": null,
+    "provenance": "discovery ceremony 2026-06-05; confirmed by Gordon; signals: Linear MCP present, GNO team named; gh auth present from setup; LINEAR_API_KEY not required",
     "staleAfterHours": 24,
-    "type": null,
+    "type": "linear",
     "version": 1
   },
   "work": {
