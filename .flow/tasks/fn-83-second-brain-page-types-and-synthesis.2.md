@@ -26,7 +26,7 @@ Add an opt-in, schema-lite `contentTypes` config key (NOT a mutable ontology) wi
 
 - `src/config/types.ts:171-229` (ModelPreset pattern), `:252-270` (ConfigSchema slot).
 - `src/config/loader.ts:18-19,51-131` — result type + `loadConfigFromPath`; where the warnings field + post-parse normalization land.
-- `src/core/note-presets.ts:11-17` — `NotePresetId` for post-parse `preset` resolution.
+- `src/core/note-presets.ts:11-21` — `NotePresetId` for post-parse `preset` resolution. <!-- Updated by plan-sync: fn-83-second-brain-page-types-and-synthesis.1 used expanded NotePresetId union range 11-21 not planned 11-17 -->
 
 **Optional:**
 
