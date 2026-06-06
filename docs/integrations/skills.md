@@ -1,37 +1,37 @@
 # Skills Integration
 
-Use GNO as a skill in AI coding agents like Claude Code, OpenAI Codex, OpenCode, OpenClaw, Amp, VS Code Copilot, and Cursor.
+Use GNO as a skill in AI coding agents like Claude Code, OpenAI Codex, OpenCode, OpenClaw, VS Code Copilot, and Cursor.
 
 > **Why Skills?** Skills are the preferred integration method due to progressive discovery: tools are only loaded when invoked via `/gno`, avoiding context pollution from unused tool definitions. See [agentskills.io](https://agentskills.io/home) for the specification.
 >
-> Skills work in any client that supports the spec. OpenCode and Amp use the same `.claude` path as Claude Code. VS Code Copilot and Cursor require manual setup (see below).
+> Skills work in clients that support the spec. GNO has first-class install targets for Claude Code, Codex, OpenCode, and OpenClaw. VS Code Copilot and Cursor require manual setup (see below).
 
 ## Quick Install
 
 ```bash
-gno skill install --scope user          # Claude Code (default)
-gno skill install --target codex        # OpenAI Codex CLI
-gno skill install --target opencode     # OpenCode
-gno skill install --target openclaw     # OpenClaw
-gno skill install --target all          # All targets at once
+gno skill install --scope user                    # Claude Code, user-wide
+gno skill install --target codex --scope user     # OpenAI Codex CLI
+gno skill install --target opencode --scope user  # OpenCode
+gno skill install --target openclaw --scope user  # OpenClaw
+gno skill install --target all --scope user       # All targets at once
 ```
 
 ## Supported Targets
 
-| Target     | Command                               | Config Location                  | Also Works With |
-| :--------- | :------------------------------------ | :------------------------------- | :-------------- |
-| `claude`   | `gno skill install`                   | `~/.claude/skills/gno/`          | OpenCode, Amp   |
-| `codex`    | `gno skill install --target codex`    | `~/.codex/skills/gno/`           |                 |
-| `opencode` | `gno skill install --target opencode` | `~/.config/opencode/skills/gno/` |                 |
-| `openclaw` | `gno skill install --target openclaw` | `~/.openclaw/skills/gno/`        |                 |
-| `all`      | `gno skill install --target all`      | All locations                    |                 |
+| Target     | User-wide command                                  | User Config Location             |
+| :--------- | :------------------------------------------------- | :------------------------------- |
+| `claude`   | `gno skill install --scope user`                   | `~/.claude/skills/gno/`          |
+| `codex`    | `gno skill install --target codex --scope user`    | `~/.codex/skills/gno/`           |
+| `opencode` | `gno skill install --target opencode --scope user` | `~/.config/opencode/skills/gno/` |
+| `openclaw` | `gno skill install --target openclaw --scope user` | `~/.openclaw/skills/gno/`        |
+| `all`      | `gno skill install --target all --scope user`      | All locations                    |
 
 ## Scope Options
 
-| Scope     | Flag              | Description                        |
-| :-------- | :---------------- | :--------------------------------- |
-| `project` | `--scope project` | Install to current directory only  |
-| `user`    | `--scope user`    | Install for all projects (default) |
+| Scope     | Flag              | Description                                 |
+| :-------- | :---------------- | :------------------------------------------ |
+| `project` | `--scope project` | Install to current directory only (default) |
+| `user`    | `--scope user`    | Install for all projects                    |
 
 ## Using the Skill
 
@@ -90,12 +90,9 @@ gno skill paths [options]      # Show installation paths
 
 | Flag                | Description                                                             |
 | :------------------ | :---------------------------------------------------------------------- |
-| `--scope <scope>`   | `project` or `user` (default: `user`)                                   |
+| `--scope <scope>`   | `project` or `user` (default: `project`)                                |
 | `--target <target>` | `claude`, `codex`, `opencode`, `openclaw`, or `all` (default: `claude`) |
 | `--force`           | Overwrite existing installation                                         |
-| `--retrieval`       | Include retrieval flags reference                                       |
-| `--links`           | Include linking commands reference                                      |
-| `--query-mode`      | Include query mode documentation                                        |
 
 ## Example Workflows
 

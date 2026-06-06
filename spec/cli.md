@@ -1650,7 +1650,7 @@ Remove GNO agent skill.
 **Synopsis:**
 
 ```bash
-gno skill uninstall [--scope <project|user>] [--target <claude|codex|all>] [--json]
+gno skill uninstall [--scope <project|user>] [--target <claude|codex|opencode|openclaw|all>] [--json]
 ```
 
 **Options:** Same as `skill install` (except `--force`)
@@ -1726,7 +1726,7 @@ Show resolved skill installation paths.
 **Synopsis:**
 
 ```bash
-gno skill paths [--scope <project|user>] [--target <claude|codex|all>] [--json]
+gno skill paths [--scope <project|user>] [--target <claude|codex|opencode|openclaw|all>] [--json]
 ```
 
 **Options:** Same as `skill install`
