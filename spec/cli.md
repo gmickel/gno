@@ -1890,7 +1890,7 @@ List outgoing links from a document.
 **Synopsis:**
 
 ```bash
-gno links [list] <doc> [--type <wiki|markdown>] [--json] [--md]
+gno links [list] <doc> [--type <wiki|markdown>] [--edge-type <type>] [--relation <type>] [--json] [--md]
 ```
 
 **Arguments:**
@@ -1901,11 +1901,13 @@ gno links [list] <doc> [--type <wiki|markdown>] [--json] [--md]
 
 **Options:**
 
-| Flag     | Type   | Description         |
-| -------- | ------ | ------------------- |
-| `--type` | string | Filter by link type |
-| `--json` | flag   | JSON output         |
-| `--md`   | flag   | Markdown output     |
+| Flag          | Type   | Description                       |
+| ------------- | ------ | --------------------------------- |
+| `--type`      | string | Filter positional links by syntax |
+| `--edge-type` | string | Filter semantic edges by type     |
+| `--relation`  | string | Alias for `--edge-type`           |
+| `--json`      | flag   | JSON output                       |
+| `--md`        | flag   | Markdown output                   |
 
 **Behavior:**
 
@@ -1913,6 +1915,9 @@ gno links [list] <doc> [--type <wiki|markdown>] [--json] [--md]
 - Shows link type (wiki or markdown), target, display text, location
 - Indicates whether each link resolves to an indexed document
 - Default subcommand is `list` (can be omitted)
+- `--edge-type`/`--relation` switches to semantic `doc_edges` output (`edgeType`, `relationType`, `confidence`, `edgeSource`)
+- `--edge-type` and `--relation` are aliases for the same semantic edge type filter; if both are supplied they must match
+- `--type` cannot be combined with `--edge-type` or `--relation`
 
 **Output (JSON):**
 
@@ -1954,6 +1959,10 @@ gno links gno://notes/source.md
 # Filter to wiki links only
 gno links list #abc123 --type wiki
 
+# Filter semantic relationship edges
+gno links gno://notes/source.md --edge-type mentions --json
+gno links gno://notes/source.md --relation mentions --json
+
 # JSON output
 gno links gno://notes/note.md --json
 ```
@@ -1967,7 +1976,7 @@ List documents that link to a target document.
 **Synopsis:**
 
 ```bash
-gno backlinks <doc> [-c, --collection <name>] [--json] [--md]
+gno backlinks <doc> [-c, --collection <name>] [--edge-type <type>] [--relation <type>] [--json] [--md]
 ```
 
 **Arguments:**
@@ -1978,17 +1987,20 @@ gno backlinks <doc> [-c, --collection <name>] [--json] [--md]
 
 **Options:**
 
-| Flag               | Type   | Description          |
-| ------------------ | ------ | -------------------- |
-| `-c, --collection` | string | Filter by collection |
-| `--json`           | flag   | JSON output          |
-| `--md`             | flag   | Markdown output      |
+| Flag               | Type   | Description                       |
+| ------------------ | ------ | --------------------------------- |
+| `-c, --collection` | string | Filter by collection              |
+| `--edge-type`      | string | Filter semantic backlinks by type |
+| `--relation`       | string | Alias for `--edge-type`           |
+| `--json`           | flag   | JSON output                       |
+| `--md`             | flag   | Markdown output                   |
 
 **Behavior:**
 
 - Lists all documents that link TO the specified document
 - Shows source document info, link location, and link text
 - Supports both wiki and markdown link resolution
+- `--edge-type`/`--relation` switches to semantic `doc_edges` backlinks (`edgeType`, `relationType`, `confidence`, `edgeSource`) while preserving `--collection`
 
 **Output (JSON):**
 
@@ -2027,6 +2039,9 @@ gno backlinks gno://notes/target.md
 
 # Filter by collection
 gno backlinks #abc123 --collection notes
+
+# Filter semantic backlinks
+gno backlinks gno://notes/target.md --relation related_to --json
 
 # JSON output
 gno backlinks gno://docs/api.md --json

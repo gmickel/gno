@@ -2197,6 +2197,8 @@ function wireLinksCommands(program: Command): void {
     .command("list <doc>", { isDefault: true })
     .description("List outgoing links from a document")
     .option("--type <type>", "filter by link type (wiki, markdown)")
+    .option("--edge-type <type>", "filter by semantic edge type")
+    .option("--relation <type>", "alias for --edge-type")
     .option("--json", "JSON output")
     .option("--md", "Markdown output")
     .action(async (doc: string, cmdOpts: Record<string, unknown>) => {
@@ -2212,11 +2214,27 @@ function wireLinksCommands(program: Command): void {
           `Invalid link type: ${linkType}. Must be 'wiki' or 'markdown'.`
         );
       }
+      const edgeType = cmdOpts.edgeType as string | undefined;
+      const relation = cmdOpts.relation as string | undefined;
+      if (linkType && (edgeType || relation)) {
+        throw new CliError(
+          "VALIDATION",
+          "--type cannot be combined with --edge-type or --relation"
+        );
+      }
+      if (edgeType && relation && edgeType !== relation) {
+        throw new CliError(
+          "VALIDATION",
+          "--edge-type and --relation are aliases and must match when both are provided"
+        );
+      }
 
       const { linksList, formatLinksList } = await import("./commands/links");
       const result = await linksList(doc, {
         configPath: globals.config,
         type: linkType as "wiki" | "markdown" | undefined,
+        edgeType,
+        relation,
         json: format === "json",
         md: format === "md",
       });
@@ -2240,6 +2258,8 @@ function wireLinksCommands(program: Command): void {
     .command("backlinks <doc>")
     .description("List documents linking to this document")
     .option("-c, --collection <name>", "filter by collection")
+    .option("--edge-type <type>", "filter by semantic edge type")
+    .option("--relation <type>", "alias for --edge-type")
     .option("--json", "JSON output")
     .option("--md", "Markdown output")
     .action(async (doc: string, cmdOpts: Record<string, unknown>) => {
@@ -2248,9 +2268,19 @@ function wireLinksCommands(program: Command): void {
       const globals = getGlobals();
 
       const { backlinks, formatBacklinks } = await import("./commands/links");
+      const edgeType = cmdOpts.edgeType as string | undefined;
+      const relation = cmdOpts.relation as string | undefined;
+      if (edgeType && relation && edgeType !== relation) {
+        throw new CliError(
+          "VALIDATION",
+          "--edge-type and --relation are aliases and must match when both are provided"
+        );
+      }
       const result = await backlinks(doc, {
         configPath: globals.config,
         collection: cmdOpts.collection as string | undefined,
+        edgeType,
+        relation,
         json: format === "json",
         md: format === "md",
       });

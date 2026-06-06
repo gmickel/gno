@@ -838,15 +838,18 @@ List outgoing links from a document.
 ```bash
 gno links gno://notes/source.md        # List all links
 gno links #abc123 --type wiki          # Wiki links only
+gno links source.md --edge-type mentions --json
+gno links source.md --relation mentions --json
 gno links source.md --json
 ```
 
 Options:
 
-- `--type <wiki|markdown>` - Filter by link type
+- `--type <wiki|markdown>` - Filter positional links by syntax
+- `--edge-type <type>`, `--relation <type>` - Filter semantic relationship edges
 - `--json`, `--md` - Output format
 
-Shows link type, target, display text, line/column, and whether the target resolves to an indexed document.
+Default output shows positional link type, target, display text, line/column, and whether the target resolves to an indexed document. `--edge-type`/`--relation` are aliases for the same semantic edge type filter; either switches to the semantic edge layer and returns `edgeType`, `relationType`, `confidence`, and `edgeSource`. They cannot be combined with `--type`, and if both aliases are supplied they must match.
 
 ### gno backlinks
 
@@ -855,12 +858,14 @@ List documents that link TO a target document.
 ```bash
 gno backlinks gno://notes/target.md
 gno backlinks #abc123 --collection notes
+gno backlinks target.md --relation related_to --json
 gno backlinks target.md --json
 ```
 
 Options:
 
 - `-c, --collection <name>` - Filter by source collection
+- `--edge-type <type>`, `--relation <type>` - Filter semantic relationship backlinks
 - `--json`, `--md` - Output format
 
 ### gno similar

@@ -10,76 +10,122 @@
       "type": "array",
       "description": "List of outgoing links",
       "items": {
-        "type": "object",
-        "required": ["targetRef", "linkType", "startLine", "startCol"],
-        "properties": {
-          "targetRef": {
-            "type": "string",
-            "description": "Target reference (path or wiki name)"
+        "oneOf": [
+          {
+            "type": "object",
+            "required": ["targetRef", "linkType", "startLine", "startCol"],
+            "additionalProperties": false,
+            "properties": {
+              "targetRef": {
+                "type": "string",
+                "description": "Target reference (path or wiki name)"
+              },
+              "targetRefNorm": {
+                "type": "string",
+                "description": "Normalized target reference for matching"
+              },
+              "targetAnchor": {
+                "type": "string",
+                "description": "Target anchor/fragment without #"
+              },
+              "targetCollection": {
+                "type": "string",
+                "description": "Explicit collection prefix"
+              },
+              "linkType": {
+                "type": "string",
+                "enum": ["wiki", "markdown"],
+                "description": "Link type"
+              },
+              "linkText": {
+                "type": "string",
+                "description": "Display text (truncated 256 graphemes)"
+              },
+              "startLine": {
+                "type": "integer",
+                "description": "1-based line number",
+                "minimum": 1
+              },
+              "startCol": {
+                "type": "integer",
+                "description": "1-based column",
+                "minimum": 1
+              },
+              "endLine": {
+                "type": "integer",
+                "description": "1-based end line",
+                "minimum": 1
+              },
+              "endCol": {
+                "type": "integer",
+                "description": "1-based end column",
+                "minimum": 1
+              },
+              "source": {
+                "type": "string",
+                "enum": ["parsed", "user", "suggested"],
+                "description": "Source of the positional link"
+              },
+              "resolved": {
+                "type": "boolean",
+                "description": "Whether target document exists in index"
+              },
+              "resolvedDocid": {
+                "type": "string",
+                "description": "Docid of resolved target document"
+              },
+              "resolvedUri": {
+                "type": "string",
+                "description": "URI of resolved target document"
+              },
+              "resolvedTitle": {
+                "type": "string",
+                "description": "Title of resolved target document"
+              }
+            }
           },
-          "targetRefNorm": {
-            "type": "string",
-            "description": "Normalized target reference for matching"
-          },
-          "targetAnchor": {
-            "type": "string",
-            "description": "Target anchor/fragment without #"
-          },
-          "targetCollection": {
-            "type": "string",
-            "description": "Explicit collection prefix"
-          },
-          "linkType": {
-            "type": "string",
-            "enum": ["wiki", "markdown"],
-            "description": "Link type"
-          },
-          "linkText": {
-            "type": "string",
-            "description": "Display text (truncated 256 graphemes)"
-          },
-          "startLine": {
-            "type": "integer",
-            "description": "1-based line number",
-            "minimum": 1
-          },
-          "startCol": {
-            "type": "integer",
-            "description": "1-based column",
-            "minimum": 1
-          },
-          "endLine": {
-            "type": "integer",
-            "description": "1-based end line",
-            "minimum": 1
-          },
-          "endCol": {
-            "type": "integer",
-            "description": "1-based end column",
-            "minimum": 1
-          },
-          "source": {
-            "type": "string",
-            "enum": ["parsed", "user", "suggested"],
-            "description": "Source of the link"
-          },
-          "resolved": {
-            "type": "boolean",
-            "description": "Whether target document exists in index"
-          },
-          "resolvedDocid": {
-            "type": "string",
-            "description": "Docid of resolved target document"
-          },
-          "resolvedUri": {
-            "type": "string",
-            "description": "URI of resolved target document"
-          },
-          "resolvedTitle": {
-            "type": "string",
-            "description": "Title of resolved target document"
+          {
+            "type": "object",
+            "required": [
+              "targetDocid",
+              "targetUri",
+              "edgeType",
+              "confidence",
+              "edgeSource"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "targetDocid": {
+                "type": "string",
+                "description": "Target document ID"
+              },
+              "targetUri": {
+                "type": "string",
+                "description": "Target document URI"
+              },
+              "targetTitle": {
+                "type": "string",
+                "description": "Target document title"
+              },
+              "edgeType": {
+                "type": "string",
+                "description": "Semantic relationship type"
+              },
+              "relationType": {
+                "type": "string",
+                "description": "Alias of edgeType"
+              },
+              "confidence": {
+                "type": "string",
+                "enum": ["parsed", "configured", "manual", "inferred"]
+              },
+              "edgeSource": {
+                "type": "string",
+                "enum": ["wikilink", "markdown-link", "frontmatter-relation"]
+              }
+            }
           }
-        }
+        ]
       }
     },
     "meta": {
@@ -121,6 +167,18 @@
           "type": "string",
           "enum": ["wiki", "markdown"],
           "description": "Link type filter applied"
+        },
+        "edgeTypeFilter": {
+          "type": "string",
+          "description": "Semantic edge-type filter applied"
+        },
+        "relationFilter": {
+          "type": "string",
+          "description": "Semantic relation filter applied"
+        },
+        "semantic": {
+          "type": "boolean",
+          "description": "Whether links came from the semantic edge layer"
         }
       }
     }

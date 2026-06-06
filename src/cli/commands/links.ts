@@ -7,7 +7,12 @@
 
 import { basename } from "node:path";
 
-import type { DocLinkRow, DocumentRow, StorePort } from "../../store/types";
+import type {
+  DocEdgeRow,
+  DocLinkRow,
+  DocumentRow,
+  StorePort,
+} from "../../store/types";
 
 import { normalizeWikiName } from "../../core/links";
 import { resolveDocRef } from "../../core/ref-parser";
@@ -22,6 +27,10 @@ export interface LinksListOptions {
   configPath?: string;
   /** Filter by link type */
   type?: "wiki" | "markdown";
+  /** Filter semantic edges by relationship type */
+  edgeType?: string;
+  /** Alias for edgeType */
+  relation?: string;
   /** JSON output */
   json?: boolean;
   /** Markdown output */
@@ -44,8 +53,18 @@ export interface LinkWithResolution {
   resolvedUri?: string;
 }
 
+export interface SemanticLinkItem {
+  targetDocid: string;
+  targetUri: string;
+  targetTitle?: string;
+  edgeType: string;
+  relationType: string;
+  confidence: DocEdgeRow["confidence"];
+  edgeSource: DocEdgeRow["edgeSource"];
+}
+
 export interface LinksListResponse {
-  links: LinkWithResolution[];
+  links: Array<LinkWithResolution | SemanticLinkItem>;
   meta: {
     docid: string;
     uri: string;
@@ -53,12 +72,65 @@ export interface LinksListResponse {
     totalLinks: number;
     resolvedCount: number;
     typeFilter?: "wiki" | "markdown";
+    edgeTypeFilter?: string;
+    relationFilter?: string;
+    semantic: boolean;
   };
 }
 
 export type LinksListResult =
   | { success: true; data: LinksListResponse }
   | { success: false; error: string; isValidation?: boolean };
+
+function resolveSemanticEdgeFilter(options: {
+  edgeType?: string;
+  relation?: string;
+}): string | undefined {
+  if (
+    options.edgeType &&
+    options.relation &&
+    options.edgeType !== options.relation
+  ) {
+    return undefined;
+  }
+  return options.edgeType ?? options.relation;
+}
+
+function mapEdgeToLinkOutput(edge: DocEdgeRow): SemanticLinkItem {
+  return {
+    targetDocid: edge.targetDocid,
+    targetUri: edge.targetUri,
+    ...(edge.targetTitle && { targetTitle: edge.targetTitle }),
+    edgeType: edge.edgeType,
+    relationType: edge.relationType,
+    confidence: edge.confidence,
+    edgeSource: edge.edgeSource,
+  };
+}
+
+function mapEdgeToBacklinkOutput(edge: DocEdgeRow): SemanticBacklinkItem {
+  return {
+    sourceDocid: edge.sourceDocid,
+    sourceUri: edge.sourceUri,
+    ...(edge.sourceTitle && { sourceTitle: edge.sourceTitle }),
+    edgeType: edge.edgeType,
+    relationType: edge.relationType,
+    confidence: edge.confidence,
+    edgeSource: edge.edgeSource,
+  };
+}
+
+function isSemanticLink(
+  link: LinkWithResolution | SemanticLinkItem
+): link is SemanticLinkItem {
+  return "edgeType" in link;
+}
+
+function isSemanticBacklink(
+  backlink: BacklinkItem | SemanticBacklinkItem
+): backlink is SemanticBacklinkItem {
+  return "edgeType" in backlink;
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types - Backlinks
@@ -69,6 +141,10 @@ export interface BacklinksOptions {
   configPath?: string;
   /** Filter by collection */
   collection?: string;
+  /** Filter semantic edges by relationship type */
+  edgeType?: string;
+  /** Alias for edgeType */
+  relation?: string;
   /** JSON output */
   json?: boolean;
   /** Markdown output */
@@ -84,14 +160,27 @@ export interface BacklinkItem {
   startCol: number;
 }
 
+export interface SemanticBacklinkItem {
+  sourceDocid: string;
+  sourceUri: string;
+  sourceTitle?: string;
+  edgeType: string;
+  relationType: string;
+  confidence: DocEdgeRow["confidence"];
+  edgeSource: DocEdgeRow["edgeSource"];
+}
+
 export interface BacklinksResponse {
-  backlinks: BacklinkItem[];
+  backlinks: Array<BacklinkItem | SemanticBacklinkItem>;
   meta: {
     docid: string;
     uri: string;
     title?: string;
     totalBacklinks: number;
     collection?: string;
+    edgeTypeFilter?: string;
+    relationFilter?: string;
+    semantic: boolean;
   };
 }
 
@@ -265,6 +354,26 @@ export async function linksList(
   docRef: string,
   options: LinksListOptions = {}
 ): Promise<LinksListResult> {
+  if (options.type && (options.edgeType || options.relation)) {
+    return {
+      success: false,
+      error: "--type cannot be combined with --edge-type or --relation",
+      isValidation: true,
+    };
+  }
+  if (
+    options.edgeType &&
+    options.relation &&
+    options.edgeType !== options.relation
+  ) {
+    return {
+      success: false,
+      error:
+        "--edge-type and --relation are aliases and must match when both are provided",
+      isValidation: true,
+    };
+  }
+
   const initResult = await initStore({
     configPath: options.configPath,
     syncConfig: false,
@@ -285,6 +394,35 @@ export async function linksList(
       };
     }
     const { doc } = resolved;
+
+    const semanticEdgeType = resolveSemanticEdgeFilter(options);
+    if (semanticEdgeType) {
+      const edgesResult = await store.getEdgesForDoc(doc.id, {
+        edgeType: semanticEdgeType,
+      });
+      if (!edgesResult.ok) {
+        return { success: false, error: edgesResult.error.message };
+      }
+
+      const linksWithResolution = edgesResult.value.map(mapEdgeToLinkOutput);
+
+      return {
+        success: true,
+        data: {
+          links: linksWithResolution,
+          meta: {
+            docid: doc.docid,
+            uri: doc.uri,
+            ...(doc.title && { title: doc.title }),
+            totalLinks: linksWithResolution.length,
+            resolvedCount: linksWithResolution.length,
+            ...(options.edgeType && { edgeTypeFilter: options.edgeType }),
+            ...(options.relation && { relationFilter: options.relation }),
+            semantic: true,
+          },
+        },
+      };
+    }
 
     // Get links
     const linksResult = await store.getLinksForDoc(doc.id);
@@ -361,6 +499,7 @@ export async function linksList(
           totalLinks: linksWithResolution.length,
           resolvedCount,
           ...(options.type && { typeFilter: options.type }),
+          semantic: false,
         },
       },
     };
@@ -381,6 +520,19 @@ export async function backlinks(
   docRef: string,
   options: BacklinksOptions = {}
 ): Promise<BacklinksResult> {
+  if (
+    options.edgeType &&
+    options.relation &&
+    options.edgeType !== options.relation
+  ) {
+    return {
+      success: false,
+      error:
+        "--edge-type and --relation are aliases and must match when both are provided",
+      isValidation: true,
+    };
+  }
+
   const initResult = await initStore({
     configPath: options.configPath,
     syncConfig: false,
@@ -401,6 +553,36 @@ export async function backlinks(
       };
     }
     const { doc } = resolved;
+
+    const semanticEdgeType = resolveSemanticEdgeFilter(options);
+    if (semanticEdgeType) {
+      const edgesResult = await store.getEdgeBacklinksForDoc(doc.id, {
+        collection: options.collection,
+        edgeType: semanticEdgeType,
+      });
+      if (!edgesResult.ok) {
+        return { success: false, error: edgesResult.error.message };
+      }
+
+      const backlinkItems = edgesResult.value.map(mapEdgeToBacklinkOutput);
+
+      return {
+        success: true,
+        data: {
+          backlinks: backlinkItems,
+          meta: {
+            docid: doc.docid,
+            uri: doc.uri,
+            ...(doc.title && { title: doc.title }),
+            totalBacklinks: backlinkItems.length,
+            ...(options.collection && { collection: options.collection }),
+            ...(options.edgeType && { edgeTypeFilter: options.edgeType }),
+            ...(options.relation && { relationFilter: options.relation }),
+            semantic: true,
+          },
+        },
+      };
+    }
 
     // Get backlinks
     const backlinksResult = await store.getBacklinksForDoc(doc.id, {
@@ -439,6 +621,7 @@ export async function backlinks(
           ...(doc.title && { title: doc.title }),
           totalBacklinks: backlinkItems.length,
           ...(options.collection && { collection: options.collection }),
+          semantic: false,
         },
       },
     };
@@ -696,6 +879,24 @@ export function formatLinksList(
     if (data.links.length === 0) {
       return `# Links from ${data.meta.docid}\n\nNo outgoing links found.`;
     }
+    if (data.meta.semantic) {
+      const lines: string[] = [
+        `# Links from ${escapeTableCell(data.meta.title ?? data.meta.docid)}`,
+        "",
+        `*${data.meta.totalLinks} semantic links*`,
+        "",
+        "| Target | Relation | Confidence | Source |",
+        "|--------|----------|------------|--------|",
+      ];
+      for (const l of data.links) {
+        if (!isSemanticLink(l)) continue;
+        const target = escapeTableCell(l.targetTitle ?? l.targetDocid);
+        lines.push(
+          `| ${target} | ${l.edgeType} | ${l.confidence} | ${l.edgeSource} |`
+        );
+      }
+      return lines.join("\n");
+    }
     const lines: string[] = [
       `# Links from ${escapeTableCell(data.meta.title ?? data.meta.docid)}`,
       "",
@@ -705,6 +906,7 @@ export function formatLinksList(
       "|-----------|------|------|------|----------|",
     ];
     for (const l of data.links) {
+      if (isSemanticLink(l)) continue;
       const targetRef = escapeTableCell(l.targetRef);
       const text = l.linkText ? escapeTableCell(l.linkText) : "-";
       const resolved = l.resolved ? `\`${l.resolvedDocid}\`` : "-";
@@ -722,6 +924,11 @@ export function formatLinksList(
 
   const lines: string[] = [];
   for (const l of data.links) {
+    if (isSemanticLink(l)) {
+      const target = l.targetTitle ?? l.targetDocid;
+      lines.push(`${l.edgeType}\t${target}\t${l.confidence}\t${l.edgeSource}`);
+      continue;
+    }
     const target = l.targetRef;
     const status = l.resolved ? `-> ${l.resolvedDocid}` : "(unresolved)";
     lines.push(
@@ -761,6 +968,24 @@ export function formatBacklinks(
     if (data.backlinks.length === 0) {
       return `# Backlinks to ${data.meta.docid}\n\nNo backlinks found.`;
     }
+    if (data.meta.semantic) {
+      const lines: string[] = [
+        `# Backlinks to ${escapeTableCell(data.meta.title ?? data.meta.docid)}`,
+        "",
+        `*${data.meta.totalBacklinks} semantic backlinks*`,
+        "",
+        "| Source | Relation | Confidence | Edge Source |",
+        "|--------|----------|------------|-------------|",
+      ];
+      for (const bl of data.backlinks) {
+        if (!isSemanticBacklink(bl)) continue;
+        const source = escapeTableCell(bl.sourceTitle ?? bl.sourceDocid);
+        lines.push(
+          `| ${source} | ${bl.edgeType} | ${bl.confidence} | ${bl.edgeSource} |`
+        );
+      }
+      return lines.join("\n");
+    }
     const lines: string[] = [
       `# Backlinks to ${escapeTableCell(data.meta.title ?? data.meta.docid)}`,
       "",
@@ -770,6 +995,7 @@ export function formatBacklinks(
       "|--------|------|-----------|",
     ];
     for (const bl of data.backlinks) {
+      if (isSemanticBacklink(bl)) continue;
       const source = escapeTableCell(bl.sourceTitle ?? bl.sourceDocid);
       const text = bl.linkText ? escapeTableCell(bl.linkText) : "-";
       lines.push(`| ${source} | ${bl.startLine} | ${text} |`);
@@ -784,6 +1010,13 @@ export function formatBacklinks(
 
   const lines: string[] = [];
   for (const bl of data.backlinks) {
+    if (isSemanticBacklink(bl)) {
+      const source = bl.sourceTitle ?? bl.sourceDocid;
+      lines.push(
+        `${source}\t${bl.edgeType}\t${bl.confidence}\t${bl.edgeSource}`
+      );
+      continue;
+    }
     const source = bl.sourceTitle ?? bl.sourceDocid;
     const text = bl.linkText ? `"${bl.linkText}"` : "";
     lines.push(`${source}\t${bl.startLine}:${bl.startCol}\t${text}`);
