@@ -41,8 +41,11 @@ Derive typed edges deterministically during indexing from `relations:` frontmatt
 - [x] Tests cover relations parsing, graphHints consumption, idempotent re-sync, fingerprint re-derive, ingest-version reprocess
 
 ## Done summary
+
 Added sync-time typed-edge derivation: frontmatter relations parsing/projection, post-sync typed-edge projection over the settled active document set, graphHint primary link typing with configured confidence, relation precedence over graphHints, normalized graphHint/relation edge types, graphHint fingerprinting, and ingest version bump to 6.
+
 ## Evidence
+
 - Commits:
 - Tests: bun run lint && bun run lint:check, bun test test/config/content-types.test.ts test/ingestion/frontmatter.test.ts test/ingestion/sync-links.test.ts test/ingestion/sync-tags.test.ts test/store/links.test.ts, bun test test/store test/spec/schemas test/ingestion test/config
 - PRs:
