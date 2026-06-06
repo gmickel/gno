@@ -54,8 +54,10 @@ fn-82 and fn-83 provide the capture/provenance and page-type substrate. fn-84 pr
 
 ## Done summary
 
-Not started.
+Completed the recipe router and playbook assets. `assets/skill/SKILL.md` now routes second-brain workflow intents to seven progressive-disclosure recipes, and each recipe uses shipped GNO commands with explicit provenance, prompt-injection, privacy, and post-write verification guardrails.
 
 ## Evidence
 
-Not started.
+- Commits: a429dbc
+- Tests: bun test test/cli/skill.test.ts, rg command-surface audit over assets/skill/SKILL.md and assets/skill/recipes
+- PRs:

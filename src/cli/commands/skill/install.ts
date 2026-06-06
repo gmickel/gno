@@ -34,6 +34,40 @@ function getSkillSourceDir(): string {
   return join(__dirname, "../../../../assets/skill");
 }
 
+async function copySkillAssetDirectory(
+  sourceDir: string,
+  destDir: string
+): Promise<number> {
+  const entries = await readdir(sourceDir, { withFileTypes: true });
+  let copied = 0;
+
+  for (const entry of entries) {
+    const sourcePath = join(sourceDir, entry.name);
+    const destPath = join(destDir, entry.name);
+
+    if (entry.isSymbolicLink()) {
+      throw new CliError(
+        "RUNTIME",
+        `Refusing to install symlinked skill asset: ${sourcePath}`
+      );
+    }
+
+    if (entry.isDirectory()) {
+      await mkdir(destPath, { recursive: true });
+      copied += await copySkillAssetDirectory(sourcePath, destPath);
+      continue;
+    }
+
+    if (entry.isFile()) {
+      const content = await Bun.file(sourcePath).arrayBuffer();
+      await Bun.write(destPath, content);
+      copied += 1;
+    }
+  }
+
+  return copied;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Install Command
 // ─────────────────────────────────────────────────────────────────────────────
@@ -90,7 +124,6 @@ export async function installSkillToTarget(
     );
   }
 
-  // Read source files
   const sourceFiles = await readdir(sourceDir);
   if (sourceFiles.length === 0) {
     throw new CliError("RUNTIME", `No skill files found in ${sourceDir}`);
@@ -108,10 +141,10 @@ export async function installSkillToTarget(
     // Create temp directory
     await mkdir(tmpDir, { recursive: true });
 
-    // Copy all files to temp (binary-safe)
-    for (const file of sourceFiles) {
-      const content = await Bun.file(join(sourceDir, file)).arrayBuffer();
-      await Bun.write(join(tmpDir, file), content);
+    // Copy all files to temp (binary-safe), including nested recipe assets.
+    const copiedFiles = await copySkillAssetDirectory(sourceDir, tmpDir);
+    if (copiedFiles === 0) {
+      throw new CliError("RUNTIME", `No skill files found in ${sourceDir}`);
     }
 
     // Remove existing if present (with safety check)

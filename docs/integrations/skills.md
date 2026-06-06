@@ -1,37 +1,37 @@
 # Skills Integration
 
-Use GNO as a skill in AI coding agents like Claude Code, OpenAI Codex, OpenCode, OpenClaw, Amp, VS Code Copilot, and Cursor.
+Use GNO as a skill in AI coding agents like Claude Code, OpenAI Codex, OpenCode, OpenClaw, VS Code Copilot, and Cursor.
 
 > **Why Skills?** Skills are the preferred integration method due to progressive discovery: tools are only loaded when invoked via `/gno`, avoiding context pollution from unused tool definitions. See [agentskills.io](https://agentskills.io/home) for the specification.
 >
-> Skills work in any client that supports the spec. OpenCode and Amp use the same `.claude` path as Claude Code. VS Code Copilot and Cursor require manual setup (see below).
+> Skills work in clients that support the spec. GNO has first-class install targets for Claude Code, Codex, OpenCode, and OpenClaw. VS Code Copilot and Cursor require manual setup (see below).
 
 ## Quick Install
 
 ```bash
-gno skill install --scope user          # Claude Code (default)
-gno skill install --target codex        # OpenAI Codex CLI
-gno skill install --target opencode     # OpenCode
-gno skill install --target openclaw     # OpenClaw
-gno skill install --target all          # All targets at once
+gno skill install --scope user                    # Claude Code, user-wide
+gno skill install --target codex --scope user     # OpenAI Codex CLI
+gno skill install --target opencode --scope user  # OpenCode
+gno skill install --target openclaw --scope user  # OpenClaw
+gno skill install --target all --scope user       # All targets at once
 ```
 
 ## Supported Targets
 
-| Target     | Command                               | Config Location                  | Also Works With |
-| :--------- | :------------------------------------ | :------------------------------- | :-------------- |
-| `claude`   | `gno skill install`                   | `~/.claude/skills/gno/`          | OpenCode, Amp   |
-| `codex`    | `gno skill install --target codex`    | `~/.codex/skills/gno/`           |                 |
-| `opencode` | `gno skill install --target opencode` | `~/.config/opencode/skills/gno/` |                 |
-| `openclaw` | `gno skill install --target openclaw` | `~/.openclaw/skills/gno/`        |                 |
-| `all`      | `gno skill install --target all`      | All locations                    |                 |
+| Target     | User-wide command                                  | User Config Location             |
+| :--------- | :------------------------------------------------- | :------------------------------- |
+| `claude`   | `gno skill install --scope user`                   | `~/.claude/skills/gno/`          |
+| `codex`    | `gno skill install --target codex --scope user`    | `~/.codex/skills/gno/`           |
+| `opencode` | `gno skill install --target opencode --scope user` | `~/.config/opencode/skills/gno/` |
+| `openclaw` | `gno skill install --target openclaw --scope user` | `~/.openclaw/skills/gno/`        |
+| `all`      | `gno skill install --target all --scope user`      | All locations                    |
 
 ## Scope Options
 
-| Scope     | Flag              | Description                        |
-| :-------- | :---------------- | :--------------------------------- |
-| `project` | `--scope project` | Install to current directory only  |
-| `user`    | `--scope user`    | Install for all projects (default) |
+| Scope     | Flag              | Description                                 |
+| :-------- | :---------------- | :------------------------------------------ |
+| `project` | `--scope project` | Install to current directory only (default) |
+| `user`    | `--scope user`    | Install for all projects                    |
 
 ## Using the Skill
 
@@ -47,6 +47,36 @@ Or just ask your agent naturally:
 
 > "Search my notes for the auth discussion"
 
+## Second-Brain Recipes
+
+The installed skill includes a recipe router in `SKILL.md` plus nested playbooks under `recipes/`. These files teach agents repeatable workflows without advertising native connectors or background automation.
+
+Preview a recipe before installing:
+
+```bash
+gno skill show --file recipes/brain-first-lookup.md
+gno skill show --file recipes/capture-and-file.md
+gno skill show --file recipes/meeting-ingestion.md
+gno skill show --file recipes/email-context.md
+gno skill show --file recipes/source-summary.md
+gno skill show --file recipes/idea-capture.md
+gno skill show --file recipes/citation-and-provenance.md
+```
+
+Recipe coverage:
+
+| Recipe                       | Use when                                                  | Verification                                  |
+| :--------------------------- | :-------------------------------------------------------- | :-------------------------------------------- |
+| `brain-first-lookup.md`      | Local context may already answer the request              | Evidence checked and gaps stated              |
+| `capture-and-file.md`        | Save a durable fact, clip, or note                        | Capture receipt plus search/get verification  |
+| `meeting-ingestion.md`       | Ingest user-provided meeting notes or transcript text     | Meeting page and action items findable        |
+| `email-context.md`           | Draft or summarize from user-provided/exported email text | Local context checked; no native mail claim   |
+| `source-summary.md`          | Summarize a source into a durable note                    | Provenance-bearing summary findable           |
+| `idea-capture.md`            | Preserve an idea or prompt pattern                        | Original phrasing captured and searchable     |
+| `citation-and-provenance.md` | Verify claims or produce traceable answers                | Claims labeled with evidence or explicit gaps |
+
+Email, calendar, chat, and web sources are user-supplied/exported inputs unless a separate connector outside GNO provides them. GNO does not include native Gmail, Calendar, Slack, webhook, cron, or background-agent recipe automation.
+
 ## Commands
 
 ```bash
@@ -60,12 +90,9 @@ gno skill paths [options]      # Show installation paths
 
 | Flag                | Description                                                             |
 | :------------------ | :---------------------------------------------------------------------- |
-| `--scope <scope>`   | `project` or `user` (default: `user`)                                   |
+| `--scope <scope>`   | `project` or `user` (default: `project`)                                |
 | `--target <target>` | `claude`, `codex`, `opencode`, `openclaw`, or `all` (default: `claude`) |
 | `--force`           | Overwrite existing installation                                         |
-| `--retrieval`       | Include retrieval flags reference                                       |
-| `--links`           | Include linking commands reference                                      |
-| `--query-mode`      | Include query mode documentation                                        |
 
 ## Example Workflows
 
@@ -107,20 +134,18 @@ Add to `~/.codex/config.json`:
 
 ### OpenCode
 
-Copy the skill manually:
+Install directly:
 
 ```bash
-mkdir -p ~/.config/opencode/skills/gno
-gno skill show --target opencode > ~/.config/opencode/skills/gno/SKILL.md
+gno skill install --target opencode --scope user
 ```
 
 ### OpenClaw
 
-Copy the skill manually:
+Install directly:
 
 ```bash
-mkdir -p ~/.openclaw/skills/gno
-gno skill show --target openclaw > ~/.openclaw/skills/gno/SKILL.md
+gno skill install --target openclaw --scope user
 ```
 
 ## Other Compatible Clients
@@ -132,7 +157,9 @@ These clients support the skills spec but require manual setup:
 Copy the skill to `.github/skills/gno/` (or `.claude/skills/gno/`):
 
 ```bash
-gno skill show > .github/skills/gno/SKILL.md
+gno skill install --scope project --target claude --force
+mkdir -p .github/skills
+cp -R .claude/skills/gno .github/skills/gno
 ```
 
 Requires VS Code Insiders with `chat.useAgentSkills` enabled.
@@ -142,7 +169,9 @@ Requires VS Code Insiders with `chat.useAgentSkills` enabled.
 Copy the skill to your Cursor skills directory:
 
 ```bash
-gno skill show > .cursor/skills/gno/SKILL.md
+gno skill install --scope project --target claude --force
+mkdir -p .cursor/skills
+cp -R .claude/skills/gno .cursor/skills/gno
 ```
 
 Enable Agent Skills in Cursor Settings → Rules.

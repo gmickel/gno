@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { mkdir, readdir } from "node:fs/promises";
+import { mkdir, readdir, symlink } from "node:fs/promises";
 import { join } from "node:path";
 
 import { installSkill } from "../../src/cli/commands/skill/install";
@@ -198,6 +198,17 @@ describe("skill CLI commands", () => {
       const error = validatePathForDeletion(destDir, base);
       expect(error).toContain("suffix");
     });
+
+    test("rejects symlinked parent escaping base", async () => {
+      const base = join(TEST_DIR, "symlink-base", ".claude");
+      const outside = join(TEST_DIR, "outside-skills");
+      await mkdir(base, { recursive: true });
+      await mkdir(join(outside, "gno"), { recursive: true });
+      await symlink(outside, join(base, "skills"));
+
+      const error = validatePathForDeletion(join(base, "skills", "gno"), base);
+      expect(error).toContain("resolves outside");
+    });
   });
 
   describe("installSkill", () => {
@@ -212,6 +223,11 @@ describe("skill CLI commands", () => {
       const skillDir = join(FAKE_CWD, ".claude", "skills", "gno");
       const files = await readdir(skillDir);
       expect(files).toContain("SKILL.md");
+      expect(
+        await Bun.file(
+          join(skillDir, "recipes", "brain-first-lookup.md")
+        ).exists()
+      ).toBe(true);
       expect(stdoutOutput.join("")).toContain("Installed");
     });
 
@@ -340,12 +356,21 @@ describe("skill CLI commands", () => {
       expect(output).toContain("CLI Reference");
     });
 
+    test("shows nested recipe file", async () => {
+      await showSkill({ file: "recipes/brain-first-lookup.md" });
+
+      const output = stdoutOutput.join("");
+      expect(output).toContain("Brain-First Lookup");
+      expect(output).toContain("recipes/brain-first-lookup.md");
+    });
+
     test("shows all files with --all", async () => {
       await showSkill({ all: true });
 
       const output = stdoutOutput.join("");
       expect(output).toContain("--- SKILL.md ---");
       expect(output).toContain("--- cli-reference.md ---");
+      expect(output).toContain("--- recipes/brain-first-lookup.md ---");
     });
 
     test("errors on unknown file", async () => {
@@ -359,6 +384,20 @@ describe("skill CLI commands", () => {
       expect(error).toBeInstanceOf(CliError);
       expect(error?.code).toBe("VALIDATION");
       expect(error?.message).toContain("Unknown file");
+    });
+
+    test("rejects unsafe file paths", async () => {
+      for (const file of ["../SKILL.md", "/tmp/SKILL.md", "recipes\\x.md"]) {
+        let error: CliError | undefined;
+        try {
+          await showSkill({ file });
+        } catch (e) {
+          error = e as CliError;
+        }
+
+        expect(error).toBeInstanceOf(CliError);
+        expect(error?.code).toBe("VALIDATION");
+      }
     });
   });
 

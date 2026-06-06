@@ -53,8 +53,10 @@ Repo research found nested recipes will not install or preview today. `install.t
 
 ## Done summary
 
-Not started.
+Implemented recursive GNO skill asset packaging and preview support. `gno skill install` now copies nested recipe files with symlink refusal, and `gno skill show` recursively lists markdown files, previews `recipes/<name>.md`, and rejects unsafe file paths. Added initial recipe assets as package-visible fixtures and regression coverage.
 
 ## Evidence
 
-Not started.
+- Commits:
+- Tests: bun test test/cli/skill.test.ts, npm pack --dry-run
+- PRs:

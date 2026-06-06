@@ -728,17 +728,17 @@ gno models path
 
 ## Skill Commands
 
-Install GNO as a skill for AI coding assistants (Claude Code, Codex).
+Install GNO as a skill for AI coding assistants (Claude Code, Codex, OpenCode, OpenClaw).
 
 ### gno skill install
 
-Install the GNO skill files.
+Install the GNO skill files, including nested recipe playbooks.
 
 ```bash
 gno skill install                    # Project scope, Claude target
 gno skill install --scope user       # User-wide installation
 gno skill install --target codex     # For Codex instead of Claude
-gno skill install --target all       # Both Claude and Codex
+gno skill install --target all       # All supported agents
 gno skill install --force            # Overwrite existing
 ```
 
@@ -772,13 +772,16 @@ Preview skill files without installing.
 ```bash
 gno skill show
 gno skill show --file SKILL.md
+gno skill show --file recipes/brain-first-lookup.md
 gno skill show --all
 ```
 
 Options:
 
-- `--file <name>` - Show specific file only
-- `--all` - Show all skill files
+- `--file <name>` - Show specific markdown file only, including safe nested paths like `recipes/brain-first-lookup.md`
+- `--all` - Show all skill markdown files
+
+`--file` accepts relative POSIX markdown paths inside the bundled skill asset directory. Absolute paths, `..`, backslashes, and non-markdown paths are rejected.
 
 ### gno skill paths
 

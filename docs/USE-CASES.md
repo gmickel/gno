@@ -279,18 +279,37 @@ gno skill install --scope user
 # Install for Codex
 gno skill install --target codex
 
-# Install for both
+# Install for all supported agents
 gno skill install --target all --scope user
 ```
 
-After installation, restart your agent. It will automatically detect the GNO skill and can search your indexed documents.
+After installation, restart your agent. It will detect the GNO skill and can search your indexed documents on demand.
 
 ![GNO Skill in Claude Code](../assets/screenshots/claudecodeskill.jpg)
 
 **What gets installed:**
 
 - `SKILL.md` - Instructions for the agent on how to use GNO
-- Tool definitions for search, query, and document retrieval
+- CLI references for search, query, retrieval, links, capture, MCP, and examples
+- `recipes/` - Second-brain playbooks for lookup, capture, meetings, email context, source summaries, ideas, and citations
+
+The recipes are agent-facing guidance, not native connectors. Email, calendar, chat, and web material must be user-supplied or exported unless you use a separate connector outside GNO.
+
+### Second-Brain Recipe Workflows
+
+Installed skills include a compact router in `SKILL.md` plus detailed recipe files:
+
+```bash
+gno skill show --file recipes/brain-first-lookup.md
+gno skill show --file recipes/capture-and-file.md
+gno skill show --file recipes/meeting-ingestion.md
+gno skill show --file recipes/email-context.md
+gno skill show --file recipes/source-summary.md
+gno skill show --file recipes/idea-capture.md
+gno skill show --file recipes/citation-and-provenance.md
+```
+
+Use these when an agent should search local context first, write durable notes with provenance, or verify claims with citations. Write-flavored recipes require post-write verification with `gno index`, `gno embed`, `gno search`, `gno query`, or `gno get` as appropriate.
 
 ### Option 2: MCP Server
 

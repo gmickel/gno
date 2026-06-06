@@ -53,8 +53,10 @@ Gordon explicitly asked previously to keep Evalite out of standard release workf
 
 ## Done summary
 
-Not started.
+Reran the GNO skill autoresearch eval from a current-router seed and completed the stale/false surface audit. Eval scored 100% (48/48), so no router iteration was needed. Verified local source install/preview includes nested recipe files, npm dry-run includes all recipes, full tests pass, lint passes, and docs verification passes.
 
 ## Evidence
 
-Not started.
+- Commits: a429dbc, 70e3e8b, 3a826c7, 4fbf69c, 753cbdd
+- Tests: cd ~/repos/autoresearch-gno-skill && uv run eval.py > run.log 2>&1 (score 100.0, 48/48), bun run lint:check, bun test (2013 pass, 1 skip, 0 fail), bun run docs:verify, bun src/index.ts skill install --target codex --scope user --force, bun src/index.ts skill show --file recipes/brain-first-lookup.md, npm pack --dry-run (all seven assets/skill/recipes/\*.md listed), rg stale-claim audit over README.md docs website assets/skill spec
+- PRs:

@@ -253,9 +253,9 @@ gno mcp install --target librechat   # LibreChat
 
 Check status: `gno mcp status`
 
-#### Skills (Claude Code, Codex, OpenCode)
+#### Skills (Claude Code, Codex, OpenCode, OpenClaw)
 
-Skills integrate via CLI with no MCP overhead:
+Skills integrate via CLI with no MCP overhead and include second-brain recipe playbooks:
 
 ```bash
 gno skill install --scope user        # User-wide
@@ -480,7 +480,7 @@ Give your local LLM agents a long-term memory. GNO integrates as a Claude Code s
 
 ### Skills
 
-Skills add GNO search to Claude Code/Codex without MCP protocol overhead:
+Skills add GNO search to Claude Code, Codex, OpenCode, and OpenClaw without MCP protocol overhead:
 
 ```bash
 gno skill install --scope user
@@ -489,6 +489,8 @@ gno skill install --scope user
 ![GNO Skill in Claude Code](./assets/screenshots/claudecodeskill.jpg)
 
 Then ask your agent: _"Search my notes for the auth discussion"_
+
+Installed skills also include recipes for brain-first lookup, capture/file, meeting ingestion, email context, source summaries, idea capture, and citation/provenance. Preview them with `gno skill show --file recipes/brain-first-lookup.md`. Recipes use user-supplied/exported external material; they do not add native Gmail, Calendar, Slack, webhook, cron, or background-agent integrations.
 
 Agent-friendly CLI examples:
 

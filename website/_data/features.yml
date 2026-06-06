@@ -175,13 +175,14 @@
 - slug: agent-integration
   title: AI Agent Integration
   headline: Full GNO Access, Zero Overhead
-  description: Give AI coding agents full GNO access via SKILL.md files—no MCP server, no context window pollution. One-line install for Claude Code, Codex, OpenCode, OpenClaw, and more. Your agent calls GNO on demand for instant knowledge retrieval.
+  description: Give AI coding agents full GNO access via SKILL.md files and second-brain recipes—no MCP server, no context window pollution. One-line install for Claude Code, Codex, OpenCode, and OpenClaw. Your agent calls GNO on demand for grounded retrieval, capture, and citation workflows.
   icon: agent
   benefits:
     - SKILL.md integration (no MCP overhead)
     - Zero context window pollution
     - One-line install for Claude Code, Codex, OpenCode, OpenClaw
     - On-demand knowledge retrieval
+    - Second-brain recipe playbooks
     - Works alongside MCP if needed
     - Supports user and project scope
   commands:
@@ -279,7 +280,7 @@
   commands:
     - "gno graph"
     - "gno graph --collection notes"
-    - "gno graph --similar"
+    - "gno graph --include-similar"
     - "gno graph query gno://notes/auth.md --edge-type mentions"
     - "gno serve # then /graph"
 
