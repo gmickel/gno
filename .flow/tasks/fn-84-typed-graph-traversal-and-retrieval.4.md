@@ -33,9 +33,14 @@ Build the **shared `diagnoseQueryTarget()` core** that explains where a named ta
 - [ ] Deterministic regression tests: BM25-only (fusion sourceCount:1), with-embeddings, target-found-wrong-chunk, target-missing, and each non-`diagnosed` targetStatus
 
 ## Done summary
+Implemented targeted query diagnostics and `gno query diagnose`.
 
-_Filled in on completion._
-
+- Added shared non-CLI `diagnoseQueryTarget()` core with target-first ref resolution, target states, filter evaluation, typed metadata, graph hints, and chunk/line reporting.
+- Added opt-in hybrid pipeline trace for BM25, vector, fusion, graph, and rerank stages without changing normal query behavior.
+- Added `query-diagnose.schema.json`, validator registration, CLI/spec/docs updates, pipeline tests, schema tests, and CLI smoke.
+- Fixed command dispatch so normal queries beginning with `diagnose` are not hijacked unless `--target` is supplied.
+- RepoPrompt implementation review returned SHIP.
 ## Evidence
-
-_Links to commits, tests, and verification._
+- Commits:
+- Tests: bun run lint, bun run lint:check, bun test test/pipeline/diagnose.test.ts test/spec/schemas/query-diagnose.test.ts test/cli/commands/links.test.ts (30 pass), bun test test/pipeline test/spec/schemas test/cli/commands/links.test.ts test/store/adapter.test.ts test/store/fts.test.ts (360 pass)
+- PRs:

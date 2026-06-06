@@ -35,6 +35,7 @@ async function loadAllSchemas(): Promise<void> {
     "similar",
     "graph",
     "graph-query",
+    "query-diagnose",
   ];
 
   for (const name of schemaFiles) {

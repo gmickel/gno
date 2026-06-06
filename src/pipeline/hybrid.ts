@@ -14,6 +14,8 @@ import type {
   ExplainLine,
   HybridSearchOptions,
   PipelineConfig,
+  QueryDiagnoseTrace,
+  QueryDiagnoseTraceCandidate,
   SearchResult,
   SearchResults,
 } from "./types";
@@ -22,7 +24,6 @@ import { embedTextsWithRecovery } from "../embed/batch";
 import { err, ok } from "../store/types";
 import { createChunkLookup } from "./chunk-lookup";
 import { formatQueryForEmbedding } from "./contextual";
-import { matchesExcludedChunks, matchesExcludedText } from "./exclude";
 import { expandQuery } from "./expansion";
 import {
   buildExplainResults,
@@ -36,6 +37,7 @@ import {
   explainTimings,
   explainVector,
 } from "./explain";
+import { evaluateDocumentChunkFilters } from "./filters";
 import { type RankedInput, rrfFuse, toRankedInput } from "./fusion";
 import { expandGraphCandidates } from "./graph-retrieval";
 import { selectBestChunkForSteering } from "./intent";
@@ -153,6 +155,7 @@ async function checkBm25Strength(
 interface ChunkId {
   mirrorHash: string;
   seq: number;
+  score?: number;
 }
 
 type FtsChunksResult =
@@ -196,6 +199,7 @@ async function searchFtsChunks(
     chunks: result.value.map((r) => ({
       mirrorHash: r.mirrorHash,
       seq: r.seq,
+      score: r.score,
     })),
   };
 }
@@ -236,6 +240,32 @@ async function searchVectorChunks(
   return searchResult.value.map((r) => ({
     mirrorHash: r.mirrorHash,
     seq: r.seq,
+    score: r.distance,
+  }));
+}
+
+function toTraceCandidates(chunks: ChunkId[]): QueryDiagnoseTraceCandidate[] {
+  return chunks.map((chunk, index) => ({
+    mirrorHash: chunk.mirrorHash,
+    seq: chunk.seq,
+    rank: index + 1,
+    score: chunk.score ?? index + 1,
+  }));
+}
+
+function candidatesToTrace(
+  candidates: Array<{
+    mirrorHash: string;
+    seq: number;
+    fusionScore?: number;
+    blendedScore?: number;
+  }>
+): QueryDiagnoseTraceCandidate[] {
+  return candidates.map((candidate, index) => ({
+    mirrorHash: candidate.mirrorHash,
+    seq: candidate.seq,
+    rank: index + 1,
+    score: candidate.blendedScore ?? candidate.fusionScore ?? index + 1,
   }));
 }
 
@@ -377,6 +407,9 @@ export async function searchHybrid(
   // 2. Parallel retrieval using raw store/vector APIs for correct seq tracking
   // ─────────────────────────────────────────────────────────────────────────
   const rankedInputs: RankedInput[] = [];
+  const diagnoseTrace: QueryDiagnoseTrace | undefined = options.diagnoseTrace
+    ? { stages: [] }
+    : undefined;
 
   const bm25StartedAt = performance.now();
 
@@ -401,6 +434,12 @@ export async function searchHybrid(
 
   const bm25Chunks = bm25Result.ok ? bm25Result.chunks : [];
   const bm25Count = bm25Chunks.length;
+  diagnoseTrace?.stages.push({
+    id: "bm25",
+    status: "active",
+    sourceCount: 1,
+    candidates: toTraceCandidates(bm25Chunks),
+  });
   if (bm25Count > 0) {
     rankedInputs.push(toRankedInput("bm25", bm25Chunks));
   }
@@ -446,6 +485,7 @@ export async function searchHybrid(
   }
 
   const vectorStartedAt = performance.now();
+  const vectorTraceChunks: ChunkId[] = [];
 
   if (vectorAvailable && vectorIndex && embedPort) {
     const vectorVariantQueries = [
@@ -469,6 +509,7 @@ export async function searchHybrid(
       );
 
       vecCount = vecChunks.length;
+      vectorTraceChunks.push(...vecChunks);
       if (vecCount > 0) {
         rankedInputs.push(toRankedInput("vector", vecChunks));
       }
@@ -520,6 +561,7 @@ export async function searchHybrid(
           if (variant.source === "vector") {
             vecCount = chunks.length;
           }
+          vectorTraceChunks.push(...chunks);
           if (chunks.length === 0) {
             continue;
           }
@@ -529,6 +571,14 @@ export async function searchHybrid(
     }
   }
   timings.vectorMs = performance.now() - vectorStartedAt;
+
+  diagnoseTrace?.stages.push({
+    id: "vector",
+    status: vectorAvailable ? "active" : "skipped",
+    reason: vectorAvailable ? undefined : "vector_unavailable",
+    sourceCount: vectorAvailable ? 1 : 0,
+    candidates: toTraceCandidates(vectorTraceChunks),
+  });
 
   explainLines.push(
     explainVector(
@@ -546,6 +596,12 @@ export async function searchHybrid(
   const candidateLimit =
     options.candidateLimit ?? pipelineConfig.rerankCandidates;
   let fusedCandidates = rrfFuse(rankedInputs, pipelineConfig.rrf);
+  diagnoseTrace?.stages.push({
+    id: "fusion",
+    status: "active",
+    sourceCount: rankedInputs.length,
+    candidates: candidatesToTrace(fusedCandidates),
+  });
 
   timings.fusionMs = performance.now() - fusionStartedAt;
   const graphStartedAt = performance.now();
@@ -570,6 +626,20 @@ export async function searchHybrid(
     fusedCandidates = rrfFuse(rankedInputs, pipelineConfig.rrf);
     timings.fusionMs += performance.now() - graphFusionStartedAt;
   }
+  diagnoseTrace?.stages.push({
+    id: "graph",
+    status: graphExpansion.meta.attempted ? "active" : "skipped",
+    reason: graphExpansion.meta.attempted
+      ? undefined
+      : graphExpansion.meta.fallbackReasons.join(", ") || "disabled",
+    sourceCount: graphExpansion.meta.attempted ? 1 : 0,
+    candidates: graphExpansion.candidates.map((candidate, index) => ({
+      mirrorHash: candidate.mirrorHash,
+      seq: candidate.seq,
+      rank: index + 1,
+      score: index + 1,
+    })),
+  });
   if (graphExpansion.meta.fallbackReasons.length > 0) {
     counters.fallbackEvents.push(...graphExpansion.meta.fallbackReasons);
   }
@@ -603,6 +673,16 @@ export async function searchHybrid(
     counters.fallbackEvents.push("rerank_error");
   }
   timings.rerankMs = performance.now() - rerankStartedAt;
+
+  diagnoseTrace?.stages.push({
+    id: "rerank",
+    status: rerankResult.reranked ? "active" : "skipped",
+    reason: rerankResult.reranked
+      ? undefined
+      : (rerankResult.fallbackReason ?? "disabled"),
+    sourceCount: rerankResult.reranked ? 1 : 0,
+    candidates: candidatesToTrace(rerankResult.candidates),
+  });
 
   explainLines.push(
     explainRerank(!options.noRerank && rerankPort !== null, candidateLimit)
@@ -754,22 +834,14 @@ export async function searchHybrid(
       continue;
     }
 
-    const excluded =
-      matchesExcludedText(
-        [
-          doc.title ?? "",
-          doc.relPath,
-          doc.author ?? "",
-          doc.contentType ?? "",
-          ...(doc.categories ?? []),
-        ],
-        options.exclude
-      ) ||
-      matchesExcludedChunks(
-        chunksMap.get(candidate.mirrorHash) ?? [],
-        options.exclude
-      );
-    if (excluded) {
+    const docChunks = chunksMap.get(candidate.mirrorHash) ?? [];
+    const filterEval = evaluateDocumentChunkFilters(
+      query,
+      doc,
+      docChunks,
+      options
+    );
+    if (!filterEval.matches) {
       continue;
     }
 
@@ -935,6 +1007,7 @@ export async function searchHybrid(
       queryLanguage,
       queryModes: queryModeSummary,
       explain: explainData,
+      trace: diagnoseTrace,
     },
   });
 }

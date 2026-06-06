@@ -1,0 +1,113 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "gno://schemas/query-diagnose@1.0",
+  "title": "GNO Query Diagnose",
+  "type": "object",
+  "required": ["schemaVersion", "query", "target", "stages", "chunk", "meta"],
+  "properties": {
+    "schemaVersion": { "type": "string", "const": "1.0" },
+    "query": { "type": "string" },
+    "target": {
+      "type": "object",
+      "required": [
+        "ref",
+        "status",
+        "docid",
+        "uri",
+        "title",
+        "contentType",
+        "contentTypeSource",
+        "categories",
+        "graphHints",
+        "contentTypeRulesFingerprint",
+        "contentTypeFingerprintMatches",
+        "mirrorHash",
+        "chunkCount",
+        "filterReasons"
+      ],
+      "properties": {
+        "ref": { "type": "string" },
+        "status": {
+          "type": "string",
+          "enum": [
+            "not_found",
+            "inactive",
+            "no_indexed_content",
+            "filtered_out",
+            "diagnosed"
+          ]
+        },
+        "docid": { "type": ["string", "null"], "pattern": "^#[a-f0-9]{6,}$" },
+        "uri": { "type": ["string", "null"], "format": "uri" },
+        "title": { "type": ["string", "null"] },
+        "contentType": { "type": ["string", "null"] },
+        "contentTypeSource": { "type": ["string", "null"] },
+        "categories": { "type": "array", "items": { "type": "string" } },
+        "graphHints": { "type": "array", "items": { "type": "string" } },
+        "contentTypeRulesFingerprint": { "type": ["string", "null"] },
+        "contentTypeFingerprintMatches": { "type": ["boolean", "null"] },
+        "mirrorHash": { "type": ["string", "null"] },
+        "chunkCount": { "type": "integer", "minimum": 0 },
+        "filterReasons": { "type": "array", "items": { "type": "string" } }
+      },
+      "additionalProperties": false
+    },
+    "stages": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "status",
+          "sourceCount",
+          "present",
+          "rank",
+          "score",
+          "survived",
+          "dropReason"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "enum": ["bm25", "vector", "fusion", "graph", "rerank"]
+          },
+          "status": { "type": "string", "enum": ["active", "skipped"] },
+          "sourceCount": { "type": "integer", "minimum": 0 },
+          "present": { "type": "boolean" },
+          "rank": { "type": ["integer", "null"], "minimum": 1 },
+          "score": { "type": ["number", "null"] },
+          "survived": { "type": "boolean" },
+          "dropReason": {
+            "type": ["string", "null"],
+            "enum": ["not_in_candidate_set", "below_cutoff", "skipped", null]
+          },
+          "reason": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "chunk": {
+      "type": "object",
+      "required": ["seq", "startLine", "endLine", "language"],
+      "properties": {
+        "seq": { "type": ["integer", "null"], "minimum": 0 },
+        "startLine": { "type": ["integer", "null"], "minimum": 1 },
+        "endLine": { "type": ["integer", "null"], "minimum": 1 },
+        "language": { "type": ["string", "null"] }
+      },
+      "additionalProperties": false
+    },
+    "meta": {
+      "type": "object",
+      "required": ["mode", "vectorsUsed", "reranked", "totalResults"],
+      "properties": {
+        "mode": { "type": "string", "enum": ["bm25_only", "hybrid"] },
+        "vectorsUsed": { "type": "boolean" },
+        "reranked": { "type": "boolean" },
+        "totalResults": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

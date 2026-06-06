@@ -406,6 +406,29 @@ describe("gno backlinks", () => {
   });
 });
 
+describe("gno query diagnose", () => {
+  test("returns target diagnostics JSON", async () => {
+    const { code, stdout } = await cli(
+      "query",
+      "diagnose",
+      "Target Document",
+      "--target",
+      "gno://notes/target.md",
+      "--fast",
+      "--json"
+    );
+
+    expect(code).toBe(0);
+    const data = JSON.parse(stdout);
+    expect(data.schemaVersion).toBe("1.0");
+    expect(data.target.status).toBe("diagnosed");
+    expect(data.meta.mode).toBe("bm25_only");
+    expect(
+      data.stages.some((stage: { id: string }) => stage.id === "fusion")
+    ).toBe(true);
+  });
+});
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Similar Tests (requires embeddings)
 // ─────────────────────────────────────────────────────────────────────────────

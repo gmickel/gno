@@ -104,6 +104,8 @@ export interface SearchMeta {
     lines: ExplainLine[];
     results: ExplainResult[];
   };
+  /** Internal diagnose trace, only populated when diagnoseTrace is enabled */
+  trace?: QueryDiagnoseTrace;
 }
 
 /** Complete search results wrapper */
@@ -182,6 +184,8 @@ export type HybridSearchOptions = SearchOptions & {
   noGraph?: boolean;
   /** Language hint for prompt selection (does NOT filter retrieval, only affects expansion prompts) */
   queryLanguageHint?: string;
+  /** Internal: capture per-stage candidates for query diagnose */
+  diagnoseTrace?: boolean;
 };
 
 /** Options for ask command */
@@ -256,6 +260,34 @@ export interface FusionCandidate {
   vecRank: number | null;
   fusionScore: number;
   sources: FusionSource[];
+}
+
+export type QueryDiagnoseStageId =
+  | "bm25"
+  | "vector"
+  | "fusion"
+  | "graph"
+  | "rerank";
+
+export type QueryDiagnoseStageStatus = "active" | "skipped";
+
+export interface QueryDiagnoseTraceCandidate {
+  mirrorHash: string;
+  seq: number;
+  rank: number;
+  score: number;
+}
+
+export interface QueryDiagnoseTraceStage {
+  id: QueryDiagnoseStageId;
+  status: QueryDiagnoseStageStatus;
+  reason?: string;
+  sourceCount: number;
+  candidates: QueryDiagnoseTraceCandidate[];
+}
+
+export interface QueryDiagnoseTrace {
+  stages: QueryDiagnoseTraceStage[];
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

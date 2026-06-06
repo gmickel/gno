@@ -679,6 +679,7 @@ Hybrid search combining BM25 and vector retrieval with optional expansion and re
 
 ```bash
 gno query <query> [-n <num>] [--min-score <num>] [-c <collection>] [--since <date>] [--until <date>] [--category <values>] [--author <text>] [--intent <text>] [--exclude <values>] [-C <num>] [--tags-all <tags>] [--tags-any <tags>] [--full] [--line-numbers] [--lang <bcp47>] [--no-expand] [--no-rerank] [--graph] [--no-graph] [--query-mode <mode:text>]... [--explain] [--json|--files|--csv|--md|--xml]
+gno query diagnose <query> --target <doc> [-n <num>] [--min-score <num>] [-c <collection>] [--since <date>] [--until <date>] [--category <values>] [--author <text>] [--intent <text>] [--exclude <values>] [-C <num>] [--tags-all <tags>] [--tags-any <tags>] [--lang <bcp47>] [--no-expand] [--no-rerank] [--graph] [--no-graph] [--json]
 ```
 
 **Options:** Same as `gno search`, plus:
@@ -695,6 +696,7 @@ gno query <query> [-n <num>] [--min-score <num>] [-c <collection>] [--since <dat
 | `-C, --candidate-limit` | integer | Max candidates passed to reranking (default 20) |
 | `--query-mode` | string[] | Structured mode entry (`term:<text>`, `intent:<text>`, `hyde:<text>`). Repeatable. |
 | `--explain` | boolean | Print retrieval explanation to stderr |
+| `--target` | ref | Required for `query diagnose`; target document to diagnose |
 
 **Compatibility / Migration:**
 
@@ -704,6 +706,18 @@ gno query <query> [-n <num>] [--min-score <num>] [-c <collection>] [--since <dat
 - `--query-mode` is optional and additive to the command surface.
 - If one or more `--query-mode` entries are provided, generated expansion is bypassed and provided entries are used as retrieval intents.
 - By default, `gno query` does not expand through the document graph. Use `--graph` to add a capped one-hop graph-neighbor candidate set after BM25/vector retrieval. Explicit links are weighted above inferred, ambiguous, or similarity edges.
+
+**Diagnose Output:**
+
+`gno query diagnose` wraps the shared `diagnoseQueryTarget()` core and emits
+`query-diagnose.schema.json` for `--json`. The payload requires
+`schemaVersion: "1.0"`, resolves the target first, reports `target.status`
+(`not_found|inactive|no_indexed_content|filtered_out|diagnosed`), and only runs
+stage tracing for `diagnosed` targets. Stages report
+`present`, `rank`, `score`, `survived`, `dropReason`, `status`, and
+`sourceCount` across BM25, vector, fusion, graph, and rerank. BM25-only mode
+marks vector/rerank skipped when unavailable or disabled, but fusion remains
+active with `sourceCount: 1`.
 
 **Explain Output (stderr):**
 

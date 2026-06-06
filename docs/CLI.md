@@ -172,6 +172,7 @@ gno query "auth" --thorough          # Full pipeline: ~5-8s
 gno query "auth" --tags-all work,backend   # Filter by tags
 gno query "performance" --intent "web performance and latency"
 gno query "auth" --graph             # Enable graph-neighbor candidates
+gno query diagnose "Alice Acme" --target gno://notes/people/alice.md --json
 gno query "auth flow" --query-mode term:"jwt refresh token" --query-mode intent:"how refresh token rotation works"
 gno query $'auth flow\nterm: "refresh token"\nintent: token rotation'
 ```
@@ -210,6 +211,17 @@ Additional options:
 - `--author <text>` - Author contains text (case-insensitive)
 - `--tags-all <tags>` - Filter: docs must have ALL tags
 - `--tags-any <tags>` - Filter: docs must have ANY tag
+
+**Target diagnostics**:
+
+`gno query diagnose "<query>" --target <doc>` runs the query with an opt-in
+trace and reports whether the target document appears at each retrieval stage.
+The JSON payload uses `query-diagnose.schema.json`, requires
+`schemaVersion: "1.0"`, and includes `target.status`
+(`not_found|inactive|no_indexed_content|filtered_out|diagnosed`), per-stage
+`present/rank/score/survived/dropReason`, typed metadata, graph hints, and the
+chunk/line selected for the target. In BM25-only mode, vector/rerank stages are
+reported as skipped while fusion remains active with `sourceCount: 1`.
 
 **Migration notes (retrieval v2):**
 

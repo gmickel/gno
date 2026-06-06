@@ -508,7 +508,7 @@ function wireSearchCommands(program: Command): void {
 
   // query - Hybrid search with expansion and reranking
   program
-    .command("query <query>")
+    .command("query <query...>")
     .description("Hybrid search with expansion and reranking")
     .option("-n, --limit <num>", "max results")
     .option("--min-score <num>", "minimum score threshold")
@@ -542,6 +542,7 @@ function wireSearchCommands(program: Command): void {
     .option("--no-rerank", "disable reranking")
     .option("--graph", "enable graph neighbor expansion")
     .option("--no-graph", "compatibility no-op; graph is off by default")
+    .option("--target <doc>", "diagnose target document ref")
     .option(
       "--query-mode <mode:text>",
       "structured mode entry (repeatable): term:<text>, intent:<text>, or hyde:<text>",
@@ -555,10 +556,16 @@ function wireSearchCommands(program: Command): void {
     .option("--csv", "CSV output")
     .option("--xml", "XML output")
     .option("--files", "file paths only")
-    .action(async (queryText: string, cmdOpts: Record<string, unknown>) => {
+    .action(async (queryParts: string[], cmdOpts: Record<string, unknown>) => {
       const format = getFormat(cmdOpts);
-      assertFormatSupported(CMD.query, format);
+      const isDiagnose =
+        queryParts[0] === "diagnose" && Boolean(cmdOpts.target);
+      assertFormatSupported(isDiagnose ? CMD.queryDiagnose : CMD.query, format);
+      const diagnoseFormat = format === "json" ? "json" : "terminal";
       const globals = getGlobals();
+      let queryText = isDiagnose
+        ? queryParts.slice(1).join(" ")
+        : queryParts.join(" ");
 
       // Validate empty query
       if (!queryText.trim()) {
@@ -637,6 +644,43 @@ function wireSearchCommands(program: Command): void {
         rerank: cmdOpts.rerank === false ? false : undefined,
         candidateLimit,
       });
+
+      if (isDiagnose) {
+        const { queryDiagnose, formatQueryDiagnose } =
+          await import("./commands/query");
+        const result = await queryDiagnose(queryText, {
+          configPath: globals.config,
+          indexName: globals.index,
+          target: cmdOpts.target as string,
+          limit,
+          minScore,
+          collection: cmdOpts.collection as string | undefined,
+          lang: cmdOpts.lang as string | undefined,
+          since: cmdOpts.since as string | undefined,
+          until: cmdOpts.until as string | undefined,
+          categories,
+          author: cmdOpts.author as string | undefined,
+          intent: cmdOpts.intent as string | undefined,
+          exclude,
+          tagsAll,
+          tagsAny,
+          noExpand: depthPolicy.noExpand,
+          noRerank: depthPolicy.noRerank,
+          graph: Boolean(cmdOpts.graph),
+          noGraph: Boolean(cmdOpts.fast) || cmdOpts.graph === false,
+          candidateLimit: depthPolicy.candidateLimit,
+          json: diagnoseFormat === "json",
+        });
+
+        if (!result.success) {
+          throw new CliError("RUNTIME", result.error);
+        }
+        await writeOutput(
+          formatQueryDiagnose(result, { format: diagnoseFormat }),
+          diagnoseFormat
+        );
+        return;
+      }
 
       const { query, formatQuery } = await import("./commands/query");
       const result = await query(queryText, {
