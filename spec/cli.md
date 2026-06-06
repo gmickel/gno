@@ -1589,12 +1589,12 @@ MCP Server Status
 
 ### gno skill install
 
-Install GNO agent skill for Claude Code or Codex.
+Install GNO agent skill for Claude Code, Codex, OpenCode, or OpenClaw.
 
 **Synopsis:**
 
 ```bash
-gno skill install [--scope <project|user>] [--target <claude|codex|all>] [--force] [--json]
+gno skill install [--scope <project|user>] [--target <claude|codex|opencode|openclaw|all>] [--force] [--json]
 ```
 
 **Options:**
@@ -1602,7 +1602,7 @@ gno skill install [--scope <project|user>] [--target <claude|codex|all>] [--forc
 | Option     | Type    | Default | Description                                               |
 | ---------- | ------- | ------- | --------------------------------------------------------- |
 | `--scope`  | string  | project | `project` (.claude/skills/) or `user` (~/.claude/skills/) |
-| `--target` | string  | claude  | `claude`, `codex`, or `all`                               |
+| `--target` | string  | claude  | `claude`, `codex`, `opencode`, `openclaw`, or `all`        |
 | `--force`  | boolean | false   | Overwrite existing skill without prompting                |
 
 **Behavior:**
@@ -1610,7 +1610,7 @@ gno skill install [--scope <project|user>] [--target <claude|codex|all>] [--forc
 1. Resolves target path based on scope and target
 2. If skill exists and not `--force`/`--yes`: error
 3. Atomically installs skill directory (temp + rename)
-4. Copies SKILL.md and reference files
+4. Copies SKILL.md, reference files, and nested recipe files
 
 **Output (JSON):**
 
@@ -1686,20 +1686,22 @@ Preview skill files without installing.
 **Synopsis:**
 
 ```bash
-gno skill show [--file <name>] [--all]
+gno skill show [--file <relative-md-path>] [--all]
 ```
 
 **Options:**
 
 | Option   | Type    | Default  | Description                                                             |
 | -------- | ------- | -------- | ----------------------------------------------------------------------- |
-| `--file` | string  | SKILL.md | File to show: SKILL.md, cli-reference.md, mcp-reference.md, examples.md |
-| `--all`  | boolean | false    | Show all files with separators                                          |
+| `--file` | string  | SKILL.md | Relative POSIX markdown path to show, including nested paths like `recipes/brain-first-lookup.md` |
+| `--all`  | boolean | false    | Show all skill markdown files with separators                                             |
 
 **Behavior:**
 
 - Outputs file content to stdout
 - Lists available files at end
+- Recursively lists bundled markdown files under the skill asset directory
+- Rejects absolute paths, `..`, backslashes, and non-markdown file paths
 
 **Exit Codes:**
 
@@ -1711,6 +1713,7 @@ gno skill show [--file <name>] [--all]
 ```bash
 gno skill show
 gno skill show --file cli-reference.md
+gno skill show --file recipes/brain-first-lookup.md
 gno skill show --all
 ```
 
