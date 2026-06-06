@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+### Fixed
+
+- Added a directory-lock fallback for platforms without `lockf` or `flock`, so
+  capture writes and MCP write tools work on Windows.
+
 ## [1.10.0] - 2026-06-06
 
 ### Added

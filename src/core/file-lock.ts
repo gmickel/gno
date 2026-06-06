@@ -4,8 +4,8 @@
  * @module src/core/file-lock
  */
 
-// node:fs/promises for mkdir (no Bun equivalent for recursive dir creation)
-import { mkdir } from "node:fs/promises";
+// node:fs/promises for mkdir/rm (no Bun equivalent for filesystem structure ops)
+import { mkdir, rm } from "node:fs/promises";
 // node:path for dirname (no Bun path utils)
 import { dirname } from "node:path";
 
@@ -13,6 +13,8 @@ import { MCP_ERRORS } from "./errors";
 const DEFAULT_TIMEOUT_MS = 5000;
 const HOLD_SECONDS = 60 * 60 * 24 * 365;
 const READY_TOKEN = "READY";
+const DIRECTORY_LOCK_SUFFIX = ".dir";
+const DIRECTORY_LOCK_POLL_MS = 50;
 
 export interface WriteLockHandle {
   release: () => Promise<void>;
@@ -65,6 +67,10 @@ function buildHoldCommand(): string {
   return `printf '${READY_TOKEN}\\n'; exec sleep ${HOLD_SECONDS}`;
 }
 
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 async function waitForReady(
   proc: ReturnType<typeof Bun.spawn>
 ): Promise<boolean> {
@@ -90,13 +96,42 @@ async function waitForReady(
   }
 }
 
+async function acquireDirectoryLock(
+  lockPath: string,
+  timeoutMs: number
+): Promise<WriteLockHandle | null> {
+  const directoryLockPath = `${lockPath}${DIRECTORY_LOCK_SUFFIX}`;
+  await mkdir(dirname(directoryLockPath), { recursive: true });
+
+  const deadline = Date.now() + Math.max(0, timeoutMs);
+  while (true) {
+    try {
+      await mkdir(directoryLockPath);
+      return {
+        release: async () => {
+          await rm(directoryLockPath, { force: true, recursive: true });
+        },
+      };
+    } catch (error) {
+      const code = (error as { code?: string }).code;
+      if (code !== "EEXIST") {
+        throw error;
+      }
+      if (Date.now() >= deadline) {
+        return null;
+      }
+      await delay(Math.min(DIRECTORY_LOCK_POLL_MS, deadline - Date.now()));
+    }
+  }
+}
+
 export async function acquireWriteLock(
   lockPath: string,
   timeoutMs: number = DEFAULT_TIMEOUT_MS
 ): Promise<WriteLockHandle | null> {
   const cmd = resolveLockCommand();
   if (!cmd) {
-    throw new Error("No lockf/flock available for write locking");
+    return acquireDirectoryLock(lockPath, timeoutMs);
   }
 
   await mkdir(dirname(lockPath), { recursive: true });
