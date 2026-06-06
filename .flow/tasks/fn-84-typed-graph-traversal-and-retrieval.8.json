@@ -1,0 +1,14 @@
+{
+  "assignee": null,
+  "claim_note": "",
+  "claimed_at": null,
+  "created_at": "2026-06-05T22:50:13.758570Z",
+  "depends_on": ["fn-84-typed-graph-traversal-and-retrieval.3"],
+  "id": "fn-84-typed-graph-traversal-and-retrieval.8",
+  "priority": null,
+  "spec": "fn-84-typed-graph-traversal-and-retrieval",
+  "spec_path": ".flow/tasks/fn-84-typed-graph-traversal-and-retrieval.8.md",
+  "status": "todo",
+  "title": "Edge-type/relation filters on gno links + gno backlinks",
+  "updated_at": "2026-06-05T22:50:32.452882Z"
+}

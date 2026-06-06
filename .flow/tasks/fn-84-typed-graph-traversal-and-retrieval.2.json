@@ -1,0 +1,14 @@
+{
+  "assignee": null,
+  "claim_note": "",
+  "claimed_at": null,
+  "created_at": "2026-06-05T22:34:58.372698Z",
+  "depends_on": ["fn-84-typed-graph-traversal-and-retrieval.1"],
+  "id": "fn-84-typed-graph-traversal-and-retrieval.2",
+  "priority": null,
+  "spec": "fn-84-typed-graph-traversal-and-retrieval",
+  "spec_path": ".flow/tasks/fn-84-typed-graph-traversal-and-retrieval.2.md",
+  "status": "todo",
+  "title": "Typed-edge derivation at ingestion (relations: + graphHints)",
+  "updated_at": "2026-06-05T22:48:59.896221Z"
+}
