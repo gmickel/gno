@@ -47,6 +47,36 @@ Or just ask your agent naturally:
 
 > "Search my notes for the auth discussion"
 
+## Second-Brain Recipes
+
+The installed skill includes a recipe router in `SKILL.md` plus nested playbooks under `recipes/`. These files teach agents repeatable workflows without advertising native connectors or background automation.
+
+Preview a recipe before installing:
+
+```bash
+gno skill show --file recipes/brain-first-lookup.md
+gno skill show --file recipes/capture-and-file.md
+gno skill show --file recipes/meeting-ingestion.md
+gno skill show --file recipes/email-context.md
+gno skill show --file recipes/source-summary.md
+gno skill show --file recipes/idea-capture.md
+gno skill show --file recipes/citation-and-provenance.md
+```
+
+Recipe coverage:
+
+| Recipe | Use when | Verification |
+| :----- | :------- | :----------- |
+| `brain-first-lookup.md` | Local context may already answer the request | Evidence checked and gaps stated |
+| `capture-and-file.md` | Save a durable fact, clip, or note | Capture receipt plus search/get verification |
+| `meeting-ingestion.md` | Ingest user-provided meeting notes or transcript text | Meeting page and action items findable |
+| `email-context.md` | Draft or summarize from user-provided/exported email text | Local context checked; no native mail claim |
+| `source-summary.md` | Summarize a source into a durable note | Provenance-bearing summary findable |
+| `idea-capture.md` | Preserve an idea or prompt pattern | Original phrasing captured and searchable |
+| `citation-and-provenance.md` | Verify claims or produce traceable answers | Claims labeled with evidence or explicit gaps |
+
+Email, calendar, chat, and web sources are user-supplied/exported inputs unless a separate connector outside GNO provides them. GNO does not include native Gmail, Calendar, Slack, webhook, cron, or background-agent recipe automation.
+
 ## Commands
 
 ```bash
@@ -107,20 +137,18 @@ Add to `~/.codex/config.json`:
 
 ### OpenCode
 
-Copy the skill manually:
+Install directly:
 
 ```bash
-mkdir -p ~/.config/opencode/skills/gno
-gno skill show --target opencode > ~/.config/opencode/skills/gno/SKILL.md
+gno skill install --target opencode --scope user
 ```
 
 ### OpenClaw
 
-Copy the skill manually:
+Install directly:
 
 ```bash
-mkdir -p ~/.openclaw/skills/gno
-gno skill show --target openclaw > ~/.openclaw/skills/gno/SKILL.md
+gno skill install --target openclaw --scope user
 ```
 
 ## Other Compatible Clients
@@ -132,7 +160,9 @@ These clients support the skills spec but require manual setup:
 Copy the skill to `.github/skills/gno/` (or `.claude/skills/gno/`):
 
 ```bash
-gno skill show > .github/skills/gno/SKILL.md
+gno skill install --scope project --target claude --force
+mkdir -p .github/skills
+cp -R .claude/skills/gno .github/skills/gno
 ```
 
 Requires VS Code Insiders with `chat.useAgentSkills` enabled.
@@ -142,7 +172,9 @@ Requires VS Code Insiders with `chat.useAgentSkills` enabled.
 Copy the skill to your Cursor skills directory:
 
 ```bash
-gno skill show > .cursor/skills/gno/SKILL.md
+gno skill install --scope project --target claude --force
+mkdir -p .cursor/skills
+cp -R .claude/skills/gno .cursor/skills/gno
 ```
 
 Enable Agent Skills in Cursor Settings → Rules.

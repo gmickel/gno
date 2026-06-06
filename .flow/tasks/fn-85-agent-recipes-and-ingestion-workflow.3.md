@@ -50,9 +50,8 @@ The first plan review found selected docs may already contain stale skill CLI/ta
 - [ ] Docs note fn-83 page-type/preset behavior without implying fn-83 spec closure if it remains open.
 
 ## Done summary
-
-Not started.
-
+Updated repo docs and legacy checked-in website surfaces for second-brain recipes. README, CLI docs, use cases, skills integration docs, and the legacy Jekyll feature/data pages now describe recipe installation, preview, workflow coverage, verification expectations, and connector boundaries. Removed stale skill snippets for unsupported or nonexistent skill commands.
 ## Evidence
-
-Not started.
+- Commits: a429dbc, 70e3e8b
+- Tests: bun run docs:verify, make -C website sync-docs, mise exec -- make -C website build, rg stale-surface audit over README.md docs website assets/skill spec
+- PRs:

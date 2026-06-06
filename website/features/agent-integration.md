@@ -2,7 +2,7 @@
 layout: feature
 title: AI Agent Integration
 headline: Agent Memory Without Prompt Bloat
-description: Give AI coding agents full GNO access via SKILL.md files with zero MCP overhead. One-line install for Claude Code, Codex, OpenCode, OpenClaw, and Amp for grounded local retrieval on demand.
+description: Give AI coding agents full GNO access via SKILL.md files with zero MCP overhead. One-line install for Claude Code, Codex, OpenCode, and OpenClaw for grounded local retrieval on demand.
 keywords: ai agent memory, claude code skill, codex skill, local retrieval skill, skill.md, local knowledge for agents, coding agent memory
 icon: agent
 slug: agent-integration
@@ -11,8 +11,9 @@ og_image: /assets/images/og/og-agent-integration.png
 benefits:
   - SKILL.md integration (no MCP overhead)
   - Zero context window pollution
-  - One-line install for 4+ agents
+  - One-line install for supported agents
   - On-demand knowledge retrieval
+  - Second-brain workflow recipes
   - Works alongside MCP if needed
 commands:
   - "gno skill install --scope user"
@@ -40,14 +41,15 @@ gno skill install --target all       # All supported agents
 
 Your agent now has access to `/gno` commands that search your knowledge base only when needed.
 
-For write-capable workflows, GNO now also has stronger place-aware note creation semantics underneath the app and MCP surfaces, so future agent write actions can stay aligned with the same collection/folder/preset rules instead of inventing one-off behaviors.
+For write-capable workflows, installed skills include recipe playbooks for capture, meeting ingestion, email context, source summaries, idea capture, and citation/provenance. These recipes use user-supplied or exported inputs; GNO does not ship native Gmail, Calendar, Slack, webhook, cron, or background-agent automation.
 
 ## How It Works
 
 1. **Install** creates a `SKILL.md` in your agent's config
-2. **Agent reads** the skill description (once, on startup)
-3. **On demand** agent invokes `gno query` or `gno search`
-4. **Results returned** directly—no persistent connection
+2. **Recipe files** install alongside the skill for progressive workflow guidance
+3. **Agent reads** the skill description (once, on startup)
+4. **On demand** agent invokes `gno query`, `gno search`, `gno get`, or `gno capture`
+5. **Results returned** directly—no persistent connection
 
 ```
 ┌─────────────┐    invoke     ┌─────────┐    search    ┌─────────┐
@@ -65,7 +67,20 @@ For write-capable workflows, GNO now also has stronger place-aware note creation
 | OpenAI Codex | `--target codex`    | ✓      |
 | OpenCode     | `--target opencode` | ✓      |
 | OpenClaw     | `--target openclaw` | ✓      |
-| Amp          | `--target amp`      | ✓      |
+
+## Second-Brain Recipes
+
+```bash
+gno skill show --file recipes/brain-first-lookup.md
+gno skill show --file recipes/capture-and-file.md
+gno skill show --file recipes/meeting-ingestion.md
+gno skill show --file recipes/email-context.md
+gno skill show --file recipes/source-summary.md
+gno skill show --file recipes/idea-capture.md
+gno skill show --file recipes/citation-and-provenance.md
+```
+
+Use recipes when an agent should search local context before acting, save durable notes with provenance, or verify claims with citations. Write-flavored recipes end with `gno index`, `gno embed`, `gno search`, `gno query`, or `gno get` verification.
 
 ## Example Usage
 
@@ -98,8 +113,8 @@ The agent will:
 # Install for Claude Code
 gno skill install --scope user
 
-# Verify
-gno skill status
+# Verify install paths
+gno skill paths
 
 # Test
 # Ask your agent: "Use gno to search for recent project notes"
