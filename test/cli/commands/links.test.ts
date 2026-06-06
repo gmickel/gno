@@ -533,6 +533,28 @@ describe("gno query diagnose", () => {
       data.stages.some((stage: { id: string }) => stage.id === "fusion")
     ).toBe(true);
   });
+
+  test("forwards structured query modes to target diagnostics", async () => {
+    const { code, stdout } = await cli(
+      "query",
+      "diagnose",
+      "unmatched",
+      "--target",
+      "gno://notes/target.md",
+      "--query-mode",
+      "term:Target Document",
+      "--fast",
+      "--json"
+    );
+
+    expect(code).toBe(0);
+    const data = JSON.parse(stdout);
+    expect(data.meta.queryModes).toEqual({
+      term: 1,
+      intent: 0,
+      hyde: false,
+    });
+  });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────

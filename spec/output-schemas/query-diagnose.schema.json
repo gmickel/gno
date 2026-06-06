@@ -104,7 +104,17 @@
         "mode": { "type": "string", "enum": ["bm25_only", "hybrid"] },
         "vectorsUsed": { "type": "boolean" },
         "reranked": { "type": "boolean" },
-        "totalResults": { "type": "integer", "minimum": 0 }
+        "totalResults": { "type": "integer", "minimum": 0 },
+        "queryModes": {
+          "type": "object",
+          "required": ["term", "intent", "hyde"],
+          "properties": {
+            "term": { "type": "integer", "minimum": 0 },
+            "intent": { "type": "integer", "minimum": 0 },
+            "hyde": { "type": "boolean" }
+          },
+          "additionalProperties": false
+        }
       },
       "additionalProperties": false
     }

@@ -669,6 +669,7 @@ function wireSearchCommands(program: Command): void {
           graph: Boolean(cmdOpts.graph),
           noGraph: Boolean(cmdOpts.fast) || cmdOpts.graph === false,
           candidateLimit: depthPolicy.candidateLimit,
+          queryModes,
           json: diagnoseFormat === "json",
         });
 

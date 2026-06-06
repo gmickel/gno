@@ -9,6 +9,7 @@ import type { DocumentRow, StoreResult } from "../store/types";
 import type { HybridSearchDeps } from "./hybrid";
 import type {
   HybridSearchOptions,
+  QueryModeSummary,
   QueryDiagnoseStageId,
   QueryDiagnoseTraceCandidate,
 } from "./types";
@@ -75,6 +76,7 @@ export interface QueryDiagnoseResult {
     vectorsUsed: boolean;
     reranked: boolean;
     totalResults: number;
+    queryModes?: QueryModeSummary;
   };
 }
 
@@ -294,6 +296,7 @@ export async function diagnoseQueryTarget(
       vectorsUsed: searchResult.value.meta.vectorsUsed ?? false,
       reranked: searchResult.value.meta.reranked ?? false,
       totalResults: searchResult.value.meta.totalResults,
+      queryModes: searchResult.value.meta.queryModes,
     },
   });
 }
