@@ -15,9 +15,11 @@ import type { ToolContext } from "../../src/mcp/server";
 import type { DocLinkInput, DocumentInput } from "../../src/store/types";
 
 import {
+  handleGraphQuery,
   handleGraphNeighbors,
   handleGraphPath,
 } from "../../src/mcp/tools/links";
+import { handleQueryDiagnose } from "../../src/mcp/tools/query";
 import { SqliteAdapter } from "../../src/store/sqlite/adapter";
 import { safeRm } from "../helpers/cleanup";
 
@@ -638,6 +640,175 @@ describe("MCP link tools integration", () => {
       expect(result.structuredContent?.meta).toMatchObject({
         direction: "out",
         totalNeighbors: 1,
+      });
+    });
+
+    test("typed graph query tool returns schema-shaped traversal", async () => {
+      const rootId = await createTestDoc(
+        "notes",
+        "typed-root.md",
+        "Typed Root",
+        "Typed root"
+      );
+      const targetId = await createTestDoc(
+        "notes",
+        "typed-target.md",
+        "Typed Target",
+        "Typed target"
+      );
+      const setEdges = await store.setDocEdges(
+        rootId,
+        [
+          {
+            targetDocId: targetId,
+            edgeType: "works_at",
+            confidence: "parsed",
+          },
+        ],
+        "wikilink"
+      );
+      expect(setEdges.ok).toBe(true);
+
+      const result = await handleGraphQuery(
+        {
+          ref: "gno://notes/typed-root.md",
+          direction: "out",
+          edgeType: "works_at",
+          maxDepth: 1,
+        },
+        toolContext()
+      );
+
+      expect(result.isError).toBeFalsy();
+      expect(result.content[0]?.text).toContain("Typed graph query");
+      expect(result.structuredContent?.schemaVersion).toBe("1.0");
+      expect(result.structuredContent?.meta).toMatchObject({
+        direction: "out",
+        edgeType: "works_at",
+      });
+    });
+
+    test("typed graph query honors depth alias", async () => {
+      const rootId = await createTestDoc(
+        "notes",
+        "depth-root.md",
+        "Depth Root",
+        "Depth root"
+      );
+      const midId = await createTestDoc(
+        "notes",
+        "depth-mid.md",
+        "Depth Mid",
+        "Depth mid"
+      );
+      const leafId = await createTestDoc(
+        "notes",
+        "depth-leaf.md",
+        "Depth Leaf",
+        "Depth leaf"
+      );
+      expect(
+        (
+          await store.setDocEdges(
+            rootId,
+            [
+              {
+                targetDocId: midId,
+                edgeType: "mentions",
+                confidence: "parsed",
+              },
+            ],
+            "wikilink"
+          )
+        ).ok
+      ).toBe(true);
+      expect(
+        (
+          await store.setDocEdges(
+            midId,
+            [
+              {
+                targetDocId: leafId,
+                edgeType: "mentions",
+                confidence: "parsed",
+              },
+            ],
+            "wikilink"
+          )
+        ).ok
+      ).toBe(true);
+
+      const result = await handleGraphQuery(
+        {
+          ref: "gno://notes/depth-root.md",
+          direction: "out",
+          depth: 2,
+        },
+        toolContext()
+      );
+
+      expect(result.isError).toBeFalsy();
+      expect(result.structuredContent?.meta).toMatchObject({ maxDepth: 2 });
+      expect(result.structuredContent?.nodes).toHaveLength(3);
+    });
+
+    test("typed graph query rejects conflicting edge aliases", async () => {
+      const result = await handleGraphQuery(
+        {
+          ref: "gno://notes/typed-root.md",
+          edgeType: "mentions",
+          relation: "works_at",
+        },
+        toolContext()
+      );
+
+      expect(result.isError).toBe(true);
+      expect(result.content[0]?.text).toContain("aliases");
+    });
+
+    test("query diagnose tool returns BM25-only structured diagnostics", async () => {
+      await createTestDoc(
+        "notes",
+        "diagnose-alice.md",
+        "Diagnose Alice",
+        "Alice works at Acme"
+      );
+      const doc = await store.getDocument("notes", "diagnose-alice.md");
+      expect(doc.ok).toBe(true);
+      if (!doc.ok || !doc.value?.mirrorHash) {
+        throw new Error("document not created");
+      }
+      const mirrorHash = doc.value.mirrorHash;
+      const chunks = await store.upsertChunks(mirrorHash, [
+        {
+          seq: 0,
+          pos: 0,
+          text: "Alice works at Acme",
+          startLine: 1,
+          endLine: 1,
+        },
+      ]);
+      expect(chunks.ok).toBe(true);
+      const fts = await store.rebuildFtsForHash(mirrorHash);
+      expect(fts.ok).toBe(true);
+
+      const result = await handleQueryDiagnose(
+        {
+          query: "Alice Acme",
+          target: "gno://notes/diagnose-alice.md",
+          collection: "NOTES",
+          fast: true,
+        },
+        toolContext()
+      );
+
+      expect(result.isError).toBeFalsy();
+      expect(result.structuredContent?.schemaVersion).toBe("1.0");
+      expect(result.structuredContent?.target).toMatchObject({
+        status: "diagnosed",
+      });
+      expect(result.structuredContent?.meta).toMatchObject({
+        mode: "bm25_only",
       });
     });
 

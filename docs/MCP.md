@@ -16,7 +16,7 @@ Use GNO as a local MCP server for Claude Desktop, Cursor, Zed, Windsurf, Amp, Ra
 
 MCP (Model Context Protocol) allows AI assistants to access external tools and resources. GNO provides:
 
-- **Tools (read)**: gno_search, gno_vsearch, gno_query, gno_get, gno_multi_get, gno_status, gno_list_tags, gno_links, gno_backlinks, gno_similar, gno_graph
+- **Tools (read)**: gno_search, gno_vsearch, gno_query, gno_query_diagnose, gno_get, gno_multi_get, gno_status, gno_list_tags, gno_links, gno_backlinks, gno_similar, gno_graph, gno_graph_query, gno_graph_neighbors, gno_graph_path
 - **Tools (write, opt-in)**: gno_capture, gno_add_collection, gno_sync, gno_embed, gno_index, gno_remove_collection
 - **Tools (jobs)**: gno_job_status, gno_list_jobs
 - **Resources**: Access documents via `gno://collection/path`
@@ -43,14 +43,15 @@ For most questions, start with `gno_query`. It combines BM25, vector search, and
 
 Use the narrower tools when the request is explicit:
 
-| Tool            | Use When                                                              | Follow-up                                    |
-| --------------- | --------------------------------------------------------------------- | -------------------------------------------- |
-| `gno_search`    | Exact phrases, filenames, identifiers, error messages, known symbols  | `gno_get` around result `line`               |
-| `gno_vsearch`   | Conceptual similarity where exact wording may differ                  | `gno_get` or `gno_multi_get` top results     |
-| `gno_query`     | Default choice; mixed lexical + semantic + reranked retrieval         | `gno_multi_get` for top URIs                 |
-| `gno_get`       | One known `gno://` URI, `#docid`, or `collection/path`                | Use `fromLine` + `lineCount` first           |
-| `gno_multi_get` | Batch several top result refs or glob-matched docs                    | Keep `maxBytes` bounded                      |
-| `gno_status`    | Results look stale, vector search fails, or embeddings may be missing | Run write-enabled `gno_index` or `gno_embed` |
+| Tool                 | Use When                                                                      | Follow-up                                         |
+| -------------------- | ----------------------------------------------------------------------------- | ------------------------------------------------- |
+| `gno_search`         | Exact phrases, filenames, identifiers, error messages, known symbols          | `gno_get` around result `line`                    |
+| `gno_vsearch`        | Conceptual similarity where exact wording may differ                          | `gno_get` or `gno_multi_get` top results          |
+| `gno_query`          | Default choice; mixed lexical + semantic + reranked retrieval                 | `gno_multi_get` for top URIs                      |
+| `gno_query_diagnose` | Important target doc is missing or you need stage-by-stage retrieval evidence | Adjust filters/query mode, then retry `gno_query` |
+| `gno_get`            | One known `gno://` URI, `#docid`, or `collection/path`                        | Use `fromLine` + `lineCount` first                |
+| `gno_multi_get`      | Batch several top result refs or glob-matched docs                            | Keep `maxBytes` bounded                           |
+| `gno_status`         | Results look stale, vector search fails, or embeddings may be missing         | Run write-enabled `gno_index` or `gno_embed`      |
 
 For ambiguous terms, pass `intent` instead of stuffing extra words into `query`:
 
@@ -662,6 +663,27 @@ query: |
   intent: how token rotation is implemented
 ```
 
+### gno_query_diagnose
+
+Diagnose why one target document does or does not retrieve for a query.
+
+```yaml
+query: "Alice Acme"
+target: "gno://notes/people/alice.md"
+fast: true
+graph: false
+tagsAll: ["crm"]
+```
+
+Use this when an expected document is missing from `gno_query` results or when
+you need evidence before changing filters, query modes, graph expansion, or
+reranking. The structured response matches `query-diagnose.schema.json` and
+reports target status (`not_found`, `inactive`, `no_indexed_content`,
+`filtered_out`, or `diagnosed`), typed metadata, graph hints, chunk/line choice,
+and BM25/vector/fusion/graph/rerank stage survival.
+For low-latency or CPU-only checks, `fast: true` keeps MCP diagnose BM25-only
+and avoids initializing embedding/rerank models.
+
 ### gno_get
 
 Retrieve document by ID.
@@ -860,6 +882,26 @@ fallback matches, collision-prone matches, or similarity scores.
 - Analyze knowledge graph structure
 - Find highly connected "hub" documents
 - Spot clusters/communities for agent navigation
+
+### gno_graph_query
+
+Run bounded traversal over the typed `doc_edges` relationship layer from one
+root document.
+
+```yaml
+ref: "gno://notes/people/alice.md"
+direction: "both" # "out", "in", or "both"
+edgeType: "works_at" # Optional semantic edge filter
+maxDepth: 2 # 1-6
+maxNodes: 100 # 1-1000
+frontierLimit: 100 # 1-1000
+visitedLimit: 500 # 1-5000
+```
+
+`relation` is an alias for `edgeType`; if both are set they must match. The
+structured response matches `graph-query.schema.json` and includes
+`schemaVersion`, resolved `root`, typed `nodes`/`edges`, traversal caps,
+returned counts, warnings, and `truncated`.
 
 ### gno_graph_neighbors
 

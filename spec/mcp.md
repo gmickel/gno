@@ -83,6 +83,8 @@ Collection names are case-insensitive on input and normalized to lowercase in re
 - Use `gno_vsearch` for semantic similarity when wording differs and embeddings are current.
 - Use `intent` to disambiguate short or overloaded terms without changing the searched text.
 - Use `queryModes` when the caller has typed retrieval text: `term` for lexical anchors, `intent` for disambiguation, and at most one `hyde` hypothetical answer/document.
+- Use `gno_query_diagnose` when a specific important document is missing from results or when you need per-stage retrieval evidence before changing query strategy.
+- Use `gno_graph_query` for bounded typed-edge traversal over `doc_edges`; keep `gno_graph_neighbors`/`gno_graph_path` for the legacy graph projection.
 - After search/query returns a `line`, call `gno_get` with `fromLine` and `lineCount` before fetching whole documents.
 - Use `gno_multi_get` to batch the top result refs. Keep `maxBytes` bounded to avoid flooding client context.
 - Check `gno_status` when results look stale, vector search is unavailable, or embedding backlog may explain missing results.
@@ -463,6 +465,38 @@ Compatibility / migration notes:
 - If vectors unavailable: `mode: "bm25_only"`, `vectorsUsed: false`
 - If expansion model unavailable: `expanded: false`
 - If rerank model unavailable: `reranked: false`
+
+---
+
+### gno_query_diagnose
+
+Targeted retrieval diagnostics for one named document. This read-only tool wraps
+`diagnoseQueryTarget()` and uses the same query/filter controls as `gno_query`
+plus a required `target` reference.
+
+**Input Schema:** same fields as `gno_query`, plus:
+
+```json
+{
+  "target": "gno://notes/people/alice.md"
+}
+```
+
+- `target`: URI, `#docid`, or `collection/path` for the document to diagnose.
+- `query`, filters, `queryModes`, `fast`/`thorough`, `graph`, and rerank/expand controls behave like `gno_query`.
+
+**Output Schema:** `gno://schemas/query-diagnose@1.0`
+
+Structured content includes `schemaVersion`, normalized `query`, `target`
+metadata/status (`not_found`, `inactive`, `no_indexed_content`,
+`filtered_out`, or `diagnosed`), `stages` for BM25/vector/fusion/graph/rerank,
+the selected target `chunk`, and retrieval `meta`.
+
+Use when an expected target is missing from `gno_query`, when filters may have
+excluded it, or when an agent needs evidence before raising `candidateLimit`,
+changing `queryModes`, enabling graph expansion, or fetching more context.
+For low-latency or CPU-only diagnosis, `fast: true` keeps this MCP tool
+BM25-only and avoids initializing embedding/rerank models.
 
 ---
 
@@ -1174,6 +1208,47 @@ clusters, and trust before deeper traversal.
 **Errors:**
 
 - Collection not found: returns `isError: true`
+
+---
+
+### gno_graph_query
+
+Bounded typed-edge traversal over the `doc_edges` relationship layer. This
+read-only tool wraps the shared graph-query core.
+
+**Input Schema:**
+
+```json
+{
+  "ref": "gno://notes/people/alice.md",
+  "direction": "both",
+  "edgeType": "works_at",
+  "maxDepth": 2,
+  "maxNodes": 100,
+  "frontierLimit": 100,
+  "visitedLimit": 500
+}
+```
+
+- `ref`: root document ref (URI, `#docid`, or `collection/path`).
+- `direction`: `out`, `in`, or `both` (default `both`).
+- `edgeType`: optional semantic edge type filter.
+- `relation`: alias for `edgeType`; if both are set they must match.
+- `maxDepth`: 1-6, default 2.
+- `maxNodes`: 1-1000, default 100.
+- `frontierLimit`: 1-1000, default 100.
+- `visitedLimit`: 1-5000, default 500.
+
+**Output Schema:** `gno://schemas/graph-query@1.0`
+
+Structured content includes `schemaVersion`, resolved `root`, typed `nodes`
+with graph hints, typed `edges` with `edgeType`/`relationType`/`confidence`/
+`edgeSource`, and `meta` with direction, caps, returned counts, warnings, and
+`truncated`.
+
+Use for explicit relationship questions over typed edges such as `works_at`,
+`attended`, or `mentions` after a seed ref is known. Use `gno_query` first if
+the seed document is unknown.
 
 ---
 
