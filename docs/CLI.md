@@ -886,6 +886,7 @@ gno graph -c notes                  # Single collection
 gno graph --include-similar         # Add similarity edges
 gno graph --neighbors gno://notes/auth.md
 gno graph --from gno://notes/a.md --to gno://notes/b.md
+gno graph query gno://notes/auth.md --edge-type mentions --json
 ```
 
 Options:
@@ -904,6 +905,22 @@ Options:
 - `--json` - JSON output (default)
 - `--dot` - Graphviz DOT format
 - `--mermaid` - Mermaid diagram format
+
+#### `gno graph query`
+
+Run a bounded typed-edge traversal from one document. It uses the typed
+`doc_edges` projection, so `relations:` frontmatter and graph-hinted links can
+be traversed by relation type.
+
+Options:
+
+- `--direction <both|out|in>` - Traversal direction (default: `both`)
+- `--edge-type <type>` - Filter to one typed edge/relation
+- `--max-depth <n>` - Maximum traversal depth (default: 2)
+- `--max-nodes <n>` - Maximum returned nodes (default: 100)
+- `--frontier-limit <n>` - Max frontier width per depth (default: 100)
+- `--visited-limit <n>` - Max visited rows during traversal (default: 500)
+- `--json` - JSON output using `graph-query.schema.json`
 
 **Pipeline to Graphviz**:
 

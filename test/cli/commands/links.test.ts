@@ -448,6 +448,39 @@ describe("gno similar", () => {
 });
 
 describe("gno graph traversal", () => {
+  test("runs bounded typed-edge graph query", async () => {
+    const { code, stdout } = await cli(
+      "graph",
+      "query",
+      "gno://notes/source.md",
+      "--direction",
+      "out",
+      "--edge-type",
+      "mentions",
+      "--max-depth",
+      "1",
+      "--json"
+    );
+
+    expect(code).toBe(0);
+    const data = JSON.parse(stdout) as {
+      schemaVersion: string;
+      root: { uri: string };
+      nodes: Array<{ uri: string; depth: number; graphHints: string[] }>;
+      edges: Array<{ edgeType: string; depth: number }>;
+      meta: { direction: string; edgeType: string; truncated: boolean };
+    };
+    expect(data.schemaVersion).toBe("1.0");
+    expect(data.root.uri).toBe("gno://notes/source.md");
+    expect(data.meta).toMatchObject({
+      direction: "out",
+      edgeType: "mentions",
+      truncated: false,
+    });
+    expect(data.nodes.some((node) => node.depth === 1)).toBe(true);
+    expect(data.edges.every((edge) => edge.edgeType === "mentions")).toBe(true);
+  });
+
   test("returns neighbors for a graph ref", async () => {
     const { code, stdout } = await cli(
       "graph",

@@ -94,6 +94,7 @@ Default output is human-readable terminal format.
 | backlinks          | yes    | no      | no    | yes  | no    | terminal |
 | similar            | yes    | no      | no    | yes  | no    | terminal |
 | graph              | yes    | no      | no    | no   | no    | terminal |
+| graph query        | yes    | no      | no    | no   | no    | terminal |
 | serve              | yes¹   | no      | no    | no   | no    | terminal |
 | completion         | no     | no      | no    | no   | no    | terminal |
 | completion install | yes    | no      | no    | no   | no    | terminal |
@@ -2203,11 +2204,50 @@ Schema: `graph.schema.json`
 }
 ```
 
-**Edge Types:**
+### gno graph query
+
+Run a bounded typed-edge traversal from one document. This command uses the
+typed `doc_edges` projection (`relations:`, graph-hinted links, and backfilled
+wiki/markdown links) and is scoped to a resolved root rather than the global
+graph export.
+
+**Synopsis:**
+
+```bash
+gno graph query <doc> [--direction <both|out|in>] [--edge-type <type>] [--max-depth <n>] [--max-nodes <n>] [--frontier-limit <n>] [--visited-limit <n>] [--json]
+```
+
+**Options:**
+
+| Flag               | Type   | Default | Description                          |
+| ------------------ | ------ | ------- | ------------------------------------ |
+| `--direction`      | enum   | both    | Traverse outgoing, incoming, or both |
+| `--edge-type`      | string | all     | Filter to one typed edge/relation    |
+| `--max-depth`      | number | 2       | Maximum traversal depth              |
+| `--max-nodes`      | number | 100     | Maximum returned nodes               |
+| `--frontier-limit` | number | 100     | Max frontier width per depth         |
+| `--visited-limit`  | number | 500     | Max visited rows during traversal    |
+| `--json`           | flag   |         | JSON output                          |
+
+**Behavior:**
+
+- Resolves `<doc>` using the shared core ref parser (`#docid`, `gno://...`, or `collection/path`)
+- Traverses typed edges with cycle safety and deterministic ordering
+- Enforces hard depth, frontier, and visited-row caps; sets `meta.truncated` with warnings when caps trip
+- Includes per-node `graphHints` from the node's configured content type
+
+Schema: `graph-query.schema.json`
+
+**Global Graph Edge Types:**
 
 - `wiki`: Wiki link (`[[Target]]`)
 - `markdown`: Markdown link (`[text](path.md)`)
 - `similar`: Semantic similarity (requires `--similar` flag)
+
+`gno graph query --edge-type` filters the typed `doc_edges.edge_type` values
+derived from frontmatter relations, content-type graph hints, and backfilled
+wiki/markdown projections (for example `mentions`, `references`, or
+`related`), not the global graph export edge-type enum above.
 
 **Exit Codes:**
 

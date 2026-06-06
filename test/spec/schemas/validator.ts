@@ -34,6 +34,7 @@ async function loadAllSchemas(): Promise<void> {
     "backlinks",
     "similar",
     "graph",
+    "graph-query",
   ];
 
   for (const name of schemaFiles) {

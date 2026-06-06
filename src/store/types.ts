@@ -500,6 +500,8 @@ export interface GraphNode {
   degree: number;
   /** Optional deterministic community id from graph analysis */
   communityId?: string;
+  /** Typed graph hints from the node's configured content type */
+  graphHints?: string[];
 }
 
 /** Compact graph report node summary */
@@ -655,6 +657,68 @@ export interface GetGraphOptions {
   linkedOnly?: boolean;
   /** Top-K similar docs per node (default 5, clamped 1-20) */
   similarTopK?: number;
+}
+
+/** Direction for bounded typed-edge graph traversal. */
+export type GraphQueryDirection = "out" | "in" | "both";
+
+/** Node returned by graph query traversal. */
+export interface GraphQueryNode {
+  id: string;
+  uri: string;
+  title: string | null;
+  collection: string;
+  relPath: string;
+  depth: number;
+  graphHints: string[];
+}
+
+/** Edge returned by graph query traversal. */
+export interface GraphQueryEdge {
+  source: string;
+  target: string;
+  edgeType: DocEdgeType;
+  relationType: RelationType;
+  confidence: DocEdgeConfidence;
+  edgeSource: DocEdgeSource;
+  depth: number;
+}
+
+/** Options for bounded graph query traversal. */
+export interface GraphQueryOptions {
+  direction?: GraphQueryDirection;
+  edgeType?: DocEdgeType;
+  maxDepth?: number;
+  maxNodes?: number;
+  frontierLimit?: number;
+  visitedLimit?: number;
+}
+
+/** Bounded graph query traversal result. */
+export interface GraphQueryResult {
+  schemaVersion: "1.0";
+  root: GraphQueryNode;
+  nodes: GraphQueryNode[];
+  edges: GraphQueryEdge[];
+  meta: {
+    direction: GraphQueryDirection;
+    edgeType: DocEdgeType | null;
+    maxDepth: number;
+    maxNodes: number;
+    frontierLimit: number;
+    visitedLimit: number;
+    returnedNodes: number;
+    returnedEdges: number;
+    truncated: boolean;
+    warnings: string[];
+  };
+}
+
+export interface GraphQueryTraversalRows {
+  nodes: Array<{ doc: DocumentRow; depth: number }>;
+  edges: Array<{ edge: DocEdgeRow; depth: number }>;
+  truncated: boolean;
+  warnings: string[];
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1034,6 +1098,14 @@ export interface StorePort {
     documentId: number,
     options?: { collection?: string; edgeType?: DocEdgeType }
   ): Promise<StoreResult<DocEdgeRow[]>>;
+
+  /**
+   * Bounded recursive traversal over typed document edges.
+   */
+  queryGraphTraversal(
+    rootDocumentId: number,
+    options?: GraphQueryOptions
+  ): Promise<StoreResult<GraphQueryTraversalRows>>;
 
   /**
    * Rebuild derived semantic edges from currently indexed links.

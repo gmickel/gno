@@ -2278,7 +2278,7 @@ function wireLinksCommands(program: Command): void {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function wireGraphCommand(program: Command): void {
-  program
+  const graphCmd = program
     .command("graph")
     .description("Output knowledge graph of document links")
     .option("-c, --collection <name>", "filter by collection")
@@ -2289,7 +2289,7 @@ function wireGraphCommand(program: Command): void {
     .option("--include-isolated", "include nodes with no links")
     .option("--similar-top-k <n>", "similar docs per node (default 5)")
     .option("--neighbors <ref>", "show graph neighbors for document/node ref")
-    .option("--direction <dir>", "neighbor direction: both, out, in", "both")
+    .option("--direction <dir>", "neighbor direction: both, out, in")
     .option("--from <ref>", "path start document/node ref")
     .option("--to <ref>", "path target document/node ref")
     .option("--max-depth <n>", "max path hops (default 6)")
@@ -2332,10 +2332,11 @@ function wireGraphCommand(program: Command): void {
       const maxDepth = cmdOpts.maxDepth
         ? parsePositiveInt("max-depth", cmdOpts.maxDepth)
         : undefined;
+      const graphDirection = (cmdOpts.direction ?? "both") as string;
       if (
-        cmdOpts.direction !== "both" &&
-        cmdOpts.direction !== "out" &&
-        cmdOpts.direction !== "in"
+        graphDirection !== "both" &&
+        graphDirection !== "out" &&
+        graphDirection !== "in"
       ) {
         throw new CliError(
           "VALIDATION",
@@ -2352,6 +2353,7 @@ function wireGraphCommand(program: Command): void {
       const { graph, formatGraph } = await import("./commands/graph.js");
       const result = await graph({
         configPath: globals.config,
+        indexName: globals.index,
         collection: cmdOpts.collection as string | undefined,
         limitNodes,
         limitEdges,
@@ -2361,7 +2363,7 @@ function wireGraphCommand(program: Command): void {
         similarTopK,
         format,
         neighbors: cmdOpts.neighbors as string | undefined,
-        direction: cmdOpts.direction as "both" | "out" | "in",
+        direction: graphDirection as "both" | "out" | "in",
         from: cmdOpts.from as string | undefined,
         to: cmdOpts.to as string | undefined,
         maxDepth,
@@ -2385,6 +2387,96 @@ function wireGraphCommand(program: Command): void {
 
       await writeOutput(output, format === "json" ? "json" : "terminal");
     });
+
+  graphCmd
+    .command("query <doc>")
+    .description("Run bounded typed-edge traversal from a document")
+    .option("--direction <dir>", "direction: both, out, in")
+    .option("--edge-type <type>", "filter by typed edge type")
+    .option("--max-depth <n>", "max traversal depth (default 2)")
+    .option("--max-nodes <n>", "max returned nodes (default 100)")
+    .option(
+      "--frontier-limit <n>",
+      "max frontier width per depth (default 100)"
+    )
+    .option(
+      "--visited-limit <n>",
+      "max visited rows during traversal (default 500)"
+    )
+    .option("--json", "JSON output")
+    .action(
+      async (
+        doc: string,
+        cmdOpts: Record<string, unknown>,
+        command: Command
+      ) => {
+        const globals = getGlobals();
+        const format = getFormat(cmdOpts);
+        assertFormatSupported(CMD.graphQuery, format);
+        if (format !== "terminal" && format !== "json") {
+          throw new CliError(
+            "VALIDATION",
+            "gno graph query supports terminal and json output"
+          );
+        }
+        const argv = resolveCliArgv(command);
+        const directionFlagIndex = argv.lastIndexOf("--direction");
+        const rawDirection =
+          directionFlagIndex >= 0 ? argv[directionFlagIndex + 1] : undefined;
+        const direction = (rawDirection ??
+          cmdOpts.direction ??
+          "both") as string;
+        if (direction !== "both" && direction !== "out" && direction !== "in") {
+          throw new CliError(
+            "VALIDATION",
+            "--direction must be one of: both, out, in"
+          );
+        }
+
+        const maxDepth = cmdOpts.maxDepth
+          ? parsePositiveInt("max-depth", cmdOpts.maxDepth)
+          : undefined;
+        const maxNodes = cmdOpts.maxNodes
+          ? parsePositiveInt("max-nodes", cmdOpts.maxNodes)
+          : undefined;
+        const frontierLimit = cmdOpts.frontierLimit
+          ? parsePositiveInt("frontier-limit", cmdOpts.frontierLimit)
+          : undefined;
+        const visitedLimit = cmdOpts.visitedLimit
+          ? parsePositiveInt("visited-limit", cmdOpts.visitedLimit)
+          : undefined;
+
+        const { graphQuery, formatGraphQuery } =
+          await import("./commands/graph.js");
+        const result = await graphQuery(doc, {
+          configPath: globals.config,
+          indexName: globals.index,
+          direction: direction as "both" | "out" | "in",
+          edgeType: cmdOpts.edgeType as string | undefined,
+          maxDepth,
+          maxNodes,
+          frontierLimit,
+          visitedLimit,
+          format,
+        });
+
+        if (!result.success) {
+          throw new CliError(
+            result.isValidation ? "VALIDATION" : "RUNTIME",
+            result.error
+          );
+        }
+
+        const output = formatGraphQuery(result, { format });
+        if (result.data.meta.truncated) {
+          for (const warning of result.data.meta.warnings) {
+            console.error(`Warning: ${warning}`);
+          }
+        }
+
+        await writeOutput(output, format);
+      }
+    );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

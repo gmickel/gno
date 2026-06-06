@@ -24,6 +24,7 @@ import { migration as m007 } from "./007-document-date-fields";
 import { migration as m008 } from "./008-vector-fingerprints";
 import { migration as m009 } from "./009-content-type-rule-fingerprint";
 import { migration as m010 } from "./010-typed-edges";
+import { migration as m011 } from "./011-doc-edge-traversal-indexes";
 
 /** All migrations in order */
 export const migrations = [
@@ -37,4 +38,5 @@ export const migrations = [
   m008,
   m009,
   m010,
+  m011,
 ];

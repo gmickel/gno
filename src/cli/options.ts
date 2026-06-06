@@ -38,6 +38,7 @@ export const CMD = {
   backlinks: "backlinks",
   similar: "similar",
   graph: "graph",
+  graphQuery: "graph.query",
   capture: "capture",
 } as const;
 
@@ -64,6 +65,7 @@ const FORMAT_SUPPORT: Record<CommandId, OutputFormat[]> = {
   [CMD.similar]: ["terminal", "json", "md"],
   // graph uses custom --dot/--mermaid flags (not OutputFormat) and writes via terminal output
   [CMD.graph]: ["json", "terminal"],
+  [CMD.graphQuery]: ["terminal", "json"],
   [CMD.capture]: ["terminal", "json"],
 };
 
