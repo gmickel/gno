@@ -38,6 +38,7 @@ Add optional `--edge-type`/`--relation` filters to the existing `gno links` / `g
 - [ ] Tests cover edge-type filtering, no-typed-data degradation, and backward-compatible default output
 
 ## Done summary
+
 Implemented semantic edge filters for links/backlinks.
 
 - Added `--edge-type` and `--relation` to `gno links` / `gno backlinks`; semantic mode uses `doc_edges` via shared store APIs.
@@ -46,7 +47,9 @@ Implemented semantic edge filters for links/backlinks.
 - Extended links/backlinks output schemas with strict `oneOf` positional vs semantic item shapes, including `edgeType`, `relationType`, `confidence`, and `edgeSource`.
 - Updated CLI spec/docs and added CLI/schema regressions for semantic filters, empty typed results, mixed filters, conflicting aliases, and mixed schema rows.
 - RepoPrompt implementation review returned SHIP after one fix loop.
+
 ## Evidence
+
 - Commits:
 - Tests: bun run lint, bun run lint:check, bun test test/cli/commands/links.test.ts test/spec/schemas/api-links.test.ts (63 pass), bun test test/cli/commands/links.test.ts test/spec/schemas/api-links.test.ts test/store/links.test.ts test/ingestion/sync-links.test.ts test/core/graph-query.test.ts (129 pass)
 - PRs:
