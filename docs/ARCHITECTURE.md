@@ -114,6 +114,26 @@ User query
 - **Compatibility**: existing query calls still work; structured modes are opt-in.
 - **Mode behavior**: when structured modes are present, generated expansion is skipped for that query.
 
+### Typed Graph Layer
+
+GNO keeps positional links and semantic relationships separate:
+
+- `doc_links` records how a link was written (`wiki` or `markdown`) and keeps
+  line/column/link-text metadata for link listings.
+- `doc_edges` records what the relationship means with `edgeType`,
+  `confidence`, and `edgeSource`.
+
+During sync, GNO projects wiki/markdown links into typed edges, parses
+`relations:` frontmatter into explicit relation edges, and applies the first
+matching `contentTypes[].graphHints` value as the projected edge type for plain
+links. Reads join active source and target documents so inactive renamed files
+do not surface stale edges.
+
+`gno graph query`, REST `/api/graph/query`, and MCP `gno_graph_query` all wrap
+the same bounded traversal core. `gno query diagnose`, REST
+`/api/query/diagnose`, and MCP `gno_query_diagnose` wrap the same target-first
+diagnostic pipeline.
+
 ### Observability Surfaces
 
 - `--explain` includes per-stage timings (`lang`, `expansion`, `bm25`, `vector`, `fusion`, `rerank`, `assembly`, `total`).

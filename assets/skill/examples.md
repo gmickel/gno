@@ -380,6 +380,26 @@ and raw chronology below it. If `contentTypes` are configured in `index.yml`,
 matching frontmatter `type` or path prefixes become `contentType` in JSON search
 results.
 
+### Typed relationships and diagnostics
+
+```yaml
+relations:
+  works_at: [gno://notes/companies/acme.md]
+  attended: [gno://notes/meetings/weekly-sync.md]
+```
+
+```bash
+# Traverse semantic relationships
+gno graph query gno://notes/people/alice.md --edge-type works_at --max-depth 2 --json
+
+# Query the semantic edge layer from link commands
+gno links gno://notes/people/alice.md --edge-type works_at
+gno backlinks gno://notes/meetings/weekly-sync.md --relation attended
+
+# Debug why a named target did not rank
+gno query diagnose "Alice Acme" --target gno://notes/people/alice.md --fast --json
+```
+
 ### Web UI quick capture
 
 Press **N** in `gno serve`, write the note, and open **Source** only when you

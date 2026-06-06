@@ -21,6 +21,11 @@ import type {
   CleanupStats,
   CollectionRow,
   ContextRow,
+  DocEdgeConfidence,
+  DocEdgeInput,
+  DocEdgeRow,
+  DocEdgeSource,
+  DocEdgeType,
   DocLinkInput,
   DocLinkRow,
   DocLinkSource,
@@ -33,6 +38,8 @@ import type {
   GraphEdgeConfidence,
   GraphEdgeAudit,
   GraphLinkType,
+  GraphQueryOptions,
+  GraphQueryTraversalRows,
   GraphReportNode,
   GraphResult,
   IndexStatus,
@@ -50,6 +57,11 @@ import type { SqliteDbProvider } from "./types";
 
 import { buildUri, deriveDocid, stripUriIndex } from "../../app/constants";
 import { analyzeGraphCommunities } from "../../core/graph-analysis";
+import {
+  buildWikiBestMatchSubquery,
+  buildWikiBestRankMatchCountSubquery,
+  buildWikiBestRankSubquery,
+} from "../../core/graph-resolver";
 import { normalizeWikiName, stripWikiMdExt } from "../../core/links";
 import { migrations, runMigrations } from "../migrations";
 import { err, ok } from "../types";
@@ -65,6 +77,7 @@ import { loadFts5Snowball } from "./fts5-snowball";
 const WHITESPACE_REGEX = /\s+/;
 const SINGLE_LINE_QUERY_PATTERN = /[\r\n]/;
 const DOUBLE_QUOTE_PATTERN = /"/g;
+const DOC_EDGE_TYPE_PATTERN = /^[a-z][a-z0-9_]*$/;
 const FTS5_FIELD_WEIGHTS = {
   filepath: 1.5,
   title: 4.0,
@@ -87,6 +100,16 @@ function sanitizeCompoundTerm(term: string): string {
     .map((part) => sanitizeFts5Term(part))
     .filter((part) => part.length > 0)
     .join(" ");
+}
+
+function normalizeDocEdgeType(edgeType: DocEdgeType): string {
+  const normalized = edgeType.trim().toLowerCase();
+  if (!DOC_EDGE_TYPE_PATTERN.test(normalized)) {
+    throw new Error(
+      `Invalid edge_type "${edgeType}" (expected lowercase snake_case)`
+    );
+  }
+  return normalized;
 }
 
 type FtsQueryBuildResult =
@@ -554,10 +577,10 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
           collection, rel_path, source_hash, source_mime, source_ext,
           source_size, source_mtime, source_ctime, docid, uri, title, mirror_hash,
           converter_id, converter_version, language_hint, content_type, categories,
-          author, frontmatter_date, date_fields, content_type_rules_fingerprint,
+          content_type_source, author, frontmatter_date, date_fields, content_type_rules_fingerprint,
           active, indexed_at, last_error_code, last_error_message, last_error_at,
           ingest_version, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, datetime('now'), ?, ?, ?, ?, datetime('now'))
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, datetime('now'), ?, ?, ?, ?, datetime('now'))
         ON CONFLICT(collection, rel_path) DO UPDATE SET
           source_hash = excluded.source_hash,
           source_mime = excluded.source_mime,
@@ -574,6 +597,7 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
           language_hint = excluded.language_hint,
           content_type = excluded.content_type,
           categories = excluded.categories,
+          content_type_source = excluded.content_type_source,
           author = excluded.author,
           frontmatter_date = excluded.frontmatter_date,
           date_fields = excluded.date_fields,
@@ -604,6 +628,7 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
           doc.languageHint ?? null,
           doc.contentType ?? null,
           doc.categories ? JSON.stringify(doc.categories) : null,
+          doc.contentTypeSource ?? null,
           doc.author ?? null,
           doc.frontmatterDate ?? null,
           doc.dateFields ? JSON.stringify(doc.dateFields) : null,
@@ -2294,6 +2319,768 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
     }
   }
 
+  /**
+   * Set semantic edges for a document.
+   * Replaces edges from the given source.
+   */
+  async setDocEdges(
+    documentId: number,
+    edges: DocEdgeInput[],
+    source: DocEdgeSource
+  ): Promise<StoreResult<void>> {
+    try {
+      const db = this.ensureOpen();
+
+      const transaction = db.transaction(() => {
+        db.run("DELETE FROM doc_edges WHERE src_doc_id = ? AND source = ?", [
+          documentId,
+          source,
+        ]);
+
+        if (edges.length === 0) {
+          return;
+        }
+
+        const stmt = db.prepare(`
+          INSERT INTO doc_edges (
+            src_doc_id, dst_doc_id, edge_type, confidence, source
+          ) VALUES (?, ?, ?, ?, ?)
+          ON CONFLICT(src_doc_id, dst_doc_id, edge_type, source) DO UPDATE SET
+            confidence = excluded.confidence
+        `);
+
+        for (const edge of edges) {
+          stmt.run(
+            documentId,
+            edge.targetDocId,
+            normalizeDocEdgeType(edge.edgeType),
+            edge.confidence,
+            source
+          );
+        }
+      });
+
+      transaction();
+      return ok(undefined);
+    } catch (cause) {
+      return err(
+        "QUERY_FAILED",
+        cause instanceof Error ? cause.message : "Failed to set document edges",
+        cause
+      );
+    }
+  }
+
+  async getEdgesForDoc(
+    documentId: number,
+    options?: { edgeType?: DocEdgeType }
+  ): Promise<StoreResult<DocEdgeRow[]>> {
+    try {
+      const db = this.ensureOpen();
+      const params: (number | string)[] = [documentId];
+      const edgeTypeClause = options?.edgeType ? "AND e.edge_type = ?" : "";
+      if (options?.edgeType) {
+        params.push(normalizeDocEdgeType(options.edgeType));
+      }
+
+      const rows = db
+        .query<DbDocEdgeRow, (number | string)[]>(
+          `
+          WITH ranked AS (
+            SELECT
+              e.src_doc_id,
+              src.docid AS source_docid,
+              src.uri AS source_uri,
+              src.title AS source_title,
+              e.dst_doc_id,
+              dst.docid AS target_docid,
+              dst.uri AS target_uri,
+              dst.title AS target_title,
+              e.edge_type,
+              e.confidence,
+              e.source,
+              ROW_NUMBER() OVER (
+                PARTITION BY e.src_doc_id, e.dst_doc_id, e.edge_type
+                ORDER BY
+                  CASE e.confidence
+                    WHEN 'manual' THEN 1
+                    WHEN 'configured' THEN 2
+                    WHEN 'parsed' THEN 3
+                    WHEN 'inferred' THEN 4
+                    ELSE 5
+                  END,
+                  e.source ASC,
+                  dst.docid ASC,
+                  dst.uri ASC
+              ) AS rn
+            FROM doc_edges e
+            JOIN documents src ON src.id = e.src_doc_id AND src.active = 1
+            JOIN documents dst ON dst.id = e.dst_doc_id AND dst.active = 1
+            WHERE e.src_doc_id = ?
+              ${edgeTypeClause}
+          )
+          SELECT *
+          FROM ranked
+          WHERE rn = 1
+          ORDER BY edge_type ASC, target_uri ASC, target_docid ASC
+          `
+        )
+        .all(...params);
+
+      return ok(rows.map(mapDocEdgeRow));
+    } catch (cause) {
+      return err(
+        "QUERY_FAILED",
+        cause instanceof Error
+          ? cause.message
+          : "Failed to get edges for document",
+        cause
+      );
+    }
+  }
+
+  async getEdgeBacklinksForDoc(
+    documentId: number,
+    options?: { collection?: string; edgeType?: DocEdgeType }
+  ): Promise<StoreResult<DocEdgeRow[]>> {
+    try {
+      const db = this.ensureOpen();
+      const params: (number | string)[] = [documentId];
+      const conditions: string[] = ["e.dst_doc_id = ?"];
+      if (options?.collection) {
+        conditions.push("src.collection = ?");
+        params.push(options.collection);
+      }
+      if (options?.edgeType) {
+        conditions.push("e.edge_type = ?");
+        params.push(normalizeDocEdgeType(options.edgeType));
+      }
+
+      const rows = db
+        .query<DbDocEdgeRow, (number | string)[]>(
+          `
+          WITH ranked AS (
+            SELECT
+              e.src_doc_id,
+              src.docid AS source_docid,
+              src.uri AS source_uri,
+              src.title AS source_title,
+              e.dst_doc_id,
+              dst.docid AS target_docid,
+              dst.uri AS target_uri,
+              dst.title AS target_title,
+              e.edge_type,
+              e.confidence,
+              e.source,
+              ROW_NUMBER() OVER (
+                PARTITION BY e.src_doc_id, e.dst_doc_id, e.edge_type
+                ORDER BY
+                  CASE e.confidence
+                    WHEN 'manual' THEN 1
+                    WHEN 'configured' THEN 2
+                    WHEN 'parsed' THEN 3
+                    WHEN 'inferred' THEN 4
+                    ELSE 5
+                  END,
+                  e.source ASC,
+                  src.docid ASC,
+                  src.uri ASC
+              ) AS rn
+            FROM doc_edges e
+            JOIN documents src ON src.id = e.src_doc_id AND src.active = 1
+            JOIN documents dst ON dst.id = e.dst_doc_id AND dst.active = 1
+            WHERE ${conditions.join(" AND ")}
+          )
+          SELECT *
+          FROM ranked
+          WHERE rn = 1
+          ORDER BY edge_type ASC, source_uri ASC, source_docid ASC
+          `
+        )
+        .all(...params);
+
+      return ok(rows.map(mapDocEdgeRow));
+    } catch (cause) {
+      return err(
+        "QUERY_FAILED",
+        cause instanceof Error
+          ? cause.message
+          : "Failed to get edge backlinks for document",
+        cause
+      );
+    }
+  }
+
+  async queryGraphTraversal(
+    rootDocumentId: number,
+    options: GraphQueryOptions = {}
+  ): Promise<StoreResult<GraphQueryTraversalRows>> {
+    try {
+      const db = this.ensureOpen();
+      const direction = options.direction ?? "both";
+      const maxDepth = Math.max(1, Math.min(options.maxDepth ?? 2, 6));
+      const maxNodes = Math.max(1, Math.min(options.maxNodes ?? 100, 1_000));
+      const frontierLimit = Math.max(
+        1,
+        Math.min(options.frontierLimit ?? 100, 1_000)
+      );
+      const visitedLimit = Math.max(
+        1,
+        Math.min(options.visitedLimit ?? 500, 5_000)
+      );
+      const edgeType = options.edgeType
+        ? normalizeDocEdgeType(options.edgeType)
+        : undefined;
+
+      const nodeLimit = Math.min(maxNodes, visitedLimit);
+      const edgeTypeFilter = edgeType ? "AND e.edge_type = ?" : "";
+      const edgeTypeFilterFor = (alias: string): string =>
+        edgeType ? `AND ${alias}.edge_type = ?` : "";
+      const candidateEdgeLimit = Math.min(frontierLimit * 4, 4_000);
+      const frontierCtes: string[] = [];
+      const frontierParams: (number | string)[] = [];
+      const frontierNames = ["f0"];
+      const allFrontiers = (): string =>
+        frontierNames
+          .map((name) => `SELECT doc_id FROM ${name}`)
+          .join(" UNION ");
+      const frontierJoinClause = (frontierName: string): string =>
+        direction === "out"
+          ? `e.src_doc_id = ${frontierName}.doc_id`
+          : direction === "in"
+            ? `e.dst_doc_id = ${frontierName}.doc_id`
+            : `(e.src_doc_id = ${frontierName}.doc_id OR e.dst_doc_id = ${frontierName}.doc_id)`;
+      const boundedEdgePredicate = (frontierName: string): string => {
+        if (direction === "out") {
+          return `
+            e.id IN (
+              SELECT edge_id
+              FROM (
+                SELECT
+                  edge_id,
+                  edge_type,
+                  next_doc_id
+                FROM (
+                  SELECT
+                    e2.id AS edge_id,
+                    e2.edge_type,
+                    e2.dst_doc_id AS next_doc_id,
+                    row_number() OVER (
+                      PARTITION BY e2.dst_doc_id
+                      ORDER BY e2.edge_type ASC, e2.id ASC
+                    ) AS next_rank
+                  FROM doc_edges e2
+                  JOIN documents next_doc ON next_doc.id = e2.dst_doc_id AND next_doc.active = 1
+                  WHERE e2.src_doc_id = ${frontierName}.doc_id
+                    ${edgeTypeFilterFor("e2")}
+                    AND instr(${frontierName}.path, printf(',%d,', e2.dst_doc_id)) = 0
+                    AND e2.dst_doc_id NOT IN (${allFrontiers()})
+                )
+                WHERE next_rank = 1
+                ORDER BY edge_type ASC, next_doc_id ASC, edge_id ASC
+                LIMIT ?
+              )
+            )`;
+        }
+        if (direction === "in") {
+          return `
+            e.id IN (
+              SELECT edge_id
+              FROM (
+                SELECT
+                  edge_id,
+                  edge_type,
+                  next_doc_id
+                FROM (
+                  SELECT
+                    e2.id AS edge_id,
+                    e2.edge_type,
+                    e2.src_doc_id AS next_doc_id,
+                    row_number() OVER (
+                      PARTITION BY e2.src_doc_id
+                      ORDER BY e2.edge_type ASC, e2.id ASC
+                    ) AS next_rank
+                  FROM doc_edges e2
+                  JOIN documents next_doc ON next_doc.id = e2.src_doc_id AND next_doc.active = 1
+                  WHERE e2.dst_doc_id = ${frontierName}.doc_id
+                    ${edgeTypeFilterFor("e2")}
+                    AND instr(${frontierName}.path, printf(',%d,', e2.src_doc_id)) = 0
+                    AND e2.src_doc_id NOT IN (${allFrontiers()})
+                )
+                WHERE next_rank = 1
+                ORDER BY edge_type ASC, next_doc_id ASC, edge_id ASC
+                LIMIT ?
+              )
+            )`;
+        }
+        return `
+          (
+            e.id IN (
+              SELECT edge_id
+              FROM (
+                SELECT
+                  edge_id,
+                  edge_type,
+                  next_doc_id
+                FROM (
+                  SELECT
+                    e2.id AS edge_id,
+                    e2.edge_type,
+                    e2.dst_doc_id AS next_doc_id,
+                    row_number() OVER (
+                      PARTITION BY e2.dst_doc_id
+                      ORDER BY e2.edge_type ASC, e2.id ASC
+                    ) AS next_rank
+                  FROM doc_edges e2
+                  JOIN documents next_doc ON next_doc.id = e2.dst_doc_id AND next_doc.active = 1
+                  WHERE e2.src_doc_id = ${frontierName}.doc_id
+                    ${edgeTypeFilterFor("e2")}
+                    AND instr(${frontierName}.path, printf(',%d,', e2.dst_doc_id)) = 0
+                    AND e2.dst_doc_id NOT IN (${allFrontiers()})
+                )
+                WHERE next_rank = 1
+                ORDER BY edge_type ASC, next_doc_id ASC, edge_id ASC
+                LIMIT ?
+              )
+            )
+            OR e.id IN (
+              SELECT edge_id
+              FROM (
+                SELECT
+                  edge_id,
+                  edge_type,
+                  next_doc_id
+                FROM (
+                  SELECT
+                    e3.id AS edge_id,
+                    e3.edge_type,
+                    e3.src_doc_id AS next_doc_id,
+                    row_number() OVER (
+                      PARTITION BY e3.src_doc_id
+                      ORDER BY e3.edge_type ASC, e3.id ASC
+                    ) AS next_rank
+                  FROM doc_edges e3
+                  JOIN documents next_doc ON next_doc.id = e3.src_doc_id AND next_doc.active = 1
+                  WHERE e3.dst_doc_id = ${frontierName}.doc_id
+                    ${edgeTypeFilterFor("e3")}
+                    AND instr(${frontierName}.path, printf(',%d,', e3.src_doc_id)) = 0
+                    AND e3.src_doc_id NOT IN (${allFrontiers()})
+                )
+                WHERE next_rank = 1
+                ORDER BY edge_type ASC, next_doc_id ASC, edge_id ASC
+                LIMIT ?
+              )
+            )
+          )`;
+      };
+      const nextExprFor = (frontierName: string): string =>
+        `CASE WHEN e.src_doc_id = ${frontierName}.doc_id THEN e.dst_doc_id ELSE e.src_doc_id END`;
+
+      const boundaryCandidateDepth = maxDepth + 1;
+      for (let depth = 1; depth <= boundaryCandidateDepth; depth += 1) {
+        const previous = `f${depth - 1}`;
+        const raw = `c${depth}_raw`;
+        const deduped = `c${depth}_deduped`;
+        const nodeDeduped = `c${depth}_node_deduped`;
+        const ranked = `c${depth}_ranked`;
+        const candidates = `c${depth}`;
+        const frontier = `f${depth}`;
+        const nextExpr = nextExprFor(previous);
+        frontierCtes.push(`
+        ${raw} AS (
+          SELECT
+            ${previous}.doc_id AS from_doc_id,
+            ${nextExpr} AS doc_id,
+            ${depth} AS depth,
+            ${previous}.path || ${nextExpr} || ',' AS path,
+            printf('%06d|%s|%012d', ${depth}, e.edge_type, ${nextExpr}) AS sort_key,
+            e.src_doc_id,
+            src.docid AS source_docid,
+            src.uri AS source_uri,
+            src.title AS source_title,
+            e.dst_doc_id,
+            dst.docid AS target_docid,
+            dst.uri AS target_uri,
+            dst.title AS target_title,
+            e.edge_type,
+            e.confidence,
+            e.source,
+            row_number() OVER (
+              PARTITION BY ${previous}.doc_id, e.src_doc_id, e.dst_doc_id, e.edge_type
+              ORDER BY
+                CASE e.confidence
+                  WHEN 'manual' THEN 1
+                  WHEN 'configured' THEN 2
+                  WHEN 'parsed' THEN 3
+                  WHEN 'inferred' THEN 4
+                  ELSE 5
+                END,
+                e.source ASC,
+                src.docid ASC,
+                dst.docid ASC
+            ) AS dedup_rank
+          FROM ${previous}
+          JOIN doc_edges e ON ${frontierJoinClause(previous)}
+            AND ${boundedEdgePredicate(previous)}
+          JOIN documents src ON src.id = e.src_doc_id AND src.active = 1
+          JOIN documents dst ON dst.id = e.dst_doc_id AND dst.active = 1
+          WHERE 1 = 1
+            ${edgeTypeFilter}
+            AND instr(${previous}.path, printf(',%d,', ${nextExpr})) = 0
+            AND ${nextExpr} NOT IN (${allFrontiers()})
+        ),
+        ${deduped} AS (
+          SELECT *
+          FROM ${raw}
+          WHERE dedup_rank = 1
+        ),
+        ${nodeDeduped} AS (
+          SELECT
+            from_doc_id,
+            doc_id,
+            depth,
+            min(path) AS path,
+            min(sort_key) AS sort_key
+          FROM ${deduped}
+          GROUP BY from_doc_id, doc_id, depth
+        ),
+        ${ranked} AS (
+          SELECT
+            *,
+            row_number() OVER (
+              PARTITION BY from_doc_id
+              ORDER BY sort_key ASC, doc_id ASC
+            ) AS expansion_rank
+          FROM ${nodeDeduped}
+        ),
+        ${candidates} AS (
+          SELECT doc_id, depth, min(path) AS path, min(sort_key) AS sort_key
+          FROM ${ranked}
+          WHERE expansion_rank <= ?
+          GROUP BY doc_id, depth
+        ),
+        ${frontier} AS (
+          SELECT doc_id, depth, path, sort_key
+          FROM (
+            SELECT
+              doc_id,
+              depth,
+              path,
+              sort_key,
+              row_number() OVER (ORDER BY sort_key ASC, doc_id ASC) AS depth_rank
+            FROM ${candidates}
+          )
+          WHERE depth_rank <= ?
+            AND depth_rank <= ? - (
+              SELECT count(*)
+              FROM (${allFrontiers()})
+            )
+        )`);
+        if (direction === "both") {
+          if (edgeType) {
+            frontierParams.push(edgeType);
+          }
+          frontierParams.push(candidateEdgeLimit);
+          if (edgeType) {
+            frontierParams.push(edgeType);
+          }
+          frontierParams.push(candidateEdgeLimit);
+        } else {
+          if (edgeType) {
+            frontierParams.push(edgeType);
+          }
+          frontierParams.push(candidateEdgeLimit);
+        }
+        if (edgeType) {
+          frontierParams.push(edgeType);
+        }
+        frontierParams.push(frontierLimit, frontierLimit, visitedLimit);
+        if (depth <= maxDepth) {
+          frontierNames.push(frontier);
+        }
+      }
+
+      const returnedEdgeDirectionClause =
+        direction === "out"
+          ? "AND ns.depth < nt.depth"
+          : direction === "in"
+            ? "AND ns.depth > nt.depth"
+            : "";
+      const frontierUnion = frontierNames
+        .map((name) => `SELECT doc_id, depth, sort_key FROM ${name}`)
+        .join(" UNION ALL ");
+      const visitedOverflowChecks = Array.from(
+        { length: maxDepth },
+        (_, index) => {
+          const previousFrontiers = Array.from(
+            { length: index + 1 },
+            (__, frontierIndex) => `SELECT doc_id FROM f${frontierIndex}`
+          ).join(" UNION ");
+          return `
+          SELECT 1 AS has_more
+          FROM c${index + 1}
+          GROUP BY 1
+          HAVING count(*) > ? - (
+            SELECT count(*)
+            FROM (${previousFrontiers})
+          )`;
+        }
+      ).join(" UNION ALL ");
+      const frontierOverflowChecks = Array.from(
+        { length: maxDepth },
+        (_, index) => `
+          SELECT 1 AS has_more
+          FROM c${index + 1}
+          GROUP BY 1
+          HAVING count(*) > ?
+          UNION ALL
+          SELECT 1 AS has_more
+          FROM c${index + 1}_ranked
+          WHERE expansion_rank > ?`
+      ).join(" UNION ALL ");
+      const walkCte = `
+        WITH RECURSIVE
+        f0(doc_id, depth, path, sort_key) AS (
+          SELECT ?, 0, printf(',%d,', ?), ''
+        ),
+        ${frontierCtes.join(",")},
+        node_depth AS (
+          SELECT doc_id, min(depth) AS depth, min(sort_key) AS sort_key
+          FROM (${frontierUnion})
+          GROUP BY doc_id
+        ),
+        ranked_nodes AS (
+          SELECT
+            d.*,
+            nd.depth,
+            row_number() OVER (ORDER BY nd.depth ASC, nd.sort_key ASC, d.id ASC) AS global_rank,
+            count(*) OVER () AS total_count
+          FROM node_depth nd
+          JOIN documents d ON d.id = nd.doc_id AND d.active = 1
+        )
+      `;
+
+      const baseParams: (number | string)[] = [];
+      baseParams.push(rootDocumentId, rootDocumentId, ...frontierParams);
+
+      const nodeRows = db
+        .query<
+          DbDocumentRow & {
+            depth: number;
+            global_rank: number;
+            total_count: number;
+          },
+          (number | string)[]
+        >(
+          `${walkCte}
+           SELECT *
+           FROM ranked_nodes
+           WHERE global_rank <= ?
+           ORDER BY depth ASC, uri ASC, docid ASC
+           LIMIT ?`
+        )
+        .all(...baseParams, nodeLimit + 1, nodeLimit + 1);
+
+      const returnedNodeRows = nodeRows.slice(0, nodeLimit);
+      const returnedIds = new Set(returnedNodeRows.map((row) => row.id));
+      const totalNodes = nodeRows[0]?.total_count ?? 0;
+      const warnings: string[] = [];
+      let truncated = false;
+      if (totalNodes > maxNodes) {
+        truncated = true;
+        warnings.push("maxNodes reached");
+      }
+      if (totalNodes > visitedLimit) {
+        truncated = true;
+        warnings.push("visitedLimit reached");
+      }
+
+      const visitedRows = db
+        .query<{ has_more: number }, (number | string)[]>(
+          `${walkCte}
+           SELECT 1 AS has_more
+           FROM (${visitedOverflowChecks})
+           LIMIT 1`
+        )
+        .get(...baseParams, ...Array(maxDepth).fill(visitedLimit));
+      if (visitedRows) {
+        truncated = true;
+        warnings.push("visitedLimit reached");
+      }
+
+      const frontierRows = db
+        .query<{ has_more: number }, (number | string)[]>(
+          `${walkCte}
+           SELECT 1 AS has_more
+           FROM (${frontierOverflowChecks})
+           LIMIT 1`
+        )
+        .get(...baseParams, ...Array(maxDepth * 2).fill(frontierLimit));
+      if (frontierRows) {
+        truncated = true;
+        warnings.push("frontierLimit reached");
+      }
+
+      const edgeRows = db
+        .query<DbDocEdgeRow & { traversal_depth: number }, (number | string)[]>(
+          `${walkCte}
+           , returned_edges AS (
+           SELECT
+             e.src_doc_id,
+             src.docid AS source_docid,
+             src.uri AS source_uri,
+             src.title AS source_title,
+             e.dst_doc_id,
+             dst.docid AS target_docid,
+             dst.uri AS target_uri,
+             dst.title AS target_title,
+             e.edge_type,
+             e.confidence,
+             e.source,
+             CASE
+               WHEN ns.depth >= nt.depth THEN ns.depth
+               ELSE nt.depth
+             END AS traversal_depth,
+             row_number() OVER (
+               PARTITION BY e.src_doc_id, e.dst_doc_id, e.edge_type
+               ORDER BY
+                 CASE e.confidence
+                   WHEN 'manual' THEN 1
+                   WHEN 'configured' THEN 2
+                   WHEN 'parsed' THEN 3
+                   WHEN 'inferred' THEN 4
+                   ELSE 5
+                 END,
+                 e.source ASC,
+                 src.docid ASC,
+                 dst.docid ASC
+             ) AS dedup_rank
+           FROM doc_edges e
+           JOIN node_depth ns ON ns.doc_id = e.src_doc_id
+           JOIN node_depth nt ON nt.doc_id = e.dst_doc_id
+           JOIN documents src ON src.id = e.src_doc_id AND src.active = 1
+           JOIN documents dst ON dst.id = e.dst_doc_id AND dst.active = 1
+           WHERE ns.doc_id IN (${[...returnedIds].map(() => "?").join(",")})
+             AND nt.doc_id IN (${[...returnedIds].map(() => "?").join(",")})
+             ${edgeTypeFilter}
+             ${returnedEdgeDirectionClause}
+           )
+           SELECT *
+           FROM returned_edges
+           WHERE dedup_rank = 1
+           ORDER BY traversal_depth ASC, edge_type ASC, source_docid ASC, target_docid ASC`
+        )
+        .all(
+          ...baseParams,
+          ...returnedIds,
+          ...returnedIds,
+          ...(edgeType ? [edgeType] : [])
+        );
+
+      const boundaryRows = db
+        .query<{ has_more: number }, (number | string)[]>(
+          `${walkCte}
+           SELECT 1 AS has_more
+           FROM c${boundaryCandidateDepth}_ranked
+           LIMIT 1`
+        )
+        .get(...baseParams);
+
+      if (boundaryRows) {
+        truncated = true;
+        warnings.push("maxDepth reached");
+      }
+
+      return ok({
+        nodes: returnedNodeRows.map((row) => ({
+          doc: mapDocumentRow(row),
+          depth: row.depth,
+        })),
+        edges: edgeRows.map((row) => ({
+          edge: mapDocEdgeRow(row),
+          depth: row.traversal_depth,
+        })),
+        truncated,
+        warnings: [...new Set(warnings)],
+      });
+    } catch (cause) {
+      return err(
+        "QUERY_FAILED",
+        cause instanceof Error
+          ? cause.message
+          : "Failed to run graph traversal",
+        cause
+      );
+    }
+  }
+
+  async backfillDocEdges(): Promise<StoreResult<{ inserted: number }>> {
+    try {
+      const db = this.ensureOpen();
+      let inserted = 0;
+
+      const transaction = db.transaction(() => {
+        db.run("DELETE FROM doc_edges WHERE source IN (?, ?)", [
+          "wikilink",
+          "markdown-link",
+        ]);
+
+        const insertWiki = db.run(`
+          INSERT OR IGNORE INTO doc_edges (
+            src_doc_id, dst_doc_id, edge_type, confidence, source
+          )
+          SELECT
+            src.id,
+            tgt.id,
+            'mentions',
+            'parsed',
+            'wikilink'
+          FROM documents src
+          JOIN doc_links dl ON dl.source_doc_id = src.id
+          JOIN documents tgt ON tgt.id = (${buildWikiBestMatchSubquery(
+            "COALESCE(dl.target_collection, src.collection)",
+            "dl.target_ref_norm"
+          )})
+          WHERE src.active = 1
+            AND tgt.active = 1
+            AND dl.link_type = 'wiki'
+        `);
+
+        const insertMarkdown = db.run(`
+          INSERT OR IGNORE INTO doc_edges (
+            src_doc_id, dst_doc_id, edge_type, confidence, source
+          )
+          SELECT
+            src.id,
+            tgt.id,
+            'related_to',
+            'parsed',
+            'markdown-link'
+          FROM documents src
+          JOIN doc_links dl ON dl.source_doc_id = src.id
+          JOIN documents tgt ON tgt.active = 1
+            AND tgt.collection = COALESCE(dl.target_collection, src.collection)
+            AND tgt.rel_path = dl.target_ref_norm
+          WHERE src.active = 1
+            AND dl.link_type = 'markdown'
+        `);
+
+        inserted = insertWiki.changes + insertMarkdown.changes;
+      });
+
+      transaction();
+      return ok({ inserted });
+    } catch (cause) {
+      return err(
+        "QUERY_FAILED",
+        cause instanceof Error
+          ? cause.message
+          : "Failed to backfill document edges",
+        cause
+      );
+    }
+  }
+
   // ─────────────────────────────────────────────────────────────────────────
   // Graph
   // ─────────────────────────────────────────────────────────────────────────
@@ -2329,102 +3116,6 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
         // sqlite-vec not loaded
       }
 
-      const wikiTitleExpr = (alias: string): string =>
-        `lower(trim(${alias}.title))`;
-
-      const wikiRelPathExpr = (alias: string): string =>
-        `lower(${alias}.rel_path)`;
-
-      const suffixMatch = (targetExpr: string, valueExpr: string): string =>
-        `(substr(${targetExpr}, -length(${valueExpr})) = ${valueExpr}
-          AND (length(${targetExpr}) = length(${valueExpr})
-            OR substr(${targetExpr}, -length(${valueExpr}) - 1, 1) = '/'))`;
-
-      const wikiMatch = (alias: string, targetRefExpr: string): string => {
-        const titleExpr = wikiTitleExpr(alias);
-        const relExpr = wikiRelPathExpr(alias);
-        const targetBaseExpr = `CASE
-          WHEN ${targetRefExpr} LIKE '%.md' THEN substr(${targetRefExpr}, 1, length(${targetRefExpr}) - 3)
-          ELSE ${targetRefExpr}
-        END`;
-        const targetMdExpr = `${targetBaseExpr} || '.md'`;
-        return `(
-          ${titleExpr} = ${targetBaseExpr}
-          OR ${titleExpr} = ${targetMdExpr}
-          OR ${suffixMatch(targetBaseExpr, titleExpr)}
-          OR ${suffixMatch(targetMdExpr, `${titleExpr} || '.md'`)}
-          OR ${relExpr} = ${targetBaseExpr}
-          OR ${relExpr} = ${targetMdExpr}
-          OR ${suffixMatch(relExpr, targetMdExpr)}
-          OR ${suffixMatch(relExpr, targetBaseExpr)}
-          OR ${suffixMatch(targetMdExpr, relExpr)}
-          OR ${suffixMatch(targetBaseExpr, relExpr)}
-        )`;
-      };
-
-      const wikiOrder = (alias: string, targetRefExpr: string): string => {
-        const titleExpr = wikiTitleExpr(alias);
-        const relExpr = wikiRelPathExpr(alias);
-        const targetBaseExpr = `CASE
-          WHEN ${targetRefExpr} LIKE '%.md' THEN substr(${targetRefExpr}, 1, length(${targetRefExpr}) - 3)
-          ELSE ${targetRefExpr}
-        END`;
-        const targetMdExpr = `${targetBaseExpr} || '.md'`;
-        return `CASE
-          WHEN ${titleExpr} = ${targetBaseExpr} THEN 1
-          WHEN ${titleExpr} = ${targetMdExpr} THEN 2
-          WHEN ${suffixMatch(targetBaseExpr, titleExpr)} THEN 3
-          WHEN ${suffixMatch(targetMdExpr, `${titleExpr} || '.md'`)} THEN 4
-          WHEN ${relExpr} = ${targetBaseExpr} THEN 5
-          WHEN ${relExpr} = ${targetMdExpr} THEN 6
-          WHEN ${suffixMatch(relExpr, targetMdExpr)} THEN 7
-          WHEN ${suffixMatch(relExpr, targetBaseExpr)} THEN 8
-          WHEN ${suffixMatch(targetMdExpr, relExpr)} THEN 9
-          WHEN ${suffixMatch(targetBaseExpr, relExpr)} THEN 10
-          ELSE 11
-        END`;
-      };
-
-      const wikiBestMatch = (
-        collectionExpr: string,
-        targetRefExpr: string
-      ): string => `
-        SELECT t.id FROM documents t
-        WHERE t.active = 1
-          AND t.collection = ${collectionExpr}
-          AND ${wikiMatch("t", targetRefExpr)}
-          AND ${wikiOrder("t", targetRefExpr)} = (
-            SELECT MIN(${wikiOrder("t2", targetRefExpr)}) FROM documents t2
-            WHERE t2.active = 1
-              AND t2.collection = ${collectionExpr}
-              AND ${wikiMatch("t2", targetRefExpr)}
-          )
-        ORDER BY t.id LIMIT 1
-      `;
-
-      const wikiBestRank = (
-        collectionExpr: string,
-        targetRefExpr: string
-      ): string => `
-        SELECT MIN(${wikiOrder("t", targetRefExpr)}) FROM documents t
-        WHERE t.active = 1
-          AND t.collection = ${collectionExpr}
-          AND ${wikiMatch("t", targetRefExpr)}
-      `;
-
-      const wikiBestRankMatchCount = (
-        collectionExpr: string,
-        targetRefExpr: string
-      ): string => `
-        SELECT COUNT(*) FROM documents t
-        WHERE t.active = 1
-          AND t.collection = ${collectionExpr}
-          AND ${wikiMatch("t", targetRefExpr)}
-          AND ${wikiOrder("t", targetRefExpr)} = (${wikiBestRank(
-            collectionExpr,
-            targetRefExpr
-          )})
-      `;
       interface ResolvedEdgeRow {
         source_id: number;
         source_docid: string;
@@ -2464,14 +3155,14 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
           tgt.docid as target_docid,
           dl.link_type,
           CASE dl.link_type
-            WHEN 'wiki' THEN (${wikiBestRank(
+            WHEN 'wiki' THEN (${buildWikiBestRankSubquery(
               "COALESCE(dl.target_collection, src.collection)",
               "dl.target_ref_norm"
             )})
             WHEN 'markdown' THEN 5
           END as match_rank,
           CASE dl.link_type
-            WHEN 'wiki' THEN (${wikiBestRankMatchCount(
+            WHEN 'wiki' THEN (${buildWikiBestRankMatchCountSubquery(
               "COALESCE(dl.target_collection, src.collection)",
               "dl.target_ref_norm"
             )})
@@ -2480,7 +3171,7 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
         FROM documents src
         JOIN doc_links dl ON dl.source_doc_id = src.id
         JOIN documents tgt ON tgt.id = CASE dl.link_type
-          WHEN 'wiki' THEN (${wikiBestMatch(
+          WHEN 'wiki' THEN (${buildWikiBestMatchSubquery(
             "COALESCE(dl.target_collection, src.collection)",
             "dl.target_ref_norm"
           )})
@@ -2516,7 +3207,7 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
             dl.link_type,
             CASE dl.link_type
               WHEN 'wiki' THEN (
-                ${wikiBestMatch(
+                ${buildWikiBestMatchSubquery(
                   "COALESCE(dl.target_collection, src.collection)",
                   "dl.target_ref_norm"
                 )}
@@ -3527,6 +4218,7 @@ interface DbDocumentRow {
   converter_version: string | null;
   language_hint: string | null;
   content_type: string | null;
+  content_type_source: string | null;
   categories: string | null;
   author: string | null;
   frontmatter_date: string | null;
@@ -3540,6 +4232,20 @@ interface DbDocumentRow {
   last_error_at: string | null;
   created_at: string;
   updated_at: string;
+}
+
+interface DbDocEdgeRow {
+  src_doc_id: number;
+  source_docid: string;
+  source_uri: string;
+  source_title: string | null;
+  dst_doc_id: number;
+  target_docid: string;
+  target_uri: string;
+  target_title: string | null;
+  edge_type: string;
+  confidence: DocEdgeConfidence;
+  source: DocEdgeSource;
 }
 
 interface DbChunkRow {
@@ -3645,6 +4351,7 @@ function mapDocumentRow(row: DbDocumentRow): DocumentRow {
     converterVersion: row.converter_version,
     languageHint: row.language_hint,
     contentType: row.content_type,
+    contentTypeSource: row.content_type_source,
     categories,
     author: row.author,
     frontmatterDate: row.frontmatter_date,
@@ -3658,6 +4365,23 @@ function mapDocumentRow(row: DbDocumentRow): DocumentRow {
     lastErrorAt: row.last_error_at,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+  };
+}
+
+function mapDocEdgeRow(row: DbDocEdgeRow): DocEdgeRow {
+  return {
+    sourceDocId: row.src_doc_id,
+    sourceDocid: row.source_docid,
+    sourceUri: row.source_uri,
+    sourceTitle: row.source_title,
+    targetDocId: row.dst_doc_id,
+    targetDocid: row.target_docid,
+    targetUri: row.target_uri,
+    targetTitle: row.target_title,
+    edgeType: row.edge_type,
+    relationType: row.edge_type,
+    confidence: row.confidence,
+    edgeSource: row.source,
   };
 }
 

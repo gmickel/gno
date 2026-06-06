@@ -384,6 +384,28 @@ The `--category` filter checks both canonical `contentType` and category filters
 
 GNO persists a fingerprint of the normalized `contentTypes` rules used during ingestion. If you edit prefixes or type IDs later, unchanged files are reprocessed on the next sync so stored `contentType` metadata is re-derived; this is not tied only to an ingest-version bump.
 
+## Typed Graphs and Retrieval Diagnosis
+
+GNO stores semantic relationships in a derived `doc_edges` layer. Wiki links and
+markdown links are projected into typed edges during sync, `relations:`
+frontmatter can declare explicit relationship targets, and
+`contentTypes[].graphHints` type projected links without changing ranking by
+default.
+
+`gno graph query <doc>` traverses this typed edge layer with bounded depth,
+direction, and node/edge caps. `gno links <doc> --edge-type <type>` and
+`gno backlinks <doc> --relation <type>` inspect the same semantic layer while
+leaving the untyped positional link commands backward compatible.
+
+`gno query diagnose "<query>" --target <doc>` resolves the target first, then
+compares that document's chunks against every retrieval stage. It reports
+whether the target was present in BM25, vector search, hybrid fusion, graph
+expansion, and rerank, including target states such as `not_found`,
+`filtered_out`, `no_indexed_content`, and diagnosed drop reasons such as
+`not_in_candidate_set` or `below_cutoff`. In fast/BM25-only mode, vector and
+rerank stages are skipped with reasons while fusion still runs over the BM25
+candidate set.
+
 ## Controlling Search Behavior
 
 ### Search Modes

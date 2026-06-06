@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Added typed `doc_edges` with frontmatter `relations:` and active
+  `contentTypes[].graphHints` projection metadata.
+- Added bounded typed graph traversal through `gno graph query`, REST
+  `/api/graph/query`, and MCP `gno_graph_query`.
+- Added targeted retrieval diagnostics through `gno query diagnose --target`,
+  REST `/api/query/diagnose`, and MCP `gno_query_diagnose`.
+- Added `--edge-type` / `--relation` filters to `gno links` and
+  `gno backlinks` for semantic relationship queries.
+
 ## [1.9.0] - 2026-06-05
 
 ### Added

@@ -94,6 +94,7 @@ Default output is human-readable terminal format.
 | backlinks          | yes    | no      | no    | yes  | no    | terminal |
 | similar            | yes    | no      | no    | yes  | no    | terminal |
 | graph              | yes    | no      | no    | no   | no    | terminal |
+| graph query        | yes    | no      | no    | no   | no    | terminal |
 | serve              | yes¹   | no      | no    | no   | no    | terminal |
 | completion         | no     | no      | no    | no   | no    | terminal |
 | completion install | yes    | no      | no    | no   | no    | terminal |
@@ -245,7 +246,8 @@ Zod validates `id`, `prefixes`, `preset`, `graphHints`, `searchBoost`, and
 `temporal`, while `preset` remains a permissive string. Post-parse normalization
 warns and drops unknown preset references, dedupes exact duplicate prefixes,
 retains overlapping prefixes, and sorts rules longest-prefix-first. `searchBoost`
-and `graphHints` are accepted but reserved/no-op in this phase.
+is accepted but currently no-op. `graphHints` is active: ordered hints type
+projected wiki/markdown edges and surface in graph traversal/diagnose metadata.
 
 ---
 
@@ -678,6 +680,7 @@ Hybrid search combining BM25 and vector retrieval with optional expansion and re
 
 ```bash
 gno query <query> [-n <num>] [--min-score <num>] [-c <collection>] [--since <date>] [--until <date>] [--category <values>] [--author <text>] [--intent <text>] [--exclude <values>] [-C <num>] [--tags-all <tags>] [--tags-any <tags>] [--full] [--line-numbers] [--lang <bcp47>] [--no-expand] [--no-rerank] [--graph] [--no-graph] [--query-mode <mode:text>]... [--explain] [--json|--files|--csv|--md|--xml]
+gno query diagnose <query> --target <doc> [-n <num>] [--min-score <num>] [-c <collection>] [--since <date>] [--until <date>] [--category <values>] [--author <text>] [--intent <text>] [--exclude <values>] [-C <num>] [--tags-all <tags>] [--tags-any <tags>] [--lang <bcp47>] [--no-expand] [--no-rerank] [--graph] [--no-graph] [--json]
 ```
 
 **Options:** Same as `gno search`, plus:
@@ -694,6 +697,7 @@ gno query <query> [-n <num>] [--min-score <num>] [-c <collection>] [--since <dat
 | `-C, --candidate-limit` | integer | Max candidates passed to reranking (default 20) |
 | `--query-mode` | string[] | Structured mode entry (`term:<text>`, `intent:<text>`, `hyde:<text>`). Repeatable. |
 | `--explain` | boolean | Print retrieval explanation to stderr |
+| `--target` | ref | Required for `query diagnose`; target document to diagnose |
 
 **Compatibility / Migration:**
 
@@ -703,6 +707,18 @@ gno query <query> [-n <num>] [--min-score <num>] [-c <collection>] [--since <dat
 - `--query-mode` is optional and additive to the command surface.
 - If one or more `--query-mode` entries are provided, generated expansion is bypassed and provided entries are used as retrieval intents.
 - By default, `gno query` does not expand through the document graph. Use `--graph` to add a capped one-hop graph-neighbor candidate set after BM25/vector retrieval. Explicit links are weighted above inferred, ambiguous, or similarity edges.
+
+**Diagnose Output:**
+
+`gno query diagnose` wraps the shared `diagnoseQueryTarget()` core and emits
+`query-diagnose.schema.json` for `--json`. The payload requires
+`schemaVersion: "1.0"`, resolves the target first, reports `target.status`
+(`not_found|inactive|no_indexed_content|filtered_out|diagnosed`), and only runs
+stage tracing for `diagnosed` targets. Stages report
+`present`, `rank`, `score`, `survived`, `dropReason`, `status`, and
+`sourceCount` across BM25, vector, fusion, graph, and rerank. BM25-only mode
+marks vector/rerank skipped when unavailable or disabled, but fusion remains
+active with `sourceCount: 1`.
 
 **Explain Output (stderr):**
 
@@ -1875,7 +1891,7 @@ List outgoing links from a document.
 **Synopsis:**
 
 ```bash
-gno links [list] <doc> [--type <wiki|markdown>] [--json] [--md]
+gno links [list] <doc> [--type <wiki|markdown>] [--edge-type <type>] [--relation <type>] [--json] [--md]
 ```
 
 **Arguments:**
@@ -1886,11 +1902,13 @@ gno links [list] <doc> [--type <wiki|markdown>] [--json] [--md]
 
 **Options:**
 
-| Flag     | Type   | Description         |
-| -------- | ------ | ------------------- |
-| `--type` | string | Filter by link type |
-| `--json` | flag   | JSON output         |
-| `--md`   | flag   | Markdown output     |
+| Flag          | Type   | Description                       |
+| ------------- | ------ | --------------------------------- |
+| `--type`      | string | Filter positional links by syntax |
+| `--edge-type` | string | Filter semantic edges by type     |
+| `--relation`  | string | Alias for `--edge-type`           |
+| `--json`      | flag   | JSON output                       |
+| `--md`        | flag   | Markdown output                   |
 
 **Behavior:**
 
@@ -1898,6 +1916,9 @@ gno links [list] <doc> [--type <wiki|markdown>] [--json] [--md]
 - Shows link type (wiki or markdown), target, display text, location
 - Indicates whether each link resolves to an indexed document
 - Default subcommand is `list` (can be omitted)
+- `--edge-type`/`--relation` switches to semantic `doc_edges` output (`edgeType`, `relationType`, `confidence`, `edgeSource`)
+- `--edge-type` and `--relation` are aliases for the same semantic edge type filter; if both are supplied they must match
+- `--type` cannot be combined with `--edge-type` or `--relation`
 
 **Output (JSON):**
 
@@ -1939,6 +1960,10 @@ gno links gno://notes/source.md
 # Filter to wiki links only
 gno links list #abc123 --type wiki
 
+# Filter semantic relationship edges
+gno links gno://notes/source.md --edge-type mentions --json
+gno links gno://notes/source.md --relation mentions --json
+
 # JSON output
 gno links gno://notes/note.md --json
 ```
@@ -1952,7 +1977,7 @@ List documents that link to a target document.
 **Synopsis:**
 
 ```bash
-gno backlinks <doc> [-c, --collection <name>] [--json] [--md]
+gno backlinks <doc> [-c, --collection <name>] [--edge-type <type>] [--relation <type>] [--json] [--md]
 ```
 
 **Arguments:**
@@ -1963,17 +1988,20 @@ gno backlinks <doc> [-c, --collection <name>] [--json] [--md]
 
 **Options:**
 
-| Flag               | Type   | Description          |
-| ------------------ | ------ | -------------------- |
-| `-c, --collection` | string | Filter by collection |
-| `--json`           | flag   | JSON output          |
-| `--md`             | flag   | Markdown output      |
+| Flag               | Type   | Description                       |
+| ------------------ | ------ | --------------------------------- |
+| `-c, --collection` | string | Filter by collection              |
+| `--edge-type`      | string | Filter semantic backlinks by type |
+| `--relation`       | string | Alias for `--edge-type`           |
+| `--json`           | flag   | JSON output                       |
+| `--md`             | flag   | Markdown output                   |
 
 **Behavior:**
 
 - Lists all documents that link TO the specified document
 - Shows source document info, link location, and link text
 - Supports both wiki and markdown link resolution
+- `--edge-type`/`--relation` switches to semantic `doc_edges` backlinks (`edgeType`, `relationType`, `confidence`, `edgeSource`) while preserving `--collection`
 
 **Output (JSON):**
 
@@ -2012,6 +2040,9 @@ gno backlinks gno://notes/target.md
 
 # Filter by collection
 gno backlinks #abc123 --collection notes
+
+# Filter semantic backlinks
+gno backlinks gno://notes/target.md --relation related_to --json
 
 # JSON output
 gno backlinks gno://docs/api.md --json
@@ -2203,11 +2234,50 @@ Schema: `graph.schema.json`
 }
 ```
 
-**Edge Types:**
+### gno graph query
+
+Run a bounded typed-edge traversal from one document. This command uses the
+typed `doc_edges` projection (`relations:`, graph-hinted links, and backfilled
+wiki/markdown links) and is scoped to a resolved root rather than the global
+graph export.
+
+**Synopsis:**
+
+```bash
+gno graph query <doc> [--direction <both|out|in>] [--edge-type <type>] [--max-depth <n>] [--max-nodes <n>] [--frontier-limit <n>] [--visited-limit <n>] [--json]
+```
+
+**Options:**
+
+| Flag               | Type   | Default | Description                          |
+| ------------------ | ------ | ------- | ------------------------------------ |
+| `--direction`      | enum   | both    | Traverse outgoing, incoming, or both |
+| `--edge-type`      | string | all     | Filter to one typed edge/relation    |
+| `--max-depth`      | number | 2       | Maximum traversal depth              |
+| `--max-nodes`      | number | 100     | Maximum returned nodes               |
+| `--frontier-limit` | number | 100     | Max frontier width per depth         |
+| `--visited-limit`  | number | 500     | Max visited rows during traversal    |
+| `--json`           | flag   |         | JSON output                          |
+
+**Behavior:**
+
+- Resolves `<doc>` using the shared core ref parser (`#docid`, `gno://...`, or `collection/path`)
+- Traverses typed edges with cycle safety and deterministic ordering
+- Enforces hard depth, frontier, and visited-row caps; sets `meta.truncated` with warnings when caps trip
+- Includes per-node `graphHints` from the node's configured content type
+
+Schema: `graph-query.schema.json`
+
+**Global Graph Edge Types:**
 
 - `wiki`: Wiki link (`[[Target]]`)
 - `markdown`: Markdown link (`[text](path.md)`)
 - `similar`: Semantic similarity (requires `--similar` flag)
+
+`gno graph query --edge-type` filters the typed `doc_edges.edge_type` values
+derived from frontmatter relations, content-type graph hints, and backfilled
+wiki/markdown projections (for example `mentions`, `references`, or
+`related`), not the global graph export edge-type enum above.
 
 **Exit Codes:**
 

@@ -74,6 +74,27 @@ If both are supplied, GNO merges:
 
 Validation still applies across the combined set, including the single-`hyde` rule.
 
+## Frontmatter Relations
+
+Documents can declare typed relationships in frontmatter with a one-level
+`relations:` map:
+
+```yaml
+relations:
+  works_at: [gno://notes/companies/acme.md]
+  attended:
+    - gno://notes/meetings/2026-06-04-sync.md
+```
+
+Relation names are normalized lowercase identifiers such as `mentions`,
+`works_at`, `attended`, `decided`, or `related_to`. Targets are GNO refs. GNO
+resolves them during indexing and writes typed edges to the derived graph layer;
+it never rewrites the source file.
+
+Use `gno graph query <doc> --edge-type works_at`, `gno links <doc>
+--edge-type works_at`, or `gno backlinks <doc> --relation attended` to inspect
+typed relationships.
+
 ## Supported Surfaces
 
 Current rollout:

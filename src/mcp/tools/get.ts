@@ -10,11 +10,11 @@ import type { DocumentRow, StorePort } from "../../store/types";
 import type { ToolContext } from "../server";
 
 import { decorateUriForIndex, parseUri } from "../../app/constants";
-import { parseRef } from "../../cli/commands/ref-parser";
 import {
   getDocumentCapabilities,
   type DocumentCapabilities,
 } from "../../core/document-capabilities";
+import { parseRef } from "../../core/ref-parser";
 import { runTool, type ToolResult } from "./index";
 
 interface GetInput {

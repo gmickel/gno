@@ -10,14 +10,18 @@ import type {
   BacklinkRow,
   DocLinkRow,
   DocumentRow,
+  GraphQueryDirection,
+  GraphQueryResult,
   GraphLink,
   GraphNode,
   GraphResult,
 } from "../../store/types";
 import type { ToolContext } from "../server";
 
-import { parseRef } from "../../cli/commands/ref-parser";
+import { normalizeContentTypes } from "../../config";
 import { MCP_ERRORS } from "../../core/errors";
+import { diagnoseGraphQuery } from "../../core/graph-query";
+import { parseRef } from "../../core/ref-parser";
 import { normalizeCollectionName } from "../../core/validation";
 import { getActivePreset } from "../../llm/registry";
 import { createVectorIndexPort } from "../../store/vector";
@@ -648,6 +652,18 @@ interface GraphPathInput extends GraphInput {
   maxDepth?: number;
 }
 
+interface GraphQueryInput {
+  ref: string;
+  direction?: GraphQueryDirection;
+  edgeType?: string;
+  relation?: string;
+  maxDepth?: number;
+  depth?: number;
+  maxNodes?: number;
+  frontierLimit?: number;
+  visitedLimit?: number;
+}
+
 interface GraphNeighbor {
   node: GraphNode;
   direction: "out" | "in";
@@ -858,6 +874,72 @@ function formatGraphNeighborsResult(data: GraphNeighborsResult): string {
     );
   }
   return lines.join("\n");
+}
+
+function formatGraphQueryResult(data: GraphQueryResult): string {
+  const lines = [
+    `Typed graph query from ${data.root.uri}: ${data.nodes.length} nodes, ${data.edges.length} edges`,
+    `Direction: ${data.meta.direction}, depth: ${data.meta.maxDepth}`,
+  ];
+  if (data.meta.edgeType) {
+    lines.push(`Edge type: ${data.meta.edgeType}`);
+  }
+  if (data.meta.truncated) {
+    lines.push("Traversal truncated by configured caps");
+  }
+  for (const edge of data.edges.slice(0, 20)) {
+    lines.push(
+      `  ${edge.source} -> ${edge.target} (${edge.edgeType}, ${edge.confidence}, ${edge.edgeSource})`
+    );
+  }
+  return lines.join("\n");
+}
+
+export function handleGraphQuery(
+  args: GraphQueryInput,
+  ctx: ToolContext
+): Promise<ToolResult> {
+  return runTool(
+    ctx,
+    "gno_graph_query",
+    async () => {
+      const edgeTypeValue = args.edgeType?.trim();
+      const relationValue = args.relation?.trim();
+      if (edgeTypeValue && relationValue && edgeTypeValue !== relationValue) {
+        throw new Error(
+          "VALIDATION: edgeType and relation are aliases and must match when both are provided"
+        );
+      }
+      if (
+        args.maxDepth !== undefined &&
+        args.depth !== undefined &&
+        args.maxDepth !== args.depth
+      ) {
+        throw new Error(
+          "VALIDATION: maxDepth and depth are aliases and must match when both are provided"
+        );
+      }
+
+      const result = await diagnoseGraphQuery(ctx.store, args.ref, {
+        direction: args.direction ?? "both",
+        edgeType: edgeTypeValue || relationValue || undefined,
+        maxDepth: args.maxDepth ?? args.depth,
+        maxNodes: args.maxNodes,
+        frontierLimit: args.frontierLimit,
+        visitedLimit: args.visitedLimit,
+        contentTypeRules: normalizeContentTypes(ctx.config.contentTypes ?? [])
+          .rules,
+      });
+      if (!result.success) {
+        throw new Error(
+          `${result.isValidation ? "VALIDATION" : "RUNTIME"}: ${result.error}`
+        );
+      }
+
+      return result.data;
+    },
+    formatGraphQueryResult
+  );
 }
 
 export function handleGraphNeighbors(

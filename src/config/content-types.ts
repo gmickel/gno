@@ -37,6 +37,13 @@ const NOTE_PRESET_IDS = new Set<NotePresetId>(
   NOTE_PRESETS.map((preset) => preset.id)
 );
 
+function normalizeGraphHint(value: string): string {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[-\s]+/g, "_");
+}
+
 function isNotePresetId(value: string): value is NotePresetId {
   return NOTE_PRESET_IDS.has(value as NotePresetId);
 }
@@ -79,6 +86,9 @@ export function normalizeContentTypes(
         ...contentType,
         preset: contentType.preset,
         prefixes,
+        graphHints: contentType.graphHints
+          ? contentType.graphHints.map(normalizeGraphHint).filter(Boolean)
+          : undefined,
       });
       continue;
     }
@@ -87,6 +97,9 @@ export function normalizeContentTypes(
       ...contentType,
       preset: contentType.preset,
       prefixes: [...prefixes].sort((a, b) => b.length - a.length),
+      graphHints: contentType.graphHints
+        ? contentType.graphHints.map(normalizeGraphHint).filter(Boolean)
+        : undefined,
     });
   }
 
@@ -119,6 +132,7 @@ export function fingerprintContentTypeRules(
     id: rule.id,
     preset: rule.preset,
     prefixes: rule.prefixes,
+    graphHints: rule.graphHints ?? [],
   }));
   const hasher = new Bun.CryptoHasher("sha256");
   hasher.update(JSON.stringify(canonical));

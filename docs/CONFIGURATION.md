@@ -349,17 +349,23 @@ Fields:
 | `prefixes`    | string[] | Relative path prefixes that map documents to this type                |
 | `preset`      | string   | Note preset used by future type-aware creation and ingestion behavior |
 | `temporal`    | boolean  | Accepted metadata flag for time-oriented pages                        |
-| `searchBoost` | number   | Reserved for future ranking; accepted but no-op in this release       |
-| `graphHints`  | string[] | Reserved for typed graph work; accepted but no-op in this release     |
+| `searchBoost` | number   | Reserved for future ranking; accepted but currently no-op             |
+| `graphHints`  | string[] | Ordered typed-edge hints for link projection, traversal, and diagnose |
 
 Validation is warning-based after YAML parsing:
 
 - unknown `preset` references warn and the content type entry is dropped
 - exact duplicate prefixes are deduped
 - overlapping prefixes are retained, for example `people/` and `people/team/`
-- rules are normalized longest-prefix-first for future matching
+- rules are normalized longest-prefix-first for matching and edge derivation
 
-Reserved `graphHints` vocabulary is centralized in the config API for future graph work. Current documented hints: `mentions`, `works_at`, `attended`, `decided`, `related_to`.
+`graphHints` vocabulary is centralized in the config API. Supported hints are
+`mentions`, `works_at`, `attended`, `decided`, and `related_to`. Hints do not
+create standalone edges because they have no target. Instead, the first hint
+types projected wiki/markdown links for matching documents, and remaining hints
+surface in `gno graph query` and `gno query diagnose` metadata. Editing
+`graphHints` changes the content-type fingerprint, so unchanged documents are
+reprocessed on the next sync and typed edges are re-derived.
 
 ### Custom Models
 

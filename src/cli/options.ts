@@ -22,6 +22,7 @@ export const CMD = {
   search: "search",
   vsearch: "vsearch",
   query: "query",
+  queryDiagnose: "query.diagnose",
   bench: "bench",
   ask: "ask",
   get: "get",
@@ -38,6 +39,7 @@ export const CMD = {
   backlinks: "backlinks",
   similar: "similar",
   graph: "graph",
+  graphQuery: "graph.query",
   capture: "capture",
 } as const;
 
@@ -47,6 +49,7 @@ const FORMAT_SUPPORT: Record<CommandId, OutputFormat[]> = {
   [CMD.search]: ["terminal", "json", "files", "csv", "md", "xml"],
   [CMD.vsearch]: ["terminal", "json", "files", "csv", "md", "xml"],
   [CMD.query]: ["terminal", "json", "files", "csv", "md", "xml"],
+  [CMD.queryDiagnose]: ["terminal", "json"],
   [CMD.bench]: ["terminal", "json"],
   [CMD.ask]: ["terminal", "json", "md"],
   [CMD.get]: ["terminal", "json", "md"],
@@ -64,6 +67,7 @@ const FORMAT_SUPPORT: Record<CommandId, OutputFormat[]> = {
   [CMD.similar]: ["terminal", "json", "md"],
   // graph uses custom --dot/--mermaid flags (not OutputFormat) and writes via terminal output
   [CMD.graph]: ["json", "terminal"],
+  [CMD.graphQuery]: ["terminal", "json"],
   [CMD.capture]: ["terminal", "json"],
 };
 

@@ -36,6 +36,10 @@ import {
   updateCollection,
 } from "../../collection";
 import {
+  fingerprintContentTypeRules,
+  normalizeContentTypes,
+} from "../../config";
+import {
   buildCaptureReceipt,
   listCaptureDiskRelPaths,
   planCapture,
@@ -100,6 +104,7 @@ import {
   generateGroundedAnswer,
   processAnswerResult,
 } from "../../pipeline/answer";
+import { diagnoseQueryTarget } from "../../pipeline/diagnose";
 import { searchHybrid } from "../../pipeline/hybrid";
 import { validateQueryModes } from "../../pipeline/query-modes";
 import { searchBm25 } from "../../pipeline/search";
@@ -190,6 +195,10 @@ export interface QueryRequestBody {
   tagsAll?: string;
   /** Comma-separated tags - filter to docs having ANY (OR) */
   tagsAny?: string;
+}
+
+export interface QueryDiagnoseRequestBody extends QueryRequestBody {
+  target?: string;
 }
 
 export interface AskRequestBody {
@@ -3507,6 +3516,191 @@ export async function handleQuery(
       until: body.until,
       categories,
       author,
+    }
+  );
+
+  if (!result.ok) {
+    return errorResponse("RUNTIME", result.error.message, 500);
+  }
+
+  return jsonResponse(result.value);
+}
+
+/**
+ * POST /api/query/diagnose
+ * Body: { query, target, limit?, minScore?, collection?, lang?, queryModes?, noExpand?, noRerank?, graph? }
+ * Returns targeted retrieval diagnostics for one document.
+ */
+export async function handleQueryDiagnose(
+  ctx: ServerContext,
+  req: Request
+): Promise<Response> {
+  let body: QueryDiagnoseRequestBody;
+  try {
+    body = (await req.json()) as QueryDiagnoseRequestBody;
+  } catch {
+    return errorResponse("VALIDATION", "Invalid JSON body");
+  }
+  if (!body || typeof body !== "object" || Array.isArray(body)) {
+    return errorResponse("VALIDATION", "JSON body must be an object");
+  }
+
+  if (!body.query || typeof body.query !== "string") {
+    return errorResponse("VALIDATION", "Missing or invalid query");
+  }
+  if (!body.target || typeof body.target !== "string") {
+    return errorResponse("VALIDATION", "Missing or invalid target");
+  }
+
+  const rawQuery = body.query.trim();
+  const target = body.target.trim();
+  if (!rawQuery) {
+    return errorResponse("VALIDATION", "Query cannot be empty");
+  }
+  if (!target) {
+    return errorResponse("VALIDATION", "target cannot be empty");
+  }
+
+  if (
+    body.limit !== undefined &&
+    (typeof body.limit !== "number" || body.limit < 1)
+  ) {
+    return errorResponse("VALIDATION", "limit must be a positive integer");
+  }
+  if (
+    body.minScore !== undefined &&
+    (typeof body.minScore !== "number" ||
+      body.minScore < 0 ||
+      body.minScore > 1)
+  ) {
+    return errorResponse(
+      "VALIDATION",
+      "minScore must be a number between 0 and 1"
+    );
+  }
+  if (body.since !== undefined && typeof body.since !== "string") {
+    return errorResponse("VALIDATION", "since must be a string");
+  }
+  if (body.until !== undefined && typeof body.until !== "string") {
+    return errorResponse("VALIDATION", "until must be a string");
+  }
+  if (body.intent !== undefined && typeof body.intent !== "string") {
+    return errorResponse("VALIDATION", "intent must be a string");
+  }
+  if (body.exclude !== undefined && typeof body.exclude !== "string") {
+    return errorResponse(
+      "VALIDATION",
+      "exclude must be a comma-separated string"
+    );
+  }
+  if (
+    body.candidateLimit !== undefined &&
+    (typeof body.candidateLimit !== "number" || body.candidateLimit < 1)
+  ) {
+    return errorResponse(
+      "VALIDATION",
+      "candidateLimit must be a positive integer"
+    );
+  }
+  if (body.category !== undefined && typeof body.category !== "string") {
+    return errorResponse(
+      "VALIDATION",
+      "category must be a comma-separated string"
+    );
+  }
+  if (body.author !== undefined && typeof body.author !== "string") {
+    return errorResponse("VALIDATION", "author must be a string");
+  }
+
+  const { queryModes, error: queryModesError } = parseQueryModesInput(
+    body.queryModes
+  );
+  if (queryModesError) {
+    return queryModesError;
+  }
+
+  const {
+    query,
+    queryModes: normalizedQueryModes,
+    error: structuredQueryError,
+  } = normalizeStructuredQueryBody(rawQuery, queryModes);
+  if (structuredQueryError) {
+    return structuredQueryError;
+  }
+  const normalizedQuery = query ?? rawQuery;
+
+  let tagsAll: string[] | undefined;
+  let tagsAny: string[] | undefined;
+
+  if (body.tagsAll) {
+    try {
+      tagsAll = parseAndValidateTagFilter(body.tagsAll);
+    } catch (e) {
+      return errorResponse(
+        "VALIDATION",
+        e instanceof Error ? e.message : "Invalid tagsAll"
+      );
+    }
+  }
+
+  if (body.tagsAny) {
+    try {
+      tagsAny = parseAndValidateTagFilter(body.tagsAny);
+    } catch (e) {
+      return errorResponse(
+        "VALIDATION",
+        e instanceof Error ? e.message : "Invalid tagsAny"
+      );
+    }
+  }
+
+  const categories = body.category
+    ? parseCommaSeparatedValues(body.category)
+    : undefined;
+  const exclude = body.exclude
+    ? parseCommaSeparatedValues(body.exclude)
+    : undefined;
+  const author = body.author?.trim() || undefined;
+  const contentTypeRules = normalizeContentTypes(
+    ctx.config.contentTypes ?? []
+  ).rules;
+
+  const result = await diagnoseQueryTarget(
+    {
+      store: ctx.store,
+      config: ctx.config,
+      vectorIndex: ctx.vectorIndex,
+      embedPort: ctx.embedPort,
+      expandPort: ctx.expandPort,
+      rerankPort: ctx.rerankPort,
+    },
+    normalizedQuery,
+    {
+      target,
+      limit: Math.min(body.limit ?? 20, 50),
+      minScore: body.minScore,
+      collection: body.collection,
+      lang: body.lang,
+      intent: body.intent?.trim() || undefined,
+      candidateLimit:
+        body.candidateLimit !== undefined
+          ? Math.min(body.candidateLimit, 100)
+          : undefined,
+      exclude,
+      queryModes: normalizedQueryModes,
+      noExpand: body.noExpand,
+      noRerank: body.noRerank,
+      graph: body.graph === true,
+      noGraph: body.noGraph,
+      tagsAll,
+      tagsAny,
+      since: body.since,
+      until: body.until,
+      categories,
+      author,
+      contentTypeRules,
+      contentTypeRulesFingerprint:
+        fingerprintContentTypeRules(contentTypeRules),
     }
   );
 

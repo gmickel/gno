@@ -23,6 +23,7 @@ import { handleJobStatus } from "./job-status";
 import {
   handleBacklinks,
   handleGraph,
+  handleGraphQuery,
   handleGraphNeighbors,
   handleGraphPath,
   handleLinks,
@@ -31,7 +32,7 @@ import {
 import { handleListJobs } from "./list-jobs";
 import { handleListTags } from "./list-tags";
 import { handleMultiGet } from "./multi-get";
-import { handleQuery } from "./query";
+import { handleQuery, handleQueryDiagnose } from "./query";
 import { handleRemoveCollection } from "./remove-collection";
 import { handleSearch } from "./search";
 import { handleStatus } from "./status";
@@ -64,6 +65,8 @@ export const MCP_TOOL_DESCRIPTIONS = {
     "Vector semantic search. Finds conceptually similar docs with different wording. Best after embeddings are current; use intent to disambiguate short terms. Use gno_query for default hybrid retrieval.",
   query:
     "Hybrid search (BM25 + vector + optional expansion/reranking). Recommended default. Use intent for ambiguous terms, queryModes to combine term/intent/hyde strategies, fast=true for quick lookup, thorough=true when recall matters, and candidateLimit to trade latency for coverage.",
+  queryDiagnose:
+    "Diagnose why one target document does or does not appear for a query. Use when an important doc is missing, a filter may exclude it, or you need stage-by-stage BM25/vector/fusion/graph/rerank evidence before changing retrieval strategy.",
   get: "Retrieve one document by gno:// URI, docid (#abc123), or collection/path. After search results include line, pass fromLine and lineCount to fetch only the relevant range before expanding to the full document.",
   multiGet:
     "Retrieve multiple documents by refs array or glob pattern. Use after gno_search/gno_query to batch top result URIs/docids; set maxBytes and lineNumbers to control context size.",
@@ -499,6 +502,16 @@ export const queryInputSchema = z.object({
   tagsAny: z.array(z.string()).optional().describe("Require ANY of these tags"),
 });
 
+export const queryDiagnoseInputSchema = queryInputSchema.extend({
+  target: z
+    .string()
+    .trim()
+    .min(1, "Target reference cannot be empty")
+    .describe(
+      "Target document reference to diagnose (gno URI, docid, or collection/path)"
+    ),
+});
+
 const getInputSchema = z.object({
   ref: z
     .string()
@@ -715,6 +728,67 @@ const graphPathInputSchema = graphInputSchema.extend({
     .describe("Maximum relationship hops to search"),
 });
 
+export const graphQueryInputSchema = z.object({
+  ref: z
+    .string()
+    .trim()
+    .min(1, "Reference cannot be empty")
+    .describe(
+      "Root document reference for typed-edge traversal: gno URI, docid, or collection/path"
+    ),
+  direction: z
+    .enum(["both", "out", "in"])
+    .default("both")
+    .describe("Which typed edges to traverse"),
+  edgeType: z
+    .string()
+    .trim()
+    .min(1)
+    .optional()
+    .describe("Semantic edge type filter, e.g. mentions or works_at"),
+  relation: z
+    .string()
+    .trim()
+    .min(1)
+    .optional()
+    .describe("Alias for edgeType; must match edgeType when both are set"),
+  maxDepth: z
+    .number()
+    .int()
+    .min(1)
+    .max(6)
+    .optional()
+    .describe("Maximum typed-edge hops to traverse"),
+  depth: z
+    .number()
+    .int()
+    .min(1)
+    .max(6)
+    .optional()
+    .describe("Alias for maxDepth"),
+  maxNodes: z
+    .number()
+    .int()
+    .min(1)
+    .max(1000)
+    .default(100)
+    .describe("Returned node cap"),
+  frontierLimit: z
+    .number()
+    .int()
+    .min(1)
+    .max(1000)
+    .default(100)
+    .describe("Per-depth frontier cap"),
+  visitedLimit: z
+    .number()
+    .int()
+    .min(1)
+    .max(5000)
+    .default(500)
+    .describe("SQL traversal visited-row cap"),
+});
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Tool Result Type
 // ─────────────────────────────────────────────────────────────────────────────
@@ -847,6 +921,13 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
   );
 
   server.tool(
+    "gno_query_diagnose",
+    MCP_TOOL_DESCRIPTIONS.queryDiagnose,
+    queryDiagnoseInputSchema.shape,
+    (args) => handleQueryDiagnose(args, ctx)
+  );
+
+  server.tool(
     "gno_get",
     MCP_TOOL_DESCRIPTIONS.get,
     getInputSchema.shape,
@@ -900,6 +981,13 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
     "Get graph report/stats plus nodes/edges for corpus navigation. Use for unfamiliar corpus structure, hubs/isolates/unresolved links, or custom graph analysis; do not replace normal retrieval with this. Start with gno_query for content questions, then graph tools for relationship context, then gno_get for targeted reads.",
     graphInputSchema.shape,
     (args) => handleGraph(args, ctx)
+  );
+
+  server.tool(
+    "gno_graph_query",
+    "Run bounded traversal over typed doc_edges from one root document. Use for explicit relationship questions like 'what does Alice work_at within 2 hops?' or to inspect typed graph hints; returns schemaVersion, root, nodes, edges, caps, and truncation.",
+    graphQueryInputSchema.shape,
+    (args) => handleGraphQuery(args, ctx)
   );
 
   server.tool(

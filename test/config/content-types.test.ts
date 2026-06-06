@@ -100,11 +100,35 @@ describe("normalizeContentTypes", () => {
     expect(result.rules[0]?.temporal).toBe(true);
   });
 
-  test("fingerprint ignores reserved no-op fields", () => {
+  test("normalizes graphHints before fingerprinting", () => {
+    const spaced = normalizeContentTypes([
+      {
+        id: "person",
+        prefixes: ["people/"],
+        preset: "person",
+        graphHints: [" Works At ", "related-to"],
+      },
+    ]);
+    const canonical = normalizeContentTypes([
+      {
+        id: "person",
+        prefixes: ["people/"],
+        preset: "person",
+        graphHints: ["works_at", "related_to"],
+      },
+    ]);
+
+    expect(spaced.rules[0]?.graphHints).toEqual(["works_at", "related_to"]);
+    expect(fingerprintContentTypeRules(spaced.rules)).toBe(
+      fingerprintContentTypeRules(canonical.rules)
+    );
+  });
+
+  test("fingerprint includes graphHints but ignores other reserved no-op fields", () => {
     const base = normalizeContentTypes([
       { id: "person", prefixes: ["people/"], preset: "person" },
     ]);
-    const withNoOps = normalizeContentTypes([
+    const withGraphHints = normalizeContentTypes([
       {
         id: "person",
         prefixes: ["people/"],
@@ -114,8 +138,20 @@ describe("normalizeContentTypes", () => {
         temporal: true,
       },
     ]);
+    const withOtherNoOps = normalizeContentTypes([
+      {
+        id: "person",
+        prefixes: ["people/"],
+        preset: "person",
+        searchBoost: 1.15,
+        temporal: true,
+      },
+    ]);
 
-    expect(fingerprintContentTypeRules(withNoOps.rules)).toBe(
+    expect(fingerprintContentTypeRules(withGraphHints.rules)).not.toBe(
+      fingerprintContentTypeRules(base.rules)
+    );
+    expect(fingerprintContentTypeRules(withOtherNoOps.rules)).toBe(
       fingerprintContentTypeRules(base.rules)
     );
   });

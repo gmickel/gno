@@ -317,6 +317,36 @@ gno backlinks <ref> [options]
 | `-n`     | Max results (default: 20) |
 | `--json` | JSON output               |
 
+`gno links` and `gno backlinks` also accept `--edge-type <type>` or
+`--relation <type>` to query semantic typed edges instead of positional
+wiki/markdown links. Do not combine `--type` with `--edge-type`.
+
+### gno graph query
+
+Bounded typed-edge traversal from a document.
+
+```bash
+gno graph query <ref> [--edge-type <type>] [--max-depth <n>] [--direction out|in|both] [--json]
+```
+
+Use this when relation meaning matters:
+
+```bash
+gno graph query gno://notes/people/alice.md --edge-type works_at --max-depth 2 --json
+```
+
+### gno query diagnose
+
+Explain why a target document did or did not surface for a query.
+
+```bash
+gno query diagnose "<query>" --target <ref> [--fast|--thorough] [--json]
+```
+
+The JSON output reports target status, filters, typed metadata, and per-stage
+presence across BM25, vector, fusion, graph expansion, and rerank. Use `--fast`
+for BM25-only diagnosis without vector/rerank startup.
+
 ### gno similar
 
 Find semantically similar documents.

@@ -13,8 +13,8 @@ import type {
   MultiGetResponse,
   SkippedDoc,
 } from "../cli/commands/multi-get";
-import type { ParsedRef } from "../cli/commands/ref-parser";
 import type { Config } from "../config/types";
+import type { ParsedRef } from "../core/ref-parser";
 import type { DocumentRow, StorePort } from "../store/types";
 import type {
   GnoGetOptions,
@@ -22,8 +22,8 @@ import type {
   GnoMultiGetOptions,
 } from "./types";
 
-import { isGlobPattern, parseRef, splitRefs } from "../cli/commands/ref-parser";
 import { getDocumentCapabilities } from "../core/document-capabilities";
+import { isGlobPattern, parseRef, splitRefs } from "../core/ref-parser";
 import { sdkError } from "./errors";
 
 const URI_PREFIX_PATTERN = /^gno:\/\/[^/]+\//;

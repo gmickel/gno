@@ -46,6 +46,7 @@ import {
   handlePublishExport,
   handlePresets,
   handleQuery,
+  handleQueryDiagnose,
   handleRefactorPlan,
   handleRenameDoc,
   handleRevealDoc,
@@ -58,7 +59,7 @@ import {
   handleUpdateCollection,
   handleUpdateDoc,
 } from "./routes/api";
-import { handleGraph } from "./routes/graph";
+import { handleGraph, handleGraphQuery } from "./routes/graph";
 import {
   handleDocBacklinks,
   handleDocLinks,
@@ -489,6 +490,17 @@ export async function startServer(
             );
           },
         },
+        "/api/query/diagnose": {
+          POST: async (req: Request) => {
+            if (!isRequestAllowed(req, port)) {
+              return withSecurityHeaders(forbiddenResponse(), isDev);
+            }
+            return withSecurityHeaders(
+              await handleQueryDiagnose(ctxHolder.current, req),
+              isDev
+            );
+          },
+        },
         "/api/ask": {
           POST: async (req: Request) => {
             if (!isRequestAllowed(req, port)) {
@@ -651,6 +663,17 @@ export async function startServer(
           GET: async (req: Request) => {
             const url = new URL(req.url);
             return withSecurityHeaders(await handleGraph(store, url), isDev);
+          },
+        },
+        "/api/graph/query": {
+          POST: async (req: Request) => {
+            if (!isRequestAllowed(req, port)) {
+              return withSecurityHeaders(forbiddenResponse(), isDev);
+            }
+            return withSecurityHeaders(
+              await handleGraphQuery(store, ctxHolder.config, req),
+              isDev
+            );
           },
         },
       },

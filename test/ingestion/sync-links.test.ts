@@ -9,6 +9,7 @@ import { mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
+import type { NormalizedContentTypeRule } from "../../src/config";
 import type { Collection } from "../../src/config/types";
 
 import { INGEST_VERSION, SyncService } from "../../src/ingestion/sync";
@@ -479,6 +480,246 @@ See [[Link]].
     if (!docResult.ok || !docResult.value) return;
 
     expect(docResult.value.ingestVersion).toBe(INGEST_VERSION);
+  });
+
+  test("projects frontmatter relations to typed edges after same-batch sync", async () => {
+    await writeFile(
+      join(collectionDir, "source.md"),
+      `---
+relations:
+  Works At:
+    - target.md
+---
+# Source
+`
+    );
+    await writeFile(join(collectionDir, "target.md"), "# Target\n");
+
+    const syncService = new SyncService();
+    const syncResult = await syncService.syncCollection(collection, adapter);
+    expect(syncResult.errors).toEqual([]);
+
+    const sourceResult = await adapter.getDocument("docs", "source.md");
+    const targetResult = await adapter.getDocument("docs", "target.md");
+    expect(sourceResult.ok).toBe(true);
+    expect(targetResult.ok).toBe(true);
+    if (
+      !sourceResult.ok ||
+      !sourceResult.value ||
+      !targetResult.ok ||
+      !targetResult.value
+    ) {
+      return;
+    }
+
+    const edgesResult = await adapter.getEdgesForDoc(sourceResult.value.id, {
+      edgeType: "works_at",
+    });
+    expect(edgesResult.ok).toBe(true);
+    if (!edgesResult.ok) return;
+
+    expect(edgesResult.value).toHaveLength(1);
+    expect(edgesResult.value[0]?.targetDocid).toBe(targetResult.value.docid);
+    expect(edgesResult.value[0]?.edgeSource).toBe("frontmatter-relation");
+    expect(edgesResult.value[0]?.confidence).toBe("manual");
+  });
+
+  test("projects linked docs with primary graphHint and configured confidence", async () => {
+    const rules: NormalizedContentTypeRule[] = [
+      {
+        id: "meeting",
+        prefixes: [],
+        preset: "meeting",
+        graphHints: ["attended", "mentions"],
+      },
+    ];
+    await writeFile(
+      join(collectionDir, "meeting.md"),
+      `---
+type: meeting
+---
+# Meeting
+See [[Person]].
+`
+    );
+    await writeFile(join(collectionDir, "person.md"), "# Person\n");
+
+    const syncService = new SyncService();
+    await syncService.syncCollection(collection, adapter, {
+      contentTypeRules: rules,
+    });
+    await syncService.syncCollection(collection, adapter, {
+      contentTypeRules: rules,
+    });
+
+    const sourceResult = await adapter.getDocument("docs", "meeting.md");
+    const targetResult = await adapter.getDocument("docs", "person.md");
+    expect(sourceResult.ok).toBe(true);
+    expect(targetResult.ok).toBe(true);
+    if (
+      !sourceResult.ok ||
+      !sourceResult.value ||
+      !targetResult.ok ||
+      !targetResult.value
+    ) {
+      return;
+    }
+
+    const edgesResult = await adapter.getEdgesForDoc(sourceResult.value.id);
+    expect(edgesResult.ok).toBe(true);
+    if (!edgesResult.ok) return;
+
+    expect(edgesResult.value).toHaveLength(1);
+    expect(edgesResult.value[0]?.targetDocid).toBe(targetResult.value.docid);
+    expect(edgesResult.value[0]?.edgeType).toBe("attended");
+    expect(edgesResult.value[0]?.confidence).toBe("configured");
+    expect(edgesResult.value[0]?.edgeSource).toBe("wikilink");
+  });
+
+  test("frontmatter relation wins over graphHint link projection for same target", async () => {
+    const rules: NormalizedContentTypeRule[] = [
+      {
+        id: "meeting",
+        prefixes: [],
+        preset: "meeting",
+        graphHints: ["mentions"],
+      },
+    ];
+    await writeFile(
+      join(collectionDir, "meeting.md"),
+      `---
+type: meeting
+relations:
+  mentions:
+    - person.md
+---
+# Meeting
+See [[Person]].
+`
+    );
+    await writeFile(join(collectionDir, "person.md"), "# Person\n");
+
+    const syncService = new SyncService();
+    await syncService.syncCollection(collection, adapter, {
+      contentTypeRules: rules,
+    });
+
+    const sourceResult = await adapter.getDocument("docs", "meeting.md");
+    expect(sourceResult.ok).toBe(true);
+    if (!sourceResult.ok || !sourceResult.value) return;
+
+    const edgesResult = await adapter.getEdgesForDoc(sourceResult.value.id, {
+      edgeType: "mentions",
+    });
+    expect(edgesResult.ok).toBe(true);
+    if (!edgesResult.ok) return;
+
+    expect(edgesResult.value).toHaveLength(1);
+    expect(edgesResult.value[0]?.edgeSource).toBe("frontmatter-relation");
+    expect(edgesResult.value[0]?.confidence).toBe("manual");
+  });
+
+  test("graphHint changes re-derive typed link edges for unchanged docs", async () => {
+    await writeFile(
+      join(collectionDir, "meeting.md"),
+      `---
+type: meeting
+---
+# Meeting
+See [[Person]].
+`
+    );
+    await writeFile(join(collectionDir, "person.md"), "# Person\n");
+
+    const syncService = new SyncService();
+    await syncService.syncCollection(collection, adapter, {
+      contentTypeRules: [
+        {
+          id: "meeting",
+          prefixes: [],
+          preset: "meeting",
+          graphHints: ["mentions"],
+        },
+      ],
+    });
+    await syncService.syncCollection(collection, adapter, {
+      contentTypeRules: [
+        {
+          id: "meeting",
+          prefixes: [],
+          preset: "meeting",
+          graphHints: ["attended"],
+        },
+      ],
+    });
+
+    const sourceResult = await adapter.getDocument("docs", "meeting.md");
+    expect(sourceResult.ok).toBe(true);
+    if (!sourceResult.ok || !sourceResult.value) return;
+
+    const edgesResult = await adapter.getEdgesForDoc(sourceResult.value.id);
+    expect(edgesResult.ok).toBe(true);
+    if (!edgesResult.ok) return;
+
+    expect(edgesResult.value).toHaveLength(1);
+    expect(edgesResult.value[0]?.edgeType).toBe("attended");
+  });
+
+  test("global backfill preserves graphHint edges in other collections", async () => {
+    const otherDir = join(tmpDir, "other");
+    await Bun.$`mkdir -p ${otherDir}`;
+    const otherCollection: Collection = {
+      name: "other",
+      path: otherDir,
+      pattern: "**/*.md",
+      include: [],
+      exclude: [],
+    };
+    const syncCollections = await adapter.syncCollections([
+      collection,
+      otherCollection,
+    ]);
+    expect(syncCollections.ok).toBe(true);
+
+    const rules: NormalizedContentTypeRule[] = [
+      {
+        id: "meeting",
+        prefixes: [],
+        preset: "meeting",
+        graphHints: ["attended"],
+      },
+    ];
+    await writeFile(
+      join(otherDir, "meeting.md"),
+      `---
+type: meeting
+---
+# Other Meeting
+See [[Person]].
+`
+    );
+    await writeFile(join(otherDir, "person.md"), "# Person\n");
+    await writeFile(join(collectionDir, "note.md"), "# Note\n");
+
+    const syncService = new SyncService();
+    await syncService.syncCollection(otherCollection, adapter, {
+      contentTypeRules: rules,
+    });
+    await syncService.syncCollection(collection, adapter, {
+      contentTypeRules: rules,
+    });
+
+    const otherSource = await adapter.getDocument("other", "meeting.md");
+    expect(otherSource.ok).toBe(true);
+    if (!otherSource.ok || !otherSource.value) return;
+
+    const edgesResult = await adapter.getEdgesForDoc(otherSource.value.id);
+    expect(edgesResult.ok).toBe(true);
+    if (!edgesResult.ok) return;
+
+    expect(edgesResult.value).toHaveLength(1);
+    expect(edgesResult.value[0]?.edgeType).toBe("attended");
+    expect(edgesResult.value[0]?.confidence).toBe("configured");
   });
 });
 

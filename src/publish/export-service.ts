@@ -7,7 +7,7 @@
 import type { Collection } from "../config/types";
 import type { DocumentRow, StorePort, TagRow } from "../store/types";
 
-import { parseRef } from "../cli/commands/ref-parser";
+import { parseRef } from "../core/ref-parser";
 import { parseFrontmatter } from "../ingestion/frontmatter";
 import { getContentBatch } from "../store/content-batch";
 import {

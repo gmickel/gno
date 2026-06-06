@@ -5,7 +5,9 @@
 import { describe, expect, test } from "bun:test";
 
 import {
+  graphQueryInputSchema,
   MCP_TOOL_DESCRIPTIONS,
+  queryDiagnoseInputSchema,
   queryInputSchema,
 } from "../../../src/mcp/tools/index";
 
@@ -87,5 +89,34 @@ describe("gno_query schema", () => {
     expect(MCP_TOOL_DESCRIPTIONS.query).toContain("candidateLimit");
     expect(MCP_TOOL_DESCRIPTIONS.get).toContain("fromLine");
     expect(MCP_TOOL_DESCRIPTIONS.multiGet).toContain("batch top result");
+  });
+
+  test("diagnose schema requires a target ref", () => {
+    const result = queryDiagnoseInputSchema.safeParse({
+      query: "Alice Acme",
+      target: "gno://notes/people/alice.md",
+      fast: true,
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  test("typed graph query schema accepts bounded traversal controls", () => {
+    const result = graphQueryInputSchema.safeParse({
+      ref: "gno://notes/people/alice.md",
+      direction: "both",
+      relation: "mentions",
+      maxDepth: 2,
+      maxNodes: 100,
+      frontierLimit: 50,
+      visitedLimit: 250,
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  test("new tool descriptions explain when to diagnose/query graph", () => {
+    expect(MCP_TOOL_DESCRIPTIONS.queryDiagnose).toContain("missing");
+    expect(MCP_TOOL_DESCRIPTIONS.queryDiagnose).toContain("stage-by-stage");
   });
 });

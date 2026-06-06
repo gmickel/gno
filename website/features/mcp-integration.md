@@ -9,7 +9,7 @@ slug: mcp-integration
 permalink: /features/mcp-integration/
 og_image: /assets/images/og/og-mcp-integration.png
 benefits:
-  - 21 MCP tools for search, retrieval, graph traversal, and indexing
+  - 28 registered MCP tools for search, retrieval, graph traversal, diagnostics, and indexing
   - Works with Claude Desktop, Cursor, Zed, Windsurf, Amp
   - Also supports Raycast, LM Studio, LibreChat
   - One-command install for 10+ clients
@@ -88,7 +88,7 @@ Configure in Cursor's MCP settings with the command:
 gno mcp
 ```
 
-## Available Tools (19 Total)
+## Available Tools (28 Registered)
 
 Once connected, your AI assistant can use:
 
@@ -99,6 +99,7 @@ Once connected, your AI assistant can use:
 | `gno_search`          | BM25 keyword search            |
 | `gno_vsearch`         | Vector similarity search       |
 | `gno_query`           | Hybrid search with reranking   |
+| `gno_query_diagnose`  | Diagnose target retrieval      |
 | `gno_get`             | Retrieve document content      |
 | `gno_multi_get`       | Batch document retrieval       |
 | `gno_status`          | Check index status             |
@@ -107,19 +108,25 @@ Once connected, your AI assistant can use:
 | `gno_backlinks`       | Get incoming backlinks         |
 | `gno_similar`         | Find semantically similar docs |
 | `gno_graph`           | Knowledge graph data           |
+| `gno_graph_query`     | Typed graph traversal          |
 | `gno_graph_neighbors` | Nearby graph relationships     |
 | `gno_graph_path`      | Shortest path between docs     |
 
 **Write Tools (opt-in with `--enable-write`):**
 
-| Tool                    | Description             |
-| ----------------------- | ----------------------- |
-| `gno_capture`           | Create new documents    |
-| `gno_add_collection`    | Add document sources    |
-| `gno_remove_collection` | Remove document sources |
-| `gno_sync`              | Update collections      |
-| `gno_embed`             | Generate embeddings     |
-| `gno_index`             | Full re-index           |
+| Tool                              | Description              |
+| --------------------------------- | ------------------------ |
+| `gno_capture`                     | Create new documents     |
+| `gno_add_collection`              | Add document sources     |
+| `gno_remove_collection`           | Remove document sources  |
+| `gno_sync`                        | Update collections       |
+| `gno_embed`                       | Generate embeddings      |
+| `gno_index`                       | Full re-index            |
+| `gno_clear_collection_embeddings` | Clear collection vectors |
+| `gno_create_folder`               | Create workspace folders |
+| `gno_rename_note`                 | Rename notes             |
+| `gno_move_note`                   | Move notes               |
+| `gno_duplicate_note`              | Duplicate notes          |
 
 **Job Tools:**
 

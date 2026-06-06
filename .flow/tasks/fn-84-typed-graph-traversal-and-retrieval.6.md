@@ -37,8 +37,10 @@ Expose graph traversal and retrieval diagnostics as read-only MCP tools: `gno_gr
 
 ## Done summary
 
-_Filled in on completion._
+Added read-only MCP tools gno_graph_query and gno_query_diagnose. Registered input schemas and agent-facing descriptions, wrapped shared graph-query and query-diagnose cores, updated MCP spec/docs, added typed graph query and query diagnose MCP tests, and fixed depth/relation alias validation plus case-insensitive collection handling.
 
 ## Evidence
 
-_Links to commits, tests, and verification._
+- Commits:
+- Tests: bun test test/mcp/tools/query.test.ts test/mcp/links-integration.test.ts (27 pass), bun run lint && bun run lint:check (pass), bun test test/mcp test/spec/schemas/graph-query.test.ts test/spec/schemas/query-diagnose.test.ts test/core/graph-query.test.ts test/pipeline/diagnose.test.ts (136 pass), RepoPrompt review untitled-chat-6B3021: NEEDS_WORK; re-review untitled-chat-3D1416: SHIP
+- PRs:

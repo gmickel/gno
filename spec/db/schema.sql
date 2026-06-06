@@ -14,6 +14,7 @@
 --   ingest_errors     - Conversion/indexing error records
 --   doc_tags          - Document tags (frontmatter and user-added)
 --   doc_links         - Wiki and markdown links between documents
+--   doc_edges         - Derived semantic document relationships
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- Schema Metadata
@@ -83,6 +84,7 @@ CREATE TABLE IF NOT EXISTS documents (
   converter_id TEXT,
   converter_version TEXT,
   language_hint TEXT,               -- BCP-47 or NULL
+  content_type_source TEXT,         -- frontmatter | rules | default | extension | null
 
   -- Status
   active INTEGER NOT NULL DEFAULT 1,
@@ -264,3 +266,26 @@ CREATE INDEX IF NOT EXISTS idx_doc_links_source ON doc_links(source_doc_id);
 
 -- Index for resolving links (backlinks query)
 CREATE INDEX IF NOT EXISTS idx_doc_links_resolve ON doc_links(link_type, target_ref_norm, target_collection);
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Document Edges (derived semantic relationships)
+-- ─────────────────────────────────────────────────────────────────────────────
+
+-- Derived from links/frontmatter/config. Stores resolved target ids for bounded
+-- traversal; reads join active source and target documents to avoid stale edges
+-- after soft-delete/inactivation.
+CREATE TABLE IF NOT EXISTS doc_edges (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  src_doc_id INTEGER NOT NULL,
+  dst_doc_id INTEGER NOT NULL,
+  edge_type TEXT NOT NULL,           -- free-form validated lowercase snake_case
+  confidence TEXT NOT NULL CHECK (confidence IN ('parsed', 'configured', 'manual', 'inferred')),
+  source TEXT NOT NULL CHECK (source IN ('wikilink', 'markdown-link', 'frontmatter-relation')),
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  UNIQUE(src_doc_id, dst_doc_id, edge_type, source),
+  FOREIGN KEY (src_doc_id) REFERENCES documents(id) ON DELETE CASCADE,
+  FOREIGN KEY (dst_doc_id) REFERENCES documents(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_doc_edges_src_type ON doc_edges(src_doc_id, edge_type);
+CREATE INDEX IF NOT EXISTS idx_doc_edges_dst_type ON doc_edges(dst_doc_id, edge_type);

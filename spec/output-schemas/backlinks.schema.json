@@ -10,36 +10,82 @@
       "type": "array",
       "description": "List of documents linking to this one",
       "items": {
-        "type": "object",
-        "required": ["sourceDocid", "sourceUri", "startLine", "startCol"],
-        "properties": {
-          "sourceDocid": {
-            "type": "string",
-            "description": "Source document ID"
+        "oneOf": [
+          {
+            "type": "object",
+            "required": ["sourceDocid", "sourceUri", "startLine", "startCol"],
+            "additionalProperties": false,
+            "properties": {
+              "sourceDocid": {
+                "type": "string",
+                "description": "Source document ID"
+              },
+              "sourceUri": {
+                "type": "string",
+                "description": "Source document URI"
+              },
+              "sourceTitle": {
+                "type": "string",
+                "description": "Source document title"
+              },
+              "linkText": {
+                "type": "string",
+                "description": "Link display text"
+              },
+              "startLine": {
+                "type": "integer",
+                "description": "1-based line number in source",
+                "minimum": 1
+              },
+              "startCol": {
+                "type": "integer",
+                "description": "1-based column in source",
+                "minimum": 1
+              }
+            }
           },
-          "sourceUri": {
-            "type": "string",
-            "description": "Source document URI"
-          },
-          "sourceTitle": {
-            "type": "string",
-            "description": "Source document title"
-          },
-          "linkText": {
-            "type": "string",
-            "description": "Link display text"
-          },
-          "startLine": {
-            "type": "integer",
-            "description": "1-based line number in source",
-            "minimum": 1
-          },
-          "startCol": {
-            "type": "integer",
-            "description": "1-based column in source",
-            "minimum": 1
+          {
+            "type": "object",
+            "required": [
+              "sourceDocid",
+              "sourceUri",
+              "edgeType",
+              "confidence",
+              "edgeSource"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "sourceDocid": {
+                "type": "string",
+                "description": "Source document ID"
+              },
+              "sourceUri": {
+                "type": "string",
+                "description": "Source document URI"
+              },
+              "sourceTitle": {
+                "type": "string",
+                "description": "Source document title"
+              },
+              "edgeType": {
+                "type": "string",
+                "description": "Semantic relationship type"
+              },
+              "relationType": {
+                "type": "string",
+                "description": "Alias of edgeType"
+              },
+              "confidence": {
+                "type": "string",
+                "enum": ["parsed", "configured", "manual", "inferred"]
+              },
+              "edgeSource": {
+                "type": "string",
+                "enum": ["wikilink", "markdown-link", "frontmatter-relation"]
+              }
+            }
           }
-        }
+        ]
       }
     },
     "meta": {
@@ -66,6 +112,18 @@
         "collection": {
           "type": "string",
           "description": "Collection filter applied"
+        },
+        "edgeTypeFilter": {
+          "type": "string",
+          "description": "Semantic edge-type filter applied"
+        },
+        "relationFilter": {
+          "type": "string",
+          "description": "Semantic relation filter applied"
+        },
+        "semantic": {
+          "type": "boolean",
+          "description": "Whether backlinks came from the semantic edge layer"
         }
       }
     }

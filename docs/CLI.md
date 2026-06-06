@@ -172,6 +172,7 @@ gno query "auth" --thorough          # Full pipeline: ~5-8s
 gno query "auth" --tags-all work,backend   # Filter by tags
 gno query "performance" --intent "web performance and latency"
 gno query "auth" --graph             # Enable graph-neighbor candidates
+gno query diagnose "Alice Acme" --target gno://notes/people/alice.md --json
 gno query "auth flow" --query-mode term:"jwt refresh token" --query-mode intent:"how refresh token rotation works"
 gno query $'auth flow\nterm: "refresh token"\nintent: token rotation'
 ```
@@ -210,6 +211,17 @@ Additional options:
 - `--author <text>` - Author contains text (case-insensitive)
 - `--tags-all <tags>` - Filter: docs must have ALL tags
 - `--tags-any <tags>` - Filter: docs must have ANY tag
+
+**Target diagnostics**:
+
+`gno query diagnose "<query>" --target <doc>` runs the query with an opt-in
+trace and reports whether the target document appears at each retrieval stage.
+The JSON payload uses `query-diagnose.schema.json`, requires
+`schemaVersion: "1.0"`, and includes `target.status`
+(`not_found|inactive|no_indexed_content|filtered_out|diagnosed`), per-stage
+`present/rank/score/survived/dropReason`, typed metadata, graph hints, and the
+chunk/line selected for the target. In BM25-only mode, vector/rerank stages are
+reported as skipped while fusion remains active with `sourceCount: 1`.
 
 **Migration notes (retrieval v2):**
 
@@ -826,15 +838,18 @@ List outgoing links from a document.
 ```bash
 gno links gno://notes/source.md        # List all links
 gno links #abc123 --type wiki          # Wiki links only
+gno links source.md --edge-type mentions --json
+gno links source.md --relation mentions --json
 gno links source.md --json
 ```
 
 Options:
 
-- `--type <wiki|markdown>` - Filter by link type
+- `--type <wiki|markdown>` - Filter positional links by syntax
+- `--edge-type <type>`, `--relation <type>` - Filter semantic relationship edges
 - `--json`, `--md` - Output format
 
-Shows link type, target, display text, line/column, and whether the target resolves to an indexed document.
+Default output shows positional link type, target, display text, line/column, and whether the target resolves to an indexed document. `--edge-type`/`--relation` are aliases for the same semantic edge type filter; either switches to the semantic edge layer and returns `edgeType`, `relationType`, `confidence`, and `edgeSource`. They cannot be combined with `--type`, and if both aliases are supplied they must match.
 
 ### gno backlinks
 
@@ -843,12 +858,14 @@ List documents that link TO a target document.
 ```bash
 gno backlinks gno://notes/target.md
 gno backlinks #abc123 --collection notes
+gno backlinks target.md --relation related_to --json
 gno backlinks target.md --json
 ```
 
 Options:
 
 - `-c, --collection <name>` - Filter by source collection
+- `--edge-type <type>`, `--relation <type>` - Filter semantic relationship backlinks
 - `--json`, `--md` - Output format
 
 ### gno similar
@@ -886,6 +903,7 @@ gno graph -c notes                  # Single collection
 gno graph --include-similar         # Add similarity edges
 gno graph --neighbors gno://notes/auth.md
 gno graph --from gno://notes/a.md --to gno://notes/b.md
+gno graph query gno://notes/auth.md --edge-type mentions --json
 ```
 
 Options:
@@ -904,6 +922,22 @@ Options:
 - `--json` - JSON output (default)
 - `--dot` - Graphviz DOT format
 - `--mermaid` - Mermaid diagram format
+
+#### `gno graph query`
+
+Run a bounded typed-edge traversal from one document. It uses the typed
+`doc_edges` projection, so `relations:` frontmatter and graph-hinted links can
+be traversed by relation type.
+
+Options:
+
+- `--direction <both|out|in>` - Traversal direction (default: `both`)
+- `--edge-type <type>` - Filter to one typed edge/relation
+- `--max-depth <n>` - Maximum traversal depth (default: 2)
+- `--max-nodes <n>` - Maximum returned nodes (default: 100)
+- `--frontier-limit <n>` - Max frontier width per depth (default: 100)
+- `--visited-limit <n>` - Max visited rows during traversal (default: 500)
+- `--json` - JSON output using `graph-query.schema.json`
 
 **Pipeline to Graphviz**:
 

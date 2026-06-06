@@ -251,6 +251,76 @@ describe("gno links list", () => {
     }
   });
 
+  test("filters semantic outgoing edges by edge type", async () => {
+    const { code, stdout } = await cli(
+      "links",
+      "list",
+      "gno://notes/source.md",
+      "--edge-type",
+      "mentions",
+      "--json"
+    );
+
+    expect(code).toBe(0);
+    const data = JSON.parse(stdout);
+    expect(data.meta.semantic).toBe(true);
+    expect(data.meta.edgeTypeFilter).toBe("mentions");
+    expect(data.links.length).toBeGreaterThan(0);
+    for (const link of data.links) {
+      expect(link.edgeType).toBe("mentions");
+      expect(link.edgeSource).toBe("wikilink");
+      expect(link.targetDocid).toBeDefined();
+      expect(link.startLine).toBeUndefined();
+    }
+  });
+
+  test("semantic filters degrade to empty when no typed data matches", async () => {
+    const { code, stdout } = await cli(
+      "links",
+      "list",
+      "gno://notes/isolated.md",
+      "--relation",
+      "mentions",
+      "--json"
+    );
+
+    expect(code).toBe(0);
+    const data = JSON.parse(stdout);
+    expect(data.meta.semantic).toBe(true);
+    expect(data.meta.totalLinks).toBe(0);
+    expect(data.links).toHaveLength(0);
+  });
+
+  test("rejects mixing positional and semantic filters", async () => {
+    const { code, stderr } = await cli(
+      "links",
+      "list",
+      "gno://notes/source.md",
+      "--type",
+      "wiki",
+      "--edge-type",
+      "mentions"
+    );
+
+    expect(code).toBe(1);
+    expect(stderr).toContain("--type cannot be combined");
+  });
+
+  test("rejects conflicting semantic filter aliases", async () => {
+    const { code, stderr } = await cli(
+      "links",
+      "list",
+      "gno://notes/source.md",
+      "--edge-type",
+      "mentions",
+      "--relation",
+      "related_to"
+    );
+
+    expect(code).toBe(1);
+    expect(stderr).toContain("--edge-type and --relation are aliases");
+  });
+
   test("shows resolved status for links", async () => {
     const { code, stdout } = await cli(
       "links",
@@ -366,6 +436,42 @@ describe("gno backlinks", () => {
     }
   });
 
+  test("filters semantic backlinks by relation", async () => {
+    const { code, stdout } = await cli(
+      "backlinks",
+      "gno://notes/target.md",
+      "--relation",
+      "related_to",
+      "--json"
+    );
+
+    expect(code).toBe(0);
+    const data = JSON.parse(stdout);
+    expect(data.meta.semantic).toBe(true);
+    expect(data.meta.relationFilter).toBe("related_to");
+    expect(data.backlinks.length).toBeGreaterThan(0);
+    for (const backlink of data.backlinks) {
+      expect(backlink.edgeType).toBe("related_to");
+      expect(backlink.edgeSource).toBe("markdown-link");
+      expect(backlink.sourceDocid).toBeDefined();
+      expect(backlink.startLine).toBeUndefined();
+    }
+  });
+
+  test("rejects conflicting semantic backlink aliases", async () => {
+    const { code, stderr } = await cli(
+      "backlinks",
+      "gno://notes/target.md",
+      "--edge-type",
+      "mentions",
+      "--relation",
+      "related_to"
+    );
+
+    expect(code).toBe(1);
+    expect(stderr).toContain("--edge-type and --relation are aliases");
+  });
+
   test("returns markdown format", async () => {
     const { code, stdout } = await cli(
       "backlinks",
@@ -403,6 +509,51 @@ describe("gno backlinks", () => {
 
     expect(code).toBe(1);
     expect(stderr).toContain("Invalid ref format");
+  });
+});
+
+describe("gno query diagnose", () => {
+  test("returns target diagnostics JSON", async () => {
+    const { code, stdout } = await cli(
+      "query",
+      "diagnose",
+      "Target Document",
+      "--target",
+      "gno://notes/target.md",
+      "--fast",
+      "--json"
+    );
+
+    expect(code).toBe(0);
+    const data = JSON.parse(stdout);
+    expect(data.schemaVersion).toBe("1.0");
+    expect(data.target.status).toBe("diagnosed");
+    expect(data.meta.mode).toBe("bm25_only");
+    expect(
+      data.stages.some((stage: { id: string }) => stage.id === "fusion")
+    ).toBe(true);
+  });
+
+  test("forwards structured query modes to target diagnostics", async () => {
+    const { code, stdout } = await cli(
+      "query",
+      "diagnose",
+      "unmatched",
+      "--target",
+      "gno://notes/target.md",
+      "--query-mode",
+      "term:Target Document",
+      "--fast",
+      "--json"
+    );
+
+    expect(code).toBe(0);
+    const data = JSON.parse(stdout);
+    expect(data.meta.queryModes).toEqual({
+      term: 1,
+      intent: 0,
+      hyde: false,
+    });
   });
 });
 
@@ -448,6 +599,39 @@ describe("gno similar", () => {
 });
 
 describe("gno graph traversal", () => {
+  test("runs bounded typed-edge graph query", async () => {
+    const { code, stdout } = await cli(
+      "graph",
+      "query",
+      "gno://notes/source.md",
+      "--direction",
+      "out",
+      "--edge-type",
+      "mentions",
+      "--max-depth",
+      "1",
+      "--json"
+    );
+
+    expect(code).toBe(0);
+    const data = JSON.parse(stdout) as {
+      schemaVersion: string;
+      root: { uri: string };
+      nodes: Array<{ uri: string; depth: number; graphHints: string[] }>;
+      edges: Array<{ edgeType: string; depth: number }>;
+      meta: { direction: string; edgeType: string; truncated: boolean };
+    };
+    expect(data.schemaVersion).toBe("1.0");
+    expect(data.root.uri).toBe("gno://notes/source.md");
+    expect(data.meta).toMatchObject({
+      direction: "out",
+      edgeType: "mentions",
+      truncated: false,
+    });
+    expect(data.nodes.some((node) => node.depth === 1)).toBe(true);
+    expect(data.edges.every((edge) => edge.edgeType === "mentions")).toBe(true);
+  });
+
   test("returns neighbors for a graph ref", async () => {
     const { code, stdout } = await cli(
       "graph",

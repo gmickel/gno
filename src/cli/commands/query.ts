@@ -12,9 +12,17 @@ import type {
 } from "../../llm/types";
 import type { HybridSearchOptions, SearchResults } from "../../pipeline/types";
 
+import {
+  fingerprintContentTypeRules,
+  normalizeContentTypes,
+} from "../../config";
 import { LlmAdapter } from "../../llm/nodeLlamaCpp/adapter";
 import { resolveDownloadPolicy } from "../../llm/policy";
 import { resolveModelUri } from "../../llm/registry";
+import {
+  diagnoseQueryTarget,
+  type QueryDiagnoseResult as PipelineQueryDiagnoseResult,
+} from "../../pipeline/diagnose";
 import { type HybridSearchDeps, searchHybrid } from "../../pipeline/hybrid";
 import {
   createVectorIndexPort,
@@ -65,6 +73,25 @@ export interface QueryFormatOptions {
 
 export type QueryResult =
   | { success: true; data: SearchResults }
+  | { success: false; error: string };
+
+export type QueryDiagnoseCommandOptions = HybridSearchOptions & {
+  target: string;
+  configPath?: string;
+  indexName?: string;
+  embedModel?: string;
+  expandModel?: string;
+  genModel?: string;
+  rerankModel?: string;
+  json?: boolean;
+};
+
+export interface QueryDiagnoseFormatOptions {
+  format: "terminal" | "json";
+}
+
+export type QueryDiagnoseResult =
+  | { success: true; data: PipelineQueryDiagnoseResult }
   | { success: false; error: string };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -229,6 +256,149 @@ export async function query(
   }
 }
 
+// oxlint-disable-next-line max-lines-per-function -- mirrors query setup for diagnose-specific shared core
+export async function queryDiagnose(
+  queryText: string,
+  options: QueryDiagnoseCommandOptions
+): Promise<QueryDiagnoseResult> {
+  const initResult = await initStore({
+    configPath: options.configPath,
+    indexName: options.indexName,
+    collection: options.collection,
+    syncConfig: false,
+  });
+
+  if (!initResult.ok) {
+    return { success: false, error: initResult.error };
+  }
+
+  const { store, config } = initResult;
+  let embedPort: EmbeddingPort | null = null;
+  let expandPort: GenerationPort | null = null;
+  let rerankPort: RerankPort | null = null;
+
+  try {
+    const globals = getGlobals();
+    const policy = resolveDownloadPolicy(process.env, {
+      offline: globals.offline,
+    });
+    const showProgress = !options.json && process.stderr.isTTY;
+    const downloadProgress = showProgress
+      ? createThrottledProgressRenderer(createProgressRenderer())
+      : undefined;
+    const shouldCreateEmbeddingPort =
+      !options.noExpand || !options.noRerank || Boolean(options.graph);
+    const shouldCreateAnyModel =
+      shouldCreateEmbeddingPort || !options.noExpand || !options.noRerank;
+    const llm = shouldCreateAnyModel ? new LlmAdapter(config) : null;
+
+    const embedUri = shouldCreateEmbeddingPort
+      ? resolveModelUri(config, "embed", options.embedModel, options.collection)
+      : null;
+    if (embedUri && llm) {
+      const embedResult = await llm.createEmbeddingPort(embedUri, {
+        policy,
+        onProgress: downloadProgress
+          ? (progress) => downloadProgress("embed", progress)
+          : undefined,
+      });
+      if (embedResult.ok) {
+        embedPort = embedResult.value;
+      }
+    }
+
+    if (llm && !options.noExpand && !options.queryModes?.length) {
+      const expandUri = resolveModelUri(
+        config,
+        "expand",
+        options.expandModel ?? options.genModel,
+        options.collection
+      );
+      const genResult = await llm.createExpansionPort(expandUri, {
+        policy,
+        onProgress: downloadProgress
+          ? (progress) => downloadProgress("expand", progress)
+          : undefined,
+      });
+      if (genResult.ok) {
+        expandPort = genResult.value;
+      }
+    }
+
+    if (llm && !options.noRerank) {
+      const rerankUri = resolveModelUri(
+        config,
+        "rerank",
+        options.rerankModel,
+        options.collection
+      );
+      const rerankResult = await llm.createRerankPort(rerankUri, {
+        policy,
+        onProgress: downloadProgress
+          ? (progress) => downloadProgress("rerank", progress)
+          : undefined,
+      });
+      if (rerankResult.ok) {
+        rerankPort = rerankResult.value;
+      }
+    }
+
+    if (showProgress && downloadProgress) {
+      process.stderr.write("\n");
+    }
+
+    let vectorIndex: VectorIndexPort | null = null;
+    if (embedPort && embedUri) {
+      const embedInitResult = await embedPort.init();
+      if (embedInitResult.ok) {
+        const dimensions = embedPort.dimensions();
+        const db = store.getRawDb();
+        const vectorResult = await createVectorIndexPort(db, {
+          model: embedUri,
+          dimensions,
+        });
+        if (vectorResult.ok) {
+          vectorIndex = vectorResult.value;
+        }
+      }
+    }
+
+    const contentTypeRules = normalizeContentTypes(
+      config.contentTypes ?? []
+    ).rules;
+    const deps: HybridSearchDeps = {
+      store,
+      config,
+      vectorIndex,
+      embedPort,
+      expandPort,
+      rerankPort,
+    };
+    const result = await diagnoseQueryTarget(deps, queryText, {
+      ...options,
+      contentTypeRules,
+      contentTypeRulesFingerprint:
+        fingerprintContentTypeRules(contentTypeRules),
+    });
+
+    if (!result.ok) {
+      return { success: false, error: result.error.message };
+    }
+    return { success: true, data: result.value };
+  } finally {
+    if (embedPort) {
+      await embedPort.dispose();
+    }
+    if (expandPort) {
+      await expandPort.dispose();
+    }
+    if (rerankPort) {
+      await rerankPort.dispose();
+    }
+    await store.close();
+  }
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Formatters
 // ─────────────────────────────────────────────────────────────────────────────
@@ -282,4 +452,46 @@ export function formatQuery(
     lineNumbers: options.lineNumbers,
     terminalLinks: options.terminalLinks,
   });
+}
+
+export function formatQueryDiagnose(
+  result: QueryDiagnoseResult,
+  options: QueryDiagnoseFormatOptions
+): string {
+  if (!result.success) {
+    return options.format === "json"
+      ? JSON.stringify({
+          error: { code: "QUERY_DIAGNOSE_FAILED", message: result.error },
+        })
+      : `Error: ${result.error}`;
+  }
+
+  if (options.format === "json") {
+    return JSON.stringify(result.data, null, 2);
+  }
+
+  const target = result.data.target;
+  const lines = [
+    `Target: ${target.uri ?? target.ref}`,
+    `Status: ${target.status}`,
+    `Mode: ${result.data.meta.mode}`,
+  ];
+  if (target.filterReasons.length > 0) {
+    lines.push(`Filters: ${target.filterReasons.join(", ")}`);
+  }
+  if (target.graphHints.length > 0) {
+    lines.push(`Graph hints: ${target.graphHints.join(", ")}`);
+  }
+  if (result.data.stages.length > 0) {
+    lines.push("", "Stages:");
+    for (const stage of result.data.stages) {
+      const rank = stage.rank === null ? "-" : `#${stage.rank}`;
+      const score = stage.score === null ? "-" : stage.score.toFixed(4);
+      const reason = stage.dropReason ? ` ${stage.dropReason}` : "";
+      lines.push(
+        `  ${stage.id}: ${stage.status} present=${stage.present} rank=${rank} score=${score}${reason}`
+      );
+    }
+  }
+  return lines.join("\n");
 }

@@ -11,6 +11,7 @@ import type {
   GenerationPort,
   RerankPort,
 } from "../../llm/types";
+import type { QueryDiagnoseResult } from "../../pipeline/diagnose";
 import type {
   QueryModeInput,
   SearchResult,
@@ -20,11 +21,16 @@ import type { ToolContext } from "../server";
 
 import { decorateUriForIndex, parseUri } from "../../app/constants";
 import { createNonTtyProgressRenderer } from "../../cli/progress";
+import {
+  fingerprintContentTypeRules,
+  normalizeContentTypes,
+} from "../../config";
 import { resolveDepthPolicy } from "../../core/depth-policy";
 import { normalizeStructuredQueryInput } from "../../core/structured-query";
 import { LlmAdapter } from "../../llm/nodeLlamaCpp/adapter";
 import { resolveDownloadPolicy } from "../../llm/policy";
 import { getActivePreset, resolveModelUri } from "../../llm/registry";
+import { diagnoseQueryTarget } from "../../pipeline/diagnose";
 import { type HybridSearchDeps, searchHybrid } from "../../pipeline/hybrid";
 import {
   createVectorIndexPort,
@@ -54,6 +60,10 @@ interface QueryInput {
   graph?: boolean;
   tagsAll?: string[];
   tagsAny?: string[];
+}
+
+interface QueryDiagnoseInput extends QueryInput {
+  target: string;
 }
 
 /**
@@ -123,6 +133,29 @@ function formatSearchResults(data: SearchResults): string {
       lines.push(`  ${snippetPreview}${r.snippet.length > 200 ? "..." : ""}`);
     }
     lines.push("");
+  }
+
+  return lines.join("\n");
+}
+
+function formatQueryDiagnoseResult(data: QueryDiagnoseResult): string {
+  if (data.target.status !== "diagnosed") {
+    return `Target ${data.target.ref}: ${data.target.status}`;
+  }
+
+  const lines = [
+    `Query diagnose for ${data.target.uri ?? data.target.ref}`,
+    `Mode: ${data.meta.mode}, results: ${data.meta.totalResults}`,
+    "",
+  ];
+
+  for (const stage of data.stages) {
+    const rank = stage.rank === null ? "-" : `#${stage.rank}`;
+    const score = stage.score === null ? "-" : Number(stage.score).toFixed(3);
+    const reason = stage.dropReason ? `, ${stage.dropReason}` : "";
+    lines.push(
+      `${stage.id}: ${stage.status}, present=${stage.present}, rank=${rank}, score=${score}${reason}`
+    );
   }
 
   return lines.join("\n");
@@ -309,5 +342,179 @@ export function handleQuery(
       }
     },
     formatSearchResults
+  );
+}
+
+/**
+ * Handle gno_query_diagnose tool call.
+ */
+export function handleQueryDiagnose(
+  args: QueryDiagnoseInput,
+  ctx: ToolContext
+): Promise<ToolResult> {
+  return runTool(
+    ctx,
+    "gno_query_diagnose",
+    // oxlint-disable-next-line max-lines-per-function -- mirrors query setup for diagnostic trace ports
+    async () => {
+      let collection: string | undefined;
+      if (args.collection) {
+        const canonical = ctx.collections.find(
+          (c) => c.name.toLowerCase() === args.collection?.toLowerCase()
+        );
+        if (!canonical) {
+          throw new Error(`Collection not found: ${args.collection}`);
+        }
+        collection = canonical.name;
+      }
+
+      const normalizedInput = normalizeStructuredQueryInput(
+        args.query,
+        args.queryModes ?? []
+      );
+      if (!normalizedInput.ok) {
+        throw new Error(normalizedInput.error.message);
+      }
+      const queryText = normalizedInput.value.query;
+      const queryModes =
+        normalizedInput.value.queryModes.length > 0
+          ? normalizedInput.value.queryModes
+          : undefined;
+
+      const preset = getActivePreset(ctx.config);
+      const llm = new LlmAdapter(ctx.config);
+      const policy = resolveDownloadPolicy(process.env, {});
+      const downloadProgress = createNonTtyProgressRenderer();
+
+      let embedPort: EmbeddingPort | null = null;
+      let expandPort: GenerationPort | null = null;
+      let rerankPort: RerankPort | null = null;
+      let vectorIndex: VectorIndexPort | null = null;
+      const embedUri = resolveModelUri(
+        ctx.config,
+        "embed",
+        undefined,
+        collection
+      );
+
+      try {
+        const hasStructuredModes = Boolean(queryModes?.length);
+        const depthPolicy = resolveDepthPolicy({
+          presetId: preset.id,
+          fast: args.fast,
+          thorough: args.thorough,
+          expand: args.expand,
+          rerank: args.rerank,
+          candidateLimit: args.candidateLimit,
+          hasStructuredModes,
+        });
+        const { noExpand, noRerank } = depthPolicy;
+
+        if (!args.fast) {
+          const embedResult = await llm.createEmbeddingPort(embedUri, {
+            policy,
+            onProgress: (progress) => downloadProgress("embed", progress),
+          });
+          if (embedResult.ok) {
+            embedPort = embedResult.value;
+          }
+        }
+
+        if (!noExpand && !hasStructuredModes) {
+          const genResult = await llm.createExpansionPort(
+            resolveModelUri(ctx.config, "expand", undefined, collection),
+            {
+              policy,
+              onProgress: (progress) => downloadProgress("expand", progress),
+            }
+          );
+          if (genResult.ok) {
+            expandPort = genResult.value;
+          }
+        }
+
+        if (!noRerank) {
+          const rerankResult = await llm.createRerankPort(
+            resolveModelUri(ctx.config, "rerank", undefined, collection),
+            {
+              policy,
+              onProgress: (progress) => downloadProgress("rerank", progress),
+            }
+          );
+          if (rerankResult.ok) {
+            rerankPort = rerankResult.value;
+          }
+        }
+
+        if (embedPort) {
+          const embedInitResult = await embedPort.init();
+          if (embedInitResult.ok) {
+            const dimensions = embedPort.dimensions();
+            const db = ctx.store.getRawDb();
+            const vectorResult = await createVectorIndexPort(db, {
+              model: embedUri,
+              dimensions,
+            });
+            if (vectorResult.ok) {
+              vectorIndex = vectorResult.value;
+            }
+          }
+        }
+
+        const deps: HybridSearchDeps = {
+          store: ctx.store,
+          config: ctx.config,
+          vectorIndex,
+          embedPort,
+          expandPort,
+          rerankPort,
+        };
+        const contentTypeRules = normalizeContentTypes(
+          ctx.config.contentTypes ?? []
+        ).rules;
+
+        const result = await diagnoseQueryTarget(deps, queryText, {
+          target: args.target,
+          limit: args.limit ?? 5,
+          minScore: args.minScore,
+          collection,
+          queryLanguageHint: args.lang,
+          intent: args.intent,
+          candidateLimit: depthPolicy.candidateLimit,
+          exclude: args.exclude,
+          since: args.since,
+          until: args.until,
+          categories: args.categories,
+          author: args.author,
+          noExpand,
+          noRerank,
+          graph: args.graph === true,
+          noGraph: args.noGraph || args.fast,
+          queryModes,
+          tagsAll: normalizeTagFilters(args.tagsAll),
+          tagsAny: normalizeTagFilters(args.tagsAny),
+          contentTypeRules,
+          contentTypeRulesFingerprint:
+            fingerprintContentTypeRules(contentTypeRules),
+        });
+
+        if (!result.ok) {
+          throw new Error(result.error.message);
+        }
+
+        return result.value;
+      } finally {
+        if (embedPort) {
+          await embedPort.dispose();
+        }
+        if (expandPort) {
+          await expandPort.dispose();
+        }
+        if (rerankPort) {
+          await rerankPort.dispose();
+        }
+      }
+    },
+    formatQueryDiagnoseResult
   );
 }

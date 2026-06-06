@@ -93,6 +93,31 @@ describe("links-list schema", () => {
       expect(assertValid(response, schema)).toBe(true);
     });
 
+    test("validates response with semantic edge link", () => {
+      const response = {
+        links: [
+          {
+            targetDocid: "#def456",
+            targetUri: "gno://notes/target.md",
+            targetTitle: "Target",
+            edgeType: "mentions",
+            relationType: "mentions",
+            confidence: "parsed",
+            edgeSource: "wikilink",
+          },
+        ],
+        meta: {
+          docid: "#abc123",
+          totalLinks: 1,
+          resolvedCount: 1,
+          resolutionAvailable: true,
+          edgeTypeFilter: "mentions",
+          semantic: true,
+        },
+      };
+      expect(assertValid(response, schema)).toBe(true);
+    });
+
     test("validates response when resolution unavailable", () => {
       const response = {
         links: [
@@ -170,6 +195,24 @@ describe("links-list schema", () => {
       };
       expect(assertInvalid(response, schema)).toBe(true);
     });
+
+    test("rejects mixed positional and semantic link fields", () => {
+      const response = {
+        links: [
+          {
+            targetRef: "Note",
+            linkType: "wiki",
+            startLine: 1,
+            startCol: 1,
+            edgeType: "mentions",
+            confidence: "parsed",
+            edgeSource: "wikilink",
+          },
+        ],
+        meta: { docid: "#abc123", totalLinks: 1 },
+      };
+      expect(assertInvalid(response, schema)).toBe(true);
+    });
   });
 });
 
@@ -211,6 +254,29 @@ describe("backlinks schema", () => {
       };
       expect(assertValid(response, schema)).toBe(true);
     });
+
+    test("validates response with semantic backlink", () => {
+      const response = {
+        backlinks: [
+          {
+            sourceDocid: "#def456",
+            sourceUri: "gno://notes/source.md",
+            sourceTitle: "Source",
+            edgeType: "related_to",
+            relationType: "related_to",
+            confidence: "parsed",
+            edgeSource: "markdown-link",
+          },
+        ],
+        meta: {
+          docid: "#abc123",
+          totalBacklinks: 1,
+          relationFilter: "related_to",
+          semantic: true,
+        },
+      };
+      expect(assertValid(response, schema)).toBe(true);
+    });
   });
 
   describe("invalid inputs", () => {
@@ -242,6 +308,24 @@ describe("backlinks schema", () => {
     test("rejects backlink without sourceUri", () => {
       const response = {
         backlinks: [{ sourceDocid: "#def456", startLine: 10, startCol: 5 }],
+        meta: { docid: "#abc123", totalBacklinks: 1 },
+      };
+      expect(assertInvalid(response, schema)).toBe(true);
+    });
+
+    test("rejects mixed positional and semantic backlink fields", () => {
+      const response = {
+        backlinks: [
+          {
+            sourceDocid: "#def456",
+            sourceUri: "gno://notes/source.md",
+            startLine: 10,
+            startCol: 5,
+            edgeType: "related_to",
+            confidence: "parsed",
+            edgeSource: "markdown-link",
+          },
+        ],
         meta: { docid: "#abc123", totalBacklinks: 1 },
       };
       expect(assertInvalid(response, schema)).toBe(true);

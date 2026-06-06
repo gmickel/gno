@@ -5,8 +5,15 @@
  * @module src/cli/commands/graph
  */
 
-import type { GetGraphOptions, GraphResult } from "../../store/types";
+import type {
+  GetGraphOptions,
+  GraphQueryDirection,
+  GraphQueryResult,
+  GraphResult,
+} from "../../store/types";
 
+import { normalizeContentTypes } from "../../config";
+import { diagnoseGraphQuery } from "../../core/graph-query";
 import { initStore } from "./shared";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -16,6 +23,8 @@ import { initStore } from "./shared";
 export interface GraphOptions {
   /** Override config path */
   configPath?: string;
+  /** Override index name */
+  indexName?: string;
   /** Filter by collection */
   collection?: string;
   /** Max nodes (default 2000) */
@@ -44,10 +53,26 @@ export interface GraphOptions {
   maxDepth?: number;
 }
 
+export interface GraphQueryCliOptions {
+  configPath?: string;
+  indexName?: string;
+  direction?: GraphQueryDirection;
+  edgeType?: string;
+  maxDepth?: number;
+  maxNodes?: number;
+  frontierLimit?: number;
+  visitedLimit?: number;
+  format?: "terminal" | "json";
+}
+
 export type GraphCommandResult =
   | { success: true; data: GraphResult }
   | { success: true; data: GraphNeighborsCliResult }
   | { success: true; data: GraphPathCliResult }
+  | { success: false; error: string; isValidation?: boolean };
+
+export type GraphQueryCommandResult =
+  | { success: true; data: GraphQueryResult }
   | { success: false; error: string; isValidation?: boolean };
 
 type GraphNode = GraphResult["nodes"][number];
@@ -94,6 +119,7 @@ export async function graph(
 ): Promise<GraphCommandResult> {
   const initResult = await initStore({
     configPath: options.configPath,
+    indexName: options.indexName,
     syncConfig: false,
   });
   if (!initResult.ok) {
@@ -180,6 +206,35 @@ export async function graph(
     }
 
     return { success: true, data: result.value };
+  } finally {
+    await store.close();
+  }
+}
+
+export async function graphQuery(
+  docRef: string,
+  options: GraphQueryCliOptions = {}
+): Promise<GraphQueryCommandResult> {
+  const initResult = await initStore({
+    configPath: options.configPath,
+    indexName: options.indexName,
+    syncConfig: false,
+  });
+  if (!initResult.ok) {
+    return { success: false, error: initResult.error };
+  }
+  const { store, config } = initResult;
+
+  try {
+    return await diagnoseGraphQuery(store, docRef, {
+      direction: options.direction,
+      edgeType: options.edgeType,
+      maxDepth: options.maxDepth,
+      maxNodes: options.maxNodes,
+      frontierLimit: options.frontierLimit,
+      visitedLimit: options.visitedLimit,
+      contentTypeRules: normalizeContentTypes(config.contentTypes ?? []).rules,
+    });
   } finally {
     await store.close();
   }
@@ -420,4 +475,36 @@ export function formatGraph(
     default:
       return JSON.stringify(data, null, 2);
   }
+}
+
+export function formatGraphQuery(
+  result: GraphQueryCommandResult,
+  options: GraphQueryCliOptions
+): string {
+  if (!result.success) {
+    if (options.format === "json") {
+      return JSON.stringify({
+        error: { code: "GRAPH_QUERY_FAILED", message: result.error },
+      });
+    }
+    return `Error: ${result.error}`;
+  }
+
+  if (options.format === "json") {
+    return JSON.stringify(result.data, null, 2);
+  }
+
+  const lines = [
+    `Graph query from ${result.data.root.uri}`,
+    `Nodes: ${result.data.meta.returnedNodes}, edges: ${result.data.meta.returnedEdges}`,
+  ];
+  if (result.data.meta.truncated) {
+    lines.push(`Truncated: ${result.data.meta.warnings.join("; ")}`);
+  }
+  for (const edge of result.data.edges) {
+    lines.push(
+      `${edge.source} -> ${edge.target} (${edge.edgeType}, ${edge.confidence}, ${edge.edgeSource}, depth ${edge.depth})`
+    );
+  }
+  return lines.join("\n");
 }

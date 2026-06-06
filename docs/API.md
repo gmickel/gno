@@ -49,9 +49,11 @@ All endpoints are JSON-based and run entirely on your machine.
 | `/api/doc/:id/backlinks` | GET    | Get docs linking to this                                    |
 | `/api/doc/:id/similar`   | GET    | Find semantically similar                                   |
 | `/api/graph`             | GET    | Knowledge graph of links                                    |
+| `/api/graph/query`       | POST   | Bounded typed-edge graph traversal                          |
 | `/api/tags`              | GET    | List tags with counts                                       |
 | `/api/search`            | POST   | BM25 keyword search                                         |
 | `/api/query`             | POST   | Hybrid search                                               |
+| `/api/query/diagnose`    | POST   | Diagnose why a target document does or does not retrieve    |
 | `/api/ask`               | POST   | AI-powered Q&A                                              |
 | `/api/presets`           | GET    | List model presets                                          |
 | `/api/presets`           | POST   | Switch preset                                               |
@@ -1291,6 +1293,60 @@ curl "http://localhost:3000/api/graph?linkedOnly=false&limit=500" | jq
 
 ---
 
+### Query Typed Graph
+
+```http
+POST /api/graph/query
+```
+
+Bounded traversal over the typed `doc_edges` relationship layer from a resolved root document.
+
+**Request Body**:
+
+```json
+{
+  "doc": "gno://notes/people/alice.md",
+  "direction": "both",
+  "edgeType": "mentions",
+  "maxDepth": 2,
+  "maxNodes": 100,
+  "frontierLimit": 100,
+  "visitedLimit": 500
+}
+```
+
+| Field           | Type   | Default | Description                                      |
+| :-------------- | :----- | :------ | :----------------------------------------------- |
+| `doc` / `root`  | string | —       | Root document ref (required)                     |
+| `direction`     | string | `both`  | `out`, `in`, or `both`                           |
+| `edgeType`      | string | —       | Semantic edge type filter                        |
+| `relation`      | string | —       | Alias for `edgeType`; must match if both are set |
+| `maxDepth`      | number | 2       | Traversal depth (1-6)                            |
+| `depth`         | number | —       | Alias for `maxDepth`                             |
+| `maxNodes`      | number | 100     | Returned node cap (1-1000)                       |
+| `frontierLimit` | number | 100     | Per-depth frontier cap (1-1000)                  |
+| `visitedLimit`  | number | 500     | SQL traversal visited-row cap (1-5000)           |
+
+**Response**: `graph-query.schema.json`.
+
+Top-level fields:
+
+- `schemaVersion` - Graph query schema version
+- `root` - Resolved root document node
+- `nodes` - Returned graph nodes with depth and graph hints
+- `edges` - Typed relationship edges with depth, confidence, and source
+- `meta` - Direction, caps, returned counts, truncation flag, and warnings
+
+**Example**:
+
+```bash
+curl -X POST http://localhost:3000/api/graph/query \
+  -H "Content-Type: application/json" \
+  -d '{"doc":"gno://notes/people/alice.md","direction":"both","edgeType":"mentions","maxDepth":2}' | jq
+```
+
+---
+
 ### Capture Note
 
 ```http
@@ -1740,6 +1796,53 @@ curl -X POST http://localhost:3000/api/query \
 curl -X POST http://localhost:3000/api/query \
   -H "Content-Type: application/json" \
   -d '{"query": "auth flow\nterm: \"refresh token\"\nintent: token rotation"}'
+```
+
+---
+
+### Diagnose Query Target
+
+```http
+POST /api/query/diagnose
+```
+
+Explains why a named target document does or does not appear in a query result. Uses the same filters and retrieval controls as `/api/query`, plus a required `target` document ref.
+
+**Request Body**:
+
+```json
+{
+  "query": "Alice Acme",
+  "target": "gno://notes/people/alice.md",
+  "limit": 20,
+  "collection": "notes",
+  "category": "person",
+  "tagsAll": "crm",
+  "noExpand": true,
+  "noRerank": true,
+  "graph": false
+}
+```
+
+**Response**: `query-diagnose.schema.json`.
+
+Top-level fields:
+
+- `schemaVersion` - Query diagnose schema version
+- `query` - Normalized query text
+- `target` - Resolved target metadata, status, filters, and graph hints
+- `stages` - BM25/vector/fusion/graph/rerank survival, rank, score, and drop reason
+- `chunk` - Target chunk and line range when diagnosed
+- `meta` - Retrieval mode, vector/rerank usage, and result count
+
+The response includes `target.status` (`not_found`, `inactive`, `no_indexed_content`, `filtered_out`, or `diagnosed`) plus per-stage retrieval status for BM25, vector, fusion, graph expansion, and rerank.
+
+**Example**:
+
+```bash
+curl -X POST http://localhost:3000/api/query/diagnose \
+  -H "Content-Type: application/json" \
+  -d '{"query":"Alice Acme","target":"gno://notes/people/alice.md","noExpand":true,"noRerank":true}' | jq
 ```
 
 ---

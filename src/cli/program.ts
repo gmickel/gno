@@ -508,7 +508,7 @@ function wireSearchCommands(program: Command): void {
 
   // query - Hybrid search with expansion and reranking
   program
-    .command("query <query>")
+    .command("query <query...>")
     .description("Hybrid search with expansion and reranking")
     .option("-n, --limit <num>", "max results")
     .option("--min-score <num>", "minimum score threshold")
@@ -542,6 +542,7 @@ function wireSearchCommands(program: Command): void {
     .option("--no-rerank", "disable reranking")
     .option("--graph", "enable graph neighbor expansion")
     .option("--no-graph", "compatibility no-op; graph is off by default")
+    .option("--target <doc>", "diagnose target document ref")
     .option(
       "--query-mode <mode:text>",
       "structured mode entry (repeatable): term:<text>, intent:<text>, or hyde:<text>",
@@ -555,10 +556,16 @@ function wireSearchCommands(program: Command): void {
     .option("--csv", "CSV output")
     .option("--xml", "XML output")
     .option("--files", "file paths only")
-    .action(async (queryText: string, cmdOpts: Record<string, unknown>) => {
+    .action(async (queryParts: string[], cmdOpts: Record<string, unknown>) => {
       const format = getFormat(cmdOpts);
-      assertFormatSupported(CMD.query, format);
+      const isDiagnose =
+        queryParts[0] === "diagnose" && Boolean(cmdOpts.target);
+      assertFormatSupported(isDiagnose ? CMD.queryDiagnose : CMD.query, format);
+      const diagnoseFormat = format === "json" ? "json" : "terminal";
       const globals = getGlobals();
+      let queryText = isDiagnose
+        ? queryParts.slice(1).join(" ")
+        : queryParts.join(" ");
 
       // Validate empty query
       if (!queryText.trim()) {
@@ -637,6 +644,44 @@ function wireSearchCommands(program: Command): void {
         rerank: cmdOpts.rerank === false ? false : undefined,
         candidateLimit,
       });
+
+      if (isDiagnose) {
+        const { queryDiagnose, formatQueryDiagnose } =
+          await import("./commands/query");
+        const result = await queryDiagnose(queryText, {
+          configPath: globals.config,
+          indexName: globals.index,
+          target: cmdOpts.target as string,
+          limit,
+          minScore,
+          collection: cmdOpts.collection as string | undefined,
+          lang: cmdOpts.lang as string | undefined,
+          since: cmdOpts.since as string | undefined,
+          until: cmdOpts.until as string | undefined,
+          categories,
+          author: cmdOpts.author as string | undefined,
+          intent: cmdOpts.intent as string | undefined,
+          exclude,
+          tagsAll,
+          tagsAny,
+          noExpand: depthPolicy.noExpand,
+          noRerank: depthPolicy.noRerank,
+          graph: Boolean(cmdOpts.graph),
+          noGraph: Boolean(cmdOpts.fast) || cmdOpts.graph === false,
+          candidateLimit: depthPolicy.candidateLimit,
+          queryModes,
+          json: diagnoseFormat === "json",
+        });
+
+        if (!result.success) {
+          throw new CliError("RUNTIME", result.error);
+        }
+        await writeOutput(
+          formatQueryDiagnose(result, { format: diagnoseFormat }),
+          diagnoseFormat
+        );
+        return;
+      }
 
       const { query, formatQuery } = await import("./commands/query");
       const result = await query(queryText, {
@@ -2153,6 +2198,8 @@ function wireLinksCommands(program: Command): void {
     .command("list <doc>", { isDefault: true })
     .description("List outgoing links from a document")
     .option("--type <type>", "filter by link type (wiki, markdown)")
+    .option("--edge-type <type>", "filter by semantic edge type")
+    .option("--relation <type>", "alias for --edge-type")
     .option("--json", "JSON output")
     .option("--md", "Markdown output")
     .action(async (doc: string, cmdOpts: Record<string, unknown>) => {
@@ -2168,11 +2215,27 @@ function wireLinksCommands(program: Command): void {
           `Invalid link type: ${linkType}. Must be 'wiki' or 'markdown'.`
         );
       }
+      const edgeType = cmdOpts.edgeType as string | undefined;
+      const relation = cmdOpts.relation as string | undefined;
+      if (linkType && (edgeType || relation)) {
+        throw new CliError(
+          "VALIDATION",
+          "--type cannot be combined with --edge-type or --relation"
+        );
+      }
+      if (edgeType && relation && edgeType !== relation) {
+        throw new CliError(
+          "VALIDATION",
+          "--edge-type and --relation are aliases and must match when both are provided"
+        );
+      }
 
       const { linksList, formatLinksList } = await import("./commands/links");
       const result = await linksList(doc, {
         configPath: globals.config,
         type: linkType as "wiki" | "markdown" | undefined,
+        edgeType,
+        relation,
         json: format === "json",
         md: format === "md",
       });
@@ -2196,6 +2259,8 @@ function wireLinksCommands(program: Command): void {
     .command("backlinks <doc>")
     .description("List documents linking to this document")
     .option("-c, --collection <name>", "filter by collection")
+    .option("--edge-type <type>", "filter by semantic edge type")
+    .option("--relation <type>", "alias for --edge-type")
     .option("--json", "JSON output")
     .option("--md", "Markdown output")
     .action(async (doc: string, cmdOpts: Record<string, unknown>) => {
@@ -2204,9 +2269,19 @@ function wireLinksCommands(program: Command): void {
       const globals = getGlobals();
 
       const { backlinks, formatBacklinks } = await import("./commands/links");
+      const edgeType = cmdOpts.edgeType as string | undefined;
+      const relation = cmdOpts.relation as string | undefined;
+      if (edgeType && relation && edgeType !== relation) {
+        throw new CliError(
+          "VALIDATION",
+          "--edge-type and --relation are aliases and must match when both are provided"
+        );
+      }
       const result = await backlinks(doc, {
         configPath: globals.config,
         collection: cmdOpts.collection as string | undefined,
+        edgeType,
+        relation,
         json: format === "json",
         md: format === "md",
       });
@@ -2278,7 +2353,7 @@ function wireLinksCommands(program: Command): void {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function wireGraphCommand(program: Command): void {
-  program
+  const graphCmd = program
     .command("graph")
     .description("Output knowledge graph of document links")
     .option("-c, --collection <name>", "filter by collection")
@@ -2289,7 +2364,7 @@ function wireGraphCommand(program: Command): void {
     .option("--include-isolated", "include nodes with no links")
     .option("--similar-top-k <n>", "similar docs per node (default 5)")
     .option("--neighbors <ref>", "show graph neighbors for document/node ref")
-    .option("--direction <dir>", "neighbor direction: both, out, in", "both")
+    .option("--direction <dir>", "neighbor direction: both, out, in")
     .option("--from <ref>", "path start document/node ref")
     .option("--to <ref>", "path target document/node ref")
     .option("--max-depth <n>", "max path hops (default 6)")
@@ -2332,10 +2407,11 @@ function wireGraphCommand(program: Command): void {
       const maxDepth = cmdOpts.maxDepth
         ? parsePositiveInt("max-depth", cmdOpts.maxDepth)
         : undefined;
+      const graphDirection = (cmdOpts.direction ?? "both") as string;
       if (
-        cmdOpts.direction !== "both" &&
-        cmdOpts.direction !== "out" &&
-        cmdOpts.direction !== "in"
+        graphDirection !== "both" &&
+        graphDirection !== "out" &&
+        graphDirection !== "in"
       ) {
         throw new CliError(
           "VALIDATION",
@@ -2352,6 +2428,7 @@ function wireGraphCommand(program: Command): void {
       const { graph, formatGraph } = await import("./commands/graph.js");
       const result = await graph({
         configPath: globals.config,
+        indexName: globals.index,
         collection: cmdOpts.collection as string | undefined,
         limitNodes,
         limitEdges,
@@ -2361,7 +2438,7 @@ function wireGraphCommand(program: Command): void {
         similarTopK,
         format,
         neighbors: cmdOpts.neighbors as string | undefined,
-        direction: cmdOpts.direction as "both" | "out" | "in",
+        direction: graphDirection as "both" | "out" | "in",
         from: cmdOpts.from as string | undefined,
         to: cmdOpts.to as string | undefined,
         maxDepth,
@@ -2385,6 +2462,96 @@ function wireGraphCommand(program: Command): void {
 
       await writeOutput(output, format === "json" ? "json" : "terminal");
     });
+
+  graphCmd
+    .command("query <doc>")
+    .description("Run bounded typed-edge traversal from a document")
+    .option("--direction <dir>", "direction: both, out, in")
+    .option("--edge-type <type>", "filter by typed edge type")
+    .option("--max-depth <n>", "max traversal depth (default 2)")
+    .option("--max-nodes <n>", "max returned nodes (default 100)")
+    .option(
+      "--frontier-limit <n>",
+      "max frontier width per depth (default 100)"
+    )
+    .option(
+      "--visited-limit <n>",
+      "max visited rows during traversal (default 500)"
+    )
+    .option("--json", "JSON output")
+    .action(
+      async (
+        doc: string,
+        cmdOpts: Record<string, unknown>,
+        command: Command
+      ) => {
+        const globals = getGlobals();
+        const format = getFormat(cmdOpts);
+        assertFormatSupported(CMD.graphQuery, format);
+        if (format !== "terminal" && format !== "json") {
+          throw new CliError(
+            "VALIDATION",
+            "gno graph query supports terminal and json output"
+          );
+        }
+        const argv = resolveCliArgv(command);
+        const directionFlagIndex = argv.lastIndexOf("--direction");
+        const rawDirection =
+          directionFlagIndex >= 0 ? argv[directionFlagIndex + 1] : undefined;
+        const direction = (rawDirection ??
+          cmdOpts.direction ??
+          "both") as string;
+        if (direction !== "both" && direction !== "out" && direction !== "in") {
+          throw new CliError(
+            "VALIDATION",
+            "--direction must be one of: both, out, in"
+          );
+        }
+
+        const maxDepth = cmdOpts.maxDepth
+          ? parsePositiveInt("max-depth", cmdOpts.maxDepth)
+          : undefined;
+        const maxNodes = cmdOpts.maxNodes
+          ? parsePositiveInt("max-nodes", cmdOpts.maxNodes)
+          : undefined;
+        const frontierLimit = cmdOpts.frontierLimit
+          ? parsePositiveInt("frontier-limit", cmdOpts.frontierLimit)
+          : undefined;
+        const visitedLimit = cmdOpts.visitedLimit
+          ? parsePositiveInt("visited-limit", cmdOpts.visitedLimit)
+          : undefined;
+
+        const { graphQuery, formatGraphQuery } =
+          await import("./commands/graph.js");
+        const result = await graphQuery(doc, {
+          configPath: globals.config,
+          indexName: globals.index,
+          direction: direction as "both" | "out" | "in",
+          edgeType: cmdOpts.edgeType as string | undefined,
+          maxDepth,
+          maxNodes,
+          frontierLimit,
+          visitedLimit,
+          format,
+        });
+
+        if (!result.success) {
+          throw new CliError(
+            result.isValidation ? "VALIDATION" : "RUNTIME",
+            result.error
+          );
+        }
+
+        const output = formatGraphQuery(result, { format });
+        if (result.data.meta.truncated) {
+          for (const warning of result.data.meta.warnings) {
+            console.error(`Warning: ${warning}`);
+          }
+        }
+
+        await writeOutput(output, format);
+      }
+    );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

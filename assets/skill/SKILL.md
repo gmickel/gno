@@ -35,20 +35,20 @@ gno search "your query"               # BM25 keyword search
 
 ## Command Overview
 
-| Category     | Commands                                                         | Description                                               |
-| ------------ | ---------------------------------------------------------------- | --------------------------------------------------------- |
-| **Search**   | `search`, `vsearch`, `query`, `ask`                              | Find documents by keywords, meaning, or get AI answers    |
-| **Links**    | `links`, `backlinks`, `similar`, `graph`                         | Navigate document relationships and visualize connections |
-| **Retrieve** | `get`, `multi-get`, `ls`                                         | Fetch document content by URI or ID                       |
-| **Index**    | `init`, `collection add/list/remove`, `index`, `update`, `embed` | Set up and maintain document index                        |
-| **Tags**     | `tags`, `tags add`, `tags rm`                                    | Organize and filter documents                             |
-| **Context**  | `context add/list/rm/check`                                      | Add hints to improve search relevance                     |
-| **Models**   | `models list/use/pull/clear/path`                                | Manage local AI models                                    |
-| **Serve**    | `serve`                                                          | Web UI for browsing and searching                         |
-| **Publish**  | `publish export`                                                 | Export gno.sh publish artifacts                           |
-| **MCP**      | `mcp`, `mcp install/uninstall/status`                            | AI assistant integration                                  |
-| **Skill**    | `skill install/uninstall/show/paths`                             | Install skill for AI agents                               |
-| **Admin**    | `status`, `doctor`, `cleanup`, `reset`, `vec`, `completion`      | Maintenance and diagnostics                               |
+| Category     | Commands                                                         | Description                                            |
+| ------------ | ---------------------------------------------------------------- | ------------------------------------------------------ |
+| **Search**   | `search`, `vsearch`, `query`, `ask`                              | Find documents by keywords, meaning, or get AI answers |
+| **Links**    | `links`, `backlinks`, `similar`, `graph`, `graph query`          | Navigate document relationships and typed connections  |
+| **Retrieve** | `get`, `multi-get`, `ls`                                         | Fetch document content by URI or ID                    |
+| **Index**    | `init`, `collection add/list/remove`, `index`, `update`, `embed` | Set up and maintain document index                     |
+| **Tags**     | `tags`, `tags add`, `tags rm`                                    | Organize and filter documents                          |
+| **Context**  | `context add/list/rm/check`                                      | Add hints to improve search relevance                  |
+| **Models**   | `models list/use/pull/clear/path`                                | Manage local AI models                                 |
+| **Serve**    | `serve`                                                          | Web UI for browsing and searching                      |
+| **Publish**  | `publish export`                                                 | Export gno.sh publish artifacts                        |
+| **MCP**      | `mcp`, `mcp install/uninstall/status`                            | AI assistant integration                               |
+| **Skill**    | `skill install/uninstall/show/paths`                             | Install skill for AI agents                            |
+| **Admin**    | `status`, `doctor`, `cleanup`, `reset`, `vec`, `completion`      | Maintenance and diagnostics                            |
 
 ## Search Modes
 
@@ -137,8 +137,9 @@ When using GNO through MCP, prefer this retrieval order:
 
 1. Check `gno_status` first when freshness, missing vectors, or stale results are plausible.
 2. Use `gno_query` first for normal content questions. It returns snippets plus `uri`, `docid`, and often `line`; pass `graph: true` only when linked context is worth the extra latency.
-3. Use graph/link expansion for relationship context: `gno_graph_neighbors` for nearby documents, `gno_graph_path` for "how are X and Y connected?", `gno_links`/`gno_backlinks` for one-document link expansion, and `gno_similar` for semantic neighbors. Prefer `explicit` graph edges over `inferred`, `ambiguous`, or `similarity` edges when confidence matters.
-4. Use `gno_get` with `fromLine`/`lineCount` for targeted reads, or `gno_multi_get` to batch top refs.
+3. Use graph/link expansion for relationship context: `gno_graph_query` for typed relationship traversal, `gno_graph_neighbors` for nearby documents, `gno_graph_path` for "how are X and Y connected?", `gno_links`/`gno_backlinks` for one-document link expansion, and `gno_similar` for semantic neighbors. Prefer explicit or typed edges over inferred, ambiguous, or similarity edges when confidence matters.
+4. Use `gno_query_diagnose` when a known target document should have appeared but did not; it reports BM25/vector/fusion/graph/rerank stage presence and filter state.
+5. Use `gno_get` with `fromLine`/`lineCount` for targeted reads, or `gno_multi_get` to batch top refs.
 
 Use narrower tools when the request tells you to:
 
@@ -146,8 +147,10 @@ Use narrower tools when the request tells you to:
 - `gno_vsearch`: conceptual similarity when exact wording differs
 - `gno_status`: stale results, missing embeddings, vector unavailable
 - `gno_graph`: graph report/stats, hubs, isolates, unresolved links, edge confidence/audit, communities, unfamiliar corpus overview
+- `gno_graph_query`: bounded typed-edge traversal from a known document
 - `gno_graph_neighbors`: relationship/corpus-navigation questions around a known document
 - `gno_graph_path`: "how are X and Y connected?" questions
+- `gno_query_diagnose`: why a named target did or did not surface for a query
 
 For ambiguous terms, pass `intent` instead of bloating the query text. For typed retrieval, use `queryModes`: `term` for lexical anchors, `intent` for disambiguation, one `hyde` for a hypothetical answer/document.
 
@@ -159,6 +162,15 @@ gno links gno://notes/readme.md
 
 # Find documents linking TO a document (backlinks)
 gno backlinks gno://notes/api-design.md
+
+# Traverse typed relationships
+gno graph query gno://notes/people/alice.md --edge-type works_at --max-depth 2
+
+# Query semantic edges on link commands
+gno links gno://notes/people/alice.md --edge-type works_at
+
+# Diagnose a missing expected result
+gno query diagnose "Alice Acme" --target gno://notes/people/alice.md --json
 
 # Find semantically similar documents
 gno similar gno://notes/auth.md

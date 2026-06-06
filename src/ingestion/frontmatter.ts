@@ -170,11 +170,95 @@ function parseBlockArrayValue(lines: string[], startIdx: number): string[] {
   return items;
 }
 
+function countIndent(line: string): number {
+  let indent = 0;
+  for (const char of line) {
+    if (char === " ") {
+      indent += 1;
+    } else if (char === "\t") {
+      indent += 2;
+    } else {
+      break;
+    }
+  }
+  return indent;
+}
+
+function parseNestedMapValue(
+  lines: string[],
+  startIdx: number
+): Record<string, string[]> {
+  const result: Record<string, string[]> = {};
+
+  for (let i = startIdx + 1; i < lines.length; i++) {
+    const line = lines[i];
+    if (line === undefined) break;
+    if (line.trim().length === 0) continue;
+    if (!line.startsWith(" ") && !line.startsWith("\t")) {
+      break;
+    }
+
+    const keyIndent = countIndent(line);
+    const trimmed = line.trim();
+    const colonIdx = trimmed.indexOf(":");
+    if (colonIdx <= 0) {
+      continue;
+    }
+
+    const key = trimmed.slice(0, colonIdx).trim();
+    const rawValue = trimmed.slice(colonIdx + 1).trim();
+    const values: string[] = [];
+
+    const inlineArray = parseInlineArrayValue(rawValue);
+    if (inlineArray) {
+      values.push(...inlineArray);
+    } else if (rawValue.length > 0) {
+      values.push(unquoteScalar(rawValue));
+    } else {
+      for (let j = i + 1; j < lines.length; j++) {
+        const childLine = lines[j];
+        if (childLine === undefined) break;
+        if (childLine.trim().length === 0) continue;
+        const childIndent = countIndent(childLine);
+        if (childIndent <= keyIndent) {
+          break;
+        }
+        const itemMatch = YAML_ARRAY_ITEM_REGEX.exec(childLine);
+        if (itemMatch?.[1]) {
+          const item = unquoteScalar(itemMatch[1]);
+          if (item.length > 0) {
+            values.push(item);
+          }
+        }
+      }
+    }
+
+    if (key.length > 0 && values.length > 0) {
+      result[key] = values;
+    }
+  }
+
+  return result;
+}
+
+function startsNestedMap(lines: string[], startIdx: number): boolean {
+  for (let i = startIdx + 1; i < lines.length; i++) {
+    const line = lines[i];
+    if (line === undefined) break;
+    if (line.trim().length === 0) continue;
+    if (!line.startsWith(" ") && !line.startsWith("\t")) {
+      return false;
+    }
+    return line.trim().indexOf(":") > 0;
+  }
+  return false;
+}
+
 function parseMetadataValue(
   value: string,
   lines: string[],
   startIdx: number
-): string | string[] | undefined {
+): string | string[] | Record<string, string[]> | undefined {
   const trimmed = value.trim();
   const inlineArray = parseInlineArrayValue(trimmed);
   if (inlineArray) {
@@ -182,8 +266,14 @@ function parseMetadataValue(
   }
 
   if (trimmed.length === 0) {
+    if (startsNestedMap(lines, startIdx)) {
+      const nestedMap = parseNestedMapValue(lines, startIdx);
+      return Object.keys(nestedMap).length > 0 ? nestedMap : undefined;
+    }
     const blockArray = parseBlockArrayValue(lines, startIdx);
-    return blockArray.length > 0 ? blockArray : undefined;
+    if (blockArray.length > 0) {
+      return blockArray;
+    }
   }
 
   return unquoteScalar(trimmed);
@@ -222,6 +312,9 @@ export function parseFrontmatter(source: string): FrontmatterResult {
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
       if (line === undefined) continue;
+      if (line.startsWith(" ") || line.startsWith("\t")) {
+        continue;
+      }
 
       // Logseq format: tags:: value
       const logseqMatch = LOGSEQ_TAGS_REGEX.exec(line);
