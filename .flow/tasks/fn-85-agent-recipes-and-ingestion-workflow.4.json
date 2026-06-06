@@ -1,0 +1,18 @@
+{
+  "assignee": null,
+  "claim_note": "",
+  "claimed_at": null,
+  "created_at": "2026-06-06T13:17:09.431754Z",
+  "depends_on": [
+    "fn-85-agent-recipes-and-ingestion-workflow.2",
+    "fn-85-agent-recipes-and-ingestion-workflow.3",
+    "fn-85-agent-recipes-and-ingestion-workflow.5"
+  ],
+  "id": "fn-85-agent-recipes-and-ingestion-workflow.4",
+  "priority": null,
+  "spec": "fn-85-agent-recipes-and-ingestion-workflow",
+  "spec_path": ".flow/tasks/fn-85-agent-recipes-and-ingestion-workflow.4.md",
+  "status": "todo",
+  "title": "Autoresearch eval and false-claim audit",
+  "updated_at": "2026-06-06T13:28:13.407854Z"
+}
