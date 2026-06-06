@@ -21,7 +21,7 @@ gno get <uri> --from <line> -l <count> --line-numbers
 
 ```bash
 gno backlinks <uri>
-gno graph path --from <uri-a> --to <uri-b>
+gno graph --from <uri-a> --to <uri-b>
 ```
 
 3. Label claim status:

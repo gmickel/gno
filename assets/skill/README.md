@@ -96,6 +96,8 @@ progressive disclosure — the model only pulls them when it needs them:
 - [cli-reference.md](cli-reference.md) — every CLI command, option and flag
 - [mcp-reference.md](mcp-reference.md) — MCP tool and resource contract
 - [examples.md](examples.md) — end-to-end usage patterns
+- [recipes/](recipes/) — task-shaped second-brain workflows for lookup,
+  capture, meetings, email context, source summaries, ideas, and citations
 
 ## Agent tooling contract
 

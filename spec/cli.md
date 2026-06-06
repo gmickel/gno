@@ -1602,7 +1602,7 @@ gno skill install [--scope <project|user>] [--target <claude|codex|opencode|open
 | Option     | Type    | Default | Description                                               |
 | ---------- | ------- | ------- | --------------------------------------------------------- |
 | `--scope`  | string  | project | `project` (.claude/skills/) or `user` (~/.claude/skills/) |
-| `--target` | string  | claude  | `claude`, `codex`, `opencode`, `openclaw`, or `all`        |
+| `--target` | string  | claude  | `claude`, `codex`, `opencode`, `openclaw`, or `all`       |
 | `--force`  | boolean | false   | Overwrite existing skill without prompting                |
 
 **Behavior:**
@@ -1691,10 +1691,10 @@ gno skill show [--file <relative-md-path>] [--all]
 
 **Options:**
 
-| Option   | Type    | Default  | Description                                                             |
-| -------- | ------- | -------- | ----------------------------------------------------------------------- |
+| Option   | Type    | Default  | Description                                                                                       |
+| -------- | ------- | -------- | ------------------------------------------------------------------------------------------------- |
 | `--file` | string  | SKILL.md | Relative POSIX markdown path to show, including nested paths like `recipes/brain-first-lookup.md` |
-| `--all`  | boolean | false    | Show all skill markdown files with separators                                             |
+| `--all`  | boolean | false    | Show all skill markdown files with separators                                                     |
 
 **Behavior:**
 
