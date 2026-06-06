@@ -16,8 +16,8 @@ import type {
 } from "../../store/types";
 import type { ToolContext } from "../server";
 
-import { parseRef } from "../../cli/commands/ref-parser";
 import { MCP_ERRORS } from "../../core/errors";
+import { parseRef } from "../../core/ref-parser";
 import { normalizeCollectionName } from "../../core/validation";
 import { getActivePreset } from "../../llm/registry";
 import { createVectorIndexPort } from "../../store/vector";

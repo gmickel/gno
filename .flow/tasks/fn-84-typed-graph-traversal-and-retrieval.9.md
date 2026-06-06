@@ -28,14 +28,23 @@ Two **behavior-preserving** extractions that unblock the typed-graph work, kept 
 
 ## Acceptance
 
-- [ ] Link resolver/projection helper extracted from `getGraph()`; `getGraph()` refactored to call it; existing graph tests pass unchanged (no behavior change)
-- [ ] `parseRef`/`resolveDocRef` moved to `src/core/ref-parser.ts`; CLI re-exports; existing ref-parser + CLI tests pass unchanged
-- [ ] No public API/output behavior change (pure refactor verified by existing suites)
+- [x] Link resolver/projection helper extracted from `getGraph()`; `getGraph()` refactored to call it; existing graph tests pass unchanged (no behavior change)
+- [x] `parseRef`/`resolveDocRef` moved to `src/core/ref-parser.ts`; CLI re-exports; existing ref-parser + CLI tests pass unchanged
+- [x] No public API/output behavior change (pure refactor verified by existing suites)
 
 ## Done summary
 
-_Filled in on completion._
+Behavior-preserving extraction completed.
+
+- Moved document ref parsing/resolution to `src/core/ref-parser.ts`; CLI parser now re-exports for compatibility.
+- Extracted getGraph wiki resolver SQL helpers to `src/core/graph-resolver.ts`; `getGraph()` now calls the shared helper names.
+- Updated SDK/MCP/publish imports to use core ref parsing instead of CLI internals.
+
+No public output/API behavior change intended.
 
 ## Evidence
 
-_Links to commits, tests, and verification._
+- Commits:
+- Tests: bun test test/store/links.test.ts test/mcp/links-integration.test.ts test/cli/commands/links.test.ts test/cli/get.test.ts test/sdk/client.test.ts test/mcp/tools/links.test.ts, bun test test/cli test/mcp test/sdk, bun run lint:check
+- Review: RepoPrompt implementation review SHIP, no findings (`/tmp/fn84-9-rp-review.md`)
+- PRs:

@@ -50,6 +50,11 @@ import type { SqliteDbProvider } from "./types";
 
 import { buildUri, deriveDocid, stripUriIndex } from "../../app/constants";
 import { analyzeGraphCommunities } from "../../core/graph-analysis";
+import {
+  buildWikiBestMatchSubquery,
+  buildWikiBestRankMatchCountSubquery,
+  buildWikiBestRankSubquery,
+} from "../../core/graph-resolver";
 import { normalizeWikiName, stripWikiMdExt } from "../../core/links";
 import { migrations, runMigrations } from "../migrations";
 import { err, ok } from "../types";
@@ -2329,102 +2334,6 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
         // sqlite-vec not loaded
       }
 
-      const wikiTitleExpr = (alias: string): string =>
-        `lower(trim(${alias}.title))`;
-
-      const wikiRelPathExpr = (alias: string): string =>
-        `lower(${alias}.rel_path)`;
-
-      const suffixMatch = (targetExpr: string, valueExpr: string): string =>
-        `(substr(${targetExpr}, -length(${valueExpr})) = ${valueExpr}
-          AND (length(${targetExpr}) = length(${valueExpr})
-            OR substr(${targetExpr}, -length(${valueExpr}) - 1, 1) = '/'))`;
-
-      const wikiMatch = (alias: string, targetRefExpr: string): string => {
-        const titleExpr = wikiTitleExpr(alias);
-        const relExpr = wikiRelPathExpr(alias);
-        const targetBaseExpr = `CASE
-          WHEN ${targetRefExpr} LIKE '%.md' THEN substr(${targetRefExpr}, 1, length(${targetRefExpr}) - 3)
-          ELSE ${targetRefExpr}
-        END`;
-        const targetMdExpr = `${targetBaseExpr} || '.md'`;
-        return `(
-          ${titleExpr} = ${targetBaseExpr}
-          OR ${titleExpr} = ${targetMdExpr}
-          OR ${suffixMatch(targetBaseExpr, titleExpr)}
-          OR ${suffixMatch(targetMdExpr, `${titleExpr} || '.md'`)}
-          OR ${relExpr} = ${targetBaseExpr}
-          OR ${relExpr} = ${targetMdExpr}
-          OR ${suffixMatch(relExpr, targetMdExpr)}
-          OR ${suffixMatch(relExpr, targetBaseExpr)}
-          OR ${suffixMatch(targetMdExpr, relExpr)}
-          OR ${suffixMatch(targetBaseExpr, relExpr)}
-        )`;
-      };
-
-      const wikiOrder = (alias: string, targetRefExpr: string): string => {
-        const titleExpr = wikiTitleExpr(alias);
-        const relExpr = wikiRelPathExpr(alias);
-        const targetBaseExpr = `CASE
-          WHEN ${targetRefExpr} LIKE '%.md' THEN substr(${targetRefExpr}, 1, length(${targetRefExpr}) - 3)
-          ELSE ${targetRefExpr}
-        END`;
-        const targetMdExpr = `${targetBaseExpr} || '.md'`;
-        return `CASE
-          WHEN ${titleExpr} = ${targetBaseExpr} THEN 1
-          WHEN ${titleExpr} = ${targetMdExpr} THEN 2
-          WHEN ${suffixMatch(targetBaseExpr, titleExpr)} THEN 3
-          WHEN ${suffixMatch(targetMdExpr, `${titleExpr} || '.md'`)} THEN 4
-          WHEN ${relExpr} = ${targetBaseExpr} THEN 5
-          WHEN ${relExpr} = ${targetMdExpr} THEN 6
-          WHEN ${suffixMatch(relExpr, targetMdExpr)} THEN 7
-          WHEN ${suffixMatch(relExpr, targetBaseExpr)} THEN 8
-          WHEN ${suffixMatch(targetMdExpr, relExpr)} THEN 9
-          WHEN ${suffixMatch(targetBaseExpr, relExpr)} THEN 10
-          ELSE 11
-        END`;
-      };
-
-      const wikiBestMatch = (
-        collectionExpr: string,
-        targetRefExpr: string
-      ): string => `
-        SELECT t.id FROM documents t
-        WHERE t.active = 1
-          AND t.collection = ${collectionExpr}
-          AND ${wikiMatch("t", targetRefExpr)}
-          AND ${wikiOrder("t", targetRefExpr)} = (
-            SELECT MIN(${wikiOrder("t2", targetRefExpr)}) FROM documents t2
-            WHERE t2.active = 1
-              AND t2.collection = ${collectionExpr}
-              AND ${wikiMatch("t2", targetRefExpr)}
-          )
-        ORDER BY t.id LIMIT 1
-      `;
-
-      const wikiBestRank = (
-        collectionExpr: string,
-        targetRefExpr: string
-      ): string => `
-        SELECT MIN(${wikiOrder("t", targetRefExpr)}) FROM documents t
-        WHERE t.active = 1
-          AND t.collection = ${collectionExpr}
-          AND ${wikiMatch("t", targetRefExpr)}
-      `;
-
-      const wikiBestRankMatchCount = (
-        collectionExpr: string,
-        targetRefExpr: string
-      ): string => `
-        SELECT COUNT(*) FROM documents t
-        WHERE t.active = 1
-          AND t.collection = ${collectionExpr}
-          AND ${wikiMatch("t", targetRefExpr)}
-          AND ${wikiOrder("t", targetRefExpr)} = (${wikiBestRank(
-            collectionExpr,
-            targetRefExpr
-          )})
-      `;
       interface ResolvedEdgeRow {
         source_id: number;
         source_docid: string;
@@ -2464,14 +2373,14 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
           tgt.docid as target_docid,
           dl.link_type,
           CASE dl.link_type
-            WHEN 'wiki' THEN (${wikiBestRank(
+            WHEN 'wiki' THEN (${buildWikiBestRankSubquery(
               "COALESCE(dl.target_collection, src.collection)",
               "dl.target_ref_norm"
             )})
             WHEN 'markdown' THEN 5
           END as match_rank,
           CASE dl.link_type
-            WHEN 'wiki' THEN (${wikiBestRankMatchCount(
+            WHEN 'wiki' THEN (${buildWikiBestRankMatchCountSubquery(
               "COALESCE(dl.target_collection, src.collection)",
               "dl.target_ref_norm"
             )})
@@ -2480,7 +2389,7 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
         FROM documents src
         JOIN doc_links dl ON dl.source_doc_id = src.id
         JOIN documents tgt ON tgt.id = CASE dl.link_type
-          WHEN 'wiki' THEN (${wikiBestMatch(
+          WHEN 'wiki' THEN (${buildWikiBestMatchSubquery(
             "COALESCE(dl.target_collection, src.collection)",
             "dl.target_ref_norm"
           )})
@@ -2516,7 +2425,7 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
             dl.link_type,
             CASE dl.link_type
               WHEN 'wiki' THEN (
-                ${wikiBestMatch(
+                ${buildWikiBestMatchSubquery(
                   "COALESCE(dl.target_collection, src.collection)",
                   "dl.target_ref_norm"
                 )}

@@ -10,7 +10,7 @@ import { basename } from "node:path";
 import type { DocLinkRow, DocumentRow, StorePort } from "../../store/types";
 
 import { normalizeWikiName } from "../../core/links";
-import { parseRef } from "./ref-parser";
+import { resolveDocRef } from "../../core/ref-parser";
 import { initStore } from "./shared";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -143,56 +143,6 @@ export interface SimilarResponse {
 export type SimilarResult =
   | { success: true; data: SimilarResponse }
   | { success: false; error: string; isValidation?: boolean };
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Helper: Resolve document reference (supports all ref formats)
-// ─────────────────────────────────────────────────────────────────────────────
-
-async function resolveDocRef(
-  store: StorePort,
-  docRef: string
-): Promise<{ doc: DocumentRow } | { error: string; isValidation: boolean }> {
-  // Parse the ref to determine type
-  const parsed = parseRef(docRef);
-
-  if ("error" in parsed) {
-    return { error: parsed.error, isValidation: true };
-  }
-
-  let doc: DocumentRow | null = null;
-
-  switch (parsed.type) {
-    case "docid": {
-      const result = await store.getDocumentByDocid(parsed.value);
-      if (result.ok && result.value) {
-        doc = result.value;
-      }
-      break;
-    }
-    case "uri": {
-      const result = await store.getDocumentByUri(parsed.value);
-      if (result.ok && result.value) {
-        doc = result.value;
-      }
-      break;
-    }
-    case "collPath": {
-      // Build URI from collection/path
-      const uri = `gno://${parsed.collection}/${parsed.relPath}`;
-      const result = await store.getDocumentByUri(uri);
-      if (result.ok && result.value) {
-        doc = result.value;
-      }
-      break;
-    }
-  }
-
-  if (!doc) {
-    return { error: `Document not found: ${docRef}`, isValidation: true };
-  }
-
-  return { doc };
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helper: Build resolution indexes (cached per collection)
