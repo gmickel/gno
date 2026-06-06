@@ -29,6 +29,7 @@ Build the **shared bounded-traversal core** (recursive CTE over `doc_edges` from
 - [ ] Regression tests cover traversal limits, isolated-root, edge-type filtering, direction, determinism, and the `truncated` path
 
 ## Done summary
+
 Implemented shared bounded typed-edge traversal and `gno graph query <doc>`.
 
 - Added non-CLI `diagnoseGraphQuery` core using core ref parsing and active-root validation.
@@ -36,7 +37,9 @@ Implemented shared bounded typed-edge traversal and `gno graph query <doc>`.
 - Added CLI wiring, output schema, schema contract registration, CLI/docs/spec updates.
 - Added regression coverage for hub caps, inactive/stale edges, max-depth boundary probes, cycle eligibility before candidate limits, unique next-node frontier ranking, silent global-depth frontier truncation, and edge-type fanout bounding.
 - RepoPrompt implementation review returned SHIP.
+
 ## Evidence
+
 - Commits:
 - Tests: bun run lint, bun run lint:check, bun test test/core/graph-query.test.ts test/spec/schemas/graph-query.test.ts test/cli/commands/links.test.ts test/store/links.test.ts test/store/adapter.test.ts test/store/migrations.test.ts (107 pass), bun test test/core test/store test/spec/schemas test/cli/commands/links.test.ts (468 pass)
 - PRs:
