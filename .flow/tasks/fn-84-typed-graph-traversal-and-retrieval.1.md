@@ -48,8 +48,11 @@ Add the typed-edge data model: a derived `doc_edges` table with **distinct** new
 - [x] Regression tests cover edge CRUD, replace-by-source, idempotency, backfill parity, backward compatibility
 
 ## Done summary
+
 Added migration v10 and typed-edge storage/backfill foundation. doc_edges is additive, provenance-preserving, and read-deduped; store APIs expose replace-by-source writes plus active-doc-filtered outgoing/backlink reads. Link-derived backfill reuses the shared task .9 graph resolver helpers and preserves getGraph parity. content_type_source now persists through ingestion/upsert, and ADR-007 records the data-model decision.
+
 ## Evidence
+
 - Commits:
 - Tests: bun run lint:check, bun test test/store test/spec/schemas test/ingestion
 - PRs:

@@ -145,6 +145,36 @@ tags: work
       expect(result.metadata.title).toBe("My Document");
       expect(result.metadata.author).toBe("John");
     });
+
+    test("extracts one-level relations map", () => {
+      const source = `---
+title: Work note
+relations:
+  works_at:
+    - people/acme.md
+    - "[[Globex]]"
+  related_to: [projects/alpha.md, "Project Beta"]
+---
+# Content`;
+      const result = parseFrontmatter(source);
+      expect(result.metadata.relations).toEqual({
+        works_at: ["people/acme.md", "[[Globex]]"],
+        related_to: ["projects/alpha.md", "Project Beta"],
+      });
+    });
+
+    test("does not leak nested relation keys into top-level metadata", () => {
+      const source = `---
+relations:
+  type:
+    - person.md
+type: meeting
+---
+# Content`;
+      const result = parseFrontmatter(source);
+      expect(result.metadata.relations).toEqual({ type: ["person.md"] });
+      expect(result.metadata.type).toBe("meeting");
+    });
   });
 });
 

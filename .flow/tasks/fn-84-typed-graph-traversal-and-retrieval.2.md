@@ -30,20 +30,19 @@ Derive typed edges deterministically during indexing from `relations:` frontmatt
 
 ## Acceptance
 
-- [ ] `relations:` nested-map frontmatter parsed and stored as `frontmatter-relation` edges during indexing
-- [ ] Frontmatter parsing change preserves existing flat/scalar/tag/never-throw behavior (regression-tested)
-- [ ] Edge derivation runs as a post-upsert projection pass (sees final doc set); same-sync `relations:` targets resolve; re-derive on add/rename/inactivate/fingerprint-change
-- [ ] Wiki/markdown link projection from task .1 runs after sync so old `doc_links` read paths and new typed edges stay in parity
-- [ ] `content_type_source` persistence from task .1 remains covered while relation/graphHint re-derivation is added
-- [ ] `graphHints` consumed as projection-typing + diagnostic hints (no standalone edges, no-op for ranking); **multi-hint docs project to the single primary hint** (tested)
-- [ ] `fingerprintContentTypeRules` includes normalized `graphHints`; `INGEST_VERSION` bumped so edits re-derive
-- [ ] User files never mutated; preset serialization unchanged
-- [ ] Tests cover relations parsing, graphHints consumption, idempotent re-sync, fingerprint re-derive, ingest-version reprocess
+- [x] `relations:` nested-map frontmatter parsed and stored as `frontmatter-relation` edges during indexing
+- [x] Frontmatter parsing change preserves existing flat/scalar/tag/never-throw behavior (regression-tested)
+- [x] Edge derivation runs as a post-upsert projection pass (sees final doc set); same-sync `relations:` targets resolve; re-derive on add/rename/inactivate/fingerprint-change
+- [x] Wiki/markdown link projection from task .1 runs after sync so old `doc_links` read paths and new typed edges stay in parity
+- [x] `content_type_source` persistence from task .1 remains covered while relation/graphHint re-derivation is added
+- [x] `graphHints` consumed as projection-typing + diagnostic hints (no standalone edges, no-op for ranking); **multi-hint docs project to the single primary hint** (tested)
+- [x] `fingerprintContentTypeRules` includes normalized `graphHints`; `INGEST_VERSION` bumped so edits re-derive
+- [x] User files never mutated; preset serialization unchanged
+- [x] Tests cover relations parsing, graphHints consumption, idempotent re-sync, fingerprint re-derive, ingest-version reprocess
 
 ## Done summary
-
-_Filled in on completion._
-
+Added sync-time typed-edge derivation: frontmatter relations parsing/projection, post-sync typed-edge projection over the settled active document set, graphHint primary link typing with configured confidence, relation precedence over graphHints, normalized graphHint/relation edge types, graphHint fingerprinting, and ingest version bump to 6.
 ## Evidence
-
-_Links to commits, tests, and verification._
+- Commits:
+- Tests: bun run lint && bun run lint:check, bun test test/config/content-types.test.ts test/ingestion/frontmatter.test.ts test/ingestion/sync-links.test.ts test/ingestion/sync-tags.test.ts test/store/links.test.ts, bun test test/store test/spec/schemas test/ingestion test/config
+- PRs:
