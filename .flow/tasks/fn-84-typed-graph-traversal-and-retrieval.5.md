@@ -34,8 +34,11 @@ Expose graph traversal and retrieval diagnostics over REST: `POST /api/graph/que
 - [ ] REST contract/integration tests pass
 
 ## Done summary
+
 Added REST endpoints POST /api/graph/query and POST /api/query/diagnose, backed by shared graph traversal and query diagnose services. Added validation for object JSON bodies, direction/cap bounds, edgeType/relation alias types, docs, and schema-valid REST tests.
+
 ## Evidence
+
 - Commits:
 - Tests: bun test test/serve/routes/graph-query.test.ts test/serve/routes/query.test.ts test/spec/schemas/graph-query.test.ts test/spec/schemas/query-diagnose.test.ts (20 pass), bun run lint:check (pass), RepoPrompt re-review untitled-chat-C28197: SHIP
 - PRs:
