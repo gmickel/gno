@@ -65,15 +65,15 @@ gno skill show --file recipes/citation-and-provenance.md
 
 Recipe coverage:
 
-| Recipe | Use when | Verification |
-| :----- | :------- | :----------- |
-| `brain-first-lookup.md` | Local context may already answer the request | Evidence checked and gaps stated |
-| `capture-and-file.md` | Save a durable fact, clip, or note | Capture receipt plus search/get verification |
-| `meeting-ingestion.md` | Ingest user-provided meeting notes or transcript text | Meeting page and action items findable |
-| `email-context.md` | Draft or summarize from user-provided/exported email text | Local context checked; no native mail claim |
-| `source-summary.md` | Summarize a source into a durable note | Provenance-bearing summary findable |
-| `idea-capture.md` | Preserve an idea or prompt pattern | Original phrasing captured and searchable |
-| `citation-and-provenance.md` | Verify claims or produce traceable answers | Claims labeled with evidence or explicit gaps |
+| Recipe                       | Use when                                                  | Verification                                  |
+| :--------------------------- | :-------------------------------------------------------- | :-------------------------------------------- |
+| `brain-first-lookup.md`      | Local context may already answer the request              | Evidence checked and gaps stated              |
+| `capture-and-file.md`        | Save a durable fact, clip, or note                        | Capture receipt plus search/get verification  |
+| `meeting-ingestion.md`       | Ingest user-provided meeting notes or transcript text     | Meeting page and action items findable        |
+| `email-context.md`           | Draft or summarize from user-provided/exported email text | Local context checked; no native mail claim   |
+| `source-summary.md`          | Summarize a source into a durable note                    | Provenance-bearing summary findable           |
+| `idea-capture.md`            | Preserve an idea or prompt pattern                        | Original phrasing captured and searchable     |
+| `citation-and-provenance.md` | Verify claims or produce traceable answers                | Claims labeled with evidence or explicit gaps |
 
 Email, calendar, chat, and web sources are user-supplied/exported inputs unless a separate connector outside GNO provides them. GNO does not include native Gmail, Calendar, Slack, webhook, cron, or background-agent recipe automation.
 

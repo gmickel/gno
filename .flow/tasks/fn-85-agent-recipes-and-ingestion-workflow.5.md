@@ -43,8 +43,11 @@ Production hosted docs are not the legacy `website/` directory in this repo. Do 
 - [ ] If a new hosted docs route is added, `prerender-routes.ts` or equivalent route metadata includes it.
 
 ## Done summary
+
 Updated hosted gno.sh docs/source copy for second-brain recipes. The hosted skills docs, how-to docs, product page, and FAQ/site-content now describe recipe workflows, preview commands, supported skill targets, and connector boundaries.
+
 ## Evidence
+
 - Commits: 753cbdd
 - Tests: cd ~/work/gno.sh && bun run typecheck, cd ~/work/gno.sh && bun run build, cd ~/work/gno.sh && rg prerendered output for recipe copy, cd ~/work/gno.sh && rg stale-claim audit over src docs package.json
 - PRs:
