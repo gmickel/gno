@@ -20,6 +20,7 @@ Update repo docs, skill docs, and legacy checked-in website surfaces so users ca
 ## Investigation targets
 
 **Required**
+
 - `README.md:479-507` — current agent integration section.
 - `docs/USE-CASES.md:66-96` — typed second-brain page guidance.
 - `docs/USE-CASES.md:181-207` — meeting transcript and meeting preset guidance.
@@ -29,6 +30,7 @@ Update repo docs, skill docs, and legacy checked-in website surfaces so users ca
 - `docs/MCP.md:1-130` — MCP overview if a recipes-vs-MCP note is needed.
 
 **Optional**
+
 - `website/features/agent-integration.md` — legacy site feature copy.
 - `website/_data/features.yml` and `website/_data/faq.yml` — legacy site cards/FAQ if still synced by release flow.
 - `docs/GLOSSARY.md` — add `Agent recipe`, `Brain-first lookup`, or related terms if docs use them repeatedly.

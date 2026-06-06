@@ -21,6 +21,7 @@ Make GNO skill recipe files shippable, discoverable, and path-safe before final 
 ## Investigation targets
 
 **Required**
+
 - `src/cli/commands/skill/install.ts:93-115` — current top-level source file copy behavior.
 - `src/cli/commands/skill/show.ts:39-73` — current top-level markdown listing and `--file` validation.
 - `test/cli/skill.test.ts:203-230` — install tests that should prove recipe files copy to targets.
@@ -29,6 +30,7 @@ Make GNO skill recipe files shippable, discoverable, and path-safe before final 
 - `package.json` — package `files` includes `assets`; verify nested recipe assets ship in tarballs.
 
 **Optional**
+
 - `docs/integrations/skills.md:19-28` — target path docs if install path behavior changes.
 - `assets/skill/README.md:32-56` — skill install/show documentation.
 

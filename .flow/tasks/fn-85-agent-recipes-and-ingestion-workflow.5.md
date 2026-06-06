@@ -19,12 +19,14 @@ Update hosted `~/work/gno.sh` docs for agent recipes and second-brain workflows,
 ## Investigation targets
 
 **Required**
+
 - `/Users/gordon/work/gno.sh/src/lib/gno-docs.tsx:1849-1955` — hosted skills doc.
 - `/Users/gordon/work/gno.sh/src/lib/gno-docs.tsx:1958-2062` — hosted how-to / personal memory doc.
 - `/Users/gordon/work/gno.sh/src/lib/prerender-routes.ts:23-46` — docs route list if adding a new slug.
 - `/Users/gordon/work/gno.sh/src/lib/product-pages.ts` — agent integration product copy if recipes become first-class public copy.
 
 **Optional**
+
 - `/Users/gordon/work/gno.sh/src/routes/index.tsx` — landing copy only if needed.
 - `/Users/gordon/work/gno.sh/scripts/deploy-prod.sh` — deployment path if release closeout includes hosted deploy.
 

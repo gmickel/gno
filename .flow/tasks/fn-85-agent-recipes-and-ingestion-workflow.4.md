@@ -22,6 +22,7 @@ Run the agent-skill behavior verification, autoresearch evaluation, final packag
 ## Investigation targets
 
 **Required**
+
 - `AGENTS.md:183-199` — autoresearch workflow and skill source of truth.
 - `assets/skill/SKILL.md` — router under test.
 - `assets/skill/recipes/*.md` — recipes under test.
@@ -30,6 +31,7 @@ Run the agent-skill behavior verification, autoresearch evaluation, final packag
 - `package.json` — package `files` evidence for final recipe assets.
 
 **Optional**
+
 - `spec/evals.md` — only for background; do not run local Evalite unless requested.
 - `~/repos/autoresearch-gno-skill/` — eval harness and candidate skill text.
 

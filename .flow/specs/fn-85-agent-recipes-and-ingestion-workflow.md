@@ -7,6 +7,7 @@ Ship GNO's second-brain value as reusable agent recipes: concise workflow files 
 This plan builds on shipped capture/provenance, page-type presets, and typed graph diagnostics. It is not a native connector or autonomous background-agent project. The first implementation risk is packaging: `assets/skill/recipes/*.md` will not be useful unless `gno skill install` and `gno skill show` can copy/list/display nested recipe files safely.
 
 Stakeholders:
+
 - End users: clearer second-brain workflows from installed GNO skills and hosted docs.
 - Developers: small CLI skill-management behavior change for nested skill assets, with specs/tests and path-safety checks.
 - Operations/release: npm package/tarball proof, autoresearch skill eval, stale-surface audit, and hosted `gno.sh` docs/build.
@@ -102,15 +103,15 @@ Task `fn-85-agent-recipes-and-ingestion-workflow.1` proves the core approach by 
 
 ## Requirement coverage
 
-| Req | Description | Task(s) | Gap justification |
-| --- | --- | --- | --- |
-| R1 | Recipe files package/install for supported skill targets and npm tarball | fn-85-agent-recipes-and-ingestion-workflow.1, fn-85-agent-recipes-and-ingestion-workflow.4 | — |
-| R2 | Skill preview/listing can display recipes with path safety | fn-85-agent-recipes-and-ingestion-workflow.1 | — |
-| R3 | Concise `SKILL.md` recipe router | fn-85-agent-recipes-and-ingestion-workflow.2 | — |
-| R4 | Seven recipe files cover required workflows | fn-85-agent-recipes-and-ingestion-workflow.2 | — |
-| R5 | Recipes use shipped GNO commands and mark external sources correctly | fn-85-agent-recipes-and-ingestion-workflow.2, fn-85-agent-recipes-and-ingestion-workflow.4 | — |
-| R6 | Provenance, prompt-injection, privacy, and post-write verification guardrails | fn-85-agent-recipes-and-ingestion-workflow.2, fn-85-agent-recipes-and-ingestion-workflow.4 | — |
-| R7 | Repo docs, bundled skill docs, legacy website, and hosted `gno.sh` docs aligned | fn-85-agent-recipes-and-ingestion-workflow.2, fn-85-agent-recipes-and-ingestion-workflow.3, fn-85-agent-recipes-and-ingestion-workflow.5 | — |
-| R8 | Autoresearch eval rerun from current-router seed and skill updated if needed | fn-85-agent-recipes-and-ingestion-workflow.4 | — |
-| R9 | Stale/false surface audit passes | fn-85-agent-recipes-and-ingestion-workflow.4 | — |
-| R10 | fn-83 relationship recorded without implying closure | fn-85-agent-recipes-and-ingestion-workflow.2, fn-85-agent-recipes-and-ingestion-workflow.3, fn-85-agent-recipes-and-ingestion-workflow.5 | — |
+| Req | Description                                                                     | Task(s)                                                                                                                                  | Gap justification |
+| --- | ------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- | ----------------- |
+| R1  | Recipe files package/install for supported skill targets and npm tarball        | fn-85-agent-recipes-and-ingestion-workflow.1, fn-85-agent-recipes-and-ingestion-workflow.4                                               | —                 |
+| R2  | Skill preview/listing can display recipes with path safety                      | fn-85-agent-recipes-and-ingestion-workflow.1                                                                                             | —                 |
+| R3  | Concise `SKILL.md` recipe router                                                | fn-85-agent-recipes-and-ingestion-workflow.2                                                                                             | —                 |
+| R4  | Seven recipe files cover required workflows                                     | fn-85-agent-recipes-and-ingestion-workflow.2                                                                                             | —                 |
+| R5  | Recipes use shipped GNO commands and mark external sources correctly            | fn-85-agent-recipes-and-ingestion-workflow.2, fn-85-agent-recipes-and-ingestion-workflow.4                                               | —                 |
+| R6  | Provenance, prompt-injection, privacy, and post-write verification guardrails   | fn-85-agent-recipes-and-ingestion-workflow.2, fn-85-agent-recipes-and-ingestion-workflow.4                                               | —                 |
+| R7  | Repo docs, bundled skill docs, legacy website, and hosted `gno.sh` docs aligned | fn-85-agent-recipes-and-ingestion-workflow.2, fn-85-agent-recipes-and-ingestion-workflow.3, fn-85-agent-recipes-and-ingestion-workflow.5 | —                 |
+| R8  | Autoresearch eval rerun from current-router seed and skill updated if needed    | fn-85-agent-recipes-and-ingestion-workflow.4                                                                                             | —                 |
+| R9  | Stale/false surface audit passes                                                | fn-85-agent-recipes-and-ingestion-workflow.4                                                                                             | —                 |
+| R10 | fn-83 relationship recorded without implying closure                            | fn-85-agent-recipes-and-ingestion-workflow.2, fn-85-agent-recipes-and-ingestion-workflow.3, fn-85-agent-recipes-and-ingestion-workflow.5 | —                 |

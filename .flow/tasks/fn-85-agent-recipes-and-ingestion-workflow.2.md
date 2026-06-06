@@ -21,6 +21,7 @@ Add the recipe router and the seven final agent recipe playbooks. `assets/skill/
 ## Investigation targets
 
 **Required**
+
 - `assets/skill/SKILL.md:207-261` — existing embedding and capture guidance to reuse.
 - `assets/skill/SKILL.md:296-302` — reference-document table where recipes should be linked.
 - `assets/skill/examples.md:355-406` — existing capture examples to extend or cross-link.
@@ -31,6 +32,7 @@ Add the recipe router and the seven final agent recipe playbooks. `assets/skill/
 - `src/core/note-presets.ts:132-155` — `source-summary` and `idea-original` scaffold behavior.
 
 **Optional**
+
 - `/tmp/gbrain/skills/RESOLVER.md` — resolver-table inspiration only; do not copy wording.
 - `/tmp/gbrain/docs/guides/brain-first-lookup.md` — lookup-chain inspiration only; do not copy wording.
 - `docs/adr/007-typed-graph-edges.md` — relation/provenance wording when recipes mention typed graph output.
