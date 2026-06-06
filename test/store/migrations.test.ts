@@ -52,7 +52,7 @@ describe("store migrations", () => {
 
       const upgradeResult = runMigrations(db, migrations, "unicode61");
       expect(upgradeResult.ok).toBe(true);
-      expect(getSchemaVersion(db)).toBe(9);
+      expect(getSchemaVersion(db)).toBe(10);
 
       const indexedRow = db
         .query<{ indexed_at: string | null }, []>(

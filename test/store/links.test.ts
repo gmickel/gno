@@ -9,7 +9,11 @@ import { mkdtemp } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import type { DocLinkInput, DocumentInput } from "../../src/store/types";
+import type {
+  DocEdgeInput,
+  DocLinkInput,
+  DocumentInput,
+} from "../../src/store/types";
 
 import { SqliteAdapter } from "../../src/store/sqlite/adapter";
 import { safeRm } from "../helpers/cleanup";
@@ -317,6 +321,143 @@ describe("SqliteAdapter links", () => {
       expect(linksResult.value[0]?.targetRef).toBe("First");
       expect(linksResult.value[1]?.targetRef).toBe("Second");
       expect(linksResult.value[2]?.targetRef).toBe("Third");
+    });
+  });
+
+  describe("doc_edges", () => {
+    test("sets edges replace-by-source and reads active targets only", async () => {
+      const sourceId = await createTestDoc("notes", "source.md", "Source");
+      const targetAId = await createTestDoc("notes", "target-a.md", "Target A");
+      const targetBId = await createTestDoc("notes", "target-b.md", "Target B");
+
+      const edges: DocEdgeInput[] = [
+        { targetDocId: targetAId, edgeType: "works_at", confidence: "parsed" },
+        { targetDocId: targetBId, edgeType: "works_at", confidence: "parsed" },
+      ];
+      const setResult = await adapter.setDocEdges(sourceId, edges, "wikilink");
+      expect(setResult.ok).toBe(true);
+
+      const firstRead = await adapter.getEdgesForDoc(sourceId, {
+        edgeType: "works_at",
+      });
+      expect(firstRead.ok).toBe(true);
+      if (!firstRead.ok) return;
+      expect(firstRead.value.map((edge) => edge.targetTitle)).toEqual([
+        "Target A",
+        "Target B",
+      ]);
+
+      const replaceResult = await adapter.setDocEdges(
+        sourceId,
+        [
+          {
+            targetDocId: targetBId,
+            edgeType: "works_at",
+            confidence: "parsed",
+          },
+        ],
+        "wikilink"
+      );
+      expect(replaceResult.ok).toBe(true);
+
+      const replacedRead = await adapter.getEdgesForDoc(sourceId, {
+        edgeType: "works_at",
+      });
+      expect(replacedRead.ok).toBe(true);
+      if (!replacedRead.ok) return;
+      expect(replacedRead.value).toHaveLength(1);
+      expect(replacedRead.value[0]?.targetTitle).toBe("Target B");
+
+      const inactiveResult = await adapter.markInactive("notes", [
+        "target-b.md",
+      ]);
+      expect(inactiveResult.ok).toBe(true);
+
+      const activeRead = await adapter.getEdgesForDoc(sourceId, {
+        edgeType: "works_at",
+      });
+      expect(activeRead.ok).toBe(true);
+      if (!activeRead.ok) return;
+      expect(activeRead.value).toHaveLength(0);
+    });
+
+    test("dedups by edge type with confidence precedence", async () => {
+      const sourceId = await createTestDoc("notes", "source.md", "Source");
+      const targetId = await createTestDoc("notes", "target.md", "Target");
+
+      await adapter.setDocEdges(
+        sourceId,
+        [{ targetDocId: targetId, edgeType: "mentions", confidence: "parsed" }],
+        "wikilink"
+      );
+      await adapter.setDocEdges(
+        sourceId,
+        [{ targetDocId: targetId, edgeType: "mentions", confidence: "manual" }],
+        "frontmatter-relation"
+      );
+
+      const edges = await adapter.getEdgesForDoc(sourceId, {
+        edgeType: "mentions",
+      });
+      expect(edges.ok).toBe(true);
+      if (!edges.ok) return;
+      expect(edges.value).toHaveLength(1);
+      expect(edges.value[0]?.confidence).toBe("manual");
+      expect(edges.value[0]?.edgeSource).toBe("frontmatter-relation");
+    });
+
+    test("backfills resolved doc_links with getGraph parity", async () => {
+      const sourceId = await createTestDoc("notes", "source.md", "Source");
+      const targetId = await createTestDoc(
+        "notes",
+        "folder/target.md",
+        "Target"
+      );
+
+      await adapter.setDocLinks(
+        sourceId,
+        [
+          {
+            targetRef: "Target",
+            targetRefNorm: "target",
+            linkType: "wiki",
+            startLine: 1,
+            startCol: 1,
+            endLine: 1,
+            endCol: 11,
+          },
+        ],
+        "parsed"
+      );
+
+      const backfill = await adapter.backfillDocEdges();
+      expect(backfill.ok).toBe(true);
+      if (!backfill.ok) return;
+      expect(backfill.value.inserted).toBe(1);
+
+      const edgeResult = await adapter.getEdgesForDoc(sourceId);
+      expect(edgeResult.ok).toBe(true);
+      if (!edgeResult.ok) return;
+      expect(edgeResult.value).toHaveLength(1);
+      expect(edgeResult.value[0]?.targetDocId).toBe(targetId);
+      expect(edgeResult.value[0]?.edgeType).toBe("mentions");
+      expect(edgeResult.value[0]?.edgeSource).toBe("wikilink");
+
+      const graph = await adapter.getGraph({ collection: "notes" });
+      expect(graph.ok).toBe(true);
+      if (!graph.ok) return;
+      expect(graph.value.links).toContainEqual(
+        expect.objectContaining({
+          source: edgeResult.value[0]?.sourceDocid,
+          target: edgeResult.value[0]?.targetDocid,
+          type: "wiki",
+        })
+      );
+
+      const secondBackfill = await adapter.backfillDocEdges();
+      expect(secondBackfill.ok).toBe(true);
+      if (!secondBackfill.ok) return;
+      expect(secondBackfill.value.inserted).toBe(1);
     });
   });
 

@@ -21,6 +21,11 @@ import type {
   CleanupStats,
   CollectionRow,
   ContextRow,
+  DocEdgeConfidence,
+  DocEdgeInput,
+  DocEdgeRow,
+  DocEdgeSource,
+  DocEdgeType,
   DocLinkInput,
   DocLinkRow,
   DocLinkSource,
@@ -70,6 +75,7 @@ import { loadFts5Snowball } from "./fts5-snowball";
 const WHITESPACE_REGEX = /\s+/;
 const SINGLE_LINE_QUERY_PATTERN = /[\r\n]/;
 const DOUBLE_QUOTE_PATTERN = /"/g;
+const DOC_EDGE_TYPE_PATTERN = /^[a-z][a-z0-9_]*$/;
 const FTS5_FIELD_WEIGHTS = {
   filepath: 1.5,
   title: 4.0,
@@ -92,6 +98,16 @@ function sanitizeCompoundTerm(term: string): string {
     .map((part) => sanitizeFts5Term(part))
     .filter((part) => part.length > 0)
     .join(" ");
+}
+
+function normalizeDocEdgeType(edgeType: DocEdgeType): string {
+  const normalized = edgeType.trim().toLowerCase();
+  if (!DOC_EDGE_TYPE_PATTERN.test(normalized)) {
+    throw new Error(
+      `Invalid edge_type "${edgeType}" (expected lowercase snake_case)`
+    );
+  }
+  return normalized;
 }
 
 type FtsQueryBuildResult =
@@ -559,10 +575,10 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
           collection, rel_path, source_hash, source_mime, source_ext,
           source_size, source_mtime, source_ctime, docid, uri, title, mirror_hash,
           converter_id, converter_version, language_hint, content_type, categories,
-          author, frontmatter_date, date_fields, content_type_rules_fingerprint,
+          content_type_source, author, frontmatter_date, date_fields, content_type_rules_fingerprint,
           active, indexed_at, last_error_code, last_error_message, last_error_at,
           ingest_version, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, datetime('now'), ?, ?, ?, ?, datetime('now'))
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, datetime('now'), ?, ?, ?, ?, datetime('now'))
         ON CONFLICT(collection, rel_path) DO UPDATE SET
           source_hash = excluded.source_hash,
           source_mime = excluded.source_mime,
@@ -579,6 +595,7 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
           language_hint = excluded.language_hint,
           content_type = excluded.content_type,
           categories = excluded.categories,
+          content_type_source = excluded.content_type_source,
           author = excluded.author,
           frontmatter_date = excluded.frontmatter_date,
           date_fields = excluded.date_fields,
@@ -609,6 +626,7 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
           doc.languageHint ?? null,
           doc.contentType ?? null,
           doc.categories ? JSON.stringify(doc.categories) : null,
+          doc.contentTypeSource ?? null,
           doc.author ?? null,
           doc.frontmatterDate ?? null,
           doc.dateFields ? JSON.stringify(doc.dateFields) : null,
@@ -2299,6 +2317,265 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
     }
   }
 
+  /**
+   * Set semantic edges for a document.
+   * Replaces edges from the given source.
+   */
+  async setDocEdges(
+    documentId: number,
+    edges: DocEdgeInput[],
+    source: DocEdgeSource
+  ): Promise<StoreResult<void>> {
+    try {
+      const db = this.ensureOpen();
+
+      const transaction = db.transaction(() => {
+        db.run("DELETE FROM doc_edges WHERE src_doc_id = ? AND source = ?", [
+          documentId,
+          source,
+        ]);
+
+        if (edges.length === 0) {
+          return;
+        }
+
+        const stmt = db.prepare(`
+          INSERT INTO doc_edges (
+            src_doc_id, dst_doc_id, edge_type, confidence, source
+          ) VALUES (?, ?, ?, ?, ?)
+          ON CONFLICT(src_doc_id, dst_doc_id, edge_type, source) DO UPDATE SET
+            confidence = excluded.confidence
+        `);
+
+        for (const edge of edges) {
+          stmt.run(
+            documentId,
+            edge.targetDocId,
+            normalizeDocEdgeType(edge.edgeType),
+            edge.confidence,
+            source
+          );
+        }
+      });
+
+      transaction();
+      return ok(undefined);
+    } catch (cause) {
+      return err(
+        "QUERY_FAILED",
+        cause instanceof Error ? cause.message : "Failed to set document edges",
+        cause
+      );
+    }
+  }
+
+  async getEdgesForDoc(
+    documentId: number,
+    options?: { edgeType?: DocEdgeType }
+  ): Promise<StoreResult<DocEdgeRow[]>> {
+    try {
+      const db = this.ensureOpen();
+      const params: (number | string)[] = [documentId];
+      const edgeTypeClause = options?.edgeType ? "AND e.edge_type = ?" : "";
+      if (options?.edgeType) {
+        params.push(normalizeDocEdgeType(options.edgeType));
+      }
+
+      const rows = db
+        .query<DbDocEdgeRow, (number | string)[]>(
+          `
+          WITH ranked AS (
+            SELECT
+              e.src_doc_id,
+              src.docid AS source_docid,
+              src.uri AS source_uri,
+              src.title AS source_title,
+              e.dst_doc_id,
+              dst.docid AS target_docid,
+              dst.uri AS target_uri,
+              dst.title AS target_title,
+              e.edge_type,
+              e.confidence,
+              e.source,
+              ROW_NUMBER() OVER (
+                PARTITION BY e.src_doc_id, e.dst_doc_id, e.edge_type
+                ORDER BY
+                  CASE e.confidence
+                    WHEN 'manual' THEN 1
+                    WHEN 'configured' THEN 2
+                    WHEN 'parsed' THEN 3
+                    WHEN 'inferred' THEN 4
+                    ELSE 5
+                  END,
+                  e.source ASC,
+                  dst.docid ASC,
+                  dst.uri ASC
+              ) AS rn
+            FROM doc_edges e
+            JOIN documents src ON src.id = e.src_doc_id AND src.active = 1
+            JOIN documents dst ON dst.id = e.dst_doc_id AND dst.active = 1
+            WHERE e.src_doc_id = ?
+              ${edgeTypeClause}
+          )
+          SELECT *
+          FROM ranked
+          WHERE rn = 1
+          ORDER BY edge_type ASC, target_uri ASC, target_docid ASC
+          `
+        )
+        .all(...params);
+
+      return ok(rows.map(mapDocEdgeRow));
+    } catch (cause) {
+      return err(
+        "QUERY_FAILED",
+        cause instanceof Error
+          ? cause.message
+          : "Failed to get edges for document",
+        cause
+      );
+    }
+  }
+
+  async getEdgeBacklinksForDoc(
+    documentId: number,
+    options?: { collection?: string; edgeType?: DocEdgeType }
+  ): Promise<StoreResult<DocEdgeRow[]>> {
+    try {
+      const db = this.ensureOpen();
+      const params: (number | string)[] = [documentId];
+      const conditions: string[] = ["e.dst_doc_id = ?"];
+      if (options?.collection) {
+        conditions.push("src.collection = ?");
+        params.push(options.collection);
+      }
+      if (options?.edgeType) {
+        conditions.push("e.edge_type = ?");
+        params.push(normalizeDocEdgeType(options.edgeType));
+      }
+
+      const rows = db
+        .query<DbDocEdgeRow, (number | string)[]>(
+          `
+          WITH ranked AS (
+            SELECT
+              e.src_doc_id,
+              src.docid AS source_docid,
+              src.uri AS source_uri,
+              src.title AS source_title,
+              e.dst_doc_id,
+              dst.docid AS target_docid,
+              dst.uri AS target_uri,
+              dst.title AS target_title,
+              e.edge_type,
+              e.confidence,
+              e.source,
+              ROW_NUMBER() OVER (
+                PARTITION BY e.src_doc_id, e.dst_doc_id, e.edge_type
+                ORDER BY
+                  CASE e.confidence
+                    WHEN 'manual' THEN 1
+                    WHEN 'configured' THEN 2
+                    WHEN 'parsed' THEN 3
+                    WHEN 'inferred' THEN 4
+                    ELSE 5
+                  END,
+                  e.source ASC,
+                  src.docid ASC,
+                  src.uri ASC
+              ) AS rn
+            FROM doc_edges e
+            JOIN documents src ON src.id = e.src_doc_id AND src.active = 1
+            JOIN documents dst ON dst.id = e.dst_doc_id AND dst.active = 1
+            WHERE ${conditions.join(" AND ")}
+          )
+          SELECT *
+          FROM ranked
+          WHERE rn = 1
+          ORDER BY edge_type ASC, source_uri ASC, source_docid ASC
+          `
+        )
+        .all(...params);
+
+      return ok(rows.map(mapDocEdgeRow));
+    } catch (cause) {
+      return err(
+        "QUERY_FAILED",
+        cause instanceof Error
+          ? cause.message
+          : "Failed to get edge backlinks for document",
+        cause
+      );
+    }
+  }
+
+  async backfillDocEdges(): Promise<StoreResult<{ inserted: number }>> {
+    try {
+      const db = this.ensureOpen();
+      let inserted = 0;
+
+      const transaction = db.transaction(() => {
+        db.run("DELETE FROM doc_edges WHERE source IN (?, ?)", [
+          "wikilink",
+          "markdown-link",
+        ]);
+
+        const insertWiki = db.run(`
+          INSERT OR IGNORE INTO doc_edges (
+            src_doc_id, dst_doc_id, edge_type, confidence, source
+          )
+          SELECT
+            src.id,
+            tgt.id,
+            'mentions',
+            'parsed',
+            'wikilink'
+          FROM documents src
+          JOIN doc_links dl ON dl.source_doc_id = src.id
+          JOIN documents tgt ON tgt.id = (${buildWikiBestMatchSubquery(
+            "COALESCE(dl.target_collection, src.collection)",
+            "dl.target_ref_norm"
+          )})
+          WHERE src.active = 1
+            AND tgt.active = 1
+            AND dl.link_type = 'wiki'
+        `);
+
+        const insertMarkdown = db.run(`
+          INSERT OR IGNORE INTO doc_edges (
+            src_doc_id, dst_doc_id, edge_type, confidence, source
+          )
+          SELECT
+            src.id,
+            tgt.id,
+            'related_to',
+            'parsed',
+            'markdown-link'
+          FROM documents src
+          JOIN doc_links dl ON dl.source_doc_id = src.id
+          JOIN documents tgt ON tgt.active = 1
+            AND tgt.collection = COALESCE(dl.target_collection, src.collection)
+            AND tgt.rel_path = dl.target_ref_norm
+          WHERE src.active = 1
+            AND dl.link_type = 'markdown'
+        `);
+
+        inserted = insertWiki.changes + insertMarkdown.changes;
+      });
+
+      transaction();
+      return ok({ inserted });
+    } catch (cause) {
+      return err(
+        "QUERY_FAILED",
+        cause instanceof Error
+          ? cause.message
+          : "Failed to backfill document edges",
+        cause
+      );
+    }
+  }
+
   // ─────────────────────────────────────────────────────────────────────────
   // Graph
   // ─────────────────────────────────────────────────────────────────────────
@@ -3436,6 +3713,7 @@ interface DbDocumentRow {
   converter_version: string | null;
   language_hint: string | null;
   content_type: string | null;
+  content_type_source: string | null;
   categories: string | null;
   author: string | null;
   frontmatter_date: string | null;
@@ -3449,6 +3727,20 @@ interface DbDocumentRow {
   last_error_at: string | null;
   created_at: string;
   updated_at: string;
+}
+
+interface DbDocEdgeRow {
+  src_doc_id: number;
+  source_docid: string;
+  source_uri: string;
+  source_title: string | null;
+  dst_doc_id: number;
+  target_docid: string;
+  target_uri: string;
+  target_title: string | null;
+  edge_type: string;
+  confidence: DocEdgeConfidence;
+  source: DocEdgeSource;
 }
 
 interface DbChunkRow {
@@ -3554,6 +3846,7 @@ function mapDocumentRow(row: DbDocumentRow): DocumentRow {
     converterVersion: row.converter_version,
     languageHint: row.language_hint,
     contentType: row.content_type,
+    contentTypeSource: row.content_type_source,
     categories,
     author: row.author,
     frontmatterDate: row.frontmatter_date,
@@ -3567,6 +3860,23 @@ function mapDocumentRow(row: DbDocumentRow): DocumentRow {
     lastErrorAt: row.last_error_at,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+  };
+}
+
+function mapDocEdgeRow(row: DbDocEdgeRow): DocEdgeRow {
+  return {
+    sourceDocId: row.src_doc_id,
+    sourceDocid: row.source_docid,
+    sourceUri: row.source_uri,
+    sourceTitle: row.source_title,
+    targetDocId: row.dst_doc_id,
+    targetDocid: row.target_docid,
+    targetUri: row.target_uri,
+    targetTitle: row.target_title,
+    edgeType: row.edge_type,
+    relationType: row.edge_type,
+    confidence: row.confidence,
+    edgeSource: row.source,
   };
 }
 

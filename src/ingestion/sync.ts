@@ -658,6 +658,7 @@ export class SyncService {
         converterVersion: artifact.meta.converterVersion,
         languageHint: artifact.languageHint ?? collection.languageHint,
         contentType: extractedMetadata.contentType,
+        contentTypeSource: extractedMetadata.contentTypeSource,
         categories: extractedMetadata.categories,
         author: extractedMetadata.author,
         frontmatterDate: extractedMetadata.frontmatterDate,

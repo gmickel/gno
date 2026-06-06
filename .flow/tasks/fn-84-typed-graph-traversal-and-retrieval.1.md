@@ -37,20 +37,19 @@ Add the typed-edge data model: a derived `doc_edges` table with **distinct** new
 
 ## Acceptance
 
-- [ ] `doc_edges` lands via additive idempotent migration v10; `UNIQUE(src,dst,edge_type,source)` + dual indexes; no CHECK on `edge_type`
-- [ ] Distinct `DocEdgeType`/`RelationType`/`DocEdgeConfidence`/`DocEdgeSource` types (no collision with `GraphEdgeConfidence`)
-- [ ] `setDocEdges(documentId, edges, source)` replace-by-source + typed-edge read methods that join `documents.active=1` (src+dst) and dedup by `(src,dst,edge_type)` with precedence `manual>configured>parsed>inferred`
-- [ ] `backfillDocEdges()` projection service: idempotent, transactional, runnable post-migration and as sync-repair re-projection; no reliance on `ON DELETE CASCADE`
-- [ ] `content_type_source` persisted as a `documents` column via v10
-- [ ] Backfill reuses the **task .9** resolver helpers; **parity test** proves backfilled edges match `getGraph`-derived edges
-- [ ] Existing `linkType: wiki|markdown` APIs/schemas, `getGraph`, `gno links`/`gno backlinks` read paths unchanged on old data
-- [ ] ADR-007 records the data-model decision
-- [ ] Regression tests cover edge CRUD, replace-by-source, idempotency, backfill parity, backward compatibility
+- [x] `doc_edges` lands via additive idempotent migration v10; `UNIQUE(src,dst,edge_type,source)` + dual indexes; no CHECK on `edge_type`
+- [x] Distinct `DocEdgeType`/`RelationType`/`DocEdgeConfidence`/`DocEdgeSource` types (no collision with `GraphEdgeConfidence`)
+- [x] `setDocEdges(documentId, edges, source)` replace-by-source + typed-edge read methods that join `documents.active=1` (src+dst) and dedup by `(src,dst,edge_type)` with precedence `manual>configured>parsed>inferred`
+- [x] `backfillDocEdges()` projection service: idempotent, transactional, runnable post-migration and as sync-repair re-projection; no reliance on `ON DELETE CASCADE`
+- [x] `content_type_source` persisted as a `documents` column via v10
+- [x] Backfill reuses the **task .9** resolver helpers; **parity test** proves backfilled edges match `getGraph`-derived edges
+- [x] Existing `linkType: wiki|markdown` APIs/schemas, `getGraph`, `gno links`/`gno backlinks` read paths unchanged on old data
+- [x] ADR-007 records the data-model decision
+- [x] Regression tests cover edge CRUD, replace-by-source, idempotency, backfill parity, backward compatibility
 
 ## Done summary
-
-_Filled in on completion._
-
+Added migration v10 and typed-edge storage/backfill foundation. doc_edges is additive, provenance-preserving, and read-deduped; store APIs expose replace-by-source writes plus active-doc-filtered outgoing/backlink reads. Link-derived backfill reuses the shared task .9 graph resolver helpers and preserves getGraph parity. content_type_source now persists through ingestion/upsert, and ADR-007 records the data-model decision.
 ## Evidence
-
-_Links to commits, tests, and verification._
+- Commits:
+- Tests: bun run lint:check, bun test test/store test/spec/schemas test/ingestion
+- PRs:

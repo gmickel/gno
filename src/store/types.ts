@@ -108,6 +108,7 @@ export interface DocumentRow {
   converterVersion: string | null;
   languageHint: string | null;
   contentType?: string | null;
+  contentTypeSource?: string | null;
   categories?: string[] | null;
   author?: string | null;
   frontmatterDate?: string | null;
@@ -180,6 +181,19 @@ export type DocLinkSource = "parsed" | "user" | "suggested";
 /** Link type */
 export type DocLinkType = "wiki" | "markdown";
 
+/** Semantic edge type / relationship name. Lowercase snake_case after validation. */
+export type DocEdgeType = string;
+export type RelationType = DocEdgeType;
+
+/** Semantic edge confidence. Distinct from GraphEdgeConfidence. */
+export type DocEdgeConfidence = "parsed" | "configured" | "manual" | "inferred";
+
+/** Semantic edge source / provenance. */
+export type DocEdgeSource =
+  | "wikilink"
+  | "markdown-link"
+  | "frontmatter-relation";
+
 /** Document link row from DB */
 export interface DocLinkRow {
   /** Raw path or wiki name (no anchor) */
@@ -204,6 +218,22 @@ export interface DocLinkRow {
   endCol: number;
   /** Source of the link */
   source: DocLinkSource;
+}
+
+/** Semantic document edge row from DB. */
+export interface DocEdgeRow {
+  sourceDocId: number;
+  sourceDocid: string;
+  sourceUri: string;
+  sourceTitle: string | null;
+  targetDocId: number;
+  targetDocid: string;
+  targetUri: string;
+  targetTitle: string | null;
+  edgeType: DocEdgeType;
+  relationType: RelationType;
+  confidence: DocEdgeConfidence;
+  edgeSource: DocEdgeSource;
 }
 
 /** Backlink row from DB (document linking TO target) */
@@ -238,6 +268,13 @@ export interface DocLinkInput {
   endCol: number;
 }
 
+/** Input for setting semantic document edges for one source document. */
+export interface DocEdgeInput {
+  targetDocId: number;
+  edgeType: DocEdgeType;
+  confidence: DocEdgeConfidence;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Input Types (for upsert operations)
 // ─────────────────────────────────────────────────────────────────────────────
@@ -258,6 +295,7 @@ export interface DocumentInput {
   converterVersion?: string;
   languageHint?: string;
   contentType?: string;
+  contentTypeSource?: string;
   categories?: string[];
   author?: string;
   frontmatterDate?: string;
@@ -970,6 +1008,37 @@ export interface StorePort {
       Array<{ docid: string; uri: string; title: string | null } | null>
     >
   >;
+
+  /**
+   * Set semantic edges for a document.
+   * Replaces edges from the given source.
+   */
+  setDocEdges(
+    documentId: number,
+    edges: DocEdgeInput[],
+    source: DocEdgeSource
+  ): Promise<StoreResult<void>>;
+
+  /**
+   * Get outgoing semantic edges for a document.
+   */
+  getEdgesForDoc(
+    documentId: number,
+    options?: { edgeType?: DocEdgeType }
+  ): Promise<StoreResult<DocEdgeRow[]>>;
+
+  /**
+   * Get semantic backlinks pointing to a document.
+   */
+  getEdgeBacklinksForDoc(
+    documentId: number,
+    options?: { collection?: string; edgeType?: DocEdgeType }
+  ): Promise<StoreResult<DocEdgeRow[]>>;
+
+  /**
+   * Rebuild derived semantic edges from currently indexed links.
+   */
+  backfillDocEdges(): Promise<StoreResult<{ inserted: number }>>;
 
   // ─────────────────────────────────────────────────────────────────────────
   // Graph
