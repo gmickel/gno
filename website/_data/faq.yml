@@ -125,7 +125,7 @@
 
     - q: How do I use GNO with Cursor, Zed, or Windsurf?
       a: >
-        Install GNO as an MCP server with gno mcp install --target cursor (or zed, windsurf, amp, etc.). GNO provides 19 MCP tools for search, retrieval, indexing, and graph exploration.
+        Install GNO as an MCP server with gno mcp install --target cursor (or zed, windsurf, amp, etc.). GNO provides 28 registered MCP tools for search, retrieval, indexing, typed graph traversal, and diagnostics.
 
     - q: What is MCP?
       a: Model Context Protocol (MCP) is a standard for AI assistants to access external tools. GNO provides an MCP server so Claude Desktop, Cursor, Zed, Windsurf, Amp, Raycast, and more can search your documents.

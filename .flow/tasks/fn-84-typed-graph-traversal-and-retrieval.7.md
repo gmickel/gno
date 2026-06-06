@@ -45,9 +45,8 @@ Cross-cutting documentation sweep: update every user-facing surface not already 
 - [ ] No documentation drift: docs-verify (or manual check) passes; hosted site reflects new behavior
 
 ## Done summary
-
-_Filled in on completion._
-
+Updated cross-cutting docs, spec, bundled skill assets, repo website metadata/pages, and hosted gno.sh product copy for typed graph traversal, query diagnostics, active graphHints, relations frontmatter, semantic link filters, and 28 registered MCP tools. Ran website docs sync and verified docs/site gates. RepoPrompt review verdict SHIP.
 ## Evidence
-
-_Links to commits, tests, and verification._
+- Commits:
+- Tests:
+- PRs:

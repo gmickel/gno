@@ -131,6 +131,24 @@ gno backlinks my-note.md
 gno similar my-note.md
 ```
 
+### Query Typed Relationships
+
+Add typed relationships with `relations:` frontmatter:
+
+```yaml
+relations:
+  works_at: [gno://notes/companies/acme.md]
+  attended: [gno://notes/meetings/weekly-sync.md]
+```
+
+Then traverse or debug the relationship layer:
+
+```bash
+gno graph query gno://notes/people/alice.md --edge-type works_at --max-depth 2
+gno links gno://notes/people/alice.md --edge-type works_at
+gno query diagnose "Alice Acme" --target gno://notes/people/alice.md --json
+```
+
 ### Re-Index After Changes
 
 ```bash

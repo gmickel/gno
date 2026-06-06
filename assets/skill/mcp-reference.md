@@ -58,15 +58,21 @@ gno mcp status
 For normal questions, start with `gno_query`, then read targeted snippets with
 `gno_get` or batch refs with `gno_multi_get`. Pass `graph: true` only when
 linked context is worth the extra latency. Check `gno_status` first when freshness or
-embeddings may be stale.
+embeddings may be stale. Use `gno_query_diagnose` when a known target document
+should have appeared but did not.
 
 Use graph tools for relationship context: `gno_graph` for corpus report/stats,
 community summaries,
+`gno_graph_query` for bounded typed-edge traversal,
 `gno_graph_neighbors` for nearby incoming/outgoing graph context, and
 `gno_graph_path` for "how are X and Y connected?" questions. Use
 `gno_links`, `gno_backlinks`, and `gno_similar` for one-document expansion.
 Graph edges include confidence/audit metadata; prefer `explicit` edges when
 answers depend on link certainty.
+
+Read-only MCP graph/query diagnostics include `gno_graph_query` and
+`gno_query_diagnose`. In `gno_query_diagnose`, pass `fast: true` for a BM25-only
+diagnosis that avoids embedding/rerank model initialization.
 
 ## Capture
 

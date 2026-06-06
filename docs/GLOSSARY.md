@@ -56,6 +56,44 @@ matches a configured content type ID; otherwise it remains a normal category
 filter. JSON search/query results expose `contentType` and `categories` per
 result.
 
+### Typed Edge
+
+A semantic relationship between two documents stored in GNO's derived
+`doc_edges` layer. Typed edges are separate from positional markdown/wiki links:
+`linkType` describes how a link was written, while `edgeType` or
+`relationType` describes what the relationship means.
+
+### Edge Type / Relation Type
+
+The lowercase relationship label on a typed edge, for example `mentions`,
+`works_at`, `attended`, `decided`, or `related_to`. `--edge-type` and
+`--relation` are aliases on traversal surfaces.
+
+### Relations Frontmatter
+
+A frontmatter map that creates typed edges at index time:
+
+```yaml
+relations:
+  works_at: [gno://notes/companies/acme.md]
+```
+
+GNO resolves relation targets during indexing and never mutates source files.
+
+### Graph Hints
+
+Ordered hints in `contentTypes[].graphHints`. The first hint types projected
+wiki/markdown links for matching documents; remaining hints are surfaced in
+graph-query and retrieval-diagnose metadata. Graph hints do not create edges on
+their own.
+
+### Retrieval Diagnosis
+
+The `gno query diagnose --target` workflow that explains whether a target
+document appeared at each retrieval stage: BM25, vector, hybrid fusion, graph
+expansion, and rerank. It distinguishes retrieval misses such as
+`not_in_candidate_set` from ranking misses such as `below_cutoff`.
+
 ### Virtual URI
 
 GNO's internal document identifier format:
@@ -170,7 +208,7 @@ Documents that are semantically related based on vector similarity. Found using 
 
 ### Link Resolution
 
-Process of matching link targets to actual documents. Wiki links match normalized titles with path-style fallbacks (basename/rel_path, optional .md); markdown links use resolved paths. Resolution happens at query time, not during indexing.
+Process of matching link targets to actual documents. Wiki links match normalized titles with path-style fallbacks (basename/rel_path, optional .md); markdown links use resolved paths. Positional link listings still resolve at query time; typed `doc_edges` are re-derived during sync with the same resolver.
 
 ### Cross-Collection Link
 
@@ -276,7 +314,9 @@ Protocol for AI assistants to access external tools and resources. GNO runs as a
 
 ### Tool
 
-MCP function that AI can invoke. GNO provides: gno_search, gno_vsearch, gno_query, gno_get, gno_multi_get, gno_status.
+MCP function that AI can invoke. GNO read tools include search/query/get/status
+tools plus link, graph, and diagnostic tools such as `gno_query_diagnose` and
+`gno_graph_query`. Write tools such as `gno_capture` are opt-in.
 
 ### Resource
 

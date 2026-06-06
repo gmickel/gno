@@ -156,10 +156,10 @@
 - slug: mcp-integration
   title: MCP Integration
   headline: Give Your AI Assistant Memory
-  description: Connect GNO to Claude Desktop, Cursor, Zed, Windsurf, Amp, Raycast, LM Studio, LibreChat, and more via MCP. 21 tools for search, retrieval, indexing, and graph exploration. Your AI assistant can search and cite your local documents.
+  description: Connect GNO to Claude Desktop, Cursor, Zed, Windsurf, Amp, Raycast, LM Studio, LibreChat, and more via MCP. 28 registered tools for search, retrieval, indexing, typed graph traversal, and diagnostics. Your AI assistant can search and cite your local documents.
   icon: mcp-integration
   benefits:
-    - 21 MCP tools (search, query, get, graph, graph path, capture, and more)
+    - 28 registered MCP tools (search, query, get, graph query, query diagnose, capture, and more)
     - Works with Claude Desktop, Cursor, Zed, Windsurf, Amp
     - Also supports Raycast, LM Studio, LibreChat
     - Resource URIs for direct document access
@@ -246,7 +246,7 @@
 - slug: note-linking
   title: Note Linking
   headline: Navigate Your Knowledge Graph
-  description: Wiki links, backlinks, and semantic similarity for connected notes. Build a personal knowledge graph with bidirectional navigation, cross-collection links, Logseq-compatible embeds, and AI-powered related note discovery.
+  description: Wiki links, backlinks, typed relations, and semantic similarity for connected notes. Build a personal knowledge graph with bidirectional navigation, cross-collection links, Logseq-compatible embeds, and AI-powered related note discovery.
   icon: link
   benefits:
     - "[[Wiki links]] and [Markdown](links)"
@@ -254,6 +254,7 @@
     - Cross-collection linking
     - "Logseq-compatible links and {{embed}} syntax"
     - Semantic similar notes via vectors
+    - Typed relations from relations frontmatter
     - Broken link indicators
     - Wiki link autocomplete in editor
   commands:
@@ -264,12 +265,13 @@
 - slug: graph-view
   title: Knowledge Graph
   headline: See How Your Ideas Connect
-  description: Interactive force-directed graph visualization of document connections. Explore wiki links, markdown links, and semantic similarity edges as a navigable constellation. Available in CLI, Web UI, REST API, and via MCP.
+  description: Interactive force-directed graph visualization plus typed relationship traversal. Explore wiki links, markdown links, semantic similarity edges, and derived typed edges from relations frontmatter and graph hints. Available in CLI, Web UI, REST API, and via MCP.
   icon: graph
   benefits:
     - Interactive force-directed visualization
-    - Wiki links, markdown links, and golden similarity edges
+    - Wiki links, markdown links, golden similarity edges, and typed doc_edges
     - Graph health report with hubs, unresolved links, and isolates
+    - Traverse relation types with gno graph query
     - Filter by collection
     - Click nodes to navigate to documents
     - Zoom, pan, and explore
@@ -278,6 +280,7 @@
     - "gno graph"
     - "gno graph --collection notes"
     - "gno graph --similar"
+    - "gno graph query gno://notes/auth.md --edge-type mentions"
     - "gno serve # then /graph"
 
 - slug: collections

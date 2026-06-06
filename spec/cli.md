@@ -246,7 +246,8 @@ Zod validates `id`, `prefixes`, `preset`, `graphHints`, `searchBoost`, and
 `temporal`, while `preset` remains a permissive string. Post-parse normalization
 warns and drops unknown preset references, dedupes exact duplicate prefixes,
 retains overlapping prefixes, and sorts rules longest-prefix-first. `searchBoost`
-and `graphHints` are accepted but reserved/no-op in this phase.
+is accepted but currently no-op. `graphHints` is active: ordered hints type
+projected wiki/markdown edges and surface in graph traversal/diagnose metadata.
 
 ---
 
