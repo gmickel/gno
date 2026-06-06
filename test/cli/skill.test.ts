@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { mkdir, readdir } from "node:fs/promises";
+import { mkdir, readdir, symlink } from "node:fs/promises";
 import { join } from "node:path";
 
 import { installSkill } from "../../src/cli/commands/skill/install";
@@ -197,6 +197,17 @@ describe("skill CLI commands", () => {
       const destDir = "/home/user/gno";
       const error = validatePathForDeletion(destDir, base);
       expect(error).toContain("suffix");
+    });
+
+    test("rejects symlinked parent escaping base", async () => {
+      const base = join(TEST_DIR, "symlink-base", ".claude");
+      const outside = join(TEST_DIR, "outside-skills");
+      await mkdir(base, { recursive: true });
+      await mkdir(join(outside, "gno"), { recursive: true });
+      await symlink(outside, join(base, "skills"));
+
+      const error = validatePathForDeletion(join(base, "skills", "gno"), base);
+      expect(error).toContain("resolves outside");
     });
   });
 

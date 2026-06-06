@@ -208,7 +208,7 @@ gno similar gno://notes/auth.md --threshold 0.85
 
 # Knowledge graph
 gno graph --json
-gno graph -c notes --similar   # Include similarity edges
+gno graph -c notes --include-similar   # Include similarity edges
 gno graph --neighbors gno://notes/auth.md
 gno graph --from gno://notes/a.md --to gno://notes/b.md
 ```

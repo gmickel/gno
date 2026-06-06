@@ -86,7 +86,7 @@ gno graph --from gno://notes/a.md --to gno://notes/b.md
 gno graph --json
 
 # Include similarity edges
-gno graph --similar
+gno graph --include-similar
 
 # Limit nodes/edges
 gno graph --limit 500 --edge-limit 2000
@@ -94,18 +94,18 @@ gno graph --limit 500 --edge-limit 2000
 
 ### Options
 
-| Flag             | Description                 | Default |
-| ---------------- | --------------------------- | ------- |
-| `--collection`   | Filter to single collection | all     |
-| `--limit`        | Max nodes to return         | 2000    |
-| `--edge-limit`   | Max edges to return         | 10000   |
-| `--similar`      | Include similarity edges    | false   |
-| `--threshold`    | Similarity threshold (0-1)  | 0.7     |
-| `--linked-only`  | Exclude isolated nodes      | true    |
-| `--neighbors`    | Show graph neighbors        | -       |
-| `--from`, `--to` | Find shortest graph path    | -       |
-| `--max-depth`    | Max path hops               | 6       |
-| `--json`         | JSON output                 | false   |
+| Flag                 | Description                 | Default |
+| -------------------- | --------------------------- | ------- |
+| `--collection`       | Filter to single collection | all     |
+| `--limit`            | Max nodes to return         | 2000    |
+| `--edge-limit`       | Max edges to return         | 10000   |
+| `--include-similar`  | Include similarity edges    | false   |
+| `--threshold`        | Similarity threshold (0-1)  | 0.7     |
+| `--include-isolated` | Include isolated nodes      | false   |
+| `--neighbors`        | Show graph neighbors        | -       |
+| `--from`, `--to`     | Find shortest graph path    | -       |
+| `--max-depth`        | Max path hops               | 6       |
+| `--json`             | JSON output                 | false   |
 
 ## REST API
 

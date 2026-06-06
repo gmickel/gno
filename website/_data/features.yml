@@ -280,7 +280,7 @@
   commands:
     - "gno graph"
     - "gno graph --collection notes"
-    - "gno graph --similar"
+    - "gno graph --include-similar"
     - "gno graph query gno://notes/auth.md --edge-type mentions"
     - "gno serve # then /graph"
 

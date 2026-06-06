@@ -5,8 +5,11 @@
  * @module src/cli/commands/skill/paths
  */
 
+// node:fs is used here because Bun has no realpath/lstat equivalent for
+// validating symlink-aware deletion containment before recursive rm.
+import { existsSync, realpathSync } from "node:fs";
 import { homedir } from "node:os";
-import { isAbsolute, join, normalize, relative, sep } from "node:path";
+import { dirname, isAbsolute, join, normalize, relative, sep } from "node:path";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Environment Variables
@@ -226,6 +229,20 @@ export function validatePathForDeletion(
   const rel = relative(normalizedBase, normalized);
   if (rel.startsWith("..") || isAbsolute(rel)) {
     return "Path is not inside expected base directory";
+  }
+
+  const parentDir = dirname(normalized);
+  if (existsSync(parentDir) && existsSync(normalizedBase)) {
+    try {
+      const realBase = realpathSync(normalizedBase);
+      const realParent = realpathSync(parentDir);
+      const realRel = relative(realBase, realParent);
+      if (realRel.startsWith("..") || isAbsolute(realRel)) {
+        return "Path resolves outside expected base directory";
+      }
+    } catch (err) {
+      return `Path realpath check failed: ${err instanceof Error ? err.message : String(err)}`;
+    }
   }
 
   return null;

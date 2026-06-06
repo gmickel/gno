@@ -297,12 +297,13 @@ List outgoing links from a document.
 gno links <ref> [options]
 ```
 
-| Option       | Description                          |
-| ------------ | ------------------------------------ |
-| `--type`     | Filter: `wiki`, `markdown`, or `all` |
-| `--resolved` | Only show resolved links             |
-| `--broken`   | Only show broken links               |
-| `--json`     | JSON output                          |
+| Option        | Description                  |
+| ------------- | ---------------------------- |
+| `--type`      | Filter: `wiki` or `markdown` |
+| `--edge-type` | Filter by semantic edge type |
+| `--relation`  | Alias for `--edge-type`      |
+| `--json`      | JSON output                  |
+| `--md`        | Markdown output              |
 
 ### gno backlinks
 
@@ -312,10 +313,13 @@ Find documents linking TO a target.
 gno backlinks <ref> [options]
 ```
 
-| Option   | Description               |
-| -------- | ------------------------- |
-| `-n`     | Max results (default: 20) |
-| `--json` | JSON output               |
+| Option             | Description                  |
+| ------------------ | ---------------------------- |
+| `-c, --collection` | Filter by collection         |
+| `--edge-type`      | Filter by semantic edge type |
+| `--relation`       | Alias for `--edge-type`      |
+| `--json`           | JSON output                  |
+| `--md`             | Markdown output              |
 
 `gno links` and `gno backlinks` also accept `--edge-type <type>` or
 `--relation <type>` to query semantic typed edges instead of positional
@@ -374,20 +378,20 @@ gno graph --neighbors <ref> [--direction both|out|in]
 gno graph --from <ref> --to <ref> [--max-depth 6]
 ```
 
-| Option             | Default | Description                    |
-| ------------------ | ------- | ------------------------------ |
-| `-c, --collection` | all     | Filter to single collection    |
-| `--limit`          | 2000    | Max nodes                      |
-| `--edge-limit`     | 10000   | Max edges                      |
-| `--similar`        | false   | Include similarity edges       |
-| `--threshold`      | 0.7     | Similarity threshold (0-1)     |
-| `--linked-only`    | true    | Exclude isolated nodes         |
-| `--similar-top-k`  | 5       | Similar docs per node (max 20) |
-| `--neighbors`      | -       | Show graph neighbors for ref   |
-| `--direction`      | both    | Neighbor direction             |
-| `--from`, `--to`   | -       | Find shortest graph path       |
-| `--max-depth`      | 6       | Max path hops                  |
-| `--json`           | -       | JSON output                    |
+| Option               | Default | Description                    |
+| -------------------- | ------- | ------------------------------ |
+| `-c, --collection`   | all     | Filter to single collection    |
+| `--limit`            | 2000    | Max nodes                      |
+| `--edge-limit`       | 10000   | Max edges                      |
+| `--include-similar`  | false   | Include similarity edges       |
+| `--threshold`        | 0.7     | Similarity threshold (0-1)     |
+| `--include-isolated` | false   | Include isolated nodes         |
+| `--similar-top-k`    | 5       | Similar docs per node (max 20) |
+| `--neighbors`        | -       | Show graph neighbors for ref   |
+| `--direction`        | both    | Neighbor direction             |
+| `--from`, `--to`     | -       | Find shortest graph path       |
+| `--max-depth`        | 6       | Max path hops                  |
+| `--json`             | -       | JSON output                    |
 
 **Edge types**: `wiki` (wiki links), `markdown` (md links), `similar` (vector similarity).
 JSON edges include `confidence` (`explicit`, `inferred`, `ambiguous`, `similarity`) and `audit` metadata so agents can prefer exact links over fallback or collision-prone matches.
@@ -568,7 +572,6 @@ gno serve [options]
 | Option       | Default | Description      |
 | ------------ | ------- | ---------------- |
 | `-p, --port` | 3000    | Port to serve on |
-| `--host`     | 0.0.0.0 | Host to bind     |
 
 Features: Dashboard, search, browse collections, document viewer, AI Q&A with citations.
 
@@ -739,9 +742,8 @@ gno skill install [options]
 | Option         | Default | Description                                              |
 | -------------- | ------- | -------------------------------------------------------- |
 | `-t, --target` | claude  | Target: `claude`, `codex`, `opencode`, `openclaw`, `all` |
-| `-s, --scope`  | user    | Scope: `user`, `project`                                 |
+| `-s, --scope`  | project | Scope: `project`, `user`                                 |
 | `-f, --force`  | false   | Overwrite existing                                       |
-| `--dry-run`    | false   | Preview changes                                          |
 
 Examples:
 
@@ -765,7 +767,7 @@ gno skill uninstall [-t <target>] [-s <scope>]
 Preview skill files that would be installed.
 
 ```bash
-gno skill show [--json]
+gno skill show [--file <name>] [--all]
 ```
 
 ### gno skill paths
@@ -783,7 +785,7 @@ gno skill paths [--json]
 Delete all GNO data (database, embeddings, config). Use with caution.
 
 ```bash
-gno reset [--force]
+gno reset --confirm [--keep-config] [--keep-cache]
 ```
 
 ### gno completion
@@ -792,7 +794,7 @@ Install shell tab completion.
 
 ```bash
 gno completion install [--shell <bash|zsh|fish>]
-gno completion uninstall
+gno completion output <bash|zsh|fish>
 ```
 
 ## Exit Codes

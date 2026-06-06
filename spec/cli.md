@@ -2140,21 +2140,21 @@ Generate knowledge graph of document links.
 **Synopsis:**
 
 ```bash
-gno graph [-c, --collection <name>] [--limit <num>] [--edge-limit <num>] [--similar] [--threshold <num>] [--linked-only] [--similar-top-k <num>] [--json]
+gno graph [-c, --collection <name>] [--limit <num>] [--edge-limit <num>] [--include-similar] [--threshold <num>] [--include-isolated] [--similar-top-k <num>] [--json]
 ```
 
 **Options:**
 
-| Flag               | Type   | Default | Description                    |
-| ------------------ | ------ | ------- | ------------------------------ |
-| `-c, --collection` | string | all     | Filter to single collection    |
-| `--limit`          | number | 2000    | Maximum nodes to return        |
-| `--edge-limit`     | number | 10000   | Maximum edges to return        |
-| `--similar`        | flag   | false   | Include similarity edges       |
-| `--threshold`      | number | 0.7     | Similarity threshold (0-1)     |
-| `--linked-only`    | flag   | true    | Exclude isolated nodes         |
-| `--similar-top-k`  | number | 5       | Similar docs per node (max 20) |
-| `--json`           | flag   |         | JSON output                    |
+| Flag                 | Type   | Default | Description                    |
+| -------------------- | ------ | ------- | ------------------------------ |
+| `-c, --collection`   | string | all     | Filter to single collection    |
+| `--limit`            | number | 2000    | Maximum nodes to return        |
+| `--edge-limit`       | number | 10000   | Maximum edges to return        |
+| `--include-similar`  | flag   | false   | Include similarity edges       |
+| `--threshold`        | number | 0.7     | Similarity threshold (0-1)     |
+| `--include-isolated` | flag   | false   | Include isolated nodes         |
+| `--similar-top-k`    | number | 5       | Similar docs per node (max 20) |
+| `--json`             | flag   |         | JSON output                    |
 
 **Behavior:**
 
@@ -2275,7 +2275,7 @@ Schema: `graph-query.schema.json`
 
 - `wiki`: Wiki link (`[[Target]]`)
 - `markdown`: Markdown link (`[text](path.md)`)
-- `similar`: Semantic similarity (requires `--similar` flag)
+- `similar`: Semantic similarity (requires `--include-similar` flag)
 
 `gno graph query --edge-type` filters the typed `doc_edges.edge_type` values
 derived from frontmatter relations, content-type graph hints, and backfilled
@@ -2297,7 +2297,7 @@ gno graph
 gno graph --collection notes
 
 # Include similarity edges
-gno graph --similar --threshold 0.6
+gno graph --include-similar --threshold 0.6
 
 # JSON output with limits
 gno graph --limit 500 --edge-limit 2000 --json
