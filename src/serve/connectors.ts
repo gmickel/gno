@@ -118,6 +118,18 @@ const CONNECTOR_DEFINITIONS: ConnectorDefinition[] = [
         "Recommended default for local agent access without manual file edits.",
     },
   },
+  {
+    id: "hermes-skill",
+    appName: "Hermes Agent",
+    installKind: "skill",
+    target: "hermes",
+    scope: "user",
+    mode: {
+      label: "Read/search via skill",
+      detail:
+        "Recommended default for Hermes Agent. Uses the standard ~/.hermes/skills path.",
+    },
+  },
 ] as const;
 
 export async function getConnectorStatuses(overrides?: {

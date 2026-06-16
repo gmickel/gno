@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Added Hermes Agent as a first-class `gno skill install --target hermes`
+  target, including `--target all`, uninstall, path inspection, and connector
+  status support.
+
 ## [1.11.0] - 2026-06-06
 
 ### Added

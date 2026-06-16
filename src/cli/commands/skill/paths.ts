@@ -1,6 +1,6 @@
 /**
  * Path resolution for skill installation.
- * Supports Claude Code, Codex, OpenCode, and OpenClaw targets with project/user scopes.
+ * Supports Claude Code, Codex, OpenCode, OpenClaw, and Hermes targets with project/user scopes.
  *
  * @module src/cli/commands/skill/paths
  */
@@ -30,18 +30,27 @@ export const ENV_OPENCODE_SKILLS_DIR = "OPENCODE_SKILLS_DIR";
 /** Override OpenClaw skills directory */
 export const ENV_OPENCLAW_SKILLS_DIR = "OPENCLAW_SKILLS_DIR";
 
+/** Override Hermes skills directory */
+export const ENV_HERMES_SKILLS_DIR = "HERMES_SKILLS_DIR";
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
 // ─────────────────────────────────────────────────────────────────────────────
 
 export type SkillScope = "project" | "user";
-export type SkillTarget = "claude" | "codex" | "opencode" | "openclaw";
+export type SkillTarget =
+  | "claude"
+  | "codex"
+  | "opencode"
+  | "openclaw"
+  | "hermes";
 
 export const SKILL_TARGETS: SkillTarget[] = [
   "claude",
   "codex",
   "opencode",
   "openclaw",
+  "hermes",
 ];
 
 export interface SkillPathOptions {
@@ -101,6 +110,12 @@ const TARGET_CONFIGS: Record<SkillTarget, TargetPathConfig> = {
     userBase: ".openclaw",
     skillsSubdir: "skills",
     envVar: ENV_OPENCLAW_SKILLS_DIR,
+  },
+  hermes: {
+    projectBase: ".hermes",
+    userBase: ".hermes",
+    skillsSubdir: "skills",
+    envVar: ENV_HERMES_SKILLS_DIR,
   },
 };
 
@@ -201,17 +216,21 @@ function getExpectedSuffixes(): string[] {
  */
 export function validatePathForDeletion(
   destDir: string,
-  base: string
+  base: string,
+  expectedDir?: string
 ): string | null {
   const normalized = normalize(destDir);
   const normalizedBase = normalize(base);
+  const normalizedExpected = expectedDir ? normalize(expectedDir) : undefined;
   const expectedSuffixes = getExpectedSuffixes();
 
-  // Must end with /skills/gno or /skill/gno (platform-aware)
+  // Must be the resolved target directory, or end with a known skill suffix.
+  // The exact resolved path covers absolute skills-dir env overrides.
+  const matchesExpectedDir = normalizedExpected === normalized;
   const hasValidSuffix = expectedSuffixes.some((suffix) =>
     normalized.endsWith(suffix)
   );
-  if (!hasValidSuffix) {
+  if (!(matchesExpectedDir || hasValidSuffix)) {
     return `Path does not end with expected suffix (${expectedSuffixes.join(" or ")})`;
   }
 

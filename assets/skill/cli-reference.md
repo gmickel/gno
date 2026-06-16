@@ -739,11 +739,11 @@ Install GNO skill for AI coding assistants.
 gno skill install [options]
 ```
 
-| Option         | Default | Description                                              |
-| -------------- | ------- | -------------------------------------------------------- |
-| `-t, --target` | claude  | Target: `claude`, `codex`, `opencode`, `openclaw`, `all` |
-| `-s, --scope`  | project | Scope: `project`, `user`                                 |
-| `-f, --force`  | false   | Overwrite existing                                       |
+| Option         | Default | Description                                                        |
+| -------------- | ------- | ------------------------------------------------------------------ |
+| `-t, --target` | claude  | Target: `claude`, `codex`, `opencode`, `openclaw`, `hermes`, `all` |
+| `-s, --scope`  | project | Scope: `project`, `user`                                           |
+| `-f, --force`  | false   | Overwrite existing                                                 |
 
 Examples:
 
@@ -751,6 +751,7 @@ Examples:
 gno skill install --target claude --scope project
 gno skill install --target codex --scope user
 gno skill install --target openclaw --scope user
+gno skill install --target hermes --scope user
 gno skill install --target all --force   # Install to all targets
 ```
 

@@ -1939,7 +1939,7 @@ function wireSkillCommands(program: Command): void {
 
   skillCmd
     .command("install")
-    .description("Install GNO skill to Claude Code or Codex")
+    .description("Install GNO skill to supported agents")
     .option(
       "-s, --scope <scope>",
       "installation scope (project, user)",
@@ -1947,7 +1947,7 @@ function wireSkillCommands(program: Command): void {
     )
     .option(
       "-t, --target <target>",
-      "target agent (claude, codex, opencode, openclaw, all)",
+      "target agent (claude, codex, opencode, openclaw, hermes, all)",
       "claude"
     )
     .option("-f, --force", "overwrite existing installation")
@@ -1965,18 +1965,26 @@ function wireSkillCommands(program: Command): void {
       }
       // Validate target
       if (
-        !["claude", "codex", "opencode", "openclaw", "all"].includes(target)
+        !["claude", "codex", "opencode", "openclaw", "hermes", "all"].includes(
+          target
+        )
       ) {
         throw new CliError(
           "VALIDATION",
-          `Invalid target: ${target}. Must be 'claude', 'codex', 'opencode', 'openclaw', or 'all'.`
+          `Invalid target: ${target}. Must be 'claude', 'codex', 'opencode', 'openclaw', 'hermes', or 'all'.`
         );
       }
 
       const { installSkill } = await import("./commands/skill/install.js");
       await installSkill({
         scope: scope as "project" | "user",
-        target: target as "claude" | "codex" | "opencode" | "openclaw" | "all",
+        target: target as
+          | "claude"
+          | "codex"
+          | "opencode"
+          | "openclaw"
+          | "hermes"
+          | "all",
         force: Boolean(cmdOpts.force),
         json: Boolean(cmdOpts.json),
       });
@@ -1992,7 +2000,7 @@ function wireSkillCommands(program: Command): void {
     )
     .option(
       "-t, --target <target>",
-      "target agent (claude, codex, opencode, openclaw, all)",
+      "target agent (claude, codex, opencode, openclaw, hermes, all)",
       "claude"
     )
     .option("--json", "JSON output")
@@ -2009,18 +2017,26 @@ function wireSkillCommands(program: Command): void {
       }
       // Validate target
       if (
-        !["claude", "codex", "opencode", "openclaw", "all"].includes(target)
+        !["claude", "codex", "opencode", "openclaw", "hermes", "all"].includes(
+          target
+        )
       ) {
         throw new CliError(
           "VALIDATION",
-          `Invalid target: ${target}. Must be 'claude', 'codex', 'opencode', 'openclaw', or 'all'.`
+          `Invalid target: ${target}. Must be 'claude', 'codex', 'opencode', 'openclaw', 'hermes', or 'all'.`
         );
       }
 
       const { uninstallSkill } = await import("./commands/skill/uninstall.js");
       await uninstallSkill({
         scope: scope as "project" | "user",
-        target: target as "claude" | "codex" | "opencode" | "openclaw" | "all",
+        target: target as
+          | "claude"
+          | "codex"
+          | "opencode"
+          | "openclaw"
+          | "hermes"
+          | "all",
         json: Boolean(cmdOpts.json),
       });
     });
@@ -2048,7 +2064,7 @@ function wireSkillCommands(program: Command): void {
     )
     .option(
       "-t, --target <target>",
-      "filter by target (claude, codex, opencode, openclaw, all)",
+      "filter by target (claude, codex, opencode, openclaw, hermes, all)",
       "all"
     )
     .option("--json", "JSON output")
@@ -2065,18 +2081,26 @@ function wireSkillCommands(program: Command): void {
       }
       // Validate target
       if (
-        !["claude", "codex", "opencode", "openclaw", "all"].includes(target)
+        !["claude", "codex", "opencode", "openclaw", "hermes", "all"].includes(
+          target
+        )
       ) {
         throw new CliError(
           "VALIDATION",
-          `Invalid target: ${target}. Must be 'claude', 'codex', 'opencode', 'openclaw', or 'all'.`
+          `Invalid target: ${target}. Must be 'claude', 'codex', 'opencode', 'openclaw', 'hermes', or 'all'.`
         );
       }
 
       const { showPaths } = await import("./commands/skill/paths-cmd.js");
       await showPaths({
         scope: scope as "project" | "user" | "all",
-        target: target as "claude" | "codex" | "opencode" | "openclaw" | "all",
+        target: target as
+          | "claude"
+          | "codex"
+          | "opencode"
+          | "openclaw"
+          | "hermes"
+          | "all",
         json: Boolean(cmdOpts.json),
       });
     });

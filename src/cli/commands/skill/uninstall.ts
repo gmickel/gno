@@ -1,5 +1,5 @@
 /**
- * Uninstall GNO agent skill from Claude Code or Codex.
+ * Uninstall GNO agent skill from supported agent targets.
  * Includes safety checks before deletion.
  *
  * @module src/cli/commands/skill/uninstall
@@ -58,7 +58,11 @@ async function uninstallFromTarget(
   }
 
   // Safety validation
-  const validationError = validatePathForDeletion(paths.gnoDir, paths.base);
+  const validationError = validatePathForDeletion(
+    paths.gnoDir,
+    paths.base,
+    paths.gnoDir
+  );
   if (validationError) {
     throw new CliError(
       "RUNTIME",

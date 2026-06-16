@@ -1,5 +1,5 @@
 /**
- * Install GNO agent skill to Claude Code or Codex.
+ * Install GNO agent skill to supported agent targets.
  * Atomic install via temp directory + rename.
  *
  * @module src/cli/commands/skill/install
@@ -149,7 +149,11 @@ export async function installSkillToTarget(
 
     // Remove existing if present (with safety check)
     if (destExists) {
-      const validationError = validatePathForDeletion(paths.gnoDir, paths.base);
+      const validationError = validatePathForDeletion(
+        paths.gnoDir,
+        paths.base,
+        paths.gnoDir
+      );
       if (validationError) {
         throw new CliError(
           "RUNTIME",

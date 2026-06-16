@@ -728,7 +728,7 @@ gno models path
 
 ## Skill Commands
 
-Install GNO as a skill for AI coding assistants (Claude Code, Codex, OpenCode, OpenClaw).
+Install GNO as a skill for AI coding assistants (Claude Code, Codex, OpenCode, OpenClaw, Hermes Agent).
 
 ### gno skill install
 
@@ -738,6 +738,7 @@ Install the GNO skill files, including nested recipe playbooks.
 gno skill install                    # Project scope, Claude target
 gno skill install --scope user       # User-wide installation
 gno skill install --target codex     # For Codex instead of Claude
+gno skill install --target hermes    # For Hermes Agent
 gno skill install --target all       # All supported agents
 gno skill install --force            # Overwrite existing
 ```
@@ -745,10 +746,10 @@ gno skill install --force            # Overwrite existing
 Options:
 
 - `--scope <project|user>` - Installation scope (default: project)
-- `--target <claude|codex|opencode|openclaw|all>` - Target agent (default: claude)
+- `--target <claude|codex|opencode|openclaw|hermes|all>` - Target agent (default: claude)
 - `--force` - Overwrite existing installation
 
-Supported targets: Claude Code, Codex, OpenCode, OpenClaw. Use `all` to install to every target.
+Supported targets: Claude Code, Codex, OpenCode, OpenClaw, Hermes Agent. Use `all` to install to every target.
 
 ### gno skill uninstall
 
@@ -763,7 +764,7 @@ gno skill uninstall --target all
 Options:
 
 - `-s, --scope <project|user>` - Scope to uninstall from (default: project)
-- `-t, --target <claude|codex|opencode|openclaw|all>` - Target to uninstall from (default: claude)
+- `-t, --target <claude|codex|opencode|openclaw|hermes|all>` - Target to uninstall from (default: claude)
 
 ### gno skill show
 

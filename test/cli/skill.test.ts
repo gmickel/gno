@@ -4,6 +4,7 @@ import { join } from "node:path";
 
 import { installSkill } from "../../src/cli/commands/skill/install";
 import {
+  ENV_HERMES_SKILLS_DIR,
   resolveAllPaths,
   resolveSkillPaths,
   validatePathForDeletion,
@@ -129,25 +130,85 @@ describe("skill CLI commands", () => {
       expect(paths.skillsDir).toBe(join(FAKE_HOME, ".openclaw", "skills"));
       expect(paths.gnoDir).toBe(join(FAKE_HOME, ".openclaw", "skills", "gno"));
     });
+
+    test("resolves project/hermes paths", () => {
+      const paths = resolveSkillPaths({
+        scope: "project",
+        target: "hermes",
+        cwd: FAKE_CWD,
+        homeDir: FAKE_HOME,
+      });
+
+      expect(paths.skillsDir).toBe(join(FAKE_CWD, ".hermes", "skills"));
+      expect(paths.gnoDir).toBe(join(FAKE_CWD, ".hermes", "skills", "gno"));
+    });
+
+    test("resolves user/hermes paths", () => {
+      const paths = resolveSkillPaths({
+        scope: "user",
+        target: "hermes",
+        cwd: FAKE_CWD,
+        homeDir: FAKE_HOME,
+      });
+
+      expect(paths.skillsDir).toBe(join(FAKE_HOME, ".hermes", "skills"));
+      expect(paths.gnoDir).toBe(join(FAKE_HOME, ".hermes", "skills", "gno"));
+    });
+
+    test("uses absolute HERMES_SKILLS_DIR override", () => {
+      const overrideDir = join(TEST_DIR, "custom-hermes-skills");
+      process.env[ENV_HERMES_SKILLS_DIR] = overrideDir;
+      try {
+        const paths = resolveSkillPaths({
+          scope: "user",
+          target: "hermes",
+          cwd: FAKE_CWD,
+          homeDir: FAKE_HOME,
+        });
+
+        expect(paths.skillsDir).toBe(overrideDir);
+        expect(paths.gnoDir).toBe(join(overrideDir, "gno"));
+      } finally {
+        delete process.env[ENV_HERMES_SKILLS_DIR];
+      }
+    });
+
+    test("rejects relative HERMES_SKILLS_DIR override", () => {
+      process.env[ENV_HERMES_SKILLS_DIR] = "relative/hermes/skills";
+      try {
+        expect(() =>
+          resolveSkillPaths({
+            scope: "user",
+            target: "hermes",
+            cwd: FAKE_CWD,
+            homeDir: FAKE_HOME,
+          })
+        ).toThrow("HERMES_SKILLS_DIR must be an absolute path");
+      } finally {
+        delete process.env[ENV_HERMES_SKILLS_DIR];
+      }
+    });
   });
 
   describe("resolveAllPaths", () => {
-    test("returns all 8 combinations for scope=all, target=all", () => {
+    test("returns all 10 combinations for scope=all, target=all", () => {
       const results = resolveAllPaths("all", "all", {
         cwd: FAKE_CWD,
         homeDir: FAKE_HOME,
       });
 
-      expect(results).toHaveLength(8);
+      expect(results).toHaveLength(10);
       const combos = results.map((r) => `${r.scope}/${r.target}`);
       expect(combos).toContain("project/claude");
       expect(combos).toContain("project/codex");
       expect(combos).toContain("project/opencode");
       expect(combos).toContain("project/openclaw");
+      expect(combos).toContain("project/hermes");
       expect(combos).toContain("user/claude");
       expect(combos).toContain("user/codex");
       expect(combos).toContain("user/opencode");
       expect(combos).toContain("user/openclaw");
+      expect(combos).toContain("user/hermes");
     });
 
     test("filters by scope", () => {
@@ -156,7 +217,7 @@ describe("skill CLI commands", () => {
         homeDir: FAKE_HOME,
       });
 
-      expect(results).toHaveLength(4);
+      expect(results).toHaveLength(5);
       expect(results.every((r) => r.scope === "project")).toBe(true);
     });
 
@@ -241,9 +302,62 @@ describe("skill CLI commands", () => {
 
       const claudeDir = join(FAKE_CWD, ".claude", "skills", "gno");
       const codexDir = join(FAKE_CWD, ".codex", "skills", "gno");
+      const hermesDir = join(FAKE_CWD, ".hermes", "skills", "gno");
 
       expect(await Bun.file(join(claudeDir, "SKILL.md")).exists()).toBe(true);
       expect(await Bun.file(join(codexDir, "SKILL.md")).exists()).toBe(true);
+      expect(await Bun.file(join(hermesDir, "SKILL.md")).exists()).toBe(true);
+    });
+
+    test("installs and uninstalls skill to user/hermes", async () => {
+      await installSkill({
+        scope: "user",
+        target: "hermes",
+        cwd: FAKE_CWD,
+        homeDir: FAKE_HOME,
+      });
+
+      const skillDir = join(FAKE_HOME, ".hermes", "skills", "gno");
+      expect(await Bun.file(join(skillDir, "SKILL.md")).exists()).toBe(true);
+
+      stdoutOutput = [];
+      await uninstallSkill({
+        scope: "user",
+        target: "hermes",
+        cwd: FAKE_CWD,
+        homeDir: FAKE_HOME,
+      });
+
+      expect(await Bun.file(join(skillDir, "SKILL.md")).exists()).toBe(false);
+      expect(stdoutOutput.join("")).toContain("Uninstalled");
+    });
+
+    test("installs and uninstalls hermes with HERMES_SKILLS_DIR override", async () => {
+      const overrideDir = join(TEST_DIR, "hermes-override");
+      process.env[ENV_HERMES_SKILLS_DIR] = overrideDir;
+      try {
+        await installSkill({
+          scope: "user",
+          target: "hermes",
+          cwd: FAKE_CWD,
+          homeDir: FAKE_HOME,
+        });
+
+        const skillDir = join(overrideDir, "gno");
+        expect(await Bun.file(join(skillDir, "SKILL.md")).exists()).toBe(true);
+
+        stdoutOutput = [];
+        await uninstallSkill({
+          scope: "user",
+          target: "hermes",
+          cwd: FAKE_CWD,
+          homeDir: FAKE_HOME,
+        });
+
+        expect(await Bun.file(join(skillDir, "SKILL.md")).exists()).toBe(false);
+      } finally {
+        delete process.env[ENV_HERMES_SKILLS_DIR];
+      }
     });
 
     test("errors on duplicate without --force", async () => {
@@ -415,6 +529,8 @@ describe("skill CLI commands", () => {
       expect(output).toContain("claude/user");
       expect(output).toContain("codex/project");
       expect(output).toContain("codex/user");
+      expect(output).toContain("hermes/project");
+      expect(output).toContain("hermes/user");
     });
 
     test("shows installed status", async () => {

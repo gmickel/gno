@@ -1589,21 +1589,21 @@ MCP Server Status
 
 ### gno skill install
 
-Install GNO agent skill for Claude Code, Codex, OpenCode, or OpenClaw.
+Install GNO agent skill for Claude Code, Codex, OpenCode, OpenClaw, or Hermes.
 
 **Synopsis:**
 
 ```bash
-gno skill install [--scope <project|user>] [--target <claude|codex|opencode|openclaw|all>] [--force] [--json]
+gno skill install [--scope <project|user>] [--target <claude|codex|opencode|openclaw|hermes|all>] [--force] [--json]
 ```
 
 **Options:**
 
-| Option     | Type    | Default | Description                                               |
-| ---------- | ------- | ------- | --------------------------------------------------------- |
-| `--scope`  | string  | project | `project` (.claude/skills/) or `user` (~/.claude/skills/) |
-| `--target` | string  | claude  | `claude`, `codex`, `opencode`, `openclaw`, or `all`       |
-| `--force`  | boolean | false   | Overwrite existing skill without prompting                |
+| Option     | Type    | Default | Description                                                   |
+| ---------- | ------- | ------- | ------------------------------------------------------------- |
+| `--scope`  | string  | project | `project` (.claude/skills/) or `user` (~/.claude/skills/)     |
+| `--target` | string  | claude  | `claude`, `codex`, `opencode`, `openclaw`, `hermes`, or `all` |
+| `--force`  | boolean | false   | Overwrite existing skill without prompting                    |
 
 **Behavior:**
 
@@ -1650,7 +1650,7 @@ Remove GNO agent skill.
 **Synopsis:**
 
 ```bash
-gno skill uninstall [--scope <project|user>] [--target <claude|codex|opencode|openclaw|all>] [--json]
+gno skill uninstall [--scope <project|user>] [--target <claude|codex|opencode|openclaw|hermes|all>] [--json]
 ```
 
 **Options:** Same as `skill install` (except `--force`)
@@ -1726,7 +1726,7 @@ Show resolved skill installation paths.
 **Synopsis:**
 
 ```bash
-gno skill paths [--scope <project|user>] [--target <claude|codex|opencode|openclaw|all>] [--json]
+gno skill paths [--scope <project|user>] [--target <claude|codex|opencode|openclaw|hermes|all>] [--json]
 ```
 
 **Options:** Same as `skill install`

@@ -88,11 +88,11 @@ gno skill paths [options]      # Show installation paths
 
 ### CLI Flags
 
-| Flag                | Description                                                             |
-| :------------------ | :---------------------------------------------------------------------- |
-| `--scope <scope>`   | `project` or `user` (default: `project`)                                |
-| `--target <target>` | `claude`, `codex`, `opencode`, `openclaw`, or `all` (default: `claude`) |
-| `--force`           | Overwrite existing installation                                         |
+| Flag                | Description                                                                       |
+| :------------------ | :-------------------------------------------------------------------------------- |
+| `--scope <scope>`   | `project` or `user` (default: `project`)                                          |
+| `--target <target>` | `claude`, `codex`, `opencode`, `openclaw`, `hermes`, or `all` (default: `claude`) |
+| `--force`           | Overwrite existing installation                                                   |
 
 ## Example Workflows
 
