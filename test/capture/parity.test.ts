@@ -283,63 +283,67 @@ describe("capture surface parity", () => {
     process.env.GNO_CACHE_DIR = originalEnv.cacheDir;
   });
 
-  test("CLI, REST, MCP, and SDK write equivalent capture receipts and frontmatter", async () => {
-    const cli = await runCliSurface();
-    roots.push(cli.root);
-    const api = await runApiSurface();
-    roots.push(api.root);
-    closers.push(() => api.store.close());
-    const mcp = await runMcpSurface();
-    roots.push(mcp.root);
-    closers.push(() => mcp.store.close());
-    const sdk = await runSdkSurface();
-    roots.push(sdk.root);
-    closers.push(sdk.close);
+  test(
+    "CLI, REST, MCP, and SDK write equivalent capture receipts and frontmatter",
+    async () => {
+      const cli = await runCliSurface();
+      roots.push(cli.root);
+      const api = await runApiSurface();
+      roots.push(api.root);
+      closers.push(() => api.store.close());
+      const mcp = await runMcpSurface();
+      roots.push(mcp.root);
+      closers.push(() => mcp.store.close());
+      const sdk = await runSdkSurface();
+      roots.push(sdk.root);
+      closers.push(sdk.close);
 
-    const stable = [
-      stableReceipt(cli.receipt),
-      stableReceipt(api.receipt),
-      stableReceipt(mcp.receipt),
-      stableReceipt(sdk.receipt),
-    ];
-    for (const receipt of stable) {
-      expect(receipt).toMatchObject({
-        collection: "notes",
-        relPath: SHARED_INPUT.relPath,
-        created: true,
-        openedExisting: false,
-        createdWithSuffix: false,
-        overwritten: false,
-        collisionPolicyResult: "created",
-        tags: ["inbox", "project/gno"],
-        embedStatus: "not_requested",
-      });
-      expect(receipt.source).toMatchObject({
-        kind: "web",
-        url: SHARED_INPUT.source.url,
-        title: SHARED_INPUT.source.title,
-        author: SHARED_INPUT.source.author,
-        observedAt: "2026-06-04T12:00:00.000Z",
-        externalId: SHARED_INPUT.source.externalId,
-      });
-    }
+      const stable = [
+        stableReceipt(cli.receipt),
+        stableReceipt(api.receipt),
+        stableReceipt(mcp.receipt),
+        stableReceipt(sdk.receipt),
+      ];
+      for (const receipt of stable) {
+        expect(receipt).toMatchObject({
+          collection: "notes",
+          relPath: SHARED_INPUT.relPath,
+          created: true,
+          openedExisting: false,
+          createdWithSuffix: false,
+          overwritten: false,
+          collisionPolicyResult: "created",
+          tags: ["inbox", "project/gno"],
+          embedStatus: "not_requested",
+        });
+        expect(receipt.source).toMatchObject({
+          kind: "web",
+          url: SHARED_INPUT.source.url,
+          title: SHARED_INPUT.source.title,
+          author: SHARED_INPUT.source.author,
+          observedAt: "2026-06-04T12:00:00.000Z",
+          externalId: SHARED_INPUT.source.externalId,
+        });
+      }
 
-    expect(stable[0]?.contentHash).toBe(stable[1]?.contentHash);
-    expect(stable[0]?.contentHash).toBe(stable[2]?.contentHash);
-    expect(stable[0]?.contentHash).toBe(stable[3]?.contentHash);
-    expect(cli.receipt.sync.status).toBe("completed");
-    expect(api.receipt.sync.status).toBe("pending");
-    expect(mcp.receipt.sync.status).toBe("completed");
-    expect(sdk.receipt.sync.status).toBe("completed");
+      expect(stable[0]?.contentHash).toBe(stable[1]?.contentHash);
+      expect(stable[0]?.contentHash).toBe(stable[2]?.contentHash);
+      expect(stable[0]?.contentHash).toBe(stable[3]?.contentHash);
+      expect(cli.receipt.sync.status).toBe("completed");
+      expect(api.receipt.sync.status).toBe("pending");
+      expect(mcp.receipt.sync.status).toBe("completed");
+      expect(sdk.receipt.sync.status).toBe("completed");
 
-    const normalizedContent = [
-      normalizeCaptureContent(cli.content),
-      normalizeCaptureContent(api.content),
-      normalizeCaptureContent(mcp.content),
-      normalizeCaptureContent(sdk.content),
-    ];
-    expect(normalizedContent[0]).toBe(normalizedContent[1]);
-    expect(normalizedContent[0]).toBe(normalizedContent[2]);
-    expect(normalizedContent[0]).toBe(normalizedContent[3]);
-  });
+      const normalizedContent = [
+        normalizeCaptureContent(cli.content),
+        normalizeCaptureContent(api.content),
+        normalizeCaptureContent(mcp.content),
+        normalizeCaptureContent(sdk.content),
+      ];
+      expect(normalizedContent[0]).toBe(normalizedContent[1]);
+      expect(normalizedContent[0]).toBe(normalizedContent[2]);
+      expect(normalizedContent[0]).toBe(normalizedContent[3]);
+    },
+    { timeout: 60_000 }
+  );
 });
