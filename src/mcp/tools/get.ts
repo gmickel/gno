@@ -14,7 +14,9 @@ import {
   getDocumentCapabilities,
   type DocumentCapabilities,
 } from "../../core/document-capabilities";
+import { resolveEffectiveIndex } from "../../core/indexed-reference";
 import { parseRef } from "../../core/ref-parser";
+import { openScopedIndexStore } from "../../store/sqlite/scoped-index";
 import { runTool, type ToolResult } from "./index";
 
 interface GetInput {
@@ -128,109 +130,122 @@ export function handleGet(
         throw new Error(parsed.error);
       }
 
-      // Lookup document
-      const doc = await lookupDocument(ctx.store, parsed);
-      if (!doc) {
-        throw new Error(`Document not found: ${args.ref}`);
+      const resolution = resolveEffectiveIndex([args.ref], ctx.indexName);
+      if (!resolution.ok) {
+        throw new Error(resolution.error);
       }
+      const scoped = await openScopedIndexStore({
+        activeStore: ctx.store,
+        activeIndexName: ctx.indexName,
+        requestedIndexName: resolution.value.indexName,
+        config: ctx.config,
+        configPath: ctx.actualConfigPath,
+      });
 
-      // Get content
-      if (!doc.mirrorHash) {
-        throw new Error("Document has no indexed content");
-      }
+      try {
+        // Lookup document
+        const doc = await lookupDocument(scoped.store, parsed);
+        if (!doc) {
+          throw new Error(`Document not found: ${args.ref}`);
+        }
 
-      const contentResult = await ctx.store.getContent(doc.mirrorHash);
-      if (!contentResult.ok) {
-        throw new Error(contentResult.error.message);
-      }
+        // Get content
+        if (!doc.mirrorHash) {
+          throw new Error("Document has no indexed content");
+        }
 
-      const fullContent = contentResult.value ?? "";
-      const contentLines = fullContent.split("\n");
-      const totalLines = contentLines.length;
+        const contentResult = await scoped.store.getContent(doc.mirrorHash);
+        if (!contentResult.ok) {
+          throw new Error(contentResult.error.message);
+        }
 
-      // Apply line range if specified
-      let content = fullContent;
-      let returnedLines: { start: number; end: number } | undefined;
+        const fullContent = contentResult.value ?? "";
+        const contentLines = fullContent.split("\n");
+        const totalLines = contentLines.length;
 
-      // lineNumbers defaults to true per spec
-      const showLineNumbers = args.lineNumbers !== false;
+        // Apply line range if specified
+        let content = fullContent;
+        let returnedLines: { start: number; end: number } | undefined;
 
-      if (args.fromLine || args.lineCount) {
-        const startLine = args.fromLine ?? 1;
-        // Clamp startLine to valid range
-        if (startLine > totalLines) {
-          // Return empty content for out-of-range request
-          content = "";
-          returnedLines = undefined;
-        } else {
-          const count = args.lineCount ?? totalLines - startLine + 1;
-          const endLine = Math.min(startLine + count - 1, totalLines);
+        // lineNumbers defaults to true per spec
+        const showLineNumbers = args.lineNumbers !== false;
 
-          const slicedLines = contentLines.slice(startLine - 1, endLine);
-
-          if (showLineNumbers) {
-            content = slicedLines
-              .map((line, i) => `${startLine + i}: ${line}`)
-              .join("\n");
+        if (args.fromLine || args.lineCount) {
+          const startLine = args.fromLine ?? 1;
+          // Clamp startLine to valid range
+          if (startLine > totalLines) {
+            // Return empty content for out-of-range request
+            content = "";
+            returnedLines = undefined;
           } else {
-            content = slicedLines.join("\n");
-          }
+            const count = args.lineCount ?? totalLines - startLine + 1;
+            const endLine = Math.min(startLine + count - 1, totalLines);
 
-          returnedLines = { start: startLine, end: endLine };
-        }
-      } else if (showLineNumbers) {
-        content = contentLines.map((line, i) => `${i + 1}: ${line}`).join("\n");
-      }
+            const slicedLines = contentLines.slice(startLine - 1, endLine);
 
-      // Build absPath
-      const uriParsed = parseUri(doc.uri);
-      let absPath: string | undefined;
-      if (uriParsed) {
-        const collection = ctx.collections.find(
-          (c) => c.name === uriParsed.collection
-        );
-        if (collection) {
-          absPath = pathJoin(collection.path, doc.relPath);
-        }
-      }
-
-      const response: GetResponse = {
-        docid: doc.docid,
-        uri: decorateUriForIndex(
-          doc.uri,
-          parsed.type === "uri"
-            ? (parseUri(parsed.value)?.indexName ?? ctx.indexName)
-            : ctx.indexName
-        ),
-        title: doc.title ?? undefined,
-        content,
-        totalLines,
-        returnedLines,
-        language: doc.languageHint ?? undefined,
-        source: {
-          absPath,
-          relPath: doc.relPath,
-          mime: doc.sourceMime,
-          ext: doc.sourceExt,
-          modifiedAt: doc.sourceMtime,
-          sizeBytes: doc.sourceSize,
-          sourceHash: doc.sourceHash,
-        },
-        conversion: doc.mirrorHash
-          ? {
-              converterId: doc.converterId ?? undefined,
-              converterVersion: doc.converterVersion ?? undefined,
-              mirrorHash: doc.mirrorHash,
+            if (showLineNumbers) {
+              content = slicedLines
+                .map((line, i) => `${startLine + i}: ${line}`)
+                .join("\n");
+            } else {
+              content = slicedLines.join("\n");
             }
-          : undefined,
-        capabilities: getDocumentCapabilities({
-          sourceExt: doc.sourceExt,
-          sourceMime: doc.sourceMime,
-          contentAvailable: doc.mirrorHash !== null,
-        }),
-      };
 
-      return response;
+            returnedLines = { start: startLine, end: endLine };
+          }
+        } else if (showLineNumbers) {
+          content = contentLines
+            .map((line, i) => `${i + 1}: ${line}`)
+            .join("\n");
+        }
+
+        // Build absPath
+        const uriParsed = parseUri(doc.uri);
+        let absPath: string | undefined;
+        if (uriParsed) {
+          const collection = ctx.collections.find(
+            (c) => c.name === uriParsed.collection
+          );
+          if (collection) {
+            absPath = pathJoin(collection.path, doc.relPath);
+          }
+        }
+
+        const response: GetResponse = {
+          docid: doc.docid,
+          uri: decorateUriForIndex(doc.uri, scoped.indexName),
+          title: doc.title ?? undefined,
+          content,
+          totalLines,
+          returnedLines,
+          language: doc.languageHint ?? undefined,
+          source: {
+            absPath,
+            relPath: doc.relPath,
+            mime: doc.sourceMime,
+            ext: doc.sourceExt,
+            modifiedAt: doc.sourceMtime,
+            sizeBytes: doc.sourceSize,
+            sourceHash: doc.sourceHash,
+          },
+          conversion: doc.mirrorHash
+            ? {
+                converterId: doc.converterId ?? undefined,
+                converterVersion: doc.converterVersion ?? undefined,
+                mirrorHash: doc.mirrorHash,
+              }
+            : undefined,
+          capabilities: getDocumentCapabilities({
+            sourceExt: doc.sourceExt,
+            sourceMime: doc.sourceMime,
+            contentAvailable: doc.mirrorHash !== null,
+          }),
+        };
+
+        return response;
+      } finally {
+        await scoped.close();
+      }
     },
     formatGetResponse
   );

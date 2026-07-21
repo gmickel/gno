@@ -227,7 +227,9 @@ gno graph --from gno://notes/a.md --to gno://notes/b.md
 ```
 
 Non-default index search results may include `?index=<name>` on `gno://` URIs.
-Keep that query string when passing the URI to `gno get`.
+Keep that query string when passing the URI to `gno get`, SDK `get()`, MCP
+`gno_get`, or an MCP resource read: it selects the named database. Batch reads
+must contain refs for one index; split mixed-index results before `multi-get`.
 
 ## Important: Embedding After Changes
 

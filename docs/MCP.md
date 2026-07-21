@@ -694,6 +694,10 @@ ref: "abc123def456"
 
 The response includes source metadata such as `absPath`, `sourceHash`, MIME/ext, and document capability metadata so clients can distinguish editable source files from read-only converted documents.
 
+An indexed URI such as `gno://notes/plan.md?index=research` opens and reads the
+named index, even when the MCP server itself is using another index. A missing
+named index returns an error and is never created as a side effect.
+
 ### gno_multi_get
 
 Retrieve multiple documents.
@@ -701,6 +705,9 @@ Retrieve multiple documents.
 ```
 refs: ["abc123", "def456"]
 ```
+
+All refs in one call must resolve to the same index. Split mixed-index batches
+into one `gno_multi_get` call per index.
 
 ### gno_status
 
@@ -947,10 +954,10 @@ gno://work/src/main.ts
 Resource format:
 
 - `gno://<collection>/<relative-path>`
-- Non-default indexes may appear as output-only metadata:
+- Non-default indexes appear as round-trip metadata:
   `gno://<collection>/<relative-path>?index=<name>`. Document resources and
-  read tools accept indexed URIs; mixed-index multi-get requests should be
-  split by index.
+  read tools open that named index; mixed-index multi-get requests must be split
+  by index.
 
 ## Clarifications
 
