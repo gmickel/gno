@@ -40,6 +40,7 @@ const CFB_SIGNATURE = new Uint8Array([
 ]);
 const ENCRYPTION_INFO = utf16le("EncryptionInfo");
 const ENCRYPTED_PACKAGE = utf16le("EncryptedPackage");
+const PDF_TRAILER_SCAN_BYTES = 2048;
 const MAX_MESSAGE_LENGTH = 200;
 const PASSWORD_ERROR_REGEX = /password(?:-protected)?|no password given/i;
 
@@ -98,6 +99,19 @@ function isPasswordProtectedPdf(bytes: Uint8Array): boolean {
   const tailStart = Math.max(0, bytes.length - 64 * 1024);
   const tail = Buffer.from(bytes.subarray(tailStart)).toString("latin1");
   return /\/Encrypt\b/.test(tail);
+}
+
+function hasCompletePdfTrailer(bytes: Uint8Array): boolean {
+  if (!hasPrefix(bytes, PDF_SIGNATURE)) {
+    return false;
+  }
+
+  const tailStart = Math.max(0, bytes.length - PDF_TRAILER_SCAN_BYTES);
+  const tail = Buffer.from(bytes.subarray(tailStart)).toString("latin1");
+  const eofIndex = tail.lastIndexOf("%%EOF");
+  const startXrefIndex = tail.lastIndexOf("startxref");
+
+  return startXrefIndex >= 0 && eofIndex > startXrefIndex;
 }
 
 function isPasswordProtectedXlsx(bytes: Uint8Array): boolean {
@@ -162,7 +176,20 @@ export const markitdownAdapter: Converter = {
       return { ok: false, error: tooLargeError(input, CONVERTER_ID) };
     }
 
-    // 1b. Detect password-protected documents before calling markitdown-ts.
+    // 1b. Reject obviously truncated PDFs before markitdown-ts logs a parser
+    // stack trace. ISO 32000 requires the final %%EOF marker near the file end.
+    if (input.ext === ".pdf" && !hasCompletePdfTrailer(input.bytes)) {
+      return {
+        ok: false,
+        error: corruptError(
+          input,
+          CONVERTER_ID,
+          "Invalid or incomplete PDF structure"
+        ),
+      };
+    }
+
+    // 1c. Detect password-protected documents before calling markitdown-ts.
     // markitdown-ts logs dependency stack traces to stderr for these files.
     if (isPasswordProtected(input)) {
       return {

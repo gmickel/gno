@@ -230,6 +230,28 @@ describe("Document Conversion Integration", () => {
   });
 
   describe("Error handling", () => {
+    test("rejects a truncated PDF before invoking the noisy parser", async () => {
+      const bytes = new TextEncoder().encode(
+        "%PDF-1.7\n1 0 obj\n<< /Type /Catalog >>\nendobj\n"
+      );
+      const registry = await createDefaultRegistry();
+      const input = makeInput(
+        { bytes, ext: ".pdf", mime: "application/pdf" },
+        "pdf/truncated.pdf"
+      );
+
+      const result = await registry.convert(input);
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.code).toBe("CORRUPT");
+        expect(result.error.retryable).toBe(false);
+        expect(result.error.message).toBe(
+          "Invalid or incomplete PDF structure"
+        );
+      }
+    });
+
     test("rejects files exceeding size limit", async () => {
       const fixture = await loadFixture("pdf", "sample.pdf");
       const registry = await createDefaultRegistry();

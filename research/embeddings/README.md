@@ -52,6 +52,12 @@ bun run bench:general-embeddings --candidate qwen3-embedding-0.6b --write
 Do not change product defaults from this harness directly.
 Promotion remains a human decision.
 
+## Dated evaluations
+
+- [2026-07-21 — Nemotron 3 Embed 1B](./2026-07-21-nemotron-3-embed-1b.md):
+  tested across multilingual docs, canonical code, GNO `src/serve`, and public
+  OSS slices; no default-model change.
+
 ## Benchmark lanes
 
 ### Code

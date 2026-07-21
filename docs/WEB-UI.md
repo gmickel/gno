@@ -714,6 +714,13 @@ lsof -i :3000
 kill -9 <PID>
 ```
 
+### Update All reports an invalid PDF
+
+A damaged PDF is isolated as a non-fatal `CORRUPT` document. Other documents
+continue indexing and the workspace remains usable. GNO will retry it after the
+file is replaced or re-exported, not on every unchanged update. See
+[Troubleshooting](./TROUBLESHOOTING.md#invalid-pdf-structure-while-indexing).
+
 ### "No results" in search
 
 ```bash

@@ -75,6 +75,12 @@ const MAX_CONCURRENCY = 16;
 export const INGEST_VERSION = 6;
 const EMPTY_CONTENT_TYPE_RULES_FINGERPRINT = fingerprintContentTypeRules([]);
 const RELATION_EDGE_TYPE_PATTERN = /^[a-z][a-z0-9_]*$/;
+const NON_RETRYABLE_CONVERSION_ERROR_CODES = new Set([
+  "CORRUPT",
+  "PERMISSION",
+  "TOO_LARGE",
+  "UNSUPPORTED",
+]);
 
 type RelationMap = Record<string, string[]>;
 
@@ -218,6 +224,20 @@ function decideAction(
   }
 
   // Source unchanged, but check for repair cases:
+
+  // Preserve non-retryable conversion failures until the source or ingest
+  // version changes. Re-running an unchanged corrupt/protected file on every
+  // sync only repeats expensive work and noisy diagnostics.
+  if (
+    existing.lastErrorCode &&
+    NON_RETRYABLE_CONVERSION_ERROR_CODES.has(existing.lastErrorCode) &&
+    existing.ingestVersion === INGEST_VERSION
+  ) {
+    return {
+      kind: "skip",
+      reason: "unchanged non-retryable conversion failure",
+    };
+  }
 
   // 1. Previous conversion failed (mirrorHash is null)
   if (!existing.mirrorHash) {
@@ -738,6 +758,8 @@ export class SyncService {
           sourceCtime,
           lastErrorCode: convertResult.error.code,
           lastErrorMessage: convertResult.error.message,
+          ingestVersion: INGEST_VERSION,
+          contentTypeRulesFingerprint,
           // mirrorHash intentionally omitted (will be null)
         });
 

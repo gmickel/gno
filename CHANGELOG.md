@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Kept `gno serve` responsive around truncated PDFs by rejecting incomplete PDF
+  trailers before the converter emits a parser stack, classifying the file as
+  non-retryable `CORRUPT`, and skipping unchanged non-retryable conversion
+  failures on later syncs.
+
 ## [1.12.0] - 2026-06-16
 
 ### Added

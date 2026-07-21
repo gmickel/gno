@@ -128,6 +128,21 @@ Common causes:
 - Exclude patterns too aggressive
 - Empty directory
 
+### "Invalid PDF structure" while indexing
+
+The PDF is incomplete or damaged. GNO records it as a non-fatal `CORRUPT`
+document, keeps the rest of the collection and Web UI available, and does not
+retry the unchanged file on every update.
+
+Validate the source independently:
+
+```bash
+qpdf --check /path/to/file.pdf
+```
+
+Replace or re-export the PDF, then run `gno update` or **Update All** in the Web
+UI. A changed source hash makes GNO try the repaired file again.
+
 ### "I changed a collection embedding model and vector results look stale"
 
 Collection-level `models.embed` overrides do not rewrite old vectors immediately.
