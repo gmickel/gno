@@ -13,8 +13,11 @@ Use reported watcher paths instead of full collection scans. Handle add/change/d
 - [ ] Watch callback/result tests cover add/change/delete.
 
 ## Done summary
+
 Watcher batches now sync only changed paths, mark deletions inactive, and reproject changed sources plus known backlinks without walking collections.
+
 ## Evidence
+
 - Commits: 0a1db7b
 - Tests: test/ingestion/sync-incremental.test.ts, test/serve/watch-service.test.ts
 - PRs:

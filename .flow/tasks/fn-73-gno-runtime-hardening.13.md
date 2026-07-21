@@ -13,8 +13,11 @@ Stop running global typed-edge backfill and all-document projection inside every
 - [ ] Production-scale full update materially improves from the measured 853.6s baseline; stage timings identify remaining cost.
 
 ## Done summary
+
 Revalidated and implemented under fn-90.2-.4: one full-sync projection, incremental watcher sync, scoped backlink refresh, and cooperative yields.
+
 ## Evidence
+
 - Commits: 0a1db7b
 - Tests: production full update 46.1s vs 14m13s, Browse tree 32ms, docs 10ms
 - PRs:

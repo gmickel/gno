@@ -13,8 +13,11 @@ Replace the correlated per-collection embedding freshness scan in SqliteAdapter.
 - [ ] Regression/performance fixture covers at least 20 collections and tens of thousands of historical chunks.
 
 ## Done summary
+
 Revalidated and implemented under fn-90.1: set-based status aggregation, request coalescing, and duplicate dashboard fetch removal.
+
 ## Evidence
+
 - Commits: 0a1db7b
 - Tests: status fixture 56ms, production status 295-315ms, browser single status request
 - PRs:

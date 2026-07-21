@@ -12,8 +12,11 @@ Investigate and prevent the reproducible Bun 1.3.6 segmentation fault after gno 
 - [ ] Add lifecycle regression coverage that detects panic output and orphan processes.
 
 ## Done summary
+
 Revalidated and implemented under fn-91.1: the crash was a competing SIGINT teardown race, fixed with serialized lifecycle ownership and subprocess regression coverage.
+
 ## Evidence
+
 - Commits: 256cba8
 - Tests: Bun 1.3.6 and 1.3.14 lifecycle matrix, production Ctrl-C exit 0
 - PRs:

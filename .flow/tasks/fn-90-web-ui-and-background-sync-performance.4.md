@@ -12,8 +12,11 @@ Bound/yield typed-edge projection work so Bun.serve can answer unrelated request
 - [ ] Remaining costs and reconciliation boundary are documented.
 
 ## Done summary
+
 Projection yields cooperatively; production browser navigation and API timing confirm responsive reads during reconciliation and fast steady-state Browse.
+
 ## Evidence
+
 - Commits: 0a1db7b
 - Tests: projection yield regression, Collections status 293ms, Browse tree 32ms and docs 10ms, full update 46.1s
 - PRs:

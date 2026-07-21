@@ -13,8 +13,11 @@ Implement shared effective-index resolution and scoped read-only store ownership
 - [ ] Scoped stores close on success and failure.
 
 ## Done summary
+
 Indexed SDK/MCP tool/resource reads now open the database named by ?index=, reject ambiguous batches, and never create missing indexes.
+
 ## Evidence
+
 - Commits: 51e4550
 - Tests: test/indexed-uri-roundtrip.test.ts (4 pass), full bun test: 2034 pass
 - PRs:

@@ -12,8 +12,11 @@ Separate collection ingestion from typed-edge projection so syncAll performs one
 - [ ] Existing graph tests retain parity.
 
 ## Done summary
+
 syncAll defers typed-edge projection until every collection completes, then runs one exact global reconciliation.
+
 ## Evidence
+
 - Commits: 0a1db7b
 - Tests: sync-incremental projection-count regression, production full update: 46.1s vs 14m13s
 - PRs:
