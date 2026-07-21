@@ -129,6 +129,13 @@ matching `contentTypes[].graphHints` value as the projected edge type for plain
 links. Reads join active source and target documents so inactive renamed files
 do not surface stale edges.
 
+`syncAll` defers this projection until every collection has synced, then runs
+one exact global reconciliation. File-watcher batches use path-scoped ingestion
+and reproject changed sources plus known backlinks; periodic/full sync remains
+the exact fallback for previously unresolved frontmatter targets. Projection
+yields to the event loop in bounded intervals so HTTP requests remain
+responsive during larger graph rebuilds.
+
 `gno graph query`, REST `/api/graph/query`, and MCP `gno_graph_query` all wrap
 the same bounded traversal core. `gno query diagnose`, REST
 `/api/query/diagnose`, and MCP `gno_query_diagnose` wrap the same target-first

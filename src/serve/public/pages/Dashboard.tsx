@@ -396,7 +396,7 @@ export default function Dashboard({ navigate }: PageProps) {
             </div>
 
             <div className="flex flex-wrap items-center gap-3 md:justify-end">
-              <AIModelSelector showLabel={false} />
+              <AIModelSelector appStatus={status} showLabel={false} />
               <Button
                 disabled={syncing}
                 onClick={() => void handleSync()}

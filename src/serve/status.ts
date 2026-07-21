@@ -381,6 +381,29 @@ async function buildModelCheck(
   };
 }
 
+function buildVectorCheck(ctx: ServerContext): HealthCheck | null {
+  const vectorIndex = ctx.vectorIndex;
+  if (!vectorIndex || vectorIndex.searchAvailable) {
+    return null;
+  }
+
+  const reason = vectorIndex.loadError?.trim();
+  const guidance = vectorIndex.guidance?.trim();
+  return {
+    id: "vector-runtime",
+    title: "Vector search",
+    status: "warn",
+    summary: "Semantic search acceleration is unavailable",
+    detail: [
+      reason ? `sqlite-vec failed to load: ${reason}` : null,
+      guidance ?? "Run `gno doctor` for recovery guidance.",
+      "BM25 search remains available.",
+    ]
+      .filter((part): part is string => part !== null)
+      .join(" "),
+  };
+}
+
 async function buildDiskCheck(
   status: IndexStatus,
   deps: StatusBuildDeps
@@ -636,6 +659,7 @@ export async function buildAppStatus(
     buildCollectionCheck(status),
     buildIndexingCheck(status),
     modelCheck,
+    buildVectorCheck(ctx),
     diskCheck,
     backgroundCheck,
   ].filter((check): check is HealthCheck => check !== null);

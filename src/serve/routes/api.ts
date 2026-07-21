@@ -736,6 +736,31 @@ export function handleHealth(): Response {
   return jsonResponse({ ok: true });
 }
 
+const statusBuilds = new WeakMap<
+  ServerContext,
+  Promise<Awaited<ReturnType<typeof buildAppStatus>>>
+>();
+
+async function getCoalescedAppStatus(
+  ctx: ServerContext,
+  deps?: StatusBuildDeps
+): Promise<Awaited<ReturnType<typeof buildAppStatus>>> {
+  const existing = statusBuilds.get(ctx);
+  if (existing) {
+    return existing;
+  }
+
+  const build = buildAppStatus(ctx, deps ?? {});
+  statusBuilds.set(ctx, build);
+  try {
+    return await build;
+  } finally {
+    if (statusBuilds.get(ctx) === build) {
+      statusBuilds.delete(ctx);
+    }
+  }
+}
+
 /**
  * GET /api/status
  * Returns index status matching status.schema.json.
@@ -745,7 +770,7 @@ export async function handleStatus(
   deps?: StatusBuildDeps
 ): Promise<Response> {
   try {
-    const status = await buildAppStatus(ctx, deps);
+    const status = await getCoalescedAppStatus(ctx, deps);
     return jsonResponse(status);
   } catch (error) {
     return errorResponse(

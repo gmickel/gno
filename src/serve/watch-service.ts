@@ -209,9 +209,10 @@ export class CollectionWatchService {
         collection: collection.name,
         relPaths,
       });
-      const result = await defaultSyncService.syncCollection(
+      const result = await defaultSyncService.syncPaths(
         collection,
         this.#store,
+        relPaths,
         {
           ...this.#syncOptions,
           runUpdateCmd: false,

@@ -275,13 +275,21 @@ Returns index statistics plus first-run onboarding, health-center state, backgro
 
 `onboarding.stage` is one of `add-collection`, `models`, `indexing`, or `ready`.
 
-`health.checks` gives per-area status cards for folders, indexing, models, and disk. Actions map to dashboard buttons such as add folder, run sync, or download models.
+`health.checks` gives per-area status cards for folders, indexing, models,
+vector runtime, and disk. When sqlite-vec cannot load, the `vector-runtime`
+check preserves the loader error and recovery guidance while confirming that
+BM25 remains available. Actions map to dashboard buttons such as add folder,
+run sync, or download models.
 
 `background` is the reliability block:
 
 - `watcher` shows which collections are expected, actively watched, queued, syncing, or failed
 - `embedding` reports pending/running background embedding state
 - `events` reports current SSE clients and recommended reconnect retry
+
+Concurrent requests for the same live server context share one in-flight status
+build. Completed responses are not retained, so each later request still sees
+fresh index and background state.
 
 `bootstrap` is the install/runtime/model block:
 

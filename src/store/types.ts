@@ -1110,7 +1110,9 @@ export interface StorePort {
   /**
    * Rebuild derived semantic edges from currently indexed links.
    */
-  backfillDocEdges(): Promise<StoreResult<{ inserted: number }>>;
+  backfillDocEdges(
+    sourceDocumentIds?: number[]
+  ): Promise<StoreResult<{ inserted: number }>>;
 
   // ─────────────────────────────────────────────────────────────────────────
   // Graph

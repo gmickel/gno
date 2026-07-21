@@ -74,6 +74,9 @@ See [CLI reference](CLI.md#long-running-processes) for the full management
 contract (mutex flags, `--json` gating, exit codes, `--pid-file` / `--log-file`
 overrides, live-foreign handling).
 
+Foreground Ctrl+C and SIGTERM both wait for the HTTP server, background
+runtime, and SQLite handles to close before the process exits.
+
 ### 2. Open Your Browser
 
 Navigate to `http://localhost:3000`. The dashboard now handles both first-run setup and ongoing health:
@@ -383,6 +386,12 @@ The dashboard health model now includes background-service state:
 - event-stream retry support for long-running tabs after disconnects or server restarts
 
 This is meant to reduce the “why didn’t it refresh?” class of failures in long sessions.
+
+Watcher batches sync only the changed paths and refresh graph projection for
+those documents plus known backlinks. A full sync still performs one exact
+global graph reconciliation. Status aggregation is set-based, concurrent status
+requests share the same in-flight build, and the dashboard reuses that response
+for its model selector instead of issuing a duplicate request.
 
 ### Bootstrap & Storage
 

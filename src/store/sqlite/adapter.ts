@@ -3014,18 +3014,35 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
     }
   }
 
-  async backfillDocEdges(): Promise<StoreResult<{ inserted: number }>> {
+  async backfillDocEdges(
+    sourceDocumentIds?: number[]
+  ): Promise<StoreResult<{ inserted: number }>> {
     try {
       const db = this.ensureOpen();
+      const sourceIds = sourceDocumentIds
+        ? [...new Set(sourceDocumentIds)].filter((id) => id > 0)
+        : undefined;
+      if (sourceIds?.length === 0) {
+        return ok({ inserted: 0 });
+      }
+      const sourcePlaceholders = sourceIds
+        ? sourceIds.map(() => "?").join(", ")
+        : "";
+      const sourceFilter = sourceIds
+        ? `AND src.id IN (${sourcePlaceholders})`
+        : "";
       let inserted = 0;
 
       const transaction = db.transaction(() => {
-        db.run("DELETE FROM doc_edges WHERE source IN (?, ?)", [
-          "wikilink",
-          "markdown-link",
-        ]);
+        db.run(
+          `DELETE FROM doc_edges
+           WHERE source IN (?, ?)
+           ${sourceIds ? `AND src_doc_id IN (${sourcePlaceholders})` : ""}`,
+          ["wikilink", "markdown-link", ...(sourceIds ?? [])]
+        );
 
-        const insertWiki = db.run(`
+        const insertWiki = db.run(
+          `
           INSERT OR IGNORE INTO doc_edges (
             src_doc_id, dst_doc_id, edge_type, confidence, source
           )
@@ -3044,9 +3061,13 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
           WHERE src.active = 1
             AND tgt.active = 1
             AND dl.link_type = 'wiki'
-        `);
+            ${sourceFilter}
+        `,
+          sourceIds ?? []
+        );
 
-        const insertMarkdown = db.run(`
+        const insertMarkdown = db.run(
+          `
           INSERT OR IGNORE INTO doc_edges (
             src_doc_id, dst_doc_id, edge_type, confidence, source
           )
@@ -3063,7 +3084,10 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
             AND tgt.rel_path = dl.target_ref_norm
           WHERE src.active = 1
             AND dl.link_type = 'markdown'
-        `);
+            ${sourceFilter}
+        `,
+          sourceIds ?? []
+        );
 
         inserted = insertWiki.changes + insertMarkdown.changes;
       });
@@ -3804,36 +3828,56 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
       const collectionStats = db
         .query<CollectionStat, [string | null, string | null, string | null]>(
           `
+          WITH document_stats AS (
+            SELECT
+              collection,
+              COUNT(*) AS total,
+              SUM(CASE WHEN active = 1 THEN 1 ELSE 0 END) AS active,
+              SUM(CASE WHEN last_error_code IS NOT NULL THEN 1 ELSE 0 END) AS errored,
+              SUM(CASE WHEN mirror_hash IS NOT NULL THEN 1 ELSE 0 END) AS chunked
+            FROM documents
+            GROUP BY collection
+          ),
+          active_collection_mirrors AS (
+            SELECT DISTINCT collection, mirror_hash
+            FROM documents
+            WHERE active = 1 AND mirror_hash IS NOT NULL
+          ),
+          matching_vectors AS (
+            SELECT mirror_hash, seq, MAX(embedded_at) AS embedded_at
+            FROM content_vectors
+            WHERE (? IS NULL OR (
+              model = ? AND embed_fingerprint = ?
+            ))
+            GROUP BY mirror_hash, seq
+          ),
+          collection_chunks AS (
+            SELECT
+              acm.collection,
+              COUNT(*) AS chunk_count,
+              SUM(CASE
+                WHEN mv.embedded_at >= cc.created_at THEN 1
+                ELSE 0
+              END) AS embedded_count
+            FROM active_collection_mirrors acm
+            JOIN content_chunks cc ON cc.mirror_hash = acm.mirror_hash
+            LEFT JOIN matching_vectors mv
+              ON mv.mirror_hash = cc.mirror_hash AND mv.seq = cc.seq
+            GROUP BY acm.collection
+          )
           SELECT
             c.name,
             c.path,
-            COUNT(DISTINCT d.id) as total,
-            SUM(CASE WHEN d.active = 1 THEN 1 ELSE 0 END) as active,
-            SUM(CASE WHEN d.last_error_code IS NOT NULL THEN 1 ELSE 0 END) as errored,
-            SUM(CASE WHEN d.mirror_hash IS NOT NULL THEN 1 ELSE 0 END) as chunked,
-            (SELECT COUNT(*) FROM content_chunks cc
-             JOIN documents d2 ON d2.mirror_hash = cc.mirror_hash
-             WHERE d2.collection = c.name AND d2.active = 1) as chunk_count,
-            (SELECT COUNT(*) FROM content_chunks cc
-             WHERE EXISTS (
-               SELECT 1 FROM documents d3
-               WHERE d3.collection = c.name
-                 AND d3.active = 1
-                 AND d3.mirror_hash = cc.mirror_hash
-             )
-             AND EXISTS (
-               SELECT 1 FROM content_vectors cv
-               WHERE cv.mirror_hash = cc.mirror_hash
-                 AND cv.seq = cc.seq
-                 AND (? IS NULL OR (
-                   cv.model = ?
-                   AND cv.embed_fingerprint = ?
-                 ))
-                 AND cv.embedded_at >= cc.created_at
-             )) as embedded_count
+            COALESCE(ds.total, 0) AS total,
+            COALESCE(ds.active, 0) AS active,
+            COALESCE(ds.errored, 0) AS errored,
+            COALESCE(ds.chunked, 0) AS chunked,
+            COALESCE(ch.chunk_count, 0) AS chunk_count,
+            COALESCE(ch.embedded_count, 0) AS embedded_count
           FROM collections c
-          LEFT JOIN documents d ON d.collection = c.name
-          GROUP BY c.name, c.path
+          LEFT JOIN document_stats ds ON ds.collection = c.name
+          LEFT JOIN collection_chunks ch ON ch.collection = c.name
+          ORDER BY c.name
         `
         )
         .all(embedModel, embedModel, embedFingerprint);
@@ -3865,21 +3909,27 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
           [string | null, string | null, string | null]
         >(
           `
-          SELECT COUNT(*) as count FROM content_chunks c
-          WHERE EXISTS (
-            SELECT 1 FROM documents d
-            WHERE d.mirror_hash = c.mirror_hash AND d.active = 1
+          WITH active_mirrors AS (
+            SELECT DISTINCT mirror_hash
+            FROM documents
+            WHERE active = 1 AND mirror_hash IS NOT NULL
+          ),
+          matching_vectors AS (
+            SELECT mirror_hash, seq, MAX(embedded_at) AS embedded_at
+            FROM content_vectors
+            WHERE (? IS NULL OR (
+              model = ? AND embed_fingerprint = ?
+            ))
+            GROUP BY mirror_hash, seq
           )
-          AND NOT EXISTS (
-            SELECT 1 FROM content_vectors v
-            WHERE v.mirror_hash = c.mirror_hash
-              AND v.seq = c.seq
-              AND (? IS NULL OR (
-                v.model = ?
-                AND v.embed_fingerprint = ?
-              ))
-              AND v.embedded_at >= c.created_at
-          )
+          SELECT COUNT(*) AS count
+          FROM active_mirrors am
+          JOIN content_chunks c ON c.mirror_hash = am.mirror_hash
+          LEFT JOIN matching_vectors mv
+            ON mv.mirror_hash = c.mirror_hash
+            AND mv.seq = c.seq
+            AND mv.embedded_at >= c.created_at
+          WHERE mv.mirror_hash IS NULL
         `
         )
         .get(embedModel, embedModel, embedFingerprint);
