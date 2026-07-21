@@ -86,7 +86,9 @@ function byteKey(text: string): string {
 }
 
 function matchesPathPrefix(relPath: string, prefix: string): boolean {
-  return relPath === prefix || relPath.startsWith(`${prefix}/`);
+  return (
+    prefix === "" || relPath === prefix || relPath.startsWith(`${prefix}/`)
+  );
 }
 
 function normalizeContext(

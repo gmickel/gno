@@ -59,6 +59,23 @@ describe("resolveContextSnapshot", () => {
     );
   });
 
+  test("treats accepted collection-root prefixes as collection-wide", () => {
+    const identity = { collection: "notes", relPath: "projects/readme.md" };
+
+    expect(
+      resolveContextSnapshot(
+        [context("prefix", "gno://notes", "Root without slash")],
+        identity
+      )?.text
+    ).toBe("Root without slash");
+    expect(
+      resolveContextSnapshot(
+        [context("prefix", "gno://notes/", "Root with slash")],
+        identity
+      )?.text
+    ).toBe("Root with slash");
+  });
+
   test("collapses normalized record and joined-text duplicates", () => {
     const resolved = resolveContextSnapshot(
       [
