@@ -801,6 +801,12 @@ export interface StorePort {
   syncContexts(contexts: Context[]): Promise<StoreResult<void>>;
 
   /**
+   * Monotonic in-process generation for the persisted context snapshot.
+   * Changes after a successful context sync or when the store is reopened.
+   */
+  getContextGeneration(): number;
+
+  /**
    * Get all collections from DB.
    */
   getCollections(): Promise<StoreResult<CollectionRow[]>>;
