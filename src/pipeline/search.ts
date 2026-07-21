@@ -21,6 +21,7 @@ import { createChunkLookup } from "./chunk-lookup";
 import { matchesExcludedChunks, matchesExcludedText } from "./exclude";
 import { selectBestChunkForSteering } from "./intent";
 import { detectQueryLanguage } from "./query-language";
+import { attachSearchResultContexts } from "./result-context";
 import {
   resolveRecencyTimestamp,
   resolveTemporalRange,
@@ -329,8 +330,11 @@ export async function searchBm25(
     });
   }
 
+  const finalResults = filteredResults.slice(0, limit);
+  await attachSearchResultContexts(store, finalResults);
+
   return ok({
-    results: filteredResults.slice(0, limit),
+    results: finalResults,
     meta: {
       query,
       mode: "bm25",

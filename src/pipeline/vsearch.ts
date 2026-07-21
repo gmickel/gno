@@ -18,6 +18,7 @@ import { formatQueryForEmbedding } from "./contextual";
 import { matchesExcludedChunks, matchesExcludedText } from "./exclude";
 import { selectBestChunkForSteering } from "./intent";
 import { detectQueryLanguage } from "./query-language";
+import { attachSearchResultContexts } from "./result-context";
 import {
   resolveRecencyTimestamp,
   isWithinTemporalRange,
@@ -333,6 +334,7 @@ export async function searchVectorWithEmbedding(
   }
 
   const finalResults = results.slice(0, limit);
+  await attachSearchResultContexts(store, finalResults);
 
   return ok({
     results: finalResults,
