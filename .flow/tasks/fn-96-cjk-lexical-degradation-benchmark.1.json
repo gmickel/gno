@@ -1,0 +1,14 @@
+{
+  "assignee": null,
+  "claim_note": "",
+  "claimed_at": null,
+  "created_at": "2026-07-21T21:55:26.038728Z",
+  "depends_on": [],
+  "id": "fn-96-cjk-lexical-degradation-benchmark.1",
+  "priority": null,
+  "spec": "fn-96-cjk-lexical-degradation-benchmark",
+  "spec_path": ".flow/tasks/fn-96-cjk-lexical-degradation-benchmark.1.md",
+  "status": "todo",
+  "title": "Build licensed CJK corpora qrels and validation",
+  "updated_at": "2026-07-21T21:55:26.038872Z"
+}

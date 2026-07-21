@@ -1,0 +1,16 @@
+{
+  "assignee": null,
+  "claim_note": "",
+  "claimed_at": null,
+  "created_at": "2026-07-21T22:04:34.423970Z",
+  "depends_on": [
+    "fn-109-cjk-lexical-normalization.1"
+  ],
+  "id": "fn-109-cjk-lexical-normalization.2",
+  "priority": null,
+  "spec": "fn-109-cjk-lexical-normalization",
+  "spec_path": ".flow/tasks/fn-109-cjk-lexical-normalization.2.md",
+  "status": "todo",
+  "title": "Add versioned lexical analyzer schema and crash-safe backfill",
+  "updated_at": "2026-07-21T22:04:34.424139Z"
+}

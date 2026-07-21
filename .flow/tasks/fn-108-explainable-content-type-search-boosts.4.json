@@ -1,0 +1,16 @@
+{
+  "assignee": null,
+  "claim_note": "",
+  "claimed_at": null,
+  "created_at": "2026-07-21T22:04:33.749479Z",
+  "depends_on": [
+    "fn-108-explainable-content-type-search-boosts.3"
+  ],
+  "id": "fn-108-explainable-content-type-search-boosts.4",
+  "priority": null,
+  "spec": "fn-108-explainable-content-type-search-boosts",
+  "spec_path": ".flow/tasks/fn-108-explainable-content-type-search-boosts.4.md",
+  "status": "todo",
+  "title": "Run adversarial promotion evals and replace no-op documentation",
+  "updated_at": "2026-07-21T22:08:28.220072Z"
+}

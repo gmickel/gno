@@ -57,3 +57,40 @@ The schema already promises this knob. Shipping it with strict caps and explain 
 <!-- scope: technical -->
 
 A small post-normalization contribution is less expressive than retraining/reranking but works across retrieval modes and is easy to reason about. Strict caps protect relevance.
+
+## Implementation Plan
+
+1. `fn-108-explainable-content-type-search-boosts.1` — Normalize bound and fingerprint searchBoost configuration (**M**)
+2. `fn-108-explainable-content-type-search-boosts.2` — Apply one capped boost across retrieval and explain output (**M**); depends on `fn-108-explainable-content-type-search-boosts.1`
+3. `fn-108-explainable-content-type-search-boosts.3` — Complete cross-surface schemas invalidation and configuration UX (**M**); depends on `fn-108-explainable-content-type-search-boosts.2`
+4. `fn-108-explainable-content-type-search-boosts.4` — Run adversarial promotion evals and replace no-op documentation (**M**); depends on `fn-108-explainable-content-type-search-boosts.3`
+
+## Quick commands
+
+```bash
+bun test test/config/content-types* test/pipeline/content-type-boost*
+bun run eval:agentic
+.flow/bin/flowctl validate --spec fn-108-explainable-content-type-search-boosts --json
+```
+
+## References
+
+- `src/config/types.ts:262-277` — accepted no-op field.
+- `src/config/content-types.ts:51-140` — normalization/fingerprint.
+- `src/pipeline/search.ts:39-153` and `src/pipeline/hybrid.ts:659-760` — score seams.
+
+## Early proof point
+
+Task `fn-108-explainable-content-type-search-boosts.1` validates the core approach (bounded config normalization and fingerprinting turn the existing no-op field into an explicit neutral or capped signal).
+If it fails, re-evaluate the numeric contract and auxiliary-ranking composition cap before continuing with `fn-108-explainable-content-type-search-boosts.2`+.
+
+## Requirement coverage
+
+| Req | Description | Task(s) | Gap justification |
+|-----|-------------|---------|-------------------|
+| R1 | Valid configured canonical content types produce one bounded neutral/default or non-neutral boost consistently across BM25, vector, and hybrid paths. | fn-108-explainable-content-type-search-boosts.1, fn-108-explainable-content-type-search-boosts.2, fn-108-explainable-content-type-search-boosts.3 | — |
+| R2 | Explain/diagnose reports raw/base score, factor, capped contribution, and final score with deterministic ordering. | fn-108-explainable-content-type-search-boosts.2, fn-108-explainable-content-type-search-boosts.3, fn-108-explainable-content-type-search-boosts.4 | — |
+| R3 | Adversarial tests prove boosted irrelevant documents cannot overtake clearly relevant evidence beyond the defined cap and filters are never bypassed. | fn-108-explainable-content-type-search-boosts.2, fn-108-explainable-content-type-search-boosts.4 | — |
+| R4 | Search-boost rules participate in config fingerprint/invalidation and config warnings/errors are documented. | fn-108-explainable-content-type-search-boosts.1, fn-108-explainable-content-type-search-boosts.3, fn-108-explainable-content-type-search-boosts.4 | — |
+| R5 | Existing configs without `searchBoost` retain ranking/output compatibility. | fn-108-explainable-content-type-search-boosts.1, fn-108-explainable-content-type-search-boosts.2, fn-108-explainable-content-type-search-boosts.3 | — |
+| R6 | `fn-97` relevant tasks show no accuracy/evidence-coverage regression; any promotion claim includes before/after receipts. | fn-108-explainable-content-type-search-boosts.4 | — |

@@ -1,0 +1,17 @@
+{
+  "assignee": null,
+  "claim_note": "",
+  "claimed_at": null,
+  "created_at": "2026-07-21T22:04:37.558823Z",
+  "depends_on": [
+    "fn-111-collection-egress-policies.1",
+    "fn-111-collection-egress-policies.3"
+  ],
+  "id": "fn-111-collection-egress-policies.4",
+  "priority": null,
+  "spec": "fn-111-collection-egress-policies",
+  "spec_path": ".flow/tasks/fn-111-collection-egress-policies.4.md",
+  "status": "todo",
+  "title": "Propagate restrictive policy through mixed and derived data with audit",
+  "updated_at": "2026-07-21T22:07:15.194100Z"
+}

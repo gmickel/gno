@@ -1,0 +1,16 @@
+{
+  "assignee": null,
+  "claim_note": "",
+  "claimed_at": null,
+  "created_at": "2026-07-21T21:58:23.097345Z",
+  "depends_on": [
+    "fn-102-knowledge-delta-and-capsule.1"
+  ],
+  "id": "fn-102-knowledge-delta-and-capsule.2",
+  "priority": null,
+  "spec": "fn-102-knowledge-delta-and-capsule",
+  "spec_path": ".flow/tasks/fn-102-knowledge-delta-and-capsule.2.md",
+  "status": "todo",
+  "title": "Compute source heading link and typed-edge deltas during sync",
+  "updated_at": "2026-07-21T22:08:26.203514Z"
+}

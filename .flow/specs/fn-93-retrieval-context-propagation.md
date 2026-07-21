@@ -57,3 +57,39 @@ Persisted guidance that never reaches agents violates the user contract and weak
 <!-- scope: technical -->
 
 Resolve once in the shared pipeline instead of patching individual surfaces. Concatenated text keeps the public shape compatible; deterministic scope ordering makes behavior explainable and testable.
+
+## Implementation Plan
+
+1. `fn-93-retrieval-context-propagation.1` — Build the canonical scoped-context resolver (**M**)
+2. `fn-93-retrieval-context-propagation.2` — Propagate context through every retrieval pipeline (**M**); depends on `fn-93-retrieval-context-propagation.1`
+3. `fn-93-retrieval-context-propagation.3` — Complete cross-surface contracts and context guidance (**M**); depends on `fn-93-retrieval-context-propagation.2`
+
+## Quick commands
+
+```bash
+bun test test/pipeline test/store/adapter.test.ts
+bun run lint:check
+.flow/bin/flowctl validate --spec fn-93-retrieval-context-propagation --json
+```
+
+## References
+
+- `src/config/types.ts:136-165` — configured context scope contract.
+- `src/store/sqlite/adapter.ts:501-558` — current persistence/read seam.
+- `src/pipeline/search.ts:115-153` and `src/pipeline/hybrid.ts:700-840` — result construction paths.
+
+## Early proof point
+
+Task `fn-93-retrieval-context-propagation.1` validates the core approach (one canonical resolver produces stable scoped guidance with one context-table read).
+If it fails, re-evaluate the context identity and caching boundary before continuing with `fn-93-retrieval-context-propagation.2`+.
+
+## Requirement coverage
+
+| Req | Description | Task(s) | Gap justification |
+|-----|-------------|---------|-------------------|
+| R1 | A shared resolver returns the correct global, collection, and nested-prefix context with deterministic precedence and segment-safe matching. | fn-93-retrieval-context-propagation.1 | — |
+| R2 | BM25, vector, and hybrid results produce identical `context` values for the same document and config. | fn-93-retrieval-context-propagation.2 | — |
+| R3 | Fusion, rerank, full-content, Ask, indexed URI, REST, MCP, and SDK paths preserve the resolved context. | fn-93-retrieval-context-propagation.2, fn-93-retrieval-context-propagation.3 | — |
+| R4 | A request with N results performs at most one context-table read and no N+1 context queries. | fn-93-retrieval-context-propagation.1, fn-93-retrieval-context-propagation.2 | — |
+| R5 | Structured schemas, contract tests, CLI/MCP/API docs, and agent skill guidance match the shipped behavior. | fn-93-retrieval-context-propagation.3 | — |
+| R6 | Existing retrieval without configured contexts is byte/shape compatible except for already-optional fields. | fn-93-retrieval-context-propagation.1, fn-93-retrieval-context-propagation.2, fn-93-retrieval-context-propagation.3 | — |

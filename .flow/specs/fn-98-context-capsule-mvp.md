@@ -72,3 +72,45 @@ GNO has capable primitives but asks every agent to reinvent evidence gathering a
 <!-- scope: technical -->
 
 An extractive deterministic compiler is less fluent than synthesis but much easier to verify, cache, compare, and secure. Facet-aware selection improves diversity without introducing opaque autonomous loops.
+
+## Implementation Plan
+
+1. `fn-98-context-capsule-mvp.1` — Freeze the Context Capsule V1 contract and canonical identity (**M**)
+2. `fn-98-context-capsule-mvp.2` — Build deterministic evidence planning and budget selection (**M**); depends on `fn-98-context-capsule-mvp.1`
+3. `fn-98-context-capsule-mvp.3` — Compile exact evidence spans with trust boundaries (**M**); depends on `fn-98-context-capsule-mvp.2`
+4. `fn-98-context-capsule-mvp.4` — Implement non-mutating Capsule verification (**M**); depends on `fn-98-context-capsule-mvp.1`, `fn-98-context-capsule-mvp.3`
+5. `fn-98-context-capsule-mvp.5` — Expose Capsule build and verify through CLI and SDK (**M**); depends on `fn-98-context-capsule-mvp.3`, `fn-98-context-capsule-mvp.4`
+6. `fn-98-context-capsule-mvp.6` — Complete REST MCP parity promotion proof and documentation (**M**); depends on `fn-98-context-capsule-mvp.5`
+
+## Quick commands
+
+```bash
+bun test test/context test/spec/schemas
+bun run eval:agentic
+bun run lint:check
+.flow/bin/flowctl validate --spec fn-98-context-capsule-mvp --json
+```
+
+## References
+
+- `src/pipeline/hybrid.ts:804-840` — exact result/chunk assembly.
+- `src/core/sections.ts` — source section addressing.
+- `src/pipeline/answer.ts:435-515` — current full-document answer path.
+- [OWASP prompt injection guidance](https://genai.owasp.org/llmrisk/llm01-prompt-injection/).
+
+## Early proof point
+
+Task `fn-98-context-capsule-mvp.1` validates the core approach (a canonical schema and serializer produce byte-identical extractive evidence payloads from unchanged inputs).
+If it fails, re-evaluate the Capsule lifecycle, fingerprint boundary, and canonicalization rules before continuing with `fn-98-context-capsule-mvp.2`+.
+
+## Requirement coverage
+
+| Req | Description | Task(s) | Gap justification |
+|-----|-------------|---------|-------------------|
+| R1 | One shared compiler emits schema-valid V1 Capsules across CLI, REST, MCP, and SDK with cross-surface parity fixtures. | fn-98-context-capsule-mvp.1, fn-98-context-capsule-mvp.5, fn-98-context-capsule-mvp.6 | — |
+| R2 | Every evidence item carries an extractive passage, exact line range, URI/docid, source/mirror hashes, dates when known, and reproducibility fingerprints. | fn-98-context-capsule-mvp.1, fn-98-context-capsule-mvp.2, fn-98-context-capsule-mvp.3 | — |
+| R3 | Selection enforces one global budget, collapses overlap, rewards uncovered facet coverage, and reports omitted candidates/gaps explicitly. | fn-98-context-capsule-mvp.2, fn-98-context-capsule-mvp.5 | — |
+| R4 | Verification classifies unchanged, stale, missing, and reranked evidence without mutating or silently rebuilding the Capsule. | fn-98-context-capsule-mvp.4, fn-98-context-capsule-mvp.5 | — |
+| R5 | Prompt-injection fixtures prove retrieved instructions remain data and cannot alter compiler/tool policy. | fn-98-context-capsule-mvp.2, fn-98-context-capsule-mvp.3, fn-98-context-capsule-mvp.6 | — |
+| R6 | The `fn-97` comparison meets all encoded promotion gates: no task-accuracy loss, 25% fewer calls, 35% less context, 95% claim-span linkage, deterministic canonical output. | fn-98-context-capsule-mvp.1, fn-98-context-capsule-mvp.2, fn-98-context-capsule-mvp.6 | — |
+| R7 | Specs, schemas, docs, skill assets, examples, and hosted gno.sh surfaces ship together with a reproducible before/after demo. | fn-98-context-capsule-mvp.6 | — |

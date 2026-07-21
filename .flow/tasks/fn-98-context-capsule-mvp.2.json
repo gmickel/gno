@@ -1,0 +1,16 @@
+{
+  "assignee": null,
+  "claim_note": "",
+  "claimed_at": null,
+  "created_at": "2026-07-21T21:58:17.872729Z",
+  "depends_on": [
+    "fn-98-context-capsule-mvp.1"
+  ],
+  "id": "fn-98-context-capsule-mvp.2",
+  "priority": null,
+  "spec": "fn-98-context-capsule-mvp",
+  "spec_path": ".flow/tasks/fn-98-context-capsule-mvp.2.md",
+  "status": "todo",
+  "title": "Build deterministic evidence planning and budget selection",
+  "updated_at": "2026-07-21T22:08:30.470950Z"
+}

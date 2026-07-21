@@ -1,0 +1,16 @@
+{
+  "assignee": null,
+  "claim_note": "",
+  "claimed_at": null,
+  "created_at": "2026-07-21T22:00:53.445421Z",
+  "depends_on": [
+    "fn-105-verified-folder-setup.3"
+  ],
+  "id": "fn-105-verified-folder-setup.4",
+  "priority": null,
+  "spec": "fn-105-verified-folder-setup",
+  "spec_path": ".flow/tasks/fn-105-verified-folder-setup.4.md",
+  "status": "todo",
+  "title": "Prove idempotency package behavior and activation documentation",
+  "updated_at": "2026-07-21T22:08:27.546497Z"
+}

@@ -1,0 +1,16 @@
+{
+  "assignee": null,
+  "claim_note": "",
+  "claimed_at": null,
+  "created_at": "2026-07-21T21:58:20.055697Z",
+  "depends_on": [
+    "fn-99-resident-local-context-gateway.4"
+  ],
+  "id": "fn-99-resident-local-context-gateway.5",
+  "priority": null,
+  "spec": "fn-99-resident-local-context-gateway",
+  "spec_path": ".flow/tasks/fn-99-resident-local-context-gateway.5.md",
+  "status": "todo",
+  "title": "Prove packaged cross-platform gateway behavior and document it",
+  "updated_at": "2026-07-21T22:08:31.146195Z"
+}

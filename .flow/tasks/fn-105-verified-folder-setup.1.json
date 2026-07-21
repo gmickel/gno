@@ -1,0 +1,14 @@
+{
+  "assignee": null,
+  "claim_note": "",
+  "claimed_at": null,
+  "created_at": "2026-07-21T22:00:52.799231Z",
+  "depends_on": [],
+  "id": "fn-105-verified-folder-setup.1",
+  "priority": null,
+  "spec": "fn-105-verified-folder-setup",
+  "spec_path": ".flow/tasks/fn-105-verified-folder-setup.1.md",
+  "status": "todo",
+  "title": "Build the resumable setup orchestrator and receipt",
+  "updated_at": "2026-07-21T22:07:11.693940Z"
+}

@@ -1,0 +1,16 @@
+{
+  "assignee": null,
+  "claim_note": "",
+  "claimed_at": null,
+  "created_at": "2026-07-21T21:55:26.253378Z",
+  "depends_on": [
+    "fn-96-cjk-lexical-degradation-benchmark.1"
+  ],
+  "id": "fn-96-cjk-lexical-degradation-benchmark.2",
+  "priority": null,
+  "spec": "fn-96-cjk-lexical-degradation-benchmark",
+  "spec_path": ".flow/tasks/fn-96-cjk-lexical-degradation-benchmark.2.md",
+  "status": "todo",
+  "title": "Implement deterministic CJK benchmark lanes",
+  "updated_at": "2026-07-21T21:55:26.253524Z"
+}

@@ -1,0 +1,17 @@
+{
+  "assignee": null,
+  "claim_note": "",
+  "claimed_at": null,
+  "created_at": "2026-07-21T21:58:18.310795Z",
+  "depends_on": [
+    "fn-98-context-capsule-mvp.1",
+    "fn-98-context-capsule-mvp.3"
+  ],
+  "id": "fn-98-context-capsule-mvp.4",
+  "priority": null,
+  "spec": "fn-98-context-capsule-mvp",
+  "spec_path": ".flow/tasks/fn-98-context-capsule-mvp.4.md",
+  "status": "todo",
+  "title": "Implement non-mutating Capsule verification",
+  "updated_at": "2026-07-21T21:58:18.310981Z"
+}

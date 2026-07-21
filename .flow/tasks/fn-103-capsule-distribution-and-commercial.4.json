@@ -1,0 +1,17 @@
+{
+  "assignee": null,
+  "claim_note": "",
+  "claimed_at": null,
+  "created_at": "2026-07-21T22:00:51.243888Z",
+  "depends_on": [
+    "fn-103-capsule-distribution-and-commercial.2",
+    "fn-103-capsule-distribution-and-commercial.3"
+  ],
+  "id": "fn-103-capsule-distribution-and-commercial.4",
+  "priority": null,
+  "spec": "fn-103-capsule-distribution-and-commercial",
+  "spec_path": ".flow/tasks/fn-103-capsule-distribution-and-commercial.4.md",
+  "status": "todo",
+  "title": "Run privacy-safe design-partner validation and truthful launch",
+  "updated_at": "2026-07-21T22:07:11.260449Z"
+}

@@ -66,3 +66,45 @@ Local-first trust fails if new gateways, models, and publishing paths can move c
 <!-- scope: technical -->
 
 Fail-closed defaults create deliberate friction for network features but prevent surprising disclosure. One centralized evaluator is easier to audit than scattered booleans, while stable reason codes keep denials actionable across every surface.
+
+## Implementation Plan
+
+1. `fn-111-collection-egress-policies.1` — Define egress policy schema evaluator and fail-closed migration (**M**)
+2. `fn-111-collection-egress-policies.2` — Build conservative destination and network-zone classification (**M**); depends on `fn-111-collection-egress-policies.1`
+3. `fn-111-collection-egress-policies.3` — Enforce policy at every current network-capable boundary (**M**); depends on `fn-111-collection-egress-policies.1`, `fn-111-collection-egress-policies.2`
+4. `fn-111-collection-egress-policies.4` — Propagate restrictive policy through mixed and derived data with audit (**M**); depends on `fn-111-collection-egress-policies.1`, `fn-111-collection-egress-policies.3`
+5. `fn-111-collection-egress-policies.5` — Expose policy configuration checks and denials across surfaces (**M**); depends on `fn-111-collection-egress-policies.4`
+6. `fn-111-collection-egress-policies.6` — Prove migration adversarial enforcement and public security docs (**M**); depends on `fn-111-collection-egress-policies.5`
+
+## Quick commands
+
+```bash
+bun test test/egress test/publish test/mcp
+bun run test:package
+.flow/bin/flowctl validate --spec fn-111-collection-egress-policies --json
+```
+
+## References
+
+- `src/config/types.ts:71-114` and `src/store/types.ts:67-130` — collection contracts.
+- `src/publish/export-service.ts:347-390` — publish handoff.
+- `src/serve/security.ts` and fn-99 HTTP gateway security.
+- [MCP transport security](https://modelcontextprotocol.io/specification/2025-11-25/basic/transports).
+
+## Early proof point
+
+Task `fn-111-collection-egress-policies.1` validates the core approach (one fail-closed evaluator returns stable allow/deny reasons for local, LAN, and remote actions before any transfer).
+If it fails, re-evaluate policy ownership, destination classification, and derived-data inheritance before continuing with `fn-111-collection-egress-policies.2`+.
+
+## Requirement coverage
+
+| Req | Description | Task(s) | Gap justification |
+|-----|-------------|---------|-------------------|
+| R1 | Every collection has a deterministic effective `local_only\|lan\|remote` policy and new/existing migration defaults fail closed. | fn-111-collection-egress-policies.1, fn-111-collection-egress-policies.5, fn-111-collection-egress-policies.6 | — |
+| R2 | A single shared evaluator gates non-loopback serving, public/private publishing, remote inference, network export, and any future remote agent path before content transfer. | fn-111-collection-egress-policies.1, fn-111-collection-egress-policies.2, fn-111-collection-egress-policies.3, fn-111-collection-egress-policies.6 | — |
+| R3 | Mixed-collection and derived-artifact operations preserve the most restrictive source policy with explicit partial/deny semantics. | fn-111-collection-egress-policies.4, fn-111-collection-egress-policies.6 | — |
+| R4 | LAN/public/loopback/VPN/proxy/rebinding/redirect classification and auth-policy intersection pass adversarial integration tests. | fn-111-collection-egress-policies.2, fn-111-collection-egress-policies.3, fn-111-collection-egress-policies.6 | — |
+| R5 | CLI, REST, MCP, SDK, Web/Desktop config, schemas, docs, and status/explain surfaces share stable allow/deny reason codes. | fn-111-collection-egress-policies.5, fn-111-collection-egress-policies.6 | — |
+| R6 | Local bounded audit receipts support inspect/purge and never contain content, credentials, or sensitive absolute paths. | fn-111-collection-egress-policies.4, fn-111-collection-egress-policies.5, fn-111-collection-egress-policies.6 | — |
+| R7 | Remote/private features remain disabled until their own authentication controls and this policy gate both pass; encrypted spaces are never server-decrypted. | fn-111-collection-egress-policies.1, fn-111-collection-egress-policies.2, fn-111-collection-egress-policies.3, fn-111-collection-egress-policies.4, fn-111-collection-egress-policies.6 | — |
+| R8 | Existing local retrieval/indexing behavior remains usable after migration; blocked network actions provide explicit remediation. | fn-111-collection-egress-policies.1, fn-111-collection-egress-policies.5, fn-111-collection-egress-policies.6 | — |

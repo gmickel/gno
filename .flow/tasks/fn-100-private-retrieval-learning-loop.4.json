@@ -1,0 +1,17 @@
+{
+  "assignee": null,
+  "claim_note": "",
+  "claimed_at": null,
+  "created_at": "2026-07-21T21:58:21.147146Z",
+  "depends_on": [
+    "fn-100-private-retrieval-learning-loop.2",
+    "fn-100-private-retrieval-learning-loop.3"
+  ],
+  "id": "fn-100-private-retrieval-learning-loop.4",
+  "priority": null,
+  "spec": "fn-100-private-retrieval-learning-loop",
+  "spec_path": ".flow/tasks/fn-100-private-retrieval-learning-loop.4.md",
+  "status": "todo",
+  "title": "Export qrels and replay candidate retrieval pipelines",
+  "updated_at": "2026-07-21T22:07:09.495610Z"
+}

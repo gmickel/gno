@@ -59,3 +59,41 @@ Adoption and trust depend on agent outcomes, not Recall@K alone. This benchmark 
 <!-- scope: technical -->
 
 Deterministic span validation is narrower than open-ended judging but makes regressions actionable. Keeping generation-backed runs opt-in avoids turning the standard gate into a slow, quota-sensitive suite.
+
+## Implementation Plan
+
+1. `fn-97-agentic-retrieval-outcome-benchmark.1` — Define agent tasks trajectory receipts and deterministic scorers (**M**)
+2. `fn-97-agentic-retrieval-outcome-benchmark.2` — Instrument the current GNO agent workflow adapter (**M**); depends on `fn-97-agentic-retrieval-outcome-benchmark.1`
+3. `fn-97-agentic-retrieval-outcome-benchmark.3` — Add comparator and Capsule-prototype adapters (**M**); depends on `fn-97-agentic-retrieval-outcome-benchmark.1`
+4. `fn-97-agentic-retrieval-outcome-benchmark.4` — Publish baselines and enforce Capsule promotion gates (**M**); depends on `fn-97-agentic-retrieval-outcome-benchmark.2`, `fn-97-agentic-retrieval-outcome-benchmark.3`
+
+## Quick commands
+
+```bash
+bun test test/evals/agentic*
+bun run eval:agentic -- --write
+.flow/bin/flowctl validate --spec fn-97-agentic-retrieval-outcome-benchmark --json
+```
+
+## References
+
+- [SGR-Bench](https://arxiv.org/abs/2605.22219) — agentic search behavior.
+- [AgenticRAGTracer](https://arxiv.org/abs/2602.19127) — trajectory diagnostics.
+- [OpenAI evaluation guidance](https://openai.com/index/trustworthy-third-party-evaluations-foundations/).
+- `evals/helpers/setup-db.ts` — isolated fixture DB pattern.
+
+## Early proof point
+
+Task `fn-97-agentic-retrieval-outcome-benchmark.1` validates the core approach (a frozen task/receipt/scorer contract can distinguish sufficient evidence and correct stopping without an LLM judge).
+If it fails, re-evaluate the task taxonomy, evidence qrels, and trajectory normalization contract before continuing with `fn-97-agentic-retrieval-outcome-benchmark.2`+.
+
+## Requirement coverage
+
+| Req | Description | Task(s) | Gap justification |
+|-----|-------------|---------|-------------------|
+| R1 | At least 20 deterministic tasks cover every agreed retrieval/agent category, including abstention and multilingual cases. | fn-97-agentic-retrieval-outcome-benchmark.1 | — |
+| R2 | The runner executes identical task briefs against current GNO and at least one non-GNO/lexical comparator through normalized adapters. | fn-97-agentic-retrieval-outcome-benchmark.2, fn-97-agentic-retrieval-outcome-benchmark.3 | — |
+| R3 | Receipts record exact evidence spans/hashes, calls, bytes/tokens, timing, claims/citations, stop reason, and reproducibility fingerprints. | fn-97-agentic-retrieval-outcome-benchmark.1, fn-97-agentic-retrieval-outcome-benchmark.2, fn-97-agentic-retrieval-outcome-benchmark.3, fn-97-agentic-retrieval-outcome-benchmark.4 | — |
+| R4 | Deterministic scoring distinguishes supported, unsupported, missing, and forbidden evidence without relying on an LLM judge. | fn-97-agentic-retrieval-outcome-benchmark.1, fn-97-agentic-retrieval-outcome-benchmark.4 | — |
+| R5 | Baseline artifacts are committed with documented environment and known limitations; fixture/schema tests run in `bun test`. | fn-97-agentic-retrieval-outcome-benchmark.1, fn-97-agentic-retrieval-outcome-benchmark.2, fn-97-agentic-retrieval-outcome-benchmark.4 | — |
+| R6 | The Capsule promotion gate is encoded: no completed-task accuracy loss, at least 25% fewer retrieval calls, at least 35% less context consumed, at least 95% substantive-claim evidence linkage, and deterministic unchanged-input payloads. | fn-97-agentic-retrieval-outcome-benchmark.3, fn-97-agentic-retrieval-outcome-benchmark.4 | — |

@@ -1,0 +1,16 @@
+{
+  "assignee": null,
+  "claim_note": "",
+  "claimed_at": null,
+  "created_at": "2026-07-21T22:04:33.303723Z",
+  "depends_on": [
+    "fn-108-explainable-content-type-search-boosts.1"
+  ],
+  "id": "fn-108-explainable-content-type-search-boosts.2",
+  "priority": null,
+  "spec": "fn-108-explainable-content-type-search-boosts",
+  "spec_path": ".flow/tasks/fn-108-explainable-content-type-search-boosts.2.md",
+  "status": "todo",
+  "title": "Apply one capped boost across retrieval and explain output",
+  "updated_at": "2026-07-21T22:07:13.017894Z"
+}

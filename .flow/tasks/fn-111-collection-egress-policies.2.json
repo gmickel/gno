@@ -1,0 +1,16 @@
+{
+  "assignee": null,
+  "claim_note": "",
+  "claimed_at": null,
+  "created_at": "2026-07-21T22:04:37.113604Z",
+  "depends_on": [
+    "fn-111-collection-egress-policies.1"
+  ],
+  "id": "fn-111-collection-egress-policies.2",
+  "priority": null,
+  "spec": "fn-111-collection-egress-policies",
+  "spec_path": ".flow/tasks/fn-111-collection-egress-policies.2.md",
+  "status": "todo",
+  "title": "Build conservative destination and network-zone classification",
+  "updated_at": "2026-07-21T22:08:28.889093Z"
+}

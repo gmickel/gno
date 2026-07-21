@@ -1,0 +1,16 @@
+{
+  "assignee": null,
+  "claim_note": "",
+  "claimed_at": null,
+  "created_at": "2026-07-21T22:00:50.795888Z",
+  "depends_on": [
+    "fn-103-capsule-distribution-and-commercial.1"
+  ],
+  "id": "fn-103-capsule-distribution-and-commercial.2",
+  "priority": null,
+  "spec": "fn-103-capsule-distribution-and-commercial",
+  "spec_path": ".flow/tasks/fn-103-capsule-distribution-and-commercial.2.md",
+  "status": "todo",
+  "title": "Serve llms manifests Markdown and evidence safely on gno.sh",
+  "updated_at": "2026-07-21T22:07:10.823167Z"
+}

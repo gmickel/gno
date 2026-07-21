@@ -1,0 +1,16 @@
+{
+  "assignee": null,
+  "claim_note": "",
+  "claimed_at": null,
+  "created_at": "2026-07-21T21:58:20.710006Z",
+  "depends_on": [
+    "fn-100-private-retrieval-learning-loop.1"
+  ],
+  "id": "fn-100-private-retrieval-learning-loop.2",
+  "priority": null,
+  "spec": "fn-100-private-retrieval-learning-loop",
+  "spec_path": ".flow/tasks/fn-100-private-retrieval-learning-loop.2.md",
+  "status": "todo",
+  "title": "Propagate trace identity through retrieval evidence and outcomes",
+  "updated_at": "2026-07-21T22:07:09.277337Z"
+}

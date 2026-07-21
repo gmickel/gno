@@ -60,3 +60,42 @@ GNO's adoption gap is more plausibly proof/activation/positioning than missing c
 <!-- scope: technical -->
 
 Public projection is safe to ship before remote private access. Deferring token-authenticated secret spaces prevents distribution work from outrunning collection-level egress and security controls.
+
+## Implementation Plan
+
+1. `fn-103-capsule-distribution-and-commercial.1` — Extend the public publish artifact with agent-readable evidence (**M**)
+2. `fn-103-capsule-distribution-and-commercial.2` — Serve llms manifests Markdown and evidence safely on gno.sh (**M**); depends on `fn-103-capsule-distribution-and-commercial.1`
+3. `fn-103-capsule-distribution-and-commercial.3` — Publish the reproducible three-way agent outcome demo (**M**); depends on `fn-103-capsule-distribution-and-commercial.1`, `fn-103-capsule-distribution-and-commercial.2`
+4. `fn-103-capsule-distribution-and-commercial.4` — Run privacy-safe design-partner validation and truthful launch (**M**); depends on `fn-103-capsule-distribution-and-commercial.2`, `fn-103-capsule-distribution-and-commercial.3`
+
+## Quick commands
+
+```bash
+bun test test/publish
+bun run docs:verify
+cd /Users/gordon/work/gno.sh && bun test
+.flow/bin/flowctl validate --spec fn-103-capsule-distribution-and-commercial --json
+```
+
+## References
+
+- `src/publish/export-service.ts:134-390` — local reader-safe export.
+- `src/publish/artifact.ts:11-90` — artifact visibility/schema.
+- `/Users/gordon/work/gno.sh/src/lib/publish-read-service.ts` — hosted reader projection.
+
+## Early proof point
+
+Task `fn-103-capsule-distribution-and-commercial.1` validates the core approach (a public export can expose deterministic agent-readable evidence without including any unpublished/local source).
+If it fails, re-evaluate the reader-safe projection boundary and manifest lineage before continuing with `fn-103-capsule-distribution-and-commercial.2`+.
+
+## Requirement coverage
+
+| Req | Description | Task(s) | Gap justification |
+|-----|-------------|---------|-------------------|
+| R1 | A public gno.sh space is agent-readable through `llms.txt`, manifest JSON, Markdown, and exact evidence links derived solely from its published projection. | fn-103-capsule-distribution-and-commercial.1, fn-103-capsule-distribution-and-commercial.2 | — |
+| R2 | Visibility regression tests prove private/draft/local-only material cannot appear in public artifacts or caches. | fn-103-capsule-distribution-and-commercial.1, fn-103-capsule-distribution-and-commercial.2 | — |
+| R3 | A reproducible three-way outcome demo publishes exact evidence, calls, context/tokens, latency, methodology, and raw receipts. | fn-103-capsule-distribution-and-commercial.3 | — |
+| R4 | Five design-partner trials can be run with concierge onboarding and content-free funnel/retention measurement. | fn-103-capsule-distribution-and-commercial.4 | — |
+| R5 | Public/pricing copy removes or marks unimplemented promises and accurately separates free local GNO from paid controlled distribution/collaboration. | fn-103-capsule-distribution-and-commercial.3, fn-103-capsule-distribution-and-commercial.4 | — |
+| R6 | Encrypted spaces are never server-decrypted; token-authenticated secret/invite agent access remains blocked pending `fn-111` and a dedicated auth gate. | fn-103-capsule-distribution-and-commercial.1, fn-103-capsule-distribution-and-commercial.2, fn-103-capsule-distribution-and-commercial.4 | — |
+| R7 | gno.sh deployment, cache/security checks, analytics privacy, and rollback are documented and verified. | fn-103-capsule-distribution-and-commercial.2, fn-103-capsule-distribution-and-commercial.4 | — |

@@ -56,3 +56,39 @@ GNO detects CJK languages but lacks evidence for its lexical fallback. Measureme
 <!-- scope: technical -->
 
 Small deterministic fixtures enable rapid regression work; per-language reporting avoids misleading aggregate scores. Production changes are deliberately deferred to `fn-109` and gated on measured lift.
+
+## Implementation Plan
+
+1. `fn-96-cjk-lexical-degradation-benchmark.1` — Build licensed CJK corpora qrels and validation (**M**)
+2. `fn-96-cjk-lexical-degradation-benchmark.2` — Implement deterministic CJK benchmark lanes (**M**); depends on `fn-96-cjk-lexical-degradation-benchmark.1`
+3. `fn-96-cjk-lexical-degradation-benchmark.3` — Freeze promotion gates baselines and public caveats (**M**); depends on `fn-96-cjk-lexical-degradation-benchmark.2`
+
+## Quick commands
+
+```bash
+bun test test/bench/cjk*
+bun run bench:cjk-lexical -- --write
+.flow/bin/flowctl validate --spec fn-96-cjk-lexical-degradation-benchmark --json
+```
+
+## References
+
+- [Unicode UAX #29](https://unicode.org/reports/tr29/) — word-boundary tailoring.
+- [SQLite FTS5](https://www.sqlite.org/fts5.html) — tokenizer/trigram constraints.
+- `src/bench/types.ts:17-94` and `src/bench/metrics.ts:102-138` — current benchmark contracts.
+
+## Early proof point
+
+Task `fn-96-cjk-lexical-degradation-benchmark.1` validates the core approach (licensed CJK fixtures and qrels expose deterministic lexical failure categories before any production analyzer changes).
+If it fails, re-evaluate fixture composition, qrels, and leakage controls before continuing with `fn-96-cjk-lexical-degradation-benchmark.2`+.
+
+## Requirement coverage
+
+| Req | Description | Task(s) | Gap justification |
+|-----|-------------|---------|-------------------|
+| R1 | Committed fixtures contain meaningful Chinese, Japanese, and Korean retrieval cases with explicit qrels and provenance. | fn-96-cjk-lexical-degradation-benchmark.1 | — |
+| R2 | BM25-only and production hybrid baselines emit deterministic per-language Recall, MRR, nDCG, zero-result, size, and latency metrics. | fn-96-cjk-lexical-degradation-benchmark.2 | — |
+| R3 | Failure reports categorize token-boundary, normalization, mixed-script, identifier, and ranking failures with concrete examples. | fn-96-cjk-lexical-degradation-benchmark.2, fn-96-cjk-lexical-degradation-benchmark.3 | — |
+| R4 | The benchmark defines a quantitative promotion gate for `fn-109` without selecting an implementation in advance. | fn-96-cjk-lexical-degradation-benchmark.3 | — |
+| R5 | CI-safe fixture validation tests run in the standard suite; the heavier benchmark remains documented and opt-in. | fn-96-cjk-lexical-degradation-benchmark.1, fn-96-cjk-lexical-degradation-benchmark.2 | — |
+| R6 | Public multilingual docs link the result and distinguish semantic from degraded lexical behavior. | fn-96-cjk-lexical-degradation-benchmark.3 | — |

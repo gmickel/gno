@@ -1,0 +1,16 @@
+{
+  "assignee": null,
+  "claim_note": "",
+  "claimed_at": null,
+  "created_at": "2026-07-21T21:58:23.746338Z",
+  "depends_on": [
+    "fn-102-knowledge-delta-and-capsule.4"
+  ],
+  "id": "fn-102-knowledge-delta-and-capsule.5",
+  "priority": null,
+  "spec": "fn-102-knowledge-delta-and-capsule",
+  "spec_path": ".flow/tasks/fn-102-knowledge-delta-and-capsule.5.md",
+  "status": "todo",
+  "title": "Complete delta schemas lifecycle tests and documentation",
+  "updated_at": "2026-07-21T22:08:26.653480Z"
+}

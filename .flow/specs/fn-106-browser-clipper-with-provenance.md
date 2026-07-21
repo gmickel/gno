@@ -61,3 +61,40 @@ Web evidence is a common input to a knowledge base. A previewed local clipper cl
 <!-- scope: technical -->
 
 A browser extension offers reliable selection/Reader access but requires careful local pairing. Reusing capture provenance avoids creating a second ingestion model.
+
+## Implementation Plan
+
+1. `fn-106-browser-clipper-with-provenance.1` — Define clip payload sanitization and capture provenance (**M**)
+2. `fn-106-browser-clipper-with-provenance.2` — Add secure loopback clipper pairing and capture endpoints (**M**); depends on `fn-106-browser-clipper-with-provenance.1`
+3. `fn-106-browser-clipper-with-provenance.3` — Build the minimal browser extension preview workflow (**M**); depends on `fn-106-browser-clipper-with-provenance.1`, `fn-106-browser-clipper-with-provenance.2`
+4. `fn-106-browser-clipper-with-provenance.4` — Package test and document the local clipper (**M**); depends on `fn-106-browser-clipper-with-provenance.3`
+
+## Quick commands
+
+```bash
+bun test test/clipper test/capture
+bun run test:e2e
+.flow/bin/flowctl validate --spec fn-106-browser-clipper-with-provenance --json
+```
+
+## References
+
+- [MDN extension content safety](https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/Safely_inserting_external_content_into_a_page).
+- `src/core/capture.ts:53-120` and `:627-744` — capture plan/receipt.
+- `src/serve/routes/api.ts:2869-3020` — local capture API.
+
+## Early proof point
+
+Task `fn-106-browser-clipper-with-provenance.1` validates the core approach (a versioned selected-text payload round-trips through existing capture provenance without executable HTML or ambiguous source hashing).
+If it fails, re-evaluate the clip payload/edit provenance and sanitization boundary before continuing with `fn-106-browser-clipper-with-provenance.2`+.
+
+## Requirement coverage
+
+| Req | Description | Task(s) | Gap justification |
+|-----|-------------|---------|-------------------|
+| R1 | A user can select text or choose Reader extraction, preview/edit it, select destination/tags, and create a GNO note with one confirmation. | fn-106-browser-clipper-with-provenance.3, fn-106-browser-clipper-with-provenance.4 | — |
+| R2 | Captured notes carry normalized source URL/title/dates/mode/hash provenance through the existing capture receipt path. | fn-106-browser-clipper-with-provenance.1 | — |
+| R3 | Pairing tokens are short-lived/scoped/revocable; Origin/CSRF/rate-limit tests block unauthorized local-web requests. | fn-106-browser-clipper-with-provenance.2, fn-106-browser-clipper-with-provenance.4 | — |
+| R4 | Sanitization fixtures remove executable/tracking content while preserving readable structure and exact selected text. | fn-106-browser-clipper-with-provenance.1, fn-106-browser-clipper-with-provenance.4 | — |
+| R5 | Duplicate, huge, authenticated-visible, SPA, offline, expiry, and Unicode cases return actionable receipts without silent data loss. | fn-106-browser-clipper-with-provenance.1, fn-106-browser-clipper-with-provenance.2, fn-106-browser-clipper-with-provenance.3, fn-106-browser-clipper-with-provenance.4 | — |
+| R6 | Extension packaging, permissions, privacy disclosure, local gateway docs, and end-to-end browser tests are complete. | fn-106-browser-clipper-with-provenance.3, fn-106-browser-clipper-with-provenance.4 | — |

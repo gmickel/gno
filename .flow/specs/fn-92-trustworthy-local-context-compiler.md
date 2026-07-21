@@ -69,3 +69,60 @@ GNO already has broad local retrieval, workspace, graph, capture, SDK, Web, and 
 <!-- scope: technical -->
 
 A thin ordering spec avoids duplicating child requirements. A linear dependency chain trades some theoretical parallelism for a clear execution queue and prevents unrelated open backlog items from becoming the accidental next task.
+
+## Program Planning State
+
+The detailed program is implementation-planned as 82 bounded tasks. The master remains intentionally taskless: it is the ordering and governance surface, while each child owns its implementation plan and evidence.
+
+| Order | Spec | Planned tasks | Program role |
+| ---: | --- | ---: | --- |
+| 1 | `fn-93` | 3 | Repair retrieval context propagation |
+| 2 | `fn-94` | 4 | Prove setup and connector activation with retrieval |
+| 3 | `fn-95` | 3 | Restore public documentation and claim truth |
+| 4 | `fn-96` | 3 | Establish the CJK lexical degradation evidence |
+| 5 | `fn-97` | 4 | Establish agent-outcome benchmark infrastructure |
+| 6 | `fn-98` | 6 | Ship the Context Capsule evidence primitive |
+| 7 | `fn-99` | 5 | Share one resident warm runtime across clients |
+| 8 | `fn-100` | 5 | Capture private outcome receipts and replay them |
+| 9 | `fn-101` | 4 | Verify answer claims against exact evidence |
+| 10 | `fn-102` | 5 | Journal knowledge changes and reverify capsules |
+| 11 | `fn-103` | 4 | Distribute public capsules and prove the wedge |
+| 12 | `fn-104` | 4 | Add transparent project-aware affinity |
+| 13 | `fn-105` | 4 | Make folder setup end in successful retrieval |
+| 14 | `fn-106` | 4 | Capture browser evidence with provenance |
+| 15 | `fn-107` | 4 | Add source-controlled project retrieval profiles |
+| 16 | `fn-108` | 4 | Activate bounded explainable content-type boosts |
+| 17 | `fn-109` | 4 | Ship CJK normalization only if evidence supports it |
+| 18 | `fn-110` | 6 | Add deterministic file/export source adapters |
+| 19 | `fn-111` | 6 | Enforce collection egress policy at network boundaries |
+|  | **Total** | **82** |  |
+
+### Quick commands
+
+```bash
+.flow/bin/flowctl show fn-92
+.flow/bin/flowctl ready --spec fn-93
+.flow/bin/flowctl tasks --spec fn-98
+.flow/bin/flowctl deps fn-111
+.flow/bin/flowctl validate --all --json
+```
+
+### References
+
+- Detailed contracts and implementation plans: `.flow/specs/fn-93-*.md` through `.flow/specs/fn-111-*.md`
+- Program research basis: competitive audit of GNO, qmd, and gbrain; agentic-retrieval evaluation literature; official MCP Streamable HTTP and Bun server guidance
+- Existing product contracts: `spec/cli.md`, `spec/mcp.md`, `spec/output-schemas/`, and `spec/db/schema.sql`
+
+### Early proof point
+
+The first proof is `fn-93.1`: a failing cross-mode regression fixture that demonstrates persisted configured context is absent from an otherwise valid retrieval result. The program does not advance past any child whose acceptance evidence is missing, invalidated, or below its explicit gate.
+
+## Requirement coverage
+
+| Requirement | Coverage | Gap or deferred work |
+| --- | --- | --- |
+| R1 | Ordered table above contains each of `fn-93` through `fn-111` exactly once. | None. |
+| R2 | Each child has a seven-section contract, bounded task plan, investigation targets, acceptance tests, and R-ID mapping. | Human readiness remains a separate gate. |
+| R3 | Flow dependency metadata forms the exact predecessor chain from `fn-94` back to `fn-93`. | None. |
+| R4 | Planning changed only this program lane; unrelated specs retain their state and content. | Future reprioritization requires Gordon's explicit direction. |
+| R5 | No tasks are attached to `fn-92`; all 82 implementation tasks belong to child specs. | Governance is intentionally taskless. |

@@ -58,3 +58,43 @@ Multilingual reliability includes degraded local lexical operation, not only the
 <!-- scope: technical -->
 
 Benchmark-selected additive representation costs index space but preserves source fidelity and rollback. A production change is justified only if per-language gains exceed its size/latency burden.
+
+## Implementation Plan
+
+1. `fn-109-cjk-lexical-normalization.1` — Select and record the benchmark-proven lexical representation (**M**)
+2. `fn-109-cjk-lexical-normalization.2` — Add versioned lexical analyzer schema and crash-safe backfill (**M**); depends on `fn-109-cjk-lexical-normalization.1`
+3. `fn-109-cjk-lexical-normalization.3` — Use identical bounded analysis at index and query time (**M**); depends on `fn-109-cjk-lexical-normalization.2`
+4. `fn-109-cjk-lexical-normalization.4` — Prove promotion gates rollback packaging and truthful claims (**M**); depends on `fn-109-cjk-lexical-normalization.3`
+
+## Quick commands
+
+```bash
+bun run bench:cjk-lexical -- --delta
+bun test test/store/cjk* test/ingestion/language*
+bun run test:package
+.flow/bin/flowctl validate --spec fn-109-cjk-lexical-normalization --json
+```
+
+## References
+
+- [Unicode UAX #29](https://unicode.org/reports/tr29/).
+- [SQLite FTS5](https://www.sqlite.org/fts5.html).
+- `src/store/sqlite/adapter.ts:1364-1510` — current FTS query/sync.
+- fn-96 committed promotion artifacts.
+
+## Early proof point
+
+Task `fn-109-cjk-lexical-normalization.1` validates the core approach (fn-96 artifacts select one representation that clears per-language lift and cost gates before production schema work).
+If it fails, re-evaluate whether any production lexical change is justified before continuing with `fn-109-cjk-lexical-normalization.2`+.
+
+## Requirement coverage
+
+| Req | Description | Task(s) | Gap justification |
+|-----|-------------|---------|-------------------|
+| R1 | The implementation choice is justified by committed `fn-96` comparisons rather than competitor precedent or intuition. | fn-109-cjk-lexical-normalization.1 | — |
+| R2 | Every CJK lane that failed its baseline gate shows the specified meaningful Recall/nDCG/zero-result improvement; no lane is hidden by an aggregate. | fn-109-cjk-lexical-normalization.1, fn-109-cjk-lexical-normalization.3, fn-109-cjk-lexical-normalization.4 | — |
+| R3 | Existing Latin-language, code, identifier, phrase, and mixed-script retrieval stays within declared non-regression bounds. | fn-109-cjk-lexical-normalization.1, fn-109-cjk-lexical-normalization.3, fn-109-cjk-lexical-normalization.4 | — |
+| R4 | Index size, build time, and warm-query latency remain within explicit caps recorded in benchmark artifacts. | fn-109-cjk-lexical-normalization.1, fn-109-cjk-lexical-normalization.3, fn-109-cjk-lexical-normalization.4 | — |
+| R5 | Original snippets/line ranges remain exact; explain/diagnose exposes analyzer and fingerprint without normalized-text leakage. | fn-109-cjk-lexical-normalization.2, fn-109-cjk-lexical-normalization.3, fn-109-cjk-lexical-normalization.4 | — |
+| R6 | Migration/backfill/rollback, stale fingerprint, offline mode, and cross-platform tests are complete. | fn-109-cjk-lexical-normalization.2, fn-109-cjk-lexical-normalization.3, fn-109-cjk-lexical-normalization.4 | — |
+| R7 | Public multilingual documentation is updated with measured semantic and lexical results and limitations. | fn-109-cjk-lexical-normalization.4 | — |

@@ -1,0 +1,14 @@
+{
+  "assignee": null,
+  "claim_note": "",
+  "claimed_at": null,
+  "created_at": "2026-07-21T21:58:20.492139Z",
+  "depends_on": [],
+  "id": "fn-100-private-retrieval-learning-loop.1",
+  "priority": null,
+  "spec": "fn-100-private-retrieval-learning-loop",
+  "spec_path": ".flow/tasks/fn-100-private-retrieval-learning-loop.1.md",
+  "status": "todo",
+  "title": "Add opt-in trace storage retention and redaction",
+  "updated_at": "2026-07-21T21:58:20.492305Z"
+}

@@ -1,0 +1,16 @@
+{
+  "assignee": null,
+  "claim_note": "",
+  "claimed_at": null,
+  "created_at": "2026-07-21T21:58:19.405835Z",
+  "depends_on": [
+    "fn-99-resident-local-context-gateway.1"
+  ],
+  "id": "fn-99-resident-local-context-gateway.2",
+  "priority": null,
+  "spec": "fn-99-resident-local-context-gateway",
+  "spec_path": ".flow/tasks/fn-99-resident-local-context-gateway.2.md",
+  "status": "todo",
+  "title": "Add stateful Streamable HTTP MCP transport",
+  "updated_at": "2026-07-21T21:58:19.406009Z"
+}

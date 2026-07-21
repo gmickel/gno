@@ -1,0 +1,17 @@
+{
+  "assignee": null,
+  "claim_note": "",
+  "claimed_at": null,
+  "created_at": "2026-07-21T22:00:51.021288Z",
+  "depends_on": [
+    "fn-103-capsule-distribution-and-commercial.1",
+    "fn-103-capsule-distribution-and-commercial.2"
+  ],
+  "id": "fn-103-capsule-distribution-and-commercial.3",
+  "priority": null,
+  "spec": "fn-103-capsule-distribution-and-commercial",
+  "spec_path": ".flow/tasks/fn-103-capsule-distribution-and-commercial.3.md",
+  "status": "todo",
+  "title": "Publish the reproducible three-way agent outcome demo",
+  "updated_at": "2026-07-21T22:07:11.043205Z"
+}

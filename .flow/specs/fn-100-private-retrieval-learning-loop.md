@@ -66,3 +66,42 @@ Private failure replay can become GNO's compounding quality moat: each corpus im
 <!-- scope: technical -->
 
 Receipts and offline replay precede ranking adaptation. This delays personalization but makes every later change measurable, reversible, and privacy-preserving.
+
+## Implementation Plan
+
+1. `fn-100-private-retrieval-learning-loop.1` — Add opt-in trace storage retention and redaction (**M**)
+2. `fn-100-private-retrieval-learning-loop.2` — Propagate trace identity through retrieval evidence and outcomes (**M**); depends on `fn-100-private-retrieval-learning-loop.1`
+3. `fn-100-private-retrieval-learning-loop.3` — Expose local trace feedback and purge controls (**M**); depends on `fn-100-private-retrieval-learning-loop.1`, `fn-100-private-retrieval-learning-loop.2`
+4. `fn-100-private-retrieval-learning-loop.4` — Export qrels and replay candidate retrieval pipelines (**M**); depends on `fn-100-private-retrieval-learning-loop.2`, `fn-100-private-retrieval-learning-loop.3`
+5. `fn-100-private-retrieval-learning-loop.5` — Complete privacy migration documentation and regression gates (**M**); depends on `fn-100-private-retrieval-learning-loop.4`
+
+## Quick commands
+
+```bash
+bun test test/traces test/replay
+bun run eval:agentic
+.flow/bin/flowctl validate --spec fn-100-private-retrieval-learning-loop --json
+```
+
+## References
+
+- `src/store/migrations/index.ts:1-40` — migration registry.
+- `src/core/job-manager.ts` — bounded local job semantics.
+- `src/bench/types.ts` and fn-97 receipt contract.
+
+## Early proof point
+
+Task `fn-100-private-retrieval-learning-loop.1` validates the core approach (an opt-in bounded local trace can replay a frozen retrieval outcome without storing raw documents or sending network traffic).
+If it fails, re-evaluate the redaction model and replay identity contract before continuing with `fn-100-private-retrieval-learning-loop.2`+.
+
+## Requirement coverage
+
+| Req | Description | Task(s) | Gap justification |
+|-----|-------------|---------|-------------------|
+| R1 | Recording is off by default and can be enabled with explicit retention/redaction controls documented across CLI/Web/config. | fn-100-private-retrieval-learning-loop.1, fn-100-private-retrieval-learning-loop.3, fn-100-private-retrieval-learning-loop.5 | — |
+| R2 | A trace links query through retrieval, Context Capsule/get operations, exact cited/opened/pinned spans, and explicit judgments with stable fingerprints. | fn-100-private-retrieval-learning-loop.2, fn-100-private-retrieval-learning-loop.3 | — |
+| R3 | Users can inspect, label, export, delete, and fully purge local receipts; tests prove no hidden network transmission. | fn-100-private-retrieval-learning-loop.1, fn-100-private-retrieval-learning-loop.2, fn-100-private-retrieval-learning-loop.3, fn-100-private-retrieval-learning-loop.5 | — |
+| R4 | Export produces deterministic benchmark/qrels fixtures consumable by `fn-97` without raw-document duplication. | fn-100-private-retrieval-learning-loop.4 | — |
+| R5 | Replay compares baseline/candidate rank, coverage, and evidence outcomes against unchanged fixtures and reports stale/missing sources. | fn-100-private-retrieval-learning-loop.4 | — |
+| R6 | No replay result automatically modifies ranking, boosts, prompts, or user files. | fn-100-private-retrieval-learning-loop.4, fn-100-private-retrieval-learning-loop.5 | — |
+| R7 | Size/retention caps, concurrent event idempotency, migrations, and privacy docs are tested. | fn-100-private-retrieval-learning-loop.1, fn-100-private-retrieval-learning-loop.5 | — |

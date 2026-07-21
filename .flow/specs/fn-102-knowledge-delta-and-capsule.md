@@ -58,3 +58,42 @@ A warm daemon should answer “what changed?” and “is my evidence still curr
 <!-- scope: technical -->
 
 A compact structural journal is less complete than retaining every document version but is bounded, privacy-conscious, and sufficient for impact and evidence freshness. Reverification is evidence-triggered rather than schedule-heavy.
+
+## Implementation Plan
+
+1. `fn-102-knowledge-delta-and-capsule.1` — Add transactional bounded document change journal (**M**)
+2. `fn-102-knowledge-delta-and-capsule.2` — Compute source heading link and typed-edge deltas during sync (**M**); depends on `fn-102-knowledge-delta-and-capsule.1`
+3. `fn-102-knowledge-delta-and-capsule.3` — Expose changes diff and impact through shared read surfaces (**M**); depends on `fn-102-knowledge-delta-and-capsule.2`
+4. `fn-102-knowledge-delta-and-capsule.4` — Register saved Capsules and reverify affected evidence (**M**); depends on `fn-102-knowledge-delta-and-capsule.1`, `fn-102-knowledge-delta-and-capsule.3`
+5. `fn-102-knowledge-delta-and-capsule.5` — Complete delta schemas lifecycle tests and documentation (**M**); depends on `fn-102-knowledge-delta-and-capsule.4`
+
+## Quick commands
+
+```bash
+bun test test/store/change-journal* test/changes
+bun run lint:check
+.flow/bin/flowctl validate --spec fn-102-knowledge-delta-and-capsule --json
+```
+
+## References
+
+- `src/ingestion/sync.ts:1008` and `:1557` — upsert/inactivation paths.
+- `src/core/graph-query.ts:52-110` — bounded typed traversal.
+- `src/serve/doc-events.ts` — in-memory document event model.
+
+## Early proof point
+
+Task `fn-102-knowledge-delta-and-capsule.1` validates the core approach (one successful sync transaction emits one deterministic content/structure delta while no-op and failed syncs emit none).
+If it fails, re-evaluate journal transaction boundaries and stable document identity before continuing with `fn-102-knowledge-delta-and-capsule.2`+.
+
+## Requirement coverage
+
+| Req | Description | Task(s) | Gap justification |
+|-----|-------------|---------|-------------------|
+| R1 | Successful create/update/rename/inactivate/reactivate operations emit deterministic bounded journal entries with old/new hashes and structural deltas. | fn-102-knowledge-delta-and-capsule.1, fn-102-knowledge-delta-and-capsule.2 | — |
+| R2 | `changes`, `diff`, and `impact` return schema-valid, cross-surface-equivalent results with stable pagination and truncation disclosure. | fn-102-knowledge-delta-and-capsule.3, fn-102-knowledge-delta-and-capsule.5 | — |
+| R3 | Impact output explains bounded typed/backlink dependency paths and remains cycle/hub safe under regression fixtures. | fn-102-knowledge-delta-and-capsule.3 | — |
+| R4 | Saved Capsules reverify only when referenced evidence changes and report unchanged, stale, missing, reranked, and affected-question states. | fn-102-knowledge-delta-and-capsule.4, fn-102-knowledge-delta-and-capsule.5 | — |
+| R5 | Failed/no-content-change syncs do not emit false deltas; concurrent watcher/full sync settles to one logical change sequence. | fn-102-knowledge-delta-and-capsule.1, fn-102-knowledge-delta-and-capsule.2, fn-102-knowledge-delta-and-capsule.4, fn-102-knowledge-delta-and-capsule.5 | — |
+| R6 | Retention/purge behavior, cursor expiry, local notifications, docs, and privacy boundaries are tested. | fn-102-knowledge-delta-and-capsule.1, fn-102-knowledge-delta-and-capsule.3, fn-102-knowledge-delta-and-capsule.4, fn-102-knowledge-delta-and-capsule.5 | — |
+| R7 | No user file is rewritten and no autonomous synthesis occurs. | fn-102-knowledge-delta-and-capsule.2, fn-102-knowledge-delta-and-capsule.4, fn-102-knowledge-delta-and-capsule.5 | — |

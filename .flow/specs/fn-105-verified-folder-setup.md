@@ -57,3 +57,41 @@ A single verified path reduces activation friction and ends with real value rath
 <!-- scope: technical -->
 
 Composing existing primitives minimizes new failure modes. Lexical-first readiness separates immediate utility from heavier optional semantic setup.
+
+## Implementation Plan
+
+1. `fn-105-verified-folder-setup.1` — Build the resumable setup orchestrator and receipt (**M**)
+2. `fn-105-verified-folder-setup.2` — Add safe setup CLI UX and semantic background handoff (**M**); depends on `fn-105-verified-folder-setup.1`
+3. `fn-105-verified-folder-setup.3` — Integrate connector verification onboarding and optional profiles (**M**); depends on `fn-105-verified-folder-setup.2`
+4. `fn-105-verified-folder-setup.4` — Prove idempotency package behavior and activation documentation (**M**); depends on `fn-105-verified-folder-setup.3`
+
+## Quick commands
+
+```bash
+bun test test/cli/setup* test/core/setup*
+bun run docs:verify
+bun run test:package
+.flow/bin/flowctl validate --spec fn-105-verified-folder-setup --json
+```
+
+## References
+
+- `src/cli/commands/init.ts`, `src/collection/add.ts`, and `src/ingestion/sync.ts` — existing primitives.
+- `src/core/config-mutation.ts` — config mutation guard.
+- fn-94 activation receipt contract.
+
+## Early proof point
+
+Task `fn-105-verified-folder-setup.1` validates the core approach (a safe folder fixture reaches a real BM25 result through composed existing primitives before model download).
+If it fails, re-evaluate the stage transaction/resume receipt and lexical-first boundary before continuing with `fn-105-verified-folder-setup.2`+.
+
+## Requirement coverage
+
+| Req | Description | Task(s) | Gap justification |
+|-----|-------------|---------|-------------------|
+| R1 | `gno setup <folder>` idempotently creates/reuses a collection, indexes supported text, and returns a real corpus-derived BM25 result. | fn-105-verified-folder-setup.1, fn-105-verified-folder-setup.2, fn-105-verified-folder-setup.4 | — |
+| R2 | Semantic models/indexing can continue in the background with truthful pending status; users can search lexically immediately. | fn-105-verified-folder-setup.1, fn-105-verified-folder-setup.2, fn-105-verified-folder-setup.3 | — |
+| R3 | Requested installed connectors complete the `fn-94` read-only verification without bypassing trust/auth boundaries. | fn-105-verified-folder-setup.3, fn-105-verified-folder-setup.4 | — |
+| R4 | Interrupt/resume, empty/unsupported folder, nested collection, collision, symlink, and secret-risk fixtures produce safe deterministic receipts. | fn-105-verified-folder-setup.1, fn-105-verified-folder-setup.2, fn-105-verified-folder-setup.4 | — |
+| R5 | JSON output has a versioned schema; terminal output gives concise success, pending work, and remediation. | fn-105-verified-folder-setup.1, fn-105-verified-folder-setup.2, fn-105-verified-folder-setup.4 | — |
+| R6 | CLI docs, quickstart, skill instructions, Web/Desktop handoff, and hosted gno.sh installation flow use the same verified setup contract. | fn-105-verified-folder-setup.3, fn-105-verified-folder-setup.4 | — |

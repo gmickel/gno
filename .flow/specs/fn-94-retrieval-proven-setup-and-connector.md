@@ -57,3 +57,40 @@ Users currently can finish onboarding with a technically initialized but practic
 <!-- scope: technical -->
 
 A corpus-derived lexical probe is immediate and local. Semantic and connector stages remain independent so slow downloads or optional clients do not erase truthful partial readiness.
+
+## Implementation Plan
+
+1. `fn-94-retrieval-proven-setup-and-connector.1` — Define activation receipt and lexical proof core (**M**)
+2. `fn-94-retrieval-proven-setup-and-connector.2` — Add read-only connector verification adapters (**M**); depends on `fn-94-retrieval-proven-setup-and-connector.1`
+3. `fn-94-retrieval-proven-setup-and-connector.3` — Integrate activation into CLI REST and onboarding health (**M**); depends on `fn-94-retrieval-proven-setup-and-connector.1`, `fn-94-retrieval-proven-setup-and-connector.2`
+4. `fn-94-retrieval-proven-setup-and-connector.4` — Lock activation parity privacy and documentation (**M**); depends on `fn-94-retrieval-proven-setup-and-connector.3`
+
+## Quick commands
+
+```bash
+bun test test/activation test/cli/doctor* test/serve
+bun run docs:verify
+.flow/bin/flowctl validate --spec fn-94-retrieval-proven-setup-and-connector --json
+```
+
+## References
+
+- `src/cli/commands/doctor.ts` — current diagnostics.
+- `src/serve/routes/api.ts:732-780` — shallow health/status surfaces.
+- `src/serve/connectors.ts:135` — installed/configured connector status.
+
+## Early proof point
+
+Task `fn-94-retrieval-proven-setup-and-connector.1` validates the core approach (a local corpus-derived lexical probe fails closed when the expected source cannot be retrieved).
+If it fails, re-evaluate probe-term derivation and the activation stage contract before continuing with `fn-94-retrieval-proven-setup-and-connector.2`+.
+
+## Requirement coverage
+
+| Req | Description | Task(s) | Gap justification |
+|-----|-------------|---------|-------------------|
+| R1 | A newly indexed text corpus can complete a lexical retrieval proof before semantic models finish downloading. | fn-94-retrieval-proven-setup-and-connector.1, fn-94-retrieval-proven-setup-and-connector.3 | — |
+| R2 | Verification fails clearly when the expected collection cannot return its corpus-derived result; readiness cannot remain falsely green. | fn-94-retrieval-proven-setup-and-connector.1, fn-94-retrieval-proven-setup-and-connector.3 | — |
+| R3 | Supported installed MCP/skill targets complete a real read-only tool/search smoke with target-specific evidence. | fn-94-retrieval-proven-setup-and-connector.2 | — |
+| R4 | Empty/unsupported corpora and unavailable connectors produce explicit pending/skipped/failed states with remediation, never silent success. | fn-94-retrieval-proven-setup-and-connector.1, fn-94-retrieval-proven-setup-and-connector.2, fn-94-retrieval-proven-setup-and-connector.3, fn-94-retrieval-proven-setup-and-connector.4 | — |
+| R5 | CLI, REST, Web/Desktop health, docs, and schemas consume one shared result contract. | fn-94-retrieval-proven-setup-and-connector.3, fn-94-retrieval-proven-setup-and-connector.4 | — |
+| R6 | Activation receipts are bounded, privacy-preserving, fingerprinted, and covered by invalidation tests. | fn-94-retrieval-proven-setup-and-connector.1, fn-94-retrieval-proven-setup-and-connector.2, fn-94-retrieval-proven-setup-and-connector.4 | — |

@@ -64,3 +64,41 @@ Citation presence alone is not trust. Claim-level support and explicit gaps turn
 <!-- scope: technical -->
 
 Closed-evidence verification is intentionally narrower than open-web fact checking. It is reproducible and privacy-preserving, and it avoids GBrain-style loops that claim gap filling without actually retrieving new evidence.
+
+## Implementation Plan
+
+1. `fn-101-trustworthy-synthesis-and-claim.1` — Define claim verification semantics and deterministic hygiene (**M**)
+2. `fn-101-trustworthy-synthesis-and-claim.2` — Add bounded semantic claim-to-evidence verification (**M**); depends on `fn-101-trustworthy-synthesis-and-claim.1`
+3. `fn-101-trustworthy-synthesis-and-claim.3` — Integrate verified synthesis across Ask surfaces (**M**); depends on `fn-101-trustworthy-synthesis-and-claim.2`
+4. `fn-101-trustworthy-synthesis-and-claim.4` — Run adversarial outcome gates and ship truthful verification docs (**M**); depends on `fn-101-trustworthy-synthesis-and-claim.3`
+
+## Quick commands
+
+```bash
+bun test test/pipeline/claim-verification*
+bun run eval:agentic
+.flow/bin/flowctl validate --spec fn-101-trustworthy-synthesis-and-claim --json
+```
+
+## References
+
+- `src/pipeline/answer.ts:114-178` — citation hygiene.
+- `src/pipeline/answer.ts:435-560` — grounded answer generation.
+- [OWASP prompt injection guidance](https://genai.owasp.org/llmrisk/llm01-prompt-injection/).
+
+## Early proof point
+
+Task `fn-101-trustworthy-synthesis-and-claim.1` validates the core approach (deterministic claim/citation hygiene separates unsupported, contradicted, and insufficient outcomes on closed Capsule evidence).
+If it fails, re-evaluate the substantive-claim segmentation and four-state verdict semantics before continuing with `fn-101-trustworthy-synthesis-and-claim.2`+.
+
+## Requirement coverage
+
+| Req | Description | Task(s) | Gap justification |
+|-----|-------------|---------|-------------------|
+| R1 | Verified Ask outputs classify every substantive claim using the four-state contract and bind non-insufficient verdicts to exact Capsule evidence. | fn-101-trustworthy-synthesis-and-claim.1, fn-101-trustworthy-synthesis-and-claim.2, fn-101-trustworthy-synthesis-and-claim.3 | — |
+| R2 | Contradiction and missing-evidence fixtures produce correct distinct statuses; coverage below threshold causes explicit abstention. | fn-101-trustworthy-synthesis-and-claim.1, fn-101-trustworthy-synthesis-and-claim.3, fn-101-trustworthy-synthesis-and-claim.4 | — |
+| R3 | Unsupported, stale, malformed, and out-of-Capsule citations cannot survive as valid support. | fn-101-trustworthy-synthesis-and-claim.1, fn-101-trustworthy-synthesis-and-claim.2 | — |
+| R4 | Adversarial prompt-injection fixtures cannot alter verification policy, schema, or tool behavior. | fn-101-trustworthy-synthesis-and-claim.2, fn-101-trustworthy-synthesis-and-claim.4 | — |
+| R5 | CLI, REST, MCP, SDK, schemas, docs, and readable output share one verification result. | fn-101-trustworthy-synthesis-and-claim.3, fn-101-trustworthy-synthesis-and-claim.4 | — |
+| R6 | Deterministic stages run without a model; verifier unavailability degrades explicitly without fabricating confidence. | fn-101-trustworthy-synthesis-and-claim.1, fn-101-trustworthy-synthesis-and-claim.2, fn-101-trustworthy-synthesis-and-claim.3 | — |
+| R7 | `fn-97` cases show no answer-accuracy regression and a measurable reduction in unsupported substantive claims. | fn-101-trustworthy-synthesis-and-claim.4 | — |
