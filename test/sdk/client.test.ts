@@ -90,6 +90,19 @@ beforeAll(async () => {
       exclude: [],
     },
   ];
+  config.contexts = [
+    { scopeType: "global", scopeKey: "/", text: "Global guidance" },
+    {
+      scopeType: "collection",
+      scopeKey: "fixtures:",
+      text: "Fixture guidance",
+    },
+    {
+      scopeType: "prefix",
+      scopeKey: "gno://fixtures/authentication.md",
+      text: "Authentication guidance",
+    },
+  ];
 
   client = await createGnoClient({
     config,
@@ -130,6 +143,13 @@ describe("SDK client", () => {
     expect(
       result.results.some((r) => r.source.relPath === "authentication.md")
     ).toBe(true);
+    const auth = result.results.find(
+      (item) => item.source.relPath === "authentication.md"
+    );
+    expect(auth).toMatchObject({
+      uri: "gno://fixtures/authentication.md",
+      context: "Global guidance\n\nFixture guidance\n\nAuthentication guidance",
+    });
   });
 
   test("runs hybrid query in BM25-only fallback mode", async () => {
@@ -336,6 +356,14 @@ describe("SDK client", () => {
   test("matches CLI search totals for a representative flow", async () => {
     const sdkResult = await client.search("JWT token", { limit: 5 });
     await cli("init", fixturesDir, "--name", "fixtures");
+    await cli("context", "add", "/", "Global guidance");
+    await cli("context", "add", "fixtures:", "Fixture guidance");
+    await cli(
+      "context",
+      "add",
+      "gno://fixtures/authentication.md",
+      "Authentication guidance"
+    );
     await cli("update");
     const { code, stdout } = await cli(
       "search",
@@ -348,6 +376,11 @@ describe("SDK client", () => {
     const cliResult = JSON.parse(stdout) as SearchResults;
     expect(cliResult.results.length).toBe(sdkResult.results.length);
     expect(cliResult.results[0]?.uri).toBe(sdkResult.results[0]?.uri);
+    expect(cliResult.results[0]?.context).toBe(sdkResult.results[0]?.context);
+    expect(cliResult.results[0]).toMatchObject({
+      uri: "gno://fixtures/authentication.md",
+      context: "Global guidance\n\nFixture guidance\n\nAuthentication guidance",
+    });
   });
 
   test("closes cleanly and rejects further calls", async () => {

@@ -77,6 +77,23 @@ describe("search-result schema", () => {
       };
       expect(assertValid(result, schema)).toBe(true);
     });
+
+    test("validates resolved configured context without changing identity", () => {
+      const result = {
+        docid: "#abc123",
+        score: 0.5,
+        uri: "gno://work/security/auth.md?index=research",
+        context: "Global guidance\n\nSecurity guidance",
+        snippet: "text",
+        source: {
+          relPath: "security/auth.md",
+          mime: "text/markdown",
+          ext: ".md",
+        },
+      };
+      expect(assertValid(result, schema)).toBe(true);
+      expect(result.uri).toBe("gno://work/security/auth.md?index=research");
+    });
   });
 
   describe("invalid inputs", () => {

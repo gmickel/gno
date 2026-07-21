@@ -209,6 +209,17 @@ contexts:
     text: REST API documentation and OpenAPI specs
 ```
 
+Contexts are operational retrieval guidance, not labels stored and forgotten.
+Structured CLI, REST, MCP, and SDK search results include an optional `context`
+field whenever a scope matches. GNO composes matching text deterministically:
+global first, collection second, then path prefixes from broadest to most
+specific. Duplicate text is included once, and prefix matching respects path
+segments (`projects/a` does not match `projects/ab`).
+
+Context does not affect matching or ranking. Grounded Ask uses it as trusted
+user configuration, delimited separately from retrieved document content. A
+result with no matching context keeps the historical shape and omits the field.
+
 ## Models
 
 Model configuration for embeddings and AI answers.
