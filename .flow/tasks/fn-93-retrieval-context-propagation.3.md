@@ -36,9 +36,8 @@ Deliver complete cross-surface contracts and context guidance as one implementat
 
 
 ## Done summary
-TBD
-
+Exposed configured retrieval context consistently through CLI, REST, MCP, SDK, indexed-URI, and Ask contracts, with exact source identity and prompt-role separation between trusted guidance and untrusted evidence. Updated schemas, specs, user docs, agent skill guidance, and the hosted gno.sh reference (commit 99382000d9d331ca8606d2ed5bf628c8a2dbef6c); the shipped skill autoresearch evaluation scored 100% (48/48).
 ## Evidence
-- Commits:
-- Tests:
+- Commits: a6e094ea215549c93cda7ac94d5a50262f07656e
+- Tests: bun test test/pipeline/answer.test.ts test/serve/routes/retrieval-context.test.ts test/mcp/tools/search.test.ts test/spec/schemas/search-result.test.ts test/sdk/client.test.ts, bun run prerelease, bun test test/pipeline test/store/adapter.test.ts, bun run lint:check, .flow/bin/flowctl validate --spec fn-93-retrieval-context-propagation --json, mise x uv@latest -- uv run python -c shipped-skill-eval (score 100.0, 48/48), gno.sh: bun run check, gno.sh: bun run typecheck, gno.sh commit 99382000d9d331ca8606d2ed5bf628c8a2dbef6c
 - PRs:
