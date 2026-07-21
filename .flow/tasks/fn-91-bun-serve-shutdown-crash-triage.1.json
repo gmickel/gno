@@ -1,0 +1,14 @@
+{
+  "assignee": null,
+  "claim_note": "",
+  "claimed_at": null,
+  "created_at": "2026-07-21T12:08:29.205321Z",
+  "depends_on": [],
+  "id": "fn-91-bun-serve-shutdown-crash-triage.1",
+  "priority": null,
+  "spec": "fn-91-bun-serve-shutdown-crash-triage",
+  "spec_path": ".flow/tasks/fn-91-bun-serve-shutdown-crash-triage.1.md",
+  "status": "todo",
+  "title": "Reproduce classify and eliminate serve shutdown crash",
+  "updated_at": "2026-07-21T12:08:51.679204Z"
+}
