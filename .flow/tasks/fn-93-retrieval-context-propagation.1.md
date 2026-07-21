@@ -35,9 +35,8 @@ Deliver build the canonical scoped-context resolver as one implementation-sized 
 
 
 ## Done summary
-TBD
-
+Added a canonical scoped-context resolver with deterministic global, collection, and segment-safe prefix precedence, normalized duplicate collapse, and ordered provenance. Added store-generation invalidation so one request-local resolver reads contexts once per generation and refreshes safely after sync.
 ## Evidence
-- Commits:
-- Tests:
+- Commits: 3a857be52358384b9b575bca0815921f108bd8a8
+- Tests: bun test test/core/context-resolver.test.ts test/store/adapter.test.ts, bun test test/pipeline test/store/adapter.test.ts, bun run lint:check, .flow/bin/flowctl validate --spec fn-93-retrieval-context-propagation --json
 - PRs:
