@@ -13,10 +13,16 @@ TBD
 
 ## Done summary
 
-TBD
+Preserved the model-correct Nemotron 3 Embed 1B comparison across four retrieval
+lanes and kept Qwen3-Embedding-0.6B as the default. Refreshed Qwen's first-party
+embedding inventory. The only newer family is Qwen3-VL-Embedding; its 2B model
+is larger, text-benchmark-worse, narrower-language, non-GGUF, and unusable for
+GNO's current text-only embedding port. Recorded it as a future multimodal
+candidate rather than spending a local benchmark on a model that fails the
+product-fit gate.
 
 ## Evidence
 
 - Commits:
-- Tests:
+- Tests: Nemotron vs Qwen: multilingual docs, canonical code, GNO src/serve, and public OSS slices, bun run lint:check, bun test
 - PRs:

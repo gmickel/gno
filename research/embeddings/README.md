@@ -57,6 +57,9 @@ Promotion remains a human decision.
 - [2026-07-21 — Nemotron 3 Embed 1B](./2026-07-21-nemotron-3-embed-1b.md):
   tested across multilingual docs, canonical code, GNO `src/serve`, and public
   OSS slices; no default-model change.
+- [2026-07-21 — Qwen candidate refresh](./2026-07-21-qwen-candidate-refresh.md):
+  no newer text-only candidate; Qwen3-VL-Embedding-2B remains a future
+  multimodal candidate, not a current replacement.
 
 ## Benchmark lanes
 
