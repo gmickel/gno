@@ -32,9 +32,8 @@ Deliver propagate context through every retrieval pipeline as one implementation
 
 
 ## Done summary
-TBD
-
+Attached canonical scoped context to final BM25, vector, and hybrid results through one fail-open batch read per request. Added parity coverage for full-content, fusion/rerank, no-N+1 behavior, and preservation of the historical optional-field shape when no context is configured.
 ## Evidence
-- Commits:
-- Tests:
+- Commits: 20cf8705982449046adb4d80640411c4e5dba44a
+- Tests: GATE_SKIPPED:unittest:green-receipt 3a857be5 - baseline reused from prior post-gate pass, bun test test/pipeline/context-propagation.test.ts, bun test test/pipeline test/store/adapter.test.ts, bun run lint:check, .flow/bin/flowctl validate --spec fn-93-retrieval-context-propagation --json
 - PRs:
