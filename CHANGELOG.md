@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Made indexed `gno://...?index=<name>` reads use the requested database across
+  the SDK, MCP read tools, and MCP resources; missing or mixed indexes now fail
+  explicitly instead of returning content from the active index.
+- Preserved sqlite-vec load diagnostics in Web UI health responses while
+  keeping BM25 fallback available and avoiding repeated warning logs.
+- Removed the competing CLI/server SIGINT cleanup race so foreground
+  `gno serve` completes HTTP, runtime, and SQLite teardown before exiting.
+
+### Performance
+
+- Replaced per-collection status subqueries with set-based aggregation,
+  coalesced concurrent `/api/status` builds, and removed the dashboard's
+  duplicate status request.
+- Reduced background graph work to one projection per full sync and scoped
+  watcher sync/projection to changed files plus known backlinks, with
+  cooperative event-loop yields during larger reconciliations.
+
 ## [1.12.2] - 2026-07-21
 
 ### Documentation

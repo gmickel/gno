@@ -171,8 +171,10 @@ const listed = await client.list({ limit: 20 });
 
 Clients opened with a non-default `indexName` decorate returned `gno://` URIs
 with `?index=<name>` so search/list results can round-trip back to the same
-index. `get()` also accepts indexed URIs and strips the query metadata before
-same-store lookup.
+index. `get()` and `multiGet()` open the named database carried by an indexed
+URI, even when the client was created for another index. Missing indexes fail
+without creating a database. Every `multiGet()` batch must resolve to one index;
+split mixed-index batches before calling it.
 
 ### Capture
 

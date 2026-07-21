@@ -141,5 +141,10 @@ export function splitRefs(refs: string[]): string[] {
  * Check if a ref contains glob characters.
  */
 export function isGlobPattern(ref: string): boolean {
-  return GLOB_PATTERN.test(ref);
+  const queryIndex = ref.indexOf("?");
+  const globCandidate =
+    ref.startsWith("gno://") && queryIndex >= 0
+      ? ref.slice(0, queryIndex)
+      : ref;
+  return GLOB_PATTERN.test(globCandidate);
 }

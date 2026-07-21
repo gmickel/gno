@@ -20,8 +20,10 @@ import {
   URI_PREFIX,
 } from "../../app/constants";
 import { MCP_ERRORS } from "../../core/errors";
+import { resolveEffectiveIndex } from "../../core/indexed-reference";
 import { normalizeTag, validateTag } from "../../core/tags";
 import { normalizeCollectionName } from "../../core/validation";
+import { openScopedIndexStore } from "../../store/sqlite/scoped-index";
 
 // Tags resource URI prefix
 const TAGS_URI = `${URI_PREFIX}tags`;
@@ -51,7 +53,8 @@ function formatTagsContent(
 function formatResourceContent(
   doc: DocumentRow,
   content: string,
-  ctx: ToolContext
+  ctx: ToolContext,
+  indexName = ctx.indexName
 ): string {
   // Find collection for absPath
   const uriParsed = parseUri(doc.uri);
@@ -69,7 +72,7 @@ function formatResourceContent(
   const langLine = doc.languageHint
     ? `\n     language: ${doc.languageHint}`
     : "";
-  const displayUri = decorateUriForIndex(doc.uri, ctx.indexName);
+  const displayUri = decorateUriForIndex(doc.uri, indexName);
   const header = `<!-- ${displayUri}
      docid: ${doc.docid}
      source: ${absPath}
@@ -125,61 +128,82 @@ export function registerResources(server: McpServer, ctx: ToolContext): void {
         throw new Error(`Invalid gno:// URI: ${uri.href}`);
       }
 
-      const { collection, path } = parsed;
-
-      // Validate collection exists
-      const collectionExists = ctx.collections.some(
-        (c) => c.name === collection
-      );
-      if (!collectionExists) {
-        throw new Error(`Collection not found: ${collection}`);
+      const resolution = resolveEffectiveIndex([uri.href], ctx.indexName);
+      if (!resolution.ok) {
+        throw new Error(resolution.error);
       }
+      const scoped = await openScopedIndexStore({
+        activeStore: ctx.store,
+        activeIndexName: ctx.indexName,
+        requestedIndexName: resolution.value.indexName,
+        config: ctx.config,
+        configPath: ctx.actualConfigPath,
+      });
 
-      // Look up document (path is properly decoded by parseUri)
-      const docResult = await ctx.store.getDocument(collection, path);
-      if (!docResult.ok) {
-        throw new Error(
-          `Failed to lookup document: ${docResult.error.message}`
+      try {
+        const { collection, path } = parsed;
+
+        // Validate collection exists
+        const collectionExists = ctx.collections.some(
+          (c) => c.name === collection
         );
-      }
+        if (!collectionExists) {
+          throw new Error(`Collection not found: ${collection}`);
+        }
 
-      const doc = docResult.value;
-      if (!doc) {
-        throw new Error(`Document not found: ${uri.href}`);
-      }
+        // Look up document (path is properly decoded by parseUri)
+        const docResult = await scoped.store.getDocument(collection, path);
+        if (!docResult.ok) {
+          throw new Error(
+            `Failed to lookup document: ${docResult.error.message}`
+          );
+        }
 
-      // Get content
-      if (!doc.mirrorHash) {
-        throw new Error(`Document has no indexed content: ${uri.href}`);
-      }
+        const doc = docResult.value;
+        if (!doc) {
+          throw new Error(`Document not found: ${uri.href}`);
+        }
 
-      const contentResult = await ctx.store.getContent(doc.mirrorHash);
-      if (!contentResult.ok) {
-        throw new Error(
-          `Failed to read content: ${contentResult.error.message}`
+        // Get content
+        if (!doc.mirrorHash) {
+          throw new Error(`Document has no indexed content: ${uri.href}`);
+        }
+
+        const contentResult = await scoped.store.getContent(doc.mirrorHash);
+        if (!contentResult.ok) {
+          throw new Error(
+            `Failed to read content: ${contentResult.error.message}`
+          );
+        }
+
+        const content = contentResult.value ?? "";
+
+        // Format with header and line numbers
+        const formattedContent = formatResourceContent(
+          doc,
+          content,
+          ctx,
+          scoped.indexName
         );
+
+        // Build canonical URI
+        const canonicalUri = decorateUriForIndex(
+          buildUri(collection, path),
+          scoped.indexName
+        );
+
+        return {
+          contents: [
+            {
+              uri: canonicalUri,
+              mimeType: "text/markdown",
+              text: formattedContent,
+            },
+          ],
+        };
+      } finally {
+        await scoped.close();
       }
-
-      const content = contentResult.value ?? "";
-
-      // Format with header and line numbers
-      const formattedContent = formatResourceContent(doc, content, ctx);
-
-      // Build canonical URI
-      const canonicalUri = decorateUriForIndex(
-        buildUri(collection, path),
-        parsed.indexName ?? ctx.indexName
-      );
-
-      return {
-        contents: [
-          {
-            uri: canonicalUri,
-            mimeType: "text/markdown",
-            text: formattedContent,
-          },
-        ],
-      };
     } finally {
       release();
     }

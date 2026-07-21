@@ -17,11 +17,10 @@ function createCollection(name: string, path: string): Collection {
   };
 }
 
-const originalSyncCollection =
-  defaultSyncService.syncCollection.bind(defaultSyncService);
+const originalSyncPaths = defaultSyncService.syncPaths.bind(defaultSyncService);
 
 afterEach(() => {
-  defaultSyncService.syncCollection = originalSyncCollection;
+  defaultSyncService.syncPaths = originalSyncPaths;
 });
 
 describe("CollectionWatchService", () => {
@@ -88,7 +87,7 @@ describe("CollectionWatchService", () => {
     const onSyncStart = mock(() => undefined);
     const onSyncComplete = mock(() => undefined);
 
-    defaultSyncService.syncCollection = (async () => ({
+    defaultSyncService.syncPaths = (async () => ({
       collection: "notes",
       filesProcessed: 1,
       filesAdded: 1,
@@ -99,7 +98,7 @@ describe("CollectionWatchService", () => {
       filesMarkedInactive: 0,
       durationMs: 3,
       errors: [],
-    })) as typeof defaultSyncService.syncCollection;
+    })) as typeof defaultSyncService.syncPaths;
 
     const service = new CollectionWatchService({
       collections: [createCollection("notes", "/tmp/notes")],
@@ -138,12 +137,15 @@ describe("CollectionWatchService", () => {
       | ((eventType: string, filename: string) => void)
       | undefined;
     const seenFingerprints: Array<string | undefined> = [];
+    const seenPaths: string[][] = [];
 
-    defaultSyncService.syncCollection = (async (
+    defaultSyncService.syncPaths = (async (
       _collection,
       _store,
+      relPaths,
       options
     ) => {
+      seenPaths.push(relPaths);
       seenFingerprints.push(options?.contentTypeRulesFingerprint);
       return {
         collection: "notes",
@@ -157,7 +159,7 @@ describe("CollectionWatchService", () => {
         durationMs: 3,
         errors: [],
       };
-    }) as typeof defaultSyncService.syncCollection;
+    }) as typeof defaultSyncService.syncPaths;
 
     const service = new CollectionWatchService({
       collections: [createCollection("notes", "/tmp/notes")],
@@ -185,6 +187,7 @@ describe("CollectionWatchService", () => {
     await Bun.sleep(350);
 
     expect(seenFingerprints).toEqual(["after"]);
+    expect(seenPaths).toEqual([["doc.md"]]);
     service.dispose();
   });
 });

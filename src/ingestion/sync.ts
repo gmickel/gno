@@ -75,6 +75,7 @@ const MAX_CONCURRENCY = 16;
 export const INGEST_VERSION = 6;
 const EMPTY_CONTENT_TYPE_RULES_FINGERPRINT = fingerprintContentTypeRules([]);
 const RELATION_EDGE_TYPE_PATTERN = /^[a-z][a-z0-9_]*$/;
+const PROJECTION_YIELD_INTERVAL = 25;
 const NON_RETRYABLE_CONVERSION_ERROR_CODES = new Set([
   "CORRUPT",
   "PERMISSION",
@@ -1000,19 +1001,83 @@ export class SyncService {
     relPaths: string[],
     options: SyncOptions = {}
   ): Promise<FileSyncResult[]> {
+    const result = await this.syncPaths(collection, store, relPaths, options);
+    return result.files ?? [];
+  }
+
+  async syncPaths(
+    collection: Collection,
+    store: StorePort,
+    relPaths: string[],
+    options: SyncOptions = {}
+  ): Promise<CollectionSyncResult> {
+    const startedAt = Date.now();
+    const syncOptions: SyncOptions = {
+      ...options,
+      contentTypeRules: options.contentTypeRules ?? [],
+      contentTypeRulesFingerprint:
+        options.contentTypeRulesFingerprint ??
+        fingerprintContentTypeRules(options.contentTypeRules ?? []),
+    };
     const results: FileSyncResult[] = [];
+    const projectionSourceIds = new Set<number>();
+    let markedInactive = 0;
 
     for (const relPath of relPaths) {
+      const existingResult = await store.getDocument(collection.name, relPath);
+      const existingDoc = existingResult.ok ? existingResult.value : null;
+      if (existingDoc) {
+        await this.collectProjectionSourceIds(
+          store,
+          existingDoc.id,
+          projectionSourceIds
+        );
+      }
+
       const absPath = join(collection.path, relPath);
       let stats: Awaited<ReturnType<typeof stat>>;
       try {
         stats = await stat(absPath);
-      } catch {
+      } catch (error) {
+        const errorCode =
+          error && typeof error === "object" && "code" in error
+            ? String(error.code)
+            : undefined;
+        if (errorCode !== "ENOENT") {
+          results.push({
+            relPath,
+            status: "error",
+            errorCode: "STAT_FAILED",
+            errorMessage:
+              error instanceof Error ? error.message : "Failed to stat file",
+          });
+          continue;
+        }
+        if (existingDoc?.active) {
+          const inactiveResult = await store.markInactive(collection.name, [
+            relPath,
+          ]);
+          if (!inactiveResult.ok) {
+            results.push({
+              relPath,
+              status: "error",
+              errorCode: inactiveResult.error.code,
+              errorMessage: inactiveResult.error.message,
+            });
+            continue;
+          }
+          markedInactive += inactiveResult.value;
+          results.push({
+            relPath,
+            status: "updated",
+            docid: existingDoc.docid,
+          });
+          continue;
+        }
         results.push({
           relPath,
-          status: "error",
-          errorCode: "NOT_FOUND",
-          errorMessage: "File not found",
+          status: existingDoc ? "unchanged" : "skipped",
+          docid: existingDoc?.docid,
         });
         continue;
       }
@@ -1035,24 +1100,91 @@ export class SyncService {
         ctime: (stats.birthtime ?? stats.ctime ?? stats.mtime).toISOString(),
       };
 
-      const result = await this.processFile(collection, entry, store, options);
+      const result = await this.processFile(
+        collection,
+        entry,
+        store,
+        syncOptions
+      );
       results.push(result);
+      const currentResult = await store.getDocument(collection.name, relPath);
+      const currentDoc = currentResult.ok ? currentResult.value : null;
+      if (currentDoc?.active) {
+        await this.collectProjectionSourceIds(
+          store,
+          currentDoc.id,
+          projectionSourceIds
+        );
+      }
     }
 
-    await this.projectTypedEdges(collection, store, options);
+    const errors =
+      syncOptions.projectTypedEdges === false
+        ? []
+        : await this.projectTypedEdges(store, syncOptions, projectionSourceIds);
+    const added = results.filter((result) => result.status === "added").length;
+    const updated = results.filter(
+      (result) => result.status === "updated"
+    ).length;
+    const unchanged = results.filter(
+      (result) => result.status === "unchanged"
+    ).length;
+    const errored = results.filter(
+      (result) => result.status === "error"
+    ).length;
+    const skipped = results.filter(
+      (result) => result.status === "skipped"
+    ).length;
 
-    return results;
+    return {
+      collection: collection.name,
+      filesProcessed: results.length,
+      filesAdded: added,
+      filesUpdated: updated,
+      filesUnchanged: unchanged,
+      filesErrored: errored,
+      filesSkipped: skipped,
+      filesMarkedInactive: markedInactive,
+      durationMs: Date.now() - startedAt,
+      files: results,
+      errors,
+    };
+  }
+
+  private async collectProjectionSourceIds(
+    store: StorePort,
+    documentId: number,
+    sourceIds: Set<number>
+  ): Promise<void> {
+    sourceIds.add(documentId);
+    const [linkBacklinks, edgeBacklinks] = await Promise.all([
+      store.getBacklinksForDoc(documentId),
+      store.getEdgeBacklinksForDoc(documentId),
+    ]);
+    if (linkBacklinks.ok) {
+      for (const backlink of linkBacklinks.value) {
+        sourceIds.add(backlink.sourceDocId);
+      }
+    }
+    if (edgeBacklinks.ok) {
+      for (const backlink of edgeBacklinks.value) {
+        sourceIds.add(backlink.sourceDocId);
+      }
+    }
   }
 
   private async projectTypedEdges(
-    collection: Collection,
     store: StorePort,
-    options: SyncOptions
+    options: SyncOptions,
+    sourceDocumentIds?: Set<number>
   ): Promise<Array<{ relPath: string; code: string; message: string }>> {
     const errors: Array<{ relPath: string; code: string; message: string }> =
       [];
 
-    const backfillResult = await store.backfillDocEdges();
+    const selectedSourceIds = sourceDocumentIds
+      ? [...sourceDocumentIds]
+      : undefined;
+    const backfillResult = await store.backfillDocEdges(selectedSourceIds);
     if (!backfillResult.ok) {
       return [
         {
@@ -1075,8 +1207,22 @@ export class SyncService {
     }
 
     const activeDocs = docsResult.value.filter((doc) => doc.active);
+    const activeIds = new Set(activeDocs.map((doc) => doc.id));
+    if (selectedSourceIds) {
+      for (const documentId of selectedSourceIds) {
+        if (!activeIds.has(documentId)) {
+          await store.setDocEdges(documentId, [], "frontmatter-relation");
+        }
+      }
+    }
+    const projectedDocs = sourceDocumentIds
+      ? activeDocs.filter((doc) => sourceDocumentIds.has(doc.id))
+      : activeDocs;
 
-    for (const doc of activeDocs) {
+    for (const [docIndex, doc] of projectedDocs.entries()) {
+      if (docIndex > 0 && docIndex % PROJECTION_YIELD_INTERVAL === 0) {
+        await Bun.sleep(0);
+      }
       if (!doc.mirrorHash) {
         continue;
       }
@@ -1191,6 +1337,14 @@ export class SyncService {
     }
 
     return errors;
+  }
+
+  /** Run an exact global typed-edge reconciliation with cooperative yields. */
+  reconcileTypedEdges(
+    store: StorePort,
+    options: SyncOptions = {}
+  ): Promise<Array<{ relPath: string; code: string; message: string }>> {
+    return this.projectTypedEdges(store, options);
   }
 
   /**
@@ -1419,9 +1573,9 @@ export class SyncService {
       }
     }
 
-    errors.push(
-      ...(await this.projectTypedEdges(collection, store, syncOptions))
-    );
+    if (syncOptions.projectTypedEdges !== false) {
+      errors.push(...(await this.projectTypedEdges(store, syncOptions)));
+    }
 
     return {
       collection: collection.name,
@@ -1448,10 +1602,23 @@ export class SyncService {
   ): Promise<SyncResult> {
     const startTime = Date.now();
     const results: CollectionSyncResult[] = [];
+    const deferredProjectionOptions: SyncOptions = {
+      ...options,
+      projectTypedEdges: false,
+    };
 
     for (const collection of collections) {
-      const result = await this.syncCollection(collection, store, options);
+      const result = await this.syncCollection(
+        collection,
+        store,
+        deferredProjectionOptions
+      );
       results.push(result);
+    }
+
+    if (results.length > 0) {
+      const projectionErrors = await this.projectTypedEdges(store, options);
+      results.at(-1)?.errors.push(...projectionErrors);
     }
 
     // Aggregate totals

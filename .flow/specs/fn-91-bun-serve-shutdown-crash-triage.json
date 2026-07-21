@@ -1,0 +1,23 @@
+{
+  "branch_name": "fn-91-bun-serve-shutdown-crash-triage",
+  "created_at": "2026-07-21T12:07:34.553738Z",
+  "depends_on_epics": [],
+  "id": "fn-91-bun-serve-shutdown-crash-triage",
+  "next_task": 1,
+  "plan_review_status": "unknown",
+  "plan_reviewed_at": null,
+  "spec_path": ".flow/specs/fn-91-bun-serve-shutdown-crash-triage.md",
+  "status": "done",
+  "title": "Bun serve shutdown crash triage",
+  "tracker": {
+    "baseHashFlow": null,
+    "baseHashTracker": null,
+    "id": null,
+    "identifier": null,
+    "lastSyncedAt": null,
+    "mergeBaseFlow": null,
+    "mergeBaseTracker": null,
+    "url": null
+  },
+  "updated_at": "2026-07-21T12:42:05.907977Z"
+}

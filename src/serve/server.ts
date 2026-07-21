@@ -163,6 +163,10 @@ export async function startServer(
 
   process.once("SIGINT", shutdown);
   process.once("SIGTERM", shutdown);
+  const removeShutdownHandlers = (): void => {
+    process.off("SIGINT", shutdown);
+    process.off("SIGTERM", shutdown);
+  };
 
   // Start server with try/catch for port-in-use etc.
   let server: ReturnType<typeof Bun.serve>;
@@ -679,6 +683,7 @@ export async function startServer(
       },
     });
   } catch (e) {
+    removeShutdownHandlers();
     await runtime.dispose();
     return {
       success: false,
@@ -696,7 +701,11 @@ export async function startServer(
     });
   });
 
-  await server.stop(true);
-  await runtime.dispose();
+  removeShutdownHandlers();
+  try {
+    await server.stop(true);
+  } finally {
+    await runtime.dispose();
+  }
   return { success: true };
 }

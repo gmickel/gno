@@ -10,7 +10,9 @@ import type { DocumentRow, StorePort } from "../../store/types";
 import type { ToolContext } from "../server";
 
 import { decorateUriForIndex, parseUri } from "../../app/constants";
+import { resolveEffectiveIndex } from "../../core/indexed-reference";
 import { parseRef } from "../../core/ref-parser";
+import { openScopedIndexStore } from "../../store/sqlite/scoped-index";
 import { runTool, type ToolResult } from "./index";
 
 interface MultiGetInput {
@@ -144,121 +146,136 @@ export function handleMultiGet(
       const skipped: Array<{ ref: string; reason: string }> = [];
 
       let refs: string[] = args.refs ?? [];
-
-      // Pattern-based lookup
-      if (args.pattern) {
-        // For pattern matching, list all documents and filter
-        const listResult = await ctx.store.listDocuments();
-        if (!listResult.ok) {
-          throw new Error(listResult.error.message);
-        }
-
-        // Safe glob-like pattern matching: escape regex metacharacters first
-        const pattern = args.pattern;
-        // Escape all regex metacharacters except * and ?
-        const escaped = pattern.replace(/[.+^${}()|[\]\\]/g, "\\$&");
-        // Then convert glob wildcards to regex
-        const regexPattern = escaped.replace(/\*/g, ".*").replace(/\?/g, ".");
-        const regex = new RegExp(`^${regexPattern}$`);
-
-        refs = listResult.value
-          .filter((d) => regex.test(d.uri) || regex.test(d.relPath))
-          .map((d) => d.uri);
+      const resolution = resolveEffectiveIndex(refs, ctx.indexName);
+      if (!resolution.ok) {
+        throw new Error(resolution.error);
       }
+      const scoped = await openScopedIndexStore({
+        activeStore: ctx.store,
+        activeIndexName: ctx.indexName,
+        requestedIndexName: resolution.value.indexName,
+        config: ctx.config,
+        configPath: ctx.actualConfigPath,
+      });
 
-      // Process each reference
-      for (const ref of refs) {
-        const parsed = parseRef(ref);
-        if ("error" in parsed) {
-          skipped.push({ ref, reason: parsed.error });
-          continue;
-        }
-
-        const doc = await lookupDocument(ctx.store, parsed);
-        if (!doc) {
-          skipped.push({ ref, reason: "Not found" });
-          continue;
-        }
-
-        if (!doc.mirrorHash) {
-          skipped.push({ ref, reason: "No indexed content" });
-          continue;
-        }
-
-        // Get content
-        const contentResult = await ctx.store.getContent(doc.mirrorHash);
-        if (!contentResult.ok) {
-          skipped.push({ ref, reason: contentResult.error.message });
-          continue;
-        }
-
-        let content = contentResult.value ?? "";
-        let truncated = false;
-
-        // Apply maxBytes truncation (actual UTF-8 bytes, not characters)
-        const contentBuffer = Buffer.from(content, "utf8");
-        if (contentBuffer.length > maxBytes) {
-          // Truncate by bytes, then decode safely (may cut mid-codepoint)
-          const truncatedBuffer = contentBuffer.subarray(0, maxBytes);
-          // Decode with replacement char for incomplete sequences
-          content = truncatedBuffer.toString("utf8");
-          // Remove potential trailing replacement char from cut codepoint
-          if (content.endsWith("\uFFFD")) {
-            content = content.slice(0, -1);
+      try {
+        // Pattern-based lookup
+        if (args.pattern) {
+          // For pattern matching, list all documents and filter
+          const listResult = await scoped.store.listDocuments();
+          if (!listResult.ok) {
+            throw new Error(listResult.error.message);
           }
-          truncated = true;
+
+          // Safe glob-like pattern matching: escape regex metacharacters first
+          const pattern = args.pattern;
+          // Escape all regex metacharacters except * and ?
+          const escaped = pattern.replace(/[.+^${}()|[\]\\]/g, "\\$&");
+          // Then convert glob wildcards to regex
+          const regexPattern = escaped.replace(/\*/g, ".*").replace(/\?/g, ".");
+          const regex = new RegExp(`^${regexPattern}$`);
+
+          refs = listResult.value
+            .filter((d) => regex.test(d.uri) || regex.test(d.relPath))
+            .map((d) => d.uri);
         }
 
-        const contentLines = content.split("\n");
-
-        // Apply line numbers (defaults to true per spec)
-        if (args.lineNumbers !== false) {
-          content = contentLines
-            .map((line, i) => `${i + 1}: ${line}`)
-            .join("\n");
-        }
-
-        // Build absPath
-        const uriParsed = parseUri(doc.uri);
-        let absPath: string | undefined;
-        if (uriParsed) {
-          const collection = ctx.collections.find(
-            (c) => c.name === uriParsed.collection
-          );
-          if (collection) {
-            absPath = pathJoin(collection.path, doc.relPath);
+        // Process each reference
+        for (const ref of refs) {
+          const parsed = parseRef(ref);
+          if ("error" in parsed) {
+            skipped.push({ ref, reason: parsed.error });
+            continue;
           }
+
+          const doc = await lookupDocument(scoped.store, parsed);
+          if (!doc) {
+            skipped.push({ ref, reason: "Not found" });
+            continue;
+          }
+
+          if (!doc.mirrorHash) {
+            skipped.push({ ref, reason: "No indexed content" });
+            continue;
+          }
+
+          // Get content
+          const contentResult = await scoped.store.getContent(doc.mirrorHash);
+          if (!contentResult.ok) {
+            skipped.push({ ref, reason: contentResult.error.message });
+            continue;
+          }
+
+          let content = contentResult.value ?? "";
+          let truncated = false;
+
+          // Apply maxBytes truncation (actual UTF-8 bytes, not characters)
+          const contentBuffer = Buffer.from(content, "utf8");
+          if (contentBuffer.length > maxBytes) {
+            // Truncate by bytes, then decode safely (may cut mid-codepoint)
+            const truncatedBuffer = contentBuffer.subarray(0, maxBytes);
+            // Decode with replacement char for incomplete sequences
+            content = truncatedBuffer.toString("utf8");
+            // Remove potential trailing replacement char from cut codepoint
+            if (content.endsWith("\uFFFD")) {
+              content = content.slice(0, -1);
+            }
+            truncated = true;
+          }
+
+          const contentLines = content.split("\n");
+
+          // Apply line numbers (defaults to true per spec)
+          if (args.lineNumbers !== false) {
+            content = contentLines
+              .map((line, i) => `${i + 1}: ${line}`)
+              .join("\n");
+          }
+
+          // Build absPath
+          const uriParsed = parseUri(doc.uri);
+          let absPath: string | undefined;
+          if (uriParsed) {
+            const collection = ctx.collections.find(
+              (c) => c.name === uriParsed.collection
+            );
+            if (collection) {
+              absPath = pathJoin(collection.path, doc.relPath);
+            }
+          }
+
+          documents.push({
+            docid: doc.docid,
+            uri: decorateUriForIndex(doc.uri, scoped.indexName),
+            title: doc.title ?? undefined,
+            content,
+            totalLines: (contentResult.value ?? "").split("\n").length,
+            truncated,
+            source: {
+              absPath,
+              relPath: doc.relPath,
+              mime: doc.sourceMime,
+              ext: doc.sourceExt,
+              modifiedAt: doc.sourceMtime,
+              sizeBytes: doc.sourceSize,
+            },
+          });
         }
 
-        documents.push({
-          docid: doc.docid,
-          uri: decorateUriForIndex(doc.uri, ctx.indexName),
-          title: doc.title ?? undefined,
-          content,
-          totalLines: (contentResult.value ?? "").split("\n").length,
-          truncated,
-          source: {
-            absPath,
-            relPath: doc.relPath,
-            mime: doc.sourceMime,
-            ext: doc.sourceExt,
-            modifiedAt: doc.sourceMtime,
-            sizeBytes: doc.sourceSize,
+        const response: MultiGetResponse = {
+          documents,
+          skipped,
+          meta: {
+            requested: refs.length,
+            returned: documents.length,
+            skipped: skipped.length,
           },
-        });
+        };
+
+        return response;
+      } finally {
+        await scoped.close();
       }
-
-      const response: MultiGetResponse = {
-        documents,
-        skipped,
-        meta: {
-          requested: refs.length,
-          returned: documents.length,
-          skipped: skipped.length,
-        },
-      };
-
-      return response;
     },
     formatMultiGetResponse
   );

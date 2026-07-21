@@ -137,6 +137,8 @@ export interface SyncOptions {
   contentTypeRules?: NormalizedContentTypeRule[];
   /** Stable hash of the normalized content type rules, used for re-derivation. */
   contentTypeRulesFingerprint?: string;
+  /** Internal orchestration flag: defer graph projection to an outer sync. */
+  projectTypedEdges?: boolean;
 }
 
 export type ContentTypeSource =

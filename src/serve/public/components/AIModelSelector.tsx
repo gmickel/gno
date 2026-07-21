@@ -128,6 +128,7 @@ function formatModelRole(uri: string | undefined): string {
 }
 
 export interface AIModelSelectorProps {
+  appStatus?: AppStatusResponse | null;
   onPresetChange?: (presetId: string) => void;
   showDetails?: boolean;
   showDownloadAction?: boolean;
@@ -139,6 +140,7 @@ function isCustomPreset(preset: Preset): boolean {
 }
 
 export function AIModelSelector({
+  appStatus,
   onPresetChange,
   showDetails = false,
   showDownloadAction = true,
@@ -164,6 +166,7 @@ export function AIModelSelector({
     null
   );
   const pollInterval = useRef<ReturnType<typeof setInterval> | null>(null);
+  const parentOwnsStatus = useRef(appStatus !== undefined);
   const containerRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -274,13 +277,15 @@ export function AIModelSelector({
       setLoading(false);
     });
 
-    void apiFetch<AppStatusResponse>("/api/status").then(({ data }) => {
-      if (data) {
-        setModelsNeeded(
-          data.bootstrap.models.cachedCount < data.bootstrap.models.totalCount
-        );
-      }
-    });
+    if (!parentOwnsStatus.current) {
+      void apiFetch<AppStatusResponse>("/api/status").then(({ data }) => {
+        if (data) {
+          setModelsNeeded(
+            data.bootstrap.models.cachedCount < data.bootstrap.models.totalCount
+          );
+        }
+      });
+    }
 
     void apiFetch<DownloadStatus>("/api/models/status").then(({ data }) => {
       if (data?.active) {
@@ -289,6 +294,16 @@ export function AIModelSelector({
       }
     });
   }, [checkCapabilities]);
+
+  useEffect(() => {
+    if (!appStatus) {
+      return;
+    }
+    setModelsNeeded(
+      appStatus.bootstrap.models.cachedCount <
+        appStatus.bootstrap.models.totalCount
+    );
+  }, [appStatus]);
 
   // Polling
   useEffect(() => {

@@ -1,0 +1,23 @@
+{
+  "branch_name": "fn-90-web-ui-and-background-sync-performance",
+  "created_at": "2026-07-21T12:07:34.365449Z",
+  "depends_on_epics": [],
+  "id": "fn-90-web-ui-and-background-sync-performance",
+  "next_task": 1,
+  "plan_review_status": "unknown",
+  "plan_reviewed_at": null,
+  "spec_path": ".flow/specs/fn-90-web-ui-and-background-sync-performance.md",
+  "status": "done",
+  "title": "Web UI and background sync performance",
+  "tracker": {
+    "baseHashFlow": null,
+    "baseHashTracker": null,
+    "id": null,
+    "identifier": null,
+    "lastSyncedAt": null,
+    "mergeBaseFlow": null,
+    "mergeBaseTracker": null,
+    "url": null
+  },
+  "updated_at": "2026-07-21T12:42:05.403144Z"
+}

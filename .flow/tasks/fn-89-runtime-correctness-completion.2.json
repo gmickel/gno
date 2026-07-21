@@ -1,0 +1,14 @@
+{
+  "assignee": null,
+  "claim_note": "",
+  "claimed_at": null,
+  "created_at": "2026-07-21T12:08:28.184794Z",
+  "depends_on": ["fn-89-runtime-correctness-completion.1"],
+  "id": "fn-89-runtime-correctness-completion.2",
+  "priority": null,
+  "spec": "fn-89-runtime-correctness-completion",
+  "spec_path": ".flow/tasks/fn-89-runtime-correctness-completion.2.md",
+  "status": "todo",
+  "title": "Expose vector diagnostics and correct docs",
+  "updated_at": "2026-07-21T12:08:51.944673Z"
+}

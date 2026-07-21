@@ -39,11 +39,7 @@ import type {
   GnoVectorSearchOptions,
 } from "./types";
 
-import {
-  decorateUriForIndex,
-  getIndexDbPath,
-  parseUri,
-} from "../app/constants";
+import { decorateUriForIndex, getIndexDbPath } from "../app/constants";
 import {
   ConfigSchema,
   loadConfig,
@@ -69,6 +65,7 @@ import {
   planMoveRefactor,
   planRenameRefactor,
 } from "../core/file-refactors";
+import { resolveEffectiveIndex } from "../core/indexed-reference";
 import { resolveNoteCreatePlan } from "../core/note-creation";
 import { resolveNotePreset } from "../core/note-presets";
 import { extractSections } from "../core/sections";
@@ -92,6 +89,7 @@ import { searchHybrid } from "../pipeline/hybrid";
 import { searchBm25 } from "../pipeline/search";
 import { searchVectorWithEmbedding } from "../pipeline/vsearch";
 import { SqliteAdapter } from "../store/sqlite/adapter";
+import { openScopedIndexStore } from "../store/sqlite/scoped-index";
 import { createVectorIndexPort } from "../store/vector";
 import {
   getDocumentByRef,
@@ -647,36 +645,63 @@ class GnoClientImpl implements GnoClient {
 
   async get(ref: string, options: GnoGetOptions = {}) {
     this.assertOpen();
-    const explicitIndex = ref.startsWith("gno://")
-      ? parseUri(ref)?.indexName
-      : undefined;
-    const result = await getDocumentByRef(
-      this.store,
-      this.config,
-      ref,
-      options
-    );
-    return {
-      ...result,
-      uri: decorateUriForIndex(result.uri, explicitIndex ?? this.indexName),
-    };
+    const resolution = resolveEffectiveIndex([ref], this.indexName);
+    if (!resolution.ok) {
+      throw sdkError("VALIDATION", resolution.error);
+    }
+    const scoped = await openScopedIndexStore({
+      activeStore: this.store,
+      activeIndexName: this.indexName,
+      requestedIndexName: resolution.value.indexName,
+      config: this.config,
+      configPath: this.configPath,
+    });
+    try {
+      const result = await getDocumentByRef(
+        scoped.store,
+        this.config,
+        ref,
+        options
+      );
+      return {
+        ...result,
+        uri: decorateUriForIndex(result.uri, scoped.indexName),
+      };
+    } finally {
+      await scoped.close();
+    }
   }
 
   async multiGet(refs: string[], options: GnoMultiGetOptions = {}) {
     this.assertOpen();
-    const result = await multiGetDocuments(
-      this.store,
-      this.config,
-      refs,
-      options
-    );
-    return {
-      ...result,
-      documents: result.documents.map((doc) => ({
-        ...doc,
-        uri: decorateUriForIndex(doc.uri, this.indexName),
-      })),
-    };
+    const resolution = resolveEffectiveIndex(refs, this.indexName);
+    if (!resolution.ok) {
+      throw sdkError("VALIDATION", resolution.error);
+    }
+    const scoped = await openScopedIndexStore({
+      activeStore: this.store,
+      activeIndexName: this.indexName,
+      requestedIndexName: resolution.value.indexName,
+      config: this.config,
+      configPath: this.configPath,
+    });
+    try {
+      const result = await multiGetDocuments(
+        scoped.store,
+        this.config,
+        refs,
+        options
+      );
+      return {
+        ...result,
+        documents: result.documents.map((doc) => ({
+          ...doc,
+          uri: decorateUriForIndex(doc.uri, scoped.indexName),
+        })),
+      };
+    } finally {
+      await scoped.close();
+    }
   }
 
   async list(options: GnoListOptions = {}) {

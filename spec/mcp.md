@@ -576,6 +576,10 @@ Retrieve a single document by reference.
 
 - Document not found: returns `isError: true`
 - Invalid ref format: returns `isError: true`
+- Indexed URI names a missing index: returns `isError: true` without creating it
+
+For `gno://...?...index=<name>` refs, the tool reads the named index rather than
+the MCP server's active index.
 
 ---
 
@@ -615,6 +619,10 @@ Retrieve multiple documents by pattern or list.
 ```
 
 **Note:** Provide either `refs` or `pattern`, not both.
+
+All refs in one request must resolve to one index. Explicit refs for different
+indexes, or indexed refs mixed with unindexed refs from another active index,
+return `isError: true`; callers must split the batch by index.
 
 **Output Schema:** `gno://schemas/multi-get`
 
@@ -1690,12 +1698,13 @@ MIME type: `application/json`
 
 Read document content by URI.
 
-**URI Pattern:** `gno://{collection}/{relativePath}`
+**URI Pattern:** `gno://{collection}/{relativePath}[?index={name}]`
 
 **Examples:**
 
 - `gno://work/contracts/nda.docx`
 - `gno://notes/2025/01/meeting.md`
+- `gno://notes/2025/01/meeting.md?index=research`
 
 **Response:**
 
@@ -1729,6 +1738,8 @@ Content includes optional header comment:
 - Returns Markdown mirror content (converted from source)
 - Line numbers included by default for agent friendliness
 - Header is display-only, not part of indexed content
+- An `index` query opens that named database; a missing index errors without
+  creating an empty database
 
 **Errors:**
 

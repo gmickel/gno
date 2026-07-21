@@ -1,0 +1,17 @@
+{
+  "assignee": null,
+  "claim_note": "",
+  "claimed_at": null,
+  "created_at": "2026-07-21T12:08:28.999641Z",
+  "depends_on": [
+    "fn-90-web-ui-and-background-sync-performance.1",
+    "fn-90-web-ui-and-background-sync-performance.3"
+  ],
+  "id": "fn-90-web-ui-and-background-sync-performance.4",
+  "priority": null,
+  "spec": "fn-90-web-ui-and-background-sync-performance",
+  "spec_path": ".flow/tasks/fn-90-web-ui-and-background-sync-performance.4.md",
+  "status": "todo",
+  "title": "Keep projection responsive and verify production timings",
+  "updated_at": "2026-07-21T12:08:52.386374Z"
+}
