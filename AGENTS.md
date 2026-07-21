@@ -415,51 +415,28 @@ If you change behavior, update docs in the same commit. Never leave docs out of 
 Work is NOT complete until pushed to remote.
 
 <!-- BEGIN FLOW-NEXT -->
-
 ## Flow-Next
 
-This project uses Flow-Next for task tracking. Use `.flow/bin/flowctl` instead of markdown TODOs or TodoWrite.
-
-**Quick commands:**
+This project uses Flow-Next. Use `.flow/bin/flowctl` for ALL task tracking. Do NOT create markdown TODOs or use TodoWrite. Re-anchor (re-read spec + task status) before every task.
 
 ```bash
-.flow/bin/flowctl list # List all specs + tasks
-.flow/bin/flowctl specs # List all specs
-.flow/bin/flowctl tasks --spec fn-N # List tasks for spec
-.flow/bin/flowctl ready --spec fn-N # What's ready
-.flow/bin/flowctl show fn-N.M # View task
-.flow/bin/flowctl start fn-N.M # Claim task
+.flow/bin/flowctl list # specs + tasks
+.flow/bin/flowctl show fn-N.M # view task
+.flow/bin/flowctl start fn-N.M # claim -> implement -> commit
 .flow/bin/flowctl done fn-N.M --summary-file s.md --evidence-json e.json
+# e.json: {"commits": ["<sha>"], "tests": ["<command>"], "prs": []}
 ```
 
-**Creating a spec** ("create a spec", "spec out X", "write a spec for X"):
-
-Create one directly — do NOT use `$flow-next-plan` (that breaks specs into tasks). The canonical 7-section spec scaffold lives at `.flow/templates/spec.md` (copied here by `$flow-next-setup`) — read it for the section list, scope ownership, and `## Decision Context` H3 conditional. To customize the scaffold for this project, copy `.flow/templates/spec.md` to `<repo-root>/SPEC.md` and edit there — the discovery cascade prefers it (first match wins): `<repo_root>/SPEC.md` → `<repo_root>/spec.md` → `.flow/templates/spec.md` → bundled plugin template.
+**Creating a spec:** write it directly - do NOT use `$flow-next-plan` (task breakdown only). Scaffold cascade (first match wins): `SPEC.md` -> `spec.md` -> `.flow/templates/spec.md` -> bundled template.
 
 ```bash
 .flow/bin/flowctl spec create --title "Short title" --json
-.flow/bin/flowctl spec set-plan <spec-id> --file - --json <<'EOF'
-# Title
-
-# ... fill the 7 canonical sections (see SPEC.md / .flow/templates/spec.md)
-EOF
+.flow/bin/flowctl spec set-plan <spec-id> --file plan.md
 ```
 
-After creating a spec, choose next step:
+Then `$flow-next-plan <spec-id>`.
 
-- `$flow-next-plan <spec-id>` — research + break into tasks
-- `$flow-next-interview <spec-id>` — deep Q&A to refine the spec
-
-**Rules:**
-
-- Use `.flow/bin/flowctl` for ALL task tracking
-- Do NOT create markdown TODOs or use TodoWrite
-- Re-anchor (re-read spec + status) before every task
-
-**Optional — codebase feature map:** `$flow-next-map` wraps [openclaw/clawpatch](https://github.com/openclaw/clawpatch)'s `clawpatch map` command to build a semantic feature index under `.clawpatch/features/*.json`. When present, `repo-scout` and `context-scout` use it to anchor R-IDs and `Investigation targets` to concrete codebase regions. Provider-free by default; install via `pnpm add -g clawpatch` (Node 22+).
-
-**More info:** `.flow/bin/flowctl --help` or read `.flow/usage.md`
-
+**More:** `.flow/bin/flowctl --help` or `.flow/usage.md`
 <!-- END FLOW-NEXT -->
 
 # Oxlint + Oxfmt Code Standards
@@ -587,3 +564,48 @@ Oxlint will catch most issues automatically. Focus your attention on:
 ---
 
 Most formatting and common issues are automatically fixed. Run `bun run lint` before committing to ensure compliance.
+
+<!-- flow-next:model-routing:start -->
+## Picking models for Flow-Next workflows and subagents
+
+_Scaffolded by Flow-Next setup — edit freely; rerun setup to regenerate. These scores are starting opinions as of July 2026._
+
+Rankings: higher is better. **Cost** means subscription headroom, not token pricing. Each provider has a separate quota.
+
+| Model | Cost | Speed | Intelligence | Taste |
+|---|---:|---:|---:|---:|
+| fable-5 | 2 | 2 | 10 | 9 |
+| opus-4.8 | 4 | 3 | 7 | 8 |
+| gpt-5.6-sol | 8 | 5 | 9 | 6 |
+| gpt-5.6-terra | 9 | 7 | 7 | 5 |
+| grok-4.5 | 9 | 9 | 7 | 5 |
+| composer-2.5 | 9 | 10 | 6 | 6 |
+| sonnet-5 | 5 | 6 | 7 | 7 |
+| haiku-4.5 | 8 | 9 | 4 | 4 |
+
+Default orchestration:
+
+- The active harness owns capture, interviews, research synthesis, planning, task decomposition, review verdicts, acceptance checks, git, releases, and final user-facing judgment.
+- Planning and review stay in-harness. Use native agents or subagents where useful. Never shell out to `codex`, `cursor-agent`, `grok`, Copilot, or RepoPrompt for planning or review.
+- Implementation defaults to Grok 4.5 through exactly one editing bridge:
+  - Cursor quota available: `cursor-agent -p --force --model cursor-grok-4.5-high "<self-contained implementation brief>"`
+  - Grok quota available: `grok --permission-mode acceptEdits -m grok-4.5-high -p "<self-contained implementation brief>"`
+- Pick the bridge with usable quota. If it returns an authentication, rate-limit, credit, or quota error, try the other bridge once. Do not run both speculatively.
+- Run implementation bridges in the foreground from the verified repository root. Give them a self-contained task brief: scope, relevant paths, requirements, acceptance criteria, tests, and explicit prohibitions.
+- Grok edits code only. The host retains task state, review, validation, documentation reconciliation, commits, pushes, releases, and tracker updates.
+- After delegated implementation, inspect the diff and run an in-harness review before accepting it. `review.backend=none` intentionally disables external Flow-Next review subprocesses; it does not waive review.
+- User-facing UI, copy, API design, architecture, security-sensitive work, and ambiguous decisions require final judgment by the active harness.
+- If neither Grok route is usable, implement in the active harness and report the quota fallback; never block the task solely because a bridge is unavailable.
+- Explicit user instructions override this policy.
+
+Persisted role pins:
+
+- Fast triage: `models.roles.fastJudge.codex = gpt-5.6-luna:low`
+- Fast scouting: `models.roles.scoutFast.codex = gpt-5.6-luna:low`
+- Judgment-heavy scouting: `models.roles.scoutIntelligent.codex = gpt-5.6-sol:medium`
+- Cursor implementation: `models.roles.delegate.cursor = cursor-grok-4.5-high`
+- No external-review role pin.
+- No Codex implementation-delegate pin.
+
+For Flow-Next work commands (`$flow-next-work` in Codex, `/flow-next:work` in Claude Code), this project policy overrides the generic packaged delegation defaults.
+<!-- flow-next:model-routing:end -->

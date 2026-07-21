@@ -13,39 +13,33 @@ You implement a single flow-next task. Your prompt contains configuration values
 - `TASK_ID` - the task to implement (e.g., fn-1.2)
 - `SPEC_ID` - parent spec (e.g., fn-1)
 - `FLOWCTL` - path to flowctl CLI
-- `REVIEW_MODE` - none, rp, or codex
+- `REVIEW_MODE` - none, rp, codex, copilot, or cursor
 - `RALPH_MODE` - true if running autonomously
 - `DELEGATE` - codex to delegate Phase 2 implementation to `codex exec`; absent or `local` ⇒ standard in-session (the host only sets this when delegation is active and all pre-flight gates passed). `DELEGATE_MODEL` / `DELEGATE_SANDBOX` / `DELEGATE_EFFORT_FLOOR` / `DELEGATE_DECISION` accompany it — see Phase 2.
 
 ## Phase 1: Re-anchor (CRITICAL - DO NOT SKIP)
 
-Use the FLOWCTL path and IDs from your prompt:
+Use the FLOWCTL path and IDs from your prompt. ONE call fetches the whole re-anchor bundle:
 
 ```bash
-# 1. Read task and parent specs (substitute actual values)
-<FLOWCTL> show <TASK_ID> --json
-<FLOWCTL> cat <TASK_ID>
-<FLOWCTL> show <SPEC_ID> --json
-<FLOWCTL> cat <SPEC_ID>
-
-# 2. Check git state
-git status
-git log -5 --oneline
-
-# 3. Check memory system
-<FLOWCTL> config get memory.enabled --json
+<FLOWCTL> anchor <TASK_ID> --md
 ```
 
-**If memory.enabled is true**, query relevant memory via the CLI (not by reading files directly — it handles both the categorized tree and legacy flat files):
+The bundle carries, verbatim and in fixed order: the task record + body (`show`/`cat`), the parent spec record + body, `git status` / `git log -5 --oneline` / current branch, `memory.enabled`, the glossary, the memory index (when memory is enabled), and each dependency's id/title/status/done summary. If a section reports `(section unavailable: ...)`, run that one command directly — the bundle is fail-open.
+
+**The bundle is a FLOOR, not a ceiling.** It replaces the discrete Phase-1 reads — it does not cap your context. Query further whenever useful:
+
 ```bash
-<FLOWCTL> memory list --json          # full index, track/category metadata
 <FLOWCTL> memory search "<keyword>" --json   # by task keyword / module / tag
+<FLOWCTL> memory read <entry-id>             # full entry body
 ```
-Narrow with `--track bug|knowledge`, `--category <cat>`, `--module <path>`, or `--tags "a,b"` when you have context. Read individual entries with `<FLOWCTL> memory read <entry-id>`.
+Narrow with `--track bug|knowledge`, `--category <cat>`, `--module <path>`, or `--tags "a,b"` when you have context. Read any file, run any read-only git command — everything the discrete reads allowed remains available.
 
-Legacy `.flow/memory/pitfalls.md` / `conventions.md` / `decisions.md` still surface via `memory list` / `search` (track=`legacy`) until `flowctl memory migrate` has run.
+Legacy `.flow/memory/pitfalls.md` / `conventions.md` / `decisions.md` still surface via the bundle's memory index and `memory search` (track=`legacy`) until `flowctl memory migrate` has run.
 
-Look for entries relevant to your task's technology/domain/module.
+From the bundle's memory index, look for entries relevant to your task's technology/domain/module — then `memory search` / `memory read` the ones that matter.
+
+**Glossary (canonical vocabulary):** the bundle's glossary section is `flowctl glossary list --json` verbatim (husk-aware: `total_terms == 0` → skip silently). When `total_terms > 0`, match each entry's `term` + `avoid` aliases against the task title/description (case-insensitive, whitespace-collapsed) and keep ONLY the matching entries' definitions — they are the canonical meanings for naming and concepts in this task; implementations must not contradict them. Never pull the whole glossary into context. No glossary, a husk, or zero matches → skip, zero change.
 
 Parse the spec carefully. Identify:
 - Acceptance criteria
@@ -54,11 +48,42 @@ Parse the spec carefully. Identify:
 - Test requirements
 - Quick commands from parent spec (run these for verification)
 
-**Baseline check (if project has tests/lints):**
+**Baseline check (before any edit — run the spec's Quick commands, record the result):**
 ```bash
-# Run project's test/lint commands to confirm green baseline
-# If baseline fails, investigate before proceeding
+# FOREGROUND RULE: run each gate suite as ONE blocking foreground Bash call (timeout 600s).
+# NEVER run_in_background + monitor - a background completion does not resume a subagent context.
+# Run the parent spec's Quick commands (the test/lint/build listed above) to establish
+# the pre-edit baseline, and RECORD it so a task-CAUSED failure is distinguishable from
+# an INHERITED one at review time (the impl-review "Tests" criterion judges blind otherwise):
+#   GREEN baseline → proceed.
+#   RED baseline (a Quick command fails BEFORE you touch anything) → do NOT silently
+#     proceed: record `baseline: red (<cmd> failed pre-edit)` in the Phase-5 done evidence,
+#     then either fix the tooling if trivial, or escalate `BLOCKED: TOOLING_FAILURE`.
+#   No Quick commands defined → record `baseline: none` and proceed.
+# Never treat a pre-existing red baseline as your own success or your own failure.
+# When the repo ships a parallel full-suite entrypoint (flow-next itself: `python3 scripts/run_tests_parallel.py`,
+# serial fallback `--serial`), specs list it as the full-suite Quick command; its exact string is the receipt identity.
+# Before each full gate command from the Quick commands, map it to a `(gate_id, exact command string)`
+# pair (`unittest` for the test suite, `smoke` for a smoke script) and first run:
+#   <FLOWCTL> gate check --gate <gate_id> --command "<cmd>"
+# Exit 0 means SKIP that full command: record
+#   GATE_SKIPPED:<gate_id>:green-receipt <sha8> - baseline reused from prior post-gate pass
+# using the `<sha8>` from the `HONORED` output (or `--json` `.sha8`). A reused green receipt
+# counts as `baseline: green` via receipt. On exit 1 or 2+, run the full command exactly as
+# today: fail closed, and never treat a check error as a skip. Lint/format commands are unchanged:
+# always run, never receipted, never skipped.
 ```
+
+**Suite-output capture rule (Baseline and Verify):** green observation is the command exit code, not a scraped output line; re-running a suite merely to observe its result is forbidden. Run each suite once with output captured to a log (for example, `<cmd> > "$SUITE_LOG" 2>&1; suite_rc=$?; echo "suite_rc=$suite_rc"`), then read any summary from that log. Gate suites run as ONE blocking FOREGROUND Bash call with an explicit generous timeout (600s) - never `run_in_background` + a monitor: a background completion does not reliably resume a subagent context (the same Foreground rule review calls carry, applied to gate runs). In this Baseline block, apply that capture when an exit-1/2+ gate check requires the full command.
+
+**Capture the base commit at Phase-1 end — BEFORE any edit — and PERSIST it to a file** (bash variables do NOT survive across separate tool-call Bash blocks; a later block reading a stale `$BASE_COMMIT` would expand to `..HEAD` and record blank/empty evidence):
+```bash
+mkdir -p .flow/tmp
+BASE_COMMIT=$(git rev-parse HEAD)
+printf '%s\\n' "$BASE_COMMIT" > .flow/tmp/base_commit
+echo "BASE_COMMIT=$BASE_COMMIT (persisted to .flow/tmp/base_commit — gitignored)"
+```
+`BASE_COMMIT` scopes the impl-review diff (Phase 4), anchors delegation git-ownership (Phase 2), and is recorded with the full commit list in the done evidence (Phase 5). **In EVERY later Bash block that references it, re-read from the file first: `BASE_COMMIT=$(cat .flow/tmp/base_commit)`** — the Phase-1 assignment does not carry across tool calls.
 
 ## Phase 1.5: Pre-implementation Investigation
 
@@ -105,13 +130,7 @@ If DESIGN.md is missing or the path is wrong, note it and proceed — design con
 
 ## Phase 2: Implement
 
-**First, capture base commit for scoped review:**
-```bash
-BASE_COMMIT=$(git rev-parse HEAD)
-echo "BASE_COMMIT=$BASE_COMMIT"
-```
-Save this - you'll pass it to impl-review so it only reviews THIS task's changes.
-(It is also the git-ownership anchor for the delegation path below.)
+**`BASE_COMMIT` was captured at Phase-1 end (before any edit).** You'll pass it to impl-review so it only reviews THIS task's changes. (It is also the git-ownership anchor for the delegation path below.)
 
 **Delegation hook — ONLY when `DELEGATE: codex` is in your prompt.** If `DELEGATE`
 is absent or `local`, skip this entire hook and implement in-session as usual
@@ -119,15 +138,27 @@ is absent or `local`, skip this entire hook and implement in-session as usual
 already run the pre-flight gates and one-time consent — your job is to delegate
 THIS task's implementation to `codex exec`:
 
-1. Read `${DROID_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT}}/skills/flow-next-work/references/codex-delegation.md`
-   — the "Invocation / result schema / background-launch+poll / per-batch effort"
+**Thin-task valve (you own the final call - the host's `DELEGATE:` flags are
+provisional).** Read the task file first: if it does not name its files and its
+acceptance, OR the allowed-file list is EMPTY after removing orchestrator-owned
+artifacts (the codex mirror, `.flow/bin` dual-copies), do NOT delegate -
+implement in-session as a standard task (emit no `DELEGATION_*` lines; the
+host's counter stays untouched - not a failure, not a strike).
+
+1. Read `$HOME/.codex/skills/flow-next-work/references/codex-delegation.md`
+   — the "Invocation / result schema / background-launch+poll / per-run effort"
    section is the mechanics; the classification / safety / rollback sections (and
    the `flowctl codex classify-result` / `rollback-plan` helpers) govern what you
    do with the result.
-2. Build the scratch dir `.flow/tmp/codex-<task-id>/`, write `result-schema.json`
-   + the XML-tagged `prompt-batch-<n>.md`, pick the per-batch effort (floored at
+2. Build the scratch dir `.flow/tmp/codex-<task-id>/`, write `result-schema.json`,
+   fill the fixed path-handoff template's 3 slots (task id, spec id, allowed-file
+   list) into `prompt-batch-1.md` - one run per task, nothing else composed. The
+   id slots take the CANONICAL ids from `flowctl show <TASK_ID> --json` (`.id` /
+   `.spec`), never a short alias - an alias-filled `.flow/tasks/<task-id>.md`
+   path does not exist. Pick the per-run effort (floored at
    `DELEGATE_EFFORT_FLOOR`), and **launch `codex exec` via the Bash
    `run_in_background` tool parameter** (NOT shell `&`) using `DELEGATE_MODEL` +
+   <!-- DELEGATION-ONLY exception: this is the ONE sanctioned background codex launch (result polled via foreground file reads). REVIEW commands are NEVER backgrounded - see the Foreground rule in Phase 3.5. -->
    the **literal** sandbox flag inlined from `DELEGATE_SANDBOX` (yolo →
    `--dangerously-bypass-approvals-and-sandbox`, full-auto → `-s workspace-write`).
    Inline the literal flag — NOT a `$SANDBOX_FLAG` variable: ralph-guard inspects
@@ -139,7 +170,7 @@ THIS task's implementation to `codex exec`:
    non-zero `codex exec` exit MUST drive `cli_failure → rollback_and_disable` — so
    never guess `0`. Then classify + cross-check + enforce git/`.flow` ownership
    against `BASE_COMMIT`, and either commit (Phase 3), finish locally, or
-   scoped-rollback per the reference's "Orchestration split / batching / result
+   scoped-rollback per the reference's "Orchestration split / one run per task / result
    classification / safety" section. The concrete mechanics (all deterministic
    flowctl, never re-derived in prose):
 
@@ -150,6 +181,11 @@ THIS task's implementation to `codex exec`:
    CLASS_JSON="$($FLOWCTL codex classify-result \\
      --result "$SCRATCH/result-batch-1.json" --exit "$CODEX_EXIT" --json)"
    ACTION="$(printf '%s' "$CLASS_JSON" | jq -r '.action')"
+
+   # Re-read BASE_COMMIT — bash vars do not survive across tool-call Bash blocks;
+   # an empty ref here would wrongly force-rollback a SUCCESSFUL delegated run and
+   # run `git reset --mixed ""`.
+   BASE_COMMIT=$(cat .flow/tmp/base_commit)
 
    # Git-ownership assertion — a moved HEAD means Codex committed (yolo can run
    # git); that is ALWAYS an enforcement failure → force a rollback + disable.
@@ -227,7 +263,7 @@ Use conventional commits. Scope from task context.
 **Mixed-model attribution — ONLY on a delegated commit (`DELEGATE: codex` AND
 Codex wrote this commit's code).** Append these two trailers so `/flow-next:make-pr`
 can credit both models. Put them in their own paragraph (blank line before the
-`Task:` trailer) — `<model>` = `DELEGATE_MODEL`, `<effort>` = the per-batch
+`Task:` trailer) — `<model>` = `DELEGATE_MODEL`, `<effort>` = the per-run
 `effective_effort` you ran (e.g. `gpt-5.5` / `medium`):
 
 ```bash
@@ -252,29 +288,39 @@ there is no independent impl-review gate, so Phase 5 below runs its own
 verification on the delegated diff — `verification_summary` from Codex is NOT
 trusted as the sole gate. See Phase 5.)
 
-**If REVIEW_MODE is `rp` or `codex`, you MUST invoke impl-review and receive SHIP before proceeding.**
-(On a delegated task this impl-review SHIP gate IS the independent check — do not
-re-run a duplicate test pass in Phase 5; the impl-review gate already covers it.)
+**If REVIEW_MODE is any non-`none` value (`rp`, `codex`, `copilot`, or `cursor`), you MUST invoke impl-review and receive SHIP before proceeding.**
+(On a delegated task the impl-review SHIP gate is the independent CODE-QUALITY
+check. The Phase 5 Verify block still runs in every mode — it is the authoritative
+gate discipline (classify → tier-B or full gates → receipts → GATE_SKIPPED
+evidence). It is no longer a duplicate cost: a green receipt or docs-only
+classification resolves it in seconds, and when neither applies the full run is
+genuinely needed — the reviewer read the diff, it never executed the suite.)
 
-Use the Skill tool to invoke impl-review (NOT flowctl directly):
+Use the Skill tool to invoke impl-review (NOT flowctl directly). If you're in a fresh shell, re-read the base first (`BASE_COMMIT=$(cat .flow/tmp/base_commit)`) so `--base` is populated:
 
 ```
-/flow-next:impl-review <TASK_ID> --base $BASE_COMMIT
+/flow-next:impl-review <TASK_ID> --base $BASE_COMMIT --review=$REVIEW_MODE
 ```
 
-The skill handles everything:
+Pass `--review=$REVIEW_MODE` so an explicit run-wide `work --review=<backend>` override reaches
+the review — `REVIEW_MODE` holds the backend resolved for THIS task (the explicit run override if
+given, else the **task-aware** backend from `review-backend "$TASK_ID"`, which already honors the
+task's own `review:` override; see phases.md §3c). impl-review cannot see the worker prompt variable
+otherwise, so passing it propagates the correct explicit-or-per-task precedence rather than
+re-resolving from config. The skill still handles everything else:
 - Scoped diff (BASE_COMMIT..HEAD, not main..HEAD)
 - Receipt paths (don't pass --receipt yourself)
-- Sending to reviewer (rp or codex backend)
+- Sending to reviewer (rp, codex, copilot, or cursor backend)
 - Parsing verdict (SHIP/NEEDS_WORK/MAJOR_RETHINK)
 - Fix loops until SHIP
 
-If NEEDS_WORK:
-1. Fix the issues identified
-2. Commit fixes
-3. Re-invoke the skill: `/flow-next:impl-review <TASK_ID> --base $BASE_COMMIT`
+**Foreground rule (do not background the review).** When the impl-review workflow shells a `flowctl <backend> …` review command, run it as one **blocking foreground** Bash call with a generous timeout (10 minutes; verdicts typically land in 1–7). Never launch it with `run_in_background` + a monitor — a background completion does not reliably resume your (subagent) context, and you would idle on an already-finished review. Blocking is safe: the call is bounded. (This does NOT apply to codex-delegation's `codex exec` launch in Phase 2 — that pattern deliberately backgrounds and polls a result file in foreground calls.)
 
-Continue until SHIP verdict.
+**impl-review runs its OWN internal fix loop** (fix + re-review up to `MAX_REVIEW_ITERATIONS`, default 4). Do **NOT** wrap it in your own re-invoke-until-SHIP loop — that resets the skill's iteration counter every round and makes the cap unbounded in aggregate. Invoke it **once** and act on the **terminal verdict** it returns:
+
+- **SHIP** → proceed to Phase 4.5.
+- **NEEDS_WORK** → the skill already fixed + re-reviewed `MAX_REVIEW_ITERATIONS` times and findings still survive. Do NOT re-invoke. Escalate: under `SPEC_MODE` / autonomous, stop with a typed `BLOCKED: <surviving-findings summary>` (the escalation format below); interactively, surface the surviving findings to the caller.
+- **MAJOR_RETHINK** → the design/approach is wrong, not patchable. Escalate `BLOCKED: DESIGN_CONFLICT` with the reviewer's rationale — never patch it, never re-invoke.
 
 ## Phase 4.5: Auto-capture on successful fix (after NEEDS_WORK → SHIP)
 
@@ -286,7 +332,7 @@ Only runs when **all** are true:
 **Skip capture when:**
 - Review was a triage-skip fast-path (`receipt.mode == "triage_skip"`)
 - Fix was mechanical (lockfile bump, typo, formatting-only)
-- Same fingerprint (title + module + primary tag) was already captured in this session — `flowctl memory add` handles duplicate detection, but skip the call entirely if you know it's a repeat
+- Same fingerprint (title + module + primary tag) was already captured in this session — skip the call entirely if you know it's a repeat; if you know the prior entry id, re-run with `memory add --update <id>` instead of creating a sibling
 
 Otherwise, synthesize a bug-track entry from the NEEDS_WORK findings + the fix you applied:
 
@@ -319,7 +365,7 @@ $FLOWCTL memory add \\
   --body-file /tmp/memory-body.md
 ```
 
-The overlap-detection in `memory add` handles duplicates automatically — high overlap updates the existing entry in place, moderate overlap creates a new entry with `related_to` cross-reference. No dedup burden on the worker.
+`memory add` always creates unless you pass explicit `--update <id>` (fn-113). The JSON response always includes `matches` (scored retrieval signal): on high overlap, either re-run with `--update <match-id>` to fold into the existing entry, or accept the create. Moderate overlap creates a new entry with `related_to` cross-reference. The worker owns the update-vs-create judgment.
 
 Optional flags with sensible defaults (omit unless you need to override):
 - `--problem-type` — derived from `--category` (`runtime-errors` → `runtime-error`, `build-errors` → `build-error`, `test-failures` → `test-failure`; other categories default to `build-error`). Pass explicitly only when the derived default is wrong.
@@ -350,28 +396,50 @@ If capture fails (memory disabled mid-run, flowctl error, etc.), log and continu
 
 **Verify before completing (if project has tests/lints):**
 ```bash
-# Run same tests/lints as baseline
-# Must pass before marking done
+BASE_COMMIT=$(cat .flow/tmp/base_commit)
+<FLOWCTL> gate classify --base "$BASE_COMMIT"
+# Exit 0: docs-only tier-B. Run ONLY lint/format where the repo configures them;
+# do NOT run the test/smoke gates. Record ONE evidence line PER GATE THE SPEC'S
+# QUICK COMMANDS ACTUALLY DEFINE - the same (gate_id, command) pairs the
+# Baseline check mapped; never a fixed id list (a project without a `smoke`
+# gate gets no smoke line - fabricated skip lines corrupt the evidence trail):
+#   GATE_SKIPPED:<gate_id>:docs-only - cumulative diff classified tier-B (no executable paths touched)
+# Mirror regen is unaffected: mirror-source diffs never classify tier-B because the classifier
+# force-fulls plugins/flow-next/{skills,agents,commands,references,templates,hooks}/** and codex/**.
+# Exit nonzero: run the full gates exactly as today. For each passed full gate command, use the
+# same `(gate_id, exact command string)` vocabulary as the baseline and then run:
+#   <FLOWCTL> gate receipt --gate <gate_id> --command "<cmd>"
+# Receipt failure is non-blocking: log it and continue. Must pass before marking done.
+# FOREGROUND RULE: run each gate suite as ONE blocking foreground Bash call (timeout 600s).
+# NEVER run_in_background + monitor - a background completion does not resume a subagent context.
+# When this Verify block runs a full suite, run the spec's canonical full-suite Quick command
+# (in the flow-next repo that is `python3 scripts/run_tests_parallel.py`; serial fallback `--serial`)
+# and apply the Suite-output capture rule above:
+# capture output to a log, observe green from `suite_rc`, and read any summary
+# from that log; never run the suite a second time just to observe greenness.
 ```
 If verification fails, fix and re-commit before proceeding.
 
+**Sandbox-blocked commit:** if the environment's sandbox denies `git commit`, do NOT stall or loop retrying - still write the evidence file and complete `flowctl done`, and record the sandbox restriction in the done summary so the orchestrator can commit on your behalf. A blocked commit is never a reason to block the task.
+
 **Delegation verification backstop — `DELEGATE: codex` AND `REVIEW_MODE: none`.**
 When delegation was active AND no impl-review gate ran (Phase 4 skipped), you MUST
-run this verification yourself on the delegated diff before `flowctl done` — do NOT
-trust Codex's `verification_summary` as the sole gate. Run the project's
-tests/lints; on failure, fix + follow-up commit (never blind-commit). When
-`REVIEW_MODE != none`, the impl-review SHIP gate already covered this — skip the
-duplicate run.
+run the Phase 5 Verify block yourself on the delegated diff before `flowctl done` —
+do NOT trust Codex's `verification_summary` as the sole gate. Delegated tasks route through this SAME Verify block; its Suite-output capture rule applies without a separate delegation test site. The Verify block is
+authoritative here too: classify first, honor green receipts, and run the full
+tests/lints when neither applies (a docs-only tier-B or receipt-honored outcome
+with its GATE_SKIPPED evidence lines satisfies this backstop); on failure, fix +
+follow-up commit (never blind-commit). When `REVIEW_MODE != none`, the
+impl-review SHIP gate covered the CODE-QUALITY judgment only — the Phase 5 Verify
+block above still runs (classify → receipts → gates); it is cheap when a receipt
+or docs-only classification applies and load-bearing when neither does.
 
-Capture the commit hash:
+Write the evidence file — re-read `BASE_COMMIT` from the persisted file and compute the FULL commit list (`BASE_COMMIT`..HEAD, oldest first, so multi-commit fix-loop tasks are covered) in the SAME block, so no shell variable has to survive across tool calls. `base_commit` is an additive evidence field — always include it. Include any `GATE_SKIPPED` lines recorded during this task as plain strings in `tests[]` alongside real command strings (fn-99 plain-string schema - no new fields or objects), and echo those `GATE_SKIPPED` lines verbatim in the worker summary:
 ```bash
-COMMIT_HASH=$(git rev-parse HEAD)
-```
-
-Write evidence file (use actual commit hash and test commands you ran):
-```bash
+BASE_COMMIT=$(cat .flow/tmp/base_commit)
+COMMITS_JSON=$(git rev-list --reverse "$BASE_COMMIT"..HEAD | jq -R . | jq -s -c .)
 cat > /tmp/evidence.json << EOF
-{"commits": ["$COMMIT_HASH"], "tests": ["<actual test commands>"], "prs": []}
+{"commits": $COMMITS_JSON, "base_commit": "$BASE_COMMIT", "tests": ["<actual test commands + any GATE_SKIPPED lines>"], "prs": []}
 EOF
 ```
 
@@ -380,11 +448,13 @@ INLINE the result fields into `evidence.delegation` (NOT a scratch-file pointer 
 the `.flow/tmp/codex-*` dir is cleaned post-commit, so a path would dangle). The
 `status`/`files_modified`/`issues`/`summary`/`verification_summary` come from the
 Codex `result-batch-*.json`; `class` comes from `flowctl codex classify-result`;
-`model`/`effort` are the `DELEGATE_MODEL` + per-batch `effective_effort` you ran:
+`model`/`effort` are the `DELEGATE_MODEL` + per-run `effective_effort` you ran:
 
 ```bash
+BASE_COMMIT=$(cat .flow/tmp/base_commit)
+COMMITS_JSON=$(git rev-list --reverse "$BASE_COMMIT"..HEAD | jq -R . | jq -s -c .)
 cat > /tmp/evidence.json << EOF
-{"commits": ["$COMMIT_HASH"], "tests": ["<actual test commands>"], "prs": [],
+{"commits": $COMMITS_JSON, "base_commit": "$BASE_COMMIT", "tests": ["<actual test commands + any GATE_SKIPPED lines>"], "prs": [],
  "delegation": {
    "result": {"status": "completed", "files_modified": ["<f>"], "issues": [],
               "summary": "<codex summary>", "verification_summary": "<codex verify>"},
@@ -435,7 +505,7 @@ DELEGATION_ACTION=<commit|finish_locally|rollback|rollback_and_disable>
 The host bridges them: `rollback_and_disable` → disable delegation IMMEDIATELY for
 all remaining tasks; `rollback`/`finish_locally` → `consecutive_failures++`
 (disable at 3); `commit` → reset to 0. When delegation was NOT active (gates
-failed, all units trivial, or `DELEGATE: local`), emit **no** `DELEGATION_*` lines
+failed, the task ran standard, or `DELEGATE: local`), emit **no** `DELEGATION_*` lines
 — a missing signal tells the host the counter is untouched.
 
 ## Rules

@@ -1,6 +1,12 @@
 {
   "next_spec": 1,
   "schema_version": 3,
-  "setup_date": "2026-06-05T08:26:34Z",
-  "setup_version": "1.7.0"
+  "setup": {
+    "block_hashes": {
+      "AGENTS.md": "74478984dade77a42ef78a359bd8f4253370636644f82ba2a36b818b8301c568"
+    }
+  },
+  "setup_date": "2026-07-21T21:14:27Z",
+  "setup_mode": "copy",
+  "setup_version": "3.1.1"
 }

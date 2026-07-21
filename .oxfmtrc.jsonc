@@ -20,5 +20,11 @@
     "newlinesBetween": true,
     "order": "asc",
   },
-  "ignorePatterns": ["invalid-yaml-syntax.yml"],
+  "ignorePatterns": [
+    "invalid-yaml-syntax.yml",
+    ".flow/**",
+    "AGENTS.md",
+    "CLAUDE.md",
+    "SPEC.md",
+  ],
 }

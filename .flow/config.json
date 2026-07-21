@@ -1,6 +1,45 @@
 {
+  "artifacts": {
+    "html": {
+      "enabled": false
+    }
+  },
+  "land": {
+    "automatedReviewers": "",
+    "ciFixBudget": 3,
+    "cleanReviewCommentPattern": "(Didn'?t find any( major)? issues|No( major)? issues found).*Reviewed commit",
+    "patienceMinutes": 30,
+    "release": true,
+    "reviewSignal": "silence",
+    "reviewTrigger": ""
+  },
   "memory": {
     "enabled": true
+  },
+  "models": {
+    "roles": {
+      "delegate": {
+        "cursor": "cursor-grok-4.5-high"
+      },
+      "fastJudge": {
+        "codex": "gpt-5.6-luna:low"
+      },
+      "scoutFast": {
+        "codex": "gpt-5.6-luna:low"
+      },
+      "scoutIntelligent": {
+        "codex": "gpt-5.6-sol:medium"
+      }
+    },
+    "verifiedAt": "2026-07-21",
+    "verifiedWith": "codex 0.145.0; cursor-agent 2026.07.17-3e2a980; grok 0.2.109; copilot 1.0.73"
+  },
+  "pilot": {
+    "autonomy": "ready",
+    "gateClasses": []
+  },
+  "pipeline": {
+    "qa": "off"
   },
   "planSync": {
     "crossEpic": true,
@@ -8,7 +47,7 @@
     "enabled": true
   },
   "review": {
-    "backend": "rp"
+    "backend": "none"
   },
   "scouts": {
     "github": false
@@ -20,6 +59,9 @@
       "capture": "reconcile",
       "completionReview": "reconcile",
       "interview": "reconcile",
+      "land": {
+        "merged": "off"
+      },
       "makePr": "comment",
       "plan": "reconcile",
       "qa": "off",
@@ -30,12 +72,21 @@
       }
     },
     "perTracker": {
+      "apiVersion": null,
+      "authScheme": null,
+      "baseUrl": null,
+      "host": null,
       "labelMap": {},
       "priorityMap": {},
+      "project": null,
       "projectId": null,
+      "projectKey": null,
+      "sslVerify": true,
+      "statusMap": {},
       "teamId": "ccfc7aae-89d7-417a-a58f-8b32cae471d9"
     },
     "provenance": "discovery ceremony 2026-06-05; confirmed by Gordon; signals: Linear MCP present, GNO team named; gh auth present from setup; LINEAR_API_KEY not required",
+    "readyState": null,
     "staleAfterHours": 24,
     "type": "linear",
     "version": 1
