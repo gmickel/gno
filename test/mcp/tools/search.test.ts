@@ -115,6 +115,7 @@ describe("gno_search output schema", () => {
     title: z.string().optional(),
     snippet: z.string(),
     snippetLanguage: z.string().optional(),
+    context: z.string().optional(),
     snippetRange: z
       .object({
         startLine: z.number(),
@@ -162,6 +163,7 @@ describe("gno_search output schema", () => {
           score: 0.85,
           uri: "gno://docs/readme.md",
           title: "README",
+          context: "Global guidance\n\nDocs guidance",
           snippet: "This is the readme file...",
           source: {
             relPath: "readme.md",
@@ -180,6 +182,11 @@ describe("gno_search output schema", () => {
 
     const result = searchOutputSchema.safeParse(validOutput);
     expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.results[0]?.context).toBe(
+        "Global guidance\n\nDocs guidance"
+      );
+    }
   });
 
   test("search output validates empty results", () => {

@@ -103,6 +103,11 @@ BM25/document-level search.
 const results = await client.search("JWT token", { limit: 5 });
 ```
 
+`search`, `vsearch`, `query`, and `ask` preserve optional `context` on each
+result. It contains matching user-configured guidance in deterministic
+global-to-specific order while `uri` and `docid` retain the exact source
+identity. No matching scope means the optional field is absent.
+
 ### Query
 
 Hybrid retrieval. Same retrieval controls as the CLI/API.

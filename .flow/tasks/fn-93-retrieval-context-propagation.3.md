@@ -36,9 +36,8 @@ Deliver complete cross-surface contracts and context guidance as one implementat
 
 
 ## Done summary
-TBD
-
+Exposed configured retrieval context consistently through CLI, REST, MCP, SDK, indexed-URI, and Ask contracts. Review hardening now builds prompts without reparsing inserted values, XML-escapes structured fields, keeps guidance outside citation numbering, and treats accepted collection-root prefixes as collection-wide. Updated schemas, specs, docs, agent guidance, and hosted gno.sh reference.
 ## Evidence
-- Commits:
-- Tests:
-- PRs:
+- Commits: a6e094ea215549c93cda7ac94d5a50262f07656e, ed34e99
+- Tests: 71 focused review-regression tests passed, bun run prerelease: 2051 passed, 1 skipped, 0 failed, docs verification: 12 passed, 2 model-dependent skips, package smoke passed, shipped-skill autoresearch: 48/48, gno.sh bun run check and bun run typecheck
+- PRs: https://github.com/gmickel/gno/pull/132, https://github.com/gmickel/gno.sh/pull/5

@@ -278,6 +278,7 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
   private configPath = ""; // Set by CLI layer for status output
   private txDepth = 0; // Transaction nesting depth
   private txCounter = 0; // Savepoint counter for unique names
+  private contextGeneration = 0;
 
   // ─────────────────────────────────────────────────────────────────────────
   // Lifecycle
@@ -341,6 +342,7 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
         return result;
       }
 
+      this.contextGeneration += 1;
       return result;
     } catch (cause) {
       const message =
@@ -517,6 +519,7 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
       });
 
       transaction();
+      this.contextGeneration += 1;
       return ok(undefined);
     } catch (cause) {
       return err(
@@ -557,6 +560,10 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
         cause
       );
     }
+  }
+
+  getContextGeneration(): number {
+    return this.contextGeneration;
   }
 
   // ─────────────────────────────────────────────────────────────────────────

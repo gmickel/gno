@@ -47,6 +47,7 @@ import {
   summarizeQueryModes,
 } from "./query-modes";
 import { rerankCandidates } from "./rerank";
+import { attachSearchResultContexts } from "./result-context";
 import {
   isWithinTemporalRange,
   resolveRecencyTimestamp,
@@ -977,6 +978,7 @@ export async function searchHybrid(
   }
 
   const finalResults = results.slice(0, limit);
+  await attachSearchResultContexts(store, finalResults);
 
   return ok({
     results: finalResults,

@@ -48,7 +48,7 @@
     },
     "context": {
       "type": "string",
-      "description": "Context metadata from folder/collection"
+      "description": "Resolved user-configured retrieval guidance, ordered from global to collection to matching path prefixes"
     },
     "snippet": {
       "type": "string",

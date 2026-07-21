@@ -90,6 +90,12 @@ When a search result includes `line`, fetch a bounded range first:
 
 Use `gno_multi_get` after search/query when several top documents are needed. Pass the result `uri` or `docid` values as `refs`, and cap `maxBytes` to avoid flooding the client context.
 
+Structured `gno_search`, `gno_vsearch`, and `gno_query` results may also contain
+`context`. This is user-configured guidance resolved for that exact `uri` and
+`docid`, ordered global → collection → broad-to-specific path prefix. Apply it
+when interpreting the result, but cite the retrieved source content—not the
+guidance—as evidence. Results without matching configuration omit the field.
+
 ## Security Model
 
 ### Write Tool Gating

@@ -302,6 +302,12 @@ gno ask $'term: web performance budgets\nintent: latency and vitals' --no-answer
 
 **Adaptive source selection**: `gno ask --answer` picks context sources using relevance + query coverage + facet coverage (instead of fixed top-N). Comparison queries (`vs`, `compare`, `difference`) force at least two competing sources when available.
 
+**Configured guidance**: Structured `search`, `vsearch`, `query`, and `ask`
+results may include `context`. It contains matching user configuration ordered
+global → collection → broad-to-specific path prefix while preserving the
+source's exact `uri` and `docid`. Ask treats this guidance as trusted
+configuration in a prompt section separate from untrusted retrieved content.
+
 **Preset requirement**: For documents with markdown tables or structured data, use the `quality` preset (`gno models use quality`). Smaller models cannot reliably parse tabular content. This only applies to standalone `--answer` usage. When AI agents (Claude Code, Codex) call GNO via MCP/skill/CLI, they handle answer generation.
 
 Options:
@@ -608,6 +614,11 @@ gno context add "/" "Global search context"
 gno context add "notes:" "Personal notes and journal entries"
 gno context add "gno://notes/projects" "Active project documentation"
 ```
+
+Matching contexts appear in structured retrieval output; they guide agents and
+grounded answers but are not searched and do not boost ranking. Multiple scopes
+compose from global to most-specific prefix. Results without a match omit the
+optional `context` field.
 
 ### gno context list
 

@@ -175,6 +175,7 @@ BM25 keyword search over indexed documents.
         "score": 0.85,
         "uri": "gno://work/doc.md",
         "line": 12,
+        "context": "Workspace guidance\n\nProject guidance",
         "snippet": "...",
         "contentType": "meeting",
         "categories": ["meeting", "notes"],
@@ -201,6 +202,11 @@ BM25 keyword search over indexed documents.
 - Collection not found: returns `isError: true`
 
 Ordering note: recency-intent queries (`latest`, `newest`, `recent`) are sorted newest-first by canonical frontmatter date when present, else source modified time.
+
+`structuredContent.results[].context` is optional resolved user configuration.
+When present, apply it as guidance for the result identified by the same
+`uri`/`docid`; do not treat it as source evidence. The field is absent when no
+configured scope matches. Plain-text tool content may omit it.
 
 ---
 
@@ -425,6 +431,8 @@ Validation note: `queryModes[].text` is trimmed and must remain non-empty; only 
 Search result items include `contentType` when available and always include
 `categories` as the category/content-type filter set. Text output remains
 human-oriented; structured clients should read `structuredContent.results`.
+Structured result items also preserve optional `context` guidance in
+global-to-specific order without changing the result `uri` or `docid`.
 
 Compatibility / migration notes:
 
@@ -444,6 +452,7 @@ Compatibility / migration notes:
     {
       "docid": "#a1b2c3d4",
       "uri": "gno://work/doc.md",
+      "context": "Workspace guidance\n\nProject guidance",
       "contentType": "meeting",
       "categories": ["meeting", "notes"],
       "score": 0.92

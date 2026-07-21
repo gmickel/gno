@@ -627,6 +627,12 @@ Important notes:
 **Output (JSON):**
 See [Output Schemas](./output-schemas/search-result.schema.json)
 
+Every structured search result may include `context`, the matching
+user-configured guidance joined in deterministic global, collection, then
+broad-to-specific path-prefix order. The field is absent when no scope matches;
+`uri` and `docid` remain the exact source identity. The same contract applies to
+`vsearch`, `query`, and the `results` array returned by `ask`.
+
 **Exit Codes:**
 
 - 0: Success (including zero results)
@@ -824,6 +830,9 @@ Notes:
 
 - `meta.answerContext` is optional explain payload for answer source selection.
 - Strategy: adaptive coverage (relevance + query/facet coverage), not fixed top-N.
+- Each result preserves optional configured `context`. Answer generation places
+  that trusted configuration in a separate prompt role from untrusted retrieved
+  document content.
 
 **Exit Codes:**
 
@@ -1010,6 +1019,12 @@ gno ls [<scope>] [--json|--files|--md]
 ### gno context add
 
 Add context metadata for a scope.
+
+Configured text is returned as optional `context` on matching structured
+retrieval results and is used as trusted guidance during grounded answer
+generation. Matching scopes compose once in this order: global, collection,
+then path prefixes from broadest to most specific. Context guides interpretation;
+it is not searched and does not change ranking.
 
 **Synopsis:**
 

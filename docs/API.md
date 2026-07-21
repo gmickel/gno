@@ -1647,6 +1647,11 @@ Keyword search using BM25 algorithm.
 
 If query text includes recency intent (`latest`, `newest`, `recent`), results are ordered newest-first by canonical frontmatter date when present, otherwise by source modified time.
 
+Structured search results may include `context`, resolved from matching global,
+collection, and path-prefix configuration. It is trusted user guidance for the
+same `uri`/`docid`, not retrieved evidence or a ranking signal. The optional
+field is omitted when no configured scope matches.
+
 **Response**:
 
 ```json
@@ -1658,6 +1663,7 @@ If query text includes recency intent (`latest`, `newest`, `recent`), results ar
       "docid": "abc123",
       "uri": "gno://notes/auth.md",
       "line": 42,
+      "context": "Company knowledge base\n\nReviewed security documentation",
       "title": "Authentication Guide",
       "collection": "notes",
       "contentType": "meeting",
@@ -1768,6 +1774,7 @@ Combined BM25 + vector search with optional reranking. **Recommended for best re
     {
       "docid": "abc123",
       "uri": "gno://notes/auth.md",
+      "context": "Company knowledge base\n\nReviewed security documentation",
       "title": "Authentication Guide",
       "collection": "notes",
       "contentType": "meeting",
@@ -1792,7 +1799,9 @@ Combined BM25 + vector search with optional reranking. **Recommended for best re
 JSON search/query results include `contentType` when a configured content type
 or built-in heuristic is available, plus the full `categories` array used by
 category filters. Plain text, CSV, Markdown, and XML formatters keep their
-existing shapes.
+existing shapes. They also preserve optional configured `context` guidance and
+the exact source `uri`/`docid`; grounded Ask delimits that trusted guidance from
+untrusted retrieved document content.
 
 **Example**:
 

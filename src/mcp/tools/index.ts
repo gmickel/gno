@@ -60,11 +60,11 @@ export function normalizeTagFilters(tags?: string[]): string[] | undefined {
 
 export const MCP_TOOL_DESCRIPTIONS = {
   search:
-    "BM25 keyword search. Fast exact-term lookup for names, identifiers, error text, and known phrases. Results include uri/docid and line when available; use gno_get with fromLine/lineCount or gno_multi_get for full context. Use gno_query when wording is uncertain.",
+    "BM25 keyword search. Fast exact-term lookup for names, identifiers, error text, and known phrases. Structured results include uri/docid, line when available, and optional user-configured context guidance; use gno_get with fromLine/lineCount or gno_multi_get for full context. Use gno_query when wording is uncertain.",
   vsearch:
-    "Vector semantic search. Finds conceptually similar docs with different wording. Best after embeddings are current; use intent to disambiguate short terms. Use gno_query for default hybrid retrieval.",
+    "Vector semantic search. Finds conceptually similar docs with different wording. Structured results preserve optional user-configured context guidance. Best after embeddings are current; use intent to disambiguate short terms. Use gno_query for default hybrid retrieval.",
   query:
-    "Hybrid search (BM25 + vector + optional expansion/reranking). Recommended default. Use intent for ambiguous terms, queryModes to combine term/intent/hyde strategies, fast=true for quick lookup, thorough=true when recall matters, and candidateLimit to trade latency for coverage.",
+    "Hybrid search (BM25 + vector + optional expansion/reranking). Recommended default. Structured results preserve optional user-configured context guidance with source identity. Use intent for ambiguous terms, queryModes to combine term/intent/hyde strategies, fast=true for quick lookup, thorough=true when recall matters, and candidateLimit to trade latency for coverage.",
   queryDiagnose:
     "Diagnose why one target document does or does not appear for a query. Use when an important doc is missing, a filter may exclude it, or you need stage-by-stage BM25/vector/fusion/graph/rerank evidence before changing retrieval strategy.",
   get: "Retrieve one document by gno:// URI, docid (#abc123), or collection/path. After search results include line, pass fromLine and lineCount to fetch only the relevant range before expanding to the full document.",
