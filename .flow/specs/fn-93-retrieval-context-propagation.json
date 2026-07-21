@@ -1,0 +1,24 @@
+{
+  "branch_name": "fix/retrieval-context-propagation",
+  "created_at": "2026-07-21T21:34:01.379944Z",
+  "depends_on_epics": [],
+  "id": "fn-93-retrieval-context-propagation",
+  "next_task": 1,
+  "plan_review_status": "unknown",
+  "plan_reviewed_at": null,
+  "spec_path": ".flow/specs/fn-93-retrieval-context-propagation.md",
+  "status": "open",
+  "title": "Retrieval Context Propagation Correctness",
+  "tracker": {
+    "baseHashFlow": null,
+    "baseHashTracker": null,
+    "depRelations": [],
+    "id": null,
+    "identifier": null,
+    "lastSyncedAt": null,
+    "mergeBaseFlow": null,
+    "mergeBaseTracker": null,
+    "url": null
+  },
+  "updated_at": "2026-07-21T21:35:30.355480Z"
+}

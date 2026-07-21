@@ -1,0 +1,26 @@
+{
+  "branch_name": "bench/agentic-retrieval-outcomes",
+  "created_at": "2026-07-21T21:34:02.247972Z",
+  "depends_on_epics": [
+    "fn-96-cjk-lexical-degradation-benchmark"
+  ],
+  "id": "fn-97-agentic-retrieval-outcome-benchmark",
+  "next_task": 1,
+  "plan_review_status": "unknown",
+  "plan_reviewed_at": null,
+  "spec_path": ".flow/specs/fn-97-agentic-retrieval-outcome-benchmark.md",
+  "status": "open",
+  "title": "Agentic Retrieval Outcome Benchmark",
+  "tracker": {
+    "baseHashFlow": null,
+    "baseHashTracker": null,
+    "depRelations": [],
+    "id": null,
+    "identifier": null,
+    "lastSyncedAt": null,
+    "mergeBaseFlow": null,
+    "mergeBaseTracker": null,
+    "url": null
+  },
+  "updated_at": "2026-07-21T21:41:02.851260Z"
+}
