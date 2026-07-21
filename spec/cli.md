@@ -2335,7 +2335,8 @@ Default paths live under `resolveDirs().data` (honours `GNO_DATA_DIR`). Only one
 **Behavior:**
 
 - Opens database once at startup (not per-request)
-- Closes database on SIGINT/SIGTERM
+- Closes the HTTP server, background runtime, and database on SIGINT/SIGTERM
+  before the CLI exits; the CLI bootstrap does not race the command's handler
 - Sets CSP header: `default-src 'self'; script-src 'self'`
 - Health check at `/api/health` returns `{ok:true}`
 - On `--detach`: forks a detached child with stdio redirected to `--log-file`, writes pid-file JSON (`{pid, port, cmd:"serve", version, started_at}`), prints `{pid, url}` on stdout, exits 0

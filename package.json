@@ -71,6 +71,7 @@
     "eval:hybrid:baseline": "bun scripts/hybrid-benchmark.ts --write",
     "eval:hybrid:delta": "bun scripts/hybrid-benchmark.ts --delta",
     "bench:ast-chunking": "bun scripts/ast-chunking-benchmark.ts",
+    "smoke:serve-shutdown": "bun scripts/serve-shutdown-smoke.ts",
     "bench:code-embeddings": "bun scripts/code-embedding-benchmark.ts",
     "bench:code-embeddings:write": "bun scripts/code-embedding-benchmark.ts --write",
     "bench:general-embeddings": "bun scripts/general-embedding-benchmark.ts",

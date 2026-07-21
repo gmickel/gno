@@ -197,7 +197,7 @@ Manage the detached process with `gno daemon --status` and `gno daemon --stop`.
 
 ### Install GNO
 
-Requires [Bun](https://bun.sh/) >= 1.0.0.
+Requires [Bun](https://bun.sh/) >= 1.3.0.
 
 ```bash
 bun install -g @gmickel/gno
