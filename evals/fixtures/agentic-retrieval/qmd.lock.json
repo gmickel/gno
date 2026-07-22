@@ -1,0 +1,64 @@
+{
+  "schemaVersion": "1.0",
+  "repository": {
+    "url": "https://github.com/tobi/qmd.git",
+    "commit": "e428df76bc0274d9e93eb7ca3e95673315c42e90",
+    "tree": "96aa633ac64f23e87e094af8c160026d70d6c783"
+  },
+  "package": {
+    "name": "@tobilu/qmd",
+    "version": "2.6.3",
+    "packageJsonSha256": "a29706170438bf7a7e544f4c63cf3e661a1b5c99344d395885de57a076a5fc68",
+    "bunLockSha256": "ad07cccd59e39b363ba2092e142f1c465051da1e954e0f479f6f06e8b2c9f036"
+  },
+  "entrypoint": {
+    "path": "bin/qmd",
+    "sha256": "06e3254316ee4f27ac9308779926be1ec9bfb299586d64bd0d8bee9a59ac4257"
+  },
+  "tools": {
+    "query": {
+      "inputSchemaSha256": "4c9e8b906ca8078e7e253243a6f38caae1ba9948ba237dc9868490788f665184",
+      "contractSha256": "1ec7f40c0beb4efce0b8411f5998e1e82699e2ac0e7e8639bd9c1a9b0640380d"
+    },
+    "get": {
+      "inputSchemaSha256": "a7403eedb96b76012e8f9e0f28c759b032643d004c85bcf4fd444af538bacd8f",
+      "contractSha256": "fe9b69f8b977bd02600cc653f6f82f59862f172f0b781603a88055de7bb85a3e"
+    },
+    "multi_get": {
+      "inputSchemaSha256": "e0b91a2646f3afc412c4e4baa331484efb31aca609bd09da015974ce4db7dbcd",
+      "contractSha256": "02d18b0250f19f2e50897980ec99cd96143ade81ea86905b2dcd4e609a07abef"
+    },
+    "status": {
+      "inputSchemaSha256": "7a014b717a77aac971ea0ab5c0ff47bb13e6cae7ef9442d9dedb15ce36381b15",
+      "contractSha256": "111aa984e751320a4bf24bdc8ab087b4b3c1cbb390d94266d18e8170ed7cde08"
+    },
+    "inputSchemasSha256": "740c1d1443e47e8ec6c159b18eca321e8e55103409d3dbc57b5ac8e727eac1d5",
+    "contractsSha256": "d842c30bdf9efa8adf6451127092aa1d9b07f729b1294b70b0e347891e13fd42"
+  },
+  "models": {
+    "embed": {
+      "uri": "hf:ggml-org/embeddinggemma-300M-GGUF/embeddinggemma-300M-Q8_0.gguf",
+      "revision": "0f741b5a6585bd53aeb15cd1372c56f2a0f65e12",
+      "file": "embeddinggemma-300M-Q8_0.gguf",
+      "cacheFile": "hf_ggml-org_embeddinggemma-300M-Q8_0.gguf",
+      "sha256": "b5ce9d77a3fc4b3b39ccb5643c36777911cc4eb46a66962eadfa3f5f60490d63",
+      "bytes": 333590944
+    },
+    "rerank": {
+      "uri": "hf:ggml-org/Qwen3-Reranker-0.6B-Q8_0-GGUF/qwen3-reranker-0.6b-q8_0.gguf",
+      "revision": "a02f48bb4f057028298c21fa033da2b30d7742d5",
+      "file": "qwen3-reranker-0.6b-q8_0.gguf",
+      "cacheFile": "hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+      "sha256": "22c9979ce4fbcdc5acdc310c6641c32797eff1aa980b8f7a2db8a8ea23429a48",
+      "bytes": 639153184
+    },
+    "generate": {
+      "uri": "hf:tobil/qmd-query-expansion-1.7B-gguf/qmd-query-expansion-1.7B-q4_k_m.gguf",
+      "revision": "7816de0b72572c6c860ca1eddf97ba9e7fb8cc65",
+      "file": "qmd-query-expansion-1.7B-q4_k_m.gguf",
+      "cacheFile": "hf_tobil_qmd-query-expansion-1.7B-q4_k_m.gguf",
+      "sha256": "000dfb1c06efa6a049e9f64ba921c3740e2454f62abab6fa10e77bd30bb2bcc0",
+      "bytes": 1282438912
+    }
+  }
+}
