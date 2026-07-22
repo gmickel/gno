@@ -776,8 +776,9 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
       const docid = deriveDocid(doc.sourceHash);
       const uri = buildUri(doc.collection, doc.relPath);
 
-      db.run(
-        `
+      const transaction = db.transaction((): UpsertDocumentResult => {
+        db.run(
+          `
         INSERT INTO documents (
           collection, rel_path, source_hash, source_mime, source_ext,
           source_size, source_mtime, source_ctime, docid, uri, title, mirror_hash,
@@ -815,48 +816,61 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
           ingest_version = excluded.ingest_version,
           updated_at = datetime('now')
       `,
-        [
-          doc.collection,
-          doc.relPath,
-          doc.sourceHash,
-          doc.sourceMime,
-          doc.sourceExt,
-          doc.sourceSize,
-          doc.sourceMtime,
-          doc.sourceCtime ?? doc.sourceMtime,
-          docid,
-          uri,
-          doc.title ?? null,
-          doc.mirrorHash ?? null,
-          doc.converterId ?? null,
-          doc.converterVersion ?? null,
-          doc.languageHint ?? null,
-          doc.contentType ?? null,
-          doc.categories ? JSON.stringify(doc.categories) : null,
-          doc.contentTypeSource ?? null,
-          doc.author ?? null,
-          doc.frontmatterDate ?? null,
-          doc.dateFields ? JSON.stringify(doc.dateFields) : null,
-          doc.contentTypeRulesFingerprint ?? null,
-          doc.lastErrorCode ?? null,
-          doc.lastErrorMessage ?? null,
-          doc.lastErrorCode ? new Date().toISOString() : null,
-          doc.ingestVersion ?? null,
-        ]
-      );
+          [
+            doc.collection,
+            doc.relPath,
+            doc.sourceHash,
+            doc.sourceMime,
+            doc.sourceExt,
+            doc.sourceSize,
+            doc.sourceMtime,
+            doc.sourceCtime ?? doc.sourceMtime,
+            docid,
+            uri,
+            doc.title ?? null,
+            doc.mirrorHash ?? null,
+            doc.converterId ?? null,
+            doc.converterVersion ?? null,
+            doc.languageHint ?? null,
+            doc.contentType ?? null,
+            doc.categories ? JSON.stringify(doc.categories) : null,
+            doc.contentTypeSource ?? null,
+            doc.author ?? null,
+            doc.frontmatterDate ?? null,
+            doc.dateFields ? JSON.stringify(doc.dateFields) : null,
+            doc.contentTypeRulesFingerprint ?? null,
+            doc.lastErrorCode ?? null,
+            doc.lastErrorMessage ?? null,
+            doc.lastErrorCode ? new Date().toISOString() : null,
+            doc.ingestVersion ?? null,
+          ]
+        );
 
-      // Get the row id (either inserted or updated)
-      const idRow = db
-        .query<{ id: number }, [string, string]>(
-          "SELECT id FROM documents WHERE collection = ? AND rel_path = ?"
-        )
-        .get(doc.collection, doc.relPath);
+        // Get the row id (either inserted or updated)
+        const idRow = db
+          .query<{ id: number }, [string, string]>(
+            "SELECT id FROM documents WHERE collection = ? AND rel_path = ?"
+          )
+          .get(doc.collection, doc.relPath);
 
-      if (!idRow) {
-        return err("QUERY_FAILED", "Failed to get document id after upsert");
-      }
+        if (!idRow) {
+          throw new Error("Failed to get document id after upsert");
+        }
 
-      return ok({ id: idRow.id, docid });
+        // Conversion failures deliberately drop mirror ownership. Remove the
+        // old lexical projection in the same transaction so stale content can
+        // never join against the newly updated document metadata.
+        if (doc.mirrorHash == null) {
+          db.run("DELETE FROM documents_fts WHERE rowid = ?", [idRow.id]);
+          db.run("UPDATE documents SET fts_mirror_hash = NULL WHERE id = ?", [
+            idRow.id,
+          ]);
+        }
+
+        return { id: idRow.id, docid };
+      });
+
+      return ok(transaction());
     } catch (cause) {
       return err(
         "QUERY_FAILED",

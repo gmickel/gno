@@ -157,4 +157,57 @@ describe("activation index snapshot", () => {
       expect(snapshot.value.identity.ftsSynchronized).toBe(false);
     }
   });
+
+  test("dropping mirror ownership atomically clears stale lexical content", async () => {
+    await upsertDocument("obsolete lexical evidence");
+    expect((await adapter.syncDocumentFts("notes", "tracked.md")).ok).toBe(
+      true
+    );
+    const indexed = await adapter.searchFts("obsolete", {
+      collection: "notes",
+    });
+    expect(indexed.ok && indexed.value).toHaveLength(1);
+
+    expect(
+      (
+        await adapter.upsertDocument({
+          collection: "notes",
+          relPath: "tracked.md",
+          sourceHash: hash("source:conversion-failed"),
+          sourceMime: "application/pdf",
+          sourceExt: ".pdf",
+          sourceSize: 128,
+          sourceMtime: "2026-07-22T11:00:00.000Z",
+          lastErrorCode: "CONVERSION_FAILED",
+          lastErrorMessage: "Invalid document structure",
+        })
+      ).ok
+    ).toBe(true);
+
+    const staleSearch = await adapter.searchFts("obsolete", {
+      collection: "notes",
+    });
+    expect(staleSearch.ok && staleSearch.value).toHaveLength(0);
+
+    const row = adapter
+      .getRawDb()
+      .query<{ fts_mirror_hash: string | null; fts_rows: number }, []>(
+        `SELECT d.fts_mirror_hash,
+                (SELECT COUNT(*) FROM documents_fts f WHERE f.rowid = d.id) AS fts_rows
+         FROM documents d WHERE d.rel_path = 'tracked.md'`
+      )
+      .get();
+    expect(row).toEqual({ fts_mirror_hash: null, fts_rows: 0 });
+
+    const snapshot = await adapter.getActivationIndexSnapshot("notes");
+    expect(snapshot.ok).toBe(true);
+    if (snapshot.ok) {
+      expect(snapshot.value.identity.ftsSynchronized).toBe(true);
+      expect(snapshot.value.documents).toEqual([
+        expect.objectContaining({
+          mirrorHash: null,
+        }),
+      ]);
+    }
+  });
 });
