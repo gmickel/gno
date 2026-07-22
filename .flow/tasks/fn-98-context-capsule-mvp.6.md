@@ -10,7 +10,7 @@ Deliver complete rest mcp parity promotion proof and documentation as one implem
 **Files:** `src/serve/routes/api.ts`, `src/serve/server.ts`, `src/mcp/tools/context.ts`, `src/mcp/server.ts`, `test/context/cross-surface-parity.test.ts`, `docs`
 
 ### Approach
-- Add `POST /api/context`, verification route, and `gno_context` MCP tool over the shared ports; do not fork compiler behavior.
+- Add `POST /api/context`, verification route, and `gno_context` MCP tool over the same `compileContextEvidence`/verifier ports used by CLI and SDK; do not fork snapshot capture, evidence loading, or projection behavior.
 - Run cross-surface canonical parity for canonical URIs, full-payload exact byte accounting, estimator-specific token accounting, safety margins, evidence scope/facet bindings, configured-context canonical keys, and omission reason counts; add adversarial JSON and Markdown projection fixtures proving source text remains escaped/hard-delimited data, then run fn-97 promotion fixtures.
 - Update specs, schemas, docs, skill recipes, hosted gno.sh content, and autoresearch skill results in the same finalization task.
 
@@ -35,8 +35,10 @@ Deliver complete rest mcp parity promotion proof and documentation as one implem
 - [ ] Full prerelease and skill autoresearch gates pass.
 - [ ] Cross-surface fixtures reject capsules that differ in final `usedBytes`, active-token accounting projection, URI canonicalization, evidence bindings, or omission `reasonCounts`.
 - [ ] Adversarial evidence containing JSON/Markdown delimiters, instruction-like text, and control-looking fields cannot change either projection structure or compiler policy.
+- [ ] REST/MCP parity fixtures cover task 3's fail-closed context/index drift and store/provenance error codes, shared-mirror sources, exact full-line extraction, `observedAt: null`, and literal adversarial text in both JSON and Markdown.
 <!-- Updated by plan-sync: fn-98-context-capsule-mvp.1 used the frozen canonical payload contract across all surfaces -->
 <!-- Updated by plan-sync: fn-98-context-capsule-mvp.2 materialized untrusted full-line evidence before exact canonical budget fit -->
+<!-- Updated by plan-sync: fn-98-context-capsule-mvp.3 exposed one strict compileContextEvidence snapshot/materialization boundary for every surface -->
 
 
 ## Done summary
