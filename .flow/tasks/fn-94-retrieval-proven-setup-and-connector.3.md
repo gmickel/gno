@@ -58,9 +58,12 @@ Deliver integrate activation into cli rest and onboarding health as one implemen
 
 
 ## Done summary
-TBD
+Integrated one deterministic, privacy-bounded activation status contract across `gno status`, `gno doctor`, `/api/status`, and the Web onboarding/health UI. Lexical readiness is collection-scoped and independent from passive semantic availability; connector health is projected separately from fingerprint-current persisted receipts without starting connector runtimes.
 
+Added fingerprint-scoped in-flight coalescing with no settled TTL, bounded collection/connector work, exact remediation, strict additive JSON schemas, doctor exit-2 semantics, unchanged liveness-only `/api/health`, and regression/performance coverage. Warm 20-collection status performs no content reads and completed in 6.2 ms in the final focused run.
+
+Inherited-model review completed clean after resolving skipped-connector presentation, stale coalescing, truncation accounting, schema privacy, and cached-content-read findings.
 ## Evidence
-- Commits:
-- Tests:
+- Commits: 96736bc
+- Tests: bun run lint:check, bun test test/core/activation-status.test.ts test/core/activation-status-performance.test.ts test/core/activation-verifier.test.ts test/serve/api-status.test.ts test/spec/schemas/status.test.ts test/spec/schemas/doctor.test.ts test/serve/public/components/HealthCenter.test.tsx (43 pass, 0 fail), bun test (2112 pass, 1 Windows-only skip, 0 fail), bun run docs:verify (12 pass, 0 fail, 2 semantic-model skips), bun run eval:hybrid (88%, threshold 70%), .flow/bin/flowctl validate --spec fn-94-retrieval-proven-setup-and-connector --json
 - PRs:
