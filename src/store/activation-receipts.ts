@@ -21,6 +21,16 @@ const ACTIVATION_CODES = new Set([
   "retrieval_mismatch",
   "semantic_not_checked",
   "connector_not_requested",
+  "connector_not_configured",
+  "connector_probe_unavailable",
+  "connector_unsupported_config",
+  "connector_start_failed",
+  "connector_timeout",
+  "connector_missing_tools",
+  "connector_status_failed",
+  "connector_search_failed",
+  "connector_result_mismatch",
+  "target_runtime_unverifiable",
 ]);
 
 function projectStage(stage: ActivationStageReceipt): ActivationStageReceipt {
@@ -190,6 +200,7 @@ function isReceipt(value: unknown): value is ActivationVerificationReceipt {
 
   const indexStage = stages.index as ActivationStageReceipt;
   const lexicalStage = stages.lexical as ActivationStageReceipt;
+  const connectorStage = stages.connector as ActivationStageReceipt;
   const expectedReady =
     indexStage.status === "passed" && lexicalStage.status === "passed";
   if (receipt.ready !== expectedReady) {
@@ -211,6 +222,15 @@ function isReceipt(value: unknown): value is ActivationVerificationReceipt {
       (typeof evidence.connectorTarget === "string" &&
         evidence.connectorTarget.length <= 256));
   if (!validEvidence) {
+    return false;
+  }
+
+  const connectorWasRequested =
+    connectorStage.status === "passed" ||
+    connectorStage.status === "failed" ||
+    (connectorStage.code !== undefined &&
+      connectorStage.code !== "connector_not_requested");
+  if (connectorWasRequested && typeof evidence.connectorTarget !== "string") {
     return false;
   }
 

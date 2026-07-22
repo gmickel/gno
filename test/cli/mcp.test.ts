@@ -10,7 +10,11 @@ import {
   resolveMcpConfigPath,
   TARGETS_WITH_PROJECT_SCOPE,
 } from "../../src/cli/commands/mcp/paths";
-import { statusMcp } from "../../src/cli/commands/mcp/status";
+import {
+  checkMcpTargetStatus,
+  statusMcp,
+  toMcpConnectorVerificationTarget,
+} from "../../src/cli/commands/mcp/status";
 import { uninstallMcp } from "../../src/cli/commands/mcp/uninstall";
 import { CliError } from "../../src/cli/errors";
 import { resetGlobals } from "../../src/cli/program";
@@ -550,6 +554,30 @@ describe("MCP CLI commands", () => {
       expect(TARGETS_WITH_PROJECT_SCOPE).not.toContain("amp");
       expect(TARGETS_WITH_PROJECT_SCOPE).not.toContain("lmstudio");
       expect(TARGETS_WITH_PROJECT_SCOPE).toHaveLength(5);
+    });
+  });
+
+  test("projects parsed config into the read-only verification seam", async () => {
+    await Bun.write(
+      join(FAKE_HOME, ".claude.json"),
+      JSON.stringify({
+        mcpServers: {
+          gno: { command: "/usr/local/bin/gno", args: ["mcp"] },
+        },
+      })
+    );
+    const status = await checkMcpTargetStatus("claude-code", "user", {
+      homeDir: FAKE_HOME,
+      cwd: FAKE_CWD,
+    });
+    expect(toMcpConnectorVerificationTarget("claude-code", status)).toEqual({
+      kind: "mcp",
+      id: "claude-code",
+      target: "claude-code",
+      scope: "user",
+      configPath: join(FAKE_HOME, ".claude.json"),
+      configured: true,
+      serverEntry: { command: "/usr/local/bin/gno", args: ["mcp"] },
     });
   });
 });

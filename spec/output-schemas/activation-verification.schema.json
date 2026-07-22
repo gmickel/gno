@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "gno://schemas/activation-verification@1.0",
   "title": "GNO Activation Verification Receipt",
-  "description": "Privacy-bounded proof that one collection can retrieve a corpus-derived lexical result.",
+  "description": "Privacy-bounded proof that one collection can retrieve a corpus-derived result locally and, when requested, through one connector target.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -88,6 +88,46 @@
           }
         }
       }
+    },
+    {
+      "if": {
+        "type": "object",
+        "properties": {
+          "stages": {
+            "type": "object",
+            "properties": {
+              "connector": {
+                "type": "object",
+                "anyOf": [
+                  {
+                    "properties": {
+                      "status": { "enum": ["passed", "failed"] }
+                    }
+                  },
+                  {
+                    "required": ["code"],
+                    "properties": {
+                      "code": { "not": { "const": "connector_not_requested" } }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "type": "object",
+        "properties": {
+          "evidence": {
+            "type": "object",
+            "properties": {
+              "connectorTarget": { "type": "string" }
+            },
+            "required": ["connectorTarget"]
+          }
+        }
+      }
     }
   ],
   "properties": {
@@ -156,7 +196,17 @@
             "index_query_failed",
             "retrieval_mismatch",
             "semantic_not_checked",
-            "connector_not_requested"
+            "connector_not_requested",
+            "connector_not_configured",
+            "connector_probe_unavailable",
+            "connector_unsupported_config",
+            "connector_start_failed",
+            "connector_timeout",
+            "connector_missing_tools",
+            "connector_status_failed",
+            "connector_search_failed",
+            "connector_result_mismatch",
+            "target_runtime_unverifiable"
           ]
         }
       }

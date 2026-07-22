@@ -6,7 +6,9 @@ import { join } from "node:path";
 import {
   getConnectorStatuses,
   installConnector,
+  verifyInstalledConnector,
 } from "../../src/serve/connectors";
+import { SqliteAdapter } from "../../src/store";
 
 async function createTempWorkspace(): Promise<{
   homeDir: string;
@@ -93,5 +95,48 @@ describe("connector service", () => {
     }
 
     expect(message).toContain("already installed");
+  });
+
+  test("reports installed skill execution as explicitly unverifiable", async () => {
+    const workspace = await createTempWorkspace();
+    cleanupPaths.push(join(workspace.homeDir, ".."));
+    await installConnector("codex-skill", { reinstall: false }, workspace);
+
+    const adapter = new SqliteAdapter();
+    expect(
+      (await adapter.open(join(workspace.homeDir, "index.sqlite"), "unicode61"))
+        .ok
+    ).toBe(true);
+    expect(
+      (
+        await adapter.syncCollections([
+          {
+            name: "notes",
+            path: workspace.cwd,
+            pattern: "**/*",
+            include: [],
+            exclude: [],
+          },
+        ])
+      ).ok
+    ).toBe(true);
+    try {
+      const result = await verifyInstalledConnector(
+        "codex-skill",
+        adapter,
+        "notes",
+        { force: true },
+        workspace
+      );
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value.stages.connector).toMatchObject({
+          status: "skipped",
+          code: "target_runtime_unverifiable",
+        });
+      }
+    } finally {
+      await adapter.close();
+    }
   });
 });

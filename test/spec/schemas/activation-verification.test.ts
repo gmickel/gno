@@ -54,6 +54,74 @@ describe("activation verification schema", () => {
     expect(assertValid(validReceipt, schema)).toBe(true);
   });
 
+  test("accepts connector-specific success and stable failure receipts", () => {
+    expect(
+      assertValid(
+        {
+          ...validReceipt,
+          fingerprint: "d".repeat(64),
+          stages: {
+            ...validReceipt.stages,
+            connector: {
+              status: "passed",
+              startedAt: "2026-07-22T10:00:00.000Z",
+              completedAt: "2026-07-22T10:00:00.000Z",
+              latencyMs: 4,
+            },
+          },
+          evidence: {
+            ...validReceipt.evidence,
+            connectorTarget: `mcp:cursor:user:${"e".repeat(64)}`,
+          },
+        },
+        schema
+      )
+    ).toBe(true);
+    expect(
+      assertValid(
+        {
+          ...validReceipt,
+          stages: {
+            ...validReceipt.stages,
+            connector: {
+              status: "failed",
+              startedAt: "2026-07-22T10:00:00.000Z",
+              completedAt: "2026-07-22T10:00:00.000Z",
+              latencyMs: 4,
+              code: "connector_timeout",
+            },
+          },
+          evidence: {
+            ...validReceipt.evidence,
+            connectorTarget: `mcp:cursor:user:${"e".repeat(64)}`,
+          },
+        },
+        schema
+      )
+    ).toBe(true);
+  });
+
+  test("rejects connector proof without target identity", () => {
+    expect(
+      assertInvalid(
+        {
+          ...validReceipt,
+          stages: {
+            ...validReceipt.stages,
+            connector: {
+              status: "failed",
+              startedAt: "2026-07-22T10:00:00.000Z",
+              completedAt: "2026-07-22T10:00:00.000Z",
+              latencyMs: 4,
+              code: "connector_timeout",
+            },
+          },
+        },
+        schema
+      )
+    ).toBe(true);
+  });
+
   test("rejects raw query and snippet fields", () => {
     expect(assertInvalid({ ...validReceipt, query: "secret" }, schema)).toBe(
       true

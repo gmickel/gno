@@ -1,14 +1,27 @@
 import type { McpScope, McpTarget } from "../cli/commands/mcp/paths";
 import type { SkillScope, SkillTarget } from "../cli/commands/skill/paths";
+import type {
+  ConnectorVerifierOptions,
+  ConnectorVerificationTarget,
+} from "../core/connector-verifier";
+import type {
+  ActivationVerificationReceipt,
+  StorePort,
+  StoreResult,
+} from "../store/types";
 
 import { installMcpToTarget } from "../cli/commands/mcp/install";
 import {
   buildMcpServerEntry,
   getTargetDisplayName,
 } from "../cli/commands/mcp/paths";
-import { checkMcpTargetStatus } from "../cli/commands/mcp/status";
+import {
+  checkMcpTargetStatus,
+  toMcpConnectorVerificationTarget,
+} from "../cli/commands/mcp/status";
 import { installSkillToTarget } from "../cli/commands/skill/install";
 import { resolveSkillPaths } from "../cli/commands/skill/paths";
+import { verifyConnectorActivation } from "../core/connector-verifier";
 
 export interface ConnectorStatus {
   id: string;
@@ -252,4 +265,48 @@ export function getConnectorDisplayName(id: string): string {
   }
 
   return definition.appName;
+}
+
+/**
+ * Resolve and verify one connector without editing its client configuration.
+ * Kept separate from passive status listing because this starts a local MCP
+ * child and performs a real, collection-scoped retrieval smoke.
+ */
+export async function verifyInstalledConnector(
+  id: string,
+  store: StorePort,
+  collection: string,
+  options?: ConnectorVerifierOptions,
+  overrides?: { cwd?: string; homeDir?: string }
+): Promise<StoreResult<ActivationVerificationReceipt>> {
+  const definition = CONNECTOR_DEFINITIONS.find((entry) => entry.id === id);
+  if (!definition) {
+    throw new Error(`Unknown connector: ${id}`);
+  }
+
+  let target: ConnectorVerificationTarget;
+  if (definition.installKind === "skill") {
+    const paths = resolveSkillPaths({
+      scope: definition.scope,
+      target: definition.target,
+      ...overrides,
+    });
+    target = {
+      kind: "skill",
+      id: definition.id,
+      target: definition.target,
+      scope: definition.scope,
+      configPath: paths.gnoDir,
+      installed: await Bun.file(`${paths.gnoDir}/SKILL.md`).exists(),
+    };
+  } else {
+    const status = await checkMcpTargetStatus(
+      definition.target,
+      definition.scope,
+      overrides ?? {}
+    );
+    target = toMcpConnectorVerificationTarget(definition.id, status);
+  }
+
+  return verifyConnectorActivation(store, collection, target, options);
 }

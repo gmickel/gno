@@ -750,7 +750,17 @@ export type ActivationVerificationCode =
   | "index_query_failed"
   | "retrieval_mismatch"
   | "semantic_not_checked"
-  | "connector_not_requested";
+  | "connector_not_requested"
+  | "connector_not_configured"
+  | "connector_probe_unavailable"
+  | "connector_unsupported_config"
+  | "connector_start_failed"
+  | "connector_timeout"
+  | "connector_missing_tools"
+  | "connector_status_failed"
+  | "connector_search_failed"
+  | "connector_result_mismatch"
+  | "target_runtime_unverifiable";
 
 export interface ActivationStageReceipt {
   status: ActivationStageStatus;

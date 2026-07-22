@@ -4,6 +4,8 @@
  * @module src/cli/commands/mcp/status
  */
 
+import type { McpConnectorVerificationTarget } from "../../../core/connector-verifier";
+
 import { getGlobals } from "../../program.js";
 import {
   type AnyMcpConfig,
@@ -44,6 +46,23 @@ export interface McpTargetStatus {
   configured: boolean;
   serverEntry?: { command: string; args: string[] };
   error?: string;
+}
+
+/** Project a parsed target status into the read-only activation verifier seam. */
+export function toMcpConnectorVerificationTarget(
+  id: string,
+  status: McpTargetStatus
+): McpConnectorVerificationTarget {
+  return {
+    kind: "mcp",
+    id,
+    target: status.target,
+    scope: status.scope,
+    configPath: status.configPath,
+    configured: status.configured,
+    ...(status.serverEntry ? { serverEntry: status.serverEntry } : {}),
+    ...(status.error ? { configError: true } : {}),
+  };
 }
 
 interface StatusResult {
