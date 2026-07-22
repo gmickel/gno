@@ -94,3 +94,121 @@ export interface BenchOutput {
 export type BenchResult =
   | { success: true; data: BenchOutput }
   | { success: false; error: string; isValidation?: boolean };
+
+export const CJK_BENCH_LANGUAGES = ["zh", "ja", "ko"] as const;
+export type CjkBenchLanguage = (typeof CJK_BENCH_LANGUAGES)[number];
+
+export type CjkBenchCategory =
+  | "exact-term"
+  | "filename"
+  | "identifier"
+  | "mixed-script"
+  | "normalization"
+  | "punctuation"
+  | "token-boundary";
+
+export type CjkBenchLane =
+  | "bm25"
+  | "hybrid-no-models"
+  | "substring-raw"
+  | "substring-nfc";
+
+export interface CjkBenchMetrics {
+  recallAt5: number;
+  recallAt10: number;
+  mrr: number;
+  ndcgAt10: number;
+  zeroResultRate: number;
+}
+
+export interface CjkBenchLatency {
+  coldQueryMs: number;
+  warmQuery: {
+    p50Ms: number;
+    p95Ms: number;
+    meanMs: number;
+  };
+}
+
+export interface CjkBenchFailure {
+  queryId: string;
+  language: CjkBenchLanguage;
+  category: CjkBenchCategory | "ranking";
+  reason: "below-rank-5" | "not-in-top-10" | "zero-result";
+  query: string;
+  expected: string[];
+  topDocs: string[];
+}
+
+export interface CjkBenchCaseResult {
+  queryId: string;
+  language: CjkBenchLanguage;
+  category: CjkBenchCategory;
+  query: string;
+  expected: string[];
+  normalization?: {
+    form: "NFC" | "NFKC";
+    source: string;
+    target: string;
+  };
+  topDocs: string[];
+  metrics: Omit<CjkBenchMetrics, "zeroResultRate">;
+  zeroResult: boolean;
+  warmLatencyMs: number;
+  error?: string;
+}
+
+export interface CjkBenchLanguageResult {
+  language: CjkBenchLanguage;
+  queryCount: number;
+  metrics: CjkBenchMetrics;
+  failures: CjkBenchFailure[];
+}
+
+export interface CjkBenchLaneResult {
+  id: CjkBenchLane;
+  description: string;
+  config: Record<string, string | number | boolean | null>;
+  queryCount: number;
+  metrics: CjkBenchMetrics;
+  latency: CjkBenchLatency;
+  languages: CjkBenchLanguageResult[];
+  cases: CjkBenchCaseResult[];
+}
+
+export interface CjkBenchOutput {
+  schemaVersion: 1;
+  generatedAt: string;
+  benchmark: "gno-cjk-lexical-degradation";
+  corpus: {
+    fixtureVersion: number;
+    documentCount: number;
+    queryCount: number;
+    languages: CjkBenchLanguage[];
+    provenance: string;
+    fingerprint: string;
+  };
+  runtime: {
+    bun: string;
+    platform: string;
+    arch: string;
+    sqlite: string;
+  };
+  index: {
+    tokenizer: string;
+    buildMs: number;
+    bytes: number;
+    pageCount: number;
+    pageSize: number;
+    vocabularyTerms: number;
+    vocabularyDocuments: number;
+    tokenOccurrences: number;
+  };
+  fingerprints: {
+    config: string;
+    runtime: string;
+    tokenizer: string;
+    result: string;
+  };
+  lanes: CjkBenchLaneResult[];
+}

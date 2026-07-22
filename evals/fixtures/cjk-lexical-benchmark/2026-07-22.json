@@ -1,0 +1,2365 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-07-22T13:19:03.508Z",
+  "benchmark": "gno-cjk-lexical-degradation",
+  "corpus": {
+    "fixtureVersion": 1,
+    "documentCount": 21,
+    "queryCount": 24,
+    "languages": ["zh", "ja", "ko"],
+    "provenance": "Original synthetic documents and judgments authored for GNO; no upstream corpus text was copied",
+    "fingerprint": "5a780ba2d7d8e33190e1468ac1f4d5499b5012820e6b9085ee7112eb3eb45504"
+  },
+  "runtime": {
+    "bun": "1.3.5",
+    "platform": "darwin",
+    "arch": "arm64",
+    "sqlite": "3.53.3"
+  },
+  "index": {
+    "tokenizer": "snowball english",
+    "buildMs": 487.71,
+    "bytes": 323584,
+    "pageCount": 79,
+    "pageSize": 4096,
+    "vocabularyTerms": 402,
+    "vocabularyDocuments": 485,
+    "tokenOccurrences": 548
+  },
+  "fingerprints": {
+    "config": "fa077cfe5ce65773ff646492e0590432cad3dc80f1e355ba528abfce34518c5a",
+    "runtime": "18f5bd4226355d82961d1b739bcd163f9fae96722b5d230e386e4a74dac94872",
+    "tokenizer": "7c079447fed5ba49dcbe3c1934d41be3a99bd430852dc48ff80d990f46daba96",
+    "result": "15fa566ae8f262fbf1108d1dc74df5f2adc2b1eac05b616eb8551f88e41edb60"
+  },
+  "lanes": [
+    {
+      "id": "bm25",
+      "description": "Production BM25 through searchBm25",
+      "config": {
+        "collection": "cjk-lexical-benchmark",
+        "limit": 10,
+        "tokenizer": "snowball english",
+        "vector": false,
+        "expand": false,
+        "rerank": false,
+        "normalization": null,
+        "match": "production-fts"
+      },
+      "queryCount": 24,
+      "metrics": {
+        "recallAt5": 0.25,
+        "recallAt10": 0.25,
+        "mrr": 0.25,
+        "ndcgAt10": 0.25,
+        "zeroResultRate": 0.75
+      },
+      "latency": {
+        "coldQueryMs": 2.69,
+        "warmQuery": {
+          "p50Ms": 0.45,
+          "p95Ms": 0.67,
+          "meanMs": 0.48
+        }
+      },
+      "languages": [
+        {
+          "language": "zh",
+          "queryCount": 8,
+          "metrics": {
+            "recallAt5": 0.125,
+            "recallAt10": 0.125,
+            "mrr": 0.125,
+            "ndcgAt10": 0.125,
+            "zeroResultRate": 0.875
+          },
+          "failures": [
+            {
+              "queryId": "zh-q001",
+              "language": "zh",
+              "category": "ranking",
+              "reason": "zero-result",
+              "query": "北辰物流 冷链温控报警",
+              "expected": ["zh/d001.md"],
+              "topDocs": []
+            },
+            {
+              "queryId": "zh-q002",
+              "language": "zh",
+              "category": "identifier",
+              "reason": "zero-result",
+              "query": "TW-0317 古籍除湿",
+              "expected": ["zh/d002.md"],
+              "topDocs": []
+            },
+            {
+              "queryId": "zh-q003",
+              "language": "zh",
+              "category": "mixed-script",
+              "reason": "zero-result",
+              "query": "QinglanPay ZH_API-77 回调失败",
+              "expected": ["zh/d003.md"],
+              "topDocs": []
+            },
+            {
+              "queryId": "zh-q004",
+              "language": "zh",
+              "category": "token-boundary",
+              "reason": "zero-result",
+              "query": "机器学习模型 登记责任人",
+              "expected": ["zh/d004.md"],
+              "topDocs": []
+            },
+            {
+              "queryId": "zh-q005",
+              "language": "zh",
+              "category": "normalization",
+              "reason": "zero-result",
+              "query": "ＡＣＣＴ－９９ 账户迁移",
+              "expected": ["zh/d005.md"],
+              "topDocs": []
+            },
+            {
+              "queryId": "zh-q006",
+              "language": "zh",
+              "category": "ranking",
+              "reason": "zero-result",
+              "query": "供应商 华北 乙类 合同修订",
+              "expected": ["zh/d006.md"],
+              "topDocs": []
+            },
+            {
+              "queryId": "zh-q007",
+              "language": "zh",
+              "category": "ranking",
+              "reason": "zero-result",
+              "query": "值班计划_夏季版.md 夜班交接",
+              "expected": ["zh/d007.md"],
+              "topDocs": []
+            }
+          ]
+        },
+        {
+          "language": "ja",
+          "queryCount": 8,
+          "metrics": {
+            "recallAt5": 0.125,
+            "recallAt10": 0.125,
+            "mrr": 0.125,
+            "ndcgAt10": 0.125,
+            "zeroResultRate": 0.875
+          },
+          "failures": [
+            {
+              "queryId": "ja-q001",
+              "language": "ja",
+              "category": "identifier",
+              "reason": "zero-result",
+              "query": "北浜倉庫 冷凍機 JP-771",
+              "expected": ["ja/d001.md"],
+              "topDocs": []
+            },
+            {
+              "queryId": "ja-q002",
+              "language": "ja",
+              "category": "ranking",
+              "reason": "zero-result",
+              "query": "さくら配送センター 封印番号",
+              "expected": ["ja/d002.md"],
+              "topDocs": []
+            },
+            {
+              "queryId": "ja-q003",
+              "language": "ja",
+              "category": "mixed-script",
+              "reason": "zero-result",
+              "query": "KumoPay JP_API-42 Webhook 再送",
+              "expected": ["ja/d003.md"],
+              "topDocs": []
+            },
+            {
+              "queryId": "ja-q004",
+              "language": "ja",
+              "category": "normalization",
+              "reason": "zero-result",
+              "query": "ガラス乾板 保管温度",
+              "expected": ["ja/d004.md"],
+              "topDocs": []
+            },
+            {
+              "queryId": "ja-q005",
+              "language": "ja",
+              "category": "ranking",
+              "reason": "zero-result",
+              "query": "青葉 二組 河口 観測",
+              "expected": ["ja/d005.md"],
+              "topDocs": []
+            },
+            {
+              "queryId": "ja-q007",
+              "language": "ja",
+              "category": "ranking",
+              "reason": "zero-result",
+              "query": "当番表_夜間版.md 引き継ぎ",
+              "expected": ["ja/d007.md"],
+              "topDocs": []
+            },
+            {
+              "queryId": "ja-q008",
+              "language": "ja",
+              "category": "ranking",
+              "reason": "zero-result",
+              "query": "ガラス乾板 乳剤面 順応",
+              "expected": ["ja/d004.md"],
+              "topDocs": []
+            }
+          ]
+        },
+        {
+          "language": "ko",
+          "queryCount": 8,
+          "metrics": {
+            "recallAt5": 0.5,
+            "recallAt10": 0.5,
+            "mrr": 0.5,
+            "ndcgAt10": 0.5,
+            "zeroResultRate": 0.5
+          },
+          "failures": [
+            {
+              "queryId": "ko-q001",
+              "language": "ko",
+              "category": "identifier",
+              "reason": "zero-result",
+              "query": "북항 창고 냉동기 KR-882",
+              "expected": ["ko/d001.md"],
+              "topDocs": []
+            },
+            {
+              "queryId": "ko-q003",
+              "language": "ko",
+              "category": "mixed-script",
+              "reason": "zero-result",
+              "query": "DuriPay KO_API-31 Webhook 재전송",
+              "expected": ["ko/d003.md"],
+              "topDocs": []
+            },
+            {
+              "queryId": "ko-q004",
+              "language": "ko",
+              "category": "normalization",
+              "reason": "zero-result",
+              "query": "가속기 실험 안전 절차",
+              "expected": ["ko/d004.md"],
+              "topDocs": []
+            },
+            {
+              "queryId": "ko-q007",
+              "language": "ko",
+              "category": "ranking",
+              "reason": "zero-result",
+              "query": "당직표_야간판.md 인계",
+              "expected": ["ko/d007.md"],
+              "topDocs": []
+            }
+          ]
+        }
+      ],
+      "cases": [
+        {
+          "queryId": "zh-q001",
+          "language": "zh",
+          "category": "exact-term",
+          "query": "北辰物流 冷链温控报警",
+          "expected": ["zh/d001.md"],
+          "topDocs": [],
+          "metrics": {
+            "recallAt5": 0,
+            "recallAt10": 0,
+            "mrr": 0,
+            "ndcgAt10": 0
+          },
+          "zeroResult": true,
+          "warmLatencyMs": 0.45
+        },
+        {
+          "queryId": "zh-q002",
+          "language": "zh",
+          "category": "identifier",
+          "query": "TW-0317 古籍除湿",
+          "expected": ["zh/d002.md"],
+          "topDocs": [],
+          "metrics": {
+            "recallAt5": 0,
+            "recallAt10": 0,
+            "mrr": 0,
+            "ndcgAt10": 0
+          },
+          "zeroResult": true,
+          "warmLatencyMs": 0.36
+        },
+        {
+          "queryId": "zh-q003",
+          "language": "zh",
+          "category": "mixed-script",
+          "query": "QinglanPay ZH_API-77 回调失败",
+          "expected": ["zh/d003.md"],
+          "topDocs": [],
+          "metrics": {
+            "recallAt5": 0,
+            "recallAt10": 0,
+            "mrr": 0,
+            "ndcgAt10": 0
+          },
+          "zeroResult": true,
+          "warmLatencyMs": 0.61
+        },
+        {
+          "queryId": "zh-q004",
+          "language": "zh",
+          "category": "token-boundary",
+          "query": "机器学习模型 登记责任人",
+          "expected": ["zh/d004.md"],
+          "topDocs": [],
+          "metrics": {
+            "recallAt5": 0,
+            "recallAt10": 0,
+            "mrr": 0,
+            "ndcgAt10": 0
+          },
+          "zeroResult": true,
+          "warmLatencyMs": 0.31
+        },
+        {
+          "queryId": "zh-q005",
+          "language": "zh",
+          "category": "normalization",
+          "query": "ＡＣＣＴ－９９ 账户迁移",
+          "expected": ["zh/d005.md"],
+          "topDocs": [],
+          "metrics": {
+            "recallAt5": 0,
+            "recallAt10": 0,
+            "mrr": 0,
+            "ndcgAt10": 0
+          },
+          "zeroResult": true,
+          "warmLatencyMs": 0.3,
+          "normalization": {
+            "form": "NFKC",
+            "source": "ＡＣＣＴ－９９",
+            "target": "ACCT-99"
+          }
+        },
+        {
+          "queryId": "zh-q006",
+          "language": "zh",
+          "category": "punctuation",
+          "query": "供应商 华北 乙类 合同修订",
+          "expected": ["zh/d006.md"],
+          "topDocs": [],
+          "metrics": {
+            "recallAt5": 0,
+            "recallAt10": 0,
+            "mrr": 0,
+            "ndcgAt10": 0
+          },
+          "zeroResult": true,
+          "warmLatencyMs": 0.5
+        },
+        {
+          "queryId": "zh-q007",
+          "language": "zh",
+          "category": "filename",
+          "query": "值班计划_夏季版.md 夜班交接",
+          "expected": ["zh/d007.md"],
+          "topDocs": [],
+          "metrics": {
+            "recallAt5": 0,
+            "recallAt10": 0,
+            "mrr": 0,
+            "ndcgAt10": 0
+          },
+          "zeroResult": true,
+          "warmLatencyMs": 0.37
+        },
+        {
+          "queryId": "zh-q008",
+          "language": "zh",
+          "category": "exact-term",
+          "query": "雲嶺圖書館 濕度上限",
+          "expected": ["zh/d002.md"],
+          "topDocs": ["zh/d002.md"],
+          "metrics": {
+            "recallAt5": 1,
+            "recallAt10": 1,
+            "mrr": 1,
+            "ndcgAt10": 1
+          },
+          "zeroResult": false,
+          "warmLatencyMs": 0.36
+        },
+        {
+          "queryId": "ja-q001",
+          "language": "ja",
+          "category": "identifier",
+          "query": "北浜倉庫 冷凍機 JP-771",
+          "expected": ["ja/d001.md"],
+          "topDocs": [],
+          "metrics": {
+            "recallAt5": 0,
+            "recallAt10": 0,
+            "mrr": 0,
+            "ndcgAt10": 0
+          },
+          "zeroResult": true,
+          "warmLatencyMs": 0.45
+        },
+        {
+          "queryId": "ja-q002",
+          "language": "ja",
+          "category": "exact-term",
+          "query": "さくら配送センター 封印番号",
+          "expected": ["ja/d002.md"],
+          "topDocs": [],
+          "metrics": {
+            "recallAt5": 0,
+            "recallAt10": 0,
+            "mrr": 0,
+            "ndcgAt10": 0
+          },
+          "zeroResult": true,
+          "warmLatencyMs": 0.37
+        },
+        {
+          "queryId": "ja-q003",
+          "language": "ja",
+          "category": "mixed-script",
+          "query": "KumoPay JP_API-42 Webhook 再送",
+          "expected": ["ja/d003.md"],
+          "topDocs": [],
+          "metrics": {
+            "recallAt5": 0,
+            "recallAt10": 0,
+            "mrr": 0,
+            "ndcgAt10": 0
+          },
+          "zeroResult": true,
+          "warmLatencyMs": 0.67
+        },
+        {
+          "queryId": "ja-q004",
+          "language": "ja",
+          "category": "normalization",
+          "query": "ガラス乾板 保管温度",
+          "expected": ["ja/d004.md"],
+          "topDocs": [],
+          "metrics": {
+            "recallAt5": 0,
+            "recallAt10": 0,
+            "mrr": 0,
+            "ndcgAt10": 0
+          },
+          "zeroResult": true,
+          "warmLatencyMs": 0.39,
+          "normalization": {
+            "form": "NFC",
+            "source": "ガラス",
+            "target": "ガラス"
+          }
+        },
+        {
+          "queryId": "ja-q005",
+          "language": "ja",
+          "category": "punctuation",
+          "query": "青葉 二組 河口 観測",
+          "expected": ["ja/d005.md"],
+          "topDocs": [],
+          "metrics": {
+            "recallAt5": 0,
+            "recallAt10": 0,
+            "mrr": 0,
+            "ndcgAt10": 0
+          },
+          "zeroResult": true,
+          "warmLatencyMs": 0.49
+        },
+        {
+          "queryId": "ja-q006",
+          "language": "ja",
+          "category": "token-boundary",
+          "query": "機械学習 モデル管理台帳 登録",
+          "expected": ["ja/d006.md"],
+          "topDocs": ["ja/d006.md"],
+          "metrics": {
+            "recallAt5": 1,
+            "recallAt10": 1,
+            "mrr": 1,
+            "ndcgAt10": 1
+          },
+          "zeroResult": false,
+          "warmLatencyMs": 0.51
+        },
+        {
+          "queryId": "ja-q007",
+          "language": "ja",
+          "category": "filename",
+          "query": "当番表_夜間版.md 引き継ぎ",
+          "expected": ["ja/d007.md"],
+          "topDocs": [],
+          "metrics": {
+            "recallAt5": 0,
+            "recallAt10": 0,
+            "mrr": 0,
+            "ndcgAt10": 0
+          },
+          "zeroResult": true,
+          "warmLatencyMs": 0.38
+        },
+        {
+          "queryId": "ja-q008",
+          "language": "ja",
+          "category": "exact-term",
+          "query": "ガラス乾板 乳剤面 順応",
+          "expected": ["ja/d004.md"],
+          "topDocs": [],
+          "metrics": {
+            "recallAt5": 0,
+            "recallAt10": 0,
+            "mrr": 0,
+            "ndcgAt10": 0
+          },
+          "zeroResult": true,
+          "warmLatencyMs": 0.36
+        },
+        {
+          "queryId": "ko-q001",
+          "language": "ko",
+          "category": "identifier",
+          "query": "북항 창고 냉동기 KR-882",
+          "expected": ["ko/d001.md"],
+          "topDocs": [],
+          "metrics": {
+            "recallAt5": 0,
+            "recallAt10": 0,
+            "mrr": 0,
+            "ndcgAt10": 0
+          },
+          "zeroResult": true,
+          "warmLatencyMs": 0.51
+        },
+        {
+          "queryId": "ko-q002",
+          "language": "ko",
+          "category": "exact-term",
+          "query": "한빛도서관 고문서 습도 상한",
+          "expected": ["ko/d002.md"],
+          "topDocs": ["ko/d002.md"],
+          "metrics": {
+            "recallAt5": 1,
+            "recallAt10": 1,
+            "mrr": 1,
+            "ndcgAt10": 1
+          },
+          "zeroResult": false,
+          "warmLatencyMs": 0.62
+        },
+        {
+          "queryId": "ko-q003",
+          "language": "ko",
+          "category": "mixed-script",
+          "query": "DuriPay KO_API-31 Webhook 재전송",
+          "expected": ["ko/d003.md"],
+          "topDocs": [],
+          "metrics": {
+            "recallAt5": 0,
+            "recallAt10": 0,
+            "mrr": 0,
+            "ndcgAt10": 0
+          },
+          "zeroResult": true,
+          "warmLatencyMs": 0.63
+        },
+        {
+          "queryId": "ko-q004",
+          "language": "ko",
+          "category": "normalization",
+          "query": "가속기 실험 안전 절차",
+          "expected": ["ko/d004.md"],
+          "topDocs": [],
+          "metrics": {
+            "recallAt5": 0,
+            "recallAt10": 0,
+            "mrr": 0,
+            "ndcgAt10": 0
+          },
+          "zeroResult": true,
+          "warmLatencyMs": 0.53,
+          "normalization": {
+            "form": "NFC",
+            "source": "가속기",
+            "target": "가속기"
+          }
+        },
+        {
+          "queryId": "ko-q005",
+          "language": "ko",
+          "category": "punctuation",
+          "query": "푸른별 2조 하구 관측",
+          "expected": ["ko/d005.md"],
+          "topDocs": ["ko/d005.md"],
+          "metrics": {
+            "recallAt5": 1,
+            "recallAt10": 1,
+            "mrr": 1,
+            "ndcgAt10": 1
+          },
+          "zeroResult": false,
+          "warmLatencyMs": 0.6
+        },
+        {
+          "queryId": "ko-q006",
+          "language": "ko",
+          "category": "token-boundary",
+          "query": "기계 학습 모델 등록 대장 책임자",
+          "expected": ["ko/d006.md"],
+          "topDocs": ["ko/d006.md"],
+          "metrics": {
+            "recallAt5": 1,
+            "recallAt10": 1,
+            "mrr": 1,
+            "ndcgAt10": 1
+          },
+          "zeroResult": false,
+          "warmLatencyMs": 0.79
+        },
+        {
+          "queryId": "ko-q007",
+          "language": "ko",
+          "category": "filename",
+          "query": "당직표_야간판.md 인계",
+          "expected": ["ko/d007.md"],
+          "topDocs": [],
+          "metrics": {
+            "recallAt5": 0,
+            "recallAt10": 0,
+            "mrr": 0,
+            "ndcgAt10": 0
+          },
+          "zeroResult": true,
+          "warmLatencyMs": 0.34
+        },
+        {
+          "queryId": "ko-q008",
+          "language": "ko",
+          "category": "exact-term",
+          "query": "입자 가속기 차폐문 비상 정지",
+          "expected": ["ko/d004.md"],
+          "topDocs": ["ko/d004.md"],
+          "metrics": {
+            "recallAt5": 1,
+            "recallAt10": 1,
+            "mrr": 1,
+            "ndcgAt10": 1
+          },
+          "zeroResult": false,
+          "warmLatencyMs": 0.67
+        }
+      ]
+    },
+    {
+      "id": "hybrid-no-models",
+      "description": "Production hybrid pipeline with vector, expansion, and rerank disabled",
+      "config": {
+        "collection": "cjk-lexical-benchmark",
+        "limit": 10,
+        "tokenizer": "snowball english",
+        "vector": false,
+        "expand": false,
+        "rerank": false,
+        "normalization": null,
+        "match": "production-fts"
+      },
+      "queryCount": 24,
+      "metrics": {
+        "recallAt5": 0.25,
+        "recallAt10": 0.25,
+        "mrr": 0.25,
+        "ndcgAt10": 0.25,
+        "zeroResultRate": 0.75
+      },
+      "latency": {
+        "coldQueryMs": 2.5,
+        "warmQuery": {
+          "p50Ms": 0.46,
+          "p95Ms": 0.77,
+          "meanMs": 0.5
+        }
+      },
+      "languages": [
+        {
+          "language": "zh",
+          "queryCount": 8,
+          "metrics": {
+            "recallAt5": 0.125,
+            "recallAt10": 0.125,
+            "mrr": 0.125,
+            "ndcgAt10": 0.125,
+            "zeroResultRate": 0.875
+          },
+          "failures": [
+            {
+              "queryId": "zh-q001",
+              "language": "zh",
+              "category": "ranking",
+              "reason": "zero-result",
+              "query": "北辰物流 冷链温控报警",
+              "expected": ["zh/d001.md"],
+              "topDocs": []
+            },
+            {
+              "queryId": "zh-q002",
+              "language": "zh",
+              "category": "identifier",
+              "reason": "zero-result",
+              "query": "TW-0317 古籍除湿",
+              "expected": ["zh/d002.md"],
+              "topDocs": []
+            },
+            {
+              "queryId": "zh-q003",
+              "language": "zh",
+              "category": "mixed-script",
+              "reason": "zero-result",
+              "query": "QinglanPay ZH_API-77 回调失败",
+              "expected": ["zh/d003.md"],
+              "topDocs": []
+            },
+            {
+              "queryId": "zh-q004",
+              "language": "zh",
+              "category": "token-boundary",
+              "reason": "zero-result",
+              "query": "机器学习模型 登记责任人",
+              "expected": ["zh/d004.md"],
+              "topDocs": []
+            },
+            {
+              "queryId": "zh-q005",
+              "language": "zh",
+              "category": "normalization",
+              "reason": "zero-result",
+              "query": "ＡＣＣＴ－９９ 账户迁移",
+              "expected": ["zh/d005.md"],
+              "topDocs": []
+            },
+            {
+              "queryId": "zh-q006",
+              "language": "zh",
+              "category": "ranking",
+              "reason": "zero-result",
+              "query": "供应商 华北 乙类 合同修订",
+              "expected": ["zh/d006.md"],
+              "topDocs": []
+            },
+            {
+              "queryId": "zh-q007",
+              "language": "zh",
+              "category": "ranking",
+              "reason": "zero-result",
+              "query": "值班计划_夏季版.md 夜班交接",
+              "expected": ["zh/d007.md"],
+              "topDocs": []
+            }
+          ]
+        },
+        {
+          "language": "ja",
+          "queryCount": 8,
+          "metrics": {
+            "recallAt5": 0.125,
+            "recallAt10": 0.125,
+            "mrr": 0.125,
+            "ndcgAt10": 0.125,
+            "zeroResultRate": 0.875
+          },
+          "failures": [
+            {
+              "queryId": "ja-q001",
+              "language": "ja",
+              "category": "identifier",
+              "reason": "zero-result",
+              "query": "北浜倉庫 冷凍機 JP-771",
+              "expected": ["ja/d001.md"],
+              "topDocs": []
+            },
+            {
+              "queryId": "ja-q002",
+              "language": "ja",
+              "category": "ranking",
+              "reason": "zero-result",
+              "query": "さくら配送センター 封印番号",
+              "expected": ["ja/d002.md"],
+              "topDocs": []
+            },
+            {
+              "queryId": "ja-q003",
+              "language": "ja",
+              "category": "mixed-script",
+              "reason": "zero-result",
+              "query": "KumoPay JP_API-42 Webhook 再送",
+              "expected": ["ja/d003.md"],
+              "topDocs": []
+            },
+            {
+              "queryId": "ja-q004",
+              "language": "ja",
+              "category": "normalization",
+              "reason": "zero-result",
+              "query": "ガラス乾板 保管温度",
+              "expected": ["ja/d004.md"],
+              "topDocs": []
+            },
+            {
+              "queryId": "ja-q005",
+              "language": "ja",
+              "category": "ranking",
+              "reason": "zero-result",
+              "query": "青葉 二組 河口 観測",
+              "expected": ["ja/d005.md"],
+              "topDocs": []
+            },
+            {
+              "queryId": "ja-q007",
+              "language": "ja",
+              "category": "ranking",
+              "reason": "zero-result",
+              "query": "当番表_夜間版.md 引き継ぎ",
+              "expected": ["ja/d007.md"],
+              "topDocs": []
+            },
+            {
+              "queryId": "ja-q008",
+              "language": "ja",
+              "category": "ranking",
+              "reason": "zero-result",
+              "query": "ガラス乾板 乳剤面 順応",
+              "expected": ["ja/d004.md"],
+              "topDocs": []
+            }
+          ]
+        },
+        {
+          "language": "ko",
+          "queryCount": 8,
+          "metrics": {
+            "recallAt5": 0.5,
+            "recallAt10": 0.5,
+            "mrr": 0.5,
+            "ndcgAt10": 0.5,
+            "zeroResultRate": 0.5
+          },
+          "failures": [
+            {
+              "queryId": "ko-q001",
+              "language": "ko",
+              "category": "identifier",
+              "reason": "zero-result",
+              "query": "북항 창고 냉동기 KR-882",
+              "expected": ["ko/d001.md"],
+              "topDocs": []
+            },
+            {
+              "queryId": "ko-q003",
+              "language": "ko",
+              "category": "mixed-script",
+              "reason": "zero-result",
+              "query": "DuriPay KO_API-31 Webhook 재전송",
+              "expected": ["ko/d003.md"],
+              "topDocs": []
+            },
+            {
+              "queryId": "ko-q004",
+              "language": "ko",
+              "category": "normalization",
+              "reason": "zero-result",
+              "query": "가속기 실험 안전 절차",
+              "expected": ["ko/d004.md"],
+              "topDocs": []
+            },
+            {
+              "queryId": "ko-q007",
+              "language": "ko",
+              "category": "ranking",
+              "reason": "zero-result",
+              "query": "당직표_야간판.md 인계",
+              "expected": ["ko/d007.md"],
+              "topDocs": []
+            }
+          ]
+        }
+      ],
+      "cases": [
+        {
+          "queryId": "zh-q001",
+          "language": "zh",
+          "category": "exact-term",
+          "query": "北辰物流 冷链温控报警",
+          "expected": ["zh/d001.md"],
+          "topDocs": [],
+          "metrics": {
+            "recallAt5": 0,
+            "recallAt10": 0,
+            "mrr": 0,
+            "ndcgAt10": 0
+          },
+          "zeroResult": true,
+          "warmLatencyMs": 0.37
+        },
+        {
+          "queryId": "zh-q002",
+          "language": "zh",
+          "category": "identifier",
+          "query": "TW-0317 古籍除湿",
+          "expected": ["zh/d002.md"],
+          "topDocs": [],
+          "metrics": {
+            "recallAt5": 0,
+            "recallAt10": 0,
+            "mrr": 0,
+            "ndcgAt10": 0
+          },
+          "zeroResult": true,
+          "warmLatencyMs": 0.34
+        },
+        {
+          "queryId": "zh-q003",
+          "language": "zh",
+          "category": "mixed-script",
+          "query": "QinglanPay ZH_API-77 回调失败",
+          "expected": ["zh/d003.md"],
+          "topDocs": [],
+          "metrics": {
+            "recallAt5": 0,
+            "recallAt10": 0,
+            "mrr": 0,
+            "ndcgAt10": 0
+          },
+          "zeroResult": true,
+          "warmLatencyMs": 0.58
+        },
+        {
+          "queryId": "zh-q004",
+          "language": "zh",
+          "category": "token-boundary",
+          "query": "机器学习模型 登记责任人",
+          "expected": ["zh/d004.md"],
+          "topDocs": [],
+          "metrics": {
+            "recallAt5": 0,
+            "recallAt10": 0,
+            "mrr": 0,
+            "ndcgAt10": 0
+          },
+          "zeroResult": true,
+          "warmLatencyMs": 0.35
+        },
+        {
+          "queryId": "zh-q005",
+          "language": "zh",
+          "category": "normalization",
+          "query": "ＡＣＣＴ－９９ 账户迁移",
+          "expected": ["zh/d005.md"],
+          "topDocs": [],
+          "metrics": {
+            "recallAt5": 0,
+            "recallAt10": 0,
+            "mrr": 0,
+            "ndcgAt10": 0
+          },
+          "zeroResult": true,
+          "warmLatencyMs": 0.32,
+          "normalization": {
+            "form": "NFKC",
+            "source": "ＡＣＣＴ－９９",
+            "target": "ACCT-99"
+          }
+        },
+        {
+          "queryId": "zh-q006",
+          "language": "zh",
+          "category": "punctuation",
+          "query": "供应商 华北 乙类 合同修订",
+          "expected": ["zh/d006.md"],
+          "topDocs": [],
+          "metrics": {
+            "recallAt5": 0,
+            "recallAt10": 0,
+            "mrr": 0,
+            "ndcgAt10": 0
+          },
+          "zeroResult": true,
+          "warmLatencyMs": 0.49
+        },
+        {
+          "queryId": "zh-q007",
+          "language": "zh",
+          "category": "filename",
+          "query": "值班计划_夏季版.md 夜班交接",
+          "expected": ["zh/d007.md"],
+          "topDocs": [],
+          "metrics": {
+            "recallAt5": 0,
+            "recallAt10": 0,
+            "mrr": 0,
+            "ndcgAt10": 0
+          },
+          "zeroResult": true,
+          "warmLatencyMs": 0.37
+        },
+        {
+          "queryId": "zh-q008",
+          "language": "zh",
+          "category": "exact-term",
+          "query": "雲嶺圖書館 濕度上限",
+          "expected": ["zh/d002.md"],
+          "topDocs": ["zh/d002.md"],
+          "metrics": {
+            "recallAt5": 1,
+            "recallAt10": 1,
+            "mrr": 1,
+            "ndcgAt10": 1
+          },
+          "zeroResult": false,
+          "warmLatencyMs": 0.39
+        },
+        {
+          "queryId": "ja-q001",
+          "language": "ja",
+          "category": "identifier",
+          "query": "北浜倉庫 冷凍機 JP-771",
+          "expected": ["ja/d001.md"],
+          "topDocs": [],
+          "metrics": {
+            "recallAt5": 0,
+            "recallAt10": 0,
+            "mrr": 0,
+            "ndcgAt10": 0
+          },
+          "zeroResult": true,
+          "warmLatencyMs": 0.46
+        },
+        {
+          "queryId": "ja-q002",
+          "language": "ja",
+          "category": "exact-term",
+          "query": "さくら配送センター 封印番号",
+          "expected": ["ja/d002.md"],
+          "topDocs": [],
+          "metrics": {
+            "recallAt5": 0,
+            "recallAt10": 0,
+            "mrr": 0,
+            "ndcgAt10": 0
+          },
+          "zeroResult": true,
+          "warmLatencyMs": 0.31
+        },
+        {
+          "queryId": "ja-q003",
+          "language": "ja",
+          "category": "mixed-script",
+          "query": "KumoPay JP_API-42 Webhook 再送",
+          "expected": ["ja/d003.md"],
+          "topDocs": [],
+          "metrics": {
+            "recallAt5": 0,
+            "recallAt10": 0,
+            "mrr": 0,
+            "ndcgAt10": 0
+          },
+          "zeroResult": true,
+          "warmLatencyMs": 0.63
+        },
+        {
+          "queryId": "ja-q004",
+          "language": "ja",
+          "category": "normalization",
+          "query": "ガラス乾板 保管温度",
+          "expected": ["ja/d004.md"],
+          "topDocs": [],
+          "metrics": {
+            "recallAt5": 0,
+            "recallAt10": 0,
+            "mrr": 0,
+            "ndcgAt10": 0
+          },
+          "zeroResult": true,
+          "warmLatencyMs": 0.28,
+          "normalization": {
+            "form": "NFC",
+            "source": "ガラス",
+            "target": "ガラス"
+          }
+        },
+        {
+          "queryId": "ja-q005",
+          "language": "ja",
+          "category": "punctuation",
+          "query": "青葉 二組 河口 観測",
+          "expected": ["ja/d005.md"],
+          "topDocs": [],
+          "metrics": {
+            "recallAt5": 0,
+            "recallAt10": 0,
+            "mrr": 0,
+            "ndcgAt10": 0
+          },
+          "zeroResult": true,
+          "warmLatencyMs": 0.66
+        },
+        {
+          "queryId": "ja-q006",
+          "language": "ja",
+          "category": "token-boundary",
+          "query": "機械学習 モデル管理台帳 登録",
+          "expected": ["ja/d006.md"],
+          "topDocs": ["ja/d006.md"],
+          "metrics": {
+            "recallAt5": 1,
+            "recallAt10": 1,
+            "mrr": 1,
+            "ndcgAt10": 1
+          },
+          "zeroResult": false,
+          "warmLatencyMs": 0.58
+        },
+        {
+          "queryId": "ja-q007",
+          "language": "ja",
+          "category": "filename",
+          "query": "当番表_夜間版.md 引き継ぎ",
+          "expected": ["ja/d007.md"],
+          "topDocs": [],
+          "metrics": {
+            "recallAt5": 0,
+            "recallAt10": 0,
+            "mrr": 0,
+            "ndcgAt10": 0
+          },
+          "zeroResult": true,
+          "warmLatencyMs": 0.38
+        },
+        {
+          "queryId": "ja-q008",
+          "language": "ja",
+          "category": "exact-term",
+          "query": "ガラス乾板 乳剤面 順応",
+          "expected": ["ja/d004.md"],
+          "topDocs": [],
+          "metrics": {
+            "recallAt5": 0,
+            "recallAt10": 0,
+            "mrr": 0,
+            "ndcgAt10": 0
+          },
+          "zeroResult": true,
+          "warmLatencyMs": 0.36
+        },
+        {
+          "queryId": "ko-q001",
+          "language": "ko",
+          "category": "identifier",
+          "query": "북항 창고 냉동기 KR-882",
+          "expected": ["ko/d001.md"],
+          "topDocs": [],
+          "metrics": {
+            "recallAt5": 0,
+            "recallAt10": 0,
+            "mrr": 0,
+            "ndcgAt10": 0
+          },
+          "zeroResult": true,
+          "warmLatencyMs": 0.61
+        },
+        {
+          "queryId": "ko-q002",
+          "language": "ko",
+          "category": "exact-term",
+          "query": "한빛도서관 고문서 습도 상한",
+          "expected": ["ko/d002.md"],
+          "topDocs": ["ko/d002.md"],
+          "metrics": {
+            "recallAt5": 1,
+            "recallAt10": 1,
+            "mrr": 1,
+            "ndcgAt10": 1
+          },
+          "zeroResult": false,
+          "warmLatencyMs": 0.77
+        },
+        {
+          "queryId": "ko-q003",
+          "language": "ko",
+          "category": "mixed-script",
+          "query": "DuriPay KO_API-31 Webhook 재전송",
+          "expected": ["ko/d003.md"],
+          "topDocs": [],
+          "metrics": {
+            "recallAt5": 0,
+            "recallAt10": 0,
+            "mrr": 0,
+            "ndcgAt10": 0
+          },
+          "zeroResult": true,
+          "warmLatencyMs": 0.83
+        },
+        {
+          "queryId": "ko-q004",
+          "language": "ko",
+          "category": "normalization",
+          "query": "가속기 실험 안전 절차",
+          "expected": ["ko/d004.md"],
+          "topDocs": [],
+          "metrics": {
+            "recallAt5": 0,
+            "recallAt10": 0,
+            "mrr": 0,
+            "ndcgAt10": 0
+          },
+          "zeroResult": true,
+          "warmLatencyMs": 0.55,
+          "normalization": {
+            "form": "NFC",
+            "source": "가속기",
+            "target": "가속기"
+          }
+        },
+        {
+          "queryId": "ko-q005",
+          "language": "ko",
+          "category": "punctuation",
+          "query": "푸른별 2조 하구 관측",
+          "expected": ["ko/d005.md"],
+          "topDocs": ["ko/d005.md"],
+          "metrics": {
+            "recallAt5": 1,
+            "recallAt10": 1,
+            "mrr": 1,
+            "ndcgAt10": 1
+          },
+          "zeroResult": false,
+          "warmLatencyMs": 0.56
+        },
+        {
+          "queryId": "ko-q006",
+          "language": "ko",
+          "category": "token-boundary",
+          "query": "기계 학습 모델 등록 대장 책임자",
+          "expected": ["ko/d006.md"],
+          "topDocs": ["ko/d006.md"],
+          "metrics": {
+            "recallAt5": 1,
+            "recallAt10": 1,
+            "mrr": 1,
+            "ndcgAt10": 1
+          },
+          "zeroResult": false,
+          "warmLatencyMs": 0.76
+        },
+        {
+          "queryId": "ko-q007",
+          "language": "ko",
+          "category": "filename",
+          "query": "당직표_야간판.md 인계",
+          "expected": ["ko/d007.md"],
+          "topDocs": [],
+          "metrics": {
+            "recallAt5": 0,
+            "recallAt10": 0,
+            "mrr": 0,
+            "ndcgAt10": 0
+          },
+          "zeroResult": true,
+          "warmLatencyMs": 0.34
+        },
+        {
+          "queryId": "ko-q008",
+          "language": "ko",
+          "category": "exact-term",
+          "query": "입자 가속기 차폐문 비상 정지",
+          "expected": ["ko/d004.md"],
+          "topDocs": ["ko/d004.md"],
+          "metrics": {
+            "recallAt5": 1,
+            "recallAt10": 1,
+            "mrr": 1,
+            "ndcgAt10": 1
+          },
+          "zeroResult": false,
+          "warmLatencyMs": 0.65
+        }
+      ]
+    },
+    {
+      "id": "substring-raw",
+      "description": "Benchmark-only raw substring diagnostic over title and content",
+      "config": {
+        "collection": "cjk-lexical-benchmark",
+        "limit": 10,
+        "tokenizer": "snowball english",
+        "vector": false,
+        "expand": false,
+        "rerank": false,
+        "normalization": "raw",
+        "match": "all-query-terms-substring-with-exact-phrase-boost"
+      },
+      "queryCount": 24,
+      "metrics": {
+        "recallAt5": 0.7083,
+        "recallAt10": 0.7083,
+        "mrr": 0.7083,
+        "ndcgAt10": 0.7083,
+        "zeroResultRate": 0.2917
+      },
+      "latency": {
+        "coldQueryMs": 0.31,
+        "warmQuery": {
+          "p50Ms": 0.05,
+          "p95Ms": 0.07,
+          "meanMs": 0.05
+        }
+      },
+      "languages": [
+        {
+          "language": "zh",
+          "queryCount": 8,
+          "metrics": {
+            "recallAt5": 0.375,
+            "recallAt10": 0.375,
+            "mrr": 0.375,
+            "ndcgAt10": 0.375,
+            "zeroResultRate": 0.625
+          },
+          "failures": [
+            {
+              "queryId": "zh-q002",
+              "language": "zh",
+              "category": "identifier",
+              "reason": "zero-result",
+              "query": "TW-0317 古籍除湿",
+              "expected": ["zh/d002.md"],
+              "topDocs": []
+            },
+            {
+              "queryId": "zh-q003",
+              "language": "zh",
+              "category": "mixed-script",
+              "reason": "zero-result",
+              "query": "QinglanPay ZH_API-77 回调失败",
+              "expected": ["zh/d003.md"],
+              "topDocs": []
+            },
+            {
+              "queryId": "zh-q004",
+              "language": "zh",
+              "category": "token-boundary",
+              "reason": "zero-result",
+              "query": "机器学习模型 登记责任人",
+              "expected": ["zh/d004.md"],
+              "topDocs": []
+            },
+            {
+              "queryId": "zh-q005",
+              "language": "zh",
+              "category": "normalization",
+              "reason": "zero-result",
+              "query": "ＡＣＣＴ－９９ 账户迁移",
+              "expected": ["zh/d005.md"],
+              "topDocs": []
+            },
+            {
+              "queryId": "zh-q007",
+              "language": "zh",
+              "category": "ranking",
+              "reason": "zero-result",
+              "query": "值班计划_夏季版.md 夜班交接",
+              "expected": ["zh/d007.md"],
+              "topDocs": []
+            }
+          ]
+        },
+        {
+          "language": "ja",
+          "queryCount": 8,
+          "metrics": {
+            "recallAt5": 0.875,
+            "recallAt10": 0.875,
+            "mrr": 0.875,
+            "ndcgAt10": 0.875,
+            "zeroResultRate": 0.125
+          },
+          "failures": [
+            {
+              "queryId": "ja-q004",
+              "language": "ja",
+              "category": "normalization",
+              "reason": "zero-result",
+              "query": "ガラス乾板 保管温度",
+              "expected": ["ja/d004.md"],
+              "topDocs": []
+            }
+          ]
+        },
+        {
+          "language": "ko",
+          "queryCount": 8,
+          "metrics": {
+            "recallAt5": 0.875,
+            "recallAt10": 0.875,
+            "mrr": 0.875,
+            "ndcgAt10": 0.875,
+            "zeroResultRate": 0.125
+          },
+          "failures": [
+            {
+              "queryId": "ko-q004",
+              "language": "ko",
+              "category": "normalization",
+              "reason": "zero-result",
+              "query": "가속기 실험 안전 절차",
+              "expected": ["ko/d004.md"],
+              "topDocs": []
+            }
+          ]
+        }
+      ],
+      "cases": [
+        {
+          "queryId": "zh-q001",
+          "language": "zh",
+          "category": "exact-term",
+          "query": "北辰物流 冷链温控报警",
+          "expected": ["zh/d001.md"],
+          "topDocs": ["zh/d001.md"],
+          "metrics": {
+            "recallAt5": 1,
+            "recallAt10": 1,
+            "mrr": 1,
+            "ndcgAt10": 1
+          },
+          "zeroResult": false,
+          "warmLatencyMs": 0.06
+        },
+        {
+          "queryId": "zh-q002",
+          "language": "zh",
+          "category": "identifier",
+          "query": "TW-0317 古籍除湿",
+          "expected": ["zh/d002.md"],
+          "topDocs": [],
+          "metrics": {
+            "recallAt5": 0,
+            "recallAt10": 0,
+            "mrr": 0,
+            "ndcgAt10": 0
+          },
+          "zeroResult": true,
+          "warmLatencyMs": 0.05
+        },
+        {
+          "queryId": "zh-q003",
+          "language": "zh",
+          "category": "mixed-script",
+          "query": "QinglanPay ZH_API-77 回调失败",
+          "expected": ["zh/d003.md"],
+          "topDocs": [],
+          "metrics": {
+            "recallAt5": 0,
+            "recallAt10": 0,
+            "mrr": 0,
+            "ndcgAt10": 0
+          },
+          "zeroResult": true,
+          "warmLatencyMs": 0.05
+        },
+        {
+          "queryId": "zh-q004",
+          "language": "zh",
+          "category": "token-boundary",
+          "query": "机器学习模型 登记责任人",
+          "expected": ["zh/d004.md"],
+          "topDocs": [],
+          "metrics": {
+            "recallAt5": 0,
+            "recallAt10": 0,
+            "mrr": 0,
+            "ndcgAt10": 0
+          },
+          "zeroResult": true,
+          "warmLatencyMs": 0.05
+        },
+        {
+          "queryId": "zh-q005",
+          "language": "zh",
+          "category": "normalization",
+          "query": "ＡＣＣＴ－９９ 账户迁移",
+          "expected": ["zh/d005.md"],
+          "topDocs": [],
+          "metrics": {
+            "recallAt5": 0,
+            "recallAt10": 0,
+            "mrr": 0,
+            "ndcgAt10": 0
+          },
+          "zeroResult": true,
+          "warmLatencyMs": 0.04,
+          "normalization": {
+            "form": "NFKC",
+            "source": "ＡＣＣＴ－９９",
+            "target": "ACCT-99"
+          }
+        },
+        {
+          "queryId": "zh-q006",
+          "language": "zh",
+          "category": "punctuation",
+          "query": "供应商 华北 乙类 合同修订",
+          "expected": ["zh/d006.md"],
+          "topDocs": ["zh/d006.md"],
+          "metrics": {
+            "recallAt5": 1,
+            "recallAt10": 1,
+            "mrr": 1,
+            "ndcgAt10": 1
+          },
+          "zeroResult": false,
+          "warmLatencyMs": 0.05
+        },
+        {
+          "queryId": "zh-q007",
+          "language": "zh",
+          "category": "filename",
+          "query": "值班计划_夏季版.md 夜班交接",
+          "expected": ["zh/d007.md"],
+          "topDocs": [],
+          "metrics": {
+            "recallAt5": 0,
+            "recallAt10": 0,
+            "mrr": 0,
+            "ndcgAt10": 0
+          },
+          "zeroResult": true,
+          "warmLatencyMs": 0.05
+        },
+        {
+          "queryId": "zh-q008",
+          "language": "zh",
+          "category": "exact-term",
+          "query": "雲嶺圖書館 濕度上限",
+          "expected": ["zh/d002.md"],
+          "topDocs": ["zh/d002.md"],
+          "metrics": {
+            "recallAt5": 1,
+            "recallAt10": 1,
+            "mrr": 1,
+            "ndcgAt10": 1
+          },
+          "zeroResult": false,
+          "warmLatencyMs": 0.05
+        },
+        {
+          "queryId": "ja-q001",
+          "language": "ja",
+          "category": "identifier",
+          "query": "北浜倉庫 冷凍機 JP-771",
+          "expected": ["ja/d001.md"],
+          "topDocs": ["ja/d001.md"],
+          "metrics": {
+            "recallAt5": 1,
+            "recallAt10": 1,
+            "mrr": 1,
+            "ndcgAt10": 1
+          },
+          "zeroResult": false,
+          "warmLatencyMs": 0.05
+        },
+        {
+          "queryId": "ja-q002",
+          "language": "ja",
+          "category": "exact-term",
+          "query": "さくら配送センター 封印番号",
+          "expected": ["ja/d002.md"],
+          "topDocs": ["ja/d002.md"],
+          "metrics": {
+            "recallAt5": 1,
+            "recallAt10": 1,
+            "mrr": 1,
+            "ndcgAt10": 1
+          },
+          "zeroResult": false,
+          "warmLatencyMs": 0.05
+        },
+        {
+          "queryId": "ja-q003",
+          "language": "ja",
+          "category": "mixed-script",
+          "query": "KumoPay JP_API-42 Webhook 再送",
+          "expected": ["ja/d003.md"],
+          "topDocs": ["ja/d003.md"],
+          "metrics": {
+            "recallAt5": 1,
+            "recallAt10": 1,
+            "mrr": 1,
+            "ndcgAt10": 1
+          },
+          "zeroResult": false,
+          "warmLatencyMs": 0.05
+        },
+        {
+          "queryId": "ja-q004",
+          "language": "ja",
+          "category": "normalization",
+          "query": "ガラス乾板 保管温度",
+          "expected": ["ja/d004.md"],
+          "topDocs": [],
+          "metrics": {
+            "recallAt5": 0,
+            "recallAt10": 0,
+            "mrr": 0,
+            "ndcgAt10": 0
+          },
+          "zeroResult": true,
+          "warmLatencyMs": 0.05,
+          "normalization": {
+            "form": "NFC",
+            "source": "ガラス",
+            "target": "ガラス"
+          }
+        },
+        {
+          "queryId": "ja-q005",
+          "language": "ja",
+          "category": "punctuation",
+          "query": "青葉 二組 河口 観測",
+          "expected": ["ja/d005.md"],
+          "topDocs": ["ja/d005.md"],
+          "metrics": {
+            "recallAt5": 1,
+            "recallAt10": 1,
+            "mrr": 1,
+            "ndcgAt10": 1
+          },
+          "zeroResult": false,
+          "warmLatencyMs": 0.05
+        },
+        {
+          "queryId": "ja-q006",
+          "language": "ja",
+          "category": "token-boundary",
+          "query": "機械学習 モデル管理台帳 登録",
+          "expected": ["ja/d006.md"],
+          "topDocs": ["ja/d006.md"],
+          "metrics": {
+            "recallAt5": 1,
+            "recallAt10": 1,
+            "mrr": 1,
+            "ndcgAt10": 1
+          },
+          "zeroResult": false,
+          "warmLatencyMs": 0.05
+        },
+        {
+          "queryId": "ja-q007",
+          "language": "ja",
+          "category": "filename",
+          "query": "当番表_夜間版.md 引き継ぎ",
+          "expected": ["ja/d007.md"],
+          "topDocs": ["ja/d007.md"],
+          "metrics": {
+            "recallAt5": 1,
+            "recallAt10": 1,
+            "mrr": 1,
+            "ndcgAt10": 1
+          },
+          "zeroResult": false,
+          "warmLatencyMs": 0.05
+        },
+        {
+          "queryId": "ja-q008",
+          "language": "ja",
+          "category": "exact-term",
+          "query": "ガラス乾板 乳剤面 順応",
+          "expected": ["ja/d004.md"],
+          "topDocs": ["ja/d004.md"],
+          "metrics": {
+            "recallAt5": 1,
+            "recallAt10": 1,
+            "mrr": 1,
+            "ndcgAt10": 1
+          },
+          "zeroResult": false,
+          "warmLatencyMs": 0.05
+        },
+        {
+          "queryId": "ko-q001",
+          "language": "ko",
+          "category": "identifier",
+          "query": "북항 창고 냉동기 KR-882",
+          "expected": ["ko/d001.md"],
+          "topDocs": ["ko/d001.md"],
+          "metrics": {
+            "recallAt5": 1,
+            "recallAt10": 1,
+            "mrr": 1,
+            "ndcgAt10": 1
+          },
+          "zeroResult": false,
+          "warmLatencyMs": 0.04
+        },
+        {
+          "queryId": "ko-q002",
+          "language": "ko",
+          "category": "exact-term",
+          "query": "한빛도서관 고문서 습도 상한",
+          "expected": ["ko/d002.md"],
+          "topDocs": ["ko/d002.md"],
+          "metrics": {
+            "recallAt5": 1,
+            "recallAt10": 1,
+            "mrr": 1,
+            "ndcgAt10": 1
+          },
+          "zeroResult": false,
+          "warmLatencyMs": 0.05
+        },
+        {
+          "queryId": "ko-q003",
+          "language": "ko",
+          "category": "mixed-script",
+          "query": "DuriPay KO_API-31 Webhook 재전송",
+          "expected": ["ko/d003.md"],
+          "topDocs": ["ko/d003.md"],
+          "metrics": {
+            "recallAt5": 1,
+            "recallAt10": 1,
+            "mrr": 1,
+            "ndcgAt10": 1
+          },
+          "zeroResult": false,
+          "warmLatencyMs": 0.05
+        },
+        {
+          "queryId": "ko-q004",
+          "language": "ko",
+          "category": "normalization",
+          "query": "가속기 실험 안전 절차",
+          "expected": ["ko/d004.md"],
+          "topDocs": [],
+          "metrics": {
+            "recallAt5": 0,
+            "recallAt10": 0,
+            "mrr": 0,
+            "ndcgAt10": 0
+          },
+          "zeroResult": true,
+          "warmLatencyMs": 0.04,
+          "normalization": {
+            "form": "NFC",
+            "source": "가속기",
+            "target": "가속기"
+          }
+        },
+        {
+          "queryId": "ko-q005",
+          "language": "ko",
+          "category": "punctuation",
+          "query": "푸른별 2조 하구 관측",
+          "expected": ["ko/d005.md"],
+          "topDocs": ["ko/d005.md"],
+          "metrics": {
+            "recallAt5": 1,
+            "recallAt10": 1,
+            "mrr": 1,
+            "ndcgAt10": 1
+          },
+          "zeroResult": false,
+          "warmLatencyMs": 0.05
+        },
+        {
+          "queryId": "ko-q006",
+          "language": "ko",
+          "category": "token-boundary",
+          "query": "기계 학습 모델 등록 대장 책임자",
+          "expected": ["ko/d006.md"],
+          "topDocs": ["ko/d006.md"],
+          "metrics": {
+            "recallAt5": 1,
+            "recallAt10": 1,
+            "mrr": 1,
+            "ndcgAt10": 1
+          },
+          "zeroResult": false,
+          "warmLatencyMs": 0.09
+        },
+        {
+          "queryId": "ko-q007",
+          "language": "ko",
+          "category": "filename",
+          "query": "당직표_야간판.md 인계",
+          "expected": ["ko/d007.md"],
+          "topDocs": ["ko/d007.md"],
+          "metrics": {
+            "recallAt5": 1,
+            "recallAt10": 1,
+            "mrr": 1,
+            "ndcgAt10": 1
+          },
+          "zeroResult": false,
+          "warmLatencyMs": 0.07
+        },
+        {
+          "queryId": "ko-q008",
+          "language": "ko",
+          "category": "exact-term",
+          "query": "입자 가속기 차폐문 비상 정지",
+          "expected": ["ko/d004.md"],
+          "topDocs": ["ko/d004.md"],
+          "metrics": {
+            "recallAt5": 1,
+            "recallAt10": 1,
+            "mrr": 1,
+            "ndcgAt10": 1
+          },
+          "zeroResult": false,
+          "warmLatencyMs": 0.07
+        }
+      ]
+    },
+    {
+      "id": "substring-nfc",
+      "description": "Benchmark-only NFC substring diagnostic over title and content",
+      "config": {
+        "collection": "cjk-lexical-benchmark",
+        "limit": 10,
+        "tokenizer": "snowball english",
+        "vector": false,
+        "expand": false,
+        "rerank": false,
+        "normalization": "NFC",
+        "match": "all-query-terms-substring-with-exact-phrase-boost"
+      },
+      "queryCount": 24,
+      "metrics": {
+        "recallAt5": 0.75,
+        "recallAt10": 0.75,
+        "mrr": 0.75,
+        "ndcgAt10": 0.75,
+        "zeroResultRate": 0.25
+      },
+      "latency": {
+        "coldQueryMs": 0.07,
+        "warmQuery": {
+          "p50Ms": 0.05,
+          "p95Ms": 0.06,
+          "meanMs": 0.05
+        }
+      },
+      "languages": [
+        {
+          "language": "zh",
+          "queryCount": 8,
+          "metrics": {
+            "recallAt5": 0.375,
+            "recallAt10": 0.375,
+            "mrr": 0.375,
+            "ndcgAt10": 0.375,
+            "zeroResultRate": 0.625
+          },
+          "failures": [
+            {
+              "queryId": "zh-q002",
+              "language": "zh",
+              "category": "identifier",
+              "reason": "zero-result",
+              "query": "TW-0317 古籍除湿",
+              "expected": ["zh/d002.md"],
+              "topDocs": []
+            },
+            {
+              "queryId": "zh-q003",
+              "language": "zh",
+              "category": "mixed-script",
+              "reason": "zero-result",
+              "query": "QinglanPay ZH_API-77 回调失败",
+              "expected": ["zh/d003.md"],
+              "topDocs": []
+            },
+            {
+              "queryId": "zh-q004",
+              "language": "zh",
+              "category": "token-boundary",
+              "reason": "zero-result",
+              "query": "机器学习模型 登记责任人",
+              "expected": ["zh/d004.md"],
+              "topDocs": []
+            },
+            {
+              "queryId": "zh-q005",
+              "language": "zh",
+              "category": "normalization",
+              "reason": "zero-result",
+              "query": "ＡＣＣＴ－９９ 账户迁移",
+              "expected": ["zh/d005.md"],
+              "topDocs": []
+            },
+            {
+              "queryId": "zh-q007",
+              "language": "zh",
+              "category": "ranking",
+              "reason": "zero-result",
+              "query": "值班计划_夏季版.md 夜班交接",
+              "expected": ["zh/d007.md"],
+              "topDocs": []
+            }
+          ]
+        },
+        {
+          "language": "ja",
+          "queryCount": 8,
+          "metrics": {
+            "recallAt5": 0.875,
+            "recallAt10": 0.875,
+            "mrr": 0.875,
+            "ndcgAt10": 0.875,
+            "zeroResultRate": 0.125
+          },
+          "failures": [
+            {
+              "queryId": "ja-q004",
+              "language": "ja",
+              "category": "normalization",
+              "reason": "zero-result",
+              "query": "ガラス乾板 保管温度",
+              "expected": ["ja/d004.md"],
+              "topDocs": []
+            }
+          ]
+        },
+        {
+          "language": "ko",
+          "queryCount": 8,
+          "metrics": {
+            "recallAt5": 1,
+            "recallAt10": 1,
+            "mrr": 1,
+            "ndcgAt10": 1,
+            "zeroResultRate": 0
+          },
+          "failures": []
+        }
+      ],
+      "cases": [
+        {
+          "queryId": "zh-q001",
+          "language": "zh",
+          "category": "exact-term",
+          "query": "北辰物流 冷链温控报警",
+          "expected": ["zh/d001.md"],
+          "topDocs": ["zh/d001.md"],
+          "metrics": {
+            "recallAt5": 1,
+            "recallAt10": 1,
+            "mrr": 1,
+            "ndcgAt10": 1
+          },
+          "zeroResult": false,
+          "warmLatencyMs": 0.05
+        },
+        {
+          "queryId": "zh-q002",
+          "language": "zh",
+          "category": "identifier",
+          "query": "TW-0317 古籍除湿",
+          "expected": ["zh/d002.md"],
+          "topDocs": [],
+          "metrics": {
+            "recallAt5": 0,
+            "recallAt10": 0,
+            "mrr": 0,
+            "ndcgAt10": 0
+          },
+          "zeroResult": true,
+          "warmLatencyMs": 0.05
+        },
+        {
+          "queryId": "zh-q003",
+          "language": "zh",
+          "category": "mixed-script",
+          "query": "QinglanPay ZH_API-77 回调失败",
+          "expected": ["zh/d003.md"],
+          "topDocs": [],
+          "metrics": {
+            "recallAt5": 0,
+            "recallAt10": 0,
+            "mrr": 0,
+            "ndcgAt10": 0
+          },
+          "zeroResult": true,
+          "warmLatencyMs": 0.05
+        },
+        {
+          "queryId": "zh-q004",
+          "language": "zh",
+          "category": "token-boundary",
+          "query": "机器学习模型 登记责任人",
+          "expected": ["zh/d004.md"],
+          "topDocs": [],
+          "metrics": {
+            "recallAt5": 0,
+            "recallAt10": 0,
+            "mrr": 0,
+            "ndcgAt10": 0
+          },
+          "zeroResult": true,
+          "warmLatencyMs": 0.05
+        },
+        {
+          "queryId": "zh-q005",
+          "language": "zh",
+          "category": "normalization",
+          "query": "ＡＣＣＴ－９９ 账户迁移",
+          "expected": ["zh/d005.md"],
+          "topDocs": [],
+          "metrics": {
+            "recallAt5": 0,
+            "recallAt10": 0,
+            "mrr": 0,
+            "ndcgAt10": 0
+          },
+          "zeroResult": true,
+          "warmLatencyMs": 0.05,
+          "normalization": {
+            "form": "NFKC",
+            "source": "ＡＣＣＴ－９９",
+            "target": "ACCT-99"
+          }
+        },
+        {
+          "queryId": "zh-q006",
+          "language": "zh",
+          "category": "punctuation",
+          "query": "供应商 华北 乙类 合同修订",
+          "expected": ["zh/d006.md"],
+          "topDocs": ["zh/d006.md"],
+          "metrics": {
+            "recallAt5": 1,
+            "recallAt10": 1,
+            "mrr": 1,
+            "ndcgAt10": 1
+          },
+          "zeroResult": false,
+          "warmLatencyMs": 0.05
+        },
+        {
+          "queryId": "zh-q007",
+          "language": "zh",
+          "category": "filename",
+          "query": "值班计划_夏季版.md 夜班交接",
+          "expected": ["zh/d007.md"],
+          "topDocs": [],
+          "metrics": {
+            "recallAt5": 0,
+            "recallAt10": 0,
+            "mrr": 0,
+            "ndcgAt10": 0
+          },
+          "zeroResult": true,
+          "warmLatencyMs": 0.05
+        },
+        {
+          "queryId": "zh-q008",
+          "language": "zh",
+          "category": "exact-term",
+          "query": "雲嶺圖書館 濕度上限",
+          "expected": ["zh/d002.md"],
+          "topDocs": ["zh/d002.md"],
+          "metrics": {
+            "recallAt5": 1,
+            "recallAt10": 1,
+            "mrr": 1,
+            "ndcgAt10": 1
+          },
+          "zeroResult": false,
+          "warmLatencyMs": 0.05
+        },
+        {
+          "queryId": "ja-q001",
+          "language": "ja",
+          "category": "identifier",
+          "query": "北浜倉庫 冷凍機 JP-771",
+          "expected": ["ja/d001.md"],
+          "topDocs": ["ja/d001.md"],
+          "metrics": {
+            "recallAt5": 1,
+            "recallAt10": 1,
+            "mrr": 1,
+            "ndcgAt10": 1
+          },
+          "zeroResult": false,
+          "warmLatencyMs": 0.05
+        },
+        {
+          "queryId": "ja-q002",
+          "language": "ja",
+          "category": "exact-term",
+          "query": "さくら配送センター 封印番号",
+          "expected": ["ja/d002.md"],
+          "topDocs": ["ja/d002.md"],
+          "metrics": {
+            "recallAt5": 1,
+            "recallAt10": 1,
+            "mrr": 1,
+            "ndcgAt10": 1
+          },
+          "zeroResult": false,
+          "warmLatencyMs": 0.06
+        },
+        {
+          "queryId": "ja-q003",
+          "language": "ja",
+          "category": "mixed-script",
+          "query": "KumoPay JP_API-42 Webhook 再送",
+          "expected": ["ja/d003.md"],
+          "topDocs": ["ja/d003.md"],
+          "metrics": {
+            "recallAt5": 1,
+            "recallAt10": 1,
+            "mrr": 1,
+            "ndcgAt10": 1
+          },
+          "zeroResult": false,
+          "warmLatencyMs": 0.06
+        },
+        {
+          "queryId": "ja-q004",
+          "language": "ja",
+          "category": "normalization",
+          "query": "ガラス乾板 保管温度",
+          "expected": ["ja/d004.md"],
+          "topDocs": [],
+          "metrics": {
+            "recallAt5": 0,
+            "recallAt10": 0,
+            "mrr": 0,
+            "ndcgAt10": 0
+          },
+          "zeroResult": true,
+          "warmLatencyMs": 0.05,
+          "normalization": {
+            "form": "NFC",
+            "source": "ガラス",
+            "target": "ガラス"
+          }
+        },
+        {
+          "queryId": "ja-q005",
+          "language": "ja",
+          "category": "punctuation",
+          "query": "青葉 二組 河口 観測",
+          "expected": ["ja/d005.md"],
+          "topDocs": ["ja/d005.md"],
+          "metrics": {
+            "recallAt5": 1,
+            "recallAt10": 1,
+            "mrr": 1,
+            "ndcgAt10": 1
+          },
+          "zeroResult": false,
+          "warmLatencyMs": 0.05
+        },
+        {
+          "queryId": "ja-q006",
+          "language": "ja",
+          "category": "token-boundary",
+          "query": "機械学習 モデル管理台帳 登録",
+          "expected": ["ja/d006.md"],
+          "topDocs": ["ja/d006.md"],
+          "metrics": {
+            "recallAt5": 1,
+            "recallAt10": 1,
+            "mrr": 1,
+            "ndcgAt10": 1
+          },
+          "zeroResult": false,
+          "warmLatencyMs": 0.06
+        },
+        {
+          "queryId": "ja-q007",
+          "language": "ja",
+          "category": "filename",
+          "query": "当番表_夜間版.md 引き継ぎ",
+          "expected": ["ja/d007.md"],
+          "topDocs": ["ja/d007.md"],
+          "metrics": {
+            "recallAt5": 1,
+            "recallAt10": 1,
+            "mrr": 1,
+            "ndcgAt10": 1
+          },
+          "zeroResult": false,
+          "warmLatencyMs": 0.06
+        },
+        {
+          "queryId": "ja-q008",
+          "language": "ja",
+          "category": "exact-term",
+          "query": "ガラス乾板 乳剤面 順応",
+          "expected": ["ja/d004.md"],
+          "topDocs": ["ja/d004.md"],
+          "metrics": {
+            "recallAt5": 1,
+            "recallAt10": 1,
+            "mrr": 1,
+            "ndcgAt10": 1
+          },
+          "zeroResult": false,
+          "warmLatencyMs": 0.06
+        },
+        {
+          "queryId": "ko-q001",
+          "language": "ko",
+          "category": "identifier",
+          "query": "북항 창고 냉동기 KR-882",
+          "expected": ["ko/d001.md"],
+          "topDocs": ["ko/d001.md"],
+          "metrics": {
+            "recallAt5": 1,
+            "recallAt10": 1,
+            "mrr": 1,
+            "ndcgAt10": 1
+          },
+          "zeroResult": false,
+          "warmLatencyMs": 0.05
+        },
+        {
+          "queryId": "ko-q002",
+          "language": "ko",
+          "category": "exact-term",
+          "query": "한빛도서관 고문서 습도 상한",
+          "expected": ["ko/d002.md"],
+          "topDocs": ["ko/d002.md"],
+          "metrics": {
+            "recallAt5": 1,
+            "recallAt10": 1,
+            "mrr": 1,
+            "ndcgAt10": 1
+          },
+          "zeroResult": false,
+          "warmLatencyMs": 0.05
+        },
+        {
+          "queryId": "ko-q003",
+          "language": "ko",
+          "category": "mixed-script",
+          "query": "DuriPay KO_API-31 Webhook 재전송",
+          "expected": ["ko/d003.md"],
+          "topDocs": ["ko/d003.md"],
+          "metrics": {
+            "recallAt5": 1,
+            "recallAt10": 1,
+            "mrr": 1,
+            "ndcgAt10": 1
+          },
+          "zeroResult": false,
+          "warmLatencyMs": 0.06
+        },
+        {
+          "queryId": "ko-q004",
+          "language": "ko",
+          "category": "normalization",
+          "query": "가속기 실험 안전 절차",
+          "expected": ["ko/d004.md"],
+          "topDocs": ["ko/d004.md"],
+          "metrics": {
+            "recallAt5": 1,
+            "recallAt10": 1,
+            "mrr": 1,
+            "ndcgAt10": 1
+          },
+          "zeroResult": false,
+          "warmLatencyMs": 0.05,
+          "normalization": {
+            "form": "NFC",
+            "source": "가속기",
+            "target": "가속기"
+          }
+        },
+        {
+          "queryId": "ko-q005",
+          "language": "ko",
+          "category": "punctuation",
+          "query": "푸른별 2조 하구 관측",
+          "expected": ["ko/d005.md"],
+          "topDocs": ["ko/d005.md"],
+          "metrics": {
+            "recallAt5": 1,
+            "recallAt10": 1,
+            "mrr": 1,
+            "ndcgAt10": 1
+          },
+          "zeroResult": false,
+          "warmLatencyMs": 0.05
+        },
+        {
+          "queryId": "ko-q006",
+          "language": "ko",
+          "category": "token-boundary",
+          "query": "기계 학습 모델 등록 대장 책임자",
+          "expected": ["ko/d006.md"],
+          "topDocs": ["ko/d006.md"],
+          "metrics": {
+            "recallAt5": 1,
+            "recallAt10": 1,
+            "mrr": 1,
+            "ndcgAt10": 1
+          },
+          "zeroResult": false,
+          "warmLatencyMs": 0.05
+        },
+        {
+          "queryId": "ko-q007",
+          "language": "ko",
+          "category": "filename",
+          "query": "당직표_야간판.md 인계",
+          "expected": ["ko/d007.md"],
+          "topDocs": ["ko/d007.md"],
+          "metrics": {
+            "recallAt5": 1,
+            "recallAt10": 1,
+            "mrr": 1,
+            "ndcgAt10": 1
+          },
+          "zeroResult": false,
+          "warmLatencyMs": 0.05
+        },
+        {
+          "queryId": "ko-q008",
+          "language": "ko",
+          "category": "exact-term",
+          "query": "입자 가속기 차폐문 비상 정지",
+          "expected": ["ko/d004.md"],
+          "topDocs": ["ko/d004.md"],
+          "metrics": {
+            "recallAt5": 1,
+            "recallAt10": 1,
+            "mrr": 1,
+            "ndcgAt10": 1
+          },
+          "zeroResult": false,
+          "warmLatencyMs": 0.05
+        }
+      ]
+    }
+  ]
+}
