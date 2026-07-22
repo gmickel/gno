@@ -32,8 +32,8 @@ Deliver freeze promotion gates baselines and public caveats as one implementatio
 
 
 ## Done summary
-Froze immutable per-language CJK lexical promotion gates, concrete failure examples, qrels limitations, public semantic-versus-lexical caveats, hosted documentation, and regression verification. Updated fn-109 acceptance thresholds without preselecting an analyzer.
+Froze immutable per-language CJK lexical promotion gates with a genuine Chinese rank-6 failure, concrete diagnostic categories, qrels limitations, public semantic-versus-lexical caveats, hosted documentation, and fail-closed public-truth verification. Updated fn-109 acceptance thresholds without preselecting an analyzer.
 ## Evidence
-- Commits: 8b48159, gno.sh:2cbd759
-- Tests: bun run bench:cjk-lexical, bun run lint:check, bun run docs:truth, bun run docs:verify (13 passed, 2 model-cache skips), bun test, flowctl validate fn-96, gno.sh: bun test src/lib/public-truth-content.test.ts (6 passed), gno.sh: bun run lint, gno.sh: bun run typecheck, gno.sh: bun run build (67 pages prerendered)
+- Commits: 8b48159, 43bccdf, gno.sh:2cbd759, gno.sh:eb1a417, gno.sh:5a1d30b
+- Tests: bun run bench:cjk-lexical, bun run lint:check, bun run docs:truth, bun run docs:verify (13 passed, 2 model-cache skips), bun test (2333 pass, 1 platform skip), flowctl validate fn-96, flowctl validate fn-109, gno.sh: bun test src/lib/public-truth-content.test.ts (6 passed), gno.sh: bun run lint, gno.sh: bun run typecheck
 - PRs:
