@@ -61,7 +61,7 @@ The diagram below shows how your query flows through GNO's search system:
 │  STAGE 2A: BM25 SEARCH      │ │  STAGE 2B: VECTOR SEARCH    │
 │                             │ │                             │
 │  Document-level FTS5 with   │ │  Chunk-level embeddings     │
-│  Snowball stemmer (20+ langs)│ │  with contextual prefixes   │
+│  Snowball English stemming  │ │  with contextual prefixes   │
 │                             │ │                             │
 │  Searches in parallel:      │ │  Searches in parallel:      │
 │  • Original query (2×)      │ │  • Original query (2×)      │
@@ -184,7 +184,10 @@ Fast keyword search using SQLite FTS5 with document-level indexing. Best for:
 
 **Document-level BM25**: Unlike chunk-level search, GNO indexes entire documents. This means a query for "authentication JWT" finds documents where these terms appear anywhere, even in different sections.
 
-**Snowball stemming**: FTS5 uses the Snowball stemmer supporting 20+ languages. "running" matches "run", "scored" matches "score", plurals match singulars.
+**Snowball stemming**: The exposed default tokenizer is specifically
+`snowball english`. It handles English word forms such as "running" → "run"
+and "scored" → "score"; GNO does not expose the other Snowball language
+stemmers. `unicode61` provides language-neutral tokenization without stemming.
 
 **Weighted BM25 fields**: `gno search` intentionally favors title hits first, then filepath hits, then body-only mentions. This helps code/doc lookups like `auth-flow`, `DEC-0054`, and `jwt token rotation` rank the expected document above a weak incidental body mention.
 
@@ -496,7 +499,38 @@ Query expansion prompts are language-aware:
 - **German** (`de-*`): Native German prompt
 - **Other**: Multilingual fallback prompt
 
-Language is auto-detected from your query text using the [franc](https://github.com/wooorm/franc) library (supports 30+ languages).
+Query-language classification uses [franc](https://github.com/wooorm/franc)
+with an explicit 34-language allowlist. That classification chooses prompt
+language and metadata; it does not prove retrieval quality or determine the
+language recorded for indexed documents.
+
+Indexed-document detection is a separate deterministic path covering seven
+languages: English, German, French, Italian, Chinese, Japanese, and Korean
+(`en`, `de`, `fr`, `it`, `zh`, `ja`, `ko`). A collection's explicit
+`languageHint` overrides inferred document language.
+
+### Measured multilingual scope
+
+<!-- public-truth:general-embedding-benchmark -->
+
+The immutable April 2026 FastAPI-docs fixture contains 15 documents in five
+languages (`en`, `de`, `fr`, `es`, `zh`) and 13 queries. It measured
+[bge-m3 incumbent](../evals/fixtures/general-embedding-benchmark/2026-04-06-bge-m3-incumbent.md)
+at vector nDCG@10 `0.3503` / hybrid `0.642`, and
+[Qwen3 Embedding 0.6B](../evals/fixtures/general-embedding-benchmark/2026-04-06-qwen3-embedding-0-6b.md)
+at vector `0.8594` / hybrid `0.947`.
+
+<!-- /public-truth -->
+
+The separate [July 2026 Nemotron screen](../research/embeddings/2026-07-21-nemotron-3-embed-1b.md)
+measured Qwen at `0.9891` / `0.9891` and Nemotron at `0.9023` / `0.9461`
+on that 13-query lane after runtime/profile changes. Nemotron ran through a
+temporary PyTorch HTTP adapter, so its timings are not comparable with Qwen's
+production GGUF path; no official production Nemotron GGUF was validated.
+
+These are small semantic/hybrid fixtures, not general language guarantees. The
+legacy `evals/multilingual.eval.ts` suite is BM25-only, and dedicated lexical
+CJK benchmark coverage remains pending.
 
 ## Performance Characteristics
 

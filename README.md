@@ -92,7 +92,12 @@ gno daemon --detach  # headless continuous indexing (background; --status / --st
 
 ## What's New
 
-> Latest release: see [CHANGELOG.md](./CHANGELOG.md)
+<!-- public-truth:current-version -->
+
+> Current release: **v1.13.0** — see [CHANGELOG.md](./CHANGELOG.md)
+
+<!-- /public-truth -->
+
 > Full release history: [CHANGELOG.md](./CHANGELOG.md)
 
 - **Retrieval-proven activation**: `gno status`, `gno doctor`, REST, and the
@@ -109,7 +114,9 @@ gno daemon --detach  # headless continuous indexing (background; --status / --st
 - **Publish to [gno.sh](https://gno.sh/publish)**: new `gno publish export` CLI and Web UI action produce a self-contained artifact you upload to the hosted reader — public, secret, invite-only, or locally encrypted before upload
 - **Retrieval Quality Upgrade**: stronger BM25 lexical handling, code-aware chunking, terminal result hyperlinks, and per-collection model overrides
 - **Code Embedding Benchmarks**: new benchmark workflow across canonical, real-GNO, and pinned OSS slices for comparing alternate embedding models
-- **Default Embed Model**: built-in presets now use `Qwen3-Embedding-0.6B-GGUF` after it beat `bge-m3` on both code and multilingual prose benchmark lanes
+<!-- public-truth:default-embed-model -->
+- **Default Embed Model**: all four built-in presets use `Qwen3-Embedding-0.6B-GGUF`; see the dated, fixture-scoped evidence below
+<!-- /public-truth -->
 - **Regression Fixes**: tightened phrase/negation/hyphen/underscore BM25 behavior, cleaned non-TTY hyperlink output, improved `gno doctor` chunking and embedding fingerprint visibility, and fixed the embedding autoresearch harness
 
 ### Upgrading Existing Collections
@@ -201,7 +208,11 @@ Manage the detached process with `gno daemon --status` and `gno daemon --stop`.
 
 ### Install GNO
 
-Requires [Bun](https://bun.sh/) >= 1.3.0.
+<!-- public-truth:runtime -->
+
+Requires [Bun](https://bun.sh/) >=1.3.0.
+
+<!-- /public-truth -->
 
 ```bash
 bun install -g @gmickel/gno
@@ -225,9 +236,14 @@ when its structured activation state is degraded. `gno doctor` exits 2 when any
 configured folder fails the lexical proof; semantic models may still be pending
 without blocking BM25 search.
 
-**Windows**: current validated target is `windows-x64`, with a packaged
+<!-- public-truth:supported-platforms -->
+
+GNO supports macOS, Linux, and Windows. The current validated Windows target is
+`windows-x64`, with a packaged
 desktop beta zip now published on GitHub Releases. See
 [docs/WINDOWS.md](./docs/WINDOWS.md) for support scope and validation notes.
+
+<!-- /public-truth -->
 
 Keep an index fresh continuously without opening the Web UI:
 
@@ -532,7 +548,9 @@ Connect GNO to Claude Desktop, Cursor, Raycast, and more:
 
 ![GNO MCP](./assets/screenshots/mcp.jpg)
 
-GNO exposes tools via [Model Context Protocol](https://modelcontextprotocol.io):
+GNO exposes 17 tools by default via [Model Context Protocol](https://modelcontextprotocol.io),
+including the core retrieval tools below. Starting MCP with `--enable-write`
+adds 11 opt-in mutation tools, for 28 total.
 
 | Tool            | Description                           |
 | :-------------- | :------------------------------------ |
@@ -547,7 +565,9 @@ GNO exposes tools via [Model Context Protocol](https://modelcontextprotocol.io):
 | `gno_graph`     | Get knowledge graph (nodes and edges) |
 | `gno_status`    | Index health check                    |
 
-**Design**: MCP tools are retrieval-only. Your AI assistant (Claude, GPT-4) synthesizes answers from retrieved context. Best retrieval (GNO) + best reasoning (your LLM).
+**Design**: Default MCP mode is read-only: retrieval, graph, status, and job
+inspection. Your AI assistant synthesizes answers from retrieved context. Write
+tools are available only through the explicit `--enable-write` opt-in.
 
 [MCP setup guide →](https://gno.sh/docs/MCP/)
 
@@ -644,7 +664,10 @@ Interactive visualization of document connections. Wiki links, markdown links, a
 
 Ask questions in natural language. GNO searches your documents and synthesizes answers with inline citations linking to sources.
 
-Everything runs locally. No cloud, no accounts, no data leaving your machine.
+The Web UI and local-model path run on your machine with no account or
+telemetry. Network access occurs when GNO downloads models, when you configure
+an HTTP model backend, or when you explicitly upload an exported artifact to
+gno.sh.
 
 > **Detailed docs**: [Web UI Guide](https://gno.sh/docs/WEB-UI/)
 
@@ -802,13 +825,13 @@ graph TD
 | **REST API**         | HTTP API for custom tools and integrations                                     |
 | **Multi-Format**     | Markdown, PDF, DOCX, XLSX, PPTX, plain text                                    |
 | **Local LLM**        | AI answers via llama.cpp, no API keys                                          |
-| **Remote Inference** | Offload to GPU servers via HTTP (llama-server, Ollama, LocalAI)                |
-| **Privacy First**    | 100% offline, zero telemetry, your data stays yours                            |
-| **MCP Server**       | Works with Claude Desktop, Cursor, Zed, + 8 more                               |
+| **Remote Inference** | Optional HTTP endpoints for embedding, reranking, expansion, and generation    |
+| **Privacy First**    | Local by default; no telemetry; network use is explicit or model provisioning  |
+| **MCP Server**       | 10 automatic client targets; 17 read-only tools, 28 with writes enabled        |
 | **Collections**      | Organize sources with patterns, excludes, contexts                             |
 | **Tag Filtering**    | Frontmatter tags with hierarchical paths, filter via `--tags-any`/`--tags-all` |
 | **Note Linking**     | Wiki links, backlinks, related notes, cross-collection navigation              |
-| **Multilingual**     | 30+ languages, auto-detection, cross-lingual search                            |
+| **Multilingual**     | Query classification, 7-language document detection, multilingual embeddings   |
 | **Incremental**      | SHA-256 tracking, only changed files re-indexed                                |
 | **Keyboard First**   | ⌘N capture, ⌘K search, ⌘/ shortcuts, ⌘S save                                   |
 
@@ -818,20 +841,20 @@ graph TD
 
 Models auto-download on first use to `~/.cache/gno/models/`. GNO validates cached GGUF files before loading and removes intercepted HTML/non-GGUF cache entries with a clear recovery error. For deterministic startup, set `GNO_NO_AUTO_DOWNLOAD=1` and use `gno models pull` explicitly. Alternatively, offload to a GPU server on your network using HTTP backends.
 
-| Model                  | Purpose                               | Size         |
-| :--------------------- | :------------------------------------ | :----------- |
-| Qwen3-Embedding-0.6B   | Embeddings (multilingual)             | ~640MB       |
-| Qwen3-Reranker-0.6B    | Cross-encoder reranking (32K context) | ~700MB       |
-| Qwen3 / Qwen2.5 family | Query expansion + AI answers          | ~600MB-2.5GB |
+| Model                  | Purpose                                          |
+| :--------------------- | :----------------------------------------------- |
+| Qwen3-Embedding-0.6B   | Embeddings                                       |
+| Qwen3-Reranker-0.6B    | Best-chunk-per-document cross-encoder reranking  |
+| Qwen3 / Qwen2.5 family | Query expansion and standalone answer generation |
 
 ### Model Presets
 
-| Preset       | Disk   | Best For                                                |
-| :----------- | :----- | :------------------------------------------------------ |
-| `slim-tuned` | ~1GB   | Current default, tuned retrieval in a compact footprint |
-| `slim`       | ~1GB   | Fast, good quality                                      |
-| `balanced`   | ~2GB   | Slightly larger model                                   |
-| `quality`    | ~2.5GB | Best answers                                            |
+| Preset       | Best For                                     |
+| :----------- | :------------------------------------------- |
+| `slim-tuned` | Current default; tuned query expansion       |
+| `slim`       | Untuned slim query expansion                 |
+| `balanced`   | Qwen2.5 3B expansion and answers             |
+| `quality`    | Qwen3 4B expansion and standalone AI answers |
 
 ```bash
 gno models use slim-tuned
@@ -849,7 +872,9 @@ GNO now has a published promoted retrieval model for the default slim path:
 
 Use it when you want the tuned retrieval expansion path immediately, without running local fine-tuning yourself.
 
-For private/internal products, use the same workflow but keep the final GGUF private and point `gen:` at a `file:` URI instead of publishing to Hugging Face.
+For private/internal products, use the same workflow but keep the final GGUF
+private and point `expand:` at a `file:` URI instead of publishing it to
+Hugging Face. The `gen:` role remains the standalone answer model.
 
 See:
 
@@ -873,7 +898,10 @@ models:
       gen: "http://192.168.1.100:8083/v1/chat/completions#qwen3-4b"
 ```
 
-Works with llama-server, Ollama, LocalAI, vLLM, or any OpenAI-compatible server.
+The HTTP adapter expects the OpenAI-compatible endpoint shapes documented in
+[Configuration](./docs/CONFIGURATION.md). Remote servers receive the query,
+chunk, or answer context sent to their configured model role; they are outside
+GNO's local trust boundary.
 
 > **Configuration**: [Model Setup](https://gno.sh/docs/CONFIGURATION/)
 
@@ -989,16 +1017,28 @@ bun run bench:general-embeddings --candidate bge-m3-incumbent --write
 bun run bench:general-embeddings --candidate qwen3-embedding-0.6b --write
 ```
 
-Current signal on the public multilingual FastAPI-docs fixture:
+<!-- public-truth:general-embedding-benchmark -->
 
-- `bge-m3`: vector nDCG@10 `0.3508`, hybrid nDCG@10 `0.6756`
-- `Qwen3-Embedding-0.6B-GGUF`: vector nDCG@10 `0.9891`, hybrid nDCG@10 `0.9891`
+The immutable April 2026 FastAPI-docs run used 15 documents in five corpus
+languages (`en`, `de`, `fr`, `es`, `zh`) and 13 queries:
 
-Interpretation:
+- [bge-m3 incumbent](./evals/fixtures/general-embedding-benchmark/2026-04-06-bge-m3-incumbent.md): vector nDCG@10 `0.3503`, hybrid nDCG@10 `0.642`
+- [Qwen3 Embedding 0.6B](./evals/fixtures/general-embedding-benchmark/2026-04-06-qwen3-embedding-0-6b.md): vector nDCG@10 `0.8594`, hybrid nDCG@10 `0.947`
+<!-- /public-truth -->
 
-- Qwen is now the strongest general multilingual embedding model we have tested
-- built-in presets now use Qwen by default
-- existing users may need to run `gno embed` again after upgrading so current collections catch up
+A separate [July 2026 Nemotron screen](./research/embeddings/2026-07-21-nemotron-3-embed-1b.md)
+reran the same 13-query multilingual lane after runtime/profile changes. It
+measured Qwen at `0.9891` vector / `0.9891` hybrid nDCG@10 and Nemotron 3 Embed
+1B at `0.9023` / `0.9461`. Nemotron used a temporary PyTorch HTTP adapter;
+Qwen used GNO's production GGUF path. Their timings are not comparable, and no
+official production GGUF was validated for Nemotron.
+
+These small fixture results support keeping Qwen as the built-in default; they
+do not establish general language superiority. Query-language classification
+supports a broader set than the indexed-document detector (`en`, `de`, `fr`,
+`it`, `zh`, `ja`, `ko`), and the committed fixture covers only five languages.
+The BM25-only multilingual eval remains a legacy sanity lane; dedicated lexical
+CJK benchmarking is pending.
 
 ---
 

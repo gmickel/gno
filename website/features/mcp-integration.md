@@ -9,7 +9,7 @@ slug: mcp-integration
 permalink: /features/mcp-integration/
 og_image: /assets/images/og/og-mcp-integration.png
 benefits:
-  - 28 registered MCP tools for search, retrieval, graph traversal, diagnostics, and indexing
+  - 17 read-only tools by default; 28 total with writes enabled
   - Works with Claude Desktop, Cursor, Zed, Windsurf, Amp
   - Also supports Raycast, LM Studio, LibreChat
   - One-command install for 10 automatic targets
@@ -103,9 +103,11 @@ Prefer the installer-generated entry:
 gno mcp install --target cursor
 ```
 
-## Available Tools (28 Registered)
+## Available Tools (17 Default, 28 With Writes)
 
-Once connected, your AI assistant can use:
+Once connected, your AI assistant gets the 15 read/diagnostic tools plus two
+job-inspection tools below. Starting MCP with `--enable-write` adds 11 mutation
+tools.
 
 **Read Tools:**
 

@@ -453,7 +453,8 @@ gno models list [--json|--md]
 gno models use <preset>
 ```
 
-Presets: `slim` (~1GB), `balanced` (~2GB), `quality` (~2.5GB)
+Built-ins: `slim-tuned` (default), `slim`, `balanced`, `quality`. Actual
+download/cache use depends on the selected artifacts and existing shared cache.
 
 ### gno models pull
 

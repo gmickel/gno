@@ -32,35 +32,38 @@ docker pull mintplexlabs/anythingllm
 
 ## Feature Comparison
 
-| Feature                  | GNO                             | AnythingLLM                                                                     |
-| ------------------------ | ------------------------------- | ------------------------------------------------------------------------------- |
-| **Interface**            | CLI + Web UI                    | Desktop app, Docker                                                             |
-| **File Formats**         | MD, PDF, DOCX, XLSX, PPTX, TXT  | PDF, TXT, DOCX, etc.                                                            |
-| **AI Answers (RAG)**     | ✓                               | ✓                                                                               |
-| **MCP Support**          | ✓ 10 automatic targets          | ✓                                                                               |
-| **Multi-user**           | ✗                               | ✓ (Docker)                                                                      |
-| **Workspaces**           | Collections                     | ✓ Isolated contexts                                                             |
-| **Agent Builder**        | ✗                               | ✓ No-code                                                                       |
-| **Database**             | SQLite (embedded)               | LanceDB (default) + 8 others                                                    |
-| **Vector Store Options** | SQLite-vec only                 | LanceDB, Pinecone, Chroma, Weaviate, Qdrant, Milvus, PGVector, Astra DB, Zilliz |
-| **LLM Providers**        | Local only (llama.cpp)          | 30+ (OpenAI, Anthropic, Ollama, Azure, AWS, etc.)                               |
-| **Search Quality**       | Hybrid (BM25 + vector + rerank) | Vector similarity                                                               |
-| **Setup**                | npm/bun install                 | Desktop download or Docker                                                      |
-| **Headless Daemon**      | ✓ `gno daemon`                  | ✓ Docker/server mode                                                            |
-| **Embedding Widget**     | ✗                               | ✓ (Docker)                                                                      |
-| **Browser Extension**    | ✗                               | ✓                                                                               |
-| **REST API**             | ✓                               | ✓                                                                               |
-| **License**              | MIT                             | MIT                                                                             |
+| Feature                  | GNO                                                          | AnythingLLM                                                                     |
+| ------------------------ | ------------------------------------------------------------ | ------------------------------------------------------------------------------- |
+| **Interface**            | CLI + Web UI                                                 | Desktop app, Docker                                                             |
+| **File Formats**         | MD, PDF, DOCX, XLSX, PPTX, TXT                               | PDF, TXT, DOCX, etc.                                                            |
+| **AI Answers (RAG)**     | ✓                                                            | ✓                                                                               |
+| **MCP Support**          | ✓ 10 automatic targets                                       | ✓                                                                               |
+| **Multi-user**           | ✗                                                            | ✓ (Docker)                                                                      |
+| **Workspaces**           | Collections                                                  | ✓ Isolated contexts                                                             |
+| **Agent Builder**        | ✗                                                            | ✓ No-code                                                                       |
+| **Database**             | SQLite (embedded)                                            | LanceDB (default) + 8 others                                                    |
+| **Vector Store Options** | SQLite-vec only                                              | LanceDB, Pinecone, Chroma, Weaviate, Qdrant, Milvus, PGVector, Astra DB, Zilliz |
+| **LLM Providers**        | Local llama.cpp or explicit OpenAI-compatible HTTP endpoints | 30+ (OpenAI, Anthropic, Ollama, Azure, AWS, etc.)                               |
+| **Search Quality**       | Hybrid (BM25 + vector + rerank)                              | Vector similarity                                                               |
+| **Setup**                | npm/bun install                                              | Desktop download or Docker                                                      |
+| **Headless Daemon**      | ✓ `gno daemon`                                               | ✓ Docker/server mode                                                            |
+| **Embedding Widget**     | ✗                                                            | ✓ (Docker)                                                                      |
+| **Browser Extension**    | ✗                                                            | ✓                                                                               |
+| **REST API**             | ✓                                                            | ✓                                                                               |
+| **License**              | MIT                                                          | MIT                                                                             |
 
 ## GNO Advantages
 
 **Search quality**: Hybrid retrieval with BM25, vector search, RRF fusion, and cross-encoder reranking. AnythingLLM uses vector similarity only.
 
-**Lightweight**: Single CLI binary, ~500MB RAM. No Docker, no server processes.
+**Lightweight**: Bun CLI with embedded SQLite; no Docker requirement. The Web UI
+starts a local server only when you run `gno serve`, and the daemon is optional.
 
 **CLI-first**: Script searches, pipe output, integrate with shell workflows.
 
-**Privacy**: 100% local, no network calls, no cloud dependencies. AnythingLLM can use cloud LLMs.
+**Privacy**: GNO's default inference path is local and has no telemetry. Model
+downloads, configured HTTP inference, and explicit hosted publishing are
+network boundaries. AnythingLLM can use cloud LLMs.
 
 **AI agent integration**: Automatic MCP configuration for 10 clients, including Claude Desktop, Claude Code, Codex, Cursor, Zed, Windsurf, OpenCode, Amp, LM Studio, and LibreChat; Raycast uses manual configuration. Skills for Claude Code, Codex, OpenCode, and OpenClaw.
 
@@ -72,7 +75,9 @@ gno daemon
 
 **Incremental indexing**: SHA-256 change detection, only re-indexes modified files.
 
-**Multilingual**: 30+ languages with cross-lingual search via the current Qwen3 embedding default.
+**Multilingual**: GNO has 34-language query classification, seven-language
+indexed-document detection, and fixture-scoped cross-language vector evidence
+for the Qwen3 embedding default.
 
 ## AnythingLLM Advantages
 
@@ -82,7 +87,9 @@ gno daemon
 
 **No-code agent builder**: Create custom AI agents without programming.
 
-**LLM flexibility**: 30+ providers including OpenAI, Anthropic, Azure, AWS Bedrock, Ollama, Groq. GNO is local-only.
+**LLM flexibility**: 30+ providers including OpenAI, Anthropic, Azure, AWS
+Bedrock, Ollama, and Groq. GNO defaults to local models and can also use
+explicitly configured OpenAI-compatible HTTP endpoints.
 
 **Vector DB choice**: Swap between LanceDB, Pinecone, Chroma, Weaviate, Qdrant, Milvus, and more.
 

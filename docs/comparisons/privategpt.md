@@ -35,24 +35,24 @@ PGPT_PROFILES=ollama make run
 
 ## Feature Comparison
 
-| Feature              | GNO                            | PrivateGPT                                                              |
-| -------------------- | ------------------------------ | ----------------------------------------------------------------------- |
-| **File Formats**     | MD, PDF, DOCX, XLSX, PPTX, TXT | MD, PDF, DOCX, PPTX, EPUB, CSV, JSON, MBOX, IPYNB, images, audio, video |
-| **Search Modes**     | BM25, Vector, Hybrid           | Vector (Qdrant)                                                         |
-| **Reranking**        | ✓ Cross-encoder                | ✗                                                                       |
-| **AI Answers (RAG)** | ✓                              | ✓                                                                       |
-| **Web UI**           | ✓ `gno serve`                  | ✓ Gradio                                                                |
-| **REST API**         | ✓                              | ✓ FastAPI (OpenAI-compatible)                                           |
-| **CLI**              | ✓ Full-featured                | ✗ Scripts only                                                          |
-| **Headless Daemon**  | ✓ `gno daemon`                 | ✓ Server mode                                                           |
-| **MCP Support**      | ✓ 10 automatic targets         | ✗                                                                       |
-| **Local LLMs**       | ✓ node-llama-cpp               | ✓ llama.cpp, Ollama                                                     |
-| **Database**         | SQLite (embedded)              | Qdrant (requires service)                                               |
-| **Setup Complexity** | Single command                 | Git clone, Poetry, backend setup                                        |
-| **Query Expansion**  | ✓ LLM-powered                  | ✗                                                                       |
-| **HyDE**             | ✓                              | ✗                                                                       |
-| **Model Presets**    | ✓ slim/balanced/quality        | ✗                                                                       |
-| **Folder Watch**     | ✗                              | ✓                                                                       |
+| Feature              | GNO                                | PrivateGPT                                                              |
+| -------------------- | ---------------------------------- | ----------------------------------------------------------------------- |
+| **File Formats**     | MD, PDF, DOCX, XLSX, PPTX, TXT     | MD, PDF, DOCX, PPTX, EPUB, CSV, JSON, MBOX, IPYNB, images, audio, video |
+| **Search Modes**     | BM25, Vector, Hybrid               | Vector (Qdrant)                                                         |
+| **Reranking**        | ✓ Cross-encoder                    | ✗                                                                       |
+| **AI Answers (RAG)** | ✓                                  | ✓                                                                       |
+| **Web UI**           | ✓ `gno serve`                      | ✓ Gradio                                                                |
+| **REST API**         | ✓                                  | ✓ FastAPI (OpenAI-compatible)                                           |
+| **CLI**              | ✓ Full-featured                    | ✗ Scripts only                                                          |
+| **Headless Daemon**  | ✓ `gno daemon`                     | ✓ Server mode                                                           |
+| **MCP Support**      | ✓ 10 automatic targets             | ✗                                                                       |
+| **Local LLMs**       | ✓ node-llama-cpp                   | ✓ llama.cpp, Ollama                                                     |
+| **Database**         | SQLite (embedded)                  | Qdrant (requires service)                                               |
+| **Setup Complexity** | Single command                     | Git clone, Poetry, backend setup                                        |
+| **Query Expansion**  | ✓ LLM-powered                      | ✗                                                                       |
+| **HyDE**             | ✓                                  | ✗                                                                       |
+| **Model Presets**    | ✓ slim-tuned/slim/balanced/quality | ✗                                                                       |
+| **Folder Watch**     | ✗                                  | ✓                                                                       |
 
 ## LLM Backend Support
 

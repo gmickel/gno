@@ -23,35 +23,35 @@ qmd init && qmd index
 
 ## Quick Summary
 
-| Aspect               | GNO                           | QMD                       |
-| -------------------- | ----------------------------- | ------------------------- |
-| **Best for**         | Multi-format knowledge bases  | Markdown-only collections |
-| **Unique strength**  | Web UI, REST API, RAG answers | Shopify founder's tool    |
-| **Language support** | 30+ languages                 | English-focused           |
+| Aspect               | GNO                                                             | QMD                       |
+| -------------------- | --------------------------------------------------------------- | ------------------------- |
+| **Best for**         | Multi-format knowledge bases                                    | Markdown-only collections |
+| **Unique strength**  | Web UI, REST API, RAG answers                                   | Shopify founder's tool    |
+| **Language support** | 34-language query classification; 7-language document detection | English-focused           |
 
 ## Feature Comparison
 
-| Feature                 | GNO                                      | QMD                   |
-| ----------------------- | ---------------------------------------- | --------------------- |
-| **File Formats**        | MD, PDF, DOCX, XLSX, PPTX, TXT           | Markdown only         |
-| **Search Modes**        | BM25, Vector, Hybrid                     | BM25, Vector, Hybrid  |
-| **Query Expansion**     | ✓ LLM-powered                            | ✓ LLM-powered         |
-| **Reranking**           | ✓ Cross-encoder                          | ✓ Cross-encoder       |
-| **HyDE**                | ✓                                        | ✓                     |
-| **Remote Inference**    | ✓ Native HTTP backends                   | ✗ Local or cloud only |
-| **AI Answers (RAG)**    | ✓ `gno ask --answer`                     | ✗                     |
-| **Web UI**              | ✓ `gno serve`                            | ✗                     |
-| **REST API**            | ✓ `gno serve`                            | ✗                     |
-| **Headless Daemon**     | ✓ `gno daemon`                           | ✗                     |
-| **Languages**           | 30+ (auto-detect)                        | English-focused       |
-| **MCP Install CLI**     | ✓ 10 automatic targets                   | ✗ Manual config       |
-| **Skills**              | ✓ Claude Code, Codex, OpenCode, OpenClaw | ✗                     |
-| **Model Presets**       | slim/balanced/quality                    | Single config         |
-| **Search Depth**        | fast/balanced/thorough                   | ✗                     |
-| **Incremental Index**   | ✓ SHA-256 tracking                       | ✓                     |
-| **Collection Contexts** | ✓ Semantic hints                         | ✓                     |
-| **Output Formats**      | JSON, CSV, MD, XML, files                | JSON, CSV, MD, XML    |
-| **Tab Completion**      | ✓ bash/zsh/fish                          | ✗                     |
+| Feature                 | GNO                                             | QMD                   |
+| ----------------------- | ----------------------------------------------- | --------------------- |
+| **File Formats**        | MD, PDF, DOCX, XLSX, PPTX, TXT                  | Markdown only         |
+| **Search Modes**        | BM25, Vector, Hybrid                            | BM25, Vector, Hybrid  |
+| **Query Expansion**     | ✓ LLM-powered                                   | ✓ LLM-powered         |
+| **Reranking**           | ✓ Cross-encoder                                 | ✓ Cross-encoder       |
+| **HyDE**                | ✓                                               | ✓                     |
+| **Remote Inference**    | ✓ Native HTTP backends                          | ✗ Local or cloud only |
+| **AI Answers (RAG)**    | ✓ `gno ask --answer`                            | ✗                     |
+| **Web UI**              | ✓ `gno serve`                                   | ✗                     |
+| **REST API**            | ✓ `gno serve`                                   | ✗                     |
+| **Headless Daemon**     | ✓ `gno daemon`                                  | ✗                     |
+| **Languages**           | 34 query classes; 7 detected document languages | English-focused       |
+| **MCP Install CLI**     | ✓ 10 automatic targets                          | ✗ Manual config       |
+| **Skills**              | ✓ Claude Code, Codex, OpenCode, OpenClaw        | ✗                     |
+| **Model Presets**       | slim-tuned/slim/balanced/quality                | Single config         |
+| **Search Depth**        | fast/balanced/thorough                          | ✗                     |
+| **Incremental Index**   | ✓ SHA-256 tracking                              | ✓                     |
+| **Collection Contexts** | ✓ Semantic hints                                | ✓                     |
+| **Output Formats**      | JSON, CSV, MD, XML, files                       | JSON, CSV, MD, XML    |
+| **Tab Completion**      | ✓ bash/zsh/fish                                 | ✗                     |
 
 ## Key Differentiators
 
@@ -65,7 +65,10 @@ gno init ~/Documents --name docs
 gno index
 ```
 
-**Multilingual**: Auto-detects 30+ languages. Search across notes in English, German, Japanese, and more without configuration.
+**Multilingual**: Query classification covers 34 languages; indexed-document
+detection covers English, German, French, Italian, Chinese, Japanese, and
+Korean. Cross-language vector evidence is fixture-scoped, and lexical CJK
+benchmarking remains pending.
 
 **Web UI & REST API**: Visual dashboard for search, browsing, and AI answers. Full REST API for custom integrations.
 

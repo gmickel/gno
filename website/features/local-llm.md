@@ -9,7 +9,7 @@ slug: local-llm
 permalink: /features/local-llm/
 og_image: /assets/images/og/og-local-llm.png
 benefits:
-  - 100% local processing
+  - Local inference by default
   - No API keys required
   - Cited answers from your docs
   - Multiple model presets (slim-tuned, slim, balanced, quality)
@@ -68,19 +68,21 @@ models:
       gen: "http://192.168.1.100:8083/v1/chat/completions#qwen3-4b"
 ```
 
-Works with any OpenAI-compatible server (llama-server, Ollama, LocalAI, vLLM). No CORS configuration needed—just point to your server.
+The HTTP adapter expects the documented OpenAI-compatible endpoint shapes.
+Remote servers receive the query, chunk, or answer context sent to their model
+role; use HTTPS and access controls outside a trusted network.
 
 [Configuration guide →](/docs/CONFIGURATION/#http-endpoints)
 
 ### No Cloud Required
 
-Everything runs on your machine (or your network):
+The default path runs on your machine:
 
 - Models downloaded once, run locally
-- Optional: offload to GPU server on LAN
+- Optional: offload to an explicitly configured HTTP server
 - No API keys or subscriptions
-- Works completely offline
-- Your data never leaves your network
+- Works offline after required models are cached
+- HTTP backends receive role-specific inputs and are outside the local trust boundary
 
 ## Learn More
 

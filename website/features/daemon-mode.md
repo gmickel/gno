@@ -12,13 +12,13 @@ benefits:
   - Continuous indexing without opening the browser
   - Reuses the same watch/sync/embed runtime as gno serve
   - Great fit for CLI, skills, and local automation
-  - Foreground process keeps lifecycle simple and observable
+  - Native --detach, --status, and --stop lifecycle on macOS/Linux
   - Supports --no-sync-on-start for watcher-only startup
   - Works with --offline and manual download policy
 commands:
   - "gno daemon"
+  - "gno daemon --detach"
   - "gno daemon --no-sync-on-start"
-  - "nohup gno daemon > /tmp/gno-daemon.log 2>&1 &"
 ---
 
 ## Why It Exists
@@ -42,13 +42,17 @@ just without the HTTP server and UI layer.
 gno daemon
 ```
 
-It stays in the foreground in v0.30.
-
-If you want supervision:
+It stays in the foreground by default. On macOS/Linux, use the built-in
+background lifecycle:
 
 ```bash
-nohup gno daemon > /tmp/gno-daemon.log 2>&1 &
+gno daemon --detach
+gno daemon --status
+gno daemon --stop
 ```
+
+Native detach is unavailable on Windows; use foreground mode, WSL, or a Windows
+service wrapper.
 
 ## Skip The Initial Sync
 
@@ -66,14 +70,14 @@ file changes.
 | `gno serve`  | browser sessions, desktop shell, REST API, dashboard |
 | `gno daemon` | headless continuous indexing only                    |
 
-Avoid running both against the same index at the same time in v0.30.
+Avoid running both against the same index at the same time.
 
 ## Typical Workflow
 
 ```bash
 gno init ~/notes --name notes
 gno index
-gno daemon
+gno daemon --detach
 ```
 
 Then use normal CLI commands in another terminal:

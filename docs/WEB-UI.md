@@ -19,7 +19,10 @@ gno serve
 
 ## Overview
 
-The GNO Web UI provides a complete graphical interface to your local knowledge index. Create, edit, search, and manage your documents, all running on your machine with no cloud dependencies.
+The GNO Web UI provides a complete graphical interface to your local knowledge
+index. Create, edit, search, and manage documents on your machine. Model
+downloads, explicitly configured HTTP inference, and gno.sh publishing are
+separate network boundaries.
 
 | Page            | Purpose                                                         |
 | :-------------- | :-------------------------------------------------------------- |
@@ -358,12 +361,16 @@ Switch between model presets without restarting:
 
 The preset controls both retrieval expansion and standalone answer generation.
 
-| Preset     | Disk   | Best For                                                |
-| :--------- | :----- | :------------------------------------------------------ |
-| Slim Tuned | ~1GB   | Current default, tuned retrieval in a compact footprint |
-| Slim       | ~1GB   | Fast, good quality                                      |
-| Balanced   | ~2GB   | Slightly larger model                                   |
-| Quality    | ~2.5GB | Best answer quality                                     |
+| Preset     | Best For                                     |
+| :--------- | :------------------------------------------- |
+| Slim Tuned | Current default; tuned query expansion       |
+| Slim       | Untuned slim query expansion                 |
+| Balanced   | Qwen2.5 3B expansion and answers             |
+| Quality    | Qwen3 4B expansion and standalone AI answers |
+
+Actual download and cache use depends on artifact versions, quantization, and
+which shared model files are already present. The UI's legacy approximate size
+labels are orientation only, not clean-install measurements.
 
 ### Model Download
 
@@ -649,11 +656,9 @@ The Web UI is designed for local use only:
 
 > **Warning**: Do not expose `gno serve` to the internet. It has no authentication.
 
-> **Pro tip**: Want remote access? Use a tunnel:
->
-> - [Tailscale Serve](https://tailscale.com/kb/1312/serve): Expose to your Tailnet
-> - [Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/): Free tier with auth
-> - [ngrok](https://ngrok.com/): Quick setup, supports basic auth
+Remote Web UI access is not a GNO feature. GNO does not configure or validate
+tunnels, authentication proxies, TLS, or multi-user isolation; keep the server
+on loopback unless you independently own and audit that security boundary.
 
 ---
 

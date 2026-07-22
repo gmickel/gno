@@ -1,9 +1,9 @@
 /**
- * Multilingual cross-language retrieval evaluation.
- * Placeholder that passes - per-language tables are future work.
+ * Legacy multilingual BM25 sanity lane.
+ * Placeholder that records lexical degradation; not a semantic quality claim.
  *
- * Tests that queries in one language can find docs in another
- * via semantic similarity (embeddings bridge language gap).
+ * Runs cross-language queries through document-level BM25 only. The separate
+ * general-embedding benchmark owns vector/hybrid multilingual evidence.
  *
  * @module evals/multilingual.eval
  */
@@ -28,7 +28,7 @@ const queries = queriesJson as QueryData[];
 // Filter to multilingual test cases only
 const multilingualQueries = queries.filter((q) => q.id.startsWith("ml"));
 
-evalite("Multilingual Cross-Language Retrieval", {
+evalite("Multilingual BM25 Baseline (Legacy)", {
   data: () =>
     multilingualQueries.map((q) => ({
       input: { query: q.query, id: q.id, note: q.note },
@@ -38,9 +38,8 @@ evalite("Multilingual Cross-Language Retrieval", {
   task: async (input) => {
     const ctx = await getSharedEvalDb();
 
-    // BM25 won't find cross-language matches well
-    // This is expected - vector search would do better
-    // For now, this is a placeholder that may score low
+    // Cross-language lexical degradation is expected. This lane intentionally
+    // does not invoke embeddings and cannot support semantic quality claims.
     const result = await searchBm25(ctx.adapter, input.query, {
       limit: 10,
       collection: "eval",
@@ -72,7 +71,7 @@ evalite("Multilingual Cross-Language Retrieval", {
           metadata: {
             hits,
             total: expected.length,
-            note: "BM25 baseline - vector search will improve",
+            note: "Legacy BM25 baseline; semantic benchmark is separate",
           },
         };
       },

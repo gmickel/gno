@@ -6,7 +6,9 @@ allowed-tools: Bash(gno:*) Read
 
 # GNO - Local Knowledge Engine
 
-Fast local semantic search. Index once, search instantly. No cloud, no API keys.
+Fast local semantic search. Index once, search instantly. Local inference needs
+no API key; configured HTTP backends and explicit gno.sh publishing are separate
+network boundaries.
 
 ## When to Use This Skill
 

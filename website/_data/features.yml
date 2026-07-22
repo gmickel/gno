@@ -3,7 +3,7 @@
 - slug: hybrid-search
   title: Hybrid Search
   headline: The Best of Keywords and Semantics
-  description: GNO combines BM25 full-text search with vector similarity search, reciprocal rank fusion, query expansion, and cross-encoder reranking. Get accurate results whether you search for exact terms or conceptual matches—across 15,000+ documents in under a second.
+  description: GNO combines BM25 full-text search with vector similarity, reciprocal rank fusion, query expansion, and best-chunk-per-document cross-encoder reranking for exact and conceptual retrieval.
   icon: hybrid-search
   benefits:
     - Exact keyword matching with BM25 full-text search
@@ -24,10 +24,10 @@
 - slug: local-llm
   title: Local LLM Answers
   headline: AI Answers Without the Cloud
-  description: Get cited, grounded answers from your own documents using local language models. Run locally or offload to a GPU server on your network—no cloud APIs, no data sharing. Default to slim-tuned (~1GB) or move up through balanced and quality.
+  description: Get cited, grounded answers from your own documents using local language models. Run locally by default or explicitly send model-role inputs to an OpenAI-compatible HTTP server you control.
   icon: local-llm
   benefits:
-    - 100% local processing
+    - Local inference by default
     - Remote GPU server support via HTTP backends
     - No API keys required
     - Cited answers with source documents
@@ -48,18 +48,18 @@
     - Continuous indexing without opening the browser
     - Reuses the same watch/sync/embed runtime as `gno serve`
     - Great fit for CLI, skills, and local automation
-    - Foreground process keeps lifecycle simple and observable
+    - Native background lifecycle on macOS/Linux with --detach, --status, and --stop
     - Supports `--no-sync-on-start` for watcher-only startup
     - Works with `--offline` and manual download policy
   commands:
     - "gno daemon"
+    - "gno daemon --detach"
     - "gno daemon --no-sync-on-start"
-    - "nohup gno daemon > /tmp/gno-daemon.log 2>&1 &"
 
 - slug: fine-tuned-models
   title: Fine-Tuned Models
   headline: Train Local, Ship Portable
-  description: Fine-tune retrieval generation models locally on Apple Silicon with MLX LoRA, publish portable GGUF artifacts, benchmark against the shipped baseline, and install via Hugging Face-backed custom presets.
+  description: Fine-tune retrieval-time expansion models locally on Apple Silicon with MLX LoRA, publish portable GGUF artifacts, benchmark against the shipped baseline, and install them in a preset's expand role.
   icon: brain
   benefits:
     - Local MLX LoRA training on Apple Silicon
@@ -70,7 +70,7 @@
     - Autonomous search harness for model selection
   commands:
     - "gno models use slim-tuned"
-    - "gno models pull --gen"
+    - "gno models pull --expand"
     - "gno query 'topic' --thorough"
 
 - slug: benchmarks
@@ -94,7 +94,7 @@
 - slug: web-ui
   title: Web UI
   headline: Your Knowledge Dashboard
-  description: A local web dashboard for searching, browsing, creating, and editing documents. Full-featured markdown editor with live preview, keyboard shortcuts, knowledge graph visualization, and AI-powered answers—all running 100% locally.
+  description: A local-first web dashboard for searching, browsing, creating, and editing documents, with explicit network boundaries for model downloads, configured HTTP inference, and publishing.
   icon: globe
   benefits:
     - Split-view markdown editor with live preview
@@ -112,7 +112,7 @@
     - Wiki-link autocomplete and linked-note creation
     - Keyboard-first design (Cmd+N, Cmd+K, Cmd+S)
     - Live preset switching and model download
-    - 100% local, no cloud
+    - Local index and UI with no telemetry
   commands:
     - "gno serve"
     - "gno serve --port 8080"
@@ -120,7 +120,7 @@
 - slug: multi-format
   title: Multi-Format Indexing
   headline: Index Everything You Write
-  description: GNO indexes Markdown, PDF, Word, Excel, PowerPoint, and plain text. One tool for all your documents, with intelligent chunking, frontmatter extraction, and language detection across 30+ languages.
+  description: GNO indexes Markdown, PDF, Word, Excel, PowerPoint, and plain text with structural chunking, frontmatter extraction, and seven-language document detection.
   icon: multi-format
   benefits:
     - Markdown with frontmatter extraction
@@ -128,7 +128,7 @@
     - Office documents (DOCX, XLSX, PPTX)
     - Plain text files
     - Automatic structural first-pass chunking for ts/js/python/go/rust family
-    - Automatic language detection (30+ languages)
+    - Document detection for en, de, fr, it, zh, ja, and ko
     - Content deduplication via mirror hashing
     - Incremental indexing with SHA-256 change detection
   commands:
@@ -139,13 +139,13 @@
 - slug: privacy-first
   title: Privacy First
   headline: Your Data Stays Yours
-  description: GNO is designed from the ground up for privacy. All processing happens locally—indexing, embeddings, search, and AI answers. Zero telemetry, zero tracking, works completely offline. Your documents never leave your machine.
+  description: GNO keeps indexing and the default inference path local with zero telemetry. Model downloads, configured HTTP inference, and explicit gno.sh uploads are clear network boundaries.
   icon: privacy-first
   benefits:
-    - Zero cloud dependencies
+    - Local-first default processing
     - No telemetry or tracking
     - SQLite database on your disk
-    - Works completely offline
+    - Offline operation after required models are cached
     - Collection root validation (rejects dangerous paths)
     - Advisory locks prevent concurrent writes
     - CSRF protection on API endpoints
@@ -156,10 +156,10 @@
 - slug: mcp-integration
   title: MCP Integration
   headline: Give Your AI Assistant Memory
-  description: Connect GNO to Claude Desktop, Cursor, Zed, Windsurf, Amp, Raycast, LM Studio, LibreChat, and more via MCP. 28 registered tools for search, retrieval, indexing, typed graph traversal, and diagnostics. Your AI assistant can search and cite your local documents.
+  description: Connect GNO to 10 automatically configured clients via MCP. Default mode exposes 17 read-only tools; explicit write mode exposes 28 total for retrieval, graph, diagnostics, and mutation.
   icon: mcp-integration
   benefits:
-    - 28 registered MCP tools (search, query, get, graph query, query diagnose, capture, and more)
+    - 17 tools by default; 28 total with writes explicitly enabled
     - Works with Claude Desktop, Cursor, Zed, Windsurf, Amp
     - Also supports Raycast, LM Studio, LibreChat
     - Resource URIs for direct document access
