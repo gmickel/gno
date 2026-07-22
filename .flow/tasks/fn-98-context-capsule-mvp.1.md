@@ -36,9 +36,8 @@ Deliver freeze the context capsule v1 contract and canonical identity as one imp
 
 
 ## Done summary
-TBD
-
+Frozen the Context Capsule V1 and verification contracts with deterministic canonical serialization, stable identity, and a non-self-referential token-accounting projection. The contract now enforces Draft/Zod URI and gap parity, exact budget accounting with explicit safety margins, URI/scope/facet bindings, canonical configured-context scopes, revision-bound omissions with deterministic reason counts, and regression coverage for every review finding.
 ## Evidence
 - Commits:
-- Tests:
+- Tests: bun test test/spec/schemas/context-capsule.test.ts test/spec/schemas/context-capsule-verification.test.ts, bun test test/context test/spec/schemas, bun run typecheck, bun run lint:check, bun run eval:agentic, .flow/bin/flowctl validate --spec fn-98-context-capsule-mvp --json
 - PRs:

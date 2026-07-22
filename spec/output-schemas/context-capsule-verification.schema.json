@@ -1,0 +1,224 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "gno://schemas/context-capsule-verification@1.0",
+  "title": "GNO Context Capsule Verification Receipt",
+  "description": "Successful, non-mutating verification of saved Capsule content and ranking state. Stale or missing evidence remains a completed receipt.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "coordinateSpace",
+    "capsuleId",
+    "operationStatus",
+    "contentStatus",
+    "contentCode",
+    "rankingStatus",
+    "rankingCode",
+    "indexSnapshot",
+    "evidence"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "1.0" },
+    "coordinateSpace": { "const": "canonical_mirror" },
+    "capsuleId": { "$ref": "#/definitions/sha256" },
+    "operationStatus": { "const": "completed" },
+    "contentStatus": { "enum": ["unchanged", "stale", "missing"] },
+    "contentCode": {
+      "enum": ["verified_unchanged", "content_stale", "content_missing"]
+    },
+    "rankingStatus": { "enum": ["unchanged", "reranked", "unavailable"] },
+    "rankingCode": {
+      "enum": ["ranking_unchanged", "ranking_changed", "ranking_unavailable"]
+    },
+    "indexSnapshot": { "$ref": "#/definitions/indexSnapshot" },
+    "evidence": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/definitions/evidenceVerification" }
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "contentStatus": { "const": "unchanged" } } },
+      "then": {
+        "properties": { "contentCode": { "const": "verified_unchanged" } }
+      }
+    },
+    {
+      "if": { "properties": { "contentStatus": { "const": "stale" } } },
+      "then": {
+        "properties": {
+          "contentCode": { "const": "content_stale" },
+          "rankingStatus": { "const": "unavailable" },
+          "rankingCode": { "const": "ranking_unavailable" }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "contentStatus": { "const": "missing" } } },
+      "then": {
+        "properties": {
+          "contentCode": { "const": "content_missing" },
+          "rankingStatus": { "const": "unavailable" },
+          "rankingCode": { "const": "ranking_unavailable" }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "rankingStatus": { "const": "unchanged" } } },
+      "then": {
+        "properties": { "rankingCode": { "const": "ranking_unchanged" } }
+      }
+    },
+    {
+      "if": { "properties": { "rankingStatus": { "const": "reranked" } } },
+      "then": {
+        "properties": { "rankingCode": { "const": "ranking_changed" } }
+      }
+    },
+    {
+      "if": { "properties": { "rankingStatus": { "const": "unavailable" } } },
+      "then": {
+        "properties": { "rankingCode": { "const": "ranking_unavailable" } }
+      }
+    }
+  ],
+  "definitions": {
+    "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "nullableSha256": {
+      "oneOf": [{ "$ref": "#/definitions/sha256" }, { "type": "null" }]
+    },
+    "gnoUri": {
+      "type": "string",
+      "maxLength": 2048,
+      "pattern": "^gno://[a-z0-9][a-z0-9_-]{0,63}/(?!.*%2F)(?:[A-Za-z0-9_.!~*'()/\\-]|%[0-9A-F]{2})+(?:\\?index=(?:[A-Za-z0-9_.!~*'()\\-]|%[0-9A-F]{2})+)?$"
+    },
+    "indexSnapshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["before", "after", "stable"],
+      "properties": {
+        "before": { "$ref": "#/definitions/sha256" },
+        "after": { "$ref": "#/definitions/sha256" },
+        "stable": { "const": true }
+      }
+    },
+    "evidenceVerification": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "evidenceId",
+        "uri",
+        "contentStatus",
+        "contentCode",
+        "rankingStatus",
+        "rankingCode",
+        "currentSourceHash",
+        "currentMirrorHash",
+        "currentPassageHash",
+        "currentRetrievalRank"
+      ],
+      "properties": {
+        "evidenceId": { "$ref": "#/definitions/sha256" },
+        "uri": { "$ref": "#/definitions/gnoUri" },
+        "contentStatus": { "enum": ["unchanged", "stale", "missing"] },
+        "contentCode": {
+          "enum": [
+            "verified_unchanged",
+            "source_stale",
+            "mirror_stale",
+            "passage_stale",
+            "source_missing"
+          ]
+        },
+        "rankingStatus": { "enum": ["unchanged", "reranked", "unavailable"] },
+        "rankingCode": {
+          "enum": [
+            "ranking_unchanged",
+            "ranking_changed",
+            "ranking_unavailable"
+          ]
+        },
+        "currentSourceHash": { "$ref": "#/definitions/nullableSha256" },
+        "currentMirrorHash": { "$ref": "#/definitions/nullableSha256" },
+        "currentPassageHash": { "$ref": "#/definitions/nullableSha256" },
+        "currentRetrievalRank": {
+          "type": ["integer", "null"],
+          "minimum": 1
+        }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "contentStatus": { "const": "unchanged" } } },
+          "then": {
+            "properties": {
+              "contentCode": { "const": "verified_unchanged" },
+              "currentSourceHash": { "$ref": "#/definitions/sha256" },
+              "currentMirrorHash": { "$ref": "#/definitions/sha256" },
+              "currentPassageHash": { "$ref": "#/definitions/sha256" }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "contentStatus": { "const": "stale" } } },
+          "then": {
+            "properties": {
+              "contentCode": {
+                "enum": ["source_stale", "mirror_stale", "passage_stale"]
+              },
+              "currentSourceHash": { "$ref": "#/definitions/sha256" },
+              "currentMirrorHash": { "$ref": "#/definitions/sha256" },
+              "currentPassageHash": { "$ref": "#/definitions/sha256" },
+              "rankingStatus": { "const": "unavailable" },
+              "rankingCode": { "const": "ranking_unavailable" },
+              "currentRetrievalRank": { "type": "null" }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "contentStatus": { "const": "missing" } } },
+          "then": {
+            "properties": {
+              "contentCode": { "const": "source_missing" },
+              "rankingStatus": { "const": "unavailable" },
+              "rankingCode": { "const": "ranking_unavailable" },
+              "currentSourceHash": { "type": "null" },
+              "currentMirrorHash": { "type": "null" },
+              "currentPassageHash": { "type": "null" },
+              "currentRetrievalRank": { "type": "null" }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "rankingStatus": { "const": "unchanged" } } },
+          "then": {
+            "properties": {
+              "rankingCode": { "const": "ranking_unchanged" },
+              "currentRetrievalRank": { "type": "integer", "minimum": 1 }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "rankingStatus": { "const": "reranked" } } },
+          "then": {
+            "properties": {
+              "rankingCode": { "const": "ranking_changed" },
+              "currentRetrievalRank": { "type": "integer", "minimum": 1 }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": { "rankingStatus": { "const": "unavailable" } }
+          },
+          "then": {
+            "properties": {
+              "rankingCode": { "const": "ranking_unavailable" },
+              "currentRetrievalRank": { "type": "null" }
+            }
+          }
+        }
+      ]
+    }
+  }
+}
