@@ -1,7 +1,4 @@
 {
-  "assignee": null,
-  "claim_note": "",
-  "claimed_at": null,
   "created_at": "2026-07-21T21:58:18.529916Z",
   "depends_on": [
     "fn-98-context-capsule-mvp.3",
@@ -13,5 +10,5 @@
   "spec_path": ".flow/tasks/fn-98-context-capsule-mvp.5.md",
   "status": "todo",
   "title": "Expose Capsule build and verify through CLI and SDK",
-  "updated_at": "2026-07-21T21:58:18.530061Z"
+  "updated_at": "2026-07-22T22:17:38.391337Z"
 }
