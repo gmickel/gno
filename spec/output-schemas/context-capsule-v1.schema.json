@@ -275,6 +275,11 @@
       "maxLength": 2048,
       "pattern": "^gno://[a-z0-9][a-z0-9_-]{0,63}/(?!.*%2F)(?:[A-Za-z0-9_.!~*'()/\\-]|%[0-9A-F]{2})+(?:\\?index=(?:[A-Za-z0-9_.!~*'()\\-]|%[0-9A-F]{2})+)?$"
     },
+    "gnoPrefixUri": {
+      "type": "string",
+      "maxLength": 2048,
+      "pattern": "^gno://[a-z0-9][a-z0-9_-]{0,63}/(?!.*%2F)(?:[A-Za-z0-9_.!~*'()/\\-]|%[0-9A-F]{2})*(?:\\?index=(?:[A-Za-z0-9_.!~*'()\\-]|%[0-9A-F]{2})+)?$"
+    },
     "docid": { "type": "string", "pattern": "^#[a-f0-9]{6,}$" },
     "collection": {
       "type": "string",
@@ -356,7 +361,9 @@
         {
           "if": { "properties": { "scopeType": { "const": "prefix" } } },
           "then": {
-            "properties": { "scopeKey": { "$ref": "#/definitions/gnoUri" } }
+            "properties": {
+              "scopeKey": { "$ref": "#/definitions/gnoPrefixUri" }
+            }
           }
         }
       ]

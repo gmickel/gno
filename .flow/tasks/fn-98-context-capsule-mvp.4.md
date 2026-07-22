@@ -10,7 +10,7 @@ Deliver implement non-mutating capsule verification as one implementation-sized 
 **Files:** `src/core/context-verifier.ts`, `src/store/types.ts`, `src/store/sqlite/adapter.ts`, `test/core/context-verifier.test.ts`
 
 ### Approach
-- Resolve each saved evidence identity against current active source/mirror hashes and exact spans.
+- Build on `src/core/context-capsule-verification.ts` and resolve each saved canonical evidence identity against current active source/mirror hashes and exact spans.
 - Classify unchanged, stale, missing, and reranked with explicit config/index/model fingerprint drift; never rebuild or rewrite the input Capsule.
 - Separate content staleness from ranking/config drift so callers can decide whether to rebuild.
 
@@ -29,6 +29,8 @@ Deliver implement non-mutating capsule verification as one implementation-sized 
 - [ ] Fixtures distinguish unchanged, changed hash/span, missing source, and ranking/fingerprint drift.
 - [ ] Verification leaves Capsule bytes unchanged and returns a separate canonical receipt.
 - [ ] Missing/corrupt sources fail per item without aborting unrelated evidence checks.
+- [ ] Verification accepts only the frozen canonical URI, evidence-ID, and exact-budget Capsule contract before it resolves evidence.
+<!-- Updated by plan-sync: fn-98-context-capsule-mvp.1 used src/core/context-capsule-verification.ts as the frozen verification contract -->
 
 
 ## Done summary

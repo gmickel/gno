@@ -11,7 +11,7 @@ Deliver complete rest mcp parity promotion proof and documentation as one implem
 
 ### Approach
 - Add `POST /api/context`, verification route, and `gno_context` MCP tool over the shared ports; do not fork compiler behavior.
-- Run cross-surface canonical parity, adversarial injection, and fn-97 promotion fixtures, then publish the before/after demonstration.
+- Run cross-surface canonical parity for canonical URIs, full-payload exact byte accounting, estimator-specific token accounting, safety margins, evidence scope/facet bindings, configured-context canonical keys, and omission reason counts; also run adversarial injection and fn-97 promotion fixtures.
 - Update specs, schemas, docs, skill recipes, hosted gno.sh content, and autoresearch skill results in the same finalization task.
 
 ### Investigation targets
@@ -33,6 +33,8 @@ Deliver complete rest mcp parity promotion proof and documentation as one implem
 - [ ] All fn-97 promotion gates pass and raw receipts/methodology are committed.
 - [ ] Specs/docs/skill/gno.sh explain budget, gaps, exact spans, verification, prompt boundaries, and non-persistence accurately.
 - [ ] Full prerelease and skill autoresearch gates pass.
+- [ ] Cross-surface fixtures reject capsules that differ in final `usedBytes`, active-token accounting projection, URI canonicalization, evidence bindings, or omission `reasonCounts`.
+<!-- Updated by plan-sync: fn-98-context-capsule-mvp.1 used the frozen canonical payload contract across all surfaces -->
 
 
 ## Done summary

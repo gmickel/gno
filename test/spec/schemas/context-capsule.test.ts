@@ -11,7 +11,10 @@ import {
   createContextCapsuleV1,
   parseContextCapsuleV1,
 } from "../../../src/core/context-capsule";
-import { contextCapsuleGnoUriSchema } from "../../../src/core/context-capsule-schema";
+import {
+  contextCapsuleGnoUriSchema,
+  contextCapsulePrefixUriSchema,
+} from "../../../src/core/context-capsule-schema";
 import {
   contextCapsuleContextIdentity,
   contextCapsuleEvidenceIdentity,
@@ -219,9 +222,12 @@ describe("Context Capsule V1 contract", () => {
 
   test("keeps Draft-07 and Zod canonical GNO URI rejection in parity", async () => {
     const schema = (await loadSchema("context-capsule-v1")) as {
-      definitions: { gnoUri: object };
+      definitions: { gnoUri: object; gnoPrefixUri: object };
     };
     const validateDraftUri = createValidator(schema.definitions.gnoUri);
+    const validateDraftPrefixUri = createValidator(
+      schema.definitions.gnoPrefixUri
+    );
     const vectors = [
       ["gno://notes/decision.md", true],
       ["gno://notes/my%20decision.md?index=research", true],
@@ -234,6 +240,55 @@ describe("Context Capsule V1 contract", () => {
       expect(contextCapsuleGnoUriSchema.safeParse(uri).success).toBe(expected);
       expect(validateDraftUri(uri)).toBe(expected);
     }
+    const prefixVectors = [
+      ["gno://notes/", true],
+      ["gno://notes/?index=research", true],
+      ["gno://notes/projects", true],
+      ["gno://notes", false],
+      ["gno://Notes/", false],
+    ] as const;
+    for (const [uri, expected] of prefixVectors) {
+      expect(contextCapsulePrefixUriSchema.safeParse(uri).success).toBe(
+        expected
+      );
+      expect(validateDraftPrefixUri(uri)).toBe(expected);
+    }
+  });
+
+  test("accepts canonical collection-root configured prefix context", async () => {
+    const schema = await loadSchema("context-capsule-v1");
+    const payload = buildPayload();
+    const text = "Collection-root guidance";
+    const contextId = contextCapsuleContextIdentity({
+      scopeType: "prefix",
+      scopeKey: "gno://notes/",
+      text,
+    });
+    const capsule = createContextCapsuleV1({
+      ...payload,
+      guidance: {
+        ...payload.guidance,
+        configuredContexts: [
+          {
+            contextId,
+            scopeType: "prefix",
+            scopeKey: "gno://notes/",
+            text,
+          },
+        ],
+      },
+      evidence: [{ ...payload.evidence[0], contextIds: [contextId] }],
+    });
+
+    expect(assertValid(capsule, schema)).toBe(true);
+    expect(
+      parseContextCapsuleV1(capsule).guidance.configuredContexts[0]
+    ).toEqual({
+      contextId,
+      scopeType: "prefix",
+      scopeKey: "gno://notes/",
+      text,
+    });
   });
 
   test("rejects unknown versions, fields, secrets, paths, and volatile timing", async () => {

@@ -10,7 +10,7 @@ Deliver expose capsule build and verify through cli and sdk as one implementatio
 **Files:** `src/cli/program.ts`, `src/cli/commands/context-build.ts`, `src/cli/commands/context-verify.ts`, `src/sdk/client.ts`, `src/sdk/types.ts`, `test/cli/context-capsule.test.ts`
 
 ### Approach
-- Add `gno context build` and `gno context verify` over the shared compiler/verifier with deterministic JSON and readable Markdown.
+- Add `gno context build` and `gno context verify` over the shared compiler/verifier with deterministic JSON and readable Markdown; validate the frozen schema before emitting or verifying.
 - Support explicit output files without implicit persistence; keep progress on stderr and canonical payload on stdout/file.
 - Add SDK methods using the same option/result types and error taxonomy.
 
@@ -29,6 +29,8 @@ Deliver expose capsule build and verify through cli and sdk as one implementatio
 - [ ] CLI JSON, CLI Markdown, and SDK emit equivalent canonical Capsule content.
 - [ ] Budget/filter/index/goal options validate consistently and stdout remains clean.
 - [ ] Verify accepts schema-valid files and returns per-evidence classifications without mutation.
+- [ ] JSON/Markdown/SDK preserve canonical URI parity, exact final `usedBytes`, the estimator-specific `usedTokens` contract, safety margins, evidence bindings, and omission `reasonCounts`.
+<!-- Updated by plan-sync: fn-98-context-capsule-mvp.1 used the frozen canonical Capsule accounting and evidence contract -->
 
 
 ## Done summary

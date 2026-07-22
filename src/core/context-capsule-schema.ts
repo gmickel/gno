@@ -25,27 +25,50 @@ const positiveIntegerSchema = z.number().int().positive();
 const nonNegativeIntegerSchema = z.number().int().nonnegative();
 const COLLECTION_PATTERN = /^[a-z0-9][a-z0-9_-]{0,63}$/;
 const collectionSchema = nonEmptyTextSchema.max(64).regex(COLLECTION_PATTERN);
+const compareCodeUnits = (left: string, right: string): number =>
+  left < right ? -1 : left > right ? 1 : 0;
+
+const isCanonicalCapsuleUri = (
+  value: string,
+  allowCollectionRoot: boolean
+): boolean => {
+  const parsed = parseUri(value);
+  if (
+    !parsed ||
+    parsed.collection.length === 0 ||
+    (!allowCollectionRoot && parsed.path.length === 0)
+  ) {
+    return false;
+  }
+  if (!COLLECTION_PATTERN.test(parsed.collection)) return false;
+  if (parsed.indexName !== undefined && !isValidIndexName(parsed.indexName))
+    return false;
+  try {
+    return (
+      buildUri(parsed.collection, parsed.path, {
+        indexName: parsed.indexName,
+      }) === value
+    );
+  } catch {
+    return false;
+  }
+};
 
 export const contextCapsuleGnoUriSchema = z
   .string()
   .max(2048)
-  .refine((value) => {
-    const parsed = parseUri(value);
-    if (!parsed || parsed.collection.length === 0 || parsed.path.length === 0)
-      return false;
-    if (!COLLECTION_PATTERN.test(parsed.collection)) return false;
-    if (parsed.indexName !== undefined && !isValidIndexName(parsed.indexName))
-      return false;
-    try {
-      return (
-        buildUri(parsed.collection, parsed.path, {
-          indexName: parsed.indexName,
-        }) === value
-      );
-    } catch {
-      return false;
-    }
-  }, "URI must be a canonical indexed GNO document reference");
+  .refine(
+    (value) => isCanonicalCapsuleUri(value, false),
+    "URI must be a canonical indexed GNO document reference"
+  );
+
+export const contextCapsulePrefixUriSchema = z
+  .string()
+  .max(2048)
+  .refine(
+    (value) => isCanonicalCapsuleUri(value, true),
+    "URI must be a canonical indexed GNO prefix reference"
+  );
 
 export const contextCapsuleFallbackCodeSchema = z.enum([
   "embedding_unavailable",
@@ -204,7 +227,8 @@ const guidanceSchema = z
               (value.scopeType === "collection" &&
                 /^[a-z0-9][a-z0-9_-]{0,63}:$/.test(value.scopeKey)) ||
               (value.scopeType === "prefix" &&
-                contextCapsuleGnoUriSchema.safeParse(value.scopeKey).success);
+                contextCapsulePrefixUriSchema.safeParse(value.scopeKey)
+                  .success);
             if (!valid) {
               context.addIssue({
                 code: "custom",
@@ -419,9 +443,13 @@ const omissionsSchema = z
       }
       if (index > 0) {
         const previous = value.items[index - 1];
-        const previousKey = `${previous?.reason}\0${previous?.uri}\0${previous?.startLine ?? 0}\0${previous?.candidateId}`;
-        const currentKey = `${item.reason}\0${item.uri}\0${item.startLine ?? 0}\0${item.candidateId}`;
-        if (previousKey > currentKey) {
+        const outOfOrder =
+          previous !== undefined &&
+          (compareCodeUnits(previous.reason, item.reason) ||
+            compareCodeUnits(previous.uri, item.uri) ||
+            (previous.startLine ?? 0) - (item.startLine ?? 0) ||
+            compareCodeUnits(previous.candidateId, item.candidateId)) > 0;
+        if (outOfOrder) {
           context.addIssue({
             code: "custom",
             message: "omission items must use canonical deterministic order",

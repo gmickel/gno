@@ -54,7 +54,10 @@ import {
   resolveTemporalRange,
   shouldSortByRecency,
 } from "./temporal";
-import { DEFAULT_PIPELINE_CONFIG } from "./types";
+import {
+  DEFAULT_PIPELINE_CONFIG,
+  SEARCH_RESULT_PLANNER_METADATA,
+} from "./types";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Dependencies
@@ -719,7 +722,16 @@ export async function searchHybrid(
   }
 
   // Build lookup maps.
-  const docByMirrorHash = new Map<string, (typeof docsResult.value)[number]>();
+  const docsByMirrorHash = new Map<
+    string,
+    (typeof docsResult.value)[number][]
+  >();
+  const addDocument = (doc: (typeof docsResult.value)[number]): void => {
+    if (!doc.mirrorHash) return;
+    const docs = docsByMirrorHash.get(doc.mirrorHash) ?? [];
+    docs.push(doc);
+    docsByMirrorHash.set(doc.mirrorHash, docs);
+  };
   const matchesMetadataFilters = (
     doc: (typeof docsResult.value)[number]
   ): boolean => {
@@ -761,7 +773,7 @@ export async function searchHybrid(
       candidateDocs.push(doc);
     } else {
       if (matchesMetadataFilters(doc)) {
-        docByMirrorHash.set(doc.mirrorHash, doc);
+        addDocument(doc);
       }
     }
   }
@@ -789,10 +801,18 @@ export async function searchHybrid(
         }
 
         if (doc.mirrorHash && matchesMetadataFilters(doc)) {
-          docByMirrorHash.set(doc.mirrorHash, doc);
+          addDocument(doc);
         }
       }
     }
+  }
+
+  for (const docs of docsByMirrorHash.values()) {
+    docs.sort((left, right) => {
+      if (left.uri < right.uri) return -1;
+      if (left.uri > right.uri) return 1;
+      return left.docid < right.docid ? -1 : left.docid > right.docid ? 1 : 0;
+    });
   }
 
   const collectionPaths = new Map<string, string>();
@@ -823,34 +843,19 @@ export async function searchHybrid(
   const seenDocids = new Set<string>();
 
   // Iterate until we have enough results (don't slice early - deduping may skip candidates)
-  for (const candidate of filteredCandidates) {
+  for (const [candidateIndex, candidate] of filteredCandidates.entries()) {
     // Stop when we have enough results
     if (results.length >= assemblyLimit) {
       break;
     }
 
     // Find document from pre-fetched map
-    const doc = docByMirrorHash.get(candidate.mirrorHash);
-    if (!doc) {
+    const candidateDocs = docsByMirrorHash.get(candidate.mirrorHash) ?? [];
+    if (candidateDocs.length === 0) {
       continue;
     }
 
     const docChunks = chunksMap.get(candidate.mirrorHash) ?? [];
-    const filterEval = evaluateDocumentChunkFilters(
-      query,
-      doc,
-      docChunks,
-      options
-    );
-    if (!filterEval.matches) {
-      continue;
-    }
-
-    // For --full mode, de-dupe by docid (keep best scoring candidate per doc)
-    if (options.full && seenDocids.has(doc.docid)) {
-      continue;
-    }
-
     // Get chunk via O(1) lookup
     // For doc-level FTS (seq=0), fall back to first available chunk if exact lookup fails
     let chunk = getChunk(candidate.mirrorHash, candidate.seq);
@@ -867,10 +872,6 @@ export async function searchHybrid(
     if (options.lang && chunk.language !== options.lang) {
       continue;
     }
-
-    docidMap.set(`${candidate.mirrorHash}:${candidate.seq}`, doc.docid);
-
-    const collectionPath = collectionPaths.get(doc.collection);
 
     // For --full mode, fetch full mirror content
     const snippetChunk =
@@ -907,37 +908,58 @@ export async function searchHybrid(
       // Fallback to chunk text if content unavailable
     }
 
-    seenDocids.add(doc.docid);
-
-    results.push({
-      docid: doc.docid,
-      score: candidate.blendedScore,
-      uri: doc.uri,
-      title: doc.title ?? undefined,
-      contentType: doc.contentType ?? undefined,
-      categories: doc.categories ?? undefined,
-      line: snippetChunk.startLine,
-      snippet,
-      snippetLanguage: chunk.language ?? undefined,
-      snippetRange,
-      source: {
-        relPath: doc.relPath,
-        absPath: collectionPath
-          ? `${collectionPath}/${doc.relPath}`
-          : undefined,
-        mime: doc.sourceMime,
-        ext: doc.sourceExt,
-        modifiedAt: doc.sourceMtime,
-        documentDate: doc.frontmatterDate ?? undefined,
-        sizeBytes: doc.sourceSize,
-        sourceHash: doc.sourceHash,
-      },
-      conversion: {
-        mirrorHash: candidate.mirrorHash,
-        converterId: doc.converterId ?? undefined,
-        converterVersion: doc.converterVersion ?? undefined,
-      },
-    });
+    for (const doc of candidateDocs) {
+      if (results.length >= assemblyLimit) break;
+      const filterEval = evaluateDocumentChunkFilters(
+        query,
+        doc,
+        docChunks,
+        options
+      );
+      if (!filterEval.matches || (options.full && seenDocids.has(doc.docid))) {
+        continue;
+      }
+      const docidKey = `${candidate.mirrorHash}:${candidate.seq}`;
+      if (!docidMap.has(docidKey)) docidMap.set(docidKey, doc.docid);
+      const collectionPath = collectionPaths.get(doc.collection);
+      seenDocids.add(doc.docid);
+      results.push({
+        docid: doc.docid,
+        score: candidate.blendedScore,
+        uri: doc.uri,
+        title: doc.title ?? undefined,
+        contentType: doc.contentType ?? undefined,
+        categories: doc.categories ?? undefined,
+        line: snippetChunk.startLine,
+        snippet,
+        snippetLanguage: chunk.language ?? undefined,
+        snippetRange,
+        source: {
+          relPath: doc.relPath,
+          absPath: collectionPath
+            ? `${collectionPath}/${doc.relPath}`
+            : undefined,
+          mime: doc.sourceMime,
+          ext: doc.sourceExt,
+          modifiedAt: doc.sourceMtime,
+          documentDate: doc.frontmatterDate ?? undefined,
+          sizeBytes: doc.sourceSize,
+          sourceHash: doc.sourceHash,
+        },
+        conversion: {
+          mirrorHash: candidate.mirrorHash,
+          converterId: doc.converterId ?? undefined,
+          converterVersion: doc.converterVersion ?? undefined,
+        },
+        [SEARCH_RESULT_PLANNER_METADATA]: {
+          retrievalRank: candidateIndex + 1,
+          mirrorHash: candidate.mirrorHash,
+          seq: snippetChunk.seq,
+          sources: [...candidate.sources].sort(),
+          graphExpanded: candidate.sources.includes("graph"),
+        },
+      });
+    }
   }
   timings.assemblyMs = performance.now() - assemblyStartedAt;
   timings.totalMs = performance.now() - runStartedAt;

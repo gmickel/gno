@@ -81,7 +81,9 @@ const isWithinPrefix = (
 ): boolean =>
   uri.collection === prefix.collection &&
   uriIndex(uri.indexName) === uriIndex(prefix.indexName) &&
-  (uri.path === prefix.path || uri.path.startsWith(`${prefix.path}/`));
+  (prefix.path === "" ||
+    uri.path === prefix.path ||
+    uri.path.startsWith(`${prefix.path}/`));
 
 const validateCapabilityBindings = (
   value: ContextCapsulePayloadV1,

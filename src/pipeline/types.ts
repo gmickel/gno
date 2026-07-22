@@ -37,6 +37,19 @@ export interface SnippetRange {
   endLine: number;
 }
 
+/** Symbol-keyed planner metadata; omitted from JSON/API projections. */
+export const SEARCH_RESULT_PLANNER_METADATA = Symbol(
+  "gno.searchResultPlannerMetadata"
+);
+
+export interface SearchResultPlannerMetadata {
+  retrievalRank: number;
+  mirrorHash: string;
+  seq: number;
+  sources: FusionSource[];
+  graphExpanded: boolean;
+}
+
 /** Single search result matching output schema */
 export interface SearchResult {
   docid: string;
@@ -53,6 +66,7 @@ export interface SearchResult {
   context?: string;
   source: SearchResultSource;
   conversion?: SearchResultConversion;
+  [SEARCH_RESULT_PLANNER_METADATA]?: SearchResultPlannerMetadata;
 }
 
 /** Search mode enum */
