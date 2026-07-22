@@ -135,6 +135,32 @@ Current manual benchmark:
   - covers baseline, adversarial, multilingual, and ask-style retrieval cases
   - writes artifacts to `evals/fixtures/retrieval-candidate-benchmark/`
 
+### CJK lexical degradation fixtures
+
+The dedicated CJK lane uses the versioned fixture contract in
+`evals/fixtures/cjk-lexical-benchmark/`:
+
+- 21 original synthetic, MIT-licensed Markdown documents: seven each for
+  Chinese, Japanese, and Korean
+- 24 same-language queries with separate graded qrels
+- exact terms, identifiers, mixed scripts, token boundaries, punctuation,
+  content-level filenames, and intentional Unicode normalization variants
+- simplified and traditional Chinese, Japanese kana and kanji, and composed
+  Hangul
+- opaque corpus paths, SHA-256 provenance records, and query/path leakage
+  checks
+
+Fixture validation is deterministic, offline, and part of the standard test
+suite:
+
+```bash
+bun test test/bench/cjk-fixtures.test.ts
+```
+
+The corpus is a controlled regression fixture, not evidence for broad CJK
+language quality. The opt-in benchmark runner and committed result artifacts are
+separate layers; production tokenization and normalization remain unchanged.
+
 ## Lexical Regression Matrix
 
 Not every BM25 search regression belongs in broad hybrid/model benchmarks.

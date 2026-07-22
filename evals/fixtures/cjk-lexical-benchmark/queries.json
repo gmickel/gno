@@ -1,0 +1,185 @@
+[
+  {
+    "id": "zh-q001",
+    "language": "zh",
+    "query": "北辰物流 冷链温控报警",
+    "category": "exact-term",
+    "notes": "Simplified Chinese organization and multi-character domain term"
+  },
+  {
+    "id": "zh-q002",
+    "language": "zh",
+    "query": "TW-0317 古籍除湿",
+    "category": "identifier",
+    "notes": "ASCII identifier with simplified query against traditional Chinese prose"
+  },
+  {
+    "id": "zh-q003",
+    "language": "zh",
+    "query": "QinglanPay ZH_API-77 回调失败",
+    "category": "mixed-script",
+    "notes": "Latin service name and underscore identifier inside Chinese"
+  },
+  {
+    "id": "zh-q004",
+    "language": "zh",
+    "query": "机器学习模型 登记责任人",
+    "category": "token-boundary",
+    "notes": "Unsegmented multi-character term plus separated qualifier"
+  },
+  {
+    "id": "zh-q005",
+    "language": "zh",
+    "query": "ＡＣＣＴ－９９ 账户迁移",
+    "category": "normalization",
+    "normalizationVariant": {
+      "form": "NFKC",
+      "source": "ＡＣＣＴ－９９",
+      "target": "ACCT-99"
+    },
+    "notes": "Full-width compatibility characters against ASCII corpus text"
+  },
+  {
+    "id": "zh-q006",
+    "language": "zh",
+    "query": "供应商 华北 乙类 合同修订",
+    "category": "punctuation",
+    "notes": "Query omits the full-width parentheses and slash used in the document"
+  },
+  {
+    "id": "zh-q007",
+    "language": "zh",
+    "query": "值班计划_夏季版.md 夜班交接",
+    "category": "filename",
+    "notes": "Content-level filename, distinct from the opaque benchmark path"
+  },
+  {
+    "id": "zh-q008",
+    "language": "zh",
+    "query": "雲嶺圖書館 濕度上限",
+    "category": "exact-term",
+    "notes": "Traditional Chinese query and document"
+  },
+  {
+    "id": "ja-q001",
+    "language": "ja",
+    "query": "北浜倉庫 冷凍機 JP-771",
+    "category": "identifier",
+    "notes": "Kanji organization name with ASCII equipment identifier"
+  },
+  {
+    "id": "ja-q002",
+    "language": "ja",
+    "query": "さくら配送センター 封印番号",
+    "category": "exact-term",
+    "notes": "Hiragana and kanji same-language lookup"
+  },
+  {
+    "id": "ja-q003",
+    "language": "ja",
+    "query": "KumoPay JP_API-42 Webhook 再送",
+    "category": "mixed-script",
+    "notes": "Latin product and protocol terms inside Japanese"
+  },
+  {
+    "id": "ja-q004",
+    "language": "ja",
+    "query": "ガラス乾板 保管温度",
+    "category": "normalization",
+    "normalizationVariant": {
+      "form": "NFC",
+      "source": "ガラス",
+      "target": "ガラス"
+    },
+    "notes": "Decomposed dakuten query against NFC corpus text"
+  },
+  {
+    "id": "ja-q005",
+    "language": "ja",
+    "query": "青葉 二組 河口 観測",
+    "category": "punctuation",
+    "notes": "Query omits Japanese corner quotes and middle dot"
+  },
+  {
+    "id": "ja-q006",
+    "language": "ja",
+    "query": "機械学習 モデル管理台帳 登録",
+    "category": "token-boundary",
+    "notes": "Alternative spacing across a compound noun"
+  },
+  {
+    "id": "ja-q007",
+    "language": "ja",
+    "query": "当番表_夜間版.md 引き継ぎ",
+    "category": "filename",
+    "notes": "Content-level filename, distinct from the opaque benchmark path"
+  },
+  {
+    "id": "ja-q008",
+    "language": "ja",
+    "query": "ガラス乾板 乳剤面 順応",
+    "category": "exact-term",
+    "notes": "NFC katakana and kanji exact terms"
+  },
+  {
+    "id": "ko-q001",
+    "language": "ko",
+    "query": "북항 창고 냉동기 KR-882",
+    "category": "identifier",
+    "notes": "Hangul organization text with ASCII equipment identifier"
+  },
+  {
+    "id": "ko-q002",
+    "language": "ko",
+    "query": "한빛도서관 고문서 습도 상한",
+    "category": "exact-term",
+    "notes": "Hangul same-language lookup"
+  },
+  {
+    "id": "ko-q003",
+    "language": "ko",
+    "query": "DuriPay KO_API-31 Webhook 재전송",
+    "category": "mixed-script",
+    "notes": "Latin product and protocol terms inside Korean"
+  },
+  {
+    "id": "ko-q004",
+    "language": "ko",
+    "query": "가속기 실험 안전 절차",
+    "category": "normalization",
+    "normalizationVariant": {
+      "form": "NFC",
+      "source": "가속기",
+      "target": "가속기"
+    },
+    "notes": "Decomposed Hangul Jamo query against NFC syllables"
+  },
+  {
+    "id": "ko-q005",
+    "language": "ko",
+    "query": "푸른별 2조 하구 관측",
+    "category": "punctuation",
+    "notes": "Query omits curly quotes and middle dot"
+  },
+  {
+    "id": "ko-q006",
+    "language": "ko",
+    "query": "기계 학습 모델 등록 대장 책임자",
+    "category": "token-boundary",
+    "notes": "Spaced query against compounded Hangul terms"
+  },
+  {
+    "id": "ko-q007",
+    "language": "ko",
+    "query": "당직표_야간판.md 인계",
+    "category": "filename",
+    "notes": "Content-level filename, distinct from the opaque benchmark path"
+  },
+  {
+    "id": "ko-q008",
+    "language": "ko",
+    "query": "입자 가속기 차폐문 비상 정지",
+    "category": "exact-term",
+    "notes": "NFC Hangul exact terms"
+  }
+]
