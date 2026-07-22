@@ -3,6 +3,8 @@
 // node:path is used for portable path normalization; Bun has no path utilities.
 import { basename, isAbsolute, join, relative } from "node:path";
 
+import cjkBenchmark from "../evals/fixtures/cjk-lexical-benchmark/2026-07-22.json";
+import cjkPromotionGates from "../evals/fixtures/cjk-lexical-benchmark/promotion-gates.json";
 import incumbentBenchmark from "../evals/fixtures/general-embedding-benchmark/2026-04-06-bge-m3-incumbent.json";
 import qwenBenchmark from "../evals/fixtures/general-embedding-benchmark/2026-04-06-qwen3-embedding-0-6b.json";
 import packageMetadata from "../package.json";
@@ -27,7 +29,7 @@ export type {
 
 const REPOSITORY_ROOT = join(import.meta.dir, "..");
 const CURRENT_VERSION_REGEX = /\bv?(\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?)\b/g;
-const DATED_EVIDENCE_REGEX = /(?:^|\/)\d{4}-\d{2}-\d{2}-[^/]+\.md$/;
+const DATED_EVIDENCE_REGEX = /(?:^|\/)\d{4}-\d{2}-\d{2}(?:-[^/]+)?\.md$/;
 const START_ANCHOR_REGEX = /<!--\s*public-truth:([a-z-]+)\s*-->/g;
 const END_ANCHOR_REGEX = /<!--\s*\/public-truth\s*-->/g;
 const UNSUPPORTED_SUPERLATIVE_REGEX =
@@ -84,6 +86,17 @@ export const PUBLIC_TRUTH = {
     },
   },
   benchmarks: {
+    cjkLexical: {
+      dataPath: "evals/fixtures/cjk-lexical-benchmark/2026-07-22.json",
+      evidencePath: "evals/fixtures/cjk-lexical-benchmark/2026-07-22.md",
+      gatesDataPath:
+        "evals/fixtures/cjk-lexical-benchmark/promotion-gates.json",
+      gatesPath: "evals/fixtures/cjk-lexical-benchmark/promotion-gates.md",
+      resultFingerprint: cjkBenchmark.fingerprints.result,
+      baselineLane: cjkPromotionGates.baseline.lane,
+      languages: cjkPromotionGates.quality.languages,
+      positiveQrelGrades: cjkPromotionGates.baseline.positiveQrelGrades,
+    },
     generalEmbedding: {
       incumbent: benchmarkEntry(
         "evals/fixtures/general-embedding-benchmark/2026-04-06-bge-m3-incumbent.json",
@@ -107,6 +120,28 @@ interface AnchoredClaim {
 
 const metricText = (value: number): string =>
   value.toFixed(4).replace(/0+$/, "").replace(/\.$/, "");
+
+const cjkLanguageLabel = (language: string): string => {
+  switch (language) {
+    case "zh":
+      return "Chinese";
+    case "ja":
+      return "Japanese";
+    case "ko":
+      return "Korean";
+    default:
+      return language;
+  }
+};
+
+const cjkLanguageTuple = (
+  language: string,
+  values: (typeof PUBLIC_TRUTH.benchmarks.cjkLexical.languages)[keyof typeof PUBLIC_TRUTH.benchmarks.cjkLexical.languages]
+): string =>
+  `${cjkLanguageLabel(language)}: baseline Recall@10 ${metricText(values.baseline.recallAt10)}, nDCG@10 ${metricText(values.baseline.ndcgAt10)}, zero-result ${metricText(values.baseline.zeroResultRate)}; promotion Recall@10 ${metricText(values.minimumCandidate.recallAt10)}, nDCG@10 ${metricText(values.minimumCandidate.ndcgAt10)}, maximum zero-result ${metricText(values.minimumCandidate.zeroResultRate)}`;
+
+const normalizeClaimText = (content: string): string =>
+  content.replaceAll("`", "").replace(/\s+/g, " ").trim();
 
 const missingTokens = (content: string, tokens: readonly string[]): string[] =>
   tokens.filter((token) => !content.includes(token));
@@ -307,11 +342,102 @@ const validateGeneralBenchmark = (
   return mismatches;
 };
 
+const validateCjkLexicalBenchmark = (
+  document: PublicTruthDocument,
+  claim: AnchoredClaim
+): PublicTruthMismatch[] => {
+  const benchmark = PUBLIC_TRUTH.benchmarks.cjkLexical;
+  const requiredTokens = [
+    basename(benchmark.evidencePath),
+    basename(benchmark.gatesPath),
+    "BM25",
+    "semantic",
+    "lexical",
+    "positive qrels",
+    "relevance",
+    `\`${benchmark.positiveQrelGrades[0]}\``,
+    ...Object.values(benchmark.languages).flatMap(
+      ({ baseline, minimumCandidate }) => [
+        metricText(baseline.recallAt10),
+        metricText(baseline.zeroResultRate),
+        metricText(minimumCandidate.recallAt10),
+        metricText(minimumCandidate.zeroResultRate),
+      ]
+    ),
+  ];
+  const missing = missingTokens(claim.content, [...new Set(requiredTokens)]);
+  const mismatches: PublicTruthMismatch[] = [];
+  if (missing.length > 0) {
+    mismatches.push(
+      mismatch(
+        document,
+        claim,
+        "cjk-lexical-benchmark",
+        `CJK lexical summary is stale or incomplete; missing canonical value(s): ${missing.join(", ")}`
+      )
+    );
+  }
+  const normalizedClaim = normalizeClaimText(claim.content);
+  const missingLanguageTuples = Object.entries(benchmark.languages)
+    .map(([language, values]) => cjkLanguageTuple(language, values))
+    .filter((tuple) => !normalizedClaim.includes(tuple));
+  if (missingLanguageTuples.length > 0) {
+    mismatches.push(
+      mismatch(
+        document,
+        claim,
+        "cjk-lexical-benchmark",
+        `CJK lexical summary does not bind canonical metrics to each language; missing tuple(s): ${missingLanguageTuples.join(" | ")}`
+      )
+    );
+  }
+  if (UNSUPPORTED_SUPERLATIVE_REGEX.test(claim.content)) {
+    mismatches.push(
+      mismatch(
+        document,
+        claim,
+        "cjk-lexical-benchmark",
+        "CJK lexical summary uses an unsupported superlative; state the fixture and measured metric instead"
+      )
+    );
+  }
+
+  const canonicalMetrics = new Set(
+    Object.values(benchmark.languages).flatMap(
+      ({ baseline, minimumCandidate }) => [
+        ...Object.values(baseline),
+        ...Object.values(minimumCandidate),
+      ]
+    )
+  );
+  const contradictoryMetrics = [
+    ...new Set(
+      [...claim.content.matchAll(BENCHMARK_DECIMAL_REGEX)]
+        .map((match) => match[0])
+        .filter((value) => !canonicalMetrics.has(Number(value)))
+    ),
+  ];
+  if (contradictoryMetrics.length > 0) {
+    mismatches.push(
+      mismatch(
+        document,
+        claim,
+        "cjk-lexical-benchmark",
+        `CJK lexical summary contains non-canonical metric(s): ${contradictoryMetrics.join(", ")}`
+      )
+    );
+  }
+
+  return mismatches;
+};
+
 const validateClaim = (
   document: PublicTruthDocument,
   claim: AnchoredClaim
 ): PublicTruthMismatch[] => {
   switch (claim.claimClass) {
+    case "cjk-lexical-benchmark":
+      return validateCjkLexicalBenchmark(document, claim);
     case "current-version":
       return validateCurrentVersion(document, claim);
     case "default-embed-model":
@@ -383,11 +509,16 @@ export const verifyAnchoredPublicTruth = (
 
 const evidencePaths = (): string[] => {
   const benchmark = PUBLIC_TRUTH.benchmarks.generalEmbedding;
+  const cjk = PUBLIC_TRUTH.benchmarks.cjkLexical;
   return [
     benchmark.incumbent.dataPath,
     benchmark.incumbent.evidencePath,
     benchmark.qwen.dataPath,
     benchmark.qwen.evidencePath,
+    cjk.dataPath,
+    cjk.evidencePath,
+    cjk.gatesDataPath,
+    cjk.gatesPath,
   ];
 };
 
@@ -397,7 +528,10 @@ export const validatePublicTruthEvidence = async (
   const mismatches: PublicTruthMismatch[] = [];
   for (const path of evidencePaths()) {
     const isMarkdown = path.endsWith(".md");
-    const immutable = !isMarkdown || DATED_EVIDENCE_REGEX.test(path);
+    const immutable =
+      !isMarkdown ||
+      DATED_EVIDENCE_REGEX.test(path) ||
+      path === PUBLIC_TRUTH.benchmarks.cjkLexical.gatesPath;
     const exists = await Bun.file(join(rootDir, path)).exists();
     if (
       !(immutable && exists) ||

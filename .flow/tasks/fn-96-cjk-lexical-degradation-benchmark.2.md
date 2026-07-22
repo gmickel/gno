@@ -36,9 +36,8 @@ Deliver implement deterministic cjk benchmark lanes as one implementation-sized 
 
 
 ## Done summary
-TBD
-
+Implemented the deterministic CJK lexical degradation benchmark with production BM25, degraded production hybrid with all semantic ports disabled, raw/NFC substring diagnostics, stable fingerprints, per-language metrics/failures, index and latency costs, and dated/latest JSON plus Markdown artifacts.
 ## Evidence
-- Commits:
-- Tests:
+- Commits: 7f3635e
+- Tests: bun test test/bench/cjk*, bun run bench:cjk-lexical -- --write, bun run lint:check, .flow/bin/flowctl validate --spec fn-96-cjk-lexical-degradation-benchmark --json
 - PRs:

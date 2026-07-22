@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "name": "GNO CJK lexical degradation benchmark",
+  "description": "Deterministic same-language lexical retrieval cases for Chinese, Japanese, and Korean.",
+  "languages": ["zh", "ja", "ko"],
+  "requiredCategories": [
+    "exact-term",
+    "identifier",
+    "mixed-script",
+    "token-boundary",
+    "normalization",
+    "punctuation",
+    "filename"
+  ],
+  "minimums": {
+    "documentsPerLanguage": 7,
+    "queriesPerLanguage": 8
+  },
+  "license": {
+    "spdx": "MIT",
+    "path": "../../../LICENSE",
+    "scope": "All original synthetic corpus documents, queries, qrels, and metadata in this directory"
+  },
+  "provenanceReview": {
+    "reviewedAt": "2026-07-22",
+    "redistributable": true,
+    "externalTextIncluded": false,
+    "method": "Original synthetic documents and judgments authored for GNO; no upstream corpus text was copied"
+  },
+  "unicodePolicy": {
+    "encoding": "UTF-8",
+    "corpusNormalization": "NFC",
+    "intentionalQueryVariants": ["NFD", "NFKC"]
+  }
+}

@@ -88,10 +88,28 @@ uses 15 FastAPI documents in five corpus languages (`en`, `de`, `fr`, `es`,
 used different runtime/profile paths, so its timings and Qwen scores are not an
 update to the April artifact.
 
-Dedicated lexical CJK benchmarking remains pending. Query-language
-classification and the seven-language indexed-document detector are product
-metadata/prompt features, not evidence that this placeholder eval covers those
-languages.
+The dedicated lexical CJK lane is now frozen separately in the immutable
+[July 22, 2026 result](fixtures/cjk-lexical-benchmark/2026-07-22.md). It uses 21
+synthetic documents and 25 same-language queries. Production BM25
+Recall@10/nDCG@10 is `0.2222`/`0.1481` for Chinese, `0.125`/`0.125` for
+Japanese, and `0.5`/`0.5` for Korean; zero-result rates are `0.7778`, `0.875`,
+and `0.5`. The Chinese lane includes one genuine rank-7 fixture rather than
+classifying a zero-result as a ranking failure. This does not turn the legacy
+four-case lane into cross-language evidence. Query-language classification and
+the seven-language indexed-document detector remain product metadata/prompt
+features, not retrieval-quality guarantees.
+
+The frozen [promotion gates](fixtures/cjk-lexical-benchmark/promotion-gates.md)
+require at least two more Recall hits in every language plus independent
+`+0.25` Recall, MRR, and nDCG@10 lifts and a `-0.25` zero-result-rate change.
+The nine-query Chinese lane therefore needs three additional hits. They
+also allow at most `0.02` Latin and code metric loss, zero lost identifier
+cases, at most `1.75x` index size, `2x` build time, and `3x` warm-query p95 with
+no more than `2 ms` absolute increase. Ratios compare a candidate with a co-run
+production baseline. No implementation is preselected.
+
+All current positive qrels use relevance `3`. nDCG therefore measures where
+relevant documents rank, not distinctions among multiple positive gain grades.
 
 ### Ask Eval (61% score)
 
@@ -117,9 +135,8 @@ The balanced preset trades some citation reliability for faster inference and lo
 
 - **Evalite vector multilingual lane** - vector/hybrid evidence currently lives
   in the separate general-embedding benchmark harness
-- **Lexical CJK benchmark** - tracked separately from the BM25 placeholder
-- **Latency budgets** - measure comparable production runtime paths first, then
-  set thresholds
+- **Production CJK lexical analyzer** - benchmarked candidate selection and
+  implementation remain tracked in `fn-109`
 
 ## Architecture
 
@@ -129,6 +146,7 @@ evals/
 │   ├── corpus/{de,en,fr,it}/  # Multilingual test documents
 │   ├── hybrid-adversarial.json # Entity/phrase/negation/ambiguity cases
 │   ├── hybrid-baseline/        # Baseline snapshots (json+md)
+│   ├── cjk-lexical-benchmark/  # CJK fixtures, baseline, and promotion gates
 │   ├── retrieval-candidate-benchmark/ # Candidate benchmark outputs (json+md)
 │   ├── queries.json           # Search queries with relevance judgments
 │   └── ask-cases.json         # Answer generation test cases

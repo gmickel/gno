@@ -1,0 +1,132 @@
+{
+  "schemaVersion": 1,
+  "benchmark": "gno-cjk-lexical-degradation",
+  "baseline": {
+    "artifact": "2026-07-22.json",
+    "resultFingerprint": "11d865ebc56e5319587427473c668725ff7d1ec97e05234ec66bc63291858cea",
+    "configFingerprint": "fa077cfe5ce65773ff646492e0590432cad3dc80f1e355ba528abfce34518c5a",
+    "tokenizerFingerprint": "7c079447fed5ba49dcbe3c1934d41be3a99bd430852dc48ff80d990f46daba96",
+    "lane": "bm25",
+    "queryCounts": {
+      "zh": 9,
+      "ja": 8,
+      "ko": 8
+    },
+    "positiveQrelGrades": [3],
+    "qrelsLimitation": "All positive qrels use relevance 3, so nDCG measures placement of relevant documents but not distinctions among positive gain grades."
+  },
+  "quality": {
+    "minimumAdditionalRecallHitsPerLanguage": {
+      "zh": 3,
+      "ja": 2,
+      "ko": 2
+    },
+    "minimumAbsoluteMetricLift": 0.25,
+    "maximumAbsoluteZeroResultRate": {
+      "zh": 0.5278,
+      "ja": 0.625,
+      "ko": 0.25
+    },
+    "languages": {
+      "zh": {
+        "baseline": {
+          "recallAt5": 0.1111,
+          "recallAt10": 0.2222,
+          "mrr": 0.127,
+          "ndcgAt10": 0.1481,
+          "zeroResultRate": 0.7778
+        },
+        "minimumCandidate": {
+          "recallAt5": 0.3611,
+          "recallAt10": 0.4722,
+          "mrr": 0.377,
+          "ndcgAt10": 0.3981,
+          "zeroResultRate": 0.5278
+        }
+      },
+      "ja": {
+        "baseline": {
+          "recallAt5": 0.125,
+          "recallAt10": 0.125,
+          "mrr": 0.125,
+          "ndcgAt10": 0.125,
+          "zeroResultRate": 0.875
+        },
+        "minimumCandidate": {
+          "recallAt5": 0.375,
+          "recallAt10": 0.375,
+          "mrr": 0.375,
+          "ndcgAt10": 0.375,
+          "zeroResultRate": 0.625
+        }
+      },
+      "ko": {
+        "baseline": {
+          "recallAt5": 0.5,
+          "recallAt10": 0.5,
+          "mrr": 0.5,
+          "ndcgAt10": 0.5,
+          "zeroResultRate": 0.5
+        },
+        "minimumCandidate": {
+          "recallAt5": 0.75,
+          "recallAt10": 0.75,
+          "mrr": 0.75,
+          "ndcgAt10": 0.75,
+          "zeroResultRate": 0.25
+        }
+      }
+    }
+  },
+  "failureCoverage": {
+    "requiredCategories": [
+      "token-boundary",
+      "normalization",
+      "mixed-script",
+      "identifier",
+      "ranking"
+    ],
+    "baselineExamples": {
+      "token-boundary": ["zh-q004"],
+      "normalization": ["zh-q005", "ja-q004", "ko-q004"],
+      "mixed-script": ["zh-q003", "ja-q003", "ko-q003"],
+      "identifier": ["zh-q002", "ja-q001", "ko-q001"],
+      "ranking": ["zh-q009"]
+    }
+  },
+  "nonRegression": {
+    "comparison": "candidate and current production analyzer must run in the same process against the same committed fixtures",
+    "latinAndCode": {
+      "maximumAbsoluteRecallAt10Loss": 0.02,
+      "maximumAbsoluteNdcgAt10Loss": 0.02
+    },
+    "identifiers": {
+      "maximumPreviouslyPassingQueriesLost": 0,
+      "maximumNewZeroResultQueries": 0
+    },
+    "requiredSuites": [
+      "test/store/fts-lexical-regression.test.ts",
+      "test/cli/search-fixtures.test.ts"
+    ]
+  },
+  "cost": {
+    "comparison": "ratios use a co-run current-production baseline; dated milliseconds are evidence, not portable absolute budgets",
+    "indexBytes": {
+      "baseline": 323584,
+      "maximumRatio": 1.75,
+      "datedRunMaximumBytes": 566272
+    },
+    "buildMs": {
+      "baseline": 507.84,
+      "maximumRatio": 2,
+      "datedRunMaximumMs": 1015.68
+    },
+    "warmQueryP95Ms": {
+      "baseline": 0.71,
+      "maximumRatio": 3,
+      "maximumAbsoluteIncreaseMs": 2,
+      "datedRunRatioMaximumMs": 2.13
+    }
+  },
+  "decisionRule": "fn-109 may select any deterministic representation that passes every per-language quality floor, failure-category coverage, non-regression gate, and cost cap. No aggregate score may compensate for a failed language or gate. If no candidate passes, record a no-ship decision instead of weakening these thresholds."
+}

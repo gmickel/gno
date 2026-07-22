@@ -1036,9 +1036,30 @@ official production GGUF was validated for Nemotron.
 These small fixture results support keeping Qwen as the built-in default; they
 do not establish general language superiority. Query-language classification
 supports a broader set than the indexed-document detector (`en`, `de`, `fr`,
-`it`, `zh`, `ja`, `ko`), and the committed fixture covers only five languages.
-The BM25-only multilingual eval remains a legacy sanity lane; dedicated lexical
-CJK benchmarking is pending.
+`it`, `zh`, `ja`, `ko`), and the committed semantic fixture covers only five
+languages.
+
+<!-- public-truth:cjk-lexical-benchmark -->
+
+Lexical fallback has separate evidence. The immutable
+[July 22, 2026 CJK result](./evals/fixtures/cjk-lexical-benchmark/2026-07-22.md)
+uses 21 synthetic documents and 25 same-language queries across Chinese,
+Japanese, and Korean. Production BM25 lexical results and frozen floors:
+
+- Chinese: baseline Recall@10 `0.2222`, nDCG@10 `0.1481`, zero-result `0.7778`; promotion Recall@10 `0.4722`, nDCG@10 `0.3981`, maximum zero-result `0.5278`
+- Japanese: baseline Recall@10 `0.125`, nDCG@10 `0.125`, zero-result `0.875`; promotion Recall@10 `0.375`, nDCG@10 `0.375`, maximum zero-result `0.625`
+- Korean: baseline Recall@10 `0.5`, nDCG@10 `0.5`, zero-result `0.5`; promotion Recall@10 `0.75`, nDCG@10 `0.75`, maximum zero-result `0.25`
+
+The
+[promotion-gates.md](./evals/fixtures/cjk-lexical-benchmark/promotion-gates.md)
+also bind MRR, non-regression, and cost requirements. This lexical result does
+not reduce or replace the semantic evidence above. All positive qrels use
+relevance `3`, so
+nDCG measures placement but not distinctions among positive gain grades.
+Production tokenization is unchanged; improvements remain gated work for
+`fn-109`.
+
+<!-- /public-truth -->
 
 ---
 

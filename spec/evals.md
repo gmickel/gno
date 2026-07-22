@@ -135,6 +135,52 @@ Current manual benchmark:
   - covers baseline, adversarial, multilingual, and ask-style retrieval cases
   - writes artifacts to `evals/fixtures/retrieval-candidate-benchmark/`
 
+### CJK lexical degradation fixtures
+
+The dedicated CJK lane uses the versioned fixture contract in
+`evals/fixtures/cjk-lexical-benchmark/`:
+
+- 21 original synthetic, MIT-licensed Markdown documents: seven each for
+  Chinese, Japanese, and Korean
+- 25 same-language queries with separate graded qrels
+- exact terms, identifiers, mixed scripts, token boundaries, punctuation,
+  content-level filenames, and intentional Unicode normalization variants
+- simplified and traditional Chinese, Japanese kana and kanji, and composed
+  Hangul
+- opaque corpus paths, SHA-256 provenance records, and query/path leakage
+  checks
+
+Fixture validation is deterministic, offline, and part of the standard test
+suite:
+
+```bash
+bun test test/bench/cjk*.test.ts
+bun run bench:cjk-lexical
+```
+
+The committed [`2026-07-22.json`](../evals/fixtures/cjk-lexical-benchmark/2026-07-22.json)
+and readable Markdown are immutable baseline evidence. The machine-readable
+[`promotion-gates.json`](../evals/fixtures/cjk-lexical-benchmark/promotion-gates.json)
+binds `fn-109` to these per-language floors:
+
+| Language | Baseline Recall@10/nDCG@10 | Minimum candidate | Baseline zero-result | Maximum candidate |
+| -------- | -------------------------: | ----------------: | -------------------: | ----------------: |
+| `zh`     |                     0.2222 |            0.4722 |               0.7778 |            0.5278 |
+| `ja`     |                      0.125 |             0.375 |                0.875 |             0.625 |
+| `ko`     |                        0.5 |              0.75 |                  0.5 |              0.25 |
+
+The discrete Recall@10 floors require three additional Chinese hits and two
+additional Japanese and Korean hits; the Chinese count rounds up because nine
+queries cannot represent an exact `0.25` lift. MRR and nDCG@10 must
+independently improve by `0.25`, adding a ranking-quality floor.
+The same contract caps Latin/code Recall@10 and nDCG loss at `0.02`, permits
+zero lost exact-identifier cases, and bounds index size/build/warm-query p95 by
+co-run ratios. It does not select an implementation. All positive qrels are
+currently relevance `3`, so nDCG cannot distinguish among positive gain grades.
+
+The corpus is a controlled regression fixture, not evidence for broad CJK
+language quality. Production tokenization and normalization remain unchanged.
+
 ## Lexical Regression Matrix
 
 Not every BM25 search regression belongs in broad hybrid/model benchmarks.

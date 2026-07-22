@@ -1,0 +1,36 @@
+{
+  "version": 1,
+  "scale": {
+    "0": "not relevant",
+    "1": "related context",
+    "2": "useful answer context",
+    "3": "direct answer"
+  },
+  "judgments": [
+    { "queryId": "zh-q001", "docid": "zh/d001.md", "relevance": 3 },
+    { "queryId": "zh-q002", "docid": "zh/d002.md", "relevance": 3 },
+    { "queryId": "zh-q003", "docid": "zh/d003.md", "relevance": 3 },
+    { "queryId": "zh-q004", "docid": "zh/d004.md", "relevance": 3 },
+    { "queryId": "zh-q005", "docid": "zh/d005.md", "relevance": 3 },
+    { "queryId": "zh-q006", "docid": "zh/d006.md", "relevance": 3 },
+    { "queryId": "zh-q007", "docid": "zh/d007.md", "relevance": 3 },
+    { "queryId": "zh-q008", "docid": "zh/d002.md", "relevance": 3 },
+    { "queryId": "zh-q009", "docid": "zh/d001.md", "relevance": 3 },
+    { "queryId": "ja-q001", "docid": "ja/d001.md", "relevance": 3 },
+    { "queryId": "ja-q002", "docid": "ja/d002.md", "relevance": 3 },
+    { "queryId": "ja-q003", "docid": "ja/d003.md", "relevance": 3 },
+    { "queryId": "ja-q004", "docid": "ja/d004.md", "relevance": 3 },
+    { "queryId": "ja-q005", "docid": "ja/d005.md", "relevance": 3 },
+    { "queryId": "ja-q006", "docid": "ja/d006.md", "relevance": 3 },
+    { "queryId": "ja-q007", "docid": "ja/d007.md", "relevance": 3 },
+    { "queryId": "ja-q008", "docid": "ja/d004.md", "relevance": 3 },
+    { "queryId": "ko-q001", "docid": "ko/d001.md", "relevance": 3 },
+    { "queryId": "ko-q002", "docid": "ko/d002.md", "relevance": 3 },
+    { "queryId": "ko-q003", "docid": "ko/d003.md", "relevance": 3 },
+    { "queryId": "ko-q004", "docid": "ko/d004.md", "relevance": 3 },
+    { "queryId": "ko-q005", "docid": "ko/d005.md", "relevance": 3 },
+    { "queryId": "ko-q006", "docid": "ko/d006.md", "relevance": 3 },
+    { "queryId": "ko-q007", "docid": "ko/d007.md", "relevance": 3 },
+    { "queryId": "ko-q008", "docid": "ko/d004.md", "relevance": 3 }
+  ]
+}

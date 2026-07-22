@@ -1,0 +1,191 @@
+[
+  {
+    "id": "zh/d001.md",
+    "language": "zh",
+    "license": "MIT",
+    "provenance": "original-synthetic",
+    "authoredAt": "2026-07-22",
+    "normalization": "NFC",
+    "contentSha256": "1cde32239d9049a924242f77f72ad62a9d07f861db39bd395754f953ddf49571"
+  },
+  {
+    "id": "zh/d002.md",
+    "language": "zh",
+    "license": "MIT",
+    "provenance": "original-synthetic",
+    "authoredAt": "2026-07-22",
+    "normalization": "NFC",
+    "contentSha256": "295fe6ac605638902e9c3b3ee20742a7fcb25199e892f6dd468cd4dbda4567a6"
+  },
+  {
+    "id": "zh/d003.md",
+    "language": "zh",
+    "license": "MIT",
+    "provenance": "original-synthetic",
+    "authoredAt": "2026-07-22",
+    "normalization": "NFC",
+    "contentSha256": "fce0472519d4aa6b96291af0ac26ced6914f9d04c1511e066b2c3b013d626cb8"
+  },
+  {
+    "id": "zh/d004.md",
+    "language": "zh",
+    "license": "MIT",
+    "provenance": "original-synthetic",
+    "authoredAt": "2026-07-22",
+    "normalization": "NFC",
+    "contentSha256": "3d5ce852c7aa1b02073688a4e7fb363c394870c2b44cc0621512959c5831b79b"
+  },
+  {
+    "id": "zh/d005.md",
+    "language": "zh",
+    "license": "MIT",
+    "provenance": "original-synthetic",
+    "authoredAt": "2026-07-22",
+    "normalization": "NFC",
+    "contentSha256": "1eaf79879f36c92e9d97e894ba982d4aef11c7bfee86eb144da7f561e3c41d0e"
+  },
+  {
+    "id": "zh/d006.md",
+    "language": "zh",
+    "license": "MIT",
+    "provenance": "original-synthetic",
+    "authoredAt": "2026-07-22",
+    "normalization": "NFC",
+    "contentSha256": "e81c21f0983517f3bad15733f2265ba430b3f20d385f17dba6b9cda011016859"
+  },
+  {
+    "id": "zh/d007.md",
+    "language": "zh",
+    "license": "MIT",
+    "provenance": "original-synthetic",
+    "authoredAt": "2026-07-22",
+    "normalization": "NFC",
+    "contentSha256": "423c462ae2e84fba459fc8859ffb08a5009615e3dfb2e221972b7a877eaaf220"
+  },
+  {
+    "id": "ja/d001.md",
+    "language": "ja",
+    "license": "MIT",
+    "provenance": "original-synthetic",
+    "authoredAt": "2026-07-22",
+    "normalization": "NFC",
+    "contentSha256": "94a345a3dd3a46d62cac9dbdcd22f89b7e223b21f3a99cf1321bfdd663184bd1"
+  },
+  {
+    "id": "ja/d002.md",
+    "language": "ja",
+    "license": "MIT",
+    "provenance": "original-synthetic",
+    "authoredAt": "2026-07-22",
+    "normalization": "NFC",
+    "contentSha256": "db31a7f470a9224ddc9bb489a0512387ee3051e35326f0ced395b3ad6c4fd8f6"
+  },
+  {
+    "id": "ja/d003.md",
+    "language": "ja",
+    "license": "MIT",
+    "provenance": "original-synthetic",
+    "authoredAt": "2026-07-22",
+    "normalization": "NFC",
+    "contentSha256": "68c21f200ae4aa60ff059e432d7e3626004f227f5e0235aacaaf95ecfcdd1262"
+  },
+  {
+    "id": "ja/d004.md",
+    "language": "ja",
+    "license": "MIT",
+    "provenance": "original-synthetic",
+    "authoredAt": "2026-07-22",
+    "normalization": "NFC",
+    "contentSha256": "b048a89bb3a5fc6fae8aef62fbb7d233b07ff012ee63fead72ba6601daf80e25"
+  },
+  {
+    "id": "ja/d005.md",
+    "language": "ja",
+    "license": "MIT",
+    "provenance": "original-synthetic",
+    "authoredAt": "2026-07-22",
+    "normalization": "NFC",
+    "contentSha256": "5ff40fe467f2605e27b2f0200d29414a235d1ceaab98521ad81e6193ec69dd1e"
+  },
+  {
+    "id": "ja/d006.md",
+    "language": "ja",
+    "license": "MIT",
+    "provenance": "original-synthetic",
+    "authoredAt": "2026-07-22",
+    "normalization": "NFC",
+    "contentSha256": "129304a146206e13bbb616cfe8a6309a6c79f8fd4961996a9e69be7baae9fc84"
+  },
+  {
+    "id": "ja/d007.md",
+    "language": "ja",
+    "license": "MIT",
+    "provenance": "original-synthetic",
+    "authoredAt": "2026-07-22",
+    "normalization": "NFC",
+    "contentSha256": "c907d53b191050713b8ed5eb39eca2362c12e7f39fafab5691cbc2771a5e317e"
+  },
+  {
+    "id": "ko/d001.md",
+    "language": "ko",
+    "license": "MIT",
+    "provenance": "original-synthetic",
+    "authoredAt": "2026-07-22",
+    "normalization": "NFC",
+    "contentSha256": "cf30715a9313cd2da07f85913ec4a9337c8671c85599051c672f028c271d3b7e"
+  },
+  {
+    "id": "ko/d002.md",
+    "language": "ko",
+    "license": "MIT",
+    "provenance": "original-synthetic",
+    "authoredAt": "2026-07-22",
+    "normalization": "NFC",
+    "contentSha256": "71749a9788704a21ba0c1ba46ba7592077f17766e9fe3cf2e3cd14bebfc8823b"
+  },
+  {
+    "id": "ko/d003.md",
+    "language": "ko",
+    "license": "MIT",
+    "provenance": "original-synthetic",
+    "authoredAt": "2026-07-22",
+    "normalization": "NFC",
+    "contentSha256": "5207013209c79e8476bdcc6f4175af4c065a4d46032499d659f86f06abf1c7ce"
+  },
+  {
+    "id": "ko/d004.md",
+    "language": "ko",
+    "license": "MIT",
+    "provenance": "original-synthetic",
+    "authoredAt": "2026-07-22",
+    "normalization": "NFC",
+    "contentSha256": "f0cd3953a26a8ab6f58335d344dce766636122bb6660f1e910a8e69bae4d6e45"
+  },
+  {
+    "id": "ko/d005.md",
+    "language": "ko",
+    "license": "MIT",
+    "provenance": "original-synthetic",
+    "authoredAt": "2026-07-22",
+    "normalization": "NFC",
+    "contentSha256": "50898982af5d7beff1f40d955b7576990472fe3c5e09a11d4d0aae2a78a71de2"
+  },
+  {
+    "id": "ko/d006.md",
+    "language": "ko",
+    "license": "MIT",
+    "provenance": "original-synthetic",
+    "authoredAt": "2026-07-22",
+    "normalization": "NFC",
+    "contentSha256": "f033528f3ea477ea87bf0d48f2035329e6887a6dd7d48e66b836521a6d13d0db"
+  },
+  {
+    "id": "ko/d007.md",
+    "language": "ko",
+    "license": "MIT",
+    "provenance": "original-synthetic",
+    "authoredAt": "2026-07-22",
+    "normalization": "NFC",
+    "contentSha256": "6cf6aff59ac307cfa65920396875b6dd2ea45effe30988feb34e2191bc69b738"
+  }
+]

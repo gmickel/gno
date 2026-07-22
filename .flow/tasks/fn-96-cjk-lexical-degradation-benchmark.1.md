@@ -32,9 +32,8 @@ Deliver build licensed cjk corpora qrels and validation as one implementation-si
 
 
 ## Done summary
-TBD
-
+Added a versioned, redistributable CJK lexical benchmark fixture contract with 21 opaque MIT-licensed synthetic documents and 25 same-language Chinese, Japanese, and Korean queries. Separate graded qrels, source provenance and SHA-256 digests, explicit Unicode/category metadata, and offline validation cover license, shape, per-language minimums, required scripts/categories, normalization variants, dangling judgments, filename/query leakage, and a genuine Chinese rank-7 case. Documented the fixture lane in spec/evals.md without changing production retrieval behavior.
 ## Evidence
-- Commits:
-- Tests:
+- Commits: 3c20e05, 43bccdf
+- Tests: bun test test/bench/cjk-fixtures.test.ts, bun run lint:check, flowctl validate fn-96
 - PRs:
