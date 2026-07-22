@@ -36,9 +36,8 @@ Add bounded in-repo comparators that isolate lexical retrieval and test the one-
 - [ ] Tests assert the prototype is eval-only and does not create or claim production CLI/MCP/REST/SDK contracts owned by fn-98.
 
 ## Done summary
-TBD
-
+Added two runner-compatible, task-isolated comparators over one immutable production-native fixture index. The lexical lane calls production BM25 with expansion, vectors, reranking, and graph disabled and normalizes exact atomic line evidence. The eval-only Capsule lane plans deterministic lexical variants, reads exact source lines, collapses duplicate/overlapping spans, selects by marginal facet coverage under one full model-visible UTF-8 budget, records auditable omissions and internal stage accounting, and emits canonical JSON. Both lanes enforce task corpus scope for search, get, and multi_get, expose cold/warm lifecycle accounting, and use the same pinned outer-agent runner. All 24 Capsule tasks succeed in one outer call; two unchanged-input runs produce byte-identical payload JSON and SHA-256.
 ## Evidence
-- Commits:
-- Tests:
+- Commits: 52b066c
+- Tests: bun test test/eval/agentic/lexical-adapter.test.ts test/eval/agentic/capsule-selection.test.ts test/eval/agentic/capsule-prototype.test.ts, bunx tsc --noEmit, bunx oxfmt --check evals/agentic/native-fixture-store.ts evals/agentic/adapters/lexical-core.ts evals/agentic/adapters/lexical.ts evals/agentic/capsule-query.ts evals/agentic/capsule-selection.ts evals/agentic/adapters/capsule-prototype-payload.ts evals/agentic/adapters/capsule-prototype.ts test/eval/agentic/lexical-adapter.test.ts test/eval/agentic/capsule-selection.test.ts test/eval/agentic/capsule-prototype.test.ts, .flow/bin/flowctl validate --spec fn-97-agentic-retrieval-outcome-benchmark --json
 - PRs:
