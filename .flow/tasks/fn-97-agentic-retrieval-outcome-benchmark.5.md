@@ -12,6 +12,7 @@ Integrate qmd as an immutable external comparator without trusting PATH, modifyi
 ### Approach
 - Add `qmd.lock.json` with exact repository URL, full commit `e428df76bc0274d9e93eb7ca3e95673315c42e90`, package name/version, repository-relative entrypoint, normalized tool-schema hashes, and model IDs/checksums. Preflight every field and reject missing, dirty, mismatched, placeholder, or ambiguous inputs before a trial starts.
 - Resolve only the locked checkout entrypoint and invoke it with isolated `QMD_CONFIG_DIR`, `XDG_CONFIG_HOME`, and `XDG_CACHE_HOME` plus isolated data paths. Never use PATH/global qmd, `git checkout`, `git pull`, dependency installation, or writes inside the supplied repository.
+- Build qmd's native immutable index from the common corpus snapshot only inside those temporary QMD/XDG/data roots during unmeasured preparation. Record its index fingerprint/build observations; cold and warm qmd cohorts reuse that identical prepared qmd index.
 - Hash exact returned content in the harness and label it `harness_observed`. Preserve backend-provided source/span hashes only when actually present; otherwise store null plus reason. Never pass hidden oracle data to qmd or synthesize backend hashes from it.
 - Map qmd capabilities/results/errors into the normalized adapter contract and disclose unsupported tool, span, token, lifecycle, and backend-hash measurements explicitly.
 - Make a requested qmd run fail as a harness error on preflight/contract failure; qmd remains optional for ordinary tests and non-qmd adapter runs.

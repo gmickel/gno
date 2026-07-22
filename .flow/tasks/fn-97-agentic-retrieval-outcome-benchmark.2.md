@@ -12,7 +12,7 @@ Build one adapter-neutral agent loop and runner so every system receives the sam
 ### Approach
 - Implement the deterministic fixture agent as the standard lane: pinned state machine/prompt/tool schema/call budget/stop policy, normalized tool results only, and prose-free schema-valid typed claims/citations/gaps.
 - Add an opt-in cached-local-model lane whose `agent-model.lock.json` contains an exact model URI, local file SHA-256, tokenizer identifier/checksum, maximum steps/tokens, and three-trial seed schedule. Refuse missing files, checksum/version mismatch, placeholder locks, downloads, API keys, and network fallback.
-- Consume task 1's immutable prebuilt fixture index. Run preparation before either cohort; cold uses a fresh process and first scored call, while warm uses one process/index after a discarded readiness probe.
+- Consume task 1's immutable corpus snapshot and coordinate adapter-native index builds during unmeasured preparation. Record corpus and per-adapter index fingerprints/build observations. For each adapter, cold and warm reuse its identical prebuilt native index; cold uses a fresh process and first scored call, while warm uses one process/index after a discarded readiness probe.
 - Implement timeout/call budgets, normalized trajectory capture, distinct outer-agent `agentCalls` and internal `backendInvocations`, stable canonical serialization, nullable separated preparation/startup/model/tool/driver/e2e observations, and explicit `harness_error|agent_error|product_error` classification.
 - Meter exact model-visible UTF-8 tool-result bytes as primary context. Record tokens only from the same pinned tokenizer; otherwise `null`.
 

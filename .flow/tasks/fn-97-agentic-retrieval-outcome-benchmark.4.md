@@ -11,6 +11,7 @@ Add bounded in-repo comparators that isolate lexical retrieval and test the one-
 
 ### Approach
 - Implement a lexical-only adapter on the isolated fixture DB using the production lexical path while disabling model-backed expansion/vector/reranking. Declare unsupported capabilities instead of fabricating parity.
+- Build from the immutable corpus snapshot during unmeasured preparation and share the fingerprinted GNO-native index with GNO MCP/Capsule where compatible; cold and warm reuse the identical prepared index.
 - Implement an eval-only Capsule prototype that retrieves extractive candidates, collapses duplicate/overlapping spans, and selects exact evidence under one global model-visible UTF-8 byte budget.
 - Emit canonical Capsule payload JSON containing exact URI/line/hash evidence and deterministic omission reasons; exclude observations and production API/schema commitments.
 - Count only outer-agent adapter calls as `agentCalls`; report retrieval/search/selection work separately as `backendInvocations`, never using the latter in R6's call-reduction gate.

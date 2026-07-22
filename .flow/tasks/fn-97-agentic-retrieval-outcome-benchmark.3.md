@@ -12,7 +12,7 @@ Measure the shipped GNO query/get workflow through its real MCP boundary with ex
 ### Approach
 - Spawn the real isolated stdio MCP server and invoke shipped tool names/schemas; do not import retrieval pipelines or add hidden shortcuts unavailable to an agent.
 - Follow the installed skill's search/query then get/multi_get workflow, capturing normalized arguments/order, returned exact evidence coordinates, repeated reads, filters, model-visible bytes, errors, and stop timing.
-- Use task 1's same immutable prebuilt index for both cohorts. Cold starts a fresh MCP process/cached model and scores its first call; warm preserves one process/index/model after a discarded readiness probe. Report preparation/startup/model/tool/driver/e2e timings separately with null reasons where unavailable.
+- Build or reuse the shared GNO-native immutable index from task 1's corpus snapshot during unmeasured preparation; record its fingerprint/build observations. Cold and warm reuse that exact GNO index: cold starts a fresh MCP process/cached model and scores its first call; warm preserves one process/index/model after a discarded readiness probe. Report preparation/startup/model/tool/driver/e2e timings separately with null reasons where unavailable.
 - Add deterministic fake-process contract tests plus isolated real-MCP integration coverage.
 
 ### Investigation targets

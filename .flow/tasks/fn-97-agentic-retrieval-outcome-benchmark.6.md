@@ -12,6 +12,7 @@ Compose all adapters, generate reviewable evidence, and enforce the exact paired
 ### Approach
 - Register `gno-mcp`, `lexical`, `capsule`, and `qmd` adapters behind one CLI with task/adapter/lifecycle/agent filters and explicit `--write` behavior.
 - Generate stable-key canonical JSON receipts, separate observations, and readable Markdown reports with environment, fingerprints, cohorts, every attempted pair/exclusion, methodology, and limitations.
+- Report the shared corpus-snapshot fingerprint plus every adapter-native index fingerprint/build observation; never imply cross-adapter index identity.
 - Enforce R6 on identical non-harness-failed task/trial pairs only: every pair has Capsule success ≥ GNO success; aggregate accuracy has no loss; sum-ratio outer-agent `agentCalls` reduction ≥25%; sum-ratio model-visible UTF-8 byte reduction ≥35%; micro claim linkage ≥95%; non-zero denominators; and byte-identical unchanged-input Capsule payloads. Report `backendInvocations` separately and never use them for the call gate.
 - Commit deterministic fixture-agent baselines. Keep cached-local-model and qmd observations separate, opt-in, and non-authoritative for the deterministic gate.
 
