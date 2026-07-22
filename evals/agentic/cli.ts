@@ -83,7 +83,7 @@ export const writeBenchmarkArtifacts = async (
     ]);
     const formatter = Bun.spawn([process.execPath, "x", "oxfmt", ...paths], {
       cwd: join(import.meta.dir, "../.."),
-      stdout: "pipe",
+      stdout: "ignore",
       stderr: "pipe",
     });
     const [formatterExit, formatterError] = await Promise.all([
