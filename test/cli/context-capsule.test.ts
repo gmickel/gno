@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, test } from "bun:test";
+import { afterEach, beforeEach, describe, expect, spyOn, test } from "bun:test";
 import { mkdir } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -13,6 +13,7 @@ import {
 } from "../../src/app/context-runtime";
 import { runCli } from "../../src/cli/run";
 import { createGnoClient } from "../../src/sdk/client";
+import { SqliteAdapter } from "../../src/store/sqlite/adapter";
 import { safeRm } from "../helpers/cleanup";
 
 let stdoutData = "";
@@ -300,6 +301,80 @@ describe("Context Capsule CLI and SDK", () => {
       );
     } finally {
       await client.close();
+    }
+  }, 30_000);
+
+  test("uses Capsule index authority unless CLI or SDK explicitly selects another index", async () => {
+    const workCapsulePath = join(testDir, "work-capsule.json");
+    expect((await cli("--index", "work", "update")).code).toBe(0);
+    expect(
+      (
+        await cli(
+          "--index",
+          "work",
+          "context",
+          "build",
+          "launch decision",
+          "--budget",
+          "100000",
+          "--collection",
+          "docs",
+          "--fast",
+          "--json",
+          "--output",
+          workCapsulePath
+        )
+      ).code
+    ).toBe(0);
+    const capsule = JSON.parse(await Bun.file(workCapsulePath).text());
+    expect(capsule.scope.indexName).toBe("work");
+
+    const omitted = await cli("context", "verify", workCapsulePath, "--json");
+    expect(omitted.code).toBe(0);
+    const matching = await cli(
+      "--index",
+      "WORK",
+      "context",
+      "verify",
+      workCapsulePath,
+      "--json"
+    );
+    expect(matching.code).toBe(0);
+    expect(matching.stdout).toBe(omitted.stdout);
+
+    const defaultClient = await createGnoClient();
+    const matchingClient = await createGnoClient({ indexName: "WORK" });
+    try {
+      const sdkReceipt = await matchingClient.verifyContext(capsule);
+      expect(canonicalVerifiedContextCapsuleJson(sdkReceipt)).toBe(
+        omitted.stdout.trimEnd()
+      );
+
+      const openSpy = spyOn(SqliteAdapter.prototype, "open");
+      try {
+        const mismatchedCli = await cli(
+          "--index",
+          "other",
+          "context",
+          "verify",
+          workCapsulePath,
+          "--json"
+        );
+        expect(mismatchedCli.code).toBe(1);
+        expect(mismatchedCli.stdout).toBe("");
+        expect(JSON.parse(mismatchedCli.stderr).error.details.contextCode).toBe(
+          "invalid_filter"
+        );
+        expect(defaultClient.verifyContext(capsule)).rejects.toMatchObject({
+          code: "invalid_filter",
+        });
+        expect(openSpy).not.toHaveBeenCalled();
+      } finally {
+        openSpy.mockRestore();
+      }
+    } finally {
+      await matchingClient.close();
+      await defaultClient.close();
     }
   }, 30_000);
 

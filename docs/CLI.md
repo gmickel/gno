@@ -693,11 +693,12 @@ independently from ranking plus current source, mirror, and passage hashes when
 known. No rank resolver means `ranking_unavailable`; stale or missing content
 is never ranked.
 
-An explicit global `--index` must match the Capsule's saved index. Verification
-of an `active_tokenizer` Capsule requires the matching tokenizer fingerprint
-and deterministic token counter before GNO opens the store; runtimes without
-that tokenizer return `tokenizer_unavailable` and never trust saved
-`usedTokens` alone.
+With no global `--index`, verification opens the Capsule's saved index. An
+explicit global `--index` must match that index; mismatches fail before GNO
+opens a store. Verification of an `active_tokenizer` Capsule requires the
+matching tokenizer fingerprint and deterministic token counter before GNO
+opens the store; runtimes without that tokenizer return `tokenizer_unavailable`
+and never trust saved `usedTokens` alone.
 
 ### gno context rm
 

@@ -42,13 +42,21 @@ import type {
   GnoVectorSearchOptions,
 } from "./types";
 
-import { decorateUriForIndex, getIndexDbPath } from "../app/constants";
+import {
+  decorateUriForIndex,
+  DEFAULT_INDEX_NAME,
+  getIndexDbPath,
+} from "../app/constants";
 import {
   buildContextCapsule,
   validateContextCapsuleBuildInput,
   verifyContextCapsuleRuntime,
 } from "../app/context-runtime";
-import { INDEX_NAME_REQUIREMENTS, isValidIndexName } from "../app/index-name";
+import {
+  canonicalizeIndexName,
+  INDEX_NAME_REQUIREMENTS,
+  isValidIndexName,
+} from "../app/index-name";
 import {
   ConfigSchema,
   loadConfig,
@@ -116,7 +124,7 @@ interface OpenedClientState {
   store: SqliteAdapter;
   llm: LlmAdapter;
   downloadPolicy: DownloadPolicy;
-  indexName?: string;
+  indexName: string;
 }
 
 interface RuntimePorts {
@@ -169,7 +177,10 @@ async function resolveClientState(
     configSource = "file";
   }
 
-  const dbPath = options.dbPath ?? getIndexDbPath(options.indexName);
+  const indexName = canonicalizeIndexName(
+    options.indexName ?? DEFAULT_INDEX_NAME
+  );
+  const dbPath = options.dbPath ?? getIndexDbPath(indexName);
   await mkdir(dirname(dbPath), { recursive: true });
 
   const store = new SqliteAdapter();
@@ -187,7 +198,7 @@ async function resolveClientState(
     llm: new LlmAdapter(config, options.cacheDir),
     downloadPolicy:
       options.downloadPolicy ?? resolveDownloadPolicy(process.env, {}),
-    indexName: options.indexName,
+    indexName,
   };
 }
 
@@ -200,7 +211,7 @@ class GnoClientImpl implements GnoClient {
   private readonly store: SqliteAdapter;
   private readonly llm: LlmAdapter;
   private readonly downloadPolicy: DownloadPolicy;
-  private readonly indexName?: string;
+  private readonly indexName: string;
   private closed = false;
 
   constructor(state: OpenedClientState) {

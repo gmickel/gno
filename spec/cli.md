@@ -1253,10 +1253,12 @@ and index state. Without a live rank resolver, ranking is reported as
 JSON uses the canonical verification schema. Markdown projects the same receipt,
 including fingerprint drift and every available current hash. Non-canonical
 metadata and invalid identity/budget data fail before the store is read.
-An explicit global `--index` must match the Capsule scope. Active-tokenizer
-Capsules require the matching tokenizer fingerprint and deterministic recount
-callback before any store read; CLI runtimes without that tokenizer fail with
-`tokenizer_unavailable` rather than trusting saved `usedTokens`.
+When global `--index` is omitted, the Capsule scope selects the index. An
+explicit global `--index` must match the Capsule scope; mismatch fails before a
+store is opened. Active-tokenizer Capsules require the matching tokenizer
+fingerprint and deterministic recount callback before any store read; CLI
+runtimes without that tokenizer fail with `tokenizer_unavailable` rather than
+trusting saved `usedTokens`.
 
 ---
 

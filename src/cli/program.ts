@@ -1774,23 +1774,33 @@ function wireManagementCommands(program: Command): void {
     .option("--output <path>", "write only to this explicit file")
     .option("--json", "canonical JSON receipt")
     .option("--md", "readable Markdown receipt")
-    .action(async (file: string, cmdOpts: Record<string, unknown>) => {
-      const format = getFormat(cmdOpts);
-      assertFormatSupported(CMD.contextVerify, format);
-      const outputPath = validateContextOutputPath(cmdOpts.output);
-      const globals = getGlobals();
-      const { contextVerify } = await import("./commands/context-verify");
-      const output = await contextVerify(file, {
-        configPath: globals.config,
-        indexName: globals.index,
-        format: format === "json" ? "json" : "md",
-      });
-      if (outputPath !== undefined) {
-        await Bun.write(outputPath, output);
-        return;
+    .action(
+      async (
+        file: string,
+        cmdOpts: Record<string, unknown>,
+        command: Command
+      ) => {
+        const format = getFormat(cmdOpts);
+        assertFormatSupported(CMD.contextVerify, format);
+        const outputPath = validateContextOutputPath(cmdOpts.output);
+        const globals = getGlobals();
+        const explicitIndexName =
+          command.getOptionValueSourceWithGlobals("index") === "cli"
+            ? globals.index
+            : undefined;
+        const { contextVerify } = await import("./commands/context-verify");
+        const output = await contextVerify(file, {
+          configPath: globals.config,
+          indexName: explicitIndexName,
+          format: format === "json" ? "json" : "md",
+        });
+        if (outputPath !== undefined) {
+          await Bun.write(outputPath, output);
+          return;
+        }
+        await writeOutput(output, format === "json" ? "json" : "md");
       }
-      await writeOutput(output, format === "json" ? "json" : "md");
-    });
+    );
 
   contextCmd
     .command("rm <uri>")

@@ -182,6 +182,9 @@ console.log(receipt.contentStatus, receipt.fingerprintStatus);
 ```
 
 `client.context()` and the CLI share the same compiler and canonical projector.
+`client.verifyContext()` requires the client's effective index to match the
+Capsule scope. An omitted client `indexName` is canonical `default`; mismatches
+return `invalid_filter` before verification reads the store.
 The returned `GnoContextResult` includes exact evidence text and line ranges,
 source/mirror/passage hashes, configured-context bindings, coverage gaps,
 omission counts, capability fallbacks, and exact final payload accounting.
