@@ -12,7 +12,7 @@ Deliver register saved capsules and reverify affected evidence as one implementa
 ### Approach
 - Register only explicitly saved Capsule path/hash/question/evidence references; keep the Capsule body user-owned at its chosen location.
 - Use journal source/hash changes to enqueue bounded reverification only for referenced evidence, not every saved Capsule on every sync.
-- Run `verifyContextCapsuleRuntime` once for each affected saved Capsule with `ContextCapsuleRuntimeDeps`, including optional evidence-ID keyed rank resolution; let the shared runtime derive current fingerprints from the active config/index/model boundary. Persist/project the receipt separately with `canonicalVerifiedContextCapsuleJson`, including `currentFingerprints`, `fingerprintStatus`, and ordered `fingerprintReasons` independently from per-evidence ranking, then derive affected-question state and optional local notifications after committed changes. Use the store's batch lookup ports as-is so their internal SQLite-safe chunking supports large saved Capsules.
+- Run `verifyContextCapsuleRuntime` once for each affected saved Capsule with `ContextCapsuleRuntimeDeps`, including optional evidence-ID keyed rank resolution; resolve and pass the registry's canonical effective index (including `default`) so a saved Capsule/index mismatch fails before evidence-store reads, and let the shared runtime derive current fingerprints from the matching config/index/model boundary. Persist/project the receipt separately with `canonicalVerifiedContextCapsuleJson`, including `currentFingerprints`, `fingerprintStatus`, and ordered `fingerprintReasons` independently from per-evidence ranking, then derive affected-question state and optional local notifications after committed changes. Use the store's batch lookup ports as-is so their internal SQLite-safe chunking supports large saved Capsules.
 
 ### Investigation targets
 **Required** (read before coding):
@@ -37,9 +37,11 @@ Deliver register saved capsules and reverify affected evidence as one implementa
 - [ ] Receipts preserve partial truth for source/mirror/passage/chunk stale, missing, and corrupt states, including each current hash the verifier could determine, and distinguish those content results from ranking drift, aggregate fingerprint drift, and affected question state.
 - [ ] Jobs are bounded/idempotent and notifications contain no source passage content.
 - [ ] Reverification preserves the saved Capsule bytes, handles `ContextVerifierErrorCode` operation failures separately from completed stale/missing receipts, and does not treat `ranking_unavailable` as content staleness.
+- [ ] A saved Capsule bound to another index reports `invalid_filter` before evidence-store reads; reverification never silently falls back to the process default or reads the wrong open index.
 <!-- Updated by plan-sync (cross-spec): fn-98-context-capsule-mvp.4 exposed verifyContextCapsule and canonical non-mutating verification receipts -->
 <!-- Updated by plan-sync (cross-spec): fn-98-context-capsule-mvp.4 review fixes finalized independent fingerprint status, partial-truth hashes, exact evidence bytes, and chunked large-Capsule lookups -->
 <!-- Updated by plan-sync (cross-spec): fn-98-context-capsule-mvp.5 centralized verification dependency wiring and current fingerprint derivation in verifyContextCapsuleRuntime -->
+<!-- Updated by plan-sync (cross-spec): fn-98-context-capsule-mvp.5 review fixes made the Capsule/runtime canonical index match a pre-read verification invariant -->
 
 
 ## Done summary

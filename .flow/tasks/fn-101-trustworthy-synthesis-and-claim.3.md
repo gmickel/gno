@@ -11,7 +11,7 @@ Deliver integrate verified synthesis across ask surfaces as one implementation-s
 
 ### Approach
 - Build verified Ask on Context Capsules rather than full-document prefixes, preserving raw Ask mode as an explicit compatibility choice during rollout. Compose Capsule build/freshness through `buildContextCapsule` and `verifyContextCapsuleRuntime` so Ask does not recreate input normalization, runtime fingerprint derivation, compiler wiring, or verification wiring.
-- Return answer, per-claim verdicts, exact support/conflict spans, gaps, coverage, abstention, and degraded capability through one result contract.
+- Return answer, per-claim verdicts, exact support/conflict spans, gaps, coverage, abstention, and degraded capability through one result contract. Derive degradation from the Capsule's requested/attempted/outcome `retrieval.capabilityStates`, not from ambiguous capability booleans or the mere absence of a fallback.
 - Use the same defaults/thresholds and readable rendering across CLI, REST, MCP, SDK, and Web.
 
 ### Investigation targets
@@ -32,7 +32,9 @@ Deliver integrate verified synthesis across ask surfaces as one implementation-s
 - [ ] All surfaces emit schema-equivalent claims/verdicts/evidence/gaps/coverage.
 - [ ] Below-threshold support yields explicit abstention instead of an unsupported answer.
 - [ ] Contradiction and missing evidence remain distinct in JSON and readable output.
+- [ ] Verified Ask preserves the normalized Capsule retrieval request for reproducibility, distinguishes `not_requested` from attempted `unavailable`, and uses each surface's canonical effective index so freshness verification fails closed on an index mismatch.
 <!-- Updated by plan-sync (cross-spec): fn-98-context-capsule-mvp.5 introduced buildContextCapsule and verifyContextCapsuleRuntime as the shared surface composition boundary -->
+<!-- Updated by plan-sync (cross-spec): fn-98-context-capsule-mvp.5 review fixes made retrieval request, capability outcome, and runtime-index authority explicit -->
 
 
 ## Done summary
