@@ -7,28 +7,47 @@ satisfies: [R1, R2, R4, R5]
 Deliver integrate activation into cli rest and onboarding health as one implementation-sized increment.
 
 **Size:** M
-**Files:** `src/cli/commands/doctor.ts`, `src/cli/commands/status.ts`, `src/serve/routes/api.ts`, `src/serve/status.ts`, `src/serve/public/components/BootstrapStatus.tsx`
+**Files:** `src/core/activation-status.ts`, `src/cli/commands/doctor.ts`, `src/cli/commands/status.ts`, `src/serve/status-model.ts`, `src/serve/routes/api.ts`, `src/serve/status.ts`, `src/serve/public/components/BootstrapStatus.tsx`, `src/serve/public/components/FirstRunWizard.tsx`, `src/serve/public/components/HealthCenter.tsx`, `spec/cli.md`, `spec/output-schemas/status.schema.json`, `spec/output-schemas/doctor.schema.json`, `test/cli/doctor.test.ts`, `test/cli/status.test.ts`, `test/serve/api-status.test.ts`, `test/spec/schemas/status.test.ts`, `test/spec/schemas/doctor.test.ts`
 
 ### Approach
-- Expose the shared receipt additively through doctor/status and Web health without duplicating probe logic.
-- Show exact failed/pending stage, next command, and semantic background state; keep JSON stdout clean.
-- Cache only by receipt fingerprint and coalesce concurrent checks without allowing stale green state.
+- Add one shared activation status aggregator over the per-collection `ActivationVerificationReceipt@1.0` rows and optional target-specific connector rows; CLI, REST, and Web must consume that model without reimplementing probe or readiness logic.
+- Run `verifyLexicalActivation` for every configured collection and retain every receipt in deterministic collection order. Expose two unambiguous aggregates: `usable` means at least one collection has a passing lexical receipt; `healthy` means at least one collection is configured and every configured collection receipt is ready. UI green and `gno doctor` success use `healthy`; `usable:true, healthy:false` is a visibly degraded state, never green. Empty/unsupported collections remain explicit failures/remediation.
+- Keep `/api/health` as process liveness. Expose readiness additively under `/api/status.activation`; mirror the same contract in `gno status` and `gno doctor`. `gno status` still exits successfully while emitting `healthy:false`; `gno doctor` exits 2 when lexical activation is not ready.
+- Show the exact failed/pending stage, stable code, collection/connector target, and next command. Connector failure does not rewrite the receipt's lexical `ready` invariant; render connector health separately so a requested broken target cannot look green.
+- Passive status/doctor/API reads must never initialize or download models. Keep semantic activation `pending` in this feature with a stable reason such as `models_missing`, `embeddings_pending`, or `vector_unavailable`; do not emit semantic `passed` until a later implementation defines a fingerprint covering embedding model/config and vector-index completeness. Semantic pending does not block lexical usability.
+- Reuse only fingerprint-matched receipts, rely on fn-94.1 FTS-state invalidation, and coalesce concurrent verification for the same collection/fingerprint/target. A failed or corrupt cached row must never become a stale green response.
+
+### Shipped contracts to preserve
+- The receipt is per collection, not a singleton. SQLite migration 012 keys it by `(collection, connector_target)`.
+- `ready === (index.status === "passed" && lexical.status === "passed")`; ready receipts require `probeHash`, `resultUri`, and `resultSourceHash`.
+- The fingerprint includes schema, tokenizer, active document hashes, and FTS synchronization state; surfaces must not add an independent TTL cache that bypasses it.
+- Connector stage and semantic stage are truthful partial states, not prerequisites for immediate lexical use.
+- Connector remediation comes from fn-94.2's deterministic code/target mapper; it is not arbitrary persisted receipt text.
 
 ### Investigation targets
 **Required** (read before coding):
 - `src/cli/commands/doctor.ts`
 - `src/serve/routes/api.ts:732-780`
 - `src/serve/status.ts`
+- `src/serve/status-model.ts`
 - `src/serve/public/components/BootstrapStatus.tsx`
 
 **Optional** (reference as needed):
 - `src/serve/public/components/HealthCenter.tsx`
-- `src/serve/status-model.ts`
+- `src/serve/public/components/FirstRunWizard.tsx`
+- `src/core/activation-verifier.ts`
+- `src/store/types.ts`
+- `spec/cli.md`
+- `spec/output-schemas/status.schema.json`
+- `spec/output-schemas/doctor.schema.json`
 
 ## Acceptance
 - [ ] CLI, REST, and Web render the same stage statuses and remediation from one contract.
 - [ ] A failed lexical stage cannot appear green on any surface.
 - [ ] Semantic pending does not block lexical usability and is visibly distinguished from failure.
+- [ ] Status/API paths perform no model download or remote call, `/api/health` remains liveness-only, and concurrent checks coalesce without reusing fingerprint-stale receipts.
+- [ ] Multi-collection fixtures prove deterministic `usable`/`healthy` aggregation, explicit empty/unsupported handling, visibly degraded mixed outcomes, `status` versus `doctor` exit semantics, and separate connector health.
+- [ ] `spec/cli.md`, status/doctor JSON schemas, and contract tests change before or with implementation; task .3 lands with no contract/docs drift deferred to .4.
 
 
 ## Done summary
