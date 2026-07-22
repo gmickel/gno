@@ -10,7 +10,7 @@ Deliver implement non-mutating capsule verification as one implementation-sized 
 **Files:** `src/core/context-verifier.ts`, `src/store/types.ts`, `src/store/sqlite/adapter.ts`, `test/core/context-verifier.test.ts`
 
 ### Approach
-- Build on `src/core/context-capsule-verification.ts` and resolve each saved canonical evidence identity against current active source/mirror hashes and exact spans.
+- Build on `src/core/context-capsule-verification.ts` and reuse task 3's strict docid-keyed loader/extractor to resolve each saved canonical evidence identity against current active source/mirror hashes, chunks, and exact spans; do not fork source loading or same-mirror handling.
 - Classify unchanged, stale, missing, and reranked with explicit config/index/model fingerprint drift; never rebuild or rewrite the input Capsule.
 - Separate content staleness from ranking/config drift so callers can decide whether to rebuild.
 
@@ -30,7 +30,9 @@ Deliver implement non-mutating capsule verification as one implementation-sized 
 - [ ] Verification leaves Capsule bytes unchanged and returns a separate canonical receipt.
 - [ ] Missing/corrupt sources fail per item without aborting unrelated evidence checks.
 - [ ] Verification accepts only the frozen canonical URI, evidence-ID, and exact-budget Capsule contract before it resolves evidence.
+- [ ] Verification shares the compiler's active-document, mirror/chunk, and canonical full-line extractor and preserves per-item failure isolation.
 <!-- Updated by plan-sync: fn-98-context-capsule-mvp.1 used src/core/context-capsule-verification.ts as the frozen verification contract -->
+<!-- Updated by plan-sync: fn-98-context-capsule-mvp.2 used strict injected materialization over preserved same-mirror search results -->
 
 
 ## Done summary
