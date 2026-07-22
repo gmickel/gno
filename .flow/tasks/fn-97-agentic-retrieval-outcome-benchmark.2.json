@@ -11,6 +11,6 @@
   "spec": "fn-97-agentic-retrieval-outcome-benchmark",
   "spec_path": ".flow/tasks/fn-97-agentic-retrieval-outcome-benchmark.2.md",
   "status": "todo",
-  "title": "Instrument the current GNO agent workflow adapter",
-  "updated_at": "2026-07-21T22:08:30.236899Z"
+  "title": "Build the pinned outer-agent driver and benchmark runner",
+  "updated_at": "2026-07-22T14:39:13.409680Z"
 }

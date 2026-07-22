@@ -1,34 +1,33 @@
 ---
-satisfies: [R2, R3, R5]
+satisfies: [R2, R3, R4]
 ---
-# fn-97-agentic-retrieval-outcome-benchmark.2 Instrument the current GNO agent workflow adapter
+# fn-97-agentic-retrieval-outcome-benchmark.2 Build the pinned outer-agent driver and benchmark runner
 
 ## Description
-Deliver instrument the current gno agent workflow adapter as one implementation-sized increment.
+Build one adapter-neutral agent loop and runner so every system receives the same visible task and stopping policy.
 
 **Size:** M
-**Files:** `evals/agentic/adapters/gno-current.ts`, `evals/agentic/runner.ts`, `assets/skill/SKILL.md`, `test/evals/gno-current-adapter.test.ts`
+**Files:** `evals/agentic/fixture-agent.ts`, `evals/agentic/local-model-agent.ts`, `evals/agentic/runner.ts`, `evals/agentic/adapter.ts`, `test/evals/agentic/driver.test.ts`, `test/evals/agentic/runner.test.ts`
 
 ### Approach
-- Execute the documented query/search then get/multi_get workflow through the real CLI/MCP contract in an isolated corpus.
-- Capture normalized tool trajectories, exact bytes read, evidence spans, filter selection, premature stopping, and warm/cold model lifecycle.
-- Meter tokens through the pinned tokenizer when available; otherwise record a deterministic byte-derived estimate and safety margin rather than inventing precision.
+- Implement the deterministic fixture agent as the standard lane: pinned state machine/prompt/tool schema/call budget/stop policy, normalized tool results only, and schema-valid `FinalEnvelope` output.
+- Add an opt-in cached-local-model lane with a pinned local model/prompt/tokenizer and exactly three paired trials sharing trial IDs/seeds/task order across adapters. No downloads, API keys, or network fallback.
+- Implement isolated corpus setup, adapter lifecycle, timeout/call budgets, normalized trajectory capture, stable canonical serialization, observations, and explicit `harness_error|agent_error|product_error` classification.
+- Meter exact model-visible UTF-8 tool-result bytes as primary context. Record tokens only from the same pinned tokenizer; otherwise `null`.
 
 ### Investigation targets
 **Required** (read before coding):
-- `assets/skill/SKILL.md`
-- `docs/MCP.md:37-100`
-- `src/mcp/tools/query.ts`
-- `src/mcp/tools/multi-get.ts`
-- `src/cli/commands/query.ts`
+- Planned task 1 outputs: `evals/agentic/types.ts`, `evals/agentic/schemas/`, `evals/agentic/scoring.ts`
+- `evals/helpers/setup-db.ts`
+- `evals/helpers/hybrid-benchmark.ts`
+- `src/llm/` local model lifecycle patterns
 
-**Optional** (reference as needed):
-- `src/cli/commands/get.ts`
 ## Acceptance
-- [ ] The adapter follows the shipped skill/MCP workflow and records every call/read without hidden shortcuts.
-- [ ] Warm and cold runs have distinct lifecycle/timing receipts.
-- [ ] Token/byte accounting is reproducible and discloses fallback estimation.
-
+- [ ] Fixture-agent runs are byte-reproducible from unchanged inputs and emit only schema-valid structured final envelopes.
+- [ ] The runner uses the same agent-visible brief, driver, budgets, and normalized tool envelope for all adapters.
+- [ ] Optional local-model mode refuses uncached/unpinned models and produces exactly three explicitly paired trials per task/adapter.
+- [ ] Receipts classify all attempted trials, never score harness failures as product failures, and preserve canonical/observation separation.
+- [ ] UTF-8 model-visible bytes are exact and tokens are measured only with one pinned tokenizer or reported `null`.
 
 ## Done summary
 TBD

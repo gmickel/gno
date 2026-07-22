@@ -1,0 +1,16 @@
+{
+  "assignee": null,
+  "claim_note": "",
+  "claimed_at": null,
+  "created_at": "2026-07-22T14:33:55.479665Z",
+  "depends_on": [
+    "fn-97-agentic-retrieval-outcome-benchmark.2"
+  ],
+  "id": "fn-97-agentic-retrieval-outcome-benchmark.5",
+  "priority": null,
+  "spec": "fn-97-agentic-retrieval-outcome-benchmark",
+  "spec_path": ".flow/tasks/fn-97-agentic-retrieval-outcome-benchmark.5.md",
+  "status": "todo",
+  "title": "Add fail-closed revision-pinned qmd comparator",
+  "updated_at": "2026-07-22T14:39:13.954480Z"
+}

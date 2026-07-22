@@ -4,14 +4,13 @@
   "claimed_at": null,
   "created_at": "2026-07-21T21:55:27.544092Z",
   "depends_on": [
-    "fn-97-agentic-retrieval-outcome-benchmark.2",
-    "fn-97-agentic-retrieval-outcome-benchmark.3"
+    "fn-97-agentic-retrieval-outcome-benchmark.2"
   ],
   "id": "fn-97-agentic-retrieval-outcome-benchmark.4",
   "priority": null,
   "spec": "fn-97-agentic-retrieval-outcome-benchmark",
   "spec_path": ".flow/tasks/fn-97-agentic-retrieval-outcome-benchmark.4.md",
   "status": "todo",
-  "title": "Publish baselines and enforce Capsule promotion gates",
-  "updated_at": "2026-07-21T21:55:27.544266Z"
+  "title": "Add lexical comparator and eval-only Capsule prototype",
+  "updated_at": "2026-07-22T14:39:13.768856Z"
 }
