@@ -201,6 +201,15 @@ describe("gno get smoke tests", () => {
     expect(stderr).toContain("Invalid ref");
   });
 
+  test("exits 1 for an unsafe indexed URI before filesystem access", async () => {
+    const { code, stderr } = await cli(
+      "get",
+      "gno://docs/test.md?index=work%2F..%2F..%2Fescape"
+    );
+    expect(code).toBe(1);
+    expect(stderr).toContain("Invalid index name:");
+  });
+
   test("exits 2 for not found", async () => {
     const { code, stderr } = await cli("get", "docs/nonexistent.md");
     expect(code).toBe(2);

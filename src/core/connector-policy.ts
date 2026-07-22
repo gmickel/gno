@@ -2,10 +2,13 @@
 
 // node:fs/promises realpath has no Bun equivalent for symlink-safe provenance.
 import { realpath } from "node:fs/promises";
-// node:path has no Bun equivalent for portable path identity and lookup.
-import { basename, delimiter, isAbsolute, join, resolve, sep } from "node:path";
+// node:path has no Bun equivalent for portable path identity checks.
+import { basename, isAbsolute } from "node:path";
 
 import type { ActivationVerificationCode } from "../store/types";
+
+import { isValidIndexName } from "../app/index-name";
+import { getCurrentGnoEntrypoint } from "./runtime-entrypoint";
 
 export type ConnectorVerificationCode = Extract<
   ActivationVerificationCode,
@@ -41,26 +44,13 @@ async function realpathOrNull(path: string): Promise<string | null> {
   }
 }
 
-function executableCandidates(command: string): string[] {
-  if (isAbsolute(command) || command.includes(sep)) {
-    return [resolve(command)];
-  }
-  return (process.env.PATH ?? "")
-    .split(delimiter)
-    .filter(Boolean)
-    .map((directory) => join(directory, command));
-}
-
 async function resolveExecutableIdentity(
   command: string
 ): Promise<string | null> {
-  for (const candidate of executableCandidates(command)) {
-    const identity = await realpathOrNull(candidate);
-    if (identity) {
-      return identity;
-    }
+  if (!isAbsolute(command)) {
+    return null;
   }
-  return null;
+  return realpathOrNull(command);
 }
 
 async function trustedGnoIdentities(
@@ -69,7 +59,7 @@ async function trustedGnoIdentities(
   // Conventional install paths are locators, not trust roots: symlinks resolve
   // to this package entrypoint; standalone wrappers must be explicitly trusted.
   const candidates = [
-    resolve(import.meta.dir, "../index.ts"),
+    getCurrentGnoEntrypoint(),
     ...(options.trustedGnoEntryPaths ?? []),
   ];
   const identities = new Set<string>();
@@ -99,15 +89,10 @@ async function hasTrustedGnoExecutableIdentity(
 }
 
 const SAFE_GLOBAL_VALUE_FLAGS = ["--index", "--config"] as const;
-const MAX_SAFE_INDEX_NAME_LENGTH = 64;
-const SAFE_INDEX_NAME_REGEX = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
+const CONTROL_CHARACTER_PATTERN = /\p{Cc}/u;
 
-function isSafeIndexName(value: string): boolean {
-  return (
-    value.length <= MAX_SAFE_INDEX_NAME_LENGTH &&
-    SAFE_INDEX_NAME_REGEX.test(value) &&
-    !value.includes("..")
-  );
+function isSafeConfigPath(value: string): boolean {
+  return isAbsolute(value) && !CONTROL_CHARACTER_PATTERN.test(value);
 }
 
 function isSafeReadOnlyMcpArgs(args: string[]): boolean {
@@ -137,7 +122,8 @@ function isSafeReadOnlyMcpArgs(args: string[]): boolean {
       if (
         !value ||
         value.startsWith("-") ||
-        (flag === "--index" && !isSafeIndexName(value))
+        (flag === "--index" && !isValidIndexName(value)) ||
+        (flag === "--config" && !isSafeConfigPath(value))
       ) {
         return false;
       }
@@ -146,7 +132,11 @@ function isSafeReadOnlyMcpArgs(args: string[]): boolean {
     }
 
     const value = argument?.slice(flag.length + 1);
-    if (!value || (flag === "--index" && !isSafeIndexName(value))) {
+    if (
+      !value ||
+      (flag === "--index" && !isValidIndexName(value)) ||
+      (flag === "--config" && !isSafeConfigPath(value))
+    ) {
       return false;
     }
     position += 1;
@@ -163,6 +153,7 @@ export async function isSafeLocalGnoMcpCommand(
   const args = entry.args;
   if (
     !entry.command ||
+    !isAbsolute(entry.command) ||
     args.length === 0 ||
     args.includes("--enable-write") ||
     commandName === "bunx" ||

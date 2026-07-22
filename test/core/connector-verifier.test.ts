@@ -152,7 +152,8 @@ describe("connector activation verifier", () => {
       | "search-fails"
       | "mismatch"
       | "wrong-result-index",
-    reportedIndexName: "default" | "work" = "default"
+    reportedIndexName: string = "default",
+    expectedEnvironment?: { dataDir: string; cacheDir: string }
   ): Promise<{ command: string; args: string[] }> {
     const fixtureDir = join(testDir, "fixture");
     await mkdir(fixtureDir, { recursive: true });
@@ -181,6 +182,7 @@ describe("connector activation verifier", () => {
         searchFails: mode === "search-fails",
         statusFails: mode === "status-fails",
         statusTimeout: mode === "status-timeout",
+        expectedEnvironment,
       })
     );
     const script = `
@@ -193,7 +195,7 @@ if (config.hasStatus) {
   if (config.statusTimeout) {
     server.tool("gno_status", {}, async () => await new Promise(() => {}));
   } else {
-    server.tool("gno_status", {}, async () => ({ isError: config.statusFails, content: [{ type: "text", text: "status" }], structuredContent: { indexName: config.reportedIndexName } }));
+    server.tool("gno_status", {}, async () => ({ isError: config.statusFails || (config.expectedEnvironment && (process.env.GNO_DATA_DIR !== config.expectedEnvironment.dataDir || process.env.GNO_CACHE_DIR !== config.expectedEnvironment.cacheDir)), content: [{ type: "text", text: "status" }], structuredContent: { indexName: config.reportedIndexName } }));
   }
 }
 if (config.hasSearch) {
@@ -209,6 +211,7 @@ await new Promise((resolve) => process.stdin.once("end", resolve));
   function mcpTarget(serverEntry: {
     command: string;
     args: string[];
+    env?: { GNO_DATA_DIR?: string; GNO_CACHE_DIR?: string };
   }): McpConnectorVerificationTarget {
     return {
       kind: "mcp",
@@ -245,6 +248,43 @@ await new Promise((resolve) => process.stdin.once("end", resolve));
     expect(new TextEncoder().encode(serialized).byteLength).toBeLessThan(
       16_384
     );
+  });
+
+  test("fails closed when status reports an empty index identity", async () => {
+    const serverEntry = await createMcpFixture("pass", "");
+    const result = await verifyConnectorActivation(
+      adapter,
+      COLLECTION,
+      mcpTarget(serverEntry),
+      optionsForTrustedEntry(serverEntry)
+    );
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.stages.connector).toMatchObject({
+        status: "failed",
+        code: "connector_status_failed",
+      });
+    }
+  });
+
+  test("passes only audited workspace roots to the proof child", async () => {
+    const dataDir = join(testDir, "proof-data");
+    const cacheDir = join(testDir, "proof-cache");
+    const serverEntry = await createMcpFixture("pass", "default", {
+      dataDir,
+      cacheDir,
+    });
+    const result = await verifyConnectorActivation(
+      adapter,
+      COLLECTION,
+      mcpTarget({
+        ...serverEntry,
+        env: { GNO_DATA_DIR: dataDir, GNO_CACHE_DIR: cacheDir },
+      }),
+      optionsForTrustedEntry(serverEntry)
+    );
+    expect(result.ok).toBe(true);
+    expect(result.ok && result.value.stages.connector.status).toBe("passed");
   });
 
   test("requires MCP status and results to match the selected non-default index", async () => {

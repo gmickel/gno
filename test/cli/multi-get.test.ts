@@ -218,6 +218,15 @@ describe("gno multi-get smoke tests", () => {
     expect(parsed.skipped[0].reason).toBe("not_found");
   });
 
+  test("exits 1 for an unsafe indexed URI before filesystem access", async () => {
+    const { code, stderr } = await cli(
+      "multi-get",
+      "gno://docs/doc1.md?index=work%2F..%2F..%2Fescape"
+    );
+    expect(code).toBe(1);
+    expect(stderr).toContain("Invalid index name:");
+  });
+
   test("truncates large documents with --max-bytes", async () => {
     const { code, stdout } = await cli(
       "multi-get",

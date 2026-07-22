@@ -147,6 +147,25 @@ describe("indexed URI roundtrip", () => {
     expect(await Bun.file(missingPath).exists()).toBe(false);
   });
 
+  test("SDK and MCP reject path-like indexed URI names before filesystem access", async () => {
+    const escapedPath = join(tmpDir, "escape.sqlite");
+    const maliciousRef = "gno://notes/same.md?index=work%2F..%2F..%2Fescape";
+
+    const sdkError = await captureRejection(
+      Promise.resolve(sdkClient.get(maliciousRef))
+    );
+    expect(sdkError.message).toContain("Invalid index name:");
+    expect(await Bun.file(escapedPath).exists()).toBe(false);
+
+    const mcpResult = await handleGet(
+      { ref: maliciousRef, lineNumbers: false },
+      createToolContext()
+    );
+    expect(mcpResult.isError).toBe(true);
+    expect(mcpResult.content[0]?.text).toContain("Invalid index name:");
+    expect(await Bun.file(escapedPath).exists()).toBe(false);
+  });
+
   test("MCP get and multi-get read the explicitly requested index", async () => {
     const ref = "gno://notes/same.md?index=alt";
     const ctx = createToolContext();

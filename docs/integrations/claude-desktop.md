@@ -60,14 +60,28 @@ Claude uses GNO's search tools to find relevant documents, then synthesizes answ
 
 ## Manual Configuration
 
-If auto-install doesn't work, add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
+If auto-install doesn't work, run `gno mcp install --dry-run --json`, then add
+the reported absolute values to
+`~/Library/Application Support/Claude/claude_desktop_config.json`:
 
 ```json
 {
   "mcpServers": {
     "gno": {
-      "command": "gno",
-      "args": ["mcp"]
+      "command": "/absolute/path/to/bun",
+      "args": [
+        "run",
+        "/absolute/path/to/@gmickel/gno/src/index.ts",
+        "--index",
+        "default",
+        "--config",
+        "/absolute/path/to/index.yml",
+        "mcp"
+      ],
+      "env": {
+        "GNO_DATA_DIR": "/absolute/path/to/data",
+        "GNO_CACHE_DIR": "/absolute/path/to/cache"
+      }
     }
   }
 }

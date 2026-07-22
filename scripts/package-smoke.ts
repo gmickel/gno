@@ -1,10 +1,11 @@
-// node:fs/promises: temp dir structure and cleanup have no Bun-native equivalent.
+// node:fs/promises: temp structure and cleanup have no Bun-native equivalent.
 import { mkdir, mkdtemp } from "node:fs/promises";
 // node:os: tmpdir has no Bun-native equivalent.
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
 import { safeRm } from "../test/helpers/cleanup";
+import { verifyPackedMcpInstall } from "./package-smoke-mcp";
 
 interface CommandResult {
   stdout: string;
@@ -150,6 +151,7 @@ async function verifyTarballContents(tarballPath: string): Promise<void> {
     "package/src/index.ts",
     "package/src/sdk/index.ts",
     "package/src/embed/retry.ts",
+    "package/src/core/runtime-entrypoint.ts",
     "package/src/serve/public/globals.built.css",
     "package/THIRD_PARTY_NOTICES.md",
   ]) {
@@ -357,6 +359,13 @@ async function main(): Promise<void> {
     const gnoBin = join(installPrefix, "bin", "gno");
     runCommand([gnoBin, "--version"], tempRoot, env);
     runCommand([gnoBin, "--help"], tempRoot, env);
+    await verifyPackedMcpInstall({
+      gnoBin,
+      installPrefix,
+      cwd: tempRoot,
+      env,
+      runCommand,
+    });
     runCommand(
       [gnoBin, "init", notesDir, "--name", "package-smoke"],
       tempRoot,

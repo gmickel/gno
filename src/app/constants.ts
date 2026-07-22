@@ -10,6 +10,11 @@ import { basename, join } from "node:path";
 
 // Bun supports JSON imports natively - version single source of truth
 import pkg from "../../package.json";
+import {
+  assertValidIndexName,
+  indexNamesMatch,
+  resolveIndexDbFilename,
+} from "./index-name";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Brand / Product Identity
@@ -218,7 +223,26 @@ export function getIndexDbPath(
   indexName: string = DEFAULT_INDEX_NAME,
   dirs: ResolvedDirs = resolveDirs()
 ): string {
-  return join(dirs.data, `index-${indexName}.sqlite`);
+  assertValidIndexName(indexName);
+  let existingFilenames: string[] = [];
+  try {
+    existingFilenames = [
+      ...new Bun.Glob("index-*.sqlite").scanSync({
+        cwd: dirs.data,
+        onlyFiles: false,
+      }),
+    ];
+  } catch (error) {
+    if (
+      !error ||
+      typeof error !== "object" ||
+      !("code" in error) ||
+      error.code !== "ENOENT"
+    ) {
+      throw error;
+    }
+  }
+  return join(dirs.data, resolveIndexDbFilename(indexName, existingFilenames));
 }
 
 /**
@@ -265,8 +289,12 @@ export function buildUri(
     .map((segment) => encodeURIComponent(segment))
     .join("/");
   const uri = `${URI_PREFIX}${collection}/${encodedPath}`;
-  const indexName = options.indexName?.trim();
-  if (!indexName || indexName === DEFAULT_INDEX_NAME) {
+  const indexName = options.indexName;
+  if (indexName === undefined) {
+    return uri;
+  }
+  assertValidIndexName(indexName);
+  if (indexNamesMatch(indexName, DEFAULT_INDEX_NAME)) {
     return uri;
   }
   return `${uri}?index=${encodeURIComponent(indexName)}`;
@@ -287,8 +315,8 @@ export function parseUri(uri: string): ParsedGnoUri | null {
   if (slashIndex === -1) {
     // gno://collection (no path)
     const [collectionWithQuery, query = ""] = rest.split("?", 2);
-    const indexName = new URLSearchParams(query).get("index")?.trim();
-    return indexName
+    const indexName = new URLSearchParams(query).get("index");
+    return indexName !== null
       ? {
           collection: collectionWithQuery ?? rest,
           path: "",
@@ -307,8 +335,10 @@ export function parseUri(uri: string): ParsedGnoUri | null {
   // decodeURIComponent throws on malformed percent-encoding
   try {
     const path = decodeURIComponent(encodedPath);
-    const indexName = new URLSearchParams(query).get("index")?.trim();
-    return indexName ? { collection, path, indexName } : { collection, path };
+    const indexName = new URLSearchParams(query).get("index");
+    return indexName !== null
+      ? { collection, path, indexName }
+      : { collection, path };
   } catch {
     return null;
   }
@@ -319,12 +349,15 @@ export function parseUri(uri: string): ParsedGnoUri | null {
  */
 export function decorateUriForIndex(uri: string, indexName?: string): string {
   const parsed = parseUri(uri);
-  const normalizedIndex = indexName?.trim();
-  if (!parsed || !normalizedIndex || normalizedIndex === DEFAULT_INDEX_NAME) {
+  if (!parsed || indexName === undefined) {
+    return stripUriIndex(uri);
+  }
+  assertValidIndexName(indexName);
+  if (indexNamesMatch(indexName, DEFAULT_INDEX_NAME)) {
     return stripUriIndex(uri);
   }
   return buildUri(parsed.collection, parsed.path, {
-    indexName: normalizedIndex,
+    indexName,
   });
 }
 

@@ -4,6 +4,9 @@ import { join } from "node:path";
 
 import { installMcp } from "../../src/cli/commands/mcp/install";
 import {
+  buildMcpServerEntry,
+  getDefaultTargetScope,
+  getTargetScopes,
   MCP_SERVER_NAME,
   MCP_TARGETS,
   resolveAllMcpPaths,
@@ -18,7 +21,11 @@ import {
 import { uninstallMcp } from "../../src/cli/commands/mcp/uninstall";
 import { CliError } from "../../src/cli/errors";
 import { resetGlobals } from "../../src/cli/program";
-import { getConnectorActivationReceiptLookup } from "../../src/core/connector-verifier";
+import {
+  getConnectorActivationReceiptLookup,
+  isSafeLocalGnoMcpCommand,
+} from "../../src/core/connector-verifier";
+import { getCurrentGnoEntrypoint } from "../../src/core/runtime-entrypoint";
 import { safeRm } from "../helpers/cleanup";
 
 // Temp directory for tests
@@ -53,6 +60,31 @@ describe("MCP CLI commands", () => {
 
     // Clean up temp dir
     await safeRm(TEST_DIR);
+  });
+
+  test("builds a verifier-trusted entry from the current GNO runtime", async () => {
+    const entry = buildMcpServerEntry({
+      indexName: "client-work",
+      configPath: join(FAKE_CWD, "gno.yml"),
+    });
+
+    expect(entry).toEqual({
+      command: process.execPath,
+      args: [
+        "run",
+        getCurrentGnoEntrypoint(),
+        "--index",
+        "client-work",
+        "--config",
+        join(FAKE_CWD, "gno.yml"),
+        "mcp",
+      ],
+      env: {
+        GNO_DATA_DIR: expect.stringMatching(/^\//),
+        GNO_CACHE_DIR: expect.stringMatching(/^\//),
+      },
+    });
+    expect(await isSafeLocalGnoMcpCommand(entry)).toBe(true);
   });
 
   describe("resolveMcpConfigPath", () => {
@@ -97,7 +129,7 @@ describe("MCP CLI commands", () => {
         homeDir: FAKE_HOME,
       });
 
-      expect(result.configPath).toBe(join(FAKE_HOME, ".codex.json"));
+      expect(result.configPath).toBe(join(FAKE_HOME, ".codex/config.toml"));
     });
 
     test("resolves codex project path", () => {
@@ -108,21 +140,106 @@ describe("MCP CLI commands", () => {
         homeDir: FAKE_HOME,
       });
 
-      expect(result.configPath).toBe(join(FAKE_CWD, ".codex/.mcp.json"));
+      expect(result.configPath).toBe(join(FAKE_CWD, ".codex/config.toml"));
+    });
+
+    test("resolves OpenCode's canonical user and project paths", () => {
+      expect(
+        resolveMcpConfigPath({
+          target: "opencode",
+          scope: "user",
+          homeDir: FAKE_HOME,
+        }).configPath
+      ).toBe(join(FAKE_HOME, ".config/opencode/opencode.json"));
+      expect(
+        resolveMcpConfigPath({
+          target: "opencode",
+          scope: "project",
+          cwd: FAKE_CWD,
+        }).configPath
+      ).toBe(join(FAKE_CWD, "opencode.json"));
+    });
+
+    test("keeps Windsurf's home-relative config contract on Windows", () => {
+      expect(
+        resolveMcpConfigPath({
+          target: "windsurf",
+          scope: "user",
+          homeDir: FAKE_HOME,
+          platform: "win32",
+          env: { APPDATA: "C:\\Users\\agent\\AppData\\Roaming" },
+        }).configPath
+      ).toBe(join(FAKE_HOME, ".codeium/windsurf/mcp_config.json"));
+    });
+
+    test("resolves Zed's Windows user config under APPDATA", () => {
+      const appData = join(FAKE_HOME, "custom-roaming");
+
+      const result = resolveMcpConfigPath({
+        target: "zed",
+        homeDir: FAKE_HOME,
+        platform: "win32",
+        env: { APPDATA: appData },
+      });
+
+      expect(result.configPath).toBe(join(appData, "Zed", "settings.json"));
+    });
+
+    test("falls back to the conventional Zed Windows roaming directory", () => {
+      const result = resolveMcpConfigPath({
+        target: "zed",
+        homeDir: FAKE_HOME,
+        platform: "win32",
+        env: {},
+      });
+
+      expect(result.configPath).toBe(
+        join(FAKE_HOME, "AppData", "Roaming", "Zed", "settings.json")
+      );
+    });
+
+    test("keeps Zed's XDG config contract on macOS and Linux", () => {
+      const xdgConfig = join(FAKE_HOME, "xdg");
+
+      for (const runtimePlatform of ["darwin", "linux"] as const) {
+        const result = resolveMcpConfigPath({
+          target: "zed",
+          homeDir: FAKE_HOME,
+          platform: runtimePlatform,
+          env: { XDG_CONFIG_HOME: xdgConfig },
+        });
+
+        expect(result.configPath).toBe(join(xdgConfig, "zed", "settings.json"));
+      }
+    });
+
+    test("models LibreChat as project-only and defaults to project scope", () => {
+      expect(getTargetScopes("librechat")).toEqual(["project"]);
+      expect(getDefaultTargetScope("librechat")).toBe("project");
+      expect(
+        resolveMcpConfigPath({ target: "librechat", cwd: FAKE_CWD }).configPath
+      ).toBe(join(FAKE_CWD, "librechat.yaml"));
+      expect(() =>
+        resolveMcpConfigPath({
+          target: "librechat",
+          scope: "user",
+          cwd: FAKE_CWD,
+        })
+      ).toThrow("LibreChat does not support user scope");
     });
   });
 
   describe("resolveAllMcpPaths", () => {
-    test("returns 13 entries for all/all", () => {
+    test("returns each canonical target/scope path once for all/all", () => {
       const results = resolveAllMcpPaths("all", "all", {
         cwd: FAKE_CWD,
         homeDir: FAKE_HOME,
       });
 
       // User-only targets (1 each): claude-desktop, zed, windsurf, amp, lmstudio = 5
-      // User+project targets (2 each): claude-code, codex, cursor, opencode, librechat = 10
-      // Total: 15
-      expect(results).toHaveLength(15);
+      // User+project targets (2 each): claude-code, codex, cursor, opencode = 8
+      // Project-only targets (1 each): librechat = 1; total 14
+      expect(results).toHaveLength(14);
 
       const targets = results.map((r) => r.target);
       expect(targets.filter((t) => t === "claude-desktop")).toHaveLength(1);
@@ -134,7 +251,10 @@ describe("MCP CLI commands", () => {
       expect(targets.filter((t) => t === "opencode")).toHaveLength(2);
       expect(targets.filter((t) => t === "amp")).toHaveLength(1);
       expect(targets.filter((t) => t === "lmstudio")).toHaveLength(1);
-      expect(targets.filter((t) => t === "librechat")).toHaveLength(2);
+      expect(targets.filter((t) => t === "librechat")).toHaveLength(1);
+      expect(
+        results.find((result) => result.target === "librechat")?.scope
+      ).toBe("project");
     });
 
     test("filters by target", () => {
@@ -156,6 +276,28 @@ describe("MCP CLI commands", () => {
       // claude-code, codex, cursor, opencode, librechat support project scope
       expect(results).toHaveLength(5);
       expect(results.every((r) => r.scope === "project")).toBe(true);
+    });
+
+    test("excludes project-only LibreChat from user-scope resolution", () => {
+      expect(
+        resolveAllMcpPaths("user", "librechat", {
+          cwd: FAKE_CWD,
+          homeDir: FAKE_HOME,
+        })
+      ).toEqual([]);
+    });
+
+    test("does not duplicate a target when user and project paths coincide", () => {
+      const results = resolveAllMcpPaths("all", "codex", {
+        cwd: FAKE_HOME,
+        homeDir: FAKE_HOME,
+      });
+
+      expect(results).toHaveLength(1);
+      expect(results[0]?.scope).toBe("user");
+      expect(results[0]?.paths.configPath).toBe(
+        join(FAKE_HOME, ".codex/config.toml")
+      );
     });
   });
 
@@ -473,6 +615,26 @@ describe("MCP CLI commands", () => {
       expect(stdoutOutput.join("")).toContain("not configured");
     });
 
+    test("rejects an explicit unsupported target scope", async () => {
+      let error: unknown;
+      try {
+        await statusMcp({
+          target: "librechat",
+          scope: "user",
+          homeDir: FAKE_HOME,
+          cwd: FAKE_CWD,
+        });
+      } catch (caught) {
+        error = caught;
+      }
+
+      expect(error).toBeInstanceOf(CliError);
+      expect((error as CliError).code).toBe("VALIDATION");
+      expect((error as Error).message).toContain(
+        "LibreChat does not support user scope"
+      );
+    });
+
     test("shows configured after install", async () => {
       // Install first
       await installMcp({
@@ -518,8 +680,8 @@ describe("MCP CLI commands", () => {
       });
 
       const output = JSON.parse(stdoutOutput.join(""));
-      expect(output.targets).toHaveLength(15);
-      expect(output.summary.total).toBe(15);
+      expect(output.targets).toHaveLength(14);
+      expect(output.summary.total).toBe(14);
     });
   });
 
@@ -609,10 +771,7 @@ describe("MCP CLI commands", () => {
     });
   });
 
-  test.each([
-    ["env", { GNO_DATA_DIR: "/alternate/data" }],
-    ["cwd", "/alternate/project"],
-  ])(
+  test.each([["cwd", "/alternate/project"]])(
     "fails closed for standard entries with %s execution semantics",
     async (field, value) => {
       const entry = {
@@ -642,8 +801,39 @@ describe("MCP CLI commands", () => {
     }
   );
 
-  test("fails closed for OpenCode environment execution semantics", async () => {
-    const configPath = join(FAKE_HOME, ".config/opencode/config.json");
+  test("accepts the audited standard workspace environment", async () => {
+    await Bun.write(
+      join(FAKE_HOME, ".claude.json"),
+      JSON.stringify({
+        mcpServers: {
+          gno: {
+            command: "/usr/local/bin/gno",
+            args: ["mcp"],
+            env: {
+              GNO_DATA_DIR: "/alternate/data",
+              GNO_CACHE_DIR: "/alternate/cache",
+            },
+          },
+        },
+      })
+    );
+    const status = await checkMcpTargetStatus("claude-code", "user", {
+      homeDir: FAKE_HOME,
+      cwd: FAKE_CWD,
+    });
+    expect(status).toMatchObject({
+      configured: true,
+      serverEntry: {
+        env: {
+          GNO_DATA_DIR: "/alternate/data",
+          GNO_CACHE_DIR: "/alternate/cache",
+        },
+      },
+    });
+  });
+
+  test("accepts OpenCode's audited workspace environment", async () => {
+    const configPath = join(FAKE_HOME, ".config/opencode/opencode.json");
     await mkdir(join(FAKE_HOME, ".config/opencode"), { recursive: true });
     await Bun.write(
       configPath,
@@ -653,7 +843,10 @@ describe("MCP CLI commands", () => {
             type: "local",
             command: ["gno", "mcp"],
             enabled: true,
-            environment: { GNO_DATA_DIR: "/alternate/data" },
+            environment: {
+              GNO_DATA_DIR: "/alternate/data",
+              GNO_CACHE_DIR: "/alternate/cache",
+            },
           },
         },
       })
@@ -663,13 +856,13 @@ describe("MCP CLI commands", () => {
       homeDir: FAKE_HOME,
       cwd: FAKE_CWD,
     });
-    expect(status).toMatchObject({
-      configured: false,
-      error: "Malformed MCP server entry",
-    });
+    expect(status).toMatchObject({ configured: true });
     const projected = toMcpConnectorVerificationTarget("opencode", status);
-    expect(projected.configured).toBe(false);
-    expect(projected.configError).toBe(true);
+    expect(projected.configured).toBe(true);
+    expect(projected.serverEntry?.env).toEqual({
+      GNO_DATA_DIR: "/alternate/data",
+      GNO_CACHE_DIR: "/alternate/cache",
+    });
     expect(projected.configIdentity).toMatch(/^[a-f0-9]{64}$/);
     expect(JSON.stringify(status)).not.toContain("configIdentity");
   });
@@ -708,13 +901,9 @@ describe("MCP CLI commands", () => {
 
   test.each([
     ["standard command shape", { command: "gno", args: ["mcp"] }],
-    [
-      "disabled local command",
-      { type: "local", command: ["gno", "mcp"], enabled: false },
-    ],
     ["falsy entry", false],
   ])("rejects OpenCode %s without exposing an executable", async (_, entry) => {
-    const configPath = join(FAKE_HOME, ".config/opencode/config.json");
+    const configPath = join(FAKE_HOME, ".config/opencode/opencode.json");
     await mkdir(join(FAKE_HOME, ".config/opencode"), { recursive: true });
     await Bun.write(configPath, JSON.stringify({ mcp: { gno: entry } }));
 
@@ -733,5 +922,44 @@ describe("MCP CLI commands", () => {
     expect(
       toMcpConnectorVerificationTarget("opencode", status).serverEntry
     ).toBeUndefined();
+  });
+
+  test("reports an explicitly disabled OpenCode entry as unconfigured", async () => {
+    const configPath = join(FAKE_HOME, ".config/opencode/opencode.json");
+    await mkdir(join(FAKE_HOME, ".config/opencode"), { recursive: true });
+    await Bun.write(
+      configPath,
+      JSON.stringify({
+        mcp: {
+          gno: { type: "local", command: ["gno", "mcp"], enabled: false },
+        },
+      })
+    );
+    const status = await checkMcpTargetStatus("opencode", "user", {
+      homeDir: FAKE_HOME,
+      cwd: FAKE_CWD,
+    });
+    expect(status).toMatchObject({ configured: false });
+    expect(status.error).toBeUndefined();
+    expect(toMcpConnectorVerificationTarget("opencode", status)).toMatchObject({
+      configured: false,
+    });
+  });
+
+  test("accepts an OpenCode entry when enabled is omitted", async () => {
+    const configPath = join(FAKE_HOME, ".config/opencode/opencode.json");
+    await mkdir(join(FAKE_HOME, ".config/opencode"), { recursive: true });
+    await Bun.write(
+      configPath,
+      JSON.stringify({
+        mcp: { gno: { type: "local", command: ["/bin/gno", "mcp"] } },
+      })
+    );
+    expect(
+      await checkMcpTargetStatus("opencode", "user", {
+        homeDir: FAKE_HOME,
+        cwd: FAKE_CWD,
+      })
+    ).toMatchObject({ configured: true });
   });
 });

@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { ENV_CODEX_SKILLS_DIR } from "../../src/cli/commands/skill/paths";
+import { isSafeLocalGnoMcpCommand } from "../../src/core/connector-verifier";
 import {
   getConnectorStatuses,
   getConnectorVerificationTargets,
@@ -176,6 +177,14 @@ describe("connector service", () => {
     expect(await Bun.file(status.path).exists()).toBe(true);
     const content = await Bun.file(status.path).text();
     expect(content).toContain('"gno"');
+
+    const targets = await getConnectorVerificationTargets(workspace);
+    const installed = targets.find(({ id }) => id === "claude-desktop-mcp");
+    expect(installed?.kind).toBe("mcp");
+    if (installed?.kind !== "mcp" || !installed.serverEntry) {
+      throw new Error("Installed MCP entry was not projected for verification");
+    }
+    expect(await isSafeLocalGnoMcpCommand(installed.serverEntry)).toBe(true);
   });
 
   test("preserves the active serve index and config in installed MCP argv", async () => {

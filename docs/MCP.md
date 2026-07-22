@@ -144,16 +144,31 @@ gno mcp install --target windsurf         # Windsurf
 gno mcp install --target opencode         # OpenCode
 gno mcp install --target amp              # Amp
 gno mcp install --target lmstudio         # LM Studio
-gno mcp install --target librechat        # LibreChat
+gno mcp install --target librechat --scope project # LibreChat
 gno mcp install --target claude-code      # Claude Code CLI
 gno mcp install --target codex            # OpenAI Codex CLI
 ```
+
+Every install pins the workspace that was active when the command ran. The
+generated entry uses the absolute Bun executable, `run`, the current installed
+package's absolute `src/index.ts`, then `--index <active>` and
+`--config <absolute>` before `mcp`. It also stores absolute `GNO_DATA_DIR` and
+`GNO_CACHE_DIR` values (`env`, or OpenCode's `environment`). This keeps desktop
+clients on the same index, config, database, and model cache even when they do
+not inherit your shell environment. Codex uses its native
+`~/.codex/config.toml` or project `.codex/config.toml` tables. Run
+`gno mcp install --dry-run --json` to inspect the exact command, arguments, and
+workspace values before writing them. If the target already has GNO configured,
+add `--force` to preview the replacement without writing it.
+
+JSON client configs are edited as JSONC, preserving comments, trailing commas,
+and unrelated layout. For OpenCode and Amp, GNO reuses an existing supported
+`.jsonc` alternate instead of creating a duplicate `.json` config.
 
 ```bash
 # Write-enabled
 gno mcp install --enable-write                    # Claude Desktop (default)
 gno mcp install --target cursor --enable-write    # Cursor
-gno mcp install --target raycast --enable-write   # Raycast (if supported)
 ```
 
 > ⚠️ **Write-enabled mode** allows AI to create documents, add collections, and trigger reindexing. Review tool calls before approving.
@@ -164,6 +179,7 @@ Some clients support project-level configuration:
 
 ```bash
 gno mcp install --target cursor --scope project     # .cursor/mcp.json
+gno mcp install --target codex --scope project      # .codex/config.toml
 gno mcp install --target opencode --scope project   # opencode.json
 gno mcp install --target librechat --scope project  # librechat.yaml
 ```
@@ -177,18 +193,18 @@ gno mcp uninstall --target X    # Remove GNO from a target
 
 ## Supported Clients
 
-| Client         | Install Command                        | Scope         |
-| -------------- | -------------------------------------- | ------------- |
-| Claude Desktop | `gno mcp install`                      | User          |
-| Claude Code    | `gno mcp install --target claude-code` | User, Project |
-| Cursor         | `gno mcp install --target cursor`      | User, Project |
-| Zed            | `gno mcp install --target zed`         | User          |
-| Windsurf       | `gno mcp install --target windsurf`    | User          |
-| OpenCode       | `gno mcp install --target opencode`    | User, Project |
-| Amp            | `gno mcp install --target amp`         | User          |
-| LM Studio      | `gno mcp install --target lmstudio`    | User          |
-| LibreChat      | `gno mcp install --target librechat`   | Project       |
-| Codex          | `gno mcp install --target codex`       | User, Project |
+| Client         | Install Command                                      | Scope         |
+| -------------- | ---------------------------------------------------- | ------------- |
+| Claude Desktop | `gno mcp install`                                    | User          |
+| Claude Code    | `gno mcp install --target claude-code`               | User, Project |
+| Cursor         | `gno mcp install --target cursor`                    | User, Project |
+| Zed            | `gno mcp install --target zed`                       | User          |
+| Windsurf       | `gno mcp install --target windsurf`                  | User          |
+| OpenCode       | `gno mcp install --target opencode`                  | User, Project |
+| Amp            | `gno mcp install --target amp`                       | User          |
+| LM Studio      | `gno mcp install --target lmstudio`                  | User          |
+| LibreChat      | `gno mcp install --target librechat --scope project` | Project       |
+| Codex          | `gno mcp install --target codex`                     | User, Project |
 
 **Note**: Warp terminal requires manual UI configuration. See [Warp MCP docs](https://docs.warp.dev/knowledge-and-collaboration/mcp).
 
@@ -206,7 +222,9 @@ Use GNO directly in [Raycast AI](https://www.raycast.com/core-features/ai) with 
 
 **Option 1: Clipboard Auto-Fill**
 
-Copy this JSON, then open Raycast → "Install MCP Server". Raycast auto-fills from clipboard.
+Run `gno mcp install --dry-run --json`, substitute its absolute values into this
+JSON, then open Raycast → "Install MCP Server". Raycast auto-fills from the
+clipboard. Raycast is a manual target; `--target raycast` is not supported.
 
 Read-only:
 
@@ -214,8 +232,20 @@ Read-only:
 {
   "mcpServers": {
     "gno": {
-      "command": "gno",
-      "args": ["mcp"]
+      "command": "/absolute/path/to/bun",
+      "args": [
+        "run",
+        "/absolute/path/to/@gmickel/gno/src/index.ts",
+        "--index",
+        "default",
+        "--config",
+        "/absolute/path/to/index.yml",
+        "mcp"
+      ],
+      "env": {
+        "GNO_DATA_DIR": "/absolute/path/to/data",
+        "GNO_CACHE_DIR": "/absolute/path/to/cache"
+      }
     }
   }
 }
@@ -227,8 +257,21 @@ Write-enabled:
 {
   "mcpServers": {
     "gno": {
-      "command": "gno",
-      "args": ["mcp", "--enable-write"]
+      "command": "/absolute/path/to/bun",
+      "args": [
+        "run",
+        "/absolute/path/to/@gmickel/gno/src/index.ts",
+        "--index",
+        "default",
+        "--config",
+        "/absolute/path/to/index.yml",
+        "mcp",
+        "--enable-write"
+      ],
+      "env": {
+        "GNO_DATA_DIR": "/absolute/path/to/data",
+        "GNO_CACHE_DIR": "/absolute/path/to/cache"
+      }
     }
   }
 }
@@ -239,8 +282,8 @@ Write-enabled:
 1. Open Raycast → Search "Install MCP Server"
 2. Configure:
    - **Name**: `gno`
-   - **Command**: `gno`
-   - **Arguments**: `mcp` (read-only) or `mcp`, `--enable-write` (write-enabled)
+   - **Command**: the absolute Bun executable from the dry-run JSON
+   - **Arguments**: copy the full generated argument array; append `--enable-write` only for write-enabled mode
 
 ### Where to Use GNO
 
@@ -312,6 +355,13 @@ Smaller/weaker models may:
 
 ## Manual Configuration
 
+The examples below show the canonical installed command shape. Replace every
+`/absolute/path/to/...` placeholder with values from
+`gno mcp install --dry-run --json`; also replace `default` if another index is
+active. Keep both absolute workspace environment values. Do not shorten the
+entry to `gno mcp`: GUI clients may have a different `PATH` and do not reliably
+inherit `GNO_*` variables.
+
 ### Claude Desktop
 
 Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
@@ -322,8 +372,20 @@ Read-only:
 {
   "mcpServers": {
     "gno": {
-      "command": "gno",
-      "args": ["mcp"]
+      "command": "/absolute/path/to/bun",
+      "args": [
+        "run",
+        "/absolute/path/to/@gmickel/gno/src/index.ts",
+        "--index",
+        "default",
+        "--config",
+        "/absolute/path/to/index.yml",
+        "mcp"
+      ],
+      "env": {
+        "GNO_DATA_DIR": "/absolute/path/to/data",
+        "GNO_CACHE_DIR": "/absolute/path/to/cache"
+      }
     }
   }
 }
@@ -335,8 +397,21 @@ Write-enabled:
 {
   "mcpServers": {
     "gno": {
-      "command": "gno",
-      "args": ["mcp", "--enable-write"]
+      "command": "/absolute/path/to/bun",
+      "args": [
+        "run",
+        "/absolute/path/to/@gmickel/gno/src/index.ts",
+        "--index",
+        "default",
+        "--config",
+        "/absolute/path/to/index.yml",
+        "mcp",
+        "--enable-write"
+      ],
+      "env": {
+        "GNO_DATA_DIR": "/absolute/path/to/data",
+        "GNO_CACHE_DIR": "/absolute/path/to/cache"
+      }
     }
   }
 }
@@ -352,8 +427,20 @@ Read-only:
 {
   "mcpServers": {
     "gno": {
-      "command": "gno",
-      "args": ["mcp"]
+      "command": "/absolute/path/to/bun",
+      "args": [
+        "run",
+        "/absolute/path/to/@gmickel/gno/src/index.ts",
+        "--index",
+        "default",
+        "--config",
+        "/absolute/path/to/index.yml",
+        "mcp"
+      ],
+      "env": {
+        "GNO_DATA_DIR": "/absolute/path/to/data",
+        "GNO_CACHE_DIR": "/absolute/path/to/cache"
+      }
     }
   }
 }
@@ -365,16 +452,48 @@ Write-enabled:
 {
   "mcpServers": {
     "gno": {
-      "command": "gno",
-      "args": ["mcp", "--enable-write"]
+      "command": "/absolute/path/to/bun",
+      "args": [
+        "run",
+        "/absolute/path/to/@gmickel/gno/src/index.ts",
+        "--index",
+        "default",
+        "--config",
+        "/absolute/path/to/index.yml",
+        "mcp",
+        "--enable-write"
+      ],
+      "env": {
+        "GNO_DATA_DIR": "/absolute/path/to/data",
+        "GNO_CACHE_DIR": "/absolute/path/to/cache"
+      }
     }
   }
 }
 ```
 
+### Codex
+
+Add to `~/.codex/config.toml` (user) or `.codex/config.toml` (project):
+
+```toml
+[mcp_servers.gno]
+command = "/absolute/path/to/bun"
+args = ["run", "/absolute/path/to/@gmickel/gno/src/index.ts", "--index", "default", "--config", "/absolute/path/to/index.yml", "mcp"]
+
+[mcp_servers.gno.env]
+GNO_DATA_DIR = "/absolute/path/to/data"
+GNO_CACHE_DIR = "/absolute/path/to/cache"
+```
+
+For write-enabled mode, append `"--enable-write"` after `"mcp"` in `args`.
+`gno mcp install --target codex` updates only these two GNO tables and preserves
+unrelated TOML and comments.
+
 ### Zed
 
-Add to `~/.config/zed/settings.json`:
+Add to `~/.config/zed/settings.json` on macOS/Linux or
+`%APPDATA%\Zed\settings.json` on Windows:
 
 Read-only:
 
@@ -382,8 +501,20 @@ Read-only:
 {
   "context_servers": {
     "gno": {
-      "command": "gno",
-      "args": ["mcp"]
+      "command": "/absolute/path/to/bun",
+      "args": [
+        "run",
+        "/absolute/path/to/@gmickel/gno/src/index.ts",
+        "--index",
+        "default",
+        "--config",
+        "/absolute/path/to/index.yml",
+        "mcp"
+      ],
+      "env": {
+        "GNO_DATA_DIR": "/absolute/path/to/data",
+        "GNO_CACHE_DIR": "/absolute/path/to/cache"
+      }
     }
   }
 }
@@ -395,8 +526,21 @@ Write-enabled:
 {
   "context_servers": {
     "gno": {
-      "command": "gno",
-      "args": ["mcp", "--enable-write"]
+      "command": "/absolute/path/to/bun",
+      "args": [
+        "run",
+        "/absolute/path/to/@gmickel/gno/src/index.ts",
+        "--index",
+        "default",
+        "--config",
+        "/absolute/path/to/index.yml",
+        "mcp",
+        "--enable-write"
+      ],
+      "env": {
+        "GNO_DATA_DIR": "/absolute/path/to/data",
+        "GNO_CACHE_DIR": "/absolute/path/to/cache"
+      }
     }
   }
 }
@@ -412,8 +556,20 @@ Read-only:
 {
   "mcpServers": {
     "gno": {
-      "command": "gno",
-      "args": ["mcp"]
+      "command": "/absolute/path/to/bun",
+      "args": [
+        "run",
+        "/absolute/path/to/@gmickel/gno/src/index.ts",
+        "--index",
+        "default",
+        "--config",
+        "/absolute/path/to/index.yml",
+        "mcp"
+      ],
+      "env": {
+        "GNO_DATA_DIR": "/absolute/path/to/data",
+        "GNO_CACHE_DIR": "/absolute/path/to/cache"
+      }
     }
   }
 }
@@ -425,8 +581,21 @@ Write-enabled:
 {
   "mcpServers": {
     "gno": {
-      "command": "gno",
-      "args": ["mcp", "--enable-write"]
+      "command": "/absolute/path/to/bun",
+      "args": [
+        "run",
+        "/absolute/path/to/@gmickel/gno/src/index.ts",
+        "--index",
+        "default",
+        "--config",
+        "/absolute/path/to/index.yml",
+        "mcp",
+        "--enable-write"
+      ],
+      "env": {
+        "GNO_DATA_DIR": "/absolute/path/to/data",
+        "GNO_CACHE_DIR": "/absolute/path/to/cache"
+      }
     }
   }
 }
@@ -434,7 +603,8 @@ Write-enabled:
 
 ### OpenCode
 
-Add to `~/.config/opencode/config.json`:
+Add to `~/.config/opencode/opencode.json` (or the existing
+`~/.config/opencode/opencode.jsonc`):
 
 Read-only:
 
@@ -443,7 +613,20 @@ Read-only:
   "mcp": {
     "gno": {
       "type": "local",
-      "command": ["gno", "mcp"],
+      "command": [
+        "/absolute/path/to/bun",
+        "run",
+        "/absolute/path/to/@gmickel/gno/src/index.ts",
+        "--index",
+        "default",
+        "--config",
+        "/absolute/path/to/index.yml",
+        "mcp"
+      ],
+      "environment": {
+        "GNO_DATA_DIR": "/absolute/path/to/data",
+        "GNO_CACHE_DIR": "/absolute/path/to/cache"
+      },
       "enabled": true
     }
   }
@@ -457,7 +640,21 @@ Write-enabled:
   "mcp": {
     "gno": {
       "type": "local",
-      "command": ["gno", "mcp", "--enable-write"],
+      "command": [
+        "/absolute/path/to/bun",
+        "run",
+        "/absolute/path/to/@gmickel/gno/src/index.ts",
+        "--index",
+        "default",
+        "--config",
+        "/absolute/path/to/index.yml",
+        "mcp",
+        "--enable-write"
+      ],
+      "environment": {
+        "GNO_DATA_DIR": "/absolute/path/to/data",
+        "GNO_CACHE_DIR": "/absolute/path/to/cache"
+      },
       "enabled": true
     }
   }
@@ -474,8 +671,20 @@ Read-only:
 {
   "amp.mcpServers": {
     "gno": {
-      "command": "gno",
-      "args": ["mcp"]
+      "command": "/absolute/path/to/bun",
+      "args": [
+        "run",
+        "/absolute/path/to/@gmickel/gno/src/index.ts",
+        "--index",
+        "default",
+        "--config",
+        "/absolute/path/to/index.yml",
+        "mcp"
+      ],
+      "env": {
+        "GNO_DATA_DIR": "/absolute/path/to/data",
+        "GNO_CACHE_DIR": "/absolute/path/to/cache"
+      }
     }
   }
 }
@@ -487,8 +696,21 @@ Write-enabled:
 {
   "amp.mcpServers": {
     "gno": {
-      "command": "gno",
-      "args": ["mcp", "--enable-write"]
+      "command": "/absolute/path/to/bun",
+      "args": [
+        "run",
+        "/absolute/path/to/@gmickel/gno/src/index.ts",
+        "--index",
+        "default",
+        "--config",
+        "/absolute/path/to/index.yml",
+        "mcp",
+        "--enable-write"
+      ],
+      "env": {
+        "GNO_DATA_DIR": "/absolute/path/to/data",
+        "GNO_CACHE_DIR": "/absolute/path/to/cache"
+      }
     }
   }
 }
@@ -504,8 +726,20 @@ Read-only:
 {
   "mcpServers": {
     "gno": {
-      "command": "gno",
-      "args": ["mcp"]
+      "command": "/absolute/path/to/bun",
+      "args": [
+        "run",
+        "/absolute/path/to/@gmickel/gno/src/index.ts",
+        "--index",
+        "default",
+        "--config",
+        "/absolute/path/to/index.yml",
+        "mcp"
+      ],
+      "env": {
+        "GNO_DATA_DIR": "/absolute/path/to/data",
+        "GNO_CACHE_DIR": "/absolute/path/to/cache"
+      }
     }
   }
 }
@@ -517,8 +751,21 @@ Write-enabled:
 {
   "mcpServers": {
     "gno": {
-      "command": "gno",
-      "args": ["mcp", "--enable-write"]
+      "command": "/absolute/path/to/bun",
+      "args": [
+        "run",
+        "/absolute/path/to/@gmickel/gno/src/index.ts",
+        "--index",
+        "default",
+        "--config",
+        "/absolute/path/to/index.yml",
+        "mcp",
+        "--enable-write"
+      ],
+      "env": {
+        "GNO_DATA_DIR": "/absolute/path/to/data",
+        "GNO_CACHE_DIR": "/absolute/path/to/cache"
+      }
     }
   }
 }
@@ -533,9 +780,18 @@ Read-only:
 ```yaml
 mcpServers:
   gno:
-    command: gno
+    command: /absolute/path/to/bun
     args:
+      - run
+      - /absolute/path/to/@gmickel/gno/src/index.ts
+      - --index
+      - default
+      - --config
+      - /absolute/path/to/index.yml
       - mcp
+    env:
+      GNO_DATA_DIR: /absolute/path/to/data
+      GNO_CACHE_DIR: /absolute/path/to/cache
 ```
 
 Write-enabled:
@@ -543,10 +799,19 @@ Write-enabled:
 ```yaml
 mcpServers:
   gno:
-    command: gno
+    command: /absolute/path/to/bun
     args:
+      - run
+      - /absolute/path/to/@gmickel/gno/src/index.ts
+      - --index
+      - default
+      - --config
+      - /absolute/path/to/index.yml
       - mcp
       - --enable-write
+    env:
+      GNO_DATA_DIR: /absolute/path/to/data
+      GNO_CACHE_DIR: /absolute/path/to/cache
 ```
 
 ## Other MCP Clients
@@ -703,6 +968,14 @@ The response includes source metadata such as `absPath`, `sourceHash`, MIME/ext,
 An indexed URI such as `gno://notes/plan.md?index=research` opens and reads the
 named index, even when the MCP server itself is using another index. A missing
 named index returns an error and is never created as a side effect.
+
+Named indexes use 1–64 UTF-16 code units drawn from Unicode letters, marks,
+numbers, internal ASCII spaces, `.`, `_`, or `-`. They start with a letter or
+number, cannot end with a space or `.`, and cannot contain `..`. Absolute paths,
+path separators, controls, and platform-invalid punctuation are rejected before
+filesystem access. Case and canonically equivalent Unicode spellings share one
+NFC/case-folded identity. Its 242-byte UTF-8 budget keeps the complete
+`index-<identity>.sqlite` filename within the portable 255-byte component limit.
 
 ### gno_multi_get
 

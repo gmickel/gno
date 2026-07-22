@@ -17,8 +17,11 @@ bun install -g @gmickel/gno
 gno init ~/notes --name notes
 gno index
 
-# Install both MCP and Skills
+# Install MCP
 gno mcp install --target claude-code
+
+# Install the GNO skill separately
+gno skill install --target claude --scope user
 ```
 
 ## Using Skills
@@ -49,7 +52,7 @@ For project-specific knowledge:
 gno mcp install --target claude-code --scope project
 ```
 
-This creates `.claude/settings.json` with MCP configuration.
+This creates `.mcp.json` with MCP configuration.
 
 ## Example Workflows
 
@@ -69,14 +72,27 @@ This creates `.claude/settings.json` with MCP configuration.
 
 ## Manual Configuration
 
-Add to `~/.claude/settings.json`:
+Run `gno mcp install --target claude-code --dry-run --json`, then add the
+reported absolute values to `~/.claude.json` (user) or `.mcp.json` (project):
 
 ```json
 {
   "mcpServers": {
     "gno": {
-      "command": "gno",
-      "args": ["mcp"]
+      "command": "/absolute/path/to/bun",
+      "args": [
+        "run",
+        "/absolute/path/to/@gmickel/gno/src/index.ts",
+        "--index",
+        "default",
+        "--config",
+        "/absolute/path/to/index.yml",
+        "mcp"
+      ],
+      "env": {
+        "GNO_DATA_DIR": "/absolute/path/to/data",
+        "GNO_CACHE_DIR": "/absolute/path/to/cache"
+      }
     }
   }
 }

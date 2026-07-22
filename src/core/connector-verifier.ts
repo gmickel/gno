@@ -5,8 +5,6 @@ import {
   getDefaultEnvironment,
   StdioClientTransport,
 } from "@modelcontextprotocol/sdk/client/stdio.js";
-// node:path has no Bun equivalent for portable resolved path identity.
-import { resolve } from "node:path";
 
 import type {
   ActivationStageReceipt,
@@ -14,6 +12,8 @@ import type {
   StorePort,
   StoreResult,
 } from "../store/types";
+import type { ConnectorWorkspaceEnvironment } from "./connector-environment";
+import type { ConnectorVerificationTarget } from "./connector-verification-target";
 
 import { DEFAULT_INDEX_NAME, parseUri } from "../app/constants";
 import { MCP_ACTIVATION_VERIFICATION_ENV } from "../mcp/activation-verification-mode";
@@ -30,45 +30,30 @@ import {
   type ConnectorVerificationCode,
   isSafeLocalGnoMcpCommand,
 } from "./connector-policy";
+import {
+  connectorFingerprint,
+  getConnectorActivationReceiptLookup,
+  normalizeConnectorTarget,
+  targetIdentity,
+} from "./connector-verification-target";
+import { indexesMatch } from "./indexed-reference";
 
 export {
   getConnectorVerificationRemediation,
   isSafeLocalGnoMcpCommand,
 } from "./connector-policy";
 export type { ConnectorVerificationCode } from "./connector-policy";
+export { getConnectorActivationReceiptLookup } from "./connector-verification-target";
+export type {
+  ConnectorVerificationTarget,
+  McpConnectorVerificationTarget,
+  SkillConnectorVerificationTarget,
+} from "./connector-verification-target";
 
-const CONNECTOR_VERIFIER_IMPLEMENTATION_ID = "mcp-stdio-readonly-v2";
 const DEFAULT_TIMEOUT_MS = 5000;
 const CONCURRENT_INDEX_CHANGE_MESSAGE =
   "Activation index changed during connector verification; retry";
 const REQUIRED_TOOLS = new Set(["gno_status", "gno_search"]);
-
-interface ConnectorTargetBase {
-  id: string;
-  target: string;
-  scope: "user" | "project";
-  configPath: string;
-  configError?: boolean;
-}
-
-export interface McpConnectorVerificationTarget extends ConnectorTargetBase {
-  kind: "mcp";
-  configured: boolean;
-  serverEntry?: { command: string; args: string[] };
-  /** Privacy-bounded identity of the complete client entry. */
-  configIdentity?: string;
-}
-
-export interface SkillConnectorVerificationTarget extends ConnectorTargetBase {
-  kind: "skill";
-  installed: boolean;
-  /** Reserved for a future client-owned, read-only runtime verification hook. */
-  runtimeHook?: never;
-}
-
-export type ConnectorVerificationTarget =
-  | McpConnectorVerificationTarget
-  | SkillConnectorVerificationTarget;
 
 export interface ConnectorVerifierOptions {
   force?: boolean;
@@ -82,6 +67,7 @@ export interface ConnectorVerifierOptions {
 interface McpProofInput {
   command: string;
   args: string[];
+  env?: ConnectorWorkspaceEnvironment;
   collection: string;
   /** Sensitive corpus-derived term. Never serialize or log. */
   term: string;
@@ -95,104 +81,8 @@ type McpProofResult =
   | { ok: true }
   | { ok: false; code: ConnectorVerificationCode };
 
-function sha256(value: string): string {
-  const hasher = new Bun.CryptoHasher("sha256");
-  hasher.update(value);
-  return hasher.digest("hex");
-}
-
 function elapsedMs(startedAt: number, monotonicNow: () => number): number {
   return Math.max(0, Math.round(monotonicNow() - startedAt));
-}
-
-function targetIdentity(target: ConnectorVerificationTarget): {
-  connectorTarget: string;
-  normalized: Record<string, unknown>;
-} {
-  const configPathIdentity = sha256(resolve(target.configPath));
-  const normalized = {
-    kind: target.kind,
-    id: target.id,
-    target: target.target,
-    scope: target.scope,
-    configPathIdentity,
-    configError: target.configError === true,
-    ...(target.kind === "mcp"
-      ? {
-          configured: target.configured,
-          command: target.serverEntry?.command ?? null,
-          args: target.serverEntry?.args ?? [],
-          configIdentity: target.configIdentity ?? null,
-        }
-      : { installed: target.installed }),
-  };
-  return {
-    connectorTarget: `${target.kind}:${target.target}:${target.scope}:${configPathIdentity}`,
-    normalized,
-  };
-}
-
-function normalizeConnectorTarget(
-  target: ConnectorVerificationTarget
-): ConnectorVerificationTarget {
-  if (target.kind !== "mcp") {
-    return target;
-  }
-  if (!target.configured) {
-    return { ...target, serverEntry: undefined };
-  }
-  const entry: unknown = target.serverEntry;
-  if (!entry || typeof entry !== "object") {
-    return { ...target, configured: false, configError: true };
-  }
-  const record = entry as { command?: unknown; args?: unknown };
-  const entryKeys = Object.keys(record);
-  if (
-    typeof record.command !== "string" ||
-    record.command.length === 0 ||
-    !Array.isArray(record.args) ||
-    !record.args.every((argument) => typeof argument === "string") ||
-    entryKeys.some((key) => key !== "command" && key !== "args")
-  ) {
-    return {
-      ...target,
-      configured: false,
-      serverEntry: undefined,
-      configIdentity:
-        target.configIdentity ?? sha256(JSON.stringify(entry) ?? "undefined"),
-      configError: true,
-    };
-  }
-  return {
-    ...target,
-    serverEntry: { command: record.command, args: record.args },
-  };
-}
-
-function connectorFingerprint(
-  lexicalFingerprint: string,
-  normalizedTarget: Record<string, unknown>
-): string {
-  return sha256(
-    JSON.stringify({
-      lexicalFingerprint,
-      connectorVerifier: CONNECTOR_VERIFIER_IMPLEMENTATION_ID,
-      target: normalizedTarget,
-    })
-  );
-}
-
-/** Pure lookup key for reading one target's fingerprint-current receipt. */
-export function getConnectorActivationReceiptLookup(
-  lexicalFingerprint: string,
-  target: ConnectorVerificationTarget
-): { connectorTarget: string; fingerprint: string } {
-  const normalizedTarget = normalizeConnectorTarget(target);
-  const identity = targetIdentity(normalizedTarget);
-  return {
-    connectorTarget: identity.connectorTarget,
-    fingerprint: connectorFingerprint(lexicalFingerprint, identity.normalized),
-  };
 }
 
 function connectorStage(
@@ -284,7 +174,11 @@ function hasExpectedStatusIndex(
   return (
     !!structured &&
     typeof structured === "object" &&
-    (structured as { indexName?: unknown }).indexName === expectedIndexName
+    typeof (structured as { indexName?: unknown }).indexName === "string" &&
+    indexesMatch(
+      (structured as { indexName: string }).indexName,
+      expectedIndexName
+    )
   );
 }
 
@@ -323,7 +217,7 @@ function hasExpectedResult(
     return (
       uri?.collection === expected.collection &&
       uri.path === expected.path &&
-      resultIndexName === expectedIndexName &&
+      indexesMatch(resultIndexName, expectedIndexName) &&
       record.source?.sourceHash === expectedSourceHash
     );
   });
@@ -339,6 +233,7 @@ async function executeMcpProof(input: McpProofInput): Promise<McpProofResult> {
     args: input.args,
     env: {
       ...getDefaultEnvironment(),
+      ...input.env,
       [MCP_ACTIVATION_VERIFICATION_ENV]: "1",
     },
     stderr: "ignore",
@@ -553,6 +448,7 @@ export async function verifyConnectorActivation(
   const proof = await executeMcpProof({
     command: normalizedTarget.serverEntry.command,
     args: normalizedTarget.serverEntry.args,
+    env: normalizedTarget.serverEntry.env,
     collection,
     term: match.value.value.term,
     expectedUri: match.value.value.resultUri,

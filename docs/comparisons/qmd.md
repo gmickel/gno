@@ -44,7 +44,7 @@ qmd init && qmd index
 | **REST API**            | ✓ `gno serve`                            | ✗                     |
 | **Headless Daemon**     | ✓ `gno daemon`                           | ✗                     |
 | **Languages**           | 30+ (auto-detect)                        | English-focused       |
-| **MCP Install CLI**     | ✓ 10+ targets                            | ✗ Manual config       |
+| **MCP Install CLI**     | ✓ 10 automatic targets                   | ✗ Manual config       |
 | **Skills**              | ✓ Claude Code, Codex, OpenCode, OpenClaw | ✗                     |
 | **Model Presets**       | slim/balanced/quality                    | Single config         |
 | **Search Depth**        | fast/balanced/thorough                   | ✗                     |
@@ -73,7 +73,7 @@ gno index
 gno serve  # Open http://localhost:3000
 ```
 
-**MCP install CLI**: One-command setup for 10+ targets. QMD requires manual config editing.
+**MCP install CLI**: One-command setup for 10 automatic targets. QMD requires manual config editing.
 
 ```bash
 gno mcp install --target cursor

@@ -11,6 +11,12 @@ import type { DocumentRow, StorePort, StoreResult } from "../../store/types";
 import type { ParsedRef } from "./ref-parser";
 
 import { decorateUriForIndex, parseUri } from "../../app/constants";
+import {
+  canonicalizeIndexName,
+  INDEX_NAME_REQUIREMENTS,
+  indexNamesMatch,
+  isValidIndexName,
+} from "../../app/index-name";
 import { isGlobPattern, parseRef, splitRefs } from "./ref-parser";
 import { initStore } from "./shared";
 
@@ -319,7 +325,13 @@ function resolveMultiGetIndex(
   refs: string[],
   globalIndexName?: string
 ): { ok: true; indexName?: string } | { ok: false; error: string } {
-  const explicitIndexes = new Set<string>();
+  if (globalIndexName !== undefined && !isValidIndexName(globalIndexName)) {
+    return {
+      ok: false,
+      error: `Invalid index name: ${INDEX_NAME_REQUIREMENTS}.`,
+    };
+  }
+  const explicitIndexes = new Map<string, string>();
   let hasUnindexedRef = false;
 
   for (const ref of refs) {
@@ -329,8 +341,17 @@ function resolveMultiGetIndex(
       continue;
     }
     const indexName = parseUri(parsed.value)?.indexName;
-    if (indexName) {
-      explicitIndexes.add(indexName);
+    if (indexName !== undefined) {
+      if (!isValidIndexName(indexName)) {
+        return {
+          ok: false,
+          error: `Invalid index name: ${INDEX_NAME_REQUIREMENTS}.`,
+        };
+      }
+      const identity = canonicalizeIndexName(indexName);
+      if (!explicitIndexes.has(identity)) {
+        explicitIndexes.set(identity, indexName);
+      }
     } else {
       hasUnindexedRef = true;
     }
@@ -342,16 +363,20 @@ function resolveMultiGetIndex(
   if (explicitIndexes.size > 1) {
     return {
       ok: false,
-      error: `multi-get cannot mix explicit indexes: ${[...explicitIndexes].sort().join(", ")}`,
+      error: `multi-get cannot mix explicit indexes: ${[
+        ...explicitIndexes.values(),
+      ]
+        .sort()
+        .join(", ")}`,
     };
   }
 
-  const explicitIndex = [...explicitIndexes][0];
+  const explicitIndex = [...explicitIndexes.values()][0];
   if (
     hasUnindexedRef &&
     globalIndexName &&
     explicitIndex &&
-    globalIndexName !== explicitIndex
+    !indexNamesMatch(globalIndexName, explicitIndex)
   ) {
     return {
       ok: false,

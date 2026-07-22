@@ -12,7 +12,7 @@ benefits:
   - 28 registered MCP tools for search, retrieval, graph traversal, diagnostics, and indexing
   - Works with Claude Desktop, Cursor, Zed, Windsurf, Amp
   - Also supports Raycast, LM Studio, LibreChat
-  - One-command install for 10+ clients
+  - One-command install for 10 automatic targets
   - Write tools disabled by default (security-first)
   - Resource URIs for direct document access
 commands:
@@ -62,14 +62,28 @@ For manual configuration or unsupported clients, add to the client's MCP config:
 {
   "mcpServers": {
     "gno": {
-      "command": "/path/to/bun",
-      "args": ["/path/to/gno", "mcp"]
+      "command": "/absolute/path/to/bun",
+      "args": [
+        "run",
+        "/absolute/path/to/@gmickel/gno/src/index.ts",
+        "--index",
+        "default",
+        "--config",
+        "/absolute/path/to/index.yml",
+        "mcp"
+      ],
+      "env": {
+        "GNO_DATA_DIR": "/absolute/path/to/data",
+        "GNO_CACHE_DIR": "/absolute/path/to/cache"
+      }
     }
   }
 }
 ```
 
-**Note**: Use absolute paths. Claude Desktop runs in a sandboxed environment with a limited PATH.
+**Note**: Copy the exact absolute values from `gno mcp install --dry-run --json`.
+The package entrypoint, index, config, data directory, and cache are all part of
+the installed workspace identity.
 
 ### Config Locations
 
@@ -78,14 +92,15 @@ For manual configuration or unsupported clients, add to the client's MCP config:
 | Claude Desktop (macOS) | `~/Library/Application Support/Claude/claude_desktop_config.json` |
 | Claude Code (user)     | `~/.claude.json`                                                  |
 | Claude Code (project)  | `./.mcp.json`                                                     |
-| Codex (user)           | `~/.codex.json`                                                   |
+| Codex (user)           | `~/.codex/config.toml`                                            |
+| Codex (project)        | `./.codex/config.toml`                                            |
 
 ### Cursor
 
-Configure in Cursor's MCP settings with the command:
+Prefer the installer-generated entry:
 
-```
-gno mcp
+```bash
+gno mcp install --target cursor
 ```
 
 ## Available Tools (28 Registered)

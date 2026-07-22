@@ -5,9 +5,17 @@
  * @module src/cli/commands/mcp/paths
  */
 
-import { existsSync } from "node:fs";
 import { homedir, platform } from "node:os";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
+
+import type { ConnectorWorkspaceEnvironment } from "../../../core/connector-environment";
+
+import { resolveDirs } from "../../../app/constants";
+import { assertValidIndexName } from "../../../app/index-name";
+import { getCurrentGnoEntrypoint } from "../../../core/runtime-entrypoint";
+import { getTargetDisplayName } from "./target-display.js";
+
+export { getTargetDisplayName } from "./target-display.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -40,7 +48,8 @@ export type McpConfigFormat =
   | "context_servers"
   | "mcp"
   | "amp_mcp"
-  | "yaml_standard";
+  | "yaml_standard"
+  | "codex_toml";
 
 export interface McpConfigPaths {
   /** Config file path */
@@ -49,17 +58,22 @@ export interface McpConfigPaths {
   supportsProjectScope: boolean;
   /** Config format for this target */
   configFormat: McpConfigFormat;
+  /** Supported alternate filenames, checked without creating duplicates. */
+  alternativeConfigPaths?: string[];
 }
 
 export interface McpServerEntry {
   command: string;
   args: string[];
+  env?: ConnectorWorkspaceEnvironment;
 }
 
 interface McpServerEntryOptions {
   enableWrite?: boolean;
   indexName?: string;
   configPath?: string;
+  dataDir?: string;
+  cacheDir?: string;
 }
 
 export interface McpPathOptions {
@@ -69,6 +83,10 @@ export interface McpPathOptions {
   cwd?: string;
   /** Override home dir (testing) */
   homeDir?: string;
+  /** Override runtime platform (testing) */
+  platform?: NodeJS.Platform;
+  /** Override process environment used for platform config directories (testing) */
+  env?: Readonly<Record<string, string | undefined>>;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -91,18 +109,43 @@ export const MCP_TARGETS: McpTarget[] = [
   "librechat",
 ];
 
-/** Targets that support project scope */
-export const TARGETS_WITH_PROJECT_SCOPE: McpTarget[] = [
-  "claude-code",
-  "codex",
-  "cursor",
-  "opencode",
-  "librechat",
-];
+/** Canonical target scope support. LibreChat has no user-global config. */
+export const MCP_TARGET_SCOPES: Readonly<
+  Record<McpTarget, readonly McpScope[]>
+> = {
+  "claude-desktop": ["user"],
+  "claude-code": ["user", "project"],
+  codex: ["user", "project"],
+  cursor: ["user", "project"],
+  zed: ["user"],
+  windsurf: ["user"],
+  opencode: ["user", "project"],
+  amp: ["user"],
+  lmstudio: ["user"],
+  librechat: ["project"],
+};
+
+/** Targets that support project scope. */
+export const TARGETS_WITH_PROJECT_SCOPE: McpTarget[] = MCP_TARGETS.filter(
+  (target) => MCP_TARGET_SCOPES[target].includes("project")
+);
+
+/** Return the supported scopes in canonical display/operation order. */
+export function getTargetScopes(target: McpTarget): readonly McpScope[] {
+  return MCP_TARGET_SCOPES[target];
+}
+
+/** Default to user scope when available, otherwise the sole supported scope. */
+export function getDefaultTargetScope(target: McpTarget): McpScope {
+  const scopes = getTargetScopes(target);
+  return scopes.includes("user") ? "user" : (scopes[0] ?? "user");
+}
 
 /** Get config format for a target */
 export function getTargetConfigFormat(target: McpTarget): McpConfigFormat {
   switch (target) {
+    case "codex":
+      return "codex_toml";
     case "zed":
       return "context_servers";
     case "opencode":
@@ -115,9 +158,6 @@ export function getTargetConfigFormat(target: McpTarget): McpConfigFormat {
       return "standard";
   }
 }
-
-/** Regex to extract entry script path from command path */
-const COMMANDS_PATH_PATTERN = /\/commands\/.*$/;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Config Path Resolution
@@ -162,9 +202,9 @@ function resolveClaudeCodePath(
  */
 function resolveCodexPath(scope: McpScope, home: string, cwd: string): string {
   if (scope === "user") {
-    return join(home, ".codex.json");
+    return join(home, ".codex/config.toml");
   }
-  return join(cwd, ".codex/.mcp.json");
+  return join(cwd, ".codex/config.toml");
 }
 
 /**
@@ -181,17 +221,18 @@ function resolveCursorPath(scope: McpScope, home: string, cwd: string): string {
   return join(cwd, ".cursor/mcp.json");
 }
 
-/**
- * Resolve Zed config path (macOS/Linux only, no project scope).
- */
-function resolveZedPath(home: string): string {
-  const plat = platform();
+/** Resolve the user-level Zed config path. */
+function resolveZedPath(
+  home: string,
+  plat: NodeJS.Platform,
+  env: Readonly<Record<string, string | undefined>>
+): string {
   if (plat === "win32") {
-    // Zed not available on Windows, but provide path anyway
-    return join(home, ".config/zed/settings.json");
+    const appData = env.APPDATA?.trim() || join(home, "AppData", "Roaming");
+    return join(appData, "Zed", "settings.json");
   }
   // macOS and Linux use XDG or fallback
-  const xdgConfig = process.env.XDG_CONFIG_HOME;
+  const xdgConfig = env.XDG_CONFIG_HOME;
   if (xdgConfig) {
     return join(xdgConfig, "zed/settings.json");
   }
@@ -220,9 +261,9 @@ function resolveOpenCodePath(
   if (scope === "user") {
     const plat = platform();
     if (plat === "win32") {
-      return join(home, ".config", "opencode", "config.json");
+      return join(home, ".config", "opencode", "opencode.json");
     }
-    return join(home, ".config/opencode/config.json");
+    return join(home, ".config/opencode/opencode.json");
   }
   // Project scope: opencode.json in project root
   return join(cwd, "opencode.json");
@@ -262,12 +303,15 @@ function resolveLibreChatPath(cwd: string): string {
  * Resolve MCP config path for a given target and scope.
  */
 export function resolveMcpConfigPath(opts: McpPathOptions): McpConfigPaths {
-  const {
-    target,
-    scope = "user",
-    cwd = process.cwd(),
-    homeDir = homedir(),
-  } = opts;
+  const { target, cwd = process.cwd(), homeDir = homedir() } = opts;
+  const runtimePlatform = opts.platform ?? platform();
+  const runtimeEnv = opts.env ?? process.env;
+  const scope = opts.scope ?? getDefaultTargetScope(target);
+  if (!getTargetScopes(target).includes(scope)) {
+    throw new Error(
+      `${getTargetDisplayName(target)} does not support ${scope} scope.`
+    );
+  }
 
   const configFormat = getTargetConfigFormat(target);
   const supportsProjectScope = TARGETS_WITH_PROJECT_SCOPE.includes(target);
@@ -299,7 +343,7 @@ export function resolveMcpConfigPath(opts: McpPathOptions): McpConfigPaths {
       };
     case "zed":
       return {
-        configPath: resolveZedPath(homeDir),
+        configPath: resolveZedPath(homeDir, runtimePlatform, runtimeEnv),
         supportsProjectScope,
         configFormat,
       };
@@ -309,18 +353,24 @@ export function resolveMcpConfigPath(opts: McpPathOptions): McpConfigPaths {
         supportsProjectScope,
         configFormat,
       };
-    case "opencode":
+    case "opencode": {
+      const configPath = resolveOpenCodePath(scope, homeDir, cwd);
       return {
-        configPath: resolveOpenCodePath(scope, homeDir, cwd),
+        configPath,
+        alternativeConfigPaths: [configPath.replace(/\.json$/u, ".jsonc")],
         supportsProjectScope,
         configFormat,
       };
-    case "amp":
+    }
+    case "amp": {
+      const configPath = resolveAmpPath(homeDir);
       return {
-        configPath: resolveAmpPath(homeDir),
+        configPath,
+        alternativeConfigPaths: [configPath.replace(/\.json$/u, ".jsonc")],
         supportsProjectScope,
         configFormat,
       };
+    }
     case "lmstudio":
       return {
         configPath: resolveLmStudioPath(homeDir),
@@ -346,7 +396,7 @@ export function resolveMcpConfigPath(opts: McpPathOptions): McpConfigPaths {
 export function resolveAllMcpPaths(
   scope: McpScope | "all" = "all",
   target: McpTarget | "all" = "all",
-  overrides?: { cwd?: string; homeDir?: string }
+  overrides?: Pick<McpPathOptions, "cwd" | "env" | "homeDir" | "platform">
 ): Array<{ target: McpTarget; scope: McpScope; paths: McpConfigPaths }> {
   const targets: McpTarget[] = target === "all" ? MCP_TARGETS : [target];
   const results: Array<{
@@ -356,28 +406,29 @@ export function resolveAllMcpPaths(
   }> = [];
 
   for (const t of targets) {
-    const supportsProject = TARGETS_WITH_PROJECT_SCOPE.includes(t);
-
-    if (supportsProject) {
-      // Targets that support both scopes
-      const scopes: McpScope[] =
-        scope === "all" ? ["user", "project"] : [scope];
-      for (const s of scopes) {
-        results.push({
-          target: t,
-          scope: s,
-          paths: resolveMcpConfigPath({ target: t, scope: s, ...overrides }),
-        });
-      }
-    } else {
-      // User scope only - skip if filtering by project
-      if (scope === "project") {
+    const supportedScopes = getTargetScopes(t);
+    const scopes =
+      scope === "all"
+        ? supportedScopes
+        : supportedScopes.includes(scope)
+          ? [scope]
+          : [];
+    const seenConfigPaths = new Set<string>();
+    for (const targetScope of scopes) {
+      const paths = resolveMcpConfigPath({
+        target: t,
+        scope: targetScope,
+        ...overrides,
+      });
+      const configIdentity = resolve(paths.configPath);
+      if (seenConfigPaths.has(configIdentity)) {
         continue;
       }
+      seenConfigPaths.add(configIdentity);
       results.push({
         target: t,
-        scope: "user",
-        paths: resolveMcpConfigPath({ target: t, scope: "user", ...overrides }),
+        scope: targetScope,
+        paths,
       });
     }
   }
@@ -400,55 +451,27 @@ export function findBunPath(): string {
 }
 
 /**
- * Detect how gno should be invoked and return the MCP server entry.
- * Uses absolute paths because Claude Desktop has a limited PATH.
- * Cross-platform: avoids shelling out to `which`.
+ * Return an MCP server entry bound to the GNO runtime installing it.
+ * Uses absolute paths because desktop clients have a limited PATH.
  */
 export function buildMcpServerEntry(
   options: McpServerEntryOptions = {}
 ): McpServerEntry {
+  if (options.indexName !== undefined) {
+    assertValidIndexName(options.indexName);
+  }
   const bunPath = findBunPath();
-  const home = homedir();
-  const isWindows = platform() === "win32";
-
-  // 1. Check if running from source (dev mode)
-  const scriptPath = process.argv[1];
-  if (
-    scriptPath?.includes("/gno/src/cli/") ||
-    scriptPath?.includes("\\gno\\src\\cli\\")
-  ) {
-    // Dev mode: run the entry script directly with bun
-    const entryScript = scriptPath.replace(COMMANDS_PATH_PATTERN, "/index.ts");
-    const args = ["run", entryScript];
-    appendMcpArguments(args, options);
-    return { command: bunPath, args };
-  }
-
-  // 2. Check common gno install locations (cross-platform)
-  const gnoCandidates = isWindows
-    ? [
-        join(home, ".bun\\bin\\gno.exe"),
-        join(home, "AppData\\Roaming\\npm\\gno.cmd"),
-      ]
-    : [
-        join(home, ".bun/bin/gno"),
-        "/usr/local/bin/gno",
-        "/opt/homebrew/bin/gno",
-      ];
-
-  for (const gnoPath of gnoCandidates) {
-    if (existsSync(gnoPath)) {
-      const args = [gnoPath];
-      appendMcpArguments(args, options);
-      return { command: bunPath, args };
-    }
-  }
-
-  // 3. Fallback to bunx (works if gno is published to npm)
-  // Note: This may trigger network access on first run
-  const args = ["x", "@gmickel/gno"];
+  const args = ["run", getCurrentGnoEntrypoint()];
   appendMcpArguments(args, options);
-  return { command: bunPath, args };
+  const dirs = resolveDirs();
+  return {
+    command: bunPath,
+    args,
+    env: {
+      GNO_DATA_DIR: resolve(options.dataDir ?? dirs.data),
+      GNO_CACHE_DIR: resolve(options.cacheDir ?? dirs.cache),
+    },
+  };
 }
 
 function appendMcpArguments(
@@ -459,42 +482,10 @@ function appendMcpArguments(
     args.push("--index", options.indexName);
   }
   if (options.configPath) {
-    args.push("--config", options.configPath);
+    args.push("--config", resolve(options.configPath));
   }
   args.push("mcp");
   if (options.enableWrite) {
     args.push("--enable-write");
-  }
-}
-
-/**
- * Get display name for a target.
- */
-export function getTargetDisplayName(target: McpTarget): string {
-  switch (target) {
-    case "claude-desktop":
-      return "Claude Desktop";
-    case "claude-code":
-      return "Claude Code";
-    case "codex":
-      return "Codex";
-    case "cursor":
-      return "Cursor";
-    case "zed":
-      return "Zed";
-    case "windsurf":
-      return "Windsurf";
-    case "opencode":
-      return "OpenCode";
-    case "amp":
-      return "Amp";
-    case "lmstudio":
-      return "LM Studio";
-    case "librechat":
-      return "LibreChat";
-    default: {
-      const _exhaustive: never = target;
-      throw new Error(`Unknown target: ${String(_exhaustive)}`);
-    }
   }
 }

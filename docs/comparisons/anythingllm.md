@@ -37,7 +37,7 @@ docker pull mintplexlabs/anythingllm
 | **Interface**            | CLI + Web UI                    | Desktop app, Docker                                                             |
 | **File Formats**         | MD, PDF, DOCX, XLSX, PPTX, TXT  | PDF, TXT, DOCX, etc.                                                            |
 | **AI Answers (RAG)**     | ✓                               | ✓                                                                               |
-| **MCP Support**          | ✓ 10+ targets                   | ✓                                                                               |
+| **MCP Support**          | ✓ 10 automatic targets          | ✓                                                                               |
 | **Multi-user**           | ✗                               | ✓ (Docker)                                                                      |
 | **Workspaces**           | Collections                     | ✓ Isolated contexts                                                             |
 | **Agent Builder**        | ✗                               | ✓ No-code                                                                       |
@@ -62,7 +62,7 @@ docker pull mintplexlabs/anythingllm
 
 **Privacy**: 100% local, no network calls, no cloud dependencies. AnythingLLM can use cloud LLMs.
 
-**AI agent integration**: Native MCP server for Claude Desktop, Cursor, Zed, Windsurf, Amp, Raycast, and more (11 targets). Skills for Claude Code, Codex, OpenCode, OpenClaw.
+**AI agent integration**: Automatic MCP configuration for 10 clients, including Claude Desktop, Claude Code, Codex, Cursor, Zed, Windsurf, OpenCode, Amp, LM Studio, and LibreChat; Raycast uses manual configuration. Skills for Claude Code, Codex, OpenCode, and OpenClaw.
 
 **Headless indexing**: Keep the same watch/sync/embed loop hot for shells, agents, and automations without opening the workspace UI.
 
@@ -72,7 +72,7 @@ gno daemon
 
 **Incremental indexing**: SHA-256 change detection, only re-indexes modified files.
 
-**Multilingual**: 30+ languages with cross-lingual search via bge-m3.
+**Multilingual**: 30+ languages with cross-lingual search via the current Qwen3 embedding default.
 
 ## AnythingLLM Advantages
 

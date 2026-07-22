@@ -21,14 +21,27 @@ gno mcp install --enable-write
 
 ### Claude Desktop
 
-Add to `claude_desktop_config.json`:
+Run `gno mcp install --dry-run --json`, then add the reported absolute values to
+`claude_desktop_config.json`:
 
 ```json
 {
   "mcpServers": {
     "gno": {
-      "command": "gno",
-      "args": ["mcp"]
+      "command": "/absolute/path/to/bun",
+      "args": [
+        "run",
+        "/absolute/path/to/@gmickel/gno/src/index.ts",
+        "--index",
+        "default",
+        "--config",
+        "/absolute/path/to/index.yml",
+        "mcp"
+      ],
+      "env": {
+        "GNO_DATA_DIR": "/absolute/path/to/data",
+        "GNO_CACHE_DIR": "/absolute/path/to/cache"
+      }
     }
   }
 }
@@ -46,6 +59,12 @@ Config locations:
 gno mcp install -t claude-code -s user    # User scope
 gno mcp install -t claude-code -s project # Project scope
 ```
+
+Installed entries deliberately pin the current Bun/package entrypoint, active
+index, absolute config, data directory, and model cache. Standard clients use
+`env`; OpenCode uses `environment`; Codex uses `~/.codex/config.toml` or project
+`.codex/config.toml` with `[mcp_servers.gno]` and `[mcp_servers.gno.env]`.
+Do not shorten a generated entry to `gno mcp`.
 
 ## Check Status
 

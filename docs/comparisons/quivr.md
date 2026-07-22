@@ -59,7 +59,7 @@ gno init ~/docs && gno index
 gno query "how does authentication work"
 ```
 
-**CLI-first design**: Full-featured command line with tab completion, output formats (JSON, CSV, MD), and one-command MCP install for 10+ editors.
+**CLI-first design**: Full-featured command line with tab completion, output formats (JSON, CSV, MD), and one-command MCP install for 10 automatic targets.
 
 ```bash
 gno mcp install --target cursor

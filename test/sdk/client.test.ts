@@ -121,6 +121,23 @@ afterAll(async () => {
 });
 
 describe("SDK client", () => {
+  test("rejects an unsafe index name even with an explicit database path", async () => {
+    let caught: unknown;
+    try {
+      await createGnoClient({
+        config: createDefaultConfig(),
+        dbPath,
+        indexName: "../escape",
+      });
+    } catch (error) {
+      caught = error;
+    }
+    expect(caught).toMatchObject({
+      code: "VALIDATION",
+      message: expect.stringContaining("Invalid index name:"),
+    });
+  });
+
   test("opens with inline config and reports status", async () => {
     expect(client.isOpen()).toBe(true);
     const status = await client.status();

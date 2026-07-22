@@ -18,12 +18,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   search without editing client configuration. Skill-only client execution is
   reported as runtime-unverifiable instead of passed.
 
+### Fixed
+
+- Made MCP client installs use the canonical current Bun/package runtime and
+  pin the active index, absolute config, data, and cache paths, so GUI clients
+  preserve the installing workspace without inheriting shell state. Codex now
+  uses its official user/project `config.toml` files while preserving unrelated
+  TOML and comments. JSONC and YAML edits now preserve comments and surrounding
+  layout; existing alternate `.jsonc` files are discovered without creating a
+  duplicate config. Atomic writes preserve file permissions and symbolic links.
+  Corrected client scope defaults and the Codex, OpenCode, Windsurf, and
+  LibreChat path/scope contracts.
+
 ### Security
 
 - Kept activation receipts content-free and bounded, with fingerprint-scoped
   invalidation and no persisted probe query, snippet, passage, or unrestricted
   connector output. Passive status paths do not start connector children,
   initialize or download models, or invoke remote inference.
+- Enforced one shared filesystem-safe index-name contract before index paths,
+  indexed references, SDK clients, or generated MCP entries can use the name;
+  empty, traversal-like, platform-invalid, and over-budget canonical values fail
+  closed. NFC/case-equivalent spellings now share one cross-platform identity,
+  whose full database filename stays within the portable 255-byte component
+  limit.
 
 ## [1.12.4] - 2026-07-22
 

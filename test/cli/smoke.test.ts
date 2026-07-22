@@ -466,6 +466,38 @@ describe("CLI smoke tests", () => {
       expect(code).toBe(0);
     });
 
+    test("--index does not reject safe spaces and Unicode", async () => {
+      for (const indexName of ["research index", "ümlaut"]) {
+        const { code, stderr } = await cli("--index", indexName, "status");
+        expect(code).not.toBe(1);
+        expect(stderr).not.toContain("Invalid index name:");
+      }
+    });
+
+    test("--index rejects names outside the filesystem-safe contract", async () => {
+      for (const indexName of [
+        "../work",
+        "work/other",
+        "work\\other",
+        "/tmp/work",
+        "work ",
+        "work.",
+        "work:other",
+      ]) {
+        const { code, stderr } = await cli("--index", indexName, "status");
+        expect(code).toBe(1);
+        expect(stderr).toContain("Invalid index name:");
+      }
+    });
+
+    test("--index validation uses the structured validation envelope", async () => {
+      const { code, stderr } = await cli("--json", "--index=..", "status");
+      expect(code).toBe(1);
+      const parsed = JSON.parse(stderr);
+      expect(parsed.error.code).toBe("VALIDATION");
+      expect(parsed.error.message).toContain("Invalid index name:");
+    });
+
     test("--quiet/-q is accepted", async () => {
       const { code: code1 } = await cli("--quiet", "--help");
       expect(code1).toBe(0);

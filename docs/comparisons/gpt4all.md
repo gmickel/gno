@@ -67,7 +67,7 @@ gno query "how to configure oauth" --rerank
 **MCP for AI assistants**: Let Claude, Cursor, or other AI tools search your documents.
 
 ```bash
-gno mcp install --target claude
+gno mcp install --target claude-desktop
 # Now Claude can search your indexed documents
 ```
 
@@ -146,7 +146,7 @@ gno index
 gno query "project requirements" --format json
 
 # Or let Claude search via MCP while using GPT4All for other chats
-gno mcp install --target claude
+gno mcp install --target claude-desktop
 ```
 
 ## Next Steps

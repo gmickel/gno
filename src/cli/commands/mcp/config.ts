@@ -5,12 +5,13 @@
  * @module src/cli/commands/mcp/config
  */
 
-import { copyFile, mkdir, rename, stat, unlink } from "node:fs/promises";
-import { dirname } from "node:path";
+import { copyFile, lstat, stat } from "node:fs/promises";
 
+import type { ConnectorWorkspaceEnvironment } from "../../../core/connector-environment.js";
 import type { McpConfigFormat } from "./paths.js";
 
 import { CliError } from "../../errors.js";
+import { writeMcpConfigTextAtomically } from "./atomic-config-write.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -20,6 +21,7 @@ import { CliError } from "../../errors.js";
 export interface StandardMcpEntry {
   command: string;
   args: string[];
+  env?: ConnectorWorkspaceEnvironment;
 }
 
 /** OpenCode mcp entry (command is array, has type and enabled) */
@@ -27,6 +29,7 @@ export interface OpenCodeMcpEntry {
   type: "local";
   command: string[];
   enabled: boolean;
+  environment?: ConnectorWorkspaceEnvironment;
 }
 
 /** Config with standard mcpServers key */
@@ -68,8 +71,29 @@ async function checkConfigPath(
   configPath: string
 ): Promise<"file" | "missing"> {
   try {
-    const stats = await stat(configPath);
-    if (!stats.isFile()) {
+    const pathStats = await lstat(configPath);
+    if (pathStats.isSymbolicLink()) {
+      let targetStats: Awaited<ReturnType<typeof stat>>;
+      try {
+        targetStats = await stat(configPath);
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+          throw new CliError(
+            "RUNTIME",
+            `Config path is a dangling symbolic link: ${configPath}`
+          );
+        }
+        throw error;
+      }
+      if (!targetStats.isFile()) {
+        throw new CliError(
+          "RUNTIME",
+          `Config symbolic link target is not a file: ${configPath}`
+        );
+      }
+      return "file";
+    }
+    if (!pathStats.isFile()) {
       throw new CliError(
         "RUNTIME",
         `Config path exists but is not a file: ${configPath}`
@@ -84,88 +108,49 @@ async function checkConfigPath(
   }
 }
 
-/**
- * Read and parse MCP config file.
- * Returns empty config if file doesn't exist.
- * Returns null if file doesn't exist AND returnNullOnMissing is true.
- * Throws on malformed JSON/YAML or if path is a directory.
- */
-export async function readMcpConfig(
+/** Read config text without parsing so format-specific editors preserve layout. */
+export async function readMcpConfigText(
   configPath: string,
-  options?: { returnNullOnMissing?: boolean; yaml?: boolean }
-): Promise<McpConfig | null> {
+  options?: { returnNullOnMissing?: boolean }
+): Promise<string | null> {
   const pathStatus = await checkConfigPath(configPath);
-
   if (pathStatus === "missing") {
-    return options?.returnNullOnMissing ? null : {};
+    return options?.returnNullOnMissing ? null : "";
   }
-
-  const file = Bun.file(configPath);
-  const content = await file.text();
-
-  // Handle empty file
-  if (!content.trim()) {
-    return {};
-  }
-
-  try {
-    if (options?.yaml) {
-      return Bun.YAML.parse(content) as McpConfig;
-    }
-    return JSON.parse(content) as McpConfig;
-  } catch {
-    const format = options?.yaml ? "YAML" : "JSON";
-    throw new CliError(
-      "RUNTIME",
-      `Malformed ${format} in ${configPath}. Please fix or backup and delete the file.`
-    );
-  }
+  return Bun.file(configPath).text();
 }
 
-/**
- * Write MCP config atomically via temp file + rename.
- * Creates backup of existing file first.
- */
-export async function writeMcpConfig(
+/** Write MCP text atomically while preserving the same backup contract. */
+export async function writeMcpConfigText(
   configPath: string,
-  config: AnyMcpConfig,
-  options?: { yaml?: boolean }
+  content: string
 ): Promise<void> {
-  const dir = dirname(configPath);
-
-  // Ensure directory exists
-  await mkdir(dir, { recursive: true });
-
-  // Create backup of existing file
+  const backupPath = `${configPath}.bak`;
   try {
     const stats = await stat(configPath);
     if (stats.isFile()) {
-      await copyFile(configPath, `${configPath}.bak`);
+      try {
+        const backupStats = await lstat(backupPath);
+        if (!backupStats.isFile() || backupStats.isSymbolicLink()) {
+          throw new CliError(
+            "RUNTIME",
+            `MCP config backup path is not a regular file: ${backupPath}`
+          );
+        }
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
+          throw error;
+        }
+      }
+      await copyFile(configPath, backupPath);
     }
-  } catch {
-    // File doesn't exist, no backup needed
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
+      throw error;
+    }
   }
 
-  // Serialize content
-  const content = options?.yaml
-    ? Bun.YAML.stringify(config)
-    : JSON.stringify(config, null, 2);
-
-  // Write to temp file first
-  const tmpPath = `${configPath}.tmp.${Date.now()}.${process.pid}`;
-  try {
-    await Bun.write(tmpPath, content);
-    // Atomic rename
-    await rename(tmpPath, configPath);
-  } catch (err) {
-    // Cleanup temp file on error
-    try {
-      await unlink(tmpPath);
-    } catch {
-      // Ignore cleanup errors
-    }
-    throw err;
-  }
+  await writeMcpConfigTextAtomically(configPath, content);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -188,6 +173,8 @@ export function getServersKey(
       return "mcp";
     case "amp_mcp":
       return "amp.mcpServers";
+    case "codex_toml":
+      throw new Error("Codex TOML uses dedicated config operations");
     default: {
       const _exhaustive: never = format;
       throw new Error(`Unknown format: ${String(_exhaustive)}`);
@@ -196,47 +183,13 @@ export function getServersKey(
 }
 
 /**
- * Check if format uses YAML.
- */
-export function isYamlFormat(format: McpConfigFormat): boolean {
-  return format === "yaml_standard";
-}
-
-/**
- * Check if a server entry exists in config for given format.
- */
-export function hasServerEntry(
-  config: AnyMcpConfig,
-  serverName: string,
-  format: McpConfigFormat
-): boolean {
-  const key = getServersKey(format);
-  const servers = config[key] as Record<string, unknown> | undefined;
-  return !!servers?.[serverName];
-}
-
-/**
- * Get server entry from config.
- */
-export function getServerEntry(
-  config: AnyMcpConfig,
-  serverName: string,
-  format: McpConfigFormat
-): StandardMcpEntry | OpenCodeMcpEntry | undefined {
-  const key = getServersKey(format);
-  const servers = config[key] as
-    | Record<string, StandardMcpEntry | OpenCodeMcpEntry>
-    | undefined;
-  return servers?.[serverName];
-}
-
-/**
  * Build entry for a specific format from standard command/args.
  */
 export function buildEntry(
   command: string,
   args: string[],
-  format: McpConfigFormat
+  format: McpConfigFormat,
+  env?: ConnectorWorkspaceEnvironment
 ): StandardMcpEntry | OpenCodeMcpEntry {
   if (format === "mcp") {
     // OpenCode: command is array [command, ...args]
@@ -244,59 +197,9 @@ export function buildEntry(
       type: "local",
       command: [command, ...args],
       enabled: true,
+      ...(env ? { environment: env } : {}),
     };
   }
   // All others use standard format
-  return { command, args };
-}
-
-/**
- * Add or update server entry in config.
- */
-export function setServerEntry(
-  config: AnyMcpConfig,
-  serverName: string,
-  entry: StandardMcpEntry | OpenCodeMcpEntry,
-  format: McpConfigFormat
-): void {
-  const key = getServersKey(format);
-
-  // Initialize servers record if needed
-  if (!config[key]) {
-    (config as Record<string, unknown>)[key] = {};
-  }
-
-  const servers = config[key] as Record<
-    string,
-    StandardMcpEntry | OpenCodeMcpEntry
-  >;
-  servers[serverName] = entry;
-}
-
-/**
- * Remove server entry from config.
- * Returns true if entry was removed, false if not found.
- */
-export function removeServerEntry(
-  config: AnyMcpConfig,
-  serverName: string,
-  format: McpConfigFormat
-): boolean {
-  const key = getServersKey(format);
-  const servers = config[key] as
-    | Record<string, StandardMcpEntry | OpenCodeMcpEntry>
-    | undefined;
-
-  if (!servers?.[serverName]) {
-    return false;
-  }
-
-  delete servers[serverName];
-
-  // Clean up empty servers object
-  if (Object.keys(servers).length === 0) {
-    delete (config as Record<string, unknown>)[key];
-  }
-
-  return true;
+  return { command, args, ...(env ? { env } : {}) };
 }

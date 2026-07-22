@@ -3,6 +3,7 @@ import { mkdir, mkdtemp } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
+import { isValidIndexName } from "../../src/app/index-name";
 import { isSafeLocalGnoMcpCommand } from "../../src/core/connector-verifier";
 import { safeRm } from "../helpers/cleanup";
 
@@ -42,6 +43,35 @@ test("connector policy requires trusted realpath provenance", async () => {
         trusted
       )
     ).toBe(true);
+    for (const command of ["gno", "gno.cmd", "./gno", "trusted/gno"]) {
+      expect(
+        await isSafeLocalGnoMcpCommand({ command, args: ["mcp"] }, trusted)
+      ).toBe(false);
+    }
+    expect(
+      await isSafeLocalGnoMcpCommand(
+        { command: "bun", args: ["run", trustedSource, "mcp"] },
+        trusted
+      )
+    ).toBe(false);
+    expect(
+      await isSafeLocalGnoMcpCommand(
+        {
+          command: trustedGno,
+          args: ["--config", "relative/index.yml", "mcp"],
+        },
+        trusted
+      )
+    ).toBe(false);
+    expect(
+      await isSafeLocalGnoMcpCommand(
+        {
+          command: trustedGno,
+          args: ["--config=relative/index.yml", "mcp"],
+        },
+        trusted
+      )
+    ).toBe(false);
     expect(
       await isSafeLocalGnoMcpCommand(
         { command: process.execPath, args: [trustedGno, "mcp"] },
@@ -76,8 +106,11 @@ test("connector policy requires trusted realpath provenance", async () => {
       "research-2026",
       "team_alpha",
       "research.v2",
+      "research index",
+      "ümlaut",
       "a".repeat(64),
     ]) {
+      expect(isValidIndexName(indexName)).toBe(true);
       expect(
         await isSafeLocalGnoMcpCommand(
           { command: trustedGno, args: ["--index", indexName, "mcp"] },
@@ -100,6 +133,32 @@ test("connector policy requires trusted realpath provenance", async () => {
         trusted
       )
     ).toBe(true);
+    for (const controlCharacter of ["\0", "\n", "\u001b"]) {
+      const unsafeConfigPath = `/tmp/gno${controlCharacter}.yml`;
+      for (const args of [
+        ["--config", unsafeConfigPath, "mcp"],
+        [`--config=${unsafeConfigPath}`, "mcp"],
+      ]) {
+        expect(
+          await isSafeLocalGnoMcpCommand({ command: trustedGno, args }, trusted)
+        ).toBe(false);
+        expect(
+          await isSafeLocalGnoMcpCommand(
+            { command: process.execPath, args: [trustedGno, ...args] },
+            trusted
+          )
+        ).toBe(false);
+        expect(
+          await isSafeLocalGnoMcpCommand(
+            {
+              command: process.execPath,
+              args: ["run", trustedSource, ...args],
+            },
+            trusted
+          )
+        ).toBe(false);
+      }
+    }
     expect(
       await isSafeLocalGnoMcpCommand(
         {
@@ -165,10 +224,13 @@ test("connector policy requires trusted realpath provenance", async () => {
       "..",
       "work..other",
       ".hidden",
-      "research index",
-      "ümlaut",
+      "research index ",
+      "research.index.",
+      "research:index",
+      "research?index",
       "a".repeat(65),
     ]) {
+      expect(isValidIndexName(indexName)).toBe(false);
       expect(
         await isSafeLocalGnoMcpCommand(
           { command: trustedGno, args: ["--index", indexName, "mcp"] },

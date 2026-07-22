@@ -160,6 +160,7 @@
     "commander": "14.0.3",
     "embla-carousel-react": "8.6.0",
     "franc": "6.2.0",
+    "jsonc-parser": "3.3.1",
     "lucide-react": "1.8.0",
     "markitdown-ts": "0.0.9",
     "minimatch": "10.2.3",
@@ -179,6 +180,7 @@
     "tailwind-merge": "3.4.0",
     "tailwindcss": "4.1.18",
     "use-stick-to-bottom": "1.1.2",
+    "yaml": "2.9.0",
     "zod": "4.3.6"
   },
   "devDependencies": {

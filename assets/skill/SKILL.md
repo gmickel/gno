@@ -226,6 +226,11 @@ gno graph --from gno://notes/a.md --to gno://notes/b.md
 --no-pager        Disable paging
 ```
 
+Index names follow the CLI filesystem-identity contract: 1–64 UTF-16 code
+units, letter/number first, no trailing space or `.`, no `..`, separators, or
+platform-invalid punctuation. NFC/case-equivalent names share one identity.
+See `docs/CLI.md` under Global Options for the complete byte limits.
+
 Non-default index search results may include `?index=<name>` on `gno://` URIs.
 Keep that query string when passing the URI to `gno get`, SDK `get()`, MCP
 `gno_get`, or an MCP resource read: it selects the named database. Batch reads

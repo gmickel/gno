@@ -85,7 +85,7 @@ gno query "Q4 budget projections"
 
 ```bash
 # Let Claude search your docs
-gno mcp install --target claude
+gno mcp install --target claude-desktop
 
 # Get AI-generated answers
 gno ask "what is our deployment process" --answer

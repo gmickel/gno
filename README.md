@@ -258,8 +258,15 @@ gno mcp install --target codex       # OpenAI Codex CLI
 gno mcp install --target opencode    # OpenCode
 gno mcp install --target amp         # Amp
 gno mcp install --target lmstudio    # LM Studio
-gno mcp install --target librechat   # LibreChat
+gno mcp install --target librechat --scope project # LibreChat
 ```
+
+Each install records an absolute Bun/package entrypoint plus the active index,
+config, data directory, and model cache, so desktop clients open the same GNO
+workspace without relying on shell `PATH` or `GNO_*` inheritance. Inspect the
+exact command, arguments, and workspace values with
+`gno mcp install --dry-run --json`. If GNO is already configured in that
+target, add `--force` to preview the replacement without writing it.
 
 Check status: `gno mcp status`
 
@@ -350,6 +357,7 @@ import { createGnoClient } from "@gmickel/gno";
 
 const client = await createGnoClient({
   configPath: "/Users/me/.config/gno/index.yml",
+  indexName: "research",
 });
 
 // Fast exact search
@@ -382,7 +390,7 @@ await client.close();
 
 Core SDK surface:
 
-- `createGnoClient({ config | configPath, dbPath? })`
+- `createGnoClient({ config | configPath, dbPath?, indexName? })`
 - `search`, `vsearch`, `query`, `ask`
 - `get`, `multiGet`, `list`, `status`
 - `update`, `embed`, `index`

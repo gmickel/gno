@@ -5,6 +5,20 @@ import { resolve } from "node:path";
 import { startBackgroundRuntime } from "../../src/serve/background-runtime";
 
 describe("startBackgroundRuntime", () => {
+  test("rejects an unsafe index name before initialization or filesystem access", async () => {
+    const isInitialized = mock(async () => true);
+    const result = await startBackgroundRuntime(
+      { index: "../escape" },
+      { isInitialized }
+    );
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error).toContain("Invalid index name:");
+    }
+    expect(isInitialized).not.toHaveBeenCalled();
+  });
+
   test("fails when collections are required but config is empty", async () => {
     const result = await startBackgroundRuntime(
       {

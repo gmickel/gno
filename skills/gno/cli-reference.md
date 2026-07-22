@@ -17,6 +17,11 @@ All commands accept:
 | `--no-pager`      | Disable automatic paging                 |
 | `--offline`       | Use cached models only                   |
 
+Index names use 1–64 UTF-16 code units, start with a letter or number, and
+reject trailing space/dot, `..`, separators, controls, and platform-invalid
+punctuation. NFC/case-equivalent spellings share one identity. See
+`docs/CLI.md` under Global Options for the complete canonical-byte contract.
+
 ## Initialization
 
 ### gno init
@@ -430,12 +435,17 @@ Install GNO as MCP server in client configurations.
 gno mcp install [options]
 ```
 
-| Option         | Default        | Description                                      |
-| -------------- | -------------- | ------------------------------------------------ |
-| `-t, --target` | claude-desktop | Target: `claude-desktop`, `claude-code`, `codex` |
-| `-s, --scope`  | user           | Scope: `user`, `project`                         |
-| `-f, --force`  | false          | Overwrite existing config                        |
-| `--dry-run`    | false          | Preview changes                                  |
+| Option         | Default        | Description               |
+| -------------- | -------------- | ------------------------- |
+| `-t, --target` | claude-desktop | Target client (see below) |
+| `-s, --scope`  | target default | Scope: `user`, `project`  |
+| `-f, --force`  | false          | Overwrite existing config |
+| `--dry-run`    | false          | Preview changes           |
+
+Targets: `claude-desktop`, `claude-code`, `codex`, `cursor`, `zed`,
+`windsurf`, `opencode`, `amp`, `lmstudio`, and `librechat`. Project scope is
+supported by Claude Code, Codex, Cursor, OpenCode, and LibreChat.
+LibreChat is project-only; all other targets default to user scope.
 
 Examples:
 

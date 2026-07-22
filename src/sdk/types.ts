@@ -46,6 +46,7 @@ export interface GnoClientInitOptions {
   config?: Config;
   configPath?: string;
   dbPath?: string;
+  /** Filesystem-safe index name: 1-64 Unicode letters/marks/numbers plus ` ._-`. */
   indexName?: string;
   cacheDir?: string;
   downloadPolicy?: DownloadPolicy;

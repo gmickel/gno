@@ -92,7 +92,7 @@ gno similar doc.md          # Semantically similar notes
 **MCP for AI assistants**: Let Claude, Cursor, or other AI tools search your documents.
 
 ```bash
-gno mcp install --target claude
+gno mcp install --target claude-desktop
 # Now Claude can search your indexed documents
 ```
 
@@ -157,7 +157,7 @@ gno index
 gno query "project ideas"
 
 # Let AI assistants access your Reor notes
-gno mcp install --target claude
+gno mcp install --target claude-desktop
 ```
 
 This gives you Reor's note-taking and auto-linking plus GNO's CLI, MCP, and multi-format search.

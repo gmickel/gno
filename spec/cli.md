@@ -46,6 +46,18 @@ Commands that produce structured output support these format flags:
 
 Default output is human-readable terminal format.
 
+Index names are filesystem identifiers: 1–64 UTF-16 code units drawn from
+Unicode letters, marks, numbers, internal ASCII spaces, `.`, `_`, or `-`. The
+first character must be a letter or number; the last cannot be a space or `.`;
+`..` is forbidden. Absolute paths, path separators, controls, and
+platform-invalid punctuation are validation errors (exit 1). NFC/case-folded
+equivalents have one logical identity and database selection. The canonical
+identity is limited to 242 UTF-8 bytes so `index-<identity>.sqlite` stays within
+the portable 255-byte filename-component limit. The same contract applies to
+indexed `gno://` references. New indexes use the canonical filename. One
+pre-existing legacy filename for that identity remains addressable; multiple
+equivalent files fail closed as ambiguous.
+
 ### Output Format Support Matrix
 
 | Command            | --json | --files | --csv | --md | --xml | Default  |
@@ -1467,12 +1479,12 @@ gno mcp install [--target <target>] [--scope <scope>] [--force] [--dry-run] [--j
 
 **Options:**
 
-| Option      | Type    | Default        | Description                                                |
-| ----------- | ------- | -------------- | ---------------------------------------------------------- |
-| `--target`  | string  | claude-desktop | Target client (see table below)                            |
-| `--scope`   | string  | user           | Scope: `user` or `project` (project only for some targets) |
-| `--force`   | boolean | false          | Overwrite existing gno configuration                       |
-| `--dry-run` | boolean | false          | Show what would be done without changes                    |
+| Option      | Type    | Default        | Description                                               |
+| ----------- | ------- | -------------- | --------------------------------------------------------- |
+| `--target`  | string  | claude-desktop | Target client (see table below)                           |
+| `--scope`   | string  | target default | Scope: `user` or `project`; LibreChat defaults to project |
+| `--force`   | boolean | false          | Overwrite existing gno configuration                      |
+| `--dry-run` | boolean | false          | Show what would be done without changes                   |
 
 **Targets:**
 
@@ -1496,13 +1508,13 @@ gno mcp install [--target <target>] [--scope <scope>] [--force] [--dry-run] [--j
 | claude-desktop | user    | `~/Library/Application Support/Claude/claude_desktop_config.json` | `%APPDATA%\Claude\claude_desktop_config.json` | `~/.config/Claude/claude_desktop_config.json` |
 | claude-code    | user    | `~/.claude.json`                                                  | `~/.claude.json`                              | `~/.claude.json`                              |
 | claude-code    | project | `./.mcp.json`                                                     | `./.mcp.json`                                 | `./.mcp.json`                                 |
-| codex          | user    | `~/.codex.json`                                                   | `~/.codex.json`                               | `~/.codex.json`                               |
-| codex          | project | `./.codex/.mcp.json`                                              | `./.codex/.mcp.json`                          | `./.codex/.mcp.json`                          |
+| codex          | user    | `~/.codex/config.toml`                                            | `~/.codex/config.toml`                        | `~/.codex/config.toml`                        |
+| codex          | project | `./.codex/config.toml`                                            | `./.codex/config.toml`                        | `./.codex/config.toml`                        |
 | cursor         | user    | `~/.cursor/mcp.json`                                              | `~/.cursor/mcp.json`                          | `~/.cursor/mcp.json`                          |
 | cursor         | project | `./.cursor/mcp.json`                                              | `./.cursor/mcp.json`                          | `./.cursor/mcp.json`                          |
-| zed            | user    | `~/.config/zed/settings.json`                                     | N/A                                           | `~/.config/zed/settings.json`                 |
-| windsurf       | user    | `~/.codeium/windsurf/mcp_config.json`                             | `%APPDATA%\Codeium\windsurf\mcp_config.json`  | `~/.codeium/windsurf/mcp_config.json`         |
-| opencode       | user    | `~/.config/opencode/config.json`                                  | `~/.config/opencode/config.json`              | `~/.config/opencode/config.json`              |
+| zed            | user    | `~/.config/zed/settings.json`                                     | `%APPDATA%\Zed\settings.json`                 | `~/.config/zed/settings.json`                 |
+| windsurf       | user    | `~/.codeium/windsurf/mcp_config.json`                             | `~/.codeium/windsurf/mcp_config.json`         | `~/.codeium/windsurf/mcp_config.json`         |
+| opencode       | user    | `~/.config/opencode/opencode.json`                                | `~/.config/opencode/opencode.json`            | `~/.config/opencode/opencode.json`            |
 | opencode       | project | `./opencode.json`                                                 | `./opencode.json`                             | `./opencode.json`                             |
 | amp            | user    | `~/.config/amp/settings.json`                                     | `~/.config/amp/settings.json`                 | `~/.config/amp/settings.json`                 |
 | lmstudio       | user    | `~/.lmstudio/mcp.json`                                            | `~/.lmstudio/mcp.json`                        | `~/.lmstudio/mcp.json`                        |
@@ -1510,19 +1522,39 @@ gno mcp install [--target <target>] [--scope <scope>] [--force] [--dry-run] [--j
 
 **Config Formats:**
 
-- Standard JSON (`mcpServers` key): Claude Desktop, Claude Code, Codex, Cursor, Windsurf, LM Studio
+- JSONC-compatible (`mcpServers` key): Claude Desktop, Claude Code, Cursor, Windsurf, LM Studio
 - Standard YAML (`mcpServers` key): LibreChat
+- Codex TOML: `[mcp_servers.gno]` plus `[mcp_servers.gno.env]`
 - Zed: `context_servers` key
 - OpenCode: `mcp` key with array command format
 - Amp: `amp.mcpServers` key
 
+JSON/JSONC edits preserve comments, trailing commas, and unrelated layout.
+OpenCode and Amp discover an existing `.jsonc` alternate instead of creating a
+duplicate canonical `.json` file.
+
+`--dry-run --json` reports the normalized command, arguments, and workspace
+environment, not the target's persisted wrapper shape. Previewing replacement
+of an existing `gno` entry requires `--force --dry-run --json`; no file is
+written in dry-run mode.
+
 **Behavior:**
 
-1. Detects bun and gno paths (absolute paths for sandboxed environments)
-2. Reads existing config (creates if missing)
-3. Adds `mcpServers.gno` entry
-4. Creates backup before modifying
-5. Writes atomically via temp file + rename
+1. Resolves the active index and validates it with the shared index-name contract
+2. Resolves the active explicit, environment-selected, or default config to an absolute path
+3. Builds an absolute command using the current Bun executable, `run`, and the current package's `src/index.ts`
+4. Appends `--index <active> --config <absolute> mcp` (`--enable-write` follows `mcp` when requested)
+5. Resolves absolute `GNO_DATA_DIR` and `GNO_CACHE_DIR` values for the active workspace
+6. Reads existing config (creates if missing)
+7. Adds the format-specific `gno` server entry, using `env` for standard/Codex/YAML entries and `environment` for OpenCode
+8. Creates a backup before modifying
+9. Writes atomically via temp file + rename
+
+The persisted index, config, data directory, and cache directory are workspace
+identity, not display metadata. They make the installed GUI client deterministic
+even when it has a different `PATH` or does not inherit `GNO_*` variables. Only
+the two audited absolute-path environment keys are persisted; status and
+activation reject other environment keys or invalid values.
 
 **Output (JSON):**
 
@@ -1535,7 +1567,19 @@ gno mcp install [--target <target>] [--scope <scope>] [--force] [--dry-run] [--j
     "action": "created",
     "serverEntry": {
       "command": "/path/to/bun",
-      "args": ["/path/to/gno", "mcp"]
+      "args": [
+        "run",
+        "/path/to/@gmickel/gno/src/index.ts",
+        "--index",
+        "default",
+        "--config",
+        "/absolute/path/to/index.yml",
+        "mcp"
+      ],
+      "env": {
+        "GNO_DATA_DIR": "/absolute/path/to/data",
+        "GNO_CACHE_DIR": "/absolute/path/to/cache"
+      }
     }
   }
 }
@@ -1544,7 +1588,7 @@ gno mcp install [--target <target>] [--scope <scope>] [--force] [--dry-run] [--j
 **Exit Codes:**
 
 - 0: Success
-- 1: Already configured (without --force), invalid scope for target
+- 1: Already configured (without --force), invalid scope for target, invalid index name
 - 2: Bun not found, gno not found, IO failure
 
 **Examples:**
@@ -1583,17 +1627,20 @@ gno mcp uninstall [--target <target>] [--scope <scope>] [--json]
 
 **Options:**
 
-| Option     | Type   | Default        | Description   |
-| ---------- | ------ | -------------- | ------------- |
-| `--target` | string | claude-desktop | Target client |
-| `--scope`  | string | user           | Scope         |
+| Option     | Type   | Default        | Description                          |
+| ---------- | ------ | -------------- | ------------------------------------ |
+| `--target` | string | claude-desktop | Target client                        |
+| `--scope`  | string | target default | Scope; LibreChat defaults to project |
 
 **Behavior:**
 
 1. Reads existing config
-2. Removes `mcpServers.gno` entry if present
+2. Removes the format-specific GNO entry if present (`mcpServers.gno`,
+   `context_servers.gno`, `mcp.gno`, `amp.mcpServers.gno`, or Codex's
+   `[mcp_servers.gno]` plus `[mcp_servers.gno.env]` tables)
 3. Creates backup before modifying
-4. Removes empty `mcpServers` object
+4. Removes an empty format-specific server object; Codex preserves unrelated
+   TOML and comments byte-for-byte apart from necessary surrounding whitespace
 5. Preserves other entries
 
 **Output (JSON):**
@@ -1634,7 +1681,8 @@ gno mcp status [--target <target>] [--scope <scope>] [--json]
 | `--target` | string | all     | Filter by target (or `all`) |
 | `--scope`  | string | all     | Filter by scope (or `all`)  |
 
-**Output (Terminal):**
+**Output (Terminal, abbreviated; unfiltered status enumerates 14 target/scope
+pairs):**
 
 ```text
 MCP Server Status
@@ -1642,7 +1690,7 @@ MCP Server Status
 
 ✓ Claude Desktop: configured
     Command: /path/to/bun
-    Args: /path/to/gno mcp
+    Args: run /path/to/@gmickel/gno/src/index.ts --index default --config /absolute/path/to/index.yml mcp
     Config: ~/Library/Application Support/Claude/claude_desktop_config.json
 
 ✗ Claude Code: not configured
@@ -1651,7 +1699,7 @@ MCP Server Status
 ✗ Claude Code (project): not configured
     Config: ./.mcp.json
 
-2/5 targets configured
+1/14 targets configured
 ```
 
 **Output (JSON):**
@@ -1666,7 +1714,19 @@ MCP Server Status
       "configured": true,
       "serverEntry": {
         "command": "/path/to/bun",
-        "args": ["/path/to/gno", "mcp"]
+        "args": [
+          "run",
+          "/path/to/@gmickel/gno/src/index.ts",
+          "--index",
+          "default",
+          "--config",
+          "/absolute/path/to/index.yml",
+          "mcp"
+        ],
+        "env": {
+          "GNO_DATA_DIR": "/absolute/path/to/data",
+          "GNO_CACHE_DIR": "/absolute/path/to/cache"
+        }
       }
     },
     {
@@ -1676,7 +1736,7 @@ MCP Server Status
       "configured": false
     }
   ],
-  "summary": { "configured": 1, "total": 5 }
+  "summary": { "configured": 1, "total": 14 }
 }
 ```
 

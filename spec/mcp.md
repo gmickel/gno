@@ -590,6 +590,14 @@ Retrieve a single document by reference.
 For `gno://...?...index=<name>` refs, the tool reads the named index rather than
 the MCP server's active index.
 
+`<name>` follows the CLI index-name contract: 1–64 UTF-16 code units drawn from
+Unicode letters, marks, numbers, internal ASCII spaces, `.`, `_`, or `-`; it
+starts with a letter or number, cannot end with a space or `.`, and cannot
+contain `..`. Invalid names are rejected before filesystem access. NFC/case-
+folded equivalents share one logical identity. The canonical identity is
+limited to 242 UTF-8 bytes so `index-<identity>.sqlite` stays within the portable
+255-byte filename-component limit.
+
 ---
 
 ### gno_multi_get
@@ -1857,24 +1865,29 @@ gno mcp install [options]
 
 **Options:**
 
-| Option                  | Description                                                   | Default          |
-| ----------------------- | ------------------------------------------------------------- | ---------------- |
-| `-t, --target <target>` | Target client: `claude-desktop`, `claude-code`, `codex`       | `claude-desktop` |
-| `-s, --scope <scope>`   | Scope: `user`, `project` (project only for claude-code/codex) | `user`           |
-| `-f, --force`           | Overwrite existing configuration                              | `false`          |
-| `--dry-run`             | Show what would be done without changes                       | `false`          |
-| `--enable-write`        | Install config with `--enable-write` args                     | `false`          |
-| `--json`                | JSON output                                                   | `false`          |
+| Option                  | Description                                                                                                   | Default                           |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------- | --------------------------------- |
+| `-t, --target <target>` | One of the 10 supported automatic clients                                                                     | `claude-desktop`                  |
+| `-s, --scope <scope>`   | `user` or `project`; project is supported by Claude Code, Codex, Cursor, OpenCode, and project-only LibreChat | Target default (otherwise `user`) |
+| `-f, --force`           | Overwrite existing configuration                                                                              | `false`                           |
+| `--dry-run`             | Show what would be done without changes                                                                       | `false`                           |
+| `--enable-write`        | Install config with `--enable-write` args                                                                     | `false`                           |
+| `--json`                | JSON output                                                                                                   | `false`                           |
 
 **Config Locations:**
 
-| Target           | Scope   | macOS Path                                                        |
-| ---------------- | ------- | ----------------------------------------------------------------- |
-| `claude-desktop` | user    | `~/Library/Application Support/Claude/claude_desktop_config.json` |
-| `claude-code`    | user    | `~/.claude.json`                                                  |
-| `claude-code`    | project | `./.mcp.json`                                                     |
-| `codex`          | user    | `~/.codex.json`                                                   |
-| `codex`          | project | `./.codex/.mcp.json`                                              |
+| Target           | Scope(s)      | Config path                                                           |
+| ---------------- | ------------- | --------------------------------------------------------------------- |
+| `claude-desktop` | user          | `~/Library/Application Support/Claude/claude_desktop_config.json`     |
+| `claude-code`    | user, project | `~/.claude.json`, `./.mcp.json`                                       |
+| `codex`          | user, project | `~/.codex/config.toml`, `./.codex/config.toml`                        |
+| `cursor`         | user, project | `~/.cursor/mcp.json`, `./.cursor/mcp.json`                            |
+| `zed`            | user          | `~/.config/zed/settings.json`; Windows: `%APPDATA%\Zed\settings.json` |
+| `windsurf`       | user          | `~/.codeium/windsurf/mcp_config.json`                                 |
+| `opencode`       | user, project | `~/.config/opencode/opencode.json`, `./opencode.json`                 |
+| `amp`            | user          | `~/.config/amp/settings.json`                                         |
+| `lmstudio`       | user          | `~/.lmstudio/mcp.json`                                                |
+| `librechat`      | project       | `./librechat.yaml`                                                    |
 
 **Example:**
 
@@ -1888,11 +1901,68 @@ gno mcp install -t claude-code
 # Install for Claude Code (project scope)
 gno mcp install -t claude-code -s project
 
+# Install for project-only LibreChat
+gno mcp install -t librechat -s project
+
 # Preview changes
 gno mcp install --dry-run
 
 # Install with write tools enabled
 gno mcp install --enable-write
+```
+
+**Installed entry contract:** The command is the absolute current Bun
+executable. Arguments are `run`, the absolute `src/index.ts` from the currently
+installed GNO package, `--index <active>`, `--config <absolute>`, then `mcp`.
+`--enable-write`, when requested, follows `mcp`. The config path is the active
+explicit, environment-selected, or default config resolved to an absolute path.
+Entries also pin absolute `GNO_DATA_DIR` and `GNO_CACHE_DIR` values under `env`
+(`environment` for OpenCode). No other environment keys are accepted by status
+or activation verification, and all values must be absolute paths without
+control characters. Codex uses native `[mcp_servers.gno]` and nested
+`[mcp_servers.gno.env]` TOML tables; install, update, and uninstall preserve
+unrelated TOML and comments. The index, config, data, and cache identity are
+always pinned because GUI clients do not reliably inherit the installing
+shell's `PATH` or environment. Invalid or empty index names fail before the
+target client config is written.
+JSON/JSONC targets preserve comments, trailing commas, and unrelated layout;
+OpenCode and Amp reuse supported existing `.jsonc` alternates rather than
+creating duplicate `.json` configs. `--dry-run --json` returns normalized
+command, argument, and workspace values rather than a target-specific persisted
+wrapper. Previewing an existing entry requires `--force --dry-run --json`.
+
+Standard JSON/YAML entries use this shape (with target-specific outer keys):
+
+```json
+{
+  "command": "/absolute/path/to/bun",
+  "args": [
+    "run",
+    "/absolute/path/to/@gmickel/gno/src/index.ts",
+    "--index",
+    "default",
+    "--config",
+    "/absolute/path/to/index.yml",
+    "mcp"
+  ],
+  "env": {
+    "GNO_DATA_DIR": "/absolute/path/to/data",
+    "GNO_CACHE_DIR": "/absolute/path/to/cache"
+  }
+}
+```
+
+OpenCode stores the same executable and arguments in its `command` array and
+uses `environment`, not `env`. Codex stores the equivalent native TOML:
+
+```toml
+[mcp_servers.gno]
+command = "/absolute/path/to/bun"
+args = ["run", "/absolute/path/to/@gmickel/gno/src/index.ts", "--index", "default", "--config", "/absolute/path/to/index.yml", "mcp"]
+
+[mcp_servers.gno.env]
+GNO_DATA_DIR = "/absolute/path/to/data"
+GNO_CACHE_DIR = "/absolute/path/to/cache"
 ```
 
 ### gno mcp uninstall
@@ -1907,11 +1977,11 @@ gno mcp uninstall [options]
 
 **Options:**
 
-| Option                  | Description   | Default          |
-| ----------------------- | ------------- | ---------------- |
-| `-t, --target <target>` | Target client | `claude-desktop` |
-| `-s, --scope <scope>`   | Scope         | `user`           |
-| `--json`                | JSON output   | `false`          |
+| Option                  | Description                          | Default          |
+| ----------------------- | ------------------------------------ | ---------------- |
+| `-t, --target <target>` | Target client                        | `claude-desktop` |
+| `-s, --scope <scope>`   | Scope; LibreChat defaults to project | Target default   |
+| `--json`                | JSON output                          | `false`          |
 
 ### gno mcp status
 
@@ -1931,7 +2001,8 @@ gno mcp status [options]
 | `-s, --scope <scope>`   | Filter by scope (or `all`)  | `all`   |
 | `--json`                | JSON output                 | `false` |
 
-**Example Output:**
+**Example Output (abbreviated; unfiltered status enumerates 14 target/scope
+pairs):**
 
 ```text
 MCP Server Status
@@ -1939,13 +2010,13 @@ MCP Server Status
 
 ✓ Claude Desktop: configured
     Command: /path/to/bun
-    Args: /path/to/gno mcp
+    Args: run /path/to/@gmickel/gno/src/index.ts --index default --config /absolute/path/to/index.yml mcp
     Config: ~/Library/Application Support/Claude/claude_desktop_config.json
 
 ✗ Claude Code: not configured
     Config: ~/.claude.json
 
-2/5 targets configured
+1/14 targets configured
 ```
 
 ---

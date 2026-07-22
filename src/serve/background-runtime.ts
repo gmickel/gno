@@ -12,6 +12,7 @@ import type {
 } from "./watch-service";
 
 import { getIndexDbPath } from "../app/constants";
+import { INDEX_NAME_REQUIREMENTS, isValidIndexName } from "../app/index-name";
 import {
   ensureDirectories,
   formatConfigWarnings,
@@ -92,6 +93,12 @@ export async function startBackgroundRuntime(
   options: BackgroundRuntimeOptions = {},
   deps: BackgroundRuntimeDeps = {}
 ): Promise<BackgroundRuntimeResult> {
+  if (options.index !== undefined && !isValidIndexName(options.index)) {
+    return {
+      success: false,
+      error: `Invalid index name: ${INDEX_NAME_REQUIREMENTS}.`,
+    };
+  }
   const syncAllService = deps.syncAllService
     ? (...args: Parameters<typeof defaultSyncService.syncAll>) =>
         deps.syncAllService!(...args)
