@@ -1,6 +1,6 @@
 # Agentic Retrieval Benchmark — fixture-agent-v1
 
-Canonical fingerprint: `05895be6133d636ce2b0d571748f678e19c2714c0b9c938f9f01ce7b07801330`
+Canonical fingerprint: `db20b317d355347eaa1f02295611db09161742983c35034c505641d829f2f814`
 Fixture: `2026-07-22.1` / `68027bb0248c09507dbdba9d8cf2433f1b9b7b547ba5db8811db338982f9d08b`
 Adapters: `capsule`, `gno-mcp`, `lexical`
 Attempted/scored/successful: 144/144/138
@@ -18,9 +18,9 @@ Failures: context_byte_reduction_below_0.35_or_zero_denominator
 
 ## Adapter-native indexes
 
-- `capsule`: `9c4a65f08850a70ff6d2ec6fe069b4cd38c9cbf3481583afd76a74264cf0591a` (corpus `68027bb0248c09507dbdba9d8cf2433f1b9b7b547ba5db8811db338982f9d08b`, preparation 497.259 ms)
-- `gno-mcp`: `9c4a65f08850a70ff6d2ec6fe069b4cd38c9cbf3481583afd76a74264cf0591a` (corpus `68027bb0248c09507dbdba9d8cf2433f1b9b7b547ba5db8811db338982f9d08b`, preparation 3918.65 ms)
-- `lexical`: `9c4a65f08850a70ff6d2ec6fe069b4cd38c9cbf3481583afd76a74264cf0591a` (corpus `68027bb0248c09507dbdba9d8cf2433f1b9b7b547ba5db8811db338982f9d08b`, preparation 58.099 ms)
+- `capsule`: `9c4a65f08850a70ff6d2ec6fe069b4cd38c9cbf3481583afd76a74264cf0591a` (corpus `68027bb0248c09507dbdba9d8cf2433f1b9b7b547ba5db8811db338982f9d08b`, preparation 493.706 ms)
+- `gno-mcp`: `9c4a65f08850a70ff6d2ec6fe069b4cd38c9cbf3481583afd76a74264cf0591a` (corpus `68027bb0248c09507dbdba9d8cf2433f1b9b7b547ba5db8811db338982f9d08b`, preparation 3950.78 ms)
+- `lexical`: `9c4a65f08850a70ff6d2ec6fe069b4cd38c9cbf3481583afd76a74264cf0591a` (corpus `68027bb0248c09507dbdba9d8cf2433f1b9b7b547ba5db8811db338982f9d08b`, preparation 59.203 ms)
 
 ## Cohort accounting
 
@@ -39,12 +39,12 @@ Measured totals and explicit unavailable counts/reasons; milliseconds.
 
 | Adapter/lifecycle | Startup                                                  | Model load                                                         | Tool                  | Driver            | End-to-end            |
 | ----------------- | -------------------------------------------------------- | ------------------------------------------------------------------ | --------------------- | ----------------- | --------------------- |
-| capsule/cold      | 7.113 ms / null 0                                        | 0.000 ms / null 24 (one or more model-load components unavailable) | 28.937 ms / null 0    | 1.332 ms / null 0 | 50.060 ms / null 0    |
-| capsule/warm      | 0.000 ms / null 24 (completed before scored warm cohort) | 0.000 ms / null 24 (completed before scored warm cohort)           | 15.581 ms / null 0    | 0.594 ms / null 0 | 18.839 ms / null 0    |
-| gno-mcp/cold      | 2603.698 ms / null 0                                     | 0.000 ms / null 24 (one or more model-load components unavailable) | 28699.566 ms / null 0 | 2.739 ms / null 0 | 31419.127 ms / null 0 |
-| gno-mcp/warm      | 0.000 ms / null 24 (completed before scored warm cohort) | 0.000 ms / null 24 (completed before scored warm cohort)           | 15700.740 ms / null 0 | 2.710 ms / null 0 | 15711.576 ms / null 0 |
-| lexical/cold      | 6.093 ms / null 0                                        | 0.000 ms / null 24 (one or more model-load components unavailable) | 7.768 ms / null 0     | 0.670 ms / null 0 | 19.418 ms / null 0    |
-| lexical/warm      | 0.000 ms / null 24 (completed before scored warm cohort) | 0.000 ms / null 24 (completed before scored warm cohort)           | 3.549 ms / null 0     | 0.450 ms / null 0 | 6.061 ms / null 0     |
+| capsule/cold      | 7.888 ms / null 0                                        | 0.000 ms / null 24 (one or more model-load components unavailable) | 29.990 ms / null 0    | 1.438 ms / null 0 | 55.358 ms / null 0    |
+| capsule/warm      | 0.000 ms / null 24 (completed before scored warm cohort) | 0.000 ms / null 24 (completed before scored warm cohort)           | 14.984 ms / null 0    | 0.564 ms / null 0 | 17.988 ms / null 0    |
+| gno-mcp/cold      | 2659.827 ms / null 0                                     | 0.000 ms / null 24 (one or more model-load components unavailable) | 29129.425 ms / null 0 | 2.897 ms / null 0 | 31906.217 ms / null 0 |
+| gno-mcp/warm      | 0.000 ms / null 24 (completed before scored warm cohort) | 0.000 ms / null 24 (completed before scored warm cohort)           | 23435.630 ms / null 0 | 3.884 ms / null 0 | 23450.692 ms / null 0 |
+| lexical/cold      | 9.008 ms / null 0                                        | 0.000 ms / null 24 (one or more model-load components unavailable) | 10.934 ms / null 0    | 0.911 ms / null 0 | 27.857 ms / null 0    |
+| lexical/warm      | 0.000 ms / null 24 (completed before scored warm cohort) | 0.000 ms / null 24 (completed before scored warm cohort)           | 5.981 ms / null 0     | 0.814 ms / null 0 | 10.244 ms / null 0    |
 
 ## Capsule replay hashes
 
