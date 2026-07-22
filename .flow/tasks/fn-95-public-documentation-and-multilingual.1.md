@@ -32,9 +32,8 @@ Deliver create the public-truth manifest and drift verifier as one implementatio
 
 
 ## Done summary
-TBD
-
+Added a machine-derived public-truth manifest and anchor-aware drift verifier for release, runtime, platform, model, and benchmark claims. Integrated deterministic diagnostics into docs verification with regression coverage for stale claims, immutable evidence, and archival-version exemptions.
 ## Evidence
-- Commits:
-- Tests:
+- Commits: 5f8e3f5bafdbcc1f4ca11bf78de57fe86a07cc6b
+- Tests: baseline: green, bun run lint:check, bun run docs:truth, bun run docs:verify, bun test test/scripts/docs-verify*, .flow/bin/flowctl validate --spec fn-95-public-documentation-and-multilingual --json
 - PRs:
