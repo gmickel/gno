@@ -62,7 +62,6 @@ export async function buildDoctorActivation(
           embeddingBacklog: indexStatus.ok
             ? indexStatus.value.embeddingBacklog
             : 0,
-          vectorAvailable: false,
         },
         connectorTargets: await getConnectorVerificationTargets(),
       }
@@ -118,25 +117,35 @@ export function checkRetrievalActivation(
 export function checkConnectorActivation(
   activation: ActivationStatus
 ): DoctorCheck | null {
+  const { projected, total, truncated } = activation.connectorProjection;
+  const omitted = total - projected;
   const observed = activation.connectors.filter(
     ({ code }) =>
       code !== "connector_not_configured" &&
       code !== "target_runtime_unverifiable"
   );
-  if (observed.length === 0) {
+  if (observed.length === 0 && !truncated) {
     return null;
   }
   const incomplete = observed.filter(({ status }) => status !== "passed");
+  const details = incomplete.map(
+    ({ collection, target, status, code, remediation }) =>
+      `${target}/${collection}: ${status}${code ? `/${code}` : ""}${remediation ? `. ${remediation}` : ""}`
+  );
+  if (truncated) {
+    details.unshift(
+      `${omitted} target/collection checks were omitted by the bounded status projection; no result is claimed for them.`
+    );
+  }
   return {
     name: "connector-activation",
-    status: incomplete.length > 0 ? "warn" : "ok",
+    status: incomplete.length > 0 || truncated ? "warn" : "ok",
     message:
       incomplete.length > 0
         ? `${incomplete.length} connector proof${incomplete.length === 1 ? "" : "s"} pending or failed`
-        : `${observed.length} connector proof${observed.length === 1 ? "" : "s"} passed`,
-    details: incomplete.map(
-      ({ collection, target, status, code, remediation }) =>
-        `${target}/${collection}: ${status}${code ? `/${code}` : ""}${remediation ? `. ${remediation}` : ""}`
-    ),
+        : truncated
+          ? `${projected} of ${total} connector target/collection checks projected`
+          : `${observed.length} connector proof${observed.length === 1 ? "" : "s"} passed`,
+    details,
   };
 }

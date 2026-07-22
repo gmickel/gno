@@ -746,6 +746,7 @@ export type ActivationStageStatus = "passed" | "pending" | "failed" | "skipped";
 
 export type ActivationVerificationCode =
   | "no_documents"
+  | "index_out_of_sync"
   | "no_probe_term"
   | "index_query_failed"
   | "retrieval_mismatch"
@@ -794,6 +795,25 @@ export interface ActivationIndexIdentity {
   ftsTokenizer: FtsTokenizer;
   /** Hash of collection-scoped active FTS synchronization state. */
   ftsStateHash: string;
+  /** Number of active documents represented by the snapshot. */
+  activeDocumentCount: number;
+  /** True only when every active document has a current owned FTS row. */
+  ftsSynchronized: boolean;
+}
+
+/** Content-free document identity used by passive activation fingerprints. */
+export interface ActivationIndexDocument {
+  id: number;
+  uri: string;
+  sourceHash: string;
+  mirrorHash: string | null;
+  active: boolean;
+}
+
+/** One metadata-only snapshot; never contains source or indexed body text. */
+export interface ActivationIndexSnapshot {
+  identity: ActivationIndexIdentity;
+  documents: ActivationIndexDocument[];
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -884,6 +904,11 @@ export interface StorePort {
   getActivationIndexIdentity(
     collection: string
   ): Promise<StoreResult<ActivationIndexIdentity>>;
+
+  /** Metadata/hash-only identity and documents for passive activation checks. */
+  getActivationIndexSnapshot(
+    collection: string
+  ): Promise<StoreResult<ActivationIndexSnapshot>>;
 
   /**
    * Load the current activation receipt. A row with a different fingerprint is
@@ -1011,6 +1036,15 @@ export interface StorePort {
    * Get markdown content by mirror hash.
    */
   getContent(mirrorHash: string): Promise<StoreResult<string | null>>;
+
+  /**
+   * Read at most maxChars from stored markdown. Used by bounded activation
+   * probes so readiness checks never materialize whole documents.
+   */
+  getContentPrefix(
+    mirrorHash: string,
+    maxChars: number
+  ): Promise<StoreResult<string | null>>;
 
   /**
    * Batch fetch markdown content for multiple mirror hashes.

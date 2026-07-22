@@ -197,6 +197,24 @@ Semantic and connector stages remain independent; passive status never starts a
 model runtime or connector process. `gno status` still exits 0 when activation
 is unhealthy so scripts can inspect the structured state.
 
+Local activation fingerprints use active-document identifiers and source/mirror
+hashes plus schema, tokenizer, and owned FTS synchronization metadata. Passive
+status never selects or compares stored markdown or FTS bodies. On a receipt
+miss, lexical proof reads at most 64 document prefixes of 32,768 characters and
+tries at most 64 corpus-derived terms. `index_out_of_sync` fails before probing
+when any active document lacks a current owned FTS row. Direct out-of-band FTS
+body mutations are outside this owned-writer contract.
+
+Passive callers report `semantic_not_checked` when vector runtime availability
+is unknown. `vector_unavailable` is reserved for a resident runtime that has
+positively reported vector search unavailable.
+
+`connectorProjection.total` counts every configured collection and connector
+target pair before projection bounds. `projected` equals `connectors.length`,
+and `truncated` is true exactly when `total > projected`. No result is claimed
+for omitted pairs, and human-readable health output must not report connector
+proof as healthy while the projection is truncated.
+
 **Exit Codes:**
 
 - 0: Success

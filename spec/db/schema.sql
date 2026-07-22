@@ -82,6 +82,7 @@ CREATE TABLE IF NOT EXISTS documents (
   -- Conversion output
   title TEXT,
   mirror_hash TEXT,                 -- FK to content.mirror_hash (NULL if failed)
+  fts_mirror_hash TEXT,             -- owned-writer sync marker; passive activation never compares bodies
   converter_id TEXT,
   converter_version TEXT,
   language_hint TEXT,               -- BCP-47 or NULL

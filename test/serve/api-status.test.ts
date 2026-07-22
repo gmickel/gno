@@ -136,6 +136,22 @@ describe("GET /api/status", () => {
     expect(await response.json()).toEqual({ ok: true });
   });
 
+  test("passes known resident vector capability into activation status", async () => {
+    const ctx = createMockContext();
+    let vectorAvailable: boolean | undefined;
+    await handleStatus(ctx, {
+      inspectDisk: async () => null,
+      isModelCached: async () => true,
+      listSuggestedCollections: async () => [],
+      buildActivation: async (_store, _collections, options) => {
+        vectorAvailable = options?.semantic?.vectorAvailable;
+        return activationStatus([]);
+      },
+    });
+
+    expect(vectorAvailable).toBe(false);
+  });
+
   test("returns onboarding and health metadata for first run", async () => {
     const ctx = createMockContext();
     const res = await handleStatus(ctx, {

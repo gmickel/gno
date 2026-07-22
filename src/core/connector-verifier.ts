@@ -384,7 +384,7 @@ export async function verifyConnectorActivation(
     if (!current.ok) {
       return current;
     }
-    if (current.value) {
+    if (current.value?.stages.connector.status === "passed") {
       return ok(current.value);
     }
   }

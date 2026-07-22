@@ -88,4 +88,44 @@ describe("HealthCenter", () => {
       summary: "1 connector proof incomplete",
     });
   });
+
+  test("never labels a truncated connector projection as healthy", () => {
+    const check = buildConnectorActivationCheck({
+      schemaVersion: "1.0",
+      usable: true,
+      healthy: true,
+      collections: [],
+      connectors: [
+        {
+          collection: "notes",
+          target: "cursor-mcp",
+          status: "passed",
+          remediation: null,
+        },
+      ],
+      connectorProjection: { total: 85, projected: 64, truncated: true },
+    });
+
+    expect(check).toMatchObject({
+      status: "warn",
+      summary: "64 of 85 connector target/collection checks projected",
+    });
+    expect(check?.detail).toContain("21 target/collection checks were omitted");
+  });
+
+  test("surfaces truncation even when no projected proof is observable", () => {
+    const check = buildConnectorActivationCheck({
+      schemaVersion: "1.0",
+      usable: true,
+      healthy: true,
+      collections: [],
+      connectors: [],
+      connectorProjection: { total: 2, projected: 0, truncated: true },
+    });
+
+    expect(check).toMatchObject({
+      status: "warn",
+      summary: "0 of 2 connector target/collection checks projected",
+    });
+  });
 });

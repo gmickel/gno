@@ -37,6 +37,25 @@ export type StatusResult =
   | { success: true; status: IndexStatus; activation: ActivationStatus }
   | { success: false; error: string };
 
+function connectorProjectionLine(activation: ActivationStatus): string | null {
+  const { projected, total, truncated } = activation.connectorProjection;
+  if (!truncated) {
+    return null;
+  }
+  return `Connector projection: ${projected}/${total} target/collection checks shown; ${total - projected} omitted`;
+}
+
+function isStatusHealthy(
+  indexStatus: IndexStatus,
+  activation: ActivationStatus
+): boolean {
+  return (
+    indexStatus.healthy &&
+    activation.healthy &&
+    !activation.connectorProjection.truncated
+  );
+}
+
 /**
  * Format status as terminal output.
  */
@@ -81,11 +100,11 @@ function formatTerminal(
   }
 
   lines.push(
-    `Health: ${indexStatus.healthy && activation.healthy ? "OK" : "DEGRADED"}`
+    `Health: ${isStatusHealthy(indexStatus, activation) ? "OK" : "DEGRADED"}`
   );
   lines.push("");
   lines.push(
-    `Activation: ${activation.healthy ? "READY" : activation.usable ? "DEGRADED" : "BLOCKED"}`
+    `Lexical activation: ${activation.healthy ? "READY" : activation.usable ? "DEGRADED" : "BLOCKED"}`
   );
   for (const collection of activation.collections) {
     const failedStage = collection.remediation?.stage;
@@ -103,6 +122,10 @@ function formatTerminal(
         `  ${connector.target}/${connector.collection}: ${connector.status}${connector.code ? ` (${connector.code})` : ""}`
       );
     }
+  }
+  const projectionLine = connectorProjectionLine(activation);
+  if (projectionLine) {
+    lines.push(projectionLine);
   }
 
   return lines.join("\n");
@@ -122,7 +145,7 @@ function formatMarkdown(
   lines.push(`- **Config**: ${indexStatus.configPath}`);
   lines.push(`- **Database**: ${indexStatus.dbPath}`);
   lines.push(
-    `- **Health**: ${indexStatus.healthy && activation.healthy ? "✓ OK" : "⚠ DEGRADED"}`
+    `- **Health**: ${isStatusHealthy(indexStatus, activation) ? "✓ OK" : "⚠ DEGRADED"}`
   );
   lines.push("");
 
@@ -151,10 +174,10 @@ function formatMarkdown(
   }
 
   lines.push("");
-  lines.push("## Activation");
+  lines.push("## Lexical activation");
   lines.push("");
   lines.push(`- **Usable**: ${activation.usable}`);
-  lines.push(`- **Healthy**: ${activation.healthy}`);
+  lines.push(`- **Lexically healthy**: ${activation.healthy}`);
   for (const collection of activation.collections) {
     lines.push(
       `- **${collection.collection}**: ${collection.ready ? "lexical ready" : `${collection.remediation?.stage ?? "index"} ${collection.remediation?.code ?? "index_query_failed"}`}`
@@ -164,6 +187,10 @@ function formatMarkdown(
     lines.push(
       `- **${connector.target}/${connector.collection}**: ${connector.status}${connector.code ? ` (${connector.code})` : ""}`
     );
+  }
+  const projectionLine = connectorProjectionLine(activation);
+  if (projectionLine) {
+    lines.push(`- **${projectionLine}**`);
   }
 
   return lines.join("\n");
@@ -220,7 +247,6 @@ export async function status(
         semantic: {
           modelsCached: embedModelCached,
           embeddingBacklog: statusResult.value.embeddingBacklog,
-          vectorAvailable: false,
         },
         connectorTargets: await getConnectorVerificationTargets(),
       }
@@ -264,7 +290,7 @@ export function formatStatus(
         totalChunks: s.totalChunks,
         embeddingBacklog: s.embeddingBacklog,
         lastUpdated: s.lastUpdatedAt,
-        healthy: s.healthy && result.activation.healthy,
+        healthy: isStatusHealthy(s, result.activation),
         activation: result.activation,
       },
       null,

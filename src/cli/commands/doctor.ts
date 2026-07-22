@@ -536,7 +536,10 @@ export async function doctor(
   const hasErrors = checks.some((c) => c.status === "error");
 
   return {
-    healthy: !hasErrors && activation.healthy,
+    healthy:
+      !hasErrors &&
+      activation.healthy &&
+      !activation.connectorProjection.truncated,
     checks,
     activation,
   };

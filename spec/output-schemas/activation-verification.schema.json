@@ -196,6 +196,7 @@
           "type": "string",
           "enum": [
             "no_documents",
+            "index_out_of_sync",
             "no_probe_term",
             "index_query_failed",
             "retrieval_mismatch",

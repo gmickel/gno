@@ -46,6 +46,12 @@ export function BootstrapStatus({
 }: BootstrapStatusProps) {
   const missingModels =
     bootstrap.models.totalCount - bootstrap.models.cachedCount;
+  const displayedConnectorCount = Math.min(activation.connectors.length, 8);
+  const hiddenProjectedConnectorCount =
+    activation.connectorProjection.projected - displayedConnectorCount;
+  const omittedConnectorCount =
+    activation.connectorProjection.total -
+    activation.connectorProjection.projected;
 
   return (
     <section className="space-y-4">
@@ -135,8 +141,11 @@ export function BootstrapStatus({
         <Card className="border-border/60 bg-card/70">
           <CardHeader className="pb-3">
             <div className="flex items-center gap-2">
-              {activation.healthy ? (
+              {activation.healthy &&
+              !activation.connectorProjection.truncated ? (
                 <CheckCircle2Icon className="size-4 text-emerald-500" />
+              ) : activation.usable ? (
+                <ServerCogIcon className="size-4 text-amber-500" />
               ) : (
                 <AlertCircleIcon className="size-4 text-destructive" />
               )}
@@ -175,7 +184,8 @@ export function BootstrapStatus({
                 </div>
               ))
             )}
-            {activation.connectors.length > 0 && (
+            {(activation.connectors.length > 0 ||
+              activation.connectorProjection.truncated) && (
               <div className="space-y-2 border-border/50 border-t pt-3">
                 <p className="font-medium text-xs uppercase tracking-wide">
                   Connector proof
@@ -192,10 +202,15 @@ export function BootstrapStatus({
                     {connector.code ? `/${connector.code}` : ""}
                   </div>
                 ))}
-                {activation.connectorProjection.total > 8 && (
+                {hiddenProjectedConnectorCount > 0 && (
                   <p className="text-muted-foreground text-xs">
-                    +{activation.connectorProjection.total - 8} more
-                    target/collection checks
+                    +{hiddenProjectedConnectorCount} more projected checks
+                  </p>
+                )}
+                {activation.connectorProjection.truncated && (
+                  <p className="text-muted-foreground text-xs">
+                    {omittedConnectorCount} additional target/collection checks
+                    omitted from this bounded status view
                   </p>
                 )}
               </div>

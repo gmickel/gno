@@ -3,6 +3,7 @@ import { mkdir, mkdtemp } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
+import { checkConnectorActivation } from "../../src/cli/commands/doctor-activation";
 import { runCli } from "../../src/cli/run";
 import { safeRm } from "../helpers/cleanup";
 
@@ -66,6 +67,32 @@ describe("gno doctor activation exit semantics", () => {
         name: "retrieval-activation",
         status: "error",
       })
+    );
+  });
+
+  test("warns when connector status omits bounded projections", () => {
+    const check = checkConnectorActivation({
+      schemaVersion: "1.0",
+      usable: true,
+      healthy: true,
+      collections: [],
+      connectors: [
+        {
+          collection: "notes",
+          target: "cursor-mcp",
+          status: "passed",
+          remediation: null,
+        },
+      ],
+      connectorProjection: { total: 85, projected: 64, truncated: true },
+    });
+
+    expect(check).toMatchObject({
+      status: "warn",
+      message: "64 of 85 connector target/collection checks projected",
+    });
+    expect(check?.details?.[0]).toContain(
+      "21 target/collection checks were omitted"
     );
   });
 });

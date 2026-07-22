@@ -52,19 +52,17 @@ describe("BootstrapStatus", () => {
               remediation: null,
             },
           ],
-          connectors: [
-            {
-              collection: "notes",
-              target: "cursor-mcp",
-              status: "failed",
-              code: "connector_timeout",
-              remediation: "Retry cursor-mcp verification.",
-            },
-          ],
+          connectors: Array.from({ length: 64 }, (_, index) => ({
+            collection: "notes",
+            target: index === 0 ? "cursor-mcp" : `connector-${index}`,
+            status: "failed" as const,
+            code: "connector_timeout" as const,
+            remediation: "Retry connector verification.",
+          })),
           connectorProjection: {
-            total: 1,
-            projected: 1,
-            truncated: false,
+            total: 85,
+            projected: 64,
+            truncated: true,
           },
         }}
         bootstrap={{
@@ -147,5 +145,10 @@ describe("BootstrapStatus", () => {
     expect(html).toContain("Connector proof");
     expect(html).toContain("cursor-mcp");
     expect(html).toContain("failed/connector_timeout");
+    expect(html).toContain("+56 more projected checks");
+    expect(html).toContain(
+      "21 additional target/collection checks omitted from this bounded status view"
+    );
+    expect(html).not.toContain("+77 more");
   });
 });

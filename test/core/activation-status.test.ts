@@ -23,6 +23,8 @@ function probePlan(
       schemaVersion: 12,
       ftsTokenizer: "unicode61",
       ftsStateHash: fingerprint,
+      activeDocumentCount: 0,
+      ftsSynchronized: true,
     },
     activeDocuments: [],
     candidates: [],
@@ -137,6 +139,55 @@ describe("activation status", () => {
       code: "embeddings_pending",
     });
     expect(status.collections[0]?.stages.semantic.status).not.toBe("passed");
+  });
+
+  test("distinguishes unknown vector state from known unavailability", async () => {
+    const verifyCollection = async () => ({
+      ok: true as const,
+      value: receipt("notes", true),
+    });
+    const unchecked = await buildActivationStatus(store, ["notes"], {
+      verifyCollection,
+    });
+    expect(unchecked.collections[0]?.semanticAvailability).toMatchObject({
+      status: "pending",
+      code: "semantic_not_checked",
+    });
+
+    const passive = await buildActivationStatus(store, ["notes"], {
+      semantic: { modelsCached: true, embeddingBacklog: 0 },
+      verifyCollection,
+    });
+    expect(passive.collections[0]?.semanticAvailability).toMatchObject({
+      status: "pending",
+      code: "semantic_not_checked",
+    });
+
+    const unavailable = await buildActivationStatus(store, ["notes"], {
+      semantic: {
+        modelsCached: true,
+        embeddingBacklog: 0,
+        vectorAvailable: false,
+      },
+      verifyCollection,
+    });
+    expect(unavailable.collections[0]?.semanticAvailability).toMatchObject({
+      status: "skipped",
+      code: "vector_unavailable",
+    });
+
+    const resident = await buildActivationStatus(store, ["notes"], {
+      semantic: {
+        modelsCached: true,
+        embeddingBacklog: 0,
+        vectorAvailable: true,
+      },
+      verifyCollection,
+    });
+    expect(resident.collections[0]?.semanticAvailability).toMatchObject({
+      status: "pending",
+      code: "semantic_not_checked",
+    });
   });
 
   test("fails closed for no configured collections and verifier errors", async () => {

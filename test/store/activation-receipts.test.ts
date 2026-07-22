@@ -6,6 +6,7 @@ import { join } from "node:path";
 import type { ActivationVerificationReceipt } from "../../src/store/types";
 
 import { SqliteAdapter } from "../../src/store";
+import { ACTIVATION_INDEX_SNAPSHOT_SQL } from "../../src/store/sqlite/adapter";
 import { safeRm } from "../helpers/cleanup";
 
 const FINGERPRINT = "a".repeat(64);
@@ -308,5 +309,72 @@ describe("activation receipt store", () => {
     expect(result.value.map((item) => item.uri)).toEqual([
       "gno://notes/target.md",
     ]);
+  });
+
+  test("tracks owned FTS synchronization without reading indexed bodies", async () => {
+    expect(ACTIVATION_INDEX_SNAPSHOT_SQL).not.toMatch(/\bbody\b/i);
+    expect(ACTIVATION_INDEX_SNAPSHOT_SQL).not.toMatch(/\bmarkdown\b/i);
+    expect(ACTIVATION_INDEX_SNAPSHOT_SQL).not.toMatch(/\bcontent\b/i);
+
+    const firstBody = "shared alpha evidence";
+    const firstMirror = new Bun.CryptoHasher("sha256")
+      .update(firstBody)
+      .digest("hex");
+    expect(
+      (
+        await adapter.upsertDocument({
+          collection: "notes",
+          relPath: "tracked.md",
+          title: "Tracked",
+          sourceHash: "1".repeat(64),
+          mirrorHash: firstMirror,
+          sourceMime: "text/markdown",
+          sourceExt: ".md",
+          sourceSize: firstBody.length,
+          sourceMtime: "2026-07-22T10:00:00.000Z",
+        })
+      ).ok
+    ).toBe(true);
+    expect((await adapter.upsertContent(firstMirror, firstBody)).ok).toBe(true);
+
+    const unsynchronized = await adapter.getActivationIndexSnapshot("notes");
+    expect(unsynchronized.ok).toBe(true);
+    if (!unsynchronized.ok) {
+      return;
+    }
+    expect(unsynchronized.value.identity).toMatchObject({
+      activeDocumentCount: 1,
+      ftsSynchronized: false,
+    });
+
+    expect((await adapter.syncDocumentFts("notes", "tracked.md")).ok).toBe(
+      true
+    );
+    const documentSync = await adapter.getActivationIndexSnapshot("notes");
+    expect(documentSync.ok && documentSync.value.identity.ftsSynchronized).toBe(
+      true
+    );
+
+    adapter
+      .getRawDb()
+      .run("UPDATE documents SET fts_mirror_hash = NULL WHERE rel_path = ?", [
+        "tracked.md",
+      ]);
+    expect((await adapter.rebuildAllDocumentsFts()).ok).toBe(true);
+    const fullRebuild = await adapter.getActivationIndexSnapshot("notes");
+    expect(fullRebuild.ok && fullRebuild.value.identity.ftsSynchronized).toBe(
+      true
+    );
+
+    adapter.getRawDb().run(
+      `DELETE FROM documents_fts
+       WHERE rowid = (SELECT id FROM documents WHERE rel_path = ?)`,
+      ["tracked.md"]
+    );
+    expect((await adapter.rebuildFtsForHash(firstMirror)).ok).toBe(true);
+    const hashRebuild = await adapter.getActivationIndexSnapshot("notes");
+    expect(hashRebuild.ok && hashRebuild.value.identity.ftsSynchronized).toBe(
+      true
+    );
   });
 });

@@ -272,6 +272,107 @@ describe("lexical activation verifier", () => {
     });
   });
 
+  test("retries a transient index query failure under the same fingerprint", async () => {
+    await addDocument("retry-query.md", "transientqueryneedle evidence");
+    let searches = 0;
+    const retryingStore = new Proxy(adapter, {
+      get(target, property, receiver) {
+        if (property === "searchFts") {
+          return async (...args: Parameters<StorePort["searchFts"]>) => {
+            searches += 1;
+            if (searches === 1) {
+              return {
+                ok: false as const,
+                error: {
+                  code: "QUERY_FAILED" as const,
+                  message: "transient test failure",
+                },
+              };
+            }
+            return target.searchFts(...args);
+          };
+        }
+        const value = Reflect.get(target, property, receiver);
+        return typeof value === "function" ? value.bind(target) : value;
+      },
+    }) as StorePort;
+
+    const failed = await verifyLexicalActivation(
+      retryingStore,
+      "notes",
+      verifierOptions
+    );
+    expect(failed.ok).toBe(true);
+    if (!failed.ok) {
+      return;
+    }
+    expect(failed.value.stages.lexical.code).toBe("index_query_failed");
+
+    const recovered = await verifyLexicalActivation(
+      retryingStore,
+      "notes",
+      verifierOptions
+    );
+    expect(recovered.ok).toBe(true);
+    if (recovered.ok) {
+      expect(recovered.value.ready).toBe(true);
+      expect(recovered.value.fingerprint).toBe(failed.value.fingerprint);
+    }
+  });
+
+  test("retries a retrieval mismatch under the same fingerprint", async () => {
+    await addDocument("retry-mismatch.md", "transientmismatchneedle evidence");
+    let returnMismatches = true;
+    const retryingStore = new Proxy(adapter, {
+      get(target, property, receiver) {
+        if (property === "searchFts") {
+          return async (...args: Parameters<StorePort["searchFts"]>) => {
+            if (returnMismatches) {
+              return {
+                ok: true as const,
+                value: [
+                  {
+                    mirrorHash: hash("wrong-mirror"),
+                    seq: 0,
+                    score: -1,
+                    uri: "gno://notes/wrong.md",
+                    sourceHash: hash("wrong-source"),
+                  },
+                ],
+              };
+            }
+            return target.searchFts(...args);
+          };
+        }
+        const value = Reflect.get(target, property, receiver);
+        return typeof value === "function" ? value.bind(target) : value;
+      },
+    }) as StorePort;
+
+    const failed = await verifyLexicalActivation(
+      retryingStore,
+      "notes",
+      verifierOptions
+    );
+    expect(failed.ok).toBe(true);
+    if (!failed.ok) {
+      return;
+    }
+    expect(failed.value.stages.lexical.code).toBe("retrieval_mismatch");
+
+    returnMismatches = false;
+    const recovered = await verifyLexicalActivation(
+      retryingStore,
+      "notes",
+      verifierOptions
+    );
+    expect(recovered.ok).toBe(true);
+    if (recovered.ok) {
+      expect(recovered.value.ready).toBe(true);
+      expect(recovered.value.fingerprint).toBe(failed.value.fingerprint);
+    }
+  });
+
   test("invalidates a persisted receipt after source/index fingerprint changes", async () => {
     await addDocument("mutable.md", "firstuniqueterm evidence");
     const first = await verifyLexicalActivation(
@@ -324,7 +425,11 @@ describe("lexical activation verifier", () => {
       return;
     }
     expect(beforeSync.value.ready).toBe(false);
-    expect(beforeSync.value.stages.lexical.code).toBe("retrieval_mismatch");
+    expect(beforeSync.value.stages.index.code).toBe("index_out_of_sync");
+    expect(beforeSync.value.stages.lexical).toMatchObject({
+      status: "skipped",
+      code: "index_out_of_sync",
+    });
 
     expect((await adapter.syncDocumentFts("notes", "race.md")).ok).toBe(true);
     const afterSync = await verifyLexicalActivation(
@@ -356,6 +461,62 @@ describe("lexical activation verifier", () => {
         afterSync.value.fingerprint
       );
     }
+  });
+
+  test("fails closed before probing when changed content has stale FTS", async () => {
+    await addDocument("stale.md", "shared alpha evidence");
+    const first = await verifyLexicalActivation(
+      adapter,
+      "notes",
+      verifierOptions
+    );
+    expect(first.ok && first.value.ready).toBe(true);
+
+    await addDocument("stale.md", "shared beta evidence", false);
+    let prefixReads = 0;
+    let searches = 0;
+    const staleStore = new Proxy(adapter, {
+      get(target, property, receiver) {
+        if (property === "getContentPrefix") {
+          return async (...args: Parameters<StorePort["getContentPrefix"]>) => {
+            prefixReads += 1;
+            return target.getContentPrefix(...args);
+          };
+        }
+        if (property === "searchFts") {
+          return async (...args: Parameters<StorePort["searchFts"]>) => {
+            searches += 1;
+            return target.searchFts(...args);
+          };
+        }
+        const value = Reflect.get(target, property, receiver);
+        return typeof value === "function" ? value.bind(target) : value;
+      },
+    }) as StorePort;
+
+    const stale = await verifyLexicalActivation(
+      staleStore,
+      "notes",
+      verifierOptions
+    );
+    expect(stale.ok).toBe(true);
+    if (stale.ok) {
+      expect(stale.value.ready).toBe(false);
+      expect(stale.value.stages.index.code).toBe("index_out_of_sync");
+      expect(stale.value.fingerprint).not.toBe(
+        first.ok ? first.value.fingerprint : ""
+      );
+    }
+    expect(prefixReads).toBe(0);
+    expect(searches).toBe(0);
+
+    expect((await adapter.syncDocumentFts("notes", "stale.md")).ok).toBe(true);
+    const recovered = await verifyLexicalActivation(
+      adapter,
+      "notes",
+      verifierOptions
+    );
+    expect(recovered.ok && recovered.value.ready).toBe(true);
   });
 
   test("deduplicates shared probes and accepts any exact matching source", async () => {
@@ -402,6 +563,51 @@ describe("lexical activation verifier", () => {
       expect(result.value.ready).toBe(true);
       expect(result.value.evidence.resultUri).toBe("gno://notes/99-valid.md");
     }
+  });
+
+  test("bounds cold probe reads by document count and content prefix", async () => {
+    for (let index = 0; index < 64; index += 1) {
+      await addDocument(
+        `${String(index).padStart(2, "0")}-no-probe.md`,
+        "the and of to ".repeat(4000)
+      );
+    }
+    await addDocument("99-valid.md", "boundedactivationneedle evidence");
+
+    let fullReads = 0;
+    const requestedPrefixes: number[] = [];
+    const boundedStore = new Proxy(adapter, {
+      get(target, property, receiver) {
+        if (property === "getContent") {
+          return async (...args: Parameters<StorePort["getContent"]>) => {
+            fullReads += 1;
+            return target.getContent(...args);
+          };
+        }
+        if (property === "getContentPrefix") {
+          return async (...args: Parameters<StorePort["getContentPrefix"]>) => {
+            requestedPrefixes.push(args[1]);
+            return target.getContentPrefix(...args);
+          };
+        }
+        const value = Reflect.get(target, property, receiver);
+        return typeof value === "function" ? value.bind(target) : value;
+      },
+    }) as StorePort;
+
+    const result = await verifyLexicalActivation(
+      boundedStore,
+      "notes",
+      verifierOptions
+    );
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.ready).toBe(false);
+      expect(result.value.stages.lexical.code).toBe("no_probe_term");
+    }
+    expect(fullReads).toBe(0);
+    expect(requestedPrefixes).toHaveLength(64);
+    expect(new Set(requestedPrefixes)).toEqual(new Set([32_768]));
   });
 
   test("persists no raw term, query, snippet, or passage", async () => {

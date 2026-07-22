@@ -7,8 +7,8 @@
 
 import type { FtsTokenizer } from "../config/types";
 import type {
+  ActivationIndexDocument,
   ActivationIndexIdentity,
-  DocumentRow,
   StorePort,
   StoreResult,
 } from "../store/types";
@@ -20,11 +20,13 @@ import {
 } from "./activation-probe";
 
 const MAX_PROBE_DOCUMENTS = 16;
+const MAX_PROBE_DOCUMENT_SCANS = 64;
 const MAX_PROBE_ATTEMPTS = 64;
+const MAX_PROBE_CONTENT_CHARS = 32_768;
 const PROBE_RESULT_LIMIT = 8;
 
 interface ProbeDocumentReference {
-  document: DocumentRow;
+  document: ActivationIndexDocument;
   mirrorHash: string;
 }
 
@@ -42,7 +44,7 @@ export interface EphemeralActivationProbePlan {
   collection: string;
   fingerprint: string;
   identity: ActivationIndexIdentity;
-  activeDocuments: DocumentRow[];
+  activeDocuments: ActivationIndexDocument[];
   candidates: EphemeralActivationProbeCandidate[];
 }
 
@@ -74,15 +76,23 @@ function compareText(left: string, right: string): number {
 
 async function collectProbeCandidates(
   store: StorePort,
-  documents: DocumentRow[],
+  documents: ActivationIndexDocument[],
   ftsTokenizer: FtsTokenizer
 ): Promise<StoreResult<EphemeralActivationProbeCandidate[]>> {
   const probeDocuments: ProbeDocumentCandidates[] = [];
+  let scannedDocuments = 0;
   for (const document of documents) {
+    if (scannedDocuments >= MAX_PROBE_DOCUMENT_SCANS) {
+      break;
+    }
+    scannedDocuments += 1;
     if (!document.mirrorHash) {
       continue;
     }
-    const content = await store.getContent(document.mirrorHash);
+    const content = await store.getContentPrefix(
+      document.mirrorHash,
+      MAX_PROBE_CONTENT_CHARS
+    );
     if (!content.ok) {
       return err(
         content.error.code,
@@ -164,32 +174,21 @@ export async function createEphemeralActivationProbePlan(
   collection: string,
   options: { collectCandidates?: boolean } = {}
 ): Promise<StoreResult<EphemeralActivationProbePlan>> {
-  const [identityResult, documentsResult] = await Promise.all([
-    store.getActivationIndexIdentity(collection),
-    store.listDocuments(collection),
-  ]);
-  if (!identityResult.ok) {
+  const snapshotResult = await store.getActivationIndexSnapshot(collection);
+  if (!snapshotResult.ok) {
     return err(
-      identityResult.error.code,
-      identityResult.error.message,
-      identityResult.error.cause
+      snapshotResult.error.code,
+      snapshotResult.error.message,
+      snapshotResult.error.cause
     );
   }
-  if (!documentsResult.ok) {
-    return err(
-      documentsResult.error.code,
-      documentsResult.error.message,
-      documentsResult.error.cause
-    );
-  }
-
-  const activeDocuments = documentsResult.value
+  const { documents, identity } = snapshotResult.value;
+  const activeDocuments = documents
     .filter((document) => document.active)
     .sort((left, right) => {
       const uriDifference = compareText(left.uri, right.uri);
       return uriDifference === 0 ? left.id - right.id : uriDifference;
     });
-  const identity = identityResult.value;
   const fingerprint = fingerprintActivationIndex({
     collection,
     indexName: identity.indexName,

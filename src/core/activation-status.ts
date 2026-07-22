@@ -90,7 +90,8 @@ export interface ActivationStatusOptions {
   semantic?: {
     modelsCached: boolean;
     embeddingBacklog: number;
-    vectorAvailable: boolean;
+    /** Omit when the passive caller has not initialized the vector runtime. */
+    vectorAvailable?: boolean;
   };
   /** Current target configs, inspected without starting their runtimes. */
   connectorTargets?: readonly ConnectorVerificationTarget[];
@@ -185,6 +186,8 @@ function remediationFor(
       "Add searchable text or adjust the collection filters, then reindex.",
     index_query_failed:
       "Repair the local index and rerun the collection-scoped lexical proof.",
+    index_out_of_sync:
+      "Rebuild this collection's lexical index so its FTS rows match the current mirrors.",
     retrieval_mismatch:
       "Rebuild the collection index so lexical results match the current source.",
   };
@@ -201,7 +204,14 @@ function remediationFor(
 function semanticAvailability(
   options: ActivationStatusOptions["semantic"]
 ): ActivationCollectionStatus["semanticAvailability"] {
-  if (!options?.modelsCached) {
+  if (!options) {
+    return {
+      status: "pending",
+      code: "semantic_not_checked",
+      command: "gno status",
+    };
+  }
+  if (!options.modelsCached) {
     return {
       status: "pending",
       code: "models_missing",
@@ -215,7 +225,7 @@ function semanticAvailability(
       command: "gno embed",
     };
   }
-  if (!options.vectorAvailable) {
+  if (options.vectorAvailable === false) {
     return {
       status: "skipped",
       code: "vector_unavailable",

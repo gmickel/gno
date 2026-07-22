@@ -26,6 +26,7 @@ import { migration as m009 } from "./009-content-type-rule-fingerprint";
 import { migration as m010 } from "./010-typed-edges";
 import { migration as m011 } from "./011-doc-edge-traversal-indexes";
 import { migration as m012 } from "./012-activation-receipts";
+import { migration as m013 } from "./013-fts-sync-marker";
 
 /** All migrations in order */
 export const migrations = [
@@ -41,4 +42,5 @@ export const migrations = [
   m010,
   m011,
   m012,
+  m013,
 ];

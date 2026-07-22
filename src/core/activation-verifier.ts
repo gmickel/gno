@@ -166,7 +166,10 @@ export async function verifyLexicalActivation(
         current.error.cause
       );
     }
-    if (current.value) {
+    // Passing receipts are stable for this exact fingerprint. Failed receipts
+    // are evidence of the last attempt, not a readiness cache: retry them so a
+    // transient query failure or repaired same-fingerprint FTS state recovers.
+    if (current.value?.ready) {
       return ok(current.value);
     }
   }
@@ -190,6 +193,29 @@ export async function verifyLexicalActivation(
         indexCompletedAt,
         null,
         "no_documents"
+      ),
+    });
+    return persistReceipt(store, receipt);
+  }
+
+  if (!plan.identity.ftsSynchronized) {
+    const receipt = buildReceipt({
+      collection,
+      fingerprint,
+      generatedAt: indexCompletedAt,
+      index: completedStage(
+        "failed",
+        indexStartedAt,
+        indexCompletedAt,
+        elapsedMs(indexStartedClock, monotonicNow),
+        "index_out_of_sync"
+      ),
+      lexical: completedStage(
+        "skipped",
+        null,
+        indexCompletedAt,
+        null,
+        "index_out_of_sync"
       ),
     });
     return persistReceipt(store, receipt);

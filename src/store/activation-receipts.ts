@@ -18,6 +18,7 @@ const ACTIVATION_STAGE_STATUSES = new Set([
 ]);
 const ACTIVATION_CODES = new Set([
   "no_documents",
+  "index_out_of_sync",
   "no_probe_term",
   "index_query_failed",
   "retrieval_mismatch",

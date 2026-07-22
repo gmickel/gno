@@ -93,9 +93,14 @@ describe("activation status performance", () => {
 
     let contentReads = 0;
     const originalGetContent = store.getContent.bind(store);
+    const originalGetContentPrefix = store.getContentPrefix.bind(store);
     store.getContent = async (...args) => {
       contentReads += 1;
       return originalGetContent(...args);
+    };
+    store.getContentPrefix = async (...args) => {
+      contentReads += 1;
+      return originalGetContentPrefix(...args);
     };
     const startedAt = performance.now();
     const status = await buildActivationStatus(
@@ -104,6 +109,7 @@ describe("activation status performance", () => {
     );
     const elapsedMs = performance.now() - startedAt;
     store.getContent = originalGetContent;
+    store.getContentPrefix = originalGetContentPrefix;
 
     expect(status.healthy).toBe(true);
     expect(status.collections).toHaveLength(COLLECTION_COUNT);

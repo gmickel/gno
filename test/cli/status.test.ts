@@ -90,8 +90,45 @@ describe("gno status activation output", () => {
 
     const terminal = formatStatus(result, {});
     expect(terminal).toContain("Health: DEGRADED");
-    expect(terminal).toContain("Activation: BLOCKED");
+    expect(terminal).toContain("Lexical activation: BLOCKED");
     expect(terminal).toContain("index: no_documents");
     expect(terminal).toContain("gno index notes --no-embed");
+  });
+
+  test("reports omitted connector projections in human-readable output", () => {
+    const result = statusResult();
+    if (!result.success) {
+      throw new Error("Expected status fixture to succeed");
+    }
+    result.activation.usable = true;
+    result.activation.healthy = true;
+    result.activation.connectors = [
+      {
+        collection: "notes",
+        target: "cursor-mcp",
+        status: "passed",
+        remediation: null,
+      },
+    ];
+    result.activation.connectorProjection = {
+      total: 85,
+      projected: 64,
+      truncated: true,
+    };
+
+    const projection =
+      "Connector projection: 64/85 target/collection checks shown; 21 omitted";
+    const terminal = formatStatus(result, {});
+    const markdown = formatStatus(result, { md: true });
+    expect(terminal).toContain(projection);
+    expect(markdown).toContain(projection);
+    expect(terminal).toContain("Health: DEGRADED");
+    expect(terminal).toContain("Lexical activation: READY");
+    expect(terminal).not.toContain("\nActivation: READY");
+    expect(markdown).toContain("**Lexically healthy**: true");
+    expect(markdown).not.toContain("**Healthy**: true");
+    expect(JSON.parse(formatStatus(result, { json: true })).healthy).toBe(
+      false
+    );
   });
 });

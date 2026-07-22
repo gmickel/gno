@@ -1,5 +1,5 @@
 import type { FtsTokenizer } from "../config/types";
-import type { DocumentRow } from "../store/types";
+import type { ActivationIndexDocument } from "../store/types";
 
 const RECEIPT_SCHEMA_VERSION = "1.0";
 const INDEX_IMPLEMENTATION_ID = "documents_fts-bm25-v1";
@@ -113,7 +113,7 @@ export function fingerprintActivationIndex(input: {
   schemaVersion: number;
   ftsTokenizer: string;
   ftsStateHash: string;
-  documents: DocumentRow[];
+  documents: ActivationIndexDocument[];
 }): string {
   const documents = input.documents
     .filter((document) => document.active)

@@ -15,7 +15,9 @@ import { basename } from "node:path";
 
 import type { Collection, Context, FtsTokenizer } from "../../config/types";
 import type {
+  ActivationIndexDocument,
   ActivationIndexIdentity,
+  ActivationIndexSnapshot,
   ActivationVerificationReceipt,
   BacklinkRow,
   ChunkInput,
@@ -89,6 +91,25 @@ const FTS5_FIELD_WEIGHTS = {
   title: 4.0,
   body: 1.0,
 } as const;
+
+/** Content-free activation snapshot query; kept exported for contract tests. */
+export const ACTIVATION_INDEX_SNAPSHOT_SQL = `SELECT
+  d.id,
+  d.uri,
+  d.source_hash,
+  d.mirror_hash,
+  d.active,
+  CASE WHEN f.rowid IS NULL THEN 0 ELSE 1 END AS fts_present,
+  CASE WHEN
+    f.rowid IS NOT NULL
+    AND f.filepath = d.rel_path
+    AND f.title = COALESCE(d.title, '')
+    AND d.fts_mirror_hash = d.mirror_hash
+  THEN 1 ELSE 0 END AS fts_current
+FROM documents d
+LEFT JOIN documents_fts f ON f.rowid = d.id
+WHERE d.collection = ? AND d.active = 1
+ORDER BY d.uri ASC, d.id ASC`;
 
 function sanitizeFts5Term(term: string): string {
   return term.replace(/[^\p{L}\p{N}'_]/gu, "").toLowerCase();
@@ -571,37 +592,60 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
   async getActivationIndexIdentity(
     collection: string
   ): Promise<StoreResult<ActivationIndexIdentity>> {
+    const snapshot = await this.getActivationIndexSnapshot(collection);
+    return snapshot.ok ? ok(snapshot.value.identity) : snapshot;
+  }
+
+  async getActivationIndexSnapshot(
+    collection: string
+  ): Promise<StoreResult<ActivationIndexSnapshot>> {
     try {
       const db = this.ensureOpen();
       const indexName =
         basename(this.dbPath)
           .replace(SQLITE_EXT_REGEX, "")
           .replace(INDEX_PREFIX_REGEX, "") || "default";
-      const ftsRows = db
-        .query<{ uri: string; present: number; current: number }, [string]>(
-          `SELECT
-             d.uri,
-             CASE WHEN f.rowid IS NULL THEN 0 ELSE 1 END AS present,
-             CASE WHEN
-               f.rowid IS NOT NULL
-               AND f.filepath = d.rel_path
-               AND f.title = COALESCE(d.title, '')
-               AND f.body = c.markdown
-             THEN 1 ELSE 0 END AS current
-           FROM documents d
-           LEFT JOIN content c ON c.mirror_hash = d.mirror_hash
-           LEFT JOIN documents_fts f ON f.rowid = d.id
-           WHERE d.collection = ? AND d.active = 1
-           ORDER BY d.uri ASC, d.id ASC`
-        )
+      const rows = db
+        .query<
+          {
+            id: number;
+            uri: string;
+            source_hash: string;
+            mirror_hash: string | null;
+            active: number;
+            fts_present: number;
+            fts_current: number;
+          },
+          [string]
+        >(ACTIVATION_INDEX_SNAPSHOT_SQL)
         .all(collection);
       const ftsHasher = new Bun.CryptoHasher("sha256");
-      ftsHasher.update(JSON.stringify(ftsRows));
+      ftsHasher.update(
+        JSON.stringify(
+          rows.map(({ uri, fts_present, fts_current }) => ({
+            uri,
+            present: fts_present,
+            current: fts_current,
+          }))
+        )
+      );
+      const documents: ActivationIndexDocument[] = rows.map((row) => ({
+        id: row.id,
+        uri: row.uri,
+        sourceHash: row.source_hash,
+        mirrorHash: row.mirror_hash,
+        active: row.active === 1,
+      }));
       return ok({
-        indexName,
-        schemaVersion: getSchemaVersion(db),
-        ftsTokenizer: this.ftsTokenizer,
-        ftsStateHash: ftsHasher.digest("hex"),
+        identity: {
+          indexName,
+          schemaVersion: getSchemaVersion(db),
+          ftsTokenizer: this.ftsTokenizer,
+          ftsStateHash: ftsHasher.digest("hex"),
+          activeDocumentCount: documents.length,
+          ftsSynchronized: rows.every((row) => row.fts_current === 1),
+        },
+        documents,
       });
     } catch (cause) {
       return err(
@@ -1295,6 +1339,29 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
     }
   }
 
+  async getContentPrefix(
+    mirrorHash: string,
+    maxChars: number
+  ): Promise<StoreResult<string | null>> {
+    try {
+      const db = this.ensureOpen();
+      const boundedChars = Math.max(0, Math.floor(maxChars));
+      const row = db
+        .query<{ markdown: string }, [number, string]>(
+          "SELECT substr(markdown, 1, ?) AS markdown FROM content WHERE mirror_hash = ?"
+        )
+        .get(boundedChars, mirrorHash);
+
+      return ok(row?.markdown ?? null);
+    } catch (cause) {
+      return err(
+        "QUERY_FAILED",
+        cause instanceof Error ? cause.message : "Failed to get content prefix",
+        cause
+      );
+    }
+  }
+
   async getContentBatch(
     mirrorHashes: string[]
   ): Promise<StoreResult<Map<string, string>>> {
@@ -1646,12 +1713,13 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
           id: number;
           rel_path: string;
           title: string | null;
+          mirror_hash: string | null;
           markdown: string | null;
         }
 
         const doc = db
           .query<DocWithContent, [string, string]>(
-            `SELECT d.id, d.rel_path, d.title, c.markdown
+            `SELECT d.id, d.rel_path, d.title, d.mirror_hash, c.markdown
              FROM documents d
              LEFT JOIN content c ON c.mirror_hash = d.mirror_hash
              WHERE d.collection = ? AND d.rel_path = ? AND d.active = 1`
@@ -1664,13 +1732,20 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
 
         // Delete existing FTS entry for this doc
         db.run("DELETE FROM documents_fts WHERE rowid = ?", [doc.id]);
+        db.run("UPDATE documents SET fts_mirror_hash = NULL WHERE id = ?", [
+          doc.id,
+        ]);
 
         // Insert new FTS entry if we have content
-        if (doc.markdown) {
+        if (doc.markdown !== null) {
           db.run(
             "INSERT INTO documents_fts (rowid, filepath, title, body) VALUES (?, ?, ?, ?)",
             [doc.id, doc.rel_path, doc.title ?? "", doc.markdown]
           );
+          db.run("UPDATE documents SET fts_mirror_hash = ? WHERE id = ?", [
+            doc.mirror_hash,
+            doc.id,
+          ]);
         }
       });
 
@@ -1697,18 +1772,20 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
       const transaction = db.transaction(() => {
         // Clear FTS table
         db.run("DELETE FROM documents_fts");
+        db.run("UPDATE documents SET fts_mirror_hash = NULL");
 
         // Get all active documents with content
         interface DocWithContent {
           id: number;
           rel_path: string;
           title: string | null;
+          mirror_hash: string;
           markdown: string;
         }
 
         const docs = db
           .query<DocWithContent, []>(
-            `SELECT d.id, d.rel_path, d.title, c.markdown
+            `SELECT d.id, d.rel_path, d.title, d.mirror_hash, c.markdown
              FROM documents d
              JOIN content c ON c.mirror_hash = d.mirror_hash
              WHERE d.active = 1 AND d.mirror_hash IS NOT NULL`
@@ -1719,9 +1796,13 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
         const stmt = db.prepare(
           "INSERT INTO documents_fts (rowid, filepath, title, body) VALUES (?, ?, ?, ?)"
         );
+        const markSynced = db.prepare(
+          "UPDATE documents SET fts_mirror_hash = ? WHERE id = ?"
+        );
 
         for (const doc of docs) {
           stmt.run(doc.id, doc.rel_path, doc.title ?? "", doc.markdown);
+          markSynced.run(doc.mirror_hash, doc.id);
           count++;
         }
       });
@@ -1775,10 +1856,17 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
         // Update FTS for each document using this hash
         for (const doc of docs) {
           db.run("DELETE FROM documents_fts WHERE rowid = ?", [doc.id]);
+          db.run("UPDATE documents SET fts_mirror_hash = NULL WHERE id = ?", [
+            doc.id,
+          ]);
           db.run(
             "INSERT INTO documents_fts (rowid, filepath, title, body) VALUES (?, ?, ?, ?)",
             [doc.id, doc.rel_path, doc.title ?? "", content.markdown]
           );
+          db.run("UPDATE documents SET fts_mirror_hash = ? WHERE id = ?", [
+            mirrorHash,
+            doc.id,
+          ]);
         }
       });
 

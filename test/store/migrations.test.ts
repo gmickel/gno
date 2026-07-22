@@ -52,7 +52,7 @@ describe("store migrations", () => {
 
       const upgradeResult = runMigrations(db, migrations, "unicode61");
       expect(upgradeResult.ok).toBe(true);
-      expect(getSchemaVersion(db)).toBe(12);
+      expect(getSchemaVersion(db)).toBe(13);
 
       const indexedRow = db
         .query<{ indexed_at: string | null }, []>(
@@ -79,6 +79,56 @@ describe("store migrations", () => {
         "fingerprint",
         "receipt_json",
         "updated_at",
+      ]);
+
+      const documentColumns = db
+        .query<{ name: string }, []>("PRAGMA table_info(documents)")
+        .all()
+        .map((column) => column.name);
+      expect(documentColumns).toContain("fts_mirror_hash");
+    } finally {
+      db.close();
+    }
+  });
+
+  test("backfills FTS sync markers only for metadata-aligned active rows", () => {
+    const db = new Database(dbPath);
+
+    try {
+      expect(runMigrations(db, migrations.slice(0, 12), "unicode61").ok).toBe(
+        true
+      );
+      db.exec(`
+        INSERT INTO collections (name, path, pattern)
+        VALUES ('notes', '/notes', '**/*');
+        INSERT INTO content (mirror_hash, markdown)
+        VALUES ('mirror-current', 'current body'), ('mirror-missing', 'missing body');
+        INSERT INTO documents (
+          collection, rel_path, source_hash, source_mime, source_ext,
+          source_size, source_mtime, docid, uri, title, mirror_hash, active
+        ) VALUES
+          ('notes', 'current.md', 'source-current', 'text/markdown', '.md',
+           12, '2026-07-22T10:00:00.000Z', 'current1', 'gno://notes/current.md',
+           'Current', 'mirror-current', 1),
+          ('notes', 'missing.md', 'source-missing', 'text/markdown', '.md',
+           12, '2026-07-22T10:00:00.000Z', 'missing1', 'gno://notes/missing.md',
+           'Missing', 'mirror-missing', 1);
+        INSERT INTO documents_fts (rowid, filepath, title, body)
+        SELECT id, rel_path, title, 'current body'
+        FROM documents WHERE rel_path = 'current.md';
+      `);
+
+      const upgraded = runMigrations(db, migrations, "unicode61");
+      expect(upgraded.ok).toBe(true);
+      expect(getSchemaVersion(db)).toBe(13);
+      const rows = db
+        .query<{ rel_path: string; fts_mirror_hash: string | null }, []>(
+          "SELECT rel_path, fts_mirror_hash FROM documents ORDER BY rel_path"
+        )
+        .all();
+      expect(rows).toEqual([
+        { rel_path: "current.md", fts_mirror_hash: "mirror-current" },
+        { rel_path: "missing.md", fts_mirror_hash: null },
       ]);
     } finally {
       db.close();

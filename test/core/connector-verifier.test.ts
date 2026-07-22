@@ -315,6 +315,40 @@ await new Promise((resolve) => process.stdin.once("end", resolve));
     }
   });
 
+  test("retries a failed connector receipt under the same fingerprint", async () => {
+    const serverEntry = await createMcpFixture("mismatch");
+    const retryOptions = {
+      ...optionsForTrustedEntry(serverEntry),
+      force: false,
+    };
+    const failed = await verifyConnectorActivation(
+      adapter,
+      COLLECTION,
+      mcpTarget(serverEntry),
+      retryOptions
+    );
+    expect(failed.ok).toBe(true);
+    if (!failed.ok) {
+      return;
+    }
+    expect(failed.value.stages.connector.code).toBe(
+      "connector_result_mismatch"
+    );
+
+    await createMcpFixture("pass");
+    const recovered = await verifyConnectorActivation(
+      adapter,
+      COLLECTION,
+      mcpTarget(serverEntry),
+      retryOptions
+    );
+    expect(recovered.ok).toBe(true);
+    if (recovered.ok) {
+      expect(recovered.value.stages.connector.status).toBe("passed");
+      expect(recovered.value.fingerprint).toBe(failed.value.fingerprint);
+    }
+  });
+
   test("rejects unsafe config without spawning and maps bounded remediation", async () => {
     const result = await verifyConnectorActivation(
       adapter,

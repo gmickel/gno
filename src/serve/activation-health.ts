@@ -50,29 +50,42 @@ export function buildActivationCheck(
 export function buildConnectorActivationCheck(
   activation: ActivationStatus
 ): HealthCheck | null {
+  const { projected, total, truncated } = activation.connectorProjection;
+  const omitted = total - projected;
   const observed = activation.connectors.filter(
     ({ code }) =>
       code !== "connector_not_configured" &&
       code !== "target_runtime_unverifiable"
   );
-  if (observed.length === 0) {
+  if (observed.length === 0 && !truncated) {
     return null;
   }
   const failed = observed.filter(({ status }) => status === "failed");
   const incomplete = observed.filter(({ status }) => status !== "passed");
   const first = failed[0] ?? incomplete[0] ?? observed[0];
+  const firstDetail = first
+    ? `${first.target} / ${first.collection}: ${first.status}${first.code ? `/${first.code}` : ""}${first.remediation ? `. ${first.remediation}` : ""}`
+    : null;
+  const projectionDetail = truncated
+    ? `${omitted} target/collection checks were omitted by the bounded status projection; no result is claimed for them.`
+    : null;
   return {
     id: "connector-activation",
     title: "Connector proof",
-    status: failed.length > 0 ? "error" : incomplete.length > 0 ? "warn" : "ok",
+    status:
+      failed.length > 0
+        ? "error"
+        : incomplete.length > 0 || truncated
+          ? "warn"
+          : "ok",
     summary:
       failed.length > 0
         ? `${countLabel(failed.length, "connector proof")} failed`
         : incomplete.length > 0
           ? `${countLabel(incomplete.length, "connector proof")} incomplete`
-          : `${countLabel(observed.length, "connector proof")} passed`,
-    detail: first
-      ? `${first.target} / ${first.collection}: ${first.status}${first.code ? `/${first.code}` : ""}${first.remediation ? `. ${first.remediation}` : ""}`
-      : "No connector proof recorded.",
+          : truncated
+            ? `${projected} of ${total} connector target/collection checks projected`
+            : `${countLabel(observed.length, "connector proof")} passed`,
+    detail: [projectionDetail, firstDetail].filter(Boolean).join(" "),
   };
 }

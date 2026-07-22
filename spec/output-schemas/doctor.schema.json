@@ -124,9 +124,21 @@
           "additionalProperties": false,
           "required": ["total", "projected", "truncated"],
           "properties": {
-            "total": { "type": "integer", "minimum": 0 },
-            "projected": { "type": "integer", "minimum": 0, "maximum": 64 },
-            "truncated": { "type": "boolean" }
+            "total": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "All configured collection and connector target pairs before projection bounds."
+            },
+            "projected": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 64,
+              "description": "Pairs included in connectors; always equals connectors.length."
+            },
+            "truncated": {
+              "type": "boolean",
+              "description": "True exactly when total is greater than projected; omitted pairs have no claimed result."
+            }
           }
         }
       },
@@ -134,6 +146,7 @@
         "code": {
           "enum": [
             "no_documents",
+            "index_out_of_sync",
             "no_probe_term",
             "index_query_failed",
             "retrieval_mismatch",
