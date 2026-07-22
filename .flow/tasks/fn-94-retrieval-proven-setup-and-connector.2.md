@@ -48,8 +48,8 @@ Deliver add read-only connector verification adapters as one implementation-size
 
 
 ## Done summary
-Implemented read-only MCP connector proof; hardened review findings with realpath command provenance, malformed-config normalization, Windows gno.cmd support, and non-leaking connector target identities.
+Implemented read-only MCP connector proof; hardened command provenance, format-specific MCP/OpenCode normalization, disabled-entry fail-closed behavior, Windows gno.cmd support, and non-leaking connector target identities.
 ## Evidence
-- Commits: 6345f79, e97f2b2
-- Tests: bun test (2091 passed, 1 platform skip, 0 failed), bun test test/core/connector-verifier.test.ts test/core/activation-verifier.test.ts test/store/activation-receipts.test.ts test/serve/connectors.test.ts test/cli/mcp.test.ts test/spec/schemas/activation-verification.test.ts (73 passed, 0 failed), bun run lint:check (passed), bunx tsc --noEmit --pretty false (passed), bun run docs:verify (12 passed, 2 model-cache skips, 0 failed), bun run eval:hybrid (88%, threshold 70%, passed), .flow/bin/flowctl validate --spec fn-94-retrieval-proven-setup-and-connector --json (valid)
+- Commits: 6345f79, e97f2b2, 327ab47
+- Tests: bun test (2091 passed, 1 platform skip, 0 failed), bun test test/cli/mcp.test.ts test/core/connector-policy.test.ts test/core/connector-verifier.test.ts (47 passed, 0 failed), bun run lint:check (passed), bunx tsc --noEmit --pretty false (passed), bun run docs:verify (12 passed, 2 model-cache skips, 0 failed), bun run eval:hybrid (88%, threshold 70%, passed), .flow/bin/flowctl validate --spec fn-94-retrieval-proven-setup-and-connector --json (valid)
 - PRs:
