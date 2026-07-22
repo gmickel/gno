@@ -153,6 +153,63 @@ describe("lexical activation verifier", () => {
     expect(result.value.evidence.probeHash).toMatch(/^[a-f0-9]{64}$/);
   });
 
+  test("ignores unindexable rows without FTS content but detects stale FTS", async () => {
+    await addDocument(
+      "searchable.md",
+      "# Searchable\nCopperlattice proves the healthy lexical path."
+    );
+    const broken = await adapter.upsertDocument({
+      collection: "notes",
+      relPath: "broken.pdf",
+      sourceHash: hash("source:broken.pdf"),
+      sourceMime: "application/pdf",
+      sourceExt: ".pdf",
+      sourceSize: 128,
+      sourceMtime: "2026-07-22T09:00:00.000Z",
+      lastErrorCode: "CORRUPT",
+      lastErrorMessage: "Invalid PDF structure",
+    });
+    expect(broken.ok).toBe(true);
+    if (!broken.ok) {
+      return;
+    }
+
+    const retrievable = await verifyLexicalActivation(
+      adapter,
+      "notes",
+      verifierOptions
+    );
+    expect(retrievable.ok && retrievable.value.ready).toBe(true);
+
+    adapter.getRawDb().run(
+      `INSERT INTO documents_fts (rowid, filepath, title, body)
+       VALUES (?, 'broken.pdf', '', 'stale searchable content')`,
+      [broken.value.id]
+    );
+    const stale = await verifyLexicalActivation(
+      adapter,
+      "notes",
+      verifierOptions
+    );
+    expect(stale.ok).toBe(true);
+    if (stale.ok) {
+      expect(stale.value.stages.index).toMatchObject({
+        status: "failed",
+        code: "index_out_of_sync",
+      });
+    }
+
+    expect((await adapter.syncDocumentFts("notes", "broken.pdf")).ok).toBe(
+      true
+    );
+    const repaired = await verifyLexicalActivation(
+      adapter,
+      "notes",
+      verifierOptions
+    );
+    expect(repaired.ok && repaired.value.ready).toBe(true);
+  });
+
   test("fails explicitly for an empty collection", async () => {
     const result = await verifyLexicalActivation(
       adapter,

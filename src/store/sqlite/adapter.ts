@@ -100,12 +100,16 @@ export const ACTIVATION_INDEX_SNAPSHOT_SQL = `SELECT
   d.mirror_hash,
   d.active,
   CASE WHEN f.rowid IS NULL THEN 0 ELSE 1 END AS fts_present,
-  CASE WHEN
-    f.rowid IS NOT NULL
-    AND f.filepath = d.rel_path
-    AND f.title = COALESCE(d.title, '')
-    AND d.fts_mirror_hash = d.mirror_hash
-  THEN 1 ELSE 0 END AS fts_current
+  CASE
+    WHEN d.mirror_hash IS NULL AND f.rowid IS NULL THEN 1
+    WHEN
+      f.rowid IS NOT NULL
+      AND f.filepath = d.rel_path
+      AND f.title = COALESCE(d.title, '')
+      AND d.fts_mirror_hash = d.mirror_hash
+    THEN 1
+    ELSE 0
+  END AS fts_current
 FROM documents d
 LEFT JOIN documents_fts f ON f.rowid = d.id
 WHERE d.collection = ? AND d.active = 1
