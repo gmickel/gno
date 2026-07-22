@@ -11,7 +11,7 @@ Deliver define claim verification semantics and deterministic hygiene as one imp
 
 ### Approach
 - Define substantive-claim segmentation, coverage denominator, supported/contradicted/insufficient/uncertain verdicts, and explicit abstention text.
-- Extend deterministic citation parsing to reject malformed, stale, out-of-Capsule, and non-substantive citation artifacts before semantic verification.
+- Extend deterministic citation parsing to reject malformed, out-of-Capsule, and non-substantive citation artifacts; when freshness is supplied, consume `verifyContextCapsule` evidence receipts and reject any citation whose `contentStatus` is not `unchanged` before semantic verification.
 - Keep contradiction distinct from missing evidence and include reason codes plus exact evidence IDs.
 
 ### Investigation targets
@@ -31,6 +31,8 @@ Deliver define claim verification semantics and deterministic hygiene as one imp
 - [ ] Fixtures classify supported, contradicted, insufficient, and uncertain claims distinctly.
 - [ ] Malformed/stale/out-of-Capsule citations cannot count as support.
 - [ ] Coverage and abstention thresholds are deterministic and surface-independent.
+- [ ] Capsule freshness consumes the canonical verification receipt by evidence ID; `stale`/`missing` never count as support, while `ranking_unavailable` remains distinct from content invalidity.
+<!-- Updated by plan-sync (cross-spec): fn-98-context-capsule-mvp.4 exposed verifyContextCapsule with per-evidence content and ranking statuses -->
 
 
 ## Done summary

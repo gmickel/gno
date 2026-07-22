@@ -11,6 +11,30 @@ const sha256Schema = z.string().regex(/^[a-f0-9]{64}$/);
 const nullableSha256Schema = sha256Schema.nullable();
 const positiveIntegerSchema = z.number().int().positive();
 
+export const CONTEXT_CAPSULE_FINGERPRINT_DRIFT_REASONS = [
+  "config_changed",
+  "retrieval_changed",
+  "embedding_model_changed",
+  "rerank_model_changed",
+  "tokenizer_changed",
+  "index_changed",
+] as const;
+
+const fingerprintDriftReasonSchema = z.enum(
+  CONTEXT_CAPSULE_FINGERPRINT_DRIFT_REASONS
+);
+
+export const contextCapsuleCurrentFingerprintsSchema = z
+  .object({
+    config: sha256Schema,
+    retrieval: sha256Schema,
+    embeddingModel: nullableSha256Schema,
+    rerankModel: nullableSha256Schema,
+    tokenizer: nullableSha256Schema,
+    index: sha256Schema,
+  })
+  .strict();
+
 export const contextCapsuleVerificationEvidenceSchema = z
   .object({
     evidenceId: sha256Schema,
@@ -20,8 +44,12 @@ export const contextCapsuleVerificationEvidenceSchema = z
       "verified_unchanged",
       "source_stale",
       "mirror_stale",
+      "mirror_corrupt",
       "passage_stale",
+      "chunk_missing",
+      "chunk_corrupt",
       "source_missing",
+      "mirror_missing",
     ]),
     rankingStatus: z.enum(["unchanged", "reranked", "unavailable"]),
     rankingCode: z.enum([
@@ -46,13 +74,22 @@ export const contextCapsuleVerificationEvidenceSchema = z
         value.contentCode === "verified_unchanged" &&
         hashes.every((hash) => hash !== null)) ||
       (value.contentStatus === "stale" &&
-        ["source_stale", "mirror_stale", "passage_stale"].includes(
-          value.contentCode
-        ) &&
+        [
+          "source_stale",
+          "mirror_stale",
+          "mirror_corrupt",
+          "passage_stale",
+          "chunk_missing",
+          "chunk_corrupt",
+        ].includes(value.contentCode) &&
         hashes.every((hash) => hash !== null)) ||
       (value.contentStatus === "missing" &&
         value.contentCode === "source_missing" &&
-        hashes.every((hash) => hash === null));
+        hashes.every((hash) => hash === null)) ||
+      (value.contentStatus === "missing" &&
+        value.contentCode === "mirror_missing" &&
+        value.currentSourceHash !== null &&
+        value.currentPassageHash === null);
     const rankingValid =
       (value.rankingStatus === "unchanged" &&
         value.rankingCode === "ranking_unchanged" &&
@@ -99,6 +136,9 @@ export const contextCapsuleVerificationSchema = z
       "ranking_changed",
       "ranking_unavailable",
     ]),
+    currentFingerprints: contextCapsuleCurrentFingerprintsSchema,
+    fingerprintStatus: z.enum(["unchanged", "drifted"]),
+    fingerprintReasons: z.array(fingerprintDriftReasonSchema),
     indexSnapshot: contextCapsuleIndexSnapshotSchema,
     evidence: z.array(contextCapsuleVerificationEvidenceSchema).min(1),
   })
@@ -146,6 +186,29 @@ export const contextCapsuleVerificationSchema = z
       context.addIssue({
         code: "custom",
         message: "aggregate ranking status disagrees with evidence",
+      });
+    }
+    const reasonIndexes = value.fingerprintReasons.map((reason) =>
+      CONTEXT_CAPSULE_FINGERPRINT_DRIFT_REASONS.indexOf(reason)
+    );
+    const canonicalReasons =
+      new Set(value.fingerprintReasons).size ===
+        value.fingerprintReasons.length &&
+      reasonIndexes.every(
+        (reasonIndex, index) =>
+          index === 0 || reasonIndex > (reasonIndexes[index - 1] ?? -1)
+      );
+    const fingerprintsValid =
+      (value.fingerprintStatus === "unchanged" &&
+        value.fingerprintReasons.length === 0) ||
+      (value.fingerprintStatus === "drifted" &&
+        value.fingerprintReasons.length > 0);
+    if (!canonicalReasons || !fingerprintsValid) {
+      context.addIssue({
+        code: "custom",
+        message:
+          "fingerprint drift reasons must be distinct and canonically ordered",
+        path: ["fingerprintReasons"],
       });
     }
   });

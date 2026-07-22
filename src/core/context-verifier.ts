@@ -13,15 +13,23 @@ import { decorateUriForIndex, deriveDocid } from "../app/constants";
 import { chunkMatchesCanonicalContent } from "../pipeline/chunk-lookup";
 import {
   canonicalContextCapsuleJson,
+  ContextCapsuleContractError,
   parseContextCapsuleV1,
   type ContextCapsuleCreateOptions,
 } from "./context-capsule";
 import { sha256Text } from "./context-capsule-validation";
-import { contextCapsuleVerificationSchema } from "./context-capsule-verification";
+import {
+  CONTEXT_CAPSULE_FINGERPRINT_DRIFT_REASONS,
+  contextCapsuleVerificationSchema,
+} from "./context-capsule-verification";
 import {
   captureContextEvidenceSnapshot,
   type ContextEvidenceSnapshot,
 } from "./context-evidence";
+import {
+  canonicalVerifierJson,
+  hasNoncanonicalVerifierText,
+} from "./context-verifier-canonical";
 import { extractInclusiveLines } from "./sections";
 
 type ContextVerifierStore = Pick<
@@ -73,31 +81,6 @@ export class ContextVerifierError extends Error {
   }
 }
 
-const compareCodeUnits = (left: string, right: string): number =>
-  left < right ? -1 : left > right ? 1 : 0;
-
-const canonicalizeJsonValue = (value: unknown): unknown => {
-  if (Array.isArray(value)) return value.map(canonicalizeJsonValue);
-  if (value !== null && typeof value === "object") {
-    const sorted: Record<string, unknown> = {};
-    for (const key of Object.keys(value).sort(compareCodeUnits)) {
-      const child = (value as Record<string, unknown>)[key];
-      if (child === undefined) {
-        throw new Error(`Canonical JSON rejects undefined at ${key}`);
-      }
-      sorted[key] = canonicalizeJsonValue(child);
-    }
-    return sorted;
-  }
-  if (typeof value === "number" && !Number.isFinite(value)) {
-    throw new Error("Canonical JSON rejects non-finite numbers");
-  }
-  return value;
-};
-
-const canonicalJson = (value: unknown): string =>
-  JSON.stringify(canonicalizeJsonValue(value));
-
 const unwrapStore = <T>(
   result: StoreResult<T>,
   code: ContextVerifierErrorCode,
@@ -139,16 +122,6 @@ const rawInclusiveLines = (
   return lines.slice(startLine - 1, Math.min(endLine, lines.length)).join("\n");
 };
 
-const fingerprintsMatch = (
-  current: ContextVerifierFingerprints,
-  saved: ContextCapsuleV1["fingerprints"]
-): boolean =>
-  current.config === saved.config &&
-  current.retrieval === saved.retrieval &&
-  current.embeddingModel === saved.embeddingModel &&
-  current.rerankModel === saved.rerankModel &&
-  current.tokenizer === saved.tokenizer;
-
 type Evidence = ContextCapsuleV1["evidence"][number];
 type EvidenceReceipt = ContextCapsuleVerification["evidence"][number];
 
@@ -172,6 +145,23 @@ const missingReceipt = (evidence: Evidence): EvidenceReceipt => ({
   currentRetrievalRank: null,
 });
 
+const missingMirrorReceipt = (
+  evidence: Evidence,
+  sourceHash: string,
+  mirrorHash: string | null
+): EvidenceReceipt => ({
+  evidenceId: evidence.evidenceId,
+  uri: evidence.uri,
+  contentStatus: "missing",
+  contentCode: "mirror_missing",
+  rankingStatus: "unavailable",
+  rankingCode: "ranking_unavailable",
+  currentSourceHash: sourceHash,
+  currentMirrorHash: mirrorHash,
+  currentPassageHash: null,
+  currentRetrievalRank: null,
+});
+
 const verifyContent = (
   evidence: Evidence,
   loaded: LoadedEvidence,
@@ -181,7 +171,10 @@ const verifyContent = (
     (document) => document.uri === evidence.uri
   );
   const identity = identities.length === 1 ? identities[0] : undefined;
-  if (!identity?.mirrorHash) return missingReceipt(evidence);
+  if (!identity) return missingReceipt(evidence);
+  if (!identity.mirrorHash) {
+    return missingMirrorReceipt(evidence, identity.sourceHash, null);
+  }
   const document = matchingDocument(
     loaded.documents,
     evidence.uri,
@@ -189,8 +182,16 @@ const verifyContent = (
     identity.mirrorHash,
     indexName
   );
-  const content = loaded.contentByHash.get(identity.mirrorHash);
-  if (!document || content === undefined) return missingReceipt(evidence);
+  const currentSourceHash = document?.sourceHash ?? identity.sourceHash;
+  const registeredMirrorHash = document?.mirrorHash ?? identity.mirrorHash;
+  const content = loaded.contentByHash.get(registeredMirrorHash);
+  if (content === undefined) {
+    return missingMirrorReceipt(
+      evidence,
+      currentSourceHash,
+      registeredMirrorHash
+    );
+  }
 
   const currentMirrorHash = sha256Text(content);
   const exactPassage = extractInclusiveLines(
@@ -202,32 +203,35 @@ const verifyContent = (
     exactPassage ??
       rawInclusiveLines(content, evidence.startLine, evidence.endLine)
   );
-  const chunk = loaded.chunksByHash
-    .get(identity.mirrorHash)
-    ?.find(
-      (candidate) =>
-        candidate.mirrorHash === identity.mirrorHash &&
-        candidate.startLine === evidence.startLine &&
-        candidate.endLine === evidence.endLine &&
-        chunkMatchesCanonicalContent(candidate, content)
-    );
+  const chunks = loaded.chunksByHash.get(registeredMirrorHash);
+  const chunk = chunks?.find(
+    (candidate) =>
+      candidate.mirrorHash === registeredMirrorHash &&
+      candidate.startLine === evidence.startLine &&
+      candidate.endLine === evidence.endLine &&
+      chunkMatchesCanonicalContent(candidate, content)
+  );
   const chunkValid = chunk !== undefined;
 
   let contentCode: EvidenceReceipt["contentCode"] = "verified_unchanged";
-  if (identity.sourceHash !== evidence.sourceHash) {
+  if (currentSourceHash !== evidence.sourceHash) {
     contentCode = "source_stale";
   } else if (
-    identity.mirrorHash !== evidence.mirrorHash ||
-    currentMirrorHash !== identity.mirrorHash ||
+    currentMirrorHash !== registeredMirrorHash ||
     content.includes("\r")
   ) {
+    contentCode = "mirror_corrupt";
+  } else if (registeredMirrorHash !== evidence.mirrorHash) {
     contentCode = "mirror_stale";
   } else if (
     exactPassage === null ||
-    currentPassageHash !== evidence.passageHash ||
-    !chunkValid
+    currentPassageHash !== evidence.passageHash
   ) {
     contentCode = "passage_stale";
+  } else if (!chunks || chunks.length === 0) {
+    contentCode = "chunk_missing";
+  } else if (!chunkValid) {
+    contentCode = "chunk_corrupt";
   }
 
   return {
@@ -237,7 +241,7 @@ const verifyContent = (
     contentCode,
     rankingStatus: "unavailable",
     rankingCode: "ranking_unavailable",
-    currentSourceHash: identity.sourceHash,
+    currentSourceHash,
     currentMirrorHash,
     currentPassageHash,
     currentRetrievalRank: null,
@@ -247,15 +251,12 @@ const verifyContent = (
 const applyRanking = (
   receipt: EvidenceReceipt,
   evidence: Evidence,
-  currentRanks: ReadonlyMap<string, number> | null,
-  fingerprintsDrifted: boolean,
-  indexDrifted: boolean
+  currentRanks: ReadonlyMap<string, number> | null
 ): EvidenceReceipt => {
   if (receipt.contentStatus !== "unchanged") return receipt;
   const rank = currentRanks?.get(evidence.evidenceId);
   if (!Number.isSafeInteger(rank) || (rank ?? 0) < 1) return receipt;
-  const reranked =
-    rank !== evidence.retrievalRank || fingerprintsDrifted || indexDrifted;
+  const reranked = rank !== evidence.retrievalRank;
   return {
     ...receipt,
     rankingStatus: reranked ? "reranked" : "unchanged",
@@ -267,6 +268,7 @@ const applyRanking = (
 const aggregateReceipt = (
   capsule: ContextCapsuleV1,
   indexFingerprint: string,
+  currentFingerprints: ContextVerifierFingerprints,
   evidence: EvidenceReceipt[]
 ): ContextCapsuleVerification => {
   const contentStatus = evidence.some(
@@ -283,6 +285,11 @@ const aggregateReceipt = (
     : evidence.some((item) => item.rankingStatus === "reranked")
       ? "reranked"
       : "unchanged";
+  const reasons = fingerprintReasons(
+    capsule,
+    currentFingerprints,
+    indexFingerprint
+  );
   return contextCapsuleVerificationSchema.parse({
     schemaVersion: capsule.schemaVersion,
     coordinateSpace: capsule.coordinateSpace,
@@ -302,6 +309,12 @@ const aggregateReceipt = (
         : rankingStatus === "reranked"
           ? "ranking_changed"
           : "ranking_unchanged",
+    currentFingerprints: {
+      ...currentFingerprints,
+      index: indexFingerprint,
+    },
+    fingerprintStatus: reasons.length === 0 ? "unchanged" : "drifted",
+    fingerprintReasons: reasons,
     indexSnapshot: {
       before: indexFingerprint,
       after: indexFingerprint,
@@ -311,14 +324,61 @@ const aggregateReceipt = (
   });
 };
 
+const fingerprintReasons = (
+  capsule: ContextCapsuleV1,
+  current: ContextVerifierFingerprints,
+  indexFingerprint: string
+): (typeof CONTEXT_CAPSULE_FINGERPRINT_DRIFT_REASONS)[number][] => {
+  const changed = {
+    config_changed: current.config !== capsule.fingerprints.config,
+    retrieval_changed: current.retrieval !== capsule.fingerprints.retrieval,
+    embedding_model_changed:
+      current.embeddingModel !== capsule.fingerprints.embeddingModel,
+    rerank_model_changed:
+      current.rerankModel !== capsule.fingerprints.rerankModel,
+    tokenizer_changed: current.tokenizer !== capsule.fingerprints.tokenizer,
+    index_changed: indexFingerprint !== capsule.retrieval.indexSnapshot.after,
+  } satisfies Record<
+    (typeof CONTEXT_CAPSULE_FINGERPRINT_DRIFT_REASONS)[number],
+    boolean
+  >;
+  return CONTEXT_CAPSULE_FINGERPRINT_DRIFT_REASONS.filter(
+    (reason) => changed[reason]
+  );
+};
+
+const rawCanonicalJson = (input: unknown): string => {
+  try {
+    return canonicalVerifierJson(input);
+  } catch (cause) {
+    throw new ContextCapsuleContractError(
+      "invalid_input",
+      "Context Capsule input must be canonical JSON",
+      { cause }
+    );
+  }
+};
+
 /** Verify a Capsule without rebuilding it or mutating caller-owned input. */
 export const verifyContextCapsule = async (
   input: unknown,
   deps: ContextVerifierDeps
 ): Promise<ContextCapsuleVerification> => {
   const options = { countTokens: deps.countTokens };
+  const rawInputBefore = rawCanonicalJson(input);
+  if (hasNoncanonicalVerifierText(input)) {
+    throw new ContextCapsuleContractError(
+      "invalid_input",
+      "Context Capsule input must already use NFC text and LF line endings"
+    );
+  }
   const capsule = parseContextCapsuleV1(input, options);
-  const inputBytesBefore = canonicalContextCapsuleJson(capsule);
+  if (rawInputBefore !== canonicalContextCapsuleJson(capsule)) {
+    throw new ContextCapsuleContractError(
+      "invalid_input",
+      "Context Capsule input must already use its canonical semantic representation"
+    );
+  }
   const before = await captureContextEvidenceSnapshot(
     deps.store,
     capsule.scope.indexName,
@@ -383,33 +443,31 @@ export const verifyContextCapsule = async (
       "Configured contexts changed while Context Capsule verification was running"
     );
   }
-  const inputBytesAfter = canonicalContextCapsuleJson(input);
-  if (inputBytesBefore !== inputBytesAfter) {
+  const rawInputAfter = rawCanonicalJson(input);
+  if (rawInputBefore !== rawInputAfter) {
     throw new ContextVerifierError(
       "capsule_mutated_during_verify",
       "Context Capsule input changed while verification was running"
     );
   }
 
-  const fingerprintsDrifted = !fingerprintsMatch(
-    deps.currentFingerprints,
-    capsule.fingerprints
-  );
-  const indexDrifted =
-    before.indexFingerprint !== capsule.retrieval.indexSnapshot.after;
   const evidence = capsule.evidence.map((item) =>
     applyRanking(
       verifyContent(item, loaded, capsule.scope.indexName),
       item,
-      rankResult,
-      fingerprintsDrifted,
-      indexDrifted
+      rankResult
     )
   );
-  return aggregateReceipt(capsule, before.indexFingerprint, evidence);
+  return aggregateReceipt(
+    capsule,
+    before.indexFingerprint,
+    deps.currentFingerprints,
+    evidence
+  );
 };
 
 /** Canonical JSON projection for cross-surface receipt parity. */
 export const canonicalContextCapsuleVerificationJson = (
   input: unknown
-): string => canonicalJson(contextCapsuleVerificationSchema.parse(input));
+): string =>
+  canonicalVerifierJson(contextCapsuleVerificationSchema.parse(input));

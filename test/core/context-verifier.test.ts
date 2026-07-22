@@ -13,6 +13,7 @@ import {
 import {
   capsuleFor,
   createVerifierStore,
+  documentRow,
   FINGERPRINTS,
   makeChunk,
   verifierDeps,
@@ -37,6 +38,8 @@ describe("Context Capsule verifier", () => {
 
     expect(first.contentStatus).toBe("unchanged");
     expect(first.rankingStatus).toBe("unchanged");
+    expect(first.fingerprintStatus).toBe("unchanged");
+    expect(first.fingerprintReasons).toEqual([]);
     expect(first.evidence.map((item) => item.uri)).toEqual(
       capsule.evidence.map((item) => item.uri)
     );
@@ -104,7 +107,7 @@ describe("Context Capsule verifier", () => {
       verifierDeps(corruptHarness.store, corruptCapsule)
     );
     expect(corruptReceipt.evidence[0]).toMatchObject({
-      contentCode: "mirror_stale",
+      contentCode: "mirror_corrupt",
       currentMirrorHash: sha256Text(crlf),
     });
     expect(corruptReceipt.evidence[1]?.contentStatus).toBe("unchanged");
@@ -148,8 +151,66 @@ describe("Context Capsule verifier", () => {
       passageCapsule,
       verifierDeps(passageHarness.store, passageCapsule)
     );
-    expect(passageReceipt.evidence[0]?.contentCode).toBe("passage_stale");
+    expect(passageReceipt.evidence[0]?.contentCode).toBe("chunk_corrupt");
     expect(passageReceipt.evidence[1]?.contentStatus).toBe("unchanged");
+  });
+
+  test("distinguishes missing mirrors and chunks while retaining known hashes", async () => {
+    const mirror = verifierFixture(false);
+    const mirrorHarness = createVerifierStore(mirror.state);
+    const mirrorCapsule = await capsuleFor(mirrorHarness.store, mirror.state);
+    const mirrorHash = mirror.state.documents[0]?.mirrorHash ?? "";
+    mirror.state.contents.delete(mirrorHash);
+    const mirrorReceipt = await verifyContextCapsule(
+      mirrorCapsule,
+      verifierDeps(mirrorHarness.store, mirrorCapsule)
+    );
+    expect(mirrorReceipt.evidence[0]).toMatchObject({
+      contentStatus: "missing",
+      contentCode: "mirror_missing",
+      currentSourceHash: mirror.state.documents[0]?.sourceHash,
+      currentMirrorHash: mirrorHash,
+      currentPassageHash: null,
+    });
+
+    const unregistered = verifierFixture(false);
+    const unregisteredHarness = createVerifierStore(unregistered.state);
+    const unregisteredCapsule = await capsuleFor(
+      unregisteredHarness.store,
+      unregistered.state
+    );
+    unregistered.state.documents[0] = {
+      ...unregistered.state.documents[0]!,
+      mirrorHash: null,
+    };
+    const unregisteredReceipt = await verifyContextCapsule(
+      unregisteredCapsule,
+      verifierDeps(unregisteredHarness.store, unregisteredCapsule)
+    );
+    expect(unregisteredReceipt.evidence[0]).toMatchObject({
+      contentStatus: "missing",
+      contentCode: "mirror_missing",
+      currentSourceHash: unregistered.state.documents[0]?.sourceHash,
+      currentMirrorHash: null,
+      currentPassageHash: null,
+    });
+
+    const chunk = verifierFixture(false);
+    const chunkHarness = createVerifierStore(chunk.state);
+    const chunkCapsule = await capsuleFor(chunkHarness.store, chunk.state);
+    const chunkHash = chunk.state.documents[0]?.mirrorHash ?? "";
+    chunk.state.chunks.delete(chunkHash);
+    const chunkReceipt = await verifyContextCapsule(
+      chunkCapsule,
+      verifierDeps(chunkHarness.store, chunkCapsule)
+    );
+    expect(chunkReceipt.evidence[0]).toMatchObject({
+      contentStatus: "stale",
+      contentCode: "chunk_missing",
+      currentSourceHash: chunk.state.documents[0]?.sourceHash,
+      currentMirrorHash: chunkHash,
+      currentPassageHash: chunkCapsule.evidence[0]?.passageHash,
+    });
   });
 
   test("separates rank, config, model, and saved-index fingerprint drift", async () => {
@@ -170,12 +231,19 @@ describe("Context Capsule verifier", () => {
         embeddingModel: sha256Text("new-embedding-model"),
       },
     ];
-    for (const currentFingerprints of changedFingerprints) {
+    const expectedReasons = [
+      "config_changed",
+      "embedding_model_changed",
+    ] as const;
+    for (const [index, currentFingerprints] of changedFingerprints.entries()) {
       const receipt = await verifyContextCapsule(capsule, {
         ...verifierDeps(rankingHarness.store, capsule),
         currentFingerprints,
       });
-      expect(receipt.rankingStatus).toBe("reranked");
+      expect(receipt.rankingStatus).toBe("unchanged");
+      expect(receipt.fingerprintStatus).toBe("drifted");
+      expect(receipt.fingerprintReasons).toEqual([expectedReasons[index]!]);
+      expect(receipt.currentFingerprints).toMatchObject(currentFingerprints);
     }
 
     const { capsuleId: _capsuleId, ...savedPayload } = capsule;
@@ -195,7 +263,33 @@ describe("Context Capsule verifier", () => {
           ])
         ),
     });
-    expect(indexReceipt.rankingStatus).toBe("reranked");
+    expect(indexReceipt.rankingStatus).toBe("unchanged");
+    expect(indexReceipt.fingerprintReasons).toEqual(["index_changed"]);
+
+    const allCurrentFingerprints = {
+      config: sha256Text("all-config"),
+      retrieval: sha256Text("all-retrieval"),
+      embeddingModel: sha256Text("all-embedding"),
+      rerankModel: sha256Text("all-rerank"),
+      tokenizer: sha256Text("all-tokenizer"),
+    };
+    const noRankingReceipt = await verifyContextCapsule(oldIndexCapsule, {
+      store: rankingHarness.store,
+      currentFingerprints: allCurrentFingerprints,
+    });
+    expect(noRankingReceipt.rankingStatus).toBe("unavailable");
+    expect(noRankingReceipt.currentFingerprints).toEqual({
+      ...allCurrentFingerprints,
+      index: noRankingReceipt.indexSnapshot.after,
+    });
+    expect(noRankingReceipt.fingerprintReasons).toEqual([
+      "config_changed",
+      "retrieval_changed",
+      "embedding_model_changed",
+      "rerank_model_changed",
+      "tokenizer_changed",
+      "index_changed",
+    ]);
   });
 
   test("rejects noncanonical URI, evidence identity, and budget before resolving", async () => {
@@ -218,6 +312,42 @@ describe("Context Capsule verifier", () => {
     expect(calls.snapshots).toBe(0);
   });
 
+  test("rejects noncanonical text before I/O and detects normalization-equivalent mutation", async () => {
+    const { state } = verifierFixture(true);
+    const harness = createVerifierStore(state);
+    const capsule = await capsuleFor(harness.store, state);
+    harness.calls.snapshots = 0;
+    const nfd = structuredClone(capsule);
+    nfd.goal = "Cafe\u0301 decision owner";
+    expect(
+      verifyContextCapsule(nfd, verifierDeps(harness.store, capsule))
+    ).rejects.toMatchObject({
+      name: "ContextCapsuleContractError",
+      code: "invalid_input",
+    });
+    const crlf = structuredClone(capsule);
+    crlf.query = "decision\r\nowner";
+    expect(
+      verifyContextCapsule(crlf, verifierDeps(harness.store, capsule))
+    ).rejects.toMatchObject({
+      name: "ContextCapsuleContractError",
+      code: "invalid_input",
+    });
+    expect(harness.calls.snapshots).toBe(0);
+
+    const { capsuleId: _capsuleId, ...payload } = capsule;
+    payload.goal = "Caf\u00e9 decision owner";
+    const mutable = createContextCapsuleV1(payload);
+    const originalGetContentBatch = harness.store.getContentBatch;
+    harness.store.getContentBatch = async (hashes) => {
+      mutable.goal = "Cafe\u0301 decision owner";
+      return originalGetContentBatch(hashes);
+    };
+    expect(
+      verifyContextCapsule(mutable, verifierDeps(harness.store, mutable))
+    ).rejects.toMatchObject({ code: "capsule_mutated_during_verify" });
+  });
+
   test("fails the operation deterministically when the index snapshot drifts", async () => {
     const { state } = verifierFixture(true);
     const { store, calls } = createVerifierStore(state);
@@ -227,5 +357,46 @@ describe("Context Capsule verifier", () => {
     expect(
       verifyContextCapsule(capsule, verifierDeps(store, capsule))
     ).rejects.toMatchObject({ code: "index_changed_during_verify" });
+  });
+
+  test("isolates verification across more than 900 unique mirrors", async () => {
+    const documents = [];
+    const contents = new Map<string, string>();
+    const chunks = new Map<string, ReturnType<typeof makeChunk>[]>();
+    for (let index = 0; index < 901; index += 1) {
+      const content = `# Owner\nOwner ${index} holds the decision.\nReview Friday.`;
+      const mirrorHash = sha256Text(content);
+      documents.push(
+        documentRow(
+          index + 1,
+          `large-${index}.md`,
+          sha256Text(`source-${index}`),
+          mirrorHash
+        )
+      );
+      contents.set(mirrorHash, content);
+      chunks.set(mirrorHash, [makeChunk(mirrorHash, content)]);
+    }
+    const state = {
+      documents,
+      contents,
+      chunks,
+      indexRevision: "large-stable",
+    };
+    const { store, calls } = createVerifierStore(state);
+    const capsule = await capsuleFor(store, state);
+    calls.snapshots = 0;
+    contents.delete(documents[450]!.mirrorHash ?? "");
+
+    const receipt = await verifyContextCapsule(
+      capsule,
+      verifierDeps(store, capsule)
+    );
+    expect(receipt.evidence).toHaveLength(901);
+    expect(receipt.evidence[450]?.contentCode).toBe("mirror_missing");
+    expect(receipt.evidence[449]?.contentStatus).toBe("unchanged");
+    expect(receipt.evidence[451]?.contentStatus).toBe("unchanged");
+    expect(calls.contents).toHaveLength(1);
+    expect(calls.contents[0]).toHaveLength(901);
   });
 });

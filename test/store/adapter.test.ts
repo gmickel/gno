@@ -801,6 +801,31 @@ describe("SqliteAdapter", () => {
       expect(result.value.get("hash-2")).toBe("beta");
     });
 
+    test("retrieves more than 900 unique mirrors without exceeding SQLite variables", async () => {
+      const mirrorHashes = Array.from(
+        { length: 901 },
+        (_, index) => `large-content-${index}`
+      );
+      for (const [index, mirrorHash] of mirrorHashes.entries()) {
+        const upsert = await adapter.upsertContent(
+          mirrorHash,
+          `content-${index}`
+        );
+        expect(upsert.ok).toBe(true);
+      }
+
+      const result = await adapter.getContentBatch([
+        ...mirrorHashes,
+        mirrorHashes[0]!,
+        "",
+      ]);
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect(result.value.size).toBe(901);
+      expect(result.value.get(mirrorHashes[0]!)).toBe("content-0");
+      expect(result.value.get(mirrorHashes[900]!)).toBe("content-900");
+    });
+
     test("upsert is idempotent", async () => {
       const mirrorHash = "idem_hash";
       const markdown = "content";

@@ -12,7 +12,7 @@ Deliver register saved capsules and reverify affected evidence as one implementa
 ### Approach
 - Register only explicitly saved Capsule path/hash/question/evidence references; keep the Capsule body user-owned at its chosen location.
 - Use journal source/hash changes to enqueue bounded reverification only for referenced evidence, not every saved Capsule on every sync.
-- Emit unchanged/stale/missing/reranked/affected-question receipts and optional local notifications after committed changes.
+- Run `verifyContextCapsule` once for each affected saved Capsule with current fingerprints and optional evidence-ID keyed rank resolution; persist/project its canonical receipt separately, then derive affected-question state and optional local notifications after committed changes.
 
 ### Investigation targets
 **Required** (read before coding):
@@ -34,6 +34,8 @@ Deliver register saved capsules and reverify affected evidence as one implementa
 - [ ] Only Capsules referencing changed evidence are scheduled for reverification.
 - [ ] Receipts distinguish source staleness, missing evidence, ranking drift, and affected question state.
 - [ ] Jobs are bounded/idempotent and notifications contain no source passage content.
+- [ ] Reverification preserves the saved Capsule bytes, handles `ContextVerifierErrorCode` operation failures separately from completed stale/missing receipts, and does not treat `ranking_unavailable` as content staleness.
+<!-- Updated by plan-sync (cross-spec): fn-98-context-capsule-mvp.4 exposed verifyContextCapsule and canonical non-mutating verification receipts -->
 
 
 ## Done summary

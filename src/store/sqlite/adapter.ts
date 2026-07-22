@@ -86,11 +86,16 @@ const WHITESPACE_REGEX = /\s+/;
 const SINGLE_LINE_QUERY_PATTERN = /[\r\n]/;
 const DOUBLE_QUOTE_PATTERN = /"/g;
 const DOC_EDGE_TYPE_PATTERN = /^[a-z][a-z0-9_]*$/;
+const SQLITE_SAFE_PARAMETER_BATCH_SIZE = 900;
 const FTS5_FIELD_WEIGHTS = {
   filepath: 1.5,
   title: 4.0,
   body: 1.0,
 } as const;
+
+const uniqueNonEmptyValues = (values: readonly string[]): string[] => [
+  ...new Set(values.filter((value) => value.trim().length > 0)),
+];
 
 /** Content-free activation snapshot query; kept exported for contract tests. */
 export const ACTIVATION_INDEX_SNAPSHOT_SQL = `SELECT
@@ -1384,28 +1389,38 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
     mirrorHashes: string[]
   ): Promise<StoreResult<Map<string, string>>> {
     try {
-      const db = this.ensureOpen();
-
-      if (mirrorHashes.length === 0) {
+      const uniqueHashes = uniqueNonEmptyValues(mirrorHashes);
+      if (uniqueHashes.length === 0) {
         return ok(new Map());
       }
+      const db = this.ensureOpen();
 
       interface DbContentRow {
         mirror_hash: string;
         markdown: string;
       }
 
-      const placeholders = mirrorHashes.map(() => "?").join(", ");
-      const rows = db
-        .query<DbContentRow, string[]>(
-          `SELECT mirror_hash, markdown FROM content
-           WHERE mirror_hash IN (${placeholders})`
-        )
-        .all(...mirrorHashes);
+      const result = new Map<string, string>();
+      for (
+        let offset = 0;
+        offset < uniqueHashes.length;
+        offset += SQLITE_SAFE_PARAMETER_BATCH_SIZE
+      ) {
+        const batch = uniqueHashes.slice(
+          offset,
+          offset + SQLITE_SAFE_PARAMETER_BATCH_SIZE
+        );
+        const placeholders = batch.map(() => "?").join(", ");
+        const rows = db
+          .query<DbContentRow, string[]>(
+            `SELECT mirror_hash, markdown FROM content
+             WHERE mirror_hash IN (${placeholders})`
+          )
+          .all(...batch);
+        for (const row of rows) result.set(row.mirror_hash, row.markdown);
+      }
 
-      return ok(
-        new Map(rows.map((row) => [row.mirror_hash, row.markdown] as const))
-      );
+      return ok(result);
     } catch (cause) {
       return err(
         "QUERY_FAILED",
@@ -1493,9 +1508,7 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
       }
 
       // Dedupe and filter empty strings
-      const uniqueHashes = [
-        ...new Set(mirrorHashes.filter((h) => h.trim().length > 0)),
-      ];
+      const uniqueHashes = uniqueNonEmptyValues(mirrorHashes);
       if (uniqueHashes.length === 0) {
         return ok(new Map());
       }
@@ -1505,11 +1518,16 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
 
       // SQLite SQLITE_LIMIT_VARIABLE_NUMBER defaults to 999
       // Reserve 99 for potential future filter params (collection, language, etc.)
-      const SQLITE_MAX_PARAMS = 900;
-
       // Batch queries to respect SQLite parameter limit
-      for (let i = 0; i < uniqueHashes.length; i += SQLITE_MAX_PARAMS) {
-        const batch = uniqueHashes.slice(i, i + SQLITE_MAX_PARAMS);
+      for (
+        let i = 0;
+        i < uniqueHashes.length;
+        i += SQLITE_SAFE_PARAMETER_BATCH_SIZE
+      ) {
+        const batch = uniqueHashes.slice(
+          i,
+          i + SQLITE_SAFE_PARAMETER_BATCH_SIZE
+        );
         const placeholders = batch.map(() => "?").join(",");
         const sql = `SELECT * FROM content_chunks
                      WHERE mirror_hash IN (${placeholders})

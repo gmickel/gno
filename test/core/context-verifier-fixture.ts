@@ -59,7 +59,7 @@ export const makeChunk = (
   };
 };
 
-const documentRow = (
+export const documentRow = (
   id: number,
   relPath: string,
   sourceHash: string,
@@ -241,7 +241,7 @@ export const capsuleFor = async (
       contextIds: [],
       retrievalRank: index + 1,
       selectionRank: index + 1,
-      facets: ["decision"],
+      facets: index === 0 ? ["decision"] : [],
       trust: "untrusted" as const,
       egress: "unavailable" as const,
     };
@@ -263,8 +263,8 @@ export const capsuleFor = async (
     },
     budget: {
       authority: "canonical_json",
-      requestedTokens: 100_000,
-      requestedBytes: 100_000,
+      requestedTokens: 100_000_000,
+      requestedBytes: 100_000_000,
       safetyMarginTokens: 0,
       safetyMarginBytes: 0,
       usedTokens: 1,
@@ -313,7 +313,7 @@ export const capsuleFor = async (
       coveredFacets: [
         {
           facet: "decision",
-          evidenceIds: evidence.map((item) => item.evidenceId),
+          evidenceIds: [evidence[0]!.evidenceId],
         },
       ],
       unresolvedFacets: [],
