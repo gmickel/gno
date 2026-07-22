@@ -48,9 +48,17 @@ Deliver add read-only connector verification adapters as one implementation-size
 
 
 ## Done summary
-TBD
+Implemented truthful, read-only connector activation verification.
 
+- Shared one deterministic ephemeral probe plan between local BM25 and connector proofs; raw probe terms stay in memory and never enter receipts, logs, errors, or public results.
+- Added strict local GNO MCP command policy. Direct GNO and Bun-to-local-GNO shapes are accepted; `bun x`, `bunx`, `npx`, shell wrappers, write-enabled entries, and arbitrary commands are rejected before spawn.
+- Added bounded MCP SDK stdio verification: initialize, tools/list, `gno_status`, then collection-scoped `gno_search`; exact URI and source hash required; child responses discarded and transport always closed.
+- Added stable connector failure codes and bounded deterministic remediation.
+- Skill installation remains truthful: installed files report `skipped/target_runtime_unverifiable` until a client-owned read-only runtime hook exists.
+- Added target-specific receipt fingerprints/keys covering lexical fingerprint, verifier version, target kind/id/scope, config-path digest, and configured command/args. Connector evidence is required for requested connector stages.
+- Added explicit serve verifier seam and MCP status projection while keeping passive connector status reads spawn-free.
+- Added stdio integration, timeout, missing/unavailable/malformed/unsafe/tool/status/search/mismatch, invalidation, schema, storage privacy, CLI projection, and serve regressions.
 ## Evidence
-- Commits:
-- Tests:
+- Commits: 6345f79
+- Tests: bun test (2086 passed, 1 platform skip, 0 failed), bun test test/core/connector-verifier.test.ts test/core/activation-verifier.test.ts test/store/activation-receipts.test.ts test/serve/connectors.test.ts test/cli/mcp.test.ts test/spec/schemas/activation-verification.test.ts (69 passed, 0 failed), bun run lint:check (passed), bunx tsc --noEmit --pretty false (passed), bun run docs:verify (12 passed, 2 model-cache skips, 0 failed), bun run eval:hybrid (88%, threshold 70%, passed), .flow/bin/flowctl validate --spec fn-94-retrieval-proven-setup-and-connector --json (valid)
 - PRs:
