@@ -4,7 +4,9 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import type { McpConnectorVerificationTarget } from "../../src/core/connector-verifier";
+import type { StorePort } from "../../src/store/types";
 
+import { verifyLexicalActivation } from "../../src/core/activation-verifier";
 import {
   getConnectorVerificationRemediation,
   verifyConnectorActivation,
@@ -76,6 +78,40 @@ describe("connector activation verifier", () => {
       ).ok
     ).toBe(true);
     expect((await target.syncDocumentFts(COLLECTION, REL_PATH)).ok).toBe(true);
+  }
+
+  async function seedDocument(
+    target: SqliteAdapter,
+    collection: string,
+    relPath: string,
+    markdown: string
+  ): Promise<void> {
+    const sourceHash = hash(`source:${markdown}`);
+    const mirrorHash = hash(`mirror:${markdown}`);
+    expect(
+      (
+        await target.upsertDocument({
+          collection,
+          relPath,
+          sourceHash,
+          sourceMime: "text/markdown",
+          sourceExt: ".md",
+          sourceSize: markdown.length,
+          sourceMtime: "2026-07-22T09:00:00.000Z",
+          mirrorHash,
+          title: relPath,
+        })
+      ).ok
+    ).toBe(true);
+    expect((await target.upsertContent(mirrorHash, markdown)).ok).toBe(true);
+    expect(
+      (
+        await target.upsertChunks(mirrorHash, [
+          { seq: 0, pos: 0, text: markdown, startLine: 1, endLine: 1 },
+        ])
+      ).ok
+    ).toBe(true);
+    expect((await target.syncDocumentFts(collection, relPath)).ok).toBe(true);
   }
 
   beforeEach(async () => {
@@ -258,6 +294,234 @@ await new Promise((resolve) => process.stdin.once("end", resolve));
     }
   });
 
+  test("verification MCP startup does not synchronize away omitted indexed state", async () => {
+    const dataDir = join(testDir, "activation-data");
+    const configDir = join(testDir, "activation-config");
+    await mkdir(dataDir, { recursive: true });
+    await mkdir(configDir, { recursive: true });
+    const scopedStore = new SqliteAdapter();
+    expect(
+      (
+        await scopedStore.open(
+          join(dataDir, "index-default.sqlite"),
+          "unicode61"
+        )
+      ).ok
+    ).toBe(true);
+
+    const notesCollection = {
+      name: COLLECTION,
+      path: testDir,
+      pattern: "**/*",
+      include: [],
+      exclude: [],
+    };
+    const archiveCollection = {
+      ...notesCollection,
+      name: "archive",
+    };
+    expect(
+      (await scopedStore.syncCollections([notesCollection, archiveCollection]))
+        .ok
+    ).toBe(true);
+    await seedDocument(
+      scopedStore,
+      COLLECTION,
+      REL_PATH,
+      "# Architecture\nZephyrlattice proves connector retrieval."
+    );
+    await seedDocument(
+      scopedStore,
+      "archive",
+      "retained.md",
+      "archiveretentionneedle must remain indexed"
+    );
+    expect(
+      (
+        await scopedStore.syncContexts([
+          {
+            scopeType: "collection",
+            scopeKey: "archive:",
+            text: "Retained archive context",
+          },
+        ])
+      ).ok
+    ).toBe(true);
+    const archiveReceipt = await verifyLexicalActivation(
+      scopedStore,
+      "archive",
+      options
+    );
+    expect(archiveReceipt.ok).toBe(true);
+
+    const omittedState = (): string =>
+      JSON.stringify({
+        collections: scopedStore
+          .getRawDb()
+          .query("SELECT * FROM collections WHERE name = 'archive'")
+          .all(),
+        documents: scopedStore
+          .getRawDb()
+          .query(
+            "SELECT * FROM documents WHERE collection = 'archive' ORDER BY rel_path"
+          )
+          .all(),
+        contexts: scopedStore
+          .getRawDb()
+          .query(
+            "SELECT * FROM contexts WHERE scope_key = 'archive:' ORDER BY scope_type, scope_key"
+          )
+          .all(),
+        receipts: scopedStore
+          .getRawDb()
+          .query(
+            "SELECT * FROM activation_receipts WHERE collection = 'archive' ORDER BY connector_target"
+          )
+          .all(),
+      });
+    const before = omittedState();
+
+    const configPath = join(configDir, "verification.yml");
+    await Bun.write(
+      configPath,
+      Bun.YAML.stringify({
+        version: "1.0",
+        ftsTokenizer: "unicode61",
+        collections: [notesCollection],
+        contexts: [],
+      })
+    );
+    const wrapperPath = join(testDir, "fixture", "gno");
+    await mkdir(join(testDir, "fixture"), { recursive: true });
+    await Bun.write(
+      wrapperPath,
+      `process.env.GNO_DATA_DIR = ${JSON.stringify(dataDir)};\nprocess.env.GNO_CONFIG_DIR = ${JSON.stringify(configDir)};\nawait import(${JSON.stringify(join(process.cwd(), "src/index.ts"))});\n`
+    );
+    const serverEntry = {
+      command: process.execPath,
+      args: [wrapperPath, "--config", configPath, "mcp"],
+    };
+
+    try {
+      const result = await verifyConnectorActivation(
+        scopedStore,
+        COLLECTION,
+        mcpTarget(serverEntry),
+        {
+          ...optionsForTrustedEntry(serverEntry),
+          timeoutMs: 5000,
+        }
+      );
+      expect(result.ok).toBe(true);
+      expect(result.ok && result.value.stages.connector.status).toBe("passed");
+      expect(omittedState()).toBe(before);
+    } finally {
+      await scopedStore.close();
+    }
+  });
+
+  test("fails closed when the index changes during connector proof", async () => {
+    const serverEntry = await createMcpFixture("pass");
+    let prefixReads = 0;
+    const racingStore = new Proxy(adapter, {
+      get(target, property, receiver) {
+        if (property === "getContentPrefix") {
+          return async (...args: Parameters<StorePort["getContentPrefix"]>) => {
+            const content = await target.getContentPrefix(...args);
+            prefixReads += 1;
+            if (prefixReads === 2) {
+              await seedDocument(
+                target,
+                COLLECTION,
+                "race.md",
+                "Connector evidence changed during proof."
+              );
+            }
+            return content;
+          };
+        }
+        const value = Reflect.get(target, property, receiver);
+        return typeof value === "function" ? value.bind(target) : value;
+      },
+    }) as StorePort;
+
+    const result = await verifyConnectorActivation(
+      racingStore,
+      COLLECTION,
+      mcpTarget(serverEntry),
+      optionsForTrustedEntry(serverEntry)
+    );
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.code).toBe("INTERNAL");
+      expect(result.error.message).toContain("changed during connector");
+    }
+    const connectorRows = adapter
+      .getRawDb()
+      .query<{ count: number }, []>(
+        "SELECT COUNT(*) AS count FROM activation_receipts WHERE connector_target <> ''"
+      )
+      .get();
+    expect(connectorRows?.count).toBe(0);
+  });
+
+  test("revalidates cached connector green after receipt lookup", async () => {
+    const serverEntry = await createMcpFixture("pass");
+    const target = mcpTarget(serverEntry);
+    const first = await verifyConnectorActivation(
+      adapter,
+      COLLECTION,
+      target,
+      optionsForTrustedEntry(serverEntry)
+    );
+    expect(first.ok && first.value.stages.connector.status).toBe("passed");
+
+    let mutated = false;
+    const racingStore = new Proxy(adapter, {
+      get(storeTarget, property, receiver) {
+        if (property === "getActivationReceipt") {
+          return async (
+            ...args: Parameters<StorePort["getActivationReceipt"]>
+          ) => {
+            const receipt = await storeTarget.getActivationReceipt(...args);
+            const connectorTarget = args[2];
+            if (connectorTarget && !mutated) {
+              mutated = true;
+              await seedDocument(
+                storeTarget,
+                COLLECTION,
+                "cached-race.md",
+                "Cached connector evidence changed after receipt lookup."
+              );
+            }
+            return receipt;
+          };
+        }
+        const value = Reflect.get(storeTarget, property, receiver);
+        return typeof value === "function" ? value.bind(storeTarget) : value;
+      },
+    }) as StorePort;
+
+    const cached = await verifyConnectorActivation(
+      racingStore,
+      COLLECTION,
+      target,
+      { ...optionsForTrustedEntry(serverEntry), force: false }
+    );
+    expect(cached.ok).toBe(false);
+    if (!cached.ok) {
+      expect(cached.error.code).toBe("INTERNAL");
+      expect(cached.error.message).toContain("changed during connector");
+    }
+    const connectorRows = adapter
+      .getRawDb()
+      .query<{ count: number }, []>(
+        "SELECT COUNT(*) AS count FROM activation_receipts WHERE connector_target <> ''"
+      )
+      .get();
+    expect(connectorRows?.count).toBe(0);
+  });
+
   test("reports skill installation as runtime-unverifiable, never passed", async () => {
     const result = await verifyConnectorActivation(
       adapter,
@@ -277,6 +541,31 @@ await new Promise((resolve) => process.stdin.once("end", resolve));
       expect(result.value.stages.connector).toMatchObject({
         status: "skipped",
         code: "target_runtime_unverifiable",
+      });
+    }
+  });
+
+  test("reports invalid skill configuration without starting a runtime", async () => {
+    const result = await verifyConnectorActivation(
+      adapter,
+      COLLECTION,
+      {
+        kind: "skill",
+        id: "codex-skill",
+        target: "codex",
+        scope: "user",
+        configPath: join(testDir, "unresolved-skill-path/codex"),
+        installed: false,
+        configError: true,
+      },
+      options
+    );
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.stages.connector).toMatchObject({
+        status: "failed",
+        code: "connector_unsupported_config",
       });
     }
   });

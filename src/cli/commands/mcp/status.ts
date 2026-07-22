@@ -49,6 +49,9 @@ export interface McpTargetStatus {
   error?: string;
 }
 
+/** Verification-only identity; deliberately omitted from status JSON output. */
+const configIdentityByStatus = new WeakMap<McpTargetStatus, string>();
+
 /** Project a parsed target status into the read-only activation verifier seam. */
 export function toMcpConnectorVerificationTarget(
   id: string,
@@ -56,6 +59,7 @@ export function toMcpConnectorVerificationTarget(
 ): McpConnectorVerificationTarget {
   const serverEntry = normalizeEntry(status.serverEntry, "standard");
   const configured = status.configured && serverEntry !== null;
+  const configIdentity = configIdentityByStatus.get(status);
   return {
     kind: "mcp",
     id,
@@ -64,6 +68,7 @@ export function toMcpConnectorVerificationTarget(
     configPath: status.configPath,
     configured,
     ...(serverEntry ? { serverEntry } : {}),
+    ...(configIdentity ? { configIdentity } : {}),
     ...(status.error || (status.configured && !serverEntry)
       ? { configError: true }
       : {}),
@@ -100,7 +105,10 @@ function normalizeEntry(
       record.enabled !== true ||
       !Array.isArray(record.command) ||
       record.command.length === 0 ||
-      !record.command.every((part) => typeof part === "string")
+      !record.command.every((part) => typeof part === "string") ||
+      Object.keys(record).some(
+        (key) => key !== "type" && key !== "command" && key !== "enabled"
+      )
     ) {
       return null;
     }
@@ -114,11 +122,18 @@ function normalizeEntry(
     typeof record.command !== "string" ||
     record.command.length === 0 ||
     !Array.isArray(record.args) ||
-    !record.args.every((argument) => typeof argument === "string")
+    !record.args.every((argument) => typeof argument === "string") ||
+    Object.keys(record).some((key) => key !== "command" && key !== "args")
   ) {
     return null;
   }
   return { command: record.command, args: record.args };
+}
+
+function entryIdentity(entry: unknown): string {
+  const hasher = new Bun.CryptoHasher("sha256");
+  hasher.update(JSON.stringify(entry) ?? "undefined");
+  return hasher.digest("hex");
 }
 
 function hasOwnServerEntry(
@@ -171,17 +186,28 @@ export async function checkMcpTargetStatus(
     );
 
     if (hasOwnServerEntry(config, configFormat)) {
+      const configIdentity = entryIdentity(entry);
       const serverEntry = normalizeEntry(entry, configFormat);
       if (!serverEntry) {
-        return {
+        const status: McpTargetStatus = {
           target,
           scope,
           configPath,
           configured: false,
           error: "Malformed MCP server entry",
         };
+        configIdentityByStatus.set(status, configIdentity);
+        return status;
       }
-      return { target, scope, configPath, configured: true, serverEntry };
+      const status: McpTargetStatus = {
+        target,
+        scope,
+        configPath,
+        configured: true,
+        serverEntry,
+      };
+      configIdentityByStatus.set(status, configIdentity);
+      return status;
     }
 
     return { target, scope, configPath, configured: false };

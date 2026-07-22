@@ -3,8 +3,10 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
+import { ENV_CODEX_SKILLS_DIR } from "../../src/cli/commands/skill/paths";
 import {
   getConnectorStatuses,
+  getConnectorVerificationTargets,
   installConnector,
   verifyInstalledConnector,
 } from "../../src/serve/connectors";
@@ -41,6 +43,109 @@ describe("connector service", () => {
 
     expect(statuses.length).toBeGreaterThan(0);
     expect(statuses.every((status) => status.installed === false)).toBe(true);
+  });
+
+  test("bounds invalid skill path overrides in passive target projection", async () => {
+    const workspace = await createTempWorkspace();
+    cleanupPaths.push(join(workspace.homeDir, ".."));
+    const originalOverride = process.env[ENV_CODEX_SKILLS_DIR];
+    process.env[ENV_CODEX_SKILLS_DIR] = "relative/codex/skills";
+
+    try {
+      const statuses = await getConnectorStatuses(workspace);
+      const targets = await getConnectorVerificationTargets(workspace);
+      const expectedIds = [
+        "claude-code-skill",
+        "claude-desktop-mcp",
+        "cursor-mcp",
+        "codex-skill",
+        "opencode-skill",
+        "openclaw-skill",
+        "hermes-skill",
+      ];
+
+      expect(statuses).toHaveLength(7);
+      expect(statuses.map(({ id }) => id)).toEqual(expectedIds);
+      expect(statuses.find(({ id }) => id === "codex-skill")).toMatchObject({
+        installed: false,
+        path: "unresolved-skill-path/codex",
+        summary: "Codex skill path is unavailable.",
+        nextAction: "Fix the skill path configuration, then reload status.",
+        error: "Skill path configuration is invalid or unavailable.",
+      });
+      expect(targets).toHaveLength(7);
+      expect(targets.map(({ id }) => id)).toEqual(expectedIds);
+      expect(targets.find(({ id }) => id === "codex-skill")).toEqual({
+        kind: "skill",
+        id: "codex-skill",
+        target: "codex",
+        scope: "user",
+        configPath: "unresolved-skill-path/codex",
+        installed: false,
+        configError: true,
+      });
+    } finally {
+      if (originalOverride === undefined) {
+        delete process.env[ENV_CODEX_SKILLS_DIR];
+      } else {
+        process.env[ENV_CODEX_SKILLS_DIR] = originalOverride;
+      }
+    }
+  });
+
+  test("returns a structured verification failure for an invalid skill path", async () => {
+    const workspace = await createTempWorkspace();
+    cleanupPaths.push(join(workspace.homeDir, ".."));
+    const originalOverride = process.env[ENV_CODEX_SKILLS_DIR];
+
+    const adapter = new SqliteAdapter();
+    expect(
+      (
+        await adapter.open(
+          join(workspace.homeDir, "..", "index.sqlite"),
+          "unicode61"
+        )
+      ).ok
+    ).toBe(true);
+    expect(
+      (
+        await adapter.syncCollections([
+          {
+            name: "notes",
+            path: workspace.cwd,
+            pattern: "**/*",
+            include: [],
+            exclude: [],
+          },
+        ])
+      ).ok
+    ).toBe(true);
+    process.env[ENV_CODEX_SKILLS_DIR] = "relative/codex/skills";
+
+    try {
+      const result = await verifyInstalledConnector(
+        "codex-skill",
+        adapter,
+        "notes",
+        { force: true },
+        workspace
+      );
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value.stages.connector).toMatchObject({
+          status: "failed",
+          code: "connector_unsupported_config",
+        });
+      }
+    } finally {
+      await adapter.close();
+      if (originalOverride === undefined) {
+        delete process.env[ENV_CODEX_SKILLS_DIR];
+      } else {
+        process.env[ENV_CODEX_SKILLS_DIR] = originalOverride;
+      }
+    }
   });
 
   test("installs skill connector using existing installer logic", async () => {

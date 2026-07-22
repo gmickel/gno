@@ -384,6 +384,34 @@ describe("activation status", () => {
     expect(receiptReads[1]).not.toBe(lookup.fingerprint);
   });
 
+  test("projects invalid skill configuration as a failed connector", async () => {
+    const status = await buildActivationStatus(store, ["notes"], {
+      connectorTargets: [
+        {
+          kind: "skill",
+          id: "codex-skill",
+          target: "codex",
+          scope: "user",
+          configPath: "unresolved-skill-path/codex",
+          installed: false,
+          configError: true,
+        },
+      ],
+      verifyCollection: async () => ({
+        ok: true,
+        value: receipt("notes", true),
+      }),
+    });
+
+    expect(status.connectors).toEqual([
+      expect.objectContaining({
+        target: "codex-skill",
+        status: "failed",
+        code: "connector_unsupported_config",
+      }),
+    ]);
+  });
+
   test("bounds connector projections and reports truncation", async () => {
     const collections = ["a", "b", "c", "d", "e"];
     const connectorTargets = Array.from({ length: 17 }, (_, index) => ({

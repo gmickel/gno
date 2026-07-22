@@ -18,6 +18,7 @@ import {
 import { uninstallMcp } from "../../src/cli/commands/mcp/uninstall";
 import { CliError } from "../../src/cli/errors";
 import { resetGlobals } from "../../src/cli/program";
+import { getConnectorActivationReceiptLookup } from "../../src/core/connector-verifier";
 import { safeRm } from "../helpers/cleanup";
 
 // Temp directory for tests
@@ -578,6 +579,7 @@ describe("MCP CLI commands", () => {
       configPath: join(FAKE_HOME, ".claude.json"),
       configured: true,
       serverEntry: { command: "/usr/local/bin/gno", args: ["mcp"] },
+      configIdentity: expect.stringMatching(/^[a-f0-9]{64}$/),
     });
   });
 
@@ -602,8 +604,106 @@ describe("MCP CLI commands", () => {
       scope: "user",
       configPath: join(FAKE_HOME, ".claude.json"),
       configured: false,
+      configIdentity: expect.stringMatching(/^[a-f0-9]{64}$/),
       configError: true,
     });
+  });
+
+  test.each([
+    ["env", { GNO_DATA_DIR: "/alternate/data" }],
+    ["cwd", "/alternate/project"],
+  ])(
+    "fails closed for standard entries with %s execution semantics",
+    async (field, value) => {
+      const entry = {
+        command: "/usr/local/bin/gno",
+        args: ["mcp"],
+        [field]: value,
+      };
+      await Bun.write(
+        join(FAKE_HOME, ".claude.json"),
+        JSON.stringify({ mcpServers: { gno: entry } })
+      );
+
+      const status = await checkMcpTargetStatus("claude-code", "user", {
+        homeDir: FAKE_HOME,
+        cwd: FAKE_CWD,
+      });
+      expect(status).toMatchObject({
+        configured: false,
+        error: "Malformed MCP server entry",
+      });
+      const projected = toMcpConnectorVerificationTarget("claude-code", status);
+      expect(projected.configured).toBe(false);
+      expect(projected.configError).toBe(true);
+      expect(projected.configIdentity).toMatch(/^[a-f0-9]{64}$/);
+      expect(JSON.stringify(status)).not.toContain("configIdentity");
+      expect(projected.serverEntry).toBeUndefined();
+    }
+  );
+
+  test("fails closed for OpenCode environment execution semantics", async () => {
+    const configPath = join(FAKE_HOME, ".config/opencode/config.json");
+    await mkdir(join(FAKE_HOME, ".config/opencode"), { recursive: true });
+    await Bun.write(
+      configPath,
+      JSON.stringify({
+        mcp: {
+          gno: {
+            type: "local",
+            command: ["gno", "mcp"],
+            enabled: true,
+            environment: { GNO_DATA_DIR: "/alternate/data" },
+          },
+        },
+      })
+    );
+
+    const status = await checkMcpTargetStatus("opencode", "user", {
+      homeDir: FAKE_HOME,
+      cwd: FAKE_CWD,
+    });
+    expect(status).toMatchObject({
+      configured: false,
+      error: "Malformed MCP server entry",
+    });
+    const projected = toMcpConnectorVerificationTarget("opencode", status);
+    expect(projected.configured).toBe(false);
+    expect(projected.configError).toBe(true);
+    expect(projected.configIdentity).toMatch(/^[a-f0-9]{64}$/);
+    expect(JSON.stringify(status)).not.toContain("configIdentity");
+  });
+
+  test("execution override changes invalidate connector receipt identity", async () => {
+    const readTarget = async (dataDir: string) => {
+      await Bun.write(
+        join(FAKE_HOME, ".claude.json"),
+        JSON.stringify({
+          mcpServers: {
+            gno: {
+              command: "/usr/local/bin/gno",
+              args: ["mcp"],
+              env: { GNO_DATA_DIR: dataDir },
+            },
+          },
+        })
+      );
+      const status = await checkMcpTargetStatus("claude-code", "user", {
+        homeDir: FAKE_HOME,
+        cwd: FAKE_CWD,
+      });
+      return toMcpConnectorVerificationTarget("claude-code", status);
+    };
+
+    const first = getConnectorActivationReceiptLookup(
+      "lexical-fingerprint",
+      await readTarget("/alternate/one")
+    );
+    const second = getConnectorActivationReceiptLookup(
+      "lexical-fingerprint",
+      await readTarget("/alternate/two")
+    );
+    expect(first.fingerprint).not.toBe(second.fingerprint);
   });
 
   test.each([

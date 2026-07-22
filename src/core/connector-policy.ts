@@ -2,7 +2,6 @@
 
 // node:fs/promises realpath has no Bun equivalent for symlink-safe provenance.
 import { realpath } from "node:fs/promises";
-import { homedir, platform } from "node:os";
 // node:path has no Bun equivalent for portable path identity and lookup.
 import { basename, delimiter, isAbsolute, join, resolve, sep } from "node:path";
 
@@ -67,19 +66,10 @@ async function resolveExecutableIdentity(
 async function trustedGnoIdentities(
   options: ConnectorCommandPolicyOptions
 ): Promise<Set<string>> {
-  const home = homedir();
+  // Conventional install paths are locators, not trust roots: symlinks resolve
+  // to this package entrypoint; standalone wrappers must be explicitly trusted.
   const candidates = [
     resolve(import.meta.dir, "../index.ts"),
-    resolve(import.meta.dir, "../cli/index.ts"),
-    join(home, ".bun/bin/gno"),
-    "/usr/local/bin/gno",
-    "/opt/homebrew/bin/gno",
-    ...(platform() === "win32"
-      ? [
-          join(home, ".bun/bin/gno.exe"),
-          join(home, "AppData/Roaming/npm/gno.cmd"),
-        ]
-      : []),
     ...(options.trustedGnoEntryPaths ?? []),
   ];
   const identities = new Set<string>();
@@ -109,6 +99,16 @@ async function hasTrustedGnoExecutableIdentity(
 }
 
 const SAFE_GLOBAL_VALUE_FLAGS = ["--index", "--config"] as const;
+const MAX_SAFE_INDEX_NAME_LENGTH = 64;
+const SAFE_INDEX_NAME_REGEX = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
+
+function isSafeIndexName(value: string): boolean {
+  return (
+    value.length <= MAX_SAFE_INDEX_NAME_LENGTH &&
+    SAFE_INDEX_NAME_REGEX.test(value) &&
+    !value.includes("..")
+  );
+}
 
 function isSafeReadOnlyMcpArgs(args: string[]): boolean {
   const seenFlags = new Set<string>();
@@ -134,7 +134,11 @@ function isSafeReadOnlyMcpArgs(args: string[]): boolean {
 
     if (argument === flag) {
       const value = args[position + 1];
-      if (!value || value.startsWith("-")) {
+      if (
+        !value ||
+        value.startsWith("-") ||
+        (flag === "--index" && !isSafeIndexName(value))
+      ) {
         return false;
       }
       position += 2;
@@ -142,7 +146,7 @@ function isSafeReadOnlyMcpArgs(args: string[]): boolean {
     }
 
     const value = argument?.slice(flag.length + 1);
-    if (!value) {
+    if (!value || (flag === "--index" && !isSafeIndexName(value))) {
       return false;
     }
     position += 1;

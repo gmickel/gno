@@ -276,6 +276,9 @@ function connectorFallback(
   if (!lexicalReady) {
     status = "skipped";
     code = "connector_probe_unavailable";
+  } else if (target.configError) {
+    status = "failed";
+    code = "connector_unsupported_config";
   } else if (target.kind === "skill") {
     status = "skipped";
     code = target.installed

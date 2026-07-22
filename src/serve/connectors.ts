@@ -60,6 +60,68 @@ interface McpConnectorDefinition {
 
 type ConnectorDefinition = SkillConnectorDefinition | McpConnectorDefinition;
 
+interface SkillInspection {
+  installed: boolean;
+  path: string;
+  unavailable: boolean;
+}
+
+const SKILL_PATH_UNAVAILABLE_ERROR =
+  "Skill path configuration is invalid or unavailable.";
+
+function unresolvedSkillPath(target: SkillTarget): string {
+  return `unresolved-skill-path/${target}`;
+}
+
+async function inspectSkillConnector(
+  definition: SkillConnectorDefinition,
+  overrides?: { cwd?: string; homeDir?: string }
+): Promise<SkillInspection> {
+  try {
+    const paths = resolveSkillPaths({
+      scope: definition.scope,
+      target: definition.target,
+      ...overrides,
+    });
+    return {
+      installed: await Bun.file(`${paths.gnoDir}/SKILL.md`).exists(),
+      path: paths.gnoDir,
+      unavailable: false,
+    };
+  } catch {
+    return {
+      installed: false,
+      path: unresolvedSkillPath(definition.target),
+      unavailable: true,
+    };
+  }
+}
+
+function toSkillVerificationTarget(
+  definition: SkillConnectorDefinition,
+  inspection: SkillInspection
+): ConnectorVerificationTarget {
+  if (inspection.unavailable) {
+    return {
+      kind: "skill",
+      id: definition.id,
+      target: definition.target,
+      scope: definition.scope,
+      configPath: inspection.path,
+      installed: false,
+      configError: true,
+    };
+  }
+  return {
+    kind: "skill",
+    id: definition.id,
+    target: definition.target,
+    scope: definition.scope,
+    configPath: inspection.path,
+    installed: inspection.installed,
+  };
+}
+
 const CONNECTOR_DEFINITIONS: ConnectorDefinition[] = [
   {
     id: "claude-code-skill",
@@ -152,28 +214,29 @@ export async function getConnectorStatuses(overrides?: {
   const statuses = await Promise.all(
     CONNECTOR_DEFINITIONS.map(async (definition) => {
       if (definition.installKind === "skill") {
-        const paths = resolveSkillPaths({
-          scope: definition.scope,
-          target: definition.target,
-          ...overrides,
-        });
-        const skillMdPath = `${paths.gnoDir}/SKILL.md`;
-        const installed = await Bun.file(skillMdPath).exists();
+        const inspection = await inspectSkillConnector(definition, overrides);
         return {
           id: definition.id,
           appName: definition.appName,
           installKind: definition.installKind,
           target: definition.target,
           scope: definition.scope,
-          installed,
-          path: paths.gnoDir,
-          summary: installed
-            ? `${definition.appName} skill is installed.`
-            : `${definition.appName} skill is not installed yet.`,
-          nextAction: installed
-            ? "Restart the agent to reload the skill."
-            : "Install the skill from the app.",
+          installed: inspection.installed,
+          path: inspection.path,
+          summary: inspection.unavailable
+            ? `${definition.appName} skill path is unavailable.`
+            : inspection.installed
+              ? `${definition.appName} skill is installed.`
+              : `${definition.appName} skill is not installed yet.`,
+          nextAction: inspection.unavailable
+            ? "Fix the skill path configuration, then reload status."
+            : inspection.installed
+              ? "Restart the agent to reload the skill."
+              : "Install the skill from the app.",
           mode: definition.mode,
+          ...(inspection.unavailable
+            ? { error: SKILL_PATH_UNAVAILABLE_ERROR }
+            : {}),
         } satisfies ConnectorStatus;
       }
 
@@ -213,19 +276,8 @@ export async function getConnectorVerificationTargets(overrides?: {
   return Promise.all(
     CONNECTOR_DEFINITIONS.map(async (definition) => {
       if (definition.installKind === "skill") {
-        const paths = resolveSkillPaths({
-          scope: definition.scope,
-          target: definition.target,
-          ...overrides,
-        });
-        return {
-          kind: "skill",
-          id: definition.id,
-          target: definition.target,
-          scope: definition.scope,
-          configPath: paths.gnoDir,
-          installed: await Bun.file(`${paths.gnoDir}/SKILL.md`).exists(),
-        } satisfies ConnectorVerificationTarget;
+        const inspection = await inspectSkillConnector(definition, overrides);
+        return toSkillVerificationTarget(definition, inspection);
       }
 
       const status = await checkMcpTargetStatus(
@@ -319,19 +371,8 @@ export async function verifyInstalledConnector(
 
   let target: ConnectorVerificationTarget;
   if (definition.installKind === "skill") {
-    const paths = resolveSkillPaths({
-      scope: definition.scope,
-      target: definition.target,
-      ...overrides,
-    });
-    target = {
-      kind: "skill",
-      id: definition.id,
-      target: definition.target,
-      scope: definition.scope,
-      configPath: paths.gnoDir,
-      installed: await Bun.file(`${paths.gnoDir}/SKILL.md`).exists(),
-    };
+    const inspection = await inspectSkillConnector(definition, overrides);
+    target = toSkillVerificationTarget(definition, inspection);
   } else {
     const status = await checkMcpTargetStatus(
       definition.target,

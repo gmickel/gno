@@ -1,7 +1,10 @@
 /** Read-only, privacy-bounded connector activation verification. */
 
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
+import {
+  getDefaultEnvironment,
+  StdioClientTransport,
+} from "@modelcontextprotocol/sdk/client/stdio.js";
 // node:path has no Bun equivalent for portable resolved path identity.
 import { resolve } from "node:path";
 
@@ -13,10 +16,12 @@ import type {
 } from "../store/types";
 
 import { DEFAULT_INDEX_NAME, parseUri } from "../app/constants";
-import { ok } from "../store/types";
+import { MCP_ACTIVATION_VERIFICATION_ENV } from "../mcp/activation-verification-mode";
+import { err, ok } from "../store/types";
 import {
   createEphemeralActivationProbePlan,
   findEphemeralActivationProbeMatch,
+  revalidateEphemeralActivationProbePlan,
 } from "./activation-probe-plan";
 import { persistActivationReceiptForKnownCollection } from "./activation-receipt-store";
 import { verifyLexicalActivation } from "./activation-verifier";
@@ -32,8 +37,10 @@ export {
 } from "./connector-policy";
 export type { ConnectorVerificationCode } from "./connector-policy";
 
-const CONNECTOR_VERIFIER_IMPLEMENTATION_ID = "mcp-stdio-readonly-v1";
+const CONNECTOR_VERIFIER_IMPLEMENTATION_ID = "mcp-stdio-readonly-v2";
 const DEFAULT_TIMEOUT_MS = 5000;
+const CONCURRENT_INDEX_CHANGE_MESSAGE =
+  "Activation index changed during connector verification; retry";
 const REQUIRED_TOOLS = new Set(["gno_status", "gno_search"]);
 
 interface ConnectorTargetBase {
@@ -41,13 +48,15 @@ interface ConnectorTargetBase {
   target: string;
   scope: "user" | "project";
   configPath: string;
+  configError?: boolean;
 }
 
 export interface McpConnectorVerificationTarget extends ConnectorTargetBase {
   kind: "mcp";
   configured: boolean;
   serverEntry?: { command: string; args: string[] };
-  configError?: boolean;
+  /** Privacy-bounded identity of the complete client entry. */
+  configIdentity?: string;
 }
 
 export interface SkillConnectorVerificationTarget extends ConnectorTargetBase {
@@ -107,12 +116,13 @@ function targetIdentity(target: ConnectorVerificationTarget): {
     target: target.target,
     scope: target.scope,
     configPathIdentity,
+    configError: target.configError === true,
     ...(target.kind === "mcp"
       ? {
           configured: target.configured,
           command: target.serverEntry?.command ?? null,
           args: target.serverEntry?.args ?? [],
-          configError: target.configError === true,
+          configIdentity: target.configIdentity ?? null,
         }
       : { installed: target.installed }),
   };
@@ -136,16 +146,20 @@ function normalizeConnectorTarget(
     return { ...target, configured: false, configError: true };
   }
   const record = entry as { command?: unknown; args?: unknown };
+  const entryKeys = Object.keys(record);
   if (
     typeof record.command !== "string" ||
     record.command.length === 0 ||
     !Array.isArray(record.args) ||
-    !record.args.every((argument) => typeof argument === "string")
+    !record.args.every((argument) => typeof argument === "string") ||
+    entryKeys.some((key) => key !== "command" && key !== "args")
   ) {
     return {
       ...target,
       configured: false,
       serverEntry: undefined,
+      configIdentity:
+        target.configIdentity ?? sha256(JSON.stringify(entry) ?? "undefined"),
       configError: true,
     };
   }
@@ -221,6 +235,29 @@ async function persistConnectorReceipt(
   receipt: ActivationVerificationReceipt
 ): Promise<StoreResult<ActivationVerificationReceipt>> {
   return persistActivationReceiptForKnownCollection(store, receipt);
+}
+
+async function discardObsoleteConnectorReceipt(
+  store: StorePort,
+  collection: string,
+  currentLexicalFingerprint: string,
+  identity: {
+    connectorTarget: string;
+    normalized: Record<string, unknown>;
+  }
+): Promise<StoreResult<void>> {
+  const currentConnectorFingerprint = connectorFingerprint(
+    currentLexicalFingerprint,
+    identity.normalized
+  );
+  const current = await store.getActivationReceipt(
+    collection,
+    currentConnectorFingerprint,
+    identity.connectorTarget
+  );
+  return current.ok
+    ? ok(undefined)
+    : err(current.error.code, current.error.message, current.error.cause);
 }
 
 function isTimeoutError(error: unknown): boolean {
@@ -300,6 +337,10 @@ async function executeMcpProof(input: McpProofInput): Promise<McpProofResult> {
   const transport = new StdioClientTransport({
     command: input.command,
     args: input.args,
+    env: {
+      ...getDefaultEnvironment(),
+      [MCP_ACTIVATION_VERIFICATION_ENV]: "1",
+    },
     stderr: "ignore",
   });
   const requestOptions = { timeout: input.timeoutMs };
@@ -414,6 +455,25 @@ export async function verifyConnectorActivation(
       return current;
     }
     if (current.value?.stages.connector.status === "passed") {
+      const currentPlan = await createEphemeralActivationProbePlan(
+        store,
+        collection,
+        { collectCandidates: false }
+      );
+      if (!currentPlan.ok) {
+        return currentPlan;
+      }
+      if (currentPlan.value.fingerprint !== lexical.value.fingerprint) {
+        const cleanup = await discardObsoleteConnectorReceipt(
+          store,
+          collection,
+          currentPlan.value.fingerprint,
+          identity
+        );
+        return cleanup.ok
+          ? err("INTERNAL", CONCURRENT_INDEX_CHANGE_MESSAGE)
+          : cleanup;
+      }
       return ok(current.value);
     }
   }
@@ -443,6 +503,9 @@ export async function verifyConnectorActivation(
     );
   };
 
+  if (normalizedTarget.configError) {
+    return finish("failed", "connector_unsupported_config");
+  }
   if (normalizedTarget.kind === "skill") {
     return finish(
       "skipped",
@@ -476,6 +539,9 @@ export async function verifyConnectorActivation(
   if (!plan.ok) {
     return plan;
   }
+  if (plan.value.fingerprint !== lexical.value.fingerprint) {
+    return err("INTERNAL", CONCURRENT_INDEX_CHANGE_MESSAGE);
+  }
   const match = await findEphemeralActivationProbeMatch(store, plan.value);
   if (!match.ok) {
     return finish("failed", "connector_probe_unavailable");
@@ -494,5 +560,42 @@ export async function verifyConnectorActivation(
     expectedIndexName: plan.value.identity.indexName,
     timeoutMs: Math.max(100, options.timeoutMs ?? DEFAULT_TIMEOUT_MS),
   });
-  return proof.ok ? finish("passed") : finish("failed", proof.code);
+  const beforePersistence = await revalidateEphemeralActivationProbePlan(
+    store,
+    plan.value
+  );
+  if (!beforePersistence.ok) {
+    return beforePersistence;
+  }
+  if (!beforePersistence.value.stable) {
+    return err("INTERNAL", CONCURRENT_INDEX_CHANGE_MESSAGE);
+  }
+
+  const persisted = proof.ok
+    ? await finish("passed")
+    : await finish("failed", proof.code);
+  if (!persisted.ok) {
+    return persisted;
+  }
+  const afterPersistence = await revalidateEphemeralActivationProbePlan(
+    store,
+    plan.value
+  );
+  if (!afterPersistence.ok) {
+    return afterPersistence;
+  }
+  if (afterPersistence.value.stable) {
+    return persisted;
+  }
+
+  const cleanup = await discardObsoleteConnectorReceipt(
+    store,
+    collection,
+    afterPersistence.value.currentPlan.fingerprint,
+    identity
+  );
+  if (!cleanup.ok) {
+    return cleanup;
+  }
+  return err("INTERNAL", CONCURRENT_INDEX_CHANGE_MESSAGE);
 }
