@@ -85,15 +85,15 @@ async function collectProbeCandidates(
   ftsTokenizer: FtsTokenizer
 ): Promise<StoreResult<EphemeralActivationProbeCandidate[]>> {
   const probeDocuments: ProbeDocumentCandidates[] = [];
-  let scannedDocuments = 0;
+  let probeDocumentReads = 0;
   for (const document of documents) {
-    if (scannedDocuments >= MAX_PROBE_DOCUMENT_SCANS) {
-      break;
-    }
-    scannedDocuments += 1;
     if (!document.mirrorHash) {
       continue;
     }
+    if (probeDocumentReads >= MAX_PROBE_DOCUMENT_SCANS) {
+      break;
+    }
+    probeDocumentReads += 1;
     const content = await store.getContentPrefix(
       document.mirrorHash,
       MAX_PROBE_CONTENT_CHARS

@@ -877,6 +877,51 @@ describe("lexical activation verifier", () => {
     }
   });
 
+  test("does not spend the probe read budget on unindexable documents", async () => {
+    for (let index = 0; index < 80; index += 1) {
+      const relPath = `${String(index).padStart(2, "0")}-unindexable.pdf`;
+      const upserted = await adapter.upsertDocument({
+        collection: "notes",
+        relPath,
+        sourceHash: hash(`source:${relPath}`),
+        sourceMime: "application/pdf",
+        sourceExt: ".pdf",
+        sourceSize: 128,
+        sourceMtime: "2026-07-22T09:00:00.000Z",
+        lastErrorCode: "CORRUPT",
+        lastErrorMessage: "Invalid PDF structure",
+      });
+      expect(upserted.ok).toBe(true);
+    }
+    await addDocument("99-valid.md", "lateunindexableneedle usable evidence");
+
+    const requestedPrefixes: number[] = [];
+    const boundedStore = new Proxy(adapter, {
+      get(target, property, receiver) {
+        if (property === "getContentPrefix") {
+          return async (...args: Parameters<StorePort["getContentPrefix"]>) => {
+            requestedPrefixes.push(args[1]);
+            return target.getContentPrefix(...args);
+          };
+        }
+        const value = Reflect.get(target, property, receiver);
+        return typeof value === "function" ? value.bind(target) : value;
+      },
+    }) as StorePort;
+
+    const result = await verifyLexicalActivation(
+      boundedStore,
+      "notes",
+      verifierOptions
+    );
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.ready).toBe(true);
+      expect(result.value.evidence.resultUri).toBe("gno://notes/99-valid.md");
+    }
+    expect(requestedPrefixes).toEqual([32_768]);
+  });
+
   test("bounds cold probe reads by document count and content prefix", async () => {
     for (let index = 0; index < 64; index += 1) {
       await addDocument(
