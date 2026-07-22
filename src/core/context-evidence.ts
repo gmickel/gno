@@ -81,8 +81,17 @@ export class ContextEvidenceError extends Error {
 export interface ContextEvidenceSnapshot {
   collections: string[];
   contexts: ContextRow[];
+  documents: ContextEvidenceSnapshotDocument[];
   contextFingerprint: string;
   indexFingerprint: string;
+}
+
+/** Content-free active document identity captured with an evidence snapshot. */
+export interface ContextEvidenceSnapshotDocument {
+  collection: string;
+  uri: string;
+  sourceHash: string;
+  mirrorHash: string | null;
 }
 
 export interface ContextEvidenceValue {
@@ -210,6 +219,7 @@ export const captureContextEvidenceSnapshot = async (
         ].sort(compareCodeUnits);
   const indexName = canonicalizeIndexName(indexNameInput);
   const indexSnapshots: ReturnType<typeof canonicalIndexSnapshot>[] = [];
+  const documents: ContextEvidenceSnapshotDocument[] = [];
   for (const collection of collections) {
     const snapshot = unwrapStore(
       await store.getActivationIndexSnapshot(collection),
@@ -223,10 +233,25 @@ export const captureContextEvidenceSnapshot = async (
       );
     }
     indexSnapshots.push(canonicalIndexSnapshot(collection, snapshot));
+    for (const document of snapshot.documents) {
+      if (!document.active) continue;
+      documents.push({
+        collection,
+        uri: decorateUriForIndex(document.uri, indexName),
+        sourceHash: document.sourceHash,
+        mirrorHash: document.mirrorHash,
+      });
+    }
   }
   return {
     collections,
     contexts,
+    documents: documents.sort(
+      (left, right) =>
+        compareCodeUnits(left.uri, right.uri) ||
+        compareCodeUnits(left.sourceHash, right.sourceHash) ||
+        compareCodeUnits(left.mirrorHash ?? "", right.mirrorHash ?? "")
+    ),
     contextFingerprint: fingerprintContextRows(contexts),
     indexFingerprint: hashJson(indexSnapshots),
   };
