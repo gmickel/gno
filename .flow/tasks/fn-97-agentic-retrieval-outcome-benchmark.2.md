@@ -32,9 +32,8 @@ Build one adapter-neutral agent loop and runner so every system receives the sam
 - [ ] UTF-8 model-visible bytes are exact and tokens are measured only with one pinned tokenizer or reported `null`.
 
 ## Done summary
-TBD
-
+Implemented the adapter-neutral agentic benchmark driver and runner. Added a pinned deterministic fixture agent, strict prose-free action/final parsing, an optional checksum-pinned offline local-model lane with exactly three paired seeds, immutable normalized tool schemas, exact agent-visible byte/token accounting, cold/warm lifecycle orchestration, stable receipts, and explicit capability/failure separation. Closed every adapter, preparation, reset, tool-result, runtime, session, schedule, and token-accounting boundary; bounded lifecycle operations; added adversarial cleanup and malformed-output regressions; documented the contract.
 ## Evidence
-- Commits:
-- Tests:
+- Commits: 3828702
+- Tests: bun run lint:check, bun run typecheck, bun test test/eval/agentic (67 pass, 404 assertions), bun test (2401 pass, 1 skip, 0 fail), .flow/bin/flowctl validate --spec fn-97-agentic-retrieval-outcome-benchmark --json, independent read-only audit: SHIP
 - PRs:
