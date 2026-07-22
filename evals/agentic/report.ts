@@ -384,8 +384,8 @@ export const buildBenchmarkReport = (input: {
           agentId: record.agentId,
           failureClass: receipt.canonical.failure.class,
           reason:
-            record.score.exclusionReason ??
             receipt.canonical.failure.code ??
+            record.score.exclusionReason ??
             "unscored",
         },
       ];

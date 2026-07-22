@@ -88,6 +88,7 @@ describe("agentic benchmark CLI", () => {
     expect(exit).toBe(2);
     expect(output).toContain("Attempted/scored/successful: 1/0/0");
     expect(output).toContain("qmd/t0a1b2c3/fixture-01/cold");
+    expect(output).toContain("adapter_preparation_failed");
   });
 
   test("formats and atomically replaces one four-file artifact set", async () => {
