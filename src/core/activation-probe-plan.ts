@@ -268,6 +268,9 @@ export async function findEphemeralActivationProbeMatch(
     return ok({ kind: "no_probe_term" });
   }
 
+  const activeDocumentsByUri = new Map(
+    plan.activeDocuments.map((document) => [document.uri, document])
+  );
   let finalProbeHash: string | undefined;
   for (const candidate of plan.candidates) {
     const digestKey = candidate.documents
@@ -283,23 +286,23 @@ export async function findEphemeralActivationProbeMatch(
     if (!search.ok) {
       return err(search.error.code, search.error.message, search.error.cause);
     }
-    const matchedResult = search.value.find((result) =>
-      candidate.documents.some(
-        ({ document, mirrorHash }) =>
-          result.uri === document.uri &&
-          result.sourceHash === document.sourceHash &&
-          result.mirrorHash === mirrorHash
-      )
-    );
+    const matchedResult = search.value.find((result) => {
+      const activeDocument = result.uri
+        ? activeDocumentsByUri.get(result.uri)
+        : undefined;
+      return (
+        activeDocument !== undefined &&
+        activeDocument.mirrorHash !== null &&
+        result.sourceHash === activeDocument.sourceHash &&
+        result.mirrorHash === activeDocument.mirrorHash
+      );
+    });
     if (!matchedResult) {
       continue;
     }
-    const matchedDocument = candidate.documents.find(
-      ({ document, mirrorHash }) =>
-        matchedResult.uri === document.uri &&
-        matchedResult.sourceHash === document.sourceHash &&
-        matchedResult.mirrorHash === mirrorHash
-    );
+    const matchedDocument = matchedResult.uri
+      ? activeDocumentsByUri.get(matchedResult.uri)
+      : undefined;
     if (!matchedDocument) {
       continue;
     }
@@ -308,9 +311,9 @@ export async function findEphemeralActivationProbeMatch(
       value: {
         term: candidate.term,
         probeHash: finalProbeHash,
-        resultUri: matchedResult.uri ?? matchedDocument.document.uri,
+        resultUri: matchedResult.uri ?? matchedDocument.uri,
         resultSourceHash:
-          matchedResult.sourceHash ?? matchedDocument.document.sourceHash,
+          matchedResult.sourceHash ?? matchedDocument.sourceHash,
       },
     });
   }

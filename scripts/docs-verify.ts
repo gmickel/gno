@@ -18,6 +18,7 @@ import { join } from "node:path";
 
 import { runCli } from "../src/cli/run";
 import { safeRm } from "../test/helpers/cleanup";
+import { validateDoctorExit } from "./docs-doctor-contract";
 
 // ANSI colors
 const GREEN = "\x1b[32m";
@@ -414,24 +415,11 @@ async function testDoctor() {
   log(`\n${BOLD}Diagnostics${RESET}`);
 
   const { code, stdout } = await cli("doctor", "--json");
-  if (code !== 0 && code !== 2) {
-    fail("gno doctor", `unexpected exit ${code}`);
-    return;
-  }
-
   try {
-    const result = JSON.parse(stdout);
-    if (typeof result.healthy !== "boolean") {
-      fail("gno doctor", "missing healthy field");
-      return;
-    }
-
-    const expectedCode = result.activation?.healthy === false ? 2 : 0;
-    if (code !== expectedCode) {
-      fail(
-        "gno doctor",
-        `activation health expected exit ${expectedCode}, received ${code}`
-      );
+    const result: unknown = JSON.parse(stdout);
+    const validationError = validateDoctorExit(code, result);
+    if (validationError) {
+      fail("gno doctor", validationError);
       return;
     }
 
@@ -496,7 +484,9 @@ async function main() {
   }
 }
 
-main().catch((err) => {
-  console.error("Fatal error:", err);
-  process.exit(1);
-});
+if (import.meta.main) {
+  main().catch((err) => {
+    console.error("Fatal error:", err);
+    process.exit(1);
+  });
+}

@@ -856,6 +856,49 @@ describe("lexical activation verifier", () => {
     }
   });
 
+  test("accepts top shared-term hits beyond the 16 sampled documents", async () => {
+    const sharedTerms = Array.from(
+      { length: 32 },
+      (_, index) => `crowdedterm${index}`
+    ).join(" ");
+    const paths = Array.from(
+      { length: 24 },
+      (_, index) => `${String(index).padStart(2, "0")}-shared.md`
+    );
+    for (const relPath of paths.toReversed()) {
+      await addDocument(relPath, sharedTerms);
+    }
+
+    const topHits = await adapter.searchFts("crowdedterm0", {
+      collection: "notes",
+      limit: 8,
+      snippet: false,
+    });
+    expect(topHits.ok).toBe(true);
+    if (topHits.ok) {
+      expect(topHits.value).toHaveLength(8);
+      expect(
+        topHits.value.every((hit) =>
+          /^gno:\/\/notes\/(?:1[6-9]|2[0-3])-shared\.md$/.test(hit.uri ?? "")
+        )
+      ).toBe(true);
+    }
+
+    const result = await verifyLexicalActivation(
+      adapter,
+      "notes",
+      verifierOptions
+    );
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.ready).toBe(true);
+      expect(result.value.evidence.resultUri).toMatch(
+        /^gno:\/\/notes\/(?:1[6-9]|2[0-3])-shared\.md$/
+      );
+    }
+  });
+
   test("continues past non-probe documents to find usable evidence", async () => {
     for (let index = 0; index < 16; index += 1) {
       await addDocument(
