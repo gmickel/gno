@@ -63,7 +63,9 @@ Integrated retrieval-proven activation across CLI, REST, doctor, and Web, then r
 Connector projection truncation now forces degraded/warn health everywhere and distinguishes rendered, projected, and omitted counts. CLI green labels are explicitly lexical. Passive semantic availability is tri-state: unknown remains semantic_not_checked, while vector_unavailable requires a known false runtime capability. Migration 013, schema snapshot, owned-writer coverage, recovery, stale-shared-term, bounded-read, surface, and component regressions are included.
 
 Inherited-model read-only review found one final CLI wording ambiguity under projection truncation; it was fixed and the focused gate rerun green.
+
+Final re-review hardening validates legacy FTS bodies once during migration 013 before trusting a backfilled sync marker, while keeping every passive activation check metadata-only. Fingerprint-stable deterministic negatives (`no_documents`, `no_probe_term`, `index_out_of_sync`) now reuse their receipts without repeating corpus reads; recoverable query and retrieval mismatches still retry.
 ## Evidence
-- Commits: 96736bc, 7bd3f29
-- Tests: bun run lint:check (green), bun run typecheck (green), focused activation/CLI/serve/store suite (66 pass, 0 fail before final review; 62 pass, 0 fail after review wording fix), bun test (2125 pass, 1 Windows-only skip, 0 fail; 11169 assertions; 240 files; 39.90s), bun run docs:verify (12 pass, 0 fail, 2 expected model-cache skips), bun run eval:hybrid (88%, threshold 70%), .flow/bin/flowctl validate --all (110 specs, 312 tasks, valid)
+- Commits: 96736bc, 7bd3f29, 5584721
+- Tests: bun run lint:check (green), bun run typecheck (green), focused activation/CLI/serve/store suite (66 pass, 0 fail before final review; 62 pass, 0 fail after review wording fix), final migration/cache focused suite (27 pass, 0 fail), bun test (2126 pass, 1 Windows-only skip, 0 fail; 11187 assertions; 240 files; 39.93s), bun run docs:verify (12 pass, 0 fail, 2 expected model-cache skips), bun run eval:hybrid (88%, threshold 70%), .flow/bin/flowctl validate --all (110 specs, 312 tasks, valid)
 - PRs:
