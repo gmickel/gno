@@ -58,12 +58,12 @@ Deliver integrate activation into cli rest and onboarding health as one implemen
 
 
 ## Done summary
-Integrated one deterministic, privacy-bounded activation status contract across `gno status`, `gno doctor`, `/api/status`, and the Web onboarding/health UI. Lexical readiness is collection-scoped and independent from passive semantic availability; connector health is projected separately from fingerprint-current persisted receipts without starting connector runtimes.
+Integrated retrieval-proven activation across CLI, REST, doctor, and Web, then resolved the independent review findings. Passive fingerprints now use metadata plus an owned FTS synchronization marker without selecting or comparing Markdown/FTS bodies. Cold probes read at most 64 prefixes of 32,768 characters; stale or missing FTS state fails closed before probing. Failed lexical and connector receipts retry under an unchanged fingerprint so repaired/transient failures recover.
 
-Added fingerprint-scoped in-flight coalescing with no settled TTL, bounded collection/connector work, exact remediation, strict additive JSON schemas, doctor exit-2 semantics, unchanged liveness-only `/api/health`, and regression/performance coverage. Warm 20-collection status performs no content reads and completed in 6.2 ms in the final focused run.
+Connector projection truncation now forces degraded/warn health everywhere and distinguishes rendered, projected, and omitted counts. CLI green labels are explicitly lexical. Passive semantic availability is tri-state: unknown remains semantic_not_checked, while vector_unavailable requires a known false runtime capability. Migration 013, schema snapshot, owned-writer coverage, recovery, stale-shared-term, bounded-read, surface, and component regressions are included.
 
-Inherited-model review completed clean after resolving skipped-connector presentation, stale coalescing, truncation accounting, schema privacy, and cached-content-read findings.
+Inherited-model read-only review found one final CLI wording ambiguity under projection truncation; it was fixed and the focused gate rerun green.
 ## Evidence
-- Commits: 96736bc
-- Tests: bun run lint:check, bun test test/core/activation-status.test.ts test/core/activation-status-performance.test.ts test/core/activation-verifier.test.ts test/serve/api-status.test.ts test/spec/schemas/status.test.ts test/spec/schemas/doctor.test.ts test/serve/public/components/HealthCenter.test.tsx (43 pass, 0 fail), bun test (2112 pass, 1 Windows-only skip, 0 fail), bun run docs:verify (12 pass, 0 fail, 2 semantic-model skips), bun run eval:hybrid (88%, threshold 70%), .flow/bin/flowctl validate --spec fn-94-retrieval-proven-setup-and-connector --json
+- Commits: 96736bc, 7bd3f29
+- Tests: bun run lint:check (green), bun run typecheck (green), focused activation/CLI/serve/store suite (66 pass, 0 fail before final review; 62 pass, 0 fail after review wording fix), bun test (2125 pass, 1 Windows-only skip, 0 fail; 11169 assertions; 240 files; 39.90s), bun run docs:verify (12 pass, 0 fail, 2 expected model-cache skips), bun run eval:hybrid (88%, threshold 70%), .flow/bin/flowctl validate --all (110 specs, 312 tasks, valid)
 - PRs:
