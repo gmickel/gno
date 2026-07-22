@@ -12,6 +12,7 @@ type Category =
   | "mixed-script"
   | "normalization"
   | "punctuation"
+  | "ranking"
   | "token-boundary";
 
 interface Manifest {
@@ -171,9 +172,11 @@ describe("CJK lexical benchmark fixture contract", () => {
       expect(languageQueries.length).toBeGreaterThanOrEqual(
         manifest.minimums.queriesPerLanguage
       );
-      expect(new Set(languageQueries.map((query) => query.category))).toEqual(
-        new Set(manifest.requiredCategories)
-      );
+      expect(
+        manifest.requiredCategories.every((category) =>
+          languageQueries.some((query) => query.category === category)
+        )
+      ).toBe(true);
       expect(
         languageQueries.every((query) => query.id.startsWith(`${language}-q`))
       ).toBe(true);
@@ -191,6 +194,7 @@ describe("CJK lexical benchmark fixture contract", () => {
     expect(queries.some((query) => /[A-Z]+[_-]\d+/u.test(query.query))).toBe(
       true
     );
+    expect(queries.some((query) => query.category === "ranking")).toBe(true);
   });
 
   test("keeps qrels complete, graded, and language-local", async () => {

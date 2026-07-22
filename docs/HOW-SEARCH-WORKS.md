@@ -534,14 +534,19 @@ These are small semantic/hybrid fixtures, not general language guarantees.
 
 Degraded lexical behavior is measured separately in the immutable
 [July 22, 2026 CJK benchmark](../evals/fixtures/cjk-lexical-benchmark/2026-07-22.md).
-Across eight queries per language, production BM25 Recall@10/nDCG@10 was
-`0.125` for Chinese, `0.125` for Japanese, and `0.5` for Korean, with
-zero-result rates of `0.875`, `0.875`, and `0.5`. The frozen
+Across 25 queries, production BM25 lexical results and frozen floors:
+
+- Chinese: baseline Recall@10 `0.2222`, nDCG@10 `0.1507`, zero-result `0.7778`; promotion Recall@10 `0.4722`, nDCG@10 `0.4007`, maximum zero-result `0.5278`
+- Japanese: baseline Recall@10 `0.125`, nDCG@10 `0.125`, zero-result `0.875`; promotion Recall@10 `0.375`, nDCG@10 `0.375`, maximum zero-result `0.625`
+- Korean: baseline Recall@10 `0.5`, nDCG@10 `0.5`, zero-result `0.5`; promotion Recall@10 `0.75`, nDCG@10 `0.75`, maximum zero-result `0.25`
+
+The frozen
 [promotion-gates.md](../evals/fixtures/cjk-lexical-benchmark/promotion-gates.md)
-requires floors of `0.375`, `0.375`, and `0.75` before any lexical analyzer can
-ship, with maximum zero-result rates of `0.625`, `0.625`, and `0.25`.
+also binds MRR, non-regression, and cost requirements before any lexical
+analyzer can ship.
 Token-boundary, normalization, mixed-script, identifier, and ranking failures
-are reported as concrete cases. This lexical baseline does not measure semantic
+are reported as concrete cases; ranking uses a genuine rank-6 retrieval
+fixture. This lexical baseline does not measure semantic
 retrieval, and production BM25 remains unchanged. All positive qrels use
 relevance `3`; nDCG therefore measures placement but not distinctions among
 positive gain grades.

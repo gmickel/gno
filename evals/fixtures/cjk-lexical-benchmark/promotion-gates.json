@@ -3,11 +3,15 @@
   "benchmark": "gno-cjk-lexical-degradation",
   "baseline": {
     "artifact": "2026-07-22.json",
-    "resultFingerprint": "15fa566ae8f262fbf1108d1dc74df5f2adc2b1eac05b616eb8551f88e41edb60",
+    "resultFingerprint": "5a3e4018bffaf1e640909d562aa596747d49c88cd9fbd781a06a72cf7d8b87ca",
     "configFingerprint": "fa077cfe5ce65773ff646492e0590432cad3dc80f1e355ba528abfce34518c5a",
     "tokenizerFingerprint": "7c079447fed5ba49dcbe3c1934d41be3a99bd430852dc48ff80d990f46daba96",
     "lane": "bm25",
-    "queryCountPerLanguage": 8,
+    "queryCounts": {
+      "zh": 9,
+      "ja": 8,
+      "ko": 8
+    },
     "positiveQrelGrades": [3],
     "qrelsLimitation": "All positive qrels use relevance 3, so nDCG measures placement of relevant documents but not distinctions among positive gain grades."
   },
@@ -22,18 +26,18 @@
     "languages": {
       "zh": {
         "baseline": {
-          "recallAt5": 0.125,
-          "recallAt10": 0.125,
-          "mrr": 0.125,
-          "ndcgAt10": 0.125,
-          "zeroResultRate": 0.875
+          "recallAt5": 0.1111,
+          "recallAt10": 0.2222,
+          "mrr": 0.1296,
+          "ndcgAt10": 0.1507,
+          "zeroResultRate": 0.7778
         },
         "minimumCandidate": {
-          "recallAt5": 0.375,
-          "recallAt10": 0.375,
-          "mrr": 0.375,
-          "ndcgAt10": 0.375,
-          "zeroResultRate": 0.625
+          "recallAt5": 0.3611,
+          "recallAt10": 0.4722,
+          "mrr": 0.3796,
+          "ndcgAt10": 0.4007,
+          "zeroResultRate": 0.5278
         }
       },
       "ja": {
@@ -83,7 +87,7 @@
       "normalization": ["zh-q005", "ja-q004", "ko-q004"],
       "mixed-script": ["zh-q003", "ja-q003", "ko-q003"],
       "identifier": ["zh-q002", "ja-q001", "ko-q001"],
-      "ranking": ["zh-q001", "ja-q002", "ko-q007"]
+      "ranking": ["zh-q009"]
     }
   },
   "nonRegression": {
@@ -109,15 +113,15 @@
       "datedRunMaximumBytes": 566272
     },
     "buildMs": {
-      "baseline": 487.71,
+      "baseline": 465.13,
       "maximumRatio": 2,
-      "datedRunMaximumMs": 975.42
+      "datedRunMaximumMs": 930.26
     },
     "warmQueryP95Ms": {
-      "baseline": 0.67,
+      "baseline": 0.61,
       "maximumRatio": 3,
       "maximumAbsoluteIncreaseMs": 2,
-      "datedRunRatioMaximumMs": 2.01
+      "datedRunRatioMaximumMs": 1.83
     }
   },
   "decisionRule": "fn-109 may select any deterministic representation that passes every per-language quality floor, failure-category coverage, non-regression gate, and cost cap. No aggregate score may compensate for a failed language or gate. If no candidate passes, record a no-ship decision instead of weakening these thresholds."

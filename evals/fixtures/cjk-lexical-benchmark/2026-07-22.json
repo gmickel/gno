@@ -1,14 +1,14 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-07-22T13:19:03.508Z",
+  "generatedAt": "2026-07-22T13:54:15.635Z",
   "benchmark": "gno-cjk-lexical-degradation",
   "corpus": {
     "fixtureVersion": 1,
     "documentCount": 21,
-    "queryCount": 24,
+    "queryCount": 25,
     "languages": ["zh", "ja", "ko"],
     "provenance": "Original synthetic documents and judgments authored for GNO; no upstream corpus text was copied",
-    "fingerprint": "5a780ba2d7d8e33190e1468ac1f4d5499b5012820e6b9085ee7112eb3eb45504"
+    "fingerprint": "faaa552dedbc162637353a08fc4132aa09dace89a6a2690772d2ba30e97dec02"
   },
   "runtime": {
     "bun": "1.3.5",
@@ -18,19 +18,19 @@
   },
   "index": {
     "tokenizer": "snowball english",
-    "buildMs": 487.71,
+    "buildMs": 465.13,
     "bytes": 323584,
     "pageCount": 79,
     "pageSize": 4096,
-    "vocabularyTerms": 402,
-    "vocabularyDocuments": 485,
-    "tokenOccurrences": 548
+    "vocabularyTerms": 405,
+    "vocabularyDocuments": 499,
+    "tokenOccurrences": 592
   },
   "fingerprints": {
     "config": "fa077cfe5ce65773ff646492e0590432cad3dc80f1e355ba528abfce34518c5a",
     "runtime": "18f5bd4226355d82961d1b739bcd163f9fae96722b5d230e386e4a74dac94872",
     "tokenizer": "7c079447fed5ba49dcbe3c1934d41be3a99bd430852dc48ff80d990f46daba96",
-    "result": "15fa566ae8f262fbf1108d1dc74df5f2adc2b1eac05b616eb8551f88e41edb60"
+    "result": "5a3e4018bffaf1e640909d562aa596747d49c88cd9fbd781a06a72cf7d8b87ca"
   },
   "lanes": [
     {
@@ -46,38 +46,38 @@
         "normalization": null,
         "match": "production-fts"
       },
-      "queryCount": 24,
+      "queryCount": 25,
       "metrics": {
-        "recallAt5": 0.25,
-        "recallAt10": 0.25,
-        "mrr": 0.25,
-        "ndcgAt10": 0.25,
-        "zeroResultRate": 0.75
+        "recallAt5": 0.24,
+        "recallAt10": 0.28,
+        "mrr": 0.2467,
+        "ndcgAt10": 0.2542,
+        "zeroResultRate": 0.72
       },
       "latency": {
-        "coldQueryMs": 2.69,
+        "coldQueryMs": 2.76,
         "warmQuery": {
-          "p50Ms": 0.45,
-          "p95Ms": 0.67,
-          "meanMs": 0.48
+          "p50Ms": 0.44,
+          "p95Ms": 0.61,
+          "meanMs": 0.43
         }
       },
       "languages": [
         {
           "language": "zh",
-          "queryCount": 8,
+          "queryCount": 9,
           "metrics": {
-            "recallAt5": 0.125,
-            "recallAt10": 0.125,
-            "mrr": 0.125,
-            "ndcgAt10": 0.125,
-            "zeroResultRate": 0.875
+            "recallAt5": 0.1111,
+            "recallAt10": 0.2222,
+            "mrr": 0.1296,
+            "ndcgAt10": 0.1507,
+            "zeroResultRate": 0.7778
           },
           "failures": [
             {
               "queryId": "zh-q001",
               "language": "zh",
-              "category": "ranking",
+              "category": "exact-term",
               "reason": "zero-result",
               "query": "北辰物流 冷链温控报警",
               "expected": ["zh/d001.md"],
@@ -122,7 +122,7 @@
             {
               "queryId": "zh-q006",
               "language": "zh",
-              "category": "ranking",
+              "category": "punctuation",
               "reason": "zero-result",
               "query": "供应商 华北 乙类 合同修订",
               "expected": ["zh/d006.md"],
@@ -131,11 +131,26 @@
             {
               "queryId": "zh-q007",
               "language": "zh",
-              "category": "ranking",
+              "category": "filename",
               "reason": "zero-result",
               "query": "值班计划_夏季版.md 夜班交接",
               "expected": ["zh/d007.md"],
               "topDocs": []
+            },
+            {
+              "queryId": "zh-q009",
+              "language": "zh",
+              "category": "ranking",
+              "reason": "below-rank-5",
+              "query": "排序审计标记 ZHRANK",
+              "expected": ["zh/d001.md"],
+              "topDocs": [
+                "zh/d004.md",
+                "zh/d006.md",
+                "zh/d007.md",
+                "zh/d005.md",
+                "zh/d003.md"
+              ]
             }
           ]
         },
@@ -162,7 +177,7 @@
             {
               "queryId": "ja-q002",
               "language": "ja",
-              "category": "ranking",
+              "category": "exact-term",
               "reason": "zero-result",
               "query": "さくら配送センター 封印番号",
               "expected": ["ja/d002.md"],
@@ -189,7 +204,7 @@
             {
               "queryId": "ja-q005",
               "language": "ja",
-              "category": "ranking",
+              "category": "punctuation",
               "reason": "zero-result",
               "query": "青葉 二組 河口 観測",
               "expected": ["ja/d005.md"],
@@ -198,7 +213,7 @@
             {
               "queryId": "ja-q007",
               "language": "ja",
-              "category": "ranking",
+              "category": "filename",
               "reason": "zero-result",
               "query": "当番表_夜間版.md 引き継ぎ",
               "expected": ["ja/d007.md"],
@@ -207,7 +222,7 @@
             {
               "queryId": "ja-q008",
               "language": "ja",
-              "category": "ranking",
+              "category": "exact-term",
               "reason": "zero-result",
               "query": "ガラス乾板 乳剤面 順応",
               "expected": ["ja/d004.md"],
@@ -256,7 +271,7 @@
             {
               "queryId": "ko-q007",
               "language": "ko",
-              "category": "ranking",
+              "category": "filename",
               "reason": "zero-result",
               "query": "당직표_야간판.md 인계",
               "expected": ["ko/d007.md"],
@@ -280,7 +295,7 @@
             "ndcgAt10": 0
           },
           "zeroResult": true,
-          "warmLatencyMs": 0.45
+          "warmLatencyMs": 0.29
         },
         {
           "queryId": "zh-q002",
@@ -296,7 +311,7 @@
             "ndcgAt10": 0
           },
           "zeroResult": true,
-          "warmLatencyMs": 0.36
+          "warmLatencyMs": 0.3
         },
         {
           "queryId": "zh-q003",
@@ -312,7 +327,7 @@
             "ndcgAt10": 0
           },
           "zeroResult": true,
-          "warmLatencyMs": 0.61
+          "warmLatencyMs": 0.49
         },
         {
           "queryId": "zh-q004",
@@ -328,7 +343,7 @@
             "ndcgAt10": 0
           },
           "zeroResult": true,
-          "warmLatencyMs": 0.31
+          "warmLatencyMs": 0.27
         },
         {
           "queryId": "zh-q005",
@@ -344,7 +359,7 @@
             "ndcgAt10": 0
           },
           "zeroResult": true,
-          "warmLatencyMs": 0.3,
+          "warmLatencyMs": 0.27,
           "normalization": {
             "form": "NFKC",
             "source": "ＡＣＣＴ－９９",
@@ -365,7 +380,7 @@
             "ndcgAt10": 0
           },
           "zeroResult": true,
-          "warmLatencyMs": 0.5
+          "warmLatencyMs": 0.46
         },
         {
           "queryId": "zh-q007",
@@ -381,7 +396,7 @@
             "ndcgAt10": 0
           },
           "zeroResult": true,
-          "warmLatencyMs": 0.37
+          "warmLatencyMs": 0.36
         },
         {
           "queryId": "zh-q008",
@@ -397,7 +412,30 @@
             "ndcgAt10": 1
           },
           "zeroResult": false,
-          "warmLatencyMs": 0.36
+          "warmLatencyMs": 0.37
+        },
+        {
+          "queryId": "zh-q009",
+          "language": "zh",
+          "category": "ranking",
+          "query": "排序审计标记 ZHRANK",
+          "expected": ["zh/d001.md"],
+          "topDocs": [
+            "zh/d004.md",
+            "zh/d006.md",
+            "zh/d007.md",
+            "zh/d005.md",
+            "zh/d003.md",
+            "zh/d001.md"
+          ],
+          "metrics": {
+            "recallAt5": 0,
+            "recallAt10": 1,
+            "mrr": 0.1667,
+            "ndcgAt10": 0.3562
+          },
+          "zeroResult": false,
+          "warmLatencyMs": 0.56
         },
         {
           "queryId": "ja-q001",
@@ -413,7 +451,7 @@
             "ndcgAt10": 0
           },
           "zeroResult": true,
-          "warmLatencyMs": 0.45
+          "warmLatencyMs": 0.42
         },
         {
           "queryId": "ja-q002",
@@ -429,7 +467,7 @@
             "ndcgAt10": 0
           },
           "zeroResult": true,
-          "warmLatencyMs": 0.37
+          "warmLatencyMs": 0.27
         },
         {
           "queryId": "ja-q003",
@@ -445,7 +483,7 @@
             "ndcgAt10": 0
           },
           "zeroResult": true,
-          "warmLatencyMs": 0.67
+          "warmLatencyMs": 0.57
         },
         {
           "queryId": "ja-q004",
@@ -461,7 +499,7 @@
             "ndcgAt10": 0
           },
           "zeroResult": true,
-          "warmLatencyMs": 0.39,
+          "warmLatencyMs": 0.25,
           "normalization": {
             "form": "NFC",
             "source": "ガラス",
@@ -482,7 +520,7 @@
             "ndcgAt10": 0
           },
           "zeroResult": true,
-          "warmLatencyMs": 0.49
+          "warmLatencyMs": 0.44
         },
         {
           "queryId": "ja-q006",
@@ -498,7 +536,7 @@
             "ndcgAt10": 1
           },
           "zeroResult": false,
-          "warmLatencyMs": 0.51
+          "warmLatencyMs": 0.44
         },
         {
           "queryId": "ja-q007",
@@ -514,7 +552,7 @@
             "ndcgAt10": 0
           },
           "zeroResult": true,
-          "warmLatencyMs": 0.38
+          "warmLatencyMs": 0.33
         },
         {
           "queryId": "ja-q008",
@@ -530,7 +568,7 @@
             "ndcgAt10": 0
           },
           "zeroResult": true,
-          "warmLatencyMs": 0.36
+          "warmLatencyMs": 0.34
         },
         {
           "queryId": "ko-q001",
@@ -546,7 +584,7 @@
             "ndcgAt10": 0
           },
           "zeroResult": true,
-          "warmLatencyMs": 0.51
+          "warmLatencyMs": 0.47
         },
         {
           "queryId": "ko-q002",
@@ -562,7 +600,7 @@
             "ndcgAt10": 1
           },
           "zeroResult": false,
-          "warmLatencyMs": 0.62
+          "warmLatencyMs": 0.51
         },
         {
           "queryId": "ko-q003",
@@ -578,7 +616,7 @@
             "ndcgAt10": 0
           },
           "zeroResult": true,
-          "warmLatencyMs": 0.63
+          "warmLatencyMs": 0.57
         },
         {
           "queryId": "ko-q004",
@@ -594,7 +632,7 @@
             "ndcgAt10": 0
           },
           "zeroResult": true,
-          "warmLatencyMs": 0.53,
+          "warmLatencyMs": 0.49,
           "normalization": {
             "form": "NFC",
             "source": "가속기",
@@ -615,7 +653,7 @@
             "ndcgAt10": 1
           },
           "zeroResult": false,
-          "warmLatencyMs": 0.6
+          "warmLatencyMs": 0.54
         },
         {
           "queryId": "ko-q006",
@@ -631,7 +669,7 @@
             "ndcgAt10": 1
           },
           "zeroResult": false,
-          "warmLatencyMs": 0.79
+          "warmLatencyMs": 0.73
         },
         {
           "queryId": "ko-q007",
@@ -647,7 +685,7 @@
             "ndcgAt10": 0
           },
           "zeroResult": true,
-          "warmLatencyMs": 0.34
+          "warmLatencyMs": 0.33
         },
         {
           "queryId": "ko-q008",
@@ -663,7 +701,7 @@
             "ndcgAt10": 1
           },
           "zeroResult": false,
-          "warmLatencyMs": 0.67
+          "warmLatencyMs": 0.61
         }
       ]
     },
@@ -680,38 +718,38 @@
         "normalization": null,
         "match": "production-fts"
       },
-      "queryCount": 24,
+      "queryCount": 25,
       "metrics": {
-        "recallAt5": 0.25,
-        "recallAt10": 0.25,
-        "mrr": 0.25,
-        "ndcgAt10": 0.25,
-        "zeroResultRate": 0.75
+        "recallAt5": 0.24,
+        "recallAt10": 0.28,
+        "mrr": 0.2467,
+        "ndcgAt10": 0.2542,
+        "zeroResultRate": 0.72
       },
       "latency": {
-        "coldQueryMs": 2.5,
+        "coldQueryMs": 2.26,
         "warmQuery": {
-          "p50Ms": 0.46,
-          "p95Ms": 0.77,
-          "meanMs": 0.5
+          "p50Ms": 0.44,
+          "p95Ms": 0.84,
+          "meanMs": 0.45
         }
       },
       "languages": [
         {
           "language": "zh",
-          "queryCount": 8,
+          "queryCount": 9,
           "metrics": {
-            "recallAt5": 0.125,
-            "recallAt10": 0.125,
-            "mrr": 0.125,
-            "ndcgAt10": 0.125,
-            "zeroResultRate": 0.875
+            "recallAt5": 0.1111,
+            "recallAt10": 0.2222,
+            "mrr": 0.1296,
+            "ndcgAt10": 0.1507,
+            "zeroResultRate": 0.7778
           },
           "failures": [
             {
               "queryId": "zh-q001",
               "language": "zh",
-              "category": "ranking",
+              "category": "exact-term",
               "reason": "zero-result",
               "query": "北辰物流 冷链温控报警",
               "expected": ["zh/d001.md"],
@@ -756,7 +794,7 @@
             {
               "queryId": "zh-q006",
               "language": "zh",
-              "category": "ranking",
+              "category": "punctuation",
               "reason": "zero-result",
               "query": "供应商 华北 乙类 合同修订",
               "expected": ["zh/d006.md"],
@@ -765,11 +803,26 @@
             {
               "queryId": "zh-q007",
               "language": "zh",
-              "category": "ranking",
+              "category": "filename",
               "reason": "zero-result",
               "query": "值班计划_夏季版.md 夜班交接",
               "expected": ["zh/d007.md"],
               "topDocs": []
+            },
+            {
+              "queryId": "zh-q009",
+              "language": "zh",
+              "category": "ranking",
+              "reason": "below-rank-5",
+              "query": "排序审计标记 ZHRANK",
+              "expected": ["zh/d001.md"],
+              "topDocs": [
+                "zh/d004.md",
+                "zh/d006.md",
+                "zh/d007.md",
+                "zh/d005.md",
+                "zh/d003.md"
+              ]
             }
           ]
         },
@@ -796,7 +849,7 @@
             {
               "queryId": "ja-q002",
               "language": "ja",
-              "category": "ranking",
+              "category": "exact-term",
               "reason": "zero-result",
               "query": "さくら配送センター 封印番号",
               "expected": ["ja/d002.md"],
@@ -823,7 +876,7 @@
             {
               "queryId": "ja-q005",
               "language": "ja",
-              "category": "ranking",
+              "category": "punctuation",
               "reason": "zero-result",
               "query": "青葉 二組 河口 観測",
               "expected": ["ja/d005.md"],
@@ -832,7 +885,7 @@
             {
               "queryId": "ja-q007",
               "language": "ja",
-              "category": "ranking",
+              "category": "filename",
               "reason": "zero-result",
               "query": "当番表_夜間版.md 引き継ぎ",
               "expected": ["ja/d007.md"],
@@ -841,7 +894,7 @@
             {
               "queryId": "ja-q008",
               "language": "ja",
-              "category": "ranking",
+              "category": "exact-term",
               "reason": "zero-result",
               "query": "ガラス乾板 乳剤面 順応",
               "expected": ["ja/d004.md"],
@@ -890,7 +943,7 @@
             {
               "queryId": "ko-q007",
               "language": "ko",
-              "category": "ranking",
+              "category": "filename",
               "reason": "zero-result",
               "query": "당직표_야간판.md 인계",
               "expected": ["ko/d007.md"],
@@ -914,7 +967,7 @@
             "ndcgAt10": 0
           },
           "zeroResult": true,
-          "warmLatencyMs": 0.37
+          "warmLatencyMs": 0.3
         },
         {
           "queryId": "zh-q002",
@@ -930,7 +983,7 @@
             "ndcgAt10": 0
           },
           "zeroResult": true,
-          "warmLatencyMs": 0.34
+          "warmLatencyMs": 0.31
         },
         {
           "queryId": "zh-q003",
@@ -946,7 +999,7 @@
             "ndcgAt10": 0
           },
           "zeroResult": true,
-          "warmLatencyMs": 0.58
+          "warmLatencyMs": 0.5
         },
         {
           "queryId": "zh-q004",
@@ -962,7 +1015,7 @@
             "ndcgAt10": 0
           },
           "zeroResult": true,
-          "warmLatencyMs": 0.35
+          "warmLatencyMs": 0.29
         },
         {
           "queryId": "zh-q005",
@@ -978,7 +1031,7 @@
             "ndcgAt10": 0
           },
           "zeroResult": true,
-          "warmLatencyMs": 0.32,
+          "warmLatencyMs": 0.28,
           "normalization": {
             "form": "NFKC",
             "source": "ＡＣＣＴ－９９",
@@ -999,7 +1052,7 @@
             "ndcgAt10": 0
           },
           "zeroResult": true,
-          "warmLatencyMs": 0.49
+          "warmLatencyMs": 0.47
         },
         {
           "queryId": "zh-q007",
@@ -1015,7 +1068,7 @@
             "ndcgAt10": 0
           },
           "zeroResult": true,
-          "warmLatencyMs": 0.37
+          "warmLatencyMs": 0.36
         },
         {
           "queryId": "zh-q008",
@@ -1031,7 +1084,30 @@
             "ndcgAt10": 1
           },
           "zeroResult": false,
-          "warmLatencyMs": 0.39
+          "warmLatencyMs": 0.36
+        },
+        {
+          "queryId": "zh-q009",
+          "language": "zh",
+          "category": "ranking",
+          "query": "排序审计标记 ZHRANK",
+          "expected": ["zh/d001.md"],
+          "topDocs": [
+            "zh/d004.md",
+            "zh/d006.md",
+            "zh/d007.md",
+            "zh/d005.md",
+            "zh/d003.md",
+            "zh/d001.md"
+          ],
+          "metrics": {
+            "recallAt5": 0,
+            "recallAt10": 1,
+            "mrr": 0.1667,
+            "ndcgAt10": 0.3562
+          },
+          "zeroResult": false,
+          "warmLatencyMs": 0.49
         },
         {
           "queryId": "ja-q001",
@@ -1047,7 +1123,7 @@
             "ndcgAt10": 0
           },
           "zeroResult": true,
-          "warmLatencyMs": 0.46
+          "warmLatencyMs": 0.44
         },
         {
           "queryId": "ja-q002",
@@ -1063,7 +1139,7 @@
             "ndcgAt10": 0
           },
           "zeroResult": true,
-          "warmLatencyMs": 0.31
+          "warmLatencyMs": 0.28
         },
         {
           "queryId": "ja-q003",
@@ -1079,7 +1155,7 @@
             "ndcgAt10": 0
           },
           "zeroResult": true,
-          "warmLatencyMs": 0.63
+          "warmLatencyMs": 0.58
         },
         {
           "queryId": "ja-q004",
@@ -1095,7 +1171,7 @@
             "ndcgAt10": 0
           },
           "zeroResult": true,
-          "warmLatencyMs": 0.28,
+          "warmLatencyMs": 0.26,
           "normalization": {
             "form": "NFC",
             "source": "ガラス",
@@ -1116,7 +1192,7 @@
             "ndcgAt10": 0
           },
           "zeroResult": true,
-          "warmLatencyMs": 0.66
+          "warmLatencyMs": 0.45
         },
         {
           "queryId": "ja-q006",
@@ -1132,7 +1208,7 @@
             "ndcgAt10": 1
           },
           "zeroResult": false,
-          "warmLatencyMs": 0.58
+          "warmLatencyMs": 0.43
         },
         {
           "queryId": "ja-q007",
@@ -1148,7 +1224,7 @@
             "ndcgAt10": 0
           },
           "zeroResult": true,
-          "warmLatencyMs": 0.38
+          "warmLatencyMs": 0.35
         },
         {
           "queryId": "ja-q008",
@@ -1164,7 +1240,7 @@
             "ndcgAt10": 0
           },
           "zeroResult": true,
-          "warmLatencyMs": 0.36
+          "warmLatencyMs": 0.35
         },
         {
           "queryId": "ko-q001",
@@ -1180,7 +1256,7 @@
             "ndcgAt10": 0
           },
           "zeroResult": true,
-          "warmLatencyMs": 0.61
+          "warmLatencyMs": 0.48
         },
         {
           "queryId": "ko-q002",
@@ -1196,7 +1272,7 @@
             "ndcgAt10": 1
           },
           "zeroResult": false,
-          "warmLatencyMs": 0.77
+          "warmLatencyMs": 0.87
         },
         {
           "queryId": "ko-q003",
@@ -1212,7 +1288,7 @@
             "ndcgAt10": 0
           },
           "zeroResult": true,
-          "warmLatencyMs": 0.83
+          "warmLatencyMs": 0.84
         },
         {
           "queryId": "ko-q004",
@@ -1228,7 +1304,7 @@
             "ndcgAt10": 0
           },
           "zeroResult": true,
-          "warmLatencyMs": 0.55,
+          "warmLatencyMs": 0.48,
           "normalization": {
             "form": "NFC",
             "source": "가속기",
@@ -1249,7 +1325,7 @@
             "ndcgAt10": 1
           },
           "zeroResult": false,
-          "warmLatencyMs": 0.56
+          "warmLatencyMs": 0.5
         },
         {
           "queryId": "ko-q006",
@@ -1265,7 +1341,7 @@
             "ndcgAt10": 1
           },
           "zeroResult": false,
-          "warmLatencyMs": 0.76
+          "warmLatencyMs": 0.73
         },
         {
           "queryId": "ko-q007",
@@ -1297,7 +1373,7 @@
             "ndcgAt10": 1
           },
           "zeroResult": false,
-          "warmLatencyMs": 0.65
+          "warmLatencyMs": 0.62
         }
       ]
     },
@@ -1314,32 +1390,32 @@
         "normalization": "raw",
         "match": "all-query-terms-substring-with-exact-phrase-boost"
       },
-      "queryCount": 24,
+      "queryCount": 25,
       "metrics": {
-        "recallAt5": 0.7083,
-        "recallAt10": 0.7083,
-        "mrr": 0.7083,
-        "ndcgAt10": 0.7083,
-        "zeroResultRate": 0.2917
+        "recallAt5": 0.72,
+        "recallAt10": 0.72,
+        "mrr": 0.72,
+        "ndcgAt10": 0.72,
+        "zeroResultRate": 0.28
       },
       "latency": {
-        "coldQueryMs": 0.31,
+        "coldQueryMs": 0.28,
         "warmQuery": {
-          "p50Ms": 0.05,
-          "p95Ms": 0.07,
-          "meanMs": 0.05
+          "p50Ms": 0.02,
+          "p95Ms": 0.04,
+          "meanMs": 0.02
         }
       },
       "languages": [
         {
           "language": "zh",
-          "queryCount": 8,
+          "queryCount": 9,
           "metrics": {
-            "recallAt5": 0.375,
-            "recallAt10": 0.375,
-            "mrr": 0.375,
-            "ndcgAt10": 0.375,
-            "zeroResultRate": 0.625
+            "recallAt5": 0.4444,
+            "recallAt10": 0.4444,
+            "mrr": 0.4444,
+            "ndcgAt10": 0.4444,
+            "zeroResultRate": 0.5556
           },
           "failures": [
             {
@@ -1381,7 +1457,7 @@
             {
               "queryId": "zh-q007",
               "language": "zh",
-              "category": "ranking",
+              "category": "filename",
               "reason": "zero-result",
               "query": "值班计划_夏季版.md 夜班交接",
               "expected": ["zh/d007.md"],
@@ -1449,7 +1525,7 @@
             "ndcgAt10": 1
           },
           "zeroResult": false,
-          "warmLatencyMs": 0.06
+          "warmLatencyMs": 0.04
         },
         {
           "queryId": "zh-q002",
@@ -1465,7 +1541,7 @@
             "ndcgAt10": 0
           },
           "zeroResult": true,
-          "warmLatencyMs": 0.05
+          "warmLatencyMs": 0.02
         },
         {
           "queryId": "zh-q003",
@@ -1481,7 +1557,7 @@
             "ndcgAt10": 0
           },
           "zeroResult": true,
-          "warmLatencyMs": 0.05
+          "warmLatencyMs": 0.02
         },
         {
           "queryId": "zh-q004",
@@ -1497,7 +1573,7 @@
             "ndcgAt10": 0
           },
           "zeroResult": true,
-          "warmLatencyMs": 0.05
+          "warmLatencyMs": 0.02
         },
         {
           "queryId": "zh-q005",
@@ -1513,7 +1589,7 @@
             "ndcgAt10": 0
           },
           "zeroResult": true,
-          "warmLatencyMs": 0.04,
+          "warmLatencyMs": 0.02,
           "normalization": {
             "form": "NFKC",
             "source": "ＡＣＣＴ－９９",
@@ -1534,7 +1610,7 @@
             "ndcgAt10": 1
           },
           "zeroResult": false,
-          "warmLatencyMs": 0.05
+          "warmLatencyMs": 0.02
         },
         {
           "queryId": "zh-q007",
@@ -1550,7 +1626,7 @@
             "ndcgAt10": 0
           },
           "zeroResult": true,
-          "warmLatencyMs": 0.05
+          "warmLatencyMs": 0.02
         },
         {
           "queryId": "zh-q008",
@@ -1566,7 +1642,30 @@
             "ndcgAt10": 1
           },
           "zeroResult": false,
-          "warmLatencyMs": 0.05
+          "warmLatencyMs": 0.02
+        },
+        {
+          "queryId": "zh-q009",
+          "language": "zh",
+          "category": "ranking",
+          "query": "排序审计标记 ZHRANK",
+          "expected": ["zh/d001.md"],
+          "topDocs": [
+            "zh/d001.md",
+            "zh/d003.md",
+            "zh/d004.md",
+            "zh/d005.md",
+            "zh/d006.md",
+            "zh/d007.md"
+          ],
+          "metrics": {
+            "recallAt5": 1,
+            "recallAt10": 1,
+            "mrr": 1,
+            "ndcgAt10": 1
+          },
+          "zeroResult": false,
+          "warmLatencyMs": 0.02
         },
         {
           "queryId": "ja-q001",
@@ -1582,7 +1681,7 @@
             "ndcgAt10": 1
           },
           "zeroResult": false,
-          "warmLatencyMs": 0.05
+          "warmLatencyMs": 0.04
         },
         {
           "queryId": "ja-q002",
@@ -1598,7 +1697,7 @@
             "ndcgAt10": 1
           },
           "zeroResult": false,
-          "warmLatencyMs": 0.05
+          "warmLatencyMs": 0.02
         },
         {
           "queryId": "ja-q003",
@@ -1614,7 +1713,7 @@
             "ndcgAt10": 1
           },
           "zeroResult": false,
-          "warmLatencyMs": 0.05
+          "warmLatencyMs": 0.02
         },
         {
           "queryId": "ja-q004",
@@ -1630,7 +1729,7 @@
             "ndcgAt10": 0
           },
           "zeroResult": true,
-          "warmLatencyMs": 0.05,
+          "warmLatencyMs": 0.02,
           "normalization": {
             "form": "NFC",
             "source": "ガラス",
@@ -1651,7 +1750,7 @@
             "ndcgAt10": 1
           },
           "zeroResult": false,
-          "warmLatencyMs": 0.05
+          "warmLatencyMs": 0.02
         },
         {
           "queryId": "ja-q006",
@@ -1667,7 +1766,7 @@
             "ndcgAt10": 1
           },
           "zeroResult": false,
-          "warmLatencyMs": 0.05
+          "warmLatencyMs": 0.02
         },
         {
           "queryId": "ja-q007",
@@ -1683,7 +1782,7 @@
             "ndcgAt10": 1
           },
           "zeroResult": false,
-          "warmLatencyMs": 0.05
+          "warmLatencyMs": 0.01
         },
         {
           "queryId": "ja-q008",
@@ -1699,7 +1798,7 @@
             "ndcgAt10": 1
           },
           "zeroResult": false,
-          "warmLatencyMs": 0.05
+          "warmLatencyMs": 0.02
         },
         {
           "queryId": "ko-q001",
@@ -1715,7 +1814,7 @@
             "ndcgAt10": 1
           },
           "zeroResult": false,
-          "warmLatencyMs": 0.04
+          "warmLatencyMs": 0.03
         },
         {
           "queryId": "ko-q002",
@@ -1731,7 +1830,7 @@
             "ndcgAt10": 1
           },
           "zeroResult": false,
-          "warmLatencyMs": 0.05
+          "warmLatencyMs": 0.02
         },
         {
           "queryId": "ko-q003",
@@ -1747,7 +1846,7 @@
             "ndcgAt10": 1
           },
           "zeroResult": false,
-          "warmLatencyMs": 0.05
+          "warmLatencyMs": 0.02
         },
         {
           "queryId": "ko-q004",
@@ -1763,7 +1862,7 @@
             "ndcgAt10": 0
           },
           "zeroResult": true,
-          "warmLatencyMs": 0.04,
+          "warmLatencyMs": 0.01,
           "normalization": {
             "form": "NFC",
             "source": "가속기",
@@ -1784,7 +1883,7 @@
             "ndcgAt10": 1
           },
           "zeroResult": false,
-          "warmLatencyMs": 0.05
+          "warmLatencyMs": 0.02
         },
         {
           "queryId": "ko-q006",
@@ -1800,7 +1899,7 @@
             "ndcgAt10": 1
           },
           "zeroResult": false,
-          "warmLatencyMs": 0.09
+          "warmLatencyMs": 0.02
         },
         {
           "queryId": "ko-q007",
@@ -1832,7 +1931,7 @@
             "ndcgAt10": 1
           },
           "zeroResult": false,
-          "warmLatencyMs": 0.07
+          "warmLatencyMs": 0.02
         }
       ]
     },
@@ -1849,32 +1948,32 @@
         "normalization": "NFC",
         "match": "all-query-terms-substring-with-exact-phrase-boost"
       },
-      "queryCount": 24,
+      "queryCount": 25,
       "metrics": {
-        "recallAt5": 0.75,
-        "recallAt10": 0.75,
-        "mrr": 0.75,
-        "ndcgAt10": 0.75,
-        "zeroResultRate": 0.25
+        "recallAt5": 0.76,
+        "recallAt10": 0.76,
+        "mrr": 0.76,
+        "ndcgAt10": 0.76,
+        "zeroResultRate": 0.24
       },
       "latency": {
-        "coldQueryMs": 0.07,
+        "coldQueryMs": 0.04,
         "warmQuery": {
-          "p50Ms": 0.05,
-          "p95Ms": 0.06,
-          "meanMs": 0.05
+          "p50Ms": 0.02,
+          "p95Ms": 0.02,
+          "meanMs": 0.02
         }
       },
       "languages": [
         {
           "language": "zh",
-          "queryCount": 8,
+          "queryCount": 9,
           "metrics": {
-            "recallAt5": 0.375,
-            "recallAt10": 0.375,
-            "mrr": 0.375,
-            "ndcgAt10": 0.375,
-            "zeroResultRate": 0.625
+            "recallAt5": 0.4444,
+            "recallAt10": 0.4444,
+            "mrr": 0.4444,
+            "ndcgAt10": 0.4444,
+            "zeroResultRate": 0.5556
           },
           "failures": [
             {
@@ -1916,7 +2015,7 @@
             {
               "queryId": "zh-q007",
               "language": "zh",
-              "category": "ranking",
+              "category": "filename",
               "reason": "zero-result",
               "query": "值班计划_夏季版.md 夜班交接",
               "expected": ["zh/d007.md"],
@@ -1974,7 +2073,7 @@
             "ndcgAt10": 1
           },
           "zeroResult": false,
-          "warmLatencyMs": 0.05
+          "warmLatencyMs": 0.02
         },
         {
           "queryId": "zh-q002",
@@ -1990,7 +2089,7 @@
             "ndcgAt10": 0
           },
           "zeroResult": true,
-          "warmLatencyMs": 0.05
+          "warmLatencyMs": 0.02
         },
         {
           "queryId": "zh-q003",
@@ -2006,7 +2105,7 @@
             "ndcgAt10": 0
           },
           "zeroResult": true,
-          "warmLatencyMs": 0.05
+          "warmLatencyMs": 0.02
         },
         {
           "queryId": "zh-q004",
@@ -2022,7 +2121,7 @@
             "ndcgAt10": 0
           },
           "zeroResult": true,
-          "warmLatencyMs": 0.05
+          "warmLatencyMs": 0.02
         },
         {
           "queryId": "zh-q005",
@@ -2038,7 +2137,7 @@
             "ndcgAt10": 0
           },
           "zeroResult": true,
-          "warmLatencyMs": 0.05,
+          "warmLatencyMs": 0.02,
           "normalization": {
             "form": "NFKC",
             "source": "ＡＣＣＴ－９９",
@@ -2059,7 +2158,7 @@
             "ndcgAt10": 1
           },
           "zeroResult": false,
-          "warmLatencyMs": 0.05
+          "warmLatencyMs": 0.02
         },
         {
           "queryId": "zh-q007",
@@ -2075,7 +2174,7 @@
             "ndcgAt10": 0
           },
           "zeroResult": true,
-          "warmLatencyMs": 0.05
+          "warmLatencyMs": 0.02
         },
         {
           "queryId": "zh-q008",
@@ -2091,7 +2190,30 @@
             "ndcgAt10": 1
           },
           "zeroResult": false,
-          "warmLatencyMs": 0.05
+          "warmLatencyMs": 0.02
+        },
+        {
+          "queryId": "zh-q009",
+          "language": "zh",
+          "category": "ranking",
+          "query": "排序审计标记 ZHRANK",
+          "expected": ["zh/d001.md"],
+          "topDocs": [
+            "zh/d001.md",
+            "zh/d003.md",
+            "zh/d004.md",
+            "zh/d005.md",
+            "zh/d006.md",
+            "zh/d007.md"
+          ],
+          "metrics": {
+            "recallAt5": 1,
+            "recallAt10": 1,
+            "mrr": 1,
+            "ndcgAt10": 1
+          },
+          "zeroResult": false,
+          "warmLatencyMs": 0.02
         },
         {
           "queryId": "ja-q001",
@@ -2107,7 +2229,7 @@
             "ndcgAt10": 1
           },
           "zeroResult": false,
-          "warmLatencyMs": 0.05
+          "warmLatencyMs": 0.03
         },
         {
           "queryId": "ja-q002",
@@ -2123,7 +2245,7 @@
             "ndcgAt10": 1
           },
           "zeroResult": false,
-          "warmLatencyMs": 0.06
+          "warmLatencyMs": 0.02
         },
         {
           "queryId": "ja-q003",
@@ -2139,7 +2261,7 @@
             "ndcgAt10": 1
           },
           "zeroResult": false,
-          "warmLatencyMs": 0.06
+          "warmLatencyMs": 0.02
         },
         {
           "queryId": "ja-q004",
@@ -2155,7 +2277,7 @@
             "ndcgAt10": 0
           },
           "zeroResult": true,
-          "warmLatencyMs": 0.05,
+          "warmLatencyMs": 0.02,
           "normalization": {
             "form": "NFC",
             "source": "ガラス",
@@ -2176,7 +2298,7 @@
             "ndcgAt10": 1
           },
           "zeroResult": false,
-          "warmLatencyMs": 0.05
+          "warmLatencyMs": 0.02
         },
         {
           "queryId": "ja-q006",
@@ -2192,7 +2314,7 @@
             "ndcgAt10": 1
           },
           "zeroResult": false,
-          "warmLatencyMs": 0.06
+          "warmLatencyMs": 0.02
         },
         {
           "queryId": "ja-q007",
@@ -2208,7 +2330,7 @@
             "ndcgAt10": 1
           },
           "zeroResult": false,
-          "warmLatencyMs": 0.06
+          "warmLatencyMs": 0.02
         },
         {
           "queryId": "ja-q008",
@@ -2224,7 +2346,7 @@
             "ndcgAt10": 1
           },
           "zeroResult": false,
-          "warmLatencyMs": 0.06
+          "warmLatencyMs": 0.02
         },
         {
           "queryId": "ko-q001",
@@ -2240,7 +2362,7 @@
             "ndcgAt10": 1
           },
           "zeroResult": false,
-          "warmLatencyMs": 0.05
+          "warmLatencyMs": 0.02
         },
         {
           "queryId": "ko-q002",
@@ -2256,7 +2378,7 @@
             "ndcgAt10": 1
           },
           "zeroResult": false,
-          "warmLatencyMs": 0.05
+          "warmLatencyMs": 0.02
         },
         {
           "queryId": "ko-q003",
@@ -2272,7 +2394,7 @@
             "ndcgAt10": 1
           },
           "zeroResult": false,
-          "warmLatencyMs": 0.06
+          "warmLatencyMs": 0.02
         },
         {
           "queryId": "ko-q004",
@@ -2288,7 +2410,7 @@
             "ndcgAt10": 1
           },
           "zeroResult": false,
-          "warmLatencyMs": 0.05,
+          "warmLatencyMs": 0.02,
           "normalization": {
             "form": "NFC",
             "source": "가속기",
@@ -2309,7 +2431,7 @@
             "ndcgAt10": 1
           },
           "zeroResult": false,
-          "warmLatencyMs": 0.05
+          "warmLatencyMs": 0.02
         },
         {
           "queryId": "ko-q006",
@@ -2325,7 +2447,7 @@
             "ndcgAt10": 1
           },
           "zeroResult": false,
-          "warmLatencyMs": 0.05
+          "warmLatencyMs": 0.02
         },
         {
           "queryId": "ko-q007",
@@ -2341,7 +2463,7 @@
             "ndcgAt10": 1
           },
           "zeroResult": false,
-          "warmLatencyMs": 0.05
+          "warmLatencyMs": 0.02
         },
         {
           "queryId": "ko-q008",
@@ -2357,7 +2479,7 @@
             "ndcgAt10": 1
           },
           "zeroResult": false,
-          "warmLatencyMs": 0.05
+          "warmLatencyMs": 0.02
         }
       ]
     }

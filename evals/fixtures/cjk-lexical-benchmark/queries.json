@@ -61,6 +61,13 @@
     "notes": "Traditional Chinese query and document"
   },
   {
+    "id": "zh-q009",
+    "language": "zh",
+    "query": "排序审计标记 ZHRANK",
+    "category": "ranking",
+    "notes": "Shared synthetic audit token whose relevant document is intentionally ranked below five stronger decoys"
+  },
+  {
     "id": "ja-q001",
     "language": "ja",
     "query": "北浜倉庫 冷凍機 JP-771",

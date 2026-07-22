@@ -142,7 +142,7 @@ The dedicated CJK lane uses the versioned fixture contract in
 
 - 21 original synthetic, MIT-licensed Markdown documents: seven each for
   Chinese, Japanese, and Korean
-- 24 same-language queries with separate graded qrels
+- 25 same-language queries with separate graded qrels
 - exact terms, identifiers, mixed scripts, token boundaries, punctuation,
   content-level filenames, and intentional Unicode normalization variants
 - simplified and traditional Chinese, Japanese kana and kanji, and composed
@@ -165,7 +165,7 @@ binds `fn-109` to these per-language floors:
 
 | Language | Baseline Recall@10/nDCG@10 | Minimum candidate | Baseline zero-result | Maximum candidate |
 | -------- | -------------------------: | ----------------: | -------------------: | ----------------: |
-| `zh`     |                      0.125 |             0.375 |                0.875 |             0.625 |
+| `zh`     |                     0.2222 |            0.4722 |               0.7778 |            0.5278 |
 | `ja`     |                      0.125 |             0.375 |                0.875 |             0.625 |
 | `ko`     |                        0.5 |              0.75 |                  0.5 |              0.25 |
 

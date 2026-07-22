@@ -37,21 +37,25 @@ describe("CJK lexical promotion gates", () => {
       if (!measured) {
         throw new Error(`Missing ${language} baseline metrics`);
       }
-      expect(measured.queryCount).toBe(gates.baseline.queryCountPerLanguage);
+      expect(measured.queryCount).toBe(gates.baseline.queryCounts[language]);
       expect(gate.baseline).toEqual(measured.metrics);
 
       for (const metric of QUALITY_METRICS) {
-        expect(gate.minimumCandidate[metric] - gate.baseline[metric]).toBe(
-          gates.quality.minimumAbsoluteMetricLift
-        );
+        expect(
+          gate.minimumCandidate[metric] - gate.baseline[metric]
+        ).toBeCloseTo(gates.quality.minimumAbsoluteMetricLift);
       }
       expect(
         gate.baseline.zeroResultRate - gate.minimumCandidate.zeroResultRate
-      ).toBe(gates.quality.minimumAbsoluteMetricLift);
+      ).toBeCloseTo(gates.quality.minimumAbsoluteMetricLift);
       expect(
-        gates.quality.minimumAbsoluteMetricLift *
-          gates.baseline.queryCountPerLanguage
-      ).toBe(gates.quality.minimumAdditionalRecallHitsPerLanguage);
+        Math.ceil(
+          gates.quality.minimumAbsoluteMetricLift *
+            gates.baseline.queryCounts[language]
+        )
+      ).toBeGreaterThanOrEqual(
+        gates.quality.minimumAdditionalRecallHitsPerLanguage
+      );
     }
   });
 

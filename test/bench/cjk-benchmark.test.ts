@@ -52,6 +52,42 @@ describe("CJK benchmark contracts", () => {
     ]);
   });
 
+  test("reports ranking only for a genuine retrieved-document misordering", () => {
+    const failing = buildCjkCaseResult({
+      queryId: "zh-ranking",
+      language: "zh",
+      category: "ranking",
+      query: "排序审计标记 ZHRANK",
+      expected: ["zh/d001.md"],
+      judgments: [{ docid: "zh/d001.md", relevance: 3 }],
+      topDocs: [
+        "zh/d002.md",
+        "zh/d003.md",
+        "zh/d004.md",
+        "zh/d005.md",
+        "zh/d006.md",
+        "zh/d007.md",
+        "zh/d001.md",
+      ],
+      warmLatencyMs: 1,
+    });
+
+    expect(summarizeCjkLanguage("zh", [failing]).failures).toEqual([
+      expect.objectContaining({
+        queryId: "zh-ranking",
+        category: "ranking",
+        reason: "below-rank-5",
+        topDocs: [
+          "zh/d002.md",
+          "zh/d003.md",
+          "zh/d004.md",
+          "zh/d005.md",
+          "zh/d006.md",
+        ],
+      }),
+    ]);
+  });
+
   test("stable fingerprints exclude timestamps and all millisecond timings", () => {
     const first = {
       generatedAt: "2026-07-22T10:00:00Z",

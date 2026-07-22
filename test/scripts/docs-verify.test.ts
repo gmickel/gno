@@ -159,13 +159,106 @@ describe("public truth verification", () => {
       },
     ]);
 
-    expect(mismatches).toHaveLength(1);
-    expect(mismatches[0]).toEqual(
-      expect.objectContaining({
-        claimClass: "cjk-lexical-benchmark",
-        message: expect.stringContaining("2026-07-22.md"),
-      })
+    expect(mismatches).toHaveLength(2);
+    expect(mismatches).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          claimClass: "cjk-lexical-benchmark",
+          message: expect.stringContaining("2026-07-22.md"),
+        }),
+        expect.objectContaining({
+          claimClass: "cjk-lexical-benchmark",
+          message: expect.stringContaining(
+            "does not bind canonical metrics to each language"
+          ),
+        }),
+      ])
     );
+  });
+
+  test("rejects contradictory CJK metrics and unsupported superlatives", () => {
+    const benchmark = PUBLIC_TRUTH.benchmarks.cjkLexical;
+    const labels = ["Chinese", "Japanese", "Korean"];
+    const canonical = [
+      `[${benchmark.evidencePath}](${benchmark.evidencePath})`,
+      `[${benchmark.gatesPath}](${benchmark.gatesPath})`,
+      "Production BM25 lexical fallback is separate from semantic evidence.",
+      "All positive qrels use relevance `3`.",
+      ...Object.values(benchmark.languages).map(
+        ({ baseline, minimumCandidate }, index) =>
+          `${labels[index]}: baseline Recall@10 ${baseline.recallAt10}, nDCG@10 ${baseline.ndcgAt10}, zero-result ${baseline.zeroResultRate}; promotion Recall@10 ${minimumCandidate.recallAt10}, nDCG@10 ${minimumCandidate.ndcgAt10}, maximum zero-result ${minimumCandidate.zeroResultRate}`
+      ),
+      "The best result also scored 0.9999.",
+    ].join("\n");
+
+    const mismatches = verifyAnchoredPublicTruth([
+      {
+        path: "docs/benchmark.md",
+        content: anchored("cjk-lexical-benchmark", canonical),
+      },
+    ]);
+
+    expect(mismatches).toHaveLength(2);
+    expect(mismatches.map(({ message }) => message)).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining("unsupported superlative"),
+        expect.stringContaining("non-canonical metric(s): 0.9999"),
+      ])
+    );
+  });
+
+  test("rejects canonical CJK values assigned to the wrong language", () => {
+    const benchmark = PUBLIC_TRUTH.benchmarks.cjkLexical;
+    const { zh, ja, ko } = benchmark.languages;
+    const tuple = (label: string, values: typeof zh): string =>
+      `${label}: baseline Recall@10 ${values.baseline.recallAt10}, nDCG@10 ${values.baseline.ndcgAt10}, zero-result ${values.baseline.zeroResultRate}; promotion Recall@10 ${values.minimumCandidate.recallAt10}, nDCG@10 ${values.minimumCandidate.ndcgAt10}, maximum zero-result ${values.minimumCandidate.zeroResultRate}`;
+    const swapped = [
+      `[${benchmark.evidencePath}](${benchmark.evidencePath})`,
+      `[${benchmark.gatesPath}](${benchmark.gatesPath})`,
+      "Production BM25 lexical fallback is separate from semantic evidence.",
+      "All positive qrels use relevance `3`.",
+      tuple("Chinese", ja),
+      tuple("Japanese", zh),
+      tuple("Korean", ko),
+    ].join("\n");
+
+    const mismatches = verifyAnchoredPublicTruth([
+      {
+        path: "docs/benchmark.md",
+        content: anchored("cjk-lexical-benchmark", swapped),
+      },
+    ]);
+
+    expect(mismatches).toHaveLength(1);
+    expect(mismatches[0]?.message).toContain(
+      "does not bind canonical metrics to each language"
+    );
+    expect(mismatches[0]?.message).toContain(
+      "Chinese: baseline Recall@10 0.2222"
+    );
+  });
+
+  test("validates every CJK JSON Markdown and gate evidence path", async () => {
+    const benchmark = PUBLIC_TRUTH.benchmarks.cjkLexical;
+    expect(await validatePublicTruthEvidence()).toEqual([]);
+
+    const missing = await validatePublicTruthEvidence(
+      "/tmp/gno-public-truth-evidence-does-not-exist"
+    );
+    for (const path of [
+      benchmark.dataPath,
+      benchmark.evidencePath,
+      benchmark.gatesDataPath,
+      benchmark.gatesPath,
+    ]) {
+      expect(missing).toContainEqual(
+        expect.objectContaining({
+          path,
+          claimClass: "manifest-evidence",
+          message: "manifest evidence does not exist",
+        })
+      );
+    }
   });
 
   test("rejects stale extra metrics when every canonical benchmark token remains", () => {

@@ -318,11 +318,16 @@ semantic fixture covers only five languages.
 
 Model-free lexical fallback has a separate immutable
 [July 22, 2026 CJK benchmark](../evals/fixtures/cjk-lexical-benchmark/2026-07-22.md).
-Production BM25 Recall@10/nDCG@10 was `0.125` for both Chinese and Japanese and
-`0.5` for Korean; zero-result rates were `0.875`, `0.875`, and `0.5`. The
+Production BM25 lexical results and frozen floors:
+
+- Chinese: baseline Recall@10 `0.2222`, nDCG@10 `0.1507`, zero-result `0.7778`; promotion Recall@10 `0.4722`, nDCG@10 `0.4007`, maximum zero-result `0.5278`
+- Japanese: baseline Recall@10 `0.125`, nDCG@10 `0.125`, zero-result `0.875`; promotion Recall@10 `0.375`, nDCG@10 `0.375`, maximum zero-result `0.625`
+- Korean: baseline Recall@10 `0.5`, nDCG@10 `0.5`, zero-result `0.5`; promotion Recall@10 `0.75`, nDCG@10 `0.75`, maximum zero-result `0.25`
+
+The
 [promotion-gates.md](../evals/fixtures/cjk-lexical-benchmark/promotion-gates.md)
-requires candidate floors of `0.375`, `0.375`, and `0.75` with maximum
-zero-result rates of `0.625`, `0.625`, and `0.25`. These lexical results do not
+also binds MRR, non-regression, and cost requirements. The Chinese fixture
+includes a genuine rank-6 retrieval failure. These lexical results do not
 describe semantic retrieval or select an implementation, and no production
 analyzer/configuration changed. All positive qrels use relevance `3`, so nDCG
 measures placement but not distinctions among positive gain grades.

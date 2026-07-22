@@ -86,19 +86,11 @@ export const classifyCjkFailures = (
       : item.metrics.recallAt10 === 0
         ? "not-in-top-10"
         : "below-rank-5";
-    const diagnosticCategories = new Set([
-      "identifier",
-      "mixed-script",
-      "normalization",
-      "token-boundary",
-    ]);
     return [
       {
         queryId: item.queryId,
         language: item.language,
-        category: diagnosticCategories.has(item.category)
-          ? item.category
-          : "ranking",
+        category: item.category,
         reason,
         query: item.query,
         expected: item.expected,

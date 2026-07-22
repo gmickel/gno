@@ -105,6 +105,7 @@ export type CjkBenchCategory =
   | "mixed-script"
   | "normalization"
   | "punctuation"
+  | "ranking"
   | "token-boundary";
 
 export type CjkBenchLane =
@@ -133,7 +134,7 @@ export interface CjkBenchLatency {
 export interface CjkBenchFailure {
   queryId: string;
   language: CjkBenchLanguage;
-  category: CjkBenchCategory | "ranking";
+  category: CjkBenchCategory;
   reason: "below-rank-5" | "not-in-top-10" | "zero-result";
   query: string;
   expected: string[];

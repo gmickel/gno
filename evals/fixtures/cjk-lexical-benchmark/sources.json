@@ -6,7 +6,7 @@
     "provenance": "original-synthetic",
     "authoredAt": "2026-07-22",
     "normalization": "NFC",
-    "contentSha256": "b0f19f0dd7cb7b21170b9db227ea5b562f03bb3f59e8a4739bc433cccb4d1210"
+    "contentSha256": "4be3cdc75e568cc9a78818a2dafc65b2e7a34ad63950f134330ec987019bf58f"
   },
   {
     "id": "zh/d002.md",
@@ -15,7 +15,7 @@
     "provenance": "original-synthetic",
     "authoredAt": "2026-07-22",
     "normalization": "NFC",
-    "contentSha256": "9066fe48d281a573006c74597fe2ee45490050273ceb7bcb7deb6719d0452f82"
+    "contentSha256": "1789ecb761b3c5e77171eb570565fcac08684f18683f31f733f307248aa9af34"
   },
   {
     "id": "zh/d003.md",
@@ -24,7 +24,7 @@
     "provenance": "original-synthetic",
     "authoredAt": "2026-07-22",
     "normalization": "NFC",
-    "contentSha256": "12e0fb0beb5b74ed6ddf9c0d51999270ce17f9aa216c48d25aabc6603130728a"
+    "contentSha256": "b2911f4b29857bfbfae9ca62da3c40149ea5e45397f7f4f321b36da2cbc1febf"
   },
   {
     "id": "zh/d004.md",
@@ -33,7 +33,7 @@
     "provenance": "original-synthetic",
     "authoredAt": "2026-07-22",
     "normalization": "NFC",
-    "contentSha256": "be4d66721a970fa98a4bbbbbab4e615965ce8794d67b7dabf35ec8f7d72c7510"
+    "contentSha256": "8a826247c6cad2982e4b10abbf3f604474ad9403af8a392f6f8986d9fd0636ed"
   },
   {
     "id": "zh/d005.md",
@@ -42,7 +42,7 @@
     "provenance": "original-synthetic",
     "authoredAt": "2026-07-22",
     "normalization": "NFC",
-    "contentSha256": "3b4ce089dc3ba087a43d20beacbf23c919a7d066e02ba51ae4063433ae142d51"
+    "contentSha256": "90e6bb697012a7e2ffd096517a83b2ed9f8a85358eeb1a7d7396ff3ffec49c94"
   },
   {
     "id": "zh/d006.md",
@@ -51,7 +51,7 @@
     "provenance": "original-synthetic",
     "authoredAt": "2026-07-22",
     "normalization": "NFC",
-    "contentSha256": "e07dabee0066bf657c29b391dea8beac6d34b144279eb932845291aba7c91421"
+    "contentSha256": "79c200ccdd840912ee5e992ee55a3a25fda7cb9f9951e5f13ae5c99174489ebc"
   },
   {
     "id": "zh/d007.md",
@@ -60,7 +60,7 @@
     "provenance": "original-synthetic",
     "authoredAt": "2026-07-22",
     "normalization": "NFC",
-    "contentSha256": "e40e1926f3b09fbba53810a2060af8f5df648a8c10e103d5de86048a8e42389c"
+    "contentSha256": "877b657ecaa19e4c8735737dd54bebccc9a26c65e85c3a49e0536959186fbf95"
   },
   {
     "id": "ja/d001.md",

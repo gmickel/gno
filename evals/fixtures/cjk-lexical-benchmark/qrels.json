@@ -15,6 +15,7 @@
     { "queryId": "zh-q006", "docid": "zh/d006.md", "relevance": 3 },
     { "queryId": "zh-q007", "docid": "zh/d007.md", "relevance": 3 },
     { "queryId": "zh-q008", "docid": "zh/d002.md", "relevance": 3 },
+    { "queryId": "zh-q009", "docid": "zh/d001.md", "relevance": 3 },
     { "queryId": "ja-q001", "docid": "ja/d001.md", "relevance": 3 },
     { "queryId": "ja-q002", "docid": "ja/d002.md", "relevance": 3 },
     { "queryId": "ja-q003", "docid": "ja/d003.md", "relevance": 3 },
