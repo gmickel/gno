@@ -60,3 +60,36 @@ export function extractSections(content: string): DocumentSection[] {
 
   return sections;
 }
+
+/** Extract one inclusive, 1-based line range without normalizing source bytes. */
+export function extractInclusiveLines(
+  content: string,
+  startLine: number,
+  endLine: number
+): string | null {
+  if (
+    content.includes("\r") ||
+    !Number.isSafeInteger(startLine) ||
+    !Number.isSafeInteger(endLine) ||
+    startLine < 1 ||
+    endLine < startLine
+  ) {
+    return null;
+  }
+  const lines = content.split("\n");
+  if (endLine > lines.length) return null;
+  return lines.slice(startLine - 1, endLine).join("\n");
+}
+
+/** Find the nearest Markdown heading governing a 1-based source line. */
+export function headingForLine(
+  sections: readonly DocumentSection[],
+  line: number
+): string | null {
+  let heading: string | null = null;
+  for (const section of sections) {
+    if (section.line > line) break;
+    heading = section.title;
+  }
+  return heading;
+}
