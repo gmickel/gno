@@ -559,6 +559,158 @@ describe("lexical activation verifier", () => {
     });
   });
 
+  test("revalidates a cached receipt when the index changes during lookup", async () => {
+    await addDocument("cached-race.md", "cachedraceneedle original evidence");
+    const original = await verifyLexicalActivation(
+      adapter,
+      "notes",
+      verifierOptions
+    );
+    expect(original.ok).toBe(true);
+    if (!original.ok) {
+      return;
+    }
+
+    let mutated = false;
+    const racingStore = new Proxy(adapter, {
+      get(target, property, receiver) {
+        if (property === "getActivationReceipt") {
+          return async (
+            ...args: Parameters<StorePort["getActivationReceipt"]>
+          ) => {
+            const receipt = await target.getActivationReceipt(...args);
+            if (!mutated) {
+              mutated = true;
+              await addDocument(
+                "cached-race.md",
+                "cachedracereplacement current evidence"
+              );
+            }
+            return receipt;
+          };
+        }
+        const value = Reflect.get(target, property, receiver);
+        return typeof value === "function" ? value.bind(target) : value;
+      },
+    }) as StorePort;
+
+    const current = await verifyLexicalActivation(
+      racingStore,
+      "notes",
+      verifierOptions
+    );
+    expect(current.ok).toBe(true);
+    if (current.ok) {
+      expect(current.value.ready).toBe(true);
+      expect(current.value.fingerprint).not.toBe(original.value.fingerprint);
+    }
+  });
+
+  test("retries when the index changes after lexical search", async () => {
+    await addDocument("post-search.md", "postsearchneedle original evidence");
+    let mutated = false;
+    const racingStore = new Proxy(adapter, {
+      get(target, property, receiver) {
+        if (property === "searchFts") {
+          return async (...args: Parameters<StorePort["searchFts"]>) => {
+            const results = await target.searchFts(...args);
+            if (!mutated) {
+              mutated = true;
+              await addDocument(
+                "post-search.md",
+                "postsearchreplacement current evidence"
+              );
+            }
+            return results;
+          };
+        }
+        const value = Reflect.get(target, property, receiver);
+        return typeof value === "function" ? value.bind(target) : value;
+      },
+    }) as StorePort;
+
+    const result = await verifyLexicalActivation(racingStore, "notes", {
+      ...verifierOptions,
+      force: true,
+    });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.ready).toBe(true);
+      expect(result.value.evidence.resultSourceHash).toBe(
+        hash("source:post-search.md:postsearchreplacement current evidence")
+      );
+    }
+  });
+
+  test("repairs an out-of-order receipt overwrite before returning", async () => {
+    await addDocument(
+      "overwrite-race.md",
+      "overwriteraceneedle original evidence"
+    );
+    let releaseFirstWrite: () => void = () => {};
+    let announceFirstWrite: () => void = () => {};
+    const firstWriteReached = new Promise<void>((resolve) => {
+      announceFirstWrite = resolve;
+    });
+    const firstWriteReleased = new Promise<void>((resolve) => {
+      releaseFirstWrite = resolve;
+    });
+    let delayWrite = true;
+    const delayedStore = new Proxy(adapter, {
+      get(target, property, receiver) {
+        if (property === "upsertActivationReceipt") {
+          return async (
+            ...args: Parameters<StorePort["upsertActivationReceipt"]>
+          ) => {
+            if (delayWrite) {
+              delayWrite = false;
+              announceFirstWrite();
+              await firstWriteReleased;
+            }
+            return target.upsertActivationReceipt(...args);
+          };
+        }
+        const value = Reflect.get(target, property, receiver);
+        return typeof value === "function" ? value.bind(target) : value;
+      },
+    }) as StorePort;
+
+    const olderVerification = verifyLexicalActivation(
+      delayedStore,
+      "notes",
+      verifierOptions
+    );
+    await firstWriteReached;
+    await addDocument(
+      "overwrite-race.md",
+      "overwriteracereplacement current evidence"
+    );
+    const newerVerification = await verifyLexicalActivation(
+      adapter,
+      "notes",
+      verifierOptions
+    );
+    expect(newerVerification.ok).toBe(true);
+    releaseFirstWrite();
+
+    const completedOlderVerification = await olderVerification;
+    expect(completedOlderVerification.ok).toBe(true);
+    if (!(newerVerification.ok && completedOlderVerification.ok)) {
+      return;
+    }
+    expect(completedOlderVerification.value.fingerprint).toBe(
+      newerVerification.value.fingerprint
+    );
+    const persisted = await adapter.getActivationReceipt(
+      "notes",
+      newerVerification.value.fingerprint
+    );
+    expect(persisted.ok).toBe(true);
+    expect(persisted.ok ? persisted.value?.fingerprint : null).toBe(
+      newerVerification.value.fingerprint
+    );
+  });
+
   test("invalidates receipts when FTS synchronization state changes", async () => {
     await addDocument("race.md", "synchronizationneedle evidence", false);
 

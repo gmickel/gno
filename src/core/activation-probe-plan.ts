@@ -56,6 +56,11 @@ export interface EphemeralActivationProbeMatch {
   resultSourceHash: string;
 }
 
+export interface ActivationProbePlanRevalidation {
+  stable: boolean;
+  currentPlan: EphemeralActivationProbePlan;
+}
+
 export type ActivationProbeMatchResult =
   | { kind: "matched"; value: EphemeralActivationProbeMatch }
   | { kind: "no_probe_term" }
@@ -230,6 +235,29 @@ export async function populateEphemeralActivationProbePlan(
     return candidates;
   }
   return ok({ ...plan, candidates: candidates.value });
+}
+
+/**
+ * Re-read the metadata-only activation snapshot and compare it with a plan
+ * created before an asynchronous proof. Callers use this optimistic guard
+ * immediately before accepting or persisting proof derived from that plan.
+ */
+export async function revalidateEphemeralActivationProbePlan(
+  store: StorePort,
+  plan: EphemeralActivationProbePlan
+): Promise<StoreResult<ActivationProbePlanRevalidation>> {
+  const current = await createEphemeralActivationProbePlan(
+    store,
+    plan.collection,
+    { collectCandidates: false }
+  );
+  if (!current.ok) {
+    return current;
+  }
+  return ok({
+    stable: current.value.fingerprint === plan.fingerprint,
+    currentPlan: current.value,
+  });
 }
 
 export async function findEphemeralActivationProbeMatch(
