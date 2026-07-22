@@ -22,10 +22,11 @@ import {
 import { searchHybrid } from "../pipeline/hybrid";
 import {
   currentContextFingerprints,
-  normalizeContextBuildInput,
   projectContextCapsule,
 } from "./context-runtime-contract";
+import { normalizeContextBuildInput } from "./context-runtime-input";
 import { ContextRuntimeError } from "./context-runtime-types";
+import { canonicalizeIndexName } from "./index-name";
 
 export type {
   ContextCapsuleBuildInput,
@@ -35,23 +36,20 @@ export type {
 } from "./context-runtime-types";
 export { ContextRuntimeError } from "./context-runtime-types";
 
-const DEFAULT_CANDIDATE_LIMIT = 40;
-const DEFAULT_LIMIT = 20;
-
 /** Build one strict Capsule through the shared compiler composition. */
 export const buildContextCapsule = async (
   input: ContextCapsuleBuildInput,
   deps: ContextCapsuleRuntimeDeps
 ): Promise<ContextCapsuleV1> => {
   const now = new Date();
-  const normalized = normalizeContextBuildInput(input, deps.indexName, now);
+  const normalized = normalizeContextBuildInput(
+    input,
+    deps.indexName,
+    now,
+    deps.config.collections.map((collection) => collection.name)
+  );
   const noRerank = normalized.depthPolicy === "fast";
-  const candidateLimit =
-    normalized.candidateLimit ??
-    (normalized.depthPolicy === "thorough"
-      ? DEFAULT_CANDIDATE_LIMIT * 2
-      : DEFAULT_CANDIDATE_LIMIT);
-  const plan = await compileContextEvidence(
+  const plan = await compileContextEvidence<ContextCapsuleV1>(
     {
       goal: normalized.goal,
       query: normalized.query,
@@ -62,13 +60,13 @@ export const buildContextCapsule = async (
       tagsAll: normalized.tagsAll,
       tagsAny: normalized.tagsAny,
       categories: normalized.categories,
-      author: normalized.author,
-      lang: normalized.lang,
+      author: normalized.author ?? undefined,
+      lang: normalized.lang ?? undefined,
       since: normalized.since,
       until: normalized.until,
       graph: normalized.graph,
-      limit: normalized.limit ?? DEFAULT_LIMIT,
-      candidateLimit,
+      limit: normalized.limit,
+      candidateLimit: normalized.candidateLimit,
       temporalNow: now,
       limits: {
         requestedBytes: normalized.budgetBytes,
@@ -126,15 +124,25 @@ export const verifyContextCapsuleRuntime = async (
 ): Promise<ContextCapsuleVerification> => {
   // Parse before any store access. verifyContextCapsule repeats this guard to
   // retain its standalone fail-closed contract.
-  const capsule = parseCanonicalContextCapsuleForVerification(
-    input,
-    deps.countTokens
-  );
+  const capsule = parseCanonicalContextCapsuleForVerification(input, {
+    countTokens: deps.countTokens,
+    tokenizerFingerprint: deps.tokenizerFingerprint,
+  });
+  if (
+    deps.indexName !== undefined &&
+    canonicalizeIndexName(deps.indexName) !== capsule.scope.indexName
+  ) {
+    throw new ContextRuntimeError(
+      "invalid_filter",
+      `Context Capsule index ${capsule.scope.indexName} does not match runtime index ${deps.indexName}`
+    );
+  }
   return verifyContextCapsule(input, {
     store: deps.store,
     currentFingerprints: currentContextFingerprints(capsule, deps),
     resolveCurrentRanks: deps.resolveCurrentRanks,
     countTokens: deps.countTokens,
+    tokenizerFingerprint: deps.tokenizerFingerprint,
   });
 };
 
@@ -149,7 +157,13 @@ export const canonicalVerifiedContextCapsuleJson = (
 /** Pure validation used by CLI before opening the selected store. */
 export const validateContextCapsuleBuildInput = (
   input: ContextCapsuleBuildInput,
-  defaultIndexName?: string
+  defaultIndexName?: string,
+  configuredCollectionNames?: readonly string[]
 ): void => {
-  normalizeContextBuildInput(input, defaultIndexName, new Date());
+  normalizeContextBuildInput(
+    input,
+    defaultIndexName,
+    new Date(),
+    configuredCollectionNames
+  );
 };

@@ -45,6 +45,7 @@ import type {
 import { decorateUriForIndex, getIndexDbPath } from "../app/constants";
 import {
   buildContextCapsule,
+  validateContextCapsuleBuildInput,
   verifyContextCapsuleRuntime,
 } from "../app/context-runtime";
 import { INDEX_NAME_REQUIREMENTS, isValidIndexName } from "../app/index-name";
@@ -653,6 +654,11 @@ class GnoClientImpl implements GnoClient {
 
   async context(input: GnoContextInput): Promise<GnoContextResult> {
     this.assertOpen();
+    validateContextCapsuleBuildInput(
+      { ...input, indexName: this.indexName },
+      this.indexName,
+      this.config.collections.map((collection) => collection.name)
+    );
     const collection =
       input.collections?.length === 1 ? input.collections[0] : undefined;
     const useModels = input.depthPolicy !== "fast";

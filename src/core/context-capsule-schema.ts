@@ -2,12 +2,16 @@ import { z } from "zod";
 
 import { buildUri, deriveDocid, parseUri } from "../app/constants";
 import { isValidIndexName } from "../app/index-name";
+import { contextCapsuleIndexSnapshotSchema } from "./context-capsule-index-schema";
+import { contextCapsuleRetrievalSchema } from "./context-capsule-retrieval-schema";
 import {
   contextCapsuleEvidenceIdentity,
   contextCapsuleOmissionIdentity,
   sha256Text,
   validateContextCapsulePayload,
 } from "./context-capsule-validation";
+
+export { contextCapsuleIndexSnapshotSchema } from "./context-capsule-index-schema";
 
 export const CONTEXT_CAPSULE_SCHEMA_VERSION = "1.0" as const;
 export const CONTEXT_CAPSULE_COORDINATE_SPACE = "canonical_mirror" as const;
@@ -148,28 +152,6 @@ const budgetSchema = z
       path: ["safetyMarginBytes"],
     }
   );
-
-export const contextCapsuleIndexSnapshotSchema = z
-  .object({
-    before: sha256Schema,
-    after: sha256Schema,
-    stable: z.literal(true),
-  })
-  .strict()
-  .refine((value) => value.before === value.after, {
-    message: "index changed while the operation was running",
-    path: ["after"],
-  });
-
-const retrievalSchema = z
-  .object({
-    depthPolicy: z.enum(["fast", "balanced", "thorough"]),
-    facets: z.array(nonEmptyTextSchema.max(512)).max(128),
-    queryVariants: z.array(nonEmptyTextSchema.max(4096)).min(1).max(128),
-    expansionPolicy: z.literal("deterministic_only"),
-    indexSnapshot: contextCapsuleIndexSnapshotSchema,
-  })
-  .strict();
 
 const capabilitiesSchema = z
   .object({
@@ -472,7 +454,7 @@ export const contextCapsulePayloadV1Schema = z
     query: nonEmptyTextSchema,
     scope: scopeSchema,
     budget: budgetSchema,
-    retrieval: retrievalSchema,
+    retrieval: contextCapsuleRetrievalSchema,
     fingerprints: fingerprintsSchema,
     capabilities: capabilitiesSchema,
     fallbacks: z.array(fallbackSchema).max(16),

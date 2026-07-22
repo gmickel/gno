@@ -78,6 +78,11 @@ export const contextBuild = async (
   let rerankPort: RerankPort | null = null;
   let vectorIndex: VectorIndexPort | null = null;
   try {
+    validateContextCapsuleBuildInput(
+      { goal, ...options },
+      options.indexName,
+      config.collections.map((collection) => collection.name)
+    );
     if (options.depthPolicy !== "fast") {
       const globals = getGlobals();
       const policy = resolveDownloadPolicy(process.env, {

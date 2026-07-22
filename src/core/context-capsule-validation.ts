@@ -91,10 +91,14 @@ const validateCapabilityBindings = (
   context: RefinementCtx
 ): void => {
   const bindings = [
-    ["semanticSearch", "embedding_unavailable", "embeddingModel"],
-    ["reranking", "reranking_unavailable", "rerankModel"],
-    ["graphExpansion", "graph_unavailable", null],
-    ["egressPolicy", "egress_policy_unavailable", null],
+    [
+      "semanticSearch",
+      "semanticSearch",
+      "embedding_unavailable",
+      "embeddingModel",
+    ],
+    ["reranking", "reranking", "reranking_unavailable", "rerankModel"],
+    ["graphExpansion", "graphExpansion", "graph_unavailable", null],
   ] as const;
   const expectedFallbackCapabilities = new Map([
     ["embedding_unavailable", "semantic_search"],
@@ -115,25 +119,41 @@ const validateCapabilityBindings = (
       path: ["fallbacks"],
     });
   }
-  for (const [capability, fallback, fingerprint] of bindings) {
-    const available = value.capabilities[capability];
-    if (fallbackKeys.has(fallback) === available) {
+  for (const [capability, stateKey, fallback, fingerprint] of bindings) {
+    const state = value.retrieval.capabilityStates[stateKey];
+    const used = state.outcome === "used";
+    const unavailable = state.outcome === "unavailable";
+    if (value.capabilities[capability] !== used) {
       context.addIssue({
         code: "custom",
-        message: `${fallback} must be present exactly when ${capability} is unavailable`,
+        message: `${capability} must reflect its retrieval outcome`,
+        path: ["capabilities", capability],
+      });
+    }
+    if (fallbackKeys.has(fallback) !== unavailable) {
+      context.addIssue({
+        code: "custom",
+        message: `${fallback} must describe attempted unavailable retrieval only`,
         path: ["fallbacks"],
       });
     }
-    if (
-      fingerprint &&
-      (value.fingerprints[fingerprint] !== null) !== available
-    ) {
+    if (fingerprint && (value.fingerprints[fingerprint] !== null) !== used) {
       context.addIssue({
         code: "custom",
         message: `${fingerprint} must be present exactly when ${capability} is available`,
         path: ["fingerprints", fingerprint],
       });
     }
+  }
+  if (
+    fallbackKeys.has("egress_policy_unavailable") ===
+    value.capabilities.egressPolicy
+  ) {
+    context.addIssue({
+      code: "custom",
+      message: "egress fallback must reflect policy availability",
+      path: ["fallbacks"],
+    });
   }
   if (value.fingerprints.tokenizer !== value.budget.tokenizerFingerprint) {
     context.addIssue({
@@ -329,6 +349,21 @@ export const validateContextCapsulePayload = (
       message:
         "token estimator authority, capability, fingerprint, and fallback disagree",
       path: ["budget", "estimator"],
+    });
+  }
+  const semanticRequested = value.retrieval.depthPolicy !== "fast";
+  if (
+    value.retrieval.capabilityStates.semanticSearch.requested !==
+      semanticRequested ||
+    value.retrieval.capabilityStates.reranking.requested !==
+      semanticRequested ||
+    value.retrieval.capabilityStates.graphExpansion.requested !==
+      value.retrieval.request.graphRequested
+  ) {
+    context.addIssue({
+      code: "custom",
+      message: "retrieval requests and capability states disagree",
+      path: ["retrieval", "capabilityStates"],
     });
   }
   validateCapabilityBindings(value, fallbackKeys, context);

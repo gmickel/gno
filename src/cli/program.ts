@@ -1667,6 +1667,12 @@ function wireManagementCommands(program: Command): void {
     .option("--bytes <bytes>", "global byte budget")
     .option("--query <query>", "retrieval query (defaults to goal)")
     .option(
+      "--query-mode <mode:text>",
+      "structured mode entry (repeatable): term:<text>, intent:<text>, or hyde:<text>",
+      (value: string, previous: string[] = []) => [...previous, value],
+      []
+    )
+    .option(
       "-c, --collection <name>",
       "collection filter (repeatable)",
       (value: string, previous: string[] = []) => [...previous, value],
@@ -1699,6 +1705,17 @@ function wireManagementCommands(program: Command): void {
       }
       const globals = getGlobals();
       const { contextBuild } = await import("./commands/context-build");
+      let queryModes: import("../pipeline/types").QueryModeInput[] | undefined;
+      if (Array.isArray(cmdOpts.queryMode) && cmdOpts.queryMode.length > 0) {
+        const { parseQueryModeSpecs } = await import("../pipeline/query-modes");
+        const parsed = parseQueryModeSpecs(cmdOpts.queryMode as string[]);
+        if (!parsed.ok) {
+          throw new CliError("VALIDATION", parsed.error.message, {
+            details: { contextCode: "invalid_filter" },
+          });
+        }
+        queryModes = parsed.value;
+      }
       const output = await contextBuild(goalParts.join(" "), {
         configPath: globals.config,
         indexName: globals.index,
@@ -1718,6 +1735,7 @@ function wireManagementCommands(program: Command): void {
           true
         ),
         query: cmdOpts.query as string | undefined,
+        queryModes,
         collections: cmdOpts.collection as string[],
         uriPrefix: cmdOpts.uriPrefix as string | undefined,
         tagsAll: parseCsvValues(cmdOpts.tagsAll),

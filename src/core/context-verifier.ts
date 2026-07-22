@@ -11,12 +11,7 @@ import type { ContextCapsuleVerification } from "./context-capsule-verification"
 
 import { decorateUriForIndex, deriveDocid } from "../app/constants";
 import { chunkMatchesCanonicalContent } from "../pipeline/chunk-lookup";
-import {
-  canonicalContextCapsuleJson,
-  ContextCapsuleContractError,
-  parseContextCapsuleV1,
-  type ContextCapsuleCreateOptions,
-} from "./context-capsule";
+import { type ContextCapsuleCreateOptions } from "./context-capsule";
 import { sha256Text } from "./context-capsule-validation";
 import {
   CONTEXT_CAPSULE_FINGERPRINT_DRIFT_REASONS,
@@ -26,10 +21,11 @@ import {
   captureContextEvidenceSnapshot,
   type ContextEvidenceSnapshot,
 } from "./context-evidence";
+import { canonicalVerifierJson } from "./context-verifier-canonical";
 import {
-  canonicalVerifierJson,
-  hasNoncanonicalVerifierText,
-} from "./context-verifier-canonical";
+  parseCanonicalContextCapsuleForVerification,
+  rawCanonicalContextJson,
+} from "./context-verifier-input";
 import { extractInclusiveLines } from "./sections";
 
 type ContextVerifierStore = Pick<
@@ -57,6 +53,7 @@ export interface ContextVerifierDeps {
     capsule: ContextCapsuleV1
   ) => Promise<ReadonlyMap<string, number>>;
   countTokens?: ContextCapsuleCreateOptions["countTokens"];
+  tokenizerFingerprint?: string | null;
 }
 
 export type ContextVerifierErrorCode =
@@ -347,51 +344,15 @@ const fingerprintReasons = (
   );
 };
 
-const rawCanonicalJson = (input: unknown): string => {
-  try {
-    return canonicalVerifierJson(input);
-  } catch (cause) {
-    throw new ContextCapsuleContractError(
-      "invalid_input",
-      "Context Capsule input must be canonical JSON",
-      { cause }
-    );
-  }
-};
-
-/** Verify a Capsule without rebuilding it or mutating caller-owned input. */
-export const parseCanonicalContextCapsuleForVerification = (
-  input: unknown,
-  countTokens?: ContextCapsuleCreateOptions["countTokens"]
-): ContextCapsuleV1 => {
-  const options = { countTokens };
-  const rawInputBefore = rawCanonicalJson(input);
-  if (hasNoncanonicalVerifierText(input)) {
-    throw new ContextCapsuleContractError(
-      "invalid_input",
-      "Context Capsule input must already use NFC text and LF line endings"
-    );
-  }
-  const capsule = parseContextCapsuleV1(input, options);
-  if (rawInputBefore !== canonicalContextCapsuleJson(capsule)) {
-    throw new ContextCapsuleContractError(
-      "invalid_input",
-      "Context Capsule input must already use its canonical semantic representation"
-    );
-  }
-  return capsule;
-};
+export { parseCanonicalContextCapsuleForVerification } from "./context-verifier-input";
 
 /** Verify a Capsule without rebuilding it or mutating caller-owned input. */
 export const verifyContextCapsule = async (
   input: unknown,
   deps: ContextVerifierDeps
 ): Promise<ContextCapsuleVerification> => {
-  const rawInputBefore = rawCanonicalJson(input);
-  const capsule = parseCanonicalContextCapsuleForVerification(
-    input,
-    deps.countTokens
-  );
+  const rawInputBefore = rawCanonicalContextJson(input);
+  const capsule = parseCanonicalContextCapsuleForVerification(input, deps);
   const before = await captureContextEvidenceSnapshot(
     deps.store,
     capsule.scope.indexName,
@@ -456,7 +417,7 @@ export const verifyContextCapsule = async (
       "Configured contexts changed while Context Capsule verification was running"
     );
   }
-  const rawInputAfter = rawCanonicalJson(input);
+  const rawInputAfter = rawCanonicalContextJson(input);
   if (rawInputBefore !== rawInputAfter) {
     throw new ContextVerifierError(
       "capsule_mutated_during_verify",

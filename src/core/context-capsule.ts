@@ -74,6 +74,27 @@ const normalizePayload = (
     ...value.retrieval,
     facets: normalizeSet(value.retrieval.facets),
     queryVariants: value.retrieval.queryVariants.map(normalizeText),
+    request: {
+      ...value.retrieval.request,
+      author:
+        value.retrieval.request.author === null
+          ? null
+          : normalizeText(value.retrieval.request.author),
+      lang:
+        value.retrieval.request.lang === null
+          ? null
+          : normalizeText(value.retrieval.request.lang),
+      queryModes: value.retrieval.request.queryModes.map((mode) => ({
+        ...mode,
+        text: normalizeText(mode.text),
+      })),
+    },
+    capabilityStates: Object.fromEntries(
+      Object.entries(value.retrieval.capabilityStates).map(([key, state]) => [
+        key,
+        { ...state, fallbackReasons: normalizeSet(state.fallbackReasons) },
+      ])
+    ) as typeof value.retrieval.capabilityStates,
   },
   fallbacks: [...value.fallbacks].sort((left, right) =>
     compareCodeUnits(
@@ -128,7 +149,8 @@ export type ContextCapsuleErrorCode =
   | "index_changed_during_compile"
   | "invalid_budget"
   | "invalid_input"
-  | "no_evidence";
+  | "no_evidence"
+  | "tokenizer_unavailable";
 
 export class ContextCapsuleContractError extends Error {
   readonly code: ContextCapsuleErrorCode;

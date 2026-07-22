@@ -5,6 +5,7 @@ import {
   canonicalVerifiedContextCapsuleJson,
   verifyContextCapsuleRuntime,
 } from "../../app/context-runtime";
+import { canonicalizeIndexName } from "../../app/index-name";
 import { parseCanonicalContextCapsuleForVerification } from "../../core/context-verifier";
 import { CliError } from "../errors";
 import { contextCliError } from "./context-build";
@@ -51,6 +52,16 @@ export const contextVerify = async (
     capsule = parseCanonicalContextCapsuleForVerification(input);
   } catch (error) {
     throw contextCliError(error);
+  }
+  if (
+    options.indexName !== undefined &&
+    canonicalizeIndexName(options.indexName) !== capsule.scope.indexName
+  ) {
+    throw new CliError(
+      "VALIDATION",
+      `Context Capsule index ${capsule.scope.indexName} does not match --index ${options.indexName}`,
+      { details: { contextCode: "invalid_filter" } }
+    );
   }
   const initResult = await initStore({
     configPath: options.configPath,

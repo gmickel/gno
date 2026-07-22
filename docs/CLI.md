@@ -657,16 +657,26 @@ document. Evidence keeps exact canonical-mirror line ranges and source, mirror,
 and passage hashes. Selection collapses duplicates, rewards uncovered query
 facets, and records every omission and gap. `--fast` avoids model loading;
 default and `--thorough` use available semantic/rerank capabilities and record
-fallbacks when unavailable.
+fallbacks when attempted but unavailable. The persisted retrieval plan records
+normalized author/language/query-mode filters, effective limits, graph request,
+and requested/attempted/outcome state. A capability that was not requested is
+reported as `not_requested`, not as an availability failure. Unknown requested
+collections fail validation before retrieval.
 
 JSON is deterministic and machine-readable. Markdown is a readable projection
-of the same Capsule with untrusted passages explicitly delimited. Use
+of the same Capsule with untrusted passages explicitly delimited. Indexed
+title, heading, and configured-context text is JSON-escaped inside explicit
+untrusted metadata boundaries; passage bytes stay exact inside evidence-text
+sentinels. The full canonical manifest is included as an indented safe block.
+Use
 `--output <file>` for explicit file output; GNO never saves Capsules implicitly.
 Progress stays on stderr, leaving stdout or the output file clean.
 
 Filters include repeatable `--collection`, `--uri-prefix`, `--tags-all`,
 `--tags-any`, `--category`, `--author`, `--lang`, `--since`, and `--until`.
-`--query` can separate the retrieval query from the stated goal.
+`--query` can separate the retrieval query from the stated goal; repeatable
+`--query-mode term:...|intent:...|hyde:...` entries become part of the frozen
+normalized retrieval request.
 
 ### gno context verify
 
@@ -682,6 +692,12 @@ ranking as unchanged, reranked, or unavailable. It includes fingerprint drift
 independently from ranking plus current source, mirror, and passage hashes when
 known. No rank resolver means `ranking_unavailable`; stale or missing content
 is never ranked.
+
+An explicit global `--index` must match the Capsule's saved index. Verification
+of an `active_tokenizer` Capsule requires the matching tokenizer fingerprint
+and deterministic token counter before GNO opens the store; runtimes without
+that tokenizer return `tokenizer_unavailable` and never trust saved
+`usedTokens` alone.
 
 ### gno context rm
 

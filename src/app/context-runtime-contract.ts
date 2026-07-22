@@ -2,13 +2,12 @@
 
 import type { ContextCanonicalProjection } from "../core/context-budget";
 import type { ContextCapsuleV1 } from "../core/context-capsule";
+import type { ContextCapabilityState } from "../core/context-capsule-retrieval-schema";
 import type { ContextCapsulePayloadV1 } from "../core/context-capsule-schema";
 import type { ContextCanonicalPlanDraft } from "../core/context-compiler";
 import type { ContextEvidenceValue } from "../core/context-evidence";
-import type {
-  ContextCapsuleBuildInput,
-  ContextCapsuleRuntimeDeps,
-} from "./context-runtime-types";
+import type { NormalizedContextBuildInput } from "./context-runtime-input";
+import type { ContextCapsuleRuntimeDeps } from "./context-runtime-types";
 
 import {
   ContextCapsuleContractError,
@@ -21,45 +20,6 @@ import {
 } from "../core/context-evidence";
 import { canonicalVerifierJson } from "../core/context-verifier-canonical";
 import { resolveModelUri } from "../llm/registry";
-import { resolveTemporalRange } from "../pipeline/temporal";
-import { buildUri, parseUri } from "./constants";
-import { ContextRuntimeError } from "./context-runtime-types";
-import { canonicalizeIndexName } from "./index-name";
-
-const COLLECTION_PATTERN = /^[a-z0-9][a-z0-9_-]{0,63}$/;
-const MAX_FILTER_VALUES = 128;
-const MAX_FILTER_LENGTH = 256;
-const MAX_TEXT_LENGTH = 16_384;
-
-const compareCodeUnits = (left: string, right: string): number =>
-  left < right ? -1 : left > right ? 1 : 0;
-
-const canonicalStrings = (values: readonly string[] | undefined): string[] =>
-  [...new Set((values ?? []).map((value) => value.normalize("NFC")))].sort(
-    compareCodeUnits
-  );
-
-const canonicalFilters = (
-  values: readonly string[] | undefined,
-  label: string
-): string[] => {
-  const normalized = canonicalStrings(values).map((value) => value.trim());
-  if (
-    normalized.length > MAX_FILTER_VALUES ||
-    normalized.some(
-      (value) =>
-        value.length === 0 ||
-        value.length > MAX_FILTER_LENGTH ||
-        value.includes("\r")
-    )
-  ) {
-    throw new ContextRuntimeError(
-      "invalid_filter",
-      `${label} contains an invalid value`
-    );
-  }
-  return normalized;
-};
 
 const fingerprint = (value: unknown): string =>
   sha256Text(canonicalVerifierJson(value));
@@ -77,188 +37,6 @@ const configuredContextFingerprint = (
     }))
   );
 
-const positiveSafeInteger = (value: number, label: string): number => {
-  if (!Number.isSafeInteger(value) || value < 1) {
-    throw new ContextRuntimeError(
-      "invalid_budget",
-      `${label} must be a positive safe integer`
-    );
-  }
-  return value;
-};
-
-const validateCollection = (value: string): string => {
-  const normalized = value.normalize("NFC");
-  if (!COLLECTION_PATTERN.test(normalized)) {
-    throw new ContextRuntimeError(
-      "invalid_filter",
-      `Invalid collection filter: ${value}`
-    );
-  }
-  return normalized;
-};
-
-const validateUriPrefix = (
-  value: string | null | undefined,
-  indexName: string,
-  collections: readonly string[]
-): string | null => {
-  if (value === undefined || value === null) return null;
-  const parsed = parseUri(value);
-  if (
-    !parsed ||
-    parsed.collection.length === 0 ||
-    (parsed.indexName !== undefined &&
-      canonicalizeIndexName(parsed.indexName) !== indexName) ||
-    (collections.length > 0 && !collections.includes(parsed.collection))
-  ) {
-    throw new ContextRuntimeError(
-      "invalid_uri",
-      "URI prefix must be a canonical GNO reference inside the requested index and collections"
-    );
-  }
-  if (buildUri(parsed.collection, parsed.path, { indexName }) !== value) {
-    throw new ContextRuntimeError(
-      "invalid_uri",
-      "URI prefix must use its canonical indexed GNO representation"
-    );
-  }
-  return value;
-};
-
-export const normalizeContextBuildInput = (
-  input: ContextCapsuleBuildInput,
-  defaultIndexName: string | undefined,
-  now: Date
-) => {
-  const goal = input.goal.normalize("NFC").trim();
-  const query = (input.query ?? input.goal).normalize("NFC").trim();
-  if (
-    !goal ||
-    !query ||
-    goal.length > MAX_TEXT_LENGTH ||
-    query.length > MAX_TEXT_LENGTH ||
-    goal.includes("\r") ||
-    query.includes("\r")
-  ) {
-    throw new ContextRuntimeError(
-      "invalid_goal",
-      "Context goal and query must be non-empty canonical text"
-    );
-  }
-  let indexName: string;
-  try {
-    indexName = canonicalizeIndexName(
-      input.indexName ?? defaultIndexName ?? "default"
-    );
-  } catch (cause) {
-    throw new ContextRuntimeError(
-      "invalid_filter",
-      "Context index name is invalid",
-      cause
-    );
-  }
-  const collections = canonicalStrings(input.collections).map(
-    validateCollection
-  );
-  if (collections.length > MAX_FILTER_VALUES) {
-    throw new ContextRuntimeError(
-      "invalid_filter",
-      "Too many Context collection filters"
-    );
-  }
-  const uriPrefix = validateUriPrefix(input.uriPrefix, indexName, collections);
-  const budgetTokens = positiveSafeInteger(
-    input.budgetTokens,
-    "Context token budget"
-  );
-  const budgetBytes =
-    input.budgetBytes === undefined
-      ? Math.min(Number.MAX_SAFE_INTEGER, budgetTokens * 4)
-      : positiveSafeInteger(input.budgetBytes, "Context byte budget");
-  const safetyMarginTokens = input.safetyMarginTokens ?? 0;
-  const safetyMarginBytes = input.safetyMarginBytes ?? 0;
-  if (
-    !Number.isSafeInteger(safetyMarginTokens) ||
-    !Number.isSafeInteger(safetyMarginBytes) ||
-    safetyMarginTokens < 0 ||
-    safetyMarginBytes < 0 ||
-    safetyMarginTokens >= budgetTokens ||
-    safetyMarginBytes >= budgetBytes
-  ) {
-    throw new ContextRuntimeError(
-      "invalid_budget",
-      "Context safety margins must be non-negative and smaller than their budgets"
-    );
-  }
-  const temporalRange = resolveTemporalRange(
-    query,
-    input.since,
-    input.until,
-    now
-  );
-  if (
-    (input.since !== undefined && temporalRange.since === undefined) ||
-    (input.until !== undefined && temporalRange.until === undefined) ||
-    (temporalRange.since !== undefined &&
-      temporalRange.until !== undefined &&
-      temporalRange.since > temporalRange.until)
-  ) {
-    throw new ContextRuntimeError(
-      "invalid_filter",
-      "Context date filters are invalid or reversed"
-    );
-  }
-  if (
-    (input.limit !== undefined &&
-      (!Number.isSafeInteger(input.limit) || input.limit < 1)) ||
-    (input.candidateLimit !== undefined &&
-      (!Number.isSafeInteger(input.candidateLimit) ||
-        input.candidateLimit < 1)) ||
-    !["fast", "balanced", "thorough", undefined].includes(input.depthPolicy)
-  ) {
-    throw new ContextRuntimeError(
-      "invalid_filter",
-      "Context retrieval limits or depth policy are invalid"
-    );
-  }
-  const author = input.author?.normalize("NFC").trim();
-  const lang = input.lang?.normalize("NFC").trim();
-  if (
-    (input.author !== undefined && !author) ||
-    (input.lang !== undefined && (!lang || lang.length > 64))
-  ) {
-    throw new ContextRuntimeError(
-      "invalid_filter",
-      "Context author or language filter is invalid"
-    );
-  }
-  return {
-    ...input,
-    goal,
-    query,
-    indexName,
-    collections,
-    uriPrefix,
-    tagsAll: canonicalFilters(input.tagsAll, "tagsAll"),
-    tagsAny: canonicalFilters(input.tagsAny, "tagsAny"),
-    categories: canonicalFilters(input.categories, "categories"),
-    author,
-    lang,
-    since: temporalRange.since,
-    until: temporalRange.until,
-    budgetTokens,
-    budgetBytes,
-    safetyMarginTokens,
-    safetyMarginBytes,
-    depthPolicy: input.depthPolicy ?? "balanced",
-  };
-};
-
-type NormalizedContextBuildInput = ReturnType<
-  typeof normalizeContextBuildInput
->;
-
 const retrievalFingerprint = (
   capsule: Pick<
     ContextCapsuleV1,
@@ -275,46 +53,84 @@ const retrievalFingerprint = (
     scope: capsule.scope,
   });
 
-const capsuleCapabilities = (
+const capabilityState = (
+  requested: boolean,
+  used: boolean,
+  unavailableReasons: string[],
+  usedReasons: string[] = []
+): ContextCapabilityState => ({
+  requested,
+  attempted: requested,
+  outcome: used ? "used" : requested ? "unavailable" : "not_requested",
+  fallbackReasons: requested ? (used ? usedReasons : unavailableReasons) : [],
+});
+
+const capsuleCapabilityStates = (
   draft: ContextCanonicalPlanDraft<ContextEvidenceValue>,
-  exactTokens: boolean
+  input: NormalizedContextBuildInput
+) => ({
+  semanticSearch: capabilityState(
+    input.depthPolicy !== "fast",
+    draft.retrieval.semanticSearch,
+    ["embedding_unavailable"]
+  ),
+  reranking: capabilityState(
+    input.depthPolicy !== "fast",
+    draft.retrieval.reranked,
+    ["reranking_unavailable"]
+  ),
+  graphExpansion: capabilityState(
+    input.graph,
+    draft.retrieval.graphExpansion,
+    draft.retrieval.graphFallbackReasons.length > 0
+      ? draft.retrieval.graphFallbackReasons
+      : ["graph_unavailable"],
+    draft.retrieval.graphFallbackReasons
+  ),
+});
+
+const capsuleCapabilities = (
+  states: ReturnType<typeof capsuleCapabilityStates>,
+  exactTokens: boolean,
+  configuredContext: boolean
 ) => ({
   lexicalSearch: true as const,
-  semanticSearch: draft.retrieval.semanticSearch,
-  reranking: draft.retrieval.reranked,
-  graphExpansion: draft.retrieval.graphExpansion,
+  semanticSearch: states.semanticSearch.outcome === "used",
+  reranking: states.reranking.outcome === "used",
+  graphExpansion: states.graphExpansion.outcome === "used",
   exactTokenCount: exactTokens,
-  configuredContext: draft.configuredContexts.length > 0,
+  configuredContext,
   egressPolicy: false,
 });
 
 const capsuleFallbacks = (
-  capabilities: ReturnType<typeof capsuleCapabilities>
+  capabilities: ReturnType<typeof capsuleCapabilities>,
+  states: ReturnType<typeof capsuleCapabilityStates>
 ): ContextCapsulePayloadV1["fallbacks"] => [
-  ...(capabilities.semanticSearch
-    ? []
-    : [
+  ...(states.semanticSearch.outcome === "unavailable"
+    ? [
         {
           code: "embedding_unavailable" as const,
           capability: "semantic_search" as const,
         },
-      ]),
-  ...(capabilities.reranking
-    ? []
-    : [
+      ]
+    : []),
+  ...(states.reranking.outcome === "unavailable"
+    ? [
         {
           code: "reranking_unavailable" as const,
           capability: "reranking" as const,
         },
-      ]),
-  ...(capabilities.graphExpansion
-    ? []
-    : [
+      ]
+    : []),
+  ...(states.graphExpansion.outcome === "unavailable"
+    ? [
         {
           code: "graph_unavailable" as const,
           capability: "graph_expansion" as const,
         },
-      ]),
+      ]
+    : []),
   ...(capabilities.exactTokenCount
     ? []
     : [
@@ -346,7 +162,12 @@ export const projectContextCapsule = (
   }
   const exactTokens =
     deps.countTokens !== undefined && deps.tokenizerFingerprint != null;
-  const capabilities = capsuleCapabilities(draft, exactTokens);
+  const capabilityStates = capsuleCapabilityStates(draft, input);
+  const capabilities = capsuleCapabilities(
+    capabilityStates,
+    exactTokens,
+    draft.configuredContexts.length > 0
+  );
   const base = {
     schemaVersion: "1.0" as const,
     coordinateSpace: "canonical_mirror" as const,
@@ -367,6 +188,15 @@ export const projectContextCapsule = (
       facets: draft.retrieval.facets,
       queryVariants: draft.retrieval.queryVariants,
       expansionPolicy: "deterministic_only" as const,
+      request: {
+        author: input.author,
+        lang: input.lang,
+        queryModes: input.queryModes,
+        limit: input.limit,
+        candidateLimit: input.candidateLimit,
+        graphRequested: input.graph,
+      },
+      capabilityStates,
       indexSnapshot: {
         before: snapshots.indexFingerprint,
         after: snapshots.indexFingerprint,
@@ -401,7 +231,7 @@ export const projectContextCapsule = (
         : null,
       tokenizer: exactTokens ? (deps.tokenizerFingerprint ?? null) : null,
     },
-    fallbacks: capsuleFallbacks(capabilities),
+    fallbacks: capsuleFallbacks(capabilities, capabilityStates),
     guidance: {
       extractiveOnly: true,
       evidenceTrust: "untrusted_data",

@@ -398,6 +398,55 @@ describe("Context Capsule verifier", () => {
     ).rejects.toMatchObject({ code: "index_changed_during_verify" });
   });
 
+  test("requires and recounts the matching active tokenizer before store I/O", async () => {
+    const { state } = verifierFixture(true);
+    const { store, calls } = createVerifierStore(state);
+    const conservative = await capsuleFor(store, state);
+    const { capsuleId: _capsuleId, ...payload } = conservative;
+    const tokenizerFingerprint = "9".repeat(64);
+    const active = createContextCapsuleV1(
+      {
+        ...payload,
+        budget: {
+          ...payload.budget,
+          estimator: "active_tokenizer",
+          tokenizerFingerprint,
+        },
+        fingerprints: {
+          ...payload.fingerprints,
+          tokenizer: tokenizerFingerprint,
+        },
+        capabilities: { ...payload.capabilities, exactTokenCount: true },
+        fallbacks: payload.fallbacks.filter(
+          (fallback) => fallback.code !== "tokenizer_unavailable"
+        ),
+        warnings: payload.warnings.filter(
+          (warning) => warning.code !== "token_estimate_used"
+        ),
+      },
+      { countTokens: () => 17 }
+    );
+    calls.snapshots = 0;
+
+    expect(
+      verifyContextCapsule(active, verifierDeps(store, active))
+    ).rejects.toMatchObject({ code: "tokenizer_unavailable" });
+    expect(calls.snapshots).toBe(0);
+
+    const tampered = {
+      ...active,
+      budget: { ...active.budget, usedTokens: active.budget.usedTokens + 1 },
+    };
+    expect(
+      verifyContextCapsule(tampered, {
+        ...verifierDeps(store, active),
+        countTokens: () => 17,
+        tokenizerFingerprint,
+      })
+    ).rejects.toMatchObject({ code: "invalid_budget" });
+    expect(calls.snapshots).toBe(0);
+  });
+
   test("isolates verification across more than 900 unique mirrors", async () => {
     const documents = [];
     const contents = new Map<string, string>();

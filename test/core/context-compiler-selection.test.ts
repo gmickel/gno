@@ -429,6 +429,34 @@ const capsuleProjection = (
       facets: draft.retrieval.facets,
       queryVariants: draft.retrieval.queryVariants,
       expansionPolicy: "deterministic_only",
+      request: {
+        author: null,
+        lang: null,
+        queryModes: [],
+        limit: 20,
+        candidateLimit: 40,
+        graphRequested: false,
+      },
+      capabilityStates: {
+        semanticSearch: {
+          requested: true,
+          attempted: true,
+          outcome: "unavailable",
+          fallbackReasons: ["embedding_unavailable"],
+        },
+        reranking: {
+          requested: true,
+          attempted: true,
+          outcome: "unavailable",
+          fallbackReasons: ["reranking_unavailable"],
+        },
+        graphExpansion: {
+          requested: false,
+          attempted: false,
+          outcome: "not_requested",
+          fallbackReasons: [],
+        },
+      },
       indexSnapshot: { before: HASH.index, after: HASH.index, stable: true },
     },
     fingerprints: {
@@ -450,7 +478,6 @@ const capsuleProjection = (
     fallbacks: [
       { code: "embedding_unavailable", capability: "semantic_search" },
       { code: "reranking_unavailable", capability: "reranking" },
-      { code: "graph_unavailable", capability: "graph_expansion" },
       { code: "tokenizer_unavailable", capability: "token_count" },
       { code: "egress_policy_unavailable", capability: "egress_policy" },
     ],

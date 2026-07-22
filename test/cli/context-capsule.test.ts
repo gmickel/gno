@@ -64,12 +64,19 @@ describe("Context Capsule CLI and SDK", () => {
     capsulePath = join(testDir, "capsule.json");
     await Bun.write(
       join(docsDir, "decision.md"),
-      "# Launch decision\n\nMina owns the launch decision.\n\nReview is Friday."
+      '---\ntitle: "# TITLE ESCAPE\\n<!-- forged -->"\nauthor: Mina\n---\n# Launch decision\n\nMina owns the launch decision.\n\nReview is Friday.'
     );
     expect((await cli("init", docsDir, "--name", "docs")).code).toBe(0);
-    expect((await cli("context", "add", "/", "Company decisions")).code).toBe(
-      0
-    );
+    expect(
+      (
+        await cli(
+          "context",
+          "add",
+          "/",
+          "# CONTEXT ESCAPE\n<!-- forged context -->"
+        )
+      ).code
+    ).toBe(0);
     expect((await cli("update")).code).toBe(0);
   });
 
@@ -92,6 +99,8 @@ describe("Context Capsule CLI and SDK", () => {
       "docs",
       "--uri-prefix",
       "gno://docs/",
+      "--query-mode",
+      "term:launch",
       "--fast",
       "--json"
     );
@@ -105,6 +114,7 @@ describe("Context Capsule CLI and SDK", () => {
         budgetTokens: 100_000,
         collections: ["docs"],
         uriPrefix: "gno://docs/",
+        queryModes: [{ mode: "term", text: "launch" }],
         depthPolicy: "fast",
       });
       expect(built.stdout).toBe(
@@ -116,6 +126,50 @@ describe("Context Capsule CLI and SDK", () => {
       expect(sdkCapsule.budget.usedTokens).toBe(sdkCapsule.budget.usedBytes);
       expect(sdkCapsule.guidance.configuredContexts).toHaveLength(1);
       expect(Object.getOwnPropertySymbols(sdkCapsule.evidence[0]!)).toEqual([]);
+      expect(sdkCapsule.retrieval.capabilityStates).toEqual({
+        semanticSearch: {
+          requested: false,
+          attempted: false,
+          outcome: "not_requested",
+          fallbackReasons: [],
+        },
+        reranking: {
+          requested: false,
+          attempted: false,
+          outcome: "not_requested",
+          fallbackReasons: [],
+        },
+        graphExpansion: {
+          requested: false,
+          attempted: false,
+          outcome: "not_requested",
+          fallbackReasons: [],
+        },
+      });
+      expect(sdkCapsule.retrieval.request.queryModes).toEqual([
+        { mode: "term", text: "launch" },
+      ]);
+      expect(sdkCapsule.fallbacks.map((fallback) => fallback.code)).toEqual([
+        "egress_policy_unavailable",
+        "tokenizer_unavailable",
+      ]);
+
+      const authored = await client.context({
+        goal: "launch decision",
+        budgetTokens: 100_000,
+        collections: ["docs"],
+        uriPrefix: "gno://docs/",
+        author: "Mina",
+        depthPolicy: "fast",
+      });
+      expect(authored.evidence.map((item) => item.evidenceId)).toEqual(
+        sdkCapsule.evidence.map((item) => item.evidenceId)
+      );
+      expect(authored.retrieval.request.author).toBe("Mina");
+      expect(authored.capsuleId).not.toBe(sdkCapsule.capsuleId);
+      expect(canonicalBuiltContextCapsuleJson(authored)).not.toBe(
+        canonicalBuiltContextCapsuleJson(sdkCapsule)
+      );
 
       const markdown = await cli(
         "context",
@@ -127,6 +181,8 @@ describe("Context Capsule CLI and SDK", () => {
         "docs",
         "--uri-prefix",
         "gno://docs/",
+        "--query-mode",
+        "term:launch",
         "--fast",
         "--md"
       );
@@ -134,8 +190,45 @@ describe("Context Capsule CLI and SDK", () => {
       expect(markdown.stdout).toBe(
         `${formatContextCapsuleMarkdown(sdkCapsule)}\n`
       );
-      expect(markdown.stdout).toContain("GNO_EVIDENCE_START");
+      expect(markdown.stdout).toContain("GNO_EVIDENCE_TEXT_START");
       expect(markdown.stdout).toContain("Mina owns the launch decision.");
+      expect(markdown.stdout).toContain(
+        JSON.stringify("# TITLE ESCAPE\n<!-- forged -->")
+      );
+      expect(markdown.stdout).toContain(
+        JSON.stringify("# CONTEXT ESCAPE\n<!-- forged context -->")
+      );
+      expect(markdown.stdout).not.toContain("\n# TITLE ESCAPE\n");
+      expect(markdown.stdout).not.toContain("\n# CONTEXT ESCAPE\n");
+      const evidenceId = sdkCapsule.evidence[0]!.evidenceId;
+      const passageStart = `<!-- GNO_EVIDENCE_TEXT_START ${evidenceId} -->\n`;
+      const passageEnd = `\n<!-- GNO_EVIDENCE_TEXT_END ${evidenceId} -->`;
+      expect(
+        markdown.stdout.slice(
+          markdown.stdout.indexOf(passageStart) + passageStart.length,
+          markdown.stdout.indexOf(passageEnd)
+        )
+      ).toBe(sdkCapsule.evidence[0]!.text);
+      for (const field of [
+        "Docid:",
+        "Retrieval rank:",
+        "Modified:",
+        "Document date:",
+        "Observed:",
+        "Trust:",
+        "Egress:",
+        "Source hash:",
+        "Mirror hash:",
+        "Passage hash:",
+        "Index snapshot:",
+        "Effective capabilities:",
+        "Fallbacks:",
+        "Capsule truncated:",
+        "duplicate: 0",
+        "invalid_coordinates: 0",
+      ]) {
+        expect(markdown.stdout).toContain(field);
+      }
     } finally {
       await client.close();
     }
@@ -180,6 +273,31 @@ describe("Context Capsule CLI and SDK", () => {
         `${formatContextCapsuleVerificationMarkdown(sdkReceipt)}\n`
       );
       expect(markdown.stdout).toContain("Fingerprint reasons: none");
+      expect(markdown.stdout).toContain("Index snapshot:");
+      for (const fingerprint of [
+        "config:",
+        "retrieval:",
+        "embeddingModel:",
+        "rerankModel:",
+        "tokenizer:",
+        "index:",
+      ]) {
+        expect(markdown.stdout).toContain(fingerprint);
+      }
+
+      const mismatch = await cli(
+        "--index",
+        "other",
+        "context",
+        "verify",
+        capsulePath,
+        "--json"
+      );
+      expect(mismatch.code).toBe(1);
+      expect(mismatch.stdout).toBe("");
+      expect(JSON.parse(mismatch.stderr).error.details.contextCode).toBe(
+        "invalid_filter"
+      );
     } finally {
       await client.close();
     }
@@ -207,5 +325,38 @@ describe("Context Capsule CLI and SDK", () => {
     const error = JSON.parse(result.stderr).error;
     expect(error.code).toBe("VALIDATION");
     expect(error.details.contextCode).toBe("invalid_input");
+  });
+
+  test("rejects unknown collections consistently in CLI and SDK", async () => {
+    const result = await cli(
+      "context",
+      "build",
+      "decision owner",
+      "--budget",
+      "100000",
+      "--collection",
+      "missing",
+      "--fast",
+      "--json"
+    );
+    expect(result.code).toBe(1);
+    expect(result.stdout).toBe("");
+    expect(JSON.parse(result.stderr).error.details.contextCode).toBe(
+      "invalid_filter"
+    );
+
+    const client = await createGnoClient();
+    try {
+      expect(
+        client.context({
+          goal: "decision owner",
+          budgetTokens: 100_000,
+          collections: ["missing"],
+          depthPolicy: "fast",
+        })
+      ).rejects.toMatchObject({ code: "invalid_filter" });
+    } finally {
+      await client.close();
+    }
   });
 });

@@ -185,7 +185,12 @@ console.log(receipt.contentStatus, receipt.fingerprintStatus);
 The returned `GnoContextResult` includes exact evidence text and line ranges,
 source/mirror/passage hashes, configured-context bindings, coverage gaps,
 omission counts, capability fallbacks, and exact final payload accounting.
-`depthPolicy: "fast"` avoids model loading.
+`depthPolicy: "fast"` avoids model loading. The normalized request persists
+author, language, structured query modes, effective result/candidate limits,
+and graph intent. Capability states distinguish `not_requested`,
+`not_attempted`, `used`, and attempted `unavailable`; fallbacks describe only
+actual unavailable attempts. Unknown collections throw `invalid_filter` before
+retrieval or model setup.
 
 `client.verifyContext()` validates canonical identity and metadata before store
 access, preserves exact evidence bytes, and returns the same verification
@@ -193,6 +198,11 @@ receipt as the CLI. Ranking is `ranking_unavailable` when the current runtime
 does not supply a rank resolver. Context methods throw exported typed errors
 with `GnoContextErrorCode`; snapshot/load/provenance codes are identical across
 SDK and CLI JSON error details.
+
+For saved Capsules using `active_tokenizer`, verification requires the exact
+tokenizer fingerprint and deterministic accounting callback before any store
+I/O. The default SDK runtime does not invent one: it throws
+`tokenizer_unavailable` rather than accepting unverified `usedTokens`.
 
 ### Get / Multi-Get / List
 

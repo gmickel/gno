@@ -1221,13 +1221,21 @@ gno context build "<goal>" --budget <tokens> [--collection <name>] [--fast|--tho
 byte ceiling; otherwise it is four times the token request. Without an active
 token counter, `usedTokens` uses the conservative UTF-8 byte count and the
 Capsule records `tokenizer_unavailable`. `--query`, `--uri-prefix`, tag,
-category, author, language, and date filters use the same canonical retrieval
-semantics as `gno query`. `--collection` is repeatable.
+category, author, language, date, and repeatable `--query-mode` filters use the
+same canonical retrieval semantics as `gno query`. `--collection` is
+repeatable.
 
 JSON is the canonical V1 payload. Markdown is a readable projection of that
-same payload and hard-delimits each untrusted evidence passage. Invalid goals,
+same payload and hard-delimits each untrusted evidence passage. Indexed title,
+heading, and configured-context metadata is JSON-escaped inside explicit
+untrusted-data boundaries; exact passage bytes remain between evidence-text
+sentinels. The Markdown also includes a safe indented canonical manifest, so
+budgets, normalized retrieval requests, capability attempts/outcomes,
+fingerprints, snapshots, fallbacks, omissions, and truncation remain auditable.
+Invalid goals,
 budgets, filters, URI/index combinations, or output paths exit 1. Snapshot,
 retrieval, provenance, and store failures exit 2 with no partial Capsule.
+Requested collections must exist in the active configuration before retrieval.
 
 ### gno context verify
 
@@ -1245,6 +1253,10 @@ and index state. Without a live rank resolver, ranking is reported as
 JSON uses the canonical verification schema. Markdown projects the same receipt,
 including fingerprint drift and every available current hash. Non-canonical
 metadata and invalid identity/budget data fail before the store is read.
+An explicit global `--index` must match the Capsule scope. Active-tokenizer
+Capsules require the matching tokenizer fingerprint and deterministic recount
+callback before any store read; CLI runtimes without that tokenizer fail with
+`tokenizer_unavailable` rather than trusting saved `usedTokens`.
 
 ---
 
