@@ -12,11 +12,12 @@ import type {
   StoreResult,
 } from "../store/types";
 
-import { err, ok } from "../store/types";
+import { ok } from "../store/types";
 import {
   createEphemeralActivationProbePlan,
   findEphemeralActivationProbeMatch,
 } from "./activation-probe-plan";
+import { persistActivationReceiptForKnownCollection } from "./activation-receipt-store";
 import { verifyLexicalActivation } from "./activation-verifier";
 import {
   type ConnectorCommandPolicyOptions,
@@ -217,10 +218,7 @@ async function persistConnectorReceipt(
   store: StorePort,
   receipt: ActivationVerificationReceipt
 ): Promise<StoreResult<ActivationVerificationReceipt>> {
-  const persisted = await store.upsertActivationReceipt(receipt);
-  return persisted.ok
-    ? ok(receipt)
-    : err(persisted.error.code, persisted.error.message, persisted.error.cause);
+  return persistActivationReceiptForKnownCollection(store, receipt);
 }
 
 function isTimeoutError(error: unknown): boolean {

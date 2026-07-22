@@ -184,6 +184,36 @@ describe("lexical activation verifier", () => {
     });
   });
 
+  test("returns no_documents before the configured collection is first synced", async () => {
+    const result = await verifyLexicalActivation(
+      adapter,
+      "configured-but-unsynced",
+      verifierOptions
+    );
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      return;
+    }
+    expect(result.value).toMatchObject({
+      collection: "configured-but-unsynced",
+      ready: false,
+      stages: {
+        index: { status: "failed", code: "no_documents" },
+        lexical: { status: "skipped", code: "no_documents" },
+      },
+    });
+
+    const db = new Database(dbPath, { readonly: true });
+    const persisted = db
+      .query<{ count: number }, [string]>(
+        "SELECT COUNT(*) AS count FROM activation_receipts WHERE collection = ?"
+      )
+      .get("configured-but-unsynced");
+    db.close();
+    expect(persisted?.count).toBe(0);
+  });
+
   test("fails with no_probe_term for stopword-only and numeric text", async () => {
     await addDocument("empty-terms.md", "the and of to 12345");
 

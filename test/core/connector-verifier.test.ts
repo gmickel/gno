@@ -208,6 +208,47 @@ await new Promise((resolve) => process.stdin.once("end", resolve));
     }
   });
 
+  test("keeps connector verification bounded before the collection is first synced", async () => {
+    const result = await verifyConnectorActivation(
+      adapter,
+      "configured-but-unsynced",
+      {
+        kind: "skill",
+        id: "codex-skill",
+        target: "codex",
+        scope: "user",
+        configPath: join(testDir, "skills/gno"),
+        installed: true,
+      },
+      options
+    );
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      return;
+    }
+    expect(result.value).toMatchObject({
+      collection: "configured-but-unsynced",
+      ready: false,
+      stages: {
+        index: { status: "failed", code: "no_documents" },
+        lexical: { status: "skipped", code: "no_documents" },
+        connector: {
+          status: "skipped",
+          code: "target_runtime_unverifiable",
+        },
+      },
+    });
+
+    const rows = adapter
+      .getRawDb()
+      .query<{ count: number }, [string]>(
+        "SELECT COUNT(*) AS count FROM activation_receipts WHERE collection = ?"
+      )
+      .get("configured-but-unsynced");
+    expect(rows?.count).toBe(0);
+  });
+
   test("reports missing and untrusted MCP targets with stable codes", async () => {
     const missingConfig = mcpTarget({
       command: "/missing/gno",

@@ -1,4 +1,7 @@
 import { describe, expect, mock, test } from "bun:test";
+import { mkdtemp } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 import type { Config } from "../../src/config/types";
 import type {
@@ -8,11 +11,14 @@ import type {
 } from "../../src/store/types";
 
 import { createDefaultConfig } from "../../src/config/defaults";
+import { verifyConnectorActivation } from "../../src/core/connector-verifier";
 import {
   handleConnectors,
   handleVerifyConnector,
 } from "../../src/serve/routes/api";
+import { SqliteAdapter } from "../../src/store";
 import { ok } from "../../src/store/types";
+import { safeRm } from "../helpers/cleanup";
 
 const skippedStage = (
   code:
@@ -162,6 +168,62 @@ describe("connector API", () => {
     expect(JSON.stringify(body)).not.toMatch(
       /fingerprint|probeHash|resultUri|resultSourceHash|connectorTarget/
     );
+  });
+
+  test("returns bounded readiness before the configured collection is first synced", async () => {
+    const testDir = await mkdtemp(join(tmpdir(), "gno-connector-api-"));
+    const store = new SqliteAdapter();
+    expect(
+      (await store.open(join(testDir, "index.sqlite"), "unicode61")).ok
+    ).toBe(true);
+
+    try {
+      const response = await handleVerifyConnector(
+        configWithCollections("unsynced"),
+        store,
+        request({ connectorId: "codex-skill", collection: "unsynced" }),
+        undefined,
+        {
+          getStatuses: async () => [connectorStatus("skill")],
+          verify: async (_connectorId, targetStore, collection, options) =>
+            verifyConnectorActivation(
+              targetStore,
+              collection,
+              {
+                kind: "skill",
+                id: "codex-skill",
+                target: "codex",
+                scope: "user",
+                configPath: join(testDir, "skills/gno"),
+                installed: true,
+              },
+              {
+                ...options,
+                now: () => new Date("2026-07-22T12:00:00.000Z"),
+                monotonicNow: () => 1,
+              }
+            ),
+        }
+      );
+
+      expect(response.status).toBe(200);
+      expect(await response.json()).toMatchObject({
+        verification: {
+          collection: "unsynced",
+          lexicalReady: false,
+          connectorReady: false,
+          stages: {
+            connector: {
+              status: "skipped",
+              code: "target_runtime_unverifiable",
+            },
+          },
+        },
+      });
+    } finally {
+      await store.close();
+      await safeRm(testDir);
+    }
   });
 
   test("keeps a failed connector proof distinct from lexical readiness", async () => {

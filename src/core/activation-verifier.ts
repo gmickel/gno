@@ -24,6 +24,7 @@ import {
   findEphemeralActivationProbeMatch,
   populateEphemeralActivationProbePlan,
 } from "./activation-probe-plan";
+import { persistActivationReceiptForKnownCollection } from "./activation-receipt-store";
 
 export {
   extractActivationProbeTerms,
@@ -135,15 +136,7 @@ async function persistReceipt(
   store: StorePort,
   receipt: ActivationVerificationReceipt
 ): Promise<StoreResult<ActivationVerificationReceipt>> {
-  const persisted = await store.upsertActivationReceipt(receipt);
-  if (!persisted.ok) {
-    return err(
-      persisted.error.code,
-      persisted.error.message,
-      persisted.error.cause
-    );
-  }
-  return ok(receipt);
+  return persistActivationReceiptForKnownCollection(store, receipt);
 }
 
 /**
@@ -209,6 +202,9 @@ export async function verifyLexicalActivation(
         "no_documents"
       ),
     });
+    // A configured collection may be checked before its first sync has created
+    // the store row. Return the bounded negative result without violating the
+    // receipt table's collection foreign key; the next check retries normally.
     return persistReceipt(store, receipt);
   }
 
