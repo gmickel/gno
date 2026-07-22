@@ -47,4 +47,46 @@ describe("FirstRunWizard", () => {
       "You can jump between steps without losing progress."
     );
   });
+
+  test("shows exact lexical remediation without treating embeddings as blocking", () => {
+    const html = renderToStaticMarkup(
+      <FirstRunWizard
+        onboarding={{
+          ready: false,
+          stage: "indexing",
+          headline: "Finish the first lexical retrieval proof",
+          detail:
+            "alpha: lexical/retrieval_mismatch. Run: gno index alpha --no-embed",
+          suggestedCollections: [],
+          steps: [
+            {
+              id: "folders",
+              title: "Pick folders",
+              status: "complete",
+              detail: "1 folder connected.",
+              action: "add-collection",
+            },
+            {
+              id: "indexing",
+              title: "Prove lexical retrieval",
+              status: "current",
+              detail:
+                "alpha: lexical/retrieval_mismatch. Run: gno index alpha --no-embed",
+              action: "sync",
+            },
+          ],
+        }}
+        onAddCollection={() => undefined}
+        onDownloadModels={() => undefined}
+        onEmbed={() => undefined}
+        onSync={() => undefined}
+      />
+    );
+
+    expect(html).toContain("Prove lexical retrieval");
+    expect(html).toContain("lexical/retrieval_mismatch");
+    expect(html).toContain("gno index alpha --no-embed");
+    expect(html).toContain("Run sync");
+    expect(html).not.toContain("Finish embeddings");
+  });
 });

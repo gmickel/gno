@@ -422,6 +422,11 @@ The **Connectors** page gives one place to:
 
 - detect whether core agent integrations are already installed
 - install supported Skill or MCP connectors without manually editing config files
+- explicitly verify an installed MCP target against one configured collection;
+  this read-only action checks tools, status, and retrieval without rewriting
+  client config
+- distinguish installed Skill files from client execution: skill runtimes stay
+  unverifiable until the owning client provides a safe verification hook
 - understand the default mode in plain language:
   - read/search by default
   - write-capable MCP remains an advanced opt-in path

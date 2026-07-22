@@ -5,11 +5,16 @@
  * @module src/cli/commands/status
  */
 
+import type { ActivationStatus } from "../../core/activation-status";
 import type { IndexStatus } from "../../store/types";
 
-import { getIndexDbPath } from "../../app/constants";
+import { getIndexDbPath, getModelsCachePath } from "../../app/constants";
 import { getConfigPaths, isInitialized, loadConfig } from "../../config";
-import { resolveModelUri } from "../../llm/registry";
+import { isConnectorActivationComplete } from "../../core/activation-connector-health";
+import { buildActivationStatus } from "../../core/activation-status";
+import { ModelCache } from "../../llm/cache";
+import { getActivePreset, resolveModelUri } from "../../llm/registry";
+import { getConnectorVerificationTargets } from "../../serve/connectors";
 import { SqliteAdapter } from "../../store/sqlite/adapter";
 
 /**
@@ -30,13 +35,35 @@ export interface StatusOptions {
  * Result of status command.
  */
 export type StatusResult =
-  | { success: true; status: IndexStatus }
+  | { success: true; status: IndexStatus; activation: ActivationStatus }
   | { success: false; error: string };
+
+function connectorProjectionLine(activation: ActivationStatus): string | null {
+  const { projected, total, truncated } = activation.connectorProjection;
+  if (!truncated) {
+    return null;
+  }
+  return `Connector projection: ${projected}/${total} target/collection checks shown; ${total - projected} omitted`;
+}
+
+function isStatusHealthy(
+  indexStatus: IndexStatus,
+  activation: ActivationStatus
+): boolean {
+  return (
+    indexStatus.healthy &&
+    activation.healthy &&
+    isConnectorActivationComplete(activation)
+  );
+}
 
 /**
  * Format status as terminal output.
  */
-function formatTerminal(indexStatus: IndexStatus): string {
+function formatTerminal(
+  indexStatus: IndexStatus,
+  activation: ActivationStatus
+): string {
   const lines: string[] = [];
 
   lines.push(`Index: ${indexStatus.indexName}`);
@@ -73,7 +100,34 @@ function formatTerminal(indexStatus: IndexStatus): string {
     lines.push(`Last updated: ${indexStatus.lastUpdatedAt}`);
   }
 
-  lines.push(`Health: ${indexStatus.healthy ? "OK" : "DEGRADED"}`);
+  lines.push(
+    `Health: ${isStatusHealthy(indexStatus, activation) ? "OK" : "DEGRADED"}`
+  );
+  lines.push("");
+  lines.push(
+    `Lexical activation: ${activation.healthy ? "READY" : activation.usable ? "DEGRADED" : "BLOCKED"}`
+  );
+  for (const collection of activation.collections) {
+    const failedStage = collection.remediation?.stage;
+    const suffix = failedStage
+      ? ` (${failedStage}: ${collection.remediation?.code}; ${collection.remediation?.command})`
+      : ` (semantic: ${collection.semanticAvailability.code})`;
+    lines.push(
+      `  ${collection.collection}: ${collection.ready ? "lexical ready" : "not ready"}${suffix}`
+    );
+  }
+  if (activation.connectors.length > 0) {
+    lines.push("Connector proofs:");
+    for (const connector of activation.connectors) {
+      lines.push(
+        `  ${connector.target}/${connector.collection}: ${connector.status}${connector.code ? ` (${connector.code})` : ""}`
+      );
+    }
+  }
+  const projectionLine = connectorProjectionLine(activation);
+  if (projectionLine) {
+    lines.push(projectionLine);
+  }
 
   return lines.join("\n");
 }
@@ -81,14 +135,19 @@ function formatTerminal(indexStatus: IndexStatus): string {
 /**
  * Format status as Markdown.
  */
-function formatMarkdown(indexStatus: IndexStatus): string {
+function formatMarkdown(
+  indexStatus: IndexStatus,
+  activation: ActivationStatus
+): string {
   const lines: string[] = [];
 
   lines.push(`# Index Status: ${indexStatus.indexName}`);
   lines.push("");
   lines.push(`- **Config**: ${indexStatus.configPath}`);
   lines.push(`- **Database**: ${indexStatus.dbPath}`);
-  lines.push(`- **Health**: ${indexStatus.healthy ? "✓ OK" : "⚠ DEGRADED"}`);
+  lines.push(
+    `- **Health**: ${isStatusHealthy(indexStatus, activation) ? "✓ OK" : "⚠ DEGRADED"}`
+  );
   lines.push("");
 
   if (indexStatus.collections.length > 0) {
@@ -113,6 +172,26 @@ function formatMarkdown(indexStatus: IndexStatus): string {
 
   if (indexStatus.lastUpdatedAt) {
     lines.push(`- **Last updated**: ${indexStatus.lastUpdatedAt}`);
+  }
+
+  lines.push("");
+  lines.push("## Lexical activation");
+  lines.push("");
+  lines.push(`- **Usable**: ${activation.usable}`);
+  lines.push(`- **Lexically healthy**: ${activation.healthy}`);
+  for (const collection of activation.collections) {
+    lines.push(
+      `- **${collection.collection}**: ${collection.ready ? "lexical ready" : `${collection.remediation?.stage ?? "index"} ${collection.remediation?.code ?? "index_query_failed"}`}`
+    );
+  }
+  for (const connector of activation.connectors) {
+    lines.push(
+      `- **${connector.target}/${connector.collection}**: ${connector.status}${connector.code ? ` (${connector.code})` : ""}`
+    );
+  }
+  const projectionLine = connectorProjectionLine(activation);
+  if (projectionLine) {
+    lines.push(`- **${projectionLine}**`);
   }
 
   return lines.join("\n");
@@ -158,7 +237,23 @@ export async function status(
       return { success: false, error: statusResult.error.message };
     }
 
-    return { success: true, status: statusResult.value };
+    const preset = getActivePreset(config);
+    const embedModelCached = await new ModelCache(
+      getModelsCachePath()
+    ).isCached(preset.embed);
+    const activation = await buildActivationStatus(
+      store,
+      config.collections.map(({ name }) => name),
+      {
+        semantic: {
+          modelsCached: embedModelCached,
+          embeddingBacklog: statusResult.value.embeddingBacklog,
+        },
+        connectorTargets: await getConnectorVerificationTargets(),
+      }
+    );
+
+    return { success: true, status: statusResult.value, activation };
   } finally {
     await store.close();
   }
@@ -196,7 +291,8 @@ export function formatStatus(
         totalChunks: s.totalChunks,
         embeddingBacklog: s.embeddingBacklog,
         lastUpdated: s.lastUpdatedAt,
-        healthy: s.healthy,
+        healthy: isStatusHealthy(s, result.activation),
+        activation: result.activation,
       },
       null,
       2
@@ -204,8 +300,8 @@ export function formatStatus(
   }
 
   if (options.md) {
-    return formatMarkdown(result.status);
+    return formatMarkdown(result.status, result.activation);
   }
 
-  return formatTerminal(result.status);
+  return formatTerminal(result.status, result.activation);
 }

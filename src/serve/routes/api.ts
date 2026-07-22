@@ -23,7 +23,12 @@ import type {
   SearchOptions,
 } from "../../pipeline/types";
 import type { SqliteAdapter } from "../../store/sqlite/adapter";
-import type { DocumentRow } from "../../store/types";
+import type {
+  ActivationVerificationReceipt,
+  DocumentRow,
+  StorePort,
+  StoreResult,
+} from "../../store/types";
 import type { DocumentEventBus } from "../doc-events";
 import type { EmbedScheduler } from "../embed-scheduler";
 import type { StartJobError } from "../jobs";
@@ -47,6 +52,10 @@ import {
   type PublicCaptureInput,
 } from "../../core/capture";
 import { writeCapturePlanFile } from "../../core/capture-write";
+import {
+  type ConnectorVerificationCode,
+  getConnectorVerificationRemediation,
+} from "../../core/connector-verifier";
 import {
   buildEditableCopyContent,
   deriveEditableCopyRelPath,
@@ -116,7 +125,11 @@ import {
 import { exportPublishArtifact } from "../../publish/export-service";
 import { buildBrowseTree, normalizeBrowsePath } from "../browse-tree";
 import { applyConfigChange, applyConfigChangeTyped } from "../config-sync";
-import { getConnectorStatuses, installConnector } from "../connectors";
+import {
+  getConnectorStatuses,
+  installConnector,
+  verifyInstalledConnector,
+} from "../connectors";
 import {
   downloadState,
   reloadServerContext,
@@ -152,6 +165,27 @@ export interface InstallConnectorRequestBody {
   connectorId: string;
   reinstall?: boolean;
 }
+
+export interface VerifyConnectorRequestBody {
+  connectorId: string;
+  collection: string;
+}
+
+interface ConnectorRouteDeps {
+  getStatuses: typeof getConnectorStatuses;
+  verify: (
+    id: string,
+    store: StorePort,
+    collection: string,
+    options?: { force?: boolean },
+    overrides?: { cwd?: string; homeDir?: string }
+  ) => Promise<StoreResult<ActivationVerificationReceipt>>;
+}
+
+const DEFAULT_CONNECTOR_ROUTE_DEPS: ConnectorRouteDeps = {
+  getStatuses: getConnectorStatuses,
+  verify: verifyInstalledConnector,
+};
 
 export interface SearchRequestBody {
   query: string;
@@ -4272,18 +4306,120 @@ export function handleEmbedStatus(scheduler: EmbedScheduler | null): Response {
   });
 }
 
-export async function handleConnectors(overrides?: {
-  cwd?: string;
-  homeDir?: string;
-}): Promise<Response> {
+export async function handleConnectors(
+  config: Config,
+  overrides?: { cwd?: string; homeDir?: string },
+  deps: ConnectorRouteDeps = DEFAULT_CONNECTOR_ROUTE_DEPS
+): Promise<Response> {
   return jsonResponse({
-    connectors: await getConnectorStatuses(overrides),
+    connectors: await deps.getStatuses(overrides),
+    collections: config.collections
+      .map(({ name }) => name)
+      .sort((left, right) => left.localeCompare(right)),
   });
+}
+
+/**
+ * Explicitly run one collection-scoped connector retrieval proof.
+ * Passive connector/status routes never call this handler.
+ */
+export async function handleVerifyConnector(
+  config: Config,
+  store: StorePort,
+  req: Request,
+  overrides?: { cwd?: string; homeDir?: string },
+  deps: ConnectorRouteDeps = DEFAULT_CONNECTOR_ROUTE_DEPS
+): Promise<Response> {
+  let body: unknown;
+  try {
+    body = await req.json();
+  } catch {
+    return errorResponse("VALIDATION", "Invalid JSON body");
+  }
+
+  if (!body || typeof body !== "object" || Array.isArray(body)) {
+    return errorResponse("VALIDATION", "Request body must be an object");
+  }
+  const fields = Object.keys(body);
+  const allowedFields = new Set(["connectorId", "collection"]);
+  if (fields.some((field) => !allowedFields.has(field))) {
+    return errorResponse("VALIDATION", "Request body has unknown fields");
+  }
+
+  const { connectorId, collection } = body as Record<string, unknown>;
+  if (
+    typeof connectorId !== "string" ||
+    connectorId.length === 0 ||
+    connectorId.length > 128
+  ) {
+    return errorResponse("VALIDATION", "Missing or invalid connectorId");
+  }
+  if (
+    typeof collection !== "string" ||
+    collection.length === 0 ||
+    collection.length > 64
+  ) {
+    return errorResponse("VALIDATION", "Missing or invalid collection");
+  }
+  if (!config.collections.some(({ name }) => name === collection)) {
+    return errorResponse("VALIDATION", "Unknown collection");
+  }
+
+  try {
+    const statuses = await deps.getStatuses(overrides);
+    const connector = statuses.find(({ id }) => id === connectorId);
+    if (!connector) {
+      return errorResponse("VALIDATION", "Unknown connectorId");
+    }
+
+    const result = await deps.verify(
+      connectorId,
+      store,
+      collection,
+      { force: true },
+      overrides
+    );
+    if (!result.ok) {
+      return errorResponse(
+        "CONNECTOR_VERIFICATION_FAILED",
+        "Connector verification could not be completed",
+        500
+      );
+    }
+
+    const code = result.value.stages.connector.code;
+    return jsonResponse({
+      verification: {
+        collection: result.value.collection,
+        lexicalReady: result.value.ready,
+        connectorReady: result.value.stages.connector.status === "passed",
+        generatedAt: result.value.generatedAt,
+        stages: { connector: result.value.stages.connector },
+      },
+      remediation: code
+        ? getConnectorVerificationRemediation(
+            code as ConnectorVerificationCode,
+            connector.appName
+          )
+        : null,
+    });
+  } catch {
+    return errorResponse(
+      "CONNECTOR_VERIFICATION_FAILED",
+      "Connector verification could not be completed",
+      500
+    );
+  }
 }
 
 export async function handleInstallConnector(
   req: Request,
-  overrides?: { cwd?: string; homeDir?: string }
+  overrides?: {
+    cwd?: string;
+    homeDir?: string;
+    indexName?: string;
+    configPath?: string;
+  }
 ): Promise<Response> {
   let body: InstallConnectorRequestBody;
   try {
@@ -4389,6 +4525,14 @@ export async function routeApi(
 
   if (path === "/api/collections") {
     return handleCollections(config);
+  }
+
+  if (path === "/api/connectors" && req.method === "GET") {
+    return handleConnectors(config);
+  }
+
+  if (path === "/api/connectors/verify" && req.method === "POST") {
+    return handleVerifyConnector(config, store, req);
   }
 
   if (path === "/api/publish/export" && req.method === "POST") {

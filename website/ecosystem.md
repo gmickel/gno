@@ -31,7 +31,7 @@ Claude Code marketplace plugin for structured development workflow. Research age
 /plugin install flow
 
 # GNO provides the memory, Flow provides the process
-gno mcp install --target claude
+gno mcp install --target claude-desktop
 ```
 
 [GitHub](https://github.com/gmickel/gmickel-claude-marketplace) | [Documentation](https://mickel.tech/apps/flow)
@@ -152,7 +152,7 @@ bun install -g @gmickel/gno
 gno init ~/notes --name notes && gno index
 
 # Add as MCP server for AI integration
-gno mcp install --target claude
+gno mcp install --target claude-desktop
 
 # Install companion tools
 bun install -g sheets-cli    # Google Sheets automation

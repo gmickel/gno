@@ -1,0 +1,515 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "gno://schemas/activation-verification@1.0",
+  "title": "GNO Activation Verification Receipt",
+  "description": "Privacy-bounded proof that one collection can retrieve a corpus-derived result locally and, when requested, through one connector target.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "collection",
+    "fingerprint",
+    "ready",
+    "generatedAt",
+    "stages",
+    "evidence"
+  ],
+  "allOf": [
+    {
+      "if": {
+        "type": "object",
+        "properties": { "ready": { "const": true } },
+        "required": ["ready"]
+      },
+      "then": {
+        "type": "object",
+        "properties": {
+          "stages": {
+            "type": "object",
+            "properties": {
+              "index": {
+                "type": "object",
+                "properties": { "status": { "const": "passed" } }
+              },
+              "lexical": {
+                "type": "object",
+                "properties": { "status": { "const": "passed" } }
+              }
+            }
+          }
+        }
+      },
+      "else": {
+        "type": "object",
+        "properties": {
+          "stages": {
+            "type": "object",
+            "not": {
+              "type": "object",
+              "properties": {
+                "index": {
+                  "type": "object",
+                  "properties": { "status": { "const": "passed" } }
+                },
+                "lexical": {
+                  "type": "object",
+                  "properties": { "status": { "const": "passed" } }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "type": "object",
+        "properties": {
+          "stages": {
+            "type": "object",
+            "properties": {
+              "lexical": {
+                "type": "object",
+                "properties": { "status": { "const": "passed" } }
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "type": "object",
+        "properties": {
+          "evidence": {
+            "type": "object",
+            "properties": {
+              "probeHash": {},
+              "resultUri": {},
+              "resultSourceHash": {}
+            },
+            "required": ["probeHash", "resultUri", "resultSourceHash"]
+          }
+        }
+      },
+      "else": {
+        "if": {
+          "type": "object",
+          "properties": {
+            "stages": {
+              "type": "object",
+              "properties": {
+                "lexical": {
+                  "type": "object",
+                  "properties": { "code": { "const": "retrieval_mismatch" } },
+                  "required": ["code"]
+                }
+              }
+            }
+          }
+        },
+        "then": {
+          "type": "object",
+          "properties": {
+            "evidence": {
+              "type": "object",
+              "properties": { "probeHash": {} },
+              "required": ["probeHash"],
+              "not": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": { "resultUri": {} },
+                    "required": ["resultUri"]
+                  },
+                  {
+                    "type": "object",
+                    "properties": { "resultSourceHash": {} },
+                    "required": ["resultSourceHash"]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "else": {
+          "type": "object",
+          "properties": {
+            "evidence": {
+              "type": "object",
+              "not": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": { "probeHash": {} },
+                    "required": ["probeHash"]
+                  },
+                  {
+                    "type": "object",
+                    "properties": { "resultUri": {} },
+                    "required": ["resultUri"]
+                  },
+                  {
+                    "type": "object",
+                    "properties": { "resultSourceHash": {} },
+                    "required": ["resultSourceHash"]
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "type": "object",
+        "properties": {
+          "stages": {
+            "type": "object",
+            "properties": {
+              "connector": {
+                "type": "object",
+                "properties": {
+                  "code": { "const": "connector_not_requested" }
+                },
+                "required": ["code"]
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "type": "object",
+        "properties": {
+          "evidence": {
+            "type": "object",
+            "not": {
+              "type": "object",
+              "properties": { "connectorTarget": {} },
+              "required": ["connectorTarget"]
+            }
+          }
+        }
+      },
+      "else": {
+        "type": "object",
+        "properties": {
+          "evidence": {
+            "type": "object",
+            "properties": { "connectorTarget": {} },
+            "required": ["connectorTarget"]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "type": "object",
+        "properties": {
+          "stages": {
+            "type": "object",
+            "properties": {
+              "connector": {
+                "type": "object",
+                "properties": { "status": { "const": "passed" } },
+                "required": ["status"]
+              }
+            },
+            "required": ["connector"]
+          }
+        },
+        "required": ["stages"]
+      },
+      "then": {
+        "type": "object",
+        "properties": { "ready": { "const": true } },
+        "required": ["ready"]
+      }
+    },
+    {
+      "if": {
+        "type": "object",
+        "properties": {
+          "stages": {
+            "type": "object",
+            "properties": {
+              "connector": {
+                "type": "object",
+                "properties": {
+                  "status": { "const": "skipped" },
+                  "code": { "const": "connector_probe_unavailable" }
+                },
+                "required": ["status", "code"]
+              }
+            },
+            "required": ["connector"]
+          }
+        },
+        "required": ["stages"]
+      },
+      "then": {
+        "type": "object",
+        "properties": { "ready": { "const": false } },
+        "required": ["ready"]
+      }
+    },
+    {
+      "if": {
+        "type": "object",
+        "properties": {
+          "stages": {
+            "type": "object",
+            "properties": {
+              "connector": {
+                "type": "object",
+                "properties": {
+                  "status": { "const": "failed" },
+                  "code": {
+                    "enum": [
+                      "connector_probe_unavailable",
+                      "connector_start_failed",
+                      "connector_timeout",
+                      "connector_missing_tools",
+                      "connector_status_failed",
+                      "connector_search_failed",
+                      "connector_result_mismatch"
+                    ]
+                  }
+                },
+                "required": ["status", "code"]
+              }
+            },
+            "required": ["connector"]
+          }
+        },
+        "required": ["stages"]
+      },
+      "then": {
+        "type": "object",
+        "properties": { "ready": { "const": true } },
+        "required": ["ready"]
+      }
+    }
+  ],
+  "properties": {
+    "schemaVersion": { "const": "1.0" },
+    "collection": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "fingerprint": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "ready": { "type": "boolean" },
+    "generatedAt": { "type": "string", "format": "date-time" },
+    "stages": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["index", "lexical", "semantic", "connector"],
+      "properties": {
+        "index": { "$ref": "#/definitions/indexStage" },
+        "lexical": { "$ref": "#/definitions/lexicalStage" },
+        "semantic": { "$ref": "#/definitions/semanticStage" },
+        "connector": { "$ref": "#/definitions/connectorStage" }
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "probeHash": {
+          "type": "string",
+          "description": "Corpus-keyed probe digest; the raw probe term and key are not persisted.",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "resultUri": {
+          "type": "string",
+          "pattern": "^gno://[^/]+/.+",
+          "maxLength": 2048
+        },
+        "resultSourceHash": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "connectorTarget": {
+          "type": "string",
+          "maxLength": 256,
+          "pattern": "^(mcp|skill):[a-z0-9][a-z0-9._-]{0,63}:(user|project):[a-f0-9]{64}$"
+        }
+      }
+    }
+  },
+  "definitions": {
+    "timedStage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "startedAt", "completedAt", "latencyMs"],
+      "properties": {
+        "status": { "type": "string" },
+        "startedAt": { "type": "string", "format": "date-time" },
+        "completedAt": { "type": "string", "format": "date-time" },
+        "latencyMs": { "type": "integer", "minimum": 0 },
+        "code": { "type": "string" }
+      }
+    },
+    "indexStage": {
+      "oneOf": [
+        {
+          "allOf": [
+            { "$ref": "#/definitions/timedStage" },
+            {
+              "type": "object",
+              "properties": { "status": { "const": "passed" } },
+              "not": { "type": "object", "required": ["code"] }
+            }
+          ]
+        },
+        {
+          "allOf": [
+            { "$ref": "#/definitions/timedStage" },
+            {
+              "type": "object",
+              "properties": {
+                "status": { "const": "failed" },
+                "code": { "enum": ["no_documents", "index_out_of_sync"] }
+              },
+              "required": ["code"]
+            }
+          ]
+        }
+      ]
+    },
+    "lexicalStage": {
+      "oneOf": [
+        {
+          "allOf": [
+            { "$ref": "#/definitions/timedStage" },
+            {
+              "type": "object",
+              "properties": { "status": { "const": "passed" } },
+              "not": { "type": "object", "required": ["code"] }
+            }
+          ]
+        },
+        {
+          "allOf": [
+            { "$ref": "#/definitions/timedStage" },
+            {
+              "type": "object",
+              "properties": {
+                "status": { "const": "failed" },
+                "code": {
+                  "enum": [
+                    "no_probe_term",
+                    "index_query_failed",
+                    "retrieval_mismatch"
+                  ]
+                }
+              },
+              "required": ["code"]
+            }
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "status",
+            "startedAt",
+            "completedAt",
+            "latencyMs",
+            "code"
+          ],
+          "properties": {
+            "status": { "const": "skipped" },
+            "startedAt": { "type": "null" },
+            "completedAt": { "type": "string", "format": "date-time" },
+            "latencyMs": { "type": "null" },
+            "code": { "enum": ["no_documents", "index_out_of_sync"] }
+          }
+        }
+      ]
+    },
+    "semanticStage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "startedAt", "completedAt", "latencyMs", "code"],
+      "properties": {
+        "status": { "const": "pending" },
+        "startedAt": { "type": "null" },
+        "completedAt": { "type": "null" },
+        "latencyMs": { "type": "null" },
+        "code": { "const": "semantic_not_checked" }
+      }
+    },
+    "connectorStage": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "status",
+            "startedAt",
+            "completedAt",
+            "latencyMs",
+            "code"
+          ],
+          "properties": {
+            "status": { "const": "skipped" },
+            "startedAt": { "type": "null" },
+            "completedAt": { "type": "null" },
+            "latencyMs": { "type": "null" },
+            "code": { "const": "connector_not_requested" }
+          }
+        },
+        {
+          "allOf": [
+            { "$ref": "#/definitions/timedStage" },
+            {
+              "type": "object",
+              "properties": { "status": { "const": "passed" } },
+              "not": { "type": "object", "required": ["code"] }
+            }
+          ]
+        },
+        {
+          "allOf": [
+            { "$ref": "#/definitions/timedStage" },
+            {
+              "type": "object",
+              "properties": {
+                "status": { "const": "skipped" },
+                "code": {
+                  "enum": [
+                    "connector_not_configured",
+                    "connector_probe_unavailable",
+                    "target_runtime_unverifiable"
+                  ]
+                }
+              },
+              "required": ["code"]
+            }
+          ]
+        },
+        {
+          "allOf": [
+            { "$ref": "#/definitions/timedStage" },
+            {
+              "type": "object",
+              "properties": {
+                "status": { "const": "failed" },
+                "code": {
+                  "enum": [
+                    "connector_probe_unavailable",
+                    "connector_unsupported_config",
+                    "connector_start_failed",
+                    "connector_timeout",
+                    "connector_missing_tools",
+                    "connector_status_failed",
+                    "connector_search_failed",
+                    "connector_result_mismatch"
+                  ]
+                }
+              },
+              "required": ["code"]
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

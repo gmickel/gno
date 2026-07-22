@@ -4,22 +4,31 @@
  * @module src/cli/commands/mcp/status
  */
 
+import type { ConnectorWorkspaceEnvironment } from "../../../core/connector-environment";
+import type { McpConnectorVerificationTarget } from "../../../core/connector-verifier";
+import type { StandardMcpEntry } from "./config.js";
+
+import { normalizeConnectorWorkspaceEnvironment } from "../../../core/connector-environment";
+import { CliError } from "../../errors.js";
 import { getGlobals } from "../../program.js";
 import {
-  type AnyMcpConfig,
-  getServerEntry,
-  isYamlFormat,
-  type OpenCodeMcpEntry,
-  type StandardMcpEntry,
-} from "./config.js";
+  configPathEntryExists,
+  resolveMcpConfigLocation,
+} from "./config-discovery.js";
 import {
+  getJsoncServerEntry,
+  getTomlServerEntry,
+  getYamlServerEntry,
+} from "./config-editors.js";
+import { getServersKey } from "./config.js";
+import {
+  getTargetScopes,
   getTargetDisplayName,
-  MCP_SERVER_NAME,
   MCP_TARGETS,
+  type McpConfigFormat,
   type McpScope,
   type McpTarget,
   resolveMcpConfigPath,
-  TARGETS_WITH_PROJECT_SCOPE,
 } from "./paths.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -42,8 +51,38 @@ export interface McpTargetStatus {
   scope: McpScope;
   configPath: string;
   configured: boolean;
-  serverEntry?: { command: string; args: string[] };
+  serverEntry?: {
+    command: string;
+    args: string[];
+    env?: ConnectorWorkspaceEnvironment;
+  };
   error?: string;
+}
+
+/** Verification-only identity; deliberately omitted from status JSON output. */
+const configIdentityByStatus = new WeakMap<McpTargetStatus, string>();
+
+/** Project a parsed target status into the read-only activation verifier seam. */
+export function toMcpConnectorVerificationTarget(
+  id: string,
+  status: McpTargetStatus
+): McpConnectorVerificationTarget {
+  const serverEntry = normalizeEntry(status.serverEntry, "standard");
+  const configured = status.configured && serverEntry !== null;
+  const configIdentity = configIdentityByStatus.get(status);
+  return {
+    kind: "mcp",
+    id,
+    target: status.target,
+    scope: status.scope,
+    configPath: status.configPath,
+    configured,
+    ...(serverEntry ? { serverEntry } : {}),
+    ...(configIdentity ? { configIdentity } : {}),
+    ...(status.error || (status.configured && !serverEntry)
+      ? { configError: true }
+      : {}),
+  };
 }
 
 interface StatusResult {
@@ -62,14 +101,71 @@ interface StatusResult {
  * Normalize entry to standard format for display.
  */
 function normalizeEntry(
-  entry: StandardMcpEntry | OpenCodeMcpEntry
-): StandardMcpEntry {
-  if ("type" in entry && entry.type === "local") {
-    // OpenCode format: command is array [command, ...args]
-    const [command = "", ...args] = entry.command;
-    return { command, args };
+  entry: unknown,
+  configFormat: McpConfigFormat
+): StandardMcpEntry | null {
+  if (!entry || typeof entry !== "object") {
+    return null;
   }
-  return entry as StandardMcpEntry;
+  const record = entry as Record<string, unknown>;
+  if (configFormat === "mcp") {
+    // OpenCode format: command is array [command, ...args]
+    if (
+      record.type !== "local" ||
+      (record.enabled !== undefined && record.enabled !== true) ||
+      !Array.isArray(record.command) ||
+      record.command.length === 0 ||
+      !record.command.every((part) => typeof part === "string") ||
+      Object.keys(record).some(
+        (key) =>
+          key !== "type" &&
+          key !== "command" &&
+          key !== "enabled" &&
+          key !== "environment"
+      )
+    ) {
+      return null;
+    }
+    const [command = "", ...args] = record.command;
+    if (!command) {
+      return null;
+    }
+    const env = normalizeConnectorWorkspaceEnvironment(record.environment);
+    if (env === null) {
+      return null;
+    }
+    return {
+      command,
+      args,
+      ...(Object.keys(env).length > 0 ? { env } : {}),
+    };
+  }
+  if (
+    typeof record.command !== "string" ||
+    record.command.length === 0 ||
+    !Array.isArray(record.args) ||
+    !record.args.every((argument) => typeof argument === "string") ||
+    Object.keys(record).some(
+      (key) => key !== "command" && key !== "args" && key !== "env"
+    )
+  ) {
+    return null;
+  }
+  const env = normalizeConnectorWorkspaceEnvironment(record.env);
+  if (env === null) {
+    return null;
+  }
+  return {
+    command: record.command,
+    args: record.args,
+    ...(Object.keys(env).length > 0 ? { env } : {}),
+  };
+}
+
+function entryIdentity(entry: unknown): string {
+  const hasher = new Bun.CryptoHasher("sha256");
+  hasher.update(JSON.stringify(entry) ?? "undefined");
+  return hasher.digest("hex");
 }
 
 export async function checkMcpTargetStatus(
@@ -79,46 +175,84 @@ export async function checkMcpTargetStatus(
 ): Promise<McpTargetStatus> {
   const { cwd, homeDir } = options;
 
-  const { configPath, configFormat } = resolveMcpConfigPath({
+  const resolvedPaths = resolveMcpConfigPath({
     target,
     scope,
     cwd,
     homeDir,
   });
-
-  const file = Bun.file(configPath);
-  const exists = await file.exists();
-
-  if (!exists) {
-    return { target, scope, configPath, configured: false };
-  }
+  let configPath = resolvedPaths.configPath;
+  const { configFormat } = resolvedPaths;
 
   try {
-    const content = await file.text();
+    configPath = await resolveMcpConfigLocation(resolvedPaths);
+    if (!(await configPathEntryExists(configPath))) {
+      return { target, scope, configPath, configured: false };
+    }
+    const content = await Bun.file(configPath).text();
     if (!content.trim()) {
       return { target, scope, configPath, configured: false };
     }
-
-    const useYaml = isYamlFormat(configFormat);
-    const config = useYaml
-      ? (Bun.YAML.parse(content) as AnyMcpConfig)
-      : (JSON.parse(content) as AnyMcpConfig);
-    const entry = getServerEntry(config, MCP_SERVER_NAME, configFormat);
-
-    if (entry) {
-      const serverEntry = normalizeEntry(entry);
-      return { target, scope, configPath, configured: true, serverEntry };
+    const serversKey =
+      configFormat === "codex_toml"
+        ? "mcp_servers"
+        : getServersKey(configFormat);
+    const parsed =
+      configFormat === "codex_toml"
+        ? getTomlServerEntry(content, configPath)
+        : configFormat === "yaml_standard"
+          ? getYamlServerEntry(content, configPath, serversKey)
+          : getJsoncServerEntry(content, configPath, serversKey);
+    if (!parsed.exists) {
+      return { target, scope, configPath, configured: false };
     }
-
-    return { target, scope, configPath, configured: false };
-  } catch {
-    const format = isYamlFormat(configFormat) ? "YAML" : "JSON";
+    const entry = parsed.entry;
+    if (
+      configFormat === "mcp" &&
+      entry &&
+      typeof entry === "object" &&
+      (entry as { enabled?: unknown }).enabled === false
+    ) {
+      return { target, scope, configPath, configured: false };
+    }
+    const configIdentity = entryIdentity(entry);
+    const serverEntry = normalizeEntry(entry, configFormat);
+    if (!serverEntry) {
+      const status: McpTargetStatus = {
+        target,
+        scope,
+        configPath,
+        configured: false,
+        error: "Malformed MCP server entry",
+      };
+      configIdentityByStatus.set(status, configIdentity);
+      return status;
+    }
+    const status: McpTargetStatus = {
+      target,
+      scope,
+      configPath,
+      configured: true,
+      serverEntry,
+    };
+    configIdentityByStatus.set(status, configIdentity);
+    return status;
+  } catch (error) {
+    const format =
+      configFormat === "codex_toml"
+        ? "TOML"
+        : configFormat === "yaml_standard"
+          ? "YAML"
+          : "JSON";
     return {
       target,
       scope,
       configPath,
       configured: false,
-      error: `Malformed ${format}`,
+      error:
+        error instanceof Error && error.message.startsWith("Ambiguous MCP")
+          ? error.message
+          : `Malformed ${format}`,
     };
   }
 }
@@ -148,31 +282,29 @@ export async function statusMcp(opts: StatusOptions = {}): Promise<void> {
   const globals = safeGetGlobals();
   const json = opts.json ?? globals.json;
 
+  if (
+    targetFilter !== "all" &&
+    scopeFilter !== "all" &&
+    !getTargetScopes(targetFilter).includes(scopeFilter)
+  ) {
+    throw new CliError(
+      "VALIDATION",
+      `${getTargetDisplayName(targetFilter)} does not support ${scopeFilter} scope.`
+    );
+  }
+
   const targets: McpTarget[] =
     targetFilter === "all" ? MCP_TARGETS : [targetFilter];
 
   const results: McpTargetStatus[] = [];
 
   for (const target of targets) {
-    const supportsProject = TARGETS_WITH_PROJECT_SCOPE.includes(target);
-
-    if (supportsProject) {
-      // Targets that support both scopes
-      const scopes: McpScope[] =
-        scopeFilter === "all" ? ["user", "project"] : [scopeFilter];
-
-      for (const scope of scopes) {
-        results.push(
-          await checkMcpTargetStatus(target, scope, {
-            cwd: opts.cwd,
-            homeDir: opts.homeDir,
-          })
-        );
-      }
-    } else if (scopeFilter === "all" || scopeFilter === "user") {
-      // User scope only - skip if filtering by project
+    const scopes = getTargetScopes(target).filter(
+      (scope) => scopeFilter === "all" || scope === scopeFilter
+    );
+    for (const scope of scopes) {
       results.push(
-        await checkMcpTargetStatus(target, "user", {
+        await checkMcpTargetStatus(target, scope, {
           cwd: opts.cwd,
           homeDir: opts.homeDir,
         })

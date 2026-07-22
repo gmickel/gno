@@ -4,27 +4,36 @@
  * @module src/cli/commands/mcp/install
  */
 
+import { DEFAULT_INDEX_NAME } from "../../../app/constants.js";
+import { getConfigPaths, toAbsolutePath } from "../../../config/paths.js";
 import { CliError } from "../../errors.js";
 import { getGlobals } from "../../program.js";
+import { resolveMcpConfigLocation } from "./config-discovery.js";
 import {
-  type AnyMcpConfig,
+  getJsoncServerEntry,
+  getTomlServerEntry,
+  getYamlServerEntry,
+  setJsoncServerEntry,
+  setTomlServerEntry,
+  setYamlServerEntry,
+} from "./config-editors.js";
+import {
   buildEntry,
-  hasServerEntry,
-  isYamlFormat,
-  readMcpConfig,
-  type StandardMcpEntry,
-  setServerEntry,
-  writeMcpConfig,
+  getServersKey,
+  readMcpConfigText,
+  writeMcpConfigText,
 } from "./config.js";
 import {
   buildMcpServerEntry,
+  getDefaultTargetScope,
+  getTargetScopes,
   getTargetDisplayName,
-  MCP_SERVER_NAME,
   type McpScope,
+  type McpServerEntry,
   type McpTarget,
   resolveMcpConfigPath,
-  TARGETS_WITH_PROJECT_SCOPE,
 } from "./paths.js";
+import { normalizeMcpServerEntryForInstall } from "./server-entry.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -36,6 +45,10 @@ export interface InstallOptions {
   force?: boolean;
   dryRun?: boolean;
   enableWrite?: boolean;
+  /** Index identity persisted in the installed MCP command. */
+  indexName?: string;
+  /** Active GNO config persisted as a canonical absolute path. */
+  configPath?: string;
   /** Override cwd (testing) */
   cwd?: string;
   /** Override home dir (testing) */
@@ -51,7 +64,7 @@ export interface McpInstallResult {
   scope: McpScope;
   configPath: string;
   action: "created" | "updated" | "dry_run_create" | "dry_run_update";
-  serverEntry: { command: string; args: string[] };
+  serverEntry: McpServerEntry;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -64,7 +77,7 @@ export interface McpInstallResult {
 export async function installMcpToTarget(
   target: McpTarget,
   scope: McpScope,
-  serverEntry: StandardMcpEntry,
+  serverEntry: McpServerEntry,
   options: {
     force?: boolean;
     dryRun?: boolean;
@@ -73,23 +86,25 @@ export async function installMcpToTarget(
   }
 ): Promise<McpInstallResult> {
   const { force = false, dryRun = false, cwd, homeDir } = options;
-
-  const { configPath, configFormat } = resolveMcpConfigPath({
+  const normalizedEntry = normalizeMcpServerEntryForInstall(serverEntry);
+  const resolvedPaths = resolveMcpConfigPath({
     target,
     scope,
     cwd,
     homeDir,
   });
-
-  // Read existing config (needed for both dry-run preview and actual install)
-  // readMcpConfig returns {} for missing files when returnNullOnMissing is not set
-  const useYaml = isYamlFormat(configFormat);
-  const config = ((await readMcpConfig(configPath, {
-    yaml: useYaml,
-  })) ?? {}) as AnyMcpConfig;
-
-  // Check if already exists using format-aware helper
-  const alreadyExists = hasServerEntry(config, MCP_SERVER_NAME, configFormat);
+  const configPath = await resolveMcpConfigLocation(resolvedPaths);
+  const { configFormat } = resolvedPaths;
+  const content = (await readMcpConfigText(configPath)) ?? "";
+  const serversKey =
+    configFormat === "codex_toml" ? "mcp_servers" : getServersKey(configFormat);
+  const parsed =
+    configFormat === "codex_toml"
+      ? getTomlServerEntry(content, configPath)
+      : configFormat === "yaml_standard"
+        ? getYamlServerEntry(content, configPath, serversKey)
+        : getJsoncServerEntry(content, configPath, serversKey);
+  const alreadyExists = parsed.exists;
   if (alreadyExists && !force) {
     throw new CliError(
       "VALIDATION",
@@ -99,33 +114,44 @@ export async function installMcpToTarget(
     );
   }
 
-  const wouldCreate = !alreadyExists;
+  const entry = buildEntry(
+    normalizedEntry.command,
+    normalizedEntry.args,
+    configFormat,
+    normalizedEntry.env
+  );
+  const standardEntry = {
+    command: normalizedEntry.command,
+    args: normalizedEntry.args,
+    ...(normalizedEntry.env ? { env: normalizedEntry.env } : {}),
+  };
+  const updated =
+    configFormat === "codex_toml"
+      ? setTomlServerEntry(content, configPath, standardEntry)
+      : configFormat === "yaml_standard"
+        ? setYamlServerEntry(content, configPath, serversKey, standardEntry)
+        : setJsoncServerEntry(content, configPath, serversKey, entry);
 
+  const wouldCreate = !alreadyExists;
   if (dryRun) {
     return {
       target,
       scope,
       configPath,
       action: wouldCreate ? "dry_run_create" : "dry_run_update",
-      serverEntry,
+      serverEntry: normalizedEntry,
     };
   }
 
   const action = wouldCreate ? "created" : "updated";
-
-  // Build format-specific entry and add to config
-  const entry = buildEntry(serverEntry.command, serverEntry.args, configFormat);
-  setServerEntry(config, MCP_SERVER_NAME, entry, configFormat);
-
-  // Write atomically
-  await writeMcpConfig(configPath, config, { yaml: useYaml });
+  await writeMcpConfigText(configPath, updated);
 
   return {
     target,
     scope,
     configPath,
     action,
-    serverEntry,
+    serverEntry: normalizedEntry,
   };
 }
 
@@ -145,24 +171,36 @@ function safeGetGlobals(): { json: boolean; quiet: boolean } {
  */
 export async function installMcp(opts: InstallOptions = {}): Promise<void> {
   const target = opts.target ?? "claude-desktop";
-  const scope = opts.scope ?? "user";
+  const scope = opts.scope ?? getDefaultTargetScope(target);
   const force = opts.force ?? false;
   const dryRun = opts.dryRun ?? false;
   const enableWrite = opts.enableWrite ?? false;
+  const indexName = opts.indexName ?? DEFAULT_INDEX_NAME;
+  const paths = getConfigPaths();
+  const configPath = toAbsolutePath(
+    opts.configPath ?? paths.configFile,
+    opts.cwd
+  );
   const globals = safeGetGlobals();
   const json = opts.json ?? globals.json;
   const quiet = opts.quiet ?? globals.quiet;
 
   // Validate scope - only some targets support project scope
-  if (scope === "project" && !TARGETS_WITH_PROJECT_SCOPE.includes(target)) {
+  if (!getTargetScopes(target).includes(scope)) {
     throw new CliError(
       "VALIDATION",
-      `${getTargetDisplayName(target)} does not support project scope. Use --scope user.`
+      `${getTargetDisplayName(target)} does not support ${scope} scope.`
     );
   }
 
   // Build server entry (uses process.execPath, always succeeds)
-  const serverEntry = buildMcpServerEntry({ enableWrite });
+  const serverEntry = buildMcpServerEntry({
+    enableWrite,
+    indexName,
+    configPath,
+    dataDir: toAbsolutePath(paths.dataDir, opts.cwd),
+    cacheDir: toAbsolutePath(paths.cacheDir, opts.cwd),
+  });
 
   // Install
   const result = await installMcpToTarget(target, scope, serverEntry, {

@@ -238,6 +238,21 @@ GNO works with reduced capabilities when components are missing:
 
 Run `gno doctor` to check component status.
 
+## Retrieval-Proven Activation
+
+CLI status/doctor, REST, and Web/Desktop onboarding consume one shared passive
+activation model. A collection becomes lexically ready only after a bounded,
+corpus-derived term returns the expected local source. Exact-fingerprint
+deterministic negatives are reusable; transient query/result failures retry.
+
+Passive identity uses document URI/source/mirror metadata, schema/tokenizer
+identity, and the owned `fts_mirror_hash` marker. It does not select Markdown or
+FTS bodies. Cold proof content work is capped at 64 prefixes of 32,768 characters
+and 64 terms. Semantic capability is tri-state and independent from lexical
+readiness. Connector proof is active only behind an explicit user action; all
+ordinary health/status reads load bounded persisted projections and never start
+a client process.
+
 Embedding inputs are clamped to the active local model context when tokenizer
 metadata is available. Chunking remains the first guardrail; the runtime clamp
 keeps pathological direct inputs from reaching native inference oversized.

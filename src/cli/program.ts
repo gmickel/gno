@@ -18,6 +18,7 @@ import {
   PRODUCT_NAME,
   VERSION,
 } from "../app/constants";
+import { INDEX_NAME_REQUIREMENTS, isValidIndexName } from "../app/index-name";
 import { resolveDepthPolicy } from "../core/depth-policy";
 import { parseAndValidateTagFilter } from "../core/tags";
 import { setColorsEnabled } from "./colors";
@@ -240,6 +241,12 @@ export function createProgram(): Command {
   program.hook("preAction", (thisCommand) => {
     const rootOpts = thisCommand.optsWithGlobals();
     const globals = parseGlobalOptions(rootOpts);
+    if (!isValidIndexName(globals.index)) {
+      throw new CliError(
+        "VALIDATION",
+        `Invalid index name: ${INDEX_NAME_REQUIREMENTS}.`
+      );
+    }
     applyGlobalOptions(globals);
     globalState.current = globals;
   });
@@ -1045,13 +1052,23 @@ function wireOnboardingCommands(program: Command): void {
     .option("--json", "JSON output")
     .action(async (cmdOpts: Record<string, unknown>) => {
       const format = getFormat(cmdOpts);
-      const { doctor, formatDoctor } = await import("./commands/doctor");
-      const result = await doctor({ json: format === "json" });
+      const { doctor, formatDoctor, hasCriticalDoctorErrors } =
+        await import("./commands/doctor");
+      const globals = getGlobals();
+      const result = await doctor({
+        configPath: globals.config,
+        indexName: globals.index,
+        json: format === "json",
+      });
 
-      // Doctor always succeeds but may report issues
       process.stdout.write(
         `${formatDoctor(result, { json: format === "json" })}\n`
       );
+      if (hasCriticalDoctorErrors(result.checks)) {
+        throw new CliError("RUNTIME", "Critical health checks failed", {
+          silent: true,
+        });
+      }
     });
 }
 
@@ -1308,8 +1325,7 @@ function wireMcpCommand(program: Command): void {
     )
     .option(
       "-s, --scope <scope>",
-      "scope (user, project) - project only for claude-code/codex/cursor/opencode",
-      "user"
+      "scope (user, project) - defaults to project for LibreChat and user otherwise"
     )
     .option("-f, --force", "overwrite existing configuration")
     .option("--dry-run", "show what would be done without making changes")
@@ -1320,10 +1336,11 @@ function wireMcpCommand(program: Command): void {
     .option("--json", "JSON output")
     .action(async (cmdOpts: Record<string, unknown>) => {
       const target = cmdOpts.target as string;
-      const scope = cmdOpts.scope as string;
+      const requestedScope = cmdOpts.scope;
 
       // Import MCP_TARGETS for validation
-      const { MCP_TARGETS } = await import("./commands/mcp/paths.js");
+      const { getDefaultTargetScope, MCP_TARGETS } =
+        await import("./commands/mcp/paths.js");
 
       // Validate target
       if (!(MCP_TARGETS as string[]).includes(target)) {
@@ -1332,15 +1349,26 @@ function wireMcpCommand(program: Command): void {
           `Invalid target: ${target}. Must be one of: ${MCP_TARGETS.join(", ")}.`
         );
       }
-      // Validate scope
-      if (!["user", "project"].includes(scope)) {
+      // Validate an explicit scope, then let the target choose its default.
+      if (
+        requestedScope !== undefined &&
+        (typeof requestedScope !== "string" ||
+          !["user", "project"].includes(requestedScope))
+      ) {
         throw new CliError(
           "VALIDATION",
-          `Invalid scope: ${scope}. Must be 'user' or 'project'.`
+          `Invalid scope: ${JSON.stringify(requestedScope)}. Must be 'user' or 'project'.`
         );
       }
+      const scope =
+        typeof requestedScope === "string"
+          ? requestedScope
+          : getDefaultTargetScope(
+              target as Parameters<typeof getDefaultTargetScope>[0]
+            );
 
       const { installMcp } = await import("./commands/mcp/install.js");
+      const globals = getGlobals();
       await installMcp({
         target: target as NonNullable<
           Parameters<typeof installMcp>[0]
@@ -1349,6 +1377,8 @@ function wireMcpCommand(program: Command): void {
         force: Boolean(cmdOpts.force),
         dryRun: Boolean(cmdOpts.dryRun),
         enableWrite: Boolean(cmdOpts.enableWrite),
+        indexName: globals.index,
+        configPath: globals.config,
         // Pass undefined if not set, so global --json can take effect
         json: cmdOpts.json === true ? true : undefined,
       });
@@ -1363,14 +1393,18 @@ function wireMcpCommand(program: Command): void {
       "target client (claude-desktop, cursor, zed, windsurf, opencode, amp, lmstudio, librechat, claude-code, codex)",
       "claude-desktop"
     )
-    .option("-s, --scope <scope>", "scope (user, project)", "user")
+    .option(
+      "-s, --scope <scope>",
+      "scope (user, project) - defaults to project for LibreChat and user otherwise"
+    )
     .option("--json", "JSON output")
     .action(async (cmdOpts: Record<string, unknown>) => {
       const target = cmdOpts.target as string;
-      const scope = cmdOpts.scope as string;
+      const requestedScope = cmdOpts.scope;
 
       // Import MCP_TARGETS for validation
-      const { MCP_TARGETS } = await import("./commands/mcp/paths.js");
+      const { getDefaultTargetScope, MCP_TARGETS } =
+        await import("./commands/mcp/paths.js");
 
       // Validate target
       if (!(MCP_TARGETS as string[]).includes(target)) {
@@ -1379,13 +1413,23 @@ function wireMcpCommand(program: Command): void {
           `Invalid target: ${target}. Must be one of: ${MCP_TARGETS.join(", ")}.`
         );
       }
-      // Validate scope
-      if (!["user", "project"].includes(scope)) {
+      // Validate an explicit scope, then let the target choose its default.
+      if (
+        requestedScope !== undefined &&
+        (typeof requestedScope !== "string" ||
+          !["user", "project"].includes(requestedScope))
+      ) {
         throw new CliError(
           "VALIDATION",
-          `Invalid scope: ${scope}. Must be 'user' or 'project'.`
+          `Invalid scope: ${JSON.stringify(requestedScope)}. Must be 'user' or 'project'.`
         );
       }
+      const scope =
+        typeof requestedScope === "string"
+          ? requestedScope
+          : getDefaultTargetScope(
+              target as Parameters<typeof getDefaultTargetScope>[0]
+            );
 
       const { uninstallMcp } = await import("./commands/mcp/uninstall.js");
       await uninstallMcp({
@@ -1418,7 +1462,7 @@ function wireMcpCommand(program: Command): void {
       const scope = cmdOpts.scope as string;
 
       // Import MCP_TARGETS for validation
-      const { MCP_TARGETS, TARGETS_WITH_PROJECT_SCOPE } =
+      const { getTargetDisplayName, getTargetScopes, MCP_TARGETS } =
         await import("./commands/mcp/paths.js");
 
       // Validate target
@@ -1438,12 +1482,14 @@ function wireMcpCommand(program: Command): void {
       // Validate target/scope combination
       if (
         target !== "all" &&
-        scope === "project" &&
-        !(TARGETS_WITH_PROJECT_SCOPE as string[]).includes(target)
+        scope !== "all" &&
+        !getTargetScopes(
+          target as Parameters<typeof getTargetScopes>[0]
+        ).includes(scope as "user" | "project")
       ) {
         throw new CliError(
           "VALIDATION",
-          `${target} does not support project scope.`
+          `${getTargetDisplayName(target as Parameters<typeof getTargetDisplayName>[0])} does not support ${scope} scope.`
         );
       }
 

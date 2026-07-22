@@ -66,7 +66,13 @@ export function HealthCenter({
           <p className="max-w-3xl text-muted-foreground">{health.summary}</p>
         </div>
         <Badge
-          className="border-primary/20 bg-primary/10 text-primary"
+          className={
+            health.state === "healthy"
+              ? "border-emerald-500/25 bg-emerald-500/10 text-emerald-500"
+              : health.state === "setup-required"
+                ? "border-destructive/25 bg-destructive/10 text-destructive"
+                : "border-amber-500/25 bg-amber-500/10 text-amber-500"
+          }
           variant="outline"
         >
           {health.state === "healthy"
@@ -77,7 +83,7 @@ export function HealthCenter({
         </Badge>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {health.checks.map((check) => {
           const isBusy = busyAction === check.actionKind;
 

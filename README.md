@@ -92,9 +92,13 @@ gno daemon --detach  # headless continuous indexing (background; --status / --st
 
 ## What's New
 
-> Latest release: [v1.8.0](./CHANGELOG.md#180---2026-06-05)  
+> Latest release: see [CHANGELOG.md](./CHANGELOG.md)
 > Full release history: [CHANGELOG.md](./CHANGELOG.md)
 
+- **Retrieval-proven activation**: `gno status`, `gno doctor`, REST, and the
+  Web/Desktop dashboard now share a per-folder lexical retrieval proof. Local
+  semantic readiness remains independent, and installed MCP targets can run an
+  explicit read-only retrieval smoke from Connectors.
 - **Second-brain capture**: `gno capture`, REST `/api/capture`, SDK
   `client.capture()`, MCP `gno_capture`, and Web UI Quick Capture write
   provenance-rich notes from text, stdin, or files, including typed presets for
@@ -209,11 +213,17 @@ bun install -g @gmickel/gno
 brew install sqlite3
 ```
 
-Verify everything works:
+Verify the local installation and corpus-derived lexical retrieval:
 
 ```bash
 gno doctor
+gno status --json
 ```
+
+`gno status` is passive with respect to models and connectors and exits 0 even
+when its structured activation state is degraded. `gno doctor` exits 2 when any
+configured folder fails the lexical proof; semantic models may still be pending
+without blocking BM25 search.
 
 **Windows**: current validated target is `windows-x64`, with a packaged
 desktop beta zip now published on GitHub Releases. See
@@ -248,8 +258,15 @@ gno mcp install --target codex       # OpenAI Codex CLI
 gno mcp install --target opencode    # OpenCode
 gno mcp install --target amp         # Amp
 gno mcp install --target lmstudio    # LM Studio
-gno mcp install --target librechat   # LibreChat
+gno mcp install --target librechat --scope project # LibreChat
 ```
+
+Each install records an absolute Bun/package entrypoint plus the active index,
+config, data directory, and model cache, so desktop clients open the same GNO
+workspace without relying on shell `PATH` or `GNO_*` inheritance. Inspect the
+exact command, arguments, and workspace values with
+`gno mcp install --dry-run --json`. If GNO is already configured in that
+target, add `--force` to preview the replacement without writing it.
 
 Check status: `gno mcp status`
 
@@ -340,6 +357,7 @@ import { createGnoClient } from "@gmickel/gno";
 
 const client = await createGnoClient({
   configPath: "/Users/me/.config/gno/index.yml",
+  indexName: "research",
 });
 
 // Fast exact search
@@ -372,7 +390,7 @@ await client.close();
 
 Core SDK surface:
 
-- `createGnoClient({ config | configPath, dbPath? })`
+- `createGnoClient({ config | configPath, dbPath?, indexName? })`
 - `search`, `vsearch`, `query`, `ask`
 - `get`, `multiGet`, `list`, `status`
 - `update`, `embed`, `index`
@@ -556,7 +574,11 @@ Open `http://localhost:3000` to:
 - **Same capture contract everywhere**: CLI, MCP `gno_capture`, REST `/api/capture`, SDK `client.capture()`, and Web UI Quick Capture return the same provenance receipt shape
 - **Ask**: AI-powered Q&A with citations
 - **Manage Collections**: Add, remove, and re-index collections
-- **Connect agents**: Install core Skill/MCP integrations from the app
+- **Verify retrieval**: See each folder's lexical proof, exact failed stage,
+  and remediation without waiting for semantic models
+- **Connect agents**: Install core Skill/MCP integrations; explicitly verify
+  configured MCP retrieval without changing client config. Skill installation
+  is visible, but client runtime execution cannot be proven automatically
 - **Manage files safely**: Rename, reveal, or move editable files to Trash with explicit index-vs-disk semantics
 - **Refactor files safely**: Move, duplicate, and organize editable notes with reference warnings
 - **Switch presets**: Change models live without restart
@@ -697,32 +719,37 @@ curl -X POST http://localhost:3000/api/ask \
 
 # Index status
 curl http://localhost:3000/api/status
+
+# Process liveness only
+curl http://localhost:3000/api/health
 ```
 
-| Endpoint                      | Method | Description                 |
-| :---------------------------- | :----- | :-------------------------- |
-| `/api/query`                  | POST   | Hybrid search (recommended) |
-| `/api/search`                 | POST   | BM25 keyword search         |
-| `/api/ask`                    | POST   | AI-powered Q&A              |
-| `/api/docs`                   | GET    | List documents              |
-| `/api/docs`                   | POST   | Create document             |
-| `/api/docs/:id`               | PUT    | Update document content     |
-| `/api/docs/:id/move`          | POST   | Move editable document      |
-| `/api/docs/:id/duplicate`     | POST   | Duplicate editable document |
-| `/api/docs/:id/refactor-plan` | POST   | Preview file-op warnings    |
-| `/api/docs/:id/deactivate`    | POST   | Remove from index           |
-| `/api/doc`                    | GET    | Get document content        |
-| `/api/doc/:id/sections`       | GET    | Get document sections       |
-| `/api/collections`            | POST   | Add collection              |
-| `/api/collections/:name`      | DELETE | Remove collection           |
-| `/api/folders`                | POST   | Create folder               |
-| `/api/sync`                   | POST   | Trigger re-index            |
-| `/api/status`                 | GET    | Index statistics            |
-| `/api/note-presets`           | GET    | List note presets           |
-| `/api/presets`                | GET    | List model presets          |
-| `/api/presets`                | POST   | Switch preset               |
-| `/api/models/pull`            | POST   | Download models             |
-| `/api/models/status`          | GET    | Download progress           |
+| Endpoint                      | Method | Description                  |
+| :---------------------------- | :----- | :--------------------------- |
+| `/api/query`                  | POST   | Hybrid search (recommended)  |
+| `/api/search`                 | POST   | BM25 keyword search          |
+| `/api/ask`                    | POST   | AI-powered Q&A               |
+| `/api/docs`                   | GET    | List documents               |
+| `/api/docs`                   | POST   | Create document              |
+| `/api/docs/:id`               | PUT    | Update document content      |
+| `/api/docs/:id/move`          | POST   | Move editable document       |
+| `/api/docs/:id/duplicate`     | POST   | Duplicate editable document  |
+| `/api/docs/:id/refactor-plan` | POST   | Preview file-op warnings     |
+| `/api/docs/:id/deactivate`    | POST   | Remove from index            |
+| `/api/doc`                    | GET    | Get document content         |
+| `/api/doc/:id/sections`       | GET    | Get document sections        |
+| `/api/collections`            | POST   | Add collection               |
+| `/api/collections/:name`      | DELETE | Remove collection            |
+| `/api/folders`                | POST   | Create folder                |
+| `/api/sync`                   | POST   | Trigger re-index             |
+| `/api/status`                 | GET    | Index and activation state   |
+| `/api/health`                 | GET    | Process liveness only        |
+| `/api/connectors/verify`      | POST   | Explicit read-only MCP proof |
+| `/api/note-presets`           | GET    | List note presets            |
+| `/api/presets`                | GET    | List model presets           |
+| `/api/presets`                | POST   | Switch preset                |
+| `/api/models/pull`            | POST   | Download models              |
+| `/api/models/status`          | GET    | Download progress            |
 
 No authentication. No rate limits. Build custom tools, automate workflows, integrate with any language.
 

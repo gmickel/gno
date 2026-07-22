@@ -53,14 +53,27 @@ Ask Cursor's AI:
 
 ## Manual Configuration
 
-Add to `~/.cursor/mcp.json` (user) or `.cursor/mcp.json` (project):
+Run `gno mcp install --target cursor --dry-run --json`, then add the reported
+absolute values to `~/.cursor/mcp.json` (user) or `.cursor/mcp.json` (project):
 
 ```json
 {
   "mcpServers": {
     "gno": {
-      "command": "gno",
-      "args": ["mcp"]
+      "command": "/absolute/path/to/bun",
+      "args": [
+        "run",
+        "/absolute/path/to/@gmickel/gno/src/index.ts",
+        "--index",
+        "default",
+        "--config",
+        "/absolute/path/to/index.yml",
+        "mcp"
+      ],
+      "env": {
+        "GNO_DATA_DIR": "/absolute/path/to/data",
+        "GNO_CACHE_DIR": "/absolute/path/to/cache"
+      }
     }
   }
 }

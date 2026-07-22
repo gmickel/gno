@@ -1,3 +1,5 @@
+import type { ActivationStatus } from "../core/activation-status";
+
 export type HealthCheckStatus = "ok" | "warn" | "error";
 
 export type HealthActionKind =
@@ -29,6 +31,7 @@ export interface OnboardingStep {
   title: string;
   status: OnboardingStepStatus;
   detail: string;
+  action?: "add-collection" | "download-models" | "sync" | "embed";
 }
 
 export interface OnboardingState {
@@ -142,6 +145,7 @@ export interface AppStatusResponse {
     hybrid: boolean;
     answer: boolean;
   };
+  activation: ActivationStatus;
   onboarding: OnboardingState;
   health: HealthCenterState;
   background: BackgroundServiceState;

@@ -520,6 +520,7 @@ export default function Dashboard({ navigate }: PageProps) {
         {status && (
           <div className="mb-10">
             <BootstrapStatus
+              activation={status.activation}
               bootstrap={status.bootstrap}
               onDownloadModels={() => void handleDownloadModels()}
             />

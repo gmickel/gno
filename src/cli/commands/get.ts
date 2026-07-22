@@ -10,6 +10,10 @@ import type { ParsedRef } from "./ref-parser";
 
 import { decorateUriForIndex, parseUri } from "../../app/constants";
 import {
+  INDEX_NAME_REQUIREMENTS,
+  isValidIndexName,
+} from "../../app/index-name";
+import {
   getDocumentCapabilities,
   type DocumentCapabilities,
 } from "../../core/document-capabilities";
@@ -114,6 +118,13 @@ export async function get(
   }
   const explicitIndexName =
     parsed.type === "uri" ? parseUri(parsed.value)?.indexName : undefined;
+  if (explicitIndexName !== undefined && !isValidIndexName(explicitIndexName)) {
+    return {
+      success: false,
+      error: `Invalid index name: ${INDEX_NAME_REQUIREMENTS}.`,
+      isValidation: true,
+    };
+  }
   const indexName = explicitIndexName ?? options.indexName;
 
   const initResult = await initStore({
@@ -134,6 +145,13 @@ export async function get(
 }
 
 function validateOptions(options: GetCommandOptions): GetResult | null {
+  if (options.indexName !== undefined && !isValidIndexName(options.indexName)) {
+    return {
+      success: false,
+      error: `Invalid index name: ${INDEX_NAME_REQUIREMENTS}.`,
+      isValidation: true,
+    };
+  }
   if (options.from !== undefined && options.from <= 0) {
     return {
       success: false,

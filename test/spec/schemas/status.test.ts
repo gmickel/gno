@@ -2,6 +2,23 @@ import { beforeAll, describe, expect, test } from "bun:test";
 
 import { assertInvalid, assertValid, loadSchema } from "./validator";
 
+const activation = {
+  schemaVersion: "1.0",
+  usable: false,
+  healthy: false,
+  collections: [],
+  connectors: [],
+  connectorProjection: { total: 0, projected: 0, truncated: false },
+} as const;
+
+const pendingStage = {
+  status: "pending",
+  startedAt: null,
+  completedAt: null,
+  latencyMs: null,
+  code: "semantic_not_checked",
+} as const;
+
 describe("status schema", () => {
   let schema: object;
 
@@ -36,6 +53,7 @@ describe("status schema", () => {
           hybrid: false,
           answer: false,
         },
+        activation,
         onboarding: {
           ready: false,
           stage: "add-collection",
@@ -136,6 +154,7 @@ describe("status schema", () => {
           hybrid: true,
           answer: true,
         },
+        activation: { ...activation, usable: true, healthy: true },
         onboarding: {
           ready: false,
           stage: "indexing",
@@ -228,6 +247,7 @@ describe("status schema", () => {
           hybrid: false,
           answer: false,
         },
+        activation,
         onboarding: {
           ready: false,
           stage: "models",
@@ -303,6 +323,92 @@ describe("status schema", () => {
   });
 
   describe("invalid inputs", () => {
+    test("rejects contradictory semantic availability states", async () => {
+      const status = await Bun.file(
+        "test/fixtures/outputs/status-healthy.json"
+      ).json();
+      status.activation.collections = [
+        {
+          collection: "notes",
+          ready: true,
+          generatedAt: "2026-07-22T10:00:00.000Z",
+          stages: {
+            index: {
+              status: "passed",
+              startedAt: null,
+              completedAt: null,
+              latencyMs: 1,
+            },
+            lexical: {
+              status: "passed",
+              startedAt: null,
+              completedAt: null,
+              latencyMs: 1,
+            },
+            semantic: pendingStage,
+            connector: {
+              ...pendingStage,
+              status: "skipped",
+              code: "connector_not_requested",
+            },
+          },
+          semanticAvailability: {
+            status: "pending",
+            code: "vector_unavailable",
+            command: "gno doctor",
+          },
+          remediation: null,
+        },
+      ];
+
+      expect(assertInvalid(status, schema)).toBe(true);
+    });
+
+    test("rejects corpus-bearing fields at the status root", async () => {
+      const status = await Bun.file(
+        "test/fixtures/outputs/status-healthy.json"
+      ).json();
+      status.rawCorpus = "must not cross the status boundary";
+
+      expect(assertInvalid(status, schema)).toBe(true);
+    });
+
+    test("rejects corpus-bearing fields outside the activation projection", async () => {
+      const status = await Bun.file(
+        "test/fixtures/outputs/status-healthy.json"
+      ).json();
+      status.activation.collections = [
+        {
+          collection: "notes",
+          ready: false,
+          generatedAt: null,
+          stages: {
+            index: {
+              ...pendingStage,
+              code: "index_query_failed",
+              rawSnippet: "must not cross the status boundary",
+            },
+            lexical: pendingStage,
+            semantic: pendingStage,
+            connector: { ...pendingStage, code: "connector_not_requested" },
+          },
+          semanticAvailability: {
+            status: "pending",
+            code: "models_missing",
+            command: "gno models pull --embed",
+          },
+          remediation: {
+            stage: "index",
+            code: "index_query_failed",
+            command: "gno index notes --no-embed",
+            message: "Repair the index.",
+          },
+        },
+      ];
+
+      expect(assertInvalid(status, schema)).toBe(true);
+    });
+
     test("rejects missing indexName", () => {
       const status = {
         collections: [],

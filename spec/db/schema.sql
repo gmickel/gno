@@ -15,6 +15,7 @@
 --   doc_tags          - Document tags (frontmatter and user-added)
 --   doc_links         - Wiki and markdown links between documents
 --   doc_edges         - Derived semantic document relationships
+--   activation_receipts - Bounded per-collection retrieval proof receipts
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- Schema Metadata
@@ -81,6 +82,7 @@ CREATE TABLE IF NOT EXISTS documents (
   -- Conversion output
   title TEXT,
   mirror_hash TEXT,                 -- FK to content.mirror_hash (NULL if failed)
+  fts_mirror_hash TEXT,             -- supported writers maintain transactionally; migration 013 validates legacy bodies once
   converter_id TEXT,
   converter_version TEXT,
   language_hint TEXT,               -- BCP-47 or NULL
@@ -209,6 +211,29 @@ CREATE TABLE IF NOT EXISTS ingest_errors (
 
 CREATE INDEX IF NOT EXISTS idx_ingest_errors_occurred ON ingest_errors(occurred_at DESC);
 CREATE INDEX IF NOT EXISTS idx_ingest_errors_collection ON ingest_errors(collection, rel_path);
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Activation Receipts
+-- ─────────────────────────────────────────────────────────────────────────────
+
+-- Passive activation reads only document/FTS metadata and this owned-writer
+-- marker; it never selects Markdown or FTS bodies. Direct post-migration
+-- mutation of internal FTS bodies outside GNO is unsupported and may not alter
+-- the metadata-only identity. Rebuild through the supported index writer.
+
+CREATE TABLE IF NOT EXISTS activation_receipts (
+  collection TEXT NOT NULL,
+  connector_target TEXT NOT NULL DEFAULT '',
+  schema_version TEXT NOT NULL,
+  fingerprint TEXT NOT NULL,
+  receipt_json TEXT NOT NULL CHECK (length(receipt_json) <= 16384),
+  updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+  PRIMARY KEY (collection, connector_target),
+  FOREIGN KEY (collection) REFERENCES collections(name) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_activation_receipts_fingerprint
+  ON activation_receipts(fingerprint);
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- Document Tags

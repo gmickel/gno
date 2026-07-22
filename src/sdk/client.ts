@@ -40,6 +40,7 @@ import type {
 } from "./types";
 
 import { decorateUriForIndex, getIndexDbPath } from "../app/constants";
+import { INDEX_NAME_REQUIREMENTS, isValidIndexName } from "../app/index-name";
 import {
   ConfigSchema,
   loadConfig,
@@ -1208,6 +1209,12 @@ class GnoClientImpl implements GnoClient {
 export async function createGnoClient(
   options: GnoClientInitOptions = {}
 ): Promise<GnoClient> {
+  if (options.indexName !== undefined && !isValidIndexName(options.indexName)) {
+    throw sdkError(
+      "VALIDATION",
+      `Invalid index name: ${INDEX_NAME_REQUIREMENTS}.`
+    );
+  }
   const state = await resolveClientState(options);
   return new GnoClientImpl(state);
 }

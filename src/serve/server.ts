@@ -58,6 +58,7 @@ import {
   handleTrashDoc,
   handleUpdateCollection,
   handleUpdateDoc,
+  handleVerifyConnector,
 } from "./routes/api";
 import { handleGraph, handleGraphQuery } from "./routes/graph";
 import {
@@ -79,6 +80,13 @@ export interface ServeOptions {
 export interface ServeResult {
   success: boolean;
   error?: string;
+}
+
+interface StartServerDependencies {
+  startBackgroundRuntime?: typeof startBackgroundRuntime;
+  serve?: typeof Bun.serve;
+  handleInstallConnector?: typeof handleInstallConnector;
+  waitForShutdown?: (signal: AbortSignal) => Promise<void>;
 }
 
 // Hostname parsing helpers - preserved for future fetch handler use
@@ -135,11 +143,14 @@ function withSecurityHeaders(response: Response, isDev: boolean): Response {
  * Opens DB once, closes on SIGINT/SIGTERM.
  */
 export async function startServer(
-  options: ServeOptions = {}
+  options: ServeOptions = {},
+  dependencies: StartServerDependencies = {}
 ): Promise<ServeResult> {
   const port = options.port ?? 3000;
   const isDev = process.env.NODE_ENV !== "production";
-  const runtimeResult = await startBackgroundRuntime({
+  const runtimeResult = await (
+    dependencies.startBackgroundRuntime ?? startBackgroundRuntime
+  )({
     configPath: options.configPath,
     index: options.index,
     requireCollections: false,
@@ -171,7 +182,7 @@ export async function startServer(
   // Start server with try/catch for port-in-use etc.
   let server: ReturnType<typeof Bun.serve>;
   try {
-    server = Bun.serve({
+    server = (dependencies.serve ?? Bun.serve)({
       port,
       hostname: "127.0.0.1", // Loopback only - no LAN exposure
 
@@ -216,7 +227,11 @@ export async function startServer(
           },
         },
         "/api/connectors": {
-          GET: async () => withSecurityHeaders(await handleConnectors(), isDev),
+          GET: async () =>
+            withSecurityHeaders(
+              await handleConnectors(ctxHolder.config),
+              isDev
+            ),
         },
         "/api/connectors/install": {
           POST: async (req: Request) => {
@@ -224,7 +239,23 @@ export async function startServer(
               return withSecurityHeaders(forbiddenResponse(), isDev);
             }
             return withSecurityHeaders(
-              await handleInstallConnector(req),
+              await (
+                dependencies.handleInstallConnector ?? handleInstallConnector
+              )(req, {
+                indexName: options.index,
+                configPath: runtime.actualConfigPath,
+              }),
+              isDev
+            );
+          },
+        },
+        "/api/connectors/verify": {
+          POST: async (req: Request) => {
+            if (!isRequestAllowed(req, port)) {
+              return withSecurityHeaders(forbiddenResponse(), isDev);
+            }
+            return withSecurityHeaders(
+              await handleVerifyConnector(ctxHolder.config, store, req),
               isDev
             );
           },
@@ -695,11 +726,15 @@ export async function startServer(
   console.log("Press Ctrl+C to stop");
 
   // Block until shutdown signal
-  await new Promise<void>((resolve) => {
-    shutdownController.signal.addEventListener("abort", () => resolve(), {
-      once: true,
+  if (dependencies.waitForShutdown) {
+    await dependencies.waitForShutdown(shutdownController.signal);
+  } else {
+    await new Promise<void>((resolve) => {
+      shutdownController.signal.addEventListener("abort", () => resolve(), {
+        once: true,
+      });
     });
-  });
+  }
 
   removeShutdownHandlers();
   try {

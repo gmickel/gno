@@ -4,11 +4,217 @@
   "title": "GNO Doctor",
   "description": "Health check diagnostics",
   "type": "object",
-  "required": ["healthy", "checks"],
+  "additionalProperties": false,
+  "required": ["healthy", "checks", "activation"],
   "properties": {
     "healthy": {
       "type": "boolean",
       "description": "Overall health status (true if no errors)"
+    },
+    "activation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion",
+        "usable",
+        "healthy",
+        "collections",
+        "connectors",
+        "connectorProjection"
+      ],
+      "properties": {
+        "schemaVersion": { "const": "1.0" },
+        "usable": { "type": "boolean" },
+        "healthy": { "type": "boolean" },
+        "collections": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "collection",
+              "ready",
+              "generatedAt",
+              "stages",
+              "semanticAvailability",
+              "remediation"
+            ],
+            "properties": {
+              "collection": { "type": "string" },
+              "ready": { "type": "boolean" },
+              "generatedAt": {
+                "type": ["string", "null"],
+                "format": "date-time"
+              },
+              "stages": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["index", "lexical", "semantic", "connector"],
+                "properties": {
+                  "index": {
+                    "$ref": "#/properties/activation/definitions/stage"
+                  },
+                  "lexical": {
+                    "$ref": "#/properties/activation/definitions/stage"
+                  },
+                  "semantic": {
+                    "$ref": "#/properties/activation/definitions/stage"
+                  },
+                  "connector": {
+                    "$ref": "#/properties/activation/definitions/stage"
+                  }
+                }
+              },
+              "semanticAvailability": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["status", "code", "command"],
+                "allOf": [
+                  {
+                    "if": {
+                      "properties": {
+                        "code": { "const": "vector_unavailable" }
+                      },
+                      "required": ["code"]
+                    },
+                    "then": {
+                      "properties": { "status": { "const": "skipped" } }
+                    }
+                  },
+                  {
+                    "if": {
+                      "properties": {
+                        "code": {
+                          "enum": [
+                            "models_missing",
+                            "embeddings_pending",
+                            "semantic_not_checked"
+                          ]
+                        }
+                      },
+                      "required": ["code"]
+                    },
+                    "then": {
+                      "properties": { "status": { "const": "pending" } }
+                    }
+                  }
+                ],
+                "properties": {
+                  "status": { "enum": ["pending", "skipped"] },
+                  "code": {
+                    "enum": [
+                      "models_missing",
+                      "embeddings_pending",
+                      "vector_unavailable",
+                      "semantic_not_checked"
+                    ]
+                  },
+                  "command": { "type": "string" }
+                }
+              },
+              "remediation": {
+                "type": ["object", "null"],
+                "additionalProperties": false,
+                "required": ["stage", "code", "command", "message"],
+                "properties": {
+                  "stage": {
+                    "enum": ["index", "lexical", "semantic", "connector"]
+                  },
+                  "code": {
+                    "$ref": "#/properties/activation/definitions/code"
+                  },
+                  "command": { "type": "string" },
+                  "message": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "connectors": {
+          "type": "array",
+          "maxItems": 64,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["collection", "target", "status", "remediation"],
+            "properties": {
+              "collection": { "type": "string" },
+              "target": { "type": "string" },
+              "status": {
+                "enum": ["passed", "pending", "failed", "skipped"]
+              },
+              "code": {
+                "$ref": "#/properties/activation/definitions/code"
+              },
+              "remediation": { "type": ["string", "null"] }
+            }
+          }
+        },
+        "connectorProjection": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["total", "projected", "truncated"],
+          "properties": {
+            "total": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "All configured collection and connector target pairs before projection bounds."
+            },
+            "projected": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 64,
+              "description": "Pairs included in connectors; always equals connectors.length."
+            },
+            "truncated": {
+              "type": "boolean",
+              "description": "True exactly when total is greater than projected; omitted pairs have no claimed result."
+            }
+          }
+        }
+      },
+      "definitions": {
+        "code": {
+          "enum": [
+            "no_documents",
+            "index_out_of_sync",
+            "no_probe_term",
+            "index_query_failed",
+            "retrieval_mismatch",
+            "semantic_not_checked",
+            "connector_not_requested",
+            "connector_not_configured",
+            "connector_probe_unavailable",
+            "connector_unsupported_config",
+            "connector_start_failed",
+            "connector_timeout",
+            "connector_missing_tools",
+            "connector_status_failed",
+            "connector_search_failed",
+            "connector_result_mismatch",
+            "target_runtime_unverifiable"
+          ]
+        },
+        "stage": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["status", "startedAt", "completedAt", "latencyMs"],
+          "properties": {
+            "status": {
+              "enum": ["passed", "pending", "failed", "skipped"]
+            },
+            "startedAt": { "type": ["string", "null"], "format": "date-time" },
+            "completedAt": {
+              "type": ["string", "null"],
+              "format": "date-time"
+            },
+            "latencyMs": { "type": ["integer", "null"], "minimum": 0 },
+            "code": {
+              "$ref": "#/properties/activation/definitions/code"
+            }
+          }
+        }
+      }
     },
     "checks": {
       "type": "array",

@@ -160,6 +160,7 @@
     "commander": "14.0.3",
     "embla-carousel-react": "8.6.0",
     "franc": "6.2.0",
+    "jsonc-parser": "3.3.1",
     "lucide-react": "1.8.0",
     "markitdown-ts": "0.0.9",
     "minimatch": "10.2.3",

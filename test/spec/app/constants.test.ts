@@ -28,6 +28,10 @@ import {
   URI_PREFIX,
   URI_SCHEME,
 } from "../../../src/app/constants";
+import {
+  INDEX_NAME_REQUIREMENTS,
+  isValidIndexName,
+} from "../../../src/app/index-name";
 
 describe("constants", () => {
   describe("brand identity", () => {
@@ -164,6 +168,50 @@ describe("getIndexDbPath", () => {
     const path = getIndexDbPath("work", dirs);
     expect(path).toBe(join(dirs.data, "index-work.sqlite"));
   });
+
+  test("accepts the canonical index-name contract", () => {
+    const dirs = { config: "/c", data: "/d", cache: "/k" };
+    for (const name of [
+      "research-2026",
+      "team_alpha",
+      "research.v2",
+      "research index",
+      "ümlaut",
+      "a".repeat(64),
+    ]) {
+      expect(isValidIndexName(name)).toBe(true);
+      expect(getIndexDbPath(name, dirs)).toBe(
+        join(dirs.data, `index-${name}.sqlite`)
+      );
+    }
+  });
+
+  test("rejects non-canonical and path-like index names", () => {
+    const dirs = { config: "/c", data: "/d", cache: "/k" };
+    for (const name of [
+      "",
+      ".",
+      "..",
+      ".hidden",
+      "work..other",
+      "work ",
+      "work.",
+      "work\tother",
+      "work:other",
+      "work?other",
+      "../work",
+      "work/other",
+      "work\\other",
+      "/tmp/work",
+      "C:\\work",
+      "a".repeat(65),
+    ]) {
+      expect(isValidIndexName(name)).toBe(false);
+      expect(() => getIndexDbPath(name, dirs)).toThrow(
+        `Invalid index name: ${INDEX_NAME_REQUIREMENTS}.`
+      );
+    }
+  });
 });
 
 describe("getConfigPath", () => {
@@ -214,6 +262,18 @@ describe("URI utilities", () => {
         "gno://notes/a/b.md"
       );
     });
+
+    test("rejects unsafe index query metadata", () => {
+      expect(() =>
+        buildUri("notes", "a/b.md", { indexName: "work/../../escape" })
+      ).toThrow("Invalid index name:");
+      expect(() => buildUri("notes", "a/b.md", { indexName: "" })).toThrow(
+        "Invalid index name:"
+      );
+      expect(() =>
+        decorateUriForIndex("gno://notes/a.md", "work\\other")
+      ).toThrow("Invalid index name:");
+    });
   });
 
   describe("parseUri", () => {
@@ -241,6 +301,19 @@ describe("URI utilities", () => {
         collection: "work",
         path: "my?file.md",
         indexName: "research idx",
+      });
+    });
+
+    test("preserves invalid index metadata for fail-closed resolution", () => {
+      expect(parseUri("gno://work/file.md?index=%20escape%20")).toEqual({
+        collection: "work",
+        path: "file.md",
+        indexName: " escape ",
+      });
+      expect(parseUri("gno://work/file.md?index=")).toEqual({
+        collection: "work",
+        path: "file.md",
+        indexName: "",
       });
     });
 

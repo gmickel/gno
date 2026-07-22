@@ -45,7 +45,7 @@ PGPT_PROFILES=ollama make run
 | **REST API**         | ✓                              | ✓ FastAPI (OpenAI-compatible)                                           |
 | **CLI**              | ✓ Full-featured                | ✗ Scripts only                                                          |
 | **Headless Daemon**  | ✓ `gno daemon`                 | ✓ Server mode                                                           |
-| **MCP Support**      | ✓ 10+ targets                  | ✗                                                                       |
+| **MCP Support**      | ✓ 10 automatic targets         | ✗                                                                       |
 | **Local LLMs**       | ✓ node-llama-cpp               | ✓ llama.cpp, Ollama                                                     |
 | **Database**         | SQLite (embedded)              | Qdrant (requires service)                                               |
 | **Setup Complexity** | Single command                 | Git clone, Poetry, backend setup                                        |

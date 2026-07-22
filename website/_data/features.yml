@@ -164,7 +164,7 @@
     - Also supports Raycast, LM Studio, LibreChat
     - Resource URIs for direct document access
     - Write tools disabled by default (security-first)
-    - One-command install for 10+ clients
+    - One-command install for 10 automatic targets
   commands:
     - "gno mcp install"
     - "gno mcp install --target cursor"

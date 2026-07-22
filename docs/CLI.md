@@ -56,6 +56,14 @@ All commands accept:
 --skill           Output SKILL.md for agent discovery and exit
 ```
 
+Index names use 1–64 UTF-16 code units drawn from Unicode letters, marks,
+numbers, internal ASCII spaces, `.`, `_`, or `-`. They must start with a letter
+or number, cannot end with a space or `.`, and cannot contain `..`. Absolute
+paths, path separators, controls, and platform-invalid punctuation are rejected.
+Case and canonically equivalent Unicode spellings share one NFC/case-folded
+identity. That identity may use at most 242 UTF-8 bytes, keeping the complete
+`index-<identity>.sqlite` filename within the portable 255-byte component limit.
+
 **Pager**: Long output is automatically piped through a pager when in terminal mode. Uses `$PAGER` if set, otherwise `less -R` (Unix) or `more` (Windows). Disable with `--no-pager`.
 
 **Offline mode**: Use `--offline` or set `HF_HUB_OFFLINE=1` to prevent auto-downloading models. Set `GNO_NO_AUTO_DOWNLOAD=1` to disable auto-download while still allowing explicit `gno models pull`.
@@ -973,12 +981,24 @@ Similarity edges use `seq=0` embeddings only.
 
 ### gno status
 
-Show index status.
+Show index status plus the shared retrieval activation contract.
 
 ```bash
 gno status
 gno status --json
 ```
+
+`activation.usable` means at least one configured collection passed a local,
+corpus-derived lexical retrieval proof; `activation.healthy` means every
+configured collection passed. Status exits 0 even when those fields are false
+so automation can inspect remediation. It does not start connector children,
+initialize/download models, or invoke remote inference.
+
+Semantic availability is separate: unknown resident capability is
+`semantic_not_checked`; only a positively known unavailable vector runtime is
+`vector_unavailable`. Connector status is a bounded passive projection of
+explicit verification receipts. `connectorProjection.truncated` means omitted
+target/collection pairs have no result and overall health is degraded.
 
 ### gno doctor
 
@@ -999,6 +1019,12 @@ Checks include:
 - local model cache readiness
 - embedding fingerprint freshness: current fingerprint, pending/stale chunks,
   legacy empty-fingerprint vectors, and mixed stored fingerprint groups
+- per-collection corpus-derived lexical retrieval proof
+- passive projection of explicit connector proof receipts
+
+Doctor exits 2 when lexical activation fails. Connector failures or a truncated
+projection remain warnings for process-exit purposes but make the structured
+doctor result non-healthy. Doctor never actively starts a connector or model.
 
 ### gno cleanup
 
@@ -1265,3 +1291,14 @@ gno mcp
 ```
 
 See [MCP Integration](MCP.md) for setup details.
+
+`gno mcp install` writes an absolute, workspace-pinned entry: the current Bun
+executable runs the current package's `src/index.ts`, followed by the active
+`--index` and canonical absolute `--config` before `mcp`. It also persists
+absolute `GNO_DATA_DIR` and `GNO_CACHE_DIR` values (`env` for standard clients
+and Codex, `environment` for OpenCode). This is intentional; desktop clients
+need not share the shell's `PATH` or GNO environment variables. Codex writes
+native `~/.codex/config.toml` or project `.codex/config.toml` tables. Use
+`gno mcp install --dry-run --json` to inspect the exact command, arguments, and
+workspace values. If the target already has GNO configured, add `--force` to
+preview the replacement without writing it.

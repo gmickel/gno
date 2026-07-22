@@ -733,6 +733,90 @@ export interface MigrationResult {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Activation Verification
+// ─────────────────────────────────────────────────────────────────────────────
+
+export type ActivationStageName =
+  | "index"
+  | "lexical"
+  | "semantic"
+  | "connector";
+
+export type ActivationStageStatus = "passed" | "pending" | "failed" | "skipped";
+
+export type ActivationVerificationCode =
+  | "no_documents"
+  | "index_out_of_sync"
+  | "no_probe_term"
+  | "index_query_failed"
+  | "retrieval_mismatch"
+  | "semantic_not_checked"
+  | "connector_not_requested"
+  | "connector_not_configured"
+  | "connector_probe_unavailable"
+  | "connector_unsupported_config"
+  | "connector_start_failed"
+  | "connector_timeout"
+  | "connector_missing_tools"
+  | "connector_status_failed"
+  | "connector_search_failed"
+  | "connector_result_mismatch"
+  | "target_runtime_unverifiable";
+
+export interface ActivationStageReceipt {
+  status: ActivationStageStatus;
+  startedAt: string | null;
+  completedAt: string | null;
+  latencyMs: number | null;
+  code?: ActivationVerificationCode;
+}
+
+/** Privacy-bounded, per-collection proof that the local index can retrieve. */
+export interface ActivationVerificationReceipt {
+  schemaVersion: "1.0";
+  collection: string;
+  fingerprint: string;
+  ready: boolean;
+  generatedAt: string;
+  stages: Record<ActivationStageName, ActivationStageReceipt>;
+  evidence: {
+    /** Corpus-keyed SHA-256 probe digest. The term/key are never persisted. */
+    probeHash?: string;
+    resultUri?: string;
+    resultSourceHash?: string;
+    connectorTarget?: string;
+  };
+}
+
+/** Stable index inputs included in activation fingerprints. */
+export interface ActivationIndexIdentity {
+  indexName: string;
+  schemaVersion: number;
+  ftsTokenizer: FtsTokenizer;
+  /** Hash of collection-scoped active FTS synchronization state. */
+  ftsStateHash: string;
+  /** Number of active documents represented by the snapshot. */
+  activeDocumentCount: number;
+  /** True only when every active document has a current owned FTS row. */
+  ftsSynchronized: boolean;
+}
+
+/** Content-free document identity used by passive activation fingerprints. */
+export interface ActivationIndexDocument {
+  id: number;
+  uri: string;
+  sourceHash: string;
+  mirrorHash: string | null;
+  active: boolean;
+}
+
+/** One metadata-only snapshot; never contains source or indexed body text. */
+export interface ActivationIndexSnapshot {
+  identity: ActivationIndexIdentity;
+  documents: ActivationIndexDocument[];
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Transaction Types
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -815,6 +899,31 @@ export interface StorePort {
    * Get all contexts from DB.
    */
   getContexts(): Promise<StoreResult<ContextRow[]>>;
+
+  /** Schema/tokenizer identity used to invalidate activation receipts. */
+  getActivationIndexIdentity(
+    collection: string
+  ): Promise<StoreResult<ActivationIndexIdentity>>;
+
+  /** Metadata/hash-only identity and documents for passive activation checks. */
+  getActivationIndexSnapshot(
+    collection: string
+  ): Promise<StoreResult<ActivationIndexSnapshot>>;
+
+  /**
+   * Load the current activation receipt. A row with a different fingerprint is
+   * deleted and returned as null so stale readiness cannot escape the store.
+   */
+  getActivationReceipt(
+    collection: string,
+    expectedFingerprint: string,
+    connectorTarget?: string
+  ): Promise<StoreResult<ActivationVerificationReceipt | null>>;
+
+  /** Persist a strictly projected, privacy-bounded activation receipt. */
+  upsertActivationReceipt(
+    receipt: ActivationVerificationReceipt
+  ): Promise<StoreResult<void>>;
 
   // ─────────────────────────────────────────────────────────────────────────
   // Documents
@@ -927,6 +1036,15 @@ export interface StorePort {
    * Get markdown content by mirror hash.
    */
   getContent(mirrorHash: string): Promise<StoreResult<string | null>>;
+
+  /**
+   * Read at most maxChars from stored markdown. Used by bounded activation
+   * probes so readiness checks never materialize whole documents.
+   */
+  getContentPrefix(
+    mirrorHash: string,
+    maxChars: number
+  ): Promise<StoreResult<string | null>>;
 
   /**
    * Batch fetch markdown content for multiple mirror hashes.

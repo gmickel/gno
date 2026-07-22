@@ -11,12 +11,13 @@ import { stat } from "node:fs/promises";
 import { arch, platform } from "node:os";
 
 import type { Config } from "../../config/types";
+import type { ActivationStatus } from "../../core/activation-status";
 
 import { getIndexDbPath, getModelsCachePath } from "../../app/constants";
 import { getConfigPaths, isInitialized, loadConfig } from "../../config";
+import { isConnectorActivationComplete } from "../../core/activation-connector-health";
 import { getCodeChunkingStatus } from "../../ingestion/chunker";
 import { ModelCache } from "../../llm/cache";
-import { LlmAdapter } from "../../llm/nodeLlamaCpp/adapter";
 import { getActivePreset, resolveModelUri } from "../../llm/registry";
 import { SqliteAdapter } from "../../store/sqlite/adapter";
 import { loadFts5Snowball } from "../../store/sqlite/fts5-snowball";
@@ -26,6 +27,11 @@ import {
   getLoadAttempts,
 } from "../../store/sqlite/setup";
 import { getStoredEmbeddingFingerprint } from "../../store/vector/freshness";
+import {
+  buildDoctorActivation,
+  checkConnectorActivation,
+  checkRetrievalActivation,
+} from "./doctor-activation";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -63,6 +69,8 @@ export interface EmbeddingFingerprintHealth {
 export interface DoctorOptions {
   /** Override config path */
   configPath?: string;
+  /** Index name */
+  indexName?: string;
   /** Output as JSON */
   json?: boolean;
   /** Output as Markdown */
@@ -72,6 +80,14 @@ export interface DoctorOptions {
 export interface DoctorResult {
   healthy: boolean;
   checks: DoctorCheck[];
+  activation: ActivationStatus;
+}
+
+/** Whether doctor found a process-failing check (warnings remain exit-safe). */
+export function hasCriticalDoctorErrors(
+  checks: readonly DoctorCheck[]
+): boolean {
+  return checks.some(({ status }) => status === "error");
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -105,8 +121,8 @@ async function checkConfig(configPath?: string): Promise<DoctorCheck> {
   };
 }
 
-async function checkDatabase(): Promise<DoctorCheck> {
-  const dbPath = getIndexDbPath();
+async function checkDatabase(indexName?: string): Promise<DoctorCheck> {
+  const dbPath = getIndexDbPath(indexName);
 
   try {
     await stat(dbPath);
@@ -175,9 +191,10 @@ function describeFingerprintGroup(group: EmbeddingFingerprintGroup): string {
 }
 
 async function checkEmbeddingFingerprints(
-  config: Config
+  config: Config,
+  indexName?: string
 ): Promise<DoctorCheck> {
-  const dbPath = getIndexDbPath();
+  const dbPath = getIndexDbPath(indexName);
   try {
     await stat(dbPath);
   } catch {
@@ -312,14 +329,13 @@ async function checkEmbeddingFingerprints(
   }
 }
 
-async function checkNodeLlamaCpp(config: Config): Promise<DoctorCheck> {
-  const llm = new LlmAdapter(config);
+function checkNodeLlamaCpp(): DoctorCheck {
   try {
-    await llm.getManager().getLlama();
+    import.meta.resolve("node-llama-cpp");
     return {
       name: "node-llama-cpp",
       status: "ok",
-      message: "node-llama-cpp loaded successfully",
+      message: "node-llama-cpp package available (runtime not initialized)",
     };
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
@@ -328,8 +344,6 @@ async function checkNodeLlamaCpp(config: Config): Promise<DoctorCheck> {
       status: "error",
       message: `node-llama-cpp failed: ${message}`,
     };
-  } finally {
-    await llm.dispose();
   }
 }
 
@@ -495,7 +509,7 @@ export async function doctor(
   checks.push(await checkConfig(options.configPath));
 
   // Database check
-  checks.push(await checkDatabase());
+  checks.push(await checkDatabase(options.indexName));
 
   // Load config for model checks (if available)
   const { createDefaultConfig } = await import("../../config");
@@ -507,7 +521,7 @@ export async function doctor(
   checks.push(...modelChecks);
 
   // node-llama-cpp check
-  checks.push(await checkNodeLlamaCpp(config));
+  checks.push(checkNodeLlamaCpp());
 
   // SQLite extension checks
   const sqliteChecks = await checkSqliteExtensions();
@@ -517,14 +531,25 @@ export async function doctor(
   checks.push(checkCodeChunking());
 
   // Embedding fingerprint freshness
-  checks.push(await checkEmbeddingFingerprints(config));
+  checks.push(await checkEmbeddingFingerprints(config, options.indexName));
+
+  const activation = await buildDoctorActivation(config, options);
+  checks.push(checkRetrievalActivation(activation));
+  const connectorActivation = checkConnectorActivation(activation);
+  if (connectorActivation) {
+    checks.push(connectorActivation);
+  }
 
   // Determine overall health
-  const hasErrors = checks.some((c) => c.status === "error");
+  const hasErrors = hasCriticalDoctorErrors(checks);
 
   return {
-    healthy: !hasErrors,
+    healthy:
+      !hasErrors &&
+      activation.healthy &&
+      isConnectorActivationComplete(activation),
     checks,
+    activation,
   };
 }
 

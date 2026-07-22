@@ -204,10 +204,8 @@ export function FirstRunWizard({
   onboarding,
   onAddCollection,
   onDownloadModels,
-  onEmbed,
   onSync,
   onSyncComplete,
-  embedding = false,
   syncJobId = null,
   syncing = false,
 }: FirstRunWizardProps) {
@@ -238,27 +236,19 @@ export function FirstRunWizard({
       : null;
   const progressValue = getStepProgress(onboarding);
   const isShowingRecommended = activeStep?.id === recommendedStepId;
-  const indexingNeedsEmbeddings =
-    onboarding.stage === "indexing" &&
-    onboarding.detail.toLowerCase().includes("embedding");
-
   const runRecommendedAction = () => {
     if (!activeStep) {
       return;
     }
-    if (activeStep.id === "folders") {
+    if (activeStep.action === "add-collection") {
       onAddCollection();
       return;
     }
-    if (activeStep.id === "models") {
+    if (activeStep.action === "download-models") {
       onDownloadModels();
       return;
     }
-    if (activeStep.id === "indexing" && indexingNeedsEmbeddings && !embedding) {
-      onEmbed();
-      return;
-    }
-    if (activeStep.id === "indexing" && !syncing) {
+    if (activeStep.action === "sync" && !syncing) {
       onSync();
     }
   };
@@ -403,7 +393,7 @@ export function FirstRunWizard({
         <WizardPanel>
           <WizardPanelHeader
             badge={<Badge variant="outline">Safe to rerun</Badge>}
-            title="Finish first indexing"
+            title="Prove lexical retrieval"
           >
             <p className="max-w-2xl text-muted-foreground text-sm leading-6">
               {activeStep.detail}
@@ -419,31 +409,13 @@ export function FirstRunWizard({
 
         <WizardActionPanel
           action={
-            <Button
-              disabled={indexingNeedsEmbeddings ? embedding : syncing}
-              onClick={indexingNeedsEmbeddings ? onEmbed : onSync}
-              size="lg"
-            >
+            <Button disabled={syncing} onClick={onSync} size="lg">
               <RefreshCwIcon className="mr-2 size-4" />
-              {indexingNeedsEmbeddings
-                ? embedding
-                  ? "Embedding..."
-                  : "Finish embeddings"
-                : syncing
-                  ? "Syncing..."
-                  : "Run first sync"}
+              {syncing ? "Syncing..." : "Run first sync"}
             </Button>
           }
-          body={
-            indexingNeedsEmbeddings
-              ? "Your files are indexed. One more embedding pass will unlock semantic search and local answers."
-              : "Good last step before you move into normal use."
-          }
-          title={
-            indexingNeedsEmbeddings
-              ? "Finish semantic indexing"
-              : "Index the current workspace"
-          }
+          body="Builds the local lexical index and proves that this exact folder can return corpus-derived evidence."
+          title="Index and verify the current workspace"
         />
 
         {syncJobId && (
@@ -451,7 +423,7 @@ export function FirstRunWizard({
             <WizardPanelHeader title="Sync progress">
               <p className="max-w-2xl text-muted-foreground text-sm leading-6">
                 Your first indexing run is in progress. The wizard will advance
-                once the job finishes and embeddings catch up.
+                once the job finishes and lexical retrieval is proven.
               </p>
             </WizardPanelHeader>
             <div style={{ padding: "24px 28px" }}>
@@ -568,24 +540,14 @@ export function FirstRunWizard({
             </div>
             {activeStep && activeStep.id !== "preset" && (
               <Button
-                disabled={
-                  activeStep.id === "indexing"
-                    ? indexingNeedsEmbeddings
-                      ? embedding
-                      : syncing
-                    : false
-                }
+                disabled={activeStep.action === "sync" ? syncing : false}
                 onClick={runRecommendedAction}
                 size="sm"
                 variant={isShowingRecommended ? "default" : "outline"}
               >
-                {activeStep.id === "indexing" && indexingNeedsEmbeddings
-                  ? embedding
-                    ? "Embedding..."
-                    : "Finish embeddings"
-                  : activeStep.id === "indexing" && syncing
-                    ? "Syncing..."
-                    : getStepActionLabel(activeStep.id)}
+                {activeStep.action === "sync" && syncing
+                  ? "Syncing..."
+                  : getStepActionLabel(activeStep.id)}
               </Button>
             )}
           </div>

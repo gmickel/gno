@@ -15,6 +15,10 @@ import { basename } from "node:path";
 
 import type { Collection, Context, FtsTokenizer } from "../../config/types";
 import type {
+  ActivationIndexDocument,
+  ActivationIndexIdentity,
+  ActivationIndexSnapshot,
+  ActivationVerificationReceipt,
   BacklinkRow,
   ChunkInput,
   ChunkRow,
@@ -63,7 +67,11 @@ import {
   buildWikiBestRankSubquery,
 } from "../../core/graph-resolver";
 import { normalizeWikiName, stripWikiMdExt } from "../../core/links";
-import { migrations, runMigrations } from "../migrations";
+import {
+  parseActivationReceipt,
+  serializeActivationReceipt,
+} from "../activation-receipts";
+import { getSchemaVersion, migrations, runMigrations } from "../migrations";
 import { err, ok } from "../types";
 import { getStoredEmbeddingFingerprint } from "../vector/freshness";
 import { modelTableName } from "../vector/sqlite-vec";
@@ -83,6 +91,29 @@ const FTS5_FIELD_WEIGHTS = {
   title: 4.0,
   body: 1.0,
 } as const;
+
+/** Content-free activation snapshot query; kept exported for contract tests. */
+export const ACTIVATION_INDEX_SNAPSHOT_SQL = `SELECT
+  d.id,
+  d.uri,
+  d.source_hash,
+  d.mirror_hash,
+  d.active,
+  CASE WHEN f.rowid IS NULL THEN 0 ELSE 1 END AS fts_present,
+  CASE
+    WHEN d.mirror_hash IS NULL AND f.rowid IS NULL THEN 1
+    WHEN
+      f.rowid IS NOT NULL
+      AND f.filepath = d.rel_path
+      AND f.title = COALESCE(d.title, '')
+      AND d.fts_mirror_hash = d.mirror_hash
+    THEN 1
+    ELSE 0
+  END AS fts_current
+FROM documents d
+LEFT JOIN documents_fts f ON f.rowid = d.id
+WHERE d.collection = ? AND d.active = 1
+ORDER BY d.uri ASC, d.id ASC`;
 
 function sanitizeFts5Term(term: string): string {
   return term.replace(/[^\p{L}\p{N}'_]/gu, "").toLowerCase();
@@ -562,6 +593,173 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
     }
   }
 
+  async getActivationIndexIdentity(
+    collection: string
+  ): Promise<StoreResult<ActivationIndexIdentity>> {
+    const snapshot = await this.getActivationIndexSnapshot(collection);
+    return snapshot.ok ? ok(snapshot.value.identity) : snapshot;
+  }
+
+  async getActivationIndexSnapshot(
+    collection: string
+  ): Promise<StoreResult<ActivationIndexSnapshot>> {
+    try {
+      const db = this.ensureOpen();
+      const indexName =
+        basename(this.dbPath)
+          .replace(SQLITE_EXT_REGEX, "")
+          .replace(INDEX_PREFIX_REGEX, "") || "default";
+      const rows = db
+        .query<
+          {
+            id: number;
+            uri: string;
+            source_hash: string;
+            mirror_hash: string | null;
+            active: number;
+            fts_present: number;
+            fts_current: number;
+          },
+          [string]
+        >(ACTIVATION_INDEX_SNAPSHOT_SQL)
+        .all(collection);
+      const ftsHasher = new Bun.CryptoHasher("sha256");
+      ftsHasher.update(
+        JSON.stringify(
+          rows.map(({ uri, fts_present, fts_current }) => ({
+            uri,
+            present: fts_present,
+            current: fts_current,
+          }))
+        )
+      );
+      const documents: ActivationIndexDocument[] = rows.map((row) => ({
+        id: row.id,
+        uri: row.uri,
+        sourceHash: row.source_hash,
+        mirrorHash: row.mirror_hash,
+        active: row.active === 1,
+      }));
+      return ok({
+        identity: {
+          indexName,
+          schemaVersion: getSchemaVersion(db),
+          ftsTokenizer: this.ftsTokenizer,
+          ftsStateHash: ftsHasher.digest("hex"),
+          activeDocumentCount: documents.length,
+          ftsSynchronized: rows.every((row) => row.fts_current === 1),
+        },
+        documents,
+      });
+    } catch (cause) {
+      return err(
+        "QUERY_FAILED",
+        cause instanceof Error
+          ? cause.message
+          : "Failed to get activation index identity",
+        cause
+      );
+    }
+  }
+
+  async getActivationReceipt(
+    collection: string,
+    expectedFingerprint: string,
+    connectorTarget = ""
+  ): Promise<StoreResult<ActivationVerificationReceipt | null>> {
+    try {
+      const db = this.ensureOpen();
+      const row = db
+        .query<
+          {
+            collection: string;
+            connector_target: string;
+            fingerprint: string;
+            receipt_json: string;
+          },
+          [string, string]
+        >(
+          `SELECT collection, connector_target, fingerprint, receipt_json
+           FROM activation_receipts
+           WHERE collection = ? AND connector_target = ?`
+        )
+        .get(collection, connectorTarget);
+
+      if (!row) {
+        return ok(null);
+      }
+      if (row.fingerprint !== expectedFingerprint) {
+        db.run(
+          "DELETE FROM activation_receipts WHERE collection = ? AND connector_target = ?",
+          [collection, connectorTarget]
+        );
+        return ok(null);
+      }
+
+      const receipt = parseActivationReceipt(row.receipt_json);
+      if (
+        !receipt ||
+        receipt.fingerprint !== expectedFingerprint ||
+        receipt.collection !== row.collection ||
+        (receipt.evidence.connectorTarget ?? "") !== row.connector_target
+      ) {
+        db.run(
+          "DELETE FROM activation_receipts WHERE collection = ? AND connector_target = ?",
+          [collection, connectorTarget]
+        );
+        return ok(null);
+      }
+      return ok(receipt);
+    } catch (cause) {
+      return err(
+        "QUERY_FAILED",
+        cause instanceof Error
+          ? cause.message
+          : "Failed to get activation receipt",
+        cause
+      );
+    }
+  }
+
+  async upsertActivationReceipt(
+    receipt: ActivationVerificationReceipt
+  ): Promise<StoreResult<void>> {
+    try {
+      const db = this.ensureOpen();
+      const serialized = serializeActivationReceipt(receipt);
+      if (!serialized.ok) {
+        return err("INVALID_INPUT", serialized.error);
+      }
+      db.run(
+        `INSERT INTO activation_receipts (
+           collection, connector_target, schema_version, fingerprint,
+           receipt_json, updated_at
+         ) VALUES (?, ?, ?, ?, ?, datetime('now'))
+         ON CONFLICT(collection, connector_target) DO UPDATE SET
+           schema_version = excluded.schema_version,
+           fingerprint = excluded.fingerprint,
+           receipt_json = excluded.receipt_json,
+           updated_at = datetime('now')`,
+        [
+          serialized.projected.collection,
+          serialized.connectorTarget,
+          serialized.projected.schemaVersion,
+          serialized.projected.fingerprint,
+          serialized.json,
+        ]
+      );
+      return ok(undefined);
+    } catch (cause) {
+      return err(
+        "QUERY_FAILED",
+        cause instanceof Error
+          ? cause.message
+          : "Failed to persist activation receipt",
+        cause
+      );
+    }
+  }
+
   getContextGeneration(): number {
     return this.contextGeneration;
   }
@@ -578,8 +776,9 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
       const docid = deriveDocid(doc.sourceHash);
       const uri = buildUri(doc.collection, doc.relPath);
 
-      db.run(
-        `
+      const transaction = db.transaction((): UpsertDocumentResult => {
+        db.run(
+          `
         INSERT INTO documents (
           collection, rel_path, source_hash, source_mime, source_ext,
           source_size, source_mtime, source_ctime, docid, uri, title, mirror_hash,
@@ -617,48 +816,61 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
           ingest_version = excluded.ingest_version,
           updated_at = datetime('now')
       `,
-        [
-          doc.collection,
-          doc.relPath,
-          doc.sourceHash,
-          doc.sourceMime,
-          doc.sourceExt,
-          doc.sourceSize,
-          doc.sourceMtime,
-          doc.sourceCtime ?? doc.sourceMtime,
-          docid,
-          uri,
-          doc.title ?? null,
-          doc.mirrorHash ?? null,
-          doc.converterId ?? null,
-          doc.converterVersion ?? null,
-          doc.languageHint ?? null,
-          doc.contentType ?? null,
-          doc.categories ? JSON.stringify(doc.categories) : null,
-          doc.contentTypeSource ?? null,
-          doc.author ?? null,
-          doc.frontmatterDate ?? null,
-          doc.dateFields ? JSON.stringify(doc.dateFields) : null,
-          doc.contentTypeRulesFingerprint ?? null,
-          doc.lastErrorCode ?? null,
-          doc.lastErrorMessage ?? null,
-          doc.lastErrorCode ? new Date().toISOString() : null,
-          doc.ingestVersion ?? null,
-        ]
-      );
+          [
+            doc.collection,
+            doc.relPath,
+            doc.sourceHash,
+            doc.sourceMime,
+            doc.sourceExt,
+            doc.sourceSize,
+            doc.sourceMtime,
+            doc.sourceCtime ?? doc.sourceMtime,
+            docid,
+            uri,
+            doc.title ?? null,
+            doc.mirrorHash ?? null,
+            doc.converterId ?? null,
+            doc.converterVersion ?? null,
+            doc.languageHint ?? null,
+            doc.contentType ?? null,
+            doc.categories ? JSON.stringify(doc.categories) : null,
+            doc.contentTypeSource ?? null,
+            doc.author ?? null,
+            doc.frontmatterDate ?? null,
+            doc.dateFields ? JSON.stringify(doc.dateFields) : null,
+            doc.contentTypeRulesFingerprint ?? null,
+            doc.lastErrorCode ?? null,
+            doc.lastErrorMessage ?? null,
+            doc.lastErrorCode ? new Date().toISOString() : null,
+            doc.ingestVersion ?? null,
+          ]
+        );
 
-      // Get the row id (either inserted or updated)
-      const idRow = db
-        .query<{ id: number }, [string, string]>(
-          "SELECT id FROM documents WHERE collection = ? AND rel_path = ?"
-        )
-        .get(doc.collection, doc.relPath);
+        // Get the row id (either inserted or updated)
+        const idRow = db
+          .query<{ id: number }, [string, string]>(
+            "SELECT id FROM documents WHERE collection = ? AND rel_path = ?"
+          )
+          .get(doc.collection, doc.relPath);
 
-      if (!idRow) {
-        return err("QUERY_FAILED", "Failed to get document id after upsert");
-      }
+        if (!idRow) {
+          throw new Error("Failed to get document id after upsert");
+        }
 
-      return ok({ id: idRow.id, docid });
+        // Conversion failures deliberately drop mirror ownership. Remove the
+        // old lexical projection in the same transaction so stale content can
+        // never join against the newly updated document metadata.
+        if (doc.mirrorHash == null) {
+          db.run("DELETE FROM documents_fts WHERE rowid = ?", [idRow.id]);
+          db.run("UPDATE documents SET fts_mirror_hash = NULL WHERE id = ?", [
+            idRow.id,
+          ]);
+        }
+
+        return { id: idRow.id, docid };
+      });
+
+      return ok(transaction());
     } catch (cause) {
       return err(
         "QUERY_FAILED",
@@ -1145,6 +1357,29 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
     }
   }
 
+  async getContentPrefix(
+    mirrorHash: string,
+    maxChars: number
+  ): Promise<StoreResult<string | null>> {
+    try {
+      const db = this.ensureOpen();
+      const boundedChars = Math.max(0, Math.floor(maxChars));
+      const row = db
+        .query<{ markdown: string }, [number, string]>(
+          "SELECT substr(markdown, 1, ?) AS markdown FROM content WHERE mirror_hash = ?"
+        )
+        .get(boundedChars, mirrorHash);
+
+      return ok(row?.markdown ?? null);
+    } catch (cause) {
+      return err(
+        "QUERY_FAILED",
+        cause instanceof Error ? cause.message : "Failed to get content prefix",
+        cause
+      );
+    }
+  }
+
   async getContentBatch(
     mirrorHashes: string[]
   ): Promise<StoreResult<Map<string, string>>> {
@@ -1359,12 +1594,7 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
         params.push(`%${options.author.toLowerCase()}%`);
       }
 
-      if (options.collection) {
-        params.push(options.collection);
-      }
-
-      const hasOuterFilters =
-        tagConditions.length > 0 || Boolean(options.collection);
+      const hasOuterFilters = tagConditions.length > 0;
       const ftsLimit = hasOuterFilters ? limit * 10 : limit;
       params.push(limit);
 
@@ -1383,6 +1613,11 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
             ) as score
           FROM documents_fts
           WHERE documents_fts MATCH ?
+          AND rowid IN (
+            SELECT id FROM documents
+            WHERE active = 1
+            ${options.collection ? "AND collection = ?" : ""}
+          )
           ORDER BY score
           LIMIT ?
         )
@@ -1408,7 +1643,6 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
         JOIN documents d ON d.id = fm.rowid AND d.active = 1
         WHERE 1 = 1
         ${tagConditions.length > 0 ? `AND ${tagConditions.join(" AND ")}` : ""}
-        ${options.collection ? "AND d.collection = ?" : ""}
         ORDER BY fm.score
         LIMIT ?
       `;
@@ -1433,7 +1667,12 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
         categories: string | null;
       }
 
-      const queryParams = [builtQuery.query, ftsLimit, ...params];
+      const queryParams = [
+        builtQuery.query,
+        ...(options.collection ? [options.collection] : []),
+        ftsLimit,
+        ...params,
+      ];
       const rows = db
         .query<FtsRow, (string | number)[]>(sql)
         .all(...queryParams);
@@ -1492,12 +1731,13 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
           id: number;
           rel_path: string;
           title: string | null;
+          mirror_hash: string | null;
           markdown: string | null;
         }
 
         const doc = db
           .query<DocWithContent, [string, string]>(
-            `SELECT d.id, d.rel_path, d.title, c.markdown
+            `SELECT d.id, d.rel_path, d.title, d.mirror_hash, c.markdown
              FROM documents d
              LEFT JOIN content c ON c.mirror_hash = d.mirror_hash
              WHERE d.collection = ? AND d.rel_path = ? AND d.active = 1`
@@ -1510,13 +1750,20 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
 
         // Delete existing FTS entry for this doc
         db.run("DELETE FROM documents_fts WHERE rowid = ?", [doc.id]);
+        db.run("UPDATE documents SET fts_mirror_hash = NULL WHERE id = ?", [
+          doc.id,
+        ]);
 
         // Insert new FTS entry if we have content
-        if (doc.markdown) {
+        if (doc.markdown !== null) {
           db.run(
             "INSERT INTO documents_fts (rowid, filepath, title, body) VALUES (?, ?, ?, ?)",
             [doc.id, doc.rel_path, doc.title ?? "", doc.markdown]
           );
+          db.run("UPDATE documents SET fts_mirror_hash = ? WHERE id = ?", [
+            doc.mirror_hash,
+            doc.id,
+          ]);
         }
       });
 
@@ -1543,18 +1790,20 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
       const transaction = db.transaction(() => {
         // Clear FTS table
         db.run("DELETE FROM documents_fts");
+        db.run("UPDATE documents SET fts_mirror_hash = NULL");
 
         // Get all active documents with content
         interface DocWithContent {
           id: number;
           rel_path: string;
           title: string | null;
+          mirror_hash: string;
           markdown: string;
         }
 
         const docs = db
           .query<DocWithContent, []>(
-            `SELECT d.id, d.rel_path, d.title, c.markdown
+            `SELECT d.id, d.rel_path, d.title, d.mirror_hash, c.markdown
              FROM documents d
              JOIN content c ON c.mirror_hash = d.mirror_hash
              WHERE d.active = 1 AND d.mirror_hash IS NOT NULL`
@@ -1565,9 +1814,13 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
         const stmt = db.prepare(
           "INSERT INTO documents_fts (rowid, filepath, title, body) VALUES (?, ?, ?, ?)"
         );
+        const markSynced = db.prepare(
+          "UPDATE documents SET fts_mirror_hash = ? WHERE id = ?"
+        );
 
         for (const doc of docs) {
           stmt.run(doc.id, doc.rel_path, doc.title ?? "", doc.markdown);
+          markSynced.run(doc.mirror_hash, doc.id);
           count++;
         }
       });
@@ -1621,10 +1874,17 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
         // Update FTS for each document using this hash
         for (const doc of docs) {
           db.run("DELETE FROM documents_fts WHERE rowid = ?", [doc.id]);
+          db.run("UPDATE documents SET fts_mirror_hash = NULL WHERE id = ?", [
+            doc.id,
+          ]);
           db.run(
             "INSERT INTO documents_fts (rowid, filepath, title, body) VALUES (?, ?, ?, ?)",
             [doc.id, doc.rel_path, doc.title ?? "", content.markdown]
           );
+          db.run("UPDATE documents SET fts_mirror_hash = ? WHERE id = ?", [
+            mirrorHash,
+            doc.id,
+          ]);
         }
       });
 

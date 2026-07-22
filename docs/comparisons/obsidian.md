@@ -56,7 +56,7 @@ gno query "what were my notes about project planning"
 gno ask "summarize my meeting notes from last week" --answer
 
 # 5. Let Claude search your vault
-gno mcp install --target claude
+gno mcp install --target claude-desktop
 # Now Claude can search your Obsidian notes
 ```
 
@@ -141,7 +141,7 @@ If you prefer the app flow, open `gno serve`, go to **Collections**, and use the
 
 ```bash
 # For Claude Desktop
-gno mcp install --target claude
+gno mcp install --target claude-desktop
 
 # For Cursor
 gno mcp install --target cursor

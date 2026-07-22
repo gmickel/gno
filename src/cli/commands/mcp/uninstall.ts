@@ -6,20 +6,24 @@
 
 import { CliError } from "../../errors.js";
 import { getGlobals } from "../../program.js";
+import { resolveMcpConfigLocation } from "./config-discovery.js";
 import {
-  type AnyMcpConfig,
-  isYamlFormat,
-  readMcpConfig,
-  removeServerEntry,
-  writeMcpConfig,
+  removeJsoncServerEntry,
+  removeTomlServerEntry,
+  removeYamlServerEntry,
+} from "./config-editors.js";
+import {
+  getServersKey,
+  readMcpConfigText,
+  writeMcpConfigText,
 } from "./config.js";
 import {
+  getDefaultTargetScope,
+  getTargetScopes,
   getTargetDisplayName,
-  MCP_SERVER_NAME,
   type McpScope,
   type McpTarget,
   resolveMcpConfigPath,
-  TARGETS_WITH_PROJECT_SCOPE,
 } from "./paths.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -60,38 +64,32 @@ async function uninstallFromTarget(
 ): Promise<UninstallResult> {
   const { cwd, homeDir } = options;
 
-  const { configPath, configFormat } = resolveMcpConfigPath({
+  const resolvedPaths = resolveMcpConfigPath({
     target,
     scope,
     cwd,
     homeDir,
   });
-
-  const useYaml = isYamlFormat(configFormat);
-  const config = await readMcpConfig(configPath, {
+  const configPath = await resolveMcpConfigLocation(resolvedPaths);
+  const { configFormat } = resolvedPaths;
+  const content = await readMcpConfigText(configPath, {
     returnNullOnMissing: true,
-    yaml: useYaml,
   });
-
-  // File doesn't exist
-  if (config === null) {
+  if (content === null) {
     return { target, scope, configPath, action: "not_found" };
   }
-
-  // Try to remove entry using format-aware helper
-  const removed = removeServerEntry(
-    config as AnyMcpConfig,
-    MCP_SERVER_NAME,
-    configFormat
-  );
-
-  if (!removed) {
+  const serversKey =
+    configFormat === "codex_toml" ? "mcp_servers" : getServersKey(configFormat);
+  const result =
+    configFormat === "codex_toml"
+      ? removeTomlServerEntry(content, configPath)
+      : configFormat === "yaml_standard"
+        ? removeYamlServerEntry(content, configPath, serversKey)
+        : removeJsoncServerEntry(content, configPath, serversKey);
+  if (!result.removed) {
     return { target, scope, configPath, action: "not_found" };
   }
-
-  // Write back
-  await writeMcpConfig(configPath, config as AnyMcpConfig, { yaml: useYaml });
-
+  await writeMcpConfigText(configPath, result.content);
   return { target, scope, configPath, action: "removed" };
 }
 
@@ -111,16 +109,16 @@ function safeGetGlobals(): { json: boolean; quiet: boolean } {
  */
 export async function uninstallMcp(opts: UninstallOptions = {}): Promise<void> {
   const target = opts.target ?? "claude-desktop";
-  const scope = opts.scope ?? "user";
+  const scope = opts.scope ?? getDefaultTargetScope(target);
   const globals = safeGetGlobals();
   const json = opts.json ?? globals.json;
   const quiet = opts.quiet ?? globals.quiet;
 
   // Validate scope - only some targets support project scope
-  if (scope === "project" && !TARGETS_WITH_PROJECT_SCOPE.includes(target)) {
+  if (!getTargetScopes(target).includes(scope)) {
     throw new CliError(
       "VALIDATION",
-      `${getTargetDisplayName(target)} does not support project scope.`
+      `${getTargetDisplayName(target)} does not support ${scope} scope.`
     );
   }
 

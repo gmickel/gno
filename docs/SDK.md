@@ -181,6 +181,15 @@ URI, even when the client was created for another index. Missing indexes fail
 without creating a database. Every `multiGet()` batch must resolve to one index;
 split mixed-index batches before calling it.
 
+`indexName` uses the same filesystem-safe contract as the CLI: 1–64 UTF-16 code
+units drawn from Unicode letters, marks, numbers, internal ASCII spaces, `.`,
+`_`, or `-`; it starts with a letter or number, cannot end with a space or `.`,
+and cannot contain `..`. Absolute paths, path separators, controls, and
+platform-invalid punctuation are rejected even when a custom `dbPath` is
+supplied. Case and canonically equivalent Unicode spellings share one
+NFC/case-folded identity. Its 242-byte UTF-8 budget keeps the complete
+`index-<identity>.sqlite` filename within the portable 255-byte component limit.
+
 ### Capture
 
 Capture a note with provenance and receive the shared capture receipt.

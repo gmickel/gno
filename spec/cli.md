@@ -46,6 +46,18 @@ Commands that produce structured output support these format flags:
 
 Default output is human-readable terminal format.
 
+Index names are filesystem identifiers: 1–64 UTF-16 code units drawn from
+Unicode letters, marks, numbers, internal ASCII spaces, `.`, `_`, or `-`. The
+first character must be a letter or number; the last cannot be a space or `.`;
+`..` is forbidden. Absolute paths, path separators, controls, and
+platform-invalid punctuation are validation errors (exit 1). NFC/case-folded
+equivalents have one logical identity and database selection. The canonical
+identity is limited to 242 UTF-8 bytes so `index-<identity>.sqlite` stays within
+the portable 255-byte filename-component limit. The same contract applies to
+indexed `gno://` references. New indexes use the canonical filename. One
+pre-existing legacy filename for that identity remains addressable; multiple
+equivalent files fail closed as ambiguous.
+
 ### Output Format Support Matrix
 
 | Command            | --json | --files | --csv | --md | --xml | Default  |
@@ -135,9 +147,86 @@ gno status [--json|--md]
   "totalChunks": 500,
   "embeddingBacklog": 0,
   "lastUpdated": "2025-12-23T10:00:00Z",
-  "healthy": true
+  "healthy": true,
+  "activation": {
+    "schemaVersion": "1.0",
+    "usable": true,
+    "healthy": true,
+    "collections": [
+      {
+        "collection": "work",
+        "ready": true,
+        "generatedAt": "2025-12-23T10:00:00Z",
+        "stages": {
+          "index": {
+            "status": "passed",
+            "startedAt": "2025-12-23T10:00:00Z",
+            "completedAt": "2025-12-23T10:00:00Z",
+            "latencyMs": 3
+          },
+          "lexical": {
+            "status": "passed",
+            "startedAt": "2025-12-23T10:00:00Z",
+            "completedAt": "2025-12-23T10:00:00Z",
+            "latencyMs": 2
+          },
+          "semantic": {
+            "status": "pending",
+            "startedAt": null,
+            "completedAt": null,
+            "latencyMs": null,
+            "code": "semantic_not_checked"
+          },
+          "connector": {
+            "status": "skipped",
+            "startedAt": null,
+            "completedAt": null,
+            "latencyMs": null,
+            "code": "connector_not_requested"
+          }
+        },
+        "semanticAvailability": {
+          "status": "pending",
+          "code": "semantic_not_checked",
+          "command": "gno status"
+        },
+        "remediation": null
+      }
+    ],
+    "connectors": [],
+    "connectorProjection": {
+      "total": 0,
+      "projected": 0,
+      "truncated": false
+    }
+  }
 }
 ```
+
+`activation.usable` means at least one configured collection passed its local
+lexical proof. `activation.healthy` means every configured collection passed.
+Semantic and connector stages remain independent; passive status never starts a
+model runtime or connector process. `gno status` still exits 0 when activation
+is unhealthy so scripts can inspect the structured state.
+
+Local activation fingerprints use active-document identifiers and source/mirror
+hashes plus schema, tokenizer, and owned FTS synchronization metadata. Passive
+status never selects or compares stored markdown or FTS bodies. On a receipt
+miss, lexical proof reads at most 64 document prefixes of 32,768 characters and
+tries at most 64 corpus-derived terms. `index_out_of_sync` fails before probing
+when any active document lacks a current owned FTS row. Migration 013 compares
+legacy FTS bodies once before backfilling that marker; after migration, direct
+out-of-band FTS body mutations remain outside the owned-writer contract.
+
+Passive callers report `semantic_not_checked` when vector runtime availability
+is unknown. `vector_unavailable` is reserved for a resident runtime that has
+positively reported vector search unavailable.
+
+`connectorProjection.total` counts every configured collection and connector
+target pair before projection bounds. `projected` equals `connectors.length`,
+and `truncated` is true exactly when `total > projected`. No result is claimed
+for omitted pairs, and human-readable health output must not report connector
+proof as healthy while the projection is truncated.
 
 **Exit Codes:**
 
@@ -1339,6 +1428,15 @@ freshness fingerprint, pending/stale chunks, legacy empty-fingerprint vectors,
 and stored fingerprint groups. Stale, legacy, and mixed groups are warnings;
 recover with `gno embed`, or `gno embed --force` if vectors still look stale.
 
+The additive `activation` object uses the same contract as `gno status` and
+`GET /api/status`. Doctor performs only the local lexical proof. It never starts
+connector children or initializes/downloads models. A failed lexical proof adds
+the `retrieval-activation` error check and exits 2 after writing the complete
+result; no duplicate error is written to stderr. Connector failure or projection
+truncation adds a warning and makes the structured doctor result non-healthy,
+but preserves exit 0 when lexical proof and all other required checks pass. An
+omitted target/collection pair has no inferred result.
+
 **Exit Codes:**
 
 - 0: All checks pass or only warnings
@@ -1381,12 +1479,12 @@ gno mcp install [--target <target>] [--scope <scope>] [--force] [--dry-run] [--j
 
 **Options:**
 
-| Option      | Type    | Default        | Description                                                |
-| ----------- | ------- | -------------- | ---------------------------------------------------------- |
-| `--target`  | string  | claude-desktop | Target client (see table below)                            |
-| `--scope`   | string  | user           | Scope: `user` or `project` (project only for some targets) |
-| `--force`   | boolean | false          | Overwrite existing gno configuration                       |
-| `--dry-run` | boolean | false          | Show what would be done without changes                    |
+| Option      | Type    | Default        | Description                                               |
+| ----------- | ------- | -------------- | --------------------------------------------------------- |
+| `--target`  | string  | claude-desktop | Target client (see table below)                           |
+| `--scope`   | string  | target default | Scope: `user` or `project`; LibreChat defaults to project |
+| `--force`   | boolean | false          | Overwrite existing gno configuration                      |
+| `--dry-run` | boolean | false          | Show what would be done without changes                   |
 
 **Targets:**
 
@@ -1410,13 +1508,13 @@ gno mcp install [--target <target>] [--scope <scope>] [--force] [--dry-run] [--j
 | claude-desktop | user    | `~/Library/Application Support/Claude/claude_desktop_config.json` | `%APPDATA%\Claude\claude_desktop_config.json` | `~/.config/Claude/claude_desktop_config.json` |
 | claude-code    | user    | `~/.claude.json`                                                  | `~/.claude.json`                              | `~/.claude.json`                              |
 | claude-code    | project | `./.mcp.json`                                                     | `./.mcp.json`                                 | `./.mcp.json`                                 |
-| codex          | user    | `~/.codex.json`                                                   | `~/.codex.json`                               | `~/.codex.json`                               |
-| codex          | project | `./.codex/.mcp.json`                                              | `./.codex/.mcp.json`                          | `./.codex/.mcp.json`                          |
+| codex          | user    | `~/.codex/config.toml`                                            | `~/.codex/config.toml`                        | `~/.codex/config.toml`                        |
+| codex          | project | `./.codex/config.toml`                                            | `./.codex/config.toml`                        | `./.codex/config.toml`                        |
 | cursor         | user    | `~/.cursor/mcp.json`                                              | `~/.cursor/mcp.json`                          | `~/.cursor/mcp.json`                          |
 | cursor         | project | `./.cursor/mcp.json`                                              | `./.cursor/mcp.json`                          | `./.cursor/mcp.json`                          |
-| zed            | user    | `~/.config/zed/settings.json`                                     | N/A                                           | `~/.config/zed/settings.json`                 |
-| windsurf       | user    | `~/.codeium/windsurf/mcp_config.json`                             | `%APPDATA%\Codeium\windsurf\mcp_config.json`  | `~/.codeium/windsurf/mcp_config.json`         |
-| opencode       | user    | `~/.config/opencode/config.json`                                  | `~/.config/opencode/config.json`              | `~/.config/opencode/config.json`              |
+| zed            | user    | `~/.config/zed/settings.json`                                     | `%APPDATA%\Zed\settings.json`                 | `~/.config/zed/settings.json`                 |
+| windsurf       | user    | `~/.codeium/windsurf/mcp_config.json`                             | `~/.codeium/windsurf/mcp_config.json`         | `~/.codeium/windsurf/mcp_config.json`         |
+| opencode       | user    | `~/.config/opencode/opencode.json`                                | `~/.config/opencode/opencode.json`            | `~/.config/opencode/opencode.json`            |
 | opencode       | project | `./opencode.json`                                                 | `./opencode.json`                             | `./opencode.json`                             |
 | amp            | user    | `~/.config/amp/settings.json`                                     | `~/.config/amp/settings.json`                 | `~/.config/amp/settings.json`                 |
 | lmstudio       | user    | `~/.lmstudio/mcp.json`                                            | `~/.lmstudio/mcp.json`                        | `~/.lmstudio/mcp.json`                        |
@@ -1424,19 +1522,39 @@ gno mcp install [--target <target>] [--scope <scope>] [--force] [--dry-run] [--j
 
 **Config Formats:**
 
-- Standard JSON (`mcpServers` key): Claude Desktop, Claude Code, Codex, Cursor, Windsurf, LM Studio
+- JSONC-compatible (`mcpServers` key): Claude Desktop, Claude Code, Cursor, Windsurf, LM Studio
 - Standard YAML (`mcpServers` key): LibreChat
+- Codex TOML: `[mcp_servers.gno]` plus `[mcp_servers.gno.env]`
 - Zed: `context_servers` key
 - OpenCode: `mcp` key with array command format
 - Amp: `amp.mcpServers` key
 
+JSON/JSONC edits preserve comments, trailing commas, and unrelated layout.
+OpenCode and Amp discover an existing `.jsonc` alternate instead of creating a
+duplicate canonical `.json` file.
+
+`--dry-run --json` reports the normalized command, arguments, and workspace
+environment, not the target's persisted wrapper shape. Previewing replacement
+of an existing `gno` entry requires `--force --dry-run --json`; no file is
+written in dry-run mode.
+
 **Behavior:**
 
-1. Detects bun and gno paths (absolute paths for sandboxed environments)
-2. Reads existing config (creates if missing)
-3. Adds `mcpServers.gno` entry
-4. Creates backup before modifying
-5. Writes atomically via temp file + rename
+1. Resolves the active index and validates it with the shared index-name contract
+2. Resolves the active explicit, environment-selected, or default config to an absolute path
+3. Builds an absolute command using the current Bun executable, `run`, and the current package's `src/index.ts`
+4. Appends `--index <active> --config <absolute> mcp` (`--enable-write` follows `mcp` when requested)
+5. Resolves absolute `GNO_DATA_DIR` and `GNO_CACHE_DIR` values for the active workspace
+6. Reads existing config (creates if missing)
+7. Adds the format-specific `gno` server entry, using `env` for standard/Codex/YAML entries and `environment` for OpenCode
+8. Creates a backup before modifying
+9. Writes atomically via temp file + rename
+
+The persisted index, config, data directory, and cache directory are workspace
+identity, not display metadata. They make the installed GUI client deterministic
+even when it has a different `PATH` or does not inherit `GNO_*` variables. Only
+the two audited absolute-path environment keys are persisted; status and
+activation reject other environment keys or invalid values.
 
 **Output (JSON):**
 
@@ -1449,7 +1567,19 @@ gno mcp install [--target <target>] [--scope <scope>] [--force] [--dry-run] [--j
     "action": "created",
     "serverEntry": {
       "command": "/path/to/bun",
-      "args": ["/path/to/gno", "mcp"]
+      "args": [
+        "run",
+        "/path/to/@gmickel/gno/src/index.ts",
+        "--index",
+        "default",
+        "--config",
+        "/absolute/path/to/index.yml",
+        "mcp"
+      ],
+      "env": {
+        "GNO_DATA_DIR": "/absolute/path/to/data",
+        "GNO_CACHE_DIR": "/absolute/path/to/cache"
+      }
     }
   }
 }
@@ -1458,7 +1588,7 @@ gno mcp install [--target <target>] [--scope <scope>] [--force] [--dry-run] [--j
 **Exit Codes:**
 
 - 0: Success
-- 1: Already configured (without --force), invalid scope for target
+- 1: Already configured (without --force), invalid scope for target, invalid index name
 - 2: Bun not found, gno not found, IO failure
 
 **Examples:**
@@ -1497,17 +1627,20 @@ gno mcp uninstall [--target <target>] [--scope <scope>] [--json]
 
 **Options:**
 
-| Option     | Type   | Default        | Description   |
-| ---------- | ------ | -------------- | ------------- |
-| `--target` | string | claude-desktop | Target client |
-| `--scope`  | string | user           | Scope         |
+| Option     | Type   | Default        | Description                          |
+| ---------- | ------ | -------------- | ------------------------------------ |
+| `--target` | string | claude-desktop | Target client                        |
+| `--scope`  | string | target default | Scope; LibreChat defaults to project |
 
 **Behavior:**
 
 1. Reads existing config
-2. Removes `mcpServers.gno` entry if present
+2. Removes the format-specific GNO entry if present (`mcpServers.gno`,
+   `context_servers.gno`, `mcp.gno`, `amp.mcpServers.gno`, or Codex's
+   `[mcp_servers.gno]` plus `[mcp_servers.gno.env]` tables)
 3. Creates backup before modifying
-4. Removes empty `mcpServers` object
+4. Removes an empty format-specific server object; Codex preserves unrelated
+   TOML and comments byte-for-byte apart from necessary surrounding whitespace
 5. Preserves other entries
 
 **Output (JSON):**
@@ -1548,7 +1681,8 @@ gno mcp status [--target <target>] [--scope <scope>] [--json]
 | `--target` | string | all     | Filter by target (or `all`) |
 | `--scope`  | string | all     | Filter by scope (or `all`)  |
 
-**Output (Terminal):**
+**Output (Terminal, abbreviated; unfiltered status enumerates 14 target/scope
+pairs):**
 
 ```text
 MCP Server Status
@@ -1556,7 +1690,7 @@ MCP Server Status
 
 ✓ Claude Desktop: configured
     Command: /path/to/bun
-    Args: /path/to/gno mcp
+    Args: run /path/to/@gmickel/gno/src/index.ts --index default --config /absolute/path/to/index.yml mcp
     Config: ~/Library/Application Support/Claude/claude_desktop_config.json
 
 ✗ Claude Code: not configured
@@ -1565,7 +1699,7 @@ MCP Server Status
 ✗ Claude Code (project): not configured
     Config: ./.mcp.json
 
-2/5 targets configured
+1/14 targets configured
 ```
 
 **Output (JSON):**
@@ -1580,7 +1714,19 @@ MCP Server Status
       "configured": true,
       "serverEntry": {
         "command": "/path/to/bun",
-        "args": ["/path/to/gno", "mcp"]
+        "args": [
+          "run",
+          "/path/to/@gmickel/gno/src/index.ts",
+          "--index",
+          "default",
+          "--config",
+          "/absolute/path/to/index.yml",
+          "mcp"
+        ],
+        "env": {
+          "GNO_DATA_DIR": "/absolute/path/to/data",
+          "GNO_CACHE_DIR": "/absolute/path/to/cache"
+        }
       }
     },
     {
@@ -1590,7 +1736,7 @@ MCP Server Status
       "configured": false
     }
   ],
-  "summary": { "configured": 1, "total": 5 }
+  "summary": { "configured": 1, "total": 14 }
 }
 ```
 

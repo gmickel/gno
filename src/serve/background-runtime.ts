@@ -1,3 +1,6 @@
+// node:path resolve has no Bun equivalent for canonical process-relative paths.
+import { resolve } from "node:path";
+
 import type { Config } from "../config/types";
 import type { SyncResult } from "../ingestion";
 import type { DocumentEventBus } from "./doc-events";
@@ -9,6 +12,7 @@ import type {
 } from "./watch-service";
 
 import { getIndexDbPath } from "../app/constants";
+import { INDEX_NAME_REQUIREMENTS, isValidIndexName } from "../app/index-name";
 import {
   ensureDirectories,
   formatConfigWarnings,
@@ -89,6 +93,12 @@ export async function startBackgroundRuntime(
   options: BackgroundRuntimeOptions = {},
   deps: BackgroundRuntimeDeps = {}
 ): Promise<BackgroundRuntimeResult> {
+  if (options.index !== undefined && !isValidIndexName(options.index)) {
+    return {
+      success: false,
+      error: `Invalid index name: ${INDEX_NAME_REQUIREMENTS}.`,
+    };
+  }
   const syncAllService = deps.syncAllService
     ? (...args: Parameters<typeof defaultSyncService.syncAll>) =>
         deps.syncAllService!(...args)
@@ -123,7 +133,7 @@ export async function startBackgroundRuntime(
   const store = deps.storeFactory ? deps.storeFactory() : new SqliteAdapter();
   const dbPath = getIndexDbPath(options.index);
   const paths = (deps.getConfigPaths ?? getConfigPaths)();
-  const actualConfigPath = options.configPath ?? paths.configFile;
+  const actualConfigPath = resolve(options.configPath ?? paths.configFile);
   store.setConfigPath(actualConfigPath);
 
   const openResult = await store.open(dbPath, config.ftsTokenizer);
