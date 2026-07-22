@@ -59,7 +59,7 @@ const artifactLane = (input: {
   return null;
 };
 
-const writeArtifacts = async (
+export const writeBenchmarkArtifacts = async (
   directory: string,
   artifacts: BenchmarkArtifacts
 ): Promise<void> => {
@@ -69,12 +69,31 @@ const writeArtifacts = async (
   const backup = `${staging}.previous`;
   let movedPrevious = false;
   try {
+    const paths = [
+      join(staging, "report.json"),
+      join(staging, "canonical.json"),
+      join(staging, "observations.json"),
+      join(staging, "report.md"),
+    ];
     await Promise.all([
-      Bun.write(join(staging, "report.json"), artifacts.reportJson),
-      Bun.write(join(staging, "canonical.json"), artifacts.canonicalJson),
-      Bun.write(join(staging, "observations.json"), artifacts.observationsJson),
-      Bun.write(join(staging, "report.md"), artifacts.reportMarkdown),
+      Bun.write(paths[0]!, artifacts.reportJson),
+      Bun.write(paths[1]!, artifacts.canonicalJson),
+      Bun.write(paths[2]!, artifacts.observationsJson),
+      Bun.write(paths[3]!, artifacts.reportMarkdown),
     ]);
+    const formatter = Bun.spawn([process.execPath, "x", "oxfmt", ...paths], {
+      cwd: join(import.meta.dir, "../.."),
+      stdout: "pipe",
+      stderr: "pipe",
+    });
+    const [formatterExit, formatterError] = await Promise.all([
+      formatter.exited,
+      new Response(formatter.stderr).text(),
+    ]);
+    if (formatterExit !== 0)
+      throw new Error(
+        `Artifact formatting failed: ${formatterError.trim() || `exit ${formatterExit}`}`
+      );
     try {
       await rename(directory, backup);
       movedPrevious = true;
@@ -97,7 +116,7 @@ export interface AgenticCliDependencies {
   loadFixture: () => Promise<LoadedAgenticFixture>;
   createAgentFactory: (agent: "fixture" | "local-model") => OuterAgentFactory;
   runBenchmark: typeof runAgenticBenchmark;
-  writeArtifacts: typeof writeArtifacts;
+  writeArtifacts: typeof writeBenchmarkArtifacts;
   stdout: Pick<typeof process.stdout, "write">;
   stderr: Pick<typeof process.stderr, "write">;
 }
@@ -109,7 +128,7 @@ const defaultDependencies: AgenticCliDependencies = {
       ? new FixtureAgentFactory()
       : new LocalModelAgentFactory(),
   runBenchmark: runAgenticBenchmark,
-  writeArtifacts,
+  writeArtifacts: writeBenchmarkArtifacts,
   stdout: process.stdout,
   stderr: process.stderr,
 };
