@@ -32,9 +32,8 @@ Deliver freeze promotion gates baselines and public caveats as one implementatio
 
 
 ## Done summary
-TBD
-
+Froze immutable per-language CJK lexical promotion gates, concrete failure examples, qrels limitations, public semantic-versus-lexical caveats, hosted documentation, and regression verification. Updated fn-109 acceptance thresholds without preselecting an analyzer.
 ## Evidence
-- Commits:
-- Tests:
+- Commits: 8b48159, gno.sh:2cbd759
+- Tests: bun run bench:cjk-lexical, bun run lint:check, bun run docs:truth, bun run docs:verify (13 passed, 2 model-cache skips), bun test, flowctl validate fn-96, gno.sh: bun test src/lib/public-truth-content.test.ts (6 passed), gno.sh: bun run lint, gno.sh: bun run typecheck, gno.sh: bun run build (67 pages prerendered)
 - PRs:
