@@ -207,10 +207,21 @@ order, and rejects `undefined`, non-finite numbers, and non-JSON values. It
 excludes all observations. Unchanged deterministic inputs therefore produce
 byte-identical canonical JSON and SHA-256.
 
-`agentCalls` counts outer-agent tool choices. `backendInvocations` counts
-adapter-internal retrieval, fetch, rerank, or synthesis operations. Promotion
-efficiency uses `agentCalls`; backend invocations are reported separately and
-cannot substitute for them.
+`agentCalls` counts every valid outer-agent tool choice, including a choice
+whose adapter call times out or throws, whose returned envelope is malformed,
+or whose result is rejected before delivery by context/token accounting.
+Each canonical call records `deliveredToAgent` and a nullable `failureCode`.
+Undelivered calls retain a valid returned result and known backend invocation
+count when available; otherwise they use a closed synthetic error result. They
+always contribute zero model-visible bytes and have no per-call token
+measurement. Aggregate measured tokens sum delivered calls only, preserving
+any earlier measured context; with no delivered measured call, tokenizer
+comparability remains `null`. The undelivered call is unique, terminal, bound
+to the receipt failure code, and excluded from the outer-agent history.
+`backendInvocations` counts adapter-internal
+retrieval, fetch, rerank, or synthesis operations. Promotion efficiency uses
+`agentCalls`; backend invocations are reported separately and cannot substitute
+for them.
 
 ### Observations
 
@@ -327,12 +338,18 @@ absolute, clean checkout at commit
 `e428df76bc0274d9e93eb7ca3e95673315c42e90`. Preflight verifies the exact
 origin, commit, clean tree, package manifest, lockfile, executable entrypoint,
 and the dynamically listed MCP tool name, description, and input-schema
-fingerprints. It also verifies three pinned model identities by URI, revision,
-filename, byte size, and streamed SHA-256:
+fingerprints. It also verifies three pinned model identities by URI, filename,
+native cache filename, byte size, and streamed SHA-256:
 
 - `hf_ggml-org_embeddinggemma-300M-Q8_0.gguf`
 - `hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf`
 - `hf_tobil_qmd-query-expansion-1.7B-q4_k_m.gguf`
+
+The lock deliberately does not claim a separately verifiable model-repository
+revision: the already-cached GGUF identity is pinned by exact URI, native
+filename, byte size, and whole-file SHA-256. The committed lock's raw bytes are
+also SHA-256 pinned before any checkout or model validation, and that raw lock
+identity is included in the adapter configuration fingerprint.
 
 `QMD_MODEL_CACHE` may name an absolute read-only cache containing those exact
 files. The adapter never resolves qmd from `PATH`, uses a global install,

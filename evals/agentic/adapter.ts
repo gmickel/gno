@@ -266,35 +266,72 @@ export class AgentAdapterRegistry {
   }
 }
 
+export interface AgenticErrorOptions extends ErrorOptions {
+  backendInvocations?: number;
+}
+
+const backendInvocationMetadata = (
+  options?: AgenticErrorOptions
+): number | null => {
+  const count = options?.backendInvocations;
+  return Number.isSafeInteger(count) && (count as number) >= 0
+    ? (count as number)
+    : null;
+};
+
 export class AgenticHarnessError extends Error {
   readonly code: string;
+  readonly backendInvocations: number | null;
 
-  constructor(code: string, message: string, options?: ErrorOptions) {
+  constructor(code: string, message: string, options?: AgenticErrorOptions) {
     super(message, options);
     this.name = "AgenticHarnessError";
     this.code = code;
+    this.backendInvocations = backendInvocationMetadata(options);
   }
 }
 
 export class AgenticAgentError extends Error {
   readonly code: string;
+  readonly backendInvocations: number | null;
 
-  constructor(code: string, message: string, options?: ErrorOptions) {
+  constructor(code: string, message: string, options?: AgenticErrorOptions) {
     super(message, options);
     this.name = "AgenticAgentError";
     this.code = code;
+    this.backendInvocations = backendInvocationMetadata(options);
   }
 }
 
 export class AgenticProductError extends Error {
   readonly code: string;
+  readonly backendInvocations: number | null;
 
-  constructor(code: string, message: string, options?: ErrorOptions) {
+  constructor(code: string, message: string, options?: AgenticErrorOptions) {
     super(message, options);
     this.name = "AgenticProductError";
     this.code = code;
+    this.backendInvocations = backendInvocationMetadata(options);
   }
 }
+
+export const withBackendInvocations = (
+  error: unknown,
+  backendInvocations: number
+): Error => {
+  const options = { cause: error, backendInvocations };
+  if (error instanceof AgenticHarnessError)
+    return new AgenticHarnessError(error.code, error.message, options);
+  if (error instanceof AgenticAgentError)
+    return new AgenticAgentError(error.code, error.message, options);
+  if (error instanceof AgenticProductError)
+    return new AgenticProductError(error.code, error.message, options);
+  return new AgenticHarnessError(
+    "tool_result_normalization_failed",
+    "Adapter tool result normalization failed",
+    options
+  );
+};
 
 export const unavailableTiming = (reason: string): TimingObservation => ({
   valueMs: null,

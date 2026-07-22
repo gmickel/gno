@@ -1,6 +1,5 @@
 import { describe, expect, test } from "bun:test";
 
-import type { AdapterPreparation } from "../../../evals/agentic/adapter";
 import type {
   GnoMcpCallResult,
   GnoMcpConnection,
@@ -8,6 +7,10 @@ import type {
   GnoMcpProductTool,
 } from "../../../evals/agentic/lifecycle/gno-mcp";
 
+import {
+  AgenticProductError,
+  type AdapterPreparation,
+} from "../../../evals/agentic/adapter";
 import {
   GnoMcpAdapter,
   mapCanonicalGnoMcpCall,
@@ -214,6 +217,58 @@ describe("GNO MCP agentic adapter", () => {
     expect(() => validateGnoProductTools(incompatible)).toThrow(
       "gno_query is missing or incompatible"
     );
+  });
+
+  test("carries known backend accounting through post-dispatch normalization failure", async () => {
+    const fixture = await loadAgenticFixture();
+    const task = fixture.tasks.get("t0a1b2c3");
+    if (!task) throw new Error("fixture task missing");
+    const state: FakeConnectionState = { calls: [], closes: 0 };
+    const { handle } = await fakeHandle();
+    const adapter = new GnoMcpAdapter({
+      prepareHandle: async () => handle,
+      cleanupHandle: async () => undefined,
+      connectionFactory: async () =>
+        fakeConnection(state, [
+          {
+            structuredContent: {
+              results: [{ malformed: true }],
+              meta: {
+                query: "incident",
+                mode: "hybrid",
+                expanded: true,
+                reranked: true,
+                vectorsUsed: true,
+                totalResults: 1,
+              },
+            },
+          },
+        ]),
+    });
+    await adapter.prepare({
+      snapshot: fixture.snapshot,
+      prepared: null,
+      signal: new AbortController().signal,
+    });
+    await adapter.reset({
+      task,
+      lifecycle: "cold",
+      readinessProbe: false,
+      signal: new AbortController().signal,
+    });
+    const error = await adapter
+      .callTool(
+        "search",
+        { query: "incident", collection: "c001" },
+        new AbortController().signal
+      )
+      .then(
+        () => null,
+        (failure: unknown) => failure
+      );
+    expect(error).toBeInstanceOf(AgenticProductError);
+    expect((error as AgenticProductError).backendInvocations).toBe(4);
+    await adapter.dispose();
   });
 
   test("rejects model identity drift and cache path traversal", async () => {

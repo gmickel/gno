@@ -163,6 +163,8 @@
         "toolName",
         "arguments",
         "result",
+        "deliveredToAgent",
+        "failureCode",
         "modelVisibleUtf8Bytes",
         "measuredTokens",
         "tokenizerFingerprint",
@@ -195,6 +197,8 @@
             "errorCode": { "$ref": "#/definitions/nullableString" }
           }
         },
+        "deliveredToAgent": { "type": "boolean" },
+        "failureCode": { "$ref": "#/definitions/nullableString" },
         "modelVisibleUtf8Bytes": { "type": "integer", "minimum": 0 },
         "measuredTokens": {
           "oneOf": [{ "type": "integer", "minimum": 0 }, { "type": "null" }]

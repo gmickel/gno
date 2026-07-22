@@ -145,6 +145,8 @@ export const receiptFixture = (
           toolName: "search",
           arguments: { query: "incident", collection: "c001" },
           result: toolResult,
+          deliveredToAgent: true,
+          failureCode: null,
           modelVisibleUtf8Bytes: visibleBytes,
           measuredTokens: null,
           tokenizerFingerprint: null,

@@ -246,6 +246,41 @@ describe("runner accounting and failures", () => {
     expect(result.receipts[0]?.canonical.failure.class).toBe("none");
   });
 
+  test("accounts a valid tool choice rejected by the context budget", async () => {
+    const fixture = await loadAgenticFixture();
+    const { factory } = createPerfectAdapterFactory(fixture.snapshot, {
+      backendInvocations: 7,
+      resultOverride: {
+        status: "ok",
+        resultRole: "candidates",
+        content: "x".repeat(13_000),
+        evidence: [],
+        errorCode: null,
+      },
+    });
+    const result = await runAgenticBenchmark({
+      adapters: { perfect: factory },
+      fixture,
+      taskIds: ["t0a1b2c3"],
+      lifecycles: ["cold"],
+    });
+    const receipt = result.receipts[0];
+    expect(receipt?.canonical.failure).toMatchObject({
+      class: "agent_error",
+      code: "context_byte_budget_exceeded",
+    });
+    expect(receipt?.canonical.agentCalls).toBe(1);
+    expect(receipt?.canonical.backendInvocations).toBe(7);
+    expect(receipt?.canonical.modelVisibleUtf8Bytes).toBe(0);
+    expect(receipt?.canonical.calls[0]).toMatchObject({
+      deliveredToAgent: false,
+      failureCode: "context_byte_budget_exceeded",
+      backendInvocations: 7,
+      modelVisibleUtf8Bytes: 0,
+    });
+    expect(receipt?.canonical.calls[0]?.result.content).toHaveLength(13_000);
+  });
+
   test("records preparation failures for every attempted lifecycle", async () => {
     const fixture = await loadAgenticFixture();
     const { factory } = createPerfectAdapterFactory(fixture.snapshot, {
@@ -269,6 +304,34 @@ describe("runner accounting and failures", () => {
     ).toBe(true);
   });
 
+  test("accounts a valid tool choice when its adapter call times out", async () => {
+    const fixture = await loadAgenticFixture();
+    const base = createPerfectAdapterFactory(fixture.snapshot);
+    const result = await runAgenticBenchmark({
+      adapters: {
+        perfect: () => ({
+          ...base.factory(),
+          callTool: () => new Promise(() => {}),
+        }),
+      },
+      fixture,
+      taskIds: ["t0a1b2c3"],
+      lifecycles: ["cold"],
+      callTimeoutMs: 15,
+    });
+    expect(result.receipts[0]?.canonical.failure).toMatchObject({
+      class: "product_error",
+      code: "tool_timeout",
+    });
+    expect(result.receipts[0]?.canonical.agentCalls).toBe(1);
+    expect(result.receipts[0]?.canonical.calls[0]).toMatchObject({
+      deliveredToAgent: false,
+      failureCode: "tool_timeout",
+      backendInvocations: 0,
+      modelVisibleUtf8Bytes: 0,
+    });
+  });
+
   test("marks remaining warm pairs when a failed call may corrupt the cohort", async () => {
     const fixture = await loadAgenticFixture();
     const { factory } = createPerfectAdapterFactory(fixture.snapshot, {
@@ -283,6 +346,13 @@ describe("runner accounting and failures", () => {
     expect(
       result.receipts.map((receipt) => receipt.canonical.failure.class)
     ).toEqual(["product_error", "harness_error"]);
+    expect(result.receipts[0]?.canonical.calls).toHaveLength(1);
+    expect(result.receipts[0]?.canonical.calls[0]).toMatchObject({
+      deliveredToAgent: false,
+      failureCode: "tool_call_failed",
+      backendInvocations: 0,
+      modelVisibleUtf8Bytes: 0,
+    });
     expect(result.receipts[1]?.canonical.failure.code).toBe(
       "warm_cohort_corrupted"
     );

@@ -185,6 +185,8 @@ export interface CanonicalAgentCall {
   toolName: string;
   arguments: Record<string, unknown>;
   result: NormalizedToolResult;
+  deliveredToAgent: boolean;
+  failureCode: string | null;
   modelVisibleUtf8Bytes: number;
   measuredTokens: number | null;
   tokenizerFingerprint: string | null;

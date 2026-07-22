@@ -5,6 +5,8 @@ import { assertSha256, canonicalFingerprint } from "./canonical";
 import { parseStrictHarnessJson } from "./strict-json";
 
 export const QMD_LOCK_SCHEMA_VERSION = "1.0" as const;
+export const QMD_LOCK_FILE_SHA256 =
+  "8089d441aa2cead938be2e494ad47b93a34b554ecdfaae3d5b9a5d3759aad72f";
 export const QMD_TOOL_NAMES = ["query", "get", "multi_get", "status"] as const;
 export type QmdToolName = (typeof QMD_TOOL_NAMES)[number];
 export const QMD_MODEL_ROLES = ["embed", "rerank", "generate"] as const;
@@ -12,7 +14,6 @@ export type QmdModelRole = (typeof QMD_MODEL_ROLES)[number];
 
 export interface QmdLockedModel {
   uri: string;
-  revision: string;
   file: string;
   cacheFile: string;
   sha256: string;
@@ -34,6 +35,11 @@ export interface QmdLock {
     { inputSchemaSha256: string; contractSha256: string }
   > & { inputSchemasSha256: string; contractsSha256: string };
   models: Record<QmdModelRole, QmdLockedModel>;
+}
+
+export interface QmdLockFile {
+  lock: QmdLock;
+  fileSha256: string;
 }
 
 const exactKeys = (
@@ -183,7 +189,7 @@ export const validateQmdLock = (value: unknown): QmdLock => {
       const model = objectValue(models[role], `models.${role}`);
       exactKeys(
         model,
-        ["uri", "revision", "file", "cacheFile", "sha256", "bytes"],
+        ["uri", "file", "cacheFile", "sha256", "bytes"],
         `models.${role}`
       );
       if (!Number.isSafeInteger(model.bytes) || (model.bytes as number) <= 0) {
@@ -208,11 +214,25 @@ export const validateQmdLock = (value: unknown): QmdLock => {
           `models.${role}.file must be one unambiguous cache filename`
         );
       }
+      const uri = stringValue(model.uri, `models.${role}.uri`);
+      const uriMatch = /^hf:([^/]+)\/([^/]+)\/([^/]+)$/.exec(uri);
+      if (!uriMatch || uriMatch[3] !== file) {
+        throw new AgenticHarnessError(
+          "qmd_lock_invalid",
+          `models.${role}.file must exactly match its Hugging Face URI filename`
+        );
+      }
+      const expectedCacheFile = `hf_${uriMatch[1]}_${file}`;
+      if (cacheFile !== expectedCacheFile) {
+        throw new AgenticHarnessError(
+          "qmd_lock_invalid",
+          `models.${role}.cacheFile must match qmd's native Hugging Face cache filename`
+        );
+      }
       return [
         role,
         {
-          uri: stringValue(model.uri, `models.${role}.uri`),
-          revision: lockedGitObject(model.revision, `models.${role}.revision`),
+          uri,
           file,
           cacheFile,
           sha256: lockedHash(model.sha256, `models.${role}.sha256`),
@@ -263,12 +283,15 @@ export const validateQmdLock = (value: unknown): QmdLock => {
   };
 };
 
-export const loadQmdLock = async (
-  lockPath = join(
-    import.meta.dir,
-    "../fixtures/agentic-retrieval/qmd.lock.json"
-  )
-): Promise<QmdLock> => {
+export const QMD_LOCK_PATH = join(
+  import.meta.dir,
+  "../fixtures/agentic-retrieval/qmd.lock.json"
+);
+
+export const loadQmdLockFile = async (
+  lockPath = QMD_LOCK_PATH,
+  expectedFileSha256 = QMD_LOCK_FILE_SHA256
+): Promise<QmdLockFile> => {
   const file = Bun.file(lockPath);
   if (!(await file.exists())) {
     throw new AgenticHarnessError(
@@ -276,8 +299,23 @@ export const loadQmdLock = async (
       `qmd lock is missing: ${lockPath}`
     );
   }
-  return validateQmdLock(parseStrictHarnessJson(await file.text(), "qmd lock"));
+  const raw = await file.text();
+  const lock = validateQmdLock(parseStrictHarnessJson(raw, "qmd lock"));
+  const fileSha256 = new Bun.CryptoHasher("sha256").update(raw).digest("hex");
+  if (fileSha256 !== expectedFileSha256) {
+    throw new AgenticHarnessError(
+      "qmd_lock_identity_mismatch",
+      `qmd lock file SHA-256 mismatch: expected ${expectedFileSha256}, got ${fileSha256}`
+    );
+  }
+  return { lock, fileSha256 };
 };
+
+export const loadQmdLock = async (
+  lockPath = QMD_LOCK_PATH,
+  expectedFileSha256 = QMD_LOCK_FILE_SHA256
+): Promise<QmdLock> =>
+  (await loadQmdLockFile(lockPath, expectedFileSha256)).lock;
 
 export const fingerprintQmdLock = (lock: QmdLock): string =>
   canonicalFingerprint(lock);

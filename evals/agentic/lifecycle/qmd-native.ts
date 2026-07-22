@@ -205,7 +205,8 @@ export const buildQmdEnvironment = (
   const base = Object.fromEntries(
     Object.entries(inherited).filter(
       (entry): entry is [string, string] =>
-        typeof entry[1] === "string" && !entry[0].startsWith("QMD_")
+        typeof entry[1] === "string" &&
+        !entry[0].toUpperCase().startsWith("QMD_")
     )
   );
   return {

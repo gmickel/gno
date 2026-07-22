@@ -26,12 +26,11 @@ import {
   type QmdPreparedHandle,
   type QmdRuntimeClone,
 } from "../lifecycle/qmd-native";
+import { QMD_LOCK_FILE_SHA256 } from "../qmd-lock";
 import { assertQmdCheckoutStillClean } from "../qmd-preflight";
 import { mapQmdToolCall, normalizeQmdToolResult } from "./qmd-normalize";
 
 export const QMD_ADAPTER_ID = "qmd";
-const QMD_LOCK_FILE_SHA256 =
-  "3e9e06ef272667b3e6ad1d33b536c31d49b96a8e36335fd92e761f52e937c25d";
 
 export const QMD_CAPABILITIES: AdapterCapabilities = Object.freeze({
   backendInvocationAccounting: false,
@@ -114,6 +113,7 @@ export const createQmdAdapterFactory = (
             collectionCount: prepared.collectionCount,
             qmdRepositoryFingerprint: prepared.preflight.repositoryFingerprint,
             qmdLockFingerprint: prepared.preflight.lockFingerprint,
+            qmdLockFileSha256: prepared.preflight.lockFileSha256,
             qmdIndexFileSha256: prepared.indexFileSha256,
             isolationFingerprint: canonicalFingerprint({
               config: prepared.configDir,

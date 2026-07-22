@@ -11,6 +11,7 @@ import {
   AgenticProductError,
   measuredTiming,
   unavailableTiming,
+  withBackendInvocations,
 } from "../adapter";
 import {
   cleanupGnoMcpHandle,
@@ -24,7 +25,10 @@ import {
   type GnoMcpPreparedHandle,
   type PrepareGnoMcpOptions,
 } from "../lifecycle/gno-mcp";
-import { normalizeGnoMcpResult } from "./gno-mcp-normalize";
+import {
+  knownGnoMcpBackendInvocations,
+  normalizeGnoMcpResult,
+} from "./gno-mcp-normalize";
 
 const PRODUCT_TOOL_NAMES = {
   search: "gno_query",
@@ -345,12 +349,23 @@ export class GnoMcpAdapter implements AgentAdapter {
       mapped.arguments,
       signal
     );
-    const normalized = normalizeGnoMcpResult(
-      toolName as CanonicalToolName,
-      response,
-      this.requireHandle().snapshot,
-      task
-    );
+    let normalized;
+    try {
+      normalized = normalizeGnoMcpResult(
+        toolName as CanonicalToolName,
+        response,
+        this.requireHandle().snapshot,
+        task
+      );
+    } catch (error) {
+      const backendInvocations = knownGnoMcpBackendInvocations(
+        toolName,
+        response
+      );
+      if (backendInvocations !== null)
+        throw withBackendInvocations(error, backendInvocations);
+      throw error;
+    }
     return {
       ...normalized,
       timing: measuredTiming(this.now() - started),

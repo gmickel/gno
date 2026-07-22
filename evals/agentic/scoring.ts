@@ -131,7 +131,9 @@ const scopeScores = (
 };
 
 const returnedEvidence = (receipt: TrajectoryReceipt): EvidenceCoordinate[] =>
-  receipt.canonical.calls.flatMap((call) => call.result.evidence);
+  receipt.canonical.calls
+    .filter((call) => call.deliveredToAgent)
+    .flatMap((call) => call.result.evidence);
 
 const invalidScore = (
   task: AgentTask,

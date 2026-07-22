@@ -108,7 +108,8 @@ const capsuleEvidenceBundlePayload = (
   receipt: TrajectoryReceipt
 ): string | null => {
   const evidenceBundles = receipt.canonical.calls.filter(
-    (call) => call.result.resultRole === "evidence_bundle"
+    (call) =>
+      call.deliveredToAgent && call.result.resultRole === "evidence_bundle"
   );
   if (evidenceBundles.length !== 1) return null;
   return evidenceBundles[0]?.result.content || null;

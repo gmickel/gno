@@ -253,6 +253,59 @@ describe("runner agent boundaries", () => {
       class: "harness_error",
       code: "invalid_token_accounting",
     });
+    expect(tokenMeter.receipts[0]?.canonical.agentCalls).toBe(1);
+    expect(tokenMeter.receipts[0]?.canonical.backendInvocations).toBe(1);
+    expect(tokenMeter.receipts[0]?.canonical.calls[0]).toMatchObject({
+      deliveredToAgent: false,
+      failureCode: "invalid_token_accounting",
+      modelVisibleUtf8Bytes: 0,
+      backendInvocations: 1,
+    });
+
+    let tokenCalls = 0;
+    const partialTokenMeter = await runAgenticBenchmark({
+      adapters: { perfect: factory },
+      fixture,
+      taskIds: ["t0a1b2c3"],
+      lifecycles: ["cold"],
+      agentFactory: scriptedAgent(
+        {},
+        {
+          createSession: async () => ({
+            ...boundarySession({}),
+            tokenizerFingerprint: "5".repeat(64),
+            async next(calls) {
+              return calls.length === 0
+                ? {
+                    kind: "tool" as const,
+                    toolName: "search",
+                    arguments: { query: "incident", collection: "c001" },
+                  }
+                : {
+                    kind: "tool" as const,
+                    toolName: "get",
+                    arguments: { uri: "gno://c001/d001.md" },
+                  };
+            },
+            countTokens() {
+              tokenCalls += 1;
+              if (tokenCalls === 2) throw new Error("tokenizer failed");
+              return 5;
+            },
+          }),
+        }
+      ),
+    });
+    expect(partialTokenMeter.receipts[0]?.canonical.measuredTokens).toBe(5);
+    expect(
+      partialTokenMeter.receipts[0]?.canonical.calls.map((call) => ({
+        delivered: call.deliveredToAgent,
+        measuredTokens: call.measuredTokens,
+      }))
+    ).toEqual([
+      { delivered: true, measuredTokens: 5 },
+      { delivered: false, measuredTokens: null },
+    ]);
   });
 });
 
@@ -365,6 +418,29 @@ describe("runner adapter boundaries", () => {
     expect(outcome.receipts[0]?.canonical.failure).toMatchObject({
       class: "harness_error",
       code: "invalid_tool_result",
+    });
+    expect(outcome.receipts[0]?.canonical.agentCalls).toBe(1);
+    expect(outcome.receipts[0]?.canonical.calls[0]).toMatchObject({
+      deliveredToAgent: false,
+      failureCode: "invalid_tool_result",
+      backendInvocations: 1,
+      modelVisibleUtf8Bytes: 0,
+    });
+
+    const accountedThrow = await malformed((adapter) => ({
+      ...adapter,
+      async callTool() {
+        throw new AgenticHarnessError(
+          "post_dispatch_normalization_failed",
+          "backend completed before normalization failed",
+          { backendInvocations: 7 }
+        );
+      },
+    }));
+    expect(accountedThrow.receipts[0]?.canonical.calls[0]).toMatchObject({
+      deliveredToAgent: false,
+      failureCode: "post_dispatch_normalization_failed",
+      backendInvocations: 7,
     });
 
     const partialBackendHash = await malformed((adapter) => ({

@@ -7,12 +7,22 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { AgenticHarnessError } from "../../../evals/agentic/adapter";
-import { sha256Bytes } from "../../../evals/agentic/canonical";
-import { loadQmdLock, validateQmdLock } from "../../../evals/agentic/qmd-lock";
+import { createQmdAdapterFactory } from "../../../evals/agentic/adapters/qmd";
+import {
+  canonicalFingerprint,
+  sha256Bytes,
+} from "../../../evals/agentic/canonical";
+import {
+  loadQmdLock,
+  loadQmdLockFile,
+  QMD_LOCK_FILE_SHA256,
+  validateQmdLock,
+} from "../../../evals/agentic/qmd-lock";
 import {
   hashQmdFile,
   preflightQmd,
   type QmdCommandRunner,
+  type QmdPreflightOptions,
 } from "../../../evals/agentic/qmd-preflight";
 
 const tempPaths: string[] = [];
@@ -53,6 +63,15 @@ const expectRejectMessage = async (
 };
 
 describe("qmd lock", () => {
+  test("binds the committed raw identity into adapter configuration", () => {
+    expect(createQmdAdapterFactory()().configFingerprint).toBe(
+      canonicalFingerprint({
+        adapter: "qmd",
+        lockFileSha256: QMD_LOCK_FILE_SHA256,
+      })
+    );
+  });
+
   test("loads every exact repository, package, tool, and model field", async () => {
     const lock = await loadQmdLock();
     expect(lock.repository.commit).toBe(
@@ -87,6 +106,32 @@ describe("qmd lock", () => {
     expect(lock.models.generate.cacheFile).toBe(
       "hf_tobil_qmd-query-expansion-1.7B-q4_k_m.gguf"
     );
+    expect(lock.models).toEqual({
+      embed: {
+        uri: "hf:ggml-org/embeddinggemma-300M-GGUF/embeddinggemma-300M-Q8_0.gguf",
+        file: "embeddinggemma-300M-Q8_0.gguf",
+        cacheFile: "hf_ggml-org_embeddinggemma-300M-Q8_0.gguf",
+        sha256:
+          "b5ce9d77a3fc4b3b39ccb5643c36777911cc4eb46a66962eadfa3f5f60490d63",
+        bytes: 333_590_944,
+      },
+      rerank: {
+        uri: "hf:ggml-org/Qwen3-Reranker-0.6B-Q8_0-GGUF/qwen3-reranker-0.6b-q8_0.gguf",
+        file: "qwen3-reranker-0.6b-q8_0.gguf",
+        cacheFile: "hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+        sha256:
+          "22c9979ce4fbcdc5acdc310c6641c32797eff1aa980b8f7a2db8a8ea23429a48",
+        bytes: 639_153_184,
+      },
+      generate: {
+        uri: "hf:tobil/qmd-query-expansion-1.7B-gguf/qmd-query-expansion-1.7B-q4_k_m.gguf",
+        file: "qmd-query-expansion-1.7B-q4_k_m.gguf",
+        cacheFile: "hf_tobil_qmd-query-expansion-1.7B-q4_k_m.gguf",
+        sha256:
+          "000dfb1c06efa6a049e9f64ba921c3740e2454f62abab6fa10e77bd30bb2bcc0",
+        bytes: 1_282_438_912,
+      },
+    });
   });
 
   test("rejects placeholders, short revisions, extra fields, and duplicate keys", async () => {
@@ -111,11 +156,33 @@ describe("qmd lock", () => {
       "unambiguous cache filename"
     );
 
+    const uriDrift = structuredClone(await loadQmdLock());
+    uriDrift.models.embed.file = "different.gguf";
+    expect(() => validateQmdLock(uriDrift)).toThrow(
+      "exactly match its Hugging Face URI filename"
+    );
+
+    const nativeNameDrift = structuredClone(await loadQmdLock());
+    nativeNameDrift.models.embed.cacheFile = "model.gguf";
+    expect(() => validateQmdLock(nativeNameDrift)).toThrow(
+      "native Hugging Face cache filename"
+    );
+
     const root = await mkdtemp(join(tmpdir(), "qmd-lock-duplicate-"));
     tempPaths.push(root);
     const path = join(root, "qmd.lock.json");
     await Bun.write(path, '{"schemaVersion":"1.0","schemaVersion":"1.0"}');
     await expectRejectMessage(loadQmdLock(path), "Duplicate JSON key");
+  });
+
+  test("rejects a structurally valid raw lock whose pinned model fields drift", async () => {
+    const root = await mkdtemp(join(tmpdir(), "qmd-lock-drift-"));
+    tempPaths.push(root);
+    const path = join(root, "qmd.lock.json");
+    const drifted = structuredClone(await loadQmdLock());
+    drifted.models.embed.sha256 = "1".repeat(64);
+    await Bun.write(path, JSON.stringify(drifted, null, 2));
+    await expectRejectCode(loadQmdLock(path), "qmd_lock_identity_mismatch");
   });
 });
 
@@ -161,7 +228,8 @@ const createExactFixture = async () => {
     await Bun.write(join(modelCachePath, model.cacheFile), content);
   }
   const lockPath = join(root, "qmd.lock.json");
-  await Bun.write(lockPath, JSON.stringify(lock));
+  const lockText = JSON.stringify(lock);
+  await Bun.write(lockPath, lockText);
 
   let dirty = false;
   let commit = lock.repository.commit;
@@ -186,6 +254,7 @@ const createExactFixture = async () => {
     repoPath,
     modelCachePath,
     lockPath,
+    expectedLockFileSha256: sha256Bytes(lockText),
     lock,
     commandRunner,
     setDirty(value: boolean) {
@@ -197,21 +266,42 @@ const createExactFixture = async () => {
   };
 };
 
+const preflightExactFixture = async (
+  fixture: Awaited<ReturnType<typeof createExactFixture>>,
+  overrides: Partial<QmdPreflightOptions> = {}
+) =>
+  preflightQmd(
+    {
+      repoPath: fixture.repoPath,
+      modelCachePath: fixture.modelCachePath,
+      commandRunner: fixture.commandRunner,
+      ...overrides,
+    },
+    {
+      loadLockFile: () =>
+        loadQmdLockFile(fixture.lockPath, fixture.expectedLockFileSha256),
+    }
+  );
+
 describe("qmd static preflight", () => {
   test("accepts only a clean exact checkout with all pinned cached models", async () => {
     const fixture = await createExactFixture();
-    const result = await preflightQmd(fixture);
+    const result = await preflightExactFixture(fixture);
     expect(result.repoPath).toBe(fixture.repoPath);
     expect(result.modelPaths.generate).toBe(
       join(fixture.modelCachePath, fixture.lock.models.generate.cacheFile)
     );
     expect(result.lockFingerprint).toMatch(/^[a-f0-9]{64}$/);
+    expect(result.lockFileSha256).toBe(fixture.expectedLockFileSha256);
   });
 
   test("requires an executable locked entrypoint", async () => {
     const fixture = await createExactFixture();
     await chmod(join(fixture.repoPath, "bin/qmd"), 0o644);
-    await expectRejectCode(preflightQmd(fixture), "qmd_entrypoint_invalid");
+    await expectRejectCode(
+      preflightExactFixture(fixture),
+      "qmd_entrypoint_invalid"
+    );
   });
 
   test("stops file hashing before reading when cancelled", async () => {
@@ -227,10 +317,16 @@ describe("qmd static preflight", () => {
   test("fails closed on dirty or revision-mismatched checkouts", async () => {
     const fixture = await createExactFixture();
     fixture.setDirty(true);
-    await expectRejectCode(preflightQmd(fixture), "qmd_checkout_dirty");
+    await expectRejectCode(
+      preflightExactFixture(fixture),
+      "qmd_checkout_dirty"
+    );
     fixture.setDirty(false);
     fixture.setCommit("1".repeat(40));
-    await expectRejectCode(preflightQmd(fixture), "qmd_revision_mismatch");
+    await expectRejectCode(
+      preflightExactFixture(fixture),
+      "qmd_revision_mismatch"
+    );
   });
 
   test("fails closed on missing, stale, and real currently unavailable model caches", async () => {
@@ -239,7 +335,10 @@ describe("qmd static preflight", () => {
       join(fixture.modelCachePath, fixture.lock.models.generate.cacheFile),
       "stale"
     );
-    await expectRejectCode(preflightQmd(fixture), "qmd_model_preflight_failed");
+    await expectRejectCode(
+      preflightExactFixture(fixture),
+      "qmd_model_preflight_failed"
+    );
 
     await expectRejectCode(
       preflightQmd({

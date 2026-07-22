@@ -18,6 +18,7 @@ import {
   validateQmdPreparedStatus,
 } from "../../../evals/agentic/lifecycle/qmd-native";
 import { loadQmdLock } from "../../../evals/agentic/qmd-lock";
+import { runQmdCommand } from "../../../evals/agentic/qmd-preflight";
 
 const snapshot: CorpusSnapshot = {
   fixtureVersion: "fixture",
@@ -98,6 +99,7 @@ test("qmd isolated environment drops inherited knobs and pins Bun lookup", async
     },
     {
       lock,
+      lockFileSha256: "0".repeat(64),
       lockFingerprint: "lock",
       repoPath: "/qmd",
       entrypointPath: "/qmd/bin/qmd",
@@ -115,14 +117,38 @@ test("qmd isolated environment drops inherited knobs and pins Bun lookup", async
       QMD_FORCE_CPU: "1",
       QMD_EMBED_CONTEXT_SIZE: "42",
       QMD_WRAPPER_CAPTURE: "/tmp/capture",
+      qmd_case_insensitive_poison: "windows-parent",
     }
   );
   expect(env.HOME).toBe("/home/test");
   expect(env.QMD_FORCE_CPU).toBeUndefined();
   expect(env.QMD_EMBED_CONTEXT_SIZE).toBeUndefined();
   expect(env.QMD_WRAPPER_CAPTURE).toBeUndefined();
+  expect(env.qmd_case_insensitive_poison).toBeUndefined();
   expect(env.PATH?.split(delimiter)[0]).toBe(dirname(process.execPath));
   expect(env.QMD_SOURCE_MODE).toBe("1");
+
+  const inheritedPoison = process.env.QMD_FORCE_CPU;
+  process.env.QMD_FORCE_CPU = "reintroduced-by-parent";
+  try {
+    const child = await runQmdCommand({
+      command: process.execPath,
+      args: [
+        "-e",
+        "process.stdout.write(JSON.stringify({home:process.env.HOME,poison:process.env.QMD_FORCE_CPU,embed:process.env.QMD_EMBED_MODEL}))",
+      ],
+      cwd: process.cwd(),
+      env,
+    });
+    expect(child.exitCode).toBe(0);
+    expect(JSON.parse(child.stdout)).toEqual({
+      home: "/home/test",
+      embed: lock.models.embed.uri,
+    });
+  } finally {
+    if (inheritedPoison === undefined) delete process.env.QMD_FORCE_CPU;
+    else process.env.QMD_FORCE_CPU = inheritedPoison;
+  }
 });
 
 test("qmd adapter rejects invalid attached preparation as a harness error", async () => {

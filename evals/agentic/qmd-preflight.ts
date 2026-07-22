@@ -7,7 +7,8 @@ import { AgenticHarnessError } from "./adapter";
 import { sha256Bytes } from "./canonical";
 import {
   fingerprintQmdLock,
-  loadQmdLock,
+  loadQmdLockFile,
+  QMD_LOCK_FILE_SHA256,
   QMD_MODEL_ROLES,
   type QmdLock,
   type QmdModelRole,
@@ -30,6 +31,7 @@ export type QmdCommandRunner = (input: {
 
 export interface QmdPreflightResult {
   lock: QmdLock;
+  lockFileSha256: string;
   lockFingerprint: string;
   repoPath: string;
   entrypointPath: string;
@@ -41,15 +43,22 @@ export interface QmdPreflightResult {
 export interface QmdPreflightOptions {
   repoPath?: string;
   modelCachePath?: string;
-  lockPath?: string;
   commandRunner?: QmdCommandRunner;
   signal?: AbortSignal;
 }
 
+export interface QmdPreflightDependencies {
+  loadLockFile: typeof loadQmdLockFile;
+}
+
+const DEFAULT_QMD_PREFLIGHT_DEPENDENCIES: QmdPreflightDependencies = {
+  loadLockFile: loadQmdLockFile,
+};
+
 export const runQmdCommand: QmdCommandRunner = async (input) => {
   const child = Bun.spawn([input.command, ...input.args], {
     cwd: input.cwd,
-    env: input.env ? { ...process.env, ...input.env } : process.env,
+    env: input.env ?? process.env,
     stdout: "pipe",
     stderr: "pipe",
     signal: input.signal,
@@ -220,7 +229,8 @@ const validateModelCache = async (
 };
 
 export const preflightQmd = async (
-  options: QmdPreflightOptions = {}
+  options: QmdPreflightOptions = {},
+  dependencies: QmdPreflightDependencies = DEFAULT_QMD_PREFLIGHT_DEPENDENCIES
 ): Promise<QmdPreflightResult> => {
   throwIfAborted(options.signal);
   const repoInput = options.repoPath ?? process.env.QMD_REPO;
@@ -231,7 +241,11 @@ export const preflightQmd = async (
     );
   }
   const repoPath = resolve(repoInput);
-  const lock = await loadQmdLock(options.lockPath);
+  const lockFile = await dependencies.loadLockFile(
+    undefined,
+    QMD_LOCK_FILE_SHA256
+  );
+  const { lock } = lockFile;
   const runner = options.commandRunner ?? runQmdCommand;
   if (!(await Bun.file(join(repoPath, ".git", "HEAD")).exists())) {
     throw new AgenticHarnessError(
@@ -329,6 +343,7 @@ export const preflightQmd = async (
   );
   return {
     lock,
+    lockFileSha256: lockFile.fileSha256,
     lockFingerprint: fingerprintQmdLock(lock),
     repoPath,
     entrypointPath,

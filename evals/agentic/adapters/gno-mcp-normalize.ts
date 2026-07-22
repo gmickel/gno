@@ -37,6 +37,30 @@ interface NormalizedMcpOutcome {
   diagnostics: string[];
 }
 
+export const knownGnoMcpBackendInvocations = (
+  toolName: string,
+  response: GnoMcpCallResult
+): number | null => {
+  if (response.isError === true || toolName !== "search") return 1;
+  const meta = objectRecord(objectRecord(response.structuredContent)?.meta);
+  if (
+    !meta ||
+    typeof meta.vectorsUsed !== "boolean" ||
+    typeof meta.expanded !== "boolean" ||
+    typeof meta.reranked !== "boolean"
+  ) {
+    return null;
+  }
+  const graph = objectRecord(meta.graphExpansion);
+  return (
+    1 +
+    (meta.vectorsUsed ? 1 : 0) +
+    (meta.expanded ? 1 : 0) +
+    (meta.reranked ? 1 : 0) +
+    (graph?.enabled === true ? 1 : 0)
+  );
+};
+
 const evidenceForRange = (input: {
   snapshot: CorpusSnapshot;
   task: Readonly<AgentTask>;

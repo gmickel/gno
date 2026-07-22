@@ -131,12 +131,14 @@ export const projectModelVisibleToolResult = (
 export const projectAgentVisibleCalls = (
   calls: readonly CanonicalAgentCall[]
 ): AgentVisibleCall[] =>
-  calls.map((call) => ({
-    callIndex: call.callIndex,
-    toolName: call.toolName,
-    arguments: structuredClone(call.arguments),
-    result: projectModelVisibleToolResult(call.result),
-  }));
+  calls
+    .filter((call) => call.deliveredToAgent)
+    .map((call) => ({
+      callIndex: call.callIndex,
+      toolName: call.toolName,
+      arguments: structuredClone(call.arguments),
+      result: projectModelVisibleToolResult(call.result),
+    }));
 
 export const receiptCanonicalJson = (receipt: TrajectoryReceipt): string =>
   canonicalJson(receipt.canonical);

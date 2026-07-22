@@ -139,7 +139,8 @@ export const buildCapsuleReplayRecords = (
       throw new Error("Capsule replay inputs have different fingerprints");
     const payloadFor = (item: TrajectoryReceipt): string => {
       const bundles = item.canonical.calls.filter(
-        (call) => call.result.resultRole === "evidence_bundle"
+        (call) =>
+          call.deliveredToAgent && call.result.resultRole === "evidence_bundle"
       );
       if (bundles.length !== 1 || !bundles[0]?.result.content)
         throw new Error(

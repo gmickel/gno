@@ -3,11 +3,13 @@ import type {
   AdapterResetResult,
   AgentAdapter,
   AgentToolDefinition,
+  AdapterToolCallResult,
 } from "./adapter";
 import type { AgentTrial, OuterAgentRuntime, OuterAgentSession } from "./agent";
 import type {
   AgentTask,
   CanonicalAgentCall,
+  NormalizedToolResult,
   TimingObservation,
   TrajectoryReceipt,
 } from "./types";
@@ -50,6 +52,67 @@ export interface TrialContext {
   e2eStarted: number;
   recordedAt: () => string;
 }
+
+interface ValidToolChoice {
+  toolName: string;
+  arguments: Record<string, unknown>;
+}
+
+const failedToolResult = (
+  toolName: string,
+  failureCode: string
+): NormalizedToolResult => ({
+  status: "error",
+  resultRole: toolName === "search" ? "candidates" : "source",
+  content: "",
+  evidence: [],
+  errorCode: failureCode,
+});
+
+const knownBackendInvocations = (value: unknown): number => {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return 0;
+  const count = (value as { backendInvocations?: unknown }).backendInvocations;
+  return Number.isSafeInteger(count) && (count as number) >= 0
+    ? (count as number)
+    : 0;
+};
+
+const normalizeToolFailure = (error: unknown): Error => {
+  if (
+    error instanceof AgenticHarnessError ||
+    error instanceof AgenticProductError ||
+    error instanceof AgenticAgentError
+  ) {
+    return error;
+  }
+  return new AgenticProductError(
+    "tool_call_failed",
+    `Adapter tool call failed: ${redactError(error)}`,
+    { cause: error }
+  );
+};
+
+const recordCall = (
+  calls: CanonicalAgentCall[],
+  step: ValidToolChoice,
+  input: {
+    result: NormalizedToolResult;
+    deliveredToAgent: boolean;
+    failureCode: string | null;
+    modelVisibleUtf8Bytes: number;
+    measuredTokens: number | null;
+    tokenizerFingerprint: string | null;
+    backendInvocations: number;
+  }
+): void => {
+  calls.push({
+    callIndex: calls.length,
+    toolName: step.toolName,
+    arguments: structuredClone(step.arguments),
+    ...input,
+    result: structuredClone(input.result),
+  });
+};
 
 export const runAgentTrial = async (
   context: TrialContext
@@ -103,14 +166,24 @@ export const runAgentTrial = async (
         );
       }
       if (calls.length >= context.task.budgets.maxAgentCalls) {
-        throw new AgenticAgentError(
+        const failure = new AgenticAgentError(
           "agent_call_budget_exceeded",
           "Agent call budget exceeded"
         );
+        recordCall(calls, step, {
+          result: failedToolResult(step.toolName, failure.code),
+          deliveredToAgent: false,
+          failureCode: failure.code,
+          modelVisibleUtf8Bytes: 0,
+          measuredTokens: null,
+          tokenizerFingerprint: null,
+          backendInvocations: 0,
+        });
+        throw failure;
       }
-      let outcome;
+      let rawOutcome: unknown;
       try {
-        outcome = await withAbortTimeout(
+        rawOutcome = await withAbortTimeout(
           (signal) =>
             context.adapter.callTool(step.toolName, step.arguments, signal),
           context.timeoutMs,
@@ -120,19 +193,41 @@ export const runAgentTrial = async (
           )
         );
       } catch (error) {
-        if (
-          error instanceof AgenticHarnessError ||
-          error instanceof AgenticProductError
-        ) {
-          throw error;
-        }
-        throw new AgenticProductError(
-          "tool_call_failed",
-          `Adapter tool call failed: ${redactError(error)}`,
-          { cause: error }
-        );
+        const failure = normalizeToolFailure(error);
+        const failureCode = classifyError(failure).code;
+        recordCall(calls, step, {
+          result: failedToolResult(step.toolName, failureCode),
+          deliveredToAgent: false,
+          failureCode,
+          modelVisibleUtf8Bytes: 0,
+          measuredTokens: null,
+          tokenizerFingerprint: null,
+          backendInvocations: Math.max(
+            knownBackendInvocations(error),
+            knownBackendInvocations(rawOutcome)
+          ),
+        });
+        throw failure;
       }
-      validateAdapterToolCallResult(outcome);
+      try {
+        validateAdapterToolCallResult(rawOutcome as AdapterToolCallResult);
+      } catch (error) {
+        const failure = normalizeToolFailure(error);
+        const failureCode = classifyError(failure).code;
+        recordCall(calls, step, {
+          result: failedToolResult(step.toolName, failureCode),
+          deliveredToAgent: false,
+          failureCode,
+          modelVisibleUtf8Bytes: 0,
+          measuredTokens: null,
+          tokenizerFingerprint: null,
+          backendInvocations: knownBackendInvocations(rawOutcome),
+        });
+        throw failure;
+      }
+      const outcome = rawOutcome as AdapterToolCallResult;
+      toolTimings.push(outcome.timing);
+      diagnostics.push(...outcome.diagnostics);
       const visiblePayload = projectModelVisibleToolResult(outcome.result);
       const visibleJson = canonicalJson(visiblePayload);
       const visibleBytes = modelVisibleUtf8Bytes(visiblePayload);
@@ -141,20 +236,40 @@ export const runAgentTrial = async (
         visibleBytes
       );
       if (accumulatedBytes > context.task.budgets.maxModelVisibleBytes) {
-        throw new AgenticAgentError(
+        const failure = new AgenticAgentError(
           "context_byte_budget_exceeded",
           "Model-visible byte budget exceeded"
         );
+        recordCall(calls, step, {
+          result: outcome.result,
+          deliveredToAgent: false,
+          failureCode: failure.code,
+          modelVisibleUtf8Bytes: 0,
+          measuredTokens: null,
+          tokenizerFingerprint: null,
+          backendInvocations: outcome.backendInvocations,
+        });
+        throw failure;
       }
       let measuredTokens: number | null;
       try {
         measuredTokens = session.countTokens(visibleJson);
       } catch (error) {
-        throw new AgenticHarnessError(
+        const failure = new AgenticHarnessError(
           "invalid_token_accounting",
           "Outer agent token measurement failed",
           { cause: error }
         );
+        recordCall(calls, step, {
+          result: outcome.result,
+          deliveredToAgent: false,
+          failureCode: failure.code,
+          modelVisibleUtf8Bytes: 0,
+          measuredTokens: null,
+          tokenizerFingerprint: null,
+          backendInvocations: outcome.backendInvocations,
+        });
+        throw failure;
       }
       if (
         !(
@@ -163,24 +278,31 @@ export const runAgentTrial = async (
         ) ||
         (measuredTokens !== null && session.tokenizerFingerprint === null)
       ) {
-        throw new AgenticHarnessError(
+        const failure = new AgenticHarnessError(
           "invalid_token_accounting",
           "Outer agent token measurement differs from the contract"
         );
+        recordCall(calls, step, {
+          result: outcome.result,
+          deliveredToAgent: false,
+          failureCode: failure.code,
+          modelVisibleUtf8Bytes: 0,
+          measuredTokens: null,
+          tokenizerFingerprint: null,
+          backendInvocations: outcome.backendInvocations,
+        });
+        throw failure;
       }
-      calls.push({
-        callIndex: calls.length,
-        toolName: step.toolName,
-        arguments: structuredClone(step.arguments),
+      recordCall(calls, step, {
         result: structuredClone(outcome.result),
+        deliveredToAgent: true,
+        failureCode: null,
         modelVisibleUtf8Bytes: visibleBytes,
         measuredTokens,
         tokenizerFingerprint:
           measuredTokens === null ? null : session.tokenizerFingerprint,
         backendInvocations: outcome.backendInvocations,
       });
-      toolTimings.push(outcome.timing);
-      diagnostics.push(...outcome.diagnostics);
     }
   } catch (error) {
     return createTrajectoryReceipt(

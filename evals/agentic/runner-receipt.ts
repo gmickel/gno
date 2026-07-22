@@ -104,9 +104,13 @@ const runtimeFingerprint = (): string =>
   });
 
 const totalTokens = (calls: readonly CanonicalAgentCall[]): number | null => {
-  if (calls.length === 0 || calls.some((call) => call.measuredTokens === null))
+  const delivered = calls.filter((call) => call.deliveredToAgent);
+  if (
+    delivered.length === 0 ||
+    delivered.some((call) => call.measuredTokens === null)
+  )
     return null;
-  return calls.reduce((sum, call) => sum + (call.measuredTokens ?? 0), 0);
+  return delivered.reduce((sum, call) => sum + (call.measuredTokens ?? 0), 0);
 };
 
 export const createTrajectoryReceipt = (

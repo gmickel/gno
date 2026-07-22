@@ -192,18 +192,50 @@ export const validateTrajectoryAccounting = (
     canonical.calls.some(
       (call) =>
         call.modelVisibleUtf8Bytes !==
-        modelVisibleUtf8Bytes(projectModelVisibleToolResult(call.result))
+        (call.deliveredToAgent
+          ? modelVisibleUtf8Bytes(projectModelVisibleToolResult(call.result))
+          : 0)
     )
   ) {
     issues.push("call_model_visible_bytes_mismatch");
   }
-  const measuredTokens = canonical.calls.map((call) => call.measuredTokens);
+  if (
+    canonical.calls.some(
+      (call) =>
+        (call.deliveredToAgent && call.failureCode !== null) ||
+        (!call.deliveredToAgent &&
+          (typeof call.failureCode !== "string" ||
+            !call.failureCode.trim() ||
+            call.measuredTokens !== null ||
+            call.tokenizerFingerprint !== null))
+    )
+  ) {
+    issues.push("call_delivery_failure_invariant");
+  }
+  const undeliveredCalls = canonical.calls.filter(
+    (call) => !call.deliveredToAgent
+  );
+  if (
+    undeliveredCalls.length > 1 ||
+    (undeliveredCalls.length === 1 &&
+      canonical.calls.at(-1) !== undeliveredCalls[0]) ||
+    (undeliveredCalls.length === 1 &&
+      (canonical.failure.class === "none" ||
+        canonical.failure.code !== undeliveredCalls[0]?.failureCode))
+  ) {
+    issues.push("undelivered_call_failure_mismatch");
+  }
+  const deliveredCalls = canonical.calls.filter(
+    (call) => call.deliveredToAgent
+  );
+  const measuredTokens = deliveredCalls.map((call) => call.measuredTokens);
   const allTokensMeasured = measuredTokens.every(
     (tokens): tokens is number => tokens !== null
   );
   if (
+    (deliveredCalls.length === 0 && canonical.measuredTokens !== null) ||
     (canonical.measuredTokens !== null && !allTokensMeasured) ||
-    (canonical.calls.length > 0 &&
+    (deliveredCalls.length > 0 &&
       allTokensMeasured &&
       canonical.measuredTokens === null) ||
     (canonical.measuredTokens !== null &&
