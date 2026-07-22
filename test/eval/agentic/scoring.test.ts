@@ -335,6 +335,10 @@ const promotionPair = (
     evalOnly: true,
     taskId: candidateReceipt.canonical.taskId,
   });
+  const candidateCall = candidateReceipt.canonical.calls[0];
+  if (!candidateCall) throw new Error("Promotion fixture requires one call");
+  candidateCall.result.resultRole = "evidence_bundle";
+  candidateCall.result.content = payload;
   const replay = {
     taskId: candidateReceipt.canonical.taskId,
     adapterId: "capsule" as const,
@@ -399,6 +403,8 @@ describe("Capsule promotion formulas", () => {
       sha256: sha256Bytes(changedPayload),
     };
     second.candidate.replay.second = second.candidate.replay.first;
+    second.candidate.receipt.canonical.calls[0]!.result.content =
+      changedPayload;
     second.baseline.score.score.success = 0;
     const result = evaluatePromotionGates([first, second]);
     expect(result.passed).toBe(false);
