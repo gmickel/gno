@@ -7,12 +7,12 @@ satisfies: [R2, R3, R5]
 Measure the shipped GNO query/get workflow through its real MCP boundary with exact lifecycle and context instrumentation.
 
 **Size:** M
-**Files:** `evals/agentic/adapters/gno-mcp.ts`, `evals/agentic/lifecycle/gno-mcp.ts`, `test/evals/agentic/gno-mcp-adapter.test.ts`, `spec/evals-agentic.md`
+**Files:** `evals/agentic/adapters/gno-mcp.ts`, `evals/agentic/lifecycle/gno-mcp.ts`, `test/eval/agentic/gno-mcp-adapter.test.ts`, `spec/evals-agentic.md`
 
 ### Approach
 - Spawn the real isolated stdio MCP server and invoke shipped tool names/schemas; do not import retrieval pipelines or add hidden shortcuts unavailable to an agent.
 - Follow the installed skill's search/query then get/multi_get workflow, capturing normalized arguments/order, returned exact evidence coordinates, repeated reads, filters, model-visible bytes, errors, and stop timing.
-- Implement exact lifecycle semantics: cold includes new server/store/model spawn through final envelope per task trial; warm uses one ready, pre-indexed process with one unscored readiness call, preserves process/model/store state across a cohort, resets only agent-visible state, and excludes initial setup.
+- Use task 1's same immutable prebuilt index for both cohorts. Cold starts a fresh MCP process/cached model and scores its first call; warm preserves one process/index/model after a discarded readiness probe. Report preparation/startup/model/tool/driver/e2e timings separately with null reasons where unavailable.
 - Add deterministic fake-process contract tests plus isolated real-MCP integration coverage.
 
 ### Investigation targets
