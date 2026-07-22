@@ -23,8 +23,10 @@
         "taskId",
         "adapterId",
         "trialId",
+        "seed",
         "lifecycle",
         "agentId",
+        "capabilities",
         "calls",
         "agentCalls",
         "backendInvocations",
@@ -40,8 +42,12 @@
         "taskId": { "type": "string", "pattern": "^t[0-9a-f]{7}$" },
         "adapterId": { "type": "string", "minLength": 1 },
         "trialId": { "type": "string", "minLength": 1 },
+        "seed": {
+          "oneOf": [{ "type": "integer" }, { "type": "null" }]
+        },
         "lifecycle": { "enum": ["cold", "warm"] },
         "agentId": { "type": "string", "minLength": 1 },
+        "capabilities": { "$ref": "#/definitions/capabilities" },
         "calls": {
           "type": "array",
           "items": { "$ref": "#/definitions/call" }
@@ -103,6 +109,52 @@
         }
       }
     },
+    "capabilityState": {
+      "enum": ["supported", "unsupported", "unavailable"]
+    },
+    "capabilities": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "backendInvocationAccounting",
+        "startupTiming",
+        "modelLoadTiming",
+        "toolTiming",
+        "tools",
+        "exactLineSpans",
+        "measuredTokens",
+        "backendHashes",
+        "lifecycle"
+      ],
+      "properties": {
+        "backendInvocationAccounting": { "type": "boolean" },
+        "startupTiming": { "type": "boolean" },
+        "modelLoadTiming": { "type": "boolean" },
+        "toolTiming": { "type": "boolean" },
+        "tools": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["search", "get", "multi_get"],
+          "properties": {
+            "search": { "$ref": "#/definitions/capabilityState" },
+            "get": { "$ref": "#/definitions/capabilityState" },
+            "multi_get": { "$ref": "#/definitions/capabilityState" }
+          }
+        },
+        "exactLineSpans": { "$ref": "#/definitions/capabilityState" },
+        "measuredTokens": { "$ref": "#/definitions/capabilityState" },
+        "backendHashes": { "$ref": "#/definitions/capabilityState" },
+        "lifecycle": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["cold", "warm"],
+          "properties": {
+            "cold": { "$ref": "#/definitions/capabilityState" },
+            "warm": { "$ref": "#/definitions/capabilityState" }
+          }
+        }
+      }
+    },
     "call": {
       "type": "object",
       "additionalProperties": false,
@@ -123,9 +175,18 @@
         "result": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["status", "content", "evidence", "errorCode"],
+          "required": [
+            "status",
+            "resultRole",
+            "content",
+            "evidence",
+            "errorCode"
+          ],
           "properties": {
             "status": { "enum": ["ok", "error"] },
+            "resultRole": {
+              "enum": ["candidates", "source", "evidence_bundle"]
+            },
             "content": { "type": "string" },
             "evidence": {
               "type": "array",

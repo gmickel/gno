@@ -9,7 +9,10 @@ import type {
   TrajectoryReceipt,
 } from "./types";
 
-import { modelVisibleUtf8Bytes } from "./canonical";
+import {
+  modelVisibleUtf8Bytes,
+  projectModelVisibleToolResult,
+} from "./canonical";
 import agentTaskSchema from "./schemas/agent-task.schema.json";
 import benchmarkReportSchema from "./schemas/benchmark-report.schema.json";
 import finalEnvelopeSchema from "./schemas/final-envelope.schema.json";
@@ -188,7 +191,8 @@ export const validateTrajectoryAccounting = (
   if (
     canonical.calls.some(
       (call) =>
-        call.modelVisibleUtf8Bytes !== modelVisibleUtf8Bytes(call.result)
+        call.modelVisibleUtf8Bytes !==
+        modelVisibleUtf8Bytes(projectModelVisibleToolResult(call.result))
     )
   ) {
     issues.push("call_model_visible_bytes_mismatch");
@@ -217,10 +221,42 @@ export const validateTrajectoryAccounting = (
     issues.push("tokenizer_fingerprint_missing");
   }
   if (
+    canonical.calls.some(
+      (call) =>
+        call.measuredTokens === null && call.tokenizerFingerprint !== null
+    )
+  ) {
+    issues.push("unexpected_tokenizer_fingerprint");
+  }
+  const tokenizerFingerprints = new Set(
+    canonical.calls
+      .map((call) => call.tokenizerFingerprint)
+      .filter((value): value is string => value !== null)
+  );
+  if (tokenizerFingerprints.size > 1) {
+    issues.push("tokenizer_fingerprint_mismatch");
+  }
+  if (
     canonical.finalEnvelope &&
     canonical.finalEnvelope.stopReason !== canonical.stopReason
   ) {
     issues.push("stop_reason_mismatch");
+  }
+  if (
+    (canonical.failure.class === "none" &&
+      (canonical.failure.code !== null ||
+        canonical.failure.redactedMessage !== null)) ||
+    (canonical.failure.class !== "none" && canonical.failure.code === null)
+  ) {
+    issues.push("failure_payload_invariant_invalid");
+  }
+  if (
+    (canonical.finalEnvelope === null &&
+      (canonical.stopReason !== "error" ||
+        canonical.failure.class === "none")) ||
+    (canonical.finalEnvelope !== null && canonical.failure.class !== "none")
+  ) {
+    issues.push("failure_envelope_invariant_invalid");
   }
   return issues;
 };

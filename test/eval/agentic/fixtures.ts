@@ -6,7 +6,10 @@ import type {
   TrajectoryReceipt,
 } from "../../../evals/agentic/types";
 
-import { modelVisibleUtf8Bytes } from "../../../evals/agentic/canonical";
+import {
+  modelVisibleUtf8Bytes,
+  projectModelVisibleToolResult,
+} from "../../../evals/agentic/canonical";
 
 const ZERO_HASH = "0".repeat(64);
 
@@ -95,6 +98,7 @@ export const receiptFixture = (
   const finalEnvelope = finalEnvelopeFixture(coordinate);
   const toolResult = {
     status: "ok" as const,
+    resultRole: "source" as const,
     content: "Incident identifier: INC-4827",
     evidence: [
       {
@@ -107,7 +111,9 @@ export const receiptFixture = (
     ],
     errorCode: null,
   };
-  const visibleBytes = modelVisibleUtf8Bytes(toolResult);
+  const visibleBytes = modelVisibleUtf8Bytes(
+    projectModelVisibleToolResult(toolResult)
+  );
   return {
     schemaVersion: "1.0",
     canonical: {
@@ -115,8 +121,24 @@ export const receiptFixture = (
       taskId: "t0a1b2c3",
       adapterId: "fixture",
       trialId: "trial-1",
+      seed: null,
       lifecycle: "cold",
       agentId: "fixture-agent@1",
+      capabilities: {
+        backendInvocationAccounting: true,
+        startupTiming: true,
+        modelLoadTiming: false,
+        toolTiming: true,
+        tools: {
+          search: "supported",
+          get: "supported",
+          multi_get: "supported",
+        },
+        exactLineSpans: "supported",
+        measuredTokens: "unavailable",
+        backendHashes: "unavailable",
+        lifecycle: { cold: "supported", warm: "supported" },
+      },
       calls: [
         {
           callIndex: 0,

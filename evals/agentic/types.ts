@@ -154,9 +154,30 @@ export interface NormalizedToolEvidence extends EvidenceCoordinate {
 
 export interface NormalizedToolResult {
   status: "ok" | "error";
+  resultRole: "candidates" | "source" | "evidence_bundle";
   content: string;
   evidence: NormalizedToolEvidence[];
   errorCode: string | null;
+}
+
+/** Exact tool-result payload exposed to either outer-agent lane. */
+export interface AgentVisibleToolResult {
+  status: "ok" | "error";
+  resultRole: "candidates" | "source" | "evidence_bundle";
+  content: string;
+  evidence: Array<
+    EvidenceCoordinate & {
+      text: string;
+    }
+  >;
+  errorCode: string | null;
+}
+
+export interface AgentVisibleCall {
+  callIndex: number;
+  toolName: string;
+  arguments: Record<string, unknown>;
+  result: AgentVisibleToolResult;
 }
 
 export interface CanonicalAgentCall {
@@ -168,6 +189,20 @@ export interface CanonicalAgentCall {
   measuredTokens: number | null;
   tokenizerFingerprint: string | null;
   backendInvocations: number;
+}
+
+export type CapabilityState = "supported" | "unsupported" | "unavailable";
+
+export interface AdapterCapabilitySnapshot {
+  backendInvocationAccounting: boolean;
+  startupTiming: boolean;
+  modelLoadTiming: boolean;
+  toolTiming: boolean;
+  tools: Record<"search" | "get" | "multi_get", CapabilityState>;
+  exactLineSpans: CapabilityState;
+  measuredTokens: CapabilityState;
+  backendHashes: CapabilityState;
+  lifecycle: Record<"cold" | "warm", CapabilityState>;
 }
 
 export const FAILURE_CLASSES = [
@@ -183,8 +218,10 @@ export interface TrajectoryCanonical {
   taskId: string;
   adapterId: string;
   trialId: string;
+  seed: number | null;
   lifecycle: "cold" | "warm";
   agentId: string;
+  capabilities: AdapterCapabilitySnapshot;
   calls: CanonicalAgentCall[];
   agentCalls: number;
   backendInvocations: number;

@@ -17,9 +17,19 @@ draft-07 objects. Unknown properties fail validation.
 evals/agentic/
   types.ts
   canonical.ts
+  strict-json.ts
   validation.ts
   fixture-db.ts
   scoring.ts
+  adapter.ts
+  agent.ts
+  fixture-agent.ts
+  local-model-agent.ts
+  runner.ts
+  runner-contract.ts
+  runner-receipt.ts
+  runner-trial.ts
+  runner-validation.ts
   schemas/
     agent-task.schema.json
     hidden-oracle.schema.json
@@ -32,6 +42,7 @@ evals/fixtures/agentic-retrieval/
   tasks/<opaque-task-id>.json
   oracles/<opaque-task-id>.json
   corpus/<opaque-task-id>/<opaque-collection>/<opaque-file>.md
+  agent-model.lock.json
   baseline/                         # populated by later runner work
 ```
 
@@ -56,6 +67,15 @@ An `AgentTask` contains only:
 The outer agent receives the result of `projectAgentVisibleTask()` and normalized
 tool results. It never receives the oracle, fixture manifest, setup paths,
 adapter labels, or evaluation metadata.
+
+The normalized tool contract is one deeply frozen `search`, `get`, and
+`multi_get` schema shared by every adapter. An adapter declares unsupported or
+unavailable capabilities without changing that schema. Result
+`resultRole` is agent-visible and closed: `candidates` requires a subsequent
+source read, `source` is an exact read, and `evidence_bundle` is complete enough
+to support a one-call final envelope. The fixture agent responds to this role,
+never to an adapter ID. A one-call-budget task may finalize exact candidate
+evidence rather than exceed its budget.
 
 A separate `HiddenOracle` contains normalized expected typed values,
 normalizer ID/version, required/optional/forbidden evidence, expected missing
@@ -93,7 +113,8 @@ Claim values are tagged unions: `string`, `number`, `boolean`, `string[]`,
 `tool_unavailable`. Stop reasons are `complete`, `abstained`,
 `budget_exhausted`, `tool_unavailable`, or `error`.
 
-Schema validation rejects prose and malformed tagged values. Semantic validation
+Strict parsing rejects comments, trailing commas, duplicate properties at any
+depth, prose, and malformed tagged values. Semantic validation
 then rejects unknown or duplicate claim/gap keys, value types that disagree with
 the public claim definition, missing required claims, and uncited required
 claims. Invalid output is scored as unsupported; it is never ignored.
@@ -155,14 +176,22 @@ A `TrajectoryReceipt` has two top-level partitions.
 
 The canonical partition contains every decision-affecting input and output:
 
-- task, adapter, trial, lifecycle, and agent IDs
-- normalized calls, arguments, results, evidence, and redacted error codes
+- task, adapter, trial, seed, lifecycle, and agent IDs
+- normalized calls, arguments, results, evidence, and stable error codes
 - distinct outer `agentCalls` and internal `backendInvocations`
 - exact model-visible UTF-8 bytes for every tool result, including repeated
   reads and model-visible errors
 - measured token counts and tokenizer fingerprint, or `null` when unavailable
 - structured final envelope, stop reason, and failure class
+- explicit tool/span/token/hash/lifecycle capability states, including
+  `unsupported` and `unavailable`
 - corpus, prompt, tools, model, runtime, config, and index fingerprints
+
+The exact agent-visible result projection includes status, `resultRole`, content,
+citeable observed coordinates/hashes/provenance, evidence text, and error code.
+Adapter backend hashes, backend-hash diagnostics, call accounting, tokenizer
+accounting, temp paths, and oracle data are excluded from both the agent history
+and its UTF-8 byte count.
 
 Canonical JSON recursively sorts object keys by code-unit order, preserves array
 order, and rejects `undefined`, non-finite numbers, and non-JSON values. It
@@ -181,7 +210,7 @@ The observations partition contains volatile data:
 - recording timestamp
 - preparation, startup, model-load, tool, driver, and end-to-end timings
 - process/resource measurements
-- temporary paths and redacted diagnostics
+- temporary paths and redacted diagnostics, including volatile failure messages
 
 Each timing is either `{ valueMs: <non-negative>, unavailableReason: null }` or
 `{ valueMs: null, unavailableReason: <non-empty reason> }`. Changing an
@@ -198,8 +227,37 @@ compare unlike lifecycle states.
 Failures are `harness_error`, `agent_error`, or `product_error`; successful
 receipts use `none`. Harness failures are attempted pairs but are excluded from
 product scoring with an explicit reason. They cannot silently reduce a cohort.
-Malformed tool/final envelopes, timeouts, and unavailable requested adapters
-fail closed.
+Malformed tool/final envelopes, duplicate JSON keys, timeouts, and unavailable
+requested adapters fail closed. Adapter calls receive an `AbortSignal`; a timed
+out or state-unknown warm call excludes the remaining cohort explicitly rather
+than running alongside a leaked request. Deterministic agent errors do not
+invalidate later warm pairs.
+
+The runner rejects empty, duplicate, or malformed task, adapter, lifecycle, and
+trial schedules before preparation. Every attached adapter must preserve its
+prepared owner identity, config fingerprint, capability contract, and index
+fingerprint. Preparation, reset, tool outcomes, runtime/session identities,
+token measurements, agent steps, and tool arguments are closed runtime-validated
+before they enter a receipt or reach a product adapter. Tool listing, session
+construction, inference, calls, and best-effort disposal are bounded.
+
+## Outer-agent lanes and lifecycle
+
+The standard fixture agent is a pinned answer-free state machine. It selects one
+preferred lexical cue per public claim, performs `search`, reads returned URIs
+for candidate results, reduces exact observed lines into declared typed claims,
+and stops or abstains within the public budgets. Ordinary candidates require a
+`get` or `multi_get`; a complete evidence bundle can stop after one call.
+
+The optional cached-local-model lane is fail-closed. `agent-model.lock.json`
+pins one exact Hugging Face URI, whole-GGUF SHA-256 (also binding its embedded
+tokenizer), tokenizer identifier, step/output budgets, and exactly three unique
+paired trial IDs/seeds. `GNO_AGENTIC_MODEL_PATH` must point at that already
+cached exact file. Preflight performs strict duplicate-safe JSON parsing and a
+streaming SHA-256 check before model initialization. It never resolves a remote
+endpoint, downloads a model, reads an API key, or falls back to the network.
+Model output is one strict JSON tool action or `FinalEnvelope`; prose and
+duplicate keys are agent errors.
 
 Committed reports record attempted pairs, scored pairs, every exclusion,
 receipts, task scores, environment/methodology, and known limitations.

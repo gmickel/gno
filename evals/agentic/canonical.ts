@@ -1,4 +1,11 @@
-import type { EvidenceCoordinate, TrajectoryReceipt } from "./types";
+import type {
+  AgentVisibleCall,
+  AgentVisibleToolResult,
+  CanonicalAgentCall,
+  EvidenceCoordinate,
+  NormalizedToolResult,
+  TrajectoryReceipt,
+} from "./types";
 
 const SHA256_PATTERN = /^[a-f0-9]{64}$/;
 
@@ -101,6 +108,35 @@ export const canonicalFingerprint = (value: unknown): string =>
 
 export const modelVisibleUtf8Bytes = (value: unknown): number =>
   new TextEncoder().encode(canonicalJson(value)).byteLength;
+
+export const projectModelVisibleToolResult = (
+  result: NormalizedToolResult
+): AgentVisibleToolResult => ({
+  status: result.status,
+  resultRole: result.resultRole,
+  content: result.content,
+  evidence: result.evidence.map((item) => ({
+    uri: item.uri,
+    sourceHash: item.sourceHash,
+    startLine: item.startLine,
+    endLine: item.endLine,
+    spanHash: item.spanHash,
+    sourceHashProvenance: item.sourceHashProvenance,
+    spanHashProvenance: item.spanHashProvenance,
+    text: item.text,
+  })),
+  errorCode: result.errorCode,
+});
+
+export const projectAgentVisibleCalls = (
+  calls: readonly CanonicalAgentCall[]
+): AgentVisibleCall[] =>
+  calls.map((call) => ({
+    callIndex: call.callIndex,
+    toolName: call.toolName,
+    arguments: structuredClone(call.arguments),
+    result: projectModelVisibleToolResult(call.result),
+  }));
 
 export const receiptCanonicalJson = (receipt: TrajectoryReceipt): string =>
   canonicalJson(receipt.canonical);
