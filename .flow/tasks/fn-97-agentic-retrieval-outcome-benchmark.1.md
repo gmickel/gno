@@ -37,9 +37,8 @@ Define the leak-resistant fixture, oracle, receipt, final-envelope, report, and 
 - [ ] `spec/evals-agentic.md` documents fixture layout, schemas, evidence semantics, accounting, and formulas; `spec/evals.md` links it.
 
 ## Done summary
-TBD
-
+Defined the versioned agentic retrieval evaluation foundation: 24 opaque tasks across all nine required categories, separate hidden oracles, 34 immutable corpus documents, exact manifest hashes, closed schemas, typed prose-free final envelopes, canonical/observation receipts, production-ingested native-index helpers, deterministic outcome scoring, and fail-closed Capsule promotion formulas. Added full contract documentation and 34 offline regression tests, including immutable snapshot, unseen/spoofed citation, abstention, failure taxonomy, accounting, evidence hash, and R6 denominator/determinism coverage.
 ## Evidence
-- Commits:
-- Tests:
+- Commits: 5deb34d
+- Tests: bun test test/eval/agentic (34 pass, 300 assertions), bun run lint:check, bun run typecheck, .flow/bin/flowctl validate --spec fn-97-agentic-retrieval-outcome-benchmark --json
 - PRs:
