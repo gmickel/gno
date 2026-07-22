@@ -66,9 +66,12 @@ This task owns comprehensive parity/privacy fixtures, evaluation locks, user-fac
 - [ ] Repo docs, schemas, UI language, skill assets, and canonical hosted `gno.sh` guidance accurately describe lexical proof, semantic pending, MCP-versus-skill verification, metadata-only passive identity, bounded cold work, projection omission, migration integrity boundaries, and remediation without overstating unsupported FTS tamper detection.
 - [ ] Full gates include lint/typecheck/format, `bun test`, affected retrieval evals, docs sync/verification, package smoke, hosted-doc verification, and the skill autoresearch check required by changed CLI/MCP behavior.
 ## Done summary
-TBD
+Locked the retrieval-proven activation contract across runtime validation, JSON schemas, CLI, doctor, REST, Web, package smoke, and documentation. Receipts now enforce stage-specific codes, timing, evidence, exact lexical readiness, connector-versus-lexical coherence, RFC 3339 timestamps, a 16 KiB ceiling, and metadata-only fingerprint invalidation for schema, tokenizer, documents, and owned FTS synchronization state.
 
+Closed the remaining surface gaps: connector projection truncation and observed failures cannot render green; semantic capability remains tri-state; doctor holds the store open through activation proof and preserves lexical exit semantics; onboarding does not claim semantic readiness from cached models alone. Added an explicit CSRF-protected, read-only Web/API MCP verification action with strict request validation, bounded redacted output, separate `lexicalReady` and `connectorReady`, and honest `target_runtime_unverifiable` behavior for skills.
+
+Documented the owned-writer integrity boundary and exact remediation across repo docs/specs and the hosted gno.sh guidance. Package smoke now proves a packed install can update, return lexical-ready status, keep semantic work pending, and pass doctor. The shipped skill scored 48/48 (100%) in an isolated autoresearch baseline, so no skill change or reinstall was needed. Independent inherited-model review found and verified fixes for connector false-green API naming, missing cross-stage receipt invariants, and doctor exit wording; final verdict CLEAN / SHIP.
 ## Evidence
-- Commits:
-- Tests:
+- Commits: a8641a5e1bdb32b0a78b6c3775032b885cd74a1c
+- Tests: bun run lint:check (green: 0 warnings/errors; formatting clean), bun run typecheck (green), focused activation parity suite (193 pass, 0 fail before review; 28 pass, 0 fail after review fixes), bun test (2157 pass, 1 Windows-only skip, 0 fail; 244 files), bun run prerelease (green after review fixes), bun run docs:verify (12 pass, 0 fail, 2 expected model-cache skips), make -C website sync-docs (green), bun run eval:hybrid (88%, threshold 70%), bun run build:css && bun run test:package (green; packed @gmickel/gno 1.12.4 activation smoke), isolated shipped-skill autoresearch baseline (48/48, 100%), gno.sh: bun run check; bun run typecheck; bun test (76 pass, 5 integration skips); bun run build (67 pages), .flow/bin/flowctl validate --spec fn-94-retrieval-proven-setup-and-connector --json (valid)
 - PRs:

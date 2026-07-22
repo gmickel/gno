@@ -1039,6 +1039,18 @@ echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}' | gno mcp
 
 Should return a valid JSON-RPC response.
 
+`gno mcp status` and connector installation prove configuration presence, not
+that a client can retrieve. The Web Connectors page offers an explicit read-only
+verification for supported installed MCP targets. It starts only the configured,
+trusted local GNO command, requires `gno_status` and `gno_search`, and confirms a
+collection-scoped corpus result. Package-runner/bootstrap commands such as
+`bunx`, `bun x`, or `npx` are not accepted for this verification path.
+
+Skill installations cannot be executed through a safe generic client hook.
+They remain `target_runtime_unverifiable` until the owning client exposes a
+read-only verification interface; installed must never be interpreted as
+retrieval passed.
+
 ### Debug Mode
 
 Enable verbose logging:

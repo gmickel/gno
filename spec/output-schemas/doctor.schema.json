@@ -4,6 +4,7 @@
   "title": "GNO Doctor",
   "description": "Health check diagnostics",
   "type": "object",
+  "additionalProperties": false,
   "required": ["healthy", "checks", "activation"],
   "properties": {
     "healthy": {
@@ -68,6 +69,36 @@
                 "type": "object",
                 "additionalProperties": false,
                 "required": ["status", "code", "command"],
+                "allOf": [
+                  {
+                    "if": {
+                      "properties": {
+                        "code": { "const": "vector_unavailable" }
+                      },
+                      "required": ["code"]
+                    },
+                    "then": {
+                      "properties": { "status": { "const": "skipped" } }
+                    }
+                  },
+                  {
+                    "if": {
+                      "properties": {
+                        "code": {
+                          "enum": [
+                            "models_missing",
+                            "embeddings_pending",
+                            "semantic_not_checked"
+                          ]
+                        }
+                      },
+                      "required": ["code"]
+                    },
+                    "then": {
+                      "properties": { "status": { "const": "pending" } }
+                    }
+                  }
+                ],
                 "properties": {
                   "status": { "enum": ["pending", "skipped"] },
                   "code": {

@@ -58,6 +58,7 @@ import {
   handleTrashDoc,
   handleUpdateCollection,
   handleUpdateDoc,
+  handleVerifyConnector,
 } from "./routes/api";
 import { handleGraph, handleGraphQuery } from "./routes/graph";
 import {
@@ -216,7 +217,11 @@ export async function startServer(
           },
         },
         "/api/connectors": {
-          GET: async () => withSecurityHeaders(await handleConnectors(), isDev),
+          GET: async () =>
+            withSecurityHeaders(
+              await handleConnectors(ctxHolder.config),
+              isDev
+            ),
         },
         "/api/connectors/install": {
           POST: async (req: Request) => {
@@ -225,6 +230,17 @@ export async function startServer(
             }
             return withSecurityHeaders(
               await handleInstallConnector(req),
+              isDev
+            );
+          },
+        },
+        "/api/connectors/verify": {
+          POST: async (req: Request) => {
+            if (!isRequestAllowed(req, port)) {
+              return withSecurityHeaders(forbiddenResponse(), isDev);
+            }
+            return withSecurityHeaders(
+              await handleVerifyConnector(ctxHolder.config, store, req),
               isDev
             );
           },

@@ -10,6 +10,7 @@ import type { IndexStatus } from "../../store/types";
 
 import { getIndexDbPath, getModelsCachePath } from "../../app/constants";
 import { getConfigPaths, isInitialized, loadConfig } from "../../config";
+import { isConnectorActivationComplete } from "../../core/activation-connector-health";
 import { buildActivationStatus } from "../../core/activation-status";
 import { ModelCache } from "../../llm/cache";
 import { getActivePreset, resolveModelUri } from "../../llm/registry";
@@ -52,7 +53,7 @@ function isStatusHealthy(
   return (
     indexStatus.healthy &&
     activation.healthy &&
-    !activation.connectorProjection.truncated
+    isConnectorActivationComplete(activation)
   );
 }
 

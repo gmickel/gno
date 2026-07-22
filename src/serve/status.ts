@@ -558,6 +558,13 @@ function buildOnboarding(
   const foldersReady = activation.collections.length > 0;
   const modelsReady = modelCheck.status === "ok";
   const indexedReady = activation.healthy;
+  const semanticStates = [
+    ...new Set(
+      activation.collections.map(
+        ({ semanticAvailability }) => semanticAvailability.code
+      )
+    ),
+  ];
   const failedActivation = activation.collections.find(({ ready }) => !ready);
   const activationDetail = failedActivation?.remediation
     ? `${failedActivation.collection}: ${failedActivation.remediation.stage}/${failedActivation.remediation.code}. Run: ${failedActivation.remediation.command}`
@@ -631,8 +638,8 @@ function buildOnboarding(
     stage: "ready",
     headline: "Workspace ready",
     detail: modelsReady
-      ? "Every folder passed lexical retrieval. Local semantic models are also ready."
-      : "Every folder passed lexical retrieval. Semantic models remain an optional next step.",
+      ? `Every folder passed lexical retrieval. Local model files are cached; semantic retrieval remains separate (${semanticStates.join(", ")}).`
+      : `Every folder passed lexical retrieval. Semantic retrieval remains an optional next step (${semanticStates.join(", ")}).`,
     suggestedCollections: suggestions,
     steps,
   };

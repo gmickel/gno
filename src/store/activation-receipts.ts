@@ -10,21 +10,18 @@ const CONNECTOR_TARGET_PATTERN =
   /^(?:mcp|skill):[a-z0-9][a-z0-9._-]{0,63}:(?:user|project):[a-f0-9]{64}$/;
 const DATE_TIME_PATTERN =
   /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d+)?(?:Z|[+-](\d{2}):(\d{2}))$/;
-const ACTIVATION_STAGE_STATUSES = new Set([
-  "passed",
-  "pending",
-  "failed",
-  "skipped",
-]);
-const ACTIVATION_CODES = new Set([
-  "no_documents",
-  "index_out_of_sync",
+const INDEX_FAILURE_CODES = new Set(["no_documents", "index_out_of_sync"]);
+const LEXICAL_FAILURE_CODES = new Set([
   "no_probe_term",
   "index_query_failed",
   "retrieval_mismatch",
-  "semantic_not_checked",
-  "connector_not_requested",
+]);
+const CONNECTOR_SKIPPED_CODES = new Set([
   "connector_not_configured",
+  "connector_probe_unavailable",
+  "target_runtime_unverifiable",
+]);
+const CONNECTOR_FAILURE_CODES = new Set([
   "connector_probe_unavailable",
   "connector_unsupported_config",
   "connector_start_failed",
@@ -33,7 +30,6 @@ const ACTIVATION_CODES = new Set([
   "connector_status_failed",
   "connector_search_failed",
   "connector_result_mismatch",
-  "target_runtime_unverifiable",
 ]);
 
 function projectStage(stage: ActivationStageReceipt): ActivationStageReceipt {
@@ -132,7 +128,7 @@ function isNullableDateTime(value: unknown): value is string | null {
   return value === null || isDateTime(value);
 }
 
-function isStage(value: unknown): value is ActivationStageReceipt {
+function isStageShape(value: unknown): value is ActivationStageReceipt {
   if (!value || typeof value !== "object") {
     return false;
   }
@@ -143,15 +139,92 @@ function isStage(value: unknown): value is ActivationStageReceipt {
       new Set(["status", "startedAt", "completedAt", "latencyMs", "code"])
     ) &&
     typeof stage.status === "string" &&
-    ACTIVATION_STAGE_STATUSES.has(stage.status) &&
     isNullableDateTime(stage.startedAt) &&
     isNullableDateTime(stage.completedAt) &&
     (stage.latencyMs === null ||
       (typeof stage.latencyMs === "number" &&
         Number.isInteger(stage.latencyMs) &&
         stage.latencyMs >= 0)) &&
-    (stage.code === undefined ||
-      (typeof stage.code === "string" && ACTIVATION_CODES.has(stage.code)))
+    (stage.code === undefined || typeof stage.code === "string")
+  );
+}
+
+function isTimedStage(stage: ActivationStageReceipt): boolean {
+  return (
+    isDateTime(stage.startedAt) &&
+    isDateTime(stage.completedAt) &&
+    typeof stage.latencyMs === "number"
+  );
+}
+
+function isIndexStage(stage: ActivationStageReceipt): boolean {
+  if (!isTimedStage(stage)) {
+    return false;
+  }
+  return (
+    (stage.status === "passed" && stage.code === undefined) ||
+    (stage.status === "failed" &&
+      stage.code !== undefined &&
+      INDEX_FAILURE_CODES.has(stage.code))
+  );
+}
+
+function isLexicalStage(stage: ActivationStageReceipt): boolean {
+  if (stage.status === "passed") {
+    return isTimedStage(stage) && stage.code === undefined;
+  }
+  if (stage.status === "failed") {
+    return (
+      isTimedStage(stage) &&
+      stage.code !== undefined &&
+      LEXICAL_FAILURE_CODES.has(stage.code)
+    );
+  }
+  return (
+    stage.status === "skipped" &&
+    stage.startedAt === null &&
+    isDateTime(stage.completedAt) &&
+    stage.latencyMs === null &&
+    stage.code !== undefined &&
+    INDEX_FAILURE_CODES.has(stage.code)
+  );
+}
+
+function isSemanticStage(stage: ActivationStageReceipt): boolean {
+  return (
+    stage.status === "pending" &&
+    stage.startedAt === null &&
+    stage.completedAt === null &&
+    stage.latencyMs === null &&
+    stage.code === "semantic_not_checked"
+  );
+}
+
+function isConnectorStage(stage: ActivationStageReceipt): boolean {
+  if (stage.status === "passed") {
+    return isTimedStage(stage) && stage.code === undefined;
+  }
+  if (stage.status === "failed") {
+    return (
+      isTimedStage(stage) &&
+      stage.code !== undefined &&
+      CONNECTOR_FAILURE_CODES.has(stage.code)
+    );
+  }
+  if (stage.status !== "skipped") {
+    return false;
+  }
+  if (stage.code === "connector_not_requested") {
+    return (
+      stage.startedAt === null &&
+      stage.completedAt === null &&
+      stage.latencyMs === null
+    );
+  }
+  return (
+    isTimedStage(stage) &&
+    stage.code !== undefined &&
+    CONNECTOR_SKIPPED_CODES.has(stage.code)
   );
 }
 
@@ -188,10 +261,10 @@ function isReceipt(value: unknown): value is ActivationVerificationReceipt {
       stages,
       new Set(["index", "lexical", "semantic", "connector"])
     ) ||
-    !isStage(stages.index) ||
-    !isStage(stages.lexical) ||
-    !isStage(stages.semantic) ||
-    !isStage(stages.connector) ||
+    !isStageShape(stages.index) ||
+    !isStageShape(stages.lexical) ||
+    !isStageShape(stages.semantic) ||
+    !isStageShape(stages.connector) ||
     !evidence ||
     !hasOnlyKeys(
       evidence,
@@ -203,10 +276,33 @@ function isReceipt(value: unknown): value is ActivationVerificationReceipt {
 
   const indexStage = stages.index as ActivationStageReceipt;
   const lexicalStage = stages.lexical as ActivationStageReceipt;
+  const semanticStage = stages.semantic as ActivationStageReceipt;
   const connectorStage = stages.connector as ActivationStageReceipt;
+  if (
+    !isIndexStage(indexStage) ||
+    !isLexicalStage(lexicalStage) ||
+    !isSemanticStage(semanticStage) ||
+    !isConnectorStage(connectorStage)
+  ) {
+    return false;
+  }
   const expectedReady =
     indexStage.status === "passed" && lexicalStage.status === "passed";
   if (receipt.ready !== expectedReady) {
+    return false;
+  }
+  const connectorCode = connectorStage.code;
+  const connectorNeedsLexicalProof =
+    connectorStage.status === "passed" ||
+    (connectorStage.status === "failed" &&
+      connectorCode !== "connector_unsupported_config");
+  const unavailableBeforeConnectorProbe =
+    connectorStage.status === "skipped" &&
+    connectorCode === "connector_probe_unavailable";
+  if (
+    (connectorNeedsLexicalProof && !expectedReady) ||
+    (unavailableBeforeConnectorProbe && expectedReady)
+  ) {
     return false;
   }
 
@@ -229,20 +325,24 @@ function isReceipt(value: unknown): value is ActivationVerificationReceipt {
   }
 
   const connectorWasRequested =
-    connectorStage.status === "passed" ||
-    connectorStage.status === "failed" ||
-    (connectorStage.code !== undefined &&
-      connectorStage.code !== "connector_not_requested");
-  if (connectorWasRequested && typeof evidence.connectorTarget !== "string") {
+    connectorStage.code !== "connector_not_requested";
+  if (
+    connectorWasRequested !==
+    (typeof evidence.connectorTarget === "string")
+  ) {
     return false;
   }
 
-  return (
-    !expectedReady ||
-    (typeof evidence.probeHash === "string" &&
-      typeof evidence.resultUri === "string" &&
-      typeof evidence.resultSourceHash === "string")
-  );
+  const hasProbeHash = typeof evidence.probeHash === "string";
+  const hasResultUri = typeof evidence.resultUri === "string";
+  const hasResultSourceHash = typeof evidence.resultSourceHash === "string";
+  if (expectedReady) {
+    return hasProbeHash && hasResultUri && hasResultSourceHash;
+  }
+  if (lexicalStage.code === "retrieval_mismatch") {
+    return hasProbeHash && !hasResultUri && !hasResultSourceHash;
+  }
+  return !hasProbeHash && !hasResultUri && !hasResultSourceHash;
 }
 
 export function parseActivationReceipt(

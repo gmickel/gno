@@ -82,7 +82,7 @@ CREATE TABLE IF NOT EXISTS documents (
   -- Conversion output
   title TEXT,
   mirror_hash TEXT,                 -- FK to content.mirror_hash (NULL if failed)
-  fts_mirror_hash TEXT,             -- owned-writer sync marker; passive activation never compares bodies
+  fts_mirror_hash TEXT,             -- supported writers maintain transactionally; migration 013 validates legacy bodies once
   converter_id TEXT,
   converter_version TEXT,
   language_hint TEXT,               -- BCP-47 or NULL
@@ -215,6 +215,11 @@ CREATE INDEX IF NOT EXISTS idx_ingest_errors_collection ON ingest_errors(collect
 -- ─────────────────────────────────────────────────────────────────────────────
 -- Activation Receipts
 -- ─────────────────────────────────────────────────────────────────────────────
+
+-- Passive activation reads only document/FTS metadata and this owned-writer
+-- marker; it never selects Markdown or FTS bodies. Direct post-migration
+-- mutation of internal FTS bodies outside GNO is unsupported and may not alter
+-- the metadata-only identity. Rebuild through the supported index writer.
 
 CREATE TABLE IF NOT EXISTS activation_receipts (
   collection TEXT NOT NULL,

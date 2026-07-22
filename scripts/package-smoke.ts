@@ -24,9 +24,37 @@ interface DoctorCheck {
   };
 }
 
+interface ActivationCollection {
+  collection: string;
+  ready: boolean;
+  semanticAvailability: {
+    status: "pending" | "skipped";
+    code: string;
+  };
+}
+
+interface ActivationStatus {
+  schemaVersion: "1.0";
+  usable: boolean;
+  healthy: boolean;
+  collections: ActivationCollection[];
+  connectors: unknown[];
+  connectorProjection: {
+    total: number;
+    projected: number;
+    truncated: boolean;
+  };
+}
+
 interface DoctorResult {
   healthy: boolean;
   checks: DoctorCheck[];
+  activation: ActivationStatus;
+}
+
+interface StatusResult {
+  healthy: boolean;
+  activation: ActivationStatus;
 }
 
 interface NpmPackResult {
@@ -129,14 +157,112 @@ async function verifyTarballContents(tarballPath: string): Promise<void> {
   }
 }
 
-function parseDoctorJson(stdout: string): DoctorResult {
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function parseActivationStatus(
+  value: unknown,
+  command: "doctor" | "status"
+): ActivationStatus {
+  if (!isRecord(value)) {
+    throw new Error(`gno ${command} --json missing activation object`);
+  }
+
+  const projection = value.connectorProjection;
+  const collections = value.collections;
+  const validProjection =
+    isRecord(projection) &&
+    Number.isInteger(projection.total) &&
+    Number.isInteger(projection.projected) &&
+    typeof projection.truncated === "boolean";
+  const validCollections =
+    Array.isArray(collections) &&
+    collections.every(
+      (collection) =>
+        isRecord(collection) &&
+        typeof collection.collection === "string" &&
+        typeof collection.ready === "boolean" &&
+        isRecord(collection.semanticAvailability) &&
+        (collection.semanticAvailability.status === "pending" ||
+          collection.semanticAvailability.status === "skipped") &&
+        typeof collection.semanticAvailability.code === "string"
+    );
+  const validShape =
+    value.schemaVersion === "1.0" &&
+    typeof value.usable === "boolean" &&
+    typeof value.healthy === "boolean" &&
+    validCollections &&
+    Array.isArray(value.connectors) &&
+    validProjection;
+
+  if (!validShape) {
+    throw new Error(
+      `gno ${command} --json activation has unexpected shape:\n${JSON.stringify(value, null, 2)}`
+    );
+  }
+  return value as unknown as ActivationStatus;
+}
+
+function parseJsonObject(stdout: string, command: "doctor" | "status") {
   try {
-    return JSON.parse(stdout) as DoctorResult;
+    const parsed: unknown = JSON.parse(stdout);
+    if (!isRecord(parsed)) {
+      throw new Error("top-level value is not an object");
+    }
+    return parsed;
   } catch (error) {
     throw new Error(
-      `gno doctor --json did not produce valid JSON: ${
+      `gno ${command} --json did not produce valid JSON: ${
         error instanceof Error ? error.message : String(error)
       }\n${stdout}`
+    );
+  }
+}
+
+function parseDoctorJson(stdout: string): DoctorResult {
+  const parsed = parseJsonObject(stdout, "doctor");
+  const activation = parseActivationStatus(parsed.activation, "doctor");
+  const validChecks =
+    Array.isArray(parsed.checks) &&
+    parsed.checks.every(
+      (check) =>
+        isRecord(check) &&
+        typeof check.name === "string" &&
+        (check.status === "ok" ||
+          check.status === "warn" ||
+          check.status === "error") &&
+        typeof check.message === "string"
+    );
+  if (typeof parsed.healthy !== "boolean" || !validChecks) {
+    throw new Error(
+      `gno doctor --json has unexpected shape:\n${JSON.stringify(parsed, null, 2)}`
+    );
+  }
+  return { ...parsed, activation } as DoctorResult;
+}
+
+function parseStatusJson(stdout: string): StatusResult {
+  const parsed = parseJsonObject(stdout, "status");
+  const activation = parseActivationStatus(parsed.activation, "status");
+  if (typeof parsed.healthy !== "boolean") {
+    throw new Error(
+      `gno status --json has unexpected shape:\n${JSON.stringify(parsed, null, 2)}`
+    );
+  }
+  return { ...parsed, activation } as StatusResult;
+}
+
+function assertLexicalActivationReady(
+  activation: ActivationStatus,
+  command: "doctor" | "status"
+): void {
+  const allCollectionsReady =
+    activation.collections.length > 0 &&
+    activation.collections.every((collection) => collection.ready);
+  if (!(activation.usable && activation.healthy && allCollectionsReady)) {
+    throw new Error(
+      `gno ${command} --json did not prove packaged lexical activation:\n${JSON.stringify(activation, null, 2)}`
     );
   }
 }
@@ -236,10 +362,29 @@ async function main(): Promise<void> {
       tempRoot,
       env
     );
+    runCommand([gnoBin, "update", "--yes"], tempRoot, env);
+
+    // Status is a passive report: a successfully generated report exits zero
+    // even when its structured health is degraded. This fixture proves the
+    // packaged corpus is lexically usable without requiring semantic models.
+    const status = parseStatusJson(
+      runCommand([gnoBin, "status", "--json"], tempRoot, env).stdout
+    );
+    assertLexicalActivationReady(status.activation, "status");
+    if (
+      !status.activation.collections.every(
+        ({ semanticAvailability }) => semanticAvailability.status === "pending"
+      )
+    ) {
+      throw new Error(
+        `gno status --json unexpectedly claimed semantic readiness:\n${JSON.stringify(status.activation, null, 2)}`
+      );
+    }
 
     const doctor = parseDoctorJson(
       runCommand([gnoBin, "doctor", "--json"], tempRoot, env).stdout
     );
+    assertLexicalActivationReady(doctor.activation, "doctor");
     assertEmbeddingFingerprintShape(doctor);
     assertNoDoctorErrors(doctor);
 

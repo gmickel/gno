@@ -6,6 +6,10 @@ import { join } from "node:path";
 import type { ActivationVerificationReceipt } from "../../src/store/types";
 
 import { SqliteAdapter } from "../../src/store";
+import {
+  parseActivationReceipt,
+  serializeActivationReceipt,
+} from "../../src/store/activation-receipts";
 import { ACTIVATION_INDEX_SNAPSHOT_SQL } from "../../src/store/sqlite/adapter";
 import { safeRm } from "../helpers/cleanup";
 
@@ -143,6 +147,138 @@ describe("activation receipt store", () => {
       expect(result.error.code).toBe("INVALID_INPUT");
       expect(result.error.message).toContain("schema-invalid");
     }
+  });
+
+  test("applies stage-specific status code timing and evidence invariants at runtime", () => {
+    const base = receipt();
+    const target = `mcp:cursor:user:${"e".repeat(64)}`;
+    const timed = (
+      status: "passed" | "failed" | "skipped",
+      code?: ActivationVerificationReceipt["stages"]["index"]["code"]
+    ) => ({
+      status,
+      startedAt: "2026-07-22T10:00:00.000Z",
+      completedAt: "2026-07-22T10:00:00.000Z",
+      latencyMs: 1,
+      ...(code ? { code } : {}),
+    });
+    const invalid = [
+      receipt({
+        stages: {
+          ...base.stages,
+          index: timed("failed", "no_probe_term"),
+        },
+      }),
+      receipt({
+        stages: {
+          ...base.stages,
+          lexical: timed("failed", "no_documents"),
+        },
+      }),
+      receipt({
+        stages: {
+          ...base.stages,
+          semantic: {
+            ...base.stages.semantic,
+            completedAt: "2026-07-22T10:00:00.000Z",
+          },
+        },
+      }),
+      receipt({
+        stages: {
+          ...base.stages,
+          connector: timed("failed", "connector_not_configured"),
+        },
+        evidence: { ...base.evidence, connectorTarget: target },
+      }),
+      receipt({ ready: false }),
+      receipt({ evidence: { probeHash: "b".repeat(64) } }),
+      receipt({
+        evidence: { ...base.evidence, connectorTarget: target },
+      }),
+      receipt({
+        ready: false,
+        stages: {
+          ...base.stages,
+          lexical: timed("failed", "no_probe_term"),
+          connector: timed("passed"),
+        },
+        evidence: { connectorTarget: target },
+      }),
+      receipt({
+        stages: {
+          ...base.stages,
+          connector: timed("skipped", "connector_probe_unavailable"),
+        },
+        evidence: { ...base.evidence, connectorTarget: target },
+      }),
+      receipt({
+        ready: false,
+        stages: {
+          ...base.stages,
+          lexical: timed("failed", "no_probe_term"),
+          connector: timed("failed", "connector_timeout"),
+        },
+        evidence: { connectorTarget: target },
+      }),
+    ];
+
+    for (const value of invalid) {
+      expect(serializeActivationReceipt(value).ok).toBe(false);
+      expect(parseActivationReceipt(JSON.stringify(value))).toBeNull();
+    }
+
+    const mismatch = receipt({
+      ready: false,
+      stages: {
+        ...base.stages,
+        lexical: timed("failed", "retrieval_mismatch"),
+      },
+      evidence: { probeHash: "b".repeat(64) },
+    });
+    expect(serializeActivationReceipt(mismatch).ok).toBe(true);
+    expect(parseActivationReceipt(JSON.stringify(mismatch))).toEqual(mismatch);
+  });
+
+  test("rejects calendar-invalid timestamps at every runtime entry point", () => {
+    for (const generatedAt of [
+      "2026-02-29T10:00:00Z",
+      "2026-04-31T10:00:00Z",
+      "2026-07-22T24:00:00Z",
+      "2026-07-22T10:00:00+24:00",
+    ]) {
+      const invalid = receipt({ generatedAt });
+      expect(serializeActivationReceipt(invalid).ok).toBe(false);
+      expect(parseActivationReceipt(JSON.stringify(invalid))).toBeNull();
+    }
+  });
+
+  test("enforces the 16 KiB persistence ceiling", () => {
+    const serialized = serializeActivationReceipt(
+      receipt({
+        collection: "n".repeat(128),
+        evidence: {
+          ...receipt().evidence,
+          resultUri: `gno://notes/${"x".repeat(2036)}`,
+        },
+      })
+    );
+    expect(serialized.ok).toBe(true);
+    if (serialized.ok) {
+      expect(
+        new TextEncoder().encode(serialized.json).byteLength
+      ).toBeLessThanOrEqual(16_384);
+    }
+
+    expect(() =>
+      adapter.getRawDb().run(
+        `INSERT INTO activation_receipts (
+           collection, connector_target, schema_version, fingerprint,
+           receipt_json, updated_at
+         ) VALUES (?, '', '1.0', ?, ?, datetime('now'))`,
+        ["notes", FINGERPRINT, "x".repeat(16_385)]
+      )
+    ).toThrow();
   });
 
   test("rejects raw-path connector target identities before persistence", async () => {

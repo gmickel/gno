@@ -53,7 +53,7 @@ export async function buildDoctorActivation(
     const embedCached = await new ModelCache(getModelsCachePath()).isCached(
       getActivePreset(config).embed
     );
-    return buildActivationStatus(
+    return await buildActivationStatus(
       store,
       config.collections.map(({ name }) => name),
       {
@@ -75,20 +75,20 @@ export function checkRetrievalActivation(
   activation: ActivationStatus
 ): DoctorCheck {
   if (activation.healthy) {
-    const semanticPending = activation.collections.filter(
-      ({ semanticAvailability }) =>
-        semanticAvailability.code !== "semantic_not_checked"
-    ).length;
+    const semanticStates = [
+      ...new Set(
+        activation.collections.map(
+          ({ semanticAvailability }) => semanticAvailability.code
+        )
+      ),
+    ];
     return {
       name: "retrieval-activation",
       status: "ok",
       message: `${activation.collections.length} collection${activation.collections.length === 1 ? "" : "s"} passed lexical retrieval proof`,
-      details:
-        semanticPending > 0
-          ? [
-              `Semantic availability remains pending in ${semanticPending} collection${semanticPending === 1 ? "" : "s"}.`,
-            ]
-          : undefined,
+      details: [
+        `Semantic retrieval remains separate (${semanticStates.join(", ")}).`,
+      ],
     };
   }
 

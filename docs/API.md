@@ -39,6 +39,7 @@ All endpoints are JSON-based and run entirely on your machine.
 | `/api/capabilities`      | GET    | Available features                                          |
 | `/api/collections`       | GET    | List collections                                            |
 | `/api/connectors`        | GET    | Detect in-app connector install state                       |
+| `/api/connectors/verify` | POST   | Explicit read-only connector retrieval proof                |
 | `/api/docs`              | GET    | List documents                                              |
 | `/api/docs/autocomplete` | GET    | Title/path suggestions for wiki-linking and quick switcher  |
 | `/api/note-presets`      | GET    | List note presets and scaffold previews                     |
@@ -66,6 +67,7 @@ All endpoints are JSON-based and run entirely on your machine.
 | :---------------------------- | :----- | :------------------------------------- |
 | `/api/collections`            | POST   | Add new collection                     |
 | `/api/connectors/install`     | POST   | Install connector                      |
+| `/api/connectors/verify`      | POST   | Verify configured MCP retrieval        |
 | `/api/collections/:name`      | DELETE | Remove collection                      |
 | `/api/sync`                   | POST   | Trigger re-index                       |
 | `/api/capture`                | POST   | Capture note with provenance receipt   |
@@ -125,6 +127,9 @@ curl -X POST http://localhost:3000/api/collections \
 GET /api/health
 ```
 
+This endpoint proves only that the local HTTP process is alive. Use
+`GET /api/status` and its `activation` object for retrieval readiness.
+
 **Response**:
 
 ```json
@@ -165,6 +170,58 @@ Returns index statistics plus first-run onboarding, health-center state, backgro
   "recentErrors": 0,
   "lastUpdated": "2025-01-15T10:30:00Z",
   "healthy": true,
+  "activation": {
+    "schemaVersion": "1.0",
+    "usable": true,
+    "healthy": true,
+    "collections": [
+      {
+        "collection": "notes",
+        "ready": true,
+        "generatedAt": "2026-07-22T10:30:00Z",
+        "stages": {
+          "index": {
+            "status": "passed",
+            "startedAt": "2026-07-22T10:29:59Z",
+            "completedAt": "2026-07-22T10:30:00Z",
+            "latencyMs": 3
+          },
+          "lexical": {
+            "status": "passed",
+            "startedAt": "2026-07-22T10:30:00Z",
+            "completedAt": "2026-07-22T10:30:00Z",
+            "latencyMs": 2
+          },
+          "semantic": {
+            "status": "pending",
+            "startedAt": null,
+            "completedAt": null,
+            "latencyMs": null,
+            "code": "semantic_not_checked"
+          },
+          "connector": {
+            "status": "skipped",
+            "startedAt": null,
+            "completedAt": null,
+            "latencyMs": null,
+            "code": "connector_not_requested"
+          }
+        },
+        "semanticAvailability": {
+          "status": "pending",
+          "code": "semantic_not_checked",
+          "command": "gno status"
+        },
+        "remediation": null
+      }
+    ],
+    "connectors": [],
+    "connectorProjection": {
+      "total": 0,
+      "projected": 0,
+      "truncated": false
+    }
+  },
   "activePreset": {
     "id": "slim-tuned",
     "name": "GNO Slim Tuned (Default, ~1GB)"
@@ -272,6 +329,32 @@ Returns index statistics plus first-run onboarding, health-center state, backgro
   }
 }
 ```
+
+The activation object is identical to the `gno status --json`/doctor/Web model.
+Lexical readiness is proven per collection; semantic availability remains
+independent. Connector entries are fingerprint-current persisted receipts only.
+If `connectorProjection.truncated` is true, omitted pairs have no claimed result
+and health remains degraded. Status may perform a bounded local lexical proof on
+a receipt miss, but it never starts connector children or remote inference.
+
+### Verify Connector Retrieval
+
+```http
+POST /api/connectors/verify
+Content-Type: application/json
+
+{"connectorId":"cursor-mcp","collection":"notes"}
+```
+
+This is the explicit, read-only action that may start the configured local MCP
+process. It requires a configured collection and returns a bounded verification
+projection (`lexicalReady`, `connectorReady`, timestamp, and connector stage
+only). `connectorReady` is true only when the explicit connector stage passes;
+`lexicalReady` reports the prerequisite local proof separately. The proof checks
+the tool list, `gno_status`, and a collection-scoped `gno_search`; it does not
+edit client configuration. Skill-only targets return
+`skipped/target_runtime_unverifiable` because file installation cannot prove
+that the client loaded or executed the skill.
 
 `onboarding.stage` is one of `add-collection`, `models`, `indexing`, or `ready`.
 

@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Added a shared retrieval-proven activation contract across `gno status`,
+  `gno doctor`, REST, and Web/Desktop onboarding. Each configured collection
+  must return a deterministic corpus-derived lexical result; semantic readiness
+  remains an independent tri-state.
+- Added explicit read-only MCP connector verification from the Web Connectors
+  surface. It checks the target's tool list, status tool, and collection-scoped
+  search without editing client configuration. Skill-only client execution is
+  reported as runtime-unverifiable instead of passed.
+
+### Security
+
+- Kept activation receipts content-free and bounded, with fingerprint-scoped
+  invalidation and no persisted probe query, snippet, passage, or unrestricted
+  connector output. Passive status paths do not start connector children,
+  initialize or download models, or invoke remote inference.
+
 ## [1.12.4] - 2026-07-22
 
 ### Fixed

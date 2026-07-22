@@ -683,6 +683,46 @@ describe("lexical activation verifier", () => {
     expect(new Set(requestedPrefixes)).toEqual(new Set([32_768]));
   });
 
+  test("attempts at most 64 viable corpus terms before mismatch", async () => {
+    for (let documentIndex = 0; documentIndex < 3; documentIndex += 1) {
+      const terms = Array.from(
+        { length: 32 },
+        (_, termIndex) =>
+          `probe${documentIndex}${String(termIndex).padStart(2, "0")}`
+      ).join(" ");
+      await addDocument(`terms-${documentIndex}.md`, terms);
+    }
+
+    let searches = 0;
+    const mismatchingStore = new Proxy(adapter, {
+      get(target, property, receiver) {
+        if (property === "searchFts") {
+          return async () => {
+            searches += 1;
+            return { ok: true as const, value: [] };
+          };
+        }
+        const value = Reflect.get(target, property, receiver);
+        return typeof value === "function" ? value.bind(target) : value;
+      },
+    }) as StorePort;
+
+    const result = await verifyLexicalActivation(mismatchingStore, "notes", {
+      ...verifierOptions,
+      force: true,
+    });
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.ready).toBe(false);
+      expect(result.value.stages.lexical).toMatchObject({
+        status: "failed",
+        code: "retrieval_mismatch",
+      });
+    }
+    expect(searches).toBe(64);
+  });
+
   test("persists no raw term, query, snippet, or passage", async () => {
     const secretTerm = "confidentialzephyrneedle";
     await addDocument("private.md", `${secretTerm} restricted passage body`);

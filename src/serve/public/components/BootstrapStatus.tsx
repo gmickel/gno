@@ -9,6 +9,7 @@ import {
 
 import type { AppStatusResponse } from "../../status-model";
 
+import { buildConnectorActivationCheck } from "../../activation-health";
 import { Button } from "./ui/button";
 import {
   Card,
@@ -52,6 +53,9 @@ export function BootstrapStatus({
   const omittedConnectorCount =
     activation.connectorProjection.total -
     activation.connectorProjection.projected;
+  const connectorHealth = buildConnectorActivationCheck(activation);
+  const connectorsHealthy =
+    connectorHealth === null || connectorHealth.status === "ok";
 
   return (
     <section className="space-y-4">
@@ -141,8 +145,7 @@ export function BootstrapStatus({
         <Card className="border-border/60 bg-card/70">
           <CardHeader className="pb-3">
             <div className="flex items-center gap-2">
-              {activation.healthy &&
-              !activation.connectorProjection.truncated ? (
+              {activation.healthy && connectorsHealthy ? (
                 <CheckCircle2Icon className="size-4 text-emerald-500" />
               ) : activation.usable ? (
                 <ServerCogIcon className="size-4 text-amber-500" />

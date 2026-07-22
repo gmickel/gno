@@ -1420,7 +1420,10 @@ The additive `activation` object uses the same contract as `gno status` and
 `GET /api/status`. Doctor performs only the local lexical proof. It never starts
 connector children or initializes/downloads models. A failed lexical proof adds
 the `retrieval-activation` error check and exits 2 after writing the complete
-result; no duplicate error is written to stderr.
+result; no duplicate error is written to stderr. Connector failure or projection
+truncation adds a warning and makes the structured doctor result non-healthy,
+but preserves exit 0 when lexical proof and all other required checks pass. An
+omitted target/collection pair has no inferred result.
 
 **Exit Codes:**
 

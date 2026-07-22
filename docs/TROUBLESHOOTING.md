@@ -22,6 +22,11 @@ This checks:
 - Database accessibility
 - SQLite extensions
 - Model cache status
+- Per-collection corpus-derived lexical retrieval
+
+`gno status --json` always exits 0 after a successful read and exposes degraded
+state under `.activation`. `gno doctor` exits 2 when lexical activation fails.
+Semantic pending and connector-only warnings do not block lexical use.
 
 ## Exit Codes
 
@@ -84,6 +89,40 @@ bun upgrade
 ```
 
 ## Indexing Issues
+
+### Retrieval activation failed
+
+Inspect the exact collection, stage, code, and remediation:
+
+```bash
+gno status --json | jq '.activation.collections[] | select(.ready == false)'
+```
+
+- `no_documents`: index at least one supported text document.
+- `no_probe_term`: the bounded document prefixes contain no safe searchable
+  term; check filters/content and reindex.
+- `index_out_of_sync`: an owned FTS row or sync marker is missing/stale; run
+  `gno index <collection> --no-embed`.
+- `index_query_failed` or `retrieval_mismatch`: transient/recoverable failures
+  are retried on the next check; rebuild the collection if they persist.
+
+A cold proof reads at most 64 document prefixes of 32,768 characters and tries
+at most 64 terms. Receipts persist hashes and result identity, never the raw
+probe term, query, snippet, or passage.
+
+Supported GNO writers maintain `fts_mirror_hash` transactionally. Migration 013
+compares legacy FTS bodies once before trusting/backfilling that marker. Direct
+post-migration mutation of internal FTS bodies outside GNO is unsupported and
+may not change the metadata-only passive identity; rebuild through
+`gno index <collection> --no-embed`.
+
+### Connector is installed but not verified
+
+Installation and `gno mcp status` confirm config presence only. From the Web
+Connectors page, run **Verify retrieval** for a configured MCP target and choose
+the collection to test. The proof checks tool discovery, `gno_status`, and a
+scoped `gno_search` without rewriting client config. Skill-only integrations
+remain `target_runtime_unverifiable`; the client must load and use them itself.
 
 ### "Collection not found"
 

@@ -323,6 +323,56 @@ describe("status schema", () => {
   });
 
   describe("invalid inputs", () => {
+    test("rejects contradictory semantic availability states", async () => {
+      const status = await Bun.file(
+        "test/fixtures/outputs/status-healthy.json"
+      ).json();
+      status.activation.collections = [
+        {
+          collection: "notes",
+          ready: true,
+          generatedAt: "2026-07-22T10:00:00.000Z",
+          stages: {
+            index: {
+              status: "passed",
+              startedAt: null,
+              completedAt: null,
+              latencyMs: 1,
+            },
+            lexical: {
+              status: "passed",
+              startedAt: null,
+              completedAt: null,
+              latencyMs: 1,
+            },
+            semantic: pendingStage,
+            connector: {
+              ...pendingStage,
+              status: "skipped",
+              code: "connector_not_requested",
+            },
+          },
+          semanticAvailability: {
+            status: "pending",
+            code: "vector_unavailable",
+            command: "gno doctor",
+          },
+          remediation: null,
+        },
+      ];
+
+      expect(assertInvalid(status, schema)).toBe(true);
+    });
+
+    test("rejects corpus-bearing fields at the status root", async () => {
+      const status = await Bun.file(
+        "test/fixtures/outputs/status-healthy.json"
+      ).json();
+      status.rawCorpus = "must not cross the status boundary";
+
+      expect(assertInvalid(status, schema)).toBe(true);
+    });
+
     test("rejects corpus-bearing fields outside the activation projection", async () => {
       const status = await Bun.file(
         "test/fixtures/outputs/status-healthy.json"

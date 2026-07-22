@@ -15,6 +15,7 @@ import type { ActivationStatus } from "../../core/activation-status";
 
 import { getIndexDbPath, getModelsCachePath } from "../../app/constants";
 import { getConfigPaths, isInitialized, loadConfig } from "../../config";
+import { isConnectorActivationComplete } from "../../core/activation-connector-health";
 import { getCodeChunkingStatus } from "../../ingestion/chunker";
 import { ModelCache } from "../../llm/cache";
 import { getActivePreset, resolveModelUri } from "../../llm/registry";
@@ -539,7 +540,7 @@ export async function doctor(
     healthy:
       !hasErrors &&
       activation.healthy &&
-      !activation.connectorProjection.truncated,
+      isConnectorActivationComplete(activation),
     checks,
     activation,
   };

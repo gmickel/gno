@@ -973,12 +973,24 @@ Similarity edges use `seq=0` embeddings only.
 
 ### gno status
 
-Show index status.
+Show index status plus the shared retrieval activation contract.
 
 ```bash
 gno status
 gno status --json
 ```
+
+`activation.usable` means at least one configured collection passed a local,
+corpus-derived lexical retrieval proof; `activation.healthy` means every
+configured collection passed. Status exits 0 even when those fields are false
+so automation can inspect remediation. It does not start connector children,
+initialize/download models, or invoke remote inference.
+
+Semantic availability is separate: unknown resident capability is
+`semantic_not_checked`; only a positively known unavailable vector runtime is
+`vector_unavailable`. Connector status is a bounded passive projection of
+explicit verification receipts. `connectorProjection.truncated` means omitted
+target/collection pairs have no result and overall health is degraded.
 
 ### gno doctor
 
@@ -999,6 +1011,12 @@ Checks include:
 - local model cache readiness
 - embedding fingerprint freshness: current fingerprint, pending/stale chunks,
   legacy empty-fingerprint vectors, and mixed stored fingerprint groups
+- per-collection corpus-derived lexical retrieval proof
+- passive projection of explicit connector proof receipts
+
+Doctor exits 2 when lexical activation fails. Connector failures or a truncated
+projection remain warnings for process-exit purposes but make the structured
+doctor result non-healthy. Doctor never actively starts a connector or model.
 
 ### gno cleanup
 

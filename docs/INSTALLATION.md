@@ -21,7 +21,13 @@ bun install -g @gmickel/gno
 
 # Verify installation
 gno doctor
+gno status --json
 ```
+
+Verification includes a local corpus-derived lexical retrieval proof once a
+collection has been indexed. `activation.usable` means at least one configured
+collection passed; `activation.healthy` means every configured collection
+passed. Semantic models may remain pending without blocking lexical search.
 
 Release packages are smoke-tested with `bun run test:package`, which installs
 the packed npm tarball into isolated temp paths and verifies packaged
@@ -194,6 +200,58 @@ gno doctor --json
 ```json
 {
   "healthy": true,
+  "activation": {
+    "schemaVersion": "1.0",
+    "usable": true,
+    "healthy": true,
+    "collections": [
+      {
+        "collection": "notes",
+        "ready": true,
+        "generatedAt": "2026-07-22T10:00:00Z",
+        "stages": {
+          "index": {
+            "status": "passed",
+            "startedAt": "2026-07-22T09:59:59Z",
+            "completedAt": "2026-07-22T10:00:00Z",
+            "latencyMs": 3
+          },
+          "lexical": {
+            "status": "passed",
+            "startedAt": "2026-07-22T10:00:00Z",
+            "completedAt": "2026-07-22T10:00:00Z",
+            "latencyMs": 2
+          },
+          "semantic": {
+            "status": "pending",
+            "startedAt": null,
+            "completedAt": null,
+            "latencyMs": null,
+            "code": "semantic_not_checked"
+          },
+          "connector": {
+            "status": "skipped",
+            "startedAt": null,
+            "completedAt": null,
+            "latencyMs": null,
+            "code": "connector_not_requested"
+          }
+        },
+        "semanticAvailability": {
+          "status": "pending",
+          "code": "semantic_not_checked",
+          "command": "gno status"
+        },
+        "remediation": null
+      }
+    ],
+    "connectors": [],
+    "connectorProjection": {
+      "total": 0,
+      "projected": 0,
+      "truncated": false
+    }
+  },
   "checks": [
     { "name": "config", "status": "ok", "message": "Config loaded" },
     { "name": "database", "status": "ok", "message": "Database found" },
@@ -224,6 +282,12 @@ Status meanings:
 - `ok` - Component working
 - `warn` - Optional component missing (functionality limited)
 - `error` - Required component failing
+
+Doctor does not start connectors, initialize or download models, or invoke
+remote inference. A failed lexical activation proof exits 2 after writing the
+complete JSON result. Connector projection truncation is a warning: omitted
+target/collection pairs have no claimed result, top-level `healthy` is false,
+but the process still exits 0 when lexical proof and other required checks pass.
 
 On Windows x64, `gno doctor --json` is also the quickest way to confirm the
 packaged/runtime proof path: FTS5, vendored `fts5-snowball.dll`, and

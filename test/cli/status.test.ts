@@ -1,8 +1,13 @@
 import { describe, expect, test } from "bun:test";
+import { mkdir, mkdtemp } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 import type { StatusResult } from "../../src/cli/commands/status";
 
 import { formatStatus } from "../../src/cli/commands/status";
+import { runCli } from "../../src/cli/run";
+import { safeRm } from "../helpers/cleanup";
 
 function statusResult(): StatusResult {
   return {
@@ -102,14 +107,12 @@ describe("gno status activation output", () => {
     }
     result.activation.usable = true;
     result.activation.healthy = true;
-    result.activation.connectors = [
-      {
-        collection: "notes",
-        target: "cursor-mcp",
-        status: "passed",
-        remediation: null,
-      },
-    ];
+    result.activation.connectors = Array.from({ length: 64 }, (_, index) => ({
+      collection: "notes",
+      target: index === 0 ? "cursor-mcp" : `connector-${index}`,
+      status: "passed",
+      remediation: null,
+    }));
     result.activation.connectorProjection = {
       total: 85,
       projected: 64,
@@ -131,4 +134,54 @@ describe("gno status activation output", () => {
       false
     );
   });
+
+  test("exits 0 with structured unhealthy activation", async () => {
+    const testDir = await mkdtemp(join(tmpdir(), "gno-status-activation-"));
+    const emptyDir = join(testDir, "empty");
+    const originalStdoutWrite = process.stdout.write.bind(process.stdout);
+    const previousEnv = {
+      config: process.env.GNO_CONFIG_DIR,
+      data: process.env.GNO_DATA_DIR,
+      cache: process.env.GNO_CACHE_DIR,
+    };
+    let output = "";
+
+    process.env.GNO_CONFIG_DIR = join(testDir, "config");
+    process.env.GNO_DATA_DIR = join(testDir, "data");
+    process.env.GNO_CACHE_DIR = join(testDir, "cache");
+    process.stdout.write = (chunk: string | Uint8Array): boolean => {
+      output += typeof chunk === "string" ? chunk : chunk.toString();
+      return true;
+    };
+
+    try {
+      await mkdir(emptyDir, { recursive: true });
+      expect(
+        await runCli(["bun", "gno", "init", emptyDir, "--name", "empty"])
+      ).toBe(0);
+      output = "";
+
+      const code = await runCli(["bun", "gno", "status", "--json"]);
+      expect(code).toBe(0);
+      const parsed = JSON.parse(output);
+      expect(parsed).toMatchObject({
+        healthy: false,
+        activation: { usable: false, healthy: false },
+      });
+    } finally {
+      process.stdout.write = originalStdoutWrite;
+      setOptionalEnv("GNO_CONFIG_DIR", previousEnv.config);
+      setOptionalEnv("GNO_DATA_DIR", previousEnv.data);
+      setOptionalEnv("GNO_CACHE_DIR", previousEnv.cache);
+      await safeRm(testDir);
+    }
+  });
 });
+
+function setOptionalEnv(name: string, value: string | undefined): void {
+  if (value === undefined) {
+    Reflect.deleteProperty(process.env, name);
+    return;
+  }
+  process.env[name] = value;
+}

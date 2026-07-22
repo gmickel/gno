@@ -42,7 +42,23 @@ Check what's indexed:
 
 ```bash
 gno ls
+gno status --json | jq '.activation'
 ```
+
+The activation result is stronger than a document count: each ready collection
+returned one of its own corpus-derived sources through local lexical search.
+`usable` means at least one configured collection passed; `healthy` means all
+configured collections passed. Semantic status may remain pending while BM25 is
+already usable.
+
+Need immediate local search without waiting for model downloads?
+
+```bash
+gno index --no-embed
+gno status
+```
+
+Generate embeddings later with `gno embed`.
 
 ## 3. Search Your Knowledge
 
@@ -215,6 +231,10 @@ Need the full behavior, lifecycle controls, and troubleshooting guide? See
 ```bash
 gno doctor
 ```
+
+Doctor runs the same local lexical proof and exits 2 when it fails. Follow the
+reported collection, stage, code, and command. Semantic pending is not a lexical
+failure, and doctor never starts connector children or downloads models.
 
 ### View Indexed Documents
 

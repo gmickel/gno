@@ -93,7 +93,7 @@ describe("store migrations", () => {
     }
   });
 
-  test("backfills FTS sync markers only for metadata-aligned active rows", () => {
+  test("backfills FTS sync markers only for fully aligned active legacy rows", () => {
     const db = new Database(dbPath);
 
     try {
@@ -104,7 +104,12 @@ describe("store migrations", () => {
         INSERT INTO collections (name, path, pattern)
         VALUES ('notes', '/notes', '**/*');
         INSERT INTO content (mirror_hash, markdown)
-        VALUES ('mirror-current', 'current body'), ('mirror-missing', 'missing body');
+        VALUES
+          ('mirror-current', 'current body'),
+          ('mirror-filepath', 'filepath body'),
+          ('mirror-title', 'title body'),
+          ('mirror-inactive', 'inactive body'),
+          ('mirror-body', 'expected body');
         INSERT INTO documents (
           collection, rel_path, source_hash, source_mime, source_ext,
           source_size, source_mtime, docid, uri, title, mirror_hash, active
@@ -112,12 +117,33 @@ describe("store migrations", () => {
           ('notes', 'current.md', 'source-current', 'text/markdown', '.md',
            12, '2026-07-22T10:00:00.000Z', 'current1', 'gno://notes/current.md',
            'Current', 'mirror-current', 1),
-          ('notes', 'missing.md', 'source-missing', 'text/markdown', '.md',
-           12, '2026-07-22T10:00:00.000Z', 'missing1', 'gno://notes/missing.md',
-           'Missing', 'mirror-missing', 1);
+          ('notes', 'filepath.md', 'source-filepath', 'text/markdown', '.md',
+           13, '2026-07-22T10:00:00.000Z', 'filepath1', 'gno://notes/filepath.md',
+           'Filepath', 'mirror-filepath', 1),
+          ('notes', 'title.md', 'source-title', 'text/markdown', '.md',
+           10, '2026-07-22T10:00:00.000Z', 'title001', 'gno://notes/title.md',
+           'Title', 'mirror-title', 1),
+          ('notes', 'inactive.md', 'source-inactive', 'text/markdown', '.md',
+           13, '2026-07-22T10:00:00.000Z', 'inactive1', 'gno://notes/inactive.md',
+           'Inactive', 'mirror-inactive', 0),
+          ('notes', 'body.md', 'source-body', 'text/markdown', '.md',
+           13, '2026-07-22T10:00:00.000Z', 'body0001', 'gno://notes/body.md',
+           'Body', 'mirror-body', 1);
         INSERT INTO documents_fts (rowid, filepath, title, body)
         SELECT id, rel_path, title, 'current body'
         FROM documents WHERE rel_path = 'current.md';
+        INSERT INTO documents_fts (rowid, filepath, title, body)
+        SELECT id, 'wrong-path.md', title, 'filepath body'
+        FROM documents WHERE rel_path = 'filepath.md';
+        INSERT INTO documents_fts (rowid, filepath, title, body)
+        SELECT id, rel_path, 'Wrong title', 'title body'
+        FROM documents WHERE rel_path = 'title.md';
+        INSERT INTO documents_fts (rowid, filepath, title, body)
+        SELECT id, rel_path, title, 'inactive body'
+        FROM documents WHERE rel_path = 'inactive.md';
+        INSERT INTO documents_fts (rowid, filepath, title, body)
+        SELECT id, rel_path, title, 'stale body'
+        FROM documents WHERE rel_path = 'body.md';
       `);
 
       const upgraded = runMigrations(db, migrations, "unicode61");
@@ -129,8 +155,11 @@ describe("store migrations", () => {
         )
         .all();
       expect(rows).toEqual([
+        { rel_path: "body.md", fts_mirror_hash: null },
         { rel_path: "current.md", fts_mirror_hash: "mirror-current" },
-        { rel_path: "missing.md", fts_mirror_hash: null },
+        { rel_path: "filepath.md", fts_mirror_hash: null },
+        { rel_path: "inactive.md", fts_mirror_hash: null },
+        { rel_path: "title.md", fts_mirror_hash: null },
       ]);
     } finally {
       db.close();

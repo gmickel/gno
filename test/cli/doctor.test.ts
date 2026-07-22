@@ -3,7 +3,10 @@ import { mkdir, mkdtemp } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { checkConnectorActivation } from "../../src/cli/commands/doctor-activation";
+import {
+  checkConnectorActivation,
+  checkRetrievalActivation,
+} from "../../src/cli/commands/doctor-activation";
 import { runCli } from "../../src/cli/run";
 import { safeRm } from "../helpers/cleanup";
 
@@ -76,14 +79,12 @@ describe("gno doctor activation exit semantics", () => {
       usable: true,
       healthy: true,
       collections: [],
-      connectors: [
-        {
-          collection: "notes",
-          target: "cursor-mcp",
-          status: "passed",
-          remediation: null,
-        },
-      ],
+      connectors: Array.from({ length: 64 }, (_, index) => ({
+        collection: "notes",
+        target: index === 0 ? "cursor-mcp" : `connector-${index}`,
+        status: "passed",
+        remediation: null,
+      })),
       connectorProjection: { total: 85, projected: 64, truncated: true },
     });
 
@@ -94,5 +95,54 @@ describe("gno doctor activation exit semantics", () => {
     expect(check?.details?.[0]).toContain(
       "21 target/collection checks were omitted"
     );
+  });
+
+  test("does not describe known vector unavailability as pending", () => {
+    const check = checkRetrievalActivation({
+      schemaVersion: "1.0",
+      usable: true,
+      healthy: true,
+      collections: [
+        {
+          collection: "notes",
+          ready: true,
+          generatedAt: null,
+          stages: {} as never,
+          semanticAvailability: {
+            status: "skipped",
+            code: "vector_unavailable",
+            command: "gno doctor",
+          },
+          remediation: null,
+        },
+      ],
+      connectors: [],
+      connectorProjection: { total: 0, projected: 0, truncated: false },
+    });
+
+    expect(check.details).toEqual([
+      "Semantic retrieval remains separate (vector_unavailable).",
+    ]);
+    expect(check.details?.join(" ")).not.toContain("pending");
+  });
+
+  test("keeps the store open until a healthy lexical proof completes", async () => {
+    const notesDir = join(testDir, "notes");
+    await mkdir(notesDir, { recursive: true });
+    await Bun.write(
+      join(notesDir, "proof.md"),
+      "# Proof\npackagedactivationneedle confirms local retrieval."
+    );
+    expect((await cli("init", notesDir, "--name", "notes")).code).toBe(0);
+    expect((await cli("update", "--yes")).code).toBe(0);
+
+    const result = await cli("doctor", "--json");
+    expect(result.code).toBe(0);
+    expect(result.stderr).toBe("");
+    expect(JSON.parse(result.stdout).activation).toMatchObject({
+      usable: true,
+      healthy: true,
+      collections: [{ collection: "notes", ready: true }],
+    });
   });
 });
