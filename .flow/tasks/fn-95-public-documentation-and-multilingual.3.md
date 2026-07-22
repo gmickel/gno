@@ -44,8 +44,8 @@ Deliver propagate and verify truthful public documentation as one implementation
 
 
 ## Done summary
-Aligned the canonical gno.sh hosted sources with released GNO behavior and dated multilingual evidence, including exact MCP targets, remote-inference/privacy boundaries, loopback API scope, fine-tuned expansion semantics, implemented publishing tiers, footer behavior, and desktop/package facts. Added source-content regression coverage; production deploy plus HTTPS, service, and remote-revision verification is intentionally deferred to land after commit 21c605f4dd698804bae0f2ce67648ec0e7cfce0a merges into gno.sh main.
+Aligned canonical gno.sh hosted sources with released GNO behavior and dated multilingual evidence, including MCP targets, remote-inference/privacy boundaries, loopback API scope, fine-tuned expansion semantics, implemented publishing tiers, footer behavior, and release-agnostic package/desktop facts. Added source-content regressions, merged gno.sh PR #7, deployed production, and verified HTTPS 200, active service, and remote revision ee792bcc754c706ffca62ffd0f6f693a4580fd8c equal to origin/main.
 ## Evidence
-- Commits: 21c605f4dd698804bae0f2ce67648ec0e7cfce0a
-- Tests: bun run format (gno.sh), bun run check (gno.sh), bun run typecheck (gno.sh), bun test (gno.sh: 81 pass, 5 skip), bun run build (gno.sh: 67 pages prerendered), bun run lint:check, bun run docs:truth, bun run docs:verify (13 pass, 2 model-cache skips), .flow/bin/flowctl validate --spec fn-95-public-documentation-and-multilingual --json, GATE_SKIPPED:unittest:docs-only - cumulative GNO diff classified tier-B (no executable GNO paths touched), DEPLOY_DEFERRED: production HTTPS/service/revision verification waits for gno.sh commit 21c605f to merge to main during land
-- PRs:
+- Commits: 21c605f4dd698804bae0f2ce67648ec0e7cfce0a, 679c29e8bf2cc5833421a9ef69dc2a06cafe5149, ee792bcc754c706ffca62ffd0f6f693a4580fd8c
+- Tests: bun run format (gno.sh), bun run lint (gno.sh), bun run typecheck (gno.sh), bun test (gno.sh: 81 pass before review fixes; public-truth 6/6 after fixes), bun run build (gno.sh: 67 pages prerendered), bun run lint:check, bun run docs:truth, bun run docs:verify, HTTPS https://gno.sh = 200, systemctl is-active gno-sh = active, remote /srv/gno-sh/repo HEAD equals origin/main ee792bcc754c706ffca62ffd0f6f693a4580fd8c
+- PRs: https://github.com/gmickel/gno.sh/pull/7
