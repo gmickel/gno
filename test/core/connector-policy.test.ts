@@ -56,6 +56,39 @@ test("connector policy requires trusted realpath provenance", async () => {
       )
     ).toBe(true);
     expect(
+      await isSafeLocalGnoMcpCommand(
+        { command: trustedGno, args: ["--index", "work", "mcp"] },
+        trusted
+      )
+    ).toBe(true);
+    expect(
+      await isSafeLocalGnoMcpCommand(
+        {
+          command: trustedGno,
+          args: ["--config=/tmp/gno.yml", "--index=work", "mcp", "serve"],
+        },
+        trusted
+      )
+    ).toBe(true);
+    expect(
+      await isSafeLocalGnoMcpCommand(
+        {
+          command: process.execPath,
+          args: [trustedGno, "--config", "/tmp/gno.yml", "mcp"],
+        },
+        trusted
+      )
+    ).toBe(true);
+    expect(
+      await isSafeLocalGnoMcpCommand(
+        {
+          command: process.execPath,
+          args: ["run", trustedSource, "--index=work", "mcp"],
+        },
+        trusted
+      )
+    ).toBe(true);
+    expect(
       await isSafeLocalGnoMcpCommand({
         command: process.execPath,
         args: ["x", "@gmickel/gno", "mcp"],
@@ -79,6 +112,19 @@ test("connector policy requires trusted realpath provenance", async () => {
         trusted
       )
     ).toBe(false);
+    for (const args of [
+      ["--index", "mcp"],
+      ["--index=", "mcp"],
+      ["--index", "work", "--index", "other", "mcp"],
+      ["--config", "--enable-write", "mcp"],
+      ["--verbose", "mcp"],
+      ["mcp", "--index", "work"],
+      ["--index", "work", "mcp", "serve", "extra"],
+    ]) {
+      expect(
+        await isSafeLocalGnoMcpCommand({ command: trustedGno, args }, trusted)
+      ).toBe(false);
+    }
     expect(
       await isSafeLocalGnoMcpCommand({
         command: "sh",

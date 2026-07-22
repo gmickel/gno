@@ -108,6 +108,48 @@ async function hasTrustedGnoExecutableIdentity(
   return identity !== null && trusted.has(identity);
 }
 
+const SAFE_GLOBAL_VALUE_FLAGS = ["--index", "--config"] as const;
+
+function isSafeReadOnlyMcpArgs(args: string[]): boolean {
+  const seenFlags = new Set<string>();
+  let position = 0;
+  while (position < args.length) {
+    const argument = args[position];
+    if (argument === "mcp") {
+      const remainder = args.slice(position + 1);
+      return (
+        remainder.length === 0 ||
+        (remainder.length === 1 && remainder[0] === "serve")
+      );
+    }
+
+    const flag = SAFE_GLOBAL_VALUE_FLAGS.find(
+      (candidate) =>
+        argument === candidate || argument?.startsWith(`${candidate}=`)
+    );
+    if (!flag || seenFlags.has(flag)) {
+      return false;
+    }
+    seenFlags.add(flag);
+
+    if (argument === flag) {
+      const value = args[position + 1];
+      if (!value || value.startsWith("-")) {
+        return false;
+      }
+      position += 2;
+      continue;
+    }
+
+    const value = argument?.slice(flag.length + 1);
+    if (!value) {
+      return false;
+    }
+    position += 1;
+  }
+  return false;
+}
+
 /** Accept only provenance-verified direct GNO or Bun-to-local-GNO shapes. */
 export async function isSafeLocalGnoMcpCommand(
   entry: { command: string; args: string[] },
@@ -132,8 +174,7 @@ export async function isSafeLocalGnoMcpCommand(
   if (isGnoExecutable(entry.command)) {
     return (
       (await hasTrustedGnoExecutableIdentity(entry.command, trusted)) &&
-      args[0] === "mcp" &&
-      (args.length === 1 || (args.length === 2 && args[1] === "serve"))
+      isSafeReadOnlyMcpArgs(args)
     );
   }
   if (commandName !== "bun" && commandName !== "bun.exe") {
@@ -152,15 +193,13 @@ export async function isSafeLocalGnoMcpCommand(
   if (isGnoExecutable(args[0] ?? "")) {
     return (
       (await hasTrustedGnoIdentity(args[0] ?? "", trusted)) &&
-      args[1] === "mcp" &&
-      (args.length === 2 || (args.length === 3 && args[2] === "serve"))
+      isSafeReadOnlyMcpArgs(args.slice(1))
     );
   }
   return (
     args[0] === "run" &&
     (await hasTrustedGnoIdentity(args[1] ?? "", trusted)) &&
-    args[2] === "mcp" &&
-    (args.length === 3 || (args.length === 4 && args[3] === "serve"))
+    isSafeReadOnlyMcpArgs(args.slice(2))
   );
 }
 
