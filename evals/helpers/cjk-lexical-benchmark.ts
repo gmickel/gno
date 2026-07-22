@@ -122,10 +122,7 @@ export const diagnosticSearch = (
   normalization: "raw" | "NFC"
 ): string[] => {
   const transform = (value: string): string =>
-    (normalization === "NFC"
-      ? value.normalize("NFC")
-      : value
-    ).toLocaleLowerCase();
+    (normalization === "NFC" ? value.normalize("NFC") : value).toLowerCase();
   const normalizedQuery = transform(query);
   const terms = normalizedQuery.split(/\s+/u).filter(Boolean);
   return documents

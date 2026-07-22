@@ -148,6 +148,26 @@ describe("public truth verification", () => {
     );
   });
 
+  test("rejects incomplete CJK lexical evidence and promotion caveats", () => {
+    const mismatches = verifyAnchoredPublicTruth([
+      {
+        path: "docs/benchmark.md",
+        content: anchored(
+          "cjk-lexical-benchmark",
+          "The lexical benchmark is complete."
+        ),
+      },
+    ]);
+
+    expect(mismatches).toHaveLength(1);
+    expect(mismatches[0]).toEqual(
+      expect.objectContaining({
+        claimClass: "cjk-lexical-benchmark",
+        message: expect.stringContaining("2026-07-22.md"),
+      })
+    );
+  });
+
   test("rejects stale extra metrics when every canonical benchmark token remains", () => {
     const { incumbent, qwen } = PUBLIC_TRUTH.benchmarks.generalEmbedding;
     const summary = [

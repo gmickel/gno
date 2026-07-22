@@ -24,13 +24,14 @@ Deliver prove promotion gates rollback packaging and truthful claims as one impl
 - `README.md`
 - `/Users/gordon/work/gno.sh/src/lib/gno-comparisons.tsx`
 - `scripts/package-smoke.ts`
+- `evals/fixtures/cjk-lexical-benchmark/promotion-gates.json`
 
 **Planned dependency outputs** (expected by execution; not plan-time investigation sources):
 - `evals/fixtures/cjk-lexical-benchmark`
 
 ## Acceptance
-- [ ] Every failing CJK lane clears its frozen gate and no aggregate hides a failure.
-- [ ] All cost/non-regression/migration/offline/cross-platform/package caps pass with committed evidence.
+- [ ] Chinese/Japanese clear `0.375` Recall@5/10, MRR, and nDCG@10 with zero-result at most `0.625`; Korean clears `0.75` with zero-result at most `0.25`; no aggregate hides a failure.
+- [ ] Latin/code loss is at most `0.02`, no identifier case regresses, and the frozen `1.75x` size, `2x` build, and `3x` plus `2 ms` p95 caps pass alongside migration/offline/cross-platform/package evidence.
 - [ ] Public docs state per-language semantic and lexical results, analyzer/version limits, and rollback guidance accurately.
 
 

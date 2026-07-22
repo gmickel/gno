@@ -312,8 +312,25 @@ Operational consequences:
 
 Scope matters: query-language classification is distinct from indexed-document
 language detection (`en`, `de`, `fr`, `it`, `zh`, `ja`, `ko`), and this small
-semantic fixture covers only five languages. The legacy multilingual Evalite
-lane is BM25-only; a dedicated lexical CJK benchmark is still pending.
+semantic fixture covers only five languages.
+
+<!-- public-truth:cjk-lexical-benchmark -->
+
+Model-free lexical fallback has a separate immutable
+[July 22, 2026 CJK benchmark](../evals/fixtures/cjk-lexical-benchmark/2026-07-22.md).
+Production BM25 Recall@10/nDCG@10 was `0.125` for both Chinese and Japanese and
+`0.5` for Korean; zero-result rates were `0.875`, `0.875`, and `0.5`. The
+[promotion-gates.md](../evals/fixtures/cjk-lexical-benchmark/promotion-gates.md)
+requires candidate floors of `0.375`, `0.375`, and `0.75` with maximum
+zero-result rates of `0.625`, `0.625`, and `0.25`. These lexical results do not
+describe semantic retrieval or select an implementation, and no production
+analyzer/configuration changed. All positive qrels use relevance `3`, so nDCG
+measures placement but not distinctions among positive gain grades.
+
+<!-- /public-truth -->
+
+The legacy multilingual Evalite lane is a four-case BM25-only sanity check, not
+a release gate.
 
 ### Model Details
 

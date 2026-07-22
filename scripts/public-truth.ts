@@ -3,6 +3,8 @@
 // node:path is used for portable path normalization; Bun has no path utilities.
 import { basename, isAbsolute, join, relative } from "node:path";
 
+import cjkBenchmark from "../evals/fixtures/cjk-lexical-benchmark/2026-07-22.json";
+import cjkPromotionGates from "../evals/fixtures/cjk-lexical-benchmark/promotion-gates.json";
 import incumbentBenchmark from "../evals/fixtures/general-embedding-benchmark/2026-04-06-bge-m3-incumbent.json";
 import qwenBenchmark from "../evals/fixtures/general-embedding-benchmark/2026-04-06-qwen3-embedding-0-6b.json";
 import packageMetadata from "../package.json";
@@ -84,6 +86,15 @@ export const PUBLIC_TRUTH = {
     },
   },
   benchmarks: {
+    cjkLexical: {
+      dataPath: "evals/fixtures/cjk-lexical-benchmark/2026-07-22.json",
+      evidencePath: "evals/fixtures/cjk-lexical-benchmark/2026-07-22.md",
+      gatesPath: "evals/fixtures/cjk-lexical-benchmark/promotion-gates.md",
+      resultFingerprint: cjkBenchmark.fingerprints.result,
+      baselineLane: cjkPromotionGates.baseline.lane,
+      languages: cjkPromotionGates.quality.languages,
+      positiveQrelGrades: cjkPromotionGates.baseline.positiveQrelGrades,
+    },
     generalEmbedding: {
       incumbent: benchmarkEntry(
         "evals/fixtures/general-embedding-benchmark/2026-04-06-bge-m3-incumbent.json",
@@ -307,11 +318,50 @@ const validateGeneralBenchmark = (
   return mismatches;
 };
 
+const validateCjkLexicalBenchmark = (
+  document: PublicTruthDocument,
+  claim: AnchoredClaim
+): PublicTruthMismatch[] => {
+  const benchmark = PUBLIC_TRUTH.benchmarks.cjkLexical;
+  const requiredTokens = [
+    basename(benchmark.evidencePath),
+    basename(benchmark.gatesPath),
+    "BM25",
+    "semantic",
+    "lexical",
+    "positive qrels",
+    "relevance",
+    `\`${benchmark.positiveQrelGrades[0]}\``,
+    ...Object.values(benchmark.languages).flatMap(
+      ({ baseline, minimumCandidate }) => [
+        metricText(baseline.recallAt10),
+        metricText(baseline.zeroResultRate),
+        metricText(minimumCandidate.recallAt10),
+        metricText(minimumCandidate.zeroResultRate),
+      ]
+    ),
+  ];
+  const missing = missingTokens(claim.content, [...new Set(requiredTokens)]);
+  if (missing.length === 0) {
+    return [];
+  }
+  return [
+    mismatch(
+      document,
+      claim,
+      "cjk-lexical-benchmark",
+      `CJK lexical summary is stale or incomplete; missing canonical value(s): ${missing.join(", ")}`
+    ),
+  ];
+};
+
 const validateClaim = (
   document: PublicTruthDocument,
   claim: AnchoredClaim
 ): PublicTruthMismatch[] => {
   switch (claim.claimClass) {
+    case "cjk-lexical-benchmark":
+      return validateCjkLexicalBenchmark(document, claim);
     case "current-version":
       return validateCurrentVersion(document, claim);
     case "default-embed-model":

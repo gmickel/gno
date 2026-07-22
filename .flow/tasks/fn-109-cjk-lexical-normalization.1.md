@@ -7,7 +7,7 @@ satisfies: [R1, R2, R3, R4]
 Deliver select and record the benchmark-proven lexical representation as one implementation-sized increment.
 
 **Size:** M
-**Files:** `evals/fixtures/cjk-lexical-benchmark/candidates`, `evals/fixtures/cjk-lexical-benchmark/decision.md`, `scripts/cjk-lexical-benchmark.ts`, `test/bench/cjk-decision.test.ts`
+**Files:** `evals/fixtures/cjk-lexical-benchmark/promotion-gates.json`, `evals/fixtures/cjk-lexical-benchmark/candidates`, `evals/fixtures/cjk-lexical-benchmark/decision.md`, `scripts/cjk-lexical-benchmark.ts`, `test/bench/cjk-decision.test.ts`
 
 ### Approach
 - Evaluate only predeclared benchmark adapters such as Unicode normalization, tailored segmentation, character n-grams, or additive FTS representation against fn-96 gates.
@@ -22,13 +22,14 @@ Deliver select and record the benchmark-proven lexical representation as one imp
 **Optional** (reference as needed):
 - `src/bench/metrics.ts`
 - `spec/evals.md`
+- `evals/fixtures/cjk-lexical-benchmark/promotion-gates.json`
 
 **Planned dependency outputs** (expected by execution; not plan-time investigation sources):
 - `evals/fixtures/cjk-lexical-benchmark`
 - `scripts/cjk-lexical-benchmark.ts`
 
 ## Acceptance
-- [ ] Decision artifact links immutable fn-96 comparisons and names every promotion/non-regression/cost result.
+- [ ] Decision artifact links immutable fn-96 comparisons and evaluates every threshold in `promotion-gates.json` without weakening or averaging it.
 - [ ] Selected representation passes every required language/cost gate or records an explicit no-ship outcome.
 - [ ] No production source/schema behavior changes in this task.
 

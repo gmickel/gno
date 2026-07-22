@@ -11,6 +11,10 @@ lexical fallback before changing any production tokenizer or normalizer.
 - `queries.json` — same-language cases with explicit diagnostic categories
 - `qrels.json` — graded relevance judgments on a 0–3 scale
 - `corpus/{zh,ja,ko}/` — seven opaque Markdown documents per language
+- `2026-07-22.{json,md}` — immutable production and diagnostic baseline
+- `latest.{json,md}` — convenience copies of the current baseline
+- `promotion-gates.{json,md}` — machine-readable and human-readable `fn-109`
+  quality, non-regression, and cost contract
 
 The document paths (`d001.md`, and so on) and query IDs are deliberately opaque.
 Queries may name a filename that appears **inside** a document, but never the
@@ -53,9 +57,12 @@ minimums, required categories, qrel integrity, Unicode variants, opaque paths,
 and query/path leakage:
 
 ```bash
-bun test test/bench/cjk-fixtures.test.ts
+bun test test/bench/cjk*.test.ts
+bun run bench:cjk-lexical
 ```
 
-The benchmark runner and result artifacts are added separately. Keeping fixture
-validation CI-safe avoids model downloads, network access, and machine-dependent
-latency assertions in the standard test suite.
+The benchmark is deterministic and model-free. Timings remain machine-specific,
+so promotion compares candidate and production analyzers in the same run. All
+positive qrels currently use relevance `3`; nDCG measures rank placement but not
+differences among positive gain grades. Production tokenization and
+normalization remain unchanged.

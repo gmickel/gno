@@ -24,11 +24,13 @@ Deliver use identical bounded analysis at index and query time as one implementa
 **Optional** (reference as needed):
 - `src/pipeline/query-language.ts`
 - `src/ingestion/strip.ts`
+- `evals/fixtures/cjk-lexical-benchmark/promotion-gates.json`
 
 ## Acceptance
 - [ ] Index/query analysis is byte-deterministic and version-identical for Chinese/Japanese/Korean/mixed fixtures.
 - [ ] ASCII/code/path/URL/number/punctuation and original snippet/line-range fixtures remain exact.
 - [ ] Expansion caps and neutral fallback prevent pathological index/query growth.
+- [ ] Same-run benchmark evidence stays within the frozen `1.75x` index, `2x` build, and `3x` plus `2 ms` warm-p95 caps.
 
 
 ## Done summary

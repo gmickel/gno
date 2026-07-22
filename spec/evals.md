@@ -154,12 +154,30 @@ Fixture validation is deterministic, offline, and part of the standard test
 suite:
 
 ```bash
-bun test test/bench/cjk-fixtures.test.ts
+bun test test/bench/cjk*.test.ts
+bun run bench:cjk-lexical
 ```
 
+The committed [`2026-07-22.json`](../evals/fixtures/cjk-lexical-benchmark/2026-07-22.json)
+and readable Markdown are immutable baseline evidence. The machine-readable
+[`promotion-gates.json`](../evals/fixtures/cjk-lexical-benchmark/promotion-gates.json)
+binds `fn-109` to these per-language floors:
+
+| Language | Baseline Recall@10/nDCG@10 | Minimum candidate | Baseline zero-result | Maximum candidate |
+| -------- | -------------------------: | ----------------: | -------------------: | ----------------: |
+| `zh`     |                      0.125 |             0.375 |                0.875 |             0.625 |
+| `ja`     |                      0.125 |             0.375 |                0.875 |             0.625 |
+| `ko`     |                        0.5 |              0.75 |                  0.5 |              0.25 |
+
+Recall and zero-result floors require two additional hits per language. MRR and
+nDCG@10 must independently improve by `0.25`, adding a ranking-quality floor.
+The same contract caps Latin/code Recall@10 and nDCG loss at `0.02`, permits
+zero lost exact-identifier cases, and bounds index size/build/warm-query p95 by
+co-run ratios. It does not select an implementation. All positive qrels are
+currently relevance `3`, so nDCG cannot distinguish among positive gain grades.
+
 The corpus is a controlled regression fixture, not evidence for broad CJK
-language quality. The opt-in benchmark runner and committed result artifacts are
-separate layers; production tokenization and normalization remain unchanged.
+language quality. Production tokenization and normalization remain unchanged.
 
 ## Lexical Regression Matrix
 

@@ -1,6 +1,7 @@
 const START_ANCHOR_REGEX = /<!--\s*public-truth:([a-z-]+)\s*-->/g;
 
 export type PublicTruthClaimClass =
+  | "cjk-lexical-benchmark"
   | "current-version"
   | "default-embed-model"
   | "general-embedding-benchmark"
@@ -32,6 +33,7 @@ export const REQUIRED_PUBLIC_TRUTH_ANCHORS = [
   { path: "README.md", claimClass: "runtime" },
   { path: "README.md", claimClass: "supported-platforms" },
   { path: "README.md", claimClass: "general-embedding-benchmark" },
+  { path: "README.md", claimClass: "cjk-lexical-benchmark" },
   { path: "website/_config.yml", claimClass: "current-version" },
   { path: "docs/FINE-TUNED-MODELS.md", claimClass: "default-embed-model" },
   {
@@ -39,8 +41,16 @@ export const REQUIRED_PUBLIC_TRUTH_ANCHORS = [
     claimClass: "general-embedding-benchmark",
   },
   {
+    path: "docs/HOW-SEARCH-WORKS.md",
+    claimClass: "cjk-lexical-benchmark",
+  },
+  {
     path: "docs/CONFIGURATION.md",
     claimClass: "general-embedding-benchmark",
+  },
+  {
+    path: "docs/CONFIGURATION.md",
+    claimClass: "cjk-lexical-benchmark",
   },
   { path: "docs/CONFIGURATION.md", claimClass: "default-embed-model" },
   {
