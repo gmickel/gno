@@ -63,9 +63,13 @@
   {
     "id": "zh-q009",
     "language": "zh",
-    "query": "排序审计标记 ZHRANK",
+    "query": "北辰物流 冷链 🧊 ZHRANK",
     "category": "ranking",
-    "notes": "Shared synthetic audit token whose relevant document is intentionally ranked below five stronger decoys"
+    "rankingVariant": {
+      "relevantDiscriminator": "北辰物流 冷链 🧊",
+      "sharedTerms": ["北辰物流", "冷链", "ZHRANK"]
+    },
+    "notes": "The exact Chinese cold-chain phrase uniquely identifies d001; decoys repeat its component terms out of phrase, exposing production BM25's bag-of-words ranking behavior"
   },
   {
     "id": "ja-q001",

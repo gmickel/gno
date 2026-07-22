@@ -64,6 +64,10 @@ interface Query {
   category: Category;
   notes: string;
   normalizationVariant?: NormalizationVariant;
+  rankingVariant?: {
+    relevantDiscriminator: string;
+    sharedTerms: string[];
+  };
 }
 
 interface Qrels {
@@ -291,6 +295,54 @@ describe("CJK lexical benchmark fixture contract", () => {
       const text = await Bun.file(`${CORPUS_ROOT}/${directDoc}`).text();
       expect(text).toContain(variant.target);
       expect(text).not.toContain(variant.source);
+    }
+  });
+
+  test("makes ranking relevance unique while decoys match the shared terms out of phrase", async () => {
+    const { qrels, queries, sources } = await loadFixtures();
+    const rankingCases = queries.filter(
+      (query) => query.category === "ranking"
+    );
+
+    expect(rankingCases).toHaveLength(1);
+    for (const query of rankingCases) {
+      const variant = query.rankingVariant;
+      expect(variant).toBeDefined();
+      if (!variant) {
+        throw new Error(`Missing ranking variant for ${query.id}`);
+      }
+      expect(variant.relevantDiscriminator).toMatch(/\p{Script=Han}/u);
+      expect(variant.sharedTerms.length).toBeGreaterThanOrEqual(2);
+      expect(query.query).toContain(variant.relevantDiscriminator);
+      for (const sharedTerm of variant.sharedTerms) {
+        expect(query.query).toContain(sharedTerm);
+      }
+
+      const relevantDoc = qrels.judgments.find(
+        (judgment) => judgment.queryId === query.id && judgment.relevance === 3
+      )?.docid;
+      expect(relevantDoc).toBeDefined();
+      if (!relevantDoc) {
+        throw new Error(`Missing direct qrel for ${query.id}`);
+      }
+
+      const languageSources = sources.filter(
+        (source) => source.language === query.language
+      );
+      let sharedOnlyDecoys = 0;
+      for (const source of languageSources) {
+        const text = await Bun.file(`${CORPUS_ROOT}/${source.id}`).text();
+        for (const sharedTerm of variant.sharedTerms) {
+          expect(text).toContain(sharedTerm);
+        }
+        if (source.id === relevantDoc) {
+          expect(text).toContain(variant.relevantDiscriminator);
+        } else {
+          expect(text).not.toContain(variant.relevantDiscriminator);
+          sharedOnlyDecoys += 1;
+        }
+      }
+      expect(sharedOnlyDecoys).toBeGreaterThanOrEqual(5);
     }
   });
 });

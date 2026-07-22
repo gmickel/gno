@@ -169,8 +169,10 @@ binds `fn-109` to these per-language floors:
 | `ja`     |                      0.125 |             0.375 |                0.875 |             0.625 |
 | `ko`     |                        0.5 |              0.75 |                  0.5 |              0.25 |
 
-Recall and zero-result floors require two additional hits per language. MRR and
-nDCG@10 must independently improve by `0.25`, adding a ranking-quality floor.
+The discrete Recall@10 floors require three additional Chinese hits and two
+additional Japanese and Korean hits; the Chinese count rounds up because nine
+queries cannot represent an exact `0.25` lift. MRR and nDCG@10 must
+independently improve by `0.25`, adding a ranking-quality floor.
 The same contract caps Latin/code Recall@10 and nDCG loss at `0.02`, permits
 zero lost exact-identifier cases, and bounds index size/build/warm-query p95 by
 co-run ratios. It does not select an implementation. All positive qrels are

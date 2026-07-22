@@ -48,13 +48,19 @@ describe("CJK lexical promotion gates", () => {
       expect(
         gate.baseline.zeroResultRate - gate.minimumCandidate.zeroResultRate
       ).toBeCloseTo(gates.quality.minimumAbsoluteMetricLift);
-      expect(
-        Math.ceil(
-          gates.quality.minimumAbsoluteMetricLift *
-            gates.baseline.queryCounts[language]
-        )
-      ).toBeGreaterThanOrEqual(
-        gates.quality.minimumAdditionalRecallHitsPerLanguage
+      expect(gates.quality.maximumAbsoluteZeroResultRate[language]).toBe(
+        gate.minimumCandidate.zeroResultRate
+      );
+      const baselineHits = Math.round(
+        gate.baseline.recallAt10 * gates.baseline.queryCounts[language]
+      );
+      const minimumCandidateHits = Math.ceil(
+        gate.minimumCandidate.recallAt10 *
+          gates.baseline.queryCounts[language] -
+          Number.EPSILON
+      );
+      expect(minimumCandidateHits - baselineHits).toBe(
+        gates.quality.minimumAdditionalRecallHitsPerLanguage[language]
       );
     }
   });

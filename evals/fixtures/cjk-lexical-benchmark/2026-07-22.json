@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-07-22T13:54:15.635Z",
+  "generatedAt": "2026-07-22T14:09:02.370Z",
   "benchmark": "gno-cjk-lexical-degradation",
   "corpus": {
     "fixtureVersion": 1,
@@ -8,7 +8,7 @@
     "queryCount": 25,
     "languages": ["zh", "ja", "ko"],
     "provenance": "Original synthetic documents and judgments authored for GNO; no upstream corpus text was copied",
-    "fingerprint": "faaa552dedbc162637353a08fc4132aa09dace89a6a2690772d2ba30e97dec02"
+    "fingerprint": "dcc9af547f228af7fa7b1039d1d9d7f5f1ca8f8aadbbd3716cb5d5fd71055657"
   },
   "runtime": {
     "bun": "1.3.5",
@@ -18,19 +18,19 @@
   },
   "index": {
     "tokenizer": "snowball english",
-    "buildMs": 465.13,
+    "buildMs": 507.84,
     "bytes": 323584,
     "pageCount": 79,
     "pageSize": 4096,
-    "vocabularyTerms": 405,
-    "vocabularyDocuments": 499,
-    "tokenOccurrences": 592
+    "vocabularyTerms": 408,
+    "vocabularyDocuments": 514,
+    "tokenOccurrences": 613
   },
   "fingerprints": {
     "config": "fa077cfe5ce65773ff646492e0590432cad3dc80f1e355ba528abfce34518c5a",
     "runtime": "18f5bd4226355d82961d1b739bcd163f9fae96722b5d230e386e4a74dac94872",
     "tokenizer": "7c079447fed5ba49dcbe3c1934d41be3a99bd430852dc48ff80d990f46daba96",
-    "result": "5a3e4018bffaf1e640909d562aa596747d49c88cd9fbd781a06a72cf7d8b87ca"
+    "result": "11d865ebc56e5319587427473c668725ff7d1ec97e05234ec66bc63291858cea"
   },
   "lanes": [
     {
@@ -50,16 +50,16 @@
       "metrics": {
         "recallAt5": 0.24,
         "recallAt10": 0.28,
-        "mrr": 0.2467,
-        "ndcgAt10": 0.2542,
+        "mrr": 0.2457,
+        "ndcgAt10": 0.2533,
         "zeroResultRate": 0.72
       },
       "latency": {
-        "coldQueryMs": 2.76,
+        "coldQueryMs": 3.02,
         "warmQuery": {
-          "p50Ms": 0.44,
-          "p95Ms": 0.61,
-          "meanMs": 0.43
+          "p50Ms": 0.45,
+          "p95Ms": 0.71,
+          "meanMs": 0.46
         }
       },
       "languages": [
@@ -69,8 +69,8 @@
           "metrics": {
             "recallAt5": 0.1111,
             "recallAt10": 0.2222,
-            "mrr": 0.1296,
-            "ndcgAt10": 0.1507,
+            "mrr": 0.127,
+            "ndcgAt10": 0.1481,
             "zeroResultRate": 0.7778
           },
           "failures": [
@@ -142,14 +142,14 @@
               "language": "zh",
               "category": "ranking",
               "reason": "below-rank-5",
-              "query": "排序审计标记 ZHRANK",
+              "query": "北辰物流 冷链 🧊 ZHRANK",
               "expected": ["zh/d001.md"],
               "topDocs": [
                 "zh/d004.md",
                 "zh/d006.md",
+                "zh/d002.md",
                 "zh/d007.md",
-                "zh/d005.md",
-                "zh/d003.md"
+                "zh/d005.md"
               ]
             }
           ]
@@ -295,7 +295,7 @@
             "ndcgAt10": 0
           },
           "zeroResult": true,
-          "warmLatencyMs": 0.29
+          "warmLatencyMs": 0.31
         },
         {
           "queryId": "zh-q002",
@@ -327,7 +327,7 @@
             "ndcgAt10": 0
           },
           "zeroResult": true,
-          "warmLatencyMs": 0.49
+          "warmLatencyMs": 0.5
         },
         {
           "queryId": "zh-q004",
@@ -380,7 +380,7 @@
             "ndcgAt10": 0
           },
           "zeroResult": true,
-          "warmLatencyMs": 0.46
+          "warmLatencyMs": 0.45
         },
         {
           "queryId": "zh-q007",
@@ -396,7 +396,7 @@
             "ndcgAt10": 0
           },
           "zeroResult": true,
-          "warmLatencyMs": 0.36
+          "warmLatencyMs": 0.35
         },
         {
           "queryId": "zh-q008",
@@ -412,17 +412,18 @@
             "ndcgAt10": 1
           },
           "zeroResult": false,
-          "warmLatencyMs": 0.37
+          "warmLatencyMs": 0.36
         },
         {
           "queryId": "zh-q009",
           "language": "zh",
           "category": "ranking",
-          "query": "排序审计标记 ZHRANK",
+          "query": "北辰物流 冷链 🧊 ZHRANK",
           "expected": ["zh/d001.md"],
           "topDocs": [
             "zh/d004.md",
             "zh/d006.md",
+            "zh/d002.md",
             "zh/d007.md",
             "zh/d005.md",
             "zh/d003.md",
@@ -431,11 +432,11 @@
           "metrics": {
             "recallAt5": 0,
             "recallAt10": 1,
-            "mrr": 0.1667,
-            "ndcgAt10": 0.3562
+            "mrr": 0.1429,
+            "ndcgAt10": 0.3333
           },
           "zeroResult": false,
-          "warmLatencyMs": 0.56
+          "warmLatencyMs": 1.25
         },
         {
           "queryId": "ja-q001",
@@ -451,7 +452,7 @@
             "ndcgAt10": 0
           },
           "zeroResult": true,
-          "warmLatencyMs": 0.42
+          "warmLatencyMs": 0.48
         },
         {
           "queryId": "ja-q002",
@@ -467,7 +468,7 @@
             "ndcgAt10": 0
           },
           "zeroResult": true,
-          "warmLatencyMs": 0.27
+          "warmLatencyMs": 0.28
         },
         {
           "queryId": "ja-q003",
@@ -483,7 +484,7 @@
             "ndcgAt10": 0
           },
           "zeroResult": true,
-          "warmLatencyMs": 0.57
+          "warmLatencyMs": 0.6
         },
         {
           "queryId": "ja-q004",
@@ -499,7 +500,7 @@
             "ndcgAt10": 0
           },
           "zeroResult": true,
-          "warmLatencyMs": 0.25,
+          "warmLatencyMs": 0.26,
           "normalization": {
             "form": "NFC",
             "source": "ガラス",
@@ -520,7 +521,7 @@
             "ndcgAt10": 0
           },
           "zeroResult": true,
-          "warmLatencyMs": 0.44
+          "warmLatencyMs": 0.45
         },
         {
           "queryId": "ja-q006",
@@ -584,7 +585,7 @@
             "ndcgAt10": 0
           },
           "zeroResult": true,
-          "warmLatencyMs": 0.47
+          "warmLatencyMs": 0.48
         },
         {
           "queryId": "ko-q002",
@@ -600,7 +601,7 @@
             "ndcgAt10": 1
           },
           "zeroResult": false,
-          "warmLatencyMs": 0.51
+          "warmLatencyMs": 0.52
         },
         {
           "queryId": "ko-q003",
@@ -632,7 +633,7 @@
             "ndcgAt10": 0
           },
           "zeroResult": true,
-          "warmLatencyMs": 0.49,
+          "warmLatencyMs": 0.45,
           "normalization": {
             "form": "NFC",
             "source": "가속기",
@@ -653,7 +654,7 @@
             "ndcgAt10": 1
           },
           "zeroResult": false,
-          "warmLatencyMs": 0.54
+          "warmLatencyMs": 0.5
         },
         {
           "queryId": "ko-q006",
@@ -669,7 +670,7 @@
             "ndcgAt10": 1
           },
           "zeroResult": false,
-          "warmLatencyMs": 0.73
+          "warmLatencyMs": 0.71
         },
         {
           "queryId": "ko-q007",
@@ -685,7 +686,7 @@
             "ndcgAt10": 0
           },
           "zeroResult": true,
-          "warmLatencyMs": 0.33
+          "warmLatencyMs": 0.32
         },
         {
           "queryId": "ko-q008",
@@ -701,7 +702,7 @@
             "ndcgAt10": 1
           },
           "zeroResult": false,
-          "warmLatencyMs": 0.61
+          "warmLatencyMs": 0.6
         }
       ]
     },
@@ -722,16 +723,16 @@
       "metrics": {
         "recallAt5": 0.24,
         "recallAt10": 0.28,
-        "mrr": 0.2467,
-        "ndcgAt10": 0.2542,
+        "mrr": 0.2457,
+        "ndcgAt10": 0.2533,
         "zeroResultRate": 0.72
       },
       "latency": {
-        "coldQueryMs": 2.26,
+        "coldQueryMs": 2.53,
         "warmQuery": {
-          "p50Ms": 0.44,
-          "p95Ms": 0.84,
-          "meanMs": 0.45
+          "p50Ms": 0.45,
+          "p95Ms": 0.8,
+          "meanMs": 0.49
         }
       },
       "languages": [
@@ -741,8 +742,8 @@
           "metrics": {
             "recallAt5": 0.1111,
             "recallAt10": 0.2222,
-            "mrr": 0.1296,
-            "ndcgAt10": 0.1507,
+            "mrr": 0.127,
+            "ndcgAt10": 0.1481,
             "zeroResultRate": 0.7778
           },
           "failures": [
@@ -814,14 +815,14 @@
               "language": "zh",
               "category": "ranking",
               "reason": "below-rank-5",
-              "query": "排序审计标记 ZHRANK",
+              "query": "北辰物流 冷链 🧊 ZHRANK",
               "expected": ["zh/d001.md"],
               "topDocs": [
                 "zh/d004.md",
                 "zh/d006.md",
+                "zh/d002.md",
                 "zh/d007.md",
-                "zh/d005.md",
-                "zh/d003.md"
+                "zh/d005.md"
               ]
             }
           ]
@@ -967,7 +968,7 @@
             "ndcgAt10": 0
           },
           "zeroResult": true,
-          "warmLatencyMs": 0.3
+          "warmLatencyMs": 0.34
         },
         {
           "queryId": "zh-q002",
@@ -983,7 +984,7 @@
             "ndcgAt10": 0
           },
           "zeroResult": true,
-          "warmLatencyMs": 0.31
+          "warmLatencyMs": 0.32
         },
         {
           "queryId": "zh-q003",
@@ -999,7 +1000,7 @@
             "ndcgAt10": 0
           },
           "zeroResult": true,
-          "warmLatencyMs": 0.5
+          "warmLatencyMs": 0.6
         },
         {
           "queryId": "zh-q004",
@@ -1015,7 +1016,7 @@
             "ndcgAt10": 0
           },
           "zeroResult": true,
-          "warmLatencyMs": 0.29
+          "warmLatencyMs": 0.35
         },
         {
           "queryId": "zh-q005",
@@ -1031,7 +1032,7 @@
             "ndcgAt10": 0
           },
           "zeroResult": true,
-          "warmLatencyMs": 0.28,
+          "warmLatencyMs": 0.33,
           "normalization": {
             "form": "NFKC",
             "source": "ＡＣＣＴ－９９",
@@ -1052,7 +1053,7 @@
             "ndcgAt10": 0
           },
           "zeroResult": true,
-          "warmLatencyMs": 0.47
+          "warmLatencyMs": 0.57
         },
         {
           "queryId": "zh-q007",
@@ -1068,7 +1069,7 @@
             "ndcgAt10": 0
           },
           "zeroResult": true,
-          "warmLatencyMs": 0.36
+          "warmLatencyMs": 0.41
         },
         {
           "queryId": "zh-q008",
@@ -1084,17 +1085,18 @@
             "ndcgAt10": 1
           },
           "zeroResult": false,
-          "warmLatencyMs": 0.36
+          "warmLatencyMs": 0.4
         },
         {
           "queryId": "zh-q009",
           "language": "zh",
           "category": "ranking",
-          "query": "排序审计标记 ZHRANK",
+          "query": "北辰物流 冷链 🧊 ZHRANK",
           "expected": ["zh/d001.md"],
           "topDocs": [
             "zh/d004.md",
             "zh/d006.md",
+            "zh/d002.md",
             "zh/d007.md",
             "zh/d005.md",
             "zh/d003.md",
@@ -1103,11 +1105,11 @@
           "metrics": {
             "recallAt5": 0,
             "recallAt10": 1,
-            "mrr": 0.1667,
-            "ndcgAt10": 0.3562
+            "mrr": 0.1429,
+            "ndcgAt10": 0.3333
           },
           "zeroResult": false,
-          "warmLatencyMs": 0.49
+          "warmLatencyMs": 0.69
         },
         {
           "queryId": "ja-q001",
@@ -1123,7 +1125,7 @@
             "ndcgAt10": 0
           },
           "zeroResult": true,
-          "warmLatencyMs": 0.44
+          "warmLatencyMs": 0.43
         },
         {
           "queryId": "ja-q002",
@@ -1155,7 +1157,7 @@
             "ndcgAt10": 0
           },
           "zeroResult": true,
-          "warmLatencyMs": 0.58
+          "warmLatencyMs": 0.57
         },
         {
           "queryId": "ja-q004",
@@ -1208,7 +1210,7 @@
             "ndcgAt10": 1
           },
           "zeroResult": false,
-          "warmLatencyMs": 0.43
+          "warmLatencyMs": 0.47
         },
         {
           "queryId": "ja-q007",
@@ -1240,7 +1242,7 @@
             "ndcgAt10": 0
           },
           "zeroResult": true,
-          "warmLatencyMs": 0.35
+          "warmLatencyMs": 0.34
         },
         {
           "queryId": "ko-q001",
@@ -1272,7 +1274,7 @@
             "ndcgAt10": 1
           },
           "zeroResult": false,
-          "warmLatencyMs": 0.87
+          "warmLatencyMs": 0.75
         },
         {
           "queryId": "ko-q003",
@@ -1288,7 +1290,7 @@
             "ndcgAt10": 0
           },
           "zeroResult": true,
-          "warmLatencyMs": 0.84
+          "warmLatencyMs": 0.74
         },
         {
           "queryId": "ko-q004",
@@ -1304,7 +1306,7 @@
             "ndcgAt10": 0
           },
           "zeroResult": true,
-          "warmLatencyMs": 0.48,
+          "warmLatencyMs": 0.5,
           "normalization": {
             "form": "NFC",
             "source": "가속기",
@@ -1325,7 +1327,7 @@
             "ndcgAt10": 1
           },
           "zeroResult": false,
-          "warmLatencyMs": 0.5
+          "warmLatencyMs": 0.59
         },
         {
           "queryId": "ko-q006",
@@ -1341,7 +1343,7 @@
             "ndcgAt10": 1
           },
           "zeroResult": false,
-          "warmLatencyMs": 0.73
+          "warmLatencyMs": 0.81
         },
         {
           "queryId": "ko-q007",
@@ -1357,7 +1359,7 @@
             "ndcgAt10": 0
           },
           "zeroResult": true,
-          "warmLatencyMs": 0.34
+          "warmLatencyMs": 0.37
         },
         {
           "queryId": "ko-q008",
@@ -1373,7 +1375,7 @@
             "ndcgAt10": 1
           },
           "zeroResult": false,
-          "warmLatencyMs": 0.62
+          "warmLatencyMs": 0.8
         }
       ]
     },
@@ -1399,10 +1401,10 @@
         "zeroResultRate": 0.28
       },
       "latency": {
-        "coldQueryMs": 0.28,
+        "coldQueryMs": 0.18,
         "warmQuery": {
           "p50Ms": 0.02,
-          "p95Ms": 0.04,
+          "p95Ms": 0.03,
           "meanMs": 0.02
         }
       },
@@ -1525,7 +1527,7 @@
             "ndcgAt10": 1
           },
           "zeroResult": false,
-          "warmLatencyMs": 0.04
+          "warmLatencyMs": 0.02
         },
         {
           "queryId": "zh-q002",
@@ -1541,7 +1543,7 @@
             "ndcgAt10": 0
           },
           "zeroResult": true,
-          "warmLatencyMs": 0.02
+          "warmLatencyMs": 0.03
         },
         {
           "queryId": "zh-q003",
@@ -1573,7 +1575,7 @@
             "ndcgAt10": 0
           },
           "zeroResult": true,
-          "warmLatencyMs": 0.02
+          "warmLatencyMs": 0.03
         },
         {
           "queryId": "zh-q005",
@@ -1648,16 +1650,9 @@
           "queryId": "zh-q009",
           "language": "zh",
           "category": "ranking",
-          "query": "排序审计标记 ZHRANK",
+          "query": "北辰物流 冷链 🧊 ZHRANK",
           "expected": ["zh/d001.md"],
-          "topDocs": [
-            "zh/d001.md",
-            "zh/d003.md",
-            "zh/d004.md",
-            "zh/d005.md",
-            "zh/d006.md",
-            "zh/d007.md"
-          ],
+          "topDocs": ["zh/d001.md"],
           "metrics": {
             "recallAt5": 1,
             "recallAt10": 1,
@@ -1681,7 +1676,7 @@
             "ndcgAt10": 1
           },
           "zeroResult": false,
-          "warmLatencyMs": 0.04
+          "warmLatencyMs": 0.01
         },
         {
           "queryId": "ja-q002",
@@ -1782,7 +1777,7 @@
             "ndcgAt10": 1
           },
           "zeroResult": false,
-          "warmLatencyMs": 0.01
+          "warmLatencyMs": 0.02
         },
         {
           "queryId": "ja-q008",
@@ -1798,7 +1793,7 @@
             "ndcgAt10": 1
           },
           "zeroResult": false,
-          "warmLatencyMs": 0.02
+          "warmLatencyMs": 0.01
         },
         {
           "queryId": "ko-q001",
@@ -1814,7 +1809,7 @@
             "ndcgAt10": 1
           },
           "zeroResult": false,
-          "warmLatencyMs": 0.03
+          "warmLatencyMs": 0.02
         },
         {
           "queryId": "ko-q002",
@@ -1862,7 +1857,7 @@
             "ndcgAt10": 0
           },
           "zeroResult": true,
-          "warmLatencyMs": 0.01,
+          "warmLatencyMs": 0.02,
           "normalization": {
             "form": "NFC",
             "source": "가속기",
@@ -1915,7 +1910,7 @@
             "ndcgAt10": 1
           },
           "zeroResult": false,
-          "warmLatencyMs": 0.07
+          "warmLatencyMs": 0.02
         },
         {
           "queryId": "ko-q008",
@@ -2196,16 +2191,9 @@
           "queryId": "zh-q009",
           "language": "zh",
           "category": "ranking",
-          "query": "排序审计标记 ZHRANK",
+          "query": "北辰物流 冷链 🧊 ZHRANK",
           "expected": ["zh/d001.md"],
-          "topDocs": [
-            "zh/d001.md",
-            "zh/d003.md",
-            "zh/d004.md",
-            "zh/d005.md",
-            "zh/d006.md",
-            "zh/d007.md"
-          ],
+          "topDocs": ["zh/d001.md"],
           "metrics": {
             "recallAt5": 1,
             "recallAt10": 1,
@@ -2229,7 +2217,7 @@
             "ndcgAt10": 1
           },
           "zeroResult": false,
-          "warmLatencyMs": 0.03
+          "warmLatencyMs": 0.02
         },
         {
           "queryId": "ja-q002",

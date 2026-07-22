@@ -3,7 +3,7 @@
   "benchmark": "gno-cjk-lexical-degradation",
   "baseline": {
     "artifact": "2026-07-22.json",
-    "resultFingerprint": "5a3e4018bffaf1e640909d562aa596747d49c88cd9fbd781a06a72cf7d8b87ca",
+    "resultFingerprint": "11d865ebc56e5319587427473c668725ff7d1ec97e05234ec66bc63291858cea",
     "configFingerprint": "fa077cfe5ce65773ff646492e0590432cad3dc80f1e355ba528abfce34518c5a",
     "tokenizerFingerprint": "7c079447fed5ba49dcbe3c1934d41be3a99bd430852dc48ff80d990f46daba96",
     "lane": "bm25",
@@ -16,10 +16,14 @@
     "qrelsLimitation": "All positive qrels use relevance 3, so nDCG measures placement of relevant documents but not distinctions among positive gain grades."
   },
   "quality": {
-    "minimumAdditionalRecallHitsPerLanguage": 2,
+    "minimumAdditionalRecallHitsPerLanguage": {
+      "zh": 3,
+      "ja": 2,
+      "ko": 2
+    },
     "minimumAbsoluteMetricLift": 0.25,
     "maximumAbsoluteZeroResultRate": {
-      "zh": 0.625,
+      "zh": 0.5278,
       "ja": 0.625,
       "ko": 0.25
     },
@@ -28,15 +32,15 @@
         "baseline": {
           "recallAt5": 0.1111,
           "recallAt10": 0.2222,
-          "mrr": 0.1296,
-          "ndcgAt10": 0.1507,
+          "mrr": 0.127,
+          "ndcgAt10": 0.1481,
           "zeroResultRate": 0.7778
         },
         "minimumCandidate": {
           "recallAt5": 0.3611,
           "recallAt10": 0.4722,
-          "mrr": 0.3796,
-          "ndcgAt10": 0.4007,
+          "mrr": 0.377,
+          "ndcgAt10": 0.3981,
           "zeroResultRate": 0.5278
         }
       },
@@ -113,15 +117,15 @@
       "datedRunMaximumBytes": 566272
     },
     "buildMs": {
-      "baseline": 465.13,
+      "baseline": 507.84,
       "maximumRatio": 2,
-      "datedRunMaximumMs": 930.26
+      "datedRunMaximumMs": 1015.68
     },
     "warmQueryP95Ms": {
-      "baseline": 0.61,
+      "baseline": 0.71,
       "maximumRatio": 3,
       "maximumAbsoluteIncreaseMs": 2,
-      "datedRunRatioMaximumMs": 1.83
+      "datedRunRatioMaximumMs": 2.13
     }
   },
   "decisionRule": "fn-109 may select any deterministic representation that passes every per-language quality floor, failure-category coverage, non-regression gate, and cost cap. No aggregate score may compensate for a failed language or gate. If no candidate passes, record a no-ship decision instead of weakening these thresholds."

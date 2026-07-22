@@ -1046,7 +1046,7 @@ Lexical fallback has separate evidence. The immutable
 uses 21 synthetic documents and 25 same-language queries across Chinese,
 Japanese, and Korean. Production BM25 lexical results and frozen floors:
 
-- Chinese: baseline Recall@10 `0.2222`, nDCG@10 `0.1507`, zero-result `0.7778`; promotion Recall@10 `0.4722`, nDCG@10 `0.4007`, maximum zero-result `0.5278`
+- Chinese: baseline Recall@10 `0.2222`, nDCG@10 `0.1481`, zero-result `0.7778`; promotion Recall@10 `0.4722`, nDCG@10 `0.3981`, maximum zero-result `0.5278`
 - Japanese: baseline Recall@10 `0.125`, nDCG@10 `0.125`, zero-result `0.875`; promotion Recall@10 `0.375`, nDCG@10 `0.375`, maximum zero-result `0.625`
 - Korean: baseline Recall@10 `0.5`, nDCG@10 `0.5`, zero-result `0.5`; promotion Recall@10 `0.75`, nDCG@10 `0.75`, maximum zero-result `0.25`
 

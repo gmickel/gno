@@ -91,9 +91,9 @@ update to the April artifact.
 The dedicated lexical CJK lane is now frozen separately in the immutable
 [July 22, 2026 result](fixtures/cjk-lexical-benchmark/2026-07-22.md). It uses 21
 synthetic documents and 25 same-language queries. Production BM25
-Recall@10/nDCG@10 is `0.2222`/`0.1507` for Chinese, `0.125`/`0.125` for
+Recall@10/nDCG@10 is `0.2222`/`0.1481` for Chinese, `0.125`/`0.125` for
 Japanese, and `0.5`/`0.5` for Korean; zero-result rates are `0.7778`, `0.875`,
-and `0.5`. The Chinese lane includes one genuine rank-6 fixture rather than
+and `0.5`. The Chinese lane includes one genuine rank-7 fixture rather than
 classifying a zero-result as a ranking failure. This does not turn the legacy
 four-case lane into cross-language evidence. Query-language classification and
 the seven-language indexed-document detector remain product metadata/prompt

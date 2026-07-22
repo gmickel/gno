@@ -34,7 +34,7 @@ Prefer an additive FTS column/table or tokenizer path that permits migration/bac
 <!-- scope: both -->
 
 - **R1:** The implementation choice is justified by committed `fn-96` comparisons rather than competitor precedent or intuition.
-- **R2:** Every CJK lane independently clears the per-language floors frozen in `evals/fixtures/cjk-lexical-benchmark/promotion-gates.json`: Chinese Recall@5/10, MRR, and nDCG@10 at least `0.3611`/`0.4722`/`0.3796`/`0.4007` with zero-result at most `0.5278`; Japanese at least `0.375` for all four metrics with zero-result at most `0.625`; Korean at least `0.75` with zero-result at most `0.25`.
+- **R2:** Every CJK lane independently clears the per-language floors frozen in `evals/fixtures/cjk-lexical-benchmark/promotion-gates.json`: Chinese Recall@5/10, MRR, and nDCG@10 at least `0.3611`/`0.4722`/`0.377`/`0.3981` with zero-result at most `0.5278`; Japanese at least `0.375` for all four metrics with zero-result at most `0.625`; Korean at least `0.75` with zero-result at most `0.25`.
 - **R3:** Existing Latin-language and code Recall@10/nDCG@10 lose at most `0.02` absolute; zero previously passing identifier cases or new identifier zero-results are allowed; phrase and mixed-script regression fixtures remain green.
 - **R4:** Against a same-run production baseline, index size stays at most `1.75x`, build time at most `2x`, and warm-query p95 at most `3x` with no more than `2 ms` absolute increase.
 - **R5:** Original snippets/line ranges remain exact; explain/diagnose exposes analyzer and fingerprint without normalized-text leakage.

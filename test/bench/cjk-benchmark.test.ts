@@ -57,7 +57,7 @@ describe("CJK benchmark contracts", () => {
       queryId: "zh-ranking",
       language: "zh",
       category: "ranking",
-      query: "排序审计标记 ZHRANK",
+      query: "北辰物流 冷链 🧊 ZHRANK",
       expected: ["zh/d001.md"],
       judgments: [{ docid: "zh/d001.md", relevance: 3 }],
       topDocs: [
@@ -173,5 +173,27 @@ describe("CJK benchmark contracts", () => {
     const markdown = renderCjkBenchmarkMarkdown(result);
     expect(markdown).toContain("All positive qrels currently use relevance 3");
     expect(markdown).toContain("title and document content only");
+  }, 30_000);
+
+  test("keeps the semantically unique ranking source below rank five in production BM25", async () => {
+    const result = await runCjkLexicalBenchmark({
+      queryIds: ["zh-q009"],
+      languages: ["zh"],
+      generatedAt: "2026-07-22T00:00:00.000Z",
+    });
+    const bm25 = result.lanes.find((lane) => lane.id === "bm25");
+    const rankingCase = bm25?.cases[0];
+    const relevantRank = (rankingCase?.topDocs.indexOf("zh/d001.md") ?? -1) + 1;
+
+    expect(rankingCase?.query).toBe("北辰物流 冷链 🧊 ZHRANK");
+    expect(relevantRank).toBeGreaterThanOrEqual(6);
+    expect(relevantRank).toBeLessThanOrEqual(10);
+    expect(bm25?.languages[0]?.failures).toContainEqual(
+      expect.objectContaining({
+        queryId: "zh-q009",
+        category: "ranking",
+        reason: "below-rank-5",
+      })
+    );
   }, 30_000);
 });

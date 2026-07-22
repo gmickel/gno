@@ -1,6 +1,6 @@
 # CJK Lexical Degradation Benchmark
 
-Generated: 2026-07-22T13:54:15.635Z
+Generated: 2026-07-22T14:09:02.370Z
 
 This deterministic same-language benchmark measures Chinese, Japanese, and Korean retrieval when no embedding, expansion, or reranking model is available. It is a small synthetic diagnostic corpus, not a claim of complete CJK coverage.
 
@@ -8,11 +8,11 @@ This deterministic same-language benchmark measures Chinese, Japanese, and Korea
 
 - Schema: 1
 - Corpus: 21 documents, 25 queries
-- Corpus fingerprint: `faaa552dedbc162637353a08fc4132aa09dace89a6a2690772d2ba30e97dec02`
+- Corpus fingerprint: `dcc9af547f228af7fa7b1039d1d9d7f5f1ca8f8aadbbd3716cb5d5fd71055657`
 - Configuration fingerprint: `fa077cfe5ce65773ff646492e0590432cad3dc80f1e355ba528abfce34518c5a`
 - Runtime fingerprint: `18f5bd4226355d82961d1b739bcd163f9fae96722b5d230e386e4a74dac94872`
 - Tokenizer fingerprint: `7c079447fed5ba49dcbe3c1934d41be3a99bd430852dc48ff80d990f46daba96`
-- Stable result fingerprint: `5a3e4018bffaf1e640909d562aa596747d49c88cd9fbd781a06a72cf7d8b87ca`
+- Stable result fingerprint: `11d865ebc56e5319587427473c668725ff7d1ec97e05234ec66bc63291858cea`
 - Tokenizer: `snowball english`
 - Runtime: Bun 1.3.5, darwin-arm64, SQLite 3.53.3
 - Provenance: Original synthetic documents and judgments authored for GNO; no upstream corpus text was copied
@@ -23,16 +23,16 @@ The stable result fingerprint excludes `generatedAt` and all millisecond timing 
 
 |     Build |         Size | Pages | Page size | Vocabulary terms | Vocabulary documents | Token occurrences |
 | --------: | -----------: | ----: | --------: | ---------------: | -------------------: | ----------------: |
-| 465.13 ms | 323584 bytes |    79 |      4096 |              405 |                  499 |               592 |
+| 507.84 ms | 323584 bytes |    79 |      4096 |              408 |                  514 |               613 |
 
 ## Per-language quality
 
 | Lane             | Language | Queries | Recall@5 | Recall@10 |    MRR | nDCG@10 | Zero-result |
 | ---------------- | -------- | ------: | -------: | --------: | -----: | ------: | ----------: |
-| bm25             | zh       |       9 |   11.11% |    22.22% | 0.1296 |  0.1507 |      77.78% |
+| bm25             | zh       |       9 |   11.11% |    22.22% | 0.1270 |  0.1481 |      77.78% |
 | bm25             | ja       |       8 |   12.50% |    12.50% | 0.1250 |  0.1250 |      87.50% |
 | bm25             | ko       |       8 |   50.00% |    50.00% | 0.5000 |  0.5000 |      50.00% |
-| hybrid-no-models | zh       |       9 |   11.11% |    22.22% | 0.1296 |  0.1507 |      77.78% |
+| hybrid-no-models | zh       |       9 |   11.11% |    22.22% | 0.1270 |  0.1481 |      77.78% |
 | hybrid-no-models | ja       |       8 |   12.50% |    12.50% | 0.1250 |  0.1250 |      87.50% |
 | hybrid-no-models | ko       |       8 |   50.00% |    50.00% | 0.5000 |  0.5000 |      50.00% |
 | substring-raw    | zh       |       9 |   44.44% |    44.44% | 0.4444 |  0.4444 |      55.56% |
@@ -46,9 +46,9 @@ The stable result fingerprint excludes `generatedAt` and all millisecond timing 
 
 | Lane             | Cold query | Warm p50 | Warm p95 | Warm mean |
 | ---------------- | ---------: | -------: | -------: | --------: |
-| bm25             |    2.76 ms |  0.44 ms |  0.61 ms |   0.43 ms |
-| hybrid-no-models |    2.26 ms |  0.44 ms |  0.84 ms |   0.45 ms |
-| substring-raw    |    0.28 ms |  0.02 ms |  0.04 ms |   0.02 ms |
+| bm25             |    3.02 ms |  0.45 ms |  0.71 ms |   0.46 ms |
+| hybrid-no-models |    2.53 ms |  0.45 ms |  0.80 ms |   0.49 ms |
+| substring-raw    |    0.18 ms |  0.02 ms |  0.03 ms |   0.02 ms |
 | substring-nfc    |    0.04 ms |  0.02 ms |  0.02 ms |   0.02 ms |
 
 Cold query is the first timed request for each lane after index construction. Warm latency is measured after one untimed full-corpus pass.
@@ -64,7 +64,7 @@ Cold query is the first timed request for each lane after index construction. Wa
 | bm25             | zh       | zh-q005 | normalization  | zero-result  | ＡＣＣＴ－９９ 账户迁移          | zh/d005.md | —                                                          |
 | bm25             | zh       | zh-q006 | punctuation    | zero-result  | 供应商 华北 乙类 合同修订        | zh/d006.md | —                                                          |
 | bm25             | zh       | zh-q007 | filename       | zero-result  | 值班计划\_夏季版.md 夜班交接     | zh/d007.md | —                                                          |
-| bm25             | zh       | zh-q009 | ranking        | below-rank-5 | 排序审计标记 ZHRANK              | zh/d001.md | zh/d004.md, zh/d006.md, zh/d007.md, zh/d005.md, zh/d003.md |
+| bm25             | zh       | zh-q009 | ranking        | below-rank-5 | 北辰物流 冷链 🧊 ZHRANK          | zh/d001.md | zh/d004.md, zh/d006.md, zh/d002.md, zh/d007.md, zh/d005.md |
 | bm25             | ja       | ja-q001 | identifier     | zero-result  | 北浜倉庫 冷凍機 JP-771           | ja/d001.md | —                                                          |
 | bm25             | ja       | ja-q002 | exact-term     | zero-result  | さくら配送センター 封印番号      | ja/d002.md | —                                                          |
 | bm25             | ja       | ja-q003 | mixed-script   | zero-result  | KumoPay JP_API-42 Webhook 再送   | ja/d003.md | —                                                          |
@@ -83,7 +83,7 @@ Cold query is the first timed request for each lane after index construction. Wa
 | hybrid-no-models | zh       | zh-q005 | normalization  | zero-result  | ＡＣＣＴ－９９ 账户迁移          | zh/d005.md | —                                                          |
 | hybrid-no-models | zh       | zh-q006 | punctuation    | zero-result  | 供应商 华北 乙类 合同修订        | zh/d006.md | —                                                          |
 | hybrid-no-models | zh       | zh-q007 | filename       | zero-result  | 值班计划\_夏季版.md 夜班交接     | zh/d007.md | —                                                          |
-| hybrid-no-models | zh       | zh-q009 | ranking        | below-rank-5 | 排序审计标记 ZHRANK              | zh/d001.md | zh/d004.md, zh/d006.md, zh/d007.md, zh/d005.md, zh/d003.md |
+| hybrid-no-models | zh       | zh-q009 | ranking        | below-rank-5 | 北辰物流 冷链 🧊 ZHRANK          | zh/d001.md | zh/d004.md, zh/d006.md, zh/d002.md, zh/d007.md, zh/d005.md |
 | hybrid-no-models | ja       | ja-q001 | identifier     | zero-result  | 北浜倉庫 冷凍機 JP-771           | ja/d001.md | —                                                          |
 | hybrid-no-models | ja       | ja-q002 | exact-term     | zero-result  | さくら配送センター 封印番号      | ja/d002.md | —                                                          |
 | hybrid-no-models | ja       | ja-q003 | mixed-script   | zero-result  | KumoPay JP_API-42 Webhook 再送   | ja/d003.md | —                                                          |

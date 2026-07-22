@@ -61,6 +61,10 @@ interface FixtureQuery {
   query: string;
   category: CjkBenchCategory;
   normalizationVariant?: NormalizationVariant;
+  rankingVariant?: {
+    relevantDiscriminator: string;
+    sharedTerms: string[];
+  };
 }
 
 interface FixtureJudgment {

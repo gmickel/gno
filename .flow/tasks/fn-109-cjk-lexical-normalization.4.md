@@ -30,7 +30,7 @@ Deliver prove promotion gates rollback packaging and truthful claims as one impl
 - `evals/fixtures/cjk-lexical-benchmark`
 
 ## Acceptance
-- [ ] Chinese clears `0.3611`/`0.4722`/`0.3796`/`0.4007` Recall@5/10, MRR, and nDCG@10 with zero-result at most `0.5278`; Japanese clears `0.375` with zero-result at most `0.625`; Korean clears `0.75` with zero-result at most `0.25`; no aggregate hides a failure.
+- [ ] Chinese clears `0.3611`/`0.4722`/`0.377`/`0.3981` Recall@5/10, MRR, and nDCG@10 with zero-result at most `0.5278`; Japanese clears `0.375` with zero-result at most `0.625`; Korean clears `0.75` with zero-result at most `0.25`; no aggregate hides a failure.
 - [ ] Latin/code loss is at most `0.02`, no identifier case regresses, and the frozen `1.75x` size, `2x` build, and `3x` plus `2 ms` p95 caps pass alongside migration/offline/cross-platform/package evidence.
 - [ ] Public docs state per-language semantic and lexical results, analyzer/version limits, and rollback guidance accurately.
 
