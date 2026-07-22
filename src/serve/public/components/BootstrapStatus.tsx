@@ -1,4 +1,6 @@
 import {
+  AlertCircleIcon,
+  CheckCircle2Icon,
   DownloadIcon,
   HardDriveIcon,
   PackageIcon,
@@ -18,6 +20,7 @@ import {
 
 interface BootstrapStatusProps {
   bootstrap: AppStatusResponse["bootstrap"];
+  activation: AppStatusResponse["activation"];
   onDownloadModels: () => void;
 }
 
@@ -37,6 +40,7 @@ function formatRole(
 }
 
 export function BootstrapStatus({
+  activation,
   bootstrap,
   onDownloadModels,
 }: BootstrapStatusProps) {
@@ -64,7 +68,7 @@ export function BootstrapStatus({
         )}
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <Card className="border-border/60 bg-card/70">
           <CardHeader className="pb-3">
             <div className="flex items-center gap-2">
@@ -125,6 +129,77 @@ export function BootstrapStatus({
                 </div>
               ))}
             </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-border/60 bg-card/70">
+          <CardHeader className="pb-3">
+            <div className="flex items-center gap-2">
+              {activation.healthy ? (
+                <CheckCircle2Icon className="size-4 text-emerald-500" />
+              ) : (
+                <AlertCircleIcon className="size-4 text-destructive" />
+              )}
+              <CardTitle className="text-base">Retrieval proof</CardTitle>
+            </div>
+            <CardDescription>
+              {activation.healthy
+                ? "Lexical retrieval proven"
+                : activation.usable
+                  ? `Search usable in ${activation.collections.filter(({ ready }) => ready).length}/${activation.collections.length} folders`
+                  : "Retrieval proof failed"}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3 text-sm">
+            {activation.collections.length === 0 ? (
+              <p className="text-muted-foreground">
+                Add and index a text folder to prove retrieval.
+              </p>
+            ) : (
+              activation.collections.map((collection) => (
+                <div
+                  className="rounded-lg border border-border/50 px-3 py-2"
+                  key={collection.collection}
+                >
+                  <p className="font-medium">{collection.collection}</p>
+                  <p className="text-muted-foreground text-xs">
+                    {collection.ready
+                      ? `Lexical passed; semantic ${collection.semanticAvailability.code}`
+                      : `${collection.remediation?.stage ?? "index"}/${collection.remediation?.code ?? "index_query_failed"}`}
+                  </p>
+                  {collection.remediation && (
+                    <p className="mt-1 font-mono text-muted-foreground text-xs">
+                      {collection.remediation.command}
+                    </p>
+                  )}
+                </div>
+              ))
+            )}
+            {activation.connectors.length > 0 && (
+              <div className="space-y-2 border-border/50 border-t pt-3">
+                <p className="font-medium text-xs uppercase tracking-wide">
+                  Connector proof
+                </p>
+                {activation.connectors.slice(0, 8).map((connector) => (
+                  <div
+                    className="text-muted-foreground text-xs"
+                    key={`${connector.collection}-${connector.target}`}
+                  >
+                    <span className="font-medium text-foreground">
+                      {connector.target}
+                    </span>{" "}
+                    · {connector.collection} · {connector.status}
+                    {connector.code ? `/${connector.code}` : ""}
+                  </div>
+                ))}
+                {activation.connectorProjection.total > 8 && (
+                  <p className="text-muted-foreground text-xs">
+                    +{activation.connectorProjection.total - 8} more
+                    target/collection checks
+                  </p>
+                )}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

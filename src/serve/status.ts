@@ -13,9 +13,18 @@ import type {
 } from "./status-model";
 
 import { getModelsCachePath } from "../app/constants";
+import {
+  type ActivationStatus,
+  buildActivationStatus,
+} from "../core/activation-status";
 import { ModelCache } from "../llm/cache";
 import { envIsSet, resolveDownloadPolicy } from "../llm/policy";
 import { getActivePreset, resolveModelUri } from "../llm/registry";
+import {
+  buildActivationCheck,
+  buildConnectorActivationCheck,
+} from "./activation-health";
+import { getConnectorVerificationTargets } from "./connectors";
 import { downloadState, type ServerContext } from "./context";
 
 const GIGABYTE = 1024 * 1024 * 1024;
@@ -60,6 +69,8 @@ export interface StatusBuildDeps {
   inspectDisk?: (path: string) => Promise<DiskSnapshot | null>;
   isModelCached?: (uri: string) => Promise<boolean>;
   listSuggestedCollections?: () => Promise<SuggestedCollection[]>;
+  buildActivation?: typeof buildActivationStatus;
+  listConnectorTargets?: typeof getConnectorVerificationTargets;
 }
 
 function formatBytes(bytes: number): string {
@@ -490,6 +501,7 @@ async function buildBootstrapState(
 
   const cachedCount = modelEntries.filter((entry) => entry.cached).length;
   const totalCount = modelEntries.length;
+  const totalSizeBytes = await cache.totalSize();
 
   const policySummary = policy.offline
     ? "Offline mode. Cached models only."
@@ -517,8 +529,8 @@ async function buildBootstrapState(
     },
     cache: {
       path: cache.dir,
-      totalSizeBytes: await cache.totalSize(),
-      totalSizeLabel: formatBytes(await cache.totalSize()),
+      totalSizeBytes,
+      totalSizeLabel: formatBytes(totalSizeBytes),
     },
     models: {
       activePresetId: preset.id,
@@ -540,12 +552,16 @@ function buildOnboarding(
   status: IndexStatus,
   modelCheck: HealthCheck,
   suggestions: SuggestedCollection[],
-  presetName: string
+  presetName: string,
+  activation: ActivationStatus
 ): AppStatusResponse["onboarding"] {
-  const foldersReady = status.collections.length > 0;
+  const foldersReady = activation.collections.length > 0;
   const modelsReady = modelCheck.status === "ok";
-  const indexedReady =
-    status.activeDocuments > 0 && status.embeddingBacklog === 0;
+  const indexedReady = activation.healthy;
+  const failedActivation = activation.collections.find(({ ready }) => !ready);
+  const activationDetail = failedActivation?.remediation
+    ? `${failedActivation.collection}: ${failedActivation.remediation.stage}/${failedActivation.remediation.code}. Run: ${failedActivation.remediation.command}`
+    : "Run the first sync to populate a searchable lexical index.";
 
   const steps = [
     {
@@ -555,6 +571,7 @@ function buildOnboarding(
       detail: foldersReady
         ? `${summarizeCount(status.collections.length, "folder")} connected.`
         : "Choose the folders you want GNO to watch and index.",
+      action: "add-collection",
     },
     {
       id: "preset",
@@ -567,21 +584,20 @@ function buildOnboarding(
           {
             id: "models",
             title: "Prepare local models",
-            status: foldersReady ? "current" : "upcoming",
+            status: "upcoming",
             detail: modelCheck.detail,
+            action: "download-models",
           },
         ] satisfies AppStatusResponse["onboarding"]["steps"])
       : []),
     {
       id: "indexing",
-      title: "Finish first index",
+      title: "Prove lexical retrieval",
       status: indexedReady ? "complete" : foldersReady ? "current" : "upcoming",
-      detail:
-        status.activeDocuments > 0 && status.embeddingBacklog > 0
-          ? `${summarizeCount(status.embeddingBacklog, "chunk")} still waiting on embeddings.`
-          : status.activeDocuments > 0
-            ? `${summarizeCount(status.activeDocuments, "document")} indexed so far.`
-            : "Run the first sync to scan your folders and build the search index.",
+      detail: indexedReady
+        ? `${summarizeCount(activation.collections.length, "folder")} passed a corpus-derived lexical proof.`
+        : activationDetail,
+      action: "sync",
     },
   ] satisfies AppStatusResponse["onboarding"]["steps"];
 
@@ -597,28 +613,14 @@ function buildOnboarding(
     };
   }
 
-  if (!modelsReady) {
-    return {
-      ready: false,
-      stage: "models",
-      headline: "Your folders are connected. Finish model setup next",
-      detail: modelCheck.detail,
-      suggestedCollections: suggestions,
-      steps,
-    };
-  }
-
   if (!indexedReady) {
     return {
       ready: false,
       stage: "indexing",
-      headline: "GNO is almost ready. Finish the first indexing run",
-      detail:
-        status.activeDocuments > 0 && status.embeddingBacklog > 0
-          ? `Finish embeddings for ${summarizeCount(status.embeddingBacklog, "chunk")} to unlock semantic search and local answers.`
-          : status.activeDocuments > 0
-            ? "The first sync started. Let embeddings finish so semantic search and answers can fully light up."
-            : "Run the first sync to populate the index from the folders you connected.",
+      headline: activation.usable
+        ? "Search works in some folders. Repair the remaining retrieval proof"
+        : "Finish the first lexical retrieval proof",
+      detail: activationDetail,
       suggestedCollections: suggestions,
       steps,
     };
@@ -628,7 +630,9 @@ function buildOnboarding(
     ready: true,
     stage: "ready",
     headline: "Workspace ready",
-    detail: "Your folders, local models, and first index are all in place.",
+    detail: modelsReady
+      ? "Every folder passed lexical retrieval. Local semantic models are also ready."
+      : "Every folder passed lexical retrieval. Semantic models remain an optional next step.",
     suggestedCollections: suggestions,
     steps,
   };
@@ -647,17 +651,43 @@ export async function buildAppStatus(
 
   const status = result.value;
   const preset = getActivePreset(ctx.config);
-  const [modelCheck, diskCheck, suggestions, bootstrap] = await Promise.all([
+  const cache = new ModelCache(getModelsCachePath());
+  const isModelCached =
+    deps.isModelCached ?? ((uri: string) => cache.isCached(uri));
+  const [
+    modelCheck,
+    diskCheck,
+    suggestions,
+    bootstrap,
+    embedCached,
+    connectorTargets,
+  ] = await Promise.all([
     buildModelCheck(ctx, deps),
     buildDiskCheck(status, deps),
     deps.listSuggestedCollections?.() ?? listSuggestedCollections(),
     buildBootstrapState(ctx),
+    isModelCached(preset.embed),
+    (deps.listConnectorTargets ?? getConnectorVerificationTargets)(),
   ]);
+  const activation = await (deps.buildActivation ?? buildActivationStatus)(
+    ctx.store,
+    ctx.config.collections.map(({ name }) => name),
+    {
+      semantic: {
+        modelsCached: embedCached,
+        embeddingBacklog: status.embeddingBacklog,
+        vectorAvailable: ctx.capabilities.vector,
+      },
+      connectorTargets,
+    }
+  );
 
   const backgroundCheck = buildBackgroundCheck(ctx, status);
   const checks = [
     buildCollectionCheck(status),
     buildIndexingCheck(status),
+    buildActivationCheck(activation),
+    buildConnectorActivationCheck(activation),
     modelCheck,
     buildVectorCheck(ctx),
     diskCheck,
@@ -698,7 +728,14 @@ export async function buildAppStatus(
       name: preset.name,
     },
     capabilities: ctx.capabilities,
-    onboarding: buildOnboarding(status, modelCheck, suggestions, preset.name),
+    activation,
+    onboarding: buildOnboarding(
+      status,
+      modelCheck,
+      suggestions,
+      preset.name,
+      activation
+    ),
     health: {
       state: healthState,
       summary: healthSummary,

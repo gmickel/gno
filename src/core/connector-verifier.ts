@@ -165,6 +165,19 @@ function connectorFingerprint(
   );
 }
 
+/** Pure lookup key for reading one target's fingerprint-current receipt. */
+export function getConnectorActivationReceiptLookup(
+  lexicalFingerprint: string,
+  target: ConnectorVerificationTarget
+): { connectorTarget: string; fingerprint: string } {
+  const normalizedTarget = normalizeConnectorTarget(target);
+  const identity = targetIdentity(normalizedTarget);
+  return {
+    connectorTarget: identity.connectorTarget,
+    fingerprint: connectorFingerprint(lexicalFingerprint, identity.normalized),
+  };
+}
+
 function connectorStage(
   status: "passed" | "failed" | "skipped",
   startedAt: string | null,

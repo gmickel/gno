@@ -205,6 +205,39 @@ export async function getConnectorStatuses(overrides?: {
   return statuses;
 }
 
+/** Inspect current connector configs without starting any connector runtime. */
+export async function getConnectorVerificationTargets(overrides?: {
+  cwd?: string;
+  homeDir?: string;
+}): Promise<ConnectorVerificationTarget[]> {
+  return Promise.all(
+    CONNECTOR_DEFINITIONS.map(async (definition) => {
+      if (definition.installKind === "skill") {
+        const paths = resolveSkillPaths({
+          scope: definition.scope,
+          target: definition.target,
+          ...overrides,
+        });
+        return {
+          kind: "skill",
+          id: definition.id,
+          target: definition.target,
+          scope: definition.scope,
+          configPath: paths.gnoDir,
+          installed: await Bun.file(`${paths.gnoDir}/SKILL.md`).exists(),
+        } satisfies ConnectorVerificationTarget;
+      }
+
+      const status = await checkMcpTargetStatus(
+        definition.target,
+        definition.scope,
+        overrides ?? {}
+      );
+      return toMcpConnectorVerificationTarget(definition.id, status);
+    })
+  );
+}
+
 export async function installConnector(
   id: string,
   options?: {

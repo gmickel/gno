@@ -414,19 +414,30 @@ async function testDoctor() {
   log(`\n${BOLD}Diagnostics${RESET}`);
 
   const { code, stdout } = await cli("doctor", "--json");
-  if (code === 0) {
-    try {
-      const result = JSON.parse(stdout);
-      if (typeof result.healthy === "boolean") {
-        pass("gno doctor --json");
-      } else {
-        fail("gno doctor", "missing healthy field");
-      }
-    } catch {
-      fail("gno doctor", "invalid JSON");
+  if (code !== 0 && code !== 2) {
+    fail("gno doctor", `unexpected exit ${code}`);
+    return;
+  }
+
+  try {
+    const result = JSON.parse(stdout);
+    if (typeof result.healthy !== "boolean") {
+      fail("gno doctor", "missing healthy field");
+      return;
     }
-  } else {
-    fail("gno doctor", `exit ${code}`);
+
+    const expectedCode = result.activation?.healthy === false ? 2 : 0;
+    if (code !== expectedCode) {
+      fail(
+        "gno doctor",
+        `activation health expected exit ${expectedCode}, received ${code}`
+      );
+      return;
+    }
+
+    pass("gno doctor --json");
+  } catch {
+    fail("gno doctor", "invalid JSON");
   }
 }
 

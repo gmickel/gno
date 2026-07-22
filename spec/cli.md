@@ -135,9 +135,67 @@ gno status [--json|--md]
   "totalChunks": 500,
   "embeddingBacklog": 0,
   "lastUpdated": "2025-12-23T10:00:00Z",
-  "healthy": true
+  "healthy": true,
+  "activation": {
+    "schemaVersion": "1.0",
+    "usable": true,
+    "healthy": true,
+    "collections": [
+      {
+        "collection": "work",
+        "ready": true,
+        "generatedAt": "2025-12-23T10:00:00Z",
+        "stages": {
+          "index": {
+            "status": "passed",
+            "startedAt": "2025-12-23T10:00:00Z",
+            "completedAt": "2025-12-23T10:00:00Z",
+            "latencyMs": 3
+          },
+          "lexical": {
+            "status": "passed",
+            "startedAt": "2025-12-23T10:00:00Z",
+            "completedAt": "2025-12-23T10:00:00Z",
+            "latencyMs": 2
+          },
+          "semantic": {
+            "status": "pending",
+            "startedAt": null,
+            "completedAt": null,
+            "latencyMs": null,
+            "code": "semantic_not_checked"
+          },
+          "connector": {
+            "status": "skipped",
+            "startedAt": null,
+            "completedAt": null,
+            "latencyMs": null,
+            "code": "connector_not_requested"
+          }
+        },
+        "semanticAvailability": {
+          "status": "pending",
+          "code": "semantic_not_checked",
+          "command": "gno status"
+        },
+        "remediation": null
+      }
+    ],
+    "connectors": [],
+    "connectorProjection": {
+      "total": 0,
+      "projected": 0,
+      "truncated": false
+    }
+  }
 }
 ```
+
+`activation.usable` means at least one configured collection passed its local
+lexical proof. `activation.healthy` means every configured collection passed.
+Semantic and connector stages remain independent; passive status never starts a
+model runtime or connector process. `gno status` still exits 0 when activation
+is unhealthy so scripts can inspect the structured state.
 
 **Exit Codes:**
 
@@ -1338,6 +1396,12 @@ the active embed model and stored vector dimensions to report the current
 freshness fingerprint, pending/stale chunks, legacy empty-fingerprint vectors,
 and stored fingerprint groups. Stale, legacy, and mixed groups are warnings;
 recover with `gno embed`, or `gno embed --force` if vectors still look stale.
+
+The additive `activation` object uses the same contract as `gno status` and
+`GET /api/status`. Doctor performs only the local lexical proof. It never starts
+connector children or initializes/downloads models. A failed lexical proof adds
+the `retrieval-activation` error check and exits 2 after writing the complete
+result; no duplicate error is written to stderr.
 
 **Exit Codes:**
 

@@ -1046,12 +1046,21 @@ function wireOnboardingCommands(program: Command): void {
     .action(async (cmdOpts: Record<string, unknown>) => {
       const format = getFormat(cmdOpts);
       const { doctor, formatDoctor } = await import("./commands/doctor");
-      const result = await doctor({ json: format === "json" });
+      const globals = getGlobals();
+      const result = await doctor({
+        configPath: globals.config,
+        indexName: globals.index,
+        json: format === "json",
+      });
 
-      // Doctor always succeeds but may report issues
       process.stdout.write(
         `${formatDoctor(result, { json: format === "json" })}\n`
       );
+      if (!result.activation.healthy) {
+        throw new CliError("RUNTIME", "Retrieval activation is unhealthy", {
+          silent: true,
+        });
+      }
     });
 }
 

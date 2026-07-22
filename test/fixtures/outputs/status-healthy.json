@@ -34,6 +34,18 @@
     "hybrid": true,
     "answer": true
   },
+  "activation": {
+    "schemaVersion": "1.0",
+    "usable": true,
+    "healthy": true,
+    "collections": [],
+    "connectors": [],
+    "connectorProjection": {
+      "total": 0,
+      "projected": 0,
+      "truncated": false
+    }
+  },
   "onboarding": {
     "ready": true,
     "stage": "ready",

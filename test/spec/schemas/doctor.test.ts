@@ -12,6 +12,14 @@ describe("doctor schema", () => {
   test("validates embedding fingerprint diagnostics", () => {
     const doctor = {
       healthy: true,
+      activation: {
+        schemaVersion: "1.0",
+        usable: true,
+        healthy: true,
+        collections: [],
+        connectors: [],
+        connectorProjection: { total: 0, projected: 0, truncated: false },
+      },
       checks: [
         {
           name: "embedding-fingerprint",
@@ -69,6 +77,32 @@ describe("doctor schema", () => {
           },
         },
       ],
+    };
+
+    expect(assertInvalid(doctor, schema)).toBe(true);
+  });
+
+  test("rejects arbitrary fields on connector projections", () => {
+    const doctor = {
+      healthy: false,
+      activation: {
+        schemaVersion: "1.0",
+        usable: false,
+        healthy: false,
+        collections: [],
+        connectors: [
+          {
+            collection: "notes",
+            target: "cursor-mcp",
+            status: "failed",
+            code: "connector_search_failed",
+            remediation: "Repeat explicit verification.",
+            connectorOutput: "must not cross the diagnostic boundary",
+          },
+        ],
+        connectorProjection: { total: 1, projected: 1, truncated: false },
+      },
+      checks: [],
     };
 
     expect(assertInvalid(doctor, schema)).toBe(true);

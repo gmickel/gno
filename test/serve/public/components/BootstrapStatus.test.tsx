@@ -7,6 +7,66 @@ describe("BootstrapStatus", () => {
   test("renders runtime, cache, and model readiness", () => {
     const html = renderToStaticMarkup(
       <BootstrapStatus
+        activation={{
+          schemaVersion: "1.0",
+          usable: true,
+          healthy: true,
+          collections: [
+            {
+              collection: "notes",
+              ready: true,
+              generatedAt: "2026-07-22T10:00:00.000Z",
+              stages: {
+                index: {
+                  status: "passed",
+                  startedAt: null,
+                  completedAt: null,
+                  latencyMs: 1,
+                },
+                lexical: {
+                  status: "passed",
+                  startedAt: null,
+                  completedAt: null,
+                  latencyMs: 1,
+                },
+                semantic: {
+                  status: "pending",
+                  startedAt: null,
+                  completedAt: null,
+                  latencyMs: null,
+                  code: "semantic_not_checked",
+                },
+                connector: {
+                  status: "skipped",
+                  startedAt: null,
+                  completedAt: null,
+                  latencyMs: null,
+                  code: "connector_not_requested",
+                },
+              },
+              semanticAvailability: {
+                status: "pending",
+                code: "models_missing",
+                command: "gno models pull --embed",
+              },
+              remediation: null,
+            },
+          ],
+          connectors: [
+            {
+              collection: "notes",
+              target: "cursor-mcp",
+              status: "failed",
+              code: "connector_timeout",
+              remediation: "Retry cursor-mcp verification.",
+            },
+          ],
+          connectorProjection: {
+            total: 1,
+            projected: 1,
+            truncated: false,
+          },
+        }}
         bootstrap={{
           runtime: {
             kind: "bun",
@@ -82,5 +142,10 @@ describe("BootstrapStatus", () => {
     expect(html).toContain("Models can auto-download on first use.");
     expect(html).toContain("Download missing models");
     expect(html).toContain("Needs download");
+    expect(html).toContain("Lexical retrieval proven");
+    expect(html).toContain("semantic models_missing");
+    expect(html).toContain("Connector proof");
+    expect(html).toContain("cursor-mcp");
+    expect(html).toContain("failed/connector_timeout");
   });
 });

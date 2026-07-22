@@ -12,6 +12,7 @@ import type {
   StorePort,
   StoreResult,
 } from "../store/types";
+import type { EphemeralActivationProbePlan } from "./activation-probe-plan";
 
 import { err, ok } from "../store/types";
 import {
@@ -43,6 +44,8 @@ export interface ActivationVerifierOptions {
   force?: boolean;
   now?: () => Date;
   monotonicNow?: () => number;
+  /** Precomputed, in-memory plan used to fingerprint-scope coalesced callers. */
+  plan?: EphemeralActivationProbePlan;
 }
 
 function elapsedMs(startedAt: number, monotonicNow: () => number): number {
@@ -142,11 +145,12 @@ export async function verifyLexicalActivation(
   const indexStartedAt = now().toISOString();
   const indexStartedClock = monotonicNow();
 
-  const planResult = await createEphemeralActivationProbePlan(
-    store,
-    collection,
-    { collectCandidates: false }
-  );
+  const planResult =
+    options.plan?.collection === collection
+      ? ok(options.plan)
+      : await createEphemeralActivationProbePlan(store, collection, {
+          collectCandidates: false,
+        });
   if (!planResult.ok) {
     return planResult;
   }
