@@ -110,7 +110,10 @@
           "items": { "$ref": "#/definitions/collection" }
         },
         "uriPrefix": {
-          "oneOf": [{ "$ref": "#/definitions/gnoUri" }, { "type": "null" }]
+          "oneOf": [
+            { "$ref": "#/definitions/gnoPrefixUri" },
+            { "type": "null" }
+          ]
         },
         "tagsAll": { "$ref": "#/definitions/filterValues" },
         "tagsAny": { "$ref": "#/definitions/filterValues" },

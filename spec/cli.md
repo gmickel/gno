@@ -84,6 +84,8 @@ equivalent files fail closed as ambiguous.
 | context add        | no     | no      | no    | no   | no    | terminal |
 | context list       | yes    | no      | no    | yes  | no    | terminal |
 | context check      | yes    | no      | no    | yes  | no    | terminal |
+| context build      | yes    | no      | no    | yes  | no    | Markdown |
+| context verify     | yes    | no      | no    | yes  | no    | Markdown |
 | context rm         | no     | no      | no    | no   | no    | terminal |
 | models list        | yes    | no      | no    | yes  | no    | terminal |
 | models pull        | no     | no      | no    | no   | no    | terminal |
@@ -1199,6 +1201,50 @@ gno context rm <scope>
 
 - 0: Success
 - 1: Scope not found
+
+---
+
+### gno context build
+
+Compile exact indexed evidence into a deterministic Context Capsule. The
+Capsule is returned only on stdout or at an explicitly requested output path;
+the command never persists Capsules implicitly. Model and download progress is
+written to stderr.
+
+**Synopsis:**
+
+```bash
+gno context build "<goal>" --budget <tokens> [--collection <name>] [--fast|--thorough] [--json|--md] [--output <file>]
+```
+
+`--budget` is the global token ceiling. `--bytes` optionally sets a separate
+byte ceiling; otherwise it is four times the token request. Without an active
+token counter, `usedTokens` uses the conservative UTF-8 byte count and the
+Capsule records `tokenizer_unavailable`. `--query`, `--uri-prefix`, tag,
+category, author, language, and date filters use the same canonical retrieval
+semantics as `gno query`. `--collection` is repeatable.
+
+JSON is the canonical V1 payload. Markdown is a readable projection of that
+same payload and hard-delimits each untrusted evidence passage. Invalid goals,
+budgets, filters, URI/index combinations, or output paths exit 1. Snapshot,
+retrieval, provenance, and store failures exit 2 with no partial Capsule.
+
+### gno context verify
+
+Verify a saved canonical JSON Capsule without rebuilding or mutating it.
+
+**Synopsis:**
+
+```bash
+gno context verify <file|-> [--json|--md] [--output <file>]
+```
+
+`-` reads stdin. Verification re-resolves exact source, mirror, chunk, passage,
+and index state. Without a live rank resolver, ranking is reported as
+`ranking_unavailable`; stale or missing evidence is never reported as ranked.
+JSON uses the canonical verification schema. Markdown projects the same receipt,
+including fingerprint drift and every available current hash. Non-canonical
+metadata and invalid identity/budget data fail before the store is read.
 
 ---
 

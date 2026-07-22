@@ -360,11 +360,11 @@ const rawCanonicalJson = (input: unknown): string => {
 };
 
 /** Verify a Capsule without rebuilding it or mutating caller-owned input. */
-export const verifyContextCapsule = async (
+export const parseCanonicalContextCapsuleForVerification = (
   input: unknown,
-  deps: ContextVerifierDeps
-): Promise<ContextCapsuleVerification> => {
-  const options = { countTokens: deps.countTokens };
+  countTokens?: ContextCapsuleCreateOptions["countTokens"]
+): ContextCapsuleV1 => {
+  const options = { countTokens };
   const rawInputBefore = rawCanonicalJson(input);
   if (hasNoncanonicalVerifierText(input)) {
     throw new ContextCapsuleContractError(
@@ -379,6 +379,19 @@ export const verifyContextCapsule = async (
       "Context Capsule input must already use its canonical semantic representation"
     );
   }
+  return capsule;
+};
+
+/** Verify a Capsule without rebuilding it or mutating caller-owned input. */
+export const verifyContextCapsule = async (
+  input: unknown,
+  deps: ContextVerifierDeps
+): Promise<ContextCapsuleVerification> => {
+  const rawInputBefore = rawCanonicalJson(input);
+  const capsule = parseCanonicalContextCapsuleForVerification(
+    input,
+    deps.countTokens
+  );
   const before = await captureContextEvidenceSnapshot(
     deps.store,
     capsule.scope.indexName,

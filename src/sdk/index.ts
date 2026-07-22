@@ -31,6 +31,10 @@ export type {
   GnoAskOptions,
   GnoCaptureOptions,
   GnoCaptureResult,
+  GnoContextErrorCode,
+  GnoContextInput,
+  GnoContextResult,
+  GnoContextVerificationResult,
   GnoClient,
   GnoClientInitOptions,
   GnoEmbedOptions,
@@ -51,3 +55,20 @@ export type {
   GnoUpdateOptions,
   GnoVectorSearchOptions,
 } from "./types";
+export {
+  ContextCapsuleContractError,
+  type ContextCapsuleErrorCode,
+  type ContextCapsuleV1,
+} from "../core/context-capsule";
+export {
+  ContextEvidenceError,
+  type ContextEvidenceErrorCode,
+} from "../core/context-evidence";
+export {
+  ContextVerifierError,
+  type ContextVerifierErrorCode,
+} from "../core/context-verifier";
+export {
+  ContextRuntimeError,
+  type ContextRuntimeErrorCode,
+} from "../app/context-runtime";

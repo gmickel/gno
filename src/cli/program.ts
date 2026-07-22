@@ -210,6 +210,42 @@ function parseCsvValues(raw: unknown): string[] | undefined {
   return values.length > 0 ? values : undefined;
 }
 
+function parseContextInteger(
+  name: string,
+  value: unknown,
+  allowZero = false
+): number {
+  const raw = typeof value === "string" ? value : String(value);
+  if (!/^\d+$/.test(raw)) {
+    throw new CliError("VALIDATION", `--${name} must be an integer`, {
+      details: { contextCode: "invalid_budget" },
+    });
+  }
+  const parsed = Number(raw);
+  if (!Number.isSafeInteger(parsed) || (allowZero ? parsed < 0 : parsed < 1)) {
+    throw new CliError(
+      "VALIDATION",
+      `--${name} must be ${allowZero ? "non-negative" : "positive"}`,
+      { details: { contextCode: "invalid_budget" } }
+    );
+  }
+  return parsed;
+}
+
+function validateContextOutputPath(value: unknown): string | undefined {
+  if (value === undefined) return undefined;
+  if (typeof value !== "string" || !value.trim() || value === "-") {
+    throw new CliError(
+      "VALIDATION",
+      "--output requires an explicit file path",
+      {
+        details: { contextCode: "invalid_filter" },
+      }
+    );
+  }
+  return value;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Program Factory
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1622,6 +1658,120 @@ function wireManagementCommands(program: Command): void {
 
       const { contextCheck } = await import("./commands/context");
       await contextCheck(format as "terminal" | "json" | "md");
+    });
+
+  contextCmd
+    .command("build <goal...>")
+    .description("Build a deterministic evidence Capsule")
+    .requiredOption("--budget <tokens>", "global token budget")
+    .option("--bytes <bytes>", "global byte budget")
+    .option("--query <query>", "retrieval query (defaults to goal)")
+    .option(
+      "-c, --collection <name>",
+      "collection filter (repeatable)",
+      (value: string, previous: string[] = []) => [...previous, value],
+      []
+    )
+    .option("--uri-prefix <uri>", "canonical GNO URI prefix")
+    .option("--tags-all <tags>", "require ALL tags (comma-separated)")
+    .option("--tags-any <tags>", "require ANY tag (comma-separated)")
+    .option("--category <values>", "require category match (comma-separated)")
+    .option("--author <text>", "filter by author")
+    .option("--lang <code>", "language hint (BCP-47)")
+    .option("--since <date>", "modified-at lower bound")
+    .option("--until <date>", "modified-at upper bound")
+    .option("--graph", "enable graph neighbor expansion")
+    .option("--fast", "use lexical-first fast retrieval")
+    .option("--thorough", "use a wider retrieval pool")
+    .option("-n, --limit <num>", "maximum retrieved results")
+    .option("-C, --candidate-limit <num>", "maximum rerank candidates")
+    .option("--safety-margin <tokens>", "reserved token margin", "0")
+    .option("--safety-margin-bytes <bytes>", "reserved byte margin", "0")
+    .option("--output <path>", "write only to this explicit file")
+    .option("--json", "canonical JSON output")
+    .option("--md", "readable Markdown output")
+    .action(async (goalParts: string[], cmdOpts: Record<string, unknown>) => {
+      const format = getFormat(cmdOpts);
+      assertFormatSupported(CMD.contextBuild, format);
+      const outputPath = validateContextOutputPath(cmdOpts.output);
+      if (cmdOpts.fast && cmdOpts.thorough) {
+        throw new CliError("VALIDATION", "Choose either --fast or --thorough");
+      }
+      const globals = getGlobals();
+      const { contextBuild } = await import("./commands/context-build");
+      const output = await contextBuild(goalParts.join(" "), {
+        configPath: globals.config,
+        indexName: globals.index,
+        budgetTokens: parseContextInteger("budget", cmdOpts.budget),
+        budgetBytes:
+          cmdOpts.bytes === undefined
+            ? undefined
+            : parseContextInteger("bytes", cmdOpts.bytes),
+        safetyMarginTokens: parseContextInteger(
+          "safety-margin",
+          cmdOpts.safetyMargin ?? "0",
+          true
+        ),
+        safetyMarginBytes: parseContextInteger(
+          "safety-margin-bytes",
+          cmdOpts.safetyMarginBytes ?? "0",
+          true
+        ),
+        query: cmdOpts.query as string | undefined,
+        collections: cmdOpts.collection as string[],
+        uriPrefix: cmdOpts.uriPrefix as string | undefined,
+        tagsAll: parseCsvValues(cmdOpts.tagsAll),
+        tagsAny: parseCsvValues(cmdOpts.tagsAny),
+        categories: parseCsvValues(cmdOpts.category),
+        author: cmdOpts.author as string | undefined,
+        lang: cmdOpts.lang as string | undefined,
+        since: cmdOpts.since as string | undefined,
+        until: cmdOpts.until as string | undefined,
+        graph: Boolean(cmdOpts.graph),
+        limit:
+          cmdOpts.limit === undefined
+            ? undefined
+            : parseContextInteger("limit", cmdOpts.limit),
+        candidateLimit:
+          cmdOpts.candidateLimit === undefined
+            ? undefined
+            : parseContextInteger("candidate-limit", cmdOpts.candidateLimit),
+        depthPolicy: cmdOpts.fast
+          ? "fast"
+          : cmdOpts.thorough
+            ? "thorough"
+            : "balanced",
+        format: format === "json" ? "json" : "md",
+      });
+      if (outputPath !== undefined) {
+        await Bun.write(outputPath, output);
+        return;
+      }
+      await writeOutput(output, format === "json" ? "json" : "md");
+    });
+
+  contextCmd
+    .command("verify <file>")
+    .description("Verify a saved Context Capsule without rebuilding it")
+    .option("--output <path>", "write only to this explicit file")
+    .option("--json", "canonical JSON receipt")
+    .option("--md", "readable Markdown receipt")
+    .action(async (file: string, cmdOpts: Record<string, unknown>) => {
+      const format = getFormat(cmdOpts);
+      assertFormatSupported(CMD.contextVerify, format);
+      const outputPath = validateContextOutputPath(cmdOpts.output);
+      const globals = getGlobals();
+      const { contextVerify } = await import("./commands/context-verify");
+      const output = await contextVerify(file, {
+        configPath: globals.config,
+        indexName: globals.index,
+        format: format === "json" ? "json" : "md",
+      });
+      if (outputPath !== undefined) {
+        await Bun.write(outputPath, output);
+        return;
+      }
+      await writeOutput(output, format === "json" ? "json" : "md");
     });
 
   contextCmd

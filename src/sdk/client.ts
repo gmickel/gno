@@ -22,6 +22,9 @@ import type {
   GnoCreateFolderResult,
   GnoCreateNoteOptions,
   GnoCreateNoteResult,
+  GnoContextInput,
+  GnoContextResult,
+  GnoContextVerificationResult,
   GnoClientInitOptions,
   GnoDuplicateNoteOptions,
   GnoEmbedOptions,
@@ -40,6 +43,10 @@ import type {
 } from "./types";
 
 import { decorateUriForIndex, getIndexDbPath } from "../app/constants";
+import {
+  buildContextCapsule,
+  verifyContextCapsuleRuntime,
+} from "../app/context-runtime";
 import { INDEX_NAME_REQUIREMENTS, isValidIndexName } from "../app/index-name";
 import {
   ConfigSchema,
@@ -642,6 +649,44 @@ class GnoClientImpl implements GnoClient {
     } finally {
       await this.disposeRuntimePorts(ports);
     }
+  }
+
+  async context(input: GnoContextInput): Promise<GnoContextResult> {
+    this.assertOpen();
+    const collection =
+      input.collections?.length === 1 ? input.collections[0] : undefined;
+    const useModels = input.depthPolicy !== "fast";
+    const ports = await this.createRuntimePorts({
+      embed: useModels,
+      rerank: useModels,
+      collection,
+    });
+    try {
+      return await buildContextCapsule(
+        { ...input, indexName: this.indexName },
+        {
+          store: this.store,
+          config: this.config,
+          indexName: this.indexName,
+          vectorIndex: ports.vectorIndex,
+          embedPort: ports.embedPort,
+          rerankPort: ports.rerankPort,
+        }
+      );
+    } finally {
+      await this.disposeRuntimePorts(ports);
+    }
+  }
+
+  async verifyContext(
+    capsule: GnoContextResult
+  ): Promise<GnoContextVerificationResult> {
+    this.assertOpen();
+    return verifyContextCapsuleRuntime(capsule, {
+      store: this.store,
+      config: this.config,
+      indexName: this.indexName,
+    });
   }
 
   async get(ref: string, options: GnoGetOptions = {}) {

@@ -642,6 +642,47 @@ Validate context configuration.
 gno context check
 ```
 
+### gno context build
+
+Compile a goal into a deterministic, citation-complete evidence Capsule:
+
+```bash
+gno context build "launch decision" --budget 12000 --json
+gno context build "compare the proposals" --budget 16000 --collection work --md
+gno context build "release evidence" --budget 12000 --fast --output capsule.json
+```
+
+The budget applies to the complete canonical payload, not separately to each
+document. Evidence keeps exact canonical-mirror line ranges and source, mirror,
+and passage hashes. Selection collapses duplicates, rewards uncovered query
+facets, and records every omission and gap. `--fast` avoids model loading;
+default and `--thorough` use available semantic/rerank capabilities and record
+fallbacks when unavailable.
+
+JSON is deterministic and machine-readable. Markdown is a readable projection
+of the same Capsule with untrusted passages explicitly delimited. Use
+`--output <file>` for explicit file output; GNO never saves Capsules implicitly.
+Progress stays on stderr, leaving stdout or the output file clean.
+
+Filters include repeatable `--collection`, `--uri-prefix`, `--tags-all`,
+`--tags-any`, `--category`, `--author`, `--lang`, `--since`, and `--until`.
+`--query` can separate the retrieval query from the stated goal.
+
+### gno context verify
+
+Recheck a saved Capsule without rebuilding it:
+
+```bash
+gno context verify capsule.json --json
+cat capsule.json | gno context verify - --md
+```
+
+The receipt classifies each evidence item as unchanged, stale, or missing and
+ranking as unchanged, reranked, or unavailable. It includes fingerprint drift
+independently from ranking plus current source, mirror, and passage hashes when
+known. No rank resolver means `ranking_unavailable`; stale or missing content
+is never ranked.
+
 ### gno context rm
 
 ```bash

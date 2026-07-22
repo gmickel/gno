@@ -4,8 +4,19 @@
  * @module src/sdk/types
  */
 
+import type {
+  ContextCapsuleBuildInput,
+  ContextRuntimeErrorCode,
+} from "../app/context-runtime";
 import type { Config } from "../config/types";
 import type { CaptureInput, CaptureReceipt } from "../core/capture";
+import type {
+  ContextCapsuleErrorCode,
+  ContextCapsuleV1,
+  ContextCapsuleVerification,
+} from "../core/context-capsule";
+import type { ContextEvidenceErrorCode } from "../core/context-evidence";
+import type { ContextVerifierErrorCode } from "../core/context-verifier";
 import type { NoteCollisionPolicy } from "../core/note-creation";
 import type { NotePresetId } from "../core/note-presets";
 import type { DocumentSection } from "../core/sections";
@@ -64,6 +75,15 @@ export type GnoAskOptions = AskOptions & GnoModelOverrides;
 export type GnoVectorSearchOptions = SearchOptions & {
   model?: string;
 };
+
+export type GnoContextInput = Omit<ContextCapsuleBuildInput, "indexName">;
+export type GnoContextResult = ContextCapsuleV1;
+export type GnoContextVerificationResult = ContextCapsuleVerification;
+export type GnoContextErrorCode =
+  | ContextRuntimeErrorCode
+  | ContextCapsuleErrorCode
+  | ContextEvidenceErrorCode
+  | ContextVerifierErrorCode;
 
 export interface GnoGetOptions {
   from?: number;
@@ -185,6 +205,10 @@ export interface GnoClient {
   ): Promise<SearchResults>;
   query(query: string, options?: GnoQueryOptions): Promise<SearchResults>;
   ask(query: string, options?: GnoAskOptions): Promise<AskResult>;
+  context(input: GnoContextInput): Promise<GnoContextResult>;
+  verifyContext(
+    capsule: ContextCapsuleV1
+  ): Promise<GnoContextVerificationResult>;
   get(
     ref: string,
     options?: GnoGetOptions

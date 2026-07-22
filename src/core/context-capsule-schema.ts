@@ -102,7 +102,7 @@ const scopeSchema = z
   .object({
     indexName: nonEmptyTextSchema.max(64).refine(isValidIndexName),
     collections: z.array(collectionSchema).max(128),
-    uriPrefix: contextCapsuleGnoUriSchema.nullable(),
+    uriPrefix: contextCapsulePrefixUriSchema.nullable(),
     tagsAll: z.array(nonEmptyTextSchema.max(256)).max(128),
     tagsAny: z.array(nonEmptyTextSchema.max(256)).max(128),
     categories: z.array(nonEmptyTextSchema.max(256)).max(128),
