@@ -30,9 +30,8 @@ Integrate qmd as an immutable external comparator without trusting PATH, modifyi
 - [ ] qmd receipts distinguish `harness_observed` returned-content hashes from nullable backend hashes and declare every unavailable capability/measurement rather than imputing calls, spans, hashes, tokens, or lifecycle parity.
 
 ## Done summary
-TBD
-
+Implemented the explicit opt-in qmd comparator with an exact repository/package/tool/model lock, isolated offline native index preparation, pristine per-process database clones, deterministic cold/warm lifecycle behavior, canonical adapter normalization, and fail-closed scope/output validation. Added cancellation-aware large-file work, exact Bun launch, inherited QMD environment scrubbing, checkout mutation checks, and current-cache diagnostics. Independent review verdict: SHIP with no remaining P0/P1/P2 findings.
 ## Evidence
-- Commits:
-- Tests:
+- Commits: 4893569
+- Tests: bun test test/eval/agentic/qmd-lock.test.ts test/eval/agentic/qmd-native-status.test.ts test/eval/agentic/qmd-normalize.test.ts test/eval/agentic/qmd-adapter.test.ts (23 pass, 96 assertions), bunx tsc --noEmit, bunx oxlint --type-aware --type-check <task5 qmd files> (0 warnings, 0 errors), independent review: SHIP, no P0/P1/P2 findings
 - PRs:
