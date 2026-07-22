@@ -1,0 +1,42 @@
+{
+  "schemaVersion": "1.0",
+  "taskId": "t6071829",
+  "claims": [
+    {
+      "claimKey": "selectedDatabase",
+      "expectedValue": {
+        "type": "string",
+        "value": "PostgreSQL"
+      },
+      "normalizer": {
+        "id": "exact-v1",
+        "version": 1
+      },
+      "requiredEvidence": [
+        {
+          "uri": "gno://c007/d001.md",
+          "sourceHash": "fd3c6b2c7a9616068d0d5bf3ac0b43f2e269a25f0c269099a6debe74eb0e5c23",
+          "startLine": 3,
+          "endLine": 3,
+          "spanHash": "8a6399715ed5f5f6db1149612df3a5d53a2c39e2a7dfe8a25d6a0d41f2dd4440",
+          "sourceHashProvenance": "harness_observed",
+          "spanHashProvenance": "harness_observed"
+        }
+      ],
+      "optionalEvidence": [],
+      "forbiddenEvidence": []
+    }
+  ],
+  "expectedMissing": [],
+  "expectedScope": {
+    "collection": null,
+    "filters": {}
+  },
+  "completion": {
+    "expectAbstention": false,
+    "maxAgentCalls": 3,
+    "maxModelVisibleBytes": 12000,
+    "failOnUnexpectedEvidence": false
+  },
+  "leakCanaries": ["oracle-only-t6071829-9f7c2a"]
+}

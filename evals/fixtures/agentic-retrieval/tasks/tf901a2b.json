@@ -1,0 +1,28 @@
+{
+  "schemaVersion": "1.0",
+  "taskId": "tf901a2b",
+  "category": "multilingual",
+  "brief": {
+    "goal": "Quelle date de renouvellement est indiquée dans le contrat français ?",
+    "instructions": [
+      "Return only the declared structured claims or gaps.",
+      "Cite exact evidence spans and abstain when required evidence is absent."
+    ]
+  },
+  "claims": [
+    {
+      "claimKey": "renewalDate",
+      "valueType": "date",
+      "substantive": true,
+      "required": true
+    }
+  ],
+  "allowedTools": ["search", "get", "multi_get"],
+  "budgets": {
+    "maxAgentCalls": 3,
+    "maxModelVisibleBytes": 12000
+  },
+  "corpus": {
+    "collections": ["c010"]
+  }
+}

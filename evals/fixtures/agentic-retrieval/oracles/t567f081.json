@@ -1,0 +1,42 @@
+{
+  "schemaVersion": "1.0",
+  "taskId": "t567f081",
+  "claims": [
+    {
+      "claimKey": "initiativeOwner",
+      "expectedValue": {
+        "type": "string",
+        "value": "Casey Lin"
+      },
+      "normalizer": {
+        "id": "exact-v1",
+        "version": 1
+      },
+      "requiredEvidence": [
+        {
+          "uri": "gno://c016/d001.md",
+          "sourceHash": "9024c0e24d568a709478e7797e0c4ced44d9dee8bddf06b44c168ce3cdbd3d2c",
+          "startLine": 3,
+          "endLine": 3,
+          "spanHash": "33e439ffe7deec12e23219ddec84e931b276f372e11355ab8d9c6bb58742e286",
+          "sourceHashProvenance": "harness_observed",
+          "spanHashProvenance": "harness_observed"
+        }
+      ],
+      "optionalEvidence": [],
+      "forbiddenEvidence": []
+    }
+  ],
+  "expectedMissing": [],
+  "expectedScope": {
+    "collection": "c016",
+    "filters": {}
+  },
+  "completion": {
+    "expectAbstention": false,
+    "maxAgentCalls": 3,
+    "maxModelVisibleBytes": 12000,
+    "failOnUnexpectedEvidence": false
+  },
+  "leakCanaries": ["oracle-only-t567f081-9f7c2a"]
+}

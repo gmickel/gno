@@ -1,0 +1,42 @@
+{
+  "schemaVersion": "1.0",
+  "taskId": "tf901a2b",
+  "claims": [
+    {
+      "claimKey": "renewalDate",
+      "expectedValue": {
+        "type": "date",
+        "value": "2026-10-03"
+      },
+      "normalizer": {
+        "id": "iso-date-v1",
+        "version": 1
+      },
+      "requiredEvidence": [
+        {
+          "uri": "gno://c010/d001.md",
+          "sourceHash": "5355f832bc4b4ef7eaee1d9c097d2b23e66b701a2312b5f608fec3e34ec81c61",
+          "startLine": 3,
+          "endLine": 3,
+          "spanHash": "856b536920299946d26b581915902e5758426046004d35717bc263382a4d30dc",
+          "sourceHashProvenance": "harness_observed",
+          "spanHashProvenance": "harness_observed"
+        }
+      ],
+      "optionalEvidence": [],
+      "forbiddenEvidence": []
+    }
+  ],
+  "expectedMissing": [],
+  "expectedScope": {
+    "collection": null,
+    "filters": {}
+  },
+  "completion": {
+    "expectAbstention": false,
+    "maxAgentCalls": 3,
+    "maxModelVisibleBytes": 12000,
+    "failOnUnexpectedEvidence": false
+  },
+  "leakCanaries": ["oracle-only-tf901a2b-9f7c2a"]
+}

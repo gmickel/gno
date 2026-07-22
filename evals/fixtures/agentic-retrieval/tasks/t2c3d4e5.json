@@ -1,0 +1,28 @@
+{
+  "schemaVersion": "1.0",
+  "taskId": "t2c3d4e5",
+  "category": "ambiguity",
+  "brief": {
+    "goal": "What codename does the software project Mercury use? Do not answer about astronomy.",
+    "instructions": [
+      "Return only the declared structured claims or gaps.",
+      "Cite exact evidence spans and abstain when required evidence is absent."
+    ]
+  },
+  "claims": [
+    {
+      "claimKey": "projectCodename",
+      "valueType": "string",
+      "substantive": true,
+      "required": true
+    }
+  ],
+  "allowedTools": ["search", "get", "multi_get"],
+  "budgets": {
+    "maxAgentCalls": 3,
+    "maxModelVisibleBytes": 12000
+  },
+  "corpus": {
+    "collections": ["c003"]
+  }
+}

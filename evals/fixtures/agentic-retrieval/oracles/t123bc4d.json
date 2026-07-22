@@ -1,0 +1,42 @@
+{
+  "schemaVersion": "1.0",
+  "taskId": "t123bc4d",
+  "claims": [
+    {
+      "claimKey": "releaseCodename",
+      "expectedValue": {
+        "type": "string",
+        "value": "蓝鲸"
+      },
+      "normalizer": {
+        "id": "exact-v1",
+        "version": 1
+      },
+      "requiredEvidence": [
+        {
+          "uri": "gno://c012/d001.md",
+          "sourceHash": "55c0749f5106ee5d826cae27dc109f0835efb7f063cfe94832f2dd3f331af8c7",
+          "startLine": 3,
+          "endLine": 3,
+          "spanHash": "bb07ed4c5eb39044c02b392e70671e302c9f124c63ff8b9e9c998b11cda60177",
+          "sourceHashProvenance": "harness_observed",
+          "spanHashProvenance": "harness_observed"
+        }
+      ],
+      "optionalEvidence": [],
+      "forbiddenEvidence": []
+    }
+  ],
+  "expectedMissing": [],
+  "expectedScope": {
+    "collection": null,
+    "filters": {}
+  },
+  "completion": {
+    "expectAbstention": false,
+    "maxAgentCalls": 3,
+    "maxModelVisibleBytes": 12000,
+    "failOnUnexpectedEvidence": false
+  },
+  "leakCanaries": ["oracle-only-t123bc4d-9f7c2a"]
+}

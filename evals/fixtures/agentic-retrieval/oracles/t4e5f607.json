@@ -1,0 +1,51 @@
+{
+  "schemaVersion": "1.0",
+  "taskId": "t4e5f607",
+  "claims": [
+    {
+      "claimKey": "retentionComparison",
+      "expectedValue": {
+        "type": "string",
+        "value": "Standard: 30 days; Regulated: 90 days"
+      },
+      "normalizer": {
+        "id": "exact-v1",
+        "version": 1
+      },
+      "requiredEvidence": [
+        {
+          "uri": "gno://c005/d001.md",
+          "sourceHash": "fd5e3609879dde23f83010d591146418c9578a21f862e42ad322b773906b5c84",
+          "startLine": 3,
+          "endLine": 3,
+          "spanHash": "f57d1be700500ba5b1fbac0a39980d6f60db8e9cfed9dd6c6d2dfbeca34cac6b",
+          "sourceHashProvenance": "harness_observed",
+          "spanHashProvenance": "harness_observed"
+        },
+        {
+          "uri": "gno://c005/d002.md",
+          "sourceHash": "14d452bd9958c2ba1f01fc395209fabdb3c8792e24c906866720d01e63abc9cf",
+          "startLine": 3,
+          "endLine": 3,
+          "spanHash": "477c529b6c172e3866267da4a79f77a1256d1968fc21038ec62ebd579663d92b",
+          "sourceHashProvenance": "harness_observed",
+          "spanHashProvenance": "harness_observed"
+        }
+      ],
+      "optionalEvidence": [],
+      "forbiddenEvidence": []
+    }
+  ],
+  "expectedMissing": [],
+  "expectedScope": {
+    "collection": null,
+    "filters": {}
+  },
+  "completion": {
+    "expectAbstention": false,
+    "maxAgentCalls": 3,
+    "maxModelVisibleBytes": 12000,
+    "failOnUnexpectedEvidence": false
+  },
+  "leakCanaries": ["oracle-only-t4e5f607-9f7c2a"]
+}

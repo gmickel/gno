@@ -1,0 +1,268 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "gno://schemas/evals/agentic/trajectory-receipt@1.0",
+  "title": "TrajectoryReceipt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "canonical", "observations"],
+  "properties": {
+    "schemaVersion": { "const": "1.0" },
+    "canonical": { "$ref": "#/definitions/canonical" },
+    "observations": { "$ref": "#/definitions/observations" }
+  },
+  "definitions": {
+    "fingerprint": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "nullableString": {
+      "oneOf": [{ "type": "string" }, { "type": "null" }]
+    },
+    "canonical": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion",
+        "taskId",
+        "adapterId",
+        "trialId",
+        "lifecycle",
+        "agentId",
+        "calls",
+        "agentCalls",
+        "backendInvocations",
+        "modelVisibleUtf8Bytes",
+        "measuredTokens",
+        "finalEnvelope",
+        "stopReason",
+        "failure",
+        "fingerprints"
+      ],
+      "properties": {
+        "schemaVersion": { "const": "1.0" },
+        "taskId": { "type": "string", "pattern": "^t[0-9a-f]{7}$" },
+        "adapterId": { "type": "string", "minLength": 1 },
+        "trialId": { "type": "string", "minLength": 1 },
+        "lifecycle": { "enum": ["cold", "warm"] },
+        "agentId": { "type": "string", "minLength": 1 },
+        "calls": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/call" }
+        },
+        "agentCalls": { "type": "integer", "minimum": 0 },
+        "backendInvocations": { "type": "integer", "minimum": 0 },
+        "modelVisibleUtf8Bytes": { "type": "integer", "minimum": 0 },
+        "measuredTokens": {
+          "oneOf": [{ "type": "integer", "minimum": 0 }, { "type": "null" }]
+        },
+        "finalEnvelope": {
+          "oneOf": [
+            { "$ref": "gno://schemas/evals/agentic/final-envelope@1.0" },
+            { "type": "null" }
+          ]
+        },
+        "stopReason": {
+          "enum": [
+            "complete",
+            "abstained",
+            "budget_exhausted",
+            "tool_unavailable",
+            "error"
+          ]
+        },
+        "failure": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["class", "code", "redactedMessage"],
+          "properties": {
+            "class": {
+              "enum": ["none", "harness_error", "agent_error", "product_error"]
+            },
+            "code": { "$ref": "#/definitions/nullableString" },
+            "redactedMessage": { "$ref": "#/definitions/nullableString" }
+          }
+        },
+        "fingerprints": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "corpus",
+            "prompt",
+            "tools",
+            "model",
+            "runtime",
+            "config",
+            "index"
+          ],
+          "properties": {
+            "corpus": { "$ref": "#/definitions/fingerprint" },
+            "prompt": { "$ref": "#/definitions/fingerprint" },
+            "tools": { "$ref": "#/definitions/fingerprint" },
+            "model": { "$ref": "#/definitions/fingerprint" },
+            "runtime": { "$ref": "#/definitions/fingerprint" },
+            "config": { "$ref": "#/definitions/fingerprint" },
+            "index": { "$ref": "#/definitions/fingerprint" }
+          }
+        }
+      }
+    },
+    "call": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "callIndex",
+        "toolName",
+        "arguments",
+        "result",
+        "modelVisibleUtf8Bytes",
+        "measuredTokens",
+        "tokenizerFingerprint",
+        "backendInvocations"
+      ],
+      "properties": {
+        "callIndex": { "type": "integer", "minimum": 0 },
+        "toolName": { "type": "string", "minLength": 1 },
+        "arguments": { "type": "object" },
+        "result": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["status", "content", "evidence", "errorCode"],
+          "properties": {
+            "status": { "enum": ["ok", "error"] },
+            "content": { "type": "string" },
+            "evidence": {
+              "type": "array",
+              "items": { "$ref": "#/definitions/toolEvidence" }
+            },
+            "errorCode": { "$ref": "#/definitions/nullableString" }
+          }
+        },
+        "modelVisibleUtf8Bytes": { "type": "integer", "minimum": 0 },
+        "measuredTokens": {
+          "oneOf": [{ "type": "integer", "minimum": 0 }, { "type": "null" }]
+        },
+        "tokenizerFingerprint": {
+          "oneOf": [{ "$ref": "#/definitions/fingerprint" }, { "type": "null" }]
+        },
+        "backendInvocations": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "toolEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "uri",
+        "sourceHash",
+        "startLine",
+        "endLine",
+        "spanHash",
+        "sourceHashProvenance",
+        "spanHashProvenance",
+        "text",
+        "backendSourceHash",
+        "backendSpanHash",
+        "backendHashUnavailableReason"
+      ],
+      "properties": {
+        "uri": { "type": "string", "pattern": "^gno://" },
+        "sourceHash": { "$ref": "#/definitions/fingerprint" },
+        "startLine": { "type": "integer", "minimum": 1 },
+        "endLine": { "type": "integer", "minimum": 1 },
+        "spanHash": { "$ref": "#/definitions/fingerprint" },
+        "sourceHashProvenance": {
+          "enum": ["harness_observed", "backend_provided"]
+        },
+        "spanHashProvenance": {
+          "enum": ["harness_observed", "backend_provided"]
+        },
+        "text": { "type": "string" },
+        "backendSourceHash": {
+          "oneOf": [{ "$ref": "#/definitions/fingerprint" }, { "type": "null" }]
+        },
+        "backendSpanHash": {
+          "oneOf": [{ "$ref": "#/definitions/fingerprint" }, { "type": "null" }]
+        },
+        "backendHashUnavailableReason": {
+          "$ref": "#/definitions/nullableString"
+        }
+      }
+    },
+    "timing": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["valueMs", "unavailableReason"],
+          "properties": {
+            "valueMs": { "type": "number", "minimum": 0 },
+            "unavailableReason": { "type": "null" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["valueMs", "unavailableReason"],
+          "properties": {
+            "valueMs": { "type": "null" },
+            "unavailableReason": { "type": "string", "minLength": 1 }
+          }
+        }
+      ]
+    },
+    "observations": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "recordedAt",
+        "timings",
+        "process",
+        "tempPaths",
+        "diagnostics"
+      ],
+      "properties": {
+        "recordedAt": { "type": "string", "format": "date-time" },
+        "timings": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "preparation",
+            "startup",
+            "modelLoad",
+            "tool",
+            "driver",
+            "endToEnd"
+          ],
+          "properties": {
+            "preparation": { "$ref": "#/definitions/timing" },
+            "startup": { "$ref": "#/definitions/timing" },
+            "modelLoad": { "$ref": "#/definitions/timing" },
+            "tool": { "$ref": "#/definitions/timing" },
+            "driver": { "$ref": "#/definitions/timing" },
+            "endToEnd": { "$ref": "#/definitions/timing" }
+          }
+        },
+        "process": {
+          "oneOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["peakRssBytes", "unavailableReason"],
+              "properties": {
+                "peakRssBytes": { "type": "integer", "minimum": 0 },
+                "unavailableReason": { "type": "null" }
+              }
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["peakRssBytes", "unavailableReason"],
+              "properties": {
+                "peakRssBytes": { "type": "null" },
+                "unavailableReason": { "type": "string", "minLength": 1 }
+              }
+            }
+          ]
+        },
+        "tempPaths": { "type": "array", "items": { "type": "string" } },
+        "diagnostics": { "type": "array", "items": { "type": "string" } }
+      }
+    }
+  }
+}

@@ -1,0 +1,52 @@
+{
+  "schemaVersion": "1.0",
+  "taskId": "t6780192",
+  "claims": [
+    {
+      "claimKey": "rolloutRegion",
+      "expectedValue": {
+        "type": "string",
+        "value": "north"
+      },
+      "normalizer": {
+        "id": "exact-v1",
+        "version": 1
+      },
+      "requiredEvidence": [
+        {
+          "uri": "gno://c017/d002.md",
+          "sourceHash": "88c7021ebc0f1bb38c8948242b76528b7c4bde832efb77bb90fd9d76e6b358a2",
+          "startLine": 3,
+          "endLine": 3,
+          "spanHash": "ecbc1a2f7d95d2187a3b3470b9cb5f8907aa031fa23378b268d869cd6a9a642c",
+          "sourceHashProvenance": "harness_observed",
+          "spanHashProvenance": "harness_observed"
+        }
+      ],
+      "optionalEvidence": [],
+      "forbiddenEvidence": [
+        {
+          "uri": "gno://c017/d001.md",
+          "sourceHash": "d3fa9ee7709ed93d676fc38c7d405e0ac0428fe8da24230da06db27f6bd970f1",
+          "startLine": 3,
+          "endLine": 3,
+          "spanHash": "b7a1baaaeb4fb6119a7bdba5c7a7ab94b65b74036b3c9a1c8bc8e0d6ee78e4c9",
+          "sourceHashProvenance": "harness_observed",
+          "spanHashProvenance": "harness_observed"
+        }
+      ]
+    }
+  ],
+  "expectedMissing": [],
+  "expectedScope": {
+    "collection": null,
+    "filters": {}
+  },
+  "completion": {
+    "expectAbstention": false,
+    "maxAgentCalls": 3,
+    "maxModelVisibleBytes": 12000,
+    "failOnUnexpectedEvidence": false
+  },
+  "leakCanaries": ["oracle-only-t6780192-9f7c2a"]
+}

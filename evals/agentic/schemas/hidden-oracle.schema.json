@@ -1,0 +1,126 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "gno://schemas/evals/agentic/hidden-oracle@1.0",
+  "title": "HiddenOracle",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "taskId",
+    "claims",
+    "expectedMissing",
+    "expectedScope",
+    "completion",
+    "leakCanaries"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "1.0" },
+    "taskId": { "type": "string", "pattern": "^t[0-9a-f]{7}$" },
+    "claims": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "claimKey",
+          "expectedValue",
+          "normalizer",
+          "requiredEvidence",
+          "optionalEvidence",
+          "forbiddenEvidence"
+        ],
+        "properties": {
+          "claimKey": { "type": "string", "pattern": "^[a-z][a-zA-Z0-9]*$" },
+          "expectedValue": {
+            "$ref": "gno://schemas/evals/agentic/final-envelope@1.0#/definitions/claimValue"
+          },
+          "normalizer": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "version"],
+            "properties": {
+              "id": {
+                "enum": [
+                  "exact-v1",
+                  "trim-lower-v1",
+                  "identifier-v1",
+                  "iso-date-v1",
+                  "string-set-v1"
+                ]
+              },
+              "version": { "const": 1 }
+            }
+          },
+          "requiredEvidence": {
+            "type": "array",
+            "items": {
+              "$ref": "gno://schemas/evals/agentic/final-envelope@1.0#/definitions/evidence"
+            }
+          },
+          "optionalEvidence": {
+            "type": "array",
+            "items": {
+              "$ref": "gno://schemas/evals/agentic/final-envelope@1.0#/definitions/evidence"
+            }
+          },
+          "forbiddenEvidence": {
+            "type": "array",
+            "items": {
+              "$ref": "gno://schemas/evals/agentic/final-envelope@1.0#/definitions/evidence"
+            }
+          }
+        }
+      }
+    },
+    "expectedMissing": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "type": "string", "pattern": "^[a-z][a-zA-Z0-9]*$" }
+    },
+    "expectedScope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["collection", "filters"],
+      "properties": {
+        "collection": {
+          "oneOf": [
+            { "type": "string", "pattern": "^c[0-9a-f]{3}$" },
+            { "type": "null" }
+          ]
+        },
+        "filters": {
+          "type": "object",
+          "propertyNames": { "pattern": "^[a-z][a-zA-Z0-9]*$" },
+          "additionalProperties": {
+            "oneOf": [
+              { "type": "string" },
+              { "type": "number" },
+              { "type": "boolean" }
+            ]
+          }
+        }
+      }
+    },
+    "completion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "expectAbstention",
+        "maxAgentCalls",
+        "maxModelVisibleBytes",
+        "failOnUnexpectedEvidence"
+      ],
+      "properties": {
+        "expectAbstention": { "type": "boolean" },
+        "maxAgentCalls": { "type": "integer", "minimum": 1 },
+        "maxModelVisibleBytes": { "type": "integer", "minimum": 1 },
+        "failOnUnexpectedEvidence": { "type": "boolean" }
+      }
+    },
+    "leakCanaries": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "type": "string", "minLength": 8 }
+    }
+  }
+}

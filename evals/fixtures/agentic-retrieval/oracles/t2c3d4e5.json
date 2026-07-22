@@ -1,0 +1,42 @@
+{
+  "schemaVersion": "1.0",
+  "taskId": "t2c3d4e5",
+  "claims": [
+    {
+      "claimKey": "projectCodename",
+      "expectedValue": {
+        "type": "string",
+        "value": "Harbor"
+      },
+      "normalizer": {
+        "id": "exact-v1",
+        "version": 1
+      },
+      "requiredEvidence": [
+        {
+          "uri": "gno://c003/d001.md",
+          "sourceHash": "97696698bbc33ad157b2b93e2729ecf37c20ec5b02f2cfc3e9e51d0c6f985c98",
+          "startLine": 3,
+          "endLine": 3,
+          "spanHash": "ac8878aa3e62ce49d9d9ba2aab3b9b27c86165bead080da84aebf2d664589f6f",
+          "sourceHashProvenance": "harness_observed",
+          "spanHashProvenance": "harness_observed"
+        }
+      ],
+      "optionalEvidence": [],
+      "forbiddenEvidence": []
+    }
+  ],
+  "expectedMissing": [],
+  "expectedScope": {
+    "collection": null,
+    "filters": {}
+  },
+  "completion": {
+    "expectAbstention": false,
+    "maxAgentCalls": 3,
+    "maxModelVisibleBytes": 12000,
+    "failOnUnexpectedEvidence": false
+  },
+  "leakCanaries": ["oracle-only-t2c3d4e5-9f7c2a"]
+}

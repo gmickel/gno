@@ -1,0 +1,142 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "gno://schemas/evals/agentic/benchmark-report@1.0",
+  "title": "AgenticBenchmarkReport",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "benchmarkId",
+    "fixtureFingerprint",
+    "attemptedPairs",
+    "scoredPairs",
+    "exclusions",
+    "receipts",
+    "scores",
+    "promotion"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "1.0" },
+    "benchmarkId": { "type": "string", "minLength": 1 },
+    "fixtureFingerprint": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "attemptedPairs": { "type": "integer", "minimum": 0 },
+    "scoredPairs": { "type": "integer", "minimum": 0 },
+    "exclusions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "taskId",
+          "adapterId",
+          "trialId",
+          "failureClass",
+          "reason"
+        ],
+        "properties": {
+          "taskId": { "type": "string" },
+          "adapterId": { "type": "string" },
+          "trialId": { "type": "string" },
+          "failureClass": {
+            "enum": ["none", "harness_error", "agent_error", "product_error"]
+          },
+          "reason": { "type": "string" }
+        }
+      }
+    },
+    "receipts": {
+      "type": "array",
+      "items": { "$ref": "gno://schemas/evals/agentic/trajectory-receipt@1.0" }
+    },
+    "scores": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/score" }
+    },
+    "promotion": {
+      "oneOf": [{ "$ref": "#/definitions/promotion" }, { "type": "null" }]
+    }
+  },
+  "definitions": {
+    "nullableNumber": {
+      "oneOf": [{ "type": "number" }, { "type": "null" }]
+    },
+    "score": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "taskId",
+        "scored",
+        "exclusionReason",
+        "success",
+        "completed",
+        "supportedClaims",
+        "unsupportedClaims",
+        "missingRequiredClaims",
+        "forbiddenEvidenceClaims",
+        "invalidOutputs",
+        "correctAbstention",
+        "prematureStop",
+        "unnecessaryRead",
+        "collectionCorrect",
+        "filtersCorrect",
+        "substantiveClaims",
+        "linkedSupportedClaims"
+      ],
+      "properties": {
+        "taskId": { "type": "string" },
+        "scored": { "type": "boolean" },
+        "exclusionReason": {
+          "oneOf": [{ "type": "string" }, { "type": "null" }]
+        },
+        "success": { "enum": [0, 1] },
+        "completed": { "type": "boolean" },
+        "supportedClaims": { "type": "array", "items": { "type": "string" } },
+        "unsupportedClaims": { "type": "array", "items": { "type": "string" } },
+        "missingRequiredClaims": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "forbiddenEvidenceClaims": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "invalidOutputs": { "type": "array", "items": { "type": "string" } },
+        "correctAbstention": { "type": "boolean" },
+        "prematureStop": { "type": "boolean" },
+        "unnecessaryRead": { "type": "boolean" },
+        "collectionCorrect": { "type": "boolean" },
+        "filtersCorrect": { "type": "boolean" },
+        "substantiveClaims": { "type": "integer", "minimum": 0 },
+        "linkedSupportedClaims": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "promotion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["passed", "pairCount", "failures", "metrics"],
+      "properties": {
+        "passed": { "type": "boolean" },
+        "pairCount": { "type": "integer", "minimum": 0 },
+        "failures": { "type": "array", "items": { "type": "string" } },
+        "metrics": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "baselineSuccessRate",
+            "candidateSuccessRate",
+            "agentCallReduction",
+            "contextByteReduction",
+            "claimLinkageRate"
+          ],
+          "properties": {
+            "baselineSuccessRate": { "$ref": "#/definitions/nullableNumber" },
+            "candidateSuccessRate": { "$ref": "#/definitions/nullableNumber" },
+            "agentCallReduction": { "$ref": "#/definitions/nullableNumber" },
+            "contextByteReduction": { "$ref": "#/definitions/nullableNumber" },
+            "claimLinkageRate": { "$ref": "#/definitions/nullableNumber" }
+          }
+        }
+      }
+    }
+  }
+}

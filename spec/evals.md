@@ -23,6 +23,10 @@ GNO uses Evalite for:
 - **Stability checks**: Ensure structured expansion outputs are schema-valid
 - **Multilingual sanity**: Cross-language retrieval works (DE query → EN doc)
 
+Agent-level evidence sufficiency, exact citation coverage, stopping behavior,
+and Context Capsule promotion use the separate deterministic
+[Agentic Retrieval Evaluation Contract](evals-agentic.md).
+
 ## Dependencies
 
 ```json

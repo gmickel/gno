@@ -1,0 +1,42 @@
+{
+  "schemaVersion": "1.0",
+  "taskId": "t456ef70",
+  "claims": [
+    {
+      "claimKey": "invoiceId",
+      "expectedValue": {
+        "type": "identifier",
+        "value": "INV-7741"
+      },
+      "normalizer": {
+        "id": "identifier-v1",
+        "version": 1
+      },
+      "requiredEvidence": [
+        {
+          "uri": "gno://c015/d001.md",
+          "sourceHash": "aa21f9ddd17198aa5e12794b6a48d7b2bfbcd13173a07a773a0750ec77840cd7",
+          "startLine": 3,
+          "endLine": 3,
+          "spanHash": "6a002d56d1b828fe0af6ba26bebef8512671d2abfa38dcc3216c1a5c9ca54a17",
+          "sourceHashProvenance": "harness_observed",
+          "spanHashProvenance": "harness_observed"
+        }
+      ],
+      "optionalEvidence": [],
+      "forbiddenEvidence": []
+    }
+  ],
+  "expectedMissing": [],
+  "expectedScope": {
+    "collection": "c015",
+    "filters": {}
+  },
+  "completion": {
+    "expectAbstention": false,
+    "maxAgentCalls": 3,
+    "maxModelVisibleBytes": 12000,
+    "failOnUnexpectedEvidence": false
+  },
+  "leakCanaries": ["oracle-only-t456ef70-9f7c2a"]
+}

@@ -1,0 +1,42 @@
+{
+  "schemaVersion": "1.0",
+  "taskId": "t3d4e5f6",
+  "claims": [
+    {
+      "claimKey": "serviceOwner",
+      "expectedValue": {
+        "type": "string",
+        "value": "Mina Shah"
+      },
+      "normalizer": {
+        "id": "exact-v1",
+        "version": 1
+      },
+      "requiredEvidence": [
+        {
+          "uri": "gno://c004/d001.md",
+          "sourceHash": "610fb36439bd3ea25011aed2763b2ea3b9d39e154784e5a312eeb2bf8859dd30",
+          "startLine": 3,
+          "endLine": 3,
+          "spanHash": "0520a74e3e2ee9c1030b90e005c9e6b6d967574aa3801c1659c35cdb8c65cdbe",
+          "sourceHashProvenance": "harness_observed",
+          "spanHashProvenance": "harness_observed"
+        }
+      ],
+      "optionalEvidence": [],
+      "forbiddenEvidence": []
+    }
+  ],
+  "expectedMissing": [],
+  "expectedScope": {
+    "collection": null,
+    "filters": {}
+  },
+  "completion": {
+    "expectAbstention": false,
+    "maxAgentCalls": 3,
+    "maxModelVisibleBytes": 12000,
+    "failOnUnexpectedEvidence": false
+  },
+  "leakCanaries": ["oracle-only-t3d4e5f6-9f7c2a"]
+}
