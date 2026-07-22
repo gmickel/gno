@@ -118,6 +118,7 @@
     "research:finetune:mlx:fuse": "bun research/finetune/scripts/fuse-mlx.ts",
     "research:finetune:mlx:smoke": "bun research/finetune/scripts/smoke-mlx.ts",
     "reset": "bun run src/index.ts reset --confirm",
+    "docs:truth": "bun run scripts/public-truth.ts",
     "docs:verify": "bun run scripts/docs-verify.ts",
     "website:install": "cd website && bundle install",
     "website:dev": "cd website && make serve",

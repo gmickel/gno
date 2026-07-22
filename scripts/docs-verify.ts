@@ -19,6 +19,10 @@ import { join } from "node:path";
 import { runCli } from "../src/cli/run";
 import { safeRm } from "../test/helpers/cleanup";
 import { validateDoctorExit } from "./docs-doctor-contract";
+import {
+  formatPublicTruthMismatch,
+  verifyRepositoryPublicTruth,
+} from "./public-truth";
 
 // ANSI colors
 const GREEN = "\x1b[32m";
@@ -457,6 +461,16 @@ async function main() {
     log(
       `  Gen model: ${caps.genModel ? `${GREEN}yes${RESET}` : `${YELLOW}no${RESET}`}`
     );
+
+    log(`\n${BOLD}Public Truth${RESET}`);
+    const truthMismatches = await verifyRepositoryPublicTruth();
+    if (truthMismatches.length === 0) {
+      pass("anchored public claims");
+    } else {
+      for (const truthMismatch of truthMismatches) {
+        fail("public truth", formatPublicTruthMismatch(truthMismatch));
+      }
+    }
 
     // Run test suites
     await testHelp();
