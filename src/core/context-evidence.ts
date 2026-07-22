@@ -34,6 +34,7 @@ import {
   sha256Text,
 } from "./context-capsule-validation";
 import { planContextEvidence } from "./context-compiler";
+import { projectContextEvidenceMetadata } from "./context-evidence-metadata";
 import {
   extractInclusiveLines,
   extractSections,
@@ -380,8 +381,10 @@ export const materializeContextEvidenceCandidates = async (
         mirrorHash: document.mirrorHash,
         value: {
           collection: document.collection,
-          title: document.title,
-          heading: headingForLine(sections, chunk.startLine),
+          title: projectContextEvidenceMetadata(document.title),
+          heading: projectContextEvidenceMetadata(
+            headingForLine(sections, chunk.startLine)
+          ),
           modifiedAt: document.sourceMtime ?? null,
           documentDate: document.frontmatterDate ?? null,
           observedAt: null,

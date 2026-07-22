@@ -14,6 +14,26 @@ export interface DocumentSection {
 }
 
 const HEADING_REGEX = /^(#{1,6})\s+(.+?)\s*#*\s*$/u;
+const FENCE_REGEX = /^ {0,3}(`{3,}|~{3,})(.*)$/u;
+const FENCE_CLOSE_REGEX = /^ {0,3}(`{3,}|~{3,})[\t ]*$/u;
+
+interface OpenFence {
+  marker: "`" | "~";
+  length: number;
+}
+
+const fenceOpener = (line: string): OpenFence | null => {
+  const match = FENCE_REGEX.exec(line);
+  const run = match?.[1];
+  const suffix = match?.[2] ?? "";
+  if (!run || (run[0] === "`" && suffix.includes("`"))) return null;
+  return { marker: run[0] as OpenFence["marker"], length: run.length };
+};
+
+const closesFence = (line: string, fence: OpenFence): boolean => {
+  const run = FENCE_CLOSE_REGEX.exec(line)?.[1];
+  return Boolean(run && run[0] === fence.marker && run.length >= fence.length);
+};
 
 export function slugifySectionTitle(title: string): string {
   return (
@@ -32,8 +52,18 @@ export function extractSections(content: string): DocumentSection[] {
   const sections: DocumentSection[] = [];
   const counts = new Map<string, number>();
   const lines = content.split("\n");
+  let openFence: OpenFence | null = null;
 
   for (const [index, line] of lines.entries()) {
+    if (openFence) {
+      if (closesFence(line, openFence)) openFence = null;
+      continue;
+    }
+    const opener = fenceOpener(line);
+    if (opener) {
+      openFence = opener;
+      continue;
+    }
     const match = HEADING_REGEX.exec(line);
     if (!match) {
       continue;

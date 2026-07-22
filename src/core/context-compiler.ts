@@ -24,6 +24,7 @@ import type {
   ContextSelectionState,
   MaterializedContextCandidate,
 } from "./context-budget";
+import type { ContextConfiguredGuidance } from "./context-guidance";
 
 import { decorateUriForIndex } from "../app/constants";
 import { canonicalizeIndexName } from "../app/index-name";
@@ -34,7 +35,6 @@ import {
 } from "../pipeline/types";
 import { selectContextEvidence } from "./context-budget";
 import {
-  contextCapsuleContextIdentity,
   contextCapsuleOmissionIdentity,
   sha256Text,
 } from "./context-capsule-validation";
@@ -44,22 +44,16 @@ import {
   normalizeContextText,
 } from "./context-facets";
 import {
-  contextIdentityFromUri,
-  resolveContextSnapshot,
-} from "./context-resolver";
+  contextGuidanceResultIdentity,
+  resolveContextGuidance,
+} from "./context-guidance";
 import { isContextUriInScope } from "./context-scope";
 
 export { deriveContextFacets } from "./context-facets";
+export type { ContextConfiguredGuidance } from "./context-guidance";
 
 const HASH_PATTERN = /^[a-f0-9]{64}$/;
 const DOCID_PATTERN = /^#[a-f0-9]{6,}$/;
-export interface ContextConfiguredGuidance {
-  contextId: string;
-  scopeType: "global" | "collection" | "prefix";
-  scopeKey: string;
-  text: string;
-}
-
 export interface ContextRetrievalRequest extends HybridSearchOptions {
   query: string;
   collection?: string;
@@ -191,45 +185,6 @@ const compareSearchResults = (
     right.source.sourceHash ?? ""
   ) ||
   compareCodeUnits(left.docid, right.docid);
-
-const canonicalGuidance = (
-  contextSnapshot: ContextRow[],
-  results: SearchResult[],
-  indexName: string
-): {
-  contexts: ContextConfiguredGuidance[];
-  idsByDocid: Map<string, string[]>;
-} => {
-  const byId = new Map<string, ContextConfiguredGuidance>();
-  const idsByDocid = new Map<string, string[]>();
-  for (const result of results) {
-    const ids: string[] = [];
-    const identity = contextIdentityFromUri(result.uri);
-    const resolved = identity
-      ? resolveContextSnapshot(contextSnapshot, identity)
-      : undefined;
-    for (const provenance of resolved?.provenance ?? []) {
-      const guidance = {
-        scopeType: provenance.scopeType,
-        scopeKey:
-          provenance.scopeType === "prefix"
-            ? decorateUriForIndex(provenance.normalizedScopeKey, indexName)
-            : provenance.normalizedScopeKey,
-        text: provenance.text,
-      };
-      const contextId = contextCapsuleContextIdentity(guidance);
-      byId.set(contextId, { contextId, ...guidance });
-      ids.push(contextId);
-    }
-    idsByDocid.set(result.docid, [...new Set(ids)].sort(compareCodeUnits));
-  }
-  return {
-    contexts: [...byId.values()].sort((left, right) =>
-      compareCodeUnits(left.contextId, right.contextId)
-    ),
-    idsByDocid,
-  };
-};
 
 const referenceFromResult = (
   result: SearchResult
@@ -396,7 +351,7 @@ export const planContextEvidence = async <T, P>(
   const inScopeResults = results.filter((result) =>
     isContextUriInScope(result.uri, indexName, collections, uriPrefix)
   );
-  const guidance = canonicalGuidance(
+  const guidance = resolveContextGuidance(
     input.contextSnapshot,
     inScopeResults,
     indexName
@@ -436,7 +391,10 @@ export const planContextEvidence = async <T, P>(
       retrievalRank: meta.retrievalRank,
       retrievalSources: [...meta.sources].sort(compareCodeUnits),
       graphExpanded: meta.graphExpanded,
-      contextIds: guidance.idsByDocid.get(result.docid) ?? [],
+      contextIds:
+        guidance.idsByResultIdentity.get(
+          contextGuidanceResultIdentity(result)
+        ) ?? [],
       observedAt,
     });
     referencesByCandidate.push(retrievalReference);
