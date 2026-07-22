@@ -349,16 +349,15 @@ const compareMarginalValue = <T>(
     candidate.facets.filter((facet) => !covered.has(facet)).length;
   const leftUncovered = uncovered(left);
   const rightUncovered = uncovered(right);
-  if (leftUncovered !== rightUncovered) {
-    return rightUncovered - leftUncovered;
-  }
-  const relevance = (candidate: MaterializedContextCandidate<T>): number =>
-    Math.max(1, poolSize - candidate.retrievalRank + 1);
   const leftCost = BigInt(Math.max(1, utf8Bytes(left.text)));
   const rightCost = BigInt(Math.max(1, utf8Bytes(right.text)));
-  const leftRatio = BigInt(relevance(left)) * rightCost;
-  const rightRatio = BigInt(relevance(right)) * leftCost;
+  const leftRatio = BigInt(leftUncovered) * rightCost;
+  const rightRatio = BigInt(rightUncovered) * leftCost;
   if (leftRatio !== rightRatio) return leftRatio > rightRatio ? -1 : 1;
+  const relevance = (candidate: MaterializedContextCandidate<T>): number =>
+    Math.max(1, poolSize - candidate.retrievalRank + 1);
+  const relevanceDifference = relevance(right) - relevance(left);
+  if (relevanceDifference !== 0) return relevanceDifference;
   if (left.retrievalRank !== right.retrievalRank) {
     return left.retrievalRank - right.retrievalRank;
   }

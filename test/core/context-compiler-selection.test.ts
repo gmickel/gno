@@ -276,6 +276,61 @@ describe("deterministic Context budget selection", () => {
     expect(forward.omissions[0]?.uri).toBe(worse.uri);
     expect(forward.omissions[0]?.reason).toBe("duplicate");
   });
+
+  test("maximizes marginal uncovered facets per UTF-8 byte", () => {
+    const wide = candidate("wide", {
+      text: "w".repeat(95),
+      facets: ["alpha", "beta"],
+      retrievalRank: 1,
+    });
+    const alpha = candidate("small-alpha", {
+      text: "a".repeat(10),
+      facets: ["alpha"],
+      retrievalRank: 2,
+    });
+    const beta = candidate("small-beta", {
+      text: "b".repeat(10),
+      facets: ["beta"],
+      retrievalRank: 3,
+    });
+    const gamma = candidate("small-gamma", {
+      text: "g".repeat(10),
+      facets: ["gamma"],
+      retrievalRank: 4,
+    });
+    const result = selectContextEvidence({
+      candidates: [wide, alpha, beta, gamma],
+      requestedFacets: ["alpha", "beta", "gamma"],
+      limits: {
+        requestedBytes: 100,
+        requestedTokens: 100,
+        safetyMarginBytes: 0,
+        safetyMarginTokens: 0,
+        documentShareNumerator: 1,
+        documentShareDenominator: 1,
+      },
+      projectCanonical: (state) => {
+        const usedBytes = state.selected.reduce(
+          (total, item) =>
+            total + new TextEncoder().encode(item.text).byteLength,
+          0
+        );
+        return { value: state, usedBytes, usedTokens: usedBytes };
+      },
+    });
+
+    expect(result.selected.map((item) => item.uri)).toEqual([
+      alpha.uri,
+      beta.uri,
+      gamma.uri,
+    ]);
+    expect(result.projection?.usedBytes).toBe(30);
+    expect(result.coverage.coveredFacets).toEqual(["alpha", "beta", "gamma"]);
+    expect(result.coverage.unresolvedFacets).toEqual([]);
+    expect(result.omissions).toContainEqual(
+      expect.objectContaining({ uri: wide.uri, reason: "redundant_coverage" })
+    );
+  });
 });
 
 const searchResult = (
