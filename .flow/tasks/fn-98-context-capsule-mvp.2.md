@@ -38,9 +38,8 @@ Deliver build deterministic evidence planning and budget selection as one implem
 
 
 ## Done summary
-TBD
-
+Implemented deterministic Context Capsule evidence planning: exact materialization before fit, byte/token margin enforcement, stable omission and coverage accounting, deterministic query facets, canonical context scoping, and preserved hybrid provenance across same-mirror documents. Added focused regressions and corrected the inherited root-prefix contract seam; all task code/schema gates pass, while the pre-existing agentic context-byte promotion gate remains unchanged for later integration work.
 ## Evidence
-- Commits:
-- Tests:
+- Commits: fdc06f9487bdb1f3a517bce7439c1bde23264da5
+- Tests: baseline: red (bun run eval:agentic failed pre-edit: context_byte_reduction_below_0.35_or_zero_denominator, -0.6570175070322011), bun test test/core/context-compiler-selection.test.ts test/pipeline/hybrid-doc-lookup.test.ts test/spec/schemas/context-capsule.test.ts (24 pass), bun test (2485 pass, 1 skip, 0 fail), bun test test/context test/spec/schemas (191 pass), bun run lint:check, .flow/bin/flowctl validate --spec fn-98-context-capsule-mvp --json, bun run eval:agentic (inherited red unchanged: context_byte_reduction_below_0.35_or_zero_denominator, -0.6570175070322011; agent-call reduction 0.4893617021276596 passed)
 - PRs:
