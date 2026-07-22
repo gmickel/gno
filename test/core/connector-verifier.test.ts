@@ -15,7 +15,8 @@ import { safeRm } from "../helpers/cleanup";
 const FIXED_NOW = new Date("2026-07-22T10:00:00.000Z");
 const COLLECTION = "notes";
 const REL_PATH = "architecture.md";
-const URI = `gno://${COLLECTION}/${REL_PATH}`;
+const SOURCE_HASH =
+  "3273f6e7e0531d489eabc07eec21c67c510cf500a6b198752021f98f9b73c8b7";
 
 function hash(value: string): string {
   const hasher = new Bun.CryptoHasher("sha256");
@@ -26,7 +27,6 @@ function hash(value: string): string {
 describe("connector activation verifier", () => {
   let adapter: SqliteAdapter;
   let testDir: string;
-  let sourceHash: string;
 
   beforeEach(async () => {
     testDir = await mkdtemp(join(tmpdir(), "gno-connector-verifier-"));
@@ -49,14 +49,14 @@ describe("connector activation verifier", () => {
     ).toBe(true);
     const markdown =
       "# Architecture\nZephyrlattice proves connector retrieval.";
-    sourceHash = hash(`source:${markdown}`);
+    expect(hash(`source:${markdown}`)).toBe(SOURCE_HASH);
     const mirrorHash = hash(`mirror:${markdown}`);
     expect(
       (
         await adapter.upsertDocument({
           collection: COLLECTION,
           relPath: REL_PATH,
-          sourceHash,
+          sourceHash: SOURCE_HASH,
           sourceMime: "text/markdown",
           sourceExt: ".md",
           sourceSize: markdown.length,
@@ -134,7 +134,7 @@ ${
 }
 ${
   hasSearch
-    ? `server.tool("gno_search", { query: z.string(), collection: z.string(), limit: z.number() }, async () => ({ isError: ${mode === "search-fails"}, content: [{ type: "text", text: "discarded snippet" }], structuredContent: { results: [{ uri: ${JSON.stringify(mode === "mismatch" ? "gno://notes/wrong.md" : URI)}, snippet: "discarded snippet", source: { sourceHash: ${JSON.stringify(sourceHash)} } }] } }));`
+    ? `server.tool("gno_search", { query: z.string(), collection: z.string(), limit: z.number() }, async () => ({ isError: ${mode === "search-fails"}, content: [{ type: "text", text: "discarded snippet" }], structuredContent: { results: [{ uri: ${mode === "mismatch" ? '"gno://notes/wrong.md"' : '"gno://notes/architecture.md"'}, snippet: "discarded snippet", source: { sourceHash: "3273f6e7e0531d489eabc07eec21c67c510cf500a6b198752021f98f9b73c8b7" } }] } }));`
     : ""
 }
 await server.connect(new StdioServerTransport());
