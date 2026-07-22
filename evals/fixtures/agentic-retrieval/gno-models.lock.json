@@ -1,0 +1,33 @@
+{
+  "schemaVersion": "1.0",
+  "models": [
+    {
+      "role": "embed",
+      "uri": "hf:Qwen/Qwen3-Embedding-0.6B-GGUF/Qwen3-Embedding-0.6B-Q8_0.gguf",
+      "cacheFile": "hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+      "sha256": "06507c7b42688469c4e7298b0a1e16deff06caf291cf0a5b278c308249c3e439",
+      "sizeBytes": 639150592
+    },
+    {
+      "role": "rerank",
+      "uri": "hf:ggml-org/Qwen3-Reranker-0.6B-Q8_0-GGUF/qwen3-reranker-0.6b-q8_0.gguf",
+      "cacheFile": "hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+      "sha256": "22c9979ce4fbcdc5acdc310c6641c32797eff1aa980b8f7a2db8a8ea23429a48",
+      "sizeBytes": 639153184
+    },
+    {
+      "role": "expand",
+      "uri": "hf:guiltylemon/gno-expansion-slim-retrieval-v1/gno-expansion-auto-entity-lock-default-mix-lr95-f16.gguf",
+      "cacheFile": "hf_guiltylemon_gno-expansion-slim-retrieval-v1_gno-expansion-auto-entity-lock-default-mix-lr95-.gguf",
+      "sha256": "3b20c99404c2c1d66ad695489bf91cf5b5d3369e8055d5587fc60507ceac3338",
+      "sizeBytes": 3447349312
+    },
+    {
+      "role": "gen",
+      "uri": "hf:unsloth/Qwen3-1.7B-GGUF/Qwen3-1.7B-Q4_K_M.gguf",
+      "cacheFile": "hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+      "sha256": "b139949c5bd74937ad8ed8c8cf3d9ffb1e99c866c823204dc42c0d91fa181897",
+      "sizeBytes": 1107409472
+    }
+  ]
+}

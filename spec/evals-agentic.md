@@ -259,6 +259,98 @@ endpoint, downloads a model, reads an API key, or falls back to the network.
 Model output is one strict JSON tool action or `FinalEnvelope`; prose and
 duplicate keys are agent errors.
 
+## Product-faithful GNO MCP comparator
+
+The `gno-mcp` adapter measures the shipped stdio MCP process rather than
+importing a retrieval pipeline. Its normalized surface maps `search` to
+`gno_query`, `get` to `gno_get`, and `multi_get` to `gno_multi_get`. The adapter
+lists the real product tools during unmeasured preparation and fails closed if
+any mapped field is missing from the shipped input schemas. It sets
+`lineNumbers: false` on reads so exact returned bytes can be bound to fixture
+line coordinates; this is a public MCP option, not an evaluator shortcut.
+
+Preparation materializes the immutable corpus into an isolated config/data/
+cache root, runs production ingestion, and embeds every active chunk before
+scoring. `gno-models.lock.json` pins the exact embed, rerank, expansion, and
+generation GGUF URI, byte size, and SHA-256. `GNO_AGENTIC_GNO_MODEL_DIR` may
+point at a cache containing those exact files. The harness streams and verifies
+all four files, rewrites the isolated config to `file://` URIs, passes
+`--offline`, sets `HF_HUB_OFFLINE=1`, and rejects missing or mismatched vectors.
+It never downloads a model or mutates the user's config/database/model cache.
+
+Cold trials create a fresh stdio MCP process against the already prepared
+index. Warm trials preserve one process and first issue exactly one discarded
+`gno_query` readiness probe with `fast: true`; the probe must report
+`vectorsUsed: true`. Process startup and tool latency are measured separately.
+GNO does not expose model-load timing independently from its first query, so
+that observation is explicitly unavailable rather than inferred.
+
+Normalized candidate and source payloads strip absolute paths, mtimes, and
+volatile error messages. Non-default-index URI decoration is removed because
+the isolated adapter already owns one explicit index. Citeable evidence is
+emitted only when returned text exactly matches the snapshot's inclusive line
+span. Evidence is line-atomic even when GNO returns a multi-line chunk. Source
+and span hashes are recomputed from observed fixture bytes. Because GNO does
+not return a backend span hash, the closed backend hash pair is explicitly
+unavailable; the product source hash remains in normalized candidate metadata.
+Repeated reads remain repeated calls and bytes. Query backend invocation
+accounting includes lexical/vector retrieval, expansion, reranking, and graph
+stages declared by structured MCP metadata.
+
+The native index may contain the whole fixture, but every reset establishes one
+task visibility boundary. Single-collection searches are automatically scoped;
+multi-collection tasks must name one of their declared collections. Foreign
+collections and foreign `get`/`multi_get` URIs are rejected before MCP traffic,
+and any foreign result returned by the product fails the trial without exposing
+its content to the outer agent.
+
+Fake-process tests are part of the normal offline suite. The isolated real
+stdio smoke is opt-in with `GNO_AGENTIC_RUN_REAL_MCP=1`; it uses the exact model
+lock and performs no network access. Successful MCP envelopes are validated
+before normalization; malformed or source-hash-mismatched output fails closed.
+Preparation cancellation is threaded through model verification, embedding,
+and MCP preflight, with child termination and isolated-root cleanup.
+
+## Optional pinned qmd comparator
+
+The `qmd` lane is explicit opt-in and fail-closed. `QMD_REPO` must be an
+absolute, clean checkout at commit
+`e428df76bc0274d9e93eb7ca3e95673315c42e90`. Preflight verifies the exact
+origin, commit, clean tree, package manifest, lockfile, executable entrypoint,
+and the dynamically listed MCP tool name, description, and input-schema
+fingerprints. It also verifies three pinned model identities by URI, revision,
+filename, byte size, and streamed SHA-256:
+
+- `hf_ggml-org_embeddinggemma-300M-Q8_0.gguf`
+- `hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf`
+- `hf_tobil_qmd-query-expansion-1.7B-q4_k_m.gguf`
+
+`QMD_MODEL_CACHE` may name an absolute read-only cache containing those exact
+files. The adapter never resolves qmd from `PATH`, uses a global install,
+downloads a model, pulls or checks out the repository, or mutates the checkout
+or supplied cache. Missing, stale, dirty, mismatched, or schema-drifted inputs
+are harness errors, never skips or degraded comparisons. The intentionally
+strict preflight therefore fails until the exact checkout and model artifacts
+have been prepared.
+
+Preparation runs qmd's update, embed, and status lifecycle outside measured
+trials, then verifies the native index. `QMD_CONFIG_DIR`, `XDG_CONFIG_HOME`,
+`XDG_CACHE_HOME`, `INDEX_PATH`, and data paths are isolated under one temporary
+root; locked models are copied and reverified there. Cold trials start a fresh
+stdio process on a byte-identical clone of the pristine prepared database.
+Warm trials retain one process after exactly one discarded full query using the
+task goal, declared collections, `rerank: true`, and readiness-only intent so
+models load without colliding with a scored query cache key.
+
+qmd result ranges are parsed from the inner `@@` coordinates and accepted only
+when returned bytes exactly match the fixture snapshot. Evidence is emitted as
+atomic lines with harness-observed source and span hashes; backend hashes remain
+the complete null pair with an explicit unavailable reason. The same pre-call
+task scope and post-result isolation rules apply as for GNO. qmd does not expose
+reliable internal backend invocation counts, model-load timing, or token
+measurements, so invocation-accounting capability is `false`, its count is
+zero with a diagnostic, and those observations remain explicitly unavailable.
+
 Committed reports record attempted pairs, scored pairs, every exclusion,
 receipts, task scores, environment/methodology, and known limitations.
 
