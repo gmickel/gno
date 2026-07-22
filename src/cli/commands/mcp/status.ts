@@ -10,6 +10,7 @@ import { getGlobals } from "../../program.js";
 import {
   type AnyMcpConfig,
   getServerEntry,
+  getServersKey,
   isYamlFormat,
   type StandardMcpEntry,
 } from "./config.js";
@@ -17,6 +18,7 @@ import {
   getTargetDisplayName,
   MCP_SERVER_NAME,
   MCP_TARGETS,
+  type McpConfigFormat,
   type McpScope,
   type McpTarget,
   resolveMcpConfigPath,
@@ -52,7 +54,7 @@ export function toMcpConnectorVerificationTarget(
   id: string,
   status: McpTargetStatus
 ): McpConnectorVerificationTarget {
-  const serverEntry = normalizeEntry(status.serverEntry);
+  const serverEntry = normalizeEntry(status.serverEntry, "standard");
   const configured = status.configured && serverEntry !== null;
   return {
     kind: "mcp",
@@ -83,14 +85,19 @@ interface StatusResult {
 /**
  * Normalize entry to standard format for display.
  */
-function normalizeEntry(entry: unknown): StandardMcpEntry | null {
+function normalizeEntry(
+  entry: unknown,
+  configFormat: McpConfigFormat
+): StandardMcpEntry | null {
   if (!entry || typeof entry !== "object") {
     return null;
   }
   const record = entry as Record<string, unknown>;
-  if (record.type === "local") {
+  if (configFormat === "mcp") {
     // OpenCode format: command is array [command, ...args]
     if (
+      record.type !== "local" ||
+      record.enabled !== true ||
       !Array.isArray(record.command) ||
       record.command.length === 0 ||
       !record.command.every((part) => typeof part === "string")
@@ -112,6 +119,18 @@ function normalizeEntry(entry: unknown): StandardMcpEntry | null {
     return null;
   }
   return { command: record.command, args: record.args };
+}
+
+function hasOwnServerEntry(
+  config: AnyMcpConfig,
+  configFormat: McpConfigFormat
+): boolean {
+  const servers = config[getServersKey(configFormat)];
+  return (
+    !!servers &&
+    typeof servers === "object" &&
+    Object.hasOwn(servers, MCP_SERVER_NAME)
+  );
 }
 
 export async function checkMcpTargetStatus(
@@ -145,10 +164,14 @@ export async function checkMcpTargetStatus(
     const config = useYaml
       ? (Bun.YAML.parse(content) as AnyMcpConfig)
       : (JSON.parse(content) as AnyMcpConfig);
-    const entry = getServerEntry(config, MCP_SERVER_NAME, configFormat);
+    const entry: unknown = getServerEntry(
+      config,
+      MCP_SERVER_NAME,
+      configFormat
+    );
 
-    if (entry) {
-      const serverEntry = normalizeEntry(entry);
+    if (hasOwnServerEntry(config, configFormat)) {
+      const serverEntry = normalizeEntry(entry, configFormat);
       if (!serverEntry) {
         return {
           target,

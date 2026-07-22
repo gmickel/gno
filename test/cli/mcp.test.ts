@@ -605,4 +605,33 @@ describe("MCP CLI commands", () => {
       configError: true,
     });
   });
+
+  test.each([
+    ["standard command shape", { command: "gno", args: ["mcp"] }],
+    [
+      "disabled local command",
+      { type: "local", command: ["gno", "mcp"], enabled: false },
+    ],
+    ["falsy entry", false],
+  ])("rejects OpenCode %s without exposing an executable", async (_, entry) => {
+    const configPath = join(FAKE_HOME, ".config/opencode/config.json");
+    await mkdir(join(FAKE_HOME, ".config/opencode"), { recursive: true });
+    await Bun.write(configPath, JSON.stringify({ mcp: { gno: entry } }));
+
+    const status = await checkMcpTargetStatus("opencode", "user", {
+      homeDir: FAKE_HOME,
+      cwd: FAKE_CWD,
+    });
+    expect(status).toMatchObject({
+      configured: false,
+      error: "Malformed MCP server entry",
+    });
+    expect(toMcpConnectorVerificationTarget("opencode", status)).toMatchObject({
+      configured: false,
+      configError: true,
+    });
+    expect(
+      toMcpConnectorVerificationTarget("opencode", status).serverEntry
+    ).toBeUndefined();
+  });
 });

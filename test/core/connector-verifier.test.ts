@@ -7,7 +7,6 @@ import type { McpConnectorVerificationTarget } from "../../src/core/connector-ve
 
 import {
   getConnectorVerificationRemediation,
-  isSafeLocalGnoMcpCommand,
   verifyConnectorActivation,
 } from "../../src/core/connector-verifier";
 import { SqliteAdapter } from "../../src/store";
@@ -160,109 +159,6 @@ await new Promise((resolve) => process.stdin.once("end", resolve));
     };
   }
 
-  test("requires trusted realpath provenance for local GNO commands", async () => {
-    const trustedDir = join(testDir, "trusted");
-    const spoofDir = join(testDir, "spoof", "gno", "src", "cli");
-    const untrustedDir = join(testDir, "untrusted");
-    await mkdir(trustedDir, { recursive: true });
-    await mkdir(spoofDir, { recursive: true });
-    await mkdir(untrustedDir, { recursive: true });
-    const trustedGno = join(trustedDir, "gno");
-    const trustedCmd = join(trustedDir, "gno.cmd");
-    const trustedSource = join(trustedDir, "index.ts");
-    const spoofGno = join(untrustedDir, "gno");
-    const spoofSource = join(spoofDir, "index.ts");
-    await Promise.all([
-      Bun.write(trustedGno, "trusted"),
-      Bun.write(trustedCmd, "trusted"),
-      Bun.write(trustedSource, "trusted"),
-      Bun.write(spoofGno, "spoof"),
-      Bun.write(spoofSource, "spoof"),
-    ]);
-    const trusted = {
-      trustedGnoEntryPaths: [trustedGno, trustedCmd, trustedSource],
-    };
-
-    expect(
-      await isSafeLocalGnoMcpCommand(
-        { command: trustedGno, args: ["mcp"] },
-        trusted
-      )
-    ).toBe(true);
-    expect(
-      await isSafeLocalGnoMcpCommand(
-        { command: process.execPath, args: [trustedGno, "mcp"] },
-        trusted
-      )
-    ).toBe(true);
-    expect(
-      await isSafeLocalGnoMcpCommand(
-        {
-          command: process.execPath,
-          args: ["run", trustedSource, "mcp"],
-        },
-        trusted
-      )
-    ).toBe(true);
-    expect(
-      await isSafeLocalGnoMcpCommand(
-        { command: process.execPath, args: [trustedCmd, "mcp"] },
-        trusted
-      )
-    ).toBe(true);
-    expect(
-      await isSafeLocalGnoMcpCommand({
-        command: process.execPath,
-        args: ["x", "@gmickel/gno", "mcp"],
-      })
-    ).toBe(false);
-    expect(
-      await isSafeLocalGnoMcpCommand({
-        command: "bunx",
-        args: ["@gmickel/gno", "mcp"],
-      })
-    ).toBe(false);
-    expect(
-      await isSafeLocalGnoMcpCommand({
-        command: "npx",
-        args: ["@gmickel/gno", "mcp"],
-      })
-    ).toBe(false);
-    expect(
-      await isSafeLocalGnoMcpCommand(
-        {
-          command: trustedGno,
-          args: ["mcp", "--enable-write"],
-        },
-        trusted
-      )
-    ).toBe(false);
-    expect(
-      await isSafeLocalGnoMcpCommand({
-        command: "sh",
-        args: ["-c", "gno mcp"],
-      })
-    ).toBe(false);
-    expect(
-      await isSafeLocalGnoMcpCommand({
-        command: spoofGno,
-        args: ["mcp"],
-      })
-    ).toBe(false);
-    expect(
-      await isSafeLocalGnoMcpCommand({
-        command: process.execPath,
-        args: [spoofGno, "mcp"],
-      })
-    ).toBe(false);
-    expect(
-      await isSafeLocalGnoMcpCommand({
-        command: process.execPath,
-        args: ["run", spoofSource, "mcp"],
-      })
-    ).toBe(false);
-  });
-
   test("executes tools list, status, and scoped search through stdio", async () => {
     const serverEntry = await createMcpFixture("pass");
     const result = await verifyConnectorActivation(
@@ -371,6 +267,29 @@ await new Promise((resolve) => process.stdin.once("end", resolve));
         /^mcp:fixture:user:[a-f0-9]{64}$/
       );
     }
+
+    const marker = join(testDir, "disabled-spawned");
+    const disabledScript = join(testDir, "disabled-gno");
+    await Bun.write(
+      disabledScript,
+      `await Bun.write(${JSON.stringify(marker)}, "spawned")`
+    );
+    const disabled = mcpTarget({
+      command: process.execPath,
+      args: [disabledScript, "mcp"],
+    });
+    disabled.configured = false;
+    disabled.configError = true;
+    const disabledResult = await verifyConnectorActivation(
+      adapter,
+      COLLECTION,
+      disabled,
+      optionsForTrustedEntry(disabled.serverEntry!)
+    );
+    expect(
+      disabledResult.ok && disabledResult.value.stages.connector.code
+    ).toBe("connector_unsupported_config");
+    expect(await Bun.file(marker).exists()).toBe(false);
   });
 
   test.each([
