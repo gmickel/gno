@@ -294,15 +294,36 @@ export interface TaskScore {
   linkedSupportedClaims: number;
 }
 
+export interface BenchmarkScoreRecord {
+  taskId: string;
+  adapterId: string;
+  trialId: string;
+  seed: number | null;
+  lifecycle: "cold" | "warm";
+  agentId: string;
+  score: TaskScore;
+}
+
+export interface CapsuleReplayRecord {
+  taskId: string;
+  adapterId: "capsule";
+  trialId: string;
+  seed: number | null;
+  lifecycle: "cold" | "warm";
+  agentId: string;
+  first: { canonicalJson: string; sha256: string };
+  second: { canonicalJson: string; sha256: string };
+}
+
 export interface PromotionPair {
   taskId: string;
   trialId: string;
   lifecycle: "cold" | "warm";
-  baseline: { receipt: TrajectoryReceipt; score: TaskScore };
+  baseline: { receipt: TrajectoryReceipt; score: BenchmarkScoreRecord };
   candidate: {
     receipt: TrajectoryReceipt;
-    score: TaskScore;
-    canonicalPayloads: [string, string];
+    score: BenchmarkScoreRecord;
+    replay: CapsuleReplayRecord;
   };
 }
 
@@ -322,18 +343,40 @@ export interface PromotionGateResult {
 export interface BenchmarkReport {
   schemaVersion: typeof AGENTIC_SCHEMA_VERSION;
   benchmarkId: string;
+  canonicalFingerprint: string;
   fixtureFingerprint: string;
+  environment: {
+    packageVersion: string;
+    bunVersion: string;
+    platform: string;
+    architecture: string;
+    git: {
+      commit: string | null;
+      dirty: boolean | null;
+      unavailableReason: string | null;
+    };
+    fixtureVersion: string;
+    agentId: string;
+    trials: Array<{ trialId: string; seed: number | null }>;
+  };
+  methodology: string[];
+  limitations: string[];
+  preparations: AdapterNativeIndexRecord[];
   attemptedPairs: number;
   scoredPairs: number;
   exclusions: Array<{
     taskId: string;
     adapterId: string;
     trialId: string;
+    seed: number | null;
+    lifecycle: "cold" | "warm";
+    agentId: string;
     failureClass: FailureClass;
     reason: string;
   }>;
   receipts: TrajectoryReceipt[];
-  scores: TaskScore[];
+  scores: BenchmarkScoreRecord[];
+  capsuleReplays: CapsuleReplayRecord[];
   promotion: PromotionGateResult | null;
 }
 

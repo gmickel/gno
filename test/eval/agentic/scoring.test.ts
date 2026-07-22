@@ -6,11 +6,18 @@ import type {
   TrajectoryReceipt,
 } from "../../../evals/agentic/types";
 
-import { modelVisibleUtf8Bytes } from "../../../evals/agentic/canonical";
+import {
+  canonicalJson,
+  modelVisibleUtf8Bytes,
+  sha256Bytes,
+} from "../../../evals/agentic/canonical";
 import {
   evaluatePromotionGates,
   pairPromotionCohorts,
+} from "../../../evals/agentic/promotion";
+import {
   scoreTrajectory,
+  scoreRecordFor,
   type ScoredReceipt,
 } from "../../../evals/agentic/scoring";
 import {
@@ -314,6 +321,7 @@ const promotionPair = (
   candidateBytes = 65
 ): PromotionPair => {
   const baselineReceipt = receiptFixture(evidence(), {
+    adapterId: "gno-mcp",
     agentCalls: baselineCalls,
     modelVisibleUtf8Bytes: baselineBytes,
   });
@@ -322,18 +330,36 @@ const promotionPair = (
     agentCalls: candidateCalls,
     modelVisibleUtf8Bytes: candidateBytes,
   });
+  const payload = canonicalJson({
+    schemaVersion: "eval-capsule-prototype-v1",
+    evalOnly: true,
+    taskId: candidateReceipt.canonical.taskId,
+  });
+  const replay = {
+    taskId: candidateReceipt.canonical.taskId,
+    adapterId: "capsule" as const,
+    trialId: candidateReceipt.canonical.trialId,
+    seed: candidateReceipt.canonical.seed,
+    lifecycle: candidateReceipt.canonical.lifecycle,
+    agentId: candidateReceipt.canonical.agentId,
+    first: { canonicalJson: payload, sha256: sha256Bytes(payload) },
+    second: { canonicalJson: payload, sha256: sha256Bytes(payload) },
+  };
   return {
     taskId: baselineReceipt.canonical.taskId,
     trialId: baselineReceipt.canonical.trialId,
     lifecycle: baselineReceipt.canonical.lifecycle,
     baseline: {
       receipt: baselineReceipt,
-      score: successfulScore(baselineReceipt),
+      score: scoreRecordFor(baselineReceipt, successfulScore(baselineReceipt)),
     },
     candidate: {
       receipt: candidateReceipt,
-      score: successfulScore(candidateReceipt),
-      canonicalPayloads: ["same", "same"],
+      score: scoreRecordFor(
+        candidateReceipt,
+        successfulScore(candidateReceipt)
+      ),
+      replay,
     },
   };
 };
@@ -353,14 +379,27 @@ describe("Capsule promotion formulas", () => {
 
   test("fails pairwise loss even when aggregate could tie", () => {
     const first = promotionPair();
-    first.candidate.score.success = 0;
+    first.candidate.score.score.success = 0;
     const second = promotionPair();
     second.taskId = "t1b2c3d4";
     second.baseline.receipt.canonical.taskId = second.taskId;
     second.candidate.receipt.canonical.taskId = second.taskId;
     second.baseline.score.taskId = second.taskId;
+    second.baseline.score.score.taskId = second.taskId;
     second.candidate.score.taskId = second.taskId;
-    second.baseline.score.success = 0;
+    second.candidate.score.score.taskId = second.taskId;
+    second.candidate.replay.taskId = second.taskId;
+    const changedPayload = canonicalJson({
+      schemaVersion: "eval-capsule-prototype-v1",
+      evalOnly: true,
+      taskId: second.taskId,
+    });
+    second.candidate.replay.first = {
+      canonicalJson: changedPayload,
+      sha256: sha256Bytes(changedPayload),
+    };
+    second.candidate.replay.second = second.candidate.replay.first;
+    second.baseline.score.score.success = 0;
     const result = evaluatePromotionGates([first, second]);
     expect(result.passed).toBe(false);
     expect(
@@ -372,9 +411,16 @@ describe("Capsule promotion formulas", () => {
 
   test("fails zero denominators and nondeterministic payloads", () => {
     const pair = promotionPair(0, 0, 0, 0);
-    pair.candidate.canonicalPayloads = ["first", "second"];
-    pair.candidate.score.substantiveClaims = 0;
-    pair.candidate.score.linkedSupportedClaims = 0;
+    const changed = canonicalJson({
+      schemaVersion: "eval-capsule-prototype-v1",
+      evalOnly: true,
+      taskId: pair.taskId,
+      replay: 2,
+    });
+    pair.candidate.replay.second.canonicalJson = changed;
+    pair.candidate.replay.second.sha256 = sha256Bytes(changed);
+    pair.candidate.score.score.substantiveClaims = 0;
+    pair.candidate.score.score.linkedSupportedClaims = 0;
     const result = evaluatePromotionGates([pair]);
     expect(result.passed).toBe(false);
     expect(result.failures).toContain(
@@ -396,7 +442,13 @@ describe("Capsule promotion formulas", () => {
   test("requires identical unique paired cohorts", () => {
     const baselineReceipt = receiptFixture();
     const baseline: ScoredReceipt[] = [
-      { receipt: baselineReceipt, score: successfulScore(baselineReceipt) },
+      {
+        receipt: baselineReceipt,
+        score: scoreRecordFor(
+          baselineReceipt,
+          successfulScore(baselineReceipt)
+        ),
+      },
     ];
     const candidateReceipt = receiptFixture(evidence(), {
       taskId: "t1b2c3d4",
@@ -405,8 +457,11 @@ describe("Capsule promotion formulas", () => {
     const candidate = [
       {
         receipt: candidateReceipt,
-        score: successfulScore(candidateReceipt),
-        canonicalPayloads: ["same", "same"] as [string, string],
+        score: scoreRecordFor(
+          candidateReceipt,
+          successfulScore(candidateReceipt)
+        ),
+        replay: promotionPair().candidate.replay,
       },
     ];
     expect(() => pairPromotionCohorts(baseline, candidate)).toThrow(

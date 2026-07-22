@@ -240,12 +240,31 @@ describe("canonical evidence and receipt semantics", () => {
     const report: BenchmarkReport = {
       schemaVersion: "1.0",
       benchmarkId: "agentic-retrieval@1",
+      canonicalFingerprint: "0".repeat(64),
       fixtureFingerprint: "0".repeat(64),
+      environment: {
+        packageVersion: "1.15.0",
+        bunVersion: "1.3.0",
+        platform: "darwin",
+        architecture: "arm64",
+        git: {
+          commit: "0".repeat(40),
+          dirty: false,
+          unavailableReason: null,
+        },
+        fixtureVersion: "fixture-v1",
+        agentId: "fixture-agent@1",
+        trials: [{ trialId: "fixture-01", seed: 20260722 }],
+      },
+      methodology: ["Pinned deterministic comparison."],
+      limitations: ["Controlled fixture."],
+      preparations: [],
       attemptedPairs: 0,
       scoredPairs: 0,
       exclusions: [],
       receipts: [],
       scores: [],
+      capsuleReplays: [],
       promotion: null,
     };
     expect(validateAgenticSchema("benchmark-report", report)).toBeTrue();

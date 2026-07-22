@@ -109,6 +109,7 @@ export default defineConfig({
   "scripts": {
     "eval": "bun --bun evalite",
     "eval:watch": "bun --bun evalite watch",
+    "eval:agentic": "bun evals/agentic/cli.ts",
     "eval:retrieval-candidates": "bun scripts/retrieval-candidate-benchmark.ts",
     "eval:retrieval-candidates:write": "bun scripts/retrieval-candidate-benchmark.ts --write"
   }
@@ -116,6 +117,13 @@ export default defineConfig({
 ```
 
 **Note**: `--bun` flag required because evals use `bun:sqlite` via SqliteAdapter.
+
+`eval:agentic` is the separate deterministic end-to-end agent benchmark. Its
+default fixture lane runs all 24 tasks through `gno-mcp`, `lexical`, and the
+eval-only `capsule` adapter in cold and warm lifecycles. It is opt-in, local,
+and not an Evalite or release-CI command. See
+[Agentic Retrieval Evaluation Contract](evals-agentic.md) for filters, exit
+codes, report schemas, and baseline policy.
 
 **CLI Modes:**
 

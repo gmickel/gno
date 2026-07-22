@@ -1,12 +1,11 @@
 import type {
   AgentTask,
+  BenchmarkScoreRecord,
   ClaimValue,
   EvidenceCoordinate,
   FinalEnvelope,
   HiddenOracle,
   NormalizerId,
-  PromotionGateResult,
-  PromotionPair,
   TaskScore,
   TrajectoryReceipt,
 } from "./types";
@@ -20,8 +19,21 @@ import {
 
 export interface ScoredReceipt {
   receipt: TrajectoryReceipt;
-  score: TaskScore;
+  score: BenchmarkScoreRecord;
 }
+
+export const scoreRecordFor = (
+  receipt: TrajectoryReceipt,
+  score: TaskScore
+): BenchmarkScoreRecord => ({
+  taskId: receipt.canonical.taskId,
+  adapterId: receipt.canonical.adapterId,
+  trialId: receipt.canonical.trialId,
+  seed: receipt.canonical.seed,
+  lifecycle: receipt.canonical.lifecycle,
+  agentId: receipt.canonical.agentId,
+  score,
+});
 
 const normalizeScalar = (
   value: string | number | boolean,
@@ -311,158 +323,5 @@ export const scoreTrajectory = (
     filtersCorrect,
     substantiveClaims,
     linkedSupportedClaims,
-  };
-};
-
-const pairKey = (receipt: TrajectoryReceipt): string =>
-  [
-    receipt.canonical.taskId,
-    receipt.canonical.trialId,
-    receipt.canonical.lifecycle,
-  ].join("\0");
-
-export const pairPromotionCohorts = (
-  baseline: ScoredReceipt[],
-  candidate: Array<ScoredReceipt & { canonicalPayloads: [string, string] }>
-): PromotionPair[] => {
-  const baselineByKey = new Map(
-    baseline.map((item) => [pairKey(item.receipt), item])
-  );
-  const candidateByKey = new Map(
-    candidate.map((item) => [pairKey(item.receipt), item])
-  );
-  if (
-    baselineByKey.size !== baseline.length ||
-    candidateByKey.size !== candidate.length
-  ) {
-    throw new Error(
-      "Promotion cohorts contain duplicate task/trial/lifecycle pairs"
-    );
-  }
-  const baselineKeys = [...baselineByKey.keys()].sort();
-  const candidateKeys = [...candidateByKey.keys()].sort();
-  if (canonicalJson(baselineKeys) !== canonicalJson(candidateKeys)) {
-    throw new Error("Promotion cohorts do not contain identical pairs");
-  }
-  return baselineKeys.map((key) => {
-    const baselineItem = baselineByKey.get(key);
-    const candidateItem = candidateByKey.get(key);
-    if (!baselineItem || !candidateItem) {
-      throw new Error(`Promotion pair disappeared: ${key}`);
-    }
-    return {
-      taskId: baselineItem.receipt.canonical.taskId,
-      trialId: baselineItem.receipt.canonical.trialId,
-      lifecycle: baselineItem.receipt.canonical.lifecycle,
-      baseline: baselineItem,
-      candidate: candidateItem,
-    };
-  });
-};
-
-const safeReduction = (candidate: number, baseline: number): number | null =>
-  baseline > 0 ? 1 - candidate / baseline : null;
-
-export const evaluatePromotionGates = (
-  pairs: PromotionPair[]
-): PromotionGateResult => {
-  const failures: string[] = [];
-  if (pairs.length === 0) failures.push("paired_cohort_empty");
-  const seen = new Set<string>();
-  let baselineSuccess = 0;
-  let candidateSuccess = 0;
-  let baselineCalls = 0;
-  let candidateCalls = 0;
-  let baselineBytes = 0;
-  let candidateBytes = 0;
-  let substantiveClaims = 0;
-  let linkedSupportedClaims = 0;
-
-  for (const pair of pairs) {
-    const identity = `${pair.taskId}\0${pair.trialId}\0${pair.lifecycle}`;
-    if (seen.has(identity)) failures.push(`duplicate_pair:${identity}`);
-    seen.add(identity);
-    const pairReceipts = [pair.baseline.receipt, pair.candidate.receipt];
-    if (
-      pairReceipts.some(
-        (receipt) =>
-          receipt.canonical.taskId !== pair.taskId ||
-          receipt.canonical.trialId !== pair.trialId ||
-          receipt.canonical.lifecycle !== pair.lifecycle
-      )
-    ) {
-      failures.push(`pair_identity_mismatch:${identity}`);
-    }
-    if (
-      !pair.baseline.score.scored ||
-      !pair.candidate.score.scored ||
-      pairReceipts.some(
-        (receipt) => receipt.canonical.failure.class === "harness_error"
-      )
-    ) {
-      failures.push(`unscored_or_harness_failed_pair:${identity}`);
-      continue;
-    }
-    baselineSuccess += pair.baseline.score.success;
-    candidateSuccess += pair.candidate.score.success;
-    baselineCalls += pair.baseline.receipt.canonical.agentCalls;
-    candidateCalls += pair.candidate.receipt.canonical.agentCalls;
-    baselineBytes += pair.baseline.receipt.canonical.modelVisibleUtf8Bytes;
-    candidateBytes += pair.candidate.receipt.canonical.modelVisibleUtf8Bytes;
-    substantiveClaims += pair.candidate.score.substantiveClaims;
-    linkedSupportedClaims += pair.candidate.score.linkedSupportedClaims;
-    if (pair.candidate.score.success < pair.baseline.score.success) {
-      failures.push(`pairwise_accuracy_loss:${identity}`);
-    }
-    if (
-      pair.candidate.canonicalPayloads[0] !==
-      pair.candidate.canonicalPayloads[1]
-    ) {
-      failures.push(`nondeterministic_capsule_payload:${identity}`);
-    }
-  }
-
-  const scoredPairs =
-    pairs.length -
-    failures.filter((failure) =>
-      failure.startsWith("unscored_or_harness_failed_pair:")
-    ).length;
-  const baselineSuccessRate =
-    scoredPairs > 0 ? baselineSuccess / scoredPairs : null;
-  const candidateSuccessRate =
-    scoredPairs > 0 ? candidateSuccess / scoredPairs : null;
-  const agentCallReduction = safeReduction(candidateCalls, baselineCalls);
-  const contextByteReduction = safeReduction(candidateBytes, baselineBytes);
-  const claimLinkageRate =
-    substantiveClaims > 0 ? linkedSupportedClaims / substantiveClaims : null;
-
-  if (
-    baselineSuccessRate === null ||
-    candidateSuccessRate === null ||
-    candidateSuccessRate < baselineSuccessRate
-  ) {
-    failures.push("aggregate_accuracy_loss_or_empty_denominator");
-  }
-  if (agentCallReduction === null || agentCallReduction < 0.25) {
-    failures.push("agent_call_reduction_below_0.25_or_zero_denominator");
-  }
-  if (contextByteReduction === null || contextByteReduction < 0.35) {
-    failures.push("context_byte_reduction_below_0.35_or_zero_denominator");
-  }
-  if (claimLinkageRate === null || claimLinkageRate < 0.95) {
-    failures.push("claim_linkage_below_0.95_or_zero_denominator");
-  }
-
-  return {
-    passed: failures.length === 0,
-    pairCount: pairs.length,
-    failures,
-    metrics: {
-      baselineSuccessRate,
-      candidateSuccessRate,
-      agentCallReduction,
-      contextByteReduction,
-      claimLinkageRate,
-    },
   };
 };

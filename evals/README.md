@@ -14,6 +14,9 @@ bun run evals
 # Run hybrid benchmark only
 bun run eval:hybrid
 
+# Run deterministic agent retrieval outcomes (local, opt-in)
+bun run eval:agentic
+
 # Generate hybrid baseline snapshot artifacts
 bun run eval:hybrid:baseline
 
@@ -41,16 +44,17 @@ See [scores.md](scores.md) for latest results. Updated automatically by `bun run
 
 `gno bench <fixture.json>` is the public, local fixture runner for your own corpora. The Evalite suites below remain internal release/development gates.
 
-| Eval                     | What it tests                                    | Status                       |
-| ------------------------ | ------------------------------------------------ | ---------------------------- |
-| **vsearch**              | Legacy BM25 ranking suite (Recall@K, nDCG@K)     | ✅ Passing                   |
-| **query**                | Query parsing and latency                        | ✅ Passing                   |
-| **hybrid**               | End-to-end hybrid benchmark + p50/p95            | ✅ Passing                   |
-| **retrieval-candidates** | Candidate gen-model benchmark (full hybrid path) | ✅ Available for manual runs |
-| **expansion**            | Query expansion validity                         | ✅ Passing                   |
-| **thoroughness**         | Fast/balanced/thorough comparison                | ✅ Passing                   |
-| **multilingual**         | Cross-language retrieval                         | ⚠️ Placeholder (see below)   |
-| **ask**                  | Answer generation quality                        | ⚠️ LLM-dependent (see below) |
+| Eval                     | What it tests                                     | Status                       |
+| ------------------------ | ------------------------------------------------- | ---------------------------- |
+| **vsearch**              | Legacy BM25 ranking suite (Recall@K, nDCG@K)      | ✅ Passing                   |
+| **query**                | Query parsing and latency                         | ✅ Passing                   |
+| **hybrid**               | End-to-end hybrid benchmark + p50/p95             | ✅ Passing                   |
+| **retrieval-candidates** | Candidate gen-model benchmark (full hybrid path)  | ✅ Available for manual runs |
+| **agentic retrieval**    | Agent evidence, citations, stopping, Capsule gate | ✅ Deterministic opt-in      |
+| **expansion**            | Query expansion validity                          | ✅ Passing                   |
+| **thoroughness**         | Fast/balanced/thorough comparison                 | ✅ Passing                   |
+| **multilingual**         | Cross-language retrieval                          | ⚠️ Placeholder (see below)   |
+| **ask**                  | Answer generation quality                         | ⚠️ LLM-dependent (see below) |
 
 ## Hybrid Blend Policy Notes
 
@@ -69,6 +73,29 @@ See [scores.md](scores.md) for latest results. Updated automatically by `bun run
   - retrieval metrics across baseline, adversarial, multilingual, and ask-style cases
   - answer smoke metrics, latency, and RSS deltas on the local machine
 - Use this benchmark before changing the default generation base or starting retrieval fine-tuning work.
+
+## Agentic Retrieval Outcome Benchmark
+
+- `bun run eval:agentic` runs all 24 immutable tasks with the pinned fixture
+  agent against `gno-mcp`, lexical-only, and the eval-only Capsule prototype,
+  across cold and warm lifecycles.
+- Reports retain all attempted identities, harness exclusions, separate
+  `agentCalls`/`backendInvocations`, exact UTF-8 context bytes, native-index
+  fingerprints, environment provenance, and Capsule payload replay hashes.
+- `--adapter`, `--task`, and `--lifecycle` accept unique CSV filters;
+  `--agent fixture|local-model` selects the one-trial deterministic or pinned
+  three-trial cached-model lane. `--timeout-ms` bounds lifecycle operations.
+- qmd is explicit and fail-closed:
+  `QMD_REPO=/path/to/qmd QMD_MODEL_CACHE=/path/to/cache bun run eval:agentic -- --adapter qmd`.
+  Missing or mismatched inputs remain full harness-error receipts and exit `2`.
+- Exit `0`: complete and promotion passed when applicable. Exit `1`: complete
+  but Capsule promotion failed. Exit `2`: CLI, preflight, or harness failure.
+- `--write` only accepts a complete lane. The committed authoritative fixture
+  baseline lives at `fixtures/agentic-retrieval/baseline/fixture-agent/`;
+  qmd/local-model outputs stay under `baseline/optional/` and are not promotion
+  evidence.
+
+See [the full contract](../spec/evals-agentic.md).
 
 ## Known Limitations
 

@@ -21,6 +21,12 @@ evals/agentic/
   validation.ts
   fixture-db.ts
   scoring.ts
+  promotion.ts
+  registry.ts
+  report.ts
+  report-artifacts.ts
+  cli-options.ts
+  cli.ts
   adapter.ts
   agent.ts
   fixture-agent.ts
@@ -43,7 +49,10 @@ evals/fixtures/agentic-retrieval/
   oracles/<opaque-task-id>.json
   corpus/<opaque-task-id>/<opaque-collection>/<opaque-file>.md
   agent-model.lock.json
-  baseline/                         # populated by later runner work
+  baseline/
+    README.md
+    fixture-agent/{report.json,canonical.json,observations.json,report.md}
+    optional/{qmd,local-model}/     # local opt-in evidence; not authoritative
 ```
 
 The first fixture version contains 24 original synthetic tasks and 34 Markdown
@@ -352,7 +361,20 @@ measurements, so invocation-accounting capability is `false`, its count is
 zero with a diagnostic, and those observations remain explicitly unavailable.
 
 Committed reports record attempted pairs, scored pairs, every exclusion,
-receipts, task scores, environment/methodology, and known limitations.
+receipts, identity-bearing task scores, Capsule replay proofs, exact
+environment/methodology, and known limitations. The environment includes the
+package and Bun versions, platform/architecture, Git commit/dirty state,
+fixture version/fingerprint, selected agent, and trial schedule.
+
+The report `canonicalFingerprint` hashes a non-self-referential projection:
+the fingerprint field itself and volatile receipt observations are excluded;
+environment provenance, methodologies, limitations, native index identities,
+canonical receipts, identity-bearing scores, exclusions, Capsule payload bytes
+and hashes, and promotion results remain included. `report.json` is schema
+valid. `canonical.json` contains that exact projection. `observations.json`
+holds environment, build observations, and full-identity receipt observations;
+committed temporary paths are projected to `<temp>`. `report.md` is the readable
+summary. The four files are staged and directory-renamed as one baseline set.
 
 ## Deterministic scoring
 
@@ -376,7 +398,11 @@ prose in separate experiments, but cannot override deterministic promotion.
 ## Capsule promotion formulas
 
 Promotion compares Capsule and current GNO only over the identical non-harness-
-failed task/trial/lifecycle pair set `P`.
+failed task/trial/seed/lifecycle/agent pair set `P`. Baseline adapter identity
+must be exactly `gno-mcp`; candidate identity must be exactly `capsule`. Corpus,
+prompt, tool, model, and runtime fingerprints must match. Adapter config and
+native index fingerprints may differ by design. Every score record must match
+its receipt identity.
 
 For every pair:
 
@@ -405,8 +431,10 @@ linkedSupportedClaims_capsule / substantiveClaims_capsule >= 0.95
 
 All denominators must be non-zero. Abstention-only tasks use their completion
 predicate and do not fabricate substantive claims. Every fixture-agent Capsule
-task must also emit byte-identical canonical Capsule payload JSON in two
-unchanged-input replays. Missing pairs, duplicates, identity mismatches,
+task must also emit byte-identical canonical Capsule payload JSON and matching
+SHA-256 across the scored run and one unchanged-input replay. Empty,
+non-canonical, wrong-task, or synthetic sentinel payloads fail. Missing pairs,
+duplicates, identity mismatches,
 pairwise or aggregate accuracy loss, denominator failure, threshold miss, or
 nondeterminism fails promotion.
 
@@ -418,12 +446,27 @@ Contract tests are ordinary offline tests:
 bun test test/eval/agentic
 ```
 
-The opt-in runner contract reserved for subsequent tasks is:
+The runner is local and opt-in:
 
 ```bash
-bun run eval:agentic -- --agent fixture --adapter gno-mcp,lexical,capsule --lifecycle cold --write
-QMD_REPO=/path/to/pinned/qmd bun run eval:agentic -- --agent fixture --adapter qmd --lifecycle cold --write
+bun run eval:agentic
+bun run eval:agentic -- --adapter gno-mcp,lexical,capsule --task t0a1b2c3 --lifecycle cold --agent fixture --timeout-ms 30000
+QMD_REPO=/path/to/pinned/qmd QMD_MODEL_CACHE=/path/to/cache bun run eval:agentic -- --adapter qmd
 ```
+
+Filters are CSV lists and reject empty, duplicate, or unknown values before
+adapter preparation. Defaults are all tasks, `gno-mcp,lexical,capsule`, both
+lifecycles, and the fixture agent. qmd is lazily registered and never runs by
+default. A requested unavailable qmd lane produces the complete requested
+harness-error matrix/report and exits `2`; it never disappears or downgrades.
+
+Exit `0` means a complete run and, when applicable, passing promotion. Exit `1`
+means the complete Capsule promotion gate failed. Exit `2` means invalid CLI,
+preflight, harness, or requested-adapter failure. `--write` accepts only a full
+24-task/two-lifecycle lane: the fixture-agent three-adapter lane writes the
+authoritative baseline, while qmd and the three-trial cached-local-model lane
+write only under `baseline/optional/`. Filtered or mixed writes are refused and
+can never overwrite the authoritative baseline.
 
 ## Limitations
 
