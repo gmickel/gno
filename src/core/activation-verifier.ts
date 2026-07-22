@@ -39,6 +39,11 @@ export type {
 } from "../store/types";
 
 const RECEIPT_SCHEMA_VERSION = "1.0" as const;
+const REUSABLE_NEGATIVE_CODES = new Set<ActivationVerificationCode>([
+  "no_documents",
+  "no_probe_term",
+  "index_out_of_sync",
+]);
 export interface ActivationVerifierOptions {
   /** Re-run proof instead of reusing a current fingerprint-matched receipt. */
   force?: boolean;
@@ -79,6 +84,16 @@ function pendingStage(
     latencyMs: null,
     code,
   };
+}
+
+function isReusableLexicalReceipt(
+  receipt: ActivationVerificationReceipt
+): boolean {
+  if (receipt.ready) {
+    return true;
+  }
+  const code = receipt.stages.index.code ?? receipt.stages.lexical.code;
+  return code !== undefined && REUSABLE_NEGATIVE_CODES.has(code);
 }
 
 function buildReceipt(input: {
@@ -166,10 +181,9 @@ export async function verifyLexicalActivation(
         current.error.cause
       );
     }
-    // Passing receipts are stable for this exact fingerprint. Failed receipts
-    // are evidence of the last attempt, not a readiness cache: retry them so a
-    // transient query failure or repaired same-fingerprint FTS state recovers.
-    if (current.value?.ready) {
+    // Deterministic negatives are stable for this exact fingerprint. Query and
+    // result mismatches remain recoverable and are retried without a TTL.
+    if (current.value && isReusableLexicalReceipt(current.value)) {
       return ok(current.value);
     }
   }

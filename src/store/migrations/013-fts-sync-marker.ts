@@ -2,8 +2,8 @@
  * Migration: metadata-only FTS synchronization marker.
  *
  * The marker records which mirror hash was transactionally written through the
- * supported FTS writers. Activation fingerprints can detect sync lag without
- * selecting or comparing corpus bodies.
+ * supported FTS writers. This one-time migration compares legacy FTS bodies
+ * before trusting them; passive activation checks remain metadata-only.
  */
 
 import type { Database } from "bun:sqlite";
@@ -24,9 +24,11 @@ export const migration: Migration = {
         AND EXISTS (
           SELECT 1
           FROM documents_fts f
+          JOIN content c ON c.mirror_hash = documents.mirror_hash
           WHERE f.rowid = documents.id
             AND f.filepath = documents.rel_path
             AND f.title = COALESCE(documents.title, '')
+            AND f.body = c.markdown
         )
     `);
   },

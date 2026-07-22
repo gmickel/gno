@@ -202,8 +202,9 @@ hashes plus schema, tokenizer, and owned FTS synchronization metadata. Passive
 status never selects or compares stored markdown or FTS bodies. On a receipt
 miss, lexical proof reads at most 64 document prefixes of 32,768 characters and
 tries at most 64 corpus-derived terms. `index_out_of_sync` fails before probing
-when any active document lacks a current owned FTS row. Direct out-of-band FTS
-body mutations are outside this owned-writer contract.
+when any active document lacks a current owned FTS row. Migration 013 compares
+legacy FTS bodies once before backfilling that marker; after migration, direct
+out-of-band FTS body mutations remain outside the owned-writer contract.
 
 Passive callers report `semantic_not_checked` when vector runtime availability
 is unknown. `vector_unavailable` is reserved for a resident runtime that has

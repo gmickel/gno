@@ -87,6 +87,40 @@ describe("lexical activation verifier", () => {
     }
   }
 
+  function trackedProofStore(): {
+    store: StorePort;
+    counts: { prefixReads: number; searches: number; receiptWrites: number };
+  } {
+    const counts = { prefixReads: 0, searches: 0, receiptWrites: 0 };
+    const store = new Proxy(adapter, {
+      get(target, property, receiver) {
+        if (property === "getContentPrefix") {
+          return async (...args: Parameters<StorePort["getContentPrefix"]>) => {
+            counts.prefixReads += 1;
+            return target.getContentPrefix(...args);
+          };
+        }
+        if (property === "searchFts") {
+          return async (...args: Parameters<StorePort["searchFts"]>) => {
+            counts.searches += 1;
+            return target.searchFts(...args);
+          };
+        }
+        if (property === "upsertActivationReceipt") {
+          return async (
+            ...args: Parameters<StorePort["upsertActivationReceipt"]>
+          ) => {
+            counts.receiptWrites += 1;
+            return target.upsertActivationReceipt(...args);
+          };
+        }
+        const value = Reflect.get(target, property, receiver);
+        return typeof value === "function" ? value.bind(target) : value;
+      },
+    }) as StorePort;
+    return { store, counts };
+  }
+
   const verifierOptions = {
     now: () => FIXED_NOW,
     monotonicNow: () => 10,
@@ -135,6 +169,19 @@ describe("lexical activation verifier", () => {
       status: "failed",
       code: "no_documents",
     });
+
+    const tracked = trackedProofStore();
+    const cached = await verifyLexicalActivation(
+      tracked.store,
+      "notes",
+      verifierOptions
+    );
+    expect(cached).toEqual(result);
+    expect(tracked.counts).toEqual({
+      prefixReads: 0,
+      searches: 0,
+      receiptWrites: 0,
+    });
   });
 
   test("fails with no_probe_term for stopword-only and numeric text", async () => {
@@ -154,6 +201,19 @@ describe("lexical activation verifier", () => {
     expect(result.value.stages.lexical).toMatchObject({
       status: "failed",
       code: "no_probe_term",
+    });
+
+    const tracked = trackedProofStore();
+    const cached = await verifyLexicalActivation(
+      tracked.store,
+      "notes",
+      verifierOptions
+    );
+    expect(cached).toEqual(result);
+    expect(tracked.counts).toEqual({
+      prefixReads: 0,
+      searches: 0,
+      receiptWrites: 0,
     });
   });
 
@@ -429,6 +489,19 @@ describe("lexical activation verifier", () => {
     expect(beforeSync.value.stages.lexical).toMatchObject({
       status: "skipped",
       code: "index_out_of_sync",
+    });
+
+    const tracked = trackedProofStore();
+    const cachedOutOfSync = await verifyLexicalActivation(
+      tracked.store,
+      "notes",
+      verifierOptions
+    );
+    expect(cachedOutOfSync).toEqual(beforeSync);
+    expect(tracked.counts).toEqual({
+      prefixReads: 0,
+      searches: 0,
+      receiptWrites: 0,
     });
 
     expect((await adapter.syncDocumentFts("notes", "race.md")).ok).toBe(true);
