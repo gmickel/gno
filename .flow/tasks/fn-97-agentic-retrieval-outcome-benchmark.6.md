@@ -41,10 +41,10 @@ Implemented the complete fn-97 agentic benchmark reporting and promotion layer.
 - Preserved requested unavailable-qmd attempts as a complete harness-error report with canonical failure reasons and exit 2.
 - Preserved failed and budget-rejected outer tool choices in canonical accounting, sanitized qmd child environments, and enforced raw qmd lock/model cache identity.
 - Added contract, CLI, report, promotion, baseline, runner-failure, artifact-writer, failure-accounting, and qmd identity regressions; updated eval specifications and documentation.
-- Independent implementation review: SHIP after completion fixes.
+- Independent completion review: SHIP, no remaining P0-P2 findings.
 
 Authoritative result: Capsule maintained/improved task accuracy, reduced agent calls by 48.94%, and linked 100% of substantive claims, but used 65.70% more model-visible bytes. Promotion truthfully fails only the 35% context-byte-reduction gate. Canonical fingerprint: 1c1ce409aef4a0b21e4412cf57017bda55ff6265bc1c8bdd3373fd5a49033217. Baseline provenance: 64d2e47fff29a32ac4edc8c49d63f38752c8bdea, dirty=false. Baseline artifact commit: 249271a.
 ## Evidence
-- Commits: 9298c60e273cf1ab24e99968644f87271c4f7819, 3ec2615be3c8ec331a53e0dacb4dc41aeb05c3d0, 9cb55795dd346a6fe63d233fabcef8fdf2b68f1b, a8bc43ed2f832a432654a6a4c555c166ea2ed161, cbe671742beb0f643b48646efee7e0f099024c01, 76a3d4d29ff5da13057cdcd31be1730c02f583fe, 0efcbb791c98bc7802c3fc0949ae4bb177856bd3, 1fd32c49090aa4e61131aea83a1c645290a859aa, cdaf4725130e9b0770a6e4d64a456ddf7cf2a041, 331a249107085cb251bcac33e5383b8e4d584cbe, 64d2e47fff29a32ac4edc8c49d63f38752c8bdea, 249271a
-- Tests: bun test test/eval/agentic: 135 passed, 0 failed, 2355 assertions, authoritative baseline: 144 receipts/scores, 48 replays, schema/canonical parity green, promotion truthfully fails only context-byte reduction
+- Commits: 9298c60e273cf1ab24e99968644f87271c4f7819, 3ec2615be3c8ec331a53e0dacb4dc41aeb05c3d0, 9cb55795dd346a6fe63d233fabcef8fdf2b68f1b, a8bc43ed2f832a432654a6a4c555c166ea2ed161, cbe671742beb0f643b48646efee7e0f099024c01, 76a3d4d29ff5da13057cdcd31be1730c02f583fe, 0efcbb791c98bc7802c3fc0949ae4bb177856bd3, 1fd32c49090aa4e61131aea83a1c645290a859aa, cdaf4725130e9b0770a6e4d64a456ddf7cf2a041, 331a249107085cb251bcac33e5383b8e4d584cbe, 64d2e47fff29a32ac4edc8c49d63f38752c8bdea, 249271a, ca4a74a
+- Tests: bun run lint:check: 0 warnings, 0 errors, formatting clean, bun test: 2470 passed, 1 Windows-only skip, 0 failed, 16066 assertions, bun run docs:verify: 13 passed, 0 failed, 2 model-cache skips, bun test test/eval/agentic: 135 passed, 0 failed, 2355 assertions, authoritative baseline: 144 receipts/scores, 48 replays, schema/canonical parity green, promotion truthfully fails only context-byte reduction
 - PRs:
