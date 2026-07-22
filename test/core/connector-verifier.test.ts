@@ -28,15 +28,10 @@ describe("connector activation verifier", () => {
   let adapter: SqliteAdapter;
   let testDir: string;
 
-  beforeEach(async () => {
-    testDir = await mkdtemp(join(tmpdir(), "gno-connector-verifier-"));
-    adapter = new SqliteAdapter();
-    expect(
-      (await adapter.open(join(testDir, "index.sqlite"), "unicode61")).ok
-    ).toBe(true);
+  async function seedAdapter(target: SqliteAdapter): Promise<void> {
     expect(
       (
-        await adapter.syncCollections([
+        await target.syncCollections([
           {
             name: COLLECTION,
             path: testDir,
@@ -53,7 +48,7 @@ describe("connector activation verifier", () => {
     const mirrorHash = hash(`mirror:${markdown}`);
     expect(
       (
-        await adapter.upsertDocument({
+        await target.upsertDocument({
           collection: COLLECTION,
           relPath: REL_PATH,
           sourceHash: SOURCE_HASH,
@@ -66,10 +61,10 @@ describe("connector activation verifier", () => {
         })
       ).ok
     ).toBe(true);
-    expect((await adapter.upsertContent(mirrorHash, markdown)).ok).toBe(true);
+    expect((await target.upsertContent(mirrorHash, markdown)).ok).toBe(true);
     expect(
       (
-        await adapter.upsertChunks(mirrorHash, [
+        await target.upsertChunks(mirrorHash, [
           {
             seq: 0,
             pos: 0,
@@ -80,7 +75,17 @@ describe("connector activation verifier", () => {
         ])
       ).ok
     ).toBe(true);
-    expect((await adapter.syncDocumentFts(COLLECTION, REL_PATH)).ok).toBe(true);
+    expect((await target.syncDocumentFts(COLLECTION, REL_PATH)).ok).toBe(true);
+  }
+
+  beforeEach(async () => {
+    testDir = await mkdtemp(join(tmpdir(), "gno-connector-verifier-"));
+    adapter = new SqliteAdapter();
+    expect(
+      (await adapter.open(join(testDir, "index-default.sqlite"), "unicode61"))
+        .ok
+    ).toBe(true);
+    await seedAdapter(adapter);
   });
 
   afterEach(async () => {
@@ -110,6 +115,8 @@ describe("connector activation verifier", () => {
       | "status-timeout"
       | "search-fails"
       | "mismatch"
+      | "wrong-result-index",
+    reportedIndexName = "default"
   ): Promise<{ command: string; args: string[] }> {
     const fixtureDir = join(testDir, "fixture");
     await mkdir(fixtureDir, { recursive: true });
@@ -129,12 +136,20 @@ ${
   hasStatus
     ? mode === "status-timeout"
       ? `server.tool("gno_status", {}, async () => await new Promise(() => {}));`
-      : `server.tool("gno_status", {}, async () => ({ isError: ${mode === "status-fails"}, content: [{ type: "text", text: "status" }], structuredContent: {} }));`
+      : `server.tool("gno_status", {}, async () => ({ isError: ${mode === "status-fails"}, content: [{ type: "text", text: "status" }], structuredContent: { indexName: ${JSON.stringify(reportedIndexName)} } }));`
     : ""
 }
 ${
   hasSearch
-    ? `server.tool("gno_search", { query: z.string(), collection: z.string(), limit: z.number() }, async () => ({ isError: ${mode === "search-fails"}, content: [{ type: "text", text: "discarded snippet" }], structuredContent: { results: [{ uri: ${mode === "mismatch" ? '"gno://notes/wrong.md"' : '"gno://notes/architecture.md"'}, snippet: "discarded snippet", source: { sourceHash: "3273f6e7e0531d489eabc07eec21c67c510cf500a6b198752021f98f9b73c8b7" } }] } }));`
+    ? `server.tool("gno_search", { query: z.string(), collection: z.string(), limit: z.number() }, async () => ({ isError: ${mode === "search-fails"}, content: [{ type: "text", text: "discarded snippet" }], structuredContent: { results: [{ uri: ${JSON.stringify(
+        mode === "mismatch"
+          ? "gno://notes/wrong.md"
+          : mode === "wrong-result-index"
+            ? "gno://notes/architecture.md?index=other"
+            : reportedIndexName === "default"
+              ? "gno://notes/architecture.md"
+              : `gno://notes/architecture.md?index=${encodeURIComponent(reportedIndexName)}`
+      )}, snippet: "discarded snippet", source: { sourceHash: "3273f6e7e0531d489eabc07eec21c67c510cf500a6b198752021f98f9b73c8b7" } }] } }));`
     : ""
 }
 await server.connect(new StdioServerTransport());
@@ -183,6 +198,53 @@ await new Promise((resolve) => process.stdin.once("end", resolve));
     expect(new TextEncoder().encode(serialized).byteLength).toBeLessThan(
       16_384
     );
+  });
+
+  test("requires MCP status and results to match the selected non-default index", async () => {
+    const scopedStore = new SqliteAdapter();
+    expect(
+      (await scopedStore.open(join(testDir, "index-work.sqlite"), "unicode61"))
+        .ok
+    ).toBe(true);
+    await seedAdapter(scopedStore);
+
+    try {
+      const defaultEntry = await createMcpFixture("pass");
+      defaultEntry.args = [
+        defaultEntry.args[0] ?? "",
+        "--index",
+        "work",
+        "mcp",
+      ];
+      const wrongIndex = await verifyConnectorActivation(
+        scopedStore,
+        COLLECTION,
+        mcpTarget(defaultEntry),
+        optionsForTrustedEntry(defaultEntry)
+      );
+      expect(wrongIndex.ok).toBe(true);
+      if (wrongIndex.ok) {
+        expect(wrongIndex.value.stages.connector).toMatchObject({
+          status: "failed",
+          code: "connector_status_failed",
+        });
+      }
+
+      const workEntry = await createMcpFixture("pass", "work");
+      workEntry.args = [workEntry.args[0] ?? "", "--index=work", "mcp"];
+      const matchingIndex = await verifyConnectorActivation(
+        scopedStore,
+        COLLECTION,
+        mcpTarget(workEntry),
+        optionsForTrustedEntry(workEntry)
+      );
+      expect(matchingIndex.ok).toBe(true);
+      if (matchingIndex.ok) {
+        expect(matchingIndex.value.stages.connector.status).toBe("passed");
+      }
+    } finally {
+      await scopedStore.close();
+    }
   });
 
   test("reports skill installation as runtime-unverifiable, never passed", async () => {
@@ -339,6 +401,7 @@ await new Promise((resolve) => process.stdin.once("end", resolve));
     ["status-timeout", "connector_timeout"],
     ["search-fails", "connector_search_failed"],
     ["mismatch", "connector_result_mismatch"],
+    ["wrong-result-index", "connector_result_mismatch"],
   ] as const)("maps %s to stable failure code", async (mode, expectedCode) => {
     const serverEntry = await createMcpFixture(mode);
     const result = await verifyConnectorActivation(

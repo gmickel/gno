@@ -12,6 +12,7 @@ import type {
   StoreResult,
 } from "../store/types";
 
+import { DEFAULT_INDEX_NAME, parseUri } from "../app/constants";
 import { ok } from "../store/types";
 import {
   createEphemeralActivationProbePlan,
@@ -77,6 +78,7 @@ interface McpProofInput {
   term: string;
   expectedUri: string;
   expectedSourceHash: string;
+  expectedIndexName: string;
   timeoutMs: number;
 }
 
@@ -233,10 +235,27 @@ function isTimeoutError(error: unknown): boolean {
   );
 }
 
+function hasExpectedStatusIndex(
+  response: unknown,
+  expectedIndexName: string
+): boolean {
+  if (!response || typeof response !== "object") {
+    return false;
+  }
+  const structured = (response as { structuredContent?: unknown })
+    .structuredContent;
+  return (
+    !!structured &&
+    typeof structured === "object" &&
+    (structured as { indexName?: unknown }).indexName === expectedIndexName
+  );
+}
+
 function hasExpectedResult(
   response: unknown,
   expectedUri: string,
-  expectedSourceHash: string
+  expectedSourceHash: string,
+  expectedIndexName: string
 ): boolean {
   if (!response || typeof response !== "object") {
     return false;
@@ -250,6 +269,10 @@ function hasExpectedResult(
   if (!Array.isArray(results)) {
     return false;
   }
+  const expected = parseUri(expectedUri);
+  if (!expected) {
+    return false;
+  }
   return results.some((result) => {
     if (!result || typeof result !== "object") {
       return false;
@@ -258,9 +281,13 @@ function hasExpectedResult(
       uri?: unknown;
       source?: { sourceHash?: unknown };
     };
-    const uri = typeof record.uri === "string" ? record.uri.split("?")[0] : "";
+    const uri = typeof record.uri === "string" ? parseUri(record.uri) : null;
+    const resultIndexName = uri?.indexName ?? DEFAULT_INDEX_NAME;
     return (
-      uri === expectedUri && record.source?.sourceHash === expectedSourceHash
+      uri?.collection === expected.collection &&
+      uri.path === expected.path &&
+      resultIndexName === expectedIndexName &&
+      record.source?.sourceHash === expectedSourceHash
     );
   });
 }
@@ -292,7 +319,10 @@ async function executeMcpProof(input: McpProofInput): Promise<McpProofResult> {
       undefined,
       requestOptions
     );
-    if (status.isError === true) {
+    if (
+      status.isError === true ||
+      !hasExpectedStatusIndex(status, input.expectedIndexName)
+    ) {
       return { ok: false, code: "connector_status_failed" };
     }
 
@@ -318,7 +348,8 @@ async function executeMcpProof(input: McpProofInput): Promise<McpProofResult> {
       hasExpectedResult(
         searchResponse,
         input.expectedUri,
-        input.expectedSourceHash
+        input.expectedSourceHash,
+        input.expectedIndexName
       );
     searchResponse = undefined;
     if (searchFailed) {
@@ -460,6 +491,7 @@ export async function verifyConnectorActivation(
     term: match.value.value.term,
     expectedUri: match.value.value.resultUri,
     expectedSourceHash: match.value.value.resultSourceHash,
+    expectedIndexName: plan.value.identity.indexName,
     timeoutMs: Math.max(100, options.timeoutMs ?? DEFAULT_TIMEOUT_MS),
   });
   return proof.ok ? finish("passed") : finish("failed", proof.code);
