@@ -15,6 +15,8 @@ import { basename } from "node:path";
 
 import type { Collection, Context, FtsTokenizer } from "../../config/types";
 import type {
+  ActivationIndexIdentity,
+  ActivationVerificationReceipt,
   BacklinkRow,
   ChunkInput,
   ChunkRow,
@@ -63,7 +65,11 @@ import {
   buildWikiBestRankSubquery,
 } from "../../core/graph-resolver";
 import { normalizeWikiName, stripWikiMdExt } from "../../core/links";
-import { migrations, runMigrations } from "../migrations";
+import {
+  parseActivationReceipt,
+  serializeActivationReceipt,
+} from "../activation-receipts";
+import { getSchemaVersion, migrations, runMigrations } from "../migrations";
 import { err, ok } from "../types";
 import { getStoredEmbeddingFingerprint } from "../vector/freshness";
 import { modelTableName } from "../vector/sqlite-vec";
@@ -557,6 +563,116 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
       return err(
         "QUERY_FAILED",
         cause instanceof Error ? cause.message : "Failed to get contexts",
+        cause
+      );
+    }
+  }
+
+  async getActivationIndexIdentity(): Promise<
+    StoreResult<ActivationIndexIdentity>
+  > {
+    try {
+      const db = this.ensureOpen();
+      const indexName =
+        basename(this.dbPath)
+          .replace(SQLITE_EXT_REGEX, "")
+          .replace(INDEX_PREFIX_REGEX, "") || "default";
+      return ok({
+        indexName,
+        schemaVersion: getSchemaVersion(db),
+        ftsTokenizer: this.ftsTokenizer,
+      });
+    } catch (cause) {
+      return err(
+        "QUERY_FAILED",
+        cause instanceof Error
+          ? cause.message
+          : "Failed to get activation index identity",
+        cause
+      );
+    }
+  }
+
+  async getActivationReceipt(
+    collection: string,
+    expectedFingerprint: string,
+    connectorTarget = ""
+  ): Promise<StoreResult<ActivationVerificationReceipt | null>> {
+    try {
+      const db = this.ensureOpen();
+      const row = db
+        .query<{ fingerprint: string; receipt_json: string }, [string, string]>(
+          `SELECT fingerprint, receipt_json
+           FROM activation_receipts
+           WHERE collection = ? AND connector_target = ?`
+        )
+        .get(collection, connectorTarget);
+
+      if (!row) {
+        return ok(null);
+      }
+      if (row.fingerprint !== expectedFingerprint) {
+        db.run(
+          "DELETE FROM activation_receipts WHERE collection = ? AND connector_target = ?",
+          [collection, connectorTarget]
+        );
+        return ok(null);
+      }
+
+      const receipt = parseActivationReceipt(row.receipt_json);
+      if (!receipt || receipt.fingerprint !== expectedFingerprint) {
+        db.run(
+          "DELETE FROM activation_receipts WHERE collection = ? AND connector_target = ?",
+          [collection, connectorTarget]
+        );
+        return ok(null);
+      }
+      return ok(receipt);
+    } catch (cause) {
+      return err(
+        "QUERY_FAILED",
+        cause instanceof Error
+          ? cause.message
+          : "Failed to get activation receipt",
+        cause
+      );
+    }
+  }
+
+  async upsertActivationReceipt(
+    receipt: ActivationVerificationReceipt
+  ): Promise<StoreResult<void>> {
+    try {
+      const db = this.ensureOpen();
+      const serialized = serializeActivationReceipt(receipt);
+      if (!serialized.ok) {
+        return err("INVALID_INPUT", "Activation receipt exceeds 16 KiB");
+      }
+      db.run(
+        `INSERT INTO activation_receipts (
+           collection, connector_target, schema_version, fingerprint,
+           receipt_json, updated_at
+         ) VALUES (?, ?, ?, ?, ?, datetime('now'))
+         ON CONFLICT(collection, connector_target) DO UPDATE SET
+           schema_version = excluded.schema_version,
+           fingerprint = excluded.fingerprint,
+           receipt_json = excluded.receipt_json,
+           updated_at = datetime('now')`,
+        [
+          serialized.projected.collection,
+          serialized.connectorTarget,
+          serialized.projected.schemaVersion,
+          serialized.projected.fingerprint,
+          serialized.json,
+        ]
+      );
+      return ok(undefined);
+    } catch (cause) {
+      return err(
+        "QUERY_FAILED",
+        cause instanceof Error
+          ? cause.message
+          : "Failed to persist activation receipt",
         cause
       );
     }
@@ -1359,12 +1475,7 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
         params.push(`%${options.author.toLowerCase()}%`);
       }
 
-      if (options.collection) {
-        params.push(options.collection);
-      }
-
-      const hasOuterFilters =
-        tagConditions.length > 0 || Boolean(options.collection);
+      const hasOuterFilters = tagConditions.length > 0;
       const ftsLimit = hasOuterFilters ? limit * 10 : limit;
       params.push(limit);
 
@@ -1383,6 +1494,11 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
             ) as score
           FROM documents_fts
           WHERE documents_fts MATCH ?
+          AND rowid IN (
+            SELECT id FROM documents
+            WHERE active = 1
+            ${options.collection ? "AND collection = ?" : ""}
+          )
           ORDER BY score
           LIMIT ?
         )
@@ -1408,7 +1524,6 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
         JOIN documents d ON d.id = fm.rowid AND d.active = 1
         WHERE 1 = 1
         ${tagConditions.length > 0 ? `AND ${tagConditions.join(" AND ")}` : ""}
-        ${options.collection ? "AND d.collection = ?" : ""}
         ORDER BY fm.score
         LIMIT ?
       `;
@@ -1433,7 +1548,12 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
         categories: string | null;
       }
 
-      const queryParams = [builtQuery.query, ftsLimit, ...params];
+      const queryParams = [
+        builtQuery.query,
+        ...(options.collection ? [options.collection] : []),
+        ftsLimit,
+        ...params,
+      ];
       const rows = db
         .query<FtsRow, (string | number)[]>(sql)
         .all(...queryParams);

@@ -19,6 +19,12 @@ export {
 export { SqliteAdapter } from "./sqlite";
 // Types and interfaces
 export type {
+  ActivationIndexIdentity,
+  ActivationStageName,
+  ActivationStageReceipt,
+  ActivationStageStatus,
+  ActivationVerificationCode,
+  ActivationVerificationReceipt,
   ChunkInput,
   ChunkRow,
   CleanupStats,

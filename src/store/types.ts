@@ -733,6 +733,58 @@ export interface MigrationResult {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Activation Verification
+// ─────────────────────────────────────────────────────────────────────────────
+
+export type ActivationStageName =
+  | "index"
+  | "lexical"
+  | "semantic"
+  | "connector";
+
+export type ActivationStageStatus = "passed" | "pending" | "failed" | "skipped";
+
+export type ActivationVerificationCode =
+  | "no_documents"
+  | "no_probe_term"
+  | "index_query_failed"
+  | "retrieval_mismatch"
+  | "semantic_not_checked"
+  | "connector_not_requested";
+
+export interface ActivationStageReceipt {
+  status: ActivationStageStatus;
+  startedAt: string | null;
+  completedAt: string | null;
+  latencyMs: number | null;
+  code?: ActivationVerificationCode;
+}
+
+/** Privacy-bounded, per-collection proof that the local index can retrieve. */
+export interface ActivationVerificationReceipt {
+  schemaVersion: "1.0";
+  collection: string;
+  fingerprint: string;
+  ready: boolean;
+  generatedAt: string;
+  stages: Record<ActivationStageName, ActivationStageReceipt>;
+  evidence: {
+    /** Corpus-keyed SHA-256 probe digest. The term/key are never persisted. */
+    probeHash?: string;
+    resultUri?: string;
+    resultSourceHash?: string;
+    connectorTarget?: string;
+  };
+}
+
+/** Stable index inputs included in activation fingerprints. */
+export interface ActivationIndexIdentity {
+  indexName: string;
+  schemaVersion: number;
+  ftsTokenizer: FtsTokenizer;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Transaction Types
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -815,6 +867,24 @@ export interface StorePort {
    * Get all contexts from DB.
    */
   getContexts(): Promise<StoreResult<ContextRow[]>>;
+
+  /** Schema/tokenizer identity used to invalidate activation receipts. */
+  getActivationIndexIdentity(): Promise<StoreResult<ActivationIndexIdentity>>;
+
+  /**
+   * Load the current activation receipt. A row with a different fingerprint is
+   * deleted and returned as null so stale readiness cannot escape the store.
+   */
+  getActivationReceipt(
+    collection: string,
+    expectedFingerprint: string,
+    connectorTarget?: string
+  ): Promise<StoreResult<ActivationVerificationReceipt | null>>;
+
+  /** Persist a strictly projected, privacy-bounded activation receipt. */
+  upsertActivationReceipt(
+    receipt: ActivationVerificationReceipt
+  ): Promise<StoreResult<void>>;
 
   // ─────────────────────────────────────────────────────────────────────────
   // Documents
