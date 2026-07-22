@@ -12,7 +12,7 @@ Deliver register saved capsules and reverify affected evidence as one implementa
 ### Approach
 - Register only explicitly saved Capsule path/hash/question/evidence references; keep the Capsule body user-owned at its chosen location.
 - Use journal source/hash changes to enqueue bounded reverification only for referenced evidence, not every saved Capsule on every sync.
-- Run `verifyContextCapsule` once for each affected saved Capsule with current fingerprints and optional evidence-ID keyed rank resolution; persist/project its canonical receipt separately, then derive affected-question state and optional local notifications after committed changes.
+- Run `verifyContextCapsule` once for each affected saved Capsule with current fingerprints and optional evidence-ID keyed rank resolution; persist/project its canonical receipt separately, including `currentFingerprints`, `fingerprintStatus`, and ordered `fingerprintReasons` independently from per-evidence ranking, then derive affected-question state and optional local notifications after committed changes. Use the store's batch lookup ports as-is so their internal SQLite-safe chunking supports large saved Capsules.
 
 ### Investigation targets
 **Required** (read before coding):
@@ -32,10 +32,11 @@ Deliver register saved capsules and reverify affected evidence as one implementa
 
 ## Acceptance
 - [ ] Only Capsules referencing changed evidence are scheduled for reverification.
-- [ ] Receipts distinguish source staleness, missing evidence, ranking drift, and affected question state.
+- [ ] Receipts preserve partial truth for source/mirror/passage/chunk stale, missing, and corrupt states, including each current hash the verifier could determine, and distinguish those content results from ranking drift, aggregate fingerprint drift, and affected question state.
 - [ ] Jobs are bounded/idempotent and notifications contain no source passage content.
 - [ ] Reverification preserves the saved Capsule bytes, handles `ContextVerifierErrorCode` operation failures separately from completed stale/missing receipts, and does not treat `ranking_unavailable` as content staleness.
 <!-- Updated by plan-sync (cross-spec): fn-98-context-capsule-mvp.4 exposed verifyContextCapsule and canonical non-mutating verification receipts -->
+<!-- Updated by plan-sync (cross-spec): fn-98-context-capsule-mvp.4 review fixes finalized independent fingerprint status, partial-truth hashes, exact evidence bytes, and chunked large-Capsule lookups -->
 
 
 ## Done summary
