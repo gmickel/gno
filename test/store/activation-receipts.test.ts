@@ -133,6 +133,94 @@ describe("activation receipt store", () => {
     expect(raw).not.toContain("private-passage");
   });
 
+  test("rejects schema-invalid receipts before persistence", async () => {
+    const invalid = receipt({ fingerprint: "not-a-sha256" });
+    const result = await adapter.upsertActivationReceipt(invalid);
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.code).toBe("INVALID_INPUT");
+      expect(result.error.message).toContain("schema-invalid");
+    }
+  });
+
+  test("deletes corrupt or row-mismatched receipt JSON on read", async () => {
+    const db = adapter.getRawDb();
+    const insert = (
+      collection: string,
+      connectorTarget: string,
+      value: unknown
+    ): void => {
+      db.run(
+        `INSERT OR REPLACE INTO activation_receipts (
+           collection, connector_target, schema_version, fingerprint,
+           receipt_json, updated_at
+         ) VALUES (?, ?, '1.0', ?, ?, datetime('now'))`,
+        [collection, connectorTarget, FINGERPRINT, JSON.stringify(value)]
+      );
+    };
+
+    insert("notes", "", {
+      ...receipt(),
+      generatedAt: "not-a-date",
+      evidence: { resultUri: "not-a-gno-uri" },
+    });
+    expect(await adapter.getActivationReceipt("notes", FINGERPRINT)).toEqual({
+      ok: true,
+      value: null,
+    });
+
+    insert("notes", "", {
+      ...receipt(),
+      generatedAt: "2026-02-31T10:00:00Z",
+    });
+    expect(await adapter.getActivationReceipt("notes", FINGERPRINT)).toEqual({
+      ok: true,
+      value: null,
+    });
+
+    insert("notes", "", receipt({ collection: "other" }));
+    expect(await adapter.getActivationReceipt("notes", FINGERPRINT)).toEqual({
+      ok: true,
+      value: null,
+    });
+
+    insert("notes", "mcp-local", receipt());
+    expect(
+      await adapter.getActivationReceipt("notes", FINGERPRINT, "mcp-local")
+    ).toEqual({ ok: true, value: null });
+
+    insert(
+      "notes",
+      "",
+      receipt({
+        stages: {
+          ...receipt().stages,
+          lexical: {
+            status: "failed",
+            startedAt: "2026-07-22T10:00:00.000Z",
+            completedAt: "2026-07-22T10:00:00.000Z",
+            latencyMs: 1,
+            code: "retrieval_mismatch",
+          },
+        },
+        evidence: {},
+      })
+    );
+    expect(await adapter.getActivationReceipt("notes", FINGERPRINT)).toEqual({
+      ok: true,
+      value: null,
+    });
+
+    expect(
+      db
+        .query<{ count: number }, []>(
+          "SELECT COUNT(*) AS count FROM activation_receipts"
+        )
+        .get()?.count
+    ).toBe(0);
+  });
+
   test("scopes the FTS candidate limit before BM25 ranking", async () => {
     const addDocument = async (
       collection: string,

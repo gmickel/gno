@@ -14,6 +14,82 @@
     "stages",
     "evidence"
   ],
+  "allOf": [
+    {
+      "if": {
+        "type": "object",
+        "properties": {
+          "ready": {
+            "const": true
+          }
+        }
+      },
+      "then": {
+        "type": "object",
+        "properties": {
+          "stages": {
+            "type": "object",
+            "properties": {
+              "index": {
+                "type": "object",
+                "properties": {
+                  "status": {
+                    "const": "passed"
+                  }
+                }
+              },
+              "lexical": {
+                "type": "object",
+                "properties": {
+                  "status": {
+                    "const": "passed"
+                  }
+                }
+              }
+            }
+          },
+          "evidence": {
+            "type": "object",
+            "properties": {
+              "probeHash": {},
+              "resultUri": {},
+              "resultSourceHash": {}
+            },
+            "required": ["probeHash", "resultUri", "resultSourceHash"]
+          }
+        }
+      },
+      "else": {
+        "type": "object",
+        "properties": {
+          "stages": {
+            "type": "object",
+            "not": {
+              "type": "object",
+              "properties": {
+                "index": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "const": "passed"
+                    }
+                  }
+                },
+                "lexical": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "const": "passed"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  ],
   "properties": {
     "schemaVersion": { "const": "1.0" },
     "collection": { "type": "string", "minLength": 1, "maxLength": 128 },

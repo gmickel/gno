@@ -5,6 +5,7 @@
  * hash plus exact result identity, never the query, snippet, or passage.
  */
 
+import type { FtsTokenizer } from "../config/types";
 import type {
   ActivationStageReceipt,
   ActivationVerificationCode,
@@ -40,9 +41,16 @@ const PROBE_RESULT_LIMIT = 8;
 
 interface ProbeCandidate {
   term: string;
-  mirrorHash: string;
+  documents: ProbeDocumentReference[];
+}
+
+interface ProbeDocumentReference {
   document: DocumentRow;
-  occurrence: number;
+  mirrorHash: string;
+}
+
+interface ProbeDocumentCandidates extends ProbeDocumentReference {
+  terms: Array<{ term: string; occurrence: number }>;
 }
 
 export interface ActivationVerifierOptions {
@@ -150,10 +158,11 @@ async function persistReceipt(
 
 async function collectProbeCandidates(
   store: StorePort,
-  documents: DocumentRow[]
+  documents: DocumentRow[],
+  ftsTokenizer: FtsTokenizer
 ): Promise<StoreResult<ProbeCandidate[]>> {
-  const candidates: ProbeCandidate[] = [];
-  for (const document of documents.slice(0, MAX_PROBE_DOCUMENTS)) {
+  const probeDocuments: ProbeDocumentCandidates[] = [];
+  for (const document of documents) {
     if (!document.mirrorHash) {
       continue;
     }
@@ -168,47 +177,70 @@ async function collectProbeCandidates(
     if (content.value === null) {
       continue;
     }
-    const terms = extractActivationProbeTerms(content.value);
-    for (const [occurrence, term] of terms.entries()) {
+    const terms = extractActivationProbeTerms(content.value, ftsTokenizer);
+    if (terms.length === 0) {
+      continue;
+    }
+    probeDocuments.push({
+      document,
+      mirrorHash: document.mirrorHash,
+      terms: terms.map((term, occurrence) => ({ term, occurrence })),
+    });
+    if (probeDocuments.length >= MAX_PROBE_DOCUMENTS) {
+      break;
+    }
+  }
+
+  const documentsByTerm = new Map<string, ProbeDocumentReference[]>();
+  for (const probeDocument of probeDocuments) {
+    for (const { term } of probeDocument.terms) {
+      const references = documentsByTerm.get(term) ?? [];
+      references.push({
+        document: probeDocument.document,
+        mirrorHash: probeDocument.mirrorHash,
+      });
+      documentsByTerm.set(term, references);
+    }
+  }
+
+  for (const probeDocument of probeDocuments) {
+    probeDocument.terms.sort((left, right) => {
+      const frequencyDifference =
+        (documentsByTerm.get(left.term)?.length ?? 0) -
+        (documentsByTerm.get(right.term)?.length ?? 0);
+      if (frequencyDifference !== 0) {
+        return frequencyDifference;
+      }
+      if (left.occurrence !== right.occurrence) {
+        return left.occurrence - right.occurrence;
+      }
+      return compareText(left.term, right.term);
+    });
+  }
+
+  const candidates: ProbeCandidate[] = [];
+  const seenTerms = new Set<string>();
+  const rounds = Math.max(
+    0,
+    ...probeDocuments.map(({ terms }) => terms.length)
+  );
+  for (let round = 0; round < rounds; round += 1) {
+    for (const probeDocument of probeDocuments) {
+      const term = probeDocument.terms[round]?.term;
+      if (!term || seenTerms.has(term)) {
+        continue;
+      }
+      seenTerms.add(term);
       candidates.push({
         term,
-        mirrorHash: document.mirrorHash,
-        document,
-        occurrence,
+        documents: documentsByTerm.get(term) ?? [],
       });
+      if (candidates.length >= MAX_PROBE_ATTEMPTS) {
+        return ok(candidates);
+      }
     }
   }
-
-  const documentFrequency = new Map<string, number>();
-  const termsByDocument = new Map<string, Set<string>>();
-  for (const candidate of candidates) {
-    const terms = termsByDocument.get(candidate.document.uri) ?? new Set();
-    terms.add(candidate.term);
-    termsByDocument.set(candidate.document.uri, terms);
-  }
-  for (const terms of termsByDocument.values()) {
-    for (const term of terms) {
-      documentFrequency.set(term, (documentFrequency.get(term) ?? 0) + 1);
-    }
-  }
-
-  candidates.sort((left, right) => {
-    const frequencyDifference =
-      (documentFrequency.get(left.term) ?? 0) -
-      (documentFrequency.get(right.term) ?? 0);
-    if (frequencyDifference !== 0) {
-      return frequencyDifference;
-    }
-    const uriDifference = compareText(left.document.uri, right.document.uri);
-    if (uriDifference !== 0) {
-      return uriDifference;
-    }
-    if (left.occurrence !== right.occurrence) {
-      return left.occurrence - right.occurrence;
-    }
-    return compareText(left.term, right.term);
-  });
-  return ok(candidates.slice(0, MAX_PROBE_ATTEMPTS));
+  return ok(candidates);
 }
 
 /**
@@ -226,7 +258,7 @@ export async function verifyLexicalActivation(
   const indexStartedClock = monotonicNow();
 
   const [identityResult, documentsResult] = await Promise.all([
-    store.getActivationIndexIdentity(),
+    store.getActivationIndexIdentity(collection),
     store.listDocuments(collection),
   ]);
   if (!identityResult.ok) {
@@ -256,6 +288,7 @@ export async function verifyLexicalActivation(
     indexName: identity.indexName,
     schemaVersion: identity.schemaVersion,
     ftsTokenizer: identity.ftsTokenizer,
+    ftsStateHash: identity.ftsStateHash,
     documents: activeDocuments,
   });
 
@@ -305,7 +338,11 @@ export async function verifyLexicalActivation(
   );
   const lexicalStartedAt = now().toISOString();
   const lexicalStartedClock = monotonicNow();
-  const candidatesResult = await collectProbeCandidates(store, activeDocuments);
+  const candidatesResult = await collectProbeCandidates(
+    store,
+    activeDocuments,
+    identity.ftsTokenizer
+  );
   if (!candidatesResult.ok) {
     const completedAt = now().toISOString();
     return persistReceipt(
@@ -349,7 +386,11 @@ export async function verifyLexicalActivation(
 
   let finalProbeHash: string | undefined;
   for (const candidate of candidates) {
-    finalProbeHash = sha256(`${candidate.mirrorHash}\0${candidate.term}`);
+    const digestKey = candidate.documents
+      .map(({ mirrorHash }) => mirrorHash)
+      .sort(compareText)
+      .join("\0");
+    finalProbeHash = sha256(`${digestKey}\0${candidate.term}`);
     const search = await store.searchFts(candidate.term, {
       collection,
       limit: PROBE_RESULT_LIMIT,
@@ -375,13 +416,24 @@ export async function verifyLexicalActivation(
         })
       );
     }
-    const expected = search.value.find(
-      (result) =>
-        result.uri === candidate.document.uri &&
-        result.sourceHash === candidate.document.sourceHash &&
-        result.mirrorHash === candidate.document.mirrorHash
+    const matchedResult = search.value.find((result) =>
+      candidate.documents.some(
+        ({ document, mirrorHash }) =>
+          result.uri === document.uri &&
+          result.sourceHash === document.sourceHash &&
+          result.mirrorHash === mirrorHash
+      )
     );
-    if (!expected) {
+    if (!matchedResult) {
+      continue;
+    }
+    const matchedDocument = candidate.documents.find(
+      ({ document, mirrorHash }) =>
+        matchedResult.uri === document.uri &&
+        matchedResult.sourceHash === document.sourceHash &&
+        matchedResult.mirrorHash === mirrorHash
+    );
+    if (!matchedDocument) {
       continue;
     }
 
@@ -401,8 +453,9 @@ export async function verifyLexicalActivation(
         ),
         probeHash: finalProbeHash,
         result: {
-          uri: expected.uri ?? candidate.document.uri,
-          sourceHash: expected.sourceHash ?? candidate.document.sourceHash,
+          uri: matchedResult.uri ?? matchedDocument.document.uri,
+          sourceHash:
+            matchedResult.sourceHash ?? matchedDocument.document.sourceHash,
         },
       })
     );

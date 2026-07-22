@@ -782,6 +782,8 @@ export interface ActivationIndexIdentity {
   indexName: string;
   schemaVersion: number;
   ftsTokenizer: FtsTokenizer;
+  /** Hash of collection-scoped active FTS synchronization state. */
+  ftsStateHash: string;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -869,7 +871,9 @@ export interface StorePort {
   getContexts(): Promise<StoreResult<ContextRow[]>>;
 
   /** Schema/tokenizer identity used to invalidate activation receipts. */
-  getActivationIndexIdentity(): Promise<StoreResult<ActivationIndexIdentity>>;
+  getActivationIndexIdentity(
+    collection: string
+  ): Promise<StoreResult<ActivationIndexIdentity>>;
 
   /**
    * Load the current activation receipt. A row with a different fingerprint is

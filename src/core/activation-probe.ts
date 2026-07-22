@@ -1,3 +1,4 @@
+import type { FtsTokenizer } from "../config/types";
 import type { DocumentRow } from "../store/types";
 
 const RECEIPT_SCHEMA_VERSION = "1.0";
@@ -64,11 +65,12 @@ function compareText(left: string, right: string): number {
   return left < right ? -1 : 1;
 }
 
-function normalizeTerm(raw: string): string | null {
-  const normalized = raw.normalize("NFKC").toLocaleLowerCase("und");
+function normalizeTerm(raw: string, ftsTokenizer: FtsTokenizer): string | null {
+  const normalized = raw.normalize("NFC").toLocaleLowerCase("und");
   const codepoints = Array.from(normalized);
+  const minimumCodepoints = ftsTokenizer === "trigram" ? 3 : 2;
   if (
-    codepoints.length < 2 ||
+    codepoints.length < minimumCodepoints ||
     !LETTER_PATTERN.test(normalized) ||
     STOPWORDS.has(normalized)
   ) {
@@ -84,12 +86,15 @@ function normalizeTerm(raw: string): string | null {
 }
 
 /** Extract bounded Unicode FTS-compatible candidates in occurrence order. */
-export function extractActivationProbeTerms(text: string): string[] {
+export function extractActivationProbeTerms(
+  text: string,
+  ftsTokenizer: FtsTokenizer = "unicode61"
+): string[] {
   const terms: string[] = [];
   const seen = new Set<string>();
   const input = text.slice(0, MAX_CONTENT_CHARS_PER_DOCUMENT);
   for (const match of input.matchAll(TOKEN_PATTERN)) {
-    const term = normalizeTerm(match[0]);
+    const term = normalizeTerm(match[0], ftsTokenizer);
     if (!term || seen.has(term)) {
       continue;
     }
@@ -107,6 +112,7 @@ export function fingerprintActivationIndex(input: {
   indexName: string;
   schemaVersion: number;
   ftsTokenizer: string;
+  ftsStateHash: string;
   documents: DocumentRow[];
 }): string {
   const documents = input.documents
@@ -124,6 +130,7 @@ export function fingerprintActivationIndex(input: {
       indexName: input.indexName,
       schemaVersion: input.schemaVersion,
       ftsTokenizer: input.ftsTokenizer,
+      ftsStateHash: input.ftsStateHash,
       collection: input.collection,
       documents,
     })

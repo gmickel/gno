@@ -68,4 +68,23 @@ describe("activation verification schema", () => {
       )
     ).toBe(true);
   });
+
+  test("rejects contradictory green readiness", () => {
+    const contradictory = {
+      ...validReceipt,
+      stages: {
+        ...validReceipt.stages,
+        lexical: {
+          status: "failed",
+          startedAt: "2026-07-22T10:00:00.000Z",
+          completedAt: "2026-07-22T10:00:00.000Z",
+          latencyMs: 1,
+          code: "retrieval_mismatch",
+        },
+      },
+      evidence: {},
+    };
+
+    expect(assertInvalid(contradictory, schema)).toBe(true);
+  });
 });

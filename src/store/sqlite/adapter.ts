@@ -568,19 +568,40 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
     }
   }
 
-  async getActivationIndexIdentity(): Promise<
-    StoreResult<ActivationIndexIdentity>
-  > {
+  async getActivationIndexIdentity(
+    collection: string
+  ): Promise<StoreResult<ActivationIndexIdentity>> {
     try {
       const db = this.ensureOpen();
       const indexName =
         basename(this.dbPath)
           .replace(SQLITE_EXT_REGEX, "")
           .replace(INDEX_PREFIX_REGEX, "") || "default";
+      const ftsRows = db
+        .query<{ uri: string; present: number; current: number }, [string]>(
+          `SELECT
+             d.uri,
+             CASE WHEN f.rowid IS NULL THEN 0 ELSE 1 END AS present,
+             CASE WHEN
+               f.rowid IS NOT NULL
+               AND f.filepath = d.rel_path
+               AND f.title = COALESCE(d.title, '')
+               AND f.body = c.markdown
+             THEN 1 ELSE 0 END AS current
+           FROM documents d
+           LEFT JOIN content c ON c.mirror_hash = d.mirror_hash
+           LEFT JOIN documents_fts f ON f.rowid = d.id
+           WHERE d.collection = ? AND d.active = 1
+           ORDER BY d.uri ASC, d.id ASC`
+        )
+        .all(collection);
+      const ftsHasher = new Bun.CryptoHasher("sha256");
+      ftsHasher.update(JSON.stringify(ftsRows));
       return ok({
         indexName,
         schemaVersion: getSchemaVersion(db),
         ftsTokenizer: this.ftsTokenizer,
+        ftsStateHash: ftsHasher.digest("hex"),
       });
     } catch (cause) {
       return err(
@@ -601,8 +622,16 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
     try {
       const db = this.ensureOpen();
       const row = db
-        .query<{ fingerprint: string; receipt_json: string }, [string, string]>(
-          `SELECT fingerprint, receipt_json
+        .query<
+          {
+            collection: string;
+            connector_target: string;
+            fingerprint: string;
+            receipt_json: string;
+          },
+          [string, string]
+        >(
+          `SELECT collection, connector_target, fingerprint, receipt_json
            FROM activation_receipts
            WHERE collection = ? AND connector_target = ?`
         )
@@ -620,7 +649,12 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
       }
 
       const receipt = parseActivationReceipt(row.receipt_json);
-      if (!receipt || receipt.fingerprint !== expectedFingerprint) {
+      if (
+        !receipt ||
+        receipt.fingerprint !== expectedFingerprint ||
+        receipt.collection !== row.collection ||
+        (receipt.evidence.connectorTarget ?? "") !== row.connector_target
+      ) {
         db.run(
           "DELETE FROM activation_receipts WHERE collection = ? AND connector_target = ?",
           [collection, connectorTarget]
@@ -646,7 +680,7 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
       const db = this.ensureOpen();
       const serialized = serializeActivationReceipt(receipt);
       if (!serialized.ok) {
-        return err("INVALID_INPUT", "Activation receipt exceeds 16 KiB");
+        return err("INVALID_INPUT", serialized.error);
       }
       db.run(
         `INSERT INTO activation_receipts (

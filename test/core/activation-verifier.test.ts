@@ -49,7 +49,11 @@ describe("lexical activation verifier", () => {
     await safeRm(testDir);
   });
 
-  async function addDocument(relPath: string, markdown: string): Promise<void> {
+  async function addDocument(
+    relPath: string,
+    markdown: string,
+    syncFts = true
+  ): Promise<void> {
     const sourceHash = hash(`source:${relPath}:${markdown}`);
     const mirrorHash = hash(`mirror:${markdown}`);
     const upserted = await adapter.upsertDocument({
@@ -78,7 +82,9 @@ describe("lexical activation verifier", () => {
         ])
       ).ok
     ).toBe(true);
-    expect((await adapter.syncDocumentFts("notes", relPath)).ok).toBe(true);
+    if (syncFts) {
+      expect((await adapter.syncDocumentFts("notes", relPath)).ok).toBe(true);
+    }
   }
 
   const verifierOptions = {
@@ -172,6 +178,61 @@ describe("lexical activation verifier", () => {
     expect(result.value.stages.lexical.status).toBe("passed");
   });
 
+  test("preserves full-width Unicode terms used by unicode61", async () => {
+    await addDocument("full-width.md", "Ｚｅｐｈｙｒ 検証 証拠");
+
+    expect(extractActivationProbeTerms("Ｚｅｐｈｙｒ 検証")).toEqual([
+      "ｚｅｐｈｙｒ",
+      "検証",
+    ]);
+    const result = await verifyLexicalActivation(
+      adapter,
+      "notes",
+      verifierOptions
+    );
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.ready).toBe(true);
+    }
+  });
+
+  test("does not create an invalid two-codepoint trigram probe", async () => {
+    expect(extractActivationProbeTerms("東京", "trigram")).toEqual([]);
+
+    await adapter.close();
+    dbPath = join(testDir, "trigram-test.sqlite");
+    adapter = new SqliteAdapter();
+    expect((await adapter.open(dbPath, "trigram")).ok).toBe(true);
+    expect(
+      (
+        await adapter.syncCollections([
+          {
+            name: "notes",
+            path: "/notes",
+            pattern: "**/*",
+            include: [],
+            exclude: [],
+          },
+        ])
+      ).ok
+    ).toBe(true);
+    await addDocument("short-cjk.md", "東京");
+
+    const result = await verifyLexicalActivation(
+      adapter,
+      "notes",
+      verifierOptions
+    );
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.stages.lexical).toMatchObject({
+        status: "failed",
+        code: "no_probe_term",
+      });
+    }
+  });
+
   test("fails closed when lexical results do not match the expected source", async () => {
     await addDocument("expected.md", "uniquefailureprobe evidence");
     const mismatchingStore = new Proxy(adapter, {
@@ -248,6 +309,99 @@ describe("lexical activation verifier", () => {
       count: 1,
       fingerprint: second.value.fingerprint,
     });
+  });
+
+  test("invalidates receipts when FTS synchronization state changes", async () => {
+    await addDocument("race.md", "synchronizationneedle evidence", false);
+
+    const beforeSync = await verifyLexicalActivation(
+      adapter,
+      "notes",
+      verifierOptions
+    );
+    expect(beforeSync.ok).toBe(true);
+    if (!beforeSync.ok) {
+      return;
+    }
+    expect(beforeSync.value.ready).toBe(false);
+    expect(beforeSync.value.stages.lexical.code).toBe("retrieval_mismatch");
+
+    expect((await adapter.syncDocumentFts("notes", "race.md")).ok).toBe(true);
+    const afterSync = await verifyLexicalActivation(
+      adapter,
+      "notes",
+      verifierOptions
+    );
+    expect(afterSync.ok).toBe(true);
+    if (!afterSync.ok) {
+      return;
+    }
+    expect(afterSync.value.ready).toBe(true);
+    expect(afterSync.value.fingerprint).not.toBe(beforeSync.value.fingerprint);
+
+    adapter.getRawDb().run(
+      `DELETE FROM documents_fts
+       WHERE rowid = (SELECT id FROM documents WHERE collection = ? AND rel_path = ?)`,
+      ["notes", "race.md"]
+    );
+    const afterFtsLoss = await verifyLexicalActivation(
+      adapter,
+      "notes",
+      verifierOptions
+    );
+    expect(afterFtsLoss.ok).toBe(true);
+    if (afterFtsLoss.ok) {
+      expect(afterFtsLoss.value.ready).toBe(false);
+      expect(afterFtsLoss.value.fingerprint).not.toBe(
+        afterSync.value.fingerprint
+      );
+    }
+  });
+
+  test("deduplicates shared probes and accepts any exact matching source", async () => {
+    const sharedTerms = Array.from(
+      { length: 32 },
+      (_, index) => `sharedterm${index}`
+    ).join(" ");
+    const paths = Array.from(
+      { length: 12 },
+      (_, index) => `${String.fromCharCode(97 + index)}.md`
+    );
+    for (const relPath of paths.toReversed()) {
+      await addDocument(relPath, sharedTerms);
+    }
+
+    const result = await verifyLexicalActivation(
+      adapter,
+      "notes",
+      verifierOptions
+    );
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.ready).toBe(true);
+      expect(result.value.evidence.resultUri).toMatch(/^gno:\/\/notes\//);
+    }
+  });
+
+  test("continues past non-probe documents to find usable evidence", async () => {
+    for (let index = 0; index < 16; index += 1) {
+      await addDocument(
+        `${String(index).padStart(2, "0")}-no-probe.md`,
+        "the and of to 12345"
+      );
+    }
+    await addDocument("99-valid.md", "lateactivationneedle usable evidence");
+
+    const result = await verifyLexicalActivation(
+      adapter,
+      "notes",
+      verifierOptions
+    );
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.ready).toBe(true);
+      expect(result.value.evidence.resultUri).toBe("gno://notes/99-valid.md");
+    }
   });
 
   test("persists no raw term, query, snippet, or passage", async () => {
