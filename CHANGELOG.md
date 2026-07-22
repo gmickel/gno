@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Added a public-truth documentation verifier backed by current package,
+  configuration, and immutable benchmark evidence. Required claim anchors and
+  contradiction checks now fail closed when release, model, runtime, platform,
+  or measured benchmark claims drift.
+
 ## [1.13.0] - 2026-07-22
 
 ### Added

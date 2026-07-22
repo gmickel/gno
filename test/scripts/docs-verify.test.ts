@@ -7,6 +7,7 @@ import {
   PUBLIC_TRUTH,
   validatePublicTruthEvidence,
   verifyAnchoredPublicTruth,
+  verifyRequiredAnchorCoverage,
 } from "../../scripts/public-truth";
 
 const anchored = (claimClass: string, content: string): string =>
@@ -107,6 +108,22 @@ describe("public truth verification", () => {
     expect(mismatches[0]?.message).toContain("Qwen3-Embedding-0.6B-GGUF");
   });
 
+  test("rejects a stale default assertion even when the canonical model is present", () => {
+    const mismatches = verifyAnchoredPublicTruth([
+      {
+        path: "README.md",
+        content: anchored(
+          "default-embed-model",
+          `Default: ${PUBLIC_TRUTH.models.defaultEmbed.id}. bge-m3 remains the default.`
+        ),
+      },
+    ]);
+
+    expect(mismatches).toHaveLength(1);
+    expect(mismatches[0]?.message).toContain("stale model assertion");
+    expect(mismatches[0]?.message).toContain("bge-m3");
+  });
+
   test("rejects stale benchmark metrics and unsupported superlatives", () => {
     const { incumbent, qwen } = PUBLIC_TRUTH.benchmarks.generalEmbedding;
     const summary = [
@@ -121,9 +138,63 @@ describe("public truth verification", () => {
       },
     ]);
 
-    expect(mismatches).toHaveLength(2);
-    expect(mismatches[0]?.message).toContain("0.8594");
-    expect(mismatches[1]?.message).toContain("unsupported superlative");
+    expect(mismatches).toHaveLength(3);
+    expect(mismatches.map(({ message }) => message)).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining("0.8594"),
+        expect.stringContaining("unsupported superlative"),
+        expect.stringContaining("non-canonical metric(s): 0.9999"),
+      ])
+    );
+  });
+
+  test("rejects stale extra metrics when every canonical benchmark token remains", () => {
+    const { incumbent, qwen } = PUBLIC_TRUTH.benchmarks.generalEmbedding;
+    const summary = [
+      `[${incumbent.label}](${incumbent.evidencePath}): vector nDCG@10 0.3503, hybrid nDCG@10 0.642`,
+      `[${qwen.label}](${qwen.evidencePath}): vector nDCG@10 0.8594, hybrid nDCG@10 0.947`,
+      "A stale table also reports vector nDCG@10 0.9999.",
+    ].join("\n");
+
+    const mismatches = verifyAnchoredPublicTruth([
+      {
+        path: "docs/benchmark.md",
+        content: anchored("general-embedding-benchmark", summary),
+      },
+    ]);
+
+    expect(mismatches).toHaveLength(1);
+    expect(mismatches[0]?.message).toContain("non-canonical metric(s): 0.9999");
+  });
+
+  test("rejects deletion of a required claim anchor", () => {
+    const mismatches = verifyRequiredAnchorCoverage(
+      [{ path: "README.md", content: "Current release is documented here." }],
+      [{ path: "README.md", claimClass: "current-version" }]
+    );
+
+    expect(mismatches).toEqual([
+      expect.objectContaining({
+        path: "README.md",
+        claimClass: "anchor",
+        message: "required public-truth anchor is missing: current-version",
+      }),
+    ]);
+  });
+
+  test("rejects deletion of a required public claim surface", () => {
+    const mismatches = verifyRequiredAnchorCoverage(
+      [],
+      [{ path: "README.md", claimClass: "current-version" }]
+    );
+
+    expect(mismatches).toEqual([
+      expect.objectContaining({
+        path: "README.md",
+        claimClass: "anchor",
+        message: "required public-truth surface is missing (current-version)",
+      }),
+    ]);
   });
 
   test("accepts canonical anchored claims alongside historical versions", () => {

@@ -7,6 +7,23 @@ import incumbentBenchmark from "../evals/fixtures/general-embedding-benchmark/20
 import qwenBenchmark from "../evals/fixtures/general-embedding-benchmark/2026-04-06-qwen3-embedding-0-6b.json";
 import packageMetadata from "../package.json";
 import { DEFAULT_MODEL_PRESETS } from "../src/config/types";
+import {
+  type PublicTruthClaimClass,
+  type PublicTruthDocument,
+  type PublicTruthMismatch,
+  verifyRequiredAnchorCoverage,
+} from "./public-truth-coverage";
+
+export {
+  REQUIRED_PUBLIC_TRUTH_ANCHORS,
+  verifyRequiredAnchorCoverage,
+} from "./public-truth-coverage";
+export type {
+  PublicTruthClaimClass,
+  PublicTruthDocument,
+  PublicTruthMismatch,
+  RequiredPublicTruthAnchor,
+} from "./public-truth-coverage";
 
 const REPOSITORY_ROOT = join(import.meta.dir, "..");
 const CURRENT_VERSION_REGEX = /\bv?(\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?)\b/g;
@@ -15,6 +32,7 @@ const START_ANCHOR_REGEX = /<!--\s*public-truth:([a-z-]+)\s*-->/g;
 const END_ANCHOR_REGEX = /<!--\s*\/public-truth\s*-->/g;
 const UNSUPPORTED_SUPERLATIVE_REGEX =
   /\b(best|strongest|superior|unbeatable|state[- ]of[- ]the[- ]art)\b/i;
+const BENCHMARK_DECIMAL_REGEX = /\b(?:0|1)\.\d+\b/g;
 
 const DEFAULT_SURFACE_GLOBS = [
   "README.md",
@@ -52,10 +70,6 @@ const benchmarkEntry = (
   },
 });
 
-/**
- * Machine-owned facts suitable for exact public claims. Nuanced conclusions stay
- * in prose and link back to the immutable evidence recorded here.
- */
 export const PUBLIC_TRUTH = {
   release: {
     version: packageMetadata.version,
@@ -84,27 +98,6 @@ export const PUBLIC_TRUTH = {
     },
   },
 } as const;
-
-export type PublicTruthClaimClass =
-  | "current-version"
-  | "default-embed-model"
-  | "general-embedding-benchmark"
-  | "runtime"
-  | "supported-platforms"
-  | "manifest-evidence"
-  | "anchor";
-
-export interface PublicTruthDocument {
-  path: string;
-  content: string;
-}
-
-export interface PublicTruthMismatch {
-  path: string;
-  line: number;
-  claimClass: PublicTruthClaimClass;
-  message: string;
-}
 
 interface AnchoredClaim {
   claimClass: string;
@@ -205,17 +198,47 @@ const validateDefaultModel = (
   claim: AnchoredClaim
 ): PublicTruthMismatch[] => {
   const { id, uri } = PUBLIC_TRUTH.models.defaultEmbed;
-  if (claim.content.includes(id) || claim.content.includes(uri)) {
-    return [];
+  const mismatches: PublicTruthMismatch[] = [];
+  const hasCanonicalModel =
+    claim.content.includes(id) || claim.content.includes(uri);
+  if (!hasCanonicalModel) {
+    mismatches.push(
+      mismatch(
+        document,
+        claim,
+        "default-embed-model",
+        `expected default embed model ${id} (${uri})`
+      )
+    );
   }
-  return [
-    mismatch(
-      document,
-      claim,
-      "default-embed-model",
-      `expected default embed model ${id} (${uri})`
+
+  const incumbent = PUBLIC_TRUTH.benchmarks.generalEmbedding.incumbent;
+  const staleTokens = [
+    incumbent.label.replace(/\s+incumbent$/i, ""),
+    incumbent.label,
+    incumbent.modelUri,
+    incumbent.modelUri.split("/").at(-2) ?? "",
+    incumbent.modelUri.split("/").at(-1) ?? "",
+  ].filter((token) => token.length > 0);
+  const normalizedContent = claim.content.toLowerCase();
+  const contradictory = [
+    ...new Set(
+      staleTokens.filter((token) =>
+        normalizedContent.includes(token.toLowerCase())
+      )
     ),
   ];
+  if (hasCanonicalModel && contradictory.length > 0) {
+    mismatches.push(
+      mismatch(
+        document,
+        claim,
+        "default-embed-model",
+        `default model claim contains stale model assertion(s): ${contradictory.join(", ")}`
+      )
+    );
+  }
+  return mismatches;
 };
 
 const validateGeneralBenchmark = (
@@ -253,6 +276,30 @@ const validateGeneralBenchmark = (
         claim,
         "general-embedding-benchmark",
         "benchmark summary uses an unsupported superlative; state the fixture and measured metric instead"
+      )
+    );
+  }
+
+  const canonicalMetrics = new Set([
+    benchmark.incumbent.metrics.vectorNdcgAt10,
+    benchmark.incumbent.metrics.hybridNdcgAt10,
+    benchmark.qwen.metrics.vectorNdcgAt10,
+    benchmark.qwen.metrics.hybridNdcgAt10,
+  ]);
+  const contradictoryMetrics = [
+    ...new Set(
+      [...claim.content.matchAll(BENCHMARK_DECIMAL_REGEX)]
+        .map((match) => match[0])
+        .filter((value) => !canonicalMetrics.has(Number(value)))
+    ),
+  ];
+  if (contradictoryMetrics.length > 0) {
+    mismatches.push(
+      mismatch(
+        document,
+        claim,
+        "general-embedding-benchmark",
+        `benchmark summary contains non-canonical metric(s): ${contradictoryMetrics.join(", ")}`
       )
     );
   }
@@ -422,9 +469,14 @@ export const verifyRepositoryPublicTruth = async (options?: {
     validatePublicTruthEvidence(rootDir),
     collectDocuments(rootDir, options?.paths),
   ]);
-  return [...evidence, ...verifyAnchoredPublicTruth(documents)].sort(
-    compareMismatches
-  );
+  const coverage = options?.paths
+    ? []
+    : verifyRequiredAnchorCoverage(documents);
+  return [
+    ...evidence,
+    ...coverage,
+    ...verifyAnchoredPublicTruth(documents),
+  ].sort(compareMismatches);
 };
 
 export const formatPublicTruthMismatch = (value: PublicTruthMismatch): string =>
