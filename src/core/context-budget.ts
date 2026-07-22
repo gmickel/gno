@@ -275,9 +275,13 @@ const omissionReason = <T>(
   candidate: MaterializedContextCandidate<T>,
   selected: MaterializedContextCandidate<T>[],
   covered: ReadonlySet<string>,
+  requestedFacetCount: number,
   candidateDocumentCount: number,
   limits: ContextBudgetLimits
 ): ContextOmissionReason | null => {
+  if (requestedFacetCount > 0 && candidate.facets.length === 0) {
+    return "redundant_coverage";
+  }
   if (overlaps(candidate, selected)) return "overlap";
   if (
     documentShareExceeded(candidate, selected, candidateDocumentCount, limits)
@@ -314,7 +318,10 @@ const collapseDuplicates = <T>(
   candidates: MaterializedContextCandidate<T>[];
   omissions: ContextOmission[];
 } => {
-  const ordered = [...candidates].sort(compareReferences);
+  const ordered = [...candidates].sort(
+    (left, right) =>
+      left.retrievalRank - right.retrievalRank || compareReferences(left, right)
+  );
   const seenIds = new Set<string>();
   const seenPassages = new Set<string>();
   const kept: MaterializedContextCandidate<T>[] = [];
@@ -340,14 +347,17 @@ const compareMarginalValue = <T>(
 ): number => {
   const uncovered = (candidate: MaterializedContextCandidate<T>): number =>
     candidate.facets.filter((facet) => !covered.has(facet)).length;
+  const leftUncovered = uncovered(left);
+  const rightUncovered = uncovered(right);
+  if (leftUncovered !== rightUncovered) {
+    return rightUncovered - leftUncovered;
+  }
   const relevance = (candidate: MaterializedContextCandidate<T>): number =>
     Math.max(1, poolSize - candidate.retrievalRank + 1);
-  const gain = (candidate: MaterializedContextCandidate<T>): bigint =>
-    BigInt(uncovered(candidate) * (poolSize + 1) + relevance(candidate));
   const leftCost = BigInt(Math.max(1, utf8Bytes(left.text)));
   const rightCost = BigInt(Math.max(1, utf8Bytes(right.text)));
-  const leftRatio = gain(left) * rightCost;
-  const rightRatio = gain(right) * leftCost;
+  const leftRatio = BigInt(relevance(left)) * rightCost;
+  const rightRatio = BigInt(relevance(right)) * leftCost;
   if (leftRatio !== rightRatio) return leftRatio > rightRatio ? -1 : 1;
   if (left.retrievalRank !== right.retrievalRank) {
     return left.retrievalRank - right.retrievalRank;
@@ -386,6 +396,7 @@ export const selectContextEvidence = <T, P>(
         candidate,
         selected,
         covered,
+        requestedFacets.length,
         candidateDocumentCount,
         options.limits
       );
@@ -412,6 +423,7 @@ export const selectContextEvidence = <T, P>(
             item,
             proposedSelected,
             proposedCovered,
+            requestedFacets.length,
             candidateDocumentCount,
             options.limits
           ) ?? "global_budget"

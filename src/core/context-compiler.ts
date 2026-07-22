@@ -14,6 +14,7 @@ import type {
   SearchResult,
   SearchResults,
 } from "../pipeline/types";
+import type { ContextRow } from "../store/types";
 import type {
   ContextBudgetLimits,
   ContextCandidateReference,
@@ -23,8 +24,8 @@ import type {
   ContextSelectionState,
   MaterializedContextCandidate,
 } from "./context-budget";
-import type { ResolvedContext } from "./context-resolver";
 
+import { decorateUriForIndex } from "../app/constants";
 import { canonicalizeIndexName } from "../app/index-name";
 import { resolveTemporalRange } from "../pipeline/temporal";
 import {
@@ -42,6 +43,10 @@ import {
   deriveContextFacetPlan,
   normalizeContextText,
 } from "./context-facets";
+import {
+  contextIdentityFromUri,
+  resolveContextSnapshot,
+} from "./context-resolver";
 import { isContextUriInScope } from "./context-scope";
 
 export { deriveContextFacets } from "./context-facets";
@@ -107,8 +112,8 @@ export interface ContextCompilerInput {
   /** Stable observation boundary. Use null when no durable timestamp exists. */
   observedAt: string | null;
   limits: ContextBudgetLimits;
-  /** Built only from a caller-owned, successfully loaded context snapshot. */
-  contextsByDocid: ReadonlyMap<string, ResolvedContext | undefined>;
+  /** One caller-owned, successfully loaded context snapshot for this plan. */
+  contextSnapshot: ContextRow[];
 }
 
 export interface ContextRetrievalPlan {
@@ -135,9 +140,10 @@ export interface ContextCanonicalPlanDraft<T = unknown> {
 
 export interface ContextCompilerDeps<T = unknown, P = unknown> {
   retrieve: (request: ContextRetrievalRequest) => Promise<SearchResults>;
-  materializeCandidate: (
-    candidate: ContextRetrievalCandidate
-  ) => Promise<ContextMaterialization<T>>;
+  /** Results must align one-for-one with the supplied candidates. */
+  materializeCandidates: (
+    candidates: ContextRetrievalCandidate[]
+  ) => Promise<ContextMaterialization<T>[]>;
   projectCanonical: (
     draft: ContextCanonicalPlanDraft<T>
   ) => ContextCanonicalProjection<P> | null;
@@ -187,8 +193,9 @@ const compareSearchResults = (
   compareCodeUnits(left.docid, right.docid);
 
 const canonicalGuidance = (
-  contextsByDocid: ReadonlyMap<string, ResolvedContext | undefined>,
-  results: SearchResult[]
+  contextSnapshot: ContextRow[],
+  results: SearchResult[],
+  indexName: string
 ): {
   contexts: ContextConfiguredGuidance[];
   idsByDocid: Map<string, string[]>;
@@ -197,11 +204,17 @@ const canonicalGuidance = (
   const idsByDocid = new Map<string, string[]>();
   for (const result of results) {
     const ids: string[] = [];
-    for (const provenance of contextsByDocid.get(result.docid)?.provenance ??
-      []) {
+    const identity = contextIdentityFromUri(result.uri);
+    const resolved = identity
+      ? resolveContextSnapshot(contextSnapshot, identity)
+      : undefined;
+    for (const provenance of resolved?.provenance ?? []) {
       const guidance = {
         scopeType: provenance.scopeType,
-        scopeKey: provenance.normalizedScopeKey,
+        scopeKey:
+          provenance.scopeType === "prefix"
+            ? decorateUriForIndex(provenance.normalizedScopeKey, indexName)
+            : provenance.normalizedScopeKey,
         text: provenance.text,
       };
       const contextId = contextCapsuleContextIdentity(guidance);
@@ -371,16 +384,29 @@ export const planContextEvidence = async <T, P>(
   }
   const results = responses
     .flatMap((response) => response.results)
+    .map((result) => ({
+      ...result,
+      uri: decorateUriForIndex(result.uri, indexName),
+    }))
     .sort(compareSearchResults);
-  const uriPrefix = input.uriPrefix ?? null;
+  const uriPrefix =
+    input.uriPrefix === null || input.uriPrefix === undefined
+      ? null
+      : decorateUriForIndex(input.uriPrefix, indexName);
   const inScopeResults = results.filter((result) =>
     isContextUriInScope(result.uri, indexName, collections, uriPrefix)
   );
-  const guidance = canonicalGuidance(input.contextsByDocid, inScopeResults);
+  const guidance = canonicalGuidance(
+    input.contextSnapshot,
+    inScopeResults,
+    indexName
+  );
   const filteredFacetMatches = new Set<string>();
   const initialOmissions: ContextOmission[] = [];
   const materialized: MaterializedContextCandidate<T>[] = [];
   const retrievalSources = new Set<FusionSource>();
+  const plannedCandidates: ContextRetrievalCandidate[] = [];
+  const referencesByCandidate: ContextCandidateReference[] = [];
 
   for (const [index, result] of results.entries()) {
     const meta = plannerMeta(result, index + 1);
@@ -405,15 +431,31 @@ export const planContextEvidence = async <T, P>(
       });
       continue;
     }
-    const plannedCandidate: ContextRetrievalCandidate = {
+    plannedCandidates.push({
       result,
       retrievalRank: meta.retrievalRank,
       retrievalSources: [...meta.sources].sort(compareCodeUnits),
       graphExpanded: meta.graphExpanded,
       contextIds: guidance.idsByDocid.get(result.docid) ?? [],
       observedAt,
-    };
-    const outcome = await deps.materializeCandidate(plannedCandidate);
+    });
+    referencesByCandidate.push(retrievalReference);
+  }
+
+  const outcomes =
+    plannedCandidates.length === 0
+      ? []
+      : await deps.materializeCandidates(plannedCandidates);
+  if (outcomes.length !== plannedCandidates.length) {
+    throw new Error("Context materialization batch must align with candidates");
+  }
+  for (const [index, plannedCandidate] of plannedCandidates.entries()) {
+    const outcome = outcomes[index];
+    const retrievalReference = referencesByCandidate[index];
+    if (!outcome || !retrievalReference) {
+      throw new Error("Context materialization batch alignment failed");
+    }
+    const result = plannedCandidate.result;
     if (
       !hasSameSourceIdentity(
         outcome.ok ? outcome.candidate : outcome.reference,
@@ -443,7 +485,7 @@ export const planContextEvidence = async <T, P>(
       normalizeMaterialized(
         outcome.candidate,
         matchedFacets,
-        meta.retrievalRank
+        plannedCandidate.retrievalRank
       )
     );
   }
