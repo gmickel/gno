@@ -104,6 +104,16 @@ const validateReplayPayload = (
   }
 };
 
+const capsuleEvidenceBundlePayload = (
+  receipt: TrajectoryReceipt
+): string | null => {
+  const evidenceBundles = receipt.canonical.calls.filter(
+    (call) => call.result.resultRole === "evidence_bundle"
+  );
+  if (evidenceBundles.length !== 1) return null;
+  return evidenceBundles[0]?.result.content || null;
+};
+
 const equalComparisonFingerprints = (
   baseline: TrajectoryReceipt,
   candidate: TrajectoryReceipt
@@ -193,6 +203,17 @@ export const evaluatePromotionGates = (
     const replay = pair.candidate.replay;
     if (!replayMatchesReceipt(replay, pair.candidate.receipt))
       fail("capsule_replay_identity_mismatch");
+    const candidatePayload = capsuleEvidenceBundlePayload(
+      pair.candidate.receipt
+    );
+    if (!candidatePayload) {
+      fail("candidate_capsule_payload_missing_or_ambiguous");
+    } else if (
+      replay.first.canonicalJson !== candidatePayload ||
+      replay.first.sha256 !== sha256Bytes(candidatePayload)
+    ) {
+      fail("capsule_replay_first_payload_mismatch");
+    }
     if (
       !validateReplayPayload(replay.first, pair.taskId) ||
       !validateReplayPayload(replay.second, pair.taskId)

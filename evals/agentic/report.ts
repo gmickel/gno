@@ -292,14 +292,41 @@ export const buildBenchmarkReport = (input: {
     adapterId: string;
     taskId: string;
     trialId: string;
+    seed: number | null;
     lifecycle: string;
+    agentId: string;
   }): string =>
-    [value.adapterId, value.taskId, value.trialId, value.lifecycle].join("\0");
+    [
+      value.adapterId,
+      value.taskId,
+      value.trialId,
+      String(value.seed),
+      value.lifecycle,
+      value.agentId,
+    ].join("\0");
+  const expectedTrials = [...input.expected.trials]
+    .map((trial) => ({ trialId: trial.trialId, seed: trial.seed }))
+    .sort((left, right) => left.trialId.localeCompare(right.trialId, "en"));
+  const environmentTrials = [...input.environment.trials].sort((left, right) =>
+    left.trialId.localeCompare(right.trialId, "en")
+  );
+  if (canonicalJson(expectedTrials) !== canonicalJson(environmentTrials)) {
+    throw new Error(
+      "Benchmark environment trials differ from the requested trial schedule"
+    );
+  }
   const expectedIdentities = input.expected.adapterIds.flatMap((adapterId) =>
     input.expected.taskIds.flatMap((taskId) =>
       input.expected.trials.flatMap((trial) =>
         input.expected.lifecycles.map((lifecycle) =>
-          matrixKey({ adapterId, taskId, trialId: trial.trialId, lifecycle })
+          matrixKey({
+            adapterId,
+            taskId,
+            trialId: trial.trialId,
+            seed: trial.seed,
+            lifecycle,
+            agentId: input.environment.agentId,
+          })
         )
       )
     )

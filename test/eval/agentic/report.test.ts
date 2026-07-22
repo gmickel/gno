@@ -22,7 +22,7 @@ const environment = {
   },
   fixtureVersion: "2026-07-22.1",
   agentId: "fixture-agent-v1",
-  trials: [{ trialId: "fixture-01", seed: 20260722 }],
+  trials: [{ trialId: "fixture-01", seed: 0 }],
 };
 
 describe("agentic benchmark reports", () => {
@@ -123,5 +123,51 @@ describe("agentic benchmark reports", () => {
         },
       })
     ).toThrow("exact matrix");
+  });
+
+  test("binds the exact matrix to trial seeds and the selected agent", async () => {
+    const fixture = await loadAgenticFixture();
+    const agentFactory = new FixtureAgentFactory();
+    const trials = [...agentFactory.trials()];
+    const result = await runAgenticBenchmark({
+      adapters: { lexical: createLexicalAdapterFactory() },
+      agentFactory,
+      fixture,
+      taskIds: ["t0a1b2c3"],
+      lifecycles: ["cold"],
+    });
+    const input = {
+      fixture,
+      environment,
+      expected: {
+        adapterIds: ["lexical"],
+        taskIds: ["t0a1b2c3"],
+        lifecycles: ["cold"] as const,
+        trials,
+      },
+    };
+
+    result.receipts[0]!.canonical.seed = 999;
+    expect(() => buildBenchmarkReport({ ...input, result })).toThrow(
+      "exact matrix"
+    );
+
+    result.receipts[0]!.canonical.seed = trials[0]?.seed ?? null;
+    result.receipts[0]!.canonical.agentId = "wrong-agent";
+    expect(() => buildBenchmarkReport({ ...input, result })).toThrow(
+      "exact matrix"
+    );
+
+    result.receipts[0]!.canonical.agentId = environment.agentId;
+    expect(() =>
+      buildBenchmarkReport({
+        ...input,
+        result,
+        environment: {
+          ...environment,
+          trials: [{ trialId: "fixture-01", seed: 999 }],
+        },
+      })
+    ).toThrow("environment trials");
   });
 });

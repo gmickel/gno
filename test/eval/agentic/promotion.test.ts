@@ -41,6 +41,10 @@ const replayFor = (receipt: TrajectoryReceipt): CapsuleReplayRecord => {
     evalOnly: true,
     taskId: receipt.canonical.taskId,
   });
+  const firstCall = receipt.canonical.calls[0];
+  if (!firstCall) throw new Error("Promotion fixture requires one call");
+  firstCall.result.resultRole = "evidence_bundle";
+  firstCall.result.content = payload;
   return {
     taskId: receipt.canonical.taskId,
     adapterId: "capsule",
@@ -142,6 +146,32 @@ describe("strict Capsule promotion identity", () => {
     };
     expect(evaluatePromotionGates([noncanonical]).failures).toContainEqual(
       expect.stringContaining("invalid_capsule_payload_replay")
+    );
+
+    const sentinel = promotionPair();
+    const sentinelPayload = canonicalJson({
+      schemaVersion: "eval-capsule-prototype-v1",
+      evalOnly: true,
+      taskId: sentinel.taskId,
+      sentinel: true,
+    });
+    sentinel.candidate.replay.first = {
+      canonicalJson: sentinelPayload,
+      sha256: sha256Bytes(sentinelPayload),
+    };
+    sentinel.candidate.replay.second = structuredClone(
+      sentinel.candidate.replay.first
+    );
+    expect(evaluatePromotionGates([sentinel]).failures).toContainEqual(
+      expect.stringContaining("capsule_replay_first_payload_mismatch")
+    );
+
+    const ambiguous = promotionPair();
+    ambiguous.candidate.receipt.canonical.calls.push(
+      structuredClone(ambiguous.candidate.receipt.canonical.calls[0]!)
+    );
+    expect(evaluatePromotionGates([ambiguous]).failures).toContainEqual(
+      expect.stringContaining("candidate_capsule_payload_missing_or_ambiguous")
     );
   });
 
