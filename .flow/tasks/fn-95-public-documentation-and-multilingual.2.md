@@ -39,9 +39,8 @@ Deliver reconcile repository claims with measured evidence as one implementation
 
 
 ## Done summary
-TBD
-
+Aligned repository-owned public documentation with released behavior and immutable benchmark evidence. Separated April and July multilingual measurements, narrowed language/model/privacy claims, corrected MCP/daemon/preset details, and added verifier-backed anchors for stable current facts.
 ## Evidence
-- Commits:
-- Tests:
+- Commits: 694c3c2cec667b4e76e9cdfd2c5950c15ca37ede
+- Tests: GATE_SKIPPED:smoke:green-receipt 5f8e3f5b - baseline reused from prior post-gate pass, GATE_SKIPPED:unittest:green-receipt 5f8e3f5b - baseline reused from prior post-gate pass, bun run lint, bun run lint:check, bun run docs:truth, bun run docs:verify, bun test test/scripts/docs-verify*, .flow/bin/flowctl validate --spec fn-95-public-documentation-and-multilingual --json, bun run website:build
 - PRs:
