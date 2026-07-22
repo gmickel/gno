@@ -348,6 +348,45 @@ describe("Context Capsule verifier", () => {
     ).rejects.toMatchObject({ code: "capsule_mutated_during_verify" });
   });
 
+  test("preserves exact NFD evidence bytes while detecting concurrent evidence mutation", async () => {
+    const fixture = verifierFixture(false);
+    const originalMirrorHash = fixture.state.documents[0]?.mirrorHash ?? "";
+    const nfdText = "Cafe\u0301 owns the decision.";
+    const nfdContent = `# Owner\n${nfdText}\nReview Friday.`;
+    const nfdMirrorHash = sha256Text(nfdContent);
+    fixture.state.documents[0] = {
+      ...fixture.state.documents[0]!,
+      mirrorHash: nfdMirrorHash,
+    };
+    fixture.state.contents.delete(originalMirrorHash);
+    fixture.state.contents.set(nfdMirrorHash, nfdContent);
+    fixture.state.chunks.delete(originalMirrorHash);
+    fixture.state.chunks.set(nfdMirrorHash, [
+      makeChunk(nfdMirrorHash, nfdContent),
+    ]);
+    const harness = createVerifierStore(fixture.state);
+    const capsule = await capsuleFor(harness.store, fixture.state);
+    harness.calls.snapshots = 0;
+
+    expect(capsule.evidence[0]?.text).toBe(nfdText);
+    const receipt = await verifyContextCapsule(
+      capsule,
+      verifierDeps(harness.store, capsule)
+    );
+    expect(receipt.evidence[0]?.contentStatus).toBe("unchanged");
+    expect(harness.calls.snapshots).toBeGreaterThan(0);
+
+    const mutable = structuredClone(capsule);
+    const originalGetContentBatch = harness.store.getContentBatch;
+    harness.store.getContentBatch = async (hashes) => {
+      mutable.evidence[0]!.text = "Caf\u00e9 owns the decision.";
+      return originalGetContentBatch(hashes);
+    };
+    expect(
+      verifyContextCapsule(mutable, verifierDeps(harness.store, mutable))
+    ).rejects.toMatchObject({ code: "capsule_mutated_during_verify" });
+  });
+
   test("fails the operation deterministically when the index snapshot drifts", async () => {
     const { state } = verifierFixture(true);
     const { store, calls } = createVerifierStore(state);

@@ -25,13 +25,66 @@ const canonicalizeJsonValue = (value: unknown): unknown => {
 export const canonicalVerifierJson = (value: unknown): string =>
   JSON.stringify(canonicalizeJsonValue(value));
 
-export const hasNoncanonicalVerifierText = (value: unknown): boolean => {
+const isNoncanonicalNormalizedText = (value: unknown): boolean => {
   if (typeof value === "string") {
     return value.includes("\r") || value !== value.normalize("NFC");
   }
-  if (Array.isArray(value)) return value.some(hasNoncanonicalVerifierText);
-  if (value !== null && typeof value === "object") {
-    return Object.values(value).some(hasNoncanonicalVerifierText);
-  }
   return false;
+};
+
+const containsNoncanonicalText = (value: unknown): boolean =>
+  Array.isArray(value) && value.some(isNoncanonicalNormalizedText);
+
+const recordOf = (value: unknown): Record<string, unknown> =>
+  value !== null && typeof value === "object"
+    ? (value as Record<string, unknown>)
+    : {};
+
+/** Mirrors only the text fields normalized by normalizePayload. */
+export const hasNoncanonicalVerifierText = (value: unknown): boolean => {
+  const capsule = recordOf(value);
+  const scope = recordOf(capsule.scope);
+  const retrieval = recordOf(capsule.retrieval);
+  const guidance = recordOf(capsule.guidance);
+  const coverage = recordOf(capsule.coverage);
+  const evidence = Array.isArray(capsule.evidence) ? capsule.evidence : [];
+  const configuredContexts = Array.isArray(guidance.configuredContexts)
+    ? guidance.configuredContexts
+    : [];
+  const coveredFacets = Array.isArray(coverage.coveredFacets)
+    ? coverage.coveredFacets
+    : [];
+
+  return (
+    isNoncanonicalNormalizedText(capsule.goal) ||
+    isNoncanonicalNormalizedText(capsule.query) ||
+    isNoncanonicalNormalizedText(scope.uriPrefix) ||
+    containsNoncanonicalText(scope.collections) ||
+    containsNoncanonicalText(scope.tagsAll) ||
+    containsNoncanonicalText(scope.tagsAny) ||
+    containsNoncanonicalText(scope.categories) ||
+    containsNoncanonicalText(retrieval.facets) ||
+    containsNoncanonicalText(retrieval.queryVariants) ||
+    evidence.some((item) => {
+      const record = recordOf(item);
+      return (
+        isNoncanonicalNormalizedText(record.title) ||
+        isNoncanonicalNormalizedText(record.heading) ||
+        containsNoncanonicalText(record.contextIds) ||
+        containsNoncanonicalText(record.facets)
+      );
+    }) ||
+    configuredContexts.some((item) => {
+      const record = recordOf(item);
+      return (
+        isNoncanonicalNormalizedText(record.scopeKey) ||
+        isNoncanonicalNormalizedText(record.text)
+      );
+    }) ||
+    containsNoncanonicalText(coverage.requestedFacets) ||
+    coveredFacets.some((item) =>
+      isNoncanonicalNormalizedText(recordOf(item).facet)
+    ) ||
+    containsNoncanonicalText(coverage.unresolvedFacets)
+  );
 };
