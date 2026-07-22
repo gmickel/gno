@@ -9,6 +9,6 @@
   "spec": "fn-97-agentic-retrieval-outcome-benchmark",
   "spec_path": ".flow/tasks/fn-97-agentic-retrieval-outcome-benchmark.1.md",
   "status": "todo",
-  "title": "Define agent tasks trajectory receipts and deterministic scorers",
-  "updated_at": "2026-07-21T21:55:26.896840Z"
+  "title": "Define fixtures schemas receipts hidden oracles and deterministic scorers",
+  "updated_at": "2026-07-22T14:48:16.148322Z"
 }

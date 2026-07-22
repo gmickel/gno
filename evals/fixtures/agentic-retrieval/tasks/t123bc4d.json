@@ -1,0 +1,28 @@
+{
+  "schemaVersion": "1.0",
+  "taskId": "t123bc4d",
+  "category": "multilingual",
+  "brief": {
+    "goal": "中文项目记录中的发布代号是什么？",
+    "instructions": [
+      "Return only the declared structured claims or gaps.",
+      "Cite exact evidence spans and abstain when required evidence is absent."
+    ]
+  },
+  "claims": [
+    {
+      "claimKey": "releaseCodename",
+      "valueType": "string",
+      "substantive": true,
+      "required": true
+    }
+  ],
+  "allowedTools": ["search", "get", "multi_get"],
+  "budgets": {
+    "maxAgentCalls": 3,
+    "maxModelVisibleBytes": 12000
+  },
+  "corpus": {
+    "collections": ["c012"]
+  }
+}

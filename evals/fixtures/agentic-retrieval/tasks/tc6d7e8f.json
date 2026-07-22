@@ -1,0 +1,28 @@
+{
+  "schemaVersion": "1.0",
+  "taskId": "tc6d7e8f",
+  "category": "code_documentation",
+  "brief": {
+    "goal": "What default batch size does the sync API document?",
+    "instructions": [
+      "Return only the declared structured claims or gaps.",
+      "Cite exact evidence spans and abstain when required evidence is absent."
+    ]
+  },
+  "claims": [
+    {
+      "claimKey": "defaultBatchSize",
+      "valueType": "number",
+      "substantive": true,
+      "required": true
+    }
+  ],
+  "allowedTools": ["search", "get", "multi_get"],
+  "budgets": {
+    "maxAgentCalls": 3,
+    "maxModelVisibleBytes": 12000
+  },
+  "corpus": {
+    "collections": ["c00d"]
+  }
+}

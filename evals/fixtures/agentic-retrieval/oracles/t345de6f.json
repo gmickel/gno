@@ -1,0 +1,17 @@
+{
+  "schemaVersion": "1.0",
+  "taskId": "t345de6f",
+  "claims": [],
+  "expectedMissing": ["migrationOwner"],
+  "expectedScope": {
+    "collection": null,
+    "filters": {}
+  },
+  "completion": {
+    "expectAbstention": true,
+    "maxAgentCalls": 3,
+    "maxModelVisibleBytes": 12000,
+    "failOnUnexpectedEvidence": false
+  },
+  "leakCanaries": ["oracle-only-t345de6f-9f7c2a"]
+}

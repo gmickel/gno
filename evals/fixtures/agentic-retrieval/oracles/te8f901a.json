@@ -1,0 +1,42 @@
+{
+  "schemaVersion": "1.0",
+  "taskId": "te8f901a",
+  "claims": [
+    {
+      "claimKey": "supportCity",
+      "expectedValue": {
+        "type": "string",
+        "value": "Bern"
+      },
+      "normalizer": {
+        "id": "exact-v1",
+        "version": 1
+      },
+      "requiredEvidence": [
+        {
+          "uri": "gno://c00f/d001.md",
+          "sourceHash": "a36f9396b78110ed8b1aafa8804c9babcc3d672a0922fb3357f74797222cde32",
+          "startLine": 3,
+          "endLine": 3,
+          "spanHash": "00fac50166d71f8f2091966bb4206f433d0b5b5487791198ce1f8597ef4d5659",
+          "sourceHashProvenance": "harness_observed",
+          "spanHashProvenance": "harness_observed"
+        }
+      ],
+      "optionalEvidence": [],
+      "forbiddenEvidence": []
+    }
+  ],
+  "expectedMissing": [],
+  "expectedScope": {
+    "collection": null,
+    "filters": {}
+  },
+  "completion": {
+    "expectAbstention": false,
+    "maxAgentCalls": 3,
+    "maxModelVisibleBytes": 12000,
+    "failOnUnexpectedEvidence": false
+  },
+  "leakCanaries": ["oracle-only-te8f901a-9f7c2a"]
+}

@@ -1,0 +1,28 @@
+{
+  "schemaVersion": "1.0",
+  "taskId": "t93a4b5c",
+  "category": "temporal",
+  "brief": {
+    "goal": "Find the earliest recorded milestone date across the two project records.",
+    "instructions": [
+      "Return only the declared structured claims or gaps.",
+      "Cite exact evidence spans and abstain when required evidence is absent."
+    ]
+  },
+  "claims": [
+    {
+      "claimKey": "earliestMilestone",
+      "valueType": "date",
+      "substantive": true,
+      "required": true
+    }
+  ],
+  "allowedTools": ["search", "get", "multi_get"],
+  "budgets": {
+    "maxAgentCalls": 3,
+    "maxModelVisibleBytes": 12000
+  },
+  "corpus": {
+    "collections": ["c00a"]
+  }
+}

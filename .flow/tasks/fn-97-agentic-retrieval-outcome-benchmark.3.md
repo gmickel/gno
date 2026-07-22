@@ -1,44 +1,47 @@
 ---
-satisfies: [R2, R3, R6]
+satisfies: [R2, R3, R5]
 ---
-# fn-97-agentic-retrieval-outcome-benchmark.3 Add comparator and Capsule-prototype adapters
+# fn-97-agentic-retrieval-outcome-benchmark.3 Add product-faithful GNO MCP adapter and instrumentation
 
 ## Description
-Deliver add comparator and capsule-prototype adapters as one implementation-sized increment.
+Measure the shipped GNO query/get workflow through its real MCP boundary with exact lifecycle and context instrumentation.
 
 **Size:** M
-**Files:** `evals/agentic/adapters/lexical.ts`, `evals/agentic/adapters/qmd.ts`, `evals/agentic/adapters/capsule-prototype.ts`, `test/evals/agentic-adapters.test.ts`
+**Files:** `evals/agentic/adapters/gno-mcp.ts`, `evals/agentic/lifecycle/gno-mcp.ts`, `test/eval/agentic/gno-mcp-adapter.test.ts`, `spec/evals-agentic.md`
 
 ### Approach
-- Normalize current qmd and lexical-only baselines behind the same task brief and receipt contract.
-- Define the Capsule adapter contract and a bounded prototype sufficient to test the one-call evidence-bundle thesis without becoming fn-98 production implementation.
-- Mark unsupported comparator capabilities explicitly; never impute missing token/tool data.
+- Spawn the real isolated stdio MCP server and invoke shipped tool names/schemas; do not import retrieval pipelines or add hidden shortcuts unavailable to an agent.
+- Follow the installed skill's search/query then get/multi_get workflow, capturing normalized arguments/order, returned exact evidence coordinates, repeated reads, filters, model-visible bytes, errors, and stop timing.
+- Build or reuse the shared GNO-native immutable index from task 1's corpus snapshot during unmeasured preparation; record its fingerprint/build observations. Cold and warm reuse that exact GNO index: cold starts a fresh MCP process/cached model and scores its first call; warm preserves one process/index/model after a discarded readiness probe. Report preparation/startup/model/tool/driver/e2e timings separately with null reasons where unavailable.
+- Add deterministic fake-process contract tests plus isolated real-MCP integration coverage.
 
 ### Investigation targets
 **Required** (read before coding):
-- `src/pipeline/hybrid.ts`
-- `/Users/gordon/repos/qmd/README.md`
+- `assets/skill/SKILL.md`
+- `docs/MCP.md:37-100`
+- `src/mcp/server.ts`
+- `src/mcp/tools/query.ts`
+- `src/mcp/tools/multi-get.ts`
+- Planned task 2 outputs: `evals/agentic/adapter.ts`, `evals/agentic/runner.ts`
 
 **Optional** (reference as needed):
-- `src/bench/fixture.ts`
-- `evals/helpers/retrieval-candidate-benchmark.ts`
-
-**Planned dependency outputs** (expected by execution; not plan-time investigation sources):
-- `evals/agentic/types.ts`
-
-### Key context
-- The prototype validates the contract and selection hypothesis; production schemas/surfaces remain owned by fn-98.
+- `src/cli/commands/get.ts`
 
 ## Acceptance
-- [ ] The same validated tasks run against current GNO and at least one lexical/non-GNO comparator.
-- [ ] Comparator receipts disclose unsupported/missing measurements instead of fabricating parity.
-- [ ] The Capsule prototype returns canonical extractive evidence spans under a global budget.
-
+- [ ] Adapter traffic uses only the shipped MCP contract and fails if a required tool/schema is unavailable; no pipeline-internal shortcut exists.
+- [ ] Every call/result/read/filter/error is normalized and exact model-visible UTF-8 bytes include repeated and error payloads.
+- [ ] Cold and warm receipts match the spec definitions and cannot be compared across lifecycle labels.
+- [ ] Isolated integration proves a fixture task completes through the real stdio MCP server without global config or production DB mutation.
 
 ## Done summary
-TBD
+Implemented the product-faithful GNO stdio MCP benchmark comparator.
 
+- Added exact canonical-to-product tool mapping, task isolation, strict structured-output validation, and exact line-atomic evidence normalization.
+- Added isolated offline preparation using production ingestion, a four-model SHA-256 lock, full embedding verification, cold/warm lifecycle behavior, cancellation, and failure-safe cleanup.
+- Added fake-process contract/lifecycle/isolation tests, all-24-task runner coverage, and an opt-in real isolated stdio MCP smoke.
+- Documented the GNO comparator and the fail-closed pinned qmd comparator methodology.
+- Independent quality review verdict: SHIP.
 ## Evidence
-- Commits:
-- Tests:
+- Commits: ffa374c
+- Tests: bun run lint:check, bunx tsc --noEmit, bun test test/eval/agentic, GNO_AGENTIC_RUN_REAL_MCP=1 bun test test/eval/agentic/gno-mcp-real.test.ts --timeout 300000, .flow/bin/flowctl validate --spec fn-97-agentic-retrieval-outcome-benchmark --json
 - PRs:

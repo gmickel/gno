@@ -1,0 +1,42 @@
+{
+  "schemaVersion": "1.0",
+  "taskId": "tc6d7e8f",
+  "claims": [
+    {
+      "claimKey": "defaultBatchSize",
+      "expectedValue": {
+        "type": "number",
+        "value": 64
+      },
+      "normalizer": {
+        "id": "exact-v1",
+        "version": 1
+      },
+      "requiredEvidence": [
+        {
+          "uri": "gno://c00d/d001.md",
+          "sourceHash": "a32291aaaedb3793c89bed14a4979513821b049a1893dea57e3e4e4f3cfc11f6",
+          "startLine": 3,
+          "endLine": 3,
+          "spanHash": "56f7eb6574532be6c89e417472fadce106ad3a7fed0d7f7fd908dbcc1b172dfc",
+          "sourceHashProvenance": "harness_observed",
+          "spanHashProvenance": "harness_observed"
+        }
+      ],
+      "optionalEvidence": [],
+      "forbiddenEvidence": []
+    }
+  ],
+  "expectedMissing": [],
+  "expectedScope": {
+    "collection": null,
+    "filters": {}
+  },
+  "completion": {
+    "expectAbstention": false,
+    "maxAgentCalls": 3,
+    "maxModelVisibleBytes": 12000,
+    "failOnUnexpectedEvidence": false
+  },
+  "leakCanaries": ["oracle-only-tc6d7e8f-9f7c2a"]
+}

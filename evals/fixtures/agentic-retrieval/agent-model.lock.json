@@ -1,0 +1,17 @@
+{
+  "schemaVersion": "1.0",
+  "modelUri": "hf:ggml-org/Qwen3-0.6B-GGUF/Qwen3-0.6B-Q8_0.gguf",
+  "fileSha256": "84c0dbe606526d5907251d88ea88b41457f46ce456e9a333d5d2b6245a95cafe",
+  "tokenizer": {
+    "identifier": "qwen3-gguf-embedded-v1",
+    "sha256": "84c0dbe606526d5907251d88ea88b41457f46ce456e9a333d5d2b6245a95cafe",
+    "checksumScope": "embedded-in-model-file"
+  },
+  "maximumSteps": 3,
+  "maximumOutputTokens": 1024,
+  "seedSchedule": [
+    { "trialId": "local-01", "seed": 104729 },
+    { "trialId": "local-02", "seed": 130363 },
+    { "trialId": "local-03", "seed": 155921 }
+  ]
+}

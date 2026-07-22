@@ -1,0 +1,28 @@
+{
+  "schemaVersion": "1.0",
+  "taskId": "ta4b5c6d",
+  "category": "typed_relationship",
+  "brief": {
+    "goal": "Which service does Orion explicitly depend on?",
+    "instructions": [
+      "Return only the declared structured claims or gaps.",
+      "Cite exact evidence spans and abstain when required evidence is absent."
+    ]
+  },
+  "claims": [
+    {
+      "claimKey": "dependency",
+      "valueType": "string",
+      "substantive": true,
+      "required": true
+    }
+  ],
+  "allowedTools": ["search", "get", "multi_get"],
+  "budgets": {
+    "maxAgentCalls": 3,
+    "maxModelVisibleBytes": 12000
+  },
+  "corpus": {
+    "collections": ["c00b"]
+  }
+}

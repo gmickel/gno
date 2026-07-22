@@ -1,0 +1,584 @@
+{
+  "schemaVersion": "1.0",
+  "fixtureVersion": "2026-07-22.1",
+  "license": "MIT",
+  "provenance": "Original synthetic fixture authored for GNO; no third-party corpus text.",
+  "taskCount": 24,
+  "files": [
+    {
+      "path": "corpus/t012ab3c/c011/d001.md",
+      "kind": "corpus",
+      "sha256": "fd30242b01b65c156c900d87b0467174e765a866e40388a8670c4acd3b60a943",
+      "taskId": "t012ab3c",
+      "collection": "c011"
+    },
+    {
+      "path": "corpus/t0a1b2c3/c001/d001.md",
+      "kind": "corpus",
+      "sha256": "f02c60996c5114f6ceb2f7cbfc96094f7a8df034ffd1bb62dfb841fba37099aa",
+      "taskId": "t0a1b2c3",
+      "collection": "c001"
+    },
+    {
+      "path": "corpus/t0a1b2c3/c001/d002.md",
+      "kind": "corpus",
+      "sha256": "e634f945db5853ac51e820ad6ec8830520e934ad032f745b472c31521ed7e44e",
+      "taskId": "t0a1b2c3",
+      "collection": "c001"
+    },
+    {
+      "path": "corpus/t123bc4d/c012/d001.md",
+      "kind": "corpus",
+      "sha256": "55c0749f5106ee5d826cae27dc109f0835efb7f063cfe94832f2dd3f331af8c7",
+      "taskId": "t123bc4d",
+      "collection": "c012"
+    },
+    {
+      "path": "corpus/t1b2c3d4/c002/d001.md",
+      "kind": "corpus",
+      "sha256": "59b932bf5537f90823c7fa70b733ef3ec781bcc5f1ce0f4573afd991dbf85c91",
+      "taskId": "t1b2c3d4",
+      "collection": "c002"
+    },
+    {
+      "path": "corpus/t234cd5e/c013/d001.md",
+      "kind": "corpus",
+      "sha256": "c4b5ce4a23ccf259ee615110116546ba6ccd12d83eb49bc3f9887ccffb2afc98",
+      "taskId": "t234cd5e",
+      "collection": "c013"
+    },
+    {
+      "path": "corpus/t2c3d4e5/c003/d001.md",
+      "kind": "corpus",
+      "sha256": "97696698bbc33ad157b2b93e2729ecf37c20ec5b02f2cfc3e9e51d0c6f985c98",
+      "taskId": "t2c3d4e5",
+      "collection": "c003"
+    },
+    {
+      "path": "corpus/t2c3d4e5/c003/d002.md",
+      "kind": "corpus",
+      "sha256": "8b4fb4e31dd736bdc4455e0647fbed61fbd82cacef3a6dc02f775e626f8dd125",
+      "taskId": "t2c3d4e5",
+      "collection": "c003"
+    },
+    {
+      "path": "corpus/t345de6f/c014/d001.md",
+      "kind": "corpus",
+      "sha256": "cd1dc6369bf24bbc90ac10507547fec55c1f62528907accdaf5842837f32c577",
+      "taskId": "t345de6f",
+      "collection": "c014"
+    },
+    {
+      "path": "corpus/t3d4e5f6/c004/d001.md",
+      "kind": "corpus",
+      "sha256": "610fb36439bd3ea25011aed2763b2ea3b9d39e154784e5a312eeb2bf8859dd30",
+      "taskId": "t3d4e5f6",
+      "collection": "c004"
+    },
+    {
+      "path": "corpus/t3d4e5f6/c004/d002.md",
+      "kind": "corpus",
+      "sha256": "b38079b38fdf9593956f81041b9afe3d8f4ebb4fd98fdeb0659ad1454b857cf9",
+      "taskId": "t3d4e5f6",
+      "collection": "c004"
+    },
+    {
+      "path": "corpus/t456ef70/c015/d001.md",
+      "kind": "corpus",
+      "sha256": "aa21f9ddd17198aa5e12794b6a48d7b2bfbcd13173a07a773a0750ec77840cd7",
+      "taskId": "t456ef70",
+      "collection": "c015"
+    },
+    {
+      "path": "corpus/t456ef70/c115/d002.md",
+      "kind": "corpus",
+      "sha256": "274702c0912619fbbf400b334a09f275b88947b420f8e5bf85c9cbd836092bb9",
+      "taskId": "t456ef70",
+      "collection": "c115"
+    },
+    {
+      "path": "corpus/t4e5f607/c005/d001.md",
+      "kind": "corpus",
+      "sha256": "fd5e3609879dde23f83010d591146418c9578a21f862e42ad322b773906b5c84",
+      "taskId": "t4e5f607",
+      "collection": "c005"
+    },
+    {
+      "path": "corpus/t4e5f607/c005/d002.md",
+      "kind": "corpus",
+      "sha256": "14d452bd9958c2ba1f01fc395209fabdb3c8792e24c906866720d01e63abc9cf",
+      "taskId": "t4e5f607",
+      "collection": "c005"
+    },
+    {
+      "path": "corpus/t567f081/c016/d001.md",
+      "kind": "corpus",
+      "sha256": "9024c0e24d568a709478e7797e0c4ced44d9dee8bddf06b44c168ce3cdbd3d2c",
+      "taskId": "t567f081",
+      "collection": "c016"
+    },
+    {
+      "path": "corpus/t567f081/c116/d002.md",
+      "kind": "corpus",
+      "sha256": "0f8c45f7a60e0a3db4c77c555fdd46ba81eb44e44c040278094e66098b2ba621",
+      "taskId": "t567f081",
+      "collection": "c116"
+    },
+    {
+      "path": "corpus/t5f60718/c006/d001.md",
+      "kind": "corpus",
+      "sha256": "6053e645fa75291d58163f3e1f6e164641104f0a16433264418d9354fe36612e",
+      "taskId": "t5f60718",
+      "collection": "c006"
+    },
+    {
+      "path": "corpus/t5f60718/c006/d002.md",
+      "kind": "corpus",
+      "sha256": "e875973c880641a8e9f7755d20971dc4675737b42d14cae0feb8323db36b2a19",
+      "taskId": "t5f60718",
+      "collection": "c006"
+    },
+    {
+      "path": "corpus/t6071829/c007/d001.md",
+      "kind": "corpus",
+      "sha256": "fd3c6b2c7a9616068d0d5bf3ac0b43f2e269a25f0c269099a6debe74eb0e5c23",
+      "taskId": "t6071829",
+      "collection": "c007"
+    },
+    {
+      "path": "corpus/t6780192/c017/d001.md",
+      "kind": "corpus",
+      "sha256": "d3fa9ee7709ed93d676fc38c7d405e0ac0428fe8da24230da06db27f6bd970f1",
+      "taskId": "t6780192",
+      "collection": "c017"
+    },
+    {
+      "path": "corpus/t6780192/c017/d002.md",
+      "kind": "corpus",
+      "sha256": "88c7021ebc0f1bb38c8948242b76528b7c4bde832efb77bb90fd9d76e6b358a2",
+      "taskId": "t6780192",
+      "collection": "c017"
+    },
+    {
+      "path": "corpus/t718293a/c008/d001.md",
+      "kind": "corpus",
+      "sha256": "8b1bbc9a9a46064fe6c621cd8693249c2d3a82fffb4982db609b4cda7334dc18",
+      "taskId": "t718293a",
+      "collection": "c008"
+    },
+    {
+      "path": "corpus/t7891a03/c018/d001.md",
+      "kind": "corpus",
+      "sha256": "36a083e77527435026287d7a7e8586a1c69f6e04b68af0f73fabccaed580f74f",
+      "taskId": "t7891a03",
+      "collection": "c018"
+    },
+    {
+      "path": "corpus/t8293a4b/c009/d001.md",
+      "kind": "corpus",
+      "sha256": "2248468cc1454d9516147d4709e0b02ec803eea8c1faed0730c882c103f3e5f1",
+      "taskId": "t8293a4b",
+      "collection": "c009"
+    },
+    {
+      "path": "corpus/t8293a4b/c009/d002.md",
+      "kind": "corpus",
+      "sha256": "ef789cb8fb2cc8ad612a79bbb5ac16e686dc0b0a915a977f5c97ac2b4998ff7a",
+      "taskId": "t8293a4b",
+      "collection": "c009"
+    },
+    {
+      "path": "corpus/t93a4b5c/c00a/d001.md",
+      "kind": "corpus",
+      "sha256": "c9ef3ecc72f923683284fb579fa2ce3070f8a03f3cf614d46180bb4a061eed46",
+      "taskId": "t93a4b5c",
+      "collection": "c00a"
+    },
+    {
+      "path": "corpus/t93a4b5c/c00a/d002.md",
+      "kind": "corpus",
+      "sha256": "2e4ea0de3a672c8bbc56edb7879a3ead2a6170e89f4496af1ff2f40834911618",
+      "taskId": "t93a4b5c",
+      "collection": "c00a"
+    },
+    {
+      "path": "corpus/ta4b5c6d/c00b/d001.md",
+      "kind": "corpus",
+      "sha256": "62a1d3220388445d8e800fa6cacae01d8733c6368c83e2dbdfefc253bf13782d",
+      "taskId": "ta4b5c6d",
+      "collection": "c00b"
+    },
+    {
+      "path": "corpus/tb5c6d7e/c00c/d001.md",
+      "kind": "corpus",
+      "sha256": "83fe317f44568f10ffe52913f86b510742ae2784185b8760e756e25c7cd691e5",
+      "taskId": "tb5c6d7e",
+      "collection": "c00c"
+    },
+    {
+      "path": "corpus/tc6d7e8f/c00d/d001.md",
+      "kind": "corpus",
+      "sha256": "a32291aaaedb3793c89bed14a4979513821b049a1893dea57e3e4e4f3cfc11f6",
+      "taskId": "tc6d7e8f",
+      "collection": "c00d"
+    },
+    {
+      "path": "corpus/td7e8f90/c00e/d001.md",
+      "kind": "corpus",
+      "sha256": "bc1062e6f5cf34d8d0c0f846aee95ba9244370ab9a3dd0fc4783edf1d8e16ef7",
+      "taskId": "td7e8f90",
+      "collection": "c00e"
+    },
+    {
+      "path": "corpus/te8f901a/c00f/d001.md",
+      "kind": "corpus",
+      "sha256": "a36f9396b78110ed8b1aafa8804c9babcc3d672a0922fb3357f74797222cde32",
+      "taskId": "te8f901a",
+      "collection": "c00f"
+    },
+    {
+      "path": "corpus/tf901a2b/c010/d001.md",
+      "kind": "corpus",
+      "sha256": "5355f832bc4b4ef7eaee1d9c097d2b23e66b701a2312b5f608fec3e34ec81c61",
+      "taskId": "tf901a2b",
+      "collection": "c010"
+    },
+    {
+      "path": "oracles/t012ab3c.json",
+      "kind": "oracle",
+      "sha256": "4023f77ab6f08e50c181b1560c43624f623c7a64e4eb1ea1b1d30bdd9dab1275",
+      "taskId": "t012ab3c",
+      "collection": null
+    },
+    {
+      "path": "oracles/t0a1b2c3.json",
+      "kind": "oracle",
+      "sha256": "39b8b437f10733b8fd0e3b806180317b45703b21b413d8102e45b96dc4534c39",
+      "taskId": "t0a1b2c3",
+      "collection": null
+    },
+    {
+      "path": "oracles/t123bc4d.json",
+      "kind": "oracle",
+      "sha256": "115eb907f1004945b27475d81d4705d53861943e59332ef174c5c631dae1d636",
+      "taskId": "t123bc4d",
+      "collection": null
+    },
+    {
+      "path": "oracles/t1b2c3d4.json",
+      "kind": "oracle",
+      "sha256": "5dc5b92e11cc25cbb906e80ac30c4082deffd15702abf795d3e87f0817d2f338",
+      "taskId": "t1b2c3d4",
+      "collection": null
+    },
+    {
+      "path": "oracles/t234cd5e.json",
+      "kind": "oracle",
+      "sha256": "13941561f103d64f072fde1dc673e60ef966ab627b89c538f7306ad1e232c46d",
+      "taskId": "t234cd5e",
+      "collection": null
+    },
+    {
+      "path": "oracles/t2c3d4e5.json",
+      "kind": "oracle",
+      "sha256": "7c380d9f9a075b0b07ab1676bb21e2f7755ae2b189c9f127e7cc16a30d63f1b3",
+      "taskId": "t2c3d4e5",
+      "collection": null
+    },
+    {
+      "path": "oracles/t345de6f.json",
+      "kind": "oracle",
+      "sha256": "ff69f198ebbd1bdc84bad615dc6de7d633943ed7acf631c477fbe3cc67ddf999",
+      "taskId": "t345de6f",
+      "collection": null
+    },
+    {
+      "path": "oracles/t3d4e5f6.json",
+      "kind": "oracle",
+      "sha256": "5e62485d40e04cbffc52e9adcae804553f883337663afa49edba746af5cc0ecb",
+      "taskId": "t3d4e5f6",
+      "collection": null
+    },
+    {
+      "path": "oracles/t456ef70.json",
+      "kind": "oracle",
+      "sha256": "520af66f461a7d50b0ad1924b36ac2ebb284cb5ff8a6ec36bbfddba233d30b62",
+      "taskId": "t456ef70",
+      "collection": null
+    },
+    {
+      "path": "oracles/t4e5f607.json",
+      "kind": "oracle",
+      "sha256": "3373d477a981562e3d618f9c8c8cd35f655373c224eba454132a9b166342ac77",
+      "taskId": "t4e5f607",
+      "collection": null
+    },
+    {
+      "path": "oracles/t567f081.json",
+      "kind": "oracle",
+      "sha256": "c7d50abbe1662d63062e1f7c5eff2d6db946b75bec4b3c7e5f4326015d52b18b",
+      "taskId": "t567f081",
+      "collection": null
+    },
+    {
+      "path": "oracles/t5f60718.json",
+      "kind": "oracle",
+      "sha256": "9aa123150c35cd1a45e02a50942512c580fb0b1931dc0616c83a4874cf35345e",
+      "taskId": "t5f60718",
+      "collection": null
+    },
+    {
+      "path": "oracles/t6071829.json",
+      "kind": "oracle",
+      "sha256": "2ffa6eace1237ccfc66b9e5f65fe62089962d59e5780a9a1907a27e72ec024e4",
+      "taskId": "t6071829",
+      "collection": null
+    },
+    {
+      "path": "oracles/t6780192.json",
+      "kind": "oracle",
+      "sha256": "faac8db990090084911d689377bf109b0428ea89254aa23d821494deac937357",
+      "taskId": "t6780192",
+      "collection": null
+    },
+    {
+      "path": "oracles/t718293a.json",
+      "kind": "oracle",
+      "sha256": "041d9027c30f20619b73bd90376b2d364948f455764ddf11d595a922a3beab82",
+      "taskId": "t718293a",
+      "collection": null
+    },
+    {
+      "path": "oracles/t7891a03.json",
+      "kind": "oracle",
+      "sha256": "c347058001edb9144729394b22f765dd391b3307e02909b6f28fa602aab109df",
+      "taskId": "t7891a03",
+      "collection": null
+    },
+    {
+      "path": "oracles/t8293a4b.json",
+      "kind": "oracle",
+      "sha256": "b242a41c65409bcc00127ded3ec956cb438ee67f042dba2a81f1f3eba3f0f68d",
+      "taskId": "t8293a4b",
+      "collection": null
+    },
+    {
+      "path": "oracles/t93a4b5c.json",
+      "kind": "oracle",
+      "sha256": "c2fc50e264cd441dd807a84c9993ce7c1b951eb3c199f53016d940dd99b11841",
+      "taskId": "t93a4b5c",
+      "collection": null
+    },
+    {
+      "path": "oracles/ta4b5c6d.json",
+      "kind": "oracle",
+      "sha256": "7544e2ffb9fe64b6396786c35611f543cc27726640ef682d6b969a8d5d0d1555",
+      "taskId": "ta4b5c6d",
+      "collection": null
+    },
+    {
+      "path": "oracles/tb5c6d7e.json",
+      "kind": "oracle",
+      "sha256": "d18a986ca9ed9797af7c3d92b404408e8969199dafc978ce06c55597bb4e18f3",
+      "taskId": "tb5c6d7e",
+      "collection": null
+    },
+    {
+      "path": "oracles/tc6d7e8f.json",
+      "kind": "oracle",
+      "sha256": "42f0eeb5d9d665d9d566f0e5a624f58825004f5887fffd438d235cfb25d402bd",
+      "taskId": "tc6d7e8f",
+      "collection": null
+    },
+    {
+      "path": "oracles/td7e8f90.json",
+      "kind": "oracle",
+      "sha256": "2c7a40410699659e561e3e2a66562c6aff726a4bfbb740092c3eb90347f386f3",
+      "taskId": "td7e8f90",
+      "collection": null
+    },
+    {
+      "path": "oracles/te8f901a.json",
+      "kind": "oracle",
+      "sha256": "bb291558ea809f9e62e5eef186148662d21164dc9891b0235d4f70f9ca48ae62",
+      "taskId": "te8f901a",
+      "collection": null
+    },
+    {
+      "path": "oracles/tf901a2b.json",
+      "kind": "oracle",
+      "sha256": "4b3ac73ba24f6d77ecc5ca4fce3e70be3edb46793600d1bd87bcfa63064ff5bf",
+      "taskId": "tf901a2b",
+      "collection": null
+    },
+    {
+      "path": "tasks/t012ab3c.json",
+      "kind": "task",
+      "sha256": "6051318f50e59645c03f05fdc9071ad99036345eda680b190836708b2fb53f4b",
+      "taskId": "t012ab3c",
+      "collection": null
+    },
+    {
+      "path": "tasks/t0a1b2c3.json",
+      "kind": "task",
+      "sha256": "d43d4e2de6a552f877fbee1cbc1d6b12ad6956d19592dde49331dade8e34ee8d",
+      "taskId": "t0a1b2c3",
+      "collection": null
+    },
+    {
+      "path": "tasks/t123bc4d.json",
+      "kind": "task",
+      "sha256": "03aa6a76f68cd17c461c688f14b8dd0e4834779912f6a2316545183377339d42",
+      "taskId": "t123bc4d",
+      "collection": null
+    },
+    {
+      "path": "tasks/t1b2c3d4.json",
+      "kind": "task",
+      "sha256": "e6da3e544e3dd850237e549a44fb7f68ea235e5e71c2bca3fa5efca1b9980749",
+      "taskId": "t1b2c3d4",
+      "collection": null
+    },
+    {
+      "path": "tasks/t234cd5e.json",
+      "kind": "task",
+      "sha256": "ca23357f1befeec5108b464fcf45ce02eb4f39630e4d0483b3cd5a68b9f2483b",
+      "taskId": "t234cd5e",
+      "collection": null
+    },
+    {
+      "path": "tasks/t2c3d4e5.json",
+      "kind": "task",
+      "sha256": "ca0813f22f7ea42db1156d465c37b48566b54495ff06f7d6aed73feb5f08f979",
+      "taskId": "t2c3d4e5",
+      "collection": null
+    },
+    {
+      "path": "tasks/t345de6f.json",
+      "kind": "task",
+      "sha256": "55d219c138dc33a896613ce639996181106fb729f95fd65188b2f279e02c25cc",
+      "taskId": "t345de6f",
+      "collection": null
+    },
+    {
+      "path": "tasks/t3d4e5f6.json",
+      "kind": "task",
+      "sha256": "3a1a59c2194be91af49d00ff4556339d244ad04e95061a29a40a75347df6f143",
+      "taskId": "t3d4e5f6",
+      "collection": null
+    },
+    {
+      "path": "tasks/t456ef70.json",
+      "kind": "task",
+      "sha256": "13824af874195e8c244ff975298636e469d8a72df25d90d676bf8d3e0f3ddbca",
+      "taskId": "t456ef70",
+      "collection": null
+    },
+    {
+      "path": "tasks/t4e5f607.json",
+      "kind": "task",
+      "sha256": "1ec37c6523e77d51617aa221fd8a497e52b4377e90d9d16f6a14663c999a4ff7",
+      "taskId": "t4e5f607",
+      "collection": null
+    },
+    {
+      "path": "tasks/t567f081.json",
+      "kind": "task",
+      "sha256": "639c7a7bd60fcfa02ebe8636d955aff69c60ce7a86cbbf5501b3dfb1b298aca7",
+      "taskId": "t567f081",
+      "collection": null
+    },
+    {
+      "path": "tasks/t5f60718.json",
+      "kind": "task",
+      "sha256": "766006dbf08c6959de0e6dd4c7992bd7a8d7323f4e76a9c8703c53bb0a86377e",
+      "taskId": "t5f60718",
+      "collection": null
+    },
+    {
+      "path": "tasks/t6071829.json",
+      "kind": "task",
+      "sha256": "8b867ff2c9050dc70d804d421dced13d344f7e2de0487adc5d159a36b3e22b25",
+      "taskId": "t6071829",
+      "collection": null
+    },
+    {
+      "path": "tasks/t6780192.json",
+      "kind": "task",
+      "sha256": "2b2d3d742a6919b31e360e3eb5ca909b927fc839c2337682b064e622f9da1a74",
+      "taskId": "t6780192",
+      "collection": null
+    },
+    {
+      "path": "tasks/t718293a.json",
+      "kind": "task",
+      "sha256": "6a616ae9db1592bd3b53ebe45832b04f92edeea9f31bbd6825a7b225aebb8855",
+      "taskId": "t718293a",
+      "collection": null
+    },
+    {
+      "path": "tasks/t7891a03.json",
+      "kind": "task",
+      "sha256": "fd28da3905e4f72918b82396e0d1842cfd0bc58483d5705b33146d08cdc4d2ec",
+      "taskId": "t7891a03",
+      "collection": null
+    },
+    {
+      "path": "tasks/t8293a4b.json",
+      "kind": "task",
+      "sha256": "bc030d13ca3f984f409d518f99e7778dfc1f949e0cd1667f35357c3c4dde95fe",
+      "taskId": "t8293a4b",
+      "collection": null
+    },
+    {
+      "path": "tasks/t93a4b5c.json",
+      "kind": "task",
+      "sha256": "c622c9b5c6c75446221aa89c029973d0d161a46eab2e2bc69b824158c57d0f66",
+      "taskId": "t93a4b5c",
+      "collection": null
+    },
+    {
+      "path": "tasks/ta4b5c6d.json",
+      "kind": "task",
+      "sha256": "c941333b599518bfe3aacaaf77820dc1d6297ccc591da3fb85c3165b2281431b",
+      "taskId": "ta4b5c6d",
+      "collection": null
+    },
+    {
+      "path": "tasks/tb5c6d7e.json",
+      "kind": "task",
+      "sha256": "8e8a79e94793b62a9973a16874700ba045e949ec283853bd661ab516b68b7c9b",
+      "taskId": "tb5c6d7e",
+      "collection": null
+    },
+    {
+      "path": "tasks/tc6d7e8f.json",
+      "kind": "task",
+      "sha256": "c025c3a1a5b8d93ea4b915dfac8b7a024a86aa0db300ed0e7cee1e2beea27091",
+      "taskId": "tc6d7e8f",
+      "collection": null
+    },
+    {
+      "path": "tasks/td7e8f90.json",
+      "kind": "task",
+      "sha256": "bbc8d0237f751967ab22add162299c7cbb2f0d2b152e2199b72085e7126fedde",
+      "taskId": "td7e8f90",
+      "collection": null
+    },
+    {
+      "path": "tasks/te8f901a.json",
+      "kind": "task",
+      "sha256": "231bc03409b121d63fc6dd47b61e2517cde005ea07774b6da271ef4295b133d5",
+      "taskId": "te8f901a",
+      "collection": null
+    },
+    {
+      "path": "tasks/tf901a2b.json",
+      "kind": "task",
+      "sha256": "32042e329849e82c400b96616a98825702dda9cad29c9fca8b0e291a9616c89a",
+      "taskId": "tf901a2b",
+      "collection": null
+    }
+  ],
+  "corpusFingerprint": "68027bb0248c09507dbdba9d8cf2433f1b9b7b547ba5db8811db338982f9d08b"
+}

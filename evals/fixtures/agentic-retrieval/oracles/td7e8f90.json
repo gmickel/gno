@@ -1,0 +1,42 @@
+{
+  "schemaVersion": "1.0",
+  "taskId": "td7e8f90",
+  "claims": [
+    {
+      "claimKey": "errorIdentifier",
+      "expectedValue": {
+        "type": "identifier",
+        "value": "E_INDEX_LOCKED"
+      },
+      "normalizer": {
+        "id": "identifier-v1",
+        "version": 1
+      },
+      "requiredEvidence": [
+        {
+          "uri": "gno://c00e/d001.md",
+          "sourceHash": "bc1062e6f5cf34d8d0c0f846aee95ba9244370ab9a3dd0fc4783edf1d8e16ef7",
+          "startLine": 3,
+          "endLine": 3,
+          "spanHash": "9b1a0dca709dedd03fba8ba0adccb14420920d10e8ec25540e45f1b4150e7441",
+          "sourceHashProvenance": "harness_observed",
+          "spanHashProvenance": "harness_observed"
+        }
+      ],
+      "optionalEvidence": [],
+      "forbiddenEvidence": []
+    }
+  ],
+  "expectedMissing": [],
+  "expectedScope": {
+    "collection": null,
+    "filters": {}
+  },
+  "completion": {
+    "expectAbstention": false,
+    "maxAgentCalls": 3,
+    "maxModelVisibleBytes": 12000,
+    "failOnUnexpectedEvidence": false
+  },
+  "leakCanaries": ["oracle-only-td7e8f90-9f7c2a"]
+}

@@ -1,0 +1,42 @@
+{
+  "schemaVersion": "1.0",
+  "taskId": "t7891a03",
+  "claims": [
+    {
+      "claimKey": "escalationWindow",
+      "expectedValue": {
+        "type": "string",
+        "value": "15 minutes"
+      },
+      "normalizer": {
+        "id": "exact-v1",
+        "version": 1
+      },
+      "requiredEvidence": [
+        {
+          "uri": "gno://c018/d001.md",
+          "sourceHash": "36a083e77527435026287d7a7e8586a1c69f6e04b68af0f73fabccaed580f74f",
+          "startLine": 3,
+          "endLine": 3,
+          "spanHash": "4d51a25747654dd5ae61c57a3860cc93e29ba845fa848dc97c8aed1480d02bdd",
+          "sourceHashProvenance": "harness_observed",
+          "spanHashProvenance": "harness_observed"
+        }
+      ],
+      "optionalEvidence": [],
+      "forbiddenEvidence": []
+    }
+  ],
+  "expectedMissing": [],
+  "expectedScope": {
+    "collection": null,
+    "filters": {}
+  },
+  "completion": {
+    "expectAbstention": false,
+    "maxAgentCalls": 1,
+    "maxModelVisibleBytes": 12000,
+    "failOnUnexpectedEvidence": true
+  },
+  "leakCanaries": ["oracle-only-t7891a03-9f7c2a"]
+}

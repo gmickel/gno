@@ -1,0 +1,28 @@
+{
+  "schemaVersion": "1.0",
+  "taskId": "t6780192",
+  "category": "meeting_decision",
+  "brief": {
+    "goal": "Use the final steering record to report the selected rollout region.",
+    "instructions": [
+      "Return only the declared structured claims or gaps.",
+      "Cite exact evidence spans and abstain when required evidence is absent."
+    ]
+  },
+  "claims": [
+    {
+      "claimKey": "rolloutRegion",
+      "valueType": "string",
+      "substantive": true,
+      "required": true
+    }
+  ],
+  "allowedTools": ["search", "get", "multi_get"],
+  "budgets": {
+    "maxAgentCalls": 3,
+    "maxModelVisibleBytes": 12000
+  },
+  "corpus": {
+    "collections": ["c017"]
+  }
+}

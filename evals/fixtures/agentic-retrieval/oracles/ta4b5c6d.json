@@ -1,0 +1,42 @@
+{
+  "schemaVersion": "1.0",
+  "taskId": "ta4b5c6d",
+  "claims": [
+    {
+      "claimKey": "dependency",
+      "expectedValue": {
+        "type": "string",
+        "value": "Beacon"
+      },
+      "normalizer": {
+        "id": "exact-v1",
+        "version": 1
+      },
+      "requiredEvidence": [
+        {
+          "uri": "gno://c00b/d001.md",
+          "sourceHash": "62a1d3220388445d8e800fa6cacae01d8733c6368c83e2dbdfefc253bf13782d",
+          "startLine": 3,
+          "endLine": 3,
+          "spanHash": "94cdc160d298196cb798795735bf2c6cdb3182afbbe9f6e0f0cfd94a3bd625b2",
+          "sourceHashProvenance": "harness_observed",
+          "spanHashProvenance": "harness_observed"
+        }
+      ],
+      "optionalEvidence": [],
+      "forbiddenEvidence": []
+    }
+  ],
+  "expectedMissing": [],
+  "expectedScope": {
+    "collection": null,
+    "filters": {}
+  },
+  "completion": {
+    "expectAbstention": false,
+    "maxAgentCalls": 3,
+    "maxModelVisibleBytes": 12000,
+    "failOnUnexpectedEvidence": false
+  },
+  "leakCanaries": ["oracle-only-ta4b5c6d-9f7c2a"]
+}

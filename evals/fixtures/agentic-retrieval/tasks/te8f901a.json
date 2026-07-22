@@ -1,0 +1,28 @@
+{
+  "schemaVersion": "1.0",
+  "taskId": "te8f901a",
+  "category": "multilingual",
+  "brief": {
+    "goal": "Welche Stadt wurde als Standort für das deutschsprachige Supportteam gewählt?",
+    "instructions": [
+      "Return only the declared structured claims or gaps.",
+      "Cite exact evidence spans and abstain when required evidence is absent."
+    ]
+  },
+  "claims": [
+    {
+      "claimKey": "supportCity",
+      "valueType": "string",
+      "substantive": true,
+      "required": true
+    }
+  ],
+  "allowedTools": ["search", "get", "multi_get"],
+  "budgets": {
+    "maxAgentCalls": 3,
+    "maxModelVisibleBytes": 12000
+  },
+  "corpus": {
+    "collections": ["c00f"]
+  }
+}

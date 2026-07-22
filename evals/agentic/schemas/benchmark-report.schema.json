@@ -1,0 +1,330 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "gno://schemas/evals/agentic/benchmark-report@1.0",
+  "title": "AgenticBenchmarkReport",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "benchmarkId",
+    "canonicalFingerprint",
+    "fixtureFingerprint",
+    "environment",
+    "methodology",
+    "limitations",
+    "preparations",
+    "attemptedPairs",
+    "scoredPairs",
+    "exclusions",
+    "receipts",
+    "scores",
+    "capsuleReplays",
+    "promotion"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "1.0" },
+    "benchmarkId": { "type": "string", "minLength": 1 },
+    "canonicalFingerprint": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "fixtureFingerprint": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "environment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "packageVersion",
+        "bunVersion",
+        "platform",
+        "architecture",
+        "git",
+        "fixtureVersion",
+        "agentId",
+        "trials"
+      ],
+      "properties": {
+        "packageVersion": { "type": "string", "minLength": 1 },
+        "bunVersion": { "type": "string", "minLength": 1 },
+        "platform": { "type": "string", "minLength": 1 },
+        "architecture": { "type": "string", "minLength": 1 },
+        "git": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["commit", "dirty", "unavailableReason"],
+          "properties": {
+            "commit": {
+              "oneOf": [
+                { "type": "string", "pattern": "^[a-f0-9]{40}$" },
+                { "type": "null" }
+              ]
+            },
+            "dirty": { "oneOf": [{ "type": "boolean" }, { "type": "null" }] },
+            "unavailableReason": {
+              "oneOf": [{ "type": "string" }, { "type": "null" }]
+            }
+          }
+        },
+        "fixtureVersion": { "type": "string", "minLength": 1 },
+        "agentId": { "type": "string", "minLength": 1 },
+        "trials": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["trialId", "seed"],
+            "properties": {
+              "trialId": { "type": "string", "minLength": 1 },
+              "seed": { "oneOf": [{ "type": "integer" }, { "type": "null" }] }
+            }
+          }
+        }
+      }
+    },
+    "methodology": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "limitations": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "preparations": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/preparation" }
+    },
+    "attemptedPairs": { "type": "integer", "minimum": 0 },
+    "scoredPairs": { "type": "integer", "minimum": 0 },
+    "exclusions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "taskId",
+          "adapterId",
+          "trialId",
+          "seed",
+          "lifecycle",
+          "agentId",
+          "failureClass",
+          "reason"
+        ],
+        "properties": {
+          "taskId": { "type": "string" },
+          "adapterId": { "type": "string" },
+          "trialId": { "type": "string" },
+          "seed": { "oneOf": [{ "type": "integer" }, { "type": "null" }] },
+          "lifecycle": { "enum": ["cold", "warm"] },
+          "agentId": { "type": "string" },
+          "failureClass": {
+            "enum": ["none", "harness_error", "agent_error", "product_error"]
+          },
+          "reason": { "type": "string" }
+        }
+      }
+    },
+    "receipts": {
+      "type": "array",
+      "items": { "$ref": "gno://schemas/evals/agentic/trajectory-receipt@1.0" }
+    },
+    "scores": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/scoreRecord" }
+    },
+    "capsuleReplays": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/capsuleReplay" }
+    },
+    "promotion": {
+      "oneOf": [{ "$ref": "#/definitions/promotion" }, { "type": "null" }]
+    }
+  },
+  "definitions": {
+    "nullableNumber": {
+      "oneOf": [{ "type": "number" }, { "type": "null" }]
+    },
+    "timing": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["valueMs", "unavailableReason"],
+      "properties": {
+        "valueMs": { "$ref": "#/definitions/nullableNumber" },
+        "unavailableReason": {
+          "oneOf": [{ "type": "string" }, { "type": "null" }]
+        }
+      }
+    },
+    "preparation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "adapterId",
+        "corpusFingerprint",
+        "indexFingerprint",
+        "observations"
+      ],
+      "properties": {
+        "adapterId": { "type": "string", "minLength": 1 },
+        "corpusFingerprint": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "indexFingerprint": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "observations": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "preparationMs",
+            "preparationUnavailableReason",
+            "details"
+          ],
+          "properties": {
+            "preparationMs": { "$ref": "#/definitions/nullableNumber" },
+            "preparationUnavailableReason": {
+              "oneOf": [{ "type": "string" }, { "type": "null" }]
+            },
+            "details": {
+              "type": "object",
+              "additionalProperties": {
+                "oneOf": [
+                  { "type": "string" },
+                  { "type": "number" },
+                  { "type": "boolean" },
+                  { "type": "null" }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "scoreRecord": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "taskId",
+        "adapterId",
+        "trialId",
+        "seed",
+        "lifecycle",
+        "agentId",
+        "score"
+      ],
+      "properties": {
+        "taskId": { "type": "string", "minLength": 1 },
+        "adapterId": { "type": "string", "minLength": 1 },
+        "trialId": { "type": "string", "minLength": 1 },
+        "seed": { "oneOf": [{ "type": "integer" }, { "type": "null" }] },
+        "lifecycle": { "enum": ["cold", "warm"] },
+        "agentId": { "type": "string", "minLength": 1 },
+        "score": { "$ref": "#/definitions/taskScore" }
+      }
+    },
+    "taskScore": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "taskId",
+        "scored",
+        "exclusionReason",
+        "success",
+        "completed",
+        "supportedClaims",
+        "unsupportedClaims",
+        "missingRequiredClaims",
+        "forbiddenEvidenceClaims",
+        "invalidOutputs",
+        "correctAbstention",
+        "prematureStop",
+        "unnecessaryRead",
+        "collectionCorrect",
+        "filtersCorrect",
+        "substantiveClaims",
+        "linkedSupportedClaims"
+      ],
+      "properties": {
+        "taskId": { "type": "string" },
+        "scored": { "type": "boolean" },
+        "exclusionReason": {
+          "oneOf": [{ "type": "string" }, { "type": "null" }]
+        },
+        "success": { "enum": [0, 1] },
+        "completed": { "type": "boolean" },
+        "supportedClaims": { "type": "array", "items": { "type": "string" } },
+        "unsupportedClaims": { "type": "array", "items": { "type": "string" } },
+        "missingRequiredClaims": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "forbiddenEvidenceClaims": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "invalidOutputs": { "type": "array", "items": { "type": "string" } },
+        "correctAbstention": { "type": "boolean" },
+        "prematureStop": { "type": "boolean" },
+        "unnecessaryRead": { "type": "boolean" },
+        "collectionCorrect": { "type": "boolean" },
+        "filtersCorrect": { "type": "boolean" },
+        "substantiveClaims": { "type": "integer", "minimum": 0 },
+        "linkedSupportedClaims": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "payloadReplay": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["canonicalJson", "sha256"],
+      "properties": {
+        "canonicalJson": { "type": "string", "minLength": 2 },
+        "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+      }
+    },
+    "capsuleReplay": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "taskId",
+        "adapterId",
+        "trialId",
+        "seed",
+        "lifecycle",
+        "agentId",
+        "first",
+        "second"
+      ],
+      "properties": {
+        "taskId": { "type": "string", "minLength": 1 },
+        "adapterId": { "const": "capsule" },
+        "trialId": { "type": "string", "minLength": 1 },
+        "seed": { "oneOf": [{ "type": "integer" }, { "type": "null" }] },
+        "lifecycle": { "enum": ["cold", "warm"] },
+        "agentId": { "type": "string", "minLength": 1 },
+        "first": { "$ref": "#/definitions/payloadReplay" },
+        "second": { "$ref": "#/definitions/payloadReplay" }
+      }
+    },
+    "promotion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["passed", "pairCount", "failures", "metrics"],
+      "properties": {
+        "passed": { "type": "boolean" },
+        "pairCount": { "type": "integer", "minimum": 0 },
+        "failures": { "type": "array", "items": { "type": "string" } },
+        "metrics": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "baselineSuccessRate",
+            "candidateSuccessRate",
+            "agentCallReduction",
+            "contextByteReduction",
+            "claimLinkageRate"
+          ],
+          "properties": {
+            "baselineSuccessRate": { "$ref": "#/definitions/nullableNumber" },
+            "candidateSuccessRate": { "$ref": "#/definitions/nullableNumber" },
+            "agentCallReduction": { "$ref": "#/definitions/nullableNumber" },
+            "contextByteReduction": { "$ref": "#/definitions/nullableNumber" },
+            "claimLinkageRate": { "$ref": "#/definitions/nullableNumber" }
+          }
+        }
+      }
+    }
+  }
+}

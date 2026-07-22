@@ -1,0 +1,6452 @@
+{
+  "environment": {
+    "agentId": "fixture-agent-v1",
+    "architecture": "arm64",
+    "bunVersion": "1.3.5",
+    "fixtureVersion": "2026-07-22.1",
+    "git": {
+      "commit": "64d2e47fff29a32ac4edc8c49d63f38752c8bdea",
+      "dirty": false,
+      "unavailableReason": null
+    },
+    "packageVersion": "1.15.0",
+    "platform": "darwin",
+    "trials": [
+      {
+        "seed": 0,
+        "trialId": "fixture-01"
+      }
+    ]
+  },
+  "preparations": [
+    {
+      "adapterId": "capsule",
+      "observations": {
+        "details": {
+          "collectionCount": 26,
+          "documentCount": 34,
+          "filesErrored": 0,
+          "filesProcessed": 34,
+          "nativeFormat": "gno-agentic-native-fixture-index-v1"
+        },
+        "preparationMs": 814.607,
+        "preparationUnavailableReason": null
+      }
+    },
+    {
+      "adapterId": "gno-mcp",
+      "observations": {
+        "details": {
+          "collections": 26,
+          "documents": 34,
+          "embedded": true,
+          "filesErrored": 0,
+          "filesProcessed": 34,
+          "productToolsFingerprint": "f06562561e09d1fe446acdbe266c84b9353feefdbe34496c693e74070fbb12a4"
+        },
+        "preparationMs": 4797.725,
+        "preparationUnavailableReason": null
+      }
+    },
+    {
+      "adapterId": "lexical",
+      "observations": {
+        "details": {
+          "collectionCount": 26,
+          "documentCount": 34,
+          "filesErrored": 0,
+          "filesProcessed": 34,
+          "nativeFormat": "gno-agentic-native-fixture-index-v1"
+        },
+        "preparationMs": 75.107,
+        "preparationUnavailableReason": null
+      }
+    }
+  ],
+  "receipts": [
+    {
+      "adapterId": "capsule",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "cold",
+      "observations": {
+        "diagnostics": [
+          "eval-only Capsule prototype; no production API contract"
+        ],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:38:05.698Z",
+        "tempPaths": ["<temp>", "<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.446
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 14.796
+          },
+          "modelLoad": {
+            "unavailableReason": "one or more model-load components unavailable",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 814.607
+          },
+          "startup": {
+            "unavailableReason": null,
+            "valueMs": 0.494
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 6.517
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "t012ab3c",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "capsule",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "warm",
+      "observations": {
+        "diagnostics": [
+          "eval-only Capsule prototype; no production API contract"
+        ],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:38:05.739Z",
+        "tempPaths": ["<temp>", "<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.016
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 0.837
+          },
+          "modelLoad": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 814.607
+          },
+          "startup": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 0.721
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "t012ab3c",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "capsule",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "cold",
+      "observations": {
+        "diagnostics": [
+          "eval-only Capsule prototype; no production API contract"
+        ],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:38:05.703Z",
+        "tempPaths": ["<temp>", "<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.074
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 2.411
+          },
+          "modelLoad": {
+            "unavailableReason": "one or more model-load components unavailable",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 814.607
+          },
+          "startup": {
+            "unavailableReason": null,
+            "valueMs": 0.437
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 1.541
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "t0a1b2c3",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "capsule",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "warm",
+      "observations": {
+        "diagnostics": [
+          "eval-only Capsule prototype; no production API contract"
+        ],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:38:05.740Z",
+        "tempPaths": ["<temp>", "<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.016
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 0.942
+          },
+          "modelLoad": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 814.607
+          },
+          "startup": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 0.804
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "t0a1b2c3",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "capsule",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "cold",
+      "observations": {
+        "diagnostics": [
+          "eval-only Capsule prototype; no production API contract"
+        ],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:38:05.705Z",
+        "tempPaths": ["<temp>", "<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.064
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 2.361
+          },
+          "modelLoad": {
+            "unavailableReason": "one or more model-load components unavailable",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 814.607
+          },
+          "startup": {
+            "unavailableReason": null,
+            "valueMs": 0.268
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 1.808
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "t123bc4d",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "capsule",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "warm",
+      "observations": {
+        "diagnostics": [
+          "eval-only Capsule prototype; no production API contract"
+        ],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:38:05.741Z",
+        "tempPaths": ["<temp>", "<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.015
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 0.551
+          },
+          "modelLoad": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 814.607
+          },
+          "startup": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 0.434
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "t123bc4d",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "capsule",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "cold",
+      "observations": {
+        "diagnostics": [
+          "eval-only Capsule prototype; no production API contract"
+        ],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:38:05.707Z",
+        "tempPaths": ["<temp>", "<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.052
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 1.763
+          },
+          "modelLoad": {
+            "unavailableReason": "one or more model-load components unavailable",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 814.607
+          },
+          "startup": {
+            "unavailableReason": null,
+            "valueMs": 0.259
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 1.142
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "t1b2c3d4",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "capsule",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "warm",
+      "observations": {
+        "diagnostics": [
+          "eval-only Capsule prototype; no production API contract"
+        ],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:38:05.742Z",
+        "tempPaths": ["<temp>", "<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.047
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 1.278
+          },
+          "modelLoad": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 814.607
+          },
+          "startup": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 0.985
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "t1b2c3d4",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "capsule",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "cold",
+      "observations": {
+        "diagnostics": [
+          "eval-only Capsule prototype; no production API contract"
+        ],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:38:05.709Z",
+        "tempPaths": ["<temp>", "<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.089
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 1.606
+          },
+          "modelLoad": {
+            "unavailableReason": "one or more model-load components unavailable",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 814.607
+          },
+          "startup": {
+            "unavailableReason": null,
+            "valueMs": 0.376
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 0.852
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "t234cd5e",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "capsule",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "warm",
+      "observations": {
+        "diagnostics": [
+          "eval-only Capsule prototype; no production API contract"
+        ],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:38:05.743Z",
+        "tempPaths": ["<temp>", "<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.031
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 0.548
+          },
+          "modelLoad": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 814.607
+          },
+          "startup": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 0.407
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "t234cd5e",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "capsule",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "cold",
+      "observations": {
+        "diagnostics": [
+          "eval-only Capsule prototype; no production API contract"
+        ],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:38:05.711Z",
+        "tempPaths": ["<temp>", "<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.032
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 1.776
+          },
+          "modelLoad": {
+            "unavailableReason": "one or more model-load components unavailable",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 814.607
+          },
+          "startup": {
+            "unavailableReason": null,
+            "valueMs": 0.305
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 1.15
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "t2c3d4e5",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "capsule",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "warm",
+      "observations": {
+        "diagnostics": [
+          "eval-only Capsule prototype; no production API contract"
+        ],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:38:05.744Z",
+        "tempPaths": ["<temp>", "<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.018
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 0.68
+          },
+          "modelLoad": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 814.607
+          },
+          "startup": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 0.549
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "t2c3d4e5",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "capsule",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "cold",
+      "observations": {
+        "diagnostics": [
+          "eval-only Capsule prototype; no production API contract"
+        ],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:38:05.713Z",
+        "tempPaths": ["<temp>", "<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.056
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 1.501
+          },
+          "modelLoad": {
+            "unavailableReason": "one or more model-load components unavailable",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 814.607
+          },
+          "startup": {
+            "unavailableReason": null,
+            "valueMs": 0.444
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 0.695
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "t345de6f",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "capsule",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "warm",
+      "observations": {
+        "diagnostics": [
+          "eval-only Capsule prototype; no production API contract"
+        ],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:38:05.744Z",
+        "tempPaths": ["<temp>", "<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.021
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 0.456
+          },
+          "modelLoad": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 814.607
+          },
+          "startup": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 0.349
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "t345de6f",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "capsule",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "cold",
+      "observations": {
+        "diagnostics": [
+          "eval-only Capsule prototype; no production API contract"
+        ],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:38:05.714Z",
+        "tempPaths": ["<temp>", "<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.025
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 1.493
+          },
+          "modelLoad": {
+            "unavailableReason": "one or more model-load components unavailable",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 814.607
+          },
+          "startup": {
+            "unavailableReason": null,
+            "valueMs": 0.31
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 0.892
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "t3d4e5f6",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "capsule",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "warm",
+      "observations": {
+        "diagnostics": [
+          "eval-only Capsule prototype; no production API contract"
+        ],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:38:05.745Z",
+        "tempPaths": ["<temp>", "<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.016
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 0.578
+          },
+          "modelLoad": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 814.607
+          },
+          "startup": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 0.475
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "t3d4e5f6",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "capsule",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "cold",
+      "observations": {
+        "diagnostics": [
+          "eval-only Capsule prototype; no production API contract"
+        ],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:38:05.716Z",
+        "tempPaths": ["<temp>", "<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.033
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 1.417
+          },
+          "modelLoad": {
+            "unavailableReason": "one or more model-load components unavailable",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 814.607
+          },
+          "startup": {
+            "unavailableReason": null,
+            "valueMs": 0.255
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 0.927
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "t456ef70",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "capsule",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "warm",
+      "observations": {
+        "diagnostics": [
+          "eval-only Capsule prototype; no production API contract"
+        ],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:38:05.745Z",
+        "tempPaths": ["<temp>", "<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.019
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 0.621
+          },
+          "modelLoad": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 814.607
+          },
+          "startup": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 0.525
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "t456ef70",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "capsule",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "cold",
+      "observations": {
+        "diagnostics": [
+          "eval-only Capsule prototype; no production API contract"
+        ],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:38:05.717Z",
+        "tempPaths": ["<temp>", "<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.057
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 1.51
+          },
+          "modelLoad": {
+            "unavailableReason": "one or more model-load components unavailable",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 814.607
+          },
+          "startup": {
+            "unavailableReason": null,
+            "valueMs": 0.238
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 1.004
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "t4e5f607",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "capsule",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "warm",
+      "observations": {
+        "diagnostics": [
+          "eval-only Capsule prototype; no production API contract"
+        ],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:38:05.746Z",
+        "tempPaths": ["<temp>", "<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.028
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 0.887
+          },
+          "modelLoad": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 814.607
+          },
+          "startup": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 0.729
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "t4e5f607",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "capsule",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "cold",
+      "observations": {
+        "diagnostics": [
+          "eval-only Capsule prototype; no production API contract"
+        ],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:38:05.719Z",
+        "tempPaths": ["<temp>", "<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.03
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 1.089
+          },
+          "modelLoad": {
+            "unavailableReason": "one or more model-load components unavailable",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 814.607
+          },
+          "startup": {
+            "unavailableReason": null,
+            "valueMs": 0.226
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 0.675
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "t567f081",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "capsule",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "warm",
+      "observations": {
+        "diagnostics": [
+          "eval-only Capsule prototype; no production API contract"
+        ],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:38:05.747Z",
+        "tempPaths": ["<temp>", "<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.017
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 0.599
+          },
+          "modelLoad": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 814.607
+          },
+          "startup": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 0.488
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "t567f081",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "capsule",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "cold",
+      "observations": {
+        "diagnostics": [
+          "eval-only Capsule prototype; no production API contract"
+        ],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:38:05.720Z",
+        "tempPaths": ["<temp>", "<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.025
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 1.565
+          },
+          "modelLoad": {
+            "unavailableReason": "one or more model-load components unavailable",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 814.607
+          },
+          "startup": {
+            "unavailableReason": null,
+            "valueMs": 0.207
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 1.136
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "t5f60718",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "capsule",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "warm",
+      "observations": {
+        "diagnostics": [
+          "eval-only Capsule prototype; no production API contract"
+        ],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:38:05.748Z",
+        "tempPaths": ["<temp>", "<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.024
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 1.071
+          },
+          "modelLoad": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 814.607
+          },
+          "startup": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 0.91
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "t5f60718",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "capsule",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "cold",
+      "observations": {
+        "diagnostics": [
+          "eval-only Capsule prototype; no production API contract"
+        ],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:38:05.722Z",
+        "tempPaths": ["<temp>", "<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.046
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 1.739
+          },
+          "modelLoad": {
+            "unavailableReason": "one or more model-load components unavailable",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 814.607
+          },
+          "startup": {
+            "unavailableReason": null,
+            "valueMs": 0.433
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 0.848
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "t6071829",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "capsule",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "warm",
+      "observations": {
+        "diagnostics": [
+          "eval-only Capsule prototype; no production API contract"
+        ],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:38:05.749Z",
+        "tempPaths": ["<temp>", "<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.053
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 0.656
+          },
+          "modelLoad": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 814.607
+          },
+          "startup": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 0.435
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "t6071829",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "capsule",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "cold",
+      "observations": {
+        "diagnostics": [
+          "eval-only Capsule prototype; no production API contract"
+        ],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:38:05.724Z",
+        "tempPaths": ["<temp>", "<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.041
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 1.926
+          },
+          "modelLoad": {
+            "unavailableReason": "one or more model-load components unavailable",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 814.607
+          },
+          "startup": {
+            "unavailableReason": null,
+            "valueMs": 0.326
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 1.266
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "t6780192",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "capsule",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "warm",
+      "observations": {
+        "diagnostics": [
+          "eval-only Capsule prototype; no production API contract"
+        ],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:38:05.750Z",
+        "tempPaths": ["<temp>", "<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.028
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 1.22
+          },
+          "modelLoad": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 814.607
+          },
+          "startup": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 1.046
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "t6780192",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "capsule",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "cold",
+      "observations": {
+        "diagnostics": [
+          "eval-only Capsule prototype; no production API contract"
+        ],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:38:05.726Z",
+        "tempPaths": ["<temp>", "<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.073
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 1.251
+          },
+          "modelLoad": {
+            "unavailableReason": "one or more model-load components unavailable",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 814.607
+          },
+          "startup": {
+            "unavailableReason": null,
+            "valueMs": 0.305
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 0.657
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "t718293a",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "capsule",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "warm",
+      "observations": {
+        "diagnostics": [
+          "eval-only Capsule prototype; no production API contract"
+        ],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:38:05.751Z",
+        "tempPaths": ["<temp>", "<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.024
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 0.564
+          },
+          "modelLoad": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 814.607
+          },
+          "startup": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 0.443
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "t718293a",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "capsule",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "cold",
+      "observations": {
+        "diagnostics": [
+          "eval-only Capsule prototype; no production API contract"
+        ],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:38:05.727Z",
+        "tempPaths": ["<temp>", "<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.02
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 1.264
+          },
+          "modelLoad": {
+            "unavailableReason": "one or more model-load components unavailable",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 814.607
+          },
+          "startup": {
+            "unavailableReason": null,
+            "valueMs": 0.269
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 0.786
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "t7891a03",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "capsule",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "warm",
+      "observations": {
+        "diagnostics": [
+          "eval-only Capsule prototype; no production API contract"
+        ],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:38:05.751Z",
+        "tempPaths": ["<temp>", "<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.016
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 0.604
+          },
+          "modelLoad": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 814.607
+          },
+          "startup": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 0.5
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "t7891a03",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "capsule",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "cold",
+      "observations": {
+        "diagnostics": [
+          "eval-only Capsule prototype; no production API contract"
+        ],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:38:05.729Z",
+        "tempPaths": ["<temp>", "<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.037
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 1.511
+          },
+          "modelLoad": {
+            "unavailableReason": "one or more model-load components unavailable",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 814.607
+          },
+          "startup": {
+            "unavailableReason": null,
+            "valueMs": 0.246
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 0.988
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "t8293a4b",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "capsule",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "warm",
+      "observations": {
+        "diagnostics": [
+          "eval-only Capsule prototype; no production API contract"
+        ],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:38:05.752Z",
+        "tempPaths": ["<temp>", "<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.02
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 0.872
+          },
+          "modelLoad": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 814.607
+          },
+          "startup": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 0.737
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "t8293a4b",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "capsule",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "cold",
+      "observations": {
+        "diagnostics": [
+          "eval-only Capsule prototype; no production API contract"
+        ],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:38:05.730Z",
+        "tempPaths": ["<temp>", "<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.042
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 1.515
+          },
+          "modelLoad": {
+            "unavailableReason": "one or more model-load components unavailable",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 814.607
+          },
+          "startup": {
+            "unavailableReason": null,
+            "valueMs": 0.282
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 0.957
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "t93a4b5c",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "capsule",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "warm",
+      "observations": {
+        "diagnostics": [
+          "eval-only Capsule prototype; no production API contract"
+        ],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:38:05.753Z",
+        "tempPaths": ["<temp>", "<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.026
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 1.005
+          },
+          "modelLoad": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 814.607
+          },
+          "startup": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 0.851
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "t93a4b5c",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "capsule",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "cold",
+      "observations": {
+        "diagnostics": [
+          "eval-only Capsule prototype; no production API contract"
+        ],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:38:05.732Z",
+        "tempPaths": ["<temp>", "<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.038
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 1.455
+          },
+          "modelLoad": {
+            "unavailableReason": "one or more model-load components unavailable",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 814.607
+          },
+          "startup": {
+            "unavailableReason": null,
+            "valueMs": 0.28
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 0.911
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "ta4b5c6d",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "capsule",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "warm",
+      "observations": {
+        "diagnostics": [
+          "eval-only Capsule prototype; no production API contract"
+        ],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:38:05.754Z",
+        "tempPaths": ["<temp>", "<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.041
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 0.799
+          },
+          "modelLoad": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 814.607
+          },
+          "startup": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 0.597
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "ta4b5c6d",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "capsule",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "cold",
+      "observations": {
+        "diagnostics": [
+          "eval-only Capsule prototype; no production API contract"
+        ],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:38:05.733Z",
+        "tempPaths": ["<temp>", "<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.019
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 1.304
+          },
+          "modelLoad": {
+            "unavailableReason": "one or more model-load components unavailable",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 814.607
+          },
+          "startup": {
+            "unavailableReason": null,
+            "valueMs": 0.285
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 0.781
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "tb5c6d7e",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "capsule",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "warm",
+      "observations": {
+        "diagnostics": [
+          "eval-only Capsule prototype; no production API contract"
+        ],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:38:05.755Z",
+        "tempPaths": ["<temp>", "<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.018
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 0.847
+          },
+          "modelLoad": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 814.607
+          },
+          "startup": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 0.709
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "tb5c6d7e",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "capsule",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "cold",
+      "observations": {
+        "diagnostics": [
+          "eval-only Capsule prototype; no production API contract"
+        ],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:38:05.734Z",
+        "tempPaths": ["<temp>", "<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.017
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 1.057
+          },
+          "modelLoad": {
+            "unavailableReason": "one or more model-load components unavailable",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 814.607
+          },
+          "startup": {
+            "unavailableReason": null,
+            "valueMs": 0.237
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 0.62
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "tc6d7e8f",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "capsule",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "warm",
+      "observations": {
+        "diagnostics": [
+          "eval-only Capsule prototype; no production API contract"
+        ],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:38:05.756Z",
+        "tempPaths": ["<temp>", "<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.032
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 0.673
+          },
+          "modelLoad": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 814.607
+          },
+          "startup": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 0.516
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "tc6d7e8f",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "capsule",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "cold",
+      "observations": {
+        "diagnostics": [
+          "eval-only Capsule prototype; no production API contract"
+        ],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:38:05.736Z",
+        "tempPaths": ["<temp>", "<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.024
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 1.179
+          },
+          "modelLoad": {
+            "unavailableReason": "one or more model-load components unavailable",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 814.607
+          },
+          "startup": {
+            "unavailableReason": null,
+            "valueMs": 0.217
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 0.783
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "td7e8f90",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "capsule",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "warm",
+      "observations": {
+        "diagnostics": [
+          "eval-only Capsule prototype; no production API contract"
+        ],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:38:05.757Z",
+        "tempPaths": ["<temp>", "<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.025
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 0.787
+          },
+          "modelLoad": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 814.607
+          },
+          "startup": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 0.635
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "td7e8f90",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "capsule",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "cold",
+      "observations": {
+        "diagnostics": [
+          "eval-only Capsule prototype; no production API contract"
+        ],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:38:05.737Z",
+        "tempPaths": ["<temp>", "<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.018
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 1.169
+          },
+          "modelLoad": {
+            "unavailableReason": "one or more model-load components unavailable",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 814.607
+          },
+          "startup": {
+            "unavailableReason": null,
+            "valueMs": 0.22
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 0.771
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "te8f901a",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "capsule",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "warm",
+      "observations": {
+        "diagnostics": [
+          "eval-only Capsule prototype; no production API contract"
+        ],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:38:05.757Z",
+        "tempPaths": ["<temp>", "<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.017
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 0.75
+          },
+          "modelLoad": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 814.607
+          },
+          "startup": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 0.645
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "te8f901a",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "capsule",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "cold",
+      "observations": {
+        "diagnostics": [
+          "eval-only Capsule prototype; no production API contract"
+        ],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:38:05.738Z",
+        "tempPaths": ["<temp>", "<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.022
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 1.191
+          },
+          "modelLoad": {
+            "unavailableReason": "one or more model-load components unavailable",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 814.607
+          },
+          "startup": {
+            "unavailableReason": null,
+            "valueMs": 0.206
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 0.804
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "tf901a2b",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "capsule",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "warm",
+      "observations": {
+        "diagnostics": [
+          "eval-only Capsule prototype; no production API contract"
+        ],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:38:05.758Z",
+        "tempPaths": ["<temp>", "<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.013
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 0.746
+          },
+          "modelLoad": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 814.607
+          },
+          "startup": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 0.65
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "tf901a2b",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "gno-mcp",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "cold",
+      "observations": {
+        "diagnostics": ["GNO MCP 1.15.0 pid=36732"],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:38:12.801Z",
+        "tempPaths": ["<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.467
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 2238.389
+          },
+          "modelLoad": {
+            "unavailableReason": "one or more model-load components unavailable",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 4797.725
+          },
+          "startup": {
+            "unavailableReason": null,
+            "valueMs": 104.278
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 2125.702
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "t012ab3c",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "gno-mcp",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "warm",
+      "observations": {
+        "diagnostics": [],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:38:55.773Z",
+        "tempPaths": ["<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.105
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 814.461
+          },
+          "modelLoad": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 4797.725
+          },
+          "startup": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 814.01
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "t012ab3c",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "gno-mcp",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "cold",
+      "observations": {
+        "diagnostics": ["GNO MCP 1.15.0 pid=36760"],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:38:14.631Z",
+        "tempPaths": ["<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.154
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 1299.839
+          },
+          "modelLoad": {
+            "unavailableReason": "one or more model-load components unavailable",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 4797.725
+          },
+          "startup": {
+            "unavailableReason": null,
+            "valueMs": 110.378
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 1184.289
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "t0a1b2c3",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "gno-mcp",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "warm",
+      "observations": {
+        "diagnostics": [],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:38:56.415Z",
+        "tempPaths": ["<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.098
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 641.638
+          },
+          "modelLoad": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 4797.725
+          },
+          "startup": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 641.228
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "t0a1b2c3",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "gno-mcp",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "cold",
+      "observations": {
+        "diagnostics": ["GNO MCP 1.15.0 pid=36763"],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:38:16.410Z",
+        "tempPaths": ["<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.124
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 1333.038
+          },
+          "modelLoad": {
+            "unavailableReason": "one or more model-load components unavailable",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 4797.725
+          },
+          "startup": {
+            "unavailableReason": null,
+            "valueMs": 108.288
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 1219.833
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "t123bc4d",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "gno-mcp",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "warm",
+      "observations": {
+        "diagnostics": [],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:38:57.030Z",
+        "tempPaths": ["<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.102
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 615.112
+          },
+          "modelLoad": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 4797.725
+          },
+          "startup": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 614.599
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "t123bc4d",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "gno-mcp",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "cold",
+      "observations": {
+        "diagnostics": ["GNO MCP 1.15.0 pid=36765"],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:38:18.211Z",
+        "tempPaths": ["<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.116
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 1337.941
+          },
+          "modelLoad": {
+            "unavailableReason": "one or more model-load components unavailable",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 4797.725
+          },
+          "startup": {
+            "unavailableReason": null,
+            "valueMs": 111.339
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 1221.602
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "t1b2c3d4",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "gno-mcp",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "warm",
+      "observations": {
+        "diagnostics": [],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:38:57.653Z",
+        "tempPaths": ["<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.103
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 623.308
+          },
+          "modelLoad": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 4797.725
+          },
+          "startup": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 622.811
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "t1b2c3d4",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "gno-mcp",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "cold",
+      "observations": {
+        "diagnostics": ["GNO MCP 1.15.0 pid=36771"],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:38:20.317Z",
+        "tempPaths": ["<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.248
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 1695.488
+          },
+          "modelLoad": {
+            "unavailableReason": "one or more model-load components unavailable",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 4797.725
+          },
+          "startup": {
+            "unavailableReason": null,
+            "valueMs": 107.559
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 1582.311
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "t234cd5e",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "gno-mcp",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "warm",
+      "observations": {
+        "diagnostics": [],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:38:58.302Z",
+        "tempPaths": ["<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.087
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 648.644
+          },
+          "modelLoad": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 4797.725
+          },
+          "startup": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 648.255
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "t234cd5e",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "gno-mcp",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "cold",
+      "observations": {
+        "diagnostics": ["GNO MCP 1.15.0 pid=36776"],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:38:22.216Z",
+        "tempPaths": ["<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.128
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 1329.166
+          },
+          "modelLoad": {
+            "unavailableReason": "one or more model-load components unavailable",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 4797.725
+          },
+          "startup": {
+            "unavailableReason": null,
+            "valueMs": 108.946
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 1215.723
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "t2c3d4e5",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "gno-mcp",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "warm",
+      "observations": {
+        "diagnostics": [],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:38:58.906Z",
+        "tempPaths": ["<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.13
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 603.598
+          },
+          "modelLoad": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 4797.725
+          },
+          "startup": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 603.043
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "t2c3d4e5",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "gno-mcp",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "cold",
+      "observations": {
+        "diagnostics": ["GNO MCP 1.15.0 pid=36781"],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:38:23.929Z",
+        "tempPaths": ["<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.107
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 1268.84
+          },
+          "modelLoad": {
+            "unavailableReason": "one or more model-load components unavailable",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 4797.725
+          },
+          "startup": {
+            "unavailableReason": null,
+            "valueMs": 109.053
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 1155.283
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "t345de6f",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "gno-mcp",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "warm",
+      "observations": {
+        "diagnostics": [],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:38:59.537Z",
+        "tempPaths": ["<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.105
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 630.303
+          },
+          "modelLoad": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 4797.725
+          },
+          "startup": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 629.819
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "t345de6f",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "gno-mcp",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "cold",
+      "observations": {
+        "diagnostics": ["GNO MCP 1.15.0 pid=36790"],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:38:25.703Z",
+        "tempPaths": ["<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.193
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 1278.019
+          },
+          "modelLoad": {
+            "unavailableReason": "one or more model-load components unavailable",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 4797.725
+          },
+          "startup": {
+            "unavailableReason": null,
+            "valueMs": 100.473
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 1172.504
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "t3d4e5f6",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "gno-mcp",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "warm",
+      "observations": {
+        "diagnostics": [],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:39:00.159Z",
+        "tempPaths": ["<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.095
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 622.109
+          },
+          "modelLoad": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 4797.725
+          },
+          "startup": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 621.688
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "t3d4e5f6",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "gno-mcp",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "cold",
+      "observations": {
+        "diagnostics": ["GNO MCP 1.15.0 pid=36801"],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:38:27.452Z",
+        "tempPaths": ["<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.16
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 1278.798
+          },
+          "modelLoad": {
+            "unavailableReason": "one or more model-load components unavailable",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 4797.725
+          },
+          "startup": {
+            "unavailableReason": null,
+            "valueMs": 110.819
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 1162.829
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "t456ef70",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "gno-mcp",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "warm",
+      "observations": {
+        "diagnostics": [],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:39:00.780Z",
+        "tempPaths": ["<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.137
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 620.944
+          },
+          "modelLoad": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 4797.725
+          },
+          "startup": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 620.441
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "t456ef70",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "gno-mcp",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "cold",
+      "observations": {
+        "diagnostics": ["GNO MCP 1.15.0 pid=36811"],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:38:29.200Z",
+        "tempPaths": ["<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.141
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 1258.898
+          },
+          "modelLoad": {
+            "unavailableReason": "one or more model-load components unavailable",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 4797.725
+          },
+          "startup": {
+            "unavailableReason": null,
+            "valueMs": 108.357
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 1144.187
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "t4e5f607",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "gno-mcp",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "warm",
+      "observations": {
+        "diagnostics": [],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:39:01.407Z",
+        "tempPaths": ["<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.102
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 626.772
+          },
+          "modelLoad": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 4797.725
+          },
+          "startup": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 626.281
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "t4e5f607",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "gno-mcp",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "cold",
+      "observations": {
+        "diagnostics": ["GNO MCP 1.15.0 pid=36818"],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:38:30.970Z",
+        "tempPaths": ["<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.101
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 1271.495
+          },
+          "modelLoad": {
+            "unavailableReason": "one or more model-load components unavailable",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 4797.725
+          },
+          "startup": {
+            "unavailableReason": null,
+            "valueMs": 107.8
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 1159.289
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "t567f081",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "gno-mcp",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "warm",
+      "observations": {
+        "diagnostics": [],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:39:02.035Z",
+        "tempPaths": ["<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.107
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 627.915
+          },
+          "modelLoad": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 4797.725
+          },
+          "startup": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 627.489
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "t567f081",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "gno-mcp",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "cold",
+      "observations": {
+        "diagnostics": ["GNO MCP 1.15.0 pid=36895"],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:38:32.733Z",
+        "tempPaths": ["<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.12
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 1281.712
+          },
+          "modelLoad": {
+            "unavailableReason": "one or more model-load components unavailable",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 4797.725
+          },
+          "startup": {
+            "unavailableReason": null,
+            "valueMs": 108.586
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 1167.931
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "t5f60718",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "gno-mcp",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "warm",
+      "observations": {
+        "diagnostics": [],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:39:02.666Z",
+        "tempPaths": ["<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.097
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 631.151
+          },
+          "modelLoad": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 4797.725
+          },
+          "startup": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 630.686
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "t5f60718",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "gno-mcp",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "cold",
+      "observations": {
+        "diagnostics": ["GNO MCP 1.15.0 pid=37311"],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:38:34.487Z",
+        "tempPaths": ["<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.113
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 1275.389
+          },
+          "modelLoad": {
+            "unavailableReason": "one or more model-load components unavailable",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 4797.725
+          },
+          "startup": {
+            "unavailableReason": null,
+            "valueMs": 102.46
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 1168.115
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "t6071829",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "gno-mcp",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "warm",
+      "observations": {
+        "diagnostics": [],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:39:03.290Z",
+        "tempPaths": ["<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.1
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 623.91
+          },
+          "modelLoad": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 4797.725
+          },
+          "startup": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 623.459
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "t6071829",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "gno-mcp",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "cold",
+      "observations": {
+        "diagnostics": ["GNO MCP 1.15.0 pid=37567"],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:38:36.418Z",
+        "tempPaths": ["<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.127
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 1466.232
+          },
+          "modelLoad": {
+            "unavailableReason": "one or more model-load components unavailable",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 4797.725
+          },
+          "startup": {
+            "unavailableReason": null,
+            "valueMs": 217.792
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 1243.662
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "t6780192",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "gno-mcp",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "warm",
+      "observations": {
+        "diagnostics": [],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:39:03.925Z",
+        "tempPaths": ["<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.092
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 634.456
+          },
+          "modelLoad": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 4797.725
+          },
+          "startup": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 633.961
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "t6780192",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "gno-mcp",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "cold",
+      "observations": {
+        "diagnostics": ["GNO MCP 1.15.0 pid=37751"],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:38:38.103Z",
+        "tempPaths": ["<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.135
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 1276.026
+          },
+          "modelLoad": {
+            "unavailableReason": "one or more model-load components unavailable",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 4797.725
+          },
+          "startup": {
+            "unavailableReason": null,
+            "valueMs": 107.615
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 1163.404
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "t718293a",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "gno-mcp",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "warm",
+      "observations": {
+        "diagnostics": [],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:39:04.550Z",
+        "tempPaths": ["<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.095
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 625.3
+          },
+          "modelLoad": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 4797.725
+          },
+          "startup": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 624.869
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "t718293a",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "gno-mcp",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "cold",
+      "observations": {
+        "diagnostics": ["GNO MCP 1.15.0 pid=37920"],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:38:39.877Z",
+        "tempPaths": ["<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.063
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 1291.372
+          },
+          "modelLoad": {
+            "unavailableReason": "one or more model-load components unavailable",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 4797.725
+          },
+          "startup": {
+            "unavailableReason": null,
+            "valueMs": 107.832
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 1178.876
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "t7891a03",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "gno-mcp",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "warm",
+      "observations": {
+        "diagnostics": [],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:39:05.173Z",
+        "tempPaths": ["<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.063
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 622.58
+          },
+          "modelLoad": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 4797.725
+          },
+          "startup": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 622.257
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "t7891a03",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "gno-mcp",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "cold",
+      "observations": {
+        "diagnostics": ["GNO MCP 1.15.0 pid=37979"],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:38:41.608Z",
+        "tempPaths": ["<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.128
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 1265.862
+          },
+          "modelLoad": {
+            "unavailableReason": "one or more model-load components unavailable",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 4797.725
+          },
+          "startup": {
+            "unavailableReason": null,
+            "valueMs": 109.907
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 1151.359
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "t8293a4b",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "gno-mcp",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "warm",
+      "observations": {
+        "diagnostics": [],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:39:05.807Z",
+        "tempPaths": ["<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.079
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 634.108
+          },
+          "modelLoad": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 4797.725
+          },
+          "startup": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 633.705
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "t8293a4b",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "gno-mcp",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "cold",
+      "observations": {
+        "diagnostics": ["GNO MCP 1.15.0 pid=38011"],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:38:43.376Z",
+        "tempPaths": ["<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.104
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 1272.527
+          },
+          "modelLoad": {
+            "unavailableReason": "one or more model-load components unavailable",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 4797.725
+          },
+          "startup": {
+            "unavailableReason": null,
+            "valueMs": 104.756
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 1163.005
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "t93a4b5c",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "gno-mcp",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "warm",
+      "observations": {
+        "diagnostics": [],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:39:06.435Z",
+        "tempPaths": ["<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.141
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 627.674
+          },
+          "modelLoad": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 4797.725
+          },
+          "startup": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 627.049
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "t93a4b5c",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "gno-mcp",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "cold",
+      "observations": {
+        "diagnostics": ["GNO MCP 1.15.0 pid=38059"],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:38:45.119Z",
+        "tempPaths": ["<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.105
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 1259.919
+          },
+          "modelLoad": {
+            "unavailableReason": "one or more model-load components unavailable",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 4797.725
+          },
+          "startup": {
+            "unavailableReason": null,
+            "valueMs": 113.537
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 1141.985
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "ta4b5c6d",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "gno-mcp",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "warm",
+      "observations": {
+        "diagnostics": [],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:39:07.066Z",
+        "tempPaths": ["<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.116
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 631.218
+          },
+          "modelLoad": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 4797.725
+          },
+          "startup": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 630.714
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "ta4b5c6d",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "gno-mcp",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "cold",
+      "observations": {
+        "diagnostics": ["GNO MCP 1.15.0 pid=38063"],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:38:46.900Z",
+        "tempPaths": ["<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.11
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 1282.084
+          },
+          "modelLoad": {
+            "unavailableReason": "one or more model-load components unavailable",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 4797.725
+          },
+          "startup": {
+            "unavailableReason": null,
+            "valueMs": 107.534
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 1169.699
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "tb5c6d7e",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "gno-mcp",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "warm",
+      "observations": {
+        "diagnostics": [],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:39:07.709Z",
+        "tempPaths": ["<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.091
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 642.574
+          },
+          "modelLoad": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 4797.725
+          },
+          "startup": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 642.156
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "tb5c6d7e",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "gno-mcp",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "cold",
+      "observations": {
+        "diagnostics": ["GNO MCP 1.15.0 pid=38202"],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:38:48.657Z",
+        "tempPaths": ["<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.11
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 1281.058
+          },
+          "modelLoad": {
+            "unavailableReason": "one or more model-load components unavailable",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 4797.725
+          },
+          "startup": {
+            "unavailableReason": null,
+            "valueMs": 110.561
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 1166.298
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "tc6d7e8f",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "gno-mcp",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "warm",
+      "observations": {
+        "diagnostics": [],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:39:08.347Z",
+        "tempPaths": ["<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.087
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 637.386
+          },
+          "modelLoad": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 4797.725
+          },
+          "startup": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 636.98
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "tc6d7e8f",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "gno-mcp",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "cold",
+      "observations": {
+        "diagnostics": ["GNO MCP 1.15.0 pid=38255"],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:38:50.425Z",
+        "tempPaths": ["<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.094
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 1292.34
+          },
+          "modelLoad": {
+            "unavailableReason": "one or more model-load components unavailable",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 4797.725
+          },
+          "startup": {
+            "unavailableReason": null,
+            "valueMs": 108.341
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 1179.158
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "td7e8f90",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "gno-mcp",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "warm",
+      "observations": {
+        "diagnostics": [],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:39:08.936Z",
+        "tempPaths": ["<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.092
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 589.599
+          },
+          "modelLoad": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 4797.725
+          },
+          "startup": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 589.181
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "td7e8f90",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "gno-mcp",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "cold",
+      "observations": {
+        "diagnostics": ["GNO MCP 1.15.0 pid=38635"],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:38:52.202Z",
+        "tempPaths": ["<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.09
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 1300.977
+          },
+          "modelLoad": {
+            "unavailableReason": "one or more model-load components unavailable",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 4797.725
+          },
+          "startup": {
+            "unavailableReason": null,
+            "valueMs": 104.052
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 1192.023
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "te8f901a",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "gno-mcp",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "warm",
+      "observations": {
+        "diagnostics": [],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:39:09.567Z",
+        "tempPaths": ["<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.097
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 630.41
+          },
+          "modelLoad": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 4797.725
+          },
+          "startup": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 629.959
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "te8f901a",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "gno-mcp",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "cold",
+      "observations": {
+        "diagnostics": ["GNO MCP 1.15.0 pid=39235"],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:38:53.943Z",
+        "tempPaths": ["<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.101
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 1280.701
+          },
+          "modelLoad": {
+            "unavailableReason": "one or more model-load components unavailable",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 4797.725
+          },
+          "startup": {
+            "unavailableReason": null,
+            "valueMs": 109.235
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 1166.446
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "tf901a2b",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "gno-mcp",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "warm",
+      "observations": {
+        "diagnostics": [],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:39:10.213Z",
+        "tempPaths": ["<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.084
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 645.889
+          },
+          "modelLoad": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 4797.725
+          },
+          "startup": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 645.473
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "tf901a2b",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "lexical",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "cold",
+      "observations": {
+        "diagnostics": [
+          "lexical-only: expansion, vectors, reranking, and graph disabled"
+        ],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:39:10.402Z",
+        "tempPaths": ["<temp>", "<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.052
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 2.05
+          },
+          "modelLoad": {
+            "unavailableReason": "one or more model-load components unavailable",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 75.107
+          },
+          "startup": {
+            "unavailableReason": null,
+            "valueMs": 0.431
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 0.856
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "t012ab3c",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "lexical",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "warm",
+      "observations": {
+        "diagnostics": [
+          "lexical-only: expansion, vectors, reranking, and graph disabled"
+        ],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:39:10.422Z",
+        "tempPaths": ["<temp>", "<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.024
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 0.424
+          },
+          "modelLoad": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 75.107
+          },
+          "startup": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 0.292
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "t012ab3c",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "lexical",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "cold",
+      "observations": {
+        "diagnostics": [
+          "lexical-only: expansion, vectors, reranking, and graph disabled"
+        ],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:39:10.403Z",
+        "tempPaths": ["<temp>", "<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.034
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 1.006
+          },
+          "modelLoad": {
+            "unavailableReason": "one or more model-load components unavailable",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 75.107
+          },
+          "startup": {
+            "unavailableReason": null,
+            "valueMs": 0.272
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 0.454
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "t0a1b2c3",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "lexical",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "warm",
+      "observations": {
+        "diagnostics": [
+          "lexical-only: expansion, vectors, reranking, and graph disabled"
+        ],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:39:10.422Z",
+        "tempPaths": ["<temp>", "<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.022
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 0.33
+          },
+          "modelLoad": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 75.107
+          },
+          "startup": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 0.192
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "t0a1b2c3",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "lexical",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "cold",
+      "observations": {
+        "diagnostics": [
+          "lexical-only: expansion, vectors, reranking, and graph disabled"
+        ],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:39:10.404Z",
+        "tempPaths": ["<temp>", "<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.023
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 0.73
+          },
+          "modelLoad": {
+            "unavailableReason": "one or more model-load components unavailable",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 75.107
+          },
+          "startup": {
+            "unavailableReason": null,
+            "valueMs": 0.244
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 0.284
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "t123bc4d",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "lexical",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "warm",
+      "observations": {
+        "diagnostics": [
+          "lexical-only: expansion, vectors, reranking, and graph disabled"
+        ],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:39:10.423Z",
+        "tempPaths": ["<temp>", "<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.04
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 0.269
+          },
+          "modelLoad": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 75.107
+          },
+          "startup": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 0.126
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "t123bc4d",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "lexical",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "cold",
+      "observations": {
+        "diagnostics": [
+          "lexical-only: expansion, vectors, reranking, and graph disabled"
+        ],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:39:10.405Z",
+        "tempPaths": ["<temp>", "<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.027
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 0.706
+          },
+          "modelLoad": {
+            "unavailableReason": "one or more model-load components unavailable",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 75.107
+          },
+          "startup": {
+            "unavailableReason": null,
+            "valueMs": 0.234
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 0.274
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "t1b2c3d4",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "lexical",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "warm",
+      "observations": {
+        "diagnostics": [
+          "lexical-only: expansion, vectors, reranking, and graph disabled"
+        ],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:39:10.424Z",
+        "tempPaths": ["<temp>", "<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.067
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 0.76
+          },
+          "modelLoad": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 75.107
+          },
+          "startup": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 0.429
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "t1b2c3d4",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "lexical",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "cold",
+      "observations": {
+        "diagnostics": [
+          "lexical-only: expansion, vectors, reranking, and graph disabled"
+        ],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:39:10.405Z",
+        "tempPaths": ["<temp>", "<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.02
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 0.662
+          },
+          "modelLoad": {
+            "unavailableReason": "one or more model-load components unavailable",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 75.107
+          },
+          "startup": {
+            "unavailableReason": null,
+            "valueMs": 0.268
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 0.208
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "t234cd5e",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "lexical",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "warm",
+      "observations": {
+        "diagnostics": [
+          "lexical-only: expansion, vectors, reranking, and graph disabled"
+        ],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:39:10.424Z",
+        "tempPaths": ["<temp>", "<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.035
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 0.404
+          },
+          "modelLoad": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 75.107
+          },
+          "startup": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 0.225
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "t234cd5e",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "lexical",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "cold",
+      "observations": {
+        "diagnostics": [
+          "lexical-only: expansion, vectors, reranking, and graph disabled"
+        ],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:39:10.406Z",
+        "tempPaths": ["<temp>", "<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.028
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 0.703
+          },
+          "modelLoad": {
+            "unavailableReason": "one or more model-load components unavailable",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 75.107
+          },
+          "startup": {
+            "unavailableReason": null,
+            "valueMs": 0.231
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 0.277
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "t2c3d4e5",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "lexical",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "warm",
+      "observations": {
+        "diagnostics": [
+          "lexical-only: expansion, vectors, reranking, and graph disabled"
+        ],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:39:10.424Z",
+        "tempPaths": ["<temp>", "<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.017
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 0.306
+          },
+          "modelLoad": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 75.107
+          },
+          "startup": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 0.192
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "t2c3d4e5",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "lexical",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "cold",
+      "observations": {
+        "diagnostics": [
+          "lexical-only: expansion, vectors, reranking, and graph disabled"
+        ],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:39:10.407Z",
+        "tempPaths": ["<temp>", "<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.023
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 0.581
+          },
+          "modelLoad": {
+            "unavailableReason": "one or more model-load components unavailable",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 75.107
+          },
+          "startup": {
+            "unavailableReason": null,
+            "valueMs": 0.209
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 0.199
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "t345de6f",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "lexical",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "warm",
+      "observations": {
+        "diagnostics": [
+          "lexical-only: expansion, vectors, reranking, and graph disabled"
+        ],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:39:10.425Z",
+        "tempPaths": ["<temp>", "<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.016
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 0.209
+          },
+          "modelLoad": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 75.107
+          },
+          "startup": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 0.118
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "t345de6f",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "lexical",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "cold",
+      "observations": {
+        "diagnostics": [
+          "lexical-only: expansion, vectors, reranking, and graph disabled"
+        ],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:39:10.407Z",
+        "tempPaths": ["<temp>", "<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.019
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 0.559
+          },
+          "modelLoad": {
+            "unavailableReason": "one or more model-load components unavailable",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 75.107
+          },
+          "startup": {
+            "unavailableReason": null,
+            "valueMs": 0.202
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 0.203
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "t3d4e5f6",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "lexical",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "warm",
+      "observations": {
+        "diagnostics": [
+          "lexical-only: expansion, vectors, reranking, and graph disabled"
+        ],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:39:10.425Z",
+        "tempPaths": ["<temp>", "<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.014
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 0.212
+          },
+          "modelLoad": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 75.107
+          },
+          "startup": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 0.119
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "t3d4e5f6",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "lexical",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "cold",
+      "observations": {
+        "diagnostics": [
+          "lexical-only: expansion, vectors, reranking, and graph disabled"
+        ],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:39:10.408Z",
+        "tempPaths": ["<temp>", "<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.02
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 0.602
+          },
+          "modelLoad": {
+            "unavailableReason": "one or more model-load components unavailable",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 75.107
+          },
+          "startup": {
+            "unavailableReason": null,
+            "valueMs": 0.184
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 0.244
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "t456ef70",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "lexical",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "warm",
+      "observations": {
+        "diagnostics": [
+          "lexical-only: expansion, vectors, reranking, and graph disabled"
+        ],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:39:10.425Z",
+        "tempPaths": ["<temp>", "<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.018
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 0.237
+          },
+          "modelLoad": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 75.107
+          },
+          "startup": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 0.145
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "t456ef70",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "lexical",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "cold",
+      "observations": {
+        "diagnostics": [
+          "lexical-only: expansion, vectors, reranking, and graph disabled"
+        ],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:39:10.409Z",
+        "tempPaths": ["<temp>", "<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.035
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 0.655
+          },
+          "modelLoad": {
+            "unavailableReason": "one or more model-load components unavailable",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 75.107
+          },
+          "startup": {
+            "unavailableReason": null,
+            "valueMs": 0.18
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 0.254
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "t4e5f607",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "lexical",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "warm",
+      "observations": {
+        "diagnostics": [
+          "lexical-only: expansion, vectors, reranking, and graph disabled"
+        ],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:39:10.426Z",
+        "tempPaths": ["<temp>", "<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.024
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 0.307
+          },
+          "modelLoad": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 75.107
+          },
+          "startup": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 0.155
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "t4e5f607",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "lexical",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "cold",
+      "observations": {
+        "diagnostics": [
+          "lexical-only: expansion, vectors, reranking, and graph disabled"
+        ],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:39:10.409Z",
+        "tempPaths": ["<temp>", "<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.016
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 0.585
+          },
+          "modelLoad": {
+            "unavailableReason": "one or more model-load components unavailable",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 75.107
+          },
+          "startup": {
+            "unavailableReason": null,
+            "valueMs": 0.178
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 0.255
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "t567f081",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "lexical",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "warm",
+      "observations": {
+        "diagnostics": [
+          "lexical-only: expansion, vectors, reranking, and graph disabled"
+        ],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:39:10.426Z",
+        "tempPaths": ["<temp>", "<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.015
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 0.229
+          },
+          "modelLoad": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 75.107
+          },
+          "startup": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 0.134
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "t567f081",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "lexical",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "cold",
+      "observations": {
+        "diagnostics": [
+          "lexical-only: expansion, vectors, reranking, and graph disabled"
+        ],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:39:10.411Z",
+        "tempPaths": ["<temp>", "<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.058
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 1.254
+          },
+          "modelLoad": {
+            "unavailableReason": "one or more model-load components unavailable",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 75.107
+          },
+          "startup": {
+            "unavailableReason": null,
+            "valueMs": 0.196
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 0.587
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "t5f60718",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "lexical",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "warm",
+      "observations": {
+        "diagnostics": [
+          "lexical-only: expansion, vectors, reranking, and graph disabled"
+        ],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:39:10.426Z",
+        "tempPaths": ["<temp>", "<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.024
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 0.328
+          },
+          "modelLoad": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 75.107
+          },
+          "startup": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 0.191
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "t5f60718",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "lexical",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "cold",
+      "observations": {
+        "diagnostics": [
+          "lexical-only: expansion, vectors, reranking, and graph disabled"
+        ],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:39:10.412Z",
+        "tempPaths": ["<temp>", "<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.032
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 0.979
+          },
+          "modelLoad": {
+            "unavailableReason": "one or more model-load components unavailable",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 75.107
+          },
+          "startup": {
+            "unavailableReason": null,
+            "valueMs": 0.361
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 0.338
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "t6071829",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "lexical",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "warm",
+      "observations": {
+        "diagnostics": [
+          "lexical-only: expansion, vectors, reranking, and graph disabled"
+        ],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:39:10.426Z",
+        "tempPaths": ["<temp>", "<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.02
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 0.193
+          },
+          "modelLoad": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 75.107
+          },
+          "startup": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 0.093
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "t6071829",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "lexical",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "cold",
+      "observations": {
+        "diagnostics": [
+          "lexical-only: expansion, vectors, reranking, and graph disabled"
+        ],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:39:10.413Z",
+        "tempPaths": ["<temp>", "<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.023
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 0.836
+          },
+          "modelLoad": {
+            "unavailableReason": "one or more model-load components unavailable",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 75.107
+          },
+          "startup": {
+            "unavailableReason": null,
+            "valueMs": 0.269
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 0.363
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "t6780192",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "lexical",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "warm",
+      "observations": {
+        "diagnostics": [
+          "lexical-only: expansion, vectors, reranking, and graph disabled"
+        ],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:39:10.427Z",
+        "tempPaths": ["<temp>", "<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.013
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 0.257
+          },
+          "modelLoad": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 75.107
+          },
+          "startup": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 0.161
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "t6780192",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "lexical",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "cold",
+      "observations": {
+        "diagnostics": [
+          "lexical-only: expansion, vectors, reranking, and graph disabled"
+        ],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:39:10.414Z",
+        "tempPaths": ["<temp>", "<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.059
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 1.183
+          },
+          "modelLoad": {
+            "unavailableReason": "one or more model-load components unavailable",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 75.107
+          },
+          "startup": {
+            "unavailableReason": null,
+            "valueMs": 0.433
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 0.391
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "t718293a",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "lexical",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "warm",
+      "observations": {
+        "diagnostics": [
+          "lexical-only: expansion, vectors, reranking, and graph disabled"
+        ],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:39:10.427Z",
+        "tempPaths": ["<temp>", "<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.016
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 0.199
+          },
+          "modelLoad": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 75.107
+          },
+          "startup": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 0.106
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "t718293a",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "lexical",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "cold",
+      "observations": {
+        "diagnostics": [
+          "lexical-only: expansion, vectors, reranking, and graph disabled"
+        ],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:39:10.415Z",
+        "tempPaths": ["<temp>", "<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.022
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 0.871
+          },
+          "modelLoad": {
+            "unavailableReason": "one or more model-load components unavailable",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 75.107
+          },
+          "startup": {
+            "unavailableReason": null,
+            "valueMs": 0.308
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 0.337
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "t7891a03",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "lexical",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "warm",
+      "observations": {
+        "diagnostics": [
+          "lexical-only: expansion, vectors, reranking, and graph disabled"
+        ],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:39:10.427Z",
+        "tempPaths": ["<temp>", "<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.01
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 0.197
+          },
+          "modelLoad": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 75.107
+          },
+          "startup": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 0.126
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "t7891a03",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "lexical",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "cold",
+      "observations": {
+        "diagnostics": [
+          "lexical-only: expansion, vectors, reranking, and graph disabled"
+        ],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:39:10.416Z",
+        "tempPaths": ["<temp>", "<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.031
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 0.778
+          },
+          "modelLoad": {
+            "unavailableReason": "one or more model-load components unavailable",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 75.107
+          },
+          "startup": {
+            "unavailableReason": null,
+            "valueMs": 0.231
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 0.324
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "t8293a4b",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "lexical",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "warm",
+      "observations": {
+        "diagnostics": [
+          "lexical-only: expansion, vectors, reranking, and graph disabled"
+        ],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:39:10.427Z",
+        "tempPaths": ["<temp>", "<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.015
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 0.258
+          },
+          "modelLoad": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 75.107
+          },
+          "startup": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 0.148
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "t8293a4b",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "lexical",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "cold",
+      "observations": {
+        "diagnostics": [
+          "lexical-only: expansion, vectors, reranking, and graph disabled"
+        ],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:39:10.417Z",
+        "tempPaths": ["<temp>", "<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.031
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 0.753
+          },
+          "modelLoad": {
+            "unavailableReason": "one or more model-load components unavailable",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 75.107
+          },
+          "startup": {
+            "unavailableReason": null,
+            "valueMs": 0.219
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 0.303
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "t93a4b5c",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "lexical",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "warm",
+      "observations": {
+        "diagnostics": [
+          "lexical-only: expansion, vectors, reranking, and graph disabled"
+        ],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:39:10.428Z",
+        "tempPaths": ["<temp>", "<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.018
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 0.265
+          },
+          "modelLoad": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 75.107
+          },
+          "startup": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 0.138
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "t93a4b5c",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "lexical",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "cold",
+      "observations": {
+        "diagnostics": [
+          "lexical-only: expansion, vectors, reranking, and graph disabled"
+        ],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:39:10.417Z",
+        "tempPaths": ["<temp>", "<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.021
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 0.573
+          },
+          "modelLoad": {
+            "unavailableReason": "one or more model-load components unavailable",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 75.107
+          },
+          "startup": {
+            "unavailableReason": null,
+            "valueMs": 0.205
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 0.204
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "ta4b5c6d",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "lexical",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "warm",
+      "observations": {
+        "diagnostics": [
+          "lexical-only: expansion, vectors, reranking, and graph disabled"
+        ],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:39:10.428Z",
+        "tempPaths": ["<temp>", "<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.012
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 0.182
+          },
+          "modelLoad": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 75.107
+          },
+          "startup": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 0.099
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "ta4b5c6d",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "lexical",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "cold",
+      "observations": {
+        "diagnostics": [
+          "lexical-only: expansion, vectors, reranking, and graph disabled"
+        ],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:39:10.418Z",
+        "tempPaths": ["<temp>", "<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.02
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 0.562
+          },
+          "modelLoad": {
+            "unavailableReason": "one or more model-load components unavailable",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 75.107
+          },
+          "startup": {
+            "unavailableReason": null,
+            "valueMs": 0.2
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 0.199
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "tb5c6d7e",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "lexical",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "warm",
+      "observations": {
+        "diagnostics": [
+          "lexical-only: expansion, vectors, reranking, and graph disabled"
+        ],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:39:10.428Z",
+        "tempPaths": ["<temp>", "<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.014
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 0.178
+          },
+          "modelLoad": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 75.107
+          },
+          "startup": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 0.092
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "tb5c6d7e",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "lexical",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "cold",
+      "observations": {
+        "diagnostics": [
+          "lexical-only: expansion, vectors, reranking, and graph disabled"
+        ],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:39:10.418Z",
+        "tempPaths": ["<temp>", "<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.019
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 0.517
+          },
+          "modelLoad": {
+            "unavailableReason": "one or more model-load components unavailable",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 75.107
+          },
+          "startup": {
+            "unavailableReason": null,
+            "valueMs": 0.185
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 0.184
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "tc6d7e8f",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "lexical",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "warm",
+      "observations": {
+        "diagnostics": [
+          "lexical-only: expansion, vectors, reranking, and graph disabled"
+        ],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:39:10.428Z",
+        "tempPaths": ["<temp>", "<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.018
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 0.172
+          },
+          "modelLoad": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 75.107
+          },
+          "startup": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 0.083
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "tc6d7e8f",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "lexical",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "cold",
+      "observations": {
+        "diagnostics": [
+          "lexical-only: expansion, vectors, reranking, and graph disabled"
+        ],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:39:10.419Z",
+        "tempPaths": ["<temp>", "<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.043
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 0.613
+          },
+          "modelLoad": {
+            "unavailableReason": "one or more model-load components unavailable",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 75.107
+          },
+          "startup": {
+            "unavailableReason": null,
+            "valueMs": 0.179
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 0.255
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "td7e8f90",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "lexical",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "warm",
+      "observations": {
+        "diagnostics": [
+          "lexical-only: expansion, vectors, reranking, and graph disabled"
+        ],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:39:10.428Z",
+        "tempPaths": ["<temp>", "<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.015
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 0.22
+          },
+          "modelLoad": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 75.107
+          },
+          "startup": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 0.134
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "td7e8f90",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "lexical",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "cold",
+      "observations": {
+        "diagnostics": [
+          "lexical-only: expansion, vectors, reranking, and graph disabled"
+        ],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:39:10.420Z",
+        "tempPaths": ["<temp>", "<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.02
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 0.575
+          },
+          "modelLoad": {
+            "unavailableReason": "one or more model-load components unavailable",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 75.107
+          },
+          "startup": {
+            "unavailableReason": null,
+            "valueMs": 0.185
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 0.237
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "te8f901a",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "lexical",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "warm",
+      "observations": {
+        "diagnostics": [
+          "lexical-only: expansion, vectors, reranking, and graph disabled"
+        ],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:39:10.429Z",
+        "tempPaths": ["<temp>", "<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.015
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 0.229
+          },
+          "modelLoad": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 75.107
+          },
+          "startup": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 0.136
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "te8f901a",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "lexical",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "cold",
+      "observations": {
+        "diagnostics": [
+          "lexical-only: expansion, vectors, reranking, and graph disabled"
+        ],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:39:10.421Z",
+        "tempPaths": ["<temp>", "<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.047
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 1.363
+          },
+          "modelLoad": {
+            "unavailableReason": "one or more model-load components unavailable",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 75.107
+          },
+          "startup": {
+            "unavailableReason": null,
+            "valueMs": 0.433
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 0.515
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "tf901a2b",
+      "trialId": "fixture-01"
+    },
+    {
+      "adapterId": "lexical",
+      "agentId": "fixture-agent-v1",
+      "lifecycle": "warm",
+      "observations": {
+        "diagnostics": [
+          "lexical-only: expansion, vectors, reranking, and graph disabled"
+        ],
+        "process": {
+          "peakRssBytes": null,
+          "unavailableReason": "peak RSS not sampled"
+        },
+        "recordedAt": "2026-07-22T18:39:10.429Z",
+        "tempPaths": ["<temp>", "<temp>"],
+        "timings": {
+          "driver": {
+            "unavailableReason": null,
+            "valueMs": 0.016
+          },
+          "endToEnd": {
+            "unavailableReason": null,
+            "valueMs": 0.235
+          },
+          "modelLoad": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "preparation": {
+            "unavailableReason": null,
+            "valueMs": 75.107
+          },
+          "startup": {
+            "unavailableReason": "completed before scored warm cohort",
+            "valueMs": null
+          },
+          "tool": {
+            "unavailableReason": null,
+            "valueMs": 0.143
+          }
+        }
+      },
+      "seed": 0,
+      "taskId": "tf901a2b",
+      "trialId": "fixture-01"
+    }
+  ]
+}

@@ -1,0 +1,42 @@
+{
+  "schemaVersion": "1.0",
+  "taskId": "tb5c6d7e",
+  "claims": [
+    {
+      "claimKey": "ownerTeam",
+      "expectedValue": {
+        "type": "string",
+        "value": "Platform Reliability"
+      },
+      "normalizer": {
+        "id": "exact-v1",
+        "version": 1
+      },
+      "requiredEvidence": [
+        {
+          "uri": "gno://c00c/d001.md",
+          "sourceHash": "83fe317f44568f10ffe52913f86b510742ae2784185b8760e756e25c7cd691e5",
+          "startLine": 3,
+          "endLine": 3,
+          "spanHash": "362b8aed9d2b809b970736eda90ee5ca8f4cd7a78b955ef1d5d26a9bd89a3268",
+          "sourceHashProvenance": "harness_observed",
+          "spanHashProvenance": "harness_observed"
+        }
+      ],
+      "optionalEvidence": [],
+      "forbiddenEvidence": []
+    }
+  ],
+  "expectedMissing": [],
+  "expectedScope": {
+    "collection": null,
+    "filters": {}
+  },
+  "completion": {
+    "expectAbstention": false,
+    "maxAgentCalls": 3,
+    "maxModelVisibleBytes": 12000,
+    "failOnUnexpectedEvidence": false
+  },
+  "leakCanaries": ["oracle-only-tb5c6d7e-9f7c2a"]
+}

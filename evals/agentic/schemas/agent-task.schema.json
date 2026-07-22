@@ -1,0 +1,99 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "gno://schemas/evals/agentic/agent-task@1.0",
+  "title": "AgentTask",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "taskId",
+    "category",
+    "brief",
+    "claims",
+    "allowedTools",
+    "budgets",
+    "corpus"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "1.0" },
+    "taskId": { "type": "string", "pattern": "^t[0-9a-f]{7}$" },
+    "category": {
+      "enum": [
+        "exact_identifier",
+        "ambiguity",
+        "multi_document_comparison",
+        "meeting_decision",
+        "temporal",
+        "typed_relationship",
+        "code_documentation",
+        "multilingual",
+        "missing_evidence"
+      ]
+    },
+    "brief": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["goal", "instructions"],
+      "properties": {
+        "goal": { "type": "string", "minLength": 1 },
+        "instructions": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "claims": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["claimKey", "valueType", "substantive", "required"],
+        "properties": {
+          "claimKey": { "type": "string", "pattern": "^[a-z][a-zA-Z0-9]*$" },
+          "valueType": {
+            "enum": [
+              "string",
+              "number",
+              "boolean",
+              "string[]",
+              "date",
+              "identifier"
+            ]
+          },
+          "substantive": { "type": "boolean" },
+          "required": { "type": "boolean" }
+        }
+      }
+    },
+    "allowedTools": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "type": "string", "pattern": "^[a-z][a-z0-9_-]*$" }
+    },
+    "budgets": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["maxAgentCalls", "maxModelVisibleBytes"],
+      "properties": {
+        "maxAgentCalls": { "type": "integer", "minimum": 1 },
+        "maxModelVisibleBytes": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "corpus": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["collections"],
+      "properties": {
+        "collections": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "string", "pattern": "^c[0-9a-f]{3}$" }
+        }
+      }
+    }
+  }
+}

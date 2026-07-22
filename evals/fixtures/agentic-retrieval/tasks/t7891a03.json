@@ -1,0 +1,28 @@
+{
+  "schemaVersion": "1.0",
+  "taskId": "t7891a03",
+  "category": "temporal",
+  "brief": {
+    "goal": "Return the current escalation window and stop once the cited policy is found.",
+    "instructions": [
+      "Return only the declared structured claims or gaps.",
+      "Cite exact evidence spans and abstain when required evidence is absent."
+    ]
+  },
+  "claims": [
+    {
+      "claimKey": "escalationWindow",
+      "valueType": "string",
+      "substantive": true,
+      "required": true
+    }
+  ],
+  "allowedTools": ["search", "get", "multi_get"],
+  "budgets": {
+    "maxAgentCalls": 1,
+    "maxModelVisibleBytes": 12000
+  },
+  "corpus": {
+    "collections": ["c018"]
+  }
+}

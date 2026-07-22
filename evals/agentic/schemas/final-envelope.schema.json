@@ -1,0 +1,146 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "gno://schemas/evals/agentic/final-envelope@1.0",
+  "title": "FinalEnvelope",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "claims", "gaps", "abstained", "stopReason"],
+  "properties": {
+    "schemaVersion": { "const": "1.0" },
+    "claims": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["claimKey", "value", "citations"],
+        "properties": {
+          "claimKey": { "type": "string", "pattern": "^[a-z][a-zA-Z0-9]*$" },
+          "value": { "$ref": "#/definitions/claimValue" },
+          "citations": {
+            "type": "array",
+            "items": { "$ref": "#/definitions/evidence" }
+          }
+        }
+      }
+    },
+    "gaps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["claimKey", "reason"],
+        "properties": {
+          "claimKey": { "type": "string", "pattern": "^[a-z][a-zA-Z0-9]*$" },
+          "reason": {
+            "enum": [
+              "missing_evidence",
+              "conflicting_evidence",
+              "budget_exhausted",
+              "tool_unavailable"
+            ]
+          }
+        }
+      }
+    },
+    "abstained": { "type": "boolean" },
+    "stopReason": {
+      "enum": [
+        "complete",
+        "abstained",
+        "budget_exhausted",
+        "tool_unavailable",
+        "error"
+      ]
+    }
+  },
+  "definitions": {
+    "claimValue": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "value"],
+          "properties": {
+            "type": { "const": "string" },
+            "value": { "type": "string" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "value"],
+          "properties": {
+            "type": { "const": "number" },
+            "value": { "type": "number" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "value"],
+          "properties": {
+            "type": { "const": "boolean" },
+            "value": { "type": "boolean" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "value"],
+          "properties": {
+            "type": { "const": "string[]" },
+            "value": {
+              "type": "array",
+              "uniqueItems": true,
+              "items": { "type": "string" }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "value"],
+          "properties": {
+            "type": { "const": "date" },
+            "value": { "type": "string", "format": "date" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "value"],
+          "properties": {
+            "type": { "const": "identifier" },
+            "value": { "type": "string", "minLength": 1 }
+          }
+        }
+      ]
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "uri",
+        "sourceHash",
+        "startLine",
+        "endLine",
+        "spanHash",
+        "sourceHashProvenance",
+        "spanHashProvenance"
+      ],
+      "properties": {
+        "uri": { "type": "string", "pattern": "^gno://" },
+        "sourceHash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "startLine": { "type": "integer", "minimum": 1 },
+        "endLine": { "type": "integer", "minimum": 1 },
+        "spanHash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "sourceHashProvenance": {
+          "enum": ["harness_observed", "backend_provided"]
+        },
+        "spanHashProvenance": {
+          "enum": ["harness_observed", "backend_provided"]
+        }
+      }
+    }
+  }
+}
