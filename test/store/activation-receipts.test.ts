@@ -144,6 +144,37 @@ describe("activation receipt store", () => {
     }
   });
 
+  test("rejects raw-path connector target identities before persistence", async () => {
+    const base = receipt();
+    const invalid = receipt({
+      stages: {
+        ...base.stages,
+        connector: {
+          status: "failed",
+          startedAt: "2026-07-22T10:00:00.000Z",
+          completedAt: "2026-07-22T10:00:00.000Z",
+          latencyMs: 1,
+          code: "connector_unsupported_config",
+        },
+      },
+      evidence: {
+        ...base.evidence,
+        connectorTarget: "mcp:cursor:user:/Users/private/.cursor/mcp.json",
+      },
+    });
+
+    const result = await adapter.upsertActivationReceipt(invalid);
+    expect(result.ok).toBe(false);
+    expect(
+      adapter
+        .getRawDb()
+        .query<{ count: number }, []>(
+          "SELECT COUNT(*) AS count FROM activation_receipts"
+        )
+        .get()?.count
+    ).toBe(0);
+  });
+
   test("deletes corrupt or row-mismatched receipt JSON on read", async () => {
     const db = adapter.getRawDb();
     const insert = (

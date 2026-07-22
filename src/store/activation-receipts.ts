@@ -6,6 +6,8 @@ import type {
 const ACTIVATION_RECEIPT_MAX_BYTES = 16_384;
 const HASH_PATTERN = /^[a-f0-9]{64}$/;
 const RESULT_URI_PATTERN = /^gno:\/\/[^/]+\/.+/;
+const CONNECTOR_TARGET_PATTERN =
+  /^(?:mcp|skill):[a-z0-9][a-z0-9._-]{0,63}:(?:user|project):[a-f0-9]{64}$/;
 const DATE_TIME_PATTERN =
   /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d+)?(?:Z|[+-](\d{2}):(\d{2}))$/;
 const ACTIVATION_STAGE_STATUSES = new Set([
@@ -220,7 +222,7 @@ function isReceipt(value: unknown): value is ActivationVerificationReceipt {
         HASH_PATTERN.test(evidence.resultSourceHash))) &&
     (evidence.connectorTarget === undefined ||
       (typeof evidence.connectorTarget === "string" &&
-        evidence.connectorTarget.length <= 256));
+        CONNECTOR_TARGET_PATTERN.test(evidence.connectorTarget)));
   if (!validEvidence) {
     return false;
   }

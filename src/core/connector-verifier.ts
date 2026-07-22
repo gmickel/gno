@@ -19,6 +19,7 @@ import {
 } from "./activation-probe-plan";
 import { verifyLexicalActivation } from "./activation-verifier";
 import {
+  type ConnectorCommandPolicyOptions,
   type ConnectorVerificationCode,
   isSafeLocalGnoMcpCommand,
 } from "./connector-policy";
@@ -63,6 +64,8 @@ export interface ConnectorVerifierOptions {
   timeoutMs?: number;
   now?: () => Date;
   monotonicNow?: () => number;
+  /** Trusted installer/runtime entries added to the default provenance set. */
+  commandPolicy?: ConnectorCommandPolicyOptions;
 }
 
 interface McpProofInput {
@@ -113,6 +116,39 @@ function targetIdentity(target: ConnectorVerificationTarget): {
   return {
     connectorTarget: `${target.kind}:${target.target}:${target.scope}:${configPathIdentity}`,
     normalized,
+  };
+}
+
+function normalizeConnectorTarget(
+  target: ConnectorVerificationTarget
+): ConnectorVerificationTarget {
+  if (target.kind !== "mcp") {
+    return target;
+  }
+  if (!target.configured) {
+    return { ...target, serverEntry: undefined };
+  }
+  const entry: unknown = target.serverEntry;
+  if (!entry || typeof entry !== "object") {
+    return { ...target, configured: false, configError: true };
+  }
+  const record = entry as { command?: unknown; args?: unknown };
+  if (
+    typeof record.command !== "string" ||
+    record.command.length === 0 ||
+    !Array.isArray(record.args) ||
+    !record.args.every((argument) => typeof argument === "string")
+  ) {
+    return {
+      ...target,
+      configured: false,
+      serverEntry: undefined,
+      configError: true,
+    };
+  }
+  return {
+    ...target,
+    serverEntry: { command: record.command, args: record.args },
   };
 }
 
@@ -320,7 +356,8 @@ export async function verifyConnectorActivation(
     return lexical;
   }
 
-  const identity = targetIdentity(target);
+  const normalizedTarget = normalizeConnectorTarget(target);
+  const identity = targetIdentity(normalizedTarget);
   const fingerprint = connectorFingerprint(
     lexical.value.fingerprint,
     identity.normalized
@@ -364,23 +401,29 @@ export async function verifyConnectorActivation(
     );
   };
 
-  if (target.kind === "skill") {
+  if (normalizedTarget.kind === "skill") {
     return finish(
       "skipped",
-      target.installed
+      normalizedTarget.installed
         ? "target_runtime_unverifiable"
         : "connector_not_configured"
     );
   }
-  if (!target.configured) {
+  if (!normalizedTarget.configured) {
     return finish(
-      target.configError ? "failed" : "skipped",
-      target.configError
+      normalizedTarget.configError ? "failed" : "skipped",
+      normalizedTarget.configError
         ? "connector_unsupported_config"
         : "connector_not_configured"
     );
   }
-  if (!target.serverEntry || !isSafeLocalGnoMcpCommand(target.serverEntry)) {
+  if (
+    !normalizedTarget.serverEntry ||
+    !(await isSafeLocalGnoMcpCommand(
+      normalizedTarget.serverEntry,
+      options.commandPolicy
+    ))
+  ) {
     return finish("failed", "connector_unsupported_config");
   }
   if (!lexical.value.ready) {
@@ -400,8 +443,8 @@ export async function verifyConnectorActivation(
   }
 
   const proof = await executeMcpProof({
-    command: target.serverEntry.command,
-    args: target.serverEntry.args,
+    command: normalizedTarget.serverEntry.command,
+    args: normalizedTarget.serverEntry.args,
     collection,
     term: match.value.value.term,
     expectedUri: match.value.value.resultUri,

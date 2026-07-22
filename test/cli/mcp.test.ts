@@ -580,4 +580,29 @@ describe("MCP CLI commands", () => {
       serverEntry: { command: "/usr/local/bin/gno", args: ["mcp"] },
     });
   });
+
+  test("rejects malformed server entries before verifier projection", async () => {
+    await Bun.write(
+      join(FAKE_HOME, ".claude.json"),
+      JSON.stringify({ mcpServers: { gno: { command: "gno" } } })
+    );
+
+    const status = await checkMcpTargetStatus("claude-code", "user", {
+      homeDir: FAKE_HOME,
+      cwd: FAKE_CWD,
+    });
+    expect(status).toMatchObject({
+      configured: false,
+      error: "Malformed MCP server entry",
+    });
+    expect(toMcpConnectorVerificationTarget("claude-code", status)).toEqual({
+      kind: "mcp",
+      id: "claude-code",
+      target: "claude-code",
+      scope: "user",
+      configPath: join(FAKE_HOME, ".claude.json"),
+      configured: false,
+      configError: true,
+    });
+  });
 });

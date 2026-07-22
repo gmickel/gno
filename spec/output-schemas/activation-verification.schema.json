@@ -165,7 +165,11 @@
           "type": "string",
           "pattern": "^[a-f0-9]{64}$"
         },
-        "connectorTarget": { "type": "string", "maxLength": 256 }
+        "connectorTarget": {
+          "type": "string",
+          "maxLength": 256,
+          "pattern": "^(mcp|skill):[a-z0-9][a-z0-9._-]{0,63}:(user|project):[a-f0-9]{64}$"
+        }
       }
     }
   },

@@ -1,7 +1,10 @@
 /** Security policy and remediation for connector activation verification. */
 
-// node:path has no Bun equivalent for portable command-shape validation.
-import { basename, dirname, normalize } from "node:path";
+// node:fs/promises realpath has no Bun equivalent for symlink-safe provenance.
+import { realpath } from "node:fs/promises";
+import { homedir, platform } from "node:os";
+// node:path has no Bun equivalent for portable path identity and lookup.
+import { basename, delimiter, isAbsolute, join, resolve, sep } from "node:path";
 
 import type { ActivationVerificationCode } from "../store/types";
 
@@ -19,26 +22,97 @@ export type ConnectorVerificationCode = Extract<
   | "target_runtime_unverifiable"
 >;
 
-function isGnoExecutable(path: string): boolean {
-  const executable = basename(path).toLowerCase();
-  return executable === "gno" || executable === "gno.exe";
+export interface ConnectorCommandPolicyOptions {
+  /** Extra installer-resolved GNO entry paths; primarily for packaged runtimes. */
+  trustedGnoEntryPaths?: string[];
 }
 
-function isGnoSourceEntry(path: string): boolean {
-  const normalized = normalize(path);
+function isGnoExecutable(path: string): boolean {
+  const executable = basename(path).toLowerCase();
   return (
-    basename(normalized).toLowerCase() === "index.ts" &&
-    basename(dirname(normalized)).toLowerCase() === "cli" &&
-    basename(dirname(dirname(normalized))).toLowerCase() === "src" &&
-    basename(dirname(dirname(dirname(normalized)))).toLowerCase() === "gno"
+    executable === "gno" || executable === "gno.exe" || executable === "gno.cmd"
   );
 }
 
-/** Accept only direct GNO or Bun-to-local-GNO stdio command shapes. */
-export function isSafeLocalGnoMcpCommand(entry: {
-  command: string;
-  args: string[];
-}): boolean {
+async function realpathOrNull(path: string): Promise<string | null> {
+  try {
+    return await realpath(path);
+  } catch {
+    return null;
+  }
+}
+
+function executableCandidates(command: string): string[] {
+  if (isAbsolute(command) || command.includes(sep)) {
+    return [resolve(command)];
+  }
+  return (process.env.PATH ?? "")
+    .split(delimiter)
+    .filter(Boolean)
+    .map((directory) => join(directory, command));
+}
+
+async function resolveExecutableIdentity(
+  command: string
+): Promise<string | null> {
+  for (const candidate of executableCandidates(command)) {
+    const identity = await realpathOrNull(candidate);
+    if (identity) {
+      return identity;
+    }
+  }
+  return null;
+}
+
+async function trustedGnoIdentities(
+  options: ConnectorCommandPolicyOptions
+): Promise<Set<string>> {
+  const home = homedir();
+  const candidates = [
+    resolve(import.meta.dir, "../index.ts"),
+    resolve(import.meta.dir, "../cli/index.ts"),
+    join(home, ".bun/bin/gno"),
+    "/usr/local/bin/gno",
+    "/opt/homebrew/bin/gno",
+    ...(platform() === "win32"
+      ? [
+          join(home, ".bun/bin/gno.exe"),
+          join(home, "AppData/Roaming/npm/gno.cmd"),
+        ]
+      : []),
+    ...(options.trustedGnoEntryPaths ?? []),
+  ];
+  const identities = new Set<string>();
+  for (const candidate of candidates) {
+    const identity = await realpathOrNull(candidate);
+    if (identity) {
+      identities.add(identity);
+    }
+  }
+  return identities;
+}
+
+async function hasTrustedGnoIdentity(
+  path: string,
+  trusted: Set<string>
+): Promise<boolean> {
+  const identity = await realpathOrNull(path);
+  return identity !== null && trusted.has(identity);
+}
+
+async function hasTrustedGnoExecutableIdentity(
+  command: string,
+  trusted: Set<string>
+): Promise<boolean> {
+  const identity = await resolveExecutableIdentity(command);
+  return identity !== null && trusted.has(identity);
+}
+
+/** Accept only provenance-verified direct GNO or Bun-to-local-GNO shapes. */
+export async function isSafeLocalGnoMcpCommand(
+  entry: { command: string; args: string[] },
+  options: ConnectorCommandPolicyOptions = {}
+): Promise<boolean> {
   const commandName = basename(entry.command).toLowerCase();
   const args = entry.args;
   if (
@@ -54,8 +128,10 @@ export function isSafeLocalGnoMcpCommand(entry: {
     return false;
   }
 
+  const trusted = await trustedGnoIdentities(options);
   if (isGnoExecutable(entry.command)) {
     return (
+      (await hasTrustedGnoExecutableIdentity(entry.command, trusted)) &&
       args[0] === "mcp" &&
       (args.length === 1 || (args.length === 2 && args[1] === "serve"))
     );
@@ -66,15 +142,23 @@ export function isSafeLocalGnoMcpCommand(entry: {
   if (args[0] === "x" || args[0] === "bunx") {
     return false;
   }
+  const [configuredBun, runtimeBun] = await Promise.all([
+    resolveExecutableIdentity(entry.command),
+    realpathOrNull(process.execPath),
+  ]);
+  if (!configuredBun || configuredBun !== runtimeBun) {
+    return false;
+  }
   if (isGnoExecutable(args[0] ?? "")) {
     return (
+      (await hasTrustedGnoIdentity(args[0] ?? "", trusted)) &&
       args[1] === "mcp" &&
       (args.length === 2 || (args.length === 3 && args[2] === "serve"))
     );
   }
   return (
     args[0] === "run" &&
-    isGnoSourceEntry(args[1] ?? "") &&
+    (await hasTrustedGnoIdentity(args[1] ?? "", trusted)) &&
     args[2] === "mcp" &&
     (args.length === 3 || (args.length === 4 && args[3] === "serve"))
   );

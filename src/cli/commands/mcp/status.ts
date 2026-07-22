@@ -11,7 +11,6 @@ import {
   type AnyMcpConfig,
   getServerEntry,
   isYamlFormat,
-  type OpenCodeMcpEntry,
   type StandardMcpEntry,
 } from "./config.js";
 import {
@@ -53,15 +52,19 @@ export function toMcpConnectorVerificationTarget(
   id: string,
   status: McpTargetStatus
 ): McpConnectorVerificationTarget {
+  const serverEntry = normalizeEntry(status.serverEntry);
+  const configured = status.configured && serverEntry !== null;
   return {
     kind: "mcp",
     id,
     target: status.target,
     scope: status.scope,
     configPath: status.configPath,
-    configured: status.configured,
-    ...(status.serverEntry ? { serverEntry: status.serverEntry } : {}),
-    ...(status.error ? { configError: true } : {}),
+    configured,
+    ...(serverEntry ? { serverEntry } : {}),
+    ...(status.error || (status.configured && !serverEntry)
+      ? { configError: true }
+      : {}),
   };
 }
 
@@ -80,15 +83,35 @@ interface StatusResult {
 /**
  * Normalize entry to standard format for display.
  */
-function normalizeEntry(
-  entry: StandardMcpEntry | OpenCodeMcpEntry
-): StandardMcpEntry {
-  if ("type" in entry && entry.type === "local") {
+function normalizeEntry(entry: unknown): StandardMcpEntry | null {
+  if (!entry || typeof entry !== "object") {
+    return null;
+  }
+  const record = entry as Record<string, unknown>;
+  if (record.type === "local") {
     // OpenCode format: command is array [command, ...args]
-    const [command = "", ...args] = entry.command;
+    if (
+      !Array.isArray(record.command) ||
+      record.command.length === 0 ||
+      !record.command.every((part) => typeof part === "string")
+    ) {
+      return null;
+    }
+    const [command = "", ...args] = record.command;
+    if (!command) {
+      return null;
+    }
     return { command, args };
   }
-  return entry as StandardMcpEntry;
+  if (
+    typeof record.command !== "string" ||
+    record.command.length === 0 ||
+    !Array.isArray(record.args) ||
+    !record.args.every((argument) => typeof argument === "string")
+  ) {
+    return null;
+  }
+  return { command: record.command, args: record.args };
 }
 
 export async function checkMcpTargetStatus(
@@ -126,6 +149,15 @@ export async function checkMcpTargetStatus(
 
     if (entry) {
       const serverEntry = normalizeEntry(entry);
+      if (!serverEntry) {
+        return {
+          target,
+          scope,
+          configPath,
+          configured: false,
+          error: "Malformed MCP server entry",
+        };
+      }
       return { target, scope, configPath, configured: true, serverEntry };
     }
 

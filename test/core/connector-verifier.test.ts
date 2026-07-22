@@ -96,6 +96,13 @@ describe("connector activation verifier", () => {
     monotonicNow: () => 10,
   };
 
+  function optionsForTrustedEntry(entry: { command: string; args: string[] }) {
+    return {
+      ...options,
+      commandPolicy: { trustedGnoEntryPaths: [entry.args[0] ?? entry.command] },
+    };
+  }
+
   async function createMcpFixture(
     mode:
       | "pass"
@@ -153,57 +160,116 @@ await new Promise((resolve) => process.stdin.once("end", resolve));
     };
   }
 
-  test("accepts only local read-only GNO command shapes", () => {
+  test("requires trusted realpath provenance for local GNO commands", async () => {
+    const trustedDir = join(testDir, "trusted");
+    const spoofDir = join(testDir, "spoof", "gno", "src", "cli");
+    const untrustedDir = join(testDir, "untrusted");
+    await mkdir(trustedDir, { recursive: true });
+    await mkdir(spoofDir, { recursive: true });
+    await mkdir(untrustedDir, { recursive: true });
+    const trustedGno = join(trustedDir, "gno");
+    const trustedCmd = join(trustedDir, "gno.cmd");
+    const trustedSource = join(trustedDir, "index.ts");
+    const spoofGno = join(untrustedDir, "gno");
+    const spoofSource = join(spoofDir, "index.ts");
+    await Promise.all([
+      Bun.write(trustedGno, "trusted"),
+      Bun.write(trustedCmd, "trusted"),
+      Bun.write(trustedSource, "trusted"),
+      Bun.write(spoofGno, "spoof"),
+      Bun.write(spoofSource, "spoof"),
+    ]);
+    const trusted = {
+      trustedGnoEntryPaths: [trustedGno, trustedCmd, trustedSource],
+    };
+
     expect(
-      isSafeLocalGnoMcpCommand({ command: "/usr/local/bin/gno", args: ["mcp"] })
+      await isSafeLocalGnoMcpCommand(
+        { command: trustedGno, args: ["mcp"] },
+        trusted
+      )
     ).toBe(true);
     expect(
-      isSafeLocalGnoMcpCommand({
-        command: process.execPath,
-        args: ["/Users/test/.bun/bin/gno", "mcp"],
-      })
+      await isSafeLocalGnoMcpCommand(
+        { command: process.execPath, args: [trustedGno, "mcp"] },
+        trusted
+      )
     ).toBe(true);
     expect(
-      isSafeLocalGnoMcpCommand({
-        command: process.execPath,
-        args: ["run", "/Users/test/work/gno/src/cli/index.ts", "mcp"],
-      })
+      await isSafeLocalGnoMcpCommand(
+        {
+          command: process.execPath,
+          args: ["run", trustedSource, "mcp"],
+        },
+        trusted
+      )
     ).toBe(true);
     expect(
-      isSafeLocalGnoMcpCommand({
+      await isSafeLocalGnoMcpCommand(
+        { command: process.execPath, args: [trustedCmd, "mcp"] },
+        trusted
+      )
+    ).toBe(true);
+    expect(
+      await isSafeLocalGnoMcpCommand({
         command: process.execPath,
         args: ["x", "@gmickel/gno", "mcp"],
       })
     ).toBe(false);
     expect(
-      isSafeLocalGnoMcpCommand({
+      await isSafeLocalGnoMcpCommand({
         command: "bunx",
         args: ["@gmickel/gno", "mcp"],
       })
     ).toBe(false);
     expect(
-      isSafeLocalGnoMcpCommand({
+      await isSafeLocalGnoMcpCommand({
         command: "npx",
         args: ["@gmickel/gno", "mcp"],
       })
     ).toBe(false);
     expect(
-      isSafeLocalGnoMcpCommand({
-        command: "/usr/local/bin/gno",
-        args: ["mcp", "--enable-write"],
+      await isSafeLocalGnoMcpCommand(
+        {
+          command: trustedGno,
+          args: ["mcp", "--enable-write"],
+        },
+        trusted
+      )
+    ).toBe(false);
+    expect(
+      await isSafeLocalGnoMcpCommand({
+        command: "sh",
+        args: ["-c", "gno mcp"],
       })
     ).toBe(false);
     expect(
-      isSafeLocalGnoMcpCommand({ command: "sh", args: ["-c", "gno mcp"] })
+      await isSafeLocalGnoMcpCommand({
+        command: spoofGno,
+        args: ["mcp"],
+      })
+    ).toBe(false);
+    expect(
+      await isSafeLocalGnoMcpCommand({
+        command: process.execPath,
+        args: [spoofGno, "mcp"],
+      })
+    ).toBe(false);
+    expect(
+      await isSafeLocalGnoMcpCommand({
+        command: process.execPath,
+        args: ["run", spoofSource, "mcp"],
+      })
     ).toBe(false);
   });
 
   test("executes tools list, status, and scoped search through stdio", async () => {
+    const serverEntry = await createMcpFixture("pass");
     const result = await verifyConnectorActivation(
       adapter,
       COLLECTION,
-      mcpTarget(await createMcpFixture("pass")),
-      options
+      mcpTarget(serverEntry),
+      optionsForTrustedEntry(serverEntry)
     );
     expect(result.ok).toBe(true);
     if (!result.ok) {
@@ -246,7 +312,7 @@ await new Promise((resolve) => process.stdin.once("end", resolve));
     }
   });
 
-  test("reports missing and unavailable MCP targets with stable codes", async () => {
+  test("reports missing and untrusted MCP targets with stable codes", async () => {
     const missingConfig = mcpTarget({
       command: "/missing/gno",
       args: ["mcp"],
@@ -277,8 +343,33 @@ await new Promise((resolve) => process.stdin.once("end", resolve));
     if (unavailable.ok) {
       expect(unavailable.value.stages.connector).toMatchObject({
         status: "failed",
-        code: "connector_start_failed",
+        code: "connector_unsupported_config",
       });
+    }
+  });
+
+  test("maps malformed MCP entries before fingerprinting or spawning", async () => {
+    const malformed = mcpTarget({ command: "gno", args: [] });
+    malformed.serverEntry = { command: "gno" } as unknown as {
+      command: string;
+      args: string[];
+    };
+    const result = await verifyConnectorActivation(
+      adapter,
+      COLLECTION,
+      malformed,
+      options
+    );
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.stages.connector).toMatchObject({
+        status: "failed",
+        code: "connector_unsupported_config",
+      });
+      expect(result.value.evidence.connectorTarget).toMatch(
+        /^mcp:fixture:user:[a-f0-9]{64}$/
+      );
     }
   });
 
@@ -289,11 +380,12 @@ await new Promise((resolve) => process.stdin.once("end", resolve));
     ["search-fails", "connector_search_failed"],
     ["mismatch", "connector_result_mismatch"],
   ] as const)("maps %s to stable failure code", async (mode, expectedCode) => {
+    const serverEntry = await createMcpFixture(mode);
     const result = await verifyConnectorActivation(
       adapter,
       COLLECTION,
-      mcpTarget(await createMcpFixture(mode)),
-      options
+      mcpTarget(serverEntry),
+      optionsForTrustedEntry(serverEntry)
     );
     expect(result.ok).toBe(true);
     if (result.ok) {
@@ -334,7 +426,7 @@ await new Promise((resolve) => process.stdin.once("end", resolve));
       adapter,
       COLLECTION,
       mcpTarget(serverEntry),
-      options
+      optionsForTrustedEntry(serverEntry)
     );
     const secondTarget = mcpTarget(serverEntry);
     secondTarget.configPath = join(testDir, "project/mcp.json");
@@ -343,7 +435,7 @@ await new Promise((resolve) => process.stdin.once("end", resolve));
       adapter,
       COLLECTION,
       secondTarget,
-      options
+      optionsForTrustedEntry(serverEntry)
     );
     expect(first.ok).toBe(true);
     expect(second.ok).toBe(true);
@@ -363,7 +455,7 @@ await new Promise((resolve) => process.stdin.once("end", resolve));
       adapter,
       COLLECTION,
       changedCommand,
-      options
+      optionsForTrustedEntry(serverEntry)
     );
     expect(third.ok).toBe(true);
     if (first.ok && third.ok) {
@@ -372,11 +464,12 @@ await new Promise((resolve) => process.stdin.once("end", resolve));
   });
 
   test("persists no child output or raw probe query", async () => {
+    const serverEntry = await createMcpFixture("pass");
     const result = await verifyConnectorActivation(
       adapter,
       COLLECTION,
-      mcpTarget(await createMcpFixture("pass")),
-      options
+      mcpTarget(serverEntry),
+      optionsForTrustedEntry(serverEntry)
     );
     expect(result.ok).toBe(true);
     const rows = adapter

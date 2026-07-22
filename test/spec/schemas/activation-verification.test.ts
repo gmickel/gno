@@ -122,6 +122,31 @@ describe("activation verification schema", () => {
     ).toBe(true);
   });
 
+  test("rejects connector target identities that can leak raw paths", () => {
+    expect(
+      assertInvalid(
+        {
+          ...validReceipt,
+          stages: {
+            ...validReceipt.stages,
+            connector: {
+              status: "failed",
+              startedAt: "2026-07-22T10:00:00.000Z",
+              completedAt: "2026-07-22T10:00:00.000Z",
+              latencyMs: 4,
+              code: "connector_unsupported_config",
+            },
+          },
+          evidence: {
+            ...validReceipt.evidence,
+            connectorTarget: "mcp:cursor:user:/Users/private/.cursor/mcp.json",
+          },
+        },
+        schema
+      )
+    ).toBe(true);
+  });
+
   test("rejects raw query and snippet fields", () => {
     expect(assertInvalid({ ...validReceipt, query: "secret" }, schema)).toBe(
       true
