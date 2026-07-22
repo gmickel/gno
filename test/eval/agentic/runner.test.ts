@@ -262,6 +262,11 @@ describe("runner accounting and failures", () => {
         (receipt) => receipt.canonical.failure.class === "harness_error"
       )
     ).toBe(true);
+    expect(
+      result.receipts.every(
+        (receipt) => receipt.canonical.agentId === "fixture-agent-v1"
+      )
+    ).toBe(true);
   });
 
   test("marks remaining warm pairs when a failed call may corrupt the cohort", async () => {

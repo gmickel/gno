@@ -12,7 +12,8 @@ import {
 import { parseAgenticCliOptions } from "../../../evals/agentic/cli-options";
 import { FixtureAgentFactory } from "../../../evals/agentic/fixture-agent";
 import { loadAgenticFixture } from "../../../evals/agentic/fixture-db";
-import { receiptFixture } from "./fixtures";
+import { runAgenticBenchmark } from "../../../evals/agentic/runner";
+import { createPerfectAdapterFactory } from "./driver-fakes";
 
 describe("agentic benchmark CLI", () => {
   test("parses stable defaults and normalizes lifecycle order", () => {
@@ -55,36 +56,26 @@ describe("agentic benchmark CLI", () => {
 
   test("requested unavailable qmd stays in a full harness-error report", async () => {
     const fixture = await loadAgenticFixture();
-    const receipt = receiptFixture(undefined, {
-      taskId: "t0a1b2c3",
-      adapterId: "qmd",
-      trialId: "fixture-01",
-      seed: 0,
-      lifecycle: "cold",
-      agentId: "fixture-agent-v1",
-      calls: [],
-      agentCalls: 0,
-      backendInvocations: 0,
-      modelVisibleUtf8Bytes: 0,
-      finalEnvelope: null,
-      stopReason: "error",
-      failure: {
-        class: "harness_error",
-        code: "adapter_preparation_failed",
-        redactedMessage: null,
-      },
-    });
+    const { factory: unavailableFactory } = createPerfectAdapterFactory(
+      fixture.snapshot,
+      {
+        adapterId: "qmd",
+        throwOnPrepare: new Error("qmd unavailable"),
+      }
+    );
+    const runUnavailableQmd: typeof runAgenticBenchmark = async (options) =>
+      runAgenticBenchmark({
+        ...options,
+        adapters: { qmd: unavailableFactory },
+        adapterIds: ["qmd"],
+      });
     let output = "";
     const exit = await runAgenticCli(
       ["--adapter", "qmd", "--task", "t0a1b2c3", "--lifecycle", "cold"],
       {
         loadFixture: async () => fixture,
         createAgentFactory: () => new FixtureAgentFactory(),
-        runBenchmark: async () => ({
-          receipts: [receipt],
-          preparations: [],
-          canonicalFingerprint: "0".repeat(64),
-        }),
+        runBenchmark: runUnavailableQmd,
         stdout: {
           write: (chunk) => {
             output += String(chunk);

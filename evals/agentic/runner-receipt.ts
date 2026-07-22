@@ -204,6 +204,7 @@ export interface HarnessFailureReceiptInput {
   adapterId: string;
   trial: AgentTrial;
   lifecycle: "cold" | "warm";
+  agentId: string;
   corpusFingerprint: string;
   configFingerprint: string;
   capabilities: AgentAdapter["capabilities"];
@@ -230,7 +231,7 @@ export const createHarnessFailureReceipt = (
       trialId: input.trial.trialId,
       seed: input.trial.seed,
       lifecycle: input.lifecycle,
-      agentId: "unavailable",
+      agentId: input.agentId,
       capabilities: structuredClone(input.capabilities),
       calls: [],
       agentCalls: 0,
