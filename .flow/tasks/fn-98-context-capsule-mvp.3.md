@@ -40,9 +40,8 @@ Deliver compile exact evidence spans with trust boundaries as one implementation
 
 
 ## Done summary
-TBD
-
+Implemented the shared strict evidence compiler: one docid/mirror batch path now proves active source, mirror, chunk, and exact full-line coordinates while preserving untrusted text literally. Compilation captures configured-context and activation-index fingerprints before retrieval and after projection, aborting deterministically on drift; focused, contract, lint, typecheck, and full Bun suites pass, with only the inherited agentic byte-reduction promotion gate still red.
 ## Evidence
-- Commits:
-- Tests:
+- Commits: 219552540b10425e0fd1a8241a5080cdf18676e0
+- Tests: GATE_SKIPPED:unittest:green-receipt 5e3c26fa - baseline reused from prior post-gate pass, bun test test/core/context-evidence.test.ts test/core/context-compiler-selection.test.ts test/core/sections.test.ts (13 pass), bun test test/context test/spec/schemas (191 pass), bun test (2494 pass, 1 skip), bun run typecheck, bun run lint:check, .flow/bin/flowctl validate --spec fn-98-context-capsule-mvp --json, bun run eval:agentic (inherited red before and after: context_byte_reduction=-0.6570175070322011; all other promotion gates pass)
 - PRs:
