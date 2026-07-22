@@ -62,6 +62,7 @@ const preparationRecords = (
       indexFingerprint: preparation.indexFingerprint,
       observations: {
         preparationMs: preparation.preparation.valueMs,
+        preparationUnavailableReason: preparation.preparation.unavailableReason,
         details: structuredClone(preparation.observations),
       },
     }))

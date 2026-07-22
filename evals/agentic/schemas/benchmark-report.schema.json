@@ -168,9 +168,16 @@
         "observations": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["preparationMs", "details"],
+          "required": [
+            "preparationMs",
+            "preparationUnavailableReason",
+            "details"
+          ],
           "properties": {
             "preparationMs": { "$ref": "#/definitions/nullableNumber" },
+            "preparationUnavailableReason": {
+              "oneOf": [{ "type": "string" }, { "type": "null" }]
+            },
             "details": {
               "type": "object",
               "additionalProperties": {

@@ -115,12 +115,20 @@ describe("agentic corpus snapshot", () => {
     const lexical = recordAdapterNativeIndex(fixture.snapshot, {
       adapterId: "lexical",
       indexFingerprint: canonicalFingerprint({ format: "sqlite-fts5" }),
-      observations: { preparationMs: 2, details: { documents: 34 } },
+      observations: {
+        preparationMs: 2,
+        preparationUnavailableReason: null,
+        details: { documents: 34 },
+      },
     });
     const qmd = recordAdapterNativeIndex(fixture.snapshot, {
       adapterId: "qmd",
       indexFingerprint: canonicalFingerprint({ format: "qmd-native" }),
-      observations: { preparationMs: 4, details: { documents: 34 } },
+      observations: {
+        preparationMs: 4,
+        preparationUnavailableReason: null,
+        details: { documents: 34 },
+      },
     });
     expect(lexical.corpusFingerprint).toBe(fixture.snapshot.fingerprint);
     expect(qmd.corpusFingerprint).toBe(fixture.snapshot.fingerprint);

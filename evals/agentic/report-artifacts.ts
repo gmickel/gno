@@ -19,6 +19,68 @@ const identity = (report: BenchmarkReport, index: number) => {
   };
 };
 
+const cohortRows = (report: BenchmarkReport): string[] => {
+  const rows: string[] = [];
+  const adapters = [
+    ...new Set(report.receipts.map((receipt) => receipt.canonical.adapterId)),
+  ].sort();
+  for (const adapterId of adapters) {
+    for (const lifecycle of ["cold", "warm"] as const) {
+      const indexes = report.receipts.flatMap((receipt, index) =>
+        receipt.canonical.adapterId === adapterId &&
+        receipt.canonical.lifecycle === lifecycle
+          ? [index]
+          : []
+      );
+      if (indexes.length === 0) continue;
+      const scores = indexes.map((index) => report.scores[index]!);
+      const receipts = indexes.map((index) => report.receipts[index]!);
+      rows.push(
+        `| ${adapterId} | ${lifecycle} | ${indexes.length} | ${scores.filter((score) => score.score.scored).length} | ${scores.filter((score) => score.score.success === 1).length} | ${scores.filter((score) => !score.score.scored).length} | ${receipts.reduce((sum, receipt) => sum + receipt.canonical.agentCalls, 0)} | ${receipts.reduce((sum, receipt) => sum + receipt.canonical.backendInvocations, 0)} | ${receipts.reduce((sum, receipt) => sum + receipt.canonical.modelVisibleUtf8Bytes, 0)} |`
+      );
+    }
+  }
+  return rows;
+};
+
+const timingCell = (
+  report: BenchmarkReport,
+  indexes: readonly number[],
+  key: keyof BenchmarkReport["receipts"][number]["observations"]["timings"]
+): string => {
+  const timings = indexes.map(
+    (index) => report.receipts[index]!.observations.timings[key]
+  );
+  const measured = timings.flatMap((timing) =>
+    timing.valueMs === null ? [] : [timing.valueMs]
+  );
+  const reasons = [
+    ...new Set(
+      timings.flatMap((timing) =>
+        timing.unavailableReason ? [timing.unavailableReason] : []
+      )
+    ),
+  ];
+  const total = measured.reduce((sum, value) => sum + value, 0).toFixed(3);
+  return `${total} ms / null ${timings.length - measured.length}${reasons.length > 0 ? ` (${reasons.join("; ")})` : ""}`;
+};
+
+const timingRows = (report: BenchmarkReport): string[] => {
+  const groups = new Map<string, number[]>();
+  for (const [index, receipt] of report.receipts.entries()) {
+    const key = `${receipt.canonical.adapterId}/${receipt.canonical.lifecycle}`;
+    const indexes = groups.get(key) ?? [];
+    indexes.push(index);
+    groups.set(key, indexes);
+  }
+  return [...groups.entries()]
+    .sort(([left], [right]) => left.localeCompare(right, "en"))
+    .map(
+      ([key, indexes]) =>
+        `| ${key} | ${timingCell(report, indexes, "startup")} | ${timingCell(report, indexes, "modelLoad")} | ${timingCell(report, indexes, "tool")} | ${timingCell(report, indexes, "driver")} | ${timingCell(report, indexes, "endToEnd")} |`
+    );
+};
+
 export const renderBenchmarkMarkdown = (report: BenchmarkReport): string => {
   const promotion = report.promotion;
   const adapters = [
@@ -57,7 +119,33 @@ export const renderBenchmarkMarkdown = (report: BenchmarkReport): string => {
   lines.push("", "## Adapter-native indexes", "");
   for (const preparation of report.preparations) {
     lines.push(
-      `- \`${preparation.adapterId}\`: \`${preparation.indexFingerprint}\` (corpus \`${preparation.corpusFingerprint}\`)`
+      `- \`${preparation.adapterId}\`: \`${preparation.indexFingerprint}\` (corpus \`${preparation.corpusFingerprint}\`, preparation ${preparation.observations.preparationMs === null ? `null — ${preparation.observations.preparationUnavailableReason}` : `${preparation.observations.preparationMs} ms`})`
+    );
+  }
+  lines.push(
+    "",
+    "## Cohort accounting",
+    "",
+    "| Adapter | Lifecycle | Attempted | Scored | Success | Excluded | agentCalls | backendInvocations | Model-visible bytes |",
+    "| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |",
+    ...cohortRows(report),
+    "",
+    "## Lifecycle timings",
+    "",
+    "Measured totals and explicit unavailable counts/reasons; milliseconds.",
+    "",
+    "| Adapter/lifecycle | Startup | Model load | Tool | Driver | End-to-end |",
+    "| --- | --- | --- | --- | --- | --- |",
+    ...timingRows(report),
+    "",
+    "## Capsule replay hashes",
+    "",
+    "| Task/trial/lifecycle | First SHA-256 | Replay SHA-256 | Equal |",
+    "| --- | --- | --- | --- |"
+  );
+  for (const replay of report.capsuleReplays) {
+    lines.push(
+      `| ${replay.taskId}/${replay.trialId}/${replay.lifecycle} | \`${replay.first.sha256}\` | \`${replay.second.sha256}\` | ${replay.first.sha256 === replay.second.sha256 && replay.first.canonicalJson === replay.second.canonicalJson ? "yes" : "no"} |`
     );
   }
   lines.push("", "## Methodology", "");

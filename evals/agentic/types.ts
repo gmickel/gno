@@ -434,6 +434,7 @@ export interface AdapterNativeIndexRecord {
   indexFingerprint: string;
   observations: {
     preparationMs: number | null;
+    preparationUnavailableReason: string | null;
     details: Record<string, string | number | boolean | null>;
   };
 }
