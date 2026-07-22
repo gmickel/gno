@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.14.0] - 2026-07-22
+
 ### Added
 
 - Added a public-truth documentation verifier backed by current package,
@@ -1490,7 +1492,8 @@ Re-release of 1.0.2 with a CHANGELOG formatting fix so the Publish workflow's
 | 0.4.0   | 2026-01-01 | Web UI and REST API                        |
 | 0.1.0   | 2025-12-30 | Initial release with full search pipeline  |
 
-[Unreleased]: https://github.com/gmickel/gno/compare/v1.13.0...HEAD
+[Unreleased]: https://github.com/gmickel/gno/compare/v1.14.0...HEAD
+[1.14.0]: https://github.com/gmickel/gno/compare/v1.13.0...v1.14.0
 [1.13.0]: https://github.com/gmickel/gno/compare/v1.12.4...v1.13.0
 [1.12.4]: https://github.com/gmickel/gno/compare/v1.12.3...v1.12.4
 [1.12.3]: https://github.com/gmickel/gno/compare/v1.12.2...v1.12.3
