@@ -83,6 +83,13 @@ export interface DoctorResult {
   activation: ActivationStatus;
 }
 
+/** Whether doctor found a process-failing check (warnings remain exit-safe). */
+export function hasCriticalDoctorErrors(
+  checks: readonly DoctorCheck[]
+): boolean {
+  return checks.some(({ status }) => status === "error");
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Checks
 // ─────────────────────────────────────────────────────────────────────────────
@@ -534,7 +541,7 @@ export async function doctor(
   }
 
   // Determine overall health
-  const hasErrors = checks.some((c) => c.status === "error");
+  const hasErrors = hasCriticalDoctorErrors(checks);
 
   return {
     healthy:

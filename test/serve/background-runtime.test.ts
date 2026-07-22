@@ -1,4 +1,6 @@
 import { describe, expect, mock, test } from "bun:test";
+// node:path resolve has no Bun equivalent for portable absolute path assertions.
+import { resolve } from "node:path";
 
 import { startBackgroundRuntime } from "../../src/serve/background-runtime";
 
@@ -78,7 +80,7 @@ describe("startBackgroundRuntime", () => {
     } as never;
 
     const result = await startBackgroundRuntime(
-      {},
+      { configPath: "relative/config.yml" },
       {
         isInitialized: async () => true,
         loadConfig: async () =>
@@ -147,6 +149,11 @@ describe("startBackgroundRuntime", () => {
     if (!result.success) {
       return;
     }
+
+    expect(result.runtime.actualConfigPath).toBe(
+      resolve("relative/config.yml")
+    );
+    expect(setConfigPath).toHaveBeenCalledWith(resolve("relative/config.yml"));
 
     const sync = await result.runtime.syncAll();
     expect(sync.embedResult).toEqual({ embedded: 2, errors: 0 });

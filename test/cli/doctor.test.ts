@@ -3,6 +3,7 @@ import { mkdir, mkdtemp } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
+import { hasCriticalDoctorErrors } from "../../src/cli/commands/doctor";
 import {
   checkConnectorActivation,
   checkRetrievalActivation,
@@ -55,6 +56,38 @@ afterEach(async () => {
 });
 
 describe("gno doctor activation exit semantics", () => {
+  test("fails process health for non-activation errors but not connector warnings", () => {
+    expect(
+      hasCriticalDoctorErrors([
+        {
+          name: "retrieval-activation",
+          status: "ok",
+          message: "1 collection passed lexical retrieval proof",
+        },
+        {
+          name: "sqlite-fts5",
+          status: "error",
+          message: "FTS5 not available (required)",
+        },
+      ])
+    ).toBe(true);
+
+    expect(
+      hasCriticalDoctorErrors([
+        {
+          name: "retrieval-activation",
+          status: "ok",
+          message: "1 collection passed lexical retrieval proof",
+        },
+        {
+          name: "connector-activation",
+          status: "warn",
+          message: "1 connector proof failed",
+        },
+      ])
+    ).toBe(false);
+  });
+
   test("writes one JSON result and exits 2 silently when lexical proof fails", async () => {
     const emptyDir = join(testDir, "empty");
     await mkdir(emptyDir, { recursive: true });

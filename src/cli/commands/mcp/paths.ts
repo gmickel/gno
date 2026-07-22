@@ -56,6 +56,12 @@ export interface McpServerEntry {
   args: string[];
 }
 
+interface McpServerEntryOptions {
+  enableWrite?: boolean;
+  indexName?: string;
+  configPath?: string;
+}
+
 export interface McpPathOptions {
   target: McpTarget;
   scope?: McpScope;
@@ -399,9 +405,7 @@ export function findBunPath(): string {
  * Cross-platform: avoids shelling out to `which`.
  */
 export function buildMcpServerEntry(
-  options: {
-    enableWrite?: boolean;
-  } = {}
+  options: McpServerEntryOptions = {}
 ): McpServerEntry {
   const bunPath = findBunPath();
   const home = homedir();
@@ -415,10 +419,8 @@ export function buildMcpServerEntry(
   ) {
     // Dev mode: run the entry script directly with bun
     const entryScript = scriptPath.replace(COMMANDS_PATH_PATTERN, "/index.ts");
-    const args = ["run", entryScript, "mcp"];
-    if (options.enableWrite) {
-      args.push("--enable-write");
-    }
+    const args = ["run", entryScript];
+    appendMcpArguments(args, options);
     return { command: bunPath, args };
   }
 
@@ -436,21 +438,33 @@ export function buildMcpServerEntry(
 
   for (const gnoPath of gnoCandidates) {
     if (existsSync(gnoPath)) {
-      const args = [gnoPath, "mcp"];
-      if (options.enableWrite) {
-        args.push("--enable-write");
-      }
+      const args = [gnoPath];
+      appendMcpArguments(args, options);
       return { command: bunPath, args };
     }
   }
 
   // 3. Fallback to bunx (works if gno is published to npm)
   // Note: This may trigger network access on first run
-  const args = ["x", "@gmickel/gno", "mcp"];
+  const args = ["x", "@gmickel/gno"];
+  appendMcpArguments(args, options);
+  return { command: bunPath, args };
+}
+
+function appendMcpArguments(
+  args: string[],
+  options: McpServerEntryOptions
+): void {
+  if (options.indexName) {
+    args.push("--index", options.indexName);
+  }
+  if (options.configPath) {
+    args.push("--config", options.configPath);
+  }
+  args.push("mcp");
   if (options.enableWrite) {
     args.push("--enable-write");
   }
-  return { command: bunPath, args };
 }
 
 /**

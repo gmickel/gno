@@ -229,7 +229,12 @@ export async function startServer(
               return withSecurityHeaders(forbiddenResponse(), isDev);
             }
             return withSecurityHeaders(
-              await handleInstallConnector(req),
+              await handleInstallConnector(req, {
+                indexName: options.index,
+                configPath: options.configPath
+                  ? runtime.actualConfigPath
+                  : undefined,
+              }),
               isDev
             );
           },

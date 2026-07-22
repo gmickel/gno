@@ -1,3 +1,6 @@
+// node:path resolve has no Bun equivalent for canonical process-relative paths.
+import { resolve } from "node:path";
+
 import type { Config } from "../config/types";
 import type { SyncResult } from "../ingestion";
 import type { DocumentEventBus } from "./doc-events";
@@ -123,7 +126,7 @@ export async function startBackgroundRuntime(
   const store = deps.storeFactory ? deps.storeFactory() : new SqliteAdapter();
   const dbPath = getIndexDbPath(options.index);
   const paths = (deps.getConfigPaths ?? getConfigPaths)();
-  const actualConfigPath = options.configPath ?? paths.configFile;
+  const actualConfigPath = resolve(options.configPath ?? paths.configFile);
   store.setConfigPath(actualConfigPath);
 
   const openResult = await store.open(dbPath, config.ftsTokenizer);

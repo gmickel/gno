@@ -4414,7 +4414,12 @@ export async function handleVerifyConnector(
 
 export async function handleInstallConnector(
   req: Request,
-  overrides?: { cwd?: string; homeDir?: string }
+  overrides?: {
+    cwd?: string;
+    homeDir?: string;
+    indexName?: string;
+    configPath?: string;
+  }
 ): Promise<Response> {
   let body: InstallConnectorRequestBody;
   try {

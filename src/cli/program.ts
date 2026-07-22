@@ -1045,7 +1045,8 @@ function wireOnboardingCommands(program: Command): void {
     .option("--json", "JSON output")
     .action(async (cmdOpts: Record<string, unknown>) => {
       const format = getFormat(cmdOpts);
-      const { doctor, formatDoctor } = await import("./commands/doctor");
+      const { doctor, formatDoctor, hasCriticalDoctorErrors } =
+        await import("./commands/doctor");
       const globals = getGlobals();
       const result = await doctor({
         configPath: globals.config,
@@ -1056,8 +1057,8 @@ function wireOnboardingCommands(program: Command): void {
       process.stdout.write(
         `${formatDoctor(result, { json: format === "json" })}\n`
       );
-      if (!result.activation.healthy) {
-        throw new CliError("RUNTIME", "Retrieval activation is unhealthy", {
+      if (hasCriticalDoctorErrors(result.checks)) {
+        throw new CliError("RUNTIME", "Critical health checks failed", {
           silent: true,
         });
       }

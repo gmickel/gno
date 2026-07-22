@@ -178,6 +178,37 @@ describe("connector service", () => {
     expect(content).toContain('"gno"');
   });
 
+  test("preserves the active serve index and config in installed MCP argv", async () => {
+    const workspace = await createTempWorkspace();
+    cleanupPaths.push(join(workspace.homeDir, ".."));
+    const configPath = join(workspace.cwd, "custom-config.yml");
+
+    const status = await installConnector(
+      "claude-desktop-mcp",
+      { reinstall: false },
+      {
+        ...workspace,
+        indexName: "client-work",
+        configPath,
+      }
+    );
+
+    const config = JSON.parse(await Bun.file(status.path).text()) as {
+      mcpServers: { gno: { args: string[] } };
+    };
+    const args = config.mcpServers.gno.args;
+    expect(args.slice(-5)).toEqual([
+      "--index",
+      "client-work",
+      "--config",
+      configPath,
+      "mcp",
+    ]);
+    expect(args.indexOf("--index")).toBeLessThan(args.indexOf("mcp"));
+    expect(args.indexOf("--config")).toBeLessThan(args.indexOf("mcp"));
+    expect(args).not.toContain("--enable-write");
+  });
+
   test("refuses to overwrite installed connector without explicit reinstall", async () => {
     const workspace = await createTempWorkspace();
     cleanupPaths.push(join(workspace.homeDir, ".."));

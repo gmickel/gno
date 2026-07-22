@@ -66,6 +66,13 @@ interface SkillInspection {
   unavailable: boolean;
 }
 
+interface ConnectorInstallContext {
+  cwd?: string;
+  homeDir?: string;
+  indexName?: string;
+  configPath?: string;
+}
+
 const SKILL_PATH_UNAVAILABLE_ERROR =
   "Skill path configuration is invalid or unavailable.";
 
@@ -295,7 +302,7 @@ export async function installConnector(
   options?: {
     reinstall?: boolean;
   },
-  overrides?: { cwd?: string; homeDir?: string }
+  overrides?: ConnectorInstallContext
 ): Promise<ConnectorStatus> {
   const definition = CONNECTOR_DEFINITIONS.find((entry) => entry.id === id);
   if (!definition) {
@@ -318,14 +325,21 @@ export async function installConnector(
       overrides
     );
   } else {
+    const targetOverrides = overrides
+      ? { cwd: overrides.cwd, homeDir: overrides.homeDir }
+      : undefined;
     await installMcpToTarget(
       definition.target,
       definition.scope,
-      buildMcpServerEntry({ enableWrite: false }),
+      buildMcpServerEntry({
+        enableWrite: false,
+        indexName: overrides?.indexName,
+        configPath: overrides?.configPath,
+      }),
       {
         force: options?.reinstall ?? false,
         dryRun: false,
-        ...overrides,
+        ...targetOverrides,
       }
     );
   }
