@@ -32,8 +32,8 @@ Deliver freeze promotion gates baselines and public caveats as one implementatio
 
 
 ## Done summary
-Froze immutable per-language CJK lexical promotion gates with a genuine Chinese rank-6 failure, concrete diagnostic categories, qrels limitations, public semantic-versus-lexical caveats, hosted documentation, and fail-closed public-truth verification. Updated fn-109 acceptance thresholds without preselecting an analyzer.
+Froze immutable per-language CJK lexical promotion gates with a genuine Chinese rank-7 failure: the relevant source uniquely contains an exact Chinese cold-chain phrase while six higher-ranked decoys contain the same component terms out of phrase. Bound the top-level and per-language zero-result gates, encoded the discrete three-hit Chinese/two-hit Japanese and Korean Recall@10 requirements, published semantic-versus-lexical caveats, and updated hosted documentation plus fail-closed public-truth verification. Updated fn-109 acceptance thresholds without preselecting an analyzer.
 ## Evidence
-- Commits: 8b48159, 43bccdf, gno.sh:2cbd759, gno.sh:eb1a417, gno.sh:5a1d30b
-- Tests: bun run bench:cjk-lexical, bun run lint:check, bun run docs:truth, bun run docs:verify (13 passed, 2 model-cache skips), bun test (2333 pass, 1 platform skip), flowctl validate fn-96, flowctl validate fn-109, gno.sh: bun test src/lib/public-truth-content.test.ts (6 passed), gno.sh: bun run lint, gno.sh: bun run typecheck
+- Commits: 43bccdf, 27bf76e, 32f31a4, gno.sh:eb1a417, gno.sh:5a1d30b, gno.sh:cbc203d
+- Tests: bun run bench:cjk-lexical -- --write, bun run lint:check, bun run docs:truth, bun run docs:verify (13 passed, 2 model-cache skips), bun test (exit 0), flowctl validate --spec fn-96, flowctl validate --spec fn-109, gno.sh: bun test src/lib/public-truth-content.test.ts (6 passed), gno.sh: bun run lint, gno.sh: bun run typecheck
 - PRs:
