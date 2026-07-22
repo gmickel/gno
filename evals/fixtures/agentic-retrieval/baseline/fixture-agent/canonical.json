@@ -1,5 +1,5 @@
 {
-  "canonicalFingerprint": "db20b317d355347eaa1f02295611db09161742983c35034c505641d829f2f814",
+  "canonicalFingerprint": "1c1ce409aef4a0b21e4412cf57017bda55ff6265bc1c8bdd3373fd5a49033217",
   "projection": {
     "attemptedPairs": 144,
     "benchmarkId": "agentic-retrieval@1",
@@ -779,7 +779,7 @@
       "bunVersion": "1.3.5",
       "fixtureVersion": "2026-07-22.1",
       "git": {
-        "commit": "cdaf4725130e9b0770a6e4d64a456ddf7cf2a041",
+        "commit": "64d2e47fff29a32ac4edc8c49d63f38752c8bdea",
         "dirty": false,
         "unavailableReason": null
       },
@@ -851,6 +851,8 @@
             },
             "backendInvocations": 11,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 2988,
             "result": {
@@ -984,6 +986,8 @@
             },
             "backendInvocations": 11,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 2988,
             "result": {
@@ -1117,6 +1121,8 @@
             },
             "backendInvocations": 12,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 4722,
             "result": {
@@ -1289,6 +1295,8 @@
             },
             "backendInvocations": 12,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 4722,
             "result": {
@@ -1461,6 +1469,8 @@
             },
             "backendInvocations": 9,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 2811,
             "result": {
@@ -1594,6 +1604,8 @@
             },
             "backendInvocations": 9,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 2811,
             "result": {
@@ -1727,6 +1739,8 @@
             },
             "backendInvocations": 10,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 2887,
             "result": {
@@ -1860,6 +1874,8 @@
             },
             "backendInvocations": 10,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 2887,
             "result": {
@@ -1993,6 +2009,8 @@
             },
             "backendInvocations": 8,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 2822,
             "result": {
@@ -2112,6 +2130,8 @@
             },
             "backendInvocations": 8,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 2822,
             "result": {
@@ -2231,6 +2251,8 @@
             },
             "backendInvocations": 9,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 2882,
             "result": {
@@ -2364,6 +2386,8 @@
             },
             "backendInvocations": 9,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 2882,
             "result": {
@@ -2497,6 +2521,8 @@
             },
             "backendInvocations": 8,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 2831,
             "result": {
@@ -2616,6 +2642,8 @@
             },
             "backendInvocations": 8,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 2831,
             "result": {
@@ -2735,6 +2763,8 @@
             },
             "backendInvocations": 9,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 2825,
             "result": {
@@ -2868,6 +2898,8 @@
             },
             "backendInvocations": 9,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 2825,
             "result": {
@@ -3001,6 +3033,8 @@
             },
             "backendInvocations": 10,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 2880,
             "result": {
@@ -3134,6 +3168,8 @@
             },
             "backendInvocations": 10,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 2880,
             "result": {
@@ -3267,6 +3303,8 @@
             },
             "backendInvocations": 12,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 4661,
             "result": {
@@ -3448,6 +3486,8 @@
             },
             "backendInvocations": 12,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 4661,
             "result": {
@@ -3629,6 +3669,8 @@
             },
             "backendInvocations": 9,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 2835,
             "result": {
@@ -3762,6 +3804,8 @@
             },
             "backendInvocations": 9,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 2835,
             "result": {
@@ -3895,6 +3939,8 @@
             },
             "backendInvocations": 14,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 4642,
             "result": {
@@ -4076,6 +4122,8 @@
             },
             "backendInvocations": 14,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 4642,
             "result": {
@@ -4257,6 +4305,8 @@
             },
             "backendInvocations": 9,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 2868,
             "result": {
@@ -4390,6 +4440,8 @@
             },
             "backendInvocations": 9,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 2868,
             "result": {
@@ -4523,6 +4575,8 @@
             },
             "backendInvocations": 12,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 4725,
             "result": {
@@ -4695,6 +4749,8 @@
             },
             "backendInvocations": 12,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 4725,
             "result": {
@@ -4867,6 +4923,8 @@
             },
             "backendInvocations": 9,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 2821,
             "result": {
@@ -5000,6 +5058,8 @@
             },
             "backendInvocations": 9,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 2821,
             "result": {
@@ -5133,6 +5193,8 @@
             },
             "backendInvocations": 9,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 2208,
             "result": {
@@ -5240,6 +5302,8 @@
             },
             "backendInvocations": 9,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 2208,
             "result": {
@@ -5347,6 +5411,8 @@
             },
             "backendInvocations": 11,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 4679,
             "result": {
@@ -5519,6 +5585,8 @@
             },
             "backendInvocations": 11,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 4679,
             "result": {
@@ -5691,6 +5759,8 @@
             },
             "backendInvocations": 12,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 4626,
             "result": {
@@ -5872,6 +5942,8 @@
             },
             "backendInvocations": 12,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 4626,
             "result": {
@@ -6053,6 +6125,8 @@
             },
             "backendInvocations": 10,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 2801,
             "result": {
@@ -6186,6 +6260,8 @@
             },
             "backendInvocations": 10,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 2801,
             "result": {
@@ -6319,6 +6395,8 @@
             },
             "backendInvocations": 11,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 2838,
             "result": {
@@ -6452,6 +6530,8 @@
             },
             "backendInvocations": 11,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 2838,
             "result": {
@@ -6585,6 +6665,8 @@
             },
             "backendInvocations": 10,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 2818,
             "result": {
@@ -6718,6 +6800,8 @@
             },
             "backendInvocations": 10,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 2818,
             "result": {
@@ -6851,6 +6935,8 @@
             },
             "backendInvocations": 10,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 2878,
             "result": {
@@ -6984,6 +7070,8 @@
             },
             "backendInvocations": 10,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 2878,
             "result": {
@@ -7117,6 +7205,8 @@
             },
             "backendInvocations": 11,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 2943,
             "result": {
@@ -7250,6 +7340,8 @@
             },
             "backendInvocations": 11,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 2943,
             "result": {
@@ -7383,6 +7475,8 @@
             },
             "backendInvocations": 11,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 2946,
             "result": {
@@ -7516,6 +7610,8 @@
             },
             "backendInvocations": 11,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 2946,
             "result": {
@@ -7649,6 +7745,8 @@
             },
             "backendInvocations": 3,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 966,
             "result": {
@@ -7683,6 +7781,8 @@
             },
             "backendInvocations": 1,
             "callIndex": 1,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 569,
             "result": {
@@ -7790,6 +7890,8 @@
             },
             "backendInvocations": 3,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 966,
             "result": {
@@ -7824,6 +7926,8 @@
             },
             "backendInvocations": 1,
             "callIndex": 1,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 569,
             "result": {
@@ -7931,6 +8035,8 @@
             },
             "backendInvocations": 3,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 1671,
             "result": {
@@ -7978,6 +8084,8 @@
             },
             "backendInvocations": 1,
             "callIndex": 1,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 551,
             "result": {
@@ -8085,6 +8193,8 @@
             },
             "backendInvocations": 3,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 1671,
             "result": {
@@ -8132,6 +8242,8 @@
             },
             "backendInvocations": 1,
             "callIndex": 1,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 551,
             "result": {
@@ -8239,6 +8351,8 @@
             },
             "backendInvocations": 3,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 903,
             "result": {
@@ -8273,6 +8387,8 @@
             },
             "backendInvocations": 1,
             "callIndex": 1,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 535,
             "result": {
@@ -8380,6 +8496,8 @@
             },
             "backendInvocations": 3,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 903,
             "result": {
@@ -8414,6 +8532,8 @@
             },
             "backendInvocations": 1,
             "callIndex": 1,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 535,
             "result": {
@@ -8521,6 +8641,8 @@
             },
             "backendInvocations": 3,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 944,
             "result": {
@@ -8555,6 +8677,8 @@
             },
             "backendInvocations": 1,
             "callIndex": 1,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 565,
             "result": {
@@ -8662,6 +8786,8 @@
             },
             "backendInvocations": 3,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 944,
             "result": {
@@ -8696,6 +8822,8 @@
             },
             "backendInvocations": 1,
             "callIndex": 1,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 565,
             "result": {
@@ -8803,6 +8931,8 @@
             },
             "backendInvocations": 3,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 945,
             "result": {
@@ -8837,6 +8967,8 @@
             },
             "backendInvocations": 1,
             "callIndex": 1,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 565,
             "result": {
@@ -8930,6 +9062,8 @@
             },
             "backendInvocations": 3,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 945,
             "result": {
@@ -8964,6 +9098,8 @@
             },
             "backendInvocations": 1,
             "callIndex": 1,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 565,
             "result": {
@@ -9057,6 +9193,8 @@
             },
             "backendInvocations": 3,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 933,
             "result": {
@@ -9091,6 +9229,8 @@
             },
             "backendInvocations": 1,
             "callIndex": 1,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 541,
             "result": {
@@ -9198,6 +9338,8 @@
             },
             "backendInvocations": 3,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 933,
             "result": {
@@ -9232,6 +9374,8 @@
             },
             "backendInvocations": 1,
             "callIndex": 1,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 541,
             "result": {
@@ -9339,6 +9483,8 @@
             },
             "backendInvocations": 3,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 946,
             "result": {
@@ -9373,6 +9519,8 @@
             },
             "backendInvocations": 1,
             "callIndex": 1,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 549,
             "result": {
@@ -9466,6 +9614,8 @@
             },
             "backendInvocations": 3,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 946,
             "result": {
@@ -9500,6 +9650,8 @@
             },
             "backendInvocations": 1,
             "callIndex": 1,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 549,
             "result": {
@@ -9593,6 +9745,8 @@
             },
             "backendInvocations": 3,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 910,
             "result": {
@@ -9627,6 +9781,8 @@
             },
             "backendInvocations": 1,
             "callIndex": 1,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 541,
             "result": {
@@ -9734,6 +9890,8 @@
             },
             "backendInvocations": 3,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 910,
             "result": {
@@ -9768,6 +9926,8 @@
             },
             "backendInvocations": 1,
             "callIndex": 1,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 541,
             "result": {
@@ -9875,6 +10035,8 @@
             },
             "backendInvocations": 3,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 945,
             "result": {
@@ -9909,6 +10071,8 @@
             },
             "backendInvocations": 1,
             "callIndex": 1,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 549,
             "result": {
@@ -10016,6 +10180,8 @@
             },
             "backendInvocations": 3,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 945,
             "result": {
@@ -10050,6 +10216,8 @@
             },
             "backendInvocations": 1,
             "callIndex": 1,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 549,
             "result": {
@@ -10157,6 +10325,8 @@
             },
             "backendInvocations": 3,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 1609,
             "result": {
@@ -10202,6 +10372,8 @@
             },
             "backendInvocations": 1,
             "callIndex": 1,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 3035,
             "result": {
@@ -10409,6 +10581,8 @@
             },
             "backendInvocations": 3,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 1609,
             "result": {
@@ -10454,6 +10628,8 @@
             },
             "backendInvocations": 1,
             "callIndex": 1,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 3035,
             "result": {
@@ -10661,6 +10837,8 @@
             },
             "backendInvocations": 3,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 942,
             "result": {
@@ -10695,6 +10873,8 @@
             },
             "backendInvocations": 1,
             "callIndex": 1,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 547,
             "result": {
@@ -10802,6 +10982,8 @@
             },
             "backendInvocations": 3,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 942,
             "result": {
@@ -10836,6 +11018,8 @@
             },
             "backendInvocations": 1,
             "callIndex": 1,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 547,
             "result": {
@@ -10943,6 +11127,8 @@
             },
             "backendInvocations": 3,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 1574,
             "result": {
@@ -10988,6 +11174,8 @@
             },
             "backendInvocations": 1,
             "callIndex": 1,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 2965,
             "result": {
@@ -11195,6 +11383,8 @@
             },
             "backendInvocations": 3,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 1574,
             "result": {
@@ -11240,6 +11430,8 @@
             },
             "backendInvocations": 1,
             "callIndex": 1,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 2965,
             "result": {
@@ -11447,6 +11639,8 @@
             },
             "backendInvocations": 3,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 956,
             "result": {
@@ -11481,6 +11675,8 @@
             },
             "backendInvocations": 1,
             "callIndex": 1,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 585,
             "result": {
@@ -11588,6 +11784,8 @@
             },
             "backendInvocations": 3,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 956,
             "result": {
@@ -11622,6 +11820,8 @@
             },
             "backendInvocations": 1,
             "callIndex": 1,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 585,
             "result": {
@@ -11729,6 +11929,8 @@
             },
             "backendInvocations": 3,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 2633,
             "result": {
@@ -11815,6 +12017,8 @@
             },
             "backendInvocations": 1,
             "callIndex": 1,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 553,
             "result": {
@@ -11922,6 +12126,8 @@
             },
             "backendInvocations": 3,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 2633,
             "result": {
@@ -12008,6 +12214,8 @@
             },
             "backendInvocations": 1,
             "callIndex": 1,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 553,
             "result": {
@@ -12115,6 +12323,8 @@
             },
             "backendInvocations": 3,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 932,
             "result": {
@@ -12149,6 +12359,8 @@
             },
             "backendInvocations": 1,
             "callIndex": 1,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 557,
             "result": {
@@ -12256,6 +12468,8 @@
             },
             "backendInvocations": 3,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 932,
             "result": {
@@ -12290,6 +12504,8 @@
             },
             "backendInvocations": 1,
             "callIndex": 1,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 557,
             "result": {
@@ -12397,6 +12613,8 @@
             },
             "backendInvocations": 3,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 943,
             "result": {
@@ -12504,6 +12722,8 @@
             },
             "backendInvocations": 3,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 943,
             "result": {
@@ -12611,6 +12831,8 @@
             },
             "backendInvocations": 3,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 1672,
             "result": {
@@ -12658,6 +12880,8 @@
             },
             "backendInvocations": 1,
             "callIndex": 1,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 561,
             "result": {
@@ -12765,6 +12989,8 @@
             },
             "backendInvocations": 3,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 1672,
             "result": {
@@ -12812,6 +13038,8 @@
             },
             "backendInvocations": 1,
             "callIndex": 1,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 561,
             "result": {
@@ -12919,6 +13147,8 @@
             },
             "backendInvocations": 3,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 1621,
             "result": {
@@ -12964,6 +13194,8 @@
             },
             "backendInvocations": 1,
             "callIndex": 1,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 2997,
             "result": {
@@ -13171,6 +13403,8 @@
             },
             "backendInvocations": 3,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 1621,
             "result": {
@@ -13216,6 +13450,8 @@
             },
             "backendInvocations": 1,
             "callIndex": 1,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 2997,
             "result": {
@@ -13423,6 +13659,8 @@
             },
             "backendInvocations": 3,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 893,
             "result": {
@@ -13457,6 +13695,8 @@
             },
             "backendInvocations": 1,
             "callIndex": 1,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 529,
             "result": {
@@ -13564,6 +13804,8 @@
             },
             "backendInvocations": 3,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 893,
             "result": {
@@ -13598,6 +13840,8 @@
             },
             "backendInvocations": 1,
             "callIndex": 1,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 529,
             "result": {
@@ -13705,6 +13949,8 @@
             },
             "backendInvocations": 3,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 926,
             "result": {
@@ -13739,6 +13985,8 @@
             },
             "backendInvocations": 1,
             "callIndex": 1,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 553,
             "result": {
@@ -13846,6 +14094,8 @@
             },
             "backendInvocations": 3,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 926,
             "result": {
@@ -13880,6 +14130,8 @@
             },
             "backendInvocations": 1,
             "callIndex": 1,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 553,
             "result": {
@@ -13987,6 +14239,8 @@
             },
             "backendInvocations": 3,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 900,
             "result": {
@@ -14021,6 +14275,8 @@
             },
             "backendInvocations": 1,
             "callIndex": 1,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 549,
             "result": {
@@ -14128,6 +14384,8 @@
             },
             "backendInvocations": 3,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 900,
             "result": {
@@ -14162,6 +14420,8 @@
             },
             "backendInvocations": 1,
             "callIndex": 1,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 549,
             "result": {
@@ -14269,6 +14529,8 @@
             },
             "backendInvocations": 3,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 921,
             "result": {
@@ -14303,6 +14565,8 @@
             },
             "backendInvocations": 1,
             "callIndex": 1,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 561,
             "result": {
@@ -14410,6 +14674,8 @@
             },
             "backendInvocations": 3,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 921,
             "result": {
@@ -14444,6 +14710,8 @@
             },
             "backendInvocations": 1,
             "callIndex": 1,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 561,
             "result": {
@@ -14551,6 +14819,8 @@
             },
             "backendInvocations": 3,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 938,
             "result": {
@@ -14585,6 +14855,8 @@
             },
             "backendInvocations": 1,
             "callIndex": 1,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 543,
             "result": {
@@ -14692,6 +14964,8 @@
             },
             "backendInvocations": 3,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 938,
             "result": {
@@ -14726,6 +15000,8 @@
             },
             "backendInvocations": 1,
             "callIndex": 1,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 543,
             "result": {
@@ -14833,6 +15109,8 @@
             },
             "backendInvocations": 3,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 952,
             "result": {
@@ -14867,6 +15145,8 @@
             },
             "backendInvocations": 1,
             "callIndex": 1,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 563,
             "result": {
@@ -14974,6 +15254,8 @@
             },
             "backendInvocations": 3,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 952,
             "result": {
@@ -15008,6 +15290,8 @@
             },
             "backendInvocations": 1,
             "callIndex": 1,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 563,
             "result": {
@@ -15115,6 +15399,8 @@
             },
             "backendInvocations": 1,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 1239,
             "result": {
@@ -15175,6 +15461,8 @@
             },
             "backendInvocations": 2,
             "callIndex": 1,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 461,
             "result": {
@@ -15282,6 +15570,8 @@
             },
             "backendInvocations": 1,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 1239,
             "result": {
@@ -15342,6 +15632,8 @@
             },
             "backendInvocations": 2,
             "callIndex": 1,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 461,
             "result": {
@@ -15449,6 +15741,8 @@
             },
             "backendInvocations": 1,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 2301,
             "result": {
@@ -15548,6 +15842,8 @@
             },
             "backendInvocations": 2,
             "callIndex": 1,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 443,
             "result": {
@@ -15655,6 +15951,8 @@
             },
             "backendInvocations": 1,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 2301,
             "result": {
@@ -15754,6 +16052,8 @@
             },
             "backendInvocations": 2,
             "callIndex": 1,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 443,
             "result": {
@@ -15861,6 +16161,8 @@
             },
             "backendInvocations": 1,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 1202,
             "result": {
@@ -15921,6 +16223,8 @@
             },
             "backendInvocations": 2,
             "callIndex": 1,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 427,
             "result": {
@@ -16028,6 +16332,8 @@
             },
             "backendInvocations": 1,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 1202,
             "result": {
@@ -16088,6 +16394,8 @@
             },
             "backendInvocations": 2,
             "callIndex": 1,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 427,
             "result": {
@@ -16195,6 +16503,8 @@
             },
             "backendInvocations": 1,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 1225,
             "result": {
@@ -16255,6 +16565,8 @@
             },
             "backendInvocations": 2,
             "callIndex": 1,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 457,
             "result": {
@@ -16362,6 +16674,8 @@
             },
             "backendInvocations": 1,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 1225,
             "result": {
@@ -16422,6 +16736,8 @@
             },
             "backendInvocations": 2,
             "callIndex": 1,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 457,
             "result": {
@@ -16529,6 +16845,8 @@
             },
             "backendInvocations": 1,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 1211,
             "result": {
@@ -16589,6 +16907,8 @@
             },
             "backendInvocations": 2,
             "callIndex": 1,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 457,
             "result": {
@@ -16682,6 +17002,8 @@
             },
             "backendInvocations": 1,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 1211,
             "result": {
@@ -16742,6 +17064,8 @@
             },
             "backendInvocations": 2,
             "callIndex": 1,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 457,
             "result": {
@@ -16835,6 +17159,8 @@
             },
             "backendInvocations": 1,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 1226,
             "result": {
@@ -16895,6 +17221,8 @@
             },
             "backendInvocations": 2,
             "callIndex": 1,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 433,
             "result": {
@@ -17002,6 +17330,8 @@
             },
             "backendInvocations": 1,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 1226,
             "result": {
@@ -17062,6 +17392,8 @@
             },
             "backendInvocations": 2,
             "callIndex": 1,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 433,
             "result": {
@@ -17169,6 +17501,8 @@
             },
             "backendInvocations": 1,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 1217,
             "result": {
@@ -17229,6 +17563,8 @@
             },
             "backendInvocations": 2,
             "callIndex": 1,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 441,
             "result": {
@@ -17322,6 +17658,8 @@
             },
             "backendInvocations": 1,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 1217,
             "result": {
@@ -17382,6 +17720,8 @@
             },
             "backendInvocations": 2,
             "callIndex": 1,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 441,
             "result": {
@@ -17475,6 +17815,8 @@
             },
             "backendInvocations": 1,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 1205,
             "result": {
@@ -17535,6 +17877,8 @@
             },
             "backendInvocations": 2,
             "callIndex": 1,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 433,
             "result": {
@@ -17642,6 +17986,8 @@
             },
             "backendInvocations": 1,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 1205,
             "result": {
@@ -17702,6 +18048,8 @@
             },
             "backendInvocations": 2,
             "callIndex": 1,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 433,
             "result": {
@@ -17809,6 +18157,8 @@
             },
             "backendInvocations": 1,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 1213,
             "result": {
@@ -17869,6 +18219,8 @@
             },
             "backendInvocations": 2,
             "callIndex": 1,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 441,
             "result": {
@@ -17976,6 +18328,8 @@
             },
             "backendInvocations": 1,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 1213,
             "result": {
@@ -18036,6 +18390,8 @@
             },
             "backendInvocations": 2,
             "callIndex": 1,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 441,
             "result": {
@@ -18143,6 +18499,8 @@
             },
             "backendInvocations": 1,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 2275,
             "result": {
@@ -18240,6 +18598,8 @@
             },
             "backendInvocations": 4,
             "callIndex": 1,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 2220,
             "result": {
@@ -18421,6 +18781,8 @@
             },
             "backendInvocations": 1,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 2275,
             "result": {
@@ -18518,6 +18880,8 @@
             },
             "backendInvocations": 4,
             "callIndex": 1,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 2220,
             "result": {
@@ -18699,6 +19063,8 @@
             },
             "backendInvocations": 1,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 1214,
             "result": {
@@ -18759,6 +19125,8 @@
             },
             "backendInvocations": 2,
             "callIndex": 1,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 439,
             "result": {
@@ -18866,6 +19234,8 @@
             },
             "backendInvocations": 1,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 1214,
             "result": {
@@ -18926,6 +19296,8 @@
             },
             "backendInvocations": 2,
             "callIndex": 1,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 439,
             "result": {
@@ -19033,6 +19405,8 @@
             },
             "backendInvocations": 1,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 2246,
             "result": {
@@ -19130,6 +19504,8 @@
             },
             "backendInvocations": 4,
             "callIndex": 1,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 2150,
             "result": {
@@ -19311,6 +19687,8 @@
             },
             "backendInvocations": 1,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 2246,
             "result": {
@@ -19408,6 +19786,8 @@
             },
             "backendInvocations": 4,
             "callIndex": 1,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 2150,
             "result": {
@@ -19589,6 +19969,8 @@
             },
             "backendInvocations": 1,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 1222,
             "result": {
@@ -19649,6 +20031,8 @@
             },
             "backendInvocations": 2,
             "callIndex": 1,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 477,
             "result": {
@@ -19756,6 +20140,8 @@
             },
             "backendInvocations": 1,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 1222,
             "result": {
@@ -19816,6 +20202,8 @@
             },
             "backendInvocations": 2,
             "callIndex": 1,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 477,
             "result": {
@@ -19923,6 +20311,8 @@
             },
             "backendInvocations": 1,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 1234,
             "result": {
@@ -19983,6 +20373,8 @@
             },
             "backendInvocations": 2,
             "callIndex": 1,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 445,
             "result": {
@@ -20090,6 +20482,8 @@
             },
             "backendInvocations": 1,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 1234,
             "result": {
@@ -20150,6 +20544,8 @@
             },
             "backendInvocations": 2,
             "callIndex": 1,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 445,
             "result": {
@@ -20257,6 +20653,8 @@
             },
             "backendInvocations": 1,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 1217,
             "result": {
@@ -20317,6 +20715,8 @@
             },
             "backendInvocations": 2,
             "callIndex": 1,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 449,
             "result": {
@@ -20424,6 +20824,8 @@
             },
             "backendInvocations": 1,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 1217,
             "result": {
@@ -20484,6 +20886,8 @@
             },
             "backendInvocations": 2,
             "callIndex": 1,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 449,
             "result": {
@@ -20591,6 +20995,8 @@
             },
             "backendInvocations": 1,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 1221,
             "result": {
@@ -20724,6 +21130,8 @@
             },
             "backendInvocations": 1,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 1221,
             "result": {
@@ -20857,6 +21265,8 @@
             },
             "backendInvocations": 1,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 2295,
             "result": {
@@ -20956,6 +21366,8 @@
             },
             "backendInvocations": 2,
             "callIndex": 1,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 453,
             "result": {
@@ -21063,6 +21475,8 @@
             },
             "backendInvocations": 1,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 2295,
             "result": {
@@ -21162,6 +21576,8 @@
             },
             "backendInvocations": 2,
             "callIndex": 1,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 453,
             "result": {
@@ -21269,6 +21685,8 @@
             },
             "backendInvocations": 1,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 2257,
             "result": {
@@ -21366,6 +21784,8 @@
             },
             "backendInvocations": 4,
             "callIndex": 1,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 2182,
             "result": {
@@ -21547,6 +21967,8 @@
             },
             "backendInvocations": 1,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 2257,
             "result": {
@@ -21644,6 +22066,8 @@
             },
             "backendInvocations": 4,
             "callIndex": 1,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 2182,
             "result": {
@@ -21825,6 +22249,8 @@
             },
             "backendInvocations": 1,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 1194,
             "result": {
@@ -21885,6 +22311,8 @@
             },
             "backendInvocations": 2,
             "callIndex": 1,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 421,
             "result": {
@@ -21992,6 +22420,8 @@
             },
             "backendInvocations": 1,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 1194,
             "result": {
@@ -22052,6 +22482,8 @@
             },
             "backendInvocations": 2,
             "callIndex": 1,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 421,
             "result": {
@@ -22159,6 +22591,8 @@
             },
             "backendInvocations": 1,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 1212,
             "result": {
@@ -22219,6 +22653,8 @@
             },
             "backendInvocations": 2,
             "callIndex": 1,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 445,
             "result": {
@@ -22326,6 +22762,8 @@
             },
             "backendInvocations": 1,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 1212,
             "result": {
@@ -22386,6 +22824,8 @@
             },
             "backendInvocations": 2,
             "callIndex": 1,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 445,
             "result": {
@@ -22493,6 +22933,8 @@
             },
             "backendInvocations": 1,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 1196,
             "result": {
@@ -22553,6 +22995,8 @@
             },
             "backendInvocations": 2,
             "callIndex": 1,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 441,
             "result": {
@@ -22660,6 +23104,8 @@
             },
             "backendInvocations": 1,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 1196,
             "result": {
@@ -22720,6 +23166,8 @@
             },
             "backendInvocations": 2,
             "callIndex": 1,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 441,
             "result": {
@@ -22827,6 +23275,8 @@
             },
             "backendInvocations": 1,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 1211,
             "result": {
@@ -22887,6 +23337,8 @@
             },
             "backendInvocations": 2,
             "callIndex": 1,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 453,
             "result": {
@@ -22994,6 +23446,8 @@
             },
             "backendInvocations": 1,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 1211,
             "result": {
@@ -23054,6 +23508,8 @@
             },
             "backendInvocations": 2,
             "callIndex": 1,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 453,
             "result": {
@@ -23161,6 +23617,8 @@
             },
             "backendInvocations": 1,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 1225,
             "result": {
@@ -23221,6 +23679,8 @@
             },
             "backendInvocations": 2,
             "callIndex": 1,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 435,
             "result": {
@@ -23328,6 +23788,8 @@
             },
             "backendInvocations": 1,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 1225,
             "result": {
@@ -23388,6 +23850,8 @@
             },
             "backendInvocations": 2,
             "callIndex": 1,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 435,
             "result": {
@@ -23495,6 +23959,8 @@
             },
             "backendInvocations": 1,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 1231,
             "result": {
@@ -23555,6 +24021,8 @@
             },
             "backendInvocations": 2,
             "callIndex": 1,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 455,
             "result": {
@@ -23662,6 +24130,8 @@
             },
             "backendInvocations": 1,
             "callIndex": 0,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 1231,
             "result": {
@@ -23722,6 +24192,8 @@
             },
             "backendInvocations": 2,
             "callIndex": 1,
+            "deliveredToAgent": true,
+            "failureCode": null,
             "measuredTokens": null,
             "modelVisibleUtf8Bytes": 455,
             "result": {
