@@ -109,22 +109,56 @@ export const canonicalFingerprint = (value: unknown): string =>
 export const modelVisibleUtf8Bytes = (value: unknown): number =>
   new TextEncoder().encode(canonicalJson(value)).byteLength;
 
+const bundleContentCarriesExactEvidence = (
+  result: NormalizedToolResult
+): boolean => {
+  if (result.resultRole !== "evidence_bundle") return false;
+  try {
+    const payload = JSON.parse(result.content) as { evidence?: unknown };
+    if (!Array.isArray(payload.evidence)) return false;
+    return result.evidence.every((expected) =>
+      payload.evidence.some((value) => {
+        if (!value || typeof value !== "object" || Array.isArray(value)) {
+          return false;
+        }
+        const item = value as Record<string, unknown>;
+        return (
+          item.uri === expected.uri &&
+          item.sourceHash === expected.sourceHash &&
+          item.startLine === expected.startLine &&
+          item.endLine === expected.endLine &&
+          item.spanHash === expected.spanHash &&
+          item.text === expected.text
+        );
+      })
+    );
+  } catch {
+    return false;
+  }
+};
+
 export const projectModelVisibleToolResult = (
   result: NormalizedToolResult
 ): AgentVisibleToolResult => ({
   status: result.status,
   resultRole: result.resultRole,
   content: result.content,
-  evidence: result.evidence.map((item) => ({
-    uri: item.uri,
-    sourceHash: item.sourceHash,
-    startLine: item.startLine,
-    endLine: item.endLine,
-    spanHash: item.spanHash,
-    sourceHashProvenance: item.sourceHashProvenance,
-    spanHashProvenance: item.spanHashProvenance,
-    text: item.text,
-  })),
+  // Evidence bundles already carry these exact spans in their canonical
+  // content. The normalized evidence array is retained in the receipt for
+  // deterministic scoring, but exposing it again would charge/deliver every
+  // passage twice.
+  evidence: bundleContentCarriesExactEvidence(result)
+    ? []
+    : result.evidence.map((item) => ({
+        uri: item.uri,
+        sourceHash: item.sourceHash,
+        startLine: item.startLine,
+        endLine: item.endLine,
+        spanHash: item.spanHash,
+        sourceHashProvenance: item.sourceHashProvenance,
+        spanHashProvenance: item.spanHashProvenance,
+        text: item.text,
+      })),
   errorCode: result.errorCode,
 });
 

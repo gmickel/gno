@@ -126,6 +126,27 @@ export const selectCapsuleEvidence = (
   const omitted = [...collapsed.omitted];
 
   while (remaining.length > 0) {
+    const coveredByUri = new Map<string, Set<string>>();
+    for (const item of selected) {
+      const uriFacets = coveredByUri.get(item.uri) ?? new Set<string>();
+      for (const facet of item.facets) uriFacets.add(facet);
+      coveredByUri.set(item.uri, uriFacets);
+    }
+    const eligible: CapsuleCandidate[] = [];
+    for (const candidate of remaining) {
+      const uriFacets = coveredByUri.get(candidate.uri) ?? new Set<string>();
+      if (
+        candidate.facets.length === 0 ||
+        candidate.facets.every((facet) => uriFacets.has(facet))
+      ) {
+        omitted.push(omit(candidate, "redundant_coverage"));
+      } else {
+        eligible.push(candidate);
+      }
+    }
+    remaining.length = 0;
+    remaining.push(...eligible);
+    if (remaining.length === 0) break;
     remaining.sort((left, right) => {
       const leftMarginal = left.facets.filter(
         (facet) => !covered.has(facet)

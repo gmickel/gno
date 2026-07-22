@@ -4509,6 +4509,7 @@ export async function routeApi(
     return handleStatus({
       store,
       config,
+      indexName: "default",
       vectorIndex: null,
       embedPort: null,
       expandPort: null,
@@ -4544,6 +4545,7 @@ export async function routeApi(
       current: {
         config,
         store,
+        indexName: "default",
         vectorIndex: null,
         embedPort: null,
         expandPort: null,

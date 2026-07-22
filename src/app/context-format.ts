@@ -205,9 +205,11 @@ export const formatContextCapsuleVerificationMarkdown = (
     ]),
     "## Canonical receipt",
     "",
+    "<!-- GNO_UNTRUSTED_RECEIPT_START -->",
     ...indentedJson(
       JSON.parse(canonicalContextCapsuleVerificationJson(receipt))
     ),
+    "<!-- GNO_UNTRUSTED_RECEIPT_END -->",
     "",
   ];
   return lines.join("\n");

@@ -10,6 +10,7 @@ import {
 import {
   canonicalJson,
   exactLineSpan,
+  projectModelVisibleToolResult,
   sha256Bytes,
 } from "../../../evals/agentic/canonical";
 import { loadAgenticFixture } from "../../../evals/agentic/fixture-db";
@@ -51,6 +52,8 @@ describe("eval-only Capsule prototype", () => {
       expect(call).toBeDefined();
       if (!call) throw new Error("Capsule receipt has no search call");
       expect(call.result.resultRole).toBe("evidence_bundle");
+      expect(call.result.evidence.length).toBeGreaterThan(0);
+      expect(projectModelVisibleToolResult(call.result).evidence).toEqual([]);
       expect(call.backendInvocations).toBe(
         receipt.canonical.backendInvocations
       );
@@ -65,32 +68,28 @@ describe("eval-only Capsule prototype", () => {
       expect(payload.budget.selectedModelVisibleUtf8Bytes).toBe(
         call.modelVisibleUtf8Bytes
       );
-      expect(payload.retrieval.backendInvocations).toBe(
-        receipt.canonical.backendInvocations
-      );
+      expect(receipt.canonical.fingerprints.index).toMatch(/^[a-f0-9]{64}$/);
+      expect(receipt.canonical.fingerprints.config).toMatch(/^[a-f0-9]{64}$/);
+      expect(receipt.canonical.backendInvocations).toBeGreaterThan(1);
       expect(
-        Object.values(payload.retrieval.backendInvocationStages).reduce(
+        Object.values(payload.omitted.counts).reduce(
           (sum, count) => sum + count,
           0
         )
-      ).toBe(receipt.canonical.backendInvocations);
-      expect(payload.retrieval.backendInvocationStages.queryPlanning).toBe(1);
-      expect(payload.retrieval.backendInvocationStages.selection).toBe(1);
-      expect(payload.retrieval.backendInvocationStages.finalization).toBe(1);
-      expect(payload.omitted.counts).toEqual({
-        duplicate: payload.omitted.candidates.filter(
-          (item) => item.reason === "duplicate"
-        ).length,
-        overlap: payload.omitted.candidates.filter(
-          (item) => item.reason === "overlap"
-        ).length,
-        globalBudget: payload.omitted.candidates.filter(
-          (item) => item.reason === "global_budget"
-        ).length,
-        redundantCoverage: payload.omitted.candidates.filter(
-          (item) => item.reason === "redundant_coverage"
-        ).length,
-      });
+      ).toBe(payload.omitted.total);
+      expect(payload.omitted.candidates.length).toBeLessThanOrEqual(1);
+      expect(payload.omitted.truncated).toBe(
+        payload.omitted.total > payload.omitted.candidates.length
+      );
+      for (const omission of payload.omitted.candidates) {
+        const countKey =
+          omission.reason === "global_budget"
+            ? "globalBudget"
+            : omission.reason === "redundant_coverage"
+              ? "redundantCoverage"
+              : omission.reason;
+        expect(payload.omitted.counts[countKey]).toBeGreaterThan(0);
+      }
       expect(payload).not.toHaveProperty("cli");
       expect(payload).not.toHaveProperty("mcp");
       expect(payload).not.toHaveProperty("rest");
@@ -152,7 +151,7 @@ describe("eval-only Capsule prototype", () => {
     );
   });
 
-  test("audits every deterministic omission by exact coordinate and reason", async () => {
+  test("audits a deterministic omission sample with exact counts", async () => {
     const run = await runAgenticBenchmark({
       fixture,
       adapters: { capsule: createCapsulePrototypeAdapterFactory() },
@@ -165,7 +164,9 @@ describe("eval-only Capsule prototype", () => {
       run.receipts[0]?.canonical.calls[0]?.result.content ?? ""
     ) as CapsulePrototypePayload;
 
-    expect(payload.omitted.candidates).toHaveLength(2);
+    expect(payload.omitted.total).toBe(2);
+    expect(payload.omitted.counts.redundantCoverage).toBe(2);
+    expect(payload.omitted.candidates).toHaveLength(1);
     expect(
       payload.omitted.candidates.every(
         (item) =>

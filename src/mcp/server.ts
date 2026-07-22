@@ -13,7 +13,13 @@ import { dirname, join } from "node:path";
 import type { Collection, Config } from "../config/types";
 import type { SqliteAdapter } from "../store/sqlite/adapter";
 
-import { MCP_SERVER_NAME, VERSION, getIndexDbPath } from "../app/constants";
+import {
+  DEFAULT_INDEX_NAME,
+  MCP_SERVER_NAME,
+  VERSION,
+  getIndexDbPath,
+} from "../app/constants";
+import { canonicalizeIndexName } from "../app/index-name";
 import { JobManager } from "../core/job-manager";
 import { envIsSet } from "../llm/policy";
 import { MCP_ACTIVATION_VERIFICATION_ENV } from "./activation-verification-mode";
@@ -58,7 +64,7 @@ export interface ToolContext {
   config: Config;
   collections: Collection[];
   actualConfigPath: string;
-  indexName?: string;
+  indexName: string;
   toolMutex: Mutex;
   jobManager: JobManager;
   serverInstanceId: string;
@@ -120,7 +126,7 @@ export async function startMcpServer(options: McpServerOptions): Promise<void> {
     MCP_ACTIVATION_VERIFICATION_ENV
   );
   const init = await initStore({
-    indexName: options.indexName,
+    indexName: canonicalizeIndexName(options.indexName ?? DEFAULT_INDEX_NAME),
     configPath: options.configPath,
     syncConfig: !activationVerification,
   });
@@ -172,7 +178,7 @@ export async function startMcpServer(options: McpServerOptions): Promise<void> {
     config,
     collections,
     actualConfigPath,
-    indexName: options.indexName,
+    indexName: canonicalizeIndexName(options.indexName ?? DEFAULT_INDEX_NAME),
     toolMutex,
     jobManager,
     serverInstanceId,

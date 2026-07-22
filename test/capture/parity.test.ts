@@ -186,6 +186,7 @@ async function runMcpSurface(): Promise<{
   const root = await makeRoot("gno-capture-mcp-parity");
   const store = await openStore(root);
   const ctx: ToolContext = {
+    indexName: "default",
     store,
     config: {
       version: "1.0",

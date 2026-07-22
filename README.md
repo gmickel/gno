@@ -548,22 +548,24 @@ Connect GNO to Claude Desktop, Cursor, Raycast, and more:
 
 ![GNO MCP](./assets/screenshots/mcp.jpg)
 
-GNO exposes 17 tools by default via [Model Context Protocol](https://modelcontextprotocol.io),
+GNO exposes 19 tools by default via [Model Context Protocol](https://modelcontextprotocol.io),
 including the core retrieval tools below. Starting MCP with `--enable-write`
-adds 11 opt-in mutation tools, for 28 total.
+adds 11 opt-in mutation tools, for 30 total.
 
-| Tool            | Description                           |
-| :-------------- | :------------------------------------ |
-| `gno_search`    | BM25 keyword search                   |
-| `gno_vsearch`   | Vector semantic search                |
-| `gno_query`     | Hybrid search (recommended)           |
-| `gno_get`       | Retrieve document by ID               |
-| `gno_multi_get` | Batch document retrieval              |
-| `gno_links`     | Get outgoing links from document      |
-| `gno_backlinks` | Get documents linking TO document     |
-| `gno_similar`   | Find semantically similar documents   |
-| `gno_graph`     | Get knowledge graph (nodes and edges) |
-| `gno_status`    | Index health check                    |
+| Tool                 | Description                           |
+| :------------------- | :------------------------------------ |
+| `gno_search`         | BM25 keyword search                   |
+| `gno_vsearch`        | Vector semantic search                |
+| `gno_query`          | Hybrid search (recommended)           |
+| `gno_context`        | Budgeted exact evidence Capsule       |
+| `gno_context_verify` | Verify saved Capsule provenance       |
+| `gno_get`            | Retrieve document by ID               |
+| `gno_multi_get`      | Batch document retrieval              |
+| `gno_links`          | Get outgoing links from document      |
+| `gno_backlinks`      | Get documents linking TO document     |
+| `gno_similar`        | Find semantically similar documents   |
+| `gno_graph`          | Get knowledge graph (nodes and edges) |
+| `gno_status`         | Index health check                    |
 
 **Design**: Default MCP mode is read-only: retrieval, graph, status, and job
 inspection. Your AI assistant synthesizes answers from retrieved context. Write
@@ -752,6 +754,8 @@ curl http://localhost:3000/api/health
 | `/api/query`                  | POST   | Hybrid search (recommended)  |
 | `/api/search`                 | POST   | BM25 keyword search          |
 | `/api/ask`                    | POST   | AI-powered Q&A               |
+| `/api/context`                | POST   | Build evidence Capsule       |
+| `/api/context/verify`         | POST   | Verify saved Capsule         |
 | `/api/docs`                   | GET    | List documents               |
 | `/api/docs`                   | POST   | Create document              |
 | `/api/docs/:id`               | PUT    | Update document content      |
@@ -827,7 +831,7 @@ graph TD
 | **Local LLM**        | AI answers via llama.cpp, no API keys                                          |
 | **Remote Inference** | Optional HTTP endpoints for embedding, reranking, expansion, and generation    |
 | **Privacy First**    | Local by default; no telemetry; network use is explicit or model provisioning  |
-| **MCP Server**       | 10 automatic client targets; 17 read-only tools, 28 with writes enabled        |
+| **MCP Server**       | 10 automatic client targets; 19 read-only tools, 30 with writes enabled        |
 | **Collections**      | Organize sources with patterns, excludes, contexts                             |
 | **Tag Filtering**    | Frontmatter tags with hierarchical paths, filter via `--tags-any`/`--tags-all` |
 | **Note Linking**     | Wiki links, backlinks, related notes, cross-collection navigation              |

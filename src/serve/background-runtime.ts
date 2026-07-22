@@ -157,6 +157,7 @@ export async function startBackgroundRuntime(
     config,
     {
       offline: options.offline ?? false,
+      indexName: options.index,
     }
   );
 

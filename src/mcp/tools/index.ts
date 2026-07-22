@@ -10,12 +10,17 @@ import { z } from "zod";
 
 import type { ToolContext } from "../server";
 
+import {
+  contextBuildSurfaceSchema,
+  contextVerifySurfaceSchema,
+} from "../../app/context-surface";
 import { CAPTURE_MAX_TEXT_BYTES } from "../../core/capture";
 import { NOTE_PRESETS, type NotePresetId } from "../../core/note-presets";
 import { normalizeTag } from "../../core/tags";
 import { handleAddCollection } from "./add-collection";
 import { handleCapture } from "./capture";
 import { handleClearCollectionEmbeddings } from "./clear-collection-embeddings";
+import { handleContext, handleContextVerify } from "./context";
 import { handleEmbed } from "./embed";
 import { handleGet } from "./get";
 import { handleIndex } from "./index-cmd";
@@ -72,6 +77,10 @@ export const MCP_TOOL_DESCRIPTIONS = {
     "Retrieve multiple documents by refs array or glob pattern. Use after gno_search/gno_query to batch top result URIs/docids; set maxBytes and lineNumbers to control context size.",
   status:
     "Get index health: collection count, document count, chunk count, embedding backlog, and per-collection stats. Check first when vector/hybrid results look stale or unavailable.",
+  context:
+    "Compile one deterministic, budgeted, extractive evidence Capsule with exact line spans, coverage gaps, omissions, provenance, and verification fingerprints. Raw search/get tools remain available for manual retrieval.",
+  contextVerify:
+    "Verify a saved Context Capsule without rebuilding or mutating it. Reports unchanged, stale, missing, reranked, and fingerprint drift states against the active index.",
 } as const;
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -899,6 +908,20 @@ function parseErrorMessage(message: string): { [x: string]: unknown } {
 
 export function registerTools(server: McpServer, ctx: ToolContext): void {
   // Tool IDs use underscores (MCP pattern: ^[a-zA-Z0-9_-]{1,64}$)
+  server.tool(
+    "gno_context",
+    MCP_TOOL_DESCRIPTIONS.context,
+    contextBuildSurfaceSchema.shape,
+    (args) => handleContext(args, ctx)
+  );
+
+  server.tool(
+    "gno_context_verify",
+    MCP_TOOL_DESCRIPTIONS.contextVerify,
+    contextVerifySurfaceSchema.shape,
+    (args) => handleContextVerify(args, ctx)
+  );
+
   server.tool(
     "gno_search",
     MCP_TOOL_DESCRIPTIONS.search,

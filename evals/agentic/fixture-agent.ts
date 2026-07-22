@@ -73,6 +73,49 @@ interface EvidenceLine {
   line: number;
 }
 
+const evidenceVisibleInBundleContent = (
+  result: AgentVisibleToolResult
+): AgentVisibleToolResult["evidence"] => {
+  if (result.evidence.length > 0 || result.resultRole !== "evidence_bundle") {
+    return result.evidence;
+  }
+  try {
+    const payload = JSON.parse(result.content) as { evidence?: unknown };
+    if (!Array.isArray(payload.evidence)) return [];
+    return payload.evidence.flatMap((value) => {
+      if (!value || typeof value !== "object" || Array.isArray(value))
+        return [];
+      const item = value as Record<string, unknown>;
+      if (
+        typeof item.uri !== "string" ||
+        typeof item.sourceHash !== "string" ||
+        typeof item.startLine !== "number" ||
+        !Number.isInteger(item.startLine) ||
+        typeof item.endLine !== "number" ||
+        !Number.isInteger(item.endLine) ||
+        typeof item.spanHash !== "string" ||
+        typeof item.text !== "string"
+      ) {
+        return [];
+      }
+      return [
+        {
+          uri: item.uri,
+          sourceHash: item.sourceHash,
+          startLine: item.startLine,
+          endLine: item.endLine,
+          spanHash: item.spanHash,
+          sourceHashProvenance: "backend_provided" as const,
+          spanHashProvenance: "backend_provided" as const,
+          text: item.text,
+        },
+      ];
+    });
+  } catch {
+    return [];
+  }
+};
+
 const evidenceLines = (
   evidence: readonly AgentVisibleToolResult["evidence"][number][]
 ): EvidenceLine[] =>
@@ -293,7 +336,7 @@ class FixtureAgentSession implements OuterAgentSession {
     const lastCall = calls.at(-1);
     const readEvidence = calls
       .filter((call) => call.result.resultRole !== "candidates")
-      .flatMap((call) => call.result.evidence);
+      .flatMap((call) => evidenceVisibleInBundleContent(call.result));
     const candidateEvidence = calls
       .filter((call) => call.result.resultRole === "candidates")
       .flatMap((call) => call.result.evidence);

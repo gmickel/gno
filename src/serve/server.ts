@@ -9,6 +9,7 @@
 import type { ContextHolder } from "./routes/api";
 
 import { startBackgroundRuntime } from "./background-runtime";
+import { handleContextBuild, handleContextVerify } from "./context-capsule";
 import { DocumentEventBus } from "./doc-events";
 // HTML import - Bun handles bundling TSX/CSS automatically via routes
 import homepage from "./public/index.html";
@@ -521,6 +522,28 @@ export async function startServer(
             }
             return withSecurityHeaders(
               await handleQuery(ctxHolder.current, req),
+              isDev
+            );
+          },
+        },
+        "/api/context": {
+          POST: async (req: Request) => {
+            if (!isRequestAllowed(req, port)) {
+              return withSecurityHeaders(forbiddenResponse(), isDev);
+            }
+            return withSecurityHeaders(
+              await handleContextBuild(ctxHolder.current, req),
+              isDev
+            );
+          },
+        },
+        "/api/context/verify": {
+          POST: async (req: Request) => {
+            if (!isRequestAllowed(req, port)) {
+              return withSecurityHeaders(forbiddenResponse(), isDev);
+            }
+            return withSecurityHeaders(
+              await handleContextVerify(ctxHolder.current, req),
               isDev
             );
           },

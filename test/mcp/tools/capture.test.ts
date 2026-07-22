@@ -47,6 +47,7 @@ describe("gno_capture MCP", () => {
 
   function toolContext(enableWrite = true): ToolContext {
     return {
+      indexName: "default",
       store,
       config: {
         version: "1.0",

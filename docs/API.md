@@ -56,6 +56,8 @@ All endpoints are JSON-based and run entirely on your machine.
 | `/api/query`             | POST   | Hybrid search                                               |
 | `/api/query/diagnose`    | POST   | Diagnose why a target document does or does not retrieve    |
 | `/api/ask`               | POST   | AI-powered Q&A                                              |
+| `/api/context`           | POST   | Compile a deterministic, budgeted evidence Capsule          |
+| `/api/context/verify`    | POST   | Verify a saved Capsule against the active index             |
 | `/api/presets`           | GET    | List model presets                                          |
 | `/api/presets`           | POST   | Switch preset                                               |
 | `/api/models/status`     | GET    | Download status                                             |
@@ -1777,6 +1779,72 @@ curl -X POST http://localhost:3000/api/search \
   -H "Content-Type: application/json" \
   -d '{"query": "handleAuth", "limit": 5}'
 ```
+
+---
+
+### Context Capsule
+
+```http
+POST /api/context
+```
+
+Compiles exact indexed evidence for one goal into a deterministic Context
+Capsule. The server supplies its active canonical index; the request cannot
+switch indexes. The budget covers the complete canonical payload, including
+evidence, retrieval plan, provenance, gaps, fallbacks, and bounded omission
+details. The endpoint does not persist the Capsule.
+
+```json
+{
+  "goal": "Compare the launch proposals",
+  "query": "launch proposal owner risks",
+  "collections": ["work"],
+  "queryModes": [{ "mode": "term", "text": "launch owner" }],
+  "author": "Mina",
+  "lang": "en",
+  "graph": false,
+  "limit": 8,
+  "candidateLimit": 32,
+  "budgetTokens": 12000,
+  "budgetBytes": 48000,
+  "depthPolicy": "balanced",
+  "format": "json"
+}
+```
+
+Additional filters are `uriPrefix`, `tagsAll`, `tagsAny`, `categories`,
+`since`, and `until`; optional safety margins are `safetyMarginTokens` and
+`safetyMarginBytes`. `depthPolicy: "fast"` avoids model setup. Closed input
+validation rejects unknown fields. Unknown collections fail before retrieval or
+model setup.
+
+JSON responses are the canonical Capsule bytes. `format: "md"` returns the
+shared readable Markdown projection (`text/markdown`) with exact passage bytes
+inside hard evidence sentinels and the complete canonical manifest. Indexed
+title, heading, and configured-context values remain escaped untrusted data.
+
+Errors use `{ "error": { "code": "...", "message": "..." } }` and preserve
+the public Context runtime, Capsule, evidence, and verifier code taxonomy.
+
+### Verify Context Capsule
+
+```http
+POST /api/context/verify
+```
+
+```json
+{
+  "capsule": { "schemaVersion": "1.0", "...": "complete capsule" },
+  "format": "json"
+}
+```
+
+Verification is read-only and does not rebuild the Capsule. It reports each
+evidence item as unchanged, stale, or missing, retains current hashes when
+available, separates fingerprint drift from ranking state, and reports ranking
+as unchanged, reranked, or unavailable. Index mismatch and malformed or
+non-canonical Capsules fail before evidence-store reads. Markdown uses the same
+trust boundaries and includes the complete canonical receipt.
 
 ---
 

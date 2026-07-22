@@ -15,6 +15,8 @@ import {
 export const CAPSULE_PROTOTYPE_SCHEMA_VERSION =
   "eval-capsule-prototype-v1" as const;
 
+const MAX_VISIBLE_OMISSION_CANDIDATES = 1;
+
 interface CapsulePayloadEvidence {
   uri: string;
   sourceHash: string;
@@ -34,26 +36,15 @@ export interface CapsulePrototypePayload {
     maxModelVisibleUtf8Bytes: number;
     selectedModelVisibleUtf8Bytes: number;
   };
-  retrieval: {
-    variants: string[];
-    backendInvocations: number;
-    backendInvocationStages: {
-      queryPlanning: number;
-      lexicalSearch: number;
-      sourceRead: number;
-      selection: number;
-      finalization: number;
-    };
-    indexFingerprint: string;
-    configFingerprint: string;
-  };
   coverage: {
     coveredFacets: string[];
     unresolvedFacets: string[];
   };
   evidence: CapsulePayloadEvidence[];
   omitted: {
+    total: number;
     candidates: CapsuleOmission[];
+    truncated: boolean;
     counts: {
       duplicate: number;
       overlap: number;
@@ -70,7 +61,13 @@ export interface CapsulePayloadContext {
   variants: readonly string[];
   facets: readonly string[];
   backendInvocations: number;
-  backendInvocationStages: CapsulePrototypePayload["retrieval"]["backendInvocationStages"];
+  backendInvocationStages: {
+    queryPlanning: number;
+    lexicalSearch: number;
+    sourceRead: number;
+    selection: number;
+    finalization: number;
+  };
   indexFingerprint: string;
   configFingerprint: string;
   maxModelVisibleUtf8Bytes: number;
@@ -117,6 +114,9 @@ const buildPayload = (
   const omittedCandidates = conservativeOmissions
     ? [...conservativeOmissions]
     : [...selection.omitted];
+  const visibleOmissions = conservativeOmissions
+    ? omittedCandidates
+    : omittedCandidates.slice(0, MAX_VISIBLE_OMISSION_CANDIDATES);
   return {
     schemaVersion: CAPSULE_PROTOTYPE_SCHEMA_VERSION,
     evalOnly: true,
@@ -127,20 +127,17 @@ const buildPayload = (
       maxModelVisibleUtf8Bytes: context.maxModelVisibleUtf8Bytes,
       selectedModelVisibleUtf8Bytes,
     },
-    retrieval: {
-      variants: [...context.variants],
-      backendInvocations: context.backendInvocations,
-      backendInvocationStages: context.backendInvocationStages,
-      indexFingerprint: context.indexFingerprint,
-      configFingerprint: context.configFingerprint,
-    },
     coverage: {
       coveredFacets: context.facets.filter((facet) => covered.has(facet)),
       unresolvedFacets: context.facets.filter((facet) => !covered.has(facet)),
     },
     evidence: payloadEvidence(selection.evidence),
     omitted: {
-      candidates: omittedCandidates,
+      total: omittedCandidates.length,
+      candidates: visibleOmissions,
+      truncated:
+        !conservativeOmissions &&
+        omittedCandidates.length > MAX_VISIBLE_OMISSION_CANDIDATES,
       counts: omissionCounts({
         ...selection,
         omitted: omittedCandidates,

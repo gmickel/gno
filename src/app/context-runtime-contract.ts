@@ -251,9 +251,9 @@ export const projectContextCapsule = (
     },
     omissions: {
       total: draft.selection.omissions.length,
-      items: draft.selection.omissions.slice(0, 100),
+      items: draft.selection.omissions.slice(0, 20),
       reasonCounts: draft.selection.reasonCounts,
-      truncated: draft.selection.omissions.length > 100,
+      truncated: draft.selection.omissions.length > 20,
     },
     truncated: draft.selection.omissions.some(
       (item) => item.reason === "global_budget"
@@ -262,7 +262,7 @@ export const projectContextCapsule = (
       ...(draft.selection.coverage.unresolvedFacets.length > 0
         ? [{ code: "incomplete_coverage" as const }]
         : []),
-      ...(draft.selection.omissions.length > 100
+      ...(draft.selection.omissions.length > 20
         ? [{ code: "omissions_truncated" as const }]
         : []),
       ...(exactTokens ? [] : [{ code: "token_estimate_used" as const }]),

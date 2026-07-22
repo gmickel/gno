@@ -15,10 +15,10 @@ Use GNO as a local MCP server for Claude Desktop, Cursor, Zed, Windsurf, Amp, Ra
 ## Overview
 
 MCP (Model Context Protocol) allows AI assistants to access external tools and
-resources. GNO registers 17 tools in default read-only mode and 28 when writes
+resources. GNO registers 19 tools in default read-only mode and 30 when writes
 are explicitly enabled:
 
-- **Tools (read)**: gno_search, gno_vsearch, gno_query, gno_query_diagnose, gno_get, gno_multi_get, gno_status, gno_list_tags, gno_links, gno_backlinks, gno_similar, gno_graph, gno_graph_query, gno_graph_neighbors, gno_graph_path
+- **Tools (read)**: gno_context, gno_context_verify, gno_search, gno_vsearch, gno_query, gno_query_diagnose, gno_get, gno_multi_get, gno_status, gno_list_tags, gno_links, gno_backlinks, gno_similar, gno_graph, gno_graph_query, gno_graph_neighbors, gno_graph_path
 - **Tools (write, opt-in)**: gno_capture, gno_add_collection, gno_sync, gno_embed, gno_index, gno_remove_collection, gno_clear_collection_embeddings, gno_create_folder, gno_rename_note, gno_move_note, gno_duplicate_note
 - **Tools (jobs)**: gno_job_status, gno_list_jobs
 - **Resources**: Access documents via `gno://collection/path`
@@ -35,25 +35,36 @@ GNO's MCP tools are **retrieval-focused**. The MCP server returns search results
 
 **Intended workflow:**
 
-1. Client LLM uses `gno_query` to retrieve relevant documents
+1. Client LLM uses `gno_context` for one bounded evidence handoff, or
+   `gno_query` plus bounded reads for manual retrieval
 2. Client LLM synthesizes the answer from retrieved context
 3. Result: Best retrieval (GNO) + best synthesis (Claude/Codex)
 
 ## Agent Retrieval Playbook
 
-For most questions, start with `gno_query`. It combines BM25, vector search, and reranking, then returns `uri`, `docid`, snippets, and line anchors for follow-up retrieval.
+For tasks that need a complete, bounded evidence handoff, start with
+`gno_context`. It compiles exact line spans, provenance hashes, coverage gaps,
+omission counts, and capability fallbacks into one deterministic Capsule. Use
+`gno_context_verify` before reusing a saved Capsule. GNO does not save Capsules
+implicitly.
+
+For interactive lookup and manual retrieval control, start with `gno_query`. It
+combines BM25, vector search, and reranking, then returns `uri`, `docid`,
+snippets, and line anchors for follow-up retrieval.
 
 Use the narrower tools when the request is explicit:
 
-| Tool                 | Use When                                                                      | Follow-up                                         |
-| -------------------- | ----------------------------------------------------------------------------- | ------------------------------------------------- |
-| `gno_search`         | Exact phrases, filenames, identifiers, error messages, known symbols          | `gno_get` around result `line`                    |
-| `gno_vsearch`        | Conceptual similarity where exact wording may differ                          | `gno_get` or `gno_multi_get` top results          |
-| `gno_query`          | Default choice; mixed lexical + semantic + reranked retrieval                 | `gno_multi_get` for top URIs                      |
-| `gno_query_diagnose` | Important target doc is missing or you need stage-by-stage retrieval evidence | Adjust filters/query mode, then retry `gno_query` |
-| `gno_get`            | One known `gno://` URI, `#docid`, or `collection/path`                        | Use `fromLine` + `lineCount` first                |
-| `gno_multi_get`      | Batch several top result refs or glob-matched docs                            | Keep `maxBytes` bounded                           |
-| `gno_status`         | Results look stale, vector search fails, or embeddings may be missing         | Run write-enabled `gno_index` or `gno_embed`      |
+| Tool                 | Use When                                                                        | Follow-up                                         |
+| -------------------- | ------------------------------------------------------------------------------- | ------------------------------------------------- |
+| `gno_context`        | One deterministic, token-budgeted evidence bundle for an agent goal             | Cite exact evidence spans; state unresolved gaps  |
+| `gno_context_verify` | Reusing a saved Capsule after sources or runtime configuration may have changed | Rebuild only when the receipt reports drift       |
+| `gno_search`         | Exact phrases, filenames, identifiers, error messages, known symbols            | `gno_get` around result `line`                    |
+| `gno_vsearch`        | Conceptual similarity where exact wording may differ                            | `gno_get` or `gno_multi_get` top results          |
+| `gno_query`          | Default choice; mixed lexical + semantic + reranked retrieval                   | `gno_multi_get` for top URIs                      |
+| `gno_query_diagnose` | Important target doc is missing or you need stage-by-stage retrieval evidence   | Adjust filters/query mode, then retry `gno_query` |
+| `gno_get`            | One known `gno://` URI, `#docid`, or `collection/path`                          | Use `fromLine` + `lineCount` first                |
+| `gno_multi_get`      | Batch several top result refs or glob-matched docs                              | Keep `maxBytes` bounded                           |
+| `gno_status`         | Results look stale, vector search fails, or embeddings may be missing           | Run write-enabled `gno_index` or `gno_embed`      |
 
 For ambiguous terms, pass `intent` instead of stuffing extra words into `query`:
 
@@ -110,8 +121,8 @@ gno mcp --enable-write
 GNO_MCP_ENABLE_WRITE=1 gno mcp
 ```
 
-Without this flag, the 17 read-only retrieval, graph, status, and job-inspection
-tools are available. Enabling writes adds 11 mutation tools, for 28 total.
+Without this flag, the 19 read-only retrieval, graph, status, and job-inspection
+tools are available. Enabling writes adds 11 mutation tools, for 30 total.
 
 ### Collection Root Validation
 
