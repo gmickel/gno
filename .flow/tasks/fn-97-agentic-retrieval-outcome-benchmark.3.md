@@ -34,9 +34,14 @@ Measure the shipped GNO query/get workflow through its real MCP boundary with ex
 - [ ] Isolated integration proves a fixture task completes through the real stdio MCP server without global config or production DB mutation.
 
 ## Done summary
-TBD
+Implemented the product-faithful GNO stdio MCP benchmark comparator.
 
+- Added exact canonical-to-product tool mapping, task isolation, strict structured-output validation, and exact line-atomic evidence normalization.
+- Added isolated offline preparation using production ingestion, a four-model SHA-256 lock, full embedding verification, cold/warm lifecycle behavior, cancellation, and failure-safe cleanup.
+- Added fake-process contract/lifecycle/isolation tests, all-24-task runner coverage, and an opt-in real isolated stdio MCP smoke.
+- Documented the GNO comparator and the fail-closed pinned qmd comparator methodology.
+- Independent quality review verdict: SHIP.
 ## Evidence
-- Commits:
-- Tests:
+- Commits: ffa374c
+- Tests: bun run lint:check, bunx tsc --noEmit, bun test test/eval/agentic, GNO_AGENTIC_RUN_REAL_MCP=1 bun test test/eval/agentic/gno-mcp-real.test.ts --timeout 300000, .flow/bin/flowctl validate --spec fn-97-agentic-retrieval-outcome-benchmark --json
 - PRs:
