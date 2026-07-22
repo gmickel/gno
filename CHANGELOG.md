@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.16.0] - 2026-07-22
+
+### Added
+
+- Added a deterministic end-to-end agentic retrieval benchmark with 24
+  leak-resistant tasks, product-faithful GNO MCP, lexical, Capsule-prototype,
+  and fail-closed pinned qmd adapters, exact evidence-span scoring, canonical
+  trajectory receipts, lifecycle accounting, and reproducible promotion gates.
+- Published the first authoritative 144-receipt baseline and 48 deterministic
+  Capsule replays. The prototype preserves or improves task accuracy, reduces
+  outer-agent retrieval calls by 48.94%, and links 100% of substantive claims,
+  while truthfully failing the context-byte gate pending the production
+  Context Capsule implementation.
+
 ## [1.15.0] - 2026-07-22
 
 ### Added
@@ -1502,7 +1516,8 @@ Re-release of 1.0.2 with a CHANGELOG formatting fix so the Publish workflow's
 | 0.4.0   | 2026-01-01 | Web UI and REST API                        |
 | 0.1.0   | 2025-12-30 | Initial release with full search pipeline  |
 
-[Unreleased]: https://github.com/gmickel/gno/compare/v1.15.0...HEAD
+[Unreleased]: https://github.com/gmickel/gno/compare/v1.16.0...HEAD
+[1.16.0]: https://github.com/gmickel/gno/compare/v1.15.0...v1.16.0
 [1.15.0]: https://github.com/gmickel/gno/compare/v1.14.0...v1.15.0
 [1.14.0]: https://github.com/gmickel/gno/compare/v1.13.0...v1.14.0
 [1.13.0]: https://github.com/gmickel/gno/compare/v1.12.4...v1.13.0
