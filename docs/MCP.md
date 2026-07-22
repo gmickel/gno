@@ -14,10 +14,12 @@ Use GNO as a local MCP server for Claude Desktop, Cursor, Zed, Windsurf, Amp, Ra
 
 ## Overview
 
-MCP (Model Context Protocol) allows AI assistants to access external tools and resources. GNO provides:
+MCP (Model Context Protocol) allows AI assistants to access external tools and
+resources. GNO registers 17 tools in default read-only mode and 28 when writes
+are explicitly enabled:
 
 - **Tools (read)**: gno_search, gno_vsearch, gno_query, gno_query_diagnose, gno_get, gno_multi_get, gno_status, gno_list_tags, gno_links, gno_backlinks, gno_similar, gno_graph, gno_graph_query, gno_graph_neighbors, gno_graph_path
-- **Tools (write, opt-in)**: gno_capture, gno_add_collection, gno_sync, gno_embed, gno_index, gno_remove_collection
+- **Tools (write, opt-in)**: gno_capture, gno_add_collection, gno_sync, gno_embed, gno_index, gno_remove_collection, gno_clear_collection_embeddings, gno_create_folder, gno_rename_note, gno_move_note, gno_duplicate_note
 - **Tools (jobs)**: gno_job_status, gno_list_jobs
 - **Resources**: Access documents via `gno://collection/path`
 
@@ -108,7 +110,8 @@ gno mcp --enable-write
 GNO_MCP_ENABLE_WRITE=1 gno mcp
 ```
 
-Without this flag, only read-only tools are available.
+Without this flag, the 17 read-only retrieval, graph, status, and job-inspection
+tools are available. Enabling writes adds 11 mutation tools, for 28 total.
 
 ### Collection Root Validation
 

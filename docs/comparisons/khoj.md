@@ -37,23 +37,23 @@ docker-compose up
 
 ## Feature Comparison
 
-| Feature              | GNO                       | Khoj                  |
-| -------------------- | ------------------------- | --------------------- |
-| **Search Modes**     | BM25, Vector, Hybrid      | Vector (semantic)     |
-| **Reranking**        | ✓ Cross-encoder           | ✓ Cross-encoder       |
-| **AI Answers (RAG)** | ✓                         | ✓                     |
-| **CLI**              | ✓ Full-featured           | ✓ Server command only |
-| **Web UI**           | ✓ `gno serve`             | ✓ Gradio-based        |
-| **REST API**         | ✓                         | ✓                     |
-| **Headless Daemon**  | ✓ `gno daemon`            | ✓ Server mode         |
-| **MCP Support**      | ✓ 10 automatic targets    | ✗                     |
-| **Query Expansion**  | ✓ LLM-powered             | ✗                     |
-| **HyDE**             | ✓                         | ✗                     |
-| **Model Presets**    | ✓ slim/balanced/quality   | ✗                     |
-| **Search Depth**     | ✓ fast/balanced/thorough  | ✗                     |
-| **Tab Completion**   | ✓ bash/zsh/fish           | ✗                     |
-| **Knowledge Graph**  | ✓ Interactive force graph | ✗                     |
-| **Note Linking**     | ✓ Wiki + backlinks        | ✗                     |
+| Feature              | GNO                                | Khoj                  |
+| -------------------- | ---------------------------------- | --------------------- |
+| **Search Modes**     | BM25, Vector, Hybrid               | Vector (semantic)     |
+| **Reranking**        | ✓ Cross-encoder                    | ✓ Cross-encoder       |
+| **AI Answers (RAG)** | ✓                                  | ✓                     |
+| **CLI**              | ✓ Full-featured                    | ✓ Server command only |
+| **Web UI**           | ✓ `gno serve`                      | ✓ Gradio-based        |
+| **REST API**         | ✓                                  | ✓                     |
+| **Headless Daemon**  | ✓ `gno daemon`                     | ✓ Server mode         |
+| **MCP Support**      | ✓ 10 automatic targets             | ✗                     |
+| **Query Expansion**  | ✓ LLM-powered                      | ✗                     |
+| **HyDE**             | ✓                                  | ✗                     |
+| **Model Presets**    | ✓ slim-tuned/slim/balanced/quality | ✗                     |
+| **Search Depth**     | ✓ fast/balanced/thorough           | ✗                     |
+| **Tab Completion**   | ✓ bash/zsh/fish                    | ✗                     |
+| **Knowledge Graph**  | ✓ Interactive force graph          | ✗                     |
+| **Note Linking**     | ✓ Wiki + backlinks                 | ✗                     |
 
 ## File Format Support
 
@@ -145,7 +145,7 @@ Khoj is stronger when the assistant surface itself is the product and you want b
 - You need REST API for custom integrations
 - You're integrating with AI coding assistants (Claude, Cursor, Windsurf)
 - You want MCP support for agent workflows
-- You prefer local-first, no cloud dependencies
+- You prefer a local-first default with explicit network boundaries
 - You need fine-grained search control (BM25 hybrid, depth, expansion, HyDE)
 - You want simple SQLite setup, no PostgreSQL
 - You need MIT licensing for commercial projects

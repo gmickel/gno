@@ -281,7 +281,8 @@ Quantized model format for efficient inference. Used by llama.cpp.
 
 ### Model Preset
 
-Predefined model configuration. Available presets: slim, balanced, quality.
+Predefined model configuration. Built-ins: `slim-tuned` (default), `slim`,
+`balanced`, and `quality`.
 
 ## Database Terms
 
@@ -297,14 +298,17 @@ SQLite extension for vector storage and KNN search. Required for vector search.
 
 Text segmentation method for FTS5:
 
-- `snowball english`: Snowball stemmer (default, 20+ languages supported)
+- `snowball english`: English Snowball stemmer (default)
 - `unicode61`: Unicode-aware, no stemming
 - `porter`: English-only stemming (legacy)
 - `trigram`: Substring matching
 
 ### Snowball Stemmer
 
-Multilingual stemming algorithm for FTS5. Reduces words to their root form: "running" → "run", "scored" → "score". Supports 20+ languages including English, German, French, Spanish, and more. GNO uses Snowball English by default.
+Family of language-specific stemming algorithms for FTS5. GNO exposes only the
+`snowball english` tokenizer, which reduces English word forms such as
+"running" → "run" and "scored" → "score". Use `unicode61` for
+language-neutral Unicode tokenization without stemming.
 
 ## MCP Terms
 

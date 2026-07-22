@@ -1,7 +1,7 @@
 # GNO Documentation Site
 title: GNO
 tagline: Local Knowledge Workspace for Humans and Agents
-description: "GNO is a local knowledge workspace for search, browse, graph, editing, and AI answers across Markdown, PDFs, Office docs, code, and research folders. Works with Claude Code, Codex, Cursor, MCP clients, and local workflows. 100% local, fully private."
+description: "GNO is a local-first knowledge workspace for search, browse, graph, editing, and AI answers across Markdown, PDFs, Office docs, code, and research folders. Works with Claude Code, Codex, Cursor, MCP clients, and local workflows, with explicit network boundaries for model downloads, remote inference, and publishing."
 url: "https://www.gno.sh"
 baseurl: ""
 
@@ -19,7 +19,9 @@ social:
     - https://twitter.com/gmickel
 logo: /assets/images/logo.png
 og_image: /assets/images/og/og-image.png
-version: "0.40.2"
+# <!-- public-truth:current-version -->
+version: "1.13.0"
+# <!-- /public-truth -->
 lang: en_US
 
 # Build settings

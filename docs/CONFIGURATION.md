@@ -226,14 +226,16 @@ Model configuration for embeddings and AI answers.
 
 ### Presets
 
-| Preset       | Disk   | Best For                                                |
-| ------------ | ------ | ------------------------------------------------------- |
-| `slim-tuned` | ~1GB   | Current default, tuned retrieval in a compact footprint |
-| `slim`       | ~1GB   | Fast, good quality                                      |
-| `balanced`   | ~2GB   | Slightly larger model                                   |
-| `quality`    | ~2.5GB | Best answers, complex content                           |
+| Preset       | Best For                                     |
+| ------------ | -------------------------------------------- |
+| `slim-tuned` | Current default; tuned query expansion       |
+| `slim`       | Untuned slim query expansion                 |
+| `balanced`   | Qwen2.5 3B expansion and answers             |
+| `quality`    | Qwen3 4B expansion and standalone AI answers |
 
-The dashboard bootstrap panel uses these preset footprints as the plain-language disk estimate for first-run setup.
+Actual download and cache use depends on the selected artifacts, quantization,
+and files already present. Treat UI size labels as orientation, not measured
+clean-install footprints.
 
 > **Note**: When using GNO standalone with `--answer`, the **quality** preset is required for documents containing Markdown tables or other structured content. The smaller models in slim/balanced presets cannot reliably parse tabular data. When GNO is used via MCP, skill, or CLI by AI agents (Claude Code, Codex, etc.), the agent handles answer generation, so any preset works for retrieval.
 
@@ -281,16 +283,37 @@ This still uses normal GNO model provisioning rules:
 
 ### Current general multilingual benchmark signal
 
-On the public multilingual markdown benchmark lane, `Qwen3-Embedding-0.6B-GGUF`
-currently beats `bge-m3` by a large margin on both vector-only and hybrid
-retrieval.
+<!-- public-truth:general-embedding-benchmark -->
 
-Current product stance:
+The immutable April 2026 FastAPI-docs run used 15 documents in five corpus
+languages (`en`, `de`, `fr`, `es`, `zh`) and 13 queries:
 
-- `Qwen3-Embedding-0.6B-GGUF` is now the built-in preset default
+- [bge-m3 incumbent](../evals/fixtures/general-embedding-benchmark/2026-04-06-bge-m3-incumbent.md): vector nDCG@10 `0.3503`, hybrid nDCG@10 `0.642`
+- [Qwen3 Embedding 0.6B](../evals/fixtures/general-embedding-benchmark/2026-04-06-qwen3-embedding-0-6b.md): vector nDCG@10 `0.8594`, hybrid nDCG@10 `0.947`
+<!-- /public-truth -->
+
+A separate [July 2026 Nemotron screen](../research/embeddings/2026-07-21-nemotron-3-embed-1b.md)
+measured Qwen at `0.9891` vector / `0.9891` hybrid nDCG@10 and Nemotron at
+`0.9023` / `0.9461` on the same 13-query lane after runtime/profile changes.
+Nemotron used a temporary PyTorch HTTP adapter, so timings are not comparable;
+the screen did not validate an official production GGUF for Nemotron.
+
+<!-- public-truth:default-embed-model -->
+
+`Qwen3-Embedding-0.6B-GGUF` is the embedding model in all four built-in presets.
+
+<!-- /public-truth -->
+
+Operational consequences:
+
 - existing users who upgrade may need a fresh `gno embed` pass because their old vectors were created with `bge-m3`
 - GNO now counts readiness/backlog against the active embed model, so the need to re-embed is visible immediately after a preset/default change
 - if a future release changes the formatting profile for an active embedding model, re-embed is also required because the stored document vectors were produced differently
+
+Scope matters: query-language classification is distinct from indexed-document
+language detection (`en`, `de`, `fr`, `it`, `zh`, `ja`, `ko`), and this small
+semantic fixture covers only five languages. The legacy multilingual Evalite
+lane is BM25-only; a dedicated lexical CJK benchmark is still pending.
 
 ### Model Details
 
@@ -299,13 +322,16 @@ All presets use:
 - **Qwen3-Embedding-0.6B** for embeddings (multilingual)
 - **Qwen3-Reranker-0.6B** for reranking (scores best chunk per document)
 
-| Preset   | Embed                   | Rerank                 | Gen           |
-| -------- | ----------------------- | ---------------------- | ------------- |
-| slim     | Qwen3-Embedding-0.6B-Q8 | Qwen3-Reranker-0.6B-Q8 | Qwen3-1.7B-Q4 |
-| balanced | Qwen3-Embedding-0.6B-Q8 | Qwen3-Reranker-0.6B-Q8 | Qwen2.5-3B-Q4 |
-| quality  | Qwen3-Embedding-0.6B-Q8 | Qwen3-Reranker-0.6B-Q8 | Qwen3-4B-Q4   |
+| Preset     | Embed                   | Rerank                 | Expand                  | Gen           |
+| ---------- | ----------------------- | ---------------------- | ----------------------- | ------------- |
+| slim-tuned | Qwen3-Embedding-0.6B-Q8 | Qwen3-Reranker-0.6B-Q8 | GNO slim retrieval tune | Qwen3-1.7B-Q4 |
+| slim       | Qwen3-Embedding-0.6B-Q8 | Qwen3-Reranker-0.6B-Q8 | Qwen3-1.7B-Q4           | Qwen3-1.7B-Q4 |
+| balanced   | Qwen3-Embedding-0.6B-Q8 | Qwen3-Reranker-0.6B-Q8 | Qwen2.5-3B-Q4           | Qwen2.5-3B-Q4 |
+| quality    | Qwen3-Embedding-0.6B-Q8 | Qwen3-Reranker-0.6B-Q8 | Qwen3-4B-Q4             | Qwen3-4B-Q4   |
 
-The reranker's 32K context window allows scoring complete documents (tables, code, all sections) rather than truncated snippets.
+Reranking scores the best retrieved chunk per document, capped at 4K
+characters. The model's larger advertised context window does not mean GNO
+sends complete documents to the reranker.
 
 ## Terminal Hyperlinks
 
@@ -442,6 +468,12 @@ See [Fine-Tuned Models](FINE-TUNED-MODELS.md) for the full workflow and troubles
 
 GNO supports remote model servers using OpenAI-compatible APIs. This allows offloading inference to a more powerful machine (e.g., a GPU server on your network).
 
+Remote endpoints receive the text sent to their configured role: queries and
+document chunks for embedding/reranking, generated expansion input for
+`expand`, or retrieved answer context for `gen`. Use HTTPS and server-side
+access controls outside a trusted network; remote inference is not part of the
+local privacy boundary.
+
 ```yaml
 models:
   activePreset: remote
@@ -469,6 +501,7 @@ models:
 | ---------- | ---------------------- | --------------------------- |
 | `embed`    | `/v1/embeddings`       | Embeddings API              |
 | `rerank`   | `/v1/completions`      | Completions API (text only) |
+| `expand`   | `/v1/chat/completions` | Chat Completions API        |
 | `gen`      | `/v1/chat/completions` | Chat Completions API        |
 
 **Example with llama.cpp server:**
@@ -502,14 +535,16 @@ models:
 
 Set at `gno init`, cannot be changed without rebuilding.
 
-| Tokenizer          | Description                               |
-| ------------------ | ----------------------------------------- |
-| `snowball english` | Snowball stemmer (default, 20+ languages) |
-| `unicode61`        | Unicode-aware, no stemming                |
-| `porter`           | English-only stemming (legacy)            |
-| `trigram`          | Substring matching                        |
+| Tokenizer          | Description                        |
+| ------------------ | ---------------------------------- |
+| `snowball english` | English Snowball stemmer (default) |
+| `unicode61`        | Unicode-aware, no stemming         |
+| `porter`           | English-only stemming (legacy)     |
+| `trigram`          | Substring matching                 |
 
-The Snowball stemmer enables matching across word forms: "running" matches "run", "scored" matches "score", plurals match singulars.
+The exposed Snowball tokenizer is specifically `snowball english`; it enables
+English word-form matching such as "running" → "run" and "scored" → "score".
+Use `unicode61` for language-neutral Unicode tokenization without stemming.
 
 ```bash
 # Initialize with unicode61 (no stemming)

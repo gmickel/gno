@@ -50,7 +50,9 @@ The workflow becomes:
 2. Claude searches your notes for context
 3. Claude drafts a response with full background
 
-All local. All private. Your data never leaves your machine.
+The default local-model path keeps indexed content on your machine and GNO
+collects no telemetry. Model downloads, configured HTTP inference endpoints,
+and explicit gno.sh uploads are network boundaries you control.
 
 ### Why GNO Works Where Others Fail
 
@@ -255,7 +257,9 @@ gno daemon
 
 ### Important Constraints
 
-- `gno daemon` is foreground-only in v0.30
+- `gno daemon --detach` backgrounds the process on macOS/Linux; use
+  `--status` and `--stop` for lifecycle control (Windows uses foreground mode,
+  WSL, or a service wrapper)
 - use `nohup`, launchd, or systemd if you want supervision
 - avoid running `gno daemon` and `gno serve` against the same index at the same time
 
@@ -406,7 +410,9 @@ Combine with cron or scheduled tasks:
 
 ## Multi-Language Search
 
-GNO supports 30+ languages with automatic detection.
+GNO classifies query language through an explicit 34-language allowlist. That
+prompt-selection feature is separate from indexed-document detection, which
+covers `en`, `de`, `fr`, `it`, `zh`, `ja`, and `ko`.
 
 ### Setup Language Hints
 
@@ -425,7 +431,11 @@ GNO auto-detects query language using [franc](https://github.com/wooorm/franc). 
 
 ### Multilingual Embedding
 
-The default `Qwen3-Embedding-0.6B-GGUF` embedding model supports strong multilingual retrieval. Vector search works across languages - a German query can find relevant English documents and vice versa.
+The default `Qwen3-Embedding-0.6B-GGUF` model supports cross-language vector
+retrieval. The committed semantic fixture is small: 15 FastAPI documents in
+five languages and 13 queries. It is evidence for the default-model decision,
+not a general guarantee for every classified or indexed language. Dedicated
+lexical CJK benchmarking remains pending.
 
 ## Incremental Updates
 

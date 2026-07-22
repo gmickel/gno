@@ -18,7 +18,7 @@ benefits:
   - Keyboard-first design
   - Instant refresh after edits with external-change awareness
   - Live preset switching
-  - 100% local, no cloud
+  - Local index and UI with no telemetry
 commands:
   - "gno serve"
   - "gno serve --port 8080"
@@ -133,9 +133,10 @@ GNO searches your documents, synthesizes an answer using a local LLM, and shows 
 
 Switch between model presets without restarting:
 
-- **Slim**: Default, fast, ~1GB disk
-- **Balanced**: Slightly larger, ~2GB disk
-- **Quality**: Best answers, ~2.5GB disk
+- **Slim Tuned**: Current default with tuned query expansion
+- **Slim**: Untuned slim expansion and answers
+- **Balanced**: Qwen2.5 3B expansion and answers
+- **Quality**: Qwen3 4B expansion and answers
 
 Click the preset selector, choose your preference, and GNO reloads models automatically.
 
@@ -152,12 +153,13 @@ No terminal required. Everything happens in the browser.
 
 ## Privacy by Design
 
-Everything runs on `localhost`:
+The UI binds to `localhost` and the default inference path is local:
 
-- No cloud services
 - No user accounts
-- No data leaves your machine
 - No tracking or telemetry
+- Model downloads contact artifact hosts
+- Configured HTTP inference receives role-specific inputs
+- gno.sh receives only artifacts you explicitly export and upload
 
 The server binds to `127.0.0.1` only. It's not accessible from your network.
 

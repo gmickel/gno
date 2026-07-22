@@ -15,7 +15,7 @@ benefits:
   - Custom preset install snippets
 commands:
   - "gno models use slim-tuned"
-  - "gno models pull --gen"
+  - "gno models pull --expand"
   - "gno query 'ECONNREFUSED 127.0.0.1:5432' --thorough"
 ---
 

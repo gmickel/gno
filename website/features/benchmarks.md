@@ -127,20 +127,27 @@ collections:
 
 That gives you an explicit collection override only when one collection should diverge from the new default.
 
-## Current General Multilingual Candidate
+## General Multilingual Evidence
 
-Current public-docs benchmark numbers:
+<!-- public-truth:general-embedding-benchmark -->
 
-| Fixture                   | `bge-m3` vector nDCG@10 | `bge-m3` hybrid nDCG@10 | `Qwen3-Embedding-0.6B-GGUF` vector nDCG@10 | `Qwen3-Embedding-0.6B-GGUF` hybrid nDCG@10 |
-| ------------------------- | ----------------------- | ----------------------- | ------------------------------------------ | ------------------------------------------ |
-| multilingual FastAPI docs | `0.3508`                | `0.6756`                | `0.9891`                                   | `0.9891`                                   |
+The immutable April 2026 FastAPI-docs run used 15 documents in five corpus
+languages (`en`, `de`, `fr`, `es`, `zh`) and 13 queries:
 
-Interpretation:
+- [bge-m3 incumbent](https://github.com/gmickel/gno/blob/main/evals/fixtures/general-embedding-benchmark/2026-04-06-bge-m3-incumbent.md): vector nDCG@10 `0.3503`, hybrid nDCG@10 `0.642`
+- [Qwen3 Embedding 0.6B](https://github.com/gmickel/gno/blob/main/evals/fixtures/general-embedding-benchmark/2026-04-06-qwen3-embedding-0-6b.md): vector nDCG@10 `0.8594`, hybrid nDCG@10 `0.947`
+<!-- /public-truth -->
 
-- Qwen is now the strongest general multilingual embedding model we have
-  measured, not just the strongest code-specialist candidate
-- this benchmark lane was strong enough to justify switching built-in presets to Qwen
-- existing users still need a fresh embed pass after upgrading so current collections catch up
+A separate [July 2026 Nemotron screen](https://github.com/gmickel/gno/blob/main/research/embeddings/2026-07-21-nemotron-3-embed-1b.md)
+reran the 13-query lane after runtime/profile changes. It measured Qwen at
+`0.9891` vector / `0.9891` hybrid nDCG@10 and Nemotron at `0.9023` / `0.9461`.
+Nemotron used a temporary PyTorch HTTP adapter; Qwen used GNO's production GGUF
+path. Their timings are not comparable, and the screen did not validate an
+official production Nemotron GGUF.
+
+This small fixture supported the Qwen default-model decision; it does not prove
+general superiority across the 34 query-language classes or the seven detected
+document languages. Dedicated lexical CJK benchmarking remains pending.
 
 ## Autonomous Search, Bounded
 

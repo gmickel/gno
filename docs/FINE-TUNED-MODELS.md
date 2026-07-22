@@ -6,7 +6,7 @@ keywords: gno fine tuned models, retrieval model, gguf retrieval, mlx lora, loca
 
 # Fine-Tuned Models
 
-Guide for using fine-tuned local generation models with `gno`.
+Guide for using fine-tuned local models in GNO's retrieval-time `expand` role.
 
 ## Current Promoted Retrieval Model
 
@@ -46,10 +46,10 @@ What must be portable is the exported artifact:
 
 ## Recommended Workflow
 
-Public/shared model:
+Public/shared expansion model:
 
 1. use the published HF model directly
-2. ship it as the built-in `slim-tuned` default
+2. ship it in the `expand` role of the built-in `slim-tuned` default
 3. benchmark before replacing the other built-in presets too
 
 Private/internal model:
@@ -67,7 +67,12 @@ bun run research:finetune:promote <run>
 
 ## Install In GNO
 
-Built-in default preset:
+<!-- public-truth:default-embed-model -->
+
+The built-in `slim-tuned` preset uses `Qwen3-Embedding-0.6B-GGUF` for
+embeddings; the fine-tuned artifact below is its separate `expand` role.
+
+<!-- /public-truth -->
 
 ```yaml
 models:
@@ -93,8 +98,11 @@ Once selected, the dashboard bootstrap section reports whether the tuned preset 
 For a private expansion model that is not published to HF yet, replace `expand:` with:
 
 ```yaml
-gen: file:/absolute/path/to/your-private-model.gguf
+expand: file:/absolute/path/to/your-private-model.gguf
 ```
+
+Keep `gen:` pointed at the model used for standalone answer generation. A
+fine-tuned expansion artifact is not automatically an answer-generation model.
 
 ## When To Keep It Custom
 

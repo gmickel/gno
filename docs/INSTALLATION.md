@@ -143,7 +143,7 @@ See also:
 GNO downloads AI models on first use. Pre-download to avoid first-run delays:
 
 ```bash
-# Download all models (slim-tuned preset, ~1GB)
+# Download every role in the active slim-tuned preset
 gno models pull --all
 
 # Or download specific models
@@ -158,7 +158,8 @@ proxy, firewall, captive portal, or Hugging Face HTML error page is cached
 instead of a model, GNO removes the bad cached file and asks you to retry with
 `gno models pull --force`.
 
-Model presets control disk usage:
+Model presets select the model artifact used for each role. Actual download and
+cache use depends on artifact versions, quantization, and files already cached:
 
 | Preset     | Embed                   | Rerank                 | Expand                   | Answer        |
 | ---------- | ----------------------- | ---------------------- | ------------------------ | ------------- |
@@ -307,7 +308,9 @@ ls /opt/homebrew/opt/sqlite3/lib/libsqlite3.dylib
 
 ### Models fail to download
 
-Check network connectivity and disk space (~2GB needed for all models).
+Check network connectivity and available disk space. Use `gno models status`
+and `gno models path` to inspect the active artifacts and real cache location;
+do not infer required free space from an existing, possibly shared cache.
 
 ```bash
 # Check model cache location

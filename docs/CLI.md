@@ -664,9 +664,10 @@ gno models list --json
 Switch model preset. Changes take effect on next search.
 
 ```bash
-gno models use slim       # Default, fast, ~1GB disk
-gno models use balanced   # Larger model, ~2GB disk
-gno models use quality    # Best answers, ~2.5GB disk
+gno models use slim-tuned # Current default, tuned expansion
+gno models use slim       # Untuned slim expansion
+gno models use balanced   # Qwen2.5 3B expansion + answers
+gno models use quality    # Qwen3 4B expansion + answers
 ```
 
 If the preset switch changes the embedding model, GNO now tells you directly:

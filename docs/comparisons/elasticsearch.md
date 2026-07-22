@@ -20,22 +20,22 @@ Elasticsearch is an enterprise-grade distributed search engine for large teams a
 
 ## Feature Comparison
 
-| Feature              | GNO                           | Elasticsearch              |
-| -------------------- | ----------------------------- | -------------------------- |
-| **Deployment**       | Local CLI, zero config        | Server, cluster management |
-| **Privacy**          | 100% local, offline           | Network service            |
-| **Setup Time**       | `bun install -g @gmickel/gno` | Hours/days                 |
-| **Vector Search**    | Built-in (sqlite-vec)         | Plugin or version 8+       |
-| **AI Answers**       | ✓ Local LLM integration       | ✗ (needs external LLM)     |
-| **Remote Inference** | ✓ Simple URI config           | ✓ Complex inference API    |
-| **Resource Usage**   | ~500MB RAM                    | GB+ RAM                    |
-| **Scaling**          | Single machine                | Distributed clusters       |
-| **Cost**             | Free                          | License fees at scale      |
-| **Query DSL**        | Simple CLI flags              | Complex JSON DSL           |
-| **Aggregations**     | Basic                         | Powerful analytics         |
-| **REST API**         | ✓ `gno serve`                 | ✓ Native                   |
-| **Web UI**           | ✓ `gno serve`                 | ✓ Kibana                   |
-| **Headless Daemon**  | ✓ `gno daemon`                | ✓ Native server            |
+| Feature              | GNO                                           | Elasticsearch              |
+| -------------------- | --------------------------------------------- | -------------------------- |
+| **Deployment**       | Local CLI, zero config                        | Server, cluster management |
+| **Privacy**          | Local by default; explicit network boundaries | Network service            |
+| **Setup Time**       | `bun install -g @gmickel/gno`                 | Hours/days                 |
+| **Vector Search**    | Built-in (sqlite-vec)                         | Plugin or version 8+       |
+| **AI Answers**       | ✓ Local LLM integration                       | ✗ (needs external LLM)     |
+| **Remote Inference** | ✓ Simple URI config                           | ✓ Complex inference API    |
+| **Resource Usage**   | ~500MB RAM                                    | GB+ RAM                    |
+| **Scaling**          | Single machine                                | Distributed clusters       |
+| **Cost**             | Free                                          | License fees at scale      |
+| **Query DSL**        | Simple CLI flags                              | Complex JSON DSL           |
+| **Aggregations**     | Basic                                         | Powerful analytics         |
+| **REST API**         | ✓ `gno serve`                                 | ✓ Native                   |
+| **Web UI**           | ✓ `gno serve`                                 | ✓ Kibana                   |
+| **Headless Daemon**  | ✓ `gno daemon`                                | ✓ Native server            |
 
 ## The Key Difference
 
@@ -64,10 +64,12 @@ gno init ~/notes --name notes
 gno query "what was that thing about React performance"
 ```
 
-**Privacy-first search**: Everything stays on your machine.
+**Privacy-first search**: Indexing and the default model path stay on your
+machine. Model downloads, configured remote inference, and explicit publishing
+are separate network boundaries.
 
 ```bash
-# No network calls, no cloud storage
+# No search service or cloud storage required
 gno index
 gno query "confidential project details"
 ```

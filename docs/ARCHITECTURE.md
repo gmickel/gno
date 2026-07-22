@@ -82,7 +82,7 @@ File on disk
 ```
 User query
     │
-    ▼ Detect query language (franc, 30+ languages)
+    ▼ Classify query language (franc, explicit 34-language allowlist)
     │
     ├─[ Structured query modes provided ]─► Use provided term/intent/hyde entries
     │
@@ -223,7 +223,7 @@ Models are GGUF-quantized for efficiency. First use triggers automatic download.
 | BM25     | Document-level keyword matching via weighted FTS5 + Snowball     |
 | Vector   | Chunk-level semantic similarity with contextual embeddings       |
 | Hybrid   | BM25 + vector with RRF fusion (2× original weight, tiered bonus) |
-| Reranked | Hybrid + full-document cross-encoder (32K context)               |
+| Reranked | Hybrid + best-chunk-per-document cross-encoder (4K chars)        |
 
 ## Graceful Degradation
 

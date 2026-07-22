@@ -147,12 +147,12 @@ Build team knowledge bases with your own frontend.
 
 Search documentation as part of your pipeline.
 
-## No Limits
+## Local API Boundaries
 
 - **No authentication**: It's your local machine
 - **No rate limits**: Performance depends on hardware
-- **No data limits**: Index as much as you want
-- **No cloud**: Everything stays local
+- **Loopback default**: Do not expose the unauthenticated server to the internet
+- **Local index**: Configured HTTP inference and publishing remain separate network boundaries
 
 ## Full Documentation
 

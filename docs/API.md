@@ -337,6 +337,11 @@ If `connectorProjection.truncated` is true, omitted pairs have no claimed result
 and health remains degraded. Status may perform a bounded local lexical proof on
 a receipt miss, but it never starts connector children or remote inference.
 
+`activePreset.name`, `bootstrap.models.estimatedFootprint`, and the footprint
+text inside `bootstrap.models.summary` preserve legacy approximate labels from
+the built-in preset name. They are not measurements of a clean download or the
+current cache; use `bootstrap.cache.totalSizeBytes` for observed cache use.
+
 ### Verify Connector Retrieval
 
 ```http
@@ -2104,6 +2109,9 @@ POST /api/presets
 ```
 
 Switch to a different model preset. Reloads models automatically.
+
+The `name` strings shown above contain legacy approximate size labels. Treat
+them as display labels, not authoritative download or cache measurements.
 
 **Request Body**:
 

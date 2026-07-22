@@ -32,20 +32,20 @@ pip install quivr-core
 
 ## Feature Comparison
 
-| Feature              | GNO                             | Quivr                              |
-| -------------------- | ------------------------------- | ---------------------------------- |
-| **Primary Focus**    | Search tool + platform          | RAG framework                      |
-| **Database**         | SQLite (embedded)               | PGVector, Faiss (configurable)     |
-| **Setup Complexity** | Single command                  | Python environment + config        |
-| **CLI**              | ✓ Full-featured                 | ✗ Library-based                    |
-| **Web UI**           | ✓ Built-in                      | ✗ Build your own                   |
-| **REST API**         | ✓ Built-in                      | ✗ Build your own                   |
-| **Headless Daemon**  | ✓ `gno daemon`                  | ✓ Build it yourself                |
-| **MCP Support**      | ✓                               | ✗                                  |
-| **LLM Providers**    | Local (llama.cpp)               | OpenAI, Anthropic, Mistral, Ollama |
-| **Workflow Config**  | Presets (slim/balanced/quality) | YAML-based custom workflows        |
-| **Reranking**        | ✓ Cross-encoder                 | ✓ Cohere integration               |
-| **Multi-user**       | ✗                               | ✓ Framework supports it            |
+| Feature              | GNO                                        | Quivr                              |
+| -------------------- | ------------------------------------------ | ---------------------------------- |
+| **Primary Focus**    | Search tool + platform                     | RAG framework                      |
+| **Database**         | SQLite (embedded)                          | PGVector, Faiss (configurable)     |
+| **Setup Complexity** | Single command                             | Python environment + config        |
+| **CLI**              | ✓ Full-featured                            | ✗ Library-based                    |
+| **Web UI**           | ✓ Built-in                                 | ✗ Build your own                   |
+| **REST API**         | ✓ Built-in                                 | ✗ Build your own                   |
+| **Headless Daemon**  | ✓ `gno daemon`                             | ✓ Build it yourself                |
+| **MCP Support**      | ✓                                          | ✗                                  |
+| **LLM Providers**    | Local (llama.cpp)                          | OpenAI, Anthropic, Mistral, Ollama |
+| **Workflow Config**  | Presets (slim-tuned/slim/balanced/quality) | YAML-based custom workflows        |
+| **Reranking**        | ✓ Cross-encoder                            | ✓ Cohere integration               |
+| **Multi-user**       | ✗                                          | ✓ Framework supports it            |
 
 ## GNO Advantages
 

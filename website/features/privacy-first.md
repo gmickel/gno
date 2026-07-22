@@ -2,17 +2,17 @@
 layout: feature
 title: Privacy First
 headline: Your Data, Index, and Models Stay With You
-description: GNO is built for privacy-first local search. Indexing, embeddings, search, browsing, and AI answers run on your machine or your own network without cloud dependency.
+description: GNO is built for privacy-first local search. Indexing and default inference run on your machine, with explicit boundaries for model downloads, configured HTTP inference, and publishing.
 keywords: privacy first, local search, offline search, no cloud, private documents, local knowledge workspace
 icon: privacy-first
 slug: privacy-first
 permalink: /features/privacy-first/
 og_image: /assets/images/og/og-privacy-first.png
 benefits:
-  - Zero cloud dependencies
+  - Local-first default processing
   - No telemetry or tracking
   - SQLite database on your disk
-  - Works completely offline
+  - Offline operation after required models are cached
 commands:
   - "gno doctor"
   - "gno status"
@@ -20,19 +20,23 @@ commands:
 
 ## True Local-First Design
 
-Unlike cloud-based solutions, GNO processes everything on your machine:
+By default, GNO processes indexing and inference on your machine.
 
 ### No Network Required
 
-Once installed, GNO works completely offline:
+With required models already cached, GNO works offline:
 
 - Index documents without internet
 - Search without internet
 - Generate AI answers without internet
 
+Model downloads contact their artifact hosts. Configured HTTP model roles send
+queries, chunks, or answer context to that server. gno.sh receives only the
+artifact you explicitly export and upload.
+
 ### Your Data, Your Disk
 
-All data stays in your control:
+The local index and model cache stay on your disk:
 
 ```
 ~/.local/share/gno/

@@ -43,7 +43,7 @@ See [scores.md](scores.md) for latest results. Updated automatically by `bun run
 
 | Eval                     | What it tests                                    | Status                       |
 | ------------------------ | ------------------------------------------------ | ---------------------------- |
-| **vsearch**              | BM25 search ranking (Recall@K, nDCG@K)           | ✅ Passing                   |
+| **vsearch**              | Legacy BM25 ranking suite (Recall@K, nDCG@K)     | ✅ Passing                   |
 | **query**                | Query parsing and latency                        | ✅ Passing                   |
 | **hybrid**               | End-to-end hybrid benchmark + p50/p95            | ✅ Passing                   |
 | **retrieval-candidates** | Candidate gen-model benchmark (full hybrid path) | ✅ Available for manual runs |
@@ -72,19 +72,32 @@ See [scores.md](scores.md) for latest results. Updated automatically by `bun run
 
 ## Known Limitations
 
-### Multilingual (38% score)
+### Multilingual (38% legacy BM25 score)
 
-Cross-language retrieval is a placeholder. Current BM25 search doesn't translate queries or use multilingual embeddings. Future work:
+`multilingual.eval.ts` is a four-case BM25-only sanity lane over the small
+`evals/fixtures/corpus/{de,en,fr,it}` corpus. Despite its historical suite name,
+it does not call vector search, test the current Qwen embedding default, or
+establish cross-language quality. It documents lexical degradation and does not
+gate releases.
 
-- Query translation or multilingual embeddings
-- Per-language FTS indexes
-- Language-specific stemmers
+Do not mix this score with the separate general-embedding benchmark. The
+[immutable April 2026 evidence](fixtures/general-embedding-benchmark/README.md)
+uses 15 FastAPI documents in five corpus languages (`en`, `de`, `fr`, `es`,
+`zh`) and 13 queries. The later
+[July Nemotron screen](../research/embeddings/2026-07-21-nemotron-3-embed-1b.md)
+used different runtime/profile paths, so its timings and Qwen scores are not an
+update to the April artifact.
 
-For now, this eval documents the gap rather than gating releases.
+Dedicated lexical CJK benchmarking remains pending. Query-language
+classification and the seven-language indexed-document detector are product
+metadata/prompt features, not evidence that this placeholder eval covers those
+languages.
 
 ### Ask Eval (61% score)
 
-Tests answer generation with local LLM models across all three presets. Current scores:
+These historical results cover the three untuned presets; the current built-in
+set has four presets because `slim-tuned` is now the default retrieval preset.
+The table does not evaluate its fine-tuned `expand` role:
 
 | Preset   | Model               | Score |
 | -------- | ------------------- | ----- |
@@ -102,8 +115,11 @@ The balanced preset trades some citation reliability for faster inference and lo
 
 ### Not Yet Implemented
 
-- **Vector search evals** - Requires embedding infrastructure
-- **Latency budgets** - Measure first, then set thresholds
+- **Evalite vector multilingual lane** - vector/hybrid evidence currently lives
+  in the separate general-embedding benchmark harness
+- **Lexical CJK benchmark** - tracked separately from the BM25 placeholder
+- **Latency budgets** - measure comparable production runtime paths first, then
+  set thresholds
 
 ## Architecture
 

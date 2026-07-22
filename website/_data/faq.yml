@@ -4,7 +4,7 @@
 - category: Getting Started
   questions:
     - q: What is GNO?
-      a: GNO is a local knowledge engine that indexes your documents—Markdown, PDF, DOCX, XLSX, PPTX—and lets you search them using BM25 full-text, vector similarity, or hybrid search with query expansion and cross-encoder reranking. Everything runs 100% locally on your machine with zero cloud dependencies.
+      a: GNO is a local-first knowledge engine that indexes Markdown, PDF, DOCX, XLSX, PPTX, and plain text, then searches them with BM25, vector similarity, or hybrid retrieval. The default inference path is local; model downloads, configured HTTP inference, and explicit publishing are separate network boundaries.
 
     - q: How do I install GNO?
       a: >
@@ -20,17 +20,17 @@
 
     - q: Can GNO keep indexing without the browser open?
       a: >
-        Yes. Run gno daemon for headless continuous indexing. It keeps the same watch, sync, and embed loop alive without starting the Web UI. In v0.30 it stays in the foreground, so use nohup, launchd, or systemd if you want supervision.
+        Yes. Run gno daemon for foreground indexing, or gno daemon --detach on macOS/Linux. Manage the detached process with gno daemon --status and gno daemon --stop. Windows uses foreground mode, WSL, or a service wrapper.
 
     - q: What file formats does GNO support?
-      a: GNO indexes Markdown (.md) with frontmatter extraction, PDF (.pdf), Microsoft Word (.docx), Excel (.xlsx), PowerPoint (.pptx), and plain text files. It also detects document language across 30+ languages.
+      a: GNO indexes Markdown (.md) with frontmatter extraction, PDF (.pdf), Microsoft Word (.docx), Excel (.xlsx), PowerPoint (.pptx), and plain text files. Indexed-document detection covers English, German, French, Italian, Chinese, Japanese, and Korean.
 
     - q: Can I edit PDFs or Word docs directly in GNO?
       a: >
         Not in place. GNO can view and search converted PDF/DOCX/PPTX/XLSX content, but those source files stay read-only. If you want to work on the content, use Create editable copy to generate a markdown note with source provenance.
 
     - q: Is my data sent to the cloud?
-      a: No. GNO is 100% local and privacy-first. All indexing, embedding, search, and AI answers run on your machine. Zero telemetry, zero tracking. Your documents never leave your computer. It works completely offline.
+      a: By default, indexing and inference run locally and GNO has no telemetry. Model downloads contact their artifact hosts; configured HTTP model roles receive the text sent to them; publishing uploads only the artifact you explicitly export. Offline mode works when required models are already cached.
 
     - q: Does GNO work with Obsidian?
       a: >
@@ -74,7 +74,7 @@
 
     - q: When should I use gno serve versus gno daemon?
       a: >
-        Use gno serve when you want the browser dashboard, REST API, or desktop shell integration. Use gno daemon when you only want headless continuous indexing. In v0.30 avoid running both against the same index at the same time.
+        Use gno serve when you want the browser dashboard, REST API, or desktop shell integration. Use gno daemon when you only want headless continuous indexing. Avoid running both against the same index at the same time.
 
     - q: Can I exclude certain files or folders?
       a: >
@@ -84,7 +84,7 @@
   questions:
     - q: What LLM models does GNO use?
       a: >
-        GNO uses local models via node-llama-cpp. The default preset is slim-tuned (~1GB) with the fine-tuned local expansion model plus the same embed, rerank, and answer stack as slim. Other built-in presets are slim, balanced (~2GB), and quality (~2.5GB).
+        GNO uses local models via node-llama-cpp. The default preset is slim-tuned, with a fine-tuned local expansion role plus the same embed, rerank, and answer stack as slim. Other built-ins are slim, balanced, and quality. Actual download and cache use depends on selected artifacts and files already cached.
 
     - q: Do I need an API key?
       a: No. GNO runs entirely locally with no API keys or cloud services required. Models are downloaded once and run on your machine.
@@ -125,7 +125,7 @@
 
     - q: How do I use GNO with Cursor, Zed, or Windsurf?
       a: >
-        Install GNO as an MCP server with gno mcp install --target cursor (or zed, windsurf, amp, etc.). GNO provides 28 registered MCP tools for search, retrieval, indexing, typed graph traversal, and diagnostics.
+        Install GNO as an MCP server with gno mcp install --target cursor (or zed, windsurf, amp, etc.). Default mode exposes 17 read-only retrieval, graph, status, and job tools. Starting MCP with --enable-write adds 11 mutation tools, for 28 total.
 
     - q: What is MCP?
       a: Model Context Protocol (MCP) is a standard for AI assistants to access external tools. GNO provides an MCP server so Claude Desktop, Cursor, Zed, Windsurf, Amp, Raycast, and more can search your documents.
@@ -136,7 +136,7 @@
 
     - q: Is GNO a private search engine for Markdown and Office files?
       a: >
-        Yes. GNO is built exactly for that kind of local, privacy-first document search. It handles Markdown, PDF, DOCX, XLSX, PPTX, and plain text; stores the index locally; works offline; and does not send your files to the cloud. For many users, it acts like a private search engine for their personal knowledge base.
+        Yes. GNO stores its index locally and the default inference path is local. It can work offline after required models are cached. Configured HTTP inference and explicit publishing are separate network boundaries, so review those settings when privacy matters.
 
     - q: Can GNO be an MCP server for a personal knowledge base?
       a: >

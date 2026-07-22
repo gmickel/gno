@@ -35,21 +35,21 @@ pip install kotaemon
 
 ## Feature Comparison
 
-| Feature             | GNO                      | Kotaemon                  |
-| ------------------- | ------------------------ | ------------------------- |
-| **Search Modes**    | BM25, Vector, Hybrid     | Full-text, Vector, Hybrid |
-| **Reranking**       | ✓ Cross-encoder          | ✓                         |
-| **Citations**       | ✓ Source links           | ✓ In-browser PDF preview  |
-| **CLI**             | ✓ Full-featured          | ✗                         |
-| **Web UI**          | ✓ `gno serve`            | ✓ Gradio                  |
-| **REST API**        | ✓                        | ✗                         |
-| **Headless Daemon** | ✓ `gno daemon`           | ✓ Server mode             |
-| **MCP Support**     | ✓                        | ✗                         |
-| **Multi-modal**     | ✗                        | ✓ Figures, tables         |
-| **Query Expansion** | ✓ LLM-powered            | ✗                         |
-| **HyDE**            | ✓                        | ✗                         |
-| **Model Presets**   | ✓ slim/balanced/quality  | ✗                         |
-| **Search Depth**    | ✓ fast/balanced/thorough | ✗                         |
+| Feature             | GNO                                | Kotaemon                  |
+| ------------------- | ---------------------------------- | ------------------------- |
+| **Search Modes**    | BM25, Vector, Hybrid               | Full-text, Vector, Hybrid |
+| **Reranking**       | ✓ Cross-encoder                    | ✓                         |
+| **Citations**       | ✓ Source links                     | ✓ In-browser PDF preview  |
+| **CLI**             | ✓ Full-featured                    | ✗                         |
+| **Web UI**          | ✓ `gno serve`                      | ✓ Gradio                  |
+| **REST API**        | ✓                                  | ✗                         |
+| **Headless Daemon** | ✓ `gno daemon`                     | ✓ Server mode             |
+| **MCP Support**     | ✓                                  | ✗                         |
+| **Multi-modal**     | ✗                                  | ✓ Figures, tables         |
+| **Query Expansion** | ✓ LLM-powered                      | ✗                         |
+| **HyDE**            | ✓                                  | ✗                         |
+| **Model Presets**   | ✓ slim-tuned/slim/balanced/quality | ✗                         |
+| **Search Depth**    | ✓ fast/balanced/thorough           | ✗                         |
 
 ## File Format Support
 
@@ -131,7 +131,7 @@ Kotaemon wins when citation presentation and document-Q&A UI are the main event.
 - You need REST API for custom integrations
 - You're integrating with AI coding assistants (Claude, Cursor, Windsurf)
 - You want MCP support for agent workflows
-- You prefer local-first, no cloud dependencies
+- You prefer a local-first default with explicit network boundaries
 - You need fine-grained search control (depth, expansion, HyDE)
 
 ## When to Choose Kotaemon
