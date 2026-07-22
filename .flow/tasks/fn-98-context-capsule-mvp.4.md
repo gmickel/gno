@@ -41,9 +41,8 @@ Deliver implement non-mutating capsule verification as one implementation-sized 
 
 
 ## Done summary
-TBD
-
+Implemented deterministic, non-mutating Context Capsule verification over the frozen V1 contract. Verification now validates canonical identity and exact budget before store access; re-resolves active URI/docid/source/mirror/chunk/line truth in batches with per-item isolation; distinguishes source, mirror, passage, missing, ranking, config/model, and index drift; preserves same-mirror documents; and emits a separate canonical receipt without rewriting the Capsule. Focused, contract, typecheck, lint, Flow, and full Bun suites pass. The agentic benchmark retains its inherited context-byte-reduction failure (-0.6570175070322011) while all other promotion gates pass.
 ## Evidence
-- Commits:
-- Tests:
+- Commits: b7fa5ae3a136af4535ddb91dcb195dc058a154c2
+- Tests: bun test test/core/context-verifier.test.ts test/core/context-evidence.test.ts test/spec/schemas/context-capsule-verification.test.ts (13 pass), bun test test/context test/spec/schemas (191 pass), bun test (2504 pass, 1 skip, 0 fail), bun run typecheck, bun run lint:check, .flow/bin/flowctl validate --spec fn-98-context-capsule-mvp --json, bun run eval:agentic (inherited red: context_byte_reduction=-0.6570175070322011; all other Capsule gates pass)
 - PRs:
