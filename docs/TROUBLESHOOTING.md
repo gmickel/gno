@@ -191,6 +191,12 @@ gno --index <name> context watches --json
 gno --index <name> context reverify <capsule-registration-id> --json
 ```
 
+`context reverify` exit `2` means the operation record was persisted but
+verification failed. In terminal mode, read the printed failure code/message.
+With `--json`, parse the structured stdout object: `operationStatus` is
+`failed`, `receipt` is `null`, and `errorCode`/`errorMessage` explain the
+failure.
+
 - `capsule_file_changed`: the exact saved bytes no longer match the registered
   hash. Unwatch and register the intended canonical Capsule again.
 - `capsule_file_missing`: restore the caller-owned file at its absolute path,

@@ -847,6 +847,12 @@ not in the default index. JSON is governed by the closed Draft-07
 canonical receipt; operation failure contains no receipt. These lifecycle
 commands are CLI-only—REST, MCP, and SDK do not add persistent watch endpoints.
 
+Manual reverification exits `0` only for a completed operation. A failed
+operation remains visible: terminal output prints its code and message, while
+`--json` preserves the closed structured failure object on stdout. The process
+then exits `2`, so scripts cannot mistake a persisted failure for successful
+verification.
+
 ### gno context rm
 
 ```bash

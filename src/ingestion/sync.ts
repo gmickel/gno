@@ -725,7 +725,20 @@ export class SyncService {
           // Log but continue - error recording is best-effort
         }
 
-        // Upsert document with error info, explicitly clear mirrorHash
+        const previousStructure = await this.readPreviousStructure(
+          store,
+          existing
+        );
+        const structureDelta = diffDocumentStructure(previousStructure, {
+          headings: [],
+          links: [],
+          typedEdges: [],
+          dates: {},
+        }).delta;
+
+        // Upsert document with error info, explicitly clear mirrorHash. This
+        // source/evidence transition is journaled in the same transaction so
+        // saved Capsule freshness checks cannot miss the disappearance.
         const upsertResult = await store.upsertDocument({
           collection: collection.name,
           relPath: entry.relPath,
@@ -739,7 +752,7 @@ export class SyncService {
           lastErrorMessage: convertResult.error.message,
           ingestVersion: INGEST_VERSION,
           contentTypeRulesFingerprint,
-          changeJournal: false,
+          changeJournal: { structureDelta },
           // mirrorHash intentionally omitted (will be null)
         });
 

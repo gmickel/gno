@@ -19,13 +19,14 @@ import {
   decodeDocumentChangeCursor,
   DEFAULT_DOCUMENT_CHANGE_RETENTION,
   encodeDocumentChangeCursor,
-  normalizeDocumentChangeStructureDelta,
+  serializeDocumentChangeStructureDelta,
   validateDocumentChangeRetentionPolicy,
 } from "../../core/change-journal";
 import { err, ok } from "../types";
 
 const DAY_MS = 86_400_000;
 const MAX_PAGE_SIZE = 1_000;
+const RETENTION_DELETE_SCAN_BATCH_SIZE = 256;
 const UTF8_ENCODER = new TextEncoder();
 
 export interface DocumentChangeSnapshot {
@@ -149,57 +150,86 @@ const enforceInTransaction = (
   nowMs: number
 ): DocumentChangeRetentionResult => {
   validateDocumentChangeRetentionPolicy(policy, nowMs);
-  const rows = db
-    .query<{ sequence: number; observed_at_ms: number; byte_size: number }, []>(
-      `SELECT sequence, observed_at_ms, byte_size
-       FROM document_changes
-       ORDER BY sequence ASC`
+  const state = db
+    .query<
+      {
+        retained_entries: number;
+        retained_bytes: number;
+        retention_floor: number;
+      },
+      []
+    >(
+      `SELECT retained_entries, retained_bytes, retention_floor
+       FROM document_change_journal_state
+       WHERE singleton_id = 1`
     )
-    .all();
+    .get() ?? {
+    retained_entries: 0,
+    retained_bytes: 0,
+    retention_floor: 0,
+  };
   const ageBoundary = nowMs - policy.maxAgeDays * DAY_MS;
-  let deleteCount = 0;
-  let remainingBytes = rows.reduce((total, row) => total + row.byte_size, 0);
+  const ageCutoff =
+    db
+      .query<{ sequence: number | null }, [number]>(
+        `SELECT MAX(sequence) AS sequence
+         FROM document_changes
+         WHERE observed_at_ms <= ?`
+      )
+      .get(ageBoundary)?.sequence ?? state.retention_floor;
+  let deleted = 0;
+  let deletedBytes = 0;
+  let retentionFloor = state.retention_floor;
+  let afterSequence = state.retention_floor;
 
-  while (
-    deleteCount < rows.length &&
-    rows[deleteCount]!.observed_at_ms <= ageBoundary
+  retentionScan: while (
+    state.retained_entries - deleted > policy.maxEntries ||
+    state.retained_bytes - deletedBytes > policy.maxBytes ||
+    afterSequence < ageCutoff
   ) {
-    remainingBytes -= rows[deleteCount]!.byte_size;
-    deleteCount += 1;
-  }
-  while (
-    rows.length - deleteCount > policy.maxEntries ||
-    remainingBytes > policy.maxBytes
-  ) {
-    remainingBytes -= rows[deleteCount]!.byte_size;
-    deleteCount += 1;
+    const rows = db
+      .query<{ sequence: number; byte_size: number }, [number, number]>(
+        `SELECT sequence, byte_size
+         FROM document_changes
+         WHERE sequence > ?
+         ORDER BY sequence ASC
+         LIMIT ?`
+      )
+      .all(afterSequence, RETENTION_DELETE_SCAN_BATCH_SIZE);
+    if (rows.length === 0) break;
+
+    for (const row of rows) {
+      const overEntries = state.retained_entries - deleted > policy.maxEntries;
+      const overBytes = state.retained_bytes - deletedBytes > policy.maxBytes;
+      if (!(row.sequence <= ageCutoff || overEntries || overBytes)) {
+        break retentionScan;
+      }
+      deleted += 1;
+      deletedBytes += row.byte_size;
+      retentionFloor = row.sequence;
+      afterSequence = row.sequence;
+    }
   }
 
-  if (deleteCount > 0) {
-    const retentionFloor = rows[deleteCount - 1]!.sequence;
+  if (deleted > 0) {
     db.run("DELETE FROM document_changes WHERE sequence <= ?", [
       retentionFloor,
     ]);
     db.run(
       `UPDATE document_change_journal_state
-       SET retention_floor = MAX(retention_floor, ?)
+       SET retention_floor = MAX(retention_floor, ?),
+           retained_entries = retained_entries - ?,
+           retained_bytes = retained_bytes - ?
        WHERE singleton_id = 1`,
-      [retentionFloor]
+      [retentionFloor, deleted, deletedBytes]
     );
   }
 
-  const state = db
-    .query<{ retention_floor: number }, []>(
-      `SELECT retention_floor
-       FROM document_change_journal_state
-       WHERE singleton_id = 1`
-    )
-    .get();
   return {
-    deleted: deleteCount,
-    remainingEntries: rows.length - deleteCount,
-    remainingBytes,
-    earliestCursor: encodeDocumentChangeCursor(state?.retention_floor ?? 0),
+    deleted,
+    remainingEntries: state.retained_entries - deleted,
+    remainingBytes: state.retained_bytes - deletedBytes,
+    earliestCursor: encodeDocumentChangeCursor(retentionFloor),
   };
 };
 
@@ -210,13 +240,21 @@ export const appendDocumentChange = (
   if (!Number.isSafeInteger(draft.observedAtMs) || draft.observedAtMs < 0) {
     throw new RangeError("Document change observedAtMs must be non-negative");
   }
-  const delta = normalizeDocumentChangeStructureDelta(draft.structureDelta);
-  const headingDeltaJson = JSON.stringify(delta.headings);
-  const linkDeltaJson = JSON.stringify(delta.links);
-  const typedEdgeDeltaJson = JSON.stringify(delta.typedEdges);
-  const dateDeltaJson = JSON.stringify(delta.dates);
+  const {
+    delta,
+    headingDeltaJson,
+    linkDeltaJson,
+    typedEdgeDeltaJson,
+    dateDeltaJson,
+  } = serializeDocumentChangeStructureDelta(draft.structureDelta);
   const old = draft.oldSnapshot;
   const next = draft.newSnapshot;
+  const storedByteSize = byteSize(draft, [
+    headingDeltaJson,
+    linkDeltaJson,
+    typedEdgeDeltaJson,
+    dateDeltaJson,
+  ]);
   const inserted = db.run(
     `INSERT INTO document_changes (
        document_id, collection, change_kind,
@@ -248,19 +286,16 @@ export const appendDocumentChange = (
       dateDeltaJson,
       delta.truncated ? 1 : 0,
       draft.observedAtMs,
-      byteSize(draft, [
-        headingDeltaJson,
-        linkDeltaJson,
-        typedEdgeDeltaJson,
-        dateDeltaJson,
-      ]),
+      storedByteSize,
     ]
   );
   db.run(
     `UPDATE document_change_journal_state
-     SET last_sequence = ?
+     SET last_sequence = ?,
+         retained_entries = retained_entries + 1,
+         retained_bytes = retained_bytes + ?
      WHERE singleton_id = 1`,
-    [Number(inserted.lastInsertRowid)]
+    [Number(inserted.lastInsertRowid), storedByteSize]
   );
   enforceInTransaction(
     db,
@@ -415,7 +450,9 @@ export const purgeDocumentChanges = (
       const deleted = db.run("DELETE FROM document_changes").changes;
       db.run(
         `UPDATE document_change_journal_state
-         SET retention_floor = last_sequence
+         SET retention_floor = last_sequence,
+             retained_entries = 0,
+             retained_bytes = 0
          WHERE singleton_id = 1`
       );
       return {

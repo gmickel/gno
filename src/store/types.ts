@@ -307,8 +307,9 @@ export interface DocumentInput {
   /** Fingerprint of normalized content type rules used for derived metadata */
   contentTypeRulesFingerprint?: string;
   /**
-   * Change-journal metadata for a successful lifecycle write. Set to false for
-   * repair/error bookkeeping that must not represent a source lifecycle event.
+   * Change-journal metadata for a source lifecycle write. Conversion failures
+   * that change source/evidence identity are lifecycle writes; set false only
+   * for bookkeeping or repair that must not represent a source change.
    */
   changeJournal?:
     | false

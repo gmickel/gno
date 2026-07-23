@@ -54,7 +54,7 @@ describe("store migrations", () => {
 
       const upgradeResult = runMigrations(db, migrations, "unicode61");
       expect(upgradeResult.ok).toBe(true);
-      expect(getSchemaVersion(db)).toBe(16);
+      expect(getSchemaVersion(db)).toBe(17);
 
       const indexedRow = db
         .query<{ indexed_at: string | null }, []>(
@@ -115,7 +115,7 @@ describe("store migrations", () => {
 
     try {
       expect(runMigrations(db, migrations, "unicode61").ok).toBe(true);
-      expect(getSchemaVersion(db)).toBe(16);
+      expect(getSchemaVersion(db)).toBe(17);
 
       const savedTables = db
         .query<{ name: string }, []>(
@@ -245,6 +245,47 @@ describe("store migrations", () => {
     }
   });
 
+  test("backfills bounded document-change retention counters from v16", () => {
+    const db = new Database(dbPath);
+    try {
+      expect(runMigrations(db, migrations.slice(0, 16), "unicode61").ok).toBe(
+        true
+      );
+      db.run(
+        `INSERT INTO document_changes (
+           document_id, collection, change_kind, observed_at_ms, byte_size
+         ) VALUES (1, 'notes', 'create', 1, 41),
+                  (2, 'notes', 'create', 2, 59)`
+      );
+      db.run(
+        `UPDATE document_change_journal_state
+         SET last_sequence = 2
+         WHERE singleton_id = 1`
+      );
+
+      expect(runMigrations(db, migrations, "unicode61").ok).toBe(true);
+      expect(getSchemaVersion(db)).toBe(17);
+      expect(
+        db
+          .query<{ retained_entries: number; retained_bytes: number }, []>(
+            `SELECT retained_entries, retained_bytes
+             FROM document_change_journal_state
+             WHERE singleton_id = 1`
+          )
+          .get()
+      ).toEqual({ retained_entries: 2, retained_bytes: 100 });
+      expect(() =>
+        db.run(
+          `UPDATE document_change_journal_state
+           SET retained_entries = -1
+           WHERE singleton_id = 1`
+        )
+      ).toThrow();
+    } finally {
+      db.close();
+    }
+  });
+
   test("backfills FTS sync markers only for fully aligned active legacy rows", () => {
     const db = new Database(dbPath);
 
@@ -300,7 +341,7 @@ describe("store migrations", () => {
 
       const upgraded = runMigrations(db, migrations, "unicode61");
       expect(upgraded.ok).toBe(true);
-      expect(getSchemaVersion(db)).toBe(16);
+      expect(getSchemaVersion(db)).toBe(17);
       const rows = db
         .query<{ rel_path: string; fts_mirror_hash: string | null }, []>(
           "SELECT rel_path, fts_mirror_hash FROM documents ORDER BY rel_path"

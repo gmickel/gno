@@ -2173,14 +2173,20 @@ function wireManagementCommands(program: Command): void {
       const globals = getGlobals();
       const { reverifyWatchedCapsule } =
         await import("./commands/context-saved");
-      await writeOutput(
-        await reverifyWatchedCapsule(registration, {
-          configPath: globals.config,
-          indexName: globals.index,
-          format: format === "json" ? "json" : "terminal",
-        }),
-        format === "json" ? "json" : "terminal"
-      );
+      const result = await reverifyWatchedCapsule(registration, {
+        configPath: globals.config,
+        indexName: globals.index,
+        format: format === "json" ? "json" : "terminal",
+      });
+      await writeOutput(result.output, format === "json" ? "json" : "terminal");
+      if (result.operationStatus === "failed") {
+        throw new CliError(
+          "RUNTIME",
+          result.errorMessage ??
+            "Saved Context Capsule verification operation failed",
+          { operationStatus: "failed" }
+        );
+      }
     });
 
   contextCmd

@@ -1402,6 +1402,12 @@ operation status, affected-question state, and timestamp; they contain no
 question, file path, URI, passage, Capsule, or receipt bytes. `context
 reverify` performs the same non-generative verification immediately.
 
+`context reverify` exits `0` only when `operationStatus` is `completed`. A
+persisted `failed` operation is still rendered: terminal output includes the
+failure code and message, while `--json` writes the closed structured
+reverification object to stdout. The command then exits `2`; the structured
+failure must never be mistaken for a successful verification receipt.
+
 JSON contracts are Draft-07 and closed:
 
 - `watch`: `saved-capsule-watch.schema.json`; the initial verification is null.

@@ -31,6 +31,12 @@ export interface WatchSavedCapsuleCommandOptions extends SavedCapsuleCommandOpti
   notify?: boolean;
 }
 
+export interface ReverifySavedCapsuleCommandResult {
+  output: string;
+  operationStatus: "completed" | "failed";
+  errorMessage: string | null;
+}
+
 const withStore = async <T>(
   options: SavedCapsuleCommandOptions,
   operation: (input: {
@@ -146,21 +152,38 @@ export const unwatchSavedCapsule = async (
 export const reverifyWatchedCapsule = async (
   registrationId: string,
   options: SavedCapsuleCommandOptions
-): Promise<string> =>
+): Promise<ReverifySavedCapsuleCommandResult> =>
   withStore(options, async ({ store, config, indexName }) => {
     const outcome = await reverifySavedCapsuleManually(registrationId, {
       store,
       config,
       indexName,
     });
-    return options.format === "json"
-      ? canonicalSavedCapsuleRegistryJson({
-          schemaVersion: "1.0",
-          registration: outcome.registration,
-          verification: outcome.verification,
-          receipt: outcome.receipt,
-        })
-      : formatRegistration(outcome.registration);
+    const errorMessage =
+      outcome.verification.operationStatus === "failed"
+        ? `${outcome.verification.errorCode ?? "verification_failed"}: ${
+            outcome.verification.errorMessage ??
+            "Saved Context Capsule verification failed"
+          }`
+        : null;
+    const output =
+      options.format === "json"
+        ? canonicalSavedCapsuleRegistryJson({
+            schemaVersion: "1.0",
+            registration: outcome.registration,
+            verification: outcome.verification,
+            receipt: outcome.receipt,
+          })
+        : [
+            formatRegistration(outcome.registration),
+            `  operation: ${outcome.verification.operationStatus}`,
+            ...(errorMessage ? [`  error: ${errorMessage}`] : []),
+          ].join("\n");
+    return {
+      output,
+      operationStatus: outcome.verification.operationStatus,
+      errorMessage,
+    };
   }).catch((error) => {
     throw contextCliError(error);
   });

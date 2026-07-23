@@ -163,10 +163,14 @@ export async function listKnowledgeChanges(
       isValidation: true,
     };
   }
-  if ((input.collection?.length ?? 0) > 256) {
+  const collection = input.collection?.trim();
+  if (
+    input.collection !== undefined &&
+    (!collection || collection.length > 256)
+  ) {
     return {
       success: false,
-      error: "collection must be at most 256 characters",
+      error: "collection must be between 1 and 256 characters",
       isValidation: true,
     };
   }
@@ -184,7 +188,7 @@ export async function listKnowledgeChanges(
   }
   const listed = await store.listDocumentChanges({
     ...since,
-    collection: input.collection,
+    collection,
     limit,
   });
   if (!listed.ok) {
@@ -303,21 +307,26 @@ export async function getKnowledgeDiff(
   ref: string,
   changeId?: string
 ): Promise<KnowledgeDeltaServiceResult<KnowledgeDiffResult>> {
-  if (!ref.trim() || ref.length > 4096) {
+  const normalizedRef = ref.trim();
+  if (!normalizedRef || normalizedRef.length > 4096) {
     return {
       success: false,
       error: "ref must be between 1 and 4096 characters",
       isValidation: true,
     };
   }
-  if ((changeId?.length ?? 0) > 512) {
+  const normalizedChangeId = changeId?.trim();
+  if (
+    changeId !== undefined &&
+    (!normalizedChangeId || normalizedChangeId.length > 512)
+  ) {
     return {
       success: false,
-      error: "changeId must be at most 512 characters",
+      error: "changeId must be between 1 and 512 characters",
       isValidation: true,
     };
   }
-  const resolved = await resolveDocRef(store, ref);
+  const resolved = await resolveDocRef(store, normalizedRef);
   if ("error" in resolved) {
     return {
       success: false,
@@ -329,8 +338,12 @@ export async function getKnowledgeDiff(
   let status: KnowledgeDiffResult["status"];
   let history: KnowledgeDiffResult["history"];
   const warnings = ["Source bodies are not retained in the change journal"];
-  if (changeId) {
-    const exact = await exactRetainedChange(store, resolved.doc.id, changeId);
+  if (normalizedChangeId) {
+    const exact = await exactRetainedChange(
+      store,
+      resolved.doc.id,
+      normalizedChangeId
+    );
     if (!exact.ok) return { success: false, ...exact };
     row = exact.row;
     status = exact.expired ? "expired" : row ? "available" : "unavailable";

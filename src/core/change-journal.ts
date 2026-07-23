@@ -11,7 +11,9 @@ import type {
 
 const CURSOR_PREFIX = "gno-change-v1.";
 const MAX_DELTA_ITEMS_PER_SIDE = 16;
-const MAX_DELTA_VALUE_CHARS = 256;
+const MAX_DELTA_VALUE_JSON_BYTES = 256;
+export const MAX_DOCUMENT_CHANGE_DELTA_JSON_BYTES = 16 * 1024;
+const UTF8_ENCODER = new TextEncoder();
 
 export const DEFAULT_DOCUMENT_CHANGE_RETENTION: DocumentChangeRetentionPolicy =
   {
@@ -50,16 +52,49 @@ const normalizeValues = (
         .filter((value) => value.length > 0)
     ),
   ].sort();
-  const selected = unique
-    .slice(0, MAX_DELTA_ITEMS_PER_SIDE)
-    .map((value) => value.slice(0, MAX_DELTA_VALUE_CHARS));
+  const selected: string[] = [];
+  const selectedValues = new Set<string>();
+  let truncated = false;
+  for (const value of unique) {
+    let normalized = "";
+    let jsonByteLength = 0;
+    for (const character of value) {
+      const escaped = JSON.stringify(character).slice(1, -1);
+      const characterBytes = UTF8_ENCODER.encode(escaped).byteLength;
+      if (jsonByteLength + characterBytes > MAX_DELTA_VALUE_JSON_BYTES) {
+        truncated = true;
+        break;
+      }
+      normalized += character;
+      jsonByteLength += characterBytes;
+    }
+    if (normalized !== value) {
+      truncated = true;
+    }
+    if (selectedValues.has(normalized)) {
+      truncated = true;
+      continue;
+    }
+    if (selected.length === MAX_DELTA_ITEMS_PER_SIDE) {
+      truncated = true;
+      continue;
+    }
+    selected.push(normalized);
+    selectedValues.add(normalized);
+  }
   return {
     values: selected,
-    truncated:
-      unique.length > selected.length ||
-      unique.some((value, index) => value !== selected[index]),
+    truncated,
   };
 };
+
+export interface SerializedDocumentChangeStructureDelta {
+  delta: DocumentChangeStructureDelta;
+  headingDeltaJson: string;
+  linkDeltaJson: string;
+  typedEdgeDeltaJson: string;
+  dateDeltaJson: string;
+}
 
 const normalizeSet = (
   value: Partial<DocumentChangeSet> | undefined
@@ -107,6 +142,33 @@ export const normalizeDocumentChangeStructureDelta = (
       typedEdges.truncated ||
       dates.truncated,
   };
+};
+
+/**
+ * Canonical storage projection for migration 015's UTF-8 byte constraints.
+ * Callers must use this instead of independently stringifying normalized deltas.
+ */
+export const serializeDocumentChangeStructureDelta = (
+  value?: Partial<DocumentChangeStructureDelta>
+): SerializedDocumentChangeStructureDelta => {
+  const delta = normalizeDocumentChangeStructureDelta(value);
+  const serialized = {
+    headingDeltaJson: JSON.stringify(delta.headings),
+    linkDeltaJson: JSON.stringify(delta.links),
+    typedEdgeDeltaJson: JSON.stringify(delta.typedEdges),
+    dateDeltaJson: JSON.stringify(delta.dates),
+  };
+  for (const json of Object.values(serialized)) {
+    if (
+      UTF8_ENCODER.encode(json).byteLength >
+      MAX_DOCUMENT_CHANGE_DELTA_JSON_BYTES
+    ) {
+      throw new RangeError(
+        "Normalized document change structure exceeds its UTF-8 storage limit"
+      );
+    }
+  }
+  return { delta, ...serialized };
 };
 
 export const encodeDocumentChangeCursor = (sequence: number): string => {

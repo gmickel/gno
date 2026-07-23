@@ -185,6 +185,10 @@ export const registerSavedCapsule = async (
   input: RegisterSavedCapsuleInput,
   nowMs: number = Date.now()
 ): Promise<SavedCapsuleRegistrationRecord> => {
+  // Capture the conservative high-water mark before reading the caller-owned
+  // file. Any journal change concurrent with file loading then remains newer
+  // than the registration and cannot be skipped by the resident scheduler.
+  const sequence = await latestSequence(store);
   const loaded = await loadSavedCapsuleFile(input.filePath);
   const indexName = assertRuntimeIndex(loaded.capsule, runtimeIndexName);
   const registrationId = `capsule-${sha256Text(loaded.filePath).slice(0, 40)}`;
@@ -192,7 +196,6 @@ export const registerSavedCapsule = async (
     await store.getSavedCapsuleRegistration(registrationId),
     "Failed to read saved Context Capsule registration"
   );
-  const sequence = await latestSequence(store);
   return unwrapStore(
     await store.upsertSavedCapsuleRegistration({
       registrationId,

@@ -145,7 +145,7 @@ describe("saved Context Capsule CLI", () => {
       registration.registrationId,
       "--json"
     );
-    expect(failedReverification.code).toBe(0);
+    expect(failedReverification.code).toBe(2);
     const failed = JSON.parse(failedReverification.stdout);
     expect(failed).toMatchObject({
       receipt: null,
@@ -160,6 +160,14 @@ describe("saved Context Capsule CLI", () => {
     expect(
       assertValid(failed, await loadSchema("saved-capsule-reverification"))
     ).toBe(true);
+    const failedTerminal = await cli(
+      "context",
+      "reverify",
+      registration.registrationId
+    );
+    expect(failedTerminal.code).toBe(2);
+    expect(failedTerminal.stdout).toContain("operation: failed");
+    expect(failedTerminal.stdout).toContain("error: capsule_file_changed:");
 
     const removed = await cli(
       "context",

@@ -343,6 +343,123 @@ describe("document change journal", () => {
     expect(expired.ok && expired.value.cursorExpired).toBe(true);
   });
 
+  test("keeps transactional counters exact while pruning an out-of-order expired prefix", async () => {
+    const now = Date.now();
+    for (let index = 0; index < 4; index += 1) {
+      expect(
+        (
+          await adapter.upsertDocument(
+            document(
+              `counter-${index}.md`,
+              `source-${index}`,
+              `mirror-${index}`,
+              now
+            )
+          )
+        ).ok
+      ).toBe(true);
+    }
+    const db = adapter.getRawDb();
+    db.run(
+      `UPDATE document_changes
+       SET observed_at_ms = CASE sequence
+         WHEN 1 THEN ?
+         WHEN 2 THEN ?
+         WHEN 3 THEN ?
+         ELSE ?
+       END`,
+      [now - 3 * DAY_MS, now, now - 2 * DAY_MS, now]
+    );
+    const before = db
+      .query<
+        {
+          retained_entries: number;
+          retained_bytes: number;
+          actual_entries: number;
+          actual_bytes: number;
+        },
+        []
+      >(
+        `SELECT state.retained_entries, state.retained_bytes,
+                COUNT(changes.sequence) AS actual_entries,
+                COALESCE(SUM(changes.byte_size), 0) AS actual_bytes
+         FROM document_change_journal_state state
+         LEFT JOIN document_changes changes
+         WHERE state.singleton_id = 1`
+      )
+      .get();
+    expect(before?.retained_entries).toBe(before?.actual_entries);
+    expect(before?.retained_bytes).toBe(before?.actual_bytes);
+
+    const pruned = await adapter.enforceDocumentChangeRetention(
+      { maxAgeDays: 1, maxEntries: 100, maxBytes: 1024 * 1024 },
+      now
+    );
+    expect(pruned.ok).toBe(true);
+    if (!pruned.ok) return;
+    expect(pruned.value.deleted).toBe(3);
+    expect(pruned.value.remainingEntries).toBe(1);
+    const retained = await adapter.listDocumentChanges();
+    expect(
+      retained.ok && retained.value.changes.map(({ sequence }) => sequence)
+    ).toEqual([4]);
+
+    const second = await adapter.enforceDocumentChangeRetention(
+      { maxAgeDays: 1, maxEntries: 100, maxBytes: 1024 * 1024 },
+      now
+    );
+    expect(second.ok && second.value.deleted).toBe(0);
+    expect((await adapter.purgeDocumentChanges()).ok).toBe(true);
+    expect(
+      db
+        .query<{ retained_entries: number; retained_bytes: number }, []>(
+          `SELECT retained_entries, retained_bytes
+           FROM document_change_journal_state WHERE singleton_id = 1`
+        )
+        .get()
+    ).toEqual({ retained_entries: 0, retained_bytes: 0 });
+
+    await adapter.upsertDocument(document("after-purge.md", "after", "after"));
+    const after = await adapter.listDocumentChanges();
+    expect(after.ok && after.value.changes[0]?.sequence).toBe(5);
+  });
+
+  test("enforces a no-op policy at retained-journal scale without scanning rows into JavaScript", async () => {
+    const db = adapter.getRawDb();
+    const observedAtMs = Date.now();
+    db.exec(`
+      WITH RECURSIVE rows(value) AS (
+        SELECT 1
+        UNION ALL
+        SELECT value + 1 FROM rows WHERE value < 100000
+      )
+      INSERT INTO document_changes (
+        document_id, collection, change_kind, observed_at_ms, byte_size
+      )
+      SELECT value, 'notes', 'create', ${observedAtMs}, 1 FROM rows;
+
+      UPDATE document_change_journal_state
+      SET last_sequence = (SELECT MAX(sequence) FROM document_changes),
+          retained_entries = (SELECT COUNT(*) FROM document_changes),
+          retained_bytes = (SELECT SUM(byte_size) FROM document_changes)
+      WHERE singleton_id = 1;
+    `);
+
+    const startedAt = performance.now();
+    const result = await adapter.enforceDocumentChangeRetention(
+      {
+        maxAgeDays: 3650,
+        maxEntries: 100_000,
+        maxBytes: 1024 * 1024,
+      },
+      observedAtMs
+    );
+    const durationMs = performance.now() - startedAt;
+    expect(result.ok).toBe(true);
+    expect(result.ok && result.value.deleted).toBe(0);
+    expect(durationMs).toBeLessThan(100);
+  });
+
   test("bounds reserved structural summaries and never stores source content", async () => {
     const headings = Array.from(
       { length: 40 },
@@ -375,5 +492,74 @@ describe("document change journal", () => {
       .map(({ name }) => name);
     expect(columns).not.toContain("content");
     expect(columns).not.toContain("markdown");
+  });
+
+  test("bounds CJK, emoji, escaped controls, and collisions by serialized UTF-8 bytes", async () => {
+    const values = Array.from(
+      { length: 16 },
+      (_, index) =>
+        `${index.toString().padStart(2, "0")}:${'漢😀\u0000\\"'.repeat(100)}`
+    );
+    await adapter.upsertDocument({
+      ...document("unicode-bounded.md", "unicode", "unicode-mirror"),
+      changeJournal: {
+        structureDelta: {
+          headings: { added: values, removed: values },
+          links: { added: values, removed: values },
+          typedEdges: { added: values, removed: values },
+          dates: { added: values, removed: values, changed: values },
+        },
+      },
+    });
+    const page = await adapter.listDocumentChanges();
+    expect(page.ok).toBe(true);
+    if (!page.ok) return;
+    const delta = page.value.changes[0]?.structureDelta;
+    expect(delta?.truncated).toBe(true);
+    const changedDates = delta?.dates.changed ?? [];
+    expect(new Set(changedDates).size).toBe(changedDates.length);
+
+    const lengths = adapter
+      .getRawDb()
+      .query<
+        {
+          headings: number;
+          links: number;
+          typed_edges: number;
+          dates: number;
+        },
+        []
+      >(
+        `SELECT
+           length(CAST(heading_delta_json AS BLOB)) AS headings,
+           length(CAST(link_delta_json AS BLOB)) AS links,
+           length(CAST(typed_edge_delta_json AS BLOB)) AS typed_edges,
+           length(CAST(date_delta_json AS BLOB)) AS dates
+         FROM document_changes`
+      )
+      .get();
+    expect(lengths).toBeDefined();
+    expect(Object.values(lengths ?? {}).every((bytes) => bytes <= 16_384)).toBe(
+      true
+    );
+
+    const collisionPrefix = "x".repeat(256);
+    await adapter.upsertDocument({
+      ...document("collision.md", "collision", "collision-mirror"),
+      changeJournal: {
+        structureDelta: {
+          headings: {
+            added: [`${collisionPrefix}a`, `${collisionPrefix}b`],
+            removed: [],
+          },
+        },
+      },
+    });
+    const collisionPage = await adapter.listDocumentChanges();
+    expect(collisionPage.ok).toBe(true);
+    if (!collisionPage.ok) return;
+    const collision = collisionPage.value.changes.at(-1)?.structureDelta;
+    expect(collision?.truncated).toBe(true);
+    expect(collision?.headings.added).toEqual([collisionPrefix]);
   });
 });

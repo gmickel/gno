@@ -10,6 +10,11 @@ import {
   getKnowledgeDiff,
   listKnowledgeChanges,
 } from "../../src/core/knowledge-delta";
+import {
+  changesInputSchema,
+  diffInputSchema,
+} from "../../src/mcp/tools/changes";
+import { handleChanges, handleDiff } from "../../src/serve/routes/changes";
 import { SqliteAdapter } from "../../src/store/sqlite/adapter";
 import { safeRm } from "../helpers/cleanup";
 
@@ -132,6 +137,46 @@ describe("knowledge delta services", () => {
     );
     expect(expired.success && expired.data.status).toBe("expired");
     expect(root.id).toBeGreaterThan(0);
+  });
+
+  test("rejects provided-empty collection and change selectors across core, REST, and MCP", async () => {
+    expect(
+      await listKnowledgeChanges(store, { collection: "   " })
+    ).toMatchObject({
+      success: false,
+      isValidation: true,
+      error: expect.stringContaining("collection"),
+    });
+    expect(
+      await getKnowledgeDiff(store, "gno://notes/root.md", " ")
+    ).toMatchObject({
+      success: false,
+      isValidation: true,
+      error: expect.stringContaining("changeId"),
+    });
+
+    const changesResponse = await handleChanges(
+      store,
+      new URL("http://localhost/api/changes?collection=")
+    );
+    expect(changesResponse.status).toBe(400);
+    const diffResponse = await handleDiff(
+      store,
+      new URL(
+        "http://localhost/api/diff?ref=gno%3A%2F%2Fnotes%2Froot.md&change="
+      )
+    );
+    expect(diffResponse.status).toBe(400);
+
+    expect(changesInputSchema.safeParse({ collection: "" }).success).toBe(
+      false
+    );
+    expect(
+      diffInputSchema.safeParse({
+        ref: "gno://notes/root.md",
+        change: "   ",
+      }).success
+    ).toBe(false);
   });
 
   test("keeps cycle and hub traversal bounded with evidence paths", async () => {

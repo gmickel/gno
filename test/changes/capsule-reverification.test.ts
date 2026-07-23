@@ -13,6 +13,7 @@ import {
 } from "../../src/core/capsule-registry";
 import { reverifySavedCapsuleManually } from "../../src/core/capsule-reverification";
 import { SavedCapsuleReverificationScheduler } from "../../src/core/capsule-reverification-scheduler";
+import { decodeDocumentChangeCursor } from "../../src/core/change-journal";
 import { canonicalContextCapsuleJson } from "../../src/core/context-capsule";
 import { sha256Text } from "../../src/core/context-capsule-validation";
 import { SqliteAdapter } from "../../src/store";
@@ -130,6 +131,46 @@ describe("saved Context Capsule reverification", () => {
     expect((await listSavedCapsules(adapter))[0]?.registrationId).toBe(
       registration.registrationId
     );
+  });
+
+  test("does not skip a journal change concurrent with Capsule file loading", async () => {
+    const originalList = adapter.listDocumentChanges.bind(adapter);
+    let injected = false;
+    const listSpy = spyOn(adapter, "listDocumentChanges").mockImplementation(
+      async (options) => {
+        const page = await originalList(options);
+        if (!injected) {
+          injected = true;
+          expect(
+            (
+              await adapter.upsertDocument(
+                documentInput({
+                  ...fixture.first,
+                  sourceHash: "9".repeat(64),
+                })
+              )
+            ).ok
+          ).toBe(true);
+        }
+        return page;
+      }
+    );
+
+    const registration = await registerSavedCapsule(adapter, "default", {
+      filePath: capsulePath,
+    });
+    listSpy.mockRestore();
+    const latest = await originalList({ limit: 1 });
+    expect(latest.ok).toBe(true);
+    if (!latest.ok) return;
+    const affected = await adapter.listSavedCapsuleIdsAffectedByChanges(
+      registration.lastAttemptedSequence,
+      decodeDocumentChangeCursor(latest.value.latestCursor),
+      100
+    );
+    expect(affected.ok && affected.value.registrationIds).toEqual([
+      registration.registrationId,
+    ]);
   });
 
   test("keeps completed receipts separate from index-mismatch operation failures", async () => {

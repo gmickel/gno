@@ -30,6 +30,7 @@ import { migration as m013 } from "./013-fts-sync-marker";
 import { migration as m014 } from "./014-retrieval-traces";
 import { migration as m015 } from "./015-document-change-journal";
 import { migration as m016 } from "./016-saved-capsules";
+import { migration as m017 } from "./017-document-change-retention-counters";
 
 /** All migrations in order */
 export const migrations = [
@@ -49,4 +50,5 @@ export const migrations = [
   m014,
   m015,
   m016,
+  m017,
 ];

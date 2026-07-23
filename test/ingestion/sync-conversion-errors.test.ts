@@ -10,6 +10,7 @@ import { join } from "node:path";
 import type { Collection } from "../../src/config/types";
 import type { ConversionPipeline } from "../../src/converters/pipeline";
 
+import { decodeDocumentChangeCursor } from "../../src/core/change-journal";
 import { INGEST_VERSION, SyncService } from "../../src/ingestion/sync";
 import { SqliteAdapter } from "../../src/store/sqlite/adapter";
 import { safeRm } from "../helpers/cleanup";
@@ -89,5 +90,109 @@ describe("SyncService conversion failure retries", () => {
       expect(docResult.value?.lastErrorCode).toBe("CORRUPT");
       expect(docResult.value?.ingestVersion).toBe(INGEST_VERSION);
     }
+  });
+
+  test("journals evidence disappearance when a changed document stops converting", async () => {
+    collection = {
+      ...collection,
+      pattern: "**/*.md",
+      include: [".md"],
+      exclude: [],
+    };
+    expect((await adapter.syncCollections([collection])).ok).toBe(true);
+    const relPath = "decision.md";
+    const path = join(collectionDir, relPath);
+    await writeFile(path, "# Before\n\nSee [[Target]].\n");
+    const initial = await new SyncService().syncCollection(collection, adapter);
+    expect(initial.filesAdded).toBe(1);
+    const before = await adapter.getDocument(collection.name, relPath);
+    expect(before.ok && before.value?.mirrorHash).toBeTruthy();
+    if (!before.ok || !before.value?.mirrorHash) return;
+    const beforeJournal = await adapter.listDocumentChanges({ limit: 1 });
+    expect(beforeJournal.ok).toBe(true);
+    if (!beforeJournal.ok) return;
+    const registrationId = `capsule-${"a".repeat(40)}`;
+    expect(
+      (
+        await adapter.upsertSavedCapsuleRegistration({
+          registrationId,
+          filePath: join(collectionDir, "decision.capsule.json"),
+          fileHash: "b".repeat(64),
+          capsuleId: "c".repeat(64),
+          indexName: "default",
+          question: null,
+          label: null,
+          notificationPreference: "none",
+          registeredAtMs: 1,
+          updatedAtMs: 1,
+          lastAttemptedSequence: decodeDocumentChangeCursor(
+            beforeJournal.value.latestCursor
+          ),
+          evidence: [
+            {
+              evidenceId: "d".repeat(64),
+              canonicalUri: before.value.uri,
+              collection: before.value.collection,
+              sourceHash: before.value.sourceHash,
+              mirrorHash: before.value.mirrorHash,
+              passageHash: "e".repeat(64),
+            },
+          ],
+        })
+      ).ok
+    ).toBe(true);
+
+    await writeFile(path, "# Changed but corrupt\n");
+    const failingPipeline = {
+      convert: async () => ({
+        ok: false as const,
+        error: {
+          code: "CORRUPT" as const,
+          message: "Invalid document structure",
+          retryable: false,
+          fatal: false,
+          converterId: "test",
+          sourcePath: path,
+          mime: "text/markdown",
+          ext: ".md",
+        },
+      }),
+    };
+    const failed = await new SyncService(
+      undefined,
+      undefined,
+      undefined,
+      failingPipeline as unknown as ConversionPipeline
+    ).syncCollection(collection, adapter);
+    expect(failed.filesErrored).toBe(1);
+
+    const after = await adapter.getDocument(collection.name, relPath);
+    expect(after.ok && after.value).toMatchObject({
+      mirrorHash: null,
+      lastErrorCode: "CORRUPT",
+    });
+    const journal = await adapter.listDocumentChanges();
+    expect(journal.ok).toBe(true);
+    if (!journal.ok) return;
+    expect(journal.value.changes.map(({ kind }) => kind)).toEqual([
+      "create",
+      "update",
+    ]);
+    expect(journal.value.changes[1]).toMatchObject({
+      oldMirrorHash: before.value.mirrorHash,
+      newMirrorHash: null,
+      structureDelta: {
+        headings: { added: [], removed: ["# Before"] },
+        links: { added: [], removed: ["wiki:target"] },
+      },
+    });
+    const affected = await adapter.listSavedCapsuleIdsAffectedByChanges(
+      decodeDocumentChangeCursor(beforeJournal.value.latestCursor),
+      decodeDocumentChangeCursor(journal.value.latestCursor),
+      100
+    );
+    expect(affected.ok && affected.value.registrationIds).toEqual([
+      registrationId,
+    ]);
   });
 });

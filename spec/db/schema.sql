@@ -414,7 +414,11 @@ CREATE TABLE IF NOT EXISTS document_change_journal_state (
   singleton_id INTEGER PRIMARY KEY CHECK (singleton_id = 1),
   last_sequence INTEGER NOT NULL DEFAULT 0 CHECK (last_sequence >= 0),
   retention_floor INTEGER NOT NULL DEFAULT 0
-    CHECK (retention_floor >= 0 AND retention_floor <= last_sequence)
+    CHECK (retention_floor >= 0 AND retention_floor <= last_sequence),
+  retained_entries INTEGER NOT NULL DEFAULT 0
+    CHECK (retained_entries >= 0),
+  retained_bytes INTEGER NOT NULL DEFAULT 0
+    CHECK (retained_bytes >= 0)
 );
 
 -- ─────────────────────────────────────────────────────────────────────────────

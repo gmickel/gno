@@ -154,6 +154,19 @@ describe("SDK client", () => {
     expect(result.documents[0]?.uri.startsWith("gno://fixtures/")).toBe(true);
   });
 
+  test("rejects provided-empty Knowledge Delta selectors", async () => {
+    expect(client.changes({ collection: "   " })).rejects.toMatchObject({
+      code: "VALIDATION",
+      message: expect.stringContaining("collection"),
+    });
+    expect(
+      client.diff("gno://fixtures/authentication.md", "")
+    ).rejects.toMatchObject({
+      code: "VALIDATION",
+      message: expect.stringContaining("changeId"),
+    });
+  });
+
   test("runs BM25 search through package root import", async () => {
     const result = await client.search("JWT token", { limit: 5 });
     expect(result.meta.mode).toBe("bm25");
