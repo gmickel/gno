@@ -1,39 +1,33 @@
 ---
 satisfies: [R1, R3, R4]
 ---
-# fn-99-resident-local-context-gateway.2 Add stateful Streamable HTTP MCP transport
+# fn-99-resident-local-context-gateway.2 Add isolated Streamable HTTP MCP sessions behind a disabled route
 
 ## Description
-Deliver add stateful streamable http mcp transport as one implementation-sized increment.
+
+Implement the Bun/Web Standard MCP transport and session lifecycle, but keep the production route disabled until task 3 installs its full security boundary.
 
 **Size:** M
-**Files:** `src/mcp/http-transport.ts`, `src/serve/server.ts`, `src/serve/routes/mcp.ts`, `test/mcp/http-transport.test.ts`
+**Files:** `src/mcp/http-transport.ts`, `src/mcp/http-session.ts`, `src/serve/routes/mcp.ts`, `src/serve/server.ts`, `test/mcp/http-transport.test.ts`, `test/mcp/http-parity.test.ts`
 
 ### Approach
-- Mount SDK WebStandardStreamableHTTPServerTransport at `/mcp` with UUID session IDs and explicit POST/GET lifecycle semantics.
-- Bind each session to authenticated caller state, propagate cancellation/disconnect, and reap idle sessions/streams with bounded queues.
-- Preserve contract-equivalent tool/resource behavior and report unsupported resumption explicitly rather than partially emulating it.
+
+- Upgrade the pinned stable MCP SDK to 1.29.x and use `WebStandardStreamableHTTPServerTransport`; do not adopt v2 beta or add Express/Hono.
+- Create one `McpServer` and one transport per session. Share only the resident ports and pure surface registration factory.
+- Implement POST/GET/DELETE, protocol-version/session-header validation, initialize ownership, idle reap, disconnect/cancellation, bounded admission, and stable malformed/unknown/terminated-session behavior.
+- Omit `EventStore`; advertise resumption as unsupported rather than partially emulating it. Configure Bun timeout behavior for SSE.
+- Mount the route only behind a test-only/disabled feature gate. No insecure intermediate product surface.
 
 ### Investigation targets
-**Required** (read before coding):
-- `src/serve/server.ts:150-330`
-- `src/mcp/server.ts`
-- `src/mcp/resources/index.ts`
-- `node_modules/@modelcontextprotocol/sdk`
 
-**Optional** (reference as needed):
-- `test/mcp/server.test.ts`
-- `src/serve/jobs.ts`
-
-### Key context
-- SSE requests need Bun request timeout disabled or adjusted; request/body/session limits and overload codes are contract surface.
-- Honor `Mcp-Session-Id` on every post-initialize request.
+**Required:** pinned SDK Web Standard transport implementation/types, MCP 2025-11-25 transport spec, `src/serve/server.ts`, `src/mcp/server.ts`, `src/mcp/resources/index.ts`, and resident runtime from task 1.
 
 ## Acceptance
-- [ ] Two independent clients concurrently initialize and call tools through one resident runtime.
-- [ ] Session IDs, reconnect/disconnect/cancellation/idle reap, overload, and malformed-request fixtures follow the pinned MCP spec/SDK.
-- [ ] HTTP and stdio response contracts match on shared fixtures.
 
+- [ ] Two clients concurrently initialize and call tools with distinct session state over one resident runtime.
+- [ ] POST/GET/DELETE, version headers, session IDs, cancellation, disconnect, idle reap, overload, and malformed requests match the pinned SDK/spec.
+- [ ] Stdio and HTTP tool/resource contracts and fixture results are equivalent.
+- [ ] Route is unreachable in normal serve/daemon startup until task 3 enables it behind security middleware.
 
 ## Done summary
 TBD

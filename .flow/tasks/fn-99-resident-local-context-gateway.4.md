@@ -1,34 +1,32 @@
 ---
-satisfies: [R2, R4, R6]
+satisfies: [R1, R2, R4, R6]
 ---
-# fn-99-resident-local-context-gateway.4 Unify lifecycle health concurrency and client visibility
+# fn-99-resident-local-context-gateway.4 Unify health and prove concurrent lifecycle correctness
 
 ## Description
-Deliver unify lifecycle health concurrency and client visibility as one implementation-sized increment.
+
+Expose one safe resident truth surface and prove it remains correct under concurrent work and failure.
 
 **Size:** M
-**Files:** `src/serve/status.ts`, `src/serve/routes/api.ts`, `src/cli/commands/serve.ts`, `src/cli/commands/daemon.ts`, `src/serve/public/components/HealthCenter.tsx`, `test/serve/resident-concurrency.test.ts`
+**Files:** `src/serve/status.ts`, `src/serve/status-model.ts`, `src/serve/routes/api.ts`, `src/cli/commands/serve.ts`, `src/cli/commands/daemon.ts`, `src/serve/public/components/HealthCenter.tsx`, `spec/output-schemas/`, `test/serve/resident-concurrency.test.ts`, `test/serve/resident-health.test.ts`
 
 ### Approach
-- Expose resident transport/session/queue/model/index-generation health through CLI, Web, and process-status schemas.
-- Exercise concurrent reads, indexing/writes, cancellation, restart, graceful/forced shutdown, and DB recovery with one-writer constraints.
-- Present one resident core while preserving direct CLI operation and avoiding a hidden third daemon.
+
+- Project only safe status: mode, uptime, admission/shutdown state, active sessions, bounded queues, model lease/load counters, jobs, and monotonic content/index generation. Omit paths, tokens, queries, documents, and caller identifiers.
+- Make CLI, REST, Web/Desktop, and process status derive from the same model and distinguish standalone stdio/direct CLI truthfully.
+- Exercise concurrent HTTP/REST reads, indexing/writes, cancellation, disconnect, idle reap, config refresh, model failure, restart, graceful drain, deadline-forced shutdown, and DB recovery/integrity.
+- Verify two clients share the runtime/model/store lifecycle while session state and cancellation remain isolated.
 
 ### Investigation targets
-**Required** (read before coding):
-- `src/serve/status.ts`
-- `src/serve/routes/api.ts:732-780`
-- `src/cli/program.ts:2587-3250`
-- `src/store/sqlite/adapter.ts`
 
-**Optional** (reference as needed):
-- `src/serve/public/components/HealthCenter.tsx`
-- `src/serve/status-model.ts`
+**Required:** status model/routes/UI, resident runtime, SQLite adapter, model lifecycle, job manager, CLI serve/daemon commands, existing DB integrity helpers.
+
 ## Acceptance
-- [ ] Health shows transport, sessions, queues, warm-model reuse, jobs, and index generation consistently.
-- [ ] Concurrent read/write/index/cancel/restart/shutdown fixtures complete without deadlock or corruption.
-- [ ] Serve/daemon documentation and UI describe one core with truthful direct-CLI exceptions.
 
+- [ ] Every status surface is schema-valid and consistent, with redaction fixtures proving no sensitive state escapes.
+- [ ] Two-client warm reuse and monotonic generation metrics prove one resident lifecycle.
+- [ ] Concurrent read/write/index/cancel/restart/shutdown matrices complete without deadlock, leaked leases/sessions, or failed DB integrity checks.
+- [ ] Serve/daemon expose one owner per data directory; stdio and direct CLI exceptions are explicit.
 
 ## Done summary
 TBD

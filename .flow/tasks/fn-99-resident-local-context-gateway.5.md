@@ -1,34 +1,32 @@
 ---
 satisfies: [R4, R5, R6, R7]
 ---
-# fn-99-resident-local-context-gateway.5 Prove packaged cross-platform gateway behavior and document it
+# fn-99-resident-local-context-gateway.5 Prove packaged cross-platform behavior and ship docs
 
 ## Description
-Deliver prove packaged cross-platform gateway behavior and document it as one implementation-sized increment.
+
+Validate the installed product boundary and publish the complete lifecycle/security contract.
 
 **Size:** M
-**Files:** `scripts/package-smoke.ts`, `test/mcp/http-e2e.test.ts`, `docs/MCP.md`, `docs/DAEMON.md`, `docs/ARCHITECTURE.md`, `assets/skill/mcp-reference.md`
+**Files:** `scripts/package-smoke.ts`, `scripts/serve-shutdown-smoke.ts`, `test/mcp/http-e2e.test.ts`, `.github/workflows/ci.yml`, `docs/MCP.md`, `docs/DAEMON.md`, `docs/API.md`, `docs/ARCHITECTURE.md`, `docs/TROUBLESHOOTING.md`, `assets/skill/SKILL.md`, `assets/skill/mcp-reference.md`, `README.md`, `/Users/gordon/work/gno.sh`
 
 ### Approach
-- Add npm-tarball and desktop-compatible smoke coverage for transport startup, two clients, warm reuse, security, restart, and shutdown on supported systems.
-- Keep the known Bun Windows SIGINT/exit-130 failure visible; gateway-specific Windows acceptance belongs here without silently declaring the older foreground smoke fixed.
-- Update specs/schemas/docs/skill/gno.sh and run package/prerelease/security gates.
+
+- Run packed npm tarball smokes for secure startup, two clients, contract parity, warm reuse, status, token/Origin/Host rejection, restart, and shutdown.
+- Add desktop-compatible endpoint proof without coupling per-feature progress to macOS/Windows artifact completion; record those jobs for the consolidated final sweep.
+- Update CLI/MCP/API schemas and user docs, skill assets, examples, migration guidance, troubleshooting, and hosted gno.sh product/docs surfaces.
+- Run prerelease, package, docs, security, skill autoresearch, and hosted-site gates. Keep any existing unrelated Windows SIGINT/exit-130 limitation visible rather than suppressing it.
 
 ### Investigation targets
-**Required** (read before coding):
-- `scripts/package-smoke.ts`
-- `scripts/serve-shutdown-smoke.ts`
-- `.github/workflows/ci.yml`
-- `docs/DAEMON.md`
-- `docs/MCP.md`
 
-**Optional** (reference as needed):
-- `docs/TROUBLESHOOTING.md`
+**Required:** package smoke scripts, CI/publish workflows, packaging docs, MCP/daemon/API docs, skill source of truth, hosted gno.sh docs/product pages.
+
 ## Acceptance
-- [ ] Packaged MCP HTTP transport passes supported OS/architecture smokes or records a specific upstream blocker without suppressing required checks.
-- [ ] Docs replace separate-daemon language with the actual resident lifecycle, security, and migration path.
-- [ ] Full lint/tests/docs/package/skill evaluation and hosted-doc verification pass.
 
+- [ ] Packed npm gateway smokes pass the two-client, warm-reuse, security, restart, health, and shutdown contract.
+- [ ] Supported OS/architecture coverage passes or records a precise upstream blocker without weakening required checks; client artifact builds remain nonblocking until the final roadmap sweep.
+- [ ] README, specs/schemas, docs, skill, examples, migration/troubleshooting, and gno.sh are current and independently verified.
+- [ ] Full prerelease, package, security, Flow validation, and hosted production smoke evidence is attached.
 
 ## Done summary
 TBD
