@@ -23,6 +23,7 @@ import {
   parseRetrievalTraceRunInput,
 } from "../store/retrieval-trace-codec";
 import { err, ok } from "../store/types";
+import { canonicalizeRetrievalTraceFilters } from "./retrieval-trace-filter-normalization";
 
 const sha256Schema = z.string().regex(/^[a-f0-9]{64}$/);
 const gnoUriSchema = z
@@ -303,6 +304,7 @@ export class RetrievalTraceRecorder {
       parsed.data.goal === undefined
         ? undefined
         : normalizeText(parsed.data.goal);
+    const filters = canonicalizeRetrievalTraceFilters(parsed.data.filters);
     const replay = this.config.redactionMode === "replay";
     const create = await this.store.createRetrievalTrace({
       traceId,
@@ -315,9 +317,7 @@ export class RetrievalTraceRecorder {
       goalText: replay ? (goal ?? null) : null,
       goalDigest: replay && goal !== undefined ? sha256(goal) : null,
       goalShape: textShape(goal),
-      filters: replay
-        ? parsed.data.filters
-        : projectMetadataObject(parsed.data.filters),
+      filters: replay ? filters : projectMetadataObject(filters),
       fingerprints: parsed.data.fingerprints,
       status: "open",
       createdAtMs: nowMs,

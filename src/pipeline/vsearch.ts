@@ -26,6 +26,7 @@ import {
   shouldSortByRecency,
   type TemporalRange,
 } from "./temporal";
+import { attachSearchResultPlannerMetadata } from "./trace-metadata";
 import { SEARCH_RESULT_PLANNER_METADATA } from "./types";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -228,52 +229,56 @@ export async function searchVectorWithEmbedding(
 
     const collectionPath = collectionPaths.get(doc.collection);
 
-    results.push({
-      docid: doc.docid,
-      score,
-      uri: doc.uri,
-      title: doc.title ?? undefined,
-      contentType: doc.contentType ?? undefined,
-      categories: doc.categories ?? undefined,
-      line: chunk.startLine,
-      snippet: chunk.text,
-      snippetLanguage: chunk.language ?? undefined,
-      snippetRange: {
-        startLine: chunk.startLine,
-        endLine: chunk.endLine,
-      },
-      source: {
-        relPath: doc.relPath,
-        absPath: collectionPath
-          ? `${collectionPath}/${doc.relPath}`
-          : undefined,
-        mime: doc.sourceMime,
-        ext: doc.sourceExt,
-        modifiedAt: doc.sourceMtime,
-        documentDate: doc.frontmatterDate ?? undefined,
-        sizeBytes: doc.sourceSize,
-        sourceHash: doc.sourceHash,
-      },
-      conversion: doc.mirrorHash
-        ? {
-            mirrorHash: doc.mirrorHash,
-            converterId: doc.converterId ?? undefined,
-            converterVersion: doc.converterVersion ?? undefined,
-          }
-        : undefined,
-      [SEARCH_RESULT_PLANNER_METADATA]: {
-        retrievalRank: 0,
-        mirrorHash: vec.mirrorHash,
-        seq: chunk.seq,
-        sources: ["vector"],
-        graphExpanded: false,
-        startLine: chunk.startLine,
-        endLine: chunk.endLine,
-        passageHash: new Bun.CryptoHasher("sha256")
-          .update(chunk.text)
-          .digest("hex"),
-      },
-    });
+    results.push(
+      attachSearchResultPlannerMetadata(
+        {
+          docid: doc.docid,
+          score,
+          uri: doc.uri,
+          title: doc.title ?? undefined,
+          contentType: doc.contentType ?? undefined,
+          categories: doc.categories ?? undefined,
+          line: chunk.startLine,
+          snippet: chunk.text,
+          snippetLanguage: chunk.language ?? undefined,
+          snippetRange: {
+            startLine: chunk.startLine,
+            endLine: chunk.endLine,
+          },
+          source: {
+            relPath: doc.relPath,
+            absPath: collectionPath
+              ? `${collectionPath}/${doc.relPath}`
+              : undefined,
+            mime: doc.sourceMime,
+            ext: doc.sourceExt,
+            modifiedAt: doc.sourceMtime,
+            documentDate: doc.frontmatterDate ?? undefined,
+            sizeBytes: doc.sourceSize,
+            sourceHash: doc.sourceHash,
+          },
+          conversion: doc.mirrorHash
+            ? {
+                mirrorHash: doc.mirrorHash,
+                converterId: doc.converterId ?? undefined,
+                converterVersion: doc.converterVersion ?? undefined,
+              }
+            : undefined,
+        },
+        {
+          retrievalRank: 0,
+          mirrorHash: vec.mirrorHash,
+          seq: chunk.seq,
+          sources: ["vector"],
+          graphExpanded: false,
+          startLine: chunk.startLine,
+          endLine: chunk.endLine,
+          passageHash: new Bun.CryptoHasher("sha256")
+            .update(chunk.text)
+            .digest("hex"),
+        }
+      )
+    );
   }
 
   // For --full, fetch full content and build results
@@ -296,7 +301,7 @@ export async function searchVectorWithEmbedding(
 
       const collectionPath = collectionPaths.get(doc.collection);
 
-      results.push({
+      const result: SearchResult = {
         docid: doc.docid,
         score,
         uri: doc.uri,
@@ -329,23 +334,23 @@ export async function searchVectorWithEmbedding(
               converterVersion: doc.converterVersion ?? undefined,
             }
           : undefined,
-        ...(doc.mirrorHash
-          ? {
-              [SEARCH_RESULT_PLANNER_METADATA]: {
-                retrievalRank: 0,
-                mirrorHash: doc.mirrorHash,
-                seq: chunk.seq,
-                sources: ["vector" as const],
-                graphExpanded: false,
-                startLine: chunk.startLine,
-                endLine: chunk.endLine,
-                passageHash: new Bun.CryptoHasher("sha256")
-                  .update(chunk.text)
-                  .digest("hex"),
-              },
-            }
-          : {}),
-      });
+      };
+      results.push(
+        doc.mirrorHash
+          ? attachSearchResultPlannerMetadata(result, {
+              retrievalRank: 0,
+              mirrorHash: doc.mirrorHash,
+              seq: chunk.seq,
+              sources: ["vector"],
+              graphExpanded: false,
+              startLine: chunk.startLine,
+              endLine: chunk.endLine,
+              passageHash: new Bun.CryptoHasher("sha256")
+                .update(chunk.text)
+                .digest("hex"),
+            })
+          : result
+      );
     }
   }
 

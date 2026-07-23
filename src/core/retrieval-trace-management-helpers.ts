@@ -51,31 +51,64 @@ export const summaryOf = (
   creationDigest: trace.creationDigest,
 });
 
-export const encodeCursor = (cursor: RetrievalTraceCursor): string =>
-  `${cursor.createdAtMs}:${encodeURIComponent(cursor.traceId)}`;
+const TRACE_CURSOR_PREFIX = "gno-trace-v1.";
+const TRACE_CURSOR_KEYS = ["createdAtMs", "traceId"] as const;
+
+export const encodeCursor = (cursor: RetrievalTraceCursor): string => {
+  const payload = new TextEncoder().encode(
+    JSON.stringify({
+      createdAtMs: cursor.createdAtMs,
+      traceId: cursor.traceId,
+    })
+  );
+  return `${TRACE_CURSOR_PREFIX}${payload.toBase64({
+    alphabet: "base64url",
+    omitPadding: true,
+  })}`;
+};
 
 export const decodeCursor = (
   value: string | undefined
 ): StoreResult<RetrievalTraceCursor | undefined> => {
   if (value === undefined) return ok(undefined);
-  const separator = value.indexOf(":");
-  if (separator < 1) return err("INVALID_INPUT", "Invalid trace cursor");
-  const createdAtMs = Number(value.slice(0, separator));
-  let traceId: string;
+  if (!value.startsWith(TRACE_CURSOR_PREFIX)) {
+    return err("INVALID_INPUT", "Invalid trace cursor");
+  }
+  let decoded: unknown;
   try {
-    traceId = decodeURIComponent(value.slice(separator + 1));
+    const bytes = Uint8Array.fromBase64(
+      value.slice(TRACE_CURSOR_PREFIX.length),
+      {
+        alphabet: "base64url",
+      }
+    );
+    decoded = JSON.parse(
+      new TextDecoder("utf-8", { fatal: true }).decode(bytes)
+    );
   } catch {
     return err("INVALID_INPUT", "Invalid trace cursor");
   }
+  if (!decoded || typeof decoded !== "object" || Array.isArray(decoded)) {
+    return err("INVALID_INPUT", "Invalid trace cursor");
+  }
+  const record = decoded as Record<string, unknown>;
+  if (
+    Object.keys(record).length !== TRACE_CURSOR_KEYS.length ||
+    TRACE_CURSOR_KEYS.some((key) => !(key in record))
+  ) {
+    return err("INVALID_INPUT", "Invalid trace cursor");
+  }
+  const { createdAtMs, traceId } = record;
   if (
     !Number.isSafeInteger(createdAtMs) ||
-    createdAtMs < 0 ||
+    (createdAtMs as number) < 0 ||
+    typeof traceId !== "string" ||
     traceId.length < 1 ||
     traceId.length > 128
   ) {
     return err("INVALID_INPUT", "Invalid trace cursor");
   }
-  return ok({ createdAtMs, traceId });
+  return ok({ createdAtMs: createdAtMs as number, traceId });
 };
 
 export const stableTarget = (value: unknown): EvidenceTarget | null => {

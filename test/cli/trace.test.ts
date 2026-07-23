@@ -107,7 +107,7 @@ describe("trace CLI contract", () => {
           goalText: null,
           goalDigest: null,
           goalShape: { characters: 0, terms: 0 },
-          filters: { shape: {} },
+          filters: { shape: { type: "object", fields: {} } },
           fingerprints: {
             pipeline: HASH,
             model: HASH,

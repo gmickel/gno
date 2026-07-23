@@ -478,6 +478,39 @@ Fixtures define queries, expected documents or `gno://` URIs, optional graded ju
 
 Use mode comparisons to decide whether a corpus benefits from BM25, vector, hybrid, no-rerank, or thorough retrieval before changing defaults.
 
+## Private Retrieval Receipts and Replay
+
+Retrieval tracing is a local quality loop around the same pipelines described
+above. It is disabled by default. When explicitly enabled, GNO creates a
+receipt before model/runtime setup, records exact ranked evidence and
+capability fallbacks, and keeps search/query receipts open long enough for a
+later `get` or open event to continue the same evidence path.
+
+The redaction mode determines whether a receipt can be replayed:
+
+- `metadata` retains content-free shapes, fingerprints, source identities,
+  ranks, and exact line spans. Raw query, goal, and filter values are absent.
+- `replay` is explicit consent to retain the normalized query, goal, and
+  validated filters. It still rejects passages, absolute paths, and external
+  evidence URLs.
+
+Trace identity is transport metadata, not result content. It may appear on CLI
+stderr, in `X-GNO-Trace-ID`, in MCP `_meta`, or through the SDK metadata
+symbol, but never changes public search JSON or canonical Context Capsule
+bytes.
+
+Opened, cited, and pinned evidence are useful outcomes, not automatic labels.
+Only an explicit `relevant`, `irrelevant`, or `missing_expected` judgment
+becomes a qrel. A missing click, failed request, partial answer, or cancelled
+run never implies irrelevance.
+
+`gno trace export --format qrels` freezes explicit labels, ranks, exact
+spans/hashes, terminal status, capabilities, and fallbacks without copying
+source text. `gno trace replay` verifies that manifest, classifies evidence as
+unchanged/stale/missing/inactive/unindexed, and compares a named candidate with
+the frozen baseline. Replay always reports `applied: false`: it does not edit
+ranking configuration, boosts, prompts, models, receipts, or user files.
+
 ## Graceful Degradation
 
 GNO works even when components are missing:

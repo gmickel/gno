@@ -1,0 +1,139 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "gno://schemas/retrieval-trace-filters@1.0",
+  "title": "GNO Retrieval Trace Filters",
+  "definitions": {
+    "queryMode": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode", "text"],
+      "properties": {
+        "mode": { "enum": ["term", "intent", "hyde"] },
+        "text": { "type": "string", "maxLength": 8192 }
+      }
+    },
+    "filters": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "limit": { "type": "integer", "minimum": 1 },
+        "minScore": { "type": "number", "minimum": 0, "maximum": 1 },
+        "collection": { "type": "string", "maxLength": 256 },
+        "collections": {
+          "type": "array",
+          "maxItems": 1000,
+          "items": { "type": "string", "minLength": 1, "maxLength": 256 }
+        },
+        "lang": { "type": "string", "maxLength": 64 },
+        "full": { "type": "boolean" },
+        "lineNumbers": { "type": "boolean" },
+        "tagsAll": {
+          "type": "array",
+          "maxItems": 1000,
+          "items": { "type": "string", "maxLength": 512 }
+        },
+        "tagsAny": {
+          "type": "array",
+          "maxItems": 1000,
+          "items": { "type": "string", "maxLength": 512 }
+        },
+        "since": { "type": "string", "maxLength": 128 },
+        "until": { "type": "string", "maxLength": 128 },
+        "categories": {
+          "type": "array",
+          "maxItems": 1000,
+          "items": { "type": "string", "maxLength": 512 }
+        },
+        "author": { "type": "string", "maxLength": 1024 },
+        "intent": { "type": "string", "maxLength": 8192 },
+        "exclude": {
+          "type": "array",
+          "maxItems": 1000,
+          "items": { "type": "string", "maxLength": 1024 }
+        },
+        "noExpand": { "type": "boolean" },
+        "noRerank": { "type": "boolean" },
+        "candidateLimit": { "type": "integer", "minimum": 1 },
+        "explain": { "type": "boolean" },
+        "graph": { "type": "boolean" },
+        "noGraph": { "type": "boolean" },
+        "queryLanguageHint": { "type": "string", "maxLength": 64 },
+        "queryModes": {
+          "type": "array",
+          "maxItems": 100,
+          "items": { "$ref": "#/definitions/queryMode" }
+        },
+        "uriPrefix": { "type": "string", "maxLength": 4096 }
+      }
+    },
+    "metadataShape": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type"],
+      "properties": {
+        "type": {
+          "enum": ["null", "array", "object", "string", "number", "boolean"]
+        },
+        "count": { "type": "integer", "minimum": 0 },
+        "itemTypes": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "enum": ["null", "array", "object", "string", "number", "boolean"]
+          }
+        },
+        "fields": { "$ref": "#/definitions/metadataFilterFields" }
+      }
+    },
+    "metadataFilterFields": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "limit": { "$ref": "#/definitions/metadataShape" },
+        "minScore": { "$ref": "#/definitions/metadataShape" },
+        "collection": { "$ref": "#/definitions/metadataShape" },
+        "collections": { "$ref": "#/definitions/metadataShape" },
+        "lang": { "$ref": "#/definitions/metadataShape" },
+        "full": { "$ref": "#/definitions/metadataShape" },
+        "lineNumbers": { "$ref": "#/definitions/metadataShape" },
+        "tagsAll": { "$ref": "#/definitions/metadataShape" },
+        "tagsAny": { "$ref": "#/definitions/metadataShape" },
+        "since": { "$ref": "#/definitions/metadataShape" },
+        "until": { "$ref": "#/definitions/metadataShape" },
+        "categories": { "$ref": "#/definitions/metadataShape" },
+        "author": { "$ref": "#/definitions/metadataShape" },
+        "intent": { "$ref": "#/definitions/metadataShape" },
+        "exclude": { "$ref": "#/definitions/metadataShape" },
+        "noExpand": { "$ref": "#/definitions/metadataShape" },
+        "noRerank": { "$ref": "#/definitions/metadataShape" },
+        "candidateLimit": { "$ref": "#/definitions/metadataShape" },
+        "explain": { "$ref": "#/definitions/metadataShape" },
+        "graph": { "$ref": "#/definitions/metadataShape" },
+        "noGraph": { "$ref": "#/definitions/metadataShape" },
+        "queryLanguageHint": { "$ref": "#/definitions/metadataShape" },
+        "queryModes": { "$ref": "#/definitions/metadataShape" },
+        "uriPrefix": { "$ref": "#/definitions/metadataShape" }
+      }
+    },
+    "metadataFilters": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["shape"],
+      "properties": {
+        "shape": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "fields"],
+          "properties": {
+            "type": { "const": "object" },
+            "fields": { "$ref": "#/definitions/metadataFilterFields" }
+          }
+        }
+      }
+    }
+  },
+  "oneOf": [
+    { "$ref": "#/definitions/filters" },
+    { "$ref": "#/definitions/metadataFilters" }
+  ]
+}

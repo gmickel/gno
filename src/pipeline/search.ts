@@ -27,6 +27,7 @@ import {
   resolveTemporalRange,
   shouldSortByRecency,
 } from "./temporal";
+import { attachSearchResultPlannerMetadata } from "./trace-metadata";
 import { SEARCH_RESULT_PLANNER_METADATA } from "./types";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -114,7 +115,7 @@ function buildSearchResult(ctx: BuildResultContext): SearchResult {
       : undefined;
   }
 
-  return {
+  const result: SearchResult = {
     docid: fts.docid ?? "",
     score: fts.score, // Raw score, normalized later as batch
     uri: fts.uri ?? "",
@@ -127,23 +128,20 @@ function buildSearchResult(ctx: BuildResultContext): SearchResult {
     snippetRange,
     source,
     conversion: fts.mirrorHash ? { mirrorHash: fts.mirrorHash } : undefined,
-    ...(chunk && fts.mirrorHash
-      ? {
-          [SEARCH_RESULT_PLANNER_METADATA]: {
-            retrievalRank: 0,
-            mirrorHash: fts.mirrorHash,
-            seq: chunk.seq,
-            sources: ["bm25" as const],
-            graphExpanded: false,
-            startLine: chunk.startLine,
-            endLine: chunk.endLine,
-            passageHash: new Bun.CryptoHasher("sha256")
-              .update(chunk.text)
-              .digest("hex"),
-          },
-        }
-      : {}),
   };
+  if (!(chunk && fts.mirrorHash)) return result;
+  return attachSearchResultPlannerMetadata(result, {
+    retrievalRank: 0,
+    mirrorHash: fts.mirrorHash,
+    seq: chunk.seq,
+    sources: ["bm25"],
+    graphExpanded: false,
+    startLine: chunk.startLine,
+    endLine: chunk.endLine,
+    passageHash: new Bun.CryptoHasher("sha256")
+      .update(chunk.text)
+      .digest("hex"),
+  });
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

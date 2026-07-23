@@ -16,6 +16,7 @@ import type {
 } from "./types";
 
 import { buildAnswerPrompt, type AnswerPromptSource } from "./answer-prompt";
+import { attachCitationTraceMetadata } from "./trace-metadata";
 import {
   CITATION_TRACE_METADATA,
   SEARCH_RESULT_PLANNER_METADATA,
@@ -544,22 +545,26 @@ export async function generateGroundedAnswer(
       content: passage.text,
       guidance: r.context,
     });
-    citations.push({
-      docid: r.docid,
-      uri: r.uri,
-      startLine: passage.startLine,
-      endLine: passage.endLine,
-      [CITATION_TRACE_METADATA]: {
-        sourceHash,
-        mirrorHash,
-        passageHash: passage.passageHash,
-        seq: plannerMetadata?.seq,
-        rank: finalRanks.get(r) ?? 1,
-        plannerRank: plannerMetadata?.retrievalRank,
-        sources: plannerMetadata?.sources,
-        graphExpanded: plannerMetadata?.graphExpanded,
-      },
-    });
+    citations.push(
+      attachCitationTraceMetadata(
+        {
+          docid: r.docid,
+          uri: r.uri,
+          startLine: passage.startLine,
+          endLine: passage.endLine,
+        },
+        {
+          sourceHash,
+          mirrorHash,
+          passageHash: passage.passageHash,
+          seq: plannerMetadata?.seq,
+          rank: finalRanks.get(r) ?? 1,
+          plannerRank: plannerMetadata?.retrievalRank,
+          sources: plannerMetadata?.sources,
+          graphExpanded: plannerMetadata?.graphExpanded,
+        }
+      )
+    );
   }
 
   if (promptSources.length === 0) {

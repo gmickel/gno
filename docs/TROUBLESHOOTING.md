@@ -743,6 +743,45 @@ gno reset --confirm
 gno update
 ```
 
+### Retrieval trace migration or replay failed
+
+Private retrieval receipts use schema migration v14. Opening a v12 or v13
+index applies the remaining migrations and the trace tables in one
+transaction. A failed upgrade leaves the previous schema version and existing
+documents intact; it does not leave a partial trace schema.
+
+Before moving an important index between GNO versions, stop its resident
+`serve`/`daemon` owner and back up the active SQLite database together with any
+`-wal` and `-shm` companions. Do not copy a live database. GNO does not expose
+an in-place migration downgrade command. Existing receipts can be exported or
+removed with `gno trace` even after new recording is disabled.
+
+Replay failures are deliberately fail-closed:
+
+- `manifest_missing` or `manifest_hash_mismatch`: the saved aggregate export
+  is absent or its linked membership changed; create a fresh export from the
+  intended terminal traces.
+- `trace_missing`: retention or deletion removed a linked receipt.
+- `redaction_incompatible`, `query_missing`, or `filters_incomplete`: the
+  receipt is diagnostic-only or lacks the replay inputs; record a new trace
+  with explicit `replay` consent.
+- `source_stale`, `source_missing`, `inactive`, or `no_indexed_content`: inspect
+  the reported source state, re-index if appropriate, then deliberately create
+  a new baseline. Do not silently treat changed evidence as equivalent.
+
+### Trace purge reports `wal_busy` or `failed`
+
+Full purge deletes trace rows transactionally first, then separately attempts
+secure physical cleanup and a truncating WAL checkpoint. Only
+`physicalCleanup: "completed"` confirms that the WAL was truncated.
+
+`wal_busy` usually means another reader still holds a database snapshot. Close
+other GNO/SQLite readers and run `gno --yes trace purge --json` again.
+`failed` means the checkpoint itself could not be verified; preserve the
+receipt, stop the resident owner, check filesystem permissions and free space,
+then retry. User-created export files and external backups are not owned by the
+database purge and must be removed separately.
+
 ## MCP Issues
 
 ### "Tool not found" in Claude

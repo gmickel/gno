@@ -57,6 +57,14 @@ receipts. The list is bounded and metadata-only, even when an individual trace
 was captured in replay mode. Select a receipt to load bounded runs, events,
 judgments, and export links.
 
+Capture is off by default and has no hidden Web toggle. Enable it deliberately
+in `retrievalTraces` configuration with a redaction mode and all retention
+bounds; see [Configuration](CONFIGURATION.md#private-retrieval-traces).
+`metadata` is diagnostic-only, while `replay` additionally consents to storing
+the normalized query/goal/filter values needed for local replay. Disabling
+capture stops new receipts but leaves this page available for inspection,
+explicit labels, export, deletion, and purge of existing local data.
+
 The page supports:
 
 - selecting multiple terminal traces for one deterministic JSON export
@@ -68,6 +76,11 @@ The page supports:
 No click, open, failed request, or missing citation is treated as negative
 feedback. Labels are always explicit. The Web page uses loopback REST only;
 it is not exposed by the non-loopback daemon.
+
+Replay never changes live ranking, prompts, models, or files. Purge keeps a
+visible `completed`, `wal_busy`, or `failed` physical-cleanup receipt; only
+`completed` confirms WAL truncation. Exported files and backups remain
+user-owned.
 
 ---
 

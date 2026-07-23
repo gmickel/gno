@@ -1,3 +1,4 @@
+import { Database } from "bun:sqlite";
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 // node:fs/promises: temporary directory creation/removal has no Bun equivalent.
 import { mkdtemp } from "node:fs/promises";
@@ -202,5 +203,100 @@ describe("retrieval trace secure deletion", () => {
     const rolledBack = await adapter.getRetrievalTrace("rollback");
     expect(rolledBack.ok).toBe(true);
     if (rolledBack.ok) expect(rolledBack.value).not.toBeNull();
+  });
+
+  test("preserves a shared aggregate manifest until its final trace is deleted", async () => {
+    for (const [traceId, createdAtMs] of [
+      ["aggregate-a", 1000],
+      ["aggregate-b", 2000],
+    ] as const) {
+      expect(
+        (await adapter.createRetrievalTrace(traceInput(traceId, createdAtMs)))
+          .ok
+      ).toBeTrue();
+      expect(
+        (
+          await adapter.finalizeRetrievalTrace(
+            traceId,
+            "completed",
+            createdAtMs + 1
+          )
+        ).ok
+      ).toBeTrue();
+    }
+    expect(
+      (
+        await adapter.appendRetrievalTraceExportManifest({
+          exportId: "aggregate-export",
+          traceIds: ["aggregate-a", "aggregate-b"],
+          format: "qrels",
+          artifactHash: HASH,
+          createdAtMs: 3000,
+        })
+      ).ok
+    ).toBeTrue();
+
+    expect(await adapter.deleteRetrievalTrace("aggregate-a")).toEqual({
+      ok: true,
+      value: {
+        traces: 1,
+        runs: 0,
+        events: 0,
+        judgments: 0,
+        exports: 0,
+        exportLinks: 1,
+      },
+    });
+    const retained =
+      await adapter.getRetrievalTraceExportManifest("aggregate-export");
+    expect(retained.ok && retained.value?.traceIds).toEqual(["aggregate-b"]);
+
+    expect(await adapter.deleteRetrievalTrace("aggregate-b")).toEqual({
+      ok: true,
+      value: {
+        traces: 1,
+        runs: 0,
+        events: 0,
+        judgments: 0,
+        exports: 1,
+        exportLinks: 1,
+      },
+    });
+    const removed =
+      await adapter.getRetrievalTraceExportManifest("aggregate-export");
+    expect(removed.ok && removed.value).toBeNull();
+  });
+
+  test("reports WAL readers truthfully and completes after they release", async () => {
+    expect(
+      (
+        await adapter.createRetrievalTrace(
+          traceInput("wal-reader", 10_000, "replay", "reader canary")
+        )
+      ).ok
+    ).toBeTrue();
+    const reader = new Database(dbPath);
+    try {
+      reader.exec("PRAGMA journal_mode = WAL; BEGIN");
+      reader.query("SELECT COUNT(*) FROM retrieval_traces").get();
+      adapter.getRawDb().exec("PRAGMA busy_timeout = 0");
+
+      const busy = await adapter.purgeRetrievalTraces();
+      expect(busy.ok && busy.value).toMatchObject({
+        traces: 1,
+        physicalCleanup: "wal_busy",
+      });
+      if (busy.ok) expect(busy.value.remainingWalFrames).toBeGreaterThan(0);
+    } finally {
+      reader.exec("ROLLBACK");
+      reader.close();
+    }
+
+    const completed = await adapter.purgeRetrievalTraces();
+    expect(completed.ok && completed.value).toMatchObject({
+      traces: 0,
+      physicalCleanup: "completed",
+      remainingWalFrames: 0,
+    });
   });
 });

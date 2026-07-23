@@ -184,6 +184,22 @@ delete stored receipts. Metadata-mode label references use an index-local,
 random redaction secret persisted in database metadata so retries stay stable
 across restarts without exposing the secret through any surface.
 
+### Trace schema upgrades and recovery
+
+Trace storage is database schema v14. Existing v12 and v13 indexes upgrade
+transactionally: a failed migration preserves the prior schema version and
+does not leave partial trace tables. Stop the active resident owner and back up
+the SQLite database together with live `-wal`/`-shm` companions before moving
+an important index between GNO versions; never copy a database while it is
+being written.
+
+There is no in-place downgrade command. Disabling recording is reversible and
+does not delete receipts. Use explicit export first when evidence must be
+retained, `gno trace delete` for one receipt, or `gno --yes trace purge --json`
+for all local trace rows. Only a purge receipt with
+`physicalCleanup: completed` proves WAL truncation; exported artifacts and
+external backups remain outside the purge boundary.
+
 ## Collections
 
 Collections define what gets indexed.

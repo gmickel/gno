@@ -497,7 +497,22 @@ describe("stateful Web Standard MCP transport", () => {
       enableWrite: false,
     });
     openTransports.push(transport);
-    const sessionId = await initialize(transport);
+    const authenticatedIdentity = "bearer:authenticated-reader";
+    const sessionId = await initialize(transport, 1, authenticatedIdentity);
+    const reads = await transport.handleRequest(
+      postRequest(
+        {
+          jsonrpc: "2.0",
+          id: 2,
+          method: "tools/list",
+          params: {},
+        },
+        sessionId
+      ),
+      { identity: authenticatedIdentity }
+    );
+    expect(reads.status).toBe(200);
+    await reads.text();
     for (const name of ["gno_capture", "gno_trace_delete"]) {
       const response = await transport.handleRequest(
         postRequest(
@@ -508,7 +523,8 @@ describe("stateful Web Standard MCP transport", () => {
             params: { name, arguments: { traceId: "secret-trace" } },
           },
           sessionId
-        )
+        ),
+        { identity: authenticatedIdentity }
       );
       expect(response.status).toBe(403);
       const body = await response.text();

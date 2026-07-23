@@ -65,28 +65,31 @@ describe("trace history evidence and purge truthfulness", () => {
     );
   });
 
-  test("keeps incomplete physical cleanup visible with retry guidance", () => {
-    renderWithUser(
-      <TracePurgeNotice
-        receipt={{
-          schemaVersion: "1.0",
-          traces: 4,
-          runs: 3,
-          events: 2,
-          judgments: 1,
-          exports: 1,
-          exportLinks: 1,
-          physicalCleanup: "wal_busy",
-          checkpointedFrames: 2,
-          remainingWalFrames: 1,
-        }}
-      />
-    );
-    expect(screen.getByTestId("trace-purge-receipt").textContent).toContain(
-      "physical cleanup wal busy"
-    );
-    expect(screen.getByTestId("trace-purge-receipt").textContent).toContain(
-      "Retry Full purge"
-    );
-  });
+  test.each(["wal_busy", "failed"] as const)(
+    "keeps %s physical cleanup visible with retry guidance",
+    (physicalCleanup) => {
+      renderWithUser(
+        <TracePurgeNotice
+          receipt={{
+            schemaVersion: "1.0",
+            traces: 4,
+            runs: 3,
+            events: 2,
+            judgments: 1,
+            exports: 1,
+            exportLinks: 1,
+            physicalCleanup,
+            checkpointedFrames: physicalCleanup === "wal_busy" ? 2 : 0,
+            remainingWalFrames: physicalCleanup === "wal_busy" ? 1 : -1,
+          }}
+        />
+      );
+      expect(screen.getByTestId("trace-purge-receipt").textContent).toContain(
+        `physical cleanup ${physicalCleanup.replace("_", " ")}`
+      );
+      expect(screen.getByTestId("trace-purge-receipt").textContent).toContain(
+        "Retry Full purge"
+      );
+    }
+  );
 });

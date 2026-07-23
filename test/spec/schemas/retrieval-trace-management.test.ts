@@ -30,7 +30,7 @@ const trace = {
   queryDigest: null,
   goalText: null,
   goalDigest: null,
-  filters: { shape: { terms: 1 } },
+  filters: { shape: { type: "object", fields: {} } },
 };
 
 const judgment = {

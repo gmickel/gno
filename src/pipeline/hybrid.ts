@@ -55,10 +55,10 @@ import {
   shouldSortByRecency,
 } from "./temporal";
 import {
-  DEFAULT_PIPELINE_CONFIG,
-  SEARCH_RESULT_PLANNER_METADATA,
-  SEARCH_RESULTS_TRACE_METADATA,
-} from "./types";
+  attachSearchResultPlannerMetadata,
+  attachSearchResultsTraceMetadata,
+} from "./trace-metadata";
+import { DEFAULT_PIPELINE_CONFIG } from "./types";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Dependencies
@@ -953,47 +953,51 @@ export async function searchHybrid(
       if (!docidMap.has(docidKey)) docidMap.set(docidKey, doc.docid);
       const collectionPath = collectionPaths.get(doc.collection);
       seenDocids.add(doc.docid);
-      results.push({
-        docid: doc.docid,
-        score: candidate.blendedScore,
-        uri: doc.uri,
-        title: doc.title ?? undefined,
-        contentType: doc.contentType ?? undefined,
-        categories: doc.categories ?? undefined,
-        line: snippetChunk.startLine,
-        snippet,
-        snippetLanguage: chunk.language ?? undefined,
-        snippetRange,
-        source: {
-          relPath: doc.relPath,
-          absPath: collectionPath
-            ? `${collectionPath}/${doc.relPath}`
-            : undefined,
-          mime: doc.sourceMime,
-          ext: doc.sourceExt,
-          modifiedAt: doc.sourceMtime,
-          documentDate: doc.frontmatterDate ?? undefined,
-          sizeBytes: doc.sourceSize,
-          sourceHash: doc.sourceHash,
-        },
-        conversion: {
-          mirrorHash: candidate.mirrorHash,
-          converterId: doc.converterId ?? undefined,
-          converterVersion: doc.converterVersion ?? undefined,
-        },
-        [SEARCH_RESULT_PLANNER_METADATA]: {
-          retrievalRank: candidateIndex + 1,
-          mirrorHash: candidate.mirrorHash,
-          seq: snippetChunk.seq,
-          sources: [...candidate.sources].sort(),
-          graphExpanded: candidate.sources.includes("graph"),
-          startLine: snippetChunk.startLine,
-          endLine: snippetChunk.endLine,
-          passageHash: new Bun.CryptoHasher("sha256")
-            .update(snippetChunk.text)
-            .digest("hex"),
-        },
-      });
+      results.push(
+        attachSearchResultPlannerMetadata(
+          {
+            docid: doc.docid,
+            score: candidate.blendedScore,
+            uri: doc.uri,
+            title: doc.title ?? undefined,
+            contentType: doc.contentType ?? undefined,
+            categories: doc.categories ?? undefined,
+            line: snippetChunk.startLine,
+            snippet,
+            snippetLanguage: chunk.language ?? undefined,
+            snippetRange,
+            source: {
+              relPath: doc.relPath,
+              absPath: collectionPath
+                ? `${collectionPath}/${doc.relPath}`
+                : undefined,
+              mime: doc.sourceMime,
+              ext: doc.sourceExt,
+              modifiedAt: doc.sourceMtime,
+              documentDate: doc.frontmatterDate ?? undefined,
+              sizeBytes: doc.sourceSize,
+              sourceHash: doc.sourceHash,
+            },
+            conversion: {
+              mirrorHash: candidate.mirrorHash,
+              converterId: doc.converterId ?? undefined,
+              converterVersion: doc.converterVersion ?? undefined,
+            },
+          },
+          {
+            retrievalRank: candidateIndex + 1,
+            mirrorHash: candidate.mirrorHash,
+            seq: snippetChunk.seq,
+            sources: [...candidate.sources].sort(),
+            graphExpanded: candidate.sources.includes("graph"),
+            startLine: snippetChunk.startLine,
+            endLine: snippetChunk.endLine,
+            passageHash: new Bun.CryptoHasher("sha256")
+              .update(snippetChunk.text)
+              .digest("hex"),
+          }
+        )
+      );
     }
   }
   timings.assemblyMs = performance.now() - assemblyStartedAt;
@@ -1122,9 +1126,9 @@ export async function searchHybrid(
             graphExpansion.meta.fallbackReasons[0] ?? "graph_disabled",
         },
   ];
-  Object.defineProperty(output, SEARCH_RESULTS_TRACE_METADATA, {
-    enumerable: false,
-    value: { capabilityOutcomes, fallbackCodes },
+  attachSearchResultsTraceMetadata(output, {
+    capabilityOutcomes,
+    fallbackCodes,
   });
   const traceResult = await options.traceSession?.recordRetrieval(
     output,

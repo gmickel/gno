@@ -1,0 +1,178 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "gno://schemas/retrieval-trace-payloads@1.0",
+  "title": "GNO Retrieval Trace Payloads",
+  "definitions": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "identity": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": { "docid": {} },
+          "required": ["docid"]
+        },
+        {
+          "type": "object",
+          "properties": { "sourceHash": {} },
+          "required": ["sourceHash"]
+        },
+        {
+          "type": "object",
+          "properties": { "mirrorHash": {} },
+          "required": ["mirrorHash"]
+        },
+        {
+          "type": "object",
+          "properties": { "uri": {} },
+          "required": ["uri"]
+        }
+      ]
+    },
+    "evidenceRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "allOf": [{ "$ref": "#/definitions/identity" }],
+      "dependencies": {
+        "startLine": ["endLine"],
+        "endLine": ["startLine"]
+      },
+      "properties": {
+        "docid": { "type": "string", "minLength": 1, "maxLength": 256 },
+        "sourceHash": { "$ref": "#/definitions/sha256" },
+        "mirrorHash": { "$ref": "#/definitions/sha256" },
+        "uri": { "type": "string", "pattern": "^gno://", "maxLength": 4096 },
+        "seq": { "type": "integer", "minimum": 0 },
+        "startLine": { "type": "integer", "minimum": 1 },
+        "endLine": { "type": "integer", "minimum": 1 },
+        "score": { "type": "number" },
+        "rank": { "type": "integer", "minimum": 1 },
+        "plannerRank": { "type": "integer", "minimum": 1 },
+        "passageHash": { "$ref": "#/definitions/sha256" },
+        "sources": {
+          "type": "array",
+          "maxItems": 16,
+          "items": { "type": "string", "minLength": 1, "maxLength": 128 }
+        },
+        "graphExpanded": { "type": "boolean" }
+      }
+    },
+    "evidencePayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["evidence"],
+      "properties": {
+        "evidence": {
+          "type": "array",
+          "maxItems": 10000,
+          "items": { "$ref": "#/definitions/evidenceRef" }
+        },
+        "latencyMs": { "type": "number", "minimum": 0 }
+      }
+    },
+    "retrievalPayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ranked"],
+      "properties": {
+        "ranked": {
+          "type": "array",
+          "maxItems": 10000,
+          "items": { "$ref": "#/definitions/evidenceRef" }
+        },
+        "latencyMs": { "type": "number", "minimum": 0 },
+        "capabilities": {
+          "type": "array",
+          "maxItems": 100,
+          "items": { "type": "string", "minLength": 1, "maxLength": 128 }
+        },
+        "fallbackCodes": {
+          "type": "array",
+          "maxItems": 100,
+          "items": { "type": "string", "minLength": 1, "maxLength": 128 }
+        }
+      }
+    },
+    "contextPayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["evidence", "capsuleId"],
+      "properties": {
+        "evidence": {
+          "type": "array",
+          "maxItems": 10000,
+          "items": { "$ref": "#/definitions/evidenceRef" }
+        },
+        "capsuleId": { "type": "string", "minLength": 1, "maxLength": 256 },
+        "latencyMs": { "type": "number", "minimum": 0 }
+      }
+    },
+    "queryPayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "filterFingerprint": { "$ref": "#/definitions/sha256" }
+      }
+    },
+    "capabilityPayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["capability", "status"],
+      "properties": {
+        "capability": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "status": {
+          "enum": ["attempted", "used", "unavailable", "failed"]
+        },
+        "reasonCode": { "type": "string", "minLength": 1, "maxLength": 128 }
+      }
+    },
+    "completePayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["outcome"],
+      "properties": {
+        "outcome": { "enum": ["completed", "partial", "failed", "cancelled"] },
+        "latencyMs": { "type": "number", "minimum": 0 }
+      }
+    },
+    "judgmentTarget": {
+      "type": "object",
+      "additionalProperties": false,
+      "allOf": [{ "$ref": "#/definitions/identity" }],
+      "dependencies": {
+        "startLine": ["endLine"],
+        "endLine": ["startLine"]
+      },
+      "properties": {
+        "docid": { "type": "string", "minLength": 1, "maxLength": 256 },
+        "sourceHash": { "$ref": "#/definitions/sha256" },
+        "mirrorHash": { "$ref": "#/definitions/sha256" },
+        "uri": { "type": "string", "pattern": "^gno://", "maxLength": 4096 },
+        "seq": { "type": "integer", "minimum": 0 },
+        "startLine": { "type": "integer", "minimum": 1 },
+        "endLine": { "type": "integer", "minimum": 1 },
+        "plannerRank": { "type": "integer", "minimum": 1 },
+        "passageHash": { "$ref": "#/definitions/sha256" },
+        "sources": {
+          "type": "array",
+          "maxItems": 16,
+          "items": { "type": "string", "minLength": 1, "maxLength": 128 }
+        },
+        "graphExpanded": { "type": "boolean" }
+      }
+    },
+    "documentTarget": {
+      "type": "object",
+      "additionalProperties": false,
+      "allOf": [{ "$ref": "#/definitions/identity" }],
+      "properties": {
+        "docid": { "type": "string", "minLength": 1, "maxLength": 256 },
+        "sourceHash": { "$ref": "#/definitions/sha256" },
+        "mirrorHash": { "$ref": "#/definitions/sha256" },
+        "uri": { "type": "string", "pattern": "^gno://", "maxLength": 4096 }
+      }
+    }
+  }
+}

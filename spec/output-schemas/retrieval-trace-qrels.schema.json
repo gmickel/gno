@@ -65,19 +65,7 @@
       }
     },
     "target": {
-      "type": "object",
-      "additionalProperties": false,
-      "minProperties": 1,
-      "properties": {
-        "docid": { "type": "string" },
-        "sourceHash": { "$ref": "#/definitions/hash" },
-        "mirrorHash": { "$ref": "#/definitions/hash" },
-        "uri": { "type": "string", "pattern": "^gno://" },
-        "seq": { "type": "integer", "minimum": 0 },
-        "startLine": { "type": "integer", "minimum": 1 },
-        "endLine": { "type": "integer", "minimum": 1 },
-        "passageHash": { "$ref": "#/definitions/hash" }
-      }
+      "$ref": "gno://schemas/retrieval-trace-payloads@1.0#/definitions/judgmentTarget"
     },
     "qrel": {
       "type": "object",
@@ -137,7 +125,9 @@
               "oneOf": [{ "type": "string" }, { "type": "null" }]
             },
             "goalDigest": { "$ref": "#/definitions/nullableHash" },
-            "filters": { "type": "object" }
+            "filters": {
+              "$ref": "gno://schemas/retrieval-trace-filters@1.0#/definitions/filters"
+            }
           }
         },
         "fingerprints": {
@@ -233,7 +223,67 @@
                   "target": { "$ref": "#/definitions/target" },
                   "createdAtMs": { "type": "integer", "minimum": 0 },
                   "canonicalDigest": { "$ref": "#/definitions/hash" }
-                }
+                },
+                "allOf": [
+                  {
+                    "if": {
+                      "properties": {
+                        "targetKind": { "const": "document" }
+                      },
+                      "required": ["targetKind"]
+                    },
+                    "then": {
+                      "properties": {
+                        "target": {
+                          "$ref": "gno://schemas/retrieval-trace-payloads@1.0#/definitions/documentTarget"
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "if": {
+                      "properties": { "targetKind": { "const": "chunk" } },
+                      "required": ["targetKind"]
+                    },
+                    "then": {
+                      "properties": {
+                        "target": {
+                          "allOf": [
+                            { "$ref": "#/definitions/target" },
+                            {
+                              "type": "object",
+                              "properties": { "seq": {} },
+                              "required": ["seq"]
+                            }
+                          ]
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "if": {
+                      "properties": { "targetKind": { "const": "span" } },
+                      "required": ["targetKind"]
+                    },
+                    "then": {
+                      "properties": {
+                        "target": {
+                          "allOf": [
+                            { "$ref": "#/definitions/target" },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "startLine": {},
+                                "endLine": {}
+                              },
+                              "required": ["startLine", "endLine"]
+                            }
+                          ]
+                        }
+                      }
+                    }
+                  }
+                ]
               }
             },
             "effective": {

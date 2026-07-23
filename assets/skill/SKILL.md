@@ -169,6 +169,12 @@ When the user wants a synthesized answer instead of ranked evidence:
 gno ask "What changed in the deployment process?" --answer
 ```
 
+Trace recording is local and off by default. `metadata` mode is diagnostic-only
+and omits raw query/goal/filter values; `replay` is separate explicit consent
+to retain those bounded inputs under configured local retention limits. No
+receipt is uploaded automatically, and disabling capture does not disable
+inspection or deletion of existing receipts.
+
 For an explicitly labeled, replay-mode receipt, export content-free qrels and
 compare one candidate without changing the live ranking setup:
 

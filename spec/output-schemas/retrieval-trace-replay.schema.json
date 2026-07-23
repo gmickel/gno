@@ -151,8 +151,14 @@
             "type": "object",
             "required": ["baseline", "candidate"],
             "properties": {
-              "baseline": { "type": "array" },
-              "candidate": { "type": "array" }
+              "baseline": {
+                "type": "array",
+                "items": { "$ref": "#/definitions/capabilityOutcome" }
+              },
+              "candidate": {
+                "type": "array",
+                "items": { "$ref": "#/definitions/capabilityOutcome" }
+              }
             },
             "additionalProperties": false
           },
@@ -180,6 +186,20 @@
     }
   },
   "definitions": {
+    "capabilityOutcome": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["capability", "status", "reasonCode"],
+      "properties": {
+        "capability": { "type": "string", "minLength": 1 },
+        "status": {
+          "enum": ["attempted", "used", "unavailable", "failed"]
+        },
+        "reasonCode": {
+          "oneOf": [{ "type": "string" }, { "type": "null" }]
+        }
+      }
+    },
     "metrics": {
       "type": "object",
       "additionalProperties": false,

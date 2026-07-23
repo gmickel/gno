@@ -28,6 +28,7 @@
   "files": [
     "assets",
     "bunfig.toml",
+    "spec",
     "src",
     "THIRD_PARTY_NOTICES.md",
     "vendor"

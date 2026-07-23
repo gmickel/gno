@@ -29,6 +29,7 @@ import type { ContextConfiguredGuidance } from "./context-guidance";
 import { decorateUriForIndex } from "../app/constants";
 import { canonicalizeIndexName } from "../app/index-name";
 import { resolveTemporalRange } from "../pipeline/temporal";
+import { attachSearchResultPlannerMetadata } from "../pipeline/trace-metadata";
 import {
   SEARCH_RESULT_PLANNER_METADATA,
   type SearchResultPlannerMetadata,
@@ -363,10 +364,16 @@ export const planContextEvidence = async <T, P>(
   }
   const decoratedResults = responses
     .flatMap((response) => response.results)
-    .map((result) => ({
-      ...result,
-      uri: decorateUriForIndex(result.uri, indexName),
-    }));
+    .map((result) => {
+      const decorated = {
+        ...result,
+        uri: decorateUriForIndex(result.uri, indexName),
+      };
+      const metadata = result[SEARCH_RESULT_PLANNER_METADATA];
+      return metadata
+        ? attachSearchResultPlannerMetadata(decorated, metadata)
+        : decorated;
+    });
   const results = decoratedResults
     .map((result, index) => ({
       result,
