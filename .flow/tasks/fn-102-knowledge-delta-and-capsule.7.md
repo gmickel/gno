@@ -20,9 +20,19 @@ visible, causing the later registration to miss the already-drained change.
 
 
 ## Done summary
-TBD
+Closed the remaining saved-Capsule registration/scheduler race.
 
+Registration persistence now atomically rewinds the durable scheduler
+high-water sequence to the pre-load sequence and advances a registration epoch.
+Scheduler drains compare that epoch before advancing; a registration that
+becomes visible during a drain prevents the stale advance and triggers an
+immediate retry. This covers both scheduler-advance-before-registration and
+registration-during-final-advance interleavings without storing or rewriting
+Capsule bodies.
+
+Added migration 018, canonical schema updates, deterministic race regressions,
+upgrade coverage, notification privacy assertions, and schema-version updates.
 ## Evidence
-- Commits:
-- Tests:
-- PRs:
+- Commits: f5a189f
+- Tests: bun test test/changes/capsule-reverification.test.ts test/store/migrations.test.ts test/store/adapter.test.ts (57 pass, 0 fail), bun test (2844 pass, 1 expected Windows skip, 0 fail), bun run lint:check, bun run typecheck, bun run docs:verify (13 pass, 2 model-cache skips), .flow/bin/flowctl validate --all (110 specs, 316 tasks, valid)
+- PRs: 143
