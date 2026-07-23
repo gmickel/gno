@@ -7,6 +7,7 @@
  */
 
 import type { ContextHolder } from "./routes/api";
+import type { McpHttpRouteHandlers } from "./routes/mcp";
 
 import { startBackgroundRuntime } from "./background-runtime";
 import { handleContextBuild, handleContextVerify } from "./context-capsule";
@@ -88,6 +89,8 @@ interface StartServerDependencies {
   serve?: typeof Bun.serve;
   handleInstallConnector?: typeof handleInstallConnector;
   waitForShutdown?: (signal: AbortSignal) => Promise<void>;
+  /** Test-only until the MCP network security boundary lands in task 3. */
+  unsafeTestOnlyMcpRoute?: McpHttpRouteHandlers;
 }
 
 // Hostname parsing helpers - preserved for future fetch handler use
@@ -164,6 +167,9 @@ export async function startServer(
   const runtime = runtimeResult.runtime;
   const store = runtime.store;
   const ctxHolder: ContextHolder = runtime.ctxHolder;
+  const unsafeTestOnlyMcpRoute = dependencies.unsafeTestOnlyMcpRoute;
+  const unsafeTestOnlyRoutes: Record<string, McpHttpRouteHandlers> =
+    unsafeTestOnlyMcpRoute ? { "/mcp": unsafeTestOnlyMcpRoute } : {};
 
   // Shutdown controller for clean lifecycle
   const shutdownController = new AbortController();
@@ -193,6 +199,9 @@ export async function startServer(
 
       // Static routes - Bun handles HTML bundling and /_bun/* assets automatically
       routes: {
+        // Deliberately absent in normal serve/daemon startup. Task 3 installs
+        // security middleware before this test-only transport can be enabled.
+        ...unsafeTestOnlyRoutes,
         // SPA routes - all serve the same React app
         "/": homepage,
         "/search": homepage,
