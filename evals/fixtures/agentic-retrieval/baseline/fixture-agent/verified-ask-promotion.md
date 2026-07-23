@@ -1,6 +1,6 @@
 # Verified Ask promotion
 
-Canonical fingerprint: `741efecfd5621db4bad2e50c1194f99cf164fa80d238e515c39d5cbc02663a7a`
+Canonical fingerprint: `53931a6ad5717a707e2a486d47fafb988960b0e0f45f201c5875d1104034ee28`
 
 Verdict: **PASS**
 
