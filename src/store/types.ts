@@ -817,6 +817,182 @@ export interface ActivationIndexSnapshot {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Private Retrieval Trace Receipts
+// ─────────────────────────────────────────────────────────────────────────────
+
+export type RetrievalTraceRedactionMode = "metadata" | "replay";
+export type RetrievalTraceTerminalStatus =
+  | "completed"
+  | "partial"
+  | "failed"
+  | "cancelled";
+export type RetrievalTraceStatus = "open" | RetrievalTraceTerminalStatus;
+export type RetrievalTraceJudgmentLabel =
+  | "relevant"
+  | "irrelevant"
+  | "missing_expected";
+export type RetrievalTraceJudgmentTargetKind =
+  | "document"
+  | "chunk"
+  | "span"
+  | "query";
+export type RetrievalTraceAppendResult = "inserted" | "duplicate";
+export type RetrievalTraceRunKind = "retrieval" | "context" | "get";
+export type RetrievalTraceEventKind =
+  | "query"
+  | "retrieval"
+  | "context"
+  | "get"
+  | "open"
+  | "cite"
+  | "pin"
+  | "capability"
+  | "complete";
+export type RetrievalTraceExportFormat = "agentic-receipt" | "qrels";
+
+export interface RetrievalTraceFingerprints {
+  pipeline: string;
+  model: string;
+  config: string;
+  index: string;
+}
+
+/** Already-redacted trace header persisted by StorePort implementations. */
+export interface RetrievalTraceInput {
+  traceId: string;
+  schemaVersion: "1.0";
+  redactionMode: RetrievalTraceRedactionMode;
+  replayCapable: boolean;
+  queryText: string | null;
+  queryDigest: string | null;
+  queryShape: {
+    characters: number;
+    terms: number;
+  };
+  goalText: string | null;
+  goalDigest: string | null;
+  goalShape: {
+    characters: number;
+    terms: number;
+  };
+  filters: Record<string, unknown>;
+  fingerprints: RetrievalTraceFingerprints;
+  status: "open";
+  createdAtMs: number;
+  updatedAtMs: number;
+  expiresAtMs: number;
+}
+
+export type RetrievalTraceRow = Omit<
+  RetrievalTraceInput,
+  "status" | "updatedAtMs"
+> & {
+  status: RetrievalTraceStatus;
+  updatedAtMs: number;
+  byteSize: number;
+  /** Digest of immutable creation fields; terminal status/time are excluded. */
+  creationDigest: string;
+};
+
+export interface RetrievalTraceRunInput {
+  runId: string;
+  traceId: string;
+  idempotencyKey: string;
+  kind: RetrievalTraceRunKind;
+  payload: Record<string, unknown>;
+  createdAtMs: number;
+}
+
+export type RetrievalTraceRunRow = RetrievalTraceRunInput & {
+  payloadBytes: number;
+  canonicalDigest: string;
+};
+
+export interface RetrievalTraceEventInput {
+  eventId: string;
+  traceId: string;
+  runId: string | null;
+  idempotencyKey: string;
+  kind: RetrievalTraceEventKind;
+  payload: Record<string, unknown>;
+  createdAtMs: number;
+}
+
+export type RetrievalTraceEventRow = RetrievalTraceEventInput & {
+  payloadBytes: number;
+  canonicalDigest: string;
+};
+
+export interface RetrievalTraceJudgmentInput {
+  judgmentId: string;
+  traceId: string;
+  runId: string | null;
+  idempotencyKey: string;
+  label: RetrievalTraceJudgmentLabel;
+  targetKind: RetrievalTraceJudgmentTargetKind;
+  targetRef: string;
+  target: Record<string, unknown>;
+  createdAtMs: number;
+}
+
+export type RetrievalTraceJudgmentRow = RetrievalTraceJudgmentInput & {
+  targetBytes: number;
+  canonicalDigest: string;
+};
+
+export interface RetrievalTraceExportInput {
+  exportId: string;
+  traceId: string;
+  format: RetrievalTraceExportFormat;
+  artifactHash: string;
+  createdAtMs: number;
+}
+
+export interface RetrievalTraceExportRow extends RetrievalTraceExportInput {}
+
+export interface RetrievalTraceBundle {
+  trace: RetrievalTraceRow;
+  runs: RetrievalTraceRunRow[];
+  events: RetrievalTraceEventRow[];
+  judgments: RetrievalTraceJudgmentRow[];
+  exports: RetrievalTraceExportRow[];
+}
+
+export interface RetrievalTraceRetentionPolicy {
+  maxAgeDays: number;
+  maxTraces: number;
+  maxRecordsPerTrace: number;
+  maxBytes: number;
+}
+
+export interface RetrievalTraceDeleteCounts {
+  traces: number;
+  runs: number;
+  events: number;
+  judgments: number;
+  exports: number;
+  exportLinks: number;
+}
+
+export interface RetrievalTraceRetentionResult {
+  deleted: RetrievalTraceDeleteCounts;
+  deletedTraceIds: string[];
+  remainingTraces: number;
+  remainingBytes: number;
+}
+
+export type RetrievalTracePhysicalCleanupStatus =
+  | "completed"
+  | "wal_busy"
+  | "failed";
+
+export interface RetrievalTracePurgeResult extends RetrievalTraceDeleteCounts {
+  physicalCleanup: RetrievalTracePhysicalCleanupStatus;
+  checkpointedFrames: number;
+  remainingWalFrames: number;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Transaction Types
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -924,6 +1100,60 @@ export interface StorePort {
   upsertActivationReceipt(
     receipt: ActivationVerificationReceipt
   ): Promise<StoreResult<void>>;
+
+  /** Persist an already-redacted, versioned retrieval trace header. */
+  createRetrievalTrace(
+    trace: RetrievalTraceInput
+  ): Promise<StoreResult<RetrievalTraceAppendResult>>;
+
+  /** Return a trace and all of its locally stored subordinate records. */
+  getRetrievalTrace(
+    traceId: string
+  ): Promise<StoreResult<RetrievalTraceBundle | null>>;
+
+  /** List trace headers newest-first with a bounded caller-selected limit. */
+  listRetrievalTraces(limit: number): Promise<StoreResult<RetrievalTraceRow[]>>;
+
+  /** Transition an open trace to one explicit terminal outcome idempotently. */
+  finalizeRetrievalTrace(
+    traceId: string,
+    status: RetrievalTraceTerminalStatus,
+    updatedAtMs: number
+  ): Promise<StoreResult<RetrievalTraceAppendResult>>;
+
+  /** Append a run once per trace-scoped idempotency key. */
+  appendRetrievalTraceRun(
+    run: RetrievalTraceRunInput
+  ): Promise<StoreResult<RetrievalTraceAppendResult>>;
+
+  /** Append an event once per trace-scoped idempotency key. */
+  appendRetrievalTraceEvent(
+    event: RetrievalTraceEventInput
+  ): Promise<StoreResult<RetrievalTraceAppendResult>>;
+
+  /** Append an explicit judgment once per trace-scoped idempotency key. */
+  appendRetrievalTraceJudgment(
+    judgment: RetrievalTraceJudgmentInput
+  ): Promise<StoreResult<RetrievalTraceAppendResult>>;
+
+  /** Record a locally produced explicit export receipt idempotently. */
+  appendRetrievalTraceExport(
+    traceExport: RetrievalTraceExportInput
+  ): Promise<StoreResult<RetrievalTraceAppendResult>>;
+
+  /** Delete one trace and report exact cascade counts. */
+  deleteRetrievalTrace(
+    traceId: string
+  ): Promise<StoreResult<RetrievalTraceDeleteCounts>>;
+
+  /** Delete every trace and subordinate record in one transaction. */
+  purgeRetrievalTraces(): Promise<StoreResult<RetrievalTracePurgeResult>>;
+
+  /** Apply deterministic time, row, and byte retention limits. */
+  enforceRetrievalTraceRetention(
+    policy: RetrievalTraceRetentionPolicy,
+    nowMs: number
+  ): Promise<StoreResult<RetrievalTraceRetentionResult>>;
 
   // ─────────────────────────────────────────────────────────────────────────
   // Documents

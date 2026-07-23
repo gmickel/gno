@@ -79,6 +79,10 @@ editorUriTemplate: "vscode://file/{path}:{line}:{col}"
 gateway:
   host: 127.0.0.1
   enableWrite: false
+
+# Private local retrieval receipts are absent/off by default.
+retrievalTraces:
+  enabled: false
 ```
 
 ## Resident HTTP MCP Gateway
@@ -118,6 +122,46 @@ Upgrading from a stdio-only setup requires no client-config migration:
 `gno mcp` remains supported. Start `gno serve` or `gno daemon` only for clients
 that can use the resident URL `http://127.0.0.1:3000/mcp`. Stop any resident
 owner for the same data directory before switching between serve and daemon.
+
+## Private Retrieval Traces
+
+Retrieval trace recording is local, opt-in, and disabled when
+`retrievalTraces` is absent or `enabled: false`. Enabling it requires an
+explicit redaction mode and every retention bound:
+
+```yaml
+retrievalTraces:
+  enabled: true
+  redactionMode: metadata
+  retention:
+    maxAgeDays: 30
+    maxTraces: 1000
+    maxRecordsPerTrace: 10000
+    maxBytes: 16777216
+```
+
+`metadata` stores content-free query/goal/filter shapes plus validated evidence
+identity such as source hashes, docids, ranks, and exact line spans. It does not
+store raw query, goal, filter values, passages, filesystem paths, or external
+URLs, and it is not replay-capable.
+
+`replay` is separate, explicit consent to retain the normalized raw query,
+goal, and validated retrieval filters. Even in replay mode, event/run payloads
+use closed evidence schemas: no source passages, absolute paths, or external
+URLs are accepted. Receipts stay in the active local index database; the
+recorder has no telemetry or upload path.
+
+Retention uses epoch-millisecond timestamps and deterministically removes
+expired traces first, then traces exceeding the per-trace record limit, then
+the oldest traces until count and logical-storage byte bounds are satisfied.
+Changing `maxAgeDays` applies the shorter current policy to existing receipts.
+
+Per-trace deletion removes every owned run, event, judgment, and export link
+transactionally, but SQLite WAL history may remain until checkpointed. Full
+purge enables SQLite secure deletion for the transaction and requires a
+successful truncating WAL checkpoint before reporting physical cleanup
+complete. User-created exports and external backups remain user-owned and must
+be deleted separately.
 
 ## Collections
 

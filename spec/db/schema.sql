@@ -16,6 +16,9 @@
 --   doc_links         - Wiki and markdown links between documents
 --   doc_edges         - Derived semantic document relationships
 --   activation_receipts - Bounded per-collection retrieval proof receipts
+--   retrieval_traces - Opt-in private retrieval trace headers
+--   retrieval_trace_runs/events/judgments - Bounded trace outcome records
+--   retrieval_trace_exports/export_traces - Export manifests and trace joins
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- Schema Metadata
@@ -234,6 +237,129 @@ CREATE TABLE IF NOT EXISTS activation_receipts (
 
 CREATE INDEX IF NOT EXISTS idx_activation_receipts_fingerprint
   ON activation_receipts(fingerprint);
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Private Retrieval Trace Receipts
+-- ─────────────────────────────────────────────────────────────────────────────
+
+-- Recording is opt-in at the config/core layer. Metadata receipts keep no raw
+-- query/goal/filter values; replay receipts require explicit consent.
+
+CREATE TABLE IF NOT EXISTS retrieval_traces (
+  trace_id TEXT PRIMARY KEY CHECK (length(trace_id) BETWEEN 1 AND 128),
+  schema_version TEXT NOT NULL CHECK (schema_version = '1.0'),
+  redaction_mode TEXT NOT NULL CHECK (redaction_mode IN ('metadata', 'replay')),
+  replay_capable INTEGER NOT NULL CHECK (replay_capable IN (0, 1)),
+  query_text TEXT,
+  query_digest TEXT,
+  query_shape_json TEXT NOT NULL,
+  goal_text TEXT,
+  goal_digest TEXT,
+  goal_shape_json TEXT NOT NULL,
+  filters_json TEXT NOT NULL,
+  pipeline_fingerprint TEXT NOT NULL,
+  model_fingerprint TEXT NOT NULL,
+  config_fingerprint TEXT NOT NULL,
+  index_fingerprint TEXT NOT NULL,
+  status TEXT NOT NULL
+    CHECK (status IN ('open', 'completed', 'partial', 'failed', 'cancelled')),
+  created_at_ms INTEGER NOT NULL CHECK (created_at_ms >= 0),
+  updated_at_ms INTEGER NOT NULL CHECK (updated_at_ms >= created_at_ms),
+  expires_at_ms INTEGER NOT NULL CHECK (expires_at_ms > created_at_ms),
+  byte_size INTEGER NOT NULL CHECK (byte_size >= 0),
+  creation_digest TEXT NOT NULL,
+  CHECK (
+    (redaction_mode = 'metadata' AND replay_capable = 0
+      AND query_text IS NULL AND query_digest IS NULL
+      AND goal_text IS NULL AND goal_digest IS NULL)
+    OR
+    (redaction_mode = 'replay' AND replay_capable = 1
+      AND query_text IS NOT NULL AND query_digest IS NOT NULL)
+  )
+);
+
+CREATE INDEX IF NOT EXISTS idx_retrieval_traces_retention
+  ON retrieval_traces(expires_at_ms, created_at_ms, trace_id);
+
+CREATE TABLE IF NOT EXISTS retrieval_trace_runs (
+  run_id TEXT PRIMARY KEY,
+  trace_id TEXT NOT NULL,
+  idempotency_key TEXT NOT NULL,
+  kind TEXT NOT NULL CHECK (kind IN ('retrieval', 'context', 'get')),
+  payload_json TEXT NOT NULL,
+  payload_bytes INTEGER NOT NULL
+    CHECK (payload_bytes = length(CAST(payload_json AS BLOB)))
+    CHECK (payload_bytes <= 65536),
+  canonical_digest TEXT NOT NULL,
+  created_at_ms INTEGER NOT NULL CHECK (created_at_ms >= 0),
+  UNIQUE (trace_id, idempotency_key),
+  UNIQUE (trace_id, run_id),
+  FOREIGN KEY (trace_id) REFERENCES retrieval_traces(trace_id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS retrieval_trace_events (
+  event_id TEXT PRIMARY KEY,
+  trace_id TEXT NOT NULL,
+  run_id TEXT,
+  idempotency_key TEXT NOT NULL,
+  kind TEXT NOT NULL
+    CHECK (kind IN ('query', 'retrieval', 'context', 'get', 'open', 'cite',
+                    'pin', 'capability', 'complete')),
+  payload_json TEXT NOT NULL,
+  payload_bytes INTEGER NOT NULL
+    CHECK (payload_bytes = length(CAST(payload_json AS BLOB)))
+    CHECK (payload_bytes <= 65536),
+  canonical_digest TEXT NOT NULL,
+  created_at_ms INTEGER NOT NULL CHECK (created_at_ms >= 0),
+  UNIQUE (trace_id, idempotency_key),
+  FOREIGN KEY (trace_id) REFERENCES retrieval_traces(trace_id) ON DELETE CASCADE,
+  FOREIGN KEY (trace_id, run_id)
+    REFERENCES retrieval_trace_runs(trace_id, run_id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS retrieval_trace_judgments (
+  judgment_id TEXT PRIMARY KEY,
+  trace_id TEXT NOT NULL,
+  run_id TEXT,
+  idempotency_key TEXT NOT NULL,
+  label TEXT NOT NULL
+    CHECK (label IN ('relevant', 'irrelevant', 'missing_expected')),
+  target_kind TEXT NOT NULL
+    CHECK (target_kind IN ('document', 'chunk', 'span', 'query')),
+  target_ref TEXT NOT NULL,
+  target_json TEXT NOT NULL,
+  target_bytes INTEGER NOT NULL
+    CHECK (target_bytes = length(CAST(target_json AS BLOB)))
+    CHECK (target_bytes <= 16384),
+  canonical_digest TEXT NOT NULL,
+  created_at_ms INTEGER NOT NULL CHECK (created_at_ms >= 0),
+  UNIQUE (trace_id, idempotency_key),
+  FOREIGN KEY (trace_id) REFERENCES retrieval_traces(trace_id) ON DELETE CASCADE,
+  FOREIGN KEY (trace_id, run_id)
+    REFERENCES retrieval_trace_runs(trace_id, run_id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS retrieval_trace_exports (
+  export_id TEXT PRIMARY KEY,
+  format TEXT NOT NULL CHECK (format IN ('agentic-receipt', 'qrels')),
+  artifact_hash TEXT NOT NULL,
+  created_at_ms INTEGER NOT NULL CHECK (created_at_ms >= 0),
+  UNIQUE (format, artifact_hash)
+);
+
+CREATE TABLE IF NOT EXISTS retrieval_trace_export_traces (
+  export_id TEXT NOT NULL,
+  trace_id TEXT NOT NULL,
+  PRIMARY KEY (export_id, trace_id),
+  FOREIGN KEY (export_id) REFERENCES retrieval_trace_exports(export_id)
+    ON DELETE CASCADE,
+  FOREIGN KEY (trace_id) REFERENCES retrieval_traces(trace_id)
+    ON DELETE CASCADE
+);
+
+-- Migration 014 also installs deterministic indexes, orphan-export cleanup,
+-- and an absolute 100,000 subordinate-record safety cap per trace. Runtime
+-- retention applies the lower configured maxRecordsPerTrace bound.
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- Document Tags

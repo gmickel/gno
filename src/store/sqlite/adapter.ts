@@ -52,6 +52,19 @@ import type {
   IngestErrorInput,
   IngestErrorRow,
   MigrationResult,
+  RetrievalTraceAppendResult,
+  RetrievalTraceBundle,
+  RetrievalTraceDeleteCounts,
+  RetrievalTraceEventInput,
+  RetrievalTraceExportInput,
+  RetrievalTraceInput,
+  RetrievalTraceJudgmentInput,
+  RetrievalTracePurgeResult,
+  RetrievalTraceRetentionPolicy,
+  RetrievalTraceRetentionResult,
+  RetrievalTraceRow,
+  RetrievalTraceRunInput,
+  RetrievalTraceTerminalStatus,
   StorePort,
   StoreResult,
   TagCount,
@@ -78,6 +91,21 @@ import { err, ok } from "../types";
 import { getStoredEmbeddingFingerprint } from "../vector/freshness";
 import { modelTableName } from "../vector/sqlite-vec";
 import { loadFts5Snowball } from "./fts5-snowball";
+import {
+  deleteTrace as deleteStoredTrace,
+  enforceRetention as enforceStoredTraceRetention,
+  purgeTraces as purgeStoredTraces,
+} from "./retrieval-trace-retention";
+import {
+  appendEvent as appendStoredTraceEvent,
+  appendExport as appendStoredTraceExport,
+  appendJudgment as appendStoredTraceJudgment,
+  appendRun as appendStoredTraceRun,
+  createTrace as createStoredTrace,
+  finalizeTrace as finalizeStoredTrace,
+  getTrace as getStoredTrace,
+  listTraces as listStoredTraces,
+} from "./retrieval-trace-store";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // FTS5 Query Escaping
@@ -780,6 +808,75 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
         cause
       );
     }
+  }
+
+  async createRetrievalTrace(
+    input: RetrievalTraceInput
+  ): Promise<StoreResult<RetrievalTraceAppendResult>> {
+    return createStoredTrace(this.ensureOpen(), input);
+  }
+
+  async getRetrievalTrace(
+    traceId: string
+  ): Promise<StoreResult<RetrievalTraceBundle | null>> {
+    return getStoredTrace(this.ensureOpen(), traceId);
+  }
+
+  async listRetrievalTraces(
+    limit: number
+  ): Promise<StoreResult<RetrievalTraceRow[]>> {
+    return listStoredTraces(this.ensureOpen(), limit);
+  }
+
+  async finalizeRetrievalTrace(
+    traceId: string,
+    status: RetrievalTraceTerminalStatus,
+    updatedAtMs: number
+  ): Promise<StoreResult<RetrievalTraceAppendResult>> {
+    return finalizeStoredTrace(this.ensureOpen(), traceId, status, updatedAtMs);
+  }
+
+  async appendRetrievalTraceRun(
+    input: RetrievalTraceRunInput
+  ): Promise<StoreResult<RetrievalTraceAppendResult>> {
+    return appendStoredTraceRun(this.ensureOpen(), input);
+  }
+
+  async appendRetrievalTraceEvent(
+    input: RetrievalTraceEventInput
+  ): Promise<StoreResult<RetrievalTraceAppendResult>> {
+    return appendStoredTraceEvent(this.ensureOpen(), input);
+  }
+
+  async appendRetrievalTraceJudgment(
+    input: RetrievalTraceJudgmentInput
+  ): Promise<StoreResult<RetrievalTraceAppendResult>> {
+    return appendStoredTraceJudgment(this.ensureOpen(), input);
+  }
+
+  async appendRetrievalTraceExport(
+    input: RetrievalTraceExportInput
+  ): Promise<StoreResult<RetrievalTraceAppendResult>> {
+    return appendStoredTraceExport(this.ensureOpen(), input);
+  }
+
+  async deleteRetrievalTrace(
+    traceId: string
+  ): Promise<StoreResult<RetrievalTraceDeleteCounts>> {
+    return deleteStoredTrace(this.ensureOpen(), traceId);
+  }
+
+  async purgeRetrievalTraces(): Promise<
+    StoreResult<RetrievalTracePurgeResult>
+  > {
+    return purgeStoredTraces(this.ensureOpen());
+  }
+
+  async enforceRetrievalTraceRetention(
+    policy: RetrievalTraceRetentionPolicy,
+    nowMs: number
+  ): Promise<StoreResult<RetrievalTraceRetentionResult>> {
+    return enforceStoredTraceRetention(this.ensureOpen(), policy, nowMs);
   }
 
   getContextGeneration(): number {
@@ -4622,7 +4719,6 @@ interface DbIngestErrorRow {
   details_json: string | null;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 // Row Mappers (snake_case -> camelCase)
 // ─────────────────────────────────────────────────────────────────────────────
 
