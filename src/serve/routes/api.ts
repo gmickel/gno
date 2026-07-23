@@ -1138,6 +1138,8 @@ export async function handleDeleteCollection(
     const status = statusMap[syncResult.code] ?? 500;
     return errorResponse(syncResult.code, syncResult.error, status);
   }
+  ctxHolder.markContentMutation?.();
+  ctxHolder.markIndexMutation?.();
   return jsonResponse({
     success: true,
     collection: name,
@@ -1840,6 +1842,7 @@ export async function handleTags(
  * Deactivate a document (soft delete - does not remove file from disk).
  */
 export async function handleDeactivateDoc(
+  ctxHolder: ContextHolder,
   store: SqliteAdapter,
   docId: string,
   req?: Request
@@ -1863,6 +1866,10 @@ export async function handleDeactivateDoc(
   const result = await store.markInactive(doc.collection, [doc.relPath]);
   if (!result.ok) {
     return errorResponse("RUNTIME", result.error.message, 500);
+  }
+  if (result.value > 0) {
+    ctxHolder.markContentMutation?.();
+    ctxHolder.markIndexMutation?.();
   }
 
   return jsonResponse({

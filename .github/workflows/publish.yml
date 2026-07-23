@@ -37,6 +37,13 @@ jobs:
           restore-keys: |
             bun-cache-${{ runner.os }}-
 
+      - name: Cache package-smoke embedding model
+        if: matrix.os == 'macos-latest'
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/gno/package-smoke
+          key: package-smoke-embeddinggemma-0f741b5a-${{ runner.os }}
+
       # Windows: Move TEMP to D: drive for faster I/O
       - name: "Set TEMP to D: drive (Windows)"
         if: matrix.os == 'windows-latest'
@@ -68,6 +75,10 @@ jobs:
         run: bun test --concurrency 1
         env:
           CI: "true"
+
+      - name: Provision pinned package-smoke model
+        if: matrix.os == 'macos-latest'
+        run: bun scripts/package-smoke-model.ts
 
       - name: Test packed resident gateway (macOS)
         if: matrix.os == 'macos-latest'
@@ -212,11 +223,20 @@ jobs:
         with:
           bun-version: latest
 
+      - name: Cache package-smoke embedding model
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/gno/package-smoke
+          key: package-smoke-embeddinggemma-0f741b5a-${{ runner.os }}
+
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
       - name: Build CSS
         run: bun run build:css
+
+      - name: Provision pinned package-smoke model
+        run: bun scripts/package-smoke-model.ts
 
       - name: Test packed package
         run: GNO_PACKAGE_SMOKE_KEEP_TEMP=1 bun run test:package

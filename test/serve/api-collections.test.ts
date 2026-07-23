@@ -617,4 +617,38 @@ describe("DELETE /api/collections/:name", () => {
     const body = (await res.json()) as ErrorBody;
     expect(body.error.code).toBe("HAS_REFERENCES");
   });
+
+  test("successful removal advances resident content and index generations", async () => {
+    await writeConfig({
+      collections: [
+        {
+          name: "docs",
+          path: tmpDir,
+          pattern: "**/*.md",
+          include: [],
+          exclude: [],
+        },
+      ],
+    });
+    const store = createMockStore();
+    const ctxHolder = createMockContextHolder();
+    let contentGeneration = 0;
+    let indexGeneration = 0;
+    ctxHolder.markContentMutation = () => {
+      contentGeneration += 1;
+    };
+    ctxHolder.markIndexMutation = () => {
+      indexGeneration += 1;
+    };
+
+    const response = await handleDeleteCollection(
+      ctxHolder,
+      store as never,
+      "docs"
+    );
+
+    expect(response.status).toBe(200);
+    expect(contentGeneration).toBe(1);
+    expect(indexGeneration).toBe(1);
+  });
 });

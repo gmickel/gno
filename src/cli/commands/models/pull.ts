@@ -54,6 +54,10 @@ export interface ModelsPullResult {
   skipped: number;
 }
 
+export interface ModelsPullDependencies {
+  cache?: Pick<ModelCache, "download" | "getCachedPath" | "isCached">;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Implementation
 // ─────────────────────────────────────────────────────────────────────────────
@@ -89,7 +93,8 @@ function getTypesToPull(options: ModelsPullOptions): ModelType[] {
  * Execute gno models pull command.
  */
 export async function modelsPull(
-  options: ModelsPullOptions = {}
+  options: ModelsPullOptions = {},
+  deps: ModelsPullDependencies = {}
 ): Promise<ModelsPullResult> {
   // Use provided config, or load from disk (use defaults if not initialized)
   let config = options.config;
@@ -100,7 +105,7 @@ export async function modelsPull(
   }
 
   const preset = getActivePreset(config);
-  const cache = new ModelCache(getModelsCachePath());
+  const cache = deps.cache ?? new ModelCache(getModelsCachePath());
   const types = getTypesToPull(options);
 
   const results: ModelPullResult[] = [];
@@ -136,7 +141,8 @@ export async function modelsPull(
       (progress) => {
         options.onProgress?.(type, progress);
       },
-      options.force
+      options.force,
+      options.signal
     );
     if (options.signal?.aborted) break;
 

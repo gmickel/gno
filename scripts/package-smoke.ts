@@ -1,13 +1,14 @@
 // node:fs/promises: temp structure and cleanup have no Bun-native equivalent.
 import { mkdir, mkdtemp } from "node:fs/promises";
 // node:os: tmpdir has no Bun-native equivalent.
-import { homedir, tmpdir } from "node:os";
+import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 // node:url: pathToFileURL has no Bun-native equivalent.
 import { pathToFileURL } from "node:url";
 
 import { safeRm } from "../test/helpers/cleanup";
 import { verifyPackedMcpInstall } from "./package-smoke-mcp";
+import { resolvePackageSmokeEmbeddingModel } from "./package-smoke-model";
 import { verifyPackedResidentGateway } from "./package-smoke-resident";
 
 interface CommandResult {
@@ -67,33 +68,6 @@ interface NpmPackResult {
 
 const rootDir = resolve(import.meta.dir, "..");
 const preserveTemp = process.env.GNO_PACKAGE_SMOKE_KEEP_TEMP === "1";
-
-async function findCachedEmbeddingModel(): Promise<string | undefined> {
-  const candidates = [
-    process.env.GNO_PACKAGE_SMOKE_EMBED_MODEL,
-    join(
-      homedir(),
-      ".cache",
-      "qmd",
-      "models",
-      "hf_ggml-org_embeddinggemma-300M-Q8_0.gguf"
-    ),
-  ].filter((candidate): candidate is string => Boolean(candidate));
-  for (const candidate of candidates) {
-    const file = Bun.file(candidate);
-    if (!(await file.exists())) continue;
-    const magic = new Uint8Array(await file.slice(0, 4).arrayBuffer());
-    if (
-      magic[0] === 0x47 &&
-      magic[1] === 0x47 &&
-      magic[2] === 0x55 &&
-      magic[3] === 0x46
-    ) {
-      return resolve(candidate);
-    }
-  }
-  return undefined;
-}
 
 async function configurePackedEmbeddingModel(
   configPath: string,
@@ -359,7 +333,7 @@ function assertNoDoctorErrors(result: DoctorResult): void {
 }
 
 async function main(): Promise<void> {
-  const embeddingModelPath = await findCachedEmbeddingModel();
+  const embeddingModelPath = await resolvePackageSmokeEmbeddingModel();
   const tempRoot = await mkdtemp(join(tmpdir(), "gno-package-smoke-"));
   const packDir = join(tempRoot, "pack");
   const installPrefix = join(tempRoot, "prefix");

@@ -11,6 +11,7 @@ import {
   handleCreateCapture,
   handleCreateDoc,
   handleCreateFolder,
+  handleDeactivateDoc,
   handleDuplicateDoc,
   handleMoveDoc,
   handleRenameDoc,
@@ -108,6 +109,29 @@ describe("document lifecycle API", () => {
 
   afterEach(async () => {
     await safeRm(tmpDir);
+  });
+
+  test("deactivation advances resident content and index generations", async () => {
+    const doc = createDoc(tmpDir);
+    const ctxHolder = createMockContextHolder();
+    let contentGeneration = 0;
+    let indexGeneration = 0;
+    ctxHolder.markContentMutation = () => {
+      contentGeneration += 1;
+    };
+    ctxHolder.markIndexMutation = () => {
+      indexGeneration += 1;
+    };
+
+    const response = await handleDeactivateDoc(
+      ctxHolder,
+      createMockStore(doc) as never,
+      doc.docid
+    );
+
+    expect(response.status).toBe(200);
+    expect(contentGeneration).toBe(1);
+    expect(indexGeneration).toBe(1);
   });
 
   test("renames editable markdown files", async () => {

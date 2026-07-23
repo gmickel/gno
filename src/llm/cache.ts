@@ -46,6 +46,7 @@ const HF_PATH_PATTERN = /^([^/]+)\/([^/]+)\/(.+\.gguf)$/;
 const GGUF_MAGIC = new Uint8Array([0x47, 0x47, 0x55, 0x46]);
 
 type ModelFileOwner = "cache" | "user";
+type ResolveModelFile = typeof import("node-llama-cpp").resolveModelFile;
 
 type ValidatedCachedPath =
   | { ok: true; path: string }
@@ -268,11 +269,16 @@ const MANIFEST_VERSION = "1.0" as const;
 export class ModelCache {
   readonly dir: string;
   private readonly manifestPath: string;
+  private readonly resolveModelFileFn?: ResolveModelFile;
   private manifest: Manifest | null = null;
 
-  constructor(cacheDir?: string) {
+  constructor(
+    cacheDir?: string,
+    deps?: { resolveModelFile?: ResolveModelFile }
+  ) {
     this.dir = cacheDir ?? getModelsCachePath();
     this.manifestPath = join(this.dir, "manifest.json");
+    this.resolveModelFileFn = deps?.resolveModelFile;
   }
 
   /**
@@ -324,7 +330,8 @@ export class ModelCache {
     uri: string,
     type: ModelType,
     onProgress?: ProgressCallback,
-    force?: boolean
+    force?: boolean,
+    signal?: AbortSignal
   ): Promise<LlmResult<string>> {
     const parsed = parseModelUri(uri);
     if (!parsed.ok) {
@@ -364,7 +371,9 @@ export class ModelCache {
     }
 
     try {
-      const { resolveModelFile } = await import("node-llama-cpp");
+      const resolveModelFile =
+        this.resolveModelFileFn ??
+        (await import("node-llama-cpp")).resolveModelFile;
 
       // Convert to node-llama-cpp format (handles quantization shorthand)
       // node-llama-cpp needs hf: prefix to identify HuggingFace models
@@ -399,6 +408,7 @@ export class ModelCache {
               }
             }
           : undefined,
+        signal,
       });
 
       const validation = await validateGgufFile(resolvedPath, uri, "cache");

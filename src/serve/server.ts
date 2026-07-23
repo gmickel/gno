@@ -98,6 +98,10 @@ interface StartServerDependencies {
   serve?: typeof Bun.serve;
   handleInstallConnector?: typeof handleInstallConnector;
   handleDocs?: typeof handleDocs;
+  handleVerifyConnector?: typeof handleVerifyConnector;
+  handleImportPreview?: typeof handleImportPreview;
+  handlePublishExport?: typeof handlePublishExport;
+  handleRefactorPlan?: typeof handleRefactorPlan;
   waitForShutdown?: (signal: AbortSignal) => Promise<void>;
 }
 
@@ -317,7 +321,13 @@ export async function startServer(
               return withSecurityHeaders(forbiddenResponse(), isDev);
             }
             return withSecurityHeaders(
-              await handleVerifyConnector(ctxHolder.config, store, req),
+              await handleResidentRead(runtime as ResidentRuntime, req, () =>
+                (dependencies.handleVerifyConnector ?? handleVerifyConnector)(
+                  ctxHolder.config,
+                  store,
+                  req
+                )
+              ),
               isDev
             );
           },
@@ -328,7 +338,12 @@ export async function startServer(
               return withSecurityHeaders(forbiddenResponse(), isDev);
             }
             return withSecurityHeaders(
-              await handleImportPreview(ctxHolder, req),
+              await handleResidentRead(runtime as ResidentRuntime, req, () =>
+                (dependencies.handleImportPreview ?? handleImportPreview)(
+                  ctxHolder,
+                  req
+                )
+              ),
               isDev
             );
           },
@@ -339,7 +354,13 @@ export async function startServer(
               return withSecurityHeaders(forbiddenResponse(), isDev);
             }
             return withSecurityHeaders(
-              await handlePublishExport(ctxHolder.config, store, req),
+              await handleResidentRead(runtime as ResidentRuntime, req, () =>
+                (dependencies.handlePublishExport ?? handlePublishExport)(
+                  ctxHolder.config,
+                  store,
+                  req
+                )
+              ),
               isDev
             );
           },
@@ -431,7 +452,7 @@ export async function startServer(
             const parts = url.pathname.split("/");
             const id = decodeURIComponent(parts[3] || "");
             return withSecurityHeaders(
-              await handleDeactivateDoc(store, id, req),
+              await handleDeactivateDoc(ctxHolder, store, id, req),
               isDev
             );
           },
@@ -487,7 +508,14 @@ export async function startServer(
             const parts = url.pathname.split("/");
             const id = decodeURIComponent(parts[3] || "");
             return withSecurityHeaders(
-              await handleRefactorPlan(ctxHolder, store, id, req),
+              await handleResidentRead(runtime as ResidentRuntime, req, () =>
+                (dependencies.handleRefactorPlan ?? handleRefactorPlan)(
+                  ctxHolder,
+                  store,
+                  id,
+                  req
+                )
+              ),
               isDev
             );
           },

@@ -264,3 +264,83 @@ test("live document reads settle on shutdown before resident resources close", a
     "resources-closed",
   ]);
 });
+
+test("filesystem-backed planning and verification routes use resident admission", async () => {
+  let capturedOptions:
+    | {
+        routes: Record<
+          string,
+          { POST: (request: Request) => Promise<Response> }
+        >;
+      }
+    | undefined;
+  const admission = new AdmissionController();
+  const admitRequest = mock((signal?: AbortSignal) => admission.admit(signal));
+  const runtime = {
+    actualConfigPath: "/tmp/config/index.yml",
+    config: { collections: [] },
+    store: {},
+    ctxHolder: { current: {}, config: { collections: [] } },
+    readerGate: new ReaderGate(1, 1),
+    admitRequest,
+    withModelLease: async <T>(operation: () => Promise<T>) => operation(),
+    setListenerPort: () => undefined,
+    dispose: async () => {
+      await admission.closeAndDrain(0, 100);
+    },
+  };
+  const ok = mock(async () => Response.json({ ok: true }));
+
+  const result = await startServer(
+    { port: 3210 },
+    {
+      startBackgroundRuntime: (async () => ({
+        success: true as const,
+        runtime,
+      })) as never,
+      createMcpHttpGateway: (async () => ({
+        route: async () => new Response("ok"),
+        close: async () => undefined,
+        security: {},
+        transport: {},
+      })) as never,
+      serve: ((options: unknown) => {
+        capturedOptions = options as typeof capturedOptions;
+        return {
+          port: 3210,
+          stop: async () => undefined,
+        } as never;
+      }) as never,
+      handleVerifyConnector: ok as never,
+      handleImportPreview: ok as never,
+      handlePublishExport: ok as never,
+      handleRefactorPlan: ok as never,
+      waitForShutdown: async () => {
+        const routeRequests = [
+          [
+            "/api/connectors/verify",
+            "http://127.0.0.1:3210/api/connectors/verify",
+          ],
+          ["/api/import/preview", "http://127.0.0.1:3210/api/import/preview"],
+          ["/api/publish/export", "http://127.0.0.1:3210/api/publish/export"],
+          [
+            "/api/docs/:id/refactor-plan",
+            "http://127.0.0.1:3210/api/docs/doc/refactor-plan",
+          ],
+        ] as const;
+        for (const [routePath, requestUrl] of routeRequests) {
+          const route = capturedOptions?.routes[routePath];
+          expect(route).toBeDefined();
+          const response = await route?.POST(
+            new Request(requestUrl, { method: "POST" })
+          );
+          expect(response?.status).toBe(200);
+        }
+      },
+    }
+  );
+
+  expect(result).toEqual({ success: true });
+  expect(admitRequest).toHaveBeenCalledTimes(4);
+  expect(ok).toHaveBeenCalledTimes(4);
+});
