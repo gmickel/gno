@@ -139,7 +139,7 @@ describe("committed authoritative agentic baseline", () => {
         baselineSuccessRate: 0.9583333333333334,
         candidateSuccessRate: 1,
         agentCallReduction: 0.4893617021276596,
-        contextByteReduction: 0.499475208866871,
+        contextByteReduction: 0.4412024014442252,
         claimLinkageRate: 1,
       },
     });
