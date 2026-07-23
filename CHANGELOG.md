@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.17.0] - 2026-07-23
+
+### Added
+
+- Added deterministic, extractive Context Capsules across CLI, SDK, REST, and
+  MCP. Capsules enforce one global token and byte budget, preserve exact source
+  spans and hashes, select diverse facet coverage, and report evidence gaps,
+  omissions, capabilities, fallbacks, and reproducibility fingerprints.
+- Added non-mutating Capsule verification for unchanged, stale, missing, and
+  reranked evidence, plus canonical JSON and readable Markdown projections.
+- Promoted the production Capsule against the agentic retrieval benchmark: 48
+  paired tasks retained 100% completion accuracy while reducing retrieval calls
+  by 48.94% and model-visible context by 44.12%, with 100% exact claim-span
+  linkage and deterministic replay.
+
+### Fixed
+
+- Enforced global result and candidate limits across multi-collection Capsule
+  retrieval, with canonical rank ordering and deterministic quota allocation.
+- Normalized and validated tag filters consistently across every Capsule
+  surface.
+
+### Security
+
+- Replaced internal exception exposure with stable public errors and added
+  collision-resistant evidence fences so indexed content remains untrusted data.
+
 ## [1.16.0] - 2026-07-22
 
 ### Added
@@ -1516,7 +1543,8 @@ Re-release of 1.0.2 with a CHANGELOG formatting fix so the Publish workflow's
 | 0.4.0   | 2026-01-01 | Web UI and REST API                        |
 | 0.1.0   | 2025-12-30 | Initial release with full search pipeline  |
 
-[Unreleased]: https://github.com/gmickel/gno/compare/v1.16.0...HEAD
+[Unreleased]: https://github.com/gmickel/gno/compare/v1.17.0...HEAD
+[1.17.0]: https://github.com/gmickel/gno/compare/v1.16.0...v1.17.0
 [1.16.0]: https://github.com/gmickel/gno/compare/v1.15.0...v1.16.0
 [1.15.0]: https://github.com/gmickel/gno/compare/v1.14.0...v1.15.0
 [1.14.0]: https://github.com/gmickel/gno/compare/v1.13.0...v1.14.0
