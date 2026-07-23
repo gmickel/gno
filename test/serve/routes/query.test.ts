@@ -10,6 +10,7 @@ import {
   handleAsk,
   handleQuery,
   handleQueryDiagnose,
+  handleSearch,
 } from "../../../src/serve/routes/api";
 import { SqliteAdapter } from "../../../src/store";
 import { safeRm } from "../../helpers/cleanup";
@@ -46,6 +47,23 @@ const baseContext = {
 };
 
 describe("POST /api/query", () => {
+  test("ignores Ask-only verification controls without changing query", async () => {
+    const req = new Request("http://localhost/api/query", {
+      method: "POST",
+      body: JSON.stringify({
+        query: "performance",
+        verify: "legacy-extra",
+        contextBudgetTokens: "legacy-extra",
+        maxAnswerTokens: "legacy-extra",
+        noExpand: true,
+        noRerank: true,
+      }),
+    });
+
+    const res = await handleQuery(baseContext as never, req);
+    expect(res.status).toBe(200);
+  });
+
   test("accepts structured query documents in query text", async () => {
     const req = new Request("http://localhost/api/query", {
       method: "POST",
@@ -258,6 +276,100 @@ describe("POST /api/query/diagnose", () => {
 });
 
 describe("POST /api/ask", () => {
+  test("rejects unknown fields without closing query or search", async () => {
+    const ask = await handleAsk(
+      baseContext as never,
+      new Request("http://localhost/api/ask", {
+        method: "POST",
+        body: JSON.stringify({
+          query: "performance",
+          unknownControl: true,
+        }),
+      })
+    );
+    expect(ask.status).toBe(400);
+    expect(
+      ((await ask.json()) as { error: { message: string } }).error.message
+    ).toContain("unknownControl");
+
+    const query = await handleQuery(
+      baseContext as never,
+      new Request("http://localhost/api/query", {
+        method: "POST",
+        body: JSON.stringify({
+          query: "performance",
+          unknownControl: true,
+          noExpand: true,
+          noRerank: true,
+        }),
+      })
+    );
+    expect(query.status).toBe(200);
+
+    const search = await handleSearch(
+      baseContext as never,
+      new Request("http://localhost/api/search", {
+        method: "POST",
+        body: JSON.stringify({
+          query: "performance",
+          unknownControl: true,
+        }),
+      })
+    );
+    expect(search.status).toBe(200);
+  });
+
+  test.each([
+    ["verify", "true"],
+    ["noExpand", "yes"],
+    ["noRerank", "yes"],
+    ["graph", 1],
+    ["noGraph", 1],
+    ["limit", 0],
+    ["limit", 1.5],
+    ["limit", "5"],
+    ["candidateLimit", 0],
+    ["candidateLimit", 1.5],
+    ["candidateLimit", "5"],
+    ["maxAnswerTokens", 0],
+    ["maxAnswerTokens", 1.5],
+    ["maxAnswerTokens", "512"],
+    ["minScore", -0.1],
+    ["minScore", 1.1],
+    ["minScore", "0.5"],
+    ["contextBudgetTokens", 0],
+    ["contextBudgetTokens", 1.5],
+    ["contextBudgetTokens", "100"],
+    ["contextBudgetBytes", 0],
+    ["contextBudgetBytes", 1.5],
+    ["contextBudgetBytes", "100"],
+  ] as const)("rejects invalid %s control %#", async (field, value) => {
+    const req = new Request("http://localhost/api/ask", {
+      method: "POST",
+      body: JSON.stringify({ query: "performance", [field]: value }),
+    });
+
+    const res = await handleAsk(baseContext as never, req);
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as {
+      error: { code: string; message: string };
+    };
+    expect(body.error.code).toBe("VALIDATION");
+    expect(body.error.message).toContain(field);
+  });
+
+  test("rejects primitive JSON body", async () => {
+    const req = new Request("http://localhost/api/ask", {
+      method: "POST",
+      body: JSON.stringify(null),
+    });
+
+    const res = await handleAsk(baseContext as never, req);
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { error: { message: string } };
+    expect(body.error.message).toContain("object");
+  });
+
   test("rejects non-string exclude", async () => {
     const req = new Request("http://localhost/api/ask", {
       method: "POST",

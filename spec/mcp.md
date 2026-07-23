@@ -151,7 +151,8 @@ Collection names are case-insensitive on input and normalized to lowercase in re
 ### Private retrieval metadata
 
 When local tracing is enabled, successful `gno_search`, `gno_vsearch`,
-`gno_query`, `gno_get`, and `gno_context` results include non-model-visible
+`gno_query`, `gno_get`, `gno_context`, and `gno_ask` results include
+non-model-visible
 top-level response metadata:
 
 ```json
@@ -196,6 +197,48 @@ content or a filesystem path. Aggregate exports reject open/missing traces and
 preserve each stored terminal state without treating partial, failed, or
 cancelled as negative feedback.
 
+### gno_ask
+
+Generate and verify one answer against a closed Context Capsule. This is a
+separate read-only tool; raw retrieval remains on `gno_query`, and trace
+mutation authority is not widened.
+
+Required input:
+
+```json
+{
+  "query": "Who owns the launch decision?",
+  "verify": true
+}
+```
+
+`verify` must be the literal `true`; implicit or raw Ask requests are rejected.
+Optional fields are `collection`, `limit` (default 5), `minScore`, `lang`,
+`intent`, `candidateLimit`, `exclude`, `queryModes`, `tagsAll`, `tagsAny`,
+`since`, `until`, `categories`, `author`, `graph`, `noGraph`, `noRerank`,
+`maxAnswerTokens`, `contextBudgetTokens`, and `contextBudgetBytes`. Input
+objects are closed.
+
+`structuredContent` uses the
+[`ask`](./output-schemas/ask.schema.json) contract. Its `verification` object
+contains the canonical Capsule, freshness receipt, four-state per-claim
+verdicts, exact support/conflict evidence IDs and line spans, coverage, gaps,
+semantic verifier capability, and explicit abstention. Every substantive claim
+must be supported; otherwise the draft is withheld and `answerStatus` is
+`abstained`. Contradiction is never inferred from missing evidence.
+
+Model-visible text renders the same answer status, coverage, semantic state,
+per-claim verdicts, exact `gno://` line spans, evidence IDs, gaps, and cited
+sources. Capability degradation comes from the Capsule's
+requested/attempted/outcome states.
+
+The server-owned effective index is used for both Capsule compilation and
+freshness verification. One Ask-owned trace covers retrieval, Context,
+generation, verification, and exact retained citations. The trace ID remains
+transport-only in `_meta`; no dead ID is emitted after retention eviction.
+Support/conflict spans are inspectable and explicitly labelable, but they do
+not create implicit relevance judgments.
+
 ### gno_context
 
 Compile a deterministic, extractive Context Capsule. The active MCP server
@@ -213,8 +256,9 @@ Required input:
 ```
 
 Optional input fields are `query`, `collections`, `uriPrefix`, `queryModes`,
-`tagsAll`, `tagsAny`, `categories`, `author`, `lang`, `since`, `until`, `graph`,
-`limit`, `candidateLimit`, `budgetBytes`, `safetyMarginTokens`,
+`tagsAll`, `tagsAny`, `categories`, `author`, `lang`, `intent`, `exclude`,
+`minScore`, `since`, `until`, `graph`, `noRerank`, `limit`, `candidateLimit`,
+`budgetBytes`, `safetyMarginTokens`,
 `safetyMarginBytes`, `depthPolicy` (`fast`, `balanced`, or `thorough`), and
 `format` (`json` or `md`). Input objects are closed: unknown fields return
 `invalid_input`. Unknown collections return `invalid_filter` before model or

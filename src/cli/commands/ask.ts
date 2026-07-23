@@ -14,6 +14,7 @@ import type {
 } from "../../llm/types";
 import type { AskOptions, AskResult, Citation } from "../../pipeline/types";
 
+import { buildVerifiedAsk } from "../../app/verified-ask";
 import {
   finishRetrievalTraceAfterError,
   retrievalTraceFilters,
@@ -38,6 +39,8 @@ import {
   createThrottledProgressRenderer,
 } from "../progress";
 import { initStore } from "./shared";
+
+export { formatAsk } from "./ask-format";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -83,9 +86,11 @@ export async function ask(
   options: AskCommandOptions = {}
 ): Promise<AskCommandResult> {
   const limit = options.limit ?? 5;
+  const globals = getGlobals();
 
   const initResult = await initStore({
     configPath: options.configPath,
+    indexName: globals.index,
     collection: options.collection,
     syncConfig: false,
   });
@@ -103,7 +108,9 @@ export async function ask(
   let traceSession: RetrievalTraceSession | undefined;
 
   try {
-    const answerRequested = Boolean(options.answer && !options.noAnswer);
+    const verificationRequested = options.verify === true;
+    const answerRequested =
+      verificationRequested || Boolean(options.answer && !options.noAnswer);
     const embedUri = resolveModelUri(
       config,
       "embed",
@@ -111,7 +118,7 @@ export async function ask(
       options.collection
     );
     const expandUri =
-      !options.noExpand && !options.queryModes?.length
+      !verificationRequested && !options.noExpand && !options.queryModes?.length
         ? resolveModelUri(
             config,
             "expand",
@@ -136,6 +143,7 @@ export async function ask(
       query,
       filters: retrievalTraceFilters({ ...options, limit }),
       pipeline: "ask",
+      indexName: globals.index,
       modelUris: [embedUri, expandUri, answerUri, rerankUri].filter(
         (value): value is string => Boolean(value)
       ),
@@ -147,7 +155,6 @@ export async function ask(
     const llm = new LlmAdapter(config);
 
     // Resolve download policy from env/flags
-    const globals = getGlobals();
     const policy = resolveDownloadPolicy(process.env, {
       offline: globals.offline,
     });
@@ -254,6 +261,34 @@ export async function ask(
       };
     }
 
+    if (verificationRequested && answerPort) {
+      const verified = await buildVerifiedAsk(
+        query,
+        { ...options, limit },
+        {
+          store,
+          config,
+          indexName: globals.index,
+          vectorIndex,
+          embedPort,
+          rerankPort,
+          genPort: answerPort,
+          traceSession,
+        }
+      );
+      const finalized = await traceSession?.finish(
+        answerTraceTerminalStatus(verified.citations)
+      );
+      if (finalized && !finalized.ok) {
+        return { success: false, error: finalized.error.message };
+      }
+      return {
+        success: true,
+        data: verified,
+        metadata: traceSession?.metadata(),
+      };
+    }
+
     // Run hybrid search
     const searchResult = await searchHybrid(deps, query, {
       limit,
@@ -267,6 +302,8 @@ export async function ask(
       tagsAll: options.tagsAll,
       tagsAny: options.tagsAny,
       exclude: options.exclude,
+      minScore: options.minScore,
+      graph: options.graph,
       queryModes: options.queryModes,
       noExpand: options.noExpand,
       noRerank: options.noRerank,
@@ -393,150 +430,4 @@ export async function ask(
     }
     await store.close();
   }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Formatters
-// ─────────────────────────────────────────────────────────────────────────────
-
-interface FormatOptions {
-  showSources?: boolean;
-}
-
-// oxlint-disable-next-line max-lines-per-function -- terminal formatting with conditional sections
-function formatTerminal(data: AskResult, opts: FormatOptions = {}): string {
-  const lines: string[] = [];
-  const hasAnswer = Boolean(data.answer);
-
-  // Show answer if present
-  if (data.answer) {
-    lines.push("Answer:");
-    lines.push(data.answer);
-    lines.push("");
-  }
-
-  // Show cited sources (only sources actually referenced in answer)
-  if (data.citations && data.citations.length > 0) {
-    lines.push("Cited Sources:");
-    for (let i = 0; i < data.citations.length; i++) {
-      const c = data.citations[i];
-      if (c) {
-        lines.push(`  [${i + 1}] ${c.uri}`);
-      }
-    }
-    lines.push("");
-  }
-
-  // Show all retrieved sources if:
-  // - No answer was generated (retrieval-only mode)
-  // - User explicitly requested with --show-sources
-  const showAllSources = !hasAnswer || opts.showSources;
-  if (showAllSources && data.results.length > 0) {
-    lines.push(hasAnswer ? "All Retrieved Sources:" : "Sources:");
-    for (const r of data.results) {
-      lines.push(`  [${r.docid}] ${r.uri}`);
-      if (r.title) {
-        lines.push(`    ${r.title}`);
-      }
-    }
-  } else if (hasAnswer && data.results.length > 0) {
-    // Hint about --show-sources when we have more sources
-    const citedCount = data.citations?.length ?? 0;
-    if (data.results.length > citedCount) {
-      lines.push(
-        `(${data.results.length} sources retrieved, use --show-sources to list all)`
-      );
-    }
-  }
-
-  if (!data.answer && data.results.length === 0) {
-    lines.push("No relevant sources found.");
-  }
-
-  return lines.join("\n");
-}
-
-function formatMarkdown(data: AskResult, opts: FormatOptions = {}): string {
-  const lines: string[] = [];
-  const hasAnswer = Boolean(data.answer);
-
-  lines.push(`# Question: ${data.query}`);
-  lines.push("");
-
-  if (data.answer) {
-    lines.push("## Answer");
-    lines.push("");
-    lines.push(data.answer);
-    lines.push("");
-  }
-
-  // Show cited sources (only sources actually referenced in answer)
-  if (data.citations && data.citations.length > 0) {
-    lines.push("## Cited Sources");
-    lines.push("");
-    for (let i = 0; i < data.citations.length; i++) {
-      const c = data.citations[i];
-      if (c) {
-        lines.push(`**[${i + 1}]** \`${c.uri}\``);
-      }
-    }
-    lines.push("");
-  }
-
-  // Show all retrieved sources if no answer or --show-sources
-  const showAllSources = !hasAnswer || opts.showSources;
-  if (showAllSources) {
-    lines.push(hasAnswer ? "## All Retrieved Sources" : "## Sources");
-    lines.push("");
-
-    for (let i = 0; i < data.results.length; i++) {
-      const r = data.results[i];
-      if (!r) {
-        continue;
-      }
-      lines.push(`${i + 1}. **${r.title || r.source.relPath}**`);
-      lines.push(`   - URI: \`${r.uri}\``);
-      lines.push(`   - Score: ${r.score.toFixed(2)}`);
-    }
-
-    if (data.results.length === 0) {
-      lines.push("*No relevant sources found.*");
-    }
-  }
-
-  lines.push("");
-  lines.push("---");
-  lines.push(
-    `*Mode: ${data.mode} | Expanded: ${data.meta.expanded} | Reranked: ${data.meta.reranked}*`
-  );
-
-  return lines.join("\n");
-}
-
-/**
- * Format ask result for output.
- */
-export function formatAsk(
-  result: AskCommandResult,
-  options: AskCommandOptions
-): string {
-  if (!result.success) {
-    return options.json
-      ? JSON.stringify({
-          error: { code: "ASK_FAILED", message: result.error },
-        })
-      : `Error: ${result.error}`;
-  }
-
-  const formatOpts: FormatOptions = { showSources: options.showSources };
-
-  if (options.json) {
-    return JSON.stringify(result.data, null, 2);
-  }
-
-  if (options.md) {
-    return formatMarkdown(result.data, formatOpts);
-  }
-
-  return formatTerminal(result.data, formatOpts);
 }

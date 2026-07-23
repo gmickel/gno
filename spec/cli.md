@@ -961,27 +961,32 @@ Human-friendly query with citations-first output and optional grounded answer.
 **Synopsis:**
 
 ```bash
-gno ask <query> [-n <num>] [-c <collection>] [--lang <bcp47>] [--since <date>] [--until <date>] [--category <values>] [--author <text>] [--intent <text>] [--exclude <values>] [--query-mode <mode:text>]... [-C <num>] [--answer] [--no-answer] [--max-answer-tokens <n>] [--no-expand] [--no-rerank] [--show-sources] [--json|--md]
+gno ask <query> [-n <num>] [-c <collection>] [--lang <bcp47>] [--since <date>] [--until <date>] [--category <values>] [--author <text>] [--intent <text>] [--exclude <values>] [--query-mode <mode:text>]... [-C <num>] [--answer|--verify] [--no-answer] [--max-answer-tokens <n>] [--context-budget-tokens <n>] [--context-budget-bytes <n>] [--min-score <score>] [--graph] [--no-expand] [--no-rerank] [--show-sources] [--json|--md]
 ```
 
 **Options:**
 
-| Option                  | Type     | Default | Description                                                                        |
-| ----------------------- | -------- | ------- | ---------------------------------------------------------------------------------- |
-| `--answer`              | boolean  | false   | Generate short grounded answer                                                     |
-| `--no-answer`           | boolean  | false   | Force retrieval-only output                                                        |
-| `--max-answer-tokens`   | integer  | config  | Cap answer generation tokens                                                       |
-| `--since`               | string   | none    | Modified-at lower bound (ISO date/time or relative token)                          |
-| `--until`               | string   | none    | Modified-at upper bound (ISO date/time or relative token)                          |
-| `--category`            | string   | none    | Filter to docs with matching category/content type (comma-separated)               |
-| `--author`              | string   | none    | Filter to docs where author contains value (case-insensitive)                      |
-| `--intent`              | string   | none    | Disambiguating context for ambiguous questions without searching on that text      |
-| `--exclude`             | string   | none    | Hard-prune docs containing any comma-separated term in title/path/body             |
-| `--query-mode`          | string[] | none    | Structured mode entry (`term:<text>`, `intent:<text>`, `hyde:<text>`). Repeatable. |
-| `-C, --candidate-limit` | integer  | 20      | Max candidates passed to reranking                                                 |
-| `--no-expand`           | boolean  | false   | Disable query expansion                                                            |
-| `--no-rerank`           | boolean  | false   | Disable cross-encoder reranking                                                    |
-| `--show-sources`        | boolean  | false   | Show all retrieved sources (not just cited)                                        |
+| Option                    | Type     | Default | Description                                                                        |
+| ------------------------- | -------- | ------- | ---------------------------------------------------------------------------------- |
+| `--answer`                | boolean  | false   | Generate short grounded answer                                                     |
+| `--verify`                | boolean  | false   | Generate from a closed Context Capsule; verify every claim or abstain              |
+| `--no-answer`             | boolean  | false   | Force retrieval-only output                                                        |
+| `--max-answer-tokens`     | integer  | config  | Cap answer generation tokens                                                       |
+| `--context-budget-tokens` | integer  | 12000   | Global token budget for verified Context evidence                                  |
+| `--context-budget-bytes`  | integer  | none    | Optional global byte budget for verified Context evidence                          |
+| `--min-score`             | number   | none    | Minimum retrieval score from 0 through 1                                           |
+| `--graph`                 | boolean  | false   | Include bounded graph expansion in verified Context retrieval                      |
+| `--since`                 | string   | none    | Modified-at lower bound (ISO date/time or relative token)                          |
+| `--until`                 | string   | none    | Modified-at upper bound (ISO date/time or relative token)                          |
+| `--category`              | string   | none    | Filter to docs with matching category/content type (comma-separated)               |
+| `--author`                | string   | none    | Filter to docs where author contains value (case-insensitive)                      |
+| `--intent`                | string   | none    | Disambiguating context for ambiguous questions without searching on that text      |
+| `--exclude`               | string   | none    | Hard-prune docs containing any comma-separated term in title/path/body             |
+| `--query-mode`            | string[] | none    | Structured mode entry (`term:<text>`, `intent:<text>`, `hyde:<text>`). Repeatable. |
+| `-C, --candidate-limit`   | integer  | 20      | Max candidates passed to reranking                                                 |
+| `--no-expand`             | boolean  | false   | Disable query expansion                                                            |
+| `--no-rerank`             | boolean  | false   | Disable cross-encoder reranking                                                    |
+| `--show-sources`          | boolean  | false   | Show all retrieved sources (not just cited)                                        |
 
 **Output (JSON):**
 See [Output Schemas](./output-schemas/ask.schema.json)
@@ -989,6 +994,20 @@ See [Output Schemas](./output-schemas/ask.schema.json)
 Notes:
 
 - `meta.answerContext` is optional explain payload for answer source selection.
+- `--verify` implies answer generation and cannot be combined with
+  `--no-answer`. The JSON result adds the closed Capsule, freshness receipt,
+  four-state per-claim verdicts (`supported`, `contradicted`, `insufficient`,
+  `uncertain`), exact evidence IDs and line spans, coverage, gaps, semantic
+  verifier state, and explicit abstention. Support below 100% never returns the
+  draft answer.
+- Terminal and Markdown verified output preserve the same verdicts, exact
+  support/conflict spans, coverage, gaps, abstention, and capability
+  degradation. With `--show-sources`, both formats list every retained Capsule
+  evidence span with its exact URI and line range. JSON remains the canonical
+  machine contract.
+- Verified retrieval records the normalized request and requested/attempted
+  capability states in its Capsule. The active `--index` value is host-owned
+  and used for both compilation and freshness verification.
 - Strategy: adaptive coverage (relevance + query/facet coverage), not fixed top-N.
 - Each result preserves optional configured `context`. Answer generation places
   that trusted configuration in a separate prompt role from untrusted retrieved

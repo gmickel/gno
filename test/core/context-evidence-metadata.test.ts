@@ -54,10 +54,47 @@ test("bounds untrusted title and heading without changing passage bytes", () => 
     mirrorHash: sha256Text("mirror"),
     facets: ["evidence"],
     retrievalRank: 1,
+    retrievalSources: ["bm25"],
+    graphExpanded: false,
     value,
   };
   const evidence = toContextCapsuleEvidence(candidate, 1);
 
   expect(evidence.text).toBe(text);
+  expect(contextCapsuleEvidenceSchema.parse(evidence)).toEqual(evidence);
+});
+
+test("omits unknown planner provenance for legacy materialized evidence", () => {
+  const sourceHash = sha256Text("legacy-source");
+  const text = "legacy evidence";
+  const candidate: MaterializedContextCandidate<ContextEvidenceValue> = {
+    candidateId: sha256Text("legacy-candidate"),
+    uri: "gno://notes/legacy.md",
+    docid: deriveDocid(sourceHash),
+    startLine: 1,
+    endLine: 1,
+    text,
+    passageHash: sha256Text(text),
+    sourceHash,
+    mirrorHash: sha256Text("legacy-mirror"),
+    facets: ["legacy"],
+    retrievalRank: 1,
+    value: {
+      collection: "notes",
+      title: null,
+      heading: null,
+      modifiedAt: null,
+      documentDate: null,
+      observedAt: null,
+      contextIds: [],
+      trust: "untrusted",
+      egress: "unavailable",
+    },
+  };
+
+  const evidence = toContextCapsuleEvidence(candidate, 1);
+
+  expect(evidence.retrievalSources).toBeUndefined();
+  expect(evidence.graphExpanded).toBeUndefined();
   expect(contextCapsuleEvidenceSchema.parse(evidence)).toEqual(evidence);
 });

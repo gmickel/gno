@@ -315,16 +315,40 @@ export const normalizeContextBuildInput = (
       "Context graph flag must be boolean"
     );
   }
+  if (input.noRerank !== undefined && typeof input.noRerank !== "boolean") {
+    throw new ContextRuntimeError(
+      "invalid_filter",
+      "Context noRerank flag must be boolean"
+    );
+  }
+  if (
+    input.minScore !== undefined &&
+    (typeof input.minScore !== "number" ||
+      !Number.isFinite(input.minScore) ||
+      input.minScore < 0 ||
+      input.minScore > 1)
+  ) {
+    throw new ContextRuntimeError(
+      "invalid_filter",
+      "Context minimum score must be between 0 and 1"
+    );
+  }
   const author =
     typeof input.author === "string"
       ? input.author.normalize("NFC").trim()
       : null;
   const lang =
     typeof input.lang === "string" ? input.lang.normalize("NFC").trim() : null;
+  const intent =
+    typeof input.intent === "string"
+      ? input.intent.normalize("NFC").trim()
+      : null;
   if (
     (input.author !== undefined &&
       (!author || author.length > MAX_FILTER_LENGTH)) ||
-    (input.lang !== undefined && (!lang || !isValidLanguageHint(lang)))
+    (input.lang !== undefined && (!lang || !isValidLanguageHint(lang))) ||
+    (input.intent !== undefined &&
+      (!intent || intent.length > MAX_TEXT_LENGTH || intent.includes("\r")))
   ) {
     throw new ContextRuntimeError(
       "invalid_filter",
@@ -344,9 +368,13 @@ export const normalizeContextBuildInput = (
     categories: canonicalFilters(input.categories, "categories"),
     author,
     lang,
+    intent,
+    exclude: canonicalFilters(input.exclude, "exclude"),
+    minScore: input.minScore ?? null,
     since: temporalRange.since,
     until: temporalRange.until,
     graph: input.graph ?? false,
+    noRerank: input.noRerank ?? false,
     limit,
     candidateLimit,
     budgetTokens,

@@ -57,6 +57,7 @@ import {
   INDEX_NAME_REQUIREMENTS,
   isValidIndexName,
 } from "../app/index-name";
+import { buildVerifiedAsk } from "../app/verified-ask";
 import {
   ConfigSchema,
   loadConfig,
@@ -680,8 +681,13 @@ class GnoClientImpl implements GnoClient {
           : undefined,
     };
 
-    const answerRequested = Boolean(options.answer && !options.noAnswer);
-    const needsExpansionGen = !options.noExpand && !options.queryModes?.length;
+    const verificationRequested = options.verify === true;
+    const answerRequested =
+      verificationRequested || Boolean(options.answer && !options.noAnswer);
+    const needsExpansionGen =
+      !verificationRequested &&
+      !options.noExpand &&
+      !options.queryModes?.length;
     const rerankRequested = !options.noRerank;
     const embedUri = resolveModelUri(
       this.config,
@@ -754,6 +760,30 @@ class GnoClientImpl implements GnoClient {
         );
       }
 
+      if (verificationRequested && ports.answerPort) {
+        const verified = await buildVerifiedAsk(query, options, {
+          store: this.store,
+          config: this.config,
+          indexName: this.indexName,
+          vectorIndex: ports.vectorIndex,
+          embedPort: ports.embedPort,
+          rerankPort: ports.rerankPort,
+          genPort: ports.answerPort,
+          traceSession: traceSession ?? undefined,
+        });
+        if (traceSession) {
+          unwrapStore(
+            await traceSession.finish(
+              answerTraceTerminalStatus(verified.citations)
+            )
+          );
+        }
+        return attachRetrievalTraceMetadata(
+          verified,
+          traceSession ?? undefined
+        );
+      }
+
       const searchResult = unwrapStore(
         await searchHybrid(
           {
@@ -777,6 +807,9 @@ class GnoClientImpl implements GnoClient {
             tagsAll: options.tagsAll,
             tagsAny: options.tagsAny,
             exclude: options.exclude,
+            minScore: options.minScore,
+            graph: options.graph,
+            noGraph: options.noGraph,
             queryModes: options.queryModes,
             noExpand: options.noExpand,
             noRerank: options.noRerank,

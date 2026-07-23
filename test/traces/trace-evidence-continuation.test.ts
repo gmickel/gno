@@ -7,6 +7,7 @@ import { join } from "node:path";
 
 import type { ContextCapsuleV1 } from "../../src/core/context-capsule";
 
+import { RetrievalTraceManagementService } from "../../src/core/retrieval-trace-management";
 import { RetrievalTraceSession } from "../../src/core/retrieval-trace-session";
 import { SqliteAdapter } from "../../src/store/sqlite/adapter";
 import { safeRm } from "../helpers/cleanup";
@@ -91,7 +92,10 @@ describe("retrieval trace evidence continuation", () => {
     expect(JSON.stringify(capsule)).toBe(canonicalBytes);
     expect(canonicalBytes).not.toContain("context-trace");
     const first = await adapter.getRetrievalTrace("context-trace-1");
-    expect(first.ok && first.value?.events[1]?.payload).toMatchObject({
+    expect(
+      first.ok &&
+        first.value?.events.find((event) => event.kind === "context")?.payload
+    ).toMatchObject({
       capsuleId: HASH_D,
       evidence: [{ passageHash: PASSAGE_HASH }],
     });
@@ -138,5 +142,120 @@ describe("retrieval trace evidence continuation", () => {
     expect(
       stored.ok && stored.value?.events.map((event) => event.kind)
     ).toEqual(["query", "get", "open"]);
+  });
+
+  test("resumes exact Context evidence as a labelable citation origin", async () => {
+    const started = await RetrievalTraceSession.start({
+      store: adapter,
+      config: enabledConfig,
+      query: "verified ask",
+      idFactory: () => "verified-context-trace",
+      clock: () => 4_000,
+      fingerprints: () => ({
+        pipeline: HASH_A,
+        model: HASH_B,
+        config: HASH_C,
+        index: HASH_D,
+      }),
+    });
+    if (!started.ok || !started.value) throw new Error("trace did not start");
+    const evidence = {
+      docid: "#abcdef",
+      sourceHash: HASH_A,
+      mirrorHash: HASH_B,
+      uri: "gno://notes/exact.md",
+      startLine: 10,
+      endLine: 11,
+      passageHash: PASSAGE_HASH,
+      retrievalRank: 7,
+      selectionRank: 2,
+      retrievalSources: ["bm25", "graph"] as const,
+      graphExpanded: true,
+    };
+    const capsule = {
+      capsuleId: HASH_D,
+      evidence: [evidence],
+    } as unknown as ContextCapsuleV1;
+    expect((await started.value.recordContext(capsule)).ok).toBeTrue();
+
+    const resumed = await RetrievalTraceSession.resume({
+      store: adapter,
+      config: enabledConfig,
+      traceId: "verified-context-trace",
+      clock: () => 4_100,
+    });
+    if (!resumed.ok || !resumed.value) throw new Error("trace did not resume");
+    const { retrievalRank, selectionRank, retrievalSources, ...exactEvidence } =
+      evidence;
+    const citation = await resumed.value.recordEvidence("cite", [
+      {
+        ...exactEvidence,
+        rank: selectionRank,
+        plannerRank: retrievalRank,
+        sources: [...retrievalSources],
+        graphExpanded: evidence.graphExpanded,
+      },
+    ]);
+    expect(citation).toEqual({ ok: true, value: "inserted" });
+
+    const stored = await adapter.getRetrievalTrace("verified-context-trace");
+    expect(
+      stored.ok &&
+        stored.value?.events.find((event) => event.kind === "cite")?.runId
+    ).toContain("context-run");
+    expect(
+      stored.ok &&
+        stored.value?.events.find((event) => event.kind === "cite")?.payload
+    ).toEqual({
+      evidence: [
+        expect.objectContaining({
+          rank: 2,
+          plannerRank: 7,
+          sources: ["bm25", "graph"],
+          graphExpanded: true,
+        }),
+      ],
+    });
+    expect(stored.ok && stored.value?.judgments).toEqual([]);
+
+    const management = new RetrievalTraceManagementService(adapter, {
+      clock: () => 4_200,
+    });
+    const detail = await management.show("verified-context-trace", {
+      detailLimit: 10,
+    });
+    expect(
+      detail.ok &&
+        detail.value.events.find((event) => event.kind === "cite")?.payload
+    ).toMatchObject({
+      evidence: [
+        {
+          uri: evidence.uri,
+          startLine: evidence.startLine,
+          endLine: evidence.endLine,
+        },
+      ],
+    });
+    const label = await management.label({
+      traceId: "verified-context-trace",
+      label: "relevant",
+      targetRef: evidence.uri,
+      targetKind: "span",
+      startLine: evidence.startLine,
+      endLine: evidence.endLine,
+      sourceHash: evidence.sourceHash,
+      docid: evidence.docid,
+    });
+    expect(label.ok && label.value.judgment).toMatchObject({
+      label: "relevant",
+      targetKind: "span",
+      runId: expect.stringContaining("context-run"),
+      target: {
+        uri: evidence.uri,
+        startLine: evidence.startLine,
+        endLine: evidence.endLine,
+        sourceHash: evidence.sourceHash,
+      },
+    });
   });
 });

@@ -352,11 +352,12 @@ export const validateContextCapsulePayload = (
     });
   }
   const semanticRequested = value.retrieval.depthPolicy !== "fast";
+  const rerankRequested =
+    value.retrieval.request.rerankRequested ?? semanticRequested;
   if (
     value.retrieval.capabilityStates.semanticSearch.requested !==
       semanticRequested ||
-    value.retrieval.capabilityStates.reranking.requested !==
-      semanticRequested ||
+    value.retrieval.capabilityStates.reranking.requested !== rerankRequested ||
     value.retrieval.capabilityStates.graphExpansion.requested !==
       value.retrieval.request.graphRequested
   ) {

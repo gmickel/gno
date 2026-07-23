@@ -24,8 +24,9 @@ import { resolveModelUri } from "../llm/registry";
 const fingerprint = (value: unknown): string =>
   sha256Text(canonicalVerifierJson(value));
 
-const configFingerprint = (deps: ContextCapsuleRuntimeDeps): string =>
-  fingerprint(deps.config);
+export const contextRuntimeConfigFingerprint = (
+  deps: Pick<ContextCapsuleRuntimeDeps, "config">
+): string => fingerprint(deps.config);
 
 const configuredContextFingerprint = (
   deps: ContextCapsuleRuntimeDeps
@@ -75,7 +76,7 @@ const capsuleCapabilityStates = (
     ["embedding_unavailable"]
   ),
   reranking: capabilityState(
-    input.depthPolicy !== "fast",
+    input.depthPolicy !== "fast" && !input.noRerank,
     draft.retrieval.reranked,
     ["reranking_unavailable"]
   ),
@@ -191,10 +192,14 @@ export const projectContextCapsule = (
       request: {
         author: input.author,
         lang: input.lang,
+        intent: input.intent,
+        exclude: input.exclude,
+        minScore: input.minScore,
         queryModes: input.queryModes,
         limit: input.limit,
         candidateLimit: input.candidateLimit,
         graphRequested: input.graph,
+        rerankRequested: input.depthPolicy !== "fast" && !input.noRerank,
       },
       capabilityStates,
       indexSnapshot: {
@@ -221,7 +226,7 @@ export const projectContextCapsule = (
         : null,
     },
     fingerprints: {
-      config: configFingerprint(deps),
+      config: contextRuntimeConfigFingerprint(deps),
       retrieval: retrievalFingerprint(base, snapshots.contextFingerprint),
       embeddingModel: capabilities.semanticSearch
         ? sha256Text(deps.embedPort?.modelUri ?? "")
@@ -292,7 +297,7 @@ export const currentContextFingerprints = (
   capsule: ContextCapsuleV1,
   deps: ContextCapsuleRuntimeDeps
 ) => ({
-  config: configFingerprint(deps),
+  config: contextRuntimeConfigFingerprint(deps),
   retrieval: retrievalFingerprint(capsule, configuredContextFingerprint(deps)),
   embeddingModel: capsule.capabilities.semanticSearch
     ? sha256Text(

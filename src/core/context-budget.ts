@@ -6,6 +6,8 @@
  * canonical Capsule payload, including coverage, omissions, and guidance.
  */
 
+import type { FusionSource } from "../pipeline/types";
+
 export const CONTEXT_OMISSION_REASONS = [
   "duplicate",
   "overlap",
@@ -43,6 +45,10 @@ export interface MaterializedContextCandidate<
   text: string;
   facets: string[];
   retrievalRank: number;
+  /** Absent only for legacy results that predate planner provenance metadata. */
+  retrievalSources?: FusionSource[];
+  /** Absent only for legacy results that predate planner provenance metadata. */
+  graphExpanded?: boolean;
   value: T;
 }
 

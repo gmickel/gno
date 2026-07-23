@@ -241,6 +241,8 @@ export const capsuleFor = async (
       contextIds: [],
       retrievalRank: index + 1,
       selectionRank: index + 1,
+      retrievalSources: ["bm25" as const],
+      graphExpanded: false,
       facets: index === 0 ? ["decision"] : [],
       trust: "untrusted" as const,
       egress: "unavailable" as const,
