@@ -82,9 +82,8 @@ Deliver canonical qrels export and immutable-receipt replay as one read-only ret
 - [ ] Store, core, fn-97 importer, CLI, contract-schema, and no-mutation regression tests pass; `bun run lint:check`, `bun test`, and the retrieval-quality checks required by this repository are green.
 - [ ] `spec/cli.md`, `docs/CLI.md`, `assets/skill/SKILL.md`, affected README/CHANGELOG surfaces, and affected hosted `~/work/gno.sh` documentation describe the shipped behavior without drift.
 ## Done summary
-TBD
-
+Added deterministic qrels export and read-only BM25/vector/hybrid replay with manifest verification, exact run-scoped provenance, stable source states, strict candidate validation, fn97 import, and exact collection/URI-prefix scope.
 ## Evidence
-- Commits:
-- Tests:
+- Commits: 05d72f9
+- Tests: bun test: 2704 pass, 1 Windows-only skip, 0 fail, bun run lint:check: clean, bun run eval:hybrid: 88% (threshold 70%), gno.sh typecheck and public truth tests: green
 - PRs:
