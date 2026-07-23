@@ -8,11 +8,12 @@ satisfies: [R5]
 Install the complete fail-closed network boundary before enabling HTTP MCP for serve and daemon.
 
 **Size:** M
-**Files:** `src/serve/security.ts`, `src/mcp/http-security.ts`, `src/serve/server.ts`, `src/cli/commands/serve.ts`, `src/cli/commands/daemon.ts`, `src/config/schema.ts`, `spec/cli.md`, `spec/mcp.md`, `spec/output-schemas/`, `test/serve/security.test.ts`, `test/mcp/http-security.test.ts`
+**Files:** `src/serve/security.ts`, `src/mcp/http-security.ts`, `src/mcp/http-transport.ts`, `src/mcp/http-session.ts`, `src/serve/routes/mcp.ts`, `src/serve/server.ts`, `src/cli/commands/serve.ts`, `src/cli/commands/daemon.ts`, `src/config/schema.ts`, `spec/cli.md`, `spec/mcp.md`, `spec/output-schemas/`, `test/serve/security.test.ts`, `test/mcp/http-security.test.ts`, `test/mcp/http-transport.test.ts`
 
 ### Approach
 
 - Run external middleware before body parsing and SDK dispatch on every HTTP method. Read the real peer through Bun `requestIP`; ignore forwarded headers.
+- Replace task 2's `unsafeTestOnlyMcpRoute` injection seam with the production `/mcp` mount only after the middleware wraps its `HttpMcpTransport` handlers. Preserve its POST/GET/DELETE handling, SSE timeout disabling, admission limits, session lifecycle, and shutdown cleanup.
 - Default to literal `127.0.0.1`. Require explicit non-loopback bind, restrictive token file, exact Host/Origin allowlists, and separate read/write authorization. Authentication never grants mutation by itself.
 - Bound declared and chunked bodies, request rates, concurrent requests, queues, and sessions. Return stable redacted `401/403/413/429/503` responses.
 - Generate/store tokens with restrictive permissions. Rotation and revocation invalidate already-authenticated sessions. Never log tokens or authorization headers.
@@ -28,6 +29,8 @@ Install the complete fail-closed network boundary before enabling HTTP MCP for s
 - [ ] Wildcard/non-loopback startup fails without token file and exact allowlists; token permissions, rotation, revocation, and redaction pass adversarial tests.
 - [ ] Declared and chunked oversize bodies, rate/request/queue/session pressure, shutdown admission, and unauthorized writes return the documented stable failures.
 - [ ] `/mcp` becomes enabled only after all security fixtures pass; HTTP MCP remains read-only by default.
+
+<!-- Updated by plan-sync: fn-99-resident-local-context-gateway.2 used HttpMcpTransport + createTestOnlyMcpRoute, not a production-mounted endpoint -->
 
 ## Done summary
 TBD
