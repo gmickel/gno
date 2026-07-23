@@ -1,9 +1,9 @@
 {
   "benchmarkId": "verified-ask-outcome@1",
-  "canonicalFingerprint": "968a3880b29e00f25e9565459e70c019208823da5504aea1e3a782f943e401ec",
+  "canonicalFingerprint": "741efecfd5621db4bad2e50c1194f99cf164fa80d238e515c39d5cbc02663a7a",
   "environment": {
     "git": {
-      "commit": "c102bd0c2a0ce2422433de67bf955853513f3b03",
+      "commit": "79faddbb2914ad6575187c74c06b3cdec2631684",
       "dirty": false
     }
   },
@@ -43,9 +43,9 @@
     {
       "abstained": false,
       "agentId": "fixture-answer-agent-v1",
-      "answer": "automaticExport: true [1].",
-      "answerFingerprint": "a903f896b99186a0186956c47c282196b33210199e4230345388dd4ba1408861",
-      "canonicalFingerprint": "32218add0bd930539d4061ceb9136d5423d6abb4142587015131738731802fb4",
+      "answer": "claim automaticExport value %7B%22type%22%3A%22boolean%22%2C%22value%22%3Atrue%7D [1].",
+      "answerFingerprint": "6a7bc77f287f643542171be97ef0fee9bac0b558a521a695a334574fb51f7d32",
+      "canonicalFingerprint": "850f63037311266bd2b4d6edbb40dc3a0cf8936b7f66483d52cb47e1ae81cb93",
       "citations": [
         {
           "endLine": 5,
@@ -57,13 +57,6 @@
           "uri": "gno://c011/d001.md"
         }
       ],
-      "declaredClaim": {
-        "claimKey": "automaticExport",
-        "value": {
-          "type": "boolean",
-          "value": true
-        }
-      },
       "draftKind": "supported",
       "fixtureFingerprint": "68027bb0248c09507dbdba9d8cf2433f1b9b7b547ba5db8811db338982f9d08b",
       "indexFingerprint": "9c4a65f08850a70ff6d2ec6fe069b4cd38c9cbf3481583afd76a74264cf0591a",
@@ -81,9 +74,9 @@
     {
       "abstained": false,
       "agentId": "fixture-answer-agent-v1",
-      "answer": "automaticExport: true [evidence:a30799dbf4b7167cbf803e3b40b69a3e3621981bdff75da7b78f3b0c50c2d3ff].",
-      "answerFingerprint": "5ceb894c095ecb8d56eac6fc4c3ac57e176dde875cd93a07d4e749e410264fe6",
-      "canonicalFingerprint": "0b385c0a971a38b3fde1a0515c4ffc4f00b33653244b61c39cef5c839bb9b0b9",
+      "answer": "claim automaticExport value %7B%22type%22%3A%22boolean%22%2C%22value%22%3Atrue%7D [evidence:a30799dbf4b7167cbf803e3b40b69a3e3621981bdff75da7b78f3b0c50c2d3ff].",
+      "answerFingerprint": "973f296317e0610e304b63c1e335aa2bfb899c925777296eda58b1c16fd7080c",
+      "canonicalFingerprint": "823b9708e4cfb327274fb54309139ea567b60201b0be145dfe7b6a0e589ca14a",
       "citations": [
         {
           "endLine": 4,
@@ -95,13 +88,6 @@
           "uri": "gno://c011/d001.md?index=agentic"
         }
       ],
-      "declaredClaim": {
-        "claimKey": "automaticExport",
-        "value": {
-          "type": "boolean",
-          "value": true
-        }
-      },
       "draftKind": "supported",
       "fixtureFingerprint": "68027bb0248c09507dbdba9d8cf2433f1b9b7b547ba5db8811db338982f9d08b",
       "indexFingerprint": "9c4a65f08850a70ff6d2ec6fe069b4cd38c9cbf3481583afd76a74264cf0591a",
@@ -119,9 +105,9 @@
     {
       "abstained": false,
       "agentId": "fixture-answer-agent-v1",
-      "answer": "incidentId: INC-4827-WRONG [1].",
-      "answerFingerprint": "f798314727e6b39224de5677e8bcc9ed27517d6d5bc1942c5bdb52da19282367",
-      "canonicalFingerprint": "f887e7866781192b5d23f90a9a100e2c8f7140815c62e8de091fcae210bceed5",
+      "answer": "claim incidentId value %7B%22type%22%3A%22identifier%22%2C%22value%22%3A%22INC-4827-WRONG%22%7D [1].",
+      "answerFingerprint": "1b5ee956f1647ba544c2bfab0e3faf45b625099f341e08061b26c1c318cba02f",
+      "canonicalFingerprint": "494ca58f34372102e6158181f2118ac617a6499952e199b3d6ae1edae37e7b90",
       "citations": [
         {
           "endLine": 5,
@@ -133,13 +119,6 @@
           "uri": "gno://c001/d002.md"
         }
       ],
-      "declaredClaim": {
-        "claimKey": "incidentId",
-        "value": {
-          "type": "identifier",
-          "value": "INC-4827-WRONG"
-        }
-      },
       "draftKind": "adversarial",
       "fixtureFingerprint": "68027bb0248c09507dbdba9d8cf2433f1b9b7b547ba5db8811db338982f9d08b",
       "indexFingerprint": "9c4a65f08850a70ff6d2ec6fe069b4cd38c9cbf3481583afd76a74264cf0591a",
@@ -159,9 +138,8 @@
       "agentId": "fixture-answer-agent-v1",
       "answer": "I cannot provide this answer as verified from the supplied Context Capsule.",
       "answerFingerprint": "7fc501a758277c00b94fbb8e0cc92e8f3899b446caede21fa818362bce8a8123",
-      "canonicalFingerprint": "f0845e5fca20660e5b3ec6f5c11f955ab6583ba02037bc0a46b98e49b29ba2f9",
+      "canonicalFingerprint": "69a205f109e995c53afe8a8ce74ef7a683f61d8f827d22c92fde46a9d3ddc7d6",
       "citations": [],
-      "declaredClaim": null,
       "draftKind": "adversarial",
       "fixtureFingerprint": "68027bb0248c09507dbdba9d8cf2433f1b9b7b547ba5db8811db338982f9d08b",
       "indexFingerprint": "9c4a65f08850a70ff6d2ec6fe069b4cd38c9cbf3481583afd76a74264cf0591a",
@@ -179,9 +157,9 @@
     {
       "abstained": false,
       "agentId": "fixture-answer-agent-v1",
-      "answer": "releaseCodename: 蓝鲸 [1].",
-      "answerFingerprint": "4d07a115bc083cbac127e782cbf6e7f95b783bcb343eabefbda43f02e385ef11",
-      "canonicalFingerprint": "48eb3e16bb03b5c50e3198a7bc74278c4ebd5cd997d9a471122beea54bf75ed8",
+      "answer": "claim releaseCodename value %7B%22type%22%3A%22string%22%2C%22value%22%3A%22%E8%93%9D%E9%B2%B8%22%7D [1].",
+      "answerFingerprint": "dda25ffe9a0f6444293954fc58f5b528f0c1f2ff4c3ce81fe881720358b6495e",
+      "canonicalFingerprint": "5b1808338824d540444e508d9bde7357c8e4f3c44c887e2976e76ac19182e31f",
       "citations": [
         {
           "endLine": 5,
@@ -193,13 +171,6 @@
           "uri": "gno://c012/d001.md"
         }
       ],
-      "declaredClaim": {
-        "claimKey": "releaseCodename",
-        "value": {
-          "type": "string",
-          "value": "蓝鲸"
-        }
-      },
       "draftKind": "supported",
       "fixtureFingerprint": "68027bb0248c09507dbdba9d8cf2433f1b9b7b547ba5db8811db338982f9d08b",
       "indexFingerprint": "9c4a65f08850a70ff6d2ec6fe069b4cd38c9cbf3481583afd76a74264cf0591a",
@@ -217,9 +188,9 @@
     {
       "abstained": false,
       "agentId": "fixture-answer-agent-v1",
-      "answer": "releaseCodename: 蓝鲸 [evidence:d3451104fc2e428475701ecb749110df63a218cf1fbbd5abccda389c571b2548].",
-      "answerFingerprint": "ebecd8f8075586d596e99e61e573e676a11e0505e0a61a6bf2c1ce668f9a152e",
-      "canonicalFingerprint": "7e7708bcc4801d39e666eb26338a217f42082f129ac189f89cb0689830723e71",
+      "answer": "claim releaseCodename value %7B%22type%22%3A%22string%22%2C%22value%22%3A%22%E8%93%9D%E9%B2%B8%22%7D [evidence:d3451104fc2e428475701ecb749110df63a218cf1fbbd5abccda389c571b2548].",
+      "answerFingerprint": "77833ad243024d41cccb2ce099c654c924279abee2006acb2f90dc986cb5b07a",
+      "canonicalFingerprint": "807a29105c0513bd3a163889e9c44ff647f609daac37e46111e7f1fb078be439",
       "citations": [
         {
           "endLine": 4,
@@ -231,13 +202,6 @@
           "uri": "gno://c012/d001.md?index=agentic"
         }
       ],
-      "declaredClaim": {
-        "claimKey": "releaseCodename",
-        "value": {
-          "type": "string",
-          "value": "蓝鲸"
-        }
-      },
       "draftKind": "supported",
       "fixtureFingerprint": "68027bb0248c09507dbdba9d8cf2433f1b9b7b547ba5db8811db338982f9d08b",
       "indexFingerprint": "9c4a65f08850a70ff6d2ec6fe069b4cd38c9cbf3481583afd76a74264cf0591a",
@@ -255,9 +219,9 @@
     {
       "abstained": false,
       "agentId": "fixture-answer-agent-v1",
-      "answer": "configKey: CACHE_TTL_SECONDS [1].",
-      "answerFingerprint": "89df53aed668eae887cc1861fcfe3c5da96357204f8a88978fe07a413bb4f44a",
-      "canonicalFingerprint": "c4f9732ddca929a2fb1cfd0ac95f258817c75c4eec1b45ac093a0cd387d73586",
+      "answer": "claim configKey value %7B%22type%22%3A%22identifier%22%2C%22value%22%3A%22CACHE_TTL_SECONDS%22%7D [1].",
+      "answerFingerprint": "c20ad4955857bf572d917b3354ab73c57d5bcb38c45af715a8db8a2dde46e122",
+      "canonicalFingerprint": "fc7372a9fc509fb4cff0a710d5b3105d4f5769c707f471cdf4fbf09604af339f",
       "citations": [
         {
           "endLine": 5,
@@ -269,13 +233,6 @@
           "uri": "gno://c002/d001.md"
         }
       ],
-      "declaredClaim": {
-        "claimKey": "configKey",
-        "value": {
-          "type": "identifier",
-          "value": "CACHE_TTL_SECONDS"
-        }
-      },
       "draftKind": "supported",
       "fixtureFingerprint": "68027bb0248c09507dbdba9d8cf2433f1b9b7b547ba5db8811db338982f9d08b",
       "indexFingerprint": "9c4a65f08850a70ff6d2ec6fe069b4cd38c9cbf3481583afd76a74264cf0591a",
@@ -293,9 +250,9 @@
     {
       "abstained": false,
       "agentId": "fixture-answer-agent-v1",
-      "answer": "configKey: CACHE_TTL_SECONDS [evidence:726d47e06ad84a6052f64383fc1c05779ba0cde6eaec13c416cdd15fb36658cb].",
-      "answerFingerprint": "485c6cbd33d80ad09c8e92d03f3671ea7a65e7dc850217c2e5ff7b6c66f60317",
-      "canonicalFingerprint": "71c676ae7c5763cce4d64e793faecda8169483aaa86c1d6353f16fc1bce759f5",
+      "answer": "claim configKey value %7B%22type%22%3A%22identifier%22%2C%22value%22%3A%22CACHE_TTL_SECONDS%22%7D [evidence:726d47e06ad84a6052f64383fc1c05779ba0cde6eaec13c416cdd15fb36658cb].",
+      "answerFingerprint": "7cee1b0c5c109eafaecc4ff5aa757675d20d7ce66d64683e89a36692a1904c62",
+      "canonicalFingerprint": "587c1d8339dace6af45ca6c35913ca807d1f6fe3d92fb2665e0957518bbbe6a3",
       "citations": [
         {
           "endLine": 4,
@@ -307,13 +264,6 @@
           "uri": "gno://c002/d001.md?index=agentic"
         }
       ],
-      "declaredClaim": {
-        "claimKey": "configKey",
-        "value": {
-          "type": "identifier",
-          "value": "CACHE_TTL_SECONDS"
-        }
-      },
       "draftKind": "supported",
       "fixtureFingerprint": "68027bb0248c09507dbdba9d8cf2433f1b9b7b547ba5db8811db338982f9d08b",
       "indexFingerprint": "9c4a65f08850a70ff6d2ec6fe069b4cd38c9cbf3481583afd76a74264cf0591a",
@@ -331,9 +281,9 @@
     {
       "abstained": false,
       "agentId": "fixture-answer-agent-v1",
-      "answer": "projectCodename: Harbor [1].",
-      "answerFingerprint": "d2140544c883a30c117712bddefa8b30352649057e698eae4c5fb72e6346dcf3",
-      "canonicalFingerprint": "68603d2a27a80f9c2d875baa98586eef1a919d91edb1f51ef72e8ec7590f62fa",
+      "answer": "claim projectCodename value %7B%22type%22%3A%22string%22%2C%22value%22%3A%22Harbor%22%7D [1].",
+      "answerFingerprint": "a2a0f359e4c01bd7ecedd8c0e4775e08c63b4029877f2c904f5ac85075aada93",
+      "canonicalFingerprint": "f3f7fb47292be9afa3f612117d64b18a0112ba2c62a63eb280ebcac9ad431aa1",
       "citations": [
         {
           "endLine": 5,
@@ -345,13 +295,6 @@
           "uri": "gno://c003/d001.md"
         }
       ],
-      "declaredClaim": {
-        "claimKey": "projectCodename",
-        "value": {
-          "type": "string",
-          "value": "Harbor"
-        }
-      },
       "draftKind": "supported",
       "fixtureFingerprint": "68027bb0248c09507dbdba9d8cf2433f1b9b7b547ba5db8811db338982f9d08b",
       "indexFingerprint": "9c4a65f08850a70ff6d2ec6fe069b4cd38c9cbf3481583afd76a74264cf0591a",
@@ -369,9 +312,9 @@
     {
       "abstained": false,
       "agentId": "fixture-answer-agent-v1",
-      "answer": "projectCodename: Harbor [evidence:6b354985eb0bce7cdadb3a0c481e7327ff38be0325ed1766ed24264dbd9830f3].",
-      "answerFingerprint": "ffd174ebfe114a1daee2f1b81974e539c30ca6ea04a2c9b061c72a30fdc5a737",
-      "canonicalFingerprint": "90448967a834858ca8b1d400bd401535059b85afa05df7e33d409eb77b08dadd",
+      "answer": "claim projectCodename value %7B%22type%22%3A%22string%22%2C%22value%22%3A%22Harbor%22%7D [evidence:6b354985eb0bce7cdadb3a0c481e7327ff38be0325ed1766ed24264dbd9830f3].",
+      "answerFingerprint": "c479fc5f2ba5c27e95d96b33666ca0bb6debbfbeb234f72c73610bebad58a457",
+      "canonicalFingerprint": "5df78e2af2ff0efbe5123080426ea2a7018ba176b328d0f1ead19b5d00dc4a5d",
       "citations": [
         {
           "endLine": 4,
@@ -383,13 +326,6 @@
           "uri": "gno://c003/d001.md?index=agentic"
         }
       ],
-      "declaredClaim": {
-        "claimKey": "projectCodename",
-        "value": {
-          "type": "string",
-          "value": "Harbor"
-        }
-      },
       "draftKind": "supported",
       "fixtureFingerprint": "68027bb0248c09507dbdba9d8cf2433f1b9b7b547ba5db8811db338982f9d08b",
       "indexFingerprint": "9c4a65f08850a70ff6d2ec6fe069b4cd38c9cbf3481583afd76a74264cf0591a",
@@ -407,9 +343,9 @@
     {
       "abstained": false,
       "agentId": "fixture-answer-agent-v1",
-      "answer": "serviceOwner: Mina Shah [1].",
-      "answerFingerprint": "cdeadd467066a3e5f5bebbd8338295cc39745e0b9ea83b30061fac3c3749f1ab",
-      "canonicalFingerprint": "d873963865276e3683b3d8817d5b310b18815ff0dd84bc360254fa9578de09d5",
+      "answer": "claim serviceOwner value %7B%22type%22%3A%22string%22%2C%22value%22%3A%22Mina%20Shah%22%7D [1].",
+      "answerFingerprint": "bd7f28ba1f530f640609ecae710e00d37613d083a1feabea9dfbf577abb8292c",
+      "canonicalFingerprint": "d0798fac4c7cfc84d65709e6c484f512481d2bb9f47fb239e0c9eae8ec9cccea",
       "citations": [
         {
           "endLine": 5,
@@ -421,13 +357,6 @@
           "uri": "gno://c004/d001.md"
         }
       ],
-      "declaredClaim": {
-        "claimKey": "serviceOwner",
-        "value": {
-          "type": "string",
-          "value": "Mina Shah"
-        }
-      },
       "draftKind": "supported",
       "fixtureFingerprint": "68027bb0248c09507dbdba9d8cf2433f1b9b7b547ba5db8811db338982f9d08b",
       "indexFingerprint": "9c4a65f08850a70ff6d2ec6fe069b4cd38c9cbf3481583afd76a74264cf0591a",
@@ -445,9 +374,9 @@
     {
       "abstained": false,
       "agentId": "fixture-answer-agent-v1",
-      "answer": "serviceOwner: Mina Shah [evidence:79a92d5b938d51911fa2d99e199b268a94f644685461a645535afca3e6dd5a14].",
-      "answerFingerprint": "c2817204bf8b3b06bb17998415cbab30c1767f21c69972c8abfde271abbcd9cc",
-      "canonicalFingerprint": "8aa0bdff6f77173f5b8aad93fcefc28bd99ef7170792d1b4731e2508ea1d6d81",
+      "answer": "claim serviceOwner value %7B%22type%22%3A%22string%22%2C%22value%22%3A%22Mina%20Shah%22%7D [evidence:79a92d5b938d51911fa2d99e199b268a94f644685461a645535afca3e6dd5a14].",
+      "answerFingerprint": "e018bdb92b4eb26bcbff92a53ef76e02838887530670476fc38c26b96470d3e6",
+      "canonicalFingerprint": "bf4f2acb2b24b05d7b6718e647f29bc69f6b41f95265ce56e37ac9af4c334ad2",
       "citations": [
         {
           "endLine": 4,
@@ -459,13 +388,6 @@
           "uri": "gno://c004/d001.md?index=agentic"
         }
       ],
-      "declaredClaim": {
-        "claimKey": "serviceOwner",
-        "value": {
-          "type": "string",
-          "value": "Mina Shah"
-        }
-      },
       "draftKind": "supported",
       "fixtureFingerprint": "68027bb0248c09507dbdba9d8cf2433f1b9b7b547ba5db8811db338982f9d08b",
       "indexFingerprint": "9c4a65f08850a70ff6d2ec6fe069b4cd38c9cbf3481583afd76a74264cf0591a",
@@ -483,9 +405,9 @@
     {
       "abstained": false,
       "agentId": "fixture-answer-agent-v1",
-      "answer": "invoiceId: INV-7741 [1].",
-      "answerFingerprint": "15b021d51d815a867a56544cc1218e5338c46b232249d8a118c9a5f97bcef770",
-      "canonicalFingerprint": "0e3cad5145762f8efd5f933183595e4a7a8ff10cfce7f67dd1e0d790872ab695",
+      "answer": "claim invoiceId value %7B%22type%22%3A%22identifier%22%2C%22value%22%3A%22INV-7741%22%7D [1].",
+      "answerFingerprint": "b8ecd9da2b70a97f8cdfc76db0a1abafab7b961f9f779935addc0f3fa0c4dd5a",
+      "canonicalFingerprint": "7e08f96c9de099b25a00a1fde03a334486f19c76bf3b7ed407e7d451bb9e5388",
       "citations": [
         {
           "endLine": 5,
@@ -497,13 +419,6 @@
           "uri": "gno://c015/d001.md"
         }
       ],
-      "declaredClaim": {
-        "claimKey": "invoiceId",
-        "value": {
-          "type": "identifier",
-          "value": "INV-7741"
-        }
-      },
       "draftKind": "supported",
       "fixtureFingerprint": "68027bb0248c09507dbdba9d8cf2433f1b9b7b547ba5db8811db338982f9d08b",
       "indexFingerprint": "9c4a65f08850a70ff6d2ec6fe069b4cd38c9cbf3481583afd76a74264cf0591a",
@@ -521,9 +436,9 @@
     {
       "abstained": false,
       "agentId": "fixture-answer-agent-v1",
-      "answer": "invoiceId: INV-7741 [evidence:00e9d930325103743f5e7f1246aa5884534ee2dbb3989e3caab7a60735dbeb7c].",
-      "answerFingerprint": "6031ac062b6b2c5f0b9c75ef57cceb6a750b4532671aec75ae3ea7d8174e8775",
-      "canonicalFingerprint": "0fb3af097412a778c0117dbe1362c98da70c5e7425dd92ca4a3372596a95ef13",
+      "answer": "claim invoiceId value %7B%22type%22%3A%22identifier%22%2C%22value%22%3A%22INV-7741%22%7D [evidence:00e9d930325103743f5e7f1246aa5884534ee2dbb3989e3caab7a60735dbeb7c].",
+      "answerFingerprint": "5b0455442868d28abb36bcda12e670af8c8a57b02438a9ee56f705ebcb201f3b",
+      "canonicalFingerprint": "3dee613401eabfe0cdea9d2378462689b41066e4c98ec38f805aa2aa5c78aa19",
       "citations": [
         {
           "endLine": 4,
@@ -535,13 +450,6 @@
           "uri": "gno://c015/d001.md?index=agentic"
         }
       ],
-      "declaredClaim": {
-        "claimKey": "invoiceId",
-        "value": {
-          "type": "identifier",
-          "value": "INV-7741"
-        }
-      },
       "draftKind": "supported",
       "fixtureFingerprint": "68027bb0248c09507dbdba9d8cf2433f1b9b7b547ba5db8811db338982f9d08b",
       "indexFingerprint": "9c4a65f08850a70ff6d2ec6fe069b4cd38c9cbf3481583afd76a74264cf0591a",
@@ -559,9 +467,9 @@
     {
       "abstained": false,
       "agentId": "fixture-answer-agent-v1",
-      "answer": "retentionComparison: Standard: 30 days, Regulated: 90 days [1].",
-      "answerFingerprint": "66fa50e41b384789a378ded70caa119f0bdc48715601af201dda38895ebbd313",
-      "canonicalFingerprint": "c813efb7c08627b2021655bd19f3e3c0e09c2c3b314baa6cf62da1dbe5994675",
+      "answer": "claim retentionComparison value %7B%22type%22%3A%22string%22%2C%22value%22%3A%22Standard%3A%2030%20days%3B%20Regulated%3A%2090%20days%22%7D [1].",
+      "answerFingerprint": "a3682e5dd7a5ab60ccdef242522a6d25da75a547d7c7d3b6a4dc6ae49e3406f6",
+      "canonicalFingerprint": "b7cda260c6500726bcd8044babc5c82c1612dc74962d4fd5bf1f8c8e8e90bc8c",
       "citations": [
         {
           "endLine": 5,
@@ -573,13 +481,6 @@
           "uri": "gno://c005/d001.md"
         }
       ],
-      "declaredClaim": {
-        "claimKey": "retentionComparison",
-        "value": {
-          "type": "string",
-          "value": "Standard: 30 days; Regulated: 90 days"
-        }
-      },
       "draftKind": "supported",
       "fixtureFingerprint": "68027bb0248c09507dbdba9d8cf2433f1b9b7b547ba5db8811db338982f9d08b",
       "indexFingerprint": "9c4a65f08850a70ff6d2ec6fe069b4cd38c9cbf3481583afd76a74264cf0591a",
@@ -597,9 +498,9 @@
     {
       "abstained": false,
       "agentId": "fixture-answer-agent-v1",
-      "answer": "retentionComparison: Standard: 30 days, Regulated: 90 days [evidence:e6b83afb14eedbe9df3750ea7c419e75b2d5907d38a94a7abedfaed753fb54f0].",
-      "answerFingerprint": "46e4f65b995b84abe6d05f61675192f11249374eb84b36b125caeb73c00a6002",
-      "canonicalFingerprint": "a8d35f063dd97ab5b368750e4ebf077f10d254657455f25e75812b8140de07df",
+      "answer": "claim retentionComparison value %7B%22type%22%3A%22string%22%2C%22value%22%3A%22Standard%3A%2030%20days%3B%20Regulated%3A%2090%20days%22%7D [evidence:e6b83afb14eedbe9df3750ea7c419e75b2d5907d38a94a7abedfaed753fb54f0].",
+      "answerFingerprint": "2b2e0ebc685e7f57508d22113806c3dd312f172e324d5fe808c09c9f633ddaa8",
+      "canonicalFingerprint": "426343122d561c4bbf97e4c2b864ed19b873fc115160c5138c1f9e7284aa1609",
       "citations": [
         {
           "endLine": 4,
@@ -611,13 +512,6 @@
           "uri": "gno://c005/d001.md?index=agentic"
         }
       ],
-      "declaredClaim": {
-        "claimKey": "retentionComparison",
-        "value": {
-          "type": "string",
-          "value": "Standard: 30 days; Regulated: 90 days"
-        }
-      },
       "draftKind": "supported",
       "fixtureFingerprint": "68027bb0248c09507dbdba9d8cf2433f1b9b7b547ba5db8811db338982f9d08b",
       "indexFingerprint": "9c4a65f08850a70ff6d2ec6fe069b4cd38c9cbf3481583afd76a74264cf0591a",
@@ -635,9 +529,9 @@
     {
       "abstained": false,
       "agentId": "fixture-answer-agent-v1",
-      "answer": "initiativeOwner: Casey Lin [1].",
-      "answerFingerprint": "b11d1e6537c56921df00ef058f18afb38188fc986701d21fc8099c03b177c7f3",
-      "canonicalFingerprint": "3b5071c1b91cd3fdd1feac07a1d35aa883f943cd5e4b636e86a1be831334f600",
+      "answer": "claim initiativeOwner value %7B%22type%22%3A%22string%22%2C%22value%22%3A%22Casey%20Lin%22%7D [1].",
+      "answerFingerprint": "13a7dc0bc4ee4b0ba5dee3d79c689dce143d147dcca72b98bd2f4323be1b6b03",
+      "canonicalFingerprint": "790f8149b93a150f7815ea2bef7272b4421b5408c3b1db07d60c96408e444eac",
       "citations": [
         {
           "endLine": 5,
@@ -649,13 +543,6 @@
           "uri": "gno://c016/d001.md"
         }
       ],
-      "declaredClaim": {
-        "claimKey": "initiativeOwner",
-        "value": {
-          "type": "string",
-          "value": "Casey Lin"
-        }
-      },
       "draftKind": "supported",
       "fixtureFingerprint": "68027bb0248c09507dbdba9d8cf2433f1b9b7b547ba5db8811db338982f9d08b",
       "indexFingerprint": "9c4a65f08850a70ff6d2ec6fe069b4cd38c9cbf3481583afd76a74264cf0591a",
@@ -673,9 +560,9 @@
     {
       "abstained": false,
       "agentId": "fixture-answer-agent-v1",
-      "answer": "initiativeOwner: Casey Lin [evidence:9c9d1e217fccb5860e2a5764fa20ba059c813b9fa4946e70091e2a865b3d3857].",
-      "answerFingerprint": "1a55b755b8a29fe705c6694641dc858109ab0ad71ff611e2a956123b997883ee",
-      "canonicalFingerprint": "e017758e1036fbf7a6f257edb91ee6dc3681e6c19bdb9d77e791b0a3e122d35f",
+      "answer": "claim initiativeOwner value %7B%22type%22%3A%22string%22%2C%22value%22%3A%22Casey%20Lin%22%7D [evidence:9c9d1e217fccb5860e2a5764fa20ba059c813b9fa4946e70091e2a865b3d3857].",
+      "answerFingerprint": "95d213a8ad07f0857c72359d272708352e53ed240922044d043b8a984f477604",
+      "canonicalFingerprint": "78043dc3f6fa9b4fce210d013dd1f3d75057b44beca1752f45f24f3ead7853a0",
       "citations": [
         {
           "endLine": 4,
@@ -687,13 +574,6 @@
           "uri": "gno://c016/d001.md?index=agentic"
         }
       ],
-      "declaredClaim": {
-        "claimKey": "initiativeOwner",
-        "value": {
-          "type": "string",
-          "value": "Casey Lin"
-        }
-      },
       "draftKind": "supported",
       "fixtureFingerprint": "68027bb0248c09507dbdba9d8cf2433f1b9b7b547ba5db8811db338982f9d08b",
       "indexFingerprint": "9c4a65f08850a70ff6d2ec6fe069b4cd38c9cbf3481583afd76a74264cf0591a",
@@ -711,9 +591,9 @@
     {
       "abstained": false,
       "agentId": "fixture-answer-agent-v1",
-      "answer": "bothIncludeAuditLogs: false [1].",
-      "answerFingerprint": "906350b09dfd5f10b46ffd06832defe4e7c7cae9337b863384e046792d88e971",
-      "canonicalFingerprint": "03c3b2e0d4bbd312c1cdeaef56bac4b471c965329db64b89f372e5a67f01225f",
+      "answer": "claim bothIncludeAuditLogs value %7B%22type%22%3A%22boolean%22%2C%22value%22%3Afalse%7D [1].",
+      "answerFingerprint": "e7797a4356d85c08bfdc7f9d45695022aaeec8d0d2d9369b60fdcbc65a35a8eb",
+      "canonicalFingerprint": "84522d851e7ec13bb84e1f7c5ad19cf1eeb585ac6d78906c2dc700ed4f406ac0",
       "citations": [
         {
           "endLine": 5,
@@ -725,13 +605,6 @@
           "uri": "gno://c006/d001.md"
         }
       ],
-      "declaredClaim": {
-        "claimKey": "bothIncludeAuditLogs",
-        "value": {
-          "type": "boolean",
-          "value": false
-        }
-      },
       "draftKind": "supported",
       "fixtureFingerprint": "68027bb0248c09507dbdba9d8cf2433f1b9b7b547ba5db8811db338982f9d08b",
       "indexFingerprint": "9c4a65f08850a70ff6d2ec6fe069b4cd38c9cbf3481583afd76a74264cf0591a",
@@ -749,9 +622,9 @@
     {
       "abstained": false,
       "agentId": "fixture-answer-agent-v1",
-      "answer": "bothIncludeAuditLogs: false [evidence:93164c3c3feb78f5f0d8dbbef957a6b37dcd50689dcca0df337c1602c0e55f21].",
-      "answerFingerprint": "f680a8c2893646e09827cf086a13cd767ab230818c02c88bfe75d0060ca0082c",
-      "canonicalFingerprint": "1aeac93b3741acc44c7df80083eaba216b61a56fd631858bbefbaa0370a6c3de",
+      "answer": "claim bothIncludeAuditLogs value %7B%22type%22%3A%22boolean%22%2C%22value%22%3Afalse%7D [evidence:93164c3c3feb78f5f0d8dbbef957a6b37dcd50689dcca0df337c1602c0e55f21].",
+      "answerFingerprint": "5cf1680141a97c9d2efbab764f7c00936fa0f3187e84abf18873ef6d529ebe2f",
+      "canonicalFingerprint": "55c43b018be28777be17e29464d1b99d584176b51163a36f4c97d82dc3fcebfd",
       "citations": [
         {
           "endLine": 4,
@@ -763,13 +636,6 @@
           "uri": "gno://c006/d001.md?index=agentic"
         }
       ],
-      "declaredClaim": {
-        "claimKey": "bothIncludeAuditLogs",
-        "value": {
-          "type": "boolean",
-          "value": false
-        }
-      },
       "draftKind": "supported",
       "fixtureFingerprint": "68027bb0248c09507dbdba9d8cf2433f1b9b7b547ba5db8811db338982f9d08b",
       "indexFingerprint": "9c4a65f08850a70ff6d2ec6fe069b4cd38c9cbf3481583afd76a74264cf0591a",
@@ -787,9 +653,9 @@
     {
       "abstained": false,
       "agentId": "fixture-answer-agent-v1",
-      "answer": "selectedDatabase: PostgreSQL (incorrect) [1].",
-      "answerFingerprint": "82a7f05dee131f2ef14c92adf6fbe4214f2529e61e30084341d895fbbed28906",
-      "canonicalFingerprint": "8a94e9d3968e0a0302222a3dcf05f2b0a851f6e903ee7c4ec5320ff9f3485565",
+      "answer": "claim selectedDatabase value %7B%22type%22%3A%22string%22%2C%22value%22%3A%22PostgreSQL%20(incorrect)%22%7D [1].",
+      "answerFingerprint": "6d33b736479c880899abb1bd3780142789ac2c9acd827ffd9a778e32c0db9d5f",
+      "canonicalFingerprint": "6c05c208085b97bd32a62efe5403061f9e558d9e8c85803ded2a402d5a103eca",
       "citations": [
         {
           "endLine": 5,
@@ -801,13 +667,6 @@
           "uri": "gno://c007/d001.md"
         }
       ],
-      "declaredClaim": {
-        "claimKey": "selectedDatabase",
-        "value": {
-          "type": "string",
-          "value": "PostgreSQL (incorrect)"
-        }
-      },
       "draftKind": "adversarial",
       "fixtureFingerprint": "68027bb0248c09507dbdba9d8cf2433f1b9b7b547ba5db8811db338982f9d08b",
       "indexFingerprint": "9c4a65f08850a70ff6d2ec6fe069b4cd38c9cbf3481583afd76a74264cf0591a",
@@ -827,9 +686,8 @@
       "agentId": "fixture-answer-agent-v1",
       "answer": "I cannot provide this answer as verified from the supplied Context Capsule.",
       "answerFingerprint": "7fc501a758277c00b94fbb8e0cc92e8f3899b446caede21fa818362bce8a8123",
-      "canonicalFingerprint": "3a70c228ae3480416e872bdf01d2da2327166392738ba81c58b14edc195f4e86",
+      "canonicalFingerprint": "998daa05c5b68ab24006665641f09f1adcadcd2beca1d250fc8179da690b5d87",
       "citations": [],
-      "declaredClaim": null,
       "draftKind": "adversarial",
       "fixtureFingerprint": "68027bb0248c09507dbdba9d8cf2433f1b9b7b547ba5db8811db338982f9d08b",
       "indexFingerprint": "9c4a65f08850a70ff6d2ec6fe069b4cd38c9cbf3481583afd76a74264cf0591a",
@@ -847,9 +705,9 @@
     {
       "abstained": false,
       "agentId": "fixture-answer-agent-v1",
-      "answer": "rolloutRegion: north [1].",
-      "answerFingerprint": "e99bdf290a58798ed2cfa625e03317e5ecc7401571671ddded7cbb1900c52f91",
-      "canonicalFingerprint": "2d5d5e36aa357ce3fcb41e9df29c6b87928b189de0cfadf94e1442408c403b44",
+      "answer": "claim rolloutRegion value %7B%22type%22%3A%22string%22%2C%22value%22%3A%22north%22%7D [1].",
+      "answerFingerprint": "cbadf65fe80f835b940c464afba2a651ee78ec35414e7ce3ac412d122b1892ef",
+      "canonicalFingerprint": "cc0fccbfd02bdb152ce9e42987023876be7c45c992e2d5112d5322a59f21d2b9",
       "citations": [
         {
           "endLine": 5,
@@ -861,13 +719,6 @@
           "uri": "gno://c017/d002.md"
         }
       ],
-      "declaredClaim": {
-        "claimKey": "rolloutRegion",
-        "value": {
-          "type": "string",
-          "value": "north"
-        }
-      },
       "draftKind": "supported",
       "fixtureFingerprint": "68027bb0248c09507dbdba9d8cf2433f1b9b7b547ba5db8811db338982f9d08b",
       "indexFingerprint": "9c4a65f08850a70ff6d2ec6fe069b4cd38c9cbf3481583afd76a74264cf0591a",
@@ -885,9 +736,9 @@
     {
       "abstained": false,
       "agentId": "fixture-answer-agent-v1",
-      "answer": "rolloutRegion: north [evidence:030fe8de906ed2c06d45426a0decf56f1533f855c5a5873e2cd9be349022ff9e].",
-      "answerFingerprint": "a74bdbd4033ab11599be41688e92628769a3f48d40037939d43f3f750fd533c1",
-      "canonicalFingerprint": "f46fa28303b3320950cbb78095214b7d8eb7d047c1104ad9198d20c8ef8fd2bd",
+      "answer": "claim rolloutRegion value %7B%22type%22%3A%22string%22%2C%22value%22%3A%22north%22%7D [evidence:030fe8de906ed2c06d45426a0decf56f1533f855c5a5873e2cd9be349022ff9e].",
+      "answerFingerprint": "99648e699b128493227d8f38023200e1242e8b8cf50eab110169dc98fad73edf",
+      "canonicalFingerprint": "aac8dea45db34f04367abedcf8920ee1f3667328824c9e5f5ec93d99fffbdab2",
       "citations": [
         {
           "endLine": 4,
@@ -899,13 +750,6 @@
           "uri": "gno://c017/d002.md?index=agentic"
         }
       ],
-      "declaredClaim": {
-        "claimKey": "rolloutRegion",
-        "value": {
-          "type": "string",
-          "value": "north"
-        }
-      },
       "draftKind": "supported",
       "fixtureFingerprint": "68027bb0248c09507dbdba9d8cf2433f1b9b7b547ba5db8811db338982f9d08b",
       "indexFingerprint": "9c4a65f08850a70ff6d2ec6fe069b4cd38c9cbf3481583afd76a74264cf0591a",
@@ -923,9 +767,9 @@
     {
       "abstained": false,
       "agentId": "fixture-answer-agent-v1",
-      "answer": "launchDate: 2026-09-14 [1].",
-      "answerFingerprint": "26aab8650803aea49c3686f70159e53e1171ba0220ff1bf01386ed7a8fd422dc",
-      "canonicalFingerprint": "5484535f9f8d931058139eca6fb4c4cb671d9de91a3d17408278cc07b09f9cc8",
+      "answer": "claim launchDate value %7B%22type%22%3A%22date%22%2C%22value%22%3A%222026-09-14%22%7D [1].",
+      "answerFingerprint": "04010ec29c17e43b8631c010ec7bc841df60aa7388e68bb845987dec08aeef65",
+      "canonicalFingerprint": "5a7037d6b49bb2d0ffa78cdd2f851f0376fec3b45d1525a0f02c769a46359e00",
       "citations": [
         {
           "endLine": 5,
@@ -937,13 +781,6 @@
           "uri": "gno://c008/d001.md"
         }
       ],
-      "declaredClaim": {
-        "claimKey": "launchDate",
-        "value": {
-          "type": "date",
-          "value": "2026-09-14"
-        }
-      },
       "draftKind": "supported",
       "fixtureFingerprint": "68027bb0248c09507dbdba9d8cf2433f1b9b7b547ba5db8811db338982f9d08b",
       "indexFingerprint": "9c4a65f08850a70ff6d2ec6fe069b4cd38c9cbf3481583afd76a74264cf0591a",
@@ -961,9 +798,9 @@
     {
       "abstained": false,
       "agentId": "fixture-answer-agent-v1",
-      "answer": "launchDate: 2026-09-14 [evidence:fa6d0447056e241ed147f1badfc094050ae727dea1b7cbd639c61cc1815fe4a7].",
-      "answerFingerprint": "a8ff8314fb2cc3f022865bb51011a5a53f9d2c3c13340478bd44204fa41332c4",
-      "canonicalFingerprint": "0417b0e9d0de89d469bf111c70514dac70f29cbc1103e30d5902bbf17b6805bf",
+      "answer": "claim launchDate value %7B%22type%22%3A%22date%22%2C%22value%22%3A%222026-09-14%22%7D [evidence:fa6d0447056e241ed147f1badfc094050ae727dea1b7cbd639c61cc1815fe4a7].",
+      "answerFingerprint": "3604201d0b9ba50b5614f55009ba54ac4d6d0ea5b461af4a0b26aec45bda8ec6",
+      "canonicalFingerprint": "36c0622ee98157cd6b7e3076fd504196c2fd550a1ecac175585babda9dc004f1",
       "citations": [
         {
           "endLine": 4,
@@ -975,13 +812,6 @@
           "uri": "gno://c008/d001.md?index=agentic"
         }
       ],
-      "declaredClaim": {
-        "claimKey": "launchDate",
-        "value": {
-          "type": "date",
-          "value": "2026-09-14"
-        }
-      },
       "draftKind": "supported",
       "fixtureFingerprint": "68027bb0248c09507dbdba9d8cf2433f1b9b7b547ba5db8811db338982f9d08b",
       "indexFingerprint": "9c4a65f08850a70ff6d2ec6fe069b4cd38c9cbf3481583afd76a74264cf0591a",
@@ -999,9 +829,9 @@
     {
       "abstained": false,
       "agentId": "fixture-answer-agent-v1",
-      "answer": "escalationWindow: 15 minutes [1].",
-      "answerFingerprint": "c777e03481823261965946fb98243c064de81f893073fb226df6b441a9641add",
-      "canonicalFingerprint": "cf2706802daf8e9f02bb2f9b483318b199918a982e9b39c64578f11dcb4464cf",
+      "answer": "claim escalationWindow value %7B%22type%22%3A%22string%22%2C%22value%22%3A%2215%20minutes%22%7D [1].",
+      "answerFingerprint": "aeae0af95e9ab4693afca2899e5745226e2edfac738b8fe62c849dba1adbab31",
+      "canonicalFingerprint": "279485ac205b51afe934367a3cc03ca50f6645ff448e7120fbe65ef19dca4449",
       "citations": [
         {
           "endLine": 5,
@@ -1013,13 +843,6 @@
           "uri": "gno://c018/d001.md"
         }
       ],
-      "declaredClaim": {
-        "claimKey": "escalationWindow",
-        "value": {
-          "type": "string",
-          "value": "15 minutes"
-        }
-      },
       "draftKind": "supported",
       "fixtureFingerprint": "68027bb0248c09507dbdba9d8cf2433f1b9b7b547ba5db8811db338982f9d08b",
       "indexFingerprint": "9c4a65f08850a70ff6d2ec6fe069b4cd38c9cbf3481583afd76a74264cf0591a",
@@ -1037,9 +860,9 @@
     {
       "abstained": false,
       "agentId": "fixture-answer-agent-v1",
-      "answer": "escalationWindow: 15 minutes [evidence:e56d46bd79de4a6939f83b859dc657024c40782e6f0eb5d6077ae78bc33a7cb8].",
-      "answerFingerprint": "759dcfa10235d534d095c0c899616e681c940795d538508591feea677464b01a",
-      "canonicalFingerprint": "b052840fba4c7993ea4e87afd8fc423e5c93ceb1d9ff96d96d9f178847634327",
+      "answer": "claim escalationWindow value %7B%22type%22%3A%22string%22%2C%22value%22%3A%2215%20minutes%22%7D [evidence:e56d46bd79de4a6939f83b859dc657024c40782e6f0eb5d6077ae78bc33a7cb8].",
+      "answerFingerprint": "03d7447171b26b9b3de518b4f6300dce786d57778ef2c30192631eed46834379",
+      "canonicalFingerprint": "0b9f516f905fb8a1e131f31a9308179a6482364145028190c1bf7aa4b09b54f5",
       "citations": [
         {
           "endLine": 4,
@@ -1051,13 +874,6 @@
           "uri": "gno://c018/d001.md?index=agentic"
         }
       ],
-      "declaredClaim": {
-        "claimKey": "escalationWindow",
-        "value": {
-          "type": "string",
-          "value": "15 minutes"
-        }
-      },
       "draftKind": "supported",
       "fixtureFingerprint": "68027bb0248c09507dbdba9d8cf2433f1b9b7b547ba5db8811db338982f9d08b",
       "indexFingerprint": "9c4a65f08850a70ff6d2ec6fe069b4cd38c9cbf3481583afd76a74264cf0591a",
@@ -1075,9 +891,9 @@
     {
       "abstained": false,
       "agentId": "fixture-answer-agent-v1",
-      "answer": "availabilityTarget: 100,95 [1].",
-      "answerFingerprint": "9ba589d28598730070edf69bb079da776b15332e5f5e1f26e72c879ec51f61a1",
-      "canonicalFingerprint": "4544bee902319481a26390530790cf05cd1c6b23655aa205f959411e94f51d80",
+      "answer": "claim availabilityTarget value %7B%22type%22%3A%22number%22%2C%22value%22%3A100.95%7D [1].",
+      "answerFingerprint": "7d7a6424dafc96736302221d739c76ba537fc6f9317ea9b4df3f1529dab9c156",
+      "canonicalFingerprint": "7f77f829de63d5ee983a7144d94f3f1e4694e9b63805a5067abe9e9c3415636e",
       "citations": [
         {
           "endLine": 5,
@@ -1089,13 +905,6 @@
           "uri": "gno://c009/d001.md"
         }
       ],
-      "declaredClaim": {
-        "claimKey": "availabilityTarget",
-        "value": {
-          "type": "number",
-          "value": 100.95
-        }
-      },
       "draftKind": "adversarial",
       "fixtureFingerprint": "68027bb0248c09507dbdba9d8cf2433f1b9b7b547ba5db8811db338982f9d08b",
       "indexFingerprint": "9c4a65f08850a70ff6d2ec6fe069b4cd38c9cbf3481583afd76a74264cf0591a",
@@ -1115,9 +924,8 @@
       "agentId": "fixture-answer-agent-v1",
       "answer": "I cannot provide this answer as verified from the supplied Context Capsule.",
       "answerFingerprint": "7fc501a758277c00b94fbb8e0cc92e8f3899b446caede21fa818362bce8a8123",
-      "canonicalFingerprint": "fadc8c1695fa155e25af496e3f491bfe3bf8617cc70913520e85e0e5af99853f",
+      "canonicalFingerprint": "7ab9eff956bba171279e3e48abb87b37b0670a06a047e659b4ba7916c49388b3",
       "citations": [],
-      "declaredClaim": null,
       "draftKind": "adversarial",
       "fixtureFingerprint": "68027bb0248c09507dbdba9d8cf2433f1b9b7b547ba5db8811db338982f9d08b",
       "indexFingerprint": "9c4a65f08850a70ff6d2ec6fe069b4cd38c9cbf3481583afd76a74264cf0591a",
@@ -1135,9 +943,9 @@
     {
       "abstained": false,
       "agentId": "fixture-answer-agent-v1",
-      "answer": "earliestMilestone: 2026-01-18 [1].",
-      "answerFingerprint": "2c5a40220736e997275fc8178a7018bc3cb0f6c555e42aa6c5b32bac504fc426",
-      "canonicalFingerprint": "f8b61c323fca764c5c5f70757508fef132fe85f77b0ffaec2170de8cac12f1d3",
+      "answer": "claim earliestMilestone value %7B%22type%22%3A%22date%22%2C%22value%22%3A%222026-01-18%22%7D [1].",
+      "answerFingerprint": "a23797255d9089ea9efc34424bd6a40f4e66b635bdeed05e23e7e4502afe2946",
+      "canonicalFingerprint": "c7b2fed1015797662a6dbb5793f35def5973ef2df9f2e4f6b3b78107a7cd1691",
       "citations": [
         {
           "endLine": 5,
@@ -1149,13 +957,6 @@
           "uri": "gno://c00a/d002.md"
         }
       ],
-      "declaredClaim": {
-        "claimKey": "earliestMilestone",
-        "value": {
-          "type": "date",
-          "value": "2026-01-18"
-        }
-      },
       "draftKind": "supported",
       "fixtureFingerprint": "68027bb0248c09507dbdba9d8cf2433f1b9b7b547ba5db8811db338982f9d08b",
       "indexFingerprint": "9c4a65f08850a70ff6d2ec6fe069b4cd38c9cbf3481583afd76a74264cf0591a",
@@ -1173,9 +974,9 @@
     {
       "abstained": false,
       "agentId": "fixture-answer-agent-v1",
-      "answer": "earliestMilestone: 2026-01-18 [evidence:4b372b21df4a4d81a29434aebb9973e5a99cc0ad447250ea74a2a8f8e6d2a803].",
-      "answerFingerprint": "464429bd12b7a79f62fab19170c510283deebe5b1f829b3008db861efdae045a",
-      "canonicalFingerprint": "3972df67dcd6f8fde80619fc9c17bacba19b0c686984c193d92a143d20385684",
+      "answer": "claim earliestMilestone value %7B%22type%22%3A%22date%22%2C%22value%22%3A%222026-01-18%22%7D [evidence:4b372b21df4a4d81a29434aebb9973e5a99cc0ad447250ea74a2a8f8e6d2a803].",
+      "answerFingerprint": "369ff561f8329385dad6cc08c0c51955a534e71a405d75f2b039261cc3a312fb",
+      "canonicalFingerprint": "4dbfa16745418b3643088c8fe404cf7e9bc5e67debed2aa3b5b47764543f8838",
       "citations": [
         {
           "endLine": 4,
@@ -1187,13 +988,6 @@
           "uri": "gno://c00a/d002.md?index=agentic"
         }
       ],
-      "declaredClaim": {
-        "claimKey": "earliestMilestone",
-        "value": {
-          "type": "date",
-          "value": "2026-01-18"
-        }
-      },
       "draftKind": "supported",
       "fixtureFingerprint": "68027bb0248c09507dbdba9d8cf2433f1b9b7b547ba5db8811db338982f9d08b",
       "indexFingerprint": "9c4a65f08850a70ff6d2ec6fe069b4cd38c9cbf3481583afd76a74264cf0591a",
@@ -1211,9 +1005,9 @@
     {
       "abstained": false,
       "agentId": "fixture-answer-agent-v1",
-      "answer": "dependency: Beacon [1].",
-      "answerFingerprint": "637bcee3411926c0270a48592bc477538f29efa1fa66350e7b7ce326e3c4850e",
-      "canonicalFingerprint": "f234463b2bff964604315db1b1d8a06feb32e25df2fff024c439210ea1d04743",
+      "answer": "claim dependency value %7B%22type%22%3A%22string%22%2C%22value%22%3A%22Beacon%22%7D [1].",
+      "answerFingerprint": "394e783c9249ffade83bbe699f2d450de8eb8aff7ded145ea4b0ebd0385b1169",
+      "canonicalFingerprint": "26af8a9f511073ec2bed540a4926038027da11b13dc3cf8a5275496830be99a6",
       "citations": [
         {
           "endLine": 5,
@@ -1225,13 +1019,6 @@
           "uri": "gno://c00b/d001.md"
         }
       ],
-      "declaredClaim": {
-        "claimKey": "dependency",
-        "value": {
-          "type": "string",
-          "value": "Beacon"
-        }
-      },
       "draftKind": "supported",
       "fixtureFingerprint": "68027bb0248c09507dbdba9d8cf2433f1b9b7b547ba5db8811db338982f9d08b",
       "indexFingerprint": "9c4a65f08850a70ff6d2ec6fe069b4cd38c9cbf3481583afd76a74264cf0591a",
@@ -1249,9 +1036,9 @@
     {
       "abstained": false,
       "agentId": "fixture-answer-agent-v1",
-      "answer": "dependency: Beacon [evidence:072688617bf04ca7935f533c0e31483425618e415d3b806ce2f2acbe61848f3a].",
-      "answerFingerprint": "2c4b11aa3718c93b4d148a657178a071cca5724b922cdd0090b79f90a9e1fb2d",
-      "canonicalFingerprint": "4cf22407221edda92febd9661b2c89f3abbc4bc6d71816e906e3252cb3e4cef3",
+      "answer": "claim dependency value %7B%22type%22%3A%22string%22%2C%22value%22%3A%22Beacon%22%7D [evidence:072688617bf04ca7935f533c0e31483425618e415d3b806ce2f2acbe61848f3a].",
+      "answerFingerprint": "68e745f03b98bec3dfeb5d561c8cbd5687893fdccb05497485b72a434e8c1f8a",
+      "canonicalFingerprint": "deee0c808479c6dffc26265c6a7ec963817edd6908fe044c55f1e2999f331361",
       "citations": [
         {
           "endLine": 4,
@@ -1263,13 +1050,6 @@
           "uri": "gno://c00b/d001.md?index=agentic"
         }
       ],
-      "declaredClaim": {
-        "claimKey": "dependency",
-        "value": {
-          "type": "string",
-          "value": "Beacon"
-        }
-      },
       "draftKind": "supported",
       "fixtureFingerprint": "68027bb0248c09507dbdba9d8cf2433f1b9b7b547ba5db8811db338982f9d08b",
       "indexFingerprint": "9c4a65f08850a70ff6d2ec6fe069b4cd38c9cbf3481583afd76a74264cf0591a",
@@ -1287,9 +1067,9 @@
     {
       "abstained": false,
       "agentId": "fixture-answer-agent-v1",
-      "answer": "ownerTeam: Platform Reliability [1].",
-      "answerFingerprint": "e5098bdd981f9e5f4c3dab5ac006d6edc450755fbacb8161764a60c5feaab088",
-      "canonicalFingerprint": "87dfcb29db6e5deb4518851a23478ad30e71a48006316dd252e4420a542aaf92",
+      "answer": "claim ownerTeam value %7B%22type%22%3A%22string%22%2C%22value%22%3A%22Platform%20Reliability%22%7D [1].",
+      "answerFingerprint": "a9135fcce9860039de0df6bb4fd8683cb6987f1f937e62e9f5a7bab13dc4a80f",
+      "canonicalFingerprint": "85a3a4b77e4f86f231eb4e07a9d5518fb372272b4ec5b5af07233af0dd3c9af2",
       "citations": [
         {
           "endLine": 5,
@@ -1301,13 +1081,6 @@
           "uri": "gno://c00c/d001.md"
         }
       ],
-      "declaredClaim": {
-        "claimKey": "ownerTeam",
-        "value": {
-          "type": "string",
-          "value": "Platform Reliability"
-        }
-      },
       "draftKind": "supported",
       "fixtureFingerprint": "68027bb0248c09507dbdba9d8cf2433f1b9b7b547ba5db8811db338982f9d08b",
       "indexFingerprint": "9c4a65f08850a70ff6d2ec6fe069b4cd38c9cbf3481583afd76a74264cf0591a",
@@ -1325,9 +1098,9 @@
     {
       "abstained": false,
       "agentId": "fixture-answer-agent-v1",
-      "answer": "ownerTeam: Platform Reliability [evidence:815d7c59610902bf9d012aa6b8587a7b5ae5a96bf0cb42a3c2fcce60f4de734c].",
-      "answerFingerprint": "885dd27ed913d059f63e219c028d24977b90aab642b282372cb1d3da93e8fe1b",
-      "canonicalFingerprint": "b1f5a3a8fa233ce1e2a4352b7dfcb4ddb9f905e2825d045096c564750aec4a39",
+      "answer": "claim ownerTeam value %7B%22type%22%3A%22string%22%2C%22value%22%3A%22Platform%20Reliability%22%7D [evidence:815d7c59610902bf9d012aa6b8587a7b5ae5a96bf0cb42a3c2fcce60f4de734c].",
+      "answerFingerprint": "a669072e697f5bc9fd7f102a4aac4f05c3d4765cf29a4ac8bf1f5a3c2a34aa57",
+      "canonicalFingerprint": "d899fdc89881d89b00fcae808834cf86ff98d639bd5d98880abc9bea2a1d7293",
       "citations": [
         {
           "endLine": 4,
@@ -1339,13 +1112,6 @@
           "uri": "gno://c00c/d001.md?index=agentic"
         }
       ],
-      "declaredClaim": {
-        "claimKey": "ownerTeam",
-        "value": {
-          "type": "string",
-          "value": "Platform Reliability"
-        }
-      },
       "draftKind": "supported",
       "fixtureFingerprint": "68027bb0248c09507dbdba9d8cf2433f1b9b7b547ba5db8811db338982f9d08b",
       "indexFingerprint": "9c4a65f08850a70ff6d2ec6fe069b4cd38c9cbf3481583afd76a74264cf0591a",
@@ -1363,9 +1129,9 @@
     {
       "abstained": false,
       "agentId": "fixture-answer-agent-v1",
-      "answer": "defaultBatchSize: 64 [1].",
-      "answerFingerprint": "cc1b9af69b4a24112c77386cba66796262944cd7f797764e3a9d5fcf080d3ff2",
-      "canonicalFingerprint": "96fd421cd198c7dcbb8d80c5f336ec18c96bc807c070bea93ba317c09f27ba05",
+      "answer": "claim defaultBatchSize value %7B%22type%22%3A%22number%22%2C%22value%22%3A64%7D [1].",
+      "answerFingerprint": "5d4ced053f32d67bb6edfe745e81bda4db560f0ebcdea634cc99cf2e85e0f8d9",
+      "canonicalFingerprint": "bee6fd4a2e466722062ffb9c307634befa4c3a33c14cba119e4ab5f52a739138",
       "citations": [
         {
           "endLine": 5,
@@ -1377,13 +1143,6 @@
           "uri": "gno://c00d/d001.md"
         }
       ],
-      "declaredClaim": {
-        "claimKey": "defaultBatchSize",
-        "value": {
-          "type": "number",
-          "value": 64
-        }
-      },
       "draftKind": "supported",
       "fixtureFingerprint": "68027bb0248c09507dbdba9d8cf2433f1b9b7b547ba5db8811db338982f9d08b",
       "indexFingerprint": "9c4a65f08850a70ff6d2ec6fe069b4cd38c9cbf3481583afd76a74264cf0591a",
@@ -1401,9 +1160,9 @@
     {
       "abstained": false,
       "agentId": "fixture-answer-agent-v1",
-      "answer": "defaultBatchSize: 64 [evidence:843497cc1afc033042bab1c09e901c8c7366134efdf544f3af7bb8002ed740eb].",
-      "answerFingerprint": "35a25d3bb098ad5e78ad9b5fe43cc68f2d2386bbe541d969e6a865ba0ae29cd0",
-      "canonicalFingerprint": "c9ac8e6a82494186b0f500613504a1a63808e1520e27d710ca8a5c75a77e863b",
+      "answer": "claim defaultBatchSize value %7B%22type%22%3A%22number%22%2C%22value%22%3A64%7D [evidence:843497cc1afc033042bab1c09e901c8c7366134efdf544f3af7bb8002ed740eb].",
+      "answerFingerprint": "555c864adaac0fd70d47d8793d37dfb0aa52c871fd1cbe48a10f4bccd73e5a30",
+      "canonicalFingerprint": "a924884eae61b2f7452b7b3110977778430c2dedc98f547e2dc5b0bb92a9b398",
       "citations": [
         {
           "endLine": 4,
@@ -1415,13 +1174,6 @@
           "uri": "gno://c00d/d001.md?index=agentic"
         }
       ],
-      "declaredClaim": {
-        "claimKey": "defaultBatchSize",
-        "value": {
-          "type": "number",
-          "value": 64
-        }
-      },
       "draftKind": "supported",
       "fixtureFingerprint": "68027bb0248c09507dbdba9d8cf2433f1b9b7b547ba5db8811db338982f9d08b",
       "indexFingerprint": "9c4a65f08850a70ff6d2ec6fe069b4cd38c9cbf3481583afd76a74264cf0591a",
@@ -1439,9 +1191,9 @@
     {
       "abstained": false,
       "agentId": "fixture-answer-agent-v1",
-      "answer": "errorIdentifier: E_INDEX_LOCKED [1].",
-      "answerFingerprint": "e082d78cc54879b3e537e6b5d8032f65bfb476900371c59bd06466e07192e11a",
-      "canonicalFingerprint": "5c51ca0a2f8dc24e2443531f78b37c5b5a4ec359797bc6da14aafb2cb8a7a05a",
+      "answer": "claim errorIdentifier value %7B%22type%22%3A%22identifier%22%2C%22value%22%3A%22E_INDEX_LOCKED%22%7D [1].",
+      "answerFingerprint": "64b2ac3234ee96f340534e97911f124f5af07458a500104bee9a299e41fe8725",
+      "canonicalFingerprint": "3b67f83bd662f90a10e0394d25076c8154264bbe196142782727ec12da88f940",
       "citations": [
         {
           "endLine": 5,
@@ -1453,13 +1205,6 @@
           "uri": "gno://c00e/d001.md"
         }
       ],
-      "declaredClaim": {
-        "claimKey": "errorIdentifier",
-        "value": {
-          "type": "identifier",
-          "value": "E_INDEX_LOCKED"
-        }
-      },
       "draftKind": "supported",
       "fixtureFingerprint": "68027bb0248c09507dbdba9d8cf2433f1b9b7b547ba5db8811db338982f9d08b",
       "indexFingerprint": "9c4a65f08850a70ff6d2ec6fe069b4cd38c9cbf3481583afd76a74264cf0591a",
@@ -1477,9 +1222,9 @@
     {
       "abstained": false,
       "agentId": "fixture-answer-agent-v1",
-      "answer": "errorIdentifier: E_INDEX_LOCKED [evidence:d8bbbc369954c4cbfe2a15b069ceacc037d5ddbc4cfae71deee3d074258345eb].",
-      "answerFingerprint": "d7cb408de29d8c5ae164407990614356ca17055c9075009146bc58908ddd3012",
-      "canonicalFingerprint": "d1042392f95afdaf39af8c40323d192f10d33424dcf3eaaf254142a05ad4d300",
+      "answer": "claim errorIdentifier value %7B%22type%22%3A%22identifier%22%2C%22value%22%3A%22E_INDEX_LOCKED%22%7D [evidence:d8bbbc369954c4cbfe2a15b069ceacc037d5ddbc4cfae71deee3d074258345eb].",
+      "answerFingerprint": "d4f9c4edadd915744ef165c1435009f60595ca9f70da821ea81f57df11cb4b7e",
+      "canonicalFingerprint": "bb3b40e8b7c253b73b031ba22b823c069f037922e359f0c7afddc80406ab8a4b",
       "citations": [
         {
           "endLine": 4,
@@ -1491,13 +1236,6 @@
           "uri": "gno://c00e/d001.md?index=agentic"
         }
       ],
-      "declaredClaim": {
-        "claimKey": "errorIdentifier",
-        "value": {
-          "type": "identifier",
-          "value": "E_INDEX_LOCKED"
-        }
-      },
       "draftKind": "supported",
       "fixtureFingerprint": "68027bb0248c09507dbdba9d8cf2433f1b9b7b547ba5db8811db338982f9d08b",
       "indexFingerprint": "9c4a65f08850a70ff6d2ec6fe069b4cd38c9cbf3481583afd76a74264cf0591a",
@@ -1515,9 +1253,9 @@
     {
       "abstained": false,
       "agentId": "fixture-answer-agent-v1",
-      "answer": "supportCity: Bern (incorrect) [1].",
-      "answerFingerprint": "49dbaeec9039c68f5c0ebc1c17976d40c365157474a86732ec39ed328a94ba1e",
-      "canonicalFingerprint": "3b2c22ac08a8a8a2fe7b9c8f66402e44f96a9c689588ce297e8579d35da6a594",
+      "answer": "claim supportCity value %7B%22type%22%3A%22string%22%2C%22value%22%3A%22Bern%20(incorrect)%22%7D [1].",
+      "answerFingerprint": "5b72b18dd5d689d0eb4d137b545f23bca080cdf08c34e40305ed5609c2b88e74",
+      "canonicalFingerprint": "ef2d892fb73b8bd78279a64e3297e254fd60d3f45d62f3842ec57fed4190e657",
       "citations": [
         {
           "endLine": 5,
@@ -1529,13 +1267,6 @@
           "uri": "gno://c00f/d001.md"
         }
       ],
-      "declaredClaim": {
-        "claimKey": "supportCity",
-        "value": {
-          "type": "string",
-          "value": "Bern (incorrect)"
-        }
-      },
       "draftKind": "adversarial",
       "fixtureFingerprint": "68027bb0248c09507dbdba9d8cf2433f1b9b7b547ba5db8811db338982f9d08b",
       "indexFingerprint": "9c4a65f08850a70ff6d2ec6fe069b4cd38c9cbf3481583afd76a74264cf0591a",
@@ -1555,9 +1286,8 @@
       "agentId": "fixture-answer-agent-v1",
       "answer": "I cannot provide this answer as verified from the supplied Context Capsule.",
       "answerFingerprint": "7fc501a758277c00b94fbb8e0cc92e8f3899b446caede21fa818362bce8a8123",
-      "canonicalFingerprint": "3123c5ce3489990ff89d59150cb5eaa355cd4fdb45a193692945da40309cb277",
+      "canonicalFingerprint": "157bf14589b7f3eeac6f3e00845e8e3392b1978939b45270b12732c6b65780a8",
       "citations": [],
-      "declaredClaim": null,
       "draftKind": "adversarial",
       "fixtureFingerprint": "68027bb0248c09507dbdba9d8cf2433f1b9b7b547ba5db8811db338982f9d08b",
       "indexFingerprint": "9c4a65f08850a70ff6d2ec6fe069b4cd38c9cbf3481583afd76a74264cf0591a",
@@ -1575,9 +1305,9 @@
     {
       "abstained": false,
       "agentId": "fixture-answer-agent-v1",
-      "answer": "renewalDate: 2026-10-03 [1].",
-      "answerFingerprint": "b2487999a87fba1bcbc33c943d9ad02468d689352650b7bce940d153c27d0bb1",
-      "canonicalFingerprint": "ee1bc9c8bef57e290c3a012eba944a052e8ff68ccc3a8bc1e87d31df9d29cb15",
+      "answer": "claim renewalDate value %7B%22type%22%3A%22date%22%2C%22value%22%3A%222026-10-03%22%7D [1].",
+      "answerFingerprint": "603b569d7d9fc0b8a12f5d6fb12c45671c971390f6e6f92e427179b9ccd4d8b1",
+      "canonicalFingerprint": "fedcd6d97a7d504968523a8a2d3452a336f3e69147a090be49bb64cc21fdb7e9",
       "citations": [
         {
           "endLine": 5,
@@ -1589,13 +1319,6 @@
           "uri": "gno://c010/d001.md"
         }
       ],
-      "declaredClaim": {
-        "claimKey": "renewalDate",
-        "value": {
-          "type": "date",
-          "value": "2026-10-03"
-        }
-      },
       "draftKind": "supported",
       "fixtureFingerprint": "68027bb0248c09507dbdba9d8cf2433f1b9b7b547ba5db8811db338982f9d08b",
       "indexFingerprint": "9c4a65f08850a70ff6d2ec6fe069b4cd38c9cbf3481583afd76a74264cf0591a",
@@ -1613,9 +1336,9 @@
     {
       "abstained": false,
       "agentId": "fixture-answer-agent-v1",
-      "answer": "renewalDate: 2026-10-03 [evidence:b6170e9ce515e61dfdc683304b091753a977568ed6b9073fc8d75c723e70190c].",
-      "answerFingerprint": "4d23b9dc704794f4fe0ce40b5b99a3efe858e3924885e3e783c050627b4cfcc3",
-      "canonicalFingerprint": "61c4a45b695179d0d2064eec929e04691ae2aa8f5e44cb19ceb8234a5f5b8d46",
+      "answer": "claim renewalDate value %7B%22type%22%3A%22date%22%2C%22value%22%3A%222026-10-03%22%7D [evidence:b6170e9ce515e61dfdc683304b091753a977568ed6b9073fc8d75c723e70190c].",
+      "answerFingerprint": "df7ee6d60e8e713dc7b0d4b16ca8d020ca3bd2a1f3510b750a723dde9bb27ddf",
+      "canonicalFingerprint": "8270636bd14f3518ecc3eb0fb062d51f3d172faddfc032ab4d9dd3bbd96f6daf",
       "citations": [
         {
           "endLine": 4,
@@ -1627,13 +1350,6 @@
           "uri": "gno://c010/d001.md?index=agentic"
         }
       ],
-      "declaredClaim": {
-        "claimKey": "renewalDate",
-        "value": {
-          "type": "date",
-          "value": "2026-10-03"
-        }
-      },
       "draftKind": "supported",
       "fixtureFingerprint": "68027bb0248c09507dbdba9d8cf2433f1b9b7b547ba5db8811db338982f9d08b",
       "indexFingerprint": "9c4a65f08850a70ff6d2ec6fe069b4cd38c9cbf3481583afd76a74264cf0591a",
