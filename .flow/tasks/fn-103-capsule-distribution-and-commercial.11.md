@@ -24,9 +24,15 @@ Remediate fn-103.3 hosted evidence links and selection-context copy while preser
 
 
 ## Done summary
-TBD
-
+Corrected the hosted Context Capsule demo evidence links and public claims.
+The demo JSON/Markdown now pin the GNO commit that actually contains fingerprint
+bb5c0595; the report and Verified Ask links pin the commit that contains the
+claimed ce05f9d8 and 53931a6a fingerprints. The benchmark page and docs now
+prominently disclose that t0a1b2c3 is the sole cold current-GNO-failure /
+Capsule-success case among 24 tasks, that the Capsule lane is an evaluation-only
+lexical prototype, and that its 2.191 ms latency is not shipped-product-equivalent.
+All measured lane values remain unchanged.
 ## Evidence
-- Commits:
-- Tests:
+- Commits: e35d66b561ee5475a3839de636251f5181d71c71, bdbab09
+- Tests: curl raw immutable demo/report/Verified Ask artifacts and verify bb5c0595/ce05f9d8/53931a6a fingerprints, gno.sh bun run check, gno.sh bun run typecheck, gno.sh bun test (94 pass, 7 integration skips, 0 fail), gno.sh bun run build (67 prerenders)
 - PRs:
