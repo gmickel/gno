@@ -1,0 +1,17 @@
+{
+  "assignee": null,
+  "claim_note": "",
+  "claimed_at": null,
+  "created_at": "2026-07-23T19:35:21.948953Z",
+  "depends_on": [
+    "fn-103-capsule-distribution-and-commercial.7",
+    "fn-103-capsule-distribution-and-commercial.8"
+  ],
+  "id": "fn-103-capsule-distribution-and-commercial.9",
+  "priority": 9,
+  "spec": "fn-103-capsule-distribution-and-commercial",
+  "spec_path": ".flow/tasks/fn-103-capsule-distribution-and-commercial.9.md",
+  "status": "todo",
+  "title": "Migrate legacy publication identity without destructive pre-delete",
+  "updated_at": "2026-07-23T19:35:21.949112Z"
+}
