@@ -88,7 +88,8 @@ bun run test:package
 
 - `src/config/types.ts:71-114` and `src/store/types.ts:67-130` — collection contracts.
 - `src/publish/export-service.ts:347-390` — publish handoff.
-- `src/serve/security.ts` and fn-99 HTTP gateway security.
+- `src/mcp/http-security.ts` and fn-99 HTTP gateway security.
+<!-- Updated by plan-sync (cross-spec): fn-99-resident-local-context-gateway.3 changed the HTTP gateway boundary module from src/serve/security.ts to src/mcp/http-security.ts -->
 - [MCP transport security](https://modelcontextprotocol.io/specification/2025-11-25/basic/transports).
 
 ## Early proof point

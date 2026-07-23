@@ -2,8 +2,8 @@
 
 **Version:** 1.0.0
 **Last Updated:** 2026-04-24
-**Protocol:** Model Context Protocol (MCP) over stdio
-**Transport:** JSON-RPC 2.0
+**Protocol:** Model Context Protocol (MCP) 2025-11-25
+**Transport:** JSON-RPC 2.0 over stdio or resident Streamable HTTP
 
 This document specifies the MCP server interface for GNO.
 
@@ -62,6 +62,62 @@ When disabled, write tools are not registered and cannot be invoked.
 All write tools acquire an OS-backed advisory lock at `.mcp-write.lock` under the index directory.
 If another process holds the lock, tools return `LOCKED`.
 For async jobs, the lock is held for the full job duration.
+
+### Resident Streamable HTTP boundary
+
+`gno serve` and `gno daemon` mount the same stateful MCP surface at `/mcp`.
+The default listener is the literal IPv4 loopback address `127.0.0.1`. Each
+HTTP session owns one SDK server and transport while sharing the resident
+store, jobs, and model lifecycle. POST, GET, and DELETE follow MCP 2025-11-25;
+resumption is not advertised.
+
+The external boundary runs before JSON parsing or SDK dispatch on every HTTP
+method. It uses Bun `server.requestIP(request)` as the peer source and never
+trusts `Forwarded` or `X-Forwarded-*`. Host and present Origin headers must
+match exact allowlists. Loopback defaults allow only the selected port on
+`127.0.0.1` and `localhost` (or explicit `::1`).
+
+Wildcard and non-loopback binds fail startup unless all three controls exist:
+
+- a bearer token file readable only by its owner (`0600` or stricter on POSIX),
+- at least one exact Host value, and
+- at least one exact HTTP(S) Origin.
+
+An explicitly configured missing token file is generated with a random 256-bit
+token and restrictive creation mode. The token is never printed or included in
+errors. Rotation, deletion, invalid content, or permission relaxation revokes
+existing authenticated sessions. Session IDs are bound to the identity that
+initialized them, preventing reuse with a different bearer token.
+
+Because `gno serve` shares this listener with its Web UI and REST API, it
+remains loopback-only. Use the headless `gno daemon` command for an explicitly
+authenticated non-loopback MCP listener.
+
+HTTP MCP remains read-only unless `gateway.enableWrite: true` or
+`--mcp-enable-write` is explicitly set. Bearer authentication alone does not
+authorize mutation. Unauthorized calls to write tools fail with HTTP 403 before
+SDK dispatch.
+
+Boundary failures use the closed
+[`mcp-http-error`](./output-schemas/mcp-http-error.schema.json) body with stable,
+redacted statuses: 401 (authentication), 403 (peer/Host/Origin/write), 413
+(declared or streamed body), 429 (rate/request/queue/session pressure), and 503
+(shutdown, revoked credentials, or unavailable runtime). Defaults are 1 MiB per
+POST body, 120 requests/minute per actual peer, 64 active requests, 16 queued
+requests, 32 sessions, and a five-minute idle session timeout.
+
+### Packaged gateway conformance
+
+`bun run test:package` installs the generated npm tarball into an isolated
+environment and exercises the shipped binary. It proves two concurrent HTTP
+MCP clients plus one stdio client observe equivalent tools, resources, and
+search results; repeated HTTP calls reuse the same resident store and model
+lifecycle. The same run validates the redacted resident-status schema,
+loopback-only app-status boundary, Host/Origin,
+body-size, bearer-token, token-rotation, session-identity, and write-authorization
+boundaries, daemon-only authenticated non-loopback binding, and detached
+restart/shutdown behavior. Windows package and binary artifact jobs remain the
+final platform-specific sweep for detach rejection and known interrupt exits.
 
 ## Collection Name Rules
 
@@ -766,6 +822,12 @@ return `isError: true`; callers must split the batch by index.
 ### gno_status
 
 Get index status and health information.
+
+`structuredContent.resident` uses
+`gno://schemas/resident-status@1.0`. HTTP sessions observe the shared
+serve/daemon runtime counters. Stdio remains a standalone lifecycle and reports
+`mode:"stdio"`, `resident:false`, no listener, and zero resident transport
+counters; it never claims attachment to another process.
 
 **Input Schema:**
 

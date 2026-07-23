@@ -1064,6 +1064,10 @@ Semantic availability is separate: unknown resident capability is
 explicit verification receipts. `connectorProjection.truncated` means omitted
 target/collection pairs have no result and overall health is degraded.
 
+JSON output includes a safe `resident-status@1.0` lifecycle projection. A
+direct `gno status` invocation reports `mode:"direct-cli"` and
+`resident:false`; it does not pretend to be attached to a live server.
+
 ### gno doctor
 
 Check system health.
@@ -1174,11 +1178,11 @@ Both `gno daemon` and `gno serve` ship with a symmetric set of management flags 
 --json is only supported with `gno daemon --status`
 ```
 
-`--detach` writes a JSON pid-file at `{data}/{kind}.pid` containing `{pid, port?, cmd, version, started_at}` (port is omitted for `daemon`). `{data}` resolves to `resolveDirs().data` (honours `GNO_DATA_DIR`); pass `--pid-file` to override.
+`--detach` writes a JSON pid-file at `{data}/{kind}.pid` containing `{pid, port, cmd, version, started_at}`. For `serve`, `port` hosts Web, REST, and MCP; for `daemon`, it hosts the headless MCP gateway. `{data}` resolves to `resolveDirs().data` (honours `GNO_DATA_DIR`); pass `--pid-file` to override.
 
 **`--status` exit codes:**
 
-- `0` — a live matching process was found; stdout carries the [process-status payload](../spec/output-schemas/process-status.schema.json) (terminal table without `--json`, JSON object with `--json`).
+- `0` — a live matching process was found; stdout carries the [process-status payload](../spec/output-schemas/process-status.schema.json) (terminal table without `--json`, JSON object with `--json`). JSON includes a best-effort copy of the live listener's redacted resident snapshot.
 - `3` (`NOT_RUNNING`) — no live matching process. **The stdout payload is still emitted in JSON mode** so machine consumers always get the schema-shaped result; the `NOT_RUNNING` envelope only appears on stderr in JSON mode (and not at all in terminal mode).
 
 **`--stop` exit codes:**
@@ -1211,6 +1215,7 @@ Start a headless long-running watcher process for continuous indexing.
 
 ```bash
 gno daemon
+gno daemon --port 8080
 gno daemon --no-sync-on-start
 gno daemon --detach
 ```
@@ -1218,6 +1223,10 @@ gno daemon --detach
 Options:
 
 - `--no-sync-on-start` - Skip the initial sync pass and only watch future file changes
+- `-p, --port <num>` - Streamable HTTP MCP port (default: 3000)
+- `--host`, `--mcp-token-file`, repeatable `--mcp-allowed-host` /
+  `--mcp-allowed-origin`, and `--mcp-enable-write` - see
+  [Resident HTTP MCP security](MCP.md#resident-http-transport)
 - `--detach` / `--status` / `--stop` / `--pid-file <path>` / `--log-file <path>` - see [shared management contract](#long-running-processes) above
 
 **Behavior:**
@@ -1227,11 +1236,15 @@ Options:
 - Runs an initial sync by default, then embeds backlog immediately
 - Foreground: stays in the foreground until `SIGINT` / `SIGTERM`
 - Detached: parent prints `PID <pid>` and exits 0; child writes to `{data}/daemon.log` (or `--log-file`) in append mode
-- Does **not** start the web server or open any port
+- Hosts `/mcp` without the Web UI or browser REST routes
+- Hosts `GET /api/resident/status` alongside `/mcp`; full `GET /api/status`
+  remains loopback-only because it includes local index and configuration
+  details
 
 **Notes:**
 
-- Avoid running `gno daemon` and `gno serve` against the same index at the same time until explicit cross-process coordination exists.
+- Serve and daemon are mutually exclusive resident modes for one data
+  directory. A second owner fails startup with the current owner hint.
 - For normie/local UI usage, prefer the desktop app or `gno serve`.
 
 **Managing the daemon:**
@@ -1266,6 +1279,9 @@ gno serve --detach
 Options:
 
 - `-p, --port <num>` - Port to listen on (default: 3000)
+- `--host`, `--mcp-token-file`, repeatable `--mcp-allowed-host` /
+  `--mcp-allowed-origin`, and `--mcp-enable-write` - see
+  [Resident HTTP MCP security](MCP.md#resident-http-transport)
 - `--detach` / `--status` / `--stop` / `--pid-file <path>` / `--log-file <path>` - see [shared management contract](#long-running-processes) above
 
 **Features:**
@@ -1279,15 +1295,20 @@ Options:
 **API Endpoints:**
 
 - `GET /api/health` - Health check
-- `GET /api/status` - Index status plus onboarding and health-center state
+- `GET /api/status` - Index status, onboarding, health center, and resident lifecycle
+- `GET /api/resident/status` - Safe resident-only counters and lifecycle state
 - `GET /api/collections` - List collections
 - `GET /api/docs` - List documents (paginated: `?limit=20&offset=0&collection=name`)
 - `GET /api/doc` - Get document content (`?uri=gno://collection/path`)
 - `POST /api/search` - Search (`{"query": "...", "limit": 10}`)
+- `/mcp` - Stateful MCP 2025-11-25 Streamable HTTP (POST/GET/DELETE)
 
 **Security:**
 
-- Binds to `127.0.0.1` only (no LAN exposure)
+- Binds to literal `127.0.0.1` and remains loopback-only even when MCP token
+  settings are present
+- `gno serve` rejects non-loopback hosts because Web and REST share the
+  listener; use `gno daemon` for authenticated non-loopback MCP
 - Content Security Policy headers
 - CSRF protection for mutations
 - DNS rebinding protection

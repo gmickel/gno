@@ -1,13 +1,8 @@
-/**
- * Background job tracker for API write operations.
- * Simple in-memory tracking with global mutex (one job at a time).
- *
- * @module src/serve/jobs
- */
+/** REST-compatible facade over the resident JobManager. */
 
+import type { JobManager, JobRecord } from "../core/job-manager";
 import type { SyncResult } from "../ingestion";
 
-// Job expiration: 1 hour
 const JOB_EXPIRATION_MS = 60 * 60 * 1000;
 
 export type JobType = "add" | "sync" | "embed";
@@ -42,44 +37,60 @@ export interface StartJobError {
 
 export type StartJobResult = StartJobSuccess | StartJobError;
 
-// Global state - only one job can run at a time
+// Standalone fallback retained for unit fixtures that do not construct a resident.
 let activeJobId: string | null = null;
 const jobs = new Map<string, JobStatus>();
 
-/**
- * Clean up expired jobs to prevent memory leaks.
- * Called on every job access.
- * Only expires completed/failed jobs - running jobs are never expired.
- */
+const fromResidentRecord = (record: JobRecord): JobStatus => ({
+  id: record.id,
+  type: record.type as JobType,
+  status: record.status,
+  createdAt: record.startedAt,
+  progress: record.progress,
+  result: record.result,
+  error: record.error,
+});
+
 function cleanupExpiredJobs(now = Date.now()): void {
   for (const [id, job] of jobs) {
-    // Never expire running jobs - only completed/failed
-    if (job.status === "running") {
-      continue;
-    }
-    if (now - job.createdAt > JOB_EXPIRATION_MS) {
+    if (job.status !== "running" && now - job.createdAt > JOB_EXPIRATION_MS) {
       jobs.delete(id);
     }
   }
 }
 
-/**
- * Start a background job.
- * Returns immediately with jobId; caller polls /api/jobs/:id for status.
- * Use updateJobProgress() to update progress during execution.
- *
- * @param type - Job type identifier
- * @param fn - Async function to run in background
- * @returns Job ID on success, or 409 error if job already running
- */
 export function startJob(
   type: JobType,
   fn: () => Promise<SyncResult>
-): StartJobResult {
-  // Cleanup expired jobs first
-  cleanupExpiredJobs();
+): StartJobResult;
+export function startJob(
+  type: JobType,
+  fn: () => Promise<SyncResult>,
+  manager: JobManager
+): Promise<StartJobResult>;
+export function startJob(
+  type: JobType,
+  fn: () => Promise<SyncResult>,
+  manager: JobManager | undefined
+): StartJobResult | Promise<StartJobResult>;
+export function startJob(
+  type: JobType,
+  fn: () => Promise<SyncResult>,
+  manager?: JobManager
+): StartJobResult | Promise<StartJobResult> {
+  if (manager) {
+    return manager.startJob(type, fn).then(
+      (jobId) => ({ ok: true, jobId }),
+      (error: unknown) => ({
+        ok: false,
+        error: error instanceof Error ? error.message : String(error),
+        status: 409,
+        activeJobId: manager.getActiveJob()?.id ?? "",
+      })
+    );
+  }
 
-  // Check if a job is already running
+  cleanupExpiredJobs();
   if (activeJobId) {
     return {
       ok: false,
@@ -88,21 +99,14 @@ export function startJob(
       activeJobId,
     };
   }
-
   const jobId = crypto.randomUUID();
   activeJobId = jobId;
-
-  const jobStatus: JobStatus = {
+  jobs.set(jobId, {
     id: jobId,
     type,
     status: "running",
     createdAt: Date.now(),
-  };
-  jobs.set(jobId, jobStatus);
-
-  // Run in background (don't await)
-  // Wrap with Promise.resolve().then() to catch sync throws from fn()
-  // Without this, a sync throw would leave activeJobId set forever (deadlock)
+  });
   Promise.resolve()
     .then(fn)
     .then((result) => {
@@ -112,73 +116,67 @@ export function startJob(
         job.result = result;
       }
     })
-    .catch((e) => {
+    .catch((error: unknown) => {
       const job = jobs.get(jobId);
       if (job) {
         job.status = "failed";
-        job.error = e instanceof Error ? e.message : String(e);
+        job.error = error instanceof Error ? error.message : String(error);
       }
     })
     .finally(() => {
       activeJobId = null;
     });
-
   return { ok: true, jobId };
 }
 
-/**
- * Get current status of a job.
- *
- * @param jobId - Job ID from startJob
- * @returns Job status or undefined if not found
- */
-export function getJobStatus(jobId: string): JobStatus | undefined {
+export function getJobStatus(
+  jobId: string,
+  manager?: JobManager
+): JobStatus | undefined {
+  if (manager) {
+    const record = manager.getJob(jobId);
+    return record ? fromResidentRecord(record) : undefined;
+  }
   cleanupExpiredJobs();
   return jobs.get(jobId);
 }
 
-/**
- * Get the currently active job ID, if any.
- */
-export function getActiveJobId(): string | null {
-  return activeJobId;
+export function getActiveJobId(manager?: JobManager): string | null {
+  return manager?.getActiveJob()?.id ?? activeJobId;
 }
 
-/**
- * Get the currently active job status, if any.
- */
-export function getActiveJob(): JobStatus | null {
-  if (!activeJobId) {
-    return null;
+export function getActiveJob(manager?: JobManager): JobStatus | null {
+  if (manager) {
+    const record = manager.getActiveJob();
+    return record ? fromResidentRecord(record) : null;
   }
-  return jobs.get(activeJobId) ?? null;
+  return activeJobId ? (jobs.get(activeJobId) ?? null) : null;
 }
 
-/**
- * Update job progress (called from within job execution).
- *
- * @param jobId - Job ID to update
- * @param progress - Current progress info
- */
-export function updateJobProgress(jobId: string, progress: JobProgress): void {
+export function updateJobProgress(
+  jobId: string,
+  progress: JobProgress,
+  manager?: JobManager
+): void {
+  if (manager) {
+    manager.updateJobProgress(jobId, progress);
+    return;
+  }
   const job = jobs.get(jobId);
-  if (job) {
-    job.progress = progress;
-  }
+  if (job) job.progress = progress;
 }
 
-/**
- * Get all jobs (for debugging/monitoring).
- */
-export function getAllJobs(): JobStatus[] {
+export function getAllJobs(manager?: JobManager): JobStatus[] {
+  if (manager) {
+    const listed = manager.listJobs(100);
+    return [...listed.active, ...listed.recent].map(fromResidentRecord);
+  }
   cleanupExpiredJobs();
   return Array.from(jobs.values());
 }
 
-/**
- * Clear all jobs (for testing).
- */
-export function clearAllJobs(): void {
+export function clearAllJobs(manager?: JobManager): void {
+  if (manager) manager.clear();
   jobs.clear();
   activeJobId = null;
 }

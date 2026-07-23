@@ -10,7 +10,7 @@ Deliver package test and document the local clipper as one implementation-sized 
 **Files:** `browser-extension`, `test/clipper/e2e.test.ts`, `docs/integrations/browser-clipper.md`, `docs/API.md`, `docs/INSTALLATION.md`, `assets/skill/recipes/capture-and-file.md`, `/Users/gordon/work/gno.sh/src/lib/gno-docs.tsx`
 
 ### Approach
-- Add headed browser E2E for pair, selection/Reader preview, edit, capture receipt, revoke, and malicious local-origin attempts.
+- Add headed browser E2E for pair, selection/Reader preview, edit, capture receipt, revoke, and malicious local-origin attempts. Run against the loopback resident gateway and assert the redacted `resident-status@1.0` `GET /api/resident/status` surface for offline/readiness reporting; never use it to recover credentials or authorize capture.
 - Define reproducible extension build/package/version/privacy disclosure and manual distribution/update channel; do not claim store publication until completed.
 - Update API/Web/config/troubleshooting/skill/hosted docs with local-only security and no-history/no-OAuth boundaries.
 
@@ -25,7 +25,7 @@ Deliver package test and document the local clipper as one implementation-sized 
 **Optional** (reference as needed):
 - `docs/MCP.md`
 ## Acceptance
-- [ ] Browser E2E proves the full paired preview/write/revoke flow and all security denials.
+- [ ] Browser E2E proves the full paired preview/write/revoke flow and all security denials, including that bearer gateway authentication and `gateway.enableWrite` do not substitute for a scoped clipper token. <!-- Updated by plan-sync (cross-spec): fn-99-resident-local-context-gateway.5 finalized separate gateway identity and write authorization -->
 - [ ] Extension package is reproducible, versioned, minimally permissioned, and carries an accurate privacy disclosure.
 - [ ] Repo/skill/gno.sh documentation is current and full lint/tests/docs/package checks pass.
 

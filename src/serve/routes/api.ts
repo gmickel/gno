@@ -16,6 +16,7 @@ import type {
   Config,
   ModelPreset,
 } from "../../config/types";
+import type { JobManager } from "../../core/job-manager";
 import type {
   AskResult,
   Citation,
@@ -32,6 +33,7 @@ import type {
 import type { DocumentEventBus } from "../doc-events";
 import type { EmbedScheduler } from "../embed-scheduler";
 import type { StartJobError } from "../jobs";
+import type { ResidentStatus } from "../status-model";
 import type { CollectionWatchService } from "../watch-service";
 
 import { modelsPull } from "../../cli/commands/models/pull";
@@ -76,6 +78,11 @@ import {
   planMoveRefactor,
   planRenameRefactor,
 } from "../../core/file-refactors";
+import {
+  hasContentMutation,
+  recordContentMutation,
+  recordIndexMutation,
+} from "../../core/mutation-generations";
 import {
   resolveNoteCreatePlan,
   sanitizeNoteFilename,
@@ -147,6 +154,26 @@ export interface ContextHolder {
   scheduler: EmbedScheduler | null;
   eventBus: DocumentEventBus | null;
   watchService: CollectionWatchService | null;
+  jobManager?: JobManager;
+  markContentMutation?: () => void;
+  markIndexMutation?: () => void;
+  startBackgroundWork?: (
+    operation: (signal: AbortSignal) => Promise<void>
+  ) => boolean;
+}
+
+async function syncResidentCollection(
+  ctxHolder: ContextHolder,
+  collection: Collection,
+  store: SqliteAdapter,
+  options: Parameters<typeof defaultSyncService.syncCollection>[2],
+  syncCollection: typeof defaultSyncService.syncCollection = defaultSyncService.syncCollection.bind(
+    defaultSyncService
+  )
+): ReturnType<typeof defaultSyncService.syncCollection> {
+  const result = await syncCollection(collection, store, options);
+  recordContentMutation(result, ctxHolder.markContentMutation);
+  return result;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -815,6 +842,12 @@ export async function handleStatus(
   }
 }
 
+export function handleResidentStatus(
+  getStatus: () => ResidentStatus
+): Response {
+  return jsonResponse(getStatus());
+}
+
 /**
  * GET /api/collections
  * Returns list of collections.
@@ -990,33 +1023,38 @@ export async function handleCreateCollection(
   if (!collection) {
     return errorResponse("RUNTIME", "Collection not found after add", 500);
   }
-  const jobResult = startJob("add", async (): Promise<SyncResult> => {
-    const result = await defaultSyncService.syncCollection(
-      collection,
-      store,
-      withContentTypeRules(
-        {
-          gitPull: body.gitPull,
-          runUpdateCmd: true,
-        },
-        syncResult.config
-      )
-    );
-    if (result.filesAdded > 0 || result.filesUpdated > 0) {
-      if (ctxHolder.scheduler) {
-        await ctxHolder.scheduler.triggerNow();
+  const jobResult = await startJob(
+    "add",
+    async (): Promise<SyncResult> => {
+      const result = await syncResidentCollection(
+        ctxHolder,
+        collection,
+        store,
+        withContentTypeRules(
+          {
+            gitPull: body.gitPull,
+            runUpdateCmd: true,
+          },
+          syncResult.config
+        )
+      );
+      if (result.filesAdded > 0 || result.filesUpdated > 0) {
+        if (ctxHolder.scheduler) {
+          await ctxHolder.scheduler.triggerNow();
+        }
       }
-    }
-    return {
-      collections: [result],
-      totalDurationMs: result.durationMs,
-      totalFilesProcessed: result.filesProcessed,
-      totalFilesAdded: result.filesAdded,
-      totalFilesUpdated: result.filesUpdated,
-      totalFilesErrored: result.filesErrored,
-      totalFilesSkipped: result.filesSkipped,
-    };
-  });
+      return {
+        collections: [result],
+        totalDurationMs: result.durationMs,
+        totalFilesProcessed: result.filesProcessed,
+        totalFilesAdded: result.filesAdded,
+        totalFilesUpdated: result.filesUpdated,
+        totalFilesErrored: result.filesErrored,
+        totalFilesSkipped: result.filesSkipped,
+      };
+    },
+    ctxHolder.jobManager
+  );
 
   if (!jobResult.ok) {
     return jobConflictResponse(jobResult);
@@ -1100,7 +1138,8 @@ export async function handleDeleteCollection(
     const status = statusMap[syncResult.code] ?? 500;
     return errorResponse(syncResult.code, syncResult.error, status);
   }
-
+  ctxHolder.markContentMutation?.();
+  ctxHolder.markIndexMutation?.();
   return jsonResponse({
     success: true,
     collection: name,
@@ -1231,6 +1270,7 @@ export async function handleClearCollectionEmbeddings(
     const status = result.error.code === "INVALID_INPUT" ? 400 : 500;
     return errorResponse(result.error.code, result.error.message, status);
   }
+  recordIndexMutation(result.value.deletedVectors, ctxHolder.markIndexMutation);
 
   return jsonResponse({
     success: true,
@@ -1292,25 +1332,30 @@ export async function handleSync(
   }
 
   // Start background sync job
-  const jobResult = startJob("sync", async (): Promise<SyncResult> => {
-    const result = await defaultSyncService.syncAll(
-      collections,
-      store,
-      withContentTypeRules(
-        {
-          gitPull: body.gitPull,
-          runUpdateCmd: true,
-        },
-        ctxHolder.config
-      )
-    );
-    if (result.totalFilesAdded > 0 || result.totalFilesUpdated > 0) {
-      if (ctxHolder.scheduler) {
-        await ctxHolder.scheduler.triggerNow();
+  const jobResult = await startJob(
+    "sync",
+    async (): Promise<SyncResult> => {
+      const result = await defaultSyncService.syncAll(
+        collections,
+        store,
+        withContentTypeRules(
+          {
+            gitPull: body.gitPull,
+            runUpdateCmd: true,
+          },
+          ctxHolder.config
+        )
+      );
+      recordContentMutation(result, ctxHolder.markContentMutation);
+      if (hasContentMutation(result)) {
+        if (ctxHolder.scheduler) {
+          await ctxHolder.scheduler.triggerNow();
+        }
       }
-    }
-    return result;
-  });
+      return result;
+    },
+    ctxHolder.jobManager
+  );
 
   if (!jobResult.ok) {
     return jobConflictResponse(jobResult);
@@ -1797,6 +1842,7 @@ export async function handleTags(
  * Deactivate a document (soft delete - does not remove file from disk).
  */
 export async function handleDeactivateDoc(
+  ctxHolder: ContextHolder,
   store: SqliteAdapter,
   docId: string,
   req?: Request
@@ -1820,6 +1866,10 @@ export async function handleDeactivateDoc(
   const result = await store.markInactive(doc.collection, [doc.relPath]);
   if (!result.ok) {
     return errorResponse("RUNTIME", result.error.message, 500);
+  }
+  if (result.value > 0) {
+    ctxHolder.markContentMutation?.();
+    ctxHolder.markIndexMutation?.();
   }
 
   return jsonResponse({
@@ -1929,10 +1979,12 @@ export async function handleRenameDoc(
     const nextUri = `gno://${collection.name}/${nextRelPath}`;
     let warning: string | undefined;
     try {
-      await syncCollection(
+      await syncResidentCollection(
+        ctxHolder,
         collection,
         store,
-        withContentTypeRules({ runUpdateCmd: false }, ctxHolder.config)
+        withContentTypeRules({ runUpdateCmd: false }, ctxHolder.config),
+        syncCollection
       );
     } catch {
       warning =
@@ -2151,10 +2203,12 @@ export async function handleTrashDoc(
     }
     let warning: string | undefined;
     try {
-      await syncCollection(
+      await syncResidentCollection(
+        ctxHolder,
         collection,
         store,
-        withContentTypeRules({ runUpdateCmd: false }, ctxHolder.config)
+        withContentTypeRules({ runUpdateCmd: false }, ctxHolder.config),
+        syncCollection
       );
     } catch {
       warning =
@@ -2274,7 +2328,8 @@ export async function handleMoveDoc(
     await renameFilePath(fullPath, nextFullPath);
     let warning: string | undefined;
     try {
-      await defaultSyncService.syncCollection(
+      await syncResidentCollection(
+        ctxHolder,
         collection,
         store,
         withContentTypeRules({ runUpdateCmd: false }, ctxHolder.config)
@@ -2397,7 +2452,8 @@ export async function handleDuplicateDoc(
     await copyFilePath(fullPath, nextFullPath);
     let warning: string | undefined;
     try {
-      await defaultSyncService.syncCollection(
+      await syncResidentCollection(
+        ctxHolder,
         collection,
         store,
         withContentTypeRules({ runUpdateCmd: false }, ctxHolder.config)
@@ -2546,7 +2602,10 @@ export async function handleUpdateDoc(
   ctxHolder: ContextHolder,
   store: SqliteAdapter,
   docId: string,
-  req: Request
+  req: Request,
+  deps?: {
+    syncCollection?: typeof defaultSyncService.syncCollection;
+  }
 ): Promise<Response> {
   let body: UpdateDocRequestBody;
   try {
@@ -2726,32 +2785,38 @@ export async function handleUpdateDoc(
     // Note: embedding handled separately by embed-scheduler (not inline)
     let jobId: string | null = null;
     if (contentToWrite !== undefined) {
-      const jobResult = startJob("sync", async (): Promise<SyncResult> => {
-        const result = await defaultSyncService.syncCollection(
-          collection,
-          store,
-          withContentTypeRules({ runUpdateCmd: false }, ctxHolder.config)
-        );
-        // Notify scheduler after sync completes
-        ctxHolder.scheduler?.notifySyncComplete([doc.docid]);
-        ctxHolder.eventBus?.emit({
-          type: "document-changed",
-          uri: doc.uri,
-          collection: doc.collection,
-          relPath: doc.relPath,
-          origin: "save",
-          changedAt: new Date().toISOString(),
-        });
-        return {
-          collections: [result],
-          totalDurationMs: result.durationMs,
-          totalFilesProcessed: result.filesProcessed,
-          totalFilesAdded: result.filesAdded,
-          totalFilesUpdated: result.filesUpdated,
-          totalFilesErrored: result.filesErrored,
-          totalFilesSkipped: result.filesSkipped,
-        };
-      });
+      const jobResult = await startJob(
+        "sync",
+        async (): Promise<SyncResult> => {
+          const result = await syncResidentCollection(
+            ctxHolder,
+            collection,
+            store,
+            withContentTypeRules({ runUpdateCmd: false }, ctxHolder.config),
+            deps?.syncCollection
+          );
+          // Notify scheduler after sync completes
+          ctxHolder.scheduler?.notifySyncComplete([doc.docid]);
+          ctxHolder.eventBus?.emit({
+            type: "document-changed",
+            uri: doc.uri,
+            collection: doc.collection,
+            relPath: doc.relPath,
+            origin: "save",
+            changedAt: new Date().toISOString(),
+          });
+          return {
+            collections: [result],
+            totalDurationMs: result.durationMs,
+            totalFilesProcessed: result.filesProcessed,
+            totalFilesAdded: result.filesAdded,
+            totalFilesUpdated: result.filesUpdated,
+            totalFilesErrored: result.filesErrored,
+            totalFilesSkipped: result.filesSkipped,
+          };
+        },
+        ctxHolder.jobManager
+      );
       jobId = jobResult.ok ? jobResult.jobId : null;
     }
 
@@ -2906,7 +2971,10 @@ export async function handleCreateEditableCopy(
 export async function handleCreateCapture(
   ctxHolder: ContextHolder,
   store: SqliteAdapter,
-  req: Request
+  req: Request,
+  deps?: {
+    syncCollection?: typeof defaultSyncService.syncCollection;
+  }
 ): Promise<Response> {
   let body: CreateCaptureRequestBody;
   try {
@@ -2994,31 +3062,37 @@ export async function handleCreateCapture(
     await writeCapturePlanFile(plan, fullPath);
 
     const gnoUri = `gno://${collection.name}/${plan.relPath}`;
-    const jobResult = startJob("sync", async (): Promise<SyncResult> => {
-      const result = await defaultSyncService.syncCollection(
-        collection,
-        store,
-        withContentTypeRules({ runUpdateCmd: false }, ctxHolder.config)
-      );
-      ctxHolder.scheduler?.notifySyncComplete([plan.relPath]);
-      ctxHolder.eventBus?.emit({
-        type: "document-changed",
-        uri: gnoUri,
-        collection: collection.name,
-        relPath: plan.relPath,
-        origin: "create",
-        changedAt: new Date().toISOString(),
-      });
-      return {
-        collections: [result],
-        totalDurationMs: result.durationMs,
-        totalFilesProcessed: result.filesProcessed,
-        totalFilesAdded: result.filesAdded,
-        totalFilesUpdated: result.filesUpdated,
-        totalFilesErrored: result.filesErrored,
-        totalFilesSkipped: result.filesSkipped,
-      };
-    });
+    const jobResult = await startJob(
+      "sync",
+      async (): Promise<SyncResult> => {
+        const result = await syncResidentCollection(
+          ctxHolder,
+          collection,
+          store,
+          withContentTypeRules({ runUpdateCmd: false }, ctxHolder.config),
+          deps?.syncCollection
+        );
+        ctxHolder.scheduler?.notifySyncComplete([plan.relPath]);
+        ctxHolder.eventBus?.emit({
+          type: "document-changed",
+          uri: gnoUri,
+          collection: collection.name,
+          relPath: plan.relPath,
+          origin: "create",
+          changedAt: new Date().toISOString(),
+        });
+        return {
+          collections: [result],
+          totalDurationMs: result.durationMs,
+          totalFilesProcessed: result.filesProcessed,
+          totalFilesAdded: result.filesAdded,
+          totalFilesUpdated: result.filesUpdated,
+          totalFilesErrored: result.filesErrored,
+          totalFilesSkipped: result.filesSkipped,
+        };
+      },
+      ctxHolder.jobManager
+    );
 
     return jsonResponse(
       buildCaptureReceipt({
@@ -3058,7 +3132,10 @@ export async function handleCreateCapture(
 export async function handleCreateDoc(
   ctxHolder: ContextHolder,
   store: SqliteAdapter,
-  req: Request
+  req: Request,
+  deps?: {
+    syncCollection?: typeof defaultSyncService.syncCollection;
+  }
 ): Promise<Response> {
   let body: CreateDocRequestBody;
   try {
@@ -3230,34 +3307,40 @@ export async function handleCreateDoc(
 
     // Run sync via job system (non-blocking)
     // Note: embedding handled separately by embed-scheduler (not inline)
-    const jobResult = startJob("sync", async (): Promise<SyncResult> => {
-      const result = await defaultSyncService.syncCollection(
-        collection,
-        store,
-        withContentTypeRules({ runUpdateCmd: false }, ctxHolder.config)
-      );
-      // Notify scheduler after sync completes (use gnoUri as docid placeholder)
-      // The sync will create a proper docid, but we don't have it here yet
-      // Using normalizedRelPath as identifier since docid is generated during sync
-      ctxHolder.scheduler?.notifySyncComplete([normalizedRelPath]);
-      ctxHolder.eventBus?.emit({
-        type: "document-changed",
-        uri: gnoUri,
-        collection: collection.name,
-        relPath: normalizedRelPath,
-        origin: "create",
-        changedAt: new Date().toISOString(),
-      });
-      return {
-        collections: [result],
-        totalDurationMs: result.durationMs,
-        totalFilesProcessed: result.filesProcessed,
-        totalFilesAdded: result.filesAdded,
-        totalFilesUpdated: result.filesUpdated,
-        totalFilesErrored: result.filesErrored,
-        totalFilesSkipped: result.filesSkipped,
-      };
-    });
+    const jobResult = await startJob(
+      "sync",
+      async (): Promise<SyncResult> => {
+        const result = await syncResidentCollection(
+          ctxHolder,
+          collection,
+          store,
+          withContentTypeRules({ runUpdateCmd: false }, ctxHolder.config),
+          deps?.syncCollection
+        );
+        // Notify scheduler after sync completes (use gnoUri as docid placeholder)
+        // The sync will create a proper docid, but we don't have it here yet
+        // Using normalizedRelPath as identifier since docid is generated during sync
+        ctxHolder.scheduler?.notifySyncComplete([normalizedRelPath]);
+        ctxHolder.eventBus?.emit({
+          type: "document-changed",
+          uri: gnoUri,
+          collection: collection.name,
+          relPath: normalizedRelPath,
+          origin: "create",
+          changedAt: new Date().toISOString(),
+        });
+        return {
+          collections: [result],
+          totalDurationMs: result.durationMs,
+          totalFilesProcessed: result.filesProcessed,
+          totalFilesAdded: result.filesAdded,
+          totalFilesUpdated: result.filesUpdated,
+          totalFilesErrored: result.filesErrored,
+          totalFilesSkipped: result.filesSkipped,
+        };
+      },
+      ctxHolder.jobManager
+    );
 
     return jsonResponse(
       {
@@ -4141,7 +4224,13 @@ export function handleModelStatus(): Response {
  * Start downloading models for current preset.
  * Returns immediately; poll /api/models/status for progress.
  */
-export function handleModelPull(ctxHolder: ContextHolder): Response {
+export function handleModelPull(
+  ctxHolder: ContextHolder,
+  deps?: {
+    modelsPullFn?: typeof modelsPull;
+    reloadServerContextFn?: typeof reloadServerContext;
+  }
+): Response {
   // Don't start if already downloading
   if (downloadState.active) {
     return errorResponse("CONFLICT", "Download already in progress", 409);
@@ -4152,17 +4241,20 @@ export function handleModelPull(ctxHolder: ContextHolder): Response {
   downloadState.active = true;
   downloadState.startedAt = Date.now();
 
-  // Run download in background (don't await)
-  // Pass current config so it uses the active preset from UI
-  modelsPull({
-    config: ctxHolder.config,
-    all: true,
-    onProgress: (type, progress) => {
-      downloadState.currentType = type;
-      downloadState.progress = progress;
-    },
-  })
-    .then(async (result) => {
+  const operation = async (signal: AbortSignal): Promise<void> => {
+    try {
+      const result = await (deps?.modelsPullFn ?? modelsPull)({
+        config: ctxHolder.config,
+        all: true,
+        signal,
+        onProgress: (type, progress) => {
+          if (signal.aborted) return;
+          downloadState.currentType = type;
+          downloadState.progress = progress;
+        },
+      });
+      if (signal.aborted) return;
+
       // Track results
       for (const r of result.results) {
         if (r.ok) {
@@ -4180,35 +4272,39 @@ export function handleModelPull(ctxHolder: ContextHolder): Response {
       // Reload context to pick up new models
       console.log("Models downloaded, reloading context...");
       try {
-        ctxHolder.current = await reloadServerContext(
-          ctxHolder.current,
-          ctxHolder.config
-        );
+        ctxHolder.current = await (
+          deps?.reloadServerContextFn ?? reloadServerContext
+        )(ctxHolder.current, ctxHolder.config);
+        if (signal.aborted) return;
         console.log("Context reloaded");
         if (ctxHolder.scheduler) {
-          void ctxHolder.scheduler.triggerNow().catch((error) => {
-            console.error(
-              "Failed to trigger embedding after model download:",
-              error
-            );
-          });
+          await ctxHolder.scheduler.triggerNow();
         }
       } catch (e) {
         console.error("Failed to reload context:", e);
       }
-
-      downloadState.active = false;
-      downloadState.currentType = null;
-      downloadState.progress = null;
-    })
-    .catch((e) => {
+    } catch (e) {
       console.error("Model download failed:", e);
-      downloadState.active = false;
       downloadState.failed.push({
         type: downloadState.currentType ?? "embed",
         error: e instanceof Error ? e.message : String(e),
       });
-    });
+    } finally {
+      downloadState.active = false;
+      downloadState.currentType = null;
+      downloadState.progress = null;
+    }
+  };
+
+  const started = ctxHolder.startBackgroundWork?.(operation) ?? false;
+  if (!started) {
+    resetDownloadState();
+    return errorResponse(
+      "UNAVAILABLE",
+      "Resident runtime is shutting down",
+      503
+    );
+  }
 
   return jsonResponse({
     started: true,
@@ -4224,8 +4320,8 @@ export function handleModelPull(ctxHolder: ContextHolder): Response {
  * GET /api/jobs/:id
  * Poll job status for async operations.
  */
-export function handleJob(jobId: string): Response {
-  const status = getJobStatus(jobId);
+export function handleJob(jobId: string, jobManager?: JobManager): Response {
+  const status = getJobStatus(jobId, jobManager);
   if (!status) {
     return errorResponse("NOT_FOUND", "Job not found or expired", 404);
   }
@@ -4236,9 +4332,9 @@ export function handleJob(jobId: string): Response {
  * GET /api/jobs/active
  * Returns the current active job, or null when idle.
  */
-export function handleActiveJob(): Response {
+export function handleActiveJob(jobManager?: JobManager): Response {
   return jsonResponse({
-    activeJob: getActiveJob(),
+    activeJob: getActiveJob(jobManager),
   });
 }
 

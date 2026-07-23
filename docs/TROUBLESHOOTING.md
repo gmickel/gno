@@ -286,12 +286,36 @@ Common causes:
 
 ### "I ran gno serve and gno daemon together"
 
-Current guidance: do not run both against the same index at the same time.
+Serve and daemon are two modes of the same resident owner. The second process
+fails startup with an owner-status hint instead of opening a competing store.
 
-Until explicit cross-process coordination exists, use one of:
+Use one of:
 
 - `gno serve` for browser/desktop sessions
 - `gno daemon` for headless continuous indexing
+
+Stop the current owner before switching modes.
+
+### Resident `/mcp` returns 401 or 403
+
+- `401`: a daemon non-loopback listener did not receive the current bearer
+  token. Read the restrictive token file locally and send
+  `Authorization: Bearer <token>`; rotating the file revokes existing sessions.
+- `403`: the socket peer, exact Host, present Origin, session identity, or write
+  authorization failed. Do not add wildcards. Authentication alone never
+  enables writes; set `gateway.enableWrite: true` or `--mcp-enable-write`
+  separately.
+- `gno serve --host 0.0.0.0` always fails. Serve carries Web/REST on the same
+  listener and remains loopback-only; use the headless daemon for an explicitly
+  secured non-loopback MCP listener.
+
+### Detached status has `"resident": null`
+
+`gno serve|daemon --status --json` fetches the live redacted snapshot on a
+best-effort 500 ms budget. The process can still be running when its listener is
+starting, stopping, blocked, or otherwise unreachable. Confirm the recorded
+port, then retry `GET /api/resident/status`; never treat a null snapshot as
+permission to start a second owner.
 
 ### "pid-file exists but `--status` says not running"
 

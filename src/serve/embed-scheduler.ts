@@ -7,6 +7,7 @@
 
 import type { Database } from "bun:sqlite";
 
+import type { ModelLease } from "../llm/nodeLlamaCpp/lifecycle";
 import type { EmbeddingPort } from "../llm/types";
 import type { VectorIndexPort } from "../store/vector";
 
@@ -46,6 +47,9 @@ export interface EmbedSchedulerDeps {
   getVectorIndex: () => VectorIndexPort | null;
   /** Getter for current model URI (survives preset changes) */
   getModelUri: () => string;
+  acquireModelLease?: () => ModelLease;
+  onEmbedded?: (result: EmbedResult) => void;
+  embedBacklogFn?: typeof embedBacklog;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -63,7 +67,7 @@ export interface EmbedScheduler {
   getState(): EmbedSchedulerState;
 
   /** Cleanup on server shutdown */
-  dispose(): void;
+  dispose(): Promise<void>;
 }
 
 /**
@@ -71,7 +75,15 @@ export interface EmbedScheduler {
  * Uses getters to resolve dependencies at execution time (survives context reloads).
  */
 export function createEmbedScheduler(deps: EmbedSchedulerDeps): EmbedScheduler {
-  const { db, getEmbedPort, getVectorIndex, getModelUri } = deps;
+  const {
+    db,
+    getEmbedPort,
+    getVectorIndex,
+    getModelUri,
+    acquireModelLease,
+    onEmbedded,
+    embedBacklogFn = embedBacklog,
+  } = deps;
 
   // State
   let pendingCount = 0; // Track pending triggers (not actual docIds - we embed full backlog)
@@ -81,6 +93,7 @@ export function createEmbedScheduler(deps: EmbedSchedulerDeps): EmbedScheduler {
   let firstPendingAt: number | null = null;
   let nextRunAt: number | null = null; // Accurate timer due time
   let disposed = false;
+  let currentRun: Promise<EmbedResult | null> | null = null;
   let lastRunAt: number | null = null;
   let lastResult: EmbedResult | null = null;
 
@@ -103,20 +116,25 @@ export function createEmbedScheduler(deps: EmbedSchedulerDeps): EmbedScheduler {
       return { embedded: 0, errors: 0 };
     }
 
-    const result = await embedBacklog({
-      statsPort: stats,
-      embedPort,
-      vectorIndex,
-      modelUri,
-      batchSize: BATCH_SIZE,
-    });
+    const lease = acquireModelLease?.();
+    try {
+      const result = await embedBacklogFn({
+        statsPort: stats,
+        embedPort,
+        vectorIndex,
+        modelUri,
+        batchSize: BATCH_SIZE,
+      });
 
-    if (!result.ok) {
-      console.error("[embed-scheduler] Embed failed:", result.error.message);
-      return { embedded: 0, errors: 0 };
+      if (!result.ok) {
+        console.error("[embed-scheduler] Embed failed:", result.error.message);
+        return { embedded: 0, errors: 0 };
+      }
+      if (result.value.embedded > 0) onEmbedded?.(result.value);
+      return result.value;
+    } finally {
+      lease?.release();
     }
-
-    return result.value;
   }
 
   /**
@@ -166,41 +184,53 @@ export function createEmbedScheduler(deps: EmbedSchedulerDeps): EmbedScheduler {
   /**
    * Execute the embed run with concurrency guard.
    */
-  async function executeRun(): Promise<EmbedResult | null> {
+  function executeRun(): Promise<EmbedResult | null> {
     if (disposed || running) {
       needsRerun = true;
-      return null;
+      return Promise.resolve(null);
     }
 
-    running = true;
-    timer = null;
-    nextRunAt = null;
+    const operation = (async (): Promise<EmbedResult | null> => {
+      running = true;
+      timer = null;
+      nextRunAt = null;
 
-    // Clear pending state at START so new notifications accumulate
-    pendingCount = 0;
-    firstPendingAt = null;
+      // Clear pending state at START so new notifications accumulate
+      pendingCount = 0;
+      firstPendingAt = null;
 
-    let result: EmbedResult;
-    try {
-      result = await runEmbed();
-      lastRunAt = Date.now();
-      lastResult = result;
-    } finally {
-      running = false;
-    }
-
-    // Check if we need to rerun (notifications arrived while running)
-    // Must be AFTER running=false so scheduleRun() actually schedules
-    if ((needsRerun || pendingCount > 0) && !disposed) {
-      needsRerun = false;
-      // Set firstPendingAt if we have pending work
-      if (pendingCount > 0 && firstPendingAt === null) {
-        firstPendingAt = Date.now();
+      let result: EmbedResult;
+      try {
+        result = await runEmbed();
+        lastRunAt = Date.now();
+        lastResult = result;
+      } finally {
+        running = false;
       }
-      scheduleRun();
-    }
 
-    return result;
+      // Check if we need to rerun (notifications arrived while running)
+      // Must be AFTER running=false so scheduleRun() actually schedules
+      if ((needsRerun || pendingCount > 0) && !disposed) {
+        needsRerun = false;
+        // Set firstPendingAt if we have pending work
+        if (pendingCount > 0 && firstPendingAt === null) {
+          firstPendingAt = Date.now();
+        }
+        scheduleRun();
+      }
+
+      return result;
+    })();
+    currentRun = operation;
+    void operation.then(
+      () => {
+        if (currentRun === operation) currentRun = null;
+      },
+      () => {
+        if (currentRun === operation) currentRun = null;
+      }
+    );
+    return operation;
   }
 
   return {
@@ -263,13 +293,14 @@ export function createEmbedScheduler(deps: EmbedSchedulerDeps): EmbedScheduler {
       return state;
     },
 
-    dispose(): void {
+    async dispose(): Promise<void> {
       disposed = true;
       if (timer) {
         clearTimeout(timer);
         timer = null;
         nextRunAt = null;
       }
+      await currentRun;
     },
   };
 }

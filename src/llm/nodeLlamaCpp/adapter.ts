@@ -27,7 +27,11 @@ import {
 } from "../registry";
 import { NodeLlamaCppEmbedding } from "./embedding";
 import { NodeLlamaCppGeneration } from "./generation";
-import { getModelManager, type ModelManager } from "./lifecycle";
+import {
+  getModelManager,
+  type ModelLease,
+  type ModelManager,
+} from "./lifecycle";
 import { NodeLlamaCppRerank } from "./rerank";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -216,6 +220,11 @@ export class LlmAdapter {
    */
   getManager(): ModelManager {
     return this.manager;
+  }
+
+  /** Acquire an idempotent request lease without transferring manager ownership. */
+  acquireModelLease(): ModelLease {
+    return this.manager.acquireLease();
   }
 
   /**

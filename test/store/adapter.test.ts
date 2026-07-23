@@ -131,6 +131,90 @@ describe("SqliteAdapter", () => {
       }
     });
 
+    test("serializes concurrent outer transactions without treating them as nested", async () => {
+      expect((await adapter.open(dbPath, "unicode61")).ok).toBe(true);
+      adapter
+        .getRawDb()
+        .exec("CREATE TABLE transaction_probe (value TEXT NOT NULL)");
+      const events: string[] = [];
+      let releaseFirst!: () => void;
+      const firstHeld = new Promise<void>((resolve) => {
+        releaseFirst = resolve;
+      });
+
+      const first = adapter.withTransaction(async () => {
+        events.push("first:start");
+        adapter
+          .getRawDb()
+          .run("INSERT INTO transaction_probe (value) VALUES (?)", ["first"]);
+        await firstHeld;
+        events.push("first:end");
+      });
+      await Bun.sleep(10);
+      const second = adapter.withTransaction(async () => {
+        events.push("second:start");
+        adapter
+          .getRawDb()
+          .run("INSERT INTO transaction_probe (value) VALUES (?)", ["second"]);
+        events.push("second:end");
+      });
+
+      await Bun.sleep(10);
+      expect(events).toEqual(["first:start"]);
+      releaseFirst();
+      const [firstResult, secondResult] = await Promise.all([first, second]);
+      expect(firstResult.ok).toBe(true);
+      expect(secondResult.ok).toBe(true);
+      expect(events).toEqual([
+        "first:start",
+        "first:end",
+        "second:start",
+        "second:end",
+      ]);
+      expect(
+        adapter
+          .getRawDb()
+          .query<{ value: string }, []>(
+            "SELECT value FROM transaction_probe ORDER BY rowid"
+          )
+          .all()
+          .map((row) => row.value)
+      ).toEqual(["first", "second"]);
+    });
+
+    test("uses a savepoint only for nested work in the same async context", async () => {
+      expect((await adapter.open(dbPath, "unicode61")).ok).toBe(true);
+      adapter
+        .getRawDb()
+        .exec("CREATE TABLE nested_transaction_probe (value TEXT NOT NULL)");
+
+      const result = await adapter.withTransaction(async () => {
+        adapter
+          .getRawDb()
+          .run("INSERT INTO nested_transaction_probe (value) VALUES (?)", [
+            "outer",
+          ]);
+        const nested = await adapter.withTransaction(async () => {
+          adapter
+            .getRawDb()
+            .run("INSERT INTO nested_transaction_probe (value) VALUES (?)", [
+              "inner",
+            ]);
+        });
+        expect(nested.ok).toBe(true);
+      });
+
+      expect(result.ok).toBe(true);
+      expect(
+        adapter
+          .getRawDb()
+          .query<{ count: number }, []>(
+            "SELECT COUNT(*) AS count FROM nested_transaction_probe"
+          )
+          .get()?.count
+      ).toBe(2);
+    });
+
     test("keeps WAL journal mode in CI for cross-process reads", async () => {
       const previousCi = process.env.CI;
       process.env.CI = "true";
@@ -1108,6 +1192,12 @@ describe("SqliteAdapter", () => {
       expect(result.value.totalDocuments).toBe(1);
       expect(result.value.activeDocuments).toBe(1);
       expect(result.value.totalChunks).toBe(1);
+      expect(result.value.lastUpdatedAt).toMatch(
+        /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/
+      );
+      expect(Number.isNaN(Date.parse(result.value.lastUpdatedAt ?? ""))).toBe(
+        false
+      );
       // All chunks are in embedding backlog (no vectors yet)
       expect(result.value.embeddingBacklog).toBe(1);
       expect(result.value.collections).toHaveLength(1);

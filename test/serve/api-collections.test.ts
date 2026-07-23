@@ -340,6 +340,7 @@ describe("POST /api/collections/:name/embeddings/clear", () => {
 
   test("clears stale embeddings for a collection", async () => {
     const store = createMockStore();
+    let indexGeneration = 0;
     const ctxHolder = createMockContextHolder({
       collections: [
         {
@@ -351,6 +352,9 @@ describe("POST /api/collections/:name/embeddings/clear", () => {
         },
       ],
     });
+    ctxHolder.markIndexMutation = () => {
+      indexGeneration += 1;
+    };
 
     const req = new Request(
       "http://localhost/api/collections/docs/embeddings/clear",
@@ -378,6 +382,7 @@ describe("POST /api/collections/:name/embeddings/clear", () => {
     expect(body.stats.mode).toBe("stale");
     expect(body.stats.deletedVectors).toBe(2);
     expect(body.stats.protectedSharedVectors).toBe(1);
+    expect(indexGeneration).toBe(1);
   });
 
   test("rejects invalid mode", async () => {
@@ -611,5 +616,39 @@ describe("DELETE /api/collections/:name", () => {
     expect(res.status).toBe(400);
     const body = (await res.json()) as ErrorBody;
     expect(body.error.code).toBe("HAS_REFERENCES");
+  });
+
+  test("successful removal advances resident content and index generations", async () => {
+    await writeConfig({
+      collections: [
+        {
+          name: "docs",
+          path: tmpDir,
+          pattern: "**/*.md",
+          include: [],
+          exclude: [],
+        },
+      ],
+    });
+    const store = createMockStore();
+    const ctxHolder = createMockContextHolder();
+    let contentGeneration = 0;
+    let indexGeneration = 0;
+    ctxHolder.markContentMutation = () => {
+      contentGeneration += 1;
+    };
+    ctxHolder.markIndexMutation = () => {
+      indexGeneration += 1;
+    };
+
+    const response = await handleDeleteCollection(
+      ctxHolder,
+      store as never,
+      "docs"
+    );
+
+    expect(response.status).toBe(200);
+    expect(contentGeneration).toBe(1);
+    expect(indexGeneration).toBe(1);
   });
 });

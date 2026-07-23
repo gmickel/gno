@@ -23,7 +23,7 @@ Deliver build the resumable setup orchestrator and receipt as one implementation
 
 **Optional** (reference as needed):
 - `src/core/file-lock.ts`
-- `src/serve/background-runtime.ts:198-260`
+- `src/serve/resident-runtime.ts:263-461` — resident-owned config, sync, and lifecycle surface. <!-- Updated by plan-sync (cross-spec): fn-99-resident-local-context-gateway.1 made background-runtime a compatibility wrapper -->
 
 **Planned dependency outputs** (expected by execution; not plan-time investigation sources):
 - `src/core/activation-verifier.ts`

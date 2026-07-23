@@ -10,6 +10,8 @@
 // CRITICAL: Import setup FIRST to configure custom SQLite before any Database use
 import "./setup";
 import { Database } from "bun:sqlite";
+// node:async_hooks binds nested transactions to one async request; Bun has no separate native equivalent.
+import { AsyncLocalStorage } from "node:async_hooks";
 // node:path basename: no Bun path utilities.
 import { basename } from "node:path";
 
@@ -312,8 +314,9 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
   private dbPath = "";
   private ftsTokenizer: FtsTokenizer = "unicode61";
   private configPath = ""; // Set by CLI layer for status output
-  private txDepth = 0; // Transaction nesting depth
   private txCounter = 0; // Savepoint counter for unique names
+  private readonly txContext = new AsyncLocalStorage<{ depth: number }>();
+  private txTail: Promise<void> = Promise.resolve();
   private contextGeneration = 0;
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -407,9 +410,12 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
    */
   async withTransaction<T>(fn: () => Promise<T>): Promise<StoreResult<T>> {
     const db = this.ensureOpen();
-
-    const isOuter = this.txDepth === 0;
+    const parent = this.txContext.getStore();
+    const isOuter = parent === undefined;
     const savepoint = `sp_${++this.txCounter}`;
+    const releaseWriter = isOuter
+      ? await this.acquireTransactionWriter()
+      : null;
 
     try {
       if (isOuter) {
@@ -419,9 +425,10 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
         db.exec(`SAVEPOINT ${savepoint}`);
       }
 
-      this.txDepth += 1;
-      const value = await fn();
-      this.txDepth -= 1;
+      const value = await this.txContext.run(
+        { depth: (parent?.depth ?? 0) + 1 },
+        fn
+      );
 
       if (isOuter) {
         db.exec("COMMIT");
@@ -431,8 +438,6 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
 
       return ok(value);
     } catch (cause) {
-      this.txDepth = Math.max(0, this.txDepth - 1);
-
       try {
         if (isOuter) {
           db.exec("ROLLBACK");
@@ -447,7 +452,19 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
       const message =
         cause instanceof Error ? cause.message : "Transaction failed";
       return err("TRANSACTION_FAILED", message, cause);
+    } finally {
+      releaseWriter?.();
     }
+  }
+
+  private async acquireTransactionWriter(): Promise<() => void> {
+    const previous = this.txTail;
+    let release!: () => void;
+    this.txTail = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    await previous;
+    return release;
   }
 
   /**
@@ -4232,7 +4249,7 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
       // Last updated (max updated_at from documents)
       const lastUpdatedRow = db
         .query<{ last_updated: string | null }, []>(
-          "SELECT MAX(updated_at) as last_updated FROM documents"
+          "SELECT strftime('%Y-%m-%dT%H:%M:%fZ', MAX(updated_at)) as last_updated FROM documents"
         )
         .get();
 

@@ -3,6 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 
 import { buildConnectorActivationCheck } from "../../../../src/serve/activation-health";
 import { HealthCenter } from "../../../../src/serve/public/components/HealthCenter";
+import { createStandaloneResidentStatus } from "../../../../src/serve/resident-status";
 
 describe("HealthCenter", () => {
   test("renders health checks and actions", () => {
@@ -26,6 +27,7 @@ describe("HealthCenter", () => {
           ],
         }}
         onAction={() => undefined}
+        resident={createStandaloneResidentStatus("direct-cli")}
       />
     );
 
@@ -55,6 +57,7 @@ describe("HealthCenter", () => {
           ],
         }}
         onAction={() => undefined}
+        resident={createStandaloneResidentStatus("direct-cli")}
       />
     );
 
@@ -63,6 +66,38 @@ describe("HealthCenter", () => {
     expect(html).toContain("gno index notes --no-embed");
     expect(html).toContain("text-destructive");
     expect(html).not.toContain(">Ready<");
+  });
+
+  test("renders safe resident lifecycle counters without identities", () => {
+    const resident = {
+      ...createStandaloneResidentStatus("direct-cli"),
+      mode: "serve" as const,
+      resident: true,
+      uptimeSeconds: 42,
+      listenerPort: 3000,
+      admission: { state: "accepting" as const, activeRequests: 2 },
+      transport: {
+        activeRequests: 2,
+        activeSessions: 2,
+        queuedRequests: 1,
+        maxConcurrentRequests: 8,
+        maxQueuedRequests: 4,
+        maxSessions: 16,
+      },
+    };
+    const html = renderToStaticMarkup(
+      <HealthCenter
+        health={{ state: "healthy", summary: "Ready.", checks: [] }}
+        onAction={() => undefined}
+        resident={resident}
+      />
+    );
+
+    expect(html).toContain("Resident runtime");
+    expect(html).toContain("3000");
+    expect(html).toContain("2 +1 queued");
+    expect(html).not.toContain("caller");
+    expect(html).not.toContain("/Users/");
   });
 
   test("never labels an observed skipped connector proof as passed", () => {

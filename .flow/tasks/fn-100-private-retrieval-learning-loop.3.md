@@ -12,7 +12,7 @@ Deliver expose local trace feedback and purge controls as one implementation-siz
 ### Approach
 - Add inspect/list/label/export/delete/purge operations using stable local-write authorization and one shared service.
 - Require explicit relevant/irrelevant/missing-expected judgments; include a safe way to reference expected documents without copying raw content.
-- Keep remote/non-loopback mutation disabled unless gateway authentication authorizes the caller; fn-111 later adds egress policy, not write identity.
+- Keep remote/non-loopback mutation disabled by default. Bearer gateway authentication proves caller identity but never authorizes trace mutation; HTTP MCP writes additionally require the explicit `gateway.enableWrite` / `--mcp-enable-write` control, and fn-111 later adds egress policy rather than write identity. <!-- Updated by plan-sync (cross-spec): fn-99-resident-local-context-gateway.5 proved bearer authentication alone rejects writes -->
 
 ### Investigation targets
 **Required** (read before coding):

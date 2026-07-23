@@ -1,11 +1,29 @@
 import { describe, expect, mock, test } from "bun:test";
 
-import { daemon } from "../../src/cli/commands/daemon";
+import { daemon, handleDaemonAppStatus } from "../../src/cli/commands/daemon";
 
 type StartBackgroundRuntimeFn =
   typeof import("../../src/serve/background-runtime").startBackgroundRuntime;
 
+function gatewayDeps() {
+  return {
+    createMcpHttpGateway: (async () => ({
+      route: async () => new Response("ok"),
+      close: async () => undefined,
+      security: {},
+      transport: {},
+    })) as never,
+    serve: (() => ({ port: 3000, stop: async () => undefined })) as never,
+  };
+}
+
 describe("daemon command", () => {
+  test("denies path-bearing app status on non-loopback listeners", async () => {
+    const response = await handleDaemonAppStatus({} as never, "0.0.0.0");
+    expect(response.status).toBe(404);
+    expect(await response.text()).toBe("");
+  });
+
   test("returns startup errors from background runtime", async () => {
     const result = await daemon(
       {},
@@ -26,6 +44,7 @@ describe("daemon command", () => {
   test("runs initial sync by default and disposes on stop signal", async () => {
     const controller = new AbortController();
     const logs: string[] = [];
+    const cleanupOrder: string[] = [];
     const syncAll = mock(async () => ({
       syncResult: {
         collections: [
@@ -51,7 +70,9 @@ describe("daemon command", () => {
       },
       embedResult: { embedded: 3, errors: 0 },
     }));
-    const dispose = mock(async () => undefined);
+    const dispose = mock(async () => {
+      cleanupOrder.push("runtime");
+    });
 
     setTimeout(() => {
       controller.abort();
@@ -62,6 +83,20 @@ describe("daemon command", () => {
         signal: controller.signal,
       },
       {
+        createMcpHttpGateway: (async () => ({
+          route: async () => new Response("ok"),
+          close: async () => {
+            cleanupOrder.push("gateway");
+          },
+          security: {},
+          transport: {},
+        })) as never,
+        serve: (() => ({
+          port: 3000,
+          stop: async () => {
+            cleanupOrder.push("server");
+          },
+        })) as never,
         startBackgroundRuntime: async () => ({
           success: true,
           runtime: {
@@ -117,6 +152,7 @@ describe("daemon command", () => {
       true
     );
     expect(logs.some((line) => line.includes("embed: 3 embedded"))).toBe(true);
+    expect(cleanupOrder).toEqual(["server", "gateway", "runtime"]);
   });
 
   test("skips initial sync when requested", async () => {
@@ -144,6 +180,7 @@ describe("daemon command", () => {
         signal: controller.signal,
       },
       {
+        ...gatewayDeps(),
         startBackgroundRuntime: async () => ({
           success: true,
           runtime: {
@@ -250,6 +287,7 @@ describe("daemon command", () => {
         signal: controller.signal,
       },
       {
+        ...gatewayDeps(),
         startBackgroundRuntime,
       }
     );

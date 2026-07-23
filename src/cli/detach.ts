@@ -20,9 +20,12 @@ import { mkdir, stat, unlink } from "node:fs/promises";
 // node:path — no Bun path utils.
 import { dirname, join } from "node:path";
 
+import type { ResidentStatus } from "../serve/status-model";
+
 import { VERSION, resolveDirs } from "../app/constants";
 import { toAbsolutePath } from "../config/paths";
 import { atomicWrite } from "../core/file-ops";
+import { isResidentStatus } from "../serve/resident-status";
 import { CliError } from "./errors";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -63,6 +66,7 @@ export interface ProcessStatus {
   version: string | null;
   started_at: string | null;
   uptime_seconds: number | null;
+  resident: ResidentStatus | null;
   pid_file: string;
   log_file: string;
   log_size_bytes: number | null;
@@ -424,7 +428,7 @@ export interface SpawnDetachedOptions {
    * self-contained executable like a single `.mjs` file).
    */
   entryScript?: string | null;
-  /** Optional port to embed in the pid-file payload (serve only). */
+  /** Optional resident HTTP port to embed in the pid-file payload. */
   port?: number | null;
   /** Working directory for the child. Defaults to `process.cwd()`. */
   cwd?: string;
@@ -736,6 +740,23 @@ export interface StatusOptions {
   logFile: string;
   /** Clock override for deterministic tests. Defaults to `Date.now`. */
   now?: () => number;
+  fetchResidentStatus?: (port: number) => Promise<ResidentStatus | null>;
+}
+
+async function fetchResidentStatus(
+  port: number
+): Promise<ResidentStatus | null> {
+  try {
+    const response = await fetch(
+      `http://127.0.0.1:${port}/api/resident/status`,
+      { signal: AbortSignal.timeout(500) }
+    );
+    if (!response.ok) return null;
+    const body: unknown = await response.json();
+    return isResidentStatus(body) ? body : null;
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -765,6 +786,7 @@ export async function statusProcess(
       version: null,
       started_at: null,
       uptime_seconds: null,
+      resident: null,
       pid_file: options.pidFile,
       log_file: options.logFile,
       log_size_bytes: logSize,
@@ -789,33 +811,28 @@ export async function statusProcess(
     ? Math.max(0, Math.floor((now() - Date.parse(payload.started_at)) / 1000))
     : null;
 
-  // Schema invariant: a live serve must report a numeric port. If the pid-file
-  // is missing one somehow, fall back to not-running rather than lying.
-  const portForRunningServe =
-    running && effectiveKind === "serve"
-      ? typeof payload.port === "number"
-        ? payload.port
-        : null
-      : running && effectiveKind === "daemon"
-        ? null
-        : (payload.port ?? null);
-
-  const runningFinal =
-    running && !(effectiveKind === "serve" && portForRunningServe === null);
+  // Both resident modes expose an HTTP listener. If a live pid-file is
+  // missing its port, fall back to not-running rather than claiming a gateway
+  // that clients cannot locate.
+  const portForRunningProcess =
+    running && typeof payload.port === "number" ? payload.port : null;
+  const runningFinal = running && portForRunningProcess !== null;
+  const resident =
+    runningFinal && portForRunningProcess !== null
+      ? await (options.fetchResidentStatus ?? fetchResidentStatus)(
+          portForRunningProcess
+        )
+      : null;
 
   return {
     running: runningFinal,
     pid: payload.pid,
-    port:
-      runningFinal && effectiveKind === "serve"
-        ? portForRunningServe
-        : effectiveKind === "daemon"
-          ? null
-          : (payload.port ?? null),
+    port: runningFinal ? portForRunningProcess : (payload.port ?? null),
     cmd: effectiveKind,
     version: payload.version,
     started_at: payload.started_at,
     uptime_seconds: runningFinal ? uptimeSeconds : null,
+    resident,
     pid_file: options.pidFile,
     log_file: options.logFile,
     log_size_bytes: logSize,

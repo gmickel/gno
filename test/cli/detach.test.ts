@@ -741,7 +741,7 @@ describe("detach helper", () => {
       expect(status.log_size_bytes).toBe("hello world\n".length);
     });
 
-    test("reports running daemon with port:null", async () => {
+    test("reports running daemon with its gateway port", async () => {
       const pidFile = join(tmpDir, "daemon.pid");
       const logFile = join(tmpDir, "daemon.log");
       await writePidFile(pidFile, {
@@ -749,7 +749,7 @@ describe("detach helper", () => {
         cmd: "daemon",
         version: VERSION,
         started_at: new Date().toISOString(),
-        port: null,
+        port: 3000,
       });
 
       const status = await statusProcess({
@@ -759,7 +759,7 @@ describe("detach helper", () => {
       });
 
       expect(status.running).toBe(true);
-      expect(status.port).toBeNull();
+      expect(status.port).toBe(3000);
     });
 
     test("reports version mismatch on live pid as not-running in the schema payload", async () => {

@@ -1,4 +1,8 @@
 import { describe, expect, test } from "bun:test";
+// node:fs/promises provides temporary directory cleanup; Bun has no directory removal API.
+import { mkdtemp, rm } from "node:fs/promises";
+// node:os tmpdir and node:path join have no Bun equivalents.
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { loadConfigFromPath } from "../../src/config/loader";
@@ -73,6 +77,51 @@ describe("loadConfigFromPath", () => {
       }
 
       expect(result.value.editorUriTemplate).toBeUndefined();
+    });
+
+    test("loads resident HTTP gateway security and limit configuration", async () => {
+      const dir = await mkdtemp(join(tmpdir(), "gno-gateway-config-"));
+      const path = join(dir, "config.yml");
+      try {
+        await Bun.write(
+          path,
+          `version: "1.0"
+gateway:
+  host: 0.0.0.0
+  tokenFile: /run/secrets/gno-mcp
+  allowedHosts: [gateway.example.test:8443]
+  allowedOrigins: [https://client.example.test]
+  enableWrite: true
+  limits:
+    maxBodyBytes: 65536
+    maxRequestsPerMinute: 30
+    maxConcurrentRequests: 4
+    maxQueuedRequests: 2
+    maxSessions: 8
+    sessionIdleTimeoutMs: 60000
+`
+        );
+        const result = await loadConfigFromPath(path);
+        expect(result.ok).toBe(true);
+        if (!result.ok) return;
+        expect(result.value.gateway).toEqual({
+          host: "0.0.0.0",
+          tokenFile: "/run/secrets/gno-mcp",
+          allowedHosts: ["gateway.example.test:8443"],
+          allowedOrigins: ["https://client.example.test"],
+          enableWrite: true,
+          limits: {
+            maxBodyBytes: 65_536,
+            maxRequestsPerMinute: 30,
+            maxConcurrentRequests: 4,
+            maxQueuedRequests: 2,
+            maxSessions: 8,
+            sessionIdleTimeoutMs: 60_000,
+          },
+        });
+      } finally {
+        await rm(dir, { recursive: true });
+      }
     });
   });
 

@@ -19,9 +19,13 @@
     "onboarding",
     "health",
     "background",
-    "bootstrap"
+    "bootstrap",
+    "resident"
   ],
   "properties": {
+    "resident": {
+      "$ref": "gno://schemas/resident-status@1.0"
+    },
     "indexName": {
       "type": "string",
       "description": "Name of the index"
@@ -95,7 +99,7 @@
     },
     "lastUpdated": {
       "type": ["string", "null"],
-      "description": "Last index update time (ISO 8601)",
+      "description": "Last index update time as an RFC 3339 UTC timestamp",
       "format": "date-time"
     },
     "healthy": {

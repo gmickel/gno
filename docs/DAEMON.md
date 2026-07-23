@@ -11,7 +11,10 @@ Run GNO as a headless long-running watcher process.
 ## What It Does
 
 `gno daemon` keeps the same watch/sync/embed loop alive without starting the Web
-UI server.
+UI. The same resident process also hosts stateful Streamable HTTP MCP at
+`/mcp` plus the redacted `/api/resident/status` lifecycle surface. Full
+`/api/status`, which includes local index and configuration details, is
+available only when the daemon binds to loopback.
 
 Use it when:
 
@@ -89,6 +92,10 @@ gno daemon --detach --pid-file /tmp/gd.pid --log-file /tmp/gd.log
 `--status` always emits the schema-shaped payload on stdout, even when it exits 3. `--stop` is silent when there is nothing to stop — script against the exit
 code, not stderr text.
 
+For a live daemon, JSON status best-effort includes the same redacted resident
+snapshot available at `GET /api/resident/status`; no paths, tokens, queries,
+document content, or caller identities enter that nested lifecycle object.
+
 ### `--json` Gating
 
 `--json` is only defined for `--status`. Combining it with `--detach`, `--stop`,
@@ -114,11 +121,14 @@ stderr with `details.foreign_live = { pid, recorded_version, current_version }`.
 
 ## When To Use `daemon` vs `serve`
 
-- `gno serve`: browser or desktop session, API, dashboard, live indexing
-- `gno daemon`: headless continuous indexing only
+- `gno serve`: browser or desktop session, full local REST API, dashboard,
+  `/mcp`, and live indexing
+- `gno daemon`: headless continuous indexing, `/mcp`, and redacted lifecycle
+  status only
 
-Avoid running both against the same index at the same time until explicit
-cross-process coordination exists.
+Only one resident owner may use a data directory. Starting the other mode
+against the same `GNO_DATA_DIR` fails with the current owner hint; stop the
+owner before switching modes.
 
 ## Typical Flow
 
@@ -188,12 +198,20 @@ gno daemon --detach
 
 ### "I also ran gno serve"
 
-Do not run both against the same index at the same time.
+The second process fails closed because serve and daemon are mutually exclusive
+resident modes for one data directory.
 
 Use:
 
 - `gno serve` for browser/desktop sessions
 - `gno daemon` for headless continuous indexing
+
+Stop the running owner before switching:
+
+```bash
+gno serve --stop
+gno daemon --detach
+```
 
 ### "pid-file exists but `--status` says not running"
 

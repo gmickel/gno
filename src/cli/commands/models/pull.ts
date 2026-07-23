@@ -35,6 +35,8 @@ export interface ModelsPullOptions {
   force?: boolean;
   /** Progress callback for UI (omit to disable progress) */
   onProgress?: (type: ModelType, progress: DownloadProgress) => void;
+  /** Stop before the next model and suppress subsequent work. */
+  signal?: AbortSignal;
 }
 
 export interface ModelPullResult {
@@ -50,6 +52,10 @@ export interface ModelsPullResult {
   results: ModelPullResult[];
   failed: number;
   skipped: number;
+}
+
+export interface ModelsPullDependencies {
+  cache?: Pick<ModelCache, "download" | "getCachedPath" | "isCached">;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -87,7 +93,8 @@ function getTypesToPull(options: ModelsPullOptions): ModelType[] {
  * Execute gno models pull command.
  */
 export async function modelsPull(
-  options: ModelsPullOptions = {}
+  options: ModelsPullOptions = {},
+  deps: ModelsPullDependencies = {}
 ): Promise<ModelsPullResult> {
   // Use provided config, or load from disk (use defaults if not initialized)
   let config = options.config;
@@ -98,7 +105,7 @@ export async function modelsPull(
   }
 
   const preset = getActivePreset(config);
-  const cache = new ModelCache(getModelsCachePath());
+  const cache = deps.cache ?? new ModelCache(getModelsCachePath());
   const types = getTypesToPull(options);
 
   const results: ModelPullResult[] = [];
@@ -106,6 +113,7 @@ export async function modelsPull(
   let skipped = 0;
 
   for (const type of types) {
+    if (options.signal?.aborted) break;
     const uri =
       type === "expand" ? (preset.expand ?? preset.gen) : preset[type];
 
@@ -133,8 +141,10 @@ export async function modelsPull(
       (progress) => {
         options.onProgress?.(type, progress);
       },
-      options.force
+      options.force,
+      options.signal
     );
+    if (options.signal?.aborted) break;
 
     if (result.ok) {
       results.push({

@@ -1,39 +1,42 @@
 ---
 satisfies: [R4, R5, R6, R7]
 ---
-# fn-99-resident-local-context-gateway.5 Prove packaged cross-platform gateway behavior and document it
+# fn-99-resident-local-context-gateway.5 Prove packaged cross-platform behavior and ship docs
 
 ## Description
-Deliver prove packaged cross-platform gateway behavior and document it as one implementation-sized increment.
+
+Validate the installed product boundary and publish the complete lifecycle/security contract.
 
 **Size:** M
-**Files:** `scripts/package-smoke.ts`, `test/mcp/http-e2e.test.ts`, `docs/MCP.md`, `docs/DAEMON.md`, `docs/ARCHITECTURE.md`, `assets/skill/mcp-reference.md`
+**Files:** `scripts/package-smoke.ts`, `scripts/package-smoke-mcp.ts`, `scripts/serve-shutdown-smoke.ts`, `src/mcp/http-security.ts`, `src/serve/routes/mcp.ts`, `src/serve/resident-status.ts`, `src/cli/detach.ts`, `test/mcp/http-security.test.ts`, `test/mcp/http-transport.test.ts`, `test/mcp/http-parity.test.ts`, `test/serve/resident-health.test.ts`, `test/cli/detach.test.ts`, `.github/workflows/ci.yml`, `spec/cli.md`, `spec/mcp.md`, `spec/output-schemas/mcp-http-error.schema.json`, `spec/output-schemas/resident-status.schema.json`, `spec/output-schemas/process-status.schema.json`, `spec/output-schemas/status.schema.json`, `docs/CLI.md`, `docs/CONFIGURATION.md`, `docs/MCP.md`, `docs/DAEMON.md`, `docs/API.md`, `docs/ARCHITECTURE.md`, `docs/TROUBLESHOOTING.md`, `assets/skill/SKILL.md`, `assets/skill/mcp-reference.md`, `README.md`, `/Users/gordon/work/gno.sh`
 
 ### Approach
-- Add npm-tarball and desktop-compatible smoke coverage for transport startup, two clients, warm reuse, security, restart, and shutdown on supported systems.
-- Keep the known Bun Windows SIGINT/exit-130 failure visible; gateway-specific Windows acceptance belongs here without silently declaring the older foreground smoke fixed.
-- Update specs/schemas/docs/skill/gno.sh and run package/prerelease/security gates.
+
+- Run packed npm tarball smokes for the production-secured `/mcp` gateway: loopback startup, two clients, contract parity, warm reuse, `GET /api/resident/status` and `GET /api/status` lifecycle projections, token/Origin/Host rejection, restart, and shutdown. Validate the redacted `resident-status@1.0` snapshot and the best-effort `process-status@1.0.resident` snapshot from detached `serve` and `daemon` status; do not require the latter when its listener is unavailable.
+- Extend the existing `scripts/package-smoke.ts` and `scripts/package-smoke-mcp.ts` harnesses with task 3's `HttpMcpSecurity` boundary and production `createMcpHttpGateway` route coverage, using `test/mcp/http-security.test.ts`, `test/mcp/http-transport.test.ts`, and `test/mcp/http-parity.test.ts` as the baseline.
+- Prove the external boundary from a packed install: `gno serve` remains loopback-only; only `gno daemon` may use an explicit non-loopback bind with a restrictive token file and exact Host/Origin allowlists; authentication alone never enables writes.
+- Add desktop-compatible endpoint proof without coupling per-feature progress to macOS/Windows artifact completion; record those jobs for the consolidated final sweep.
+- Update CLI/MCP/API schemas and user docs, skill assets, examples, migration guidance, troubleshooting, and hosted gno.sh product/docs surfaces.
+- Run prerelease, package, docs, security, skill autoresearch, and hosted-site gates. Keep any existing unrelated Windows SIGINT/exit-130 limitation visible rather than suppressing it.
 
 ### Investigation targets
-**Required** (read before coding):
-- `scripts/package-smoke.ts`
-- `scripts/serve-shutdown-smoke.ts`
-- `.github/workflows/ci.yml`
-- `docs/DAEMON.md`
-- `docs/MCP.md`
 
-**Optional** (reference as needed):
-- `docs/TROUBLESHOOTING.md`
+**Required:** package smoke scripts, CI/publish workflows, packaging docs, MCP/daemon/API docs, skill source of truth, hosted gno.sh docs/product pages.
+
 ## Acceptance
-- [ ] Packaged MCP HTTP transport passes supported OS/architecture smokes or records a specific upstream blocker without suppressing required checks.
-- [ ] Docs replace separate-daemon language with the actual resident lifecycle, security, and migration path.
-- [ ] Full lint/tests/docs/package/skill evaluation and hosted-doc verification pass.
 
+- [ ] Packed npm gateway smokes pass the two-client, warm-reuse, security, restart, health, and shutdown contract, including schema-valid, redacted `resident-status@1.0` API and detached-process projections, daemon non-loopback rejection/authorization, and serve loopback-only enforcement.
+- [ ] Supported OS/architecture coverage passes or records a precise upstream blocker without weakening required checks; client artifact builds remain nonblocking until the final roadmap sweep.
+- [ ] README, specs/schemas, docs, skill, examples, migration/troubleshooting, and gno.sh are current and independently verified.
+- [ ] Full prerelease, package, security, Flow validation, and hosted production smoke evidence is attached.
+
+<!-- Updated by plan-sync: fn-99-resident-local-context-gateway.2 used the existing package-smoke-mcp and HTTP transport/parity harnesses, not test/mcp/http-e2e.test.ts -->
+<!-- Updated by plan-sync: fn-99-resident-local-context-gateway.3 used HttpMcpSecurity + createMcpHttpGateway as the production boundary; daemon alone supports authenticated non-loopback MCP -->
+<!-- Updated by plan-sync: fn-99-resident-local-context-gateway.4 used resident-status@1.0 at GET /api/resident/status and best-effort process-status@1.0.resident snapshots -->
 
 ## Done summary
-TBD
-
+Added npm-tarball conformance for concurrent resident HTTP MCP clients, stdio parity, real semantic warm-model reuse, redacted status schemas, fail-closed network/auth/write boundaries, token rotation, and detached restart/shutdown. Hardened shutdown admission, REST reader bounds, model leases/download cancellation, mutation generations, and ordered resource cleanup. Updated CLI/MCP contracts, packaged/release gates, user docs, agent skill, and gno.sh public truth; also fixed status timestamps to RFC 3339 UTC. Windows detach remains intentionally unsupported and artifact workflows remain the platform-specific final sweep.
 ## Evidence
-- Commits:
-- Tests:
-- PRs:
+- Commits: 45567ca7ea1c2478d7da53ebc08efef2fd590280, f67b553cea7c0f31383f671849525e868db9551a, 86d18e1, 2989c1c, 01bc0d4
+- Tests: bun test (2616 pass, 1 platform skip, 0 fail; 17544 assertions), focused lifecycle/security/mutation suites (65 pass, 0 fail), bun run smoke:serve-shutdown, bun run test:package with two clients/four semantic calls/one physical model load/balanced leases, CI=true bun run test:package with revision- and SHA-pinned model artifact, bun run lint:check, bun run docs:verify, .flow/bin/flowctl validate --spec fn-99-resident-local-context-gateway --json, gno.sh: bun run typecheck, gno.sh: bun run test, gno.sh: bun run check, gno.sh: bun run build, autoresearch-gno-skill: .venv/bin/python eval.py (48/48, 100%)
+- PRs: #139 (GNO), gno.sh#10

@@ -155,6 +155,18 @@ describe("CLI smoke tests", () => {
       expect(code).toBe(0);
       expect(stdout).toContain("daemon");
     });
+
+    test("serve and daemon help expose the secured HTTP MCP options", async () => {
+      for (const command of ["serve", "daemon"]) {
+        const { code, stdout } = await cli(command, "--help");
+        expect(code).toBe(0);
+        expect(stdout).toContain("--host <address>");
+        expect(stdout).toContain("--mcp-token-file <path>");
+        expect(stdout).toContain("--mcp-allowed-host <host>");
+        expect(stdout).toContain("--mcp-allowed-origin <origin>");
+        expect(stdout).toContain("--mcp-enable-write");
+      }
+    });
   });
 
   describe("error handling", () => {

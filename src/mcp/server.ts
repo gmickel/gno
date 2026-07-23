@@ -5,13 +5,9 @@
  * @module src/mcp/server
  */
 
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 // node:path for join/dirname (no Bun path utils)
 import { dirname, join } from "node:path";
-
-import type { Collection, Config } from "../config/types";
-import type { SqliteAdapter } from "../store/sqlite/adapter";
 
 import {
   DEFAULT_INDEX_NAME,
@@ -23,55 +19,14 @@ import { canonicalizeIndexName } from "../app/index-name";
 import { JobManager } from "../core/job-manager";
 import { envIsSet } from "../llm/policy";
 import { MCP_ACTIVATION_VERIFICATION_ENV } from "./activation-verification-mode";
+import {
+  createMcpServerSurface,
+  createToolContext,
+  Mutex,
+  type ToolContext,
+} from "./context";
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Simple Promise Mutex (avoids async-mutex dependency)
-// ─────────────────────────────────────────────────────────────────────────────
-
-class Mutex {
-  #locked = false;
-  readonly #queue: Array<() => void> = [];
-
-  acquire(): Promise<() => void> {
-    return new Promise((resolve) => {
-      const tryAcquire = () => {
-        if (this.#locked) {
-          this.#queue.push(tryAcquire);
-        } else {
-          this.#locked = true;
-          resolve(() => this.#release());
-        }
-      };
-      tryAcquire();
-    });
-  }
-
-  #release(): void {
-    this.#locked = false;
-    const next = this.#queue.shift();
-    if (next) {
-      next();
-    }
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Tool Context
-// ─────────────────────────────────────────────────────────────────────────────
-
-export interface ToolContext {
-  store: SqliteAdapter;
-  config: Config;
-  collections: Collection[];
-  actualConfigPath: string;
-  indexName: string;
-  toolMutex: Mutex;
-  jobManager: JobManager;
-  serverInstanceId: string;
-  writeLockPath: string;
-  enableWrite: boolean;
-  isShuttingDown: () => boolean;
-}
+export type { ToolContext } from "./context";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Server Options
@@ -136,21 +91,7 @@ export async function startMcpServer(options: McpServerOptions): Promise<void> {
     process.exit(1);
   }
 
-  const { store, config, collections, actualConfigPath } = init;
-
-  // Create MCP server
-  const server = new McpServer(
-    {
-      name: MCP_SERVER_NAME,
-      version: VERSION,
-    },
-    {
-      capabilities: {
-        tools: { listChanged: false },
-        resources: { subscribe: false, listChanged: false },
-      },
-    }
-  );
+  const { store, config, actualConfigPath } = init;
 
   // Sequential execution mutex
   const toolMutex = new Mutex();
@@ -173,10 +114,13 @@ export async function startMcpServer(options: McpServerOptions): Promise<void> {
   let shuttingDown = false;
 
   // Tool context (passed to all handlers)
-  const ctx: ToolContext = {
+  let currentConfig = config;
+  const ctx: ToolContext = createToolContext({
     store,
-    config,
-    collections,
+    getConfig: () => currentConfig,
+    setConfig: (nextConfig) => {
+      currentConfig = nextConfig;
+    },
     actualConfigPath,
     indexName: canonicalizeIndexName(options.indexName ?? DEFAULT_INDEX_NAME),
     toolMutex,
@@ -185,15 +129,11 @@ export async function startMcpServer(options: McpServerOptions): Promise<void> {
     writeLockPath,
     enableWrite,
     isShuttingDown: () => shuttingDown,
-  };
-
-  // Register tools (T10.2)
-  const { registerTools } = await import("./tools/index.js");
-  registerTools(server, ctx);
-
-  // Register resources (T10.3)
-  const { registerResources } = await import("./resources/index.js");
-  registerResources(server, ctx);
+  });
+  const server = createMcpServerSurface(ctx, {
+    name: MCP_SERVER_NAME,
+    version: VERSION,
+  });
 
   if (options.verbose) {
     console.error(

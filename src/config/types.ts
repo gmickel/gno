@@ -245,6 +245,40 @@ export const ModelConfigSchema = z.object({
 
 export type ModelConfig = z.infer<typeof ModelConfigSchema>;
 
+// ────────────────────────────────────────────────────────────────────────────
+// Resident HTTP gateway schema
+// ────────────────────────────────────────────────────────────────────────────
+
+export const HttpGatewayLimitsSchema = z.object({
+  maxBodyBytes: z
+    .number()
+    .int()
+    .min(1)
+    .max(16 * 1024 * 1024)
+    .optional(),
+  maxRequestsPerMinute: z.number().int().min(1).max(100_000).optional(),
+  maxConcurrentRequests: z.number().int().min(1).max(10_000).optional(),
+  maxQueuedRequests: z.number().int().min(0).max(10_000).optional(),
+  maxSessions: z.number().int().min(1).max(10_000).optional(),
+  sessionIdleTimeoutMs: z.number().int().min(1_000).optional(),
+});
+
+export const HttpGatewayConfigSchema = z.object({
+  /** Literal listen address. Defaults to IPv4 loopback. */
+  host: z.string().min(1).optional(),
+  /** Bearer token file. Required for wildcard/non-loopback binding. */
+  tokenFile: z.string().min(1).optional(),
+  /** Exact Host header allowlist. */
+  allowedHosts: z.array(z.string().min(1)).optional(),
+  /** Exact Origin allowlist. Origin-less non-browser clients remain supported. */
+  allowedOrigins: z.array(z.string().min(1)).optional(),
+  /** Separate mutation authorization; authentication alone never enables it. */
+  enableWrite: z.boolean().optional(),
+  limits: HttpGatewayLimitsSchema.optional(),
+});
+
+export type HttpGatewayConfig = z.infer<typeof HttpGatewayConfigSchema>;
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Content Type Schema
 // ─────────────────────────────────────────────────────────────────────────────
@@ -301,6 +335,9 @@ export const ConfigSchema = z.object({
 
   /** Model configuration */
   models: ModelConfigSchema.optional(),
+
+  /** Resident Streamable HTTP MCP gateway configuration */
+  gateway: HttpGatewayConfigSchema.optional(),
 });
 
 export type Config = Omit<z.infer<typeof ConfigSchema>, "contentTypes"> & {

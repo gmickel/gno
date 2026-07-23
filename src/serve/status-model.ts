@@ -59,6 +59,56 @@ export interface HealthCenterState {
   checks: HealthCheck[];
 }
 
+export type RuntimeMode = "serve" | "daemon" | "stdio" | "direct-cli";
+
+export interface ResidentStatus {
+  schemaVersion: "1.0";
+  mode: RuntimeMode;
+  resident: boolean;
+  uptimeSeconds: number | null;
+  listenerPort: number | null;
+  admission: {
+    state: "accepting" | "draining" | "closed";
+    activeRequests: number;
+  };
+  shutdown: {
+    state: "none" | "graceful" | "deadline";
+  };
+  transport: {
+    activeRequests: number;
+    activeSessions: number;
+    queuedRequests: number;
+    maxConcurrentRequests: number;
+    maxQueuedRequests: number;
+    maxSessions: number;
+  };
+  readers: {
+    active: number;
+    queued: number;
+    limit: number;
+    maxQueued: number;
+  };
+  models: {
+    activeLeases: number;
+    leaseAcquisitions: number;
+    leaseReleases: number;
+    loadedModels: number;
+    loadAttempts: number;
+    loadSuccesses: number;
+    loadFailures: number;
+    inflightLoads: number;
+  };
+  jobs: {
+    active: number;
+    recent: number;
+    failed: number;
+  };
+  generations: {
+    content: number;
+    index: number;
+  };
+}
+
 export interface BackgroundServiceState {
   watcher: {
     expectedCollections: string[];
@@ -125,6 +175,7 @@ export interface BootstrapState {
 }
 
 export interface AppStatusResponse {
+  resident: ResidentStatus;
   indexName: string;
   configPath: string;
   dbPath: string;

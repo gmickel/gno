@@ -170,7 +170,7 @@ describe("gno daemon backgrounding flags", () => {
       expect(payload).toMatchObject({
         running: false,
         pid: null,
-        // Daemon is headless — port is always null in the schema.
+        // No pid-file means no discoverable gateway port.
         port: null,
         cmd: "daemon",
         version: null,
@@ -209,8 +209,8 @@ describe("gno daemon backgrounding flags", () => {
         cmd: "daemon",
         version: "0.0.0-foreign-test",
         started_at: new Date().toISOString(),
-        // Daemon pid-files do not record a port — store null to match the
-        // detach helper's writePidFile path.
+        // A foreign-version pid-file may still come from the pre-gateway
+        // daemon format and omit a port.
         port: null,
       };
       await writeFile(pidFile, `${JSON.stringify(payload)}\n`);
@@ -250,7 +250,7 @@ describe("gno daemon backgrounding flags", () => {
         cmd: "daemon",
         version: VERSION,
         started_at: new Date().toISOString(),
-        port: null,
+        port: 3000,
       };
       await writeFile(pidFile, `${JSON.stringify(payload)}\n`);
 
@@ -267,8 +267,7 @@ describe("gno daemon backgrounding flags", () => {
       const parsed = JSON.parse(stdout) as Record<string, unknown>;
       expect(parsed.running).toBe(true);
       expect(parsed.pid).toBe(process.pid);
-      // Headless — never a numeric port even if one were present.
-      expect(parsed.port).toBeNull();
+      expect(parsed.port).toBe(3000);
     });
   });
 

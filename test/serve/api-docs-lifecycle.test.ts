@@ -11,6 +11,7 @@ import {
   handleCreateCapture,
   handleCreateDoc,
   handleCreateFolder,
+  handleDeactivateDoc,
   handleDuplicateDoc,
   handleMoveDoc,
   handleRenameDoc,
@@ -108,6 +109,29 @@ describe("document lifecycle API", () => {
 
   afterEach(async () => {
     await safeRm(tmpDir);
+  });
+
+  test("deactivation advances resident content and index generations", async () => {
+    const doc = createDoc(tmpDir);
+    const ctxHolder = createMockContextHolder();
+    let contentGeneration = 0;
+    let indexGeneration = 0;
+    ctxHolder.markContentMutation = () => {
+      contentGeneration += 1;
+    };
+    ctxHolder.markIndexMutation = () => {
+      indexGeneration += 1;
+    };
+
+    const response = await handleDeactivateDoc(
+      ctxHolder,
+      createMockStore(doc) as never,
+      doc.docid
+    );
+
+    expect(response.status).toBe(200);
+    expect(contentGeneration).toBe(1);
+    expect(indexGeneration).toBe(1);
   });
 
   test("renames editable markdown files", async () => {
@@ -467,6 +491,7 @@ describe("document lifecycle API", () => {
   });
 
   test("captures a note with provenance receipt", async () => {
+    let contentGeneration = 0;
     const ctxHolder = createMockContextHolder({
       collections: [
         {
@@ -478,6 +503,9 @@ describe("document lifecycle API", () => {
         },
       ],
     });
+    ctxHolder.markContentMutation = () => {
+      contentGeneration += 1;
+    };
     const store = {
       listDocuments: async () => ({ ok: true as const, value: [] }),
       getDocument: async () => ({ ok: true as const, value: null }),
@@ -494,7 +522,20 @@ describe("document lifecycle API", () => {
       }),
     });
 
-    const res = await handleCreateCapture(ctxHolder, store as never, req);
+    const res = await handleCreateCapture(ctxHolder, store as never, req, {
+      syncCollection: async () => ({
+        collection: "notes",
+        filesProcessed: 1,
+        filesAdded: 1,
+        filesUpdated: 0,
+        filesUnchanged: 0,
+        filesErrored: 0,
+        filesSkipped: 0,
+        filesMarkedInactive: 0,
+        durationMs: 1,
+        errors: [],
+      }),
+    });
     expect(res.status).toBe(202);
     const body = (await res.json()) as {
       relPath: string;
@@ -512,6 +553,7 @@ describe("document lifecycle API", () => {
     expect(content).toContain("Captured from API");
     expect(content).toContain("source:");
     await Bun.sleep(20);
+    expect(contentGeneration).toBe(1);
   });
 
   test("rejects invalid capture runtime shapes", async () => {

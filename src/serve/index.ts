@@ -11,3 +11,12 @@ export {
   type BackgroundRuntimeResult,
   startBackgroundRuntime,
 } from "./background-runtime";
+export {
+  type ResidentGeneration,
+  type ResidentMode,
+  type ResidentRequestHandle,
+  type ResidentRuntime,
+  type ResidentRuntimeOptions,
+  type ResidentRuntimeResult,
+  startResidentRuntime,
+} from "./resident-runtime";

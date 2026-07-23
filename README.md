@@ -94,7 +94,7 @@ gno daemon --detach  # headless continuous indexing (background; --status / --st
 
 <!-- public-truth:current-version -->
 
-> Current release: **v1.16.0** — see [CHANGELOG.md](./CHANGELOG.md)
+> Current release: **v1.17.0** — see [CHANGELOG.md](./CHANGELOG.md)
 
 <!-- /public-truth -->
 
@@ -104,6 +104,11 @@ gno daemon --detach  # headless continuous indexing (background; --status / --st
   Web/Desktop dashboard now share a per-folder lexical retrieval proof. Local
   semantic readiness remains independent, and installed MCP targets can run an
   explicit read-only retrieval smoke from Connectors.
+- **One resident gateway**: `gno serve` and `gno daemon` now host stateful
+  Streamable HTTP MCP at `/mcp` from the same long-lived runtime as their
+  watcher, jobs, stores, and models. The packed npm smoke proves two-client
+  parity, warm reuse, redacted lifecycle status, fail-closed security, restart,
+  and shutdown.
 - **Second-brain capture**: `gno capture`, REST `/api/capture`, SDK
   `client.capture()`, MCP `gno_capture`, and Web UI Quick Capture write
   provenance-rich notes from text, stdin, or files, including typed presets for
@@ -308,7 +313,7 @@ Use `gno daemon` when you want continuous indexing without the browser or
 desktop shell open.
 
 ```bash
-gno daemon                  # foreground (Ctrl+C to stop)
+gno daemon                  # foreground + /mcp on 127.0.0.1:3000
 gno daemon --no-sync-on-start
 gno daemon --detach         # background (macOS/Linux); auto-writes pid + log files
 gno daemon --status         # check the detached process
@@ -570,6 +575,13 @@ adds 11 opt-in mutation tools, for 30 total.
 **Design**: Default MCP mode is read-only: retrieval, graph, status, and job
 inspection. Your AI assistant synthesizes answers from retrieved context. Write
 tools are available only through the explicit `--enable-write` opt-in.
+
+`gno serve` and `gno daemon` also expose this surface as stateful Streamable
+HTTP at `http://127.0.0.1:3000/mcp`. HTTP stays read-only by default.
+Authenticated non-loopback access is available through the headless daemon and
+requires an explicit restrictive bearer-token file plus exact Host and Origin
+allowlists; `gno serve` remains loopback-only. Authentication alone never
+enables mutation tools.
 
 [MCP setup guide →](https://gno.sh/docs/MCP/)
 

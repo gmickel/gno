@@ -1,6 +1,5 @@
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { mkdtemp } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -8,14 +7,14 @@ import { join } from "node:path";
 
 import type { ToolContext } from "../../src/mcp/server";
 
-import { registerTools } from "../../src/mcp/tools/index";
+import { createMcpServerSurface } from "../../src/mcp/context";
 import { SqliteAdapter } from "../../src/store/sqlite/adapter";
 import { safeRm } from "../helpers/cleanup";
 
 describe("Context Capsule MCP transport contract", () => {
   let root: string;
   let store: SqliteAdapter;
-  let server: McpServer;
+  let server: ReturnType<typeof createMcpServerSurface>;
   let client: Client;
 
   beforeEach(async () => {
@@ -26,10 +25,6 @@ describe("Context Capsule MCP transport contract", () => {
     );
     const [clientTransport, serverTransport] =
       InMemoryTransport.createLinkedPair();
-    server = new McpServer(
-      { name: "context-schema-test", version: "1.0.0" },
-      { capabilities: { tools: {} } }
-    );
     const context: ToolContext = {
       store,
       config: {
@@ -40,7 +35,7 @@ describe("Context Capsule MCP transport contract", () => {
       },
       collections: [],
       actualConfigPath: join(root, "config.yml"),
-      indexName: "default",
+      indexName: "test.db",
       toolMutex: { acquire: async () => () => {} } as ToolContext["toolMutex"],
       jobManager: {} as ToolContext["jobManager"],
       serverInstanceId: "schema-test",
@@ -48,7 +43,10 @@ describe("Context Capsule MCP transport contract", () => {
       enableWrite: false,
       isShuttingDown: () => false,
     };
-    registerTools(server, context);
+    server = createMcpServerSurface(context, {
+      name: "context-schema-test",
+      version: "1.0.0",
+    });
     await server.connect(serverTransport);
     client = new Client({ name: "context-client", version: "1.0.0" });
     await client.connect(clientTransport);
@@ -68,6 +66,24 @@ describe("Context Capsule MCP transport contract", () => {
     expect(contextTool?.inputSchema.additionalProperties).toBe(false);
     expect(contextTool?.inputSchema.required).toContain("goal");
     expect(contextTool?.inputSchema.required).toContain("budgetTokens");
+  });
+
+  test("shared surface preserves stdio tool and resource results", async () => {
+    const status = await client.callTool({
+      name: "gno_status",
+      arguments: {},
+    });
+    expect(status.isError).not.toBe(true);
+    expect(status.structuredContent).toMatchObject({
+      indexName: "test.db",
+    });
+
+    const resources = await client.listResources();
+    expect(resources.resources).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ uri: "gno://tags", name: "tags" }),
+      ])
+    );
   });
 
   test("rejects unknown fields at MCP validation before the GNO handler", async () => {

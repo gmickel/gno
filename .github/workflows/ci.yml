@@ -29,6 +29,12 @@ jobs:
           key: bun-cache-${{ runner.os }}-${{ hashFiles('**/bun.lockb') }}
           restore-keys: bun-cache-${{ runner.os }}-
 
+      - name: Cache package-smoke embedding model
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/gno/package-smoke
+          key: package-smoke-embeddinggemma-0f741b5a-${{ runner.os }}
+
       - name: Install SQLite (macOS)
         if: matrix.os == 'macos-latest'
         run: brew install sqlite3
@@ -43,6 +49,12 @@ jobs:
         run: bun test | cat
         env:
           CI: "true"
+
+      - name: Provision pinned package-smoke model
+        run: bun scripts/package-smoke-model.ts
+
+      - name: Test packed resident gateway
+        run: bun run test:package
 
   test-windows:
     if: |

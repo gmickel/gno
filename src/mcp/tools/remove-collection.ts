@@ -89,6 +89,8 @@ export function handleRemoveCollection(
         if (!mutationResult.ok) {
           throw mapConfigError(mutationResult.code, mutationResult.error);
         }
+        ctx.markContentMutation?.();
+        ctx.markIndexMutation?.();
 
         const result: RemoveCollectionResult = {
           removed: true,

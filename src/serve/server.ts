@@ -6,13 +6,20 @@
  * @module src/serve/server
  */
 
+import type { HttpGatewayOverrides } from "../mcp/http-security";
+import type { ResidentRuntime } from "./resident-runtime";
 import type { ContextHolder } from "./routes/api";
 
+import {
+  isHttpGatewayLoopbackBind,
+  resolveHttpGatewayConfig,
+} from "../mcp/http-security";
 import { startBackgroundRuntime } from "./background-runtime";
 import { handleContextBuild, handleContextVerify } from "./context-capsule";
 import { DocumentEventBus } from "./doc-events";
 // HTML import - Bun handles bundling TSX/CSS automatically via routes
 import homepage from "./public/index.html";
+import { handleResidentRead } from "./resident-request";
 import {
   handleActiveJob,
   handleAsk,
@@ -49,6 +56,7 @@ import {
   handleQuery,
   handleQueryDiagnose,
   handleRefactorPlan,
+  handleResidentStatus,
   handleRenameDoc,
   handleRevealDoc,
   handleSearch,
@@ -67,9 +75,10 @@ import {
   handleDocLinks,
   handleDocSimilar,
 } from "./routes/links";
+import { createMcpHttpGateway } from "./routes/mcp";
 import { forbiddenResponse, isRequestAllowed } from "./security";
 
-export interface ServeOptions {
+export interface ServeOptions extends HttpGatewayOverrides {
   /** Port to listen on (default: 3000) */
   port?: number;
   /** Config path override */
@@ -85,8 +94,14 @@ export interface ServeResult {
 
 interface StartServerDependencies {
   startBackgroundRuntime?: typeof startBackgroundRuntime;
+  createMcpHttpGateway?: typeof createMcpHttpGateway;
   serve?: typeof Bun.serve;
   handleInstallConnector?: typeof handleInstallConnector;
+  handleDocs?: typeof handleDocs;
+  handleVerifyConnector?: typeof handleVerifyConnector;
+  handleImportPreview?: typeof handleImportPreview;
+  handlePublishExport?: typeof handlePublishExport;
+  handleRefactorPlan?: typeof handleRefactorPlan;
   waitForShutdown?: (signal: AbortSignal) => Promise<void>;
 }
 
@@ -152,6 +167,7 @@ export async function startServer(
   const runtimeResult = await (
     dependencies.startBackgroundRuntime ?? startBackgroundRuntime
   )({
+    mode: "serve",
     configPath: options.configPath,
     index: options.index,
     requireCollections: false,
@@ -163,6 +179,35 @@ export async function startServer(
   const runtime = runtimeResult.runtime;
   const store = runtime.store;
   const ctxHolder: ContextHolder = runtime.ctxHolder;
+  const gatewayConfig = resolveHttpGatewayConfig(runtime.config.gateway, {
+    host: options.host,
+    port,
+    tokenFile: options.tokenFile,
+    allowedHosts: options.allowedHosts,
+    allowedOrigins: options.allowedOrigins,
+    enableWrite: options.enableWrite,
+  });
+  if (!isHttpGatewayLoopbackBind(gatewayConfig.host)) {
+    await runtime.dispose();
+    return {
+      success: false,
+      error:
+        "gno serve remains loopback-only because Web and REST share its listener; use gno daemon for authenticated non-loopback MCP",
+    };
+  }
+  let gateway: Awaited<ReturnType<typeof createMcpHttpGateway>>;
+  try {
+    gateway = await (dependencies.createMcpHttpGateway ?? createMcpHttpGateway)(
+      runtime as ResidentRuntime,
+      gatewayConfig
+    );
+  } catch (error) {
+    await runtime.dispose();
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
 
   // Shutdown controller for clean lifecycle
   const shutdownController = new AbortController();
@@ -185,13 +230,14 @@ export async function startServer(
   try {
     server = (dependencies.serve ?? Bun.serve)({
       port,
-      hostname: "127.0.0.1", // Loopback only - no LAN exposure
+      hostname: gatewayConfig.host,
 
       // Enable development mode for HMR and console logging
       development: isDev,
 
       // Static routes - Bun handles HTML bundling and /_bun/* assets automatically
       routes: {
+        "/mcp": gateway.route,
         // SPA routes - all serve the same React app
         "/": homepage,
         "/search": homepage,
@@ -208,8 +254,25 @@ export async function startServer(
           GET: () => withSecurityHeaders(handleHealth(), isDev),
         },
         "/api/status": {
-          GET: async () =>
-            withSecurityHeaders(await handleStatus(ctxHolder.current), isDev),
+          GET: async (req: Request) =>
+            withSecurityHeaders(
+              await handleResidentRead(runtime as ResidentRuntime, req, () =>
+                handleStatus(ctxHolder.current, {
+                  getResidentStatus: () =>
+                    (runtime as ResidentRuntime).getStatus(),
+                })
+              ),
+              isDev
+            ),
+        },
+        "/api/resident/status": {
+          GET: () =>
+            withSecurityHeaders(
+              handleResidentStatus(() =>
+                (runtime as ResidentRuntime).getStatus()
+              ),
+              isDev
+            ),
         },
         "/api/collections": {
           GET: async () =>
@@ -228,9 +291,11 @@ export async function startServer(
           },
         },
         "/api/connectors": {
-          GET: async () =>
+          GET: async (req: Request) =>
             withSecurityHeaders(
-              await handleConnectors(ctxHolder.config),
+              await handleResidentRead(runtime as ResidentRuntime, req, () =>
+                handleConnectors(ctxHolder.config)
+              ),
               isDev
             ),
         },
@@ -256,7 +321,13 @@ export async function startServer(
               return withSecurityHeaders(forbiddenResponse(), isDev);
             }
             return withSecurityHeaders(
-              await handleVerifyConnector(ctxHolder.config, store, req),
+              await handleResidentRead(runtime as ResidentRuntime, req, () =>
+                (dependencies.handleVerifyConnector ?? handleVerifyConnector)(
+                  ctxHolder.config,
+                  store,
+                  req
+                )
+              ),
               isDev
             );
           },
@@ -267,7 +338,12 @@ export async function startServer(
               return withSecurityHeaders(forbiddenResponse(), isDev);
             }
             return withSecurityHeaders(
-              await handleImportPreview(ctxHolder, req),
+              await handleResidentRead(runtime as ResidentRuntime, req, () =>
+                (dependencies.handleImportPreview ?? handleImportPreview)(
+                  ctxHolder,
+                  req
+                )
+              ),
               isDev
             );
           },
@@ -278,7 +354,13 @@ export async function startServer(
               return withSecurityHeaders(forbiddenResponse(), isDev);
             }
             return withSecurityHeaders(
-              await handlePublishExport(ctxHolder.config, store, req),
+              await handleResidentRead(runtime as ResidentRuntime, req, () =>
+                (dependencies.handlePublishExport ?? handlePublishExport)(
+                  ctxHolder.config,
+                  store,
+                  req
+                )
+              ),
               isDev
             );
           },
@@ -308,7 +390,12 @@ export async function startServer(
         "/api/docs": {
           GET: async (req: Request) => {
             const url = new URL(req.url);
-            return withSecurityHeaders(await handleDocs(store, url), isDev);
+            return withSecurityHeaders(
+              await handleResidentRead(runtime as ResidentRuntime, req, () =>
+                (dependencies.handleDocs ?? handleDocs)(store, url)
+              ),
+              isDev
+            );
           },
           POST: async (req: Request) => {
             if (!isRequestAllowed(req, port)) {
@@ -324,7 +411,9 @@ export async function startServer(
           GET: async (req: Request) => {
             const url = new URL(req.url);
             return withSecurityHeaders(
-              await handleDocsAutocomplete(store, url),
+              await handleResidentRead(runtime as ResidentRuntime, req, () =>
+                handleDocsAutocomplete(store, url)
+              ),
               isDev
             );
           },
@@ -345,8 +434,13 @@ export async function startServer(
           },
         },
         "/api/browse/tree": {
-          GET: async () =>
-            withSecurityHeaders(await handleBrowseTree(store), isDev),
+          GET: async (req: Request) =>
+            withSecurityHeaders(
+              await handleResidentRead(runtime as ResidentRuntime, req, () =>
+                handleBrowseTree(store)
+              ),
+              isDev
+            ),
         },
         "/api/docs/:id/deactivate": {
           POST: async (req: Request) => {
@@ -358,7 +452,7 @@ export async function startServer(
             const parts = url.pathname.split("/");
             const id = decodeURIComponent(parts[3] || "");
             return withSecurityHeaders(
-              await handleDeactivateDoc(store, id, req),
+              await handleDeactivateDoc(ctxHolder, store, id, req),
               isDev
             );
           },
@@ -414,7 +508,14 @@ export async function startServer(
             const parts = url.pathname.split("/");
             const id = decodeURIComponent(parts[3] || "");
             return withSecurityHeaders(
-              await handleRefactorPlan(ctxHolder, store, id, req),
+              await handleResidentRead(runtime as ResidentRuntime, req, () =>
+                (dependencies.handleRefactorPlan ?? handleRefactorPlan)(
+                  ctxHolder,
+                  store,
+                  id,
+                  req
+                )
+              ),
               isDev
             );
           },
@@ -479,7 +580,9 @@ export async function startServer(
           GET: async (req: Request) => {
             const url = new URL(req.url);
             return withSecurityHeaders(
-              await handleDoc(store, ctxHolder.config, url),
+              await handleResidentRead(runtime as ResidentRuntime, req, () =>
+                handleDoc(store, ctxHolder.config, url)
+              ),
               isDev
             );
           },
@@ -488,7 +591,9 @@ export async function startServer(
           GET: async (req: Request) => {
             const url = new URL(req.url);
             return withSecurityHeaders(
-              await handleDocAsset(store, ctxHolder.config, url),
+              await handleResidentRead(runtime as ResidentRuntime, req, () =>
+                handleDocAsset(store, ctxHolder.config, url)
+              ),
               isDev
             );
           },
@@ -504,7 +609,12 @@ export async function startServer(
         "/api/tags": {
           GET: async (req: Request) => {
             const url = new URL(req.url);
-            return withSecurityHeaders(await handleTags(store, url), isDev);
+            return withSecurityHeaders(
+              await handleResidentRead(runtime as ResidentRuntime, req, () =>
+                handleTags(store, url)
+              ),
+              isDev
+            );
           },
         },
         "/api/search": {
@@ -512,7 +622,12 @@ export async function startServer(
             if (!isRequestAllowed(req, port)) {
               return withSecurityHeaders(forbiddenResponse(), isDev);
             }
-            return withSecurityHeaders(await handleSearch(store, req), isDev);
+            return withSecurityHeaders(
+              await handleResidentRead(runtime as ResidentRuntime, req, () =>
+                handleSearch(store, req)
+              ),
+              isDev
+            );
           },
         },
         "/api/query": {
@@ -521,7 +636,9 @@ export async function startServer(
               return withSecurityHeaders(forbiddenResponse(), isDev);
             }
             return withSecurityHeaders(
-              await handleQuery(ctxHolder.current, req),
+              await handleResidentRead(runtime as ResidentRuntime, req, () =>
+                handleQuery(ctxHolder.current, req)
+              ),
               isDev
             );
           },
@@ -532,7 +649,9 @@ export async function startServer(
               return withSecurityHeaders(forbiddenResponse(), isDev);
             }
             return withSecurityHeaders(
-              await handleContextBuild(ctxHolder.current, req),
+              await handleResidentRead(runtime as ResidentRuntime, req, () =>
+                handleContextBuild(ctxHolder.current, req)
+              ),
               isDev
             );
           },
@@ -543,7 +662,9 @@ export async function startServer(
               return withSecurityHeaders(forbiddenResponse(), isDev);
             }
             return withSecurityHeaders(
-              await handleContextVerify(ctxHolder.current, req),
+              await handleResidentRead(runtime as ResidentRuntime, req, () =>
+                handleContextVerify(ctxHolder.current, req)
+              ),
               isDev
             );
           },
@@ -554,7 +675,9 @@ export async function startServer(
               return withSecurityHeaders(forbiddenResponse(), isDev);
             }
             return withSecurityHeaders(
-              await handleQueryDiagnose(ctxHolder.current, req),
+              await handleResidentRead(runtime as ResidentRuntime, req, () =>
+                handleQueryDiagnose(ctxHolder.current, req)
+              ),
               isDev
             );
           },
@@ -565,7 +688,9 @@ export async function startServer(
               return withSecurityHeaders(forbiddenResponse(), isDev);
             }
             return withSecurityHeaders(
-              await handleAsk(ctxHolder.current, req),
+              await handleResidentRead(runtime as ResidentRuntime, req, () =>
+                handleAsk(ctxHolder.current, req)
+              ),
               isDev
             );
           },
@@ -591,21 +716,30 @@ export async function startServer(
           GET: () => withSecurityHeaders(handleModelStatus(), isDev),
         },
         "/api/models/pull": {
-          POST: (req: Request) => {
+          POST: async (req: Request) => {
             if (!isRequestAllowed(req, port)) {
               return withSecurityHeaders(forbiddenResponse(), isDev);
             }
-            return withSecurityHeaders(handleModelPull(ctxHolder), isDev);
+            return withSecurityHeaders(
+              await handleResidentRead(runtime as ResidentRuntime, req, () =>
+                handleModelPull(ctxHolder)
+              ),
+              isDev
+            );
           },
         },
         "/api/jobs/active": {
-          GET: () => withSecurityHeaders(handleActiveJob(), isDev),
+          GET: () =>
+            withSecurityHeaders(handleActiveJob(ctxHolder.jobManager), isDev),
         },
         "/api/jobs/:id": {
           GET: (req: Request) => {
             const url = new URL(req.url);
             const id = decodeURIComponent(url.pathname.split("/").pop() || "");
-            return withSecurityHeaders(handleJob(id), isDev);
+            return withSecurityHeaders(
+              handleJob(id, ctxHolder.jobManager),
+              isDev
+            );
           },
         },
         "/api/embed": {
@@ -677,7 +811,9 @@ export async function startServer(
             const parts = url.pathname.split("/");
             const id = decodeURIComponent(parts[3] || "");
             return withSecurityHeaders(
-              await handleDocLinks(store, id, url),
+              await handleResidentRead(runtime as ResidentRuntime, req, () =>
+                handleDocLinks(store, id, url)
+              ),
               isDev
             );
           },
@@ -688,7 +824,9 @@ export async function startServer(
             const parts = url.pathname.split("/");
             const id = decodeURIComponent(parts[3] || "");
             return withSecurityHeaders(
-              await handleDocSections(store, id, req),
+              await handleResidentRead(runtime as ResidentRuntime, req, () =>
+                handleDocSections(store, id, req)
+              ),
               isDev
             );
           },
@@ -700,7 +838,9 @@ export async function startServer(
             const parts = url.pathname.split("/");
             const id = decodeURIComponent(parts[3] || "");
             return withSecurityHeaders(
-              await handleDocBacklinks(store, id),
+              await handleResidentRead(runtime as ResidentRuntime, req, () =>
+                handleDocBacklinks(store, id)
+              ),
               isDev
             );
           },
@@ -712,7 +852,9 @@ export async function startServer(
             const parts = url.pathname.split("/");
             const id = decodeURIComponent(parts[3] || "");
             return withSecurityHeaders(
-              await handleDocSimilar(ctxHolder.current, id, url),
+              await handleResidentRead(runtime as ResidentRuntime, req, () =>
+                handleDocSimilar(ctxHolder.current, id, url)
+              ),
               isDev
             );
           },
@@ -720,7 +862,12 @@ export async function startServer(
         "/api/graph": {
           GET: async (req: Request) => {
             const url = new URL(req.url);
-            return withSecurityHeaders(await handleGraph(store, url), isDev);
+            return withSecurityHeaders(
+              await handleResidentRead(runtime as ResidentRuntime, req, () =>
+                handleGraph(store, url)
+              ),
+              isDev
+            );
           },
         },
         "/api/graph/query": {
@@ -729,7 +876,9 @@ export async function startServer(
               return withSecurityHeaders(forbiddenResponse(), isDev);
             }
             return withSecurityHeaders(
-              await handleGraphQuery(store, ctxHolder.config, req),
+              await handleResidentRead(runtime as ResidentRuntime, req, () =>
+                handleGraphQuery(store, ctxHolder.config, req)
+              ),
               isDev
             );
           },
@@ -738,14 +887,18 @@ export async function startServer(
     });
   } catch (e) {
     removeShutdownHandlers();
-    await runtime.dispose();
+    await Promise.allSettled([gateway.close()]);
+    await Promise.allSettled([runtime.dispose()]);
     return {
       success: false,
       error: e instanceof Error ? e.message : String(e),
     };
   }
+  (runtime as Partial<ResidentRuntime>).setListenerPort?.(server.port ?? port);
 
-  console.log(`GNO server running at http://localhost:${server.port}`);
+  console.log(
+    `GNO server running at http://${gatewayConfig.host}:${server.port}`
+  );
   console.log("Press Ctrl+C to stop");
 
   // Block until shutdown signal
@@ -763,7 +916,8 @@ export async function startServer(
   try {
     await server.stop(true);
   } finally {
-    await runtime.dispose();
+    await Promise.allSettled([gateway.close()]);
+    await Promise.allSettled([runtime.dispose()]);
   }
   return { success: true };
 }

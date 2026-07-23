@@ -513,6 +513,7 @@ export default function Dashboard({ navigate }: PageProps) {
               busyAction={busyAction}
               health={status.health}
               onAction={handleHealthAction}
+              resident={status.resident}
             />
           </div>
         )}

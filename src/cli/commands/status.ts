@@ -15,6 +15,7 @@ import { buildActivationStatus } from "../../core/activation-status";
 import { ModelCache } from "../../llm/cache";
 import { getActivePreset, resolveModelUri } from "../../llm/registry";
 import { getConnectorVerificationTargets } from "../../serve/connectors";
+import { createStandaloneResidentStatus } from "../../serve/resident-status";
 import { SqliteAdapter } from "../../store/sqlite/adapter";
 
 /**
@@ -277,6 +278,7 @@ export function formatStatus(
     const s = result.status;
     return JSON.stringify(
       {
+        resident: createStandaloneResidentStatus("direct-cli"),
         indexName: s.indexName,
         configPath: s.configPath,
         dbPath: s.dbPath,

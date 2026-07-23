@@ -14,6 +14,7 @@ import { applyConfigChange } from "../../core/config-mutation";
 import { MCP_ERRORS } from "../../core/errors";
 import { acquireWriteLock, type WriteLockHandle } from "../../core/file-lock";
 import { JobError } from "../../core/job-manager";
+import { recordContentMutation } from "../../core/mutation-generations";
 import {
   normalizeCollectionName,
   validateCollectionRoot,
@@ -152,9 +153,10 @@ export function handleAddCollection(
                   gitPull: args.gitPull ?? false,
                   runUpdateCmd: false,
                 },
-                ctx.config
+                mutationResult.config
               )
             );
+            recordContentMutation(result, ctx.markContentMutation);
 
             return {
               collections: [result],

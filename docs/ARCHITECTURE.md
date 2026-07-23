@@ -50,6 +50,20 @@ GNO is a local knowledge indexing and search system built on SQLite.
 
 ## Data Flow
 
+### Resident runtime ownership
+
+`gno serve` and `gno daemon` are mutually exclusive modes of one resident core
+per data directory. That core owns store/writer coordination, bounded readers,
+the watcher and scheduler, jobs, model manager, session/request admission,
+generation counters, and graceful shutdown. Serve adds Web UI and the full
+loopback REST API; daemon stays headless. Both mount the same stateful MCP
+surface at `/mcp` and safe lifecycle status endpoints.
+
+Stdio MCP and direct CLI commands remain truthful standalone processes. They
+reuse the same pure MCP tool/resource definitions but do not claim attachment
+to the resident listener. Every HTTP MCP session owns independent SDK
+server/transport state while borrowing resident stores and model leases.
+
 ### Ingestion Pipeline
 
 ```

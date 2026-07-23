@@ -50,6 +50,8 @@ export {
   CollectionSchema,
   type Config,
   ConfigSchema,
+  HttpGatewayConfigSchema,
+  HttpGatewayLimitsSchema,
   CONTENT_TYPE_GRAPH_HINTS,
   type ContentTypeConfig,
   type ContentTypeGraphHint,
@@ -67,3 +69,4 @@ export {
   type ScopeType,
   ScopeTypeSchema,
 } from "./types";
+export type { HttpGatewayConfig } from "./types";

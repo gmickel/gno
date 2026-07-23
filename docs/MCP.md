@@ -152,6 +152,82 @@ tools are available. Enabling writes adds 11 mutation tools, for 30 total.
 
 MCP clients prompt for tool approval. Review parameters before confirming write operations.
 
+### Resident HTTP Transport
+
+`gno serve` and `gno daemon` expose the same tools and resources at `/mcp`
+using stateful MCP 2025-11-25 Streamable HTTP. Stdio remains supported for
+clients configured with `gno mcp`.
+
+Local defaults are intentionally narrow: literal `127.0.0.1`, exact Host and
+present Origin checks for the selected port, and read-only tools. The boundary
+uses Bun's actual socket peer and ignores all forwarded-address headers.
+
+```bash
+# Safe loopback defaults
+gno serve
+gno daemon --port 3000
+
+# Explicit LAN bind: use the headless daemon; all three controls are mandatory
+gno daemon --host 0.0.0.0 \
+  --mcp-token-file ~/.config/gno/mcp-token \
+  --mcp-allowed-host workstation.local:3000 \
+  --mcp-allowed-origin https://trusted-client.example
+```
+
+`gno serve` stays loopback-only because its Web UI and REST API share the HTTP
+listener. The daemon is the supported surface for authenticated non-loopback
+MCP access.
+
+The token file is created with a random 256-bit token when an explicitly
+configured path does not exist. On POSIX it must remain mode `0600` or stricter.
+Never pass the token on the command line; clients send
+`Authorization: Bearer <token>`. Rotation, deletion, invalid contents, or
+permission relaxation invalidates authenticated sessions.
+
+Authentication does not authorize writes. Set `gateway.enableWrite: true` or
+pass `--mcp-enable-write` separately. Without that opt-in, HTTP calls to write
+tools return a redacted HTTP 403 before SDK dispatch.
+
+Requests and sessions are bounded. Boundary responses are stable and contain no
+peer, allowlist, path, token, Authorization header, query, or document content:
+401 unauthenticated, 403 forbidden, 413 oversized body, 429 pressure, and 503
+shutdown/credential/runtime unavailability. See
+[`mcp-http-error`](../spec/output-schemas/mcp-http-error.schema.json).
+
+`GET /api/resident/status` exposes the same redacted lifecycle snapshot used by
+the Web/Desktop Health Center, `gno_status`, and detached process status:
+mode, uptime, listener port, admission/shutdown state, session/request/queue
+counts, model lease/load counters, job counts, and content/index generations.
+
+### Resident client example
+
+Point Streamable HTTP clients at:
+
+```text
+http://127.0.0.1:3000/mcp
+```
+
+Start one resident owner, then connect as many isolated clients as the
+configured session limit allows:
+
+```bash
+gno serve
+# or, without the browser:
+gno daemon --no-sync-on-start
+```
+
+Each HTTP session owns its SDK server/transport state. Stores, jobs, watcher,
+model leases, and generation counters remain resident and shared. Resumable
+event delivery is not advertised in this release.
+
+### Migrating from stdio-only MCP
+
+Existing `gno mcp install` entries remain valid and continue to launch stdio.
+No forced migration: use stdio for clients that manage local subprocesses, or
+configure the resident `/mcp` URL for clients that support Streamable HTTP.
+Do not run `serve` and `daemon` together against one data directory; the second
+owner fails startup instead of opening a competing store/model lifecycle.
+
 ## Job Session Lifetime
 
 Jobs are stored in memory and tied to the MCP server process:
@@ -1022,6 +1098,10 @@ into one `gno_multi_get` call per index.
 Check index health.
 
 Returns collection counts, document totals, and health status.
+
+The structured response also includes `resident-status@1.0`. HTTP clients see
+the shared serve/daemon lifecycle. Stdio reports `mode:"stdio"`,
+`resident:false`, and no listener.
 
 ### gno_capture
 

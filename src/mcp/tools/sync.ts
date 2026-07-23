@@ -11,6 +11,7 @@ import type { ToolContext } from "../server";
 import { MCP_ERRORS } from "../../core/errors";
 import { acquireWriteLock, type WriteLockHandle } from "../../core/file-lock";
 import { JobError } from "../../core/job-manager";
+import { recordContentMutation } from "../../core/mutation-generations";
 import { normalizeCollectionName } from "../../core/validation";
 import { defaultSyncService, withContentTypeRules } from "../../ingestion";
 import { runTool, type ToolResult } from "./index";
@@ -113,20 +114,21 @@ export function handleSync(
           "sync",
           lock,
           async () => {
-            if (collection) {
-              const result = await defaultSyncService.syncCollection(
-                collection,
-                ctx.store,
-                options
-              );
-              return wrapSingleSync(result);
-            }
-
-            return defaultSyncService.syncAll(
-              ctx.collections,
-              ctx.store,
-              options
-            );
+            const result = collection
+              ? wrapSingleSync(
+                  await defaultSyncService.syncCollection(
+                    collection,
+                    ctx.store,
+                    options
+                  )
+                )
+              : await defaultSyncService.syncAll(
+                  ctx.collections,
+                  ctx.store,
+                  options
+                );
+            recordContentMutation(result, ctx.markContentMutation);
+            return result;
           }
         );
 

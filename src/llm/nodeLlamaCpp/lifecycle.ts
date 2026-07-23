@@ -35,6 +35,21 @@ interface CachedModel {
   loadedAt: number;
 }
 
+export interface ModelLease {
+  release(): void;
+}
+
+export interface ModelLifecycleStats {
+  activeLeases: number;
+  leaseAcquisitions: number;
+  leaseReleases: number;
+  loadedModels: number;
+  loadAttempts: number;
+  loadSuccesses: number;
+  loadFailures: number;
+  inflightLoads: number;
+}
+
 let invalidGpuModeWarned = false;
 let invalidBuildModeWarned = false;
 let gpuFallbackWarned = false;
@@ -134,7 +149,14 @@ export class ModelManager {
     new Map();
   private readonly inflightLoads: Map<string, Promise<LlmResult<LoadedModel>>> =
     new Map();
+  private readonly leaseDrainWaiters = new Set<() => void>();
   private readonly config: ModelConfig;
+  private activeLeases = 0;
+  private leaseAcquisitions = 0;
+  private leaseReleases = 0;
+  private loadAttempts = 0;
+  private loadSuccesses = 0;
+  private loadFailures = 0;
 
   constructor(config: ModelConfig) {
     this.config = config;
@@ -263,6 +285,7 @@ export class ModelManager {
     uri: string,
     type: ModelType
   ): Promise<LlmResult<LoadedModel>> {
+    this.loadAttempts += 1;
     const timeoutMs = this.config.loadTimeout;
     let timeoutId: ReturnType<typeof setTimeout> | null = null;
     let timedOut = false;
@@ -299,6 +322,7 @@ export class ModelManager {
 
       this.models.set(uri, cachedModel);
       this.setDisposalTimer(uri);
+      this.loadSuccesses += 1;
 
       return {
         ok: true,
@@ -310,6 +334,7 @@ export class ModelManager {
         },
       };
     } catch (e) {
+      this.loadFailures += 1;
       // Clear timeout on error
       if (timeoutId) {
         clearTimeout(timeoutId);
@@ -356,6 +381,42 @@ export class ModelManager {
     return model;
   }
 
+  /** Keep warm models alive while one request owns model-backed ports. */
+  acquireLease(): ModelLease {
+    this.activeLeases += 1;
+    this.leaseAcquisitions += 1;
+    for (const timer of this.disposalTimers.values()) clearTimeout(timer);
+    this.disposalTimers.clear();
+
+    let released = false;
+    return {
+      release: () => {
+        if (released) return;
+        released = true;
+        this.activeLeases = Math.max(0, this.activeLeases - 1);
+        this.leaseReleases += 1;
+        if (this.activeLeases === 0) {
+          for (const resolve of this.leaseDrainWaiters) resolve();
+          this.leaseDrainWaiters.clear();
+          for (const uri of this.models.keys()) this.setDisposalTimer(uri);
+        }
+      },
+    };
+  }
+
+  getLifecycleStats(): ModelLifecycleStats {
+    return {
+      activeLeases: this.activeLeases,
+      leaseAcquisitions: this.leaseAcquisitions,
+      leaseReleases: this.leaseReleases,
+      loadedModels: this.models.size,
+      loadAttempts: this.loadAttempts,
+      loadSuccesses: this.loadSuccesses,
+      loadFailures: this.loadFailures,
+      inflightLoads: this.inflightLoads.size,
+    };
+  }
+
   /**
    * Check if a model is loaded.
    */
@@ -367,6 +428,10 @@ export class ModelManager {
    * Dispose a specific model.
    */
   async dispose(uri: string): Promise<void> {
+    if (this.activeLeases > 0) {
+      this.resetDisposalTimer(uri);
+      return;
+    }
     const cached = this.models.get(uri);
     if (!cached) {
       return;
@@ -393,6 +458,11 @@ export class ModelManager {
    * Dispose all loaded models.
    */
   async disposeAll(): Promise<void> {
+    if (this.activeLeases > 0) {
+      await new Promise<void>((resolve) => this.leaseDrainWaiters.add(resolve));
+    }
+    await Promise.allSettled(this.inflightLoads.values());
+
     // Clear all timers
     for (const timer of this.disposalTimers.values()) {
       clearTimeout(timer);
@@ -429,6 +499,7 @@ export class ModelManager {
   // ───────────────────────────────────────────────────────────────────────────
 
   private setDisposalTimer(uri: string): void {
+    if (this.activeLeases > 0) return;
     const timer = setTimeout(() => {
       this.dispose(uri).catch(() => {
         // Ignore disposal errors in timer callback

@@ -36,6 +36,7 @@ All endpoints are JSON-based and run entirely on your machine.
 | :----------------------- | :----- | :---------------------------------------------------------- |
 | `/api/health`            | GET    | Health check                                                |
 | `/api/status`            | GET    | Index statistics, onboarding, health, background, bootstrap |
+| `/api/resident/status`   | GET    | Redacted resident lifecycle and bounded counters            |
 | `/api/capabilities`      | GET    | Available features                                          |
 | `/api/collections`       | GET    | List collections                                            |
 | `/api/connectors`        | GET    | Detect in-app connector install state                       |
@@ -87,7 +88,13 @@ All endpoints are JSON-based and run entirely on your machine.
 
 ## Authentication & Security
 
-The API binds to `127.0.0.1` only and is not accessible from the network.
+The full browser REST API is served by `gno serve`, which binds to
+`127.0.0.1` only. `gno daemon` exposes `/mcp` and the redacted
+`/api/resident/status`; full `/api/status` is available only on loopback because
+it includes local index and configuration details. An explicit non-loopback
+daemon bind requires the MCP token file plus exact Host and Origin allowlists.
+The resident status projection never exposes tokens, paths, queries, content,
+or caller identities.
 
 ### CSRF Protection
 
@@ -154,6 +161,36 @@ Returns index statistics plus first-run onboarding, health-center state, backgro
 
 ```json
 {
+  "resident": {
+    "schemaVersion": "1.0",
+    "mode": "serve",
+    "resident": true,
+    "uptimeSeconds": 42,
+    "listenerPort": 3000,
+    "admission": { "state": "accepting", "activeRequests": 1 },
+    "shutdown": { "state": "none" },
+    "transport": {
+      "activeRequests": 1,
+      "activeSessions": 2,
+      "queuedRequests": 0,
+      "maxConcurrentRequests": 64,
+      "maxQueuedRequests": 16,
+      "maxSessions": 32
+    },
+    "readers": { "active": 0, "queued": 0, "limit": 8, "maxQueued": 64 },
+    "models": {
+      "activeLeases": 0,
+      "leaseAcquisitions": 4,
+      "leaseReleases": 4,
+      "loadedModels": 2,
+      "loadAttempts": 2,
+      "loadSuccesses": 2,
+      "loadFailures": 0,
+      "inflightLoads": 0
+    },
+    "jobs": { "active": 0, "recent": 1, "failed": 0 },
+    "generations": { "content": 7, "index": 5 }
+  },
   "indexName": "default",
   "configPath": "/Users/you/.config/gno/index.yml",
   "dbPath": "/Users/you/.local/share/gno/index-default.sqlite",
@@ -392,6 +429,25 @@ fresh index and background state.
 
 ```bash
 curl http://localhost:3000/api/status | jq
+```
+
+---
+
+### Resident Lifecycle Status
+
+```http
+GET /api/resident/status
+```
+
+Returns only the `resident-status@1.0` object shown under
+`/api/status.resident`. The snapshot is safe for Web/Desktop/process-status
+consumers: no config/data paths, token material, request queries, document
+content, or caller/session identity. Detached `gno serve|daemon --status --json`
+copies this object on a best-effort 500 ms listener read and returns
+`resident:null` when that listener snapshot is unavailable.
+
+```bash
+curl http://127.0.0.1:3000/api/resident/status | jq
 ```
 
 ---

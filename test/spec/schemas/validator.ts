@@ -13,6 +13,7 @@ async function loadAllSchemas(): Promise<void> {
   }
 
   const schemaFiles = [
+    "resident-status",
     "search-result",
     "search-results",
     "status",
@@ -28,6 +29,7 @@ async function loadAllSchemas(): Promise<void> {
     "mcp-remove-result",
     "mcp-job-status",
     "mcp-job-list",
+    "mcp-http-error",
     "process-status",
     "activation-verification",
     "context-capsule-v1",

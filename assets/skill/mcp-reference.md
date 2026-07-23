@@ -72,6 +72,27 @@ Do not shorten a generated entry to `gno mcp`.
 gno mcp status
 ```
 
+## Resident Streamable HTTP
+
+`gno serve` and `gno daemon` expose the same read-only-by-default MCP surface at
+`http://127.0.0.1:3000/mcp`. Use this URL for clients that support Streamable
+HTTP and benefit from shared warm stores, jobs, watchers, and model leases.
+Existing `gno mcp install` stdio entries remain valid.
+
+Only `gno daemon` supports an explicit non-loopback bind. It requires a
+restrictive bearer-token file plus exact Host and Origin allowlists.
+Authentication does not grant writes; `gateway.enableWrite` or
+`--mcp-enable-write` is a separate opt-in. `gno serve` always remains
+loopback-only.
+
+Inspect the safe lifecycle without exposing paths or secrets:
+
+```bash
+curl http://127.0.0.1:3000/api/resident/status
+gno serve --status --json
+gno daemon --status --json
+```
+
 ## Retrieval Order
 
 For normal questions, start with `gno_query`, then read targeted snippets with

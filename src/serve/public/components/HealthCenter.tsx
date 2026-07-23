@@ -1,8 +1,10 @@
 import {
+  ActivityIcon,
   AlertCircleIcon,
   CheckCircle2Icon,
   HardDriveIcon,
   Loader2Icon,
+  ServerIcon,
   SparklesIcon,
 } from "lucide-react";
 
@@ -24,6 +26,7 @@ import {
 
 interface HealthCenterProps {
   health: AppStatusResponse["health"];
+  resident: AppStatusResponse["resident"];
   onAction: (action: HealthActionKind) => void;
   busyAction?: HealthActionKind | null;
 }
@@ -52,6 +55,7 @@ function getStatusLabel(status: HealthCheck["status"]): string {
 
 export function HealthCenter({
   health,
+  resident,
   onAction,
   busyAction,
 }: HealthCenterProps) {
@@ -83,7 +87,76 @@ export function HealthCenter({
         </Badge>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+      <div className="rounded-lg border border-border/40 bg-muted/10 px-4 py-3">
+        <div className="mb-3 flex items-center gap-2">
+          <ServerIcon className="size-4 text-primary" />
+          <h3 className="font-mono text-[10px] text-muted-foreground uppercase tracking-[0.15em]">
+            {resident.resident ? "Resident runtime" : "Standalone runtime"}
+          </h3>
+          <span className="ml-auto rounded bg-primary/12 px-1.5 py-0.5 font-mono text-[10px] text-primary tabular-nums">
+            {resident.mode}
+          </span>
+        </div>
+        <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm sm:grid-cols-4 lg:grid-cols-6">
+          <div>
+            <dt className="font-mono text-[9px] text-muted-foreground/50 uppercase">
+              Uptime
+            </dt>
+            <dd className="font-mono tabular-nums">
+              {resident.uptimeSeconds === null
+                ? "standalone"
+                : `${resident.uptimeSeconds}s`}
+            </dd>
+          </div>
+          <div>
+            <dt className="font-mono text-[9px] text-muted-foreground/50 uppercase">
+              Listener
+            </dt>
+            <dd className="font-mono tabular-nums">
+              {resident.listenerPort ?? "none"}
+            </dd>
+          </div>
+          <div>
+            <dt className="font-mono text-[9px] text-muted-foreground/50 uppercase">
+              Sessions
+            </dt>
+            <dd className="font-mono tabular-nums">
+              {resident.transport.activeSessions}
+            </dd>
+          </div>
+          <div>
+            <dt className="font-mono text-[9px] text-muted-foreground/50 uppercase">
+              Requests
+            </dt>
+            <dd className="font-mono tabular-nums">
+              {resident.transport.activeRequests}
+              {resident.transport.queuedRequests > 0
+                ? ` +${resident.transport.queuedRequests} queued`
+                : ""}
+            </dd>
+          </div>
+          <div>
+            <dt className="font-mono text-[9px] text-muted-foreground/50 uppercase">
+              Models
+            </dt>
+            <dd className="font-mono tabular-nums">
+              {resident.models.loadedModels} warm ·{" "}
+              {resident.models.activeLeases} leased
+            </dd>
+          </div>
+          <div>
+            <dt className="font-mono text-[9px] text-muted-foreground/50 uppercase">
+              Admission
+            </dt>
+            <dd className="flex items-center gap-1.5 font-mono">
+              <ActivityIcon className="size-3 text-primary" />
+              {resident.admission.state}
+            </dd>
+          </div>
+        </dl>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {health.checks.map((check) => {
           const isBusy = busyAction === check.actionKind;
 

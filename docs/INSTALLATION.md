@@ -31,7 +31,9 @@ passed. Semantic models may remain pending without blocking lexical search.
 
 Release packages are smoke-tested with `bun run test:package`, which installs
 the packed npm tarball into isolated temp paths and verifies packaged
-`gno --version`, `gno --help`, and `gno doctor --json` before publish.
+`gno --version`, `gno --help`, `gno doctor --json`, and the production resident
+gateway before publish. The gateway proof covers two clients, stdio/HTTP
+parity, safe lifecycle status, security rejection, restart, and shutdown.
 
 If you want a guided setup after install, run `gno serve` and open `http://localhost:3000`. The first-run dashboard can add a folder, explain health, show bootstrap/runtime status, and trigger model downloads without more terminal work.
 

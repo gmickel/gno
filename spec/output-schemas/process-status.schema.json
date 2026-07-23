@@ -12,6 +12,7 @@
     "version",
     "started_at",
     "uptime_seconds",
+    "resident",
     "pid_file",
     "log_file",
     "log_size_bytes"
@@ -30,7 +31,7 @@
       "type": ["integer", "null"],
       "minimum": 1,
       "maximum": 65535,
-      "description": "Listening port (serve only). Always null for daemon."
+      "description": "Resident HTTP listener port, or null when no usable live process was found."
     },
     "cmd": {
       "type": "string",
@@ -51,6 +52,13 @@
       "minimum": 0,
       "description": "Seconds since started_at, computed at status-read time; null when not running"
     },
+    "resident": {
+      "anyOf": [
+        { "$ref": "gno://schemas/resident-status@1.0" },
+        { "type": "null" }
+      ],
+      "description": "Best-effort live redacted resident lifecycle snapshot, or null when unavailable."
+    },
     "pid_file": {
       "type": "string",
       "description": "Absolute path to the pid-file that was consulted"
@@ -66,16 +74,6 @@
     }
   },
   "allOf": [
-    {
-      "description": "daemon never exposes a port",
-      "if": {
-        "properties": { "cmd": { "const": "daemon" } },
-        "required": ["cmd"]
-      },
-      "then": {
-        "properties": { "port": { "type": "null" } }
-      }
-    },
     {
       "description": "when running, pid/version/started_at/uptime_seconds must all be populated",
       "if": {
@@ -103,13 +101,12 @@
       }
     },
     {
-      "description": "a live serve must report the listening port as an integer",
+      "description": "a live resident process must report its HTTP listening port as an integer",
       "if": {
         "properties": {
-          "cmd": { "const": "serve" },
           "running": { "const": true }
         },
-        "required": ["cmd", "running"]
+        "required": ["running"]
       },
       "then": {
         "properties": {

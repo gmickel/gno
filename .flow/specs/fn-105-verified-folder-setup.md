@@ -10,7 +10,7 @@ Provide one reliable command that turns a folder into a usable GNO collection: `
 
 Build an idempotent setup orchestrator over existing init, collection add, index, model bootstrap, connector install/status, and the `fn-94` activation verifier. Stages are resumable and receipt-backed: preflight, config/collection, lexical index, retrieval proof, semantic bootstrap, connector verification, final summary.
 
-Never duplicate underlying collection/index/model logic. Derive a safe collection name with collision handling, preserve existing configuration, and use the resident runtime when available. A versioned setup receipt records inputs, stage state, generated paths, fingerprints, pending background work, and rollback guidance.
+Never duplicate underlying collection/index/model logic. Derive a safe collection name with collision handling and preserve existing configuration. A setup invoked inside a resident-owned surface may use its runtime; direct `gno setup` remains standalone and must never auto-attach to an existing resident process. A versioned setup receipt records inputs, stage state, generated paths, fingerprints, pending background work, and rollback guidance. <!-- Updated by plan-sync (cross-spec): fn-99-resident-local-context-gateway.5 proved direct CLI is a standalone lifecycle; resident status is observational, not an attachment protocol -->
 
 ## API Contracts
 <!-- scope: technical -->

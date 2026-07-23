@@ -26,6 +26,7 @@ import {
 } from "./activation-health";
 import { getConnectorVerificationTargets } from "./connectors";
 import { downloadState, type ServerContext } from "./context";
+import { createStandaloneResidentStatus } from "./resident-status";
 
 const GIGABYTE = 1024 * 1024 * 1024;
 const DISK_WARN_BYTES = 4 * GIGABYTE;
@@ -71,6 +72,7 @@ export interface StatusBuildDeps {
   listSuggestedCollections?: () => Promise<SuggestedCollection[]>;
   buildActivation?: typeof buildActivationStatus;
   listConnectorTargets?: typeof getConnectorVerificationTargets;
+  getResidentStatus?: () => AppStatusResponse["resident"];
 }
 
 function formatBytes(bytes: number): string {
@@ -714,6 +716,9 @@ export async function buildAppStatus(
         : "GNO works, but a few issues still need attention before it feels reliable.";
 
   return {
+    resident:
+      deps.getResidentStatus?.() ??
+      createStandaloneResidentStatus("direct-cli"),
     indexName: status.indexName,
     configPath: status.configPath,
     dbPath: status.dbPath,

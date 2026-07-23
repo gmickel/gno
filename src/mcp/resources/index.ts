@@ -92,6 +92,9 @@ function formatResourceContent(
  * Register gno:// resources with the MCP server.
  */
 export function registerResources(server: McpServer, ctx: ToolContext): void {
+  const withSnapshot = <T>(operation: () => Promise<T>): Promise<T> =>
+    ctx.runWithSnapshot?.(operation) ?? operation();
+
   // Resource template for gno://{collection}/{path} URIs
   const template = new ResourceTemplate(`${URI_PREFIX}{collection}/{+path}`, {
     list: async () => {
@@ -113,101 +116,103 @@ export function registerResources(server: McpServer, ctx: ToolContext): void {
   });
 
   // Register the template-based resource handler
-  server.resource("gno-document", template, {}, async (uri, _variables) => {
-    // Check shutdown before acquiring mutex
-    if (ctx.isShuttingDown()) {
-      throw new Error("Server is shutting down");
-    }
-
-    // Serialize resource reads same as tools (prevent concurrent DB access + shutdown race)
-    const release = await ctx.toolMutex.acquire();
-    try {
-      // Use parseUri for proper URL decoding (handles %20, etc.)
-      const parsed = parseUri(uri.href);
-      if (!parsed) {
-        throw new Error(`Invalid gno:// URI: ${uri.href}`);
+  server.resource("gno-document", template, {}, (uri, _variables) =>
+    withSnapshot(async () => {
+      // Check shutdown before acquiring mutex
+      if (ctx.isShuttingDown()) {
+        throw new Error("Server is shutting down");
       }
 
-      const resolution = resolveEffectiveIndex([uri.href], ctx.indexName);
-      if (!resolution.ok) {
-        throw new Error(resolution.error);
-      }
-      const scoped = await openScopedIndexStore({
-        activeStore: ctx.store,
-        activeIndexName: ctx.indexName,
-        requestedIndexName: resolution.value.indexName,
-        config: ctx.config,
-        configPath: ctx.actualConfigPath,
-      });
-
+      // Serialize resource reads same as tools (prevent concurrent DB access + shutdown race)
+      const release = await ctx.toolMutex.acquire();
       try {
-        const { collection, path } = parsed;
-
-        // Validate collection exists
-        const collectionExists = ctx.collections.some(
-          (c) => c.name === collection
-        );
-        if (!collectionExists) {
-          throw new Error(`Collection not found: ${collection}`);
+        // Use parseUri for proper URL decoding (handles %20, etc.)
+        const parsed = parseUri(uri.href);
+        if (!parsed) {
+          throw new Error(`Invalid gno:// URI: ${uri.href}`);
         }
 
-        // Look up document (path is properly decoded by parseUri)
-        const docResult = await scoped.store.getDocument(collection, path);
-        if (!docResult.ok) {
-          throw new Error(
-            `Failed to lookup document: ${docResult.error.message}`
+        const resolution = resolveEffectiveIndex([uri.href], ctx.indexName);
+        if (!resolution.ok) {
+          throw new Error(resolution.error);
+        }
+        const scoped = await openScopedIndexStore({
+          activeStore: ctx.store,
+          activeIndexName: ctx.indexName,
+          requestedIndexName: resolution.value.indexName,
+          config: ctx.config,
+          configPath: ctx.actualConfigPath,
+        });
+
+        try {
+          const { collection, path } = parsed;
+
+          // Validate collection exists
+          const collectionExists = ctx.collections.some(
+            (c) => c.name === collection
           );
-        }
+          if (!collectionExists) {
+            throw new Error(`Collection not found: ${collection}`);
+          }
 
-        const doc = docResult.value;
-        if (!doc) {
-          throw new Error(`Document not found: ${uri.href}`);
-        }
+          // Look up document (path is properly decoded by parseUri)
+          const docResult = await scoped.store.getDocument(collection, path);
+          if (!docResult.ok) {
+            throw new Error(
+              `Failed to lookup document: ${docResult.error.message}`
+            );
+          }
 
-        // Get content
-        if (!doc.mirrorHash) {
-          throw new Error(`Document has no indexed content: ${uri.href}`);
-        }
+          const doc = docResult.value;
+          if (!doc) {
+            throw new Error(`Document not found: ${uri.href}`);
+          }
 
-        const contentResult = await scoped.store.getContent(doc.mirrorHash);
-        if (!contentResult.ok) {
-          throw new Error(
-            `Failed to read content: ${contentResult.error.message}`
+          // Get content
+          if (!doc.mirrorHash) {
+            throw new Error(`Document has no indexed content: ${uri.href}`);
+          }
+
+          const contentResult = await scoped.store.getContent(doc.mirrorHash);
+          if (!contentResult.ok) {
+            throw new Error(
+              `Failed to read content: ${contentResult.error.message}`
+            );
+          }
+
+          const content = contentResult.value ?? "";
+
+          // Format with header and line numbers
+          const formattedContent = formatResourceContent(
+            doc,
+            content,
+            ctx,
+            scoped.indexName
           );
+
+          // Build canonical URI
+          const canonicalUri = decorateUriForIndex(
+            buildUri(collection, path),
+            scoped.indexName
+          );
+
+          return {
+            contents: [
+              {
+                uri: canonicalUri,
+                mimeType: "text/markdown",
+                text: formattedContent,
+              },
+            ],
+          };
+        } finally {
+          await scoped.close();
         }
-
-        const content = contentResult.value ?? "";
-
-        // Format with header and line numbers
-        const formattedContent = formatResourceContent(
-          doc,
-          content,
-          ctx,
-          scoped.indexName
-        );
-
-        // Build canonical URI
-        const canonicalUri = decorateUriForIndex(
-          buildUri(collection, path),
-          scoped.indexName
-        );
-
-        return {
-          contents: [
-            {
-              uri: canonicalUri,
-              mimeType: "text/markdown",
-              text: formattedContent,
-            },
-          ],
-        };
       } finally {
-        await scoped.close();
+        release();
       }
-    } finally {
-      release();
-    }
-  });
+    })
+  );
 
   // Register gno://tags resource for listing tags
   // Use ResourceTemplate with RFC6570 query expansion for proper routing
@@ -231,65 +236,67 @@ export function registerResources(server: McpServer, ctx: ToolContext): void {
     "gno-tags",
     tagsTemplate,
     { mimeType: "application/json" },
-    async (uri) => {
-      // Check shutdown before acquiring mutex
-      if (ctx.isShuttingDown()) {
-        throw new Error("Server is shutting down");
-      }
-
-      const release = await ctx.toolMutex.acquire();
-      try {
-        // Parse query params from URI
-        const url = new URL(uri.href);
-        const collectionParam = url.searchParams.get("collection") || undefined;
-        const prefixParam = url.searchParams.get("prefix") || undefined;
-
-        // Normalize and validate collection (case-insensitive)
-        let collection: string | undefined;
-        if (collectionParam) {
-          collection = normalizeCollectionName(collectionParam);
-          const exists = ctx.collections.some(
-            (c) => c.name.toLowerCase() === collection
-          );
-          if (!exists) {
-            throw new Error(
-              `${MCP_ERRORS.NOT_FOUND.code}: Collection not found: ${collectionParam}`
-            );
-          }
+    (uri) =>
+      withSnapshot(async () => {
+        // Check shutdown before acquiring mutex
+        if (ctx.isShuttingDown()) {
+          throw new Error("Server is shutting down");
         }
 
-        // Normalize and validate prefix
-        let prefix: string | undefined;
-        if (prefixParam) {
-          const trimmed = prefixParam.trim().replace(/\/+$/, "");
-          if (trimmed.length > 0) {
-            prefix = normalizeTag(trimmed);
-            if (!validateTag(prefix)) {
+        const release = await ctx.toolMutex.acquire();
+        try {
+          // Parse query params from URI
+          const url = new URL(uri.href);
+          const collectionParam =
+            url.searchParams.get("collection") || undefined;
+          const prefixParam = url.searchParams.get("prefix") || undefined;
+
+          // Normalize and validate collection (case-insensitive)
+          let collection: string | undefined;
+          if (collectionParam) {
+            collection = normalizeCollectionName(collectionParam);
+            const exists = ctx.collections.some(
+              (c) => c.name.toLowerCase() === collection
+            );
+            if (!exists) {
               throw new Error(
-                `${MCP_ERRORS.INVALID_INPUT.code}: Invalid tag prefix "${prefixParam}"`
+                `${MCP_ERRORS.NOT_FOUND.code}: Collection not found: ${collectionParam}`
               );
             }
           }
-        }
 
-        // Get tag counts
-        const result = await ctx.store.getTagCounts({ collection, prefix });
-        if (!result.ok) {
-          throw new Error(`Failed to get tags: ${result.error.message}`);
-        }
+          // Normalize and validate prefix
+          let prefix: string | undefined;
+          if (prefixParam) {
+            const trimmed = prefixParam.trim().replace(/\/+$/, "");
+            if (trimmed.length > 0) {
+              prefix = normalizeTag(trimmed);
+              if (!validateTag(prefix)) {
+                throw new Error(
+                  `${MCP_ERRORS.INVALID_INPUT.code}: Invalid tag prefix "${prefixParam}"`
+                );
+              }
+            }
+          }
 
-        return {
-          contents: [
-            {
-              uri: uri.href,
-              mimeType: "application/json",
-              text: formatTagsContent(result.value, collection, prefix),
-            },
-          ],
-        };
-      } finally {
-        release();
-      }
-    }
+          // Get tag counts
+          const result = await ctx.store.getTagCounts({ collection, prefix });
+          if (!result.ok) {
+            throw new Error(`Failed to get tags: ${result.error.message}`);
+          }
+
+          return {
+            contents: [
+              {
+                uri: uri.href,
+                mimeType: "application/json",
+                text: formatTagsContent(result.value, collection, prefix),
+              },
+            ],
+          };
+        } finally {
+          release();
+        }
+      })
   );
 }

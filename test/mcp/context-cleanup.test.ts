@@ -8,7 +8,7 @@ import {
 } from "../../src/mcp/tools/context";
 
 describe("Context Capsule MCP model ownership", () => {
-  test("attempts every cleanup and suppresses cleanup failures", async () => {
+  test("attempts every port cleanup and releases the request lease", async () => {
     const calls: string[] = [];
     await disposeContextModelOwners(
       [
@@ -25,16 +25,15 @@ describe("Context Capsule MCP model ownership", () => {
         },
       ],
       {
-        async dispose() {
-          calls.push("manager");
-          throw new Error("manager cleanup failed");
+        release() {
+          calls.push("lease");
         },
       }
     );
-    expect(calls).toEqual(["embed", "rerank", "manager"]);
+    expect(calls).toEqual(["embed", "rerank", "lease"]);
   });
 
-  test("waits for every port cleanup before disposing the model manager", async () => {
+  test("waits for every port cleanup before releasing the model lease", async () => {
     const calls: string[] = [];
     let releaseEmbed!: () => void;
     let releaseRerank!: () => void;
@@ -62,8 +61,8 @@ describe("Context Capsule MCP model ownership", () => {
         },
       ],
       {
-        async dispose() {
-          calls.push("manager");
+        release() {
+          calls.push("lease");
         },
       }
     );
@@ -74,7 +73,7 @@ describe("Context Capsule MCP model ownership", () => {
     releaseEmbed();
     await Promise.resolve();
     await Promise.resolve();
-    expect(calls).not.toContain("manager");
+    expect(calls).not.toContain("lease");
     releaseRerank();
     await cleanup;
     expect(calls).toEqual([
@@ -82,7 +81,7 @@ describe("Context Capsule MCP model ownership", () => {
       "rerank:start",
       "embed:end",
       "rerank:end",
-      "manager",
+      "lease",
     ]);
   });
 
@@ -98,6 +97,14 @@ describe("Context Capsule MCP model ownership", () => {
       },
     } as unknown as ToolContext;
     const factory = {
+      acquireModelLease() {
+        calls.push("acquire-lease");
+        return {
+          release() {
+            calls.push("release-lease");
+          },
+        };
+      },
       async createEmbeddingPort() {
         calls.push("create-embed");
         return {
@@ -128,9 +135,6 @@ describe("Context Capsule MCP model ownership", () => {
         calls.push("create-rerank");
         throw new Error("rerank must not be reached");
       },
-      async dispose() {
-        calls.push("dispose-manager");
-      },
     };
 
     const error = await createMcpModelPorts(context, undefined, factory).then(
@@ -139,10 +143,11 @@ describe("Context Capsule MCP model ownership", () => {
     );
     expect(error).toBe(initError);
     expect(calls).toEqual([
+      "acquire-lease",
       "create-embed",
       "init-embed",
       "dispose-embed",
-      "dispose-manager",
+      "release-lease",
     ]);
   });
 });

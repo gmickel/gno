@@ -46,6 +46,7 @@ export interface JobRecord {
   result?: SyncResult;
   typedResult?: JobResult;
   error?: string;
+  progress?: { current: number; total: number; currentFile?: string };
   serverInstanceId: string;
 }
 
@@ -146,6 +147,24 @@ export class JobManager {
   getJob(jobId: string): JobRecord | undefined {
     this.#cleanupExpiredJobs();
     return this.#jobs.get(jobId);
+  }
+
+  getActiveJob(): JobRecord | null {
+    if (!this.#activeJobId) return null;
+    return this.#jobs.get(this.#activeJobId) ?? null;
+  }
+
+  updateJobProgress(
+    jobId: string,
+    progress: { current: number; total: number; currentFile?: string }
+  ): void {
+    const job = this.#jobs.get(jobId);
+    if (job) job.progress = progress;
+  }
+
+  clear(): void {
+    this.#jobs.clear();
+    this.#activeJobId = null;
   }
 
   listJobs(limit: number = 10): { active: JobRecord[]; recent: JobRecord[] } {

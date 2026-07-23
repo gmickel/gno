@@ -211,6 +211,12 @@ Semantic and connector stages remain independent; passive status never starts a
 model runtime or connector process. `gno status` still exits 0 when activation
 is unhealthy so scripts can inspect the structured state.
 
+JSON output also includes `resident` using
+`gno://schemas/resident-status@1.0`. Direct `gno status` is intentionally
+truthful about its lifecycle: `mode:"direct-cli"`, `resident:false`, no
+listener, and zero resident counters. It does not imply attachment to a live
+`serve` or `daemon`.
+
 Local activation fingerprints use active-document identifiers and source/mirror
 hashes plus schema, tokenizer, and owned FTS synchronization metadata. Passive
 status never selects or compares stored markdown or FTS bodies. On a receipt
@@ -2535,28 +2541,60 @@ gno graph --limit 500 --edge-limit 2000 --json
 
 Start web UI server for visual search and browse.
 
+Both resident commands read the optional root `gateway` config. CLI gateway
+flags override the corresponding scalar/list values for that invocation:
+
+```yaml
+gateway:
+  host: 127.0.0.1
+  tokenFile: ~/.config/gno/mcp-token
+  allowedHosts: [127.0.0.1:3000, localhost:3000]
+  allowedOrigins: [http://127.0.0.1:3000, http://localhost:3000]
+  enableWrite: false
+  limits:
+    maxBodyBytes: 1048576
+    maxRequestsPerMinute: 120
+    maxConcurrentRequests: 64
+    maxQueuedRequests: 16
+    maxSessions: 32
+    sessionIdleTimeoutMs: 300000
+```
+
+The token file is generated only when a path is explicitly configured. A
+wildcard/non-loopback `host` requires a token file plus non-empty exact Host and
+Origin allowlists; startup otherwise exits 2 without opening a listener.
+`gno serve` additionally rejects non-loopback hosts because its Web UI and REST
+API share the listener; use `gno daemon` for authenticated non-loopback MCP.
+
 **Synopsis:**
 
 ```bash
-gno serve [--port <num>] [--detach] [--pid-file <path>] [--log-file <path>]
+gno serve [--port <num>] [gateway-options] [--detach] [--pid-file <path>] [--log-file <path>]
 gno serve --status [--json]
 gno serve --stop
 ```
 
 **Options:**
 
-| Option              | Type    | Default            | Description                                                      |
-| ------------------- | ------- | ------------------ | ---------------------------------------------------------------- |
-| `-p, --port`        | number  | 3000               | Port to listen on                                                |
-| `--detach`          | boolean | false              | Self-spawn a detached child; parent prints `{pid,url}` and exits |
-| `--pid-file <path>` | string  | `{data}/serve.pid` | Override pid-file location (JSON metadata, absolute path)        |
-| `--log-file <path>` | string  | `{data}/serve.log` | Override log-file location (append mode)                         |
-| `--status`          | boolean | false              | Read pid-file, check liveness, print status (JSON with `--json`) |
-| `--stop`            | boolean | false              | Graceful SIGTERM with 10s timeout → SIGKILL fallback             |
+| Option                 | Type    | Default                  | Description                                                      |
+| ---------------------- | ------- | ------------------------ | ---------------------------------------------------------------- |
+| `-p, --port`           | number  | 3000                     | Port to listen on                                                |
+| `--detach`             | boolean | false                    | Self-spawn a detached child; parent prints `{pid,url}` and exits |
+| `--pid-file <path>`    | string  | `{data}/serve.pid`       | Override pid-file location (JSON metadata, absolute path)        |
+| `--log-file <path>`    | string  | `{data}/serve.log`       | Override log-file location (append mode)                         |
+| `--status`             | boolean | false                    | Read pid-file, check liveness, print status (JSON with `--json`) |
+| `--stop`               | boolean | false                    | Graceful SIGTERM with 10s timeout → SIGKILL fallback             |
+| `--host <address>`     | string  | `127.0.0.1`              | Loopback listen address (Web/REST remains local-only)            |
+| `--mcp-token-file`     | string  | config                   | Restrictive bearer-token file                                    |
+| `--mcp-allowed-host`   | string  | config/loopback defaults | Exact Host value; repeatable                                     |
+| `--mcp-allowed-origin` | string  | config/loopback defaults | Exact Origin; repeatable                                         |
+| `--mcp-enable-write`   | boolean | false                    | Separately authorize HTTP MCP mutation tools                     |
 
 `--detach`, `--status`, and `--stop` are mutually exclusive. Passing more than one produces a `VALIDATION` error (exit 1).
 
-Default paths live under `resolveDirs().data` (honours `GNO_DATA_DIR`). Only one serve instance per `GNO_DATA_DIR`; double-start is blocked.
+Default paths live under `resolveDirs().data` (honours `GNO_DATA_DIR`). Only one
+resident owner (`serve` or `daemon`) may use a `GNO_DATA_DIR`; any second start
+is blocked.
 
 **Behavior:**
 
@@ -2565,8 +2603,13 @@ Default paths live under `resolveDirs().data` (honours `GNO_DATA_DIR`). Only one
   before the CLI exits; the CLI bootstrap does not race the command's handler
 - Sets CSP header: `default-src 'self'; script-src 'self'`
 - Health check at `/api/health` returns `{ok:true}`
+- Safe lifecycle status at `/api/resident/status` and the `resident` member of
+  `/api/status` derive from the same `resident-status@1.0` snapshot
+- Mounts stateful Streamable HTTP MCP at `/mcp` only after the fail-closed
+  actual-peer, Host, Origin, bearer, body, rate, request, queue, and session
+  boundary initializes
 - On `--detach`: forks a detached child with stdio redirected to `--log-file`, writes pid-file JSON (`{pid, port, cmd:"serve", version, started_at}`), prints `{pid, url}` on stdout, exits 0
-- On `--status`: output matches the [process-status schema](./output-schemas/process-status.schema.json). Liveness via `process.kill(pid, 0)`; stale pid-files (ESRCH) are reported as `running:false`
+- On `--status`: output matches the [process-status schema](./output-schemas/process-status.schema.json). Liveness via `process.kill(pid, 0)`; stale pid-files (ESRCH) are reported as `running:false`. Live status best-effort reads the same redacted `resident-status@1.0` snapshot from the recorded listener.
 - On `--stop`: sends SIGTERM, polls every 100ms for up to 10s, falls back to SIGKILL, polls 2s more, unlinks pid-file if the process cleaned up after itself
 - **Windows**: `--detach` is unsupported and returns a `VALIDATION` error pointing to WSL. `--status` / `--stop` / `--pid-file` / `--log-file` remain parseable but have nothing to manage.
 
@@ -2605,25 +2648,33 @@ Start a headless long-running watcher process for continuous indexing.
 **Synopsis:**
 
 ```bash
-gno daemon [--no-sync-on-start] [--detach] [--pid-file <path>] [--log-file <path>]
+gno daemon [--port <num>] [--no-sync-on-start] [gateway-options] [--detach] [--pid-file <path>] [--log-file <path>]
 gno daemon --status [--json]
 gno daemon --stop
 ```
 
 **Options:**
 
-| Option               | Type    | Default             | Description                                                      |
-| -------------------- | ------- | ------------------- | ---------------------------------------------------------------- |
-| `--no-sync-on-start` | boolean | false               | Skip initial sync; only watch future file changes                |
-| `--detach`           | boolean | false               | Self-spawn a detached child; parent prints `{pid}` and exits     |
-| `--pid-file <path>`  | string  | `{data}/daemon.pid` | Override pid-file location (JSON metadata, absolute path)        |
-| `--log-file <path>`  | string  | `{data}/daemon.log` | Override log-file location (append mode)                         |
-| `--status`           | boolean | false               | Read pid-file, check liveness, print status (JSON with `--json`) |
-| `--stop`             | boolean | false               | Graceful SIGTERM with 10s timeout → SIGKILL fallback             |
+| Option                 | Type    | Default                  | Description                                                      |
+| ---------------------- | ------- | ------------------------ | ---------------------------------------------------------------- |
+| `--no-sync-on-start`   | boolean | false                    | Skip initial sync; only watch future file changes                |
+| `-p, --port <num>`     | number  | 3000                     | Headless HTTP MCP gateway port                                   |
+| `--detach`             | boolean | false                    | Self-spawn a detached child; parent prints `{pid}` and exits     |
+| `--pid-file <path>`    | string  | `{data}/daemon.pid`      | Override pid-file location (JSON metadata, absolute path)        |
+| `--log-file <path>`    | string  | `{data}/daemon.log`      | Override log-file location (append mode)                         |
+| `--status`             | boolean | false                    | Read pid-file, check liveness, print status (JSON with `--json`) |
+| `--stop`               | boolean | false                    | Graceful SIGTERM with 10s timeout → SIGKILL fallback             |
+| `--host <address>`     | string  | `127.0.0.1`              | HTTP listen address                                              |
+| `--mcp-token-file`     | string  | config                   | Restrictive bearer-token file                                    |
+| `--mcp-allowed-host`   | string  | config/loopback defaults | Exact Host value; repeatable                                     |
+| `--mcp-allowed-origin` | string  | config/loopback defaults | Exact Origin; repeatable                                         |
+| `--mcp-enable-write`   | boolean | false                    | Separately authorize HTTP MCP mutation tools                     |
 
 `--detach`, `--status`, and `--stop` are mutually exclusive. Passing more than one produces a `VALIDATION` error (exit 1).
 
-Default paths live under `resolveDirs().data` (honours `GNO_DATA_DIR`). Only one daemon instance per `GNO_DATA_DIR`; double-start is blocked.
+Default paths live under `resolveDirs().data` (honours `GNO_DATA_DIR`). Only one
+resident owner (`serve` or `daemon`) may use a `GNO_DATA_DIR`; any second start
+is blocked.
 
 **Behavior:**
 
@@ -2633,11 +2684,21 @@ Default paths live under `resolveDirs().data` (honours `GNO_DATA_DIR`). Only one
 - Runs an initial sync by default
 - Triggers embedding after initial sync completes
 - Runs in the foreground until `SIGINT` / `SIGTERM`
-- Does not start the web server or open any port
-- On `--detach`: forks a detached child with stdio redirected to `--log-file`, writes pid-file JSON (`{pid, cmd:"daemon", version, started_at}`, no `port`), prints `{pid}` on stdout, exits 0
-- On `--status`: output matches the [process-status schema](./output-schemas/process-status.schema.json); `port` is always `null`
+- Starts a headless `/mcp` Streamable HTTP listener; it does not serve the Web UI
+- Exposes the same safe REST lifecycle snapshot at `/api/resident/status`;
+  resident-aware app status at `/api/status` is loopback-only because it
+  includes local index and configuration details
+- On `--detach`: forks a detached child with stdio redirected to `--log-file`, writes pid-file JSON including the MCP gateway `port`, prints `{pid}` on stdout, exits 0
+- On `--status`: output matches the [process-status schema](./output-schemas/process-status.schema.json), including the MCP gateway port and a best-effort copy of the live redacted resident snapshot
 - On `--stop`: SIGTERM → 10s poll → SIGKILL → 2s poll; the daemon's own signal handler unlinks the pid-file, `--stop` unlinks as fallback
 - **Windows**: `--detach` is unsupported and returns a `VALIDATION` error pointing to WSL.
+
+**Packaged conformance:** `bun run test:package` installs the generated npm
+tarball and exercises the shipped binary. It covers concurrent HTTP MCP clients,
+stdio parity, resident reuse, redacted lifecycle schemas, boundary rejection,
+bearer rotation and session binding, daemon-only authenticated non-loopback
+binding, and detached restart/shutdown. Windows artifact jobs provide the final
+platform-specific detach and interrupt-exit sweep.
 
 **Exit Codes:**
 

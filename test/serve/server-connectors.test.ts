@@ -4,6 +4,10 @@ import { resolve } from "node:path";
 
 import { ENV_CONFIG_DIR } from "../../src/app/constants";
 import { getConfigPaths } from "../../src/config";
+import {
+  AdmissionController,
+  ReaderGate,
+} from "../../src/serve/resident-admission";
 import { startServer } from "../../src/serve/server";
 
 interface CapturedServeOptions {
@@ -26,6 +30,7 @@ async function runConnectorInstallRoute(actualConfigPath: string): Promise<{
     success: true as const,
     runtime: {
       actualConfigPath,
+      config: { collections: [] },
       store: {},
       ctxHolder: {
         current: {},
@@ -42,6 +47,12 @@ async function runConnectorInstallRoute(actualConfigPath: string): Promise<{
     { index: "client-work", port: 3210 },
     {
       startBackgroundRuntime: startRuntime as never,
+      createMcpHttpGateway: (async () => ({
+        route: async () => new Response("ok"),
+        close: async () => undefined,
+        security: {},
+        transport: {},
+      })) as never,
       serve: ((options: unknown) => {
         capturedOptions = options as CapturedServeOptions;
         return { port: 3210, stop } as never;
@@ -114,4 +125,222 @@ test("serve connector install route also pins the resolved default config", asyn
       process.env[ENV_CONFIG_DIR] = previousConfigDir;
     }
   }
+});
+
+test("serve rejects non-loopback binding before opening the shared Web/REST listener", async () => {
+  const dispose = mock(async () => undefined);
+  const createMcpHttpGateway = mock(async () => {
+    throw new Error("must not initialize gateway");
+  });
+  const serve = mock(() => {
+    throw new Error("must not open listener");
+  });
+  const result = await startServer(
+    {
+      host: "0.0.0.0",
+      tokenFile: "/tmp/gno-unused-token",
+      allowedHosts: ["workstation.example:3000"],
+      allowedOrigins: ["https://agent.example"],
+    },
+    {
+      startBackgroundRuntime: (async () => ({
+        success: true as const,
+        runtime: {
+          actualConfigPath: "/tmp/config/index.yml",
+          config: { collections: [] },
+          store: {},
+          ctxHolder: { current: {}, config: { collections: [] } },
+          dispose,
+        },
+      })) as never,
+      createMcpHttpGateway: createMcpHttpGateway as never,
+      serve: serve as never,
+    }
+  );
+
+  expect(result).toEqual({
+    success: false,
+    error:
+      "gno serve remains loopback-only because Web and REST share its listener; use gno daemon for authenticated non-loopback MCP",
+  });
+  expect(dispose).toHaveBeenCalledTimes(1);
+  expect(createMcpHttpGateway).toHaveBeenCalledTimes(0);
+  expect(serve).toHaveBeenCalledTimes(0);
+});
+
+test("live document reads settle on shutdown before resident resources close", async () => {
+  let capturedOptions:
+    | {
+        routes: Record<
+          string,
+          { GET: (request: Request) => Promise<Response> }
+        >;
+      }
+    | undefined;
+  let routePromise: Promise<Response> | undefined;
+  let handlerStarted: (() => void) | undefined;
+  const started = new Promise<void>((resolve) => {
+    handlerStarted = resolve;
+  });
+  const admission = new AdmissionController();
+  const readerGate = new ReaderGate(1, 1);
+  const ordering: string[] = [];
+  let admittedSignal: AbortSignal | undefined;
+  const runtime = {
+    actualConfigPath: "/tmp/config/index.yml",
+    config: { collections: [] },
+    store: {},
+    ctxHolder: { current: {}, config: { collections: [] } },
+    readerGate,
+    admitRequest: (signal?: AbortSignal) => {
+      const handle = admission.admit(signal);
+      admittedSignal = handle?.signal;
+      return handle;
+    },
+    withModelLease: async <T>(operation: () => Promise<T>) => operation(),
+    setListenerPort: () => undefined,
+    dispose: async () => {
+      await admission.closeAndDrain(0, 100);
+      ordering.push("resources-closed");
+    },
+  };
+
+  const result = await startServer(
+    { port: 3210 },
+    {
+      startBackgroundRuntime: (async () => ({
+        success: true as const,
+        runtime,
+      })) as never,
+      createMcpHttpGateway: (async () => ({
+        route: async () => new Response("ok"),
+        close: async () => {
+          ordering.push("gateway-closed");
+        },
+        security: {},
+        transport: {},
+      })) as never,
+      serve: ((options: unknown) => {
+        capturedOptions = options as typeof capturedOptions;
+        return {
+          port: 3210,
+          stop: async () => {
+            ordering.push("server-stopped");
+          },
+        } as never;
+      }) as never,
+      handleDocs: (async () => {
+        handlerStarted?.();
+        await new Promise<void>((resolve) => {
+          admittedSignal?.addEventListener(
+            "abort",
+            () => {
+              ordering.push("handler-settled");
+              resolve();
+            },
+            { once: true }
+          );
+        });
+        return Response.json({ docs: [] });
+      }) as never,
+      waitForShutdown: async () => {
+        const route = capturedOptions?.routes["/api/docs"];
+        expect(route).toBeDefined();
+        routePromise = route?.GET(
+          new Request("http://127.0.0.1:3210/api/docs")
+        );
+        await started;
+      },
+    }
+  );
+
+  const response = await routePromise;
+  expect(result).toEqual({ success: true });
+  expect(response?.status).toBe(503);
+  expect(ordering).toEqual([
+    "server-stopped",
+    "gateway-closed",
+    "handler-settled",
+    "resources-closed",
+  ]);
+});
+
+test("filesystem-backed planning and verification routes use resident admission", async () => {
+  let capturedOptions:
+    | {
+        routes: Record<
+          string,
+          { POST: (request: Request) => Promise<Response> }
+        >;
+      }
+    | undefined;
+  const admission = new AdmissionController();
+  const admitRequest = mock((signal?: AbortSignal) => admission.admit(signal));
+  const runtime = {
+    actualConfigPath: "/tmp/config/index.yml",
+    config: { collections: [] },
+    store: {},
+    ctxHolder: { current: {}, config: { collections: [] } },
+    readerGate: new ReaderGate(1, 1),
+    admitRequest,
+    withModelLease: async <T>(operation: () => Promise<T>) => operation(),
+    setListenerPort: () => undefined,
+    dispose: async () => {
+      await admission.closeAndDrain(0, 100);
+    },
+  };
+  const ok = mock(async () => Response.json({ ok: true }));
+
+  const result = await startServer(
+    { port: 3210 },
+    {
+      startBackgroundRuntime: (async () => ({
+        success: true as const,
+        runtime,
+      })) as never,
+      createMcpHttpGateway: (async () => ({
+        route: async () => new Response("ok"),
+        close: async () => undefined,
+        security: {},
+        transport: {},
+      })) as never,
+      serve: ((options: unknown) => {
+        capturedOptions = options as typeof capturedOptions;
+        return {
+          port: 3210,
+          stop: async () => undefined,
+        } as never;
+      }) as never,
+      handleVerifyConnector: ok as never,
+      handleImportPreview: ok as never,
+      handlePublishExport: ok as never,
+      handleRefactorPlan: ok as never,
+      waitForShutdown: async () => {
+        const routeRequests = [
+          [
+            "/api/connectors/verify",
+            "http://127.0.0.1:3210/api/connectors/verify",
+          ],
+          ["/api/import/preview", "http://127.0.0.1:3210/api/import/preview"],
+          ["/api/publish/export", "http://127.0.0.1:3210/api/publish/export"],
+          [
+            "/api/docs/:id/refactor-plan",
+            "http://127.0.0.1:3210/api/docs/doc/refactor-plan",
+          ],
+        ] as const;
+        for (const [routePath, requestUrl] of routeRequests) {
+          const route = capturedOptions?.routes[routePath];
+          expect(route).toBeDefined();
+          const response = await route?.POST(
+            new Request(requestUrl, { method: "POST" })
+          );
+          expect(response?.status).toBe(200);
+        }
+      },
+    }
+  );
+
+  expect(result).toEqual({ success: true });
+  expect(admitRequest).toHaveBeenCalledTimes(4);
+  expect(ok).toHaveBeenCalledTimes(4);
 });

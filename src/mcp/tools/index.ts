@@ -83,6 +83,21 @@ export const MCP_TOOL_DESCRIPTIONS = {
     "Verify a saved Context Capsule without rebuilding or mutating it. Reports unchanged, stale, missing, reranked, and fingerprint drift states against the active index.",
 } as const;
 
+/** Tool names whose execution mutates disk, config, or index state. */
+export const MCP_WRITE_TOOL_NAMES = new Set([
+  "gno_capture",
+  "gno_add_collection",
+  "gno_sync",
+  "gno_embed",
+  "gno_index",
+  "gno_remove_collection",
+  "gno_clear_collection_embeddings",
+  "gno_create_folder",
+  "gno_rename_note",
+  "gno_move_note",
+  "gno_duplicate_note",
+]);
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Shared Input Schemas
 // ─────────────────────────────────────────────────────────────────────────────
@@ -829,8 +844,9 @@ export async function runTool<T>(
 
   // Sequential execution via mutex
   const release = await ctx.toolMutex.acquire();
+  const modelLease = ctx.acquireModelLease?.();
   try {
-    const data = await fn();
+    const data = await (ctx.runWithSnapshot?.(fn) ?? fn());
     return {
       content: [{ type: "text", text: formatText(data) }],
       structuredContent: data as { [x: string]: unknown },
@@ -846,6 +862,7 @@ export async function runTool<T>(
       structuredContent: parsedError,
     };
   } finally {
+    modelLease?.release();
     release();
   }
 }
@@ -869,8 +886,9 @@ export async function runToolNoMutex<T>(
     };
   }
 
+  const modelLease = ctx.acquireModelLease?.();
   try {
-    const data = await fn();
+    const data = await (ctx.runWithSnapshot?.(fn) ?? fn());
     return {
       content: [{ type: "text", text: formatText(data) }],
       structuredContent: data as { [x: string]: unknown },
@@ -885,6 +903,8 @@ export async function runToolNoMutex<T>(
       content: [{ type: "text", text: `Error: ${message}` }],
       structuredContent: parsedError,
     };
+  } finally {
+    modelLease?.release();
   }
 }
 

@@ -7,7 +7,7 @@ satisfies: [R2, R4, R7]
 Deliver build conservative destination and network-zone classification as one implementation-sized increment.
 
 **Size:** M
-**Files:** `src/core/destination-classifier.ts`, `src/serve/security.ts`, `src/llm/http-policy.ts`, `test/egress/destination-classifier.test.ts`
+**Files:** `src/core/destination-classifier.ts`, `src/mcp/http-security.ts`, `src/llm/http-policy.ts`, `test/egress/destination-classifier.test.ts`
 
 ### Approach
 - Classify loopback/LAN/VPN-Tailscale/public/provider destinations across hostname, IPv4/IPv6, DNS answers, redirects, and explicit bind interfaces.
@@ -16,7 +16,9 @@ Deliver build conservative destination and network-zone classification as one im
 
 ### Investigation targets
 **Required** (read before coding):
-- `src/serve/security.ts`
+- `src/mcp/http-security.ts`
+
+<!-- Updated by plan-sync (cross-spec): fn-99-resident-local-context-gateway.3 changed the HTTP gateway boundary module from src/serve/security.ts to src/mcp/http-security.ts -->
 - `src/llm/httpEmbedding.ts`
 - `src/llm/httpGeneration.ts`
 - `src/llm/httpRerank.ts`
