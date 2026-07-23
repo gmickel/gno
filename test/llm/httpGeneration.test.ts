@@ -123,6 +123,26 @@ describe("HttpGeneration", () => {
       }
     });
 
+    it("reports structured output unavailable without making a request", async () => {
+      const fetchMock = mock(() =>
+        Promise.reject(new Error("must not be called"))
+      );
+      globalThis.fetch = fetchMock as unknown as typeof fetch;
+      const gen = new HttpGeneration(
+        "http://localhost:8083/v1/chat/completions#qwen3-4b"
+      );
+      const result = await gen.generate("Hello", {
+        jsonSchema: { type: "object", properties: {} },
+      });
+
+      expect(gen.structuredOutput).toBe("none");
+      expect(fetchMock).not.toHaveBeenCalled();
+      expect(result).toMatchObject({
+        ok: false,
+        error: { code: "STRUCTURED_OUTPUT_UNAVAILABLE", retryable: false },
+      });
+    });
+
     it("handles empty response content", async () => {
       mockFetch(() =>
         Promise.resolve(
