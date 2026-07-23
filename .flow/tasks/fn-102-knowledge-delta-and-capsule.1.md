@@ -32,9 +32,8 @@ Deliver add transactional bounded document change journal as one implementation-
 
 
 ## Done summary
-TBD
-
+Added migration 015 and a transactional, metadata-only document change journal with explicit rename semantics, opaque monotonic cursors, and bounded age/count/byte retention. Lifecycle, rollback, failed-sync, concurrency, pagination, cursor-expiry, purge, schema-version, and privacy boundaries are covered by regression tests.
 ## Evidence
-- Commits:
-- Tests:
+- Commits: 83bc6d7b39d9635d80c239e4da3e19ce335046aa
+- Tests: baseline: red (bun test test/store/change-journal* test/changes failed pre-edit: expected task test paths did not exist yet), bun test test/store/change-journal.test.ts test/changes/change-journal-cursor.test.ts test/store/migrations.test.ts test/store/adapter.test.ts, bun test test/ingestion/sync-incremental.test.ts test/ingestion/sync-conversion-errors.test.ts test/ingestion/sync-links.test.ts test/ingestion/sync-tags.test.ts, bun test test/store/change-journal* test/changes, bun test, bun run lint:check, .flow/bin/flowctl validate --spec fn-102-knowledge-delta-and-capsule --json
 - PRs:

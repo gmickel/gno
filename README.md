@@ -94,7 +94,7 @@ gno daemon --detach  # headless continuous indexing (background; --status / --st
 
 <!-- public-truth:current-version -->
 
-> Current release: **v1.19.0** — see [CHANGELOG.md](./CHANGELOG.md)
+> Current release: **v1.20.0** — see [CHANGELOG.md](./CHANGELOG.md)
 
 <!-- /public-truth -->
 
@@ -109,6 +109,13 @@ gno daemon --detach  # headless continuous indexing (background; --status / --st
   watcher, jobs, stores, and models. The packed npm smoke proves two-client
   parity, warm reuse, redacted lifecycle status, fail-closed security, restart,
   and shutdown.
+- **Knowledge Delta**: `gno changes`, `gno diff`, and `gno impact` expose
+  bounded metadata-only history, structural change summaries, and explainable
+  dependency paths across CLI, REST, MCP, and SDK.
+- **Saved Capsule freshness**: CLI-only `gno context watch`, `watches`,
+  `reverify`, and `unwatch` register caller-owned Capsule files. The resident
+  runtime coalesces evidence changes into canonical, non-generative freshness
+  receipts and closed local metadata notifications.
 - **Second-brain capture**: `gno capture`, REST `/api/capture`, SDK
   `client.capture()`, MCP `gno_capture`, and Web UI Quick Capture write
   provenance-rich notes from text, stdin, or files, including typed presets for
@@ -553,9 +560,9 @@ Connect GNO to Claude Desktop, Cursor, Raycast, and more:
 
 ![GNO MCP](./assets/screenshots/mcp.jpg)
 
-GNO exposes 22 tools by default via [Model Context Protocol](https://modelcontextprotocol.io),
+GNO exposes 25 tools by default via [Model Context Protocol](https://modelcontextprotocol.io),
 including the core retrieval tools below. Starting MCP with `--enable-write`
-adds 15 opt-in mutation tools, for 37 total.
+adds 15 opt-in mutation tools, for 40 total.
 
 | Tool                 | Description                           |
 | :------------------- | :------------------------------------ |
@@ -574,6 +581,9 @@ adds 15 opt-in mutation tools, for 37 total.
 | `gno_status`         | Index health check                    |
 | `gno_trace_list`     | List private local retrieval receipts |
 | `gno_trace_show`     | Inspect one bounded trace receipt     |
+| `gno_changes`        | Read retained metadata-only changes   |
+| `gno_diff`           | Read one structural document delta    |
+| `gno_impact`         | Trace bounded dependency impact       |
 
 **Design**: Default MCP mode is read-only: retrieval, opt-in verified synthesis,
 graph, status, and job inspection. Raw retrieval tools leave synthesis to your
@@ -775,6 +785,9 @@ curl http://localhost:3000/api/health
 | `/api/ask`                    | POST   | AI-powered Q&A               |
 | `/api/context`                | POST   | Build evidence Capsule       |
 | `/api/context/verify`         | POST   | Verify saved Capsule         |
+| `/api/changes`                | GET    | List retained changes        |
+| `/api/diff`                   | GET    | Read structural delta        |
+| `/api/impact`                 | GET    | Trace dependency impact      |
 | `/api/docs`                   | GET    | List documents               |
 | `/api/docs`                   | POST   | Create document              |
 | `/api/docs/:id`               | PUT    | Update document content      |
@@ -850,7 +863,9 @@ graph TD
 | **Local LLM**        | AI answers via llama.cpp, no API keys                                          |
 | **Remote Inference** | Optional HTTP endpoints for embedding, reranking, expansion, and generation    |
 | **Privacy First**    | Local by default; no telemetry; network use is explicit or model provisioning  |
-| **MCP Server**       | 10 automatic client targets; 22 read-only tools, 37 with writes enabled        |
+| **MCP Server**       | 10 automatic client targets; 25 read-only tools, 40 with writes enabled        |
+| **Knowledge Delta**  | Bounded metadata history, structural diffs, and dependency impact paths        |
+| **Context Capsules** | Deterministic evidence bundles plus saved-file freshness reverification        |
 | **Collections**      | Organize sources with patterns, excludes, contexts                             |
 | **Tag Filtering**    | Frontmatter tags with hierarchical paths, filter via `--tags-any`/`--tags-all` |
 | **Note Linking**     | Wiki links, backlinks, related notes, cross-collection navigation              |

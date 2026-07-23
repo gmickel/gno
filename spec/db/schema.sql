@@ -19,6 +19,8 @@
 --   retrieval_traces - Opt-in private retrieval trace headers
 --   retrieval_trace_runs/events/judgments - Bounded trace outcome records
 --   retrieval_trace_exports/export_traces - Export manifests and trace joins
+--   document_changes - Bounded metadata-only document lifecycle journal
+--   document_change_journal_state - Monotonic cursor/retention boundary
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- Schema Metadata
@@ -362,6 +364,64 @@ CREATE TABLE IF NOT EXISTS retrieval_trace_export_traces (
 -- retention applies the lower configured maxRecordsPerTrace bound.
 
 -- ─────────────────────────────────────────────────────────────────────────────
+-- Document Change Journal
+-- ─────────────────────────────────────────────────────────────────────────────
+
+-- Append-only while retained. Rows contain identity, hashes, active state, and
+-- compact structural summaries only; source and converted bodies are excluded.
+
+CREATE TABLE IF NOT EXISTS document_changes (
+  sequence INTEGER PRIMARY KEY AUTOINCREMENT,
+  document_id INTEGER NOT NULL CHECK (document_id > 0),
+  collection TEXT NOT NULL,
+  change_kind TEXT NOT NULL
+    CHECK (change_kind IN ('create', 'update', 'rename', 'inactivate', 'reactivate')),
+  old_rel_path TEXT,
+  new_rel_path TEXT,
+  old_docid TEXT,
+  new_docid TEXT,
+  old_uri TEXT,
+  new_uri TEXT,
+  old_source_hash TEXT,
+  new_source_hash TEXT,
+  old_mirror_hash TEXT,
+  new_mirror_hash TEXT,
+  old_active INTEGER CHECK (old_active IS NULL OR old_active IN (0, 1)),
+  new_active INTEGER CHECK (new_active IS NULL OR new_active IN (0, 1)),
+  heading_delta_json TEXT NOT NULL DEFAULT '{"added":[],"removed":[]}',
+  link_delta_json TEXT NOT NULL DEFAULT '{"added":[],"removed":[]}',
+  typed_edge_delta_json TEXT NOT NULL DEFAULT '{"added":[],"removed":[]}',
+  date_delta_json TEXT NOT NULL
+    DEFAULT '{"added":[],"removed":[],"changed":[]}',
+  structure_truncated INTEGER NOT NULL DEFAULT 0
+    CHECK (structure_truncated IN (0, 1)),
+  observed_at_ms INTEGER NOT NULL CHECK (observed_at_ms >= 0),
+  byte_size INTEGER NOT NULL CHECK (byte_size > 0 AND byte_size <= 131072),
+  CHECK (length(CAST(heading_delta_json AS BLOB)) <= 16384),
+  CHECK (length(CAST(link_delta_json AS BLOB)) <= 16384),
+  CHECK (length(CAST(typed_edge_delta_json AS BLOB)) <= 16384),
+  CHECK (length(CAST(date_delta_json AS BLOB)) <= 16384)
+);
+
+CREATE INDEX IF NOT EXISTS idx_document_changes_collection_sequence
+  ON document_changes(collection, sequence);
+CREATE INDEX IF NOT EXISTS idx_document_changes_document_sequence
+  ON document_changes(document_id, sequence);
+CREATE INDEX IF NOT EXISTS idx_document_changes_retention
+  ON document_changes(observed_at_ms, sequence);
+
+CREATE TABLE IF NOT EXISTS document_change_journal_state (
+  singleton_id INTEGER PRIMARY KEY CHECK (singleton_id = 1),
+  last_sequence INTEGER NOT NULL DEFAULT 0 CHECK (last_sequence >= 0),
+  retention_floor INTEGER NOT NULL DEFAULT 0
+    CHECK (retention_floor >= 0 AND retention_floor <= last_sequence),
+  retained_entries INTEGER NOT NULL DEFAULT 0
+    CHECK (retained_entries >= 0),
+  retained_bytes INTEGER NOT NULL DEFAULT 0
+    CHECK (retained_bytes >= 0)
+);
+
+-- ─────────────────────────────────────────────────────────────────────────────
 -- Document Tags
 -- ─────────────────────────────────────────────────────────────────────────────
 
@@ -440,3 +500,113 @@ CREATE TABLE IF NOT EXISTS doc_edges (
 
 CREATE INDEX IF NOT EXISTS idx_doc_edges_src_type ON doc_edges(src_doc_id, edge_type);
 CREATE INDEX IF NOT EXISTS idx_doc_edges_dst_type ON doc_edges(dst_doc_id, edge_type);
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Saved Context Capsules (metadata only)
+-- ─────────────────────────────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS saved_capsule_registrations (
+  registration_id TEXT PRIMARY KEY,
+  file_path TEXT NOT NULL UNIQUE,
+  file_hash TEXT NOT NULL,
+  capsule_id TEXT NOT NULL,
+  index_name TEXT NOT NULL,
+  question TEXT,
+  label TEXT,
+  notification_preference TEXT NOT NULL DEFAULT 'none'
+    CHECK (notification_preference IN ('none', 'local')),
+  registered_at_ms INTEGER NOT NULL CHECK (registered_at_ms >= 0),
+  updated_at_ms INTEGER NOT NULL CHECK (updated_at_ms >= registered_at_ms),
+  last_attempted_sequence INTEGER NOT NULL DEFAULT 0
+    CHECK (last_attempted_sequence >= 0),
+  registration_generation INTEGER NOT NULL DEFAULT 0
+    CHECK (registration_generation >= 0),
+  CHECK (length(registration_id) BETWEEN 1 AND 128),
+  CHECK (length(CAST(file_path AS BLOB)) BETWEEN 1 AND 8192),
+  CHECK (length(file_hash) = 64 AND file_hash NOT GLOB '*[^0-9a-f]*'),
+  CHECK (length(capsule_id) = 64 AND capsule_id NOT GLOB '*[^0-9a-f]*'),
+  CHECK (length(CAST(index_name AS BLOB)) BETWEEN 1 AND 128),
+  CHECK (question IS NULL OR length(CAST(question AS BLOB)) <= 8192),
+  CHECK (label IS NULL OR length(CAST(label AS BLOB)) <= 512)
+);
+
+CREATE INDEX IF NOT EXISTS idx_saved_capsules_index
+  ON saved_capsule_registrations(index_name, registration_id);
+
+CREATE TABLE IF NOT EXISTS saved_capsule_evidence (
+  registration_id TEXT NOT NULL,
+  evidence_id TEXT NOT NULL,
+  canonical_uri TEXT NOT NULL,
+  collection TEXT NOT NULL,
+  source_hash TEXT NOT NULL,
+  mirror_hash TEXT NOT NULL,
+  passage_hash TEXT NOT NULL,
+  PRIMARY KEY (registration_id, evidence_id),
+  FOREIGN KEY (registration_id)
+    REFERENCES saved_capsule_registrations(registration_id)
+    ON DELETE CASCADE,
+  CHECK (length(evidence_id) = 64 AND evidence_id NOT GLOB '*[^0-9a-f]*'),
+  CHECK (length(CAST(canonical_uri AS BLOB)) BETWEEN 1 AND 8192),
+  CHECK (length(CAST(collection AS BLOB)) BETWEEN 1 AND 256),
+  CHECK (length(source_hash) = 64 AND source_hash NOT GLOB '*[^0-9a-f]*'),
+  CHECK (length(mirror_hash) = 64 AND mirror_hash NOT GLOB '*[^0-9a-f]*'),
+  CHECK (length(passage_hash) = 64 AND passage_hash NOT GLOB '*[^0-9a-f]*')
+);
+
+CREATE INDEX IF NOT EXISTS idx_saved_capsule_evidence_uri
+  ON saved_capsule_evidence(canonical_uri, registration_id);
+CREATE INDEX IF NOT EXISTS idx_saved_capsule_evidence_source
+  ON saved_capsule_evidence(source_hash, registration_id);
+CREATE INDEX IF NOT EXISTS idx_saved_capsule_evidence_mirror
+  ON saved_capsule_evidence(mirror_hash, registration_id);
+
+CREATE TABLE IF NOT EXISTS saved_capsule_verifications (
+  registration_id TEXT PRIMARY KEY,
+  trigger_kind TEXT NOT NULL CHECK (trigger_kind IN ('manual', 'journal')),
+  from_sequence INTEGER NOT NULL CHECK (from_sequence >= 0),
+  through_sequence INTEGER NOT NULL CHECK (through_sequence >= from_sequence),
+  operation_status TEXT NOT NULL CHECK (operation_status IN ('completed', 'failed')),
+  affected_question_state TEXT NOT NULL
+    CHECK (affected_question_state IN ('unaffected', 'affected', 'unknown')),
+  affected_reasons_json TEXT NOT NULL,
+  receipt_json TEXT,
+  receipt_hash TEXT,
+  error_code TEXT,
+  error_message TEXT,
+  verified_at_ms INTEGER NOT NULL CHECK (verified_at_ms >= 0),
+  FOREIGN KEY (registration_id)
+    REFERENCES saved_capsule_registrations(registration_id)
+    ON DELETE CASCADE,
+  CHECK (length(CAST(affected_reasons_json AS BLOB)) <= 4096),
+  CHECK (receipt_json IS NULL OR length(CAST(receipt_json AS BLOB)) <= 16777216),
+  CHECK (receipt_hash IS NULL OR (
+    length(receipt_hash) = 64 AND receipt_hash NOT GLOB '*[^0-9a-f]*'
+  )),
+  CHECK (error_code IS NULL OR length(CAST(error_code AS BLOB)) <= 256),
+  CHECK (error_message IS NULL OR length(CAST(error_message AS BLOB)) <= 4096),
+  CHECK (
+    (
+      operation_status = 'completed'
+      AND receipt_json IS NOT NULL
+      AND receipt_hash IS NOT NULL
+      AND error_code IS NULL
+      AND error_message IS NULL
+    )
+    OR
+    (
+      operation_status = 'failed'
+      AND receipt_json IS NULL
+      AND receipt_hash IS NULL
+      AND error_code IS NOT NULL
+      AND error_message IS NOT NULL
+    )
+  )
+);
+
+CREATE TABLE IF NOT EXISTS saved_capsule_reverification_state (
+  singleton_id INTEGER PRIMARY KEY CHECK (singleton_id = 1),
+  last_processed_sequence INTEGER NOT NULL DEFAULT 0
+    CHECK (last_processed_sequence >= 0),
+  registration_epoch INTEGER NOT NULL DEFAULT 0
+    CHECK (registration_epoch >= 0)
+);

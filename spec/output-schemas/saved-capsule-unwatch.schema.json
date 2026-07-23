@@ -1,0 +1,16 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "gno://schemas/saved-capsule-unwatch@1.0",
+  "title": "GNO Saved Context Capsule Unwatch Receipt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "registrationId", "removed"],
+  "properties": {
+    "schemaVersion": { "const": "1.0" },
+    "registrationId": {
+      "type": "string",
+      "pattern": "^capsule-[a-f0-9]{40}$"
+    },
+    "removed": { "const": true }
+  }
+}

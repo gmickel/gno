@@ -31,6 +31,7 @@ import {
   isInitialized,
   loadConfig,
 } from "../config";
+import { SavedCapsuleReverificationScheduler } from "../core/capsule-reverification-scheduler";
 import { acquireWriteLock } from "../core/file-lock";
 import { JobManager } from "../core/job-manager";
 import { recordContentMutation } from "../core/mutation-generations";
@@ -94,6 +95,7 @@ export interface ResidentRuntime {
   readonly toolMutex: Mutex;
   readonly readerGate: ReaderGate;
   readonly jobManager: JobManager;
+  readonly capsuleReverificationScheduler: SavedCapsuleReverificationScheduler;
   readonly modelManager: ModelManager;
   readonly mcpContext: ToolContext;
   readonly generations: ResidentGeneration;
@@ -266,6 +268,8 @@ export async function startResidentRuntime(
   ctxHolder.current.scheduler = scheduler;
   ctxHolder.current.eventBus = options.eventBus ?? null;
 
+  let capsuleReverificationScheduler: SavedCapsuleReverificationScheduler | null =
+    null;
   const watchService = (
     deps.watchServiceFactory ??
     ((watchOptions) => new DefaultCollectionWatchService(watchOptions))
@@ -281,6 +285,10 @@ export async function startResidentRuntime(
           generations.content += 1;
         });
         options.watchCallbacks?.onSyncComplete?.(event);
+      },
+      onSettled: () => {
+        capsuleReverificationScheduler?.notifySyncSettled();
+        options.watchCallbacks?.onSettled?.();
       },
     },
     syncOptions: withContentTypeRules({}, initialConfig),
@@ -312,6 +320,17 @@ export async function startResidentRuntime(
   const backgroundWork = new ResidentBackgroundWork(
     () => !disposed && admission.accepting
   );
+  capsuleReverificationScheduler = new SavedCapsuleReverificationScheduler({
+    deps: {
+      store,
+      get config() {
+        return ctxHolder.config;
+      },
+      indexName: canonicalizeIndexName(options.index ?? DEFAULT_INDEX_NAME),
+      notify: (event) => options.eventBus?.emit(event),
+    },
+    startBackgroundWork: (operation) => backgroundWork.start(operation),
+  });
 
   const mcpContext = createToolContext({
     store,
@@ -355,6 +374,7 @@ export async function startResidentRuntime(
     toolMutex,
     readerGate,
     jobManager,
+    capsuleReverificationScheduler,
     modelManager,
     mcpContext,
     generations,
@@ -453,6 +473,7 @@ export async function startResidentRuntime(
         syncOptions.triggerEmbed === false
           ? null
           : await scheduler.triggerNow();
+      capsuleReverificationScheduler.notifySyncSettled();
       return { syncResult, embedResult };
     },
     async dispose() {
@@ -466,6 +487,7 @@ export async function startResidentRuntime(
       );
       if (deadlineReached) shutdownState = "deadline";
       await backgroundWork.cancelAndDrain();
+      await capsuleReverificationScheduler.dispose();
       await jobManager.shutdown().catch(() => undefined);
       await Promise.allSettled([
         Promise.resolve().then(() => watchService.dispose()),

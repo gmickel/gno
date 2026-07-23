@@ -41,6 +41,13 @@ import {
 } from "../converters/pipeline";
 import { DEFAULT_LIMITS } from "../converters/types";
 import {
+  diffDocumentStructure,
+  extractDocumentStructure,
+  isRelationMap,
+  normalizeRelationEdgeType,
+  normalizeRelationTarget,
+} from "../core/change-diff";
+import {
   normalizeMarkdownPath,
   normalizeWikiName,
   parseLinks,
@@ -82,35 +89,6 @@ const NON_RETRYABLE_CONVERSION_ERROR_CODES = new Set([
   "TOO_LARGE",
   "UNSUPPORTED",
 ]);
-
-type RelationMap = Record<string, string[]>;
-
-function isRelationMap(value: unknown): value is RelationMap {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
-    return false;
-  }
-
-  return Object.values(value).every(
-    (targets) =>
-      Array.isArray(targets) &&
-      targets.every((target) => typeof target === "string")
-  );
-}
-
-function normalizeRelationTarget(raw: string): string {
-  const trimmed = raw.trim();
-  if (trimmed.startsWith("[[") && trimmed.endsWith("]]")) {
-    return trimmed.slice(2, -2).split("|")[0]?.trim() ?? "";
-  }
-  return trimmed;
-}
-
-function normalizeRelationEdgeType(raw: string): string {
-  return raw
-    .trim()
-    .toLowerCase()
-    .replace(/[-\s]+/g, "_");
-}
 
 function findDocByWikiRef(
   docs: DocumentRow[],
@@ -747,7 +725,24 @@ export class SyncService {
           // Log but continue - error recording is best-effort
         }
 
-        // Upsert document with error info, explicitly clear mirrorHash
+        const hadRetrievableEvidence = Boolean(existing?.mirrorHash);
+        const structureDelta = hadRetrievableEvidence
+          ? diffDocumentStructure(
+              await this.readPreviousStructure(store, existing),
+              {
+                headings: [],
+                links: [],
+                typedEdges: [],
+                dates: {},
+              }
+            ).delta
+          : undefined;
+
+        // Upsert document with error info, explicitly clear mirrorHash. This
+        // transition is journaled only when retrievable evidence previously
+        // existed; initial/repeated error placeholders are not evidence
+        // creates. Real evidence disappearance stays in the same transaction
+        // so saved Capsule freshness checks cannot miss it.
         const upsertResult = await store.upsertDocument({
           collection: collection.name,
           relPath: entry.relPath,
@@ -761,6 +756,7 @@ export class SyncService {
           lastErrorMessage: convertResult.error.message,
           ingestVersion: INGEST_VERSION,
           contentTypeRulesFingerprint,
+          changeJournal: structureDelta ? { structureDelta } : false,
           // mirrorHash intentionally omitted (will be null)
         });
 
@@ -788,155 +784,186 @@ export class SyncService {
         mime.ext,
         contentTypeRules
       );
-
-      // 7. Upsert document - EXPLICITLY clear error fields on success
-      const docidResult = await store.upsertDocument({
-        collection: collection.name,
-        relPath: entry.relPath,
-        sourceHash,
-        sourceMime: mime.mime,
-        sourceExt: mime.ext,
-        sourceSize,
-        sourceMtime,
-        sourceCtime,
-        title: artifact.title,
-        mirrorHash: artifact.mirrorHash,
-        converterId: artifact.meta.converterId,
-        converterVersion: artifact.meta.converterVersion,
-        languageHint: artifact.languageHint ?? collection.languageHint,
-        contentType: extractedMetadata.contentType,
-        contentTypeSource: extractedMetadata.contentTypeSource,
-        categories: extractedMetadata.categories,
-        author: extractedMetadata.author,
-        frontmatterDate: extractedMetadata.frontmatterDate,
-        dateFields: extractedMetadata.dateFields,
-        contentTypeRulesFingerprint,
-        // Clear error fields on success (requires store to handle undefined → null)
-        lastErrorCode: undefined,
-        lastErrorMessage: undefined,
-        ingestVersion: INGEST_VERSION,
-      });
-
-      const { id: docId, docid } = mustOk(docidResult, "upsertDocument", {
-        collection: collection.name,
-        relPath: entry.relPath,
-      });
-
-      // 8. Upsert content (content-addressed dedupe) - CHECKED
-      const contentResult = await store.upsertContent(
-        artifact.mirrorHash,
-        artifact.markdown
+      const previousStructure = await this.readPreviousStructure(
+        store,
+        existing
       );
-      mustOk(contentResult, "upsertContent", {
-        mirrorHash: artifact.mirrorHash,
-      });
-
-      // 9. Chunk content
-      const chunks = this.chunker.chunk(
+      const nextStructure = extractDocumentStructure(
         artifact.markdown,
-        DEFAULT_CHUNK_PARAMS,
-        artifact.languageHint ?? collection.languageHint,
-        entry.relPath
+        entry.relPath,
+        extractedMetadata.dateFields
       );
+      const structureDelta = diffDocumentStructure(
+        previousStructure,
+        nextStructure
+      ).delta;
 
-      // 10. Convert to ChunkInput for store
-      const chunkInputs: ChunkInput[] = chunks.map((c) => ({
-        seq: c.seq,
-        pos: c.pos,
-        text: c.text,
-        startLine: c.startLine,
-        endLine: c.endLine,
-        language: c.language ?? undefined,
-        tokenCount: c.tokenCount ?? undefined,
-      }));
+      const persistSuccessfulFile = async (): Promise<FileSyncResult> => {
+        // 7. Upsert document - EXPLICITLY clear error fields on success
+        const docidResult = await store.upsertDocument({
+          collection: collection.name,
+          relPath: entry.relPath,
+          sourceHash,
+          sourceMime: mime.mime,
+          sourceExt: mime.ext,
+          sourceSize,
+          sourceMtime,
+          sourceCtime,
+          title: artifact.title,
+          mirrorHash: artifact.mirrorHash,
+          converterId: artifact.meta.converterId,
+          converterVersion: artifact.meta.converterVersion,
+          languageHint: artifact.languageHint ?? collection.languageHint,
+          contentType: extractedMetadata.contentType,
+          contentTypeSource: extractedMetadata.contentTypeSource,
+          categories: extractedMetadata.categories,
+          author: extractedMetadata.author,
+          frontmatterDate: extractedMetadata.frontmatterDate,
+          dateFields: extractedMetadata.dateFields,
+          contentTypeRulesFingerprint,
+          // Clear error fields on success (requires store to handle undefined → null)
+          lastErrorCode: undefined,
+          lastErrorMessage: undefined,
+          ingestVersion: INGEST_VERSION,
+          changeJournal: { structureDelta },
+        });
 
-      // 11. Upsert chunks - CHECKED
-      const chunksResult = await store.upsertChunks(
-        artifact.mirrorHash,
-        chunkInputs
-      );
-      mustOk(chunksResult, "upsertChunks", {
-        mirrorHash: artifact.mirrorHash,
-        chunkCount: chunkInputs.length,
-      });
+        const { id: docId, docid } = mustOk(docidResult, "upsertDocument", {
+          collection: collection.name,
+          relPath: entry.relPath,
+        });
 
-      // 12. Rebuild FTS for this hash - CHECKED
-      const ftsResult = await store.rebuildFtsForHash(artifact.mirrorHash);
-      mustOk(ftsResult, "rebuildFtsForHash", {
-        mirrorHash: artifact.mirrorHash,
-      });
+        // 8. Upsert content (content-addressed dedupe) - CHECKED
+        const contentResult = await store.upsertContent(
+          artifact.mirrorHash,
+          artifact.markdown
+        );
+        mustOk(contentResult, "upsertContent", {
+          mirrorHash: artifact.mirrorHash,
+        });
 
-      // 13. Extract and store tags from frontmatter and body hashtags
-      // Always call setDocTags to clear removed tags on re-sync
-      const extractedTags = extractTags(artifact.markdown);
-      const tagsResult = await store.setDocTags(
-        docId,
-        extractedTags,
-        "frontmatter"
-      );
-      mustOk(tagsResult, "setDocTags", {
-        docId,
-        tagCount: extractedTags.length,
-      });
+        // 9. Chunk content
+        const chunks = this.chunker.chunk(
+          artifact.markdown,
+          DEFAULT_CHUNK_PARAMS,
+          artifact.languageHint ?? collection.languageHint,
+          entry.relPath
+        );
 
-      // 14. Extract and store links (wiki and markdown links)
-      const excludedRanges = getExcludedRanges(artifact.markdown);
-      const lineOffsets = buildLineOffsets(artifact.markdown);
-      const parsedLinks = parseLinks(
-        artifact.markdown,
-        lineOffsets,
-        excludedRanges
-      );
+        // 10. Convert to ChunkInput for store
+        const chunkInputs: ChunkInput[] = chunks.map((c) => ({
+          seq: c.seq,
+          pos: c.pos,
+          text: c.text,
+          startLine: c.startLine,
+          endLine: c.endLine,
+          language: c.language ?? undefined,
+          tokenCount: c.tokenCount ?? undefined,
+        }));
 
-      const linkInputs: DocLinkInput[] = [];
-      for (const link of parsedLinks) {
-        // Compute target_ref_norm based on link type
-        let targetRefNorm: string;
-        if (link.kind === "wiki") {
-          targetRefNorm = normalizeWikiName(link.targetRef);
-        } else {
-          // Markdown links with collection prefix are not supported
-          // (use wiki links for cross-collection references)
-          if (link.targetCollection) {
-            continue;
+        // 11. Upsert chunks - CHECKED
+        const chunksResult = await store.upsertChunks(
+          artifact.mirrorHash,
+          chunkInputs
+        );
+        mustOk(chunksResult, "upsertChunks", {
+          mirrorHash: artifact.mirrorHash,
+          chunkCount: chunkInputs.length,
+        });
+
+        // 12. Rebuild FTS for this hash - CHECKED
+        const ftsResult = await store.rebuildFtsForHash(artifact.mirrorHash);
+        mustOk(ftsResult, "rebuildFtsForHash", {
+          mirrorHash: artifact.mirrorHash,
+        });
+
+        // 13. Extract and store tags from frontmatter and body hashtags
+        // Always call setDocTags to clear removed tags on re-sync
+        const extractedTags = extractTags(artifact.markdown);
+        const tagsResult = await store.setDocTags(
+          docId,
+          extractedTags,
+          "frontmatter"
+        );
+        mustOk(tagsResult, "setDocTags", {
+          docId,
+          tagCount: extractedTags.length,
+        });
+
+        // 14. Extract and store links (wiki and markdown links)
+        const excludedRanges = getExcludedRanges(artifact.markdown);
+        const lineOffsets = buildLineOffsets(artifact.markdown);
+        const parsedLinks = parseLinks(
+          artifact.markdown,
+          lineOffsets,
+          excludedRanges
+        );
+
+        const linkInputs: DocLinkInput[] = [];
+        for (const link of parsedLinks) {
+          // Compute target_ref_norm based on link type
+          let targetRefNorm: string;
+          if (link.kind === "wiki") {
+            targetRefNorm = normalizeWikiName(link.targetRef);
+          } else {
+            // Markdown links with collection prefix are not supported
+            // (use wiki links for cross-collection references)
+            if (link.targetCollection) {
+              continue;
+            }
+            const resolved = normalizeMarkdownPath(
+              link.targetRef,
+              entry.relPath
+            );
+            if (!resolved) {
+              // Link escapes collection root - skip silently
+              continue;
+            }
+            targetRefNorm = resolved;
           }
-          const resolved = normalizeMarkdownPath(link.targetRef, entry.relPath);
-          if (!resolved) {
-            // Link escapes collection root - skip silently
-            continue;
-          }
-          targetRefNorm = resolved;
+
+          linkInputs.push({
+            targetRef: link.targetRef,
+            targetRefNorm,
+            targetAnchor: link.targetAnchor,
+            targetCollection: link.targetCollection,
+            linkType: link.kind,
+            linkText: link.displayText,
+            startLine: link.startLine,
+            startCol: link.startCol,
+            endLine: link.endLine,
+            endCol: link.endCol,
+          });
         }
 
-        linkInputs.push({
-          targetRef: link.targetRef,
-          targetRefNorm,
-          targetAnchor: link.targetAnchor,
-          targetCollection: link.targetCollection,
-          linkType: link.kind,
-          linkText: link.displayText,
-          startLine: link.startLine,
-          startCol: link.startCol,
-          endLine: link.endLine,
-          endCol: link.endCol,
+        const linksResult = await store.setDocLinks(
+          docId,
+          linkInputs,
+          "parsed"
+        );
+        mustOk(linksResult, "setDocLinks", {
+          docId,
+          linkCount: linkInputs.length,
         });
-      }
 
-      const linksResult = await store.setDocLinks(docId, linkInputs, "parsed");
-      mustOk(linksResult, "setDocLinks", {
-        docId,
-        linkCount: linkInputs.length,
-      });
-
-      const status = existing ? "updated" : "added";
-      return {
-        relPath: entry.relPath,
-        status,
-        docid,
-        mirrorHash: artifact.mirrorHash,
-        contentType: extractedMetadata.contentType,
-        contentTypeSource: extractedMetadata.contentTypeSource,
+        const status = existing ? "updated" : "added";
+        return {
+          relPath: entry.relPath,
+          status,
+          docid,
+          mirrorHash: artifact.mirrorHash,
+          contentType: extractedMetadata.contentType,
+          contentTypeSource: extractedMetadata.contentTypeSource,
+        };
       };
+      if (!store.withTransaction) {
+        return await persistSuccessfulFile();
+      }
+      const persisted = await store.withTransaction(persistSuccessfulFile);
+      return mustOk(persisted, "persistSuccessfulFile", {
+        collection: collection.name,
+        relPath: entry.relPath,
+      });
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown error";
       // Distinguish store errors from other internal errors
@@ -977,6 +1004,7 @@ export class SyncService {
               existingResult.value.sourceMtime,
             lastErrorCode: code,
             lastErrorMessage: message,
+            changeJournal: false,
           });
         }
       } catch {
@@ -990,6 +1018,27 @@ export class SyncService {
         errorMessage: message,
       };
     }
+  }
+
+  private async readPreviousStructure(
+    store: StorePort,
+    existing: DocumentRow | null
+  ): Promise<ReturnType<typeof extractDocumentStructure> | null | undefined> {
+    if (!existing) return null;
+    if (!existing.mirrorHash) return undefined;
+
+    const content = await store.getContent(existing.mirrorHash);
+    if (!content.ok) {
+      throw new Error(`Store operation failed: ${content.error.message}`, {
+        cause: content.error,
+      });
+    }
+    if (content.value === null) return undefined;
+    return extractDocumentStructure(
+      content.value,
+      existing.relPath,
+      existing.dateFields
+    );
   }
 
   /**

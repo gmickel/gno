@@ -35,6 +35,12 @@ import type {
   DocLinkInput,
   DocLinkRow,
   DocLinkSource,
+  DocumentChangeKind,
+  DocumentChangeListOptions,
+  DocumentChangePage,
+  DocumentChangePurgeResult,
+  DocumentChangeRetentionPolicy,
+  DocumentChangeRetentionResult,
   DocumentInput,
   DocumentRow,
   EmbeddingCleanupStats,
@@ -70,6 +76,13 @@ import type {
   RetrievalTraceRow,
   RetrievalTraceRunInput,
   RetrievalTraceTerminalStatus,
+  RenameDocumentOptions,
+  SavedCapsuleRegistrationInput,
+  SavedCapsuleRegistrationRecord,
+  SavedCapsuleRegistrationSnapshot,
+  SavedCapsuleReverificationState,
+  SavedCapsuleVerificationExpectation,
+  SavedCapsuleVerificationRecord,
   StorePort,
   StoreResult,
   TagCount,
@@ -95,6 +108,25 @@ import { getSchemaVersion, migrations, runMigrations } from "../migrations";
 import { err, ok } from "../types";
 import { getStoredEmbeddingFingerprint } from "../vector/freshness";
 import { modelTableName } from "../vector/sqlite-vec";
+import {
+  deleteSavedCapsuleRegistration as deleteStoredSavedCapsuleRegistration,
+  getSavedCapsuleRegistration as getStoredSavedCapsuleRegistration,
+  getSavedCapsuleRegistrationSnapshot as getStoredSavedCapsuleRegistrationSnapshot,
+  getSavedCapsuleReverificationState as getStoredSavedCapsuleReverificationState,
+  getSavedCapsuleReverificationSequence as getStoredSavedCapsuleReverificationSequence,
+  listSavedCapsuleIdsAffectedByChanges as listStoredSavedCapsuleIdsAffectedByChanges,
+  listSavedCapsuleRegistrations as listStoredSavedCapsuleRegistrations,
+  setSavedCapsuleReverificationSequence as setStoredSavedCapsuleReverificationSequence,
+  upsertSavedCapsuleRegistration as upsertStoredSavedCapsuleRegistration,
+  upsertSavedCapsuleVerification as upsertStoredSavedCapsuleVerification,
+} from "./capsule-registry-store";
+import {
+  appendDocumentChange as appendStoredDocumentChange,
+  enforceDocumentChangeRetention as enforceStoredDocumentChangeRetention,
+  listDocumentChanges as listStoredDocumentChanges,
+  purgeDocumentChanges as purgeStoredDocumentChanges,
+  snapshotDocumentChange,
+} from "./change-journal-store";
 import { loadFts5Snowball } from "./fts5-snowball";
 import {
   appendExportManifest as appendStoredTraceExportManifest,
@@ -940,6 +972,12 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
       const uri = buildUri(doc.collection, doc.relPath);
 
       const transaction = db.transaction((): UpsertDocumentResult => {
+        const previousRow = db
+          .query<DbDocumentRow, [string, string]>(
+            "SELECT * FROM documents WHERE collection = ? AND rel_path = ?"
+          )
+          .get(doc.collection, doc.relPath);
+
         db.run(
           `
         INSERT INTO documents (
@@ -1030,6 +1068,41 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
           ]);
         }
 
+        if (doc.changeJournal !== false) {
+          const nextRow = db
+            .query<DbDocumentRow, [number]>(
+              "SELECT * FROM documents WHERE id = ?"
+            )
+            .get(idRow.id);
+          if (!nextRow) {
+            throw new Error("Failed to read document after upsert");
+          }
+          const previous = previousRow
+            ? snapshotDocumentChange(mapDocumentRow(previousRow))
+            : null;
+          const next = snapshotDocumentChange(mapDocumentRow(nextRow));
+          const kind: DocumentChangeKind | null =
+            previous === null
+              ? "create"
+              : !previous.active
+                ? "reactivate"
+                : previous.sourceHash !== next.sourceHash ||
+                    previous.mirrorHash !== next.mirrorHash
+                  ? "update"
+                  : null;
+          if (kind) {
+            appendStoredDocumentChange(db, {
+              documentId: idRow.id,
+              collection: doc.collection,
+              kind,
+              oldSnapshot: previous,
+              newSnapshot: next,
+              structureDelta: doc.changeJournal?.structureDelta,
+              observedAtMs: doc.changeJournal?.observedAtMs ?? Date.now(),
+            });
+          }
+        }
+
         return { id: idRow.id, docid };
       });
 
@@ -1038,6 +1111,82 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
       return err(
         "QUERY_FAILED",
         cause instanceof Error ? cause.message : "Failed to upsert document",
+        cause
+      );
+    }
+  }
+
+  async renameDocument(
+    collection: string,
+    oldRelPath: string,
+    newRelPath: string,
+    options: RenameDocumentOptions = {}
+  ): Promise<StoreResult<DocumentRow>> {
+    try {
+      if (!oldRelPath || !newRelPath) {
+        return err("INVALID_INPUT", "Rename paths must be non-empty");
+      }
+      const db = this.ensureOpen();
+      const transaction = db.transaction((): DocumentRow => {
+        const oldRow = db
+          .query<DbDocumentRow, [string, string]>(
+            "SELECT * FROM documents WHERE collection = ? AND rel_path = ?"
+          )
+          .get(collection, oldRelPath);
+        if (!oldRow) {
+          throw new Error("DOCUMENT_RENAME_NOT_FOUND");
+        }
+        if (oldRelPath === newRelPath) {
+          return mapDocumentRow(oldRow);
+        }
+
+        const newUri = buildUri(collection, newRelPath);
+        db.run(
+          `UPDATE documents
+           SET rel_path = ?, uri = ?, updated_at = datetime('now')
+           WHERE id = ?`,
+          [newRelPath, newUri, oldRow.id]
+        );
+        db.run("UPDATE documents_fts SET filepath = ? WHERE rowid = ?", [
+          newRelPath,
+          oldRow.id,
+        ]);
+        const nextRow = db
+          .query<DbDocumentRow, [number]>(
+            "SELECT * FROM documents WHERE id = ?"
+          )
+          .get(oldRow.id);
+        if (!nextRow) {
+          throw new Error("Failed to read document after rename");
+        }
+        const oldSnapshot = snapshotDocumentChange(mapDocumentRow(oldRow));
+        const nextDocument = mapDocumentRow(nextRow);
+        appendStoredDocumentChange(db, {
+          documentId: oldRow.id,
+          collection,
+          kind: "rename",
+          oldSnapshot,
+          newSnapshot: snapshotDocumentChange(nextDocument),
+          structureDelta: options.structureDelta,
+          observedAtMs: options.observedAtMs ?? Date.now(),
+        });
+        return nextDocument;
+      });
+
+      return ok(transaction());
+    } catch (cause) {
+      if (
+        cause instanceof Error &&
+        cause.message === "DOCUMENT_RENAME_NOT_FOUND"
+      ) {
+        return err(
+          "NOT_FOUND",
+          `Document not found for rename: ${collection}/${oldRelPath}`
+        );
+      }
+      return err(
+        "QUERY_FAILED",
+        cause instanceof Error ? cause.message : "Failed to rename document",
         cause
       );
     }
@@ -1453,14 +1602,45 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
         return ok(0);
       }
 
-      const placeholders = relPaths.map(() => "?").join(",");
-      const result = db.run(
-        `UPDATE documents SET active = 0, updated_at = datetime('now')
-         WHERE collection = ? AND rel_path IN (${placeholders})`,
-        [collection, ...relPaths]
-      );
+      const uniquePaths = [...new Set(relPaths)];
+      const placeholders = uniquePaths.map(() => "?").join(",");
+      const transaction = db.transaction((): number => {
+        const activeRows = db
+          .query<DbDocumentRow, (string | number)[]>(
+            `SELECT *
+             FROM documents
+             WHERE collection = ?
+               AND active = 1
+               AND rel_path IN (${placeholders})
+             ORDER BY rel_path ASC, id ASC`
+          )
+          .all(collection, ...uniquePaths);
+        if (activeRows.length === 0) {
+          return 0;
+        }
+        const result = db.run(
+          `UPDATE documents SET active = 0, updated_at = datetime('now')
+           WHERE collection = ?
+             AND active = 1
+             AND rel_path IN (${placeholders})`,
+          [collection, ...uniquePaths]
+        );
+        const observedAtMs = Date.now();
+        for (const activeRow of activeRows) {
+          const previous = snapshotDocumentChange(mapDocumentRow(activeRow));
+          appendStoredDocumentChange(db, {
+            documentId: activeRow.id,
+            collection,
+            kind: "inactivate",
+            oldSnapshot: previous,
+            newSnapshot: { ...previous, active: false },
+            observedAtMs,
+          });
+        }
+        return result.changes;
+      });
 
-      return ok(result.changes);
+      return ok(transaction());
     } catch (cause) {
       return err(
         "QUERY_FAILED",
@@ -1470,6 +1650,110 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
         cause
       );
     }
+  }
+
+  async listDocumentChanges(
+    options: DocumentChangeListOptions = {}
+  ): Promise<StoreResult<DocumentChangePage>> {
+    return listStoredDocumentChanges(this.ensureOpen(), options);
+  }
+
+  async enforceDocumentChangeRetention(
+    policy: DocumentChangeRetentionPolicy,
+    nowMs: number
+  ): Promise<StoreResult<DocumentChangeRetentionResult>> {
+    return enforceStoredDocumentChangeRetention(
+      this.ensureOpen(),
+      policy,
+      nowMs
+    );
+  }
+
+  async purgeDocumentChanges(): Promise<
+    StoreResult<DocumentChangePurgeResult>
+  > {
+    return purgeStoredDocumentChanges(this.ensureOpen());
+  }
+
+  async upsertSavedCapsuleRegistration(
+    input: SavedCapsuleRegistrationInput
+  ): Promise<StoreResult<SavedCapsuleRegistrationRecord>> {
+    return upsertStoredSavedCapsuleRegistration(this.ensureOpen(), input);
+  }
+
+  async listSavedCapsuleRegistrations(): Promise<
+    StoreResult<SavedCapsuleRegistrationRecord[]>
+  > {
+    return listStoredSavedCapsuleRegistrations(this.ensureOpen());
+  }
+
+  async getSavedCapsuleRegistration(
+    registrationId: string
+  ): Promise<StoreResult<SavedCapsuleRegistrationRecord | null>> {
+    return getStoredSavedCapsuleRegistration(this.ensureOpen(), registrationId);
+  }
+
+  async getSavedCapsuleRegistrationSnapshot(
+    registrationId: string
+  ): Promise<StoreResult<SavedCapsuleRegistrationSnapshot | null>> {
+    return getStoredSavedCapsuleRegistrationSnapshot(
+      this.ensureOpen(),
+      registrationId
+    );
+  }
+
+  async deleteSavedCapsuleRegistration(
+    registrationId: string
+  ): Promise<StoreResult<boolean>> {
+    return deleteStoredSavedCapsuleRegistration(
+      this.ensureOpen(),
+      registrationId
+    );
+  }
+
+  async listSavedCapsuleIdsAffectedByChanges(
+    afterSequence: number,
+    throughSequence: number,
+    limit: number
+  ): Promise<StoreResult<{ registrationIds: string[]; truncated: boolean }>> {
+    return listStoredSavedCapsuleIdsAffectedByChanges(
+      this.ensureOpen(),
+      afterSequence,
+      throughSequence,
+      limit
+    );
+  }
+
+  async upsertSavedCapsuleVerification(
+    verification: SavedCapsuleVerificationRecord,
+    expectedRegistration: SavedCapsuleVerificationExpectation
+  ): Promise<StoreResult<boolean>> {
+    return upsertStoredSavedCapsuleVerification(
+      this.ensureOpen(),
+      verification,
+      expectedRegistration
+    );
+  }
+
+  async getSavedCapsuleReverificationSequence(): Promise<StoreResult<number>> {
+    return getStoredSavedCapsuleReverificationSequence(this.ensureOpen());
+  }
+
+  async getSavedCapsuleReverificationState(): Promise<
+    StoreResult<SavedCapsuleReverificationState>
+  > {
+    return getStoredSavedCapsuleReverificationState(this.ensureOpen());
+  }
+
+  async setSavedCapsuleReverificationSequence(
+    sequence: number,
+    expectedRegistrationEpoch: number
+  ): Promise<StoreResult<boolean>> {
+    return setStoredSavedCapsuleReverificationSequence(
+      this.ensureOpen(),
+      sequence,
+      expectedRegistrationEpoch
+    );
   }
 
   // ─────────────────────────────────────────────────────────────────────────

@@ -58,7 +58,11 @@ describe("retrieval trace migration compatibility", () => {
         ).toBeTrue();
         expect(getSchemaVersion(db)).toBe(baseline);
 
-        const upgraded = runMigrations(db, migrations, "unicode61");
+        const upgraded = runMigrations(
+          db,
+          migrations.slice(0, 14),
+          "unicode61"
+        );
         expect(upgraded.ok).toBeTrue();
         if (!upgraded.ok) return;
         expect(upgraded.value.applied).toEqual(
@@ -104,7 +108,7 @@ describe("retrieval trace migration compatibility", () => {
         END
       `);
 
-      const failed = runMigrations(db, migrations, "unicode61");
+      const failed = runMigrations(db, migrations.slice(0, 14), "unicode61");
       expect(failed.ok).toBeFalse();
       expect(getSchemaVersion(db)).toBe(13);
       expect(schemaObjects(db, "table")).toEqual([]);
@@ -136,7 +140,9 @@ describe("retrieval trace migration compatibility", () => {
   test("migration rollback hook removes every v14 trace object", () => {
     const db = new Database(dbPath);
     try {
-      expect(runMigrations(db, migrations, "unicode61").ok).toBeTrue();
+      expect(
+        runMigrations(db, migrations.slice(0, 14), "unicode61").ok
+      ).toBeTrue();
       const traceMigration = migrations.find(({ version }) => version === 14);
       expect(typeof traceMigration?.down).toBe("function");
       traceMigration?.down?.(db);

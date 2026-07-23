@@ -1,0 +1,280 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "gno://schemas/changes@1.0",
+  "title": "GNO Knowledge Changes",
+  "type": "object",
+  "required": ["schemaVersion", "changes", "page", "warnings"],
+  "properties": {
+    "schemaVersion": { "type": "string", "const": "1.0" },
+    "changes": {
+      "type": "array",
+      "maxItems": 1000,
+      "items": { "$ref": "#/definitions/change" }
+    },
+    "page": {
+      "type": "object",
+      "required": [
+        "nextCursor",
+        "earliestCursor",
+        "latestCursor",
+        "cursorExpired",
+        "truncated",
+        "retentionTruncated"
+      ],
+      "properties": {
+        "nextCursor": { "type": ["string", "null"], "maxLength": 512 },
+        "earliestCursor": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512
+        },
+        "latestCursor": { "type": "string", "minLength": 1, "maxLength": 512 },
+        "cursorExpired": { "type": "boolean" },
+        "truncated": { "type": "boolean" },
+        "retentionTruncated": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "warnings": { "type": "array", "items": { "type": "string" } }
+  },
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "page": {
+            "type": "object",
+            "properties": { "cursorExpired": { "const": true } },
+            "required": ["cursorExpired"]
+          }
+        },
+        "required": ["page"]
+      },
+      "then": {
+        "properties": {
+          "changes": { "type": "array", "maxItems": 0 },
+          "page": {
+            "type": "object",
+            "properties": {
+              "nextCursor": { "type": "null" },
+              "retentionTruncated": { "const": true }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "page": {
+            "type": "object",
+            "properties": { "truncated": { "const": true } },
+            "required": ["truncated"]
+          }
+        },
+        "required": ["page"]
+      },
+      "then": {
+        "properties": {
+          "page": {
+            "type": "object",
+            "properties": {
+              "nextCursor": { "type": "string", "minLength": 1 }
+            }
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "page": {
+            "type": "object",
+            "properties": { "nextCursor": { "type": "null" } }
+          }
+        }
+      }
+    }
+  ],
+  "definitions": {
+    "snapshot": {
+      "type": "object",
+      "required": [
+        "relPath",
+        "docid",
+        "uri",
+        "sourceHash",
+        "mirrorHash",
+        "active"
+      ],
+      "properties": {
+        "relPath": { "type": "string" },
+        "docid": { "type": "string", "pattern": "^#[a-f0-9]{6,}$" },
+        "uri": { "type": "string", "pattern": "^gno://.+" },
+        "sourceHash": { "$ref": "#/definitions/sha256" },
+        "mirrorHash": {
+          "anyOf": [{ "$ref": "#/definitions/sha256" }, { "type": "null" }]
+        },
+        "active": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "setDelta": {
+      "type": "object",
+      "required": ["added", "removed"],
+      "properties": {
+        "added": {
+          "type": "array",
+          "maxItems": 16,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1, "maxLength": 256 }
+        },
+        "removed": {
+          "type": "array",
+          "maxItems": 16,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1, "maxLength": 256 }
+        }
+      },
+      "additionalProperties": false
+    },
+    "dateDelta": {
+      "type": "object",
+      "required": ["added", "removed", "changed"],
+      "properties": {
+        "added": {
+          "type": "array",
+          "maxItems": 16,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1, "maxLength": 256 }
+        },
+        "removed": {
+          "type": "array",
+          "maxItems": 16,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1, "maxLength": 256 }
+        },
+        "changed": {
+          "type": "array",
+          "maxItems": 16,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1, "maxLength": 256 }
+        }
+      },
+      "additionalProperties": false
+    },
+    "structureDelta": {
+      "type": "object",
+      "required": ["headings", "links", "typedEdges", "dates", "truncated"],
+      "properties": {
+        "headings": { "$ref": "#/definitions/setDelta" },
+        "links": { "$ref": "#/definitions/setDelta" },
+        "typedEdges": { "$ref": "#/definitions/setDelta" },
+        "dates": { "$ref": "#/definitions/dateDelta" },
+        "truncated": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "change": {
+      "type": "object",
+      "required": [
+        "id",
+        "kind",
+        "collection",
+        "observedAt",
+        "previous",
+        "current",
+        "structureDelta"
+      ],
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 512 },
+        "kind": {
+          "type": "string",
+          "enum": ["create", "update", "rename", "inactivate", "reactivate"]
+        },
+        "collection": { "type": "string", "minLength": 1 },
+        "observedAt": { "type": "string", "format": "date-time" },
+        "previous": {
+          "anyOf": [{ "$ref": "#/definitions/snapshot" }, { "type": "null" }]
+        },
+        "current": {
+          "anyOf": [{ "$ref": "#/definitions/snapshot" }, { "type": "null" }]
+        },
+        "structureDelta": { "$ref": "#/definitions/structureDelta" }
+      },
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": { "kind": { "const": "create" } },
+            "required": ["kind"]
+          },
+          "then": {
+            "properties": {
+              "previous": { "type": "null" },
+              "current": {
+                "type": "object",
+                "properties": { "active": { "const": true } },
+                "required": ["active"]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": { "kind": { "enum": ["update", "rename"] } },
+            "required": ["kind"]
+          },
+          "then": {
+            "properties": {
+              "previous": { "$ref": "#/definitions/snapshot" },
+              "current": { "$ref": "#/definitions/snapshot" }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": { "kind": { "const": "inactivate" } },
+            "required": ["kind"]
+          },
+          "then": {
+            "properties": {
+              "previous": {
+                "type": "object",
+                "properties": { "active": { "const": true } },
+                "required": ["active"]
+              },
+              "current": {
+                "type": "object",
+                "properties": { "active": { "const": false } },
+                "required": ["active"]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": { "kind": { "const": "reactivate" } },
+            "required": ["kind"]
+          },
+          "then": {
+            "properties": {
+              "previous": {
+                "type": "object",
+                "properties": { "active": { "const": false } },
+                "required": ["active"]
+              },
+              "current": {
+                "type": "object",
+                "properties": { "active": { "const": true } },
+                "required": ["active"]
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

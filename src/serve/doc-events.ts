@@ -1,6 +1,6 @@
 export type DocumentEventOrigin = "watcher" | "save" | "create";
 
-export interface DocumentEvent {
+export interface DocumentChangedEvent {
   type: "document-changed";
   uri: string;
   collection: string;
@@ -8,6 +8,17 @@ export interface DocumentEvent {
   origin: DocumentEventOrigin;
   changedAt: string;
 }
+
+export interface CapsuleReverifiedEvent {
+  type: "capsule-reverified";
+  registrationId: string;
+  capsuleId: string;
+  operationStatus: "completed" | "failed";
+  affectedQuestionState: "unaffected" | "affected" | "unknown";
+  changedAt: string;
+}
+
+export type DocumentEvent = DocumentChangedEvent | CapsuleReverifiedEvent;
 
 export interface DocumentEventBusState {
   connectedClients: number;

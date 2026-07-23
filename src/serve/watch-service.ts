@@ -31,6 +31,8 @@ export interface CollectionWatchCallbacks {
     relPaths: string[];
     error: unknown;
   }) => void;
+  /** Fires after all watcher syncs and queued paths have settled. */
+  onSettled?: () => void;
 }
 
 interface CollectionWatchServiceOptions {
@@ -236,6 +238,13 @@ export class CollectionWatchService {
       const remaining = this.#pendingByCollection.get(collectionName);
       if (remaining && remaining.size > 0) {
         void this.#flushCollection(collectionName);
+      } else if (
+        this.#syncing.size === 0 &&
+        ![...this.#pendingByCollection.values()].some(
+          (relPaths) => relPaths.size > 0
+        )
+      ) {
+        this.#callbacks?.onSettled?.();
       }
     }
   }

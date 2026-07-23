@@ -35,6 +35,7 @@ export const CMD = {
   contextCheck: "context.check",
   contextBuild: "context.build",
   contextVerify: "context.verify",
+  contextSaved: "context.saved",
   modelsList: "models.list",
   tagsList: "tags.list",
   linksList: "links.list",
@@ -42,6 +43,9 @@ export const CMD = {
   similar: "similar",
   graph: "graph",
   graphQuery: "graph.query",
+  changes: "changes",
+  diff: "diff",
+  impact: "impact",
   capture: "capture",
 } as const;
 
@@ -64,6 +68,7 @@ const FORMAT_SUPPORT: Record<CommandId, OutputFormat[]> = {
   [CMD.contextCheck]: ["terminal", "json", "md"],
   [CMD.contextBuild]: ["terminal", "json", "md"],
   [CMD.contextVerify]: ["terminal", "json", "md"],
+  [CMD.contextSaved]: ["terminal", "json"],
   [CMD.modelsList]: ["terminal", "json"],
   [CMD.tagsList]: ["terminal", "json", "md"],
   [CMD.linksList]: ["terminal", "json", "md"],
@@ -72,6 +77,9 @@ const FORMAT_SUPPORT: Record<CommandId, OutputFormat[]> = {
   // graph uses custom --dot/--mermaid flags (not OutputFormat) and writes via terminal output
   [CMD.graph]: ["json", "terminal"],
   [CMD.graphQuery]: ["terminal", "json"],
+  [CMD.changes]: ["terminal", "json"],
+  [CMD.diff]: ["terminal", "json"],
+  [CMD.impact]: ["terminal", "json"],
   [CMD.capture]: ["terminal", "json"],
 };
 

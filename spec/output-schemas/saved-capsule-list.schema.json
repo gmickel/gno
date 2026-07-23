@@ -1,0 +1,16 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "gno://schemas/saved-capsule-list@1.0",
+  "title": "GNO Saved Context Capsule List",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "registrations"],
+  "properties": {
+    "schemaVersion": { "const": "1.0" },
+    "registrations": {
+      "type": "array",
+      "maxItems": 10000,
+      "items": { "$ref": "gno://schemas/saved-capsule-registration@1.0" }
+    }
+  }
+}

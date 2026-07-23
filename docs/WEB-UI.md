@@ -82,6 +82,13 @@ visible `completed`, `wal_busy`, or `failed` physical-cleanup receipt; only
 `completed` confirms WAL truncation. Exported files and backups remain
 user-owned.
 
+The same local event stream also carries `capsule-reverified` metadata after a
+CLI-registered saved Capsule has committed a freshness result. The browser uses
+that event only to refresh local state. Its closed payload contains
+registration/Capsule identity, operation status, affected-question state, and
+timestamp—never the question, label, path, URI, hashes, receipt, credentials,
+Capsule bytes, passages, or source content.
+
 ---
 
 ## Quick Start

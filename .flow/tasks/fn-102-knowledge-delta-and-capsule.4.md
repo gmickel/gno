@@ -48,9 +48,23 @@ Deliver register saved capsules and reverify affected evidence as one implementa
 
 
 ## Done summary
-TBD
+Implemented metadata-only saved Context Capsule registration and resident reverification.
 
+- Added migration 016 and SQLite store ports for registrations, evidence hash references, canonical verification receipts, disjoint operation failures, and a durable journal high-water mark.
+- Added canonical file/index validation, immutable exact-file hashing, CLI watch/list/unwatch/reverify lifecycle, and metadata-only local notifications.
+- Added a bounded, coalescing resident scheduler driven by settled raw document-journal changes, with restart idempotency and conservative expired-cursor recovery.
+- Added CLI, database, scheduler, privacy, immutability, mismatch, notification-order, restart, and cursor-expiry coverage.
+- Updated CLI, daemon, API, and database contracts.
+
+Validation:
+
+- `bun run lint:check`
+- `bun test` (2824 passed, 1 Windows-only skip, 0 failed)
+- `bun test test/changes/capsule-reverification.test.ts test/cli/context-saved.test.ts test/store/migrations.test.ts test/store/adapter.test.ts` (50 passed)
+- `/Users/gordon/.codex/scripts/flowctl validate --spec fn-102-knowledge-delta-and-capsule --json`
+
+`bun run docs:verify` completed all 12 executable checks successfully; its public-truth gate remains red on pre-existing 1.19.0 documentation strings versus package 1.20.0, reserved for task 5.
 ## Evidence
-- Commits:
-- Tests:
+- Commits: f35ca311b7cc57e4bfaf3f03bfcac1cc2fb39fba
+- Tests: bun run lint:check, bun test (2824 passed, 1 skipped, 0 failed), bun test test/changes/capsule-reverification.test.ts test/cli/context-saved.test.ts test/store/migrations.test.ts test/store/adapter.test.ts (50 passed), /Users/gordon/.codex/scripts/flowctl validate --spec fn-102-knowledge-delta-and-capsule --json
 - PRs:

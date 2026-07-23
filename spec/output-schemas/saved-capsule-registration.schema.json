@@ -1,0 +1,172 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "gno://schemas/saved-capsule-registration@1.0",
+  "title": "GNO Saved Context Capsule Registration",
+  "description": "Metadata-only registration for one caller-owned Context Capsule file. Capsule and passage bytes are never embedded in this payload.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "registrationId",
+    "filePath",
+    "fileHash",
+    "capsuleId",
+    "indexName",
+    "question",
+    "label",
+    "notificationPreference",
+    "registeredAtMs",
+    "updatedAtMs",
+    "lastAttemptedSequence",
+    "evidence",
+    "verification"
+  ],
+  "properties": {
+    "registrationId": {
+      "type": "string",
+      "pattern": "^capsule-[a-f0-9]{40}$"
+    },
+    "filePath": { "type": "string", "minLength": 1, "maxLength": 8192 },
+    "fileHash": { "$ref": "#/definitions/sha256" },
+    "capsuleId": { "$ref": "#/definitions/sha256" },
+    "indexName": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "question": {
+      "type": ["string", "null"],
+      "minLength": 1,
+      "maxLength": 8192
+    },
+    "label": {
+      "type": ["string", "null"],
+      "minLength": 1,
+      "maxLength": 512
+    },
+    "notificationPreference": { "enum": ["none", "local"] },
+    "registeredAtMs": { "type": "integer", "minimum": 0 },
+    "updatedAtMs": { "type": "integer", "minimum": 0 },
+    "lastAttemptedSequence": { "type": "integer", "minimum": 0 },
+    "evidence": {
+      "type": "array",
+      "maxItems": 10000,
+      "items": { "$ref": "#/definitions/evidenceReference" }
+    },
+    "verification": {
+      "anyOf": [{ "$ref": "#/definitions/verification" }, { "type": "null" }]
+    }
+  },
+  "definitions": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "evidenceReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "evidenceId",
+        "canonicalUri",
+        "collection",
+        "sourceHash",
+        "mirrorHash",
+        "passageHash"
+      ],
+      "properties": {
+        "evidenceId": { "$ref": "#/definitions/sha256" },
+        "canonicalUri": { "type": "string", "pattern": "^gno://.+" },
+        "collection": { "type": "string", "minLength": 1, "maxLength": 256 },
+        "sourceHash": { "$ref": "#/definitions/sha256" },
+        "mirrorHash": { "$ref": "#/definitions/sha256" },
+        "passageHash": { "$ref": "#/definitions/sha256" }
+      }
+    },
+    "verification": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "registrationId",
+        "triggerKind",
+        "fromSequence",
+        "throughSequence",
+        "operationStatus",
+        "affectedQuestionState",
+        "affectedReasons",
+        "receiptJson",
+        "receiptHash",
+        "errorCode",
+        "errorMessage",
+        "verifiedAtMs"
+      ],
+      "properties": {
+        "registrationId": {
+          "type": "string",
+          "pattern": "^capsule-[a-f0-9]{40}$"
+        },
+        "triggerKind": { "enum": ["manual", "journal"] },
+        "fromSequence": { "type": "integer", "minimum": 0 },
+        "throughSequence": { "type": "integer", "minimum": 0 },
+        "operationStatus": { "enum": ["completed", "failed"] },
+        "affectedQuestionState": {
+          "enum": ["unaffected", "affected", "unknown"]
+        },
+        "affectedReasons": {
+          "type": "array",
+          "maxItems": 4,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "content_stale",
+              "content_missing",
+              "ranking_changed",
+              "fingerprint_changed"
+            ]
+          }
+        },
+        "receiptJson": {
+          "type": ["string", "null"],
+          "maxLength": 16777216
+        },
+        "receiptHash": {
+          "anyOf": [{ "$ref": "#/definitions/sha256" }, { "type": "null" }]
+        },
+        "errorCode": {
+          "type": ["string", "null"],
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "errorMessage": {
+          "type": ["string", "null"],
+          "minLength": 1,
+          "maxLength": 4096
+        },
+        "verifiedAtMs": { "type": "integer", "minimum": 0 }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "operationStatus": { "const": "completed" } },
+            "required": ["operationStatus"]
+          },
+          "then": {
+            "properties": {
+              "affectedQuestionState": {
+                "enum": ["unaffected", "affected"]
+              },
+              "receiptJson": { "type": "string", "minLength": 1 },
+              "receiptHash": { "$ref": "#/definitions/sha256" },
+              "errorCode": { "type": "null" },
+              "errorMessage": { "type": "null" }
+            }
+          },
+          "else": {
+            "properties": {
+              "affectedQuestionState": { "const": "unknown" },
+              "affectedReasons": { "type": "array", "maxItems": 0 },
+              "receiptJson": { "type": "null" },
+              "receiptHash": { "type": "null" },
+              "errorCode": { "type": "string", "minLength": 1 },
+              "errorMessage": { "type": "string", "minLength": 1 }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

@@ -306,6 +306,17 @@ export interface DocumentInput {
   ingestVersion?: number;
   /** Fingerprint of normalized content type rules used for derived metadata */
   contentTypeRulesFingerprint?: string;
+  /**
+   * Change-journal metadata for a source lifecycle write. Conversion failures
+   * that change source/evidence identity are lifecycle writes; set false only
+   * for bookkeeping or repair that must not represent a source change.
+   */
+  changeJournal?:
+    | false
+    | {
+        observedAtMs?: number;
+        structureDelta?: Partial<DocumentChangeStructureDelta>;
+      };
 }
 
 /** Result of upserting a document */
@@ -314,6 +325,174 @@ export interface UpsertDocumentResult {
   id: number;
   /** Content-derived document ID (#hex) */
   docid: string;
+}
+
+/** Lifecycle transition persisted in the metadata-only document journal. */
+export type DocumentChangeKind =
+  | "create"
+  | "update"
+  | "rename"
+  | "inactivate"
+  | "reactivate";
+
+/** Bounded normalized additions/removals for one structural dimension. */
+export interface DocumentChangeSet {
+  added: string[];
+  removed: string[];
+}
+
+/** Bounded normalized date-field changes. */
+export interface DocumentChangeDateDelta extends DocumentChangeSet {
+  changed: string[];
+}
+
+/** Reserved structural summaries populated by the sync delta pipeline. */
+export interface DocumentChangeStructureDelta {
+  headings: DocumentChangeSet;
+  links: DocumentChangeSet;
+  typedEdges: DocumentChangeSet;
+  dates: DocumentChangeDateDelta;
+  truncated: boolean;
+}
+
+/** One committed metadata-only document lifecycle transition. */
+export interface DocumentChangeRow {
+  sequence: number;
+  documentId: number;
+  collection: string;
+  kind: DocumentChangeKind;
+  oldRelPath: string | null;
+  newRelPath: string | null;
+  oldDocid: string | null;
+  newDocid: string | null;
+  oldUri: string | null;
+  newUri: string | null;
+  oldSourceHash: string | null;
+  newSourceHash: string | null;
+  oldMirrorHash: string | null;
+  newMirrorHash: string | null;
+  oldActive: boolean | null;
+  newActive: boolean | null;
+  structureDelta: DocumentChangeStructureDelta;
+  observedAtMs: number;
+  byteSize: number;
+}
+
+/** Stable cursor page over retained document changes. */
+export interface DocumentChangePage {
+  changes: DocumentChangeRow[];
+  nextCursor: string | null;
+  earliestCursor: string;
+  latestCursor: string;
+  cursorExpired: boolean;
+  truncated: boolean;
+}
+
+export interface DocumentChangeListOptions {
+  cursor?: string;
+  collection?: string;
+  documentId?: number;
+  /** Inclusive observed-time lower bound in Unix milliseconds. */
+  observedAfterMs?: number;
+  limit?: number;
+}
+
+/** Prefix-retention limits; all three are enforced together. */
+export interface DocumentChangeRetentionPolicy {
+  maxAgeDays: number;
+  maxEntries: number;
+  maxBytes: number;
+}
+
+export interface DocumentChangeRetentionResult {
+  deleted: number;
+  remainingEntries: number;
+  remainingBytes: number;
+  earliestCursor: string;
+}
+
+export interface DocumentChangePurgeResult {
+  deleted: number;
+  earliestCursor: string;
+}
+
+export type SavedCapsuleNotificationPreference = "none" | "local";
+export type SavedCapsuleTriggerKind = "manual" | "journal";
+export type SavedCapsuleOperationStatus = "completed" | "failed";
+export type SavedCapsuleAffectedQuestionState =
+  | "unaffected"
+  | "affected"
+  | "unknown";
+
+export interface SavedCapsuleEvidenceReference {
+  evidenceId: string;
+  canonicalUri: string;
+  collection: string;
+  sourceHash: string;
+  mirrorHash: string;
+  passageHash: string;
+}
+
+export interface SavedCapsuleRegistration {
+  registrationId: string;
+  filePath: string;
+  fileHash: string;
+  capsuleId: string;
+  indexName: string;
+  question: string | null;
+  label: string | null;
+  notificationPreference: SavedCapsuleNotificationPreference;
+  registeredAtMs: number;
+  updatedAtMs: number;
+  lastAttemptedSequence: number;
+}
+
+export interface SavedCapsuleRegistrationRecord extends SavedCapsuleRegistration {
+  evidence: SavedCapsuleEvidenceReference[];
+  verification: SavedCapsuleVerificationRecord | null;
+}
+
+export interface SavedCapsuleVerificationRecord {
+  registrationId: string;
+  triggerKind: SavedCapsuleTriggerKind;
+  fromSequence: number;
+  throughSequence: number;
+  operationStatus: SavedCapsuleOperationStatus;
+  affectedQuestionState: SavedCapsuleAffectedQuestionState;
+  affectedReasons: string[];
+  receiptJson: string | null;
+  receiptHash: string | null;
+  errorCode: string | null;
+  errorMessage: string | null;
+  verifiedAtMs: number;
+}
+
+export interface SavedCapsuleVerificationExpectation {
+  registrationGeneration: number;
+}
+
+export interface SavedCapsuleReverificationState {
+  lastProcessedSequence: number;
+  registrationEpoch: number;
+}
+
+export interface SavedCapsuleRegistrationSnapshot {
+  registration: SavedCapsuleRegistrationRecord;
+  registrationGeneration: number;
+}
+
+export interface SavedCapsuleRegistrationInput extends Omit<
+  SavedCapsuleRegistration,
+  "registeredAtMs" | "updatedAtMs"
+> {
+  registeredAtMs: number;
+  updatedAtMs: number;
+  evidence: SavedCapsuleEvidenceReference[];
+}
+
+export interface RenameDocumentOptions {
+  observedAtMs?: number;
+  structureDelta?: Partial<DocumentChangeStructureDelta>;
 }
 
 /** Input for a single chunk */
@@ -1235,6 +1414,17 @@ export interface StorePort {
   ): Promise<StoreResult<UpsertDocumentResult>>;
 
   /**
+   * Explicitly rename one document while preserving its stable database id.
+   * External move inference deliberately remains outside this contract.
+   */
+  renameDocument(
+    collection: string,
+    oldRelPath: string,
+    newRelPath: string,
+    options?: RenameDocumentOptions
+  ): Promise<StoreResult<DocumentRow>>;
+
+  /**
    * Get document by collection and relative path.
    */
   getDocument(
@@ -1315,6 +1505,78 @@ export interface StorePort {
     collection: string,
     relPaths: string[]
   ): Promise<StoreResult<number>>;
+
+  /** List retained document changes using an opaque monotonic cursor. */
+  listDocumentChanges(
+    options?: DocumentChangeListOptions
+  ): Promise<StoreResult<DocumentChangePage>>;
+
+  /** Enforce age, entry-count, and byte limits by deleting an oldest prefix. */
+  enforceDocumentChangeRetention(
+    policy: DocumentChangeRetentionPolicy,
+    nowMs: number
+  ): Promise<StoreResult<DocumentChangeRetentionResult>>;
+
+  /** Purge the journal while retaining a cursor-expiry boundary. */
+  purgeDocumentChanges(): Promise<StoreResult<DocumentChangePurgeResult>>;
+
+  /** Register one user-owned Capsule file and its metadata-only evidence refs. */
+  upsertSavedCapsuleRegistration(
+    input: SavedCapsuleRegistrationInput
+  ): Promise<StoreResult<SavedCapsuleRegistrationRecord>>;
+
+  /** List saved Capsule registrations in deterministic identity order. */
+  listSavedCapsuleRegistrations(): Promise<
+    StoreResult<SavedCapsuleRegistrationRecord[]>
+  >;
+
+  /** Read one saved Capsule registration and its latest verification. */
+  getSavedCapsuleRegistration(
+    registrationId: string
+  ): Promise<StoreResult<SavedCapsuleRegistrationRecord | null>>;
+
+  /** Read one registration with its internal CAS generation atomically. */
+  getSavedCapsuleRegistrationSnapshot(
+    registrationId: string
+  ): Promise<StoreResult<SavedCapsuleRegistrationSnapshot | null>>;
+
+  /** Remove one saved Capsule registration and its subordinate metadata. */
+  deleteSavedCapsuleRegistration(
+    registrationId: string
+  ): Promise<StoreResult<boolean>>;
+
+  /** Find registrations whose evidence intersects a retained journal range. */
+  listSavedCapsuleIdsAffectedByChanges(
+    afterSequence: number,
+    throughSequence: number,
+    limit: number
+  ): Promise<StoreResult<{ registrationIds: string[]; truncated: boolean }>>;
+
+  /**
+   * Persist a receipt/failure only for the expected registration identity.
+   * Returns false without advancing sequence state when the snapshot is stale.
+   */
+  upsertSavedCapsuleVerification(
+    verification: SavedCapsuleVerificationRecord,
+    expectedRegistration: SavedCapsuleVerificationExpectation
+  ): Promise<StoreResult<boolean>>;
+
+  /** Read the resident scheduler's durable journal high-water sequence. */
+  getSavedCapsuleReverificationSequence(): Promise<StoreResult<number>>;
+
+  /** Atomically read the high-water sequence and registration generation. */
+  getSavedCapsuleReverificationState(): Promise<
+    StoreResult<SavedCapsuleReverificationState>
+  >;
+
+  /**
+   * Advance the high-water sequence only when no registration changed during
+   * the scheduler drain. Returns false when the caller must retry.
+   */
+  setSavedCapsuleReverificationSequence(
+    sequence: number,
+    expectedRegistrationEpoch: number
+  ): Promise<StoreResult<boolean>>;
 
   // ─────────────────────────────────────────────────────────────────────────
   // Content (content-addressed)

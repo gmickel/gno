@@ -1,0 +1,47 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "gno://schemas/capsule-reverified-event@1.0",
+  "title": "GNO Metadata-only Saved Capsule Reverification Event",
+  "description": "Closed local event emitted only after a saved Capsule verification result commits.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "type",
+    "registrationId",
+    "capsuleId",
+    "operationStatus",
+    "affectedQuestionState",
+    "changedAt"
+  ],
+  "properties": {
+    "type": { "const": "capsule-reverified" },
+    "registrationId": {
+      "type": "string",
+      "pattern": "^capsule-[a-f0-9]{40}$"
+    },
+    "capsuleId": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "operationStatus": { "enum": ["completed", "failed"] },
+    "affectedQuestionState": {
+      "enum": ["unaffected", "affected", "unknown"]
+    },
+    "changedAt": { "type": "string", "format": "date-time" }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": { "operationStatus": { "const": "completed" } },
+        "required": ["operationStatus"]
+      },
+      "then": {
+        "properties": {
+          "affectedQuestionState": { "enum": ["unaffected", "affected"] }
+        }
+      },
+      "else": {
+        "properties": {
+          "affectedQuestionState": { "const": "unknown" }
+        }
+      }
+    }
+  ]
+}

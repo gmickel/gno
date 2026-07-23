@@ -805,6 +805,54 @@ matching tokenizer fingerprint and deterministic token counter before GNO
 opens the store; runtimes without that tokenizer return `tokenizer_unavailable`
 and never trust saved `usedTokens` alone.
 
+### gno context watch
+
+Register an explicitly saved Capsule file for automatic reverification:
+
+```bash
+gno context watch capsule.json --question "Who owns launch?" --label launch
+gno context watch capsule.json --notify --json
+```
+
+GNO stores registration metadata and exact evidence hash references—not the
+Capsule body or passage text. The original file remains caller-owned; GNO never
+rewrites it. The file's canonical index is used unless an explicit global
+`--index` is supplied, in which case it must match.
+
+`serve` and `daemon` coalesce settled document-journal changes and reverify only
+registrations whose evidence changed. Restart resumes from a durable journal
+high-water mark; an expired cursor causes one conservative bounded pass. The
+saved verification is the same canonical, non-generative receipt returned by
+`gno context verify`. File changes, missing files, index mismatches, and other
+operation failures remain distinct from completed receipts.
+
+`--notify` publishes a local `capsule-reverified` event only after the result is
+stored. The event is metadata-only: registration/Capsule identity, operation
+status, affected-question state, and timestamp.
+
+Manage registrations:
+
+```bash
+gno context watches
+gno context watches --json
+gno context reverify capsule-abc123 --json
+gno context unwatch capsule-abc123
+```
+
+Registrations are scoped to one index database. `watches`, `reverify`, and
+`unwatch` therefore use the matching global `--index` when the registration is
+not in the default index. JSON is governed by the closed Draft-07
+`saved-capsule-watch`, `saved-capsule-list`, `saved-capsule-unwatch`, and
+`saved-capsule-reverification` schemas. Completed reverification contains a
+canonical receipt; operation failure contains no receipt. These lifecycle
+commands are CLI-only—REST, MCP, and SDK do not add persistent watch endpoints.
+
+Manual reverification exits `0` only for a completed operation. A failed
+operation remains visible: terminal output prints its code and message, while
+`--json` preserves the closed structured failure object on stdout. The process
+then exits `2`, so scripts cannot mistake a persisted failure for successful
+verification.
+
 ### gno context rm
 
 ```bash
@@ -1140,6 +1188,30 @@ gno graph --mermaid | pbcopy
 ```
 
 Similarity edges use `seq=0` embeddings only.
+
+## Knowledge Change Commands
+
+```bash
+gno changes --since 2026-07-20T00:00:00Z --json
+gno diff gno://notes/plan.md --json
+gno impact gno://notes/plan.md --max-depth 3 --max-edges 250 --json
+```
+
+- `gno changes` lists retained metadata-only lifecycle entries. `--since`
+  accepts an ISO-8601 time or an opaque cursor returned by an earlier response.
+- `gno diff` returns the latest retained structural delta; `--change <id>`
+  selects an exact opaque change ID. Source bodies are never retained, and
+  missing prior structure is disclosed through `history` and
+  `structureDelta.truncated`.
+- `gno impact` follows inbound typed, wiki, and Markdown dependencies. Depth,
+  node, edge, frontier, and visited-row caps are always enforced, and every result
+  includes an evidence path back to the changed document.
+- Journal entries retain metadata and bounded structural summaries, not source
+  bodies. Retention may expire an opaque cursor; that response returns no
+  fabricated history and directs the caller to restart from the disclosed
+  earliest cursor.
+- Machine-readable contracts: `changes.schema.json`,
+  `document-diff.schema.json`, and `impact.schema.json`.
 
 ## Admin Commands
 

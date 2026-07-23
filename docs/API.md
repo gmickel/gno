@@ -1152,7 +1152,20 @@ Returns lightweight document suggestions for title/path-driven UIs such as wiki-
 GET /api/events
 ```
 
-Server-sent event stream used by the Web UI to refresh document/search state after local edits and external file changes.
+Server-sent event stream used by the Web UI to refresh document/search state
+after local edits and external file changes. It also carries opt-in,
+metadata-only saved Capsule notifications:
+
+```text
+event: capsule-reverified
+data: {"type":"capsule-reverified","registrationId":"capsule-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","capsuleId":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb","operationStatus":"completed","affectedQuestionState":"affected","changedAt":"2026-07-23T12:00:00.000Z"}
+```
+
+The event is emitted only after the canonical verification receipt or separate
+operation failure has committed. It never includes a question, file path, URI,
+hash, passage, Capsule body, receipt body, credential, or source content.
+Event data uses the closed `capsule-reverified-event.schema.json` contract.
+Saved-Capsule registration management remains CLI-only.
 
 ---
 
@@ -1581,6 +1594,28 @@ curl -X POST http://localhost:3000/api/graph/query \
   -H "Content-Type: application/json" \
   -d '{"doc":"gno://notes/people/alice.md","direction":"both","edgeType":"mentions","maxDepth":2}' | jq
 ```
+
+---
+
+### Knowledge Changes
+
+```http
+GET /api/changes?since=<ISO-8601-or-cursor>&collection=<name>&limit=100
+GET /api/diff?ref=<document-ref>&change=<opaque-change-id>
+GET /api/impact?ref=<document-ref>&maxDepth=3&maxNodes=100&maxEdges=250&frontierLimit=100&visitedLimit=500
+```
+
+All three endpoints are read-only and share their exact structured contracts
+with CLI, MCP, and SDK:
+
+- `/api/changes` returns `changes.schema.json`, including opaque stable
+  cursors, cursor-expiry, pagination, and retention-truncation disclosure.
+- `/api/diff` returns `document-diff.schema.json`. The journal is metadata-only,
+  so `content.status` is `not_retained`; unavailable prior structure is derived
+  from `structureDelta.truncated`.
+- `/api/impact` returns `impact.schema.json`. Inbound typed/wiki/Markdown
+  traversal is cycle-safe and bounded by every supplied cap. Each impacted
+  document contains a deterministic dependency-to-root evidence path.
 
 ---
 

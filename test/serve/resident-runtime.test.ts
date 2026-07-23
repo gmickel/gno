@@ -1,4 +1,4 @@
-import { describe, expect, mock, test } from "bun:test";
+import { describe, expect, mock, spyOn, test } from "bun:test";
 
 import type { Config } from "../../src/config/types";
 import type { ResidentRuntimeDeps } from "../../src/serve/resident-runtime";
@@ -218,6 +218,33 @@ describe("ResidentRuntime", () => {
       },
     });
     expect(result.runtime.generations.content).toBe(1);
+    await result.runtime.dispose();
+  });
+
+  test("schedules saved Capsule reverification after watcher and full-sync settlement", async () => {
+    const deps = createDeps();
+    let callbacks:
+      | Parameters<
+          NonNullable<ResidentRuntimeDeps["watchServiceFactory"]>
+        >[0]["callbacks"]
+      | undefined;
+    const baseFactory = deps.watchServiceFactory!;
+    deps.watchServiceFactory = (options) => {
+      callbacks = options.callbacks;
+      return baseFactory(options);
+    };
+    const result = await startResidentRuntime({ mode: "serve" }, deps);
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+
+    const notify = spyOn(
+      result.runtime.capsuleReverificationScheduler,
+      "notifySyncSettled"
+    ).mockImplementation(() => undefined);
+    callbacks?.onSettled?.();
+    await result.runtime.syncAll();
+    expect(notify).toHaveBeenCalledTimes(2);
+
     await result.runtime.dispose();
   });
 

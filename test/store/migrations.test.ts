@@ -54,7 +54,7 @@ describe("store migrations", () => {
 
       const upgradeResult = runMigrations(db, migrations, "unicode61");
       expect(upgradeResult.ok).toBe(true);
-      expect(getSchemaVersion(db)).toBe(14);
+      expect(getSchemaVersion(db)).toBe(19);
 
       const indexedRow = db
         .query<{ indexed_at: string | null }, []>(
@@ -95,6 +95,301 @@ describe("store migrations", () => {
         .map((column) => column.name);
       expect(traceColumns).toContain("creation_digest");
       expect(traceColumns).toContain("expires_at_ms");
+
+      const changeColumns = db
+        .query<{ name: string }, []>("PRAGMA table_info(document_changes)")
+        .all()
+        .map((column) => column.name);
+      expect(changeColumns).toContain("old_source_hash");
+      expect(changeColumns).toContain("new_mirror_hash");
+      expect(changeColumns).toContain("heading_delta_json");
+      expect(changeColumns).toContain("structure_truncated");
+    } finally {
+      db.close();
+    }
+  });
+
+  test("creates the metadata-only saved Capsule registry with bounded lifecycle constraints", () => {
+    const db = new Database(dbPath);
+    db.exec("PRAGMA foreign_keys = ON");
+
+    try {
+      expect(runMigrations(db, migrations, "unicode61").ok).toBe(true);
+      expect(getSchemaVersion(db)).toBe(19);
+
+      const savedTables = db
+        .query<{ name: string }, []>(
+          `SELECT name FROM sqlite_master
+           WHERE type = 'table' AND name LIKE 'saved_capsule_%'
+           ORDER BY name`
+        )
+        .all()
+        .map((row) => row.name);
+      expect(savedTables).toEqual([
+        "saved_capsule_evidence",
+        "saved_capsule_registrations",
+        "saved_capsule_reverification_state",
+        "saved_capsule_verifications",
+      ]);
+      expect(
+        db
+          .query<{ last_processed_sequence: number }, []>(
+            `SELECT last_processed_sequence
+             FROM saved_capsule_reverification_state
+             WHERE singleton_id = 1`
+          )
+          .get()
+      ).toEqual({ last_processed_sequence: 0 });
+
+      const registrationId = `capsule-${"a".repeat(40)}`;
+      const insertRegistration = db.prepare(
+        `INSERT INTO saved_capsule_registrations (
+           registration_id, file_path, file_hash, capsule_id, index_name,
+           question, label, notification_preference, registered_at_ms,
+           updated_at_ms, last_attempted_sequence
+         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      );
+      insertRegistration.run(
+        registrationId,
+        "/tmp/decision.capsule.json",
+        "b".repeat(64),
+        "c".repeat(64),
+        "default",
+        "Who owns the decision?",
+        "Decision",
+        "local",
+        1,
+        2,
+        0
+      );
+      expect(() =>
+        insertRegistration.run(
+          `capsule-${"d".repeat(40)}`,
+          "/tmp/decision.capsule.json",
+          "e".repeat(64),
+          "f".repeat(64),
+          "default",
+          null,
+          null,
+          "none",
+          1,
+          1,
+          0
+        )
+      ).toThrow();
+      expect(() =>
+        insertRegistration.run(
+          `capsule-${"d".repeat(40)}`,
+          "/tmp/other.capsule.json",
+          "not-a-hash",
+          "f".repeat(64),
+          "default",
+          null,
+          null,
+          "none",
+          1,
+          1,
+          0
+        )
+      ).toThrow();
+
+      db.run(
+        `INSERT INTO saved_capsule_evidence (
+           registration_id, evidence_id, canonical_uri, collection,
+           source_hash, mirror_hash, passage_hash
+         ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [
+          registrationId,
+          "1".repeat(64),
+          "gno://notes/decision.md",
+          "notes",
+          "2".repeat(64),
+          "3".repeat(64),
+          "4".repeat(64),
+        ]
+      );
+      db.run(
+        `INSERT INTO saved_capsule_verifications (
+           registration_id, trigger_kind, from_sequence, through_sequence,
+           operation_status, affected_question_state, affected_reasons_json,
+           receipt_json, receipt_hash, error_code, error_message, verified_at_ms
+         ) VALUES (?, 'manual', 0, 0, 'completed', 'unaffected', '[]',
+                   ?, ?, NULL, NULL, 3)`,
+        [registrationId, '{"schemaVersion":"1.0"}', "5".repeat(64)]
+      );
+      expect(() =>
+        db.run(
+          `UPDATE saved_capsule_verifications
+           SET error_code = 'mixed_outcome', error_message = 'invalid'
+           WHERE registration_id = ?`,
+          [registrationId]
+        )
+      ).toThrow();
+
+      db.run(
+        "DELETE FROM saved_capsule_registrations WHERE registration_id = ?",
+        [registrationId]
+      );
+      expect(
+        db
+          .query<{ count: number }, []>(
+            `SELECT (
+               (SELECT COUNT(*) FROM saved_capsule_evidence) +
+               (SELECT COUNT(*) FROM saved_capsule_verifications)
+             ) AS count`
+          )
+          .get()
+      ).toEqual({ count: 0 });
+    } finally {
+      db.close();
+    }
+  });
+
+  test("backfills bounded document-change retention counters from v16", () => {
+    const db = new Database(dbPath);
+    try {
+      expect(runMigrations(db, migrations.slice(0, 16), "unicode61").ok).toBe(
+        true
+      );
+      db.run(
+        `INSERT INTO document_changes (
+           document_id, collection, change_kind, observed_at_ms, byte_size
+         ) VALUES (1, 'notes', 'create', 1, 41),
+                  (2, 'notes', 'create', 2, 59)`
+      );
+      db.run(
+        `UPDATE document_change_journal_state
+         SET last_sequence = 2
+         WHERE singleton_id = 1`
+      );
+
+      expect(runMigrations(db, migrations, "unicode61").ok).toBe(true);
+      expect(getSchemaVersion(db)).toBe(19);
+      expect(
+        db
+          .query<{ retained_entries: number; retained_bytes: number }, []>(
+            `SELECT retained_entries, retained_bytes
+             FROM document_change_journal_state
+             WHERE singleton_id = 1`
+          )
+          .get()
+      ).toEqual({ retained_entries: 2, retained_bytes: 100 });
+      expect(() =>
+        db.run(
+          `UPDATE document_change_journal_state
+           SET retained_entries = -1
+           WHERE singleton_id = 1`
+        )
+      ).toThrow();
+    } finally {
+      db.close();
+    }
+  });
+
+  test("adds a non-negative saved-Capsule registration epoch from v17", () => {
+    const db = new Database(dbPath);
+    try {
+      expect(runMigrations(db, migrations.slice(0, 17), "unicode61").ok).toBe(
+        true
+      );
+      db.run(
+        `UPDATE saved_capsule_reverification_state
+         SET last_processed_sequence = 7
+         WHERE singleton_id = 1`
+      );
+
+      expect(runMigrations(db, migrations, "unicode61").ok).toBe(true);
+      expect(getSchemaVersion(db)).toBe(19);
+      expect(
+        db
+          .query<
+            {
+              last_processed_sequence: number;
+              registration_epoch: number;
+            },
+            []
+          >(
+            `SELECT last_processed_sequence, registration_epoch
+             FROM saved_capsule_reverification_state
+             WHERE singleton_id = 1`
+          )
+          .get()
+      ).toEqual({ last_processed_sequence: 7, registration_epoch: 0 });
+      expect(() =>
+        db.run(
+          `UPDATE saved_capsule_reverification_state
+           SET registration_epoch = -1
+           WHERE singleton_id = 1`
+        )
+      ).toThrow();
+    } finally {
+      db.close();
+    }
+  });
+
+  test("backfills unique registration generations above the v18 epoch", () => {
+    const db = new Database(dbPath);
+    try {
+      expect(runMigrations(db, migrations.slice(0, 18), "unicode61").ok).toBe(
+        true
+      );
+      db.run(
+        `UPDATE saved_capsule_reverification_state
+         SET registration_epoch = 5
+         WHERE singleton_id = 1`
+      );
+      const insert = db.prepare(
+        `INSERT INTO saved_capsule_registrations (
+           registration_id, file_path, file_hash, capsule_id, index_name,
+           notification_preference, registered_at_ms, updated_at_ms
+         ) VALUES (?, ?, ?, ?, 'default', 'none', 1, 1)`
+      );
+      insert.run(
+        "capsule-a",
+        "/tmp/a.capsule.json",
+        "a".repeat(64),
+        "b".repeat(64)
+      );
+      insert.run(
+        "capsule-b",
+        "/tmp/b.capsule.json",
+        "c".repeat(64),
+        "d".repeat(64)
+      );
+
+      expect(runMigrations(db, migrations, "unicode61").ok).toBe(true);
+      expect(getSchemaVersion(db)).toBe(19);
+      expect(
+        db
+          .query<
+            { registration_id: string; registration_generation: number },
+            []
+          >(
+            `SELECT registration_id, registration_generation
+             FROM saved_capsule_registrations
+             ORDER BY registration_id ASC`
+          )
+          .all()
+      ).toEqual([
+        { registration_id: "capsule-a", registration_generation: 6 },
+        { registration_id: "capsule-b", registration_generation: 7 },
+      ]);
+      expect(
+        db
+          .query<{ registration_epoch: number }, []>(
+            `SELECT registration_epoch
+             FROM saved_capsule_reverification_state
+             WHERE singleton_id = 1`
+          )
+          .get()
+      ).toEqual({ registration_epoch: 7 });
+      expect(() =>
+        db.run(
+          `UPDATE saved_capsule_registrations
+           SET registration_generation = -1
+           WHERE registration_id = 'capsule-a'`
+        )
+      ).toThrow();
     } finally {
       db.close();
     }
@@ -155,7 +450,7 @@ describe("store migrations", () => {
 
       const upgraded = runMigrations(db, migrations, "unicode61");
       expect(upgraded.ok).toBe(true);
-      expect(getSchemaVersion(db)).toBe(14);
+      expect(getSchemaVersion(db)).toBe(19);
       const rows = db
         .query<{ rel_path: string; fts_mirror_hash: string | null }, []>(
           "SELECT rel_path, fts_mirror_hash FROM documents ORDER BY rel_path"

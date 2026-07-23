@@ -1526,6 +1526,28 @@ Use for explicit relationship questions over typed edges such as `works_at`,
 `attended`, or `mentions` after a seed ref is known. Use `gno_query` first if
 the seed document is unknown.
 
+### gno_changes
+
+Read-only metadata journal listing. Input fields: `since` (ISO-8601 time or
+opaque cursor), `collection`, and `limit` (1-1000, default 100). Structured
+content is contract-identical to CLI/REST/SDK `changes.schema.json`; it never
+contains source bodies.
+
+### gno_diff
+
+Read-only structural diff for `ref`, optionally selecting opaque `change`.
+Structured content is `document-diff.schema.json`. Expired/purged history and
+metadata-only content are explicit output states, while unavailable prior
+structure is derived from `structureDelta.truncated`.
+
+### gno_impact
+
+Read-only inbound dependency traversal for `ref`. Inputs `maxDepth`,
+`maxNodes`, `maxEdges`, `frontierLimit`, and `visitedLimit` use the same bounds
+as CLI/REST/SDK. Structured content is `impact.schema.json`; each impacted
+document includes a deterministic evidence path over typed or backlink
+projections. Truncation is explicit when any cap is reached.
+
 ---
 
 ### gno_graph_neighbors

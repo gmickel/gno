@@ -7,6 +7,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Added bounded, metadata-only Knowledge Delta history through
+  `gno changes`, `gno diff`, and `gno impact`, with equivalent REST, MCP, and
+  SDK reads, opaque retention-aware cursors, structural diffs, and bounded
+  relationship evidence paths.
+- Added CLI-only saved Context Capsule lifecycle commands:
+  `gno context watch`, `watches`, `reverify`, and `unwatch`. The resident
+  runtime coalesces settled index changes, reverifies exact saved evidence,
+  persists canonical freshness receipts, and emits closed local metadata
+  notifications without rewriting caller-owned Capsule files.
+
+### Fixed
+
+- Made structural journal summaries obey the database's serialized UTF-8 byte
+  bounds for CJK, emoji, escaped controls, and truncation collisions.
+- Replaced append-time full-journal retention scans with transactional retained
+  row/byte counters and bounded oldest-prefix deletion.
+- Closed saved-Capsule registration and conversion-failure journal gaps with a
+  durable post-registration catch-up queue and race-safe scheduler high-water
+  advancement plus generation-checked receipt persistence, so freshness checks
+  cannot skip concurrent or disappearing evidence or attach a stale receipt
+  after re-registration; never-successful conversion placeholders no longer
+  emit false document-create events.
+- Rejected explicitly empty Knowledge Delta filters/selectors across CLI, REST,
+  MCP, and SDK; failed manual Capsule reverification now renders the persisted
+  failure and exits nonzero.
+- Made the pinned package-smoke model downloader use the typed
+  `ReadableStream` reader contract, preserving streaming and SHA-256
+  validation in package typecheck environments without async-iterator types.
+- Reconciled public release labels with package version `1.20.0`.
+
+### Security
+
+- Saved Capsule registrations persist only bounded file, Capsule, index, and
+  evidence identities. Capsule bodies, evidence passages, questions, labels,
+  paths, URIs, hashes, receipts, credentials, and source content are excluded
+  from local notification payloads; reverification never invokes answer
+  generation or autonomous synthesis.
+
 ## [1.20.0] - 2026-07-23
 
 ### Added

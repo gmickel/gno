@@ -21,6 +21,14 @@ import { normalizeTag } from "../../core/tags";
 import { handleAddCollection } from "./add-collection";
 import { askInputSchema, handleAsk } from "./ask";
 import { handleCapture } from "./capture";
+import {
+  changesInputSchema,
+  diffInputSchema,
+  handleChanges,
+  handleDiff,
+  handleImpact,
+  impactInputSchema,
+} from "./changes";
 import { handleClearCollectionEmbeddings } from "./clear-collection-embeddings";
 import { handleContext, handleContextVerify } from "./context";
 import { handleEmbed } from "./embed";
@@ -1034,6 +1042,27 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
     MCP_TOOL_DESCRIPTIONS.status,
     statusInputSchema.shape,
     (args) => handleStatus(args, ctx)
+  );
+
+  server.tool(
+    "gno_changes",
+    "List retained metadata-only document changes with opaque cursor pagination and retention disclosure.",
+    changesInputSchema.shape,
+    (args) => handleChanges(args, ctx)
+  );
+
+  server.tool(
+    "gno_diff",
+    "Inspect one retained metadata-only structural document change. Source bodies are never returned.",
+    diffInputSchema.shape,
+    (args) => handleDiff(args, ctx)
+  );
+
+  server.tool(
+    "gno_impact",
+    "Find bounded inbound typed, wiki, and Markdown dependencies with deterministic evidence paths.",
+    impactInputSchema.shape,
+    (args) => handleImpact(args, ctx)
   );
 
   server.tool(
