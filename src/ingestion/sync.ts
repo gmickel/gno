@@ -41,6 +41,13 @@ import {
 } from "../converters/pipeline";
 import { DEFAULT_LIMITS } from "../converters/types";
 import {
+  diffDocumentStructure,
+  extractDocumentStructure,
+  isRelationMap,
+  normalizeRelationEdgeType,
+  normalizeRelationTarget,
+} from "../core/change-diff";
+import {
   normalizeMarkdownPath,
   normalizeWikiName,
   parseLinks,
@@ -82,35 +89,6 @@ const NON_RETRYABLE_CONVERSION_ERROR_CODES = new Set([
   "TOO_LARGE",
   "UNSUPPORTED",
 ]);
-
-type RelationMap = Record<string, string[]>;
-
-function isRelationMap(value: unknown): value is RelationMap {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
-    return false;
-  }
-
-  return Object.values(value).every(
-    (targets) =>
-      Array.isArray(targets) &&
-      targets.every((target) => typeof target === "string")
-  );
-}
-
-function normalizeRelationTarget(raw: string): string {
-  const trimmed = raw.trim();
-  if (trimmed.startsWith("[[") && trimmed.endsWith("]]")) {
-    return trimmed.slice(2, -2).split("|")[0]?.trim() ?? "";
-  }
-  return trimmed;
-}
-
-function normalizeRelationEdgeType(raw: string): string {
-  return raw
-    .trim()
-    .toLowerCase()
-    .replace(/[-\s]+/g, "_");
-}
 
 function findDocByWikiRef(
   docs: DocumentRow[],
@@ -789,6 +767,19 @@ export class SyncService {
         mime.ext,
         contentTypeRules
       );
+      const previousStructure = await this.readPreviousStructure(
+        store,
+        existing
+      );
+      const nextStructure = extractDocumentStructure(
+        artifact.markdown,
+        entry.relPath,
+        extractedMetadata.dateFields
+      );
+      const structureDelta = diffDocumentStructure(
+        previousStructure,
+        nextStructure
+      ).delta;
 
       const persistSuccessfulFile = async (): Promise<FileSyncResult> => {
         // 7. Upsert document - EXPLICITLY clear error fields on success
@@ -817,6 +808,7 @@ export class SyncService {
           lastErrorCode: undefined,
           lastErrorMessage: undefined,
           ingestVersion: INGEST_VERSION,
+          changeJournal: { structureDelta },
         });
 
         const { id: docId, docid } = mustOk(docidResult, "upsertDocument", {
@@ -1009,6 +1001,27 @@ export class SyncService {
         errorMessage: message,
       };
     }
+  }
+
+  private async readPreviousStructure(
+    store: StorePort,
+    existing: DocumentRow | null
+  ): Promise<ReturnType<typeof extractDocumentStructure> | null | undefined> {
+    if (!existing) return null;
+    if (!existing.mirrorHash) return undefined;
+
+    const content = await store.getContent(existing.mirrorHash);
+    if (!content.ok) {
+      throw new Error(`Store operation failed: ${content.error.message}`, {
+        cause: content.error,
+      });
+    }
+    if (content.value === null) return undefined;
+    return extractDocumentStructure(
+      content.value,
+      existing.relPath,
+      existing.dateFields
+    );
   }
 
   /**
