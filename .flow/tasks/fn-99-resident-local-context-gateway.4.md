@@ -38,4 +38,4 @@ Implemented a safe resident-status@1.0 lifecycle projection across CLI, REST, We
 ## Evidence
 - Commits: ece92adfff39920b9717db5711ffba856c93be1b
 - Tests: GATE_SKIPPED:unittest:green-receipt 26289d8a - baseline reused from prior post-gate pass, GATE_SKIPPED:smoke:green-receipt 26289d8a - baseline reused from prior post-gate pass, GATE_SKIPPED:package:green-receipt 26289d8a - baseline reused from prior post-gate pass, bun run lint:check, bun test test/serve/resident-health.test.ts test/serve/resident-concurrency.test.ts test/serve/resident-runtime.test.ts test/serve/api-status.test.ts test/serve/public/components/HealthCenter.test.tsx test/mcp/http-transport.test.ts test/mcp/context-lifecycle.test.ts test/llm/lifecycle.test.ts test/cli/detach.test.ts test/cli/serve-flags.test.ts test/cli/daemon-flags.test.ts test/spec/schemas/status.test.ts test/spec/schemas/process-status.test.ts, bun test test/mcp test/serve test/store, bun run smoke:serve-shutdown, bun run test:package, .flow/bin/flowctl validate --spec fn-99-resident-local-context-gateway --json
-- PRs:
+- PRs: #139

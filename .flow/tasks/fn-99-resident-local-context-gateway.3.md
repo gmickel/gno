@@ -37,4 +37,4 @@ Implemented and production-mounted a fail-closed Streamable HTTP MCP gateway for
 ## Evidence
 - Commits: a15e8b73a5ff0ec2edc8214ecb422b4a8d4b6dea, 26289d8acf8541948d7cdc68e11255d88855d3e2
 - Tests: GATE_SKIPPED:unittest:green-receipt 6bb7eef0 - baseline reused from prior post-gate pass, GATE_SKIPPED:smoke:green-receipt 6bb7eef0 - baseline reused from prior post-gate pass, GATE_SKIPPED:package:green-receipt 6bb7eef0 - baseline reused from prior post-gate pass, bun test test/mcp test/serve test/cli/daemon.test.ts test/cli/daemon-flags.test.ts test/cli/serve-flags.test.ts test/cli/smoke.test.ts test/config/loader.test.ts test/spec/schemas (832 pass, 0 fail), bun test test/cli/detach.integration.test.ts (14 pass, 0 fail), bun test test/mcp test/serve test/store (698 pass, 0 fail), bun run smoke:serve-shutdown, bun run test:package, bun run lint:check, .flow/bin/flowctl validate --spec fn-99-resident-local-context-gateway --json
-- PRs:
+- PRs: #139

@@ -38,4 +38,4 @@ Added the single resident ownership boundary used by serve and daemon, including
 ## Evidence
 - Commits: 81918e6c9b20c2c38bad57b5b6520d2ed1e63b50
 - Tests: bun run typecheck, bun test test/mcp test/serve test/store, bun run smoke:serve-shutdown, bun run test:package, bun run lint:check, .flow/bin/flowctl validate --spec fn-99-resident-local-context-gateway --json
-- PRs:
+- PRs: #139

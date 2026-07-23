@@ -39,4 +39,4 @@ Added npm-tarball conformance for concurrent resident HTTP MCP clients, stdio pa
 ## Evidence
 - Commits: 45567ca7ea1c2478d7da53ebc08efef2fd590280, f67b553cea7c0f31383f671849525e868db9551a, 86d18e1, 2989c1c, 01bc0d4
 - Tests: bun test (2616 pass, 1 platform skip, 0 fail; 17544 assertions), focused lifecycle/security/mutation suites (65 pass, 0 fail), bun run smoke:serve-shutdown, bun run test:package with two clients/four semantic calls/one physical model load/balanced leases, CI=true bun run test:package with revision- and SHA-pinned model artifact, bun run lint:check, bun run docs:verify, .flow/bin/flowctl validate --spec fn-99-resident-local-context-gateway --json, gno.sh: bun run typecheck, gno.sh: bun run test, gno.sh: bun run check, gno.sh: bun run build, autoresearch-gno-skill: .venv/bin/python eval.py (48/48, 100%)
-- PRs:
+- PRs: #139 (GNO), gno.sh#10

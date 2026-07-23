@@ -34,4 +34,4 @@ Added stable MCP SDK 1.29 Web Standard Streamable HTTP sessions with one isolate
 ## Evidence
 - Commits: 6bb7eef0d95b383a35078a13dae1212aa7fb00dc
 - Tests: GATE_SKIPPED:unittest:green-receipt 81918e6c - baseline reused from prior post-gate pass, GATE_SKIPPED:smoke:green-receipt 81918e6c - baseline reused from prior post-gate pass, GATE_SKIPPED:package:green-receipt 81918e6c - baseline reused from prior post-gate pass, bun test test/mcp/http-transport.test.ts test/mcp/http-parity.test.ts, bun run typecheck, bun install --frozen-lockfile, bun test test/mcp test/serve test/store, bun run smoke:serve-shutdown, bun run test:package, bun run lint:check, .flow/bin/flowctl validate --spec fn-99-resident-local-context-gateway --json
-- PRs:
+- PRs: #139
