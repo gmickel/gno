@@ -1,6 +1,6 @@
 # Agentic Retrieval Benchmark — fixture-agent-v1
 
-Canonical fingerprint: `25179e606bf873b118d8e9fe2dd44845841bae29fe8d23eb0b827f276e260246`
+Canonical fingerprint: `0725a8c7a5d3a468e6c80e1a3313b2dd01fc434dd1335f0c38c3c711ba7780ab`
 Fixture: `2026-07-22.1` / `68027bb0248c09507dbdba9d8cf2433f1b9b7b547ba5db8811db338982f9d08b`
 Adapters: `capsule`, `gno-mcp`, `lexical`
 Attempted/scored/successful: 144/144/138
@@ -12,22 +12,22 @@ Verdict: **PASS**
 Pairs: 48
 Baseline/Capsule success: 0.9583333333333334 / 1
 Agent-call reduction: 0.4893617021276596
-Context-byte reduction: 0.3643939711994626
+Context-byte reduction: 0.499475208866871
 Claim linkage: 1
 Failures: none
 
 ## Adapter-native indexes
 
-- `capsule`: `9c4a65f08850a70ff6d2ec6fe069b4cd38c9cbf3481583afd76a74264cf0591a` (corpus `68027bb0248c09507dbdba9d8cf2433f1b9b7b547ba5db8811db338982f9d08b`, preparation 484.994 ms)
-- `gno-mcp`: `9c4a65f08850a70ff6d2ec6fe069b4cd38c9cbf3481583afd76a74264cf0591a` (corpus `68027bb0248c09507dbdba9d8cf2433f1b9b7b547ba5db8811db338982f9d08b`, preparation 3865.8 ms)
-- `lexical`: `9c4a65f08850a70ff6d2ec6fe069b4cd38c9cbf3481583afd76a74264cf0591a` (corpus `68027bb0248c09507dbdba9d8cf2433f1b9b7b547ba5db8811db338982f9d08b`, preparation 38.799 ms)
+- `capsule`: `9c4a65f08850a70ff6d2ec6fe069b4cd38c9cbf3481583afd76a74264cf0591a` (corpus `68027bb0248c09507dbdba9d8cf2433f1b9b7b547ba5db8811db338982f9d08b`, preparation 754.193 ms)
+- `gno-mcp`: `9c4a65f08850a70ff6d2ec6fe069b4cd38c9cbf3481583afd76a74264cf0591a` (corpus `68027bb0248c09507dbdba9d8cf2433f1b9b7b547ba5db8811db338982f9d08b`, preparation 3898.367 ms)
+- `lexical`: `9c4a65f08850a70ff6d2ec6fe069b4cd38c9cbf3481583afd76a74264cf0591a` (corpus `68027bb0248c09507dbdba9d8cf2433f1b9b7b547ba5db8811db338982f9d08b`, preparation 44.547 ms)
 
 ## Cohort accounting
 
 | Adapter | Lifecycle | Attempted | Scored | Success | Excluded | agentCalls | backendInvocations | Model-visible bytes |
 | ------- | --------- | --------: | -----: | ------: | -------: | ---------: | -----------------: | ------------------: |
-| capsule | cold      |        24 |     24 |      24 |        0 |         24 |                246 |               30279 |
-| capsule | warm      |        24 |     24 |      24 |        0 |         24 |                246 |               30279 |
+| capsule | cold      |        24 |     24 |      24 |        0 |         24 |                246 |               23844 |
+| capsule | warm      |        24 |     24 |      24 |        0 |         24 |                246 |               23844 |
 | gno-mcp | cold      |        24 |     24 |      23 |        0 |         47 |                 95 |               47638 |
 | gno-mcp | warm      |        24 |     24 |      23 |        0 |         47 |                 95 |               47638 |
 | lexical | cold      |        24 |     24 |      22 |        0 |         47 |                 76 |               49947 |
@@ -39,65 +39,65 @@ Measured totals and explicit unavailable counts/reasons; milliseconds.
 
 | Adapter/lifecycle | Startup                                                  | Model load                                                         | Tool                  | Driver            | End-to-end            |
 | ----------------- | -------------------------------------------------------- | ------------------------------------------------------------------ | --------------------- | ----------------- | --------------------- |
-| capsule/cold      | 7.334 ms / null 0                                        | 0.000 ms / null 24 (one or more model-load components unavailable) | 28.927 ms / null 0    | 1.531 ms / null 0 | 51.114 ms / null 0    |
-| capsule/warm      | 0.000 ms / null 24 (completed before scored warm cohort) | 0.000 ms / null 24 (completed before scored warm cohort)           | 14.601 ms / null 0    | 0.728 ms / null 0 | 17.956 ms / null 0    |
-| gno-mcp/cold      | 2635.490 ms / null 0                                     | 0.000 ms / null 24 (one or more model-load components unavailable) | 28707.383 ms / null 0 | 2.784 ms / null 0 | 31468.894 ms / null 0 |
-| gno-mcp/warm      | 0.000 ms / null 24 (completed before scored warm cohort) | 0.000 ms / null 24 (completed before scored warm cohort)           | 14601.898 ms / null 0 | 2.427 ms / null 0 | 14612.449 ms / null 0 |
-| lexical/cold      | 6.311 ms / null 0                                        | 0.000 ms / null 24 (one or more model-load components unavailable) | 7.926 ms / null 0     | 0.678 ms / null 0 | 20.285 ms / null 0    |
-| lexical/warm      | 0.000 ms / null 24 (completed before scored warm cohort) | 0.000 ms / null 24 (completed before scored warm cohort)           | 3.761 ms / null 0     | 0.583 ms / null 0 | 6.732 ms / null 0     |
+| capsule/cold      | 7.848 ms / null 0                                        | 0.000 ms / null 24 (one or more model-load components unavailable) | 27.959 ms / null 0    | 1.720 ms / null 0 | 51.239 ms / null 0    |
+| capsule/warm      | 0.000 ms / null 24 (completed before scored warm cohort) | 0.000 ms / null 24 (completed before scored warm cohort)           | 14.529 ms / null 0    | 0.663 ms / null 0 | 17.680 ms / null 0    |
+| gno-mcp/cold      | 2736.657 ms / null 0                                     | 0.000 ms / null 24 (one or more model-load components unavailable) | 27932.680 ms / null 0 | 2.962 ms / null 0 | 30795.278 ms / null 0 |
+| gno-mcp/warm      | 0.000 ms / null 24 (completed before scored warm cohort) | 0.000 ms / null 24 (completed before scored warm cohort)           | 14941.297 ms / null 0 | 2.342 ms / null 0 | 14951.803 ms / null 0 |
+| lexical/cold      | 5.597 ms / null 0                                        | 0.000 ms / null 24 (one or more model-load components unavailable) | 7.120 ms / null 0     | 0.549 ms / null 0 | 18.023 ms / null 0    |
+| lexical/warm      | 0.000 ms / null 24 (completed before scored warm cohort) | 0.000 ms / null 24 (completed before scored warm cohort)           | 3.092 ms / null 0     | 0.388 ms / null 0 | 5.463 ms / null 0     |
 
 ## Capsule replay hashes
 
 | Task/trial/lifecycle     | First SHA-256                                                      | Replay SHA-256                                                     | Equal |
 | ------------------------ | ------------------------------------------------------------------ | ------------------------------------------------------------------ | ----- |
-| t012ab3c/fixture-01/cold | `57a7dc289fc72faf96311365c77be7a490c23cef7ce180beb30403486add4573` | `57a7dc289fc72faf96311365c77be7a490c23cef7ce180beb30403486add4573` | yes   |
-| t012ab3c/fixture-01/warm | `57a7dc289fc72faf96311365c77be7a490c23cef7ce180beb30403486add4573` | `57a7dc289fc72faf96311365c77be7a490c23cef7ce180beb30403486add4573` | yes   |
-| t0a1b2c3/fixture-01/cold | `58687522423ab479b7f1facc158742d9cb72129b315c781640b25aef2e7db858` | `58687522423ab479b7f1facc158742d9cb72129b315c781640b25aef2e7db858` | yes   |
-| t0a1b2c3/fixture-01/warm | `58687522423ab479b7f1facc158742d9cb72129b315c781640b25aef2e7db858` | `58687522423ab479b7f1facc158742d9cb72129b315c781640b25aef2e7db858` | yes   |
-| t123bc4d/fixture-01/cold | `7fe4718d6894f4346576ddc580e39cce94558f01af82510710f453914e86fe25` | `7fe4718d6894f4346576ddc580e39cce94558f01af82510710f453914e86fe25` | yes   |
-| t123bc4d/fixture-01/warm | `7fe4718d6894f4346576ddc580e39cce94558f01af82510710f453914e86fe25` | `7fe4718d6894f4346576ddc580e39cce94558f01af82510710f453914e86fe25` | yes   |
-| t1b2c3d4/fixture-01/cold | `fe689ea766c73a0e774630ecb388533738d3e4cfe6e6a7f9d03b0d2887658495` | `fe689ea766c73a0e774630ecb388533738d3e4cfe6e6a7f9d03b0d2887658495` | yes   |
-| t1b2c3d4/fixture-01/warm | `fe689ea766c73a0e774630ecb388533738d3e4cfe6e6a7f9d03b0d2887658495` | `fe689ea766c73a0e774630ecb388533738d3e4cfe6e6a7f9d03b0d2887658495` | yes   |
-| t234cd5e/fixture-01/cold | `340dc27af121ffafd51ceb61008c0a244eb94113e9c3ec6e17d7ff7255690b78` | `340dc27af121ffafd51ceb61008c0a244eb94113e9c3ec6e17d7ff7255690b78` | yes   |
-| t234cd5e/fixture-01/warm | `340dc27af121ffafd51ceb61008c0a244eb94113e9c3ec6e17d7ff7255690b78` | `340dc27af121ffafd51ceb61008c0a244eb94113e9c3ec6e17d7ff7255690b78` | yes   |
-| t2c3d4e5/fixture-01/cold | `91bcf42e33afc0ce28031a8a3334a63d8674161a2572676f6582e9681234f4ad` | `91bcf42e33afc0ce28031a8a3334a63d8674161a2572676f6582e9681234f4ad` | yes   |
-| t2c3d4e5/fixture-01/warm | `91bcf42e33afc0ce28031a8a3334a63d8674161a2572676f6582e9681234f4ad` | `91bcf42e33afc0ce28031a8a3334a63d8674161a2572676f6582e9681234f4ad` | yes   |
-| t345de6f/fixture-01/cold | `2b36ca847f60801a4db8d32ede4ab4d9f3e8f44da2763827eac34c188f9632d7` | `2b36ca847f60801a4db8d32ede4ab4d9f3e8f44da2763827eac34c188f9632d7` | yes   |
-| t345de6f/fixture-01/warm | `2b36ca847f60801a4db8d32ede4ab4d9f3e8f44da2763827eac34c188f9632d7` | `2b36ca847f60801a4db8d32ede4ab4d9f3e8f44da2763827eac34c188f9632d7` | yes   |
-| t3d4e5f6/fixture-01/cold | `c0837b3db806572e4609906401b139f08cc0a17616216ee0e92813ab00ef6a5a` | `c0837b3db806572e4609906401b139f08cc0a17616216ee0e92813ab00ef6a5a` | yes   |
-| t3d4e5f6/fixture-01/warm | `c0837b3db806572e4609906401b139f08cc0a17616216ee0e92813ab00ef6a5a` | `c0837b3db806572e4609906401b139f08cc0a17616216ee0e92813ab00ef6a5a` | yes   |
-| t456ef70/fixture-01/cold | `a4e4605a6b9a55917bced8e9cc9153f0390a19e492349e24cf133eb028b4e776` | `a4e4605a6b9a55917bced8e9cc9153f0390a19e492349e24cf133eb028b4e776` | yes   |
-| t456ef70/fixture-01/warm | `a4e4605a6b9a55917bced8e9cc9153f0390a19e492349e24cf133eb028b4e776` | `a4e4605a6b9a55917bced8e9cc9153f0390a19e492349e24cf133eb028b4e776` | yes   |
-| t4e5f607/fixture-01/cold | `6f070e77ada23803c76eb1ca9f28fad0c4293453153e48c839f5ac975ce2825e` | `6f070e77ada23803c76eb1ca9f28fad0c4293453153e48c839f5ac975ce2825e` | yes   |
-| t4e5f607/fixture-01/warm | `6f070e77ada23803c76eb1ca9f28fad0c4293453153e48c839f5ac975ce2825e` | `6f070e77ada23803c76eb1ca9f28fad0c4293453153e48c839f5ac975ce2825e` | yes   |
-| t567f081/fixture-01/cold | `eeede5ae1d6e0983d3235f959d92ac8250e321a6bcf64175bad84eefa6ad8ac3` | `eeede5ae1d6e0983d3235f959d92ac8250e321a6bcf64175bad84eefa6ad8ac3` | yes   |
-| t567f081/fixture-01/warm | `eeede5ae1d6e0983d3235f959d92ac8250e321a6bcf64175bad84eefa6ad8ac3` | `eeede5ae1d6e0983d3235f959d92ac8250e321a6bcf64175bad84eefa6ad8ac3` | yes   |
-| t5f60718/fixture-01/cold | `9c223a6535f4d8fb8034bd5b0ae6bbaba38cb8a9ff94b6a7fc4c9802a79b5499` | `9c223a6535f4d8fb8034bd5b0ae6bbaba38cb8a9ff94b6a7fc4c9802a79b5499` | yes   |
-| t5f60718/fixture-01/warm | `9c223a6535f4d8fb8034bd5b0ae6bbaba38cb8a9ff94b6a7fc4c9802a79b5499` | `9c223a6535f4d8fb8034bd5b0ae6bbaba38cb8a9ff94b6a7fc4c9802a79b5499` | yes   |
-| t6071829/fixture-01/cold | `b6d79d7627c15402ca2b9954aaf6c2b03670ac18326aed935da2dc9f4127a69a` | `b6d79d7627c15402ca2b9954aaf6c2b03670ac18326aed935da2dc9f4127a69a` | yes   |
-| t6071829/fixture-01/warm | `b6d79d7627c15402ca2b9954aaf6c2b03670ac18326aed935da2dc9f4127a69a` | `b6d79d7627c15402ca2b9954aaf6c2b03670ac18326aed935da2dc9f4127a69a` | yes   |
-| t6780192/fixture-01/cold | `01a5a3e292380e68e6bdcdc807bd1d20b99c05d5a3330b65fc96489a3eb2cc76` | `01a5a3e292380e68e6bdcdc807bd1d20b99c05d5a3330b65fc96489a3eb2cc76` | yes   |
-| t6780192/fixture-01/warm | `01a5a3e292380e68e6bdcdc807bd1d20b99c05d5a3330b65fc96489a3eb2cc76` | `01a5a3e292380e68e6bdcdc807bd1d20b99c05d5a3330b65fc96489a3eb2cc76` | yes   |
-| t718293a/fixture-01/cold | `918e6d171a063cd6ee96a491060e48dee9fd0d4c5df37225ca366b3c34d9caa5` | `918e6d171a063cd6ee96a491060e48dee9fd0d4c5df37225ca366b3c34d9caa5` | yes   |
-| t718293a/fixture-01/warm | `918e6d171a063cd6ee96a491060e48dee9fd0d4c5df37225ca366b3c34d9caa5` | `918e6d171a063cd6ee96a491060e48dee9fd0d4c5df37225ca366b3c34d9caa5` | yes   |
-| t7891a03/fixture-01/cold | `c8dcbd41fef4cc7fc326bd6724e56fd10f729f157b0be4c41402d504bee885e5` | `c8dcbd41fef4cc7fc326bd6724e56fd10f729f157b0be4c41402d504bee885e5` | yes   |
-| t7891a03/fixture-01/warm | `c8dcbd41fef4cc7fc326bd6724e56fd10f729f157b0be4c41402d504bee885e5` | `c8dcbd41fef4cc7fc326bd6724e56fd10f729f157b0be4c41402d504bee885e5` | yes   |
-| t8293a4b/fixture-01/cold | `5546d58d2de0af30509e69723873efe220a3d297941220f8d517f287ad00e2cf` | `5546d58d2de0af30509e69723873efe220a3d297941220f8d517f287ad00e2cf` | yes   |
-| t8293a4b/fixture-01/warm | `5546d58d2de0af30509e69723873efe220a3d297941220f8d517f287ad00e2cf` | `5546d58d2de0af30509e69723873efe220a3d297941220f8d517f287ad00e2cf` | yes   |
-| t93a4b5c/fixture-01/cold | `ad1fb2fae31fc583d6e9404e8a1832e99bea34bc96c639e7a16ac2f2f886322d` | `ad1fb2fae31fc583d6e9404e8a1832e99bea34bc96c639e7a16ac2f2f886322d` | yes   |
-| t93a4b5c/fixture-01/warm | `ad1fb2fae31fc583d6e9404e8a1832e99bea34bc96c639e7a16ac2f2f886322d` | `ad1fb2fae31fc583d6e9404e8a1832e99bea34bc96c639e7a16ac2f2f886322d` | yes   |
-| ta4b5c6d/fixture-01/cold | `88ead531003e38ed6b5b798f25837ead073f6bec3b84d8234ab7d7a22bc421a4` | `88ead531003e38ed6b5b798f25837ead073f6bec3b84d8234ab7d7a22bc421a4` | yes   |
-| ta4b5c6d/fixture-01/warm | `88ead531003e38ed6b5b798f25837ead073f6bec3b84d8234ab7d7a22bc421a4` | `88ead531003e38ed6b5b798f25837ead073f6bec3b84d8234ab7d7a22bc421a4` | yes   |
-| tb5c6d7e/fixture-01/cold | `b9e668f0d15df725896e75811d48cb09f5928cfc8e3f874ce92a45c9ac9c38c9` | `b9e668f0d15df725896e75811d48cb09f5928cfc8e3f874ce92a45c9ac9c38c9` | yes   |
-| tb5c6d7e/fixture-01/warm | `b9e668f0d15df725896e75811d48cb09f5928cfc8e3f874ce92a45c9ac9c38c9` | `b9e668f0d15df725896e75811d48cb09f5928cfc8e3f874ce92a45c9ac9c38c9` | yes   |
-| tc6d7e8f/fixture-01/cold | `d65a6bc5e1f4fac8277ac6cbaed7fca763b1363e7020859f45fb77686e99cf49` | `d65a6bc5e1f4fac8277ac6cbaed7fca763b1363e7020859f45fb77686e99cf49` | yes   |
-| tc6d7e8f/fixture-01/warm | `d65a6bc5e1f4fac8277ac6cbaed7fca763b1363e7020859f45fb77686e99cf49` | `d65a6bc5e1f4fac8277ac6cbaed7fca763b1363e7020859f45fb77686e99cf49` | yes   |
-| td7e8f90/fixture-01/cold | `f6e5d8f861fdedc0e81a3edfac6e0a453b067c18ce11a1fe114e4c63ffb67da0` | `f6e5d8f861fdedc0e81a3edfac6e0a453b067c18ce11a1fe114e4c63ffb67da0` | yes   |
-| td7e8f90/fixture-01/warm | `f6e5d8f861fdedc0e81a3edfac6e0a453b067c18ce11a1fe114e4c63ffb67da0` | `f6e5d8f861fdedc0e81a3edfac6e0a453b067c18ce11a1fe114e4c63ffb67da0` | yes   |
-| te8f901a/fixture-01/cold | `ab8bf29a27bd248b9497b7e103dc8aeef944c996e2bcac1987f1361776bf908d` | `ab8bf29a27bd248b9497b7e103dc8aeef944c996e2bcac1987f1361776bf908d` | yes   |
-| te8f901a/fixture-01/warm | `ab8bf29a27bd248b9497b7e103dc8aeef944c996e2bcac1987f1361776bf908d` | `ab8bf29a27bd248b9497b7e103dc8aeef944c996e2bcac1987f1361776bf908d` | yes   |
-| tf901a2b/fixture-01/cold | `be459e42c098a17c2e2e253d22b7523894712a778331076492c8aa4746ff2d94` | `be459e42c098a17c2e2e253d22b7523894712a778331076492c8aa4746ff2d94` | yes   |
-| tf901a2b/fixture-01/warm | `be459e42c098a17c2e2e253d22b7523894712a778331076492c8aa4746ff2d94` | `be459e42c098a17c2e2e253d22b7523894712a778331076492c8aa4746ff2d94` | yes   |
+| t012ab3c/fixture-01/cold | `e097f3252ffb9feb2c3dde463b7e74ef652071d3c83453ea487589d551578659` | `e097f3252ffb9feb2c3dde463b7e74ef652071d3c83453ea487589d551578659` | yes   |
+| t012ab3c/fixture-01/warm | `e097f3252ffb9feb2c3dde463b7e74ef652071d3c83453ea487589d551578659` | `e097f3252ffb9feb2c3dde463b7e74ef652071d3c83453ea487589d551578659` | yes   |
+| t0a1b2c3/fixture-01/cold | `dce6da1d5d1f9652a08a7f4266b3a618bda3a1bbb2bd41040043d5277db66c33` | `dce6da1d5d1f9652a08a7f4266b3a618bda3a1bbb2bd41040043d5277db66c33` | yes   |
+| t0a1b2c3/fixture-01/warm | `dce6da1d5d1f9652a08a7f4266b3a618bda3a1bbb2bd41040043d5277db66c33` | `dce6da1d5d1f9652a08a7f4266b3a618bda3a1bbb2bd41040043d5277db66c33` | yes   |
+| t123bc4d/fixture-01/cold | `558d8439ac25426fa3839f9385c5e08d54862240636a273617c710b705f3cce6` | `558d8439ac25426fa3839f9385c5e08d54862240636a273617c710b705f3cce6` | yes   |
+| t123bc4d/fixture-01/warm | `558d8439ac25426fa3839f9385c5e08d54862240636a273617c710b705f3cce6` | `558d8439ac25426fa3839f9385c5e08d54862240636a273617c710b705f3cce6` | yes   |
+| t1b2c3d4/fixture-01/cold | `a53457c79d8916fc5772dd8dc6e1d5e046fc5e00f92c8b1bb856cf26a082aadd` | `a53457c79d8916fc5772dd8dc6e1d5e046fc5e00f92c8b1bb856cf26a082aadd` | yes   |
+| t1b2c3d4/fixture-01/warm | `a53457c79d8916fc5772dd8dc6e1d5e046fc5e00f92c8b1bb856cf26a082aadd` | `a53457c79d8916fc5772dd8dc6e1d5e046fc5e00f92c8b1bb856cf26a082aadd` | yes   |
+| t234cd5e/fixture-01/cold | `991243fd67c389b251760b05acb3e5836c2fca0c8c89d98fa166a195bcfaeeb7` | `991243fd67c389b251760b05acb3e5836c2fca0c8c89d98fa166a195bcfaeeb7` | yes   |
+| t234cd5e/fixture-01/warm | `991243fd67c389b251760b05acb3e5836c2fca0c8c89d98fa166a195bcfaeeb7` | `991243fd67c389b251760b05acb3e5836c2fca0c8c89d98fa166a195bcfaeeb7` | yes   |
+| t2c3d4e5/fixture-01/cold | `6660ae19e06a592c0d8936065513a1a688d739cb8d40dd9049c1210fc8be197a` | `6660ae19e06a592c0d8936065513a1a688d739cb8d40dd9049c1210fc8be197a` | yes   |
+| t2c3d4e5/fixture-01/warm | `6660ae19e06a592c0d8936065513a1a688d739cb8d40dd9049c1210fc8be197a` | `6660ae19e06a592c0d8936065513a1a688d739cb8d40dd9049c1210fc8be197a` | yes   |
+| t345de6f/fixture-01/cold | `c1d9de950d39170de414528483f49e4071e88deb71e42a2c1a0306b0ca3adfca` | `c1d9de950d39170de414528483f49e4071e88deb71e42a2c1a0306b0ca3adfca` | yes   |
+| t345de6f/fixture-01/warm | `c1d9de950d39170de414528483f49e4071e88deb71e42a2c1a0306b0ca3adfca` | `c1d9de950d39170de414528483f49e4071e88deb71e42a2c1a0306b0ca3adfca` | yes   |
+| t3d4e5f6/fixture-01/cold | `4e82aae3f061b732f4b64e4d822f8a1621705f4d75c4022c1e75ebedc8f48555` | `4e82aae3f061b732f4b64e4d822f8a1621705f4d75c4022c1e75ebedc8f48555` | yes   |
+| t3d4e5f6/fixture-01/warm | `4e82aae3f061b732f4b64e4d822f8a1621705f4d75c4022c1e75ebedc8f48555` | `4e82aae3f061b732f4b64e4d822f8a1621705f4d75c4022c1e75ebedc8f48555` | yes   |
+| t456ef70/fixture-01/cold | `ee83c51b611176dd220280ee05d039c4b43ee1f91dedd271fa13d13f99eb9c41` | `ee83c51b611176dd220280ee05d039c4b43ee1f91dedd271fa13d13f99eb9c41` | yes   |
+| t456ef70/fixture-01/warm | `ee83c51b611176dd220280ee05d039c4b43ee1f91dedd271fa13d13f99eb9c41` | `ee83c51b611176dd220280ee05d039c4b43ee1f91dedd271fa13d13f99eb9c41` | yes   |
+| t4e5f607/fixture-01/cold | `297467759428f2291389b92d2b57ada99add875bb59abb086a2d08b7c9a38f5f` | `297467759428f2291389b92d2b57ada99add875bb59abb086a2d08b7c9a38f5f` | yes   |
+| t4e5f607/fixture-01/warm | `297467759428f2291389b92d2b57ada99add875bb59abb086a2d08b7c9a38f5f` | `297467759428f2291389b92d2b57ada99add875bb59abb086a2d08b7c9a38f5f` | yes   |
+| t567f081/fixture-01/cold | `aeba567741b0720315f07ea852afd4d7f75b7a41545eb807189d7c03085ed4cb` | `aeba567741b0720315f07ea852afd4d7f75b7a41545eb807189d7c03085ed4cb` | yes   |
+| t567f081/fixture-01/warm | `aeba567741b0720315f07ea852afd4d7f75b7a41545eb807189d7c03085ed4cb` | `aeba567741b0720315f07ea852afd4d7f75b7a41545eb807189d7c03085ed4cb` | yes   |
+| t5f60718/fixture-01/cold | `e747f7e74eba688c6994d99925e344daa9943a11d41a7ad8774899c7c1fbdd1f` | `e747f7e74eba688c6994d99925e344daa9943a11d41a7ad8774899c7c1fbdd1f` | yes   |
+| t5f60718/fixture-01/warm | `e747f7e74eba688c6994d99925e344daa9943a11d41a7ad8774899c7c1fbdd1f` | `e747f7e74eba688c6994d99925e344daa9943a11d41a7ad8774899c7c1fbdd1f` | yes   |
+| t6071829/fixture-01/cold | `306df8dc47ad62f04c5ab1acaaa49b47857779cfbe75799ecbbb97d173b0202f` | `306df8dc47ad62f04c5ab1acaaa49b47857779cfbe75799ecbbb97d173b0202f` | yes   |
+| t6071829/fixture-01/warm | `306df8dc47ad62f04c5ab1acaaa49b47857779cfbe75799ecbbb97d173b0202f` | `306df8dc47ad62f04c5ab1acaaa49b47857779cfbe75799ecbbb97d173b0202f` | yes   |
+| t6780192/fixture-01/cold | `c506dd3fe994ffb0748e10226c175623565a0e9bd99ebf2b040c295d00a48b30` | `c506dd3fe994ffb0748e10226c175623565a0e9bd99ebf2b040c295d00a48b30` | yes   |
+| t6780192/fixture-01/warm | `c506dd3fe994ffb0748e10226c175623565a0e9bd99ebf2b040c295d00a48b30` | `c506dd3fe994ffb0748e10226c175623565a0e9bd99ebf2b040c295d00a48b30` | yes   |
+| t718293a/fixture-01/cold | `423d5da7b698d7d936066de79c3b13563136c4dc572eae0cc1cff8003dc9db05` | `423d5da7b698d7d936066de79c3b13563136c4dc572eae0cc1cff8003dc9db05` | yes   |
+| t718293a/fixture-01/warm | `423d5da7b698d7d936066de79c3b13563136c4dc572eae0cc1cff8003dc9db05` | `423d5da7b698d7d936066de79c3b13563136c4dc572eae0cc1cff8003dc9db05` | yes   |
+| t7891a03/fixture-01/cold | `d480b2b3b300497817cf4808f4b792d008a6c913c426f952b72d3a1623016602` | `d480b2b3b300497817cf4808f4b792d008a6c913c426f952b72d3a1623016602` | yes   |
+| t7891a03/fixture-01/warm | `d480b2b3b300497817cf4808f4b792d008a6c913c426f952b72d3a1623016602` | `d480b2b3b300497817cf4808f4b792d008a6c913c426f952b72d3a1623016602` | yes   |
+| t8293a4b/fixture-01/cold | `1533e59533218158caf853ac401bcb2c7961bf71d7623d6599b8ab82bc450f48` | `1533e59533218158caf853ac401bcb2c7961bf71d7623d6599b8ab82bc450f48` | yes   |
+| t8293a4b/fixture-01/warm | `1533e59533218158caf853ac401bcb2c7961bf71d7623d6599b8ab82bc450f48` | `1533e59533218158caf853ac401bcb2c7961bf71d7623d6599b8ab82bc450f48` | yes   |
+| t93a4b5c/fixture-01/cold | `b57dfee854b5ddeba5297a5d98c3bc52e89c59c756c5e1f07a91ee58707ef186` | `b57dfee854b5ddeba5297a5d98c3bc52e89c59c756c5e1f07a91ee58707ef186` | yes   |
+| t93a4b5c/fixture-01/warm | `b57dfee854b5ddeba5297a5d98c3bc52e89c59c756c5e1f07a91ee58707ef186` | `b57dfee854b5ddeba5297a5d98c3bc52e89c59c756c5e1f07a91ee58707ef186` | yes   |
+| ta4b5c6d/fixture-01/cold | `650bd9d50a09c3f23c2183c51d544be621cfa6d79d4e9d38a8ca2dfed73418ea` | `650bd9d50a09c3f23c2183c51d544be621cfa6d79d4e9d38a8ca2dfed73418ea` | yes   |
+| ta4b5c6d/fixture-01/warm | `650bd9d50a09c3f23c2183c51d544be621cfa6d79d4e9d38a8ca2dfed73418ea` | `650bd9d50a09c3f23c2183c51d544be621cfa6d79d4e9d38a8ca2dfed73418ea` | yes   |
+| tb5c6d7e/fixture-01/cold | `a0d381fa72fb4cbd5040dbc727a2d982301a02af2c0e650fbfaf29c5afe529f9` | `a0d381fa72fb4cbd5040dbc727a2d982301a02af2c0e650fbfaf29c5afe529f9` | yes   |
+| tb5c6d7e/fixture-01/warm | `a0d381fa72fb4cbd5040dbc727a2d982301a02af2c0e650fbfaf29c5afe529f9` | `a0d381fa72fb4cbd5040dbc727a2d982301a02af2c0e650fbfaf29c5afe529f9` | yes   |
+| tc6d7e8f/fixture-01/cold | `b87208d7d773ea23efec350337b4ad78c8923812263c168fe5cfa667861ff677` | `b87208d7d773ea23efec350337b4ad78c8923812263c168fe5cfa667861ff677` | yes   |
+| tc6d7e8f/fixture-01/warm | `b87208d7d773ea23efec350337b4ad78c8923812263c168fe5cfa667861ff677` | `b87208d7d773ea23efec350337b4ad78c8923812263c168fe5cfa667861ff677` | yes   |
+| td7e8f90/fixture-01/cold | `c239cf854efa2997a675440a7e8e334eb358932f0f9df7143cd4074151aea2e4` | `c239cf854efa2997a675440a7e8e334eb358932f0f9df7143cd4074151aea2e4` | yes   |
+| td7e8f90/fixture-01/warm | `c239cf854efa2997a675440a7e8e334eb358932f0f9df7143cd4074151aea2e4` | `c239cf854efa2997a675440a7e8e334eb358932f0f9df7143cd4074151aea2e4` | yes   |
+| te8f901a/fixture-01/cold | `bf3c0ad33cc612eee1770abe17c3538912f8d5819b9351fb26704d8ec67df129` | `bf3c0ad33cc612eee1770abe17c3538912f8d5819b9351fb26704d8ec67df129` | yes   |
+| te8f901a/fixture-01/warm | `bf3c0ad33cc612eee1770abe17c3538912f8d5819b9351fb26704d8ec67df129` | `bf3c0ad33cc612eee1770abe17c3538912f8d5819b9351fb26704d8ec67df129` | yes   |
+| tf901a2b/fixture-01/cold | `790c1003720ef588011bd3319b944172260266b9e0870fb23a4075671a98ad0c` | `790c1003720ef588011bd3319b944172260266b9e0870fb23a4075671a98ad0c` | yes   |
+| tf901a2b/fixture-01/warm | `790c1003720ef588011bd3319b944172260266b9e0870fb23a4075671a98ad0c` | `790c1003720ef588011bd3319b944172260266b9e0870fb23a4075671a98ad0c` | yes   |
 
 ## Methodology
 
@@ -105,6 +105,7 @@ Measured totals and explicit unavailable counts/reasons; milliseconds.
 - Cold and warm cohorts reuse each adapter native immutable index; warm uses one discarded readiness probe.
 - Deterministic hidden-oracle scoring binds typed claims to exact source lines and hashes without an LLM judge.
 - Capsule promotion compares gno-mcp and capsule only on exact paired identities and unchanged-input payload replays.
+- Capsule content is the exact production gno-context-agent-v1 MCP text projection; full structuredContent remains application-only.
 
 ## Limitations
 
@@ -113,4 +114,4 @@ Measured totals and explicit unavailable counts/reasons; milliseconds.
 - UTF-8 bytes are the primary context measure; tokens are null without one pinned tokenizer.
 - Latency is environment-specific and comparable only within a matching lifecycle.
 - qmd is optional, exact-revision pinned, and non-authoritative for Capsule promotion.
-- The Capsule adapter is eval-only and does not define the production fn-98 contract.
+- Capsule retrieval is a fixture prototype; its model-visible serializer and omission accounting are the production MCP contract.
