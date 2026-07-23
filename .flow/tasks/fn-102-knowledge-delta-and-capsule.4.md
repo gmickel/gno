@@ -7,7 +7,7 @@ satisfies: [R4, R5, R6, R7]
 Deliver register saved capsules and reverify affected evidence as one implementation-sized increment.
 
 **Size:** M
-**Files:** `src/core/capsule-registry.ts`, `src/core/capsule-reverification.ts`, `src/serve/background-runtime.ts`, `src/core/job-manager.ts`, `test/changes/capsule-reverification.test.ts`
+**Files:** `src/core/capsule-registry.ts`, `src/core/capsule-reverification.ts`, `src/serve/resident-runtime.ts`, `src/core/job-manager.ts`, `test/changes/capsule-reverification.test.ts` <!-- Updated by plan-sync (cross-spec): fn-99-resident-local-context-gateway.1 made background-runtime a ResidentRuntime compatibility wrapper -->
 
 ### Approach
 - Register only explicitly saved Capsule path/hash/question/evidence references; keep the Capsule body user-owned at its chosen location.
@@ -16,7 +16,7 @@ Deliver register saved capsules and reverify affected evidence as one implementa
 
 ### Investigation targets
 **Required** (read before coding):
-- `src/serve/background-runtime.ts:88-260`
+- `src/serve/resident-runtime.ts:263-461` — shared config, jobs, sync, admission, and lifecycle ownership. <!-- Updated by plan-sync (cross-spec): fn-99-resident-local-context-gateway.1 moved the implementation surface -->
 - `src/core/job-manager.ts`
 - `src/serve/doc-events.ts`
 
