@@ -48,8 +48,14 @@ export interface ContextCapsuleDemoArtifact {
     benchmarkId: string;
     canonicalFingerprint: string;
     fixtureFingerprint: string;
-    immutableGitCommit: string;
+    runGitCommit: string;
     reportPath: string;
+    selection: {
+      rule: "cold_gno_failure_capsule_success";
+      cohortTaskCount: number;
+      matchingTaskIds: string[];
+      selectedTaskId: string;
+    };
   };
   frozenInput: {
     task: AgentTask;
@@ -59,6 +65,11 @@ export interface ContextCapsuleDemoArtifact {
       evidence: HiddenOracle["claims"][number]["requiredEvidence"];
     };
     environment: BenchmarkReport["environment"];
+    identity: {
+      trialId: string;
+      seed: number | null;
+      agentId: string;
+    };
     lifecycle: "cold";
     sharedFingerprints: {
       corpus: string;
@@ -82,7 +93,7 @@ export interface ContextCapsuleDemoArtifact {
     proofKind: "answer_enforcement";
     benchmarkId: string;
     canonicalFingerprint: string;
-    immutableGitCommit: string;
+    runGitCommit: string;
     artifactPath: string;
     pairCount: number;
     excludedTasks: VerifiedAskPromotionArtifact["excludedTasks"];

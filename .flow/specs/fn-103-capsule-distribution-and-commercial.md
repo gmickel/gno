@@ -69,7 +69,9 @@ Public projection is safe to ship before remote private access. Deferring token-
 1. `fn-103-capsule-distribution-and-commercial.1` — Extend the public publish artifact with agent-readable evidence (**M**)
 2. `fn-103-capsule-distribution-and-commercial.2` — Serve llms manifests Markdown and evidence safely on gno.sh (**M**); depends on `fn-103-capsule-distribution-and-commercial.1`
 3. `fn-103-capsule-distribution-and-commercial.3` — Publish the reproducible three-way agent outcome demo (**M**); depends on `fn-103-capsule-distribution-and-commercial.1`, `fn-103-capsule-distribution-and-commercial.2`
-4. `fn-103-capsule-distribution-and-commercial.4` — Run privacy-safe design-partner validation and truthful launch (**M**); depends on `fn-103-capsule-distribution-and-commercial.2`, `fn-103-capsule-distribution-and-commercial.3`
+4. `fn-103-capsule-distribution-and-commercial.10` — Harden Context Capsule demo artifact integrity (**M**); depends on `fn-103-capsule-distribution-and-commercial.3`
+5. `fn-103-capsule-distribution-and-commercial.11` — Correct Context Capsule demo public truth and links (**S**); depends on `fn-103-capsule-distribution-and-commercial.10`
+6. `fn-103-capsule-distribution-and-commercial.4` — Run privacy-safe design-partner validation and truthful launch (**M**); depends on `fn-103-capsule-distribution-and-commercial.2`, `fn-103-capsule-distribution-and-commercial.3`, `fn-103-capsule-distribution-and-commercial.11`
 
 ## Quick commands
 
@@ -97,8 +99,8 @@ If it fails, re-evaluate the reader-safe projection boundary and manifest lineag
 |-----|-------------|---------|-------------------|
 | R1 | A public gno.sh space is agent-readable through `llms.txt`, manifest JSON, Markdown, and exact evidence links derived solely from its published projection. | fn-103-capsule-distribution-and-commercial.1, fn-103-capsule-distribution-and-commercial.2 | — |
 | R2 | Visibility regression tests prove private/draft/local-only material cannot appear in public artifacts or caches. | fn-103-capsule-distribution-and-commercial.1, fn-103-capsule-distribution-and-commercial.2 | — |
-| R3 | A reproducible three-way outcome demo publishes exact evidence, calls, context/tokens, latency, methodology, and raw receipts. | fn-103-capsule-distribution-and-commercial.3 | — |
+| R3 | A reproducible three-way outcome demo publishes exact evidence, calls, context/tokens, latency, methodology, and raw receipts. | fn-103-capsule-distribution-and-commercial.3, fn-103-capsule-distribution-and-commercial.10, fn-103-capsule-distribution-and-commercial.11 | — |
 | R4 | Five design-partner trials can be run with concierge onboarding and content-free funnel/retention measurement. | fn-103-capsule-distribution-and-commercial.4 | — |
-| R5 | Public/pricing copy removes or marks unimplemented promises and accurately separates free local GNO from paid controlled distribution/collaboration. | fn-103-capsule-distribution-and-commercial.3, fn-103-capsule-distribution-and-commercial.4 | — |
+| R5 | Public/pricing copy removes or marks unimplemented promises and accurately separates free local GNO from paid controlled distribution/collaboration. | fn-103-capsule-distribution-and-commercial.3, fn-103-capsule-distribution-and-commercial.10, fn-103-capsule-distribution-and-commercial.11, fn-103-capsule-distribution-and-commercial.4 | — |
 | R6 | Encrypted spaces are never server-decrypted; token-authenticated secret/invite agent access remains blocked pending `fn-111` and a dedicated auth gate. | fn-103-capsule-distribution-and-commercial.1, fn-103-capsule-distribution-and-commercial.2, fn-103-capsule-distribution-and-commercial.4 | — |
 | R7 | gno.sh deployment, cache/security checks, analytics privacy, and rollback are documented and verified. | fn-103-capsule-distribution-and-commercial.2, fn-103-capsule-distribution-and-commercial.4 | — |

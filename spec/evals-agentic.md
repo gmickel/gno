@@ -429,16 +429,28 @@ model-visible UTF-8 bytes, token availability, and matching-lifecycle latency.
 
 All three lanes must share the task, outer agent, trial, seed, lifecycle,
 corpus, prompt, tool, model, runtime, and canonical effective-index
-fingerprints. Adapter configuration fingerprints may differ. The Capsule
-projection additionally retains its normalized `retrieval.request`, effective
-index fingerprint, capability states, fallback list, and complete production
-model-visible payload. A lane with an unavailable or different request cannot
-be relabeled as equivalent.
+fingerprints. The generator selects exactly one receipt and score per full
+identity and rejects ambiguous multi-trial input. Adapter configuration
+fingerprints may differ. The Capsule projection additionally retains its
+normalized `retrieval.request`, effective index fingerprint, capability states,
+fallback list, and complete model-visible payload. Validation parses the
+delivered evidence bundle and compares those values, then recomputes every
+displayed lane metric from the embedded receipt and score.
+
+Source provenance distinguishes each source run's clean `runGitCommit` from
+the later Git commit that contains the generated demo artifact. The artifact
+does not attempt to embed its own containing commit. Its report and Verified
+Ask fingerprints and projected fields must match the canonical linked source
+artifacts.
 
 The readable `context-capsule.md` is generated from the JSON contract. It
 states the single-trial variance limitation, reports tokens as unavailable
 without one pinned comparable tokenizer, and limits its claim to the measured
-controlled task. It cannot be used as a general product-superiority claim.
+controlled task. It discloses that the chosen task is the sole cold
+current-GNO-failure / Capsule-success case in the 24-task authoritative cohort,
+that the Capsule lane is an evaluation-only lexical prototype, and that its
+latency is not shipped-product latency. It cannot be used as a general
+product-superiority claim.
 
 The adjacent Verified Ask block is an attributable but separate
 `answer_enforcement` proof. It binds the clean-Git canonical fingerprint of the

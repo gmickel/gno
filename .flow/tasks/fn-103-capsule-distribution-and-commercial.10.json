@@ -1,0 +1,16 @@
+{
+  "assignee": null,
+  "claim_note": "",
+  "claimed_at": null,
+  "created_at": "2026-07-23T20:23:23.729518Z",
+  "depends_on": [
+    "fn-103-capsule-distribution-and-commercial.3"
+  ],
+  "id": "fn-103-capsule-distribution-and-commercial.10",
+  "priority": 10,
+  "spec": "fn-103-capsule-distribution-and-commercial",
+  "spec_path": ".flow/tasks/fn-103-capsule-distribution-and-commercial.10.md",
+  "status": "todo",
+  "title": "Harden Context Capsule demo artifact integrity",
+  "updated_at": "2026-07-23T20:23:23.729670Z"
+}

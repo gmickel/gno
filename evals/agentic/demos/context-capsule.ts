@@ -24,10 +24,14 @@ import { AGENTIC_FIXTURE_ROOT, loadAgenticFixture } from "../fixture-db";
 import { benchmarkCanonicalProjection } from "../report";
 import { assertAgenticSchema } from "../validation";
 import { validateVerifiedAskPromotionArtifact } from "../verified-ask-promotion";
+export { renderContextCapsuleDemoMarkdown } from "./context-capsule-render";
 
 export const CONTEXT_CAPSULE_DEMO_ID = "context-capsule-demo@1";
 export const CONTEXT_CAPSULE_DEMO_TASK_ID = "t0a1b2c3";
 export const CONTEXT_CAPSULE_DEMO_LIFECYCLE = "cold" as const;
+export const CONTEXT_CAPSULE_DEMO_TRIAL_ID = "fixture-01";
+export const CONTEXT_CAPSULE_DEMO_SEED = 0;
+export const CONTEXT_CAPSULE_DEMO_AGENT_ID = "fixture-agent-v1";
 
 const BASELINE_ROOT = join(AGENTIC_FIXTURE_ROOT, "baseline", "fixture-agent");
 export const CONTEXT_CAPSULE_DEMO_ROOT = join(AGENTIC_FIXTURE_ROOT, "demos");
@@ -78,6 +82,25 @@ const stopOutcome = (receipt: TrajectoryReceipt): string => {
     : envelope.stopReason;
 };
 
+const deriveLaneMetrics = (
+  receipt: TrajectoryReceipt,
+  score: BenchmarkScoreRecord
+): ContextCapsuleDemoLane["metrics"] => ({
+  completed: score.score.completed,
+  success: score.score.success,
+  substantiveClaimEvidenceCoverage: claimCoverage(score),
+  agentCalls: receipt.canonical.agentCalls,
+  backendInvocations: receipt.canonical.backendInvocations,
+  modelVisibleUtf8Bytes: receipt.canonical.modelVisibleUtf8Bytes,
+  measuredTokens: receipt.canonical.measuredTokens,
+  tokenUnavailableReason:
+    receipt.canonical.measuredTokens === null
+      ? "The benchmark did not have one pinned comparable tokenizer."
+      : null,
+  endToEnd: receipt.observations.timings.endToEnd,
+  stopOutcome: stopOutcome(receipt),
+});
+
 const buildLane = (
   adapterId: ContextCapsuleDemoAdapterId,
   receipt: TrajectoryReceipt,
@@ -87,30 +110,36 @@ const buildLane = (
   label: labels[adapterId],
   receipt,
   score,
-  metrics: {
-    completed: score.score.completed,
-    success: score.score.success,
-    substantiveClaimEvidenceCoverage: claimCoverage(score),
-    agentCalls: receipt.canonical.agentCalls,
-    backendInvocations: receipt.canonical.backendInvocations,
-    modelVisibleUtf8Bytes: receipt.canonical.modelVisibleUtf8Bytes,
-    measuredTokens: receipt.canonical.measuredTokens,
-    tokenUnavailableReason:
-      receipt.canonical.measuredTokens === null
-        ? "The benchmark did not have one pinned comparable tokenizer."
-        : null,
-    endToEnd: receipt.observations.timings.endToEnd,
-    stopOutcome: stopOutcome(receipt),
-  },
+  metrics: deriveLaneMetrics(receipt, score),
 });
 
-const parseCapsulePayload = (receipt: TrajectoryReceipt): unknown => {
-  const call = receipt.canonical.calls.find(
+const parseCapsulePayload = (
+  receipt: TrajectoryReceipt
+): {
+  call: TrajectoryReceipt["canonical"]["calls"][number];
+  payload: Record<string, unknown> & { r: unknown[] };
+  fallbacks: unknown[];
+} => {
+  const calls = receipt.canonical.calls.filter(
     ({ deliveredToAgent, result }) =>
       deliveredToAgent && result.resultRole === "evidence_bundle"
   );
-  if (!call) throw new Error("Demo Capsule has no delivered evidence bundle");
-  return JSON.parse(call.result.content) as unknown;
+  if (calls.length !== 1 || !calls[0])
+    throw new Error(
+      "Demo Capsule must have exactly one delivered evidence bundle"
+    );
+  const call = calls[0];
+  const parsed = JSON.parse(call.result.content) as unknown;
+  if (!(parsed && typeof parsed === "object" && !Array.isArray(parsed)))
+    throw new Error("Demo Capsule payload must be an object");
+  const payload = parsed as Record<string, unknown>;
+  if (!Array.isArray(payload.r) || !Array.isArray(payload.r[7]))
+    throw new Error("Demo Capsule payload lacks its fallback contract");
+  return {
+    call,
+    payload: payload as Record<string, unknown> & { r: unknown[] },
+    fallbacks: payload.r[7],
+  };
 };
 
 const requireGitCommit = (
@@ -123,12 +152,60 @@ const requireGitCommit = (
   return git.commit;
 };
 
+const requireVerifiedAskGitCommit = (
+  git: VerifiedAskPromotionArtifact["environment"]["git"]
+): string => {
+  if (!/^[a-f0-9]{40}$/.test(git.commit) || git.dirty !== false)
+    throw new Error("Verified Ask source lacks clean Git provenance");
+  return git.commit;
+};
+
+export interface ContextCapsuleDemoSources {
+  report: BenchmarkReport;
+  verifiedAsk: VerifiedAskPromotionArtifact;
+}
+
+const deriveDemoSelection = (
+  report: BenchmarkReport
+): ContextCapsuleDemoArtifact["sourceBenchmark"]["selection"] => {
+  const cohortScores = report.scores.filter(
+    ({ trialId, seed, lifecycle, agentId, adapterId }) =>
+      trialId === CONTEXT_CAPSULE_DEMO_TRIAL_ID &&
+      seed === CONTEXT_CAPSULE_DEMO_SEED &&
+      lifecycle === CONTEXT_CAPSULE_DEMO_LIFECYCLE &&
+      agentId === CONTEXT_CAPSULE_DEMO_AGENT_ID &&
+      (adapterId === "gno-mcp" || adapterId === "capsule")
+  );
+  const taskIds = [...new Set(cohortScores.map(({ taskId }) => taskId))].sort();
+  const matchingTaskIds = taskIds.filter((taskId) => {
+    const gno = cohortScores.filter(
+      (score) => score.taskId === taskId && score.adapterId === "gno-mcp"
+    );
+    const capsule = cohortScores.filter(
+      (score) => score.taskId === taskId && score.adapterId === "capsule"
+    );
+    return (
+      gno.length === 1 &&
+      capsule.length === 1 &&
+      gno[0]?.score.success === 0 &&
+      capsule[0]?.score.success === 1
+    );
+  });
+  return {
+    rule: "cold_gno_failure_capsule_success",
+    cohortTaskCount: taskIds.length,
+    matchingTaskIds,
+    selectedTaskId: CONTEXT_CAPSULE_DEMO_TASK_ID,
+  };
+};
+
 export const contextCapsuleDemoFingerprint = (
   artifact: Omit<ContextCapsuleDemoArtifact, "canonicalFingerprint">
 ): string => canonicalFingerprint(artifact);
 
 export const validateContextCapsuleDemoArtifact = (
-  artifact: ContextCapsuleDemoArtifact
+  artifact: ContextCapsuleDemoArtifact,
+  sources?: ContextCapsuleDemoSources
 ): string[] => {
   const failures: string[] = [];
   try {
@@ -149,11 +226,38 @@ export const validateContextCapsuleDemoArtifact = (
     ADAPTERS.join(",")
   )
     failures.push("demo_lane_order_or_identity_mismatch");
+  if (
+    artifact.sourceBenchmark.selection.selectedTaskId !==
+      artifact.frozenInput.task.taskId ||
+    artifact.sourceBenchmark.selection.matchingTaskIds.length !== 1 ||
+    artifact.sourceBenchmark.selection.matchingTaskIds[0] !==
+      artifact.frozenInput.task.taskId
+  )
+    failures.push("demo_selection_mismatch");
   const shared = artifact.frozenInput.sharedFingerprints;
+  const identity = artifact.frozenInput.identity;
+  const matchingEnvironmentTrials =
+    artifact.frozenInput.environment.trials.filter(
+      ({ trialId, seed }) =>
+        trialId === identity.trialId && seed === identity.seed
+    );
+  if (
+    artifact.frozenInput.environment.agentId !== identity.agentId ||
+    matchingEnvironmentTrials.length !== 1 ||
+    artifact.sourceBenchmark.runGitCommit !==
+      artifact.frozenInput.environment.git.commit ||
+    artifact.sourceBenchmark.fixtureFingerprint !== shared.corpus
+  )
+    failures.push("demo_environment_identity_mismatch");
   for (const lane of artifact.lanes) {
     const canonical = lane.receipt.canonical;
     if (
+      lane.adapterId !== canonical.adapterId ||
+      lane.label !== labels[lane.adapterId] ||
       canonical.taskId !== artifact.frozenInput.task.taskId ||
+      canonical.trialId !== identity.trialId ||
+      canonical.seed !== identity.seed ||
+      canonical.agentId !== identity.agentId ||
       canonical.lifecycle !== artifact.frozenInput.lifecycle ||
       canonical.fingerprints.corpus !== shared.corpus ||
       canonical.fingerprints.prompt !== shared.prompt ||
@@ -165,268 +269,230 @@ export const validateContextCapsuleDemoArtifact = (
       failures.push(`demo_frozen_input_mismatch:${lane.adapterId}`);
     if (identityKey(canonical) !== identityKey(lane.score))
       failures.push(`demo_score_identity_mismatch:${lane.adapterId}`);
+    if (
+      canonicalJson(lane.metrics) !==
+      canonicalJson(deriveLaneMetrics(lane.receipt, lane.score))
+    )
+      failures.push(`demo_lane_metrics_mismatch:${lane.adapterId}`);
   }
   const capsule = artifact.lanes.find(
     ({ adapterId }) => adapterId === "capsule"
   );
-  const firstCall = capsule?.receipt.canonical.calls[0];
-  if (
-    !capsule ||
-    !firstCall ||
-    canonicalJson(artifact.capsuleRetrieval.request) !==
-      canonicalJson({
-        toolName: firstCall.toolName,
-        arguments: firstCall.arguments,
-      }) ||
-    artifact.capsuleRetrieval.effectiveIndexFingerprint !==
-      capsule.receipt.canonical.fingerprints.index ||
-    canonicalJson(artifact.capsuleRetrieval.capabilityStates) !==
-      canonicalJson(capsule.receipt.canonical.capabilities)
-  )
+  try {
+    if (!capsule) throw new Error("missing capsule lane");
+    const parsed = parseCapsulePayload(capsule.receipt);
+    const compactRetrieval = parsed.payload.r;
+    if (
+      canonicalJson(artifact.capsuleRetrieval.request) !==
+        canonicalJson({
+          toolName: parsed.call.toolName,
+          arguments: parsed.call.arguments,
+        }) ||
+      artifact.capsuleRetrieval.effectiveIndexFingerprint !==
+        capsule.receipt.canonical.fingerprints.index ||
+      compactRetrieval?.[1] !==
+        artifact.capsuleRetrieval.effectiveIndexFingerprint ||
+      canonicalJson(artifact.capsuleRetrieval.capabilityStates) !==
+        canonicalJson(capsule.receipt.canonical.capabilities) ||
+      canonicalJson(artifact.capsuleRetrieval.fallbacks) !==
+        canonicalJson(parsed.fallbacks) ||
+      canonicalJson(artifact.capsuleRetrieval.normalizedPayload) !==
+        canonicalJson(parsed.payload)
+    )
+      throw new Error("capsule contract drift");
+  } catch {
     failures.push("demo_capsule_retrieval_contract_mismatch");
+  }
+  if (sources) {
+    if (
+      reportFingerprintFailures(sources.report).length > 0 ||
+      artifact.sourceBenchmark.benchmarkId !== sources.report.benchmarkId ||
+      artifact.sourceBenchmark.canonicalFingerprint !==
+        sources.report.canonicalFingerprint ||
+      artifact.sourceBenchmark.fixtureFingerprint !==
+        sources.report.fixtureFingerprint ||
+      artifact.sourceBenchmark.runGitCommit !==
+        sources.report.environment.git.commit ||
+      canonicalJson(artifact.sourceBenchmark.selection) !==
+        canonicalJson(deriveDemoSelection(sources.report)) ||
+      canonicalJson(artifact.frozenInput.environment) !==
+        canonicalJson(sources.report.environment)
+    )
+      failures.push("demo_source_report_mismatch");
+    if (
+      artifact.verifiedAsk.benchmarkId !== sources.verifiedAsk.benchmarkId ||
+      artifact.verifiedAsk.canonicalFingerprint !==
+        sources.verifiedAsk.canonicalFingerprint ||
+      artifact.verifiedAsk.runGitCommit !==
+        sources.verifiedAsk.environment.git.commit ||
+      artifact.verifiedAsk.pairCount !==
+        sources.verifiedAsk.promotion.pairCount ||
+      canonicalJson(artifact.verifiedAsk.excludedTasks) !==
+        canonicalJson(sources.verifiedAsk.excludedTasks) ||
+      canonicalJson(artifact.verifiedAsk.metrics) !==
+        canonicalJson(sources.verifiedAsk.promotion.metrics)
+    )
+      failures.push("demo_verified_ask_source_mismatch");
+  }
   return failures;
 };
 
-export const buildContextCapsuleDemoArtifact =
-  async (): Promise<ContextCapsuleDemoArtifact> => {
-    const report = (await Bun.file(
+export const buildContextCapsuleDemoArtifact = async (
+  providedSources?: ContextCapsuleDemoSources
+): Promise<ContextCapsuleDemoArtifact> => {
+  const report =
+    providedSources?.report ??
+    ((await Bun.file(
       join(BASELINE_ROOT, "report.json")
-    ).json()) as BenchmarkReport;
-    assertAgenticSchema("benchmark-report", report);
-    const reportFailures = reportFingerprintFailures(report);
-    if (reportFailures.length > 0) throw new Error(reportFailures.join(","));
-    const fixture = await loadAgenticFixture();
-    const task = fixture.tasks.get(CONTEXT_CAPSULE_DEMO_TASK_ID);
-    const oracle = fixture.oracles.get(CONTEXT_CAPSULE_DEMO_TASK_ID);
-    if (!(task && oracle))
-      throw new Error("Frozen demo task or oracle is missing");
-    const verifiedAsk = (await Bun.file(
+    ).json()) as BenchmarkReport);
+  assertAgenticSchema("benchmark-report", report);
+  const reportFailures = reportFingerprintFailures(report);
+  if (reportFailures.length > 0) throw new Error(reportFailures.join(","));
+  const fixture = await loadAgenticFixture();
+  const task = fixture.tasks.get(CONTEXT_CAPSULE_DEMO_TASK_ID);
+  const oracle = fixture.oracles.get(CONTEXT_CAPSULE_DEMO_TASK_ID);
+  if (!(task && oracle))
+    throw new Error("Frozen demo task or oracle is missing");
+  const verifiedAsk =
+    providedSources?.verifiedAsk ??
+    ((await Bun.file(
       join(BASELINE_ROOT, "verified-ask-promotion.json")
-    ).json()) as VerifiedAskPromotionArtifact;
-    const verifiedFailures = validateVerifiedAskPromotionArtifact(
-      verifiedAsk,
-      fixture.oracles
+    ).json()) as VerifiedAskPromotionArtifact);
+  const verifiedFailures = validateVerifiedAskPromotionArtifact(
+    verifiedAsk,
+    fixture.oracles
+  );
+  if (verifiedFailures.length > 0)
+    throw new Error(
+      `Verified Ask proof is invalid: ${verifiedFailures.join(",")}`
     );
-    if (verifiedFailures.length > 0)
+
+  const lanes = ADAPTERS.map((adapterId) => {
+    const receipts = report.receipts.filter(
+      ({ canonical }) =>
+        canonical.taskId === CONTEXT_CAPSULE_DEMO_TASK_ID &&
+        canonical.lifecycle === CONTEXT_CAPSULE_DEMO_LIFECYCLE &&
+        canonical.trialId === CONTEXT_CAPSULE_DEMO_TRIAL_ID &&
+        canonical.seed === CONTEXT_CAPSULE_DEMO_SEED &&
+        canonical.agentId === CONTEXT_CAPSULE_DEMO_AGENT_ID &&
+        canonical.adapterId === adapterId
+    );
+    if (receipts.length !== 1 || !receipts[0])
       throw new Error(
-        `Verified Ask proof is invalid: ${verifiedFailures.join(",")}`
+        `Expected exactly one frozen ${adapterId} demo receipt; found ${receipts.length}`
       );
-
-    const scoreByIdentity = new Map(
-      report.scores.map((score) => [identityKey(score), score])
+    const receipt = receipts[0];
+    const scores = report.scores.filter(
+      (score) => identityKey(score) === identityKey(receipt.canonical)
     );
-    const lanes = ADAPTERS.map((adapterId) => {
-      const receipt = report.receipts.find(
-        ({ canonical }) =>
-          canonical.taskId === CONTEXT_CAPSULE_DEMO_TASK_ID &&
-          canonical.lifecycle === CONTEXT_CAPSULE_DEMO_LIFECYCLE &&
-          canonical.adapterId === adapterId
+    if (scores.length !== 1 || !scores[0])
+      throw new Error(
+        `Expected exactly one frozen ${adapterId} demo score; found ${scores.length}`
       );
-      if (!receipt) throw new Error(`Missing frozen ${adapterId} demo receipt`);
-      const score = scoreByIdentity.get(identityKey(receipt.canonical));
-      if (!score) throw new Error(`Missing frozen ${adapterId} demo score`);
-      return buildLane(adapterId, receipt, score);
-    });
-    const capsule = lanes[2]!;
-    const firstCapsuleCall = capsule.receipt.canonical.calls[0];
-    if (!firstCapsuleCall)
-      throw new Error("Frozen Capsule receipt has no call");
-    const payload = parseCapsulePayload(capsule.receipt) as {
-      r?: unknown[];
-    };
-    const payloadFallbacks =
-      Array.isArray(payload.r) && Array.isArray(payload.r[7])
-        ? payload.r[7]
-        : [];
-    const sharedFingerprints = {
-      corpus: capsule.receipt.canonical.fingerprints.corpus,
-      prompt: capsule.receipt.canonical.fingerprints.prompt,
-      tools: capsule.receipt.canonical.fingerprints.tools,
-      model: capsule.receipt.canonical.fingerprints.model,
-      runtime: capsule.receipt.canonical.fingerprints.runtime,
-      index: capsule.receipt.canonical.fingerprints.index,
-    };
-    const oracleClaim = oracle.claims[0];
-    if (!oracleClaim) throw new Error("Frozen demo oracle has no claim");
-    const immutableGitCommit = requireGitCommit(report.environment.git);
-    const partial: Omit<ContextCapsuleDemoArtifact, "canonicalFingerprint"> = {
-      schemaVersion: "1.0",
-      demoId: CONTEXT_CAPSULE_DEMO_ID,
-      sourceBenchmark: {
-        benchmarkId: report.benchmarkId,
-        canonicalFingerprint: report.canonicalFingerprint,
-        fixtureFingerprint: report.fixtureFingerprint,
-        immutableGitCommit,
-        reportPath:
-          "evals/fixtures/agentic-retrieval/baseline/fixture-agent/report.json",
-      },
-      frozenInput: {
-        task,
-        expected: {
-          claimKey: oracleClaim.claimKey,
-          value: oracleClaim.expectedValue,
-          evidence: oracleClaim.requiredEvidence,
-        },
-        environment: report.environment,
-        lifecycle: CONTEXT_CAPSULE_DEMO_LIFECYCLE,
-        sharedFingerprints,
-      },
-      methodology: [
-        "One frozen fixture task, outer agent, trial, seed, lifecycle, corpus, prompt, tool contract, model, runtime, and effective index are compared across all three lanes.",
-        "The lexical lane is the no-GNO retrieval baseline; current GNO uses shipped MCP query/get primitives; the Capsule lane uses the production model-visible Context Capsule projection.",
-        "Exact hidden-oracle values and source spans score the final structured envelope without an LLM judge.",
-        "UTF-8 bytes include each complete normalized model-visible tool-result envelope. Tokens remain unavailable because the run did not use one pinned comparable tokenizer.",
-        "End-to-end latency is reported only for the matching cold lifecycle on the recorded environment; preparation is outside the scored interval.",
-      ],
-      variance: {
-        trialCount: 1,
-        estimate: null,
-        unavailableReason:
-          "This deterministic demonstration has one frozen trial; it is not a statistical latency or quality estimate.",
-      },
-      limitations: [
-        ...report.limitations,
-        "This page reports one controlled exact-identifier task. It does not extrapolate general product superiority.",
-      ],
-      lanes,
-      capsuleRetrieval: {
-        request: {
-          toolName: firstCapsuleCall.toolName,
-          arguments: firstCapsuleCall.arguments,
-        },
-        effectiveIndexFingerprint: capsule.receipt.canonical.fingerprints.index,
-        capabilityStates: capsule.receipt.canonical.capabilities,
-        fallbacks: payloadFallbacks,
-        normalizedPayload: payload,
-      },
-      verifiedAsk: {
-        proofKind: "answer_enforcement",
-        benchmarkId: verifiedAsk.benchmarkId,
-        canonicalFingerprint: verifiedAsk.canonicalFingerprint,
-        immutableGitCommit: verifiedAsk.environment.git.commit,
-        artifactPath:
-          "evals/fixtures/agentic-retrieval/baseline/fixture-agent/verified-ask-promotion.json",
-        pairCount: verifiedAsk.promotion.pairCount,
-        excludedTasks: verifiedAsk.excludedTasks,
-        metrics: verifiedAsk.promotion.metrics,
-      },
-    };
-    const artifact = {
-      ...partial,
-      canonicalFingerprint: contextCapsuleDemoFingerprint(partial),
-    };
-    const failures = validateContextCapsuleDemoArtifact(artifact);
-    if (failures.length > 0)
-      throw new Error(`Context Capsule demo is invalid: ${failures.join(",")}`);
-    return artifact;
+    const score = scores[0];
+    return buildLane(adapterId, receipt, score);
+  });
+  const capsule = lanes[2]!;
+  const capsulePayload = parseCapsulePayload(capsule.receipt);
+  const sharedFingerprints = {
+    corpus: capsule.receipt.canonical.fingerprints.corpus,
+    prompt: capsule.receipt.canonical.fingerprints.prompt,
+    tools: capsule.receipt.canonical.fingerprints.tools,
+    model: capsule.receipt.canonical.fingerprints.model,
+    runtime: capsule.receipt.canonical.fingerprints.runtime,
+    index: capsule.receipt.canonical.fingerprints.index,
   };
-
-const metric = (value: number | null): string =>
-  value === null ? "unavailable" : String(value);
-
-export const renderContextCapsuleDemoMarkdown = (
-  artifact: ContextCapsuleDemoArtifact
-): string => {
-  const tableRows = artifact.lanes.map(({ label, metrics }) => [
-    label,
-    metrics.stopOutcome,
-    String(metrics.success),
-    String(metrics.substantiveClaimEvidenceCoverage),
-    String(metrics.agentCalls),
-    String(metrics.modelVisibleUtf8Bytes),
-    metric(metrics.measuredTokens),
-    metric(metrics.endToEnd.valueMs),
-  ]);
-  const headers = [
-    "Lane",
-    "Stop outcome",
-    "Success",
-    "Evidence coverage",
-    "Agent calls",
-    "Context bytes",
-    "Tokens",
-    "Cold end-to-end ms",
-  ];
-  const widths = headers.map((header, index) =>
-    Math.max(header.length, ...tableRows.map((row) => row[index]!.length))
-  );
-  const formatRow = (row: readonly string[]): string =>
-    `| ${row
-      .map((value, index) =>
-        index < 2
-          ? value.padEnd(widths[index]!)
-          : value.padStart(widths[index]!)
-      )
-      .join(" | ")} |`;
-  const separator = widths.map((width, index) =>
-    index < 2 ? "-".repeat(width) : `${"-".repeat(width - 1)}:`
-  );
-  const rows = [
-    formatRow(headers),
-    formatRow(separator),
-    ...tableRows.map(formatRow),
-  ].join("\n");
-  const evidence = artifact.frozenInput.expected.evidence[0];
-  const verified = artifact.verifiedAsk.metrics;
-  return `# Context Capsule: one frozen agent outcome
-
-Canonical fingerprint: \`${artifact.canonicalFingerprint}\`
-
-This is one controlled exact-identifier task, not a general superiority claim.
-
-## Frozen task
-
-> ${artifact.frozenInput.task.brief.goal}
-
-Expected answer: \`${String((artifact.frozenInput.expected.value as { value?: unknown }).value)}\`
-
-Exact evidence: \`${evidence?.uri}:${evidence?.startLine}-${evidence?.endLine}\`  
-Source SHA-256: \`${evidence?.sourceHash}\`  
-Span SHA-256: \`${evidence?.spanHash}\`
-
-## Measured outcome
-
-${rows}
-
-Tokens are unavailable because this run did not use one pinned comparable tokenizer.
-Latency is the single matching cold-lifecycle observation on the recorded environment.
-
-## Methodology
-
-${artifact.methodology.map((item) => `- ${item}`).join("\n")}
-
-Variance: ${artifact.variance.unavailableReason}
-
-## Capsule retrieval contract
-
-- Request: \`${canonicalJson(artifact.capsuleRetrieval.request)}\`
-- Effective index: \`${artifact.capsuleRetrieval.effectiveIndexFingerprint}\`
-- Fallbacks: \`${canonicalJson(artifact.capsuleRetrieval.fallbacks)}\`
-- Capability states and the complete normalized payload are retained in the JSON artifact.
-
-## Separate Verified Ask answer-enforcement proof
-
-This is not a retrieval lane and its answer metrics are not retrieval metrics.
-
-- Frozen paired cohort: ${artifact.verifiedAsk.pairCount}
-- Excluded missing-evidence tasks: ${artifact.verifiedAsk.excludedTasks.map(({ taskId }) => taskId).join(", ")}
-- Answer accuracy, raw/verified: ${verified.baselineAnswerAccuracy} / ${verified.candidateAnswerAccuracy}
-- Unsupported substantive claims, raw/verified: ${verified.baselineUnsupportedSubstantiveClaims} / ${verified.candidateUnsupportedSubstantiveClaims}
-- Unsupported-claim reduction: ${verified.unsupportedSubstantiveClaimReduction}
-
-## Limitations
-
-${artifact.limitations.map((item) => `- ${item}`).join("\n")}
-`;
+  const oracleClaim = oracle.claims[0];
+  if (!oracleClaim) throw new Error("Frozen demo oracle has no claim");
+  const runGitCommit = requireGitCommit(report.environment.git);
+  const selection = deriveDemoSelection(report);
+  if (
+    selection.cohortTaskCount !== 24 ||
+    selection.matchingTaskIds.length !== 1 ||
+    selection.matchingTaskIds[0] !== CONTEXT_CAPSULE_DEMO_TASK_ID
+  )
+    throw new Error(
+      "Demo selection rule no longer identifies the sole expected task in the 24-task cohort"
+    );
+  const partial: Omit<ContextCapsuleDemoArtifact, "canonicalFingerprint"> = {
+    schemaVersion: "1.0",
+    demoId: CONTEXT_CAPSULE_DEMO_ID,
+    sourceBenchmark: {
+      benchmarkId: report.benchmarkId,
+      canonicalFingerprint: report.canonicalFingerprint,
+      fixtureFingerprint: report.fixtureFingerprint,
+      runGitCommit,
+      reportPath:
+        "evals/fixtures/agentic-retrieval/baseline/fixture-agent/report.json",
+      selection,
+    },
+    frozenInput: {
+      task,
+      expected: {
+        claimKey: oracleClaim.claimKey,
+        value: oracleClaim.expectedValue,
+        evidence: oracleClaim.requiredEvidence,
+      },
+      environment: report.environment,
+      identity: {
+        trialId: CONTEXT_CAPSULE_DEMO_TRIAL_ID,
+        seed: CONTEXT_CAPSULE_DEMO_SEED,
+        agentId: CONTEXT_CAPSULE_DEMO_AGENT_ID,
+      },
+      lifecycle: CONTEXT_CAPSULE_DEMO_LIFECYCLE,
+      sharedFingerprints,
+    },
+    methodology: [
+      "One frozen fixture task, outer agent, trial, seed, lifecycle, corpus, prompt, tool contract, model, runtime, and effective index are compared across all three lanes.",
+      "The lexical lane is the no-GNO retrieval baseline; current GNO uses shipped MCP query/get primitives; the Capsule lane is an evaluation-only lexical prototype using the production model-visible Context Capsule serialization contract.",
+      "Exact hidden-oracle values and source spans score the final structured envelope without an LLM judge.",
+      "UTF-8 bytes include each complete normalized model-visible tool-result envelope. Tokens remain unavailable because the run did not use one pinned comparable tokenizer.",
+      "End-to-end latency is reported only for the matching cold lifecycle on the recorded environment; preparation is outside the scored interval.",
+    ],
+    variance: {
+      trialCount: 1,
+      estimate: null,
+      unavailableReason:
+        "This deterministic demonstration has one frozen trial; it is not a statistical latency or quality estimate.",
+    },
+    limitations: [
+      ...report.limitations,
+      "This page reports one controlled exact-identifier task. It does not extrapolate general product superiority.",
+      "This task is the sole cold-lifecycle current-GNO failure / Capsule success case among the authoritative 24-task cohort; it was selected to demonstrate the behavioral difference, not as a representative sample.",
+      "The Capsule lane is an evaluation-only lexical prototype. Its recorded latency is not the shipped Context Capsule path and is not product-equivalent.",
+    ],
+    lanes,
+    capsuleRetrieval: {
+      request: {
+        toolName: capsulePayload.call.toolName,
+        arguments: capsulePayload.call.arguments,
+      },
+      effectiveIndexFingerprint: capsule.receipt.canonical.fingerprints.index,
+      capabilityStates: capsule.receipt.canonical.capabilities,
+      fallbacks: capsulePayload.fallbacks,
+      normalizedPayload: capsulePayload.payload,
+    },
+    verifiedAsk: {
+      proofKind: "answer_enforcement",
+      benchmarkId: verifiedAsk.benchmarkId,
+      canonicalFingerprint: verifiedAsk.canonicalFingerprint,
+      runGitCommit: requireVerifiedAskGitCommit(verifiedAsk.environment.git),
+      artifactPath:
+        "evals/fixtures/agentic-retrieval/baseline/fixture-agent/verified-ask-promotion.json",
+      pairCount: verifiedAsk.promotion.pairCount,
+      excludedTasks: verifiedAsk.excludedTasks,
+      metrics: verifiedAsk.promotion.metrics,
+    },
+  };
+  const artifact = {
+    ...partial,
+    canonicalFingerprint: contextCapsuleDemoFingerprint(partial),
+  };
+  const failures = validateContextCapsuleDemoArtifact(artifact, {
+    report,
+    verifiedAsk,
+  });
+  if (failures.length > 0)
+    throw new Error(`Context Capsule demo is invalid: ${failures.join(",")}`);
+  return artifact;
 };
-
-const main = async (): Promise<void> => {
-  const artifact = await buildContextCapsuleDemoArtifact();
-  const jsonPath = join(CONTEXT_CAPSULE_DEMO_ROOT, "context-capsule.json");
-  const markdownPath = join(CONTEXT_CAPSULE_DEMO_ROOT, "context-capsule.md");
-  await Bun.write(jsonPath, `${JSON.stringify(artifact, null, 2)}\n`);
-  await Bun.write(markdownPath, renderContextCapsuleDemoMarkdown(artifact));
-  await Bun.$`bunx oxfmt ${jsonPath} ${markdownPath}`.quiet();
-};
-
-if (import.meta.main) await main();

@@ -5,7 +5,8 @@
   "created_at": "2026-07-21T22:00:51.243888Z",
   "depends_on": [
     "fn-103-capsule-distribution-and-commercial.2",
-    "fn-103-capsule-distribution-and-commercial.3"
+    "fn-103-capsule-distribution-and-commercial.3",
+    "fn-103-capsule-distribution-and-commercial.11"
   ],
   "id": "fn-103-capsule-distribution-and-commercial.4",
   "priority": null,

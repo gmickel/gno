@@ -5,8 +5,14 @@
     "benchmarkId": "agentic-retrieval@1",
     "canonicalFingerprint": "ce05f9d8d3dfc4dbd80a97a34881f464453a8445178a68a812a69d3171910566",
     "fixtureFingerprint": "68027bb0248c09507dbdba9d8cf2433f1b9b7b547ba5db8811db338982f9d08b",
-    "immutableGitCommit": "3c8ac2c76ff04346b2a8d9f2deaa8354406595fb",
-    "reportPath": "evals/fixtures/agentic-retrieval/baseline/fixture-agent/report.json"
+    "runGitCommit": "3c8ac2c76ff04346b2a8d9f2deaa8354406595fb",
+    "reportPath": "evals/fixtures/agentic-retrieval/baseline/fixture-agent/report.json",
+    "selection": {
+      "rule": "cold_gno_failure_capsule_success",
+      "cohortTaskCount": 24,
+      "matchingTaskIds": ["t0a1b2c3"],
+      "selectedTaskId": "t0a1b2c3"
+    }
   },
   "frozenInput": {
     "task": {
@@ -74,6 +80,11 @@
         }
       ]
     },
+    "identity": {
+      "trialId": "fixture-01",
+      "seed": 0,
+      "agentId": "fixture-agent-v1"
+    },
     "lifecycle": "cold",
     "sharedFingerprints": {
       "corpus": "68027bb0248c09507dbdba9d8cf2433f1b9b7b547ba5db8811db338982f9d08b",
@@ -86,7 +97,7 @@
   },
   "methodology": [
     "One frozen fixture task, outer agent, trial, seed, lifecycle, corpus, prompt, tool contract, model, runtime, and effective index are compared across all three lanes.",
-    "The lexical lane is the no-GNO retrieval baseline; current GNO uses shipped MCP query/get primitives; the Capsule lane uses the production model-visible Context Capsule projection.",
+    "The lexical lane is the no-GNO retrieval baseline; current GNO uses shipped MCP query/get primitives; the Capsule lane is an evaluation-only lexical prototype using the production model-visible Context Capsule serialization contract.",
     "Exact hidden-oracle values and source spans score the final structured envelope without an LLM judge.",
     "UTF-8 bytes include each complete normalized model-visible tool-result envelope. Tokens remain unavailable because the run did not use one pinned comparable tokenizer.",
     "End-to-end latency is reported only for the matching cold lifecycle on the recorded environment; preparation is outside the scored interval."
@@ -103,7 +114,9 @@
     "Latency is environment-specific and comparable only within a matching lifecycle.",
     "qmd is optional, exact-revision pinned, and non-authoritative for Capsule promotion.",
     "Capsule retrieval is a fixture prototype; its model-visible serializer and omission accounting are the production MCP contract.",
-    "This page reports one controlled exact-identifier task. It does not extrapolate general product superiority."
+    "This page reports one controlled exact-identifier task. It does not extrapolate general product superiority.",
+    "This task is the sole cold-lifecycle current-GNO failure / Capsule success case among the authoritative 24-task cohort; it was selected to demonstrate the behavioral difference, not as a representative sample.",
+    "The Capsule lane is an evaluation-only lexical prototype. Its recorded latency is not the shipped Context Capsule path and is not product-equivalent."
   ],
   "lanes": [
     {
@@ -937,7 +950,7 @@
     "proofKind": "answer_enforcement",
     "benchmarkId": "verified-ask-outcome@1",
     "canonicalFingerprint": "53931a6ad5717a707e2a486d47fafb988960b0e0f45f201c5875d1104034ee28",
-    "immutableGitCommit": "3c8ac2c76ff04346b2a8d9f2deaa8354406595fb",
+    "runGitCommit": "3c8ac2c76ff04346b2a8d9f2deaa8354406595fb",
     "artifactPath": "evals/fixtures/agentic-retrieval/baseline/fixture-agent/verified-ask-promotion.json",
     "pairCount": 22,
     "excludedTasks": [
@@ -958,5 +971,5 @@
       "unsupportedSubstantiveClaimReduction": 1
     }
   },
-  "canonicalFingerprint": "a2001a5b7052ad5d325a2b4336d9598192651c588992bc732729e10a739647d4"
+  "canonicalFingerprint": "bb5c059572017e71a126233dfdeb38e547c4d87013882c833d45570da578d85f"
 }

@@ -28,15 +28,36 @@
         "benchmarkId",
         "canonicalFingerprint",
         "fixtureFingerprint",
-        "immutableGitCommit",
-        "reportPath"
+        "runGitCommit",
+        "reportPath",
+        "selection"
       ],
       "properties": {
         "benchmarkId": { "type": "string", "minLength": 1 },
         "canonicalFingerprint": { "$ref": "#/definitions/fingerprint" },
         "fixtureFingerprint": { "$ref": "#/definitions/fingerprint" },
-        "immutableGitCommit": { "$ref": "#/definitions/gitCommit" },
-        "reportPath": { "type": "string", "minLength": 1 }
+        "runGitCommit": { "$ref": "#/definitions/gitCommit" },
+        "reportPath": { "type": "string", "minLength": 1 },
+        "selection": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "rule",
+            "cohortTaskCount",
+            "matchingTaskIds",
+            "selectedTaskId"
+          ],
+          "properties": {
+            "rule": { "const": "cold_gno_failure_capsule_success" },
+            "cohortTaskCount": { "type": "integer", "minimum": 1 },
+            "matchingTaskIds": {
+              "type": "array",
+              "minItems": 1,
+              "items": { "type": "string", "minLength": 1 }
+            },
+            "selectedTaskId": { "type": "string", "minLength": 1 }
+          }
+        }
       }
     },
     "frozenInput": {
@@ -46,6 +67,7 @@
         "task",
         "expected",
         "environment",
+        "identity",
         "lifecycle",
         "sharedFingerprints"
       ],
@@ -69,6 +91,18 @@
         },
         "environment": {
           "$ref": "gno://schemas/evals/agentic/benchmark-report@1.0#/properties/environment"
+        },
+        "identity": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["trialId", "seed", "agentId"],
+          "properties": {
+            "trialId": { "type": "string", "minLength": 1 },
+            "seed": {
+              "oneOf": [{ "type": "integer" }, { "type": "null" }]
+            },
+            "agentId": { "type": "string", "minLength": 1 }
+          }
         },
         "lifecycle": { "const": "cold" },
         "sharedFingerprints": {
@@ -154,7 +188,7 @@
         "proofKind",
         "benchmarkId",
         "canonicalFingerprint",
-        "immutableGitCommit",
+        "runGitCommit",
         "artifactPath",
         "pairCount",
         "excludedTasks",
@@ -164,7 +198,7 @@
         "proofKind": { "const": "answer_enforcement" },
         "benchmarkId": { "const": "verified-ask-outcome@1" },
         "canonicalFingerprint": { "$ref": "#/definitions/fingerprint" },
-        "immutableGitCommit": { "$ref": "#/definitions/gitCommit" },
+        "runGitCommit": { "$ref": "#/definitions/gitCommit" },
         "artifactPath": { "type": "string", "minLength": 1 },
         "pairCount": { "const": 22 },
         "excludedTasks": {
