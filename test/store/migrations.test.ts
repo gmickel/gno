@@ -54,7 +54,7 @@ describe("store migrations", () => {
 
       const upgradeResult = runMigrations(db, migrations, "unicode61");
       expect(upgradeResult.ok).toBe(true);
-      expect(getSchemaVersion(db)).toBe(17);
+      expect(getSchemaVersion(db)).toBe(18);
 
       const indexedRow = db
         .query<{ indexed_at: string | null }, []>(
@@ -115,7 +115,7 @@ describe("store migrations", () => {
 
     try {
       expect(runMigrations(db, migrations, "unicode61").ok).toBe(true);
-      expect(getSchemaVersion(db)).toBe(17);
+      expect(getSchemaVersion(db)).toBe(18);
 
       const savedTables = db
         .query<{ name: string }, []>(
@@ -264,7 +264,7 @@ describe("store migrations", () => {
       );
 
       expect(runMigrations(db, migrations, "unicode61").ok).toBe(true);
-      expect(getSchemaVersion(db)).toBe(17);
+      expect(getSchemaVersion(db)).toBe(18);
       expect(
         db
           .query<{ retained_entries: number; retained_bytes: number }, []>(
@@ -278,6 +278,47 @@ describe("store migrations", () => {
         db.run(
           `UPDATE document_change_journal_state
            SET retained_entries = -1
+           WHERE singleton_id = 1`
+        )
+      ).toThrow();
+    } finally {
+      db.close();
+    }
+  });
+
+  test("adds a non-negative saved-Capsule registration epoch from v17", () => {
+    const db = new Database(dbPath);
+    try {
+      expect(runMigrations(db, migrations.slice(0, 17), "unicode61").ok).toBe(
+        true
+      );
+      db.run(
+        `UPDATE saved_capsule_reverification_state
+         SET last_processed_sequence = 7
+         WHERE singleton_id = 1`
+      );
+
+      expect(runMigrations(db, migrations, "unicode61").ok).toBe(true);
+      expect(getSchemaVersion(db)).toBe(18);
+      expect(
+        db
+          .query<
+            {
+              last_processed_sequence: number;
+              registration_epoch: number;
+            },
+            []
+          >(
+            `SELECT last_processed_sequence, registration_epoch
+             FROM saved_capsule_reverification_state
+             WHERE singleton_id = 1`
+          )
+          .get()
+      ).toEqual({ last_processed_sequence: 7, registration_epoch: 0 });
+      expect(() =>
+        db.run(
+          `UPDATE saved_capsule_reverification_state
+           SET registration_epoch = -1
            WHERE singleton_id = 1`
         )
       ).toThrow();
@@ -341,7 +382,7 @@ describe("store migrations", () => {
 
       const upgraded = runMigrations(db, migrations, "unicode61");
       expect(upgraded.ok).toBe(true);
-      expect(getSchemaVersion(db)).toBe(17);
+      expect(getSchemaVersion(db)).toBe(18);
       const rows = db
         .query<{ rel_path: string; fts_mirror_hash: string | null }, []>(
           "SELECT rel_path, fts_mirror_hash FROM documents ORDER BY rel_path"

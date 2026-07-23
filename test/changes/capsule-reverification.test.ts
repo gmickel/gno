@@ -133,44 +133,87 @@ describe("saved Context Capsule reverification", () => {
     );
   });
 
-  test("does not skip a journal change concurrent with Capsule file loading", async () => {
-    const originalList = adapter.listDocumentChanges.bind(adapter);
-    let injected = false;
-    const listSpy = spyOn(adapter, "listDocumentChanges").mockImplementation(
-      async (options) => {
-        const page = await originalList(options);
-        if (!injected) {
-          injected = true;
-          expect(
-            (
-              await adapter.upsertDocument(
-                documentInput({
-                  ...fixture.first,
-                  sourceHash: "9".repeat(64),
-                })
-              )
-            ).ok
-          ).toBe(true);
-        }
-        return page;
+  test("queues a registration when the scheduler advances while its Capsule file loads", async () => {
+    const before = await Bun.file(capsulePath).text();
+    const notifications: unknown[] = [];
+    const scheduler = new SavedCapsuleReverificationScheduler({
+      deps: {
+        store: adapter,
+        config,
+        indexName: "default",
+        notify: (event) => notifications.push(event),
+      },
+      startBackgroundWork: () => false,
+    });
+    const originalGet = adapter.getSavedCapsuleRegistration.bind(adapter);
+    let advancedBeforePersistence = false;
+    const getSpy = spyOn(
+      adapter,
+      "getSavedCapsuleRegistration"
+    ).mockImplementation(async (registrationId) => {
+      if (!advancedBeforePersistence) {
+        advancedBeforePersistence = true;
+        expect(
+          (
+            await adapter.upsertDocument(
+              documentInput({
+                ...fixture.first,
+                sourceHash: "9".repeat(64),
+              })
+            )
+          ).ok
+        ).toBe(true);
+        const emptyDrain = await scheduler.triggerNow();
+        expect(emptyDrain).toHaveLength(1);
+        expect(emptyDrain[0]).toMatchObject({ affected: 0 });
       }
-    );
+      return originalGet(registrationId);
+    });
 
     const registration = await registerSavedCapsule(adapter, "default", {
       filePath: capsulePath,
+      notificationPreference: "local",
     });
-    listSpy.mockRestore();
-    const latest = await originalList({ limit: 1 });
+    getSpy.mockRestore();
+    expect(advancedBeforePersistence).toBe(true);
+    expect(await adapter.getSavedCapsuleReverificationSequence()).toEqual({
+      ok: true,
+      value: registration.lastAttemptedSequence,
+    });
+
+    const catchUp = await scheduler.triggerNow();
+    expect(catchUp).toHaveLength(1);
+    expect(catchUp[0]).toMatchObject({ affected: 1, completed: 1, failed: 0 });
+    const latest = await adapter.listDocumentChanges({ limit: 1 });
     expect(latest.ok).toBe(true);
     if (!latest.ok) return;
-    const affected = await adapter.listSavedCapsuleIdsAffectedByChanges(
-      registration.lastAttemptedSequence,
-      decodeDocumentChangeCursor(latest.value.latestCursor),
-      100
+    const latestSequence = decodeDocumentChangeCursor(
+      latest.value.latestCursor
     );
-    expect(affected.ok && affected.value.registrationIds).toEqual([
-      registration.registrationId,
+    expect(await adapter.getSavedCapsuleReverificationSequence()).toEqual({
+      ok: true,
+      value: latestSequence,
+    });
+    expect((await listSavedCapsules(adapter))[0]?.verification).toMatchObject({
+      registrationId: registration.registrationId,
+      operationStatus: "completed",
+      affectedQuestionState: "affected",
+      fromSequence: registration.lastAttemptedSequence,
+      throughSequence: latestSequence,
+    });
+    expect(await Bun.file(capsulePath).text()).toBe(before);
+    expect(notifications).toEqual([
+      {
+        type: "capsule-reverified",
+        registrationId: registration.registrationId,
+        capsuleId: registration.capsuleId,
+        operationStatus: "completed",
+        affectedQuestionState: "affected",
+        changedAt: expect.any(String),
+      },
     ]);
+    expect(JSON.stringify(notifications)).not.toContain(capsulePath);
+    expect(JSON.stringify(notifications)).not.toContain("Mina owns");
   });
 
   test("keeps completed receipts separate from index-mismatch operation failures", async () => {
@@ -397,6 +440,72 @@ describe("saved Context Capsule reverification", () => {
     );
     await cancelled.dispose();
     await scheduler.dispose();
+  });
+
+  test("retries a drain when registration persistence races its final high-water advance", async () => {
+    const first = await registerSavedCapsule(adapter, "default", {
+      filePath: capsulePath,
+    });
+    const secondPath = join(testDir, "decision-racing.capsule.json");
+    await Bun.write(secondPath, await Bun.file(capsulePath).text());
+    expect(
+      (
+        await adapter.upsertDocument(
+          documentInput({
+            ...fixture.first,
+            sourceHash: "8".repeat(64),
+          })
+        )
+      ).ok
+    ).toBe(true);
+
+    const originalAdvance =
+      adapter.setSavedCapsuleReverificationSequence.bind(adapter);
+    let persistedDuringAdvance = false;
+    const advanceSpy = spyOn(
+      adapter,
+      "setSavedCapsuleReverificationSequence"
+    ).mockImplementation(async (sequence, expectedRegistrationEpoch) => {
+      if (!persistedDuringAdvance) {
+        persistedDuringAdvance = true;
+        expect(
+          (
+            await adapter.upsertSavedCapsuleRegistration({
+              ...first,
+              registrationId: `capsule-${sha256Text(secondPath).slice(0, 40)}`,
+              filePath: secondPath,
+              registeredAtMs: Date.now(),
+              updatedAtMs: Date.now(),
+              lastAttemptedSequence: first.lastAttemptedSequence,
+            })
+          ).ok
+        ).toBe(true);
+      }
+      return originalAdvance(sequence, expectedRegistrationEpoch);
+    });
+    const scheduler = new SavedCapsuleReverificationScheduler({
+      deps: { store: adapter, config, indexName: "default" },
+      startBackgroundWork: () => false,
+    });
+
+    const drains = await scheduler.triggerNow();
+    advanceSpy.mockRestore();
+    expect(persistedDuringAdvance).toBe(true);
+    expect(drains.map(({ affected }) => affected)).toEqual([1, 1]);
+    const registrations = await listSavedCapsules(adapter);
+    expect(registrations).toHaveLength(2);
+    expect(
+      registrations.map(
+        ({ verification }) => verification?.operationStatus ?? null
+      )
+    ).toEqual(["completed", "completed"]);
+    const latest = await adapter.listDocumentChanges({ limit: 1 });
+    expect(latest.ok).toBe(true);
+    if (!latest.ok) return;
+    expect(await adapter.getSavedCapsuleReverificationSequence()).toEqual({
+      ok: true,
+      value: decodeDocumentChangeCursor(latest.value.latestCursor),
+    });
   });
 
   test("reports a changed saved file without rewriting it", async () => {

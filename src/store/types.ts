@@ -467,6 +467,11 @@ export interface SavedCapsuleVerificationRecord {
   verifiedAtMs: number;
 }
 
+export interface SavedCapsuleReverificationState {
+  lastProcessedSequence: number;
+  registrationEpoch: number;
+}
+
 export interface SavedCapsuleRegistrationInput extends Omit<
   SavedCapsuleRegistration,
   "registeredAtMs" | "updatedAtMs"
@@ -1538,11 +1543,22 @@ export interface StorePort {
     verification: SavedCapsuleVerificationRecord
   ): Promise<StoreResult<void>>;
 
-  /** Read/write the resident scheduler's durable journal high-water sequence. */
+  /** Read the resident scheduler's durable journal high-water sequence. */
   getSavedCapsuleReverificationSequence(): Promise<StoreResult<number>>;
+
+  /** Atomically read the high-water sequence and registration generation. */
+  getSavedCapsuleReverificationState(): Promise<
+    StoreResult<SavedCapsuleReverificationState>
+  >;
+
+  /**
+   * Advance the high-water sequence only when no registration changed during
+   * the scheduler drain. Returns false when the caller must retry.
+   */
   setSavedCapsuleReverificationSequence(
-    sequence: number
-  ): Promise<StoreResult<void>>;
+    sequence: number,
+    expectedRegistrationEpoch: number
+  ): Promise<StoreResult<boolean>>;
 
   // ─────────────────────────────────────────────────────────────────────────
   // Content (content-addressed)

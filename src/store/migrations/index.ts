@@ -31,6 +31,7 @@ import { migration as m014 } from "./014-retrieval-traces";
 import { migration as m015 } from "./015-document-change-journal";
 import { migration as m016 } from "./016-saved-capsules";
 import { migration as m017 } from "./017-document-change-retention-counters";
+import { migration as m018 } from "./018-saved-capsule-registration-epoch";
 
 /** All migrations in order */
 export const migrations = [
@@ -51,4 +52,5 @@ export const migrations = [
   m015,
   m016,
   m017,
+  m018,
 ];

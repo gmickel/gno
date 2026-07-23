@@ -22,7 +22,7 @@ const MAX_REGISTRATIONS_PER_DRAIN = 10_000;
 type SchedulerStore = StorePort &
   Pick<
     StorePort,
-    | "getSavedCapsuleReverificationSequence"
+    | "getSavedCapsuleReverificationState"
     | "listDocumentChanges"
     | "listSavedCapsuleIdsAffectedByChanges"
     | "listSavedCapsuleRegistrations"
@@ -82,8 +82,12 @@ export class SavedCapsuleReverificationScheduler {
 
   async triggerNow(signal: AbortSignal = new AbortController().signal) {
     if (this.#disposed) return [];
-    this.#pending = false;
-    return [await this.#drain(signal)];
+    const results: SavedCapsuleReverificationDrain[] = [];
+    do {
+      this.#pending = false;
+      results.push(await this.#drain(signal));
+    } while (this.#pending && !signal.aborted && !this.#disposed);
+    return results;
   }
 
   async dispose(): Promise<void> {
@@ -111,10 +115,11 @@ export class SavedCapsuleReverificationScheduler {
 
   async #drain(signal: AbortSignal): Promise<SavedCapsuleReverificationDrain> {
     const store = this.#options.deps.store;
-    const fromSequence = unwrapStore(
-      await store.getSavedCapsuleReverificationSequence(),
+    const schedulerState = unwrapStore(
+      await store.getSavedCapsuleReverificationState(),
       "Failed to read saved Capsule scheduler state"
     );
+    const fromSequence = schedulerState.lastProcessedSequence;
     const journal = unwrapStore(
       await store.listDocumentChanges({
         cursor: encodeDocumentChangeCursor(fromSequence),
@@ -188,10 +193,14 @@ export class SavedCapsuleReverificationScheduler {
       );
     }
     if (!signal.aborted) {
-      unwrapStore(
-        await store.setSavedCapsuleReverificationSequence(throughSequence),
+      const advanced = unwrapStore(
+        await store.setSavedCapsuleReverificationSequence(
+          throughSequence,
+          schedulerState.registrationEpoch
+        ),
         "Failed to advance saved Capsule scheduler state"
       );
+      if (!advanced) this.#pending = true;
     }
     return {
       fromSequence,

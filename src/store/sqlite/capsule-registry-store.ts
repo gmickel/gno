@@ -7,6 +7,7 @@ import type {
   SavedCapsuleRegistration,
   SavedCapsuleRegistrationInput,
   SavedCapsuleRegistrationRecord,
+  SavedCapsuleReverificationState,
   SavedCapsuleVerificationRecord,
   StoreResult,
 } from "../types";
@@ -232,6 +233,13 @@ export const upsertSavedCapsuleRegistration = (
         "DELETE FROM saved_capsule_verifications WHERE registration_id = ?",
         [input.registrationId]
       );
+      db.run(
+        `UPDATE saved_capsule_reverification_state
+         SET last_processed_sequence = MIN(last_processed_sequence, ?),
+             registration_epoch = registration_epoch + 1
+         WHERE singleton_id = 1`,
+        [input.lastAttemptedSequence]
+      );
       return loadRecords(db, input.registrationId)[0]!;
     });
     return ok(transaction());
@@ -415,21 +423,53 @@ export const getSavedCapsuleReverificationSequence = (
   }
 };
 
+export const getSavedCapsuleReverificationState = (
+  db: Database
+): StoreResult<SavedCapsuleReverificationState> => {
+  try {
+    const row = db
+      .query<
+        {
+          last_processed_sequence: number;
+          registration_epoch: number;
+        },
+        []
+      >(
+        `SELECT last_processed_sequence, registration_epoch
+         FROM saved_capsule_reverification_state WHERE singleton_id = 1`
+      )
+      .get();
+    return ok({
+      lastProcessedSequence: row?.last_processed_sequence ?? 0,
+      registrationEpoch: row?.registration_epoch ?? 0,
+    });
+  } catch (cause) {
+    return err("QUERY_FAILED", "Failed to read reverification state", cause);
+  }
+};
+
 export const setSavedCapsuleReverificationSequence = (
   db: Database,
-  sequence: number
-): StoreResult<void> => {
+  sequence: number,
+  expectedRegistrationEpoch: number
+): StoreResult<boolean> => {
   try {
-    if (!Number.isSafeInteger(sequence) || sequence < 0) {
+    if (
+      !Number.isSafeInteger(sequence) ||
+      sequence < 0 ||
+      !Number.isSafeInteger(expectedRegistrationEpoch) ||
+      expectedRegistrationEpoch < 0
+    ) {
       return err("INVALID_INPUT", "Invalid reverification sequence");
     }
-    db.run(
+    const updated = db.run(
       `UPDATE saved_capsule_reverification_state
        SET last_processed_sequence = MAX(last_processed_sequence, ?)
-       WHERE singleton_id = 1`,
-      [sequence]
-    );
-    return ok(undefined);
+       WHERE singleton_id = 1
+         AND registration_epoch = ?`,
+      [sequence, expectedRegistrationEpoch]
+    ).changes;
+    return ok(updated > 0);
   } catch (cause) {
     return err("QUERY_FAILED", "Failed to update reverification state", cause);
   }

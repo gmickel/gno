@@ -604,5 +604,7 @@ CREATE TABLE IF NOT EXISTS saved_capsule_verifications (
 CREATE TABLE IF NOT EXISTS saved_capsule_reverification_state (
   singleton_id INTEGER PRIMARY KEY CHECK (singleton_id = 1),
   last_processed_sequence INTEGER NOT NULL DEFAULT 0
-    CHECK (last_processed_sequence >= 0)
+    CHECK (last_processed_sequence >= 0),
+  registration_epoch INTEGER NOT NULL DEFAULT 0
+    CHECK (registration_epoch >= 0)
 );

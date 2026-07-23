@@ -79,6 +79,7 @@ import type {
   RenameDocumentOptions,
   SavedCapsuleRegistrationInput,
   SavedCapsuleRegistrationRecord,
+  SavedCapsuleReverificationState,
   SavedCapsuleVerificationRecord,
   StorePort,
   StoreResult,
@@ -108,6 +109,7 @@ import { modelTableName } from "../vector/sqlite-vec";
 import {
   deleteSavedCapsuleRegistration as deleteStoredSavedCapsuleRegistration,
   getSavedCapsuleRegistration as getStoredSavedCapsuleRegistration,
+  getSavedCapsuleReverificationState as getStoredSavedCapsuleReverificationState,
   getSavedCapsuleReverificationSequence as getStoredSavedCapsuleReverificationSequence,
   listSavedCapsuleIdsAffectedByChanges as listStoredSavedCapsuleIdsAffectedByChanges,
   listSavedCapsuleRegistrations as listStoredSavedCapsuleRegistrations,
@@ -1723,12 +1725,20 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
     return getStoredSavedCapsuleReverificationSequence(this.ensureOpen());
   }
 
+  async getSavedCapsuleReverificationState(): Promise<
+    StoreResult<SavedCapsuleReverificationState>
+  > {
+    return getStoredSavedCapsuleReverificationState(this.ensureOpen());
+  }
+
   async setSavedCapsuleReverificationSequence(
-    sequence: number
-  ): Promise<StoreResult<void>> {
+    sequence: number,
+    expectedRegistrationEpoch: number
+  ): Promise<StoreResult<boolean>> {
     return setStoredSavedCapsuleReverificationSequence(
       this.ensureOpen(),
-      sequence
+      sequence,
+      expectedRegistrationEpoch
     );
   }
 
