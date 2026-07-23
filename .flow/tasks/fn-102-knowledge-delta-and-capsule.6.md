@@ -16,9 +16,22 @@ and nonzero/manual-reverification failure reporting.
 - [ ] Regression tests, docs/spec, lint, typecheck, and full tests pass.
 
 ## Done summary
-TBD
+Resolved all six PR #143 review findings.
 
+- Bounded journal structure values by serialized UTF-8 bytes and enforced the
+  migration 015 JSON-column limits.
+- Added transactional retained-entry/byte counters and bounded oldest-prefix
+  retention scans, including v16-to-v17 backfill.
+- Closed the saved-Capsule registration watermark race.
+- Journaled successful-document to conversion-failure evidence disappearance.
+- Rejected empty optional selectors across core, CLI, REST, SDK, and MCP.
+- Kept failed manual reverification output informative while exiting nonzero.
+- Updated CLI/spec/troubleshooting/changelog and hosted public truth.
+
+Regression coverage includes Unicode/escaping/collision bounds, 100,000-row
+retention behavior, migration backfill, concurrent registration, conversion
+failure scheduling, cross-surface selector validation, and CLI exit behavior.
 ## Evidence
-- Commits:
-- Tests:
-- PRs:
+- Commits: 88198b2
+- Tests: bun test (2842 pass, 1 expected Windows skip, 0 fail), bun run lint:check, bun run typecheck, bun run docs:verify (13 pass, 2 model-cache skips), bun test test/store/change-journal.test.ts (12 pass), .flow/bin/flowctl validate --all (110 specs, 315 tasks, valid)
+- PRs: 143
