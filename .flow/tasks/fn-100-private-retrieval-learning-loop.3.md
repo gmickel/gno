@@ -41,9 +41,8 @@ Deliver expose local trace feedback and purge controls as one implementation-siz
 
 
 ## Done summary
-TBD
-
+Added one bounded, redaction-aware retrieval trace management service and full CLI/REST/MCP/SDK/Web parity for list, inspect, explicit label, aggregate export manifest, delete, and physical purge. Added closed schemas, stable pagination, config-independent management, append-only correction semantics, write authorization/CSRF/no-leak gates, evidence-selectable Web labeling, and truthful WAL cleanup receipts. Independent reciprocal review: SHIP. Commit: c105032.
 ## Evidence
-- Commits:
-- Tests:
+- Commits: c105032
+- Tests: bun test: 2671 pass, 0 fail, 1 platform skip, focused management regressions: 50 pass, 0 fail, bun run lint:check, bun run docs:verify, flowctl validate fn-100, gno.sh typecheck and public-truth: 6 pass
 - PRs:
