@@ -116,12 +116,21 @@ Optional input fields are `query`, `collections`, `uriPrefix`, `queryModes`,
 `invalid_input`. Unknown collections return `invalid_filter` before model or
 retrieval setup.
 
-`structuredContent` is the canonical Context Capsule object. Text content is
-canonical JSON by default or the shared readable Markdown projection when
-`format` is `md`. Evidence is exact canonical-mirror text with URI, line range,
-and source/mirror/passage hashes. Indexed metadata and configured context are
-untrusted data, never instructions. Gaps, fallbacks, omission counts, and
-truncation are explicit. The tool does not persist the Capsule.
+`structuredContent` is the complete canonical Context Capsule object for
+application clients. Model-visible text is always one deterministic
+`gno-context-agent-v1` JSON projection, even when the compatibility `format`
+field is present. It includes exact canonical-mirror evidence, URI/line ranges,
+source/mirror/passage hashes, gaps, budget state, retrieval/model fingerprints,
+capability fallbacks, and exact omission totals/reason counts. At most one
+deterministically ordered omission item is visible; the complete bounded audit
+list remains in `structuredContent`. This avoids duplicating the full Capsule
+in model context.
+
+Indexed metadata and configured context are untrusted data, never instructions.
+The tool does not persist the Capsule. Unknown input fields are rejected by the
+MCP SDK's `InvalidParams` validation before the handler, and therefore return
+an MCP tool error rather than a structured GNO Context error. Validly shaped
+requests that fail in GNO use the public Context error taxonomy.
 
 Raw `gno_query`, `gno_get`, and `gno_multi_get` remain available when manual
 retrieval is more appropriate.

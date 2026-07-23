@@ -16,10 +16,14 @@ import {
 import { loadAgenticFixture } from "../../../evals/agentic/fixture-db";
 import { runAgenticBenchmark } from "../../../evals/agentic/runner";
 import { scoreTrajectory } from "../../../evals/agentic/scoring";
+import {
+  CONTEXT_AGENT_OMISSION_ITEM_LIMIT,
+  CONTEXT_AGENT_PROJECTION_SCHEMA_VERSION,
+} from "../../../src/app/context-agent-projection";
 
 const RECORDED_AT = "2026-07-22T00:00:00.000Z";
 
-describe("eval-only Capsule prototype", () => {
+describe("Capsule prototype with production model-visible projection", () => {
   let fixture: LoadedAgenticFixture;
 
   beforeAll(async () => {
@@ -63,32 +67,31 @@ describe("eval-only Capsule prototype", () => {
       const payload = JSON.parse(
         call.result.content
       ) as CapsulePrototypePayload;
-      expect(payload.evalOnly).toBe(true);
-      expect(payload.schemaVersion).toBe("eval-capsule-prototype-v1");
-      expect(payload.budget.selectedModelVisibleUtf8Bytes).toBe(
-        call.modelVisibleUtf8Bytes
+      expect(payload.schemaVersion).toBe(
+        CONTEXT_AGENT_PROJECTION_SCHEMA_VERSION
+      );
+      expect(payload.delivery.modelVisibleUtf8Bytes).toBe(
+        new TextEncoder().encode(call.result.content).byteLength
       );
       expect(receipt.canonical.fingerprints.index).toMatch(/^[a-f0-9]{64}$/);
       expect(receipt.canonical.fingerprints.config).toMatch(/^[a-f0-9]{64}$/);
       expect(receipt.canonical.backendInvocations).toBeGreaterThan(1);
       expect(
-        Object.values(payload.omitted.counts).reduce(
+        Object.values(payload.omissions.reasonCounts).reduce(
           (sum, count) => sum + count,
           0
         )
-      ).toBe(payload.omitted.total);
-      expect(payload.omitted.candidates.length).toBeLessThanOrEqual(1);
-      expect(payload.omitted.truncated).toBe(
-        payload.omitted.total > payload.omitted.candidates.length
+      ).toBe(payload.omissions.total);
+      expect(payload.omissions.visibleItems.length).toBeLessThanOrEqual(
+        CONTEXT_AGENT_OMISSION_ITEM_LIMIT
       );
-      for (const omission of payload.omitted.candidates) {
-        const countKey =
-          omission.reason === "global_budget"
-            ? "globalBudget"
-            : omission.reason === "redundant_coverage"
-              ? "redundantCoverage"
-              : omission.reason;
-        expect(payload.omitted.counts[countKey]).toBeGreaterThan(0);
+      expect(payload.omissions.truncated).toBe(
+        payload.omissions.total > payload.omissions.visibleItems.length
+      );
+      for (const omission of payload.omissions.visibleItems) {
+        expect(payload.omissions.reasonCounts[omission.reason]).toBeGreaterThan(
+          0
+        );
       }
       expect(payload).not.toHaveProperty("cli");
       expect(payload).not.toHaveProperty("mcp");
@@ -164,11 +167,11 @@ describe("eval-only Capsule prototype", () => {
       run.receipts[0]?.canonical.calls[0]?.result.content ?? ""
     ) as CapsulePrototypePayload;
 
-    expect(payload.omitted.total).toBe(2);
-    expect(payload.omitted.counts.redundantCoverage).toBe(2);
-    expect(payload.omitted.candidates).toHaveLength(1);
+    expect(payload.omissions.total).toBe(2);
+    expect(payload.omissions.reasonCounts.redundant_coverage).toBe(2);
+    expect(payload.omissions.visibleItems).toHaveLength(1);
     expect(
-      payload.omitted.candidates.every(
+      payload.omissions.visibleItems.every(
         (item) =>
           item.uri === "gno://c018/d001.md" &&
           item.sourceHash ===

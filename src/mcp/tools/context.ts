@@ -5,13 +5,10 @@ import type { VectorIndexPort } from "../../store/vector";
 import type { ToolContext } from "../server";
 import type { ToolResult } from "./index";
 
-import {
-  formatContextCapsuleMarkdown,
-  formatContextCapsuleVerificationMarkdown,
-} from "../../app/context-format";
+import { formatContextCapsuleAgentJson } from "../../app/context-agent-projection";
+import { formatContextCapsuleVerificationMarkdown } from "../../app/context-format";
 import {
   buildContextCapsule,
-  canonicalBuiltContextCapsuleJson,
   canonicalVerifiedContextCapsuleJson,
   validateContextCapsuleBuildInput,
   verifyContextCapsuleRuntime,
@@ -82,11 +79,37 @@ interface McpModelPorts {
   dispose(): Promise<void>;
 }
 
-const createMcpModelPorts = async (
+interface McpModelPortFactory {
+  createEmbeddingPort: LlmAdapter["createEmbeddingPort"];
+  createRerankPort: LlmAdapter["createRerankPort"];
+  dispose: LlmAdapter["dispose"];
+}
+
+export const disposeContextModelOwners = async (
+  owners: readonly { dispose(): Promise<void> }[]
+): Promise<void> => {
+  await Promise.allSettled(owners.map((owner) => owner.dispose()));
+};
+
+const modelOwners = (
+  factory: McpModelPortFactory,
+  ownedEmbedPort: EmbeddingPort | null,
+  rerankPort: RerankPort | null
+): { dispose(): Promise<void> }[] => {
+  const owners: { dispose(): Promise<void> }[] = [];
+  if (ownedEmbedPort) owners.push(ownedEmbedPort);
+  if (rerankPort) owners.push(rerankPort);
+  owners.push(factory);
+  return owners;
+};
+
+export const createMcpModelPorts = async (
   context: ToolContext,
-  collection?: string
+  collection?: string,
+  factoryOverride?: McpModelPortFactory
 ): Promise<McpModelPorts> => {
   const llm = new LlmAdapter(context.config);
+  const factory = factoryOverride ?? llm;
   const policy = resolveDownloadPolicy(process.env, {});
   const progress = createNonTtyProgressRenderer();
   const embedUri = resolveModelUri(
@@ -96,40 +119,51 @@ const createMcpModelPorts = async (
     collection
   );
   let embedPort: EmbeddingPort | null = null;
+  let ownedEmbedPort: EmbeddingPort | null = null;
   let rerankPort: RerankPort | null = null;
   let vectorIndex: VectorIndexPort | null = null;
-  const embedResult = await llm.createEmbeddingPort(embedUri, {
-    policy,
-    onProgress: (value) => progress("embed", value),
-  });
-  if (embedResult.ok) {
-    embedPort = embedResult.value;
-    const initialized = await embedPort.init();
-    if (initialized.ok) {
-      const vectorResult = await createVectorIndexPort(
-        context.store.getRawDb(),
-        { model: embedUri, dimensions: embedPort.dimensions() }
-      );
-      if (vectorResult.ok) vectorIndex = vectorResult.value;
-    }
-  }
-  const rerankResult = await llm.createRerankPort(
-    resolveModelUri(context.config, "rerank", undefined, collection),
-    {
+  try {
+    const embedResult = await factory.createEmbeddingPort(embedUri, {
       policy,
-      onProgress: (value) => progress("rerank", value),
+      onProgress: (value) => progress("embed", value),
+    });
+    if (embedResult.ok) {
+      // Take ownership before init: init failures must not leak the port.
+      ownedEmbedPort = embedResult.value;
+      const initialized = await ownedEmbedPort.init();
+      if (initialized.ok) {
+        embedPort = ownedEmbedPort;
+        const vectorResult = await createVectorIndexPort(
+          context.store.getRawDb(),
+          { model: embedUri, dimensions: ownedEmbedPort.dimensions() }
+        );
+        if (vectorResult.ok) vectorIndex = vectorResult.value;
+      }
     }
-  );
-  if (rerankResult.ok) rerankPort = rerankResult.value;
-  return {
-    embedPort,
-    rerankPort,
-    vectorIndex,
-    async dispose() {
-      await embedPort?.dispose();
-      await rerankPort?.dispose();
-    },
-  };
+    const rerankResult = await factory.createRerankPort(
+      resolveModelUri(context.config, "rerank", undefined, collection),
+      {
+        policy,
+        onProgress: (value) => progress("rerank", value),
+      }
+    );
+    if (rerankResult.ok) rerankPort = rerankResult.value;
+    return {
+      embedPort,
+      rerankPort,
+      vectorIndex,
+      async dispose() {
+        await disposeContextModelOwners(
+          modelOwners(factory, ownedEmbedPort, rerankPort)
+        );
+      },
+    };
+  } catch (error) {
+    await disposeContextModelOwners(
+      modelOwners(factory, ownedEmbedPort, rerankPort)
+    );
+    throw error;
+  }
 };
 
 export const handleContext = (
@@ -164,10 +198,10 @@ export const handleContext = (
       });
       return {
         structuredContent: capsule as unknown as Record<string, unknown>,
-        text:
-          parsed.format === "md"
-            ? formatContextCapsuleMarkdown(capsule)
-            : canonicalBuiltContextCapsuleJson(capsule),
+        // MCP model context receives this projection exactly once. The full
+        // canonical capsule remains available to application clients through
+        // structuredContent and is deliberately not duplicated in text.
+        text: formatContextCapsuleAgentJson(capsule),
       };
     } finally {
       await modelPorts?.dispose();

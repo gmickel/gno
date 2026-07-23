@@ -77,11 +77,16 @@ See [scores.md](scores.md) for latest results. Updated automatically by `bun run
 ## Agentic Retrieval Outcome Benchmark
 
 - `bun run eval:agentic` runs all 24 immutable tasks with the pinned fixture
-  agent against `gno-mcp`, lexical-only, and the eval-only Capsule prototype,
+  agent against `gno-mcp`, lexical-only, and the Capsule retrieval prototype,
   across cold and warm lifecycles.
 - Reports retain all attempted identities, harness exclusions, separate
   `agentCalls`/`backendInvocations`, exact UTF-8 context bytes, native-index
   fingerprints, environment provenance, and Capsule payload replay hashes.
+- Capsule evidence bundles use the exact production
+  `gno-context-agent-v1` serializer and production omission projection policy.
+  The measured agent-visible envelope contains that MCP text once and excludes
+  the full application-only `structuredContent`. A host that exposes both must
+  charge both and is outside this promotion claim.
 - `--adapter`, `--task`, and `--lifecycle` accept unique CSV filters;
   `--agent fixture|local-model` selects the one-trial deterministic or pinned
   three-trial cached-model lane. `--timeout-ms` bounds lifecycle operations.

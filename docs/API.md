@@ -1825,6 +1825,10 @@ title, heading, and configured-context values remain escaped untrusted data.
 
 Errors use `{ "error": { "code": "...", "message": "..." } }` and preserve
 the public Context runtime, Capsule, evidence, and verifier code taxonomy.
+Input/filter/budget/identity errors return `400`; no evidence returns `404`;
+source, index, context, mutation, or stored-provenance conflicts return `409`;
+an unavailable tokenizer returns `503`; retrieval, load, snapshot, and unknown
+runtime failures return `500`.
 
 ### Verify Context Capsule
 

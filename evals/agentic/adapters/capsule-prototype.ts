@@ -156,7 +156,9 @@ class CapsulePrototypeAdapter implements AgentAdapter {
       timing: measuredTiming(performance.now() - started),
       diagnostics:
         toolName === "search"
-          ? ["eval-only Capsule prototype; no production API contract"]
+          ? [
+              "fixture retrieval prototype; production gno-context-agent-v1 projection",
+            ]
           : [],
     };
   }

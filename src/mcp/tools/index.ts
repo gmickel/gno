@@ -908,17 +908,21 @@ function parseErrorMessage(message: string): { [x: string]: unknown } {
 
 export function registerTools(server: McpServer, ctx: ToolContext): void {
   // Tool IDs use underscores (MCP pattern: ^[a-zA-Z0-9_-]{1,64}$)
-  server.tool(
+  server.registerTool(
     "gno_context",
-    MCP_TOOL_DESCRIPTIONS.context,
-    contextBuildSurfaceSchema.shape,
+    {
+      description: MCP_TOOL_DESCRIPTIONS.context,
+      inputSchema: contextBuildSurfaceSchema,
+    },
     (args) => handleContext(args, ctx)
   );
 
-  server.tool(
+  server.registerTool(
     "gno_context_verify",
-    MCP_TOOL_DESCRIPTIONS.contextVerify,
-    contextVerifySurfaceSchema.shape,
+    {
+      description: MCP_TOOL_DESCRIPTIONS.contextVerify,
+      inputSchema: contextVerifySurfaceSchema,
+    },
     (args) => handleContextVerify(args, ctx)
   );
 

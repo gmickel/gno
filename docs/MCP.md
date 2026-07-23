@@ -48,6 +48,15 @@ omission counts, and capability fallbacks into one deterministic Capsule. Use
 `gno_context_verify` before reusing a saved Capsule. GNO does not save Capsules
 implicitly.
 
+For `gno_context`, MCP text is the compact, versioned
+`gno-context-agent-v1` projection delivered once to the model. The complete
+canonical Capsule remains in `structuredContent` for application clients. The
+projection retains exact spans, gaps, budget state, retrieval fingerprints,
+and exact omission totals/reason counts while exposing at most one omission
+sample. Hosts that expose `structuredContent` to the model must account for it
+in addition to text; GNO's promotion benchmark targets hosts that expose the
+MCP text content and keep structured data application-side.
+
 For interactive lookup and manual retrieval control, start with `gno_query`. It
 combines BM25, vector search, and reranking, then returns `uri`, `docid`,
 snippets, and line anchors for follow-up retrieval.

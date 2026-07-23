@@ -24,6 +24,7 @@ export const AGENTIC_METHODOLOGY = [
   "Cold and warm cohorts reuse each adapter native immutable index; warm uses one discarded readiness probe.",
   "Deterministic hidden-oracle scoring binds typed claims to exact source lines and hashes without an LLM judge.",
   "Capsule promotion compares gno-mcp and capsule only on exact paired identities and unchanged-input payload replays.",
+  "Capsule content is the exact production gno-context-agent-v1 MCP text projection; full structuredContent remains application-only.",
 ];
 
 export const AGENTIC_LIMITATIONS = [
@@ -32,7 +33,7 @@ export const AGENTIC_LIMITATIONS = [
   "UTF-8 bytes are the primary context measure; tokens are null without one pinned tokenizer.",
   "Latency is environment-specific and comparable only within a matching lifecycle.",
   "qmd is optional, exact-revision pinned, and non-authoritative for Capsule promotion.",
-  "The Capsule adapter is eval-only and does not define the production fn-98 contract.",
+  "Capsule retrieval is a fixture prototype; its model-visible serializer and omission bound are the production MCP contract.",
 ];
 
 const identityKey = (receipt: TrajectoryReceipt): string =>

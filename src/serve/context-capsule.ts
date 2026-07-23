@@ -1,5 +1,6 @@
 /** REST adapters for the shared Context Capsule application boundary. */
 
+import type { GnoContextErrorCode } from "../sdk/types";
 import type { ServerContext } from "./context";
 
 import {
@@ -34,21 +35,44 @@ const parseJsonBody = async (request: Request): Promise<unknown> => {
   }
 };
 
-const errorStatus = (code: string): number => {
-  if (code === "no_evidence") return 404;
-  if (
-    code.includes("changed_during") ||
-    code === "capsule_mutated_during_verify"
-  ) {
-    return 409;
-  }
-  return code === "runtime_error" || code === "retrieval_failed" ? 500 : 400;
-};
+export type ContextRestErrorCode = GnoContextErrorCode | "runtime_error";
+
+export const CONTEXT_REST_ERROR_STATUS = {
+  invalid_goal: 400,
+  invalid_budget: 400,
+  invalid_filter: 400,
+  invalid_uri: 400,
+  invalid_input: 400,
+  identity_mismatch: 400,
+  no_evidence: 404,
+  tokenizer_unavailable: 503,
+  chunk_coordinate_mismatch: 409,
+  stored_provenance_mismatch: 409,
+  index_snapshot_mismatch: 409,
+  index_changed_during_compile: 409,
+  context_changed_during_compile: 409,
+  capsule_mutated_during_verify: 409,
+  context_changed_during_verify: 409,
+  index_changed_during_verify: 409,
+  retrieval_failed: 500,
+  chunk_load_failed: 500,
+  collection_load_failed: 500,
+  content_load_failed: 500,
+  context_load_failed: 500,
+  document_load_failed: 500,
+  index_snapshot_failed: 500,
+  runtime_error: 500,
+} as const satisfies Record<ContextRestErrorCode, number>;
+
+export const contextRestStatusForCode = (code: string): number =>
+  code in CONTEXT_REST_ERROR_STATUS
+    ? CONTEXT_REST_ERROR_STATUS[code as ContextRestErrorCode]
+    : 500;
 
 const errorResponse = (error: unknown): Response => {
   const publicError = contextSurfaceError(error);
   return new Response(JSON.stringify({ error: publicError }), {
-    status: errorStatus(publicError.code),
+    status: contextRestStatusForCode(publicError.code),
     headers: JSON_HEADERS,
   });
 };

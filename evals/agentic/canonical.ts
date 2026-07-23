@@ -127,7 +127,8 @@ const bundleContentCarriesExactEvidence = (
           item.sourceHash === expected.sourceHash &&
           item.startLine === expected.startLine &&
           item.endLine === expected.endLine &&
-          item.spanHash === expected.spanHash &&
+          (item.spanHash === expected.spanHash ||
+            item.passageHash === expected.spanHash) &&
           item.text === expected.text
         );
       })

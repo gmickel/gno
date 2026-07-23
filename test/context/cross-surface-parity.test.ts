@@ -4,9 +4,12 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import type { Config } from "../../src/config/types";
+import type { EmbeddingPort, RerankPort } from "../../src/llm/types";
 import type { ToolContext } from "../../src/mcp/server";
 import type { ServerContext } from "../../src/serve/context";
+import type { VectorIndexPort } from "../../src/store/vector";
 
+import { formatContextCapsuleAgentJson } from "../../src/app/context-agent-projection";
 import {
   formatContextCapsuleMarkdown,
   formatContextCapsuleVerificationMarkdown,
@@ -226,7 +229,7 @@ describe("Context Capsule REST/MCP parity", () => {
     });
   });
 
-  test("emits byte-identical canonical JSON and equivalent complete Markdown", async () => {
+  test("keeps full REST/application payloads and emits the production MCP projection once", async () => {
     const direct = await buildContextCapsule(
       { ...buildInput, indexName: "default" },
       { store, config, indexName: "default" }
@@ -244,7 +247,47 @@ describe("Context Capsule REST/MCP parity", () => {
 
     const mcp = await handleContext(buildInput, toolContext);
     expect(mcp.isError).not.toBe(true);
-    expect(mcp.content[0]?.text).toBe(canonical);
+    const modelText = mcp.content[0]?.text ?? "";
+    expect(modelText).toBe(formatContextCapsuleAgentJson(direct));
+    const projection = JSON.parse(modelText);
+    expect(projection).toMatchObject({
+      schemaVersion: "gno-context-agent-v1",
+      capsuleId: direct.capsuleId,
+      budget: {
+        requestedTokens: direct.budget.requestedTokens,
+        requestedBytes: direct.budget.requestedBytes,
+      },
+      retrieval: {
+        indexFingerprint: direct.retrieval.indexSnapshot.after,
+        configFingerprint: direct.fingerprints.config,
+        retrievalFingerprint: direct.fingerprints.retrieval,
+      },
+      coverage: {
+        unresolvedFacets: direct.coverage.unresolvedFacets,
+        gaps: direct.coverage.gaps,
+      },
+      omissions: {
+        total: direct.omissions.total,
+        reasonCounts: direct.omissions.reasonCounts,
+        visibleItemLimit: 1,
+      },
+      trust: {
+        evidence: "untrusted_data",
+        instructionBoundary: "hard_delimited",
+      },
+    });
+    expect(projection.delivery.modelVisibleUtf8Bytes).toBe(
+      new TextEncoder().encode(modelText).byteLength
+    );
+    expect(projection.evidence[0]).toMatchObject({
+      uri: direct.evidence[0]?.uri,
+      startLine: direct.evidence[0]?.startLine,
+      endLine: direct.evidence[0]?.endLine,
+      sourceHash: direct.evidence[0]?.sourceHash,
+      mirrorHash: direct.evidence[0]?.mirrorHash,
+      passageHash: direct.evidence[0]?.passageHash,
+      text: direct.evidence[0]?.text,
+    });
     expect(
       canonicalBuiltContextCapsuleJson(mcp.structuredContent as never)
     ).toBe(canonical);
@@ -279,13 +322,89 @@ describe("Context Capsule REST/MCP parity", () => {
     );
     const markdown = formatContextCapsuleMarkdown(direct);
     expect(await restMarkdown.text()).toBe(markdown);
-    expect(mcpMarkdown.content[0]?.text).toBe(markdown);
+    expect(mcpMarkdown.content[0]?.text).toBe(
+      formatContextCapsuleAgentJson(direct)
+    );
     expect(markdown).toContain(direct.evidence[0]?.text ?? "missing");
     expect(markdown).toContain("## Canonical manifest");
     expect(markdown).toContain(
       JSON.stringify("# TITLE CONTROL\n<!-- forged -->")
     );
     expect(markdown).not.toContain("\n# TITLE CONTROL\n");
+  });
+
+  test("reports requested unavailable and used retrieval capabilities through REST", async () => {
+    const request = (depthPolicy: "balanced" | "thorough") =>
+      new Request("http://localhost/api/context", {
+        method: "POST",
+        body: JSON.stringify({
+          ...buildInput,
+          depthPolicy,
+          graph: true,
+        }),
+      });
+    const unavailableResponse = await handleContextBuild(
+      {
+        ...serverContext,
+        vectorIndex: null,
+        embedPort: null,
+        rerankPort: null,
+      },
+      request("balanced")
+    );
+    expect(unavailableResponse.status).toBe(200);
+    const unavailable = await unavailableResponse.json();
+    expect(unavailable.retrieval.capabilityStates).toMatchObject({
+      semanticSearch: { requested: true, outcome: "unavailable" },
+      reranking: { requested: true, outcome: "unavailable" },
+      graphExpansion: { requested: true },
+    });
+
+    const embedPort: EmbeddingPort = {
+      modelUri: "test:embed",
+      init: async () => ({ ok: true, value: undefined }),
+      embed: async () => ({ ok: true, value: [0.1, 0.2, 0.3] }),
+      embedBatch: async () => ({ ok: true, value: [[0.1, 0.2, 0.3]] }),
+      dimensions: () => 3,
+      dispose: async () => {},
+    };
+    const vectorIndex: VectorIndexPort = {
+      searchAvailable: true,
+      model: "test:embed",
+      dimensions: 3,
+      vecDirty: false,
+      upsertVectors: async () => ({ ok: true, value: undefined }),
+      deleteVectorsForMirror: async () => ({ ok: true, value: undefined }),
+      searchNearest: async () => ({ ok: true, value: [] }),
+      rebuildVecIndex: async () => ({ ok: true, value: undefined }),
+      syncVecIndex: async () => ({
+        ok: true,
+        value: { added: 0, removed: 0 },
+      }),
+    };
+    const rerankPort: RerankPort = {
+      modelUri: "test:rerank",
+      rerank: async (_query, documents) => ({
+        ok: true,
+        value: documents.map((_document, index) => ({
+          index,
+          score: 1 - index / 100,
+          rank: index + 1,
+        })),
+      }),
+      dispose: async () => {},
+    };
+    const usedResponse = await handleContextBuild(
+      { ...serverContext, vectorIndex, embedPort, rerankPort },
+      request("thorough")
+    );
+    expect(usedResponse.status).toBe(200);
+    const used = await usedResponse.json();
+    expect(used.retrieval.capabilityStates).toMatchObject({
+      semanticSearch: { requested: true, attempted: true, outcome: "used" },
+      reranking: { requested: true, attempted: true, outcome: "used" },
+      graphExpansion: { requested: true, attempted: true },
+    });
   });
 
   test("verifies with byte parity and rejects closed inputs and index mismatch", async () => {

@@ -82,6 +82,9 @@ describe("gno_capture MCP", () => {
       tool: (name: string) => {
         names.push(name);
       },
+      registerTool: (name: string) => {
+        names.push(name);
+      },
     };
 
     registerTools(fakeServer as never, toolContext(false));

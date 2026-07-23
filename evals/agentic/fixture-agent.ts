@@ -93,7 +93,8 @@ const evidenceVisibleInBundleContent = (
         !Number.isInteger(item.startLine) ||
         typeof item.endLine !== "number" ||
         !Number.isInteger(item.endLine) ||
-        typeof item.spanHash !== "string" ||
+        (typeof item.spanHash !== "string" &&
+          typeof item.passageHash !== "string") ||
         typeof item.text !== "string"
       ) {
         return [];
@@ -104,7 +105,10 @@ const evidenceVisibleInBundleContent = (
           sourceHash: item.sourceHash,
           startLine: item.startLine,
           endLine: item.endLine,
-          spanHash: item.spanHash,
+          spanHash:
+            typeof item.passageHash === "string"
+              ? item.passageHash
+              : (item.spanHash as string),
           sourceHashProvenance: "backend_provided" as const,
           spanHashProvenance: "backend_provided" as const,
           text: item.text,
