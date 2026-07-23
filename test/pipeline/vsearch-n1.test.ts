@@ -15,6 +15,7 @@ import type {
 } from "../../src/store/types";
 import type { VectorIndexPort } from "../../src/store/vector/types";
 
+import { getProjectAffinityMetadata } from "../../src/pipeline/project-affinity";
 import { searchVectorWithEmbedding } from "../../src/pipeline/vsearch";
 
 const NOW = "2026-02-22T00:00:00.000Z";
@@ -75,6 +76,189 @@ const TEST_COLLECTIONS: CollectionRow[] = [
 ];
 
 describe("searchVectorWithEmbedding N+1 guard", () => {
+  test("oversamples a bounded pool before affinity reorders output", async () => {
+    let requestedLimit: number | undefined;
+    const hashes = ["best", "second", "project", "fourth", "fifth", "sixth"];
+    const documents = hashes.map((hash, index) => ({
+      ...makeDoc(index + 1, hash),
+      collection: hash === "project" ? "notes" : "archive",
+      uri: `gno://${hash === "project" ? "notes" : "archive"}/${hash}.md`,
+    }));
+    const store: Partial<StorePort> = {
+      getDocumentsByMirrorHashes: async (requestedHashes) => ({
+        ok: true as const,
+        value: documents.filter((doc) =>
+          requestedHashes.includes(doc.mirrorHash!)
+        ),
+      }),
+      getCollections: async () => ({
+        ok: true as const,
+        value: [
+          ...TEST_COLLECTIONS,
+          { ...TEST_COLLECTIONS[0]!, name: "archive", path: "/tmp/archive" },
+        ],
+      }),
+      getChunksBatch: async (requestedHashes) => ({
+        ok: true as const,
+        value: new Map(
+          requestedHashes.map((hash) => [hash, [makeChunk(hash, 0)]])
+        ),
+      }),
+    };
+    const neighbors = [
+      { mirrorHash: "best", seq: 0, distance: 0 },
+      { mirrorHash: "second", seq: 0, distance: 1 },
+      { mirrorHash: "project", seq: 0, distance: 1.02 },
+      { mirrorHash: "fourth", seq: 0, distance: 1.2 },
+      { mirrorHash: "fifth", seq: 0, distance: 1.4 },
+      { mirrorHash: "sixth", seq: 0, distance: 1.6 },
+    ];
+    const vectorIndex: VectorIndexPort = {
+      searchAvailable: true,
+      model: "test-model",
+      dimensions: 3,
+      vecDirty: false,
+      upsertVectors: async () => ({ ok: true, value: undefined }),
+      deleteVectorsForMirror: async () => ({ ok: true, value: undefined }),
+      searchNearest: async (_embedding, limit) => {
+        requestedLimit = limit;
+        return {
+          ok: true as const,
+          value: neighbors.slice(0, limit),
+        };
+      },
+      rebuildVecIndex: async () => ({ ok: true, value: undefined }),
+      syncVecIndex: async () => ({ ok: true, value: { added: 0, removed: 0 } }),
+    };
+
+    const result = await searchVectorWithEmbedding(
+      {
+        store: store as StorePort,
+        vectorIndex,
+        embedPort: {} as EmbeddingPort,
+        config: {} as Config,
+      },
+      "query",
+      new Float32Array([0.1, 0.2, 0.3]),
+      {
+        limit: 2,
+        projectAffinity: {
+          resolution: {
+            matches: [
+              {
+                collection: "notes",
+                collectionAlias: "collection_000000000000",
+                distance: 0,
+                relation: "exact",
+                rootAlias: "root_000000000000",
+                source: "cli_cwd",
+              },
+            ],
+            roots: [],
+          },
+        },
+      }
+    );
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(requestedLimit).toBe(6);
+    expect(result.value.results.map((entry) => entry.docid)).toEqual([
+      "#best",
+      "#project",
+    ]);
+  });
+
+  test("scores same-mirror collection copies independently", async () => {
+    let capturedMinScore: number | undefined = Number.NaN;
+    const projectDoc = makeDoc(1, "shared");
+    const archiveDoc: DocumentRow = {
+      ...makeDoc(2, "shared"),
+      collection: "archive",
+      docid: "#archive0",
+      uri: "gno://archive/shared.md",
+      relPath: "shared.md",
+    };
+    const store: Partial<StorePort> = {
+      getDocumentsByMirrorHashes: async () => ({
+        ok: true as const,
+        value: [projectDoc, archiveDoc],
+      }),
+      getCollections: async () => ({
+        ok: true as const,
+        value: [
+          ...TEST_COLLECTIONS,
+          { ...TEST_COLLECTIONS[0]!, name: "archive", path: "/tmp/archive" },
+        ],
+      }),
+      getChunksBatch: async () => ({
+        ok: true as const,
+        value: new Map([["shared", [makeChunk("shared", 0)]]]),
+      }),
+    };
+    const vectorIndex: VectorIndexPort = {
+      searchAvailable: true,
+      model: "test-model",
+      dimensions: 3,
+      vecDirty: false,
+      upsertVectors: async () => ({ ok: true, value: undefined }),
+      deleteVectorsForMirror: async () => ({ ok: true, value: undefined }),
+      searchNearest: async (_embedding, _limit, options) => {
+        capturedMinScore = options?.minScore;
+        return {
+          ok: true as const,
+          value: [{ mirrorHash: "shared", seq: 0, distance: 1.5 }],
+        };
+      },
+      rebuildVecIndex: async () => ({ ok: true, value: undefined }),
+      syncVecIndex: async () => ({ ok: true, value: { added: 0, removed: 0 } }),
+    };
+
+    const result = await searchVectorWithEmbedding(
+      {
+        store: store as StorePort,
+        vectorIndex,
+        embedPort: {} as EmbeddingPort,
+        config: {} as Config,
+      },
+      "query",
+      new Float32Array([0.1, 0.2, 0.3]),
+      {
+        minScore: 0.27,
+        projectAffinity: {
+          resolution: {
+            matches: [
+              {
+                collection: "notes",
+                collectionAlias: "collection_000000000000",
+                distance: 0,
+                relation: "exact",
+                rootAlias: "root_000000000000",
+                source: "cli_cwd",
+              },
+            ],
+            roots: [],
+          },
+        },
+      }
+    );
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(capturedMinScore).toBeUndefined();
+    expect(result.value.results.map((entry) => entry.docid)).toEqual([
+      "#shared",
+    ]);
+    expect(result.value.results[0]?.score).toBeCloseTo(0.28);
+    const affinity = getProjectAffinityMetadata(result.value.results[0]!);
+    expect(affinity).toMatchObject({
+      baseScore: 0.25,
+      rawScore: 1.5,
+      rawScoreKind: "vector_distance",
+    });
+    expect(affinity?.affinityApplied).toBeCloseTo(0.03);
+  });
+
   test("returns actionable guidance when vector index is unavailable", async () => {
     const vectorIndex: VectorIndexPort = {
       searchAvailable: false,

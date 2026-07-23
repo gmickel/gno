@@ -19,6 +19,11 @@ import { resolveDocRef } from "../core/ref-parser";
 import { err, ok } from "../store/types";
 import { evaluateQueryTargetFilters } from "./filters";
 import { searchHybrid } from "./hybrid";
+import {
+  getProjectAffinityMetadata,
+  type ProjectAffinityScoreMetadata,
+  scoreProjectAffinity,
+} from "./project-affinity";
 
 export type QueryDiagnoseTargetStatus =
   | "not_found"
@@ -65,6 +70,7 @@ export interface QueryDiagnoseResult {
     filterReasons: string[];
   };
   stages: QueryDiagnoseStage[];
+  affinity: ProjectAffinityScoreMetadata | null;
   chunk: {
     seq: number | null;
     startLine: number | null;
@@ -129,6 +135,7 @@ function buildBaseResult(
       filterReasons: fields.filterReasons ?? [],
     },
     stages: [],
+    affinity: null,
     chunk: {
       seq: null,
       startLine: null,
@@ -276,6 +283,26 @@ export async function diagnoseQueryTarget(
     chunks.find((chunk) => chunk.seq === firstMatched?.seq) ??
     chunks[0] ??
     null;
+  const targetResult = searchResult.value.results.find(
+    (result) => result.uri === doc.uri
+  );
+  const lastMatched = trace?.stages
+    .toReversed()
+    .flatMap((stage) => stage.candidates)
+    .find(
+      (candidate) =>
+        candidate.mirrorHash === doc.mirrorHash && targetSeqs.has(candidate.seq)
+    );
+  const affinity =
+    (targetResult ? getProjectAffinityMetadata(targetResult) : undefined) ??
+    (lastMatched && options.projectAffinity
+      ? scoreProjectAffinity(
+          lastMatched.score,
+          doc.collection,
+          options.projectAffinity,
+          { kind: "hybrid_blended", score: lastMatched.score }
+        )
+      : null);
 
   return ok({
     ...buildBaseResult(query, options.target, "diagnosed", doc, {
@@ -284,6 +311,7 @@ export async function diagnoseQueryTarget(
       fingerprintMatches,
     }),
     stages,
+    affinity,
     chunk: {
       seq: matchedChunk?.seq ?? null,
       startLine: matchedChunk?.startLine ?? null,

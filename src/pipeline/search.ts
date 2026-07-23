@@ -20,6 +20,7 @@ import { err, ok } from "../store/types";
 import { createChunkLookup } from "./chunk-lookup";
 import { matchesExcludedChunks, matchesExcludedText } from "./exclude";
 import { selectBestChunkForSteering } from "./intent";
+import { applyProjectAffinity, hasProjectAffinity } from "./project-affinity";
 import { detectQueryLanguage } from "./query-language";
 import { attachSearchResultContexts } from "./result-context";
 import {
@@ -160,8 +161,9 @@ export async function searchBm25(
   const traceStartedAt = options.traceSession ? performance.now() : 0;
   const limit = options.limit ?? 20;
   const minScore = options.minScore ?? 0;
+  const affinityActive = hasProjectAffinity(options.projectAffinity);
   const recencySort = shouldSortByRecency(query);
-  const retrievalLimit = recencySort ? limit * 3 : limit;
+  const retrievalLimit = recencySort || affinityActive ? limit * 3 : limit;
   const temporalRange = resolveTemporalRange(
     query,
     options.since,
@@ -208,6 +210,10 @@ export async function searchBm25(
 
   // Build results
   const results: SearchResult[] = [];
+  const scoringByResult = new WeakMap<
+    SearchResult,
+    { collection: string; rawScore: number }
+  >();
 
   // Pre-fetch all chunks in one batch query (eliminates N+1)
   const uniqueHashes = [
@@ -229,6 +235,11 @@ export async function searchBm25(
     string,
     { fts: FtsResult; chunk: ChunkRow | null; score: number }
   >();
+  const fullAffinityEntries: {
+    fts: FtsResult;
+    chunk: ChunkRow | null;
+    score: number;
+  }[] = [];
 
   for (const fts of ftsResult.value) {
     // Dedup by uri+seq - eliminates rows from mirror_hash join fan-out
@@ -278,6 +289,10 @@ export async function searchBm25(
     // For --full, de-dupe by docid (keep best scoring chunk per doc)
     // Raw BM25: smaller (more negative) is better
     if (options.full) {
+      if (affinityActive) {
+        fullAffinityEntries.push({ fts, chunk, score: fts.score });
+        continue;
+      }
       const docid = fts.docid ?? "";
       const existing = bestByDocid.get(docid);
       if (!existing || fts.score < existing.score) {
@@ -289,16 +304,22 @@ export async function searchBm25(
     const collectionPath = fts.collection
       ? collectionPaths.get(fts.collection)
       : undefined;
-
-    results.push(buildSearchResult({ fts, chunk, collectionPath, options }));
+    const result = buildSearchResult({ fts, chunk, collectionPath, options });
+    if (fts.collection) {
+      scoringByResult.set(result, {
+        collection: fts.collection,
+        rawScore: fts.score,
+      });
+    }
+    results.push(result);
   }
 
   // For --full, fetch full content and build results
   if (options.full) {
     // Sort by raw BM25 score (smaller = better) before building results
-    const sortedEntries = [...bestByDocid.values()].sort(
-      (a, b) => a.score - b.score
-    );
+    const sortedEntries = (
+      affinityActive ? fullAffinityEntries : [...bestByDocid.values()]
+    ).sort((a, b) => a.score - b.score);
     const fullContentResult = await getContentBatch(
       store,
       sortedEntries
@@ -317,18 +338,50 @@ export async function searchBm25(
       const collectionPath = fts.collection
         ? collectionPaths.get(fts.collection)
         : undefined;
-      results.push(
-        buildSearchResult({ fts, chunk, collectionPath, options, fullContent })
-      );
+      const result = buildSearchResult({
+        fts,
+        chunk,
+        collectionPath,
+        options,
+        fullContent,
+      });
+      if (fts.collection) {
+        scoringByResult.set(result, {
+          collection: fts.collection,
+          rawScore: fts.score,
+        });
+      }
+      results.push(result);
     }
   }
 
   // Normalize scores to 0-1 range (batch min-max)
   normalizeBm25Scores(results);
 
+  if (affinityActive) {
+    for (const result of results) {
+      const scoring = scoringByResult.get(result);
+      if (scoring) {
+        applyProjectAffinity(
+          result,
+          scoring.collection,
+          options.projectAffinity,
+          { kind: "bm25", score: scoring.rawScore }
+        );
+      }
+    }
+  }
+
+  const dedupedResults =
+    options.full && affinityActive
+      ? dedupeFullResultsByDocid(results)
+      : results;
+
   // Apply minScore filter after normalization
   const filteredResults =
-    minScore > 0 ? results.filter((r) => r.score >= minScore) : results;
+    minScore > 0
+      ? dedupedResults.filter((r) => r.score >= minScore)
+      : dedupedResults;
 
   if (recencySort) {
     filteredResults.sort((a, b) => {
@@ -345,6 +398,8 @@ export async function searchBm25(
       }
       return b.score - a.score;
     });
+  } else if (affinityActive) {
+    filteredResults.sort((a, b) => b.score - a.score);
   }
 
   const finalResults = filteredResults.slice(0, limit);
@@ -383,4 +438,15 @@ export async function searchBm25(
     );
   }
   return ok(output);
+}
+
+function dedupeFullResultsByDocid(results: SearchResult[]): SearchResult[] {
+  const bestByDocid = new Map<string, SearchResult>();
+  for (const result of results) {
+    const existing = bestByDocid.get(result.docid);
+    if (!existing || result.score > existing.score) {
+      bestByDocid.set(result.docid, result);
+    }
+  }
+  return [...bestByDocid.values()];
 }

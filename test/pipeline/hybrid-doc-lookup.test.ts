@@ -17,6 +17,7 @@ import type {
 } from "../../src/store/types";
 
 import { searchHybrid } from "../../src/pipeline/hybrid";
+import { getProjectAffinityMetadata } from "../../src/pipeline/project-affinity";
 import { SEARCH_RESULT_PLANNER_METADATA } from "../../src/pipeline/types";
 
 const NOW = "2026-02-22T00:00:00.000Z";
@@ -224,6 +225,241 @@ const TEST_COLLECTIONS: CollectionRow[] = [
 ];
 
 describe("searchHybrid targeted document lookup", () => {
+  test("full mode scores shared-mirror copies before docid deduplication", async () => {
+    const sharedHash = "shared-full";
+    const bestDoc = makeDoc(3, "best-full", {
+      sourceMtime: "2026-02-01T00:00:00.000Z",
+    });
+    const projectDoc = makeDoc(1, sharedHash, {
+      sourceMtime: "2026-01-01T00:00:00.000Z",
+    });
+    const archiveDoc: DocumentRow = {
+      ...makeDoc(2, sharedHash),
+      collection: "archive",
+      relPath: "shared-copy.md",
+      docid: projectDoc.docid,
+      uri: "gno://archive/shared-copy.md",
+      sourceHash: "archive-source",
+      sourceMtime: "2026-03-01T00:00:00.000Z",
+    };
+    const store: Partial<StorePort> = {
+      searchFts: async () => ({
+        ok: true as const,
+        value: [makeFtsResult("best-full", 0), makeFtsResult(sharedHash, 0)],
+      }),
+      getDocumentsByMirrorHashes: async () => ({
+        ok: true as const,
+        value: [bestDoc, projectDoc, archiveDoc],
+      }),
+      getCollections: async () => ({
+        ok: true as const,
+        value: [
+          ...TEST_COLLECTIONS,
+          {
+            name: "archive",
+            path: "/tmp/archive",
+            pattern: "**/*",
+            include: null,
+            exclude: null,
+            updateCmd: null,
+            languageHint: null,
+            syncedAt: NOW,
+          },
+        ],
+      }),
+      getChunksBatch: async () => ({
+        ok: true as const,
+        value: new Map([
+          ["best-full", [makeChunk("best-full", 0)]],
+          [sharedHash, [makeChunk(sharedHash, 0)]],
+        ]),
+      }),
+      getContent: async () => ({
+        ok: true as const,
+        value: "shared full content",
+      }),
+    };
+
+    const result = await searchHybrid(
+      {
+        store: store as StorePort,
+        config: {} as Config,
+        vectorIndex: null,
+        embedPort: null,
+        expandPort: null,
+        rerankPort: null,
+      },
+      "latest shared",
+      {
+        full: true,
+        noExpand: true,
+        noRerank: true,
+        limit: 5,
+        projectAffinity: {
+          resolution: {
+            matches: [
+              {
+                collection: "notes",
+                collectionAlias: "collection_000000000000",
+                distance: 0,
+                relation: "exact",
+                rootAlias: "root_000000000000",
+                source: "cli_cwd",
+              },
+            ],
+            roots: [],
+          },
+        },
+      }
+    );
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.results.map((entry) => entry.docid)).toEqual([
+      "#best-full",
+      projectDoc.docid,
+    ]);
+    const shared = result.value.results.filter(
+      (entry) => entry.docid === projectDoc.docid
+    );
+    expect(shared).toHaveLength(1);
+    expect(shared[0]?.uri).toBe("gno://notes/shared-full.md");
+    expect(getProjectAffinityMetadata(shared[0]!)).toMatchObject({
+      matched: true,
+      collectionAlias: "collection_000000000000",
+    });
+  });
+
+  test("applies affinity per document without leaking across a shared mirror", async () => {
+    const sharedHash = "shared";
+    const bestDoc = makeDoc(1, "best");
+    const projectDoc = makeDoc(2, sharedHash);
+    const archiveDoc: DocumentRow = {
+      ...makeDoc(3, sharedHash),
+      collection: "archive",
+      relPath: "shared-copy.md",
+      docid: "#archive",
+      uri: "gno://archive/shared-copy.md",
+      sourceHash: "archive-source",
+    };
+    const store: Partial<StorePort> = {
+      searchFts: async () => ({
+        ok: true as const,
+        value: [makeFtsResult("best", 0), makeFtsResult(sharedHash, 0)],
+      }),
+      getDocumentsByMirrorHashes: async () => ({
+        ok: true as const,
+        value: [bestDoc, projectDoc, archiveDoc],
+      }),
+      getCollections: async () => ({
+        ok: true as const,
+        value: [
+          ...TEST_COLLECTIONS,
+          {
+            name: "archive",
+            path: "/tmp/archive",
+            pattern: "**/*",
+            include: null,
+            exclude: null,
+            updateCmd: null,
+            languageHint: null,
+            syncedAt: NOW,
+          },
+        ],
+      }),
+      getChunksBatch: async (hashes) => ({
+        ok: true as const,
+        value: new Map(
+          hashes.map((hash) => [
+            hash,
+            hash === sharedHash
+              ? [
+                  makeChunk(hash, 0),
+                  {
+                    ...makeChunk(hash, 1),
+                    text: "shared preferred project evidence",
+                  },
+                ]
+              : [makeChunk(hash, 0)],
+          ])
+        ),
+      }),
+    };
+
+    const result = await searchHybrid(
+      {
+        store: store as StorePort,
+        config: {} as Config,
+        vectorIndex: null,
+        embedPort: null,
+        expandPort: null,
+        rerankPort: null,
+      },
+      "shared",
+      {
+        noExpand: true,
+        noRerank: true,
+        explain: true,
+        intent: "preferred project",
+        limit: 5,
+        projectAffinity: {
+          resolution: {
+            matches: [
+              {
+                collection: "notes",
+                collectionAlias: "collection_000000000000",
+                distance: 0,
+                relation: "exact",
+                rootAlias: "root_000000000000",
+                source: "cli_cwd",
+              },
+            ],
+            roots: [],
+          },
+        },
+      }
+    );
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.results.map((item) => item.docid)).toEqual([
+      "#best",
+      "#shared",
+      "#archive",
+    ]);
+    expect(
+      getProjectAffinityMetadata(result.value.results[1]!)?.finalScore
+    ).toBe(0.03);
+    expect(getProjectAffinityMetadata(result.value.results[2]!)).toMatchObject({
+      affinityApplied: 0,
+      affinityRequested: 0,
+      matched: false,
+    });
+    expect(
+      result.value.meta.explain?.results[1]?.projectAffinity?.collectionAlias
+    ).toBe("collection_000000000000");
+    expect(
+      result.value.meta.explain?.results[1]?.projectAffinity
+    ).toMatchObject({
+      baseScore: 0,
+      rawScore: 0,
+      rawScoreKind: "hybrid_blended",
+    });
+    expect(result.value.meta.explain?.results[1]?.fusionScore).toBeDefined();
+    expect(
+      result.value.results[1]?.[SEARCH_RESULT_PLANNER_METADATA]
+    ).toMatchObject({
+      retrievalSeq: 0,
+      seq: 1,
+    });
+    expect(
+      result.value.meta.explain?.results[2]?.projectAffinity
+    ).toMatchObject({
+      affinityApplied: 0,
+      matched: false,
+    });
+  });
+
   test("preserves same-mirror documents in canonical URI order with planner metadata", async () => {
     const sharedHash = "shared";
     const notesDoc = makeDoc(1, sharedHash);

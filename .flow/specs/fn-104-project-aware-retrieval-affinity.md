@@ -8,7 +8,7 @@ Make retrieval naturally prefer the project an agent is working in without requi
 ## Architecture & Data Models
 <!-- scope: technical -->
 
-Add an optional `ProjectAffinity` input containing normalized caller cwd/workspace roots and source. Resolve roots against configured collection paths and document absolute paths using realpath-safe containment. Convert matches into a bounded ranking contribution applied after base retrieval normalization and before final cutoff/rerank blending.
+Add an optional `ProjectAffinity` input containing normalized caller cwd/workspace roots and source. Resolve roots against configured collection paths and document absolute paths using realpath-safe containment. Convert matches into a bounded ranking contribution applied after each pipeline's base relevance score is final and before document-level cutoff/order. The default and configurable maximum affinity contribution are `0.03`. All auxiliary ranking signals share one order-independent combined cap of `0.08`, reserving the remaining `0.05` for fn-108 content-type boosts.
 
 Expose the contribution in explain/diagnose output and request metadata. Affinity never creates candidates absent from normal retrieval and cannot overwhelm strong lexical/semantic relevance. Clients may disable or explicitly provide roots; MCP/SDK/REST cannot infer a filesystem cwd unless the caller supplies it.
 
@@ -57,6 +57,13 @@ Agents usually work within a project. A transparent affinity signal removes repe
 <!-- scope: technical -->
 
 A capped additive signal is safer than automatic filtering. Explicit metadata and explain output keep the convenience observable rather than magical.
+
+Scores remain in `0..1`: `combinedAuxiliary = clamp(sum(contributions), -0.08,
+0.08)` and `final = clamp(base + combinedAuxiliary, 0, 1)`. The effective
+affinity contribution may therefore be smaller only when the score saturates at
+`1`. Overlapping project roots do not stack. The project maximum (`0.03`) plus
+fn-108's content-type maximum (`0.05`) exactly exhausts, but cannot exceed, the
+shared `0.08` auxiliary budget.
 
 ## Implementation Plan
 

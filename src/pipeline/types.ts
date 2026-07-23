@@ -13,6 +13,10 @@ import type { RetrievalTraceSession } from "../core/retrieval-trace-session";
 import type { StoreResult } from "../store/types";
 import type { ClaimVerificationResult } from "./claim-verification";
 import type { SemanticVerificationCapability } from "./claim-verifier";
+import type {
+  ProjectAffinityScoreMetadata,
+  ProjectAffinityScoringInput,
+} from "./project-affinity";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Search Result Types
@@ -53,6 +57,8 @@ export interface SearchResultPlannerMetadata {
   retrievalRank: number;
   mirrorHash: string;
   seq: number;
+  /** Original retrieval seq when intent steering selects another snippet. */
+  retrievalSeq?: number;
   sources: FusionSource[];
   graphExpanded: boolean;
   /** Exact canonical chunk coordinates, retained even for full-content output. */
@@ -164,6 +170,8 @@ export interface SearchResults {
 export interface SearchOptions {
   /** Internal receipt seam; never serialized or included in public schemas. */
   traceSession?: RetrievalTraceSession;
+  /** Trusted, already-resolved project affinity; never accepts raw roots. */
+  projectAffinity?: ProjectAffinityScoringInput;
   /** Max results */
   limit?: number;
   /** Min score threshold (0-1) */
@@ -536,4 +544,5 @@ export interface ExplainResult {
   bm25Score?: number;
   vecScore?: number;
   rerankScore?: number;
+  projectAffinity?: ProjectAffinityScoreMetadata;
 }

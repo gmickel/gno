@@ -169,6 +169,20 @@ export const ProjectAffinityInputSchema = z.object({
 });
 export type ProjectAffinityInput = z.infer<typeof ProjectAffinityInputSchema>;
 
+export const PROJECT_AFFINITY_MAX_CONTRIBUTION = 0.03;
+export const AUXILIARY_RANKING_MAX_CONTRIBUTION = 0.08;
+
+export const ProjectAffinityConfigSchema = z.object({
+  enabled: z.boolean().default(true),
+  contribution: z
+    .number()
+    .finite()
+    .min(0)
+    .max(PROJECT_AFFINITY_MAX_CONTRIBUTION)
+    .default(PROJECT_AFFINITY_MAX_CONTRIBUTION),
+});
+export type ProjectAffinityConfig = z.infer<typeof ProjectAffinityConfigSchema>;
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Context Schema
 // ─────────────────────────────────────────────────────────────────────────────
@@ -396,6 +410,9 @@ export const ConfigSchema = z.object({
 
   /** Private local retrieval trace recording. Absent means recording off. */
   retrievalTraces: RetrievalTraceConfigSchema.optional(),
+
+  /** Bounded project-aware retrieval affinity. */
+  projectAffinity: ProjectAffinityConfigSchema.optional(),
 });
 
 export type Config = Omit<z.infer<typeof ConfigSchema>, "contentTypes"> & {
