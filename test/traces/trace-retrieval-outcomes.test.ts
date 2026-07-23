@@ -6,7 +6,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import type { AnswerGenerationResult } from "../../src/pipeline/answer";
-import type { SearchResults } from "../../src/pipeline/types";
+import type { SearchResult, SearchResults } from "../../src/pipeline/types";
 
 import { RetrievalTraceSession } from "../../src/core/retrieval-trace-session";
 import { processAnswerResultWithTrace } from "../../src/pipeline/answer";
@@ -90,6 +90,21 @@ const searchResults = (): SearchResults => ({
   },
 });
 
+const exactEvidence = {
+  docid: "#abcdef",
+  sourceHash: HASH_A,
+  mirrorHash: HASH_B,
+  uri: "gno://notes/exact.md",
+  seq: 3,
+  startLine: 10,
+  endLine: 11,
+  passageHash: PASSAGE_HASH,
+  rank: 1,
+  plannerRank: 7,
+  sources: ["bm25", "graph"],
+  graphExpanded: true,
+};
+
 describe("retrieval trace outcomes", () => {
   let testDir = "";
   let adapter: SqliteAdapter;
@@ -131,6 +146,11 @@ describe("retrieval trace outcomes", () => {
     if (!started.ok || !started.value) throw new Error("trace did not start");
     const retrieval = await started.value.recordRetrieval(result, 4);
     if (!retrieval.ok) throw new Error(JSON.stringify(retrieval.error));
+    for (const kind of ["open", "cite", "pin"] as const) {
+      expect(
+        (await started.value.recordEvidence(kind, [exactEvidence])).ok
+      ).toBeTrue();
+    }
     expect(JSON.stringify(result)).toBe(publicBytes);
     expect((await started.value.finish("completed", 5)).ok).toBeTrue();
 
@@ -157,8 +177,67 @@ describe("retrieval trace outcomes", () => {
       "retrieval",
       "capability",
       "capability",
+      "open",
+      "cite",
+      "pin",
       "complete",
     ]);
+    const retrievalRunId = stored.value.runs[0]?.runId;
+    expect(retrievalRunId).toBeDefined();
+    expect(
+      stored.value.events
+        .filter((event) =>
+          ["capability", "open", "cite", "pin"].includes(event.kind)
+        )
+        .every((event) => event.runId === retrievalRunId)
+    ).toBeTrue();
+  });
+
+  test("keeps resumed get runs separate while opening the retrieval evidence", async () => {
+    const started = await RetrievalTraceSession.start({
+      store: adapter,
+      config: enabledConfig,
+      query: "get continuation",
+      idFactory: () => "get-continuation",
+      fingerprints: () => ({
+        pipeline: HASH_A,
+        model: HASH_B,
+        config: HASH_C,
+        index: HASH_D,
+      }),
+    });
+    if (!started.ok || !started.value) throw new Error("trace did not start");
+    expect(
+      (await started.value.recordRetrieval(searchResults())).ok
+    ).toBeTrue();
+    const resumed = await RetrievalTraceSession.resume({
+      store: adapter,
+      config: enabledConfig,
+      traceId: "get-continuation",
+    });
+    if (!resumed.ok || !resumed.value) throw new Error("trace did not resume");
+    expect(
+      (await resumed.value.recordEvidence("get", [exactEvidence])).ok
+    ).toBeTrue();
+    expect(
+      (await resumed.value.recordEvidence("open", [exactEvidence])).ok
+    ).toBeTrue();
+    expect((await resumed.value.finish("completed")).ok).toBeTrue();
+
+    const stored = await adapter.getRetrievalTrace("get-continuation");
+    if (!stored.ok || !stored.value) throw new Error("trace missing");
+    const retrievalRun = stored.value.runs.find(
+      (run) => run.kind === "retrieval"
+    );
+    const getRun = stored.value.runs.find((run) => run.kind === "get");
+    expect(retrievalRun?.runId).toBeDefined();
+    expect(getRun?.runId).toBeDefined();
+    expect(
+      stored.value.events.find((event) => event.kind === "get")?.runId
+    ).toBe(getRun?.runId);
+    expect(
+      stored.value.events.find((event) => event.kind === "open")?.runId
+    ).toBe(retrievalRun?.runId);
   });
 
   test("records vector-only and degraded hybrid capabilities without inventing lexical use", async () => {
@@ -294,6 +373,46 @@ describe("retrieval trace outcomes", () => {
         dropped: [],
       },
     };
+    const retrieval: SearchResults = {
+      results: raw.citations.map<SearchResult>((citation, index) => {
+        const metadata = citation[CITATION_TRACE_METADATA]!;
+        return {
+          docid: citation.docid,
+          score: 1 - index / 10,
+          uri: citation.uri,
+          snippet: "citation source",
+          snippetRange: {
+            startLine: citation.startLine!,
+            endLine: citation.endLine!,
+          },
+          source: {
+            relPath: citation.uri.split("/").at(-1)!,
+            mime: "text/markdown",
+            ext: ".md",
+            sourceHash: metadata.sourceHash,
+          },
+          conversion: { mirrorHash: metadata.mirrorHash },
+          [SEARCH_RESULT_PLANNER_METADATA]: {
+            retrievalRank: metadata.plannerRank ?? index + 1,
+            mirrorHash: metadata.mirrorHash,
+            seq: metadata.seq ?? index,
+            sources: metadata.sources ?? [],
+            graphExpanded: metadata.graphExpanded ?? false,
+            startLine: citation.startLine!,
+            endLine: citation.endLine!,
+            passageHash: metadata.passageHash,
+          },
+        };
+      }),
+      meta: {
+        query: "citation order",
+        mode: "hybrid",
+        vectorsUsed: true,
+        reranked: true,
+        totalResults: raw.citations.length,
+      },
+    };
+    expect((await started.value.recordRetrieval(retrieval)).ok).toBeTrue();
     const processed = await processAnswerResultWithTrace(raw, started.value);
     expect(processed.citations).toHaveLength(2);
     expect((await started.value.finish("completed")).ok).toBeTrue();

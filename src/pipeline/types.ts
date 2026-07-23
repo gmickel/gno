@@ -164,6 +164,11 @@ export interface SearchOptions {
   minScore?: number;
   /** Filter by collection */
   collection?: string;
+  /** Internal exact corpus scope used by deterministic retrieval replay. */
+  retrievalScope?: {
+    relPathPrefix?: string;
+    allowedMirrorHashes: string[];
+  };
   /** Language filter/hint (BCP-47) */
   lang?: string;
   /** Include full content instead of snippet */

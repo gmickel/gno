@@ -71,7 +71,7 @@ Recipe rules:
 | **Index**    | `init`, `collection add/list/remove`, `index`, `update`, `embed` | Set up and maintain document index                     |
 | **Tags**     | `tags`, `tags add`, `tags rm`                                    | Organize and filter documents                          |
 | **Context**  | `context add/list/rm/check/build/verify`                         | Configure guidance or compile/verify evidence Capsules |
-| **Traces**   | `trace list/show/label/export/delete/purge`                      | Manage private local retrieval receipts                |
+| **Traces**   | `trace list/show/label/export/replay/delete/purge`               | Manage and replay private retrieval receipts           |
 | **Models**   | `models list/use/pull/clear/path`                                | Manage local AI models                                 |
 | **Serve**    | `serve`, `daemon`                                                | One resident Web/headless gateway and watcher          |
 | **Publish**  | `publish export`                                                 | Export gno.sh publish artifacts                        |
@@ -168,6 +168,18 @@ When the user wants a synthesized answer instead of ranked evidence:
 ```bash
 gno ask "What changed in the deployment process?" --answer
 ```
+
+For an explicitly labeled, replay-mode receipt, export content-free qrels and
+compare one candidate without changing the live ranking setup:
+
+```bash
+gno trace export <trace-id> --format qrels --output qrels.json
+gno trace replay <qrels-export-id> --candidate hybrid --md
+```
+
+Treat replay as evidence for a human promotion decision. It always reports
+`applied: false`; never claim that replay changed boosts, prompts, models,
+configuration, traces, or source files.
 
 ## MCP Retrieval Strategy
 

@@ -3,6 +3,7 @@
 import type { Config } from "../config/types";
 import type { HybridSearchOptions, SearchOptions } from "../pipeline/types";
 import type { StorePort, StoreResult } from "../store/types";
+import type { RetrievalTraceFingerprints } from "../store/types";
 import type { RetrievalTraceTerminalStatus } from "../store/types";
 
 import { canonicalTraceJson } from "../store/retrieval-trace-codec";
@@ -34,6 +35,45 @@ const fingerprint = (value: unknown): string =>
     .update(canonicalTraceJson(JSON.parse(JSON.stringify(value))))
     .digest("hex");
 
+export const buildRetrievalTraceFingerprints = async (input: {
+  store: StorePort;
+  config: Config;
+  pipeline: string;
+  pipelineOptions?: Record<string, unknown>;
+  indexName?: string;
+  modelUris?: string[];
+}): Promise<RetrievalTraceFingerprints> => {
+  const collections = await input.store.getCollections();
+  if (!collections.ok) throw new Error(collections.error.message);
+  const snapshots = [];
+  for (const collection of [...collections.value].sort((left, right) =>
+    left.name.localeCompare(right.name)
+  )) {
+    const snapshot = await input.store.getActivationIndexSnapshot(
+      collection.name
+    );
+    if (!snapshot.ok) throw new Error(snapshot.error.message);
+    snapshots.push({ collection: collection.name, value: snapshot.value });
+  }
+  return {
+    pipeline: fingerprint({
+      contract: "retrieval-trace-v1",
+      pipeline: input.pipeline,
+      ...(input.pipelineOptions ? { options: input.pipelineOptions } : {}),
+    }),
+    model: fingerprint(
+      [...(input.modelUris ?? [])].sort((left, right) =>
+        left.localeCompare(right)
+      )
+    ),
+    config: fingerprint(input.config),
+    index: fingerprint({
+      indexName: input.indexName ?? "default",
+      snapshots,
+    }),
+  };
+};
+
 /** Start a real surface session; all expensive fingerprint work stays lazy. */
 export const startRetrievalTraceRequest = async (input: {
   store: StorePort;
@@ -53,35 +93,7 @@ export const startRetrievalTraceRequest = async (input: {
       query: input.query,
       goal: input.goal,
       filters: JSON.parse(JSON.stringify(input.filters ?? {})),
-      fingerprints: async () => {
-        const collections = await input.store.getCollections();
-        if (!collections.ok) throw new Error(collections.error.message);
-        const snapshots = [];
-        for (const collection of [...collections.value].sort((left, right) =>
-          left.name < right.name ? -1 : left.name > right.name ? 1 : 0
-        )) {
-          const snapshot = await input.store.getActivationIndexSnapshot(
-            collection.name
-          );
-          if (!snapshot.ok) throw new Error(snapshot.error.message);
-          snapshots.push({
-            collection: collection.name,
-            value: snapshot.value,
-          });
-        }
-        return {
-          pipeline: fingerprint({
-            contract: "retrieval-trace-v1",
-            pipeline: input.pipeline,
-          }),
-          model: fingerprint([...(input.modelUris ?? [])].sort()),
-          config: fingerprint(input.config),
-          index: fingerprint({
-            indexName: input.indexName ?? "default",
-            snapshots,
-          }),
-        };
-      },
+      fingerprints: () => buildRetrievalTraceFingerprints(input),
     });
   } catch (cause) {
     return err(

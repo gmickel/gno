@@ -37,7 +37,7 @@ const queryModeSchema = z
     text: z.string().max(8192),
   })
   .strict();
-const traceFiltersSchema = z
+export const traceFiltersSchema = z
   .object({
     limit: z.number().int().positive().optional(),
     minScore: z.number().min(0).max(1).optional(),

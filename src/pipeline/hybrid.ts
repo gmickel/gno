@@ -122,11 +122,13 @@ async function checkBm25Strength(
     until?: string;
     categories?: string[];
     author?: string;
+    relPathPrefix?: string;
   }
 ): Promise<boolean> {
   const result = await store.searchFts(query, {
     limit: 5,
     collection: options?.collection,
+    relPathPrefix: options?.relPathPrefix,
     language: options?.lang,
     tagsAll: options?.tagsAll,
     tagsAny: options?.tagsAny,
@@ -180,11 +182,13 @@ async function searchFtsChunks(
     until?: string;
     categories?: string[];
     author?: string;
+    relPathPrefix?: string;
   }
 ): Promise<FtsChunksResult> {
   const result = await store.searchFts(query, {
     limit: options.limit,
     collection: options.collection,
+    relPathPrefix: options.relPathPrefix,
     language: options.lang,
     tagsAll: options.tagsAll,
     tagsAny: options.tagsAny,
@@ -217,7 +221,11 @@ async function searchVectorChunks(
   vectorIndex: VectorIndexPort,
   embedPort: EmbeddingPort,
   query: string,
-  options: { limit: number; minScore?: number }
+  options: {
+    limit: number;
+    minScore?: number;
+    allowedMirrorHashes?: string[];
+  }
 ): Promise<ChunkId[]> {
   if (!vectorIndex.searchAvailable) {
     return [];
@@ -235,7 +243,10 @@ async function searchVectorChunks(
   const searchResult = await vectorIndex.searchNearest(
     queryEmbedding,
     options.limit,
-    { minScore: options.minScore }
+    {
+      minScore: options.minScore,
+      allowedMirrorHashes: options.allowedMirrorHashes,
+    }
   );
 
   if (!searchResult.ok) {
@@ -382,6 +393,7 @@ export async function searchHybrid(
           until: temporalRange.until,
           categories: options.categories,
           author: options.author,
+          relPathPrefix: options.retrievalScope?.relPathPrefix,
         });
 
     if (hasStrongSignal) {
@@ -431,6 +443,7 @@ export async function searchHybrid(
     until: temporalRange.until,
     categories: options.categories,
     author: options.author,
+    relPathPrefix: options.retrievalScope?.relPathPrefix,
   });
 
   // Propagate FTS syntax errors as INVALID_INPUT
@@ -465,6 +478,7 @@ export async function searchHybrid(
           until: temporalRange.until,
           categories: options.categories,
           author: options.author,
+          relPathPrefix: options.retrievalScope?.relPathPrefix,
         })
       )
     );
@@ -512,6 +526,7 @@ export async function searchHybrid(
         query,
         {
           limit: limit * 2 * retrievalMultiplier,
+          allowedMirrorHashes: options.retrievalScope?.allowedMirrorHashes,
         }
       );
 
@@ -555,7 +570,10 @@ export async function searchHybrid(
 
           const searchResult = await vectorIndex.searchNearest(
             new Float32Array(embedding),
-            variant.limit
+            variant.limit,
+            {
+              allowedMirrorHashes: options.retrievalScope?.allowedMirrorHashes,
+            }
           );
           if (!searchResult.ok || searchResult.value.length === 0) {
             continue;
@@ -618,6 +636,7 @@ export async function searchHybrid(
     limit,
     candidateLimit,
     disabled: !options.graph || options.noGraph,
+    relPathPrefix: options.retrievalScope?.relPathPrefix,
     lang: options.lang,
     tagsAll: options.tagsAll,
     tagsAny: options.tagsAny,
@@ -738,6 +757,14 @@ export async function searchHybrid(
   const matchesMetadataFilters = (
     doc: (typeof docsResult.value)[number]
   ): boolean => {
+    const relPathPrefix = options.retrievalScope?.relPathPrefix;
+    if (
+      relPathPrefix !== undefined &&
+      doc.relPath !== relPathPrefix &&
+      !doc.relPath.startsWith(`${relPathPrefix}/`)
+    ) {
+      return false;
+    }
     if (!isWithinTemporalRange(doc.sourceMtime, temporalRange)) {
       return false;
     }

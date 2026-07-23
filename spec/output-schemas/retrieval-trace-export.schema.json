@@ -12,45 +12,50 @@
       "$ref": "gno://schemas/retrieval-trace-common@1.0#/definitions/manifest"
     },
     "artifact": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["schemaVersion", "format", "traces"],
-      "properties": {
-        "schemaVersion": { "const": "1.0" },
-        "format": { "const": "agentic-receipt" },
-        "traces": {
-          "type": "array",
-          "minItems": 1,
-          "items": {
-            "type": "object",
-            "additionalProperties": false,
-            "required": ["trace", "runs", "events", "judgments"],
-            "properties": {
-              "trace": {
-                "$ref": "gno://schemas/retrieval-trace-common@1.0#/definitions/trace"
-              },
-              "runs": {
-                "type": "array",
-                "items": {
-                  "$ref": "gno://schemas/retrieval-trace-common@1.0#/definitions/run"
-                }
-              },
-              "events": {
-                "type": "array",
-                "items": {
-                  "$ref": "gno://schemas/retrieval-trace-common@1.0#/definitions/event"
-                }
-              },
-              "judgments": {
-                "type": "array",
-                "items": {
-                  "$ref": "gno://schemas/retrieval-trace-common@1.0#/definitions/judgment"
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["schemaVersion", "format", "traces"],
+          "properties": {
+            "schemaVersion": { "const": "1.0" },
+            "format": { "const": "agentic-receipt" },
+            "traces": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["trace", "runs", "events", "judgments"],
+                "properties": {
+                  "trace": {
+                    "$ref": "gno://schemas/retrieval-trace-common@1.0#/definitions/trace"
+                  },
+                  "runs": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "gno://schemas/retrieval-trace-common@1.0#/definitions/run"
+                    }
+                  },
+                  "events": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "gno://schemas/retrieval-trace-common@1.0#/definitions/event"
+                    }
+                  },
+                  "judgments": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "gno://schemas/retrieval-trace-common@1.0#/definitions/judgment"
+                    }
+                  }
                 }
               }
             }
           }
-        }
-      }
+        },
+        { "$ref": "gno://schemas/retrieval-trace-qrels@1.0" }
+      ]
     }
   }
 }

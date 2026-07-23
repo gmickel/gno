@@ -451,10 +451,18 @@ function wireTraceCommands(program: Command): void {
   traceCmd
     .command("export <trace-ids...>")
     .description("Export immutable terminal traces as one local receipt")
+    .option("--format <format>", "agentic-receipt or qrels", "agentic-receipt")
     .option("--output <path>", "write canonical artifact atomically")
     .option("--json", "JSON output")
     .action(async (traceIds: string[], cmdOpts: Record<string, unknown>) => {
       const globals = getGlobals();
+      const exportFormat = String(cmdOpts.format);
+      if (!["agentic-receipt", "qrels"].includes(exportFormat)) {
+        throw new CliError(
+          "VALIDATION",
+          "--format must be agentic-receipt or qrels"
+        );
+      }
       const { traceExport } = await import("./commands/trace");
       process.stdout.write(
         await traceExport(traceIds, {
@@ -462,7 +470,55 @@ function wireTraceCommands(program: Command): void {
           indexName: globals.index,
           format: "json",
           output: cmdOpts.output as string | undefined,
+          exportFormat: exportFormat as "agentic-receipt" | "qrels",
         })
+      );
+    });
+
+  traceCmd
+    .command("replay <export-id>")
+    .description("Compare one immutable qrels baseline with a candidate")
+    .requiredOption("--candidate <type>", "bm25, vector, or hybrid")
+    .option("-n, --limit <num>", "result cutoff")
+    .option("--candidate-limit <num>", "candidate pool size")
+    .option("--no-expand", "disable query expansion")
+    .option("--no-rerank", "disable reranking")
+    .option("--json", "JSON output")
+    .option("--md", "Markdown output")
+    .action(async (exportId: string, cmdOpts: Record<string, unknown>) => {
+      const globals = getGlobals();
+      const candidateType = String(cmdOpts.candidate);
+      if (!["bm25", "vector", "hybrid"].includes(candidateType)) {
+        throw new CliError(
+          "VALIDATION",
+          "--candidate must be bm25, vector, or hybrid"
+        );
+      }
+      const { traceReplay } = await import("./commands/replay");
+      process.stdout.write(
+        await traceReplay(
+          exportId,
+          {
+            id: `cli-${candidateType}`,
+            type: candidateType as "bm25" | "vector" | "hybrid",
+            limit:
+              cmdOpts.limit === undefined
+                ? undefined
+                : parsePositiveInt("limit", cmdOpts.limit),
+            candidateLimit:
+              cmdOpts.candidateLimit === undefined
+                ? undefined
+                : parsePositiveInt("candidate-limit", cmdOpts.candidateLimit),
+            noExpand: cmdOpts.expand === false,
+            noRerank: cmdOpts.rerank === false,
+          },
+          {
+            configPath: globals.config,
+            indexName: globals.index,
+            format: outputFormat(cmdOpts),
+            offline: globals.offline,
+          }
+        )
       );
     });
 

@@ -10,6 +10,7 @@ import type {
   RetrievalTracePurgeResult as StoredRetrievalTracePurgeResult,
   RetrievalTraceRow,
 } from "../store/types";
+import type { RetrievalTraceQrelsArtifact } from "./retrieval-qrels";
 
 export interface RetrievalTraceSummary {
   traceId: string;
@@ -83,22 +84,32 @@ export interface LabelRetrievalTraceResult {
   judgment: RetrievalTraceJudgmentRow;
 }
 
-export interface RetrievalTraceArtifact {
+export interface RetrievalTraceAgenticArtifact {
   schemaVersion: "1.0";
   format: "agentic-receipt";
   traces: Array<Omit<RetrievalTraceBundle, "exports">>;
 }
 
-export interface ExportRetrievalTracesInput {
+export type RetrievalTraceArtifact =
+  | RetrievalTraceAgenticArtifact
+  | RetrievalTraceQrelsArtifact;
+
+export interface ExportRetrievalTracesInput<
+  Format extends RetrievalTraceExportFormat = "agentic-receipt",
+> {
   traceIds: string[];
-  format?: Extract<RetrievalTraceExportFormat, "agentic-receipt">;
+  format?: Format;
 }
 
-export interface ExportRetrievalTracesResult {
+export interface ExportRetrievalTracesResult<
+  Format extends RetrievalTraceExportFormat = "agentic-receipt",
+> {
   schemaVersion: "1.0";
   result: RetrievalTraceAppendResult;
   manifest: RetrievalTraceExportManifestRow;
-  artifact: RetrievalTraceArtifact;
+  artifact: Format extends "qrels"
+    ? RetrievalTraceQrelsArtifact
+    : RetrievalTraceAgenticArtifact;
 }
 
 export interface DeleteRetrievalTraceResult {

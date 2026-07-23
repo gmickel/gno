@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { getIndexDbPath } from "../../src/app/constants";
+import { traceReplay } from "../../src/cli/commands/replay";
 import { traceExport } from "../../src/cli/commands/trace";
 import { createProgram } from "../../src/cli/program";
 import {
@@ -44,6 +45,7 @@ describe("trace CLI contract", () => {
       "show",
       "label",
       "export",
+      "replay",
       "delete",
       "purge",
     ]);
@@ -52,6 +54,30 @@ describe("trace CLI contract", () => {
         .find((command) => command.name() === "purge")
         ?.helpInformation()
     ).toContain("Delete every local retrieval trace receipt");
+  });
+
+  test("renders a schema-valid missing-manifest replay without mutation", async () => {
+    root = await mkdtemp(join(tmpdir(), "gno-trace-replay-cli-"));
+    process.env.GNO_CONFIG_DIR = join(root, "config");
+    process.env.GNO_DATA_DIR = join(root, "data");
+    process.env.GNO_CACHE_DIR = join(root, "cache");
+    await ensureDirectories();
+    const configPath = join(root, "config", "index.yml");
+    expect((await saveConfig(createDefaultConfig(), configPath)).ok).toBeTrue();
+    const output = await traceReplay(
+      "missing-export",
+      { id: "cli-bm25", type: "bm25" },
+      { configPath, format: "json" }
+    );
+    const receipt = JSON.parse(output);
+    expect(
+      assertValid(receipt, await loadSchema("retrieval-trace-replay"))
+    ).toBeTrue();
+    expect(receipt).toMatchObject({
+      verdict: "unreplayable",
+      reason: "manifest_missing",
+      applied: false,
+    });
   });
 
   test("emits a schema-valid export receipt and keeps output files artifact-only", async () => {

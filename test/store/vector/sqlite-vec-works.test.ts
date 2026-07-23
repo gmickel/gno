@@ -125,6 +125,14 @@ describe("sqlite-vec integration", () => {
       const doc3Idx = results.findIndex((r) => r.mirrorHash === "doc3");
       const doc2Idx = results.findIndex((r) => r.mirrorHash === "doc2");
       expect(doc3Idx).toBeLessThan(doc2Idx);
+
+      const scoped = await port.searchNearest(query, 1, {
+        allowedMirrorHashes: ["doc2"],
+      });
+      expect(scoped.ok).toBe(true);
+      if (scoped.ok) {
+        expect(scoped.value.map((item) => item.mirrorHash)).toEqual(["doc2"]);
+      }
     } finally {
       db.close();
     }

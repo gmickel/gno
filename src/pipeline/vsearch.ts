@@ -104,6 +104,7 @@ export async function searchVectorWithEmbedding(
     retrievalLimit,
     {
       minScore,
+      allowedMirrorHashes: options.retrievalScope?.allowedMirrorHashes,
     }
   );
 
@@ -126,6 +127,7 @@ export async function searchVectorWithEmbedding(
   // Cache docs to avoid N+1 queries (filtered by collection and tags)
   const docByMirrorHash = await buildDocumentMap(store, {
     collection: options.collection,
+    relPathPrefix: options.retrievalScope?.relPathPrefix,
     tagsAll: options.tagsAll,
     tagsAny: options.tagsAny,
     since: temporalRange.since,
@@ -473,6 +475,7 @@ interface DocumentInfo {
 
 interface DocumentMapOptions {
   collection?: string;
+  relPathPrefix?: string;
   tagsAll?: string[];
   tagsAny?: string[];
   since?: string;
@@ -561,6 +564,13 @@ async function buildDocumentMap(
   }
 
   for (const doc of activeDocs) {
+    if (
+      options.relPathPrefix !== undefined &&
+      doc.relPath !== options.relPathPrefix &&
+      !doc.relPath.startsWith(`${options.relPathPrefix}/`)
+    ) {
+      continue;
+    }
     if (!isWithinTemporalRange(doc.sourceMtime, temporalRange)) {
       continue;
     }

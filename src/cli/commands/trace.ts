@@ -25,6 +25,7 @@ interface TraceCommandOptions {
 
 interface TraceExportOptions extends TraceCommandOptions {
   output?: string;
+  exportFormat?: "agentic-receipt" | "qrels";
 }
 
 const unwrapTraceResult = <T>(result: StoreResult<T>): T => {
@@ -161,7 +162,10 @@ export const traceExport = async (
 ): Promise<string> => {
   const value = await withTraceService(options, async (service) =>
     unwrapTraceResult(
-      await service.export({ traceIds, format: "agentic-receipt" })
+      await service.export({
+        traceIds,
+        format: options.exportFormat ?? "agentic-receipt",
+      })
     )
   );
   const artifact = json(value.artifact);

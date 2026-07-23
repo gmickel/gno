@@ -59,6 +59,7 @@ import type {
   RetrievalTraceDeleteCounts,
   RetrievalTraceEventInput,
   RetrievalTraceExportInput,
+  RetrievalTraceExportBundle,
   RetrievalTraceExportManifestInput,
   RetrievalTraceExportManifestRow,
   RetrievalTraceInput,
@@ -98,6 +99,7 @@ import { loadFts5Snowball } from "./fts5-snowball";
 import {
   appendExportManifest as appendStoredTraceExportManifest,
   getBoundedTrace as getBoundedStoredTrace,
+  getExportBundle as getStoredTraceExportBundle,
   getExportManifest as getStoredTraceExportManifest,
   getOrCreateRedactionSecret as getOrCreateStoredTraceRedactionSecret,
 } from "./retrieval-trace-management-store";
@@ -888,6 +890,12 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
     exportId: string
   ): Promise<StoreResult<RetrievalTraceExportManifestRow | null>> {
     return getStoredTraceExportManifest(this.ensureOpen(), exportId);
+  }
+
+  async getRetrievalTraceExportBundle(
+    exportId: string
+  ): Promise<StoreResult<RetrievalTraceExportBundle | null>> {
+    return getStoredTraceExportBundle(this.ensureOpen(), exportId);
   }
 
   async getOrCreateRetrievalTraceRedactionSecret(): Promise<
@@ -1785,6 +1793,11 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
             SELECT id FROM documents
             WHERE active = 1
             ${options.collection ? "AND collection = ?" : ""}
+            ${
+              options.relPathPrefix !== undefined
+                ? "AND (rel_path = ? OR substr(rel_path, 1, length(?) + 1) = ? || '/')"
+                : ""
+            }
           )
           ORDER BY score
           LIMIT ?
@@ -1838,6 +1851,13 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
       const queryParams = [
         builtQuery.query,
         ...(options.collection ? [options.collection] : []),
+        ...(options.relPathPrefix !== undefined
+          ? [
+              options.relPathPrefix,
+              options.relPathPrefix,
+              options.relPathPrefix,
+            ]
+          : []),
         ftsLimit,
         ...params,
       ];

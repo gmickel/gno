@@ -21,27 +21,15 @@ import {
   RetrievalTraceRecorder,
   type RetrievalTraceWriteResult,
 } from "./retrieval-trace";
+import {
+  type RetrievalTraceEvidence,
+  RetrievalTraceEvidenceOrigins,
+} from "./retrieval-trace-evidence-origin";
 
 type EvidenceEventKind = Extract<
   RetrievalTraceEventKind,
   "get" | "open" | "cite" | "pin"
 >;
-
-export interface RetrievalTraceEvidence {
-  docid: string;
-  sourceHash: string;
-  mirrorHash: string;
-  uri: string;
-  seq?: number;
-  startLine: number;
-  endLine: number;
-  passageHash: string;
-  score?: number;
-  rank?: number;
-  plannerRank?: number;
-  sources?: string[];
-  graphExpanded?: boolean;
-}
 
 export interface StartRetrievalTraceSessionInput {
   store: StorePort;
@@ -150,6 +138,8 @@ export class RetrievalTraceSession {
   private available = true;
   private persistedRecords = 0;
   private terminal = false;
+  private retrievalRunId: string | null = null;
+  private readonly evidenceOrigins = new RetrievalTraceEvidenceOrigins();
 
   private constructor(
     private readonly recorder: RetrievalTraceRecorder,
@@ -242,6 +232,10 @@ export class RetrievalTraceSession {
       stored.value.events.length +
       stored.value.judgments.length +
       stored.value.exports.length;
+    session.retrievalRunId =
+      stored.value.runs.filter((run) => run.kind === "retrieval").at(-1)
+        ?.runId ?? null;
+    session.evidenceOrigins.addStoredRuns(stored.value.runs);
     return ok(session);
   }
 
@@ -293,13 +287,16 @@ export class RetrievalTraceSession {
     });
     if (!run.ok) return this.softenWriteFailure();
     this.persistedRecords += 1;
+    this.retrievalRunId = runId;
     const retrievalEvent = await this.appendEvent("retrieval", payload, runId);
     if (!retrievalEvent.ok) return retrievalEvent;
+    this.evidenceOrigins.add(runId, ranked);
     for (const outcome of capabilityOutcomes) {
       const recorded = await this.recordCapability(
         outcome.capability,
         outcome.status,
-        outcome.reasonCode
+        outcome.reasonCode,
+        runId
       );
       if (!recorded.ok) return recorded;
     }
@@ -352,23 +349,48 @@ export class RetrievalTraceSession {
       });
       if (!run.ok) return this.softenWriteFailure();
       this.persistedRecords += 1;
-      return this.appendEvent(kind, payload, runId);
+      const appended = await this.appendEvent(kind, payload, runId);
+      if (appended.ok && appended.value !== "disabled") {
+        this.evidenceOrigins.addFallback(runId, evidence);
+      }
+      return appended;
     }
     if (!this.hasCapacity(1)) return ok("disabled");
-    return this.appendEvent(kind, payload);
+    const origins = this.evidenceOrigins.group(evidence);
+    if (!origins.ok) return origins;
+    if (!this.hasCapacity(origins.value.size)) return ok("disabled");
+    let result: "inserted" | "duplicate" | "disabled" = "inserted";
+    for (const [runId, runEvidence] of origins.value) {
+      const appended = await this.appendEvent(
+        kind,
+        {
+          evidence: runEvidence,
+          ...(latencyMs === undefined ? {} : { latencyMs }),
+        },
+        runId
+      );
+      if (!appended.ok) return appended;
+      result = appended.value;
+    }
+    return ok(result);
   }
 
   async recordCapability(
     capability: string,
     status: "attempted" | "used" | "unavailable" | "failed",
-    reasonCode?: string
+    reasonCode?: string,
+    runId = this.retrievalRunId
   ): Promise<StoreResult<"inserted" | "duplicate" | "disabled">> {
     if (!this.hasCapacity(1)) return ok("disabled");
-    return this.appendEvent("capability", {
-      capability,
-      status,
-      ...(reasonCode === undefined ? {} : { reasonCode }),
-    });
+    return this.appendEvent(
+      "capability",
+      {
+        capability,
+        status,
+        ...(reasonCode === undefined ? {} : { reasonCode }),
+      },
+      runId
+    );
   }
 
   async finish(
@@ -434,6 +456,7 @@ export class RetrievalTraceSession {
 }
 
 export type { RetrievalTraceWriteResult };
+export type { RetrievalTraceEvidence };
 
 export const evidenceFromExactDocument = (input: {
   docid: string;

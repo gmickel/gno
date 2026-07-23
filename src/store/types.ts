@@ -346,6 +346,8 @@ export interface FtsSearchOptions {
   limit?: number;
   /** Filter by collection */
   collection?: string;
+  /** Internal exact relative-path boundary applied before ranking and LIMIT. */
+  relPathPrefix?: string;
   /**
    * Language hint (reserved for future use).
    * Note: FTS5 snowball tokenizer is language-aware at index time,
@@ -978,6 +980,12 @@ export interface RetrievalTraceBundle {
   exports: RetrievalTraceExportRow[];
 }
 
+/** One aggregate export identity and every complete linked trace bundle. */
+export interface RetrievalTraceExportBundle {
+  manifest: RetrievalTraceExportManifestRow;
+  traces: RetrievalTraceBundle[];
+}
+
 export interface RetrievalTraceBundleTotals {
   runs: number;
   events: number;
@@ -1191,6 +1199,11 @@ export interface StorePort {
   getRetrievalTraceExportManifest(
     exportId: string
   ): Promise<StoreResult<RetrievalTraceExportManifestRow | null>>;
+
+  /** Read one export and all linked traces without bounded-detail truncation. */
+  getRetrievalTraceExportBundle(
+    exportId: string
+  ): Promise<StoreResult<RetrievalTraceExportBundle | null>>;
 
   /** Durable random index-local secret used only to redact metadata labels. */
   getOrCreateRetrievalTraceRedactionSecret(): Promise<StoreResult<string>>;

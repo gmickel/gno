@@ -652,10 +652,28 @@ Build one deterministic receipt from immutable terminal traces:
 
 ```bash
 gno trace export <trace-id> <another-trace-id> --output traces.json
+gno trace export <trace-id> --format qrels --output qrels.json
 ```
 
 Open traces cannot be exported. Completed, partial, failed, and cancelled
 outcomes stay distinct and never become implicit negative labels.
+Qrels export additionally requires replay-mode receipts with complete query,
+filter, rank, hash, and exact-span provenance. It writes only content-free
+identities and outcomes; source and mirror text are not copied.
+
+Compare that immutable qrels baseline with a candidate retrieval pipeline:
+
+```bash
+gno trace replay <qrels-export-id> --candidate bm25 --md
+gno trace replay <qrels-export-id> --candidate hybrid \
+  --candidate-limit 100 --no-expand --json
+```
+
+Replay verifies the local aggregate manifest before running, reports final
+rank separately from planner rank, classifies sources as unchanged, stale,
+missing, inactive, or unindexed, and preserves capability/fallback truth. It
+can recommend promotion but always returns `applied: false`; it never edits
+ranking, prompts, models, configuration, traces, or user files.
 
 Delete one receipt or purge all local receipt data:
 

@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Added deterministic content-free qrels export and read-only baseline versus
+  candidate retrieval replay, with manifest verification, exact rank/span
+  provenance, stale/missing source disclosure, fn-97 fixture import, and
+  human-only promotion recommendations.
+
 ## [1.18.0] - 2026-07-23
 
 ### Added

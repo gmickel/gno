@@ -74,6 +74,16 @@ function formatUnavailableMessage(loadError?: string): string {
   return `Vector search requires sqlite-vec. Embeddings are stored, but KNN search is disabled.${reason} ${SQLITE_VEC_GUIDANCE}`;
 }
 
+const ALLOWED_HASH_BATCH_SIZE = 800;
+
+const compareVectorResults = (
+  left: VectorSearchResult,
+  right: VectorSearchResult
+): number =>
+  left.distance - right.distance ||
+  left.mirrorHash.localeCompare(right.mirrorHash) ||
+  left.seq - right.seq;
+
 /**
  * Create a VectorIndexPort for a specific model.
  * sqlite-vec is optional - storage works without it, search disabled.
@@ -243,15 +253,80 @@ export async function createVectorIndexPort(
     searchNearest(
       embedding: Float32Array,
       k: number,
-      searchOptions?: { minScore?: number }
+      searchOptions?: {
+        minScore?: number;
+        allowedMirrorHashes?: string[];
+      }
     ): Promise<StoreResult<VectorSearchResult[]>> {
       if (!(searchAvailable && searchStmt)) {
         return Promise.resolve(
           err("VEC_SEARCH_UNAVAILABLE", formatUnavailableMessage(loadError))
         );
       }
+      if (!Number.isSafeInteger(k) || k < 1) {
+        return Promise.resolve(
+          err("INVALID_INPUT", "Vector search limit must be a positive integer")
+        );
+      }
 
       try {
+        const allowed = searchOptions?.allowedMirrorHashes;
+        if (allowed) {
+          const hashes = [
+            ...new Set(allowed.filter((hash) => hash.length > 0)),
+          ].sort();
+          if (hashes.length === 0) return Promise.resolve(ok([]));
+          const distanceFunction =
+            distanceMetric === "cosine"
+              ? "vec_distance_cosine"
+              : "vec_distance_L2";
+          const scoped: VectorSearchResult[] = [];
+          for (
+            let index = 0;
+            index < hashes.length;
+            index += ALLOWED_HASH_BATCH_SIZE
+          ) {
+            const batch = hashes.slice(index, index + ALLOWED_HASH_BATCH_SIZE);
+            const placeholders = batch.map(() => "?").join(",");
+            const rows = db
+              .query<
+                {
+                  mirror_hash: string;
+                  seq: number;
+                  distance: number;
+                },
+                (Uint8Array | string | number)[]
+              >(
+                `SELECT mirror_hash, seq,
+                        ${distanceFunction}(embedding, ?) AS distance
+                 FROM content_vectors
+                 WHERE model = ?
+                   AND mirror_hash IN (${placeholders})
+                 ORDER BY distance, mirror_hash, seq
+                 LIMIT ?`
+              )
+              .all(encodeEmbedding(embedding), model, ...batch, k);
+            scoped.push(
+              ...rows.map((row) => ({
+                mirrorHash: row.mirror_hash,
+                seq: row.seq,
+                distance: row.distance,
+              }))
+            );
+          }
+          const minScore = searchOptions.minScore;
+          return Promise.resolve(
+            ok(
+              scoped
+                .sort(compareVectorResults)
+                .filter(
+                  (row) =>
+                    minScore === undefined || 1 - row.distance >= minScore
+                )
+                .slice(0, k)
+            )
+          );
+        }
         const results = searchStmt.all(encodeEmbedding(embedding), k) as {
           chunk_id: string;
           distance: number;

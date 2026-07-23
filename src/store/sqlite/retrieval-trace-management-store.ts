@@ -5,6 +5,7 @@ import type { Database } from "bun:sqlite";
 import type {
   RetrievalTraceAppendResult,
   RetrievalTraceBoundedBundle,
+  RetrievalTraceExportBundle,
   RetrievalTraceExportManifestInput,
   RetrievalTraceExportManifestRow,
   StoreResult,
@@ -27,6 +28,7 @@ import {
   traceWriteError,
   validateTraceId,
 } from "./retrieval-trace-rows";
+import { getTrace } from "./retrieval-trace-store";
 
 const SHA256_PATTERN = /^[a-f0-9]{64}$/;
 const REDACTION_SECRET_KEY = "retrieval_trace_redaction_secret_v1";
@@ -302,5 +304,38 @@ export const getExportManifest = (
     return ok(readManifest(db, exportId));
   } catch (cause) {
     return traceReadError(cause, "Failed to get retrieval trace export");
+  }
+};
+
+export const getExportBundle = (
+  db: Database,
+  exportId: string
+): StoreResult<RetrievalTraceExportBundle | null> => {
+  try {
+    validateTraceId(exportId, "exportId");
+    const transaction = db.transaction(
+      (): StoreResult<RetrievalTraceExportBundle | null> => {
+        const manifest = readManifest(db, exportId);
+        if (!manifest) return ok(null);
+        const traces = [];
+        for (const traceId of manifest.traceIds) {
+          const trace = getTrace(db, traceId);
+          if (!trace.ok) return trace;
+          if (!trace.value) {
+            throw new RetrievalTraceConflictError(
+              "Export manifest references a missing retrieval trace"
+            );
+          }
+          traces.push(trace.value);
+        }
+        return ok({ manifest, traces });
+      }
+    );
+    return transaction();
+  } catch (cause) {
+    return traceReadError(
+      cause,
+      "Failed to get complete retrieval trace export"
+    );
   }
 };

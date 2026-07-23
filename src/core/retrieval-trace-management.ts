@@ -2,9 +2,14 @@
 
 import type {
   RetrievalTraceBundle,
+  RetrievalTraceExportFormat,
   StorePort,
   StoreResult,
 } from "../store/types";
+import type {
+  ReplayRetrievalTraceInput,
+  ReplayRetrievalTraceResult,
+} from "./retrieval-replay-types";
 import type {
   DeleteRetrievalTraceResult,
   ExportRetrievalTracesInput,
@@ -24,6 +29,11 @@ import {
   hashTraceCanonical,
 } from "../store/retrieval-trace-codec";
 import { err, ok } from "../store/types";
+import {
+  replayRetrievalTraces,
+  type RetrievalReplayDeps,
+} from "./retrieval-replay";
+import { exportRetrievalTraces } from "./retrieval-trace-export";
 import {
   allEvidence,
   applyTargetKind,
@@ -206,67 +216,17 @@ export class RetrievalTraceManagementService {
       : err("QUERY_FAILED", "Stored retrieval trace judgment is unavailable");
   }
 
-  async export(
-    input: ExportRetrievalTracesInput
-  ): Promise<StoreResult<ExportRetrievalTracesResult>> {
-    if (input.format !== undefined && input.format !== "agentic-receipt") {
-      return err("INVALID_INPUT", "Only agentic-receipt export is available");
-    }
-    if (
-      !Array.isArray(input.traceIds) ||
-      input.traceIds.some(
-        (traceId) => typeof traceId !== "string" || traceId.length < 1
-      )
-    ) {
-      return err("INVALID_INPUT", "Export trace IDs must be a string array");
-    }
-    const traceIds = [...new Set(input.traceIds)].sort();
-    if (traceIds.length < 1 || traceIds.length > 10_000) {
-      return err("INVALID_INPUT", "Export requires from 1 to 10000 trace IDs");
-    }
-    const traces: Array<Omit<RetrievalTraceBundle, "exports">> = [];
-    for (const traceId of traceIds) {
-      const stored = await this.store.getRetrievalTrace(traceId);
-      if (!stored.ok) return stored;
-      if (!stored.value) return err("NOT_FOUND", "Retrieval trace not found");
-      if (stored.value.trace.status === "open") {
-        return err(
-          "CONSTRAINT_VIOLATION",
-          "Open retrieval traces cannot be exported"
-        );
-      }
-      const { exports: _exports, ...trace } = stored.value;
-      traces.push(trace);
-    }
-    const artifact = {
-      schemaVersion: "1.0" as const,
-      format: "agentic-receipt" as const,
-      traces,
-    };
-    const artifactHash = hashTraceCanonical(artifact);
-    const exportId = `trace-export-${artifactHash.slice(0, 40)}`;
-    const appended = await this.store.appendRetrievalTraceExportManifest({
-      exportId,
-      traceIds,
-      format: "agentic-receipt",
-      artifactHash,
-      createdAtMs: this.clock(),
-    });
-    if (!appended.ok) return appended;
-    const manifest = await this.store.getRetrievalTraceExportManifest(exportId);
-    if (!manifest.ok) return manifest;
-    if (!manifest.value) {
-      return err(
-        "QUERY_FAILED",
-        "Stored retrieval trace export is unavailable"
-      );
-    }
-    return ok({
-      schemaVersion: "1.0",
-      result: appended.value,
-      manifest: manifest.value,
-      artifact,
-    });
+  async export<Format extends RetrievalTraceExportFormat = "agentic-receipt">(
+    input: ExportRetrievalTracesInput<Format>
+  ): Promise<StoreResult<ExportRetrievalTracesResult<Format>>> {
+    return exportRetrievalTraces(this.store, this.clock, input);
+  }
+
+  async replay(
+    input: ReplayRetrievalTraceInput,
+    deps: Omit<RetrievalReplayDeps, "store">
+  ): Promise<StoreResult<ReplayRetrievalTraceResult>> {
+    return replayRetrievalTraces({ ...deps, store: this.store }, input);
   }
 
   async delete(
@@ -451,6 +411,11 @@ export type {
   RetrievalTracePurgeResult,
   RetrievalTraceSummary,
 } from "./retrieval-trace-management-types";
+export type {
+  ReplayRetrievalTraceInput,
+  ReplayRetrievalTraceResult,
+  RetrievalReplayCandidate,
+} from "./retrieval-replay-types";
 
 export const serializeRetrievalTraceArtifact = (
   result: ExportRetrievalTracesResult

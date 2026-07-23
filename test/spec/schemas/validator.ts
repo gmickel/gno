@@ -45,6 +45,8 @@ async function loadAllSchemas(): Promise<void> {
     "retrieval-trace-list",
     "retrieval-trace-show",
     "retrieval-trace-judgment",
+    "retrieval-trace-qrels",
+    "retrieval-trace-replay",
     "retrieval-trace-export",
     "retrieval-trace-delete",
     "retrieval-trace-purge",

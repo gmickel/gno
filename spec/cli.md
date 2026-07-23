@@ -684,7 +684,9 @@ gno trace show <trace-id> [--detail-limit <limit>] [--json|--md]
 gno trace label <trace-id> --label <relevant|irrelevant|missing-expected> --target <ref>
   [--target-kind <document|chunk|span>] [--from-line <line> --to-line <line>]
   [--source-hash <sha256>] [--docid <docid>] [--idempotency-key <key>] [--json|--md]
-gno trace export <trace-id...> [--output <path>] [--json]
+gno trace export <trace-id...> [--format <agentic-receipt|qrels>] [--output <path>] [--json]
+gno trace replay <qrels-export-id> --candidate <bm25|vector|hybrid>
+  [-n <limit>] [--candidate-limit <limit>] [--no-expand] [--no-rerank] [--json|--md]
 gno trace delete <trace-id> [--json|--md]
 gno --yes trace purge [--json|--md]
 ```
@@ -695,17 +697,32 @@ totals and truncation flags. A relevant or irrelevant label must resolve to
 recorded evidence; `missing-expected` accepts only a content-free `gno://` URI,
 docid, or immutable source hash. Labels are append-only and retry-safe.
 
-`export` accepts one or more immutable terminal traces, sorts and deduplicates
-their IDs, and produces the deterministic `agentic-receipt` artifact. It
-rejects open or missing traces. `completed`, `partial`, `failed`, and
-`cancelled` remain distinct; no terminal state implies negative relevance.
+`export` accepts one or more immutable terminal traces and sorts and
+deduplicates their IDs. The default deterministic `agentic-receipt` artifact
+preserves the complete stored receipt. `--format qrels` requires replay-mode
+receipts with an exact query, strict filters, ranked evidence, and at least one
+explicit relevant or missing-expected judgment. It exports only hashes,
+coordinates, ranks, capabilities, fallbacks, and explicit outcomes—never
+source or mirror text. Both formats reject open or missing traces.
+`completed`, `partial`, `failed`, and `cancelled` remain distinct; no terminal
+state implies negative relevance.
+
+`replay` verifies the saved qrels aggregate manifest and reruns only the named
+candidate against the current local index. It compares final and planner ranks,
+coverage, explicit open/cite/pin outcomes, capability fallbacks, fingerprints,
+and unchanged/stale/missing source state. The result is
+`improved|unchanged|regressed|unreplayable` with a human promotion
+recommendation and `applied: false`; replay never changes configuration,
+boosts, prompts, models, traces, or user files. Missing or cascaded manifest
+links and changed source hashes fail closed instead of becoming an empty
+successful run.
 Without `--output`, JSON is the complete `retrieval-trace-export` receipt.
 `--output` writes only the canonical artifact atomically and intentionally
 emits no stdout. Full purge requires the global `--yes` flag and reports
 whether SQLite/WAL physical cleanup completed, remained busy, or failed.
 
 Structured outputs validate against
-`retrieval-trace-{list,show,judgment,export,delete,purge}.schema.json`;
+`retrieval-trace-{list,show,judgment,export,qrels,replay,delete,purge}.schema.json`;
 file-only `trace export --output` is the documented exception.
 
 ---

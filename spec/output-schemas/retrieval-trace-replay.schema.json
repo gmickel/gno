@@ -1,0 +1,266 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "gno://schemas/retrieval-trace-replay@1.0",
+  "title": "GNO Retrieval Trace Replay",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "exportId",
+    "candidate",
+    "verdict",
+    "reason",
+    "recommendation",
+    "applied",
+    "cases"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "1.0" },
+    "exportId": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "candidate": {
+      "type": "object",
+      "required": ["id", "type"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "type": { "enum": ["bm25", "vector", "hybrid"] },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10000
+        },
+        "candidateLimit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10000
+        },
+        "noExpand": { "type": "boolean" },
+        "noRerank": { "type": "boolean" },
+        "queryModes": {
+          "type": "array",
+          "maxItems": 100,
+          "uniqueItems": true,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["mode", "text"],
+            "properties": {
+              "mode": { "enum": ["term", "intent", "hyde"] },
+              "text": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 8192
+              }
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "verdict": {
+      "enum": ["improved", "unchanged", "regressed", "unreplayable"]
+    },
+    "reason": {
+      "oneOf": [
+        {
+          "enum": [
+            "manifest_missing",
+            "manifest_hash_mismatch",
+            "trace_missing",
+            "redaction_incompatible",
+            "query_missing",
+            "filters_incomplete",
+            "no_retrieval_run",
+            "ambiguous_missing_expected_run",
+            "source_stale",
+            "source_missing",
+            "candidate_failed"
+          ]
+        },
+        { "type": "null" }
+      ]
+    },
+    "recommendation": {
+      "enum": ["promote", "keep_baseline", "manual_review"]
+    },
+    "applied": { "const": false },
+    "cases": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "caseId",
+          "traceId",
+          "terminalStatus",
+          "verdict",
+          "reason",
+          "metrics",
+          "fingerprints",
+          "capabilityOutcomes",
+          "fallbackCodes",
+          "qrels"
+        ],
+        "properties": {
+          "caseId": { "type": "string" },
+          "traceId": { "type": "string" },
+          "terminalStatus": {
+            "enum": ["completed", "partial", "failed", "cancelled"]
+          },
+          "verdict": {
+            "enum": ["improved", "unchanged", "regressed", "unreplayable"]
+          },
+          "reason": {
+            "oneOf": [
+              { "$ref": "#/properties/reason/oneOf/0" },
+              { "type": "null" }
+            ]
+          },
+          "metrics": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "baseline",
+              "candidate",
+              "baselineCoverage",
+              "candidateCoverage"
+            ],
+            "properties": {
+              "baseline": { "$ref": "#/definitions/metrics" },
+              "candidate": { "$ref": "#/definitions/metrics" },
+              "baselineCoverage": { "type": "number" },
+              "candidateCoverage": { "type": "number" }
+            }
+          },
+          "fingerprints": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["original", "current", "candidate"],
+            "properties": {
+              "original": {
+                "$ref": "gno://schemas/retrieval-trace-common@1.0#/definitions/fingerprints"
+              },
+              "current": {
+                "$ref": "gno://schemas/retrieval-trace-common@1.0#/definitions/fingerprints"
+              },
+              "candidate": {
+                "$ref": "gno://schemas/retrieval-trace-common@1.0#/definitions/fingerprints"
+              }
+            }
+          },
+          "capabilityOutcomes": {
+            "type": "object",
+            "required": ["baseline", "candidate"],
+            "properties": {
+              "baseline": { "type": "array" },
+              "candidate": { "type": "array" }
+            },
+            "additionalProperties": false
+          },
+          "fallbackCodes": {
+            "type": "object",
+            "required": ["baseline", "candidate"],
+            "properties": {
+              "baseline": {
+                "type": "array",
+                "items": { "type": "string" }
+              },
+              "candidate": {
+                "type": "array",
+                "items": { "type": "string" }
+              }
+            },
+            "additionalProperties": false
+          },
+          "qrels": {
+            "type": "array",
+            "items": { "$ref": "#/definitions/qrelResult" }
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "metrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["precisionAtK", "recallAtK", "f1AtK", "mrr", "ndcgAtK"],
+      "properties": {
+        "precisionAtK": { "type": "number" },
+        "recallAtK": { "type": "number" },
+        "f1AtK": { "type": "number" },
+        "mrr": { "type": "number" },
+        "ndcgAtK": { "type": "number" }
+      }
+    },
+    "qrelResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "qrelId",
+        "label",
+        "relevance",
+        "baselineRank",
+        "plannerRank",
+        "candidateRank",
+        "rankDelta",
+        "opened",
+        "cited",
+        "pinned",
+        "sourceState",
+        "diagnostic"
+      ],
+      "properties": {
+        "qrelId": { "type": "string" },
+        "label": {
+          "enum": ["relevant", "irrelevant", "missing_expected"]
+        },
+        "relevance": { "enum": [0, 1] },
+        "baselineRank": {
+          "oneOf": [{ "type": "integer" }, { "type": "null" }]
+        },
+        "plannerRank": {
+          "oneOf": [{ "type": "integer" }, { "type": "null" }]
+        },
+        "candidateRank": {
+          "oneOf": [{ "type": "integer" }, { "type": "null" }]
+        },
+        "rankDelta": {
+          "oneOf": [{ "type": "integer" }, { "type": "null" }]
+        },
+        "opened": { "type": "boolean" },
+        "cited": { "type": "boolean" },
+        "pinned": { "type": "boolean" },
+        "sourceState": {
+          "enum": [
+            "unchanged",
+            "stale",
+            "missing",
+            "inactive",
+            "no_indexed_content"
+          ]
+        },
+        "diagnostic": {
+          "oneOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["status", "filterReasons", "stageDropReasons"],
+              "properties": {
+                "status": { "type": "string" },
+                "filterReasons": {
+                  "type": "array",
+                  "items": { "type": "string" }
+                },
+                "stageDropReasons": {
+                  "type": "array",
+                  "items": { "type": "string" }
+                }
+              }
+            },
+            { "type": "null" }
+          ]
+        }
+      }
+    }
+  }
+}
