@@ -9,7 +9,7 @@ import { realpath } from "node:fs/promises";
 // node:os for homedir (no Bun os utils)
 import { homedir } from "node:os";
 // node:path for path utils (no Bun path utils)
-import { isAbsolute, join, posix as pathPosix } from "node:path";
+import { isAbsolute, join, posix as pathPosix, relative, sep } from "node:path";
 
 import { toAbsolutePath } from "../config/paths";
 
@@ -56,6 +56,25 @@ export function validateRelPath(relPath: string): string {
   }
 
   return normalized;
+}
+
+/**
+ * Return whether candidate is equal to or nested beneath parent.
+ *
+ * Inputs must already be canonical absolute paths. `relative()` keeps this
+ * segment-safe, unlike string-prefix checks (`/project` vs `/project-old`).
+ */
+export function isCanonicalPathContained(
+  parent: string,
+  candidate: string
+): boolean {
+  const relativePath = relative(parent, candidate);
+  return (
+    relativePath === "" ||
+    (relativePath !== ".." &&
+      !relativePath.startsWith(`..${sep}`) &&
+      !isAbsolute(relativePath))
+  );
 }
 
 export async function validateCollectionRoot(

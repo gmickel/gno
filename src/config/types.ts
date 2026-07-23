@@ -116,6 +116,60 @@ export type Collection = z.infer<typeof CollectionSchema>;
 export type CollectionModelOverrides = NonNullable<Collection["models"]>;
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Project Affinity Input
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const TrustedProjectRootSourceSchema = z.enum([
+  "cli_cwd",
+  "cli_explicit",
+  "cli_worktree",
+]);
+export type TrustedProjectRootSource = z.infer<
+  typeof TrustedProjectRootSourceSchema
+>;
+
+export const LocalProjectAffinityRootSchema = z.object({
+  source: TrustedProjectRootSourceSchema,
+  path: z.string().min(1),
+});
+export type LocalProjectAffinityRoot = z.infer<
+  typeof LocalProjectAffinityRootSchema
+>;
+
+export const RemoteProjectAffinityRootSchema = z.object({
+  source: z.literal("remote_hint"),
+  hint: z.string().min(1),
+});
+export type RemoteProjectAffinityRoot = z.infer<
+  typeof RemoteProjectAffinityRootSchema
+>;
+
+export const ProjectAffinityRootSchema = z.discriminatedUnion("source", [
+  LocalProjectAffinityRootSchema,
+  RemoteProjectAffinityRootSchema,
+]);
+export type ProjectAffinityRoot = z.infer<typeof ProjectAffinityRootSchema>;
+
+export const LocalProjectAffinityInputSchema = z.object({
+  roots: z.array(LocalProjectAffinityRootSchema).max(16).default([]),
+});
+export type LocalProjectAffinityInput = z.infer<
+  typeof LocalProjectAffinityInputSchema
+>;
+
+export const RemoteProjectAffinityInputSchema = z.object({
+  roots: z.array(RemoteProjectAffinityRootSchema).max(16).default([]),
+});
+export type RemoteProjectAffinityInput = z.infer<
+  typeof RemoteProjectAffinityInputSchema
+>;
+
+export const ProjectAffinityInputSchema = z.object({
+  roots: z.array(ProjectAffinityRootSchema).max(16).default([]),
+});
+export type ProjectAffinityInput = z.infer<typeof ProjectAffinityInputSchema>;
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Context Schema
 // ─────────────────────────────────────────────────────────────────────────────
 
