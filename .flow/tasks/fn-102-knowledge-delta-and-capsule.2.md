@@ -32,9 +32,8 @@ Deliver compute source heading link and typed-edge deltas during sync as one imp
 
 
 ## Done summary
-TBD
-
+Added deterministic bounded structural snapshots and journal deltas for headings, links, typed relationships, dates, and hash transitions during transactional sync. Concurrent same-generation writes coalesce, missing prior mirror history is disclosed as truncated, and no source bodies enter the journal.
 ## Evidence
-- Commits:
-- Tests:
+- Commits: 04b3b6f4aba03e6e88ae1a92fc351e74115df13f
+- Tests: bun test test/ingestion/change-delta.test.ts test/ingestion/sync-links.test.ts test/ingestion/sync-incremental.test.ts test/store/change-journal.test.ts, bun test test/store/change-journal* test/changes, bun test, bun run lint:check, .flow/bin/flowctl validate --spec fn-102-knowledge-delta-and-capsule --json
 - PRs:
