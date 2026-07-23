@@ -96,8 +96,13 @@ gno daemon --status --json
 ## Retrieval Order
 
 For normal questions, start with `gno_query`, then read targeted snippets with
-`gno_get` or batch refs with `gno_multi_get`. Pass `graph: true` only when
-linked context is worth the extra latency. Check `gno_status` first when freshness or
+`gno_get` or batch refs with `gno_multi_get`. Use `gno_context` for one bounded,
+exact evidence handoff. Use `gno_ask` only when a local closed-evidence answer
+is specifically useful, and pass the literal boolean `verify: true`; it
+abstains unless every substantive claim is supported. This is a support
+classification against the retained Capsule, not a guarantee that the corpus
+is complete or its sources are true. Pass `graph: true` only when linked context
+is worth the extra latency. Check `gno_status` first when freshness or
 embeddings may be stale. Use `gno_query_diagnose` when a known target document
 should have appeared but did not.
 

@@ -284,6 +284,7 @@ export interface TaskScore {
   completed: boolean;
   supportedClaims: string[];
   unsupportedClaims: string[];
+  unsupportedSubstantiveClaims: string[];
   missingRequiredClaims: string[];
   forbiddenEvidenceClaims: string[];
   invalidOutputs: string[];
@@ -339,6 +340,9 @@ export interface PromotionGateResult {
     agentCallReduction: number | null;
     contextByteReduction: number | null;
     claimLinkageRate: number | null;
+    baselineUnsupportedClaims: number | null;
+    candidateUnsupportedClaims: number | null;
+    unsupportedClaimReduction: number | null;
   };
 }
 

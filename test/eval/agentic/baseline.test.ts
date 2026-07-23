@@ -141,7 +141,30 @@ describe("committed authoritative agentic baseline", () => {
         agentCallReduction: 0.4893617021276596,
         contextByteReduction: 0.4412024014442252,
         claimLinkageRate: 1,
+        baselineUnsupportedClaims: 2,
+        candidateUnsupportedClaims: 0,
+        unsupportedClaimReduction: 1,
       },
+    });
+    const claimTotals = (adapterId: string) =>
+      report.scores
+        .filter((record) => record.adapterId === adapterId)
+        .reduce(
+          (totals, record) => ({
+            substantive: totals.substantive + record.score.substantiveClaims,
+            unsupported:
+              totals.unsupported +
+              record.score.unsupportedSubstantiveClaims.length,
+          }),
+          { substantive: 0, unsupported: 0 }
+        );
+    expect(claimTotals("gno-mcp")).toEqual({
+      substantive: 44,
+      unsupported: 2,
+    });
+    expect(claimTotals("capsule")).toEqual({
+      substantive: 44,
+      unsupported: 0,
     });
   });
 

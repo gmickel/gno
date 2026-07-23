@@ -94,7 +94,7 @@ gno daemon --detach  # headless continuous indexing (background; --status / --st
 
 <!-- public-truth:current-version -->
 
-> Current release: **v1.18.0** — see [CHANGELOG.md](./CHANGELOG.md)
+> Current release: **v1.19.0** — see [CHANGELOG.md](./CHANGELOG.md)
 
 <!-- /public-truth -->
 
@@ -553,9 +553,9 @@ Connect GNO to Claude Desktop, Cursor, Raycast, and more:
 
 ![GNO MCP](./assets/screenshots/mcp.jpg)
 
-GNO exposes 21 tools by default via [Model Context Protocol](https://modelcontextprotocol.io),
+GNO exposes 22 tools by default via [Model Context Protocol](https://modelcontextprotocol.io),
 including the core retrieval tools below. Starting MCP with `--enable-write`
-adds 15 opt-in mutation tools, for 36 total.
+adds 15 opt-in mutation tools, for 37 total.
 
 | Tool                 | Description                           |
 | :------------------- | :------------------------------------ |
@@ -564,6 +564,7 @@ adds 15 opt-in mutation tools, for 36 total.
 | `gno_query`          | Hybrid search (recommended)           |
 | `gno_context`        | Budgeted exact evidence Capsule       |
 | `gno_context_verify` | Verify saved Capsule provenance       |
+| `gno_ask`            | Opt-in closed-Capsule verified answer |
 | `gno_get`            | Retrieve document by ID               |
 | `gno_multi_get`      | Batch document retrieval              |
 | `gno_links`          | Get outgoing links from document      |
@@ -574,9 +575,13 @@ adds 15 opt-in mutation tools, for 36 total.
 | `gno_trace_list`     | List private local retrieval receipts |
 | `gno_trace_show`     | Inspect one bounded trace receipt     |
 
-**Design**: Default MCP mode is read-only: retrieval, graph, status, and job
-inspection. Your AI assistant synthesizes answers from retrieved context. Write
-tools are available only through the explicit `--enable-write` opt-in.
+**Design**: Default MCP mode is read-only: retrieval, opt-in verified synthesis,
+graph, status, and job inspection. Raw retrieval tools leave synthesis to your
+AI assistant. `gno_ask` runs only when the caller sends literal `verify: true`;
+it verifies claims against one closed Capsule and abstains unless every
+substantive claim is supported. That classification is not a general factual
+guarantee beyond the retained evidence. Write tools remain available only
+through the explicit `--enable-write` opt-in.
 
 `gno serve` and `gno daemon` also expose this surface as stateful Streamable
 HTTP at `http://127.0.0.1:3000/mcp`. HTTP stays read-only by default.
@@ -845,7 +850,7 @@ graph TD
 | **Local LLM**        | AI answers via llama.cpp, no API keys                                          |
 | **Remote Inference** | Optional HTTP endpoints for embedding, reranking, expansion, and generation    |
 | **Privacy First**    | Local by default; no telemetry; network use is explicit or model provisioning  |
-| **MCP Server**       | 10 automatic client targets; 19 read-only tools, 30 with writes enabled        |
+| **MCP Server**       | 10 automatic client targets; 22 read-only tools, 37 with writes enabled        |
 | **Collections**      | Organize sources with patterns, excludes, contexts                             |
 | **Tag Filtering**    | Frontmatter tags with hierarchical paths, filter via `--tags-any`/`--tags-all` |
 | **Note Linking**     | Wiki links, backlinks, related notes, cross-collection navigation              |

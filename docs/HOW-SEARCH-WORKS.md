@@ -227,6 +227,32 @@ Combines BM25 + vector + expansion + reranking. Best for:
 gno query "best practices for error handling"
 ```
 
+## Verified Synthesis
+
+`gno ask "<goal>" --verify` adds a closed-evidence synthesis stage after
+retrieval. It is opt-in and distinct from both ranked retrieval and the existing
+`--answer` path:
+
+1. Hybrid retrieval compiles a deterministic Context Capsule under one global
+   token and byte budget.
+2. Generation receives only the retained Capsule sections, with indexed content
+   isolated as untrusted data.
+3. Deterministic checks reject malformed citations, out-of-Capsule evidence,
+   source/mirror freshness mismatches, and missing or stale evidence.
+4. A bounded semantic verifier classifies each substantive claim as
+   `supported`, `contradicted`, `insufficient`, or `uncertain`.
+5. The answer is released only at 100% substantive-claim support coverage.
+   Otherwise GNO withholds it and returns an explicit abstention.
+
+Semantic verification fails closed: unavailable, incapable, failed, or
+malformed verifier output leaves claims uncertain and forces abstention. Exact
+evidence IDs, URIs, and line spans remain in the structured result.
+
+This is a claim-support classification against one retained Capsule, not a
+general factual guarantee. It cannot establish corpus completeness or source
+truth, and it never silently expands beyond the closed evidence after
+generation.
+
 ## Score Normalization
 
 All scores are normalized to **[0.0 - 1.0]** range where 1.0 is the best match. This makes scores comparable within a result set.

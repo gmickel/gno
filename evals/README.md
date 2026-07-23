@@ -87,6 +87,11 @@ See [scores.md](scores.md) for latest results. Updated automatically by `bun run
   The measured agent-visible envelope contains that MCP text once and excludes
   the full application-only `structuredContent`. A host that exposes both must
   charge both and is outside this promotion claim.
+- Capsule promotion requires no pairwise or aggregate task-accuracy loss and a
+  strict reduction in unsupported substantive claims. Reports expose both
+  counts and the reduction; a missing/mismatched paired cohort or zero baseline
+  denominator is explicitly unavailable/non-comparable, never presented as an
+  improvement.
 - `--adapter`, `--task`, and `--lifecycle` accept unique CSV filters;
   `--agent fixture|local-model` selects the one-trial deterministic or pinned
   three-trial cached-model lane. `--timeout-ms` bounds lifecycle operations.

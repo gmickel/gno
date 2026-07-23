@@ -232,6 +232,12 @@ per-claim verdicts, exact `gno://` line spans, evidence IDs, gaps, and cited
 sources. Capability degradation comes from the Capsule's
 requested/attempted/outcome states.
 
+Verification is a closed-Capsule support classification, not a factual
+guarantee. It does not assert that the indexed corpus is complete or that source
+statements are true. Unavailable, incapable, failed, or malformed semantic
+verification cannot produce support; unresolved substantive claims remain
+uncertain and force abstention.
+
 The server-owned effective index is used for both Capsule compilation and
 freshness verification. One Ask-owned trace covers retrieval, Context,
 generation, verification, and exact retained citations. The trace ID remains

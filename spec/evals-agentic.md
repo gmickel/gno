@@ -455,6 +455,19 @@ Claim linkage is:
 linkedSupportedClaims_capsule / substantiveClaims_capsule >= 0.95
 ```
 
+Unsupported substantive claims must strictly decrease on a comparable paired
+cohort:
+
+```text
+unsupportedClaims_capsule < unsupportedClaims_gno
+1 - unsupportedClaims_capsule / unsupportedClaims_gno
+```
+
+The report records both counts and the reduction. A missing paired baseline,
+an identity mismatch, or a zero unsupported-claim baseline makes this reduction
+unavailable/non-comparable; GNO reports that state rather than fabricating an
+improvement.
+
 All denominators must be non-zero. Abstention-only tasks use their completion
 predicate and do not fabricate substantive claims. Every fixture-agent Capsule
 task must also emit byte-identical canonical Capsule payload JSON and matching

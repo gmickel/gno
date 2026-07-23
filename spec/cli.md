@@ -1005,6 +1005,11 @@ Notes:
   degradation. With `--show-sources`, both formats list every retained Capsule
   evidence span with its exact URI and line range. JSON remains the canonical
   machine contract.
+- Verification classifies support only against the closed Capsule and its
+  freshness receipt. It does not guarantee corpus completeness or source truth.
+  An unavailable, incapable, failed, or malformed semantic verifier cannot mark
+  claims supported; unresolved substantive claims remain uncertain and force
+  abstention.
 - Verified retrieval records the normalized request and requested/attempted
   capability states in its Capsule. The active `--index` value is host-owned
   and used for both compilation and freshness verification.
@@ -1024,6 +1029,7 @@ Notes:
 ```bash
 gno ask "how do we deploy to staging"
 gno ask "termination clause" --collection work --answer
+gno ask "who owns launch?" --verify --show-sources
 ```
 
 ---

@@ -103,9 +103,18 @@ export const renderBenchmarkMarkdown = (report: BenchmarkReport): string => {
   ];
   if (!promotion) {
     lines.push(
-      "Not evaluated: report does not contain both gno-mcp and capsule."
+      "Unavailable/non-comparable baseline: report does not contain both gno-mcp and capsule paired cohorts; no unsupported-claim reduction is claimed."
     );
   } else {
+    const unsupportedClaims =
+      promotion.metrics.baselineUnsupportedClaims === null ||
+      promotion.metrics.candidateUnsupportedClaims === null
+        ? "unavailable/non-comparable"
+        : `${promotion.metrics.baselineUnsupportedClaims} / ${promotion.metrics.candidateUnsupportedClaims}`;
+    const unsupportedReduction =
+      promotion.metrics.unsupportedClaimReduction === null
+        ? "unavailable/non-comparable"
+        : String(promotion.metrics.unsupportedClaimReduction);
     lines.push(
       `Verdict: **${promotion.passed ? "PASS" : "FAIL"}**`,
       `Pairs: ${promotion.pairCount}`,
@@ -113,6 +122,8 @@ export const renderBenchmarkMarkdown = (report: BenchmarkReport): string => {
       `Agent-call reduction: ${String(promotion.metrics.agentCallReduction)}`,
       `Context-byte reduction: ${String(promotion.metrics.contextByteReduction)}`,
       `Claim linkage: ${String(promotion.metrics.claimLinkageRate)}`,
+      `Unsupported substantive claims (baseline/Capsule): ${unsupportedClaims}`,
+      `Unsupported substantive-claim reduction: ${unsupportedReduction}`,
       `Failures: ${promotion.failures.length > 0 ? promotion.failures.join(", ") : "none"}`
     );
   }

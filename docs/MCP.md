@@ -15,19 +15,27 @@ Use GNO as a local MCP server for Claude Desktop, Cursor, Zed, Windsurf, Amp, Ra
 ## Overview
 
 MCP (Model Context Protocol) allows AI assistants to access external tools and
-resources. GNO registers 21 tools in default read-only mode and 36 when writes
+resources. GNO registers 22 tools in default read-only mode and 37 when writes
 are explicitly enabled:
 
-- **Tools (read)**: gno_context, gno_context_verify, gno_search, gno_vsearch, gno_query, gno_query_diagnose, gno_get, gno_multi_get, gno_status, gno_trace_list, gno_trace_show, gno_list_tags, gno_links, gno_backlinks, gno_similar, gno_graph, gno_graph_query, gno_graph_neighbors, gno_graph_path
+- **Tools (read)**: gno_context, gno_context_verify, gno_ask, gno_search, gno_vsearch, gno_query, gno_query_diagnose, gno_get, gno_multi_get, gno_status, gno_trace_list, gno_trace_show, gno_list_tags, gno_links, gno_backlinks, gno_similar, gno_graph, gno_graph_query, gno_graph_neighbors, gno_graph_path
 - **Tools (write, opt-in)**: gno_trace_label, gno_trace_export, gno_trace_delete, gno_trace_purge, gno_capture, gno_add_collection, gno_sync, gno_embed, gno_index, gno_remove_collection, gno_clear_collection_embeddings, gno_create_folder, gno_rename_note, gno_move_note, gno_duplicate_note
 - **Tools (jobs)**: gno_job_status, gno_list_jobs
 - **Resources**: Access documents via `gno://collection/path`
 
-## Design: Retrieval-Focused
+## Design: Retrieval First, Verified Synthesis by Explicit Opt-In
 
-GNO's MCP tools are **retrieval-focused**. The MCP server returns search results and document content; the client LLM synthesizes answers. Write tools enable collection management but do not perform answer synthesis.
+GNO's raw MCP tools remain **retrieval-focused**: they return search results,
+exact evidence, and document content for the client LLM to synthesize.
+`gno_ask` is the one explicit synthesis surface. It rejects calls unless
+`verify` is the literal boolean `true`, builds a closed Context Capsule,
+generates against only that retained evidence, classifies every substantive
+claim, and abstains unless support coverage is 100%. Write tools enable
+collection management but do not perform synthesis.
 
-**Why?** Claude, Codex, and other AI agents use much more powerful models. Having GNO call a separate (likely smaller) LLM to synthesize answers would be:
+**Why keep raw retrieval primary?** Claude, Codex, and other AI agents may use
+more capable models and need direct control over evidence selection. An
+additional local synthesis call can be:
 
 - Slower (extra LLM call)
 - Lower quality (local models < Claude/GPT-4)
@@ -36,9 +44,14 @@ GNO's MCP tools are **retrieval-focused**. The MCP server returns search results
 **Intended workflow:**
 
 1. Client LLM uses `gno_context` for one bounded evidence handoff, or
-   `gno_query` plus bounded reads for manual retrieval
-2. Client LLM synthesizes the answer from retrieved context
-3. Result: Best retrieval (GNO) + best synthesis (Claude/Codex)
+   `gno_query` plus bounded reads for manual retrieval.
+2. Client LLM synthesizes directly, or calls `gno_ask` with literal
+   `verify: true` when it needs a closed-evidence verification contract.
+3. The caller retains exact evidence spans and explicit gaps either way.
+
+Verified synthesis classifies support against one Capsule and its recorded
+freshness state. It does not prove that the retained corpus is complete, that
+the sources are true, or that a supported claim is universally factual.
 
 ## Agent Retrieval Playbook
 
@@ -69,20 +82,21 @@ snippets, and line anchors for follow-up retrieval.
 
 Use the narrower tools when the request is explicit:
 
-| Tool                 | Use When                                                                        | Follow-up                                         |
-| -------------------- | ------------------------------------------------------------------------------- | ------------------------------------------------- |
-| `gno_context`        | One deterministic, token-budgeted evidence bundle for an agent goal             | Cite exact evidence spans; state unresolved gaps  |
-| `gno_context_verify` | Reusing a saved Capsule after sources or runtime configuration may have changed | Rebuild only when the receipt reports drift       |
-| `gno_search`         | Exact phrases, filenames, identifiers, error messages, known symbols            | `gno_get` around result `line`                    |
-| `gno_vsearch`        | Conceptual similarity where exact wording may differ                            | `gno_get` or `gno_multi_get` top results          |
-| `gno_query`          | Default choice; mixed lexical + semantic + reranked retrieval                   | `gno_multi_get` for top URIs                      |
-| `gno_query_diagnose` | Important target doc is missing or you need stage-by-stage retrieval evidence   | Adjust filters/query mode, then retry `gno_query` |
-| `gno_get`            | One known `gno://` URI, `#docid`, or `collection/path`                          | Use `fromLine` + `lineCount` first                |
-| `gno_multi_get`      | Batch several top result refs or glob-matched docs                              | Keep `maxBytes` bounded                           |
-| `gno_status`         | Results look stale, vector search fails, or embeddings may be missing           | Run write-enabled `gno_index` or `gno_embed`      |
+| Tool                 | Use When                                                                        | Follow-up                                           |
+| -------------------- | ------------------------------------------------------------------------------- | --------------------------------------------------- |
+| `gno_context`        | One deterministic, token-budgeted evidence bundle for an agent goal             | Cite exact evidence spans; state unresolved gaps    |
+| `gno_context_verify` | Reusing a saved Capsule after sources or runtime configuration may have changed | Rebuild only when the receipt reports drift         |
+| `gno_ask`            | A local answer whose claims must be classified against one closed Capsule       | Send literal `verify: true`; retain gaps/abstention |
+| `gno_search`         | Exact phrases, filenames, identifiers, error messages, known symbols            | `gno_get` around result `line`                      |
+| `gno_vsearch`        | Conceptual similarity where exact wording may differ                            | `gno_get` or `gno_multi_get` top results            |
+| `gno_query`          | Default choice; mixed lexical + semantic + reranked retrieval                   | `gno_multi_get` for top URIs                        |
+| `gno_query_diagnose` | Important target doc is missing or you need stage-by-stage retrieval evidence   | Adjust filters/query mode, then retry `gno_query`   |
+| `gno_get`            | One known `gno://` URI, `#docid`, or `collection/path`                          | Use `fromLine` + `lineCount` first                  |
+| `gno_multi_get`      | Batch several top result refs or glob-matched docs                              | Keep `maxBytes` bounded                             |
+| `gno_status`         | Results look stale, vector search fails, or embeddings may be missing           | Run write-enabled `gno_index` or `gno_embed`        |
 
 With private retrieval tracing enabled, `gno_search`, `gno_vsearch`,
-`gno_query`, `gno_get`, and `gno_context` return the random receipt identity in
+`gno_query`, `gno_get`, `gno_context`, and `gno_ask` return the random receipt identity in
 top-level `_meta.gno.retrievalTrace.traceId`. Model-visible content and
 `structuredContent` stay unchanged. Pass that value as optional `traceId` to
 `gno_get` to link the exact opened line range to the original retrieval.
@@ -161,9 +175,9 @@ gno mcp --enable-write
 GNO_MCP_ENABLE_WRITE=1 gno mcp
 ```
 
-Without this flag, the 21 read-only retrieval, trace, graph, status, and
+Without this flag, the 22 read-only retrieval, verified-synthesis, trace, graph, status, and
 job-inspection tools are available. Enabling writes adds 15 mutation tools, for
-36 total.
+37 total.
 
 ### Collection Root Validation
 
@@ -1376,7 +1390,8 @@ Resource format:
 ## Clarifications
 
 - MCP loads embedding/rerank models for search tools
-- MCP does NOT do answer synthesis
+- Raw MCP retrieval tools do not synthesize answers; `gno_ask` does only with
+  literal `verify: true` and abstains below complete substantive-claim support
 - Collection names are case-insensitive
 - Search tools support `tagsAll`/`tagsAny` for filtering
 

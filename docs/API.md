@@ -2199,6 +2199,9 @@ Get an AI-generated answer with citations from your documents.
   "category": "backend,notes",
   "author": "gordon",
   "maxAnswerTokens": 512,
+  "verify": true,
+  "contextBudgetTokens": 12000,
+  "contextBudgetBytes": 48000,
   "noExpand": false,
   "noRerank": false,
   "tagsAll": "backend",
@@ -2206,29 +2209,42 @@ Get an AI-generated answer with citations from your documents.
 }
 ```
 
-| Field             | Type    | Default | Description                                                                       |
-| :---------------- | :------ | :------ | :-------------------------------------------------------------------------------- |
-| `query`           | string  | —       | Question (required)                                                               |
-| `limit`           | number  | 5       | Number of sources to consider (max 20)                                            |
-| `collection`      | string  | —       | Filter by collection                                                              |
-| `lang`            | string  | auto    | Query language hint                                                               |
-| `intent`          | string  | —       | Disambiguating context for ambiguous questions without searching on that text     |
-| `candidateLimit`  | number  | 20      | Max candidates sent to reranking (max 100)                                        |
-| `exclude`         | string  | —       | Comma-separated exclusion terms; matching docs are hard-pruned by title/path/body |
-| `queryModes`      | array   | —       | Optional structured mode entries (`term`, `intent`, `hyde`)                       |
-| `since`           | string  | —       | Modified-at lower bound (ISO date/time or token)                                  |
-| `until`           | string  | —       | Modified-at upper bound (ISO date/time or token)                                  |
-| `category`        | string  | —       | Comma-separated category/content-type filters (ANY match)                         |
-| `author`          | string  | —       | Author contains value (case-insensitive)                                          |
-| `maxAnswerTokens` | number  | 512     | Max tokens in answer                                                              |
-| `noExpand`        | boolean | false   | Disable query expansion                                                           |
-| `noRerank`        | boolean | false   | Disable cross-encoder reranking                                                   |
-| `tagsAll`         | string  | —       | Comma-separated tags (must have ALL)                                              |
-| `tagsAny`         | string  | —       | Comma-separated tags (must have ANY)                                              |
+| Field                 | Type    | Default | Description                                                                       |
+| :-------------------- | :------ | :------ | :-------------------------------------------------------------------------------- |
+| `query`               | string  | —       | Question (required)                                                               |
+| `limit`               | number  | 5       | Number of sources to consider (max 20)                                            |
+| `collection`          | string  | —       | Filter by collection                                                              |
+| `lang`                | string  | auto    | Query language hint                                                               |
+| `intent`              | string  | —       | Disambiguating context for ambiguous questions without searching on that text     |
+| `candidateLimit`      | number  | 20      | Max candidates sent to reranking (max 100)                                        |
+| `exclude`             | string  | —       | Comma-separated exclusion terms; matching docs are hard-pruned by title/path/body |
+| `queryModes`          | array   | —       | Optional structured mode entries (`term`, `intent`, `hyde`)                       |
+| `since`               | string  | —       | Modified-at lower bound (ISO date/time or token)                                  |
+| `until`               | string  | —       | Modified-at upper bound (ISO date/time or token)                                  |
+| `category`            | string  | —       | Comma-separated category/content-type filters (ANY match)                         |
+| `author`              | string  | —       | Author contains value (case-insensitive)                                          |
+| `maxAnswerTokens`     | number  | 512     | Max tokens in answer                                                              |
+| `verify`              | boolean | false   | Build a closed Capsule and abstain unless every substantive claim is supported    |
+| `contextBudgetTokens` | number  | preset  | Verified Capsule token budget                                                     |
+| `contextBudgetBytes`  | number  | preset  | Verified Capsule byte budget                                                      |
+| `noExpand`            | boolean | false   | Disable query expansion                                                           |
+| `noRerank`            | boolean | false   | Disable cross-encoder reranking                                                   |
+| `tagsAll`             | string  | —       | Comma-separated tags (must have ALL)                                              |
+| `tagsAny`             | string  | —       | Comma-separated tags (must have ANY)                                              |
 
 **Compatibility notes:**
 
 - Existing `/api/ask` payloads remain valid.
+- `verify: true` is explicit opt-in. It generates only from a closed Context
+  Capsule and returns a verified answer only at 100% substantive-claim support;
+  otherwise `answer` is withheld and `verification.claims.abstained` is true.
+- Verified responses include the canonical Capsule, freshness receipt,
+  four-state claim verdicts, exact evidence IDs and line spans, coverage, gaps,
+  semantic verifier state, and explicit abstention under `verification`.
+- An unavailable, incapable, failed, or malformed semantic verifier fails
+  closed: unresolved claims remain uncertain and the answer abstains.
+- Verification classifies support against the retained Capsule. It does not
+  guarantee corpus completeness or source truth.
 - `queryModes` is optional and only needed for explicit retrieval steering during Q&A.
 - If `queryModes` is provided, generated expansion is skipped and provided entries are used directly.
 - `query` can also be a multi-line structured query document using `term:`, `intent:`, and `hyde:` lines. See [Structured Query Syntax](./SYNTAX.md).

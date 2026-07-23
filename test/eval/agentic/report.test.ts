@@ -7,6 +7,7 @@ import {
   benchmarkCanonicalProjection,
   buildBenchmarkReport,
 } from "../../../evals/agentic/report";
+import { renderBenchmarkMarkdown } from "../../../evals/agentic/report-artifacts";
 import { runAgenticBenchmark } from "../../../evals/agentic/runner";
 import { validateAgenticSchema } from "../../../evals/agentic/validation";
 
@@ -60,6 +61,12 @@ describe("agentic benchmark reports", () => {
       agentId: "fixture-agent-v1",
     });
     expect(report.promotion).toBeNull();
+    expect(renderBenchmarkMarkdown(report)).toContain(
+      "Unavailable/non-comparable baseline"
+    );
+    expect(renderBenchmarkMarkdown(report)).toContain(
+      "no unsupported-claim reduction is claimed"
+    );
   });
 
   test("canonical projection excludes receipt observations only", async () => {

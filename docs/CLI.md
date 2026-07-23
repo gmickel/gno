@@ -314,7 +314,9 @@ Search and optionally generate an AI answer. Combines retrieval with optional LL
 ```bash
 gno ask "what is the project goal"
 gno ask "summarize the auth discussion" --answer
+gno ask "summarize the auth discussion" --verify
 gno ask "explain the auth flow" --answer --show-sources
+gno ask "explain the auth flow" --verify --show-sources
 gno ask "quick lookup" --fast            # Fastest retrieval
 gno ask "complex topic" --thorough       # Best recall
 gno ask "performance" --intent "web latency and vitals"
@@ -325,6 +327,26 @@ gno ask $'term: web performance budgets\nintent: latency and vitals' --no-answer
 **Full-document context**: When `--answer` is used, GNO passes complete document content to the generation model, not truncated snippets. This ensures the LLM sees tables, code examples, and full context needed for accurate answers.
 
 **Adaptive source selection**: `gno ask --answer` picks context sources using relevance + query coverage + facet coverage (instead of fixed top-N). Comparison queries (`vs`, `compare`, `difference`) force at least two competing sources when available.
+
+**Verified synthesis**: `gno ask --verify` is an explicit closed-evidence mode.
+It builds one token- and byte-budgeted Context Capsule, generates only from
+retained Capsule sections, and classifies every substantive claim as
+`supported`, `contradicted`, `insufficient`, or `uncertain`. GNO returns a
+verified answer only when substantive-claim support coverage is exactly 100%;
+otherwise it withholds the answer and reports abstention. Citations retain exact
+Capsule evidence IDs, URIs, and line spans. `--show-sources` lists the Capsule
+evidence used by the verifier.
+
+The semantic verifier fails closed. An unavailable, incapable, failed, or
+malformed verifier cannot turn a claim into supported evidence; unresolved
+claims become uncertain and the answer abstains. Verified synthesis also checks
+the retained evidence's source and mirror freshness before trusting a support
+judgment.
+
+`--verify` is a support classification against one closed Capsule, not a
+general factual guarantee. It cannot prove that the corpus is complete or that
+the underlying sources are true. Plain `gno ask`, `--no-answer`, and the
+existing `--answer` full-document workflow remain compatible and unchanged.
 
 **Configured guidance**: Structured `search`, `vsearch`, `query`, and `ask`
 results may include `context`. It contains matching user configuration ordered
@@ -344,8 +366,11 @@ Options:
 - Multi-line structured query documents are also supported. See [Structured Query Syntax](./SYNTAX.md).
 - `-C, --candidate-limit <n>` - Max candidates passed to reranking (default: 20)
 - `--answer` - Generate grounded AI answer (requires gen model)
+- `--verify` - Generate against a closed Capsule and abstain unless every substantive claim is supported
 - `--no-answer` - Force retrieval-only output
 - `--max-answer-tokens <n>` - Limit answer length
+- `--context-budget-tokens <n>` - Verified Capsule token budget
+- `--context-budget-bytes <n>` - Verified Capsule byte budget
 - `--show-sources` - Show all retrieved sources, not just cited ones
 - `-n, --limit <n>` - Max source results
 - `--since <date>` - Modified-at lower bound (ISO date/time or token)

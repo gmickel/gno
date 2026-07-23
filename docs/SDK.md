@@ -144,6 +144,16 @@ const answered = await client.ask("What is our auth flow?", {
   answer: true,
 });
 
+const verified = await client.ask("Who owns the launch decision?", {
+  verify: true,
+  contextBudgetTokens: 12_000,
+  contextBudgetBytes: 48_000,
+});
+console.log(
+  verified.verification?.claims.answerStatus,
+  verified.verification?.claims.coverage
+);
+
 const retrievalOnlyStructured = await client.ask(
   "term: web performance budgets\\nintent: latency and vitals",
   {
@@ -153,6 +163,20 @@ const retrievalOnlyStructured = await client.ask(
   }
 );
 ```
+
+`verify: true` is explicit closed-evidence synthesis. The SDK builds one Context
+Capsule, generates only from its retained sections, verifies source/mirror
+freshness, and classifies each substantive claim as `supported`,
+`contradicted`, `insufficient`, or `uncertain`. The draft is returned only at
+100% substantive-claim support; otherwise `answer` is withheld and the result
+records abstention. An unavailable, incapable, failed, or malformed semantic
+verifier fails closed.
+
+Verified Ask preserves the Capsule, exact evidence IDs/URIs/line spans,
+freshness receipt, coverage, gaps, and semantic capability state under
+`verification`. This is a support classification against the retained Capsule,
+not a guarantee of corpus completeness or source truth. Existing retrieval-only
+and `answer: true` calls remain compatible.
 
 ### Vector Search
 

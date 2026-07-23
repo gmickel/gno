@@ -147,6 +147,7 @@ const invalidScore = (
   completed: false,
   supportedClaims: [],
   unsupportedClaims: [],
+  unsupportedSubstantiveClaims: [],
   missingRequiredClaims: task.claims
     .filter((claim) => claim.required)
     .map((claim) => claim.claimKey),
@@ -195,6 +196,7 @@ export const scoreTrajectory = (
   ];
   const supportedClaims: string[] = [];
   const unsupportedClaims: string[] = [];
+  const unsupportedSubstantiveClaims: string[] = [];
   const forbiddenEvidenceClaims: string[] = [];
   const missingRequiredClaims: string[] = [];
   let linkedSupportedClaims = 0;
@@ -241,6 +243,9 @@ export const scoreTrajectory = (
       }
     } else {
       unsupportedClaims.push(oracleClaim.claimKey);
+      if (definition.substantive) {
+        unsupportedSubstantiveClaims.push(oracleClaim.claimKey);
+      }
     }
   }
 
@@ -315,6 +320,7 @@ export const scoreTrajectory = (
     completed,
     supportedClaims,
     unsupportedClaims,
+    unsupportedSubstantiveClaims,
     missingRequiredClaims,
     forbiddenEvidenceClaims,
     invalidOutputs,
