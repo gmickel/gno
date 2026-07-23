@@ -1,0 +1,962 @@
+{
+  "schemaVersion": "1.0",
+  "demoId": "context-capsule-demo@1",
+  "sourceBenchmark": {
+    "benchmarkId": "agentic-retrieval@1",
+    "canonicalFingerprint": "ce05f9d8d3dfc4dbd80a97a34881f464453a8445178a68a812a69d3171910566",
+    "fixtureFingerprint": "68027bb0248c09507dbdba9d8cf2433f1b9b7b547ba5db8811db338982f9d08b",
+    "immutableGitCommit": "3c8ac2c76ff04346b2a8d9f2deaa8354406595fb",
+    "reportPath": "evals/fixtures/agentic-retrieval/baseline/fixture-agent/report.json"
+  },
+  "frozenInput": {
+    "task": {
+      "schemaVersion": "1.0",
+      "taskId": "t0a1b2c3",
+      "category": "exact_identifier",
+      "brief": {
+        "goal": "Find the incident identifier assigned to the failed north gateway deployment.",
+        "instructions": [
+          "Return only the declared structured claims or gaps.",
+          "Cite exact evidence spans and abstain when required evidence is absent."
+        ]
+      },
+      "claims": [
+        {
+          "claimKey": "incidentId",
+          "valueType": "identifier",
+          "substantive": true,
+          "required": true
+        }
+      ],
+      "allowedTools": ["search", "get", "multi_get"],
+      "budgets": {
+        "maxAgentCalls": 3,
+        "maxModelVisibleBytes": 12000
+      },
+      "corpus": {
+        "collections": ["c001"]
+      }
+    },
+    "expected": {
+      "claimKey": "incidentId",
+      "value": {
+        "type": "identifier",
+        "value": "INC-4827"
+      },
+      "evidence": [
+        {
+          "uri": "gno://c001/d001.md",
+          "sourceHash": "f02c60996c5114f6ceb2f7cbfc96094f7a8df034ffd1bb62dfb841fba37099aa",
+          "startLine": 3,
+          "endLine": 3,
+          "spanHash": "db94cbe64c5c6c10d582eff7ff7d18fd2410bcbe8bbb1af42281bbfb7d69f320",
+          "sourceHashProvenance": "harness_observed",
+          "spanHashProvenance": "harness_observed"
+        }
+      ]
+    },
+    "environment": {
+      "agentId": "fixture-agent-v1",
+      "architecture": "arm64",
+      "bunVersion": "1.3.5",
+      "fixtureVersion": "2026-07-22.1",
+      "git": {
+        "commit": "3c8ac2c76ff04346b2a8d9f2deaa8354406595fb",
+        "dirty": false,
+        "unavailableReason": null
+      },
+      "packageVersion": "1.19.0",
+      "platform": "darwin",
+      "trials": [
+        {
+          "seed": 0,
+          "trialId": "fixture-01"
+        }
+      ]
+    },
+    "lifecycle": "cold",
+    "sharedFingerprints": {
+      "corpus": "68027bb0248c09507dbdba9d8cf2433f1b9b7b547ba5db8811db338982f9d08b",
+      "prompt": "23223825ac5c619622506cbbeb9f2be7e0ac11b85d45a2cb47b2d3171f9717b9",
+      "tools": "962605265a83834284686f2f41838c358bd1c2d67632efcdfb0897abdb58f484",
+      "model": "92815c3fa6427900bc6c79dce30c89b8df2f6c8509ea0975e8c5b35f6d948c90",
+      "runtime": "22a187520e286d27564996d0ed8295808984fe97187200f394125133b59b47e0",
+      "index": "9c4a65f08850a70ff6d2ec6fe069b4cd38c9cbf3481583afd76a74264cf0591a"
+    }
+  },
+  "methodology": [
+    "One frozen fixture task, outer agent, trial, seed, lifecycle, corpus, prompt, tool contract, model, runtime, and effective index are compared across all three lanes.",
+    "The lexical lane is the no-GNO retrieval baseline; current GNO uses shipped MCP query/get primitives; the Capsule lane uses the production model-visible Context Capsule projection.",
+    "Exact hidden-oracle values and source spans score the final structured envelope without an LLM judge.",
+    "UTF-8 bytes include each complete normalized model-visible tool-result envelope. Tokens remain unavailable because the run did not use one pinned comparable tokenizer.",
+    "End-to-end latency is reported only for the matching cold lifecycle on the recorded environment; preparation is outside the scored interval."
+  ],
+  "variance": {
+    "trialCount": 1,
+    "estimate": null,
+    "unavailableReason": "This deterministic demonstration has one frozen trial; it is not a statistical latency or quality estimate."
+  },
+  "limitations": [
+    "Controlled fixtures are regression evidence, not a representative workload claim.",
+    "Fixture-agent behavior is deterministic and narrower than a general model.",
+    "UTF-8 bytes are the primary context measure; tokens are null without one pinned tokenizer.",
+    "Latency is environment-specific and comparable only within a matching lifecycle.",
+    "qmd is optional, exact-revision pinned, and non-authoritative for Capsule promotion.",
+    "Capsule retrieval is a fixture prototype; its model-visible serializer and omission accounting are the production MCP contract.",
+    "This page reports one controlled exact-identifier task. It does not extrapolate general product superiority."
+  ],
+  "lanes": [
+    {
+      "adapterId": "lexical",
+      "label": "Lexical-only baseline",
+      "receipt": {
+        "canonical": {
+          "adapterId": "lexical",
+          "agentCalls": 2,
+          "agentId": "fixture-agent-v1",
+          "backendInvocations": 3,
+          "calls": [
+            {
+              "arguments": {
+                "collection": "c001",
+                "query": "incident identifier"
+              },
+              "backendInvocations": 1,
+              "callIndex": 0,
+              "deliveredToAgent": true,
+              "failureCode": null,
+              "measuredTokens": null,
+              "modelVisibleUtf8Bytes": 2301,
+              "result": {
+                "content": "{\"mode\":\"bm25\",\"query\":\"incident identifier\",\"results\":[{\"endLine\":4,\"score\":1,\"startLine\":1,\"uri\":\"gno://c001/d002.md\"},{\"endLine\":4,\"score\":0,\"startLine\":1,\"uri\":\"gno://c001/d001.md\"}]}",
+                "errorCode": null,
+                "evidence": [
+                  {
+                    "backendHashUnavailableReason": "production lexical results do not provide complete source/span hash pairs",
+                    "backendSourceHash": null,
+                    "backendSpanHash": null,
+                    "endLine": 1,
+                    "sourceHash": "e634f945db5853ac51e820ad6ec8830520e934ad032f745b472c31521ed7e44e",
+                    "sourceHashProvenance": "harness_observed",
+                    "spanHash": "5df1bc2b886064697028a795416148a545a17fd837a833ef3e4c3b2ef80ba3ef",
+                    "spanHashProvenance": "harness_observed",
+                    "startLine": 1,
+                    "text": "# Routine rollout",
+                    "uri": "gno://c001/d002.md"
+                  },
+                  {
+                    "backendHashUnavailableReason": "production lexical results do not provide complete source/span hash pairs",
+                    "backendSourceHash": null,
+                    "backendSpanHash": null,
+                    "endLine": 3,
+                    "sourceHash": "e634f945db5853ac51e820ad6ec8830520e934ad032f745b472c31521ed7e44e",
+                    "sourceHashProvenance": "harness_observed",
+                    "spanHash": "5660beda48754c2ff330d1664550b556da9d43fada081177099f5523bc27daba",
+                    "spanHashProvenance": "harness_observed",
+                    "startLine": 3,
+                    "text": "Incident identifier: INC-1042",
+                    "uri": "gno://c001/d002.md"
+                  },
+                  {
+                    "backendHashUnavailableReason": "production lexical results do not provide complete source/span hash pairs",
+                    "backendSourceHash": null,
+                    "backendSpanHash": null,
+                    "endLine": 4,
+                    "sourceHash": "e634f945db5853ac51e820ad6ec8830520e934ad032f745b472c31521ed7e44e",
+                    "sourceHashProvenance": "harness_observed",
+                    "spanHash": "a1c9df43f427dce8c111e33ad3c126bc163ece4c786cb8300ab3298c417d116c",
+                    "spanHashProvenance": "harness_observed",
+                    "startLine": 4,
+                    "text": "The south gateway rollout completed.",
+                    "uri": "gno://c001/d002.md"
+                  },
+                  {
+                    "backendHashUnavailableReason": "production lexical results do not provide complete source/span hash pairs",
+                    "backendSourceHash": null,
+                    "backendSpanHash": null,
+                    "endLine": 1,
+                    "sourceHash": "f02c60996c5114f6ceb2f7cbfc96094f7a8df034ffd1bb62dfb841fba37099aa",
+                    "sourceHashProvenance": "harness_observed",
+                    "spanHash": "6a80e8eb8a0e2ff17187c049cf8904a0cb75a57a219680dcae45963b3f483ecd",
+                    "spanHashProvenance": "harness_observed",
+                    "startLine": 1,
+                    "text": "# Deployment record",
+                    "uri": "gno://c001/d001.md"
+                  },
+                  {
+                    "backendHashUnavailableReason": "production lexical results do not provide complete source/span hash pairs",
+                    "backendSourceHash": null,
+                    "backendSpanHash": null,
+                    "endLine": 3,
+                    "sourceHash": "f02c60996c5114f6ceb2f7cbfc96094f7a8df034ffd1bb62dfb841fba37099aa",
+                    "sourceHashProvenance": "harness_observed",
+                    "spanHash": "db94cbe64c5c6c10d582eff7ff7d18fd2410bcbe8bbb1af42281bbfb7d69f320",
+                    "spanHashProvenance": "harness_observed",
+                    "startLine": 3,
+                    "text": "Incident identifier: INC-4827",
+                    "uri": "gno://c001/d001.md"
+                  },
+                  {
+                    "backendHashUnavailableReason": "production lexical results do not provide complete source/span hash pairs",
+                    "backendSourceHash": null,
+                    "backendSpanHash": null,
+                    "endLine": 4,
+                    "sourceHash": "f02c60996c5114f6ceb2f7cbfc96094f7a8df034ffd1bb62dfb841fba37099aa",
+                    "sourceHashProvenance": "harness_observed",
+                    "spanHash": "136acc379408c84f6a12a2ab6211bc26ef1d11b14409b5564082760cde9d15fc",
+                    "spanHashProvenance": "harness_observed",
+                    "startLine": 4,
+                    "text": "The north gateway failed during rollout.",
+                    "uri": "gno://c001/d001.md"
+                  }
+                ],
+                "resultRole": "candidates",
+                "status": "ok"
+              },
+              "tokenizerFingerprint": null,
+              "toolName": "search"
+            },
+            {
+              "arguments": {
+                "fromLine": 3,
+                "lineCount": 1,
+                "uri": "gno://c001/d002.md"
+              },
+              "backendInvocations": 2,
+              "callIndex": 1,
+              "deliveredToAgent": true,
+              "failureCode": null,
+              "measuredTokens": null,
+              "modelVisibleUtf8Bytes": 443,
+              "result": {
+                "content": "Incident identifier: INC-1042",
+                "errorCode": null,
+                "evidence": [
+                  {
+                    "backendHashUnavailableReason": "production document reads do not provide complete source/span hash pairs",
+                    "backendSourceHash": null,
+                    "backendSpanHash": null,
+                    "endLine": 3,
+                    "sourceHash": "e634f945db5853ac51e820ad6ec8830520e934ad032f745b472c31521ed7e44e",
+                    "sourceHashProvenance": "harness_observed",
+                    "spanHash": "5660beda48754c2ff330d1664550b556da9d43fada081177099f5523bc27daba",
+                    "spanHashProvenance": "harness_observed",
+                    "startLine": 3,
+                    "text": "Incident identifier: INC-1042",
+                    "uri": "gno://c001/d002.md"
+                  }
+                ],
+                "resultRole": "source",
+                "status": "ok"
+              },
+              "tokenizerFingerprint": null,
+              "toolName": "get"
+            }
+          ],
+          "capabilities": {
+            "backendHashes": "unsupported",
+            "backendInvocationAccounting": true,
+            "exactLineSpans": "supported",
+            "lifecycle": {
+              "cold": "supported",
+              "warm": "supported"
+            },
+            "measuredTokens": "unavailable",
+            "modelLoadTiming": false,
+            "startupTiming": true,
+            "toolTiming": true,
+            "tools": {
+              "get": "supported",
+              "multi_get": "supported",
+              "search": "supported"
+            }
+          },
+          "failure": {
+            "class": "none",
+            "code": null,
+            "redactedMessage": null
+          },
+          "finalEnvelope": {
+            "abstained": false,
+            "claims": [
+              {
+                "citations": [
+                  {
+                    "endLine": 3,
+                    "sourceHash": "e634f945db5853ac51e820ad6ec8830520e934ad032f745b472c31521ed7e44e",
+                    "sourceHashProvenance": "harness_observed",
+                    "spanHash": "5660beda48754c2ff330d1664550b556da9d43fada081177099f5523bc27daba",
+                    "spanHashProvenance": "harness_observed",
+                    "startLine": 3,
+                    "uri": "gno://c001/d002.md"
+                  }
+                ],
+                "claimKey": "incidentId",
+                "value": {
+                  "type": "identifier",
+                  "value": "INC-1042"
+                }
+              }
+            ],
+            "gaps": [],
+            "schemaVersion": "1.0",
+            "stopReason": "complete"
+          },
+          "fingerprints": {
+            "config": "084604b864839ad8be08687055ec3e1cac1599a0fc28cc09be09f41f23ac356c",
+            "corpus": "68027bb0248c09507dbdba9d8cf2433f1b9b7b547ba5db8811db338982f9d08b",
+            "index": "9c4a65f08850a70ff6d2ec6fe069b4cd38c9cbf3481583afd76a74264cf0591a",
+            "model": "92815c3fa6427900bc6c79dce30c89b8df2f6c8509ea0975e8c5b35f6d948c90",
+            "prompt": "23223825ac5c619622506cbbeb9f2be7e0ac11b85d45a2cb47b2d3171f9717b9",
+            "runtime": "22a187520e286d27564996d0ed8295808984fe97187200f394125133b59b47e0",
+            "tools": "962605265a83834284686f2f41838c358bd1c2d67632efcdfb0897abdb58f484"
+          },
+          "lifecycle": "cold",
+          "measuredTokens": null,
+          "modelVisibleUtf8Bytes": 2744,
+          "schemaVersion": "1.0",
+          "seed": 0,
+          "stopReason": "complete",
+          "taskId": "t0a1b2c3",
+          "trialId": "fixture-01"
+        },
+        "observations": {
+          "diagnostics": [
+            "lexical-only: expansion, vectors, reranking, and graph disabled"
+          ],
+          "process": {
+            "peakRssBytes": null,
+            "unavailableReason": "peak RSS not sampled"
+          },
+          "recordedAt": "2026-07-23T13:43:30.555Z",
+          "tempPaths": ["<temp>", "<temp>"],
+          "timings": {
+            "driver": {
+              "unavailableReason": null,
+              "valueMs": 0.046
+            },
+            "endToEnd": {
+              "unavailableReason": null,
+              "valueMs": 1.283
+            },
+            "modelLoad": {
+              "unavailableReason": "one or more model-load components unavailable",
+              "valueMs": null
+            },
+            "preparation": {
+              "unavailableReason": null,
+              "valueMs": 46.376
+            },
+            "startup": {
+              "unavailableReason": null,
+              "valueMs": 0.435
+            },
+            "tool": {
+              "unavailableReason": null,
+              "valueMs": 0.502
+            }
+          }
+        },
+        "schemaVersion": "1.0"
+      },
+      "score": {
+        "adapterId": "lexical",
+        "agentId": "fixture-agent-v1",
+        "lifecycle": "cold",
+        "score": {
+          "collectionCorrect": true,
+          "completed": false,
+          "correctAbstention": false,
+          "exclusionReason": null,
+          "filtersCorrect": true,
+          "forbiddenEvidenceClaims": [],
+          "invalidOutputs": [],
+          "linkedSupportedClaims": 0,
+          "missingRequiredClaims": [],
+          "prematureStop": true,
+          "scored": true,
+          "substantiveClaims": 1,
+          "success": 0,
+          "supportedClaims": [],
+          "taskId": "t0a1b2c3",
+          "unnecessaryRead": false,
+          "unsupportedClaims": ["incidentId"],
+          "unsupportedSubstantiveClaims": ["incidentId"]
+        },
+        "seed": 0,
+        "taskId": "t0a1b2c3",
+        "trialId": "fixture-01"
+      },
+      "metrics": {
+        "completed": false,
+        "success": 0,
+        "substantiveClaimEvidenceCoverage": 0,
+        "agentCalls": 2,
+        "backendInvocations": 3,
+        "modelVisibleUtf8Bytes": 2744,
+        "measuredTokens": null,
+        "tokenUnavailableReason": "The benchmark did not have one pinned comparable tokenizer.",
+        "endToEnd": {
+          "unavailableReason": null,
+          "valueMs": 1.283
+        },
+        "stopOutcome": "complete: INC-1042"
+      }
+    },
+    {
+      "adapterId": "gno-mcp",
+      "label": "Current GNO primitives",
+      "receipt": {
+        "canonical": {
+          "adapterId": "gno-mcp",
+          "agentCalls": 2,
+          "agentId": "fixture-agent-v1",
+          "backendInvocations": 4,
+          "calls": [
+            {
+              "arguments": {
+                "collection": "c001",
+                "query": "incident identifier"
+              },
+              "backendInvocations": 3,
+              "callIndex": 0,
+              "deliveredToAgent": true,
+              "failureCode": null,
+              "measuredTokens": null,
+              "modelVisibleUtf8Bytes": 1671,
+              "result": {
+                "content": "{\"meta\":{\"expanded\":false,\"mode\":\"hybrid\",\"query\":\"incident identifier\",\"reranked\":true,\"totalResults\":2,\"vectorsUsed\":true},\"results\":[{\"context\":null,\"docid\":\"#e634f945\",\"score\":0.9999224539567344,\"snippet\":\"# Routine rollout\\n\\nIncident identifier: INC-1042\\nThe south gateway rollout completed.\\n\",\"snippetRange\":{\"endLine\":4,\"startLine\":1},\"sourceHash\":\"e634f945db5853ac51e820ad6ec8830520e934ad032f745b472c31521ed7e44e\",\"title\":\"Routine rollout\",\"uri\":\"gno://c001/d002.md\"},{\"context\":null,\"docid\":\"#f02c6099\",\"score\":0.6657485525227462,\"snippet\":\"# Deployment record\\n\\nIncident identifier: INC-4827\\nThe north gateway failed during rollout.\\n\",\"snippetRange\":{\"endLine\":4,\"startLine\":1},\"sourceHash\":\"f02c60996c5114f6ceb2f7cbfc96094f7a8df034ffd1bb62dfb841fba37099aa\",\"title\":\"Deployment record\",\"uri\":\"gno://c001/d001.md\"}]}",
+                "errorCode": null,
+                "evidence": [
+                  {
+                    "backendHashUnavailableReason": "GNO MCP does not return a complete source/span hash pair",
+                    "backendSourceHash": null,
+                    "backendSpanHash": null,
+                    "endLine": 3,
+                    "sourceHash": "e634f945db5853ac51e820ad6ec8830520e934ad032f745b472c31521ed7e44e",
+                    "sourceHashProvenance": "harness_observed",
+                    "spanHash": "5660beda48754c2ff330d1664550b556da9d43fada081177099f5523bc27daba",
+                    "spanHashProvenance": "harness_observed",
+                    "startLine": 3,
+                    "text": "Incident identifier: INC-1042",
+                    "uri": "gno://c001/d002.md"
+                  },
+                  {
+                    "backendHashUnavailableReason": "GNO MCP does not return a complete source/span hash pair",
+                    "backendSourceHash": null,
+                    "backendSpanHash": null,
+                    "endLine": 3,
+                    "sourceHash": "f02c60996c5114f6ceb2f7cbfc96094f7a8df034ffd1bb62dfb841fba37099aa",
+                    "sourceHashProvenance": "harness_observed",
+                    "spanHash": "db94cbe64c5c6c10d582eff7ff7d18fd2410bcbe8bbb1af42281bbfb7d69f320",
+                    "spanHashProvenance": "harness_observed",
+                    "startLine": 3,
+                    "text": "Incident identifier: INC-4827",
+                    "uri": "gno://c001/d001.md"
+                  }
+                ],
+                "resultRole": "candidates",
+                "status": "ok"
+              },
+              "tokenizerFingerprint": null,
+              "toolName": "search"
+            },
+            {
+              "arguments": {
+                "fromLine": 3,
+                "lineCount": 1,
+                "uri": "gno://c001/d002.md"
+              },
+              "backendInvocations": 1,
+              "callIndex": 1,
+              "deliveredToAgent": true,
+              "failureCode": null,
+              "measuredTokens": null,
+              "modelVisibleUtf8Bytes": 551,
+              "result": {
+                "content": "{\"content\":\"Incident identifier: INC-1042\",\"returnedLines\":{\"end\":3,\"start\":3},\"totalLines\":5,\"uri\":\"gno://c001/d002.md\"}",
+                "errorCode": null,
+                "evidence": [
+                  {
+                    "backendHashUnavailableReason": "GNO MCP does not return a complete source/span hash pair",
+                    "backendSourceHash": null,
+                    "backendSpanHash": null,
+                    "endLine": 3,
+                    "sourceHash": "e634f945db5853ac51e820ad6ec8830520e934ad032f745b472c31521ed7e44e",
+                    "sourceHashProvenance": "harness_observed",
+                    "spanHash": "5660beda48754c2ff330d1664550b556da9d43fada081177099f5523bc27daba",
+                    "spanHashProvenance": "harness_observed",
+                    "startLine": 3,
+                    "text": "Incident identifier: INC-1042",
+                    "uri": "gno://c001/d002.md"
+                  }
+                ],
+                "resultRole": "source",
+                "status": "ok"
+              },
+              "tokenizerFingerprint": null,
+              "toolName": "get"
+            }
+          ],
+          "capabilities": {
+            "backendHashes": "unavailable",
+            "backendInvocationAccounting": true,
+            "exactLineSpans": "supported",
+            "lifecycle": {
+              "cold": "supported",
+              "warm": "supported"
+            },
+            "measuredTokens": "unavailable",
+            "modelLoadTiming": false,
+            "startupTiming": true,
+            "toolTiming": true,
+            "tools": {
+              "get": "supported",
+              "multi_get": "supported",
+              "search": "supported"
+            }
+          },
+          "failure": {
+            "class": "none",
+            "code": null,
+            "redactedMessage": null
+          },
+          "finalEnvelope": {
+            "abstained": false,
+            "claims": [
+              {
+                "citations": [
+                  {
+                    "endLine": 3,
+                    "sourceHash": "e634f945db5853ac51e820ad6ec8830520e934ad032f745b472c31521ed7e44e",
+                    "sourceHashProvenance": "harness_observed",
+                    "spanHash": "5660beda48754c2ff330d1664550b556da9d43fada081177099f5523bc27daba",
+                    "spanHashProvenance": "harness_observed",
+                    "startLine": 3,
+                    "uri": "gno://c001/d002.md"
+                  }
+                ],
+                "claimKey": "incidentId",
+                "value": {
+                  "type": "identifier",
+                  "value": "INC-1042"
+                }
+              }
+            ],
+            "gaps": [],
+            "schemaVersion": "1.0",
+            "stopReason": "complete"
+          },
+          "fingerprints": {
+            "config": "dc65dd817c5fe0770c6202fa17c4c0b7774afcb476e768f99aa9583beb538a98",
+            "corpus": "68027bb0248c09507dbdba9d8cf2433f1b9b7b547ba5db8811db338982f9d08b",
+            "index": "9c4a65f08850a70ff6d2ec6fe069b4cd38c9cbf3481583afd76a74264cf0591a",
+            "model": "92815c3fa6427900bc6c79dce30c89b8df2f6c8509ea0975e8c5b35f6d948c90",
+            "prompt": "23223825ac5c619622506cbbeb9f2be7e0ac11b85d45a2cb47b2d3171f9717b9",
+            "runtime": "22a187520e286d27564996d0ed8295808984fe97187200f394125133b59b47e0",
+            "tools": "962605265a83834284686f2f41838c358bd1c2d67632efcdfb0897abdb58f484"
+          },
+          "lifecycle": "cold",
+          "measuredTokens": null,
+          "modelVisibleUtf8Bytes": 2222,
+          "schemaVersion": "1.0",
+          "seed": 0,
+          "stopReason": "complete",
+          "taskId": "t0a1b2c3",
+          "trialId": "fixture-01"
+        },
+        "observations": {
+          "diagnostics": ["GNO MCP 1.19.0 pid=1772"],
+          "process": {
+            "peakRssBytes": null,
+            "unavailableReason": "peak RSS not sampled"
+          },
+          "recordedAt": "2026-07-23T13:42:34.144Z",
+          "tempPaths": ["<temp>"],
+          "timings": {
+            "driver": {
+              "unavailableReason": null,
+              "valueMs": 0.2
+            },
+            "endToEnd": {
+              "unavailableReason": null,
+              "valueMs": 1375.758
+            },
+            "modelLoad": {
+              "unavailableReason": "one or more model-load components unavailable",
+              "valueMs": null
+            },
+            "preparation": {
+              "unavailableReason": null,
+              "valueMs": 4031.011
+            },
+            "startup": {
+              "unavailableReason": null,
+              "valueMs": 120.19
+            },
+            "tool": {
+              "unavailableReason": null,
+              "valueMs": 1249.233
+            }
+          }
+        },
+        "schemaVersion": "1.0"
+      },
+      "score": {
+        "adapterId": "gno-mcp",
+        "agentId": "fixture-agent-v1",
+        "lifecycle": "cold",
+        "score": {
+          "collectionCorrect": true,
+          "completed": false,
+          "correctAbstention": false,
+          "exclusionReason": null,
+          "filtersCorrect": true,
+          "forbiddenEvidenceClaims": [],
+          "invalidOutputs": [],
+          "linkedSupportedClaims": 0,
+          "missingRequiredClaims": [],
+          "prematureStop": true,
+          "scored": true,
+          "substantiveClaims": 1,
+          "success": 0,
+          "supportedClaims": [],
+          "taskId": "t0a1b2c3",
+          "unnecessaryRead": false,
+          "unsupportedClaims": ["incidentId"],
+          "unsupportedSubstantiveClaims": ["incidentId"]
+        },
+        "seed": 0,
+        "taskId": "t0a1b2c3",
+        "trialId": "fixture-01"
+      },
+      "metrics": {
+        "completed": false,
+        "success": 0,
+        "substantiveClaimEvidenceCoverage": 0,
+        "agentCalls": 2,
+        "backendInvocations": 4,
+        "modelVisibleUtf8Bytes": 2222,
+        "measuredTokens": null,
+        "tokenUnavailableReason": "The benchmark did not have one pinned comparable tokenizer.",
+        "endToEnd": {
+          "unavailableReason": null,
+          "valueMs": 1375.758
+        },
+        "stopOutcome": "complete: INC-1042"
+      }
+    },
+    {
+      "adapterId": "capsule",
+      "label": "Context Capsule",
+      "receipt": {
+        "canonical": {
+          "adapterId": "capsule",
+          "agentCalls": 1,
+          "agentId": "fixture-agent-v1",
+          "backendInvocations": 12,
+          "calls": [
+            {
+              "arguments": {
+                "collection": "c001",
+                "query": "incident identifier"
+              },
+              "backendInvocations": 12,
+              "callIndex": 0,
+              "deliveredToAgent": true,
+              "failureCode": null,
+              "measuredTokens": null,
+              "modelVisibleUtf8Bytes": 1295,
+              "result": {
+                "content": "{\"b\":[3000,12000,null,null,\"model_visible_utf8\",null],\"c\":[[\"id\",\"identifier\",\"incident\"],[]],\"e\":[[\"gno://c001/d001.md\",3,3,\"f02c60996c5114f6ceb2f7cbfc96094f7a8df034ffd1bb62dfb841fba37099aa\",\"f02c60996c5114f6ceb2f7cbfc96094f7a8df034ffd1bb62dfb841fba37099aa\",\"db94cbe64c5c6c10d582eff7ff7d18fd2410bcbe8bbb1af42281bbfb7d69f320\",\"Incident identifier: INC-4827\",null,null,[],\"unavailable\"],[\"gno://c001/d002.md\",3,3,\"e634f945db5853ac51e820ad6ec8830520e934ad032f745b472c31521ed7e44e\",\"e634f945db5853ac51e820ad6ec8830520e934ad032f745b472c31521ed7e44e\",\"5660beda48754c2ff330d1664550b556da9d43fada081177099f5523bc27daba\",\"Incident identifier: INC-1042\",null,null,[],\"unavailable\"]],\"g\":[\"untrusted_data\",\"hard_delimited\",[]],\"id\":\"3647cc78db31c93fd53338975eda9c6b3fd6cd38853831f764d1fac1a5a4abc3\",\"o\":[4,[[\"redundant_coverage\",4]]],\"r\":[\"fast\",\"9c4a65f08850a70ff6d2ec6fe069b4cd38c9cbf3481583afd76a74264cf0591a\",\"a4346b0edd84e135ab39a0d88d493d3692584bd7e2eda6a39bd6f9866589824a\",\"234e9ac008b903ce8d7a485575f0ff3344d5fe0e1c1bbc65d0b124e434a883f4\",null,null,[\"lexicalSearch\"],[]],\"t\":false,\"trust\":\"untrusted_data\",\"v\":\"gno-context-agent-v1\"}",
+                "errorCode": null,
+                "evidence": [
+                  {
+                    "backendHashUnavailableReason": "production document reads do not provide complete source/span hash pairs",
+                    "backendSourceHash": null,
+                    "backendSpanHash": null,
+                    "endLine": 3,
+                    "sourceHash": "f02c60996c5114f6ceb2f7cbfc96094f7a8df034ffd1bb62dfb841fba37099aa",
+                    "sourceHashProvenance": "harness_observed",
+                    "spanHash": "db94cbe64c5c6c10d582eff7ff7d18fd2410bcbe8bbb1af42281bbfb7d69f320",
+                    "spanHashProvenance": "harness_observed",
+                    "startLine": 3,
+                    "text": "Incident identifier: INC-4827",
+                    "uri": "gno://c001/d001.md"
+                  },
+                  {
+                    "backendHashUnavailableReason": "production document reads do not provide complete source/span hash pairs",
+                    "backendSourceHash": null,
+                    "backendSpanHash": null,
+                    "endLine": 3,
+                    "sourceHash": "e634f945db5853ac51e820ad6ec8830520e934ad032f745b472c31521ed7e44e",
+                    "sourceHashProvenance": "harness_observed",
+                    "spanHash": "5660beda48754c2ff330d1664550b556da9d43fada081177099f5523bc27daba",
+                    "spanHashProvenance": "harness_observed",
+                    "startLine": 3,
+                    "text": "Incident identifier: INC-1042",
+                    "uri": "gno://c001/d002.md"
+                  }
+                ],
+                "resultRole": "evidence_bundle",
+                "status": "ok"
+              },
+              "tokenizerFingerprint": null,
+              "toolName": "search"
+            }
+          ],
+          "capabilities": {
+            "backendHashes": "unsupported",
+            "backendInvocationAccounting": true,
+            "exactLineSpans": "supported",
+            "lifecycle": {
+              "cold": "supported",
+              "warm": "supported"
+            },
+            "measuredTokens": "unavailable",
+            "modelLoadTiming": false,
+            "startupTiming": true,
+            "toolTiming": true,
+            "tools": {
+              "get": "supported",
+              "multi_get": "supported",
+              "search": "supported"
+            }
+          },
+          "failure": {
+            "class": "none",
+            "code": null,
+            "redactedMessage": null
+          },
+          "finalEnvelope": {
+            "abstained": false,
+            "claims": [
+              {
+                "citations": [
+                  {
+                    "endLine": 3,
+                    "sourceHash": "f02c60996c5114f6ceb2f7cbfc96094f7a8df034ffd1bb62dfb841fba37099aa",
+                    "sourceHashProvenance": "harness_observed",
+                    "spanHash": "db94cbe64c5c6c10d582eff7ff7d18fd2410bcbe8bbb1af42281bbfb7d69f320",
+                    "spanHashProvenance": "harness_observed",
+                    "startLine": 3,
+                    "uri": "gno://c001/d001.md"
+                  }
+                ],
+                "claimKey": "incidentId",
+                "value": {
+                  "type": "identifier",
+                  "value": "INC-4827"
+                }
+              }
+            ],
+            "gaps": [],
+            "schemaVersion": "1.0",
+            "stopReason": "complete"
+          },
+          "fingerprints": {
+            "config": "a4346b0edd84e135ab39a0d88d493d3692584bd7e2eda6a39bd6f9866589824a",
+            "corpus": "68027bb0248c09507dbdba9d8cf2433f1b9b7b547ba5db8811db338982f9d08b",
+            "index": "9c4a65f08850a70ff6d2ec6fe069b4cd38c9cbf3481583afd76a74264cf0591a",
+            "model": "92815c3fa6427900bc6c79dce30c89b8df2f6c8509ea0975e8c5b35f6d948c90",
+            "prompt": "23223825ac5c619622506cbbeb9f2be7e0ac11b85d45a2cb47b2d3171f9717b9",
+            "runtime": "22a187520e286d27564996d0ed8295808984fe97187200f394125133b59b47e0",
+            "tools": "962605265a83834284686f2f41838c358bd1c2d67632efcdfb0897abdb58f484"
+          },
+          "lifecycle": "cold",
+          "measuredTokens": null,
+          "modelVisibleUtf8Bytes": 1295,
+          "schemaVersion": "1.0",
+          "seed": 0,
+          "stopReason": "complete",
+          "taskId": "t0a1b2c3",
+          "trialId": "fixture-01"
+        },
+        "observations": {
+          "diagnostics": [
+            "fixture retrieval prototype; production gno-context-agent-v1 projection"
+          ],
+          "process": {
+            "peakRssBytes": null,
+            "unavailableReason": "peak RSS not sampled"
+          },
+          "recordedAt": "2026-07-23T13:42:25.903Z",
+          "tempPaths": ["<temp>", "<temp>"],
+          "timings": {
+            "driver": {
+              "unavailableReason": null,
+              "valueMs": 0.076
+            },
+            "endToEnd": {
+              "unavailableReason": null,
+              "valueMs": 2.191
+            },
+            "modelLoad": {
+              "unavailableReason": "one or more model-load components unavailable",
+              "valueMs": null
+            },
+            "preparation": {
+              "unavailableReason": null,
+              "valueMs": 494.841
+            },
+            "startup": {
+              "unavailableReason": null,
+              "valueMs": 0.529
+            },
+            "tool": {
+              "unavailableReason": null,
+              "valueMs": 1.295
+            }
+          }
+        },
+        "schemaVersion": "1.0"
+      },
+      "score": {
+        "adapterId": "capsule",
+        "agentId": "fixture-agent-v1",
+        "lifecycle": "cold",
+        "score": {
+          "collectionCorrect": true,
+          "completed": true,
+          "correctAbstention": false,
+          "exclusionReason": null,
+          "filtersCorrect": true,
+          "forbiddenEvidenceClaims": [],
+          "invalidOutputs": [],
+          "linkedSupportedClaims": 1,
+          "missingRequiredClaims": [],
+          "prematureStop": false,
+          "scored": true,
+          "substantiveClaims": 1,
+          "success": 1,
+          "supportedClaims": ["incidentId"],
+          "taskId": "t0a1b2c3",
+          "unnecessaryRead": false,
+          "unsupportedClaims": [],
+          "unsupportedSubstantiveClaims": []
+        },
+        "seed": 0,
+        "taskId": "t0a1b2c3",
+        "trialId": "fixture-01"
+      },
+      "metrics": {
+        "completed": true,
+        "success": 1,
+        "substantiveClaimEvidenceCoverage": 1,
+        "agentCalls": 1,
+        "backendInvocations": 12,
+        "modelVisibleUtf8Bytes": 1295,
+        "measuredTokens": null,
+        "tokenUnavailableReason": "The benchmark did not have one pinned comparable tokenizer.",
+        "endToEnd": {
+          "unavailableReason": null,
+          "valueMs": 2.191
+        },
+        "stopOutcome": "complete: INC-4827"
+      }
+    }
+  ],
+  "capsuleRetrieval": {
+    "request": {
+      "toolName": "search",
+      "arguments": {
+        "collection": "c001",
+        "query": "incident identifier"
+      }
+    },
+    "effectiveIndexFingerprint": "9c4a65f08850a70ff6d2ec6fe069b4cd38c9cbf3481583afd76a74264cf0591a",
+    "capabilityStates": {
+      "backendHashes": "unsupported",
+      "backendInvocationAccounting": true,
+      "exactLineSpans": "supported",
+      "lifecycle": {
+        "cold": "supported",
+        "warm": "supported"
+      },
+      "measuredTokens": "unavailable",
+      "modelLoadTiming": false,
+      "startupTiming": true,
+      "toolTiming": true,
+      "tools": {
+        "get": "supported",
+        "multi_get": "supported",
+        "search": "supported"
+      }
+    },
+    "fallbacks": [],
+    "normalizedPayload": {
+      "b": [3000, 12000, null, null, "model_visible_utf8", null],
+      "c": [["id", "identifier", "incident"], []],
+      "e": [
+        [
+          "gno://c001/d001.md",
+          3,
+          3,
+          "f02c60996c5114f6ceb2f7cbfc96094f7a8df034ffd1bb62dfb841fba37099aa",
+          "f02c60996c5114f6ceb2f7cbfc96094f7a8df034ffd1bb62dfb841fba37099aa",
+          "db94cbe64c5c6c10d582eff7ff7d18fd2410bcbe8bbb1af42281bbfb7d69f320",
+          "Incident identifier: INC-4827",
+          null,
+          null,
+          [],
+          "unavailable"
+        ],
+        [
+          "gno://c001/d002.md",
+          3,
+          3,
+          "e634f945db5853ac51e820ad6ec8830520e934ad032f745b472c31521ed7e44e",
+          "e634f945db5853ac51e820ad6ec8830520e934ad032f745b472c31521ed7e44e",
+          "5660beda48754c2ff330d1664550b556da9d43fada081177099f5523bc27daba",
+          "Incident identifier: INC-1042",
+          null,
+          null,
+          [],
+          "unavailable"
+        ]
+      ],
+      "g": ["untrusted_data", "hard_delimited", []],
+      "id": "3647cc78db31c93fd53338975eda9c6b3fd6cd38853831f764d1fac1a5a4abc3",
+      "o": [4, [["redundant_coverage", 4]]],
+      "r": [
+        "fast",
+        "9c4a65f08850a70ff6d2ec6fe069b4cd38c9cbf3481583afd76a74264cf0591a",
+        "a4346b0edd84e135ab39a0d88d493d3692584bd7e2eda6a39bd6f9866589824a",
+        "234e9ac008b903ce8d7a485575f0ff3344d5fe0e1c1bbc65d0b124e434a883f4",
+        null,
+        null,
+        ["lexicalSearch"],
+        []
+      ],
+      "t": false,
+      "trust": "untrusted_data",
+      "v": "gno-context-agent-v1"
+    }
+  },
+  "verifiedAsk": {
+    "proofKind": "answer_enforcement",
+    "benchmarkId": "verified-ask-outcome@1",
+    "canonicalFingerprint": "53931a6ad5717a707e2a486d47fafb988960b0e0f45f201c5875d1104034ee28",
+    "immutableGitCommit": "3c8ac2c76ff04346b2a8d9f2deaa8354406595fb",
+    "artifactPath": "evals/fixtures/agentic-retrieval/baseline/fixture-agent/verified-ask-promotion.json",
+    "pairCount": 22,
+    "excludedTasks": [
+      {
+        "reason": "expected_missing_evidence",
+        "taskId": "t234cd5e"
+      },
+      {
+        "reason": "expected_missing_evidence",
+        "taskId": "t345de6f"
+      }
+    ],
+    "metrics": {
+      "baselineAnswerAccuracy": 0.8181818181818182,
+      "baselineUnsupportedSubstantiveClaims": 4,
+      "candidateAnswerAccuracy": 0.8181818181818182,
+      "candidateUnsupportedSubstantiveClaims": 0,
+      "unsupportedSubstantiveClaimReduction": 1
+    }
+  },
+  "canonicalFingerprint": "a2001a5b7052ad5d325a2b4336d9598192651c588992bc732729e10a739647d4"
+}

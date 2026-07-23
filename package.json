@@ -83,6 +83,7 @@
     "eval:retrieval-candidates": "bun scripts/retrieval-candidate-benchmark.ts",
     "eval:retrieval-candidates:write": "bun scripts/retrieval-candidate-benchmark.ts --write",
     "eval:agentic": "bun evals/agentic/cli.ts",
+    "eval:agentic:demo": "bun evals/agentic/demos/context-capsule.ts",
     "eval:watch": "bun --bun evalite watch",
     "research:finetune:bootstrap": "bun research/finetune/scripts/bootstrap-promotion-fixtures.ts",
     "research:finetune:autonomous:noop": "bun research/finetune/autonomous/scripts/noop-run.ts",

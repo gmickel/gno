@@ -1,6 +1,7 @@
 import Ajv, { type ErrorObject, type ValidateFunction } from "ajv";
 import addFormats from "ajv-formats";
 
+import type { ContextCapsuleDemoArtifact } from "./demos/context-capsule-types";
 import type {
   AgentTask,
   BenchmarkReport,
@@ -15,6 +16,7 @@ import {
 } from "./canonical";
 import agentTaskSchema from "./schemas/agent-task.schema.json";
 import benchmarkReportSchema from "./schemas/benchmark-report.schema.json";
+import contextCapsuleDemoSchema from "./schemas/context-capsule-demo.schema.json";
 import finalEnvelopeSchema from "./schemas/final-envelope.schema.json";
 import hiddenOracleSchema from "./schemas/hidden-oracle.schema.json";
 import trajectoryReceiptSchema from "./schemas/trajectory-receipt.schema.json";
@@ -22,6 +24,7 @@ import trajectoryReceiptSchema from "./schemas/trajectory-receipt.schema.json";
 export interface AgenticSchemaTypes {
   "agent-task": AgentTask;
   "benchmark-report": BenchmarkReport;
+  "context-capsule-demo": ContextCapsuleDemoArtifact;
   "final-envelope": FinalEnvelope;
   "hidden-oracle": HiddenOracle;
   "trajectory-receipt": TrajectoryReceipt;
@@ -30,6 +33,7 @@ export interface AgenticSchemaTypes {
 const schemas = {
   "agent-task": agentTaskSchema,
   "benchmark-report": benchmarkReportSchema,
+  "context-capsule-demo": contextCapsuleDemoSchema,
   "final-envelope": finalEnvelopeSchema,
   "hidden-oracle": hiddenOracleSchema,
   "trajectory-receipt": trajectoryReceiptSchema,
