@@ -54,7 +54,7 @@ describe("store migrations", () => {
 
       const upgradeResult = runMigrations(db, migrations, "unicode61");
       expect(upgradeResult.ok).toBe(true);
-      expect(getSchemaVersion(db)).toBe(14);
+      expect(getSchemaVersion(db)).toBe(15);
 
       const indexedRow = db
         .query<{ indexed_at: string | null }, []>(
@@ -95,6 +95,15 @@ describe("store migrations", () => {
         .map((column) => column.name);
       expect(traceColumns).toContain("creation_digest");
       expect(traceColumns).toContain("expires_at_ms");
+
+      const changeColumns = db
+        .query<{ name: string }, []>("PRAGMA table_info(document_changes)")
+        .all()
+        .map((column) => column.name);
+      expect(changeColumns).toContain("old_source_hash");
+      expect(changeColumns).toContain("new_mirror_hash");
+      expect(changeColumns).toContain("heading_delta_json");
+      expect(changeColumns).toContain("structure_truncated");
     } finally {
       db.close();
     }
@@ -155,7 +164,7 @@ describe("store migrations", () => {
 
       const upgraded = runMigrations(db, migrations, "unicode61");
       expect(upgraded.ok).toBe(true);
-      expect(getSchemaVersion(db)).toBe(14);
+      expect(getSchemaVersion(db)).toBe(15);
       const rows = db
         .query<{ rel_path: string; fts_mirror_hash: string | null }, []>(
           "SELECT rel_path, fts_mirror_hash FROM documents ORDER BY rel_path"

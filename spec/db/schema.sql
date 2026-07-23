@@ -19,6 +19,8 @@
 --   retrieval_traces - Opt-in private retrieval trace headers
 --   retrieval_trace_runs/events/judgments - Bounded trace outcome records
 --   retrieval_trace_exports/export_traces - Export manifests and trace joins
+--   document_changes - Bounded metadata-only document lifecycle journal
+--   document_change_journal_state - Monotonic cursor/retention boundary
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- Schema Metadata
@@ -360,6 +362,60 @@ CREATE TABLE IF NOT EXISTS retrieval_trace_export_traces (
 -- Migration 014 also installs deterministic indexes, orphan-export cleanup,
 -- and an absolute 100,000 subordinate-record safety cap per trace. Runtime
 -- retention applies the lower configured maxRecordsPerTrace bound.
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Document Change Journal
+-- ─────────────────────────────────────────────────────────────────────────────
+
+-- Append-only while retained. Rows contain identity, hashes, active state, and
+-- compact structural summaries only; source and converted bodies are excluded.
+
+CREATE TABLE IF NOT EXISTS document_changes (
+  sequence INTEGER PRIMARY KEY AUTOINCREMENT,
+  document_id INTEGER NOT NULL CHECK (document_id > 0),
+  collection TEXT NOT NULL,
+  change_kind TEXT NOT NULL
+    CHECK (change_kind IN ('create', 'update', 'rename', 'inactivate', 'reactivate')),
+  old_rel_path TEXT,
+  new_rel_path TEXT,
+  old_docid TEXT,
+  new_docid TEXT,
+  old_uri TEXT,
+  new_uri TEXT,
+  old_source_hash TEXT,
+  new_source_hash TEXT,
+  old_mirror_hash TEXT,
+  new_mirror_hash TEXT,
+  old_active INTEGER CHECK (old_active IS NULL OR old_active IN (0, 1)),
+  new_active INTEGER CHECK (new_active IS NULL OR new_active IN (0, 1)),
+  heading_delta_json TEXT NOT NULL DEFAULT '{"added":[],"removed":[]}',
+  link_delta_json TEXT NOT NULL DEFAULT '{"added":[],"removed":[]}',
+  typed_edge_delta_json TEXT NOT NULL DEFAULT '{"added":[],"removed":[]}',
+  date_delta_json TEXT NOT NULL
+    DEFAULT '{"added":[],"removed":[],"changed":[]}',
+  structure_truncated INTEGER NOT NULL DEFAULT 0
+    CHECK (structure_truncated IN (0, 1)),
+  observed_at_ms INTEGER NOT NULL CHECK (observed_at_ms >= 0),
+  byte_size INTEGER NOT NULL CHECK (byte_size > 0 AND byte_size <= 131072),
+  CHECK (length(CAST(heading_delta_json AS BLOB)) <= 16384),
+  CHECK (length(CAST(link_delta_json AS BLOB)) <= 16384),
+  CHECK (length(CAST(typed_edge_delta_json AS BLOB)) <= 16384),
+  CHECK (length(CAST(date_delta_json AS BLOB)) <= 16384)
+);
+
+CREATE INDEX IF NOT EXISTS idx_document_changes_collection_sequence
+  ON document_changes(collection, sequence);
+CREATE INDEX IF NOT EXISTS idx_document_changes_document_sequence
+  ON document_changes(document_id, sequence);
+CREATE INDEX IF NOT EXISTS idx_document_changes_retention
+  ON document_changes(observed_at_ms, sequence);
+
+CREATE TABLE IF NOT EXISTS document_change_journal_state (
+  singleton_id INTEGER PRIMARY KEY CHECK (singleton_id = 1),
+  last_sequence INTEGER NOT NULL DEFAULT 0 CHECK (last_sequence >= 0),
+  retention_floor INTEGER NOT NULL DEFAULT 0
+    CHECK (retention_floor >= 0 AND retention_floor <= last_sequence)
+);
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- Document Tags

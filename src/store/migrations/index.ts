@@ -28,6 +28,7 @@ import { migration as m011 } from "./011-doc-edge-traversal-indexes";
 import { migration as m012 } from "./012-activation-receipts";
 import { migration as m013 } from "./013-fts-sync-marker";
 import { migration as m014 } from "./014-retrieval-traces";
+import { migration as m015 } from "./015-document-change-journal";
 
 /** All migrations in order */
 export const migrations = [
@@ -45,4 +46,5 @@ export const migrations = [
   m012,
   m013,
   m014,
+  m015,
 ];

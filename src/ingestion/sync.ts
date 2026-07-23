@@ -761,6 +761,7 @@ export class SyncService {
           lastErrorMessage: convertResult.error.message,
           ingestVersion: INGEST_VERSION,
           contentTypeRulesFingerprint,
+          changeJournal: false,
           // mirrorHash intentionally omitted (will be null)
         });
 
@@ -789,154 +790,171 @@ export class SyncService {
         contentTypeRules
       );
 
-      // 7. Upsert document - EXPLICITLY clear error fields on success
-      const docidResult = await store.upsertDocument({
-        collection: collection.name,
-        relPath: entry.relPath,
-        sourceHash,
-        sourceMime: mime.mime,
-        sourceExt: mime.ext,
-        sourceSize,
-        sourceMtime,
-        sourceCtime,
-        title: artifact.title,
-        mirrorHash: artifact.mirrorHash,
-        converterId: artifact.meta.converterId,
-        converterVersion: artifact.meta.converterVersion,
-        languageHint: artifact.languageHint ?? collection.languageHint,
-        contentType: extractedMetadata.contentType,
-        contentTypeSource: extractedMetadata.contentTypeSource,
-        categories: extractedMetadata.categories,
-        author: extractedMetadata.author,
-        frontmatterDate: extractedMetadata.frontmatterDate,
-        dateFields: extractedMetadata.dateFields,
-        contentTypeRulesFingerprint,
-        // Clear error fields on success (requires store to handle undefined → null)
-        lastErrorCode: undefined,
-        lastErrorMessage: undefined,
-        ingestVersion: INGEST_VERSION,
-      });
+      const persistSuccessfulFile = async (): Promise<FileSyncResult> => {
+        // 7. Upsert document - EXPLICITLY clear error fields on success
+        const docidResult = await store.upsertDocument({
+          collection: collection.name,
+          relPath: entry.relPath,
+          sourceHash,
+          sourceMime: mime.mime,
+          sourceExt: mime.ext,
+          sourceSize,
+          sourceMtime,
+          sourceCtime,
+          title: artifact.title,
+          mirrorHash: artifact.mirrorHash,
+          converterId: artifact.meta.converterId,
+          converterVersion: artifact.meta.converterVersion,
+          languageHint: artifact.languageHint ?? collection.languageHint,
+          contentType: extractedMetadata.contentType,
+          contentTypeSource: extractedMetadata.contentTypeSource,
+          categories: extractedMetadata.categories,
+          author: extractedMetadata.author,
+          frontmatterDate: extractedMetadata.frontmatterDate,
+          dateFields: extractedMetadata.dateFields,
+          contentTypeRulesFingerprint,
+          // Clear error fields on success (requires store to handle undefined → null)
+          lastErrorCode: undefined,
+          lastErrorMessage: undefined,
+          ingestVersion: INGEST_VERSION,
+        });
 
-      const { id: docId, docid } = mustOk(docidResult, "upsertDocument", {
-        collection: collection.name,
-        relPath: entry.relPath,
-      });
+        const { id: docId, docid } = mustOk(docidResult, "upsertDocument", {
+          collection: collection.name,
+          relPath: entry.relPath,
+        });
 
-      // 8. Upsert content (content-addressed dedupe) - CHECKED
-      const contentResult = await store.upsertContent(
-        artifact.mirrorHash,
-        artifact.markdown
-      );
-      mustOk(contentResult, "upsertContent", {
-        mirrorHash: artifact.mirrorHash,
-      });
+        // 8. Upsert content (content-addressed dedupe) - CHECKED
+        const contentResult = await store.upsertContent(
+          artifact.mirrorHash,
+          artifact.markdown
+        );
+        mustOk(contentResult, "upsertContent", {
+          mirrorHash: artifact.mirrorHash,
+        });
 
-      // 9. Chunk content
-      const chunks = this.chunker.chunk(
-        artifact.markdown,
-        DEFAULT_CHUNK_PARAMS,
-        artifact.languageHint ?? collection.languageHint,
-        entry.relPath
-      );
+        // 9. Chunk content
+        const chunks = this.chunker.chunk(
+          artifact.markdown,
+          DEFAULT_CHUNK_PARAMS,
+          artifact.languageHint ?? collection.languageHint,
+          entry.relPath
+        );
 
-      // 10. Convert to ChunkInput for store
-      const chunkInputs: ChunkInput[] = chunks.map((c) => ({
-        seq: c.seq,
-        pos: c.pos,
-        text: c.text,
-        startLine: c.startLine,
-        endLine: c.endLine,
-        language: c.language ?? undefined,
-        tokenCount: c.tokenCount ?? undefined,
-      }));
+        // 10. Convert to ChunkInput for store
+        const chunkInputs: ChunkInput[] = chunks.map((c) => ({
+          seq: c.seq,
+          pos: c.pos,
+          text: c.text,
+          startLine: c.startLine,
+          endLine: c.endLine,
+          language: c.language ?? undefined,
+          tokenCount: c.tokenCount ?? undefined,
+        }));
 
-      // 11. Upsert chunks - CHECKED
-      const chunksResult = await store.upsertChunks(
-        artifact.mirrorHash,
-        chunkInputs
-      );
-      mustOk(chunksResult, "upsertChunks", {
-        mirrorHash: artifact.mirrorHash,
-        chunkCount: chunkInputs.length,
-      });
+        // 11. Upsert chunks - CHECKED
+        const chunksResult = await store.upsertChunks(
+          artifact.mirrorHash,
+          chunkInputs
+        );
+        mustOk(chunksResult, "upsertChunks", {
+          mirrorHash: artifact.mirrorHash,
+          chunkCount: chunkInputs.length,
+        });
 
-      // 12. Rebuild FTS for this hash - CHECKED
-      const ftsResult = await store.rebuildFtsForHash(artifact.mirrorHash);
-      mustOk(ftsResult, "rebuildFtsForHash", {
-        mirrorHash: artifact.mirrorHash,
-      });
+        // 12. Rebuild FTS for this hash - CHECKED
+        const ftsResult = await store.rebuildFtsForHash(artifact.mirrorHash);
+        mustOk(ftsResult, "rebuildFtsForHash", {
+          mirrorHash: artifact.mirrorHash,
+        });
 
-      // 13. Extract and store tags from frontmatter and body hashtags
-      // Always call setDocTags to clear removed tags on re-sync
-      const extractedTags = extractTags(artifact.markdown);
-      const tagsResult = await store.setDocTags(
-        docId,
-        extractedTags,
-        "frontmatter"
-      );
-      mustOk(tagsResult, "setDocTags", {
-        docId,
-        tagCount: extractedTags.length,
-      });
+        // 13. Extract and store tags from frontmatter and body hashtags
+        // Always call setDocTags to clear removed tags on re-sync
+        const extractedTags = extractTags(artifact.markdown);
+        const tagsResult = await store.setDocTags(
+          docId,
+          extractedTags,
+          "frontmatter"
+        );
+        mustOk(tagsResult, "setDocTags", {
+          docId,
+          tagCount: extractedTags.length,
+        });
 
-      // 14. Extract and store links (wiki and markdown links)
-      const excludedRanges = getExcludedRanges(artifact.markdown);
-      const lineOffsets = buildLineOffsets(artifact.markdown);
-      const parsedLinks = parseLinks(
-        artifact.markdown,
-        lineOffsets,
-        excludedRanges
-      );
+        // 14. Extract and store links (wiki and markdown links)
+        const excludedRanges = getExcludedRanges(artifact.markdown);
+        const lineOffsets = buildLineOffsets(artifact.markdown);
+        const parsedLinks = parseLinks(
+          artifact.markdown,
+          lineOffsets,
+          excludedRanges
+        );
 
-      const linkInputs: DocLinkInput[] = [];
-      for (const link of parsedLinks) {
-        // Compute target_ref_norm based on link type
-        let targetRefNorm: string;
-        if (link.kind === "wiki") {
-          targetRefNorm = normalizeWikiName(link.targetRef);
-        } else {
-          // Markdown links with collection prefix are not supported
-          // (use wiki links for cross-collection references)
-          if (link.targetCollection) {
-            continue;
+        const linkInputs: DocLinkInput[] = [];
+        for (const link of parsedLinks) {
+          // Compute target_ref_norm based on link type
+          let targetRefNorm: string;
+          if (link.kind === "wiki") {
+            targetRefNorm = normalizeWikiName(link.targetRef);
+          } else {
+            // Markdown links with collection prefix are not supported
+            // (use wiki links for cross-collection references)
+            if (link.targetCollection) {
+              continue;
+            }
+            const resolved = normalizeMarkdownPath(
+              link.targetRef,
+              entry.relPath
+            );
+            if (!resolved) {
+              // Link escapes collection root - skip silently
+              continue;
+            }
+            targetRefNorm = resolved;
           }
-          const resolved = normalizeMarkdownPath(link.targetRef, entry.relPath);
-          if (!resolved) {
-            // Link escapes collection root - skip silently
-            continue;
-          }
-          targetRefNorm = resolved;
+
+          linkInputs.push({
+            targetRef: link.targetRef,
+            targetRefNorm,
+            targetAnchor: link.targetAnchor,
+            targetCollection: link.targetCollection,
+            linkType: link.kind,
+            linkText: link.displayText,
+            startLine: link.startLine,
+            startCol: link.startCol,
+            endLine: link.endLine,
+            endCol: link.endCol,
+          });
         }
 
-        linkInputs.push({
-          targetRef: link.targetRef,
-          targetRefNorm,
-          targetAnchor: link.targetAnchor,
-          targetCollection: link.targetCollection,
-          linkType: link.kind,
-          linkText: link.displayText,
-          startLine: link.startLine,
-          startCol: link.startCol,
-          endLine: link.endLine,
-          endCol: link.endCol,
+        const linksResult = await store.setDocLinks(
+          docId,
+          linkInputs,
+          "parsed"
+        );
+        mustOk(linksResult, "setDocLinks", {
+          docId,
+          linkCount: linkInputs.length,
         });
-      }
 
-      const linksResult = await store.setDocLinks(docId, linkInputs, "parsed");
-      mustOk(linksResult, "setDocLinks", {
-        docId,
-        linkCount: linkInputs.length,
-      });
-
-      const status = existing ? "updated" : "added";
-      return {
-        relPath: entry.relPath,
-        status,
-        docid,
-        mirrorHash: artifact.mirrorHash,
-        contentType: extractedMetadata.contentType,
-        contentTypeSource: extractedMetadata.contentTypeSource,
+        const status = existing ? "updated" : "added";
+        return {
+          relPath: entry.relPath,
+          status,
+          docid,
+          mirrorHash: artifact.mirrorHash,
+          contentType: extractedMetadata.contentType,
+          contentTypeSource: extractedMetadata.contentTypeSource,
+        };
       };
+      if (!store.withTransaction) {
+        return await persistSuccessfulFile();
+      }
+      const persisted = await store.withTransaction(persistSuccessfulFile);
+      return mustOk(persisted, "persistSuccessfulFile", {
+        collection: collection.name,
+        relPath: entry.relPath,
+      });
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown error";
       // Distinguish store errors from other internal errors
@@ -977,6 +995,7 @@ export class SyncService {
               existingResult.value.sourceMtime,
             lastErrorCode: code,
             lastErrorMessage: message,
+            changeJournal: false,
           });
         }
       } catch {
