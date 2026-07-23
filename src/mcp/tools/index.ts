@@ -844,6 +844,7 @@ export async function runTool<T>(
 
   // Sequential execution via mutex
   const release = await ctx.toolMutex.acquire();
+  const modelLease = ctx.acquireModelLease?.();
   try {
     const data = await (ctx.runWithSnapshot?.(fn) ?? fn());
     return {
@@ -861,6 +862,7 @@ export async function runTool<T>(
       structuredContent: parsedError,
     };
   } finally {
+    modelLease?.release();
     release();
   }
 }
@@ -884,6 +886,7 @@ export async function runToolNoMutex<T>(
     };
   }
 
+  const modelLease = ctx.acquireModelLease?.();
   try {
     const data = await (ctx.runWithSnapshot?.(fn) ?? fn());
     return {
@@ -900,6 +903,8 @@ export async function runToolNoMutex<T>(
       content: [{ type: "text", text: `Error: ${message}` }],
       structuredContent: parsedError,
     };
+  } finally {
+    modelLease?.release();
   }
 }
 

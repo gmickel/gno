@@ -198,18 +198,57 @@ export async function validateStatusSurfaces(
   const status: unknown = await statusResponse.json();
   assertValid(resident, residentSchema);
   assertValid(status, statusSchema);
+  const embeddedResident = isRecord(status) ? status.resident : null;
   if (
     !isRecord(resident) ||
     resident.mode !== expectedMode ||
     resident.resident !== true ||
-    !isRecord(status) ||
-    JSON.stringify(status.resident) !== JSON.stringify(resident)
+    !isRecord(embeddedResident) ||
+    embeddedResident.schemaVersion !== resident.schemaVersion ||
+    embeddedResident.mode !== resident.mode ||
+    embeddedResident.resident !== resident.resident ||
+    embeddedResident.listenerPort !== resident.listenerPort ||
+    !isRecord(embeddedResident.admission) ||
+    !isRecord(resident.admission) ||
+    embeddedResident.admission.state !== resident.admission.state ||
+    !isRecord(embeddedResident.shutdown) ||
+    !isRecord(resident.shutdown) ||
+    embeddedResident.shutdown.state !== resident.shutdown.state
   ) {
     throw new Error("Packed status endpoints disagree on resident lifecycle");
   }
   const serializedResident = JSON.stringify(resident);
   for (const forbidden of forbiddenValues) {
     if (serializedResident.includes(forbidden)) {
+      throw new Error("Packed resident status leaked sensitive state");
+    }
+  }
+  return resident as unknown as ResidentStatus;
+}
+
+export async function validateResidentStatusSurface(
+  baseUrl: string,
+  expectedMode: "serve" | "daemon",
+  forbiddenValues: string[]
+): Promise<ResidentStatus> {
+  const response = await fetch(`${baseUrl}/api/resident/status`);
+  if (!response.ok) {
+    throw new Error(
+      `Packed resident status endpoint failed: ${response.status}`
+    );
+  }
+  const resident: unknown = await response.json();
+  assertValid(resident, await loadSchema("resident-status"));
+  if (
+    !isRecord(resident) ||
+    resident.mode !== expectedMode ||
+    resident.resident !== true
+  ) {
+    throw new Error("Packed resident status returned the wrong lifecycle");
+  }
+  const serialized = JSON.stringify(resident);
+  for (const forbidden of forbiddenValues) {
+    if (serialized.includes(forbidden)) {
       throw new Error("Packed resident status leaked sensitive state");
     }
   }

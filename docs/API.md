@@ -89,11 +89,12 @@ All endpoints are JSON-based and run entirely on your machine.
 ## Authentication & Security
 
 The full browser REST API is served by `gno serve`, which binds to
-`127.0.0.1` only. `gno daemon` exposes only `/mcp`, `/api/status`, and
-`/api/resident/status`; an explicit non-loopback daemon bind requires the MCP
-token file plus exact Host and Origin allowlists. The two status routes are
-redacted safe projections and never expose tokens, paths, queries, content, or
-caller identities.
+`127.0.0.1` only. `gno daemon` exposes `/mcp` and the redacted
+`/api/resident/status`; full `/api/status` is available only on loopback because
+it includes local index and configuration details. An explicit non-loopback
+daemon bind requires the MCP token file plus exact Host and Origin allowlists.
+The resident status projection never exposes tokens, paths, queries, content,
+or caller identities.
 
 ### CSRF Protection
 

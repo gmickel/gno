@@ -18,6 +18,7 @@ import {
   runExpectedFailure,
   spawnResident,
   stopResident,
+  validateResidentStatusSurface,
   validateStatusSurfaces,
   waitForStatus,
 } from "./package-smoke-resident-support";
@@ -202,12 +203,18 @@ async function proveNonLoopbackDaemon(
   const clients: Client[] = [];
   try {
     await waitForStatus(baseUrl, "daemon");
-    await validateStatusSurfaces(baseUrl, "daemon", [
+    await validateResidentStatusSurface(baseUrl, "daemon", [
       input.cwd,
       input.env.GNO_DATA_DIR ?? "",
       firstToken,
       secondToken,
     ]);
+    const unsafeStatus = await fetch(`${baseUrl}/api/status`);
+    if (unsafeStatus.status !== 404) {
+      throw new Error(
+        `Packed external daemon exposed path-bearing /api/status (${unsafeStatus.status})`
+      );
+    }
     const unauthorized = await fetch(`${baseUrl}/mcp`, {
       method: "POST",
       headers: {

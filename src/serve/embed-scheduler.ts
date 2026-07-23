@@ -7,6 +7,7 @@
 
 import type { Database } from "bun:sqlite";
 
+import type { ModelLease } from "../llm/nodeLlamaCpp/lifecycle";
 import type { EmbeddingPort } from "../llm/types";
 import type { VectorIndexPort } from "../store/vector";
 
@@ -46,6 +47,8 @@ export interface EmbedSchedulerDeps {
   getVectorIndex: () => VectorIndexPort | null;
   /** Getter for current model URI (survives preset changes) */
   getModelUri: () => string;
+  acquireModelLease?: () => ModelLease;
+  onEmbedded?: (result: EmbedResult) => void;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -71,7 +74,14 @@ export interface EmbedScheduler {
  * Uses getters to resolve dependencies at execution time (survives context reloads).
  */
 export function createEmbedScheduler(deps: EmbedSchedulerDeps): EmbedScheduler {
-  const { db, getEmbedPort, getVectorIndex, getModelUri } = deps;
+  const {
+    db,
+    getEmbedPort,
+    getVectorIndex,
+    getModelUri,
+    acquireModelLease,
+    onEmbedded,
+  } = deps;
 
   // State
   let pendingCount = 0; // Track pending triggers (not actual docIds - we embed full backlog)
@@ -103,20 +113,25 @@ export function createEmbedScheduler(deps: EmbedSchedulerDeps): EmbedScheduler {
       return { embedded: 0, errors: 0 };
     }
 
-    const result = await embedBacklog({
-      statsPort: stats,
-      embedPort,
-      vectorIndex,
-      modelUri,
-      batchSize: BATCH_SIZE,
-    });
+    const lease = acquireModelLease?.();
+    try {
+      const result = await embedBacklog({
+        statsPort: stats,
+        embedPort,
+        vectorIndex,
+        modelUri,
+        batchSize: BATCH_SIZE,
+      });
 
-    if (!result.ok) {
-      console.error("[embed-scheduler] Embed failed:", result.error.message);
-      return { embedded: 0, errors: 0 };
+      if (!result.ok) {
+        console.error("[embed-scheduler] Embed failed:", result.error.message);
+        return { embedded: 0, errors: 0 };
+      }
+      if (result.value.embedded > 0) onEmbedded?.(result.value);
+      return result.value;
+    } finally {
+      lease?.release();
     }
-
-    return result.value;
   }
 
   /**

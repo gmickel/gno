@@ -9,7 +9,12 @@ export class ReaderGate {
   readonly #limit: number;
   readonly #maxQueued: number;
   #active = 0;
-  readonly #queue: Array<() => void> = [];
+  readonly #queue: Array<{
+    resolve: () => void;
+    reject: (error: Error) => void;
+    signal?: AbortSignal;
+    onAbort?: () => void;
+  }> = [];
 
   constructor(
     limit = DEFAULT_READER_LIMIT,
@@ -35,20 +40,42 @@ export class ReaderGate {
     return this.#maxQueued;
   }
 
-  async acquire(): Promise<() => void> {
+  async acquire(signal?: AbortSignal): Promise<() => void> {
+    if (signal?.aborted) {
+      throw new Error("Resident request aborted");
+    }
     if (this.#active >= this.#limit) {
       if (this.#queue.length >= this.#maxQueued) {
         throw new Error("Resident reader queue is full");
       }
-      await new Promise<void>((resolve) => this.#queue.push(resolve));
+      await new Promise<void>((resolve, reject) => {
+        const entry = {
+          resolve,
+          reject,
+          signal,
+          onAbort: undefined as (() => void) | undefined,
+        };
+        entry.onAbort = () => {
+          const index = this.#queue.indexOf(entry);
+          if (index >= 0) this.#queue.splice(index, 1);
+          reject(new Error("Resident request aborted"));
+        };
+        signal?.addEventListener("abort", entry.onAbort, { once: true });
+        this.#queue.push(entry);
+      });
     }
+    if (signal?.aborted) throw new Error("Resident request aborted");
     this.#active += 1;
     let released = false;
     return () => {
       if (released) return;
       released = true;
       this.#active -= 1;
-      this.#queue.shift()?.();
+      const next = this.#queue.shift();
+      if (next) {
+        next.signal?.removeEventListener("abort", next.onAbort!);
+        next.resolve();
+      }
     };
   }
 }
@@ -91,7 +118,10 @@ export class AdmissionController {
     };
   }
 
-  async closeAndDrain(deadlineMs: number): Promise<boolean> {
+  async closeAndDrain(
+    deadlineMs: number,
+    abortSettleMs = deadlineMs
+  ): Promise<boolean> {
     this.#accepting = false;
     if (this.#requests.size === 0) return false;
 
@@ -111,11 +141,19 @@ export class AdmissionController {
     ]);
     if (timeout) clearTimeout(timeout);
 
-    for (const controller of this.#requests.values()) {
+    if (!deadlineReached) return false;
+
+    for (const controller of this.#requests.values())
       controller.abort(new Error("Resident runtime is shutting down"));
+
+    if (this.#requests.size > 0) {
+      await Promise.race([
+        new Promise<void>((resolve) => this.#drainWaiters.add(resolve)),
+        new Promise<void>((resolve) =>
+          setTimeout(resolve, Math.max(0, abortSettleMs))
+        ),
+      ]);
     }
-    this.#requests.clear();
-    this.#drainWaiters.clear();
     return deadlineReached;
   }
 }

@@ -78,10 +78,14 @@ function createDeps(calls: string[] = []): ResidentRuntimeDeps {
     disposeServerContext: async () => {
       calls.push("context");
     },
-    createEmbedScheduler: () =>
+    createEmbedScheduler: (options) =>
       ({
         notifySyncComplete: () => undefined,
-        triggerNow: async () => ({ embedded: 2, errors: 0 }),
+        triggerNow: async () => {
+          const result = { embedded: 2, errors: 0 };
+          options.onEmbedded?.(result);
+          return result;
+        },
         getState: () => ({ pendingDocCount: 0, running: false }),
         dispose: () => {
           calls.push("scheduler");
@@ -181,6 +185,42 @@ describe("ResidentRuntime", () => {
     await runtime.dispose();
   });
 
+  test("watcher mutations advance the shared content generation", async () => {
+    const deps = createDeps();
+    let callbacks:
+      | Parameters<
+          NonNullable<ResidentRuntimeDeps["watchServiceFactory"]>
+        >[0]["callbacks"]
+      | undefined;
+    const baseFactory = deps.watchServiceFactory!;
+    deps.watchServiceFactory = (options) => {
+      callbacks = options.callbacks;
+      return baseFactory(options);
+    };
+    const result = await startResidentRuntime({ mode: "serve" }, deps);
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+
+    callbacks?.onSyncComplete?.({
+      collection: "notes",
+      relPaths: ["changed.md"],
+      result: {
+        collection: "notes",
+        filesProcessed: 1,
+        filesAdded: 0,
+        filesUpdated: 1,
+        filesUnchanged: 0,
+        filesErrored: 0,
+        filesSkipped: 0,
+        filesMarkedInactive: 0,
+        durationMs: 1,
+        errors: [],
+      },
+    });
+    expect(result.runtime.generations.content).toBe(1);
+    await result.runtime.dispose();
+  });
+
   test("closes admission, cancels overdue requests, and settles every cleanup", async () => {
     const calls: string[] = [];
     const deps = createDeps(calls);
@@ -207,12 +247,23 @@ describe("ResidentRuntime", () => {
         }),
       }) as never;
 
-    const result = await startResidentRuntime({ shutdownDeadlineMs: 0 }, deps);
+    const result = await startResidentRuntime(
+      { shutdownDeadlineMs: 0, shutdownAbortSettleMs: 100 },
+      deps
+    );
     expect(result.success).toBe(true);
     if (!result.success) return;
 
     const request = result.runtime.admitRequest();
     expect(request).not.toBeNull();
+    request?.signal.addEventListener(
+      "abort",
+      () => {
+        calls.push("handler");
+        request.finish();
+      },
+      { once: true }
+    );
     const closeSession = result.runtime.openSession();
     // HttpMcpSessionStore is the sole active-session counter. The runtime
     // session hook intentionally contributes no duplicate accounting.
@@ -220,6 +271,8 @@ describe("ResidentRuntime", () => {
     closeSession();
     await result.runtime.dispose();
 
+    expect(calls.indexOf("handler")).toBeLessThan(calls.indexOf("context"));
+    expect(calls.indexOf("handler")).toBeLessThan(calls.indexOf("store"));
     expect(request?.signal.aborted).toBe(true);
     expect(result.runtime.admitRequest()).toBeNull();
     expect(result.runtime.activeRequests).toBe(0);

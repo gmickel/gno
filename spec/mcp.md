@@ -112,7 +112,8 @@ requests, 32 sessions, and a five-minute idle session timeout.
 environment and exercises the shipped binary. It proves two concurrent HTTP
 MCP clients plus one stdio client observe equivalent tools, resources, and
 search results; repeated HTTP calls reuse the same resident store and model
-lifecycle. The same run validates the redacted status schemas, Host/Origin,
+lifecycle. The same run validates the redacted resident-status schema,
+loopback-only app-status boundary, Host/Origin,
 body-size, bearer-token, token-rotation, session-identity, and write-authorization
 boundaries, daemon-only authenticated non-loopback binding, and detached
 restart/shutdown behavior. Windows package and binary artifact jobs remain the

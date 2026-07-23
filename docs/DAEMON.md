@@ -12,7 +12,9 @@ Run GNO as a headless long-running watcher process.
 
 `gno daemon` keeps the same watch/sync/embed loop alive without starting the Web
 UI. The same resident process also hosts stateful Streamable HTTP MCP at
-`/mcp` plus the redacted `/api/status` and `/api/resident/status` read surfaces.
+`/mcp` plus the redacted `/api/resident/status` lifecycle surface. Full
+`/api/status`, which includes local index and configuration details, is
+available only when the daemon binds to loopback.
 
 Use it when:
 

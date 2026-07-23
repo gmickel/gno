@@ -6,6 +6,7 @@ import type { ToolContext } from "../../src/mcp/context";
 import { ModelManager } from "../../src/llm/nodeLlamaCpp/lifecycle";
 import { createToolContext } from "../../src/mcp/context";
 import { createMcpModelPorts } from "../../src/mcp/tools/context";
+import { runTool } from "../../src/mcp/tools/index";
 
 const makeConfig = (collectionName: string): Config => ({
   version: "1.0",
@@ -126,6 +127,55 @@ describe("shared MCP context lifecycle", () => {
       activeLeases: 0,
       leaseAcquisitions: 1,
       leaseReleases: 1,
+    });
+  });
+
+  test("semantic MCP calls keep one warm load and balance request leases", async () => {
+    let physicalLoads = 0;
+    let loaded = false;
+    let acquisitions = 0;
+    let releases = 0;
+    const context = createToolContext({
+      store: {} as never,
+      getConfig: () => makeConfig("notes"),
+      actualConfigPath: "/tmp/config.yml",
+      indexName: "default",
+      toolMutex: { acquire: async () => () => undefined },
+      jobManager: {} as never,
+      serverInstanceId: "test",
+      writeLockPath: "/tmp/write.lock",
+      enableWrite: false,
+      isShuttingDown: () => false,
+      acquireModelLease: () => {
+        acquisitions += 1;
+        return {
+          release() {
+            releases += 1;
+          },
+        };
+      },
+    });
+    const semanticCall = () =>
+      runTool(
+        context,
+        "semantic-proof",
+        async () => {
+          if (!loaded) {
+            loaded = true;
+            physicalLoads += 1;
+          }
+          return { loaded };
+        },
+        () => "ok"
+      );
+
+    await semanticCall();
+    await semanticCall();
+
+    expect(physicalLoads).toBe(1);
+    expect({ acquisitions, releases }).toEqual({
+      acquisitions: 2,
+      releases: 2,
     });
   });
 });

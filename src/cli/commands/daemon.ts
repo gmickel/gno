@@ -5,6 +5,7 @@ import type { ResidentRuntime } from "../../serve/resident-runtime";
 
 import {
   DEFAULT_HTTP_GATEWAY_PORT,
+  isHttpGatewayLoopbackBind,
   resolveHttpGatewayConfig,
 } from "../../mcp/http-security";
 import { startBackgroundRuntime } from "../../serve/background-runtime";
@@ -39,6 +40,18 @@ type DaemonDeps = {
 
 function formatCollectionSyncSummary(result: CollectionSyncResult): string {
   return `${result.collection}: ${result.filesAdded} added, ${result.filesUpdated} updated, ${result.filesUnchanged} unchanged, ${result.filesErrored} errors`;
+}
+
+export function handleDaemonAppStatus(
+  runtime: ResidentRuntime,
+  host: string
+): Promise<Response> | Response {
+  if (!isHttpGatewayLoopbackBind(host)) {
+    return new Response(null, { status: 404 });
+  }
+  return handleStatus(runtime.ctxHolder.current, {
+    getResidentStatus: () => runtime.getStatus(),
+  });
 }
 
 function createSignalPromise(
@@ -142,9 +155,10 @@ export async function daemon(
         "/mcp": gateway.route,
         "/api/status": {
           GET: () =>
-            handleStatus(runtime.ctxHolder.current, {
-              getResidentStatus: () => (runtime as ResidentRuntime).getStatus(),
-            }),
+            handleDaemonAppStatus(
+              runtime as ResidentRuntime,
+              gatewayConfig.host
+            ),
         },
         "/api/resident/status": {
           GET: () =>

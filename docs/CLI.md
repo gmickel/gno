@@ -1237,8 +1237,9 @@ Options:
 - Foreground: stays in the foreground until `SIGINT` / `SIGTERM`
 - Detached: parent prints `PID <pid>` and exits 0; child writes to `{data}/daemon.log` (or `--log-file`) in append mode
 - Hosts `/mcp` without the Web UI or browser REST routes
-- Hosts only the safe `GET /api/status` and `GET /api/resident/status`
-  lifecycle projections alongside `/mcp`
+- Hosts `GET /api/resident/status` alongside `/mcp`; full `GET /api/status`
+  remains loopback-only because it includes local index and configuration
+  details
 
 **Notes:**
 

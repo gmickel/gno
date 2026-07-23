@@ -19,6 +19,7 @@ import { handleContextBuild, handleContextVerify } from "./context-capsule";
 import { DocumentEventBus } from "./doc-events";
 // HTML import - Bun handles bundling TSX/CSS automatically via routes
 import homepage from "./public/index.html";
+import { handleResidentRead } from "./resident-request";
 import {
   handleActiveJob,
   handleAsk,
@@ -248,12 +249,14 @@ export async function startServer(
           GET: () => withSecurityHeaders(handleHealth(), isDev),
         },
         "/api/status": {
-          GET: async () =>
+          GET: async (req: Request) =>
             withSecurityHeaders(
-              await handleStatus(ctxHolder.current, {
-                getResidentStatus: () =>
-                  (runtime as ResidentRuntime).getStatus(),
-              }),
+              await handleResidentRead(runtime as ResidentRuntime, req, () =>
+                handleStatus(ctxHolder.current, {
+                  getResidentStatus: () =>
+                    (runtime as ResidentRuntime).getStatus(),
+                })
+              ),
               isDev
             ),
         },
@@ -534,7 +537,9 @@ export async function startServer(
           GET: async (req: Request) => {
             const url = new URL(req.url);
             return withSecurityHeaders(
-              await handleDoc(store, ctxHolder.config, url),
+              await handleResidentRead(runtime as ResidentRuntime, req, () =>
+                handleDoc(store, ctxHolder.config, url)
+              ),
               isDev
             );
           },
@@ -559,7 +564,12 @@ export async function startServer(
         "/api/tags": {
           GET: async (req: Request) => {
             const url = new URL(req.url);
-            return withSecurityHeaders(await handleTags(store, url), isDev);
+            return withSecurityHeaders(
+              await handleResidentRead(runtime as ResidentRuntime, req, () =>
+                handleTags(store, url)
+              ),
+              isDev
+            );
           },
         },
         "/api/search": {
@@ -567,7 +577,12 @@ export async function startServer(
             if (!isRequestAllowed(req, port)) {
               return withSecurityHeaders(forbiddenResponse(), isDev);
             }
-            return withSecurityHeaders(await handleSearch(store, req), isDev);
+            return withSecurityHeaders(
+              await handleResidentRead(runtime as ResidentRuntime, req, () =>
+                handleSearch(store, req)
+              ),
+              isDev
+            );
           },
         },
         "/api/query": {
@@ -576,7 +591,9 @@ export async function startServer(
               return withSecurityHeaders(forbiddenResponse(), isDev);
             }
             return withSecurityHeaders(
-              await handleQuery(ctxHolder.current, req),
+              await handleResidentRead(runtime as ResidentRuntime, req, () =>
+                handleQuery(ctxHolder.current, req)
+              ),
               isDev
             );
           },
@@ -587,7 +604,9 @@ export async function startServer(
               return withSecurityHeaders(forbiddenResponse(), isDev);
             }
             return withSecurityHeaders(
-              await handleContextBuild(ctxHolder.current, req),
+              await handleResidentRead(runtime as ResidentRuntime, req, () =>
+                handleContextBuild(ctxHolder.current, req)
+              ),
               isDev
             );
           },
@@ -598,7 +617,9 @@ export async function startServer(
               return withSecurityHeaders(forbiddenResponse(), isDev);
             }
             return withSecurityHeaders(
-              await handleContextVerify(ctxHolder.current, req),
+              await handleResidentRead(runtime as ResidentRuntime, req, () =>
+                handleContextVerify(ctxHolder.current, req)
+              ),
               isDev
             );
           },
@@ -609,7 +630,9 @@ export async function startServer(
               return withSecurityHeaders(forbiddenResponse(), isDev);
             }
             return withSecurityHeaders(
-              await handleQueryDiagnose(ctxHolder.current, req),
+              await handleResidentRead(runtime as ResidentRuntime, req, () =>
+                handleQueryDiagnose(ctxHolder.current, req)
+              ),
               isDev
             );
           },
@@ -620,7 +643,9 @@ export async function startServer(
               return withSecurityHeaders(forbiddenResponse(), isDev);
             }
             return withSecurityHeaders(
-              await handleAsk(ctxHolder.current, req),
+              await handleResidentRead(runtime as ResidentRuntime, req, () =>
+                handleAsk(ctxHolder.current, req)
+              ),
               isDev
             );
           },
@@ -736,7 +761,9 @@ export async function startServer(
             const parts = url.pathname.split("/");
             const id = decodeURIComponent(parts[3] || "");
             return withSecurityHeaders(
-              await handleDocLinks(store, id, url),
+              await handleResidentRead(runtime as ResidentRuntime, req, () =>
+                handleDocLinks(store, id, url)
+              ),
               isDev
             );
           },
@@ -747,7 +774,9 @@ export async function startServer(
             const parts = url.pathname.split("/");
             const id = decodeURIComponent(parts[3] || "");
             return withSecurityHeaders(
-              await handleDocSections(store, id, req),
+              await handleResidentRead(runtime as ResidentRuntime, req, () =>
+                handleDocSections(store, id, req)
+              ),
               isDev
             );
           },
@@ -759,7 +788,9 @@ export async function startServer(
             const parts = url.pathname.split("/");
             const id = decodeURIComponent(parts[3] || "");
             return withSecurityHeaders(
-              await handleDocBacklinks(store, id),
+              await handleResidentRead(runtime as ResidentRuntime, req, () =>
+                handleDocBacklinks(store, id)
+              ),
               isDev
             );
           },
@@ -771,7 +802,9 @@ export async function startServer(
             const parts = url.pathname.split("/");
             const id = decodeURIComponent(parts[3] || "");
             return withSecurityHeaders(
-              await handleDocSimilar(ctxHolder.current, id, url),
+              await handleResidentRead(runtime as ResidentRuntime, req, () =>
+                handleDocSimilar(ctxHolder.current, id, url)
+              ),
               isDev
             );
           },
@@ -779,7 +812,12 @@ export async function startServer(
         "/api/graph": {
           GET: async (req: Request) => {
             const url = new URL(req.url);
-            return withSecurityHeaders(await handleGraph(store, url), isDev);
+            return withSecurityHeaders(
+              await handleResidentRead(runtime as ResidentRuntime, req, () =>
+                handleGraph(store, url)
+              ),
+              isDev
+            );
           },
         },
         "/api/graph/query": {
@@ -788,7 +826,9 @@ export async function startServer(
               return withSecurityHeaders(forbiddenResponse(), isDev);
             }
             return withSecurityHeaders(
-              await handleGraphQuery(store, ctxHolder.config, req),
+              await handleResidentRead(runtime as ResidentRuntime, req, () =>
+                handleGraphQuery(store, ctxHolder.config, req)
+              ),
               isDev
             );
           },

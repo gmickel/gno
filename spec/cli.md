@@ -2685,8 +2685,9 @@ is blocked.
 - Triggers embedding after initial sync completes
 - Runs in the foreground until `SIGINT` / `SIGTERM`
 - Starts a headless `/mcp` Streamable HTTP listener; it does not serve the Web UI
-- Exposes the same safe REST lifecycle snapshot at `/api/resident/status` and
-  the same resident-aware app status at `/api/status`
+- Exposes the same safe REST lifecycle snapshot at `/api/resident/status`;
+  resident-aware app status at `/api/status` is loopback-only because it
+  includes local index and configuration details
 - On `--detach`: forks a detached child with stdio redirected to `--log-file`, writes pid-file JSON including the MCP gateway `port`, prints `{pid}` on stdout, exits 0
 - On `--status`: output matches the [process-status schema](./output-schemas/process-status.schema.json), including the MCP gateway port and a best-effort copy of the live redacted resident snapshot
 - On `--stop`: SIGTERM → 10s poll → SIGKILL → 2s poll; the daemon's own signal handler unlinks the pid-file, `--stop` unlinks as fallback

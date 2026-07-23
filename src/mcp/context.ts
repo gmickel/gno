@@ -6,6 +6,7 @@ import { AsyncLocalStorage } from "node:async_hooks";
 
 import type { Collection, Config } from "../config/types";
 import type { JobManager } from "../core/job-manager";
+import type { ModelLease } from "../llm/nodeLlamaCpp/lifecycle";
 import type { ResidentStatus } from "../serve/status-model";
 import type { SqliteAdapter } from "../store/sqlite/adapter";
 
@@ -60,6 +61,9 @@ export interface ToolContext {
   enableWrite: boolean;
   isShuttingDown: () => boolean;
   getResidentStatus?: () => ResidentStatus;
+  acquireModelLease?: () => ModelLease;
+  markContentMutation?: () => void;
+  markIndexMutation?: () => void;
   runWithSnapshot?<T>(operation: () => Promise<T>): Promise<T>;
 }
 
@@ -76,6 +80,9 @@ export interface CreateToolContextOptions {
   enableWrite: boolean;
   isShuttingDown: () => boolean;
   getResidentStatus?: () => ResidentStatus;
+  acquireModelLease?: () => ModelLease;
+  markContentMutation?: () => void;
+  markIndexMutation?: () => void;
 }
 
 /**
@@ -121,6 +128,9 @@ export function createToolContext(
     getResidentStatus:
       options.getResidentStatus ??
       (() => createStandaloneResidentStatus("stdio")),
+    acquireModelLease: options.acquireModelLease,
+    markContentMutation: options.markContentMutation,
+    markIndexMutation: options.markIndexMutation,
     runWithSnapshot<T>(operation: () => Promise<T>): Promise<T> {
       const config = options.getConfig();
       return requestSnapshot.run(

@@ -1,6 +1,6 @@
 import { describe, expect, mock, test } from "bun:test";
 
-import { daemon } from "../../src/cli/commands/daemon";
+import { daemon, handleDaemonAppStatus } from "../../src/cli/commands/daemon";
 
 type StartBackgroundRuntimeFn =
   typeof import("../../src/serve/background-runtime").startBackgroundRuntime;
@@ -18,6 +18,12 @@ function gatewayDeps() {
 }
 
 describe("daemon command", () => {
+  test("denies path-bearing app status on non-loopback listeners", async () => {
+    const response = await handleDaemonAppStatus({} as never, "0.0.0.0");
+    expect(response.status).toBe(404);
+    expect(await response.text()).toBe("");
+  });
+
   test("returns startup errors from background runtime", async () => {
     const result = await daemon(
       {},

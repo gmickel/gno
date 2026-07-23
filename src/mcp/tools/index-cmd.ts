@@ -10,6 +10,10 @@ import type { ToolContext } from "../server";
 import { MCP_ERRORS } from "../../core/errors";
 import { acquireWriteLock, type WriteLockHandle } from "../../core/file-lock";
 import { JobError } from "../../core/job-manager";
+import {
+  recordContentMutation,
+  recordIndexMutation,
+} from "../../core/mutation-generations";
 import { normalizeCollectionName } from "../../core/validation";
 import { embedBacklog } from "../../embed";
 import { defaultSyncService, withContentTypeRules } from "../../ingestion";
@@ -115,86 +119,96 @@ export function handleIndex(
           "index",
           lock,
           async () => {
-            // Phase 1: Sync
-            const syncResult = collection
-              ? await defaultSyncService
-                  .syncCollection(collection, ctx.store, options)
-                  .then((r) => ({
-                    collections: [r],
-                    totalDurationMs: r.durationMs,
-                    totalFilesProcessed: r.filesProcessed,
-                    totalFilesAdded: r.filesAdded,
-                    totalFilesUpdated: r.filesUpdated,
-                    totalFilesErrored: r.filesErrored,
-                    totalFilesSkipped: r.filesSkipped,
-                  }))
-              : await defaultSyncService.syncAll(
-                  ctx.collections,
-                  ctx.store,
-                  options
+            const lease = ctx.acquireModelLease?.();
+            try {
+              // Phase 1: Sync
+              const syncResult = collection
+                ? await defaultSyncService
+                    .syncCollection(collection, ctx.store, options)
+                    .then((r) => ({
+                      collections: [r],
+                      totalDurationMs: r.durationMs,
+                      totalFilesProcessed: r.filesProcessed,
+                      totalFilesAdded: r.filesAdded,
+                      totalFilesUpdated: r.filesUpdated,
+                      totalFilesErrored: r.filesErrored,
+                      totalFilesSkipped: r.filesSkipped,
+                    }))
+                : await defaultSyncService.syncAll(
+                    ctx.collections,
+                    ctx.store,
+                    options
+                  );
+
+              // Phase 2: Embed
+              const llm = new LlmAdapter(ctx.config);
+              const embedResult = await llm.createEmbeddingPort(modelUri, {
+                policy: { offline: true, allowDownload: false },
+              });
+
+              if (!embedResult.ok) {
+                throw new Error(
+                  `MODEL_NOT_FOUND: Embedding model not cached. ` +
+                    `Model: ${modelUri}. ` +
+                    `Run 'gno models pull embed' first.`
+                );
+              }
+
+              const embedPort = embedResult.value;
+
+              try {
+                // Initialize and get dimensions from port interface
+                const initResult = await embedPort.init();
+                if (!initResult.ok) {
+                  throw new Error(initResult.error.message);
+                }
+                const dimensions = embedPort.dimensions();
+
+                // Create vector index port
+                const db = ctx.store.getRawDb();
+                const vectorResult = await createVectorIndexPort(db, {
+                  model: modelUri,
+                  dimensions,
+                });
+                if (!vectorResult.ok) {
+                  throw new Error(vectorResult.error.message);
+                }
+                const vectorIndex = vectorResult.value;
+
+                // Create stats port for backlog
+                const statsPort = createVectorStatsPort(db);
+
+                // Run embedding
+                const backlogResult = await embedBacklog({
+                  statsPort,
+                  embedPort,
+                  vectorIndex,
+                  collection: collection?.name,
+                  modelUri,
+                  batchSize: 32,
+                });
+
+                if (!backlogResult.ok) {
+                  throw new Error(backlogResult.error.message);
+                }
+                recordContentMutation(syncResult, ctx.markContentMutation);
+                recordIndexMutation(
+                  backlogResult.value.embedded,
+                  ctx.markIndexMutation
                 );
 
-            // Phase 2: Embed
-            const llm = new LlmAdapter(ctx.config);
-            const embedResult = await llm.createEmbeddingPort(modelUri, {
-              policy: { offline: true, allowDownload: false },
-            });
-
-            if (!embedResult.ok) {
-              throw new Error(
-                `MODEL_NOT_FOUND: Embedding model not cached. ` +
-                  `Model: ${modelUri}. ` +
-                  `Run 'gno models pull embed' first.`
-              );
-            }
-
-            const embedPort = embedResult.value;
-
-            try {
-              // Initialize and get dimensions from port interface
-              const initResult = await embedPort.init();
-              if (!initResult.ok) {
-                throw new Error(initResult.error.message);
+                return {
+                  kind: "index" as const,
+                  value: {
+                    sync: syncResult,
+                    embed: backlogResult.value,
+                  },
+                };
+              } finally {
+                await embedPort.dispose();
               }
-              const dimensions = embedPort.dimensions();
-
-              // Create vector index port
-              const db = ctx.store.getRawDb();
-              const vectorResult = await createVectorIndexPort(db, {
-                model: modelUri,
-                dimensions,
-              });
-              if (!vectorResult.ok) {
-                throw new Error(vectorResult.error.message);
-              }
-              const vectorIndex = vectorResult.value;
-
-              // Create stats port for backlog
-              const statsPort = createVectorStatsPort(db);
-
-              // Run embedding
-              const backlogResult = await embedBacklog({
-                statsPort,
-                embedPort,
-                vectorIndex,
-                collection: collection?.name,
-                modelUri,
-                batchSize: 32,
-              });
-
-              if (!backlogResult.ok) {
-                throw new Error(backlogResult.error.message);
-              }
-
-              return {
-                kind: "index" as const,
-                value: {
-                  sync: syncResult,
-                  embed: backlogResult.value,
-                },
-              };
             } finally {
-              await embedPort.dispose();
+              lease?.release();
             }
           }
         );

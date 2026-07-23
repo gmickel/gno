@@ -9,6 +9,7 @@ import type { ToolContext } from "../server";
 import { MCP_ERRORS } from "../../core/errors";
 import { acquireWriteLock, type WriteLockHandle } from "../../core/file-lock";
 import { JobError } from "../../core/job-manager";
+import { recordIndexMutation } from "../../core/mutation-generations";
 import { embedBacklog } from "../../embed";
 import { LlmAdapter } from "../../llm/nodeLlamaCpp/adapter";
 import { resolveModelUri } from "../../llm/registry";
@@ -81,64 +82,73 @@ export function handleEmbed(
           "embed",
           lock,
           async () => {
-            // Create LLM adapter with offline policy (fail-fast, no download)
-            const llm = new LlmAdapter(ctx.config);
-            const embedResult = await llm.createEmbeddingPort(modelUri, {
-              policy: { offline: true, allowDownload: false },
-            });
-
-            if (!embedResult.ok) {
-              throw new Error(
-                `MODEL_NOT_FOUND: Embedding model not cached. ` +
-                  `Model: ${modelUri}. ` +
-                  `Run 'gno models pull embed' first.`
-              );
-            }
-
-            const embedPort = embedResult.value;
-
+            const lease = ctx.acquireModelLease?.();
             try {
-              // Initialize and get dimensions from port interface
-              const initResult = await embedPort.init();
-              if (!initResult.ok) {
-                throw new Error(initResult.error.message);
-              }
-              const dimensions = embedPort.dimensions();
-
-              // Create vector index port
-              const db = ctx.store.getRawDb();
-              const vectorResult = await createVectorIndexPort(db, {
-                model: modelUri,
-                dimensions,
-              });
-              if (!vectorResult.ok) {
-                throw new Error(vectorResult.error.message);
-              }
-              const vectorIndex = vectorResult.value;
-
-              // Create stats port for backlog
-              const statsPort = createVectorStatsPort(db);
-
-              // Run embedding
-              const result = await embedBacklog({
-                statsPort,
-                embedPort,
-                vectorIndex,
-                collection: collection?.name,
-                modelUri,
-                batchSize: 32,
+              // Create LLM adapter with offline policy (fail-fast, no download)
+              const llm = new LlmAdapter(ctx.config);
+              const embedResult = await llm.createEmbeddingPort(modelUri, {
+                policy: { offline: true, allowDownload: false },
               });
 
-              if (!result.ok) {
-                throw new Error(result.error.message);
+              if (!embedResult.ok) {
+                throw new Error(
+                  `MODEL_NOT_FOUND: Embedding model not cached. ` +
+                    `Model: ${modelUri}. ` +
+                    `Run 'gno models pull embed' first.`
+                );
               }
 
-              return {
-                kind: "embed" as const,
-                value: result.value,
-              };
+              const embedPort = embedResult.value;
+
+              try {
+                // Initialize and get dimensions from port interface
+                const initResult = await embedPort.init();
+                if (!initResult.ok) {
+                  throw new Error(initResult.error.message);
+                }
+                const dimensions = embedPort.dimensions();
+
+                // Create vector index port
+                const db = ctx.store.getRawDb();
+                const vectorResult = await createVectorIndexPort(db, {
+                  model: modelUri,
+                  dimensions,
+                });
+                if (!vectorResult.ok) {
+                  throw new Error(vectorResult.error.message);
+                }
+                const vectorIndex = vectorResult.value;
+
+                // Create stats port for backlog
+                const statsPort = createVectorStatsPort(db);
+
+                // Run embedding
+                const result = await embedBacklog({
+                  statsPort,
+                  embedPort,
+                  vectorIndex,
+                  collection: collection?.name,
+                  modelUri,
+                  batchSize: 32,
+                });
+
+                if (!result.ok) {
+                  throw new Error(result.error.message);
+                }
+                recordIndexMutation(
+                  result.value.embedded,
+                  ctx.markIndexMutation
+                );
+
+                return {
+                  kind: "embed" as const,
+                  value: result.value,
+                };
+              } finally {
+                await embedPort.dispose();
+              }
             } finally {
-              await embedPort.dispose();
+              lease?.release();
             }
           }
         );

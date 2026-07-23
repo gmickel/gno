@@ -33,6 +33,7 @@ import {
 } from "../config";
 import { acquireWriteLock } from "../core/file-lock";
 import { JobManager } from "../core/job-manager";
+import { recordContentMutation } from "../core/mutation-generations";
 import { defaultSyncService, withContentTypeRules } from "../ingestion";
 import { getModelManager } from "../llm/nodeLlamaCpp/lifecycle";
 import { getModelConfig } from "../llm/registry";
@@ -66,6 +67,7 @@ export interface ResidentRuntimeOptions {
   readerLimit?: number;
   readerQueueLimit?: number;
   shutdownDeadlineMs?: number;
+  shutdownAbortSettleMs?: number;
 }
 
 export interface ResidentGeneration {
@@ -103,6 +105,9 @@ export interface ResidentRuntime {
     provider: (() => HttpMcpTransportStatus) | null
   ): void;
   admitRequest(signal?: AbortSignal): ResidentRequestHandle | null;
+  withModelLease<T>(operation: () => Promise<T>): Promise<T>;
+  markContentMutation(): void;
+  markIndexMutation(): void;
   openSession(): () => void;
   syncAll(options?: {
     gitPull?: boolean;
@@ -233,11 +238,25 @@ export async function startResidentRuntime(
     eventBus: options.eventBus ?? null,
     watchService: null,
   };
+  const modelManager =
+    deps.modelManagerFactory?.(initialConfig) ??
+    getModelManager(getModelConfig(initialConfig));
+  const generations: ResidentGeneration = { content: 0, index: 0 };
+  ctxHolder.markContentMutation = () => {
+    generations.content += 1;
+  };
+  ctxHolder.markIndexMutation = () => {
+    generations.index += 1;
+  };
   const scheduler = (deps.createEmbedScheduler ?? createEmbedScheduler)({
     db: store.getRawDb(),
     getEmbedPort: () => ctxHolder.current.embedPort,
     getVectorIndex: () => ctxHolder.current.vectorIndex,
     getModelUri: () => getActivePreset(ctxHolder.config).embed,
+    acquireModelLease: () => modelManager.acquireLease(),
+    onEmbedded: () => {
+      generations.index += 1;
+    },
   });
   ctxHolder.scheduler = scheduler;
   ctxHolder.current.scheduler = scheduler;
@@ -251,7 +270,15 @@ export async function startResidentRuntime(
     store,
     scheduler,
     eventBus: options.eventBus ?? null,
-    callbacks: options.watchCallbacks,
+    callbacks: {
+      ...options.watchCallbacks,
+      onSyncComplete: (event) => {
+        recordContentMutation(event.result, () => {
+          generations.content += 1;
+        });
+        options.watchCallbacks?.onSyncComplete?.(event);
+      },
+    },
     syncOptions: withContentTypeRules({}, initialConfig),
   });
   watchService.start();
@@ -267,15 +294,11 @@ export async function startResidentRuntime(
     toolMutex,
   });
   ctxHolder.jobManager = jobManager;
-  const modelManager =
-    deps.modelManagerFactory?.(initialConfig) ??
-    getModelManager(getModelConfig(initialConfig));
   const admission = new AdmissionController();
   const readerGate = new ReaderGate(
     options.readerLimit,
     options.readerQueueLimit
   );
-  const generations: ResidentGeneration = { content: 0, index: 0 };
   const startedAt = Date.now();
   let listenerPort: number | null = null;
   let transportStatusProvider: (() => HttpMcpTransportStatus) | null = null;
@@ -302,6 +325,13 @@ export async function startResidentRuntime(
     writeLockPath,
     enableWrite: false,
     isShuttingDown: () => disposed || !admission.accepting,
+    acquireModelLease: () => modelManager.acquireLease(),
+    markContentMutation: () => {
+      generations.content += 1;
+    },
+    markIndexMutation: () => {
+      generations.index += 1;
+    },
   });
 
   const runtime: ResidentRuntime = {
@@ -331,6 +361,20 @@ export async function startResidentRuntime(
       return disposed || !admission.accepting;
     },
     admitRequest: (signal) => admission.admit(signal),
+    async withModelLease<T>(operation: () => Promise<T>): Promise<T> {
+      const lease = modelManager.acquireLease();
+      try {
+        return await operation();
+      } finally {
+        lease.release();
+      }
+    },
+    markContentMutation() {
+      generations.content += 1;
+    },
+    markIndexMutation() {
+      generations.index += 1;
+    },
     openSession() {
       return () => undefined;
     },
@@ -392,14 +436,13 @@ export async function startResidentRuntime(
           config
         )
       );
-      if (syncResult.totalFilesAdded > 0 || syncResult.totalFilesUpdated > 0) {
+      recordContentMutation(syncResult, () => {
         generations.content += 1;
-      }
+      });
       const embedResult =
         syncOptions.triggerEmbed === false
           ? null
           : await scheduler.triggerNow();
-      if (embedResult && embedResult.embedded > 0) generations.index += 1;
       return { syncResult, embedResult };
     },
     async dispose() {
@@ -408,7 +451,8 @@ export async function startResidentRuntime(
       admissionState = "draining";
       shutdownState = "graceful";
       const deadlineReached = await admission.closeAndDrain(
-        options.shutdownDeadlineMs ?? DEFAULT_SHUTDOWN_DEADLINE_MS
+        options.shutdownDeadlineMs ?? DEFAULT_SHUTDOWN_DEADLINE_MS,
+        options.shutdownAbortSettleMs ?? DEFAULT_SHUTDOWN_DEADLINE_MS
       );
       if (deadlineReached) shutdownState = "deadline";
       await jobManager.shutdown().catch(() => undefined);

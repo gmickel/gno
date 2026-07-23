@@ -79,6 +79,10 @@ import {
   planRenameRefactor,
 } from "../../core/file-refactors";
 import {
+  hasContentMutation,
+  recordContentMutation,
+} from "../../core/mutation-generations";
+import {
   resolveNoteCreatePlan,
   sanitizeNoteFilename,
   type NoteCollisionPolicy,
@@ -150,6 +154,8 @@ export interface ContextHolder {
   eventBus: DocumentEventBus | null;
   watchService: CollectionWatchService | null;
   jobManager?: JobManager;
+  markContentMutation?: () => void;
+  markIndexMutation?: () => void;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1319,7 +1325,8 @@ export async function handleSync(
           ctxHolder.config
         )
       );
-      if (result.totalFilesAdded > 0 || result.totalFilesUpdated > 0) {
+      recordContentMutation(result, ctxHolder.markContentMutation);
+      if (hasContentMutation(result)) {
         if (ctxHolder.scheduler) {
           await ctxHolder.scheduler.triggerNow();
         }
