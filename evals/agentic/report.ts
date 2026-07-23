@@ -33,7 +33,7 @@ export const AGENTIC_LIMITATIONS = [
   "UTF-8 bytes are the primary context measure; tokens are null without one pinned tokenizer.",
   "Latency is environment-specific and comparable only within a matching lifecycle.",
   "qmd is optional, exact-revision pinned, and non-authoritative for Capsule promotion.",
-  "Capsule retrieval is a fixture prototype; its model-visible serializer and omission bound are the production MCP contract.",
+  "Capsule retrieval is a fixture prototype; its model-visible serializer and omission accounting are the production MCP contract.",
 ];
 
 const identityKey = (receipt: TrajectoryReceipt): string =>

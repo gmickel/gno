@@ -506,4 +506,5 @@ can never overwrite the authoritative baseline.
 - qmd is an optional exact-revision comparator and is never required by the
   standard test suite.
 - Capsule retrieval/planning remains a deterministic fixture prototype; its
-  model-visible serializer and omission bound are the production MCP contract.
+  model-visible serializer and omission accounting are the production MCP
+  contract.
