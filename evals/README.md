@@ -98,7 +98,10 @@ See [scores.md](scores.md) for latest results. Updated automatically by `bun run
   verified Ask. The gate requires no answer-accuracy regression and strictly
   fewer unsupported substantive claims. It writes
   `verified-ask-promotion.{json,md}` without changing the Capsule retrieval
-  promotion.
+  promotion. The gate derives typed outcomes from exact final answers, checks
+  raw/verified lane semantics and every answer/receipt/artifact fingerprint,
+  recomputes scores against the fn-97 oracle, and refuses dirty-checkout
+  generation.
 - `--adapter`, `--task`, and `--lifecycle` accept unique CSV filters;
   `--agent fixture|local-model` selects the one-trial deterministic or pinned
   three-trial cached-model lane. `--timeout-ms` bounds lifecycle operations.

@@ -520,7 +520,12 @@ scores, exact cohort/exclusions, metrics, and the gate result.
 `verified-ask-promotion.md` is its readable projection. Temporary collection
 paths and timings are excluded from the canonical contract; fixture, index,
 request, model, exact answer, citation hashes, verification status, and scored
-outcome remain bound.
+outcome remain bound. The evaluator parses the typed claim from the exact final
+product answer and scores it against the independent fn-97 oracle; it
+recomputes receipt, answer, score, and artifact fingerprints rather than
+trusting harness-assigned claim or score fields. Raw and verified lane semantics
+are validated independently. Authoritative generation refuses a dirty Git
+checkout and records the exact clean source commit.
 
 ## Commands
 

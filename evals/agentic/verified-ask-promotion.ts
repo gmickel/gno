@@ -1,5 +1,6 @@
-import type { ClaimValue, NormalizerId } from "./types";
+import type { ClaimValue, HiddenOracle, NormalizerId } from "./types";
 
+import { CLAIM_ABSTENTION_TEXT } from "../../src/pipeline/claim-verification";
 import { canonicalFingerprint, canonicalJson } from "./canonical";
 
 export const VERIFIED_ASK_BENCHMARK_ID = "verified-ask-outcome@1" as const;
@@ -30,7 +31,6 @@ export interface VerifiedAskOutcomeReceipt {
   requestFingerprint: string;
   modelFingerprint: string;
   draftKind: "supported" | "adversarial";
-  declaredClaim: { claimKey: string; value: ClaimValue } | null;
   answer: string;
   answerFingerprint: string;
   abstained: boolean;
@@ -58,12 +58,7 @@ export interface VerifiedAskPromotionArtifact {
   canonicalFingerprint: string;
   fixtureFingerprint: string;
   indexFingerprint: string;
-  environment: {
-    git: {
-      commit: string;
-      dirty: boolean;
-    };
-  };
+  environment: { git: { commit: string; dirty: boolean } };
   methodology: string[];
   excludedTasks: Array<{ taskId: string; reason: string }>;
   receipts: VerifiedAskOutcomeReceipt[];
@@ -81,6 +76,9 @@ export interface VerifiedAskPromotionArtifact {
     };
   };
 }
+
+const SHA256 = /^[a-f0-9]{64}$/;
+const GIT_SHA = /^[a-f0-9]{40}$/;
 
 const normalizeScalar = (
   value: string | number | boolean,
@@ -120,7 +118,59 @@ export const verifiedAskClaimValuesMatch = (
   canonicalJson(normalizedValue(actual, normalizer)) ===
     canonicalJson(normalizedValue(expected, normalizer));
 
-const pairKey = (
+export const encodeVerifiedAskClaim = (
+  claimKey: string,
+  value: ClaimValue
+): string =>
+  `claim ${claimKey} value ${encodeURIComponent(canonicalJson(value))}`;
+
+const validClaimValue = (
+  value: unknown,
+  expectedType: ClaimValue["type"]
+): value is ClaimValue => {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const record = value as Record<string, unknown>;
+  if (
+    Object.keys(record).sort().join(",") !== "type,value" ||
+    record.type !== expectedType
+  )
+    return false;
+  if (expectedType === "number") return typeof record.value === "number";
+  if (expectedType === "boolean") return typeof record.value === "boolean";
+  if (expectedType === "string[]")
+    return (
+      Array.isArray(record.value) &&
+      record.value.every((item) => typeof item === "string")
+    );
+  return typeof record.value === "string";
+};
+
+const claimFromAnswer = (
+  receipt: VerifiedAskOutcomeReceipt,
+  oracle: HiddenOracle
+): ClaimValue | null => {
+  if (receipt.abstained) return null;
+  const expected = oracle.claims[0];
+  if (!expected) return null;
+  const prefix = `claim ${expected.claimKey} value `;
+  if (
+    receipt.answer.indexOf(prefix) < 0 ||
+    receipt.answer.indexOf(prefix) !== receipt.answer.lastIndexOf(prefix)
+  )
+    return null;
+  const encoded = receipt.answer
+    .slice(receipt.answer.indexOf(prefix) + prefix.length)
+    .split(/\s/u)[0];
+  if (!encoded) return null;
+  try {
+    const parsed: unknown = JSON.parse(decodeURIComponent(encoded));
+    return validClaimValue(parsed, expected.expectedValue.type) ? parsed : null;
+  } catch {
+    return null;
+  }
+};
+
+const identityKey = (
   value: Pick<
     VerifiedAskOutcomeReceipt | VerifiedAskOutcomeScore,
     "taskId" | "trialId" | "seed" | "agentId"
@@ -128,55 +178,199 @@ const pairKey = (
 ): string =>
   [value.taskId, value.trialId, String(value.seed), value.agentId].join("\0");
 
+export const scoreVerifiedAskReceipt = (
+  receipt: VerifiedAskOutcomeReceipt,
+  oracle: HiddenOracle
+): VerifiedAskOutcomeScore => {
+  const expected = oracle.claims[0];
+  const actual = claimFromAnswer(receipt, oracle);
+  if (!expected) throw new Error(`Oracle claim missing for ${receipt.taskId}`);
+  const accurate =
+    actual !== null &&
+    verifiedAskClaimValuesMatch(
+      actual,
+      expected.expectedValue,
+      expected.normalizer.id
+    );
+  return {
+    taskId: receipt.taskId,
+    lane: receipt.lane,
+    trialId: receipt.trialId,
+    seed: receipt.seed,
+    agentId: receipt.agentId,
+    answerAccuracy: accurate ? 1 : 0,
+    unsupportedSubstantiveClaims:
+      actual && !accurate ? [expected.claimKey] : [],
+  };
+};
+
+const receiptWithoutFingerprint = (
+  receipt: VerifiedAskOutcomeReceipt
+): Omit<VerifiedAskOutcomeReceipt, "canonicalFingerprint"> => {
+  const { canonicalFingerprint: _fingerprint, ...canonical } = receipt;
+  return canonical;
+};
+
+const citationIssues = (receipt: VerifiedAskOutcomeReceipt): string[] => {
+  const issues: string[] = [];
+  for (const citation of receipt.citations) {
+    if (
+      !citation.uri.startsWith("gno://") ||
+      citation.startLine < 1 ||
+      citation.endLine < citation.startLine ||
+      !SHA256.test(citation.sourceHash) ||
+      !SHA256.test(citation.mirrorHash) ||
+      !SHA256.test(citation.passageHash)
+    )
+      issues.push("citation_contract_invalid");
+  }
+  return issues;
+};
+
+const receiptIssues = (
+  receipt: VerifiedAskOutcomeReceipt,
+  oracle: HiddenOracle
+): string[] => {
+  const issues = citationIssues(receipt);
+  if (
+    !SHA256.test(receipt.fixtureFingerprint) ||
+    !SHA256.test(receipt.indexFingerprint) ||
+    !SHA256.test(receipt.requestFingerprint) ||
+    !SHA256.test(receipt.modelFingerprint)
+  )
+    issues.push("input_fingerprint_invalid");
+  if (
+    canonicalFingerprint(receiptWithoutFingerprint(receipt)) !==
+    receipt.canonicalFingerprint
+  )
+    issues.push("receipt_fingerprint_mismatch");
+  if (canonicalFingerprint(receipt.answer) !== receipt.answerFingerprint)
+    issues.push("answer_fingerprint_mismatch");
+  const claim = claimFromAnswer(receipt, oracle);
+  if (!receipt.abstained && !claim) issues.push("answer_claim_unparseable");
+  if (receipt.lane === "raw_ask") {
+    if (
+      receipt.verification.requested ||
+      receipt.verification.answerStatus !== "raw" ||
+      receipt.abstained ||
+      receipt.citations.length === 0 ||
+      receipt.citations.some((citation) => citation.evidenceId !== null) ||
+      !receipt.answer.includes("[1]") ||
+      receipt.answer.includes("[evidence:")
+    )
+      issues.push("raw_lane_semantics_invalid");
+  } else if (
+    !receipt.verification.requested ||
+    !["verified", "abstained"].includes(receipt.verification.answerStatus)
+  ) {
+    issues.push("verified_lane_semantics_invalid");
+  } else if (receipt.verification.answerStatus === "abstained") {
+    if (
+      !receipt.abstained ||
+      receipt.answer !== CLAIM_ABSTENTION_TEXT ||
+      receipt.citations.length !== 0 ||
+      claim !== null
+    )
+      issues.push("verified_abstention_invalid");
+  } else if (
+    receipt.abstained ||
+    receipt.citations.length === 0 ||
+    receipt.citations.some(
+      (citation) =>
+        !citation.evidenceId ||
+        !SHA256.test(citation.evidenceId) ||
+        !receipt.answer.includes(`[evidence:${citation.evidenceId}]`)
+    ) ||
+    receipt.answer.includes("[1]")
+  ) {
+    issues.push("verified_answer_invalid");
+  }
+  return [...new Set(issues)];
+};
+
+const unavailableMetrics =
+  (): VerifiedAskPromotionArtifact["promotion"]["metrics"] => ({
+    baselineAnswerAccuracy: null,
+    candidateAnswerAccuracy: null,
+    baselineUnsupportedSubstantiveClaims: null,
+    candidateUnsupportedSubstantiveClaims: null,
+    unsupportedSubstantiveClaimReduction: null,
+  });
+
 export const evaluateVerifiedAskPromotion = (
   receipts: readonly VerifiedAskOutcomeReceipt[],
-  scores: readonly VerifiedAskOutcomeScore[]
+  scores: readonly VerifiedAskOutcomeScore[],
+  oracles: ReadonlyMap<string, HiddenOracle>
 ): VerifiedAskPromotionArtifact["promotion"] => {
   const failures: string[] = [];
-  const receiptIdentity = new Set<string>();
-  const scoreIdentity = new Set<string>();
-  const receiptsByLane = new Map<
-    VerifiedAskLane,
-    Map<string, VerifiedAskOutcomeReceipt>
-  >(VERIFIED_ASK_LANES.map((lane) => [lane, new Map()]));
-  const scoresByLane = new Map<
-    VerifiedAskLane,
-    Map<string, VerifiedAskOutcomeScore>
-  >(VERIFIED_ASK_LANES.map((lane) => [lane, new Map()]));
+  const receiptMaps = new Map(
+    VERIFIED_ASK_LANES.map((lane) => [
+      lane,
+      new Map<string, VerifiedAskOutcomeReceipt>(),
+    ])
+  );
+  const scoreMaps = new Map(
+    VERIFIED_ASK_LANES.map((lane) => [
+      lane,
+      new Map<string, VerifiedAskOutcomeScore>(),
+    ])
+  );
   for (const receipt of receipts) {
-    const identity = `${receipt.lane}\0${pairKey(receipt)}`;
-    if (receiptIdentity.has(identity))
-      failures.push(`duplicate_receipt:${identity}`);
-    receiptIdentity.add(identity);
-    receiptsByLane.get(receipt.lane)?.set(pairKey(receipt), receipt);
+    const key = identityKey(receipt);
+    const lane = receiptMaps.get(receipt.lane);
+    if (!lane || lane.has(key)) failures.push(`duplicate_receipt:${key}`);
+    lane?.set(key, receipt);
   }
   for (const score of scores) {
-    const identity = `${score.lane}\0${pairKey(score)}`;
-    if (scoreIdentity.has(identity))
-      failures.push(`duplicate_score:${identity}`);
-    scoreIdentity.add(identity);
-    scoresByLane.get(score.lane)?.set(pairKey(score), score);
+    const key = identityKey(score);
+    const lane = scoreMaps.get(score.lane);
+    if (!lane || lane.has(key)) failures.push(`duplicate_score:${key}`);
+    lane?.set(key, score);
   }
-  const baseline = receiptsByLane.get("raw_ask")!;
-  const candidate = receiptsByLane.get("verified_ask")!;
+  const baseline = receiptMaps.get("raw_ask")!;
+  const candidate = receiptMaps.get("verified_ask")!;
   const keys = [...new Set([...baseline.keys(), ...candidate.keys()])].sort();
+  const recomputed = new Map<VerifiedAskLane, VerifiedAskOutcomeScore[]>(
+    VERIFIED_ASK_LANES.map((lane) => [lane, []])
+  );
   for (const key of keys) {
     const raw = baseline.get(key);
     const verified = candidate.get(key);
-    const rawScore = scoresByLane.get("raw_ask")?.get(key);
-    const verifiedScore = scoresByLane.get("verified_ask")?.get(key);
-    if (!(raw && verified && rawScore && verifiedScore)) {
+    const oracle = oracles.get(raw?.taskId ?? verified?.taskId ?? "");
+    const rawScore = scoreMaps.get("raw_ask")?.get(key);
+    const verifiedScore = scoreMaps.get("verified_ask")?.get(key);
+    if (!(raw && verified && oracle && rawScore && verifiedScore)) {
       failures.push(`missing_or_mismatched_pair:${key}`);
       continue;
+    }
+    for (const receipt of [raw, verified]) {
+      for (const issue of receiptIssues(receipt, oracle))
+        failures.push(`${issue}:${receipt.lane}:${key}`);
     }
     if (
       raw.fixtureFingerprint !== verified.fixtureFingerprint ||
       raw.indexFingerprint !== verified.indexFingerprint ||
       raw.requestFingerprint !== verified.requestFingerprint ||
-      raw.modelFingerprint !== verified.modelFingerprint
+      raw.modelFingerprint !== verified.modelFingerprint ||
+      raw.draftKind !== verified.draftKind
     )
       failures.push(`pair_fingerprint_mismatch:${key}`);
-    if (verifiedScore.answerAccuracy < rawScore.answerAccuracy)
+    const derivedRaw = scoreVerifiedAskReceipt(raw, oracle);
+    const derivedVerified = scoreVerifiedAskReceipt(verified, oracle);
+    recomputed.get("raw_ask")!.push(derivedRaw);
+    recomputed.get("verified_ask")!.push(derivedVerified);
+    if (canonicalJson(rawScore) !== canonicalJson(derivedRaw))
+      failures.push(`score_receipt_mismatch:raw_ask:${key}`);
+    if (canonicalJson(verifiedScore) !== canonicalJson(derivedVerified))
+      failures.push(`score_receipt_mismatch:verified_ask:${key}`);
+    const rawExpectedKind =
+      derivedRaw.answerAccuracy === 1 ? "supported" : "adversarial";
+    if (
+      raw.draftKind !== rawExpectedKind ||
+      verified.draftKind !== rawExpectedKind
+    )
+      failures.push(`draft_kind_mismatch:${key}`);
+    if (derivedVerified.answerAccuracy < derivedRaw.answerAccuracy)
       failures.push(`pairwise_accuracy_regression:${key}`);
   }
   if (
@@ -186,58 +380,50 @@ export const evaluateVerifiedAskPromotion = (
     scores.length !== keys.length * 2
   )
     failures.push("cohort_cardinality_mismatch");
-  const baselineScores = [...(scoresByLane.get("raw_ask")?.values() ?? [])];
-  const candidateScores = [
-    ...(scoresByLane.get("verified_ask")?.values() ?? []),
-  ];
+  const integrityFailure = failures.some(
+    (failure) =>
+      !failure.startsWith("pairwise_accuracy_regression") &&
+      failure !== "aggregate_accuracy_regression" &&
+      failure !== "unsupported_claims_not_strictly_reduced"
+  );
+  if (integrityFailure)
+    return {
+      passed: false,
+      pairCount: 0,
+      failures,
+      metrics: unavailableMetrics(),
+    };
+  const rawScores = recomputed.get("raw_ask")!;
+  const verifiedScores = recomputed.get("verified_ask")!;
   const baselineAccuracy =
-    baselineScores.length === 0
-      ? null
-      : baselineScores.reduce((sum, score) => sum + score.answerAccuracy, 0) /
-        baselineScores.length;
+    rawScores.reduce((sum, score) => sum + score.answerAccuracy, 0) /
+    rawScores.length;
   const candidateAccuracy =
-    candidateScores.length === 0
-      ? null
-      : candidateScores.reduce((sum, score) => sum + score.answerAccuracy, 0) /
-        candidateScores.length;
-  const baselineUnsupported = baselineScores.reduce(
+    verifiedScores.reduce((sum, score) => sum + score.answerAccuracy, 0) /
+    verifiedScores.length;
+  const baselineUnsupported = rawScores.reduce(
     (sum, score) => sum + score.unsupportedSubstantiveClaims.length,
     0
   );
-  const candidateUnsupported = candidateScores.reduce(
+  const candidateUnsupported = verifiedScores.reduce(
     (sum, score) => sum + score.unsupportedSubstantiveClaims.length,
     0
   );
-  if (
-    baselineAccuracy === null ||
-    candidateAccuracy === null ||
-    candidateAccuracy < baselineAccuracy
-  )
+  if (candidateAccuracy < baselineAccuracy)
     failures.push("aggregate_accuracy_regression");
   if (baselineUnsupported === 0 || candidateUnsupported >= baselineUnsupported)
     failures.push("unsupported_claims_not_strictly_reduced");
-  const comparable = failures.every(
-    (failure) =>
-      failure !== "cohort_cardinality_mismatch" &&
-      !failure.startsWith("duplicate_") &&
-      !failure.startsWith("missing_or_mismatched_pair") &&
-      !failure.startsWith("pair_fingerprint_mismatch")
-  );
   return {
     passed: failures.length === 0,
-    pairCount: comparable ? keys.length : 0,
+    pairCount: keys.length,
     failures,
     metrics: {
-      baselineAnswerAccuracy: comparable ? baselineAccuracy : null,
-      candidateAnswerAccuracy: comparable ? candidateAccuracy : null,
-      baselineUnsupportedSubstantiveClaims: comparable
-        ? baselineUnsupported
-        : null,
-      candidateUnsupportedSubstantiveClaims: comparable
-        ? candidateUnsupported
-        : null,
+      baselineAnswerAccuracy: baselineAccuracy,
+      candidateAnswerAccuracy: candidateAccuracy,
+      baselineUnsupportedSubstantiveClaims: baselineUnsupported,
+      candidateUnsupportedSubstantiveClaims: candidateUnsupported,
       unsupportedSubstantiveClaimReduction:
-        comparable && baselineUnsupported > 0
+        baselineUnsupported > 0
           ? (baselineUnsupported - candidateUnsupported) / baselineUnsupported
           : null,
     },
@@ -247,6 +433,41 @@ export const evaluateVerifiedAskPromotion = (
 export const verifiedAskArtifactFingerprint = (
   artifact: Omit<VerifiedAskPromotionArtifact, "canonicalFingerprint">
 ): string => canonicalFingerprint(artifact);
+
+export const validateVerifiedAskPromotionArtifact = (
+  artifact: VerifiedAskPromotionArtifact,
+  oracles: ReadonlyMap<string, HiddenOracle>
+): string[] => {
+  const failures: string[] = [];
+  const { canonicalFingerprint: _fingerprint, ...projection } = artifact;
+  if (
+    verifiedAskArtifactFingerprint(projection) !== artifact.canonicalFingerprint
+  )
+    failures.push("artifact_fingerprint_mismatch");
+  if (
+    !GIT_SHA.test(artifact.environment.git.commit) ||
+    artifact.environment.git.dirty
+  )
+    failures.push("artifact_git_provenance_invalid");
+  if (
+    artifact.benchmarkId !== VERIFIED_ASK_BENCHMARK_ID ||
+    artifact.schemaVersion !== "1.0" ||
+    artifact.receipts.some(
+      (receipt) =>
+        receipt.fixtureFingerprint !== artifact.fixtureFingerprint ||
+        receipt.indexFingerprint !== artifact.indexFingerprint
+    )
+  )
+    failures.push("artifact_identity_mismatch");
+  const promotion = evaluateVerifiedAskPromotion(
+    artifact.receipts,
+    artifact.scores,
+    oracles
+  );
+  if (canonicalJson(promotion) !== canonicalJson(artifact.promotion))
+    failures.push("artifact_promotion_mismatch");
+  return failures;
+};
 
 export const renderVerifiedAskPromotionMarkdown = (
   artifact: VerifiedAskPromotionArtifact

@@ -29,6 +29,7 @@ import { validateAgenticSchema } from "../../../evals/agentic/validation";
 import {
   evaluateVerifiedAskPromotion,
   type VerifiedAskPromotionArtifact,
+  validateVerifiedAskPromotionArtifact,
 } from "../../../evals/agentic/verified-ask-outcome";
 
 const BASELINE_ROOT = join(AGENTIC_FIXTURE_ROOT, "baseline", "fixture-agent");
@@ -188,6 +189,7 @@ describe("committed authoritative agentic baseline", () => {
     const report = (await Bun.file(
       join(BASELINE_ROOT, "report.json")
     ).json()) as BenchmarkReport;
+    const fixture = await loadAgenticFixture();
     expect(artifact.benchmarkId).toBe("verified-ask-outcome@1");
     expect(artifact.receipts).toHaveLength(44);
     expect(artifact.scores).toHaveLength(44);
@@ -196,8 +198,15 @@ describe("committed authoritative agentic baseline", () => {
       dirty: false,
     });
     expect(
-      evaluateVerifiedAskPromotion(artifact.receipts, artifact.scores)
+      evaluateVerifiedAskPromotion(
+        artifact.receipts,
+        artifact.scores,
+        fixture.oracles
+      )
     ).toEqual(artifact.promotion);
+    expect(
+      validateVerifiedAskPromotionArtifact(artifact, fixture.oracles)
+    ).toEqual([]);
     expect(artifact.promotion).toMatchObject({
       passed: true,
       pairCount: 22,

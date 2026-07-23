@@ -26,13 +26,15 @@ import {
   prepareGnoNativeIndex,
 } from "./native-index";
 import {
+  encodeVerifiedAskClaim,
   evaluateVerifiedAskPromotion,
+  scoreVerifiedAskReceipt,
   VERIFIED_ASK_AGENT_ID,
   VERIFIED_ASK_BENCHMARK_ID,
   VERIFIED_ASK_SEED,
   VERIFIED_ASK_TRIAL_ID,
   verifiedAskArtifactFingerprint,
-  verifiedAskClaimValuesMatch,
+  validateVerifiedAskPromotionArtifact,
 } from "./verified-ask-promotion";
 
 export type {
@@ -42,8 +44,10 @@ export type {
   VerifiedAskPromotionArtifact,
 } from "./verified-ask-promotion";
 export {
+  encodeVerifiedAskClaim,
   evaluateVerifiedAskPromotion,
   renderVerifiedAskPromotionMarkdown,
+  validateVerifiedAskPromotionArtifact,
 } from "./verified-ask-promotion";
 
 const ADVERSARIAL_TASK_IDS = new Set([
@@ -69,11 +73,6 @@ const adversarialValue = (value: ClaimValue): ClaimValue => {
       return { type: "string", value: `${value.value} (incorrect)` };
   }
 };
-
-const displayValue = (value: ClaimValue): string =>
-  (Array.isArray(value.value) ? value.value.join(", ") : String(value.value))
-    .replace(/[.;]/g, ",")
-    .trim();
 
 const compatibleTask = (
   task: AgentTask,
@@ -103,7 +102,7 @@ const generationPort = (
     if (!params?.jsonSchema) {
       return {
         ok: true,
-        value: `${claimKey}: ${displayValue(value)} [1].`,
+        value: `${encodeVerifiedAskClaim(claimKey, value)} [1].`,
       };
     }
     const schema = params.jsonSchema as {
@@ -198,34 +197,15 @@ const gitProvenance =
     };
   };
 
-const scoreOutcome = (
-  receipt: VerifiedAskOutcomeReceipt,
-  oracle: HiddenOracle
-): VerifiedAskOutcomeScore => {
-  const expected = oracle.claims[0];
-  if (!expected) throw new Error(`Oracle claim missing for ${receipt.taskId}`);
-  const accurate =
-    receipt.declaredClaim !== null &&
-    verifiedAskClaimValuesMatch(
-      receipt.declaredClaim.value,
-      expected.expectedValue,
-      expected.normalizer.id
-    );
-  return {
-    taskId: receipt.taskId,
-    lane: receipt.lane,
-    trialId: receipt.trialId,
-    seed: receipt.seed,
-    agentId: receipt.agentId,
-    answerAccuracy: accurate ? 1 : 0,
-    unsupportedSubstantiveClaims:
-      receipt.declaredClaim && !accurate ? [expected.claimKey] : [],
-  };
-};
-
 export const runVerifiedAskOutcomeBenchmark = async (
-  fixture: LoadedAgenticFixture
+  fixture: LoadedAgenticFixture,
+  options: {
+    git?: VerifiedAskPromotionArtifact["environment"]["git"];
+  } = {}
 ): Promise<VerifiedAskPromotionArtifact> => {
+  const provenance = options.git ?? gitProvenance();
+  if (provenance.dirty)
+    throw new Error("Verified Ask benchmark requires a clean Git checkout");
   const native = await prepareGnoNativeIndex(fixture.snapshot);
   const store = new SqliteAdapter();
   try {
@@ -322,7 +302,6 @@ export const runVerifiedAskOutcomeBenchmark = async (
         requestFingerprint,
         modelFingerprint,
         draftKind: supported ? "supported" : "adversarial",
-        declaredClaim: { claimKey: oracleClaim.claimKey, value },
         answer: raw.answer,
         answerFingerprint: canonicalFingerprint(raw.answer),
         abstained: false,
@@ -330,7 +309,7 @@ export const runVerifiedAskOutcomeBenchmark = async (
         verification: { requested: false, answerStatus: "raw" },
       });
       receipts.push(rawReceipt);
-      scores.push(scoreOutcome(rawReceipt, oracle));
+      scores.push(scoreVerifiedAskReceipt(rawReceipt, oracle));
 
       const verified = await buildVerifiedAsk(
         task.brief.goal,
@@ -361,9 +340,6 @@ export const runVerifiedAskOutcomeBenchmark = async (
         requestFingerprint,
         modelFingerprint,
         draftKind: supported ? "supported" : "adversarial",
-        declaredClaim: supported
-          ? { claimKey: oracleClaim.claimKey, value }
-          : null,
         answer: verified.answer ?? "",
         answerFingerprint: canonicalFingerprint(verified.answer ?? ""),
         abstained: Boolean(verified.meta.abstained),
@@ -383,7 +359,7 @@ export const runVerifiedAskOutcomeBenchmark = async (
       )
         throw new Error(`Verified Ask did not safely abstain for ${taskId}`);
       receipts.push(verifiedReceipt);
-      scores.push(scoreOutcome(verifiedReceipt, oracle));
+      scores.push(scoreVerifiedAskReceipt(verifiedReceipt, oracle));
     }
     if (
       canonicalFingerprint(excludedTasks) !==
@@ -397,14 +373,18 @@ export const runVerifiedAskOutcomeBenchmark = async (
       throw new Error(
         "Verified Ask compatible cohort differs from frozen fn-97 contract"
       );
-    const promotion = evaluateVerifiedAskPromotion(receipts, scores);
+    const promotion = evaluateVerifiedAskPromotion(
+      receipts,
+      scores,
+      fixture.oracles
+    );
     const partial: Omit<VerifiedAskPromotionArtifact, "canonicalFingerprint"> =
       {
         schemaVersion: "1.0",
         benchmarkId: VERIFIED_ASK_BENCHMARK_ID,
         fixtureFingerprint: fixture.snapshot.fingerprint,
         indexFingerprint: native.indexFingerprint,
-        environment: { git: gitProvenance() },
+        environment: { git: provenance },
         methodology: [
           "Production raw Ask (searchHybrid, generateGroundedAnswer, processAnswerResult) is the baseline.",
           "Production buildVerifiedAsk with closed-Capsule semantic claim verification is the candidate.",
@@ -428,10 +408,19 @@ export const runVerifiedAskOutcomeBenchmark = async (
         ),
         promotion,
       };
-    return {
+    const artifact = {
       ...partial,
       canonicalFingerprint: verifiedAskArtifactFingerprint(partial),
     };
+    const failures = validateVerifiedAskPromotionArtifact(
+      artifact,
+      fixture.oracles
+    );
+    if (failures.length > 0)
+      throw new Error(
+        `Verified Ask artifact validation failed: ${failures.join(",")}`
+      );
+    return artifact;
   } finally {
     await store.close();
     await cleanupNativeIndexPreparation(native);
