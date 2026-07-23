@@ -11,7 +11,8 @@ Deliver expose changes diff and impact through shared read surfaces as one imple
 
 ### Approach
 - Implement list/changes, document diff, and bounded impact services over the journal and existing graph/backlink traversal.
-- Return stable cursor/truncation/history-unavailable semantics plus evidence paths that explain why a dependent item is impacted.
+- Return stable cursor and truncation semantics; disclose unavailable prior structural history through the journal delta rather than inventing a persisted `history-unavailable` state, and include evidence paths that explain why a dependent item is impacted.
+<!-- Updated by plan-sync: fn-102-knowledge-delta-and-capsule.2 records unavailable prior mirror history as `structureDelta.truncated`, not a persisted `history-unavailable` state -->
 - Expose equivalent CLI, REST, MCP, and SDK contracts with readable summaries.
 
 ### Investigation targets
