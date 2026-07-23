@@ -7,12 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.19.0] - 2026-07-23
+
 ### Added
 
+- Added opt-in, local-only retrieval traces spanning queries, Context Capsules,
+  document reads, exact opened/cited/pinned evidence, explicit judgments, and
+  reproducibility fingerprints.
+- Added bounded trace inspection, labeling, aggregate export, deletion, and
+  physical purge across CLI, REST, MCP, SDK, and Web, with truthful WAL cleanup
+  receipts and opaque pagination cursors.
 - Added deterministic content-free qrels export and read-only baseline versus
   candidate retrieval replay, with manifest verification, exact rank/span
   provenance, stale/missing source disclosure, fn-97 fixture import, and
   human-only promotion recommendations.
+
+### Security
+
+- Kept recording disabled by default, preserved redaction and retention limits,
+  required explicit feedback and export, and proved replay performs no network
+  upload or automatic ranking, prompt, configuration, or file mutation.
+- Enforced same-origin REST mutation checks and explicit MCP write enablement;
+  authentication alone never grants trace mutation rights.
 
 ## [1.18.0] - 2026-07-23
 
@@ -1583,7 +1599,8 @@ Re-release of 1.0.2 with a CHANGELOG formatting fix so the Publish workflow's
 | 0.4.0   | 2026-01-01 | Web UI and REST API                        |
 | 0.1.0   | 2025-12-30 | Initial release with full search pipeline  |
 
-[Unreleased]: https://github.com/gmickel/gno/compare/v1.18.0...HEAD
+[Unreleased]: https://github.com/gmickel/gno/compare/v1.19.0...HEAD
+[1.19.0]: https://github.com/gmickel/gno/compare/v1.18.0...v1.19.0
 [1.18.0]: https://github.com/gmickel/gno/compare/v1.17.0...v1.18.0
 [1.17.0]: https://github.com/gmickel/gno/compare/v1.16.0...v1.17.0
 [1.16.0]: https://github.com/gmickel/gno/compare/v1.15.0...v1.16.0
