@@ -173,6 +173,31 @@ const receiptWithFingerprint = (
   canonicalFingerprint: canonicalFingerprint(receipt),
 });
 
+const gitProvenance =
+  (): VerifiedAskPromotionArtifact["environment"]["git"] => {
+    const commit = Bun.spawnSync(["/usr/bin/git", "rev-parse", "HEAD"], {
+      cwd: import.meta.dir,
+      stdout: "pipe",
+      stderr: "pipe",
+    });
+    const status = Bun.spawnSync(["/usr/bin/git", "status", "--porcelain"], {
+      cwd: import.meta.dir,
+      stdout: "pipe",
+      stderr: "pipe",
+    });
+    const sha = commit.stdout.toString().trim();
+    if (
+      commit.exitCode !== 0 ||
+      status.exitCode !== 0 ||
+      !/^[a-f0-9]{40}$/.test(sha)
+    )
+      throw new Error("Verified Ask benchmark requires Git provenance");
+    return {
+      commit: sha,
+      dirty: status.stdout.toString().trim().length > 0,
+    };
+  };
+
 const scoreOutcome = (
   receipt: VerifiedAskOutcomeReceipt,
   oracle: HiddenOracle
@@ -379,6 +404,7 @@ export const runVerifiedAskOutcomeBenchmark = async (
         benchmarkId: VERIFIED_ASK_BENCHMARK_ID,
         fixtureFingerprint: fixture.snapshot.fingerprint,
         indexFingerprint: native.indexFingerprint,
+        environment: { git: gitProvenance() },
         methodology: [
           "Production raw Ask (searchHybrid, generateGroundedAnswer, processAnswerResult) is the baseline.",
           "Production buildVerifiedAsk with closed-Capsule semantic claim verification is the candidate.",

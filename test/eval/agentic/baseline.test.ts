@@ -185,9 +185,16 @@ describe("committed authoritative agentic baseline", () => {
     const artifact = (await Bun.file(
       join(BASELINE_ROOT, "verified-ask-promotion.json")
     ).json()) as VerifiedAskPromotionArtifact;
+    const report = (await Bun.file(
+      join(BASELINE_ROOT, "report.json")
+    ).json()) as BenchmarkReport;
     expect(artifact.benchmarkId).toBe("verified-ask-outcome@1");
     expect(artifact.receipts).toHaveLength(44);
     expect(artifact.scores).toHaveLength(44);
+    expect(artifact.environment.git).toEqual({
+      commit: report.environment.git.commit!,
+      dirty: false,
+    });
     expect(
       evaluateVerifiedAskPromotion(artifact.receipts, artifact.scores)
     ).toEqual(artifact.promotion);

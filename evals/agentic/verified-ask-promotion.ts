@@ -58,6 +58,12 @@ export interface VerifiedAskPromotionArtifact {
   canonicalFingerprint: string;
   fixtureFingerprint: string;
   indexFingerprint: string;
+  environment: {
+    git: {
+      commit: string;
+      dirty: boolean;
+    };
+  };
   methodology: string[];
   excludedTasks: Array<{ taskId: string; reason: string }>;
   receipts: VerifiedAskOutcomeReceipt[];

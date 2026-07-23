@@ -24,6 +24,9 @@ describe("verified Ask outcome promotion", () => {
     ]);
     expect(artifact.receipts).toHaveLength(44);
     expect(artifact.scores).toHaveLength(44);
+    expect(artifact.environment.git).toMatchObject({
+      commit: expect.stringMatching(/^[a-f0-9]{40}$/),
+    });
     expect(artifact.promotion).toEqual({
       passed: true,
       pairCount: 22,
