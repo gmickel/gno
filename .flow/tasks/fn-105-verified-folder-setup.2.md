@@ -11,7 +11,7 @@ Deliver add safe setup cli ux and semantic background handoff as one implementat
 
 ### Approach
 - Add `gno setup <folder>` options/terminal/JSON output with progress on stderr and versioned receipt on stdout.
-- Derive collision-safe collection names, preserve granular commands, and hand semantic model/embed work to a resident job when available or an explicit resumable command otherwise.
+- Derive collision-safe collection names and preserve granular commands. A direct `gno setup` invocation stays standalone and must not auto-attach to a resident process; it surfaces an explicit resumable command for semantic model/embed work. A resident-owned caller may enqueue through its already-owned job manager. `GET /api/resident/status` (`resident-status@1.0`) is a redacted observability surface, not an attachment protocol. <!-- Updated by plan-sync (cross-spec): fn-99-resident-local-context-gateway.5 finalized the standalone direct-CLI and resident-status contract -->
 - Implement secret-risk preflight for common credential/private-key/env paths; interactive confirmation is explicit, while noninteractive JSON fails closed unless exclusions are provided.
 
 ### Investigation targets
