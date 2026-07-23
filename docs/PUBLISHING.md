@@ -70,10 +70,16 @@ HTTP model endpoints are a separate explicit boundary. gno.sh receives the
 exported artifact only when you upload it.
 
 The design-partner validation pilot is separately opt-in and concierge-run. Its
-closed receipts contain only a cohort identifier, pseudonymous participant key,
-consent receipt identifier, milestone event name, and calendar date. They never
-contain document content, queries, raw URLs, evidence spans, or free-form
-notes. Participation can be withdrawn at any time.
+closed receipts contain only a generated high-entropy cohort key, pseudonymous
+participant key, consent receipt identifier, milestone event name, monotonic
+sequence, exact UTC timestamp, and an aggregate cutoff/fingerprint for
+publication approval. Cohort keys never contain client names, project names,
+semantic slugs, or another free-form identity. Public reports omit the internal
+cohort key and expose only a one-way opaque report identifier bound to the
+approved aggregate. Receipts never contain document content, queries, raw URLs,
+evidence spans, or free-form notes. Approval seals the exact current aggregate;
+a later outcome invalidates it until every participant approves the new seal.
+Participation can be withdrawn at any time.
 
 ## Verification
 
