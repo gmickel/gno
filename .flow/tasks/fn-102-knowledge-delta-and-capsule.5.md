@@ -137,9 +137,17 @@ release gate.
 
 
 ## Done summary
-TBD
+Completed Knowledge Delta and saved Context Capsule hardening.
 
+- Froze closed JSON Schema contracts for changes, diff, impact, the saved-Capsule lifecycle, reverification receipts, and local SSE events.
+- Added migration, lifecycle, batching, scheduler, concurrency, cancellation, privacy, immutable-file, schema, CLI, and resident-runtime coverage.
+- Reconciled CLI, API, MCP, daemon, Web UI, troubleshooting, README, changelog, DB spec, package version references, and the installed agent skill.
+- Updated the hosted gno.sh product/docs truth on matching feature branch `feat/knowledge-delta`.
+- Fixed package-smoke streaming for TypeScript's ReadableStream contract and verified the packed 1.20.0 tarball.
+- Full tests, lint, typecheck, docs verification, Flow validation, focused acceptance tests, package smoke, canonical hybrid evaluation, gno.sh checks/build, and 48/48 skill autoresearch passed.
+- Full Evalite retrieval lanes cleared threshold, but its duplicate auto-discovery of an existing nested worktree ran the generation-backed Ask suite twice and exhausted local VRAM; canonical hybrid rerun passed at 86% (88% combined duplicate discovery).
+- macOS and Windows client artifact builds remain intentionally deferred per the program gate-time instruction.
 ## Evidence
-- Commits:
-- Tests:
+- Commits: f91299d, a671101
+- Tests: bun run lint:check, bun run typecheck, bun run docs:verify, /Users/gordon/.codex/scripts/flowctl validate --all, bun test (2833 pass, 1 expected Windows skip, 0 fail), bun test test/spec/schemas/knowledge-delta.test.ts test/spec/schemas/saved-capsule-lifecycle.test.ts test/cli/context-saved.test.ts test/serve/doc-events.test.ts test/serve/resident-runtime.test.ts test/store/migrations.test.ts test/changes/capsule-reverification.test.ts (25 pass, 0 fail), bun run test:package, bun run eval:hybrid (86% canonical, 88% aggregate, threshold 70%), autoresearch-gno-skill ./.venv/bin/python eval.py (48/48, 100.0), gno.sh: bun run check, gno.sh: bun run typecheck, gno.sh: bun test (84 pass, 5 expected integration skips, 0 fail), gno.sh: bun run build
 - PRs:
