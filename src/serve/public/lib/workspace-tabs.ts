@@ -65,6 +65,8 @@ function getLocationLabel(location: string): string {
       return "Connectors";
     case "/graph":
       return "Graph";
+    case "/traces":
+      return "Trace history";
     case "/doc":
     case "/edit": {
       const uri = params.get("uri") ?? "";

@@ -71,6 +71,7 @@ Recipe rules:
 | **Index**    | `init`, `collection add/list/remove`, `index`, `update`, `embed` | Set up and maintain document index                     |
 | **Tags**     | `tags`, `tags add`, `tags rm`                                    | Organize and filter documents                          |
 | **Context**  | `context add/list/rm/check/build/verify`                         | Configure guidance or compile/verify evidence Capsules |
+| **Traces**   | `trace list/show/label/export/delete/purge`                      | Manage private local retrieval receipts                |
 | **Models**   | `models list/use/pull/clear/path`                                | Manage local AI models                                 |
 | **Serve**    | `serve`, `daemon`                                                | One resident Web/headless gateway and watcher          |
 | **Publish**  | `publish export`                                                 | Export gno.sh publish artifacts                        |
@@ -176,6 +177,14 @@ with `gno serve` or `gno daemon` and connect to
 Serve is always loopback-only. Only daemon accepts an explicit non-loopback bind,
 and only with a restrictive bearer-token file plus exact Host/Origin allowlists.
 Authentication never enables writes by itself.
+
+For explicit retrieval feedback, use `gno_trace_list` and `gno_trace_show` to
+inspect local receipts. Never infer irrelevance from a missing click, a failed
+request, or a partial/cancelled outcome. Use write-enabled
+`gno_trace_label` only when the user explicitly supplies a
+relevant/irrelevant/missing-expected judgment. Trace export/delete/purge are
+also write tools and require separate write enablement; bearer authentication
+alone is insufficient.
 
 When using GNO through MCP, prefer this retrieval order:
 

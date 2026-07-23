@@ -1,0 +1,270 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "gno://schemas/retrieval-trace-common@1.0",
+  "title": "GNO Retrieval Trace Common Types",
+  "definitions": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "textShape": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["characters", "terms"],
+      "properties": {
+        "characters": { "type": "integer", "minimum": 0 },
+        "terms": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "fingerprints": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["pipeline", "model", "config", "index"],
+      "properties": {
+        "pipeline": { "$ref": "#/definitions/sha256" },
+        "model": { "$ref": "#/definitions/sha256" },
+        "config": { "$ref": "#/definitions/sha256" },
+        "index": { "$ref": "#/definitions/sha256" }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "traceId",
+        "schemaVersion",
+        "redactionMode",
+        "replayCapable",
+        "status",
+        "queryShape",
+        "goalShape",
+        "fingerprints",
+        "createdAtMs",
+        "updatedAtMs",
+        "expiresAtMs",
+        "byteSize",
+        "creationDigest"
+      ],
+      "properties": {
+        "traceId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "schemaVersion": { "const": "1.0" },
+        "redactionMode": { "enum": ["metadata", "replay"] },
+        "replayCapable": { "type": "boolean" },
+        "status": {
+          "enum": ["open", "completed", "partial", "failed", "cancelled"]
+        },
+        "queryShape": { "$ref": "#/definitions/textShape" },
+        "goalShape": { "$ref": "#/definitions/textShape" },
+        "fingerprints": { "$ref": "#/definitions/fingerprints" },
+        "createdAtMs": { "type": "integer", "minimum": 0 },
+        "updatedAtMs": { "type": "integer", "minimum": 0 },
+        "expiresAtMs": { "type": "integer", "minimum": 0 },
+        "byteSize": { "type": "integer", "minimum": 0 },
+        "creationDigest": { "$ref": "#/definitions/sha256" }
+      }
+    },
+    "trace": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "traceId",
+        "schemaVersion",
+        "redactionMode",
+        "replayCapable",
+        "status",
+        "queryText",
+        "queryDigest",
+        "queryShape",
+        "goalText",
+        "goalDigest",
+        "goalShape",
+        "filters",
+        "fingerprints",
+        "createdAtMs",
+        "updatedAtMs",
+        "expiresAtMs",
+        "byteSize",
+        "creationDigest"
+      ],
+      "properties": {
+        "traceId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "schemaVersion": { "const": "1.0" },
+        "redactionMode": { "enum": ["metadata", "replay"] },
+        "replayCapable": { "type": "boolean" },
+        "status": {
+          "enum": ["open", "completed", "partial", "failed", "cancelled"]
+        },
+        "queryText": { "type": ["string", "null"] },
+        "queryDigest": {
+          "anyOf": [{ "$ref": "#/definitions/sha256" }, { "type": "null" }]
+        },
+        "queryShape": { "$ref": "#/definitions/textShape" },
+        "goalText": { "type": ["string", "null"] },
+        "goalDigest": {
+          "anyOf": [{ "$ref": "#/definitions/sha256" }, { "type": "null" }]
+        },
+        "goalShape": { "$ref": "#/definitions/textShape" },
+        "filters": { "type": "object" },
+        "fingerprints": { "$ref": "#/definitions/fingerprints" },
+        "createdAtMs": { "type": "integer", "minimum": 0 },
+        "updatedAtMs": { "type": "integer", "minimum": 0 },
+        "expiresAtMs": { "type": "integer", "minimum": 0 },
+        "byteSize": { "type": "integer", "minimum": 0 },
+        "creationDigest": { "$ref": "#/definitions/sha256" }
+      }
+    },
+    "run": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "runId",
+        "traceId",
+        "idempotencyKey",
+        "kind",
+        "payload",
+        "createdAtMs",
+        "payloadBytes",
+        "canonicalDigest"
+      ],
+      "properties": {
+        "runId": { "type": "string" },
+        "traceId": { "type": "string" },
+        "idempotencyKey": { "type": "string" },
+        "kind": { "enum": ["retrieval", "context", "get"] },
+        "payload": { "type": "object" },
+        "createdAtMs": { "type": "integer", "minimum": 0 },
+        "payloadBytes": { "type": "integer", "minimum": 0 },
+        "canonicalDigest": { "$ref": "#/definitions/sha256" }
+      }
+    },
+    "event": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "eventId",
+        "traceId",
+        "runId",
+        "idempotencyKey",
+        "kind",
+        "payload",
+        "createdAtMs",
+        "payloadBytes",
+        "canonicalDigest"
+      ],
+      "properties": {
+        "eventId": { "type": "string" },
+        "traceId": { "type": "string" },
+        "runId": { "type": ["string", "null"] },
+        "idempotencyKey": { "type": "string" },
+        "kind": {
+          "enum": [
+            "query",
+            "retrieval",
+            "context",
+            "get",
+            "open",
+            "cite",
+            "pin",
+            "capability",
+            "complete"
+          ]
+        },
+        "payload": { "type": "object" },
+        "createdAtMs": { "type": "integer", "minimum": 0 },
+        "payloadBytes": { "type": "integer", "minimum": 0 },
+        "canonicalDigest": { "$ref": "#/definitions/sha256" }
+      }
+    },
+    "judgment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "judgmentId",
+        "traceId",
+        "runId",
+        "idempotencyKey",
+        "label",
+        "targetKind",
+        "targetRef",
+        "target",
+        "createdAtMs",
+        "targetBytes",
+        "canonicalDigest"
+      ],
+      "properties": {
+        "judgmentId": { "type": "string" },
+        "traceId": { "type": "string" },
+        "runId": { "type": ["string", "null"] },
+        "idempotencyKey": { "type": "string" },
+        "label": { "enum": ["relevant", "irrelevant", "missing_expected"] },
+        "targetKind": { "enum": ["document", "chunk", "span", "query"] },
+        "targetRef": { "type": "string" },
+        "target": { "type": "object" },
+        "createdAtMs": { "type": "integer", "minimum": 0 },
+        "targetBytes": { "type": "integer", "minimum": 0 },
+        "canonicalDigest": { "$ref": "#/definitions/sha256" }
+      }
+    },
+    "exportRow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "exportId",
+        "traceId",
+        "format",
+        "artifactHash",
+        "createdAtMs"
+      ],
+      "properties": {
+        "exportId": { "type": "string" },
+        "traceId": { "type": "string" },
+        "format": { "enum": ["agentic-receipt", "qrels"] },
+        "artifactHash": { "$ref": "#/definitions/sha256" },
+        "createdAtMs": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "manifest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "exportId",
+        "traceIds",
+        "format",
+        "artifactHash",
+        "createdAtMs"
+      ],
+      "properties": {
+        "exportId": { "type": "string" },
+        "traceIds": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "string" }
+        },
+        "format": { "enum": ["agentic-receipt", "qrels"] },
+        "artifactHash": { "$ref": "#/definitions/sha256" },
+        "createdAtMs": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "traces",
+        "runs",
+        "events",
+        "judgments",
+        "exports",
+        "exportLinks"
+      ],
+      "properties": {
+        "traces": { "type": "integer", "minimum": 0 },
+        "runs": { "type": "integer", "minimum": 0 },
+        "events": { "type": "integer", "minimum": 0 },
+        "judgments": { "type": "integer", "minimum": 0 },
+        "exports": { "type": "integer", "minimum": 0 },
+        "exportLinks": { "type": "integer", "minimum": 0 }
+      }
+    }
+  }
+}

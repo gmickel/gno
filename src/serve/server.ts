@@ -76,6 +76,14 @@ import {
   handleDocSimilar,
 } from "./routes/links";
 import { createMcpHttpGateway } from "./routes/mcp";
+import {
+  handleTraceDelete,
+  handleTraceExport,
+  handleTraceLabel,
+  handleTraceList,
+  handleTracePurge,
+  handleTraceShow,
+} from "./routes/traces";
 import { forbiddenResponse, isRequestAllowed } from "./security";
 
 export interface ServeOptions extends HttpGatewayOverrides {
@@ -246,6 +254,7 @@ export async function startServer(
         "/edit": homepage,
         "/collections": homepage,
         "/connectors": homepage,
+        "/traces": homepage,
         "/ask": homepage,
         "/graph": homepage,
 
@@ -264,6 +273,82 @@ export async function startServer(
               ),
               isDev
             ),
+        },
+        "/api/traces/export": {
+          POST: async (req: Request) => {
+            if (!isRequestAllowed(req, port)) {
+              return withSecurityHeaders(forbiddenResponse(), isDev);
+            }
+            return withSecurityHeaders(
+              await handleResidentRead(runtime as ResidentRuntime, req, () =>
+                handleTraceExport(store, req)
+              ),
+              isDev
+            );
+          },
+        },
+        "/api/traces/:traceId/judgments": {
+          POST: async (req: Request) => {
+            if (!isRequestAllowed(req, port)) {
+              return withSecurityHeaders(forbiddenResponse(), isDev);
+            }
+            const traceId = decodeURIComponent(
+              new URL(req.url).pathname.split("/")[3] ?? ""
+            );
+            return withSecurityHeaders(
+              await handleResidentRead(runtime as ResidentRuntime, req, () =>
+                handleTraceLabel(store, traceId, req)
+              ),
+              isDev
+            );
+          },
+        },
+        "/api/traces/:traceId": {
+          GET: async (req: Request) => {
+            const traceId = decodeURIComponent(
+              new URL(req.url).pathname.split("/")[3] ?? ""
+            );
+            return withSecurityHeaders(
+              await handleResidentRead(runtime as ResidentRuntime, req, () =>
+                handleTraceShow(store, traceId, req)
+              ),
+              isDev
+            );
+          },
+          DELETE: async (req: Request) => {
+            if (!isRequestAllowed(req, port)) {
+              return withSecurityHeaders(forbiddenResponse(), isDev);
+            }
+            const traceId = decodeURIComponent(
+              new URL(req.url).pathname.split("/")[3] ?? ""
+            );
+            return withSecurityHeaders(
+              await handleResidentRead(runtime as ResidentRuntime, req, () =>
+                handleTraceDelete(store, traceId)
+              ),
+              isDev
+            );
+          },
+        },
+        "/api/traces": {
+          GET: async (req: Request) =>
+            withSecurityHeaders(
+              await handleResidentRead(runtime as ResidentRuntime, req, () =>
+                handleTraceList(store, req)
+              ),
+              isDev
+            ),
+          DELETE: async (req: Request) => {
+            if (!isRequestAllowed(req, port)) {
+              return withSecurityHeaders(forbiddenResponse(), isDev);
+            }
+            return withSecurityHeaders(
+              await handleResidentRead(runtime as ResidentRuntime, req, () =>
+                handleTracePurge(store)
+              ),
+              isDev
+            );
+          },
         },
         "/api/resident/status": {
           GET: () =>

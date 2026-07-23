@@ -85,6 +85,7 @@ import {
 import { resolveEffectiveIndex } from "../core/indexed-reference";
 import { resolveNoteCreatePlan } from "../core/note-creation";
 import { resolveNotePreset } from "../core/note-presets";
+import { RetrievalTraceManagementService } from "../core/retrieval-trace-management";
 import {
   finishRetrievalTraceAfterError,
   retrievalTraceFilters,
@@ -155,6 +156,21 @@ function unwrapStore<T>(
     throw sdkError(code, result.error.message, { cause: result.error.cause });
   }
   return result.value;
+}
+
+function unwrapTraceStore<T>(result: StoreResult<T>): T {
+  if (result.ok) return result.value;
+  const code =
+    result.error.code === "NOT_FOUND"
+      ? "NOT_FOUND"
+      : result.error.code === "INVALID_INPUT" ||
+          result.error.code === "CONSTRAINT_VIOLATION"
+        ? "VALIDATION"
+        : "STORE";
+  throw sdkError(code, result.error.message, {
+    cause: result.error.cause,
+    details: { traceCode: result.error.code },
+  });
 }
 
 async function resolveClientState(
@@ -1024,6 +1040,60 @@ class GnoClientImpl implements GnoClient {
       await this.store.getStatus({
         embedModel: resolveModelUri(this.config, "embed"),
       })
+    );
+  }
+
+  async listRetrievalTraces(
+    options: import("../core/retrieval-trace-management").RetrievalTraceListRequest = {}
+  ) {
+    this.assertOpen();
+    return unwrapTraceStore(
+      await new RetrievalTraceManagementService(this.store).list(options)
+    );
+  }
+
+  async getRetrievalTrace(
+    traceId: string,
+    options: { detailLimit?: number } = {}
+  ) {
+    this.assertOpen();
+    return unwrapTraceStore(
+      await new RetrievalTraceManagementService(this.store).show(
+        traceId,
+        options
+      )
+    );
+  }
+
+  async labelRetrievalTrace(
+    input: import("../core/retrieval-trace-management").RetrievalTraceLabelRequest
+  ) {
+    this.assertOpen();
+    return unwrapTraceStore(
+      await new RetrievalTraceManagementService(this.store).label(input)
+    );
+  }
+
+  async exportRetrievalTraces(
+    input: import("../core/retrieval-trace-management").RetrievalTraceExportRequest
+  ) {
+    this.assertOpen();
+    return unwrapTraceStore(
+      await new RetrievalTraceManagementService(this.store).export(input)
+    );
+  }
+
+  async deleteRetrievalTrace(traceId: string) {
+    this.assertOpen();
+    return unwrapTraceStore(
+      await new RetrievalTraceManagementService(this.store).delete(traceId)
+    );
+  }
+
+  async purgeRetrievalTraces() {
+    this.assertOpen();
+    return unwrapTraceStore(
+      await new RetrievalTraceManagementService(this.store).purge()
     );
   }
 

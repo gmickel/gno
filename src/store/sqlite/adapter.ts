@@ -54,9 +54,13 @@ import type {
   MigrationResult,
   RetrievalTraceAppendResult,
   RetrievalTraceBundle,
+  RetrievalTraceCursor,
+  RetrievalTraceBoundedBundle,
   RetrievalTraceDeleteCounts,
   RetrievalTraceEventInput,
   RetrievalTraceExportInput,
+  RetrievalTraceExportManifestInput,
+  RetrievalTraceExportManifestRow,
   RetrievalTraceInput,
   RetrievalTraceJudgmentInput,
   RetrievalTracePurgeResult,
@@ -91,6 +95,12 @@ import { err, ok } from "../types";
 import { getStoredEmbeddingFingerprint } from "../vector/freshness";
 import { modelTableName } from "../vector/sqlite-vec";
 import { loadFts5Snowball } from "./fts5-snowball";
+import {
+  appendExportManifest as appendStoredTraceExportManifest,
+  getBoundedTrace as getBoundedStoredTrace,
+  getExportManifest as getStoredTraceExportManifest,
+  getOrCreateRedactionSecret as getOrCreateStoredTraceRedactionSecret,
+} from "./retrieval-trace-management-store";
 import {
   deleteTrace as deleteStoredTrace,
   enforceRetention as enforceStoredTraceRetention,
@@ -822,10 +832,18 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
     return getStoredTrace(this.ensureOpen(), traceId);
   }
 
+  async getBoundedRetrievalTrace(
+    traceId: string,
+    detailLimit: number
+  ): Promise<StoreResult<RetrievalTraceBoundedBundle | null>> {
+    return getBoundedStoredTrace(this.ensureOpen(), traceId, detailLimit);
+  }
+
   async listRetrievalTraces(
-    limit: number
+    limit: number,
+    cursor?: RetrievalTraceCursor
   ): Promise<StoreResult<RetrievalTraceRow[]>> {
-    return listStoredTraces(this.ensureOpen(), limit);
+    return listStoredTraces(this.ensureOpen(), limit, cursor);
   }
 
   async finalizeRetrievalTrace(
@@ -858,6 +876,24 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
     input: RetrievalTraceExportInput
   ): Promise<StoreResult<RetrievalTraceAppendResult>> {
     return appendStoredTraceExport(this.ensureOpen(), input);
+  }
+
+  async appendRetrievalTraceExportManifest(
+    input: RetrievalTraceExportManifestInput
+  ): Promise<StoreResult<RetrievalTraceAppendResult>> {
+    return appendStoredTraceExportManifest(this.ensureOpen(), input);
+  }
+
+  async getRetrievalTraceExportManifest(
+    exportId: string
+  ): Promise<StoreResult<RetrievalTraceExportManifestRow | null>> {
+    return getStoredTraceExportManifest(this.ensureOpen(), exportId);
+  }
+
+  async getOrCreateRetrievalTraceRedactionSecret(): Promise<
+    StoreResult<string>
+  > {
+    return getOrCreateStoredTraceRedactionSecret(this.ensureOpen());
   }
 
   async deleteRetrievalTrace(

@@ -628,6 +628,46 @@ gno embed
 gno embed notes
 ```
 
+## Private Retrieval Trace Commands
+
+When retrieval traces are enabled, use the receipt ID printed on stderr to
+inspect and explicitly label the local evidence path:
+
+```bash
+gno trace list --md
+gno trace show <trace-id> --json
+gno trace label <trace-id> --label relevant \
+  --target gno://notes/decision.md
+gno trace label <trace-id> --label missing-expected \
+  --target '#abcdef'
+```
+
+Relevant and irrelevant labels must match evidence already recorded by that
+trace. Missing-expected labels accept only a `gno://` URI, docid, or immutable
+source hash; GNO does not copy document text into the judgment. Retrying the
+same label is idempotent. A later correction is appended instead of rewriting
+history.
+
+Build one deterministic receipt from immutable terminal traces:
+
+```bash
+gno trace export <trace-id> <another-trace-id> --output traces.json
+```
+
+Open traces cannot be exported. Completed, partial, failed, and cancelled
+outcomes stay distinct and never become implicit negative labels.
+
+Delete one receipt or purge all local receipt data:
+
+```bash
+gno trace delete <trace-id>
+gno --yes trace purge --json
+```
+
+The purge receipt reports `physicalCleanup` as `completed`, `wal_busy`, or
+`failed`; only `completed` confirms the SQLite WAL was truncated. Recording
+can be disabled without disabling management of receipts already stored.
+
 ## Context Commands
 
 Contexts add semantic hints to improve search relevance.

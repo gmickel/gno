@@ -15,11 +15,11 @@ Use GNO as a local MCP server for Claude Desktop, Cursor, Zed, Windsurf, Amp, Ra
 ## Overview
 
 MCP (Model Context Protocol) allows AI assistants to access external tools and
-resources. GNO registers 19 tools in default read-only mode and 30 when writes
+resources. GNO registers 21 tools in default read-only mode and 36 when writes
 are explicitly enabled:
 
-- **Tools (read)**: gno_context, gno_context_verify, gno_search, gno_vsearch, gno_query, gno_query_diagnose, gno_get, gno_multi_get, gno_status, gno_list_tags, gno_links, gno_backlinks, gno_similar, gno_graph, gno_graph_query, gno_graph_neighbors, gno_graph_path
-- **Tools (write, opt-in)**: gno_capture, gno_add_collection, gno_sync, gno_embed, gno_index, gno_remove_collection, gno_clear_collection_embeddings, gno_create_folder, gno_rename_note, gno_move_note, gno_duplicate_note
+- **Tools (read)**: gno_context, gno_context_verify, gno_search, gno_vsearch, gno_query, gno_query_diagnose, gno_get, gno_multi_get, gno_status, gno_trace_list, gno_trace_show, gno_list_tags, gno_links, gno_backlinks, gno_similar, gno_graph, gno_graph_query, gno_graph_neighbors, gno_graph_path
+- **Tools (write, opt-in)**: gno_trace_label, gno_trace_export, gno_trace_delete, gno_trace_purge, gno_capture, gno_add_collection, gno_sync, gno_embed, gno_index, gno_remove_collection, gno_clear_collection_embeddings, gno_create_folder, gno_rename_note, gno_move_note, gno_duplicate_note
 - **Tools (jobs)**: gno_job_status, gno_list_jobs
 - **Resources**: Access documents via `gno://collection/path`
 
@@ -88,6 +88,24 @@ top-level `_meta.gno.retrievalTrace.traceId`. Model-visible content and
 `gno_get` to link the exact opened line range to the original retrieval.
 Disabled tracing omits `_meta` and performs no trace work.
 
+Use `gno_trace_list` for metadata-only history and `gno_trace_show` for one
+explicit bounded detail read. History never includes replay query/goal text.
+The following mutations are available only when the server starts with
+`--mcp-enable-write` or `gateway.enableWrite: true`:
+
+- `gno_trace_label`: explicit `relevant`, `irrelevant`, or
+  `missing_expected` feedback
+- `gno_trace_export`: deterministic aggregate `agentic-receipt`
+- `gno_trace_delete`: one trace plus owned records
+- `gno_trace_purge`: every local receipt; requires `confirm: true`
+
+HTTP MCP rejects those tool names before dispatch when writes are disabled.
+Bearer authentication alone never authorizes them. Handlers also enforce the
+write flag, so direct or future transports cannot bypass the boundary.
+Relevant/irrelevant targets must match recorded evidence; missing-expected
+accepts a content-free document identity. Export rejects open/missing traces
+and preserves all terminal outcomes without implicit negative feedback.
+
 For ambiguous terms, pass `intent` instead of stuffing extra words into `query`:
 
 ```json
@@ -143,8 +161,9 @@ gno mcp --enable-write
 GNO_MCP_ENABLE_WRITE=1 gno mcp
 ```
 
-Without this flag, the 19 read-only retrieval, graph, status, and job-inspection
-tools are available. Enabling writes adds 11 mutation tools, for 30 total.
+Without this flag, the 21 read-only retrieval, trace, graph, status, and
+job-inspection tools are available. Enabling writes adds 15 mutation tools, for
+36 total.
 
 ### Collection Root Validation
 

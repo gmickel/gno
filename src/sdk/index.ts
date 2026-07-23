@@ -77,3 +77,15 @@ export {
   RETRIEVAL_TRACE_METADATA,
   type RetrievalTraceSurfaceMetadata,
 } from "../core/retrieval-trace-session";
+export type {
+  RetrievalTraceDeleteResult,
+  RetrievalTraceDetail,
+  RetrievalTraceExportRequest,
+  RetrievalTraceExportResult,
+  RetrievalTraceLabelRequest,
+  RetrievalTraceLabelResult,
+  RetrievalTraceListRequest,
+  RetrievalTraceListResult,
+  RetrievalTracePurgeResult,
+  RetrievalTraceSummary,
+} from "../core/retrieval-trace-management";

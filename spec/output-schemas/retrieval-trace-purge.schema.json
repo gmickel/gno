@@ -1,0 +1,31 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "gno://schemas/retrieval-trace-purge@1.0",
+  "title": "GNO Retrieval Trace Purge",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "traces",
+    "runs",
+    "events",
+    "judgments",
+    "exports",
+    "exportLinks",
+    "physicalCleanup",
+    "checkpointedFrames",
+    "remainingWalFrames"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "1.0" },
+    "traces": { "type": "integer", "minimum": 0 },
+    "runs": { "type": "integer", "minimum": 0 },
+    "events": { "type": "integer", "minimum": 0 },
+    "judgments": { "type": "integer", "minimum": 0 },
+    "exports": { "type": "integer", "minimum": 0 },
+    "exportLinks": { "type": "integer", "minimum": 0 },
+    "physicalCleanup": { "enum": ["completed", "wal_busy", "failed"] },
+    "checkpointedFrames": { "type": "integer", "minimum": 0 },
+    "remainingWalFrames": { "type": "integer", "minimum": 0 }
+  }
+}

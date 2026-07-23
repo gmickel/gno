@@ -24,17 +24,18 @@ index. Create, edit, search, and manage documents on your machine. Model
 downloads, explicitly configured HTTP inference, and gno.sh publishing are
 separate network boundaries.
 
-| Page            | Purpose                                                         |
-| :-------------- | :-------------------------------------------------------------- |
-| **Dashboard**   | First-run onboarding, health center, stats, and quick capture   |
-| **Search**      | BM25/vector/hybrid + advanced retrieval controls and tag facets |
-| **Browse**      | Cross-collection tree workspace with folder detail panes        |
-| **Doc View**    | View document with edit/delete actions and tag editing          |
-| **Editor**      | Split-view markdown editor with live preview                    |
-| **Collections** | Add, remove, and re-index collections                           |
-| **Connectors**  | Install and verify core agent integrations                      |
-| **Ask**         | AI-powered Q&A with citations                                   |
-| **Graph**       | Interactive knowledge graph visualization                       |
+| Page              | Purpose                                                         |
+| :---------------- | :-------------------------------------------------------------- |
+| **Dashboard**     | First-run onboarding, health center, stats, and quick capture   |
+| **Search**        | BM25/vector/hybrid + advanced retrieval controls and tag facets |
+| **Browse**        | Cross-collection tree workspace with folder detail panes        |
+| **Doc View**      | View document with edit/delete actions and tag editing          |
+| **Editor**        | Split-view markdown editor with live preview                    |
+| **Collections**   | Add, remove, and re-index collections                           |
+| **Connectors**    | Install and verify core agent integrations                      |
+| **Ask**           | AI-powered Q&A with citations                                   |
+| **Graph**         | Interactive knowledge graph visualization                       |
+| **Trace History** | Inspect, label, export, delete, and purge private receipts      |
 
 ### App-Level Tabs
 
@@ -48,6 +49,25 @@ Current behavior:
 - tabs live in GNO app state, not native shell BrowserView tabs
 
 This is the foundation for the later multi-document and split-pane workspace.
+
+### Trace History
+
+Open **Trace history** from the Dashboard or footer to inspect local retrieval
+receipts. The list is bounded and metadata-only, even when an individual trace
+was captured in replay mode. Select a receipt to load bounded runs, events,
+judgments, and export links.
+
+The page supports:
+
+- selecting multiple terminal traces for one deterministic JSON export
+- explicit relevant, irrelevant, or missing-expected judgments
+- deleting one receipt with confirmation
+- purging every receipt with confirmation
+- visibly distinct open, completed, partial, failed, and cancelled states
+
+No click, open, failed request, or missing citation is treated as negative
+feedback. Labels are always explicit. The Web page uses loopback REST only;
+it is not exposed by the non-loopback daemon.
 
 ---
 

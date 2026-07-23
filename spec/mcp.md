@@ -172,6 +172,30 @@ evidence only when a valid exact line range is returned. Out-of-range and
 failed gets never fabricate evidence. Disabled tracing omits `_meta` and does
 no trace ID or fingerprint work.
 
+Trace receipt management is split into read and mutation tool names so HTTP
+authorization can reject mutations before dispatch:
+
+| Tool               | Class    | Contract                                                   |
+| ------------------ | -------- | ---------------------------------------------------------- |
+| `gno_trace_list`   | read     | Bounded cursor page; summaries omit replay query/goal text |
+| `gno_trace_show`   | read     | One bounded detail receipt with exact totals/truncation    |
+| `gno_trace_label`  | mutation | Explicit relevant/irrelevant/missing_expected judgment     |
+| `gno_trace_export` | mutation | Deterministic multi-trace `agentic-receipt`                |
+| `gno_trace_delete` | mutation | Delete one trace and owned records                         |
+| `gno_trace_purge`  | mutation | Delete all receipts; requires `confirm: true`              |
+
+Read tools are always registered. Mutation tools are registered only when
+`enableWrite` is true and every handler rechecks that state. HTTP MCP also
+classifies all four mutation names in its pre-dispatch write set. A bearer
+identity authenticates a principal but never grants trace-write authority.
+Denied calls return `403`/`WRITE_DISABLED` without echoing trace content.
+
+Relevant and irrelevant targets must resolve to exact recorded evidence.
+`missing_expected` accepts only a safe document identity, never raw document
+content or a filesystem path. Aggregate exports reject open/missing traces and
+preserve each stored terminal state without treating partial, failed, or
+cancelled as negative feedback.
+
 ### gno_context
 
 Compile a deterministic, extractive Context Capsule. The active MCP server

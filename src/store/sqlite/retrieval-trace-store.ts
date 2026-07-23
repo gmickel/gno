@@ -5,6 +5,7 @@ import type { Database } from "bun:sqlite";
 import type {
   RetrievalTraceAppendResult,
   RetrievalTraceBundle,
+  RetrievalTraceCursor,
   RetrievalTraceEventInput,
   RetrievalTraceExportInput,
   RetrievalTraceInput,
@@ -238,11 +239,32 @@ export const getTrace = (
 
 export const listTraces = (
   db: Database,
-  limit: number
+  limit: number,
+  cursor?: RetrievalTraceCursor
 ): StoreResult<RetrievalTraceRow[]> => {
   try {
     if (!Number.isSafeInteger(limit) || limit < 1 || limit > 10_000) {
       return err("INVALID_INPUT", "Trace limit must be from 1 to 10000");
+    }
+    if (cursor) {
+      validateTraceId(cursor.traceId, "cursor.traceId");
+      if (!Number.isSafeInteger(cursor.createdAtMs) || cursor.createdAtMs < 0) {
+        return err(
+          "INVALID_INPUT",
+          "Trace cursor time must be epoch milliseconds"
+        );
+      }
+      return ok(
+        db
+          .query<DbRetrievalTraceRow, [number, number, string, number]>(
+            `SELECT * FROM retrieval_traces
+             WHERE created_at_ms < ?
+                OR (created_at_ms = ? AND trace_id > ?)
+             ORDER BY created_at_ms DESC, trace_id ASC LIMIT ?`
+          )
+          .all(cursor.createdAtMs, cursor.createdAtMs, cursor.traceId, limit)
+          .map(mapTraceRow)
+      );
     }
     return ok(
       db

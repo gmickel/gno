@@ -950,12 +950,44 @@ export interface RetrievalTraceExportInput {
 
 export interface RetrievalTraceExportRow extends RetrievalTraceExportInput {}
 
+export interface RetrievalTraceCursor {
+  createdAtMs: number;
+  traceId: string;
+}
+
+export interface RetrievalTraceExportManifestInput {
+  exportId: string;
+  traceIds: string[];
+  format: RetrievalTraceExportFormat;
+  artifactHash: string;
+  createdAtMs: number;
+}
+
+export interface RetrievalTraceExportManifestRow extends Omit<
+  RetrievalTraceExportManifestInput,
+  "traceIds"
+> {
+  traceIds: string[];
+}
+
 export interface RetrievalTraceBundle {
   trace: RetrievalTraceRow;
   runs: RetrievalTraceRunRow[];
   events: RetrievalTraceEventRow[];
   judgments: RetrievalTraceJudgmentRow[];
   exports: RetrievalTraceExportRow[];
+}
+
+export interface RetrievalTraceBundleTotals {
+  runs: number;
+  events: number;
+  judgments: number;
+  exports: number;
+}
+
+export interface RetrievalTraceBoundedBundle {
+  bundle: RetrievalTraceBundle;
+  totals: RetrievalTraceBundleTotals;
 }
 
 export interface RetrievalTraceRetentionPolicy {
@@ -1111,8 +1143,17 @@ export interface StorePort {
     traceId: string
   ): Promise<StoreResult<RetrievalTraceBundle | null>>;
 
+  /** Read bounded subordinate detail while returning exact aggregate counts. */
+  getBoundedRetrievalTrace(
+    traceId: string,
+    detailLimit: number
+  ): Promise<StoreResult<RetrievalTraceBoundedBundle | null>>;
+
   /** List trace headers newest-first with a bounded caller-selected limit. */
-  listRetrievalTraces(limit: number): Promise<StoreResult<RetrievalTraceRow[]>>;
+  listRetrievalTraces(
+    limit: number,
+    cursor?: RetrievalTraceCursor
+  ): Promise<StoreResult<RetrievalTraceRow[]>>;
 
   /** Transition an open trace to one explicit terminal outcome idempotently. */
   finalizeRetrievalTrace(
@@ -1140,6 +1181,19 @@ export interface StorePort {
   appendRetrievalTraceExport(
     traceExport: RetrievalTraceExportInput
   ): Promise<StoreResult<RetrievalTraceAppendResult>>;
+
+  /** Record one export manifest and all sorted trace memberships atomically. */
+  appendRetrievalTraceExportManifest(
+    manifest: RetrievalTraceExportManifestInput
+  ): Promise<StoreResult<RetrievalTraceAppendResult>>;
+
+  /** Read one aggregate export manifest with stable sorted membership. */
+  getRetrievalTraceExportManifest(
+    exportId: string
+  ): Promise<StoreResult<RetrievalTraceExportManifestRow | null>>;
+
+  /** Durable random index-local secret used only to redact metadata labels. */
+  getOrCreateRetrievalTraceRedactionSecret(): Promise<StoreResult<string>>;
 
   /** Delete one trace and report exact cascade counts. */
   deleteRetrievalTrace(

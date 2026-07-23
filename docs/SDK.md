@@ -231,6 +231,35 @@ The symbol is available on `search`, `vsearch`, `query`, `ask`, `get`, and
 continues the open query lifecycle and records the exact returned lines;
 disabled tracing performs no trace or fingerprint work.
 
+Existing receipts remain manageable even when new recording is disabled:
+
+```ts
+const history = await client.listRetrievalTraces({ limit: 50 });
+const detail = await client.getRetrievalTrace(history.traces[0].traceId, {
+  detailLimit: 500,
+});
+
+await client.labelRetrievalTrace({
+  traceId: detail.trace.traceId,
+  label: "relevant",
+  targetRef: "gno://work/decisions/deploy.md",
+});
+
+const exported = await client.exportRetrievalTraces({
+  traceIds: [detail.trace.traceId],
+});
+await Bun.write("retrieval-receipt.json", JSON.stringify(exported.artifact));
+
+await client.deleteRetrievalTrace(detail.trace.traceId);
+const purge = await client.purgeRetrievalTraces();
+```
+
+History summaries never expose raw replay queries. Detail reads are bounded and
+include exact totals and per-section truncation flags. Export rejects open
+traces, sorts and deduplicates membership, and preserves completed, partial,
+failed, and cancelled outcomes without inferred relevance. `purge` reports the
+truthful SQLite/WAL physical-cleanup state.
+
 ### Get / Multi-Get / List
 
 ```ts

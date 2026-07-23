@@ -177,6 +177,13 @@ successful truncating WAL checkpoint before reporting physical cleanup
 complete. User-created exports and external backups remain user-owned and must
 be deleted separately.
 
+Disabling `retrievalTraces.enabled` stops new capture and fingerprint work; it
+does not make existing local receipts unmanageable. `gno trace`, the SDK, and
+the loopback REST/Web surfaces can still inspect, explicitly label, export, or
+delete stored receipts. Metadata-mode label references use an index-local,
+random redaction secret persisted in database metadata so retries stay stable
+across restarts without exposing the secret through any surface.
+
 ## Collections
 
 Collections define what gets indexed.

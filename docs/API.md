@@ -164,6 +164,47 @@ curl -sS "http://localhost:3000/api/doc?uri=gno://notes/auth.md" \
 The continuation header is ignored when recording is disabled. It does not
 enable tracing or authorize any mutation.
 
+### Retrieval Trace Management
+
+Stored receipts remain manageable after new recording is disabled:
+
+| Method   | Endpoint                               | Purpose                                |
+| -------- | -------------------------------------- | -------------------------------------- |
+| `GET`    | `/api/traces?limit=50&cursor=...`      | Bounded metadata-only history          |
+| `GET`    | `/api/traces/:traceId?detailLimit=500` | Bounded detail with exact totals       |
+| `POST`   | `/api/traces/:traceId/judgments`       | Append an explicit judgment            |
+| `POST`   | `/api/traces/export`                   | Export one immutable aggregate receipt |
+| `DELETE` | `/api/traces/:traceId`                 | Delete one trace and owned records     |
+| `DELETE` | `/api/traces`                          | Purge all local trace receipts         |
+
+Example explicit label:
+
+```bash
+curl -sS -X POST \
+  http://127.0.0.1:3000/api/traces/TRACKED_ID/judgments \
+  -H "Content-Type: application/json" \
+  -d '{
+    "label": "relevant",
+    "targetRef": "gno://notes/decision.md"
+  }'
+```
+
+`label` is `relevant`, `irrelevant`, or `missing_expected`. Relevant and
+irrelevant targets must resolve to exact evidence stored in the trace.
+Missing-expected accepts only a content-free `gno://` URI, docid, or source
+hash. Retries are idempotent; corrections append new judgments.
+
+Export accepts `{ "traceIds": ["..."], "format": "agentic-receipt" }`. It
+rejects open or missing traces, sorts and deduplicates membership, and keeps
+completed, partial, failed, and cancelled outcomes distinct. Purge returns
+exact deletion counts plus `physicalCleanup`; only `completed` confirms the
+SQLite WAL was truncated.
+
+These endpoints are available only on loopback `gno serve`. Unsafe methods use
+the same same-origin/token CSRF boundary as other Web mutations. Gateway bearer
+authentication identifies a caller but does not authorize trace mutation, and
+the non-loopback daemon does not mount these REST routes.
+
 ---
 
 ## Endpoints

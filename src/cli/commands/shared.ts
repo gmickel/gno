@@ -44,6 +44,8 @@ export interface InitStoreOptions {
   collection?: string;
   /** Sync collections/contexts from config into DB on open */
   syncConfig?: boolean;
+  /** Permit management commands that only need an existing index database */
+  allowEmptyCollections?: boolean;
 }
 
 /**
@@ -81,7 +83,7 @@ export async function initStore(
     }
   }
 
-  if (collections.length === 0) {
+  if (collections.length === 0 && !options.allowEmptyCollections) {
     return {
       ok: false,
       error: "No collections configured. Run: gno collection add <path>",

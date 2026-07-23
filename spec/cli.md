@@ -675,6 +675,39 @@ Pass that receipt back to `gno get --trace-id <traceId>` to record the exact
 opened line range against the same query. Disabled tracing performs no trace
 ID, fingerprint, or receipt work and writes no receipt line.
 
+Trace management remains available for already-stored receipts after recording
+is disabled:
+
+```text
+gno trace list [-n <limit>] [--cursor <cursor>] [--json|--md]
+gno trace show <trace-id> [--detail-limit <limit>] [--json|--md]
+gno trace label <trace-id> --label <relevant|irrelevant|missing-expected> --target <ref>
+  [--target-kind <document|chunk|span>] [--from-line <line> --to-line <line>]
+  [--source-hash <sha256>] [--docid <docid>] [--idempotency-key <key>] [--json|--md]
+gno trace export <trace-id...> [--output <path>] [--json]
+gno trace delete <trace-id> [--json|--md]
+gno --yes trace purge [--json|--md]
+```
+
+`list` is newest-first, cursor-paginated, and never returns raw replay queries
+or goals. `show` returns one bounded detail receipt with exact per-section
+totals and truncation flags. A relevant or irrelevant label must resolve to
+recorded evidence; `missing-expected` accepts only a content-free `gno://` URI,
+docid, or immutable source hash. Labels are append-only and retry-safe.
+
+`export` accepts one or more immutable terminal traces, sorts and deduplicates
+their IDs, and produces the deterministic `agentic-receipt` artifact. It
+rejects open or missing traces. `completed`, `partial`, `failed`, and
+`cancelled` remain distinct; no terminal state implies negative relevance.
+Without `--output`, JSON is the complete `retrieval-trace-export` receipt.
+`--output` writes only the canonical artifact atomically and intentionally
+emits no stdout. Full purge requires the global `--yes` flag and reports
+whether SQLite/WAL physical cleanup completed, remained busy, or failed.
+
+Structured outputs validate against
+`retrieval-trace-{list,show,judgment,export,delete,purge}.schema.json`;
+file-only `trace export --output` is the documented exception.
+
 ---
 
 ### gno search
