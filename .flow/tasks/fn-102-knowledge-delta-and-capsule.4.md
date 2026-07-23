@@ -13,6 +13,7 @@ Deliver register saved capsules and reverify affected evidence as one implementa
 - Register only explicitly saved Capsule path/hash/question/evidence references; keep the Capsule body user-owned at its chosen location.
 - Use journal source/hash changes to enqueue bounded reverification only for referenced evidence, not every saved Capsule on every sync.
 - Run `verifyContextCapsuleRuntime` once for each affected saved Capsule with `ContextCapsuleRuntimeDeps`, including optional evidence-ID keyed rank resolution; resolve and pass the registry's canonical effective index (including `default`) so a saved Capsule/index mismatch fails before evidence-store reads, and let the shared runtime derive current fingerprints from the matching config/index/model boundary. Persist/project the receipt separately with `canonicalVerifiedContextCapsuleJson`, including `currentFingerprints`, `fingerprintStatus`, and ordered `fingerprintReasons` independently from per-evidence ranking, then derive affected-question state and optional local notifications after committed changes. Use the store's batch lookup ports as-is so their internal SQLite-safe chunking supports large saved Capsules.
+- Keep evidence-triggered reverification on the non-generative Capsule freshness boundary. Do not call `buildVerifiedAsk`, regenerate an answer, or store/project fn-101's `VerifiedAskOutcomeReceipt` / `VerifiedAskPromotionArtifact` as a saved-Capsule verification receipt; those are answer-evaluation artifacts, while this task persists only the canonical `verifyContextCapsuleRuntime` result.
 
 ### Investigation targets
 **Required** (read before coding):
@@ -38,10 +39,12 @@ Deliver register saved capsules and reverify affected evidence as one implementa
 - [ ] Jobs are bounded/idempotent and notifications contain no source passage content.
 - [ ] Reverification preserves the saved Capsule bytes, handles `ContextVerifierErrorCode` operation failures separately from completed stale/missing receipts, and does not treat `ranking_unavailable` as content staleness.
 - [ ] A saved Capsule bound to another index reports `invalid_filter` before evidence-store reads; reverification never silently falls back to the process default or reads the wrong open index.
+- [ ] Change-triggered reverification performs no answer generation and cannot confuse fn-101 verified-Ask outcome/promotion artifacts with canonical saved-Capsule freshness receipts.
 <!-- Updated by plan-sync (cross-spec): fn-98-context-capsule-mvp.4 exposed verifyContextCapsule and canonical non-mutating verification receipts -->
 <!-- Updated by plan-sync (cross-spec): fn-98-context-capsule-mvp.4 review fixes finalized independent fingerprint status, partial-truth hashes, exact evidence bytes, and chunked large-Capsule lookups -->
 <!-- Updated by plan-sync (cross-spec): fn-98-context-capsule-mvp.5 centralized verification dependency wiring and current fingerprint derivation in verifyContextCapsuleRuntime -->
 <!-- Updated by plan-sync (cross-spec): fn-98-context-capsule-mvp.5 review fixes made the Capsule/runtime canonical index match a pre-read verification invariant -->
+<!-- Updated by plan-sync (cross-spec): fn-101-trustworthy-synthesis-and-claim.4 introduced separate verified-Ask outcome and promotion receipts that are not saved-Capsule reverification receipts -->
 
 
 ## Done summary

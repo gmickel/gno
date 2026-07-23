@@ -37,9 +37,8 @@ Deliver run adversarial outcome gates and ship truthful verification docs as one
 
 
 ## Done summary
-TBD
-
+Shipped adversarial verified Ask outcome gates and truthful docs across repository, skill, and hosted-site surfaces. Added a separate attributable production raw Ask versus buildVerifiedAsk fn-97 cohort with frozen task identities, output-derived oracle scoring, exact lane and whole-answer contracts, cryptographic receipt/artifact integrity, clean provenance, and fail-closed mutation tests. Preserved the existing Capsule retrieval promotion.
 ## Evidence
-- Commits:
-- Tests:
+- Commits: 0c16015, a1895a1, 1a36e40, c102bd0, 307d0da, 79faddb, dcdfb3b, 3c8ac2c, d2e2c13
+- Tests: bun test: 2796 pass, 1 Windows-only skip, 0 fail, agentic focused suite: 147 pass, bun run lint:check, docs verify: 13 pass, 2 model-cache skips, skill autoresearch: 48/48, independent implementation review: SHIP; 41 focused tests
 - PRs:

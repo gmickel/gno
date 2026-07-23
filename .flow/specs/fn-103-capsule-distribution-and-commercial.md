@@ -12,6 +12,8 @@ Extend the existing reader-safe gno.sh projection for public spaces with canonic
 
 Add a reproducible demonstration harness using one task across no GNO, current GNO primitives, and Context Capsules, reporting evidence coverage, calls, tokens, and latency from `fn-97` receipts.
 
+Treat fn-101's committed `verified-ask-promotion.json` as a separate attributable answer-enforcement proof: 22 paired production raw-Ask versus `buildVerifiedAsk` tasks, with answer accuracy and unsupported-substantive-claim counts. It may be linked alongside the three-way demo, but it does not replace or get relabeled as that retrieval demo because it has different lanes, exclusions, metrics, and artifact contracts.
+
 Commercial validation uses existing safe publishing/sharing mechanics with five design partners and explicit funnel events recorded as aggregate product metrics: onboarding started/completed, first publish, invite/share, republish, weekly retained use. Secret/invite-only agent API access remains deferred until `fn-111` egress policy and authentication requirements are complete; encrypted spaces are never server-decrypted.
 
 ## API Contracts
@@ -19,8 +21,9 @@ Commercial validation uses existing safe publishing/sharing mechanics with five 
 
 - Public spaces expose deterministic `llms.txt`, manifest JSON, Markdown documents, and Capsule/evidence links with cache validators.
 - Manifest declares schema version, space revision, visibility, generated time, documents, hashes, and supported reader capabilities.
-- Demo receipts reuse `fn-97`; marketing pages link raw methodology/results.
+- Three-way demo receipts reuse `fn-97`; marketing pages link raw methodology/results. Any fn-101 verified-Ask proof links its own canonical promotion artifact and methodology without merging receipts or metrics across the two benchmarks.
 - Any future token-authenticated private read API is explicitly non-shipping in this spec and contract-gated on `fn-111`.
+<!-- Updated by plan-sync (cross-spec): fn-101-trustworthy-synthesis-and-claim.4 shipped a distinct 22-pair verified-Ask promotion artifact, not the three-way retrieval demo required here -->
 
 ## Edge Cases & Constraints
 <!-- scope: technical -->
