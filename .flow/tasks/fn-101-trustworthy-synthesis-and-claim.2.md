@@ -37,9 +37,8 @@ Deliver add bounded semantic claim-to-evidence verification as one implementatio
 
 
 ## Done summary
-TBD
-
+Added a bounded one-call semantic verifier over exact unchanged Capsule evidence, local JSON-Schema grammar enforcement, strict post-model partition/evidence validation, adversarial data delimiters, and explicit unavailable/failed capability states.
 ## Evidence
-- Commits:
-- Tests:
+- Commits: a57d19f
+- Tests: bun test node structured/http generation and claim verifier suites (39 pass), bun run lint:check, independent read-only review: SHIP
 - PRs:
