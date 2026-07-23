@@ -58,8 +58,19 @@ Deliver complete rest mcp parity promotion proof and documentation as one implem
 
 
 ## Done summary
-Exposed deterministic Context Capsule build and verification over REST and MCP through the shared runtime, with strict closed inputs, canonical JSON/Markdown parity, public error preservation, and active-index authority. Added adversarial cross-surface tests, passed and froze the agentic promotion proof (36.44% less context, 48.94% fewer calls, 100% Capsule task success/linkage), refreshed installed skill guidance, and committed hosted gno.sh documentation as c0274ed.
+Completed Context Capsule REST/MCP parity and promotion proof.
+
+- Registered strict closed MCP tool schemas and verified SDK-level unknown-field rejection.
+- Hardened partial model initialization cleanup and exhaustive REST error/status mapping.
+- Added full cross-surface parity coverage for canonical structured payloads, compact MCP text, capabilities, verification, and index mismatch.
+- Replaced the benchmark-only Capsule payload with the exact production `gno-context-agent-v1` serializer.
+- Compacted the model-visible projection without dropping Capsule identity, requested/used budgets, retrieval/model fingerprints, capabilities/fallbacks, exact evidence coordinates/text/hashes, gaps, omission totals/reason counts, truncation, or trust classification.
+- Kept the complete canonical Capsule and omission audit in MCP `structuredContent`.
+- Promoted committed benchmark artifacts from a clean detached committed worktree.
+- Updated user, MCP contract, benchmark methodology, skill, and hosted website documentation.
+
+Promotion result: PASS across 48 paired cold/warm tasks; 100% Capsule success; 48.94% fewer agent calls; 49.95% fewer model-visible bytes; 100% claim linkage; deterministic replay failures: none.
 ## Evidence
-- Commits:
-- Tests:
+- Commits: c3774c9, 1560540, 4e8c521, 0a5e4ad, 483ca8d
+- Tests: bun test test/eval/agentic/promotion.test.ts test/eval/agentic/scoring.test.ts test/eval/agentic/capsule-prototype.test.ts test/context/cross-surface-parity.test.ts, bun run eval:agentic (PASS: 48 pairs, 48.94% call reduction, 49.95% context-byte reduction, 100% claim linkage), clean detached commit 4e8c521: bun run eval:agentic -- --write (PASS), bun test test/eval/agentic/baseline.test.ts, bun run prerelease (2551 pass, 1 platform skip; docs verify and package smoke pass)
 - PRs:
