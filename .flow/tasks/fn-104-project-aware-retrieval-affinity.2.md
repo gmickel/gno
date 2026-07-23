@@ -51,9 +51,15 @@ Deliver apply one bounded explainable affinity score as one implementation-sized
 
 
 ## Done summary
-TBD
+Implemented one bounded, explainable project-affinity ranking contribution.
 
+- Froze project affinity at default/max `+0.03` and the shared auxiliary cap at `±0.08`, preserving fn-108's `±0.05` content-type budget.
+- Applied document-level scoring after normalized/final base relevance in BM25, vector, and hybrid retrieval.
+- Kept inactive requests on legacy limits/paths; active requests use bounded `3×` retrieval oversampling before final ordering and cutoff.
+- Preserved shared-source collection identity, including `--full` post-score deduplication and canonical-URI diagnose targeting.
+- Added hidden raw/base/final score provenance plus redacted explain/diagnose output and schema coverage.
+- Covered caps, saturation, ties, dominant base scores, zero/untrusted cases, filters, top-k boundaries, shared mirrors, non-unique docids, full mode, intent-selected snippets, and N+1 behavior.
 ## Evidence
-- Commits:
-- Tests:
+- Commits: 45164aa
+- Tests: bun test (2883 pass, 1 Windows-only skip, 0 fail), bun run lint:check, bun run typecheck, bun test test/pipeline/diagnose.test.ts test/spec/schemas/query-diagnose.test.ts, focused/pipeline/config/schema suites (all green), git diff --check, fresh implementation review: SHIP
 - PRs:
