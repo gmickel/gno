@@ -44,9 +44,8 @@ Deliver propagate trace identity through retrieval evidence and outcomes as one 
 
 
 ## Done summary
-TBD
-
+Propagated opt-in retrieval identity and exact evidence provenance through BM25, vector, hybrid, Ask, get, Context Capsule, CLI, REST, MCP, and SDK surfaces without changing canonical payloads. Added boundary-first failure/cancellation lifecycles, pipeline-accurate capability outcomes, replay-complete filters, fail-soft retention behavior, and dead-receipt suppression. Independent review: SHIP. Commit: 531c811.
 ## Evidence
-- Commits:
-- Tests:
+- Commits: 531c811
+- Tests: bun test: 2651 pass, 0 fail, 1 platform skip, bun run lint:check, bun run docs:verify, flowctl validate --all, focused review: 24 pass, 0 fail
 - PRs:
