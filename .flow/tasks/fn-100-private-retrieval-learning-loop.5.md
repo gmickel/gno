@@ -49,9 +49,8 @@ Deliver complete privacy migration documentation and regression gates as one imp
 
 
 ## Done summary
-TBD
-
+Closed the private retrieval learning contract with opaque cursors, canonical filters, non-enumerable metadata, nested schema closure, transactional migration rollback, no-network/privacy/auth/purge regressions, package coverage, and complete user/hosted documentation.
 ## Evidence
-- Commits:
-- Tests:
+- Commits: 1d5c9aa
+- Tests: bun test: 2720 pass, 1 Windows-only skip, 0 fail, bun run lint:check: clean, bun run docs:verify: 13 pass, 2 uncached-model skips, bun run test:package: passed, bun run eval:agentic: 48 pairs pass, 48.94% fewer calls, 44.12% fewer bytes, 100% linkage, skill autoresearch: 48/48, gno.sh typecheck and 10 truth tests: green
 - PRs:
