@@ -751,6 +751,8 @@ content hashes, exact line spans, and Capsule-compatible evidence identities.
 The projection revision is stable while those published bytes and reader
 metadata are unchanged. Secret-link and invite-only exports do not receive
 agent capabilities or manifests. Encrypted exports remain ciphertext-only.
+Reader metadata drops embedded local path or GNO/file URI tokens; canonical
+and image fields accept only uncredentialed public HTTP(S) targets.
 
 Republishing a public, secret-link, or invite-only artifact updates the same URL. Encrypted shares should be replaced from a fresh local export so the server never needs your plaintext.
 

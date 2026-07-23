@@ -2529,7 +2529,9 @@ Public artifact spaces carry a manifest conforming to
 documents, relative Markdown paths, exact line locators, content/evidence
 hashes, and closed public capabilities. The manifest and its revision derive
 only from sanitized published notes. `publish: false` notes, local collection
-paths, and local source URIs are excluded.
+paths, local source URIs, and metadata values containing embedded local path or
+GNO/file URI tokens are excluded. Canonical and image metadata fields accept
+only uncredentialed public HTTP(S) targets.
 
 Secret-link and invite-only artifacts have no agent manifest or capability
 activation flags. Encrypted artifacts expose no plaintext manifest or evidence;

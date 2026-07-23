@@ -35,14 +35,95 @@ const PUBLIC_URL_METADATA_KEYS = new Set([
   "image",
 ]);
 
-const LOCAL_PATH_PATTERN =
-  /^(?:file:|gno:\/\/|~[/\\]|[/\\]|[a-z]:[/\\]|\\\\)/iu;
+const FORBIDDEN_URI_TOKEN_PATTERN =
+  /(?:^|[^a-z0-9+.-])(?:file:(?:\/\/)?|gno:\/\/)/iu;
+const LOCAL_PATH_TOKEN_PATTERN =
+  /(?:^|[\s([{"'=,:;])(?:~[/\\]|[a-z]:[/\\]|\\\\[^\\/\s]+[/\\]|\/(?:Applications|bin|dev|etc|home|Library|mnt|opt|private|proc|root|srv|sys|System|tmp|Users|usr|var|Volumes)(?:[/\\]|$))/iu;
+const LOCAL_HOSTNAME_SUFFIX_PATTERN =
+  /(?:^|\.)(?:home|internal|lan|local|localhost)$/iu;
+
+const containsLocalReference = (value: string): boolean =>
+  FORBIDDEN_URI_TOKEN_PATTERN.test(value) ||
+  LOCAL_PATH_TOKEN_PATTERN.test(value);
+
+const isNonPublicIpv4 = (hostname: string): boolean => {
+  if (!/^\d{1,3}(?:\.\d{1,3}){3}$/u.test(hostname)) return false;
+  const octets = hostname.split(".").map(Number);
+  if (octets.some((octet) => octet > 255)) return true;
+  const [first = 0, second = 0, third = 0] = octets;
+  return (
+    first === 0 ||
+    first === 10 ||
+    first === 127 ||
+    first >= 224 ||
+    (first === 100 && second >= 64 && second <= 127) ||
+    (first === 169 && second === 254) ||
+    (first === 172 && second >= 16 && second <= 31) ||
+    (first === 192 && second === 0 && third === 0) ||
+    (first === 192 && second === 0 && third === 2) ||
+    (first === 192 && second === 168) ||
+    (first === 198 && (second === 18 || second === 19)) ||
+    (first === 198 && second === 51 && third === 100) ||
+    (first === 203 && second === 0 && third === 113)
+  );
+};
+
+const isNonPublicIpv6 = (hostname: string): boolean => {
+  const normalized = hostname.replace(/^\[|\]$/gu, "").toLowerCase();
+  if (!normalized.includes(":")) return false;
+  return (
+    normalized === "::" ||
+    normalized.startsWith("::") ||
+    normalized.startsWith("fc") ||
+    normalized.startsWith("fd") ||
+    /^fe[89ab]/u.test(normalized) ||
+    normalized.startsWith("ff") ||
+    normalized.startsWith("2001:db8:")
+  );
+};
+
+const isPublicHttpUrl = (value: string): boolean => {
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    return false;
+  }
+
+  if (
+    (url.protocol !== "http:" && url.protocol !== "https:") ||
+    url.username.length > 0 ||
+    url.password.length > 0
+  ) {
+    return false;
+  }
+
+  const hostname = url.hostname.replace(/\.$/u, "").toLowerCase();
+  if (
+    hostname.length === 0 ||
+    LOCAL_HOSTNAME_SUFFIX_PATTERN.test(hostname) ||
+    isNonPublicIpv4(hostname) ||
+    isNonPublicIpv6(hostname)
+  ) {
+    return false;
+  }
+
+  const isIpLiteral =
+    hostname.includes(":") || /^\d+(?:\.\d+){3}$/u.test(hostname);
+  return isIpLiteral || hostname.includes(".");
+};
 
 const isSafeMetadataValue = (key: string, value: string): boolean => {
-  if (PUBLIC_URL_METADATA_KEYS.has(key)) {
-    return /^https?:\/\//iu.test(value);
+  if (containsLocalReference(value)) {
+    return false;
   }
-  return !LOCAL_PATH_PATTERN.test(value);
+  if (
+    PUBLIC_URL_METADATA_KEYS.has(key) ||
+    (key === "icon" && /^https?:\/\//iu.test(value))
+  ) {
+    return isPublicHttpUrl(value);
+  }
+  return true;
 };
 
 const filterReaderSafeMetadata = (

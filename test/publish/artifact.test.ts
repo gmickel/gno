@@ -10,6 +10,7 @@ import {
   type PublishArtifactNote,
 } from "../../src/publish/artifact";
 import { exportPublishArtifact } from "../../src/publish/export-service";
+import { buildExportedMetadata } from "../../src/publish/metadata";
 import { ok } from "../../src/store/types";
 import {
   assertInvalid,
@@ -268,5 +269,118 @@ describe("publish artifact contract", () => {
         schema
       )
     ).toBe(true);
+  });
+
+  test("fails closed when V1 builder inputs cannot satisfy the schema", () => {
+    const validInput = {
+      notes: [NOTE],
+      routeSlug: "atlas",
+      sourceType: "note" as const,
+      summary: NOTE.summary,
+      title: NOTE.title,
+      visibility: "public" as const,
+    };
+
+    expect(() => buildPublishArtifact({ ...validInput, notes: [] })).toThrow(
+      /at least one note/iu
+    );
+    expect(() =>
+      buildPublishArtifact({ ...validInput, routeSlug: "Atlas/private" })
+    ).toThrow(/valid publish slug/iu);
+    expect(() => buildPublishArtifact({ ...validInput, title: "   " })).toThrow(
+      /must not be blank/iu
+    );
+    expect(() =>
+      buildPublishArtifact({
+        ...validInput,
+        notes: [{ ...NOTE, slug: "bad_slug" }],
+      })
+    ).toThrow(/valid publish slug/iu);
+    expect(() =>
+      buildPublishArtifact({ ...validInput, notes: [NOTE, { ...NOTE }] })
+    ).toThrow(/duplicate note slug/iu);
+    expect(() =>
+      buildPublishArtifact({ ...validInput, homeNoteSlug: "missing" })
+    ).toThrow(/not present in notes/iu);
+    expect(() =>
+      buildPublishArtifact({
+        ...validInput,
+        visibility: "encrypted" as never,
+      })
+    ).toThrow(/visibility must be/iu);
+    expect(() =>
+      buildPublicPublishManifest({
+        exportedAt: "2026-07-23T10:00:00.000Z",
+        ...validInput,
+        notes: [],
+      })
+    ).toThrow(/at least one note/iu);
+
+    const projected = buildPublishArtifact({
+      ...validInput,
+      notes: [
+        {
+          ...NOTE,
+          ignored: "not part of the contract",
+          metadata: { topics: ["decisions"] },
+        } as PublishArtifactNote,
+      ],
+    });
+    expect(projected.spaces[0]?.notes[0]).not.toHaveProperty("ignored");
+    expect(assertValid(projected, schema)).toBe(true);
+  });
+
+  test("filters embedded local references and non-public metadata URLs", () => {
+    const doc = {
+      author: "Gordon Mickel",
+      categories: null,
+      contentType: "markdown",
+      frontmatterDate: null,
+      languageHint: "en",
+    };
+    const projected = buildExportedMetadata(
+      doc,
+      {
+        audience: "Source: /Users/gordon/private/atlas.md",
+        canonical: "https://example.com/public/atlas",
+        icon: "📚",
+        series: "file:///home/gordon/private.md",
+        status: "Copied from C:\\Users\\gordon\\private.md",
+        subtitle: "See /usr/local/private.md",
+        theme: "Public reader docs live in /docs/public",
+        topic: [
+          "See gno://secret/private.md",
+          "Mirror at \\\\server\\share\\private.md",
+        ],
+      },
+      []
+    );
+
+    expect(projected).toEqual({
+      author: "Gordon Mickel",
+      canonical: "https://example.com/public/atlas",
+      contentType: "markdown",
+      icon: "📚",
+      language: "en",
+      theme: "Public reader docs live in /docs/public",
+    });
+
+    const nonPublicUrls = [
+      "http://localhost/private",
+      "http://service.internal/private",
+      "http://127.0.0.1/private",
+      "http://10.0.0.4/private",
+      "http://169.254.169.254/private",
+      "http://172.16.0.4/private",
+      "http://192.168.1.4/private",
+      "http://[::1]/private",
+      "http://[fc00::1]/private",
+      "https://user:password@example.com/private",
+    ];
+    for (const canonical of nonPublicUrls) {
+      expect(buildExportedMetadata(doc, { canonical }, [])).not.toHaveProperty(
+        "canonical"
+      );
+    }
   });
 });

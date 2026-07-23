@@ -1,0 +1,16 @@
+{
+  "assignee": null,
+  "claim_note": "",
+  "claimed_at": null,
+  "created_at": "2026-07-23T18:05:58.340112Z",
+  "depends_on": [
+    "fn-103-capsule-distribution-and-commercial.1"
+  ],
+  "id": "fn-103-capsule-distribution-and-commercial.5",
+  "priority": null,
+  "spec": "fn-103-capsule-distribution-and-commercial",
+  "spec_path": ".flow/tasks/fn-103-capsule-distribution-and-commercial.5.md",
+  "status": "todo",
+  "title": "Close public publish artifact review findings",
+  "updated_at": "2026-07-23T18:05:58.340276Z"
+}

@@ -1586,7 +1586,10 @@ Capsule-compatible evidence identities. Manifest hashes and revisions MUST be
 derived only from sanitized notes and metadata present in the published
 projection. Local collection paths, document source URIs, unpublished
 documents, and filtered metadata MUST NOT enter artifact bytes or revision
-inputs.
+inputs. Reader metadata values containing embedded local path or GNO/file URI
+tokens MUST be filtered. Canonical and image metadata MUST contain
+uncredentialed public HTTP(S) targets; local hostnames and literal loopback,
+private, or link-local addresses MUST be filtered.
 
 Secret-link and invite-only V1 spaces MUST NOT contain a manifest or agent
 capability field. Encrypted V2 spaces MUST contain only ciphertext parameters,

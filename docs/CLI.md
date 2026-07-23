@@ -978,10 +978,12 @@ Public artifacts include the canonical
 `gno://schemas/publish-artifact@1.0` manifest: stable projection revision,
 published Markdown paths and line locators, SHA-256 content/evidence identity,
 and closed public reader capabilities. Local source paths and source URIs are
-not exported. Secret-link and invite-only artifacts contain the requested
-reader projection but no agent manifest or capability flags. Encrypted
-artifacts expose only ciphertext metadata and an opaque share token; GNO never
-adds plaintext evidence outside the encrypted payload.
+not exported. Metadata values containing embedded local path or GNO/file URI
+tokens are omitted; canonical and image fields accept only uncredentialed
+public HTTP(S) targets. Secret-link and invite-only artifacts contain the
+requested reader projection but no agent manifest or capability flags.
+Encrypted artifacts expose only ciphertext metadata and an opaque share token;
+GNO never adds plaintext evidence outside the encrypted payload.
 
 ## Skill Commands
 

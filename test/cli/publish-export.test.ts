@@ -19,6 +19,13 @@ import {
 } from "../../src/publish/artifact";
 import { buildEncryptedArtifactPayload } from "../../src/publish/encrypted-export";
 
+const PUBLISH_NOTE = {
+  markdown: "# Atlas\n\nPublished notes.",
+  slug: "atlas",
+  summary: "Atlas summary",
+  title: "Atlas",
+};
+
 describe("publish export helpers", () => {
   it("derives stable titles and slugs from document rows", () => {
     expect(
@@ -148,7 +155,7 @@ describe("publish export helpers", () => {
 
   it("builds default output paths in the resolved downloads dir when --out is omitted", async () => {
     const artifact = buildPublishArtifact({
-      notes: [],
+      notes: [PUBLISH_NOTE],
       routeSlug: "atlas",
       sourceType: "collection",
       summary: "Atlas summary",
@@ -165,7 +172,7 @@ describe("publish export helpers", () => {
 
   it("formats successful export output with the next step", () => {
     const artifact = buildPublishArtifact({
-      notes: [],
+      notes: [PUBLISH_NOTE],
       routeSlug: "atlas",
       sourceType: "collection",
       summary: "Atlas summary",

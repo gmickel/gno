@@ -12,7 +12,13 @@ import {
   sha256Text,
 } from "../core/context-capsule-validation";
 import { stripFrontmatter } from "../ingestion/frontmatter";
+import {
+  MAX_PUBLISH_SLUG_LENGTH,
+  requirePublishDateTime,
+  validateAndProjectPublishSpaceInput,
+} from "./artifact-validation";
 
+export { MAX_PUBLISH_SLUG_LENGTH } from "./artifact-validation";
 export { buildExportedMetadata } from "./metadata";
 
 export type PublishVisibility =
@@ -130,8 +136,6 @@ export const PUBLISH_VISIBILITY_VALUES = [
   "invite-only",
   "encrypted",
 ] as const;
-
-export const MAX_PUBLISH_SLUG_LENGTH = 80;
 
 export const isPublishVisibility = (
   value: unknown
@@ -283,26 +287,24 @@ export const buildPublicPublishManifest = (input: {
   title: string;
   visibility: "public";
 }): PublicPublishManifest => {
-  const documents = input.notes
-    .map((note) => buildPublicPublishDocument(input.routeSlug, note))
+  const validated = validateAndProjectPublishSpaceInput(input);
+  if (validated.visibility !== "public") {
+    throw new Error("Public publish manifests require public visibility");
+  }
+  const exportedAt = requirePublishDateTime(input.exportedAt);
+  const documents = validated.notes
+    .map((note) => buildPublicPublishDocument(validated.routeSlug, note))
     .sort(
       (left, right) =>
         compareCodeUnits(left.slug, right.slug) ||
         compareCodeUnits(left.title, right.title) ||
         compareCodeUnits(left.contentHash, right.contentHash)
     );
-  const markdownPaths = documents.map((document) => document.markdownPath);
-  if (new Set(markdownPaths).size !== markdownPaths.length) {
-    throw new Error(
-      `Public publish "${input.routeSlug}" contains duplicate Markdown paths`
-    );
-  }
-
   const revisionProjection = {
     capabilities: PUBLIC_PUBLISH_CAPABILITIES,
     documents,
-    homeNoteSlug: input.homeNoteSlug ?? null,
-    notes: input.notes
+    homeNoteSlug: validated.homeNoteSlug ?? null,
+    notes: validated.notes
       .map((note) => ({
         markdown: note.markdown,
         metadata: note.metadata ?? {},
@@ -311,20 +313,20 @@ export const buildPublicPublishManifest = (input: {
         title: note.title,
       }))
       .sort((left, right) => compareCodeUnits(left.slug, right.slug)),
-    routeSlug: input.routeSlug,
-    sourceType: input.sourceType,
-    summary: input.summary,
-    title: input.title,
-    visibility: input.visibility,
+    routeSlug: validated.routeSlug,
+    sourceType: validated.sourceType,
+    summary: validated.summary,
+    title: validated.title,
+    visibility: validated.visibility,
   };
 
   return {
     capabilities: { ...PUBLIC_PUBLISH_CAPABILITIES },
     documents,
-    generatedAt: input.exportedAt,
+    generatedAt: exportedAt,
     projectionRevision: sha256Text(canonicalJson(revisionProjection)),
     schemaVersion: PUBLIC_PUBLISH_MANIFEST_SCHEMA_VERSION,
-    visibility: input.visibility,
+    visibility: validated.visibility,
   };
 };
 
@@ -337,39 +339,42 @@ export const buildPublishArtifact = (input: {
   title: string;
   visibility: Exclude<PublishVisibility, "encrypted">;
 }): PublishArtifactV1 => {
+  const validated = validateAndProjectPublishSpaceInput(input);
   const exportedAt = new Date().toISOString();
   const base = {
-    homeNoteSlug: input.homeNoteSlug,
-    notes: input.notes,
-    routeSlug: input.routeSlug,
-    sourceType: input.sourceType,
-    summary: input.summary,
-    title: input.title,
+    ...(validated.homeNoteSlug === undefined
+      ? {}
+      : { homeNoteSlug: validated.homeNoteSlug }),
+    notes: validated.notes,
+    routeSlug: validated.routeSlug,
+    sourceType: validated.sourceType,
+    summary: validated.summary,
+    title: validated.title,
   };
   const space: PublishArtifactSpace =
-    input.visibility === "public"
+    validated.visibility === "public"
       ? {
           ...base,
           manifest: buildPublicPublishManifest({
             exportedAt,
-            homeNoteSlug: input.homeNoteSlug,
-            notes: input.notes,
-            routeSlug: input.routeSlug,
-            sourceType: input.sourceType,
-            summary: input.summary,
-            title: input.title,
-            visibility: input.visibility,
+            homeNoteSlug: validated.homeNoteSlug,
+            notes: validated.notes,
+            routeSlug: validated.routeSlug,
+            sourceType: validated.sourceType,
+            summary: validated.summary,
+            title: validated.title,
+            visibility: validated.visibility,
           }),
-          visibility: input.visibility,
+          visibility: validated.visibility,
         }
       : {
           ...base,
-          visibility: input.visibility,
+          visibility: validated.visibility,
         };
 
   return {
     exportedAt,
-    source: input.routeSlug,
+    source: validated.routeSlug,
     spaces: [space],
     version: 1,
   };
