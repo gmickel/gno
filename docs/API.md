@@ -1152,7 +1152,18 @@ Returns lightweight document suggestions for title/path-driven UIs such as wiki-
 GET /api/events
 ```
 
-Server-sent event stream used by the Web UI to refresh document/search state after local edits and external file changes.
+Server-sent event stream used by the Web UI to refresh document/search state
+after local edits and external file changes. It also carries opt-in,
+metadata-only saved Capsule notifications:
+
+```text
+event: capsule-reverified
+data: {"type":"capsule-reverified","registrationId":"capsule-…","capsuleId":"ctx-…","operationStatus":"completed","affectedQuestionState":"affected","changedAt":"2026-07-23T12:00:00.000Z"}
+```
+
+The event is emitted only after the canonical verification receipt or separate
+operation failure has committed. It never includes a question, file path, URI,
+passage, Capsule body, or receipt body.
 
 ---
 

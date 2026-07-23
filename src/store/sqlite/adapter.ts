@@ -77,6 +77,9 @@ import type {
   RetrievalTraceRunInput,
   RetrievalTraceTerminalStatus,
   RenameDocumentOptions,
+  SavedCapsuleRegistrationInput,
+  SavedCapsuleRegistrationRecord,
+  SavedCapsuleVerificationRecord,
   StorePort,
   StoreResult,
   TagCount,
@@ -102,6 +105,16 @@ import { getSchemaVersion, migrations, runMigrations } from "../migrations";
 import { err, ok } from "../types";
 import { getStoredEmbeddingFingerprint } from "../vector/freshness";
 import { modelTableName } from "../vector/sqlite-vec";
+import {
+  deleteSavedCapsuleRegistration as deleteStoredSavedCapsuleRegistration,
+  getSavedCapsuleRegistration as getStoredSavedCapsuleRegistration,
+  getSavedCapsuleReverificationSequence as getStoredSavedCapsuleReverificationSequence,
+  listSavedCapsuleIdsAffectedByChanges as listStoredSavedCapsuleIdsAffectedByChanges,
+  listSavedCapsuleRegistrations as listStoredSavedCapsuleRegistrations,
+  setSavedCapsuleReverificationSequence as setStoredSavedCapsuleReverificationSequence,
+  upsertSavedCapsuleRegistration as upsertStoredSavedCapsuleRegistration,
+  upsertSavedCapsuleVerification as upsertStoredSavedCapsuleVerification,
+} from "./capsule-registry-store";
 import {
   appendDocumentChange as appendStoredDocumentChange,
   enforceDocumentChangeRetention as enforceStoredDocumentChangeRetention,
@@ -1655,6 +1668,68 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
     StoreResult<DocumentChangePurgeResult>
   > {
     return purgeStoredDocumentChanges(this.ensureOpen());
+  }
+
+  async upsertSavedCapsuleRegistration(
+    input: SavedCapsuleRegistrationInput
+  ): Promise<StoreResult<SavedCapsuleRegistrationRecord>> {
+    return upsertStoredSavedCapsuleRegistration(this.ensureOpen(), input);
+  }
+
+  async listSavedCapsuleRegistrations(): Promise<
+    StoreResult<SavedCapsuleRegistrationRecord[]>
+  > {
+    return listStoredSavedCapsuleRegistrations(this.ensureOpen());
+  }
+
+  async getSavedCapsuleRegistration(
+    registrationId: string
+  ): Promise<StoreResult<SavedCapsuleRegistrationRecord | null>> {
+    return getStoredSavedCapsuleRegistration(this.ensureOpen(), registrationId);
+  }
+
+  async deleteSavedCapsuleRegistration(
+    registrationId: string
+  ): Promise<StoreResult<boolean>> {
+    return deleteStoredSavedCapsuleRegistration(
+      this.ensureOpen(),
+      registrationId
+    );
+  }
+
+  async listSavedCapsuleIdsAffectedByChanges(
+    afterSequence: number,
+    throughSequence: number,
+    limit: number
+  ): Promise<StoreResult<{ registrationIds: string[]; truncated: boolean }>> {
+    return listStoredSavedCapsuleIdsAffectedByChanges(
+      this.ensureOpen(),
+      afterSequence,
+      throughSequence,
+      limit
+    );
+  }
+
+  async upsertSavedCapsuleVerification(
+    verification: SavedCapsuleVerificationRecord
+  ): Promise<StoreResult<void>> {
+    return upsertStoredSavedCapsuleVerification(
+      this.ensureOpen(),
+      verification
+    );
+  }
+
+  async getSavedCapsuleReverificationSequence(): Promise<StoreResult<number>> {
+    return getStoredSavedCapsuleReverificationSequence(this.ensureOpen());
+  }
+
+  async setSavedCapsuleReverificationSequence(
+    sequence: number
+  ): Promise<StoreResult<void>> {
+    return setStoredSavedCapsuleReverificationSequence(
+      this.ensureOpen(),
+      sequence
+    );
   }
 
   // ─────────────────────────────────────────────────────────────────────────

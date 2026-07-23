@@ -68,7 +68,7 @@ describe("SqliteAdapter", () => {
       expect(result.value.applied).toContain(2);
       expect(result.value.applied).toContain(3);
       expect(result.value.applied).toContain(4);
-      expect(result.value.currentVersion).toBe(15);
+      expect(result.value.currentVersion).toBe(16);
       expect(result.value.ftsTokenizer).toBe("unicode61");
     });
 
@@ -86,7 +86,7 @@ describe("SqliteAdapter", () => {
       }
 
       expect(result.value.applied).toHaveLength(0);
-      expect(result.value.currentVersion).toBe(15);
+      expect(result.value.currentVersion).toBe(16);
     });
 
     test("rejects tokenizer mismatch", async () => {
@@ -1186,7 +1186,7 @@ describe("SqliteAdapter", () => {
         return;
       }
 
-      expect(result.value.version).toBe("15");
+      expect(result.value.version).toBe("16");
       expect(result.value.ftsTokenizer).toBe("unicode61");
       expect(result.value.dbPath).toBe(dbPath);
       expect(result.value.totalDocuments).toBe(1);

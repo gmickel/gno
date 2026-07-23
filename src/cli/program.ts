@@ -2090,6 +2090,100 @@ function wireManagementCommands(program: Command): void {
     );
 
   contextCmd
+    .command("watch <file>")
+    .description("Watch a saved Context Capsule for evidence changes")
+    .option("--question <text>", "question associated with this Capsule")
+    .option("--label <text>", "short local label")
+    .option("--notify", "emit metadata-only local reverification events")
+    .option("--json", "JSON output")
+    .action(
+      async (
+        file: string,
+        cmdOpts: Record<string, unknown>,
+        command: Command
+      ) => {
+        const format = getFormat(cmdOpts);
+        assertFormatSupported(CMD.contextSaved, format);
+        const globals = getGlobals();
+        const explicitIndexName =
+          command.getOptionValueSourceWithGlobals("index") === "cli"
+            ? globals.index
+            : undefined;
+        const { watchSavedCapsule } = await import("./commands/context-saved");
+        await writeOutput(
+          await watchSavedCapsule(file, {
+            configPath: globals.config,
+            indexName: globals.index,
+            explicitIndexName,
+            question: cmdOpts.question as string | undefined,
+            label: cmdOpts.label as string | undefined,
+            notify: Boolean(cmdOpts.notify),
+            format: format === "json" ? "json" : "terminal",
+          }),
+          format === "json" ? "json" : "terminal"
+        );
+      }
+    );
+
+  contextCmd
+    .command("watches")
+    .description("List watched saved Context Capsules")
+    .option("--json", "JSON output")
+    .action(async (cmdOpts: Record<string, unknown>) => {
+      const format = getFormat(cmdOpts);
+      assertFormatSupported(CMD.contextSaved, format);
+      const globals = getGlobals();
+      const { listWatchedCapsules } = await import("./commands/context-saved");
+      await writeOutput(
+        await listWatchedCapsules({
+          configPath: globals.config,
+          indexName: globals.index,
+          format: format === "json" ? "json" : "terminal",
+        }),
+        format === "json" ? "json" : "terminal"
+      );
+    });
+
+  contextCmd
+    .command("unwatch <registration>")
+    .description("Stop watching a saved Context Capsule")
+    .option("--json", "JSON output")
+    .action(async (registration: string, cmdOpts: Record<string, unknown>) => {
+      const format = getFormat(cmdOpts);
+      assertFormatSupported(CMD.contextSaved, format);
+      const globals = getGlobals();
+      const { unwatchSavedCapsule } = await import("./commands/context-saved");
+      await writeOutput(
+        await unwatchSavedCapsule(registration, {
+          configPath: globals.config,
+          indexName: globals.index,
+          format: format === "json" ? "json" : "terminal",
+        }),
+        format === "json" ? "json" : "terminal"
+      );
+    });
+
+  contextCmd
+    .command("reverify <registration>")
+    .description("Reverify one watched saved Context Capsule")
+    .option("--json", "JSON output")
+    .action(async (registration: string, cmdOpts: Record<string, unknown>) => {
+      const format = getFormat(cmdOpts);
+      assertFormatSupported(CMD.contextSaved, format);
+      const globals = getGlobals();
+      const { reverifyWatchedCapsule } =
+        await import("./commands/context-saved");
+      await writeOutput(
+        await reverifyWatchedCapsule(registration, {
+          configPath: globals.config,
+          indexName: globals.index,
+          format: format === "json" ? "json" : "terminal",
+        }),
+        format === "json" ? "json" : "terminal"
+      );
+    });
+
+  contextCmd
     .command("rm <uri>")
     .description("Remove context item")
     .action(async (uri: string) => {

@@ -415,6 +415,66 @@ export interface DocumentChangePurgeResult {
   earliestCursor: string;
 }
 
+export type SavedCapsuleNotificationPreference = "none" | "local";
+export type SavedCapsuleTriggerKind = "manual" | "journal";
+export type SavedCapsuleOperationStatus = "completed" | "failed";
+export type SavedCapsuleAffectedQuestionState =
+  | "unaffected"
+  | "affected"
+  | "unknown";
+
+export interface SavedCapsuleEvidenceReference {
+  evidenceId: string;
+  canonicalUri: string;
+  collection: string;
+  sourceHash: string;
+  mirrorHash: string;
+  passageHash: string;
+}
+
+export interface SavedCapsuleRegistration {
+  registrationId: string;
+  filePath: string;
+  fileHash: string;
+  capsuleId: string;
+  indexName: string;
+  question: string | null;
+  label: string | null;
+  notificationPreference: SavedCapsuleNotificationPreference;
+  registeredAtMs: number;
+  updatedAtMs: number;
+  lastAttemptedSequence: number;
+}
+
+export interface SavedCapsuleRegistrationRecord extends SavedCapsuleRegistration {
+  evidence: SavedCapsuleEvidenceReference[];
+  verification: SavedCapsuleVerificationRecord | null;
+}
+
+export interface SavedCapsuleVerificationRecord {
+  registrationId: string;
+  triggerKind: SavedCapsuleTriggerKind;
+  fromSequence: number;
+  throughSequence: number;
+  operationStatus: SavedCapsuleOperationStatus;
+  affectedQuestionState: SavedCapsuleAffectedQuestionState;
+  affectedReasons: string[];
+  receiptJson: string | null;
+  receiptHash: string | null;
+  errorCode: string | null;
+  errorMessage: string | null;
+  verifiedAtMs: number;
+}
+
+export interface SavedCapsuleRegistrationInput extends Omit<
+  SavedCapsuleRegistration,
+  "registeredAtMs" | "updatedAtMs"
+> {
+  registeredAtMs: number;
+  updatedAtMs: number;
+  evidence: SavedCapsuleEvidenceReference[];
+}
+
 export interface RenameDocumentOptions {
   observedAtMs?: number;
   structureDelta?: Partial<DocumentChangeStructureDelta>;
@@ -1444,6 +1504,44 @@ export interface StorePort {
 
   /** Purge the journal while retaining a cursor-expiry boundary. */
   purgeDocumentChanges(): Promise<StoreResult<DocumentChangePurgeResult>>;
+
+  /** Register one user-owned Capsule file and its metadata-only evidence refs. */
+  upsertSavedCapsuleRegistration(
+    input: SavedCapsuleRegistrationInput
+  ): Promise<StoreResult<SavedCapsuleRegistrationRecord>>;
+
+  /** List saved Capsule registrations in deterministic identity order. */
+  listSavedCapsuleRegistrations(): Promise<
+    StoreResult<SavedCapsuleRegistrationRecord[]>
+  >;
+
+  /** Read one saved Capsule registration and its latest verification. */
+  getSavedCapsuleRegistration(
+    registrationId: string
+  ): Promise<StoreResult<SavedCapsuleRegistrationRecord | null>>;
+
+  /** Remove one saved Capsule registration and its subordinate metadata. */
+  deleteSavedCapsuleRegistration(
+    registrationId: string
+  ): Promise<StoreResult<boolean>>;
+
+  /** Find registrations whose evidence intersects a retained journal range. */
+  listSavedCapsuleIdsAffectedByChanges(
+    afterSequence: number,
+    throughSequence: number,
+    limit: number
+  ): Promise<StoreResult<{ registrationIds: string[]; truncated: boolean }>>;
+
+  /** Persist the latest canonical receipt or disjoint operation failure. */
+  upsertSavedCapsuleVerification(
+    verification: SavedCapsuleVerificationRecord
+  ): Promise<StoreResult<void>>;
+
+  /** Read/write the resident scheduler's durable journal high-water sequence. */
+  getSavedCapsuleReverificationSequence(): Promise<StoreResult<number>>;
+  setSavedCapsuleReverificationSequence(
+    sequence: number
+  ): Promise<StoreResult<void>>;
 
   // ─────────────────────────────────────────────────────────────────────────
   // Content (content-addressed)

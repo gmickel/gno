@@ -805,6 +805,40 @@ matching tokenizer fingerprint and deterministic token counter before GNO
 opens the store; runtimes without that tokenizer return `tokenizer_unavailable`
 and never trust saved `usedTokens` alone.
 
+### gno context watch
+
+Register an explicitly saved Capsule file for automatic reverification:
+
+```bash
+gno context watch capsule.json --question "Who owns launch?" --label launch
+gno context watch capsule.json --notify --json
+```
+
+GNO stores registration metadata and exact evidence hash references—not the
+Capsule body or passage text. The original file remains caller-owned; GNO never
+rewrites it. The file's canonical index is used unless an explicit global
+`--index` is supplied, in which case it must match.
+
+`serve` and `daemon` coalesce settled document-journal changes and reverify only
+registrations whose evidence changed. Restart resumes from a durable journal
+high-water mark; an expired cursor causes one conservative bounded pass. The
+saved verification is the same canonical, non-generative receipt returned by
+`gno context verify`. File changes, missing files, index mismatches, and other
+operation failures remain distinct from completed receipts.
+
+`--notify` publishes a local `capsule-reverified` event only after the result is
+stored. The event is metadata-only: registration/Capsule identity, operation
+status, affected-question state, and timestamp.
+
+Manage registrations:
+
+```bash
+gno context watches
+gno context watches --json
+gno context reverify capsule-abc123 --json
+gno context unwatch capsule-abc123
+```
+
 ### gno context rm
 
 ```bash

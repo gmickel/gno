@@ -86,6 +86,10 @@ equivalent files fail closed as ambiguous.
 | context check      | yes    | no      | no    | yes  | no    | terminal |
 | context build      | yes    | no      | no    | yes  | no    | Markdown |
 | context verify     | yes    | no      | no    | yes  | no    | Markdown |
+| context watch      | yes    | no      | no    | no   | no    | terminal |
+| context watches    | yes    | no      | no    | no   | no    | terminal |
+| context unwatch    | yes    | no      | no    | no   | no    | terminal |
+| context reverify   | yes    | no      | no    | no   | no    | terminal |
 | context rm         | no     | no      | no    | no   | no    | terminal |
 | models list        | yes    | no      | no    | yes  | no    | terminal |
 | models pull        | no     | no      | no    | no   | no    | terminal |
@@ -1363,6 +1367,40 @@ store is opened. Active-tokenizer Capsules require the matching tokenizer
 fingerprint and deterministic recount callback before any store read; CLI
 runtimes without that tokenizer fail with `tokenizer_unavailable` rather than
 trusting saved `usedTokens`.
+
+### gno context watch / watches / unwatch / reverify
+
+Register an explicit canonical JSON Capsule file for local, evidence-triggered
+reverification:
+
+```bash
+gno context watch <file> [--question <text>] [--label <text>] [--notify] [--json]
+gno context watches [--json]
+gno context unwatch <registration> [--json]
+gno context reverify <registration> [--json]
+```
+
+The registration persists only the absolute file path, exact file hash,
+Capsule/index identity, optional question and label, notification preference,
+and evidence URI/hash references. Capsule bytes and evidence passages are never
+copied into the database. The file remains caller-owned and immutable to GNO.
+The Capsule's canonical index is authoritative when `watch` is invoked without
+an explicit global `--index`; an explicit mismatch fails before journal or
+evidence reads.
+
+A resident `serve` or `daemon` runtime reverifies affected registrations after
+watcher work has settled. Raw journal changes are coalesced, one bounded
+reverification batch runs at a time, and the durable journal high-water mark
+prevents duplicate work after restart. An expired journal cursor triggers a
+conservative bounded pass over all registrations. Reverification uses the
+canonical `context verify` receipt. Operation failures are stored separately
+and never synthesized into a receipt.
+
+`--notify` enables local metadata-only `capsule-reverified` events after the
+verification record commits. Events contain registration/Capsule identity,
+operation status, affected-question state, and timestamp; they contain no
+question, file path, URI, passage, Capsule, or receipt bytes. `context
+reverify` performs the same non-generative verification immediately.
 
 ---
 

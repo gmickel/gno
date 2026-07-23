@@ -16,6 +16,18 @@ UI. The same resident process also hosts stateful Streamable HTTP MCP at
 `/api/status`, which includes local index and configuration details, is
 available only when the daemon binds to loopback.
 
+It also owns saved Context Capsule reverification. Register a Capsule with
+`gno context watch <file>`; after filesystem sync and embedding work settles,
+the daemon coalesces raw document-journal changes and reverifies affected
+evidence in one bounded serial batch. A durable journal high-water mark avoids
+duplicate work across restarts. If retention has expired that cursor, the next
+settled cycle conservatively checks all saved registrations.
+
+Registrations persist metadata and evidence hashes only—never Capsule bytes,
+passage text, questions in notifications, or generated answers. `--notify`
+emits a metadata-only local `capsule-reverified` event after the verification
+record commits.
+
 Use it when:
 
 - you want continuous indexing from the terminal

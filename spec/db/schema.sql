@@ -496,3 +496,72 @@ CREATE TABLE IF NOT EXISTS doc_edges (
 
 CREATE INDEX IF NOT EXISTS idx_doc_edges_src_type ON doc_edges(src_doc_id, edge_type);
 CREATE INDEX IF NOT EXISTS idx_doc_edges_dst_type ON doc_edges(dst_doc_id, edge_type);
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Saved Context Capsules (metadata only)
+-- ─────────────────────────────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS saved_capsule_registrations (
+  registration_id TEXT PRIMARY KEY,
+  file_path TEXT NOT NULL UNIQUE,
+  file_hash TEXT NOT NULL,
+  capsule_id TEXT NOT NULL,
+  index_name TEXT NOT NULL,
+  question TEXT,
+  label TEXT,
+  notification_preference TEXT NOT NULL DEFAULT 'none'
+    CHECK (notification_preference IN ('none', 'local')),
+  registered_at_ms INTEGER NOT NULL CHECK (registered_at_ms >= 0),
+  updated_at_ms INTEGER NOT NULL CHECK (updated_at_ms >= registered_at_ms),
+  last_attempted_sequence INTEGER NOT NULL DEFAULT 0
+    CHECK (last_attempted_sequence >= 0)
+);
+
+CREATE INDEX IF NOT EXISTS idx_saved_capsules_index
+  ON saved_capsule_registrations(index_name, registration_id);
+
+CREATE TABLE IF NOT EXISTS saved_capsule_evidence (
+  registration_id TEXT NOT NULL,
+  evidence_id TEXT NOT NULL,
+  canonical_uri TEXT NOT NULL,
+  collection TEXT NOT NULL,
+  source_hash TEXT NOT NULL,
+  mirror_hash TEXT NOT NULL,
+  passage_hash TEXT NOT NULL,
+  PRIMARY KEY (registration_id, evidence_id),
+  FOREIGN KEY (registration_id)
+    REFERENCES saved_capsule_registrations(registration_id)
+    ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_saved_capsule_evidence_uri
+  ON saved_capsule_evidence(canonical_uri, registration_id);
+CREATE INDEX IF NOT EXISTS idx_saved_capsule_evidence_source
+  ON saved_capsule_evidence(source_hash, registration_id);
+CREATE INDEX IF NOT EXISTS idx_saved_capsule_evidence_mirror
+  ON saved_capsule_evidence(mirror_hash, registration_id);
+
+CREATE TABLE IF NOT EXISTS saved_capsule_verifications (
+  registration_id TEXT PRIMARY KEY,
+  trigger_kind TEXT NOT NULL CHECK (trigger_kind IN ('manual', 'journal')),
+  from_sequence INTEGER NOT NULL CHECK (from_sequence >= 0),
+  through_sequence INTEGER NOT NULL CHECK (through_sequence >= from_sequence),
+  operation_status TEXT NOT NULL CHECK (operation_status IN ('completed', 'failed')),
+  affected_question_state TEXT NOT NULL
+    CHECK (affected_question_state IN ('unaffected', 'affected', 'unknown')),
+  affected_reasons_json TEXT NOT NULL,
+  receipt_json TEXT,
+  receipt_hash TEXT,
+  error_code TEXT,
+  error_message TEXT,
+  verified_at_ms INTEGER NOT NULL CHECK (verified_at_ms >= 0),
+  FOREIGN KEY (registration_id)
+    REFERENCES saved_capsule_registrations(registration_id)
+    ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS saved_capsule_reverification_state (
+  singleton_id INTEGER PRIMARY KEY CHECK (singleton_id = 1),
+  last_processed_sequence INTEGER NOT NULL DEFAULT 0
+    CHECK (last_processed_sequence >= 0)
+);
