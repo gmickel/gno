@@ -26,9 +26,13 @@ starting hosted serving work.
 
 
 ## Done summary
-TBD
+Closed both public publish artifact review findings.
 
+- Rejects embedded POSIX, Windows, UNC, file URI, and GNO URI references from reader metadata while preserving bounded public paths such as `/docs/public`.
+- Restricts canonical and image metadata to uncredentialed public HTTP(S) targets, rejecting local hostnames and literal loopback, private, link-local, and reserved addresses.
+- Adds closed runtime projection and validation for V1 builders so returned artifacts satisfy the schema: nonempty notes, valid slugs, nonblank titles, unique note slugs, home-note membership, valid source/visibility, and typed metadata.
+- Adds direct builder, schema, metadata-egress, and URL-boundary regressions and updates the public contract documentation.
 ## Evidence
-- Commits:
-- Tests:
+- Commits: 55d479c
+- Tests: bun test test/publish test/cli/publish-export.test.ts test/serve/routes/publish-export.test.ts (15 pass, 0 fail), bun run lint:check, bunx tsc --noEmit, bun run docs:verify (13 pass, 0 fail, 2 model-cache skips), bun test (2853 pass, 1 Windows-only skip, 0 fail), .flow/bin/flowctl validate --spec fn-103-capsule-distribution-and-commercial --json
 - PRs:
