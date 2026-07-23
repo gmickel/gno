@@ -156,6 +156,9 @@ describe("startBackgroundRuntime", () => {
         createEmbedScheduler: () => scheduler,
         syncAllService,
         watchServiceFactory: () => watchService,
+        acquireOwnerLock: async () => ({
+          release: async () => undefined,
+        }),
       }
     );
 
@@ -272,6 +275,9 @@ describe("startBackgroundRuntime", () => {
               lastSyncAt: null,
             }),
           }) as never,
+        acquireOwnerLock: async () => ({
+          release: async () => undefined,
+        }),
       }
     );
 
