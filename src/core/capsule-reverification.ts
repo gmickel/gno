@@ -3,6 +3,7 @@
 import type { ContextCapsuleRuntimeDeps } from "../app/context-runtime";
 import type {
   SavedCapsuleRegistrationRecord,
+  SavedCapsuleRegistrationSnapshot,
   SavedCapsuleTriggerKind,
   SavedCapsuleVerificationRecord,
   StorePort,
@@ -29,6 +30,7 @@ type ReverificationStore = StorePort &
   Pick<
     StorePort,
     | "getSavedCapsuleRegistration"
+    | "getSavedCapsuleRegistrationSnapshot"
     | "listDocumentChanges"
     | "upsertSavedCapsuleVerification"
   >;
@@ -83,6 +85,23 @@ const currentSequence = async (store: ReverificationStore): Promise<number> => {
   return decodeDocumentChangeCursor(page.latestCursor);
 };
 
+const getVerificationSnapshot = async (
+  store: ReverificationStore,
+  registrationId: string
+): Promise<SavedCapsuleRegistrationSnapshot> => {
+  const snapshot = unwrapStore(
+    await store.getSavedCapsuleRegistrationSnapshot(registrationId),
+    "Failed to read saved Context Capsule verification snapshot"
+  );
+  if (!snapshot) {
+    throw new SavedCapsuleRegistryError(
+      "registration_not_found",
+      "Saved Context Capsule registration not found"
+    );
+  }
+  return snapshot;
+};
+
 const affected = (
   receipt: ContextCapsuleVerification
 ): {
@@ -122,12 +141,12 @@ const errorIdentity = (error: unknown): { code: string; message: string } => {
 const persist = async (
   deps: SavedCapsuleReverificationDeps,
   registration: SavedCapsuleRegistrationRecord,
+  registrationGeneration: number,
   verification: SavedCapsuleVerificationRecord
 ): Promise<boolean> => {
   const persisted = unwrapStore(
     await deps.store.upsertSavedCapsuleVerification(verification, {
-      capsuleId: registration.capsuleId,
-      fileHash: registration.fileHash,
+      registrationGeneration,
     }),
     "Failed to persist saved Context Capsule verification"
   );
@@ -150,7 +169,8 @@ const reverifySavedCapsuleAttempt = async (
   trigger: SavedCapsuleReverificationTrigger,
   deps: SavedCapsuleReverificationDeps
 ): Promise<SavedCapsuleReverificationOutcome | null> => {
-  const registration = await getSavedCapsule(deps.store, registrationId);
+  const snapshot = await getVerificationSnapshot(deps.store, registrationId);
+  const registration = snapshot.registration;
   const runtimeIndex = canonicalizeIndexName(
     deps.indexName || DEFAULT_INDEX_NAME
   );
@@ -214,7 +234,16 @@ const reverifySavedCapsuleAttempt = async (
       verifiedAtMs,
     };
   }
-  if (!(await persist(deps, registration, verification))) return null;
+  if (
+    !(await persist(
+      deps,
+      registration,
+      snapshot.registrationGeneration,
+      verification
+    ))
+  ) {
+    return null;
+  }
   const refreshed = await getSavedCapsule(deps.store, registrationId);
   return { registration: refreshed, verification, receipt };
 };

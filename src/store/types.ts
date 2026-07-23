@@ -468,13 +468,17 @@ export interface SavedCapsuleVerificationRecord {
 }
 
 export interface SavedCapsuleVerificationExpectation {
-  capsuleId: string;
-  fileHash: string;
+  registrationGeneration: number;
 }
 
 export interface SavedCapsuleReverificationState {
   lastProcessedSequence: number;
   registrationEpoch: number;
+}
+
+export interface SavedCapsuleRegistrationSnapshot {
+  registration: SavedCapsuleRegistrationRecord;
+  registrationGeneration: number;
 }
 
 export interface SavedCapsuleRegistrationInput extends Omit<
@@ -1530,6 +1534,11 @@ export interface StorePort {
   getSavedCapsuleRegistration(
     registrationId: string
   ): Promise<StoreResult<SavedCapsuleRegistrationRecord | null>>;
+
+  /** Read one registration with its internal CAS generation atomically. */
+  getSavedCapsuleRegistrationSnapshot(
+    registrationId: string
+  ): Promise<StoreResult<SavedCapsuleRegistrationSnapshot | null>>;
 
   /** Remove one saved Capsule registration and its subordinate metadata. */
   deleteSavedCapsuleRegistration(

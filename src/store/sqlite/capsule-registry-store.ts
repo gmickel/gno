@@ -7,6 +7,7 @@ import type {
   SavedCapsuleRegistration,
   SavedCapsuleRegistrationInput,
   SavedCapsuleRegistrationRecord,
+  SavedCapsuleRegistrationSnapshot,
   SavedCapsuleReverificationState,
   SavedCapsuleVerificationExpectation,
   SavedCapsuleVerificationRecord,
@@ -181,11 +182,28 @@ export const upsertSavedCapsuleRegistration = (
         throw new RangeError("Saved Capsule registration limit reached");
       }
       db.run(
+        `UPDATE saved_capsule_reverification_state
+         SET last_processed_sequence = MIN(last_processed_sequence, ?),
+             registration_epoch = registration_epoch + 1
+         WHERE singleton_id = 1`,
+        [input.lastAttemptedSequence]
+      );
+      const registrationGeneration = db
+        .query<{ registration_epoch: number }, []>(
+          `SELECT registration_epoch
+           FROM saved_capsule_reverification_state
+           WHERE singleton_id = 1`
+        )
+        .get()?.registration_epoch;
+      if (registrationGeneration === undefined) {
+        throw new Error("Saved Capsule reverification state is missing");
+      }
+      db.run(
         `INSERT INTO saved_capsule_registrations (
            registration_id, file_path, file_hash, capsule_id, index_name,
            question, label, notification_preference, registered_at_ms,
-           updated_at_ms, last_attempted_sequence
-         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+           updated_at_ms, last_attempted_sequence, registration_generation
+         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
          ON CONFLICT(registration_id) DO UPDATE SET
            file_path = excluded.file_path,
            file_hash = excluded.file_hash,
@@ -195,7 +213,8 @@ export const upsertSavedCapsuleRegistration = (
            label = excluded.label,
            notification_preference = excluded.notification_preference,
            updated_at_ms = excluded.updated_at_ms,
-           last_attempted_sequence = excluded.last_attempted_sequence`,
+           last_attempted_sequence = excluded.last_attempted_sequence,
+           registration_generation = excluded.registration_generation`,
         [
           input.registrationId,
           input.filePath,
@@ -208,6 +227,7 @@ export const upsertSavedCapsuleRegistration = (
           input.registeredAtMs,
           input.updatedAtMs,
           input.lastAttemptedSequence,
+          registrationGeneration,
         ]
       );
       db.run("DELETE FROM saved_capsule_evidence WHERE registration_id = ?", [
@@ -233,13 +253,6 @@ export const upsertSavedCapsuleRegistration = (
       db.run(
         "DELETE FROM saved_capsule_verifications WHERE registration_id = ?",
         [input.registrationId]
-      );
-      db.run(
-        `UPDATE saved_capsule_reverification_state
-         SET last_processed_sequence = MIN(last_processed_sequence, ?),
-             registration_epoch = registration_epoch + 1
-         WHERE singleton_id = 1`,
-        [input.lastAttemptedSequence]
       );
       return loadRecords(db, input.registrationId)[0]!;
     });
@@ -273,6 +286,34 @@ export const getSavedCapsuleRegistration = (
     return ok(loadRecords(db, registrationId)[0] ?? null);
   } catch (cause) {
     return err("QUERY_FAILED", "Failed to read saved Context Capsule", cause);
+  }
+};
+
+export const getSavedCapsuleRegistrationSnapshot = (
+  db: Database,
+  registrationId: string
+): StoreResult<SavedCapsuleRegistrationSnapshot | null> => {
+  try {
+    const transaction = db.transaction(() => {
+      const registration = loadRecords(db, registrationId)[0];
+      if (!registration) return null;
+      const registrationGeneration = db
+        .query<{ registration_generation: number }, [string]>(
+          `SELECT registration_generation
+           FROM saved_capsule_registrations
+           WHERE registration_id = ?`
+        )
+        .get(registrationId)?.registration_generation;
+      if (registrationGeneration === undefined) return null;
+      return { registration, registrationGeneration };
+    });
+    return ok(transaction());
+  } catch (cause) {
+    return err(
+      "QUERY_FAILED",
+      "Failed to read saved Context Capsule verification snapshot",
+      cause
+    );
   }
 };
 
@@ -353,17 +394,15 @@ export const upsertSavedCapsuleVerification = (
   try {
     const transaction = db.transaction(() => {
       const registrationMatches = db
-        .query<{ found: number }, [string, string, string]>(
+        .query<{ found: number }, [string, number]>(
           `SELECT 1 AS found
            FROM saved_capsule_registrations
            WHERE registration_id = ?
-             AND capsule_id = ?
-             AND file_hash = ?`
+             AND registration_generation = ?`
         )
         .get(
           verification.registrationId,
-          expectedRegistration.capsuleId,
-          expectedRegistration.fileHash
+          expectedRegistration.registrationGeneration
         );
       if (!registrationMatches) return false;
 
@@ -404,11 +443,13 @@ export const upsertSavedCapsuleVerification = (
         `UPDATE saved_capsule_registrations
          SET last_attempted_sequence = MAX(last_attempted_sequence, ?),
              updated_at_ms = MAX(updated_at_ms, ?)
-         WHERE registration_id = ?`,
+         WHERE registration_id = ?
+           AND registration_generation = ?`,
         [
           verification.throughSequence,
           verification.verifiedAtMs,
           verification.registrationId,
+          expectedRegistration.registrationGeneration,
         ]
       );
       return true;

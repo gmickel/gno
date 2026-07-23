@@ -610,6 +610,122 @@ describe("saved Context Capsule reverification", () => {
     });
   });
 
+  test("honors same-byte notification changes across delete and recreate", async () => {
+    const original = await registerSavedCapsule(adapter, "default", {
+      filePath: capsulePath,
+      notificationPreference: "local",
+    });
+    const originalSnapshot = await adapter.getSavedCapsuleRegistrationSnapshot(
+      original.registrationId
+    );
+    expect(originalSnapshot.ok && originalSnapshot.value).toBeTruthy();
+    if (!originalSnapshot.ok || !originalSnapshot.value) return;
+    const originalGeneration = originalSnapshot.value.registrationGeneration;
+    expect(
+      (
+        await adapter.upsertDocument(
+          documentInput({
+            ...fixture.first,
+            sourceHash: "6".repeat(64),
+          })
+        )
+      ).ok
+    ).toBe(true);
+
+    const notifications: unknown[] = [];
+    const originalPersist =
+      adapter.upsertSavedCapsuleVerification.bind(adapter);
+    let persistCalls = 0;
+    let replacementGeneration = 0;
+    const persistSpy = spyOn(
+      adapter,
+      "upsertSavedCapsuleVerification"
+    ).mockImplementation(async (verification, expectedRegistration) => {
+      persistCalls += 1;
+      if (persistCalls === 1) {
+        expect(
+          await adapter.deleteSavedCapsuleRegistration(original.registrationId)
+        ).toEqual({ ok: true, value: true });
+        const replacement = await registerSavedCapsule(adapter, "default", {
+          filePath: capsulePath,
+          notificationPreference: "none",
+        });
+        const replacementSnapshot =
+          await adapter.getSavedCapsuleRegistrationSnapshot(
+            replacement.registrationId
+          );
+        expect(
+          replacementSnapshot.ok && replacementSnapshot.value
+        ).toBeTruthy();
+        if (!replacementSnapshot.ok || !replacementSnapshot.value) {
+          return { ok: true as const, value: false };
+        }
+        replacementGeneration =
+          replacementSnapshot.value.registrationGeneration;
+        expect(replacementGeneration).toBeGreaterThan(originalGeneration);
+        const beforeSequence =
+          replacementSnapshot.value.registration.lastAttemptedSequence;
+        const staleWrite = await originalPersist(
+          verification,
+          expectedRegistration
+        );
+        expect(staleWrite).toEqual({ ok: true, value: false });
+        const afterStale = await adapter.getSavedCapsuleRegistrationSnapshot(
+          replacement.registrationId
+        );
+        expect(afterStale.ok && afterStale.value).toBeTruthy();
+        if (afterStale.ok && afterStale.value) {
+          expect(afterStale.value.registration.lastAttemptedSequence).toBe(
+            beforeSequence
+          );
+          expect(afterStale.value.registration.verification).toBeNull();
+        }
+        expect(notifications).toEqual([]);
+        return staleWrite;
+      }
+      return originalPersist(verification, expectedRegistration);
+    });
+    const scheduler = new SavedCapsuleReverificationScheduler({
+      deps: {
+        store: adapter,
+        config,
+        indexName: "default",
+        notify: (event) => notifications.push(event),
+      },
+      startBackgroundWork: () => false,
+    });
+
+    const drains = await scheduler.triggerNow();
+    persistSpy.mockRestore();
+    expect(persistCalls).toBe(2);
+    expect(drains.map(({ affected }) => affected)).toEqual([1, 0]);
+    const stored = (await listSavedCapsules(adapter))[0];
+    expect(stored).toMatchObject({
+      registrationId: original.registrationId,
+      capsuleId: original.capsuleId,
+      fileHash: original.fileHash,
+      notificationPreference: "none",
+      lastAttemptedSequence: drains[0]!.throughSequence,
+    });
+    expect(stored?.verification).toMatchObject({
+      operationStatus: "completed",
+      throughSequence: drains[0]!.throughSequence,
+    });
+    expect(notifications).toEqual([]);
+    expect(JSON.stringify(stored)).not.toContain("registrationGeneration");
+    const currentSnapshot = await adapter.getSavedCapsuleRegistrationSnapshot(
+      original.registrationId
+    );
+    expect(
+      currentSnapshot.ok &&
+        currentSnapshot.value?.registrationGeneration === replacementGeneration
+    ).toBe(true);
+    expect(await adapter.getSavedCapsuleReverificationSequence()).toEqual({
+      ok: true,
+      value: drains[0]!.throughSequence,
+    });
+  });
+
   test("bounds manual reverification when registration conflicts persist", async () => {
     const registration = await registerSavedCapsule(adapter, "default", {
       filePath: capsulePath,

@@ -54,7 +54,7 @@ describe("store migrations", () => {
 
       const upgradeResult = runMigrations(db, migrations, "unicode61");
       expect(upgradeResult.ok).toBe(true);
-      expect(getSchemaVersion(db)).toBe(18);
+      expect(getSchemaVersion(db)).toBe(19);
 
       const indexedRow = db
         .query<{ indexed_at: string | null }, []>(
@@ -115,7 +115,7 @@ describe("store migrations", () => {
 
     try {
       expect(runMigrations(db, migrations, "unicode61").ok).toBe(true);
-      expect(getSchemaVersion(db)).toBe(18);
+      expect(getSchemaVersion(db)).toBe(19);
 
       const savedTables = db
         .query<{ name: string }, []>(
@@ -264,7 +264,7 @@ describe("store migrations", () => {
       );
 
       expect(runMigrations(db, migrations, "unicode61").ok).toBe(true);
-      expect(getSchemaVersion(db)).toBe(18);
+      expect(getSchemaVersion(db)).toBe(19);
       expect(
         db
           .query<{ retained_entries: number; retained_bytes: number }, []>(
@@ -299,7 +299,7 @@ describe("store migrations", () => {
       );
 
       expect(runMigrations(db, migrations, "unicode61").ok).toBe(true);
-      expect(getSchemaVersion(db)).toBe(18);
+      expect(getSchemaVersion(db)).toBe(19);
       expect(
         db
           .query<
@@ -320,6 +320,74 @@ describe("store migrations", () => {
           `UPDATE saved_capsule_reverification_state
            SET registration_epoch = -1
            WHERE singleton_id = 1`
+        )
+      ).toThrow();
+    } finally {
+      db.close();
+    }
+  });
+
+  test("backfills unique registration generations above the v18 epoch", () => {
+    const db = new Database(dbPath);
+    try {
+      expect(runMigrations(db, migrations.slice(0, 18), "unicode61").ok).toBe(
+        true
+      );
+      db.run(
+        `UPDATE saved_capsule_reverification_state
+         SET registration_epoch = 5
+         WHERE singleton_id = 1`
+      );
+      const insert = db.prepare(
+        `INSERT INTO saved_capsule_registrations (
+           registration_id, file_path, file_hash, capsule_id, index_name,
+           notification_preference, registered_at_ms, updated_at_ms
+         ) VALUES (?, ?, ?, ?, 'default', 'none', 1, 1)`
+      );
+      insert.run(
+        "capsule-a",
+        "/tmp/a.capsule.json",
+        "a".repeat(64),
+        "b".repeat(64)
+      );
+      insert.run(
+        "capsule-b",
+        "/tmp/b.capsule.json",
+        "c".repeat(64),
+        "d".repeat(64)
+      );
+
+      expect(runMigrations(db, migrations, "unicode61").ok).toBe(true);
+      expect(getSchemaVersion(db)).toBe(19);
+      expect(
+        db
+          .query<
+            { registration_id: string; registration_generation: number },
+            []
+          >(
+            `SELECT registration_id, registration_generation
+             FROM saved_capsule_registrations
+             ORDER BY registration_id ASC`
+          )
+          .all()
+      ).toEqual([
+        { registration_id: "capsule-a", registration_generation: 6 },
+        { registration_id: "capsule-b", registration_generation: 7 },
+      ]);
+      expect(
+        db
+          .query<{ registration_epoch: number }, []>(
+            `SELECT registration_epoch
+             FROM saved_capsule_reverification_state
+             WHERE singleton_id = 1`
+          )
+          .get()
+      ).toEqual({ registration_epoch: 7 });
+      expect(() =>
+        db.run(
+          `UPDATE saved_capsule_registrations
+           SET registration_generation = -1
+           WHERE registration_id = 'capsule-a'`
         )
       ).toThrow();
     } finally {
@@ -382,7 +450,7 @@ describe("store migrations", () => {
 
       const upgraded = runMigrations(db, migrations, "unicode61");
       expect(upgraded.ok).toBe(true);
-      expect(getSchemaVersion(db)).toBe(18);
+      expect(getSchemaVersion(db)).toBe(19);
       const rows = db
         .query<{ rel_path: string; fts_mirror_hash: string | null }, []>(
           "SELECT rel_path, fts_mirror_hash FROM documents ORDER BY rel_path"

@@ -519,6 +519,8 @@ CREATE TABLE IF NOT EXISTS saved_capsule_registrations (
   updated_at_ms INTEGER NOT NULL CHECK (updated_at_ms >= registered_at_ms),
   last_attempted_sequence INTEGER NOT NULL DEFAULT 0
     CHECK (last_attempted_sequence >= 0),
+  registration_generation INTEGER NOT NULL DEFAULT 0
+    CHECK (registration_generation >= 0),
   CHECK (length(registration_id) BETWEEN 1 AND 128),
   CHECK (length(CAST(file_path AS BLOB)) BETWEEN 1 AND 8192),
   CHECK (length(file_hash) = 64 AND file_hash NOT GLOB '*[^0-9a-f]*'),
