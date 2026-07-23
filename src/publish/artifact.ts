@@ -15,6 +15,7 @@ import { stripFrontmatter } from "../ingestion/frontmatter";
 import {
   MAX_PUBLISH_SLUG_LENGTH,
   requirePublishDateTime,
+  validateAndProjectEncryptedPublishInput,
   validateAndProjectPublishSpaceInput,
 } from "./artifact-validation";
 
@@ -385,20 +386,24 @@ export const buildEncryptedPublishArtifact = (input: {
   routeSlug: string;
   secretToken: string;
   sourceType: "note" | "collection";
-}): PublishArtifactV2 => ({
-  exportedAt: new Date().toISOString(),
-  source: input.routeSlug,
-  spaces: [
-    {
-      encryptedPayload: input.encryptedPayload,
-      routeSlug: input.routeSlug,
-      secretToken: input.secretToken,
-      sourceType: input.sourceType,
-      visibility: "encrypted" as const,
-    },
-  ],
-  version: 2 as const,
-});
+}): PublishArtifactV2 => {
+  const validated = validateAndProjectEncryptedPublishInput(input);
+  const exportedAt = requirePublishDateTime(new Date().toISOString());
+  return {
+    exportedAt,
+    source: validated.routeSlug,
+    spaces: [
+      {
+        encryptedPayload: validated.encryptedPayload,
+        routeSlug: validated.routeSlug,
+        secretToken: validated.secretToken,
+        sourceType: validated.sourceType,
+        visibility: "encrypted",
+      },
+    ],
+    version: 2,
+  };
+};
 
 export const derivePublishArtifactFilename = (artifact: PublishArtifact) => {
   const routeSlug =

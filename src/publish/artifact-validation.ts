@@ -5,8 +5,13 @@
  */
 
 export const MAX_PUBLISH_SLUG_LENGTH = 80;
+export const MAX_ENCRYPTED_CIPHERTEXT_BASE64_LENGTH = 67_108_864;
+export const MAX_ENCRYPTED_KEY_MATERIAL_BASE64_LENGTH = 1024;
+export const MAX_ENCRYPTED_SECRET_TOKEN_LENGTH = 512;
 
 const PUBLISH_SLUG_PATTERN = /^[a-z0-9](?:[a-z0-9-]{0,78}[a-z0-9])?$/u;
+const BASE64_PATTERN =
+  /^(?:[a-zA-Z0-9+/]{4})*(?:[a-zA-Z0-9+/]{2}==|[a-zA-Z0-9+/]{3}=)?$/u;
 
 const SOURCE_TYPES = new Set(["collection", "note"]);
 const READER_VISIBILITIES = new Set(["invite-only", "public", "secret-link"]);
@@ -27,6 +32,18 @@ export interface ValidatedPublishSpaceInput {
   summary: string;
   title: string;
   visibility: "invite-only" | "public" | "secret-link";
+}
+
+export interface ValidatedEncryptedPublishInput {
+  encryptedPayload: {
+    ciphertext: string;
+    iterations: number;
+    iv: string;
+    salt: string;
+  };
+  routeSlug: string;
+  secretToken: string;
+  sourceType: "note" | "collection";
 }
 
 const requireRecord = (
@@ -50,6 +67,30 @@ const requireNonblankString = (value: unknown, field: string): string => {
   const result = requireString(value, field);
   if (result.trim().length === 0) {
     throw new Error(`${field} must not be blank`);
+  }
+  return result;
+};
+
+const requireBoundedNonblankString = (
+  value: unknown,
+  field: string,
+  maxLength: number
+): string => {
+  const result = requireNonblankString(value, field);
+  if (result.length > maxLength) {
+    throw new Error(`${field} must not exceed ${maxLength} characters`);
+  }
+  return result;
+};
+
+const requireBase64 = (
+  value: unknown,
+  field: string,
+  maxLength: number
+): string => {
+  const result = requireBoundedNonblankString(value, field, maxLength);
+  if (!BASE64_PATTERN.test(result)) {
+    throw new Error(`${field} must be valid base64`);
   }
   return result;
 };
@@ -151,6 +192,56 @@ export const validateAndProjectPublishSpaceInput = (
   };
   if (homeNoteSlug !== undefined) result.homeNoteSlug = homeNoteSlug;
   return result;
+};
+
+export const validateAndProjectEncryptedPublishInput = (
+  value: unknown
+): ValidatedEncryptedPublishInput => {
+  const input = requireRecord(value, "encrypted publish input");
+  const payload = requireRecord(input.encryptedPayload, "encryptedPayload");
+  const iterations = payload.iterations;
+  if (
+    typeof iterations !== "number" ||
+    !Number.isSafeInteger(iterations) ||
+    iterations <= 0
+  ) {
+    throw new Error(
+      "encryptedPayload.iterations must be a positive safe integer"
+    );
+  }
+
+  const sourceType = requireString(input.sourceType, "sourceType");
+  if (!SOURCE_TYPES.has(sourceType)) {
+    throw new Error('sourceType must be "note" or "collection"');
+  }
+
+  return {
+    encryptedPayload: {
+      ciphertext: requireBase64(
+        payload.ciphertext,
+        "encryptedPayload.ciphertext",
+        MAX_ENCRYPTED_CIPHERTEXT_BASE64_LENGTH
+      ),
+      iterations,
+      iv: requireBase64(
+        payload.iv,
+        "encryptedPayload.iv",
+        MAX_ENCRYPTED_KEY_MATERIAL_BASE64_LENGTH
+      ),
+      salt: requireBase64(
+        payload.salt,
+        "encryptedPayload.salt",
+        MAX_ENCRYPTED_KEY_MATERIAL_BASE64_LENGTH
+      ),
+    },
+    routeSlug: requireSlug(input.routeSlug, "routeSlug"),
+    secretToken: requireBoundedNonblankString(
+      input.secretToken,
+      "secretToken",
+      MAX_ENCRYPTED_SECRET_TOKEN_LENGTH
+    ),
+    sourceType: sourceType as "note" | "collection",
+  };
 };
 
 export const requirePublishDateTime = (

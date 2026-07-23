@@ -1594,7 +1594,11 @@ private, or link-local addresses MUST be filtered.
 Secret-link and invite-only V1 spaces MUST NOT contain a manifest or agent
 capability field. Encrypted V2 spaces MUST contain only ciphertext parameters,
 the opaque secret token, route slug, source type, and encrypted visibility; no
-plaintext manifest or evidence may appear outside the ciphertext.
+plaintext manifest or evidence may appear outside the ciphertext. V2 builders
+MUST emit a closed projection, validate payload strings as non-empty bounded
+base64, require a positive safe-integer KDF iteration count, and bound the
+non-blank opaque token. Caller-supplied extension fields MUST NOT enter the
+artifact.
 
 ---
 

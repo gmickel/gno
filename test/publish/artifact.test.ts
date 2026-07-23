@@ -9,6 +9,10 @@ import {
   buildPublishArtifact,
   type PublishArtifactNote,
 } from "../../src/publish/artifact";
+import {
+  MAX_ENCRYPTED_KEY_MATERIAL_BASE64_LENGTH,
+  MAX_ENCRYPTED_SECRET_TOKEN_LENGTH,
+} from "../../src/publish/artifact-validation";
 import { exportPublishArtifact } from "../../src/publish/export-service";
 import { buildExportedMetadata } from "../../src/publish/metadata";
 import { ok } from "../../src/store/types";
@@ -216,10 +220,10 @@ describe("publish artifact contract", () => {
     });
     const encrypted = buildEncryptedPublishArtifact({
       encryptedPayload: {
-        ciphertext: "ciphertext",
+        ciphertext: "Y2lwaGVydGV4dA==",
         iterations: 210_000,
-        iv: "iv",
-        salt: "salt",
+        iv: "aXY=",
+        salt: "c2FsdA==",
       },
       routeSlug: "atlas",
       secretToken: "opaque-token",
@@ -328,6 +332,98 @@ describe("publish artifact contract", () => {
     });
     expect(projected.spaces[0]?.notes[0]).not.toHaveProperty("ignored");
     expect(assertValid(projected, schema)).toBe(true);
+  });
+
+  test("fails closed and projects only schema-valid encrypted V2 fields", () => {
+    const validInput = {
+      encryptedPayload: {
+        ciphertext: "Y2lwaGVydGV4dA==",
+        iterations: 210_000,
+        iv: "aXY=",
+        salt: "c2FsdA==",
+      },
+      routeSlug: "atlas",
+      secretToken: "opaque-token",
+      sourceType: "note" as const,
+    };
+    const artifact = buildEncryptedPublishArtifact({
+      ...validInput,
+      encryptedPayload: {
+        ...validInput.encryptedPayload,
+        ignored: "not part of the contract",
+      },
+      exportedAt: "not-caller-controlled",
+      ignored: "not part of the contract",
+      visibility: "public",
+    } as Parameters<typeof buildEncryptedPublishArtifact>[0]);
+
+    expect(artifact.spaces[0]).not.toHaveProperty("ignored");
+    expect(artifact.spaces[0]?.encryptedPayload).not.toHaveProperty("ignored");
+    expect(artifact.exportedAt).toMatch(/^\d{4}-\d{2}-\d{2}T/u);
+    expect(artifact.spaces[0]?.visibility).toBe("encrypted");
+    expect(assertValid(artifact, schema)).toBe(true);
+
+    for (const field of ["ciphertext", "iv", "salt"] as const) {
+      expect(() =>
+        buildEncryptedPublishArtifact({
+          ...validInput,
+          encryptedPayload: {
+            ...validInput.encryptedPayload,
+            [field]: "",
+          },
+        })
+      ).toThrow(/must not be blank/iu);
+    }
+    expect(() =>
+      buildEncryptedPublishArtifact({
+        ...validInput,
+        encryptedPayload: {
+          ...validInput.encryptedPayload,
+          ciphertext: "not-base64",
+        },
+      })
+    ).toThrow(/valid base64/iu);
+    expect(() =>
+      buildEncryptedPublishArtifact({
+        ...validInput,
+        encryptedPayload: {
+          ...validInput.encryptedPayload,
+          iv: "A".repeat(MAX_ENCRYPTED_KEY_MATERIAL_BASE64_LENGTH + 4),
+        },
+      })
+    ).toThrow(/must not exceed/iu);
+    for (const iterations of [0, -1, 1.5, Number.MAX_SAFE_INTEGER + 1]) {
+      expect(() =>
+        buildEncryptedPublishArtifact({
+          ...validInput,
+          encryptedPayload: {
+            ...validInput.encryptedPayload,
+            iterations,
+          },
+        })
+      ).toThrow(/positive safe integer/iu);
+    }
+    expect(() =>
+      buildEncryptedPublishArtifact({
+        ...validInput,
+        routeSlug: "Atlas/private",
+      })
+    ).toThrow(/valid publish slug/iu);
+    expect(() =>
+      buildEncryptedPublishArtifact({
+        ...validInput,
+        sourceType: "workspace" as never,
+      })
+    ).toThrow(/sourceType must be/iu);
+    for (const secretToken of [
+      "",
+      "   ",
+      "x".repeat(MAX_ENCRYPTED_SECRET_TOKEN_LENGTH + 1),
+    ]) {
+      expect(() =>
+        buildEncryptedPublishArtifact({ ...validInput, secretToken })
+      ).toThrow(/secretToken/iu);
+    }
   });
 
   test("filters embedded local references and non-public metadata URLs", () => {

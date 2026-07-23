@@ -2535,7 +2535,10 @@ only uncredentialed public HTTP(S) targets.
 
 Secret-link and invite-only artifacts have no agent manifest or capability
 activation flags. Encrypted artifacts expose no plaintext manifest or evidence;
-the server receives ciphertext metadata and an opaque token only.
+the server receives ciphertext metadata and an opaque token only. V2 artifact
+fields are closed and validated before export, including bounded base64
+payloads, positive safe-integer KDF iterations, route/source identity, and the
+bounded opaque token.
 
 ---
 

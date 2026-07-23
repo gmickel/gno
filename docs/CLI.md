@@ -983,7 +983,10 @@ tokens are omitted; canonical and image fields accept only uncredentialed
 public HTTP(S) targets. Secret-link and invite-only artifacts contain the
 requested reader projection but no agent manifest or capability flags.
 Encrypted artifacts expose only ciphertext metadata and an opaque share token;
-GNO never adds plaintext evidence outside the encrypted payload.
+GNO never adds plaintext evidence outside the encrypted payload. The V2
+builder emits a closed projection and validates bounded base64 payload fields,
+the positive safe-integer KDF iteration count, route/source identity, and the
+bounded opaque token before export.
 
 ## Skill Commands
 

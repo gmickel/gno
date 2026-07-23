@@ -1,0 +1,16 @@
+{
+  "assignee": null,
+  "claim_note": "",
+  "claimed_at": null,
+  "created_at": "2026-07-23T18:21:02.276295Z",
+  "depends_on": [
+    "fn-103-capsule-distribution-and-commercial.1"
+  ],
+  "id": "fn-103-capsule-distribution-and-commercial.6",
+  "priority": null,
+  "spec": "fn-103-capsule-distribution-and-commercial",
+  "spec_path": ".flow/tasks/fn-103-capsule-distribution-and-commercial.6.md",
+  "status": "todo",
+  "title": "Close encrypted publish artifact review finding",
+  "updated_at": "2026-07-23T18:21:02.276440Z"
+}
