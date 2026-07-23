@@ -11,6 +11,7 @@ Deliver complete privacy migration documentation and regression gates as one imp
 
 ### Approach
 - Add migration/rollback, size/retention/idempotency, no-network, redaction, and purge regression suites.
+- Treat migration v14 and its migration-v12/v13 upgrade paths as the compatibility baseline; cover aggregate export links and every terminal status.
 - Document off-by-default controls, replay-capable versus diagnostic redaction, explicit feedback semantics, and failure recovery.
 - Update contracts/skill/hosted privacy guidance and run prerelease plus autoresearch gates.
 

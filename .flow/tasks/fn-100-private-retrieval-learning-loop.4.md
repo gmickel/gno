@@ -11,6 +11,7 @@ Deliver export qrels and replay candidate retrieval pipelines as one implementat
 
 ### Approach
 - Export deterministic fn-97-compatible task/qrel/receipt fixtures keyed to immutable source hashes without raw-document duplication.
+- Materialize each export from the aggregate manifest plus its immutable trace links; reject incomplete, conflicting, or redaction-mode-incompatible trace sets before writing artifacts.
 - Replay baseline and candidate pipeline configurations against unchanged sources, reporting rank, coverage, evidence outcomes, stale/missing state, and fingerprints.
 - Require a human promotion decision; replay can recommend but never mutate boosts, prompts, models, config, or files.
 
@@ -29,6 +30,7 @@ Deliver export qrels and replay candidate retrieval pipelines as one implementat
 
 ## Acceptance
 - [ ] Export is canonical, references source hashes, and is directly consumable by fn-97 fixtures.
+- [ ] Aggregate export identity and membership are deterministic; missing/conflicting trace links fail closed.
 - [ ] Replay compares baseline/candidate outcomes and discloses stale/missing/unreplayable traces.
 - [ ] No ranking/config/user-file mutation occurs even when a candidate wins.
 
