@@ -1370,6 +1370,22 @@ Use this for "how are X and Y connected?" prompts. If either endpoint is
 unknown, run `gno_query` first to find candidate refs, then use `gno_get` on
 path nodes for grounded evidence.
 
+### gno_changes / gno_diff / gno_impact
+
+These tools are always available as read-only operations; they do not require
+write enablement.
+
+- `gno_changes` accepts `since`, `collection`, and bounded `limit`. It returns
+  retained metadata-only changes with opaque cursor and retention disclosure.
+- `gno_diff` accepts `ref` and optional opaque `change`. It reports structural
+  history availability without returning or reconstructing source bodies.
+- `gno_impact` accepts `ref` plus depth/node/edge/frontier/visited caps. It
+  follows inbound typed, wiki, and Markdown dependencies and returns one
+  explainable evidence path per impacted document.
+
+Structured content uses `changes@1.0`, `document-diff@1.0`, and `impact@1.0`,
+identical to CLI JSON, REST, and SDK results.
+
 ## Resources
 
 Access documents via GNO URIs:

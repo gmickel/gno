@@ -40,6 +40,11 @@ import type {
   GnoRenameNoteOptions,
   GnoUpdateOptions,
   GnoVectorSearchOptions,
+  KnowledgeChangesResult,
+  KnowledgeDiffResult,
+  KnowledgeImpactInput,
+  KnowledgeImpactResult,
+  ListKnowledgeChangesInput,
 } from "./types";
 
 import {
@@ -84,6 +89,12 @@ import {
   planRenameRefactor,
 } from "../core/file-refactors";
 import { resolveEffectiveIndex } from "../core/indexed-reference";
+import {
+  analyzeKnowledgeImpact,
+  getKnowledgeDiff,
+  listKnowledgeChanges,
+  type KnowledgeDeltaServiceResult,
+} from "../core/knowledge-delta";
 import { resolveNoteCreatePlan } from "../core/note-creation";
 import { resolveNotePreset } from "../core/note-presets";
 import { RetrievalTraceManagementService } from "../core/retrieval-trace-management";
@@ -172,6 +183,11 @@ function unwrapTraceStore<T>(result: StoreResult<T>): T {
     cause: result.error.cause,
     details: { traceCode: result.error.code },
   });
+}
+
+function unwrapKnowledgeDelta<T>(result: KnowledgeDeltaServiceResult<T>): T {
+  if (result.success) return result.data;
+  throw sdkError(result.isValidation ? "VALIDATION" : "STORE", result.error);
 }
 
 async function resolveClientState(
@@ -1065,6 +1081,32 @@ class GnoClientImpl implements GnoClient {
         uri: decorateUriForIndex(doc.uri, this.indexName),
       })),
     };
+  }
+
+  async changes(
+    options: ListKnowledgeChangesInput = {}
+  ): Promise<KnowledgeChangesResult> {
+    this.assertOpen();
+    return unwrapKnowledgeDelta(
+      await listKnowledgeChanges(this.store, options)
+    );
+  }
+
+  async diff(ref: string, changeId?: string): Promise<KnowledgeDiffResult> {
+    this.assertOpen();
+    return unwrapKnowledgeDelta(
+      await getKnowledgeDiff(this.store, ref, changeId)
+    );
+  }
+
+  async impact(
+    ref: string,
+    options: KnowledgeImpactInput = {}
+  ): Promise<KnowledgeImpactResult> {
+    this.assertOpen();
+    return unwrapKnowledgeDelta(
+      await analyzeKnowledgeImpact(this.store, ref, options)
+    );
   }
 
   async status(): Promise<IndexStatus> {

@@ -1141,6 +1141,26 @@ gno graph --mermaid | pbcopy
 
 Similarity edges use `seq=0` embeddings only.
 
+## Knowledge Change Commands
+
+```bash
+gno changes --since 2026-07-20T00:00:00Z --json
+gno diff gno://notes/plan.md --json
+gno impact gno://notes/plan.md --max-depth 3 --max-edges 250 --json
+```
+
+- `gno changes` lists retained metadata-only lifecycle entries. `--since`
+  accepts an ISO-8601 time or an opaque cursor returned by an earlier response.
+- `gno diff` returns the latest retained structural delta; `--change <id>`
+  selects an exact opaque change ID. Source bodies are never retained, and
+  missing prior structure is disclosed through `history` and
+  `structureDelta.truncated`.
+- `gno impact` follows inbound typed, wiki, and Markdown dependencies. Depth,
+  node, edge, frontier, and visited-row caps are always enforced, and every result
+  includes an evidence path back to the changed document.
+- Machine-readable contracts: `changes.schema.json`,
+  `document-diff.schema.json`, and `impact.schema.json`.
+
 ## Admin Commands
 
 ### gno status

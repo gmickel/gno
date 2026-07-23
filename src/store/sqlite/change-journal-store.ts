@@ -287,6 +287,16 @@ export const listDocumentChanges = (
     ) {
       return err("INVALID_INPUT", "Document id must be a positive integer");
     }
+    if (
+      options.observedAfterMs !== undefined &&
+      (!Number.isSafeInteger(options.observedAfterMs) ||
+        options.observedAfterMs < 0)
+    ) {
+      return err(
+        "INVALID_INPUT",
+        "Document change observedAfterMs must be a non-negative integer"
+      );
+    }
 
     const state = db
       .query<{ last_sequence: number; retention_floor: number }, []>(
@@ -327,6 +337,10 @@ export const listDocumentChanges = (
     if (options.documentId !== undefined) {
       conditions.push("document_id = ?");
       params.push(options.documentId);
+    }
+    if (options.observedAfterMs !== undefined) {
+      conditions.push("observed_at_ms >= ?");
+      params.push(options.observedAfterMs);
     }
     const rows = db
       .query<DbDocumentChangeRow, (number | string)[]>(

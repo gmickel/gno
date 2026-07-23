@@ -69,6 +69,7 @@ import {
   handleUpdateDoc,
   handleVerifyConnector,
 } from "./routes/api";
+import { handleChanges, handleDiff, handleImpact } from "./routes/changes";
 import { handleGraph, handleGraphQuery } from "./routes/graph";
 import {
   handleDocBacklinks,
@@ -963,6 +964,39 @@ export async function startServer(
             return withSecurityHeaders(
               await handleResidentRead(runtime as ResidentRuntime, req, () =>
                 handleGraphQuery(store, ctxHolder.config, req)
+              ),
+              isDev
+            );
+          },
+        },
+        "/api/changes": {
+          GET: async (req: Request) => {
+            const url = new URL(req.url);
+            return withSecurityHeaders(
+              await handleResidentRead(runtime as ResidentRuntime, req, () =>
+                handleChanges(store, url)
+              ),
+              isDev
+            );
+          },
+        },
+        "/api/diff": {
+          GET: async (req: Request) => {
+            const url = new URL(req.url);
+            return withSecurityHeaders(
+              await handleResidentRead(runtime as ResidentRuntime, req, () =>
+                handleDiff(store, url)
+              ),
+              isDev
+            );
+          },
+        },
+        "/api/impact": {
+          GET: async (req: Request) => {
+            const url = new URL(req.url);
+            return withSecurityHeaders(
+              await handleResidentRead(runtime as ResidentRuntime, req, () =>
+                handleImpact(store, url)
               ),
               isDev
             );

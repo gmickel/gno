@@ -2607,6 +2607,50 @@ derived from frontmatter relations, content-type graph hints, and backfilled
 wiki/markdown projections (for example `mentions`, `references`, or
 `related`), not the global graph export edge-type enum above.
 
+### gno changes
+
+List retained, metadata-only document lifecycle changes.
+
+```bash
+gno changes [--since <ISO-8601|cursor>] [--collection <name>] [--limit <n>] [--json]
+```
+
+- `--since` accepts an ISO-8601 time or an opaque cursor returned by an earlier
+  call. Cursors are monotonic, stable, and must not be parsed by callers.
+- `--limit` defaults to 100 and is bounded to 1-1000.
+- JSON output uses `changes.schema.json`. It includes opaque per-change IDs,
+  old/new identity and hash snapshots, normalized structural deltas, pagination,
+  cursor-expiry, and retention-truncation disclosure.
+- The journal never returns source bodies.
+
+### gno diff
+
+Show the latest retained structural delta for one document, or select an exact
+retained journal entry by opaque ID.
+
+```bash
+gno diff <doc> [--change <id>] [--json]
+```
+
+JSON output uses `document-diff.schema.json`. `content.status` is always
+`not_retained`; GNO does not reconstruct old bodies. `history.status` is
+`partial` when `structureDelta.truncated` discloses unavailable prior
+structure. Expired/purged IDs return `status: "expired"` without inventing
+history.
+
+### gno impact
+
+Find active documents that depend on one document through inbound typed,
+wiki-link, or Markdown-link edges.
+
+```bash
+gno impact <doc> [--max-depth <n>] [--max-nodes <n>] [--max-edges <n>] [--frontier-limit <n>] [--visited-limit <n>] [--json]
+```
+
+The traversal is cycle-safe and enforces depth, node, edge, frontier, and
+visited-row caps. Every impacted document includes one deterministic
+dependency-to-root evidence path. JSON output uses `impact.schema.json`.
+
 **Exit Codes:**
 
 - 0: Success

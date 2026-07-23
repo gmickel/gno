@@ -1,0 +1,73 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "gno://schemas/document-diff@1.0",
+  "title": "GNO Document Structural Diff",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "status",
+    "document",
+    "change",
+    "content",
+    "history",
+    "warnings"
+  ],
+  "properties": {
+    "schemaVersion": { "type": "string", "const": "1.0" },
+    "status": {
+      "type": "string",
+      "enum": ["available", "expired", "unavailable"]
+    },
+    "document": {
+      "type": "object",
+      "required": ["id", "uri", "title", "collection", "relPath", "active"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^#[a-f0-9]{6,}$" },
+        "uri": { "type": "string", "pattern": "^gno://.+" },
+        "title": { "type": ["string", "null"] },
+        "collection": { "type": "string" },
+        "relPath": { "type": "string" },
+        "active": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "change": {
+      "anyOf": [
+        { "$ref": "gno://schemas/changes@1.0#/definitions/change" },
+        { "type": "null" }
+      ]
+    },
+    "content": {
+      "type": "object",
+      "required": ["status", "reason"],
+      "properties": {
+        "status": { "type": "string", "const": "not_retained" },
+        "reason": { "type": "string", "const": "journal_metadata_only" }
+      },
+      "additionalProperties": false
+    },
+    "history": {
+      "type": "object",
+      "required": ["status", "reason"],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": ["available", "partial", "unavailable"]
+        },
+        "reason": {
+          "type": ["string", "null"],
+          "enum": [
+            null,
+            "structure_delta_truncated",
+            "change_expired",
+            "no_retained_change",
+            "change_not_found"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "warnings": { "type": "array", "items": { "type": "string" } }
+  },
+  "additionalProperties": false
+}

@@ -350,6 +350,23 @@ const status = await client.status();
 console.log(status.activeDocuments, status.embeddingBacklog);
 ```
 
+### Changes, Structural Diff, and Impact
+
+```ts
+const page = await client.changes({ since: lastCursor, limit: 100 });
+const delta = await client.diff("gno://notes/plan.md", page.changes[0]?.id);
+const impact = await client.impact("gno://notes/plan.md", {
+  maxDepth: 3,
+  maxNodes: 100,
+  maxEdges: 250,
+});
+```
+
+These are read-only views over the bounded metadata journal and relationship
+projection. They return the same versioned structures as CLI JSON, REST, and
+MCP. Old source bodies are never stored or reconstructed. Impact results expose
+deterministic evidence paths and explicit truncation when any cap is reached.
+
 ### Update / Embed / Index
 
 ```ts

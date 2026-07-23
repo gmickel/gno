@@ -391,6 +391,8 @@ export interface DocumentChangeListOptions {
   cursor?: string;
   collection?: string;
   documentId?: number;
+  /** Inclusive observed-time lower bound in Unix milliseconds. */
+  observedAfterMs?: number;
   limit?: number;
 }
 

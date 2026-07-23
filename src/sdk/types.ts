@@ -17,6 +17,13 @@ import type {
 } from "../core/context-capsule";
 import type { ContextEvidenceErrorCode } from "../core/context-evidence";
 import type { ContextVerifierErrorCode } from "../core/context-verifier";
+import type {
+  KnowledgeChangesResult,
+  KnowledgeDiffResult,
+  KnowledgeImpactInput,
+  KnowledgeImpactResult,
+  ListKnowledgeChangesInput,
+} from "../core/knowledge-delta";
 import type { NoteCollisionPolicy } from "../core/note-creation";
 import type { NotePresetId } from "../core/note-presets";
 import type {
@@ -52,6 +59,15 @@ export type {
   SyncResult,
 };
 export type { AskOptions, HybridSearchOptions } from "../pipeline/types";
+export type {
+  KnowledgeChange,
+  KnowledgeChangesResult,
+  KnowledgeDiffResult,
+  KnowledgeImpactEvidenceStep,
+  KnowledgeImpactInput,
+  KnowledgeImpactResult,
+  ListKnowledgeChangesInput,
+} from "../core/knowledge-delta";
 export type { Collection, Config as GnoConfig, Context } from "../config/types";
 export type { GetResponse as GnoGetResult } from "../cli/commands/get";
 export type {
@@ -233,6 +249,12 @@ export interface GnoClient {
   list(
     options?: GnoListOptions
   ): Promise<import("../cli/commands/ls").LsResponse>;
+  changes(options?: ListKnowledgeChangesInput): Promise<KnowledgeChangesResult>;
+  diff(ref: string, changeId?: string): Promise<KnowledgeDiffResult>;
+  impact(
+    ref: string,
+    options?: KnowledgeImpactInput
+  ): Promise<KnowledgeImpactResult>;
   status(): Promise<IndexStatus>;
   listRetrievalTraces(
     options?: RetrievalTraceListRequest

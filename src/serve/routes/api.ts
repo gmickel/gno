@@ -160,6 +160,7 @@ import {
   withRetrievalTraceHeader,
 } from "../retrieval-trace";
 import { buildAppStatus, type StatusBuildDeps } from "../status";
+import { handleChanges, handleDiff, handleImpact } from "./changes";
 
 /** Mutable context holder for hot-reloading presets */
 export interface ContextHolder {
@@ -5120,6 +5121,18 @@ export async function routeApi(
       },
       req
     );
+  }
+
+  if (path === "/api/changes" && req.method === "GET") {
+    return handleChanges(store, url);
+  }
+
+  if (path === "/api/diff" && req.method === "GET") {
+    return handleDiff(store, url);
+  }
+
+  if (path === "/api/impact" && req.method === "GET") {
+    return handleImpact(store, url);
   }
 
   // Unknown API route

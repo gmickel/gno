@@ -1,0 +1,118 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "gno://schemas/changes@1.0",
+  "title": "GNO Knowledge Changes",
+  "type": "object",
+  "required": ["schemaVersion", "changes", "page", "warnings"],
+  "properties": {
+    "schemaVersion": { "type": "string", "const": "1.0" },
+    "changes": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/change" }
+    },
+    "page": {
+      "type": "object",
+      "required": [
+        "nextCursor",
+        "earliestCursor",
+        "latestCursor",
+        "cursorExpired",
+        "truncated",
+        "retentionTruncated"
+      ],
+      "properties": {
+        "nextCursor": { "type": ["string", "null"] },
+        "earliestCursor": { "type": "string", "minLength": 1 },
+        "latestCursor": { "type": "string", "minLength": 1 },
+        "cursorExpired": { "type": "boolean" },
+        "truncated": { "type": "boolean" },
+        "retentionTruncated": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "warnings": { "type": "array", "items": { "type": "string" } }
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "snapshot": {
+      "type": "object",
+      "required": [
+        "relPath",
+        "docid",
+        "uri",
+        "sourceHash",
+        "mirrorHash",
+        "active"
+      ],
+      "properties": {
+        "relPath": { "type": "string" },
+        "docid": { "type": "string", "pattern": "^#[a-f0-9]{6,}$" },
+        "uri": { "type": "string", "pattern": "^gno://.+" },
+        "sourceHash": { "type": "string", "minLength": 1 },
+        "mirrorHash": { "type": ["string", "null"] },
+        "active": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "setDelta": {
+      "type": "object",
+      "required": ["added", "removed"],
+      "properties": {
+        "added": { "type": "array", "items": { "type": "string" } },
+        "removed": { "type": "array", "items": { "type": "string" } }
+      },
+      "additionalProperties": false
+    },
+    "dateDelta": {
+      "type": "object",
+      "required": ["added", "removed", "changed"],
+      "properties": {
+        "added": { "type": "array", "items": { "type": "string" } },
+        "removed": { "type": "array", "items": { "type": "string" } },
+        "changed": { "type": "array", "items": { "type": "string" } }
+      },
+      "additionalProperties": false
+    },
+    "structureDelta": {
+      "type": "object",
+      "required": ["headings", "links", "typedEdges", "dates", "truncated"],
+      "properties": {
+        "headings": { "$ref": "#/definitions/setDelta" },
+        "links": { "$ref": "#/definitions/setDelta" },
+        "typedEdges": { "$ref": "#/definitions/setDelta" },
+        "dates": { "$ref": "#/definitions/dateDelta" },
+        "truncated": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "change": {
+      "type": "object",
+      "required": [
+        "id",
+        "kind",
+        "collection",
+        "observedAt",
+        "previous",
+        "current",
+        "structureDelta"
+      ],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "kind": {
+          "type": "string",
+          "enum": ["create", "update", "rename", "inactivate", "reactivate"]
+        },
+        "collection": { "type": "string", "minLength": 1 },
+        "observedAt": { "type": "string", "format": "date-time" },
+        "previous": {
+          "anyOf": [{ "$ref": "#/definitions/snapshot" }, { "type": "null" }]
+        },
+        "current": {
+          "anyOf": [{ "$ref": "#/definitions/snapshot" }, { "type": "null" }]
+        },
+        "structureDelta": { "$ref": "#/definitions/structureDelta" }
+      },
+      "additionalProperties": false
+    }
+  }
+}

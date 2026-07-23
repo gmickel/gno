@@ -54,6 +54,13 @@ export type {
   GnoSkippedDocument,
   GnoUpdateOptions,
   GnoVectorSearchOptions,
+  KnowledgeChange,
+  KnowledgeChangesResult,
+  KnowledgeDiffResult,
+  KnowledgeImpactEvidenceStep,
+  KnowledgeImpactInput,
+  KnowledgeImpactResult,
+  ListKnowledgeChangesInput,
 } from "./types";
 export {
   ContextCapsuleContractError,

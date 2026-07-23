@@ -308,6 +308,7 @@ export function createProgram(): Command {
   wireTagsCommands(program);
   wireLinksCommands(program);
   wireGraphCommand(program);
+  wireKnowledgeDeltaCommands(program);
   wireMcpCommand(program);
   wireSkillCommands(program);
   wireDaemonCommand(program);
@@ -3086,6 +3087,100 @@ function wireGraphCommand(program: Command): void {
         await writeOutput(output, format);
       }
     );
+}
+
+function wireKnowledgeDeltaCommands(program: Command): void {
+  program
+    .command("changes")
+    .description("List retained metadata-only document changes")
+    .option("--since <time-or-cursor>", "ISO-8601 time or opaque cursor")
+    .option("-c, --collection <name>", "filter by collection")
+    .option("-n, --limit <num>", "maximum changes", "100")
+    .option("--json", "JSON output")
+    .action(async (cmdOpts: Record<string, unknown>) => {
+      const format = getFormat(cmdOpts);
+      assertFormatSupported(CMD.changes, format);
+      const deltaFormat = format === "json" ? "json" : "terminal";
+      const globals = getGlobals();
+      const { changes, formatChanges } = await import("./commands/changes");
+      const result = await changes(
+        {
+          since: cmdOpts.since as string | undefined,
+          collection: cmdOpts.collection as string | undefined,
+          limit: parsePositiveInt("limit", cmdOpts.limit),
+        },
+        { configPath: globals.config, indexName: globals.index }
+      );
+      if (!result.success) {
+        throw new CliError(
+          result.isValidation ? "VALIDATION" : "RUNTIME",
+          result.error
+        );
+      }
+      await writeOutput(formatChanges(result.data, deltaFormat), deltaFormat);
+    });
+
+  program
+    .command("diff <doc>")
+    .description("Show one retained metadata-only structural change")
+    .option("--change <id>", "opaque change ID")
+    .option("--json", "JSON output")
+    .action(async (doc: string, cmdOpts: Record<string, unknown>) => {
+      const format = getFormat(cmdOpts);
+      assertFormatSupported(CMD.diff, format);
+      const deltaFormat = format === "json" ? "json" : "terminal";
+      const globals = getGlobals();
+      const { diff, formatDiff } = await import("./commands/changes");
+      const result = await diff(doc, cmdOpts.change as string | undefined, {
+        configPath: globals.config,
+        indexName: globals.index,
+      });
+      if (!result.success) {
+        throw new CliError(
+          result.isValidation ? "VALIDATION" : "RUNTIME",
+          result.error
+        );
+      }
+      await writeOutput(formatDiff(result.data, deltaFormat), deltaFormat);
+    });
+
+  program
+    .command("impact <doc>")
+    .description("Find bounded inbound knowledge dependencies")
+    .option("--max-depth <n>", "maximum dependency depth", "3")
+    .option("--max-nodes <n>", "maximum returned nodes", "100")
+    .option("--max-edges <n>", "maximum traversed evidence edges", "250")
+    .option("--frontier-limit <n>", "maximum frontier width", "100")
+    .option("--visited-limit <n>", "maximum visited rows", "500")
+    .option("--json", "JSON output")
+    .action(async (doc: string, cmdOpts: Record<string, unknown>) => {
+      const format = getFormat(cmdOpts);
+      assertFormatSupported(CMD.impact, format);
+      const deltaFormat = format === "json" ? "json" : "terminal";
+      const globals = getGlobals();
+      const { impact, formatImpact } = await import("./commands/changes");
+      const result = await impact(
+        doc,
+        {
+          maxDepth: parsePositiveInt("max-depth", cmdOpts.maxDepth),
+          maxNodes: parsePositiveInt("max-nodes", cmdOpts.maxNodes),
+          maxEdges: parsePositiveInt("max-edges", cmdOpts.maxEdges),
+          frontierLimit: parsePositiveInt(
+            "frontier-limit",
+            cmdOpts.frontierLimit
+          ),
+          visitedLimit: parsePositiveInt("visited-limit", cmdOpts.visitedLimit),
+        },
+        { configPath: globals.config, indexName: globals.index }
+      );
+      if (!result.success) {
+        throw new CliError(
+          result.isValidation ? "VALIDATION" : "RUNTIME",
+          result.error
+        );
+      }
+      await writeOutput(formatImpact(result.data, deltaFormat), deltaFormat);
+    });
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

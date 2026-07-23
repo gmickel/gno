@@ -1584,6 +1584,28 @@ curl -X POST http://localhost:3000/api/graph/query \
 
 ---
 
+### Knowledge Changes
+
+```http
+GET /api/changes?since=<ISO-8601-or-cursor>&collection=<name>&limit=100
+GET /api/diff?ref=<document-ref>&change=<opaque-change-id>
+GET /api/impact?ref=<document-ref>&maxDepth=3&maxNodes=100&maxEdges=250&frontierLimit=100&visitedLimit=500
+```
+
+All three endpoints are read-only and share their exact structured contracts
+with CLI, MCP, and SDK:
+
+- `/api/changes` returns `changes.schema.json`, including opaque stable
+  cursors, cursor-expiry, pagination, and retention-truncation disclosure.
+- `/api/diff` returns `document-diff.schema.json`. The journal is metadata-only,
+  so `content.status` is `not_retained`; unavailable prior structure is derived
+  from `structureDelta.truncated`.
+- `/api/impact` returns `impact.schema.json`. Inbound typed/wiki/Markdown
+  traversal is cycle-safe and bounded by every supplied cap. Each impacted
+  document contains a deterministic dependency-to-root evidence path.
+
+---
+
 ### Capture Note
 
 ```http
