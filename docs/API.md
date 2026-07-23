@@ -1816,7 +1816,10 @@ Additional filters are `uriPrefix`, `tagsAll`, `tagsAny`, `categories`,
 `since`, and `until`; optional safety margins are `safetyMarginTokens` and
 `safetyMarginBytes`. `depthPolicy: "fast"` avoids model setup. Closed input
 validation rejects unknown fields. Unknown collections fail before retrieval or
-model setup.
+model setup. Tag filters are NFC-normalized, lowercased, deduplicated, and
+validated. `limit` caps the merged result pool across all collections;
+`candidateLimit` is distributed across collection retrievals so rerank and
+graph work remains one global budget.
 
 JSON responses are the canonical Capsule bytes. `format: "md"` returns the
 shared readable Markdown projection (`text/markdown`) with exact passage bytes

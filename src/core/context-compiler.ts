@@ -281,6 +281,16 @@ const mergeMeta = (
   ].sort(compareCodeUnits),
 });
 
+const distributedLimit = (
+  total: number | undefined,
+  requestIndex: number,
+  requestCount: number
+): number | undefined => {
+  if (total === undefined) return undefined;
+  const base = Math.floor(total / requestCount);
+  return base + (requestIndex < total % requestCount ? 1 : 0);
+};
+
 /** Build a deterministic evidence plan; no answer generation occurs here. */
 export const planContextEvidence = async <T, P>(
   input: ContextCompilerInput,
@@ -316,8 +326,20 @@ export const planContextEvidence = async <T, P>(
   const collections = [...new Set(input.collections)].sort(compareCodeUnits);
   const indexName = canonicalizeIndexName(input.indexName);
   const collectionRequests = collections.length > 0 ? collections : [undefined];
+  const requestCount = collectionRequests.length;
   const responses: SearchResults[] = [];
-  for (const collection of collectionRequests) {
+  for (const [requestIndex, collection] of collectionRequests.entries()) {
+    const resultLimit = distributedLimit(
+      input.limit,
+      requestIndex,
+      requestCount
+    );
+    const rerankLimit = distributedLimit(
+      input.candidateLimit,
+      requestIndex,
+      requestCount
+    );
+    const hasRerankBudget = rerankLimit === undefined || rerankLimit > 0;
     responses.push(
       await deps.retrieve({
         query,
@@ -331,18 +353,32 @@ export const planContextEvidence = async <T, P>(
         lang: input.lang,
         since: temporalRange.since,
         until: temporalRange.until,
-        graph: input.graph,
-        limit: input.limit,
-        candidateLimit: input.candidateLimit,
+        graph: hasRerankBudget ? input.graph : false,
+        noRerank: hasRerankBudget ? undefined : true,
+        limit: resultLimit === undefined ? undefined : Math.max(1, resultLimit),
+        candidateLimit:
+          rerankLimit === undefined ? undefined : Math.max(1, rerankLimit),
       })
     );
   }
-  const results = responses
+  const decoratedResults = responses
     .flatMap((response) => response.results)
     .map((result) => ({
       ...result,
       uri: decorateUriForIndex(result.uri, indexName),
+    }));
+  const results = decoratedResults
+    .map((result, index) => ({
+      result,
+      retrievalRank: plannerMeta(result, index + 1).retrievalRank,
     }))
+    .sort(
+      (left, right) =>
+        left.retrievalRank - right.retrievalRank ||
+        compareSearchResults(left.result, right.result)
+    )
+    .slice(0, input.limit ?? decoratedResults.length)
+    .map(({ result }) => result)
     .sort(compareSearchResults);
   const uriPrefix =
     input.uriPrefix === null || input.uriPrefix === undefined

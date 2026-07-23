@@ -78,6 +78,7 @@ export const buildContextCapsule = async (
     {
       store: deps.store,
       retrieve: async (request) => {
+        const requestNoRerank = noRerank || request.noRerank === true;
         const result = await searchHybrid(
           {
             store: deps.store,
@@ -85,10 +86,10 @@ export const buildContextCapsule = async (
             vectorIndex: deps.vectorIndex ?? null,
             embedPort: deps.embedPort ?? null,
             expandPort: null,
-            rerankPort: noRerank ? null : (deps.rerankPort ?? null),
+            rerankPort: requestNoRerank ? null : (deps.rerankPort ?? null),
           },
           request.query,
-          { ...request, noRerank }
+          { ...request, noRerank: requestNoRerank }
         );
         if (!result.ok) {
           throw new ContextRuntimeError(

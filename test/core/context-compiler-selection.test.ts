@@ -530,6 +530,178 @@ const capsuleProjection = (
 };
 
 describe("Context evidence planning", () => {
+  test("distributes collection retrieval limits as one global budget", async () => {
+    const requests: Array<{
+      collection?: string;
+      limit?: number;
+      candidateLimit?: number;
+      graph?: boolean;
+      noRerank?: boolean;
+    }> = [];
+    const plan = await planContextEvidence(
+      {
+        goal: "global limits",
+        indexName: "default",
+        collections: ["gamma", "alpha", "beta"],
+        graph: true,
+        limit: 3,
+        candidateLimit: 5,
+        temporalNow: "2026-07-22T12:00:00.000Z",
+        observedAt: null,
+        limits: {
+          requestedBytes: 40_000,
+          requestedTokens: 40_000,
+          safetyMarginBytes: 64,
+          safetyMarginTokens: 64,
+        },
+        contextSnapshot: [],
+      },
+      {
+        retrieve: async (request): Promise<SearchResults> => {
+          requests.push(request);
+          const collection = request.collection ?? "notes";
+          return {
+            results: [
+              searchResult(
+                collection,
+                collection,
+                `global limits ${collection}`
+              ),
+            ],
+            meta: {
+              query: request.query,
+              mode: "bm25_only",
+              totalResults: 1,
+            },
+          };
+        },
+        materializeCandidates: async (plannedCandidates) =>
+          plannedCandidates.map((planned) => ({
+            ok: true as const,
+            candidate: {
+              uri: planned.result.uri,
+              docid: planned.result.docid,
+              startLine: 1,
+              endLine: 1,
+              text: planned.result.snippet,
+              sourceHash: planned.result.source.sourceHash ?? "",
+              mirrorHash: planned.result.conversion?.mirrorHash ?? "",
+              value: { contextIds: planned.contextIds },
+            },
+          })),
+        projectCanonical: capsuleProjection,
+      }
+    );
+
+    expect(
+      requests.map(({ collection, limit, candidateLimit }) => ({
+        collection,
+        limit,
+        candidateLimit,
+      }))
+    ).toEqual([
+      { collection: "alpha", limit: 1, candidateLimit: 2 },
+      { collection: "beta", limit: 1, candidateLimit: 2 },
+      { collection: "gamma", limit: 1, candidateLimit: 1 },
+    ]);
+    expect(
+      requests.reduce((sum, request) => sum + (request.limit ?? 0), 0)
+    ).toBe(3);
+    expect(
+      requests.reduce((sum, request) => sum + (request.candidateLimit ?? 0), 0)
+    ).toBe(5);
+    expect(plan.selected.length).toBeLessThanOrEqual(3);
+  });
+
+  test("globally caps results and disables rerank work for zero-share collections", async () => {
+    const requests: Array<{
+      collection?: string;
+      limit?: number;
+      candidateLimit?: number;
+      graph?: boolean;
+      noRerank?: boolean;
+    }> = [];
+    const plan = await planContextEvidence(
+      {
+        goal: "single result",
+        indexName: "default",
+        collections: ["beta", "alpha"],
+        graph: true,
+        limit: 1,
+        candidateLimit: 1,
+        temporalNow: "2026-07-22T12:00:00.000Z",
+        observedAt: null,
+        limits: {
+          requestedBytes: 40_000,
+          requestedTokens: 40_000,
+          safetyMarginBytes: 64,
+          safetyMarginTokens: 64,
+        },
+        contextSnapshot: [],
+      },
+      {
+        retrieve: async (request): Promise<SearchResults> => {
+          requests.push(request);
+          const collection = request.collection ?? "notes";
+          return {
+            results: [
+              searchResult(collection, collection, `single ${collection}`),
+            ],
+            meta: {
+              query: request.query,
+              mode: "bm25_only",
+              totalResults: 1,
+            },
+          };
+        },
+        materializeCandidates: async (plannedCandidates) =>
+          plannedCandidates.map((planned) => ({
+            ok: true as const,
+            candidate: {
+              uri: planned.result.uri,
+              docid: planned.result.docid,
+              startLine: 1,
+              endLine: 1,
+              text: planned.result.snippet,
+              sourceHash: planned.result.source.sourceHash ?? "",
+              mirrorHash: planned.result.conversion?.mirrorHash ?? "",
+              value: { contextIds: planned.contextIds },
+            },
+          })),
+        projectCanonical: capsuleProjection,
+      }
+    );
+
+    expect(
+      requests.map(
+        ({ collection, limit, candidateLimit, graph, noRerank }) => ({
+          collection,
+          limit,
+          candidateLimit,
+          graph,
+          noRerank,
+        })
+      )
+    ).toEqual([
+      {
+        collection: "alpha",
+        limit: 1,
+        candidateLimit: 1,
+        graph: true,
+        noRerank: undefined,
+      },
+      {
+        collection: "beta",
+        limit: 1,
+        candidateLimit: 1,
+        graph: false,
+        noRerank: true,
+      },
+    ]);
+    expect(plan.selected).toHaveLength(1);
+    expect(plan.selected[0]?.uri).toBe("gno://alpha/alpha.md");
+  });
+
   test("freezes temporal bounds, merges collections, and budgets exact full lines", async () => {
     const alpha = searchResult("alpha", "alpha", "pha");
     const zeta = searchResult(

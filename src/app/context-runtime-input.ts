@@ -4,6 +4,7 @@ import type { QueryModeInput } from "../pipeline/types";
 import type { ContextCapsuleBuildInput } from "./context-runtime-types";
 
 import { isValidLanguageHint } from "../config/types";
+import { normalizeTag, validateTag } from "../core/tags";
 import { resolveTemporalRange } from "../pipeline/temporal";
 import { buildUri, parseUri } from "./constants";
 import { ContextRuntimeError } from "./context-runtime-types";
@@ -53,6 +54,37 @@ const canonicalFilters = (
     throw new ContextRuntimeError(
       "invalid_filter",
       `${label} contains an invalid value`
+    );
+  }
+  return normalized;
+};
+
+const canonicalTagFilters = (
+  values: readonly string[] | undefined,
+  label: string
+): string[] => {
+  if (
+    values !== undefined &&
+    (!Array.isArray(values) ||
+      values.some((value) => typeof value !== "string"))
+  ) {
+    throw new ContextRuntimeError("invalid_filter", `${label} must be strings`);
+  }
+  const normalized = [
+    ...new Set((values ?? []).map((value) => normalizeTag(value))),
+  ].sort(compareCodeUnits);
+  if (
+    normalized.length > MAX_FILTER_VALUES ||
+    normalized.some(
+      (value) =>
+        value.length > MAX_FILTER_LENGTH ||
+        value.includes("\r") ||
+        !validateTag(value)
+    )
+  ) {
+    throw new ContextRuntimeError(
+      "invalid_filter",
+      `${label} contains an invalid tag`
     );
   }
   return normalized;
@@ -307,8 +339,8 @@ export const normalizeContextBuildInput = (
     collections,
     uriPrefix,
     queryModes: canonicalQueryModes(input.queryModes),
-    tagsAll: canonicalFilters(input.tagsAll, "tagsAll"),
-    tagsAny: canonicalFilters(input.tagsAny, "tagsAny"),
+    tagsAll: canonicalTagFilters(input.tagsAll, "tagsAll"),
+    tagsAny: canonicalTagFilters(input.tagsAny, "tagsAny"),
     categories: canonicalFilters(input.categories, "categories"),
     author,
     lang,

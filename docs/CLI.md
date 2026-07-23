@@ -661,7 +661,11 @@ fallbacks when attempted but unavailable. The persisted retrieval plan records
 normalized author/language/query-mode filters, effective limits, graph request,
 and requested/attempted/outcome state. A capability that was not requested is
 reported as `not_requested`, not as an availability failure. Unknown requested
-collections fail validation before retrieval.
+collections fail validation before retrieval. Tag filters are NFC-normalized,
+lowercased, deduplicated, and validated. Result and candidate limits are global
+across repeated collections: result admission is capped after the merged rank,
+and rerank/graph candidate work is distributed deterministically in canonical
+collection order.
 
 JSON is deterministic and machine-readable. Markdown is a readable projection
 of the same Capsule with untrusted passages explicitly delimited. Each passage,

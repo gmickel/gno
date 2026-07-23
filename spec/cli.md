@@ -1223,7 +1223,10 @@ token counter, `usedTokens` uses the conservative UTF-8 byte count and the
 Capsule records `tokenizer_unavailable`. `--query`, `--uri-prefix`, tag,
 category, author, language, date, and repeatable `--query-mode` filters use the
 same canonical retrieval semantics as `gno query`. `--collection` is
-repeatable.
+repeatable. Tag filters are NFC-normalized, lowercased, deduplicated, and
+validated before retrieval. Result and candidate limits are global across
+repeated collections: the merged result pool is capped once, while candidate
+work is distributed deterministically in canonical collection order.
 
 JSON is the canonical V1 payload. Markdown is a readable projection of that
 same payload and hard-delimits each untrusted evidence passage. Passage,

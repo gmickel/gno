@@ -114,7 +114,11 @@ Optional input fields are `query`, `collections`, `uriPrefix`, `queryModes`,
 `safetyMarginBytes`, `depthPolicy` (`fast`, `balanced`, or `thorough`), and
 `format` (`json` or `md`). Input objects are closed: unknown fields return
 `invalid_input`. Unknown collections return `invalid_filter` before model or
-retrieval setup.
+retrieval setup. Tag filters are NFC-normalized, lowercased, deduplicated, and
+validated before retrieval. `limit` and `candidateLimit` are global across all
+requested collections: result admission is capped after merging, and
+rerank/graph candidate work is distributed deterministically in canonical
+collection order.
 
 `structuredContent` is the complete canonical Context Capsule object for
 application clients. Model-visible text is always one deterministic

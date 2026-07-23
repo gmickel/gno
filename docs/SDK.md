@@ -193,7 +193,9 @@ author, language, structured query modes, effective result/candidate limits,
 and graph intent. Capability states distinguish `not_requested`,
 `not_attempted`, `used`, and attempted `unavailable`; fallbacks describe only
 actual unavailable attempts. Unknown collections throw `invalid_filter` before
-retrieval or model setup.
+retrieval or model setup. Tag filters are normalized, lowercased, deduplicated,
+and validated. Result admission and rerank/graph candidate limits remain global
+across multi-collection requests.
 
 `client.verifyContext()` validates canonical identity and metadata before store
 access, preserves exact evidence bytes, and returns the same verification

@@ -21,6 +21,7 @@ import {
   canonicalVerifiedContextCapsuleJson,
   verifyContextCapsuleRuntime,
 } from "../../src/app/context-runtime";
+import { normalizeContextBuildInput } from "../../src/app/context-runtime-input";
 import { parseContextBuildSurfaceInput } from "../../src/app/context-surface";
 import { createContextCapsuleV1 } from "../../src/core/context-capsule";
 import { sha256Text } from "../../src/core/context-capsule-validation";
@@ -235,6 +236,39 @@ describe("Context Capsule REST/MCP parity", () => {
       depthPolicy: "thorough",
       indexName: "default",
     });
+  });
+
+  test("normalizes and validates tag filters before every runtime surface", () => {
+    const parsed = parseContextBuildSurfaceInput(
+      {
+        goal: "Find tagged launch evidence",
+        tagsAll: [" Work/Launch ", "work/launch"],
+        tagsAny: ["Entscheidung", "ENTSCHEIDUNG"],
+        budgetTokens: 1000,
+      },
+      "default"
+    );
+    const normalized = normalizeContextBuildInput(
+      parsed.input,
+      "default",
+      new Date("2026-07-22T12:00:00.000Z"),
+      ["notes"]
+    );
+
+    expect(normalized.tagsAll).toEqual(["work/launch"]);
+    expect(normalized.tagsAny).toEqual(["entscheidung"]);
+    expect(() =>
+      normalizeContextBuildInput(
+        {
+          goal: "Reject invalid tags",
+          tagsAll: ["not valid!"],
+          budgetTokens: 1000,
+        },
+        "default",
+        new Date("2026-07-22T12:00:00.000Z"),
+        ["notes"]
+      )
+    ).toThrow("tagsAll contains an invalid tag");
   });
 
   test("keeps full REST/application payloads and emits the production MCP projection once", async () => {
