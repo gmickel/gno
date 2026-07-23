@@ -4,7 +4,6 @@ import type { ContextCapsuleV1 } from "../core/context-capsule";
 
 export const CONTEXT_AGENT_PROJECTION_SCHEMA_VERSION =
   "gno-context-agent-v1" as const;
-export const CONTEXT_AGENT_OMISSION_ITEM_LIMIT = 1;
 
 export interface ContextAgentProjectionEvidence {
   uri: string;
@@ -69,22 +68,46 @@ export interface ContextAgentProjectionSource {
   truncated: boolean;
 }
 
-export interface ContextAgentProjection extends ContextAgentProjectionSource {
-  schemaVersion: typeof CONTEXT_AGENT_PROJECTION_SCHEMA_VERSION;
-  delivery: {
-    modelVisibleUtf8Bytes: number;
-    structuredContent: "full_capsule_application_payload";
-    accounting: "mcp_text_content_only";
-  };
-  trust: {
-    evidence: "untrusted_data";
-    instructionBoundary: "hard_delimited";
-  };
-  omissions: ContextAgentProjectionSource["omissions"] & {
-    visibleItemLimit: typeof CONTEXT_AGENT_OMISSION_ITEM_LIMIT;
-    visibleItems: readonly ContextAgentProjectionOmission[];
-    truncated: boolean;
-  };
+type EvidenceTuple = readonly [
+  uri: string,
+  startLine: number,
+  endLine: number,
+  sourceHash: string,
+  mirrorHash: string,
+  passageHash: string,
+  text: string,
+];
+
+export interface ContextAgentProjection {
+  /** Projection contract version. */
+  v: typeof CONTEXT_AGENT_PROJECTION_SCHEMA_VERSION;
+  /** Capsule identity. */
+  id: string;
+  /** Tuple order: requested tokens/bytes, used tokens/bytes. */
+  b: readonly [number, number, number | null, number | null];
+  /** Tuple order: depth; index/config/retrieval/embedding/rerank identities; capabilities; fallbacks. */
+  r: readonly [
+    string,
+    string,
+    string,
+    string,
+    string | null,
+    string | null,
+    string[],
+    readonly string[],
+  ];
+  /** Tuple order is declared by EvidenceTuple above and spec/mcp.md. */
+  e: EvidenceTuple[];
+  /** Tuple order: covered facets, then [facet, gap code] pairs. */
+  c: readonly [
+    readonly string[],
+    Array<readonly [facet: string, code: string]>,
+  ];
+  /** Tuple order: total omissions, then sparse [reason, count] pairs. */
+  o: readonly [number, Array<readonly [reason: string, count: number]>];
+  /** True when the Capsule hit its global evidence budget. */
+  t: boolean;
+  trust: "untrusted_data";
 }
 
 const compareText = (left: string, right: string): number =>
@@ -105,53 +128,56 @@ const canonicalize = (value: unknown): unknown => {
 const canonicalJson = (value: unknown): string =>
   JSON.stringify(canonicalize(value));
 
-const utf8Bytes = (value: string): number =>
-  new TextEncoder().encode(value).byteLength;
-
-const projectionWithBytes = (
-  source: ContextAgentProjectionSource,
-  modelVisibleUtf8Bytes: number
-): ContextAgentProjection => ({
-  ...source,
-  schemaVersion: CONTEXT_AGENT_PROJECTION_SCHEMA_VERSION,
-  delivery: {
-    modelVisibleUtf8Bytes,
-    structuredContent: "full_capsule_application_payload",
-    accounting: "mcp_text_content_only",
-  },
-  trust: {
-    evidence: "untrusted_data",
-    instructionBoundary: "hard_delimited",
-  },
-  omissions: {
-    ...source.omissions,
-    visibleItemLimit: CONTEXT_AGENT_OMISSION_ITEM_LIMIT,
-    visibleItems: source.omissions.items.slice(
-      0,
-      CONTEXT_AGENT_OMISSION_ITEM_LIMIT
-    ),
-    truncated:
-      source.omissions.total >
-      Math.min(
-        source.omissions.items.length,
-        CONTEXT_AGENT_OMISSION_ITEM_LIMIT
-      ),
-  },
-});
+const projection = (
+  source: ContextAgentProjectionSource
+): ContextAgentProjection => {
+  const capabilities = Object.entries(source.retrieval.capabilities)
+    .filter(([, enabled]) => enabled)
+    .map(([capability]) => capability);
+  const reasonCounts = Object.entries(source.omissions.reasonCounts).filter(
+    ([, count]) => count > 0
+  );
+  return {
+    v: CONTEXT_AGENT_PROJECTION_SCHEMA_VERSION,
+    id: source.capsuleId,
+    b: [
+      source.budget.requestedTokens,
+      source.budget.requestedBytes,
+      source.budget.usedTokens,
+      source.budget.usedBytes,
+    ],
+    r: [
+      source.retrieval.depthPolicy,
+      source.retrieval.indexFingerprint,
+      source.retrieval.configFingerprint,
+      source.retrieval.retrievalFingerprint,
+      source.retrieval.embeddingModelFingerprint,
+      source.retrieval.rerankModelFingerprint,
+      capabilities,
+      source.retrieval.fallbacks,
+    ],
+    e: source.evidence.map((item) => [
+      item.uri,
+      item.startLine,
+      item.endLine,
+      item.sourceHash,
+      item.mirrorHash,
+      item.passageHash,
+      item.text,
+    ]),
+    c: [
+      source.coverage.coveredFacets,
+      source.coverage.gaps.map((gap) => [gap.facet, gap.code]),
+    ],
+    o: [source.omissions.total, reasonCounts],
+    t: source.truncated,
+    trust: "untrusted_data",
+  };
+};
 
 export const formatContextAgentProjectionJson = (
   source: ContextAgentProjectionSource
-): string => {
-  let measured = 0;
-  let text = "";
-  for (let iteration = 0; iteration < 8; iteration += 1) {
-    text = canonicalJson(projectionWithBytes(source, measured));
-    const next = utf8Bytes(text);
-    if (next === measured) return text;
-    measured = next;
-  }
-  return canonicalJson(projectionWithBytes(source, measured));
-};
+): string => canonicalJson(projection(source));
 
 export const projectContextCapsuleForAgent = (
   capsule: ContextCapsuleV1

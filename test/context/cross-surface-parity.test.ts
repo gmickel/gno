@@ -3,6 +3,7 @@ import { mkdtemp } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
+import type { ContextAgentProjection } from "../../src/app/context-agent-projection";
 import type { Config } from "../../src/config/types";
 import type { EmbeddingPort, RerankPort } from "../../src/llm/types";
 import type { ToolContext } from "../../src/mcp/server";
@@ -249,44 +250,51 @@ describe("Context Capsule REST/MCP parity", () => {
     expect(mcp.isError).not.toBe(true);
     const modelText = mcp.content[0]?.text ?? "";
     expect(modelText).toBe(formatContextCapsuleAgentJson(direct));
-    const projection = JSON.parse(modelText);
-    expect(projection).toMatchObject({
-      schemaVersion: "gno-context-agent-v1",
-      capsuleId: direct.capsuleId,
-      budget: {
-        requestedTokens: direct.budget.requestedTokens,
-        requestedBytes: direct.budget.requestedBytes,
-      },
-      retrieval: {
-        indexFingerprint: direct.retrieval.indexSnapshot.after,
-        configFingerprint: direct.fingerprints.config,
-        retrievalFingerprint: direct.fingerprints.retrieval,
-      },
-      coverage: {
-        unresolvedFacets: direct.coverage.unresolvedFacets,
-        gaps: direct.coverage.gaps,
-      },
-      omissions: {
-        total: direct.omissions.total,
-        reasonCounts: direct.omissions.reasonCounts,
-        visibleItemLimit: 1,
-      },
-      trust: {
-        evidence: "untrusted_data",
-        instructionBoundary: "hard_delimited",
-      },
-    });
-    expect(projection.delivery.modelVisibleUtf8Bytes).toBe(
-      new TextEncoder().encode(modelText).byteLength
-    );
-    expect(projection.evidence[0]).toMatchObject({
-      uri: direct.evidence[0]?.uri,
-      startLine: direct.evidence[0]?.startLine,
-      endLine: direct.evidence[0]?.endLine,
-      sourceHash: direct.evidence[0]?.sourceHash,
-      mirrorHash: direct.evidence[0]?.mirrorHash,
-      passageHash: direct.evidence[0]?.passageHash,
-      text: direct.evidence[0]?.text,
+    const projection = JSON.parse(modelText) as ContextAgentProjection;
+    expect(projection).toEqual({
+      v: "gno-context-agent-v1",
+      id: direct.capsuleId,
+      b: [
+        direct.budget.requestedTokens,
+        direct.budget.requestedBytes,
+        direct.budget.usedTokens,
+        direct.budget.usedBytes,
+      ],
+      r: [
+        direct.retrieval.depthPolicy,
+        direct.retrieval.indexSnapshot.after,
+        direct.fingerprints.config,
+        direct.fingerprints.retrieval,
+        direct.fingerprints.embeddingModel,
+        direct.fingerprints.rerankModel,
+        Object.entries(direct.capabilities)
+          .filter(([, enabled]) => enabled)
+          .map(([capability]) => capability),
+        direct.fallbacks.map(
+          (fallback) => `${fallback.capability}:${fallback.code}`
+        ),
+      ],
+      e: direct.evidence.map((item) => [
+        item.uri,
+        item.startLine,
+        item.endLine,
+        item.sourceHash,
+        item.mirrorHash,
+        item.passageHash,
+        item.text,
+      ]),
+      c: [
+        direct.coverage.coveredFacets.map((item) => item.facet),
+        direct.coverage.gaps.map((gap) => [gap.facet, gap.code]),
+      ],
+      o: [
+        direct.omissions.total,
+        Object.entries(direct.omissions.reasonCounts).filter(
+          ([, count]) => count > 0
+        ),
+      ],
+      t: direct.truncated,
+      trust: "untrusted_data",
     });
     expect(
       canonicalBuiltContextCapsuleJson(mcp.structuredContent as never)

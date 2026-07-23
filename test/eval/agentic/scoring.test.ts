@@ -7,7 +7,6 @@ import type {
 } from "../../../evals/agentic/types";
 
 import {
-  canonicalJson,
   modelVisibleUtf8Bytes,
   sha256Bytes,
 } from "../../../evals/agentic/canonical";
@@ -24,6 +23,7 @@ import {
   evidence,
   finalEnvelopeFixture,
   oracleFixture,
+  productionCapsuleProjectionFixture,
   receiptFixture,
   taskFixture,
 } from "./fixtures";
@@ -330,11 +330,9 @@ const promotionPair = (
     agentCalls: candidateCalls,
     modelVisibleUtf8Bytes: candidateBytes,
   });
-  const payload = canonicalJson({
-    schemaVersion: "eval-capsule-prototype-v1",
-    evalOnly: true,
-    taskId: candidateReceipt.canonical.taskId,
-  });
+  const payload = productionCapsuleProjectionFixture(
+    candidateReceipt.canonical.taskId
+  );
   const candidateCall = candidateReceipt.canonical.calls[0];
   if (!candidateCall) throw new Error("Promotion fixture requires one call");
   candidateCall.result.resultRole = "evidence_bundle";
@@ -393,11 +391,7 @@ describe("Capsule promotion formulas", () => {
     second.candidate.score.taskId = second.taskId;
     second.candidate.score.score.taskId = second.taskId;
     second.candidate.replay.taskId = second.taskId;
-    const changedPayload = canonicalJson({
-      schemaVersion: "eval-capsule-prototype-v1",
-      evalOnly: true,
-      taskId: second.taskId,
-    });
+    const changedPayload = productionCapsuleProjectionFixture(second.taskId);
     second.candidate.replay.first = {
       canonicalJson: changedPayload,
       sha256: sha256Bytes(changedPayload),
@@ -417,12 +411,7 @@ describe("Capsule promotion formulas", () => {
 
   test("fails zero denominators and nondeterministic payloads", () => {
     const pair = promotionPair(0, 0, 0, 0);
-    const changed = canonicalJson({
-      schemaVersion: "eval-capsule-prototype-v1",
-      evalOnly: true,
-      taskId: pair.taskId,
-      replay: 2,
-    });
+    const changed = productionCapsuleProjectionFixture(`${pair.taskId}-2`);
     pair.candidate.replay.second.canonicalJson = changed;
     pair.candidate.replay.second.sha256 = sha256Bytes(changed);
     pair.candidate.score.score.substantiveClaims = 0;

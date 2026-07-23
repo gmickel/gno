@@ -114,11 +114,30 @@ const bundleContentCarriesExactEvidence = (
 ): boolean => {
   if (result.resultRole !== "evidence_bundle") return false;
   try {
-    const payload = JSON.parse(result.content) as { evidence?: unknown };
-    if (!Array.isArray(payload.evidence)) return false;
+    const payload = JSON.parse(result.content) as {
+      evidence?: unknown;
+      v?: unknown;
+      e?: unknown;
+    };
+    const evidence = Array.isArray(payload.evidence)
+      ? payload.evidence
+      : payload.v === "gno-context-agent-v1" && Array.isArray(payload.e)
+        ? payload.e
+        : null;
+    if (!evidence) return false;
     return result.evidence.every((expected) =>
-      payload.evidence.some((value) => {
-        if (!value || typeof value !== "object" || Array.isArray(value)) {
+      evidence.some((value) => {
+        if (Array.isArray(value)) {
+          return (
+            value[0] === expected.uri &&
+            value[1] === expected.startLine &&
+            value[2] === expected.endLine &&
+            value[3] === expected.sourceHash &&
+            value[5] === expected.spanHash &&
+            value[6] === expected.text
+          );
+        }
+        if (!value || typeof value !== "object") {
           return false;
         }
         const item = value as Record<string, unknown>;

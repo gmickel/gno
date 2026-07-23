@@ -80,11 +80,45 @@ const evidenceVisibleInBundleContent = (
     return result.evidence;
   }
   try {
-    const payload = JSON.parse(result.content) as { evidence?: unknown };
-    if (!Array.isArray(payload.evidence)) return [];
-    return payload.evidence.flatMap((value) => {
-      if (!value || typeof value !== "object" || Array.isArray(value))
-        return [];
+    const payload = JSON.parse(result.content) as {
+      evidence?: unknown;
+      v?: unknown;
+      e?: unknown;
+    };
+    const evidence = Array.isArray(payload.evidence)
+      ? payload.evidence
+      : payload.v === "gno-context-agent-v1" && Array.isArray(payload.e)
+        ? payload.e
+        : null;
+    if (!evidence) return [];
+    return evidence.flatMap((value) => {
+      if (Array.isArray(value)) {
+        if (
+          typeof value[0] !== "string" ||
+          typeof value[1] !== "number" ||
+          !Number.isInteger(value[1]) ||
+          typeof value[2] !== "number" ||
+          !Number.isInteger(value[2]) ||
+          typeof value[3] !== "string" ||
+          typeof value[5] !== "string" ||
+          typeof value[6] !== "string"
+        ) {
+          return [];
+        }
+        return [
+          {
+            uri: value[0],
+            sourceHash: value[3],
+            startLine: value[1],
+            endLine: value[2],
+            spanHash: value[5],
+            sourceHashProvenance: "backend_provided" as const,
+            spanHashProvenance: "backend_provided" as const,
+            text: value[6],
+          },
+        ];
+      }
+      if (!value || typeof value !== "object") return [];
       const item = value as Record<string, unknown>;
       if (
         typeof item.uri !== "string" ||

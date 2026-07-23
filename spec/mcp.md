@@ -119,12 +119,25 @@ retrieval setup.
 `structuredContent` is the complete canonical Context Capsule object for
 application clients. Model-visible text is always one deterministic
 `gno-context-agent-v1` JSON projection, even when the compatibility `format`
-field is present. It includes exact canonical-mirror evidence, URI/line ranges,
-source/mirror/passage hashes, gaps, budget state, retrieval/model fingerprints,
-capability fallbacks, and exact omission totals/reason counts. At most one
-deterministically ordered omission item is visible; the complete bounded audit
-list remains in `structuredContent`. This avoids duplicating the full Capsule
-in model context.
+field is present. The compact keys and tuple positions are part of that
+versioned contract:
+
+- `v`: projection version; `id`: Capsule identity.
+- `b`: requested tokens, requested bytes, used tokens, used bytes.
+- `r`: depth policy, index fingerprint, config fingerprint, retrieval
+  fingerprint, embedding-model fingerprint or `null`, rerank-model fingerprint
+  or `null`, enabled capability names, fallbacks.
+- `e[]`: URI, start line, end line, source hash, mirror hash, passage hash,
+  exact extractive text.
+- `c`: covered facets, then `[facet, gapCode]` pairs.
+- `o`: exact total omissions, then sparse `[reason, count]` pairs. An absent
+  reason has count zero.
+- `t`: global evidence-budget truncation; `trust` is always `untrusted_data`.
+
+The complete bounded omission audit and all descriptive fields remain in
+`structuredContent`. This avoids duplicating the full Capsule in model context
+without dropping exact evidence, gaps, budgets, identities, capabilities,
+fallbacks, truncation, omission counts, or the trust boundary.
 
 Indexed metadata and configured context are untrusted data, never instructions.
 The tool does not persist the Capsule. Unknown input fields are rejected by the
