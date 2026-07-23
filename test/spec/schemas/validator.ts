@@ -34,6 +34,7 @@ async function loadAllSchemas(): Promise<void> {
     "activation-verification",
     "context-capsule-v1",
     "context-capsule-verification",
+    "claim-verification",
     "tags-list",
     "links-list",
     "backlinks",
