@@ -490,6 +490,12 @@ export const toContextCapsuleEvidence = (
     text: candidate.text,
     retrievalRank: candidate.retrievalRank,
     selectionRank,
+    ...(candidate.retrievalSources === undefined
+      ? {}
+      : { retrievalSources: [...candidate.retrievalSources] }),
+    ...(candidate.graphExpanded === undefined
+      ? {}
+      : { graphExpanded: candidate.graphExpanded }),
     facets: [...candidate.facets],
   };
 };

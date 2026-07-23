@@ -22,7 +22,8 @@ export type LlmErrorCode =
   | "OUT_OF_MEMORY"
   | "INVALID_URI"
   | "LOCK_FAILED"
-  | "AUTO_DOWNLOAD_DISABLED";
+  | "AUTO_DOWNLOAD_DISABLED"
+  | "STRUCTURED_OUTPUT_UNAVAILABLE";
 
 export interface LlmError {
   code: LlmErrorCode;
@@ -246,5 +247,13 @@ export function autoDownloadDisabledError(uri: string): LlmError {
     modelUri: uri,
     retryable: false,
     suggestion: "Run 'gno models pull' to download models manually.",
+  });
+}
+
+export function structuredOutputUnavailableError(uri: string): LlmError {
+  return llmError("STRUCTURED_OUTPUT_UNAVAILABLE", {
+    message: `JSON Schema constrained generation is unavailable for model: ${uri}`,
+    modelUri: uri,
+    retryable: false,
   });
 }

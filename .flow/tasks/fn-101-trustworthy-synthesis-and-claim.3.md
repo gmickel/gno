@@ -46,9 +46,8 @@ Deliver integrate verified synthesis across ask surfaces as one implementation-s
 
 
 ## Done summary
-TBD
-
+Integrated opt-in verified Ask through the shared Context Capsule boundary across CLI, REST, MCP, SDK, and Web. Added strict conditional schemas, exact evidence/provenance and trace continuity, explicit degradation/abstention, closed Ask inputs, readable Capsule evidence, canonical cross-surface parity, and backward-compatible legacy Capsule handling.
 ## Evidence
 - Commits:
-- Tests:
+- Tests: bun test verified Ask/context/trace/CLI/SDK/MCP/REST/Web focused suite (148 pass, 732 assertions), bun run lint:check (0 warnings, 0 errors; formatting clean), git diff --check, flowctl validate fn-101 (valid), independent implementation review: SHIP
 - PRs:

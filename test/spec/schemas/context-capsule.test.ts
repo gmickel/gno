@@ -21,6 +21,7 @@ import {
   contextCapsuleOmissionIdentity,
   sha256Text,
 } from "../../../src/core/context-capsule-validation";
+import { parseCanonicalContextCapsuleForVerification } from "../../../src/core/context-verifier";
 import {
   assertInvalid,
   assertValid,
@@ -167,6 +168,8 @@ const buildPayload = (
         contextIds: [contextId],
         retrievalRank: 1,
         selectionRank: 1,
+        retrievalSources: ["bm25"],
+        graphExpanded: false,
         facets: ["decision owner"],
         trust: "untrusted",
         egress: "unavailable",
@@ -213,6 +216,21 @@ const expectContractCode = (
 };
 
 describe("Context Capsule V1 contract", () => {
+  test("accepts legacy V1 evidence without additive provenance fields", () => {
+    const legacyPayload = structuredClone(buildPayload());
+    const evidence = legacyPayload.evidence[0];
+    if (!evidence) throw new Error("evidence fixture missing");
+    delete evidence.retrievalSources;
+    delete evidence.graphExpanded;
+
+    const legacyCapsule = createContextCapsuleV1(legacyPayload);
+    expect(legacyCapsule.evidence[0]?.retrievalSources).toBeUndefined();
+    expect(legacyCapsule.evidence[0]?.graphExpanded).toBeUndefined();
+    expect(parseCanonicalContextCapsuleForVerification(legacyCapsule)).toEqual(
+      legacyCapsule
+    );
+  });
+
   test("uses stable identity and non-self-referential accounting projections", async () => {
     const schema = await loadSchema("context-capsule-v1");
     const first = createContextCapsuleV1(buildPayload());

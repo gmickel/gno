@@ -48,7 +48,7 @@ export const buildContextCapsule = async (
     now,
     deps.config.collections.map((collection) => collection.name)
   );
-  const noRerank = normalized.depthPolicy === "fast";
+  const noRerank = normalized.depthPolicy === "fast" || normalized.noRerank;
   const plan = await compileContextEvidence<ContextCapsuleV1>(
     {
       goal: normalized.goal,
@@ -62,9 +62,13 @@ export const buildContextCapsule = async (
       categories: normalized.categories,
       author: normalized.author ?? undefined,
       lang: normalized.lang ?? undefined,
+      intent: normalized.intent ?? undefined,
+      exclude: normalized.exclude,
+      minScore: normalized.minScore ?? undefined,
       since: normalized.since,
       until: normalized.until,
       graph: normalized.graph,
+      noRerank: normalized.noRerank,
       limit: normalized.limit,
       candidateLimit: normalized.candidateLimit,
       temporalNow: now,

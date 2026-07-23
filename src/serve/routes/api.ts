@@ -36,6 +36,7 @@ import type { StartJobError } from "../jobs";
 import type { ResidentStatus } from "../status-model";
 import type { CollectionWatchService } from "../watch-service";
 
+import { buildVerifiedAsk } from "../../app/verified-ask";
 import { modelsPull } from "../../cli/commands/models/pull";
 import {
   addCollection,
@@ -125,6 +126,7 @@ import {
   resolveModelUri,
 } from "../../llm/registry";
 import {
+  answerTraceTerminalStatus,
   generateGroundedAnswer,
   processAnswerResultWithTrace,
 } from "../../pipeline/answer";
@@ -289,13 +291,45 @@ export interface AskRequestBody {
   category?: string;
   author?: string;
   maxAnswerTokens?: number;
+  verify?: boolean;
+  contextBudgetTokens?: number;
+  contextBudgetBytes?: number;
+  minScore?: number;
   noExpand?: boolean;
   noRerank?: boolean;
+  graph?: boolean;
+  noGraph?: boolean;
   /** Comma-separated tags - filter to docs having ALL (AND) */
   tagsAll?: string;
   /** Comma-separated tags - filter to docs having ANY (OR) */
   tagsAny?: string;
 }
+
+const ASK_REQUEST_KEYS = new Set<keyof AskRequestBody>([
+  "query",
+  "limit",
+  "collection",
+  "lang",
+  "intent",
+  "candidateLimit",
+  "exclude",
+  "queryModes",
+  "since",
+  "until",
+  "category",
+  "author",
+  "maxAnswerTokens",
+  "verify",
+  "contextBudgetTokens",
+  "contextBudgetBytes",
+  "minScore",
+  "noExpand",
+  "noRerank",
+  "graph",
+  "noGraph",
+  "tagsAll",
+  "tagsAny",
+]);
 
 export interface CreateCollectionRequestBody {
   path: string;
@@ -512,11 +546,12 @@ async function startRestTrace(
 async function finishRestTrace(
   request: Request,
   session: RetrievalTraceSession | null,
-  status: "completed" | "partial" | "failed",
+  status: "completed" | "partial" | "failed" | "cancelled",
   response: Response
 ): Promise<Response> {
   if (!session) return response;
-  const terminalStatus = request.signal.aborted ? "cancelled" : status;
+  const terminalStatus =
+    request.signal.aborted || status === "cancelled" ? "cancelled" : status;
   const finished = await session.finish(terminalStatus);
   if (!finished.ok) {
     return withRetrievalTraceHeader(
@@ -3503,6 +3538,9 @@ export async function handleSearch(
     return errorResponse("VALIDATION", "Invalid JSON body");
   }
 
+  if (body === null || typeof body !== "object" || Array.isArray(body)) {
+    return errorResponse("VALIDATION", "Request body must be an object");
+  }
   if (!body.query || typeof body.query !== "string") {
     return errorResponse("VALIDATION", "Missing or invalid query");
   }
@@ -4028,13 +4066,82 @@ export async function handleAsk(
     return errorResponse("VALIDATION", "Invalid JSON body");
   }
 
+  if (body === null || typeof body !== "object" || Array.isArray(body)) {
+    return errorResponse("VALIDATION", "Request body must be an object");
+  }
+  const unknownKey = Object.keys(body).find(
+    (key) => !ASK_REQUEST_KEYS.has(key as keyof AskRequestBody)
+  );
+  if (unknownKey) {
+    return errorResponse(
+      "VALIDATION",
+      `Unknown Ask request field: ${unknownKey}`
+    );
+  }
   if (!body.query || typeof body.query !== "string") {
     return errorResponse("VALIDATION", "Missing or invalid query");
+  }
+
+  for (const field of [
+    "verify",
+    "noExpand",
+    "noRerank",
+    "graph",
+    "noGraph",
+  ] as const) {
+    if (body[field] !== undefined && typeof body[field] !== "boolean") {
+      return errorResponse("VALIDATION", `${field} must be a boolean`);
+    }
+  }
+  for (const [field, value, maximum] of [
+    ["limit", body.limit, 20],
+    ["candidateLimit", body.candidateLimit, 100],
+    ["maxAnswerTokens", body.maxAnswerTokens, Number.MAX_SAFE_INTEGER],
+  ] as const) {
+    if (
+      value !== undefined &&
+      (!Number.isSafeInteger(value) || value < 1 || value > maximum)
+    ) {
+      return errorResponse(
+        "VALIDATION",
+        `${field} must be a positive integer${maximum < Number.MAX_SAFE_INTEGER ? ` no greater than ${maximum}` : ""}`
+      );
+    }
   }
 
   const rawQuery = body.query.trim();
   if (!rawQuery) {
     return errorResponse("VALIDATION", "Query cannot be empty");
+  }
+
+  if (
+    body.minScore !== undefined &&
+    (typeof body.minScore !== "number" ||
+      !Number.isFinite(body.minScore) ||
+      body.minScore < 0 ||
+      body.minScore > 1)
+  ) {
+    return errorResponse("VALIDATION", "minScore must be between 0 and 1");
+  }
+  if (
+    body.contextBudgetTokens !== undefined &&
+    (!Number.isSafeInteger(body.contextBudgetTokens) ||
+      body.contextBudgetTokens < 1)
+  ) {
+    return errorResponse(
+      "VALIDATION",
+      "contextBudgetTokens must be a positive integer"
+    );
+  }
+  if (
+    body.contextBudgetBytes !== undefined &&
+    (!Number.isSafeInteger(body.contextBudgetBytes) ||
+      body.contextBudgetBytes < 1)
+  ) {
+    return errorResponse(
+      "VALIDATION",
+      "contextBudgetBytes must be a positive integer"
+    );
   }
 
   // Parse tag filters
@@ -4128,6 +4235,7 @@ export async function handleAsk(
     collection: body.collection,
     lang: body.lang,
     intent: body.intent?.trim() || undefined,
+    minScore: body.minScore,
     noExpand: body.noExpand,
     noRerank: body.noRerank,
     candidateLimit:
@@ -4135,6 +4243,8 @@ export async function handleAsk(
         ? Math.min(body.candidateLimit, 100)
         : undefined,
     exclude,
+    graph: body.graph,
+    noGraph: body.noGraph,
     queryModes: normalizedQueryModes,
     tagsAll,
     tagsAny,
@@ -4142,6 +4252,10 @@ export async function handleAsk(
     until: body.until,
     categories,
     author,
+    verify: body.verify,
+    contextBudgetTokens: body.contextBudgetTokens,
+    contextBudgetBytes: body.contextBudgetBytes,
+    maxAnswerTokens: body.maxAnswerTokens,
   };
   const trace = await startRestTrace(ctx, {
     query: normalizedQuery,
@@ -4166,7 +4280,7 @@ export async function handleAsk(
       return finishRestTrace(
         req,
         trace.session,
-        "failed",
+        req.signal.aborted ? "cancelled" : "failed",
         errorResponse("RUNTIME", unavailable.error.message, 500)
       );
     }
@@ -4180,6 +4294,38 @@ export async function handleAsk(
         503
       )
     );
+  }
+
+  if (body.verify && ctx.answerPort) {
+    try {
+      const verified = await buildVerifiedAsk(normalizedQuery, askOptions, {
+        store: ctx.store,
+        config: ctx.config,
+        indexName: ctx.indexName,
+        vectorIndex: ctx.vectorIndex,
+        embedPort: ctx.embedPort,
+        rerankPort: ctx.rerankPort,
+        genPort: ctx.answerPort,
+        traceSession: trace.session ?? undefined,
+      });
+      return finishRestTrace(
+        req,
+        trace.session,
+        answerTraceTerminalStatus(verified.citations),
+        jsonResponse(verified)
+      );
+    } catch (error) {
+      return finishRestTrace(
+        req,
+        trace.session,
+        "failed",
+        errorResponse(
+          "RUNTIME",
+          error instanceof Error ? error.message : String(error),
+          500
+        )
+      );
+    }
   }
 
   // Run hybrid search first

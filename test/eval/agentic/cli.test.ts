@@ -91,7 +91,7 @@ describe("agentic benchmark CLI", () => {
     expect(output).toContain("adapter_preparation_failed");
   });
 
-  test("formats and atomically replaces one four-file artifact set", async () => {
+  test("formats and atomically replaces the authoritative artifact set", async () => {
     const root = await mkdtemp(join(tmpdir(), "gno-agentic-artifacts-"));
     const target = join(root, "lane");
     const artifacts = {
@@ -99,6 +99,8 @@ describe("agentic benchmark CLI", () => {
       canonicalJson: '{"value":1}\n',
       observationsJson: '{"value":1}\n',
       reportMarkdown: "# Report\n",
+      verifiedAskPromotionJson: '{"value":1}\n',
+      verifiedAskPromotionMarkdown: "# Verified Ask\n",
     };
     try {
       await writeBenchmarkArtifacts(target, artifacts);
@@ -119,6 +121,12 @@ describe("agentic benchmark CLI", () => {
         await Bun.file(join(target, "observations.json")).exists()
       ).toBeTrue();
       expect(await Bun.file(join(target, "report.md")).exists()).toBeTrue();
+      expect(
+        await Bun.file(join(target, "verified-ask-promotion.json")).exists()
+      ).toBeTrue();
+      expect(
+        await Bun.file(join(target, "verified-ask-promotion.md")).exists()
+      ).toBeTrue();
     } finally {
       await rm(root, { recursive: true, force: true });
     }

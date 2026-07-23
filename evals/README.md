@@ -87,14 +87,33 @@ See [scores.md](scores.md) for latest results. Updated automatically by `bun run
   The measured agent-visible envelope contains that MCP text once and excludes
   the full application-only `structuredContent`. A host that exposes both must
   charge both and is outside this promotion claim.
+- Capsule promotion requires no pairwise or aggregate task-accuracy loss and a
+  strict reduction in unsupported substantive claims. Reports expose both
+  counts and the reduction; a missing/mismatched paired cohort or zero baseline
+  denominator is explicitly unavailable/non-comparable, never presented as an
+  improvement.
+- A distinct attributable verified Ask promotion pairs production raw Ask with
+  production `buildVerifiedAsk` over the 22 evidence-present, single-claim
+  tasks. Four fixed adversarial drafts are retained by raw Ask and rejected by
+  verified Ask. The gate requires no answer-accuracy regression and strictly
+  fewer unsupported substantive claims. It writes
+  `verified-ask-promotion.{json,md}` without changing the Capsule retrieval
+  promotion. The gate derives typed outcomes from exact final answers, checks
+  raw/verified lane semantics and every answer/receipt/artifact fingerprint,
+  recomputes scores against the fn-97 oracle, and refuses dirty-checkout
+  generation. The exact 22 task IDs and two expected-missing exclusions are
+  frozen independently of generated artifacts. Supported answers must match the
+  complete one-claim/one-citation grammar; trailing prose fails even when all
+  fingerprints are resealed.
 - `--adapter`, `--task`, and `--lifecycle` accept unique CSV filters;
   `--agent fixture|local-model` selects the one-trial deterministic or pinned
   three-trial cached-model lane. `--timeout-ms` bounds lifecycle operations.
 - qmd is explicit and fail-closed:
   `QMD_REPO=/path/to/qmd QMD_MODEL_CACHE=/path/to/cache bun run eval:agentic -- --adapter qmd`.
   Missing or mismatched inputs remain full harness-error receipts and exit `2`.
-- Exit `0`: complete and promotion passed when applicable. Exit `1`: complete
-  but Capsule promotion failed. Exit `2`: CLI, preflight, or harness failure.
+- Exit `0`: complete and both applicable promotions passed. Exit `1`: complete
+  but Capsule or verified Ask promotion failed. Exit `2`: CLI, preflight, or
+  harness failure.
 - `--write` only accepts a complete lane. The committed authoritative fixture
   baseline lives at `fixtures/agentic-retrieval/baseline/fixture-agent/`;
   qmd/local-model outputs stay under `baseline/optional/` and are not promotion

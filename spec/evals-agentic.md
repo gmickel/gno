@@ -22,6 +22,8 @@ evals/agentic/
   fixture-db.ts
   scoring.ts
   promotion.ts
+  verified-ask-outcome.ts
+  verified-ask-promotion.ts
   registry.ts
   report.ts
   report-artifacts.ts
@@ -51,7 +53,13 @@ evals/fixtures/agentic-retrieval/
   agent-model.lock.json
   baseline/
     README.md
-    fixture-agent/{report.json,canonical.json,observations.json,report.md}
+    fixture-agent/
+      report.json
+      canonical.json
+      observations.json
+      report.md
+      verified-ask-promotion.json
+      verified-ask-promotion.md
     optional/{qmd,local-model}/     # local opt-in evidence; not authoritative
 ```
 
@@ -400,7 +408,9 @@ and hashes, and promotion results remain included. `report.json` is schema
 valid. `canonical.json` contains that exact projection. `observations.json`
 holds environment, build observations, and full-identity receipt observations;
 committed temporary paths are projected to `<temp>`. `report.md` is the readable
-summary. The four files are staged and directory-renamed as one baseline set.
+summary. The six files are staged and directory-renamed as one baseline set.
+The verified Ask files are a separate attributable outcome lane; they do not
+rename the Capsule retrieval promotion in `report.json`.
 
 ## Deterministic scoring
 
@@ -455,6 +465,19 @@ Claim linkage is:
 linkedSupportedClaims_capsule / substantiveClaims_capsule >= 0.95
 ```
 
+Unsupported substantive claims must strictly decrease on a comparable paired
+cohort:
+
+```text
+unsupportedClaims_capsule < unsupportedClaims_gno
+1 - unsupportedClaims_capsule / unsupportedClaims_gno
+```
+
+The report records both counts and the reduction. A missing paired baseline,
+an identity mismatch, or a zero unsupported-claim baseline makes this reduction
+unavailable/non-comparable; GNO reports that state rather than fabricating an
+improvement.
+
 All denominators must be non-zero. Abstention-only tasks use their completion
 predicate and do not fabricate substantive claims. Every fixture-agent Capsule
 task must also emit byte-identical canonical Capsule payload JSON and matching
@@ -463,6 +486,64 @@ non-canonical, wrong-task, or synthetic sentinel payloads fail. Missing pairs,
 duplicates, identity mismatches,
 pairwise or aggregate accuracy loss, denominator failure, threshold miss, or
 nondeterminism fails promotion.
+
+## Verified Ask promotion formulas
+
+The authoritative fixture-agent write additionally runs a separate 22-task
+outcome lane. It excludes only the two declared expected-missing/abstention
+tasks. Every included task must contain exactly one required substantive claim;
+missing, duplicate, extra, or mismatched pairs fail closed.
+
+The compatible cohort is an independent frozen contract, not inferred from the
+artifact under validation:
+
+```text
+t012ab3c t0a1b2c3 t123bc4d t1b2c3d4 t2c3d4e5 t3d4e5f6
+t456ef70 t4e5f607 t567f081 t5f60718 t6071829 t6780192
+t718293a t7891a03 t8293a4b t93a4b5c ta4b5c6d tb5c6d7e
+tc6d7e8f td7e8f90 te8f901a tf901a2b
+```
+
+The exact exclusions are `t234cd5e` and `t345de6f`, both with reason
+`expected_missing_evidence`. Removing or replacing a complete receipt/score
+pair and resealing every derived fingerprint still fails validation.
+
+The baseline executes the production raw Ask path:
+`searchHybrid` → `generateGroundedAnswer` → `processAnswerResult`. The candidate
+executes production `buildVerifiedAsk`. Each pair shares the immutable native
+index, task goal, collection, structured search modes, deterministic answer
+agent/model fingerprint, and initial answer draft. Receipt and score identities
+bind task, lane, trial, seed, and agent. Pairing also requires identical fixture,
+index, request, and model fingerprints.
+
+Four fixed, diverse tasks receive an unsupported deterministic draft in both
+lanes. The other 18 receive the oracle-supported draft. This controlled
+adversarial subset tests enforcement at the product boundary; it does not claim
+general model quality.
+
+For every pair and in aggregate:
+
+```text
+answerAccuracy_verified(p) >= answerAccuracy_raw(p)
+mean(answerAccuracy_verified) >= mean(answerAccuracy_raw)
+unsupportedSubstantiveClaims_verified < unsupportedSubstantiveClaims_raw
+```
+
+`verified-ask-promotion.json` contains canonical receipts, identity-bearing
+scores, exact cohort/exclusions, metrics, and the gate result.
+`verified-ask-promotion.md` is its readable projection. Temporary collection
+paths and timings are excluded from the canonical contract; fixture, index,
+request, model, exact answer, citation hashes, verification status, and scored
+outcome remain bound. The evaluator parses the typed claim from the exact final
+product answer and scores it against the independent fn-97 oracle; it
+recomputes receipt, answer, score, and artifact fingerprints rather than
+trusting harness-assigned claim or score fields. Raw and verified lane semantics
+are validated independently. A supported final answer is exactly one encoded
+typed claim followed by its lane citation (`[1].` or one
+`[evidence:<sha256>].`); prefixes, extra claims, and trailing prose are invalid.
+An abstention must equal the production abstention text and contain no
+citations. Authoritative generation refuses a dirty Git checkout and records
+the exact clean source commit.
 
 ## Commands
 
@@ -486,9 +567,10 @@ lifecycles, and the fixture agent. qmd is lazily registered and never runs by
 default. A requested unavailable qmd lane produces the complete requested
 harness-error matrix/report and exits `2`; it never disappears or downgrades.
 
-Exit `0` means a complete run and, when applicable, passing promotion. Exit `1`
-means the complete Capsule promotion gate failed. Exit `2` means invalid CLI,
-preflight, harness, or requested-adapter failure. `--write` accepts only a full
+Exit `0` means a complete run and, when applicable, both promotions pass. Exit
+`1` means the complete Capsule or verified Ask promotion gate failed. Exit `2`
+means invalid CLI, preflight, harness, or requested-adapter failure. `--write`
+accepts only a full
 24-task/two-lifecycle lane: the fixture-agent three-adapter lane writes the
 authoritative baseline, while qmd and the three-trial cached-local-model lane
 write only under `baseline/optional/`. Filtered or mixed writes are refused and

@@ -23,6 +23,7 @@ const successfulScore = (taskId: string): TaskScore => ({
   completed: true,
   supportedClaims: ["incidentId"],
   unsupportedClaims: [],
+  unsupportedSubstantiveClaims: [],
   missingRequiredClaims: [],
   forbiddenEvidenceClaims: [],
   invalidOutputs: [],
@@ -64,7 +65,7 @@ const promotionPair = (): PromotionPair => {
     agentCalls: 3,
     modelVisibleUtf8Bytes: 65,
   });
-  return {
+  const pair: PromotionPair = {
     taskId: baseline.canonical.taskId,
     trialId: baseline.canonical.trialId,
     lifecycle: baseline.canonical.lifecycle,
@@ -84,6 +85,11 @@ const promotionPair = (): PromotionPair => {
       replay: replayFor(candidate),
     },
   };
+  pair.baseline.score.score.unsupportedClaims = ["legacy-unsupported"];
+  pair.baseline.score.score.unsupportedSubstantiveClaims = [
+    "legacy-unsupported",
+  ];
+  return pair;
 };
 
 describe("strict Capsule promotion identity", () => {

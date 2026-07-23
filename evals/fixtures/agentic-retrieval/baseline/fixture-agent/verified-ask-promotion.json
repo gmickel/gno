@@ -1,0 +1,1767 @@
+{
+  "benchmarkId": "verified-ask-outcome@1",
+  "canonicalFingerprint": "53931a6ad5717a707e2a486d47fafb988960b0e0f45f201c5875d1104034ee28",
+  "environment": {
+    "git": {
+      "commit": "3c8ac2c76ff04346b2a8d9f2deaa8354406595fb",
+      "dirty": false
+    }
+  },
+  "excludedTasks": [
+    {
+      "reason": "expected_missing_evidence",
+      "taskId": "t234cd5e"
+    },
+    {
+      "reason": "expected_missing_evidence",
+      "taskId": "t345de6f"
+    }
+  ],
+  "fixtureFingerprint": "68027bb0248c09507dbdba9d8cf2433f1b9b7b547ba5db8811db338982f9d08b",
+  "indexFingerprint": "9c4a65f08850a70ff6d2ec6fe069b4cd38c9cbf3481583afd76a74264cf0591a",
+  "methodology": [
+    "Production raw Ask (searchHybrid, generateGroundedAnswer, processAnswerResult) is the baseline.",
+    "Production buildVerifiedAsk with closed-Capsule semantic claim verification is the candidate.",
+    "Both lanes share one immutable fixture index, task goal, collection, search modes, deterministic answer agent, model fingerprint, and declared draft.",
+    "The compatible cohort is deterministic: exactly one required substantive claim and no expected-missing/abstention case.",
+    "Four fixed adversarial drafts test whether unsupported substantive claims escape the product boundary; this is enforcement evidence, not a model-quality claim.",
+    "Promotion requires no pairwise or aggregate answer-accuracy regression and strictly fewer unsupported substantive claims."
+  ],
+  "promotion": {
+    "failures": [],
+    "metrics": {
+      "baselineAnswerAccuracy": 0.8181818181818182,
+      "baselineUnsupportedSubstantiveClaims": 4,
+      "candidateAnswerAccuracy": 0.8181818181818182,
+      "candidateUnsupportedSubstantiveClaims": 0,
+      "unsupportedSubstantiveClaimReduction": 1
+    },
+    "pairCount": 22,
+    "passed": true
+  },
+  "receipts": [
+    {
+      "abstained": false,
+      "agentId": "fixture-answer-agent-v1",
+      "answer": "claim automaticExport value %7B%22type%22%3A%22boolean%22%2C%22value%22%3Atrue%7D [1].",
+      "answerFingerprint": "6a7bc77f287f643542171be97ef0fee9bac0b558a521a695a334574fb51f7d32",
+      "canonicalFingerprint": "850f63037311266bd2b4d6edbb40dc3a0cf8936b7f66483d52cb47e1ae81cb93",
+      "citations": [
+        {
+          "endLine": 5,
+          "evidenceId": null,
+          "mirrorHash": "fd30242b01b65c156c900d87b0467174e765a866e40388a8670c4acd3b60a943",
+          "passageHash": "fd30242b01b65c156c900d87b0467174e765a866e40388a8670c4acd3b60a943",
+          "sourceHash": "fd30242b01b65c156c900d87b0467174e765a866e40388a8670c4acd3b60a943",
+          "startLine": 1,
+          "uri": "gno://c011/d001.md"
+        }
+      ],
+      "draftKind": "supported",
+      "fixtureFingerprint": "68027bb0248c09507dbdba9d8cf2433f1b9b7b547ba5db8811db338982f9d08b",
+      "indexFingerprint": "9c4a65f08850a70ff6d2ec6fe069b4cd38c9cbf3481583afd76a74264cf0591a",
+      "lane": "raw_ask",
+      "modelFingerprint": "32b69a9f3acb9ec09089e35a384635f9b3cd4588556d61c10b0e664fe4f775d6",
+      "requestFingerprint": "83dbfa77ac8a00b7c4dc824b03add620b9473e939a099c2606328f44a848b843",
+      "seed": 0,
+      "taskId": "t012ab3c",
+      "trialId": "verified-ask-fixture-01",
+      "verification": {
+        "answerStatus": "raw",
+        "requested": false
+      }
+    },
+    {
+      "abstained": false,
+      "agentId": "fixture-answer-agent-v1",
+      "answer": "claim automaticExport value %7B%22type%22%3A%22boolean%22%2C%22value%22%3Atrue%7D [evidence:a30799dbf4b7167cbf803e3b40b69a3e3621981bdff75da7b78f3b0c50c2d3ff].",
+      "answerFingerprint": "973f296317e0610e304b63c1e335aa2bfb899c925777296eda58b1c16fd7080c",
+      "canonicalFingerprint": "823b9708e4cfb327274fb54309139ea567b60201b0be145dfe7b6a0e589ca14a",
+      "citations": [
+        {
+          "endLine": 4,
+          "evidenceId": "a30799dbf4b7167cbf803e3b40b69a3e3621981bdff75da7b78f3b0c50c2d3ff",
+          "mirrorHash": "fd30242b01b65c156c900d87b0467174e765a866e40388a8670c4acd3b60a943",
+          "passageHash": "ca59d4e0915033310d7de35f779b4e9b89f31a2ea40755e9531b4bf54d1a1df3",
+          "sourceHash": "fd30242b01b65c156c900d87b0467174e765a866e40388a8670c4acd3b60a943",
+          "startLine": 1,
+          "uri": "gno://c011/d001.md?index=agentic"
+        }
+      ],
+      "draftKind": "supported",
+      "fixtureFingerprint": "68027bb0248c09507dbdba9d8cf2433f1b9b7b547ba5db8811db338982f9d08b",
+      "indexFingerprint": "9c4a65f08850a70ff6d2ec6fe069b4cd38c9cbf3481583afd76a74264cf0591a",
+      "lane": "verified_ask",
+      "modelFingerprint": "32b69a9f3acb9ec09089e35a384635f9b3cd4588556d61c10b0e664fe4f775d6",
+      "requestFingerprint": "83dbfa77ac8a00b7c4dc824b03add620b9473e939a099c2606328f44a848b843",
+      "seed": 0,
+      "taskId": "t012ab3c",
+      "trialId": "verified-ask-fixture-01",
+      "verification": {
+        "answerStatus": "verified",
+        "requested": true
+      }
+    },
+    {
+      "abstained": false,
+      "agentId": "fixture-answer-agent-v1",
+      "answer": "claim incidentId value %7B%22type%22%3A%22identifier%22%2C%22value%22%3A%22INC-4827-WRONG%22%7D [1].",
+      "answerFingerprint": "1b5ee956f1647ba544c2bfab0e3faf45b625099f341e08061b26c1c318cba02f",
+      "canonicalFingerprint": "494ca58f34372102e6158181f2118ac617a6499952e199b3d6ae1edae37e7b90",
+      "citations": [
+        {
+          "endLine": 5,
+          "evidenceId": null,
+          "mirrorHash": "e634f945db5853ac51e820ad6ec8830520e934ad032f745b472c31521ed7e44e",
+          "passageHash": "e634f945db5853ac51e820ad6ec8830520e934ad032f745b472c31521ed7e44e",
+          "sourceHash": "e634f945db5853ac51e820ad6ec8830520e934ad032f745b472c31521ed7e44e",
+          "startLine": 1,
+          "uri": "gno://c001/d002.md"
+        }
+      ],
+      "draftKind": "adversarial",
+      "fixtureFingerprint": "68027bb0248c09507dbdba9d8cf2433f1b9b7b547ba5db8811db338982f9d08b",
+      "indexFingerprint": "9c4a65f08850a70ff6d2ec6fe069b4cd38c9cbf3481583afd76a74264cf0591a",
+      "lane": "raw_ask",
+      "modelFingerprint": "32b69a9f3acb9ec09089e35a384635f9b3cd4588556d61c10b0e664fe4f775d6",
+      "requestFingerprint": "d7e57efc7194186d6d4ed21d4aeaee7f0105e3a9acf370d9b43d366ec46a8e47",
+      "seed": 0,
+      "taskId": "t0a1b2c3",
+      "trialId": "verified-ask-fixture-01",
+      "verification": {
+        "answerStatus": "raw",
+        "requested": false
+      }
+    },
+    {
+      "abstained": true,
+      "agentId": "fixture-answer-agent-v1",
+      "answer": "I cannot provide this answer as verified from the supplied Context Capsule.",
+      "answerFingerprint": "7fc501a758277c00b94fbb8e0cc92e8f3899b446caede21fa818362bce8a8123",
+      "canonicalFingerprint": "69a205f109e995c53afe8a8ce74ef7a683f61d8f827d22c92fde46a9d3ddc7d6",
+      "citations": [],
+      "draftKind": "adversarial",
+      "fixtureFingerprint": "68027bb0248c09507dbdba9d8cf2433f1b9b7b547ba5db8811db338982f9d08b",
+      "indexFingerprint": "9c4a65f08850a70ff6d2ec6fe069b4cd38c9cbf3481583afd76a74264cf0591a",
+      "lane": "verified_ask",
+      "modelFingerprint": "32b69a9f3acb9ec09089e35a384635f9b3cd4588556d61c10b0e664fe4f775d6",
+      "requestFingerprint": "d7e57efc7194186d6d4ed21d4aeaee7f0105e3a9acf370d9b43d366ec46a8e47",
+      "seed": 0,
+      "taskId": "t0a1b2c3",
+      "trialId": "verified-ask-fixture-01",
+      "verification": {
+        "answerStatus": "abstained",
+        "requested": true
+      }
+    },
+    {
+      "abstained": false,
+      "agentId": "fixture-answer-agent-v1",
+      "answer": "claim releaseCodename value %7B%22type%22%3A%22string%22%2C%22value%22%3A%22%E8%93%9D%E9%B2%B8%22%7D [1].",
+      "answerFingerprint": "dda25ffe9a0f6444293954fc58f5b528f0c1f2ff4c3ce81fe881720358b6495e",
+      "canonicalFingerprint": "5b1808338824d540444e508d9bde7357c8e4f3c44c887e2976e76ac19182e31f",
+      "citations": [
+        {
+          "endLine": 5,
+          "evidenceId": null,
+          "mirrorHash": "55c0749f5106ee5d826cae27dc109f0835efb7f063cfe94832f2dd3f331af8c7",
+          "passageHash": "55c0749f5106ee5d826cae27dc109f0835efb7f063cfe94832f2dd3f331af8c7",
+          "sourceHash": "55c0749f5106ee5d826cae27dc109f0835efb7f063cfe94832f2dd3f331af8c7",
+          "startLine": 1,
+          "uri": "gno://c012/d001.md"
+        }
+      ],
+      "draftKind": "supported",
+      "fixtureFingerprint": "68027bb0248c09507dbdba9d8cf2433f1b9b7b547ba5db8811db338982f9d08b",
+      "indexFingerprint": "9c4a65f08850a70ff6d2ec6fe069b4cd38c9cbf3481583afd76a74264cf0591a",
+      "lane": "raw_ask",
+      "modelFingerprint": "32b69a9f3acb9ec09089e35a384635f9b3cd4588556d61c10b0e664fe4f775d6",
+      "requestFingerprint": "a843c0fecdb6e378f99a750b0705e5ab27a9555fb972f767fec069d67048d580",
+      "seed": 0,
+      "taskId": "t123bc4d",
+      "trialId": "verified-ask-fixture-01",
+      "verification": {
+        "answerStatus": "raw",
+        "requested": false
+      }
+    },
+    {
+      "abstained": false,
+      "agentId": "fixture-answer-agent-v1",
+      "answer": "claim releaseCodename value %7B%22type%22%3A%22string%22%2C%22value%22%3A%22%E8%93%9D%E9%B2%B8%22%7D [evidence:d3451104fc2e428475701ecb749110df63a218cf1fbbd5abccda389c571b2548].",
+      "answerFingerprint": "77833ad243024d41cccb2ce099c654c924279abee2006acb2f90dc986cb5b07a",
+      "canonicalFingerprint": "807a29105c0513bd3a163889e9c44ff647f609daac37e46111e7f1fb078be439",
+      "citations": [
+        {
+          "endLine": 4,
+          "evidenceId": "d3451104fc2e428475701ecb749110df63a218cf1fbbd5abccda389c571b2548",
+          "mirrorHash": "55c0749f5106ee5d826cae27dc109f0835efb7f063cfe94832f2dd3f331af8c7",
+          "passageHash": "e379c301ff0ebeb32d65d3b83ba17762fb0001e8f80cf6ecfed2d4d240b4c5da",
+          "sourceHash": "55c0749f5106ee5d826cae27dc109f0835efb7f063cfe94832f2dd3f331af8c7",
+          "startLine": 1,
+          "uri": "gno://c012/d001.md?index=agentic"
+        }
+      ],
+      "draftKind": "supported",
+      "fixtureFingerprint": "68027bb0248c09507dbdba9d8cf2433f1b9b7b547ba5db8811db338982f9d08b",
+      "indexFingerprint": "9c4a65f08850a70ff6d2ec6fe069b4cd38c9cbf3481583afd76a74264cf0591a",
+      "lane": "verified_ask",
+      "modelFingerprint": "32b69a9f3acb9ec09089e35a384635f9b3cd4588556d61c10b0e664fe4f775d6",
+      "requestFingerprint": "a843c0fecdb6e378f99a750b0705e5ab27a9555fb972f767fec069d67048d580",
+      "seed": 0,
+      "taskId": "t123bc4d",
+      "trialId": "verified-ask-fixture-01",
+      "verification": {
+        "answerStatus": "verified",
+        "requested": true
+      }
+    },
+    {
+      "abstained": false,
+      "agentId": "fixture-answer-agent-v1",
+      "answer": "claim configKey value %7B%22type%22%3A%22identifier%22%2C%22value%22%3A%22CACHE_TTL_SECONDS%22%7D [1].",
+      "answerFingerprint": "c20ad4955857bf572d917b3354ab73c57d5bcb38c45af715a8db8a2dde46e122",
+      "canonicalFingerprint": "fc7372a9fc509fb4cff0a710d5b3105d4f5769c707f471cdf4fbf09604af339f",
+      "citations": [
+        {
+          "endLine": 5,
+          "evidenceId": null,
+          "mirrorHash": "59b932bf5537f90823c7fa70b733ef3ec781bcc5f1ce0f4573afd991dbf85c91",
+          "passageHash": "59b932bf5537f90823c7fa70b733ef3ec781bcc5f1ce0f4573afd991dbf85c91",
+          "sourceHash": "59b932bf5537f90823c7fa70b733ef3ec781bcc5f1ce0f4573afd991dbf85c91",
+          "startLine": 1,
+          "uri": "gno://c002/d001.md"
+        }
+      ],
+      "draftKind": "supported",
+      "fixtureFingerprint": "68027bb0248c09507dbdba9d8cf2433f1b9b7b547ba5db8811db338982f9d08b",
+      "indexFingerprint": "9c4a65f08850a70ff6d2ec6fe069b4cd38c9cbf3481583afd76a74264cf0591a",
+      "lane": "raw_ask",
+      "modelFingerprint": "32b69a9f3acb9ec09089e35a384635f9b3cd4588556d61c10b0e664fe4f775d6",
+      "requestFingerprint": "63c44a3b01c32539c137d968c8dc760a61cf1126a6745cee038602c75a576b62",
+      "seed": 0,
+      "taskId": "t1b2c3d4",
+      "trialId": "verified-ask-fixture-01",
+      "verification": {
+        "answerStatus": "raw",
+        "requested": false
+      }
+    },
+    {
+      "abstained": false,
+      "agentId": "fixture-answer-agent-v1",
+      "answer": "claim configKey value %7B%22type%22%3A%22identifier%22%2C%22value%22%3A%22CACHE_TTL_SECONDS%22%7D [evidence:726d47e06ad84a6052f64383fc1c05779ba0cde6eaec13c416cdd15fb36658cb].",
+      "answerFingerprint": "7cee1b0c5c109eafaecc4ff5aa757675d20d7ce66d64683e89a36692a1904c62",
+      "canonicalFingerprint": "587c1d8339dace6af45ca6c35913ca807d1f6fe3d92fb2665e0957518bbbe6a3",
+      "citations": [
+        {
+          "endLine": 4,
+          "evidenceId": "726d47e06ad84a6052f64383fc1c05779ba0cde6eaec13c416cdd15fb36658cb",
+          "mirrorHash": "59b932bf5537f90823c7fa70b733ef3ec781bcc5f1ce0f4573afd991dbf85c91",
+          "passageHash": "0f6ab84892236ec627b910dce8d010f224750b88c8c34f1e498fddd22e3197f0",
+          "sourceHash": "59b932bf5537f90823c7fa70b733ef3ec781bcc5f1ce0f4573afd991dbf85c91",
+          "startLine": 1,
+          "uri": "gno://c002/d001.md?index=agentic"
+        }
+      ],
+      "draftKind": "supported",
+      "fixtureFingerprint": "68027bb0248c09507dbdba9d8cf2433f1b9b7b547ba5db8811db338982f9d08b",
+      "indexFingerprint": "9c4a65f08850a70ff6d2ec6fe069b4cd38c9cbf3481583afd76a74264cf0591a",
+      "lane": "verified_ask",
+      "modelFingerprint": "32b69a9f3acb9ec09089e35a384635f9b3cd4588556d61c10b0e664fe4f775d6",
+      "requestFingerprint": "63c44a3b01c32539c137d968c8dc760a61cf1126a6745cee038602c75a576b62",
+      "seed": 0,
+      "taskId": "t1b2c3d4",
+      "trialId": "verified-ask-fixture-01",
+      "verification": {
+        "answerStatus": "verified",
+        "requested": true
+      }
+    },
+    {
+      "abstained": false,
+      "agentId": "fixture-answer-agent-v1",
+      "answer": "claim projectCodename value %7B%22type%22%3A%22string%22%2C%22value%22%3A%22Harbor%22%7D [1].",
+      "answerFingerprint": "a2a0f359e4c01bd7ecedd8c0e4775e08c63b4029877f2c904f5ac85075aada93",
+      "canonicalFingerprint": "f3f7fb47292be9afa3f612117d64b18a0112ba2c62a63eb280ebcac9ad431aa1",
+      "citations": [
+        {
+          "endLine": 5,
+          "evidenceId": null,
+          "mirrorHash": "97696698bbc33ad157b2b93e2729ecf37c20ec5b02f2cfc3e9e51d0c6f985c98",
+          "passageHash": "97696698bbc33ad157b2b93e2729ecf37c20ec5b02f2cfc3e9e51d0c6f985c98",
+          "sourceHash": "97696698bbc33ad157b2b93e2729ecf37c20ec5b02f2cfc3e9e51d0c6f985c98",
+          "startLine": 1,
+          "uri": "gno://c003/d001.md"
+        }
+      ],
+      "draftKind": "supported",
+      "fixtureFingerprint": "68027bb0248c09507dbdba9d8cf2433f1b9b7b547ba5db8811db338982f9d08b",
+      "indexFingerprint": "9c4a65f08850a70ff6d2ec6fe069b4cd38c9cbf3481583afd76a74264cf0591a",
+      "lane": "raw_ask",
+      "modelFingerprint": "32b69a9f3acb9ec09089e35a384635f9b3cd4588556d61c10b0e664fe4f775d6",
+      "requestFingerprint": "cd04bc792aafb1c5a339473fd0a40b25e709ebd9be3713c4b33c7131ef17821f",
+      "seed": 0,
+      "taskId": "t2c3d4e5",
+      "trialId": "verified-ask-fixture-01",
+      "verification": {
+        "answerStatus": "raw",
+        "requested": false
+      }
+    },
+    {
+      "abstained": false,
+      "agentId": "fixture-answer-agent-v1",
+      "answer": "claim projectCodename value %7B%22type%22%3A%22string%22%2C%22value%22%3A%22Harbor%22%7D [evidence:6b354985eb0bce7cdadb3a0c481e7327ff38be0325ed1766ed24264dbd9830f3].",
+      "answerFingerprint": "c479fc5f2ba5c27e95d96b33666ca0bb6debbfbeb234f72c73610bebad58a457",
+      "canonicalFingerprint": "5df78e2af2ff0efbe5123080426ea2a7018ba176b328d0f1ead19b5d00dc4a5d",
+      "citations": [
+        {
+          "endLine": 4,
+          "evidenceId": "6b354985eb0bce7cdadb3a0c481e7327ff38be0325ed1766ed24264dbd9830f3",
+          "mirrorHash": "97696698bbc33ad157b2b93e2729ecf37c20ec5b02f2cfc3e9e51d0c6f985c98",
+          "passageHash": "50232edbba1f670d9f575421345ae9a5ef90dd8b2200f4be9c4e1f87c400a5b1",
+          "sourceHash": "97696698bbc33ad157b2b93e2729ecf37c20ec5b02f2cfc3e9e51d0c6f985c98",
+          "startLine": 1,
+          "uri": "gno://c003/d001.md?index=agentic"
+        }
+      ],
+      "draftKind": "supported",
+      "fixtureFingerprint": "68027bb0248c09507dbdba9d8cf2433f1b9b7b547ba5db8811db338982f9d08b",
+      "indexFingerprint": "9c4a65f08850a70ff6d2ec6fe069b4cd38c9cbf3481583afd76a74264cf0591a",
+      "lane": "verified_ask",
+      "modelFingerprint": "32b69a9f3acb9ec09089e35a384635f9b3cd4588556d61c10b0e664fe4f775d6",
+      "requestFingerprint": "cd04bc792aafb1c5a339473fd0a40b25e709ebd9be3713c4b33c7131ef17821f",
+      "seed": 0,
+      "taskId": "t2c3d4e5",
+      "trialId": "verified-ask-fixture-01",
+      "verification": {
+        "answerStatus": "verified",
+        "requested": true
+      }
+    },
+    {
+      "abstained": false,
+      "agentId": "fixture-answer-agent-v1",
+      "answer": "claim serviceOwner value %7B%22type%22%3A%22string%22%2C%22value%22%3A%22Mina%20Shah%22%7D [1].",
+      "answerFingerprint": "bd7f28ba1f530f640609ecae710e00d37613d083a1feabea9dfbf577abb8292c",
+      "canonicalFingerprint": "d0798fac4c7cfc84d65709e6c484f512481d2bb9f47fb239e0c9eae8ec9cccea",
+      "citations": [
+        {
+          "endLine": 5,
+          "evidenceId": null,
+          "mirrorHash": "610fb36439bd3ea25011aed2763b2ea3b9d39e154784e5a312eeb2bf8859dd30",
+          "passageHash": "610fb36439bd3ea25011aed2763b2ea3b9d39e154784e5a312eeb2bf8859dd30",
+          "sourceHash": "610fb36439bd3ea25011aed2763b2ea3b9d39e154784e5a312eeb2bf8859dd30",
+          "startLine": 1,
+          "uri": "gno://c004/d001.md"
+        }
+      ],
+      "draftKind": "supported",
+      "fixtureFingerprint": "68027bb0248c09507dbdba9d8cf2433f1b9b7b547ba5db8811db338982f9d08b",
+      "indexFingerprint": "9c4a65f08850a70ff6d2ec6fe069b4cd38c9cbf3481583afd76a74264cf0591a",
+      "lane": "raw_ask",
+      "modelFingerprint": "32b69a9f3acb9ec09089e35a384635f9b3cd4588556d61c10b0e664fe4f775d6",
+      "requestFingerprint": "fc00c8d2a25238a13b728046d212adf4a447606eab9410628b3b65852a367c29",
+      "seed": 0,
+      "taskId": "t3d4e5f6",
+      "trialId": "verified-ask-fixture-01",
+      "verification": {
+        "answerStatus": "raw",
+        "requested": false
+      }
+    },
+    {
+      "abstained": false,
+      "agentId": "fixture-answer-agent-v1",
+      "answer": "claim serviceOwner value %7B%22type%22%3A%22string%22%2C%22value%22%3A%22Mina%20Shah%22%7D [evidence:79a92d5b938d51911fa2d99e199b268a94f644685461a645535afca3e6dd5a14].",
+      "answerFingerprint": "e018bdb92b4eb26bcbff92a53ef76e02838887530670476fc38c26b96470d3e6",
+      "canonicalFingerprint": "bf4f2acb2b24b05d7b6718e647f29bc69f6b41f95265ce56e37ac9af4c334ad2",
+      "citations": [
+        {
+          "endLine": 4,
+          "evidenceId": "79a92d5b938d51911fa2d99e199b268a94f644685461a645535afca3e6dd5a14",
+          "mirrorHash": "610fb36439bd3ea25011aed2763b2ea3b9d39e154784e5a312eeb2bf8859dd30",
+          "passageHash": "785108dcea1c5ad16fffb27d55082acce9b455b84dbff1052cc13571423616e8",
+          "sourceHash": "610fb36439bd3ea25011aed2763b2ea3b9d39e154784e5a312eeb2bf8859dd30",
+          "startLine": 1,
+          "uri": "gno://c004/d001.md?index=agentic"
+        }
+      ],
+      "draftKind": "supported",
+      "fixtureFingerprint": "68027bb0248c09507dbdba9d8cf2433f1b9b7b547ba5db8811db338982f9d08b",
+      "indexFingerprint": "9c4a65f08850a70ff6d2ec6fe069b4cd38c9cbf3481583afd76a74264cf0591a",
+      "lane": "verified_ask",
+      "modelFingerprint": "32b69a9f3acb9ec09089e35a384635f9b3cd4588556d61c10b0e664fe4f775d6",
+      "requestFingerprint": "fc00c8d2a25238a13b728046d212adf4a447606eab9410628b3b65852a367c29",
+      "seed": 0,
+      "taskId": "t3d4e5f6",
+      "trialId": "verified-ask-fixture-01",
+      "verification": {
+        "answerStatus": "verified",
+        "requested": true
+      }
+    },
+    {
+      "abstained": false,
+      "agentId": "fixture-answer-agent-v1",
+      "answer": "claim invoiceId value %7B%22type%22%3A%22identifier%22%2C%22value%22%3A%22INV-7741%22%7D [1].",
+      "answerFingerprint": "b8ecd9da2b70a97f8cdfc76db0a1abafab7b961f9f779935addc0f3fa0c4dd5a",
+      "canonicalFingerprint": "7e08f96c9de099b25a00a1fde03a334486f19c76bf3b7ed407e7d451bb9e5388",
+      "citations": [
+        {
+          "endLine": 5,
+          "evidenceId": null,
+          "mirrorHash": "aa21f9ddd17198aa5e12794b6a48d7b2bfbcd13173a07a773a0750ec77840cd7",
+          "passageHash": "aa21f9ddd17198aa5e12794b6a48d7b2bfbcd13173a07a773a0750ec77840cd7",
+          "sourceHash": "aa21f9ddd17198aa5e12794b6a48d7b2bfbcd13173a07a773a0750ec77840cd7",
+          "startLine": 1,
+          "uri": "gno://c015/d001.md"
+        }
+      ],
+      "draftKind": "supported",
+      "fixtureFingerprint": "68027bb0248c09507dbdba9d8cf2433f1b9b7b547ba5db8811db338982f9d08b",
+      "indexFingerprint": "9c4a65f08850a70ff6d2ec6fe069b4cd38c9cbf3481583afd76a74264cf0591a",
+      "lane": "raw_ask",
+      "modelFingerprint": "32b69a9f3acb9ec09089e35a384635f9b3cd4588556d61c10b0e664fe4f775d6",
+      "requestFingerprint": "d53953280bcab94cc567a98517a6d5c4f262ec507d77314c859594f6b78009c8",
+      "seed": 0,
+      "taskId": "t456ef70",
+      "trialId": "verified-ask-fixture-01",
+      "verification": {
+        "answerStatus": "raw",
+        "requested": false
+      }
+    },
+    {
+      "abstained": false,
+      "agentId": "fixture-answer-agent-v1",
+      "answer": "claim invoiceId value %7B%22type%22%3A%22identifier%22%2C%22value%22%3A%22INV-7741%22%7D [evidence:00e9d930325103743f5e7f1246aa5884534ee2dbb3989e3caab7a60735dbeb7c].",
+      "answerFingerprint": "5b0455442868d28abb36bcda12e670af8c8a57b02438a9ee56f705ebcb201f3b",
+      "canonicalFingerprint": "3dee613401eabfe0cdea9d2378462689b41066e4c98ec38f805aa2aa5c78aa19",
+      "citations": [
+        {
+          "endLine": 4,
+          "evidenceId": "00e9d930325103743f5e7f1246aa5884534ee2dbb3989e3caab7a60735dbeb7c",
+          "mirrorHash": "aa21f9ddd17198aa5e12794b6a48d7b2bfbcd13173a07a773a0750ec77840cd7",
+          "passageHash": "9038679a748ac316198ec2b671414c895504cffe250a97520b5e945edfc49bb4",
+          "sourceHash": "aa21f9ddd17198aa5e12794b6a48d7b2bfbcd13173a07a773a0750ec77840cd7",
+          "startLine": 1,
+          "uri": "gno://c015/d001.md?index=agentic"
+        }
+      ],
+      "draftKind": "supported",
+      "fixtureFingerprint": "68027bb0248c09507dbdba9d8cf2433f1b9b7b547ba5db8811db338982f9d08b",
+      "indexFingerprint": "9c4a65f08850a70ff6d2ec6fe069b4cd38c9cbf3481583afd76a74264cf0591a",
+      "lane": "verified_ask",
+      "modelFingerprint": "32b69a9f3acb9ec09089e35a384635f9b3cd4588556d61c10b0e664fe4f775d6",
+      "requestFingerprint": "d53953280bcab94cc567a98517a6d5c4f262ec507d77314c859594f6b78009c8",
+      "seed": 0,
+      "taskId": "t456ef70",
+      "trialId": "verified-ask-fixture-01",
+      "verification": {
+        "answerStatus": "verified",
+        "requested": true
+      }
+    },
+    {
+      "abstained": false,
+      "agentId": "fixture-answer-agent-v1",
+      "answer": "claim retentionComparison value %7B%22type%22%3A%22string%22%2C%22value%22%3A%22Standard%3A%2030%20days%3B%20Regulated%3A%2090%20days%22%7D [1].",
+      "answerFingerprint": "a3682e5dd7a5ab60ccdef242522a6d25da75a547d7c7d3b6a4dc6ae49e3406f6",
+      "canonicalFingerprint": "b7cda260c6500726bcd8044babc5c82c1612dc74962d4fd5bf1f8c8e8e90bc8c",
+      "citations": [
+        {
+          "endLine": 5,
+          "evidenceId": null,
+          "mirrorHash": "fd5e3609879dde23f83010d591146418c9578a21f862e42ad322b773906b5c84",
+          "passageHash": "fd5e3609879dde23f83010d591146418c9578a21f862e42ad322b773906b5c84",
+          "sourceHash": "fd5e3609879dde23f83010d591146418c9578a21f862e42ad322b773906b5c84",
+          "startLine": 1,
+          "uri": "gno://c005/d001.md"
+        }
+      ],
+      "draftKind": "supported",
+      "fixtureFingerprint": "68027bb0248c09507dbdba9d8cf2433f1b9b7b547ba5db8811db338982f9d08b",
+      "indexFingerprint": "9c4a65f08850a70ff6d2ec6fe069b4cd38c9cbf3481583afd76a74264cf0591a",
+      "lane": "raw_ask",
+      "modelFingerprint": "32b69a9f3acb9ec09089e35a384635f9b3cd4588556d61c10b0e664fe4f775d6",
+      "requestFingerprint": "9c2bb6d01364ead9744cd08687efff863f7136196961b6eb026aa52bd3410bdd",
+      "seed": 0,
+      "taskId": "t4e5f607",
+      "trialId": "verified-ask-fixture-01",
+      "verification": {
+        "answerStatus": "raw",
+        "requested": false
+      }
+    },
+    {
+      "abstained": false,
+      "agentId": "fixture-answer-agent-v1",
+      "answer": "claim retentionComparison value %7B%22type%22%3A%22string%22%2C%22value%22%3A%22Standard%3A%2030%20days%3B%20Regulated%3A%2090%20days%22%7D [evidence:e6b83afb14eedbe9df3750ea7c419e75b2d5907d38a94a7abedfaed753fb54f0].",
+      "answerFingerprint": "2b2e0ebc685e7f57508d22113806c3dd312f172e324d5fe808c09c9f633ddaa8",
+      "canonicalFingerprint": "426343122d561c4bbf97e4c2b864ed19b873fc115160c5138c1f9e7284aa1609",
+      "citations": [
+        {
+          "endLine": 4,
+          "evidenceId": "e6b83afb14eedbe9df3750ea7c419e75b2d5907d38a94a7abedfaed753fb54f0",
+          "mirrorHash": "fd5e3609879dde23f83010d591146418c9578a21f862e42ad322b773906b5c84",
+          "passageHash": "73686d9cd25f184019eb1efbcf5d5b75ba35cb95e92f598c4a344dae810e43f5",
+          "sourceHash": "fd5e3609879dde23f83010d591146418c9578a21f862e42ad322b773906b5c84",
+          "startLine": 1,
+          "uri": "gno://c005/d001.md?index=agentic"
+        }
+      ],
+      "draftKind": "supported",
+      "fixtureFingerprint": "68027bb0248c09507dbdba9d8cf2433f1b9b7b547ba5db8811db338982f9d08b",
+      "indexFingerprint": "9c4a65f08850a70ff6d2ec6fe069b4cd38c9cbf3481583afd76a74264cf0591a",
+      "lane": "verified_ask",
+      "modelFingerprint": "32b69a9f3acb9ec09089e35a384635f9b3cd4588556d61c10b0e664fe4f775d6",
+      "requestFingerprint": "9c2bb6d01364ead9744cd08687efff863f7136196961b6eb026aa52bd3410bdd",
+      "seed": 0,
+      "taskId": "t4e5f607",
+      "trialId": "verified-ask-fixture-01",
+      "verification": {
+        "answerStatus": "verified",
+        "requested": true
+      }
+    },
+    {
+      "abstained": false,
+      "agentId": "fixture-answer-agent-v1",
+      "answer": "claim initiativeOwner value %7B%22type%22%3A%22string%22%2C%22value%22%3A%22Casey%20Lin%22%7D [1].",
+      "answerFingerprint": "13a7dc0bc4ee4b0ba5dee3d79c689dce143d147dcca72b98bd2f4323be1b6b03",
+      "canonicalFingerprint": "790f8149b93a150f7815ea2bef7272b4421b5408c3b1db07d60c96408e444eac",
+      "citations": [
+        {
+          "endLine": 5,
+          "evidenceId": null,
+          "mirrorHash": "9024c0e24d568a709478e7797e0c4ced44d9dee8bddf06b44c168ce3cdbd3d2c",
+          "passageHash": "9024c0e24d568a709478e7797e0c4ced44d9dee8bddf06b44c168ce3cdbd3d2c",
+          "sourceHash": "9024c0e24d568a709478e7797e0c4ced44d9dee8bddf06b44c168ce3cdbd3d2c",
+          "startLine": 1,
+          "uri": "gno://c016/d001.md"
+        }
+      ],
+      "draftKind": "supported",
+      "fixtureFingerprint": "68027bb0248c09507dbdba9d8cf2433f1b9b7b547ba5db8811db338982f9d08b",
+      "indexFingerprint": "9c4a65f08850a70ff6d2ec6fe069b4cd38c9cbf3481583afd76a74264cf0591a",
+      "lane": "raw_ask",
+      "modelFingerprint": "32b69a9f3acb9ec09089e35a384635f9b3cd4588556d61c10b0e664fe4f775d6",
+      "requestFingerprint": "3c2012051360f26686bc45385336311f593977dcbd61750cf803d9316023a544",
+      "seed": 0,
+      "taskId": "t567f081",
+      "trialId": "verified-ask-fixture-01",
+      "verification": {
+        "answerStatus": "raw",
+        "requested": false
+      }
+    },
+    {
+      "abstained": false,
+      "agentId": "fixture-answer-agent-v1",
+      "answer": "claim initiativeOwner value %7B%22type%22%3A%22string%22%2C%22value%22%3A%22Casey%20Lin%22%7D [evidence:9c9d1e217fccb5860e2a5764fa20ba059c813b9fa4946e70091e2a865b3d3857].",
+      "answerFingerprint": "95d213a8ad07f0857c72359d272708352e53ed240922044d043b8a984f477604",
+      "canonicalFingerprint": "78043dc3f6fa9b4fce210d013dd1f3d75057b44beca1752f45f24f3ead7853a0",
+      "citations": [
+        {
+          "endLine": 4,
+          "evidenceId": "9c9d1e217fccb5860e2a5764fa20ba059c813b9fa4946e70091e2a865b3d3857",
+          "mirrorHash": "9024c0e24d568a709478e7797e0c4ced44d9dee8bddf06b44c168ce3cdbd3d2c",
+          "passageHash": "c27b319f0b7392dcb7d2e7357c89d0f2f30f3269b105b3137a202edead357bde",
+          "sourceHash": "9024c0e24d568a709478e7797e0c4ced44d9dee8bddf06b44c168ce3cdbd3d2c",
+          "startLine": 1,
+          "uri": "gno://c016/d001.md?index=agentic"
+        }
+      ],
+      "draftKind": "supported",
+      "fixtureFingerprint": "68027bb0248c09507dbdba9d8cf2433f1b9b7b547ba5db8811db338982f9d08b",
+      "indexFingerprint": "9c4a65f08850a70ff6d2ec6fe069b4cd38c9cbf3481583afd76a74264cf0591a",
+      "lane": "verified_ask",
+      "modelFingerprint": "32b69a9f3acb9ec09089e35a384635f9b3cd4588556d61c10b0e664fe4f775d6",
+      "requestFingerprint": "3c2012051360f26686bc45385336311f593977dcbd61750cf803d9316023a544",
+      "seed": 0,
+      "taskId": "t567f081",
+      "trialId": "verified-ask-fixture-01",
+      "verification": {
+        "answerStatus": "verified",
+        "requested": true
+      }
+    },
+    {
+      "abstained": false,
+      "agentId": "fixture-answer-agent-v1",
+      "answer": "claim bothIncludeAuditLogs value %7B%22type%22%3A%22boolean%22%2C%22value%22%3Afalse%7D [1].",
+      "answerFingerprint": "e7797a4356d85c08bfdc7f9d45695022aaeec8d0d2d9369b60fdcbc65a35a8eb",
+      "canonicalFingerprint": "84522d851e7ec13bb84e1f7c5ad19cf1eeb585ac6d78906c2dc700ed4f406ac0",
+      "citations": [
+        {
+          "endLine": 5,
+          "evidenceId": null,
+          "mirrorHash": "6053e645fa75291d58163f3e1f6e164641104f0a16433264418d9354fe36612e",
+          "passageHash": "6053e645fa75291d58163f3e1f6e164641104f0a16433264418d9354fe36612e",
+          "sourceHash": "6053e645fa75291d58163f3e1f6e164641104f0a16433264418d9354fe36612e",
+          "startLine": 1,
+          "uri": "gno://c006/d001.md"
+        }
+      ],
+      "draftKind": "supported",
+      "fixtureFingerprint": "68027bb0248c09507dbdba9d8cf2433f1b9b7b547ba5db8811db338982f9d08b",
+      "indexFingerprint": "9c4a65f08850a70ff6d2ec6fe069b4cd38c9cbf3481583afd76a74264cf0591a",
+      "lane": "raw_ask",
+      "modelFingerprint": "32b69a9f3acb9ec09089e35a384635f9b3cd4588556d61c10b0e664fe4f775d6",
+      "requestFingerprint": "36b75fb02d1f52c0bc9f9d2de2764399632d705d8bbc0dbb569fab9f745df6f1",
+      "seed": 0,
+      "taskId": "t5f60718",
+      "trialId": "verified-ask-fixture-01",
+      "verification": {
+        "answerStatus": "raw",
+        "requested": false
+      }
+    },
+    {
+      "abstained": false,
+      "agentId": "fixture-answer-agent-v1",
+      "answer": "claim bothIncludeAuditLogs value %7B%22type%22%3A%22boolean%22%2C%22value%22%3Afalse%7D [evidence:93164c3c3feb78f5f0d8dbbef957a6b37dcd50689dcca0df337c1602c0e55f21].",
+      "answerFingerprint": "5cf1680141a97c9d2efbab764f7c00936fa0f3187e84abf18873ef6d529ebe2f",
+      "canonicalFingerprint": "55c43b018be28777be17e29464d1b99d584176b51163a36f4c97d82dc3fcebfd",
+      "citations": [
+        {
+          "endLine": 4,
+          "evidenceId": "93164c3c3feb78f5f0d8dbbef957a6b37dcd50689dcca0df337c1602c0e55f21",
+          "mirrorHash": "6053e645fa75291d58163f3e1f6e164641104f0a16433264418d9354fe36612e",
+          "passageHash": "a2e9bbbc355dcf04c2d22f5fb7f947113ecd61bf7767cacdd7d3294b1f8340c7",
+          "sourceHash": "6053e645fa75291d58163f3e1f6e164641104f0a16433264418d9354fe36612e",
+          "startLine": 1,
+          "uri": "gno://c006/d001.md?index=agentic"
+        }
+      ],
+      "draftKind": "supported",
+      "fixtureFingerprint": "68027bb0248c09507dbdba9d8cf2433f1b9b7b547ba5db8811db338982f9d08b",
+      "indexFingerprint": "9c4a65f08850a70ff6d2ec6fe069b4cd38c9cbf3481583afd76a74264cf0591a",
+      "lane": "verified_ask",
+      "modelFingerprint": "32b69a9f3acb9ec09089e35a384635f9b3cd4588556d61c10b0e664fe4f775d6",
+      "requestFingerprint": "36b75fb02d1f52c0bc9f9d2de2764399632d705d8bbc0dbb569fab9f745df6f1",
+      "seed": 0,
+      "taskId": "t5f60718",
+      "trialId": "verified-ask-fixture-01",
+      "verification": {
+        "answerStatus": "verified",
+        "requested": true
+      }
+    },
+    {
+      "abstained": false,
+      "agentId": "fixture-answer-agent-v1",
+      "answer": "claim selectedDatabase value %7B%22type%22%3A%22string%22%2C%22value%22%3A%22PostgreSQL%20(incorrect)%22%7D [1].",
+      "answerFingerprint": "6d33b736479c880899abb1bd3780142789ac2c9acd827ffd9a778e32c0db9d5f",
+      "canonicalFingerprint": "6c05c208085b97bd32a62efe5403061f9e558d9e8c85803ded2a402d5a103eca",
+      "citations": [
+        {
+          "endLine": 5,
+          "evidenceId": null,
+          "mirrorHash": "fd3c6b2c7a9616068d0d5bf3ac0b43f2e269a25f0c269099a6debe74eb0e5c23",
+          "passageHash": "fd3c6b2c7a9616068d0d5bf3ac0b43f2e269a25f0c269099a6debe74eb0e5c23",
+          "sourceHash": "fd3c6b2c7a9616068d0d5bf3ac0b43f2e269a25f0c269099a6debe74eb0e5c23",
+          "startLine": 1,
+          "uri": "gno://c007/d001.md"
+        }
+      ],
+      "draftKind": "adversarial",
+      "fixtureFingerprint": "68027bb0248c09507dbdba9d8cf2433f1b9b7b547ba5db8811db338982f9d08b",
+      "indexFingerprint": "9c4a65f08850a70ff6d2ec6fe069b4cd38c9cbf3481583afd76a74264cf0591a",
+      "lane": "raw_ask",
+      "modelFingerprint": "32b69a9f3acb9ec09089e35a384635f9b3cd4588556d61c10b0e664fe4f775d6",
+      "requestFingerprint": "1562e0d09d7a9cebb018dcdf5f3a70a1aed3cf23da5abde297a13b34556cc0bc",
+      "seed": 0,
+      "taskId": "t6071829",
+      "trialId": "verified-ask-fixture-01",
+      "verification": {
+        "answerStatus": "raw",
+        "requested": false
+      }
+    },
+    {
+      "abstained": true,
+      "agentId": "fixture-answer-agent-v1",
+      "answer": "I cannot provide this answer as verified from the supplied Context Capsule.",
+      "answerFingerprint": "7fc501a758277c00b94fbb8e0cc92e8f3899b446caede21fa818362bce8a8123",
+      "canonicalFingerprint": "998daa05c5b68ab24006665641f09f1adcadcd2beca1d250fc8179da690b5d87",
+      "citations": [],
+      "draftKind": "adversarial",
+      "fixtureFingerprint": "68027bb0248c09507dbdba9d8cf2433f1b9b7b547ba5db8811db338982f9d08b",
+      "indexFingerprint": "9c4a65f08850a70ff6d2ec6fe069b4cd38c9cbf3481583afd76a74264cf0591a",
+      "lane": "verified_ask",
+      "modelFingerprint": "32b69a9f3acb9ec09089e35a384635f9b3cd4588556d61c10b0e664fe4f775d6",
+      "requestFingerprint": "1562e0d09d7a9cebb018dcdf5f3a70a1aed3cf23da5abde297a13b34556cc0bc",
+      "seed": 0,
+      "taskId": "t6071829",
+      "trialId": "verified-ask-fixture-01",
+      "verification": {
+        "answerStatus": "abstained",
+        "requested": true
+      }
+    },
+    {
+      "abstained": false,
+      "agentId": "fixture-answer-agent-v1",
+      "answer": "claim rolloutRegion value %7B%22type%22%3A%22string%22%2C%22value%22%3A%22north%22%7D [1].",
+      "answerFingerprint": "cbadf65fe80f835b940c464afba2a651ee78ec35414e7ce3ac412d122b1892ef",
+      "canonicalFingerprint": "cc0fccbfd02bdb152ce9e42987023876be7c45c992e2d5112d5322a59f21d2b9",
+      "citations": [
+        {
+          "endLine": 5,
+          "evidenceId": null,
+          "mirrorHash": "88c7021ebc0f1bb38c8948242b76528b7c4bde832efb77bb90fd9d76e6b358a2",
+          "passageHash": "88c7021ebc0f1bb38c8948242b76528b7c4bde832efb77bb90fd9d76e6b358a2",
+          "sourceHash": "88c7021ebc0f1bb38c8948242b76528b7c4bde832efb77bb90fd9d76e6b358a2",
+          "startLine": 1,
+          "uri": "gno://c017/d002.md"
+        }
+      ],
+      "draftKind": "supported",
+      "fixtureFingerprint": "68027bb0248c09507dbdba9d8cf2433f1b9b7b547ba5db8811db338982f9d08b",
+      "indexFingerprint": "9c4a65f08850a70ff6d2ec6fe069b4cd38c9cbf3481583afd76a74264cf0591a",
+      "lane": "raw_ask",
+      "modelFingerprint": "32b69a9f3acb9ec09089e35a384635f9b3cd4588556d61c10b0e664fe4f775d6",
+      "requestFingerprint": "4a7878906f8d2bbad139f20b1f85c262caafdfd61726eb41c8b14ae8d6ec958e",
+      "seed": 0,
+      "taskId": "t6780192",
+      "trialId": "verified-ask-fixture-01",
+      "verification": {
+        "answerStatus": "raw",
+        "requested": false
+      }
+    },
+    {
+      "abstained": false,
+      "agentId": "fixture-answer-agent-v1",
+      "answer": "claim rolloutRegion value %7B%22type%22%3A%22string%22%2C%22value%22%3A%22north%22%7D [evidence:030fe8de906ed2c06d45426a0decf56f1533f855c5a5873e2cd9be349022ff9e].",
+      "answerFingerprint": "99648e699b128493227d8f38023200e1242e8b8cf50eab110169dc98fad73edf",
+      "canonicalFingerprint": "aac8dea45db34f04367abedcf8920ee1f3667328824c9e5f5ec93d99fffbdab2",
+      "citations": [
+        {
+          "endLine": 4,
+          "evidenceId": "030fe8de906ed2c06d45426a0decf56f1533f855c5a5873e2cd9be349022ff9e",
+          "mirrorHash": "88c7021ebc0f1bb38c8948242b76528b7c4bde832efb77bb90fd9d76e6b358a2",
+          "passageHash": "10837b608596780cc655f6b0ce3c5b194d5194655645e1c0baf35371ec8640bb",
+          "sourceHash": "88c7021ebc0f1bb38c8948242b76528b7c4bde832efb77bb90fd9d76e6b358a2",
+          "startLine": 1,
+          "uri": "gno://c017/d002.md?index=agentic"
+        }
+      ],
+      "draftKind": "supported",
+      "fixtureFingerprint": "68027bb0248c09507dbdba9d8cf2433f1b9b7b547ba5db8811db338982f9d08b",
+      "indexFingerprint": "9c4a65f08850a70ff6d2ec6fe069b4cd38c9cbf3481583afd76a74264cf0591a",
+      "lane": "verified_ask",
+      "modelFingerprint": "32b69a9f3acb9ec09089e35a384635f9b3cd4588556d61c10b0e664fe4f775d6",
+      "requestFingerprint": "4a7878906f8d2bbad139f20b1f85c262caafdfd61726eb41c8b14ae8d6ec958e",
+      "seed": 0,
+      "taskId": "t6780192",
+      "trialId": "verified-ask-fixture-01",
+      "verification": {
+        "answerStatus": "verified",
+        "requested": true
+      }
+    },
+    {
+      "abstained": false,
+      "agentId": "fixture-answer-agent-v1",
+      "answer": "claim launchDate value %7B%22type%22%3A%22date%22%2C%22value%22%3A%222026-09-14%22%7D [1].",
+      "answerFingerprint": "04010ec29c17e43b8631c010ec7bc841df60aa7388e68bb845987dec08aeef65",
+      "canonicalFingerprint": "5a7037d6b49bb2d0ffa78cdd2f851f0376fec3b45d1525a0f02c769a46359e00",
+      "citations": [
+        {
+          "endLine": 5,
+          "evidenceId": null,
+          "mirrorHash": "8b1bbc9a9a46064fe6c621cd8693249c2d3a82fffb4982db609b4cda7334dc18",
+          "passageHash": "8b1bbc9a9a46064fe6c621cd8693249c2d3a82fffb4982db609b4cda7334dc18",
+          "sourceHash": "8b1bbc9a9a46064fe6c621cd8693249c2d3a82fffb4982db609b4cda7334dc18",
+          "startLine": 1,
+          "uri": "gno://c008/d001.md"
+        }
+      ],
+      "draftKind": "supported",
+      "fixtureFingerprint": "68027bb0248c09507dbdba9d8cf2433f1b9b7b547ba5db8811db338982f9d08b",
+      "indexFingerprint": "9c4a65f08850a70ff6d2ec6fe069b4cd38c9cbf3481583afd76a74264cf0591a",
+      "lane": "raw_ask",
+      "modelFingerprint": "32b69a9f3acb9ec09089e35a384635f9b3cd4588556d61c10b0e664fe4f775d6",
+      "requestFingerprint": "8415699594d37ff3e5d94852a970ec58d1d302c10e6a6a76d4f656061e27cb9b",
+      "seed": 0,
+      "taskId": "t718293a",
+      "trialId": "verified-ask-fixture-01",
+      "verification": {
+        "answerStatus": "raw",
+        "requested": false
+      }
+    },
+    {
+      "abstained": false,
+      "agentId": "fixture-answer-agent-v1",
+      "answer": "claim launchDate value %7B%22type%22%3A%22date%22%2C%22value%22%3A%222026-09-14%22%7D [evidence:fa6d0447056e241ed147f1badfc094050ae727dea1b7cbd639c61cc1815fe4a7].",
+      "answerFingerprint": "3604201d0b9ba50b5614f55009ba54ac4d6d0ea5b461af4a0b26aec45bda8ec6",
+      "canonicalFingerprint": "36c0622ee98157cd6b7e3076fd504196c2fd550a1ecac175585babda9dc004f1",
+      "citations": [
+        {
+          "endLine": 4,
+          "evidenceId": "fa6d0447056e241ed147f1badfc094050ae727dea1b7cbd639c61cc1815fe4a7",
+          "mirrorHash": "8b1bbc9a9a46064fe6c621cd8693249c2d3a82fffb4982db609b4cda7334dc18",
+          "passageHash": "88b69374b179c664a819b5ffe33456a70fd23d8720a69c0c8701ccb220f62729",
+          "sourceHash": "8b1bbc9a9a46064fe6c621cd8693249c2d3a82fffb4982db609b4cda7334dc18",
+          "startLine": 1,
+          "uri": "gno://c008/d001.md?index=agentic"
+        }
+      ],
+      "draftKind": "supported",
+      "fixtureFingerprint": "68027bb0248c09507dbdba9d8cf2433f1b9b7b547ba5db8811db338982f9d08b",
+      "indexFingerprint": "9c4a65f08850a70ff6d2ec6fe069b4cd38c9cbf3481583afd76a74264cf0591a",
+      "lane": "verified_ask",
+      "modelFingerprint": "32b69a9f3acb9ec09089e35a384635f9b3cd4588556d61c10b0e664fe4f775d6",
+      "requestFingerprint": "8415699594d37ff3e5d94852a970ec58d1d302c10e6a6a76d4f656061e27cb9b",
+      "seed": 0,
+      "taskId": "t718293a",
+      "trialId": "verified-ask-fixture-01",
+      "verification": {
+        "answerStatus": "verified",
+        "requested": true
+      }
+    },
+    {
+      "abstained": false,
+      "agentId": "fixture-answer-agent-v1",
+      "answer": "claim escalationWindow value %7B%22type%22%3A%22string%22%2C%22value%22%3A%2215%20minutes%22%7D [1].",
+      "answerFingerprint": "aeae0af95e9ab4693afca2899e5745226e2edfac738b8fe62c849dba1adbab31",
+      "canonicalFingerprint": "279485ac205b51afe934367a3cc03ca50f6645ff448e7120fbe65ef19dca4449",
+      "citations": [
+        {
+          "endLine": 5,
+          "evidenceId": null,
+          "mirrorHash": "36a083e77527435026287d7a7e8586a1c69f6e04b68af0f73fabccaed580f74f",
+          "passageHash": "36a083e77527435026287d7a7e8586a1c69f6e04b68af0f73fabccaed580f74f",
+          "sourceHash": "36a083e77527435026287d7a7e8586a1c69f6e04b68af0f73fabccaed580f74f",
+          "startLine": 1,
+          "uri": "gno://c018/d001.md"
+        }
+      ],
+      "draftKind": "supported",
+      "fixtureFingerprint": "68027bb0248c09507dbdba9d8cf2433f1b9b7b547ba5db8811db338982f9d08b",
+      "indexFingerprint": "9c4a65f08850a70ff6d2ec6fe069b4cd38c9cbf3481583afd76a74264cf0591a",
+      "lane": "raw_ask",
+      "modelFingerprint": "32b69a9f3acb9ec09089e35a384635f9b3cd4588556d61c10b0e664fe4f775d6",
+      "requestFingerprint": "86f773e5d3bc5ae0daca06c6e0bdb4cd42dbf48eab1c96d802a8b60476322c7d",
+      "seed": 0,
+      "taskId": "t7891a03",
+      "trialId": "verified-ask-fixture-01",
+      "verification": {
+        "answerStatus": "raw",
+        "requested": false
+      }
+    },
+    {
+      "abstained": false,
+      "agentId": "fixture-answer-agent-v1",
+      "answer": "claim escalationWindow value %7B%22type%22%3A%22string%22%2C%22value%22%3A%2215%20minutes%22%7D [evidence:e56d46bd79de4a6939f83b859dc657024c40782e6f0eb5d6077ae78bc33a7cb8].",
+      "answerFingerprint": "03d7447171b26b9b3de518b4f6300dce786d57778ef2c30192631eed46834379",
+      "canonicalFingerprint": "0b9f516f905fb8a1e131f31a9308179a6482364145028190c1bf7aa4b09b54f5",
+      "citations": [
+        {
+          "endLine": 4,
+          "evidenceId": "e56d46bd79de4a6939f83b859dc657024c40782e6f0eb5d6077ae78bc33a7cb8",
+          "mirrorHash": "36a083e77527435026287d7a7e8586a1c69f6e04b68af0f73fabccaed580f74f",
+          "passageHash": "f79b829d5d93e5afe699f74526b8eb906f38ca6e041d3edc3d3abfd760aeb780",
+          "sourceHash": "36a083e77527435026287d7a7e8586a1c69f6e04b68af0f73fabccaed580f74f",
+          "startLine": 1,
+          "uri": "gno://c018/d001.md?index=agentic"
+        }
+      ],
+      "draftKind": "supported",
+      "fixtureFingerprint": "68027bb0248c09507dbdba9d8cf2433f1b9b7b547ba5db8811db338982f9d08b",
+      "indexFingerprint": "9c4a65f08850a70ff6d2ec6fe069b4cd38c9cbf3481583afd76a74264cf0591a",
+      "lane": "verified_ask",
+      "modelFingerprint": "32b69a9f3acb9ec09089e35a384635f9b3cd4588556d61c10b0e664fe4f775d6",
+      "requestFingerprint": "86f773e5d3bc5ae0daca06c6e0bdb4cd42dbf48eab1c96d802a8b60476322c7d",
+      "seed": 0,
+      "taskId": "t7891a03",
+      "trialId": "verified-ask-fixture-01",
+      "verification": {
+        "answerStatus": "verified",
+        "requested": true
+      }
+    },
+    {
+      "abstained": false,
+      "agentId": "fixture-answer-agent-v1",
+      "answer": "claim availabilityTarget value %7B%22type%22%3A%22number%22%2C%22value%22%3A100.95%7D [1].",
+      "answerFingerprint": "7d7a6424dafc96736302221d739c76ba537fc6f9317ea9b4df3f1529dab9c156",
+      "canonicalFingerprint": "7f77f829de63d5ee983a7144d94f3f1e4694e9b63805a5067abe9e9c3415636e",
+      "citations": [
+        {
+          "endLine": 5,
+          "evidenceId": null,
+          "mirrorHash": "2248468cc1454d9516147d4709e0b02ec803eea8c1faed0730c882c103f3e5f1",
+          "passageHash": "2248468cc1454d9516147d4709e0b02ec803eea8c1faed0730c882c103f3e5f1",
+          "sourceHash": "2248468cc1454d9516147d4709e0b02ec803eea8c1faed0730c882c103f3e5f1",
+          "startLine": 1,
+          "uri": "gno://c009/d001.md"
+        }
+      ],
+      "draftKind": "adversarial",
+      "fixtureFingerprint": "68027bb0248c09507dbdba9d8cf2433f1b9b7b547ba5db8811db338982f9d08b",
+      "indexFingerprint": "9c4a65f08850a70ff6d2ec6fe069b4cd38c9cbf3481583afd76a74264cf0591a",
+      "lane": "raw_ask",
+      "modelFingerprint": "32b69a9f3acb9ec09089e35a384635f9b3cd4588556d61c10b0e664fe4f775d6",
+      "requestFingerprint": "9884be9fab6e6ab8a1c55f6ab61d301f15e1bf8c99e892f0c635e57201a29d9d",
+      "seed": 0,
+      "taskId": "t8293a4b",
+      "trialId": "verified-ask-fixture-01",
+      "verification": {
+        "answerStatus": "raw",
+        "requested": false
+      }
+    },
+    {
+      "abstained": true,
+      "agentId": "fixture-answer-agent-v1",
+      "answer": "I cannot provide this answer as verified from the supplied Context Capsule.",
+      "answerFingerprint": "7fc501a758277c00b94fbb8e0cc92e8f3899b446caede21fa818362bce8a8123",
+      "canonicalFingerprint": "7ab9eff956bba171279e3e48abb87b37b0670a06a047e659b4ba7916c49388b3",
+      "citations": [],
+      "draftKind": "adversarial",
+      "fixtureFingerprint": "68027bb0248c09507dbdba9d8cf2433f1b9b7b547ba5db8811db338982f9d08b",
+      "indexFingerprint": "9c4a65f08850a70ff6d2ec6fe069b4cd38c9cbf3481583afd76a74264cf0591a",
+      "lane": "verified_ask",
+      "modelFingerprint": "32b69a9f3acb9ec09089e35a384635f9b3cd4588556d61c10b0e664fe4f775d6",
+      "requestFingerprint": "9884be9fab6e6ab8a1c55f6ab61d301f15e1bf8c99e892f0c635e57201a29d9d",
+      "seed": 0,
+      "taskId": "t8293a4b",
+      "trialId": "verified-ask-fixture-01",
+      "verification": {
+        "answerStatus": "abstained",
+        "requested": true
+      }
+    },
+    {
+      "abstained": false,
+      "agentId": "fixture-answer-agent-v1",
+      "answer": "claim earliestMilestone value %7B%22type%22%3A%22date%22%2C%22value%22%3A%222026-01-18%22%7D [1].",
+      "answerFingerprint": "a23797255d9089ea9efc34424bd6a40f4e66b635bdeed05e23e7e4502afe2946",
+      "canonicalFingerprint": "c7b2fed1015797662a6dbb5793f35def5973ef2df9f2e4f6b3b78107a7cd1691",
+      "citations": [
+        {
+          "endLine": 5,
+          "evidenceId": null,
+          "mirrorHash": "2e4ea0de3a672c8bbc56edb7879a3ead2a6170e89f4496af1ff2f40834911618",
+          "passageHash": "2e4ea0de3a672c8bbc56edb7879a3ead2a6170e89f4496af1ff2f40834911618",
+          "sourceHash": "2e4ea0de3a672c8bbc56edb7879a3ead2a6170e89f4496af1ff2f40834911618",
+          "startLine": 1,
+          "uri": "gno://c00a/d002.md"
+        }
+      ],
+      "draftKind": "supported",
+      "fixtureFingerprint": "68027bb0248c09507dbdba9d8cf2433f1b9b7b547ba5db8811db338982f9d08b",
+      "indexFingerprint": "9c4a65f08850a70ff6d2ec6fe069b4cd38c9cbf3481583afd76a74264cf0591a",
+      "lane": "raw_ask",
+      "modelFingerprint": "32b69a9f3acb9ec09089e35a384635f9b3cd4588556d61c10b0e664fe4f775d6",
+      "requestFingerprint": "29cfb09a9b29a77b651b2486a999511d475d6907a1f04d30783a73b82086182f",
+      "seed": 0,
+      "taskId": "t93a4b5c",
+      "trialId": "verified-ask-fixture-01",
+      "verification": {
+        "answerStatus": "raw",
+        "requested": false
+      }
+    },
+    {
+      "abstained": false,
+      "agentId": "fixture-answer-agent-v1",
+      "answer": "claim earliestMilestone value %7B%22type%22%3A%22date%22%2C%22value%22%3A%222026-01-18%22%7D [evidence:4b372b21df4a4d81a29434aebb9973e5a99cc0ad447250ea74a2a8f8e6d2a803].",
+      "answerFingerprint": "369ff561f8329385dad6cc08c0c51955a534e71a405d75f2b039261cc3a312fb",
+      "canonicalFingerprint": "4dbfa16745418b3643088c8fe404cf7e9bc5e67debed2aa3b5b47764543f8838",
+      "citations": [
+        {
+          "endLine": 4,
+          "evidenceId": "4b372b21df4a4d81a29434aebb9973e5a99cc0ad447250ea74a2a8f8e6d2a803",
+          "mirrorHash": "2e4ea0de3a672c8bbc56edb7879a3ead2a6170e89f4496af1ff2f40834911618",
+          "passageHash": "9e9620d2b3f77f71e7898fe2da440ed1019deb8cf783f0c5aacbd9d946501c7a",
+          "sourceHash": "2e4ea0de3a672c8bbc56edb7879a3ead2a6170e89f4496af1ff2f40834911618",
+          "startLine": 1,
+          "uri": "gno://c00a/d002.md?index=agentic"
+        }
+      ],
+      "draftKind": "supported",
+      "fixtureFingerprint": "68027bb0248c09507dbdba9d8cf2433f1b9b7b547ba5db8811db338982f9d08b",
+      "indexFingerprint": "9c4a65f08850a70ff6d2ec6fe069b4cd38c9cbf3481583afd76a74264cf0591a",
+      "lane": "verified_ask",
+      "modelFingerprint": "32b69a9f3acb9ec09089e35a384635f9b3cd4588556d61c10b0e664fe4f775d6",
+      "requestFingerprint": "29cfb09a9b29a77b651b2486a999511d475d6907a1f04d30783a73b82086182f",
+      "seed": 0,
+      "taskId": "t93a4b5c",
+      "trialId": "verified-ask-fixture-01",
+      "verification": {
+        "answerStatus": "verified",
+        "requested": true
+      }
+    },
+    {
+      "abstained": false,
+      "agentId": "fixture-answer-agent-v1",
+      "answer": "claim dependency value %7B%22type%22%3A%22string%22%2C%22value%22%3A%22Beacon%22%7D [1].",
+      "answerFingerprint": "394e783c9249ffade83bbe699f2d450de8eb8aff7ded145ea4b0ebd0385b1169",
+      "canonicalFingerprint": "26af8a9f511073ec2bed540a4926038027da11b13dc3cf8a5275496830be99a6",
+      "citations": [
+        {
+          "endLine": 5,
+          "evidenceId": null,
+          "mirrorHash": "62a1d3220388445d8e800fa6cacae01d8733c6368c83e2dbdfefc253bf13782d",
+          "passageHash": "62a1d3220388445d8e800fa6cacae01d8733c6368c83e2dbdfefc253bf13782d",
+          "sourceHash": "62a1d3220388445d8e800fa6cacae01d8733c6368c83e2dbdfefc253bf13782d",
+          "startLine": 1,
+          "uri": "gno://c00b/d001.md"
+        }
+      ],
+      "draftKind": "supported",
+      "fixtureFingerprint": "68027bb0248c09507dbdba9d8cf2433f1b9b7b547ba5db8811db338982f9d08b",
+      "indexFingerprint": "9c4a65f08850a70ff6d2ec6fe069b4cd38c9cbf3481583afd76a74264cf0591a",
+      "lane": "raw_ask",
+      "modelFingerprint": "32b69a9f3acb9ec09089e35a384635f9b3cd4588556d61c10b0e664fe4f775d6",
+      "requestFingerprint": "ac529600e446d7bcd39d705dffb95a3c8986ba2d249749c14ef8f0ce462687c5",
+      "seed": 0,
+      "taskId": "ta4b5c6d",
+      "trialId": "verified-ask-fixture-01",
+      "verification": {
+        "answerStatus": "raw",
+        "requested": false
+      }
+    },
+    {
+      "abstained": false,
+      "agentId": "fixture-answer-agent-v1",
+      "answer": "claim dependency value %7B%22type%22%3A%22string%22%2C%22value%22%3A%22Beacon%22%7D [evidence:072688617bf04ca7935f533c0e31483425618e415d3b806ce2f2acbe61848f3a].",
+      "answerFingerprint": "68e745f03b98bec3dfeb5d561c8cbd5687893fdccb05497485b72a434e8c1f8a",
+      "canonicalFingerprint": "deee0c808479c6dffc26265c6a7ec963817edd6908fe044c55f1e2999f331361",
+      "citations": [
+        {
+          "endLine": 4,
+          "evidenceId": "072688617bf04ca7935f533c0e31483425618e415d3b806ce2f2acbe61848f3a",
+          "mirrorHash": "62a1d3220388445d8e800fa6cacae01d8733c6368c83e2dbdfefc253bf13782d",
+          "passageHash": "a83225c3e5c587fc553011365f7327aec71699e2ed637830c05300d035e34323",
+          "sourceHash": "62a1d3220388445d8e800fa6cacae01d8733c6368c83e2dbdfefc253bf13782d",
+          "startLine": 1,
+          "uri": "gno://c00b/d001.md?index=agentic"
+        }
+      ],
+      "draftKind": "supported",
+      "fixtureFingerprint": "68027bb0248c09507dbdba9d8cf2433f1b9b7b547ba5db8811db338982f9d08b",
+      "indexFingerprint": "9c4a65f08850a70ff6d2ec6fe069b4cd38c9cbf3481583afd76a74264cf0591a",
+      "lane": "verified_ask",
+      "modelFingerprint": "32b69a9f3acb9ec09089e35a384635f9b3cd4588556d61c10b0e664fe4f775d6",
+      "requestFingerprint": "ac529600e446d7bcd39d705dffb95a3c8986ba2d249749c14ef8f0ce462687c5",
+      "seed": 0,
+      "taskId": "ta4b5c6d",
+      "trialId": "verified-ask-fixture-01",
+      "verification": {
+        "answerStatus": "verified",
+        "requested": true
+      }
+    },
+    {
+      "abstained": false,
+      "agentId": "fixture-answer-agent-v1",
+      "answer": "claim ownerTeam value %7B%22type%22%3A%22string%22%2C%22value%22%3A%22Platform%20Reliability%22%7D [1].",
+      "answerFingerprint": "a9135fcce9860039de0df6bb4fd8683cb6987f1f937e62e9f5a7bab13dc4a80f",
+      "canonicalFingerprint": "85a3a4b77e4f86f231eb4e07a9d5518fb372272b4ec5b5af07233af0dd3c9af2",
+      "citations": [
+        {
+          "endLine": 5,
+          "evidenceId": null,
+          "mirrorHash": "83fe317f44568f10ffe52913f86b510742ae2784185b8760e756e25c7cd691e5",
+          "passageHash": "83fe317f44568f10ffe52913f86b510742ae2784185b8760e756e25c7cd691e5",
+          "sourceHash": "83fe317f44568f10ffe52913f86b510742ae2784185b8760e756e25c7cd691e5",
+          "startLine": 1,
+          "uri": "gno://c00c/d001.md"
+        }
+      ],
+      "draftKind": "supported",
+      "fixtureFingerprint": "68027bb0248c09507dbdba9d8cf2433f1b9b7b547ba5db8811db338982f9d08b",
+      "indexFingerprint": "9c4a65f08850a70ff6d2ec6fe069b4cd38c9cbf3481583afd76a74264cf0591a",
+      "lane": "raw_ask",
+      "modelFingerprint": "32b69a9f3acb9ec09089e35a384635f9b3cd4588556d61c10b0e664fe4f775d6",
+      "requestFingerprint": "fa002af9211ce08ab6af907282c556d439edb3025bdce4a1992abf32f97f7372",
+      "seed": 0,
+      "taskId": "tb5c6d7e",
+      "trialId": "verified-ask-fixture-01",
+      "verification": {
+        "answerStatus": "raw",
+        "requested": false
+      }
+    },
+    {
+      "abstained": false,
+      "agentId": "fixture-answer-agent-v1",
+      "answer": "claim ownerTeam value %7B%22type%22%3A%22string%22%2C%22value%22%3A%22Platform%20Reliability%22%7D [evidence:815d7c59610902bf9d012aa6b8587a7b5ae5a96bf0cb42a3c2fcce60f4de734c].",
+      "answerFingerprint": "a669072e697f5bc9fd7f102a4aac4f05c3d4765cf29a4ac8bf1f5a3c2a34aa57",
+      "canonicalFingerprint": "d899fdc89881d89b00fcae808834cf86ff98d639bd5d98880abc9bea2a1d7293",
+      "citations": [
+        {
+          "endLine": 4,
+          "evidenceId": "815d7c59610902bf9d012aa6b8587a7b5ae5a96bf0cb42a3c2fcce60f4de734c",
+          "mirrorHash": "83fe317f44568f10ffe52913f86b510742ae2784185b8760e756e25c7cd691e5",
+          "passageHash": "196bdb68f8edf7a62ee582549cc49a519572c7a8c8bf0babf3f001d10de84caa",
+          "sourceHash": "83fe317f44568f10ffe52913f86b510742ae2784185b8760e756e25c7cd691e5",
+          "startLine": 1,
+          "uri": "gno://c00c/d001.md?index=agentic"
+        }
+      ],
+      "draftKind": "supported",
+      "fixtureFingerprint": "68027bb0248c09507dbdba9d8cf2433f1b9b7b547ba5db8811db338982f9d08b",
+      "indexFingerprint": "9c4a65f08850a70ff6d2ec6fe069b4cd38c9cbf3481583afd76a74264cf0591a",
+      "lane": "verified_ask",
+      "modelFingerprint": "32b69a9f3acb9ec09089e35a384635f9b3cd4588556d61c10b0e664fe4f775d6",
+      "requestFingerprint": "fa002af9211ce08ab6af907282c556d439edb3025bdce4a1992abf32f97f7372",
+      "seed": 0,
+      "taskId": "tb5c6d7e",
+      "trialId": "verified-ask-fixture-01",
+      "verification": {
+        "answerStatus": "verified",
+        "requested": true
+      }
+    },
+    {
+      "abstained": false,
+      "agentId": "fixture-answer-agent-v1",
+      "answer": "claim defaultBatchSize value %7B%22type%22%3A%22number%22%2C%22value%22%3A64%7D [1].",
+      "answerFingerprint": "5d4ced053f32d67bb6edfe745e81bda4db560f0ebcdea634cc99cf2e85e0f8d9",
+      "canonicalFingerprint": "bee6fd4a2e466722062ffb9c307634befa4c3a33c14cba119e4ab5f52a739138",
+      "citations": [
+        {
+          "endLine": 5,
+          "evidenceId": null,
+          "mirrorHash": "a32291aaaedb3793c89bed14a4979513821b049a1893dea57e3e4e4f3cfc11f6",
+          "passageHash": "a32291aaaedb3793c89bed14a4979513821b049a1893dea57e3e4e4f3cfc11f6",
+          "sourceHash": "a32291aaaedb3793c89bed14a4979513821b049a1893dea57e3e4e4f3cfc11f6",
+          "startLine": 1,
+          "uri": "gno://c00d/d001.md"
+        }
+      ],
+      "draftKind": "supported",
+      "fixtureFingerprint": "68027bb0248c09507dbdba9d8cf2433f1b9b7b547ba5db8811db338982f9d08b",
+      "indexFingerprint": "9c4a65f08850a70ff6d2ec6fe069b4cd38c9cbf3481583afd76a74264cf0591a",
+      "lane": "raw_ask",
+      "modelFingerprint": "32b69a9f3acb9ec09089e35a384635f9b3cd4588556d61c10b0e664fe4f775d6",
+      "requestFingerprint": "75d64b2c24f8a171e1752579444396b80b55fd81039c9fa9930ee05511310dde",
+      "seed": 0,
+      "taskId": "tc6d7e8f",
+      "trialId": "verified-ask-fixture-01",
+      "verification": {
+        "answerStatus": "raw",
+        "requested": false
+      }
+    },
+    {
+      "abstained": false,
+      "agentId": "fixture-answer-agent-v1",
+      "answer": "claim defaultBatchSize value %7B%22type%22%3A%22number%22%2C%22value%22%3A64%7D [evidence:843497cc1afc033042bab1c09e901c8c7366134efdf544f3af7bb8002ed740eb].",
+      "answerFingerprint": "555c864adaac0fd70d47d8793d37dfb0aa52c871fd1cbe48a10f4bccd73e5a30",
+      "canonicalFingerprint": "a924884eae61b2f7452b7b3110977778430c2dedc98f547e2dc5b0bb92a9b398",
+      "citations": [
+        {
+          "endLine": 4,
+          "evidenceId": "843497cc1afc033042bab1c09e901c8c7366134efdf544f3af7bb8002ed740eb",
+          "mirrorHash": "a32291aaaedb3793c89bed14a4979513821b049a1893dea57e3e4e4f3cfc11f6",
+          "passageHash": "27943b52cc0039a067aae09ee0545add5214cc11c6d82a642dbb81eff31062c8",
+          "sourceHash": "a32291aaaedb3793c89bed14a4979513821b049a1893dea57e3e4e4f3cfc11f6",
+          "startLine": 1,
+          "uri": "gno://c00d/d001.md?index=agentic"
+        }
+      ],
+      "draftKind": "supported",
+      "fixtureFingerprint": "68027bb0248c09507dbdba9d8cf2433f1b9b7b547ba5db8811db338982f9d08b",
+      "indexFingerprint": "9c4a65f08850a70ff6d2ec6fe069b4cd38c9cbf3481583afd76a74264cf0591a",
+      "lane": "verified_ask",
+      "modelFingerprint": "32b69a9f3acb9ec09089e35a384635f9b3cd4588556d61c10b0e664fe4f775d6",
+      "requestFingerprint": "75d64b2c24f8a171e1752579444396b80b55fd81039c9fa9930ee05511310dde",
+      "seed": 0,
+      "taskId": "tc6d7e8f",
+      "trialId": "verified-ask-fixture-01",
+      "verification": {
+        "answerStatus": "verified",
+        "requested": true
+      }
+    },
+    {
+      "abstained": false,
+      "agentId": "fixture-answer-agent-v1",
+      "answer": "claim errorIdentifier value %7B%22type%22%3A%22identifier%22%2C%22value%22%3A%22E_INDEX_LOCKED%22%7D [1].",
+      "answerFingerprint": "64b2ac3234ee96f340534e97911f124f5af07458a500104bee9a299e41fe8725",
+      "canonicalFingerprint": "3b67f83bd662f90a10e0394d25076c8154264bbe196142782727ec12da88f940",
+      "citations": [
+        {
+          "endLine": 5,
+          "evidenceId": null,
+          "mirrorHash": "bc1062e6f5cf34d8d0c0f846aee95ba9244370ab9a3dd0fc4783edf1d8e16ef7",
+          "passageHash": "bc1062e6f5cf34d8d0c0f846aee95ba9244370ab9a3dd0fc4783edf1d8e16ef7",
+          "sourceHash": "bc1062e6f5cf34d8d0c0f846aee95ba9244370ab9a3dd0fc4783edf1d8e16ef7",
+          "startLine": 1,
+          "uri": "gno://c00e/d001.md"
+        }
+      ],
+      "draftKind": "supported",
+      "fixtureFingerprint": "68027bb0248c09507dbdba9d8cf2433f1b9b7b547ba5db8811db338982f9d08b",
+      "indexFingerprint": "9c4a65f08850a70ff6d2ec6fe069b4cd38c9cbf3481583afd76a74264cf0591a",
+      "lane": "raw_ask",
+      "modelFingerprint": "32b69a9f3acb9ec09089e35a384635f9b3cd4588556d61c10b0e664fe4f775d6",
+      "requestFingerprint": "e03f7578d5d63fd5011597d6c83d6f06a5522e6b8b6bceedbe0b3873402f2d24",
+      "seed": 0,
+      "taskId": "td7e8f90",
+      "trialId": "verified-ask-fixture-01",
+      "verification": {
+        "answerStatus": "raw",
+        "requested": false
+      }
+    },
+    {
+      "abstained": false,
+      "agentId": "fixture-answer-agent-v1",
+      "answer": "claim errorIdentifier value %7B%22type%22%3A%22identifier%22%2C%22value%22%3A%22E_INDEX_LOCKED%22%7D [evidence:d8bbbc369954c4cbfe2a15b069ceacc037d5ddbc4cfae71deee3d074258345eb].",
+      "answerFingerprint": "d4f9c4edadd915744ef165c1435009f60595ca9f70da821ea81f57df11cb4b7e",
+      "canonicalFingerprint": "bb3b40e8b7c253b73b031ba22b823c069f037922e359f0c7afddc80406ab8a4b",
+      "citations": [
+        {
+          "endLine": 4,
+          "evidenceId": "d8bbbc369954c4cbfe2a15b069ceacc037d5ddbc4cfae71deee3d074258345eb",
+          "mirrorHash": "bc1062e6f5cf34d8d0c0f846aee95ba9244370ab9a3dd0fc4783edf1d8e16ef7",
+          "passageHash": "1d06e3d9828bdcf006801137c4998abe757d6abadcccbda96f970b65d3d93ae5",
+          "sourceHash": "bc1062e6f5cf34d8d0c0f846aee95ba9244370ab9a3dd0fc4783edf1d8e16ef7",
+          "startLine": 1,
+          "uri": "gno://c00e/d001.md?index=agentic"
+        }
+      ],
+      "draftKind": "supported",
+      "fixtureFingerprint": "68027bb0248c09507dbdba9d8cf2433f1b9b7b547ba5db8811db338982f9d08b",
+      "indexFingerprint": "9c4a65f08850a70ff6d2ec6fe069b4cd38c9cbf3481583afd76a74264cf0591a",
+      "lane": "verified_ask",
+      "modelFingerprint": "32b69a9f3acb9ec09089e35a384635f9b3cd4588556d61c10b0e664fe4f775d6",
+      "requestFingerprint": "e03f7578d5d63fd5011597d6c83d6f06a5522e6b8b6bceedbe0b3873402f2d24",
+      "seed": 0,
+      "taskId": "td7e8f90",
+      "trialId": "verified-ask-fixture-01",
+      "verification": {
+        "answerStatus": "verified",
+        "requested": true
+      }
+    },
+    {
+      "abstained": false,
+      "agentId": "fixture-answer-agent-v1",
+      "answer": "claim supportCity value %7B%22type%22%3A%22string%22%2C%22value%22%3A%22Bern%20(incorrect)%22%7D [1].",
+      "answerFingerprint": "5b72b18dd5d689d0eb4d137b545f23bca080cdf08c34e40305ed5609c2b88e74",
+      "canonicalFingerprint": "ef2d892fb73b8bd78279a64e3297e254fd60d3f45d62f3842ec57fed4190e657",
+      "citations": [
+        {
+          "endLine": 5,
+          "evidenceId": null,
+          "mirrorHash": "a36f9396b78110ed8b1aafa8804c9babcc3d672a0922fb3357f74797222cde32",
+          "passageHash": "a36f9396b78110ed8b1aafa8804c9babcc3d672a0922fb3357f74797222cde32",
+          "sourceHash": "a36f9396b78110ed8b1aafa8804c9babcc3d672a0922fb3357f74797222cde32",
+          "startLine": 1,
+          "uri": "gno://c00f/d001.md"
+        }
+      ],
+      "draftKind": "adversarial",
+      "fixtureFingerprint": "68027bb0248c09507dbdba9d8cf2433f1b9b7b547ba5db8811db338982f9d08b",
+      "indexFingerprint": "9c4a65f08850a70ff6d2ec6fe069b4cd38c9cbf3481583afd76a74264cf0591a",
+      "lane": "raw_ask",
+      "modelFingerprint": "32b69a9f3acb9ec09089e35a384635f9b3cd4588556d61c10b0e664fe4f775d6",
+      "requestFingerprint": "7957b0d6262412e6fabe99b62f9b4a9773dba84a2c4d5b50abff95c11f7a450c",
+      "seed": 0,
+      "taskId": "te8f901a",
+      "trialId": "verified-ask-fixture-01",
+      "verification": {
+        "answerStatus": "raw",
+        "requested": false
+      }
+    },
+    {
+      "abstained": true,
+      "agentId": "fixture-answer-agent-v1",
+      "answer": "I cannot provide this answer as verified from the supplied Context Capsule.",
+      "answerFingerprint": "7fc501a758277c00b94fbb8e0cc92e8f3899b446caede21fa818362bce8a8123",
+      "canonicalFingerprint": "157bf14589b7f3eeac6f3e00845e8e3392b1978939b45270b12732c6b65780a8",
+      "citations": [],
+      "draftKind": "adversarial",
+      "fixtureFingerprint": "68027bb0248c09507dbdba9d8cf2433f1b9b7b547ba5db8811db338982f9d08b",
+      "indexFingerprint": "9c4a65f08850a70ff6d2ec6fe069b4cd38c9cbf3481583afd76a74264cf0591a",
+      "lane": "verified_ask",
+      "modelFingerprint": "32b69a9f3acb9ec09089e35a384635f9b3cd4588556d61c10b0e664fe4f775d6",
+      "requestFingerprint": "7957b0d6262412e6fabe99b62f9b4a9773dba84a2c4d5b50abff95c11f7a450c",
+      "seed": 0,
+      "taskId": "te8f901a",
+      "trialId": "verified-ask-fixture-01",
+      "verification": {
+        "answerStatus": "abstained",
+        "requested": true
+      }
+    },
+    {
+      "abstained": false,
+      "agentId": "fixture-answer-agent-v1",
+      "answer": "claim renewalDate value %7B%22type%22%3A%22date%22%2C%22value%22%3A%222026-10-03%22%7D [1].",
+      "answerFingerprint": "603b569d7d9fc0b8a12f5d6fb12c45671c971390f6e6f92e427179b9ccd4d8b1",
+      "canonicalFingerprint": "fedcd6d97a7d504968523a8a2d3452a336f3e69147a090be49bb64cc21fdb7e9",
+      "citations": [
+        {
+          "endLine": 5,
+          "evidenceId": null,
+          "mirrorHash": "5355f832bc4b4ef7eaee1d9c097d2b23e66b701a2312b5f608fec3e34ec81c61",
+          "passageHash": "5355f832bc4b4ef7eaee1d9c097d2b23e66b701a2312b5f608fec3e34ec81c61",
+          "sourceHash": "5355f832bc4b4ef7eaee1d9c097d2b23e66b701a2312b5f608fec3e34ec81c61",
+          "startLine": 1,
+          "uri": "gno://c010/d001.md"
+        }
+      ],
+      "draftKind": "supported",
+      "fixtureFingerprint": "68027bb0248c09507dbdba9d8cf2433f1b9b7b547ba5db8811db338982f9d08b",
+      "indexFingerprint": "9c4a65f08850a70ff6d2ec6fe069b4cd38c9cbf3481583afd76a74264cf0591a",
+      "lane": "raw_ask",
+      "modelFingerprint": "32b69a9f3acb9ec09089e35a384635f9b3cd4588556d61c10b0e664fe4f775d6",
+      "requestFingerprint": "8449ccaf21f8fde7822cc7e8ed40b695378ed30732783241f3211bc99e9e11d6",
+      "seed": 0,
+      "taskId": "tf901a2b",
+      "trialId": "verified-ask-fixture-01",
+      "verification": {
+        "answerStatus": "raw",
+        "requested": false
+      }
+    },
+    {
+      "abstained": false,
+      "agentId": "fixture-answer-agent-v1",
+      "answer": "claim renewalDate value %7B%22type%22%3A%22date%22%2C%22value%22%3A%222026-10-03%22%7D [evidence:b6170e9ce515e61dfdc683304b091753a977568ed6b9073fc8d75c723e70190c].",
+      "answerFingerprint": "df7ee6d60e8e713dc7b0d4b16ca8d020ca3bd2a1f3510b750a723dde9bb27ddf",
+      "canonicalFingerprint": "8270636bd14f3518ecc3eb0fb062d51f3d172faddfc032ab4d9dd3bbd96f6daf",
+      "citations": [
+        {
+          "endLine": 4,
+          "evidenceId": "b6170e9ce515e61dfdc683304b091753a977568ed6b9073fc8d75c723e70190c",
+          "mirrorHash": "5355f832bc4b4ef7eaee1d9c097d2b23e66b701a2312b5f608fec3e34ec81c61",
+          "passageHash": "9ee4579c9a3e5d6cbdaedb3fbe7ef93c5f534974ea3abf21126738fba6d76017",
+          "sourceHash": "5355f832bc4b4ef7eaee1d9c097d2b23e66b701a2312b5f608fec3e34ec81c61",
+          "startLine": 1,
+          "uri": "gno://c010/d001.md?index=agentic"
+        }
+      ],
+      "draftKind": "supported",
+      "fixtureFingerprint": "68027bb0248c09507dbdba9d8cf2433f1b9b7b547ba5db8811db338982f9d08b",
+      "indexFingerprint": "9c4a65f08850a70ff6d2ec6fe069b4cd38c9cbf3481583afd76a74264cf0591a",
+      "lane": "verified_ask",
+      "modelFingerprint": "32b69a9f3acb9ec09089e35a384635f9b3cd4588556d61c10b0e664fe4f775d6",
+      "requestFingerprint": "8449ccaf21f8fde7822cc7e8ed40b695378ed30732783241f3211bc99e9e11d6",
+      "seed": 0,
+      "taskId": "tf901a2b",
+      "trialId": "verified-ask-fixture-01",
+      "verification": {
+        "answerStatus": "verified",
+        "requested": true
+      }
+    }
+  ],
+  "schemaVersion": "1.0",
+  "scores": [
+    {
+      "agentId": "fixture-answer-agent-v1",
+      "answerAccuracy": 1,
+      "lane": "raw_ask",
+      "seed": 0,
+      "taskId": "t012ab3c",
+      "trialId": "verified-ask-fixture-01",
+      "unsupportedSubstantiveClaims": []
+    },
+    {
+      "agentId": "fixture-answer-agent-v1",
+      "answerAccuracy": 1,
+      "lane": "verified_ask",
+      "seed": 0,
+      "taskId": "t012ab3c",
+      "trialId": "verified-ask-fixture-01",
+      "unsupportedSubstantiveClaims": []
+    },
+    {
+      "agentId": "fixture-answer-agent-v1",
+      "answerAccuracy": 0,
+      "lane": "raw_ask",
+      "seed": 0,
+      "taskId": "t0a1b2c3",
+      "trialId": "verified-ask-fixture-01",
+      "unsupportedSubstantiveClaims": ["incidentId"]
+    },
+    {
+      "agentId": "fixture-answer-agent-v1",
+      "answerAccuracy": 0,
+      "lane": "verified_ask",
+      "seed": 0,
+      "taskId": "t0a1b2c3",
+      "trialId": "verified-ask-fixture-01",
+      "unsupportedSubstantiveClaims": []
+    },
+    {
+      "agentId": "fixture-answer-agent-v1",
+      "answerAccuracy": 1,
+      "lane": "raw_ask",
+      "seed": 0,
+      "taskId": "t123bc4d",
+      "trialId": "verified-ask-fixture-01",
+      "unsupportedSubstantiveClaims": []
+    },
+    {
+      "agentId": "fixture-answer-agent-v1",
+      "answerAccuracy": 1,
+      "lane": "verified_ask",
+      "seed": 0,
+      "taskId": "t123bc4d",
+      "trialId": "verified-ask-fixture-01",
+      "unsupportedSubstantiveClaims": []
+    },
+    {
+      "agentId": "fixture-answer-agent-v1",
+      "answerAccuracy": 1,
+      "lane": "raw_ask",
+      "seed": 0,
+      "taskId": "t1b2c3d4",
+      "trialId": "verified-ask-fixture-01",
+      "unsupportedSubstantiveClaims": []
+    },
+    {
+      "agentId": "fixture-answer-agent-v1",
+      "answerAccuracy": 1,
+      "lane": "verified_ask",
+      "seed": 0,
+      "taskId": "t1b2c3d4",
+      "trialId": "verified-ask-fixture-01",
+      "unsupportedSubstantiveClaims": []
+    },
+    {
+      "agentId": "fixture-answer-agent-v1",
+      "answerAccuracy": 1,
+      "lane": "raw_ask",
+      "seed": 0,
+      "taskId": "t2c3d4e5",
+      "trialId": "verified-ask-fixture-01",
+      "unsupportedSubstantiveClaims": []
+    },
+    {
+      "agentId": "fixture-answer-agent-v1",
+      "answerAccuracy": 1,
+      "lane": "verified_ask",
+      "seed": 0,
+      "taskId": "t2c3d4e5",
+      "trialId": "verified-ask-fixture-01",
+      "unsupportedSubstantiveClaims": []
+    },
+    {
+      "agentId": "fixture-answer-agent-v1",
+      "answerAccuracy": 1,
+      "lane": "raw_ask",
+      "seed": 0,
+      "taskId": "t3d4e5f6",
+      "trialId": "verified-ask-fixture-01",
+      "unsupportedSubstantiveClaims": []
+    },
+    {
+      "agentId": "fixture-answer-agent-v1",
+      "answerAccuracy": 1,
+      "lane": "verified_ask",
+      "seed": 0,
+      "taskId": "t3d4e5f6",
+      "trialId": "verified-ask-fixture-01",
+      "unsupportedSubstantiveClaims": []
+    },
+    {
+      "agentId": "fixture-answer-agent-v1",
+      "answerAccuracy": 1,
+      "lane": "raw_ask",
+      "seed": 0,
+      "taskId": "t456ef70",
+      "trialId": "verified-ask-fixture-01",
+      "unsupportedSubstantiveClaims": []
+    },
+    {
+      "agentId": "fixture-answer-agent-v1",
+      "answerAccuracy": 1,
+      "lane": "verified_ask",
+      "seed": 0,
+      "taskId": "t456ef70",
+      "trialId": "verified-ask-fixture-01",
+      "unsupportedSubstantiveClaims": []
+    },
+    {
+      "agentId": "fixture-answer-agent-v1",
+      "answerAccuracy": 1,
+      "lane": "raw_ask",
+      "seed": 0,
+      "taskId": "t4e5f607",
+      "trialId": "verified-ask-fixture-01",
+      "unsupportedSubstantiveClaims": []
+    },
+    {
+      "agentId": "fixture-answer-agent-v1",
+      "answerAccuracy": 1,
+      "lane": "verified_ask",
+      "seed": 0,
+      "taskId": "t4e5f607",
+      "trialId": "verified-ask-fixture-01",
+      "unsupportedSubstantiveClaims": []
+    },
+    {
+      "agentId": "fixture-answer-agent-v1",
+      "answerAccuracy": 1,
+      "lane": "raw_ask",
+      "seed": 0,
+      "taskId": "t567f081",
+      "trialId": "verified-ask-fixture-01",
+      "unsupportedSubstantiveClaims": []
+    },
+    {
+      "agentId": "fixture-answer-agent-v1",
+      "answerAccuracy": 1,
+      "lane": "verified_ask",
+      "seed": 0,
+      "taskId": "t567f081",
+      "trialId": "verified-ask-fixture-01",
+      "unsupportedSubstantiveClaims": []
+    },
+    {
+      "agentId": "fixture-answer-agent-v1",
+      "answerAccuracy": 1,
+      "lane": "raw_ask",
+      "seed": 0,
+      "taskId": "t5f60718",
+      "trialId": "verified-ask-fixture-01",
+      "unsupportedSubstantiveClaims": []
+    },
+    {
+      "agentId": "fixture-answer-agent-v1",
+      "answerAccuracy": 1,
+      "lane": "verified_ask",
+      "seed": 0,
+      "taskId": "t5f60718",
+      "trialId": "verified-ask-fixture-01",
+      "unsupportedSubstantiveClaims": []
+    },
+    {
+      "agentId": "fixture-answer-agent-v1",
+      "answerAccuracy": 0,
+      "lane": "raw_ask",
+      "seed": 0,
+      "taskId": "t6071829",
+      "trialId": "verified-ask-fixture-01",
+      "unsupportedSubstantiveClaims": ["selectedDatabase"]
+    },
+    {
+      "agentId": "fixture-answer-agent-v1",
+      "answerAccuracy": 0,
+      "lane": "verified_ask",
+      "seed": 0,
+      "taskId": "t6071829",
+      "trialId": "verified-ask-fixture-01",
+      "unsupportedSubstantiveClaims": []
+    },
+    {
+      "agentId": "fixture-answer-agent-v1",
+      "answerAccuracy": 1,
+      "lane": "raw_ask",
+      "seed": 0,
+      "taskId": "t6780192",
+      "trialId": "verified-ask-fixture-01",
+      "unsupportedSubstantiveClaims": []
+    },
+    {
+      "agentId": "fixture-answer-agent-v1",
+      "answerAccuracy": 1,
+      "lane": "verified_ask",
+      "seed": 0,
+      "taskId": "t6780192",
+      "trialId": "verified-ask-fixture-01",
+      "unsupportedSubstantiveClaims": []
+    },
+    {
+      "agentId": "fixture-answer-agent-v1",
+      "answerAccuracy": 1,
+      "lane": "raw_ask",
+      "seed": 0,
+      "taskId": "t718293a",
+      "trialId": "verified-ask-fixture-01",
+      "unsupportedSubstantiveClaims": []
+    },
+    {
+      "agentId": "fixture-answer-agent-v1",
+      "answerAccuracy": 1,
+      "lane": "verified_ask",
+      "seed": 0,
+      "taskId": "t718293a",
+      "trialId": "verified-ask-fixture-01",
+      "unsupportedSubstantiveClaims": []
+    },
+    {
+      "agentId": "fixture-answer-agent-v1",
+      "answerAccuracy": 1,
+      "lane": "raw_ask",
+      "seed": 0,
+      "taskId": "t7891a03",
+      "trialId": "verified-ask-fixture-01",
+      "unsupportedSubstantiveClaims": []
+    },
+    {
+      "agentId": "fixture-answer-agent-v1",
+      "answerAccuracy": 1,
+      "lane": "verified_ask",
+      "seed": 0,
+      "taskId": "t7891a03",
+      "trialId": "verified-ask-fixture-01",
+      "unsupportedSubstantiveClaims": []
+    },
+    {
+      "agentId": "fixture-answer-agent-v1",
+      "answerAccuracy": 0,
+      "lane": "raw_ask",
+      "seed": 0,
+      "taskId": "t8293a4b",
+      "trialId": "verified-ask-fixture-01",
+      "unsupportedSubstantiveClaims": ["availabilityTarget"]
+    },
+    {
+      "agentId": "fixture-answer-agent-v1",
+      "answerAccuracy": 0,
+      "lane": "verified_ask",
+      "seed": 0,
+      "taskId": "t8293a4b",
+      "trialId": "verified-ask-fixture-01",
+      "unsupportedSubstantiveClaims": []
+    },
+    {
+      "agentId": "fixture-answer-agent-v1",
+      "answerAccuracy": 1,
+      "lane": "raw_ask",
+      "seed": 0,
+      "taskId": "t93a4b5c",
+      "trialId": "verified-ask-fixture-01",
+      "unsupportedSubstantiveClaims": []
+    },
+    {
+      "agentId": "fixture-answer-agent-v1",
+      "answerAccuracy": 1,
+      "lane": "verified_ask",
+      "seed": 0,
+      "taskId": "t93a4b5c",
+      "trialId": "verified-ask-fixture-01",
+      "unsupportedSubstantiveClaims": []
+    },
+    {
+      "agentId": "fixture-answer-agent-v1",
+      "answerAccuracy": 1,
+      "lane": "raw_ask",
+      "seed": 0,
+      "taskId": "ta4b5c6d",
+      "trialId": "verified-ask-fixture-01",
+      "unsupportedSubstantiveClaims": []
+    },
+    {
+      "agentId": "fixture-answer-agent-v1",
+      "answerAccuracy": 1,
+      "lane": "verified_ask",
+      "seed": 0,
+      "taskId": "ta4b5c6d",
+      "trialId": "verified-ask-fixture-01",
+      "unsupportedSubstantiveClaims": []
+    },
+    {
+      "agentId": "fixture-answer-agent-v1",
+      "answerAccuracy": 1,
+      "lane": "raw_ask",
+      "seed": 0,
+      "taskId": "tb5c6d7e",
+      "trialId": "verified-ask-fixture-01",
+      "unsupportedSubstantiveClaims": []
+    },
+    {
+      "agentId": "fixture-answer-agent-v1",
+      "answerAccuracy": 1,
+      "lane": "verified_ask",
+      "seed": 0,
+      "taskId": "tb5c6d7e",
+      "trialId": "verified-ask-fixture-01",
+      "unsupportedSubstantiveClaims": []
+    },
+    {
+      "agentId": "fixture-answer-agent-v1",
+      "answerAccuracy": 1,
+      "lane": "raw_ask",
+      "seed": 0,
+      "taskId": "tc6d7e8f",
+      "trialId": "verified-ask-fixture-01",
+      "unsupportedSubstantiveClaims": []
+    },
+    {
+      "agentId": "fixture-answer-agent-v1",
+      "answerAccuracy": 1,
+      "lane": "verified_ask",
+      "seed": 0,
+      "taskId": "tc6d7e8f",
+      "trialId": "verified-ask-fixture-01",
+      "unsupportedSubstantiveClaims": []
+    },
+    {
+      "agentId": "fixture-answer-agent-v1",
+      "answerAccuracy": 1,
+      "lane": "raw_ask",
+      "seed": 0,
+      "taskId": "td7e8f90",
+      "trialId": "verified-ask-fixture-01",
+      "unsupportedSubstantiveClaims": []
+    },
+    {
+      "agentId": "fixture-answer-agent-v1",
+      "answerAccuracy": 1,
+      "lane": "verified_ask",
+      "seed": 0,
+      "taskId": "td7e8f90",
+      "trialId": "verified-ask-fixture-01",
+      "unsupportedSubstantiveClaims": []
+    },
+    {
+      "agentId": "fixture-answer-agent-v1",
+      "answerAccuracy": 0,
+      "lane": "raw_ask",
+      "seed": 0,
+      "taskId": "te8f901a",
+      "trialId": "verified-ask-fixture-01",
+      "unsupportedSubstantiveClaims": ["supportCity"]
+    },
+    {
+      "agentId": "fixture-answer-agent-v1",
+      "answerAccuracy": 0,
+      "lane": "verified_ask",
+      "seed": 0,
+      "taskId": "te8f901a",
+      "trialId": "verified-ask-fixture-01",
+      "unsupportedSubstantiveClaims": []
+    },
+    {
+      "agentId": "fixture-answer-agent-v1",
+      "answerAccuracy": 1,
+      "lane": "raw_ask",
+      "seed": 0,
+      "taskId": "tf901a2b",
+      "trialId": "verified-ask-fixture-01",
+      "unsupportedSubstantiveClaims": []
+    },
+    {
+      "agentId": "fixture-answer-agent-v1",
+      "answerAccuracy": 1,
+      "lane": "verified_ask",
+      "seed": 0,
+      "taskId": "tf901a2b",
+      "trialId": "verified-ask-fixture-01",
+      "unsupportedSubstantiveClaims": []
+    }
+  ]
+}

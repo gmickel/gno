@@ -19,6 +19,7 @@ import { NOTE_PRESETS, type NotePresetId } from "../../core/note-presets";
 import { RETRIEVAL_TRACE_METADATA } from "../../core/retrieval-trace-session";
 import { normalizeTag } from "../../core/tags";
 import { handleAddCollection } from "./add-collection";
+import { askInputSchema, handleAsk } from "./ask";
 import { handleCapture } from "./capture";
 import { handleClearCollectionEmbeddings } from "./clear-collection-embeddings";
 import { handleContext, handleContextVerify } from "./context";
@@ -96,6 +97,7 @@ export const MCP_TOOL_DESCRIPTIONS = {
     "Compile one deterministic, budgeted, extractive evidence Capsule with exact line spans, coverage gaps, omissions, provenance, and verification fingerprints. Raw search/get tools remain available for manual retrieval.",
   contextVerify:
     "Verify a saved Context Capsule without rebuilding or mutating it. Reports unchanged, stale, missing, reranked, and fingerprint drift states against the active index.",
+  ask: "Generate one answer from a deterministic Context Capsule, verify every substantive claim against exact retained spans, and abstain unless support coverage is complete. Read-only; returns the Capsule, freshness receipt, claim verdicts, gaps, and evidence IDs.",
 } as const;
 
 /** Tool names whose execution mutates disk, config, or index state. */
@@ -976,6 +978,13 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
       inputSchema: contextVerifySurfaceSchema,
     },
     (args) => handleContextVerify(args, ctx)
+  );
+
+  server.tool(
+    "gno_ask",
+    MCP_TOOL_DESCRIPTIONS.ask,
+    askInputSchema.shape,
+    (args) => handleAsk(args, ctx)
   );
 
   server.tool(

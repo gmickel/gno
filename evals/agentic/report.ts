@@ -247,6 +247,9 @@ const promotionFor = (
         agentCallReduction: null,
         contextByteReduction: null,
         claimLinkageRate: null,
+        baselineUnsupportedClaims: null,
+        candidateUnsupportedClaims: null,
+        unsupportedClaimReduction: null,
       },
     };
   }

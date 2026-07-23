@@ -58,7 +58,11 @@ export interface GenParams {
   contextSize?: number;
   /** Stop sequences */
   stop?: string[];
+  /** Closed JSON Schema enforced by a capable generation backend. */
+  jsonSchema?: Readonly<Record<string, unknown>>;
 }
+
+export type StructuredOutputCapability = "json_schema" | "none";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Rerank Types
@@ -90,6 +94,8 @@ export interface EmbeddingPort {
 
 export interface GenerationPort {
   readonly modelUri: string;
+  /** Undefined is treated as unsupported for backwards-compatible ports. */
+  readonly structuredOutput?: StructuredOutputCapability;
   generate(prompt: string, params?: GenParams): Promise<LlmResult<string>>;
   dispose(): Promise<void>;
 }

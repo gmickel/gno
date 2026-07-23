@@ -42,6 +42,7 @@ describe("deterministic trajectory scoring", () => {
       completed: true,
       supportedClaims: ["incidentId"],
       unsupportedClaims: [],
+      unsupportedSubstantiveClaims: [],
       missingRequiredClaims: [],
       forbiddenEvidenceClaims: [],
       prematureStop: false,
@@ -302,6 +303,7 @@ const successfulScore = (receipt: TrajectoryReceipt) => ({
   completed: true,
   supportedClaims: ["incidentId"],
   unsupportedClaims: [],
+  unsupportedSubstantiveClaims: [],
   missingRequiredClaims: [],
   forbiddenEvidenceClaims: [],
   invalidOutputs: [],
@@ -347,7 +349,7 @@ const promotionPair = (
     first: { canonicalJson: payload, sha256: sha256Bytes(payload) },
     second: { canonicalJson: payload, sha256: sha256Bytes(payload) },
   };
-  return {
+  const pair: PromotionPair = {
     taskId: baselineReceipt.canonical.taskId,
     trialId: baselineReceipt.canonical.trialId,
     lifecycle: baselineReceipt.canonical.lifecycle,
@@ -364,6 +366,11 @@ const promotionPair = (
       replay,
     },
   };
+  pair.baseline.score.score.unsupportedClaims = ["legacy-unsupported"];
+  pair.baseline.score.score.unsupportedSubstantiveClaims = [
+    "legacy-unsupported",
+  ];
+  return pair;
 };
 
 describe("Capsule promotion formulas", () => {
@@ -376,6 +383,9 @@ describe("Capsule promotion formulas", () => {
       agentCallReduction: 0.25,
       contextByteReduction: 0.35,
       claimLinkageRate: 1,
+      baselineUnsupportedClaims: 1,
+      candidateUnsupportedClaims: 0,
+      unsupportedClaimReduction: 1,
     });
   });
 
@@ -432,6 +442,35 @@ describe("Capsule promotion formulas", () => {
         failure.startsWith("nondeterministic_capsule_payload:")
       )
     ).toBe(true);
+  });
+
+  test("requires a comparable strict unsupported-claim reduction", () => {
+    const unchanged = promotionPair();
+    unchanged.candidate.score.score.unsupportedClaims = [
+      "candidate-unsupported",
+    ];
+    unchanged.candidate.score.score.unsupportedSubstantiveClaims = [
+      "candidate-unsupported",
+    ];
+    const unchangedResult = evaluatePromotionGates([unchanged]);
+    expect(unchangedResult.passed).toBe(false);
+    expect(unchangedResult.metrics).toMatchObject({
+      baselineUnsupportedClaims: 1,
+      candidateUnsupportedClaims: 1,
+      unsupportedClaimReduction: 0,
+    });
+    expect(unchangedResult.failures).toContain(
+      "unsupported_claims_not_strictly_reduced_or_zero_denominator"
+    );
+
+    const unavailable = promotionPair();
+    unavailable.baseline.score.score.unsupportedClaims = [];
+    unavailable.baseline.score.score.unsupportedSubstantiveClaims = [];
+    const unavailableResult = evaluatePromotionGates([unavailable]);
+    expect(unavailableResult.metrics.unsupportedClaimReduction).toBeNull();
+    expect(unavailableResult.failures).toContain(
+      "unsupported_claims_not_strictly_reduced_or_zero_denominator"
+    );
   });
 
   test("requires identical unique paired cohorts", () => {

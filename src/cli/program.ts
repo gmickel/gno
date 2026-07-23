@@ -635,7 +635,9 @@ function wireSearchCommands(program: Command): void {
 
       const limit = cmdOpts.limit
         ? parsePositiveInt("limit", cmdOpts.limit)
-        : getDefaultLimit(format);
+        : cmdOpts.verify
+          ? 5
+          : getDefaultLimit(format);
       const categories = parseCsvValues(cmdOpts.category);
       const exclude = parseCsvValues(cmdOpts.exclude);
 
@@ -1108,8 +1110,16 @@ function wireSearchCommands(program: Command): void {
     )
     .option("-C, --candidate-limit <num>", "max candidates passed to reranking")
     .option("--answer", "generate short grounded answer")
+    .option(
+      "--verify",
+      "generate and verify every claim against a closed Context Capsule"
+    )
     .option("--no-answer", "force retrieval-only output")
     .option("--max-answer-tokens <num>", "max answer tokens")
+    .option("--context-budget-tokens <num>", "verified Context token budget")
+    .option("--context-budget-bytes <num>", "verified Context byte budget")
+    .option("--min-score <score>", "minimum retrieval score (0-1)")
+    .option("--graph", "include bounded graph expansion")
     .option("--show-sources", "show all retrieved sources (not just cited)")
     .option("--json", "JSON output")
     .option("--md", "Markdown output")
@@ -1140,6 +1150,22 @@ function wireSearchCommands(program: Command): void {
       const maxAnswerTokens = cmdOpts.maxAnswerTokens
         ? parsePositiveInt("max-answer-tokens", cmdOpts.maxAnswerTokens)
         : undefined;
+      const contextBudgetTokens = cmdOpts.contextBudgetTokens
+        ? parsePositiveInt("context-budget-tokens", cmdOpts.contextBudgetTokens)
+        : undefined;
+      const contextBudgetBytes = cmdOpts.contextBudgetBytes
+        ? parsePositiveInt("context-budget-bytes", cmdOpts.contextBudgetBytes)
+        : undefined;
+      const minScore = parseOptionalFloat("min-score", cmdOpts.minScore);
+      if (minScore !== undefined && (minScore < 0 || minScore > 1)) {
+        throw new CliError("VALIDATION", "min-score must be between 0 and 1");
+      }
+      if (cmdOpts.verify && cmdOpts.noAnswer) {
+        throw new CliError(
+          "VALIDATION",
+          "--verify cannot be combined with --no-answer"
+        );
+      }
       const categories = parseCsvValues(cmdOpts.category);
       const exclude = parseCsvValues(cmdOpts.exclude);
 
@@ -1188,6 +1214,8 @@ function wireSearchCommands(program: Command): void {
         author: cmdOpts.author as string | undefined,
         intent: cmdOpts.intent as string | undefined,
         exclude,
+        minScore,
+        graph: Boolean(cmdOpts.graph),
         queryModes,
         noExpand: depthPolicy.noExpand,
         noRerank: depthPolicy.noRerank,
@@ -1196,7 +1224,10 @@ function wireSearchCommands(program: Command): void {
         // Commander creates separate cmdOpts.noAnswer for --no-answer flag
         answer: Boolean(cmdOpts.answer),
         noAnswer: Boolean(cmdOpts.noAnswer),
+        verify: Boolean(cmdOpts.verify),
         maxAnswerTokens,
+        contextBudgetTokens,
+        contextBudgetBytes,
         showSources,
         json: format === "json",
         md: format === "md",

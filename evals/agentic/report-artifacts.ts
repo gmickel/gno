@@ -1,7 +1,9 @@
 import type { BenchmarkReport } from "./types";
+import type { VerifiedAskPromotionArtifact } from "./verified-ask-outcome";
 
 import { canonicalJson } from "./canonical";
 import { benchmarkCanonicalProjection } from "./report";
+import { renderVerifiedAskPromotionMarkdown } from "./verified-ask-outcome";
 
 const stablePrettyJson = (value: unknown): string =>
   `${JSON.stringify(JSON.parse(canonicalJson(value)), null, 2)}\n`;
@@ -103,9 +105,18 @@ export const renderBenchmarkMarkdown = (report: BenchmarkReport): string => {
   ];
   if (!promotion) {
     lines.push(
-      "Not evaluated: report does not contain both gno-mcp and capsule."
+      "Unavailable/non-comparable baseline: report does not contain both gno-mcp and capsule paired cohorts; no unsupported-claim reduction is claimed."
     );
   } else {
+    const unsupportedClaims =
+      promotion.metrics.baselineUnsupportedClaims === null ||
+      promotion.metrics.candidateUnsupportedClaims === null
+        ? "unavailable/non-comparable"
+        : `${promotion.metrics.baselineUnsupportedClaims} / ${promotion.metrics.candidateUnsupportedClaims}`;
+    const unsupportedReduction =
+      promotion.metrics.unsupportedClaimReduction === null
+        ? "unavailable/non-comparable"
+        : String(promotion.metrics.unsupportedClaimReduction);
     lines.push(
       `Verdict: **${promotion.passed ? "PASS" : "FAIL"}**`,
       `Pairs: ${promotion.pairCount}`,
@@ -113,6 +124,8 @@ export const renderBenchmarkMarkdown = (report: BenchmarkReport): string => {
       `Agent-call reduction: ${String(promotion.metrics.agentCallReduction)}`,
       `Context-byte reduction: ${String(promotion.metrics.contextByteReduction)}`,
       `Claim linkage: ${String(promotion.metrics.claimLinkageRate)}`,
+      `Unsupported substantive claims (baseline/Capsule): ${unsupportedClaims}`,
+      `Unsupported substantive-claim reduction: ${unsupportedReduction}`,
       `Failures: ${promotion.failures.length > 0 ? promotion.failures.join(", ") : "none"}`
     );
   }
@@ -168,10 +181,13 @@ export interface BenchmarkArtifacts {
   canonicalJson: string;
   observationsJson: string;
   reportMarkdown: string;
+  verifiedAskPromotionJson?: string;
+  verifiedAskPromotionMarkdown?: string;
 }
 
 export const createBenchmarkArtifacts = (
-  report: BenchmarkReport
+  report: BenchmarkReport,
+  verifiedAskPromotion?: VerifiedAskPromotionArtifact
 ): BenchmarkArtifacts => {
   const projectedReport: BenchmarkReport = {
     ...report,
@@ -203,5 +219,12 @@ export const createBenchmarkArtifacts = (
       })),
     }),
     reportMarkdown: renderBenchmarkMarkdown(projectedReport),
+    ...(verifiedAskPromotion
+      ? {
+          verifiedAskPromotionJson: stablePrettyJson(verifiedAskPromotion),
+          verifiedAskPromotionMarkdown:
+            renderVerifiedAskPromotionMarkdown(verifiedAskPromotion),
+        }
+      : {}),
   };
 };

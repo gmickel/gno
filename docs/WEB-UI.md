@@ -33,7 +33,7 @@ separate network boundaries.
 | **Editor**        | Split-view markdown editor with live preview                    |
 | **Collections**   | Add, remove, and re-index collections                           |
 | **Connectors**    | Install and verify core agent integrations                      |
-| **Ask**           | AI-powered Q&A with citations                                   |
+| **Ask**           | AI-powered Q&A or closed-Capsule verified synthesis             |
 | **Graph**         | Interactive knowledge graph visualization                       |
 | **Trace History** | Inspect, label, export, delete, and purge private receipts      |
 
@@ -163,6 +163,14 @@ Choose retrieval mode:
 ### 5. Ask Questions
 
 Click **Ask** for AI-powered answers. Use **Advanced Retrieval** to scope by collection/date/category/author/tags and add optional `intent` / candidate-limit / exclude / query-mode controls for ambiguous questions.
+
+Enable **Verified** when the answer must be checked against one closed Context
+Capsule. The Ask page then shows answer status, coverage, four-state claim
+verdicts, exact evidence line spans, gaps, freshness, semantic-verifier state,
+and explicit abstention. GNO withholds the draft unless every substantive claim
+is supported. Semantic verification failures remain uncertain and fail closed.
+This mode classifies support against retained evidence; it does not guarantee
+that the corpus is complete or its sources are true.
 
 Both **Search** and **Ask** accept multi-line structured query documents. Press `Shift+Enter` to add a new line, then use:
 
@@ -522,9 +530,11 @@ Browse all indexed documents:
 The Ask page provides RAG-powered Q&A:
 
 1. Enter your question
-2. GNO runs hybrid search
-3. Local LLM synthesizes answer from top results
-4. Citations link to source documents
+2. Optionally enable **Verified** for a closed-Capsule support contract
+3. GNO runs hybrid search
+4. Local LLM synthesizes from ordinary answer context or retained Capsule spans
+5. Citations link to source documents; verified mode exposes exact lines,
+   claim verdicts, gaps, coverage, and abstention
 
 ### Knowledge Graph
 

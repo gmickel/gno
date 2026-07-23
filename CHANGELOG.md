@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Added explicit verified Ask across CLI, REST, MCP, and SDK. It generates
+  against one closed Context Capsule, preserves exact evidence spans and
+  freshness state, classifies every substantive claim, and abstains below 100%
+  support coverage.
+- Added a separate attributable verified Ask outcome lane that executes
+  production raw Ask and production `buildVerifiedAsk` over 22 paired fixture
+  tasks. It requires no answer-accuracy loss and strictly fewer unsupported
+  substantive claims, while preserving the existing Capsule retrieval
+  promotion unchanged.
+
 ## [1.19.0] - 2026-07-23
 
 ### Added

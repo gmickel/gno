@@ -196,6 +196,23 @@
                 { "type": "null" }
               ]
             },
+            "intent": {
+              "oneOf": [
+                { "type": "string", "minLength": 1, "maxLength": 16384 },
+                { "type": "null" }
+              ]
+            },
+            "exclude": {
+              "type": "array",
+              "maxItems": 128,
+              "items": { "type": "string", "minLength": 1, "maxLength": 256 }
+            },
+            "minScore": {
+              "oneOf": [
+                { "type": "number", "minimum": 0, "maximum": 1 },
+                { "type": "null" }
+              ]
+            },
             "queryModes": {
               "type": "array",
               "maxItems": 128,
@@ -203,7 +220,8 @@
             },
             "limit": { "type": "integer", "minimum": 1 },
             "candidateLimit": { "type": "integer", "minimum": 1 },
-            "graphRequested": { "type": "boolean" }
+            "graphRequested": { "type": "boolean" },
+            "rerankRequested": { "type": "boolean" }
           }
         },
         "capabilityStates": {
@@ -538,6 +556,23 @@
         },
         "retrievalRank": { "type": "integer", "minimum": 1 },
         "selectionRank": { "type": "integer", "minimum": 1 },
+        "retrievalSources": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 6,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "bm25",
+              "vector",
+              "bm25_variant",
+              "vector_variant",
+              "hyde",
+              "graph"
+            ]
+          }
+        },
+        "graphExpanded": { "type": "boolean" },
         "facets": { "$ref": "#/definitions/facets" },
         "trust": { "const": "untrusted" },
         "egress": {

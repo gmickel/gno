@@ -263,6 +263,8 @@ export const evaluatePromotionGates = (
   let candidateBytes = 0;
   let substantiveClaims = 0;
   let linkedSupportedClaims = 0;
+  let baselineUnsupportedClaims = 0;
+  let candidateUnsupportedClaims = 0;
 
   for (const pair of pairs) {
     const identity = [
@@ -345,6 +347,10 @@ export const evaluatePromotionGates = (
     candidateBytes += candidate.modelVisibleUtf8Bytes;
     substantiveClaims += pair.candidate.score.score.substantiveClaims;
     linkedSupportedClaims += pair.candidate.score.score.linkedSupportedClaims;
+    baselineUnsupportedClaims +=
+      pair.baseline.score.score.unsupportedSubstantiveClaims.length;
+    candidateUnsupportedClaims +=
+      pair.candidate.score.score.unsupportedSubstantiveClaims.length;
     if (pair.candidate.score.score.success < pair.baseline.score.score.success)
       failures.push(`pairwise_accuracy_loss:${identity}`);
   }
@@ -357,6 +363,11 @@ export const evaluatePromotionGates = (
   const contextByteReduction = safeReduction(candidateBytes, baselineBytes);
   const claimLinkageRate =
     substantiveClaims > 0 ? linkedSupportedClaims / substantiveClaims : null;
+  const unsupportedClaimsComparable =
+    validPairCount > 0 && validPairCount === pairs.length;
+  const unsupportedClaimReduction = unsupportedClaimsComparable
+    ? safeReduction(candidateUnsupportedClaims, baselineUnsupportedClaims)
+    : null;
   if (
     baselineSuccessRate === null ||
     candidateSuccessRate === null ||
@@ -369,6 +380,14 @@ export const evaluatePromotionGates = (
     failures.push("context_byte_reduction_below_0.35_or_zero_denominator");
   if (claimLinkageRate === null || claimLinkageRate < 0.95)
     failures.push("claim_linkage_below_0.95_or_zero_denominator");
+  if (
+    unsupportedClaimReduction === null ||
+    candidateUnsupportedClaims >= baselineUnsupportedClaims
+  ) {
+    failures.push(
+      "unsupported_claims_not_strictly_reduced_or_zero_denominator"
+    );
+  }
   return {
     passed: failures.length === 0,
     pairCount: pairs.length,
@@ -379,6 +398,13 @@ export const evaluatePromotionGates = (
       agentCallReduction,
       contextByteReduction,
       claimLinkageRate,
+      baselineUnsupportedClaims: unsupportedClaimsComparable
+        ? baselineUnsupportedClaims
+        : null,
+      candidateUnsupportedClaims: unsupportedClaimsComparable
+        ? candidateUnsupportedClaims
+        : null,
+      unsupportedClaimReduction,
     },
   };
 };

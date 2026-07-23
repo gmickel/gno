@@ -22,9 +22,13 @@ export interface ContextCapsuleBuildInput {
   categories?: string[];
   author?: string;
   lang?: string;
+  intent?: string;
+  exclude?: string[];
+  minScore?: number;
   since?: string;
   until?: string;
   graph?: boolean;
+  noRerank?: boolean;
   limit?: number;
   candidateLimit?: number;
   budgetTokens: number;

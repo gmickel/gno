@@ -37,9 +37,8 @@ Deliver define claim verification semantics and deterministic hygiene as one imp
 
 
 ## Done summary
-TBD
-
+Defined deterministic, Capsule-bound claim verification: exact UTF-16 spans, strict freshness and evidence identity, four-state semantic contract, 100% coverage abstention, bounded citation hygiene, and closed Zod/JSON schemas.
 ## Evidence
-- Commits:
-- Tests:
+- Commits: 90bacb5
+- Tests: bun test test/pipeline/claim-verification.test.ts test/spec/schemas/claim-verification.test.ts test/pipeline/answer.test.ts (26 pass), bun run lint:check, bun test test/spec/schemas (213 pass, worker)
 - PRs:

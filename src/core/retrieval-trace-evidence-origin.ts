@@ -130,6 +130,9 @@ export class RetrievalTraceEvidenceOrigins {
     for (const run of runs.filter(({ kind }) => kind === "get")) {
       this.addStoredFallback(run.runId, run.payload);
     }
+    for (const run of runs.filter(({ kind }) => kind === "context")) {
+      this.addStoredFallback(run.runId, run.payload);
+    }
   }
 
   group(

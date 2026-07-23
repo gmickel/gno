@@ -5,8 +5,14 @@
  * @module src/pipeline/types
  */
 
+import type {
+  ContextCapsuleV1,
+  ContextCapsuleVerification,
+} from "../core/context-capsule";
 import type { RetrievalTraceSession } from "../core/retrieval-trace-session";
 import type { StoreResult } from "../store/types";
+import type { ClaimVerificationResult } from "./claim-verification";
+import type { SemanticVerificationCapability } from "./claim-verifier";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Search Result Types
@@ -239,6 +245,12 @@ export type AskOptions = HybridSearchOptions & {
   noAnswer?: boolean;
   /** Max tokens for answer */
   maxAnswerTokens?: number;
+  /** Verify generated claims against a closed Context Capsule. */
+  verify?: boolean;
+  /** Global Context Capsule budget used by verified Ask. */
+  contextBudgetTokens?: number;
+  /** Optional explicit byte budget used by verified Ask. */
+  contextBudgetBytes?: number;
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -400,6 +412,7 @@ export interface CitationTraceMetadata {
 }
 
 export interface Citation {
+  evidenceId?: string;
   docid: string;
   uri: string;
   startLine?: number;
@@ -438,6 +451,17 @@ export interface AskMeta {
   answerGenerated?: boolean;
   totalResults?: number;
   answerContext?: AnswerContextExplain;
+  verificationRequested?: boolean;
+  abstained?: boolean;
+}
+
+export interface AskVerification {
+  schemaVersion: "1.0";
+  mode: "closed_capsule";
+  capsule: ContextCapsuleV1;
+  freshness: ContextCapsuleVerification;
+  claims: ClaimVerificationResult;
+  semantic: SemanticVerificationCapability;
 }
 
 /** Ask command result */
@@ -449,6 +473,7 @@ export interface AskResult {
   citations?: Citation[];
   results: SearchResult[];
   meta: AskMeta;
+  verification?: AskVerification;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

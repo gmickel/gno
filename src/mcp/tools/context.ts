@@ -2,7 +2,11 @@
 
 import type { RetrievalTraceSession } from "../../core/retrieval-trace-session";
 import type { ModelLease } from "../../llm/nodeLlamaCpp/lifecycle";
-import type { EmbeddingPort, RerankPort } from "../../llm/types";
+import type {
+  EmbeddingPort,
+  GenerationPort,
+  RerankPort,
+} from "../../llm/types";
 import type { VectorIndexPort } from "../../store/vector";
 import type { ToolContext } from "../server";
 import type { ToolResult } from "./index";
@@ -85,13 +89,15 @@ const runContextTool = async (
 
 interface McpModelPorts {
   embedPort: EmbeddingPort | null;
+  genPort: GenerationPort | null;
   rerankPort: RerankPort | null;
   vectorIndex: VectorIndexPort | null;
   dispose(): Promise<void>;
 }
 
-interface McpModelPortFactory {
+export interface McpModelPortFactory {
   createEmbeddingPort: LlmAdapter["createEmbeddingPort"];
+  createGenerationPort?: LlmAdapter["createGenerationPort"];
   createRerankPort: LlmAdapter["createRerankPort"];
   acquireModelLease?: LlmAdapter["acquireModelLease"];
 }
@@ -109,7 +115,8 @@ export const disposeContextModelOwners = async (
 export const createMcpModelPorts = async (
   context: ToolContext,
   collection?: string,
-  factoryOverride?: McpModelPortFactory
+  factoryOverride?: McpModelPortFactory,
+  options: { generation?: boolean } = {}
 ): Promise<McpModelPorts> => {
   const llm = new LlmAdapter(context.config);
   const factory = factoryOverride ?? llm;
@@ -125,6 +132,7 @@ export const createMcpModelPorts = async (
   let embedPort: EmbeddingPort | null = null;
   let ownedEmbedPort: EmbeddingPort | null = null;
   let rerankPort: RerankPort | null = null;
+  let genPort: GenerationPort | null = null;
   let vectorIndex: VectorIndexPort | null = null;
   try {
     const embedResult = await factory.createEmbeddingPort(embedUri, {
@@ -152,14 +160,26 @@ export const createMcpModelPorts = async (
       }
     );
     if (rerankResult.ok) rerankPort = rerankResult.value;
+    if (options.generation && factory.createGenerationPort) {
+      const genResult = await factory.createGenerationPort(
+        resolveModelUri(context.config, "gen", undefined, collection),
+        {
+          policy,
+          onProgress: (value) => progress("gen", value),
+        }
+      );
+      if (genResult.ok) genPort = genResult.value;
+    }
     return {
       embedPort,
+      genPort,
       rerankPort,
       vectorIndex,
       async dispose() {
         await disposeContextModelOwners(
-          [ownedEmbedPort, rerankPort].filter(
-            (port): port is EmbeddingPort | RerankPort => port !== null
+          [ownedEmbedPort, rerankPort, genPort].filter(
+            (port): port is EmbeddingPort | RerankPort | GenerationPort =>
+              port !== null
           ),
           lease
         );
@@ -167,8 +187,9 @@ export const createMcpModelPorts = async (
     };
   } catch (error) {
     await disposeContextModelOwners(
-      [ownedEmbedPort, rerankPort].filter(
-        (port): port is EmbeddingPort | RerankPort => port !== null
+      [ownedEmbedPort, rerankPort, genPort].filter(
+        (port): port is EmbeddingPort | RerankPort | GenerationPort =>
+          port !== null
       ),
       lease
     );

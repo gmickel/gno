@@ -59,10 +59,14 @@ export const contextCapsuleRetrievalSchema = z
       .object({
         author: z.string().min(1).max(256).nullable(),
         lang: z.string().min(1).max(64).nullable(),
+        intent: z.string().min(1).max(16_384).nullable().optional(),
+        exclude: z.array(nonEmptyText.max(256)).max(128).optional(),
+        minScore: z.number().min(0).max(1).nullable().optional(),
         queryModes: z.array(queryModeSchema).max(128),
         limit: z.number().int().positive(),
         candidateLimit: z.number().int().positive(),
         graphRequested: z.boolean(),
+        rerankRequested: z.boolean().optional(),
       })
       .strict(),
     capabilityStates: z

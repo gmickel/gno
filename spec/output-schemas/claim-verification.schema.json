@@ -1,0 +1,291 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "gno://schemas/claim-verification@1.0",
+  "title": "GNO Claim Verification Result",
+  "description": "Deterministic claim spans, Capsule-bound evidence, semantic verdicts, coverage, and abstention.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "coordinateSpace",
+    "capsuleId",
+    "answerHash",
+    "coverageThreshold",
+    "claims",
+    "rejectedCitations",
+    "coverage",
+    "answerStatus",
+    "abstained",
+    "abstentionReason",
+    "abstentionText"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "1.0" },
+    "coordinateSpace": { "const": "utf16_code_units" },
+    "capsuleId": { "$ref": "#/definitions/sha256" },
+    "answerHash": { "$ref": "#/definitions/sha256" },
+    "coverageThreshold": { "const": 1 },
+    "claims": {
+      "type": "array",
+      "maxItems": 256,
+      "items": { "$ref": "#/definitions/claim" }
+    },
+    "rejectedCitations": {
+      "type": "array",
+      "maxItems": 256,
+      "items": { "$ref": "#/definitions/rejectedCitation" }
+    },
+    "coverage": { "$ref": "#/definitions/coverage" },
+    "answerStatus": { "enum": ["verified", "abstained"] },
+    "abstained": { "type": "boolean" },
+    "abstentionReason": {
+      "enum": [
+        "contradiction_detected",
+        "coverage_below_threshold",
+        "no_substantive_claims",
+        "citation_hygiene_failed",
+        null
+      ]
+    },
+    "abstentionText": { "type": ["string", "null"] }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "abstained": { "const": false } } },
+      "then": {
+        "properties": {
+          "answerStatus": { "const": "verified" },
+          "abstentionReason": { "type": "null" },
+          "abstentionText": { "type": "null" },
+          "rejectedCitations": { "type": "array", "maxItems": 0 },
+          "claims": {
+            "type": "array",
+            "not": {
+              "contains": {
+                "type": "object",
+                "required": ["rejectedCitations"],
+                "properties": {
+                  "rejectedCitations": {
+                    "type": "array",
+                    "minItems": 1
+                  }
+                }
+              }
+            }
+          },
+          "coverage": {
+            "type": "object",
+            "properties": {
+              "totalClaims": { "type": "integer", "minimum": 1 },
+              "supportedRatio": { "const": 1 },
+              "contradictedClaims": { "const": 0 },
+              "insufficientClaims": { "const": 0 },
+              "uncertainClaims": { "const": 0 }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "abstained": { "const": true } } },
+      "then": {
+        "properties": {
+          "answerStatus": { "const": "abstained" },
+          "abstentionReason": { "type": "string" },
+          "abstentionText": { "type": "string", "minLength": 1 }
+        }
+      }
+    }
+  ],
+  "definitions": {
+    "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "evidenceReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "evidenceId",
+        "uri",
+        "startLine",
+        "endLine",
+        "text",
+        "sourceHash",
+        "mirrorHash",
+        "passageHash"
+      ],
+      "properties": {
+        "evidenceId": { "$ref": "#/definitions/sha256" },
+        "uri": {
+          "type": "string",
+          "maxLength": 2048,
+          "pattern": "^gno://"
+        },
+        "startLine": { "type": "integer", "minimum": 1 },
+        "endLine": { "type": "integer", "minimum": 1 },
+        "text": { "type": "string", "minLength": 1 },
+        "sourceHash": { "$ref": "#/definitions/sha256" },
+        "mirrorHash": { "$ref": "#/definitions/sha256" },
+        "passageHash": { "$ref": "#/definitions/sha256" }
+      }
+    },
+    "rejectedCitation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["marker", "start", "end", "evidenceId", "reason"],
+      "properties": {
+        "marker": { "type": "string", "minLength": 1 },
+        "start": { "type": "integer", "minimum": 0 },
+        "end": { "type": "integer", "minimum": 1 },
+        "evidenceId": {
+          "oneOf": [{ "$ref": "#/definitions/sha256" }, { "type": "null" }]
+        },
+        "reason": {
+          "enum": [
+            "malformed_citation",
+            "out_of_capsule",
+            "freshness_unavailable",
+            "freshness_receipt_invalid",
+            "freshness_receipt_mismatch",
+            "evidence_stale",
+            "evidence_missing",
+            "orphan_citation"
+          ]
+        }
+      }
+    },
+    "claim": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "claimId",
+        "text",
+        "start",
+        "end",
+        "status",
+        "confidence",
+        "rationaleCode",
+        "verifierFingerprint",
+        "evidence",
+        "rejectedCitations"
+      ],
+      "properties": {
+        "claimId": { "$ref": "#/definitions/sha256" },
+        "text": { "type": "string", "minLength": 1 },
+        "start": { "type": "integer", "minimum": 0 },
+        "end": { "type": "integer", "minimum": 1 },
+        "status": {
+          "enum": ["supported", "contradicted", "insufficient", "uncertain"]
+        },
+        "confidence": {
+          "oneOf": [
+            { "type": "number", "minimum": 0, "maximum": 1 },
+            { "type": "null" }
+          ]
+        },
+        "rationaleCode": {
+          "enum": [
+            "semantic_entailment",
+            "semantic_contradiction",
+            "no_valid_evidence",
+            "semantic_judgment_unavailable"
+          ]
+        },
+        "verifierFingerprint": {
+          "oneOf": [{ "$ref": "#/definitions/sha256" }, { "type": "null" }]
+        },
+        "evidence": {
+          "type": "array",
+          "maxItems": 256,
+          "items": { "$ref": "#/definitions/evidenceReference" }
+        },
+        "rejectedCitations": {
+          "type": "array",
+          "maxItems": 256,
+          "items": { "$ref": "#/definitions/rejectedCitation" }
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": { "enum": ["supported", "contradicted"] }
+            }
+          },
+          "then": {
+            "properties": {
+              "confidence": { "type": "number" },
+              "verifierFingerprint": { "$ref": "#/definitions/sha256" },
+              "evidence": { "type": "array", "minItems": 1 }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "status": { "const": "supported" } } },
+          "then": {
+            "properties": {
+              "rationaleCode": { "const": "semantic_entailment" }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "status": { "const": "contradicted" } } },
+          "then": {
+            "properties": {
+              "rationaleCode": { "const": "semantic_contradiction" }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": { "enum": ["insufficient", "uncertain"] }
+            }
+          },
+          "then": {
+            "properties": {
+              "confidence": { "type": "null" },
+              "verifierFingerprint": { "type": "null" }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "status": { "const": "insufficient" } } },
+          "then": {
+            "properties": {
+              "rationaleCode": { "const": "no_valid_evidence" },
+              "evidence": { "type": "array", "maxItems": 0 }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "status": { "const": "uncertain" } } },
+          "then": {
+            "properties": {
+              "rationaleCode": { "const": "semantic_judgment_unavailable" },
+              "evidence": { "type": "array", "minItems": 1 }
+            }
+          }
+        }
+      ]
+    },
+    "coverage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "totalClaims",
+        "supportedClaims",
+        "contradictedClaims",
+        "insufficientClaims",
+        "uncertainClaims",
+        "supportedRatio"
+      ],
+      "properties": {
+        "totalClaims": { "type": "integer", "minimum": 0 },
+        "supportedClaims": { "type": "integer", "minimum": 0 },
+        "contradictedClaims": { "type": "integer", "minimum": 0 },
+        "insufficientClaims": { "type": "integer", "minimum": 0 },
+        "uncertainClaims": { "type": "integer", "minimum": 0 },
+        "supportedRatio": { "type": "number", "minimum": 0, "maximum": 1 }
+      }
+    }
+  }
+}

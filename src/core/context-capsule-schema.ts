@@ -29,6 +29,14 @@ const positiveIntegerSchema = z.number().int().positive();
 const nonNegativeIntegerSchema = z.number().int().nonnegative();
 const COLLECTION_PATTERN = /^[a-z0-9][a-z0-9_-]{0,63}$/;
 const collectionSchema = nonEmptyTextSchema.max(64).regex(COLLECTION_PATTERN);
+const retrievalSourceSchema = z.enum([
+  "bm25",
+  "vector",
+  "bm25_variant",
+  "vector_variant",
+  "hyde",
+  "graph",
+]);
 const compareCodeUnits = (left: string, right: string): number =>
   left < right ? -1 : left > right ? 1 : 0;
 
@@ -244,6 +252,15 @@ export const contextCapsuleEvidenceSchema = z
     contextIds: z.array(sha256Schema).max(128),
     retrievalRank: positiveIntegerSchema,
     selectionRank: positiveIntegerSchema,
+    retrievalSources: z
+      .array(retrievalSourceSchema)
+      .min(1)
+      .max(6)
+      .refine((sources) => new Set(sources).size === sources.length, {
+        message: "retrievalSources must be unique",
+      })
+      .optional(),
+    graphExpanded: z.boolean().optional(),
     facets: z.array(nonEmptyTextSchema.max(512)).max(128),
     trust: z.literal("untrusted"),
     egress: z.enum([

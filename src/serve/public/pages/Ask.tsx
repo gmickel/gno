@@ -22,6 +22,10 @@ import {
 } from "../components/ai-elements/sources";
 import { AIModelSelector } from "../components/AIModelSelector";
 import {
+  type AskVerification,
+  AskVerificationPanel,
+} from "../components/AskVerificationPanel";
+import {
   ThoroughnessSelector,
   type Thoroughness,
 } from "../components/ThoroughnessSelector";
@@ -57,6 +61,7 @@ interface PageProps {
 }
 
 interface Citation {
+  evidenceId?: string;
   docid: string;
   uri: string;
   startLine?: number;
@@ -88,12 +93,15 @@ interface AskResponse {
     vectorsUsed: boolean;
     answerGenerated: boolean;
     totalResults: number;
+    verificationRequested?: boolean;
+    abstained?: boolean;
     queryModes?: {
       term: number;
       intent: number;
       hyde: boolean;
     };
   };
+  verification?: AskVerification;
 }
 
 interface Capabilities {
@@ -139,7 +147,7 @@ function renderAnswer(
   const parts: React.ReactNode[] = [];
   let key = 0;
 
-  const citationRegex = /\[(\d+)\]/g;
+  const citationRegex = /\[(?:evidence:([a-f0-9]{64})|(\d+))\]/g;
   let lastIndex = 0;
   let match: RegExpExecArray | null;
 
@@ -149,8 +157,13 @@ function renderAnswer(
       parts.push(answer.slice(lastIndex, match.index));
     }
 
-    const citationNum = Number(match[1]);
-    const citation = citations[citationNum - 1];
+    const evidenceId = match[1];
+    const numericCitation = match[2] ? Number(match[2]) : undefined;
+    const citationIndex = evidenceId
+      ? citations.findIndex((citation) => citation.evidenceId === evidenceId)
+      : (numericCitation ?? 0) - 1;
+    const citationNum = citationIndex + 1;
+    const citation = citations[citationIndex];
 
     if (citation) {
       parts.push(
@@ -186,6 +199,7 @@ export default function Ask({ navigate }: PageProps) {
   const [collections, setCollections] = useState<Collection[]>([]);
   const [thoroughness, setThoroughness] = useState<Thoroughness>("balanced");
   const [activePreset, setActivePreset] = useState("slim-tuned");
+  const [verify, setVerify] = useState(false);
 
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [selectedCollection, setSelectedCollection] = useState("");
@@ -318,6 +332,7 @@ export default function Ask({ navigate }: PageProps) {
       const requestBody: Record<string, unknown> = {
         query: currentQuery,
         limit: 5,
+        verify,
       };
 
       if (selectedCollection) {
@@ -394,6 +409,7 @@ export default function Ask({ navigate }: PageProps) {
       tagsInput,
       thoroughness,
       until,
+      verify,
     ]
   );
 
@@ -443,6 +459,7 @@ export default function Ask({ navigate }: PageProps) {
     parseTagsCsv(tagsInput).length > 0
       ? `${tagMode}:${parseTagsCsv(tagsInput).join(",")}`
       : null,
+    verify ? "verified" : null,
   ].filter((pill): pill is string => Boolean(pill));
 
   return (
@@ -474,6 +491,16 @@ export default function Ask({ navigate }: PageProps) {
               onChange={setThoroughness}
               value={thoroughness}
             />
+
+            <Button
+              aria-pressed={verify}
+              onClick={() => setVerify((value) => !value)}
+              size="sm"
+              type="button"
+              variant={verify ? "default" : "outline"}
+            >
+              Verify
+            </Button>
 
             <div className="h-6 w-px bg-border/40" />
 
@@ -878,8 +905,19 @@ export default function Ask({ navigate }: PageProps) {
                         </Sources>
                       )}
 
+                    {entry.response.verification && (
+                      <AskVerificationPanel
+                        navigate={navigate}
+                        verification={entry.response.verification}
+                      />
+                    )}
+
                     <div className="flex items-center gap-2 text-muted-foreground/60 text-xs">
-                      <span>{entry.response.results.length} results</span>
+                      <span>
+                        {entry.response.verification
+                          ? `${entry.response.verification.capsule.evidence.length} evidence spans`
+                          : `${entry.response.results.length} results`}
+                      </span>
                       {entry.response.meta.vectorsUsed && (
                         <Badge
                           className="font-mono text-[9px]"

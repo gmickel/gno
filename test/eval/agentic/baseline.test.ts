@@ -26,6 +26,11 @@ import {
   scoreTrajectory,
 } from "../../../evals/agentic/scoring";
 import { validateAgenticSchema } from "../../../evals/agentic/validation";
+import {
+  evaluateVerifiedAskPromotion,
+  type VerifiedAskPromotionArtifact,
+  validateVerifiedAskPromotionArtifact,
+} from "../../../evals/agentic/verified-ask-outcome";
 
 const BASELINE_ROOT = join(AGENTIC_FIXTURE_ROOT, "baseline", "fixture-agent");
 
@@ -141,7 +146,30 @@ describe("committed authoritative agentic baseline", () => {
         agentCallReduction: 0.4893617021276596,
         contextByteReduction: 0.4412024014442252,
         claimLinkageRate: 1,
+        baselineUnsupportedClaims: 2,
+        candidateUnsupportedClaims: 0,
+        unsupportedClaimReduction: 1,
       },
+    });
+    const claimTotals = (adapterId: string) =>
+      report.scores
+        .filter((record) => record.adapterId === adapterId)
+        .reduce(
+          (totals, record) => ({
+            substantive: totals.substantive + record.score.substantiveClaims,
+            unsupported:
+              totals.unsupported +
+              record.score.unsupportedSubstantiveClaims.length,
+          }),
+          { substantive: 0, unsupported: 0 }
+        );
+    expect(claimTotals("gno-mcp")).toEqual({
+      substantive: 44,
+      unsupported: 2,
+    });
+    expect(claimTotals("capsule")).toEqual({
+      substantive: 44,
+      unsupported: 0,
     });
   });
 
@@ -152,5 +180,47 @@ describe("committed authoritative agentic baseline", () => {
     expect(observations).not.toMatch(/\/Users\/|\/private\/|\/var\/folders\//);
     expect(observations).toContain('"<temp>"');
     expect(canonicalJson(JSON.parse(observations))).toBeTruthy();
+  });
+
+  test("contains the separate attributable verified Ask promotion", async () => {
+    const artifact = (await Bun.file(
+      join(BASELINE_ROOT, "verified-ask-promotion.json")
+    ).json()) as VerifiedAskPromotionArtifact;
+    const report = (await Bun.file(
+      join(BASELINE_ROOT, "report.json")
+    ).json()) as BenchmarkReport;
+    const fixture = await loadAgenticFixture();
+    expect(artifact.benchmarkId).toBe("verified-ask-outcome@1");
+    expect(artifact.receipts).toHaveLength(44);
+    expect(artifact.scores).toHaveLength(44);
+    expect(artifact.environment.git).toEqual({
+      commit: report.environment.git.commit!,
+      dirty: false,
+    });
+    expect(
+      evaluateVerifiedAskPromotion(
+        artifact.receipts,
+        artifact.scores,
+        fixture.oracles
+      )
+    ).toEqual(artifact.promotion);
+    expect(
+      validateVerifiedAskPromotionArtifact(artifact, fixture.oracles)
+    ).toEqual([]);
+    expect(artifact.promotion).toMatchObject({
+      passed: true,
+      pairCount: 22,
+      failures: [],
+      metrics: {
+        baselineAnswerAccuracy: 18 / 22,
+        candidateAnswerAccuracy: 18 / 22,
+        baselineUnsupportedSubstantiveClaims: 4,
+        candidateUnsupportedSubstantiveClaims: 0,
+        unsupportedSubstantiveClaimReduction: 1,
+      },
+    });
+    expect(
+      await Bun.file(join(BASELINE_ROOT, "verified-ask-promotion.md")).text()
+    ).toContain("Baseline: production raw Ask");
   });
 });

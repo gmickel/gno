@@ -226,6 +226,7 @@
         "completed",
         "supportedClaims",
         "unsupportedClaims",
+        "unsupportedSubstantiveClaims",
         "missingRequiredClaims",
         "forbiddenEvidenceClaims",
         "invalidOutputs",
@@ -247,6 +248,10 @@
         "completed": { "type": "boolean" },
         "supportedClaims": { "type": "array", "items": { "type": "string" } },
         "unsupportedClaims": { "type": "array", "items": { "type": "string" } },
+        "unsupportedSubstantiveClaims": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
         "missingRequiredClaims": {
           "type": "array",
           "items": { "type": "string" }
@@ -314,14 +319,26 @@
             "candidateSuccessRate",
             "agentCallReduction",
             "contextByteReduction",
-            "claimLinkageRate"
+            "claimLinkageRate",
+            "baselineUnsupportedClaims",
+            "candidateUnsupportedClaims",
+            "unsupportedClaimReduction"
           ],
           "properties": {
             "baselineSuccessRate": { "$ref": "#/definitions/nullableNumber" },
             "candidateSuccessRate": { "$ref": "#/definitions/nullableNumber" },
             "agentCallReduction": { "$ref": "#/definitions/nullableNumber" },
             "contextByteReduction": { "$ref": "#/definitions/nullableNumber" },
-            "claimLinkageRate": { "$ref": "#/definitions/nullableNumber" }
+            "claimLinkageRate": { "$ref": "#/definitions/nullableNumber" },
+            "baselineUnsupportedClaims": {
+              "oneOf": [{ "type": "integer", "minimum": 0 }, { "type": "null" }]
+            },
+            "candidateUnsupportedClaims": {
+              "oneOf": [{ "type": "integer", "minimum": 0 }, { "type": "null" }]
+            },
+            "unsupportedClaimReduction": {
+              "$ref": "#/definitions/nullableNumber"
+            }
           }
         }
       }

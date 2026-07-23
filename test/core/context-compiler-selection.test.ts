@@ -54,6 +54,8 @@ const candidate = (
     text,
     facets: [name],
     retrievalRank: 1,
+    retrievalSources: ["bm25"],
+    graphExpanded: false,
     value: { contextIds: [] },
     ...fields,
   };
@@ -385,6 +387,12 @@ const capsuleProjection = (
       contextIds: item.value.contextIds,
       retrievalRank: item.retrievalRank,
       selectionRank: index + 1,
+      ...(item.retrievalSources === undefined
+        ? {}
+        : { retrievalSources: item.retrievalSources }),
+      ...(item.graphExpanded === undefined
+        ? {}
+        : { graphExpanded: item.graphExpanded }),
       facets: item.facets,
       trust: "untrusted" as const,
       egress: "unavailable" as const,

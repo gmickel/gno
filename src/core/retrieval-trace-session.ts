@@ -128,7 +128,16 @@ const evidenceFromCapsule = (
     startLine: item.startLine,
     endLine: item.endLine,
     passageHash: item.passageHash,
-    rank: item.retrievalRank,
+    ...(item.selectionRank === undefined ? {} : { rank: item.selectionRank }),
+    ...(item.retrievalRank === undefined
+      ? {}
+      : { plannerRank: item.retrievalRank }),
+    ...(item.retrievalSources === undefined
+      ? {}
+      : { sources: item.retrievalSources }),
+    ...(item.graphExpanded === undefined
+      ? {}
+      : { graphExpanded: item.graphExpanded }),
   }));
 
 export class RetrievalTraceSession {
@@ -324,7 +333,11 @@ export class RetrievalTraceSession {
     });
     if (!run.ok) return this.softenWriteFailure();
     this.persistedRecords += 1;
-    return this.appendEvent("context", payload, runId);
+    const appended = await this.appendEvent("context", payload, runId);
+    if (appended.ok && appended.value !== "disabled") {
+      this.evidenceOrigins.addFallback(runId, payload.evidence);
+    }
+    return appended;
   }
 
   async recordEvidence(

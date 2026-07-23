@@ -84,6 +84,17 @@ const normalizePayload = (
         value.retrieval.request.lang === null
           ? null
           : normalizeText(value.retrieval.request.lang),
+      ...(value.retrieval.request.intent === undefined
+        ? {}
+        : {
+            intent:
+              value.retrieval.request.intent === null
+                ? null
+                : normalizeText(value.retrieval.request.intent),
+          }),
+      ...(value.retrieval.request.exclude === undefined
+        ? {}
+        : { exclude: normalizeSet(value.retrieval.request.exclude) }),
       queryModes: value.retrieval.request.queryModes.map((mode) => ({
         ...mode,
         text: normalizeText(mode.text),
@@ -110,6 +121,13 @@ const normalizePayload = (
     documentDate: normalizeDocumentDate(item.documentDate),
     observedAt: normalizeDate(item.observedAt),
     contextIds: normalizeSet(item.contextIds),
+    ...(item.retrievalSources === undefined
+      ? {}
+      : {
+          retrievalSources: [...new Set(item.retrievalSources)].sort(
+            compareCodeUnits
+          ),
+        }),
     facets: normalizeSet(item.facets),
   })),
   guidance: {

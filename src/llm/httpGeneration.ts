@@ -7,7 +7,10 @@
 
 import type { GenerationPort, GenParams, LlmResult } from "./types";
 
-import { inferenceFailedError } from "./errors";
+import {
+  inferenceFailedError,
+  structuredOutputUnavailableError,
+} from "./errors";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -42,6 +45,7 @@ export class HttpGeneration implements GenerationPort {
   private readonly apiUrl: string;
   private readonly modelName: string;
   readonly modelUri: string;
+  readonly structuredOutput = "none" as const;
 
   constructor(modelUri: string) {
     this.modelUri = modelUri;
@@ -63,6 +67,12 @@ export class HttpGeneration implements GenerationPort {
     prompt: string,
     params?: GenParams
   ): Promise<LlmResult<string>> {
+    if (params?.jsonSchema) {
+      return {
+        ok: false,
+        error: structuredOutputUnavailableError(this.modelUri),
+      };
+    }
     try {
       const response = await fetch(this.apiUrl, {
         method: "POST",

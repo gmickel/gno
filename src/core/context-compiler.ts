@@ -64,8 +64,8 @@ export interface ContextRetrievalRequest extends HybridSearchOptions {
 export interface ContextRetrievalCandidate {
   result: SearchResult;
   retrievalRank: number;
-  retrievalSources: FusionSource[];
-  graphExpanded: boolean;
+  retrievalSources?: FusionSource[];
+  graphExpanded?: boolean;
   contextIds: string[];
   observedAt: string | null;
 }
@@ -97,9 +97,13 @@ export interface ContextCompilerInput {
   categories?: string[];
   author?: string;
   lang?: string;
+  intent?: string;
+  exclude?: string[];
+  minScore?: number;
   since?: string;
   until?: string;
   graph?: boolean;
+  noRerank?: boolean;
   limit?: number;
   candidateLimit?: number;
   /** Frozen once by the caller; never defaulted from wall-clock time. */
@@ -164,16 +168,9 @@ const compareCodeUnits = (left: string, right: string): number => {
 };
 
 const plannerMeta = (
-  result: SearchResult,
-  fallbackRank: number
-): SearchResultPlannerMetadata =>
-  result[SEARCH_RESULT_PLANNER_METADATA] ?? {
-    retrievalRank: fallbackRank,
-    mirrorHash: result.conversion?.mirrorHash ?? "",
-    seq: 0,
-    sources: [],
-    graphExpanded: false,
-  };
+  result: SearchResult
+): SearchResultPlannerMetadata | undefined =>
+  result[SEARCH_RESULT_PLANNER_METADATA];
 
 const compareSearchResults = (
   left: SearchResult,
@@ -219,7 +216,9 @@ const referenceFromResult = (
 const normalizeMaterialized = <T>(
   draft: ContextMaterializedDraft<T>,
   facets: string[],
-  retrievalRank: number
+  retrievalRank: number,
+  retrievalSources: FusionSource[] | undefined,
+  graphExpanded: boolean | undefined
 ): MaterializedContextCandidate<T> => {
   const text = draft.text;
   if (
@@ -250,6 +249,10 @@ const normalizeMaterialized = <T>(
     text,
     facets,
     retrievalRank,
+    ...(retrievalSources === undefined
+      ? {}
+      : { retrievalSources: [...retrievalSources].sort(compareCodeUnits) }),
+    ...(graphExpanded === undefined ? {} : { graphExpanded }),
     value: draft.value,
   };
 };
@@ -352,10 +355,13 @@ export const planContextEvidence = async <T, P>(
         categories: input.categories,
         author: input.author,
         lang: input.lang,
+        intent: input.intent,
+        exclude: input.exclude,
+        minScore: input.minScore,
         since: temporalRange.since,
         until: temporalRange.until,
         graph: hasRerankBudget ? input.graph : false,
-        noRerank: hasRerankBudget ? undefined : true,
+        noRerank: input.noRerank || !hasRerankBudget ? true : undefined,
         limit: resultLimit === undefined ? undefined : Math.max(1, resultLimit),
         candidateLimit:
           rerankLimit === undefined ? undefined : Math.max(1, rerankLimit),
@@ -377,7 +383,7 @@ export const planContextEvidence = async <T, P>(
   const results = decoratedResults
     .map((result, index) => ({
       result,
-      retrievalRank: plannerMeta(result, index + 1).retrievalRank,
+      retrievalRank: plannerMeta(result)?.retrievalRank ?? index + 1,
     }))
     .sort(
       (left, right) =>
@@ -407,8 +413,8 @@ export const planContextEvidence = async <T, P>(
   const referencesByCandidate: ContextCandidateReference[] = [];
 
   for (const [index, result] of results.entries()) {
-    const meta = plannerMeta(result, index + 1);
-    for (const source of meta.sources) retrievalSources.add(source);
+    const meta = plannerMeta(result);
+    for (const source of meta?.sources ?? []) retrievalSources.add(source);
     const retrievalReference = referenceFromResult(result);
     if (!isContextUriInScope(result.uri, indexName, collections, uriPrefix)) {
       for (const facet of facetPlan) {
@@ -431,9 +437,13 @@ export const planContextEvidence = async <T, P>(
     }
     plannedCandidates.push({
       result,
-      retrievalRank: meta.retrievalRank,
-      retrievalSources: [...meta.sources].sort(compareCodeUnits),
-      graphExpanded: meta.graphExpanded,
+      retrievalRank: meta?.retrievalRank ?? index + 1,
+      ...(meta === undefined
+        ? {}
+        : {
+            retrievalSources: [...meta.sources].sort(compareCodeUnits),
+            graphExpanded: meta.graphExpanded,
+          }),
       contextIds:
         guidance.idsByResultIdentity.get(
           contextGuidanceResultIdentity(result)
@@ -486,7 +496,9 @@ export const planContextEvidence = async <T, P>(
       normalizeMaterialized(
         outcome.candidate,
         matchedFacets,
-        plannedCandidate.retrievalRank
+        plannedCandidate.retrievalRank,
+        plannedCandidate.retrievalSources,
+        plannedCandidate.graphExpanded
       )
     );
   }
