@@ -26,9 +26,15 @@ Remediate fn-103.3 review findings in the committed three-way demo contract with
 
 
 ## Done summary
-TBD
-
+Hardened the Context Capsule demo contract and generator. Source-run Git provenance
+is now distinct from the later artifact-containing commit; the demo binds exact
+trial, seed, agent, environment, report, and Verified Ask identities. Validation
+parses the delivered Capsule payload, verifies request/index/capabilities/fallbacks,
+recomputes every displayed metric, and rejects full-identity, source, payload, and
+selection drift. The selected task is now explicitly and reproducibly identified
+as the sole cold current-GNO-failure / Capsule-success case in the 24-task cohort.
+Added multi-trial, ambiguity, source-tamper, and resealed artifact-tamper regressions.
 ## Evidence
-- Commits:
-- Tests:
+- Commits: e35d66b
+- Tests: bun run lint:check, bun test test/eval/agentic/context-capsule-demo.test.ts test/eval/agentic/contracts.test.ts, bun test (2860 pass, 1 Windows-only skip, 0 fail)
 - PRs:
