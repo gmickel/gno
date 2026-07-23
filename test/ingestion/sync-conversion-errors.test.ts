@@ -46,7 +46,7 @@ describe("SyncService conversion failure retries", () => {
     await safeRm(tmpDir);
   });
 
-  test("does not retry an unchanged corrupt file", async () => {
+  test("never journals initial or repeated never-successful conversion failures", async () => {
     const relPath = "truncated.pdf";
     await writeFile(join(collectionDir, relPath), "%PDF-1.7\ntruncated");
 
@@ -77,12 +77,22 @@ describe("SyncService conversion failure retries", () => {
     );
 
     const first = await syncService.syncCollection(collection, adapter);
+    const afterFirst = await adapter.listDocumentChanges();
+    expect(afterFirst.ok && afterFirst.value.changes).toEqual([]);
+
+    await writeFile(join(collectionDir, relPath), "%PDF-1.7\nstill truncated");
     const second = await syncService.syncCollection(collection, adapter);
+    const afterSecond = await adapter.listDocumentChanges();
+    expect(afterSecond.ok && afterSecond.value.changes).toEqual([]);
+    const third = await syncService.syncCollection(collection, adapter);
 
     expect(first.filesErrored).toBe(1);
-    expect(second.filesErrored).toBe(0);
-    expect(second.filesUnchanged).toBe(1);
-    expect(convertCalls).toBe(1);
+    expect(second.filesErrored).toBe(1);
+    expect(third.filesErrored).toBe(0);
+    expect(third.filesUnchanged).toBe(1);
+    expect(convertCalls).toBe(2);
+    const afterThird = await adapter.listDocumentChanges();
+    expect(afterThird.ok && afterThird.value.changes).toEqual([]);
 
     const docResult = await adapter.getDocument(collection.name, relPath);
     expect(docResult.ok).toBe(true);

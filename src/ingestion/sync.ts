@@ -725,20 +725,24 @@ export class SyncService {
           // Log but continue - error recording is best-effort
         }
 
-        const previousStructure = await this.readPreviousStructure(
-          store,
-          existing
-        );
-        const structureDelta = diffDocumentStructure(previousStructure, {
-          headings: [],
-          links: [],
-          typedEdges: [],
-          dates: {},
-        }).delta;
+        const hadRetrievableEvidence = Boolean(existing?.mirrorHash);
+        const structureDelta = hadRetrievableEvidence
+          ? diffDocumentStructure(
+              await this.readPreviousStructure(store, existing),
+              {
+                headings: [],
+                links: [],
+                typedEdges: [],
+                dates: {},
+              }
+            ).delta
+          : undefined;
 
         // Upsert document with error info, explicitly clear mirrorHash. This
-        // source/evidence transition is journaled in the same transaction so
-        // saved Capsule freshness checks cannot miss the disappearance.
+        // transition is journaled only when retrievable evidence previously
+        // existed; initial/repeated error placeholders are not evidence
+        // creates. Real evidence disappearance stays in the same transaction
+        // so saved Capsule freshness checks cannot miss it.
         const upsertResult = await store.upsertDocument({
           collection: collection.name,
           relPath: entry.relPath,
@@ -752,7 +756,7 @@ export class SyncService {
           lastErrorMessage: convertResult.error.message,
           ingestVersion: INGEST_VERSION,
           contentTypeRulesFingerprint,
-          changeJournal: { structureDelta },
+          changeJournal: structureDelta ? { structureDelta } : false,
           // mirrorHash intentionally omitted (will be null)
         });
 
