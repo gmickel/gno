@@ -24,9 +24,23 @@ still be rejected without writing, advancing, or notifying.
 
 
 ## Done summary
-TBD
+Replaced saved-Capsule receipt identity CAS with a durable internal
+registration generation.
 
+Migration 019 assigns every existing registration a unique generation above
+the durable global epoch. Every future upsert atomically rewinds scheduler
+high-water, advances the epoch, and assigns that exact generation. Verification
+reads the public registration plus internal generation from one SQLite snapshot
+and persists only when the generation still matches. Delete/recreate and
+same-byte metadata changes therefore reject stale work without writing a
+receipt, advancing the registration, or emitting an outdated notification.
+
+The internal generation remains absent from public registration mapping,
+barrel exports, structured output, and notifications. Deterministic coverage
+changes `local` to `none` via identical-byte delete/recreate during persistence,
+then proves bounded retry honors the current preference and reaches the current
+journal high-water.
 ## Evidence
-- Commits:
-- Tests:
-- PRs:
+- Commits: f510dc9
+- Tests: bun test test/changes/capsule-reverification.test.ts test/store/migrations.test.ts test/store/adapter.test.ts (61 pass, 0 fail), bun test (2848 pass, 1 expected Windows skip, 0 fail), bun run lint:check, bun run typecheck, bun run docs:verify (13 pass, 2 model-cache skips), .flow/bin/flowctl validate --all (110 specs, 319 tasks, valid)
+- PRs: 143
