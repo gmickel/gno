@@ -573,8 +573,10 @@ tools are available only through the explicit `--enable-write` opt-in.
 
 `gno serve` and `gno daemon` also expose this surface as stateful Streamable
 HTTP at `http://127.0.0.1:3000/mcp`. HTTP stays read-only by default.
-Non-loopback binds require an explicit restrictive bearer-token file plus exact
-Host and Origin allowlists; authentication alone never enables mutation tools.
+Authenticated non-loopback access is available through the headless daemon and
+requires an explicit restrictive bearer-token file plus exact Host and Origin
+allowlists; `gno serve` remains loopback-only. Authentication alone never
+enables mutation tools.
 
 [MCP setup guide →](https://gno.sh/docs/MCP/)
 
