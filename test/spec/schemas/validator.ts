@@ -41,6 +41,7 @@ async function loadAllSchemas(): Promise<void> {
     "saved-capsule-reverification",
     "capsule-reverified-event",
     "claim-verification",
+    "publish-artifact",
     "tags-list",
     "links-list",
     "backlinks",

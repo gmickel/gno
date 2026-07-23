@@ -9,6 +9,7 @@ import { resolveDownloadsDir } from "../../src/core/user-dirs";
 import {
   buildEncryptedPublishArtifact,
   buildExportedMetadata,
+  buildPublishArtifact,
   derivePublishArtifactFilename,
   deriveExportedSlug,
   derivePublishSlug,
@@ -64,14 +65,14 @@ describe("publish export helpers", () => {
         {
           author: "Gordon Mickel",
           categories: ["research"],
-          collection: "atlas",
           contentType: "markdown",
           frontmatterDate: "2026-04-10",
           languageHint: "en",
-          relPath: "notes/atlas.md",
         },
         {
           audience: "clients",
+          canonical: "https://example.com/atlas",
+          coverImage: "/Users/gordon/private/cover.png",
           password: "secret",
           tags: ["ignore-me"],
           title: "Atlas",
@@ -81,15 +82,14 @@ describe("publish export helpers", () => {
         [{ source: "frontmatter", tag: "atlas" }]
       )
     ).toEqual({
+      audience: "clients",
       author: "Gordon Mickel",
+      canonical: "https://example.com/atlas",
       categories: ["research"],
-      collection: "atlas",
       contentType: "markdown",
       date: "2026-04-10",
       language: "en",
-      sourceRelPath: "notes/atlas.md",
       tags: ["atlas"],
-      audience: "clients",
       topics: ["launch", "ops"],
     });
   });
@@ -147,21 +147,15 @@ describe("publish export helpers", () => {
   });
 
   it("builds default output paths in the resolved downloads dir when --out is omitted", async () => {
-    const artifact = {
-      version: 1 as const,
-      source: "atlas",
-      exportedAt: "2026-04-10T13:45:00.000Z",
-      spaces: [
-        {
-          routeSlug: "atlas",
-          sourceType: "collection" as const,
-          title: "Atlas",
-          summary: "Atlas summary",
-          visibility: "public" as const,
-          notes: [],
-        },
-      ],
-    };
+    const artifact = buildPublishArtifact({
+      notes: [],
+      routeSlug: "atlas",
+      sourceType: "collection",
+      summary: "Atlas summary",
+      title: "Atlas",
+      visibility: "public",
+    });
+    artifact.exportedAt = "2026-04-10T13:45:00.000Z";
 
     expect(derivePublishArtifactFilename(artifact)).toBe("atlas.json");
     expect(await buildDefaultPublishExportPath(artifact)).toEndWith(
@@ -170,25 +164,19 @@ describe("publish export helpers", () => {
   });
 
   it("formats successful export output with the next step", () => {
+    const artifact = buildPublishArtifact({
+      notes: [],
+      routeSlug: "atlas",
+      sourceType: "collection",
+      summary: "Atlas summary",
+      title: "Atlas",
+      visibility: "public",
+    });
     const formatted = formatPublishExport(
       {
         success: true,
         data: {
-          artifact: {
-            version: 1,
-            source: "atlas",
-            exportedAt: "2026-04-10T00:00:00.000Z",
-            spaces: [
-              {
-                routeSlug: "atlas",
-                sourceType: "collection",
-                title: "Atlas",
-                summary: "Atlas summary",
-                visibility: "public",
-                notes: [],
-              },
-            ],
-          },
+          artifact,
           outPath: "/tmp/atlas.json",
           uploadUrl: "https://gno.sh/studio",
           warnings: [],
@@ -228,7 +216,6 @@ describe("publish export helpers", () => {
       encryptedPayload: encrypted.encryptedPayload,
       routeSlug: "spicy-fajita-pasta",
       secretToken: encrypted.secretToken,
-      source: "gno://recipes/spicy-fajita-pasta.md",
       sourceType: "note",
     });
 

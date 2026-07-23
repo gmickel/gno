@@ -95,6 +95,7 @@ equivalent files fail closed as ambiguous.
 | models pull        | no     | no      | no    | no   | no    | terminal |
 | models clear       | no     | no      | no    | no   | no    | terminal |
 | models path        | yes    | no      | no    | no   | no    | terminal |
+| publish export     | yes    | no      | no    | no   | no    | terminal |
 | cleanup            | no     | no      | no    | no   | no    | terminal |
 | doctor             | yes    | no      | no    | yes  | no    | terminal |
 | mcp                | no     | no      | no    | no   | no    | stdio    |
@@ -1555,6 +1556,42 @@ gno models path [--json]
 ```
 /Users/user/Library/Caches/gno/models
 ```
+
+---
+
+### gno publish export
+
+Build a reader-safe gno.sh artifact from one active collection or document.
+
+**Synopsis:**
+
+```bash
+gno publish export <target> \
+  [--out <path>] \
+  [--visibility public|secret-link|invite-only|encrypted] \
+  [--passphrase <value>] \
+  [--slug <slug>] \
+  [--title <title>] \
+  [--summary <summary>] \
+  [--preview] \
+  [--json]
+```
+
+Public V1 spaces MUST carry a `manifest` conforming to
+[`publish-artifact.schema.json`](./output-schemas/publish-artifact.schema.json).
+The manifest contains schema version `1.0`, a deterministic projection
+revision, generated time, closed public capabilities, sorted published
+documents, relative Markdown locators, SHA-256 content hashes, and
+Capsule-compatible evidence identities. Manifest hashes and revisions MUST be
+derived only from sanitized notes and metadata present in the published
+projection. Local collection paths, document source URIs, unpublished
+documents, and filtered metadata MUST NOT enter artifact bytes or revision
+inputs.
+
+Secret-link and invite-only V1 spaces MUST NOT contain a manifest or agent
+capability field. Encrypted V2 spaces MUST contain only ciphertext parameters,
+the opaque secret token, route slug, source type, and encrypted visibility; no
+plaintext manifest or evidence may appear outside the ciphertext.
 
 ---
 

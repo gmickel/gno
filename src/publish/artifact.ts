@@ -4,9 +4,16 @@
  * @module src/publish/artifact
  */
 
-import type { DocumentRow, TagRow } from "../store/types";
+import type { DocumentRow } from "../store/types";
 
+import { deriveDocid } from "../app/constants";
+import {
+  contextCapsuleEvidenceIdentity,
+  sha256Text,
+} from "../core/context-capsule-validation";
 import { stripFrontmatter } from "../ingestion/frontmatter";
+
+export { buildExportedMetadata } from "./metadata";
 
 export type PublishVisibility =
   | "encrypted"
@@ -22,15 +29,69 @@ export interface PublishArtifactNote {
   title: string;
 }
 
-export interface PublishArtifactSpace {
+export const PUBLIC_PUBLISH_MANIFEST_SCHEMA_VERSION = "1.0" as const;
+
+export const PUBLIC_PUBLISH_CAPABILITIES = {
+  capsuleEvidence: true,
+  exactLineCitations: true,
+  llmsTxt: true,
+  markdownDocuments: true,
+} as const;
+
+export interface PublicPublishEvidence {
+  docid: string;
+  endLine: number;
+  evidenceId: string;
+  locator: string;
+  mirrorHash: string;
+  passageHash: string;
+  sourceHash: string;
+  startLine: number;
+  uri: string;
+}
+
+export interface PublicPublishDocument {
+  byteLength: number;
+  contentHash: string;
+  evidence: PublicPublishEvidence;
+  lineCount: number;
+  markdownPath: string;
+  slug: string;
+  summary: string;
+  title: string;
+}
+
+export interface PublicPublishManifest {
+  capabilities: typeof PUBLIC_PUBLISH_CAPABILITIES;
+  documents: PublicPublishDocument[];
+  generatedAt: string;
+  projectionRevision: string;
+  schemaVersion: typeof PUBLIC_PUBLISH_MANIFEST_SCHEMA_VERSION;
+  visibility: "public";
+}
+
+interface PublishArtifactSpaceBase {
   homeNoteSlug?: string;
   notes: PublishArtifactNote[];
   routeSlug: string;
   sourceType: "note" | "collection";
   summary: string;
   title: string;
-  visibility: PublishVisibility;
 }
+
+export interface PublicPublishArtifactSpace extends PublishArtifactSpaceBase {
+  manifest: PublicPublishManifest;
+  visibility: "public";
+}
+
+export interface RestrictedPublishArtifactSpace extends PublishArtifactSpaceBase {
+  manifest?: never;
+  visibility: "invite-only" | "secret-link";
+}
+
+export type PublishArtifactSpace =
+  | PublicPublishArtifactSpace
+  | RestrictedPublishArtifactSpace;
 
 export interface EncryptedArtifactPayload {
   ciphertext: string;
@@ -71,27 +132,6 @@ export const PUBLISH_VISIBILITY_VALUES = [
 ] as const;
 
 export const MAX_PUBLISH_SLUG_LENGTH = 80;
-
-const ALLOWED_FRONTMATTER_METADATA_KEYS = new Set([
-  "audience",
-  "canonical",
-  "canonicalUrl",
-  "canonicalURL",
-  "coverAlt",
-  "coverImage",
-  "icon",
-  "image",
-  "layout",
-  "publishedAt",
-  "readingTime",
-  "series",
-  "seriesOrder",
-  "status",
-  "subtitle",
-  "theme",
-  "topic",
-  "topics",
-]);
 
 export const isPublishVisibility = (
   value: unknown
@@ -175,108 +215,174 @@ export const deriveExportedSummary = (
   return plain.slice(0, 200).trim();
 };
 
-export const buildExportedMetadata = (
-  doc: Pick<
-    DocumentRow,
-    | "author"
-    | "categories"
-    | "collection"
-    | "contentType"
-    | "frontmatterDate"
-    | "languageHint"
-    | "relPath"
-  >,
-  parsedFrontmatter: Record<string, unknown>,
-  tags: TagRow[]
-) => {
-  const metadata: Record<string, string | string[]> = {};
+const compareCodeUnits = (left: string, right: string): number => {
+  if (left < right) return -1;
+  if (left > right) return 1;
+  return 0;
+};
 
-  if (doc.author) {
-    metadata.author = doc.author;
+const canonicalizeJsonValue = (value: unknown): unknown => {
+  if (Array.isArray(value)) {
+    return value.map(canonicalizeJsonValue);
   }
-  if (doc.contentType) {
-    metadata.contentType = doc.contentType;
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value)
+        .sort(([left], [right]) => compareCodeUnits(left, right))
+        .map(([key, entry]) => [key, canonicalizeJsonValue(entry)])
+    );
   }
-  if (doc.languageHint) {
-    metadata.language = doc.languageHint;
-  }
-  if (doc.frontmatterDate) {
-    metadata.date = doc.frontmatterDate;
-  }
-  if (doc.categories?.length) {
-    metadata.categories = doc.categories;
+  return value;
+};
+
+const canonicalJson = (value: unknown): string =>
+  JSON.stringify(canonicalizeJsonValue(value));
+
+const buildPublicPublishDocument = (
+  routeSlug: string,
+  note: PublishArtifactNote
+): PublicPublishDocument => {
+  const contentHash = sha256Text(note.markdown);
+  const docid = deriveDocid(contentHash);
+  const lineCount = note.markdown.split("\n").length;
+  const markdownPath = `./${note.slug}.md`;
+  const uri = `gno://public/${routeSlug}/${note.slug}.md`;
+  const evidenceBase = {
+    uri,
+    docid,
+    startLine: 1,
+    endLine: lineCount,
+    sourceHash: contentHash,
+    mirrorHash: contentHash,
+    passageHash: contentHash,
+  };
+
+  return {
+    byteLength: new TextEncoder().encode(note.markdown).byteLength,
+    contentHash,
+    evidence: {
+      ...evidenceBase,
+      evidenceId: contextCapsuleEvidenceIdentity(evidenceBase),
+      locator: `${markdownPath}#L1-L${lineCount}`,
+    },
+    lineCount,
+    markdownPath,
+    slug: note.slug,
+    summary: note.summary,
+    title: note.title,
+  };
+};
+
+export const buildPublicPublishManifest = (input: {
+  exportedAt: string;
+  homeNoteSlug?: string;
+  notes: PublishArtifactNote[];
+  routeSlug: string;
+  sourceType: "note" | "collection";
+  summary: string;
+  title: string;
+  visibility: "public";
+}): PublicPublishManifest => {
+  const documents = input.notes
+    .map((note) => buildPublicPublishDocument(input.routeSlug, note))
+    .sort(
+      (left, right) =>
+        compareCodeUnits(left.slug, right.slug) ||
+        compareCodeUnits(left.title, right.title) ||
+        compareCodeUnits(left.contentHash, right.contentHash)
+    );
+  const markdownPaths = documents.map((document) => document.markdownPath);
+  if (new Set(markdownPaths).size !== markdownPaths.length) {
+    throw new Error(
+      `Public publish "${input.routeSlug}" contains duplicate Markdown paths`
+    );
   }
 
-  const tagValues = tags.map((tag) => tag.tag);
-  if (tagValues.length) {
-    metadata.tags = tagValues;
-  }
+  const revisionProjection = {
+    capabilities: PUBLIC_PUBLISH_CAPABILITIES,
+    documents,
+    homeNoteSlug: input.homeNoteSlug ?? null,
+    notes: input.notes
+      .map((note) => ({
+        markdown: note.markdown,
+        metadata: note.metadata ?? {},
+        slug: note.slug,
+        summary: note.summary,
+        title: note.title,
+      }))
+      .sort((left, right) => compareCodeUnits(left.slug, right.slug)),
+    routeSlug: input.routeSlug,
+    sourceType: input.sourceType,
+    summary: input.summary,
+    title: input.title,
+    visibility: input.visibility,
+  };
 
-  metadata.collection = doc.collection;
-  metadata.sourceRelPath = doc.relPath;
-
-  for (const [key, value] of Object.entries(parsedFrontmatter)) {
-    if (
-      key === "tags" ||
-      key === "title" ||
-      key === "summary" ||
-      !ALLOWED_FRONTMATTER_METADATA_KEYS.has(key)
-    ) {
-      continue;
-    }
-    if (typeof value === "string" && value.trim()) {
-      metadata[key] = value.trim();
-      continue;
-    }
-    if (Array.isArray(value)) {
-      const cleaned = value
-        .filter((entry): entry is string => typeof entry === "string")
-        .map((entry) => entry.trim())
-        .filter(Boolean);
-      if (cleaned.length > 0) {
-        metadata[key] = cleaned;
-      }
-    }
-  }
-
-  return metadata;
+  return {
+    capabilities: { ...PUBLIC_PUBLISH_CAPABILITIES },
+    documents,
+    generatedAt: input.exportedAt,
+    projectionRevision: sha256Text(canonicalJson(revisionProjection)),
+    schemaVersion: PUBLIC_PUBLISH_MANIFEST_SCHEMA_VERSION,
+    visibility: input.visibility,
+  };
 };
 
 export const buildPublishArtifact = (input: {
   homeNoteSlug?: string;
   notes: PublishArtifactNote[];
   routeSlug: string;
-  source: string;
   sourceType: "note" | "collection";
   summary: string;
   title: string;
-  visibility: PublishVisibility;
-}) => ({
-  exportedAt: new Date().toISOString(),
-  source: input.source,
-  spaces: [
-    {
-      homeNoteSlug: input.homeNoteSlug,
-      notes: input.notes,
-      routeSlug: input.routeSlug,
-      sourceType: input.sourceType,
-      summary: input.summary,
-      title: input.title,
-      visibility: input.visibility,
-    },
-  ],
-  version: 1 as const,
-});
+  visibility: Exclude<PublishVisibility, "encrypted">;
+}): PublishArtifactV1 => {
+  const exportedAt = new Date().toISOString();
+  const base = {
+    homeNoteSlug: input.homeNoteSlug,
+    notes: input.notes,
+    routeSlug: input.routeSlug,
+    sourceType: input.sourceType,
+    summary: input.summary,
+    title: input.title,
+  };
+  const space: PublishArtifactSpace =
+    input.visibility === "public"
+      ? {
+          ...base,
+          manifest: buildPublicPublishManifest({
+            exportedAt,
+            homeNoteSlug: input.homeNoteSlug,
+            notes: input.notes,
+            routeSlug: input.routeSlug,
+            sourceType: input.sourceType,
+            summary: input.summary,
+            title: input.title,
+            visibility: input.visibility,
+          }),
+          visibility: input.visibility,
+        }
+      : {
+          ...base,
+          visibility: input.visibility,
+        };
+
+  return {
+    exportedAt,
+    source: input.routeSlug,
+    spaces: [space],
+    version: 1,
+  };
+};
 
 export const buildEncryptedPublishArtifact = (input: {
   encryptedPayload: EncryptedArtifactPayload;
   routeSlug: string;
   secretToken: string;
-  source: string;
   sourceType: "note" | "collection";
-}) => ({
+}): PublishArtifactV2 => ({
   exportedAt: new Date().toISOString(),
-  source: input.source,
+  source: input.routeSlug,
   spaces: [
     {
       encryptedPayload: input.encryptedPayload,
