@@ -35,9 +35,8 @@ Validate the installed product boundary and publish the complete lifecycle/secur
 <!-- Updated by plan-sync: fn-99-resident-local-context-gateway.4 used resident-status@1.0 at GET /api/resident/status and best-effort process-status@1.0.resident snapshots -->
 
 ## Done summary
-TBD
-
+Added npm-tarball conformance for concurrent resident HTTP MCP clients, stdio parity, warm lifecycle reuse, redacted status schemas, fail-closed network/auth/write boundaries, token rotation, and detached restart/shutdown. Updated CLI/MCP contracts, packaged/release gates, user docs, agent skill, and gno.sh public truth; also fixed status timestamps to RFC 3339 UTC. Windows detach remains intentionally unsupported and artifact workflows remain the platform-specific final sweep.
 ## Evidence
-- Commits:
-- Tests:
+- Commits: 45567ca7ea1c2478d7da53ebc08efef2fd590280
+- Tests: GATE_SKIPPED:unittest:green-receipt ece92adf - baseline reused from prior post-gate pass, GATE_SKIPPED:smoke:green-receipt ece92adf - baseline reused from prior post-gate pass, bun run test:package (baseline), bun run lint:check (baseline), .flow/bin/flowctl validate --spec fn-99-resident-local-context-gateway --json (baseline), bun test test/mcp/http-security.test.ts test/mcp/http-transport.test.ts test/mcp/http-parity.test.ts test/serve/resident-health.test.ts test/cli/detach.test.ts test/store/adapter.test.ts, bun test test/mcp test/serve test/store, bun run smoke:serve-shutdown, bun run test:package, bun run lint:check, bun run docs:verify, bun run prerelease, .flow/bin/flowctl validate --spec fn-99-resident-local-context-gateway --json, gno.sh: bun run typecheck, gno.sh: bun run test, gno.sh: bun run check, gno.sh: bun run build, autoresearch-gno-skill: .venv/bin/python eval.py (48/48, 100%)
 - PRs:
