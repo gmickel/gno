@@ -19,9 +19,14 @@ Close the residual encrypted V2 publish-artifact review finding before hosted se
 
 
 ## Done summary
-TBD
+Closed the encrypted V2 publish-artifact review finding.
 
+- Routes encrypted artifact construction through a closed runtime validator and projection.
+- Validates schema-compatible route/source identity, bounded non-blank opaque tokens, bounded standard-base64 ciphertext/key material, positive safe-integer KDF iterations, generated timestamp, and fixed encrypted visibility.
+- Drops caller-supplied extension fields at the artifact and payload boundaries without inspecting or transforming encrypted content.
+- Aligns the advertised JSON schema and user-facing contract documentation with the runtime bounds.
+- Adds valid builder-to-schema and fail-closed regressions for malformed, empty, oversized, unsafe, and extension-field inputs.
 ## Evidence
-- Commits:
-- Tests:
+- Commits: 5a387b3
+- Tests: bun test test/publish test/cli/publish-export.test.ts test/serve/routes/publish-export.test.ts test/spec/schemas (224 pass, 0 fail), bun run lint:check, bunx tsc --noEmit, bun run docs:verify (13 pass, 0 fail, 2 model-cache skips), bun test (2854 pass, 1 Windows-only skip, 0 fail), .flow/bin/flowctl validate --spec fn-103-capsule-distribution-and-commercial --json
 - PRs:
